@@ -213,6 +213,19 @@ TEST(AsyncSSLSocketTest2, SSLContextLocksSetAfterInitIgnored) {
 #endif
 }
 
+TEST(AsyncSSLSocketTest2, SSLContextSetLocksAndInitialize) {
+  SSLContext::cleanupOpenSSL();
+  SSLContext::setSSLLockTypesAndInitOpenSSL({});
+  EXPECT_DEATH(
+      SSLContext::setSSLLockTypesAndInitOpenSSL({}),
+      "OpenSSL is already initialized");
+
+  SSLContext::cleanupOpenSSL();
+  SSLContext::initializeOpenSSL();
+  EXPECT_DEATH(
+      SSLContext::setSSLLockTypesAndInitOpenSSL({}),
+      "OpenSSL is already initialized");
+}
 }  // folly
 
 int main(int argc, char *argv[]) {

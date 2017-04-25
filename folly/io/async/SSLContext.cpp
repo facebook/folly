@@ -793,18 +793,32 @@ static void dyn_destroy(struct CRYPTO_dynlock_value* lock, const char*, int) {
   delete lock;
 }
 
+void SSLContext::setSSLLockTypesLocked(std::map<int, SSLLockType> inLockTypes) {
+  lockTypes() = inLockTypes;
+}
+
 void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
+  std::lock_guard<std::mutex> g(initMutex());
   if (initialized_) {
     // We set the locks on initialization, so if we are already initialized
     // this would have no affect.
     LOG(INFO) << "Ignoring setSSLLockTypes after initialization";
     return;
   }
+  setSSLLockTypesLocked(std::move(inLockTypes));
+}
 
-  lockTypes() = inLockTypes;
+void SSLContext::setSSLLockTypesAndInitOpenSSL(
+    std::map<int, SSLLockType> inLockTypes) {
+  std::lock_guard<std::mutex> g(initMutex());
+  CHECK(!initialized_) << "OpenSSL is already initialized";
+  setSSLLockTypesLocked(std::move(inLockTypes));
+  initializeOpenSSLLocked();
 }
 
 bool SSLContext::isSSLLockDisabled(int lockId) {
+  std::lock_guard<std::mutex> g(initMutex());
+  CHECK(initialized_) << "OpenSSL is not initialized yet";
   const auto& sslLocks = lockTypes();
   const auto it = sslLocks.find(lockId);
   return it != sslLocks.end() &&

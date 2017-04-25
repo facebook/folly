@@ -450,6 +450,13 @@ class SSLContext {
   static void setSSLLockTypes(std::map<int, SSLLockType> lockTypes);
 
   /**
+   * Set the lock types and initialize OpenSSL in an atomic fashion.  This
+   * aborts if the library has already been initialized.
+   */
+  static void setSSLLockTypesAndInitOpenSSL(
+      std::map<int, SSLLockType> lockTypes);
+
+  /**
    * Determine if the SSL lock with the specified id (i.e.
    * CRYPTO_LOCK_SSL_SESSION) is disabled.  This should be called after
    * initializeOpenSSL.  This will only check if the specified lock has been
@@ -594,6 +601,7 @@ class SSLContext {
   // Functions are called when locked by the calling function.
   static void initializeOpenSSLLocked();
   static void cleanupOpenSSLLocked();
+  static void setSSLLockTypesLocked(std::map<int, SSLLockType> inLockTypes);
 };
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
