@@ -37,7 +37,7 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
    * must ensure that the IOBuf provided lasts at least as long as the
    * IOStreamBuf.
    */
-  IOStreamBuf(const folly::IOBuf* head);
+  explicit IOStreamBuf(const folly::IOBuf* head);
 
   IOStreamBuf(const IOStreamBuf&) = default;
   IOStreamBuf& operator=(const IOStreamBuf&) = default;
