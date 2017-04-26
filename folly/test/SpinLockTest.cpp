@@ -68,16 +68,19 @@ template <typename LOCK>
 void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
   while (true) {
     folly::asm_pause();
+    bool ret = state->lock2.try_lock();
     SpinLockGuardImpl<LOCK> g(state->lock1);
     if (state->obtained >= count) {
+      if (ret) {
+        state->lock2.unlock();
+      }
       break;
     }
 
-    bool ret = state->lock2.try_lock();
-    EXPECT_NE(state->locked, ret);
 
     if (ret) {
       // We got lock2.
+      EXPECT_NE(state->locked, ret);
       ++state->obtained;
       state->locked = true;
 
