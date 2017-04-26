@@ -43,6 +43,7 @@
 #include <boost/mpl/size.hpp>
 #include <boost/mpl/count.hpp>
 
+#include <folly/Assume.h>
 #include <folly/FormatTraits.h>
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
@@ -118,6 +119,42 @@ namespace detail {
   >::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::memmove(out, first, (last - first) * sizeof *first);
+  }
+
+  /*
+   * Move a range to a range of uninitialized memory. Assumes the
+   * ranges don't overlap. Inserts an element at out + pos using emplaceFunc().
+   * out will contain (end - begin) + 1 elements on success and none on failure.
+   * If emplaceFunc() throws [begin, end) is unmodified.
+   */
+  template <class T, class Size, class EmplaceFunc>
+  void moveToUninitializedEmplace(
+      T* begin,
+      T* end,
+      T* out,
+      Size pos,
+      EmplaceFunc&& emplaceFunc) {
+    // Must be called first so that if it throws [begin, end) is unmodified.
+    // We have to support the strong exception guarantee for emplace_back().
+    emplaceFunc(out + pos);
+    // move old elements to the left of the new one
+    try {
+      detail::moveToUninitialized(begin, begin + pos, out);
+    } catch (...) {
+      out[pos].~T();
+      throw;
+    }
+    // move old elements to the right of the new one
+    try {
+      if (begin + pos < end) {
+        detail::moveToUninitialized(begin + pos, end, out + pos + 1);
+      }
+    } catch (...) {
+      for (Size i = 0; i <= pos; ++i) {
+        out[i].~T();
+      }
+      throw;
+    }
   }
 
   /*
@@ -638,44 +675,28 @@ class small_vector
     tmp.swap(*this);
   }
 
-  template<class ...Args>
+  template <class... Args>
   void emplace_back(Args&&... args) {
-    // call helper function for static dispatch of special cases
-    emplaceBack(std::forward<Args>(args)...);
-  }
-
-  void emplace_back(const value_type& t) {
-    push_back(t);
-  }
-  void emplace_back(value_type& t) {
-    push_back(t);
-  }
-
-  void emplace_back(value_type&& t) {
-    push_back(std::move(t));
-  }
-
-  void push_back(value_type&& t) {
     if (capacity() == size()) {
-      makeSize(std::max(size_type(2), 3 * size() / 2), &t, size());
+      // Any of args may be references into the vector.
+      // When we are reallocating, we have to be careful to construct the new
+      // element before modifying the data in the old buffer.
+      makeSize(
+          size() + 1,
+          [&](void* p) { new (p) value_type(std::forward<Args>(args)...); },
+          size());
     } else {
-      new (end()) value_type(std::move(t));
+      new (end()) value_type(std::forward<Args>(args)...);
     }
     this->setSize(size() + 1);
   }
 
+  void push_back(value_type&& t) {
+    return emplace_back(std::move(t));
+  }
+
   void push_back(value_type const& t) {
-    // TODO: we'd like to make use of makeSize (it can be optimized better,
-    // because it manipulates the internals)
-    // unfortunately the current implementation only supports moving from
-    // a supplied rvalue, and doing an extra move just to reuse it is a perf
-    // net loss
-    if (size() == capacity()) {// && isInside(&t)) {
-      value_type tmp(t);
-      emplaceBack(std::move(tmp));
-    } else {
-      emplaceBack(t);
-    }
+    emplace_back(t);
   }
 
   void pop_back() {
@@ -693,10 +714,12 @@ class small_vector
     auto offset = p - begin();
 
     if (capacity() == size()) {
-      makeSize(size() + 1, &t, offset);
+      makeSize(
+          size() + 1,
+          [&t](void* ptr) { new (ptr) value_type(std::move(t)); },
+          offset);
       this->setSize(this->size() + 1);
     } else {
-      makeSize(size() + 1);
       detail::moveObjectsRight(data() + offset,
                                data() + size(),
                                data() + size() + 1);
@@ -803,17 +826,6 @@ class small_vector
 
 private:
 
-  /*
-   * This is doing the same like emplace_back, but we need this helper
-   * to catch the special case - see the next overload function..
-   */
-  template<class ...Args>
-  void emplaceBack(Args&&... args) {
-    makeSize(size() + 1);
-    new (end()) value_type(std::forward<Args>(args)...);
-    this->setSize(size() + 1);
-  }
-
   static iterator unconst(const_iterator it) {
     return const_cast<iterator>(it);
   }
@@ -900,30 +912,50 @@ private:
     doConstruct(n, [&](void* p) { new (p) value_type(val); });
   }
 
-  void makeSize(size_type size, value_type* v = nullptr) {
-    makeSize(size, v, size - 1);
+  /*
+   * Compute the size after growth.
+   */
+  size_type computeNewSize() const {
+    return std::min((3 * capacity()) / 2 + 1, max_size());
+  }
+
+  void makeSize(size_type newSize) {
+    makeSizeInternal(newSize, false, [](void*) { assume_unreachable(); }, 0);
+  }
+
+  template <typename EmplaceFunc>
+  void makeSize(size_type newSize, EmplaceFunc&& emplaceFunc, size_type pos) {
+    assert(size() == capacity());
+    makeSizeInternal(
+        newSize, true, std::forward<EmplaceFunc>(emplaceFunc), pos);
   }
 
   /*
-   * Ensure we have a large enough memory region to be size `size'.
+   * Ensure we have a large enough memory region to be size `newSize'.
    * Will move/copy elements if we are spilling to heap_ or needed to
    * allocate a new region, but if resized in place doesn't initialize
    * anything in the new region.  In any case doesn't change size().
    * Supports insertion of new element during reallocation by given
    * pointer to new element and position of new element.
-   * NOTE: If reallocation is not needed, and new element should be
-   * inserted in the middle of vector (not at the end), do the move
-   * objects and insertion outside the function, otherwise exception is thrown.
+   * NOTE: If reallocation is not needed, insert must be false,
+   * because we only know how to emplace elements into new memory.
    */
-  void makeSize(size_type size, value_type* v, size_type pos) {
-    if (size > this->max_size()) {
+  template <typename EmplaceFunc>
+  void makeSizeInternal(
+      size_type newSize,
+      bool insert,
+      EmplaceFunc&& emplaceFunc,
+      size_type pos) {
+    if (newSize > max_size()) {
       throw std::length_error("max_size exceeded in small_vector");
     }
-    if (size <= this->capacity()) {
+    if (newSize <= capacity()) {
+      assert(!insert);
       return;
     }
+    newSize = std::max(newSize, computeNewSize());
 
-    auto needBytes = size * sizeof(value_type);
+    auto needBytes = newSize * sizeof(value_type);
     // If the capacity isn't explicitly stored inline, but the heap
     // allocation is grown to over some threshold, we should store
     // a capacity at the front of the heap allocation.
@@ -943,44 +975,18 @@ private:
         detail::shiftPointer(newh, kHeapifyCapacitySize) :
         newh);
 
-    if (v != nullptr) {
-      // move new element
-      try {
-        new (&newp[pos]) value_type(std::move(*v));
-      } catch (...) {
-        free(newh);
-        throw;
-      }
-
-      // move old elements to the left of the new one
-      try {
-        detail::moveToUninitialized(begin(), begin() + pos, newp);
-      } catch (...) {
-        newp[pos].~value_type();
-        free(newh);
-        throw;
-      }
-
-      // move old elements to the right of the new one
-      try {
-        if (pos < size-1) {
-          detail::moveToUninitialized(begin() + pos, end(), newp + pos + 1);
-        }
-      } catch (...) {
-        for (size_type i = 0; i <= pos; ++i) {
-          newp[i].~value_type();
-        }
-        free(newh);
-        throw;
-      }
-    } else {
-      // move without inserting new element
-      try {
+    try {
+      if (insert) {
+        // move and insert the new element
+        detail::moveToUninitializedEmplace(
+            begin(), end(), newp, pos, std::forward<EmplaceFunc>(emplaceFunc));
+      } else {
+        // move without inserting new element
         detail::moveToUninitialized(begin(), end(), newp);
-      } catch (...) {
-        free(newh);
-        throw;
       }
+    } catch (...) {
+      free(newh);
+      throw;
     }
     for (auto& val : *this) {
       val.~value_type();

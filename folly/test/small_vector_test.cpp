@@ -739,6 +739,7 @@ struct CheckedInt {
   static const int DEFAULT_VALUE = (int)0xdeadbeef;
   CheckedInt(): value(DEFAULT_VALUE) {}
   explicit CheckedInt(int value): value(value) {}
+  CheckedInt(const CheckedInt& rhs, int) : value(rhs.value) {}
   CheckedInt(const CheckedInt& rhs): value(rhs.value) {}
   CheckedInt(CheckedInt&& rhs) noexcept: value(rhs.value) {
     rhs.value = DEFAULT_VALUE;
@@ -755,6 +756,15 @@ struct CheckedInt {
   ~CheckedInt() {}
   int value;
 };
+
+TEST(small_vector, ForwardingEmplaceInsideVector) {
+  folly::small_vector<CheckedInt> v;
+  v.push_back(CheckedInt(1));
+  for (int i = 1; i < 20; ++i) {
+    v.emplace_back(v[0], 42);
+    ASSERT_EQ(1, v.back().value);
+  }
+}
 
 TEST(small_vector, LVEmplaceInsideVector) {
   folly::small_vector<CheckedInt> v;
@@ -855,4 +865,134 @@ TEST(small_vector, ZeroInitializable) {
   for (const auto& element : test) {
     EXPECT_EQ(element, 0);
   }
+}
+
+TEST(small_vector, InsertMoreThanGrowth) {
+  small_vector<int, 10> test;
+  test.insert(test.end(), 30, 0);
+  for (auto element : test) {
+    EXPECT_EQ(element, 0);
+  }
+}
+
+TEST(small_vector, EmplaceBackExponentialGrowth) {
+  small_vector<std::pair<int, int>> test;
+  std::vector<size_t> capacities;
+  capacities.push_back(test.capacity());
+  for (int i = 0; i < 10000; ++i) {
+    test.emplace_back(0, 0);
+    if (test.capacity() != capacities.back()) {
+      capacities.push_back(test.capacity());
+    }
+  }
+  EXPECT_LE(capacities.size(), 25);
+}
+
+TEST(small_vector, InsertExponentialGrowth) {
+  small_vector<std::pair<int, int>> test;
+  std::vector<size_t> capacities;
+  capacities.push_back(test.capacity());
+  for (int i = 0; i < 10000; ++i) {
+    test.insert(test.begin(), std::make_pair(0, 0));
+    if (test.capacity() != capacities.back()) {
+      capacities.push_back(test.capacity());
+    }
+  }
+  EXPECT_LE(capacities.size(), 25);
+}
+
+TEST(small_vector, InsertNExponentialGrowth) {
+  small_vector<int> test;
+  std::vector<size_t> capacities;
+  capacities.push_back(test.capacity());
+  for (int i = 0; i < 10000; ++i) {
+    test.insert(test.begin(), 100, 0);
+    if (test.capacity() != capacities.back()) {
+      capacities.push_back(test.capacity());
+    }
+  }
+  EXPECT_LE(capacities.size(), 25);
+}
+
+namespace {
+struct Counts {
+  size_t copyCount{0};
+  size_t moveCount{0};
+};
+
+class Counter {
+  Counts* counts;
+
+ public:
+  explicit Counter(Counts& counts) : counts(&counts) {}
+  Counter(Counter const& other) noexcept : counts(other.counts) {
+    ++counts->copyCount;
+  }
+  Counter(Counter&& other) noexcept : counts(other.counts) {
+    ++counts->moveCount;
+  }
+  Counter& operator=(Counter const& rhs) noexcept {
+    EXPECT_EQ(counts, rhs.counts);
+    ++counts->copyCount;
+    return *this;
+  }
+  Counter& operator=(Counter&& rhs) noexcept {
+    EXPECT_EQ(counts, rhs.counts);
+    ++counts->moveCount;
+    return *this;
+  }
+};
+}
+
+TEST(small_vector, EmplaceBackEfficiency) {
+  small_vector<Counter, 2> test;
+  Counts counts;
+  for (size_t i = 1; i <= test.capacity(); ++i) {
+    test.emplace_back(counts);
+    EXPECT_EQ(0, counts.copyCount);
+    EXPECT_EQ(0, counts.moveCount);
+  }
+  EXPECT_EQ(test.size(), test.capacity());
+  test.emplace_back(counts);
+  // Every element except the last has to be moved to the new position
+  EXPECT_EQ(0, counts.copyCount);
+  EXPECT_EQ(test.size() - 1, counts.moveCount);
+  EXPECT_LT(test.size(), test.capacity());
+}
+
+TEST(small_vector, RVPushBackEfficiency) {
+  small_vector<Counter, 2> test;
+  Counts counts;
+  for (size_t i = 1; i <= test.capacity(); ++i) {
+    test.push_back(Counter(counts));
+    // 1 copy for each push_back()
+    EXPECT_EQ(0, counts.copyCount);
+    EXPECT_EQ(i, counts.moveCount);
+  }
+  EXPECT_EQ(test.size(), test.capacity());
+  test.push_back(Counter(counts));
+  // 1 move for each push_back()
+  // Every element except the last has to be moved to the new position
+  EXPECT_EQ(0, counts.copyCount);
+  EXPECT_EQ(test.size() + test.size() - 1, counts.moveCount);
+  EXPECT_LT(test.size(), test.capacity());
+}
+
+TEST(small_vector, CLVPushBackEfficiency) {
+  small_vector<Counter, 2> test;
+  Counts counts;
+  Counter const counter(counts);
+  for (size_t i = 1; i <= test.capacity(); ++i) {
+    test.push_back(counter);
+    // 1 copy for each push_back()
+    EXPECT_EQ(i, counts.copyCount);
+    EXPECT_EQ(0, counts.moveCount);
+  }
+  EXPECT_EQ(test.size(), test.capacity());
+  test.push_back(counter);
+  // 1 copy for each push_back()
+  EXPECT_EQ(test.size(), counts.copyCount);
+  // Every element except the last has to be moved to the new position
+  EXPECT_EQ(test.size() - 1, counts.moveCount);
+  EXPECT_LT(test.size(), test.capacity());
 }
