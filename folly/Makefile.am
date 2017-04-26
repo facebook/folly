@@ -291,6 +291,7 @@ nobase_follyinclude_HEADERS = \
 	MPMCPipeline.h \
 	MPMCQueue.h \
 	Optional.h \
+	Overload.h \
 	PackedSyncPtr.h \
 	Padded.h \
 	Partial.h \

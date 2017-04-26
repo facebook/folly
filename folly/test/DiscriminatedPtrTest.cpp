@@ -86,6 +86,9 @@ TEST(DiscriminatedPtr, Apply) {
   p.set(&foo);
   EXPECT_EQ("Foo", p.apply(Visitor()));
   EXPECT_EQ("const Foo", static_cast<const Ptr&>(p).apply(Visitor()));
+  EXPECT_EQ("Foo", apply_visitor(Visitor(), p));
+  EXPECT_EQ("const Foo", apply_visitor(Visitor(), static_cast<const Ptr&>(p)));
+  EXPECT_EQ("Foo", apply_visitor(Visitor(), std::move(p)));
 
   p.clear();
   EXPECT_THROW({p.apply(Visitor());}, std::invalid_argument);
