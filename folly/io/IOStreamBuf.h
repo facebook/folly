@@ -37,10 +37,10 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
    * must ensure that the IOBuf provided lasts at least as long as the
    * IOStreamBuf.
    */
-  explicit IOStreamBuf(const folly::IOBuf* head);
+  explicit IOStreamBuf(folly::IOBuf const* head);
 
-  IOStreamBuf(const IOStreamBuf&) = default;
-  IOStreamBuf& operator=(const IOStreamBuf&) = default;
+  IOStreamBuf(IOStreamBuf const&) = default;
+  IOStreamBuf& operator=(IOStreamBuf const&) = default;
   void swap(IOStreamBuf<CharT,Traits>&);
 
   virtual ~IOStreamBuf() override = default;
@@ -51,7 +51,7 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
   using pos_type = typename std::basic_streambuf<CharT,Traits>::pos_type;
   using traits_type = typename std::basic_streambuf<CharT,Traits>::traits_type;
 
-  static const IOStreamBuf<CharT,Traits>::pos_type badoff;
+  static IOStreamBuf<CharT,Traits>::pos_type const badoff;
 
  protected:
   // positioning
@@ -71,13 +71,13 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
 
   pos_type current_position() const;
 
-  // setg() convenience wrapper that accepts `const uint8_t*` (pointers to
+  // setg() convenience wrapper that accepts `uint8_t const*` (pointers to
   // IOBuf bytes) and casts them to the streambuf's template type.
-  void csetg(const uint8_t* gbeg, const uint8_t* gcurr, const uint8_t* gend);
+  void csetg(uint8_t const* gbeg, uint8_t const* gcurr, uint8_t const* gend);
 
  private:
-  const folly::IOBuf* head_;
-  const folly::IOBuf* gcur_; // current get IOBuf
+  folly::IOBuf const* head_;
+  folly::IOBuf const* gcur_; // current get IOBuf
 };
 
 }

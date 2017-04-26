@@ -21,7 +21,7 @@
 namespace folly {
 
 template <typename CharT, typename Traits>
-IOStreamBuf<CharT,Traits>::IOStreamBuf(const folly::IOBuf* head)
+IOStreamBuf<CharT,Traits>::IOStreamBuf(folly::IOBuf const* head)
   : std::basic_streambuf<CharT,Traits>(),
     head_(head),
     gcur_(head) {
@@ -36,7 +36,7 @@ void IOStreamBuf<CharT,Traits>::swap(IOStreamBuf<CharT,Traits>& rhs) {
 }
 
 template <typename CharT, typename Traits>
-const typename IOStreamBuf<CharT,Traits>::pos_type
+typename IOStreamBuf<CharT,Traits>::pos_type const
 IOStreamBuf<CharT,Traits>::badoff =
   static_cast<typename IOStreamBuf<CharT,Traits>::pos_type>(
     static_cast<typename IOStreamBuf<CharT,Traits>::off_type>(-1));
@@ -59,7 +59,7 @@ IOStreamBuf<CharT,Traits>::pbackfail(int_type c) {
   // Find the next preceding non-empty IOBuf, back to head_
   // Ensure the object state is not modified unless an earlier input sequence
   // can be found.
-  const IOBuf* prev = gcur_;
+  IOBuf const* prev = gcur_;
   do {
     prev = prev->prev();
   } while (prev->length() == 0 && prev != head_);
@@ -86,7 +86,7 @@ IOStreamBuf<CharT,Traits>::underflow() {
   }
 
   // Also handles non-chained
-  const IOBuf* next = gcur_->next();
+  IOBuf const* next = gcur_->next();
   if (next == head_) {
     return traits_type::eof();
   }
@@ -102,7 +102,7 @@ typename IOStreamBuf<CharT,Traits>::pos_type
 IOStreamBuf<CharT,Traits>::current_position() const {
   pos_type pos = 0;
 
-  for (const IOBuf* buf = head_; buf != gcur_; buf = buf->next()) {
+  for (IOBuf const* buf = head_; buf != gcur_; buf = buf->next()) {
     pos += buf->length();
   }
 
@@ -123,7 +123,7 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
       return badoff;
     }
 
-    const IOBuf* buf = head_;
+    IOBuf const* buf = head_;
 
     size_t remaining_offset = static_cast<size_t>(off);
 
@@ -146,7 +146,7 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
       return badoff;
     }
 
-    const IOBuf* buf = head_->prev();
+    IOBuf const* buf = head_->prev();
 
     // Work with positive offset working back from the last tail()
     size_t remaining_offset = static_cast<size_t>(0 - off);
@@ -170,7 +170,7 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
       return current_position();
     }
 
-    const IOBuf* buf = gcur_;
+    IOBuf const* buf = gcur_;
 
     if (off < 0) {
       // backwards; use as positive distance backward
@@ -208,9 +208,9 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
     size_t remaining_offset = static_cast<size_t>(off);
 
     if (remaining_offset < static_cast<size_t>(this->egptr() - this->gptr())) {
-      assert(reinterpret_cast<const uint8_t*>(this->egptr()) == gcur_->tail());
+      assert(reinterpret_cast<uint8_t const*>(this->egptr()) == gcur_->tail());
       csetg(gcur_->data(),
-            reinterpret_cast<const uint8_t*>(this->gptr() + remaining_offset),
+            reinterpret_cast<uint8_t const*>(this->gptr() + remaining_offset),
             gcur_->tail());
       return current_position();
     }
@@ -246,7 +246,7 @@ template <typename CharT, typename Traits>
 std::streamsize IOStreamBuf<CharT,Traits>::showmanyc() {
   std::streamsize s = this->egptr() - this->gptr();
 
-  for (const IOBuf* buf = gcur_->next(); buf != head_; buf = buf->next()) {
+  for (IOBuf const* buf = gcur_->next(); buf != head_; buf = buf->next()) {
     s += buf->length();
   }
 
@@ -268,12 +268,12 @@ IOStreamBuf<CharT,Traits>::xsgetn(char_type* s, std::streamsize count) {
   count -= n;
   copied += n;
 
-  for (const IOBuf* buf = gcur_->next();
+  for (IOBuf const* buf = gcur_->next();
        buf != head_ && count > 0;
        buf = buf->next()) {
     n = std::min(static_cast<std::streamsize>(buf->length()),
                  static_cast<off_type>(count));
-    Traits::copy(s + copied, reinterpret_cast<const CharT*>(buf->data()), n);
+    Traits::copy(s + copied, reinterpret_cast<CharT const*>(buf->data()), n);
     count -= n;
     copied += n;
 
@@ -285,9 +285,9 @@ IOStreamBuf<CharT,Traits>::xsgetn(char_type* s, std::streamsize count) {
 }
 
 template <typename CharT, typename Traits>
-void IOStreamBuf<CharT,Traits>::csetg(const uint8_t* gbeg,
-                                      const uint8_t* gcurr,
-                                      const uint8_t* gend) {
+void IOStreamBuf<CharT,Traits>::csetg(uint8_t const* gbeg,
+                                      uint8_t const* gcurr,
+                                      uint8_t const* gend) {
   return this->setg(reinterpret_cast<CharT*>(const_cast<uint8_t*>(gbeg)),
                     reinterpret_cast<CharT*>(const_cast<uint8_t*>(gcurr)),
                     reinterpret_cast<CharT*>(const_cast<uint8_t*>(gend)));

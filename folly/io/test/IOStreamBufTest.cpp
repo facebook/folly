@@ -26,7 +26,7 @@
 using folly::IOBuf;
 using folly::IOStreamBuf;
 
-static std::unique_ptr<const IOBuf> sampledata() {
+static std::unique_ptr<IOBuf const> sampledata() {
   auto hello = IOBuf::copyBuffer(std::string("hello "));
   auto world = IOBuf::copyBuffer(std::string("world"));
 
@@ -37,14 +37,14 @@ static std::unique_ptr<const IOBuf> sampledata() {
 // Convenience function:
 // Create a basic_string<T> from a basic_string<char>
 template <typename T>
-static std::basic_string<T> typedString(const std::string& in) {
+static std::basic_string<T> typedString(std::string const& in) {
   // Simply cast the string instead of widening since we only support
   // 1-octet types for now.
   static_assert(sizeof(T) == 1,
       "Casting without widening only works when sizeof(T) == 1");
 
   std::basic_string<T> out;
-  out.append(reinterpret_cast<const T*>(in.data()), in.size());
+  out.append(reinterpret_cast<T const*>(in.data()), in.size());
   return out;
 }
 
@@ -56,8 +56,8 @@ class IOStreamBufTest : public ::testing::Test {
     in_(&streambuf_)
   {}
 
-  static const T newline = IOStreamBuf<T>::traits_type::to_char_type('\n');
-  static const std::unique_ptr<const IOBuf> data;
+  static T const newline = IOStreamBuf<T>::traits_type::to_char_type('\n');
+  static std::unique_ptr<IOBuf const> const data;
 
  private:
   IOStreamBuf<T> streambuf_;
@@ -66,7 +66,7 @@ class IOStreamBufTest : public ::testing::Test {
 };
 
 template <typename T>
-const std::unique_ptr<const IOBuf> IOStreamBufTest<T>::data = sampledata();
+std::unique_ptr<IOBuf const> const IOStreamBufTest<T>::data = sampledata();
 
 typedef ::testing::Types<char,
                          unsigned char,
