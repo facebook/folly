@@ -47,8 +47,9 @@ IOStreamBuf<CharT,Traits>::badoff =
 template <typename CharT, typename Traits>
 typename IOStreamBuf<CharT,Traits>::int_type
 IOStreamBuf<CharT,Traits>::pbackfail(int_type c) {
-  if (this->gptr() != this->eback())
+  if (this->gptr() != this->eback()) {
     return traits_type::eof(); // trying to putback non-matching character
+  }
 
   if (gcur_ == head_) {
     // Already at beginning of first IOBuf
@@ -64,8 +65,9 @@ IOStreamBuf<CharT,Traits>::pbackfail(int_type c) {
   } while (prev->length() == 0 && prev != head_);
 
   // Check whether c matches potential *gptr() before updating pointers
-  if (!Traits::eq(c, Traits::to_int_type(prev->tail()[-1])))
+  if (!Traits::eq(c, Traits::to_int_type(prev->tail()[-1]))) {
     return traits_type::eof();
+  }
 
   gcur_ = prev;
 
@@ -79,13 +81,15 @@ typename IOStreamBuf<CharT,Traits>::int_type
 IOStreamBuf<CharT,Traits>::underflow() {
   // public methods only call underflow() when gptr() >= egptr()
   // (but it's not an error to call underflow when gptr() < egptr())
-  if (UNLIKELY(this->gptr() < this->egptr()))
+  if (UNLIKELY(this->gptr() < this->egptr())) {
     return traits_type::to_int_type(*this->gptr());
+  }
 
   // Also handles non-chained
   const IOBuf* next = gcur_->next();
-  if (next == head_)
+  if (next == head_) {
     return traits_type::eof();
+  }
 
   gcur_ = next;
   csetg(gcur_->data(), gcur_->data(), gcur_->tail());
@@ -98,8 +102,9 @@ typename IOStreamBuf<CharT,Traits>::pos_type
 IOStreamBuf<CharT,Traits>::current_position() const {
   pos_type pos = 0;
 
-  for (const IOBuf* buf = head_; buf != gcur_; buf = buf->next())
+  for (const IOBuf* buf = head_; buf != gcur_; buf = buf->next()) {
     pos += buf->length();
+  }
 
   return pos + (this->gptr() - this->eback());
 }
@@ -109,12 +114,14 @@ typename IOStreamBuf<CharT,Traits>::pos_type
 IOStreamBuf<CharT,Traits>::seekoff(off_type off,
                                    std::ios_base::seekdir way,
                                    std::ios_base::openmode which) {
-  if ((which & std::ios_base::in) != std::ios_base::in)
+  if ((which & std::ios_base::in) != std::ios_base::in) {
     return badoff;
+  }
 
   if (way == std::ios_base::beg) {
-    if (UNLIKELY(off < 0))
+    if (UNLIKELY(off < 0)) {
       return badoff;
+    }
 
     const IOBuf* buf = head_;
 
@@ -123,8 +130,9 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
     while (remaining_offset > buf->length()) {
       remaining_offset -= buf->length();
       buf = buf->next();
-      if (buf == head_)
+      if (buf == head_) {
         return badoff;
+      }
     }
 
     gcur_ = buf;
@@ -134,8 +142,9 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
   }
 
   if (way == std::ios_base::end) {
-    if (UNLIKELY(off > 0))
+    if (UNLIKELY(off > 0)) {
       return badoff;
+    }
 
     const IOBuf* buf = head_->prev();
 
@@ -145,8 +154,9 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
     while (remaining_offset > buf->length()) {
       remaining_offset -= buf->length();
       buf = buf->prev();
-      if (buf == head_ && remaining_offset > buf->length())
+      if (buf == head_ && remaining_offset > buf->length()) {
         return badoff;
+      }
     }
 
     gcur_ = buf;
@@ -156,8 +166,9 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
   }
 
   if (way == std::ios_base::cur) {
-    if (off == 0) // commonly called by tellg()
+    if (off == 0) { // commonly called by tellg()
       return current_position();
+    }
 
     const IOBuf* buf = gcur_;
 
@@ -180,8 +191,9 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
       buf = buf->prev();
 
       while (remaining_offset > buf->length()) {
-        if (buf == head_)
+        if (buf == head_) {
           return badoff; // position precedes start of data
+        }
 
         remaining_offset -= buf->length();
         buf = buf->prev();
@@ -234,8 +246,9 @@ template <typename CharT, typename Traits>
 std::streamsize IOStreamBuf<CharT,Traits>::showmanyc() {
   std::streamsize s = this->egptr() - this->gptr();
 
-  for (const IOBuf* buf = gcur_->next(); buf != head_; buf = buf->next())
+  for (const IOBuf* buf = gcur_->next(); buf != head_; buf = buf->next()) {
     s += buf->length();
+  }
 
   return s;
 }
@@ -243,8 +256,9 @@ std::streamsize IOStreamBuf<CharT,Traits>::showmanyc() {
 template <typename CharT, typename Traits>
 std::streamsize
 IOStreamBuf<CharT,Traits>::xsgetn(char_type* s, std::streamsize count) {
-  if (UNLIKELY(count < 0))
+  if (UNLIKELY(count < 0)) {
     return 0;
+  }
 
   std::streamsize copied = 0;
 
