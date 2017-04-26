@@ -89,7 +89,7 @@ class hazptr_obj {
 
 /** Definition of hazptr_obj_base */
 template <typename T, typename Deleter = std::default_delete<T>>
-class hazptr_obj_base : private hazptr_obj {
+class hazptr_obj_base : public hazptr_obj {
  public:
   /* Retire a removed object and pass the responsibility for
    * reclaiming it to the hazptr library */

@@ -238,3 +238,21 @@ TEST_F(HazptrTest, WIDECAS) {
   ret = s.cas(u, v);
   CHECK(ret);
 }
+
+TEST_F(HazptrTest, VirtualTest) {
+  struct Thing : public hazptr_obj_base<Thing> {
+    virtual ~Thing() {
+      DEBUG_PRINT("this: " << this << " &a: " << &a << " a: " << a);
+    }
+    int a;
+  };
+  for (int i = 0; i < 100; i++) {
+    auto bar = new Thing;
+    bar->a = i;
+
+    hazptr_owner<Thing> hptr;
+    hptr.set(bar);
+    bar->retire();
+    EXPECT_EQ(bar->a, i);
+  }
+}

@@ -108,8 +108,9 @@ inline T* hazptr_owner<T>::get_protected(const A& src) noexcept {
 
 template <typename T>
 inline void hazptr_owner<T>::set(const T* ptr) noexcept {
-  DEBUG_PRINT(this << " " << ptr);
-  hazptr_->set(ptr);
+  auto p = static_cast<hazptr_obj*>(const_cast<T*>(ptr));
+  DEBUG_PRINT(this << " " << ptr << " p:" << p);
+  hazptr_->set(p);
 }
 
 template <typename T>
