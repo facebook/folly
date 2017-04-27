@@ -41,17 +41,17 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
 
   IOStreamBuf(IOStreamBuf const&) = default;
   IOStreamBuf& operator=(IOStreamBuf const&) = default;
-  void swap(IOStreamBuf<CharT,Traits>&);
+  void swap(IOStreamBuf<CharT, Traits>&);
 
   ~IOStreamBuf() override = default;
 
-  using char_type = typename std::basic_streambuf<CharT,Traits>::char_type;
-  using int_type = typename std::basic_streambuf<CharT,Traits>::int_type;
-  using off_type = typename std::basic_streambuf<CharT,Traits>::off_type;
-  using pos_type = typename std::basic_streambuf<CharT,Traits>::pos_type;
-  using traits_type = typename std::basic_streambuf<CharT,Traits>::traits_type;
+  using char_type = typename std::basic_streambuf<CharT, Traits>::char_type;
+  using int_type = typename std::basic_streambuf<CharT, Traits>::int_type;
+  using off_type = typename std::basic_streambuf<CharT, Traits>::off_type;
+  using pos_type = typename std::basic_streambuf<CharT, Traits>::pos_type;
+  using traits_type = typename std::basic_streambuf<CharT, Traits>::traits_type;
 
-  static IOStreamBuf<CharT,Traits>::pos_type const badoff;
+  static IOStreamBuf<CharT, Traits>::pos_type const badoff;
 
  protected:
   // positioning

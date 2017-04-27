@@ -21,32 +21,32 @@
 namespace folly {
 
 template <typename CharT, typename Traits>
-IOStreamBuf<CharT,Traits>::IOStreamBuf(folly::IOBuf const* head)
-  : std::basic_streambuf<CharT,Traits>(),
+IOStreamBuf<CharT, Traits>::IOStreamBuf(folly::IOBuf const* head)
+  : std::basic_streambuf<CharT, Traits>(),
     head_(head),
     gcur_(head) {
   csetg(gcur_->data(), gcur_->data(), gcur_->tail());
 }
 
 template <typename CharT, typename Traits>
-void IOStreamBuf<CharT,Traits>::swap(IOStreamBuf<CharT,Traits>& rhs) {
-  std::basic_streambuf<CharT,Traits>::swap(rhs);
+void IOStreamBuf<CharT, Traits>::swap(IOStreamBuf<CharT, Traits>& rhs) {
+  std::basic_streambuf<CharT, Traits>::swap(rhs);
   std::swap(head_, rhs.head_);
   std::swap(gcur_, rhs.gcur_);
 }
 
 template <typename CharT, typename Traits>
-typename IOStreamBuf<CharT,Traits>::pos_type const
-IOStreamBuf<CharT,Traits>::badoff =
-  static_cast<typename IOStreamBuf<CharT,Traits>::pos_type>(
-    static_cast<typename IOStreamBuf<CharT,Traits>::off_type>(-1));
+typename IOStreamBuf<CharT, Traits>::pos_type const
+IOStreamBuf<CharT, Traits>::badoff =
+  static_cast<typename IOStreamBuf<CharT, Traits>::pos_type>(
+    static_cast<typename IOStreamBuf<CharT, Traits>::off_type>(-1));
 
 // This is called either to rewind the get area (because gptr() == eback())
 // or to attempt to put back a non-matching character (which we disallow
 // on non-mutable IOBufs).
 template <typename CharT, typename Traits>
-typename IOStreamBuf<CharT,Traits>::int_type
-IOStreamBuf<CharT,Traits>::pbackfail(int_type c) {
+typename IOStreamBuf<CharT, Traits>::int_type
+IOStreamBuf<CharT, Traits>::pbackfail(int_type c) {
   if (this->gptr() != this->eback()) {
     return traits_type::eof(); // trying to putback non-matching character
   }
@@ -77,8 +77,8 @@ IOStreamBuf<CharT,Traits>::pbackfail(int_type c) {
 }
 
 template <typename CharT, typename Traits>
-typename IOStreamBuf<CharT,Traits>::int_type
-IOStreamBuf<CharT,Traits>::underflow() {
+typename IOStreamBuf<CharT, Traits>::int_type
+IOStreamBuf<CharT, Traits>::underflow() {
   // public methods only call underflow() when gptr() >= egptr()
   // (but it's not an error to call underflow when gptr() < egptr())
   if (UNLIKELY(this->gptr() < this->egptr())) {
@@ -98,8 +98,8 @@ IOStreamBuf<CharT,Traits>::underflow() {
 }
 
 template <typename CharT, typename Traits>
-typename IOStreamBuf<CharT,Traits>::pos_type
-IOStreamBuf<CharT,Traits>::current_position() const {
+typename IOStreamBuf<CharT, Traits>::pos_type
+IOStreamBuf<CharT, Traits>::current_position() const {
   pos_type pos = 0;
 
   for (IOBuf const* buf = head_; buf != gcur_; buf = buf->next()) {
@@ -110,10 +110,10 @@ IOStreamBuf<CharT,Traits>::current_position() const {
 }
 
 template <typename CharT, typename Traits>
-typename IOStreamBuf<CharT,Traits>::pos_type
-IOStreamBuf<CharT,Traits>::seekoff(off_type off,
-                                   std::ios_base::seekdir way,
-                                   std::ios_base::openmode which) {
+typename IOStreamBuf<CharT, Traits>::pos_type
+IOStreamBuf<CharT, Traits>::seekoff(off_type off,
+                                    std::ios_base::seekdir way,
+                                    std::ios_base::openmode which) {
   if ((which & std::ios_base::in) != std::ios_base::in) {
     return badoff;
   }
@@ -236,14 +236,14 @@ IOStreamBuf<CharT,Traits>::seekoff(off_type off,
 }
 
 template <typename CharT, typename Traits>
-typename IOStreamBuf<CharT,Traits>::pos_type
-IOStreamBuf<CharT,Traits>::seekpos(pos_type pos,
-                                   std::ios_base::openmode which) {
+typename IOStreamBuf<CharT, Traits>::pos_type
+IOStreamBuf<CharT, Traits>::seekpos(pos_type pos,
+                                    std::ios_base::openmode which) {
   return seekoff(off_type(pos), std::ios_base::beg, which);
 }
 
 template <typename CharT, typename Traits>
-std::streamsize IOStreamBuf<CharT,Traits>::showmanyc() {
+std::streamsize IOStreamBuf<CharT, Traits>::showmanyc() {
   std::streamsize s = this->egptr() - this->gptr();
 
   for (IOBuf const* buf = gcur_->next(); buf != head_; buf = buf->next()) {
@@ -255,7 +255,7 @@ std::streamsize IOStreamBuf<CharT,Traits>::showmanyc() {
 
 template <typename CharT, typename Traits>
 std::streamsize
-IOStreamBuf<CharT,Traits>::xsgetn(char_type* s, std::streamsize count) {
+IOStreamBuf<CharT, Traits>::xsgetn(char_type* s, std::streamsize count) {
   if (UNLIKELY(count < 0)) {
     return 0;
   }
@@ -285,9 +285,9 @@ IOStreamBuf<CharT,Traits>::xsgetn(char_type* s, std::streamsize count) {
 }
 
 template <typename CharT, typename Traits>
-void IOStreamBuf<CharT,Traits>::csetg(uint8_t const* gbeg,
-                                      uint8_t const* gcurr,
-                                      uint8_t const* gend) {
+void IOStreamBuf<CharT, Traits>::csetg(uint8_t const* gbeg,
+                                       uint8_t const* gcurr,
+                                       uint8_t const* gend) {
   return this->setg(reinterpret_cast<CharT*>(const_cast<uint8_t*>(gbeg)),
                     reinterpret_cast<CharT*>(const_cast<uint8_t*>(gcurr)),
                     reinterpret_cast<CharT*>(const_cast<uint8_t*>(gend)));
