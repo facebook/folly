@@ -25,7 +25,7 @@ TEST(Interrupt, raise) {
   using eggs_t = std::runtime_error;
   Promise<Unit> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
-    EXPECT_THROW(e.throwException(), eggs_t);
+    EXPECT_THROW(e.throw_exception(), eggs_t);
   });
   p.getFuture().raise(eggs_t("eggs"));
 }
@@ -33,7 +33,7 @@ TEST(Interrupt, raise) {
 TEST(Interrupt, cancel) {
   Promise<Unit> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
-    EXPECT_THROW(e.throwException(), FutureCancellation);
+    EXPECT_THROW(e.throw_exception(), FutureCancellation);
   });
   p.getFuture().cancel();
 }

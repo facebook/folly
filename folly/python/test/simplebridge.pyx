@@ -24,7 +24,7 @@ cdef void handle_uint64_t(cFollyTry[uint64_t]&& res, PyObject* userData):
     future = <object> userData
     if res.hasException():
         try:
-            res.exception().throwException()
+            res.exception().throw_exception()
         except Exception as ex:
             future.set_exception(ex)
     else:

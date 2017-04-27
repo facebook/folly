@@ -137,7 +137,7 @@ auto fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
 //! // Thread2: Exceptions are ok!
 //! void processResult() {
 //!   try {
-//!     globalExceptionWrapper.throwException();
+//!     globalExceptionWrapper.throw_exception();
 //!   } catch (const FacePlantException& e) {
 //!     LOG(ERROR) << "FACEPLANT!";
 //!   } catch (const FailWhaleException& e) {
@@ -499,7 +499,12 @@ class exception_wrapper final {
 
   //! \pre `bool(*this)`
   //! Throws the wrapped expression.
-  [[noreturn]] void throwException() const;
+  [[noreturn]] void throw_exception() const;
+
+  [[noreturn]] FOLLY_DEPRECATED(
+      "use throw_exception") void throwException() const {
+    throw_exception();
+  }
 
   //! Call `fn` with the wrapped exception (if any), if `fn` can accept it.
   //! \par Example
@@ -542,7 +547,7 @@ class exception_wrapper final {
   //! ew.handle(
   //!   [&](std::logic_error const& e) {
   //!      LOG(DFATAL) << "ruh roh";
-  //!      ew.throwException(); // rethrow the active exception without
+  //!      ew.throw_exception(); // rethrow the active exception without
   //!                           // slicing it. Will not be caught by other
   //!                           // handlers in this call.
   //!   },
@@ -634,7 +639,7 @@ inline exception_wrapper try_and_catch_(F&& f) {
 //!
 //! \par Example Usage:
 //! \code
-//! // This catches my runtime_error and if I call throwException() on ew, it
+//! // This catches my runtime_error and if I call throw_exception() on ew, it
 //! // will throw a runtime_error
 //! auto ew = folly::try_and_catch<std::exception, std::runtime_error>([=]() {
 //!   if (badThingHappens()) {
@@ -642,7 +647,7 @@ inline exception_wrapper try_and_catch_(F&& f) {
 //!   }
 //! });
 //!
-//! // This will catch the exception and if I call throwException() on ew, it
+//! // This will catch the exception and if I call throw_exception() on ew, it
 //! // will throw a std::exception
 //! auto ew = folly::try_and_catch<std::exception, std::runtime_error>([=]() {
 //!   if (badThingHappens()) {

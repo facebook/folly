@@ -79,7 +79,7 @@ exception_wrapper::exception_wrapper(std::exception_ptr ptr) noexcept
 [[noreturn]] void exception_wrapper::onNoExceptionError() {
   std::ios_base::Init ioinit_; // ensure std::cerr is alive
   std::cerr
-      << "Cannot use `throwException` with an empty folly::exception_wrapper"
+      << "Cannot use `throw_exception` with an empty folly::exception_wrapper"
       << std::endl;
   std::terminate();
 }

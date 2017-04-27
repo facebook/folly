@@ -61,7 +61,7 @@ T& from_eptr(std::exception_ptr& eptr) {
   }
 }
 
-// Tests that when we call throwException, the proper type is thrown (derived)
+// Tests that when we call throw_exception, the proper type is thrown (derived)
 TEST(ExceptionWrapper, throw_test) {
   std::runtime_error e("payload");
   auto ew = make_exception_wrapper<std::runtime_error>(e);
@@ -70,7 +70,7 @@ TEST(ExceptionWrapper, throw_test) {
   container.push_back(ew);
 
   try {
-    container[0].throwException();
+    container[0].throw_exception();
   } catch (std::runtime_error& err) {
     std::string expected = "payload";
     std::string actual = err.what();
@@ -222,7 +222,7 @@ TEST(ExceptionWrapper, with_exception_ptr_empty) {
   EXPECT_EQ("", ew.what());
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<int>());
-  EXPECT_DEATH(ew.throwException(), "empty folly::exception_wrapper");
+  EXPECT_DEATH(ew.throw_exception(), "empty folly::exception_wrapper");
 }
 
 TEST(ExceptionWrapper, with_shared_ptr_test) {
@@ -238,7 +238,7 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
   EXPECT_TRUE(ew.is_compatible_with<std::exception>());
   EXPECT_TRUE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_FALSE(ew.is_compatible_with<int>());
-  EXPECT_THROW(ew.throwException(), std::runtime_error);
+  EXPECT_THROW(ew.throw_exception(), std::runtime_error);
 
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
@@ -266,7 +266,7 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
   EXPECT_TRUE(ew.is_compatible_with<std::exception>());
   EXPECT_TRUE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_FALSE(ew.is_compatible_with<int>());
-  EXPECT_THROW(ew.throwException(), std::runtime_error);
+  EXPECT_THROW(ew.throw_exception(), std::runtime_error);
 
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
@@ -293,7 +293,7 @@ TEST(ExceptionWrapper, with_exception_ptr_any_test) {
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
-  EXPECT_THROW(ew.throwException(), int);
+  EXPECT_THROW(ew.throw_exception(), int);
 
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
@@ -321,7 +321,7 @@ TEST(ExceptionWrapper, with_non_std_exception_test) {
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
-  EXPECT_THROW(ew.throwException(), int);
+  EXPECT_THROW(ew.throw_exception(), int);
 
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
@@ -347,7 +347,7 @@ TEST(ExceptionWrapper, with_exception_ptr_any_nil_test) {
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
-  EXPECT_THROW(ew.throwException(), int);
+  EXPECT_THROW(ew.throw_exception(), int);
 
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
@@ -415,7 +415,7 @@ TEST(ExceptionWrapper, non_std_exception_test) {
   // non-std::exception types are supported, but the only way to
   // access their value is to explicity rethrow and catch it.
   try {
-    ew.throwException();
+    ew.throw_exception();
   } catch /* nolint */ (int& i) {
     EXPECT_EQ(i, expected);
   }
@@ -429,13 +429,13 @@ TEST(ExceptionWrapper, exceptionStr) {
 
 TEST(ExceptionWrapper, throwException_noException) {
   exception_wrapper ew;
-  ASSERT_DEATH(ew.throwException(), "empty folly::exception_wrapper");
+  ASSERT_DEATH(ew.throw_exception(), "empty folly::exception_wrapper");
 }
 
 namespace {
 class TestException : public std::exception { };
 void testEW(const exception_wrapper& ew) {
-  EXPECT_THROW(ew.throwException(), TestException);
+  EXPECT_THROW(ew.throw_exception(), TestException);
 }
 }  // namespace
 

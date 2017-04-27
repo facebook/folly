@@ -383,7 +383,7 @@ inline bool exception_wrapper::is_compatible_with() const noexcept {
   return with_exception([](Ex const&) {});
 }
 
-[[noreturn]] inline void exception_wrapper::throwException() const {
+[[noreturn]] inline void exception_wrapper::throw_exception() const {
   vptr_->throw_(this);
   onNoExceptionError();
 }
@@ -498,7 +498,7 @@ inline void exception_wrapper::handle_(
   bool handled = false;
   auto impl = exception_wrapper_detail::fold(
       HandleReduce<std::is_const<This>::value>{&handled},
-      [&] { this_.throwException(); },
+      [&] { this_.throw_exception(); },
       fns...);
   impl();
 }
