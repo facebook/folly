@@ -43,7 +43,7 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
   IOStreamBuf& operator=(IOStreamBuf const&) = default;
   void swap(IOStreamBuf<CharT,Traits>&);
 
-  virtual ~IOStreamBuf() override = default;
+  ~IOStreamBuf() override = default;
 
   using char_type = typename std::basic_streambuf<CharT,Traits>::char_type;
   using int_type = typename std::basic_streambuf<CharT,Traits>::int_type;
@@ -55,19 +55,19 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
 
  protected:
   // positioning
-  virtual pos_type seekoff(off_type off,
-                           std::ios_base::seekdir dir,
-                           std::ios_base::openmode which =
-                             std::ios_base::in | std::ios_base::out) override;
-  virtual pos_type seekpos(pos_type pos,
-                           std::ios_base::openmode which =
-                             std::ios_base::in | std::ios_base::out) override;
+  pos_type seekoff(off_type off,
+                   std::ios_base::seekdir dir,
+                   std::ios_base::openmode which =
+                     std::ios_base::in | std::ios_base::out) override;
+  pos_type seekpos(pos_type pos,
+                   std::ios_base::openmode which =
+                     std::ios_base::in | std::ios_base::out) override;
 
   // get area
-  virtual std::streamsize showmanyc() override;
-  virtual int_type underflow() override;
-  virtual std::streamsize xsgetn(char_type* s, std::streamsize count) override;
-  virtual int_type pbackfail(int_type c = traits_type::eof()) override;
+  std::streamsize showmanyc() override;
+  int_type underflow() override;
+  std::streamsize xsgetn(char_type* s, std::streamsize count) override;
+  int_type pbackfail(int_type c = traits_type::eof()) override;
 
   pos_type current_position() const;
 
