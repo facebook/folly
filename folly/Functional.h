@@ -24,7 +24,7 @@ namespace folly {
 
 /**
  * Class template that wraps a reference to an rvalue. Similar to
- * std::reference_wrapper but with four important differences:
+ * std::reference_wrapper but with three important differences:
  *
  * 1) folly::rvalue_reference_wrappers can only be moved, not copied;
  * 2) the get() function and the conversion-to-T operator are destructive and
