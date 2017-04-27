@@ -167,6 +167,13 @@ TEST(IOBufQueue, SplitAtMost) {
   EXPECT_TRUE(queue.empty());
 }
 
+TEST(IOBufQueue, SplitZero) {
+  IOBufQueue queue(clOptions);
+  queue.append(stringToIOBuf(SCL("Hello world")));
+  auto buf = queue.split(0);
+  EXPECT_EQ(buf->computeChainDataLength(), 0);
+}
+
 TEST(IOBufQueue, Preallocate) {
   IOBufQueue queue(clOptions);
   queue.append(string("Hello"));

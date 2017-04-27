@@ -212,6 +212,9 @@ unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
       break;
     }
   }
+  if (UNLIKELY(result == nullptr)) {
+    return IOBuf::create(0);
+  }
   return result;
 }
 
