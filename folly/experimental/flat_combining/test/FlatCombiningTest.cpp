@@ -19,6 +19,8 @@
 #include <folly/portability/GTest.h>
 #include <glog/logging.h>
 
+#include <mutex>
+
 using namespace folly::test;
 
 constexpr int LINES = 5;
@@ -33,6 +35,22 @@ struct Params {
 };
 
 class FlatCombiningTest : public ::testing::TestWithParam<Params> {};
+
+TEST(FlatCombiningTest, lock_holder) {
+  folly::FcSimpleExample<> ex(10);
+  {
+    std::unique_lock<std::mutex> l;
+    ex.holdLock(l);
+    CHECK(l.owns_lock());
+  }
+  {
+    std::unique_lock<std::mutex> l;
+    ex.holdLock(l, std::defer_lock);
+    CHECK(l.try_lock());
+  }
+  CHECK(ex.tryExclusive());
+  ex.releaseExclusive();
+}
 
 TEST_P(FlatCombiningTest, combining) {
   Params p = GetParam();

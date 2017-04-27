@@ -107,7 +107,7 @@ uint64_t fc_test(
         // test of exclusive access through a lock holder
         {
           std::unique_lock<Mutex> l;
-          ex.acquireExclusive(l);
+          ex.holdLock(l);
           CHECK(!mutex);
           mutex = true;
           VLOG(2) << tid << " " << ex.getVal() << " ...........";
