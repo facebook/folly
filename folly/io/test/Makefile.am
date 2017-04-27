@@ -12,8 +12,9 @@ TESTS = \
 	record-io-test \
 	shutdown-socket-set-test
 
-check_PROGRAMS = $(TESTS) \
-		 compression-test
+check_PROGRAMS = \
+	$(TESTS) \
+	compression-test
 
 iobuf_test_SOURCES = IOBufTest.cpp
 iobuf_test_LDADD = $(ldadd)
@@ -22,9 +23,10 @@ iobuf_cursor_test_SOURCES = IOBufCursorTest.cpp
 iobuf_cursor_test_LDADD = $(ldadd)
 
 compression_test_SOURCES = CompressionTest.cpp
-compression_test_LDADD = $(top_builddir)/libfolly.la \
-			 $(top_builddir)/test/libgtest.la \
-			 $(top_builddir)/libfollybenchmark.la
+compression_test_LDADD = \
+	$(top_builddir)/libfolly.la \
+	$(top_builddir)/test/libgtest.la \
+	$(top_builddir)/libfollybenchmark.la
 
 iobuf_queue_test_SOURCES = IOBufQueueTest.cpp
 iobuf_queue_test_LDADD = $(ldadd)
