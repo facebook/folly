@@ -82,4 +82,4 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
 
 }
 
-#include "IOStreamBuf-inl.h"
+#include <folly/io/IOStreamBuf-inl.h>
