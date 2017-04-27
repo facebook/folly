@@ -394,6 +394,7 @@ nobase_follyinclude_HEADERS = \
 	Try.h \
 	Unicode.h \
 	Function.h \
+	Functional.h \
 	UncaughtExceptions.h \
 	Unit.h \
 	Uri.h \

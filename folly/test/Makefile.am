@@ -302,6 +302,11 @@ function_test_SOURCES = \
 function_test_LDADD = libfollytestmain.la
 TESTS += function_test
 
+functional_test_SOURCES = \
+		FunctionalTest.cpp
+functional_test_LDADD = libfollytestmain.la
+TESTS += functional_test
+
 ssl_test_SOURCES = \
 		../ssl/test/OpenSSLHashTest.cpp
 ssl_test_LDADD = libfollytestmain.la -lcrypto
