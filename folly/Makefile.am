@@ -104,6 +104,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/AtomicSharedPtr.h \
 	experimental/detail/AtomicSharedPtr-detail.h \
 	experimental/AutoTimer.h \
+	experimental/ThreadedRepeatingFunctionRunner.h \
 	experimental/Bits.h \
 	experimental/BitVectorCoding.h \
 	experimental/DynamicParser.h \
@@ -536,6 +537,7 @@ libfolly_la_SOURCES = \
 	Uri.cpp \
 	Version.cpp \
 	experimental/AsymmetricMemoryBarrier.cpp \
+	experimental/ThreadedRepeatingFunctionRunner.cpp \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
 	experimental/DynamicParser.cpp \
