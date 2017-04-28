@@ -20,6 +20,8 @@
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
 #include <folly/portability/GTest.h>
+#include <numeric>
+#include <vector>
 
 using folly::ByteRange;
 using folly::format;
@@ -140,7 +142,7 @@ TEST(IOBuf, Cursor) {
   c.write((uint8_t)40); // OK
   try {
     c.write((uint8_t)10); // Bad write, checked should except.
-    EXPECT_EQ(true, false);
+    EXPECT_TRUE(false);
   } catch (...) {
   }
 }
@@ -528,6 +530,59 @@ TEST(IOBuf, QueueAppender) {
   }
 
   EXPECT_THROW({cursor.readBE<uint32_t>();}, std::out_of_range);
+}
+
+TEST(IOBuf, QueueAppenderPushAtMostFillBuffer) {
+  folly::IOBufQueue queue;
+  // There should be a goodMallocSize between 125 and 1000
+  QueueAppender appender{&queue, 125};
+  std::vector<uint8_t> data;
+  data.resize(1000);
+  std::iota(data.begin(), data.end(), 0);
+  // Add 100 byte
+  appender.pushAtMost(data.data(), 100);
+  // Add 900 bytes
+  appender.pushAtMost(data.data() + 100, data.size() - 100);
+  const auto buf = queue.front();
+  // Should fill the current buffer before adding another
+  EXPECT_LE(2, buf->countChainElements());
+  EXPECT_EQ(0, buf->tailroom());
+  EXPECT_LE(125, buf->length());
+  EXPECT_EQ(1000, buf->computeChainDataLength());
+  const StringPiece sp{(const char*)data.data(), data.size()};
+  EXPECT_EQ(sp, toString(*buf));
+}
+
+TEST(IOBuf, QueueAppenderInsertOwn) {
+  auto buf = IOBuf::create(10);
+  folly::IOBufQueue queue;
+  QueueAppender appender{&queue, 128};
+  appender.insert(std::move(buf));
+
+  std::vector<uint8_t> data;
+  data.resize(256);
+  std::iota(data.begin(), data.end(), 0);
+  appender.pushAtMost(folly::range(data));
+  // Buffer is owned, so we should write to it
+  EXPECT_LE(2, queue.front()->countChainElements());
+  EXPECT_EQ(0, queue.front()->tailroom());
+  const StringPiece sp{(const char*)data.data(), data.size()};
+  EXPECT_EQ(sp, toString(*queue.front()));
+}
+
+TEST(IOBuf, QueueAppenderInsertClone) {
+  IOBuf buf{IOBuf::CREATE, 100};
+  folly::IOBufQueue queue;
+  QueueAppender appender{&queue, 100};
+  // Buffer is shared, so we create a new buffer to write to
+  appender.insert(buf);
+  uint8_t x = 42;
+  appender.pushAtMost(&x, 1);
+  EXPECT_EQ(2, queue.front()->countChainElements());
+  EXPECT_EQ(0, queue.front()->length());
+  EXPECT_LT(0, queue.front()->tailroom());
+  EXPECT_EQ(1, queue.front()->next()->length());
+  EXPECT_EQ(x, queue.front()->next()->data()[0]);
 }
 
 TEST(IOBuf, CursorOperators) {
@@ -976,4 +1031,87 @@ TEST(IOBuf, TestRetreatOperators) {
   auto retreated = curs - 5;
   EXPECT_EQ(retreated.totalLength(), 5);
   EXPECT_EQ(curs.totalLength(), 0);
+}
+
+TEST(IOBuf, tryRead) {
+  unique_ptr<IOBuf> iobuf1(IOBuf::create(6));
+  iobuf1->append(6);
+  unique_ptr<IOBuf> iobuf2(IOBuf::create(24));
+  iobuf2->append(24);
+
+  iobuf1->prependChain(std::move(iobuf2));
+
+  EXPECT_TRUE(iobuf1->isChained());
+
+  RWPrivateCursor wcursor(iobuf1.get());
+  Cursor rcursor(iobuf1.get());
+  wcursor.writeLE((uint32_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint16_t)1);
+  EXPECT_EQ(0, wcursor.totalLength());
+
+  EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
+
+  EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
+  EXPECT_EQ(0u, rcursor.readLE<uint32_t>());
+
+  EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
+  rcursor.skip(4);
+
+  uint32_t val;
+  EXPECT_TRUE(rcursor.tryRead(val));
+  EXPECT_EQ(1, val);
+  EXPECT_TRUE(rcursor.tryRead(val));
+
+  EXPECT_EQ(0, val);
+  EXPECT_FALSE(rcursor.tryRead(val));
+}
+
+TEST(IOBuf, tryReadLE) {
+  IOBuf buf{IOBuf::CREATE, 4};
+  buf.append(4);
+
+  RWPrivateCursor wcursor(&buf);
+  Cursor rcursor(&buf);
+
+  const uint32_t expected = 0x01020304;
+  wcursor.writeLE(expected);
+  uint32_t actual;
+  EXPECT_TRUE(rcursor.tryReadLE(actual));
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(IOBuf, tryReadBE) {
+  IOBuf buf{IOBuf::CREATE, 4};
+  buf.append(4);
+
+  RWPrivateCursor wcursor(&buf);
+  Cursor rcursor(&buf);
+
+  const uint32_t expected = 0x01020304;
+  wcursor.writeBE(expected);
+  uint32_t actual;
+  EXPECT_TRUE(rcursor.tryReadBE(actual));
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(IOBuf, tryReadConsumesAllInputOnFailure) {
+  IOBuf buf{IOBuf::CREATE, 2};
+  buf.append(2);
+
+  Cursor rcursor(&buf);
+  uint32_t val;
+  EXPECT_FALSE(rcursor.tryRead(val));
+  EXPECT_EQ(0, rcursor.totalLength());
+}
+
+TEST(IOBuf, readConsumesAllInputOnFailure) {
+  IOBuf buf{IOBuf::CREATE, 2};
+  buf.append(2);
+
+  Cursor rcursor(&buf);
+  EXPECT_THROW(rcursor.read<uint32_t>(), std::out_of_range);
+  EXPECT_EQ(0, rcursor.totalLength());
 }

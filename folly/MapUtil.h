@@ -18,6 +18,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Optional.h>
+#include <tuple>
 
 namespace folly {
 
@@ -107,6 +108,24 @@ const typename Map::mapped_type& get_ref_default(
 }
 
 /**
+ * Passing a temporary default value returns a dangling reference when it is
+ * returned. Lifetime extension is broken by the indirection.
+ * The caller must ensure that the default value outlives the reference returned
+ * by get_ref_default().
+ */
+template <class Map>
+const typename Map::mapped_type& get_ref_default(
+    const Map& map,
+    const typename Map::key_type& key,
+    typename Map::mapped_type&& dflt) = delete;
+
+template <class Map>
+const typename Map::mapped_type& get_ref_default(
+    const Map& map,
+    const typename Map::key_type& key,
+    const typename Map::mapped_type&& dflt) = delete;
+
+/**
  * Given a map and a key, return a reference to the value corresponding to the
  * key in the map, or the given default reference if the key doesn't exist in
  * the map.
@@ -148,4 +167,111 @@ typename Map::mapped_type* get_ptr(
   return (pos != map.end() ? &pos->second : nullptr);
 }
 
+// TODO: Remove the return type computations when clang 3.5 and gcc 5.1 are
+// the minimum supported versions.
+namespace detail {
+template <
+    class T,
+    size_t pathLength,
+    class = typename std::enable_if<(pathLength > 0)>::type>
+struct NestedMapType {
+  using type = typename NestedMapType<T, pathLength - 1>::type::mapped_type;
+};
+
+template <class T>
+struct NestedMapType<T, 1> {
+  using type = typename T::mapped_type;
+};
+
+template <typename... KeysDefault>
+struct DefaultType;
+
+template <typename Default>
+struct DefaultType<Default> {
+  using type = Default;
+};
+
+template <typename Key, typename... KeysDefault>
+struct DefaultType<Key, KeysDefault...> {
+  using type = typename DefaultType<KeysDefault...>::type;
+};
+
+template <class... KeysDefault>
+auto extract_default(const KeysDefault&... keysDefault) ->
+    typename DefaultType<KeysDefault...>::type const& {
+  return std::get<sizeof...(KeysDefault)-1>(std::tie(keysDefault...));
+}
+}
+
+/**
+ * Given a map of maps and a path of keys, return a pointer to the nested value,
+ * or nullptr if the key doesn't exist in the map.
+ */
+template <class Map, class Key1, class Key2, class... Keys>
+auto get_ptr(
+    const Map& map,
+    const Key1& key1,
+    const Key2& key2,
+    const Keys&... keys) ->
+    typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type const* {
+  auto pos = map.find(key1);
+  return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
+}
+
+template <class Map, class Key1, class Key2, class... Keys>
+auto get_ptr(Map& map, const Key1& key1, const Key2& key2, const Keys&... keys)
+    -> typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type* {
+  auto pos = map.find(key1);
+  return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
+}
+
+/**
+ * Given a map and a path of keys, return the value corresponding to the nested
+ * value, or a given default value if the path doesn't exist in the map.
+ * The default value is the last parameter, and is copied when returned.
+ */
+template <
+    class Map,
+    class Key1,
+    class Key2,
+    class... KeysDefault,
+    typename = typename std::enable_if<sizeof...(KeysDefault) != 0>::type>
+auto get_default(
+    const Map& map,
+    const Key1& key1,
+    const Key2& key2,
+    const KeysDefault&... keysDefault) ->
+    typename detail::NestedMapType<Map, 1 + sizeof...(KeysDefault)>::type {
+  if (const auto* ptr = get_ptr(map, key1)) {
+    return get_default(*ptr, key2, keysDefault...);
+  }
+  return detail::extract_default(keysDefault...);
+}
+
+/**
+ * Given a map and a path of keys, return a reference to the value corresponding
+ * to the nested value, or the given default reference if the path doesn't exist
+ * in the map.
+ * The default value is the last parameter, and must be a lvalue reference.
+ */
+template <
+    class Map,
+    class Key1,
+    class Key2,
+    class... KeysDefault,
+    typename = typename std::enable_if<sizeof...(KeysDefault) != 0>::type,
+    typename = typename std::enable_if<std::is_lvalue_reference<
+        typename detail::DefaultType<KeysDefault...>::type>::value>::type>
+auto get_ref_default(
+    const Map& map,
+    const Key1& key1,
+    const Key2& key2,
+    KeysDefault&&... keysDefault) ->
+    typename detail::NestedMapType<Map, 1 + sizeof...(KeysDefault)>::type
+    const& {
+  if (const auto* ptr = get_ptr(map, key1)) {
+    return get_ref_default(*ptr, key2, keysDefault...);
+  }
+  return detail::extract_default(keysDefault...);
+}
 }  // namespace folly

@@ -1,8 +1,13 @@
 if FOLLY_TESTMAIN
-SUBDIRS = . experimental init test io/test
-else
-SUBDIRS = . test io/test
+MAYBE_INIT = init
 endif
+
+if EXCEPTION_TRACER
+MAYBE_EXCEPTION_TRACER = experimental/exception_tracer
+endif
+
+SUBDIRS = . experimental $(MAYBE_INIT) test io/test experimental/io/test \
+	  $(MAYBE_EXCEPTION_TRACER)
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -55,6 +60,7 @@ nobase_follyinclude_HEADERS = \
 	CPortability.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
+	detail/AtomicUtils.h \
 	detail/BitIteratorDetail.h \
 	detail/BitsDetail.h \
 	detail/CacheLocality.h \
@@ -75,7 +81,6 @@ nobase_follyinclude_HEADERS = \
 	detail/Sleeper.h \
 	detail/SlowFingerprint.h \
 	detail/SocketFastOpen.h \
-	detail/SpinLockImpl.h \
 	detail/StaticSingletonManager.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
@@ -92,9 +97,12 @@ nobase_follyinclude_HEADERS = \
 	Exception.h \
 	ExceptionString.h \
 	ExceptionWrapper.h \
+	ExceptionWrapper-inl.h \
 	Executor.h \
 	Expected.h \
 	experimental/AsymmetricMemoryBarrier.h \
+	experimental/AtomicSharedPtr.h \
+	experimental/detail/AtomicSharedPtr-detail.h \
 	experimental/AutoTimer.h \
 	experimental/Bits.h \
 	experimental/BitVectorCoding.h \
@@ -106,6 +114,11 @@ nobase_follyinclude_HEADERS = \
 	experimental/EventCount.h \
 	experimental/Instructions.h \
 	experimental/bser/Bser.h \
+	experimental/exception_tracer/ExceptionAbi.h \
+	experimental/exception_tracer/ExceptionCounterLib.h \
+	experimental/exception_tracer/ExceptionTracer.h \
+	experimental/exception_tracer/ExceptionTracerLib.h \
+	experimental/exception_tracer/StackTrace.h \
 	experimental/FunctionScheduler.h \
 	experimental/FutureDAG.h \
 	experimental/io/FsUtil.h \
@@ -176,6 +189,7 @@ nobase_follyinclude_HEADERS = \
 	futures/detail/Core.h \
 	futures/detail/FSM.h \
 	futures/detail/Types.h \
+	futures/test/TestExecutor.h \
 	gen/Base.h \
 	gen/Base-inl.h \
 	gen/Combine.h \
@@ -279,6 +293,7 @@ nobase_follyinclude_HEADERS = \
 	MPMCPipeline.h \
 	MPMCQueue.h \
 	Optional.h \
+	Overload.h \
 	PackedSyncPtr.h \
 	Padded.h \
 	Partial.h \
@@ -381,6 +396,7 @@ nobase_follyinclude_HEADERS = \
 	Try.h \
 	Unicode.h \
 	Function.h \
+	Functional.h \
 	UncaughtExceptions.h \
 	Unit.h \
 	Uri.h \
@@ -436,6 +452,7 @@ libfolly_la_SOURCES = \
 	futures/ManualExecutor.cpp \
 	futures/QueuedImmediateExecutor.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
+	futures/test/TestExecutor.cpp \
 	detail/Futex.cpp \
 	detail/StaticSingletonManager.cpp \
 	detail/ThreadLocalDetail.cpp \
@@ -486,6 +503,7 @@ libfolly_la_SOURCES = \
 	portability/Malloc.cpp \
 	portability/Memory.cpp \
 	portability/OpenSSL.cpp \
+	portability/PThread.cpp \
 	portability/Sockets.cpp \
 	portability/Stdio.cpp \
 	portability/Stdlib.cpp \
@@ -515,6 +533,7 @@ libfolly_la_SOURCES = \
 	stats/Instantiations.cpp \
 	Subprocess.cpp \
 	ThreadCachedArena.cpp \
+	ThreadName.cpp \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \

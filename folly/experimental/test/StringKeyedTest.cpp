@@ -355,7 +355,8 @@ TEST(StringKeyedUnorderedSetTest, constructors) {
   EXPECT_TRUE(s3.empty());
   EXPECT_TRUE(s6 == s5);
 
-  LeakCheckedUnorderedSet s7(std::move(s6), s6.get_allocator());
+  auto s6_allocator = s6.get_allocator();
+  LeakCheckedUnorderedSet s7(std::move(s6), s6_allocator);
   EXPECT_TRUE(s6.empty());
   EXPECT_TRUE(s7 == s5);
 

@@ -44,11 +44,10 @@
 #include <cstdlib>
 #include <folly/Portability.h>
 #include <mutex>
-#include <pthread.h>
 #include <type_traits>
 
-#include <glog/logging.h>
 #include <folly/detail/Sleeper.h>
+#include <glog/logging.h>
 
 #if !FOLLY_X64 && !FOLLY_A64 && !FOLLY_PPC64
 # error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
@@ -82,7 +81,7 @@ struct PicoSpinLock {
 
  public:
   static const UIntType kLockBitMask_ = UIntType(1) << Bit;
-  UIntType lock_;
+  mutable UIntType lock_;
 
   /*
    * You must call this function before using this class, if you
@@ -94,7 +93,8 @@ struct PicoSpinLock {
    */
   void init(IntType initialValue = 0) {
     CHECK(!(initialValue & kLockBitMask_));
-    lock_ = UIntType(initialValue);
+    reinterpret_cast<std::atomic<UIntType>*>(&lock_)->store(
+        UIntType(initialValue), std::memory_order_release);
   }
 
   /*
@@ -107,7 +107,10 @@ struct PicoSpinLock {
    * as you normally get.)
    */
   IntType getData() const {
-    return static_cast<IntType>(lock_ & ~kLockBitMask_);
+    auto res = reinterpret_cast<std::atomic<UIntType>*>(&lock_)->load(
+                   std::memory_order_relaxed) &
+        ~kLockBitMask_;
+    return res;
   }
 
   /*
@@ -118,7 +121,10 @@ struct PicoSpinLock {
    */
   void setData(IntType w) {
     CHECK(!(w & kLockBitMask_));
-    lock_ = UIntType((lock_ & kLockBitMask_) | w);
+    auto l = reinterpret_cast<std::atomic<UIntType>*>(&lock_);
+    l->store(
+        (l->load(std::memory_order_relaxed) & kLockBitMask_) | w,
+        std::memory_order_relaxed);
   }
 
   /*
@@ -128,7 +134,14 @@ struct PicoSpinLock {
   bool try_lock() const {
     bool ret = false;
 
-#ifdef _MSC_VER
+#if defined(FOLLY_SANITIZE_THREAD)
+    // TODO: Might be able to fully move to std::atomic when gcc emits lock btr:
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=49244
+    ret =
+        !(reinterpret_cast<std::atomic<UIntType>*>(&lock_)->fetch_or(
+              kLockBitMask_, std::memory_order_acquire) &
+          kLockBitMask_);
+#elif _MSC_VER
     switch (sizeof(IntType)) {
       case 2:
         // There is no _interlockedbittestandset16 for some reason :(

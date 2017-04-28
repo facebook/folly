@@ -326,6 +326,8 @@ if test "$folly_cv_lib_liblinux_vdso" = yes; then
   AC_DEFINE([HAVE_LINUX_VDSO], [1], [Define to 1 if liblinux-vdso is available])
 fi
 
+AC_DEFINE([HAVE_PTHREAD], [1], [Define to 1 if pthread is avaliable])
+
 AC_CACHE_CHECK(
   [for usable std::is_trivially_copyable],
   [folly_cv_decl_std_is_trivially_copyable],
@@ -554,13 +556,13 @@ AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))
 AC_CHECK_HEADER([zlib.h], AC_CHECK_LIB([z], [main]))
 AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))
 AC_CHECK_HEADER([zstd.h], AC_CHECK_LIB([zstd], [ZSTD_compressStream]))
+AC_CHECK_HEADER([bzlib.h], AC_CHECK_LIB([bz2], [main]))
 AC_CHECK_HEADER([linux/membarrier.h], AC_DEFINE([HAVE_LINUX_MEMBARRIER_H], [1], [Define to 1 if membarrier.h is available]))
 
 AC_ARG_ENABLE([follytestmain],
    AS_HELP_STRING([--enable-follytestmain], [enables using main function from folly for tests]),
-   [follytestmain=${enableval}], [follytestmain=no])
+   [use_follytestmain=${enableval}], [use_follytestmain=yes])
 
-use_follytestmain=yes
 # libdwarf used to install in /usr/include, now installs in /usr/include/libdwarf.
 AC_CHECK_HEADERS([libdwarf/dwarf.h dwarf.h], [break])
 # Check whether we have both the library and the header
@@ -577,6 +579,10 @@ AS_IF([test "x${mobile}" = "xyes"], [
     AC_DEFINE([MOBILE], [1],
               [Define to 1 for compiler guards for mobile targets.])
 ])
+
+AC_ARG_ENABLE([exception-tracer],
+    AS_HELP_STRING([--enable-exception-tracer], [enables building exception tracer]),
+    [build_exception_tracer=${enableval}], [build_exception_tracer=no])
 
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
@@ -604,6 +610,7 @@ AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
 AM_CONDITIONAL([FOLLY_TESTMAIN], [test "x${use_follytestmain}" = "xyes"])
 AM_CONDITIONAL([HAVE_LIBDWARF], [test "x${have_libdwarf}" = "xyes"])
 AM_CONDITIONAL([HAVE_BOOST_CONTEXT], [test "x${ax_cv_boost_context}" = "xyes"])
+AM_CONDITIONAL([EXCEPTION_TRACER], [test "x${build_exception_tracer}" = "xyes"])
 
 # remove pkg-config deps from dependent libraries
 # (at least for pkg-config file purposes)
@@ -616,6 +623,10 @@ AC_CONFIG_FILES([Makefile
                  test/Makefile
                  test/function_benchmark/Makefile
                  experimental/Makefile
+                 experimental/io/test/Makefile
                  experimental/symbolizer/Makefile
                  init/Makefile])
+
+AM_COND_IF([EXCEPTION_TRACER],
+           [AC_CONFIG_FILES([experimental/exception_tracer/Makefile])])
 AC_OUTPUT

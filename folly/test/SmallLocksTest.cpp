@@ -93,7 +93,7 @@ template<class T> struct PslTest {
   void doTest() {
     using UT = typename std::make_unsigned<T>::type;
     T ourVal = rand() % T(UT(1) << (sizeof(UT) * 8 - 1));
-    for (int i = 0; i < 10000; ++i) {
+    for (int i = 0; i < 100; ++i) {
       std::lock_guard<PicoSpinLock<T>> guard(lock);
       lock.setData(ourVal);
       for (int n = 0; n < 10; ++n) {
@@ -231,9 +231,9 @@ TEST(SmallLocks, MicroLock) {
   // affect bits outside the ones MicroLock is defined to affect.
   struct {
     uint8_t a;
-    volatile uint8_t b;
+    std::atomic<uint8_t> b;
     MicroLock alock;
-    volatile uint8_t d;
+    std::atomic<uint8_t> d;
   } x;
 
   uint8_t origB = 'b';

@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include <pthread.h>
-
 #include <folly/IntrusiveList.h>
 #include <folly/SpinLock.h>
 #include <folly/fibers/GenericBaton.h>
@@ -93,13 +91,8 @@ class TimedMutex {
 template <typename BatonType>
 class TimedRWMutex {
  public:
-  TimedRWMutex() {
-    pthread_spin_init(&lock_, PTHREAD_PROCESS_PRIVATE);
-  }
-
-  ~TimedRWMutex() {
-    pthread_spin_destroy(&lock_);
-  }
+  TimedRWMutex() = default;
+  ~TimedRWMutex() = default;
 
   TimedRWMutex(const TimedRWMutex& rhs) = delete;
   TimedRWMutex& operator=(const TimedRWMutex& rhs) = delete;
@@ -223,7 +216,7 @@ class TimedRWMutex {
       boost::intrusive::constant_time_size<true>>
       MutexWaiterList;
 
-  pthread_spinlock_t lock_; //< lock protecting the internal state
+  folly::SpinLock lock_; //< lock protecting the internal state
   // (state_, read_waiters_, etc.)
   State state_ = State::UNLOCKED;
 

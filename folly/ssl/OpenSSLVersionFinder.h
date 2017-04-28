@@ -18,9 +18,6 @@
 #include <folly/Conv.h>
 #include <folly/portability/OpenSSL.h>
 
-#include <openssl/crypto.h>
-#include <openssl/opensslv.h>
-
 // This is used to find the OpenSSL version at runtime. Just returning
 // OPENSSL_VERSION_NUMBER is insufficient as runtime version may be different
 // from the compile-time version

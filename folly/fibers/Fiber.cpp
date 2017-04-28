@@ -103,6 +103,9 @@ void Fiber::init(bool recordStackUsed) {
 
 Fiber::~Fiber() {
 #ifdef FOLLY_SANITIZE_ADDRESS
+  if (asanFakeStack_ != nullptr) {
+    fiberManager_.freeFakeStack(asanFakeStack_);
+  }
   fiberManager_.unpoisonFiberStack(this);
 #endif
   fiberManager_.stackAllocator_.deallocate(fiberStackLimit_, fiberStackSize_);
@@ -184,6 +187,10 @@ void Fiber::preempt(State state) {
   } else {
     preemptImpl();
   }
+}
+
+Fiber::LocalData::~LocalData() {
+  reset();
 }
 
 Fiber::LocalData::LocalData(const LocalData& other) : data_(nullptr) {

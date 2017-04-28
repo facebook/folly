@@ -90,8 +90,7 @@ void AsyncServerSocket::RemoteAcceptor::stop(
 }
 
 void AsyncServerSocket::RemoteAcceptor::messageAvailable(
-  QueueMessage&& msg) {
-
+    QueueMessage&& msg) noexcept {
   switch (msg.type) {
     case MessageType::MSG_NEW_CONN:
     {

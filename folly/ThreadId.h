@@ -18,15 +18,16 @@
 
 #include <cstdint>
 
-#include <pthread.h>
+#include <folly/portability/PThread.h>
+#include <folly/portability/Windows.h>
 
 namespace folly {
 
 inline uint64_t getCurrentThreadID() {
-#ifdef _WIN32
-  // There's no need to force a Windows.h include, so grab the ID
-  // via pthread instead.
-  return uint64_t(pthread_getw32threadid_np(pthread_self()));
+#if __APPLE__
+  return uint64_t(pthread_mach_thread_np(pthread_self()));
+#elif _WIN32
+  return uint64_t(GetCurrentThreadId());
 #else
   return uint64_t(pthread_self());
 #endif

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/SpinLock.h>
 
 #include <folly/Random.h>
@@ -67,16 +68,19 @@ template <typename LOCK>
 void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
   while (true) {
     folly::asm_pause();
+    bool ret = state->lock2.try_lock();
     SpinLockGuardImpl<LOCK> g(state->lock1);
     if (state->obtained >= count) {
+      if (ret) {
+        state->lock2.unlock();
+      }
       break;
     }
 
-    bool ret = state->lock2.trylock();
-    EXPECT_NE(state->locked, ret);
 
     if (ret) {
       // We got lock2.
+      EXPECT_NE(state->locked, ret);
       ++state->obtained;
       state->locked = true;
 
@@ -132,36 +136,9 @@ void trylockTest() {
 
 } // unnamed namespace
 
-#if __x86_64__
-TEST(SpinLock, MslCorrectness) {
-  correctnessTest<folly::SpinLockMslImpl>();
+TEST(SpinLock, Correctness) {
+  correctnessTest<folly::SpinLock>();
 }
-TEST(SpinLock, MslTryLock) {
-  trylockTest<folly::SpinLockMslImpl>();
-}
-#endif
-
-#if __APPLE__
-TEST(SpinLock, AppleCorrectness) {
-  correctnessTest<folly::SpinLockAppleImpl>();
-}
-TEST(SpinLock, AppleTryLock) {
-  trylockTest<folly::SpinLockAppleImpl>();
-}
-#endif
-
-#if FOLLY_HAVE_PTHREAD_SPINLOCK_T
-TEST(SpinLock, PthreadCorrectness) {
-  correctnessTest<folly::SpinLockPthreadImpl>();
-}
-TEST(SpinLock, PthreadTryLock) {
-  trylockTest<folly::SpinLockPthreadImpl>();
-}
-#endif
-
-TEST(SpinLock, MutexCorrectness) {
-  correctnessTest<folly::SpinLockPthreadMutexImpl>();
-}
-TEST(SpinLock, MutexTryLock) {
-  trylockTest<folly::SpinLockPthreadMutexImpl>();
+TEST(SpinLock, TryLock) {
+  trylockTest<folly::SpinLock>();
 }

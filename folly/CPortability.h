@@ -90,10 +90,10 @@
  * used as folly whitelists some functions.
  */
 #if UNDEFINED_SANITIZER
-# define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(x) \
-    __attribute__((no_sanitize(x)))
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
+  __attribute__((no_sanitize(__VA_ARGS__)))
 #else
-# define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(x)
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
 #endif // UNDEFINED_SANITIZER
 
 /**
@@ -125,4 +125,13 @@
 # define FOLLY_ALWAYS_INLINE inline __attribute__((__always_inline__))
 #else
 # define FOLLY_ALWAYS_INLINE inline
+#endif
+
+// attribute hidden
+#if _MSC_VER
+#define FOLLY_ATTR_VISIBILITY_HIDDEN
+#elif defined(__clang__) || defined(__GNUC__)
+#define FOLLY_ATTR_VISIBILITY_HIDDEN __attribute__((__visibility__("hidden")))
+#else
+#define FOLLY_ATTR_VISIBILITY_HIDDEN
 #endif

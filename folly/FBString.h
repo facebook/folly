@@ -21,7 +21,7 @@
 
 #include <atomic>
 #include <cstddef>
-#include <ios>
+#include <iosfwd>
 #include <limits>
 #include <type_traits>
 
@@ -1230,7 +1230,15 @@ public:
     return assign(s);
   }
 
-  basic_fbstring& operator=(value_type c);
+  // This actually goes directly against the C++ spec, but the
+  // value_type overload is dangerous, so we're explicitly deleting
+  // any overloads of operator= that could implicitly convert to
+  // value_type.
+  template <typename TP>
+  typename std::enable_if<
+      std::is_same<typename std::decay<TP>::type, value_type>::value,
+      basic_fbstring&>::type
+  operator=(TP c);
 
   basic_fbstring& operator=(std::initializer_list<value_type> il) {
     return assign(il.begin(), il.end());
@@ -1860,8 +1868,13 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::operator=(
 }
 
 template <typename E, class T, class A, class S>
-inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::operator=(
-    const value_type c) {
+template <typename TP>
+inline typename std::enable_if<
+    std::is_same<
+        typename std::decay<TP>::type,
+        typename basic_fbstring<E, T, A, S>::value_type>::value,
+    basic_fbstring<E, T, A, S>&>::type
+basic_fbstring<E, T, A, S>::operator=(TP c) {
   Invariant checker(*this);
 
   if (empty()) {
@@ -2643,13 +2656,13 @@ std::basic_istream<
     std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
     typename basic_fbstring<E, T, A, S>::traits_type>& is,
     basic_fbstring<E, T, A, S>& str) {
-  typename std::basic_istream<E, T>::sentry sentry(is);
-  typedef std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
-                             typename basic_fbstring<E, T, A, S>::traits_type>
-                        __istream_type;
-  typedef typename __istream_type::ios_base __ios_base;
+  typedef std::basic_istream<
+      typename basic_fbstring<E, T, A, S>::value_type,
+      typename basic_fbstring<E, T, A, S>::traits_type>
+      _istream_type;
+  typename _istream_type::sentry sentry(is);
   size_t extracted = 0;
-  auto err = __ios_base::goodbit;
+  auto err = _istream_type::goodbit;
   if (sentry) {
     auto n = is.width();
     if (n <= 0) {
@@ -2658,7 +2671,7 @@ std::basic_istream<
     str.erase();
     for (auto got = is.rdbuf()->sgetc(); extracted != size_t(n); ++extracted) {
       if (got == T::eof()) {
-        err |= __ios_base::eofbit;
+        err |= _istream_type::eofbit;
         is.width(0);
         break;
       }
@@ -2670,7 +2683,7 @@ std::basic_istream<
     }
   }
   if (!extracted) {
-    err |= __ios_base::failbit;
+    err |= _istream_type::failbit;
   }
   if (err) {
     is.setstate(err);
@@ -2687,28 +2700,31 @@ operator<<(
   typename basic_fbstring<E, T, A, S>::traits_type>& os,
     const basic_fbstring<E, T, A, S>& str) {
 #if _LIBCPP_VERSION
-  typename std::basic_ostream<
-    typename basic_fbstring<E, T, A, S>::value_type,
-    typename basic_fbstring<E, T, A, S>::traits_type>::sentry __s(os);
-  if (__s) {
+  typedef std::basic_ostream<
+      typename basic_fbstring<E, T, A, S>::value_type,
+      typename basic_fbstring<E, T, A, S>::traits_type>
+      _ostream_type;
+  typename _ostream_type::sentry _s(os);
+  if (_s) {
     typedef std::ostreambuf_iterator<
       typename basic_fbstring<E, T, A, S>::value_type,
       typename basic_fbstring<E, T, A, S>::traits_type> _Ip;
     size_t __len = str.size();
     bool __left =
-      (os.flags() & std::ios_base::adjustfield) == std::ios_base::left;
+        (os.flags() & _ostream_type::adjustfield) == _ostream_type::left;
     if (__pad_and_output(_Ip(os),
                          str.data(),
                          __left ? str.data() + __len : str.data(),
                          str.data() + __len,
                          os,
                          os.fill()).failed()) {
-      os.setstate(std::ios_base::badbit | std::ios_base::failbit);
+      os.setstate(_ostream_type::badbit | _ostream_type::failbit);
     }
   }
 #elif defined(_MSC_VER)
+  typedef decltype(os.precision()) streamsize;
   // MSVC doesn't define __ostream_insert
-  os.write(str.data(), std::streamsize(str.size()));
+  os.write(str.data(), static_cast<streamsize>(str.size()));
 #else
   std::__ostream_insert(os, str.data(), str.size());
 #endif
@@ -2722,32 +2738,88 @@ constexpr typename basic_fbstring<E1, T, A, S>::size_type
 #ifndef _LIBSTDCXX_FBSTRING
 // basic_string compatibility routines
 
-template <typename E, class T, class A, class S>
-inline
-bool operator==(const basic_fbstring<E, T, A, S>& lhs,
-                const std::string& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator==(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
   return lhs.compare(0, lhs.size(), rhs.data(), rhs.size()) == 0;
 }
 
-template <typename E, class T, class A, class S>
-inline
-bool operator==(const std::string& lhs,
-                const basic_fbstring<E, T, A, S>& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator==(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
   return rhs == lhs;
 }
 
-template <typename E, class T, class A, class S>
-inline
-bool operator!=(const basic_fbstring<E, T, A, S>& lhs,
-                const std::string& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator!=(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
   return !(lhs == rhs);
 }
 
-template <typename E, class T, class A, class S>
-inline
-bool operator!=(const std::string& lhs,
-                const basic_fbstring<E, T, A, S>& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator!=(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
   return !(lhs == rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return lhs.compare(0, lhs.size(), rhs.data(), rhs.size()) < 0;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return lhs.compare(0, lhs.size(), rhs.data(), rhs.size()) > 0;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return rhs > lhs;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return rhs < lhs;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<=(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return !(lhs > rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>=(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return !(lhs < rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<=(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return !(lhs > rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>=(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return !(lhs < rhs);
 }
 
 #if !defined(_LIBSTDCXX_FBSTRING)

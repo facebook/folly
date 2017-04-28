@@ -280,6 +280,7 @@ futures_test_SOURCES = \
     ../futures/test/RetryingTest.cpp \
     ../futures/test/SelfDestructTest.cpp \
     ../futures/test/SharedPromiseTest.cpp \
+    ../futures/test/TestExecutorTest.cpp \
     ../futures/test/ThenCompileTest.cpp \
     ../futures/test/ThenTest.cpp \
     ../futures/test/TimekeeperTest.cpp \
@@ -300,6 +301,11 @@ function_test_SOURCES = \
 		FunctionTest.cpp
 function_test_LDADD = libfollytestmain.la
 TESTS += function_test
+
+functional_test_SOURCES = \
+		FunctionalTest.cpp
+functional_test_LDADD = libfollytestmain.la
+TESTS += functional_test
 
 ssl_test_SOURCES = \
 		../ssl/test/OpenSSLHashTest.cpp

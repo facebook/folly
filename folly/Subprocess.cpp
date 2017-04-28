@@ -22,6 +22,8 @@
 
 #if __linux__
 #include <sys/prctl.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 #endif
 #include <fcntl.h>
 
@@ -389,7 +391,19 @@ void Subprocess::spawnInternal(
   // Call c_str() here, as it's not necessarily safe after fork.
   const char* childDir =
     options.childDir_.empty() ? nullptr : options.childDir_.c_str();
-  pid_t pid = vfork();
+
+  pid_t pid;
+#ifdef __linux__
+  if (options.cloneFlags_) {
+    pid = syscall(SYS_clone, *options.cloneFlags_, 0, nullptr, nullptr);
+    checkUnixError(pid, errno, "clone");
+  } else {
+#endif
+    pid = vfork();
+    checkUnixError(pid, errno, "vfork");
+#ifdef __linux__
+  }
+#endif
   if (pid == 0) {
     int errnoValue = prepareChild(options, &oldSignals, childDir);
     if (errnoValue != 0) {
@@ -400,8 +414,6 @@ void Subprocess::spawnInternal(
     // If we get here, exec() failed.
     childError(errFd, kExecFailure, errnoValue);
   }
-  // In parent.  Make sure vfork() succeeded.
-  checkUnixError(pid, errno, "vfork");
 
   // Child is alive.  We have to be very careful about throwing after this
   // point.  We are inside the constructor, so if we throw the Subprocess

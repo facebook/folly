@@ -42,7 +42,6 @@
 #include <type_traits>
 #include <boost/noncopyable.hpp>
 #include <cstdlib>
-#include <pthread.h>
 #include <mutex>
 #include <atomic>
 

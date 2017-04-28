@@ -20,9 +20,9 @@
 #include <chrono>
 #include <folly/AtomicStruct.h>
 #include <folly/Hash.h>
+#include <folly/ThreadId.h>
 #include <folly/Traits.h>
 #include <folly/detail/Futex.h>
-#include <folly/portability/PThread.h>
 
 namespace folly {
 
@@ -85,7 +85,7 @@ struct MemoryIdler {
     if (idleTimeout.count() > 0 && timeoutVariationFrac > 0) {
       // hash the pthread_t and the time to get the adjustment.
       // Standard hash func isn't very good, so bit mix the result
-      auto pr = std::make_pair(pthread_self(),
+      auto pr = std::make_pair(getCurrentThreadID(),
                                Clock::now().time_since_epoch().count());
       std::hash<decltype(pr)> hash_fn;
       uint64_t h = folly::hash::twang_mix64(hash_fn(pr));

@@ -98,7 +98,8 @@ static std::string getNoteRawContent(const std::string& fileName) {
       "section",
       ".note." + kUSDTSubsectionName,
       fileName);
-  auto subProc = folly::Subprocess(args, folly::Subprocess::pipeStdout());
+  auto subProc =
+      folly::Subprocess(args, folly::Subprocess::Options().pipeStdout());
   auto output = subProc.communicate();
   auto retCode = subProc.wait();
   CHECK(retCode.exited());

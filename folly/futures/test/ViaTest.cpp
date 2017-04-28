@@ -472,6 +472,22 @@ TEST(Via, viaRaces) {
   t2.join();
 }
 
+TEST(Via, viaDummyExecutorFutureSetValueFirst) {
+  DummyDrivableExecutor x;
+  auto future = makeFuture().via(&x).then([] { return 42; });
+
+  EXPECT_THROW(future.get(), BrokenPromise);
+}
+
+TEST(Via, viaDummyExecutorFutureSetCallbackFirst) {
+  DummyDrivableExecutor x;
+  Promise<Unit> trigger;
+  auto future = trigger.getFuture().via(&x).then([] { return 42; });
+  trigger.setValue();
+
+  EXPECT_THROW(future.get(), BrokenPromise);
+}
+
 TEST(ViaFunc, liftsVoid) {
   ManualExecutor x;
   int count = 0;

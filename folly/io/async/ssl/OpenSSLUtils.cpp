@@ -13,20 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/io/async/ssl/OpenSSLUtils.h>
-#include <folly/ScopeGuard.h>
-#include <folly/portability/OpenSSL.h>
-#include <folly/portability/Sockets.h>
+
 #include <glog/logging.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/ssl.h>
-#include <openssl/x509v3.h>
+
 #include <unordered_map>
 
+#include <folly/ScopeGuard.h>
+#include <folly/portability/Sockets.h>
+
 namespace {
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
 // BoringSSL doesn't (as of May 2016) export the equivalent
 // of BIO_sock_should_retry, so this is one way around it :(
 static int boringssl_bio_fd_should_retry(int err);
@@ -196,6 +194,48 @@ const std::string& OpenSSLUtils::getCipherName(uint16_t cipherCode) {
   }
 }
 
+void OpenSSLUtils::setSSLInitialCtx(SSL* ssl, SSL_CTX* ctx) {
+#if !FOLLY_OPENSSL_IS_110 && !defined(OPENSSL_NO_TLSEXT)
+  if (ssl) {
+    ssl->initial_ctx = ctx;
+  }
+#endif
+}
+
+SSL_CTX* OpenSSLUtils::getSSLInitialCtx(SSL* ssl) {
+#if !FOLLY_OPENSSL_IS_110 && !defined(OPENSSL_NO_TLSEXT)
+  if (ssl) {
+    return ssl->initial_ctx;
+  }
+#endif
+  return nullptr;
+}
+
+BioMethodUniquePtr OpenSSLUtils::newSocketBioMethod() {
+  BIO_METHOD* newmeth = nullptr;
+#if FOLLY_OPENSSL_IS_110
+  if (!(newmeth = BIO_meth_new(BIO_TYPE_SOCKET, "socket_bio_method"))) {
+    return nullptr;
+  }
+  auto meth = const_cast<BIO_METHOD*>(BIO_s_socket());
+  BIO_meth_set_create(newmeth, BIO_meth_get_create(meth));
+  BIO_meth_set_destroy(newmeth, BIO_meth_get_destroy(meth));
+  BIO_meth_set_ctrl(newmeth, BIO_meth_get_ctrl(meth));
+  BIO_meth_set_callback_ctrl(newmeth, BIO_meth_get_callback_ctrl(meth));
+  BIO_meth_set_read(newmeth, BIO_meth_get_read(meth));
+  BIO_meth_set_write(newmeth, BIO_meth_get_write(meth));
+  BIO_meth_set_gets(newmeth, BIO_meth_get_gets(meth));
+  BIO_meth_set_puts(newmeth, BIO_meth_get_puts(meth));
+#else
+  if (!(newmeth = (BIO_METHOD*)OPENSSL_malloc(sizeof(BIO_METHOD)))) {
+    return nullptr;
+  }
+  memcpy(newmeth, BIO_s_socket(), sizeof(BIO_METHOD));
+#endif
+
+  return BioMethodUniquePtr(newmeth);
+}
+
 bool OpenSSLUtils::setCustomBioReadMethod(
     BIO_METHOD* bioMeth,
     int (*meth)(BIO*, char*, int)) {
@@ -214,7 +254,7 @@ bool OpenSSLUtils::setCustomBioWriteMethod(
 
 int OpenSSLUtils::getBioShouldRetryWrite(int r) {
   int ret = 0;
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
   ret = boringssl_bio_fd_should_retry(r);
 #else
   ret = BIO_sock_should_retry(r);
@@ -223,7 +263,7 @@ int OpenSSLUtils::getBioShouldRetryWrite(int r) {
 }
 
 void OpenSSLUtils::setBioAppData(BIO* b, void* ptr) {
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
   BIO_set_callback_arg(b, static_cast<char*>(ptr));
 #else
   BIO_set_app_data(b, ptr);
@@ -231,18 +271,10 @@ void OpenSSLUtils::setBioAppData(BIO* b, void* ptr) {
 }
 
 void* OpenSSLUtils::getBioAppData(BIO* b) {
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
   return BIO_get_callback_arg(b);
 #else
   return BIO_get_app_data(b);
-#endif
-}
-
-void OpenSSLUtils::setCustomBioMethod(BIO* b, BIO_METHOD* meth) {
-#if defined(OPENSSL_IS_BORINGSSL)
-  b->method = meth;
-#else
-  BIO_set(b, meth);
 #endif
 }
 
@@ -275,7 +307,7 @@ void OpenSSLUtils::setBioFd(BIO* b, int fd, int flags) {
 } // folly
 
 namespace {
-#if defined(OPENSSL_IS_BORINGSSL)
+#ifdef OPENSSL_IS_BORINGSSL
 
 static int boringssl_bio_fd_non_fatal_error(int err) {
   if (

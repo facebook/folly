@@ -35,6 +35,8 @@
 #define S_IRWXU (S_IRUSR | S_IWUSR | S_IXUSR)
 #define S_IRWXG (S_IRGRP | S_IWGRP | S_IXGRP)
 
+#define S_ISDIR(mode) (((mode) & _S_IFDIR) == _S_IFDIR ? 1 : 0)
+
 // This isn't defined anywhere, so give a sane value.
 #define MAXSYMLINKS 255
 

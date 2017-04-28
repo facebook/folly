@@ -24,13 +24,6 @@
 #include <string>
 #include <random>
 
-// This has to come before SSL.
-#include <folly/portability/OpenSSL.h>
-#include <folly/portability/Sockets.h>
-
-#include <openssl/ssl.h>
-#include <openssl/tls1.h>
-
 #include <glog/logging.h>
 
 #ifndef FOLLY_NO_CONFIG
@@ -40,6 +33,7 @@
 #include <folly/Range.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
+#include <folly/portability/OpenSSL.h>
 
 namespace folly {
 
@@ -456,6 +450,23 @@ class SSLContext {
   static void setSSLLockTypes(std::map<int, SSLLockType> lockTypes);
 
   /**
+   * Set the lock types and initialize OpenSSL in an atomic fashion.  This
+   * aborts if the library has already been initialized.
+   */
+  static void setSSLLockTypesAndInitOpenSSL(
+      std::map<int, SSLLockType> lockTypes);
+
+  /**
+   * Determine if the SSL lock with the specified id (i.e.
+   * CRYPTO_LOCK_SSL_SESSION) is disabled.  This should be called after
+   * initializeOpenSSL.  This will only check if the specified lock has been
+   * explicitly set to LOCK_NONE.
+   *
+   * This is not safe to call while setSSLLockTypes is being called.
+   */
+  static bool isSSLLockDisabled(int lockId);
+
+  /**
    * Examine OpenSSL's error stack, and return a string description of the
    * errors.
    *
@@ -590,6 +601,7 @@ class SSLContext {
   // Functions are called when locked by the calling function.
   static void initializeOpenSSLLocked();
   static void cleanupOpenSSLLocked();
+  static void setSSLLockTypesLocked(std::map<int, SSLLockType> inLockTypes);
 };
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;

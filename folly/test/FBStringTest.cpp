@@ -208,7 +208,8 @@ template <class String> void clause11_21_4_2_lprime(String & test) {
 }
 template <class String> void clause11_21_4_2_m(String & test) {
   // Assignment from char
-  test = random('a', 'z');
+  using value_type = typename String::value_type;
+  test = random(static_cast<value_type>('a'), static_cast<value_type>('z'));
 }
 template <class String> void clause11_21_4_2_n(String & test) {
   // Assignment from initializer_list<char>
@@ -1438,3 +1439,212 @@ TEST(FBStringCtorTest, NullZeroConstruction) {
   folly::fbstring f(p, n);
   EXPECT_EQ(f.size(), 0);
 }
+
+// Tests for the comparison operators. I use EXPECT_TRUE rather than EXPECT_LE
+// because what's under test is the operator rather than the relation between
+// the objects.
+
+TEST(FBString, compareToStdString) {
+  using folly::fbstring;
+  using namespace std::string_literals;
+  auto stdA = "a"s;
+  auto stdB = "b"s;
+  fbstring fbA("a");
+  fbstring fbB("b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(U16FBString, compareToStdU16String) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = u"a"s;
+  auto stdB = u"b"s;
+  basic_fbstring<char16_t> fbA(u"a");
+  basic_fbstring<char16_t> fbB(u"b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(U32FBString, compareToStdU32String) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = U"a"s;
+  auto stdB = U"b"s;
+  basic_fbstring<char32_t> fbA(U"a");
+  basic_fbstring<char32_t> fbB(U"b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(WFBString, compareToStdWString) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = L"a"s;
+  auto stdB = L"b"s;
+  basic_fbstring<wchar_t> fbA(L"a");
+  basic_fbstring<wchar_t> fbB(L"b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+// Same again, but with a more challenging input - a common prefix and different
+// lengths.
+
+TEST(FBString, compareToStdStringLong) {
+  using folly::fbstring;
+  using namespace std::string_literals;
+  auto stdA = "1234567890a"s;
+  auto stdB = "1234567890ab"s;
+  fbstring fbA("1234567890a");
+  fbstring fbB("1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(U16FBString, compareToStdU16StringLong) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = u"1234567890a"s;
+  auto stdB = u"1234567890ab"s;
+  basic_fbstring<char16_t> fbA(u"1234567890a");
+  basic_fbstring<char16_t> fbB(u"1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+#if FOLLY_HAVE_WCHAR_SUPPORT
+TEST(U32FBString, compareToStdU32StringLong) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = U"1234567890a"s;
+  auto stdB = U"1234567890ab"s;
+  basic_fbstring<char32_t> fbA(U"1234567890a");
+  basic_fbstring<char32_t> fbB(U"1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(WFBString, compareToStdWStringLong) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = L"1234567890a"s;
+  auto stdB = L"1234567890ab"s;
+  basic_fbstring<wchar_t> fbA(L"1234567890a");
+  basic_fbstring<wchar_t> fbB(L"1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+#endif

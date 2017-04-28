@@ -1351,6 +1351,21 @@ TEST(EventBaseTest, RunInLoopStopLoop) {
   ASSERT_LE(c1.getCount(), 11);
 }
 
+TEST(EventBaseTest, messageAvailableException) {
+  auto deadManWalking = [] {
+    EventBase eventBase;
+    std::thread t([&] {
+      // Call this from another thread to force use of NotificationQueue in
+      // runInEventBaseThread
+      eventBase.runInEventBaseThread(
+          []() { throw std::runtime_error("boom"); });
+    });
+    t.join();
+    eventBase.loopForever();
+  };
+  EXPECT_DEATH(deadManWalking(), ".*");
+}
+
 TEST(EventBaseTest, TryRunningAfterTerminate) {
   EventBase eventBase;
   CountedLoopCallback c1(&eventBase, 1,
@@ -1651,7 +1666,7 @@ TEST(EventBaseTest, EventBaseThreadLoop) {
   });
   base.loop();
 
-  ASSERT_EQ(true, ran);
+  ASSERT_TRUE(ran);
 }
 
 TEST(EventBaseTest, EventBaseThreadName) {
@@ -1835,7 +1850,7 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
   size_t done{0};
 
   for (size_t i = 0; i < kNumThreads; ++i) {
-    batons.emplace_back(std::make_unique<Baton<>>());
+    batons.emplace_back(folly::make_unique<Baton<>>());
   }
 
   for (size_t i = 0; i < kNumThreads; ++i) {

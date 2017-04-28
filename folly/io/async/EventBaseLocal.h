@@ -21,8 +21,8 @@
 #include <folly/io/async/EventBase.h>
 #include <memory>
 #include <mutex>
-#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 namespace folly {
 
@@ -37,7 +37,6 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
 
  protected:
   void setVoid(EventBase& evb, std::shared_ptr<void>&& ptr);
-  void setVoidUnlocked(EventBase& evb, std::shared_ptr<void>&& ptr);
   void* getVoid(EventBase& evb);
 
   folly::Synchronized<std::unordered_set<EventBase*>> eventBases_;
@@ -64,7 +63,8 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
  *   Foo& foo = myFoo.getOrCreateFn(evb, [] () { return new Foo(3, 4); })
  *
  * The objects will be deleted when the EventBaseLocal or the EventBase is
- * destructed (whichever comes first).  All methods are thread-safe.
+ * destructed (whichever comes first). All methods must be called from the
+ * EventBase thread.
  *
  * The user is responsible for throwing away invalid references/ptrs returned
  * by the get() method after set/erase is called.  If shared ownership is
@@ -84,25 +84,21 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
     setVoid(evb, std::move(smartPtr));
   }
 
-  template<typename... Args>
-  void emplace(EventBase& evb, Args... args) {
-    auto smartPtr = std::make_shared<T>(args...);
+  template <typename... Args>
+  void emplace(EventBase& evb, Args&&... args) {
+    auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
     setVoid(evb, smartPtr);
   }
 
-  template<typename... Args>
-  T& getOrCreate(EventBase& evb, Args... args) {
-    std::lock_guard<std::mutex> lg(evb.localStorageMutex_);
-
-    auto it2 = evb.localStorage_.find(key_);
-    if (LIKELY(it2 != evb.localStorage_.end())) {
-      return *static_cast<T*>(it2->second.get());
-    } else {
-      auto smartPtr = std::make_shared<T>(args...);
-      auto ptr = smartPtr.get();
-      setVoidUnlocked(evb, std::move(smartPtr));
-      return *ptr;
+  template <typename... Args>
+  T& getOrCreate(EventBase& evb, Args&&... args) {
+    if (auto ptr = getVoid(evb)) {
+      return *static_cast<T*>(ptr);
     }
+    auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
+    auto& ref = *smartPtr;
+    setVoid(evb, std::move(smartPtr));
+    return ref;
   }
 
   template <typename Func>
@@ -110,17 +106,13 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
     // If this looks like it's copy/pasted from above, that's because it is.
     // gcc has a bug (fixed in 4.9) that doesn't allow capturing variadic
     // params in a lambda.
-    std::lock_guard<std::mutex> lg(evb.localStorageMutex_);
-
-    auto it2 = evb.localStorage_.find(key_);
-    if (LIKELY(it2 != evb.localStorage_.end())) {
-      return *static_cast<T*>(it2->second.get());
-    } else {
-      std::shared_ptr<T> smartPtr(fn());
-      auto ptr = smartPtr.get();
-      setVoidUnlocked(evb, std::move(smartPtr));
-      return *ptr;
+    if (auto ptr = getVoid(evb)) {
+      return *static_cast<T*>(ptr);
     }
+    std::shared_ptr<T> smartPtr(fn());
+    auto& ref = *smartPtr;
+    setVoid(evb, std::move(smartPtr));
+    return ref;
   }
 };
 

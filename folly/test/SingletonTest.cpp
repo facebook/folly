@@ -30,7 +30,7 @@
 #include <glog/logging.h>
 #include <boost/thread/barrier.hpp>
 
-FOLLY_GCC_DISABLE_WARNING(deprecated-declarations)
+FOLLY_GCC_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
 
@@ -202,7 +202,18 @@ TEST(Singleton, SharedPtrUsage) {
   auto& vault = *SingletonVault::singleton<SharedPtrUsageTag>();
 
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
-  SingletonSharedPtrUsage<Watchdog> watchdog_singleton;
+  std::vector<std::unique_ptr<Watchdog>> watchdog_instances;
+  SingletonSharedPtrUsage<Watchdog> watchdog_singleton(
+      [&] {
+        watchdog_instances.push_back(std::make_unique<Watchdog>());
+        return watchdog_instances.back().get();
+      },
+      [&](Watchdog* ptr) {
+        // Make sure that only second instance is destroyed. First instance is
+        // expected to be leaked.
+        EXPECT_EQ(watchdog_instances[1].get(), ptr);
+        watchdog_instances[1].reset();
+      });
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
 
   SingletonSharedPtrUsage<ChildWatchdog> child_watchdog_singleton;
@@ -673,4 +684,95 @@ TEST(Singleton, ConcurrentCreationDestruction) {
   vault.destroyInstances();
 
   needyThread.join();
+}
+
+struct MainThreadDestructorTag {};
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonMainThreadDestructor =
+    Singleton<T, Tag, MainThreadDestructorTag>;
+
+struct ThreadLoggingSingleton {
+  ThreadLoggingSingleton() {
+    initThread = std::this_thread::get_id();
+  }
+
+  ~ThreadLoggingSingleton() {
+    destroyThread = std::this_thread::get_id();
+  }
+
+  static std::thread::id initThread;
+  static std::thread::id destroyThread;
+};
+std::thread::id ThreadLoggingSingleton::initThread{};
+std::thread::id ThreadLoggingSingleton::destroyThread{};
+
+TEST(Singleton, MainThreadDestructor) {
+  auto& vault = *SingletonVault::singleton<MainThreadDestructorTag>();
+  SingletonMainThreadDestructor<ThreadLoggingSingleton> singleton;
+
+  vault.registrationComplete();
+  EXPECT_EQ(std::thread::id(), ThreadLoggingSingleton::initThread);
+
+  singleton.try_get();
+  EXPECT_EQ(std::this_thread::get_id(), ThreadLoggingSingleton::initThread);
+
+  std::thread t([instance = singleton.try_get()] {
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds{100});
+  });
+
+  EXPECT_EQ(std::thread::id(), ThreadLoggingSingleton::destroyThread);
+
+  vault.destroyInstances();
+  EXPECT_EQ(std::this_thread::get_id(), ThreadLoggingSingleton::destroyThread);
+
+  t.join();
+}
+
+TEST(Singleton, DoubleMakeMockAfterTryGet) {
+  // to keep track of calls to ctor and dtor below
+  struct Counts {
+    size_t ctor = 0;
+    size_t dtor = 0;
+  };
+
+  // a test type which keeps track of its ctor and dtor calls
+  struct VaultTag {};
+  struct PrivateTag {};
+  struct Object {
+    explicit Object(Counts& counts) : counts_(counts) {
+      ++counts_.ctor;
+    }
+    ~Object() {
+      ++counts_.dtor;
+    }
+    Counts& counts_;
+  };
+  using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;
+
+  // register everything
+  Counts counts;
+  auto& vault = *SingletonVault::singleton<VaultTag>();
+  auto new_object = [&] { return new Object(counts); };
+  SingletonObject object_(new_object);
+  vault.registrationComplete();
+
+  // no eager inits, nada (sanity)
+  EXPECT_EQ(0, counts.ctor);
+  EXPECT_EQ(0, counts.dtor);
+
+  // explicit request, ctor
+  SingletonObject::try_get();
+  EXPECT_EQ(1, counts.ctor);
+  EXPECT_EQ(0, counts.dtor);
+
+  // first make_mock, dtor (ctor is lazy)
+  SingletonObject::make_mock(new_object);
+  EXPECT_EQ(1, counts.ctor);
+  EXPECT_EQ(1, counts.dtor);
+
+  // second make_mock, nada (dtor already ran, ctor is lazy)
+  SingletonObject::make_mock(new_object);
+  EXPECT_EQ(1, counts.ctor);
+  EXPECT_EQ(1, counts.dtor);
 }

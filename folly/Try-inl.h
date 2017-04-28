@@ -122,7 +122,7 @@ template <class T>
 void Try<T>::throwIfFailed() const {
   if (contains_ != Contains::VALUE) {
     if (contains_ == Contains::EXCEPTION) {
-      e_->throwException();
+      e_->throw_exception();
     } else {
       throw UsingUninitializedTry();
     }
@@ -131,7 +131,7 @@ void Try<T>::throwIfFailed() const {
 
 void Try<void>::throwIfFailed() const {
   if (!hasValue_) {
-    e_->throwException();
+    e_->throw_exception();
   }
 }
 

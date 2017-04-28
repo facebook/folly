@@ -16,11 +16,12 @@
 
 #pragma once
 
+#include <folly/Traits.h>
+#include <folly/detail/AtomicUtils.h>
+#include <stdint.h>
+#include <string.h>
 #include <atomic>
 #include <type_traits>
-#include <folly/Traits.h>
-#include <string.h>
-#include <stdint.h>
 
 namespace folly {
 
@@ -75,10 +76,19 @@ class AtomicStruct {
   }
 
   bool compare_exchange_strong(
-          T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0,
+      T v1,
+      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    return compare_exchange_strong(
+        v0, v1, mo, detail::default_failure_memory_order(mo));
+  }
+  bool compare_exchange_strong(
+      T& v0,
+      T v1,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
     Raw d0 = encode(v0);
-    bool rv = data.compare_exchange_strong(d0, encode(v1), mo);
+    bool rv = data.compare_exchange_strong(d0, encode(v1), success, failure);
     if (!rv) {
       v0 = decode(d0);
     }
@@ -86,10 +96,19 @@ class AtomicStruct {
   }
 
   bool compare_exchange_weak(
-          T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0,
+      T v1,
+      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    return compare_exchange_weak(
+        v0, v1, mo, detail::default_failure_memory_order(mo));
+  }
+  bool compare_exchange_weak(
+      T& v0,
+      T v1,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
     Raw d0 = encode(v0);
-    bool rv = data.compare_exchange_weak(d0, encode(v1), mo);
+    bool rv = data.compare_exchange_weak(d0, encode(v1), success, failure);
     if (!rv) {
       v0 = decode(d0);
     }

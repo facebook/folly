@@ -478,6 +478,7 @@ class FiberManager : public ::folly::Executor {
       void* fakeStack,
       const void** saveStackBase,
       size_t* saveStackSize);
+  void freeFakeStack(void* fakeStack);
   void unpoisonFiberStack(const Fiber* fiber);
 
 #endif // FOLLY_SANITIZE_ADDRESS

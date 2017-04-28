@@ -317,14 +317,14 @@ TEST(EvictingCacheMap, DestructorInvocationTest) {
     int* ref;
   };
 
+  int sum;
   EvictingCacheMap<int, SumInt> map(0);
+
   EXPECT_EQ(0, map.size());
   EXPECT_TRUE(map.empty());
   for (int i = 0; i < 100; i++) {
     EXPECT_FALSE(map.exists(i));
   }
-
-  int sum;
 
   for (int i = 0; i < 100; i++) {
     map.set(i, SumInt(i, &sum));

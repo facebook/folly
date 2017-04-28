@@ -55,7 +55,7 @@ std::string callHelper(ProgramOptionsStyle style,
     break;
   }
 
-  Subprocess proc(allArgs, Subprocess::pipeStdout(), nullptr, &env);
+  Subprocess proc(allArgs, Subprocess::Options().pipeStdout(), nullptr, &env);
   auto p = proc.communicate();
   EXPECT_EQ(0, proc.wait().exitStatus());
 

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
@@ -83,7 +84,7 @@ constexpr typename std::decay<T>::type copy(T&& value) noexcept(
  */
 #if __cpp_lib_as_const || _MSC_VER
 
-/* using override */ using std::as_const
+/* using override */ using std::as_const;
 
 #else
 
@@ -94,6 +95,40 @@ constexpr T const& as_const(T& t) noexcept {
 
 template <class T>
 void as_const(T const&&) = delete;
+
+#endif
+
+#if __cpp_lib_integer_sequence || _MSC_VER
+
+/* using override */ using std::integer_sequence;
+/* using override */ using std::index_sequence;
+/* using override */ using std::make_index_sequence;
+
+#else
+
+template <class T, T... Ints>
+struct integer_sequence {
+  using value_type = T;
+
+  static constexpr std::size_t size() noexcept {
+    return sizeof...(Ints);
+  }
+};
+
+template <std::size_t... Ints>
+using index_sequence = folly::integer_sequence<std::size_t, Ints...>;
+
+namespace detail {
+template <std::size_t N, std::size_t... Ints>
+struct make_index_sequence
+    : detail::make_index_sequence<N - 1, N - 1, Ints...> {};
+
+template <std::size_t... Ints>
+struct make_index_sequence<0, Ints...> : folly::index_sequence<Ints...> {};
+}
+
+template <std::size_t N>
+using make_index_sequence = detail::make_index_sequence<N>;
 
 #endif
 }

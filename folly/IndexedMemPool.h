@@ -150,7 +150,11 @@ struct IndexedMemPool : boost::noncopyable {
   /// Destroys all of the contained elements
   ~IndexedMemPool() {
     if (!eagerRecycle()) {
-      for (uint32_t i = size_; i > 0; --i) {
+      // Take the minimum since it is possible that size_ > actualCapacity_.
+      // This can happen if there are multiple concurrent requests
+      // when size_ == actualCapacity_ - 1.
+      uint32_t last = std::min(uint32_t(size_), uint32_t(actualCapacity_));
+      for (uint32_t i = last; i > 0; --i) {
         slots_[i].~Slot();
       }
     }
@@ -230,7 +234,7 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// Returns true iff idx has been alloc()ed and not recycleIndex()ed
   bool isAllocated(uint32_t idx) const {
-    return slot(idx).localNext == uint32_t(-1);
+    return slot(idx).localNext.load(std::memory_order_relaxed) == uint32_t(-1);
   }
 
 
@@ -239,8 +243,8 @@ struct IndexedMemPool : boost::noncopyable {
 
   struct Slot {
     T elem;
-    uint32_t localNext;
-    uint32_t globalNext;
+    Atom<uint32_t> localNext;
+    Atom<uint32_t> globalNext;
 
     Slot() : localNext{}, globalNext{} {}
   };
@@ -346,7 +350,7 @@ struct IndexedMemPool : boost::noncopyable {
   void globalPush(Slot& s, uint32_t localHead) {
     while (true) {
       TaggedPtr gh = globalHead_.load(std::memory_order_acquire);
-      s.globalNext = gh.idx;
+      s.globalNext.store(gh.idx, std::memory_order_relaxed);
       if (globalHead_.compare_exchange_strong(gh, gh.withIdx(localHead))) {
         // success
         return;
@@ -359,7 +363,7 @@ struct IndexedMemPool : boost::noncopyable {
     Slot& s = slot(idx);
     TaggedPtr h = head.load(std::memory_order_acquire);
     while (true) {
-      s.localNext = h.idx;
+      s.localNext.store(h.idx, std::memory_order_relaxed);
 
       if (h.size() == LocalListLimit) {
         // push will overflow local list, steal it instead
@@ -383,8 +387,11 @@ struct IndexedMemPool : boost::noncopyable {
   uint32_t globalPop() {
     while (true) {
       TaggedPtr gh = globalHead_.load(std::memory_order_acquire);
-      if (gh.idx == 0 || globalHead_.compare_exchange_strong(
-                  gh, gh.withIdx(slot(gh.idx).globalNext))) {
+      if (gh.idx == 0 ||
+          globalHead_.compare_exchange_strong(
+              gh,
+              gh.withIdx(
+                  slot(gh.idx).globalNext.load(std::memory_order_relaxed)))) {
         // global list is empty, or pop was successful
         return gh.idx;
       }
@@ -398,10 +405,10 @@ struct IndexedMemPool : boost::noncopyable {
       if (h.idx != 0) {
         // local list is non-empty, try to pop
         Slot& s = slot(h.idx);
-        if (head.compare_exchange_strong(
-                    h, h.withIdx(s.localNext).withSizeDecr())) {
+        auto next = s.localNext.load(std::memory_order_relaxed);
+        if (head.compare_exchange_strong(h, h.withIdx(next).withSizeDecr())) {
           // success
-          s.localNext = uint32_t(-1);
+          s.localNext.store(uint32_t(-1), std::memory_order_relaxed);
           return h.idx;
         }
         continue;
@@ -421,15 +428,16 @@ struct IndexedMemPool : boost::noncopyable {
           T* ptr = &slot(idx).elem;
           new (ptr) T();
         }
-        slot(idx).localNext = uint32_t(-1);
+        slot(idx).localNext.store(uint32_t(-1), std::memory_order_relaxed);
         return idx;
       }
 
       Slot& s = slot(idx);
+      auto next = s.localNext.load(std::memory_order_relaxed);
       if (head.compare_exchange_strong(
-                  h, h.withIdx(s.localNext).withSize(LocalListLimit))) {
+              h, h.withIdx(next).withSize(LocalListLimit))) {
         // global list moved to local list, keep head for us
-        s.localNext = uint32_t(-1);
+        s.localNext.store(uint32_t(-1), std::memory_order_relaxed);
         return idx;
       }
       // local bulk push failed, return idx to the global list and try again

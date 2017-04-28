@@ -54,7 +54,126 @@ struct Functor {
 template <typename Ret, typename... Args>
 void deduceArgs(Function<Ret(Args...)>) {}
 
+struct CallableButNotCopyable {
+  CallableButNotCopyable() {}
+  CallableButNotCopyable(CallableButNotCopyable const&) = delete;
+  CallableButNotCopyable(CallableButNotCopyable&&) = delete;
+  CallableButNotCopyable& operator=(CallableButNotCopyable const&) = delete;
+  CallableButNotCopyable& operator=(CallableButNotCopyable&&) = delete;
+  template <class... Args>
+  void operator()(Args&&...) const {}
+};
+
 } // namespace
+
+// TEST =====================================================================
+// Test constructibility and non-constructibility for some tricky conversions
+static_assert(
+    !std::is_assignable<Function<void()>, CallableButNotCopyable>::value,
+    "");
+static_assert(
+    !std::is_constructible<Function<void()>, CallableButNotCopyable&>::value,
+    "");
+static_assert(
+    !std::is_constructible<Function<void() const>, CallableButNotCopyable>::
+        value,
+    "");
+static_assert(
+    !std::is_constructible<Function<void() const>, CallableButNotCopyable&>::
+        value,
+    "");
+
+static_assert(
+    !std::is_assignable<Function<void()>, CallableButNotCopyable>::value,
+    "");
+static_assert(
+    !std::is_assignable<Function<void()>, CallableButNotCopyable&>::value,
+    "");
+static_assert(
+    !std::is_assignable<Function<void() const>, CallableButNotCopyable>::value,
+    "");
+static_assert(
+    !std::is_assignable<Function<void() const>, CallableButNotCopyable&>::value,
+    "");
+
+static_assert(
+    std::is_constructible<Function<int(int)>, Function<int(int) const>>::value,
+    "");
+static_assert(
+    !std::is_constructible<Function<int(int) const>, Function<int(int)>>::value,
+    "");
+static_assert(
+    std::is_constructible<Function<int(short)>, Function<short(int) const>>::
+        value,
+    "");
+static_assert(
+    !std::is_constructible<Function<int(short) const>, Function<short(int)>>::
+        value,
+    "");
+static_assert(
+    !std::is_constructible<Function<int(int)>, Function<int(int) const>&>::
+        value,
+    "");
+static_assert(
+    !std::is_constructible<Function<int(int) const>, Function<int(int)>&>::
+        value,
+    "");
+static_assert(
+    !std::is_constructible<Function<int(short)>, Function<short(int) const>&>::
+        value,
+    "");
+static_assert(
+    !std::is_constructible<Function<int(short) const>, Function<short(int)>&>::
+        value,
+    "");
+
+static_assert(
+    std::is_assignable<Function<int(int)>, Function<int(int) const>>::value,
+    "");
+static_assert(
+    !std::is_assignable<Function<int(int) const>, Function<int(int)>>::value,
+    "");
+static_assert(
+    std::is_assignable<Function<int(short)>, Function<short(int) const>>::value,
+    "");
+static_assert(
+    !std::is_assignable<Function<int(short) const>, Function<short(int)>>::
+        value,
+    "");
+static_assert(
+    !std::is_assignable<Function<int(int)>, Function<int(int) const>&>::value,
+    "");
+static_assert(
+    !std::is_assignable<Function<int(int) const>, Function<int(int)>&>::value,
+    "");
+static_assert(
+    !std::is_assignable<Function<int(short)>, Function<short(int) const>&>::
+        value,
+    "");
+static_assert(
+    !std::is_assignable<Function<int(short) const>, Function<short(int)>&>::
+        value,
+    "");
+
+static_assert(
+    std::is_nothrow_constructible<
+        Function<int(int)>,
+        Function<int(int) const>>::value,
+    "");
+static_assert(
+    !std::is_nothrow_constructible<
+        Function<int(short)>,
+        Function<short(int) const>>::value,
+    "");
+static_assert(
+    std::is_nothrow_assignable<Function<int(int)>, Function<int(int) const>>::
+        value,
+    "");
+static_assert(
+    !std::is_nothrow_assignable<
+        Function<int(short)>,
+        Function<short(int) const>>::value,
+    "");
 
 // TEST =====================================================================
 // InvokeFunctor & InvokeReference
@@ -926,15 +1045,50 @@ TEST(Function, EmptyAfterConstCast) {
   EXPECT_FALSE(func2);
 }
 
-TEST(Function, SelfMoveAssign) {
-  Function<int()> f = [] { return 0; };
-  Function<int()>& g = f;
-  f = std::move(g);
+TEST(Function, SelfStdSwap) {
+  Function<int()> f = [] { return 42; };
+  f.swap(f);
   EXPECT_TRUE(bool(f));
+  EXPECT_EQ(42, f());
+  std::swap(f, f);
+  EXPECT_TRUE(bool(f));
+  EXPECT_EQ(42, f());
+  folly::swap(f, f);
+  EXPECT_TRUE(bool(f));
+  EXPECT_EQ(42, f());
+}
+
+TEST(Function, SelfMove) {
+  Function<int()> f = [] { return 42; };
+  Function<int()>& g = f;
+  f = std::move(g); // shouldn't crash!
+  (void)bool(f); // valid but unspecified state
+  f = [] { return 43; };
+  EXPECT_TRUE(bool(f));
+  EXPECT_EQ(43, f());
 }
 
 TEST(Function, DeducableArguments) {
   deduceArgs(Function<void()>{[] {}});
   deduceArgs(Function<void(int, float)>{[](int, float) {}});
   deduceArgs(Function<int(int, float)>{[](int i, float) { return i; }});
+}
+
+TEST(Function, CtorWithCopy) {
+  struct X {
+    X() {}
+    X(X const&) noexcept(true) {}
+    X& operator=(X const&) = default;
+  };
+  struct Y {
+    Y() {}
+    Y(Y const&) noexcept(false) {}
+    Y(Y&&) noexcept(true) {}
+    Y& operator=(Y&&) = default;
+    Y& operator=(Y const&) = default;
+  };
+  auto lx = [x = X()]{};
+  auto ly = [y = Y()]{};
+  EXPECT_TRUE(noexcept(Function<void()>(lx)));
+  EXPECT_FALSE(noexcept(Function<void()>(ly)));
 }

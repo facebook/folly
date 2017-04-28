@@ -440,10 +440,10 @@ TEST(Dynamic, GetSmallThings) {
   EXPECT_EQ(6.0, ddouble.getDouble());
   EXPECT_EQ(5.0, std::move(mdouble).getDouble());
 
-  EXPECT_EQ(true, cbool.getBool());
+  EXPECT_TRUE(cbool.getBool());
   dbool.getBool() = false;
   EXPECT_FALSE(dbool.getBool());
-  EXPECT_EQ(true, std::move(mbool).getBool());
+  EXPECT_TRUE(std::move(mbool).getBool());
 }
 
 TEST(Dynamic, At) {

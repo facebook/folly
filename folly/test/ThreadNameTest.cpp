@@ -24,22 +24,8 @@
 using namespace std;
 using namespace folly;
 
-static constexpr bool expectedSetOtherThreadNameResult =
-#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
-    true
-#else
-    false // This system has no known way to set the name of another thread
-#endif
-    ;
-
-static constexpr bool expectedSetSelfThreadNameResult =
-#if defined(FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME) || \
-    defined(FOLLY_HAS_PTHREAD_SETNAME_NP_NAME)
-    true
-#else
-    false // This system has no known way to set its own thread name
-#endif
-    ;
+static bool expectedSetOtherThreadNameResult = folly::canSetOtherThreadName();
+static bool expectedSetSelfThreadNameResult = folly::canSetCurrentThreadName();
 
 TEST(ThreadName, setThreadName_self) {
   thread th([] {

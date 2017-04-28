@@ -211,10 +211,12 @@ TEST_F(ReadMostlySharedPtrTest, Ctor) {
 }
 
 TEST_F(ReadMostlySharedPtrTest, ClearingCache) {
+  std::atomic<int> cnt1{0};
+  std::atomic<int> cnt2{0};
+
   ReadMostlyMainPtr<TestObject> ptr;
 
   // Store 1.
-  std::atomic<int> cnt1{0};
   ptr.reset(folly::make_unique<TestObject>(1, cnt1));
 
   Coordinator c;
@@ -230,7 +232,6 @@ TEST_F(ReadMostlySharedPtrTest, ClearingCache) {
   EXPECT_EQ(1, cnt1.load());
 
   // Store 2 and check that 1 is destroyed.
-  std::atomic<int> cnt2{0};
   ptr.reset(folly::make_unique<TestObject>(2, cnt2));
   EXPECT_EQ(0, cnt1.load());
 

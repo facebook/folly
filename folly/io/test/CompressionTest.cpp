@@ -26,6 +26,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Hash.h>
+#include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/Varint.h>
 #include <folly/io/IOBufQueue.h>
@@ -120,17 +121,55 @@ constexpr size_t dataSizeLog2 = 27;  // 128MiB
 RandomDataHolder randomDataHolder(dataSizeLog2);
 ConstantDataHolder constantDataHolder(dataSizeLog2);
 
+// The intersection of the provided codecs & those that are compiled in.
+static std::vector<CodecType> supportedCodecs(std::vector<CodecType> const& v) {
+  std::vector<CodecType> supported;
+
+  std::copy_if(
+      std::begin(v),
+      std::end(v),
+      std::back_inserter(supported),
+      hasCodec);
+
+  return supported;
+}
+
+// All compiled-in compression codecs.
+static std::vector<CodecType> availableCodecs() {
+  std::vector<CodecType> codecs;
+
+  for (size_t i = 0; i < static_cast<size_t>(CodecType::NUM_CODEC_TYPES); ++i) {
+    auto type = static_cast<CodecType>(i);
+    if (hasCodec(type)) {
+      codecs.push_back(type);
+    }
+  }
+
+  return codecs;
+}
+
 TEST(CompressionTestNeedsUncompressedLength, Simple) {
-  EXPECT_FALSE(getCodec(CodecType::NO_COMPRESSION)->needsUncompressedLength());
-  EXPECT_TRUE(getCodec(CodecType::LZ4)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::SNAPPY)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::ZLIB)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::LZ4_VARINT_SIZE)->needsUncompressedLength());
-  EXPECT_TRUE(getCodec(CodecType::LZMA2)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::LZMA2_VARINT_SIZE)
-    ->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::ZSTD)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::GZIP)->needsUncompressedLength());
+  static const struct { CodecType type; bool needsUncompressedLength; }
+    expectations[] = {
+      { CodecType::NO_COMPRESSION, false },
+      { CodecType::LZ4, true },
+      { CodecType::SNAPPY, false },
+      { CodecType::ZLIB, false },
+      { CodecType::LZ4_VARINT_SIZE, false },
+      { CodecType::LZMA2, false },
+      { CodecType::LZMA2_VARINT_SIZE, false },
+      { CodecType::ZSTD, false },
+      { CodecType::GZIP, false },
+      { CodecType::LZ4_FRAME, false },
+      { CodecType::BZIP2, false },
+    };
+
+  for (auto const& test : expectations) {
+    if (hasCodec(test.type)) {
+      EXPECT_EQ(getCodec(test.type)->needsUncompressedLength(),
+                test.needsUncompressedLength);
+    }
+  }
 }
 
 class CompressionTest
@@ -143,7 +182,9 @@ class CompressionTest
     codec_ = getCodec(std::tr1::get<2>(tup));
   }
 
-  void runSimpleTest(const DataHolder& dh);
+  void runSimpleIOBufTest(const DataHolder& dh);
+
+  void runSimpleStringTest(const DataHolder& dh);
 
  private:
   std::unique_ptr<IOBuf> split(std::unique_ptr<IOBuf> data) const;
@@ -153,7 +194,7 @@ class CompressionTest
   std::unique_ptr<Codec> codec_;
 };
 
-void CompressionTest::runSimpleTest(const DataHolder& dh) {
+void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
   const auto original = split(IOBuf::wrapBuffer(dh.data(uncompressedLength_)));
   const auto compressed = split(codec_->compress(original.get()));
   if (!codec_->needsUncompressedLength()) {
@@ -166,6 +207,23 @@ void CompressionTest::runSimpleTest(const DataHolder& dh) {
                                            uncompressedLength_);
     EXPECT_EQ(uncompressedLength_, uncompressed->computeChainDataLength());
     EXPECT_EQ(dh.hash(uncompressedLength_), hashIOBuf(uncompressed.get()));
+  }
+}
+
+void CompressionTest::runSimpleStringTest(const DataHolder& dh) {
+  const auto original = std::string(
+      reinterpret_cast<const char*>(dh.data(uncompressedLength_).data()),
+      uncompressedLength_);
+  const auto compressed = codec_->compress(original);
+  if (!codec_->needsUncompressedLength()) {
+    auto uncompressed = codec_->uncompress(compressed);
+    EXPECT_EQ(uncompressedLength_, uncompressed.length());
+    EXPECT_EQ(uncompressed, original);
+  }
+  {
+    auto uncompressed = codec_->uncompress(compressed, uncompressedLength_);
+    EXPECT_EQ(uncompressedLength_, uncompressed.length());
+    EXPECT_EQ(uncompressed, original);
   }
 }
 
@@ -196,11 +254,19 @@ std::unique_ptr<IOBuf> CompressionTest::split(
 }
 
 TEST_P(CompressionTest, RandomData) {
-  runSimpleTest(randomDataHolder);
+  runSimpleIOBufTest(randomDataHolder);
 }
 
 TEST_P(CompressionTest, ConstantData) {
-  runSimpleTest(constantDataHolder);
+  runSimpleIOBufTest(constantDataHolder);
+}
+
+TEST_P(CompressionTest, RandomDataString) {
+  runSimpleStringTest(randomDataHolder);
+}
+
+TEST_P(CompressionTest, ConstantDataString) {
+  runSimpleStringTest(constantDataHolder);
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -209,16 +275,7 @@ INSTANTIATE_TEST_CASE_P(
     testing::Combine(
         testing::Values(0, 1, 12, 22, 25, 27),
         testing::Values(1, 2, 3, 8, 65),
-        testing::Values(
-            CodecType::NO_COMPRESSION,
-            CodecType::LZ4,
-            CodecType::SNAPPY,
-            CodecType::ZLIB,
-            CodecType::LZ4_VARINT_SIZE,
-            CodecType::LZMA2,
-            CodecType::LZMA2_VARINT_SIZE,
-            CodecType::ZSTD,
-            CodecType::GZIP)));
+        testing::ValuesIn(availableCodecs())));
 
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
@@ -274,9 +331,10 @@ INSTANTIATE_TEST_CASE_P(
     CompressionVarintTest,
     testing::Combine(
         testing::Values(0, 1, 12, 22, 25, 27),
-        testing::Values(
+        testing::ValuesIn(supportedCodecs({
             CodecType::LZ4_VARINT_SIZE,
-            CodecType::LZMA2_VARINT_SIZE)));
+            CodecType::LZMA2_VARINT_SIZE,
+            }))));
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
@@ -330,12 +388,268 @@ TEST_P(CompressionCorruptionTest, ConstantData) {
 INSTANTIATE_TEST_CASE_P(
     CompressionCorruptionTest,
     CompressionCorruptionTest,
-    testing::Values(
+    testing::ValuesIn(
         // NO_COMPRESSION can't detect corruption
         // LZ4 can't detect corruption reliably (sigh)
-        CodecType::SNAPPY,
-        CodecType::ZLIB));
+        supportedCodecs({
+            CodecType::SNAPPY,
+            CodecType::ZLIB,
+            CodecType::LZMA2,
+            CodecType::ZSTD,
+            CodecType::LZ4_FRAME,
+            CodecType::BZIP2,
+        })));
 
+class AutomaticCodecTest : public testing::TestWithParam<CodecType> {
+ protected:
+  void SetUp() override {
+    codec_ = getCodec(GetParam());
+    auto_ = getAutoUncompressionCodec();
+  }
+
+  void runSimpleTest(const DataHolder& dh);
+
+  std::unique_ptr<Codec> codec_;
+  std::unique_ptr<Codec> auto_;
+};
+
+void AutomaticCodecTest::runSimpleTest(const DataHolder& dh) {
+  constexpr uint64_t uncompressedLength = 1000;
+  auto original = IOBuf::wrapBuffer(dh.data(uncompressedLength));
+  auto compressed = codec_->compress(original.get());
+
+  if (!codec_->needsUncompressedLength()) {
+    auto uncompressed = auto_->uncompress(compressed.get());
+    EXPECT_EQ(uncompressedLength, uncompressed->computeChainDataLength());
+    EXPECT_EQ(dh.hash(uncompressedLength), hashIOBuf(uncompressed.get()));
+  }
+  {
+    auto uncompressed = auto_->uncompress(compressed.get(), uncompressedLength);
+    EXPECT_EQ(uncompressedLength, uncompressed->computeChainDataLength());
+    EXPECT_EQ(dh.hash(uncompressedLength), hashIOBuf(uncompressed.get()));
+  }
+  ASSERT_GE(compressed->computeChainDataLength(), 8);
+  for (size_t i = 0; i < 8; ++i) {
+    auto split = compressed->clone();
+    auto rest = compressed->clone();
+    split->trimEnd(split->length() - i);
+    rest->trimStart(i);
+    split->appendChain(std::move(rest));
+    auto uncompressed = auto_->uncompress(split.get(), uncompressedLength);
+    EXPECT_EQ(uncompressedLength, uncompressed->computeChainDataLength());
+    EXPECT_EQ(dh.hash(uncompressedLength), hashIOBuf(uncompressed.get()));
+  }
+}
+
+TEST_P(AutomaticCodecTest, RandomData) {
+  runSimpleTest(randomDataHolder);
+}
+
+TEST_P(AutomaticCodecTest, ConstantData) {
+  runSimpleTest(constantDataHolder);
+}
+
+TEST_P(AutomaticCodecTest, ValidPrefixes) {
+  const auto prefixes = codec_->validPrefixes();
+  for (const auto& prefix : prefixes) {
+    EXPECT_FALSE(prefix.empty());
+    // Ensure that all strings are at least 8 bytes for LZMA2.
+    // The bytes after the prefix should be ignored by `canUncompress()`.
+    IOBuf data{IOBuf::COPY_BUFFER, prefix, 0, 8};
+    data.append(8);
+    EXPECT_TRUE(codec_->canUncompress(&data));
+    EXPECT_TRUE(auto_->canUncompress(&data));
+  }
+}
+
+TEST_P(AutomaticCodecTest, NeedsUncompressedLength) {
+  if (codec_->needsUncompressedLength()) {
+    EXPECT_TRUE(auto_->needsUncompressedLength());
+  }
+}
+
+TEST_P(AutomaticCodecTest, maxUncompressedLength) {
+  EXPECT_LE(codec_->maxUncompressedLength(), auto_->maxUncompressedLength());
+}
+
+TEST_P(AutomaticCodecTest, DefaultCodec) {
+  const uint64_t length = 42;
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(getCodec(CodecType::ZSTD));
+  auto automatic = getAutoUncompressionCodec(std::move(codecs));
+  auto original = IOBuf::wrapBuffer(constantDataHolder.data(length));
+  auto compressed = codec_->compress(original.get());
+  auto decompressed = automatic->uncompress(compressed.get());
+
+  EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(decompressed.get()));
+}
+
+namespace {
+class CustomCodec : public Codec {
+ public:
+  static std::unique_ptr<Codec> create(std::string prefix, CodecType type) {
+    return make_unique<CustomCodec>(std::move(prefix), type);
+  }
+  explicit CustomCodec(std::string prefix, CodecType type)
+      : Codec(CodecType::USER_DEFINED),
+        prefix_(std::move(prefix)),
+        codec_(getCodec(type)) {}
+
+ private:
+  std::vector<std::string> validPrefixes() const override {
+    return {prefix_};
+  }
+
+  bool canUncompress(const IOBuf* data, uint64_t) const override {
+    auto clone = data->cloneCoalescedAsValue();
+    if (clone.length() < prefix_.size()) {
+      return false;
+    }
+    return memcmp(clone.data(), prefix_.data(), prefix_.size()) == 0;
+  }
+
+  std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override {
+    auto result = IOBuf::copyBuffer(prefix_);
+    result->appendChain(codec_->compress(data));
+    EXPECT_TRUE(canUncompress(result.get(), data->computeChainDataLength()));
+    return result;
+  }
+
+  std::unique_ptr<IOBuf> doUncompress(
+      const IOBuf* data,
+      uint64_t uncompressedLength) override {
+    EXPECT_TRUE(canUncompress(data, uncompressedLength));
+    auto clone = data->cloneCoalescedAsValue();
+    clone.trimStart(prefix_.size());
+    return codec_->uncompress(&clone, uncompressedLength);
+  }
+
+  std::string prefix_;
+  std::unique_ptr<Codec> codec_;
+};
+}
+
+TEST_P(AutomaticCodecTest, CustomCodec) {
+  const uint64_t length = 42;
+  auto ab = CustomCodec::create("ab", CodecType::ZSTD);
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("ab", CodecType::ZSTD));
+  auto automatic = getAutoUncompressionCodec(std::move(codecs));
+  auto original = IOBuf::wrapBuffer(constantDataHolder.data(length));
+
+  auto abCompressed = ab->compress(original.get());
+  auto abDecompressed = automatic->uncompress(abCompressed.get());
+  EXPECT_TRUE(automatic->canUncompress(abCompressed.get()));
+  EXPECT_FALSE(auto_->canUncompress(abCompressed.get()));
+  EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(abDecompressed.get()));
+
+  auto compressed = codec_->compress(original.get());
+  auto decompressed = automatic->uncompress(compressed.get());
+  EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(decompressed.get()));
+}
+
+TEST_P(AutomaticCodecTest, CustomDefaultCodec) {
+  const uint64_t length = 42;
+  auto none = CustomCodec::create("none", CodecType::NO_COMPRESSION);
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("none", CodecType::NO_COMPRESSION));
+  codecs.push_back(getCodec(CodecType::LZ4_FRAME));
+  auto automatic = getAutoUncompressionCodec(std::move(codecs));
+  auto original = IOBuf::wrapBuffer(constantDataHolder.data(length));
+
+  auto noneCompressed = none->compress(original.get());
+  auto noneDecompressed = automatic->uncompress(noneCompressed.get());
+  EXPECT_TRUE(automatic->canUncompress(noneCompressed.get()));
+  EXPECT_FALSE(auto_->canUncompress(noneCompressed.get()));
+  EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(noneDecompressed.get()));
+
+  auto compressed = codec_->compress(original.get());
+  auto decompressed = automatic->uncompress(compressed.get());
+  EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(decompressed.get()));
+}
+
+TEST_P(AutomaticCodecTest, canUncompressOneBytes) {
+  // No default codec can uncompress 1 bytes.
+  IOBuf buf{IOBuf::CREATE, 1};
+  buf.append(1);
+  EXPECT_FALSE(codec_->canUncompress(&buf, 1));
+  EXPECT_FALSE(codec_->canUncompress(&buf, Codec::UNKNOWN_UNCOMPRESSED_LENGTH));
+  EXPECT_FALSE(auto_->canUncompress(&buf, 1));
+  EXPECT_FALSE(auto_->canUncompress(&buf, Codec::UNKNOWN_UNCOMPRESSED_LENGTH));
+}
+
+INSTANTIATE_TEST_CASE_P(
+    AutomaticCodecTest,
+    AutomaticCodecTest,
+    testing::Values(
+        CodecType::LZ4_FRAME,
+        CodecType::ZSTD,
+        CodecType::ZLIB,
+        CodecType::GZIP,
+        CodecType::LZMA2,
+        CodecType::BZIP2));
+
+TEST(ValidPrefixesTest, CustomCodec) {
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("none", CodecType::NO_COMPRESSION));
+  const auto none = getAutoUncompressionCodec(std::move(codecs));
+  const auto prefixes = none->validPrefixes();
+  const auto it = std::find(prefixes.begin(), prefixes.end(), "none");
+  EXPECT_TRUE(it != prefixes.end());
+}
+
+#define EXPECT_THROW_IF_DEBUG(statement, expected_exception) \
+  do {                                                       \
+    if (kIsDebug) {                                          \
+      EXPECT_THROW((statement), expected_exception);         \
+    } else {                                                 \
+      EXPECT_NO_THROW((statement));                          \
+    }                                                        \
+  } while (false)
+
+TEST(CheckCompatibleTest, SimplePrefixSecond) {
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("abc", CodecType::NO_COMPRESSION));
+  codecs.push_back(CustomCodec::create("ab", CodecType::NO_COMPRESSION));
+  EXPECT_THROW_IF_DEBUG(
+      getAutoUncompressionCodec(std::move(codecs)), std::invalid_argument);
+}
+
+TEST(CheckCompatibleTest, SimplePrefixFirst) {
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("ab", CodecType::NO_COMPRESSION));
+  codecs.push_back(CustomCodec::create("abc", CodecType::NO_COMPRESSION));
+  EXPECT_THROW_IF_DEBUG(
+      getAutoUncompressionCodec(std::move(codecs)), std::invalid_argument);
+}
+
+TEST(CheckCompatibleTest, Empty) {
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("", CodecType::NO_COMPRESSION));
+  EXPECT_THROW_IF_DEBUG(
+      getAutoUncompressionCodec(std::move(codecs)), std::invalid_argument);
+}
+
+TEST(CheckCompatibleTest, ZstdPrefix) {
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("\x28\xB5\x2F", CodecType::ZSTD));
+  EXPECT_THROW_IF_DEBUG(
+      getAutoUncompressionCodec(std::move(codecs)), std::invalid_argument);
+}
+
+TEST(CheckCompatibleTest, ZstdDuplicate) {
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("\x28\xB5\x2F\xFD", CodecType::ZSTD));
+  EXPECT_THROW_IF_DEBUG(
+      getAutoUncompressionCodec(std::move(codecs)), std::invalid_argument);
+}
+
+TEST(CheckCompatibleTest, ZlibIsPrefix) {
+  std::vector<std::unique_ptr<Codec>> codecs;
+  codecs.push_back(CustomCodec::create("\x18\x76zzasdf", CodecType::ZSTD));
+  EXPECT_THROW_IF_DEBUG(
+      getAutoUncompressionCodec(std::move(codecs)), std::invalid_argument);
+}
 }}}  // namespaces
 
 int main(int argc, char *argv[]) {

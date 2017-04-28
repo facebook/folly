@@ -129,3 +129,25 @@ TEST(RequestContext, testSetUnset) {
   EXPECT_EQ(1, testData2->set_);
   EXPECT_EQ(1, testData2->unset_);
 }
+
+TEST(RequestContext, deadlockTest) {
+  class DeadlockTestData : public RequestData {
+   public:
+    explicit DeadlockTestData(const std::string& val) : val_(val) {}
+
+    virtual ~DeadlockTestData() {
+      RequestContext::get()->setContextData(
+          val_, folly::make_unique<TestData>(1));
+    }
+
+    void onSet() override {}
+
+    void onUnset() override {}
+
+    std::string val_;
+  };
+
+  RequestContext::get()->setContextData(
+      "test", folly::make_unique<DeadlockTestData>("test2"));
+  RequestContext::get()->clearContextData("test");
+}

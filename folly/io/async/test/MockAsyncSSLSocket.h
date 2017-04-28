@@ -50,7 +50,6 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
                      bool(const unsigned char**,
                           unsigned*,
                           SSLContext::NextProtocolType*));
-  MOCK_METHOD1(setPeek, void(bool));
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
 
   void sslConn(

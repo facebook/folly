@@ -19,16 +19,23 @@
 
 #pragma once
 
+#include <folly/portability/Config.h>
+
 /**
  * Define various MALLOCX_* macros normally provided by jemalloc.  We define
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
  */
-#ifndef MALLOCX_LG_ALIGN
-#define MALLOCX_LG_ALIGN(la) (la)
-#endif
-#ifndef MALLOCX_ZERO
-#define MALLOCX_ZERO (static_cast<int>(0x40))
+#if defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)
+// We have JEMalloc, so use it.
+# include <jemalloc/jemalloc.h>
+#else
+# ifndef MALLOCX_LG_ALIGN
+#  define MALLOCX_LG_ALIGN(la) (la)
+# endif
+# ifndef MALLOCX_ZERO
+#  define MALLOCX_ZERO (static_cast<int>(0x40))
+# endif
 #endif
 
 // If using fbstring from libstdc++ (see comment in FBString.h), then

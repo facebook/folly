@@ -17,7 +17,6 @@
 #pragma once
 
 #include <limits.h>
-#include <pthread.h>
 
 #include <atomic>
 #include <functional>
@@ -34,6 +33,7 @@
 #include <folly/MicroSpinLock.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/portability/PThread.h>
 
 #include <folly/detail/StaticSingletonManager.h>
 

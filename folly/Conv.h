@@ -558,7 +558,8 @@ toAppend(Src value, Tgt * result) {
   if (value < 0) {
     result->push_back('-');
     result->append(
-        buffer, uint64ToBufferUnsafe(uint64_t(-uint64_t(value)), buffer));
+        buffer,
+        uint64ToBufferUnsafe(~static_cast<uint64_t>(value) + 1, buffer));
   } else {
     result->append(buffer, uint64ToBufferUnsafe(uint64_t(value), buffer));
   }
@@ -1179,13 +1180,14 @@ parseTo(StringPiece src, Tgt& out) {
 namespace detail {
 
 /**
- * Bool to integral doesn't need any special checks, and this
+ * Bool to integral/float doesn't need any special checks, and this
  * overload means we aren't trying to see if a bool is less than
  * an integer.
  */
 template <class Tgt>
 typename std::enable_if<
-    !std::is_same<Tgt, bool>::value && std::is_integral<Tgt>::value,
+    !std::is_same<Tgt, bool>::value &&
+        (std::is_integral<Tgt>::value || std::is_floating_point<Tgt>::value),
     Expected<Tgt, ConversionCode>>::type
 convertTo(const bool& value) noexcept {
   return static_cast<Tgt>(value ? 1 : 0);

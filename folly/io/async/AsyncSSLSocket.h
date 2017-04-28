@@ -173,10 +173,22 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * @param deferSecurityNegotiation
    *          unencrypted data can be sent before sslConn/Accept
    */
-  AsyncSSLSocket(const std::shared_ptr<folly::SSLContext>& ctx,
-                 EventBase* evb, int fd,
-                 bool server = true, bool deferSecurityNegotiation = false);
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      bool server = true,
+      bool deferSecurityNegotiation = false);
 
+  /**
+   * Create a server/client AsyncSSLSocket from an already connected
+   * AsyncSocket.
+   */
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      AsyncSocket::UniquePtr oldAsyncSocket,
+      bool server = true,
+      bool deferSecurityNegotiation = false);
 
   /**
    * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
@@ -227,11 +239,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * @param fd   File descriptor to take over (should be a connected socket).
    * @param serverName tlsext_hostname that will be sent in ClientHello.
    */
-  AsyncSSLSocket(const std::shared_ptr<folly::SSLContext>& ctx,
-                  EventBase* evb,
-                  int fd,
-                 const std::string& serverName,
-                bool deferSecurityNegotiation = false);
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      const std::string& serverName,
+      bool deferSecurityNegotiation = false);
 
   static std::shared_ptr<AsyncSSLSocket> newSocket(
     const std::shared_ptr<folly::SSLContext>& ctx,
@@ -276,8 +289,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual size_t getRawBytesReceived() const override;
   void enableClientHelloParsing();
 
-  void setPreReceivedData(std::unique_ptr<IOBuf> data);
-
   /**
    * Accept an SSL connection on the socket.
    *
@@ -315,6 +326,29 @@ class AsyncSSLSocket : public virtual AsyncSocket {
                const OptionMap &options = emptyOptionMap,
                const folly::SocketAddress& bindAddr = anyAddress())
                noexcept override;
+
+  /**
+   * A variant of connect that allows the caller to specify
+   * the timeout for the regular connect and the ssl connect
+   * separately.
+   * connectTimeout is specified as the time to establish a TCP
+   * connection.
+   * totalConnectTimeout defines the
+   * time it takes from starting the TCP connection to the time
+   * the ssl connection is established. The reason the timeout is
+   * defined this way is because user's rarely need to specify the SSL
+   * timeout independently of the connect timeout. It allows us to
+   * bound the time for a connect and SSL connection in
+   * a finer grained manner than if timeout was just defined
+   * independently for SSL.
+   */
+  virtual void connect(
+      ConnectCallback* callback,
+      const folly::SocketAddress& address,
+      std::chrono::milliseconds connectTimeout,
+      std::chrono::milliseconds totalConnectTimeout,
+      const OptionMap& options = emptyOptionMap,
+      const folly::SocketAddress& bindAddr = anyAddress()) noexcept;
 
   using AsyncSocket::connect;
 
@@ -574,6 +608,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   std::string getSSLAlertsReceived() const;
 
+  /*
+   * Save an optional alert message generated during certificate verify
+   */
+  void setSSLCertVerificationAlert(std::string alert);
+
+  std::string getSSLCertVerificationAlert() const;
+
   /**
    * Get the list of shared ciphers between the server and the client.
    * Works well for only SSLv2, not so good for SSLv3 or TLSv1.
@@ -668,6 +709,16 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   bool sessionResumptionAttempted() const {
     return sessionResumptionAttempted_;
+  }
+
+  /**
+   * If the SSL socket was used to connect as well
+   * as establish an SSL connection, this gives the total
+   * timeout for the connect + SSL connection that was
+   * set.
+   */
+  std::chrono::milliseconds getTotalConnectTimeout() const {
+    return totalConnectTimeout_;
   }
 
  private:
@@ -822,8 +873,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::chrono::steady_clock::time_point handshakeEndTime_;
   std::chrono::milliseconds handshakeConnectTimeout_{0};
   bool sessionResumptionAttempted_{false};
+  std::chrono::milliseconds totalConnectTimeout_{0};
 
-  std::unique_ptr<IOBuf> preReceivedData_;
+  std::string sslVerificationAlert_;
 };
 
 } // namespace

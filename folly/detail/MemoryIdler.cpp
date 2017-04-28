@@ -22,11 +22,11 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/detail/CacheLocality.h>
+#include <folly/portability/PThread.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
 #include <limits.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <utility>
@@ -80,7 +80,7 @@ void MemoryIdler::flushLocalMallocCaches() {
 // and arithmetic (and bug compatibility) are not portable.  The set of
 // platforms could be increased if it was useful.
 #if (FOLLY_X64 || FOLLY_PPC64) && defined(_GNU_SOURCE) && \
-    defined(__linux__) && !FOLLY_MOBILE
+    defined(__linux__) && !FOLLY_MOBILE && !FOLLY_SANITIZE_ADDRESS
 
 static FOLLY_TLS uintptr_t tls_stackLimit;
 static FOLLY_TLS size_t tls_stackSize;

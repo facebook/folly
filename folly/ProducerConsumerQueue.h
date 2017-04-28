@@ -27,6 +27,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/detail/CacheLocality.h>
+
 namespace folly {
 
 /*
@@ -166,11 +168,14 @@ struct ProducerConsumerQueue {
   }
 
 private:
+  char pad0_[detail::CacheLocality::kFalseSharingRange];
   const uint32_t size_;
   T* const records_;
 
-  std::atomic<unsigned int> readIndex_;
-  std::atomic<unsigned int> writeIndex_;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING std::atomic<unsigned int> readIndex_;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING std::atomic<unsigned int> writeIndex_;
+
+  char pad1_[detail::CacheLocality::kFalseSharingRange - sizeof(writeIndex_)];
 };
 
 }

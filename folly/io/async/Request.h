@@ -34,6 +34,10 @@ namespace folly {
 class RequestData {
  public:
   virtual ~RequestData() = default;
+  // Avoid calling RequestContext::setContextData, setContextDataIfAbsent, or
+  // clearContextData from these callbacks. Doing so will cause deadlock. We
+  // could fix these deadlocks, but only at significant performance penalty, so
+  // just don't do it!
   virtual void onSet() {}
   virtual void onUnset() {}
 };

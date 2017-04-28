@@ -212,35 +212,57 @@ unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
       break;
     }
   }
+  if (UNLIKELY(result == nullptr)) {
+    return IOBuf::create(0);
+  }
   return result;
 }
 
 void IOBufQueue::trimStart(size_t amount) {
+  auto trimmed = trimStartAtMost(amount);
+  if (trimmed != amount) {
+    throw std::underflow_error(
+        "Attempt to trim more bytes than are present in IOBufQueue");
+  }
+}
+
+size_t IOBufQueue::trimStartAtMost(size_t amount) {
+  auto original = amount;
   while (amount > 0) {
     if (!head_) {
-      throw std::underflow_error(
-        "Attempt to trim more bytes than are present in IOBufQueue");
+      break;
     }
     if (head_->length() > amount) {
       head_->trimStart(amount);
       chainLength_ -= amount;
+      amount = 0;
       break;
     }
     amount -= head_->length();
     chainLength_ -= head_->length();
     head_ = head_->pop();
   }
+  return original - amount;
 }
 
 void IOBufQueue::trimEnd(size_t amount) {
+  auto trimmed = trimEndAtMost(amount);
+  if (trimmed != amount) {
+    throw std::underflow_error(
+        "Attempt to trim more bytes than are present in IOBufQueue");
+  }
+}
+
+size_t IOBufQueue::trimEndAtMost(size_t amount) {
+  auto original = amount;
   while (amount > 0) {
     if (!head_) {
-      throw std::underflow_error(
-        "Attempt to trim more bytes than are present in IOBufQueue");
+      break;
     }
     if (head_->prev()->length() > amount) {
       head_->prev()->trimEnd(amount);
       chainLength_ -= amount;
+      amount = 0;
       break;
     }
     amount -= head_->prev()->length();
@@ -252,6 +274,7 @@ void IOBufQueue::trimEnd(size_t amount) {
       head_.reset();
     }
   }
+  return original - amount;
 }
 
 std::unique_ptr<folly::IOBuf> IOBufQueue::pop_front() {

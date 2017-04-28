@@ -1229,23 +1229,49 @@ struct retrying_policy_traits {
         is_fut::value, retrying_policy_fut_tag, void>::type>::type;
 };
 
+template <class Policy, class FF, class Prom>
+void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
+  using F = typename std::result_of<FF(size_t)>::type;
+  using T = typename F::value_type;
+  auto f = ff(k++);
+  f.then([
+    k,
+    prom = std::move(prom),
+    pm = std::forward<Policy>(p),
+    ffm = std::forward<FF>(ff)
+  ](Try<T> && t) mutable {
+    if (t.hasValue()) {
+      prom.setValue(std::move(t).value());
+      return;
+    }
+    auto& x = t.exception();
+    auto q = pm(k, x);
+    q.then([
+      k,
+      prom = std::move(prom),
+      xm = std::move(x),
+      pm = std::move(pm),
+      ffm = std::move(ffm)
+    ](bool shouldRetry) mutable {
+      if (shouldRetry) {
+        retryingImpl(k, std::move(pm), std::move(ffm), std::move(prom));
+      } else {
+        prom.setException(std::move(xm));
+      };
+    });
+  });
+}
+
 template <class Policy, class FF>
 typename std::result_of<FF(size_t)>::type
 retrying(size_t k, Policy&& p, FF&& ff) {
   using F = typename std::result_of<FF(size_t)>::type;
   using T = typename F::value_type;
-  auto f = ff(k++);
-  return f.onError(
-      [ k, pm = std::forward<Policy>(p), ffm = std::forward<FF>(ff) ](
-          exception_wrapper x) mutable {
-        auto q = pm(k, x);
-        return q.then(
-            [ k, xm = std::move(x), pm = std::move(pm), ffm = std::move(ffm) ](
-                bool r) mutable {
-              return r ? retrying(k, std::move(pm), std::move(ffm))
-                       : makeFuture<T>(std::move(xm));
-            });
-      });
+  auto prom = Promise<T>();
+  auto f = prom.getFuture();
+  retryingImpl(
+      k, std::forward<Policy>(p), std::forward<FF>(ff), std::move(prom));
+  return f;
 }
 
 template <class Policy, class FF>

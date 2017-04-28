@@ -17,11 +17,13 @@
 #include <folly/json.h>
 
 #include <algorithm>
-#include <cassert>
 #include <functional>
+#include <type_traits>
 
-#include <boost/next_prior.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/next_prior.hpp>
+#include <folly/Bits.h>
+#include <folly/Portability.h>
 
 #include <folly/Conv.h>
 #include <folly/Range.h>
@@ -113,12 +115,17 @@ private:
     out_ += '{';
     indent();
     newline();
-    if (opts_.sort_keys) {
+    if (opts_.sort_keys || opts_.sort_keys_by) {
       using ref = std::reference_wrapper<decltype(o.items())::value_type const>;
       std::vector<ref> refs(o.items().begin(), o.items().end());
-      std::sort(refs.begin(), refs.end(), [](ref a, ref b) {
+
+      using SortByRef = FunctionRef<bool(dynamic const&, dynamic const&)>;
+      auto const& sort_keys_by = opts_.sort_keys_by
+          ? SortByRef(opts_.sort_keys_by)
+          : SortByRef(std::less<dynamic>());
+      std::sort(refs.begin(), refs.end(), [&](ref a, ref b) {
         // Only compare keys.  No ordering among identical keys.
-        return a.get().first < b.get().first;
+        return sort_keys_by(a.get().first, b.get().first);
       });
       printKVPairs(refs.cbegin(), refs.cend());
     } else {
@@ -339,7 +346,7 @@ std::string parseString(Input& in);
 dynamic parseNumber(Input& in);
 
 dynamic parseObject(Input& in) {
-  assert(*in == '{');
+  DCHECK_EQ(*in, '{');
   ++in;
 
   dynamic ret = dynamic::object;
@@ -383,7 +390,7 @@ dynamic parseObject(Input& in) {
 }
 
 dynamic parseArray(Input& in) {
-  assert(*in == '[');
+  DCHECK_EQ(*in, '[');
   ++in;
 
   dynamic ret = dynamic::array;
@@ -518,7 +525,7 @@ std::string decodeUnicodeEscape(Input& in) {
 }
 
 std::string parseString(Input& in) {
-  assert(*in == '\"');
+  DCHECK_EQ(*in, '\"');
   ++in;
 
   std::string ret;
@@ -602,6 +609,44 @@ std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
   return ret;
 }
 
+// Fast path to determine the longest prefix that can be left
+// unescaped in a string of sizeof(T) bytes packed in an integer of
+// type T.
+template <class T>
+size_t firstEscapableInWord(T s) {
+  static_assert(std::is_unsigned<T>::value, "Unsigned integer required");
+  static constexpr T kOnes = ~T() / 255; // 0x...0101
+  static constexpr T kMsbs = kOnes * 0x80; // 0x...8080
+
+  // Sets the MSB of bytes < b. Precondition: b < 128.
+  auto isLess = [](T w, uint8_t b) {
+    // A byte is < b iff subtracting b underflows, so we check that
+    // the MSB wasn't set before and it's set after the subtraction.
+    return (w - kOnes * b) & ~w & kMsbs;
+  };
+
+  auto isChar = [&](uint8_t c) {
+    // A byte is == c iff it is 0 if xored with c.
+    return isLess(s ^ (kOnes * c), 1);
+  };
+
+  // The following masks have the MSB set for each byte of the word
+  // that satisfies the corresponding condition.
+  auto isHigh = s & kMsbs; // >= 128
+  auto isLow = isLess(s, 0x20); // <= 0x1f
+  auto needsEscape = isHigh | isLow | isChar('\\') | isChar('"');
+
+  if (!needsEscape) {
+    return sizeof(T);
+  }
+
+  if (folly::kIsLittleEndian) {
+    return folly::findFirstSet(needsEscape) / 8 - 1;
+  } else {
+    return sizeof(T) - folly::findLastSet(needsEscape) / 8;
+  }
+}
+
 // Escape a string so that it is legal to print it in JSON text.
 void escapeString(
     StringPiece input,
@@ -618,18 +663,48 @@ void escapeString(
   auto* e = reinterpret_cast<const unsigned char*>(input.end());
 
   while (p < e) {
+    // Find the longest prefix that does not need escaping, and copy
+    // it literally into the output string.
+    auto firstEsc = p;
+    while (firstEsc < e) {
+      auto avail = e - firstEsc;
+      uint64_t word = 0;
+      if (avail >= 8) {
+        word = folly::loadUnaligned<uint64_t>(firstEsc);
+      } else {
+        memcpy(static_cast<void*>(&word), firstEsc, avail);
+      }
+      auto prefix = firstEscapableInWord(word);
+      DCHECK_LE(prefix, avail);
+      firstEsc += prefix;
+      if (prefix < 8) {
+        break;
+      }
+    }
+    if (firstEsc > p) {
+      out.append(reinterpret_cast<const char*>(p), firstEsc - p);
+      p = firstEsc;
+      // We can't be in the middle of a multibyte sequence, so we can reset q.
+      q = p;
+      if (p == e) {
+        break;
+      }
+    }
+
+    // Handle the next byte that may need escaping.
+
     // Since non-ascii encoding inherently does utf8 validation
     // we explicitly validate utf8 only if non-ascii encoding is disabled.
     if ((opts.validate_utf8 || opts.skip_invalid_utf8)
         && !opts.encode_non_ascii) {
-      // to achieve better spatial and temporal coherence
+      // To achieve better spatial and temporal coherence
       // we do utf8 validation progressively along with the
-      // string-escaping instead of two separate passes
+      // string-escaping instead of two separate passes.
 
-      // as the encoding progresses, q will stay at or ahead of p
-      CHECK(q >= p);
+      // As the encoding progresses, q will stay at or ahead of p.
+      CHECK_GE(q, p);
 
-      // as p catches up with q, move q forward
+      // As p catches up with q, move q forward.
       if (q == p) {
         // calling utf8_decode has the side effect of
         // checking that utf8 encodings are valid
@@ -645,14 +720,16 @@ void escapeString(
       // note that this if condition captures utf8 chars
       // with value > 127, so size > 1 byte
       char32_t v = utf8ToCodePoint(p, e, opts.skip_invalid_utf8);
-      out.append("\\u");
-      out.push_back(hexDigit(uint8_t(v >> 12)));
-      out.push_back(hexDigit((v >> 8) & 0x0f));
-      out.push_back(hexDigit((v >> 4) & 0x0f));
-      out.push_back(hexDigit(v & 0x0f));
+      char buf[] = "\\u\0\0\0\0";
+      buf[2] = hexDigit(uint8_t(v >> 12));
+      buf[3] = hexDigit((v >> 8) & 0x0f);
+      buf[4] = hexDigit((v >> 4) & 0x0f);
+      buf[5] = hexDigit(v & 0x0f);
+      out.append(buf, 6);
     } else if (*p == '\\' || *p == '\"') {
-      out.push_back('\\');
-      out.push_back(char(*p++));
+      char buf[] = "\\\0";
+      buf[1] = char(*p++);
+      out.append(buf, 2);
     } else if (*p <= 0x1f) {
       switch (*p) {
         case '\b': out.append("\\b"); p++; break;
@@ -661,11 +738,12 @@ void escapeString(
         case '\r': out.append("\\r"); p++; break;
         case '\t': out.append("\\t"); p++; break;
         default:
-          // note that this if condition captures non readable chars
+          // Note that this if condition captures non readable chars
           // with value < 32, so size = 1 byte (e.g control chars).
-          out.append("\\u00");
-          out.push_back(hexDigit(uint8_t((*p & 0xf0) >> 4)));
-          out.push_back(hexDigit(uint8_t(*p & 0xf)));
+          char buf[] = "\\u00\0\0";
+          buf[4] = hexDigit(uint8_t((*p & 0xf0) >> 4));
+          buf[5] = hexDigit(uint8_t(*p & 0xf));
+          out.append(buf, 6);
           p++;
       }
     } else {

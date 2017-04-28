@@ -19,7 +19,9 @@
 #endif
 
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/VirtualEventBase.h>
 
+#include <folly/Memory.h>
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/portability/Unistd.h>
@@ -38,7 +40,7 @@ namespace folly {
 class EventBase::FunctionRunner
     : public NotificationQueue<EventBase::Func>::Consumer {
  public:
-  void messageAvailable(Func&& msg) override {
+  void messageAvailable(Func&& msg) noexcept override {
     // In libevent2, internal events do not break the loop.
     // Most users would expect loop(), followed by runInEventBaseThread(),
     // to break the loop and check if it should exit or not.
@@ -52,21 +54,7 @@ class EventBase::FunctionRunner
       // wake up the loop.  We can ignore these messages.
       return;
     }
-
-    // The function should never throw an exception, because we have no
-    // way of knowing what sort of error handling to perform.
-    //
-    // If it does throw, log a message and abort the program.
-    try {
-      msg();
-    } catch (const std::exception& ex) {
-      LOG(ERROR) << "runInEventBaseThread() function threw a "
-                 << typeid(ex).name() << " exception: " << ex.what();
-      abort();
-    } catch (...) {
-      LOG(ERROR) << "runInEventBaseThread() function threw an exception";
-      abort();
-    }
+    msg();
   }
 };
 
@@ -154,12 +142,21 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
 }
 
 EventBase::~EventBase() {
+  std::future<void> virtualEventBaseDestroyFuture;
+  if (virtualEventBase_) {
+    virtualEventBaseDestroyFuture = virtualEventBase_->destroy();
+  }
+
   // Keep looping until all keep-alive handles are released. Each keep-alive
   // handle signals that some external code will still schedule some work on
   // this EventBase (so it's not safe to destroy it).
   while (loopKeepAliveCount() > 0) {
     applyLoopKeepAlive();
     loopOnce();
+  }
+
+  if (virtualEventBaseDestroyFuture.valid()) {
+    virtualEventBaseDestroyFuture.get();
   }
 
   // Call all destruction callbacks, before we start cleaning up our state.
@@ -186,12 +183,10 @@ EventBase::~EventBase() {
     event_base_free(evb_);
   }
 
-  {
-    std::lock_guard<std::mutex> lock(localStorageMutex_);
-    for (auto storage : localStorageToDtor_) {
-      storage->onEventBaseDestruction(*this);
-    }
+  for (auto storage : localStorageToDtor_) {
+    storage->onEventBaseDestruction(*this);
   }
+
   VLOG(5) << "EventBase(): Destroyed.";
 }
 
@@ -364,7 +359,7 @@ bool EventBase::loopBody(int flags) {
     }
 
     if (enableTimeMeasurement_) {
-      VLOG(5) << "EventBase " << this << " loop time: " <<
+      VLOG(11) << "EventBase " << this << " loop time: " <<
         getTimeDelta(&prev).count();
     }
 
@@ -397,16 +392,23 @@ ssize_t EventBase::loopKeepAliveCount() {
         loopKeepAliveCountAtomic_.exchange(0, std::memory_order_relaxed);
   }
   DCHECK_GE(loopKeepAliveCount_, 0);
+
   return loopKeepAliveCount_;
 }
 
 void EventBase::applyLoopKeepAlive() {
-  if (loopKeepAliveActive_ && loopKeepAliveCount() == 0) {
+  auto keepAliveCount = loopKeepAliveCount();
+  // Make sure default VirtualEventBase won't hold EventBase::loop() forever.
+  if (virtualEventBase_ && virtualEventBase_->keepAliveCount() == 1) {
+    --keepAliveCount;
+  }
+
+  if (loopKeepAliveActive_ && keepAliveCount == 0) {
     // Restore the notification queue internal flag
     fnRunner_->stopConsuming();
     fnRunner_->startConsumingInternal(this, queue_.get());
     loopKeepAliveActive_ = false;
-  } else if (!loopKeepAliveActive_ && loopKeepAliveCount() > 0) {
+  } else if (!loopKeepAliveActive_ && keepAliveCount > 0) {
     // Update the notification queue event to treat it as a normal
     // (non-internal) event.  The notification queue event always remains
     // installed, and the main loop won't exit with it installed.
@@ -735,5 +737,13 @@ const std::string& EventBase::getName() {
 
 const char* EventBase::getLibeventVersion() { return event_get_version(); }
 const char* EventBase::getLibeventMethod() { return event_get_method(); }
+
+VirtualEventBase& EventBase::getVirtualEventBase() {
+  folly::call_once(virtualEventBaseInitFlag_, [&] {
+    virtualEventBase_ = folly::make_unique<VirtualEventBase>(*this);
+  });
+
+  return *virtualEventBase_;
+}
 
 } // folly

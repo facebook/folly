@@ -21,7 +21,7 @@
 #include <folly/experimental/hazptr/debug.h>
 #include <folly/experimental/hazptr/hazptr.h>
 
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 #include <thread>
@@ -237,4 +237,22 @@ TEST_F(HazptrTest, WIDECAS) {
   v = "333344445555";
   ret = s.cas(u, v);
   CHECK(ret);
+}
+
+TEST_F(HazptrTest, VirtualTest) {
+  struct Thing : public hazptr_obj_base<Thing> {
+    virtual ~Thing() {
+      DEBUG_PRINT("this: " << this << " &a: " << &a << " a: " << a);
+    }
+    int a;
+  };
+  for (int i = 0; i < 100; i++) {
+    auto bar = new Thing;
+    bar->a = i;
+
+    hazptr_owner<Thing> hptr;
+    hptr.set(bar);
+    bar->retire();
+    EXPECT_EQ(bar->a, i);
+  }
 }

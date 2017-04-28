@@ -38,7 +38,7 @@ class QueueConsumer : public IntQueue::Consumer {
  public:
   QueueConsumer() {}
 
-  void messageAvailable(int&& value) override {
+  void messageAvailable(int&& value) noexcept override {
     messages.push_back(value);
     if (fn) {
       fn(value);
@@ -360,7 +360,7 @@ void QueueTest::destroyCallback() {
   // avoid destroying the function object.
   class DestroyTestConsumer : public IntQueue::Consumer {
    public:
-    void messageAvailable(int&& value) override {
+    void messageAvailable(int&& value) noexcept override {
       DestructorGuard g(this);
       if (fn && *fn) {
         (*fn)(value);

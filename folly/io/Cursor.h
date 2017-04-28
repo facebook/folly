@@ -200,14 +200,36 @@ class CursorBase {
   }
 
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value, T>::type read() {
-    T val;
+  typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
+      T& val) {
     if (LIKELY(length() >= sizeof(T))) {
       val = loadUnaligned<T>(data());
       offset_ += sizeof(T);
       advanceBufferIfEmpty();
-    } else {
-      pullSlow(&val, sizeof(T));
+      return true;
+    }
+    return pullAtMostSlow(&val, sizeof(T)) == sizeof(T);
+  }
+
+  template <class T>
+  bool tryReadBE(T& val) {
+    const bool result = tryRead(val);
+    val = Endian::big(val);
+    return result;
+  }
+
+  template <class T>
+  bool tryReadLE(T& val) {
+    const bool result = tryRead(val);
+    val = Endian::little(val);
+    return result;
+  }
+
+  template <class T>
+  T read() {
+    T val{};
+    if (!tryRead(val)) {
+      std::__throw_out_of_range("underflow");
     }
     return val;
   }
@@ -975,7 +997,15 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
   using detail::Writable<QueueAppender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
-    size_t remaining = len;
+    // Fill the current buffer
+    const size_t copyLength = std::min(len, length());
+    if (copyLength != 0) {
+      memcpy(writableData(), buf, copyLength);
+      append(copyLength);
+      buf += copyLength;
+    }
+    // Allocate more buffers as necessary
+    size_t remaining = len - copyLength;
     while (remaining != 0) {
       auto p = queue_->preallocate(std::min(remaining, growth_),
                                    growth_,

@@ -23,9 +23,8 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/portability/SysUio.h>
-
-#include <openssl/ssl.h>
 
 constexpr bool kOpenSslModeMoveBufferOwnership =
 #ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
@@ -322,6 +321,20 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
    */
   virtual void getLocalAddress(SocketAddress* address) const = 0;
 
+  /**
+   * Get the address of the remote endpoint to which this transport is
+   * connected.
+   *
+   * This function may throw AsyncSocketException on error.
+   *
+   * @return         Return the local address
+   */
+  SocketAddress getLocalAddress() const {
+    SocketAddress addr;
+    getLocalAddress(&addr);
+    return addr;
+  }
+
   virtual void getAddress(SocketAddress* address) const {
     getLocalAddress(address);
   }
@@ -336,6 +349,20 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
    *                 specified SocketAddress.
    */
   virtual void getPeerAddress(SocketAddress* address) const = 0;
+
+  /**
+   * Get the address of the remote endpoint to which this transport is
+   * connected.
+   *
+   * This function may throw AsyncSocketException on error.
+   *
+   * @return         Return the remote endpoint's address
+   */
+  SocketAddress getPeerAddress() const {
+    SocketAddress addr;
+    getPeerAddress(&addr);
+    return addr;
+  }
 
   /**
    * Get the certificate used to authenticate the peer.

@@ -214,10 +214,22 @@ class IOBufQueue {
   void trimStart(size_t amount);
 
   /**
+   * Similar to trimStart, but will trim at most amount bytes and returns
+   * the number of bytes trimmed.
+   */
+  size_t trimStartAtMost(size_t amount);
+
+  /**
    * Similar to IOBuf::trimEnd, but works on the whole queue.  Will
    * pop off buffers that have been completely trimmed.
    */
   void trimEnd(size_t amount);
+
+  /**
+   * Similar to trimEnd, but will trim at most amount bytes and returns
+   * the number of bytes trimmed.
+   */
+  size_t trimEndAtMost(size_t amount);
 
   /**
    * Transfer ownership of the queue's entire IOBuf chain to the caller.

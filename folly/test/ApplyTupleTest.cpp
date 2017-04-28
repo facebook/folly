@@ -314,3 +314,59 @@ TEST(ApplyTuple, MultipleTuples) {
       folly::applyTuple(
           add, std::make_tuple(1), std::make_tuple(), std::make_tuple(2, 3)));
 }
+
+TEST(ApplyTuple, UncurryCopyMove) {
+  std::string separator = "================================\n";
+  auto formatRow = folly::uncurry([=](std::string a, std::string b) {
+    // capture separator by copy
+    return separator + a + "\n" + b + "\n" + separator;
+  });
+  auto row = std::make_tuple("hello", "world");
+  auto expected = separator + "hello\nworld\n" + separator;
+  EXPECT_EQ(expected, formatRow(row));
+  auto formatRowCopy = formatRow;
+  EXPECT_EQ(expected, formatRowCopy(row));
+  auto formatRowMove = std::move(formatRow);
+  EXPECT_EQ(expected, formatRowMove(row));
+
+  // capture value moved out from formatRow
+  EXPECT_NE(expected, formatRow(row));
+}
+
+TEST(ApplyTuple, Uncurry) {
+  EXPECT_EQ(42, folly::uncurry([](int x, int y) {
+              return x * y;
+            })(std::pair<int, int>(6, 7)));
+  EXPECT_EQ(42, folly::uncurry([](int&& x, int&& y) {
+              return x * y;
+            })(std::pair<int&&, int&&>(6, 7)));
+  EXPECT_EQ(42, folly::uncurry([](int&& x, int&& y) {
+              return x * y;
+            })(std::pair<int&&, int&&>(6, 7)));
+
+  std::string long1 = "a long string exceeding small string size";
+  std::string long2 = "and here is another one!";
+  std::string expected = long1 + long2;
+
+  auto cat = folly::uncurry(
+      [](std::string a, std::string b) { return std::move(a) + std::move(b); });
+
+  EXPECT_EQ(expected, cat(std::make_pair(long1, long2)));
+  EXPECT_FALSE(long1.empty());
+  EXPECT_FALSE(long2.empty());
+  EXPECT_EQ(expected, cat(std::tie(long1, long2)));
+  EXPECT_FALSE(long1.empty());
+  EXPECT_FALSE(long2.empty());
+  EXPECT_EQ(
+      expected, cat(std::forward_as_tuple(std::move(long1), std::move(long2))));
+  EXPECT_TRUE(long1.empty());
+  EXPECT_TRUE(long2.empty());
+}
+
+TEST(ApplyTuple, UncurryStdFind) {
+  std::vector<std::pair<int, int>> v{{1, 9}, {2, 8}, {3, 7}, {4, 6}, {5, 5}};
+  EXPECT_EQ(
+      3, std::count_if(v.begin(), v.end(), folly::uncurry([](int a, int b) {
+                         return b % a == 0;
+                       })));
+}

@@ -15,50 +15,76 @@
  */
 #include <folly/ExceptionWrapper.h>
 
-#include <exception>
 #include <iostream>
+
+#include <folly/Logging.h>
 
 namespace folly {
 
-[[noreturn]] void exception_wrapper::throwException() const {
-  if (throwfn_) {
-    throwfn_(*item_);
-  } else if (eptr_) {
-    std::rethrow_exception(eptr_);
+exception_wrapper::VTable const exception_wrapper::uninit_{
+    &noop_<void, exception_wrapper const*, exception_wrapper*>,
+    &noop_<void, exception_wrapper*, exception_wrapper*>,
+    &noop_<void, exception_wrapper*>,
+    &noop_<void, exception_wrapper const*>,
+    &uninit_type_,
+    &noop_<std::exception const*, exception_wrapper const*>,
+    &noop_<exception_wrapper, exception_wrapper const*>};
+
+exception_wrapper::VTable const exception_wrapper::ExceptionPtr::ops_{
+    copy_,
+    move_,
+    delete_,
+    throw_,
+    type_,
+    get_exception_,
+    get_exception_ptr_};
+
+exception_wrapper::VTable const exception_wrapper::SharedPtr::ops_{
+    copy_,
+    move_,
+    delete_,
+    throw_,
+    type_,
+    get_exception_,
+    get_exception_ptr_};
+
+namespace {
+std::exception const* get_std_exception_(std::exception_ptr eptr) noexcept {
+  try {
+    std::rethrow_exception(eptr);
+  } catch (const std::exception& ex) {
+    return &ex;
+  } catch (...) {
+    return nullptr;
   }
+}
+}
+
+exception_wrapper::exception_wrapper(std::exception_ptr ptr) noexcept
+    : exception_wrapper{} {
+  if (ptr) {
+    if (auto e = get_std_exception_(ptr)) {
+      LOG(DFATAL)
+          << "Performance error: Please construct exception_wrapper with a "
+             "reference to the std::exception along with the "
+             "std::exception_ptr.";
+      *this = exception_wrapper{std::move(ptr), *e};
+    } else {
+      Unknown uk;
+      *this = exception_wrapper{ptr, uk};
+    }
+  }
+}
+
+[[noreturn]] void exception_wrapper::onNoExceptionError() {
   std::ios_base::Init ioinit_; // ensure std::cerr is alive
   std::cerr
-      << "Cannot use `throwException` with an empty folly::exception_wrapper"
+      << "Cannot use `throw_exception` with an empty folly::exception_wrapper"
       << std::endl;
   std::terminate();
 }
 
-fbstring exception_wrapper::class_name() const {
-  if (item_) {
-    auto& i = *item_;
-    return demangle(typeid(i));
-  } else if (eptr_ && eobj_) {
-    return demangle(typeid(*eobj_));
-  } else if (eptr_ && etype_) {
-    return demangle(*etype_);
-  } else {
-    return fbstring();
-  }
-}
-
-fbstring exception_wrapper::what() const {
-  if (item_) {
-    return exceptionStr(*item_);
-  } else if (eptr_ && eobj_) {
-    return class_name() + ": " + eobj_->what();
-  } else if (eptr_ && etype_) {
-    return class_name();
-  } else {
-    return class_name();
-  }
-}
-
-fbstring exceptionStr(const exception_wrapper& ew) {
+fbstring exceptionStr(exception_wrapper const& ew) {
   return ew.what();
 }
 

@@ -1343,117 +1343,125 @@ private: // we have the private section first because it defines some macros
   //---------------------------------------------------------------------------
   // interface
 
-  #define FOLLY_FBVECTOR_INSERT_PRE(cpos, n)                                  \
-    if (n == 0) return (iterator)cpos;                                        \
-    bool at_end = cpos == cend();                                             \
-    bool fresh = insert_use_fresh(at_end, n);                                 \
-    if (!at_end) {                                                            \
-      if (!fresh) {
+  template <
+      typename IsInternalFunc,
+      typename InsertInternalFunc,
+      typename ConstructFunc,
+      typename DestroyFunc>
+  iterator do_real_insert(
+      const_iterator cpos,
+      size_type n,
+      IsInternalFunc&& isInternalFunc,
+      InsertInternalFunc&& insertInternalFunc,
+      ConstructFunc&& constructFunc,
+      DestroyFunc&& destroyFunc) {
+    if (n == 0) {
+      return iterator(cpos);
+    }
+    bool at_end = cpos == cend();
+    bool fresh = insert_use_fresh(at_end, n);
+    if (!at_end) {
+      if (!fresh && isInternalFunc()) {
+        // check for internal data (technically not required by the standard)
+        return insertInternalFunc();
+      }
+      assert(isValid(cpos));
+    }
+    T* position = const_cast<T*>(cpos);
+    size_type idx = size_type(std::distance(impl_.b_, position));
+    T* b;
+    size_type newCap; /* intentionally uninitialized */
 
-    // check for internal data (technically not required by the standard)
+    if (fresh) {
+      newCap = computeInsertCapacity(n);
+      b = M_allocate(newCap);
+    } else {
+      if (!at_end) {
+        make_window(position, n);
+      } else {
+        impl_.e_ += n;
+      }
+      b = impl_.b_;
+    }
 
-  #define FOLLY_FBVECTOR_INSERT_START(cpos, n)                                \
-      }                                                                       \
-      assert(isValid(cpos));                                                  \
-    }                                                                         \
-    T* position = const_cast<T*>(cpos);                                       \
-    size_type idx = size_type(std::distance(impl_.b_, position));             \
-    T* b;                                                                     \
-    size_type newCap; /* intentionally uninitialized */                       \
-                                                                              \
-    if (fresh) {                                                              \
-      newCap = computeInsertCapacity(n);                                      \
-      b = M_allocate(newCap);                                                 \
-    } else {                                                                  \
-      if (!at_end) {                                                          \
-        make_window(position, n);                                             \
-      } else {                                                                \
-        impl_.e_ += n;                                                        \
-      }                                                                       \
-      b = impl_.b_;                                                           \
-    }                                                                         \
-                                                                              \
-    T* start = b + idx;                                                       \
-                                                                              \
-    try {                                                                     \
+    T* start = b + idx;
+    try {
+      // construct the inserted elements
+      constructFunc(start);
+    } catch (...) {
+      if (fresh) {
+        M_deallocate(b, newCap);
+      } else {
+        if (!at_end) {
+          undo_window(position, n);
+        } else {
+          impl_.e_ -= n;
+        }
+      }
+      throw;
+    }
 
-    // construct the inserted elements
+    if (fresh) {
+      try {
+        wrap_frame(b, idx, n);
+      } catch (...) {
+        // delete the inserted elements (exception has been thrown)
+        destroyFunc(start);
+        M_deallocate(b, newCap);
+        throw;
+      }
+      if (impl_.b_) {
+        M_deallocate(impl_.b_, capacity());
+      }
+      impl_.set(b, size() + n, newCap);
+      return impl_.b_ + idx;
+    } else {
+      return position;
+    }
+  }
 
-  #define FOLLY_FBVECTOR_INSERT_TRY(cpos, n)                                  \
-    } catch (...) {                                                           \
-      if (fresh) {                                                            \
-        M_deallocate(b, newCap);                                              \
-      } else {                                                                \
-        if (!at_end) {                                                        \
-          undo_window(position, n);                                           \
-        } else {                                                              \
-          impl_.e_ -= n;                                                      \
-        }                                                                     \
-      }                                                                       \
-      throw;                                                                  \
-    }                                                                         \
-                                                                              \
-    if (fresh) {                                                              \
-      try {                                                                   \
-        wrap_frame(b, idx, n);                                                \
-      } catch (...) {                                                         \
-
-
-    // delete the inserted elements (exception has been thrown)
-
-  #define FOLLY_FBVECTOR_INSERT_END(cpos, n)                                  \
-        M_deallocate(b, newCap);                                              \
-        throw;                                                                \
-      }                                                                       \
-      if (impl_.b_) M_deallocate(impl_.b_, capacity());                       \
-      impl_.set(b, size() + n, newCap);                                       \
-      return impl_.b_ + idx;                                                  \
-    } else {                                                                  \
-      return position;                                                        \
-    }                                                                         \
-
-  //---------------------------------------------------------------------------
-  // insert functions
-public:
-
+ public:
   template <class... Args>
   iterator emplace(const_iterator cpos, Args&&... args) {
-    FOLLY_FBVECTOR_INSERT_PRE(cpos, 1)
-    FOLLY_FBVECTOR_INSERT_START(cpos, 1)
-      M_construct(start, std::forward<Args>(args)...);
-    FOLLY_FBVECTOR_INSERT_TRY(cpos, 1)
-      M_destroy(start);
-    FOLLY_FBVECTOR_INSERT_END(cpos, 1)
+    return do_real_insert(
+        cpos,
+        1,
+        [&] { return false; },
+        [&] { return iterator{}; },
+        [&](iterator start) {
+          M_construct(start, std::forward<Args>(args)...);
+        },
+        [&](iterator start) { M_destroy(start); });
   }
 
   iterator insert(const_iterator cpos, const T& value) {
-    FOLLY_FBVECTOR_INSERT_PRE(cpos, 1)
-      if (dataIsInternal(value)) return insert(cpos, T(value));
-    FOLLY_FBVECTOR_INSERT_START(cpos, 1)
-      M_construct(start, value);
-    FOLLY_FBVECTOR_INSERT_TRY(cpos, 1)
-      M_destroy(start);
-    FOLLY_FBVECTOR_INSERT_END(cpos, 1)
+    return do_real_insert(
+        cpos,
+        1,
+        [&] { return dataIsInternal(value); },
+        [&] { return insert(cpos, T(value)); },
+        [&](iterator start) { M_construct(start, value); },
+        [&](iterator start) { M_destroy(start); });
   }
 
   iterator insert(const_iterator cpos, T&& value) {
-    FOLLY_FBVECTOR_INSERT_PRE(cpos, 1)
-      if (dataIsInternal(value)) return insert(cpos, T(std::move(value)));
-    FOLLY_FBVECTOR_INSERT_START(cpos, 1)
-      M_construct(start, std::move(value));
-    FOLLY_FBVECTOR_INSERT_TRY(cpos, 1)
-      M_destroy(start);
-    FOLLY_FBVECTOR_INSERT_END(cpos, 1)
+    return do_real_insert(
+        cpos,
+        1,
+        [&] { return dataIsInternal(value); },
+        [&] { return insert(cpos, T(std::move(value))); },
+        [&](iterator start) { M_construct(start, std::move(value)); },
+        [&](iterator start) { M_destroy(start); });
   }
 
   iterator insert(const_iterator cpos, size_type n, VT value) {
-    FOLLY_FBVECTOR_INSERT_PRE(cpos, n)
-      if (dataIsInternalAndNotVT(value)) return insert(cpos, n, T(value));
-    FOLLY_FBVECTOR_INSERT_START(cpos, n)
-      D_uninitialized_fill_n_a(start, n, value);
-    FOLLY_FBVECTOR_INSERT_TRY(cpos, n)
-      D_destroy_range_a(start, start + n);
-    FOLLY_FBVECTOR_INSERT_END(cpos, n)
+    return do_real_insert(
+        cpos,
+        n,
+        [&] { return dataIsInternalAndNotVT(value); },
+        [&] { return insert(cpos, n, T(value)); },
+        [&](iterator start) { D_uninitialized_fill_n_a(start, n, value); },
+        [&](iterator start) { D_destroy_range_a(start, start + n); });
   }
 
   template <class It, class Category = typename
@@ -1474,12 +1482,13 @@ private:
   iterator insert(const_iterator cpos, FIt first, FIt last,
                   std::forward_iterator_tag) {
     size_type n = size_type(std::distance(first, last));
-    FOLLY_FBVECTOR_INSERT_PRE(cpos, n)
-    FOLLY_FBVECTOR_INSERT_START(cpos, n)
-      D_uninitialized_copy_a(start, first, last);
-    FOLLY_FBVECTOR_INSERT_TRY(cpos, n)
-      D_destroy_range_a(start, start + n);
-    FOLLY_FBVECTOR_INSERT_END(cpos, n)
+    return do_real_insert(
+        cpos,
+        n,
+        [&] { return false; },
+        [&] { return iterator{}; },
+        [&](iterator start) { D_uninitialized_copy_a(start, first, last); },
+        [&](iterator start) { D_destroy_range_a(start, start + n); });
   }
 
   template <class IIt>

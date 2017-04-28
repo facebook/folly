@@ -131,6 +131,7 @@ class Fiber {
   class LocalData {
    public:
     LocalData() {}
+    ~LocalData();
     LocalData(const LocalData& other);
     LocalData& operator=(const LocalData& other);
 

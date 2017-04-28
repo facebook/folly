@@ -386,8 +386,8 @@ struct Bools {
 
 // Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
 template <class... Ts>
-using StrictConjunction =
-    std::is_same<Bools<Ts::value..., true>, Bools<true, Ts::value...>>;
+struct StrictConjunction
+    : std::is_same<Bools<Ts::value..., true>, Bools<true, Ts::value...>> {};
 
 } // namespace folly
 
@@ -546,9 +546,9 @@ struct is_negative_impl<T, false> {
 // types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
 // in order to not prevent all calling code from using it.
 FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING(sign-compare)
+FOLLY_GCC_DISABLE_WARNING("-Wsign-compare")
 #if __GNUC_PREREQ(5, 0)
-FOLLY_GCC_DISABLE_WARNING(bool-compare)
+FOLLY_GCC_DISABLE_WARNING("-Wbool-compare")
 #endif
 FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
 FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare

@@ -16,7 +16,7 @@
 
 #include <folly/Utility.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 namespace {
 
@@ -74,4 +74,17 @@ TEST_F(UtilityTest, as_const) {
   EXPECT_TRUE(folly::as_const(s).member());
   EXPECT_EQ(&s, &folly::as_const(s));
   EXPECT_TRUE(noexcept(folly::as_const(s)));
+}
+
+TEST(FollyIntegerSequence, core) {
+  constexpr auto seq = folly::integer_sequence<int, 0, 3, 2>();
+  static_assert(seq.size() == 3, "");
+  EXPECT_EQ(3, seq.size());
+
+  auto seq2 = folly::index_sequence<0, 4, 3>();
+  EXPECT_EQ(3, seq2.size());
+
+  constexpr auto seq3 = folly::make_index_sequence<3>();
+  static_assert(seq3.size() == 3, "");
+  EXPECT_EQ(3, seq3.size());
 }

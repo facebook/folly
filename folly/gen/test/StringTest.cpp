@@ -18,6 +18,7 @@
 #include <map>
 #include <vector>
 
+#include <folly/ApplyTuple.h>
 #include <folly/gen/String.h>
 #include <folly/portability/GTest.h>
 
@@ -359,4 +360,20 @@ TEST(StringGen, Batch) {
   EXPECT_EQ(4, from(chunks) | resplit('\n') | batch(3) | rconcat | count);
   EXPECT_EQ(lines, from(chunks) | resplit('\n') | eachTo<std::string>() |
                        batch(3) | rconcat | as<vector>());
+}
+
+TEST(StringGen, UncurryTuple) {
+  folly::StringPiece file = "1\t2\t3\n1\t4\t9";
+  auto rows = split(file, '\n') | eachToTuple<int, int, int>('\t');
+  auto productSum =
+      rows | map(uncurry([](int x, int y, int z) { return x * y * z; })) | sum;
+  EXPECT_EQ(42, productSum);
+}
+
+TEST(StringGen, UncurryPair) {
+  folly::StringPiece file = "2\t3\n4\t9";
+  auto rows = split(file, '\n') | eachToPair<int, int>('\t');
+  auto productSum =
+      rows | map(uncurry([](int x, int y) { return x * y; })) | sum;
+  EXPECT_EQ(42, productSum);
 }

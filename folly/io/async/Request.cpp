@@ -61,12 +61,14 @@ bool RequestContext::hasContextData(const std::string& val) const {
 }
 
 RequestData* RequestContext::getContextData(const std::string& val) {
-  return get_ref_default(*data_.rlock(), val, nullptr).get();
+  const std::unique_ptr<RequestData> dflt{nullptr};
+  return get_ref_default(*data_.rlock(), val, dflt).get();
 }
 
 const RequestData* RequestContext::getContextData(
     const std::string& val) const {
-  return get_ref_default(*data_.rlock(), val, nullptr).get();
+  const std::unique_ptr<RequestData> dflt{nullptr};
+  return get_ref_default(*data_.rlock(), val, dflt).get();
 }
 
 void RequestContext::onSet() {
@@ -88,7 +90,17 @@ void RequestContext::onUnset() {
 }
 
 void RequestContext::clearContextData(const std::string& val) {
-  data_.wlock()->erase(val);
+  std::unique_ptr<RequestData> requestData;
+  // Delete the RequestData after giving up the wlock just in case one of the
+  // RequestData destructors will try to grab the lock again.
+  {
+    auto wlock = data_.wlock();
+    auto it = wlock->find(val);
+    if (it != wlock->end()) {
+      requestData = std::move(it->second);
+      wlock->erase(it);
+    }
+  }
 }
 
 std::shared_ptr<RequestContext> RequestContext::setContext(

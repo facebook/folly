@@ -44,7 +44,7 @@ struct hash< ::folly::dynamic> {
   do {                                \
     switch ((type)) {                 \
       case NULLT:                     \
-        apply(void*);                 \
+        apply(std::nullptr_t);        \
         break;                        \
       case ARRAY:                     \
         apply(Array);                 \
@@ -310,6 +310,9 @@ inline dynamic::~dynamic() noexcept { destroy(); }
 template <class T>
 struct dynamic::NumericTypeHelper<
     T, typename std::enable_if<std::is_integral<T>::value>::type> {
+  static_assert(
+      !kIsObjC || sizeof(T) > sizeof(char),
+      "char-sized types are ambiguous in objc; cast to bool or wider type");
   using type = int64_t;
 };
 template <>
@@ -416,7 +419,7 @@ inline bool dynamic::isInt() const {
   return get_nothrow<int64_t>() != nullptr;
 }
 inline bool dynamic::isNull() const {
-  return get_nothrow<void*>() != nullptr;
+  return get_nothrow<std::nullptr_t>() != nullptr;
 }
 inline bool dynamic::isNumber() const {
   return isInt() || isDouble();
@@ -479,6 +482,12 @@ struct dynamic::CompareOp<dynamic::ObjectImpl> {
   static bool comp(ObjectImpl const&, ObjectImpl const&) {
     // This code never executes; it is just here for the compiler.
     return false;
+  }
+};
+template<>
+struct dynamic::CompareOp<std::nullptr_t> {
+  static bool comp(std::nullptr_t const&, std::nullptr_t const&) {
+    return true;
   }
 };
 
@@ -705,7 +714,7 @@ inline dynamic::dynamic(Array&& r) : type_(ARRAY) {
   }; \
   //
 
-FOLLY_DYNAMIC_DEC_TYPEINFO(void*,               "null",    dynamic::NULLT)
+FOLLY_DYNAMIC_DEC_TYPEINFO(std::nullptr_t,      "null",    dynamic::NULLT)
 FOLLY_DYNAMIC_DEC_TYPEINFO(bool,                "boolean", dynamic::BOOL)
 FOLLY_DYNAMIC_DEC_TYPEINFO(std::string,         "string",  dynamic::STRING)
 FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::Array,      "array",   dynamic::ARRAY)
@@ -755,8 +764,8 @@ T const* dynamic::getAddress() const noexcept {
 }
 
 template<class T> struct dynamic::GetAddrImpl {};
-template<> struct dynamic::GetAddrImpl<void*> {
-  static void** get(Data& d) noexcept { return &d.nul; }
+template<> struct dynamic::GetAddrImpl<std::nullptr_t> {
+  static std::nullptr_t* get(Data& d) noexcept { return &d.nul; }
 };
 template<> struct dynamic::GetAddrImpl<dynamic::Array> {
   static Array* get(Data& d) noexcept { return &d.array; }
@@ -815,11 +824,10 @@ struct dynamic::PrintImpl {
 };
 // Otherwise, null, being (void*)0, would print as 0.
 template <>
-struct dynamic::PrintImpl<void*> {
+struct dynamic::PrintImpl<std::nullptr_t> {
   static void print(dynamic const& /* d */,
                     std::ostream& out,
-                    void* const& nul) {
-    DCHECK_EQ((void*)0, nul);
+                    std::nullptr_t const&) {
     out << "null";
   }
 };

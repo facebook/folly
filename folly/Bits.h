@@ -71,6 +71,7 @@
 #include <folly/Likely.h>
 
 #include <cassert>
+#include <cstring>
 #include <cinttypes>
 #include <iterator>
 #include <limits>
@@ -232,43 +233,48 @@ inline typename std::enable_if<
  */
 namespace detail {
 
-template <class T>
-struct EndianIntBase {
- public:
-  static T swap(T x);
-};
+template <size_t Size>
+struct uint_types_by_size;
 
-#define FB_GEN(t, fn)                             \
-  template <>                                     \
-  inline t EndianIntBase<t>::swap(t x) {          \
-    return t(fn(std::make_unsigned<t>::type(x))); \
-  }
+#define FB_GEN(sz, fn)                                      \
+  static inline uint##sz##_t byteswap_gen(uint##sz##_t v) { \
+    return fn(v);                                           \
+  }                                                         \
+  template <>                                               \
+  struct uint_types_by_size<sz / 8> {                       \
+    using type = uint##sz##_t;                              \
+  };
 
-// fn(x) expands to (x) if the second argument is empty, which is exactly
-// what we want for [u]int8_t.
-FB_GEN( int8_t,)
-FB_GEN(uint8_t,)
+FB_GEN(8, uint8_t)
 #ifdef _MSC_VER
-FB_GEN( int64_t, _byteswap_uint64)
-FB_GEN(uint64_t, _byteswap_uint64)
-FB_GEN( int32_t, _byteswap_ulong)
-FB_GEN(uint32_t, _byteswap_ulong)
-FB_GEN( int16_t, _byteswap_ushort)
-FB_GEN(uint16_t, _byteswap_ushort)
+FB_GEN(64, _byteswap_uint64)
+FB_GEN(32, _byteswap_ulong)
+FB_GEN(16, _byteswap_ushort)
 #else
-FB_GEN( int64_t, __builtin_bswap64)
-FB_GEN(uint64_t, __builtin_bswap64)
-FB_GEN( int32_t, __builtin_bswap32)
-FB_GEN(uint32_t, __builtin_bswap32)
-FB_GEN( int16_t, __builtin_bswap16)
-FB_GEN(uint16_t, __builtin_bswap16)
+FB_GEN(64, __builtin_bswap64)
+FB_GEN(32, __builtin_bswap32)
+FB_GEN(16, __builtin_bswap16)
 #endif
 
 #undef FB_GEN
 
 template <class T>
-struct EndianInt : public EndianIntBase<T> {
- public:
+struct EndianInt {
+  static_assert(
+      (std::is_integral<T>::value && !std::is_same<T, bool>::value) ||
+          std::is_floating_point<T>::value,
+      "template type parameter must be non-bool integral or floating point");
+  static T swap(T x) {
+    // we implement this with memcpy because that is defined behavior in C++
+    // we rely on compilers to optimize away the memcpy calls
+    constexpr auto s = sizeof(T);
+    using B = typename uint_types_by_size<s>::type;
+    B b;
+    std::memcpy(&b, &x, s);
+    b = byteswap_gen(b);
+    std::memcpy(&x, &b, s);
+    return x;
+  }
   static T big(T x) {
     return kIsLittleEndian ? EndianInt::swap(x) : x;
   }

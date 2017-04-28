@@ -119,7 +119,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_throw, iters) {
   for (size_t i = 0; i < iters; ++i) {
     auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
     try {
-      ew.throwException();
+      ew.throw_exception();
     } catch (std::runtime_error&) {
     }
   }
@@ -172,7 +172,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_throw_concurrent, iters) {
         for (size_t i = 0; i < iters; ++i) {
           auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
           try {
-            ew.throwException();
+            ew.throw_exception();
           } catch (std::runtime_error&) {
           }
         }

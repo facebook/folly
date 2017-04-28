@@ -102,6 +102,13 @@ class IPAddressV6 {
   }
 
   /**
+   * Create a new IPAddress instance from the ip6.arpa representation.
+   * @throws IPAddressFormatException if the input is not a valid ip6.arpa
+   * representation
+   */
+  static IPAddressV6 fromInverseArpaName(const std::string& arpaname);
+
+  /**
    * Returns the address as a Range.
    */
   ByteRange toBinary() const {
@@ -273,6 +280,8 @@ class IPAddressV6 {
 
   // @see IPAddress#toFullyQualified
   std::string toFullyQualified() const;
+
+  std::string toInverseArpaName() const;
 
   // @see IPAddress#str
   std::string str() const;

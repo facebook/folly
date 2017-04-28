@@ -45,6 +45,39 @@ TEST_F(OpenSSLHashTest, sha256) {
   EXPECT_EQ(expected, out);
 }
 
+TEST_F(OpenSSLHashTest, sha256_hashcopy) {
+  std::array<uint8_t, 32> expected, actual;
+
+  OpenSSLHash::Digest digest;
+  digest.hash_init(EVP_sha256());
+  digest.hash_update(ByteRange(StringPiece("foobar")));
+
+  OpenSSLHash::Digest copy(digest);
+
+  digest.hash_final(range(expected));
+  copy.hash_final(range(actual));
+
+  EXPECT_EQ(expected, actual);
+}
+
+TEST_F(OpenSSLHashTest, sha256_hashcopy_intermediate) {
+  std::array<uint8_t, 32> expected, actual;
+
+  OpenSSLHash::Digest digest;
+  digest.hash_init(EVP_sha256());
+  digest.hash_update(ByteRange(StringPiece("foo")));
+
+  OpenSSLHash::Digest copy(digest);
+
+  digest.hash_update(ByteRange(StringPiece("bar")));
+  copy.hash_update(ByteRange(StringPiece("bar")));
+
+  digest.hash_final(range(expected));
+  copy.hash_final(range(actual));
+
+  EXPECT_EQ(expected, actual);
+}
+
 TEST_F(OpenSSLHashTest, hmac_sha256) {
   auto key = ByteRange(StringPiece("qwerty"));
 
