@@ -119,117 +119,138 @@ IOStreamBuf<CharT, Traits>::seekoff(off_type off,
   }
 
   if (way == std::ios_base::beg) {
-    if (UNLIKELY(off < 0)) {
-      return badoff;
-    }
-
-    IOBuf const* buf = head_;
-
-    size_t remaining_offset = static_cast<size_t>(off);
-
-    while (remaining_offset > buf->length()) {
-      remaining_offset -= buf->length();
-      buf = buf->next();
-      if (buf == head_) {
-        return badoff;
-      }
-    }
-
-    gcur_ = buf;
-    csetg(gcur_->data(), gcur_->data() + remaining_offset, gcur_->tail());
-
-    return pos_type(off);
+    return seekbeg(off);
   }
 
   if (way == std::ios_base::end) {
-    if (UNLIKELY(off > 0)) {
-      return badoff;
-    }
-
-    IOBuf const* buf = head_->prev();
-
-    // Work with positive offset working back from the last tail()
-    size_t remaining_offset = static_cast<size_t>(0 - off);
-
-    while (remaining_offset > buf->length()) {
-      remaining_offset -= buf->length();
-      buf = buf->prev();
-      if (buf == head_ && remaining_offset > buf->length()) {
-        return badoff;
-      }
-    }
-
-    gcur_ = buf;
-    csetg(gcur_->data(), gcur_->tail() - remaining_offset, gcur_->tail());
-
-    return current_position();
+    return seekend(off);
   }
 
   if (way == std::ios_base::cur) {
-    if (off == 0) { // commonly called by tellg()
-      return current_position();
+    return seekcur(off);
+  }
+
+  return badoff;
+}
+
+// Seek from beginning
+template <typename CharT, typename Traits>
+typename IOStreamBuf<CharT, Traits>::pos_type
+IOStreamBuf<CharT, Traits>::seekbeg(off_type off) {
+  if (UNLIKELY(off < 0)) {
+    return badoff;
+  }
+
+  IOBuf const* buf = head_;
+
+  size_t remaining_offset = static_cast<size_t>(off);
+
+  while (remaining_offset > buf->length()) {
+    remaining_offset -= buf->length();
+    buf = buf->next();
+    if (buf == head_) {
+      return badoff;
     }
+  }
 
-    IOBuf const* buf = gcur_;
+  gcur_ = buf;
+  csetg(gcur_->data(), gcur_->data() + remaining_offset, gcur_->tail());
 
-    if (off < 0) {
-      // backwards; use as positive distance backward
-      size_t remaining_offset = static_cast<size_t>(0 - off);
+  return pos_type(off);
+}
 
-      if (remaining_offset <
-              static_cast<size_t>(this->gptr() - this->eback())) {
-        // In the same IOBuf
-        csetg(gcur_->data(),
-              gcur_->data() +
-                static_cast<size_t>(this->gptr() - this->eback()) -
-                remaining_offset,
-              gcur_->tail());
-        return current_position();
-      }
+// Seek from end
+template <typename CharT, typename Traits>
+typename IOStreamBuf<CharT, Traits>::pos_type
+IOStreamBuf<CharT, Traits>::seekend(off_type off) {
+  if (UNLIKELY(off > 0)) {
+    return badoff;
+  }
 
-      remaining_offset -= this->gptr() - this->eback();
-      buf = buf->prev();
+  IOBuf const* buf = head_->prev();
 
-      while (remaining_offset > buf->length()) {
-        if (buf == head_) {
-          return badoff; // position precedes start of data
-        }
+  // Work with positive offset working back from the last tail()
+  size_t remaining_offset = static_cast<size_t>(0 - off);
 
-        remaining_offset -= buf->length();
-        buf = buf->prev();
-      }
-
-      gcur_ = buf;
-      csetg(gcur_->data(), gcur_->tail() - remaining_offset, gcur_->tail());
-      return current_position();
+  while (remaining_offset > buf->length()) {
+    remaining_offset -= buf->length();
+    buf = buf->prev();
+    if (buf == head_ && remaining_offset > buf->length()) {
+      return badoff;
     }
+  }
 
-    assert(off > 0);
-    size_t remaining_offset = static_cast<size_t>(off);
+  gcur_ = buf;
+  csetg(gcur_->data(), gcur_->tail() - remaining_offset, gcur_->tail());
 
-    if (remaining_offset < static_cast<size_t>(this->egptr() - this->gptr())) {
-      assert(reinterpret_cast<uint8_t const*>(this->egptr()) == gcur_->tail());
+  return current_position();
+}
+
+// Seek from current location
+template <typename CharT, typename Traits>
+typename IOStreamBuf<CharT, Traits>::pos_type
+IOStreamBuf<CharT, Traits>::seekcur(off_type off) {
+  if (off == 0) { // commonly called by tellg()
+    return current_position();
+  }
+
+  IOBuf const* buf = gcur_;
+
+  if (off < 0) {
+    // backwards; use as positive distance backward
+    size_t remaining_offset = static_cast<size_t>(0 - off);
+
+    if (remaining_offset <
+            static_cast<size_t>(this->gptr() - this->eback())) {
+      // In the same IOBuf
       csetg(gcur_->data(),
-            reinterpret_cast<uint8_t const*>(this->gptr() + remaining_offset),
+            gcur_->data() +
+              static_cast<size_t>(this->gptr() - this->eback()) -
+              remaining_offset,
             gcur_->tail());
       return current_position();
     }
 
-    remaining_offset -= this->egptr() - this->gptr();
+    remaining_offset -= this->gptr() - this->eback();
+    buf = buf->prev();
 
-    for (buf = buf->next();
-         buf != head_;
-         buf = buf->next()) {
-      if (remaining_offset < buf->length()) {
-        gcur_ = buf;
-        csetg(gcur_->data(), gcur_->data() + remaining_offset, gcur_->tail());
-        return current_position();
+    while (remaining_offset > buf->length()) {
+      if (buf == head_) {
+        return badoff; // position precedes start of data
       }
 
       remaining_offset -= buf->length();
+      buf = buf->prev();
     }
 
-    return badoff;
+    gcur_ = buf;
+    csetg(gcur_->data(), gcur_->tail() - remaining_offset, gcur_->tail());
+    return current_position();
+  }
+
+  assert(off > 0);
+  size_t remaining_offset = static_cast<size_t>(off);
+
+  if (remaining_offset < static_cast<size_t>(this->egptr() - this->gptr())) {
+    assert(reinterpret_cast<uint8_t const*>(this->egptr()) == gcur_->tail());
+    csetg(gcur_->data(),
+          reinterpret_cast<uint8_t const*>(this->gptr() + remaining_offset),
+          gcur_->tail());
+    return current_position();
+  }
+
+  remaining_offset -= this->egptr() - this->gptr();
+
+  for (buf = buf->next();
+       buf != head_;
+       buf = buf->next()) {
+    if (remaining_offset < buf->length()) {
+      gcur_ = buf;
+      csetg(gcur_->data(), gcur_->data() + remaining_offset, gcur_->tail());
+      return current_position();
+    }
+
+    remaining_offset -= buf->length();
   }
 
   return badoff;

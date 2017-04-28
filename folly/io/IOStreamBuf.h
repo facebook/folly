@@ -78,6 +78,11 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
  private:
   folly::IOBuf const* head_;
   folly::IOBuf const* gcur_; // current get IOBuf
+
+  // seekoff implementations for the different directions
+  pos_type seekbeg(off_type off);
+  pos_type seekcur(off_type off);
+  pos_type seekend(off_type off);
 };
 
 }
