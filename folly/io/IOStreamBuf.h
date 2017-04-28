@@ -27,8 +27,9 @@ template<typename CharT, typename Traits = std::char_traits<CharT> >
 class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
   // Due to having to merge single-byte subsets of CharT across IOBuf
   // boundaries, prevent the use of IOStreamBuf on multi-byte types for now.
-  static_assert(sizeof(CharT) == 1,
-          "IOStreamBuf doesn't yet work with multi-byte types");
+  static_assert(
+      sizeof(CharT) == 1,
+      "IOStreamBuf doesn't yet work with multi-byte types");
 
  public:
   /**

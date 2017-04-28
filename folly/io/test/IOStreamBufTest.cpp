@@ -40,7 +40,8 @@ template <typename T>
 static std::basic_string<T> typedString(std::string const& in) {
   // Simply cast the string instead of widening since we only support
   // 1-octet types for now.
-  static_assert(sizeof(T) == 1,
+  static_assert(
+      sizeof(T) == 1,
       "Casting without widening only works when sizeof(T) == 1");
 
   std::basic_string<T> out;
@@ -68,10 +69,12 @@ class IOStreamBufTest : public ::testing::Test {
 template <typename T>
 std::unique_ptr<IOBuf const> const IOStreamBufTest<T>::data = sampledata();
 
-typedef ::testing::Types<char,
-                         unsigned char,
-                         uint8_t,
-                         signed char> IOStreamBufTestTypes;
+typedef ::testing::Types<
+    char,
+    unsigned char,
+    uint8_t,
+    signed char>
+  IOStreamBufTestTypes;
 
 TYPED_TEST_CASE(IOStreamBufTest, IOStreamBufTestTypes);
 
@@ -147,8 +150,10 @@ TYPED_TEST(IOStreamBufTest, xsgetn) {
   this->in_.seekg(1);
   ASSERT_EQ(this->in_.tellg(), 1);
   // memset
-  IOStreamBuf<TypeParam>::traits_type::assign(cdata,
-          sizeof(cdata) / sizeof(TypeParam), '\xfb');
+  IOStreamBuf<TypeParam>::traits_type::assign(
+      cdata,
+      sizeof(cdata) / sizeof(TypeParam),
+      '\xfb');
   this->in_.read(cdata, 6);
 
   EXPECT_EQ(this->in_.gcount(), 6);
