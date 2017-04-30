@@ -252,21 +252,6 @@ AC_DEFINE_UNQUOTED(
   [Define to "override" if the compiler supports C++11 "override"])
 
 AC_CACHE_CHECK(
-  [for constexpr strlen],
-  [folly_cv_func_constexpr_strlen],
-  [AC_COMPILE_IFELSE(
-    [AC_LANG_SOURCE[
-      #include <cstring>
-      static constexpr int val = strlen("foo");]],
-    [folly_cv_func_constexpr_strlen=yes],
-    [folly_cv_func_constexpr_strlen=no])])
-
-if test "$folly_cv_func_constexpr_strlen" = yes; then
-    AC_DEFINE([HAVE_CONSTEXPR_STRLEN], [1],
-              [Define to 1 if strlen(3) is constexpr.])
-fi
-
-AC_CACHE_CHECK(
   [for libc++],
   [folly_cv_lib_libcpp],
   [AC_COMPILE_IFELSE(
