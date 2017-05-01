@@ -16,6 +16,7 @@
 #include <array>
 
 #include <folly/io/async/AsyncSocketException.h>
+#include <folly/io/async/SSLContext.h>
 #include <folly/io/async/ssl/SSLErrors.h>
 
 #include <folly/portability/GTest.h>
@@ -52,6 +53,8 @@ TEST(AsyncSocketException, SimpleTest) {
 
 TEST(AsyncSocketException, SSLExceptionType) {
   {
+    // Initiailzes OpenSSL everything. Else some of the calls will block
+    folly::SSLContext::initializeOpenSSL();
     SSLException eof(SSL_ERROR_ZERO_RETURN, 0, 0, 0);
     EXPECT_EQ(eof.getType(), AsyncSocketException::END_OF_FILE);
 

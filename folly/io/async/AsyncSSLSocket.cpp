@@ -976,14 +976,14 @@ bool AsyncSSLSocket::willBlock(int ret,
     // The timeout (if set) keeps running here
     return true;
 #endif
-  } else if (0
+  } else if ((0
 #ifdef SSL_ERROR_WANT_RSA_ASYNC_PENDING
       || error == SSL_ERROR_WANT_RSA_ASYNC_PENDING
 #endif
 #ifdef SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
       || error == SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
 #endif
-      ) {
+      )) {
     // Our custom openssl function has kicked off an async request to do
     // rsa/ecdsa private key operation.  When that call returns, a callback will
     // be invoked that will re-call handleAccept.

@@ -87,35 +87,6 @@ unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x) {
   return ASN1_STRING_data((ASN1_STRING*)x);
 }
 
-EVP_MD_CTX* EVP_MD_CTX_new(void) {
-  EVP_MD_CTX* ctx = (EVP_MD_CTX*)OPENSSL_malloc(sizeof(EVP_MD_CTX));
-  if (!ctx) {
-    throw std::runtime_error("Cannot allocate EVP_MD_CTX");
-  }
-  EVP_MD_CTX_init(ctx);
-  return ctx;
-}
-
-void EVP_MD_CTX_free(EVP_MD_CTX* ctx) {
-  EVP_MD_CTX_destroy(ctx);
-}
-
-HMAC_CTX* HMAC_CTX_new() {
-  HMAC_CTX* ctx = (HMAC_CTX*)OPENSSL_malloc(sizeof(HMAC_CTX));
-  if (!ctx) {
-    throw std::runtime_error("Cannot allocate HMAC_CTX");
-  }
-  HMAC_CTX_init(ctx);
-  return ctx;
-}
-
-void HMAC_CTX_free(HMAC_CTX* ctx) {
-  if (ctx) {
-    HMAC_CTX_cleanup(ctx);
-    OPENSSL_free(ctx);
-  }
-}
-
 int SSL_SESSION_has_ticket(const SSL_SESSION* s) {
   return (s->tlsext_ticklen > 0) ? 1 : 0;
 }
@@ -157,6 +128,51 @@ int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g) {
 
   return 1;
 }
+
+X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx) {
+  return ctx->cert;
+}
+
+STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx) {
+  return X509_STORE_CTX_get_chain(ctx);
+}
+
+STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx) {
+  return ctx->untrusted;
+}
+
+EVP_MD_CTX* EVP_MD_CTX_new() {
+  EVP_MD_CTX* ctx = (EVP_MD_CTX*)OPENSSL_malloc(sizeof(EVP_MD_CTX));
+  if (!ctx) {
+    throw std::runtime_error("Cannot allocate EVP_MD_CTX");
+  }
+  EVP_MD_CTX_init(ctx);
+  return ctx;
+}
+
+void EVP_MD_CTX_free(EVP_MD_CTX* ctx) {
+  if (ctx) {
+    EVP_MD_CTX_cleanup(ctx);
+    OPENSSL_free(ctx);
+  }
+}
+
+HMAC_CTX* HMAC_CTX_new() {
+  HMAC_CTX* ctx = (HMAC_CTX*)OPENSSL_malloc(sizeof(HMAC_CTX));
+  if (!ctx) {
+    throw std::runtime_error("Cannot allocate HMAC_CTX");
+  }
+  HMAC_CTX_init(ctx);
+  return ctx;
+}
+
+void HMAC_CTX_free(HMAC_CTX* ctx) {
+  if (ctx) {
+    HMAC_CTX_cleanup(ctx);
+    OPENSSL_free(ctx);
+  }
+}
+
 #endif
 
 }

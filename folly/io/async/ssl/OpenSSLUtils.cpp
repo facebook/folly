@@ -195,6 +195,8 @@ const std::string& OpenSSLUtils::getCipherName(uint16_t cipherCode) {
 }
 
 void OpenSSLUtils::setSSLInitialCtx(SSL* ssl, SSL_CTX* ctx) {
+  (void)ssl;
+  (void)ctx;
 #if !FOLLY_OPENSSL_IS_110 && !defined(OPENSSL_NO_TLSEXT)
   if (ssl) {
     ssl->initial_ctx = ctx;
@@ -203,6 +205,7 @@ void OpenSSLUtils::setSSLInitialCtx(SSL* ssl, SSL_CTX* ctx) {
 }
 
 SSL_CTX* OpenSSLUtils::getSSLInitialCtx(SSL* ssl) {
+  (void)ssl;
 #if !FOLLY_OPENSSL_IS_110 && !defined(OPENSSL_NO_TLSEXT)
   if (ssl) {
     return ssl->initial_ctx;
