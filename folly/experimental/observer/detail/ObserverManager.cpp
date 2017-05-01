@@ -106,28 +106,35 @@ class ObserverManager::NextQueue {
   explicit NextQueue(ObserverManager& manager)
       : manager_(manager), queue_(kNextQueueSize) {
     thread_ = std::thread([&]() {
-      Core::Ptr queueCore;
+      Core::WeakPtr queueCoreWeak;
 
       while (true) {
-        queue_.blockingRead(queueCore);
-
-        if (!queueCore) {
+        queue_.blockingRead(queueCoreWeak);
+        if (stop_) {
           return;
         }
 
         std::vector<Core::Ptr> cores;
-        cores.emplace_back(std::move(queueCore));
+        {
+          auto queueCore = queueCoreWeak.lock();
+          if (!queueCore) {
+            continue;
+          }
+          cores.emplace_back(std::move(queueCore));
+        }
 
         {
           SharedMutexReadPriority::WriteHolder wh(manager_.versionMutex_);
 
           // We can't pick more tasks from the queue after we bumped the
           // version, so we have to do this while holding the lock.
-          while (cores.size() < kNextQueueSize && queue_.read(queueCore)) {
-            if (!queueCore) {
+          while (cores.size() < kNextQueueSize && queue_.read(queueCoreWeak)) {
+            if (stop_) {
               return;
             }
-            cores.emplace_back(std::move(queueCore));
+            if (auto queueCore = queueCoreWeak.lock()) {
+              cores.emplace_back(std::move(queueCore));
+            }
           }
 
           ++manager_.version_;
@@ -140,20 +147,22 @@ class ObserverManager::NextQueue {
     });
   }
 
-  void add(Core::Ptr core) {
+  void add(Core::WeakPtr core) {
     queue_.blockingWrite(std::move(core));
   }
 
   ~NextQueue() {
-    // Emtpy element signals thread to terminate
-    queue_.blockingWrite(nullptr);
+    stop_ = true;
+    // Write to the queue to notify the thread.
+    queue_.blockingWrite(Core::WeakPtr());
     thread_.join();
   }
 
  private:
   ObserverManager& manager_;
-  MPMCQueue<Core::Ptr> queue_;
+  MPMCQueue<Core::WeakPtr> queue_;
   std::thread thread_;
+  std::atomic<bool> stop_{false};
 };
 
 ObserverManager::ObserverManager() {
@@ -172,7 +181,7 @@ void ObserverManager::scheduleCurrent(Function<void()> task) {
   currentQueue_->add(std::move(task));
 }
 
-void ObserverManager::scheduleNext(Core::Ptr core) {
+void ObserverManager::scheduleNext(Core::WeakPtr core) {
   nextQueue_->add(std::move(core));
 }
 

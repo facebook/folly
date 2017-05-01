@@ -38,10 +38,10 @@ Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeObserver(
     F&& creator) {
   auto core = observer_detail::Core::
       create([creator = std::forward<F>(creator)]() mutable {
-        return std::static_pointer_cast<void>(creator());
+        return std::static_pointer_cast<const void>(creator());
       });
 
-  observer_detail::ObserverManager::scheduleRefreshNewVersion(core);
+  observer_detail::ObserverManager::initCore(core);
 
   return Observer<observer_detail::ResultOfUnwrapSharedPtr<F>>(core);
 }

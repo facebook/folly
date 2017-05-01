@@ -134,6 +134,9 @@ class Observer {
   }
 
  private:
+  template <typename Observable, typename Traits>
+  friend class ObserverCreator;
+
   observer_detail::Core::Ptr core_;
 };
 
