@@ -1234,10 +1234,16 @@ public:
   // value_type overload is dangerous, so we're explicitly deleting
   // any overloads of operator= that could implicitly convert to
   // value_type.
+  // Note that we do need to explicitly specify the template types because
+  // otherwise MSVC 2017 will aggressively pre-resolve value_type to
+  // traits_type::char_type, which won't compare as equal when determining
+  // which overload the implementation is referring to.
   template <typename TP>
   typename std::enable_if<
-      std::is_same<typename std::decay<TP>::type, value_type>::value,
-      basic_fbstring&>::type
+      std::is_same<
+          typename std::decay<TP>::type,
+          typename basic_fbstring<E, T, A, Storage>::value_type>::value,
+      basic_fbstring<E, T, A, Storage>&>::type
   operator=(TP c);
 
   basic_fbstring& operator=(std::initializer_list<value_type> il) {
