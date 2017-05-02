@@ -1,4 +1,4 @@
-Folly: Facebook Open-source Library
+Folly: Facebook Open-source LibrarY
 -----------------------------------
 
 ### What is `folly`?
