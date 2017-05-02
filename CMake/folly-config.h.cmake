@@ -16,7 +16,7 @@
 
 #pragma once
 
-#cmakedefine FOLLY_HAVE_PTHREAD
+#cmakedefine FOLLY_HAVE_PTHREAD 1
 
 #define FOLLY_HAVE_LIBGFLAGS 1
 #define FOLLY_UNUSUAL_GFLAGS_NAMESPACE 1

@@ -58,7 +58,7 @@ bool canSetOtherThreadName() {
 }
 
 bool setThreadName(std::thread::id tid, StringPiece name) {
-#if !FOLLY_HAVE_PTHREAD
+#if !FOLLY_HAVE_PTHREAD || _WIN32
   return false;
 #else
   static_assert(
