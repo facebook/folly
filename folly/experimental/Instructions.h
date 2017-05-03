@@ -72,6 +72,14 @@ struct Default {
     return (value >> start) &
         ((length == 64) ? (~0ULL) : ((1ULL << length) - 1ULL));
   }
+
+  // Clear high bits starting at position index.
+  static FOLLY_ALWAYS_INLINE uint64_t bzhi(uint64_t value, uint32_t index) {
+    if (index > 63) {
+      return 0;
+    }
+    return value & ((uint64_t(1) << index) - 1);
+  }
 };
 
 struct Nehalem : public Default {
@@ -94,12 +102,12 @@ struct Nehalem : public Default {
 
 struct Haswell : public Nehalem {
   static bool supported(const folly::CpuId& cpuId = {}) {
-    return Nehalem::supported(cpuId) && cpuId.bmi1();
+    return Nehalem::supported(cpuId) && cpuId.bmi1() && cpuId.bmi2();
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
 // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
-// BLSR combines two instuctions into one and reduces register pressure.
+// BLSR combines two instructions into one and reduces register pressure.
 #if defined(__GNUC__) || defined(__clang__)
     // GCC and Clang won't inline the intrinsics.
     uint64_t result;
@@ -124,6 +132,18 @@ struct Haswell : public Nehalem {
     return result;
 #else
     return _bextr_u64(value, start, length);
+#endif
+  }
+
+  static FOLLY_ALWAYS_INLINE uint64_t bzhi(uint64_t value, uint32_t index) {
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
+    const uint64_t index64 = index;
+    uint64_t result;
+    asm("bzhiq %2, %1, %0" : "=r"(result) : "r"(value), "r"(index64));
+    return result;
+#else
+    return _bzhi_u64(value, index);
 #endif
   }
 };

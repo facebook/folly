@@ -28,6 +28,7 @@
 #include <limits>
 #include <type_traits>
 
+#include <folly/Assume.h>
 #include <folly/Bits.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
@@ -526,7 +527,6 @@ class EliasFanoReader {
       : size_(list.size),
         lower_(list.lower),
         upper_(list),
-        lowerMask_((ValueType(1) << list.numLowerBits) - 1),
         numLowerBits_(list.numLowerBits) {
     DCHECK(Instructions::supported());
     // To avoid extra branching during skipTo() while reading
@@ -654,7 +654,10 @@ class EliasFanoReader {
     const size_t pos = i * numLowerBits_;
     const unsigned char* ptr = lower_ + (pos / 8);
     const uint64_t ptrv = folly::loadUnaligned<uint64_t>(ptr);
-    return lowerMask_ & (ptrv >> (pos % 8));
+    // This removes the branch in the fallback implementation of
+    // bzhi. The condition is verified at encoding time.
+    assume(numLowerBits_ < sizeof(ValueType) * 8);
+    return Instructions::bzhi(ptrv >> (pos % 8), numLowerBits_);
   }
 
   void iterateTo(ValueType value) {
@@ -671,7 +674,6 @@ class EliasFanoReader {
   size_t size_;
   const uint8_t* lower_;
   detail::UpperBitsReader<Encoder, Instructions> upper_;
-  const ValueType lowerMask_;
   ValueType value_ = kInvalidValue;
   ValueType lastValue_;
   uint8_t numLowerBits_;
