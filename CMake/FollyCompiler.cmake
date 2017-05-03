@@ -54,7 +54,9 @@ function(apply_folly_compile_options_to_target THETARGET)
       /Zc:strictStrings # Don't allow conversion from a string literal to mutable characters.
       /Zc:threadSafeInit # Enable thread-safe function-local statics initialization.
       /Zc:throwingNew # Assume operator new throws on failure.
-      /permissive- # Be mean, don't allow bad non-standard stuff (C++/CLI, __declspec, etc. are all left intact).
+
+      # This is only supported by MSVC 2017
+      $<$<BOOL:${MSVC_IS_2017}>:/permissive-> # Be mean, don't allow bad non-standard stuff (C++/CLI, __declspec, etc. are all left intact).
     PRIVATE
       /bigobj # Support objects with > 65k sections. Needed due to templates.
       /favor:${MSVC_FAVORED_ARCHITECTURE} # Architecture to prefer when generating code.
