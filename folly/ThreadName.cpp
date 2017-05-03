@@ -90,6 +90,10 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
 
 #if FOLLY_HAVE_PTHREAD
 bool setThreadName(pthread_t pid, StringPiece name) {
+#if _WIN32
+  // Not currently supported on Windows.
+  return false;
+#else
   static_assert(
       std::is_same<pthread_t, std::thread::native_handle_type>::value,
       "This assumes that the native handle type is pthread_t");
@@ -103,6 +107,7 @@ bool setThreadName(pthread_t pid, StringPiece name) {
   std::thread::id id;
   std::memcpy(&id, &pid, sizeof(id));
   return setThreadName(id, name);
+#endif
 }
 #endif
 
