@@ -293,7 +293,7 @@ template <
     FOLLY_REQUIRES_DEF(
         Conjunction<
             exception_wrapper::IsStdException<Ex_>,
-            exception_wrapper::IsRegularExceptionType<Ex_>>())>
+            exception_wrapper::IsRegularExceptionType<Ex_>>::value)>
 inline exception_wrapper::exception_wrapper(Ex&& ex)
     : exception_wrapper{std::forward<Ex>(ex), PlacementOf<Ex_>{}} {
   // Don't slice!!!
@@ -306,7 +306,7 @@ template <
     class Ex,
     class Ex_,
     FOLLY_REQUIRES_DEF(
-        exception_wrapper::IsRegularExceptionType<Ex_>())>
+        exception_wrapper::IsRegularExceptionType<Ex_>::value)>
 inline exception_wrapper::exception_wrapper(in_place_t, Ex&& ex)
     : exception_wrapper{std::forward<Ex>(ex), PlacementOf<Ex_>{}} {
   // Don't slice!!!

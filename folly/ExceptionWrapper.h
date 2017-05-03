@@ -414,7 +414,7 @@ class exception_wrapper final {
       class Ex,
       class Ex_ = _t<std::decay<Ex>>,
       FOLLY_REQUIRES(
-          Conjunction<IsStdException<Ex_>, IsRegularExceptionType<Ex_>>())>
+          Conjunction<IsStdException<Ex_>, IsRegularExceptionType<Ex_>>::value)>
   /* implicit */ exception_wrapper(Ex&& ex);
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
@@ -427,7 +427,7 @@ class exception_wrapper final {
   template <
       class Ex,
       class Ex_ = _t<std::decay<Ex>>,
-      FOLLY_REQUIRES(IsRegularExceptionType<Ex_>())>
+      FOLLY_REQUIRES(IsRegularExceptionType<Ex_>::value)>
   exception_wrapper(in_place_t, Ex&& ex);
 
   //! Swaps the value of `*this` with the value of `that`
