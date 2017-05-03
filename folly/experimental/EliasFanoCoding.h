@@ -347,7 +347,6 @@ class UpperBitsReader {
   void reset() {
     block_ = start_ != nullptr ? folly::loadUnaligned<block_t>(start_) : 0;
     outer_ = 0;
-    inner_ = std::numeric_limits<size_t>::max();
     position_ = std::numeric_limits<size_t>::max();
     value_ = 0;
   }
@@ -363,10 +362,10 @@ class UpperBitsReader {
     }
 
     ++position_;
-    inner_ = size_t(Instructions::ctz(block_));
+    size_t inner = Instructions::ctz(block_);
     block_ = Instructions::blsr(block_);
 
-    return setValue();
+    return setValue(inner);
   }
 
   ValueType skip(size_t n) {
@@ -383,7 +382,6 @@ class UpperBitsReader {
 
       reposition(dest + steps * Encoder::forwardQuantum);
       n = position_ + 1 - steps * Encoder::forwardQuantum; // n is > 0.
-      // Correct inner_ will be set at the end.
     }
 
     size_t cnt;
@@ -396,10 +394,10 @@ class UpperBitsReader {
 
     // Skip to the n-th one in the block.
     DCHECK_GT(n, 0);
-    inner_ = select64<Instructions>(block_, n - 1);
-    block_ &= (block_t(-1) << inner_) << 1;
+    size_t inner = select64<Instructions>(block_, n - 1);
+    block_ &= (block_t(-1) << inner) << 1;
 
-    return setValue();
+    return setValue(inner);
   }
 
   // Skip to the first element that is >= v and located *after* the current
@@ -417,8 +415,7 @@ class UpperBitsReader {
       reposition(dest + Encoder::skipQuantum * steps);
       position_ = dest - 1;
 
-      // Correct inner_ and value_ will be set during the next()
-      // call at the end.
+      // Correct value_ will be set during the next() call at the end.
 
       // NOTE: Corresponding block of lower bits sequence may be
       // prefetched here (via __builtin_prefetch), but experiments
@@ -470,8 +467,9 @@ class UpperBitsReader {
     DCHECK_GT(position(), 0);
 
     size_t outer = outer_;
+    auto inner = size_t(value_) - 8 * outer_ + position_;
     block_t block = folly::loadUnaligned<block_t>(start_ + outer);
-    block &= (block_t(1) << inner_) - 1;
+    block &= (block_t(1) << inner) - 1;
 
     while (UNLIKELY(block == 0)) {
       DCHECK_GT(outer, 0);
@@ -479,7 +477,7 @@ class UpperBitsReader {
       block = folly::loadUnaligned<block_t>(start_ + outer);
     }
 
-    auto inner = 8 * sizeof(block_t) - 1 - Instructions::clz(block);
+    inner = 8 * sizeof(block_t) - 1 - Instructions::clz(block);
     return static_cast<ValueType>(8 * outer + inner - (position_ - 1));
   }
 
@@ -488,8 +486,8 @@ class UpperBitsReader {
   }
 
  private:
-  ValueType setValue() {
-    value_ = static_cast<ValueType>(8 * outer_ + inner_ - position_);
+  ValueType setValue(size_t inner) {
+    value_ = static_cast<ValueType>(8 * outer_ + inner - position_);
     return value_;
   }
 
@@ -505,7 +503,6 @@ class UpperBitsReader {
   const unsigned char* const start_;
   block_t block_;
   size_t outer_;  // Outer offset: number of consumed bytes in upper.
-  size_t inner_;  // Inner offset: (bit) position in current block.
   size_t position_;  // Index of current value (= #reads - 1).
   ValueType value_;
 };

@@ -260,7 +260,6 @@ class BitVectorReader {
   void reset() {
     block_ = (bits_ != nullptr) ? folly::loadUnaligned<uint64_t>(bits_) : 0;
     outer_ = 0;
-    inner_ = -1;
     position_ = -1;
     value_ = kInvalidValue;
   }
@@ -276,10 +275,10 @@ class BitVectorReader {
     }
 
     ++position_;
-    inner_ = Instructions::ctz(block_);
+    auto inner = Instructions::ctz(block_);
     block_ = Instructions::blsr(block_);
 
-    return setValue();
+    return setValue(inner);
   }
 
   bool skip(size_t n) {
@@ -306,7 +305,6 @@ class BitVectorReader {
 
       reposition(dest);
       n = position_ + 1 - steps * Encoder::forwardQuantum;
-      // Correct inner_ will be set at the end.
     }
 
     size_t cnt;
@@ -319,10 +317,10 @@ class BitVectorReader {
 
     // Skip to the n-th one in the block.
     DCHECK_GT(n, 0);
-    inner_ = select64<Instructions>(block_, n - 1);
-    block_ &= (uint64_t(-1) << inner_) << 1;
+    auto inner = select64<Instructions>(block_, n - 1);
+    block_ &= (uint64_t(-1) << inner) << 1;
 
-    return setValue();
+    return setValue(inner);
   }
 
   bool skipTo(ValueType v) {
@@ -371,10 +369,10 @@ class BitVectorReader {
       block_ = folly::loadUnaligned<uint64_t>(bits_ + outer_);
     }
 
-    inner_ = Instructions::ctz(block_);
+    auto inner = Instructions::ctz(block_);
     block_ = Instructions::blsr(block_);
 
-    setValue();
+    setValue(inner);
     return true;
   }
 
@@ -410,8 +408,8 @@ class BitVectorReader {
   constexpr static ValueType kInvalidValue =
     std::numeric_limits<ValueType>::max();  // Must hold kInvalidValue + 1 == 0.
 
-  bool setValue() {
-    value_ = static_cast<ValueType>(8 * outer_ + inner_);
+  bool setValue(size_t inner) {
+    value_ = static_cast<ValueType>(8 * outer_ + inner);
     return true;
   }
 
@@ -425,7 +423,6 @@ class BitVectorReader {
   constexpr static size_t kLinearScanThreshold = 4;
 
   size_t outer_;
-  size_t inner_;
   size_t position_;
   uint64_t block_;
   ValueType value_;
