@@ -31,14 +31,9 @@
 
 namespace folly {
 
-File::File()
-  : fd_(-1)
-  , ownsFd_(false)
-{}
+File::File() noexcept : fd_(-1), ownsFd_(false) {}
 
-File::File(int fd, bool ownsFd)
-  : fd_(fd)
-  , ownsFd_(ownsFd) {
+File::File(int fd, bool ownsFd) noexcept : fd_(fd), ownsFd_(ownsFd) {
   CHECK_GE(fd, -1) << "fd must be -1 or non-negative";
   CHECK(fd != -1 || !ownsFd) << "cannot own -1";
 }

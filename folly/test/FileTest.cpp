@@ -135,3 +135,13 @@ TEST(File, Truthy) {
     EXPECT_TRUE(false);
   }
 }
+
+TEST(File, HelperCtor) {
+  File::makeFile(StringPiece("/etc/hosts")).then([](File&& f) {
+    char buf = 'x';
+    EXPECT_NE(-1, f.fd());
+    EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
+    f.close();
+    EXPECT_EQ(-1, f.fd());
+  });
+}
