@@ -107,6 +107,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/ThreadedRepeatingFunctionRunner.h \
 	experimental/Bits.h \
 	experimental/BitVectorCoding.h \
+	experimental/CodingDetail.h \
 	experimental/DynamicParser.h \
 	experimental/DynamicParser-inl.h \
 	experimental/ExecutionObserver.h \

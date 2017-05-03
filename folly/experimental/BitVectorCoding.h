@@ -25,6 +25,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/experimental/Bits.h>
+#include <folly/experimental/CodingDetail.h>
 #include <folly/experimental/Instructions.h>
 #include <folly/experimental/Select64.h>
 #include <glog/logging.h>
@@ -233,10 +234,12 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
   size_t forwardPointers = 0;
 };
 
-template <class Encoder,
-          class Instructions = instructions::Default,
-          bool kUnchecked = false>
-class BitVectorReader {
+template <
+    class Encoder,
+    class Instructions = instructions::Default,
+    bool kUnchecked = false>
+class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
+                        detail::SkipPointers<Encoder::skipQuantum> {
  public:
   typedef Encoder EncoderType;
   typedef typename Encoder::ValueType ValueType;
@@ -245,10 +248,10 @@ class BitVectorReader {
   typedef typename Encoder::SkipValueType SkipValueType;
 
   explicit BitVectorReader(const typename Encoder::CompressedList& list)
-      : size_(list.size),
+      : detail::ForwardPointers<Encoder::forwardQuantum>(list.forwardPointers),
+        detail::SkipPointers<Encoder::skipQuantum>(list.skipPointers),
         bits_(list.bits),
-        skipPointers_(list.skipPointers),
-        forwardPointers_(list.forwardPointers) {
+        size_(list.size) {
     reset();
 
     if (kUnchecked || UNLIKELY(list.size == 0)) {
@@ -303,7 +306,7 @@ class BitVectorReader {
     if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
       const size_t steps = position_ / Encoder::forwardQuantum;
       const size_t dest = folly::loadUnaligned<SkipValueType>(
-          forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
+          this->forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
 
       reposition(dest);
       n = position_ + 1 - steps * Encoder::forwardQuantum;
@@ -347,7 +350,7 @@ class BitVectorReader {
     if (Encoder::skipQuantum > 0 && v - value_ > Encoder::skipQuantum) {
       size_t q = v / Encoder::skipQuantum;
       auto skipPointer = folly::loadUnaligned<SkipValueType>(
-          skipPointers_ + (q - 1) * sizeof(SkipValueType));
+          this->skipPointers_ + (q - 1) * sizeof(SkipValueType));
       position_ = static_cast<SizeType>(skipPointer) - 1;
 
       reposition(q * Encoder::skipQuantum);
@@ -429,6 +432,7 @@ class BitVectorReader {
 
   constexpr static size_t kLinearScanThreshold = 4;
 
+  const uint8_t* const bits_;
   uint64_t block_;
   SizeType outer_;
   SizeType position_;
@@ -436,9 +440,6 @@ class BitVectorReader {
 
   SizeType size_;
   ValueType upperBound_;
-  const uint8_t* const bits_;
-  const uint8_t* const skipPointers_;
-  const uint8_t* const forwardPointers_;
 };
 
 }}  // namespaces

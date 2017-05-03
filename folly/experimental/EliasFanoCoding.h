@@ -33,6 +33,7 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/experimental/CodingDetail.h>
 #include <folly/experimental/Instructions.h>
 #include <folly/experimental/Select64.h>
 #include <glog/logging.h>
@@ -332,14 +333,15 @@ struct EliasFanoEncoderV2<Value,
 namespace detail {
 
 template <class Encoder, class Instructions, class SizeType>
-class UpperBitsReader {
+class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
+                        SkipPointers<Encoder::skipQuantum> {
   typedef typename Encoder::SkipValueType SkipValueType;
  public:
   typedef typename Encoder::ValueType ValueType;
 
   explicit UpperBitsReader(const typename Encoder::CompressedList& list)
-      : forwardPointers_(list.forwardPointers),
-        skipPointers_(list.skipPointers),
+      : ForwardPointers<Encoder::forwardQuantum>(list.forwardPointers),
+        SkipPointers<Encoder::skipQuantum>(list.skipPointers),
         start_(list.upper) {
     reset();
   }
@@ -380,9 +382,8 @@ class UpperBitsReader {
     // Use forward pointer.
     if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
       const size_t steps = position_ / Encoder::forwardQuantum;
-      const size_t dest =
-        folly::loadUnaligned<SkipValueType>(
-            forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
+      const size_t dest = folly::loadUnaligned<SkipValueType>(
+          this->forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
 
       reposition(dest + steps * Encoder::forwardQuantum);
       n = position_ + 1 - steps * Encoder::forwardQuantum; // n is > 0.
@@ -412,9 +413,8 @@ class UpperBitsReader {
     // Use skip pointer.
     if (Encoder::skipQuantum > 0 && v >= value_ + Encoder::skipQuantum) {
       const size_t steps = v / Encoder::skipQuantum;
-      const size_t dest =
-        folly::loadUnaligned<SkipValueType>(
-            skipPointers_ + (steps - 1) * sizeof(SkipValueType));
+      const size_t dest = folly::loadUnaligned<SkipValueType>(
+          this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
 
       reposition(dest + Encoder::skipQuantum * steps);
       position_ = dest - 1;
@@ -507,8 +507,6 @@ class UpperBitsReader {
   // so a type that can hold either sizes or values is sufficient.
   using OuterType = typename std::common_type<ValueType, SizeType>::type;
 
-  const unsigned char* const forwardPointers_;
-  const unsigned char* const skipPointers_;
   const unsigned char* const start_;
   block_t block_;
   SizeType position_; // Index of current value (= #reads - 1).
