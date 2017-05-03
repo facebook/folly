@@ -240,6 +240,8 @@ class BitVectorReader {
  public:
   typedef Encoder EncoderType;
   typedef typename Encoder::ValueType ValueType;
+  // A bitvector can only be as large as its largest value.
+  typedef typename Encoder::ValueType SizeType;
   typedef typename Encoder::SkipValueType SkipValueType;
 
   explicit BitVectorReader(const typename Encoder::CompressedList& list)
@@ -281,7 +283,7 @@ class BitVectorReader {
     return setValue(inner);
   }
 
-  bool skip(size_t n) {
+  bool skip(SizeType n) {
     CHECK_GT(n, 0);
 
     if (!kUnchecked && position() + n >= size_) {
@@ -344,8 +346,9 @@ class BitVectorReader {
 
     if (Encoder::skipQuantum > 0 && v - value_ > Encoder::skipQuantum) {
       size_t q = v / Encoder::skipQuantum;
-      position_ = size_t(folly::loadUnaligned<SkipValueType>(
-                      skipPointers_ + (q - 1) * sizeof(SkipValueType))) - 1;
+      auto skipPointer = folly::loadUnaligned<SkipValueType>(
+          skipPointers_ + (q - 1) * sizeof(SkipValueType));
+      position_ = static_cast<SizeType>(skipPointer) - 1;
 
       reposition(q * Encoder::skipQuantum);
     }
@@ -376,19 +379,23 @@ class BitVectorReader {
     return true;
   }
 
-  size_t size() const { return size_; }
+  SizeType size() const {
+    return size_;
+  }
 
   bool valid() const {
     return position() < size(); // Also checks that position() != -1.
   }
 
-  size_t position() const { return position_; }
+  SizeType position() const {
+    return position_;
+  }
   ValueType value() const {
     DCHECK(valid());
     return value_;
   }
 
-  bool jump(size_t n) {
+  bool jump(SizeType n) {
     reset();
     return skip(n + 1);
   }
@@ -422,12 +429,12 @@ class BitVectorReader {
 
   constexpr static size_t kLinearScanThreshold = 4;
 
-  size_t outer_;
-  size_t position_;
   uint64_t block_;
+  SizeType outer_;
+  SizeType position_;
   ValueType value_;
 
-  size_t size_;
+  SizeType size_;
   ValueType upperBound_;
   const uint8_t* const bits_;
   const uint8_t* const skipPointers_;

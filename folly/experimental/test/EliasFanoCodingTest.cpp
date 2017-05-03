@@ -94,11 +94,12 @@ class EliasFanoCodingTest : public ::testing::Test {
     testEmpty<Reader, Encoder>();
   }
 
-  template <size_t kSkipQuantum, size_t kForwardQuantum>
+  template <size_t kSkipQuantum, size_t kForwardQuantum, class SizeType>
   void doTestAll() {
     typedef EliasFanoEncoderV2<
       uint32_t, uint32_t, kSkipQuantum, kForwardQuantum> Encoder;
-    typedef EliasFanoReader<Encoder, instructions::EF_TEST_ARCH> Reader;
+    using Reader =
+        EliasFanoReader<Encoder, instructions::EF_TEST_ARCH, false, SizeType>;
     testAll<Reader, Encoder>({0});
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
@@ -110,19 +111,23 @@ TEST_F(EliasFanoCodingTest, Empty) {
 }
 
 TEST_F(EliasFanoCodingTest, Simple) {
-  doTestAll<0, 0>();
+  doTestAll<0, 0, uint32_t>();
+  doTestAll<0, 0, size_t>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipPointers) {
-  doTestAll<128, 0>();
+  doTestAll<128, 0, uint32_t>();
+  doTestAll<128, 0, size_t>();
 }
 
 TEST_F(EliasFanoCodingTest, ForwardPointers) {
-  doTestAll<0, 128>();
+  doTestAll<0, 128, uint32_t>();
+  doTestAll<0, 128, size_t>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
-  doTestAll<128, 128>();
+  doTestAll<128, 128, uint32_t>();
+  doTestAll<128, 128, size_t>();
 }
 
 TEST_F(EliasFanoCodingTest, Select64) {

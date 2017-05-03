@@ -331,7 +331,7 @@ struct EliasFanoEncoderV2<Value,
 
 namespace detail {
 
-template <class Encoder, class Instructions>
+template <class Encoder, class Instructions, class SizeType>
 class UpperBitsReader {
   typedef typename Encoder::SkipValueType SkipValueType;
  public:
@@ -346,13 +346,17 @@ class UpperBitsReader {
 
   void reset() {
     block_ = start_ != nullptr ? folly::loadUnaligned<block_t>(start_) : 0;
+    position_ = std::numeric_limits<SizeType>::max();
     outer_ = 0;
-    position_ = std::numeric_limits<size_t>::max();
     value_ = 0;
   }
 
-  size_t position() const { return position_; }
-  ValueType value() const { return value_; }
+  SizeType position() const {
+    return position_;
+  }
+  ValueType value() const {
+    return value_;
+  }
 
   ValueType next() {
     // Skip to the first non-zero block.
@@ -368,7 +372,7 @@ class UpperBitsReader {
     return setValue(inner);
   }
 
-  ValueType skip(size_t n) {
+  ValueType skip(SizeType n) {
     DCHECK_GT(n, 0);
 
     position_ += n;  // n 1-bits will be read.
@@ -448,7 +452,8 @@ class UpperBitsReader {
     if (Encoder::forwardQuantum == 0 || n <= Encoder::forwardQuantum) {
       reset();
     } else {
-      position_ = size_t(-1); // Avoid reading the head, skip() will reposition.
+      // Avoid reading the head, skip() will reposition.
+      position_ = std::numeric_limits<SizeType>::max();
     }
     return skip(n);
   }
@@ -463,17 +468,17 @@ class UpperBitsReader {
   }
 
   ValueType previousValue() const {
-    DCHECK_NE(position(), -1);
+    DCHECK_NE(position(), std::numeric_limits<SizeType>::max());
     DCHECK_GT(position(), 0);
 
-    size_t outer = outer_;
+    auto outer = outer_;
     auto inner = size_t(value_) - 8 * outer_ + position_;
     block_t block = folly::loadUnaligned<block_t>(start_ + outer);
     block &= (block_t(1) << inner) - 1;
 
     while (UNLIKELY(block == 0)) {
       DCHECK_GT(outer, 0);
-      outer -= std::min(sizeof(block_t), outer);
+      outer -= std::min<OuterType>(sizeof(block_t), outer);
       block = folly::loadUnaligned<block_t>(start_ + outer);
     }
 
@@ -481,7 +486,7 @@ class UpperBitsReader {
     return static_cast<ValueType>(8 * outer + inner - (position_ - 1));
   }
 
-  void setDone(size_t endPos) {
+  void setDone(SizeType endPos) {
     position_ = endPos;
   }
 
@@ -491,19 +496,23 @@ class UpperBitsReader {
     return value_;
   }
 
-  void reposition(size_t dest) {
+  void reposition(SizeType dest) {
     outer_ = dest / 8;
     block_ = folly::loadUnaligned<block_t>(start_ + outer_);
     block_ &= ~((block_t(1) << (dest % 8)) - 1);
   }
 
-  typedef uint64_t block_t;
+  using block_t = uint64_t;
+  // The size in bytes of the upper bits is limited by n + universe / 8,
+  // so a type that can hold either sizes or values is sufficient.
+  using OuterType = typename std::common_type<ValueType, SizeType>::type;
+
   const unsigned char* const forwardPointers_;
   const unsigned char* const skipPointers_;
   const unsigned char* const start_;
   block_t block_;
-  size_t outer_;  // Outer offset: number of consumed bytes in upper.
-  size_t position_;  // Index of current value (= #reads - 1).
+  SizeType position_; // Index of current value (= #reads - 1).
+  OuterType outer_; // Outer offset: number of consumed bytes in upper.
   ValueType value_;
 };
 
@@ -512,18 +521,20 @@ class UpperBitsReader {
 // If kUnchecked = true the caller must guarantee that all the
 // operations return valid elements, i.e., they would never return
 // false if checked.
-template <class Encoder,
-          class Instructions = instructions::Default,
-          bool kUnchecked = false>
+template <
+    class Encoder,
+    class Instructions = instructions::Default,
+    bool kUnchecked = false,
+    class SizeType = size_t>
 class EliasFanoReader {
  public:
   typedef Encoder EncoderType;
   typedef typename Encoder::ValueType ValueType;
 
   explicit EliasFanoReader(const typename Encoder::CompressedList& list)
-      : size_(list.size),
+      : upper_(list),
         lower_(list.lower),
-        upper_(list),
+        size_(list.size),
         numLowerBits_(list.numLowerBits) {
     DCHECK(Instructions::supported());
     // To avoid extra branching during skipTo() while reading
@@ -556,12 +567,13 @@ class EliasFanoReader {
     return true;
   }
 
-  bool skip(size_t n) {
+  bool skip(SizeType n) {
     CHECK_GT(n, 0);
 
     if (kUnchecked || LIKELY(position() + n < size_)) {
       if (LIKELY(n < kLinearScanThreshold)) {
-        for (size_t i = 0; i < n; ++i) upper_.next();
+        for (SizeType i = 0; i < n; ++i)
+          upper_.next();
       } else {
         upper_.skip(n);
       }
@@ -599,7 +611,7 @@ class EliasFanoReader {
     return true;
   }
 
-  bool jump(size_t n) {
+  bool jump(SizeType n) {
     if (LIKELY(n < size_)) {  // Also checks that n != -1.
       value_ = readLowerPart(n) | (upper_.jump(n + 1) << numLowerBits_);
       return true;
@@ -624,21 +636,26 @@ class EliasFanoReader {
       (upper_.previousValue() << numLowerBits_);
   }
 
-  size_t size() const { return size_; }
+  SizeType size() const {
+    return size_;
+  }
 
   bool valid() const {
     return position() < size(); // Also checks that position() != -1.
   }
 
-  size_t position() const { return upper_.position(); }
+  SizeType position() const {
+    return upper_.position();
+  }
   ValueType value() const {
     DCHECK(valid());
     return value_;
   }
 
  private:
+  // Must hold kInvalidValue + 1 == 0.
   constexpr static ValueType kInvalidValue =
-    std::numeric_limits<ValueType>::max();  // Must hold kInvalidValue + 1 == 0.
+      std::numeric_limits<ValueType>::max();
 
   bool setDone() {
     value_ = kInvalidValue;
@@ -646,7 +663,7 @@ class EliasFanoReader {
     return false;
   }
 
-  ValueType readLowerPart(size_t i) const {
+  ValueType readLowerPart(SizeType i) const {
     DCHECK_LT(i, size_);
     const size_t pos = i * numLowerBits_;
     const unsigned char* ptr = lower_ + (pos / 8);
@@ -668,9 +685,9 @@ class EliasFanoReader {
 
   constexpr static size_t kLinearScanThreshold = 8;
 
-  size_t size_;
+  detail::UpperBitsReader<Encoder, Instructions, SizeType> upper_;
   const uint8_t* lower_;
-  detail::UpperBitsReader<Encoder, Instructions> upper_;
+  SizeType size_;
   ValueType value_ = kInvalidValue;
   ValueType lastValue_;
   uint8_t numLowerBits_;
