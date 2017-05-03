@@ -183,18 +183,22 @@ inline const void* hazptr_obj::getObjPtr() const {
 
 inline hazptr_domain::~hazptr_domain() {
   DEBUG_PRINT(this);
+  { /* reclaim all remaining retired objects */
+    hazptr_obj* next;
+    auto retired = retired_.exchange(nullptr);
+    while (retired) {
+      for (auto p = retired; p; p = next) {
+        next = p->next_;
+        (*(p->reclaim_))(p);
+      }
+      retired = retired_.exchange(nullptr);
+    }
+  }
   { /* free all hazptr_rec-s */
     hazptr_rec* next;
     for (auto p = hazptrs_.load(); p; p = next) {
       next = p->next_;
       mr_->deallocate(static_cast<void*>(p), sizeof(hazptr_rec));
-    }
-  }
-  { /* reclaim all remaining retired objects */
-    hazptr_obj* next;
-    for (auto p = retired_.load(); p; p = next) {
-      next = p->next_;
-      (*(p->reclaim_))(p);
     }
   }
 }

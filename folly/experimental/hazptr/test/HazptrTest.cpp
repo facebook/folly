@@ -256,3 +256,22 @@ TEST_F(HazptrTest, VirtualTest) {
     EXPECT_EQ(bar->a, i);
   }
 }
+
+TEST_F(HazptrTest, DestructionTest) {
+  hazptr_domain myDomain0;
+  struct Thing : public hazptr_obj_base<Thing> {
+    Thing* next;
+    Thing(Thing* n) : next(n) {}
+    ~Thing() {
+      DEBUG_PRINT("this: " << this << " next: " << next);
+      if (next) {
+        next->retire();
+      }
+    }
+  };
+  Thing* last{nullptr};
+  for (int i = 0; i < 2000; i++) {
+    last = new Thing(last);
+  }
+  last->retire();
+}
