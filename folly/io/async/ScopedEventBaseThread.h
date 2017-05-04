@@ -24,6 +24,9 @@
 namespace folly {
 
 class EventBaseManager;
+template <class Iter>
+class Range;
+typedef Range<const char*> StringPiece;
 
 /**
  * A helper class to start a new thread running a EventBase loop.
@@ -35,7 +38,11 @@ class EventBaseManager;
 class ScopedEventBaseThread {
  public:
   ScopedEventBaseThread();
+  explicit ScopedEventBaseThread(const StringPiece& name);
   explicit ScopedEventBaseThread(EventBaseManager* ebm);
+  explicit ScopedEventBaseThread(
+      EventBaseManager* ebm,
+      const StringPiece& name);
   ~ScopedEventBaseThread();
 
   EventBase* getEventBase() const {

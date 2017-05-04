@@ -19,13 +19,19 @@
 #include <thread>
 
 #include <folly/Function.h>
+#include <folly/Range.h>
+#include <folly/ThreadName.h>
 #include <folly/io/async/EventBaseManager.h>
 
 using namespace std;
 
 namespace folly {
 
-static void run(EventBaseManager* ebm, EventBase* eb) {
+static void run(EventBaseManager* ebm, EventBase* eb, const StringPiece& name) {
+  if (name.size()) {
+    folly::setThreadName(name);
+  }
+
   ebm->setEventBase(eb, false);
   eb->loopForever();
 
@@ -36,12 +42,20 @@ static void run(EventBaseManager* ebm, EventBase* eb) {
 }
 
 ScopedEventBaseThread::ScopedEventBaseThread()
-    : ScopedEventBaseThread(nullptr) {}
+    : ScopedEventBaseThread(nullptr, "") {}
+
+ScopedEventBaseThread::ScopedEventBaseThread(const StringPiece& name)
+    : ScopedEventBaseThread(nullptr, name) {}
 
 ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
+    : ScopedEventBaseThread(ebm, "") {}
+
+ScopedEventBaseThread::ScopedEventBaseThread(
+    EventBaseManager* ebm,
+    const StringPiece& name)
     : ebm_(ebm ? ebm : EventBaseManager::get()) {
   new (&eb_) EventBase();
-  th_ = thread(run, ebm_, &eb_);
+  th_ = thread(run, ebm_, &eb_, name);
   eb_.waitUntilRunning();
 }
 

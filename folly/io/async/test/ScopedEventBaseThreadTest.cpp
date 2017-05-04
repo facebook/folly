@@ -17,9 +17,11 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 
 #include <chrono>
+#include <string>
 
 #include <folly/Baton.h>
 #include <folly/Optional.h>
+#include <folly/ThreadName.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/portability/GTest.h>
 
@@ -35,6 +37,24 @@ TEST_F(ScopedEventBaseThreadTest, example) {
   Baton<> done;
   sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
   ASSERT_TRUE(done.timed_wait(seconds(1)));
+}
+
+TEST_F(ScopedEventBaseThreadTest, named_example) {
+  static constexpr StringPiece kThreadName{"named_example"};
+
+  Optional<std::string> createdThreadName;
+  Baton<> done;
+
+  ScopedEventBaseThread sebt{kThreadName};
+  sebt.getEventBase()->runInEventBaseThread([&] {
+    createdThreadName = folly::getCurrentThreadName();
+    done.post();
+  });
+
+  ASSERT_TRUE(done.timed_wait(seconds(1)));
+  if (createdThreadName) {
+    ASSERT_EQ(kThreadName.toString(), createdThreadName.value());
+  }
 }
 
 TEST_F(ScopedEventBaseThreadTest, default_manager) {
