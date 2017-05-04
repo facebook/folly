@@ -287,6 +287,16 @@ inline exception_wrapper::exception_wrapper(std::exception_ptr ptr, Ex& ex)
   assert(eptr_.ptr_);
 }
 
+namespace exception_wrapper_detail {
+template <class Ex>
+Ex&& dont_slice(Ex&& ex) {
+  assert(typeid(ex) == typeid(_t<std::decay<Ex>>) ||
+       !"Dynamic and static exception types don't match. Exception would "
+        "be sliced when storing in exception_wrapper.");
+  return std::forward<Ex>(ex);
+}
+}
+
 template <
     class Ex,
     class Ex_,
@@ -295,11 +305,9 @@ template <
             exception_wrapper::IsStdException<Ex_>,
             exception_wrapper::IsRegularExceptionType<Ex_>>::value)>
 inline exception_wrapper::exception_wrapper(Ex&& ex)
-    : exception_wrapper{std::forward<Ex>(ex), PlacementOf<Ex_>{}} {
-  // Don't slice!!!
-  assert(typeid(ex) == typeid(Ex_) ||
-       !"Dynamic and static exception types don't match. Exception would "
-        "be sliced when storing in exception_wrapper.");
+    : exception_wrapper{
+        exception_wrapper_detail::dont_slice(std::forward<Ex>(ex)),
+        PlacementOf<Ex_>{}} {
 }
 
 template <
@@ -308,11 +316,9 @@ template <
     FOLLY_REQUIRES_DEF(
         exception_wrapper::IsRegularExceptionType<Ex_>::value)>
 inline exception_wrapper::exception_wrapper(in_place_t, Ex&& ex)
-    : exception_wrapper{std::forward<Ex>(ex), PlacementOf<Ex_>{}} {
-  // Don't slice!!!
-  assert(typeid(ex) == typeid(Ex_) ||
-       !"Dynamic and static exception types don't match. Exception would "
-        "be sliced when storing in exception_wrapper.");
+    : exception_wrapper{
+        exception_wrapper_detail::dont_slice(std::forward<Ex>(ex)),
+        PlacementOf<Ex_>{}} {
 }
 
 inline void exception_wrapper::swap(exception_wrapper& that) noexcept {
