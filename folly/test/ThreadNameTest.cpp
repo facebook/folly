@@ -27,6 +27,17 @@ using namespace folly;
 static bool expectedSetOtherThreadNameResult = folly::canSetOtherThreadName();
 static bool expectedSetSelfThreadNameResult = folly::canSetCurrentThreadName();
 
+TEST(ThreadName, getCurrentThreadName) {
+  static constexpr StringPiece kThreadName{"rockin-thread"};
+  thread th([] {
+    EXPECT_EQ(expectedSetSelfThreadNameResult, setThreadName(kThreadName));
+    if (expectedSetSelfThreadNameResult) {
+      EXPECT_EQ(kThreadName.toString(), getCurrentThreadName().value());
+    }
+  });
+  SCOPE_EXIT { th.join(); };
+}
+
 TEST(ThreadName, setThreadName_self) {
   thread th([] {
     EXPECT_EQ(expectedSetSelfThreadNameResult, setThreadName("rockin-thread"));

@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <string>
 #include <thread>
 
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/PThread.h>
@@ -33,6 +35,10 @@ bool canSetCurrentThreadName();
  * threads other than the one currently executing.
  */
 bool canSetOtherThreadName();
+/**
+ * Get the name of the current string, or nothing if an error occurs.
+ */
+Optional<std::string> getCurrentThreadName();
 
 bool setThreadName(std::thread::id tid, StringPiece name);
 #if FOLLY_HAVE_PTHREAD
