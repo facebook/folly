@@ -312,6 +312,26 @@ TEST(FixedStringCompareTest, Compare) {
   static_assert(tmp3 == "aaa", "");
 }
 
+TEST(FixedStringCompareTest, CompareStdString) {
+  constexpr folly::FixedString<10> tmp1{"aaaaaaaaaa"};
+  std::string const tmp2{"aaaaaaaaaba"};
+  EXPECT_EQ(-1, tmp1.compare(tmp2));
+  // These are specifically testing the operators, and so we can't rely
+  // on whever the implementation details of EXPECT_<OP> might be.
+  EXPECT_FALSE(tmp1 == tmp2);
+  EXPECT_FALSE(tmp2 == tmp1);
+  EXPECT_TRUE(tmp1 != tmp2);
+  EXPECT_TRUE(tmp2 != tmp1);
+  EXPECT_TRUE(tmp1 < tmp2);
+  EXPECT_FALSE(tmp2 < tmp1);
+  EXPECT_TRUE(tmp1 <= tmp2);
+  EXPECT_FALSE(tmp2 <= tmp1);
+  EXPECT_FALSE(tmp1 > tmp2);
+  EXPECT_TRUE(tmp2 > tmp1);
+  EXPECT_FALSE(tmp1 >= tmp2);
+  EXPECT_TRUE(tmp2 >= tmp1);
+}
+
 #if FOLLY_USE_CPP14_CONSTEXPR
 constexpr folly::FixedString<20> constexpr_append_string_test() {
   folly::FixedString<20> a{"hello"}, b{"X world!"};

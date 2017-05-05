@@ -28,6 +28,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Range.h>
 #include <folly/Utility.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Constexpr.h>
@@ -435,10 +436,6 @@ struct ReverseIterator {
 
 } // namespace fixedstring
 } // namespace detail
-
-// Defined in folly/Range.h
-template <class Iter>
-class Range;
 
 // Defined in folly/Hash.h
 std::uint32_t hsieh_hash32_buf(const void* buf, std::size_t len);
@@ -1607,6 +1604,13 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   }
 
   /**
+   * \overload
+   */
+  constexpr int compare(Range<const Char*> that) const noexcept {
+    return compare(0u, size_, that.begin(), that.size());
+  }
+
+  /**
    * Compare two strings for lexicographical ordering.
    * \note Equivalent to
    *   `compare(this_pos, this_count, that, strlen(that))`
@@ -1616,6 +1620,16 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t this_count,
       const Char* that) const noexcept(false) {
     return compare(this_pos, this_count, that, folly::constexpr_strlen(that));
+  }
+
+  /**
+   * \overload
+   */
+  constexpr int compare(
+      std::size_t this_pos,
+      std::size_t this_count,
+      Range<const Char*> that) const noexcept(false) {
+    return compare(this_pos, this_count, that.begin(), that.size());
   }
 
   /**
@@ -1646,6 +1660,18 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         that,
         0u,
         that_count));
+  }
+
+  constexpr int compare(
+      std::size_t this_pos,
+      std::size_t this_count,
+      Range<const Char*> that,
+      std::size_t that_count) const noexcept(false) {
+    return compare(
+        this_pos,
+        this_count,
+        that.begin(),
+        detail::fixedstring::checkOverflow(that_count, that.size()));
   }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
@@ -2660,6 +2686,24 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return b == a;
   }
 
+  /**
+   * \overload
+   */
+  friend constexpr bool operator==(
+      Range<const Char*> a,
+      const BasicFixedString& b) noexcept {
+    return detail::fixedstring::equal_(a.begin(), a.size(), b.data_, b.size_);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator==(
+      const BasicFixedString& a,
+      Range<const Char*> b) noexcept {
+    return b == a;
+  }
+
   friend constexpr bool operator!=(
       const Char* a,
       const BasicFixedString& b) noexcept {
@@ -2673,6 +2717,24 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const BasicFixedString& a,
       const Char* b) noexcept {
     return !(b == a);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator!=(
+      Range<const Char*> a,
+      const BasicFixedString& b) noexcept {
+    return !(a == b);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator!=(
+      const BasicFixedString& a,
+      Range<const Char*> b) noexcept {
+    return !(a == b);
   }
 
   friend constexpr bool operator<(
@@ -2694,6 +2756,28 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
                a.data_, 0u, a.size_, b, 0u, folly::constexpr_strlen(b));
   }
 
+  /**
+   * \overload
+   */
+  friend constexpr bool operator<(
+      Range<const Char*> a,
+      const BasicFixedString& b) noexcept {
+    return detail::fixedstring::Cmp::LT ==
+        detail::fixedstring::compare_(
+               a.begin(), 0u, a.size(), b.data_, 0u, b.size_);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator<(
+      const BasicFixedString& a,
+      Range<const Char*> b) noexcept {
+    return detail::fixedstring::Cmp::LT ==
+        detail::fixedstring::compare_(
+               a.data_, 0u, a.size_, b.begin(), 0u, b.size());
+  }
+
   friend constexpr bool operator>(
       const Char* a,
       const BasicFixedString& b) noexcept {
@@ -2706,6 +2790,24 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend constexpr bool operator>(
       const BasicFixedString& a,
       const Char* b) noexcept {
+    return b < a;
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator>(
+      Range<const Char*> a,
+      const BasicFixedString& b) noexcept {
+    return b < a;
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator>(
+      const BasicFixedString& a,
+      Range<const Char*> b) noexcept {
     return b < a;
   }
 
@@ -2721,6 +2823,24 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend constexpr bool operator<=(
       const BasicFixedString& a,
       const Char* b) noexcept {
+    return !(b < a);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator<=(
+      Range<const Char*> const& a,
+      const BasicFixedString& b) noexcept {
+    return !(b < a);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator<=(
+      const BasicFixedString& a,
+      Range<const Char*> b) noexcept {
     return !(b < a);
   }
 
@@ -2736,6 +2856,24 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend constexpr bool operator>=(
       const BasicFixedString& a,
       const Char* b) noexcept {
+    return !(a < b);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator>=(
+      Range<const Char*> a,
+      const BasicFixedString& b) noexcept {
+    return !(a < b);
+  }
+
+  /**
+   * \overload
+   */
+  friend constexpr bool operator>=(
+      const BasicFixedString& a,
+      Range<const Char*> const& b) noexcept {
     return !(a < b);
   }
 
