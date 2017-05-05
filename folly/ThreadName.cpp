@@ -60,24 +60,15 @@ bool canSetOtherThreadName() {
 static constexpr size_t kMaxThreadNameLength = 16;
 
 Optional<std::string> getCurrentThreadName() {
-#if !FOLLY_HAVE_PTHREAD
-  return Optional<std::string>();
-#else
-#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
+#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
+    FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
   std::array<char, kMaxThreadNameLength> buf;
   if (pthread_getname_np(pthread_self(), buf.data(), buf.size()) != 0) {
     return Optional<std::string>();
   }
   return make_optional(std::string(buf.data()));
-#elif FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
-  std::array<char, kMaxThreadNameLength> buf;
-  if (pthread_getname_np(buf.data(), buf.size()) != 0) {
-    return Optional<std::string>();
-  }
-  return make_optional(std::string(buf.data()));
 #else
   return Optional<std::string>();
-#endif
 #endif
 }
 
