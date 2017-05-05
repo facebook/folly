@@ -29,13 +29,13 @@ namespace folly {
  */
 class TestExecutor : public Executor {
  public:
-  TestExecutor();
+  explicit TestExecutor(size_t numThreads);
 
   ~TestExecutor() override;
 
   void add(Func f) override;
 
-  uint32_t numThreads() const;
+  size_t numThreads() const;
 
  private:
   void addImpl(Func f);

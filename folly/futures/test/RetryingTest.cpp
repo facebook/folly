@@ -151,7 +151,7 @@ TEST(RetryingTest, large_retries) {
     PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0);
   };
 
-  TestExecutor executor;
+  TestExecutor executor(4);
   // size of implicit promise is at least the size of the return.
   using LargeReturn = array<uint64_t, 16000>;
   auto func = [&executor](size_t retryNum) -> Future<LargeReturn> {
@@ -171,6 +171,8 @@ TEST(RetryingTest, large_retries) {
         },
         func));
   }
+
+  // 40 * 10,000 * 16,000B > 1GB; we should avoid OOM
 
   for (auto& f : futures) {
     f.wait();

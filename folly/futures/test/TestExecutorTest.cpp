@@ -24,8 +24,9 @@ using namespace folly;
 TEST(TestExecutor, parallel_run) {
   mutex m;
   set<thread::id> ids;
-  auto executor = std::make_unique<TestExecutor>();
+  auto executor = std::make_unique<TestExecutor>(4);
   const auto numThreads = executor->numThreads();
+  EXPECT_EQ(4, numThreads);
   for (auto idx = 0U; idx < numThreads * 10; ++idx) {
     executor->add([&m, &ids]() mutable {
       /* sleep override */ this_thread::sleep_for(milliseconds(100));

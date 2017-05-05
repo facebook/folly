@@ -20,9 +20,9 @@ using namespace std;
 
 namespace folly {
 
-TestExecutor::TestExecutor() {
-  const auto kWorkers = std::max(1U, thread::hardware_concurrency());
-  for (auto idx = 0U; idx < kWorkers; ++idx) {
+TestExecutor::TestExecutor(size_t numThreads) {
+  const auto kWorkers = std::max(size_t(1), numThreads);
+  for (auto idx = 0u; idx < kWorkers; ++idx) {
     workers_.emplace_back([this] {
       while (true) {
         Func work;
@@ -57,7 +57,7 @@ void TestExecutor::add(Func f) {
   }
 }
 
-uint32_t TestExecutor::numThreads() const {
+size_t TestExecutor::numThreads() const {
   return workers_.size();
 }
 
