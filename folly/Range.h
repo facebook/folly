@@ -359,6 +359,9 @@ public:
   Range& operator=(const Range& rhs) & = default;
   Range& operator=(Range&& rhs) & = default;
 
+  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
+  Range& operator=(std::string&& rhs) = delete;
+
   void clear() {
     b_ = Iter();
     e_ = Iter();
