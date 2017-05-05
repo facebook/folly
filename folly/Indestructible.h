@@ -17,7 +17,6 @@
 #pragma once
 
 #include <cassert>
-#include <type_traits>
 #include <utility>
 
 namespace folly {
@@ -64,7 +63,7 @@ class Indestructible final {
 
   template <typename... Args, typename = decltype(T(std::declval<Args&&>()...))>
   explicit constexpr Indestructible(Args&&... args) noexcept(
-      std::is_nothrow_constructible<T, Args&&...>::value)
+      noexcept(T(std::declval<Args&&>()...)))
       : storage_(std::forward<Args>(args)...) {}
 
   ~Indestructible() = default;
@@ -73,31 +72,31 @@ class Indestructible final {
   Indestructible& operator=(Indestructible const&) = delete;
 
   Indestructible(Indestructible&& other) noexcept(
-      std::is_nothrow_move_constructible<T>::value)
+      noexcept(T(std::declval<T&&>())))
       : storage_(std::move(other.storage_.value)) {
     other.erased_ = true;
   }
   Indestructible& operator=(Indestructible&& other) noexcept(
-      std::is_nothrow_move_assignable<T>::value) {
+      noexcept(T(std::declval<T&&>()))) {
     storage_.value = std::move(other.storage_.value);
     other.erased_ = true;
   }
 
-  T* get() {
+  T* get() noexcept {
     check();
     return &storage_.value;
   }
-  T const* get() const {
+  T const* get() const noexcept {
     check();
     return &storage_.value;
   }
-  T& operator*() { return *get(); }
-  T const& operator*() const { return *get(); }
-  T* operator->() { return get(); }
-  T const* operator->() const { return get(); }
+  T& operator*() noexcept { return *get(); }
+  T const& operator*() const noexcept { return *get(); }
+  T* operator->() noexcept { return get(); }
+  T const* operator->() const noexcept { return get(); }
 
  private:
-  void check() const {
+  void check() const noexcept {
     assert(!erased_);
   }
 
@@ -110,7 +109,8 @@ class Indestructible final {
     template <
         typename... Args,
         typename = decltype(T(std::declval<Args&&>()...))>
-    explicit constexpr Storage(Args&&... args)
+    explicit constexpr Storage(Args&&... args) noexcept(
+        noexcept(T(std::declval<Args&&>()...)))
         : value(std::forward<Args>(args)...) {}
 
     ~Storage() {}
