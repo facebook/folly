@@ -36,6 +36,7 @@
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/SharedMutex.h>
 
 namespace folly {
 
@@ -54,7 +55,7 @@ class once_flag {
 
  private:
   std::atomic<bool> called_{false};
-  std::once_flag std_once_flag_;
+  folly::SharedMutex mutex_;
 };
 
 template <class Callable, class... Args>
@@ -71,9 +72,13 @@ call_once(once_flag& flag, Callable&& f, Args&&... args) {
 template <class Callable, class... Args>
 void FOLLY_NOINLINE
 call_once_impl_no_inline(once_flag& flag, Callable&& f, Args&&... args) {
-  std::call_once(flag.std_once_flag_,
-                 std::forward<Callable>(f),
-                 std::forward<Args>(args)...);
+  std::lock_guard<folly::SharedMutex> lg(flag.mutex_);
+  if (flag.called_) {
+    return;
+  }
+
+  std::forward<Callable>(f)(std::forward<Args>(args)...);
+
   flag.called_.store(true, std::memory_order_release);
 }
 }

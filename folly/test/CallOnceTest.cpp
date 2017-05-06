@@ -50,6 +50,23 @@ TEST(FollyCallOnce, Simple) {
   ASSERT_EQ(1, out);
 }
 
+TEST(FollyCallOnce, Exception) {
+  struct ExpectedException {};
+  folly::once_flag flag;
+  size_t numCalls = 0;
+  EXPECT_THROW(
+      folly::call_once(
+          flag,
+          [&] {
+            ++numCalls;
+            throw ExpectedException();
+          }),
+      ExpectedException);
+  EXPECT_EQ(1, numCalls);
+  folly::call_once(flag, [&] { ++numCalls; });
+  EXPECT_EQ(2, numCalls);
+}
+
 TEST(FollyCallOnce, Stress) {
   for (int i = 0; i < 100; ++i) {
     folly::once_flag flag;

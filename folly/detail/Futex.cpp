@@ -20,7 +20,6 @@
 #include <condition_variable>
 #include <mutex>
 #include <boost/intrusive/list.hpp>
-#include <folly/CallOnce.h>
 #include <folly/Hash.h>
 #include <folly/ScopeGuard.h>
 
@@ -187,21 +186,14 @@ struct EmulatedFutexBucket {
   boost::intrusive::list<EmulatedFutexWaitNode> waiters_;
 
   static const size_t kNumBuckets = 4096;
-  static EmulatedFutexBucket* gBuckets;
-  static folly::once_flag gBucketInit;
 
   static EmulatedFutexBucket& bucketFor(void* addr) {
-    folly::call_once(gBucketInit, [](){
-      gBuckets = new EmulatedFutexBucket[kNumBuckets];
-    });
+    static auto gBuckets = new EmulatedFutexBucket[kNumBuckets];
     uint64_t mixedBits = folly::hash::twang_mix64(
         reinterpret_cast<uintptr_t>(addr));
     return gBuckets[mixedBits % kNumBuckets];
   }
 };
-
-EmulatedFutexBucket* EmulatedFutexBucket::gBuckets;
-folly::once_flag EmulatedFutexBucket::gBucketInit;
 
 int emulatedFutexWake(void* addr, int count, uint32_t waitMask) {
   auto& bucket = EmulatedFutexBucket::bucketFor(addr);

@@ -249,7 +249,7 @@ class SharedMutexImpl {
   class UpgradeHolder;
   class WriteHolder;
 
-  constexpr SharedMutexImpl() : state_(0) {}
+  constexpr SharedMutexImpl() noexcept : state_(0) {}
 
   SharedMutexImpl(const SharedMutexImpl&) = delete;
   SharedMutexImpl(SharedMutexImpl&&) = delete;
