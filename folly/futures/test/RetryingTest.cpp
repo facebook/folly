@@ -146,7 +146,9 @@ TEST(RetryingTest, large_retries) {
   rlimit newMemLimit;
   newMemLimit.rlim_cur = std::min(1UL << 30, oldMemLimit.rlim_max);
   newMemLimit.rlim_max = oldMemLimit.rlim_max;
-  PCHECK(setrlimit(RLIMIT_AS, &newMemLimit) == 0);
+  if (!folly::kIsSanitizeAddress) { // ASAN reserves outside of the rlimit
+    PCHECK(setrlimit(RLIMIT_AS, &newMemLimit) == 0);
+  }
   SCOPE_EXIT {
     PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0);
   };
