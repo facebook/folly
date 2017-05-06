@@ -134,7 +134,7 @@ void Promise<T>::setWith(F&& func) {
 }
 
 template <class T>
-bool Promise<T>::isFulfilled() {
+bool Promise<T>::isFulfilled() const noexcept {
   if (core_) {
     return core_->hasResult();
   }

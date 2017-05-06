@@ -101,7 +101,7 @@ class Core final {
   Core& operator=(Core&&) = delete;
 
   /// May call from any thread
-  bool hasResult() const {
+  bool hasResult() const noexcept {
     switch (fsm_.getState()) {
       case State::OnlyResult:
       case State::Armed:
@@ -115,7 +115,7 @@ class Core final {
   }
 
   /// May call from any thread
-  bool ready() const {
+  bool ready() const noexcept {
     return hasResult();
   }
 

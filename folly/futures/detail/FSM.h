@@ -43,7 +43,7 @@ private:
 public:
   explicit FSM(Enum startState) : state_(startState) {}
 
-  Enum getState() const {
+  Enum getState() const noexcept {
     return state_.load(std::memory_order_acquire);
   }
 

@@ -27,7 +27,7 @@ template <class T> class Future;
 
 template <class T>
 class Promise {
-public:
+ public:
   Promise();
   ~Promise();
 
@@ -93,9 +93,9 @@ public:
   template <class F>
   void setWith(F&& func);
 
-  bool isFulfilled();
+  bool isFulfilled() const noexcept;
 
-private:
+ private:
   typedef typename Future<T>::corePtr corePtr;
   template <class> friend class Future;
 
