@@ -418,6 +418,7 @@ GroupVarintTables.cpp: build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
 
 libfollybasesse42_la_SOURCES = \
+	detail/ChecksumDetail.cpp \
 	detail/RangeSse42.cpp
 
 libfollybase_la_SOURCES = \
@@ -613,7 +614,7 @@ libfolly_la_SOURCES += \
 endif
 
 libfollybasesse42_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
-libfollybasesse42_la_CXXFLAGS = -msse4.2
+libfollybasesse42_la_CXXFLAGS = -msse4.2 -mpclmul
 
 libfollybase_la_LIBADD = libfollybasesse42.la
 libfollybase_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)

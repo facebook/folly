@@ -37,4 +37,12 @@ namespace folly {
 uint32_t crc32c(const uint8_t* data, size_t nbytes,
     uint32_t startingChecksum = ~0U);
 
+/**
+ * Compute the CRC-32 checksum of a buffer, using a hardware-accelerated
+ * implementation if available or a portable software implementation as
+ * a default.
+ */
+uint32_t
+crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
+
 } // folly
