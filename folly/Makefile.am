@@ -248,7 +248,6 @@ nobase_follyinclude_HEADERS = \
 	io/async/EventUtil.h \
 	io/async/NotificationQueue.h \
 	io/async/HHWheelTimer.h \
-	io/async/ssl/OpenSSLPtrTypes.h \
 	io/async/ssl/OpenSSLUtils.h \
 	io/async/ssl/SSLErrors.h \
 	io/async/ssl/TLSDefinitions.h \
@@ -360,6 +359,7 @@ nobase_follyinclude_HEADERS = \
 	SpookyHashV2.h \
 	ssl/OpenSSLCertUtils.h \
 	ssl/OpenSSLHash.h \
+	ssl/OpenSSLPtrTypes.h \
 	ssl/OpenSSLVersionFinder.h \
 	ssl/SSLSession.h \
 	ssl/detail/SSLSessionImpl.h \

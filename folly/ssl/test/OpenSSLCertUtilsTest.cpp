@@ -18,7 +18,7 @@
 
 #include <folly/Range.h>
 #include <folly/String.h>
-#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 

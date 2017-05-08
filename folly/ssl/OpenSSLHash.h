@@ -18,7 +18,7 @@
 
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
-#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/portability/OpenSSL.h>
 
 namespace folly {

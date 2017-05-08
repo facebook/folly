@@ -22,7 +22,7 @@
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
-#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/SysUio.h>
 

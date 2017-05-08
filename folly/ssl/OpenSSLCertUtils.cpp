@@ -17,7 +17,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
-#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
 namespace ssl {
