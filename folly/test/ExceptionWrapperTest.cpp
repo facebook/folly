@@ -494,13 +494,13 @@ TEST(ExceptionWrapper, handle_std_exception) {
   };
 
   expect_runtime_error_yes_catch_all(ew_eptr);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_runtime_error_yes_catch_all(ew_small);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_runtime_error_yes_catch_all(ew_big);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   auto expect_runtime_error_no_catch_all = [&](const exception_wrapper& ew) {
@@ -511,13 +511,13 @@ TEST(ExceptionWrapper, handle_std_exception) {
   };
 
   expect_runtime_error_no_catch_all(ew_eptr);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_runtime_error_no_catch_all(ew_small);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_runtime_error_no_catch_all(ew_big);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   auto expect_runtime_error_catch_non_std = [&](const exception_wrapper& ew) {
@@ -529,13 +529,13 @@ TEST(ExceptionWrapper, handle_std_exception) {
   };
 
   expect_runtime_error_catch_non_std(ew_eptr);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_runtime_error_catch_non_std(ew_small);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_runtime_error_catch_non_std(ew_big);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   // Test that an exception thrown from one handler is not caught by an
@@ -551,13 +551,13 @@ TEST(ExceptionWrapper, handle_std_exception) {
   };
 
   EXPECT_THROW(expect_runtime_error_rethrow(ew_eptr), std::runtime_error);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   EXPECT_THROW(expect_runtime_error_rethrow(ew_small), std::runtime_error);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   EXPECT_THROW(expect_runtime_error_rethrow(ew_big), std::runtime_error);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
 }
 
 TEST(ExceptionWrapper, handle_std_exception_unhandled) {
@@ -574,10 +574,10 @@ TEST(ExceptionWrapper, handle_std_exception_unhandled) {
   };
 
   expect_runtime_error_yes_catch_all(ew_eptr);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_runtime_error_yes_catch_all(ew_small);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
 }
 
 TEST(ExceptionWrapper, handle_non_std_exception_small) {
@@ -594,13 +594,13 @@ TEST(ExceptionWrapper, handle_non_std_exception_small) {
   };
 
   expect_int_yes_catch_all(ew_eptr1);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_yes_catch_all(ew_eptr2);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_yes_catch_all(ew_small);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   auto expect_int_no_catch_all = [&](const exception_wrapper& ew) {
@@ -610,13 +610,13 @@ TEST(ExceptionWrapper, handle_non_std_exception_small) {
   };
 
   expect_int_no_catch_all(ew_eptr1);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all(ew_eptr2);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all(ew_small);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   auto expect_int_no_catch_all_2 = [&](const exception_wrapper& ew) {
@@ -626,13 +626,13 @@ TEST(ExceptionWrapper, handle_non_std_exception_small) {
   };
 
   expect_int_no_catch_all_2(ew_eptr1);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all_2(ew_eptr2);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all_2(ew_small);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
 }
 
 TEST(ExceptionWrapper, handle_non_std_exception_big) {
@@ -649,13 +649,13 @@ TEST(ExceptionWrapper, handle_non_std_exception_big) {
   };
 
   expect_int_yes_catch_all(ew_eptr1);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_yes_catch_all(ew_eptr2);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_yes_catch_all(ew_big);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   auto expect_int_no_catch_all = [&](const exception_wrapper& ew) {
@@ -665,13 +665,13 @@ TEST(ExceptionWrapper, handle_non_std_exception_big) {
   };
 
   expect_int_no_catch_all(ew_eptr1);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all(ew_eptr2);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all(ew_big);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   auto expect_int_no_catch_all_2 = [&](const exception_wrapper& ew) {
@@ -681,13 +681,13 @@ TEST(ExceptionWrapper, handle_non_std_exception_big) {
   };
 
   expect_int_no_catch_all_2(ew_eptr1);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all_2(ew_eptr2);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   expect_int_no_catch_all_2(ew_big);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
 
   EXPECT_THROW(
@@ -705,7 +705,7 @@ TEST(ExceptionWrapper, handle_non_std_exception_rethrow_base_derived) {
           },
           [](const BaseException&) { EXPECT_TRUE(false); }),
       DerivedException);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
   handled = false;
   EXPECT_THROW(
       ew.handle(
@@ -715,7 +715,7 @@ TEST(ExceptionWrapper, handle_non_std_exception_rethrow_base_derived) {
           },
           [](...) { EXPECT_TRUE(false); }),
       DerivedException);
-  EXPECT_EQ(true, handled);
+  EXPECT_TRUE(handled);
 }
 
 TEST(ExceptionWrapper, self_swap_test) {

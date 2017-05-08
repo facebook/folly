@@ -153,10 +153,11 @@ TEST(ApplyTuple, Test) {
             folly::applyTuple(
               static_cast<int (Overloaded::*)(int)>(&Overloaded::func),
               std::make_tuple(&ovl, 12)));
-  EXPECT_EQ(true,
-            folly::applyTuple(
-              static_cast<bool (Overloaded::*)(bool)>(&Overloaded::func),
-              std::make_tuple(&ovl, false)));
+  EXPECT_EQ(
+      /* do not code-mode to EXPECT_TRUE */ true,
+      folly::applyTuple(
+          static_cast<bool (Overloaded::*)(bool)>(&Overloaded::func),
+          std::make_tuple(&ovl, false)));
 
   int x = folly::applyTuple(std::plus<int>(), std::make_tuple(12, 12));
   EXPECT_EQ(24, x);
