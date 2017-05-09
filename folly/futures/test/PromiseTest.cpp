@@ -134,7 +134,7 @@ TEST(Promise, isFulfilledWithFuture) {
 }
 
 TEST(Promise, brokenOnDelete) {
-  auto p = folly::make_unique<Promise<int>>();
+  auto p = std::make_unique<Promise<int>>();
   auto f = p->getFuture();
 
   EXPECT_FALSE(f.isReady());
@@ -149,10 +149,10 @@ TEST(Promise, brokenOnDelete) {
 }
 
 TEST(Promise, brokenPromiseHasTypeInfo) {
-  auto pInt = folly::make_unique<Promise<int>>();
+  auto pInt = std::make_unique<Promise<int>>();
   auto fInt = pInt->getFuture();
 
-  auto pFloat = folly::make_unique<Promise<float>>();
+  auto pFloat = std::make_unique<Promise<float>>();
   auto fFloat = pFloat->getFuture();
 
   pInt.reset();

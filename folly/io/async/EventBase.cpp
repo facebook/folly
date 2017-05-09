@@ -740,7 +740,7 @@ const char* EventBase::getLibeventMethod() { return event_get_method(); }
 
 VirtualEventBase& EventBase::getVirtualEventBase() {
   folly::call_once(virtualEventBaseInitFlag_, [&] {
-    virtualEventBase_ = folly::make_unique<VirtualEventBase>(*this);
+    virtualEventBase_ = std::make_unique<VirtualEventBase>(*this);
   });
 
   return *virtualEventBase_;

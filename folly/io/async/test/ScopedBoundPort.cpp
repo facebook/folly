@@ -23,7 +23,7 @@
 namespace folly {
 
 ScopedBoundPort::ScopedBoundPort(IPAddress host) {
-  ebth_ = folly::make_unique<ScopedEventBaseThread>();
+  ebth_ = std::make_unique<ScopedEventBaseThread>();
   ebth_->getEventBase()->runInEventBaseThreadAndWait([&] {
     sock_ = AsyncServerSocket::newSocket(ebth_->getEventBase());
     sock_->bind(SocketAddress(host, 0));

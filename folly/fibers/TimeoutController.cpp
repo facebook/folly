@@ -33,7 +33,7 @@ intptr_t TimeoutController::registerTimeout(
     }
 
     timeoutHandleBuckets_.emplace_back(
-        duration, folly::make_unique<TimeoutHandleList>());
+        duration, std::make_unique<TimeoutHandleList>());
     return *timeoutHandleBuckets_.back().second;
   }();
 

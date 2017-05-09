@@ -181,7 +181,7 @@ TEST(AsyncSSLSocketTest, ReadAfterClose) {
   ReadEOFCallback readCallback(&writeCallback);
   HandshakeCallback handshakeCallback(&readCallback);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
-  auto server = folly::make_unique<TestSSLServer>(&acceptCallback);
+  auto server = std::make_unique<TestSSLServer>(&acceptCallback);
 
   // Set up SSL context.
   auto sslContext = std::make_shared<SSLContext>();
@@ -402,8 +402,8 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
       new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
     AsyncSSLSocket::UniquePtr serverSock(
       new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-    client = folly::make_unique<NpnClient>(std::move(clientSock));
-    server = folly::make_unique<NpnServer>(std::move(serverSock));
+    client = std::make_unique<NpnClient>(std::move(clientSock));
+    server = std::make_unique<NpnServer>(std::move(serverSock));
 
     eventBase.loop();
   }

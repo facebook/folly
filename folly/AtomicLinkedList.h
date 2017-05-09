@@ -54,7 +54,7 @@ class AtomicLinkedList {
    *         after the call.
    */
   bool insertHead(T t) {
-    auto wrapper = folly::make_unique<Wrapper>(std::move(t));
+    auto wrapper = std::make_unique<Wrapper>(std::move(t));
 
     return list_.insertHead(wrapper.release());
   }

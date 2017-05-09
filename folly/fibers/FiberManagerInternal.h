@@ -337,7 +337,7 @@ class FiberManager : public ::folly::Executor {
     template <typename F>
     RemoteTask(F&& f, const Fiber::LocalData& localData_)
         : func(std::forward<F>(f)),
-          localData(folly::make_unique<Fiber::LocalData>(localData_)),
+          localData(std::make_unique<Fiber::LocalData>(localData_)),
           rcontext(RequestContext::saveContext()) {}
     folly::Function<void()> func;
     std::unique_ptr<Fiber::LocalData> localData;

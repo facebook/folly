@@ -26,7 +26,7 @@ using namespace folly::fibers;
 struct Application {
  public:
   Application()
-      : fiberManager(folly::make_unique<SimpleLoopController>()),
+      : fiberManager(std::make_unique<SimpleLoopController>()),
         toSend(20),
         maxOutstanding(5) {}
 

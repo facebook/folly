@@ -335,7 +335,7 @@ class ScopedAlternateSignalStack {
       return;
     }
 
-    stack_ = folly::make_unique<AltStackBuffer>();
+    stack_ = std::make_unique<AltStackBuffer>();
 
     setAlternateStack(stack_->data(), stack_->size());
   }

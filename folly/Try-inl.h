@@ -41,7 +41,7 @@ Try<T>::Try(typename std::enable_if<std::is_same<Unit, T2>::value,
   } else if (t.hasException()) {
     contains_ = Contains::EXCEPTION;
     new (&e_) std::unique_ptr<exception_wrapper>(
-        folly::make_unique<exception_wrapper>(t.exception()));
+        std::make_unique<exception_wrapper>(t.exception()));
   }
 }
 
@@ -71,7 +71,7 @@ Try<T>::Try(const Try<T>& t) {
     new (&value_)T(t.value_);
   } else if (contains_ == Contains::EXCEPTION) {
     new (&e_)std::unique_ptr<exception_wrapper>();
-    e_ = folly::make_unique<exception_wrapper>(*(t.e_));
+    e_ = std::make_unique<exception_wrapper>(*(t.e_));
   }
 }
 
@@ -86,7 +86,7 @@ Try<T>& Try<T>::operator=(const Try<T>& t) {
     new (&value_)T(t.value_);
   } else if (contains_ == Contains::EXCEPTION) {
     new (&e_)std::unique_ptr<exception_wrapper>();
-    e_ = folly::make_unique<exception_wrapper>(*(t.e_));
+    e_ = std::make_unique<exception_wrapper>(*(t.e_));
   }
   return *this;
 }

@@ -85,9 +85,7 @@ class UDPServer {
   void start() {
     CHECK(evb_->isInEventBaseThread());
 
-    socket_ = folly::make_unique<AsyncUDPServerSocket>(
-        evb_,
-        1500);
+    socket_ = std::make_unique<AsyncUDPServerSocket>(evb_, 1500);
 
     try {
       socket_->bind(addr_);
@@ -159,7 +157,7 @@ class UDPClient
     CHECK(evb_->isInEventBaseThread());
 
     server_ = server;
-    socket_ = folly::make_unique<AsyncUDPSocket>(evb_);
+    socket_ = std::make_unique<AsyncUDPSocket>(evb_);
 
     try {
       socket_->bind(folly::SocketAddress("127.0.0.1", 0));

@@ -31,7 +31,7 @@ static size_t sNumAwaits;
 void runBenchmark(size_t numAwaits, size_t toSend) {
   sNumAwaits = numAwaits;
 
-  FiberManager fiberManager(folly::make_unique<SimpleLoopController>());
+  FiberManager fiberManager(std::make_unique<SimpleLoopController>());
   auto& loopController =
       dynamic_cast<SimpleLoopController&>(fiberManager.loopController());
 
@@ -87,7 +87,7 @@ BENCHMARK(FiberManagerAllocateDeallocatePattern, iters) {
   FiberManager::Options opts;
   opts.maxFibersPoolSize = 0;
 
-  FiberManager fiberManager(folly::make_unique<SimpleLoopController>(), opts);
+  FiberManager fiberManager(std::make_unique<SimpleLoopController>(), opts);
 
   for (size_t iter = 0; iter < iters; ++iter) {
     DCHECK_EQ(0, fiberManager.fibersPoolSize());
@@ -110,7 +110,7 @@ BENCHMARK(FiberManagerAllocateLargeChunk, iters) {
   FiberManager::Options opts;
   opts.maxFibersPoolSize = 0;
 
-  FiberManager fiberManager(folly::make_unique<SimpleLoopController>(), opts);
+  FiberManager fiberManager(std::make_unique<SimpleLoopController>(), opts);
 
   for (size_t iter = 0; iter < iters; ++iter) {
     DCHECK_EQ(0, fiberManager.fibersPoolSize());

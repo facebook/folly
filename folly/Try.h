@@ -93,8 +93,8 @@ class Try {
    * @param e The exception_wrapper
    */
   explicit Try(exception_wrapper e)
-    : contains_(Contains::EXCEPTION),
-      e_(folly::make_unique<exception_wrapper>(std::move(e))) {}
+      : contains_(Contains::EXCEPTION),
+        e_(std::make_unique<exception_wrapper>(std::move(e))) {}
 
   /*
    * DEPRECATED
@@ -108,9 +108,9 @@ class Try {
     try {
       std::rethrow_exception(ep);
     } catch (const std::exception& e) {
-      e_ = folly::make_unique<exception_wrapper>(std::current_exception(), e);
+      e_ = std::make_unique<exception_wrapper>(std::current_exception(), e);
     } catch (...) {
-      e_ = folly::make_unique<exception_wrapper>(std::current_exception());
+      e_ = std::make_unique<exception_wrapper>(std::current_exception());
     }
   }
 
@@ -266,8 +266,8 @@ class Try<void> {
    * @param e The exception_wrapper
    */
   explicit Try(exception_wrapper e)
-    : hasValue_(false),
-      e_(folly::make_unique<exception_wrapper>(std::move(e))) {}
+      : hasValue_(false),
+        e_(std::make_unique<exception_wrapper>(std::move(e))) {}
 
   /*
    * DEPRECATED
@@ -280,9 +280,9 @@ class Try<void> {
     try {
       std::rethrow_exception(ep);
     } catch (const std::exception& e) {
-      e_ = folly::make_unique<exception_wrapper>(std::current_exception(), e);
+      e_ = std::make_unique<exception_wrapper>(std::current_exception(), e);
     } catch (...) {
-      e_ = folly::make_unique<exception_wrapper>(std::current_exception());
+      e_ = std::make_unique<exception_wrapper>(std::current_exception());
     }
   }
 
@@ -290,7 +290,7 @@ class Try<void> {
   Try& operator=(const Try<void>& t) {
     hasValue_ = t.hasValue_;
     if (t.e_) {
-      e_ = folly::make_unique<exception_wrapper>(*t.e_);
+      e_ = std::make_unique<exception_wrapper>(*t.e_);
     }
     return *this;
   }

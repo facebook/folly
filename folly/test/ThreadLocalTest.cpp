@@ -103,7 +103,7 @@ TEST(ThreadLocalPtr, DefaultDeleterOwnershipTransfer) {
   Widget::totalVal_ = 0;
   {
     ThreadLocalPtr<Widget> w;
-    auto source = folly::make_unique<Widget>();
+    auto source = std::make_unique<Widget>();
     std::thread([&w, &source]() {
       w.reset(std::move(source));
       w.get()->val_ += 10;

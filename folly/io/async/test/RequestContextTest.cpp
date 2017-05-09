@@ -56,8 +56,7 @@ TEST(RequestContext, SimpleTest) {
 
   EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
 
-  RequestContext::get()->setContextData(
-      "test", folly::make_unique<TestData>(10));
+  RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
   base.runInEventBaseThread([&](){
       EXPECT_TRUE(RequestContext::get() != nullptr);
       auto data = dynamic_cast<TestData*>(
@@ -83,16 +82,15 @@ TEST(RequestContext, SimpleTest) {
 TEST(RequestContext, setIfAbsentTest) {
   EXPECT_TRUE(RequestContext::get() != nullptr);
 
-  RequestContext::get()->setContextData(
-      "test", folly::make_unique<TestData>(10));
+  RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
   EXPECT_FALSE(RequestContext::get()->setContextDataIfAbsent(
-      "test", folly::make_unique<TestData>(20)));
+      "test", std::make_unique<TestData>(20)));
   EXPECT_EQ(10,
             dynamic_cast<TestData*>(
                 RequestContext::get()->getContextData("test"))->data_);
 
   EXPECT_TRUE(RequestContext::get()->setContextDataIfAbsent(
-      "test2", folly::make_unique<TestData>(20)));
+      "test2", std::make_unique<TestData>(20)));
   EXPECT_EQ(20,
             dynamic_cast<TestData*>(
                 RequestContext::get()->getContextData("test2"))->data_);
@@ -104,13 +102,13 @@ TEST(RequestContext, setIfAbsentTest) {
 TEST(RequestContext, testSetUnset) {
   RequestContext::create();
   auto ctx1 = RequestContext::saveContext();
-  ctx1->setContextData("test", folly::make_unique<TestData>(10));
+  ctx1->setContextData("test", std::make_unique<TestData>(10));
   auto testData1 = dynamic_cast<TestData*>(ctx1->getContextData("test"));
 
   // Override RequestContext
   RequestContext::create();
   auto ctx2 = RequestContext::saveContext();
-  ctx2->setContextData("test", folly::make_unique<TestData>(20));
+  ctx2->setContextData("test", std::make_unique<TestData>(20));
   auto testData2 = dynamic_cast<TestData*>(ctx2->getContextData("test"));
 
   // Check ctx1->onUnset was called
@@ -137,7 +135,7 @@ TEST(RequestContext, deadlockTest) {
 
     virtual ~DeadlockTestData() {
       RequestContext::get()->setContextData(
-          val_, folly::make_unique<TestData>(1));
+          val_, std::make_unique<TestData>(1));
     }
 
     void onSet() override {}
@@ -148,6 +146,6 @@ TEST(RequestContext, deadlockTest) {
   };
 
   RequestContext::get()->setContextData(
-      "test", folly::make_unique<DeadlockTestData>("test2"));
+      "test", std::make_unique<DeadlockTestData>("test2"));
   RequestContext::get()->clearContextData("test");
 }

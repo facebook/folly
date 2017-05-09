@@ -1789,7 +1789,7 @@ TEST(EventBaseTest, LoopKeepAliveInLoop) {
 }
 
 TEST(EventBaseTest, LoopKeepAliveWithLoopForever) {
-  std::unique_ptr<EventBase> evb = folly::make_unique<EventBase>();
+  std::unique_ptr<EventBase> evb = std::make_unique<EventBase>();
 
   bool done = false;
 
@@ -1817,7 +1817,7 @@ TEST(EventBaseTest, LoopKeepAliveWithLoopForever) {
 }
 
 TEST(EventBaseTest, LoopKeepAliveShutdown) {
-  auto evb = folly::make_unique<EventBase>();
+  auto evb = std::make_unique<EventBase>();
 
   bool done = false;
 
@@ -1840,7 +1840,7 @@ TEST(EventBaseTest, LoopKeepAliveShutdown) {
 }
 
 TEST(EventBaseTest, LoopKeepAliveAtomic) {
-  auto evb = folly::make_unique<EventBase>();
+  auto evb = std::make_unique<EventBase>();
 
   static constexpr size_t kNumThreads = 100;
   static constexpr size_t kNumTasks = 100;
@@ -1850,7 +1850,7 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
   size_t done{0};
 
   for (size_t i = 0; i < kNumThreads; ++i) {
-    batons.emplace_back(folly::make_unique<Baton<>>());
+    batons.emplace_back(std::make_unique<Baton<>>());
   }
 
   for (size_t i = 0; i < kNumThreads; ++i) {

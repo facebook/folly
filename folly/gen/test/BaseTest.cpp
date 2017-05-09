@@ -1274,14 +1274,14 @@ TEST(Gen, Unwrap) {
   EXPECT_EQ(4, o | unwrap);
   EXPECT_THROW(e | unwrap, OptionalEmptyException);
 
-  auto oup = folly::make_optional(folly::make_unique<int>(5));
+  auto oup = folly::make_optional(std::make_unique<int>(5));
   // optional has a value, and that value is non-null
   EXPECT_TRUE(bool(oup | unwrap));
   EXPECT_EQ(5, *(oup | unwrap));
   EXPECT_TRUE(oup.hasValue()); // still has a pointer (null or not)
   EXPECT_TRUE(bool(oup.value())); // that value isn't null
 
-  auto moved1 = std::move(oup) | unwrapOr(folly::make_unique<int>(6));
+  auto moved1 = std::move(oup) | unwrapOr(std::make_unique<int>(6));
   // oup still has a value, but now it's now nullptr since the pointer was moved
   // into moved1
   EXPECT_TRUE(oup.hasValue());
@@ -1289,12 +1289,12 @@ TEST(Gen, Unwrap) {
   EXPECT_TRUE(bool(moved1));
   EXPECT_EQ(5, *moved1);
 
-  auto moved2 = std::move(oup) | unwrapOr(folly::make_unique<int>(7));
+  auto moved2 = std::move(oup) | unwrapOr(std::make_unique<int>(7));
   // oup's still-valid nullptr value wins here, the pointer to 7 doesn't apply
   EXPECT_FALSE(moved2);
 
   oup.clear();
-  auto moved3 = std::move(oup) | unwrapOr(folly::make_unique<int>(8));
+  auto moved3 = std::move(oup) | unwrapOr(std::make_unique<int>(8));
   // oup is empty now, so the unwrapOr comes into play.
   EXPECT_TRUE(bool(moved3));
   EXPECT_EQ(8, *moved3);
@@ -1332,7 +1332,7 @@ TEST(Gen, Unwrap) {
 
   {
     auto opt = folly::make_optional(std::make_shared<int>(8));
-    auto fallback = unwrapOr(folly::make_unique<int>(9));
+    auto fallback = unwrapOr(std::make_unique<int>(9));
     // fallback must be std::move'd to be used
     EXPECT_EQ(8, *(opt | std::move(fallback)));
     EXPECT_TRUE(bool(opt.value())); // shared_ptr copied out, not moved

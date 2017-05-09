@@ -29,7 +29,7 @@ template <template<typename> class MainPtr,
           template<typename> class WeakPtr,
           size_t threadCount>
 void benchmark(size_t n) {
-  MainPtr<int> mainPtr(folly::make_unique<int>(42));
+  MainPtr<int> mainPtr(std::make_unique<int>(42));
 
   std::vector<std::thread> ts;
 

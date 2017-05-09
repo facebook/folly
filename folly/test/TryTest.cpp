@@ -55,7 +55,7 @@ TEST(Try, moveOnly) {
 
 TEST(Try, makeTryWith) {
   auto func = []() {
-    return folly::make_unique<int>(1);
+    return std::make_unique<int>(1);
   };
 
   auto result = makeTryWith(func);

@@ -722,8 +722,8 @@ TEST(Future, detachRace) {
   // slow test so I won't do that but if it ever fails, take it seriously, and
   // run the test binary with "--gtest_repeat=10000 --gtest_filter=*detachRace"
   // (Don't forget to enable ASAN)
-  auto p = folly::make_unique<Promise<bool>>();
-  auto f = folly::make_unique<Future<bool>>(p->getFuture());
+  auto p = std::make_unique<Promise<bool>>();
+  auto f = std::make_unique<Future<bool>>(p->getFuture());
   folly::Baton<> baton;
   std::thread t1([&]{
     baton.post();
@@ -818,7 +818,7 @@ TEST(Future, RequestContext) {
   {
     folly::RequestContextScopeGuard rctx;
     RequestContext::get()->setContextData(
-        "key", folly::make_unique<MyRequestData>(true));
+        "key", std::make_unique<MyRequestData>(true));
     auto checker = [](int lineno) {
       return [lineno](Try<int>&& /* t */) {
         auto d = static_cast<MyRequestData*>(

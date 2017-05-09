@@ -29,8 +29,9 @@ TEST(Filter, alwaysFalse) {
 }
 
 TEST(Filter, moveOnlyValue) {
-  EXPECT_EQ(42,
-    *makeFuture(folly::make_unique<int>(42))
-     .filter([](std::unique_ptr<int> const&) { return true; })
-     .get());
+  EXPECT_EQ(
+      42,
+      *makeFuture(std::make_unique<int>(42))
+           .filter([](std::unique_ptr<int> const&) { return true; })
+           .get());
 }

@@ -23,7 +23,7 @@ struct FutureDAGTest : public testing::Test {
   typedef FutureDAG::Handle Handle;
 
   Handle add() {
-    auto node = folly::make_unique<TestNode>(this);
+    auto node = std::make_unique<TestNode>(this);
     auto handle = node->handle;
     nodes.emplace(handle, std::move(node));
     return handle;

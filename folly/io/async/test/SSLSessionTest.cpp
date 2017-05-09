@@ -138,7 +138,7 @@ TEST_F(SSLSessionTest, SerializeDeserializeTest) {
     ASSERT_TRUE(client.handshakeSuccess_);
 
     std::unique_ptr<SSLSession> sess =
-        folly::make_unique<SSLSession>(clientPtr->getSSLSession());
+        std::make_unique<SSLSession>(clientPtr->getSSLSession());
     sessiondata = sess->serialize();
     ASSERT_TRUE(!sessiondata.empty());
   }
@@ -150,7 +150,7 @@ TEST_F(SSLSessionTest, SerializeDeserializeTest) {
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
     auto clientPtr = clientSock.get();
     std::unique_ptr<SSLSession> sess =
-        folly::make_unique<SSLSession>(sessiondata);
+        std::make_unique<SSLSession>(sessiondata);
     ASSERT_NE(sess.get(), nullptr);
     clientSock->setSSLSession(sess->getRawSSLSessionDangerous(), true);
     AsyncSSLSocket::UniquePtr serverSock(
@@ -181,7 +181,7 @@ TEST_F(SSLSessionTest, GetSessionID) {
   ASSERT_TRUE(client.handshakeSuccess_);
 
   std::unique_ptr<SSLSession> sess =
-      folly::make_unique<SSLSession>(clientPtr->getSSLSession());
+      std::make_unique<SSLSession>(clientPtr->getSSLSession());
   ASSERT_NE(sess, nullptr);
   auto sessID = sess->getSessionID();
   ASSERT_GE(sessID.length(), 0);

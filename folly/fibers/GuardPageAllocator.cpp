@@ -245,7 +245,7 @@ class CacheManager {
     std::lock_guard<folly::SpinLock> lg(lock_);
     if (inUse_ < kMaxInUse) {
       ++inUse_;
-      return folly::make_unique<StackCacheEntry>(stackSize);
+      return std::make_unique<StackCacheEntry>(stackSize);
     }
 
     return nullptr;
@@ -277,7 +277,7 @@ class CacheManager {
 class StackCacheEntry {
  public:
   explicit StackCacheEntry(size_t stackSize)
-      : stackCache_(folly::make_unique<StackCache>(stackSize)) {}
+      : stackCache_(std::make_unique<StackCache>(stackSize)) {}
 
   StackCache& cache() const noexcept {
     return *stackCache_;

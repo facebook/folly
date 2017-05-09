@@ -72,7 +72,7 @@ struct TimeoutManager::CobTimeouts {
 };
 
 TimeoutManager::TimeoutManager()
-    : cobTimeouts_(folly::make_unique<CobTimeouts>()) {}
+    : cobTimeouts_(std::make_unique<CobTimeouts>()) {}
 
 void TimeoutManager::runAfterDelay(
     Func cob,
@@ -92,8 +92,8 @@ bool TimeoutManager::tryRunAfterDelay(
     return false;
   }
 
-  auto timeout = folly::make_unique<CobTimeouts::CobTimeout>(
-      this, std::move(cob), internal);
+  auto timeout =
+      std::make_unique<CobTimeouts::CobTimeout>(this, std::move(cob), internal);
   if (!timeout->scheduleTimeout(milliseconds)) {
     return false;
   }

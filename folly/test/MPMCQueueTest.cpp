@@ -149,7 +149,7 @@ TEST(MPMCQueue, lots_of_element_types) {
   runElementTypeTest(std::make_pair(10, string("def")));
   runElementTypeTest(vector<string>{{"abc"}});
   runElementTypeTest(std::make_shared<char>('a'));
-  runElementTypeTest(folly::make_unique<char>('a'));
+  runElementTypeTest(std::make_unique<char>('a'));
   runElementTypeTest(boost::intrusive_ptr<RefCounted>(new RefCounted));
   EXPECT_EQ(RefCounted::active_instances, 0);
 }
@@ -160,7 +160,7 @@ TEST(MPMCQueue, lots_of_element_types_dynamic) {
   runElementTypeTest<true>(std::make_pair(10, string("def")));
   runElementTypeTest<true>(vector<string>{{"abc"}});
   runElementTypeTest<true>(std::make_shared<char>('a'));
-  runElementTypeTest<true>(folly::make_unique<char>('a'));
+  runElementTypeTest<true>(std::make_unique<char>('a'));
   runElementTypeTest<true>(boost::intrusive_ptr<RefCounted>(new RefCounted));
   EXPECT_EQ(RefCounted::active_instances, 0);
 }

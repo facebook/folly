@@ -1338,7 +1338,7 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
                << "): client intitiated SSL renegotiation not permitted";
     return ReadResult(
         READ_ERROR,
-        folly::make_unique<SSLException>(SSLError::CLIENT_RENEGOTIATION));
+        std::make_unique<SSLException>(SSLError::CLIENT_RENEGOTIATION));
   }
   if (bytes <= 0) {
     int error = SSL_get_error(ssl_, bytes);
@@ -1358,7 +1358,7 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
                  << "): unsupported SSL renegotiation during read";
       return ReadResult(
           READ_ERROR,
-          folly::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
+          std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
     } else {
       if (zero_return(error, bytes)) {
         return ReadResult(bytes);
@@ -1375,7 +1375,7 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
               << "reason: " << ERR_reason_error_string(errError);
       return ReadResult(
           READ_ERROR,
-          folly::make_unique<SSLException>(error, errError, bytes, errno));
+          std::make_unique<SSLException>(error, errError, bytes, errno));
     }
   } else {
     appBytesReceived_ += bytes;
@@ -1418,7 +1418,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
                << "unsupported SSL renegotiation during write";
     return WriteResult(
         WRITE_ERROR,
-        folly::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
+        std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
   } else {
     if (zero_return(error, rc)) {
       return WriteResult(0);
@@ -1431,7 +1431,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
             << ", reason: " << ERR_reason_error_string(errError);
     return WriteResult(
         WRITE_ERROR,
-        folly::make_unique<SSLException>(error, errError, rc, errno));
+        std::make_unique<SSLException>(error, errError, rc, errno));
   }
 }
 
@@ -1452,7 +1452,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
                << "TODO: AsyncSSLSocket currently does not support calling "
                << "write() before the handshake has fully completed";
     return WriteResult(
-        WRITE_ERROR, folly::make_unique<SSLException>(SSLError::EARLY_WRITE));
+        WRITE_ERROR, std::make_unique<SSLException>(SSLError::EARLY_WRITE));
   }
 
   // Declare a buffer used to hold small write requests.  It could point to a

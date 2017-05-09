@@ -2011,7 +2011,7 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
         registerForConnectEvents();
       } catch (const AsyncSocketException& ex) {
         return WriteResult(
-            WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));
+            WRITE_ERROR, std::make_unique<AsyncSocketException>(ex));
       }
       // Let's fake it that no bytes were written and return an errno.
       errno = EAGAIN;
@@ -2034,7 +2034,7 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
         totalWritten = -1;
       } catch (const AsyncSocketException& ex) {
         return WriteResult(
-            WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));
+            WRITE_ERROR, std::make_unique<AsyncSocketException>(ex));
       }
     } else if (errno == EAGAIN) {
       // Normally sendmsg would indicate that the write would block.
@@ -2043,7 +2043,7 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
       // instead, and is an error condition indicating no fds available.
       return WriteResult(
           WRITE_ERROR,
-          folly::make_unique<AsyncSocketException>(
+          std::make_unique<AsyncSocketException>(
               AsyncSocketException::UNKNOWN, "No more free local ports"));
     }
   } else {

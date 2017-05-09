@@ -27,13 +27,12 @@ class SSLSession {
  public:
   // Holds and takes ownership of an SSL_SESSION object by incrementing refcount
   explicit SSLSession(SSL_SESSION* session, bool takeOwnership = true)
-      : impl_(folly::make_unique<detail::SSLSessionImpl>(
-            session,
-            takeOwnership)) {}
+      : impl_(
+            std::make_unique<detail::SSLSessionImpl>(session, takeOwnership)) {}
 
   // Deserialize from a string
   explicit SSLSession(const std::string& serializedSession)
-      : impl_(folly::make_unique<detail::SSLSessionImpl>(serializedSession)) {}
+      : impl_(std::make_unique<detail::SSLSessionImpl>(serializedSession)) {}
 
   // Serialize to a string that is suitable to store in a persistent cache
   std::string serialize() const {

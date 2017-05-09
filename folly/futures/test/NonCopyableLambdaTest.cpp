@@ -38,7 +38,7 @@ TEST(NonCopyableLambda, basic) {
 
 TEST(NonCopyableLambda, unique_ptr) {
   Promise<Unit> promise;
-  auto int_ptr = folly::make_unique<int>(1);
+  auto int_ptr = std::make_unique<int>(1);
 
   EXPECT_EQ(*int_ptr, 1);
 

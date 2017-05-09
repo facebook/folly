@@ -2806,7 +2806,7 @@ class MockEvbChangeCallback : public AsyncSocket::EvbChangeCallback {
 };
 
 TEST(AsyncSocketTest, EvbCallbacks) {
-  auto cb = folly::make_unique<MockEvbChangeCallback>();
+  auto cb = std::make_unique<MockEvbChangeCallback>();
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
 

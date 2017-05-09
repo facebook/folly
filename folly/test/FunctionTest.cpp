@@ -313,7 +313,7 @@ TEST(Function, Bind) {
 // NonCopyableLambda
 
 TEST(Function, NonCopyableLambda) {
-  auto unique_ptr_int = folly::make_unique<int>(900);
+  auto unique_ptr_int = std::make_unique<int>(900);
   EXPECT_EQ(900, *unique_ptr_int);
 
   struct {

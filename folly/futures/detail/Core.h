@@ -240,7 +240,7 @@ class Core final {
       interruptLock_.lock();
     }
     if (!interrupt_ && !hasResult()) {
-      interrupt_ = folly::make_unique<exception_wrapper>(std::move(e));
+      interrupt_ = std::make_unique<exception_wrapper>(std::move(e));
       if (interruptHandler_) {
         interruptHandler_(*interrupt_);
       }

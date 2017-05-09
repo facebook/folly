@@ -335,9 +335,8 @@ class ThreadExecutor : public Executor {
 
 TEST(Via, viaThenGetWasRacy) {
   ThreadExecutor x;
-  std::unique_ptr<int> val = folly::via(&x)
-    .then([] { return folly::make_unique<int>(42); })
-    .get();
+  std::unique_ptr<int> val =
+      folly::via(&x).then([] { return std::make_unique<int>(42); }).get();
   ASSERT_TRUE(!!val);
   EXPECT_EQ(42, *val);
 }
@@ -603,7 +602,7 @@ TEST(ViaFunc, isSticky) {
 
 TEST(ViaFunc, moveOnly) {
   ManualExecutor x;
-  auto intp = folly::make_unique<int>(42);
+  auto intp = std::make_unique<int>(42);
 
   EXPECT_EQ(42, via(&x, [intp = std::move(intp)] { return *intp; }).getVia(&x));
 }
