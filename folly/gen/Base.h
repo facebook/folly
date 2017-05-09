@@ -30,6 +30,7 @@
 #include <folly/Conv.h>
 #include <folly/Optional.h>
 #include <folly/Range.h>
+#include <folly/Utility.h>
 #include <folly/gen/Core.h>
 
 /**
@@ -196,15 +197,6 @@ public:
   auto operator()(Value&& value) const ->
   decltype(std::move(std::forward<Value>(value))) {
     return std::move(std::forward<Value>(value));
-  }
-};
-
-class Identity {
-public:
-  template<class Value>
-  auto operator()(Value&& value) const ->
-  decltype(std::forward<Value>(value)) {
-    return std::forward<Value>(value);
   }
 };
 
