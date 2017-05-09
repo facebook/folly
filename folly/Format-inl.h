@@ -31,8 +31,8 @@
 #include <folly/portability/Windows.h>
 
 // Ignore -Wformat-nonliteral warnings within this file
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wformat-nonliteral")
 
 namespace folly {
 
@@ -1127,4 +1127,4 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
 
 } // namespace folly
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
