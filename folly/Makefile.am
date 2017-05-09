@@ -272,6 +272,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
+	Iterator.h \
 	json.h \
 	Lazy.h \
 	LifoSem.h \

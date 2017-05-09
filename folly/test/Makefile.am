@@ -332,4 +332,8 @@ utility_test_SOURCES = UtilityTest.cpp
 utility_test_LDADD = libfollytestmain.la
 TESTS += utility_test
 
+iterator_test_SOURCES = IteratorTest.cpp
+iterator_test_LDADD = libfollytestmain.la
+TESTS += iterator_test
+
 check_PROGRAMS += $(TESTS)
