@@ -56,6 +56,7 @@
 #include <folly/Hash.h>
 #include <folly/Malloc.h>
 #include <folly/Traits.h>
+#include <folly/portability/BitsFunctexcept.h>
 
 #if FOLLY_HAVE_DEPRECATED_ASSOC
 #ifdef _GLIBCXX_SYMVER
@@ -79,13 +80,13 @@
 #define FBSTRING_UNLIKELY(x) (x)
 #endif
 
-#pragma GCC diagnostic push
+FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 // GCC 4.9 has a false positive in setSmallSize (probably
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=59124), disable
 // compile-time array bound checking.
-#pragma GCC diagnostic ignored "-Warray-bounds"
+FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
 
 // FBString cannot use throw when replacing std::string, though it may still
 // use std::__throw_*
@@ -2888,7 +2889,7 @@ FOLLY_FBSTRING_HASH
 
 #endif // _LIBSTDCXX_FBSTRING
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 #undef FBSTRING_DISABLE_SSO
 #undef FBSTRING_SANITIZE_ADDRESS
