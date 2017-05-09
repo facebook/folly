@@ -13,7 +13,7 @@ ENDIF ()
 
 FIND_PATH(LIBGFLAGS_INCLUDE_DIR gflags/gflags.h)
 
-FIND_LIBRARY(LIBGFLAGS_LIBRARY gflags)
+FIND_LIBRARY(LIBGFLAGS_LIBRARY NAMES gflags gflags_static)
 
 # handle the QUIETLY and REQUIRED arguments and set LIBGFLAGS_FOUND to TRUE if
 # all listed variables are TRUE
