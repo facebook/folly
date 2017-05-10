@@ -262,7 +262,6 @@ unit_test_LDADD = libfollytestmain.la
 TESTS += unit_test
 
 futures_test_SOURCES = \
-    ../futures/test/CallbackLifetimeTest.cpp \
     ../futures/test/CollectTest.cpp \
     ../futures/test/ContextTest.cpp \
     ../futures/test/CoreTest.cpp \

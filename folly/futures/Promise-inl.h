@@ -60,10 +60,6 @@ void Promise<T>::throwIfRetrieved() {
 }
 
 template <class T>
-Promise<T>::Promise(detail::EmptyConstruct) noexcept
-    : retrieved_(false), core_(nullptr) {}
-
-template <class T>
 Promise<T>::~Promise() {
   detach();
 }
