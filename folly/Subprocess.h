@@ -117,6 +117,7 @@
 #include <folly/Range.h>
 #include <folly/gen/String.h>
 #include <folly/io/IOBufQueue.h>
+#include <folly/portability/SysResource.h>
 
 namespace folly {
 
@@ -509,7 +510,7 @@ class Subprocess {
    * e.g. if you wait for the underlying process without going through this
    * Subprocess instance.
    */
-  ProcessReturnCode poll();
+  ProcessReturnCode poll(struct rusage* ru = nullptr);
 
   /**
    * Poll the child's status.  If the process is still running, return false.
