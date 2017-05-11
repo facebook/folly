@@ -382,6 +382,38 @@ template<> struct hasher<uint32_t> {
   }
 };
 
+template<> struct hasher<int16_t> {
+  size_t operator()(int16_t key) const {
+    return hasher<int32_t>()(key); // as impl accident, sign-extends
+  }
+};
+
+template<> struct hasher<uint16_t> {
+  size_t operator()(uint16_t key) const {
+    return hasher<uint32_t>()(key);
+  }
+};
+
+template<> struct hasher<int8_t> {
+  size_t operator()(int8_t key) const {
+    return hasher<int32_t>()(key); // as impl accident, sign-extends
+  }
+};
+
+template<> struct hasher<uint8_t> {
+  size_t operator()(uint8_t key) const {
+    return hasher<uint32_t>()(key);
+  }
+};
+
+template<> struct hasher<char> {
+  using explicit_type =
+      std::conditional<std::is_signed<char>::value, int8_t, uint8_t>::type;
+  size_t operator()(char key) const {
+    return hasher<explicit_type>()(key); // as impl accident, sign-extends
+  }
+};
+
 template<> struct hasher<int64_t> {
   size_t operator()(int64_t key) const {
     return static_cast<size_t>(hash::twang_mix64(uint64_t(key)));
