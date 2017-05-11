@@ -791,7 +791,11 @@ class FunctionRef<ReturnType(Args...)> final {
   /**
    * Construct a FunctionRef from a reference to a callable object.
    */
-  template <typename Fun>
+  template <
+      typename Fun,
+      typename std::enable_if<
+          !std::is_same<FunctionRef, typename std::decay<Fun>::type>::value,
+          int>::type = 0>
   /* implicit */ FunctionRef(Fun&& fun) noexcept {
     using ReferencedType = typename std::remove_reference<Fun>::type;
 
