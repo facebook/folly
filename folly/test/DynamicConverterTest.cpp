@@ -382,6 +382,12 @@ TEST(DynamicConverter, construct) {
                                dynamic::array(3, 4, 5));
     EXPECT_EQ(d, toDynamic(c));
   }
+
+  {
+    vector<bool> vb{true, false};
+    dynamic d = dynamic::array(true, false);
+    EXPECT_EQ(d, toDynamic(vb));
+  }
 }
 
 TEST(DynamicConverter, errors) {

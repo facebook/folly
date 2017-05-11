@@ -317,7 +317,7 @@ struct DynamicConstructor<
         dynamicconverter_detail::is_map<C>::value>::type> {
   static dynamic construct(const C& x) {
     dynamic d = dynamic::object;
-    for (auto& pair : x) {
+    for (const auto& pair : x) {
       d.insert(toDynamic(pair.first), toDynamic(pair.second));
     }
     return d;
@@ -335,7 +335,7 @@ struct DynamicConstructor<
         dynamicconverter_detail::is_range<C>::value>::type> {
   static dynamic construct(const C& x) {
     dynamic d = dynamic::array;
-    for (auto& item : x) {
+    for (const auto& item : x) {
       d.push_back(toDynamic(item));
     }
     return d;
