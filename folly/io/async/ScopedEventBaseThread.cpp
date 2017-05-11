@@ -27,7 +27,11 @@ using namespace std;
 
 namespace folly {
 
-static void run(EventBaseManager* ebm, EventBase* eb, const StringPiece& name) {
+static void run(
+    EventBaseManager* ebm,
+    EventBase* eb,
+    folly::Baton<>* stop,
+    const StringPiece& name) {
   if (name.size()) {
     folly::setThreadName(name);
   }
@@ -38,6 +42,8 @@ static void run(EventBaseManager* ebm, EventBase* eb, const StringPiece& name) {
   // must destruct in io thread for on-destruction callbacks
   EventBase::StackFunctionLoopCallback cb([=] { ebm->clearEventBase(); });
   eb->runOnDestruction(&cb);
+  // wait until terminateLoopSoon() is complete
+  stop->wait();
   eb->~EventBase();
 }
 
@@ -55,12 +61,13 @@ ScopedEventBaseThread::ScopedEventBaseThread(
     const StringPiece& name)
     : ebm_(ebm ? ebm : EventBaseManager::get()) {
   new (&eb_) EventBase();
-  th_ = thread(run, ebm_, &eb_, name);
+  th_ = thread(run, ebm_, &eb_, &stop_, name);
   eb_.waitUntilRunning();
 }
 
 ScopedEventBaseThread::~ScopedEventBaseThread() {
   eb_.terminateLoopSoon();
+  stop_.post();
   th_.join();
 }
 

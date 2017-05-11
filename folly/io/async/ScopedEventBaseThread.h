@@ -19,6 +19,7 @@
 #include <memory>
 #include <thread>
 
+#include <folly/Baton.h>
 #include <folly/io/async/EventBase.h>
 
 namespace folly {
@@ -65,6 +66,7 @@ class ScopedEventBaseThread {
     mutable EventBase eb_;
   };
   std::thread th_;
+  folly::Baton<> stop_;
 };
 
 }
