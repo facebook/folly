@@ -1097,6 +1097,44 @@ TEST(AsyncSocketTest, WritePipeError) {
 }
 
 /**
+ * Test writing to a socket that has its read side closed
+ */
+TEST(AsyncSocketTest, WriteAfterReadEOF) {
+  TestServer server;
+
+  // connect()
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket =
+      AsyncSocket::newSocket(&evb, server.getAddress(), 30);
+  evb.loop(); // loop until the socket is connected
+
+  // Accept the connection
+  std::shared_ptr<AsyncSocket> acceptedSocket = server.acceptAsync(&evb);
+  ReadCallback rcb;
+  acceptedSocket->setReadCB(&rcb);
+
+  // Shutdown the write side of client socket (read side of server socket)
+  socket->shutdownWrite();
+  evb.loop();
+
+  // Check that accepted socket is still writable
+  ASSERT_FALSE(acceptedSocket->good());
+  ASSERT_TRUE(acceptedSocket->writable());
+
+  // Write data to accepted socket
+  constexpr size_t simpleBufLength = 5;
+  char simpleBuf[simpleBufLength];
+  memset(simpleBuf, 'a', simpleBufLength);
+  WriteCallback wcb;
+  acceptedSocket->write(&wcb, simpleBuf, simpleBufLength);
+  evb.loop();
+
+  // Make sure we were able to write even after getting a read EOF
+  ASSERT_EQ(rcb.state, STATE_SUCCEEDED); // this indicates EOF
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+}
+
+/**
  * Test that bytes written is correctly computed in case of write failure
  */
 TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {

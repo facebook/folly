@@ -239,6 +239,16 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   virtual bool readable() const = 0;
 
   /**
+   * Determine if the transport is writable or not.
+   *
+   * @return  true iff the transport is writable, false otherwise.
+   */
+  virtual bool writable() const {
+    // By default return good() - leave it to implementers to override.
+    return good();
+  }
+
+  /**
    * Determine if the there is pending data on the transport.
    *
    * @return  true iff the if the there is pending data, false otherwise.

@@ -522,6 +522,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void shutdownWriteNow() override;
 
   bool readable() const override;
+  bool writable() const override;
   bool isPending() const override;
   virtual bool hangup() const;
   bool good() const override;

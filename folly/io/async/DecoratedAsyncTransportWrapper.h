@@ -152,6 +152,10 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
     return transport_->readable();
   }
 
+  virtual bool writable() const override {
+    return transport_->writable();
+  }
+
   virtual void setEorTracking(bool track) override {
     return transport_->setEorTracking(track);
   }
