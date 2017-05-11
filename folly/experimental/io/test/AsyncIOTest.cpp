@@ -36,7 +36,9 @@
 #include <folly/portability/Sockets.h>
 
 namespace fs = folly::fs;
+
 using folly::AsyncIO;
+using folly::AsyncIOOp;
 using folly::AsyncIOQueue;
 
 namespace {
@@ -85,7 +87,7 @@ class TemporaryFile {
 };
 
 TemporaryFile::TemporaryFile(size_t size)
-  : path_(fs::temp_directory_path() / fs::unique_path()) {
+    : path_(fs::temp_directory_path() / fs::unique_path()) {
   CHECK_EQ(size % sizeof(uint32_t), 0);
   size /= sizeof(uint32_t);
   const uint32_t seed = 42;
@@ -370,7 +372,7 @@ TEST(AsyncIO, NonBlockingWait) {
   SCOPE_EXIT {
     ::close(fd);
   };
-  size_t size = 2*kAlign;
+  size_t size = 2 * kAlign;
   auto buf = allocateAligned(size);
   op.pread(fd, buf.get(), size, 0);
   aioReader.submit(&op);
@@ -388,4 +390,51 @@ TEST(AsyncIO, NonBlockingWait) {
   EXPECT_LE(0, res) << folly::errnoStr(-res);
   EXPECT_EQ(size, res);
   EXPECT_EQ(aioReader.pending(), 0);
+}
+
+TEST(AsyncIO, Cancel) {
+  constexpr size_t kNumOps = 10;
+
+  AsyncIO aioReader(kNumOps, AsyncIO::NOT_POLLABLE);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
+  PCHECK(fd != -1);
+  SCOPE_EXIT {
+    ::close(fd);
+  };
+
+  std::vector<AsyncIO::Op> ops(kNumOps);
+  std::vector<ManagedBuffer> bufs;
+
+  size_t completed = 0;
+  for (auto& op : ops) {
+    const size_t size = 2 * kAlign;
+    bufs.push_back(allocateAligned(size));
+    op.setNotificationCallback([&](AsyncIOOp*) { ++completed; });
+    op.pread(fd, bufs.back().get(), size, 0);
+    aioReader.submit(&op);
+  }
+
+  EXPECT_EQ(aioReader.pending(), kNumOps);
+  EXPECT_EQ(completed, 0);
+
+  {
+    auto result = aioReader.wait(1);
+    EXPECT_EQ(result.size(), 1);
+  }
+  EXPECT_EQ(completed, 1);
+  EXPECT_EQ(aioReader.pending(), kNumOps - 1);
+
+  EXPECT_EQ(aioReader.cancel(), kNumOps - 1);
+  EXPECT_EQ(aioReader.pending(), 0);
+  EXPECT_EQ(completed, 1);
+
+  completed = 0;
+  for (auto& op : ops) {
+    if (op.state() == AsyncIOOp::State::COMPLETED) {
+      ++completed;
+    } else {
+      EXPECT_TRUE(op.state() == AsyncIOOp::State::CANCELED) << op;
+    }
+  }
+  EXPECT_EQ(completed, 1);
 }
