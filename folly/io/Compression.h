@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
 
@@ -110,7 +111,7 @@ class Codec {
    * Return the maximum length of data that may be compressed with this codec.
    * NO_COMPRESSION and ZLIB support arbitrary lengths;
    * LZ4 supports up to 1.9GiB; SNAPPY supports up to 4GiB.
-   * May return UNLIMITED_UNCOMPRESSED_LENGTH if unlimited.
+   * May return UNLIMITED_UNCOMPRESSED_LENGTH (uint64_t(-1)) if unlimited.
    */
   uint64_t maxUncompressedLength() const;
 
@@ -153,12 +154,11 @@ class Codec {
    * Regardless of the behavior of the underlying compressor, uncompressing
    * an empty IOBuf chain will return an empty IOBuf chain.
    */
-  static constexpr uint64_t UNKNOWN_UNCOMPRESSED_LENGTH = uint64_t(-1);
-  static constexpr uint64_t UNLIMITED_UNCOMPRESSED_LENGTH = uint64_t(-2);
+  static constexpr uint64_t UNLIMITED_UNCOMPRESSED_LENGTH = uint64_t(-1);
 
   std::unique_ptr<IOBuf> uncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength = UNKNOWN_UNCOMPRESSED_LENGTH);
+      folly::Optional<uint64_t> uncompressedLength = folly::none);
 
   /**
    * Uncompresses data. May involve additional copies compared to the overload
@@ -167,7 +167,7 @@ class Codec {
    */
   std::string uncompress(
       StringPiece data,
-      uint64_t uncompressedLength = UNKNOWN_UNCOMPRESSED_LENGTH);
+      folly::Optional<uint64_t> uncompressedLength = folly::none);
 
  protected:
   explicit Codec(CodecType type);
@@ -189,7 +189,7 @@ class Codec {
    */
   virtual bool canUncompress(
       const folly::IOBuf* data,
-      uint64_t uncompressedLength = UNKNOWN_UNCOMPRESSED_LENGTH) const;
+      folly::Optional<uint64_t> uncompressedLength = folly::none) const;
 
  private:
   // default: no limits (save for special value UNKNOWN_UNCOMPRESSED_LENGTH)
@@ -197,8 +197,9 @@ class Codec {
   // default: doesn't need uncompressed length
   virtual bool doNeedsUncompressedLength() const;
   virtual std::unique_ptr<IOBuf> doCompress(const folly::IOBuf* data) = 0;
-  virtual std::unique_ptr<IOBuf> doUncompress(const folly::IOBuf* data,
-                                              uint64_t uncompressedLength) = 0;
+  virtual std::unique_ptr<IOBuf> doUncompress(
+      const folly::IOBuf* data,
+      folly::Optional<uint64_t> uncompressedLength) = 0;
   // default: an implementation is provided by default to wrap the strings into
   // IOBufs and delegate to the IOBuf methods. This incurs a copy of the output
   // from IOBuf to string. Implementers, at their discretion, can override
@@ -206,7 +207,7 @@ class Codec {
   virtual std::string doCompressString(StringPiece data);
   virtual std::string doUncompressString(
       StringPiece data,
-      uint64_t uncompressedLength);
+      folly::Optional<uint64_t> uncompressedLength);
 
   CodecType type_;
 };

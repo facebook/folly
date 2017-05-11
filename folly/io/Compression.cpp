@@ -86,19 +86,19 @@ std::string Codec::compress(const StringPiece data) {
   return doCompressString(data);
 }
 
-std::unique_ptr<IOBuf> Codec::uncompress(const IOBuf* data,
-                                         uint64_t uncompressedLength) {
-  if (uncompressedLength == UNKNOWN_UNCOMPRESSED_LENGTH) {
+std::unique_ptr<IOBuf> Codec::uncompress(
+    const IOBuf* data,
+    Optional<uint64_t> uncompressedLength) {
+  if (!uncompressedLength) {
     if (needsUncompressedLength()) {
       throw std::invalid_argument("Codec: uncompressed length required");
     }
-  } else if (uncompressedLength > maxUncompressedLength()) {
+  } else if (*uncompressedLength > maxUncompressedLength()) {
     throw std::runtime_error("Codec: uncompressed length too large");
   }
 
   if (data->empty()) {
-    if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength != 0) {
+    if (uncompressedLength.value_or(0) != 0) {
       throw std::runtime_error("Codec: invalid uncompressed length");
     }
     return IOBuf::create(0);
@@ -109,18 +109,17 @@ std::unique_ptr<IOBuf> Codec::uncompress(const IOBuf* data,
 
 std::string Codec::uncompress(
     const StringPiece data,
-    uint64_t uncompressedLength) {
-  if (uncompressedLength == UNKNOWN_UNCOMPRESSED_LENGTH) {
+    Optional<uint64_t> uncompressedLength) {
+  if (!uncompressedLength) {
     if (needsUncompressedLength()) {
       throw std::invalid_argument("Codec: uncompressed length required");
     }
-  } else if (uncompressedLength > maxUncompressedLength()) {
+  } else if (*uncompressedLength > maxUncompressedLength()) {
     throw std::runtime_error("Codec: uncompressed length too large");
   }
 
   if (data.empty()) {
-    if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength != 0) {
+    if (uncompressedLength.value_or(0) != 0) {
       throw std::runtime_error("Codec: invalid uncompressed length");
     }
     return "";
@@ -149,7 +148,7 @@ std::vector<std::string> Codec::validPrefixes() const {
   return {};
 }
 
-bool Codec::canUncompress(const IOBuf*, uint64_t) const {
+bool Codec::canUncompress(const IOBuf*, Optional<uint64_t>) const {
   return false;
 }
 
@@ -166,7 +165,7 @@ std::string Codec::doCompressString(const StringPiece data) {
 
 std::string Codec::doUncompressString(
     const StringPiece data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   const IOBuf inputBuffer{IOBuf::WRAP_BUFFER, data};
   auto outputBuffer = doUncompress(&inputBuffer, uncompressedLength);
   std::string output;
@@ -191,7 +190,7 @@ class NoCompressionCodec final : public Codec {
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 };
 
 std::unique_ptr<Codec> NoCompressionCodec::create(int level, CodecType type) {
@@ -220,11 +219,11 @@ std::unique_ptr<IOBuf> NoCompressionCodec::doCompress(
 
 std::unique_ptr<IOBuf> NoCompressionCodec::doUncompress(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
-  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-      data->computeChainDataLength() != uncompressedLength) {
-    throw std::runtime_error(to<std::string>(
-        "NoCompressionCodec: invalid uncompressed length"));
+    Optional<uint64_t> uncompressedLength) {
+  if (uncompressedLength &&
+      data->computeChainDataLength() != *uncompressedLength) {
+    throw std::runtime_error(
+        to<std::string>("NoCompressionCodec: invalid uncompressed length"));
   }
   return data->clone();
 }
@@ -318,7 +317,7 @@ class LZ4Codec final : public Codec {
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 
   bool highCompression_;
 };
@@ -402,7 +401,7 @@ std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
 
 std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   IOBuf clone;
   if (data->isChained()) {
     // LZ4 doesn't support streaming, so we have to coalesce
@@ -414,16 +413,14 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
   uint64_t actualUncompressedLength;
   if (encodeSize()) {
     actualUncompressedLength = decodeVarintFromCursor(cursor);
-    if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength != actualUncompressedLength) {
+    if (uncompressedLength && *uncompressedLength != actualUncompressedLength) {
       throw std::runtime_error("LZ4Codec: invalid uncompressed length");
     }
   } else {
-    actualUncompressedLength = uncompressedLength;
-    if (actualUncompressedLength == UNKNOWN_UNCOMPRESSED_LENGTH ||
-        actualUncompressedLength > maxUncompressedLength()) {
-      throw std::runtime_error("LZ4Codec: invalid uncompressed length");
-    }
+    // Invariants
+    DCHECK(uncompressedLength.hasValue());
+    DCHECK(*uncompressedLength <= maxUncompressedLength());
+    actualUncompressedLength = *uncompressedLength;
   }
 
   auto sp = StringPiece{cursor.peekBytes()};
@@ -451,14 +448,14 @@ class LZ4FrameCodec final : public Codec {
   ~LZ4FrameCodec();
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
       const override;
 
  private:
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 
   // Reset the dctx_ if it is dirty or null.
   void resetDCtx();
@@ -480,7 +477,7 @@ std::vector<std::string> LZ4FrameCodec::validPrefixes() const {
   return {prefixToStringLE(kLZ4FrameMagicLE)};
 }
 
-bool LZ4FrameCodec::canUncompress(const IOBuf* data, uint64_t) const {
+bool LZ4FrameCodec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
   return dataStartsWithLE(data, kLZ4FrameMagicLE);
 }
 
@@ -551,7 +548,7 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doCompress(const IOBuf* data) {
 
 std::unique_ptr<IOBuf> LZ4FrameCodec::doUncompress(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   // Reset the dctx if any errors have occurred
   resetDCtx();
   // Coalesce the data
@@ -569,12 +566,12 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doUncompress(
   IOBufQueue queue(IOBufQueue::cacheChainLength());
   auto blockSize = uint64_t{64} << 10;
   auto growthSize = uint64_t{4} << 20;
-  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH) {
+  if (uncompressedLength) {
     // Allocate uncompressedLength in one chunk (up to 64 MB)
-    const auto allocateSize = std::min(uncompressedLength, uint64_t{64} << 20);
+    const auto allocateSize = std::min(*uncompressedLength, uint64_t{64} << 20);
     queue.preallocate(allocateSize, allocateSize);
-    blockSize = std::min(uncompressedLength, blockSize);
-    growthSize = std::min(uncompressedLength, growthSize);
+    blockSize = std::min(*uncompressedLength, blockSize);
+    growthSize = std::min(*uncompressedLength, growthSize);
   } else {
     // Reduce growthSize for small data
     const auto guessUncompressedLen =
@@ -605,8 +602,7 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doUncompress(
   } while (code != 0);
   // At this point the decompression context can be reused
   dirty_ = false;
-  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-      queue.chainLength() != uncompressedLength) {
+  if (uncompressedLength && queue.chainLength() != *uncompressedLength) {
     throw std::runtime_error("LZ4Frame error: Invalid uncompressedLength");
   }
   return queue.move();
@@ -666,7 +662,7 @@ class SnappyCodec final : public Codec {
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 };
 
 std::unique_ptr<Codec> SnappyCodec::create(int level, CodecType type) {
@@ -707,8 +703,9 @@ std::unique_ptr<IOBuf> SnappyCodec::doCompress(const IOBuf* data) {
   return out;
 }
 
-std::unique_ptr<IOBuf> SnappyCodec::doUncompress(const IOBuf* data,
-                                                 uint64_t uncompressedLength) {
+std::unique_ptr<IOBuf> SnappyCodec::doUncompress(
+    const IOBuf* data,
+    Optional<uint64_t> uncompressedLength) {
   uint32_t actualUncompressedLength = 0;
 
   {
@@ -716,8 +713,7 @@ std::unique_ptr<IOBuf> SnappyCodec::doUncompress(const IOBuf* data,
     if (!snappy::GetUncompressedLength(&source, &actualUncompressedLength)) {
       throw std::runtime_error("snappy::GetUncompressedLength failed");
     }
-    if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength != actualUncompressedLength) {
+    if (uncompressedLength && *uncompressedLength != actualUncompressedLength) {
       throw std::runtime_error("snappy: invalid uncompressed length");
     }
   }
@@ -748,14 +744,14 @@ class ZlibCodec final : public Codec {
   explicit ZlibCodec(int level, CodecType type);
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
       const override;
 
  private:
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 
   std::unique_ptr<IOBuf> addOutputBuffer(z_stream* stream, uint32_t length);
   bool doInflate(z_stream* stream, IOBuf* head, uint32_t bufferLength);
@@ -809,7 +805,7 @@ std::vector<std::string> ZlibCodec::validPrefixes() const {
   }
 }
 
-bool ZlibCodec::canUncompress(const IOBuf* data, uint64_t) const {
+bool ZlibCodec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
   if (type() == CodecType::ZLIB) {
     uint16_t value;
     Cursor cursor{data};
@@ -981,8 +977,9 @@ std::unique_ptr<IOBuf> ZlibCodec::doCompress(const IOBuf* data) {
   return out;
 }
 
-std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
-                                               uint64_t uncompressedLength) {
+std::unique_ptr<IOBuf> ZlibCodec::doUncompress(
+    const IOBuf* data,
+    Optional<uint64_t> uncompressedLength) {
   z_stream stream;
   stream.zalloc = nullptr;
   stream.zfree = nullptr;
@@ -1020,10 +1017,9 @@ std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
 
   auto out = addOutputBuffer(
       &stream,
-      ((uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength <= maxSingleStepLength) ?
-       uncompressedLength :
-       defaultBufferLength));
+      ((uncompressedLength && *uncompressedLength <= maxSingleStepLength)
+           ? *uncompressedLength
+           : defaultBufferLength));
 
   bool streamEnd = false;
   for (auto& range : *data) {
@@ -1050,10 +1046,9 @@ std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
 
   out->prev()->trimEnd(stream.avail_out);
 
-  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-      uncompressedLength != stream.total_out) {
-    throw std::runtime_error(to<std::string>(
-        "ZlibCodec: invalid uncompressed length"));
+  if (uncompressedLength && *uncompressedLength != stream.total_out) {
+    throw std::runtime_error(
+        to<std::string>("ZlibCodec: invalid uncompressed length"));
   }
 
   success = true;  // we survived
@@ -1074,7 +1069,7 @@ class LZMA2Codec final : public Codec {
   explicit LZMA2Codec(int level, CodecType type);
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
       const override;
 
  private:
@@ -1086,7 +1081,7 @@ class LZMA2Codec final : public Codec {
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 
   std::unique_ptr<IOBuf> addOutputBuffer(lzma_stream* stream, size_t length);
   bool doInflate(lzma_stream* stream, IOBuf* head, size_t bufferLength);
@@ -1104,7 +1099,7 @@ std::vector<std::string> LZMA2Codec::validPrefixes() const {
   return {prefixToStringLE(kLZMA2MagicLE, kLZMA2MagicBytes)};
 }
 
-bool LZMA2Codec::canUncompress(const IOBuf* data, uint64_t) const {
+bool LZMA2Codec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
   if (type() == CodecType::LZMA2_VARINT_SIZE) {
     return false;
   }
@@ -1255,8 +1250,9 @@ bool LZMA2Codec::doInflate(lzma_stream* stream,
   return false;
 }
 
-std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
-                                               uint64_t uncompressedLength) {
+std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(
+    const IOBuf* data,
+    Optional<uint64_t> uncompressedLength) {
   lzma_ret rc;
   lzma_stream stream = LZMA_STREAM_INIT;
 
@@ -1275,8 +1271,7 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
   folly::io::Cursor cursor(data);
   if (encodeSize()) {
     const uint64_t actualUncompressedLength = decodeVarintFromCursor(cursor);
-    if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength != actualUncompressedLength) {
+    if (uncompressedLength && *uncompressedLength != actualUncompressedLength) {
       throw std::runtime_error("LZMA2Codec: invalid uncompressed length");
     }
     uncompressedLength = actualUncompressedLength;
@@ -1284,9 +1279,8 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
 
   auto out = addOutputBuffer(
       &stream,
-      ((uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength <= maxSingleStepLength)
-           ? uncompressedLength
+      ((uncompressedLength && *uncompressedLength <= maxSingleStepLength)
+           ? *uncompressedLength
            : defaultBufferLength));
 
   bool streamEnd = false;
@@ -1314,8 +1308,7 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
 
   out->prev()->trimEnd(stream.avail_out);
 
-  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-      uncompressedLength != stream.total_out) {
+  if (uncompressedLength && *uncompressedLength != stream.total_out) {
     throw std::runtime_error(
         to<std::string>("LZMA2Codec: invalid uncompressed length"));
   }
@@ -1336,7 +1329,7 @@ class ZSTDCodec final : public Codec {
   explicit ZSTDCodec(int level, CodecType type);
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
       const override;
 
  private:
@@ -1344,7 +1337,7 @@ class ZSTDCodec final : public Codec {
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 
   int level_;
 };
@@ -1355,7 +1348,7 @@ std::vector<std::string> ZSTDCodec::validPrefixes() const {
   return {prefixToStringLE(kZSTDMagicLE)};
 }
 
-bool ZSTDCodec::canUncompress(const IOBuf* data, uint64_t) const {
+bool ZSTDCodec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
   return dataStartsWithLE(data, kZSTDMagicLE);
 }
 
@@ -1450,12 +1443,12 @@ std::unique_ptr<IOBuf> ZSTDCodec::doCompress(const IOBuf* data) {
 
 static std::unique_ptr<IOBuf> zstdUncompressBuffer(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   // Check preconditions
   DCHECK(!data->isChained());
-  DCHECK(uncompressedLength != Codec::UNKNOWN_UNCOMPRESSED_LENGTH);
+  DCHECK(uncompressedLength.hasValue());
 
-  auto uncompressed = IOBuf::create(uncompressedLength);
+  auto uncompressed = IOBuf::create(*uncompressedLength);
   const auto decompressedSize = ZSTD_decompress(
       uncompressed->writableTail(),
       uncompressed->tailroom(),
@@ -1471,7 +1464,7 @@ static std::unique_ptr<IOBuf> zstdUncompressBuffer(
 
 static std::unique_ptr<IOBuf> zstdUncompressStream(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   auto zds = ZSTD_createDStream();
   SCOPE_EXIT {
     ZSTD_freeDStream(zds);
@@ -1483,10 +1476,7 @@ static std::unique_ptr<IOBuf> zstdUncompressStream(
   ZSTD_outBuffer out{};
   ZSTD_inBuffer in{};
 
-  auto outputSize = ZSTD_DStreamOutSize();
-  if (uncompressedLength != Codec::UNKNOWN_UNCOMPRESSED_LENGTH) {
-    outputSize = uncompressedLength;
-  }
+  auto outputSize = uncompressedLength.value_or(ZSTD_DStreamOutSize());
 
   IOBufQueue queue(IOBufQueue::cacheChainLength());
 
@@ -1524,8 +1514,7 @@ static std::unique_ptr<IOBuf> zstdUncompressStream(
   if (in.pos != in.size || !cursor.isAtEnd()) {
     throw std::runtime_error("ZSTD: junk after end of data");
   }
-  if (uncompressedLength != Codec::UNKNOWN_UNCOMPRESSED_LENGTH &&
-      queue.chainLength() != uncompressedLength) {
+  if (uncompressedLength && queue.chainLength() != *uncompressedLength) {
     throw std::runtime_error("ZSTD: invalid uncompressed length");
   }
 
@@ -1534,21 +1523,20 @@ static std::unique_ptr<IOBuf> zstdUncompressStream(
 
 std::unique_ptr<IOBuf> ZSTDCodec::doUncompress(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   {
     // Read decompressed size from frame if available in first IOBuf.
     const auto decompressedSize =
         ZSTD_getDecompressedSize(data->data(), data->length());
     if (decompressedSize != 0) {
-      if (uncompressedLength != Codec::UNKNOWN_UNCOMPRESSED_LENGTH &&
-          uncompressedLength != decompressedSize) {
+      if (uncompressedLength && *uncompressedLength != decompressedSize) {
         throw std::runtime_error("ZSTD: invalid uncompressed length");
       }
       uncompressedLength = decompressedSize;
     }
   }
   // Faster to decompress using ZSTD_decompress() if we can.
-  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH && !data->isChained()) {
+  if (uncompressedLength && !data->isChained()) {
     return zstdUncompressBuffer(data, uncompressedLength);
   }
   // Fall back to slower streaming decompression.
@@ -1565,14 +1553,14 @@ class Bzip2Codec final : public Codec {
   explicit Bzip2Codec(int level, CodecType type);
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(IOBuf const* data, uint64_t uncompressedLength)
+  bool canUncompress(IOBuf const* data, Optional<uint64_t> uncompressedLength)
       const override;
 
  private:
   std::unique_ptr<IOBuf> doCompress(IOBuf const* data) override;
   std::unique_ptr<IOBuf> doUncompress(
       IOBuf const* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 
   int level_;
 };
@@ -1610,7 +1598,7 @@ std::vector<std::string> Bzip2Codec::validPrefixes() const {
   return {prefixToStringLE(kBzip2MagicLE, kBzip2MagicBytes)};
 }
 
-bool Bzip2Codec::canUncompress(IOBuf const* data, uint64_t) const {
+bool Bzip2Codec::canUncompress(IOBuf const* data, Optional<uint64_t>) const {
   return dataStartsWithLE(data, kBzip2MagicLE, kBzip2MagicBytes);
 }
 
@@ -1706,7 +1694,7 @@ std::unique_ptr<IOBuf> Bzip2Codec::doCompress(IOBuf const* data) {
 
 std::unique_ptr<IOBuf> Bzip2Codec::doUncompress(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   bz_stream stream = createBzStream();
   bzCheck(BZ2_bzDecompressInit(&stream, 0, 0));
   SCOPE_EXIT {
@@ -1720,9 +1708,8 @@ std::unique_ptr<IOBuf> Bzip2Codec::doUncompress(
 
   auto out = addOutputBuffer(
       &stream,
-      ((uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-        uncompressedLength <= kMaxSingleStepLength)
-           ? uncompressedLength
+      ((uncompressedLength && *uncompressedLength <= kMaxSingleStepLength)
+           ? *uncompressedLength
            : kDefaultBufferLength));
 
   int rc = BZ_OK;
@@ -1753,8 +1740,7 @@ std::unique_ptr<IOBuf> Bzip2Codec::doUncompress(
 
   uint64_t const totalOut =
       (uint64_t(stream.total_out_hi32) << 32) + stream.total_out_lo32;
-  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
-      uncompressedLength != totalOut) {
+  if (uncompressedLength && uncompressedLength != totalOut) {
     throw std::runtime_error("Bzip2 error: Invalid uncompressed length");
   }
 
@@ -1773,7 +1759,7 @@ class AutomaticCodec final : public Codec {
   explicit AutomaticCodec(std::vector<std::unique_ptr<Codec>> customCodecs);
 
   std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
       const override;
 
  private:
@@ -1785,7 +1771,7 @@ class AutomaticCodec final : public Codec {
   }
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override;
+      Optional<uint64_t> uncompressedLength) override;
 
   void addCodecIfSupported(CodecType type);
 
@@ -1808,7 +1794,7 @@ std::vector<std::string> AutomaticCodec::validPrefixes() const {
 
 bool AutomaticCodec::canUncompress(
     const IOBuf* data,
-    uint64_t uncompressedLength) const {
+    Optional<uint64_t> uncompressedLength) const {
   return std::any_of(
       codecs_.begin(),
       codecs_.end(),
@@ -1914,7 +1900,7 @@ uint64_t AutomaticCodec::doMaxUncompressedLength() const {
 
 std::unique_ptr<IOBuf> AutomaticCodec::doUncompress(
     const IOBuf* data,
-    uint64_t uncompressedLength) {
+    Optional<uint64_t> uncompressedLength) {
   for (auto&& codec : codecs_) {
     if (codec->canUncompress(data, uncompressedLength)) {
       return codec->uncompress(data, uncompressedLength);

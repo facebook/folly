@@ -500,7 +500,7 @@ class CustomCodec : public Codec {
     return {prefix_};
   }
 
-  bool canUncompress(const IOBuf* data, uint64_t) const override {
+  bool canUncompress(const IOBuf* data, Optional<uint64_t>) const override {
     auto clone = data->cloneCoalescedAsValue();
     if (clone.length() < prefix_.size()) {
       return false;
@@ -517,7 +517,7 @@ class CustomCodec : public Codec {
 
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
-      uint64_t uncompressedLength) override {
+      Optional<uint64_t> uncompressedLength) override {
     EXPECT_TRUE(canUncompress(data, uncompressedLength));
     auto clone = data->cloneCoalescedAsValue();
     clone.trimStart(prefix_.size());
@@ -573,9 +573,9 @@ TEST_P(AutomaticCodecTest, canUncompressOneBytes) {
   IOBuf buf{IOBuf::CREATE, 1};
   buf.append(1);
   EXPECT_FALSE(codec_->canUncompress(&buf, 1));
-  EXPECT_FALSE(codec_->canUncompress(&buf, Codec::UNKNOWN_UNCOMPRESSED_LENGTH));
+  EXPECT_FALSE(codec_->canUncompress(&buf, folly::none));
   EXPECT_FALSE(auto_->canUncompress(&buf, 1));
-  EXPECT_FALSE(auto_->canUncompress(&buf, Codec::UNKNOWN_UNCOMPRESSED_LENGTH));
+  EXPECT_FALSE(auto_->canUncompress(&buf, folly::none));
 }
 
 INSTANTIATE_TEST_CASE_P(
