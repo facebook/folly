@@ -525,6 +525,7 @@ libfolly_la_SOURCES = \
 	SharedMutex.cpp \
 	Shell.cpp \
 	MicroLock.cpp \
+	Optional.cpp \
 	Singleton.cpp \
 	SocketAddress.cpp \
 	SpookyHashV1.cpp \

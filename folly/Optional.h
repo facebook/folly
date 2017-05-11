@@ -64,7 +64,14 @@
 
 namespace folly {
 
-namespace detail { struct NoneHelper {}; }
+namespace detail {
+struct NoneHelper {};
+
+// Allow each translation unit to control its own -fexceptions setting.
+// If exceptions are disabled, std::terminate() will be called instead of
+// throwing OptionalEmptyException when the condition fails.
+[[noreturn]] void throw_optional_empty_exception();
+}
 
 typedef int detail::NoneHelper::*None;
 
@@ -252,7 +259,7 @@ class Optional {
  private:
   void require_value() const {
     if (!storage_.hasValue) {
-      throw OptionalEmptyException();
+      detail::throw_optional_empty_exception();
     }
   }
 
