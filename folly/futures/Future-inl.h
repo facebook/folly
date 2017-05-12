@@ -1233,7 +1233,7 @@ template <class Policy, class FF, class Prom>
 void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
   using F = typename std::result_of<FF(size_t)>::type;
   using T = typename F::value_type;
-  auto f = ff(k++);
+  auto f = makeFutureWith([&] { return ff(k++); });
   f.then([
     k,
     prom = std::move(prom),

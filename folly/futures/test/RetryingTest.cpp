@@ -75,6 +75,27 @@ TEST(RetryingTest, basic) {
   EXPECT_EQ(2, r.value());
 }
 
+TEST(RetryingTest, future_factory_throws) {
+  struct ReturnedException : exception {};
+  struct ThrownException : exception {};
+  auto result = futures::retrying(
+                    [](size_t n, const exception_wrapper&) { return n < 2; },
+                    [](size_t n) {
+                      switch (n) {
+                        case 0:
+                          return makeFuture<size_t>(
+                              make_exception_wrapper<ReturnedException>());
+                        case 1:
+                          throw ThrownException();
+                        default:
+                          return makeFuture(n);
+                      }
+                    })
+                    .wait()
+                    .getTry();
+  EXPECT_THROW(result.throwIfFailed(), ThrownException);
+}
+
 TEST(RetryingTest, policy_future) {
   atomic<size_t> sleeps {0};
   auto r = futures::retrying(
