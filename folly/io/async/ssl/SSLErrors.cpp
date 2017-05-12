@@ -16,8 +16,7 @@
 #include <folly/io/async/ssl/SSLErrors.h>
 
 #include <folly/Range.h>
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <folly/portability/OpenSSL.h>
 
 using namespace folly;
 
