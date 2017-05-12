@@ -16,15 +16,15 @@
 
 #include <folly/detail/SocketFastOpen.h>
 
+#include <folly/portability/Sockets.h>
+
 #include <cerrno>
+#include <cstdio>
 
 namespace folly {
 namespace detail {
 
 #if FOLLY_ALLOW_TFO && defined(__linux__)
-
-#include <netinet/tcp.h>
-#include <stdio.h>
 
 // Sometimes these flags are not present in the headers,
 // so define them if not present.
@@ -63,9 +63,6 @@ bool tfo_succeeded(int sockfd) {
 }
 
 #elif FOLLY_ALLOW_TFO && defined(__APPLE__)
-
-#include <netinet/tcp.h>
-#include <sys/socket.h>
 
 ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
   sa_endpoints_t endpoints;
