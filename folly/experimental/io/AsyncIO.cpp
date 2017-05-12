@@ -193,15 +193,13 @@ Range<AsyncIO::Op**> AsyncIO::wait(size_t minRequests) {
   CHECK_EQ(pollFd_, -1) << "wait() only allowed on non-pollable object";
   auto p = pending_.load(std::memory_order_acquire);
   CHECK_LE(minRequests, p);
-  doWait(WaitType::COMPLETE, minRequests, p, &completed_);
-  return Range<Op**>(completed_.data(), completed_.size());
+  return doWait(WaitType::COMPLETE, minRequests, p, completed_);
 }
 
-size_t AsyncIO::cancel() {
+Range<AsyncIO::Op**> AsyncIO::cancel() {
   CHECK(ctx_);
   auto p = pending_.load(std::memory_order_acquire);
-  doWait(WaitType::CANCEL, p, p, nullptr);
-  return p;
+  return doWait(WaitType::CANCEL, p, p, canceled_);
 }
 
 Range<AsyncIO::Op**> AsyncIO::pollCompleted() {
@@ -224,15 +222,14 @@ Range<AsyncIO::Op**> AsyncIO::pollCompleted() {
   DCHECK_LE(numEvents, pending_);
 
   // Don't reap more than numEvents, as we've just reset the counter to 0.
-  doWait(WaitType::COMPLETE, numEvents, numEvents, &completed_);
-  return Range<Op**>(completed_.data(), completed_.size());
+  return doWait(WaitType::COMPLETE, numEvents, numEvents, completed_);
 }
 
-void AsyncIO::doWait(
+Range<AsyncIO::Op**> AsyncIO::doWait(
     WaitType type,
     size_t minRequests,
     size_t maxRequests,
-    std::vector<Op*>* result) {
+    std::vector<Op*>& result) {
   io_event events[maxRequests];
 
   // Unfortunately, Linux AIO doesn't implement io_cancel, so even for
@@ -257,9 +254,7 @@ void AsyncIO::doWait(
   } while (count < minRequests);
   DCHECK_LE(count, maxRequests);
 
-  if (result != nullptr) {
-    result->clear();
-  }
+  result.clear();
   for (size_t i = 0; i < count; ++i) {
     DCHECK(events[i].obj);
     Op* op = boost::intrusive::get_parent_from_member(
@@ -273,10 +268,10 @@ void AsyncIO::doWait(
         op->cancel();
         break;
     }
-    if (result != nullptr) {
-      result->push_back(op);
-    }
+    result.push_back(op);
   }
+
+  return range(result);
 }
 
 AsyncIOQueue::AsyncIOQueue(AsyncIO* asyncIO)

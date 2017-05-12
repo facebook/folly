@@ -393,48 +393,63 @@ TEST(AsyncIO, NonBlockingWait) {
 }
 
 TEST(AsyncIO, Cancel) {
-  constexpr size_t kNumOps = 10;
+  constexpr size_t kNumOpsBatch1 = 10;
+  constexpr size_t kNumOpsBatch2 = 10;
 
-  AsyncIO aioReader(kNumOps, AsyncIO::NOT_POLLABLE);
+  AsyncIO aioReader(kNumOpsBatch1 + kNumOpsBatch2, AsyncIO::NOT_POLLABLE);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   PCHECK(fd != -1);
   SCOPE_EXIT {
     ::close(fd);
   };
 
-  std::vector<AsyncIO::Op> ops(kNumOps);
-  std::vector<ManagedBuffer> bufs;
-
   size_t completed = 0;
-  for (auto& op : ops) {
-    const size_t size = 2 * kAlign;
-    bufs.push_back(allocateAligned(size));
-    op.setNotificationCallback([&](AsyncIOOp*) { ++completed; });
-    op.pread(fd, bufs.back().get(), size, 0);
-    aioReader.submit(&op);
-  }
 
-  EXPECT_EQ(aioReader.pending(), kNumOps);
+  std::vector<std::unique_ptr<AsyncIO::Op>> ops;
+  std::vector<ManagedBuffer> bufs;
+  const auto schedule = [&](size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+      const size_t size = 2 * kAlign;
+      bufs.push_back(allocateAligned(size));
+
+      ops.push_back(std::make_unique<AsyncIO::Op>());
+      auto& op = *ops.back();
+
+      op.setNotificationCallback([&](AsyncIOOp*) { ++completed; });
+      op.pread(fd, bufs.back().get(), size, 0);
+      aioReader.submit(&op);
+    }
+  };
+
+  // Mix completed and canceled operations for this test.
+  // In order to achieve that, schedule in two batches and do partial
+  // wait() after the first one.
+
+  schedule(kNumOpsBatch1);
+  EXPECT_EQ(aioReader.pending(), kNumOpsBatch1);
   EXPECT_EQ(completed, 0);
 
-  {
-    auto result = aioReader.wait(1);
-    EXPECT_EQ(result.size(), 1);
-  }
-  EXPECT_EQ(completed, 1);
-  EXPECT_EQ(aioReader.pending(), kNumOps - 1);
+  auto result = aioReader.wait(1);
+  EXPECT_GE(result.size(), 1);
+  EXPECT_EQ(completed, result.size());
+  EXPECT_EQ(aioReader.pending(), kNumOpsBatch1 - result.size());
 
-  EXPECT_EQ(aioReader.cancel(), kNumOps - 1);
+  schedule(kNumOpsBatch2);
+  EXPECT_EQ(aioReader.pending(), ops.size() - result.size());
+  EXPECT_EQ(completed, result.size());
+
+  auto canceled = aioReader.cancel();
+  EXPECT_EQ(canceled.size(), ops.size() - result.size());
   EXPECT_EQ(aioReader.pending(), 0);
-  EXPECT_EQ(completed, 1);
+  EXPECT_EQ(completed, result.size());
 
-  completed = 0;
+  size_t foundCompleted = 0;
   for (auto& op : ops) {
-    if (op.state() == AsyncIOOp::State::COMPLETED) {
-      ++completed;
+    if (op->state() == AsyncIOOp::State::COMPLETED) {
+      ++foundCompleted;
     } else {
-      EXPECT_TRUE(op.state() == AsyncIOOp::State::CANCELED) << op;
+      EXPECT_TRUE(op->state() == AsyncIOOp::State::CANCELED) << *op;
     }
   }
-  EXPECT_EQ(completed, 1);
+  EXPECT_EQ(foundCompleted, completed);
 }

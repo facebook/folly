@@ -156,9 +156,10 @@ class AsyncIO : private boost::noncopyable {
   Range<Op**> wait(size_t minRequests);
 
   /**
-   * Cancel all pending requests and return their number.
+   * Cancel all pending requests and return them; the returned range is
+   * valid until the next call to cancel().
    */
-  size_t cancel();
+  Range<Op**> cancel();
 
   /**
    * Return the number of pending requests.
@@ -201,11 +202,11 @@ class AsyncIO : private boost::noncopyable {
   void initializeContext();
 
   enum class WaitType { COMPLETE, CANCEL };
-  void doWait(
+  Range<AsyncIO::Op**> doWait(
       WaitType type,
       size_t minRequests,
       size_t maxRequests,
-      std::vector<Op*>* result);
+      std::vector<Op*>& result);
 
   io_context_t ctx_{nullptr};
   std::atomic<bool> ctxSet_{false};
@@ -216,6 +217,7 @@ class AsyncIO : private boost::noncopyable {
   const size_t capacity_;
   int pollFd_{-1};
   std::vector<Op*> completed_;
+  std::vector<Op*> canceled_;
 };
 
 /**
