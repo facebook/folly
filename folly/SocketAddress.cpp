@@ -20,6 +20,7 @@
 
 #include <folly/SocketAddress.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/Exception.h>
 #include <folly/Hash.h>
 
@@ -554,7 +555,7 @@ bool SocketAddress::prefixMatch(const SocketAddress& other,
   switch (getFamily()) {
     case AF_INET:
       mask_length = 32;
-      // fallthrough
+      FOLLY_FALLTHROUGH;
     case AF_INET6:
     {
       auto prefix = folly::IPAddress::longestCommonPrefix(

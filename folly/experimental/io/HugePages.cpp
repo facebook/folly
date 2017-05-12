@@ -30,6 +30,7 @@
 #include <boost/regex.hpp>
 
 #include <folly/Conv.h>
+#include <folly/CppAttributes.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/String.h>
@@ -99,9 +100,9 @@ size_t parsePageSizeValue(StringPiece value) {
   StringPiece numStr(value.data() + match.position(1), size_t(match.length(1)));
   size_t size = to<size_t>(numStr);
   switch (c) {
-  case 't': size *= 1024;
-  case 'g': size *= 1024;
-  case 'm': size *= 1024;
+  case 't': size *= 1024; FOLLY_FALLTHROUGH;
+  case 'g': size *= 1024; FOLLY_FALLTHROUGH;
+  case 'm': size *= 1024; FOLLY_FALLTHROUGH;
   case 'k': size *= 1024;
   }
   return size;

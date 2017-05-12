@@ -16,6 +16,7 @@
 
 #include <folly/Format.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/portability/Constexpr.h>
 
 #include <double-conversion/double-conversion.h>
@@ -81,6 +82,7 @@ void FormatValue<double>::formatHelper(
   switch (arg.presentation) {
   case '%':
     val *= 100;
+    FOLLY_FALLTHROUGH;
   case 'f':
   case 'F':
     {
