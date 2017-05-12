@@ -350,6 +350,20 @@ inline std::exception const* exception_wrapper::get_exception() const noexcept {
   return vptr_->get_exception_(this);
 }
 
+template <typename Ex>
+inline Ex* exception_wrapper::get_object() noexcept {
+  Ex* object{nullptr};
+  with_exception([&](Ex& ex) { object = &ex; });
+  return object;
+}
+
+template <typename Ex>
+inline Ex const* exception_wrapper::get_object() const noexcept {
+  Ex const* object{nullptr};
+  with_exception([&](Ex const& ex) { object = &ex; });
+  return object;
+}
+
 inline std::exception_ptr const& exception_wrapper::to_exception_ptr()
     noexcept {
   // Computing an exception_ptr is expensive so cache the result.

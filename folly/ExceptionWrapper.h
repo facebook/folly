@@ -457,6 +457,18 @@ class exception_wrapper final {
   //! \overload
   std::exception const* get_exception() const noexcept;
 
+  //! \returns a pointer to the `Ex` held by `*this`, if it holds an object
+  //!     whose type `From` permits `std::is_convertible<From*, Ex*>`;
+  //!     otherwise, returns `nullptr`.
+  //! \note This function does not mutate the `exception_wrapper` object.
+  //! \note This function may cause an exception to be thrown and immediately
+  //!     caught internally, affecting runtime performance.
+  template <typename Ex>
+  Ex* get_object() noexcept;
+  //! \overload
+  template <typename Ex>
+  Ex const* get_object() const noexcept;
+
   //! \return A `std::exception_ptr` that references either the exception held
   //!     by `*this`, or a copy of same.
   //! \note This function may need to throw an exception to complete the action.
