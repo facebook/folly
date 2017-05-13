@@ -289,11 +289,16 @@ if test "$folly_cv_lib_libatomic" = no; then
                   [Please install the GNU Atomic library])])
 fi
 
+if test "$build_os" = "linux-gnu"; then
+  AC_HAVE_LIBRARY([dl],[],[AC_MSG_ERROR(
+                  [Folly depends on libdl])])
+fi
+
 AC_CACHE_CHECK(
   [for liblinux-vdso support],
   [folly_cv_lib_liblinux_vdso],
   [AC_RUN_IFELSE(
-    [AC_LANG_PROGRAM[
+    [AC_LANG_SOURCE[
       #include <dlfcn.h>
       int main() {
         void *h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);

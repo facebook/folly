@@ -48,7 +48,7 @@ static int64_t clock_gettime_ns_fallback(clockid_t clock) {
 int (*clock_gettime)(clockid_t, timespec* ts) = &::clock_gettime;
 int64_t (*clock_gettime_ns)(clockid_t) = &clock_gettime_ns_fallback;
 
-#ifdef __linux__
+#ifdef FOLLY_HAVE_LINUX_VDSO
 
 namespace {
 
