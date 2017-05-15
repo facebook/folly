@@ -152,7 +152,7 @@ crc32_hw_aligned(uint32_t remainder, const __m128i* p, size_t vec_count) {
    * have been XOR'ed with the CRC of the first part of the message.
    */
   x0 = *p++;
-  x0 ^= _mm_set_epi32(0, 0, 0, remainder);
+  x0 = _mm_xor_si128(x0, _mm_set_epi32(0, 0, 0, remainder));
 
   if (p > end512) /* only 128, 256, or 384 bits of input? */
     goto _128_bits_at_a_time;
@@ -176,14 +176,14 @@ crc32_hw_aligned(uint32_t remainder, const __m128i* p, size_t vec_count) {
      * 0x00 means low halves (higher degree polynomial terms for us)
      * 0x11 means high halves (lower degree polynomial terms for us)
      */
-    y0 ^= _mm_clmulepi64_si128(x0, multipliers_4, 0x00);
-    y1 ^= _mm_clmulepi64_si128(x1, multipliers_4, 0x00);
-    y2 ^= _mm_clmulepi64_si128(x2, multipliers_4, 0x00);
-    y3 ^= _mm_clmulepi64_si128(x3, multipliers_4, 0x00);
-    y0 ^= _mm_clmulepi64_si128(x0, multipliers_4, 0x11);
-    y1 ^= _mm_clmulepi64_si128(x1, multipliers_4, 0x11);
-    y2 ^= _mm_clmulepi64_si128(x2, multipliers_4, 0x11);
-    y3 ^= _mm_clmulepi64_si128(x3, multipliers_4, 0x11);
+    y0 = _mm_xor_si128(y0, _mm_clmulepi64_si128(x0, multipliers_4, 0x00));
+    y1 = _mm_xor_si128(y1, _mm_clmulepi64_si128(x1, multipliers_4, 0x00));
+    y2 = _mm_xor_si128(y2, _mm_clmulepi64_si128(x2, multipliers_4, 0x00));
+    y3 = _mm_xor_si128(y3, _mm_clmulepi64_si128(x3, multipliers_4, 0x00));
+    y0 = _mm_xor_si128(y0, _mm_clmulepi64_si128(x0, multipliers_4, 0x11));
+    y1 = _mm_xor_si128(y1, _mm_clmulepi64_si128(x1, multipliers_4, 0x11));
+    y2 = _mm_xor_si128(y2, _mm_clmulepi64_si128(x2, multipliers_4, 0x11));
+    y3 = _mm_xor_si128(y3, _mm_clmulepi64_si128(x3, multipliers_4, 0x11));
 
     x0 = y0;
     x1 = y1;
@@ -192,20 +192,20 @@ crc32_hw_aligned(uint32_t remainder, const __m128i* p, size_t vec_count) {
   }
 
   /* Fold 512 bits => 128 bits */
-  x2 ^= _mm_clmulepi64_si128(x0, multipliers_2, 0x00);
-  x3 ^= _mm_clmulepi64_si128(x1, multipliers_2, 0x00);
-  x2 ^= _mm_clmulepi64_si128(x0, multipliers_2, 0x11);
-  x3 ^= _mm_clmulepi64_si128(x1, multipliers_2, 0x11);
-  x3 ^= _mm_clmulepi64_si128(x2, multipliers_1, 0x00);
-  x3 ^= _mm_clmulepi64_si128(x2, multipliers_1, 0x11);
+  x2 = _mm_xor_si128(x2, _mm_clmulepi64_si128(x0, multipliers_2, 0x00));
+  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x1, multipliers_2, 0x00));
+  x2 = _mm_xor_si128(x2, _mm_clmulepi64_si128(x0, multipliers_2, 0x11));
+  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x1, multipliers_2, 0x11));
+  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x2, multipliers_1, 0x00));
+  x3 = _mm_xor_si128(x3, _mm_clmulepi64_si128(x2, multipliers_1, 0x11));
   x0 = x3;
 
 _128_bits_at_a_time:
   while (p != end) {
     /* Fold 128 bits into next 128 bits */
     x1 = *p++;
-    x1 ^= _mm_clmulepi64_si128(x0, multipliers_1, 0x00);
-    x1 ^= _mm_clmulepi64_si128(x0, multipliers_1, 0x11);
+    x1 = _mm_xor_si128(x1, _mm_clmulepi64_si128(x0, multipliers_1, 0x00));
+    x1 = _mm_xor_si128(x1, _mm_clmulepi64_si128(x0, multipliers_1, 0x11));
     x0 = x1;
   }
 
@@ -216,11 +216,11 @@ _128_bits_at_a_time:
    * which is equivalent to multiplying by x^32.  This is needed because
    * the CRC is defined as M(x)*x^32 mod G(x), not just M(x) mod G(x).
    */
-  x0 = _mm_srli_si128(x0, 8) ^ _mm_clmulepi64_si128(x0, multipliers_1, 0x10);
+  x0 = _mm_xor_si128(_mm_srli_si128(x0, 8), _mm_clmulepi64_si128(x0, multipliers_1, 0x10));
 
   /* Fold 96 => 64 bits */
-  x0 = _mm_srli_si128(x0, 4) ^
-      _mm_clmulepi64_si128(x0 & mask32, final_multiplier, 0x00);
+  x0 = _mm_xor_si128(_mm_srli_si128(x0, 4),
+      _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), final_multiplier, 0x00));
 
   /*
    * Finally, reduce 64 => 32 bits using Barrett reduction.
@@ -265,9 +265,9 @@ _128_bits_at_a_time:
    *                              \           x^32            /
    */
   x1 = x0;
-  x0 = _mm_clmulepi64_si128(x0 & mask32, barrett_reduction_constants, 0x00);
-  x0 = _mm_clmulepi64_si128(x0 & mask32, barrett_reduction_constants, 0x10);
-  return _mm_cvtsi128_si32(_mm_srli_si128(x0 ^ x1, 4));
+  x0 = _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), barrett_reduction_constants, 0x00);
+  x0 = _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), barrett_reduction_constants, 0x10);
+  return _mm_cvtsi128_si32(_mm_srli_si128(_mm_xor_si128(x0, x1), 4));
 }
 }
 } // namespace
