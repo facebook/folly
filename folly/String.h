@@ -24,13 +24,6 @@
 #include <boost/type_traits.hpp>
 #include <boost/regex/pending/unicode_iterator.hpp>
 
-#ifdef FOLLY_HAVE_DEPRECATED_ASSOC
-#ifdef _GLIBCXX_SYMVER
-#include <ext/hash_set>
-#include <ext/hash_map>
-#endif
-#endif
-
 #include <unordered_set>
 #include <unordered_map>
 
