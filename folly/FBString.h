@@ -58,13 +58,6 @@
 #include <folly/Traits.h>
 #include <folly/portability/BitsFunctexcept.h>
 
-#if FOLLY_HAVE_DEPRECATED_ASSOC
-#ifdef _GLIBCXX_SYMVER
-#include <ext/hash_set>
-#include <ext/hash_map>
-#endif
-#endif
-
 // When used in folly, assertions are not disabled.
 #define FBSTRING_ASSERT(expr) assert(expr)
 
@@ -2873,16 +2866,6 @@ namespace std {
 FOLLY_FBSTRING_HASH
 
 }  // namespace std
-
-#if FOLLY_HAVE_DEPRECATED_ASSOC
-#if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
-namespace __gnu_cxx {
-
-FOLLY_FBSTRING_HASH
-
-}  // namespace __gnu_cxx
-#endif // _GLIBCXX_SYMVER && !__BIONIC__
-#endif // FOLLY_HAVE_DEPRECATED_ASSOC
 
 #undef FOLLY_FBSTRING_HASH
 #undef FOLLY_FBSTRING_HASH1
