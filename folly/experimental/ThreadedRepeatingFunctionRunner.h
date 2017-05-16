@@ -51,32 +51,38 @@ namespace folly {
  * if you want to have ThreadedRepeatingFunctionRunner as a member of your
  * class.  A reasonable pattern looks like this:
  *
- * struct MyClass {
+ * // Your class must be `final` because inheriting from a class with
+ * // threads can cause all sorts of subtle issues:
+ * //  - Your base class might start threads that attempt to access derived
+ * //    class state **before** that state was constructed.
+ * //  - Your base class's destructor will only be able to stop threads
+ * //    **after** the derived class state was destroyed -- and that state
+ * //    might be accessed by the threads.
+ * // In short, any derived class would have to do work to manage the
+ * // threads itself, which makes inheritance a poor means of composition.
+ * struct MyClass final {
  *   // Note that threads are NOT added in the constructor, for two reasons:
  *   //
- *   //   (1) If you added some, and had any subsequent initialization (e.g.
- *   //       derived class constructors), 'this' would not be fully
- *   //       constructed when the worker threads came up, causing
- *   //       heisenbugs.
+ *   //   (1) If you first added some threads, and then had additional
+ *   //       initialization (e.g. derived class constructors), `this` might
+ *   //       not be fully constructed by the time the function threads
+ *   //       started running, causing heisenbugs.
  *   //
- *   //   (2) Also, if your constructor threw after thread creation, the
- *   //       class destructor would not be invoked, potentially leaving the
+ *   //   (2) If your constructor threw after thread creation, the class
+ *   //       destructor would not be invoked, potentially leaving the
  *   //       threads running too long.
  *   //
- *   // It's better to have explicit two-step initialization, or to lazily
- *   // add threads the first time they are needed.
+ *   // It is much safer to have explicit two-step initialization, or to
+ *   // lazily add threads the first time they are needed.
  *   MyClass() : count_(0) {}
  *
  *   // You must stop the threads as early as possible in the destruction
- *   // process (or even before).  In the case of a class hierarchy, the
- *   // final class MUST always call stop() as the first thing in its
- *   // destructor -- otherwise, the worker threads may access already-
+ *   // process (or even before).  If MyClass had derived classes, the final
+ *   // derived class MUST always call stop() as the first thing in its
+ *   // destructor -- otherwise, the worker threads might access already-
  *   // destroyed state.
  *   ~MyClass() {
- *     // if MyClass is abstract:
- *     threads_.stopAndWarn("MyClass");
- *     // Otherwise:
- *     threads_.stop();
+ *     threads_.stop();  // Stop threads BEFORE destroying any state they use.
  *   }
  *
  *   // See the constructor for why two-stage initialization is preferred.
@@ -91,7 +97,7 @@ namespace folly {
  *
  * private:
  *   std::atomic<int> count_;
- *   // Declared last because the threads' functions access other members.
+ *   // CAUTION: Declare last since the threads access other members of `this`.
  *   ThreadedRepeatingFunctionRunner threads_;
  * };
  */
@@ -110,14 +116,6 @@ class ThreadedRepeatingFunctionRunner final {
    * class state that had already been destroyed.
    */
   void stop();
-
-  /**
-   * Must be called at the TOP of the destructor of any abstract class that
-   * contains ThreadedRepeatingFunctionRunner (directly or through a
-   * parent).  Any non-abstract class destructor must instead stop() at the
-   * top.
-   */
-  void stopAndWarn(const std::string& class_of_destructor);
 
   /**
    * Run your noexcept function `f` in a background loop, sleeping between
