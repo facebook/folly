@@ -115,6 +115,8 @@
 namespace folly {
 namespace detail {
 
+#if FOLLY_SSE_PREREQ(4, 2)
+
 uint32_t
 crc32_hw_aligned(uint32_t remainder, const __m128i* p, size_t vec_count) {
   /* Constants precomputed by gen_crc32_multipliers.c.  Do not edit! */
@@ -269,5 +271,7 @@ _128_bits_at_a_time:
   x0 = _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), barrett_reduction_constants, 0x10);
   return _mm_cvtsi128_si32(_mm_srli_si128(_mm_xor_si128(x0, x1), 4));
 }
+
+#endif
 }
 } // namespace
