@@ -63,11 +63,12 @@ class GlobalCache {
     auto& fmPtrRef = map_[&evb];
 
     if (!fmPtrRef) {
-      auto loopController = make_unique<EventBaseLoopController>();
+      auto loopController = std::make_unique<EventBaseLoopController>();
       loopController->attachEventBase(evb);
       evb.runOnDestruction(new EventBaseOnDestructionCallback<EventBaseT>(evb));
 
-      fmPtrRef = make_unique<FiberManager>(std::move(loopController), opts);
+      fmPtrRef =
+          std::make_unique<FiberManager>(std::move(loopController), opts);
     }
 
     return *fmPtrRef;

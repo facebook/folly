@@ -108,7 +108,7 @@ TEST(FutureSplitter, splitFutureMoveAssignable) {
 
 TEST(FutureSplitter, splitFutureScope) {
   Promise<int> p;
-  auto pSP = make_unique<FutureSplitter<int>>(p.getFuture());
+  auto pSP = std::make_unique<FutureSplitter<int>>(p.getFuture());
   auto f1 = pSP->getFuture();
   EXPECT_FALSE(f1.isReady());
   pSP.reset();

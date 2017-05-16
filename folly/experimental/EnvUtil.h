@@ -98,7 +98,7 @@ namespace test {
 // of its destruction.
 struct EnvVarSaver {
   EnvVarSaver()
-      : state_(make_unique<experimental::EnvironmentState>(
+      : state_(std::make_unique<experimental::EnvironmentState>(
             experimental::EnvironmentState::fromCurrentEnvironment())) {}
 
   EnvVarSaver(EnvVarSaver&& other) noexcept : state_(std::move(other.state_)) {}
