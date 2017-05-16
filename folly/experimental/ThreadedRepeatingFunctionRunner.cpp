@@ -23,20 +23,13 @@ namespace folly {
 ThreadedRepeatingFunctionRunner::ThreadedRepeatingFunctionRunner() {}
 
 ThreadedRepeatingFunctionRunner::~ThreadedRepeatingFunctionRunner() {
-  stopAndWarn("ThreadedRepeatingFunctionRunner");
-}
-
-void ThreadedRepeatingFunctionRunner::stopAndWarn(
-    const std::string& class_of_destructor) {
   if (stopImpl()) {
     LOG(ERROR)
         << "ThreadedRepeatingFunctionRunner::stop() should already have been "
-        << "called, since the " << class_of_destructor << " destructor is now "
-        << "running. This is unsafe because it means that its threads "
-        << "may be accessing class state that was already destroyed "
-        << "(e.g. derived class members, or members that were declared after "
-        << "the " << class_of_destructor << ") .";
-    stop();
+        << "called, since we are now in the Runner's destructor. This is "
+        << "because it means that its threads may be accessing object state "
+        << "that was already destroyed -- e.g. members that were declared "
+        << "after the ThreadedRepeatingFunctionRunner.";
   }
 }
 
