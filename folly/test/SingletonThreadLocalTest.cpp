@@ -44,14 +44,13 @@ TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   std::atomic<std::size_t> completedThreadCount{0};
   Synchronized<std::unordered_set<Foo*>> fooAddresses{};
   std::vector<std::thread> threads{};
-  auto threadFunction =
-      [&fooAddresses, targetThreadCount, &completedThreadCount] {
-        fooAddresses.wlock()->emplace(&FooSingletonTL::get());
-        ++completedThreadCount;
-        while (completedThreadCount < targetThreadCount) {
-          std::this_thread::yield();
-        }
-      };
+  auto threadFunction = [&fooAddresses, &completedThreadCount] {
+    fooAddresses.wlock()->emplace(&FooSingletonTL::get());
+    ++completedThreadCount;
+    while (completedThreadCount < targetThreadCount) {
+      std::this_thread::yield();
+    }
+  };
   {
     for (std::size_t threadCount{0}; threadCount < targetThreadCount;
          ++threadCount) {

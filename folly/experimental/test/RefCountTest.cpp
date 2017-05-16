@@ -36,29 +36,29 @@ void basicTest() {
   std::vector<std::thread> ts;
   folly::Baton<> threadBatons[numThreads];
   for (size_t t = 0; t < numThreads; ++t) {
-    ts.emplace_back([&count, &b, &got0, numIters, t, &threadBatons]() {
-        for (size_t i = 0; i < numIters; ++i) {
-          auto ret = ++count;
+    ts.emplace_back([&count, &b, &got0, t, &threadBatons] {
+      for (size_t i = 0; i < numIters; ++i) {
+        auto ret = ++count;
 
-          EXPECT_TRUE(ret > 1);
-          if (i == 0) {
-            threadBatons[t].post();
-          }
+        EXPECT_TRUE(ret > 1);
+        if (i == 0) {
+          threadBatons[t].post();
         }
+      }
 
-        if (t == 0) {
-          b.post();
+      if (t == 0) {
+        b.post();
+      }
+
+      for (size_t i = 0; i < numIters; ++i) {
+        auto ret = --count;
+
+        if (ret == 0) {
+          ++got0;
+          EXPECT_EQ(numIters - 1, i);
         }
-
-        for (size_t i = 0; i < numIters; ++i) {
-          auto ret = --count;
-
-          if (ret == 0) {
-            ++got0;
-            EXPECT_EQ(numIters - 1, i);
-          }
-        }
-      });
+      }
+    });
   }
 
   for (size_t t = 0; t < numThreads; ++t) {

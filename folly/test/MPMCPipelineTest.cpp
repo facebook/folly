@@ -81,7 +81,7 @@ TEST(MPMCPipeline, MultiThreaded) {
   std::vector<std::thread> threads;
   threads.reserve(numThreadsPerStage * 2 + 1);
   for (size_t i = 0; i < numThreadsPerStage; ++i) {
-    threads.emplace_back([&a, i] () {
+    threads.emplace_back([&a] {
       for (;;) {
         int val;
         auto ticket = a.blockingReadStage<0>(val);
@@ -97,7 +97,7 @@ TEST(MPMCPipeline, MultiThreaded) {
   }
 
   for (size_t i = 0; i < numThreadsPerStage; ++i) {
-    threads.emplace_back([&a, i] () {
+    threads.emplace_back([&a] {
       for (;;) {
         std::string val;
         auto ticket = a.blockingReadStage<1>(val);
