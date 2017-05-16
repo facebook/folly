@@ -482,18 +482,16 @@ void runMtProdConsDeterministic(long seed) {
   // we use the Bench method, but perf results are meaningless under DSched
   DSched sched(DSched::uniform(seed));
 
-  vector<unique_ptr<WriteMethodCaller<MPMCQueue<int, DeterministicAtomic,
-                                                Dynamic>>>> callers;
-  callers.emplace_back(make_unique<BlockingWriteCaller<MPMCQueue<int,
-                       DeterministicAtomic, Dynamic>>>());
-  callers.emplace_back(make_unique<WriteIfNotFullCaller<MPMCQueue<int,
-                       DeterministicAtomic, Dynamic>>>());
-  callers.emplace_back(make_unique<WriteCaller<MPMCQueue<int,
-                       DeterministicAtomic, Dynamic>>>());
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       DeterministicAtomic, Dynamic>>>(milliseconds(1)));
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       DeterministicAtomic, Dynamic>>>(seconds(2)));
+  using QueueType = MPMCQueue<int, DeterministicAtomic, Dynamic>;
+
+  vector<unique_ptr<WriteMethodCaller<QueueType>>> callers;
+  callers.emplace_back(std::make_unique<BlockingWriteCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteIfNotFullCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteCaller<QueueType>>());
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(milliseconds(1)));
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(seconds(2)));
   size_t cap;
 
   for (const auto& caller : callers) {
@@ -562,18 +560,16 @@ void runMtProdConsDeterministicDynamic(
   // we use the Bench method, but perf results are meaningless under DSched
   DSched sched(DSched::uniform(seed));
 
-  vector<unique_ptr<WriteMethodCaller<MPMCQueue<int, DeterministicAtomic,
-                                                true>>>> callers;
-  callers.emplace_back(make_unique<BlockingWriteCaller<MPMCQueue<int,
-                       DeterministicAtomic, true>>>());
-  callers.emplace_back(make_unique<WriteIfNotFullCaller<MPMCQueue<int,
-                       DeterministicAtomic, true>>>());
-  callers.emplace_back(make_unique<WriteCaller<MPMCQueue<int,
-                       DeterministicAtomic, true>>>());
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       DeterministicAtomic, true>>>(milliseconds(1)));
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       DeterministicAtomic, true>>>(seconds(2)));
+  using QueueType = MPMCQueue<int, DeterministicAtomic, true>;
+
+  vector<unique_ptr<WriteMethodCaller<QueueType>>> callers;
+  callers.emplace_back(std::make_unique<BlockingWriteCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteIfNotFullCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteCaller<QueueType>>());
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(milliseconds(1)));
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(seconds(2)));
 
   for (const auto& caller : callers) {
     LOG(INFO) <<
@@ -628,39 +624,29 @@ TEST(MPMCQueue, mt_prod_cons_deterministic_dynamic_with_arguments) {
 
 template <bool Dynamic = false>
 void runMtProdCons() {
+  using QueueType = MPMCQueue<int, std::atomic, Dynamic>;
+
   int n = 100000;
   setFromEnv(n, "NUM_OPS");
-  vector<unique_ptr<WriteMethodCaller<MPMCQueue<int, std::atomic, Dynamic>>>>
+  vector<unique_ptr<WriteMethodCaller<QueueType>>>
     callers;
-  callers.emplace_back(make_unique<BlockingWriteCaller<MPMCQueue<int,
-                       std::atomic, Dynamic>>>());
-  callers.emplace_back(make_unique<WriteIfNotFullCaller<MPMCQueue<int,
-                       std::atomic, Dynamic>>>());
-  callers.emplace_back(make_unique<WriteCaller<MPMCQueue<int, std::atomic,
-                       Dynamic>>>());
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       std::atomic, Dynamic>>>(milliseconds(1)));
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       std::atomic, Dynamic>>>(seconds(2)));
+  callers.emplace_back(std::make_unique<BlockingWriteCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteIfNotFullCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteCaller<QueueType>>());
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(milliseconds(1)));
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(seconds(2)));
   for (const auto& caller : callers) {
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10)),
-                          1, 1, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10)),
-                          10, 1, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10)),
-                          1, 10, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10)),
-                          10, 10, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10000)),
-                          1, 1, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10000)),
-                          10, 1, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10000)),
-                          1, 10, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(10000)),
-                          10, 10, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, std::atomic, Dynamic>(100000)),
-                          32, 100, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 1, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 10, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 1, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 10, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 1, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 10, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 1, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 10, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(100000)), 32, 100, n, *caller);
   }
 }
 
@@ -674,38 +660,27 @@ TEST(MPMCQueue, mt_prod_cons_dynamic) {
 
 template <bool Dynamic = false>
 void runMtProdConsEmulatedFutex() {
+  using QueueType = MPMCQueue<int, EmulatedFutexAtomic, Dynamic>;
+
   int n = 100000;
-  vector<unique_ptr<WriteMethodCaller<MPMCQueue<int, EmulatedFutexAtomic,
-                                                Dynamic>>>> callers;
-  callers.emplace_back(make_unique<BlockingWriteCaller<MPMCQueue<int,
-                       EmulatedFutexAtomic, Dynamic>>>());
-  callers.emplace_back(make_unique<WriteIfNotFullCaller<MPMCQueue<int,
-                       EmulatedFutexAtomic, Dynamic>>>());
-  callers.emplace_back(make_unique<WriteCaller<MPMCQueue<int,
-                       EmulatedFutexAtomic, Dynamic>>>());
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       EmulatedFutexAtomic, Dynamic>>>(milliseconds(1)));
-  callers.emplace_back(make_unique<TryWriteUntilCaller<MPMCQueue<int,
-                       EmulatedFutexAtomic, Dynamic>>>(seconds(2)));
+  vector<unique_ptr<WriteMethodCaller<QueueType>>> callers;
+  callers.emplace_back(std::make_unique<BlockingWriteCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteIfNotFullCaller<QueueType>>());
+  callers.emplace_back(std::make_unique<WriteCaller<QueueType>>());
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(milliseconds(1)));
+  callers.emplace_back(
+      std::make_unique<TryWriteUntilCaller<QueueType>>(seconds(2)));
   for (const auto& caller : callers) {
-    LOG(INFO) << PC_BENCH(
-      (MPMCQueue<int, EmulatedFutexAtomic, Dynamic>(10)), 1, 1, n, *caller);
-    LOG(INFO) << PC_BENCH(
-      (MPMCQueue<int, EmulatedFutexAtomic, Dynamic>(10)), 10, 1, n, *caller);
-    LOG(INFO) << PC_BENCH(
-      (MPMCQueue<int, EmulatedFutexAtomic, Dynamic>(10)), 1, 10, n, *caller);
-    LOG(INFO) << PC_BENCH(
-      (MPMCQueue<int, EmulatedFutexAtomic, Dynamic>(10)), 10, 10, n, *caller);
-    LOG(INFO) << PC_BENCH(
-      (MPMCQueue<int, EmulatedFutexAtomic, Dynamic>(10000)), 1, 1, n, *caller);
-    LOG(INFO) << PC_BENCH(
-      (MPMCQueue<int, EmulatedFutexAtomic, Dynamic>(10000)), 10, 1, n, *caller);
-    LOG(INFO) << PC_BENCH(
-      (MPMCQueue<int, EmulatedFutexAtomic, Dynamic>(10000)), 1, 10, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, EmulatedFutexAtomic, Dynamic>
-                           (10000)), 10, 10, n, *caller);
-    LOG(INFO) << PC_BENCH((MPMCQueue<int, EmulatedFutexAtomic, Dynamic>
-                           (100000)), 32, 100, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 1, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 10, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 1, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10)), 10, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 1, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 10, 1, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 1, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(10000)), 10, 10, n, *caller);
+    LOG(INFO) << PC_BENCH((QueueType(100000)), 32, 100, n, *caller);
   }
 }
 

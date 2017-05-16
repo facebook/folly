@@ -45,7 +45,7 @@ TEST(EnvVarSaverTest, ExampleNew) {
   PCHECK(0 == unsetenv(key));
   EXPECT_EQ(nullptr, getenv(key));
 
-  auto saver = make_unique<EnvVarSaver>();
+  auto saver = std::make_unique<EnvVarSaver>();
   PCHECK(0 == setenv(key, "blah", true));
   EXPECT_STREQ("blah", getenv(key));
   saver = nullptr;
@@ -57,7 +57,7 @@ TEST(EnvVarSaverTest, ExampleExisting) {
   EXPECT_NE(nullptr, getenv(key));
   auto value = std::string{getenv(key)};
 
-  auto saver = make_unique<EnvVarSaver>();
+  auto saver = std::make_unique<EnvVarSaver>();
   PCHECK(0 == setenv(key, "blah", true));
   EXPECT_STREQ("blah", getenv(key));
   saver = nullptr;
@@ -180,7 +180,7 @@ TEST(EnvVarSaverTest, ExampleDeleting) {
   EXPECT_NE(nullptr, getenv(key));
   auto value = std::string{getenv(key)};
 
-  auto saver = make_unique<EnvVarSaver>();
+  auto saver = std::make_unique<EnvVarSaver>();
   PCHECK(0 == unsetenv(key));
   EXPECT_EQ(nullptr, getenv(key));
   saver = nullptr;

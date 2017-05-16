@@ -385,7 +385,7 @@ StackTracePrinter::StackTracePrinter(size_t minSignalSafeElfCacheSize, int fd)
           fd,
           SymbolizePrinter::COLOR_IF_TTY,
           size_t(64) << 10), // 64KiB
-      addresses_(make_unique<FrameArray<kMaxStackTraceDepth>>()) {}
+      addresses_(std::make_unique<FrameArray<kMaxStackTraceDepth>>()) {}
 
 void StackTracePrinter::flush() {
   printer_.flush();

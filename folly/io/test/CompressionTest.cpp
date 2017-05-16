@@ -488,7 +488,7 @@ namespace {
 class CustomCodec : public Codec {
  public:
   static std::unique_ptr<Codec> create(std::string prefix, CodecType type) {
-    return make_unique<CustomCodec>(std::move(prefix), type);
+    return std::make_unique<CustomCodec>(std::move(prefix), type);
   }
   explicit CustomCodec(std::string prefix, CodecType type)
       : Codec(CodecType::USER_DEFINED),

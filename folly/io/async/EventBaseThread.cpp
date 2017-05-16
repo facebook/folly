@@ -51,7 +51,7 @@ void EventBaseThread::start() {
   if (th_) {
     return;
   }
-  th_ = make_unique<ScopedEventBaseThread>(ebm_);
+  th_ = std::make_unique<ScopedEventBaseThread>(ebm_);
 }
 
 void EventBaseThread::stop() {

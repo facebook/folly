@@ -1189,7 +1189,7 @@ TEST(EventBaseTest, RunInEventBaseThreadAndWait) {
   vector<unique_ptr<atomic<size_t>>> atoms(c);
   for (size_t i = 0; i < c; ++i) {
     auto& atom = atoms.at(i);
-    atom = make_unique<atomic<size_t>>(0);
+    atom = std::make_unique<atomic<size_t>>(0);
   }
   vector<thread> threads;
   for (size_t i = 0; i < c; ++i) {

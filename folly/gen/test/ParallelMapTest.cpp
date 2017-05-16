@@ -100,20 +100,22 @@ TEST(Pmap, Rvalues) {
   // apply
   {
     auto mapResult
-      = seq(1)
-      | map([](int x) { return make_unique<int>(x); })
-      | map([](std::unique_ptr<int> x) { return make_unique<int>(*x * *x); })
-      | map([](std::unique_ptr<int> x) { return *x; })
-      | take(1000)
-      | sum;
+        = seq(1)
+        | map([](int x) { return std::make_unique<int>(x); })
+        | map([](std::unique_ptr<int> x) {
+            return std::make_unique<int>(*x * *x); })
+        | map([](std::unique_ptr<int> x) { return *x; })
+        | take(1000)
+        | sum;
 
     auto pmapResult
-      = seq(1)
-      | pmap([](int x) { return make_unique<int>(x); })
-      | pmap([](std::unique_ptr<int> x) { return make_unique<int>(*x * *x); })
-      | pmap([](std::unique_ptr<int> x) { return *x; })
-      | take(1000)
-      | sum;
+        = seq(1)
+        | pmap([](int x) { return std::make_unique<int>(x); })
+        | pmap([](std::unique_ptr<int> x) {
+            return std::make_unique<int>(*x * *x); })
+        | pmap([](std::unique_ptr<int> x) { return *x; })
+        | take(1000)
+        | sum;
 
     EXPECT_EQ(pmapResult, mapResult);
   }
@@ -121,18 +123,20 @@ TEST(Pmap, Rvalues) {
   // foreach
   {
     auto mapResult
-      = seq(1, 1000)
-      | map([](int x) { return make_unique<int>(x); })
-      | map([](std::unique_ptr<int> x) { return make_unique<int>(*x * *x); })
-      | map([](std::unique_ptr<int> x) { return *x; })
-      | sum;
+        = seq(1, 1000)
+        | map([](int x) { return std::make_unique<int>(x); })
+        | map([](std::unique_ptr<int> x) {
+            return std::make_unique<int>(*x * *x); })
+        | map([](std::unique_ptr<int> x) { return *x; })
+        | sum;
 
     auto pmapResult
-      = seq(1, 1000)
-      | pmap([](int x) { return make_unique<int>(x); })
-      | pmap([](std::unique_ptr<int> x) { return make_unique<int>(*x * *x); })
-      | pmap([](std::unique_ptr<int> x) { return *x; })
-      | sum;
+        = seq(1, 1000)
+        | pmap([](int x) { return std::make_unique<int>(x); })
+        | pmap([](std::unique_ptr<int> x) {
+            return std::make_unique<int>(*x * *x); })
+        | pmap([](std::unique_ptr<int> x) { return *x; })
+        | sum;
 
     EXPECT_EQ(pmapResult, mapResult);
   }
