@@ -618,7 +618,10 @@ TEST(Future, finishBigLambda) {
   EXPECT_EQ(bulk_data[0], 0);
 
   Promise<int> p;
-  auto f = p.getFuture().then([x, bulk_data](Try<int>&& t) { *x = t.value(); });
+  auto f = p.getFuture().then([x, bulk_data](Try<int>&& t) {
+    (void)bulk_data;
+    *x = t.value();
+  });
 
   // The callback hasn't executed
   EXPECT_EQ(0, *x);

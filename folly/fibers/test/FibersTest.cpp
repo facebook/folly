@@ -414,7 +414,7 @@ TEST(FiberManager, addTasksVoid) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.push_back([&pendingFibers]() {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -679,7 +679,7 @@ TEST(FiberManager, collectNThrow) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() -> size_t {
+          funcs.push_back([&pendingFibers]() -> size_t {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -718,7 +718,7 @@ TEST(FiberManager, collectNVoid) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.push_back([&pendingFibers]() {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -754,7 +754,7 @@ TEST(FiberManager, collectNVoidThrow) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.push_back([&pendingFibers]() {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -832,7 +832,7 @@ TEST(FiberManager, collectAllVoid) {
       manager.addTask([&]() {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.push_back([&pendingFibers]() {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
@@ -1553,8 +1553,7 @@ TEST(FiberManager, semaphore) {
   int counterA = 0;
   int counterB = 0;
 
-  auto task = [&sem, kTasks, kIterations, kNumTokens](
-      int& counter, folly::fibers::Baton& baton) {
+  auto task = [&sem, kNumTokens](int& counter, folly::fibers::Baton& baton) {
     FiberManager manager(std::make_unique<EventBaseLoopController>());
     folly::EventBase evb;
     dynamic_cast<EventBaseLoopController&>(manager.loopController())
@@ -1733,7 +1732,7 @@ TEST(FiberManager, doubleBatchDispatchTest) {
 template <typename ExecutorT>
 void batchDispatchExceptionHandling(ExecutorT& executor, int i) {
   thread_local BatchDispatcher<int, int, ExecutorT> batchDispatcher(
-      executor, [=, &executor](std::vector<int> &&) -> std::vector<int> {
+      executor, [](std::vector<int> &&) -> std::vector<int> {
         throw std::runtime_error("Surprise!!");
       });
 

@@ -307,7 +307,7 @@ TEST_F(HHWheelTimerTest, Stress) {
         runtimeouts++;
         /* sleep override */ usleep(1000);
         LOG(INFO) << "Ran " << runtimeouts << " timeouts of " << timeoutcount;
-        timeouts[i].fn = [&, i]() {
+        timeouts[i].fn = [&]() {
           runtimeouts++;
           LOG(INFO) << "Ran " << runtimeouts << " timeouts of " << timeoutcount;
         };

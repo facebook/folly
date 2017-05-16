@@ -133,12 +133,11 @@ TEST(AtomicIntrusiveLinkedList, Stress) {
 
   std::vector<std::thread> threads;
   for (size_t threadId = 0; threadId < kNumThreads; ++threadId) {
-    threads.emplace_back(
-        [threadId, kNumThreads, kNumElements, &list, &elements]() {
-          for (size_t id = 0; id < kNumElements; ++id) {
-            list.insertHead(&elements[threadId + kNumThreads * id]);
-          }
-        });
+    threads.emplace_back([threadId, &list, &elements] {
+      for (size_t id = 0; id < kNumElements; ++id) {
+        list.insertHead(&elements[threadId + kNumThreads * id]);
+      }
+    });
   }
 
   std::vector<size_t> ids;
