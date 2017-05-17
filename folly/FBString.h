@@ -1141,9 +1141,9 @@ public:
 
 #ifndef _LIBSTDCXX_FBSTRING
   // This is defined for compatibility with std::string
-  /* implicit */ basic_fbstring(const std::string& str)
-      : store_(str.data(), str.size()) {
-  }
+  template <typename A2>
+  /* implicit */ basic_fbstring(const std::basic_string<E, T, A2>& str)
+      : store_(str.data(), str.size()) {}
 #endif
 
   basic_fbstring(const basic_fbstring& str,
@@ -1205,13 +1205,14 @@ public:
 
 #ifndef _LIBSTDCXX_FBSTRING
   // Compatibility with std::string
-  basic_fbstring & operator=(const std::string & rhs) {
+  template <typename A2>
+  basic_fbstring& operator=(const std::basic_string<E, T, A2>& rhs) {
     return assign(rhs.data(), rhs.size());
   }
 
   // Compatibility with std::string
-  std::string toStdString() const {
-    return std::string(data(), size());
+  std::basic_string<E, T, A> toStdString() const {
+    return std::basic_string<E, T, A>(data(), size());
   }
 #else
   // A lot of code in fbcode still uses this method, so keep it here for now.
