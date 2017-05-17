@@ -15,6 +15,7 @@
  */
 #include "folly/experimental/ThreadedRepeatingFunctionRunner.h"
 
+#include <folly/ThreadName.h>
 #include <glog/logging.h>
 #include <iostream>
 
@@ -53,13 +54,18 @@ bool ThreadedRepeatingFunctionRunner::stopImpl() {
 }
 
 void ThreadedRepeatingFunctionRunner::add(
+    std::string name,
     RepeatingFn fn,
     std::chrono::milliseconds initialSleep) {
-  threads_.emplace_back(
-      &ThreadedRepeatingFunctionRunner::executeInLoop,
-      this,
-      std::move(fn),
-      initialSleep);
+  threads_.emplace_back([
+    name = std::move(name),
+    fn = std::move(fn),
+    initialSleep,
+    this
+  ]() mutable {
+    setThreadName(name);
+    executeInLoop(std::move(fn), initialSleep);
+  });
 }
 
 bool ThreadedRepeatingFunctionRunner::waitFor(
