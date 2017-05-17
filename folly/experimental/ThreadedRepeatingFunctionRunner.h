@@ -120,7 +120,8 @@ class ThreadedRepeatingFunctionRunner final {
   /**
    * Run your noexcept function `f` in a background loop, sleeping between
    * calls for a duration returned by `f`.  Optionally waits for
-   * `initialSleep` before calling `f` for the first time.
+   * `initialSleep` before calling `f` for the first time.  Names the thread
+   * using up to the first 15 chars of `name`.
    *
    * DANGER: If a non-final class has a ThreadedRepeatingFunctionRunner
    * member (which, by the way, must be declared last in the class), then
@@ -130,6 +131,7 @@ class ThreadedRepeatingFunctionRunner final {
    * your threads.
    */
   void add(
+      std::string name,
       RepeatingFn f,
       std::chrono::milliseconds initialSleep = std::chrono::milliseconds(0));
 
