@@ -112,7 +112,7 @@ inline int pthread_attr_getguardsize(
   return 0;
 }
 
-#include <xstddef>
+#include <functional>
 namespace std {
 template <>
 struct hash<pthread_t> {
