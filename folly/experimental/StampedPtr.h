@@ -16,7 +16,8 @@
 
 #pragma once
 
-#include <assert.h>
+#include <folly/SafeAssert.h>
+
 #include <stdint.h>
 
 namespace folly {
@@ -106,8 +107,8 @@ struct StampedPtr {
     auto shifted = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ptr))
         << kInternalStampBits;
     uint64_t raw = shifted | stamp;
-    assert(unpackPtr(raw) == ptr);
-    assert(unpackStamp(raw) == stamp);
+    FOLLY_SAFE_DCHECK(unpackPtr(raw) == ptr, "ptr mismatch.");
+    FOLLY_SAFE_DCHECK(unpackStamp(raw) == stamp, "stamp mismatch.");
     return raw;
   }
 
