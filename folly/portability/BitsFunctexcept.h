@@ -29,7 +29,7 @@
 
 FOLLY_NAMESPACE_STD_BEGIN
 
-#if _LIBCPP_VERSION < 4000 && !FOLLY_SKIP_LIBCPP_4000_THROW_BACKPORTS
+#if _LIBCPP_VERSION < 4000
 [[noreturn]] void __throw_length_error(char const* msg); // @nolint
 [[noreturn]] void __throw_logic_error(char const* msg);
 [[noreturn]] void __throw_out_of_range(char const* msg);
