@@ -439,7 +439,7 @@ class CursorBase {
 
   size_t cloneAtMost(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
     if (!buf) {
-      buf = make_unique<folly::IOBuf>();
+      buf = std::make_unique<folly::IOBuf>();
     }
     return cloneAtMost(*buf, len);
   }

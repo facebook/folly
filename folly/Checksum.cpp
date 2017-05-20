@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#if FOLLY_X64 && (__SSE4_2__ || defined(__clang__) || __GNUC_PREREQ(4, 9))
+#if FOLLY_SSE_PREREQ(4, 2)
 #include <nmmintrin.h>
 #endif
 
@@ -31,7 +31,7 @@ namespace detail {
 
 uint32_t
 crc32c_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum);
-#if FOLLY_X64 && (__SSE4_2__ || defined(__clang__) || __GNUC_PREREQ(4, 9))
+#if FOLLY_SSE_PREREQ(4, 2)
 
 // Fast SIMD implementation of CRC-32C for x86 with SSE 4.2
 FOLLY_TARGET_ATTRIBUTE("sse4.2")
@@ -107,6 +107,11 @@ bool crc32_hw_supported() {
 #else
 
 uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,
+    uint32_t startingChecksum) {
+  throw std::runtime_error("crc32_hw is not implemented on this platform");
+}
+
+uint32_t crc32_hw(const uint8_t *data, size_t nbytes,
     uint32_t startingChecksum) {
   throw std::runtime_error("crc32_hw is not implemented on this platform");
 }

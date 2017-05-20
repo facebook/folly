@@ -1,7 +1,9 @@
 # Some additional configuration options.
 option(MSVC_ENABLE_ALL_WARNINGS "If enabled, pass /Wall to the compiler." ON)
+option(MSVC_ENABLE_CPP_LATEST "If enabled, pass /std:c++latest to the compiler" ON)
 option(MSVC_ENABLE_DEBUG_INLINING "If enabled, enable inlining in the debug configuration. This allows /Zc:inline to be far more effective." OFF)
 option(MSVC_ENABLE_FAST_LINK "If enabled, pass /DEBUG:FASTLINK to the linker. This makes linking faster, but the gtest integration for Visual Studio can't currently handle the .pdbs generated." OFF)
+option(MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS "If enabled, define WIN32_LEAN_AND_MEAN to include a smaller subset of Windows.h" ON)
 option(MSVC_ENABLE_LTCG "If enabled, use Link Time Code Generation for Release builds." OFF)
 option(MSVC_ENABLE_PARALLEL_BUILD "If enabled, build multiple source files in parallel." ON)
 option(MSVC_ENABLE_STATIC_ANALYSIS "If enabled, do more complex static analysis and generate warnings appropriately." OFF)
@@ -9,6 +11,15 @@ option(MSVC_USE_STATIC_RUNTIME "If enabled, build against the static, rather tha
 
 # Alas, option() doesn't support string values.
 set(MSVC_FAVORED_ARCHITECTURE "blend" CACHE STRING "One of 'blend', 'AMD64', 'INTEL64', or 'ATOM'. This tells the compiler to generate code optimized to run best on the specified architecture.")
+# Add a pretty drop-down selector for these values when using the GUI.
+set_property(
+  CACHE MSVC_FAVORED_ARCHITECTURE
+  PROPERTY STRINGS
+    blend
+    AMD64
+    ATOM
+    INTEL64
+)
 # Validate, and then add the favored architecture.
 if (NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "blend" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "AMD64" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "INTEL64" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "ATOM")
   message(FATAL_ERROR "MSVC_FAVORED_ARCHITECTURE must be set to one of exactly, 'blend', 'AMD64', 'INTEL64', or 'ATOM'! Got '${MSVC_FAVORED_ARCHITECTURE}' instead!")
@@ -46,7 +57,6 @@ function(apply_folly_compile_options_to_target THETARGET)
   # The general options passed:
   target_compile_options(${THETARGET}
     PUBLIC
-      #/std:c++latest # Build in C++17 mode
       /EHa # Enable both SEH and C++ Exceptions.
       /Zc:referenceBinding # Disallow temporaries from binding to non-const lvalue references.
       /Zc:rvalueCast # Enforce the standard rules for explicit type conversion.
@@ -54,6 +64,8 @@ function(apply_folly_compile_options_to_target THETARGET)
       /Zc:strictStrings # Don't allow conversion from a string literal to mutable characters.
       /Zc:threadSafeInit # Enable thread-safe function-local statics initialization.
       /Zc:throwingNew # Assume operator new throws on failure.
+
+      $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:/std:c++latest> # Build in C++ Latest mode if requested.
 
       # This is only supported by MSVC 2017
       $<$<BOOL:${MSVC_IS_2017}>:/permissive-> # Be mean, don't allow bad non-standard stuff (C++/CLI, __declspec, etc. are all left intact).
@@ -223,11 +235,15 @@ function(apply_folly_compile_options_to_target THETARGET)
   # And the extra defines:
   target_compile_definitions(${THETARGET}
     PUBLIC
+      NOMINMAX # This is needed because, for some absurd reason, one of the windows headers tries to define "min" and "max" as macros, which messes up most uses of std::numeric_limits.
       _CRT_NONSTDC_NO_WARNINGS # Don't deprecate posix names of functions.
       _CRT_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
       _SCL_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
       
-      _STL_EXTRA_DISABLED_WARNINGS=4365\ 4774\ 4775\ 4987
+      _STL_EXTRA_DISABLED_WARNINGS=4774\ 4987
+
+      $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:"_HAS_AUTO_PTR_ETC=1"> # We're building in C++ 17 or greater mode, but certain dependencies (Boost) still have dependencies on unary_function and binary_function, so we have to make sure not to remove them.
+      $<$<BOOL:${MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS}>:"WIN32_LEAN_AND_MEAN"> # Don't include most of Windows.h
   )
 
   # Ignore a warning about an object file not defining any symbols,

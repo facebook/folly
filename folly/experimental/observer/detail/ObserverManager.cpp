@@ -166,8 +166,8 @@ class ObserverManager::NextQueue {
 };
 
 ObserverManager::ObserverManager() {
-  currentQueue_ = make_unique<CurrentQueue>();
-  nextQueue_ = make_unique<NextQueue>(*this);
+  currentQueue_ = std::make_unique<CurrentQueue>();
+  nextQueue_ = std::make_unique<NextQueue>(*this);
 }
 
 ObserverManager::~ObserverManager() {

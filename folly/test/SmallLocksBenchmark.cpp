@@ -106,7 +106,7 @@ static void runContended(size_t numOps, size_t numThreads) {
   SimpleBarrier runbarrier(totalthreads + 1);
 
   for (size_t t = 0; t < totalthreads; ++t) {
-    threads[t] = std::thread([&, t, totalthreads] {
+    threads[t] = std::thread([&, t] {
       lockstruct* lock = &locks[t % threadgroups];
       runbarrier.wait();
       for (size_t op = 0; op < numOps; op += 1) {
@@ -159,7 +159,7 @@ static void runFairness() {
   SimpleBarrier runbarrier(totalthreads + 1);
 
   for (size_t t = 0; t < totalthreads; ++t) {
-    threads[t] = std::thread([&, t, totalthreads] {
+    threads[t] = std::thread([&, t] {
       lockstruct* lock = &locks[t % threadgroups];
       long value = 0;
       std::chrono::microseconds max(0);

@@ -194,7 +194,7 @@ class NoCompressionCodec final : public Codec {
 };
 
 std::unique_ptr<Codec> NoCompressionCodec::create(int level, CodecType type) {
-  return make_unique<NoCompressionCodec>(level, type);
+  return std::make_unique<NoCompressionCodec>(level, type);
 }
 
 NoCompressionCodec::NoCompressionCodec(int level, CodecType type)
@@ -323,7 +323,7 @@ class LZ4Codec final : public Codec {
 };
 
 std::unique_ptr<Codec> LZ4Codec::create(int level, CodecType type) {
-  return make_unique<LZ4Codec>(level, type);
+  return std::make_unique<LZ4Codec>(level, type);
 }
 
 LZ4Codec::LZ4Codec(int level, CodecType type) : Codec(type) {
@@ -468,7 +468,7 @@ class LZ4FrameCodec final : public Codec {
 /* static */ std::unique_ptr<Codec> LZ4FrameCodec::create(
     int level,
     CodecType type) {
-  return make_unique<LZ4FrameCodec>(level, type);
+  return std::make_unique<LZ4FrameCodec>(level, type);
 }
 
 static constexpr uint32_t kLZ4FrameMagicLE = 0x184D2204;
@@ -666,7 +666,7 @@ class SnappyCodec final : public Codec {
 };
 
 std::unique_ptr<Codec> SnappyCodec::create(int level, CodecType type) {
-  return make_unique<SnappyCodec>(level, type);
+  return std::make_unique<SnappyCodec>(level, type);
 }
 
 SnappyCodec::SnappyCodec(int level, CodecType type) : Codec(type) {
@@ -820,7 +820,7 @@ bool ZlibCodec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
 }
 
 std::unique_ptr<Codec> ZlibCodec::create(int level, CodecType type) {
-  return make_unique<ZlibCodec>(level, type);
+  return std::make_unique<ZlibCodec>(level, type);
 }
 
 ZlibCodec::ZlibCodec(int level, CodecType type) : Codec(type) {
@@ -1109,7 +1109,7 @@ bool LZMA2Codec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
 }
 
 std::unique_ptr<Codec> LZMA2Codec::create(int level, CodecType type) {
-  return make_unique<LZMA2Codec>(level, type);
+  return std::make_unique<LZMA2Codec>(level, type);
 }
 
 LZMA2Codec::LZMA2Codec(int level, CodecType type) : Codec(type) {
@@ -1353,7 +1353,7 @@ bool ZSTDCodec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
 }
 
 std::unique_ptr<Codec> ZSTDCodec::create(int level, CodecType type) {
-  return make_unique<ZSTDCodec>(level, type);
+  return std::make_unique<ZSTDCodec>(level, type);
 }
 
 ZSTDCodec::ZSTDCodec(int level, CodecType type) : Codec(type) {
@@ -1568,7 +1568,7 @@ class Bzip2Codec final : public Codec {
 /* static */ std::unique_ptr<Codec> Bzip2Codec::create(
     int level,
     CodecType type) {
-  return make_unique<Bzip2Codec>(level, type);
+  return std::make_unique<Bzip2Codec>(level, type);
 }
 
 Bzip2Codec::Bzip2Codec(int level, CodecType type) : Codec(type) {
@@ -1817,7 +1817,7 @@ void AutomaticCodec::addCodecIfSupported(CodecType type) {
 
 /* static */ std::unique_ptr<Codec> AutomaticCodec::create(
     std::vector<std::unique_ptr<Codec>> customCodecs) {
-  return make_unique<AutomaticCodec>(std::move(customCodecs));
+  return std::make_unique<AutomaticCodec>(std::move(customCodecs));
 }
 
 AutomaticCodec::AutomaticCodec(std::vector<std::unique_ptr<Codec>> customCodecs)

@@ -156,7 +156,7 @@ TEST(AtomicSharedPtr, DeterministicTest) {
       fooptr(foo);
   std::vector<std::thread> threads(FLAGS_num_threads);
   for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
-    threads[tid] = DSched::thread([&, tid]() {
+    threads[tid] = DSched::thread([&]() {
       for (int i = 0; i < 1000; i++) {
         auto l = fooptr.load();
         EXPECT_TRUE(l.get() != nullptr);

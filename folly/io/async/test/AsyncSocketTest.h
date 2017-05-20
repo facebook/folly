@@ -211,11 +211,13 @@ class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
   void errMessage(const cmsghdr& cmsg) noexcept override {
     if (cmsg.cmsg_level == SOL_SOCKET &&
       cmsg.cmsg_type == SCM_TIMESTAMPING) {
-      gotTimestamp_ = true;
+      gotTimestamp_++;
+      checkResetCallback();
     } else if (
       (cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
       (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
-      gotByteSeq_ = true;
+      gotByteSeq_++;
+      checkResetCallback();
     }
   }
 
@@ -224,9 +226,18 @@ class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
     exception_ = ex;
   }
 
+  void checkResetCallback() noexcept {
+    if (socket_ != nullptr && resetAfter_ != -1 &&
+        gotTimestamp_ + gotByteSeq_ == resetAfter_) {
+      socket_->setErrMessageCB(nullptr);
+    }
+  }
+
+  folly::AsyncSocket* socket_{nullptr};
   folly::AsyncSocketException exception_;
-  bool gotTimestamp_{false};
-  bool gotByteSeq_{false};
+  int gotTimestamp_{0};
+  int gotByteSeq_{0};
+  int resetAfter_{-1};
 };
 
 class TestSendMsgParamsCallback :

@@ -83,23 +83,22 @@ class RandomDataHolder : public DataHolder {
 
 RandomDataHolder::RandomDataHolder(size_t sizeLog2)
   : DataHolder(sizeLog2) {
-  constexpr size_t numThreadsLog2 = 3;
-  constexpr size_t numThreads = size_t(1) << numThreadsLog2;
+  static constexpr size_t numThreadsLog2 = 3;
+  static constexpr size_t numThreads = size_t(1) << numThreadsLog2;
 
   uint32_t seed = randomNumberSeed();
 
   std::vector<std::thread> threads;
   threads.reserve(numThreads);
   for (size_t t = 0; t < numThreads; ++t) {
-    threads.emplace_back(
-        [this, seed, t, numThreadsLog2, sizeLog2] () {
-          std::mt19937 rng(seed + t);
-          size_t countLog2 = sizeLog2 - numThreadsLog2;
-          size_t start = size_t(t) << countLog2;
-          for (size_t i = 0; i < countLog2; ++i) {
-            this->data_[start + i] = rng();
-          }
-        });
+    threads.emplace_back([this, seed, t, sizeLog2] {
+      std::mt19937 rng(seed + t);
+      size_t countLog2 = sizeLog2 - numThreadsLog2;
+      size_t start = size_t(t) << countLog2;
+      for (size_t i = 0; i < countLog2; ++i) {
+        this->data_[start + i] = rng();
+      }
+    });
   }
 
   for (auto& t : threads) {
@@ -488,7 +487,7 @@ namespace {
 class CustomCodec : public Codec {
  public:
   static std::unique_ptr<Codec> create(std::string prefix, CodecType type) {
-    return make_unique<CustomCodec>(std::move(prefix), type);
+    return std::make_unique<CustomCodec>(std::move(prefix), type);
   }
   explicit CustomCodec(std::string prefix, CodecType type)
       : Codec(CodecType::USER_DEFINED),

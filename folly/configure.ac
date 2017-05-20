@@ -28,13 +28,6 @@ AM_INIT_AUTOMAKE([foreign dist-bzip2 nostdinc subdir-objects])
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AX_CONFIG_FEATURE_DEFAULT_DISABLED
-AX_CONFIG_FEATURE(
-        [deprecated-assoc],
-        [supports deprecated associative containers (hash_map/hash_set)],
-        [HAVE_DEPRECATED_ASSOC],
-        [Define if you want to support deprecated associative containers])
-
 AC_PROG_INSTALL
 AM_PROG_LIBTOOL
 

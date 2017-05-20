@@ -258,7 +258,7 @@ unique_ptr<IOBuf> IOBuf::createCombined(uint64_t capacity) {
 }
 
 unique_ptr<IOBuf> IOBuf::createSeparate(uint64_t capacity) {
-  return make_unique<IOBuf>(CREATE, capacity);
+  return std::make_unique<IOBuf>(CREATE, capacity);
 }
 
 unique_ptr<IOBuf> IOBuf::createChain(
@@ -309,9 +309,9 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint64_t capacity,
     //
     // Note that we always pass freeOnError as false to the constructor.
     // If the constructor throws we'll handle it below.  (We have to handle
-    // allocation failures from make_unique too.)
-    return make_unique<IOBuf>(TAKE_OWNERSHIP, buf, capacity, length,
-                              freeFn, userData, false);
+    // allocation failures from std::make_unique too.)
+    return std::make_unique<IOBuf>(
+        TAKE_OWNERSHIP, buf, capacity, length, freeFn, userData, false);
   } catch (...) {
     takeOwnershipError(freeOnError, buf, freeFn, userData);
     throw;
@@ -332,7 +332,7 @@ IOBuf::IOBuf(WrapBufferOp op, ByteRange br)
 }
 
 unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint64_t capacity) {
-  return make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
+  return std::make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
 }
 
 IOBuf IOBuf::wrapBufferAsValue(const void* buf, uint64_t capacity) {
@@ -506,15 +506,15 @@ void IOBuf::prependChain(unique_ptr<IOBuf>&& iobuf) {
 }
 
 unique_ptr<IOBuf> IOBuf::clone() const {
-  return make_unique<IOBuf>(cloneAsValue());
+  return std::make_unique<IOBuf>(cloneAsValue());
 }
 
 unique_ptr<IOBuf> IOBuf::cloneOne() const {
-  return make_unique<IOBuf>(cloneOneAsValue());
+  return std::make_unique<IOBuf>(cloneOneAsValue());
 }
 
 unique_ptr<IOBuf> IOBuf::cloneCoalesced() const {
-  return make_unique<IOBuf>(cloneCoalescedAsValue());
+  return std::make_unique<IOBuf>(cloneCoalescedAsValue());
 }
 
 IOBuf IOBuf::cloneAsValue() const {

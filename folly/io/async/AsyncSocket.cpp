@@ -1552,7 +1552,9 @@ void AsyncSocket::handleErrMessages() noexcept {
     }
 
     for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-         cmsg != nullptr && cmsg->cmsg_len != 0;
+         cmsg != nullptr &&
+           cmsg->cmsg_len != 0 &&
+           errMessageCallback_ != nullptr;
          cmsg = CMSG_NXTHDR(&msg, cmsg)) {
       errMessageCallback_->errMessage(*cmsg);
     }
