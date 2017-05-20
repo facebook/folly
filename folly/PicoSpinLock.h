@@ -171,7 +171,9 @@ struct PicoSpinLock {
 
 #undef FB_DOBTS
 #elif FOLLY_A64
-    ret = __atomic_fetch_or(&lock_, 1 << Bit, __ATOMIC_SEQ_CST);
+    ret =
+        !(__atomic_fetch_or(&lock_, kLockBitMask_, __ATOMIC_SEQ_CST) &
+          kLockBitMask_);
 #elif FOLLY_PPC64
 #define FB_DOBTS(size)                                 \
     asm volatile("\teieio\n"                           \
@@ -252,7 +254,7 @@ struct PicoSpinLock {
 
 #undef FB_DOBTR
 #elif FOLLY_A64
-    __atomic_fetch_and(&lock_, ~(1 << Bit), __ATOMIC_SEQ_CST);
+    __atomic_fetch_and(&lock_, ~kLockBitMask_, __ATOMIC_SEQ_CST);
 #elif FOLLY_PPC64
 #define FB_DOBTR(size)                                 \
     asm volatile("\teieio\n"                           \
