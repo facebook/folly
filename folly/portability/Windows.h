@@ -37,6 +37,22 @@
 #include <direct.h> // nolint
 #endif
 
+#ifndef _WINDOWS_
+// This is needed because, for some absurd reason, one of the windows headers
+// tries to define "min" and "max" as macros, which messes up most uses of
+// std::numeric_limits.
+#define NOMINMAX
+// Don't include most of Windows.h
+#define WIN32_LEAN_AND_MEAN
+#else
+#error "Folly headers must be included before including Windows.h"
+#endif
+
+#ifndef _WINSOCK2API_
+// Don't deprecate pieces of winsock
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#endif
+
 #include <WinSock2.h>
 #include <Windows.h>
 
