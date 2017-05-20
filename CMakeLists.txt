@@ -263,6 +263,10 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
     ${FOLLY_DIR}/io/async/test/Util.h
   )
+  target_compile_definitions(folly_test_support
+    PUBLIC
+      ${LIBGMOCK_DEFINES}
+  )
   target_include_directories(folly_test_support
     PUBLIC
       ${LIBGMOCK_INCLUDE_DIR}
