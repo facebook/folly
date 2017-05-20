@@ -1545,15 +1545,15 @@ TEST(FiberManager, nestedFiberManagers) {
 }
 
 TEST(FiberManager, semaphore) {
-  constexpr size_t kTasks = 10;
-  constexpr size_t kIterations = 10000;
-  constexpr size_t kNumTokens = 10;
+  static constexpr size_t kTasks = 10;
+  static constexpr size_t kIterations = 10000;
+  static constexpr size_t kNumTokens = 10;
 
   Semaphore sem(kNumTokens);
   int counterA = 0;
   int counterB = 0;
 
-  auto task = [&sem, kNumTokens](int& counter, folly::fibers::Baton& baton) {
+  auto task = [&sem](int& counter, folly::fibers::Baton& baton) {
     FiberManager manager(std::make_unique<EventBaseLoopController>());
     folly::EventBase evb;
     dynamic_cast<EventBaseLoopController&>(manager.loopController())

@@ -40,7 +40,7 @@ FooSingletonTL theFooSingleton;
 }
 
 TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
-  const std::size_t targetThreadCount{64};
+  static constexpr std::size_t targetThreadCount{64};
   std::atomic<std::size_t> completedThreadCount{0};
   Synchronized<std::unordered_set<Foo*>> fooAddresses{};
   std::vector<std::thread> threads{};
