@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include <folly/Array.h>
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <folly/experimental/TestUtil.h>
@@ -56,7 +57,34 @@ TEST(FileGen, ByLine) {
   }
 }
 
-class FileGenBufferedTest : public ::testing::TestWithParam<int> { };
+TEST(FileGen, ByLineFull) {
+  auto cases = std::vector<std::string> {
+       stripLeftMargin(R"(
+         Hello world
+         This is the second line
+
+
+         a few empty lines above
+         incomplete last line)"),
+
+         "complete last line\n",
+
+         "\n",
+
+         ""};
+
+  for (auto& lines : cases) {
+    test::TemporaryFile file("ByLineFull");
+    EXPECT_EQ(lines.size(), write(file.fd(), lines.data(), lines.size()));
+
+    auto found =
+        byLineFull(file.path().string().c_str()) | unsplit<std::string>("");
+
+    EXPECT_EQ(lines, found);
+  }
+}
+
+class FileGenBufferedTest : public ::testing::TestWithParam<int> {};
 
 TEST_P(FileGenBufferedTest, FileWriter) {
   size_t bufferSize = GetParam();

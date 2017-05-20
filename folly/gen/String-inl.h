@@ -213,16 +213,23 @@ namespace detail {
 
 class StringResplitter : public Operator<StringResplitter> {
   char delimiter_;
+  bool keepDelimiter_;
+
  public:
-  explicit StringResplitter(char delimiter) : delimiter_(delimiter) { }
+  explicit StringResplitter(char delimiter, bool keepDelimiter = false)
+      : delimiter_(delimiter), keepDelimiter_(keepDelimiter) {}
 
   template <class Source>
   class Generator : public GenImpl<StringPiece, Generator<Source>> {
     Source source_;
     char delimiter_;
+    bool keepDelimiter_;
+
    public:
-    Generator(Source source, char delimiter)
-      : source_(std::move(source)), delimiter_(delimiter) { }
+    Generator(Source source, char delimiter, bool keepDelimiter)
+        : source_(std::move(source)),
+          delimiter_(delimiter),
+          keepDelimiter_(keepDelimiter) {}
 
     template <class Body>
     bool apply(Body&& body) const {
@@ -236,7 +243,9 @@ class StringResplitter : public Operator<StringResplitter> {
             if (s.back() != this->delimiter_) {
               return body(s);
             }
-            s.pop_back();  // Remove the 1-character delimiter
+            if (!keepDelimiter_) {
+              s.pop_back(); // Remove the 1-character delimiter
+            }
             return body(s);
           });
       if (!source_.apply(splitter)) {
@@ -252,14 +261,14 @@ class StringResplitter : public Operator<StringResplitter> {
            class Value,
            class Gen = Generator<Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
-    return Gen(std::move(source.self()), delimiter_);
+    return Gen(std::move(source.self()), delimiter_, keepDelimiter_);
   }
 
   template<class Source,
            class Value,
            class Gen = Generator<Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
-    return Gen(source.self(), delimiter_);
+    return Gen(source.self(), delimiter_, keepDelimiter_);
   }
 };
 

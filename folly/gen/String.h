@@ -54,9 +54,9 @@ class SplitTo;
  */
 // make this a template so we don't require StringResplitter to be complete
 // until use
-template <class S=detail::StringResplitter>
-S resplit(char delimiter) {
-  return S(delimiter);
+template <class S = detail::StringResplitter>
+S resplit(char delimiter, bool keepDelimiter = false) {
+  return S(delimiter, keepDelimiter);
 }
 
 template <class S = detail::SplitStringSource<char>>

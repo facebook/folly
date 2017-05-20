@@ -260,6 +260,30 @@ TEST(StringGen, Resplit) {
   }
 }
 
+TEST(StringGen, ResplitKeepDelimiter) {
+  auto collect = eachTo<std::string>() | as<vector>();
+  {
+    auto pieces =
+        from({"hello,, world, goodbye, meow"}) | resplit(',', true) | collect;
+    ASSERT_EQ(5, pieces.size());
+    EXPECT_EQ("hello,", pieces[0]);
+    EXPECT_EQ(",", pieces[1]);
+    EXPECT_EQ(" world,", pieces[2]);
+    EXPECT_EQ(" goodbye,", pieces[3]);
+    EXPECT_EQ(" meow", pieces[4]);
+  }
+  {
+    auto pieces = from({"hel", "lo,", ", world", ", goodbye, m", "eow"}) |
+        resplit(',', true) | collect;
+    ASSERT_EQ(5, pieces.size());
+    EXPECT_EQ("hello,", pieces[0]);
+    EXPECT_EQ(",", pieces[1]);
+    EXPECT_EQ(" world,", pieces[2]);
+    EXPECT_EQ(" goodbye,", pieces[3]);
+    EXPECT_EQ(" meow", pieces[4]);
+  }
+}
+
 void checkResplitMaxLength(vector<string> ins,
                            char delim,
                            uint64_t maxLength,
