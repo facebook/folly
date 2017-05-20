@@ -215,7 +215,7 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
   }
 
   const auto unanosToTimespec = [](timespec* tp, unsigned_nanos t) -> int {
-    static constexpr unsigned_nanos one_sec(std::chrono::seconds(1));
+    static constexpr unsigned_nanos one_sec{std::chrono::seconds(1)};
     tp->tv_sec =
         time_t(std::chrono::duration_cast<std::chrono::seconds>(t).count());
     tp->tv_nsec = long((t % one_sec).count());
