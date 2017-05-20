@@ -112,7 +112,7 @@ TEST(BarrierTest, Random) {
   //
   // At the end, we verify that exactly one future returning true was seen
   // for each iteration.
-  constexpr uint32_t numIterations = 1;
+  static constexpr uint32_t numIterations = 1;
   auto numThreads = folly::Random::rand32(30, 91);
 
   struct ThreadInfo {

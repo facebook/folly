@@ -121,8 +121,8 @@ TEST(AtomicIntrusiveLinkedList, Move) {
 }
 
 TEST(AtomicIntrusiveLinkedList, Stress) {
-  constexpr size_t kNumThreads = 32;
-  constexpr size_t kNumElements = 100000;
+  static constexpr size_t kNumThreads = 32;
+  static constexpr size_t kNumElements = 100000;
 
   std::vector<TestIntrusiveObject> elements;
   for (size_t i = 0; i < kNumThreads * kNumElements; ++i) {
