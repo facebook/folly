@@ -223,7 +223,6 @@ function(apply_folly_compile_options_to_target THETARGET)
   # And the extra defines:
   target_compile_definitions(${THETARGET}
     PUBLIC
-      _HAS_AUTO_PTR_ETC=1 # We're building in C++ 17 mode, but certain dependencies (Boost) still have dependencies on unary_function and binary_function, so we have to make sure not to remove them.
       _CRT_NONSTDC_NO_WARNINGS # Don't deprecate posix names of functions.
       _CRT_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
       _SCL_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
