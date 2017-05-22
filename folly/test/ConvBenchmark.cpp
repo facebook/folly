@@ -19,6 +19,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <folly/Benchmark.h>
+#include <folly/CppAttributes.h>
 #include <folly/Foreach.h>
 
 #include <array>
@@ -277,10 +278,12 @@ static int64_t handwrittenAtoi(const char* start, const char* end) {
   switch (*start) {
     case '-':
       positive = false;
+      FOLLY_FALLTHROUGH;
     case '+':
       ++start;
+      FOLLY_FALLTHROUGH;
     default:
-      ;
+      break;
   }
 
   while (start < end && *start >= '0' && *start <= '9') {

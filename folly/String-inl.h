@@ -19,6 +19,8 @@
 #include <stdexcept>
 #include <iterator>
 
+#include <folly/CppAttributes.h>
+
 #ifndef FOLLY_STRING_H_
 #error This file may only be included from String.h
 #endif
@@ -228,6 +230,7 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
         break;
       }
       // else fallthrough
+      FOLLY_FALLTHROUGH;
     default:
       ++p;
       break;
