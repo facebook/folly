@@ -21,7 +21,8 @@
 #pragma once
 
 #include <functional>
-#include <event.h>  // libevent
+
+#include <folly/portability/Event.h>
 
 namespace folly {
 

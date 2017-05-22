@@ -25,7 +25,6 @@
 #include <folly/portability/Event.h>
 
 #include <boost/noncopyable.hpp>
-#include <event.h>
 #include <memory>
 #include <utility>
 

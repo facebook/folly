@@ -16,12 +16,16 @@
 
 #pragma once
 
+#ifdef _MSC_VER
+// This needs to be before the libevent include.
+# include <folly/portability/Windows.h>
+#endif
+
 #include <event.h>
 
 #ifdef _MSC_VER
 # include <event2/event_compat.h>
 # include <folly/portability/Fcntl.h>
-# include <folly/portability/Windows.h>
 #endif
 
 namespace folly {
