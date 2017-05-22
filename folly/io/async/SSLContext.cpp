@@ -19,6 +19,7 @@
 #include <folly/Format.h>
 #include <folly/Memory.h>
 #include <folly/Random.h>
+#include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 #include <folly/ThreadId.h>
 
@@ -722,20 +723,32 @@ struct SSLLock {
       lockType(inLockType) {
   }
 
-  void lock() {
+  void lock(bool read) {
     if (lockType == SSLContext::LOCK_MUTEX) {
       mutex.lock();
     } else if (lockType == SSLContext::LOCK_SPINLOCK) {
       spinLock.lock();
+    } else if (lockType == SSLContext::LOCK_SHAREDMUTEX) {
+      if (read) {
+        sharedMutex.lock_shared();
+      } else {
+        sharedMutex.lock();
+      }
     }
     // lockType == LOCK_NONE, no-op
   }
 
-  void unlock() {
+  void unlock(bool read) {
     if (lockType == SSLContext::LOCK_MUTEX) {
       mutex.unlock();
     } else if (lockType == SSLContext::LOCK_SPINLOCK) {
       spinLock.unlock();
+    } else if (lockType == SSLContext::LOCK_SHAREDMUTEX) {
+      if (read) {
+        sharedMutex.unlock_shared();
+      } else {
+        sharedMutex.unlock();
+      }
     }
     // lockType == LOCK_NONE, no-op
   }
@@ -743,6 +756,7 @@ struct SSLLock {
   SSLContext::SSLLockType lockType;
   folly::SpinLock spinLock{};
   std::mutex mutex;
+  SharedMutex sharedMutex;
 };
 
 // Statics are unsafe in environments that call exit().
@@ -763,9 +777,9 @@ static std::map<int, SSLContext::SSLLockType>& lockTypes() {
 
 static void callbackLocking(int mode, int n, const char*, int) {
   if (mode & CRYPTO_LOCK) {
-    locks()[size_t(n)].lock();
+    locks()[size_t(n)].lock(mode & CRYPTO_READ);
   } else {
-    locks()[size_t(n)].unlock();
+    locks()[size_t(n)].unlock(mode & CRYPTO_READ);
   }
 }
 

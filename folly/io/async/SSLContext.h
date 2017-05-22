@@ -421,11 +421,7 @@ class SSLContext {
     return ctx_;
   }
 
-  enum SSLLockType {
-    LOCK_MUTEX,
-    LOCK_SPINLOCK,
-    LOCK_NONE
-  };
+  enum SSLLockType { LOCK_MUTEX, LOCK_SPINLOCK, LOCK_SHAREDMUTEX, LOCK_NONE };
 
   /**
    * Set preferences for how to treat locks in OpenSSL.  This must be
