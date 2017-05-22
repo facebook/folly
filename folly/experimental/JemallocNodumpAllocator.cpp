@@ -108,7 +108,7 @@ void JemallocNodumpAllocator::deallocate(void* p) {
 
 void JemallocNodumpAllocator::deallocate(void* p, void* userData) {
   const uint64_t flags = reinterpret_cast<uint64_t>(userData);
-  dallocx != nullptr ? dallocx(p, flags) : free(p);
+  dallocx != nullptr ? dallocx(p, static_cast<int>(flags)) : free(p);
 }
 
 JemallocNodumpAllocator& globalJemallocNodumpAllocator() {

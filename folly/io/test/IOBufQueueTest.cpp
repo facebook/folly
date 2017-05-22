@@ -177,7 +177,7 @@ TEST(IOBufQueue, SplitZero) {
 TEST(IOBufQueue, Preallocate) {
   IOBufQueue queue(clOptions);
   queue.append(string("Hello"));
-  pair<void*,uint32_t> writable = queue.preallocate(2, 64, 64);
+  pair<void*, uint64_t> writable = queue.preallocate(2, 64, 64);
   checkConsistency(queue);
   EXPECT_NE((void*)nullptr, writable.first);
   EXPECT_LE(2, writable.second);

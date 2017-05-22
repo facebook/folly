@@ -145,7 +145,7 @@ struct EliasFanoEncoderV2 {
         forwardPointers_(reinterpret_cast<SkipValueType*>(
               result.forwardPointers)),
         result_(result) {
-    std::fill(result.data.begin(), result.data.end(), 0);
+    std::fill(result.data.begin(), result.data.end(), '\0');
   }
 
   EliasFanoEncoderV2(size_t size, ValueType upperBound)

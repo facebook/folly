@@ -58,16 +58,14 @@ void ArenaTester::allocate(size_t count, size_t maxSize) {
   for (size_t i = 0; i < count; i++) {
     size_t size = sizeDist(rnd);
     uint8_t* p = static_cast<uint8_t*>(arena_->allocate(size));
-    areas_.emplace_back(rnd() & 0xff, Range<uint8_t*>(p, size));
+    areas_.emplace_back(uint8_t(rnd() & 0xff), Range<uint8_t*>(p, size));
   }
 
   // Fill each area with a different value, to prove that they don't overlap
   // Fill in random order.
-  std::random_shuffle(
-      areas_.begin(), areas_.end(),
-      [&rnd] (int n) -> int {
-        return std::uniform_int_distribution<uint32_t>(0, n-1)(rnd);
-      });
+  std::random_shuffle(areas_.begin(), areas_.end(), [&rnd](ptrdiff_t n) {
+    return std::uniform_int_distribution<uint32_t>(0, n - 1)(rnd);
+  });
 
   for (auto& p : areas_) {
     std::fill(p.second.begin(), p.second.end(), p.first);

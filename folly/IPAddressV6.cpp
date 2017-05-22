@@ -188,8 +188,8 @@ IPAddressV6 IPAddressV6::fromInverseArpaName(const std::string& arpaname) {
   std::array<char, IPAddressV6::kToFullyQualifiedSize> ip;
   size_t pos = 0;
   int count = 0;
-  for (int p = pieces.size() - 1; p >= 0; p--) {
-    ip[pos] = pieces[p][0];
+  for (size_t i = 1; i <= pieces.size(); i++) {
+    ip[pos] = pieces[pieces.size() - i][0];
     pos++;
     count++;
     // add ':' every 4 chars

@@ -538,7 +538,7 @@ TEST(IOBuf, QueueAppenderPushAtMostFillBuffer) {
   QueueAppender appender{&queue, 125};
   std::vector<uint8_t> data;
   data.resize(1000);
-  std::iota(data.begin(), data.end(), 0);
+  std::iota(data.begin(), data.end(), uint8_t(0));
   // Add 100 byte
   appender.pushAtMost(data.data(), 100);
   // Add 900 bytes

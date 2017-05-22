@@ -135,6 +135,6 @@ TEST(Random, sanity) {
     }
     EXPECT_EQ(
         vals.size(),
-        std::unordered_set<uint32_t>(vals.begin(), vals.end()).size());
+        std::unordered_set<uint64_t>(vals.begin(), vals.end()).size());
   }
 }

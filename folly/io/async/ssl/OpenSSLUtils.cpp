@@ -120,7 +120,7 @@ bool OpenSSLUtils::validatePeerCertNames(X509* cert,
     }
   }
 
-  for (size_t i = 0; i < (size_t)sk_GENERAL_NAME_num(altNames); i++) {
+  for (int i = 0; i < sk_GENERAL_NAME_num(altNames); i++) {
     auto name = sk_GENERAL_NAME_value(altNames, i);
     if ((addr4 != nullptr || addr6 != nullptr) && name->type == GEN_IPADD) {
       // Extra const-ness for paranoia
