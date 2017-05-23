@@ -71,13 +71,21 @@ constexpr bool kHasUnalignedAccess = false;
 #endif
 
 // warn unused result
-#if defined(_MSC_VER) && (_MSC_VER >= 1700)
-#define FOLLY_WARN_UNUSED_RESULT _Check_return_
-#elif defined(__clang__) || defined(__GNUC__)
-#define FOLLY_WARN_UNUSED_RESULT __attribute__((__warn_unused_result__))
-#else
-#define FOLLY_WARN_UNUSED_RESULT
+#if defined(__has_cpp_attribute)
+#if __has_cpp_attribute(nodiscard)
+#define FOLLY_NODISCARD [[nodiscard]]
 #endif
+#endif
+#if !defined FOLLY_NODISCARD
+#if defined(_MSC_VER) && (_MSC_VER >= 1700)
+#define FOLLY_NODISCARD _Check_return_
+#elif defined(__clang__) || defined(__GNUC__)
+#define FOLLY_NODISCARD __attribute__((__warn_unused_result__))
+#else
+#define FOLLY_NODISCARD
+#endif
+#endif
+#define FOLLY_WARN_UNUSED_RESULT FOLLY_NODISCARD
 
 // target
 #ifdef _MSC_VER
