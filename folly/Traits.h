@@ -516,7 +516,7 @@ struct IsOneOf {
 
 template <class T, class T1, class... Ts>
 struct IsOneOf<T, T1, Ts...> {
-  enum { value = std::is_same<T, T1>::value || IsOneOf<T, Ts...>::value };
+  enum { value = std::is_same<T, typename std::decay<T1>::type>::value || IsOneOf<T, Ts...>::value };
 };
 
 /*
