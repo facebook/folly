@@ -26,7 +26,7 @@ Try<T>::Try(Try<T>&& t) noexcept : contains_(t.contains_) {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
-    new (&e_)std::unique_ptr<exception_wrapper>(std::move(t.e_));
+    new (&e_) exception_wrapper(std::move(t.e_));
   }
 }
 
@@ -40,8 +40,7 @@ Try<T>::Try(typename std::enable_if<std::is_same<Unit, T2>::value,
     new (&value_) T();
   } else if (t.hasException()) {
     contains_ = Contains::EXCEPTION;
-    new (&e_) std::unique_ptr<exception_wrapper>(
-        std::make_unique<exception_wrapper>(t.exception()));
+    new (&e_) exception_wrapper(t.exception());
   }
 }
 
@@ -56,7 +55,7 @@ Try<T>& Try<T>::operator=(Try<T>&& t) noexcept {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
-    new (&e_)std::unique_ptr<exception_wrapper>(std::move(t.e_));
+    new (&e_) exception_wrapper(std::move(t.e_));
   }
   return *this;
 }
@@ -70,8 +69,7 @@ Try<T>::Try(const Try<T>& t) {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(t.value_);
   } else if (contains_ == Contains::EXCEPTION) {
-    new (&e_)std::unique_ptr<exception_wrapper>();
-    e_ = std::make_unique<exception_wrapper>(*(t.e_));
+    new (&e_) exception_wrapper(t.e_);
   }
 }
 
@@ -85,8 +83,7 @@ Try<T>& Try<T>::operator=(const Try<T>& t) {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(t.value_);
   } else if (contains_ == Contains::EXCEPTION) {
-    new (&e_)std::unique_ptr<exception_wrapper>();
-    e_ = std::make_unique<exception_wrapper>(*(t.e_));
+    new (&e_) exception_wrapper(t.e_);
   }
   return *this;
 }
@@ -96,7 +93,7 @@ Try<T>::~Try() {
   if (LIKELY(contains_ == Contains::VALUE)) {
     value_.~T();
   } else if (UNLIKELY(contains_ == Contains::EXCEPTION)) {
-    e_.~unique_ptr<exception_wrapper>();
+    e_.~exception_wrapper();
   }
 }
 
@@ -122,7 +119,7 @@ template <class T>
 void Try<T>::throwIfFailed() const {
   if (contains_ != Contains::VALUE) {
     if (contains_ == Contains::EXCEPTION) {
-      e_->throw_exception();
+      e_.throw_exception();
     } else {
       throw UsingUninitializedTry();
     }
@@ -131,7 +128,7 @@ void Try<T>::throwIfFailed() const {
 
 void Try<void>::throwIfFailed() const {
   if (!hasValue_) {
-    e_->throw_exception();
+    e_.throw_exception();
   }
 }
 

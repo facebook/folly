@@ -93,8 +93,7 @@ class Try {
    * @param e The exception_wrapper
    */
   explicit Try(exception_wrapper e)
-      : contains_(Contains::EXCEPTION),
-        e_(std::make_unique<exception_wrapper>(std::move(e))) {}
+      : contains_(Contains::EXCEPTION), e_(std::move(e)) {}
 
   /*
    * DEPRECATED
@@ -107,10 +106,10 @@ class Try {
     : contains_(Contains::EXCEPTION) {
     try {
       std::rethrow_exception(ep);
-    } catch (const std::exception& e) {
-      e_ = std::make_unique<exception_wrapper>(std::current_exception(), e);
+    } catch (std::exception& e) {
+      e_ = exception_wrapper(std::current_exception(), e);
     } catch (...) {
-      e_ = std::make_unique<exception_wrapper>(std::current_exception());
+      e_ = exception_wrapper(std::current_exception());
     }
   }
 
@@ -195,21 +194,21 @@ class Try {
    */
   template <class Ex>
   bool hasException() const {
-    return hasException() && e_->is_compatible_with<Ex>();
+    return hasException() && e_.is_compatible_with<Ex>();
   }
 
   exception_wrapper& exception() {
     if (UNLIKELY(!hasException())) {
       throw TryException("exception(): Try does not contain an exception");
     }
-    return *e_;
+    return e_;
   }
 
   const exception_wrapper& exception() const {
     if (UNLIKELY(!hasException())) {
       throw TryException("exception(): Try does not contain an exception");
     }
-    return *e_;
+    return e_;
   }
 
   /*
@@ -220,11 +219,18 @@ class Try {
    * @returns True if the Try held an Ex and func was executed, false otherwise
    */
   template <class Ex, class F>
+  bool withException(F func) {
+    if (!hasException()) {
+      return false;
+    }
+    return e_.with_exception(std::move(func));
+  }
+  template <class Ex, class F>
   bool withException(F func) const {
     if (!hasException()) {
       return false;
     }
-    return e_->with_exception(std::move(func));
+    return e_.with_exception(std::move(func));
   }
 
   template <bool isTry, typename R>
@@ -241,7 +247,7 @@ class Try {
   Contains contains_;
   union {
     T value_;
-    std::unique_ptr<exception_wrapper> e_;
+    exception_wrapper e_;
   };
 };
 
@@ -265,9 +271,7 @@ class Try<void> {
    *
    * @param e The exception_wrapper
    */
-  explicit Try(exception_wrapper e)
-      : hasValue_(false),
-        e_(std::make_unique<exception_wrapper>(std::move(e))) {}
+  explicit Try(exception_wrapper e) : hasValue_(false), e_(std::move(e)) {}
 
   /*
    * DEPRECATED
@@ -280,18 +284,16 @@ class Try<void> {
     try {
       std::rethrow_exception(ep);
     } catch (const std::exception& e) {
-      e_ = std::make_unique<exception_wrapper>(std::current_exception(), e);
+      e_ = exception_wrapper(std::current_exception(), e);
     } catch (...) {
-      e_ = std::make_unique<exception_wrapper>(std::current_exception());
+      e_ = exception_wrapper(std::current_exception());
     }
   }
 
   // Copy assigner
   Try& operator=(const Try<void>& t) {
     hasValue_ = t.hasValue_;
-    if (t.e_) {
-      e_ = std::make_unique<exception_wrapper>(*t.e_);
-    }
+    e_ = t.e_;
     return *this;
   }
   // Copy constructor
@@ -315,7 +317,7 @@ class Try<void> {
   // @returns True if the Try contains an exception of type Ex, false otherwise
   template <class Ex>
   bool hasException() const {
-    return hasException() && e_->is_compatible_with<Ex>();
+    return hasException() && e_.is_compatible_with<Ex>();
   }
 
   /*
@@ -327,14 +329,14 @@ class Try<void> {
     if (UNLIKELY(!hasException())) {
       throw TryException("exception(): Try does not contain an exception");
     }
-    return *e_;
+    return e_;
   }
 
   const exception_wrapper& exception() const {
     if (UNLIKELY(!hasException())) {
       throw TryException("exception(): Try does not contain an exception");
     }
-    return *e_;
+    return e_;
   }
 
   /*
@@ -345,11 +347,18 @@ class Try<void> {
    * @returns True if the Try held an Ex and func was executed, false otherwise
    */
   template <class Ex, class F>
+  bool withException(F func) {
+    if (!hasException()) {
+      return false;
+    }
+    return e_.with_exception(std::move(func));
+  }
+  template <class Ex, class F>
   bool withException(F func) const {
     if (!hasException()) {
       return false;
     }
-    return e_->with_exception(std::move(func));
+    return e_.with_exception(std::move(func));
   }
 
   template <bool, typename R>
@@ -359,7 +368,7 @@ class Try<void> {
 
  private:
   bool hasValue_;
-  std::unique_ptr<exception_wrapper> e_{nullptr};
+  exception_wrapper e_;
 };
 
 /*
