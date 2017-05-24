@@ -21,7 +21,7 @@
 
 #include <folly/portability/SysTypes.h>
 
-/*
+/**
  * Similar to Python's enumerate(), folly::enumerate() can be used to
  * iterate a range with a for-range loop, and it also allows to
  * retrieve the count of iterations so far.

@@ -58,6 +58,7 @@ nobase_follyinclude_HEADERS = \
 	CppAttributes.h \
 	CpuId.h \
 	CPortability.h \
+	concurrency/CoreCachedSharedPtr.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \

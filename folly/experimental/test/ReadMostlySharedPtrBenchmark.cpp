@@ -36,9 +36,11 @@ void benchmark(size_t n) {
   for (size_t t = 0; t < threadCount; ++t) {
     ts.emplace_back([&]() {
         WeakPtr<int> weakPtr(mainPtr);
+        // Prevent the compiler from hoisting code out of the loop.
+        auto op = [&]() FOLLY_NOINLINE { weakPtr.lock(); };
 
         for (size_t i = 0; i < n; ++i) {
-          weakPtr.lock();
+          op();
         }
       });
   }
