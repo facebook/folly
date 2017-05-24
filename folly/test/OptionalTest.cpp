@@ -372,6 +372,67 @@ TEST(Optional, Comparisons) {
   EXPECT_FALSE(bob != false);
 }
 
+TEST(Optional, HeterogeneousComparisons) {
+  using opt8 = Optional<uint8_t>;
+  using opt64 = Optional<uint64_t>;
+
+  EXPECT_TRUE(opt8(4) == uint64_t(4));
+  EXPECT_FALSE(opt8(8) == uint64_t(4));
+  EXPECT_FALSE(opt8() == uint64_t(4));
+
+  EXPECT_TRUE(uint64_t(4) == opt8(4));
+  EXPECT_FALSE(uint64_t(4) == opt8(8));
+  EXPECT_FALSE(uint64_t(4) == opt8());
+
+  EXPECT_FALSE(opt8(4) != uint64_t(4));
+  EXPECT_TRUE(opt8(8) != uint64_t(4));
+  EXPECT_TRUE(opt8() != uint64_t(4));
+
+  EXPECT_FALSE(uint64_t(4) != opt8(4));
+  EXPECT_TRUE(uint64_t(4) != opt8(8));
+  EXPECT_TRUE(uint64_t(4) != opt8());
+
+  EXPECT_TRUE(opt8() == opt64());
+  EXPECT_TRUE(opt8(4) == opt64(4));
+  EXPECT_FALSE(opt8(8) == opt64(4));
+  EXPECT_FALSE(opt8() == opt64(4));
+  EXPECT_FALSE(opt8(4) == opt64());
+
+  EXPECT_FALSE(opt8() != opt64());
+  EXPECT_FALSE(opt8(4) != opt64(4));
+  EXPECT_TRUE(opt8(8) != opt64(4));
+  EXPECT_TRUE(opt8() != opt64(4));
+  EXPECT_TRUE(opt8(4) != opt64());
+
+  EXPECT_TRUE(opt8() < opt64(4));
+  EXPECT_TRUE(opt8(4) < opt64(8));
+  EXPECT_FALSE(opt8() < opt64());
+  EXPECT_FALSE(opt8(4) < opt64(4));
+  EXPECT_FALSE(opt8(8) < opt64(4));
+  EXPECT_FALSE(opt8(4) < opt64());
+
+  EXPECT_FALSE(opt8() > opt64(4));
+  EXPECT_FALSE(opt8(4) > opt64(8));
+  EXPECT_FALSE(opt8() > opt64());
+  EXPECT_FALSE(opt8(4) > opt64(4));
+  EXPECT_TRUE(opt8(8) > opt64(4));
+  EXPECT_TRUE(opt8(4) > opt64());
+
+  EXPECT_TRUE(opt8() <= opt64(4));
+  EXPECT_TRUE(opt8(4) <= opt64(8));
+  EXPECT_TRUE(opt8() <= opt64());
+  EXPECT_TRUE(opt8(4) <= opt64(4));
+  EXPECT_FALSE(opt8(8) <= opt64(4));
+  EXPECT_FALSE(opt8(4) <= opt64());
+
+  EXPECT_FALSE(opt8() >= opt64(4));
+  EXPECT_FALSE(opt8(4) >= opt64(8));
+  EXPECT_TRUE(opt8() >= opt64());
+  EXPECT_TRUE(opt8(4) >= opt64(4));
+  EXPECT_TRUE(opt8(8) >= opt64(4));
+  EXPECT_TRUE(opt8(4) >= opt64());
+}
+
 TEST(Optional, Conversions) {
   Optional<bool> mbool;
   Optional<short> mshort;

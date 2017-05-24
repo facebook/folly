@@ -359,57 +359,57 @@ Opt make_optional(T&& v) {
 ///////////////////////////////////////////////////////////////////////////////
 // Comparisons.
 
-template<class V>
-bool operator==(const Optional<V>& a, const V& b) {
+template <class U, class V>
+bool operator==(const Optional<U>& a, const V& b) {
   return a.hasValue() && a.value() == b;
 }
 
-template<class V>
-bool operator!=(const Optional<V>& a, const V& b) {
+template <class U, class V>
+bool operator!=(const Optional<U>& a, const V& b) {
   return !(a == b);
 }
 
-template<class V>
-bool operator==(const V& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator==(const U& a, const Optional<V>& b) {
   return b.hasValue() && b.value() == a;
 }
 
-template<class V>
-bool operator!=(const V& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator!=(const U& a, const Optional<V>& b) {
   return !(a == b);
 }
 
-template<class V>
-bool operator==(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator==(const Optional<U>& a, const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) { return false; }
   if (a.hasValue())                 { return a.value() == b.value(); }
   return true;
 }
 
-template<class V>
-bool operator!=(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator!=(const Optional<U>& a, const Optional<V>& b) {
   return !(a == b);
 }
 
-template<class V>
-bool operator< (const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator<(const Optional<U>& a, const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) { return a.hasValue() < b.hasValue(); }
   if (a.hasValue())                 { return a.value()    < b.value(); }
   return false;
 }
 
-template<class V>
-bool operator> (const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator>(const Optional<U>& a, const Optional<V>& b) {
   return b < a;
 }
 
-template<class V>
-bool operator<=(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator<=(const Optional<U>& a, const Optional<V>& b) {
   return !(b < a);
 }
 
-template<class V>
-bool operator>=(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator>=(const Optional<U>& a, const Optional<V>& b) {
   return !(a < b);
 }
 
