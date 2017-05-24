@@ -107,11 +107,12 @@ class Codec {
  public:
   virtual ~Codec() { }
 
+  static constexpr uint64_t UNLIMITED_UNCOMPRESSED_LENGTH = uint64_t(-1);
   /**
    * Return the maximum length of data that may be compressed with this codec.
    * NO_COMPRESSION and ZLIB support arbitrary lengths;
    * LZ4 supports up to 1.9GiB; SNAPPY supports up to 4GiB.
-   * May return UNLIMITED_UNCOMPRESSED_LENGTH (uint64_t(-1)) if unlimited.
+   * May return UNLIMITED_UNCOMPRESSED_LENGTH if unlimited.
    */
   uint64_t maxUncompressedLength() const;
 
@@ -154,8 +155,6 @@ class Codec {
    * Regardless of the behavior of the underlying compressor, uncompressing
    * an empty IOBuf chain will return an empty IOBuf chain.
    */
-  static constexpr uint64_t UNLIMITED_UNCOMPRESSED_LENGTH = uint64_t(-1);
-
   std::unique_ptr<IOBuf> uncompress(
       const IOBuf* data,
       folly::Optional<uint64_t> uncompressedLength = folly::none);
@@ -168,6 +167,24 @@ class Codec {
   std::string uncompress(
       StringPiece data,
       folly::Optional<uint64_t> uncompressedLength = folly::none);
+
+  /**
+   * Returns a bound on the maximum compressed length when compressing data with
+   * the given uncompressed length.
+   */
+  uint64_t maxCompressedLength(uint64_t uncompressedLength) const;
+
+  /**
+   * Extracts the uncompressed length from the compressed data if possible.
+   * If the codec doesn't store the uncompressed length, or the data is
+   * corrupted it returns the given uncompressedLength.
+   * If the uncompressed length is stored in the compressed data and
+   * uncompressedLength is not none and they do not match a std::runtime_error
+   * is thrown.
+   */
+  folly::Optional<uint64_t> getUncompressedLength(
+      const folly::IOBuf* data,
+      folly::Optional<uint64_t> uncompressedLength = folly::none) const;
 
  protected:
   explicit Codec(CodecType type);
@@ -209,7 +226,169 @@ class Codec {
       StringPiece data,
       folly::Optional<uint64_t> uncompressedLength);
 
+  virtual uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const = 0;
+  // default: returns the passed uncompressedLength.
+  virtual folly::Optional<uint64_t> doGetUncompressedLength(
+      const folly::IOBuf* data,
+      folly::Optional<uint64_t> uncompressedLength) const;
+
   CodecType type_;
+};
+
+class StreamCodec : public Codec {
+ public:
+  virtual ~StreamCodec() {}
+
+  /**
+   * Does the codec need the data length before compression streaming?
+   */
+  bool needsDataLength() const;
+
+  /*****************************************************************************
+   * Streaming API
+   *****************************************************************************
+   * A low-level stateful streaming API.
+   * Streaming operations can be started in two ways:
+   *   1. From a clean Codec on which no non-const methods have been called.
+   *   2. A call to resetStream(), which will reset any codec to a clean state.
+   * After a streaming operation has begun, either compressStream() or
+   * uncompressStream() must be called until the streaming operation ends.
+   * compressStream() ends when it returns true with flushOp END.
+   * uncompressStream() ends when it returns true. At this point the codec
+   * may be reused by calling resetStream().
+   *
+   * compress() and uncompress() can be called at any time, but they interrupt
+   * any ongoing streaming operations (state is lost and resetStream() must be
+   * called before another streaming operation).
+   */
+
+  /**
+   * Reset the state of the codec, and set the uncompressed length for the next
+   * streaming operation. If uncompressedLength is not none it must be exactly
+   * the uncompressed length. compressStream() must be passed exactly
+   * uncompressedLength input bytes before the stream is ended.
+   * uncompressStream() must be passed a compressed frame that uncompresses to
+   * uncompressedLength.
+   */
+  void resetStream(folly::Optional<uint64_t> uncompressedLength = folly::none);
+
+  enum class FlushOp { NONE, FLUSH, END };
+
+  /**
+   * Compresses some data from the input buffer and writes the compressed data
+   * into the output buffer. It may read input without producing any output,
+   * except when forced to flush.
+   *
+   * The input buffer is advanced to point to the range of data that hasn't yet
+   * been read. Compression will resume at this point for the next call to
+   * compressStream(). The output buffer is advanced one byte past the last byte
+   * written.
+   *
+   * The default flushOp is NONE, which allows compressStream() complete
+   * discretion in how much data to gather before writing any output.
+   *
+   * If flushOp is END, all pending and input data is flushed to the output
+   * buffer, and the frame is ended. compressStream() must be called with the
+   * same input and flushOp END until it returns true. At this point the caller
+   * must call resetStream() to use the codec again.
+   *
+   * If flushOp is FLUSH, all pending and input data is flushed to the output
+   * buffer, but the frame is not ended. compressStream() must be called with
+   * the same input and flushOp END until it returns true. At this point the
+   * caller can continue to compressStream() with any input data and flushOp.
+   * The uncompressor, if passed all the produced output data, will be able to
+   * uncompress all the input data passed to compressStream() so far. Excessive
+   * use of flushOp FLUSH will deteriorate compression ratio. This is useful for
+   * stateful streaming across a network. Most users don't need to use this
+   * flushOp.
+   *
+   * A std::logic_error is thrown on incorrect usage of the API.
+   * A std::runtime_error is thrown upon error conditions.
+   */
+  bool compressStream(
+      folly::ByteRange& input,
+      folly::MutableByteRange& output,
+      FlushOp flushOp = StreamCodec::FlushOp::NONE);
+
+  /**
+   * Uncompresses some data from the input buffer and writes the uncompressed
+   * data into the output buffer. It may read input without producing any
+   * output.
+   *
+   * The input buffer is advanced to point to the range of data that hasn't yet
+   * been read. Uncompression will resume at this point for the next call to
+   * uncompressStream(). The output buffer is advanced one byte past the last
+   * byte written.
+   *
+   * The default flushOp is NONE, which allows uncompressStream() complete
+   * discretion in how much output data to flush. The uncompressor may not make
+   * maximum forward progress, but will make some forward progress when
+   * possible.
+   *
+   * If flushOp is END, the caller guarantees that no more input will be
+   * presented to uncompressStream(). uncompressStream() must be called with the
+   * same input and flushOp END until it returns true. This is not mandatory,
+   * but if the input is all available in one buffer, and there is enough output
+   * space to write the entire frame, codecs can uncompress faster.
+   *
+   * If flushOp is FLUSH, uncompressStream() is guaranteed to make the maximum
+   * amount of forward progress possible. When using this flushOp and
+   * uncompressStream() returns with `!output.empty()` the caller knows that all
+   * pending output has been flushed. This is useful for stateful streaming
+   * across a network, and it should be used in conjunction with
+   * compressStream() with flushOp FLUSH. Most users don't need to use this
+   * flushOp.
+   *
+   * Returns true at the end of a frame. At this point resetStream() must be
+   * called to reuse the codec.
+   */
+  bool uncompressStream(
+      folly::ByteRange& input,
+      folly::MutableByteRange& output,
+      FlushOp flushOp = StreamCodec::FlushOp::NONE);
+
+ protected:
+  explicit StreamCodec(CodecType type) : Codec(type) {}
+
+  // Returns the uncompressed length last passed to resetStream() or none if it
+  // hasn't been called yet.
+  folly::Optional<uint64_t> uncompressedLength() const {
+    return uncompressedLength_;
+  }
+
+ private:
+  // default: Implemented using the streaming API.
+  std::unique_ptr<IOBuf> doCompress(const folly::IOBuf* data) override;
+  virtual std::unique_ptr<IOBuf> doUncompress(
+      const folly::IOBuf* data,
+      folly::Optional<uint64_t> uncompressedLength) override;
+
+  // default: Returns false
+  virtual bool doNeedsDataLength() const;
+  virtual void doResetStream() = 0;
+  virtual bool doCompressStream(
+      folly::ByteRange& input,
+      folly::MutableByteRange& output,
+      FlushOp flushOp) = 0;
+  virtual bool doUncompressStream(
+      folly::ByteRange& input,
+      folly::MutableByteRange& output,
+      FlushOp flushOp) = 0;
+
+  enum class State {
+    RESET,
+    COMPRESS,
+    COMPRESS_FLUSH,
+    COMPRESS_END,
+    UNCOMPRESS,
+    END,
+  };
+  void assertStateIs(State expected) const;
+
+  CodecType type_;
+  State state_{State::RESET};
+  ByteRange previousInput_{};
+  folly::Optional<uint64_t> uncompressedLength_{};
 };
 
 constexpr int COMPRESSION_LEVEL_FASTEST = -1;
@@ -232,8 +411,29 @@ constexpr int COMPRESSION_LEVEL_BEST = -3;
  * decompress all data compressed with the a codec of the same type, regardless
  * of compression level.
  */
-std::unique_ptr<Codec> getCodec(CodecType type,
-                                int level = COMPRESSION_LEVEL_DEFAULT);
+std::unique_ptr<Codec> getCodec(
+    CodecType type,
+    int level = COMPRESSION_LEVEL_DEFAULT);
+
+/**
+ * Return a codec for the given type. Throws on error.  The level
+ * is a non-negative codec-dependent integer indicating the level of
+ * compression desired, or one of the following constants:
+ *
+ * COMPRESSION_LEVEL_FASTEST is fastest (uses least CPU / memory,
+ *   worst compression)
+ * COMPRESSION_LEVEL_DEFAULT is the default (likely a tradeoff between
+ *   FASTEST and BEST)
+ * COMPRESSION_LEVEL_BEST is the best compression (uses most CPU / memory,
+ *   best compression)
+ *
+ * When decompressing, the compression level is ignored. All codecs will
+ * decompress all data compressed with the a codec of the same type, regardless
+ * of compression level.
+ */
+std::unique_ptr<StreamCodec> getStreamCodec(
+    CodecType type,
+    int level = COMPRESSION_LEVEL_DEFAULT);
 
 /**
  * Returns a codec that can uncompress any of the given codec types as well as
@@ -262,4 +462,8 @@ std::unique_ptr<Codec> getAutoUncompressionCodec(
  */
 bool hasCodec(CodecType type);
 
-}}  // namespaces
+/**
+ * Check if a specified codec is supported and supports streaming.
+ */
+bool hasStreamCodec(CodecType type);
+}} // namespaces
