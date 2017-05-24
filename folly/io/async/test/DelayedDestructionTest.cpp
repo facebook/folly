@@ -20,8 +20,7 @@
 using namespace folly;
 
 class DeleteGuarder : public DelayedDestruction {
-
-  ~DeleteGuarder() {
+  ~DeleteGuarder() override {
     doFoo();
   }
 

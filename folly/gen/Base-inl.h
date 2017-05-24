@@ -2233,15 +2233,15 @@ class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
    public:
     explicit WrapperImpl(Wrapped wrapped) : wrapped_(std::move(wrapped)) {}
 
-    virtual bool apply(const std::function<bool(Value)>& handler) const {
+    bool apply(const std::function<bool(Value)>& handler) const override {
       return wrapped_.apply(handler);
     }
 
-    virtual void foreach(const std::function<void(Value)>& body) const {
+    void foreach(const std::function<void(Value)>& body) const override {
       wrapped_.foreach(body);
     }
 
-    virtual std::unique_ptr<const WrapperBase> clone() const {
+    std::unique_ptr<const WrapperBase> clone() const override {
       return std::unique_ptr<const WrapperBase>(new WrapperImpl(wrapped_));
     }
   };

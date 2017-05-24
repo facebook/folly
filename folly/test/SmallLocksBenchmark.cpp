@@ -274,7 +274,7 @@ struct VirtualBase {
 struct VirtualImpl : VirtualBase {
   void foo() override { /* noop */
   }
-  virtual ~VirtualImpl() {}
+  ~VirtualImpl() override {}
 };
 
 #ifndef __clang__

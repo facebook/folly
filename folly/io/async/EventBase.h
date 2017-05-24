@@ -221,7 +221,7 @@ class EventBase : private boost::noncopyable,
    *                              observer, max latency and avg loop time.
    */
   explicit EventBase(event_base* evb, bool enableTimeMeasurement = true);
-  ~EventBase();
+  ~EventBase() override;
 
   /**
    * Runs the event loop.
@@ -515,7 +515,7 @@ class EventBase : private boost::noncopyable,
    * first handler fired within that cycle.
    *
    */
-  void bumpHandlingTime() override final;
+  void bumpHandlingTime() final;
 
   class SmoothLoopTime {
    public:
@@ -617,16 +617,16 @@ class EventBase : private boost::noncopyable,
   // TimeoutManager
   void attachTimeoutManager(
       AsyncTimeout* obj,
-      TimeoutManager::InternalEnum internal) override final;
+      TimeoutManager::InternalEnum internal) final;
 
-  void detachTimeoutManager(AsyncTimeout* obj) override final;
+  void detachTimeoutManager(AsyncTimeout* obj) final;
 
   bool scheduleTimeout(AsyncTimeout* obj, TimeoutManager::timeout_type timeout)
-      override final;
+      final;
 
-  void cancelTimeout(AsyncTimeout* obj) override final;
+  void cancelTimeout(AsyncTimeout* obj) final;
 
-  bool isInTimeoutManagerThread() override final {
+  bool isInTimeoutManagerThread() final {
     return isInEventBaseThread();
   }
 

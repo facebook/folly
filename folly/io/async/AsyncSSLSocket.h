@@ -141,7 +141,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
       return timeout_;
     }
 
-    virtual void timeoutExpired() noexcept override {
+    void timeoutExpired() noexcept override {
       sslSocket_->timeoutExpired(timeout_);
     }
 
@@ -275,18 +275,20 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // See the documentation in TAsyncTransport.h
   // TODO: implement graceful shutdown in close()
   // TODO: implement detachSSL() that returns the SSL connection
-  virtual void closeNow() override;
-  virtual void shutdownWrite() override;
-  virtual void shutdownWriteNow() override;
-  virtual bool good() const override;
-  virtual bool connecting() const override;
-  virtual std::string getApplicationProtocol() noexcept override;
+  void closeNow() override;
+  void shutdownWrite() override;
+  void shutdownWriteNow() override;
+  bool good() const override;
+  bool connecting() const override;
+  std::string getApplicationProtocol() noexcept override;
 
-  virtual std::string getSecurityProtocol() const override { return "TLS"; }
+  std::string getSecurityProtocol() const override {
+    return "TLS";
+  }
 
-  virtual void setEorTracking(bool track) override;
-  virtual size_t getRawBytesWritten() const override;
-  virtual size_t getRawBytesReceived() const override;
+  void setEorTracking(bool track) override;
+  size_t getRawBytesWritten() const override;
+  size_t getRawBytesReceived() const override;
   void enableClientHelloParsing();
 
   /**
@@ -513,21 +515,21 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Get the certificate used for this SSL connection. May be null
    */
-  virtual const X509* getSelfCert() const override;
+  const X509* getSelfCert() const override;
 
-  virtual void attachEventBase(EventBase* eventBase) override {
+  void attachEventBase(EventBase* eventBase) override {
     AsyncSocket::attachEventBase(eventBase);
     handshakeTimeout_.attachEventBase(eventBase);
     connectionTimeout_.attachEventBase(eventBase);
   }
 
-  virtual void detachEventBase() override {
+  void detachEventBase() override {
     AsyncSocket::detachEventBase();
     handshakeTimeout_.detachEventBase();
     connectionTimeout_.detachEventBase();
   }
 
-  virtual bool isDetachable() const override {
+  bool isDetachable() const override {
     return AsyncSocket::isDetachable() && !handshakeTimeout_.isScheduled();
   }
 
@@ -675,7 +677,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Returns the peer certificate, or nullptr if no peer certificate received.
    */
-  virtual ssl::X509UniquePtr getPeerCert() const override {
+  ssl::X509UniquePtr getPeerCert() const override {
     if (!ssl_) {
       return nullptr;
     }
@@ -734,7 +736,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * destroy() instead.  (See the documentation in DelayedDestruction.h for
    * more details.)
    */
-  ~AsyncSSLSocket();
+  ~AsyncSSLSocket() override;
 
   // Inherit event notification methods from AsyncSocket except
   // the following.
@@ -749,7 +751,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
                  int* sslErrorOut,
                  unsigned long* errErrorOut) noexcept;
 
-  virtual void checkForImmediateRead() noexcept override;
+  void checkForImmediateRead() noexcept override;
   // AsyncSocket calls this at the wrong time for SSL
   void handleInitialReadWrite() noexcept override {}
 

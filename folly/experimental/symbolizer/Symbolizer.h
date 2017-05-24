@@ -269,7 +269,7 @@ class FDSymbolizePrinter : public SymbolizePrinter {
  public:
   explicit FDSymbolizePrinter(int fd, int options=0,
                               size_t bufferSize=0);
-  ~FDSymbolizePrinter();
+  ~FDSymbolizePrinter() override;
   void flush();
  private:
   void doPrint(StringPiece sp) override;

@@ -69,7 +69,7 @@ class UndelayedDestruction : public TDD {
    * the object directly from the event loop (e.g., directly from a
    * EventBase::LoopCallback), or when the event loop is stopped.
    */
-  virtual ~UndelayedDestruction() {
+  ~UndelayedDestruction() override {
     // Crash if the caller is destroying us with outstanding destructor guards.
     if (this->getDestructorGuardCount() != 0) {
       abort();

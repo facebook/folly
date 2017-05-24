@@ -34,50 +34,50 @@ namespace test {
 class TestConnectionEventCallback
     : public AsyncServerSocket::ConnectionEventCallback {
  public:
-  virtual void onConnectionAccepted(
+  void onConnectionAccepted(
       const int /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionAccepted_++;
   }
 
-  virtual void onConnectionAcceptError(const int /* err */) noexcept override {
+  void onConnectionAcceptError(const int /* err */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionAcceptedError_++;
   }
 
-  virtual void onConnectionDropped(
+  void onConnectionDropped(
       const int /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionDropped_++;
   }
 
-  virtual void onConnectionEnqueuedForAcceptorCallback(
+  void onConnectionEnqueuedForAcceptorCallback(
       const int /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionEnqueuedForAcceptCallback_++;
   }
 
-  virtual void onConnectionDequeuedByAcceptorCallback(
+  void onConnectionDequeuedByAcceptorCallback(
       const int /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionDequeuedByAcceptCallback_++;
   }
 
-  virtual void onBackoffStarted() noexcept override {
+  void onBackoffStarted() noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     backoffStarted_++;
   }
 
-  virtual void onBackoffEnded() noexcept override {
+  void onBackoffEnded() noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     backoffEnded_++;
   }
 
-  virtual void onBackoffError() noexcept override {
+  void onBackoffError() noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     backoffError_++;
   }

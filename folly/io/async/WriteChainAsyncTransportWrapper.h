@@ -30,7 +30,7 @@ class WriteChainAsyncTransportWrapper :
  public:
   using DecoratedAsyncTransportWrapper<T>::DecoratedAsyncTransportWrapper;
 
-  virtual void write(
+  void write(
       folly::AsyncTransportWrapper::WriteCallback* callback,
       const void* buf,
       size_t bytes,
@@ -39,7 +39,7 @@ class WriteChainAsyncTransportWrapper :
     writeChain(callback, std::move(ioBuf), flags);
   }
 
-  virtual void writev(
+  void writev(
       folly::AsyncTransportWrapper::WriteCallback* callback,
       const iovec* vec,
       size_t count,
@@ -65,7 +65,7 @@ class WriteChainAsyncTransportWrapper :
    * It only makes sense to use this class if you override writeChain, so force
    * derived classes to do that.
    */
-  virtual void writeChain(
+  void writeChain(
       folly::AsyncTransportWrapper::WriteCallback* callback,
       std::unique_ptr<folly::IOBuf>&& buf,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override = 0;

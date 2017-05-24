@@ -77,7 +77,7 @@ class AsyncPipeReader : public EventHandler,
   }
 
  private:
-  ~AsyncPipeReader();
+  ~AsyncPipeReader() override;
 
   void handlerReady(uint16_t events) noexcept override;
   void failRead(const AsyncSocketException& ex);
@@ -173,7 +173,7 @@ class AsyncPipeWriter : public EventHandler,
   bool closeOnEmpty_{false};
   std::function<void(int)> closeCb_;
 
-  ~AsyncPipeWriter() {
+  ~AsyncPipeWriter() override {
     closeNow();
   }
 };

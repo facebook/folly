@@ -172,7 +172,7 @@ class NotificationQueue {
 
     void destroy() override;
 
-    virtual ~Consumer() {}
+    ~Consumer() override {}
 
    private:
     /**

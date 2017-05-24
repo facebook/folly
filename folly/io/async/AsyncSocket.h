@@ -320,7 +320,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * This prevents callers from deleting a AsyncSocket while it is invoking a
    * callback.
    */
-  virtual void destroy() override;
+  void destroy() override;
 
   /**
    * Get the EventBase used by this socket.
@@ -886,7 +886,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * destroy() instead.  (See the documentation in DelayedDestruction.h for
    * more details.)
    */
-  ~AsyncSocket();
+  ~AsyncSocket() override;
 
   friend std::ostream& operator << (std::ostream& os, const StateEnum& state);
 
@@ -919,7 +919,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       : AsyncTimeout(eventBase)
       , socket_(socket) {}
 
-    virtual void timeoutExpired() noexcept {
+    void timeoutExpired() noexcept override {
       socket_->timeoutExpired();
     }
 
@@ -936,7 +936,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       : EventHandler(eventBase, fd)
       , socket_(socket) {}
 
-    virtual void handlerReady(uint16_t events) noexcept {
+    void handlerReady(uint16_t events) noexcept override {
       socket_->ioReady(events);
     }
 

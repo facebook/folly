@@ -131,7 +131,7 @@ TEST(RequestContext, deadlockTest) {
    public:
     explicit DeadlockTestData(const std::string& val) : val_(val) {}
 
-    virtual ~DeadlockTestData() {
+    ~DeadlockTestData() override {
       RequestContext::get()->setContextData(
           val_, std::make_unique<TestData>(1));
     }

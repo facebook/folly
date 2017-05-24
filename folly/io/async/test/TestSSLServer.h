@@ -47,7 +47,7 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
   explicit SSLServerAcceptCallbackBase(HandshakeCallback* hcb)
       : state(STATE_WAITING), hcb_(hcb) {}
 
-  ~SSLServerAcceptCallbackBase() {
+  ~SSLServerAcceptCallbackBase() override {
     EXPECT_EQ(STATE_SUCCEEDED, state);
   }
 

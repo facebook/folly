@@ -499,7 +499,7 @@ class TestEagerInitParallelExecutor : public folly::Executor {
     }
   }
 
-  virtual ~TestEagerInitParallelExecutor() override {
+  ~TestEagerInitParallelExecutor() override {
     for (auto eb : eventBases_) {
       eb->runInEventBaseThread([eb] { eb->terminateLoopSoon(); });
     }
@@ -508,7 +508,7 @@ class TestEagerInitParallelExecutor : public folly::Executor {
     }
   }
 
-  virtual void add(folly::Func func) override {
+  void add(folly::Func func) override {
     const auto index = (counter_ ++) % eventBases_.size();
     eventBases_[index]->add(std::move(func));
   }

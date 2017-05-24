@@ -1396,7 +1396,7 @@ class IOBuf {
     typedef typename UniquePtr::deleter_type Deleter;
 
     explicit UniquePtrDeleter(Deleter deleter) : deleter_(std::move(deleter)){ }
-    void dispose(void* p) {
+    void dispose(void* p) override {
       try {
         deleter_(static_cast<Pointer>(p));
         delete this;

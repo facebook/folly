@@ -44,8 +44,7 @@ class TestWriteChainAsyncTransportWrapper :
   }
 
   // Allow this to be constructed on the stack for easier testing.
-  virtual ~TestWriteChainAsyncTransportWrapper() {
-  }
+  ~TestWriteChainAsyncTransportWrapper() override {}
 };
 
 MATCHER_P(BufMatches, expected, "") {

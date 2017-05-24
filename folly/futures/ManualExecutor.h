@@ -73,7 +73,7 @@ namespace folly {
 
     }
 
-    virtual void scheduleAt(Func&& f, TimePoint const& t) override {
+    void scheduleAt(Func&& f, TimePoint const& t) override {
       std::lock_guard<std::mutex> lock(lock_);
       scheduledFuncs_.emplace(t, std::move(f));
       sem_.post();

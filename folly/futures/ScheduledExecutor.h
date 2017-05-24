@@ -30,9 +30,9 @@ namespace folly {
      typedef std::chrono::microseconds Duration;
      typedef std::chrono::steady_clock::time_point TimePoint;
 
-     virtual ~ScheduledExecutor() = default;
+     ~ScheduledExecutor() override = default;
 
-     virtual void add(Func) override = 0;
+     void add(Func) override = 0;
 
      /// Alias for add() (for Rx consistency)
      void schedule(Func&& a) { add(std::move(a)); }

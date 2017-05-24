@@ -43,7 +43,7 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
   VirtualEventBase(const VirtualEventBase&) = delete;
   VirtualEventBase& operator=(const VirtualEventBase&) = delete;
 
-  ~VirtualEventBase();
+  ~VirtualEventBase() override;
 
   EventBase& getEventBase() {
     return evb_;

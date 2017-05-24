@@ -91,7 +91,7 @@ typedef LifoSemImpl<> LifoSem;
 /// The exception thrown when wait()ing on an isShutdown() LifoSem
 struct ShutdownSemError : public std::runtime_error {
   explicit ShutdownSemError(const std::string& msg);
-  virtual ~ShutdownSemError() noexcept;
+  ~ShutdownSemError() noexcept override;
 };
 
 namespace detail {

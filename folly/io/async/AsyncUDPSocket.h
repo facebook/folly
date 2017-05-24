@@ -82,7 +82,7 @@ class AsyncUDPSocket : public EventHandler {
    * given eventbase
    */
   explicit AsyncUDPSocket(EventBase* evb);
-  ~AsyncUDPSocket();
+  ~AsyncUDPSocket() override;
 
   /**
    * Returns the address server is listening on
@@ -163,7 +163,7 @@ class AsyncUDPSocket : public EventHandler {
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
 
   // EventHandler
-  void handlerReady(uint16_t events) noexcept;
+  void handlerReady(uint16_t events) noexcept override;
 
   void handleRead() noexcept;
   bool updateRegistration() noexcept;

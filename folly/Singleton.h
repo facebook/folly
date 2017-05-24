@@ -273,11 +273,11 @@ struct SingletonHolder : public SingletonHolderBase {
 
   void registerSingleton(CreateFunc c, TeardownFunc t);
   void registerSingletonMock(CreateFunc c, TeardownFunc t);
-  virtual bool hasLiveInstance() override;
-  virtual void createInstance() override;
-  virtual bool creationStarted() override;
-  virtual void preDestroyInstance(ReadMostlyMainPtrDeleter<>&) override;
-  virtual void destroyInstance() override;
+  bool hasLiveInstance() override;
+  void createInstance() override;
+  bool creationStarted() override;
+  void preDestroyInstance(ReadMostlyMainPtrDeleter<>&) override;
+  void destroyInstance() override;
 
  private:
   SingletonHolder(TypeDescriptor type, SingletonVault& vault);

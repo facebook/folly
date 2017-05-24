@@ -23,13 +23,13 @@ namespace hazptr {
 
 class MineMemoryResource : public memory_resource {
  public:
-  void* allocate(const size_t sz, const size_t /* align */) {
+  void* allocate(const size_t sz, const size_t /* align */) override {
     void* p = malloc(sz);
     DEBUG_PRINT(p << " " << sz);
     return p;
   }
 
-  void deallocate(void* p, const size_t sz, const size_t /* align */) {
+  void deallocate(void* p, const size_t sz, const size_t /* align */) override {
     DEBUG_PRINT(p << " " << sz);
     free(p);
   }

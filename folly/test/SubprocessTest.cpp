@@ -281,7 +281,7 @@ struct WriteFileAfterFork
     : public Subprocess::DangerousPostForkPreExecCallback {
   explicit WriteFileAfterFork(std::string filename)
     : filename_(std::move(filename)) {}
-  virtual ~WriteFileAfterFork() {}
+  ~WriteFileAfterFork() override {}
   int operator()() override {
     return writeFile(std::string("ok"), filename_.c_str()) ? 0 : errno;
   }

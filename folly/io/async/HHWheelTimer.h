@@ -254,7 +254,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
    * Use destroy() instead.  See the comments in DelayedDestruction for more
    * details.
    */
-  virtual ~HHWheelTimer();
+  ~HHWheelTimer() override;
 
  private:
   // Forbidden copy constructor and assignment operator
@@ -262,7 +262,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   HHWheelTimer& operator=(HHWheelTimer const &) = delete;
 
   // Methods inherited from AsyncTimeout
-  virtual void timeoutExpired() noexcept;
+  void timeoutExpired() noexcept override;
 
   std::chrono::milliseconds interval_;
   std::chrono::milliseconds defaultTimeout_;

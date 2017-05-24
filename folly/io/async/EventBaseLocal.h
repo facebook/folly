@@ -31,7 +31,7 @@ namespace detail {
 class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
  public:
   EventBaseLocalBase() {}
-  virtual ~EventBaseLocalBase();
+  ~EventBaseLocalBase() override;
   void erase(EventBase& evb);
   void onEventBaseDestruction(EventBase& evb) override;
 

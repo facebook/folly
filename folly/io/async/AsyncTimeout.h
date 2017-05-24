@@ -248,7 +248,7 @@ struct async_timeout_wrapper:
     callback_(std::forward<UCallback>(callback))
   {}
 
-  void timeoutExpired() noexcept {
+  void timeoutExpired() noexcept override {
     static_assert(
       noexcept(std::declval<TCallback>()()),
       "callback must be declared noexcept, e.g.: `[]() noexcept {}`"

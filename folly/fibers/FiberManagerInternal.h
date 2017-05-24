@@ -146,7 +146,7 @@ class FiberManager : public ::folly::Executor {
       std::unique_ptr<LoopController> loopController,
       Options options = Options());
 
-  ~FiberManager();
+  ~FiberManager() override;
 
   /**
    * Controller access.

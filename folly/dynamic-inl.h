@@ -78,7 +78,7 @@ struct TypeError : std::runtime_error {
   explicit TypeError(const std::string& expected, dynamic::Type actual);
   explicit TypeError(const std::string& expected,
     dynamic::Type actual1, dynamic::Type actual2);
-  ~TypeError();
+  ~TypeError() override;
 };
 
 

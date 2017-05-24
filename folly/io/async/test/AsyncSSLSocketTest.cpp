@@ -1779,11 +1779,11 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFOWithTFOServerDisabled) {
 
 class ConnCallback : public AsyncSocket::ConnectCallback {
  public:
-  virtual void connectSuccess() noexcept override {
+  void connectSuccess() noexcept override {
     state = State::SUCCESS;
   }
 
-  virtual void connectErr(const AsyncSocketException& ex) noexcept override {
+  void connectErr(const AsyncSocketException& ex) noexcept override {
     state = State::ERROR;
     error = ex.what();
   }

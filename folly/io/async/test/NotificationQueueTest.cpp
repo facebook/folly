@@ -369,7 +369,7 @@ void QueueTest::destroyCallback() {
 
     std::function<void(int)> *fn;
    protected:
-    virtual ~DestroyTestConsumer() = default;
+    ~DestroyTestConsumer() override = default;
   };
 
   EventBase eventBase;

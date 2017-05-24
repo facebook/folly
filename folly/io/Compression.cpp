@@ -445,7 +445,7 @@ class LZ4FrameCodec final : public Codec {
  public:
   static std::unique_ptr<Codec> create(int level, CodecType type);
   explicit LZ4FrameCodec(int level, CodecType type);
-  ~LZ4FrameCodec();
+  ~LZ4FrameCodec() override;
 
   std::vector<std::string> validPrefixes() const override;
   bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
