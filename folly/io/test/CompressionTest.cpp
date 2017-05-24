@@ -34,6 +34,10 @@
 #include <folly/io/IOBufQueue.h>
 #include <folly/portability/GTest.h>
 
+#if FOLLY_HAVE_LIBZSTD
+#include <zstd.h>
+#endif
+
 namespace folly { namespace io { namespace test {
 
 class DataHolder : private boost::noncopyable {
@@ -1084,6 +1088,31 @@ TEST(CheckCompatibleTest, ZlibIsPrefix) {
   EXPECT_THROW_IF_DEBUG(
       getAutoUncompressionCodec(std::move(codecs)), std::invalid_argument);
 }
+
+#if FOLLY_HAVE_LIBZSTD
+
+TEST(ZstdTest, BackwardCompatible) {
+  auto codec = getCodec(CodecType::ZSTD);
+  {
+    auto const data = IOBuf::wrapBuffer(randomDataHolder.data(size_t(1) << 20));
+    auto compressed = codec->compress(data.get());
+    compressed->coalesce();
+    EXPECT_EQ(
+        data->length(),
+        ZSTD_getDecompressedSize(compressed->data(), compressed->length()));
+  }
+  {
+    auto const data =
+        IOBuf::wrapBuffer(randomDataHolder.data(size_t(100) << 20));
+    auto compressed = codec->compress(data.get());
+    compressed->coalesce();
+    EXPECT_EQ(
+        data->length(),
+        ZSTD_getDecompressedSize(compressed->data(), compressed->length()));
+  }
+}
+
+#endif
 }}}  // namespaces
 
 int main(int argc, char *argv[]) {
