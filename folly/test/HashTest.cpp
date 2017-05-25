@@ -38,6 +38,12 @@ TEST(Hash, Fnv32) {
   const uint32_t s3_res = 2166136261UL;
   EXPECT_EQ(fnv32(s3), s3_res);
   EXPECT_EQ(fnv32(s3), fnv32_buf(s3, strlen(s3)));
+
+  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
+  const char* s4 = reinterpret_cast<const char*>(s4_data);
+  const uint32_t s4_res = 2420936562UL;
+  EXPECT_EQ(fnv32(s4), s4_res);
+  EXPECT_EQ(fnv32(s4), fnv32_buf(s4, strlen(s4)));
 }
 
 TEST(Hash, Fnv64) {
@@ -55,6 +61,12 @@ TEST(Hash, Fnv64) {
   const uint64_t s3_res = 14695981039346656037ULL;
   EXPECT_EQ(fnv64(s3), s3_res);
   EXPECT_EQ(fnv64(s3), fnv64_buf(s3, strlen(s3)));
+
+  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
+  const char* s4 = reinterpret_cast<const char*>(s4_data);
+  const uint64_t s4_res = 2787597222566293202ULL;
+  EXPECT_EQ(fnv64(s4), s4_res);
+  EXPECT_EQ(fnv64(s4), fnv64_buf(s4, strlen(s4)));
 
   // note: Use fnv64_buf to make a single hash value from multiple
   // fields/datatypes.
