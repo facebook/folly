@@ -1165,7 +1165,7 @@ to(const char* b, const char* e) {
  * Parsing strings to numeric types.
  */
 template <typename Tgt>
-FOLLY_WARN_UNUSED_RESULT inline typename std::enable_if<
+FOLLY_NODISCARD inline typename std::enable_if<
     std::is_arithmetic<Tgt>::value,
     Expected<StringPiece, ConversionCode>>::type
 parseTo(StringPiece src, Tgt& out) {
@@ -1372,7 +1372,7 @@ typename std::enable_if<detail::IsArithToArith<Tgt, Src>::value, Tgt>::type to(
  * }
  ******************************************************************************/
 template <class T>
-FOLLY_WARN_UNUSED_RESULT typename std::enable_if<
+FOLLY_NODISCARD typename std::enable_if<
     std::is_enum<T>::value,
     Expected<StringPiece, ConversionCode>>::type
 parseTo(StringPiece in, T& out) noexcept {
@@ -1382,7 +1382,7 @@ parseTo(StringPiece in, T& out) noexcept {
   return restOrError;
 }
 
-FOLLY_WARN_UNUSED_RESULT
+FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in,
     StringPiece& out) noexcept {
@@ -1390,7 +1390,7 @@ inline Expected<StringPiece, ConversionCode> parseTo(
   return StringPiece{in.end(), in.end()};
 }
 
-FOLLY_WARN_UNUSED_RESULT
+FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in,
     std::string& out) {
@@ -1399,7 +1399,7 @@ inline Expected<StringPiece, ConversionCode> parseTo(
   return StringPiece{in.end(), in.end()};
 }
 
-FOLLY_WARN_UNUSED_RESULT
+FOLLY_NODISCARD
 inline Expected<StringPiece, ConversionCode> parseTo(
     StringPiece in,
     fbstring& out) {

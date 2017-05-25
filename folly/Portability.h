@@ -85,7 +85,6 @@ constexpr bool kHasUnalignedAccess = false;
 #define FOLLY_NODISCARD
 #endif
 #endif
-#define FOLLY_WARN_UNUSED_RESULT FOLLY_NODISCARD
 
 // target
 #ifdef _MSC_VER
