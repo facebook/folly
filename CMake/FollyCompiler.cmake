@@ -43,6 +43,20 @@ if (MSVC_USE_STATIC_RUNTIME)
   endforeach()
 endif()
 
+# The Ninja generator doesn't de-dup the exception mode flag, so remove the
+# default flag so that MSVC doesn't warn about it on every single file.
+if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+  foreach(flag_var
+      CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+      CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
+      CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+      CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+    if (${flag_var} MATCHES "/EHsc")
+      string(REGEX REPLACE "/EHsc" "" ${flag_var} "${${flag_var}}")
+    endif()
+  endforeach()
+endif()
+
 # In order for /Zc:inline, which speeds up the build significantly, to work
 # we need to remove the /Ob0 parameter that CMake adds by default, because that
 # would normally disable all inlining.
@@ -241,8 +255,8 @@ function(apply_folly_compile_options_to_target THETARGET)
       
       _STL_EXTRA_DISABLED_WARNINGS=4774\ 4987
 
-      $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:"_HAS_AUTO_PTR_ETC=1"> # We're building in C++ 17 or greater mode, but certain dependencies (Boost) still have dependencies on unary_function and binary_function, so we have to make sure not to remove them.
-      $<$<BOOL:${MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS}>:"WIN32_LEAN_AND_MEAN"> # Don't include most of Windows.h
+      $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:_HAS_AUTO_PTR_ETC=1> # We're building in C++ 17 or greater mode, but certain dependencies (Boost) still have dependencies on unary_function and binary_function, so we have to make sure not to remove them.
+      $<$<BOOL:${MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS}>:WIN32_LEAN_AND_MEAN> # Don't include most of Windows.h
   )
 
   # Ignore a warning about an object file not defining any symbols,
