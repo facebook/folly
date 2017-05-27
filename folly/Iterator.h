@@ -150,19 +150,79 @@ decltype(auto) get_emplace_arg(const Args& args) noexcept {
 
 namespace detail {
 /**
- * Common typedefs and methods for folly::emplace_iterator,
- * folly::front_emplace_iterator, and folly::back_emplace_iterator. Implements
- * everything except the actual emplace function call.
+ * Emplace implementation class for folly::emplace_iterator.
  */
-template <typename Derived, typename Container, bool implicit_unpack>
+template <typename Container>
+struct Emplace {
+  Emplace(Container& c, typename Container::iterator i)
+      : container(std::addressof(c)), iter(std::move(i)) {}
+  template <typename... Args>
+  void emplace(Args&&... args) {
+    iter = container->emplace(iter, std::forward<Args>(args)...);
+    ++iter;
+  }
+  Container* container;
+  typename Container::iterator iter;
+};
+
+/**
+ * Emplace implementation class for folly::hint_emplace_iterator.
+ */
+template <typename Container>
+struct EmplaceHint {
+  EmplaceHint(Container& c, typename Container::iterator i)
+      : container(std::addressof(c)), iter(std::move(i)) {}
+  template <typename... Args>
+  void emplace(Args&&... args) {
+    iter = container->emplace_hint(iter, std::forward<Args>(args)...);
+    ++iter;
+  }
+  Container* container;
+  typename Container::iterator iter;
+};
+
+/**
+ * Emplace implementation class for folly::front_emplace_iterator.
+ */
+template <typename Container>
+struct EmplaceFront {
+  explicit EmplaceFront(Container& c) : container(std::addressof(c)) {}
+  template <typename... Args>
+  void emplace(Args&&... args) {
+    container->emplace_front(std::forward<Args>(args)...);
+  }
+  Container* container;
+};
+
+/**
+ * Emplace implementation class for folly::back_emplace_iterator.
+ */
+template <typename Container>
+struct EmplaceBack {
+  explicit EmplaceBack(Container& c) : container(std::addressof(c)) {}
+  template <typename... Args>
+  void emplace(Args&&... args) {
+    container->emplace_back(std::forward<Args>(args)...);
+  }
+  Container* container;
+};
+
+/**
+ * Generic base class and implementation of all emplace iterator classes.
+ *
+ * Uses the curiously recurring template pattern (CRTP) to cast `this*` to
+ * `Derived*`; i.e., to implement covariant return types in a generic manner.
+ */
+template <typename Derived, typename EmplaceImpl, bool implicit_unpack>
 class emplace_iterator_base;
 
 /**
  * Partial specialization of emplace_iterator_base with implicit unpacking
  * disabled.
  */
-template <typename Derived, typename Container>
-class emplace_iterator_base<Derived, Container, false> {
+template <typename Derived, typename EmplaceImpl>
+class emplace_iterator_base<Derived, EmplaceImpl, false>
+    : protected EmplaceImpl /* protected implementation inheritance */ {
  public:
   // Iterator traits.
   using iterator_category = std::output_iterator_tag;
@@ -170,10 +230,10 @@ class emplace_iterator_base<Derived, Container, false> {
   using difference_type = void;
   using pointer = void;
   using reference = void;
-  using container_type = Container;
+  using container_type =
+      std::remove_reference_t<decltype(*EmplaceImpl::container)>;
 
-  explicit emplace_iterator_base(Container& container)
-      : container(std::addressof(container)) {}
+  using EmplaceImpl::EmplaceImpl;
 
   /**
    * Canonical output operator. Forwards single argument straight to container's
@@ -181,7 +241,8 @@ class emplace_iterator_base<Derived, Container, false> {
    */
   template <typename T>
   Derived& operator=(T&& arg) {
-    return static_cast<Derived*>(this)->emplace(std::forward<T>(arg));
+    this->emplace(std::forward<T>(arg));
+    return static_cast<Derived&>(*this);
   }
 
   /**
@@ -222,23 +283,21 @@ class emplace_iterator_base<Derived, Container, false> {
   emplace_iterator_base& operator=(emplace_iterator_base&&) noexcept = default;
 
  protected:
-  using Class = emplace_iterator_base;
-
   template <typename Args, std::size_t... I>
   Derived& unpackAndEmplace(Args& args, std::index_sequence<I...>) {
-    return static_cast<Derived*>(this)->emplace(get_emplace_arg<I>(args)...);
+    this->emplace(get_emplace_arg<I>(args)...);
+    return static_cast<Derived&>(*this);
   }
   template <typename Args, std::size_t... I>
   Derived& unpackAndEmplace(const Args& args, std::index_sequence<I...>) {
-    return static_cast<Derived*>(this)->emplace(get_emplace_arg<I>(args)...);
+    this->emplace(get_emplace_arg<I>(args)...);
+    return static_cast<Derived&>(*this);
   }
   template <typename Args, std::size_t... I>
   Derived& unpackAndEmplace(Args&& args, std::index_sequence<I...>) {
-    return static_cast<Derived*>(this)->emplace(
-        get_emplace_arg<I>(std::move(args))...);
+    this->emplace(get_emplace_arg<I>(std::move(args))...);
+    return static_cast<Derived&>(*this);
   }
-
-  Container* container;
 };
 
 /**
@@ -246,14 +305,17 @@ class emplace_iterator_base<Derived, Container, false> {
  * enabled.
  *
  * Uses inheritance rather than SFINAE. operator= requires a single argument,
- * which makes it impossible to use std::enable_if or similar.
+ * which makes it very tricky to use std::enable_if or similar.
  */
-template <typename Derived, typename Container>
-class emplace_iterator_base<Derived, Container, true>
-    : public emplace_iterator_base<Derived, Container, false> {
+template <typename Derived, typename EmplaceImpl>
+class emplace_iterator_base<Derived, EmplaceImpl, true>
+    : public emplace_iterator_base<Derived, EmplaceImpl, false> {
+ private:
+  using Base = emplace_iterator_base<Derived, EmplaceImpl, false>;
+
  public:
-  using emplace_iterator_base<Derived, Container, false>::emplace_iterator_base;
-  using emplace_iterator_base<Derived, Container, false>::operator=;
+  using Base::Base;
+  using Base::operator=;
 
   /**
    * Special output operator for arguments packed into a std::pair. Unpacks
@@ -299,6 +361,43 @@ class emplace_iterator_base<Derived, Container, true>
   emplace_iterator_base& operator=(const emplace_iterator_base&) = default;
   emplace_iterator_base& operator=(emplace_iterator_base&&) noexcept = default;
 };
+
+/**
+ * Concrete instantiation of emplace_iterator_base. All emplace iterator
+ * classes; folly::emplace_iterator, folly::hint_emplace_iterator,
+ * folly::front_emplace_iterator, and folly::back_emplace_iterator; are just
+ * type aliases of this class.
+ *
+ * It is not possible to alias emplace_iterator_base directly, because type
+ * aliases cannot be used for CRTP.
+ */
+template <
+    template <typename> class EmplaceImplT,
+    typename Container,
+    bool implicit_unpack>
+class emplace_iterator_impl
+    : public emplace_iterator_base<
+          emplace_iterator_impl<EmplaceImplT, Container, implicit_unpack>,
+          EmplaceImplT<Container>,
+          implicit_unpack> {
+ private:
+  using Base = emplace_iterator_base<
+      emplace_iterator_impl,
+      EmplaceImplT<Container>,
+      implicit_unpack>;
+
+ public:
+  using Base::Base;
+  using Base::operator=;
+
+  // We need all of these explicit defaults because the custom operator=
+  // overloads disable implicit generation of these functions.
+  emplace_iterator_impl(const emplace_iterator_impl&) = default;
+  emplace_iterator_impl(emplace_iterator_impl&&) noexcept = default;
+  emplace_iterator_impl& operator=(emplace_iterator_impl&) = default;
+  emplace_iterator_impl& operator=(const emplace_iterator_impl&) = default;
+  emplace_iterator_impl& operator=(emplace_iterator_impl&&) noexcept = default;
+};
 } // folly::detail
 
 /**
@@ -306,115 +405,32 @@ class emplace_iterator_base<Derived, Container, true>
  * instead of insert(). Uses perfect forwarding.
  */
 template <typename Container, bool implicit_unpack = true>
-class emplace_iterator : public detail::emplace_iterator_base<
-                             emplace_iterator<Container>,
-                             Container,
-                             implicit_unpack> {
- private:
-  using Base = detail::emplace_iterator_base<
-      emplace_iterator<Container>,
-      Container,
-      implicit_unpack>;
+using emplace_iterator =
+    detail::emplace_iterator_impl<detail::Emplace, Container, implicit_unpack>;
 
- public:
-  emplace_iterator(Container& container, typename Container::iterator i)
-      : Base(container), iter(std::move(i)) {}
-
-  using Base::operator=;
-
-  // We need all of these explicit defaults because the custom operator=
-  // overloads disable implicit generation of these functions.
-  emplace_iterator(const emplace_iterator&) = default;
-  emplace_iterator(emplace_iterator&&) noexcept = default;
-  emplace_iterator& operator=(emplace_iterator&) = default;
-  emplace_iterator& operator=(const emplace_iterator&) = default;
-  emplace_iterator& operator=(emplace_iterator&&) noexcept = default;
-
- protected:
-  typename Container::iterator iter;
-
- private:
-  friend typename Base::Class;
-  template <typename... Args>
-  emplace_iterator& emplace(Args&&... args) {
-    iter = this->container->emplace(iter, std::forward<Args>(args)...);
-    ++iter;
-    return *this;
-  }
-};
+/**
+ * Behaves just like std::insert_iterator except that it calls emplace_hint()
+ * instead of insert(). Uses perfect forwarding.
+ */
+template <typename Container, bool implicit_unpack = true>
+using hint_emplace_iterator = detail::
+    emplace_iterator_impl<detail::EmplaceHint, Container, implicit_unpack>;
 
 /**
  * Behaves just like std::front_insert_iterator except that it calls
- * emplace_front() instead of insert_front(). Uses perfect forwarding.
+ * emplace_front() instead of insert(). Uses perfect forwarding.
  */
 template <typename Container, bool implicit_unpack = true>
-class front_emplace_iterator : public detail::emplace_iterator_base<
-                                   front_emplace_iterator<Container>,
-                                   Container,
-                                   implicit_unpack> {
- private:
-  using Base = detail::emplace_iterator_base<
-      front_emplace_iterator<Container>,
-      Container,
-      implicit_unpack>;
-
- public:
-  using Base::Base;
-  using Base::operator=;
-
-  // We need all of these explicit defaults because the custom operator=
-  // overloads disable implicit generation of these functions.
-  front_emplace_iterator(const front_emplace_iterator&) = default;
-  front_emplace_iterator(front_emplace_iterator&&) noexcept = default;
-  front_emplace_iterator& operator=(front_emplace_iterator&) = default;
-  front_emplace_iterator& operator=(const front_emplace_iterator&) = default;
-  front_emplace_iterator& operator=(front_emplace_iterator&&) noexcept =
-      default;
-
- private:
-  friend typename Base::Class;
-  template <typename... Args>
-  front_emplace_iterator& emplace(Args&&... args) {
-    this->container->emplace_front(std::forward<Args>(args)...);
-    return *this;
-  }
-};
+using front_emplace_iterator = detail::
+    emplace_iterator_impl<detail::EmplaceFront, Container, implicit_unpack>;
 
 /**
  * Behaves just like std::back_insert_iterator except that it calls
- * emplace_back() instead of insert_back(). Uses perfect forwarding.
+ * emplace_back() instead of insert(). Uses perfect forwarding.
  */
 template <typename Container, bool implicit_unpack = true>
-class back_emplace_iterator : public detail::emplace_iterator_base<
-                                  back_emplace_iterator<Container>,
-                                  Container,
-                                  implicit_unpack> {
- private:
-  using Base = detail::emplace_iterator_base<
-      back_emplace_iterator<Container>,
-      Container,
-      implicit_unpack>;
-
- public:
-  using Base::Base;
-  using Base::operator=;
-
-  // We need all of these explicit defaults because the custom operator=
-  // overloads disable implicit generation of these functions.
-  back_emplace_iterator(const back_emplace_iterator&) = default;
-  back_emplace_iterator(back_emplace_iterator&&) noexcept = default;
-  back_emplace_iterator& operator=(back_emplace_iterator&) = default;
-  back_emplace_iterator& operator=(const back_emplace_iterator&) = default;
-  back_emplace_iterator& operator=(back_emplace_iterator&&) noexcept = default;
-
- private:
-  friend typename Base::Class;
-  template <typename... Args>
-  back_emplace_iterator& emplace(Args&&... args) {
-    this->container->emplace_back(std::forward<Args>(args)...);
-    return *this;
-  }
-};
+using back_emplace_iterator = detail::
+    emplace_iterator_impl<detail::EmplaceBack, Container, implicit_unpack>;
 
 /**
  * Convenience function to construct a folly::emplace_iterator, analogous to
@@ -430,6 +446,22 @@ emplace_iterator<Container, implicit_unpack> emplacer(
     Container& c,
     typename Container::iterator i) {
   return emplace_iterator<Container, implicit_unpack>(c, std::move(i));
+}
+
+/**
+ * Convenience function to construct a folly::hint_emplace_iterator, analogous
+ * to std::inserter().
+ *
+ * Setting implicit_unpack to false will disable implicit unpacking of
+ * single std::pair and std::tuple arguments to the iterator's operator=. That
+ * may be desirable in case of constructors that expect a std::pair or
+ * std::tuple argument.
+ */
+template <bool implicit_unpack = true, typename Container>
+hint_emplace_iterator<Container, implicit_unpack> hint_emplacer(
+    Container& c,
+    typename Container::iterator i) {
+  return hint_emplace_iterator<Container, implicit_unpack>(c, std::move(i));
 }
 
 /**

@@ -19,9 +19,12 @@
 #include <cstddef>
 #include <deque>
 #include <functional>
+#include <map>
+#include <set>
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <folly/Iterator.h>
 #include <folly/portability/GTest.h>
@@ -216,6 +219,60 @@ TEST(EmplaceIterator, BackEmplacerTest) {
     it = 3;
     it = 4;
     EXPECT_EQ(q, Container<int>({0, 1, 2, 3, 4}));
+  }
+}
+
+/**
+ * Basic tests for folly::hint_emplace_iterator.
+ */
+TEST(EmplaceIterator, HintEmplacerTest) {
+  {
+    init_counters();
+    std::map<int, Object> m;
+    auto it = hint_emplacer(m, m.end());
+    it = make_emplace_args(
+        std::piecewise_construct,
+        std::forward_as_tuple(0),
+        std::forward_as_tuple(0));
+    it = make_emplace_args(
+        std::piecewise_construct,
+        std::forward_as_tuple(1),
+        std::forward_as_tuple(0, 0));
+    it = make_emplace_args(
+        std::piecewise_construct,
+        std::forward_as_tuple(2),
+        std::forward_as_tuple(Object{}));
+    ASSERT_EQ(m.size(), 3);
+    EXPECT_EQ(gDefaultCtrCnt, 1);
+    EXPECT_EQ(gCopyCtrCnt, 0);
+    EXPECT_EQ(gMoveCtrCnt, 1);
+    EXPECT_EQ(gExplicitCtrCnt, 1);
+    EXPECT_EQ(gMultiargCtrCnt, 1);
+    EXPECT_EQ(gCopyOpCnt, 0);
+    EXPECT_EQ(gMoveOpCnt, 0);
+    EXPECT_EQ(gConvertOpCnt, 0);
+  }
+  {
+    struct O {
+      explicit O(int i) : i(i) {}
+      bool operator<(const O& other) const {
+        return i < other.i;
+      }
+      bool operator==(const O& other) const {
+        return i == other.i;
+      }
+      int i;
+    };
+    std::vector<int> v1 = {0, 1, 2, 3, 4};
+    std::vector<int> v2 = {0, 2, 4};
+    std::set<O> diff;
+    std::set_difference(
+        v1.begin(),
+        v1.end(),
+        v2.begin(),
+        v2.end(),
+        hint_emplacer(diff, diff.end()));
+    ASSERT_EQ(diff, std::set<O>({O(1), O(3)}));
   }
 }
 
