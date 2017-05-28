@@ -1061,6 +1061,18 @@ TEST(Conv, TryStringToInt) {
   EXPECT_EQ(rv2.value(), 4711);
 }
 
+TEST(Conv, TryStringToEnum) {
+  enum class A { x = 42, y = 420, z = 65 };
+  auto rv1 = folly::tryTo<A>("1000000000000000000000000000000");
+  EXPECT_FALSE(rv1.hasValue());
+  auto rv2 = folly::tryTo<A>("42");
+  EXPECT_TRUE(rv2.hasValue());
+  EXPECT_EQ(A::x, rv2.value());
+  auto rv3 = folly::tryTo<A>("50");
+  EXPECT_TRUE(rv3.hasValue());
+  EXPECT_EQ(static_cast<A>(50), rv3.value());
+}
+
 TEST(Conv, TryStringToFloat) {
   auto rv1 = folly::tryTo<float>("");
   EXPECT_FALSE(rv1.hasValue());

@@ -1536,7 +1536,7 @@ tryTo(const Src& value) {
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value,
-    Tgt>::type
+    Expected<Tgt, ConversionCode>>::type
 tryTo(const Src& value) {
   using I = typename std::underlying_type<Tgt>::type;
   return tryTo<I>(value).then([](I i) { return static_cast<Tgt>(i); });
