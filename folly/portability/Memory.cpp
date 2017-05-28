@@ -17,6 +17,9 @@
 #include <folly/portability/Memory.h>
 
 #include <folly/portability/Config.h>
+#include <folly/portability/Malloc.h>
+
+#include <errno.h>
 
 namespace folly {
 namespace detail {
@@ -24,7 +27,6 @@ namespace detail {
     (defined(__ANDROID__) && (__ANDROID_API__ > 15)) ||                      \
     (defined(__APPLE__) && (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_6 || \
                             __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0))
-#include <errno.h>
 
 // Use posix_memalign, but mimic the behaviour of memalign
 void* aligned_malloc(size_t size, size_t align) {
@@ -41,7 +43,6 @@ void aligned_free(void* aligned_ptr) {
   free(aligned_ptr);
 }
 #elif defined(_WIN32)
-#include <malloc.h> // nolint
 
 void* aligned_malloc(size_t size, size_t align) {
   return _aligned_malloc(size, align);
@@ -51,7 +52,6 @@ void aligned_free(void* aligned_ptr) {
   _aligned_free(aligned_ptr);
 }
 #else
-#include <malloc.h> // nolint
 
 void* aligned_malloc(size_t size, size_t align) {
   return memalign(align, size);
