@@ -241,6 +241,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/DecoratedAsyncTransportWrapper.h \
 	io/async/DelayedDestructionBase.h \
 	io/async/DelayedDestruction.h \
+	io/async/DestructorCheck.h \
 	io/async/EventBase.h \
 	io/async/EventBaseLocal.h \
 	io/async/EventBaseManager.h \

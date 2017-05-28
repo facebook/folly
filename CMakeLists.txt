@@ -386,6 +386,7 @@ if (BUILD_TESTS)
       TEST async_timeout_test SOURCES AsyncTimeoutTest.cpp
       TEST AsyncUDPSocketTest SOURCES AsyncUDPSocketTest.cpp
       TEST DelayedDestructionTest SOURCES DelayedDestructionTest.cpp
+      TEST DestructorCheckTest SOURCES DestructorCheckTest.cpp
       TEST DelayedDestructionBaseTest SOURCES DelayedDestructionBaseTest.cpp
       TEST EventBaseTest SOURCES EventBaseTest.cpp
       TEST EventBaseLocalTest SOURCES EventBaseLocalTest.cpp
