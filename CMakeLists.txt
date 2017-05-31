@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 3.4.0 FATAL_ERROR)
 
-# Unfortunately, CMake doesn't easily provide us a way to merge static
-# libraries, which is what we want to do to generate the main folly library, so
-# we do a bit of a workaround here to inject a property into the generated
-# project files that will only get enabled for the folly target. Ugly, but
-# the alternatives are far, far worse.
-if ("${CMAKE_GENERATOR}" MATCHES "Visual Studio 15( 2017)? Win64")
-  set(CMAKE_GENERATOR_TOOLSET "v141</PlatformToolset></PropertyGroup><ItemDefinitionGroup Condition=\"'$(ProjectName)'=='folly'\"><ProjectReference><LinkLibraryDependencies>true</LinkLibraryDependencies></ProjectReference></ItemDefinitionGroup><PropertyGroup><PlatformToolset>v141")
+project(${PACKAGE_NAME} CXX)
+
+if (NOT ${MSVC_CXX_ARCHITECTURE_ID} STREQUAL "x64")
+  message(FATAL_ERROR "This build script only supports building Folly on 64-bit Windows.")
+endif()
+
+if (MSVC_VERSION EQUAL 1910)
   set(MSVC_IS_2017 ON)
-elseif ("${CMAKE_GENERATOR}" STREQUAL "Visual Studio 14 2015 Win64")
-  set(CMAKE_GENERATOR_TOOLSET "v140</PlatformToolset></PropertyGroup><ItemDefinitionGroup Condition=\"'$(ProjectName)'=='folly'\"><ProjectReference><LinkLibraryDependencies>true</LinkLibraryDependencies></ProjectReference></ItemDefinitionGroup><PropertyGroup><PlatformToolset>v140")
+elseif (MSVC_VERSION EQUAL 1900)
   set(MSVC_IS_2017 OFF)
 elseif ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
   message("Folly is being built with Ninja, so assuming VS 2017 is being used.")
@@ -32,12 +31,6 @@ set(PACKAGE_BUGREPORT "https://github.com/facebook/folly/issues")
 # 150+ tests in the root folder anyone? No? I didn't think so.
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-project(${PACKAGE_NAME} CXX)
-
-# Check architecture OS
-if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-  message(FATAL_ERROR "Folly requires a 64bit OS")
-endif()
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
   message(FATAL_ERROR "You should only be using CMake to build Folly if you are on Windows!")
 endif()
@@ -125,7 +118,8 @@ add_library(folly_base STATIC
 )
 auto_source_group(folly ${FOLLY_DIR} ${files} ${hfiles})
 apply_folly_compile_options_to_target(folly_base)
-target_include_directories(folly_base PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(folly_base PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
 # Add the generated files to the correct source group.
 source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
 source_group("folly\\build" FILES
@@ -136,7 +130,7 @@ source_group("folly\\build" FILES
 )
 
 target_include_directories(folly_base
-  PUBLIC
+  PRIVATE
     ${DOUBLE_CONVERSION_INCLUDE_DIR}
     ${LIBGFLAGS_INCLUDE_DIR}
     ${LIBGLOG_INCLUDE_DIR}
@@ -160,7 +154,7 @@ target_link_libraries(folly_base
     Ws2_32.lib
 )
 if (FOLLY_HAVE_PTHREAD)
-  target_include_directories(folly_base PUBLIC ${LIBPTHREAD_INCLUDE_DIRS})
+  target_include_directories(folly_base PRIVATE ${LIBPTHREAD_INCLUDE_DIRS})
   target_link_libraries(folly_base PUBLIC ${LIBPTHREAD_LIBRARIES})
 endif()
 
@@ -202,13 +196,10 @@ add_library(folly ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp)
 apply_folly_compile_options_to_target(folly)
 source_group("" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp)
 
-# Rather than list the dependencies in two places, we apply them directly on
-# the folly_base target and then copy them over to the folly target.
-get_target_property(FOLLY_LINK_LIBRARIES folly_base INTERFACE_LINK_LIBRARIES)
-target_link_libraries(folly PUBLIC ${FOLLY_LINK_LIBRARIES})
+target_link_libraries(folly PUBLIC folly_base)
 target_include_directories(folly PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
 
-install(TARGETS folly
+install(TARGETS folly folly_base
   EXPORT folly
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
