@@ -418,6 +418,13 @@ TEST(StringPiece, Suffix) {
   }
 }
 
+TEST(StringPiece, Equals) {
+  StringPiece a("hello");
+
+  EXPECT_TRUE(a.equals("HELLO", AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.equals("HELLOX", AsciiCaseInsensitive()));
+}
+
 TEST(StringPiece, PrefixEmpty) {
   StringPiece a;
   EXPECT_TRUE(a.startsWith(""));

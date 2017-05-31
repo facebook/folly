@@ -692,6 +692,12 @@ public:
         trunc.begin(), trunc.end(), other.begin(), std::forward<Comp>(eq));
   }
 
+  template <class Comp>
+  bool equals(const const_range_type& other, Comp&& eq) const {
+    return size() == other.size() &&
+        std::equal(begin(), end(), other.begin(), std::forward<Comp>(eq));
+  }
+
   /**
    * Remove the items in [b, e), as long as this subrange is at the beginning
    * or end of the Range.
