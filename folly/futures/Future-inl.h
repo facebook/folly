@@ -324,7 +324,7 @@ template <class T>
 template <class F>
 Future<T> Future<T>::ensure(F&& func) {
   return this->then([funcw = std::forward<F>(func)](Try<T> && t) mutable {
-    funcw();
+    std::move(funcw)();
     return makeFuture(std::move(t));
   });
 }
@@ -333,7 +333,7 @@ template <class T>
 template <class F>
 Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
   return within(dur, tk).onError([funcw = std::forward<F>(func)](
-      TimedOut const&) { return funcw(); });
+      TimedOut const&) { return std::move(funcw)(); });
 }
 
 template <class T>
@@ -457,8 +457,7 @@ inline Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
 
 template <class Func>
 auto via(Executor* x, Func&& func)
-  -> Future<typename isFuture<decltype(func())>::Inner>
-{
+    -> Future<typename isFuture<decltype(std::declval<Func>()())>::Inner> {
   // TODO make this actually more performant. :-P #7260175
   return via(x).then(std::forward<Func>(func));
 }
@@ -504,7 +503,7 @@ makeFutureWith(F&& func) {
   using InnerType =
       typename isFuture<typename std::result_of<F()>::type>::Inner;
   try {
-    return func();
+    return std::forward<F>(func)();
   } catch (std::exception& e) {
     return makeFuture<InnerType>(
         exception_wrapper(std::current_exception(), e));
@@ -522,9 +521,8 @@ typename std::enable_if<
 makeFutureWith(F&& func) {
   using LiftedResult =
       typename Unit::Lift<typename std::result_of<F()>::type>::type;
-  return makeFuture<LiftedResult>(makeTryWith([&func]() mutable {
-    return func();
-  }));
+  return makeFuture<LiftedResult>(
+      makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
 }
 
 template <class T>
@@ -574,7 +572,7 @@ collectAll(Fs&&... fs) {
   auto ctx = std::make_shared<detail::CollectAllVariadicContext<
     typename std::decay<Fs>::type::value_type...>>();
   detail::collectVariadicHelper<detail::CollectAllVariadicContext>(
-    ctx, std::forward<typename std::decay<Fs>::type>(fs)...);
+      ctx, std::forward<Fs>(fs)...);
   return ctx->p.getFuture();
 }
 
@@ -677,7 +675,7 @@ collect(Fs&&... fs) {
   auto ctx = std::make_shared<detail::CollectVariadicContext<
     typename std::decay<Fs>::type::value_type...>>();
   detail::collectVariadicHelper<detail::CollectVariadicContext>(
-    ctx, std::forward<typename std::decay<Fs>::type>(fs)...);
+      ctx, std::forward<Fs>(fs)...);
   return ctx->p.getFuture();
 }
 
