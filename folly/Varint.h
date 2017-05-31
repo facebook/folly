@@ -17,7 +17,10 @@
 #pragma once
 
 #include <type_traits>
+
 #include <folly/Conv.h>
+#include <folly/Expected.h>
+#include <folly/Likely.h>
 #include <folly/Range.h>
 
 namespace folly {
@@ -55,9 +58,23 @@ size_t encodeVarint(uint64_t val, uint8_t* buf);
 
 /**
  * Decode a value from a given buffer, advances data past the returned value.
+ * Throws on error.
  */
 template <class T>
 uint64_t decodeVarint(Range<T*>& data);
+
+enum class DecodeVarintError {
+  TooManyBytes = 0,
+  TooFewBytes = 1,
+};
+
+/**
+ * A variant of decodeVarint() that does not throw on error. Useful in contexts
+ * where only part of a serialized varint may be attempted to be decoded, e.g.,
+ * when a serialized varint arrives on the boundary of a network packet.
+ */
+template <class T>
+Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data);
 
 /**
  * ZigZag encoding that maps signed integers with a small absolute value
@@ -93,6 +110,18 @@ inline size_t encodeVarint(uint64_t val, uint8_t* buf) {
 
 template <class T>
 inline uint64_t decodeVarint(Range<T*>& data) {
+  auto expected = tryDecodeVarint(data);
+  if (!expected) {
+    throw std::invalid_argument(
+        expected.error() == DecodeVarintError::TooManyBytes
+            ? "Invalid varint value: too many bytes."
+            : "Invalid varint value: too few bytes.");
+  }
+  return *expected;
+}
+
+template <class T>
+inline Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data) {
   static_assert(
       std::is_same<typename std::remove_cv<T>::type, char>::value ||
           std::is_same<typename std::remove_cv<T>::type, unsigned char>::value,
@@ -117,7 +146,7 @@ inline uint64_t decodeVarint(Range<T*>& data) {
       b = *p++; val |= (b & 0x7f) << 49; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 56; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 63; if (b >= 0) break;
-      throw std::invalid_argument("Invalid varint value. Too big.");
+      return makeUnexpected(DecodeVarintError::TooManyBytes);
     } while (false);
   } else {
     int shift = 0;
@@ -126,9 +155,7 @@ inline uint64_t decodeVarint(Range<T*>& data) {
       shift += 7;
     }
     if (p == end) {
-      throw std::invalid_argument("Invalid varint value. Too small: " +
-                                  folly::to<std::string>(end - begin) +
-                                  " bytes");
+      return makeUnexpected(DecodeVarintError::TooFewBytes);
     }
     val |= static_cast<uint64_t>(*p++) << shift;
   }
@@ -137,4 +164,4 @@ inline uint64_t decodeVarint(Range<T*>& data) {
   return val;
 }
 
-}  // namespaces
+} // folly
