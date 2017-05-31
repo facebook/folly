@@ -1,23 +1,5 @@
 cmake_minimum_required(VERSION 3.4.0 FATAL_ERROR)
 
-# Unfortunately, CMake doesn't easily provide us a way to merge static
-# libraries, which is what we want to do to generate the main folly library, so
-# we do a bit of a workaround here to inject a property into the generated
-# project files that will only get enabled for the folly target. Ugly, but
-# the alternatives are far, far worse.
-if ("${CMAKE_GENERATOR}" MATCHES "Visual Studio 15( 2017)? Win64")
-  set(CMAKE_GENERATOR_TOOLSET "v141</PlatformToolset></PropertyGroup><ItemDefinitionGroup Condition=\"'$(ProjectName)'=='folly'\"><ProjectReference><LinkLibraryDependencies>true</LinkLibraryDependencies></ProjectReference></ItemDefinitionGroup><PropertyGroup><PlatformToolset>v141")
-  set(MSVC_IS_2017 ON)
-elseif ("${CMAKE_GENERATOR}" STREQUAL "Visual Studio 14 2015 Win64")
-  set(CMAKE_GENERATOR_TOOLSET "v140</PlatformToolset></PropertyGroup><ItemDefinitionGroup Condition=\"'$(ProjectName)'=='folly'\"><ProjectReference><LinkLibraryDependencies>true</LinkLibraryDependencies></ProjectReference></ItemDefinitionGroup><PropertyGroup><PlatformToolset>v140")
-  set(MSVC_IS_2017 OFF)
-elseif ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-  message("Folly is being built with Ninja, so assuming VS 2017 is being used.")
-  set(MSVC_IS_2017 ON)
-else()
-  message(FATAL_ERROR "This build script only supports building Folly on 64-bit Windows with Visual Studio 2015 or Visual Studio 2017.")
-endif()
-
 # includes
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -33,6 +15,14 @@ set(PACKAGE_BUGREPORT "https://github.com/facebook/folly/issues")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(${PACKAGE_NAME} CXX)
+
+if (MSVC_VERSION EQUAL 1910 OR MSVC_VERSION EQUAL 1911)
+  set(MSVC_IS_2017 ON)
+elseif (MSVC_VERSION EQUAL 1900)
+  set(MSVC_IS_2017 OFF)
+else()
+  message(FATAL_ERROR "This build script only supports building '${MSVC_VERSION}' Folly on 64-bit Windows with Visual Studio 2015 or Visual Studio 2017.")
+endif()
 
 # Check architecture OS
 if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -116,7 +106,7 @@ list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/experimental/io/AsyncIO.h
 )
 
-add_library(folly_base STATIC
+add_library(folly_base OBJECT
   ${files} ${hfiles}
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/EscapeTables.cpp
@@ -135,42 +125,56 @@ source_group("folly\\build" FILES
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 
+set(FOLLY_SHINY_DEPENDENCIES
+  Boost::chrono
+  Boost::context
+  Boost::date_time
+  Boost::filesystem
+  Boost::program_options
+  Boost::regex
+  Boost::system
+  OpenSSL::SSL
+  OpenSSL::Crypto
+)
+
+set(FOLLY_LINK_LIBRARIES
+  ${DOUBLE_CONVERSION_LIBRARY}
+  ${LIBEVENT_LIB}
+  ${LIBGFLAGS_LIBRARY}
+  ${LIBGLOG_LIBRARY}
+  Ws2_32.lib
+
+  ${FOLLY_SHINY_DEPENDENCIES}
+)
+
 target_include_directories(folly_base
   PUBLIC
     ${DOUBLE_CONVERSION_INCLUDE_DIR}
     ${LIBGFLAGS_INCLUDE_DIR}
     ${LIBGLOG_INCLUDE_DIR}
     ${LIBEVENT_INCLUDE_DIR}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
 )
-target_link_libraries(folly_base
-  PUBLIC
-    Boost::chrono
-    Boost::context
-    Boost::date_time
-    Boost::filesystem
-    Boost::program_options
-    Boost::regex
-    Boost::system
-    ${DOUBLE_CONVERSION_LIBRARY}
-    ${LIBEVENT_LIB}
-    ${LIBGFLAGS_LIBRARY}
-    ${LIBGLOG_LIBRARY}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    Ws2_32.lib
-)
+
+foreach (LIB ${FOLLY_SHINY_DEPENDENCIES})
+  target_include_directories(folly_base PUBLIC $<TARGET_PROPERTY:${LIB},INCLUDE_DIRECTORIES>)
+endforeach()
+
 if (FOLLY_HAVE_PTHREAD)
   target_include_directories(folly_base PUBLIC ${LIBPTHREAD_INCLUDE_DIRS})
-  target_link_libraries(folly_base PUBLIC ${LIBPTHREAD_LIBRARIES})
+  list(APPEND FOLLY_LINK_LIBRARIES ${LIBPTHREAD_LIBRARIES})
 endif()
 
 # Now to generate the fingerprint tables
 add_executable(GenerateFingerprintTables
   ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp
+  $<TARGET_OBJECTS:folly_base>
 )
+target_link_libraries(GenerateFingerprintTables PRIVATE ${FOLLY_LINK_LIBRARIES})
+target_include_directories(GenerateFingerprintTables PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+add_dependencies(GenerateFingerprintTables folly_base)
 apply_folly_compile_options_to_target(GenerateFingerprintTables)
 set_property(TARGET GenerateFingerprintTables PROPERTY FOLDER "Build")
-target_link_libraries(GenerateFingerprintTables PRIVATE folly_base)
 source_group("" FILES ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp)
 
 # Compile the fingerprint tables.
@@ -186,9 +190,12 @@ add_library(folly_fingerprint STATIC
   ${FOLLY_DIR}/Fingerprint.h
   ${FOLLY_DIR}/detail/SlowFingerprint.h
   ${FOLLY_DIR}/detail/FingerprintPolynomial.h
+  $<TARGET_OBJECTS:folly_base>
 )
+target_link_libraries(folly_fingerprint PRIVATE ${FOLLY_LINK_LIBRARIES})
+target_include_directories(folly_fingerprint PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+add_dependencies(folly_fingerprint folly_base)
 apply_folly_compile_options_to_target(folly_fingerprint)
-target_link_libraries(folly_fingerprint PRIVATE folly_base)
 
 # We want to generate a single library and target for folly, but we needed a
 # two-stage compile for the fingerprint tables, so we create a phony source
@@ -198,13 +205,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp
   COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp
   DEPENDS folly_base folly_fingerprint
 )
-add_library(folly ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp)
+add_library(folly ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp $<TARGET_OBJECTS:folly_base>)
 apply_folly_compile_options_to_target(folly)
 source_group("" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp)
 
-# Rather than list the dependencies in two places, we apply them directly on
-# the folly_base target and then copy them over to the folly target.
-get_target_property(FOLLY_LINK_LIBRARIES folly_base INTERFACE_LINK_LIBRARIES)
 target_link_libraries(folly PUBLIC ${FOLLY_LINK_LIBRARIES})
 target_include_directories(folly PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
 
@@ -386,8 +390,8 @@ if (BUILD_TESTS)
       TEST async_timeout_test SOURCES AsyncTimeoutTest.cpp
       TEST AsyncUDPSocketTest SOURCES AsyncUDPSocketTest.cpp
       TEST DelayedDestructionTest SOURCES DelayedDestructionTest.cpp
-      TEST DestructorCheckTest SOURCES DestructorCheckTest.cpp
       TEST DelayedDestructionBaseTest SOURCES DelayedDestructionBaseTest.cpp
+      TEST DestructorCheckTest SOURCES DestructorCheckTest.cpp
       TEST EventBaseTest SOURCES EventBaseTest.cpp
       TEST EventBaseLocalTest SOURCES EventBaseLocalTest.cpp
       TEST HHWheelTimerTest SOURCES HHWheelTimerTest.cpp
