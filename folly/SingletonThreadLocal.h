@@ -21,6 +21,21 @@
 
 namespace folly {
 
+// SingletonThreadLocal
+//
+// This class can help you implement a per-thread leaky-singleton model within
+// your application. Please read the usage block at the top of Singleton.h as
+// the recommendations there are also generally applicable to this class.
+//
+// When we say this is "leaky" we mean that the T instances held by a
+// SingletonThreadLocal<T> will survive until their owning thread exits,
+// regardless of the lifetime of the singleton object holding them.  That
+// means that they can be safely used during process shutdown, and
+// that they can also be safely used in an application that spawns many
+// temporary threads throughout its life.
+//
+// Keywords to help people find this class in search:
+// Thread Local Singleton ThreadLocalSingleton
 template <typename T, typename Tag = detail::DefaultTag>
 class SingletonThreadLocal {
  public:
