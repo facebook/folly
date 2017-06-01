@@ -1866,8 +1866,8 @@ class Reduce : public Operator<Reduce<Reducer>> {
     static_assert(!Source::infinite, "Cannot reduce infinite source");
     Optional<StorageType> accum;
     source | [&](Value v) {
-      if (accum.hasValue()) {
-        accum = reducer_(std::move(accum.value()), std::forward<Value>(v));
+      if (auto target = accum.get_pointer()) {
+        *target = reducer_(std::move(*target), std::forward<Value>(v));
       } else {
         accum = std::forward<Value>(v);
       }
@@ -1990,10 +1990,13 @@ class Min : public Operator<Min<Selector, Comparer>> {
     Optional<Key> minKey;
     source | [&](Value v) {
       Key key = selector_(asConst(v)); // so that selector_ cannot mutate v
-      if (!minKey.hasValue() || comparer_(key, minKey.value())) {
-        minKey = std::move(key);
-        min = std::forward<Value>(v);
+      if (auto lastKey = minKey.get_pointer()) {
+        if (!comparer_(key, *lastKey)) {
+          return;
+        }
       }
+      minKey = std::move(key);
+      min = std::forward<Value>(v);
     };
     return min;
   }
