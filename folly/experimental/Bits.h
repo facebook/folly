@@ -242,8 +242,7 @@ inline void Bits<T, Traits>::set(T* p, size_t bitStart, size_t count,
     size_t countInThisBlock = bitsPerBlock - offset;
     size_t countInNextBlock = count - countInThisBlock;
 
-    UnderlyingType thisBlock =
-        UnderlyingType(value & ((one << countInThisBlock) - 1));
+    UnderlyingType thisBlock = UnderlyingType(value & ones(countInThisBlock));
     UnderlyingType nextBlock = UnderlyingType(value >> countInThisBlock);
     if (std::is_signed<UnderlyingType>::value) {
       nextBlock &= ones(countInNextBlock);
