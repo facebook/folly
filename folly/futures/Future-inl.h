@@ -28,7 +28,7 @@
 #include <folly/futures/detail/Core.h>
 #include <folly/futures/Timekeeper.h>
 
-#if FOLLY_MOBILE || defined(__APPLE__)
+#if !HAVE_BOOST_CONTEXT || (FOLLY_MOBILE || defined(__APPLE__))
 #define FOLLY_FUTURE_USING_FIBER 0
 #else
 #define FOLLY_FUTURE_USING_FIBER 1
