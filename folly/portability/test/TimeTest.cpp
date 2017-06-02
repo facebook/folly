@@ -16,8 +16,8 @@
 
 #include <folly/portability/Time.h>
 
-#include <folly/test/TestUtils.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 #include <chrono>
 

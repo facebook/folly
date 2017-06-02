@@ -87,8 +87,9 @@ template <typename Char>
 constexpr size_t constexpr_strlen_internal(const Char* s, size_t len) {
   return *s == Char(0) ? len : constexpr_strlen_internal(s + 1, len + 1);
 }
-static_assert(constexpr_strlen_internal("123456789", 0) == 9,
-              "Someone appears to have broken constexpr_strlen...");
+static_assert(
+    constexpr_strlen_internal("123456789", 0) == 9,
+    "Someone appears to have broken constexpr_strlen...");
 } // namespace detail
 
 template <typename Char>

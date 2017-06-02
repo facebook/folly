@@ -17,16 +17,20 @@
 #pragma once
 
 #ifndef _WIN32
+
 #include <sys/mman.h>
 
 // MAP_ANONYMOUS is named MAP_ANON on OSX/BSD.
 #if defined(__APPLE__) || defined(__FreeBSD__)
-# if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
-#  define MAP_ANONYMOUS MAP_ANON
-# endif
+#if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
+#define MAP_ANONYMOUS MAP_ANON
 #endif
+#endif
+
 #else
+
 #include <cstdint>
+
 #include <sys/types.h>
 
 #define MAP_ANONYMOUS 1
@@ -56,4 +60,5 @@ int mprotect(void* addr, size_t size, int prot);
 int munlock(const void* addr, size_t length);
 int munmap(void* addr, size_t length);
 }
+
 #endif

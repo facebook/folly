@@ -24,7 +24,7 @@
 
 #else
 
-FOLLY_NAMESPACE_STD_BEGIN
+namespace std {
 
 #if _LIBCPP_VERSION < 4000
 void __throw_length_error(char const* msg) {
@@ -45,7 +45,6 @@ void __throw_bad_alloc() {
   throw std::bad_alloc();
 }
 #endif
-
-FOLLY_NAMESPACE_STD_END
+}
 
 #endif

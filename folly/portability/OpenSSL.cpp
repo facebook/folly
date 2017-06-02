@@ -174,7 +174,6 @@ void HMAC_CTX_free(HMAC_CTX* ctx) {
 }
 
 #endif
-
 }
 }
 }

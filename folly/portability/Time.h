@@ -27,16 +27,16 @@
 // solve that by pretending we have it here in the header and
 // then enable our implementation on the source side so that
 // gets linked in instead.
-#if __MACH__ && ( \
-      MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_12 || \
-      __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0)
+#if __MACH__ &&                                                \
+    (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_12 || \
+     __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0)
 
-# ifdef FOLLY_HAVE_CLOCK_GETTIME
-# undef FOLLY_HAVE_CLOCK_GETTIME
-# endif
+#ifdef FOLLY_HAVE_CLOCK_GETTIME
+#undef FOLLY_HAVE_CLOCK_GETTIME
+#endif
 
-# define FOLLY_HAVE_CLOCK_GETTIME 1
-# define FOLLY_FORCE_CLOCK_GETTIME_DEFINITION 1
+#define FOLLY_HAVE_CLOCK_GETTIME 1
+#define FOLLY_FORCE_CLOCK_GETTIME_DEFINITION 1
 
 #endif
 
@@ -62,8 +62,9 @@ char* ctime_r(const time_t* t, char* buf);
 tm* gmtime_r(const time_t* t, tm* res);
 tm* localtime_r(const time_t* t, tm* o);
 int nanosleep(const struct timespec* request, struct timespec* remain);
-char* strptime(const char* __restrict buf,
-               const char* __restrict fmt,
-               struct tm* __restrict tm);
+char* strptime(
+    const char* __restrict buf,
+    const char* __restrict fmt,
+    struct tm* __restrict tm);
 }
 #endif

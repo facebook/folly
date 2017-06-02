@@ -24,7 +24,9 @@
 namespace folly {
 namespace portability {
 namespace fcntl {
-int creat(char const* fn, int pm) { return _creat(fn, pm); }
+int creat(char const* fn, int pm) {
+  return _creat(fn, pm);
+}
 
 int fcntl(int fd, int cmd, ...) {
   va_list args;

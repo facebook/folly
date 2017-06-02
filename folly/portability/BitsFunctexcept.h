@@ -27,10 +27,10 @@
 
 #else
 
-FOLLY_NAMESPACE_STD_BEGIN
+namespace std {
 
 #if _LIBCPP_VERSION < 4000
-[[noreturn]] void __throw_length_error(char const* msg); // @nolint
+[[noreturn]] void __throw_length_error(char const* msg);
 [[noreturn]] void __throw_logic_error(char const* msg);
 [[noreturn]] void __throw_out_of_range(char const* msg);
 #endif
@@ -38,7 +38,6 @@ FOLLY_NAMESPACE_STD_BEGIN
 #if _CPPLIB_VER // msvc c++ std lib
 [[noreturn]] void __throw_bad_alloc();
 #endif
-
-FOLLY_NAMESPACE_STD_END
+}
 
 #endif

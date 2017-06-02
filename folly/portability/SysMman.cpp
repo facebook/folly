@@ -17,7 +17,9 @@
 #include <folly/portability/SysMman.h>
 
 #ifdef _WIN32
+
 #include <cassert>
+
 #include <folly/Portability.h>
 #include <folly/portability/Windows.h>
 
@@ -213,4 +215,5 @@ int munmap(void* addr, size_t length) {
   return 0;
 }
 }
+
 #endif

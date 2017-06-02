@@ -43,7 +43,7 @@ FOLLY_ALWAYS_INLINE void __builtin___clear_cache(char* begin, char* end) {
 
 FOLLY_ALWAYS_INLINE int __builtin_clz(unsigned int x) {
   unsigned long index;
-  return (int)(_BitScanReverse(&index, (unsigned long)x) ? 31 - index : 32);
+  return int(_BitScanReverse(&index, (unsigned long)x) ? 31 - index : 32);
 }
 
 FOLLY_ALWAYS_INLINE int __builtin_clzl(unsigned long x) {
@@ -52,28 +52,30 @@ FOLLY_ALWAYS_INLINE int __builtin_clzl(unsigned long x) {
 
 FOLLY_ALWAYS_INLINE int __builtin_clzll(unsigned long long x) {
   unsigned long index;
-  return (int)(_BitScanReverse64(&index, x) ? 63 - index : 64);
+  return int(_BitScanReverse64(&index, x) ? 63 - index : 64);
 }
 
 FOLLY_ALWAYS_INLINE int __builtin_ctzll(unsigned long long x) {
   unsigned long index;
-  return (int)(_BitScanForward64(&index, x) ? index : 64);
+  return int(_BitScanForward64(&index, x) ? index : 64);
 }
 
 FOLLY_ALWAYS_INLINE int __builtin_ffs(int x) {
   unsigned long index;
-  return (int)(_BitScanForward(&index, (unsigned long)x) ? index + 1 : 0);
+  return int(_BitScanForward(&index, (unsigned long)x) ? index + 1 : 0);
 }
 
-FOLLY_ALWAYS_INLINE int __builtin_ffsl(long x) { return __builtin_ffs((int)x); }
+FOLLY_ALWAYS_INLINE int __builtin_ffsl(long x) {
+  return __builtin_ffs(int(x));
+}
 
 FOLLY_ALWAYS_INLINE int __builtin_ffsll(long long x) {
   unsigned long index;
-  return (int)(_BitScanForward64(&index, (unsigned long long)x) ? index + 1 : 0);
+  return int(_BitScanForward64(&index, (unsigned long long)x) ? index + 1 : 0);
 }
 
 FOLLY_ALWAYS_INLINE int __builtin_popcountll(unsigned long long x) {
-  return (int)__popcnt64(x);
+  return int(__popcnt64(x));
 }
 
 FOLLY_ALWAYS_INLINE void* __builtin_return_address(unsigned int frame) {

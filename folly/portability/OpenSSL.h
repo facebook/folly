@@ -47,37 +47,37 @@
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.
 #if !defined(OPENSSL_IS_BORINGSSL)
-# define FOLLY_OPENSSL_IS_100                \
+#define FOLLY_OPENSSL_IS_100                \
   (OPENSSL_VERSION_NUMBER >= 0x10000003L && \
    OPENSSL_VERSION_NUMBER < 0x1000105fL)
-# define FOLLY_OPENSSL_IS_101                \
+#define FOLLY_OPENSSL_IS_101                \
   (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
    OPENSSL_VERSION_NUMBER < 0x1000200fL)
-# define FOLLY_OPENSSL_IS_102                \
+#define FOLLY_OPENSSL_IS_102                \
   (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
    OPENSSL_VERSION_NUMBER < 0x10100000L)
-# define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
 #endif
 
-#if !OPENSSL_IS_BORINGSSL && !FOLLY_OPENSSL_IS_100 && !FOLLY_OPENSSL_IS_101 \
-    && !FOLLY_OPENSSL_IS_102 && !FOLLY_OPENSSL_IS_110
-# warning Compiling with unsupported OpenSSL version
+#if !OPENSSL_IS_BORINGSSL && !FOLLY_OPENSSL_IS_100 && !FOLLY_OPENSSL_IS_101 && \
+    !FOLLY_OPENSSL_IS_102 && !FOLLY_OPENSSL_IS_110
+#warning Compiling with unsupported OpenSSL version
 #endif
 
 // BoringSSL and OpenSSL 0.9.8f later with TLS extension support SNI.
-#if OPENSSL_IS_BORINGSSL ||          \
+#if OPENSSL_IS_BORINGSSL || \
     (OPENSSL_VERSION_NUMBER >= 0x00908070L && !defined(OPENSSL_NO_TLSEXT))
-# define FOLLY_OPENSSL_HAS_SNI 1
+#define FOLLY_OPENSSL_HAS_SNI 1
 #else
-# define FOLLY_OPENSSL_HAS_SNI 0
+#define FOLLY_OPENSSL_HAS_SNI 0
 #endif
 
 // BoringSSL and OpenSSL 1.0.2 later with TLS extension support ALPN.
-#if OPENSSL_IS_BORINGSSL ||          \
+#if OPENSSL_IS_BORINGSSL || \
     (OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT))
-# define FOLLY_OPENSSL_HAS_ALPN 1
+#define FOLLY_OPENSSL_HAS_ALPN 1
 #else
-# define FOLLY_OPENSSL_HAS_ALPN 0
+#define FOLLY_OPENSSL_HAS_ALPN 0
 #endif
 
 // This attempts to "unify" the OpenSSL libcrypto/libssl APIs between
@@ -138,7 +138,6 @@ STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx);
 // minor version upgrade will need to remove this
 #define OPENSSL_lh_new OPENSSL_LH_new
 #endif
-
 }
 }
 }

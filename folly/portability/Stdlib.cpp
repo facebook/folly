@@ -17,7 +17,9 @@
 #include <folly/portability/Stdlib.h>
 
 #ifdef _WIN32
+
 #include <cstring>
+
 #include <errno.h>
 
 #include <folly/portability/Fcntl.h>
@@ -25,7 +27,9 @@
 #include <folly/portability/Windows.h>
 
 extern "C" {
-char* mktemp(char* tn) { return _mktemp(tn); }
+char* mktemp(char* tn) {
+  return _mktemp(tn);
+}
 
 // While yes, this is for a directory, due to this being windows,
 // a file and directory can't have the same name, resulting in this
@@ -135,9 +139,11 @@ int unsetenv(const char* name) {
   return 0;
 }
 }
+
 #endif
 
 #if !__linux__ && !FOLLY_MOBILE
+
 #include <string>
 #include <vector>
 
@@ -162,4 +168,5 @@ extern "C" int clearenv() {
 
   return 0;
 }
+
 #endif

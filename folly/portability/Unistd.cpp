@@ -21,8 +21,11 @@
 #include <folly/portability/Unistd.h>
 
 #ifdef _WIN32
+
 #include <cstdio>
+
 #include <fcntl.h>
+
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Windows.h>
 
@@ -60,9 +63,13 @@ static int wrapPositional(F f, int fd, off_t offset, Args... args) {
 namespace folly {
 namespace portability {
 namespace unistd {
-int access(char const* fn, int am) { return _access(fn, am); }
+int access(char const* fn, int am) {
+  return _access(fn, am);
+}
 
-int chdir(const char* path) { return _chdir(path); }
+int chdir(const char* path) {
+  return _chdir(path);
+}
 
 int close(int fh) {
   if (folly::portability::sockets::is_fh_socket(fh)) {
@@ -111,9 +118,13 @@ int close(int fh) {
   return _close(fh);
 }
 
-int dup(int fh) { return _dup(fh); }
+int dup(int fh) {
+  return _dup(fh);
+}
 
-int dup2(int fhs, int fhd) { return _dup2(fhs, fhd); }
+int dup2(int fhs, int fhd) {
+  return _dup2(fhs, fhd);
+}
 
 int fsync(int fd) {
   HANDLE h = (HANDLE)_get_osfhandle(fd);
@@ -141,29 +152,47 @@ int ftruncate(int fd, off_t len) {
   return 0;
 }
 
-char* getcwd(char* buf, int sz) { return _getcwd(buf, sz); }
+char* getcwd(char* buf, int sz) {
+  return _getcwd(buf, sz);
+}
 
-int getdtablesize() { return _getmaxstdio(); }
+int getdtablesize() {
+  return _getmaxstdio();
+}
 
-int getgid() { return 1; }
+int getgid() {
+  return 1;
+}
 
-pid_t getpid() { return (pid_t)uint64_t(GetCurrentProcessId()); }
+pid_t getpid() {
+  return (pid_t)uint64_t(GetCurrentProcessId());
+}
 
 // No major need to implement this, and getting a non-potentially
 // stale ID on windows is a bit involved.
-pid_t getppid() { return (pid_t)1; }
+pid_t getppid() {
+  return (pid_t)1;
+}
 
-int getuid() { return 1; }
+int getuid() {
+  return 1;
+}
 
-int isatty(int fh) { return _isatty(fh); }
+int isatty(int fh) {
+  return _isatty(fh);
+}
 
-int lockf(int fd, int cmd, off_t len) { return _locking(fd, cmd, len); }
+int lockf(int fd, int cmd, off_t len) {
+  return _locking(fd, cmd, len);
+}
 
 off_t lseek(int fh, off_t off, int orig) {
   return _lseek(fh, off, orig);
 }
 
-int rmdir(const char* path) { return _rmdir(path); }
+int rmdir(const char* path) {
+  return _rmdir(path);
+}
 
 int pipe(int pth[2]) {
   // We need to be able to listen to pipes with
@@ -306,4 +335,5 @@ ssize_t write(int fh, void const* buf, size_t count) {
 }
 }
 }
+
 #endif

@@ -325,9 +325,10 @@ int nanosleep(const struct timespec* request, struct timespec* remain) {
   return 0;
 }
 
-char* strptime(const char* __restrict s,
-               const char* __restrict f,
-               struct tm* __restrict tm) {
+char* strptime(
+    const char* __restrict s,
+    const char* __restrict f,
+    struct tm* __restrict tm) {
   // Isn't the C++ standard lib nice? std::get_time is defined such that its
   // format parameters are the exact same as strptime. Of course, we have to
   // create a string stream first, and imbue it with the current C locale, and

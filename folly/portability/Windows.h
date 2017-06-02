@@ -29,12 +29,12 @@
 #ifndef __STDC__
 /* nolint */
 #define __STDC__ 1
-#include <io.h> // nolint
 #include <direct.h> // nolint
+#include <io.h> // nolint
 #undef __STDC__
 #else
-#include <io.h> // nolint
 #include <direct.h> // nolint
+#include <io.h> // nolint
 #endif
 
 #if defined(min) || defined(max)

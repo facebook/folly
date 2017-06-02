@@ -17,10 +17,15 @@
 #pragma once
 
 #ifndef _WIN32
+
 #include <unistd.h>
+
 #else
+
 #include <cstdint>
+
 #include <sys/locking.h>
+
 #include <folly/portability/SysTypes.h>
 
 // This is different from the normal headers because there are a few cases,
@@ -86,4 +91,5 @@ ssize_t write(int fh, void const* buf, size_t count);
 }
 
 /* using override */ using namespace folly::portability::unistd;
+
 #endif

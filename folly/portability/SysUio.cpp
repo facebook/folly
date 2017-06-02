@@ -73,7 +73,9 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
   if (lockf(fd, F_LOCK, 0) == -1) {
     return -1;
   }
-  SCOPE_EXIT { lockf(fd, F_ULOCK, 0); };
+  SCOPE_EXIT {
+    lockf(fd, F_ULOCK, 0);
+  };
 
   ssize_t bytesProcessed = 0;
   int curIov = 0;

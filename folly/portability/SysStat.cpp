@@ -20,7 +20,9 @@
 #include <folly/portability/Windows.h>
 
 extern "C" {
-int chmod(char const* fn, int am) { return _chmod(fn, am); }
+int chmod(char const* fn, int am) {
+  return _chmod(fn, am);
+}
 
 int fchmod(int fd, mode_t mode) {
   HANDLE h = (HANDLE)_get_osfhandle(fd);
@@ -49,12 +51,16 @@ int fchmod(int fd, mode_t mode) {
 }
 
 // Just return the result of a normal stat for now
-int lstat(const char* path, struct stat* st) { return stat(path, st); }
+int lstat(const char* path, struct stat* st) {
+  return stat(path, st);
+}
 
 int mkdir(const char* fn, int /* mode */) {
   return _mkdir(fn);
 }
 
-int umask(int md) { return _umask(md); }
+int umask(int md) {
+  return _umask(md);
+}
 }
 #endif

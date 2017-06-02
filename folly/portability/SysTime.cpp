@@ -17,7 +17,9 @@
 #include <folly/portability/SysTime.h>
 
 #ifdef _WIN32
+
 #include <cstdint>
+
 #include <Windows.h>
 
 extern "C" {
@@ -58,4 +60,5 @@ void timersub(timeval* a, timeval* b, timeval* res) {
   }
 }
 }
+
 #endif
