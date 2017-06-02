@@ -53,10 +53,8 @@ class hazptr_domain {
  private:
   template <typename, typename>
   friend class hazptr_obj_base;
-  template <typename> friend class hazptr_owner;
-
-  /** Constant -- May be changed to parameter in the future */
-  enum { kScanThreshold = 3 };
+  template <typename>
+  friend class hazptr_owner;
 
   memory_resource* mr_;
   std::atomic<hazptr_rec*> hazptrs_ = {nullptr};
@@ -70,7 +68,6 @@ class hazptr_domain {
   int pushRetired(hazptr_obj* head, hazptr_obj* tail, int count);
   void tryBulkReclaim();
   void bulkReclaim();
-  void try_reclaim();
 };
 
 /** Get the default hazptr_domain */

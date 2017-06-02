@@ -13,6 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define HAZPTR_DEBUG true
+#define HAZPTR_STATS true
+#define HAZPTR_SCAN_THRESHOLD 10
+
 #include <folly/experimental/hazptr/test/HazptrUse1.h>
 #include <folly/experimental/hazptr/test/HazptrUse2.h>
 #include <folly/experimental/hazptr/example/LockFreeLIFO.h>
@@ -26,7 +30,7 @@
 
 #include <thread>
 
-DEFINE_int32(num_threads, 1, "Number of threads");
+DEFINE_int32(num_threads, 5, "Number of threads");
 DEFINE_int64(num_reps, 1, "Number of test reps");
 DEFINE_int64(num_ops, 10, "Number of ops or pairs of ops per rep");
 
