@@ -89,7 +89,12 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   }
 
   // Set the custom hook
-  hooks->alloc = &JemallocNodumpAllocator::alloc;
+  extent_hooks_ = *hooks;
+  extent_hooks_.alloc = &JemallocNodumpAllocator::alloc;
+  if (auto ret =
+          mallctl(key.c_str(), nullptr, nullptr, &hooks, sizeof(hooks))) {
+    LOG(FATAL) << "Unable to set the hooks: " << errnoStr(ret);
+  }
 #endif
 
   return true;

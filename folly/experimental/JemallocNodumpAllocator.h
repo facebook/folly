@@ -91,6 +91,7 @@ class JemallocNodumpAllocator {
   static void* alloc(
       void* chunk,
 #else
+  extent_hooks_t extent_hooks_;
   static extent_alloc_t* original_alloc_;
   static void* alloc(
       extent_hooks_t* extent,
