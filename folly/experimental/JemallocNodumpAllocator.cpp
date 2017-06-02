@@ -37,12 +37,22 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   }
 
   size_t len = sizeof(arena_index_);
-  if (auto ret = mallctl("arenas.extend", &arena_index_, &len, nullptr, 0)) {
+  if (auto ret = mallctl(
+#ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_CHUNK
+          "arenas.extend"
+#else
+          "arenas.create"
+#endif
+          ,
+          &arena_index_,
+          &len,
+          nullptr,
+          0)) {
     LOG(FATAL) << "Unable to extend arena: " << errnoStr(ret);
   }
   flags_ = MALLOCX_ARENA(arena_index_) | MALLOCX_TCACHE_NONE;
 
-  // Set the custom alloc hook
+#ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_CHUNK
   const auto key =
       folly::to<std::string>("arena.", arena_index_, ".chunk_hooks");
   chunk_hooks_t hooks;
@@ -51,18 +61,36 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   if (auto ret = mallctl(key.c_str(), &hooks, &len, nullptr, 0)) {
     LOG(FATAL) << "Unable to get the hooks: " << errnoStr(ret);
   }
-  if (original_chunk_alloc_ == nullptr) {
-    original_chunk_alloc_ = hooks.alloc;
+  if (original_alloc_ == nullptr) {
+    original_alloc_ = hooks.alloc;
   } else {
-    DCHECK_EQ(original_chunk_alloc_, hooks.alloc);
+    DCHECK_EQ(original_alloc_, hooks.alloc);
   }
 
   // Set the custom hook
-  hooks.alloc = &JemallocNodumpAllocator::chunk_alloc;
+  hooks.alloc = &JemallocNodumpAllocator::alloc;
   if (auto ret =
           mallctl(key.c_str(), nullptr, nullptr, &hooks, sizeof(hooks))) {
     LOG(FATAL) << "Unable to set the hooks: " << errnoStr(ret);
   }
+#else
+  const auto key =
+      folly::to<std::string>("arena.", arena_index_, ".extent_hooks");
+  extent_hooks_t* hooks;
+  len = sizeof(hooks);
+  // Read the existing hooks
+  if (auto ret = mallctl(key.c_str(), &hooks, &len, nullptr, 0)) {
+    LOG(FATAL) << "Unable to get the hooks: " << errnoStr(ret);
+  }
+  if (original_alloc_ == nullptr) {
+    original_alloc_ = hooks->alloc;
+  } else {
+    DCHECK_EQ(original_alloc_, hooks->alloc);
+  }
+
+  // Set the custom hook
+  hooks->alloc = &JemallocNodumpAllocator::alloc;
+#endif
 
   return true;
 #else // FOLLY_JEMALLOC_NODUMP_ALLOCATOR_SUPPORTED
@@ -80,17 +108,31 @@ void* JemallocNodumpAllocator::reallocate(void* p, size_t size) {
 
 #ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_SUPPORTED
 
-chunk_alloc_t* JemallocNodumpAllocator::original_chunk_alloc_ = nullptr;
-
-void* JemallocNodumpAllocator::chunk_alloc(
+#ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_CHUNK
+chunk_alloc_t* JemallocNodumpAllocator::original_alloc_ = nullptr;
+void* JemallocNodumpAllocator::alloc(
     void* chunk,
+#else
+extent_alloc_t* JemallocNodumpAllocator::original_alloc_ = nullptr;
+void* JemallocNodumpAllocator::alloc(
+    extent_hooks_t* extent,
+    void* new_addr,
+#endif
     size_t size,
     size_t alignment,
     bool* zero,
     bool* commit,
     unsigned arena_ind) {
-  void* result =
-      original_chunk_alloc_(chunk, size, alignment, zero, commit, arena_ind);
+  void* result = original_alloc_(
+      JEMALLOC_CHUNK_OR_EXTENT,
+#ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_EXTENT
+      new_addr,
+#endif
+      size,
+      alignment,
+      zero,
+      commit,
+      arena_ind);
   if (result != nullptr) {
     if (auto ret = madvise(result, size, MADV_DONTDUMP)) {
       VLOG(1) << "Unable to madvise(MADV_DONTDUMP): " << errnoStr(ret);
