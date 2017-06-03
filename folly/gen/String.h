@@ -41,7 +41,7 @@ template<class TargetContainer,
          class... Targets>
 class SplitTo;
 
-}  // namespace detail
+} // namespace detail
 
 /**
  * Split the output from a generator into StringPiece "lines" delimited by
@@ -242,7 +242,7 @@ StreamSplitter<Callback> streamSplitter(char delimiter,
   return StreamSplitter<Callback>(delimiter, std::move(pieceCb), capacity);
 }
 
-}  // namespace gen
-}  // namespace folly
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/String-inl.h>

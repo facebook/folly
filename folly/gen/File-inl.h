@@ -129,7 +129,7 @@ inline auto byLineImpl(File file, char delim, bool keepDelimiter)
     | resplit(delim, keepDelimiter);
 }
 
-}  // !detail
+} // !detail
 
 /**
  * Generator which reads lines from a file.
@@ -161,4 +161,5 @@ inline auto byLine(int fd, char delim = '\n')
 
 inline auto byLine(const char* f, char delim = '\n')
   -> decltype(byLine(File(f), delim)) { return byLine(File(f), delim); }
-}}  // !folly::gen
+} // !gen
+} // !folly

@@ -22,7 +22,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 
-namespace folly { namespace gen {
+namespace folly {
+namespace gen {
 
 /**
  * ArgumentReference - For determining ideal argument type to receive a value.
@@ -2336,7 +2337,7 @@ inline detail::Skip skip(size_t count) { return detail::Skip(count); }
 inline detail::Batch batch(size_t batchSize) {
   return detail::Batch(batchSize);
 }
-
-}} // folly::gen
+} // gen
+} // folly
 
 #pragma GCC diagnostic pop

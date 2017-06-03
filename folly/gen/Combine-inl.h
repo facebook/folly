@@ -201,7 +201,7 @@ class MergeTuples {
   }
 };
 
-}  // namespace detail
+} // namespace detail
 
 // TODO(mcurtiss): support zip() for N>1 operands. Because of variadic problems,
 // this might not be easily possible until gcc4.8 is available.
@@ -211,5 +211,5 @@ Zip zip(Source&& source) {
   return Zip(std::forward<Source>(source));
 }
 
-}  // namespace gen
-}  // namespace folly
+} // namespace gen
+} // namespace folly

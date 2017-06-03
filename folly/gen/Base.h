@@ -78,9 +78,10 @@
  *
  * To learn more about this library, including the use of infinite generators,
  * see the examples in the comments, or the docs (coming soon).
-*/
+ */
 
-namespace folly { namespace gen {
+namespace folly {
+namespace gen {
 
 class Less {
 public:
@@ -814,7 +815,7 @@ template<class Fallback,
 UnwrapOr unwrapOr(Fallback&& fallback) {
   return UnwrapOr(std::forward<Fallback>(fallback));
 }
-
-}} // folly::gen
+} // gen
+} // folly
 
 #include <folly/gen/Base-inl.h>

@@ -29,7 +29,7 @@ class Interleave;
 template<class Container>
 class Zip;
 
-}  // namespace detail
+} // namespace detail
 
 template<class Source2,
          class Source2Decayed = typename std::decay<Source2>::type,
@@ -38,7 +38,7 @@ Interleave interleave(Source2&& source2) {
   return Interleave(std::forward<Source2>(source2));
 }
 
-}  // namespace gen
-}  // namespace folly
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/Combine-inl.h>

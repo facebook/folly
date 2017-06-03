@@ -412,7 +412,7 @@ class SplitTo {
 
 #pragma GCC diagnostic pop
 
-}  // namespace detail
+} // namespace detail
 
-}  // namespace gen
-}  // namespace folly
+} // namespace gen
+} // namespace folly

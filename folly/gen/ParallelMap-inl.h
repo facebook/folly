@@ -28,7 +28,9 @@
 #include <folly/MPMCPipeline.h>
 #include <folly/experimental/EventCount.h>
 
-namespace folly { namespace gen { namespace detail {
+namespace folly {
+namespace gen {
+namespace detail {
 
 /**
  * PMap - Map in parallel (using threads). For producing a sequence of
@@ -250,5 +252,6 @@ class PMap : public Operator<PMap<Predicate>> {
     return Gen(source.self(), pred_, nThreads_);
   }
 };
-
-}}}  // namespaces
+} // namespace detail
+} // namespace gen
+} // namespace folly

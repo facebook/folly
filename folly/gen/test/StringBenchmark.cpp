@@ -61,7 +61,7 @@ void initStringResplitterBenchmark() {
 
 size_t len(folly::StringPiece s) { return s.size(); }
 
-}  // namespace
+} // namespace
 
 BENCHMARK(StringResplitter_Big, iters) {
   size_t s = 0;

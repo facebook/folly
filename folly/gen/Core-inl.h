@@ -25,7 +25,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 
-namespace folly { namespace gen {
+namespace folly {
+namespace gen {
 
 /**
  * IsCompatibleSignature - Trait type for testing whether a given Functor
@@ -372,7 +373,7 @@ public:
 };
 
 } // detail
-
-}} // folly::gen
+} // gen
+} // folly
 
 #pragma GCC diagnostic pop

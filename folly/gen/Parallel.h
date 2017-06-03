@@ -21,7 +21,8 @@
 
 #include <folly/gen/Base.h>
 
-namespace folly { namespace gen {
+namespace folly {
+namespace gen {
 namespace detail {
 
 template <class Ops>
@@ -102,7 +103,7 @@ template <class Sink, class Sub = detail::Sub<Sink>>
 Sub sub(Sink sink) {
   return Sub(std::move(sink));
 }
-
-}} // !namespace folly::gen
+} // !namespace gen
+} // !namespace folly
 
 #include <folly/gen/Parallel-inl.h>

@@ -19,14 +19,15 @@
 
 #include <folly/gen/Core.h>
 
-namespace folly { namespace gen {
+namespace folly {
+namespace gen {
 
 namespace detail {
 
 template<class Predicate>
 class PMap;
 
-}  // namespace detail
+} // namespace detail
 
 /**
  * Run `pred` in parallel in nThreads. Results are returned in the
@@ -42,7 +43,7 @@ template<class Predicate,
   PMap pmap(Predicate pred = Predicate(), size_t nThreads = 0) {
   return PMap(std::move(pred), nThreads);
 }
-
-}}  // namespaces
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/ParallelMap-inl.h>

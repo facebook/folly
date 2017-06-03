@@ -918,7 +918,7 @@ class TestIntSeq : public GenImpl<int, TestIntSeq> {
   TestIntSeq& operator=(const TestIntSeq&) = delete;
 };
 
-}  // namespace
+} // namespace
 
 TEST(Gen, NoGeneratorCopies) {
   EXPECT_EQ(15, TestIntSeq() | sum);

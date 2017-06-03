@@ -27,7 +27,7 @@ namespace gen {
 namespace detail {
 class FileReader;
 class FileWriter;
-}  // namespace detail
+} // namespace detail
 
 /**
  * Generator that reads from a file with a buffer of the given size.
@@ -64,7 +64,7 @@ template <class S = detail::FileWriter>
 S toFile(File file, std::unique_ptr<IOBuf> buffer) {
   return S(std::move(file), std::move(buffer));
 }
-
-}}  // !folly::gen
+} // !gen
+} // !folly
 
 #include <folly/gen/File-inl.h>
