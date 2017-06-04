@@ -49,10 +49,6 @@ inline void forEach(InputIterator first, InputIterator last, F&& f) {
   std::exception_ptr e;
   Baton baton;
 
-#ifdef __clang__
-#pragma clang diagnostic push // ignore generalized lambda capture warning
-#pragma clang diagnostic ignored "-Wc++1y-extensions"
-#endif
   auto taskFunc = [&tasksTodo, &e, &f, &baton](size_t id, FuncType&& func) {
     return [
       id,
@@ -72,9 +68,6 @@ inline void forEach(InputIterator first, InputIterator last, F&& f) {
       }
     };
   };
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
 
   auto firstTask = first;
   ++first;

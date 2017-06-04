@@ -53,10 +53,6 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   await([first, last, context](Promise<void> promise) mutable {
     context->promise = std::move(promise);
     for (size_t i = 0; first != last; ++i, ++first) {
-#ifdef __clang__
-#pragma clang diagnostic push // ignore generalized lambda capture warning
-#pragma clang diagnostic ignored "-Wc++1y-extensions"
-#endif
       addTask([ i, context, f = std::move(*first) ]() {
         try {
           auto result = f();
@@ -74,9 +70,6 @@ collectN(InputIterator first, InputIterator last, size_t n) {
           context->promise->setValue();
         }
       });
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
     }
   });
 
@@ -114,10 +107,6 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   await([first, last, context](Promise<void> promise) mutable {
     context->promise = std::move(promise);
     for (size_t i = 0; first != last; ++i, ++first) {
-#ifdef __clang__
-#pragma clang diagnostic push // ignore generalized lambda capture warning
-#pragma clang diagnostic ignored "-Wc++1y-extensions"
-#endif
       addTask([ i, context, f = std::move(*first) ]() {
         try {
           f();
@@ -135,9 +124,6 @@ collectN(InputIterator first, InputIterator last, size_t n) {
           context->promise->setValue();
         }
       });
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
     }
   });
 
