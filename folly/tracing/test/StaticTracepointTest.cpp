@@ -26,7 +26,6 @@
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Random.h>
-#include <folly/Shell.h>
 #include <folly/String.h>
 #include <folly/Subprocess.h>
 #include <folly/portability/GTest.h>
@@ -92,14 +91,14 @@ static std::string getExe() {
 }
 
 static std::string getNoteRawContent(const std::string& fileName) {
-  auto args = folly::shellify(
-      "objdump --{} --{}={} {}",
-      "full-content",
-      "section",
-      ".note." + kUSDTSubsectionName,
-      fileName);
-  auto subProc =
-      folly::Subprocess(args, folly::Subprocess::Options().pipeStdout());
+  auto subProc = folly::Subprocess(
+      std::vector<std::string>{
+          "objdump",
+          "--full-content",
+          "--section=.note." + kUSDTSubsectionName,
+          fileName,
+      },
+      folly::Subprocess::Options().pipeStdout().usePath());
   auto output = subProc.communicate();
   auto retCode = subProc.wait();
   CHECK(retCode.exited());
