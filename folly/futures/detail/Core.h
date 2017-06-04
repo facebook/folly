@@ -27,8 +27,7 @@
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
-#include <folly/futures/Future.h>
-#include <folly/futures/Promise.h>
+#include <folly/futures/FutureException.h>
 #include <folly/futures/detail/FSM.h>
 
 #include <folly/io/async/Request.h>
@@ -420,45 +419,6 @@ class Core final {
   std::shared_ptr<RequestContext> context_ {nullptr};
   std::unique_ptr<exception_wrapper> interrupt_ {};
   std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};
-};
-
-template <typename... Ts>
-struct CollectAllVariadicContext {
-  CollectAllVariadicContext() {}
-  template <typename T, size_t I>
-  inline void setPartialResult(Try<T>& t) {
-    std::get<I>(results) = std::move(t);
-  }
-  ~CollectAllVariadicContext() {
-    p.setValue(std::move(results));
-  }
-  Promise<std::tuple<Try<Ts>...>> p;
-  std::tuple<Try<Ts>...> results;
-  typedef Future<std::tuple<Try<Ts>...>> type;
-};
-
-template <typename... Ts>
-struct CollectVariadicContext {
-  CollectVariadicContext() {}
-  template <typename T, size_t I>
-  inline void setPartialResult(Try<T>& t) {
-    if (t.hasException()) {
-       if (!threw.exchange(true)) {
-         p.setException(std::move(t.exception()));
-       }
-     } else if (!threw) {
-       std::get<I>(results) = std::move(t);
-     }
-  }
-  ~CollectVariadicContext() noexcept {
-    if (!threw.exchange(true)) {
-      p.setValue(unwrapTryTuple(std::move(results)));
-    }
-  }
-  Promise<std::tuple<Ts...>> p;
-  std::tuple<folly::Try<Ts>...> results;
-  std::atomic<bool> threw {false};
-  typedef Future<std::tuple<Ts...>> type;
 };
 
 template <template <typename...> class T, typename... Ts>
