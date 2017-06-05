@@ -76,6 +76,7 @@ class JemallocNodumpAllocator {
   static void deallocate(void* p, void* userData);
 
   explicit JemallocNodumpAllocator(State state = State::ENABLED);
+  ~JemallocNodumpAllocator();
 
   void* allocate(size_t size);
   void* reallocate(void* p, size_t size);

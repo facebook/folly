@@ -29,6 +29,19 @@ JemallocNodumpAllocator::JemallocNodumpAllocator(State state) {
   }
 }
 
+JemallocNodumpAllocator::~JemallocNodumpAllocator() {
+#ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_EXTENT
+  if (arena_index_ != 0) {
+    // Destroy the arena because the hooks are linked to us.
+    const auto key = folly::to<std::string>("arena.", arena_index_, ".destroy");
+    if (auto ret = mallctl(key.c_str(), nullptr, 0, nullptr, 0)) {
+      LOG(FATAL) << "Unable to destroy arena: " << errnoStr(ret);
+    }
+    LOG(INFO) << "Destroy arena: " << arena_index_;
+  }
+#endif
+}
+
 bool JemallocNodumpAllocator::extend_and_setup_arena() {
 #ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_SUPPORTED
   if (mallctl == nullptr) {
@@ -91,8 +104,9 @@ bool JemallocNodumpAllocator::extend_and_setup_arena() {
   // Set the custom hook
   extent_hooks_ = *hooks;
   extent_hooks_.alloc = &JemallocNodumpAllocator::alloc;
-  if (auto ret =
-          mallctl(key.c_str(), nullptr, nullptr, &hooks, sizeof(hooks))) {
+  extent_hooks_t* new_hooks = &extent_hooks_;
+  if (auto ret = mallctl(
+          key.c_str(), nullptr, nullptr, &new_hooks, sizeof(new_hooks))) {
     LOG(FATAL) << "Unable to set the hooks: " << errnoStr(ret);
   }
 #endif
