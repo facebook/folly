@@ -151,9 +151,14 @@ public:
   using Base::cbegin;
   using Base::cend;
 
-  bool operator==(const StringKeyedUnorderedMap& rhs) {
-    const Base& lhs = *this;
+  bool operator==(StringKeyedUnorderedMap const& other) const {
+    Base const& lhs = *this;
+    Base const& rhs = static_cast<Base const&>(other);
     return lhs == rhs;
+  }
+
+  void swap(StringKeyedUnorderedMap& other) & {
+    return Base::swap(other);
   }
 
   // No need for copy/move overload as StringPiece is small struct.

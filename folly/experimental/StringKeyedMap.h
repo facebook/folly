@@ -131,6 +131,12 @@ public:
   using Base::crbegin;
   using Base::crend;
 
+  bool operator==(StringKeyedMap const& other) const {
+    Base const& lhs = *this;
+    Base const& rhs = static_cast<Base const&>(other);
+    return lhs == rhs;
+  }
+
   // no need for copy/move overload as StringPiece is small struct
   mapped_type& operator[](StringPiece key) {
     auto it = find(key);
@@ -144,6 +150,7 @@ public:
 
   using Base::at;
   using Base::find;
+  using Base::count;
   using Base::lower_bound;
   using Base::upper_bound;
 
@@ -188,6 +195,10 @@ public:
       stringPieceDel(it.first, get_allocator());
     }
     Base::clear();
+  }
+
+  void swap(StringKeyedMap& other) & {
+    return Base::swap(other);
   }
 
   ~StringKeyedMap() {

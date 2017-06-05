@@ -127,8 +127,15 @@ public:
   using Base::cbegin;
   using Base::cend;
   using Base::find;
+  using Base::count;
   using Base::lower_bound;
   using Base::upper_bound;
+
+  bool operator==(StringKeyedSetBase const& other) const {
+    Base const& lhs = *this;
+    Base const& rhs = static_cast<Base const&>(other);
+    return lhs == rhs;
+  }
 
   template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
@@ -172,6 +179,10 @@ public:
   }
 
   using Base::get_allocator;
+
+  void swap(StringKeyedSetBase& other) & {
+    return Base::swap(other);
+  }
 
   ~StringKeyedSetBase() {
     // Here we assume that set doesn't use keys in destructor

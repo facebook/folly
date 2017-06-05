@@ -160,9 +160,11 @@ public:
   using Base::cbegin;
   using Base::cend;
   using Base::find;
+  using Base::count;
 
-  bool operator==(const BasicStringKeyedUnorderedSet& rhs) const {
-    const Base& lhs = *this;
+  bool operator==(const BasicStringKeyedUnorderedSet& other) const {
+    Base const& lhs = *this;
+    Base const& rhs = static_cast<Base const&>(other);
     return lhs == rhs;
   }
 
@@ -213,6 +215,10 @@ public:
   using Base::max_bucket_count;
   using Base::bucket_size;
   using Base::bucket;
+
+  void swap(BasicStringKeyedUnorderedSet& other) & {
+    return Base::swap(other);
+  }
 
   ~BasicStringKeyedUnorderedSet() {
     // Here we assume that unordered_set doesn't use keys in destructor
