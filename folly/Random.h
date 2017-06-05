@@ -40,7 +40,7 @@ namespace folly {
  * However, if you are worried about performance, you can memoize the TLS
  * lookups that get the per thread state by manually using this class:
  *
- * ThreadLocalPRNG rng = Random::threadLocalPRNG()
+ * ThreadLocalPRNG rng;
  * for (...) {
  *   Random::rand32(rng);
  * }
