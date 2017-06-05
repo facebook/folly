@@ -26,11 +26,11 @@ namespace folly {
  * Given a map and a key, return the value corresponding to the key in the map,
  * or a given default value if the key doesn't exist in the map.
  */
-template <class Map>
+template <class Map, typename Key = typename Map::key_type>
 typename Map::mapped_type get_default(
-    const Map& map, const typename Map::key_type& key,
-    const typename Map::mapped_type& dflt =
-    typename Map::mapped_type()) {
+    const Map& map,
+    const Key& key,
+    const typename Map::mapped_type& dflt = typename Map::mapped_type()) {
   auto pos = map.find(key);
   return (pos != map.end() ? pos->second : dflt);
 }
@@ -41,12 +41,13 @@ typename Map::mapped_type get_default(
  */
 template <
     class Map,
+    typename Key = typename Map::key_type,
     typename Func,
     typename = typename std::enable_if<std::is_convertible<
         typename std::result_of<Func()>::type,
         typename Map::mapped_type>::value>::type>
 typename Map::mapped_type
-get_default(const Map& map, const typename Map::key_type& key, Func&& dflt) {
+get_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
   return pos != map.end() ? pos->second : dflt();
 }
@@ -55,10 +56,13 @@ get_default(const Map& map, const typename Map::key_type& key, Func&& dflt) {
  * Given a map and a key, return the value corresponding to the key in the map,
  * or throw an exception of the specified type.
  */
-template <class E = std::out_of_range, class Map>
+template <
+    class E = std::out_of_range,
+    class Map,
+    typename Key = typename Map::key_type>
 const typename Map::mapped_type& get_or_throw(
     const Map& map,
-    const typename Map::key_type& key,
+    const Key& key,
     const std::string& exceptionStrPrefix = std::string()) {
   auto pos = map.find(key);
   if (pos != map.end()) {
@@ -67,10 +71,13 @@ const typename Map::mapped_type& get_or_throw(
   throw E(folly::to<std::string>(exceptionStrPrefix, key));
 }
 
-template <class E = std::out_of_range, class Map>
+template <
+    class E = std::out_of_range,
+    class Map,
+    typename Key = typename Map::key_type>
 typename Map::mapped_type& get_or_throw(
     Map& map,
-    const typename Map::key_type& key,
+    const Key& key,
     const std::string& exceptionStrPrefix = std::string()) {
   auto pos = map.find(key);
   if (pos != map.end()) {
@@ -83,9 +90,10 @@ typename Map::mapped_type& get_or_throw(
  * Given a map and a key, return a Optional<V> if the key exists and None if the
  * key does not exist in the map.
  */
-template <class Map>
+template <class Map, typename Key = typename Map::key_type>
 folly::Optional<typename Map::mapped_type> get_optional(
-    const Map& map, const typename Map::key_type& key) {
+    const Map& map,
+    const Key& key) {
   auto pos = map.find(key);
   if (pos != map.end()) {
     return folly::Optional<typename Map::mapped_type>(pos->second);
@@ -99,9 +107,10 @@ folly::Optional<typename Map::mapped_type> get_optional(
  * key in the map, or the given default reference if the key doesn't exist in
  * the map.
  */
-template <class Map>
+template <class Map, typename Key = typename Map::key_type>
 const typename Map::mapped_type& get_ref_default(
-    const Map& map, const typename Map::key_type& key,
+    const Map& map,
+    const Key& key,
     const typename Map::mapped_type& dflt) {
   auto pos = map.find(key);
   return (pos != map.end() ? pos->second : dflt);
@@ -113,16 +122,16 @@ const typename Map::mapped_type& get_ref_default(
  * The caller must ensure that the default value outlives the reference returned
  * by get_ref_default().
  */
-template <class Map>
+template <class Map, typename Key = typename Map::key_type>
 const typename Map::mapped_type& get_ref_default(
     const Map& map,
-    const typename Map::key_type& key,
+    const Key& key,
     typename Map::mapped_type&& dflt) = delete;
 
-template <class Map>
+template <class Map, typename Key = typename Map::key_type>
 const typename Map::mapped_type& get_ref_default(
     const Map& map,
-    const typename Map::key_type& key,
+    const Key& key,
     const typename Map::mapped_type&& dflt) = delete;
 
 /**
@@ -132,16 +141,15 @@ const typename Map::mapped_type& get_ref_default(
  */
 template <
     class Map,
+    typename Key = typename Map::key_type,
     typename Func,
     typename = typename std::enable_if<std::is_convertible<
         typename std::result_of<Func()>::type,
         const typename Map::mapped_type&>::value>::type,
     typename = typename std::enable_if<
         std::is_reference<typename std::result_of<Func()>::type>::value>::type>
-const typename Map::mapped_type& get_ref_default(
-    const Map& map,
-    const typename Map::key_type& key,
-    Func&& dflt) {
+const typename Map::mapped_type&
+get_ref_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
   return (pos != map.end() ? pos->second : dflt());
 }
@@ -150,9 +158,8 @@ const typename Map::mapped_type& get_ref_default(
  * Given a map and a key, return a pointer to the value corresponding to the
  * key in the map, or nullptr if the key doesn't exist in the map.
  */
-template <class Map>
-const typename Map::mapped_type* get_ptr(
-    const Map& map, const typename Map::key_type& key) {
+template <class Map, typename Key = typename Map::key_type>
+const typename Map::mapped_type* get_ptr(const Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
 }
@@ -160,9 +167,8 @@ const typename Map::mapped_type* get_ptr(
 /**
  * Non-const overload of the above.
  */
-template <class Map>
-typename Map::mapped_type* get_ptr(
-    Map& map, const typename Map::key_type& key) {
+template <class Map, typename Key = typename Map::key_type>
+typename Map::mapped_type* get_ptr(Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
 }
