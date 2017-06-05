@@ -45,7 +45,7 @@
 // includes and uses fbstring.
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
 
-#include <folly/detail/Malloc.h>
+#include <folly/detail/MallocImpl.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 #include <string>
@@ -98,7 +98,7 @@ __attribute__((__weak__));
 
 #else // !defined(_LIBSTDCXX_FBSTRING)
 
-#include <folly/detail/Malloc.h> /* nolint */
+#include <folly/detail/MallocImpl.h> /* nolint */
 #include <folly/portability/BitsFunctexcept.h> /* nolint */
 
 #endif

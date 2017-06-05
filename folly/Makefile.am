@@ -74,7 +74,7 @@ nobase_follyinclude_HEADERS = \
 	detail/GroupVarintDetail.h \
 	detail/IPAddress.h \
 	detail/IPAddressSource.h \
-	detail/Malloc.h \
+	detail/MallocImpl.h \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
 	detail/RangeCommon.h \
