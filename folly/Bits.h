@@ -66,7 +66,6 @@
 #include <folly/portability/Builtins.h>
 
 #include <folly/Assume.h>
-#include <folly/detail/BitsDetail.h>
 #include <folly/detail/BitIteratorDetail.h>
 #include <folly/Likely.h>
 
@@ -214,7 +213,7 @@ inline typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   size_t>::type
   popcount(T x) {
-  return size_t(detail::popcount(x));
+  return size_t(__builtin_popcount(x));
 }
 
 template <class T>
@@ -225,7 +224,7 @@ inline typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   size_t>::type
   popcount(T x) {
-  return size_t(detail::popcountll(x));
+  return size_t(__builtin_popcountll(x));
 }
 
 /**

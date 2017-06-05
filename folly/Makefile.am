@@ -63,7 +63,6 @@ nobase_follyinclude_HEADERS = \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \
 	detail/BitIteratorDetail.h \
-	detail/BitsDetail.h \
 	detail/CacheLocality.h \
 	detail/CachelinePaddedImpl.h \
 	detail/ChecksumDetail.h \
@@ -440,7 +439,6 @@ libfollybase_la_SOURCES = \
 
 libfolly_la_SOURCES = \
 	Assume.cpp \
-	Bits.cpp \
 	Checksum.cpp \
 	ClockGettimeWrappers.cpp \
 	detail/CacheLocality.cpp \
