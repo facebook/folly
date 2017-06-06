@@ -25,14 +25,12 @@
 
 using namespace folly;
 
-#ifdef FOLLY_HAVE_LIBJEMALLOC
 #if JEMALLOC_VERSION_MAJOR > 4
 static constexpr char const* kDecayCmd = "arena.0.dirty_decay_ms";
 const char* malloc_conf = "dirty_decay_ms:10";
 #else
 static constexpr char const* kDecayCmd = "arena.0.decay_time";
 const char* malloc_conf = "purge:decay,decay_time:10";
-#endif
 #endif
 
 class MallctlHelperTest : public ::testing::Test {
