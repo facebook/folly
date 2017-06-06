@@ -351,14 +351,14 @@ inline std::exception const* exception_wrapper::get_exception() const noexcept {
 }
 
 template <typename Ex>
-inline Ex* exception_wrapper::get_object() noexcept {
+inline Ex* exception_wrapper::get_exception() noexcept {
   Ex* object{nullptr};
   with_exception([&](Ex& ex) { object = &ex; });
   return object;
 }
 
 template <typename Ex>
-inline Ex const* exception_wrapper::get_object() const noexcept {
+inline Ex const* exception_wrapper::get_exception() const noexcept {
   Ex const* object{nullptr};
   with_exception([&](Ex const& ex) { object = &ex; });
   return object;

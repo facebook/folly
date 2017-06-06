@@ -464,10 +464,10 @@ class exception_wrapper final {
   //! \note This function may cause an exception to be thrown and immediately
   //!     caught internally, affecting runtime performance.
   template <typename Ex>
-  Ex* get_object() noexcept;
+  Ex* get_exception() noexcept;
   //! \overload
   template <typename Ex>
-  Ex const* get_object() const noexcept;
+  Ex const* get_exception() const noexcept;
 
   //! \return A `std::exception_ptr` that references either the exception held
   //!     by `*this`, or a copy of same.

@@ -215,8 +215,8 @@ TEST(ExceptionWrapper, with_exception_ptr_empty) {
   EXPECT_EQ(exception_wrapper::none(), ew.type());
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_FALSE(ew.has_exception_ptr());
@@ -232,8 +232,8 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(typeid(std::runtime_error), ew.type());
   EXPECT_NE(nullptr, ew.get_exception());
-  EXPECT_NE(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_NE(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
@@ -248,8 +248,8 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(exception_wrapper::none(), ew.type());
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_EQ("", ew.class_name());
   EXPECT_EQ("", ew.what());
@@ -264,8 +264,8 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(typeid(std::runtime_error), ew.type());
   EXPECT_NE(nullptr, ew.get_exception());
-  EXPECT_NE(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_NE(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
@@ -280,8 +280,8 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(exception_wrapper::none(), ew.type());
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_EQ("", ew.class_name());
   EXPECT_EQ("", ew.what());
@@ -295,8 +295,8 @@ TEST(ExceptionWrapper, with_exception_ptr_any_test) {
   auto ew = exception_wrapper(ep, from_eptr<int>(ep));
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_NE(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_NE(nullptr, ew.get_exception<int>());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
@@ -310,8 +310,8 @@ TEST(ExceptionWrapper, with_exception_ptr_any_test) {
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_EQ("", ew.class_name());
@@ -325,8 +325,8 @@ TEST(ExceptionWrapper, with_non_std_exception_test) {
   auto ew = exception_wrapper(folly::in_place, 42);
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_NE(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_NE(nullptr, ew.get_exception<int>());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_EQ("int", ew.class_name());
   EXPECT_EQ("int", ew.what());
@@ -342,8 +342,8 @@ TEST(ExceptionWrapper, with_non_std_exception_test) {
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_EQ("", ew.class_name());
@@ -358,8 +358,8 @@ TEST(ExceptionWrapper, with_exception_ptr_any_nil_test) {
   auto ew = exception_wrapper(ep); // concrete type is erased
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_NE(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_NE(nullptr, ew.get_exception<int>());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_EQ("<unknown exception>", ew.class_name()); // because concrete type is
   // erased
@@ -372,8 +372,8 @@ TEST(ExceptionWrapper, with_exception_ptr_any_nil_test) {
   exception_wrapper(std::move(ew));
   EXPECT_FALSE(bool(ew));
   EXPECT_EQ(nullptr, ew.get_exception());
-  EXPECT_EQ(nullptr, ew.get_object<std::exception>());
-  EXPECT_EQ(nullptr, ew.get_object<int>());
+  EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
+  EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_EQ(nullptr, ew.to_exception_ptr());
   EXPECT_EQ("", ew.class_name());
   EXPECT_EQ("", ew.what());
