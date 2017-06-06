@@ -19,28 +19,40 @@
 #include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
 
+#ifdef FOLLY_HAVE_LIBJEMALLOC
+#include <jemalloc/jemalloc.h>
+#endif
+
 using namespace folly;
 
+#ifdef FOLLY_HAVE_LIBJEMALLOC
+#if JEMALLOC_VERSION_MAJOR > 4
+static constexpr char const* kDecayCmd = "arena.0.dirty_decay_ms";
+const char* malloc_conf = "dirty_decay_ms:10";
+#else
+static constexpr char const* kDecayCmd = "arena.0.decay_time";
 const char* malloc_conf = "purge:decay,decay_time:10";
+#endif
+#endif
 
 class MallctlHelperTest : public ::testing::Test {
  protected:
   void TearDown() override {
     // Reset decay_time of arena 0 to 10 seconds.
     ssize_t decayTime = 10;
-    EXPECT_NO_THROW(mallctlWrite("arena.0.decay_time", decayTime));
+    EXPECT_NO_THROW(mallctlWrite(kDecayCmd, decayTime));
   }
 
   static ssize_t readArena0DecayTime() {
     ssize_t decayTime = 0;
-    EXPECT_NO_THROW(mallctlRead("arena.0.decay_time", &decayTime));
+    EXPECT_NO_THROW(mallctlRead(kDecayCmd, &decayTime));
     return decayTime;
   }
 };
 
 TEST_F(MallctlHelperTest, valid_read) {
   ssize_t decayTime = 0;
-  EXPECT_NO_THROW(mallctlRead("opt.decay_time", &decayTime));
+  EXPECT_NO_THROW(mallctlRead(kDecayCmd, &decayTime));
   EXPECT_EQ(10, decayTime);
 }
 
@@ -52,7 +64,7 @@ TEST_F(MallctlHelperTest, invalid_read) {
 
 TEST_F(MallctlHelperTest, valid_write) {
   ssize_t decayTime = 20;
-  EXPECT_NO_THROW(mallctlWrite("arena.0.decay_time", decayTime));
+  EXPECT_NO_THROW(mallctlWrite(kDecayCmd, decayTime));
   EXPECT_EQ(20, readArena0DecayTime());
 }
 
@@ -65,8 +77,7 @@ TEST_F(MallctlHelperTest, invalid_write) {
 TEST_F(MallctlHelperTest, valid_read_write) {
   ssize_t oldDecayTime = 0;
   ssize_t newDecayTime = 20;
-  EXPECT_NO_THROW(
-      mallctlReadWrite("arena.0.decay_time", &oldDecayTime, newDecayTime));
+  EXPECT_NO_THROW(mallctlReadWrite(kDecayCmd, &oldDecayTime, newDecayTime));
   EXPECT_EQ(10, oldDecayTime);
   EXPECT_EQ(20, readArena0DecayTime());
 }
