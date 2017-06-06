@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/FBString.h>
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <glog/logging.h>
