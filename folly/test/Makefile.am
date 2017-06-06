@@ -96,6 +96,9 @@ TESTS += fbstring_test_using_jemalloc
 thread_cached_int_test_SOURCES = ThreadCachedIntTest.cpp
 thread_cached_int_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 
+thread_id_test_SOURCES = ThreadIdTest.cpp
+thread_id_test_LDADD = libfollytestmain.la
+
 thread_local_test_SOURCES = ThreadLocalTest.cpp
 thread_local_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 thread_local_test_LDFLAGS = -ldl

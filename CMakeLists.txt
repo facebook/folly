@@ -530,6 +530,7 @@ if (BUILD_TESTS)
       TEST synchronized_test SOURCES SynchronizedTest.cpp
       TEST thread_cached_arena_test SOURCES ThreadCachedArenaTest.cpp
       TEST thread_cached_int_test SOURCES ThreadCachedIntTest.cpp
+      TEST thread_id_test SOURCES ThreadIdTest.cpp
       TEST thread_local_test SOURCES ThreadLocalTest.cpp
       TEST thread_name_test SOURCES ThreadNameTest.cpp
       TEST timeout_queue_test SOURCES TimeoutQueueTest.cpp

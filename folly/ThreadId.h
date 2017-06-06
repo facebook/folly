@@ -20,6 +20,7 @@
 
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysSyscall.h>
+#include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
 
 namespace folly {
