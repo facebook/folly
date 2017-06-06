@@ -37,6 +37,65 @@ template <typename Pool>
 struct IndexedMemPoolRecycler;
 }
 
+template <
+    typename T,
+    bool EagerRecycleWhenTrivial = false,
+    bool EagerRecycleWhenNotTrivial = true>
+struct IndexedMemPoolTraits {
+  static constexpr bool eagerRecycle() {
+    return std::is_trivial<T>::value ? EagerRecycleWhenTrivial
+                                     : EagerRecycleWhenNotTrivial;
+  }
+
+  /// Called when the element pointed to by ptr is allocated for the
+  /// first time.
+  static void initialize(T* ptr) {
+    if (!eagerRecycle()) {
+      new (ptr) T();
+    }
+  }
+
+  /// Called when the element pointed to by ptr is freed at the pool
+  /// destruction time.
+  static void cleanup(T* ptr) {
+    if (!eagerRecycle()) {
+      ptr->~T();
+    }
+  }
+
+  /// Called when the element is allocated with the arguments forwarded from
+  /// IndexedMemPool::allocElem.
+  template <typename... Args>
+  static void onAllocate(T* ptr, Args&&... args) {
+    static_assert(
+        sizeof...(Args) == 0 || eagerRecycle(),
+        "emplace-style allocation requires eager recycle, "
+        "which is defaulted only for non-trivial types");
+    if (eagerRecycle()) {
+      new (ptr) T(std::forward<Args>(args)...);
+    }
+  }
+
+  /// Called when the element is recycled.
+  static void onRecycle(T* ptr) {
+    if (eagerRecycle()) {
+      ptr->~T();
+    }
+  }
+};
+
+/// IndexedMemPool traits that implements the lazy lifecycle strategy. In this
+/// strategy elements are default-constructed the first time they are allocated,
+/// and destroyed when the pool itself is destroyed.
+template <typename T>
+using IndexedMemPoolTraitsLazyRecycle = IndexedMemPoolTraits<T, false, false>;
+
+/// IndexedMemPool traits that implements the eager lifecycle strategy. In this
+/// strategy elements are constructed when they are allocated from the pool and
+/// destroyed when recycled.
+template <typename T>
+using IndexedMemPoolTraitsEagerRecycle = IndexedMemPoolTraits<T, true, true>;
+
 /// Instances of IndexedMemPool dynamically allocate and then pool their
 /// element type (T), returning 4-byte integer indices that can be passed
 /// to the pool's operator[] method to access or obtain pointers to the
@@ -54,13 +113,17 @@ struct IndexedMemPoolRecycler;
 /// there won't be an ABA match due to the element being overwritten with
 /// a different type that has the same bit pattern.
 ///
-/// IndexedMemPool has two object lifecycle strategies.  The first
-/// is to construct objects when they are allocated from the pool and
-/// destroy them when they are recycled.  In this mode allocIndex and
-/// allocElem have emplace-like semantics.  In the second mode, objects
-/// are default-constructed the first time they are removed from the pool,
-/// and deleted when the pool itself is deleted.  By default the first
-/// mode is used for non-trivial T, and the second is used for trivial T.
+/// The object lifecycle strategy is controlled by the Traits parameter.
+/// One strategy, implemented by IndexedMemPoolTraitsEagerRecycle, is to
+/// construct objects when they are allocated from the pool and destroy
+/// them when they are recycled.  In this mode allocIndex and allocElem
+/// have emplace-like semantics.  In another strategy, implemented by
+/// IndexedMemPoolTraitsLazyRecycle, objects are default-constructed the
+/// first time they are removed from the pool, and deleted when the pool
+/// itself is deleted.  By default the first mode is used for non-trivial
+/// T, and the second is used for trivial T.  Clients can customize the
+/// object lifecycle by providing their own Traits implementation.
+/// See IndexedMemPoolTraits for a Traits example.
 ///
 /// IMPORTANT: Space for extra elements is allocated to account for those
 /// that are inaccessible because they are in other local lists, so the
@@ -89,8 +152,7 @@ template <
     uint32_t NumLocalLists_ = 32,
     uint32_t LocalListLimit_ = 200,
     template <typename> class Atom = std::atomic,
-    bool EagerRecycleWhenTrivial = false,
-    bool EagerRecycleWhenNotTrivial = true>
+    typename Traits = IndexedMemPoolTraits<T>>
 struct IndexedMemPool : boost::noncopyable {
   typedef T value_type;
 
@@ -102,12 +164,6 @@ struct IndexedMemPool : boost::noncopyable {
     NumLocalLists = NumLocalLists_,
     LocalListLimit = LocalListLimit_
   };
-
-
-  static constexpr bool eagerRecycle() {
-    return std::is_trivial<T>::value
-        ? EagerRecycleWhenTrivial : EagerRecycleWhenNotTrivial;
-  }
 
   // these are public because clients may need to reason about the number
   // of bits required to hold indices from a pool, given its capacity
@@ -149,14 +205,8 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// Destroys all of the contained elements
   ~IndexedMemPool() {
-    if (!eagerRecycle()) {
-      // Take the minimum since it is possible that size_ > actualCapacity_.
-      // This can happen if there are multiple concurrent requests
-      // when size_ == actualCapacity_ - 1.
-      uint32_t last = std::min(uint32_t(size_), uint32_t(actualCapacity_));
-      for (uint32_t i = last; i > 0; --i) {
-        slots_[i].~Slot();
-      }
+    for (uint32_t i = maxAllocatedIndex(); i > 0; --i) {
+      Traits::cleanup(&slots_[i].elem);
     }
     munmap(slots_, mmapLength_);
   }
@@ -169,25 +219,35 @@ struct IndexedMemPool : boost::noncopyable {
     return capacityForMaxIndex(actualCapacity_);
   }
 
+  /// Returns the maximum index of elements ever allocated in this pool
+  /// including elements that have been recycled.
+  uint32_t maxAllocatedIndex() const {
+    // Take the minimum since it is possible that size_ > actualCapacity_.
+    // This can happen if there are multiple concurrent requests
+    // when size_ == actualCapacity_ - 1.
+    return std::min(uint32_t(size_), uint32_t(actualCapacity_));
+  }
+
   /// Finds a slot with a non-zero index, emplaces a T there if we're
   /// using the eager recycle lifecycle mode, and returns the index,
-  /// or returns 0 if no elements are available.
+  /// or returns 0 if no elements are available.  Passes a pointer to
+  /// the element to Traits::onAllocate before the slot is marked as
+  /// allocated.
   template <typename ...Args>
   uint32_t allocIndex(Args&&... args) {
-    static_assert(sizeof...(Args) == 0 || eagerRecycle(),
-        "emplace-style allocation requires eager recycle, "
-        "which is defaulted only for non-trivial types");
     auto idx = localPop(localHead());
-    if (idx != 0 && eagerRecycle()) {
-      T* ptr = &slot(idx).elem;
-      new (ptr) T(std::forward<Args>(args)...);
+    if (idx != 0) {
+      Slot& s = slot(idx);
+      Traits::onAllocate(&s.elem, std::forward<Args>(args)...);
+      markAllocated(s);
     }
     return idx;
   }
 
   /// If an element is available, returns a std::unique_ptr to it that will
   /// recycle the element to the pool when it is reclaimed, otherwise returns
-  /// a null (falsy) std::unique_ptr
+  /// a null (falsy) std::unique_ptr.  Passes a pointer to the element to
+  /// Traits::onAllocate before the slot is marked as allocated.
   template <typename ...Args>
   UniquePtr allocElem(Args&&... args) {
     auto idx = allocIndex(std::forward<Args>(args)...);
@@ -198,9 +258,7 @@ struct IndexedMemPool : boost::noncopyable {
   /// Gives up ownership previously granted by alloc()
   void recycleIndex(uint32_t idx) {
     assert(isAllocated(idx));
-    if (eagerRecycle()) {
-      slot(idx).elem.~T();
-    }
+    Traits::onRecycle(&slot(idx).elem);
     localPush(localHead(), idx);
   }
 
@@ -234,7 +292,7 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// Returns true iff idx has been alloc()ed and not recycleIndex()ed
   bool isAllocated(uint32_t idx) const {
-    return slot(idx).localNext.load(std::memory_order_relaxed) == uint32_t(-1);
+    return slot(idx).localNext.load(std::memory_order_acquire) == uint32_t(-1);
   }
 
 
@@ -408,7 +466,6 @@ struct IndexedMemPool : boost::noncopyable {
         auto next = s.localNext.load(std::memory_order_relaxed);
         if (head.compare_exchange_strong(h, h.withIdx(next).withSizeDecr())) {
           // success
-          s.localNext.store(uint32_t(-1), std::memory_order_relaxed);
           return h.idx;
         }
         continue;
@@ -422,13 +479,7 @@ struct IndexedMemPool : boost::noncopyable {
           // allocation failed
           return 0;
         }
-        // default-construct it now if we aren't going to construct and
-        // destroy on each allocation
-        if (!eagerRecycle()) {
-          T* ptr = &slot(idx).elem;
-          new (ptr) T();
-        }
-        slot(idx).localNext.store(uint32_t(-1), std::memory_order_relaxed);
+        Traits::initialize(&slot(idx).elem);
         return idx;
       }
 
@@ -437,7 +488,6 @@ struct IndexedMemPool : boost::noncopyable {
       if (head.compare_exchange_strong(
               h, h.withIdx(next).withSize(LocalListLimit))) {
         // global list moved to local list, keep head for us
-        s.localNext.store(uint32_t(-1), std::memory_order_relaxed);
         return idx;
       }
       // local bulk push failed, return idx to the global list and try again
@@ -448,6 +498,10 @@ struct IndexedMemPool : boost::noncopyable {
   AtomicStruct<TaggedPtr,Atom>& localHead() {
     auto stripe = detail::AccessSpreader<Atom>::current(NumLocalLists);
     return local_[stripe].head;
+  }
+
+  void markAllocated(Slot& slot) {
+    slot.localNext.store(uint32_t(-1), std::memory_order_release);
   }
 };
 

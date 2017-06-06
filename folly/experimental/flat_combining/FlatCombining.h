@@ -225,7 +225,8 @@ class FlatCombining {
     }
   };
 
-  using Pool = folly::IndexedMemPool<Rec, 32, 4, Atom, false, false>;
+  using Pool = folly::
+      IndexedMemPool<Rec, 32, 4, Atom, IndexedMemPoolTraitsLazyRecycle<Rec>>;
 
  public:
   /// The constructor takes three optional arguments:

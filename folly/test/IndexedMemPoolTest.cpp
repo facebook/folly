@@ -15,9 +15,10 @@
  */
 
 #include <folly/IndexedMemPool.h>
-#include <folly/test/DeterministicSchedule.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
+#include <folly/test/DeterministicSchedule.h>
 
 #include <string>
 #include <thread>
@@ -25,6 +26,7 @@
 
 using namespace folly;
 using namespace folly::test;
+using namespace testing;
 
 TEST(IndexedMemPool, unique_ptr) {
   typedef IndexedMemPool<size_t> Pool;
@@ -198,8 +200,12 @@ TEST(IndexedMemPool, eager_recycle) {
 
 TEST(IndexedMemPool, late_recycle) {
   {
-    typedef IndexedMemPool<NonTrivialStruct, 8, 8, std::atomic, false, false>
-        Pool;
+    using Pool = IndexedMemPool<
+        NonTrivialStruct,
+        8,
+        8,
+        std::atomic,
+        IndexedMemPoolTraitsLazyRecycle<NonTrivialStruct>>;
     Pool pool(100);
 
     EXPECT_EQ(NonTrivialStruct::count, 0);
@@ -259,7 +265,12 @@ TEST(IndexedMemPool, construction_destruction) {
   std::atomic<bool> start{false};
   std::atomic<int> started{0};
 
-  using Pool = IndexedMemPool<Foo, 1, 1, std::atomic, false, false>;
+  using Pool = IndexedMemPool<
+      Foo,
+      1,
+      1,
+      std::atomic,
+      IndexedMemPoolTraitsLazyRecycle<Foo>>;
   int nthreads = 20;
   int count = 1000;
 
@@ -291,3 +302,97 @@ TEST(IndexedMemPool, construction_destruction) {
 
   CHECK_EQ(cnum.load(), dnum.load());
 }
+
+/// Global Traits mock. It can't be a regular (non-global) mock because we
+/// don't have access to the instance.
+struct MockTraits {
+  static MockTraits* instance;
+
+  MockTraits() {
+    instance = this;
+  }
+
+  ~MockTraits() {
+    instance = nullptr;
+  }
+
+  MOCK_METHOD2(onAllocate, void(std::string*, std::string));
+  MOCK_METHOD1(onRecycle, void(std::string*));
+
+  struct Forwarder {
+    static void initialize(std::string* ptr) {
+      new (ptr) std::string();
+    }
+
+    static void cleanup(std::string* ptr) {
+      using std::string;
+      ptr->~string();
+    }
+
+    static void onAllocate(std::string* ptr, std::string s) {
+      instance->onAllocate(ptr, s);
+    }
+
+    static void onRecycle(std::string* ptr) {
+      instance->onRecycle(ptr);
+    }
+  };
+};
+
+MockTraits* MockTraits::instance;
+
+using TraitsTestPool =
+    IndexedMemPool<std::string, 1, 1, std::atomic, MockTraits::Forwarder>;
+
+void testTraits(TraitsTestPool& pool) {
+  MockTraits traits;
+  const std::string* elem = nullptr;
+  EXPECT_CALL(traits, onAllocate(_, _))
+      .WillOnce(Invoke([&](std::string* s, auto) {
+        EXPECT_FALSE(pool.isAllocated(pool.locateElem(s)));
+        elem = s;
+      }));
+  std::string* ptr = pool.allocElem("foo").release();
+  EXPECT_EQ(ptr, elem);
+
+  elem = nullptr;
+  EXPECT_CALL(traits, onRecycle(_)).WillOnce(Invoke([&](std::string* s) {
+    EXPECT_TRUE(pool.isAllocated(pool.locateElem(s)));
+    elem = s;
+  }));
+  pool.recycleIndex(pool.locateElem(ptr));
+  EXPECT_EQ(ptr, elem);
+}
+
+// Test that Traits is used when both local and global lists are empty.
+TEST(IndexedMemPool, use_traits_empty) {
+  TraitsTestPool pool(10);
+  testTraits(pool);
+}
+
+// Test that Traits is used when allocating from a local list.
+TEST(IndexedMemPool, use_traits_local_list) {
+  TraitsTestPool pool(10);
+  MockTraits traits;
+  EXPECT_CALL(traits, onAllocate(_, _));
+  // Allocate and immediately recycle an element to populate the local list.
+  pool.allocElem("");
+  testTraits(pool);
+}
+
+// Test that Traits is used when allocating from a global list.
+TEST(IndexedMemPool, use_traits_global_list) {
+  TraitsTestPool pool(10);
+  MockTraits traits;
+  EXPECT_CALL(traits, onAllocate(_, _)).Times(2);
+  auto global = pool.allocElem("");
+  // Allocate and immediately recycle an element to fill the local list.
+  pool.allocElem("");
+  // Recycle an element to populate the global list.
+  global.reset();
+  testTraits(pool);
+}
+
+// Test that IndexedMemPool works with incomplete element types.
+struct IncompleteTestElement;
+using IncompleteTestPool = IndexedMemPool<IncompleteTestElement>;
