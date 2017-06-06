@@ -42,9 +42,13 @@ class CoreCachedSharedPtr {
   }
 
   void reset(const std::shared_ptr<T>& p = nullptr) {
-    for (auto& slot : slots_) {
-      auto holder = std::make_shared<Holder>(p);
-      slot = std::shared_ptr<T>(holder, p.get());
+    // Allocate each Holder in a different CoreAllocator stripe to
+    // prevent false sharing. Their control blocks will be adjacent
+    // thanks to allocate_shared().
+    for (auto slot : folly::enumerate(slots_)) {
+      auto alloc = detail::getCoreAllocatorStl<Holder, kNumSlots>(slot.index);
+      auto holder = std::allocate_shared<Holder>(alloc, p);
+      *slot = std::shared_ptr<T>(holder, p.get());
     }
   }
 
@@ -53,16 +57,10 @@ class CoreCachedSharedPtr {
   }
 
  private:
+  using Holder = std::shared_ptr<T>;
+
   template <class, size_t>
   friend class CoreCachedWeakPtr;
-
-  // Space the Holders by a cache line, so their control blocks (which
-  // are adjacent to the slots thanks to make_shared()) will also be
-  // spaced.
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Holder {
-    explicit Holder(std::shared_ptr<T> p) : ptr(std::move(p)) {}
-    std::shared_ptr<T> ptr;
-  };
 
   std::array<std::shared_ptr<T>, kNumSlots> slots_;
 };

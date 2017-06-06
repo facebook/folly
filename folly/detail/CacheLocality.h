@@ -17,18 +17,23 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <functional>
 #include <limits>
+#include <mutex>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include <folly/Hash.h>
 #include <folly/Likely.h>
+#include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/ThreadId.h>
+#include <folly/portability/Memory.h>
 
 namespace folly {
 namespace detail {
@@ -351,6 +356,152 @@ bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
 // Suppress this instantiation in other translation units. It is
 // instantiated in CacheLocality.cpp
 extern template struct AccessSpreader<std::atomic>;
+
+/**
+ * A simple freelist allocator.  Allocates things of size sz, from
+ * slabs of size allocSize.  Takes a lock on each
+ * allocation/deallocation.
+ */
+class SimpleAllocator {
+  std::mutex m_;
+  uint8_t* mem_{nullptr};
+  uint8_t* end_{nullptr};
+  void* freelist_{nullptr};
+  size_t allocSize_;
+  size_t sz_;
+  std::vector<void*> blocks_;
+
+ public:
+  SimpleAllocator(size_t allocSize, size_t sz);
+  ~SimpleAllocator();
+  void* allocateHard();
+
+  // Inline fast-paths.
+  void* allocate() {
+    std::lock_guard<std::mutex> g(m_);
+    // Freelist allocation.
+    if (freelist_) {
+      auto mem = freelist_;
+      freelist_ = *static_cast<void**>(freelist_);
+      return mem;
+    }
+
+    // Bump-ptr allocation.
+    if (intptr_t(mem_) % 128 == 0) {
+      // Avoid allocating pointers that may look like malloc
+      // pointers.
+      mem_ += std::min(sz_, alignof(std::max_align_t));
+    }
+    if (mem_ && (mem_ + sz_ <= end_)) {
+      auto mem = mem_;
+      mem_ += sz_;
+
+      assert(intptr_t(mem) % 128 != 0);
+      return mem;
+    }
+
+    return allocateHard();
+  }
+  void deallocate(void* mem) {
+    std::lock_guard<std::mutex> g(m_);
+    *static_cast<void**>(mem) = freelist_;
+    freelist_ = mem;
+  }
+};
+
+/**
+ * An allocator that can be used with CacheLocality to allocate
+ * core-local memory.
+ *
+ * There is actually nothing special about the memory itself (it is
+ * not bound to numa nodes or anything), but the allocator guarantees
+ * that memory allocatd from the same stripe will only come from cache
+ * lines also allocated to the same stripe.  This means multiple
+ * things using CacheLocality can allocate memory in smaller-than
+ * cacheline increments, and be assured that it won't cause more false
+ * sharing than it otherwise would.
+ *
+ * Note that allocation and deallocation takes a per-sizeclass lock.
+ */
+template <size_t Stripes>
+class CoreAllocator {
+ public:
+  class Allocator {
+    static constexpr size_t AllocSize{4096};
+
+    uint8_t sizeClass(size_t size) {
+      if (size <= 8) {
+        return 0;
+      } else if (size <= 16) {
+        return 1;
+      } else if (size <= 32) {
+        return 2;
+      } else if (size <= 64) {
+        return 3;
+      } else { // punt to malloc.
+        return 4;
+      }
+    }
+
+    std::array<SimpleAllocator, 4> allocators_{
+        {{AllocSize, 8}, {AllocSize, 16}, {AllocSize, 32}, {AllocSize, 64}}};
+
+   public:
+    void* allocate(size_t size) {
+      auto cl = sizeClass(size);
+      if (cl == 4) {
+        static_assert(
+            CacheLocality::kFalseSharingRange == 128,
+            "kFalseSharingRange changed");
+        // Align to a cacheline
+        size = size + (CacheLocality::kFalseSharingRange - 1);
+        size &= ~size_t(CacheLocality::kFalseSharingRange - 1);
+        void* mem = aligned_malloc(size, CacheLocality::kFalseSharingRange);
+        if (!mem) {
+          std::__throw_bad_alloc();
+        }
+        return mem;
+      }
+      return allocators_[cl].allocate();
+    }
+    void deallocate(void* mem) {
+      if (!mem) {
+        return;
+      }
+
+      // See if it came from this allocator or malloc.
+      if (intptr_t(mem) % 128 != 0) {
+        auto addr =
+            reinterpret_cast<void*>(intptr_t(mem) & ~intptr_t(AllocSize - 1));
+        auto allocator = *static_cast<SimpleAllocator**>(addr);
+        allocator->deallocate(mem);
+      } else {
+        aligned_free(mem);
+      }
+    }
+  };
+
+  Allocator* get(size_t stripe) {
+    assert(stripe < Stripes);
+    return &allocators_[stripe];
+  }
+
+ private:
+  Allocator allocators_[Stripes];
+};
+
+template <size_t Stripes>
+typename CoreAllocator<Stripes>::Allocator* getCoreAllocator(size_t stripe) {
+  static CoreAllocator<Stripes> allocator;
+  return allocator.get(stripe);
+}
+
+template <typename T, size_t Stripes>
+StlAllocator<typename CoreAllocator<Stripes>::Allocator, T> getCoreAllocatorStl(
+    size_t stripe) {
+  auto alloc = getCoreAllocator<Stripes>(stripe);
+  return StlAllocator<typename CoreAllocator<Stripes>::Allocator, T>(alloc);
+}
 
 } // namespace detail
 } // namespace folly
