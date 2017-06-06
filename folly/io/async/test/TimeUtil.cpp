@@ -23,7 +23,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifndef _MSC_VER
+#ifdef __linux__
 #include <sys/utsname.h>
 #endif
 
@@ -33,9 +33,8 @@
 
 #include <folly/Conv.h>
 #include <folly/ScopeGuard.h>
-#include <folly/portability/SysSyscall.h>
+#include <folly/ThreadId.h>
 #include <folly/portability/Unistd.h>
-#include <folly/portability/Windows.h>
 
 #include <glog/logging.h>
 
@@ -43,19 +42,6 @@ using std::string;
 using namespace std::chrono;
 
 namespace folly {
-
-#ifdef _MSC_VER
-static pid_t gettid() {
-  return pid_t(GetCurrentThreadId());
-}
-#else
-/**
- * glibc doesn't provide gettid(), so define it ourselves.
- */
-static pid_t gettid() {
-  return syscall(FOLLY_SYS_gettid);
-}
-#endif
 
 static int getLinuxVersion(StringPiece release) {
   auto dot1 = release.find('.');
@@ -231,7 +217,7 @@ void TimePoint::reset() {
   timeStart_ = system_clock::now();
 
   // Remember how long this process has spent waiting to be scheduled
-  tid_ = gettid();
+  tid_ = getOSThreadID();
   timeWaiting_ = getTimeWaitingMS(tid_);
 
   // In case it took a while to read the schedstat info,
