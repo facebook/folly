@@ -289,6 +289,7 @@ nobase_follyinclude_HEADERS = \
 	Math.h \
 	Memory.h \
 	MemoryMapping.h \
+	memory/UninitializedMemoryHacks.h \
 	MicroSpinLock.h \
 	MicroLock.h \
 	MoveWrapper.h \
@@ -336,8 +337,8 @@ nobase_follyinclude_HEADERS = \
 	portability/SysUio.h \
 	portability/Time.h \
 	portability/TypeTraits.h \
-	portability/Windows.h \
 	portability/Unistd.h \
+	portability/Windows.h \
 	Preprocessor.h \
 	PriorityMPMCQueue.h \
 	ProducerConsumerQueue.h \
