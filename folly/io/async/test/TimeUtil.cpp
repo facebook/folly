@@ -151,19 +151,19 @@ static int64_t determineSchedstatUnits() {
  * Determine how long this process has spent waiting to get scheduled on the
  * CPU.
  *
- * Returns the number of milliseconds spent waiting, or -1 if the amount of
+ * Returns the number of nanoseconds spent waiting, or -1 if the amount of
  * time cannot be determined.
  */
-static milliseconds getTimeWaitingMS(pid_t tid) {
+static nanoseconds getSchedTimeWaiting(pid_t tid) {
 #ifndef __linux__
   (void)tid;
-  return milliseconds(0);
+  return nanoseconds(0);
 #else
   static int64_t timeUnits = determineSchedstatUnits();
   if (timeUnits < 0) {
     // We couldn't figure out how many jiffies there are in a second.
     // Don't bother reading the schedstat info if we can't interpret it.
-    return milliseconds(0);
+    return nanoseconds(0);
   }
 
   int fd = -1;
@@ -201,28 +201,28 @@ static milliseconds getTimeWaitingMS(pid_t tid) {
     }
 
     close(fd);
-    return duration_cast<milliseconds>(nanoseconds(waitingJiffies * timeUnits));
+    return nanoseconds(waitingJiffies * timeUnits);
   } catch (const std::runtime_error& e) {
     if (fd >= 0) {
       close(fd);
     }
     LOG(ERROR) << "error determining process wait time: %s" << e.what();
-    return milliseconds(0);
+    return nanoseconds(0);
   }
 #endif
 }
 
 void TimePoint::reset() {
   // Remember the current time
-  timeStart_ = system_clock::now();
+  timeStart_ = steady_clock::now();
 
   // Remember how long this process has spent waiting to be scheduled
   tid_ = getOSThreadID();
-  timeWaiting_ = getTimeWaitingMS(tid_);
+  timeWaiting_ = getSchedTimeWaiting(tid_);
 
   // In case it took a while to read the schedstat info,
   // also record the time after the schedstat check
-  timeEnd_ = system_clock::now();
+  timeEnd_ = steady_clock::now();
 }
 
 std::ostream& operator<<(std::ostream& os, const TimePoint& timePoint) {
@@ -232,16 +232,18 @@ std::ostream& operator<<(std::ostream& os, const TimePoint& timePoint) {
   return os;
 }
 
-bool
-checkTimeout(const TimePoint& start, const TimePoint& end,
-             milliseconds expectedMS, bool allowSmaller,
-             milliseconds tolerance) {
+bool checkTimeout(
+    const TimePoint& start,
+    const TimePoint& end,
+    nanoseconds expected,
+    bool allowSmaller,
+    nanoseconds tolerance) {
   auto elapsedTime = end.getTimeStart() - start.getTimeEnd();
 
   if (!allowSmaller) {
     // Timeouts should never fire before the time was up.
     // Allow 1ms of wiggle room for rounding errors.
-    if (elapsedTime < (expectedMS - milliseconds(1))) {
+    if (elapsedTime < (expected - milliseconds(1))) {
       return false;
     }
   }
@@ -251,26 +253,26 @@ checkTimeout(const TimePoint& start, const TimePoint& end,
   // If the system is under heavy load, our process may have had to wait for a
   // while to be run.  The time spent waiting for the processor shouldn't
   // count against us, so exclude this time from the check.
-  milliseconds excludedMS;
+  nanoseconds timeExcluded;
   if (end.getTid() != start.getTid()) {
     // We can only correctly compute the amount of time waiting to be scheduled
     // if both TimePoints were set in the same thread.
-    excludedMS = milliseconds(0);
+    timeExcluded = nanoseconds(0);
   } else {
-    excludedMS = end.getTimeWaiting() - start.getTimeWaiting();
+    timeExcluded = end.getTimeWaiting() - start.getTimeWaiting();
     assert(end.getTimeWaiting() >= start.getTimeWaiting());
     // Add a tolerance here due to precision issues on linux, see below note.
-    assert((elapsedTime + tolerance) >= excludedMS);
+    assert((elapsedTime + tolerance) >= timeExcluded);
   }
 
-  milliseconds effectiveElapsedMS = milliseconds(0);
-  if (elapsedTime > excludedMS) {
-    effectiveElapsedMS = duration_cast<milliseconds>(elapsedTime) - excludedMS;
+  nanoseconds effectiveElapsedTime(0);
+  if (elapsedTime > timeExcluded) {
+    effectiveElapsedTime = elapsedTime - timeExcluded;
   }
 
   // On x86 Linux, sleep calls generally have precision only to the nearest
   // millisecond.  The tolerance parameter lets users allow a few ms of slop.
-  milliseconds overrun = effectiveElapsedMS - expectedMS;
+  auto overrun = effectiveElapsedTime - expected;
   if (overrun > tolerance) {
     return false;
   }
