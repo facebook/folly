@@ -29,14 +29,14 @@ namespace folly {
 namespace uri_detail {
 
 using UriTuple = std::tuple<
-    const fbstring&,
-    const fbstring&,
-    const fbstring&,
-    const fbstring&,
+    const std::string&,
+    const std::string&,
+    const std::string&,
+    const std::string&,
     uint16_t,
-    const fbstring&,
-    const fbstring&,
-    const fbstring&>;
+    const std::string&,
+    const std::string&,
+    const std::string&>;
 
 inline UriTuple as_tuple(const folly::Uri& k) {
   return UriTuple(
