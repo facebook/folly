@@ -968,6 +968,7 @@ class NpnClient :
   const unsigned char* nextProto;
   unsigned nextProtoLength;
   SSLContext::NextProtocolType protocolType;
+  folly::Optional<AsyncSocketException> except;
 
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
@@ -977,7 +978,7 @@ class NpnClient :
   void handshakeErr(
     AsyncSSLSocket*,
     const AsyncSocketException& ex) noexcept override {
-    ADD_FAILURE() << "client handshake error: " << ex.what();
+    except = ex;
   }
   void writeSuccess() noexcept override {
     socket_->close();
@@ -1004,6 +1005,7 @@ class NpnServer :
   const unsigned char* nextProto;
   unsigned nextProtoLength;
   SSLContext::NextProtocolType protocolType;
+  folly::Optional<AsyncSocketException> except;
 
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
@@ -1013,7 +1015,7 @@ class NpnServer :
   void handshakeErr(
     AsyncSSLSocket*,
     const AsyncSocketException& ex) noexcept override {
-    ADD_FAILURE() << "server handshake error: " << ex.what();
+    except = ex;
   }
   void getReadBuffer(void** /* bufReturn */, size_t* lenReturn) override {
     *lenReturn = 0;
