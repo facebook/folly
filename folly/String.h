@@ -17,6 +17,7 @@
 #pragma once
 #define FOLLY_STRING_H_
 
+#include <stdarg.h>
 #include <exception>
 #include <stdarg.h>
 #include <string>
