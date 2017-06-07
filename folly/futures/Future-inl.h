@@ -85,6 +85,11 @@ class CoreCallbackState {
     return std::move(func_)(std::forward<Args>(args)...);
   }
 
+  template <typename... Args>
+  auto tryInvoke(Args&&... args) noexcept {
+    return makeTryWith([&] { return invoke(std::forward<Args>(args)...); });
+  }
+
   void setTry(Try<T>&& t) {
     stealPromise().setTry(std::move(t));
   }
@@ -263,26 +268,17 @@ Future<T>::thenImplementation(F&& func, detail::argResult<isTry, F, Args...>) {
   setCallback_(
       [state = detail::makeCoreCallbackState(
            std::move(p), std::forward<F>(func))](Try<T> && t) mutable {
-        auto ew = [&] {
-          if (!isTry && t.hasException()) {
-            return std::move(t.exception());
+        if (!isTry && t.hasException()) {
+          state.setException(std::move(t.exception()));
+        } else {
+          auto tf2 = state.tryInvoke(t.template get<isTry, Args>()...);
+          if (tf2.hasException()) {
+            state.setException(std::move(tf2.exception()));
           } else {
-            try {
-              auto f2 = state.invoke(t.template get<isTry, Args>()...);
-              // that didn't throw, now we can steal p
-              f2.setCallback_([p = state.stealPromise()](Try<B> && b) mutable {
-                p.setTry(std::move(b));
-              });
-              return exception_wrapper();
-            } catch (const std::exception& e) {
-              return exception_wrapper(std::current_exception(), e);
-            } catch (...) {
-              return exception_wrapper(std::current_exception());
-            }
+            tf2->setCallback_([p = state.stealPromise()](Try<B> && b) mutable {
+              p.setTry(std::move(b));
+            });
           }
-        }();
-        if (ew) {
-          state.setException(std::move(ew));
         }
       });
 
@@ -326,7 +322,7 @@ typename std::enable_if<
   !detail::Extract<F>::ReturnsFuture::value,
   Future<T>>::type
 Future<T>::onError(F&& func) {
-  typedef typename detail::Extract<F>::FirstArg Exn;
+  typedef std::remove_reference_t<typename detail::Extract<F>::FirstArg> Exn;
   static_assert(
       std::is_same<typename detail::Extract<F>::RawReturn, T>::value,
       "Return type of onError callback must be T or Future<T>");
@@ -338,9 +334,9 @@ Future<T>::onError(F&& func) {
   setCallback_(
       [state = detail::makeCoreCallbackState(
            std::move(p), std::forward<F>(func))](Try<T> && t) mutable {
-        if (!t.template withException<Exn>([&](Exn& e) {
-              state.setTry(makeTryWith([&] { return state.invoke(e); }));
-            })) {
+        if (auto e = t.template tryGetExceptionObject<Exn>()) {
+          state.setTry(makeTryWith([&] { return state.invoke(*e); }));
+        } else {
           state.setTry(std::move(t));
         }
       });
@@ -359,7 +355,7 @@ Future<T>::onError(F&& func) {
   static_assert(
       std::is_same<typename detail::Extract<F>::Return, Future<T>>::value,
       "Return type of onError callback must be T or Future<T>");
-  typedef typename detail::Extract<F>::FirstArg Exn;
+  typedef std::remove_reference_t<typename detail::Extract<F>::FirstArg> Exn;
 
   Promise<T> p;
   auto f = p.getFuture();
@@ -367,23 +363,16 @@ Future<T>::onError(F&& func) {
   setCallback_(
       [state = detail::makeCoreCallbackState(
            std::move(p), std::forward<F>(func))](Try<T> && t) mutable {
-        if (!t.template withException<Exn>([&](Exn& e) {
-              auto ew = [&] {
-                try {
-                  auto f2 = state.invoke(e);
-                  f2.setCallback_([p = state.stealPromise()](
-                      Try<T> && t2) mutable { p.setTry(std::move(t2)); });
-                  return exception_wrapper();
-                } catch (const std::exception& e2) {
-                  return exception_wrapper(std::current_exception(), e2);
-                } catch (...) {
-                  return exception_wrapper(std::current_exception());
-                }
-              }();
-              if (ew) {
-                state.setException(std::move(ew));
-              }
-            })) {
+        if (auto e = t.template tryGetExceptionObject<Exn>()) {
+          auto tf2 = state.tryInvoke(*e);
+          if (tf2.hasException()) {
+            state.setException(std::move(tf2.exception()));
+          } else {
+            tf2->setCallback_([p = state.stealPromise()](Try<T> && t3) mutable {
+              p.setTry(std::move(t3));
+            });
+          }
+        } else {
           state.setTry(std::move(t));
         }
       });
@@ -423,21 +412,13 @@ Future<T>::onError(F&& func) {
       [state = detail::makeCoreCallbackState(
            std::move(p), std::forward<F>(func))](Try<T> t) mutable {
         if (t.hasException()) {
-          auto ew = [&] {
-            try {
-              auto f2 = state.invoke(std::move(t.exception()));
-              f2.setCallback_([p = state.stealPromise()](Try<T> t2) mutable {
-                p.setTry(std::move(t2));
-              });
-              return exception_wrapper();
-            } catch (const std::exception& e2) {
-              return exception_wrapper(std::current_exception(), e2);
-            } catch (...) {
-              return exception_wrapper(std::current_exception());
-            }
-          }();
-          if (ew) {
-            state.setException(std::move(ew));
+          auto tf2 = state.tryInvoke(std::move(t.exception()));
+          if (tf2.hasException()) {
+            state.setException(std::move(tf2.exception()));
+          } else {
+            tf2->setCallback_([p = state.stealPromise()](Try<T> t3) mutable {
+              p.setTry(std::move(t3));
+            });
           }
         } else {
           state.setTry(std::move(t));
