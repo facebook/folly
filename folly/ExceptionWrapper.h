@@ -513,11 +513,6 @@ class exception_wrapper final {
   //! Throws the wrapped expression.
   [[noreturn]] void throw_exception() const;
 
-  [[noreturn]] FOLLY_DEPRECATED(
-      "use throw_exception") void throwException() const {
-    throw_exception();
-  }
-
   //! Call `fn` with the wrapped exception (if any), if `fn` can accept it.
   //! \par Example
   //! \code
