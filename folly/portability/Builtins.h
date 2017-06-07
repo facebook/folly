@@ -74,6 +74,10 @@ FOLLY_ALWAYS_INLINE int __builtin_ffsll(long long x) {
   return int(_BitScanForward64(&index, (unsigned long long)x) ? index + 1 : 0);
 }
 
+FOLLY_ALWAYS_INLINE int __builtin_popcount(unsigned int x) {
+  return int(__popcnt(x));
+}
+
 FOLLY_ALWAYS_INLINE int __builtin_popcountll(unsigned long long x) {
   return int(__popcnt64(x));
 }
