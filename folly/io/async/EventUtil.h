@@ -20,6 +20,14 @@
 
 #include <folly/portability/Event.h>
 
+#if LIBEVENT_VERSION_NUMBER > 0x02010101
+#define ev_pri ev_evcallback.evcb_pri
+#define ev_flags ev_evcallback.evcb_flags
+#define ev_closure ev_evcallback.evcb_closure
+#define ev_callback ev_evcallback.evcb_callback
+#define ev_arg ev_evcallback.evcb_arg
+#endif
+
 namespace folly {
 
 # if LIBEVENT_VERSION_NUMBER <= 0x02010101
