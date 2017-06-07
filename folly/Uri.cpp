@@ -23,9 +23,9 @@ namespace folly {
 
 namespace {
 
-fbstring submatch(const boost::cmatch& m, int idx) {
+std::string submatch(const boost::cmatch& m, int idx) {
   auto& sub = m[idx];
-  return fbstring(sub.first, sub.second);
+  return std::string(sub.first, sub.second);
 }
 
 template <class String>
@@ -61,7 +61,7 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
                           authorityAndPathRegex)) {
     // Does not start with //, doesn't have authority
     hasAuthority_ = false;
-    path_ = authorityAndPath.fbstr();
+    path_ = authorityAndPath.str();
   } else {
     static const boost::regex authorityRegex(
         "(?:([^@:]*)(?::([^@]*))?@)?"  // username, password
@@ -96,8 +96,8 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
   fragment_ = submatch(match, 4);
 }
 
-fbstring Uri::authority() const {
-  fbstring result;
+std::string Uri::authority() const {
+  std::string result;
 
   // Port is 5 characters max and we have up to 3 delimiters.
   result.reserve(host().size() + username().size() + password().size() + 8);
@@ -123,7 +123,7 @@ fbstring Uri::authority() const {
   return result;
 }
 
-fbstring Uri::hostname() const {
+std::string Uri::hostname() const {
   if (host_.size() > 0 && host_[0] == '[') {
     // If it starts with '[', then it should end with ']', this is ensured by
     // regex
@@ -132,7 +132,7 @@ fbstring Uri::hostname() const {
   return host_;
 }
 
-const std::vector<std::pair<fbstring, fbstring>>& Uri::getQueryParams() {
+const std::vector<std::pair<std::string, std::string>>& Uri::getQueryParams() {
   if (!query_.empty() && queryParams_.empty()) {
     // Parse query string
     static const boost::regex queryParamRegex(
@@ -150,8 +150,8 @@ const std::vector<std::pair<fbstring, fbstring>>& Uri::getQueryParams() {
         continue;
       }
       queryParams_.emplace_back(
-          fbstring((*itr)[2].first, (*itr)[2].second), // parameter name
-          fbstring((*itr)[3].first, (*itr)[3].second) // parameter value
+          std::string((*itr)[2].first, (*itr)[2].second), // parameter name
+          std::string((*itr)[3].first, (*itr)[3].second) // parameter value
           );
     }
   }
