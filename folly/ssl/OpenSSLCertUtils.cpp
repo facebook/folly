@@ -173,5 +173,28 @@ std::string OpenSSLCertUtils::getDateTimeStr(const ASN1_TIME* time) {
   return std::string(bioData, bioLen);
 }
 
+X509UniquePtr OpenSSLCertUtils::derDecode(ByteRange range) {
+  auto begin = range.data();
+  X509UniquePtr cert(d2i_X509(nullptr, &begin, range.size()));
+  if (!cert) {
+    throw std::runtime_error("could not read cert");
+  }
+  return cert;
+}
+
+std::unique_ptr<IOBuf> OpenSSLCertUtils::derEncode(X509& x509) {
+  auto len = i2d_X509(&x509, nullptr);
+  if (len < 0) {
+    throw std::runtime_error("Error computing length");
+  }
+  auto buf = IOBuf::create(len);
+  auto dataPtr = buf->writableData();
+  len = i2d_X509(&x509, &dataPtr);
+  if (len < 0) {
+    throw std::runtime_error("Error converting cert to DER");
+  }
+  buf->append(len);
+  return buf;
+}
 } // ssl
 } // folly

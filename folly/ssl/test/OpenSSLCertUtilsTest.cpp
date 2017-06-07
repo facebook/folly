@@ -18,9 +18,10 @@
 
 #include <folly/Range.h>
 #include <folly/String.h>
-#include <folly/ssl/OpenSSLPtrTypes.h>
+#include <folly/io/async/SSLContext.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 using namespace testing;
 using namespace folly;
@@ -56,6 +57,13 @@ const std::string kTestCertWithSan = folly::stripLeftMargin(R"(
   -----END CERTIFICATE-----
 )");
 
+class OpenSSLCertUtilsTest : public Test {
+ public:
+  void SetUp() override {
+    SSLContext::initializeOpenSSL();
+  }
+};
+
 static folly::ssl::X509UniquePtr readCertFromFile(const std::string& filename) {
   folly::ssl::BioUniquePtr bio(BIO_new(BIO_s_file()));
   if (!bio) {
@@ -79,9 +87,7 @@ static folly::ssl::X509UniquePtr readCertFromData(
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
-TEST(OpenSSLCertUtilsTest, TestX509CN) {
-  OpenSSL_add_all_algorithms();
-
+TEST_F(OpenSSLCertUtilsTest, TestX509CN) {
   auto x509 = readCertFromFile(kTestCertWithoutSan);
   EXPECT_NE(x509, nullptr);
   auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
@@ -90,9 +96,7 @@ TEST(OpenSSLCertUtilsTest, TestX509CN) {
   EXPECT_EQ(sans.size(), 0);
 }
 
-TEST(OpenSSLCertUtilsTest, TestX509Sans) {
-  OpenSSL_add_all_algorithms();
-
+TEST_F(OpenSSLCertUtilsTest, TestX509Sans) {
   auto x509 = readCertFromData(kTestCertWithSan);
   EXPECT_NE(x509, nullptr);
   auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
@@ -103,9 +107,7 @@ TEST(OpenSSLCertUtilsTest, TestX509Sans) {
   EXPECT_EQ(altNames[1], "*.thirdexample.com");
 }
 
-TEST(OpenSSLCertUtilsTest, TestX509IssuerAndSubject) {
-  OpenSSL_add_all_algorithms();
-
+TEST_F(OpenSSLCertUtilsTest, TestX509IssuerAndSubject) {
   auto x509 = readCertFromData(kTestCertWithSan);
   EXPECT_NE(x509, nullptr);
   auto issuer = folly::ssl::OpenSSLCertUtils::getIssuer(*x509);
@@ -116,9 +118,7 @@ TEST(OpenSSLCertUtilsTest, TestX509IssuerAndSubject) {
   EXPECT_EQ(subj.value(), "C = US, O = Asox, CN = 127.0.0.1");
 }
 
-TEST(OpenSSLCertUtilsTest, TestX509Dates) {
-  OpenSSL_add_all_algorithms();
-
+TEST_F(OpenSSLCertUtilsTest, TestX509Dates) {
   auto x509 = readCertFromData(kTestCertWithSan);
   EXPECT_NE(x509, nullptr);
   auto notBefore = folly::ssl::OpenSSLCertUtils::getNotBeforeTime(*x509);
@@ -127,9 +127,7 @@ TEST(OpenSSLCertUtilsTest, TestX509Dates) {
   EXPECT_EQ(notAfter, "Jul  1 23:21:03 2044 GMT");
 }
 
-TEST(OpenSSLCertUtilsTest, TestX509Summary) {
-  OpenSSL_add_all_algorithms();
-
+TEST_F(OpenSSLCertUtilsTest, TestX509Summary) {
   auto x509 = readCertFromData(kTestCertWithSan);
   EXPECT_NE(x509, nullptr);
   auto summary = folly::ssl::OpenSSLCertUtils::toString(*x509);
@@ -153,4 +151,31 @@ TEST(OpenSSLCertUtilsTest, TestX509Summary) {
       "                DNS:anotherexample.com, DNS:*.thirdexample.com\n"
       "            Authority Information Access: \n"
       "                CA Issuers - URI:https://phabricator.fb.com/diffusion/FBCODE/browse/master/ti/test_certs/ca_cert.pem?view=raw\n\n");
+}
+
+TEST_F(OpenSSLCertUtilsTest, TestDerEncodeDecode) {
+  auto x509 = readCertFromData(kTestCertWithSan);
+
+  auto der = folly::ssl::OpenSSLCertUtils::derEncode(*x509);
+  auto decoded = folly::ssl::OpenSSLCertUtils::derDecode(der->coalesce());
+
+  EXPECT_EQ(
+      folly::ssl::OpenSSLCertUtils::toString(*x509),
+      folly::ssl::OpenSSLCertUtils::toString(*decoded));
+}
+
+TEST_F(OpenSSLCertUtilsTest, TestDerDecodeJunkData) {
+  StringPiece junk{"MyFakeCertificate"};
+  EXPECT_THROW(
+      folly::ssl::OpenSSLCertUtils::derDecode(junk), std::runtime_error);
+}
+
+TEST_F(OpenSSLCertUtilsTest, TestDerDecodeTooShort) {
+  auto x509 = readCertFromData(kTestCertWithSan);
+
+  auto der = folly::ssl::OpenSSLCertUtils::derEncode(*x509);
+  der->trimEnd(1);
+  EXPECT_THROW(
+      folly::ssl::OpenSSLCertUtils::derDecode(der->coalesce()),
+      std::runtime_error);
 }

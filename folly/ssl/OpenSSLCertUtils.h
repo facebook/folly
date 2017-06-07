@@ -19,7 +19,9 @@
 #include <vector>
 
 #include <folly/Optional.h>
+#include <folly/io/IOBuf.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
 namespace ssl {
@@ -59,6 +61,20 @@ class OpenSSLCertUtils {
    * Summarize the CN, Subject, Issuer, Validity, and extensions as a string
    */
   static folly::Optional<std::string> toString(X509& x509);
+
+  /**
+   * Decodes the DER representation of an X509 certificate.
+   *
+   * Throws on error (if a valid certificate can't be decoded).
+   */
+  static X509UniquePtr derDecode(ByteRange);
+
+  /**
+   * DER encodes an X509 certificate.
+   *
+   * Throws on error.
+   */
+  static std::unique_ptr<IOBuf> derEncode(X509&);
 
  private:
   static std::string getDateTimeStr(const ASN1_TIME* time);
