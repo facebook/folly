@@ -212,6 +212,31 @@ class Try {
   }
 
   /*
+   * @returns a pointer to the `std::exception` held by `*this`, if one is held;
+   *          otherwise, returns `nullptr`.
+   */
+  std::exception* tryGetExceptionObject() {
+    return hasException() ? e_.get_exception() : nullptr;
+  }
+  std::exception const* tryGetExceptionObject() const {
+    return hasException() ? e_.get_exception() : nullptr;
+  }
+
+  /*
+   * @returns a pointer to the `Ex` held by `*this`, if it holds an object whose
+   *          type `From` permits `std::is_convertible<From*, Ex*>`; otherwise,
+   *          returns `nullptr`.
+   */
+  template <class E>
+  E* tryGetExceptionObject() {
+    return hasException() ? e_.get_exception<E>() : nullptr;
+  }
+  template <class E>
+  E const* tryGetExceptionObject() const {
+    return hasException() ? e_.get_exception<E>() : nullptr;
+  }
+
+  /*
    * If the Try contains an exception and it is of type Ex, execute func(Ex)
    *
    * @param func a function that takes a single parameter of type const Ex&
@@ -337,6 +362,31 @@ class Try<void> {
       throw TryException("exception(): Try does not contain an exception");
     }
     return e_;
+  }
+
+  /*
+   * @returns a pointer to the `std::exception` held by `*this`, if one is held;
+   *          otherwise, returns `nullptr`.
+   */
+  std::exception* tryGetExceptionObject() {
+    return hasException() ? e_.get_exception() : nullptr;
+  }
+  std::exception const* tryGetExceptionObject() const {
+    return hasException() ? e_.get_exception() : nullptr;
+  }
+
+  /*
+   * @returns a pointer to the `Ex` held by `*this`, if it holds an object whose
+   *          type `From` permits `std::is_convertible<From*, Ex*>`; otherwise,
+   *          returns `nullptr`.
+   */
+  template <class E>
+  E* tryGetExceptionObject() {
+    return hasException() ? e_.get_exception<E>() : nullptr;
+  }
+  template <class E>
+  E const* tryGetExceptionObject() const {
+    return hasException() ? e_.get_exception<E>() : nullptr;
   }
 
   /*
