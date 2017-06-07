@@ -29,6 +29,7 @@
 #include <vector>
 
 #include <folly/Hash.h>
+#include <folly/Indestructible.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
@@ -492,8 +493,10 @@ class CoreAllocator {
 
 template <size_t Stripes>
 typename CoreAllocator<Stripes>::Allocator* getCoreAllocator(size_t stripe) {
-  static CoreAllocator<Stripes> allocator;
-  return allocator.get(stripe);
+  // We cannot make sure that the allocator will be destroyed after
+  // all the objects allocated with it, so we leak it.
+  static Indestructible<CoreAllocator<Stripes>> allocator;
+  return allocator->get(stripe);
 }
 
 template <typename T, size_t Stripes>
