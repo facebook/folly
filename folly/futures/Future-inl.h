@@ -416,7 +416,7 @@ Future<T>::onError(F&& func) {
           if (tf2.hasException()) {
             state.setException(std::move(tf2.exception()));
           } else {
-            tf2->setCallback_([p = state.stealPromise()](Try<T> t3) mutable {
+            tf2->setCallback_([p = state.stealPromise()](Try<T> && t3) mutable {
               p.setTry(std::move(t3));
             });
           }
@@ -444,7 +444,7 @@ Future<T>::onError(F&& func) {
   auto f = p.getFuture();
   setCallback_(
       [state = detail::makeCoreCallbackState(
-           std::move(p), std::forward<F>(func))](Try<T> t) mutable {
+           std::move(p), std::forward<F>(func))](Try<T> && t) mutable {
         if (t.hasException()) {
           state.setTry(makeTryWith(
               [&] { return state.invoke(std::move(t.exception())); }));
