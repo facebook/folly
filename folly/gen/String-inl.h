@@ -19,6 +19,7 @@
 #endif
 
 #include <folly/Conv.h>
+#include <folly/Portability.h>
 #include <folly/String.h>
 
 namespace folly {
@@ -369,7 +370,7 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
 template<class Target, class=void>
 inline Target passthrough(Target target) { return target; }
 
-#pragma GCC diagnostic push
+FOLLY_PUSH_WARNING
 #ifdef __clang__
 // Clang isn't happy with eatField() hack below.
 #pragma GCC diagnostic ignored "-Wreturn-stack-address"
@@ -410,7 +411,7 @@ class SplitTo {
   }
 };
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 } // namespace detail
 

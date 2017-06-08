@@ -21,9 +21,11 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Portability.h>
+
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 namespace gen {
@@ -376,4 +378,4 @@ public:
 } // gen
 } // folly
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING

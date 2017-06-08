@@ -55,13 +55,13 @@ struct BitsTraits<Unaligned<T>, typename std::enable_if<
   static T load(const Unaligned<T>& x) { return x.value; }
   static void store(Unaligned<T>& x, T v) { x.value = v; }
   static T loadRMW(const Unaligned<T>& x) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Wuninitialized")
 #if !__clang__ // for gcc version [4.8, ?)
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+    FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
 #endif
     return x.value;
-#pragma GCC diagnostic pop
+    FOLLY_POP_WARNING
   }
 };
 
@@ -76,13 +76,13 @@ struct BitsTraits<UnalignedNoASan<T>, typename std::enable_if<
   store(UnalignedNoASan<T>& x, T v) { x.value = v; }
   static T FOLLY_DISABLE_ADDRESS_SANITIZER
   loadRMW(const UnalignedNoASan<T>& x) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Wuninitialized")
 #if !__clang__ // for gcc version [4.8, ?)
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+    FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
 #endif
     return x.value;
-#pragma GCC diagnostic pop
+    FOLLY_POP_WARNING
   }
 };
 
@@ -94,13 +94,13 @@ struct BitsTraits<T, typename std::enable_if<
   static T load(const T& x) { return x; }
   static void store(T& x, T v) { x = v; }
   static T loadRMW(const T& x) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Wuninitialized")
 #if !__clang__ // for gcc version [4.8, ?)
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+    FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
 #endif
     return x;
-#pragma GCC diagnostic pop
+    FOLLY_POP_WARNING
   }
 };
 
@@ -203,11 +203,10 @@ struct Bits {
 
 // gcc 4.8 needs more -Wmaybe-uninitialized tickling, as it propagates the
 // taint upstream from loadRMW
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wuninitialized")
 #if !__clang__ // for gcc version [4.8, ?)
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
 #endif
 
 template <class T, class Traits>
@@ -262,7 +261,7 @@ inline void Bits<T, Traits>::innerSet(T* p, size_t offset, size_t count,
   Traits::store(*p, v);
 }
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 template <class T, class Traits>
 inline bool Bits<T, Traits>::test(const T* p, size_t bit) {

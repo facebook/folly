@@ -22,13 +22,14 @@
 #include <stdint.h>
 #include <boost/noncopyable.hpp>
 #include <folly/AtomicStruct.h>
+#include <folly/Portability.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 
@@ -530,4 +531,4 @@ struct IndexedMemPoolRecycler {
 
 } // namespace folly
 
-# pragma GCC diagnostic pop
+FOLLY_POP_WARNING

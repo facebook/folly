@@ -29,13 +29,14 @@
 #include <boost/iterator/iterator_facade.hpp>
 
 #include <folly/FBString.h>
-#include <folly/Range.h>
 #include <folly/FBVector.h>
+#include <folly/Portability.h>
+#include <folly/Range.h>
 #include <folly/portability/SysUio.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 
@@ -1544,4 +1545,4 @@ inline IOBuf::Iterator IOBuf::end() const { return cend(); }
 
 } // folly
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
