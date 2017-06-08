@@ -136,7 +136,7 @@ IOBuf::SharedInfo::SharedInfo(FreeFunction fn, void* arg)
 void* IOBuf::operator new(size_t size) {
   size_t fullSize = offsetof(HeapStorage, buf) + size;
   auto* storage = static_cast<HeapStorage*>(malloc(fullSize));
-  // operator new is not allowed to return NULL
+  // operator new is not allowed to return nullptr
   if (UNLIKELY(storage == nullptr)) {
     throw std::bad_alloc();
   }

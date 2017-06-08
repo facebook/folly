@@ -51,7 +51,7 @@ class ElfFile {
   // Open the ELF file.
   // Returns 0 on success, kSystemError (guaranteed to be -1) (and sets errno)
   // on IO error, kInvalidElfFile (and sets errno to EINVAL) for an invalid
-  // Elf file. On error, if msg is not NULL, sets *msg to a static string
+  // Elf file. On error, if msg is not nullptr, sets *msg to a static string
   // indicating what failed.
   enum {
     kSuccess = 0,

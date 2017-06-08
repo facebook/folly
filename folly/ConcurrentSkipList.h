@@ -235,7 +235,7 @@ class ConcurrentSkipList {
 
       // if found, succs[0..foundLayer] need to point to the cached foundNode,
       // as foundNode might be deleted at the same time thus pred->skip() can
-      // return NULL or another node.
+      // return nullptr or another node.
       succs[layer] = foundNode ? foundNode : node;
     }
     return foundLayer;

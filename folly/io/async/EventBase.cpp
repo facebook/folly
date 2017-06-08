@@ -94,7 +94,7 @@ EventBase::EventBase(bool enableTimeMeasurement)
     // The value 'current_base' (libevent 1) or
     // 'event_global_current_base_' (libevent 2) is filled in by event_set(),
     // allowing examination of its value without an explicit reference here.
-    // If ev.ev_base is NULL, then event_init() must be called, otherwise
+    // If ev.ev_base is nullptr, then event_init() must be called, otherwise
     // call event_base_new().
     event_set(&ev, 0, 0, nullptr, nullptr);
     if (!ev.ev_base) {

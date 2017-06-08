@@ -626,7 +626,7 @@ struct Synchronized : public SynchronizedBase<
 
   /**
    * Attempts to acquire for a given number of milliseconds. If
-   * acquisition is unsuccessful, the returned LockedPtr is NULL.
+   * acquisition is unsuccessful, the returned LockedPtr is nullptr.
    *
    * NOTE: This API is deprecated.  Use lock(), wlock(), or rlock() instead.
    * In the future it will be marked with a deprecation attribute to emit
@@ -638,7 +638,7 @@ struct Synchronized : public SynchronizedBase<
 
   /**
    * Attempts to acquire for a given number of milliseconds. If
-   * acquisition is unsuccessful, the returned ConstLockedPtr is NULL.
+   * acquisition is unsuccessful, the returned ConstLockedPtr is nullptr.
    *
    * NOTE: This API is deprecated.  Use lock(), wlock(), or rlock() instead.
    * In the future it will be marked with a deprecation attribute to emit

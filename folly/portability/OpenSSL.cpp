@@ -97,8 +97,8 @@ unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s) {
 
 // This is taken from OpenSSL 1.1.0
 int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g) {
-  /* If the fields p and g in d are NULL, the corresponding input
-   * parameters MUST be non-NULL.  q may remain NULL.
+  /* If the fields p and g in d are nullptr, the corresponding input
+   * parameters MUST not be nullptr.  q may remain nullptr.
    */
   if (dh == nullptr || (dh->p == nullptr && p == nullptr) ||
       (dh->g == nullptr && g == nullptr)) {

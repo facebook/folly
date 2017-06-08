@@ -155,7 +155,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     // Dependent exceptions (thrown via std::rethrow_exception) aren't
     // standard ABI __cxa_exception objects, and are correctly labeled as
     // such in the exception_class field.  We could try to extract the
-    // primary exception type in horribly hacky ways, but, for now, NULL.
+    // primary exception type in horribly hacky ways, but, for now, nullptr.
     info.type =
       isAbiCppException(currentException) ?
       currentException->exceptionType :

@@ -417,7 +417,7 @@ class Histogram {
    * Get the bucket that the specified percentile falls into
    *
    * The lowest and highest percentile data points in returned bucket will be
-   * returned in the lowPct and highPct arguments, if they are non-NULL.
+   * returned in the lowPct and highPct arguments, if they are not nullptr.
    */
   size_t getPercentileBucketIdx(
       double pct,
