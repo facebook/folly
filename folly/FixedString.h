@@ -120,7 +120,7 @@ enum class Cmp : int { LT = -1, EQ = 0, GT = 1 };
 
 // Rather annoyingly, GCC's -Warray-bounds warning issues false positives for
 // this code. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61971
-#if defined(__GNUC__) && !defined(__CLANG__) && __GNUC__ <= 4
+#if defined(__GNUC__) && !defined(__CLANG__) && __GNUC__ <= 5
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
 #endif
