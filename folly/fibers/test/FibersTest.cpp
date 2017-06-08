@@ -330,21 +330,20 @@ TEST(FiberManager, awaitThrow) {
   getFiberManager(evb)
       .addTaskFuture([&] {
         EXPECT_THROW(
-          await([](Promise<int> p) {
+            await([](Promise<int> p) {
               p.setValue(42);
               throw ExpectedException();
             }),
-          ExpectedException
-        );
+            ExpectedException);
 
         EXPECT_THROW(
-          await([&](Promise<int> p) {
+            await([&](Promise<int> p) {
               evb.runInEventBaseThread([p = std::move(p)]() mutable {
-                  p.setValue(42);
-                });
+                p.setValue(42);
+              });
               throw ExpectedException();
             }),
-          ExpectedException);
+            ExpectedException);
       })
       .waitVia(&evb);
 }
@@ -1649,20 +1648,20 @@ folly::Future<std::vector<std::string>> doubleBatchInnerDispatch(
       std::vector<int>,
       std::vector<std::string>,
       ExecutorT>
-  batchDispatcher(executor, [=](std::vector<std::vector<int>>&& batch) {
-    std::vector<std::vector<std::string>> results;
-    int numberOfElements = 0;
-    for (auto& unit : batch) {
-      numberOfElements += unit.size();
-      std::vector<std::string> result;
-      for (auto& element : unit) {
-        result.push_back(folly::to<std::string>(element));
-      }
-      results.push_back(std::move(result));
-    }
-    EXPECT_EQ(totalNumberOfElements, numberOfElements);
-    return results;
-  });
+      batchDispatcher(executor, [=](std::vector<std::vector<int>>&& batch) {
+        std::vector<std::vector<std::string>> results;
+        int numberOfElements = 0;
+        for (auto& unit : batch) {
+          numberOfElements += unit.size();
+          std::vector<std::string> result;
+          for (auto& element : unit) {
+            result.push_back(folly::to<std::string>(element));
+          }
+          results.push_back(std::move(result));
+        }
+        EXPECT_EQ(totalNumberOfElements, numberOfElements);
+        return results;
+      });
 
   return batchDispatcher.add(std::move(input));
 }
@@ -1675,38 +1674,39 @@ void doubleBatchOuterDispatch(
     ExecutorT& executor,
     int totalNumberOfElements,
     int index) {
-  thread_local BatchDispatcher<int, std::string, ExecutorT>
-  batchDispatcher(executor, [=, &executor](std::vector<int>&& batch) {
-    EXPECT_EQ(totalNumberOfElements, batch.size());
-    std::vector<std::string> results;
-    std::vector<folly::Future<std::vector<std::string>>>
-        innerDispatchResultFutures;
+  thread_local BatchDispatcher<int, std::string, ExecutorT> batchDispatcher(
+      executor, [=, &executor](std::vector<int>&& batch) {
+        EXPECT_EQ(totalNumberOfElements, batch.size());
+        std::vector<std::string> results;
+        std::vector<folly::Future<std::vector<std::string>>>
+            innerDispatchResultFutures;
 
-    std::vector<int> group;
-    for (auto unit : batch) {
-      group.push_back(unit);
-      if (group.size() == 5) {
-        auto localGroup = group;
-        group.clear();
+        std::vector<int> group;
+        for (auto unit : batch) {
+          group.push_back(unit);
+          if (group.size() == 5) {
+            auto localGroup = group;
+            group.clear();
 
-        innerDispatchResultFutures.push_back(doubleBatchInnerDispatch(
-            executor, totalNumberOfElements, localGroup));
-      }
-    }
-
-    folly::collectAll(
-        innerDispatchResultFutures.begin(), innerDispatchResultFutures.end())
-        .then([&](
-            std::vector<Try<std::vector<std::string>>> innerDispatchResults) {
-          for (auto& unit : innerDispatchResults) {
-            for (auto& element : unit.value()) {
-              results.push_back(element);
-            }
+            innerDispatchResultFutures.push_back(doubleBatchInnerDispatch(
+                executor, totalNumberOfElements, localGroup));
           }
-        })
-        .get();
-    return results;
-  });
+        }
+
+        folly::collectAll(
+            innerDispatchResultFutures.begin(),
+            innerDispatchResultFutures.end())
+            .then([&](std::vector<Try<std::vector<std::string>>>
+                          innerDispatchResults) {
+              for (auto& unit : innerDispatchResults) {
+                for (auto& element : unit.value()) {
+                  results.push_back(element);
+                }
+              }
+            })
+            .get();
+        return results;
+      });
 
   auto indexCopy = index;
   auto result = batchDispatcher.add(std::move(indexCopy));
@@ -2139,7 +2139,7 @@ TEST(TimedMutex, ThreadFiberDeadlockRace) {
  */
 #ifndef FOLLY_SANITIZE_ADDRESS
 TEST(FiberManager, recordStack) {
-  std::thread([] {
+  auto f = [] {
     folly::fibers::FiberManager::Options opts;
     opts.recordStackEvery = 1;
 
@@ -2165,6 +2165,7 @@ TEST(FiberManager, recordStack) {
 
     // Check that we properly accounted fiber stack usage.
     EXPECT_LT(n * sizeof(int), fm.stackHighWatermark());
-  }).join();
+  };
+  std::thread(f).join();
 }
 #endif

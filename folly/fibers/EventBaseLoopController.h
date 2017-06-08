@@ -107,7 +107,6 @@ class EventBaseLoopController : public LoopController {
 
   friend class FiberManager;
 };
-
 }
 } // folly::fibers
 

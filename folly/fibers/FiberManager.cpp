@@ -254,8 +254,9 @@ static AsanStartSwitchStackFuncPtr getStartSwitchStackFunc() {
   }
 
   // Check whether we can find a dynamically linked enter function
-  if (nullptr != (fn = (AsanStartSwitchStackFuncPtr)dlsym(
-                      RTLD_DEFAULT, "__sanitizer_start_switch_fiber"))) {
+  if (nullptr !=
+      (fn = (AsanStartSwitchStackFuncPtr)dlsym(
+           RTLD_DEFAULT, "__sanitizer_start_switch_fiber"))) {
     return fn;
   }
 
@@ -272,8 +273,9 @@ static AsanFinishSwitchStackFuncPtr getFinishSwitchStackFunc() {
   }
 
   // Check whether we can find a dynamically linked exit function
-  if (nullptr != (fn = (AsanFinishSwitchStackFuncPtr)dlsym(
-                      RTLD_DEFAULT, "__sanitizer_finish_switch_fiber"))) {
+  if (nullptr !=
+      (fn = (AsanFinishSwitchStackFuncPtr)dlsym(
+           RTLD_DEFAULT, "__sanitizer_finish_switch_fiber"))) {
     return fn;
   }
 
@@ -290,8 +292,9 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
   }
 
   // Check whether we can find a dynamically linked unpoison function
-  if (nullptr != (fn = (AsanUnpoisonMemoryRegionFuncPtr)dlsym(
-                      RTLD_DEFAULT, "__asan_unpoison_memory_region"))) {
+  if (nullptr !=
+      (fn = (AsanUnpoisonMemoryRegionFuncPtr)dlsym(
+           RTLD_DEFAULT, "__asan_unpoison_memory_region"))) {
     return fn;
   }
 

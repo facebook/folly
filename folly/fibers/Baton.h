@@ -154,7 +154,7 @@ class Baton {
     PreBlockAttempts = 300,
   };
 
-  explicit Baton(intptr_t state) : waitingFiber_(state){}
+  explicit Baton(intptr_t state) : waitingFiber_(state) {}
 
   void postHelper(intptr_t new_value);
   void postThread();

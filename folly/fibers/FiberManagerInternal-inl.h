@@ -25,11 +25,11 @@
 #ifdef __APPLE__
 #include <folly/ThreadLocal.h>
 #endif
+#include <folly/Try.h>
 #include <folly/fibers/Baton.h>
 #include <folly/fibers/Fiber.h>
 #include <folly/fibers/LoopController.h>
 #include <folly/fibers/Promise.h>
-#include <folly/Try.h>
 
 namespace folly {
 namespace fibers {
