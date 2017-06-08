@@ -76,7 +76,6 @@ class JemallocNodumpAllocator {
   static void deallocate(void* p, void* userData);
 
   explicit JemallocNodumpAllocator(State state = State::ENABLED);
-  ~JemallocNodumpAllocator();
 
   void* allocate(size_t size);
   void* reallocate(void* p, size_t size);
@@ -92,7 +91,7 @@ class JemallocNodumpAllocator {
   static void* alloc(
       void* chunk,
 #else
-  extent_hooks_t extent_hooks_;
+  static extent_hooks_t extent_hooks_;
   static extent_alloc_t* original_alloc_;
   static void* alloc(
       extent_hooks_t* extent,
