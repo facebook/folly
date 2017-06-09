@@ -997,7 +997,7 @@ class ZlibStreamCodec final : public StreamCodec {
   static std::unique_ptr<Codec> createCodec(int level, CodecType type);
   static std::unique_ptr<StreamCodec> createStream(int level, CodecType type);
   explicit ZlibStreamCodec(int level, CodecType type);
-  ~ZlibStreamCodec();
+  ~ZlibStreamCodec() override;
 
   std::vector<std::string> validPrefixes() const override;
   bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)

@@ -237,7 +237,7 @@ class Codec {
 
 class StreamCodec : public Codec {
  public:
-  virtual ~StreamCodec() {}
+  ~StreamCodec() override {}
 
   /**
    * Does the codec need the data length before compression streaming?
@@ -359,7 +359,7 @@ class StreamCodec : public Codec {
  private:
   // default: Implemented using the streaming API.
   std::unique_ptr<IOBuf> doCompress(const folly::IOBuf* data) override;
-  virtual std::unique_ptr<IOBuf> doUncompress(
+  std::unique_ptr<IOBuf> doUncompress(
       const folly::IOBuf* data,
       folly::Optional<uint64_t> uncompressedLength) override;
 
