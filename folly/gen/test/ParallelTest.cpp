@@ -50,7 +50,7 @@ static auto isPrime = [](int n) {
 };
 
 struct {
-  template<class T>
+  template <class T>
   std::unique_ptr<T> operator()(T t) const {
     return std::unique_ptr<T>(new T(std::move(t)));
   }

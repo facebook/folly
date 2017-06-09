@@ -288,7 +288,7 @@ TEST(StringGen, ResplitMaxLength) {
   );
 }
 
-template<typename F>
+template <typename F>
 void runUnsplitSuite(F fn) {
   fn("hello, world");
   fn("hello,world,goodbye");

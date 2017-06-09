@@ -24,7 +24,7 @@ namespace gen {
 
 namespace detail {
 
-template<class Predicate>
+template <class Predicate>
 class PMap;
 
 } // namespace detail
@@ -38,8 +38,7 @@ class PMap;
  *       generator and the rest of the pipeline is executed in the
  *       caller thread.
  */
-template<class Predicate,
-         class PMap = detail::PMap<Predicate>>
+template <class Predicate, class PMap = detail::PMap<Predicate>>
   PMap pmap(Predicate pred = Predicate(), size_t nThreads = 0) {
   return PMap(std::move(pred), nThreads);
 }

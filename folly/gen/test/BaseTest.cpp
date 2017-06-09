@@ -48,12 +48,12 @@ EXPECT_SAME(int&, typename ArgumentReference<int&>::type);
 EXPECT_SAME(const int&, typename ArgumentReference<const int&>::type);
 EXPECT_SAME(const int&, typename ArgumentReference<const int>::type);
 
-template<typename T>
+template <typename T>
 ostream& operator<<(ostream& os, const set<T>& values) {
   return os << from(values);
 }
 
-template<typename T>
+template <typename T>
 ostream& operator<<(ostream& os, const vector<T>& values) {
   os << "[";
   for (auto& value : values) {
@@ -71,7 +71,7 @@ auto multiply = [](int a, int b) { return a * b; };
 
 auto product = foldl(1, multiply);
 
-template<typename A, typename B>
+template <typename A, typename B>
 ostream& operator<<(ostream& os, const pair<A, B>& pair) {
   return os << "(" << pair.first << ", " << pair.second << ")";
 }

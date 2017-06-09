@@ -33,7 +33,7 @@ namespace detail {
  * Alternate values from a sequence with values from a sequence container.
  * Stops once we run out of values from either source.
  */
-template<class Container>
+template <class Container>
 class Interleave : public Operator<Interleave<Container>> {
   // see comment about copies in CopiedSource
   const std::shared_ptr<const Container> container_;
@@ -41,8 +41,7 @@ class Interleave : public Operator<Interleave<Container>> {
   explicit Interleave(Container container)
     : container_(new Container(std::move(container))) {}
 
-  template<class Value,
-           class Source>
+  template <class Value, class Source>
   class Generator : public GenImpl<Value, Generator<Value, Source>> {
     Source source_;
     const std::shared_ptr<const Container> container_;
@@ -56,7 +55,7 @@ class Interleave : public Operator<Interleave<Container>> {
       : source_(std::move(source)),
         container_(container) { }
 
-    template<class Handler>
+    template <class Handler>
     bool apply(Handler&& handler) const {
       auto iter = container_->begin();
       return source_.apply([&](const Value& value) -> bool {
@@ -75,16 +74,12 @@ class Interleave : public Operator<Interleave<Container>> {
     }
   };
 
-  template<class Value2,
-           class Source,
-           class Gen = Generator<Value2,Source>>
+  template <class Value2, class Source, class Gen = Generator<Value2, Source>>
   Gen compose(GenImpl<Value2, Source>&& source) const {
     return Gen(std::move(source.self()), container_);
   }
 
-  template<class Value2,
-           class Source,
-           class Gen = Generator<Value2,Source>>
+  template <class Value2, class Source, class Gen = Generator<Value2, Source>>
   Gen compose(const GenImpl<Value2, Source>& source) const {
     return Gen(source.self(), container_);
   }
@@ -97,7 +92,7 @@ class Interleave : public Operator<Interleave<Container>> {
  * them into a tuple.
  *
  */
-template<class Container>
+template <class Container>
 class Zip : public Operator<Zip<Container>> {
   // see comment about copies in CopiedSource
   const std::shared_ptr<const Container> container_;
@@ -105,11 +100,13 @@ class Zip : public Operator<Zip<Container>> {
   explicit Zip(Container container)
     : container_(new Container(std::move(container))) {}
 
-  template<class Value1,
-           class Source,
-           class Value2 = decltype(*std::begin(*container_)),
-           class Result = std::tuple<typename std::decay<Value1>::type,
-                                     typename std::decay<Value2>::type>>
+  template <
+      class Value1,
+      class Source,
+      class Value2 = decltype(*std::begin(*container_)),
+      class Result = std::tuple<
+          typename std::decay<Value1>::type,
+          typename std::decay<Value2>::type>>
   class Generator : public GenImpl<Result,
                                    Generator<Value1,Source,Value2,Result>> {
     Source source_;
@@ -120,7 +117,7 @@ class Zip : public Operator<Zip<Container>> {
       : source_(std::move(source)),
         container_(container) { }
 
-    template<class Handler>
+    template <class Handler>
     bool apply(Handler&& handler) const {
       auto iter = container_->begin();
       return (source_.apply([&](Value1 value) -> bool {
@@ -136,30 +133,24 @@ class Zip : public Operator<Zip<Container>> {
     }
   };
 
-  template<class Source,
-           class Value,
-           class Gen = Generator<Value, Source>>
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
     return Gen(std::move(source.self()), container_);
   }
 
-  template<class Source,
-           class Value,
-           class Gen = Generator<Value, Source>>
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), container_);
   }
 };
 
-template<class... Types1,
-         class... Types2>
+template <class... Types1, class... Types2>
 auto add_to_tuple(std::tuple<Types1...> t1, std::tuple<Types2...> t2) ->
 std::tuple<Types1..., Types2...> {
   return std::tuple_cat(std::move(t1), std::move(t2));
 }
 
-template<class... Types1,
-         class Type2>
+template <class... Types1, class Type2>
 auto add_to_tuple(std::tuple<Types1...> t1, Type2&& t2) ->
 decltype(std::tuple_cat(std::move(t1),
                         std::make_tuple(std::forward<Type2>(t2)))) {
@@ -167,8 +158,7 @@ decltype(std::tuple_cat(std::move(t1),
                         std::make_tuple(std::forward<Type2>(t2)));
 }
 
-template<class Type1,
-         class... Types2>
+template <class Type1, class... Types2>
 auto add_to_tuple(Type1&& t1, std::tuple<Types2...> t2) ->
 decltype(std::tuple_cat(std::make_tuple(std::forward<Type1>(t1)),
                         std::move(t2))) {
@@ -176,8 +166,7 @@ decltype(std::tuple_cat(std::make_tuple(std::forward<Type1>(t1)),
                         std::move(t2));
 }
 
-template<class Type1,
-         class Type2>
+template <class Type1, class Type2>
 auto add_to_tuple(Type1&& t1, Type2&& t2) ->
 decltype(std::make_tuple(std::forward<Type1>(t1),
                          std::forward<Type2>(t2))) {
@@ -188,7 +177,7 @@ decltype(std::make_tuple(std::forward<Type1>(t1),
 // Merges a 2-tuple into a single tuple (get<0> could already be a tuple)
 class MergeTuples {
  public:
-  template<class Tuple>
+  template <class Tuple>
   auto operator()(Tuple&& value) const ->
   decltype(add_to_tuple(std::get<0>(std::forward<Tuple>(value)),
                         std::get<1>(std::forward<Tuple>(value)))) {
@@ -205,8 +194,9 @@ class MergeTuples {
 
 // TODO(mcurtiss): support zip() for N>1 operands. Because of variadic problems,
 // this might not be easily possible until gcc4.8 is available.
-template<class Source,
-         class Zip = detail::Zip<typename std::decay<Source>::type>>
+template <
+    class Source,
+    class Zip = detail::Zip<typename std::decay<Source>::type>>
 Zip zip(Source&& source) {
   return Zip(std::forward<Source>(source));
 }

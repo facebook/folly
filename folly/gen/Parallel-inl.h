@@ -132,11 +132,12 @@ class Sub : public Operator<Sub<Sink>> {
  public:
   explicit Sub(Sink sink) : sink_(sink) {}
 
-  template <class Value,
-            class Source,
-            class Result =
-                decltype(std::declval<Sink>().compose(std::declval<Source>())),
-            class Just = SingleCopy<typename std::decay<Result>::type>>
+  template <
+      class Value,
+      class Source,
+      class Result =
+          decltype(std::declval<Sink>().compose(std::declval<Source>())),
+      class Just = SingleCopy<typename std::decay<Result>::type>>
   Just compose(const GenImpl<Value, Source>& source) const {
     return Just(source | sink_);
   }
@@ -150,13 +151,14 @@ class Parallel : public Operator<Parallel<Ops>> {
  public:
   Parallel(Ops ops, size_t threads) : ops_(std::move(ops)), threads_(threads) {}
 
-  template <class Input,
-            class Source,
-            class InputDecayed = typename std::decay<Input>::type,
-            class Composed =
-                decltype(std::declval<Ops>().compose(Empty<InputDecayed&&>())),
-            class Output = typename Composed::ValueType,
-            class OutputDecayed = typename std::decay<Output>::type>
+  template <
+      class Input,
+      class Source,
+      class InputDecayed = typename std::decay<Input>::type,
+      class Composed =
+          decltype(std::declval<Ops>().compose(Empty<InputDecayed&&>())),
+      class Output = typename Composed::ValueType,
+      class OutputDecayed = typename std::decay<Output>::type>
   class Generator : public GenImpl<OutputDecayed&&,
                                    Generator<Input,
                                              Source,

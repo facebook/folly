@@ -174,7 +174,7 @@ BENCHMARK_RELATIVE(Fib_Sum_Gen, iters) {
 }
 
 struct FibYielder {
-  template<class Yield>
+  template <class Yield>
   void operator()(Yield&& yield) const {
     int a = 0;
     int b = 1;

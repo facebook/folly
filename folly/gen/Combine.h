@@ -23,17 +23,18 @@ namespace folly {
 namespace gen {
 namespace detail {
 
-template<class Container>
+template <class Container>
 class Interleave;
 
-template<class Container>
+template <class Container>
 class Zip;
 
 } // namespace detail
 
-template<class Source2,
-         class Source2Decayed = typename std::decay<Source2>::type,
-         class Interleave = detail::Interleave<Source2Decayed>>
+template <
+    class Source2,
+    class Source2Decayed = typename std::decay<Source2>::type,
+    class Interleave = detail::Interleave<Source2Decayed>>
 Interleave interleave(Source2&& source2) {
   return Interleave(std::forward<Source2>(source2));
 }

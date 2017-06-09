@@ -258,16 +258,12 @@ class StringResplitter : public Operator<StringResplitter> {
     static constexpr bool infinite = Source::infinite;
   };
 
-  template<class Source,
-           class Value,
-           class Gen = Generator<Source>>
+  template <class Source, class Value, class Gen = Generator<Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
     return Gen(std::move(source.self()), delimiter_, keepDelimiter_);
   }
 
-  template<class Source,
-           class Value,
-           class Gen = Generator<Source>>
+  template <class Source, class Value, class Gen = Generator<Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), delimiter_, keepDelimiter_);
   }
@@ -309,8 +305,7 @@ class SplitStringSource
  *
  * This type is primarily used through the 'unsplit' function.
  */
-template<class Delimiter,
-         class Output>
+template <class Delimiter, class Output>
 class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
   Delimiter delimiter_;
  public:
@@ -318,8 +313,7 @@ class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
     : delimiter_(delimiter) {
   }
 
-  template<class Source,
-           class Value>
+  template <class Source, class Value>
   Output compose(const GenImpl<Value, Source>& source) const {
     Output outputBuffer;
     UnsplitBuffer<Delimiter, Output> unsplitter(delimiter_, &outputBuffer);
@@ -334,8 +328,7 @@ class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
  *
  * This type is primarily used through the 'unsplit' function.
  */
-template<class Delimiter,
-         class OutputBuffer>
+template <class Delimiter, class OutputBuffer>
 class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
   Delimiter delimiter_;
   OutputBuffer* outputBuffer_;
@@ -346,8 +339,7 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
     CHECK(outputBuffer);
   }
 
-  template<class Source,
-           class Value>
+  template <class Source, class Value>
   void compose(const GenImpl<Value, Source>& source) const {
     // If the output buffer is empty, we skip inserting the delimiter for the
     // first element.
@@ -367,7 +359,7 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
 /**
  * Hack for static for-like constructs
  */
-template<class Target, class=void>
+template <class Target, class = void>
 inline Target passthrough(Target target) { return target; }
 
 FOLLY_PUSH_WARNING
@@ -386,9 +378,7 @@ FOLLY_PUSH_WARNING
  *    | as<vector<tuple<int, string>>>();
  *
  */
-template<class TargetContainer,
-         class Delimiter,
-         class... Targets>
+template <class TargetContainer, class Delimiter, class... Targets>
 class SplitTo {
   Delimiter delimiter_;
  public:

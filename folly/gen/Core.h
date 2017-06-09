@@ -20,21 +20,21 @@
 namespace folly {
 namespace gen {
 
-template<class Value, class Self>
+template <class Value, class Self>
 class GenImpl;
 
-template<class Self>
+template <class Self>
 class Operator;
 
 namespace detail {
 
-template<class Self>
+template <class Self>
 struct FBounded;
 
-template<class First, class Second>
+template <class First, class Second>
 class Composed;
 
-template<class Value, class First, class Second>
+template <class Value, class First, class Second>
 class Chain;
 
 } // detail

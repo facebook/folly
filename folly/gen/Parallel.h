@@ -42,16 +42,18 @@ class ChunkedRangeSource;
  * Especially for use with 'parallel()', chunked can be used to process values
  * from a persistent container in chunks larger than one value at a time. The
  * values produced are generators for slices of the input container. */
-template <class Container,
-          class Iterator = typename Container::const_iterator,
-          class Chunked = detail::ChunkedRangeSource<Iterator>>
+template <
+    class Container,
+    class Iterator = typename Container::const_iterator,
+    class Chunked = detail::ChunkedRangeSource<Iterator>>
 Chunked chunked(const Container& container, int chunkSize = 256) {
   return Chunked(chunkSize, folly::range(container.begin(), container.end()));
 }
 
-template <class Container,
-          class Iterator = typename Container::iterator,
-          class Chunked = detail::ChunkedRangeSource<Iterator>>
+template <
+    class Container,
+    class Iterator = typename Container::iterator,
+    class Chunked = detail::ChunkedRangeSource<Iterator>>
 Chunked chunked(Container& container, int chunkSize = 256) {
   return Chunked(chunkSize, folly::range(container.begin(), container.end()));
 }
