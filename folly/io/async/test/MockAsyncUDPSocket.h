@@ -22,7 +22,7 @@ namespace folly { namespace test {
 
 struct MockAsyncUDPSocket : public AsyncUDPSocket {
   explicit MockAsyncUDPSocket(EventBase* evb) : AsyncUDPSocket(evb) {}
-  virtual ~MockAsyncUDPSocket() {}
+  ~MockAsyncUDPSocket() override {}
 
   MOCK_CONST_METHOD0(address, const SocketAddress&());
   MOCK_METHOD1(bind, void(const SocketAddress&));
