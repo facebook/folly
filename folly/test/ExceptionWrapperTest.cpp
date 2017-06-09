@@ -29,17 +29,16 @@ class AbstractIntException : public std::exception {
 
 class IntException : public AbstractIntException {
  public:
-  explicit IntException(int i) : i_(i) {}
+  explicit IntException(int i) : i_(i), what_(to<std::string>("int == ", i_)) {}
 
   int getInt() const override { return i_; }
   const char* what() const noexcept override {
-    what_ = folly::to<std::string>("int == ", i_);
     return what_.c_str();
   }
 
  private:
   int i_;
-  mutable std::string what_;
+  std::string what_;
 };
 
 const static std::string kExceptionClassName =
