@@ -22,6 +22,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 
 namespace {
 #ifdef OPENSSL_IS_BORINGSSL
@@ -346,11 +347,6 @@ static int boringssl_bio_fd_non_fatal_error(int err) {
 
 #if defined(OPENSSL_WINDOWS)
 
-#include <io.h>
-#pragma warning(push, 3)
-#include <windows.h>
-#pragma warning(pop)
-
 int boringssl_bio_fd_should_retry(int i) {
   if (i == -1) {
     return boringssl_bio_fd_non_fatal_error((int)GetLastError());
@@ -360,7 +356,6 @@ int boringssl_bio_fd_should_retry(int i) {
 
 #else // !OPENSSL_WINDOWS
 
-#include <unistd.h>
 int boringssl_bio_fd_should_retry(int i) {
   if (i == -1) {
     return boringssl_bio_fd_non_fatal_error(errno);
