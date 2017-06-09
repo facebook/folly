@@ -62,6 +62,40 @@ int SSL_SESSION_up_ref(SSL_SESSION* session) {
 int X509_up_ref(X509* x) {
   return CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509);
 }
+
+int EVP_PKEY_up_ref(EVP_PKEY* evp) {
+  return CRYPTO_add(&evp->references, 1, CRYPTO_LOCK_EVP_PKEY);
+}
+
+void RSA_get0_key(
+    const RSA* r,
+    const BIGNUM** n,
+    const BIGNUM** e,
+    const BIGNUM** d) {
+  if (n != nullptr) {
+    *n = r->n;
+  }
+  if (e != nullptr) {
+    *e = r->e;
+  }
+  if (d != nullptr) {
+    *d = r->d;
+  }
+}
+
+RSA* EVP_PKEY_get0_RSA(EVP_PKEY* pkey) {
+  if (pkey->type != EVP_PKEY_RSA) {
+    return nullptr;
+  }
+  return pkey->pkey.rsa;
+}
+
+EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey) {
+  if (pkey->type != EVP_PKEY_EC) {
+    return nullptr;
+  }
+  return pkey->pkey.ec;
+}
 #endif
 
 #if !FOLLY_OPENSSL_IS_110

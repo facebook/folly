@@ -108,6 +108,14 @@ int X509_get_signature_nid(X509* cert);
 int SSL_CTX_up_ref(SSL_CTX* session);
 int SSL_SESSION_up_ref(SSL_SESSION* session);
 int X509_up_ref(X509* x);
+int EVP_PKEY_up_ref(EVP_PKEY* evp);
+void RSA_get0_key(
+    const RSA* r,
+    const BIGNUM** n,
+    const BIGNUM** e,
+    const BIGNUM** d);
+RSA* EVP_PKEY_get0_RSA(EVP_PKEY* pkey);
+EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey);
 #endif
 
 #if !FOLLY_OPENSSL_IS_110
