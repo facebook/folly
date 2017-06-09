@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <vector>
 #include <ostream>
+#include <vector>
 
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 

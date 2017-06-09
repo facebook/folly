@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <typeinfo>
 #include <exception>
+#include <typeinfo>
 
 namespace folly {
 namespace exception_tracer {

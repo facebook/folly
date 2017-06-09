@@ -17,9 +17,9 @@
 #include <exception>
 
 #include <folly/experimental/exception_tracer/ExceptionAbi.h>
-#include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 #include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
+#include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 using namespace folly::exception_tracer;
