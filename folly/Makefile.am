@@ -7,7 +7,7 @@ MAYBE_EXCEPTION_TRACER = experimental/exception_tracer
 endif
 
 SUBDIRS = . experimental $(MAYBE_INIT) test io/test experimental/io/test \
-	  $(MAYBE_EXCEPTION_TRACER)
+	  stats/test $(MAYBE_EXCEPTION_TRACER)
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -82,7 +82,6 @@ nobase_follyinclude_HEADERS = \
 	detail/SlowFingerprint.h \
 	detail/SocketFastOpen.h \
 	detail/StaticSingletonManager.h \
-	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
 	detail/TryDetail.h \
 	detail/TurnSequencer.h \
@@ -367,6 +366,7 @@ nobase_follyinclude_HEADERS = \
 	ssl/OpenSSLVersionFinder.h \
 	ssl/SSLSession.h \
 	ssl/detail/SSLSessionImpl.h \
+	stats/detail/Bucket.h \
 	stats/BucketedTimeSeries-defs.h \
 	stats/BucketedTimeSeries.h \
 	stats/Histogram-defs.h \
@@ -534,7 +534,10 @@ libfolly_la_SOURCES = \
 	ssl/OpenSSLCertUtils.cpp \
 	ssl/OpenSSLHash.cpp \
 	ssl/detail/SSLSessionImpl.cpp \
-	stats/Instantiations.cpp \
+	stats/BucketedTimeSeries.cpp \
+	stats/Histogram.cpp \
+	stats/MultiLevelTimeSeries.cpp \
+	stats/TimeseriesHistogram.cpp \
 	Subprocess.cpp \
 	ThreadCachedArena.cpp \
 	ThreadName.cpp \

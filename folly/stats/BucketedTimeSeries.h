@@ -19,7 +19,7 @@
 #include <chrono>
 #include <vector>
 
-#include <folly/detail/Stats.h>
+#include <folly/stats/detail/Bucket.h>
 
 namespace folly {
 

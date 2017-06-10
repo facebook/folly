@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/detail/Stats.h>
 #include <folly/stats/BucketedTimeSeries-defs.h>
 #include <folly/stats/BucketedTimeSeries.h>
 #include <folly/stats/MultiLevelTimeSeries-defs.h>
 #include <folly/stats/MultiLevelTimeSeries.h>
+#include <folly/stats/detail/Bucket.h>
 
 #include <array>
 

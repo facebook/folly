@@ -176,10 +176,6 @@ conv_benchmark_SOURCES = ConvBenchmark.cpp
 conv_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 check_PROGRAMS += conv_benchmark
 
-histogram_test_SOURCES = HistogramTest.cpp
-histogram_test_LDADD = libfollytestmain.la
-TESTS += histogram_test
-
 group_varint_test_SOURCES = GroupVarintTest.cpp
 group_varint_test_LDADD = libfollytestmain.la
 TESTS += group_varint_test
