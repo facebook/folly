@@ -112,19 +112,24 @@ std::string ProcessReturnCode::str() const {
 }
 
 CalledProcessError::CalledProcessError(ProcessReturnCode rc)
-  : returnCode_(rc),
-    what_(returnCode_.str()) {
+    : SubprocessError(rc.str()), returnCode_(rc) {}
+
+static inline std::string toSubprocessSpawnErrorMessage(
+    char const* executable,
+    int errCode,
+    int errnoValue) {
+  auto prefix = errCode == kExecFailure ? "failed to execute "
+                                        : "error preparing to execute ";
+  return to<std::string>(prefix, executable, ": ", errnoStr(errnoValue));
 }
 
-SubprocessSpawnError::SubprocessSpawnError(const char* executable,
-                                           int errCode,
-                                           int errnoValue)
-  : errnoValue_(errnoValue),
-    what_(to<std::string>(errCode == kExecFailure ?
-                            "failed to execute " :
-                            "error preparing to execute ",
-                          executable, ": ", errnoStr(errnoValue))) {
-}
+SubprocessSpawnError::SubprocessSpawnError(
+    const char* executable,
+    int errCode,
+    int errnoValue)
+    : SubprocessError(
+          toSubprocessSpawnErrorMessage(executable, errCode, errnoValue)),
+      errnoValue_(errnoValue) {}
 
 namespace {
 
