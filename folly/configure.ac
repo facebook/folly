@@ -608,7 +608,8 @@ AC_CONFIG_FILES([Makefile
                  experimental/Makefile
                  experimental/io/test/Makefile
                  experimental/symbolizer/Makefile
-                 init/Makefile])
+                 init/Makefile
+                 stats/test/Makefile])
 
 AM_COND_IF([EXCEPTION_TRACER],
            [AC_CONFIG_FILES([experimental/exception_tracer/Makefile])])
