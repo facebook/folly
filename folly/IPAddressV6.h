@@ -281,6 +281,9 @@ class IPAddressV6 {
   // @see IPAddress#toFullyQualified
   std::string toFullyQualified() const;
 
+  // @see IPAddress#toFullyQualifiedAppend
+  void toFullyQualifiedAppend(std::string& out) const;
+
   std::string toInverseArpaName() const;
 
   // @see IPAddress#str

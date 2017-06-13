@@ -461,9 +461,26 @@ TEST(IPAddress, ToFullyQualifiedLocal) {
   EXPECT_EQ("0000:0000:0000:0000:0000:0000:0000:0001", ip.toFullyQualified())
       << ip;
 }
-TEST(IPAddress, ToFullyQualifiedSize) {
+TEST(IPAddress, ToFullyQualifiedAppendV6) {
+  IPAddress ip("2620:0:1cfe:face:b00c::3");
+  std::string result;
+  ip.toFullyQualifiedAppend(result);
+  EXPECT_EQ("2620:0000:1cfe:face:b00c:0000:0000:0003", result) << ip;
+}
+TEST(IPAddress, ToFullyQualifiedAppendV4) {
+  IPAddress ip("127.0.0.1");
+  std::string result;
+  ip.toFullyQualifiedAppend(result);
+  EXPECT_EQ("127.0.0.1", result) << ip;
+}
+TEST(IPAddress, ToFullyQualifiedSizeV6) {
   auto actual = IPAddressV6::kToFullyQualifiedSize;
   auto expected = IPAddress("::").toFullyQualified().size();
+  EXPECT_EQ(expected, actual);
+}
+TEST(IPAddress, MaxToFullyQualifiedSizeV4) {
+  auto actual = IPAddressV4::kMaxToFullyQualifiedSize;
+  auto expected = IPAddress("255.255.255.255").toFullyQualified().size();
   EXPECT_EQ(expected, actual);
 }
 

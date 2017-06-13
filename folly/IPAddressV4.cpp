@@ -242,6 +242,11 @@ string IPAddressV4::str() const {
 }
 
 // public
+void IPAddressV4::toFullyQualifiedAppend(std::string& out) const {
+  detail::fastIpv4AppendToString(addr_.inAddr_, out);
+}
+
+// public
 string IPAddressV4::toInverseArpaName() const {
   return sformat(
       "{}.{}.{}.{}.in-addr.arpa",

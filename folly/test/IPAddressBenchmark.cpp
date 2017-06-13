@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/Conv.h>
 #include <folly/IPAddress.h>
 
 #include <glog/logging.h>
@@ -46,6 +47,30 @@ BENCHMARK_RELATIVE(ipv4_to_fully_qualified, iters) {
 
 BENCHMARK_DRAW_LINE()
 
+BENCHMARK(ipv4_to_fully_qualified_port, iters) {
+  IPAddressV4 ip("255.255.255.255");
+  while (iters--) {
+    string outputString = to<std::string>(ip.toFullyQualified(), ':', 65535);
+    folly::doNotOptimizeAway(outputString);
+    folly::doNotOptimizeAway(outputString.data());
+  }
+}
+
+BENCHMARK_RELATIVE(ipv4_append_to_fully_qualified_port, iters) {
+  IPAddressV4 ip("255.255.255.255");
+  while (iters--) {
+    string outputString;
+    outputString.reserve(IPAddressV4::kMaxToFullyQualifiedSize + 1 + 5);
+    ip.toFullyQualifiedAppend(outputString);
+    outputString += ':';
+    folly::toAppend(65535, &outputString);
+    folly::doNotOptimizeAway(outputString);
+    folly::doNotOptimizeAway(outputString.data());
+  }
+}
+
+BENCHMARK_DRAW_LINE()
+
 BENCHMARK(ipv6_to_string_inet_ntop, iters) {
   IPAddressV6 ipv6Addr("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
   in6_addr ip = ipv6Addr.toAddr();
@@ -69,15 +94,45 @@ BENCHMARK_RELATIVE(ipv6_to_fully_qualified, iters) {
   }
 }
 
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(ipv6_to_fully_qualified_port, iters) {
+  IPAddressV6 ip("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
+  while (iters--) {
+    string outputString = to<std::string>(ip.toFullyQualified(), ':', 65535);
+    folly::doNotOptimizeAway(outputString);
+    folly::doNotOptimizeAway(outputString.data());
+  }
+}
+
+BENCHMARK_RELATIVE(ipv6_append_to_fully_qualified_port, iters) {
+  IPAddressV6 ip("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
+  while (iters--) {
+    string outputString;
+    outputString.reserve(folly::IPAddressV6::kToFullyQualifiedSize + 1 + 5);
+    ip.toFullyQualifiedAppend(outputString);
+    outputString += ':';
+    folly::toAppend(65535, &outputString);
+    folly::doNotOptimizeAway(outputString);
+    folly::doNotOptimizeAway(outputString.data());
+  }
+}
+
 // Benchmark results on Intel Xeon CPU E5-2660 @ 2.20GHz
 // ============================================================================
 // folly/test/IPAddressBenchmark.cpp               relative  time/iter  iters/s
 // ============================================================================
-// ipv4_to_string_inet_ntop                                   237.87ns    4.20M
-// ipv4_to_fully_qualified                          362.31%    65.65ns   15.23M
+// ipv4_to_string_inet_ntop                                   227.13ns    4.40M
+// ipv4_to_fully_qualified                         1418.95%    16.01ns   62.47M
 // ----------------------------------------------------------------------------
-// ipv6_to_string_inet_ntop                                   768.60ns    1.30M
-// ipv6_to_fully_qualified                          821.81%    93.53ns   10.69M
+// ipv4_to_fully_qualified_port                                77.51ns   12.90M
+// ipv4_append_to_fully_qualified_port              133.72%    57.96ns   17.25M
+// ----------------------------------------------------------------------------
+// ipv6_to_string_inet_ntop                                   750.53ns    1.33M
+// ipv6_to_fully_qualified                          608.68%   123.30ns    8.11M
+// ----------------------------------------------------------------------------
+// ipv6_to_fully_qualified_port                               150.76ns    6.63M
+// ipv6_append_to_fully_qualified_port              178.73%    84.35ns   11.86M
 // ============================================================================
 
 int main(int argc, char *argv[]) {

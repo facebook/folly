@@ -426,6 +426,11 @@ string IPAddressV6::toFullyQualified() const {
 }
 
 // public
+void IPAddressV6::toFullyQualifiedAppend(std::string& out) const {
+  detail::fastIpv6AppendToString(addr_.in6Addr_, out);
+}
+
+// public
 string IPAddressV6::toInverseArpaName() const {
   constexpr folly::StringPiece lut = "0123456789abcdef";
   std::array<char, 32> a;

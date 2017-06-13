@@ -387,6 +387,12 @@ class IPAddress {
                   : asV6().toFullyQualified();
   }
 
+  /// Same as toFullyQualified but append to an output string.
+  void toFullyQualifiedAppend(std::string& out) const {
+    return isV4() ? asV4().toFullyQualifiedAppend(out)
+                  : asV6().toFullyQualifiedAppend(out);
+  }
+
   // Address version (4 or 6)
   uint8_t version() const {
     return isV4() ? asV4().version()

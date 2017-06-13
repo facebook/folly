@@ -54,6 +54,10 @@ typedef std::array<uint8_t, 4> ByteArray4;
  */
 class IPAddressV4 {
  public:
+  // Max size of std::string returned by toFullyQualified.
+  static constexpr size_t kMaxToFullyQualifiedSize =
+      4 /*words*/ * 3 /*max chars per word*/ + 3 /*separators*/;
+
   // returns true iff the input string can be parsed as an ipv4-address
   static bool validate(StringPiece ip);
 
@@ -211,6 +215,9 @@ class IPAddressV4 {
 
   // @see IPAddress#toFullyQualified
   std::string toFullyQualified() const { return str(); }
+
+  // @see IPAddress#toFullyQualifiedAppend
+  void toFullyQualifiedAppend(std::string& out) const;
 
   // @see IPAddress#version
   uint8_t version() const { return 4; }
