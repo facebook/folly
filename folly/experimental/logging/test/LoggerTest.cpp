@@ -107,7 +107,8 @@ TEST_F(LoggerTest, follyFormatError) {
   EXPECT_EQ(
       "error formatting log message: "
       "invalid format argument {:6.3f}: invalid specifier 'f'; "
-      "format string: \"param1: {:06d}, param2: {:6.3f}\"",
+      "format string: \"param1: {:06d}, param2: {:6.3f}\", "
+      "arguments: (int: 1234), (char [13]: hello world!)",
       messages[0].first.getMessage());
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
@@ -133,12 +134,37 @@ TEST_F(LoggerTest, toString) {
 }
 
 class ToStringFailure {};
+class FormattableButNoToString {};
 
 [[noreturn]] void toAppend(
     const ToStringFailure& /* arg */,
     std::string* /* result */) {
   throw std::runtime_error(
       "error converting ToStringFailure object to a string");
+}
+
+namespace folly {
+template <>
+class FormatValue<ToStringFailure> {
+ public:
+  explicit FormatValue(ToStringFailure) {}
+
+  template <class FormatCallback>
+  void format(FormatArg& arg, FormatCallback& cb) const {
+    FormatValue<std::string>("ToStringFailure").format(arg, cb);
+  }
+};
+
+template <>
+class FormatValue<FormattableButNoToString> {
+ public:
+  explicit FormatValue(FormattableButNoToString) {}
+
+  template <class FormatCallback>
+  void format(FormatArg&, FormatCallback&) const {
+    throw std::runtime_error("test");
+  }
+};
 }
 
 TEST_F(LoggerTest, toStringError) {
@@ -160,6 +186,47 @@ TEST_F(LoggerTest, toStringError) {
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::DBG1, messages[0].first.getLevel());
+  EXPECT_FALSE(messages[0].first.containsNewlines());
+  EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
+  EXPECT_EQ(logger_.getCategory(), messages[0].second);
+}
+
+TEST_F(LoggerTest, formatFallbackError) {
+  // Check the behavior if logf() fails, and toAppend() also fails.
+  ToStringFailure obj;
+  FB_LOGF(logger_, WARN, "param1: {}, param2: {}, {}", 1234, obj);
+
+  auto& messages = handler_->getMessages();
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ(
+      "error formatting log message: "
+      "invalid format argument {}: argument index out of range, max=2; "
+      "format string: \"param1: {}, param2: {}, {}\", "
+      "arguments: (int: 1234), (ToStringFailure: <error_converting_to_string>)",
+      messages[0].first.getMessage());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
+  EXPECT_FALSE(messages[0].first.containsNewlines());
+  EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
+  EXPECT_EQ(logger_.getCategory(), messages[0].second);
+}
+
+TEST_F(LoggerTest, formatFallbackUnsupported) {
+  // Check the behavior if logf() fails, and toAppend() also fails.
+  FormattableButNoToString obj;
+  FB_LOGF(logger_, WARN, "param1: {}, param2: {}", 1234, obj);
+
+  auto& messages = handler_->getMessages();
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ(
+      "error formatting log message: "
+      "test; "
+      "format string: \"param1: {}, param2: {}\", "
+      "arguments: (int: 1234), "
+      "(FormattableButNoToString: <no_string_conversion>)",
+      messages[0].first.getMessage());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
   EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
   EXPECT_EQ(logger_.getCategory(), messages[0].second);
@@ -270,7 +337,8 @@ TEST_F(LoggerTest, logMacros) {
   EXPECT_EQ(
       "error formatting log message: "
       "invalid format argument {}: argument index out of range, max=1; "
-      "format string: \"whoops: {}, {}\"",
+      "format string: \"whoops: {}, {}\", "
+      "arguments: (int: 5)",
       messages[0].first.getMessage());
   messages.clear();
 }
