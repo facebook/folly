@@ -9,7 +9,9 @@ libfollylogging_la_SOURCES = \
 	LogHandler.cpp \
 	LogLevel.cpp \
 	LogMessage.cpp \
-	LogName.cpp
+	LogName.cpp \
+	LogStream.cpp \
+	LogStreamProcessor.cpp
 
 libfollylogging_la_LIBADD = $(top_builddir)/libfolly.la
 libfollylogging_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)

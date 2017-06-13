@@ -34,6 +34,14 @@ class LoggerTest : public ::testing::Test {
     category->setLevel(LogLevel::DEBUG, true);
   }
 
+  static StringPiece pathBasename(StringPiece path) {
+    auto idx = path.rfind('/');
+    if (idx == StringPiece::npos) {
+      return path.str();
+    }
+    return path.subpiece(idx + 1);
+  }
+
   LoggerDB db_{LoggerDB::TESTING};
   Logger logger_{&db_, "test"};
   std::shared_ptr<TestLogHandler> handler_;
@@ -41,13 +49,14 @@ class LoggerTest : public ::testing::Test {
 
 TEST_F(LoggerTest, basic) {
   // Simple log message
-  logger_.log(LogLevel::WARN, "src/myproject/myfile.cpp", 1234, "hello world");
+  auto expectedLine = __LINE__ + 1;
+  FB_LOG(logger_, WARN, "hello world");
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("hello world", messages[0].first.getMessage());
-  EXPECT_EQ("src/myproject/myfile.cpp", messages[0].first.getFileName());
-  EXPECT_EQ(1234, messages[0].first.getLineNumber());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
   EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
@@ -57,13 +66,14 @@ TEST_F(LoggerTest, basic) {
 TEST_F(LoggerTest, subCategory) {
   // Log from a sub-category.
   Logger subLogger{&db_, "test.foo.bar"};
-  subLogger.log(LogLevel::ERROR, "myfile.cpp", 99, "sub-category\nlog message");
+  auto expectedLine = __LINE__ + 1;
+  FB_LOG(subLogger, ERROR, "sub-category\nlog message");
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("sub-category\nlog message", messages[0].first.getMessage());
-  EXPECT_EQ("myfile.cpp", messages[0].first.getFileName());
-  EXPECT_EQ(99, messages[0].first.getLineNumber());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::ERROR, messages[0].first.getLevel());
   EXPECT_TRUE(messages[0].first.containsNewlines());
   EXPECT_EQ(subLogger.getCategory(), messages[0].first.getCategory());
@@ -71,20 +81,15 @@ TEST_F(LoggerTest, subCategory) {
 }
 
 TEST_F(LoggerTest, formatMessage) {
-  logger_.logf(
-      LogLevel::WARN,
-      "log.cpp",
-      9,
-      "num events: {:06d}, duration: {:6.3f}",
-      1234,
-      5.6789);
+  auto expectedLine = __LINE__ + 1;
+  FB_LOGF(logger_, WARN, "num events: {:06d}, duration: {:6.3f}", 1234, 5.6789);
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ(
       "num events: 001234, duration:  5.679", messages[0].first.getMessage());
-  EXPECT_EQ("log.cpp", messages[0].first.getFileName());
-  EXPECT_EQ(9, messages[0].first.getLineNumber());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
   EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
@@ -94,23 +99,17 @@ TEST_F(LoggerTest, formatMessage) {
 TEST_F(LoggerTest, follyFormatError) {
   // If we pass in a bogus format string, logf() should not throw.
   // It should instead log a message, just complaining about the format error.
-  logger_.logf(
-      LogLevel::WARN,
-      "log.cpp",
-      9,
-      "param1: {:06d}, param2: {:6.3f}",
-      1234,
-      "hello world!");
+  FB_LOGF(
+      logger_, WARN, "param1: {:06d}, param2: {:6.3f}", 1234, "hello world!");
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ(
       "error formatting log message: "
       "invalid format argument {:6.3f}: invalid specifier 'f'; "
-      "format string: param1: {:06d}, param2: {:6.3f}",
+      "format string: \"param1: {:06d}, param2: {:6.3f}\"",
       messages[0].first.getMessage());
-  EXPECT_EQ("log.cpp", messages[0].first.getFileName());
-  EXPECT_EQ(9, messages[0].first.getLineNumber());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
   EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
@@ -119,13 +118,14 @@ TEST_F(LoggerTest, follyFormatError) {
 
 TEST_F(LoggerTest, toString) {
   // Use the log API that calls folly::to<string>
-  logger_.log(LogLevel::DBG5, "log.cpp", 3, "status=", 5, " name=", "foobar");
+  auto expectedLine = __LINE__ + 1;
+  FB_LOG(logger_, DBG5, "status=", 5, " name=", "foobar");
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("status=5 name=foobar", messages[0].first.getMessage());
-  EXPECT_EQ("log.cpp", messages[0].first.getFileName());
-  EXPECT_EQ(3, messages[0].first.getLineNumber());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::DBG5, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
   EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
@@ -148,7 +148,8 @@ TEST_F(LoggerTest, toStringError) {
   // The logging code should not throw, but should instead log a message
   // with some detail about the failure.
   ToStringFailure obj;
-  logger_.log(LogLevel::DBG1, "log.cpp", 3, "status=", obj, " name=", "foobar");
+  auto expectedLine = __LINE__ + 1;
+  FB_LOG(logger_, DBG1, "status=", obj, " name=", "foobar");
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
@@ -156,24 +157,64 @@ TEST_F(LoggerTest, toStringError) {
       "error constructing log message: "
       "error converting ToStringFailure object to a string",
       messages[0].first.getMessage());
-  EXPECT_EQ("log.cpp", messages[0].first.getFileName());
-  EXPECT_EQ(3, messages[0].first.getLineNumber());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::DBG1, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
   EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
   EXPECT_EQ(logger_.getCategory(), messages[0].second);
 }
 
+TEST_F(LoggerTest, streamingArgs) {
+  auto& messages = handler_->getMessages();
+
+  // Test with only streaming arguments
+  std::string foo = "bar";
+  FB_LOG(logger_, WARN) << "foo=" << foo << ", test=0x" << std::hex << 35;
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("foo=bar, test=0x23", messages[0].first.getMessage());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
+  EXPECT_FALSE(messages[0].first.containsNewlines());
+  EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
+  EXPECT_EQ(logger_.getCategory(), messages[0].second);
+  messages.clear();
+
+  // Test with both function-style and streaming arguments
+  FB_LOG(logger_, WARN, "foo=", foo) << " hello, "
+                                     << "world: " << 34;
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("foo=bar hello, world: 34", messages[0].first.getMessage());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
+  EXPECT_FALSE(messages[0].first.containsNewlines());
+  EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
+  EXPECT_EQ(logger_.getCategory(), messages[0].second);
+  messages.clear();
+
+  // Test with format-style and streaming arguments
+  FB_LOGF(logger_, WARN, "foo={}, x={}", foo, 34) << ", also " << 12;
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("foo=bar, x=34, also 12", messages[0].first.getMessage());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
+  EXPECT_FALSE(messages[0].first.containsNewlines());
+  EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
+  EXPECT_EQ(logger_.getCategory(), messages[0].second);
+  messages.clear();
+}
+
 TEST_F(LoggerTest, escapeSequences) {
   // Escape characters (and any other unprintable characters) in the log
   // message should be escaped when logged.
-  logger_.log(LogLevel::WARN, "termcap.cpp", 34, "hello \033[34mworld\033[0m!");
+  auto expectedLine = __LINE__ + 1;
+  FB_LOG(logger_, WARN, "hello \033[34mworld\033[0m!");
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("hello \\x1b[34mworld\\x1b[0m!", messages[0].first.getMessage());
-  EXPECT_EQ("termcap.cpp", messages[0].first.getFileName());
-  EXPECT_EQ(34, messages[0].first.getLineNumber());
+  EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
+  EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
   EXPECT_EQ(logger_.getCategory(), messages[0].first.getCategory());
@@ -229,7 +270,7 @@ TEST_F(LoggerTest, logMacros) {
   EXPECT_EQ(
       "error formatting log message: "
       "invalid format argument {}: argument index out of range, max=1; "
-      "format string: whoops: {}, {}",
+      "format string: \"whoops: {}, {}\"",
       messages[0].first.getMessage());
   messages.clear();
 }

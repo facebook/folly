@@ -324,6 +324,7 @@ if (BUILD_TESTS)
           LogLevelTest.cpp
           LogMessageTest.cpp
           LogNameTest.cpp
+          LogStreamTest.cpp
 
     DIRECTORY fibers/test/
       TEST fibers_test SOURCES FibersTest.cpp

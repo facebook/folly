@@ -126,6 +126,8 @@ nobase_follyinclude_HEADERS = \
 	experimental/logging/LogLevel.h \
 	experimental/logging/LogMessage.h \
 	experimental/logging/LogName.h \
+	experimental/logging/LogStream.h \
+	experimental/logging/LogStreamProcessor.h \
 	experimental/logging/Logger.h \
 	experimental/logging/LoggerDB.h \
 	experimental/NestedCommandLineApp.h \

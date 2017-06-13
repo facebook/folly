@@ -99,6 +99,23 @@ class LogCategory {
   }
 
   /**
+   * Check whether this Logger or any of its parent Loggers would do anything
+   * with a log message at the given level.
+   */
+  bool logCheck(LogLevel level) const {
+    // We load the effective level using std::memory_order_relaxed.
+    //
+    // We want to make log checks as lightweight as possible.  It's fine if we
+    // don't immediately respond to changes made to the log level from other
+    // threads.  We can wait until some other operation triggers a memory
+    // barrier before we honor the new log level setting.  No other memory
+    // accesses depend on the log level value.  Callers should not rely on all
+    // other threads to immediately stop logging as soon as they decrease the
+    // log level for a given category.
+    return effectiveLevel_.load(std::memory_order_relaxed) <= level;
+  }
+
+  /**
    * Set the log level for this LogCategory.
    *
    * Messages logged to a specific log category will be ignored unless the
@@ -123,7 +140,7 @@ class LogCategory {
    * LogHandlers attached to this LogCategory, without any additional log level
    * checks (apart from the ones done in the LogHandlers).
    */
-  void processMessage(const LogMessage& message);
+  void processMessage(const LogMessage& message) const;
 
   /**
    * Get the LoggerDB that this LogCategory belongs to.

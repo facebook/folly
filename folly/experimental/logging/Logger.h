@@ -19,22 +19,40 @@
 #include <folly/Format.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogLevel.h>
+#include <folly/experimental/logging/LogStream.h>
+#include <folly/experimental/logging/LogStreamProcessor.h>
+
+/**
+ * Helper macro for implementing FB_LOG() and FB_LOGF().
+ *
+ * This macro generally should not be used directly by end users.
+ */
+#define FB_LOG_IMPL(logger, level, type, ...)               \
+  (!(logger).getCategory()->logCheck(level))                \
+      ? (void)0                                             \
+      : ::folly::LogStreamProcessor{(logger).getCategory(), \
+                                    (level),                \
+                                    __FILE__,               \
+                                    __LINE__,               \
+                                    (type),                 \
+                                    ##__VA_ARGS__} &        \
+          ::folly::LogStream()
 
 /**
  * Log a message to the specified logger.
  *
  * This macro avoids evaluating the log arguments unless the log level check
  * succeeds.
+ *
+ * Beware that the logger argument is evaluated twice, so this argument should
+ * be an expression with no side-effects.
  */
-#define FB_LOG(logger, level, msg, ...)                             \
-  do {                                                              \
-    const auto fbLogLevelTmp = ::folly::LogLevel::level;            \
-    const auto& fbLoggerTmp = (logger);                             \
-    if (fbLoggerTmp.logCheck(fbLogLevelTmp)) {                      \
-      fbLoggerTmp.log(                                              \
-          fbLogLevelTmp, __FILE__, __LINE__, (msg), ##__VA_ARGS__); \
-    }                                                               \
-  } while (0)
+#define FB_LOG(logger, level, ...)         \
+  FB_LOG_IMPL(                             \
+      logger,                              \
+      ::folly::LogLevel::level,            \
+      ::folly::LogStreamProcessor::APPEND, \
+      ##__VA_ARGS__)
 
 /**
  * Log a message to the specified logger, using a folly::format() string.
@@ -44,16 +62,18 @@
  *
  * This macro avoids evaluating the log arguments unless the log level check
  * succeeds.
+ *
+ * Beware that the logger argument is evaluated twice, so this argument should
+ * be an expression with no side-effects.
  */
-#define FB_LOGF(logger, level, fmt, ...)                            \
-  do {                                                              \
-    const auto fbLogLevelTmp = ::folly::LogLevel::level;            \
-    const auto& fbLoggerTmp = (logger);                             \
-    if (fbLoggerTmp.logCheck(fbLogLevelTmp)) {                      \
-      fbLoggerTmp.logf(                                             \
-          fbLogLevelTmp, __FILE__, __LINE__, (fmt), ##__VA_ARGS__); \
-    }                                                               \
-  } while (0)
+#define FB_LOGF(logger, level, fmt, arg1, ...) \
+  FB_LOG_IMPL(                                 \
+      logger,                                  \
+      ::folly::LogLevel::level,                \
+      ::folly::LogStreamProcessor::FORMAT,     \
+      fmt,                                     \
+      arg1,                                    \
+      ##__VA_ARGS__)
 
 namespace folly {
 
@@ -90,114 +110,6 @@ class Logger {
    * This is primarily intended for use in unit tests.
    */
   Logger(LoggerDB* db, folly::StringPiece name);
-
-  /**
-   * Get the effective level for this logger.
-   *
-   * This is the minimum log level of this logger, or any of its parents.
-   * Log messages below this level will be ignored, while messages at or
-   * above this level need to be processed by this logger or one of its
-   * parents.
-   */
-  LogLevel getEffectiveLevel() const {
-    return category_->getEffectiveLevel();
-  }
-
-  /**
-   * Check whether this Logger or any of its parent Loggers would do anything
-   * with a log message at the given level.
-   */
-  bool logCheck(LogLevel level) const {
-    // We load the effective level using std::memory_order_relaxed.
-    //
-    // We want to make log checks as lightweight as possible.  It's fine if we
-    // don't immediately respond to changes made to the log level from other
-    // threads.  We can wait until some other operation triggers a memory
-    // barrier before we honor the new log level setting.  No other memory
-    // accesses depend on the log level value.  Callers should not rely on all
-    // other threads to immediately stop logging as soon as they decrease the
-    // log level for a given category.
-    return category_->getEffectiveLevelRelaxed() <= level;
-  }
-
-  /**
-   * Unconditionally log a message.
-   *
-   * The caller is responsible for calling logCheck() before log() to ensure
-   * that this log message should be admitted.  This is typically done with one
-   * of the logging macros.
-   */
-  void log(
-      LogLevel level,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      std::string&& msg) const;
-  void log(
-      LogLevel level,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      folly::StringPiece msg) const;
-
-  /**
-   * Unconditionally log a message.
-   *
-   * This concatenates the arguments into a string using
-   * folly::to<std::string>()
-   */
-  template <typename... Args>
-  void log(
-      LogLevel level,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      Args&&... args) const {
-    std::string msg;
-    try {
-      msg = folly::to<std::string>(std::forward<Args>(args)...);
-    } catch (const std::exception& ex) {
-      // This most likely means there was some error converting the arguments
-      // to strings.  Handle the exception here, rather than letting it
-      // propagate up, since callers generally do not expect log statements to
-      // throw.
-      //
-      // Just log an error message letting indicating that something went wrong
-      // formatting the log message.
-      msg =
-          folly::to<std::string>("error constructing log message: ", ex.what());
-    }
-    log(level, filename, lineNumber, std::move(msg));
-  }
-
-  /**
-   * Unconditionally log a message using a format string.
-   *
-   * This uses folly::format() to format the message.
-   */
-  template <typename... Args>
-  void logf(
-      LogLevel level,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      folly::StringPiece fmt,
-      Args&&... args) const {
-    std::string msg;
-    try {
-      msg = folly::sformat(fmt, std::forward<Args>(args)...);
-    } catch (const std::exception& ex) {
-      // This most likely means that the caller had a bug in their format
-      // string/arguments.  Handle the exception here, rather than letting it
-      // propagate up, since callers generally do not expect log statements to
-      // throw.
-      //
-      // Log the format string by itself, to help the developer at least
-      // identify the buggy format string in their code.
-      msg = folly::to<std::string>(
-          "error formatting log message: ",
-          ex.what(),
-          "; format string: ",
-          fmt);
-    }
-    log(level, filename, lineNumber, std::move(msg));
-  }
 
   /**
    * Get the LogCategory that this Logger refers to.

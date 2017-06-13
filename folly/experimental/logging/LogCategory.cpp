@@ -42,7 +42,7 @@ LogCategory::LogCategory(StringPiece name, LogCategory* parent)
   parent_->firstChild_ = this;
 }
 
-void LogCategory::processMessage(const LogMessage& message) {
+void LogCategory::processMessage(const LogMessage& message) const {
   // Make a copy of any attached LogHandlers, so we can release the handlers_
   // lock before holding them.
   //

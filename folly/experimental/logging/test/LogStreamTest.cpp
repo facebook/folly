@@ -13,22 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/logging/Logger.h>
+#include <folly/experimental/logging/LogStream.h>
+#include <folly/portability/GTest.h>
 
-#include <ostream>
+using namespace folly;
 
-#include <folly/Conv.h>
-#include <folly/experimental/logging/LogMessage.h>
-#include <folly/experimental/logging/LoggerDB.h>
+TEST(LogStream, simple) {
+  LogStream ls;
+  ls << "test";
+  ls << " foobar";
 
-using std::string;
+  EXPECT_EQ("test foobar", ls.extractString());
+}
 
-namespace folly {
+TEST(LogStream, largeMessage) {
+  std::string largeString(4096, 'a');
 
-Logger::Logger(StringPiece name) : Logger{LoggerDB::get()->getCategory(name)} {}
+  LogStream ls;
+  ls << "prefix ";
+  ls << largeString;
+  ls << " suffix";
 
-Logger::Logger(LogCategory* cat) : category_(cat) {}
-
-Logger::Logger(LoggerDB* db, StringPiece name)
-    : Logger{db->getCategory(name)} {}
+  EXPECT_EQ("prefix " + largeString + " suffix", ls.extractString());
 }
