@@ -313,6 +313,18 @@ if (BUILD_TESTS)
       #TEST async_io_test SOURCES AsyncIOTest.cpp
       TEST fs_util_test SOURCES FsUtilTest.cpp
 
+    DIRECTORY experimental/logging/test/
+      TEST logging-test
+        HEADERS
+          TestLogHandler.h
+        SOURCES
+          LogCategoryTest.cpp
+          LoggerDBTest.cpp
+          LoggerTest.cpp
+          LogLevelTest.cpp
+          LogMessageTest.cpp
+          LogNameTest.cpp
+
     DIRECTORY fibers/test/
       TEST fibers_test SOURCES FibersTest.cpp
 

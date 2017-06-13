@@ -2,12 +2,7 @@ if FOLLY_TESTMAIN
 MAYBE_INIT = init
 endif
 
-if EXCEPTION_TRACER
-MAYBE_EXCEPTION_TRACER = experimental/exception_tracer
-endif
-
-SUBDIRS = . experimental $(MAYBE_INIT) test io/test experimental/io/test \
-	  stats/test $(MAYBE_EXCEPTION_TRACER)
+SUBDIRS = . experimental $(MAYBE_INIT) test io/test stats/test
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -126,6 +121,13 @@ nobase_follyinclude_HEADERS = \
 	experimental/JemallocNodumpAllocator.h \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
+	experimental/logging/LogCategory.h \
+	experimental/logging/LogHandler.h \
+	experimental/logging/LogLevel.h \
+	experimental/logging/LogMessage.h \
+	experimental/logging/LogName.h \
+	experimental/logging/Logger.h \
+	experimental/logging/LoggerDB.h \
 	experimental/NestedCommandLineApp.h \
 	experimental/observer/detail/Core.h \
 	experimental/observer/detail/GraphCycleDetector.h \

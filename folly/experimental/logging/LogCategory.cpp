@@ -1,0 +1,183 @@
+/*
+ * Copyright 2004-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <folly/experimental/logging/LogCategory.h>
+
+#include <cstdio>
+
+#include <folly/ExceptionString.h>
+#include <folly/experimental/logging/LogHandler.h>
+#include <folly/experimental/logging/LogMessage.h>
+#include <folly/experimental/logging/LogName.h>
+#include <folly/experimental/logging/LoggerDB.h>
+
+namespace folly {
+
+LogCategory::LogCategory(LoggerDB* db)
+    : effectiveLevel_{LogLevel::ERROR},
+      level_{static_cast<uint32_t>(LogLevel::ERROR)},
+      parent_{nullptr},
+      name_{},
+      db_{db} {}
+
+LogCategory::LogCategory(StringPiece name, LogCategory* parent)
+    : effectiveLevel_{parent->getEffectiveLevel()},
+      level_{static_cast<uint32_t>(LogLevel::MAX_LEVEL) | FLAG_INHERIT},
+      parent_{parent},
+      name_{LogName::canonicalize(name)},
+      db_{parent->getDB()},
+      nextSibling_{parent_->firstChild_} {
+  parent_->firstChild_ = this;
+}
+
+void LogCategory::processMessage(const LogMessage& message) {
+  // Make a copy of any attached LogHandlers, so we can release the handlers_
+  // lock before holding them.
+  //
+  // In the common case there will only be a small number of handlers.  Use a
+  // std::array in this case to avoid a heap allocation for the vector.
+  const std::shared_ptr<LogHandler>* handlers = nullptr;
+  size_t numHandlers = 0;
+  constexpr uint32_t kSmallOptimizationSize = 5;
+  std::array<std::shared_ptr<LogHandler>, kSmallOptimizationSize> handlersArray;
+  std::vector<std::shared_ptr<LogHandler>> handlersVector;
+  {
+    auto lockedHandlers = handlers_.rlock();
+    numHandlers = lockedHandlers->size();
+    if (numHandlers <= kSmallOptimizationSize) {
+      for (size_t n = 0; n < numHandlers; ++n) {
+        handlersArray[n] = (*lockedHandlers)[n];
+      }
+      handlers = handlersArray.data();
+    } else {
+      handlersVector = *lockedHandlers;
+      handlers = handlersVector.data();
+    }
+  }
+
+  for (size_t n = 0; n < numHandlers; ++n) {
+    try {
+      handlers[n]->log(message, this);
+    } catch (const std::exception& ex) {
+      // If a LogHandler throws an exception, complain about this fact on
+      // stderr to avoid swallowing the error information completely.  We
+      // don't propagate the exception up to our caller: most code does not
+      // prepare for log statements to throw.  We also want to continue
+      // trying to log the message to any other handlers attached to ourself
+      // or one of our parent categories.
+      fprintf(
+          stderr,
+          "WARNING: log handler for category %s threw an error: %s\n",
+          name_.c_str(),
+          folly::exceptionStr(ex).c_str());
+    }
+  }
+
+  // Propagate the message up to our parent LogCategory.
+  //
+  // Maybe in the future it might be worth adding a flag to control if a
+  // LogCategory should propagate messages to its parent or not.  (This would
+  // be similar to log4j's "additivity" flag.)
+  // For now I don't have a strong use case for this.
+  if (parent_) {
+    parent_->processMessage(message);
+  }
+}
+
+void LogCategory::addHandler(std::shared_ptr<LogHandler> handler) {
+  auto handlers = handlers_.wlock();
+  handlers->emplace_back(std::move(handler));
+}
+
+void LogCategory::clearHandlers() {
+  std::vector<std::shared_ptr<LogHandler>> emptyHandlersList;
+  // Swap out the handlers list with the handlers_ lock held.
+  {
+    auto handlers = handlers_.wlock();
+    handlers->swap(emptyHandlersList);
+  }
+  // Destroy emptyHandlersList now that the handlers_ lock is released.
+  // This way we don't hold the handlers_ lock while invoking any of the
+  // LogHandler destructors.
+}
+
+void LogCategory::setLevel(LogLevel level, bool inherit) {
+  // We have to set the level through LoggerDB, since we require holding
+  // the LoggerDB lock to iterate through our children in case our effective
+  // level changes.
+  db_->setLevel(this, level, inherit);
+}
+
+void LogCategory::setLevelLocked(LogLevel level, bool inherit) {
+  // Truncate to LogLevel::MAX_LEVEL to make sure it does not conflict
+  // with our flag bits.
+  if (level > LogLevel::MAX_LEVEL) {
+    level = LogLevel::MAX_LEVEL;
+  }
+  // Make sure the inherit flag is always off for the root logger.
+  if (!parent_) {
+    inherit = false;
+  }
+  auto newValue = static_cast<uint32_t>(level);
+  if (inherit) {
+    newValue |= FLAG_INHERIT;
+  }
+
+  // Update the stored value
+  uint32_t oldValue = level_.exchange(newValue, std::memory_order_acq_rel);
+
+  // Break out early if the value has not changed.
+  if (oldValue == newValue) {
+    return;
+  }
+
+  // Update the effective log level
+  LogLevel newEffectiveLevel;
+  if (inherit) {
+    newEffectiveLevel = std::min(level, parent_->getEffectiveLevel());
+  } else {
+    newEffectiveLevel = level;
+  }
+  updateEffectiveLevel(newEffectiveLevel);
+}
+
+void LogCategory::updateEffectiveLevel(LogLevel newEffectiveLevel) {
+  auto oldEffectiveLevel =
+      effectiveLevel_.exchange(newEffectiveLevel, std::memory_order_acq_rel);
+  // Break out early if the value did not change.
+  if (newEffectiveLevel == oldEffectiveLevel) {
+    return;
+  }
+
+  // Update all children loggers
+  LogCategory* child = firstChild_;
+  while (child != nullptr) {
+    child->parentLevelUpdated(newEffectiveLevel);
+    child = child->nextSibling_;
+  }
+}
+
+void LogCategory::parentLevelUpdated(LogLevel parentEffectiveLevel) {
+  uint32_t levelValue = level_.load(std::memory_order_acquire);
+  auto inherit = (levelValue & FLAG_INHERIT);
+  if (!inherit) {
+    return;
+  }
+
+  auto myLevel = static_cast<LogLevel>(levelValue & ~FLAG_INHERIT);
+  auto newEffectiveLevel = std::min(myLevel, parentEffectiveLevel);
+  updateEffectiveLevel(newEffectiveLevel);
+}
+}
