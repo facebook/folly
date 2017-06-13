@@ -341,12 +341,17 @@ std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
     if (output.empty()) {
       buffer->prependChain(addOutputBuffer(output, kDefaultBufferLength));
     }
+    size_t const inputSize = input.size();
+    size_t const outputSize = output.size();
     bool const done = compressStream(input, output, flushOp);
     if (done) {
       DCHECK(input.empty());
       DCHECK(flushOp == StreamCodec::FlushOp::END);
       DCHECK_EQ(current->next(), data);
       break;
+    }
+    if (inputSize == input.size() && outputSize == output.size()) {
+      throw std::runtime_error("Codec: No forward progress made");
     }
   }
   buffer->prev()->trimEnd(output.size());
@@ -395,9 +400,14 @@ std::unique_ptr<IOBuf> StreamCodec::doUncompress(
     if (output.empty()) {
       buffer->prependChain(addOutputBuffer(output, defaultBufferLength));
     }
+    size_t const inputSize = input.size();
+    size_t const outputSize = output.size();
     bool const done = uncompressStream(input, output, flushOp);
     if (done) {
       break;
+    }
+    if (inputSize == input.size() && outputSize == output.size()) {
+      throw std::runtime_error("Codec: Truncated data");
     }
   }
   if (!input.empty()) {
@@ -2008,8 +2018,11 @@ std::unique_ptr<IOBuf> Bzip2Codec::doUncompress(
     if (stream.avail_out == 0) {
       out->prependChain(addOutputBuffer(&stream, kDefaultBufferLength));
     }
-
+    size_t const outputSize = stream.avail_out;
     rc = bzCheck(BZ2_bzDecompress(&stream));
+    if (outputSize == stream.avail_out) {
+      throw std::runtime_error("Bzip2Codec: Truncated input");
+    }
   }
 
   out->prev()->trimEnd(stream.avail_out);

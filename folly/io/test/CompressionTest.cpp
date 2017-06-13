@@ -383,15 +383,29 @@ void CompressionCorruptionTest::runSimpleTest(const DataHolder& dh) {
   EXPECT_THROW(codec_->uncompress(compressed.get(), uncompressedLength + 1),
                std::runtime_error);
 
-  // Corrupt the first character
-  ++(compressed->writableData()[0]);
-
+  auto corrupted = compressed->clone();
+  corrupted->unshare();
+  // Truncate the last character
+  corrupted->prev()->trimEnd(1);
   if (!codec_->needsUncompressedLength()) {
-    EXPECT_THROW(codec_->uncompress(compressed.get()),
+    EXPECT_THROW(codec_->uncompress(corrupted.get()),
                  std::runtime_error);
   }
 
-  EXPECT_THROW(codec_->uncompress(compressed.get(), uncompressedLength),
+  EXPECT_THROW(codec_->uncompress(corrupted.get(), uncompressedLength),
+               std::runtime_error);
+
+  corrupted = compressed->clone();
+  corrupted->unshare();
+  // Corrupt the first character
+  ++(corrupted->writableData()[0]);
+
+  if (!codec_->needsUncompressedLength()) {
+    EXPECT_THROW(codec_->uncompress(corrupted.get()),
+                 std::runtime_error);
+  }
+
+  EXPECT_THROW(codec_->uncompress(corrupted.get(), uncompressedLength),
                std::runtime_error);
 }
 
