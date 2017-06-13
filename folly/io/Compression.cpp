@@ -64,6 +64,9 @@ Codec::Codec(CodecType type) : type_(type) { }
 
 // Ensure consistent behavior in the nullptr case
 std::unique_ptr<IOBuf> Codec::compress(const IOBuf* data) {
+  if (data == nullptr) {
+    throw std::invalid_argument("Codec: data must not be nullptr");
+  }
   uint64_t len = data->computeChainDataLength();
   if (len == 0) {
     return IOBuf::create(0);
@@ -90,6 +93,9 @@ std::string Codec::compress(const StringPiece data) {
 std::unique_ptr<IOBuf> Codec::uncompress(
     const IOBuf* data,
     Optional<uint64_t> uncompressedLength) {
+  if (data == nullptr) {
+    throw std::invalid_argument("Codec: data must not be nullptr");
+  }
   if (!uncompressedLength) {
     if (needsUncompressedLength()) {
       throw std::invalid_argument("Codec: uncompressed length required");
@@ -1787,7 +1793,9 @@ bool ZSTDStreamCodec::tryBlockUncompress(
   size_t const length = ZSTD_decompress(
       output.data(), *uncompressedLength(), input.data(), compressedLength);
   zstdThrowIfError(length);
-  DCHECK_EQ(length, *uncompressedLength());
+  if (length != *uncompressedLength()) {
+    throw std::runtime_error("ZSTDStreamCodec: Incorrect uncompressed length");
+  }
   input.uncheckedAdvance(compressedLength);
   output.uncheckedAdvance(length);
   return true;
