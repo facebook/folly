@@ -39,9 +39,6 @@ class Partial {
       : f_(std::forward<Callable>(callable)),
         stored_args_(std::forward<Args>(args)...) {}
 
-  // full auto doesn't work here due to
-  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=70983 :(
-
   template <typename... CArgs>
   auto operator()(CArgs&&... cargs) & -> decltype(applyTuple(
       static_cast<F&>(f_),
