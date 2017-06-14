@@ -42,7 +42,7 @@ void LogStreamProcessor::operator&(LogStream&& stream) noexcept {
   // no streaming arguments were supplied to the logging macro.
   // Therefore we don't bother calling extractMessageString(stream),
   // and just directly use message_.
-  assert(stream.empty());
+  DCHECK(stream.empty());
 
   category_->processMessage(LogMessage{
       category_, level_, filename_, lineNumber_, std::move(message_)});
