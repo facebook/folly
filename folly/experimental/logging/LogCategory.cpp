@@ -121,11 +121,16 @@ void LogCategory::setLevel(LogLevel level, bool inherit) {
 }
 
 void LogCategory::setLevelLocked(LogLevel level, bool inherit) {
-  // Truncate to LogLevel::MAX_LEVEL to make sure it does not conflict
-  // with our flag bits.
+  // Clamp the value to MIN_LEVEL and MAX_LEVEL.
+  //
+  // This makes sure that UNINITIALIZED is always less than any valid level
+  // value, and that level values cannot conflict with our flag bits.
   if (level > LogLevel::MAX_LEVEL) {
     level = LogLevel::MAX_LEVEL;
+  } else if (level < LogLevel::MIN_LEVEL) {
+    level = LogLevel::MIN_LEVEL;
   }
+
   // Make sure the inherit flag is always off for the root logger.
   if (!parent_) {
     inherit = false;
@@ -161,6 +166,11 @@ void LogCategory::updateEffectiveLevel(LogLevel newEffectiveLevel) {
     return;
   }
 
+  // Update all of the values in xlogLevels_
+  for (auto* levelPtr : xlogLevels_) {
+    levelPtr->store(newEffectiveLevel, std::memory_order_release);
+  }
+
   // Update all children loggers
   LogCategory* child = firstChild_;
   while (child != nullptr) {
@@ -179,5 +189,9 @@ void LogCategory::parentLevelUpdated(LogLevel parentEffectiveLevel) {
   auto myLevel = static_cast<LogLevel>(levelValue & ~FLAG_INHERIT);
   auto newEffectiveLevel = std::min(myLevel, parentEffectiveLevel);
   updateEffectiveLevel(newEffectiveLevel);
+}
+
+void LogCategory::registerXlogLevel(std::atomic<LogLevel>* levelPtr) {
+  xlogLevels_.push_back(levelPtr);
 }
 }

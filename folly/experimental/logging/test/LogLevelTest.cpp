@@ -21,6 +21,11 @@
 using namespace folly;
 
 TEST(LogLevel, fromString) {
+  EXPECT_EQ(LogLevel::UNINITIALIZED, stringToLogLevel("uninitialized"));
+  EXPECT_EQ(LogLevel::UNINITIALIZED, stringToLogLevel("UnInitialized"));
+  EXPECT_EQ(
+      LogLevel::UNINITIALIZED, stringToLogLevel("LogLevel::UNINITIALIZED"));
+
   EXPECT_EQ(LogLevel::NONE, stringToLogLevel("none"));
   EXPECT_EQ(LogLevel::NONE, stringToLogLevel("NONE"));
   EXPECT_EQ(LogLevel::NONE, stringToLogLevel("NoNe"));
@@ -68,6 +73,8 @@ TEST(LogLevel, fromString) {
 }
 
 TEST(LogLevel, toString) {
+  EXPECT_EQ(
+      "LogLevel::UNINITIALIZED", logLevelToString(LogLevel::UNINITIALIZED));
   EXPECT_EQ("LogLevel::NONE", logLevelToString(LogLevel::NONE));
   EXPECT_EQ("LogLevel::INFO", logLevelToString(LogLevel::INFO));
   EXPECT_EQ("LogLevel::WARN", logLevelToString(LogLevel::WARN));
@@ -98,6 +105,7 @@ TEST(LogLevel, toStringAndBack) {
   };
 
   // Check all of the named levels
+  checkLevel(LogLevel::UNINITIALIZED);
   checkLevel(LogLevel::NONE);
   checkLevel(LogLevel::DEBUG);
   checkLevel(LogLevel::DBG0);

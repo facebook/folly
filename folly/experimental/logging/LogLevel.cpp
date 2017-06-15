@@ -45,7 +45,9 @@ LogLevel stringToLogLevel(StringPiece name) {
     lowerName.subtract(1);
   }
 
-  if (lowerName == "none") {
+  if (lowerName == "uninitialized") {
+    return LogLevel::UNINITIALIZED;
+  } else if (lowerName == "none") {
     return LogLevel::NONE;
   } else if (lowerName == "debug") {
     return LogLevel::DEBUG;
@@ -80,7 +82,9 @@ LogLevel stringToLogLevel(StringPiece name) {
 }
 
 string logLevelToString(LogLevel level) {
-  if (level == LogLevel::NONE) {
+  if (level == LogLevel::UNINITIALIZED) {
+    return "LogLevel::UNINITIALIZED";
+  } else if (level == LogLevel::NONE) {
     return "LogLevel::NONE";
   } else if (level == LogLevel::DEBUG) {
     return "LogLevel::DEBUG";

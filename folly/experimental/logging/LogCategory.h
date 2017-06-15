@@ -130,19 +130,6 @@ class LogCategory {
   void setLevel(LogLevel level, bool inherit = true);
 
   /**
-   * Process a log message.
-   *
-   * This method generally should be invoked through the Logger APIs,
-   * rather than calling this directly.
-   *
-   * This method assumes that log level admittance checks have already been
-   * performed.  This method unconditionally passes the message to the
-   * LogHandlers attached to this LogCategory, without any additional log level
-   * checks (apart from the ones done in the LogHandlers).
-   */
-  void processMessage(const LogMessage& message) const;
-
-  /**
    * Get the LoggerDB that this LogCategory belongs to.
    *
    * This is almost always the main LoggerDB singleton returned by
@@ -163,6 +150,21 @@ class LogCategory {
    */
   void clearHandlers();
 
+  /* Internal methods for use by other parts of the logging library code */
+
+  /**
+   * Process a log message.
+   *
+   * This method generally should be invoked only through the logging macros,
+   * rather than calling this directly.
+   *
+   * This method assumes that log level admittance checks have already been
+   * performed.  This method unconditionally passes the message to the
+   * LogHandlers attached to this LogCategory, without any additional log level
+   * checks (apart from the ones done in the LogHandlers).
+   */
+  void processMessage(const LogMessage& message) const;
+
   /**
    * Note: setLevelLocked() may only be called while holding the main
    * LoggerDB lock.
@@ -170,6 +172,18 @@ class LogCategory {
    * This method should only be invoked by LoggerDB.
    */
   void setLevelLocked(LogLevel level, bool inherit);
+
+  /**
+   * Register a std::atomic<LogLevel> value used by XLOG*() macros to check the
+   * effective level for this category.
+   *
+   * The LogCategory will keep this value updated whenever its effective log
+   * level changes.
+   *
+   * This function should only be invoked by LoggerDB, and the LoggerDB lock
+   * must be held when calling it.
+   */
+  void registerXlogLevel(std::atomic<LogLevel>* levelPtr);
 
  private:
   enum : uint32_t { FLAG_INHERIT = 0x80000000 };
@@ -228,5 +242,14 @@ class LogCategory {
    */
   LogCategory* firstChild_{nullptr};
   LogCategory* nextSibling_{nullptr};
+
+  /**
+   * A list of LogLevel values used by XLOG*() statements for this LogCategory.
+   * The XLOG*() statements will check these values.  We ensure they are kept
+   * up-to-date each time the effective log level changes for this category.
+   *
+   * This list may only be accessed while holding the main LoggerDB lock.
+   */
+  std::vector<std::atomic<LogLevel>*> xlogLevels_;
 };
 }

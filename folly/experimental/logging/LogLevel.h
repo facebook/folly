@@ -34,7 +34,9 @@ namespace folly {
  * DBG1 is one level higher of verbosity, etc.
  */
 enum class LogLevel : uint32_t {
-  NONE = 0,
+  UNINITIALIZED = 0,
+  NONE = 1,
+  MIN_LEVEL = 1,
 
   DEBUG = 900,
   DBG0 = 1000,

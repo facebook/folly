@@ -90,6 +90,21 @@ class LoggerDB {
    */
   void cleanupHandlers();
 
+  /**
+   * Initialize the LogCategory* and std::atomic<LogLevel> used by an XLOG()
+   * statement.
+   *
+   * Returns the current effective LogLevel of the category.
+   */
+  LogLevel xlogInit(
+      folly::StringPiece categoryName,
+      std::atomic<LogLevel>* xlogCategoryLevel,
+      LogCategory** xlogCategory);
+  LogCategory* xlogInitCategory(
+      folly::StringPiece categoryName,
+      LogCategory** xlogCategory,
+      std::atomic<bool>* isInitialized);
+
   enum TestConstructorArg { TESTING };
 
   /**

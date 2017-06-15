@@ -170,4 +170,49 @@ void LoggerDB::cleanupHandlers() {
     category->clearHandlers();
   }
 }
+
+LogLevel LoggerDB::xlogInit(
+    StringPiece categoryName,
+    std::atomic<LogLevel>* xlogCategoryLevel,
+    LogCategory** xlogCategory) {
+  // Hold the lock for the duration of the operation
+  // xlogInit() may be called from multiple threads simultaneously.
+  // Only one needs to perform the initialization.
+  auto loggersByName = loggersByName_.wlock();
+  if (xlogCategory != nullptr && *xlogCategory != nullptr) {
+    // The xlogCategory was already initialized before we acquired the lock
+    return (*xlogCategory)->getEffectiveLevel();
+  }
+
+  auto* category = getOrCreateCategoryLocked(*loggersByName, categoryName);
+  if (xlogCategory) {
+    // Set *xlogCategory before we update xlogCategoryLevel below.
+    // This is important, since the XLOG() macros check xlogCategoryLevel to
+    // tell if *xlogCategory has been initialized yet.
+    *xlogCategory = category;
+  }
+  auto level = category->getEffectiveLevel();
+  xlogCategoryLevel->store(level, std::memory_order_release);
+  category->registerXlogLevel(xlogCategoryLevel);
+  return level;
+}
+
+LogCategory* LoggerDB::xlogInitCategory(
+    StringPiece categoryName,
+    LogCategory** xlogCategory,
+    std::atomic<bool>* isInitialized) {
+  // Hold the lock for the duration of the operation
+  // xlogInitCategory() may be called from multiple threads simultaneously.
+  // Only one needs to perform the initialization.
+  auto loggersByName = loggersByName_.wlock();
+  if (isInitialized->load(std::memory_order_acquire)) {
+    // The xlogCategory was already initialized before we acquired the lock
+    return *xlogCategory;
+  }
+
+  auto* category = getOrCreateCategoryLocked(*loggersByName, categoryName);
+  *xlogCategory = category;
+  isInitialized->store(true, std::memory_order_release);
+  return category;
+}
 }

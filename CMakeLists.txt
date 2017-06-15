@@ -317,6 +317,8 @@ if (BUILD_TESTS)
       TEST logging-test
         HEADERS
           TestLogHandler.h
+          XlogHeader1.h
+          XlogHeader2.h
         SOURCES
           LogCategoryTest.cpp
           LoggerDBTest.cpp
@@ -325,6 +327,9 @@ if (BUILD_TESTS)
           LogMessageTest.cpp
           LogNameTest.cpp
           LogStreamTest.cpp
+          XlogFile1.cpp
+          XlogFile2.cpp
+          XlogTest.cpp
 
     DIRECTORY fibers/test/
       TEST fibers_test SOURCES FibersTest.cpp

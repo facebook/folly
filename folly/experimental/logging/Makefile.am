@@ -11,7 +11,8 @@ libfollylogging_la_SOURCES = \
 	LogMessage.cpp \
 	LogName.cpp \
 	LogStream.cpp \
-	LogStreamProcessor.cpp
+	LogStreamProcessor.cpp \
+	xlog.cpp
 
 libfollylogging_la_LIBADD = $(top_builddir)/libfolly.la
 libfollylogging_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
