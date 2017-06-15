@@ -327,6 +327,7 @@ if (BUILD_TESTS)
           LogMessageTest.cpp
           LogNameTest.cpp
           LogStreamTest.cpp
+          RateLimiterTest.cpp
           StandardLogHandlerTest.cpp
           XlogFile1.cpp
           XlogFile2.cpp
