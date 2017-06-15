@@ -33,6 +33,8 @@ inline uint64_t run_once(int nthreads, int size, int ops) {
   std::atomic<bool> start{false};
   std::atomic<int> started{0};
 
+  hazptr_owner<void> dummy_hptr[100];
+
   for (int i = 0; i < size; ++i) {
     s.add(i);
   }
@@ -107,32 +109,60 @@ const std::string header = "Test_name, Max time, Avg time, Min time";
 } // namespace hazptr {
 
 /*
---------------------------------------------------- No AMB
+------------------------------------------- No AMB - No Tc
 1 threads -- 10-item list
-no amb                          210 ns    204 ns    202 ns
-no amb - dup                    213 ns    207 ns    203 ns
+no amb - no tc                  756 ns    688 ns    674 ns
+no amb - no tc - dup            725 ns    688 ns    676 ns
 1 threads -- 100-item list
-no amb                         1862 ns   1810 ns   1778 ns
-no amb - dup                   1791 ns   1785 ns   1777 ns
+no amb - no tc                 2469 ns   2366 ns   2334 ns
+no amb - no tc - dup           2404 ns   2353 ns   2328 ns
 10 threads -- 10-item list
-no amb                          227 ns    161 ns    143 ns
-no amb - dup                    145 ns    144 ns    143 ns
+no amb - no tc                  802 ns    764 ns    750 ns
+no amb - no tc - dup            798 ns    776 ns    733 ns
 10 threads -- 100-item list
-no amb                          520 ns    518 ns    515 ns
-no amb - dup                    684 ns    536 ns    516 ns
+no amb - no tc                 2209 ns   2157 ns   2118 ns
+no amb - no tc - dup           2266 ns   2152 ns   1993 ns
 ----------------------------------------------------------
------------------------------------------------------- AMB
+---------------------------------------------- AMB - No TC
 1 threads -- 10-item list
-amb                              48 ns     46 ns     45 ns
-amb - dup                        47 ns     45 ns     45 ns
+amb - no tc                     554 ns    538 ns    525 ns
+amb - no tc - dup               540 ns    530 ns    524 ns
 1 threads -- 100-item list
-amb                             242 ns    236 ns    234 ns
-amb - dup                       243 ns    238 ns    234 ns
+amb - no tc                     731 ns    721 ns    715 ns
+amb - no tc - dup               745 ns    724 ns    714 ns
 10 threads -- 10-item list
-amb                             226 ns    130 ns    109 ns
-amb - dup                       161 ns    115 ns    109 ns
+amb - no tc                     777 ns    717 ns    676 ns
+amb - no tc - dup               726 ns    669 ns    638 ns
 10 threads -- 100-item list
-amb                             192 ns    192 ns    191 ns
-amb - dup                       416 ns    324 ns    192 ns
+amb - no tc                    1015 ns    985 ns    955 ns
+amb - no tc - dup              1000 ns    978 ns    952 ns
+----------------------------------------------------------
+---------------------------------------------- No AMB - TC
+1 threads -- 10-item list
+no amb - tc                     209 ns    203 ns    199 ns
+no amb - tc - dup               210 ns    202 ns    196 ns
+1 threads -- 100-item list
+no amb - tc                    1872 ns   1849 ns   1840 ns
+no amb - tc - dup              1902 ns   1865 ns   1838 ns
+10 threads -- 10-item list
+no amb - tc                     136 ns     50 ns     23 ns
+no amb - tc - dup               178 ns     85 ns     23 ns
+10 threads -- 100-item list
+no amb - tc                    1594 ns    651 ns    201 ns
+no amb - tc - dup              1492 ns    615 ns    203 ns
+----------------------------------------------------------
+------------------------------------------------- AMB - TC
+1 threads -- 10-item list
+amb - tc                         45 ns     44 ns     44 ns
+amb - tc - dup                   46 ns     46 ns     45 ns
+1 threads -- 100-item list
+amb - tc                        256 ns    246 ns    240 ns
+amb - tc - dup                  242 ns    240 ns    238 ns
+10 threads -- 10-item list
+amb - tc                        120 ns     35 ns     13 ns
+amb - tc - dup                  104 ns     34 ns      9 ns
+10 threads -- 100-item list
+amb - tc                        267 ns    129 ns     49 ns
+amb - tc - dup                  766 ns    147 ns     42 ns
 ----------------------------------------------------------
  */

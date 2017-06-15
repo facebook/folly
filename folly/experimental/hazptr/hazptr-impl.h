@@ -29,6 +29,14 @@
 #define HAZPTR_AMB true
 #endif
 
+#ifndef HAZPTR_TC
+#define HAZPTR_TC true
+#endif
+
+#ifndef HAZPTR_TC_SIZE
+#define HAZPTR_TC_SIZE 2
+#endif
+
 #ifndef HAZPTR_SCAN_MULT
 #define HAZPTR_SCAN_MULT 2
 #endif
@@ -45,7 +53,8 @@
 #include <folly/experimental/AsymmetricMemoryBarrier.h>
 #include <folly/experimental/hazptr/debug.h>
 
-#include <unordered_set>
+#include <mutex> // for thread caching
+#include <unordered_set> // for hash set in bulk reclamation
 
 namespace folly {
 namespace hazptr {
@@ -67,15 +76,44 @@ class hazptr_mb {
   static void heavy();
 };
 
+/** hazptr_tc */
+
+class hazptr_tc_entry {
+  friend class hazptr_tc;
+  std::atomic<hazptr_rec*> hprec_{nullptr};
+  std::atomic<hazptr_domain*> domain_{nullptr};
+
+ public:
+  void fill(hazptr_rec* hprec, hazptr_domain* domain);
+  hazptr_rec* get(hazptr_domain* domain);
+  void invalidate(hazptr_rec* hprec);
+  void evict();
+};
+
+class hazptr_tc {
+  hazptr_tc_entry tc_[HAZPTR_TC_SIZE];
+
+ public:
+  hazptr_tc();
+  ~hazptr_tc();
+  hazptr_rec* get(hazptr_domain* domain);
+  bool put(hazptr_rec* hprec, hazptr_domain* domain);
+};
+
+hazptr_tc& hazptr_tc();
+
+std::mutex& hazptr_tc_lock();
+
+using hazptr_tc_guard = std::lock_guard<std::mutex>;
+
 /**
  * public functions
  */
 
 /** hazptr_domain */
 
-constexpr hazptr_domain::hazptr_domain(memory_resource* mr) noexcept : mr_(mr) {
-  hazptr_stats();
-}
+constexpr hazptr_domain::hazptr_domain(memory_resource* mr) noexcept
+    : mr_(mr) {}
 
 /** hazptr_obj_base */
 
@@ -95,15 +133,19 @@ inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
 
 class hazptr_rec {
   friend class hazptr_domain;
+  friend class hazptr_tc_entry;
   template <typename> friend class hazptr_owner;
 
-  std::atomic<const void*> hazptr_ = {nullptr};
-  hazptr_rec* next_ = {nullptr};
-  std::atomic<bool> active_ = {false};
+  std::atomic<const void*> hazptr_{nullptr};
+  hazptr_rec* next_{nullptr};
+  std::atomic<hazptr_tc_entry*> tc_{nullptr};
+  std::atomic<bool> active_{false};
 
   void set(const void* p) noexcept;
   const void* get() const noexcept;
   void clear() noexcept;
+  bool isActive() noexcept;
+  bool tryAcquire() noexcept;
   void release() noexcept;
 };
 
@@ -182,9 +224,9 @@ inline void swap(hazptr_owner<T>& lhs, hazptr_owner<T>& rhs) noexcept {
 
 ////////////////////////////////////////////////////////////////////////////////
 // [TODO]:
-// - Thread caching of hazptr_rec-s
 // - Private storage of retired objects
 // - Control of reclamation (when and by whom)
+// - End-to-end lock-free implementation
 
 /** Definition of default_hazptr_domain() */
 inline hazptr_domain& default_hazptr_domain() {
@@ -209,6 +251,21 @@ inline const void* hazptr_rec::get() const noexcept {
 inline void hazptr_rec::clear() noexcept {
   DEBUG_PRINT(this);
   hazptr_.store(nullptr, std::memory_order_release);
+}
+
+inline bool hazptr_rec::isActive() noexcept {
+  return active_.load(std::memory_order_acquire);
+}
+
+inline bool hazptr_rec::tryAcquire() noexcept {
+  bool active = isActive();
+  if (!active &&
+      active_.compare_exchange_strong(
+          active, true, std::memory_order_release, std::memory_order_relaxed)) {
+    DEBUG_PRINT(this);
+    return true;
+  }
+  return false;
 }
 
 inline void hazptr_rec::release() noexcept {
@@ -243,26 +300,36 @@ inline hazptr_domain::~hazptr_domain() {
     hazptr_rec* next;
     for (auto p = hazptrs_.load(std::memory_order_acquire); p; p = next) {
       next = p->next_;
+      if (HAZPTR_TC) {
+        if (p->isActive()) {
+          hazptr_tc_guard g(hazptr_tc_lock());
+          if (p->isActive()) {
+            auto tc = p->tc_.load(std::memory_order_acquire);
+            DCHECK(tc != nullptr);
+            tc->invalidate(p);
+          }
+        }
+      } else {
+        CHECK(!p->isActive());
+      }
       mr_->deallocate(static_cast<void*>(p), sizeof(hazptr_rec));
     }
   }
 }
 
 inline hazptr_rec* hazptr_domain::hazptrAcquire() {
+  if (HAZPTR_TC) {
+    hazptr_rec* hprec = hazptr_tc().get(this);
+    if (hprec) {
+      return hprec;
+    }
+  }
   hazptr_rec* p;
   hazptr_rec* next;
   for (p = hazptrs_.load(std::memory_order_acquire); p; p = next) {
     next = p->next_;
-    bool active = p->active_.load(std::memory_order_acquire);
-    if (!active) {
-      if (p->active_.compare_exchange_weak(
-              active,
-              true,
-              std::memory_order_release,
-              std::memory_order_relaxed)) {
-        DEBUG_PRINT(this << " " << p);
-        return p;
-      }
+    if (p->tryAcquire()) {
+      return p;
     }
   }
   p = static_cast<hazptr_rec*>(mr_->allocate(sizeof(hazptr_rec)));
@@ -271,21 +338,18 @@ inline hazptr_rec* hazptr_domain::hazptrAcquire() {
   }
   p->active_.store(true, std::memory_order_relaxed);
   p->next_ = hazptrs_.load(std::memory_order_acquire);
-  do {
-    if (hazptrs_.compare_exchange_weak(
-            p->next_,
-            p,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
-      break;
-    }
-  } while (true);
+  while (!hazptrs_.compare_exchange_weak(
+      p->next_, p, std::memory_order_release, std::memory_order_acquire))
+    /* keep trying */;
   auto hcount = hcount_.fetch_add(1);
   DEBUG_PRINT(this << " " << p << " " << sizeof(hazptr_rec) << " " << hcount);
   return p;
 }
 
 inline void hazptr_domain::hazptrRelease(hazptr_rec* p) noexcept {
+  if (HAZPTR_TC && hazptr_tc().put(p, this)) {
+    return;
+  }
   DEBUG_PRINT(this << " " << p);
   p->release();
 }
@@ -334,7 +398,7 @@ inline void hazptr_domain::bulkReclaim() {
   auto h = hazptrs_.load(std::memory_order_acquire);
   std::unordered_set<const void*> hs; // TODO lock-free alternative
   for (; h; h = h->next_) {
-    hs.insert(h->hazptr_.load(std::memory_order_relaxed));
+    hs.insert(h->get());
   }
   int rcount = 0;
   hazptr_obj* retired = nullptr;
@@ -426,6 +490,104 @@ inline void hazptr_mb::heavy() {
     atomic_thread_fence(std::memory_order_seq_cst);
     hazptr_stats().seq_cst();
   }
+}
+
+/** hazptr_tc - functions */
+
+inline void hazptr_tc_entry::fill(hazptr_rec* hprec, hazptr_domain* domain) {
+  hprec_.store(hprec, std::memory_order_release);
+  domain_.store(domain, std::memory_order_release);
+  hprec->tc_.store(this, std::memory_order_release);
+  DEBUG_PRINT(this << " " << domain << " " << hprec);
+}
+
+inline hazptr_rec* hazptr_tc_entry::get(hazptr_domain* domain) {
+  if (domain == domain_.load(std::memory_order_acquire)) {
+    auto hprec = hprec_.load(std::memory_order_acquire);
+    if (hprec) {
+      hprec_.store(nullptr, std::memory_order_release);
+      DEBUG_PRINT(this << " " << domain << " " << hprec);
+      return hprec;
+    }
+  }
+  return nullptr;
+}
+
+inline void hazptr_tc_entry::invalidate(hazptr_rec* hprec) {
+  DCHECK_EQ(hprec, hprec_);
+  hprec_.store(nullptr, std::memory_order_release);
+  domain_.store(nullptr, std::memory_order_release);
+  hprec->tc_.store(nullptr, std::memory_order_relaxed);
+  hprec->release();
+  DEBUG_PRINT(this << " " << hprec);
+}
+
+inline void hazptr_tc_entry::evict() {
+  auto hprec = hprec_.load(std::memory_order_relaxed);
+  if (hprec) {
+    hazptr_tc_guard g(hazptr_tc_lock());
+    hprec = hprec_.load(std::memory_order_relaxed);
+    if (hprec) {
+      invalidate(hprec);
+    }
+  }
+  DEBUG_PRINT(hprec);
+}
+
+inline hazptr_tc::hazptr_tc() {
+  DEBUG_PRINT(this);
+}
+
+inline hazptr_tc::~hazptr_tc() {
+  DEBUG_PRINT(this);
+  for (int i = 0; i < HAZPTR_TC_SIZE; ++i) {
+    tc_[i].evict();
+  }
+}
+
+inline hazptr_rec* hazptr_tc::get(hazptr_domain* domain) {
+  for (int i = 0; i < HAZPTR_TC_SIZE; ++i) {
+    auto hprec = tc_[i].get(domain);
+    if (hprec) {
+      DEBUG_PRINT(this << " " << domain << " " << hprec);
+      return hprec;
+    }
+  }
+  DEBUG_PRINT(this << " " << domain << " nullptr");
+  return nullptr;
+}
+
+inline bool hazptr_tc::put(hazptr_rec* hprec, hazptr_domain* domain) {
+  int other = HAZPTR_TC_SIZE;
+  for (int i = 0; i < HAZPTR_TC_SIZE; ++i) {
+    if (tc_[i].hprec_.load(std::memory_order_acquire) == nullptr) {
+      tc_[i].fill(hprec, domain);
+      DEBUG_PRINT(this << " " << i);
+      return true;
+    }
+    if (tc_[i].domain_.load(std::memory_order_relaxed) != domain) {
+      other = i;
+    }
+  }
+  if (other < HAZPTR_TC_SIZE) {
+    tc_[other].evict();
+    tc_[other].fill(hprec, domain);
+    DEBUG_PRINT(this << " " << other);
+    return true;
+  }
+  return false;
+}
+
+inline class hazptr_tc& hazptr_tc() {
+  static thread_local class hazptr_tc tc;
+  DEBUG_PRINT(&tc);
+  return tc;
+}
+
+inline std::mutex& hazptr_tc_lock() {
+  static std::mutex m;
+  DEBUG_PRINT(&m);
+  return m;
 }
 
 } // namespace folly

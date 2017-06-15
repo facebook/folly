@@ -57,11 +57,11 @@ class SWMRListSet {
 
   /* Used by the single writer */
   void locate_lower_bound(const T& v, std::atomic<Node*>*& prev) const {
-    auto curr = prev->load();
+    auto curr = prev->load(std::memory_order_relaxed);
     while (curr) {
       if (curr->elem_ >= v) break;
       prev = &(curr->next_);
-      curr = curr->next_.load();
+      curr = curr->next_.load(std::memory_order_relaxed);
     }
     return;
   }
@@ -81,7 +81,7 @@ class SWMRListSet {
   bool add(T v) {
     auto prev = &head_;
     locate_lower_bound(v, prev);
-    auto curr = prev->load();
+    auto curr = prev->load(std::memory_order_relaxed);
     if (curr && curr->elem_ == v) return false;
     prev->store(new Node(std::move(v), curr));
     return true;
@@ -90,11 +90,13 @@ class SWMRListSet {
   bool remove(const T& v) {
     auto prev = &head_;
     locate_lower_bound(v, prev);
-    auto curr = prev->load();
+    auto curr = prev->load(std::memory_order_relaxed);
     if (!curr || curr->elem_ != v) return false;
     Node *curr_next = curr->next_.load();
-    prev->store(curr_next);  // Patch up the actual list...
-    curr->next_.store(nullptr);  // ...and only then null out the removed node.
+    // Patch up the actual list...
+    prev->store(curr_next, std::memory_order_release);
+    // ...and only then null out the removed node.
+    curr->next_.store(nullptr, std::memory_order_release);
     curr->retire(domain_);
     return true;
   }
@@ -105,13 +107,14 @@ class SWMRListSet {
     hazptr_owner<Node> hptr_curr(domain_);
     while (true) {
       auto prev = &head_;
-      auto curr = prev->load();
+      auto curr = prev->load(std::memory_order_acquire);
       while (true) {
         if (!curr) { return false; }
         if (!hptr_curr.try_protect(curr, *prev))
           break;
-        auto next = curr->next_.load();
-        if (prev->load() != curr) break;
+        auto next = curr->next_.load(std::memory_order_acquire);
+        if (prev->load(std::memory_order_acquire) != curr)
+          break;
         if (curr->elem_ == val) {
             return true;
         } else if (!(curr->elem_ < val)) {

@@ -15,6 +15,7 @@
  */
 
 #define HAZPTR_AMB true
+#define HAZPTR_TC false
 
 #include <folly/experimental/hazptr/bench/HazptrBench.h>
 #include <folly/portability/GFlags.h>
@@ -36,14 +37,14 @@ BENCHMARK(amb_dup, iters) {
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  std::cout << "------------------------------------------------------ AMB\n";
+  std::cout << "---------------------------------------------- AMB - No TC\n";
   for (int i : nthr) {
     nthreads = i;
     for (int j : sizes) {
       size = j;
       std::cout << i << " threads -- " << j << "-item list" << std::endl;
-      bench("amb                         ", i, j, 0);
-      bench("amb - dup                   ", i, j, 0);
+      bench("amb - no tc                 ", i, j, 0);
+      bench("amb - no tc - dup           ", i, j, 0);
     }
   }
   std::cout << "----------------------------------------------------------\n";
