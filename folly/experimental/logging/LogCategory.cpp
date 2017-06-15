@@ -71,17 +71,16 @@ void LogCategory::processMessage(const LogMessage& message) const {
     try {
       handlers[n]->handleMessage(message, this);
     } catch (const std::exception& ex) {
-      // If a LogHandler throws an exception, complain about this fact on
-      // stderr to avoid swallowing the error information completely.  We
-      // don't propagate the exception up to our caller: most code does not
-      // prepare for log statements to throw.  We also want to continue
-      // trying to log the message to any other handlers attached to ourself
-      // or one of our parent categories.
-      fprintf(
-          stderr,
-          "WARNING: log handler for category %s threw an error: %s\n",
-          name_.c_str(),
-          folly::exceptionStr(ex).c_str());
+      // Use LoggerDB::internalWarning() to report the error, but continue
+      // trying to log the message to any other handlers attached to ourself or
+      // one of our parent categories.
+      LoggerDB::internalWarning(
+          __FILE__,
+          __LINE__,
+          "log handler for category \"",
+          name_,
+          "\" threw an error: ",
+          folly::exceptionStr(ex));
     }
   }
 

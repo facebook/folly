@@ -15,10 +15,17 @@
  */
 #include <folly/experimental/logging/LoggerDB.h>
 
+#if _WIN32
+#include <crtdbg.h>
+#endif
+
+#include <folly/Conv.h>
+#include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogLevel.h>
 #include <folly/experimental/logging/Logger.h>
+#include <folly/experimental/logging/RateLimiter.h>
 
 namespace folly {
 
@@ -214,5 +221,84 @@ LogCategory* LoggerDB::xlogInitCategory(
   *xlogCategory = category;
   isInitialized->store(true, std::memory_order_release);
   return category;
+}
+
+std::atomic<LoggerDB::InternalWarningHandler> LoggerDB::warningHandler_;
+
+void LoggerDB::internalWarningImpl(
+    folly::StringPiece filename,
+    int lineNumber,
+    std::string&& msg) noexcept {
+  auto handler = warningHandler_.load();
+  if (handler) {
+    handler(filename, lineNumber, std::move(msg));
+  } else {
+    defaultInternalWarningImpl(filename, lineNumber, std::move(msg));
+  }
+}
+
+void LoggerDB::setInternalWarningHandler(InternalWarningHandler handler) {
+  // This API is intentionally pretty basic.  It has a number of limitations:
+  //
+  // - We only support plain function pointers, and not full std::function
+  //   objects.  This makes it possible to use std::atomic to access the
+  //   handler pointer, and also makes it safe to store in a zero-initialized
+  //   file-static pointer.
+  //
+  // - We don't support any void* argument to the handler.  The caller is
+  //   responsible for storing any callback state themselves.
+  //
+  // - When replacing or unsetting a handler we don't make any guarantees about
+  //   when the old handler will stop being called.  It may still be called
+  //   from other threads briefly even after setInternalWarningHandler()
+  //   returns.  This is also a consequence of using std::atomic rather than a
+  //   full lock.
+  //
+  // This provides the minimum capabilities needed to customize the handler,
+  // while still keeping the implementation simple and safe to use even before
+  // main().
+  warningHandler_.store(handler);
+}
+
+void LoggerDB::defaultInternalWarningImpl(
+    folly::StringPiece filename,
+    int lineNumber,
+    std::string&& msg) noexcept {
+  // Rate limit to 10 messages every 5 seconds.
+  //
+  // We intentonally use a leaky Meyer's singleton here over folly::Singleton:
+  // - We want this code to work even before main()
+  // - This singleton does not depend on any other singletons.
+  static auto* rateLimiter =
+      new logging::IntervalRateLimiter{10, std::chrono::seconds(5)};
+  if (!rateLimiter->check()) {
+    return;
+  }
+
+#if _WIN32
+  // Use _CrtDbgReport() to report the error
+  _CrtDbgReport(
+      _CRT_WARN, filename, lineNumber, "folly::logging", "%s", msg.c_str());
+#else
+  if (folly::kIsDebug) {
+    // Write directly to file descriptor 2.
+    //
+    // It's possible the application has closed fd 2 and is using it for
+    // something other than stderr.  However we have no good way to detect
+    // this, which is the main reason we only write to stderr in debug build
+    // modes.  assert() also writes directly to stderr on failure, which seems
+    // like a reasonable precedent.
+    //
+    // Another option would be to use openlog() and syslog().  However
+    // calling openlog() may inadvertently affect the behavior of other parts
+    // of the program also using syslog().
+    //
+    // We don't check for write errors here, since there's not much else we can
+    // do if it fails.
+    auto fullMsg = folly::to<std::string>(
+        "logging warning:", filename, ":", lineNumber, ": ", msg, "\n");
+    folly::writeFull(STDERR_FILENO, fullMsg.data(), fullMsg.size());
+  }
+#endif
 }
 }

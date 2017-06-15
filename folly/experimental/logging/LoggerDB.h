@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <folly/Conv.h>
 #include <folly/CppAttributes.h>
 #include <folly/Range.h>
 #include <folly/Synchronized.h>
@@ -118,6 +119,43 @@ class LoggerDB {
    */
   explicit LoggerDB(TestConstructorArg);
 
+  /**
+   * internalWarning() is used to report a problem when something goes wrong
+   * internally in the logging library.
+   *
+   * We can't log these messages through the normal logging flow since logging
+   * itself has failed.
+   *
+   * Example scenarios where this is used:
+   * - We fail to write to a log file (for instance, when the disk is full)
+   * - A LogHandler throws an unexpected exception
+   */
+  template <typename... Args>
+  static void internalWarning(
+      folly::StringPiece file,
+      int lineNumber,
+      Args&&... args) noexcept {
+    internalWarningImpl(
+        file, lineNumber, folly::to<std::string>(std::forward<Args>(args)...));
+  }
+
+  using InternalWarningHandler =
+      void (*)(folly::StringPiece file, int lineNumber, std::string&&);
+
+  /**
+   * Set a function to be called when the logging library generates an internal
+   * warning.
+   *
+   * The supplied handler should never throw exceptions.
+   *
+   * If a null handler is supplied, the default built-in handler will be used.
+   *
+   * The default handler reports the message with _CrtDbgReport(_CRT_WARN) on
+   * Windows, and prints the message to stderr on other platforms.  It also
+   * rate limits messages if they are arriving too quickly.
+   */
+  static void setInternalWarningHandler(InternalWarningHandler handler);
+
  private:
   using LoggerNameMap = std::unordered_map<
       folly::StringPiece,
@@ -138,6 +176,15 @@ class LoggerDB {
       folly::StringPiece name,
       LogCategory* parent);
 
+  static void internalWarningImpl(
+      folly::StringPiece filename,
+      int lineNumber,
+      std::string&& msg) noexcept;
+  static void defaultInternalWarningImpl(
+      folly::StringPiece filename,
+      int lineNumber,
+      std::string&& msg) noexcept;
+
   /**
    * A map of LogCategory objects by name.
    *
@@ -145,5 +192,7 @@ class LoggerDB {
    * have to be in canonical form.
    */
   folly::Synchronized<LoggerNameMap> loggersByName_;
+
+  static std::atomic<InternalWarningHandler> warningHandler_;
 };
 }
