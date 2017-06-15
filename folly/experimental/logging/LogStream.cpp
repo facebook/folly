@@ -46,7 +46,7 @@ LogStreamBuffer::int_type LogStreamBuffer::overflow(int_type ch) {
   }
 }
 
-LogStream::LogStream() {
+LogStream::LogStream() : std::ostream(nullptr) {
   rdbuf(&buffer_);
 }
 
