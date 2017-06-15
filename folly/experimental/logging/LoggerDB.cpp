@@ -15,10 +15,6 @@
  */
 #include <folly/experimental/logging/LoggerDB.h>
 
-#if _WIN32
-#include <crtdbg.h>
-#endif
-
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
@@ -275,11 +271,6 @@ void LoggerDB::defaultInternalWarningImpl(
     return;
   }
 
-#if _WIN32
-  // Use _CrtDbgReport() to report the error
-  _CrtDbgReport(
-      _CRT_WARN, filename, lineNumber, "folly::logging", "%s", msg.c_str());
-#else
   if (folly::kIsDebug) {
     // Write directly to file descriptor 2.
     //
@@ -299,6 +290,5 @@ void LoggerDB::defaultInternalWarningImpl(
         "logging warning:", filename, ":", lineNumber, ": ", msg, "\n");
     folly::writeFull(STDERR_FILENO, fullMsg.data(), fullMsg.size());
   }
-#endif
 }
 }
