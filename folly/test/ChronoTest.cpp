@@ -15,8 +15,7 @@
  */
 
 #include <folly/Chrono.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace std::chrono;
 using namespace folly::chrono;

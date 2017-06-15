@@ -15,18 +15,18 @@
  */
 
 #include <folly/detail/Futex.h>
-#include <stdint.h>
-#include <string.h>
-#include <condition_variable>
-#include <mutex>
 #include <boost/intrusive/list.hpp>
 #include <folly/Hash.h>
 #include <folly/ScopeGuard.h>
+#include <folly/portability/SysSyscall.h>
+#include <stdint.h>
+#include <string.h>
+#include <cerrno>
+#include <condition_variable>
+#include <mutex>
 
 #ifdef __linux__
-# include <errno.h>
-# include <linux/futex.h>
-# include <sys/syscall.h>
+#include <linux/futex.h>
 #endif
 
 using namespace std::chrono;

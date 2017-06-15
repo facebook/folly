@@ -21,7 +21,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <algorithm>
 #include <atomic>
@@ -36,6 +35,7 @@
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/portability/SysSyscall.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly { namespace symbolizer {
 

@@ -21,7 +21,6 @@
 #include <iostream>
 #include <limits.h>
 #include <link.h>
-#include <unistd.h>
 
 #ifdef __GNUC__
 #include <ext/stdio_filebuf.h>
@@ -34,10 +33,10 @@
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 
-#include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
+#include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/LineReader.h>
-
+#include <folly/portability/Unistd.h>
 
 /*
  * This is declared in `link.h' on Linux platforms, but apparently not on the
