@@ -6,6 +6,7 @@ libfollylogging_la_SOURCES = \
 	AsyncFileWriter.cpp \
 	GlogStyleFormatter.cpp \
 	ImmediateFileWriter.cpp \
+	Init.cpp \
 	LogCategory.cpp \
 	Logger.cpp \
 	LoggerDB.cpp \

@@ -124,6 +124,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/logging/AsyncFileWriter.h \
 	experimental/logging/GlogStyleFormatter.h \
 	experimental/logging/ImmediateFileWriter.h \
+	experimental/logging/Init.h \
 	experimental/logging/LogCategory.h \
 	experimental/logging/LogFormatter.h \
 	experimental/logging/Logger.h \
