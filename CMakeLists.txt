@@ -321,6 +321,7 @@ if (BUILD_TESTS)
           XlogHeader2.h
         SOURCES
           AsyncFileWriterTest.cpp
+          GlogFormatterTest.cpp
           ImmediateFileWriterTest.cpp
           LogCategoryTest.cpp
           LoggerDBTest.cpp

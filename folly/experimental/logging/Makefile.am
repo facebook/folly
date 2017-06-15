@@ -4,6 +4,7 @@ lib_LTLIBRARIES = libfollylogging.la
 
 libfollylogging_la_SOURCES = \
 	AsyncFileWriter.cpp \
+	GlogStyleFormatter.cpp \
 	ImmediateFileWriter.cpp \
 	LogCategory.cpp \
 	Logger.cpp \
