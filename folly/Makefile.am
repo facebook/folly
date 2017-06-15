@@ -2,7 +2,10 @@ if FOLLY_TESTMAIN
 MAYBE_INIT = init
 endif
 
-SUBDIRS = . experimental $(MAYBE_INIT) test io/test stats/test
+# Note that the order of SUBDIRS matters.
+# Many subdirectories depend on libfollytest from the test directory,
+# so it must appear before other directories
+SUBDIRS = . test experimental $(MAYBE_INIT) io/test stats/test
 
 ACLOCAL_AMFLAGS = -I m4
 

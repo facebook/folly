@@ -98,6 +98,7 @@ thread_cached_int_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybench
 
 thread_id_test_SOURCES = ThreadIdTest.cpp
 thread_id_test_LDADD = libfollytestmain.la
+TESTS += thread_id_test
 
 thread_local_test_SOURCES = ThreadLocalTest.cpp
 thread_local_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
