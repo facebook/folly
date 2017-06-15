@@ -15,30 +15,32 @@
  */
 #pragma once
 
-#include <utility>
-#include <vector>
-
-#include <folly/experimental/logging/LogHandler.h>
-#include <folly/experimental/logging/LogMessage.h>
+#include <folly/Range.h>
 
 namespace folly {
 
 /**
- * A LogHandler that simply keeps a vector of all LogMessages it receives.
+ * LogWriter defines the interface for processing a serialized log message.
  */
-class TestLogHandler : public LogHandler {
+class LogWriter {
  public:
-  std::vector<std::pair<LogMessage, const LogCategory*>>& getMessages() {
-    return messages_;
-  }
+  virtual ~LogWriter() {}
 
-  void handleMessage(
-      const LogMessage& message,
-      const LogCategory* handlerCategory) override {
-    messages_.emplace_back(message, handlerCategory);
-  }
+  /**
+   * Write a serialized log message.
+   */
+  virtual void writeMessage(folly::StringPiece buffer) = 0;
 
- private:
-  std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
+  /**
+   * Write a serialized message.
+   *
+   * This version of writeMessage() accepts a std::string&&.
+   * The default implementation calls the StringPiece version of
+   * writeMessage(), but subclasses may override this implementation if
+   * desired.
+   */
+  virtual void writeMessage(std::string&& buffer) {
+    writeMessage(folly::StringPiece{buffer});
+  }
 };
 }

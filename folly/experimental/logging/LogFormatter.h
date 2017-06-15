@@ -15,30 +15,32 @@
  */
 #pragma once
 
-#include <utility>
-#include <vector>
-
-#include <folly/experimental/logging/LogHandler.h>
-#include <folly/experimental/logging/LogMessage.h>
+#include <string>
 
 namespace folly {
 
+class LogCategory;
+class LogMessage;
+
 /**
- * A LogHandler that simply keeps a vector of all LogMessages it receives.
+ * LogFormatter defines the interface for serializing a LogMessage object
+ * into a buffer to be given to a LogWriter.
  */
-class TestLogHandler : public LogHandler {
+class LogFormatter {
  public:
-  std::vector<std::pair<LogMessage, const LogCategory*>>& getMessages() {
-    return messages_;
-  }
+  virtual ~LogFormatter() {}
 
-  void handleMessage(
+  /**
+   * Serialze a LogMessage object.
+   *
+   * @param message The LogMessage object to serialze.
+   * @param handlerCategory The LogCategory that is currently handling this
+   *     message.  Note that this is likely different from the LogCategory
+   *     where the message was originally logged, which can be accessed as
+   *     message->getCategory()
+   */
+  virtual std::string formatMessage(
       const LogMessage& message,
-      const LogCategory* handlerCategory) override {
-    messages_.emplace_back(message, handlerCategory);
-  }
-
- private:
-  std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
+      const LogCategory* handlerCategory) = 0;
 };
 }

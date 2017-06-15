@@ -122,14 +122,17 @@ nobase_follyinclude_HEADERS = \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
 	experimental/logging/LogCategory.h \
+	experimental/logging/LogFormatter.h \
+	experimental/logging/Logger.h \
+	experimental/logging/LoggerDB.h \
 	experimental/logging/LogHandler.h \
 	experimental/logging/LogLevel.h \
 	experimental/logging/LogMessage.h \
 	experimental/logging/LogName.h \
 	experimental/logging/LogStream.h \
 	experimental/logging/LogStreamProcessor.h \
-	experimental/logging/Logger.h \
-	experimental/logging/LoggerDB.h \
+	experimental/logging/LogWriter.h \
+	experimental/logging/StandardLogHandler.h \
 	experimental/logging/xlog.h \
 	experimental/NestedCommandLineApp.h \
 	experimental/observer/detail/Core.h \

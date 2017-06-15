@@ -13,18 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/logging/LogHandler.h>
+#include <folly/experimental/logging/StandardLogHandler.h>
 
+#include <folly/experimental/logging/LogFormatter.h>
 #include <folly/experimental/logging/LogMessage.h>
+#include <folly/experimental/logging/LogWriter.h>
 
 namespace folly {
 
-void LogHandler::log(
+StandardLogHandler::StandardLogHandler(
+    std::shared_ptr<LogFormatter> formatter,
+    std::shared_ptr<LogWriter> writer)
+    : formatter_{std::move(formatter)}, writer_{std::move(writer)} {}
+
+StandardLogHandler::~StandardLogHandler() {}
+
+void StandardLogHandler::handleMessage(
     const LogMessage& message,
     const LogCategory* handlerCategory) {
   if (message.getLevel() < getLevel()) {
     return;
   }
-  handleMessage(message, handlerCategory);
+  writer_->writeMessage(formatter_->formatMessage(message, handlerCategory));
 }
 }

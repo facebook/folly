@@ -6,12 +6,12 @@ libfollylogging_la_SOURCES = \
 	LogCategory.cpp \
 	Logger.cpp \
 	LoggerDB.cpp \
-	LogHandler.cpp \
 	LogLevel.cpp \
 	LogMessage.cpp \
 	LogName.cpp \
 	LogStream.cpp \
 	LogStreamProcessor.cpp \
+	StandardLogHandler.cpp \
 	xlog.cpp
 
 libfollylogging_la_LIBADD = $(top_builddir)/libfolly.la

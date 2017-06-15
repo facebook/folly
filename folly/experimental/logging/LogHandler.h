@@ -42,33 +42,11 @@ class LogMessage;
  */
 class LogHandler {
  public:
-  LogHandler() = default;
   virtual ~LogHandler() = default;
 
   /**
-   * log() is called when a log message is processed by a LogCategory that this
-   * handler is attached to.
-   *
-   * log() performs a level check, and calls handleMessage() if it passes.
-   *
-   * @param message The LogMessage objet.
-   * @param handlerCategory  The LogCategory that invoked log().  This is the
-   *     category that this LogHandler is attached to.  Note that this may be
-   *     different than the category that this message was originally logged
-   *     at.  message->getCategory() returns the category of the log message.
-   */
-  void log(const LogMessage& message, const LogCategory* handlerCategory);
-
-  LogLevel getLevel() const {
-    return level_.load(std::memory_order_acquire);
-  }
-  void setLevel(LogLevel level) {
-    return level_.store(level, std::memory_order_release);
-  }
-
- protected:
-  /**
-   * handleMessage() is invoked to process a LogMessage.
+   * handleMessage() is called when a log message is processed by a LogCategory
+   * that this handler is attached to.
    *
    * This must be implemented by LogHandler subclasses.
    *
@@ -76,12 +54,16 @@ class LogHandler {
    * message.  LogMessage::getThreadID() contains the thread ID, but the
    * LogHandler can also include any other thread-local state they desire, and
    * this will always be data for the thread that originated the log message.
+   *
+   * @param message The LogMessage objet.
+   * @param handlerCategory  The LogCategory that invoked handleMessage().
+   *     This is the category that this LogHandler is attached to.  Note that
+   *     this may be different than the category that this message was
+   *     originally logged at.  message->getCategory() returns the category of
+   *     the log message.
    */
   virtual void handleMessage(
       const LogMessage& message,
       const LogCategory* handlerCategory) = 0;
-
- private:
-  std::atomic<LogLevel> level_{LogLevel::NONE};
 };
 }

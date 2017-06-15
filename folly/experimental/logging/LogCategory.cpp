@@ -69,7 +69,7 @@ void LogCategory::processMessage(const LogMessage& message) const {
 
   for (size_t n = 0; n < numHandlers; ++n) {
     try {
-      handlers[n]->log(message, this);
+      handlers[n]->handleMessage(message, this);
     } catch (const std::exception& ex) {
       // If a LogHandler throws an exception, complain about this fact on
       // stderr to avoid swallowing the error information completely.  We
