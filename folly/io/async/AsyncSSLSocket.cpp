@@ -503,9 +503,6 @@ void AsyncSSLSocket::attachSSLContext(
   // In order to call attachSSLContext, detachSSLContext must have been
   // previously called.
   // We need to update the initial_ctx if necessary
-  auto sslCtx = ctx->getSSLCtx();
-  SSL_CTX_up_ref(sslCtx);
-
   // The 'initial_ctx' inside an SSL* points to the context that it was created
   // with, which is also where session callbacks and servername callbacks
   // happen.
@@ -514,6 +511,7 @@ void AsyncSSLSocket::attachSSLContext(
   // NOTE: this will only work if we have access to ssl_ internals, so it may
   // not work on
   // OpenSSL version >= 1.1.0
+  auto sslCtx = ctx->getSSLCtx();
   OpenSSLUtils::setSSLInitialCtx(ssl_, sslCtx);
   // Detach sets the socket's context to the dummy context. Thus we must acquire
   // this lock.

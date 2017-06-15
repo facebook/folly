@@ -200,6 +200,9 @@ void OpenSSLUtils::setSSLInitialCtx(SSL* ssl, SSL_CTX* ctx) {
   (void)ctx;
 #if !FOLLY_OPENSSL_IS_110 && !defined(OPENSSL_NO_TLSEXT)
   if (ssl) {
+    if (ctx) {
+      SSL_CTX_up_ref(ctx);
+    }
     ssl->initial_ctx = ctx;
   }
 #endif
