@@ -121,6 +121,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/JemallocNodumpAllocator.h \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
+	experimental/logging/ImmediateFileWriter.h \
 	experimental/logging/LogCategory.h \
 	experimental/logging/LogFormatter.h \
 	experimental/logging/Logger.h \

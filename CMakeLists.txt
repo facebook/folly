@@ -320,6 +320,7 @@ if (BUILD_TESTS)
           XlogHeader1.h
           XlogHeader2.h
         SOURCES
+          ImmediateFileWriterTest.cpp
           LogCategoryTest.cpp
           LoggerDBTest.cpp
           LoggerTest.cpp
