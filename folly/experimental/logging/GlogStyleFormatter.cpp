@@ -18,6 +18,7 @@
 #include <folly/Format.h>
 #include <folly/experimental/logging/LogLevel.h>
 #include <folly/experimental/logging/LogMessage.h>
+#include <folly/portability/Time.h>
 
 namespace {
 using folly::StringPiece;
