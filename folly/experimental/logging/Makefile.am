@@ -3,6 +3,7 @@ SUBDIRS = .
 lib_LTLIBRARIES = libfollylogging.la
 
 libfollylogging_la_SOURCES = \
+	AsyncFileWriter.cpp \
 	ImmediateFileWriter.cpp \
 	LogCategory.cpp \
 	Logger.cpp \
