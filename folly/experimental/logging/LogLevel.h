@@ -98,22 +98,6 @@ inline LogLevel& operator-=(LogLevel& level, uint32_t value) {
   return level;
 }
 
-/*
- * Comparisons between LogLevel values
- */
-inline bool operator<=(LogLevel a, LogLevel b) {
-  return static_cast<uint32_t>(a) <= static_cast<uint32_t>(b);
-}
-inline bool operator<(LogLevel a, LogLevel b) {
-  return static_cast<uint32_t>(a) < static_cast<uint32_t>(b);
-}
-inline bool operator>=(LogLevel a, LogLevel b) {
-  return static_cast<uint32_t>(a) >= static_cast<uint32_t>(b);
-}
-inline bool operator>(LogLevel a, LogLevel b) {
-  return static_cast<uint32_t>(a) > static_cast<uint32_t>(b);
-}
-
 /**
  * Construct a LogLevel from a string name.
  */
