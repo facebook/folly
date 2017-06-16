@@ -38,7 +38,7 @@ LogStreamBuffer::int_type LogStreamBuffer::overflow(int_type ch) {
       setp((&str_.front()) + currentSize + 1, (&str_.front()) + newSize);
       return ch;
     }
-  } catch (const std::exception& ex) {
+  } catch (const std::exception&) {
     // Return EOF to indicate that the operation failed.
     // In general the only exception we really expect to see here is
     // std::bad_alloc() from the str_.resize() call.

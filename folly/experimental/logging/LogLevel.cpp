@@ -76,7 +76,7 @@ LogLevel stringToLogLevel(StringPiece name) {
   try {
     auto level = folly::to<uint32_t>(lowerName);
     return static_cast<LogLevel>(level);
-  } catch (const std::exception& ex) {
+  } catch (const std::exception&) {
     throw std::range_error("invalid logger name " + name.str());
   }
 }
