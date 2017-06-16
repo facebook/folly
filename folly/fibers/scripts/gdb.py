@@ -277,14 +277,25 @@ class Shortcut(gdb.Function):
 
 
 def get_fiber_manager_map(evb_type):
-    global_cache_type = gdb.lookup_type(
-        "folly::fibers::(anonymous namespace)::GlobalCache<" + evb_type + ">")
+    try:
+        # Exception thrown if unable to find type
+        # Probably because of missing debug symbols
+        global_cache_type = gdb.lookup_type(
+            "folly::fibers::(anonymous namespace)::GlobalCache<" + evb_type + ">")
+    except gdb.error:
+        raise gdb.GdbError("Unable to find types. "
+                           "Please make sure debug info is available for this binary.\n"
+                           "Have you run 'fbload debuginfo_fbpkg'?")
+
     global_cache_instance_ptr_ptr = gdb.parse_and_eval(
         "&'" + global_cache_type.name + "::instance()::ret'")
-    global_cache_instance = global_cache_instance_ptr_ptr.cast(
-        global_cache_type.pointer().pointer()).dereference().dereference()
-    return global_cache_instance['map_']
+    global_cache_instance_ptr = global_cache_instance_ptr_ptr.cast(
+        global_cache_type.pointer().pointer()).dereference()
+    if global_cache_instance_ptr == 0x0:
+        raise gdb.GdbError("FiberManager map is empty.")
 
+    global_cache_instance = global_cache_instance_ptr.dereference()
+    return global_cache_instance['map_']
 
 def get_fiber_manager_map_evb():
     return get_fiber_manager_map("folly::EventBase")
