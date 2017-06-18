@@ -236,8 +236,8 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ("std::runtime_error", ew.class_name());
-  EXPECT_EQ("std::runtime_error: foo", ew.what());
+  EXPECT_EQ(kRuntimeErrorClassName, ew.class_name());
+  EXPECT_EQ(kRuntimeErrorClassName + ": foo", ew.what());
   EXPECT_TRUE(ew.is_compatible_with<std::exception>());
   EXPECT_TRUE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_FALSE(ew.is_compatible_with<int>());
@@ -268,8 +268,8 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ("std::runtime_error", ew.class_name());
-  EXPECT_EQ("std::runtime_error: foo", ew.what());
+  EXPECT_EQ(kRuntimeErrorClassName, ew.class_name());
+  EXPECT_EQ(kRuntimeErrorClassName + ": foo", ew.what());
   EXPECT_TRUE(ew.is_compatible_with<std::exception>());
   EXPECT_TRUE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_FALSE(ew.is_compatible_with<int>());
@@ -742,7 +742,7 @@ TEST(ExceptionWrapper, handle_non_std_exception_rethrow_base_derived) {
 TEST(ExceptionWrapper, self_swap_test) {
   exception_wrapper ew(std::runtime_error("hello world"));
   folly::swap(ew, ew);
-  EXPECT_STREQ("std::runtime_error: hello world", ew.what().c_str());
+  EXPECT_EQ(kRuntimeErrorClassName + ": hello world", ew.what());
   auto& ew2 = ew;
   ew = std::move(ew2); // should not crash
 }
