@@ -16,38 +16,19 @@
 
 #pragma once
 
-/*
- * Iterim macros (until we have C++0x range-based for) that simplify
- * writing loops of the form
+/**
+ * This header is deprecated
  *
- * for (Container<data>::iterator i = c.begin(); i != c.end(); ++i) statement
+ * Use range-based for loops, and if necessary Ranges-v3.
  *
- * Just replace the above with:
+ * Some of the messaging here presumes that you have coded:
  *
- * FOR_EACH (i, c) statement
- *
- * and everything is taken care of.
- *
- * The implementation is a bit convoluted to make sure the container is
- * evaluated only once (however, keep in mind that c.end() is evaluated
- * at every pass through the loop). To ensure the container is not
- * evaluated multiple times, the macro defines one do-nothing if
- * statement to inject the Boolean variable FOR_EACH_state1, and then a
- * for statement that is executed only once, which defines the variable
- * FOR_EACH_state2 holding an rvalue reference to the container being
- * iterated. The workhorse is the last loop, which uses the just-defined
- * rvalue reference FOR_EACH_state2.
- *
- * The state variables are nested so they don't interfere; you can use
- * FOR_EACH multiple times in the same scope, either at the same level or
- * nested.
- *
- * In optimized builds g++ eliminates the extra gymnastics entirely and
- * generates code 100% identical to the handwritten loop.
+ *     #include <range/v3/all.hpp>
+ *     using namespace ranges;
  */
 
-#include <type_traits>
 #include <folly/Preprocessor.h>
+#include <type_traits>
 
 /*
  * Form a local variable name from "FOR_EACH_" x __LINE__, so that
@@ -56,9 +37,11 @@
 #define _FE_ANON(x) FB_CONCATENATE(FOR_EACH_, FB_CONCATENATE(x, __LINE__))
 
 /*
- * Shorthand for:
- *   for (auto i = c.begin(); i != c.end(); ++i)
- * except that c is evaluated only once.
+ * If you just want the element values, please use:
+ *
+ *    for (auto&& element : collection)
+ *
+ * If you need access to the iterators please write an explicit iterator loop
  */
 #define FOR_EACH(i, c)                                  \
   if (bool _FE_ANON(s1_) = false) {} else               \
@@ -68,8 +51,11 @@
            i != _FE_ANON(s2_).end(); ++i)
 
 /*
- * Similar to FOR_EACH, but iterates the container backwards by
- * using rbegin() and rend().
+ * If you just want the element values, please use this (ranges-v3) construct:
+ *
+ *    for (auto&& element : collection | view::reverse)
+ *
+ * If you need access to the iterators please write an explicit iterator loop
  */
 #define FOR_EACH_R(i, c)                                \
   if (bool _FE_ANON(s1_) = false) {} else               \
@@ -79,13 +65,12 @@
            i != _FE_ANON(s2_).rend(); ++i)
 
 /*
- * Similar to FOR_EACH but also allows client to specify a 'count' variable
- * to track the current iteration in the loop (starting at zero).
- * Similar to python's enumerate() function.  For example:
- * string commaSeparatedValues = "VALUES: ";
- * FOR_EACH_ENUMERATE(ii, value, columns) {   // don't want comma at the end!
- *   commaSeparatedValues += (ii == 0) ? *value : string(",") + *value;
- * }
+ * If you just want the element values, please use this (ranges-v3) construct:
+ *
+ *    for (auto&& element : collection | view::zip(view::ints))
+ *
+ * If you need access to the iterators please write an explicit iterator loop
+ * and use a counter variable
  */
 #define FOR_EACH_ENUMERATE(count, i, c)                                \
   if (bool _FE_ANON(s1_) = false) {} else                            \
@@ -95,14 +80,23 @@
         if (const size_t& count = _FE_ANON(n1_)) {} else               \
           for (auto i = FOR_EACH_state2.begin();                       \
                i != FOR_EACH_state2.end(); ++_FE_ANON(n1_), ++i)
-
 /**
- * Similar to FOR_EACH, but gives the user the key and value for each entry in
- * the container, instead of just the iterator to the entry. For example:
- *   map<string, string> testMap;
- *   FOR_EACH_KV(key, value, testMap) {
- *      cout << key << " " << value;
- *   }
+ * If you just want the keys, please use this (ranges-v3) construct:
+ *
+ *    for (auto&& element : collection | view::keys)
+ *
+ * If you just want the values, please use this (ranges-v3) construct:
+ *
+ *    for (auto&& element : collection | view::values)
+ *
+ * If you need to see both, use:
+ *
+ *    for (auto&& element : collection) {
+ *      auto const& key = element.first;
+ *      auto& value = element.second;
+ *      ......
+ *    }
+ *
  */
 #define FOR_EACH_KV(k, v, c)                                  \
   if (unsigned int _FE_ANON(s1_) = 0) {} else                 \
@@ -210,12 +204,10 @@ downTo(T& iter, const U& begin) {
 } }
 
 /*
- * Iteration with given limits. end is assumed to be reachable from
- * begin. end is evaluated every pass through the loop.
+ * Look at the Ranges-v3 views and you'll probably find an easier way to build
+ * the view you want but the equivalent is roughly:
  *
- * NOTE: The type of the loop variable should be the common type of "begin"
- *       and "end". e.g. If "begin" is "int" but "end" is "long", we want "i"
- *       to be "long". This is done by getting the type of (true ? begin : end)
+ *    for (auto& element : make_iterator_range(begin, end))
  */
 #define FOR_EACH_RANGE(i, begin, end)           \
   for (auto i = (true ? (begin) : (end));       \
@@ -223,13 +215,10 @@ downTo(T& iter, const U& begin) {
        ++i)
 
 /*
- * Iteration with given limits. begin is assumed to be reachable from
- * end by successive decrements. begin is evaluated every pass through
- * the loop.
+ * Look at the Ranges-v3 views and you'll probably find an easier way to build
+ * the view you want but the equivalent is roughly:
  *
- * NOTE: The type of the loop variable should be the common type of "begin"
- *       and "end". e.g. If "begin" is "int" but "end" is "long", we want "i"
- *       to be "long". This is done by getting the type of (false ? begin : end)
+ *    for (auto& element : make_iterator_range(begin, end) | view::reverse)
  */
 #define FOR_EACH_RANGE_R(i, begin, end) \
   for (auto i = (false ? (begin) : (end)); ::folly::detail::downTo(i, (begin));)
