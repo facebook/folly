@@ -438,6 +438,11 @@ if (BUILD_TESTS)
     DIRECTORY ssl/test/
       TEST openssl_hash_test SOURCES OpenSSLHashTest.cpp
 
+    DIRECTORY stats/test/
+      TEST histogram_test SOURCES HistogramTest.cpp
+      TEST timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
+      TEST timeseries_test SOURCES TimeseriesTest.cpp
+
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
       TEST apply_tuple_test SOURCES ApplyTupleTest.cpp
@@ -493,7 +498,6 @@ if (BUILD_TESTS)
       TEST group_varint_test_ssse3 SOURCES GroupVarintTest.cpp
       TEST has_member_fn_traits_test SOURCES HasMemberFnTraitsTest.cpp
       TEST hash_test SOURCES HashTest.cpp
-      TEST histogram_test SOURCES HistogramTest.cpp
       TEST indestructible_test SOURCES IndestructibleTest.cpp
       TEST indexed_mem_pool_test SOURCES IndexedMemPoolTest.cpp
       # MSVC Preprocessor stringizing raw string literals bug
@@ -558,8 +562,6 @@ if (BUILD_TESTS)
       TEST thread_local_test SOURCES ThreadLocalTest.cpp
       TEST thread_name_test SOURCES ThreadNameTest.cpp
       TEST timeout_queue_test SOURCES TimeoutQueueTest.cpp
-      TEST timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
-      TEST timeseries_test SOURCES TimeseriesTest.cpp
       TEST token_bucket_test SOURCES TokenBucketTest.cpp
       TEST traits_test SOURCES TraitsTest.cpp
       TEST try_test SOURCES TryTest.cpp
