@@ -20,8 +20,8 @@
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/Promise.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/Semaphore.h>
 
-#include <semaphore.h>
 #include <vector>
 
 using namespace folly;

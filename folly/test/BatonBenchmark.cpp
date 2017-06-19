@@ -16,12 +16,12 @@
 
 #include <folly/Baton.h>
 
-#include <semaphore.h>
 #include <thread>
 
 #include <folly/Benchmark.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Semaphore.h>
 #include <folly/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
 

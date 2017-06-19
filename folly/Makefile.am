@@ -336,6 +336,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Memory.h \
 	portability/OpenSSL.h \
 	portability/PThread.h \
+	portability/Semaphore.h \
 	portability/Sockets.h \
 	portability/Stdio.h \
 	portability/Stdlib.h \
