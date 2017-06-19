@@ -108,6 +108,11 @@ class DestructorCheck {
       }
     }
 
+    Safety(const Safety&) = delete;
+    Safety(Safety&& goner) = delete;
+    Safety& operator=(const Safety&) = delete;
+    Safety& operator=(Safety&&) = delete;
+
     bool destroyed() const {
       return prev_ == nullptr;
     }
