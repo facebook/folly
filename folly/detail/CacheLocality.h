@@ -34,6 +34,7 @@
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/ThreadId.h>
+#include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Memory.h>
 
 namespace folly {
