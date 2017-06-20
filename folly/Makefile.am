@@ -451,7 +451,6 @@ libfollybase_la_SOURCES = \
 	FormatTables.cpp \
 	MallctlHelper.cpp \
 	portability/BitsFunctexcept.cpp \
-	StringBase.cpp \
 	String.cpp \
 	Unicode.cpp
 
