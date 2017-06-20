@@ -1,4 +1,4 @@
-SUBDIRS = .
+SUBDIRS = . example
 
 lib_LTLIBRARIES = libfollylogging.la
 

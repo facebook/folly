@@ -608,6 +608,7 @@ AC_CONFIG_FILES([Makefile
                  experimental/Makefile
                  experimental/io/test/Makefile
                  experimental/logging/Makefile
+                 experimental/logging/example/Makefile
                  experimental/symbolizer/Makefile
                  init/Makefile
                  stats/test/Makefile])
