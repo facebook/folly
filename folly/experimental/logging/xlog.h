@@ -111,15 +111,16 @@
  *   initialized.  On all subsequent calls, disabled log statements can be
  *   skipped with just a single check of the LogLevel.
  */
-#define XLOG_IMPL(level, type, ...)                        \
-  (!XLOG_IS_ON_IMPL(level)) ? static_cast<void>(0)         \
-                            : ::folly::LogStreamProcessor( \
-                                  XLOG_GET_CATEGORY(),     \
-                                  (level),                 \
-                                  __FILE__,                \
-                                  __LINE__,                \
-                                  (type),                  \
-                                  ##__VA_ARGS__) &         \
+#define XLOG_IMPL(level, type, ...)                                    \
+  (!XLOG_IS_ON_IMPL(level))                                            \
+      ? static_cast<void>(0)                                           \
+      : ::folly::LogStreamProcessorT<::folly::isLogLevelFatal(level)>( \
+            XLOG_GET_CATEGORY(),                                       \
+            (level),                                                   \
+            __FILE__,                                                  \
+            __LINE__,                                                  \
+            (type),                                                    \
+            ##__VA_ARGS__) &                                           \
           ::folly::LogStream()
 
 /**

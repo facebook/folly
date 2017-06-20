@@ -94,8 +94,10 @@ class LoggerDB {
   /**
    * Call flush() on all LogHandler objects registered on any LogCategory in
    * this LoggerDB.
+   *
+   * Returns the number of registered LogHandlers.
    */
-  void flushAllHandlers();
+  size_t flushAllHandlers();
 
   /**
    * Initialize the LogCategory* and std::atomic<LogLevel> used by an XLOG()

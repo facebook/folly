@@ -16,8 +16,10 @@
 #include <folly/experimental/logging/LogCategory.h>
 
 #include <cstdio>
+#include <cstdlib>
 
 #include <folly/ExceptionString.h>
+#include <folly/FileUtil.h>
 #include <folly/experimental/logging/LogHandler.h>
 #include <folly/experimental/logging/LogMessage.h>
 #include <folly/experimental/logging/LogName.h>
@@ -40,6 +42,31 @@ LogCategory::LogCategory(StringPiece name, LogCategory* parent)
       db_{parent->getDB()},
       nextSibling_{parent_->firstChild_} {
   parent_->firstChild_ = this;
+}
+
+void LogCategory::admitMessage(const LogMessage& message) const {
+  processMessage(message);
+
+  // If this is a fatal message, flush the handlers to make sure the log
+  // message was written out, then crash.
+  if (isLogLevelFatal(message.getLevel())) {
+    auto numHandlers = db_->flushAllHandlers();
+    if (numHandlers == 0) {
+      // No log handlers were configured.
+      // Print the message to stderr, to make sure we always print the reason
+      // we are crashing somewhere.
+      auto msg = folly::to<std::string>(
+          "FATAL:",
+          message.getFileName(),
+          ":",
+          message.getLineNumber(),
+          ": ",
+          message.getMessage(),
+          "\n");
+      folly::writeFull(STDERR_FILENO, msg.data(), msg.size());
+    }
+    std::abort();
+  }
 }
 
 void LogCategory::processMessage(const LogMessage& message) const {

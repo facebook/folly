@@ -178,7 +178,7 @@ void LoggerDB::cleanupHandlers() {
   }
 }
 
-void LoggerDB::flushAllHandlers() {
+size_t LoggerDB::flushAllHandlers() {
   // Build a set of all LogHandlers.  We use a set to avoid calling flush()
   // more than once on the same handler if it is registered on multiple
   // different categories.
@@ -196,6 +196,7 @@ void LoggerDB::flushAllHandlers() {
   for (const auto& handler : handlers) {
     handler->flush();
   }
+  return handlers.size();
 }
 
 LogLevel LoggerDB::xlogInit(

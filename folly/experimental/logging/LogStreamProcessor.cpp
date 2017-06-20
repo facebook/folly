@@ -21,7 +21,7 @@
 
 namespace folly {
 void LogStreamProcessor::operator&(std::ostream& stream) noexcept {
-  // Note that processMessage() is not noexcept and theoretically may throw.
+  // Note that admitMessage() is not noexcept and theoretically may throw.
   // However, the only exception that should be possible is std::bad_alloc if
   // we fail to allocate memory.  We intentionally let our noexcept specifier
   // crash in that case, since the program likely won't be able to continue
@@ -30,11 +30,11 @@ void LogStreamProcessor::operator&(std::ostream& stream) noexcept {
   // Any other error here is unexpected and we also want to fail hard
   // in that situation too.
   auto& logStream = static_cast<LogStream&>(stream);
-  category_->processMessage(LogMessage{category_,
-                                       level_,
-                                       filename_,
-                                       lineNumber_,
-                                       extractMessageString(logStream)});
+  category_->admitMessage(LogMessage{category_,
+                                     level_,
+                                     filename_,
+                                     lineNumber_,
+                                     extractMessageString(logStream)});
 }
 
 void LogStreamProcessor::operator&(LogStream&& stream) noexcept {
@@ -44,7 +44,7 @@ void LogStreamProcessor::operator&(LogStream&& stream) noexcept {
   // and just directly use message_.
   DCHECK(stream.empty());
 
-  category_->processMessage(LogMessage{
+  category_->admitMessage(LogMessage{
       category_, level_, filename_, lineNumber_, std::move(message_)});
 }
 

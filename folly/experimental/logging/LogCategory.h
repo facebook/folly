@@ -158,17 +158,15 @@ class LogCategory {
   /* Internal methods for use by other parts of the logging library code */
 
   /**
-   * Process a log message.
+   * Admit a message into the LogCategory hierarchy to be logged.
+   *
+   * The caller is responsible for having already performed log level
+   * admittance checks.
    *
    * This method generally should be invoked only through the logging macros,
    * rather than calling this directly.
-   *
-   * This method assumes that log level admittance checks have already been
-   * performed.  This method unconditionally passes the message to the
-   * LogHandlers attached to this LogCategory, without any additional log level
-   * checks (apart from the ones done in the LogHandlers).
    */
-  void processMessage(const LogMessage& message) const;
+  void admitMessage(const LogMessage& message) const;
 
   /**
    * Note: setLevelLocked() may only be called while holding the main
@@ -197,6 +195,7 @@ class LogCategory {
   LogCategory(LogCategory const&) = delete;
   LogCategory& operator=(LogCategory const&) = delete;
 
+  void processMessage(const LogMessage& message) const;
   void updateEffectiveLevel(LogLevel newEffectiveLevel);
   void parentLevelUpdated(LogLevel parentEffectiveLevel);
 

@@ -20,6 +20,7 @@
 #include <folly/Format.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogMessage.h>
+#include <cstdlib>
 
 namespace folly {
 
@@ -252,5 +253,44 @@ class LogStreamProcessor {
   folly::StringPiece filename_;
   unsigned int lineNumber_;
   std::string message_;
+};
+
+/*
+ * This template subclass of LogStreamProcessor exists primarily so that
+ * we can specify the [[noreturn]] attribute correctly on operator&()
+ * This lets the compiler know that code after LOG(FATAL) is unreachable.
+ */
+template <bool Fatal>
+class LogStreamProcessorT : public LogStreamProcessor {
+ public:
+  using LogStreamProcessor::LogStreamProcessor;
+
+  void operator&(std::ostream& stream) noexcept {
+    LogStreamProcessor::operator&(stream);
+  }
+  void operator&(LogStream&& stream) noexcept {
+    LogStreamProcessor::operator&(std::move(stream));
+  }
+};
+
+template <>
+class LogStreamProcessorT<true> : public LogStreamProcessor {
+ public:
+  using LogStreamProcessor::LogStreamProcessor;
+
+  [[noreturn]] void operator&(std::ostream& stream) noexcept {
+    LogStreamProcessor::operator&(stream);
+    // We'll never actually reach here: the LogCategory code is responsible for
+    // crashing on FATAL messages.  However, add an abort() call so the
+    // compiler knows we really cannot return here.
+    std::abort();
+  }
+  [[noreturn]] void operator&(LogStream&& stream) noexcept {
+    LogStreamProcessor::operator&(std::move(stream));
+    // We'll never actually reach here: the LogCategory code is responsible for
+    // crashing on FATAL messages.  However, add an abort() call so the
+    // compiler knows we really cannot return here.
+    std::abort();
+  }
 };
 }

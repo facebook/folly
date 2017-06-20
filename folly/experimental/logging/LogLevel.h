@@ -18,7 +18,9 @@
 #include <cstdint>
 #include <iosfwd>
 #include <string>
+#include <type_traits>
 
+#include <folly/Portability.h>
 #include <folly/Range.h>
 
 namespace folly {
@@ -66,6 +68,12 @@ enum class LogLevel : uint32_t {
 
   CRITICAL = 5000,
 
+  // DFATAL log messages crash the program on debug builds.
+  DFATAL = 0x7ffffffe,
+  // FATAL log messages always abort the program.
+  // This level is equivalent to MAX_LEVEL.
+  FATAL = 0x7fffffff,
+
   // The most significant bit is used by LogCategory to store a flag value,
   // so the maximum value has that bit cleared.
   //
@@ -78,7 +86,7 @@ enum class LogLevel : uint32_t {
  * Support adding and subtracting integers from LogLevels, to create slightly
  * adjusted log level values.
  */
-inline LogLevel operator+(LogLevel level, uint32_t value) {
+inline constexpr LogLevel operator+(LogLevel level, uint32_t value) {
   auto newValue = static_cast<uint32_t>(level) + value;
   // Cap the result at LogLevel::MAX_LEVEL
   if (newValue > static_cast<uint32_t>(LogLevel::MAX_LEVEL)) {
@@ -90,7 +98,7 @@ inline LogLevel& operator+=(LogLevel& level, uint32_t value) {
   level = level + value;
   return level;
 }
-inline LogLevel operator-(LogLevel level, uint32_t value) {
+inline constexpr LogLevel operator-(LogLevel level, uint32_t value) {
   return static_cast<LogLevel>(static_cast<uint32_t>(level) - value);
 }
 inline LogLevel& operator-=(LogLevel& level, uint32_t value) {
@@ -112,4 +120,15 @@ std::string logLevelToString(LogLevel level);
  * Print a LogLevel in a human readable format.
  */
 std::ostream& operator<<(std::ostream& os, LogLevel level);
+
+/**
+ * Returns true if and only if a LogLevel is fatal.
+ */
+inline constexpr bool isLogLevelFatal(LogLevel level) {
+  if (folly::kIsDebug) {
+    return level >= LogLevel::DFATAL;
+  } else {
+    return level >= LogLevel::FATAL;
+  }
+}
 }

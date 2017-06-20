@@ -51,6 +51,14 @@ TEST(LogLevel, fromString) {
   EXPECT_EQ(LogLevel::CRITICAL, stringToLogLevel("critical"));
   EXPECT_EQ(LogLevel::CRITICAL, stringToLogLevel("CRITICAL"));
 
+  EXPECT_EQ(LogLevel::DFATAL, stringToLogLevel("dfatal"));
+  EXPECT_EQ(LogLevel::DFATAL, stringToLogLevel("DFatal"));
+  EXPECT_EQ(LogLevel::DFATAL, stringToLogLevel("DFATAL"));
+
+  EXPECT_EQ(LogLevel::FATAL, stringToLogLevel("fatal"));
+  EXPECT_EQ(LogLevel::FATAL, stringToLogLevel("FaTaL"));
+  EXPECT_EQ(LogLevel::FATAL, stringToLogLevel("FATAL"));
+
   EXPECT_EQ(LogLevel::MAX_LEVEL, stringToLogLevel("max"));
   EXPECT_EQ(LogLevel::MAX_LEVEL, stringToLogLevel("Max_Level"));
   EXPECT_EQ(LogLevel::MAX_LEVEL, stringToLogLevel("LogLevel::MAX"));
@@ -82,7 +90,9 @@ TEST(LogLevel, toString) {
   EXPECT_EQ("LogLevel::DEBUG", logLevelToString(LogLevel::DEBUG));
   EXPECT_EQ("LogLevel::ERR", logLevelToString(LogLevel::ERR));
   EXPECT_EQ("LogLevel::CRITICAL", logLevelToString(LogLevel::CRITICAL));
-  EXPECT_EQ("LogLevel::MAX_LEVEL", logLevelToString(LogLevel::MAX_LEVEL));
+  EXPECT_EQ("LogLevel::DFATAL", logLevelToString(LogLevel::DFATAL));
+  EXPECT_EQ("LogLevel::FATAL", logLevelToString(LogLevel::FATAL));
+  EXPECT_EQ("LogLevel::FATAL", logLevelToString(LogLevel::MAX_LEVEL));
 
   EXPECT_EQ("LogLevel::DBG0", logLevelToString(LogLevel::DBG0));
   EXPECT_EQ("LogLevel::DBG2", logLevelToString(LogLevel::DBG2));
@@ -123,7 +133,8 @@ TEST(LogLevel, toStringAndBack) {
   checkLevel(LogLevel::WARNING);
   checkLevel(LogLevel::ERR);
   checkLevel(LogLevel::CRITICAL);
-  checkLevel(LogLevel::MAX_LEVEL);
+  checkLevel(LogLevel::DFATAL);
+  checkLevel(LogLevel::FATAL);
 
   // Try with some random integer values
   for (uint32_t numIters = 0; numIters < 10000; ++numIters) {

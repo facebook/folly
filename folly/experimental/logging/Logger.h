@@ -27,15 +27,16 @@
  *
  * This macro generally should not be used directly by end users.
  */
-#define FB_LOG_IMPL(logger, level, type, ...)               \
-  (!(logger).getCategory()->logCheck(level))                \
-      ? (void)0                                             \
-      : ::folly::LogStreamProcessor{(logger).getCategory(), \
-                                    (level),                \
-                                    __FILE__,               \
-                                    __LINE__,               \
-                                    (type),                 \
-                                    ##__VA_ARGS__} &        \
+#define FB_LOG_IMPL(logger, level, type, ...)                  \
+  (!(logger).getCategory()->logCheck(level))                   \
+      ? (void)0                                                \
+      : ::folly::LogStreamProcessorT<::folly::isLogLevelFatal( \
+            level)>{(logger).getCategory(),                    \
+                    (level),                                   \
+                    __FILE__,                                  \
+                    __LINE__,                                  \
+                    (type),                                    \
+                    ##__VA_ARGS__} &                           \
           ::folly::LogStream()
 
 /**

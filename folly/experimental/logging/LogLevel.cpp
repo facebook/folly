@@ -59,6 +59,10 @@ LogLevel stringToLogLevel(StringPiece name) {
     return LogLevel::ERR;
   } else if (lowerName == "critical") {
     return LogLevel::CRITICAL;
+  } else if (lowerName == "dfatal") {
+    return LogLevel::DFATAL;
+  } else if (lowerName == "fatal") {
+    return LogLevel::FATAL;
   } else if (lowerName == "max" || lowerName == "max_level") {
     return LogLevel::MAX_LEVEL;
   }
@@ -96,8 +100,10 @@ string logLevelToString(LogLevel level) {
     return "LogLevel::ERR";
   } else if (level == LogLevel::CRITICAL) {
     return "LogLevel::CRITICAL";
-  } else if (level == LogLevel::MAX_LEVEL) {
-    return "LogLevel::MAX_LEVEL";
+  } else if (level == LogLevel::DFATAL) {
+    return "LogLevel::DFATAL";
+  } else if (level == LogLevel::FATAL) {
+    return "LogLevel::FATAL";
   }
 
   if (static_cast<uint32_t>(level) <= static_cast<uint32_t>(LogLevel::DBG0) &&
