@@ -134,7 +134,7 @@ inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
 class hazptr_rec {
   friend class hazptr_domain;
   friend class hazptr_tc_entry;
-  template <typename> friend class hazptr_owner;
+  friend class hazptr_holder;
 
   std::atomic<const void*> hazptr_{nullptr};
   hazptr_rec* next_{nullptr};
@@ -149,46 +149,38 @@ class hazptr_rec {
   void release() noexcept;
 };
 
-/** hazptr_owner */
+/** hazptr_holder */
 
-template <typename T>
-inline hazptr_owner<T>::hazptr_owner(hazptr_domain& domain) {
+inline hazptr_holder::hazptr_holder(hazptr_domain& domain) {
   domain_ = &domain;
   hazptr_ = domain_->hazptrAcquire();
   DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
   if (hazptr_ == nullptr) { std::bad_alloc e; throw e; }
 }
 
-template <typename T>
-hazptr_owner<T>::~hazptr_owner() {
+hazptr_holder::~hazptr_holder() {
   DEBUG_PRINT(this);
   domain_->hazptrRelease(hazptr_);
 }
 
 template <typename T>
-template <typename A>
-inline bool hazptr_owner<T>::try_protect(T*& ptr, const A& src) noexcept {
-  static_assert(
-      std::is_same<decltype(std::declval<A>().load()), T*>::value,
-      "Return type of A::load() must be T*");
+inline bool hazptr_holder::try_protect(
+    T*& ptr,
+    const std::atomic<T*>& src) noexcept {
   DEBUG_PRINT(this << " " << ptr << " " << &src);
-  set(ptr);
+  reset(ptr);
   /*** Full fence ***/ hazptr_mb::light();
   T* p = src.load(std::memory_order_acquire);
   if (p != ptr) {
     ptr = p;
-    clear();
+    reset();
     return false;
   }
   return true;
 }
 
 template <typename T>
-template <typename A>
-inline T* hazptr_owner<T>::get_protected(const A& src) noexcept {
-  static_assert(
-      std::is_same<decltype(std::declval<A>().load()), T*>::value,
-      "Return type of A::load() must be T*");
+inline T* hazptr_holder::get_protected(const std::atomic<T*>& src) noexcept {
   T* p = src.load(std::memory_order_relaxed);
   while (!try_protect(p, src)) {}
   DEBUG_PRINT(this << " " << p << " " << &src);
@@ -196,20 +188,18 @@ inline T* hazptr_owner<T>::get_protected(const A& src) noexcept {
 }
 
 template <typename T>
-inline void hazptr_owner<T>::set(const T* ptr) noexcept {
+inline void hazptr_holder::reset(const T* ptr) noexcept {
   auto p = static_cast<hazptr_obj*>(const_cast<T*>(ptr));
   DEBUG_PRINT(this << " " << ptr << " p:" << p);
   hazptr_->set(p);
 }
 
-template <typename T>
-inline void hazptr_owner<T>::clear() noexcept {
+inline void hazptr_holder::reset(std::nullptr_t) noexcept {
   DEBUG_PRINT(this);
   hazptr_->clear();
 }
 
-template <typename T>
-inline void hazptr_owner<T>::swap(hazptr_owner<T>& rhs) noexcept {
+inline void hazptr_holder::swap(hazptr_holder& rhs) noexcept {
   DEBUG_PRINT(
     this << " " <<  this->hazptr_ << " " << this->domain_ << " -- "
     << &rhs << " " << rhs.hazptr_ << " " << rhs.domain_);
@@ -217,8 +207,7 @@ inline void hazptr_owner<T>::swap(hazptr_owner<T>& rhs) noexcept {
   std::swap(this->hazptr_, rhs.hazptr_);
 }
 
-template <typename T>
-inline void swap(hazptr_owner<T>& lhs, hazptr_owner<T>& rhs) noexcept {
+inline void swap(hazptr_holder& lhs, hazptr_holder& rhs) noexcept {
   lhs.swap(rhs);
 }
 

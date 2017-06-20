@@ -48,14 +48,14 @@ class WideCAS {
   bool cas(T& u, T& v) {
     DEBUG_PRINT(this << " " << u << " " << v);
     Node* n = new Node(v);
-    hazptr_owner<Node> hptr;
+    hazptr_holder hptr;
     Node* p;
     do {
       p = hptr.get_protected(p_);
       if (p->val_ != u) { delete n; return false; }
       if (p_.compare_exchange_weak(p, n)) break;
     } while (true);
-    hptr.clear();
+    hptr.reset();
     p->retire();
     DEBUG_PRINT(this << " " << p << " " << u << " " << n << " " << v);
     return true;

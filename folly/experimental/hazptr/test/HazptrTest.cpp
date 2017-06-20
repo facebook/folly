@@ -74,13 +74,13 @@ TEST_F(HazptrTest, Test1) {
   DEBUG_PRINT("");
 
   DEBUG_PRINT("=== hptr0");
-  hazptr_owner<Node1> hptr0;
+  hazptr_holder hptr0;
   DEBUG_PRINT("=== hptr1");
-  hazptr_owner<Node1> hptr1(myDomain0);
+  hazptr_holder hptr1(myDomain0);
   DEBUG_PRINT("=== hptr2");
-  hazptr_owner<Node1> hptr2(myDomain1);
+  hazptr_holder hptr2(myDomain1);
   DEBUG_PRINT("=== hptr3");
-  hazptr_owner<Node1> hptr3;
+  hazptr_holder hptr3;
 
   DEBUG_PRINT("");
 
@@ -91,11 +91,12 @@ TEST_F(HazptrTest, Test1) {
 
   if (hptr0.try_protect(n0, shared0)) {}
   if (hptr1.try_protect(n1, shared1)) {}
-  hptr1.clear();
-  hptr1.set(n2);
+  hptr1.reset();
+  hptr1.reset(nullptr);
+  hptr1.reset(n2);
   if (hptr2.try_protect(n3, shared3)) {}
   swap(hptr1, hptr2);
-  hptr3.clear();
+  hptr3.reset();
 
   DEBUG_PRINT("");
 
@@ -136,13 +137,13 @@ TEST_F(HazptrTest, Test2) {
   DEBUG_PRINT("");
 
   DEBUG_PRINT("=== hptr0");
-  hazptr_owner<Node2> hptr0;
+  hazptr_holder hptr0;
   DEBUG_PRINT("=== hptr1");
-  hazptr_owner<Node2> hptr1(mineDomain0);
+  hazptr_holder hptr1(mineDomain0);
   DEBUG_PRINT("=== hptr2");
-  hazptr_owner<Node2> hptr2(mineDomain1);
+  hazptr_holder hptr2(mineDomain1);
   DEBUG_PRINT("=== hptr3");
-  hazptr_owner<Node2> hptr3;
+  hazptr_holder hptr3;
 
   DEBUG_PRINT("");
 
@@ -153,11 +154,11 @@ TEST_F(HazptrTest, Test2) {
 
   if (hptr0.try_protect(n0, shared0)) {}
   if (hptr1.try_protect(n1, shared1)) {}
-  hptr1.clear();
-  hptr1.set(n2);
+  hptr1.reset();
+  hptr1.reset(n2);
   if (hptr2.try_protect(n3, shared3)) {}
   swap(hptr1, hptr2);
-  hptr3.clear();
+  hptr3.reset();
 
   DEBUG_PRINT("");
 
@@ -254,8 +255,8 @@ TEST_F(HazptrTest, VirtualTest) {
     auto bar = new Thing;
     bar->a = i;
 
-    hazptr_owner<Thing> hptr;
-    hptr.set(bar);
+    hazptr_holder hptr;
+    hptr.reset(bar);
     bar->retire();
     EXPECT_EQ(bar->a, i);
   }

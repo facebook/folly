@@ -33,7 +33,7 @@ inline uint64_t run_once(int nthreads, int size, int ops) {
   std::atomic<bool> start{false};
   std::atomic<int> started{0};
 
-  hazptr_owner<void> dummy_hptr[100];
+  hazptr_holder dummy_hptr[100];
 
   for (int i = 0; i < size; ++i) {
     s.add(i);
@@ -66,11 +66,9 @@ inline uint64_t run_once(int nthreads, int size, int ops) {
 
   susp.rehire();
   // end time measurement
-  uint64_t duration = 0;
   auto tend = std::chrono::steady_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::nanoseconds>(tend - tbegin)
-                 .count();
-  return duration;
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(tend - tbegin)
+      .count();
 }
 
 inline uint64_t bench(std::string name, int nthreads, int size, uint64_t base) {

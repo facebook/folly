@@ -103,8 +103,8 @@ class SWMRListSet {
   /* Used by readers */
   bool contains(const T& val) const {
     /* Acquire two hazard pointers for hand-over-hand traversal. */
-    hazptr_owner<Node> hptr_prev(domain_);
-    hazptr_owner<Node> hptr_curr(domain_);
+    hazptr_holder hptr_prev(domain_);
+    hazptr_holder hptr_curr(domain_);
     while (true) {
       auto prev = &head_;
       auto curr = prev->load(std::memory_order_acquire);

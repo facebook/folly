@@ -54,7 +54,7 @@ class LockFreeLIFO {
 
   bool pop(T& val) {
     DEBUG_PRINT(this);
-    hazptr_owner<Node> hptr;
+    hazptr_holder hptr;
     Node* pnode = head_.load();
     do {
       if (pnode == nullptr)
@@ -64,7 +64,7 @@ class LockFreeLIFO {
       auto next = pnode->next_;
       if (head_.compare_exchange_weak(pnode, next)) break;
     } while (true);
-    hptr.clear();
+    hptr.reset();
     val = pnode->value_;
     pnode->retire();
     return true;
