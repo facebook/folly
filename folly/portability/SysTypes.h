@@ -23,9 +23,10 @@
 
 #define HAVE_MODE_T 1
 
-// This is actually defined in our pthread implementation on
-// Windows, but we don't want to include all of that just for this.
-using pid_t = void*;
+// This is a massive pain to have be an `int` due to the pthread implementation
+// we support, but it's far more compatible with the rest of the windows world
+// as an `int` than it would be as a `void*`
+using pid_t = int;
 // This isn't actually supposed to be defined here, but it's the most
 // appropriate place without defining a portability header for stdint.h
 // with just this single typedef.
