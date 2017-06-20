@@ -213,13 +213,24 @@ void FunctionScheduler::addFunctionInternal(
           runOnce));
 }
 
-bool FunctionScheduler::cancelFunction(StringPiece nameID) {
-  std::unique_lock<std::mutex> l(mutex_);
-
+bool FunctionScheduler::cancelFunctionWithLock(
+    std::unique_lock<std::mutex>& lock,
+    StringPiece nameID) {
+  CHECK_EQ(lock.owns_lock(), true);
   if (currentFunction_ && currentFunction_->name == nameID) {
     // This function is currently being run. Clear currentFunction_
     // The running thread will see this and won't reschedule the function.
     currentFunction_ = nullptr;
+    cancellingCurrentFunction_ = true;
+    return true;
+  }
+  return false;
+}
+
+bool FunctionScheduler::cancelFunction(StringPiece nameID) {
+  std::unique_lock<std::mutex> l(mutex_);
+
+  if (cancelFunctionWithLock(l, nameID)) {
     return true;
   }
 
@@ -235,11 +246,9 @@ bool FunctionScheduler::cancelFunction(StringPiece nameID) {
 bool FunctionScheduler::cancelFunctionAndWait(StringPiece nameID) {
   std::unique_lock<std::mutex> l(mutex_);
 
-  auto* currentFunction = currentFunction_;
-  if (currentFunction && currentFunction->name == nameID) {
-    runningCondvar_.wait(l, [currentFunction, this]() {
-      return currentFunction != currentFunction_;
-    });
+  if (cancelFunctionWithLock(l, nameID)) {
+    runningCondvar_.wait(l, [this]() { return !cancellingCurrentFunction_; });
+    return true;
   }
 
   for (auto it = functions_.begin(); it != functions_.end(); ++it) {
@@ -272,18 +281,27 @@ void FunctionScheduler::cancelFunction(const std::unique_lock<std::mutex>& l,
   }
 }
 
+bool FunctionScheduler::cancelAllFunctionsWithLock(
+    std::unique_lock<std::mutex>& lock) {
+  CHECK_EQ(lock.owns_lock(), true);
+  functions_.clear();
+  if (currentFunction_) {
+    cancellingCurrentFunction_ = true;
+  }
+  currentFunction_ = nullptr;
+  return cancellingCurrentFunction_;
+}
+
 void FunctionScheduler::cancelAllFunctions() {
   std::unique_lock<std::mutex> l(mutex_);
-  functions_.clear();
-  currentFunction_ = nullptr;
+  cancelAllFunctionsWithLock(l);
 }
 
 void FunctionScheduler::cancelAllFunctionsAndWait() {
   std::unique_lock<std::mutex> l(mutex_);
-  if (currentFunction_) {
-    runningCondvar_.wait(l, [this]() { return currentFunction_ == nullptr; });
+  if (cancelAllFunctionsWithLock(l)) {
+    runningCondvar_.wait(l, [this]() { return !cancellingCurrentFunction_; });
   }
-  functions_.clear();
 }
 
 bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
@@ -441,6 +459,7 @@ void FunctionScheduler::runOneFunction(std::unique_lock<std::mutex>& lock,
   if (!currentFunction_) {
     // The function was cancelled while we were running it.
     // We shouldn't reschedule it;
+    cancellingCurrentFunction_ = false;
     return;
   }
   if (currentFunction_->runOnce) {

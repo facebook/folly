@@ -18,6 +18,7 @@
 #include <cassert>
 #include <random>
 
+#include <folly/Baton.h>
 #include <folly/Random.h>
 #include <folly/experimental/FunctionScheduler.h>
 #include <folly/portability/GTest.h>
@@ -566,4 +567,78 @@ TEST(FunctionScheduler, cancelAllFunctionsAndWait) {
 
   EXPECT_FALSE(fs.cancelFunction("add2")); // add2 has been canceled
   fs.shutdown();
+}
+
+TEST(FunctionScheduler, CancelAndWaitOnRunningFunc) {
+  folly::Baton<> baton;
+  std::thread th([&baton]() {
+    FunctionScheduler fs;
+    fs.addFunction([] { delay(10); }, testInterval(2), "func");
+    fs.start();
+    delay(1);
+    EXPECT_TRUE(fs.cancelFunctionAndWait("func"));
+    baton.post();
+  });
+
+  ASSERT_TRUE(baton.timed_wait(testInterval(15)));
+  th.join();
+}
+
+TEST(FunctionScheduler, CancelAllAndWaitWithRunningFunc) {
+  folly::Baton<> baton;
+  std::thread th([&baton]() {
+    FunctionScheduler fs;
+    fs.addFunction([] { delay(10); }, testInterval(2), "func");
+    fs.start();
+    delay(1);
+    fs.cancelAllFunctionsAndWait();
+    baton.post();
+  });
+
+  ASSERT_TRUE(baton.timed_wait(testInterval(15)));
+  th.join();
+}
+
+TEST(FunctionScheduler, CancelAllAndWaitWithOneRunningAndOneWaiting) {
+  folly::Baton<> baton;
+  std::thread th([&baton]() {
+    std::atomic<int> nExecuted(0);
+    FunctionScheduler fs;
+    fs.addFunction(
+        [&nExecuted] {
+          nExecuted++;
+          delay(10);
+        },
+        testInterval(2),
+        "func0");
+    fs.addFunction(
+        [&nExecuted] {
+          nExecuted++;
+          delay(10);
+        },
+        testInterval(2),
+        "func1",
+        testInterval(5));
+    fs.start();
+    delay(1);
+    fs.cancelAllFunctionsAndWait();
+    EXPECT_EQ(nExecuted, 1);
+    baton.post();
+  });
+
+  ASSERT_TRUE(baton.timed_wait(testInterval(15)));
+  th.join();
+}
+
+TEST(FunctionScheduler, ConcurrentCancelFunctionAndWait) {
+  FunctionScheduler fs;
+  fs.addFunction([] { delay(10); }, testInterval(2), "func");
+
+  fs.start();
+  delay(1);
+  std::thread th1([&fs] { EXPECT_TRUE(fs.cancelFunctionAndWait("func")); });
+  delay(1);
+  std::thread th2([&fs] { EXPECT_FALSE(fs.cancelFunctionAndWait("func")); });
+  th1.join();
+  th2.join();
 }
