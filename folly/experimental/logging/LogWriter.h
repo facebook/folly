@@ -24,12 +24,32 @@ namespace folly {
  */
 class LogWriter {
  public:
+  /**
+   * Bit flag values for use with writeMessage()
+   */
+  enum Flags : uint32_t {
+    NO_FLAGS = 0x00,
+    /**
+     * Ensure that this log message never gets discarded.
+     *
+     * Some LogWriter implementations may discard messages when messages are
+     * being received faster than they can be written.  This flag ensures that
+     * this message will never be discarded.
+     *
+     * This flag is used to ensure that LOG(FATAL) messages never get
+     * discarded, so we always report the reason for a crash.
+     */
+    NEVER_DISCARD = 0x01,
+  };
+
   virtual ~LogWriter() {}
 
   /**
    * Write a serialized log message.
+   *
+   * The flags parameter is a bitwise-ORed set of Flag values defined above.
    */
-  virtual void writeMessage(folly::StringPiece buffer) = 0;
+  virtual void writeMessage(folly::StringPiece buffer, uint32_t flags = 0) = 0;
 
   /**
    * Write a serialized message.
@@ -39,8 +59,8 @@ class LogWriter {
    * writeMessage(), but subclasses may override this implementation if
    * desired.
    */
-  virtual void writeMessage(std::string&& buffer) {
-    writeMessage(folly::StringPiece{buffer});
+  virtual void writeMessage(std::string&& buffer, uint32_t flags = 0) {
+    writeMessage(folly::StringPiece{buffer}, flags);
   }
 };
 }

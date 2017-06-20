@@ -56,8 +56,8 @@ class AsyncFileWriter : public LogWriter {
 
   ~AsyncFileWriter();
 
-  void writeMessage(folly::StringPiece buffer) override;
-  void writeMessage(std::string&& buffer) override;
+  void writeMessage(folly::StringPiece buffer, uint32_t flags = 0) override;
+  void writeMessage(std::string&& buffer, uint32_t flags = 0) override;
 
   /**
    * Block until the I/O thread has finished writing all messages that

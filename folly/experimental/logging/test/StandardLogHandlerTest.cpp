@@ -49,7 +49,8 @@ class TestLogFormatter : public LogFormatter {
 
 class TestLogWriter : public LogWriter {
  public:
-  void writeMessage(folly::StringPiece buffer) override {
+  void writeMessage(folly::StringPiece buffer, uint32_t /* flags */ = 0)
+      override {
     messages_.emplace_back(buffer.str());
   }
 

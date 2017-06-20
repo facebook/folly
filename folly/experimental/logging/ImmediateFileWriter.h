@@ -47,7 +47,7 @@ class ImmediateFileWriter : public LogWriter {
   explicit ImmediateFileWriter(folly::File&& file);
 
   using LogWriter::writeMessage;
-  void writeMessage(folly::StringPiece buffer) override;
+  void writeMessage(folly::StringPiece buffer, uint32_t flags = 0) override;
 
  private:
   ImmediateFileWriter(ImmediateFileWriter const&) = delete;

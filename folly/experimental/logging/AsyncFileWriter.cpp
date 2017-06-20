@@ -36,13 +36,14 @@ AsyncFileWriter::~AsyncFileWriter() {
   ioThread_.join();
 }
 
-void AsyncFileWriter::writeMessage(StringPiece buffer) {
-  return writeMessage(buffer.str());
+void AsyncFileWriter::writeMessage(StringPiece buffer, uint32_t flags) {
+  return writeMessage(buffer.str(), flags);
 }
 
-void AsyncFileWriter::writeMessage(std::string&& buffer) {
+void AsyncFileWriter::writeMessage(std::string&& buffer, uint32_t flags) {
   auto data = data_.lock();
-  if (data->currentBufferSize >= data->maxBufferBytes) {
+  if ((data->currentBufferSize >= data->maxBufferBytes) &&
+      !(flags & NEVER_DISCARD)) {
     ++data->numDiscarded;
     return;
   }
