@@ -195,7 +195,6 @@ nobase_follyinclude_HEADERS = \
 	futures/FutureSplitter.h \
 	futures/InlineExecutor.h \
 	futures/ManualExecutor.h \
-	futures/OpaqueCallbackShunt.h \
 	futures/Promise-inl.h \
 	futures/Promise.h \
 	futures/QueuedImmediateExecutor.h \
