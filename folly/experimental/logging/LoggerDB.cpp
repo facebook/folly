@@ -15,10 +15,13 @@
  */
 #include <folly/experimental/logging/LoggerDB.h>
 
+#include <set>
+
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/experimental/logging/LogCategory.h>
+#include <folly/experimental/logging/LogHandler.h>
 #include <folly/experimental/logging/LogLevel.h>
 #include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/RateLimiter.h>
@@ -40,7 +43,8 @@ class LoggerDBSingleton {
     //
     // However, we do call db_->cleanupHandlers() to destroy any registered
     // LogHandler objects.  The LogHandlers can be user-defined objects and may
-    // hold resources that should be cleaned up.
+    // hold resources that should be cleaned up.  This also ensures that the
+    // LogHandlers flush all outstanding messages before we exit.
     db_->cleanupHandlers();
   }
 
@@ -171,6 +175,26 @@ void LoggerDB::cleanupHandlers() {
 
   for (auto* category : categories) {
     category->clearHandlers();
+  }
+}
+
+void LoggerDB::flushAllHandlers() {
+  // Build a set of all LogHandlers.  We use a set to avoid calling flush()
+  // more than once on the same handler if it is registered on multiple
+  // different categories.
+  std::set<std::shared_ptr<LogHandler>> handlers;
+  {
+    auto loggersByName = loggersByName_.wlock();
+    for (const auto& entry : *loggersByName) {
+      for (const auto& handler : entry.second->getHandlers()) {
+        handlers.emplace(handler);
+      }
+    }
+  }
+
+  // Call flush() on each handler
+  for (const auto& handler : handlers) {
+    handler->flush();
   }
 }
 

@@ -15,6 +15,7 @@
  */
 #include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/LoggerDB.h>
+#include <folly/experimental/logging/test/TestLogHandler.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -32,6 +33,45 @@ TEST(LoggerDB, lookupNameCanonicalization) {
 
 TEST(LoggerDB, getCategory) {
   LoggerDB db{LoggerDB::TESTING};
+}
+
+TEST(LoggerDB, flushAllHandlers) {
+  LoggerDB db{LoggerDB::TESTING};
+  auto* cat1 = db.getCategory("foo");
+  auto* cat2 = db.getCategory("foo.bar.test");
+  auto* cat3 = db.getCategory("hello.world");
+  auto* cat4 = db.getCategory("other.category");
+
+  auto h1 = std::make_shared<TestLogHandler>();
+  auto h2 = std::make_shared<TestLogHandler>();
+  auto h3 = std::make_shared<TestLogHandler>();
+
+  cat1->addHandler(h1);
+
+  cat2->addHandler(h2);
+  cat2->addHandler(h3);
+
+  cat3->addHandler(h1);
+  cat3->addHandler(h2);
+  cat3->addHandler(h3);
+
+  cat4->addHandler(h1);
+
+  EXPECT_EQ(0, h1->getFlushCount());
+  EXPECT_EQ(0, h2->getFlushCount());
+  EXPECT_EQ(0, h3->getFlushCount());
+
+  // Calling flushAllHandlers() should only flush each handler once,
+  // even when they are attached to multiple categories.
+  db.flushAllHandlers();
+  EXPECT_EQ(1, h1->getFlushCount());
+  EXPECT_EQ(1, h2->getFlushCount());
+  EXPECT_EQ(1, h3->getFlushCount());
+
+  db.flushAllHandlers();
+  EXPECT_EQ(2, h1->getFlushCount());
+  EXPECT_EQ(2, h2->getFlushCount());
+  EXPECT_EQ(2, h3->getFlushCount());
 }
 
 TEST(LoggerDB, processConfigString) {

@@ -25,6 +25,9 @@ namespace folly {
 
 /**
  * A LogHandler that simply keeps a vector of all LogMessages it receives.
+ *
+ * This class is not thread-safe.  It is intended to be used in single-threaded
+ * tests.
  */
 class TestLogHandler : public LogHandler {
  public:
@@ -38,9 +41,16 @@ class TestLogHandler : public LogHandler {
     messages_.emplace_back(message, handlerCategory);
   }
 
-  void flush() override {}
+  void flush() override {
+    ++flushCount_;
+  }
+
+  uint64_t getFlushCount() const {
+    return flushCount_;
+  }
 
  private:
   std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
+  uint64_t flushCount_{0};
 };
 }

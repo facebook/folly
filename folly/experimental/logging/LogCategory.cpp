@@ -112,6 +112,10 @@ void LogCategory::clearHandlers() {
   // LogHandler destructors.
 }
 
+std::vector<std::shared_ptr<LogHandler>> LogCategory::getHandlers() const {
+  return *(handlers_.rlock());
+}
+
 void LogCategory::setLevel(LogLevel level, bool inherit) {
   // We have to set the level through LoggerDB, since we require holding
   // the LoggerDB lock to iterate through our children in case our effective

@@ -150,6 +150,11 @@ class LogCategory {
    */
   void clearHandlers();
 
+  /**
+   * Get the list of LogHandlers attached to this category.
+   */
+  std::vector<std::shared_ptr<LogHandler>> getHandlers() const;
+
   /* Internal methods for use by other parts of the logging library code */
 
   /**
