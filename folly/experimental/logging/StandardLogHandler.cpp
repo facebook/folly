@@ -36,4 +36,8 @@ void StandardLogHandler::handleMessage(
   }
   writer_->writeMessage(formatter_->formatMessage(message, handlerCategory));
 }
+
+void StandardLogHandler::flush() {
+  writer_->flush();
+}
 }

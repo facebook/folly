@@ -62,5 +62,15 @@ class LogWriter {
   virtual void writeMessage(std::string&& buffer, uint32_t flags = 0) {
     writeMessage(folly::StringPiece{buffer}, flags);
   }
+
+  /**
+   * Block until all messages that have already been sent to this LogWriter
+   * have been written.
+   *
+   * Other threads may still call writeMessage() while flush() is running.
+   * writeMessage() calls that did not complete before the flush() call started
+   * will not necessarily be processed by the flush call.
+   */
+  virtual void flush() = 0;
 };
 }

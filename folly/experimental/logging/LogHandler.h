@@ -65,5 +65,19 @@ class LogHandler {
   virtual void handleMessage(
       const LogMessage& message,
       const LogCategory* handlerCategory) = 0;
+
+  /**
+   * Block until all messages that have already been sent to this LogHandler
+   * have been processed.
+   *
+   * For LogHandlers that perform asynchronous processing of log messages,
+   * this ensures that messages already sent to this handler have finished
+   * being processed.
+   *
+   * Other threads may still call handleMessage() while flush() is running.
+   * handleMessage() calls that did not complete before the flush() call
+   * started will not necessarily be processed by the flush call.
+   */
+  virtual void flush() = 0;
 };
 }

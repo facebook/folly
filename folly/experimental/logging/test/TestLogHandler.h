@@ -38,6 +38,8 @@ class TestLogHandler : public LogHandler {
     messages_.emplace_back(message, handlerCategory);
   }
 
+  void flush() override {}
+
  private:
   std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
 };

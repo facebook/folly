@@ -53,6 +53,7 @@ class TestLogWriter : public LogWriter {
       override {
     messages_.emplace_back(buffer.str());
   }
+  void flush() override {}
 
   std::vector<std::string>& getMessages() {
     return messages_;

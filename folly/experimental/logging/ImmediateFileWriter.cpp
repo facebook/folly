@@ -47,4 +47,6 @@ void ImmediateFileWriter::writeMessage(
         errnoStr(errnum));
   }
 }
+
+void ImmediateFileWriter::flush() {}
 }

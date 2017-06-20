@@ -67,6 +67,8 @@ class StandardLogHandler : public LogHandler {
       const LogMessage& message,
       const LogCategory* handlerCategory) override;
 
+  void flush() override;
+
  private:
   std::atomic<LogLevel> level_{LogLevel::NONE};
   std::shared_ptr<LogFormatter> formatter_;

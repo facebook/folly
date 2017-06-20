@@ -63,7 +63,7 @@ class AsyncFileWriter : public LogWriter {
    * Block until the I/O thread has finished writing all messages that
    * were already enqueued when flush() was called.
    */
-  void flush();
+  void flush() override;
 
  private:
   /*
