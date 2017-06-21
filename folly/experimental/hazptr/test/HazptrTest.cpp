@@ -280,3 +280,32 @@ TEST_F(HazptrTest, DestructionTest) {
   }
   last->retire();
 }
+
+TEST_F(HazptrTest, Move) {
+  struct Foo : hazptr_obj_base<Foo> {
+    int a;
+  };
+  for (int i = 0; i < 100; ++i) {
+    Foo* x = new Foo;
+    x->a = i;
+    hazptr_holder hptr0;
+    // Protect object
+    hptr0.reset(x);
+    // Retire object
+    x->retire();
+    // Move constructor - still protected
+    hazptr_holder hptr1(std::move(hptr0));
+    // Self move is no-op - still protected
+    hazptr_holder* phptr1 = &hptr1;
+    CHECK_EQ(phptr1, &hptr1);
+    hptr1 = std::move(*phptr1);
+    // Empty constructor
+    hazptr_holder hptr2(nullptr);
+    // Move assignment - still protected
+    hptr2 = std::move(hptr1);
+    // Access object
+    CHECK_EQ(x->a, i);
+    // Unprotect object - hptr2 is nonempty
+    hptr2.reset();
+  }
+}

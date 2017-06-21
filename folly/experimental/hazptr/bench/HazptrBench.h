@@ -86,12 +86,13 @@ inline uint64_t bench(std::string name, int nthreads, int size, uint64_t base) {
     max = std::max(max, dur);
   }
 
+  const std::string unit = " ns";
   uint64_t avg = sum / reps;
   uint64_t res = min;
   std::cout << name;
-  std::cout << "   " << std::setw(4) << max / ops << " ns";
-  std::cout << "   " << std::setw(4) << avg / ops << " ns";
-  std::cout << "   " << std::setw(4) << res / ops << " ns";
+  std::cout << "   " << std::setw(4) << max / ops << unit;
+  std::cout << "   " << std::setw(4) << avg / ops << unit;
+  std::cout << "   " << std::setw(4) << res / ops << unit;
   if (base) {
     std::cout << " " << std::setw(3) << 100 * base / res << "%";
   }
@@ -109,58 +110,58 @@ const std::string header = "Test_name, Max time, Avg time, Min time";
 /*
 ------------------------------------------- No AMB - No Tc
 1 threads -- 10-item list
-no amb - no tc                  756 ns    688 ns    674 ns
-no amb - no tc - dup            725 ns    688 ns    676 ns
+no amb - no tc                  713 ns    672 ns    648 ns
+no amb - no tc - dup            692 ns    660 ns    648 ns
 1 threads -- 100-item list
-no amb - no tc                 2469 ns   2366 ns   2334 ns
-no amb - no tc - dup           2404 ns   2353 ns   2328 ns
+no amb - no tc                 2167 ns   2146 ns   2133 ns
+no amb - no tc - dup           2210 ns   2153 ns   2133 ns
 10 threads -- 10-item list
-no amb - no tc                  802 ns    764 ns    750 ns
-no amb - no tc - dup            798 ns    776 ns    733 ns
+no amb - no tc                  716 ns    614 ns    285 ns
+no amb - no tc - dup            750 ns    546 ns    285 ns
 10 threads -- 100-item list
-no amb - no tc                 2209 ns   2157 ns   2118 ns
-no amb - no tc - dup           2266 ns   2152 ns   1993 ns
+no amb - no tc                 1923 ns   1482 ns    862 ns
+no amb - no tc - dup           1978 ns   1614 ns   1112 ns
 ----------------------------------------------------------
 ---------------------------------------------- AMB - No TC
 1 threads -- 10-item list
-amb - no tc                     554 ns    538 ns    525 ns
-amb - no tc - dup               540 ns    530 ns    524 ns
+amb - no tc                     519 ns    504 ns    501 ns
+amb - no tc - dup               533 ns    511 ns    500 ns
 1 threads -- 100-item list
-amb - no tc                     731 ns    721 ns    715 ns
-amb - no tc - dup               745 ns    724 ns    714 ns
+amb - no tc                     721 ns    696 ns    689 ns
+amb - no tc - dup               786 ns    718 ns    688 ns
 10 threads -- 10-item list
-amb - no tc                     777 ns    717 ns    676 ns
-amb - no tc - dup               726 ns    669 ns    638 ns
+amb - no tc                     695 ns    565 ns    380 ns
+amb - no tc - dup               710 ns    450 ns    242 ns
 10 threads -- 100-item list
-amb - no tc                    1015 ns    985 ns    955 ns
-amb - no tc - dup              1000 ns    978 ns    952 ns
+amb - no tc                     921 ns    773 ns    573 ns
+amb - no tc - dup               594 ns    441 ns    409 ns
 ----------------------------------------------------------
 ---------------------------------------------- No AMB - TC
 1 threads -- 10-item list
-no amb - tc                     209 ns    203 ns    199 ns
-no amb - tc - dup               210 ns    202 ns    196 ns
+no amb - tc                     182 ns    180 ns    178 ns
+no amb - tc - dup               205 ns    183 ns    178 ns
 1 threads -- 100-item list
-no amb - tc                    1872 ns   1849 ns   1840 ns
-no amb - tc - dup              1902 ns   1865 ns   1838 ns
+no amb - tc                    1756 ns   1697 ns   1670 ns
+no amb - tc - dup              1718 ns   1681 ns   1666 ns
 10 threads -- 10-item list
-no amb - tc                     136 ns     50 ns     23 ns
-no amb - tc - dup               178 ns     85 ns     23 ns
+no amb - tc                     174 ns    120 ns     55 ns
+no amb - tc - dup               174 ns    143 ns    114 ns
 10 threads -- 100-item list
-no amb - tc                    1594 ns    651 ns    201 ns
-no amb - tc - dup              1492 ns    615 ns    203 ns
+no amb - tc                    1480 ns   1058 ns    565 ns
+no amb - tc - dup              1834 ns   1327 ns   1065 ns
 ----------------------------------------------------------
 ------------------------------------------------- AMB - TC
 1 threads -- 10-item list
-amb - tc                         45 ns     44 ns     44 ns
-amb - tc - dup                   46 ns     46 ns     45 ns
+amb - tc                         32 ns     32 ns     31 ns
+amb - tc - dup                   32 ns     32 ns     31 ns
 1 threads -- 100-item list
-amb - tc                        256 ns    246 ns    240 ns
-amb - tc - dup                  242 ns    240 ns    238 ns
+amb - tc                        238 ns    229 ns    221 ns
+amb - tc - dup                  224 ns    222 ns    221 ns
 10 threads -- 10-item list
-amb - tc                        120 ns     35 ns     13 ns
-amb - tc - dup                  104 ns     34 ns      9 ns
+amb - tc                         27 ns     20 ns     13 ns
+amb - tc - dup                   28 ns     22 ns     18 ns
 10 threads -- 100-item list
-amb - tc                        267 ns    129 ns     49 ns
-amb - tc - dup                  766 ns    147 ns     42 ns
+amb - tc                        221 ns    165 ns    116 ns
+amb - tc - dup                  277 ns    169 ns    120 ns
 ----------------------------------------------------------
  */

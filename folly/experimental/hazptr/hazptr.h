@@ -103,17 +103,19 @@ class hazptr_holder {
  public:
   /* Constructor automatically acquires a hazard pointer. */
   explicit hazptr_holder(hazptr_domain& domain = default_hazptr_domain());
+  /* Construct an empty hazptr_holder. */
+  // Note: This diverges from the proposal in P0233R4
+  explicit hazptr_holder(std::nullptr_t);
+
   /* Destructor automatically clears and releases the owned hazard pointer. */
   ~hazptr_holder();
 
-  /* Copy and move constructors and assignment operators are
-   * disallowed because:
-   * - Each hazptr_holder owns exactly one hazard pointer at any time.
-   * - Each hazard pointer may have up to one owner at any time. */
   hazptr_holder(const hazptr_holder&) = delete;
-  hazptr_holder(hazptr_holder&&) = delete;
   hazptr_holder& operator=(const hazptr_holder&) = delete;
-  hazptr_holder& operator=(hazptr_holder&&) = delete;
+  // Note: This diverges from the proposal in P0233R4 which disallows
+  // move constructor and assignment operator.
+  hazptr_holder(hazptr_holder&&) noexcept;
+  hazptr_holder& operator=(hazptr_holder&&) noexcept;
 
   /** Hazard pointer operations */
   /* Returns a protected pointer from the source */
