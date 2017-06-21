@@ -48,7 +48,7 @@ was not a good choice: it can be mathematically proven that a growth factor of
 2 is rigorously the <i>worst</i> possible because it never allows the vector 
 to reuse any of its previously-allocated memory. Despite other compilers
 reducing the growth factor to 1.5, gcc has staunchly maintained its factor of
-2. This makes `std::vector` cache- unfriendly and memory manager unfriendly.
+2. This makes `std::vector` cache-unfriendly and memory manager unfriendly.
 
 To see why that's the case, consider a large vector of capacity C.
 When there's a request to grow the vector, the vector
@@ -98,8 +98,8 @@ current size times the infamous growth constant. Because of this
 setup, `std::vector` has some slack memory at the end much like
 an allocated block has some slack memory at the end.
 
-It doesn't take a rocket surgeon to figure out that an allocator-
-aware `std::vector` would be a marriage made in heaven: the
+It doesn't take a rocket surgeon to figure out that an allocator-aware 
+`std::vector` would be a marriage made in heaven: the
 vector could directly request blocks of "perfect" size from the
 allocator so there would be virtually no slack in the allocator.
 Also, the entire growth strategy could be adjusted to work
@@ -107,8 +107,8 @@ perfectly with allocator's own block growth strategy. That's
 exactly what `fbvector` does - it automatically detects the use
 of jemalloc and adjusts its reallocation strategy accordingly.
 
-But wait, there's more. Many memory allocators do not support in-
-place reallocation, although most of them could. This comes from
+But wait, there's more. Many memory allocators do not support in-place 
+reallocation, although most of them could. This comes from
 the now notorious design of `realloc()` to opaquely perform
 either in-place reallocation or an allocate-memcpy-deallocate
 cycle. Such lack of control subsequently forced all clib-based
@@ -122,9 +122,9 @@ means less slack memory and faster reallocations.
 ***
 
 One particularly sensitive topic about handling C++ values is
-that they are all conservatively considered <i>non-
-relocatable</i>. In contrast, a relocatable value would preserve
-its invariant even if its bits were moved arbitrarily in memory.
+that they are all conservatively considered <i>non-relocatable</i>. 
+In contrast, a relocatable value would preserve its invariant 
+even if its bits were moved arbitrarily in memory.
 For example, an `int32` is relocatable because moving its 4 bytes
 would preserve its actual value, so the address of that value
 does not "matter" to its integrity.
