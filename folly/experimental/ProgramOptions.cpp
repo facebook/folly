@@ -237,6 +237,7 @@ const std::unordered_map<std::string, FlagAdder> gFlagAdders = {
   X("bool",   bool)
   X("int32",  int32_t)
   X("int64",  int64_t)
+  X("uint32", uint32_t)
   X("uint64", uint64_t)
   X("double", double)
   X("string", std::string)
