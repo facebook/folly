@@ -19,7 +19,7 @@
 using namespace folly;
 
 TEST(LogStream, simple) {
-  LogStream ls;
+  LogStream ls{nullptr};
   ls << "test";
   ls << " foobar";
 
@@ -29,7 +29,7 @@ TEST(LogStream, simple) {
 TEST(LogStream, largeMessage) {
   std::string largeString(4096, 'a');
 
-  LogStream ls;
+  LogStream ls{nullptr};
   ls << "prefix ";
   ls << largeString;
   ls << " suffix";

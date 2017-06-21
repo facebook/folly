@@ -27,17 +27,17 @@
  *
  * This macro generally should not be used directly by end users.
  */
-#define FB_LOG_IMPL(logger, level, type, ...)                  \
-  (!(logger).getCategory()->logCheck(level))                   \
-      ? (void)0                                                \
-      : ::folly::LogStreamProcessorT<::folly::isLogLevelFatal( \
-            level)>{(logger).getCategory(),                    \
-                    (level),                                   \
-                    __FILE__,                                  \
-                    __LINE__,                                  \
-                    (type),                                    \
-                    ##__VA_ARGS__} &                           \
-          ::folly::LogStream()
+#define FB_LOG_IMPL(logger, level, type, ...)                          \
+  (!(logger).getCategory()->logCheck(level))                           \
+      ? (void)0                                                        \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} & \
+          ::folly::LogStreamProcessor{(logger).getCategory(),          \
+                                      (level),                         \
+                                      __FILE__,                        \
+                                      __LINE__,                        \
+                                      (type),                          \
+                                      ##__VA_ARGS__}                   \
+              .stream()
 
 /**
  * Log a message to the specified logger.

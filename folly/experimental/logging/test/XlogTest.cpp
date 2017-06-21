@@ -22,6 +22,7 @@
 #include <folly/experimental/logging/test/XlogHeader2.h>
 #include <folly/experimental/logging/xlog.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 using namespace folly;
 using std::make_shared;
@@ -34,6 +35,11 @@ XLOG_SET_CATEGORY_NAME("xlog_test.main_file");
 // Therefore any configuration we do here affects the main log category
 // settings for the entire program.  Fortunately all of the other unit tests do
 // use testing LoggerDB objects.
+
+TEST(Xlog, xlogName) {
+  EXPECT_EQ("xlog_test.main_file", XLOG_GET_CATEGORY_NAME());
+  EXPECT_EQ("xlog_test.main_file", XLOG_GET_CATEGORY()->getName());
+}
 
 TEST(Xlog, xlog) {
   auto handler = make_shared<TestLogHandler>();

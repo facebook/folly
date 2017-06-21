@@ -112,17 +112,25 @@
  *   initialized.  On all subsequent calls, disabled log statements can be
  *   skipped with just a single check of the LogLevel.
  */
-#define XLOG_IMPL(level, type, ...)                                    \
-  (!XLOG_IS_ON_IMPL(level))                                            \
-      ? static_cast<void>(0)                                           \
-      : ::folly::LogStreamProcessorT<::folly::isLogLevelFatal(level)>( \
-            XLOG_GET_CATEGORY_INTERNAL(),                              \
-            (level),                                                   \
-            __FILE__,                                                  \
-            __LINE__,                                                  \
-            (type),                                                    \
-            ##__VA_ARGS__) &                                           \
-          ::folly::LogStream()
+#define XLOG_IMPL(level, type, ...)                                      \
+  (!XLOG_IS_ON_IMPL(level))                                              \
+      ? static_cast<void>(0)                                             \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &   \
+          ::folly::LogStreamProcessor(                                   \
+              [] {                                                       \
+                static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE> \
+                    _xlogCategory_;                                      \
+                return _xlogCategory_.getInfo(                           \
+                    &xlog_detail::xlogFileScopeInfo);                    \
+              }(),                                                       \
+              (level),                                                   \
+              xlog_detail::getXlogCategoryName(__FILE__, 0),             \
+              xlog_detail::isXlogCategoryOverridden(0),                  \
+              __FILE__,                                                  \
+              __LINE__,                                                  \
+              (type),                                                    \
+              ##__VA_ARGS__)                                             \
+              .stream()
 
 /**
  * Check if and XLOG() statement with the given log level would be enabled.
@@ -142,50 +150,26 @@
  * automatically keeps it up-to-date when the category's effective level is
  * changed.
  *
- * Most of this code must live in the macro definition itself, and cannot be
- * moved into a helper function: The getXlogCategoryName() call must be made as
- * part of the macro expansion in order to work correctly.  We also want to
- * avoid calling it whenever possible.  Therefore most of the logic must be
- * done in the macro expansion.
- *
  * See XlogLevelInfo for the implementation details.
  */
-#define XLOG_IS_ON_IMPL(level)                                                 \
-  ([] {                                                                        \
-    static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE> _xlogLevel_;         \
-    const auto _xlogLevelToCheck_ = (level);                                   \
-    /*                                                                         \
-     * Do an initial relaxed check.  If this fails we know the category level  \
-     * is initialized and the log admittance check failed.                     \
-     * Use LIKELY() to optimize for the case of disabled debug statements:     \
-     * we disabled debug statements to be cheap.  If the log message is        \
-     * enabled then this check will still be minimal perf overhead compared to \
-     * the overall cost of logging it.                                         \
-     */                                                                        \
-    if (LIKELY(                                                                \
-            _xlogLevelToCheck_ <                                               \
-            _xlogLevel_.getLevel(                                              \
-                &_xlogFileScopeInfo_, std::memory_order_relaxed))) {           \
-      return false;                                                            \
-    }                                                                          \
-    /*                                                                         \
-     * Load the level value with memory_order_acquire, and check               \
-     * to see if it is initialized or not.                                     \
-     */                                                                        \
-    auto _xlogCurrentLevel_ =                                                  \
-        _xlogLevel_.getLevel(&_xlogFileScopeInfo_, std::memory_order_acquire); \
-    if (UNLIKELY(_xlogCurrentLevel_ == ::folly::LogLevel::UNINITIALIZED)) {    \
-      _xlogCurrentLevel_ = _xlogLevel_.init(                                   \
-          getXlogCategoryName(__FILE__), &_xlogFileScopeInfo_);                \
-    }                                                                          \
-    return _xlogLevelToCheck_ >= _xlogCurrentLevel_;                           \
+#define XLOG_IS_ON_IMPL(level)                                         \
+  ([] {                                                                \
+    static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE> _xlogLevel_; \
+    return _xlogLevel_.check(                                          \
+        (level),                                                       \
+        xlog_detail::getXlogCategoryName(__FILE__, 0),                 \
+        xlog_detail::isXlogCategoryOverridden(0),                      \
+        &xlog_detail::xlogFileScopeInfo);                              \
   }())
 
 /**
  * Get the name of the log category that will be used by XLOG() statements
  * in this file.
  */
-#define XLOG_GET_CATEGORY_NAME() getXlogCategoryName(__FILE__)
+#define XLOG_GET_CATEGORY_NAME()                       \
+  (xlog_detail::isXlogCategoryOverridden(0)            \
+       ? xlog_detail::getXlogCategoryName(__FILE__, 0) \
+       : ::folly::getXlogCategoryNameForFile(__FILE__))
 
 /**
  * Get a pointer to the LogCategory that will be used by XLOG() statements in
@@ -197,34 +181,6 @@
  */
 #define XLOG_GET_CATEGORY() \
   folly::LoggerDB::get()->getCategory(XLOG_GET_CATEGORY_NAME())
-
-/**
- * Internal version of XLOG_GET_CATEGORY() that is used in the XLOG() macro.
- *
- * This macro is used in the XLOG() implementation, and therefore must be as
- * cheap as possible.  It stores the LogCategory* pointer as a local static
- * variable.  Only the first invocation has to look up the log category by
- * name.  Subsequent invocations re-use the already looked-up LogCategory
- * pointer.
- *
- * This is only safe to call after XlogLevelInfo::init() has been called.
- *
- * Most of this code must live in the macro definition itself, and cannot be
- * moved into a helper function: The getXlogCategoryName() call must be made as
- * part of the macro expansion in order to work correctly.  We also want to
- * avoid calling it whenever possible.  Therefore most of the logic must be
- * done in the macro expansion.
- *
- * See XlogCategoryInfo for the implementation details.
- */
-#define XLOG_GET_CATEGORY_INTERNAL()                                         \
-  [] {                                                                       \
-    static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE> _xlogCategory_; \
-    if (!_xlogCategory_.isInitialized()) {                                   \
-      return _xlogCategory_.init(getXlogCategoryName(__FILE__));             \
-    }                                                                        \
-    return _xlogCategory_.getCategory(&_xlogFileScopeInfo_);                 \
-  }()
 
 /**
  * XLOG_SET_CATEGORY_NAME() can be used to explicitly define the log category
@@ -239,23 +195,28 @@
  * XLOG_SET_CATEGORY_NAME() cannot be used inside header files.
  */
 #ifdef __INCLUDE_LEVEL__
-#define XLOG_SET_CATEGORY_NAME(category)                              \
-  namespace {                                                         \
-  static_assert(                                                      \
-      __INCLUDE_LEVEL__ == 0,                                         \
-      "XLOG_SET_CATEGORY_NAME() should not be used in header files"); \
-  inline std::string getXlogCategoryName(const char*) {               \
-    return category;                                                  \
-  }                                                                   \
-  }
+#define XLOG_SET_CATEGORY_CHECK \
+  static_assert(                \
+      __INCLUDE_LEVEL__ == 0,   \
+      "XLOG_SET_CATEGORY_NAME() should not be used in header files");
 #else
-#define XLOG_SET_CATEGORY_NAME(category)                \
-  namespace {                                           \
-  inline std::string getXlogCategoryName(const char*) { \
-    return category;                                    \
-  }                                                     \
-  }
+#define XLOG_SET_CATEGORY_CHECK
 #endif
+
+#define XLOG_SET_CATEGORY_NAME(category)                   \
+  namespace {                                              \
+  namespace xlog_detail {                                  \
+  XLOG_SET_CATEGORY_CHECK                                  \
+  constexpr inline folly::StringPiece getXlogCategoryName( \
+      folly::StringPiece,                                  \
+      int) {                                               \
+    return category;                                       \
+  }                                                        \
+  constexpr inline bool isXlogCategoryOverridden(int) {    \
+    return true;                                           \
+  }                                                        \
+  }                                                        \
+  }
 
 /**
  * XLOG_IS_IN_HEADER_FILE evaluates to false if we can definitively tell if we
@@ -289,35 +250,62 @@ class XlogFileScopeInfo {
  * used during dynamic object initialization before main().
  */
 template <bool IsInHeaderFile>
-struct XlogLevelInfo {
+class XlogLevelInfo {
  public:
-  inline LogLevel getLevel(XlogFileScopeInfo*, std::memory_order order) {
-    return level_.load(order);
-  }
+  bool check(
+      LogLevel levelToCheck,
+      folly::StringPiece categoryName,
+      bool isOverridden,
+      XlogFileScopeInfo*) {
+    // Do an initial relaxed check.  If this fails we know the category level
+    // is initialized and the log admittance check failed.
+    // Use LIKELY() to optimize for the case of disabled debug statements:
+    // we disabled debug statements to be cheap.  If the log message is
+    // enabled then this check will still be minimal perf overhead compared to
+    // the overall cost of logging it.
+    if (LIKELY(levelToCheck < level_.load(std::memory_order_relaxed))) {
+      return false;
+    }
 
-  inline LogLevel init(folly::StringPiece categoryName, XlogFileScopeInfo*) {
-    return LoggerDB::get()->xlogInit(categoryName, &level_, nullptr);
+    // If we are still here, then either:
+    // - The log level check actually passed, or
+    // - level_ has not been initialized yet, and we have to initialize it and
+    //   then re-perform the check.
+    //
+    // Do this work in a separate helper method.  It is intentionally defined
+    // in the xlog.cpp file to avoid inlining, to reduce the amount of code
+    // emitted for each XLOG() statement.
+    auto currentLevel = loadLevelFull(categoryName, isOverridden);
+    return levelToCheck >= currentLevel;
   }
 
  private:
+  LogLevel loadLevelFull(folly::StringPiece categoryName, bool isOverridden);
+
+  // XlogLevelInfo objects are always defined with static storage.
   // This member will always be zero-initialized on program start.
   std::atomic<LogLevel> level_;
 };
 
 template <bool IsInHeaderFile>
-struct XlogCategoryInfo {
+class XlogCategoryInfo {
  public:
   bool isInitialized() const {
     return isInitialized_.load(std::memory_order_acquire);
   }
 
-  LogCategory* init(folly::StringPiece categoryName) {
-    return LoggerDB::get()->xlogInitCategory(
-        categoryName, &category_, &isInitialized_);
-  }
+  LogCategory* init(folly::StringPiece categoryName, bool isOverridden);
 
   LogCategory* getCategory(XlogFileScopeInfo*) {
     return category_;
+  }
+
+  /**
+   * Get a pointer to pass into the LogStreamProcessor constructor,
+   * so that it is able to look up the LogCategory information.
+   */
+  XlogCategoryInfo<IsInHeaderFile>* getInfo(XlogFileScopeInfo*) {
+    return this;
   }
 
  private:
@@ -333,20 +321,33 @@ struct XlogCategoryInfo {
  * for the entire file, rather than defining one for each XLOG() statement.
  */
 template <>
-struct XlogLevelInfo<false> {
+class XlogLevelInfo<false> {
  public:
-  inline LogLevel getLevel(
-      XlogFileScopeInfo* fileScopeInfo,
-      std::memory_order order) {
-    return fileScopeInfo->level.load(order);
+  static bool check(
+      LogLevel levelToCheck,
+      folly::StringPiece categoryName,
+      bool isOverridden,
+      XlogFileScopeInfo* fileScopeInfo) {
+    // As above in the non-specialized XlogFileScopeInfo code, do a simple
+    // relaxed check first.
+    if (LIKELY(
+            levelToCheck <
+            fileScopeInfo->level.load(::std::memory_order_relaxed))) {
+      return false;
+    }
+
+    // If we are still here we the file-scope log level either needs to be
+    // initalized, or the log level check legitimately passed.
+    auto currentLevel =
+        loadLevelFull(categoryName, isOverridden, fileScopeInfo);
+    return levelToCheck >= currentLevel;
   }
 
-  inline LogLevel init(
+ private:
+  static LogLevel loadLevelFull(
       folly::StringPiece categoryName,
-      XlogFileScopeInfo* fileScopeInfo) {
-    return LoggerDB::get()->xlogInit(
-        categoryName, &fileScopeInfo->level, &fileScopeInfo->category);
-  }
+      bool isOverridden,
+      XlogFileScopeInfo* fileScopeInfo);
 };
 
 /**
@@ -356,20 +357,14 @@ struct XlogLevelInfo<false> {
  * statement.
  */
 template <>
-struct XlogCategoryInfo<false> {
+class XlogCategoryInfo<false> {
  public:
-  constexpr bool isInitialized() const {
-    // XlogLevelInfo<false>::init() is always called before XlogCategoryInfo
-    // is used, and it will have already initialized fileScopeInfo.
-    // Therefore we never have to check if it is initialized yet here.
-    return true;
-  }
-  [[noreturn]] LogCategory* init(folly::StringPiece /* categoryName */) {
-    // This method is never used given that isInitialized() always returns true
-    ::std::abort();
-  }
-  LogCategory* getCategory(XlogFileScopeInfo* fileScopeInfo) {
-    return fileScopeInfo->category;
+  /**
+   * Get a pointer to pass into the LogStreamProcessor constructor,
+   * so that it is able to look up the LogCategory information.
+   */
+  XlogFileScopeInfo* getInfo(XlogFileScopeInfo* fileScopeInfo) {
+    return fileScopeInfo;
   }
 };
 #endif
@@ -390,17 +385,45 @@ std::string getXlogCategoryNameForFile(folly::StringPiece filename);
  * implementation of the following functions and variables.
  */
 namespace {
+namespace xlog_detail {
 /**
- * The default getXlogCategoryName() implementation.
- * This will be used if XLOG_SET_CATEGORY_NAME() has not been used yet.
+ * The default getXlogCategoryName() function.
  *
- * This is a template purely so that XLOG_SET_CATEGORY_NAME() can define a more
- * specific version if desired, allowing XLOG_SET_CATEGORY_NAME() to override
- * this implementation once it has been used.
+ * By default this simply returns the filename argument passed in.
+ * The default isXlogCategoryOverridden() function returns false, indicating
+ * that the return value from getXlogCategoryName() needs to be converted
+ * using getXlogCategoryNameForFile().
+ *
+ * These are two separate steps because getXlogCategoryName() itself needs to
+ * remain constexpr--it is always evaluated in XLOG() statements, but we only
+ * want to call getXlogCategoryNameForFile() the very first time through, when
+ * we have to initialize the LogCategory object.
+ *
+ * This is a template function purely so that XLOG_SET_CATEGORY_NAME() can
+ * define a more specific version of this function that will take precedence
+ * over this one.
  */
 template <typename T>
-inline std::string getXlogCategoryName(const T* filename) {
-  return ::folly::getXlogCategoryNameForFile(filename);
+constexpr inline folly::StringPiece getXlogCategoryName(
+    folly::StringPiece filename,
+    T) {
+  return filename;
+}
+
+/**
+ * The default isXlogCategoryOverridden() function.
+ *
+ * This returns false indicating that the category name has not been
+ * overridden, so getXlogCategoryName() returns a raw filename that needs
+ * to be translated with getXlogCategoryNameForFile().
+ *
+ * This is a template function purely so that XLOG_SET_CATEGORY_NAME() can
+ * define a more specific version of this function that will take precedence
+ * over this one.
+ */
+template <typename T>
+constexpr inline bool isXlogCategoryOverridden(T) {
+  return false;
 }
 
 /**
@@ -411,5 +434,6 @@ inline std::string getXlogCategoryName(const T* filename) {
  * entire .cpp file, rather than needing a separate copy for each XLOG()
  * statement.
  */
-::folly::XlogFileScopeInfo _xlogFileScopeInfo_;
+::folly::XlogFileScopeInfo xlogFileScopeInfo;
+}
 }

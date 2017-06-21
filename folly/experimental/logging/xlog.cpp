@@ -85,4 +85,51 @@ std::string getXlogCategoryNameForFile(StringPiece filename) {
   }
   return categoryName;
 }
+
+template <bool IsInHeaderFile>
+LogLevel XlogLevelInfo<IsInHeaderFile>::loadLevelFull(
+    folly::StringPiece categoryName,
+    bool isOverridden) {
+  auto currentLevel = level_.load(std::memory_order_acquire);
+  if (UNLIKELY(currentLevel == ::folly::LogLevel::UNINITIALIZED)) {
+    return LoggerDB::get()->xlogInit(
+        isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
+        &level_,
+        nullptr);
+  }
+  return currentLevel;
+}
+
+template <bool IsInHeaderFile>
+LogCategory* XlogCategoryInfo<IsInHeaderFile>::init(
+    folly::StringPiece categoryName,
+    bool isOverridden) {
+  return LoggerDB::get()->xlogInitCategory(
+      isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
+      &category_,
+      &isInitialized_);
+}
+
+#ifdef __INCLUDE_LEVEL__
+LogLevel XlogLevelInfo<false>::loadLevelFull(
+    folly::StringPiece categoryName,
+    bool isOverridden,
+    XlogFileScopeInfo* fileScopeInfo) {
+  auto currentLevel = fileScopeInfo->level.load(std::memory_order_acquire);
+  if (UNLIKELY(currentLevel == ::folly::LogLevel::UNINITIALIZED)) {
+    return LoggerDB::get()->xlogInit(
+        isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
+        &fileScopeInfo->level,
+        &fileScopeInfo->category);
+  }
+  return currentLevel;
+}
+#endif
+
+// Explicitly instantiations of XlogLevelInfo and XlogCategoryInfo
+// If __INCLUDE_LEVEL__ is not available only the "true" variants ever get
+// used, because we cannot determine if we are ever in the .cpp file being
+// compiled or not.
+template class XlogLevelInfo<true>;
+template class XlogCategoryInfo<true>;
 }

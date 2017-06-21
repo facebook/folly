@@ -49,6 +49,8 @@ class LogStreamBuffer : public std::streambuf {
   std::string str_;
 };
 
+class LogStreamProcessor;
+
 /**
  * A std::ostream implementation for use by the logging macros.
  *
@@ -62,7 +64,7 @@ class LogStream : public std::ostream {
   // each FB_LOG() or XLOG() statement.  Inlining them just causes extra code
   // bloat, with minimal benefit--for debug log statements these never even get
   // called in the common case where the log statement is disabled.
-  LogStream();
+  explicit LogStream(LogStreamProcessor* processor);
   ~LogStream();
 
   bool empty() const {
@@ -73,7 +75,12 @@ class LogStream : public std::ostream {
     return buffer_.extractString();
   }
 
+  LogStreamProcessor* getProcessor() const {
+    return processor_;
+  }
+
  private:
   LogStreamBuffer buffer_;
+  LogStreamProcessor* const processor_;
 };
 }

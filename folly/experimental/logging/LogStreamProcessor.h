@@ -15,17 +15,17 @@
  */
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/Demangle.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogMessage.h>
+#include <folly/experimental/logging/LogStream.h>
 #include <cstdlib>
 
 namespace folly {
-
-class LogStream;
 
 /*
  * Helper functions for fallback-formatting of arguments if folly::format()
@@ -70,6 +70,10 @@ inline void fallbackFormatOneArg(std::string* str, const Arg* arg, long) {
 }
 }
 
+template <bool IsInHeaderFile>
+class XlogCategoryInfo;
+class XlogFileScopeInfo;
+
 /**
  * LogStreamProcessor receives a LogStream and logs it.
  *
@@ -104,28 +108,39 @@ class LogStreamProcessor {
       AppendType) noexcept;
 
   /**
-   * LogStreamProcessor constructor for use with a LOG() macro with arguments
-   * to be concatenated with folly::to<std::string>()
+   * LogStreamProcessor constructors for use with XLOG() macros with no extra
+   * arguments.
    *
-   * Note that the filename argument is not copied.  The caller should ensure
-   * that it points to storage that will remain valid for the lifetime of the
-   * LogStreamProcessor.  (This is always the case for the __FILE__
-   * preprocessor macro.)
+   * These are defined separately from the above constructor so that the work
+   * of initializing the XLOG LogCategory data is done in a separate function
+   * body defined in LogStreamProcessor.cpp.  We intentionally want to avoid
+   * inlining this work at every XLOG() statement, to reduce the emitted code
+   * size.
    */
-  template <typename... Args>
   LogStreamProcessor(
-      const LogCategory* category,
+      XlogCategoryInfo<true>* categoryInfo,
       LogLevel level,
-      const char* filename,
+      folly::StringPiece categoryName,
+      bool isCategoryNameOverridden,
+      folly::StringPiece filename,
       unsigned int lineNumber,
-      AppendType,
-      Args&&... args) noexcept
-      : LogStreamProcessor{category,
-                           level,
-                           filename,
-                           lineNumber,
-                           INTERNAL,
-                           createLogString(std::forward<Args>(args)...)} {}
+      AppendType) noexcept;
+  LogStreamProcessor(
+      XlogFileScopeInfo* fileScopeInfo,
+      LogLevel level,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      AppendType) noexcept;
+  LogStreamProcessor(
+      XlogFileScopeInfo* fileScopeInfo,
+      LogLevel level,
+      folly::StringPiece /* categoryName */,
+      bool /* isCategoryNameOverridden */,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      AppendType) noexcept
+      : LogStreamProcessor(fileScopeInfo, level, filename, lineNumber, APPEND) {
+  }
 
   /**
    * LogStreamProcessor constructor for use with a LOG() macro with arguments
@@ -140,17 +155,128 @@ class LogStreamProcessor {
   LogStreamProcessor(
       const LogCategory* category,
       LogLevel level,
-      const char* filename,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      AppendType,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            category,
+            level,
+            filename,
+            lineNumber,
+            INTERNAL,
+            createLogString(std::forward<Args>(args)...)) {}
+
+  /**
+   * Versions of the above constructor for use in XLOG() statements.
+   */
+  template <typename... Args>
+  LogStreamProcessor(
+      XlogCategoryInfo<true>* categoryInfo,
+      LogLevel level,
+      folly::StringPiece categoryName,
+      bool isCategoryNameOverridden,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      AppendType,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            categoryInfo,
+            level,
+            categoryName,
+            isCategoryNameOverridden,
+            filename,
+            lineNumber,
+            INTERNAL,
+            createLogString(std::forward<Args>(args)...)) {}
+  template <typename... Args>
+  LogStreamProcessor(
+      XlogFileScopeInfo* fileScopeInfo,
+      LogLevel level,
+      folly::StringPiece /* categoryName */,
+      bool /* isCategoryNameOverridden */,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      AppendType,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            fileScopeInfo,
+            level,
+            filename,
+            lineNumber,
+            INTERNAL,
+            createLogString(std::forward<Args>(args)...)) {}
+
+  /**
+   * LogStreamProcessor constructor for use with a LOG() macro with arguments
+   * to be concatenated with folly::to<std::string>()
+   *
+   * Note that the filename argument is not copied.  The caller should ensure
+   * that it points to storage that will remain valid for the lifetime of the
+   * LogStreamProcessor.  (This is always the case for the __FILE__
+   * preprocessor macro.)
+   */
+  template <typename... Args>
+  LogStreamProcessor(
+      const LogCategory* category,
+      LogLevel level,
+      folly::StringPiece filename,
       unsigned int lineNumber,
       FormatType,
       folly::StringPiece fmt,
       Args&&... args) noexcept
-      : LogStreamProcessor{category,
-                           level,
-                           filename,
-                           lineNumber,
-                           INTERNAL,
-                           formatLogString(fmt, std::forward<Args>(args)...)} {}
+      : LogStreamProcessor(
+            category,
+            level,
+            filename,
+            lineNumber,
+            INTERNAL,
+            formatLogString(fmt, std::forward<Args>(args)...)) {}
+
+  /**
+   * Versions of the above constructor for use in XLOG() statements.
+   */
+  template <typename... Args>
+  LogStreamProcessor(
+      XlogCategoryInfo<true>* categoryInfo,
+      LogLevel level,
+      folly::StringPiece categoryName,
+      bool isCategoryNameOverridden,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      FormatType,
+      folly::StringPiece fmt,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            categoryInfo,
+            level,
+            categoryName,
+            isCategoryNameOverridden,
+            filename,
+            lineNumber,
+            INTERNAL,
+            formatLogString(fmt, std::forward<Args>(args)...)) {}
+
+  template <typename... Args>
+  LogStreamProcessor(
+      XlogFileScopeInfo* fileScopeInfo,
+      LogLevel level,
+      folly::StringPiece /* categoryName */,
+      bool /* isCategoryNameOverridden */,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      FormatType,
+      folly::StringPiece fmt,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            fileScopeInfo,
+            level,
+            filename,
+            lineNumber,
+            INTERNAL,
+            formatLogString(fmt, std::forward<Args>(args)...)) {}
+
+  ~LogStreamProcessor() noexcept;
 
   /**
    * This version of operator&() is typically used when the user specifies
@@ -166,12 +292,34 @@ class LogStreamProcessor {
    */
   void operator&(LogStream&& stream) noexcept;
 
+  std::ostream& stream() noexcept {
+    return stream_;
+  }
+
+  void logNow() noexcept;
+
  private:
   enum InternalType { INTERNAL };
   LogStreamProcessor(
       const LogCategory* category,
       LogLevel level,
-      const char* filename,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      InternalType,
+      std::string&& msg) noexcept;
+  LogStreamProcessor(
+      XlogCategoryInfo<true>* categoryInfo,
+      LogLevel level,
+      folly::StringPiece categoryName,
+      bool isCategoryNameOverridden,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      InternalType,
+      std::string&& msg) noexcept;
+  LogStreamProcessor(
+      XlogFileScopeInfo* fileScopeInfo,
+      LogLevel level,
+      folly::StringPiece filename,
       unsigned int lineNumber,
       InternalType,
       std::string&& msg) noexcept;
@@ -187,7 +335,7 @@ class LogStreamProcessor {
    * exceptions, but instead just log an error string when something goes wrong.
    */
   template <typename... Args>
-  std::string createLogString(Args&&... args) noexcept {
+  FOLLY_NOINLINE std::string createLogString(Args&&... args) noexcept {
     try {
       return folly::to<std::string>(std::forward<Args>(args)...);
     } catch (const std::exception& ex) {
@@ -212,7 +360,7 @@ class LogStreamProcessor {
    * exceptions, but instead just log an error string when something goes wrong.
    */
   template <typename... Args>
-  std::string formatLogString(
+  FOLLY_NOINLINE std::string formatLogString(
       folly::StringPiece fmt,
       const Args&... args) noexcept {
     try {
@@ -261,44 +409,58 @@ class LogStreamProcessor {
   folly::StringPiece filename_;
   unsigned int lineNumber_;
   std::string message_;
+  LogStream stream_;
 };
 
-/*
- * This template subclass of LogStreamProcessor exists primarily so that
- * we can specify the [[noreturn]] attribute correctly on operator&()
- * This lets the compiler know that code after LOG(FATAL) is unreachable.
+/**
+ * LogStreamVoidify() is a helper class used in the FB_LOG() and XLOG() macros.
+ *
+ * It's only purpose is to provide an & operator overload that returns void.
+ * This allows the log macros to expand roughly to:
+ *
+ *   (logEnabled) ? (void)0
+ *                : LogStreamVoidify{} & LogStreamProcessor{}.stream() << "msg";
+ *
+ * This enables the right hand (':') side of the ternary ? expression to have a
+ * void type, and allows various streaming operator expressions to be placed on
+ * the right hand side of the expression.
+ *
+ * Operator & is used since it has higher precedence than ?:, but lower
+ * precedence than <<.
+ *
+ * This class is templated on whether the log message is fatal so that the
+ * operator& can be declared [[noreturn]] for fatal log messages.  This
+ * prevents the compiler from complaining about functions that do not return a
+ * value after a fatal log statement.
  */
 template <bool Fatal>
-class LogStreamProcessorT : public LogStreamProcessor {
+class LogStreamVoidify {
  public:
-  using LogStreamProcessor::LogStreamProcessor;
-
-  void operator&(std::ostream& stream) noexcept {
-    LogStreamProcessor::operator&(stream);
-  }
-  void operator&(LogStream&& stream) noexcept {
-    LogStreamProcessor::operator&(std::move(stream));
-  }
+  /**
+   * In the default (non-fatal) case, the & operator implementation is a no-op.
+   *
+   * We perform the actual logging in the LogStreamProcessor destructor.  It
+   * feels slightly hacky to perform logging in the LogStreamProcessor
+   * destructor instead of here, since the LogStreamProcessor destructor is not
+   * evaluated until the very end of the statement.  In practice log
+   * statements really shouldn't be in the middle of larger statements with
+   * other side effects, so this ordering distinction shouldn't make much
+   * difference.
+   *
+   * However, by keeping this function a no-op we reduce the amount of code
+   * generated for log statements.  This function call can be completely
+   * eliminated by the compiler, leaving only the LogStreamProcessor destructor
+   * invocation, which cannot be eliminated.
+   */
+  void operator&(std::ostream&)noexcept {}
 };
 
 template <>
-class LogStreamProcessorT<true> : public LogStreamProcessor {
+class LogStreamVoidify<true> {
  public:
-  using LogStreamProcessor::LogStreamProcessor;
-
-  [[noreturn]] void operator&(std::ostream& stream) noexcept {
-    LogStreamProcessor::operator&(stream);
-    // We'll never actually reach here: the LogCategory code is responsible for
-    // crashing on FATAL messages.  However, add an abort() call so the
-    // compiler knows we really cannot return here.
-    std::abort();
-  }
-  [[noreturn]] void operator&(LogStream&& stream) noexcept {
-    LogStreamProcessor::operator&(std::move(stream));
-    // We'll never actually reach here: the LogCategory code is responsible for
-    // crashing on FATAL messages.  However, add an abort() call so the
-    // compiler knows we really cannot return here.
-    std::abort();
-  }
+  /**
+   * A specialized noreturn version of operator&() for fatal log statements.
+   */
+  [[noreturn]] void operator&(std::ostream&);
 };
 }

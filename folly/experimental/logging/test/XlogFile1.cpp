@@ -18,6 +18,6 @@
 
 namespace logging_test {
 void testXlogFile1Dbg1(folly::StringPiece msg) {
-  XLOG(DBG1, "file1: ", msg);
+  XLOG(DBG1) << "file1: " << msg;
 }
 }
