@@ -198,6 +198,23 @@ void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
   fnRunner_->setMaxReadAtOnce(maxAtOnce);
 }
 
+void EventBase::checkIsInEventBaseThread() const {
+  auto evbTid = loopThread_.load(std::memory_order_relaxed);
+  if (evbTid == std::thread::id()) {
+    return;
+  }
+
+  // Using getThreadName(evbTid) instead of name_ will work also if
+  // the thread name is set outside of EventBase (and name_ is empty).
+  auto curTid = std::this_thread::get_id();
+  CHECK(evbTid == curTid)
+      << "This logic must be executed in the event base thread. "
+      << "Event base thread name: \""
+      << folly::getThreadName(evbTid).value_or("")
+      << "\", current thread name: \""
+      << folly::getThreadName(curTid).value_or("") << "\"";
+}
+
 // Set smoothing coefficient for loop load average; input is # of milliseconds
 // for exp(-1) decay.
 void EventBase::setLoadAvgMsec(std::chrono::milliseconds ms) {
@@ -486,7 +503,7 @@ void EventBase::terminateLoopSoon() {
 }
 
 void EventBase::runInLoop(LoopCallback* callback, bool thisIteration) {
-  DCHECK(isInEventBaseThread());
+  dcheckIsInEventBaseThread();
   callback->cancelLoopCallback();
   callback->context_ = RequestContext::saveContext();
   if (runOnceCallbacks_ != nullptr && thisIteration) {
@@ -497,7 +514,7 @@ void EventBase::runInLoop(LoopCallback* callback, bool thisIteration) {
 }
 
 void EventBase::runInLoop(Func cob, bool thisIteration) {
-  DCHECK(isInEventBaseThread());
+  dcheckIsInEventBaseThread();
   auto wrapper = new FunctionLoopCallback(std::move(cob));
   wrapper->context_ = RequestContext::saveContext();
   if (runOnceCallbacks_ != nullptr && thisIteration) {
@@ -514,7 +531,7 @@ void EventBase::runOnDestruction(LoopCallback* callback) {
 }
 
 void EventBase::runBeforeLoop(LoopCallback* callback) {
-  DCHECK(isInEventBaseThread());
+  dcheckIsInEventBaseThread();
   callback->cancelLoopCallback();
   runBeforeLoopCallbacks_.push_back(*callback);
 }
@@ -697,7 +714,7 @@ void EventBase::detachTimeoutManager(AsyncTimeout* obj) {
 
 bool EventBase::scheduleTimeout(AsyncTimeout* obj,
                                  TimeoutManager::timeout_type timeout) {
-  assert(isInEventBaseThread());
+  dcheckIsInEventBaseThread();
   // Set up the timeval and add the event
   struct timeval tv;
   tv.tv_sec = long(timeout.count() / 1000LL);
@@ -713,7 +730,7 @@ bool EventBase::scheduleTimeout(AsyncTimeout* obj,
 }
 
 void EventBase::cancelTimeout(AsyncTimeout* obj) {
-  assert(isInEventBaseThread());
+  dcheckIsInEventBaseThread();
   struct event* ev = obj->getEvent();
   if (EventUtil::isEventRegistered(ev)) {
     event_del(ev);
@@ -721,7 +738,7 @@ void EventBase::cancelTimeout(AsyncTimeout* obj) {
 }
 
 void EventBase::setName(const std::string& name) {
-  assert(isInEventBaseThread());
+  dcheckIsInEventBaseThread();
   name_ = name;
 
   if (isRunning()) {
@@ -731,7 +748,7 @@ void EventBase::setName(const std::string& name) {
 }
 
 const std::string& EventBase::getName() {
-  assert(isInEventBaseThread());
+  dcheckIsInEventBaseThread();
   return name_;
 }
 

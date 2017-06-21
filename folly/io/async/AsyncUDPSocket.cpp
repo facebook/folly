@@ -39,7 +39,7 @@ AsyncUDPSocket::AsyncUDPSocket(EventBase* evb)
       eventBase_(evb),
       fd_(-1),
       readCallback_(nullptr) {
-  DCHECK(evb->isInEventBaseThread());
+  evb->dcheckIsInEventBaseThread();
 }
 
 AsyncUDPSocket::~AsyncUDPSocket() {
@@ -201,7 +201,7 @@ void AsyncUDPSocket::pauseRead() {
 }
 
 void AsyncUDPSocket::close() {
-  DCHECK(eventBase_->isInEventBaseThread());
+  eventBase_->dcheckIsInEventBaseThread();
 
   if (readCallback_) {
     auto cob = readCallback_;

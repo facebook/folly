@@ -110,7 +110,7 @@ void EventHandler::attachEventBase(EventBase* eventBase) {
   assert(event_.ev_base == nullptr);
   assert(!isHandlerRegistered());
   // This must be invoked from the EventBase's thread
-  assert(eventBase->isInEventBaseThread());
+  eventBase->dcheckIsInEventBaseThread();
 
   setEventBase(eventBase);
 }

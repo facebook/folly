@@ -182,7 +182,9 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
     VLOG(10) << "AsyncServerSocket::stopAccepting " << this <<
               handler.socket_;
   }
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 
   // When destroy is called, unregister and close the socket immediately.
   accepting_ = false;
@@ -244,7 +246,7 @@ void AsyncServerSocket::destroy() {
 
 void AsyncServerSocket::attachEventBase(EventBase *eventBase) {
   assert(eventBase_ == nullptr);
-  assert(eventBase->isInEventBaseThread());
+  eventBase->dcheckIsInEventBaseThread();
 
   eventBase_ = eventBase;
   for (auto& handler : sockets_) {
@@ -254,7 +256,7 @@ void AsyncServerSocket::attachEventBase(EventBase *eventBase) {
 
 void AsyncServerSocket::detachEventBase() {
   assert(eventBase_ != nullptr);
-  assert(eventBase_->isInEventBaseThread());
+  eventBase_->dcheckIsInEventBaseThread();
   assert(!accepting_);
 
   eventBase_ = nullptr;
@@ -264,7 +266,9 @@ void AsyncServerSocket::detachEventBase() {
 }
 
 void AsyncServerSocket::useExistingSockets(const std::vector<int>& fds) {
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 
   if (sockets_.size() > 0) {
     throw std::invalid_argument(
@@ -328,7 +332,9 @@ void AsyncServerSocket::bindSocket(
 }
 
 void AsyncServerSocket::bind(const SocketAddress& address) {
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 
   // useExistingSocket() may have been called to initialize socket_ already.
   // However, in the normal case we need to create a new socket now.
@@ -505,7 +511,9 @@ void AsyncServerSocket::bind(uint16_t port) {
 }
 
 void AsyncServerSocket::listen(int backlog) {
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 
   // Start listening
   for (auto& handler : sockets_) {
@@ -539,7 +547,9 @@ std::vector<SocketAddress> AsyncServerSocket::getAddresses()
 void AsyncServerSocket::addAcceptCallback(AcceptCallback *callback,
                                            EventBase *eventBase,
                                            uint32_t maxAtOnce) {
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 
   // If this is the first accept callback and we are supposed to be accepting,
   // start accepting once the callback is installed.
@@ -585,7 +595,9 @@ void AsyncServerSocket::addAcceptCallback(AcceptCallback *callback,
 
 void AsyncServerSocket::removeAcceptCallback(AcceptCallback *callback,
                                               EventBase *eventBase) {
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 
   // Find the matching AcceptCallback.
   // We just do a simple linear search; we don't expect removeAcceptCallback()
@@ -648,7 +660,9 @@ void AsyncServerSocket::removeAcceptCallback(AcceptCallback *callback,
 }
 
 void AsyncServerSocket::startAccepting() {
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
 
   accepting_ = true;
   if (callbacks_.empty()) {
@@ -666,7 +680,9 @@ void AsyncServerSocket::startAccepting() {
 }
 
 void AsyncServerSocket::pauseAccepting() {
-  assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
+  }
   accepting_ = false;
   for (auto& handler : sockets_) {
    handler. unregisterHandler();
@@ -1023,7 +1039,8 @@ void AsyncServerSocket::backoffTimeoutExpired() {
   // the backoff timeout.
   assert(accepting_);
   // We can't be detached from the EventBase without being paused
-  assert(eventBase_ != nullptr && eventBase_->isInEventBaseThread());
+  assert(eventBase_ != nullptr);
+  eventBase_->dcheckIsInEventBaseThread();
 
   // If all of the callbacks were removed, we shouldn't re-enable accepts
   if (callbacks_.empty()) {

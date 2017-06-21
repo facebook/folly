@@ -779,7 +779,7 @@ template<typename MessageT>
 void NotificationQueue<MessageT>::Consumer::init(
     EventBase* eventBase,
     NotificationQueue* queue) {
-  assert(eventBase->isInEventBaseThread());
+  eventBase->dcheckIsInEventBaseThread();
   assert(queue_ == nullptr);
   assert(!isHandlerRegistered());
   queue->checkPid();

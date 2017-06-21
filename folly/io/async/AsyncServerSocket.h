@@ -588,7 +588,9 @@ class AsyncServerSocket : public DelayedDestruction
    * socket's primary EventBase.
    */
   int64_t getNumPendingMessagesInQueue() const {
-    assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+    if (eventBase_) {
+      eventBase_->dcheckIsInEventBaseThread();
+    }
     int64_t numMsgs = 0;
     for (const auto& callback : callbacks_) {
       numMsgs += callback.consumer->getQueue()->size();

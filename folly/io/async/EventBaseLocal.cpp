@@ -31,13 +31,13 @@ EventBaseLocalBase::~EventBaseLocalBase() {
 }
 
 void* EventBaseLocalBase::getVoid(EventBase& evb) {
-  DCHECK(evb.isInEventBaseThread());
+  evb.dcheckIsInEventBaseThread();
 
   return folly::get_default(evb.localStorage_, key_, {}).get();
 }
 
 void EventBaseLocalBase::erase(EventBase& evb) {
-  DCHECK(evb.isInEventBaseThread());
+  evb.dcheckIsInEventBaseThread();
 
   evb.localStorage_.erase(key_);
   evb.localStorageToDtor_.erase(this);
@@ -48,7 +48,7 @@ void EventBaseLocalBase::erase(EventBase& evb) {
 }
 
 void EventBaseLocalBase::onEventBaseDestruction(EventBase& evb) {
-  DCHECK(evb.isInEventBaseThread());
+  evb.dcheckIsInEventBaseThread();
 
   SYNCHRONIZED(eventBases_) {
     eventBases_.erase(&evb);
@@ -56,7 +56,7 @@ void EventBaseLocalBase::onEventBaseDestruction(EventBase& evb) {
 }
 
 void EventBaseLocalBase::setVoid(EventBase& evb, std::shared_ptr<void>&& ptr) {
-  DCHECK(evb.isInEventBaseThread());
+  evb.dcheckIsInEventBaseThread();
 
   auto alreadyExists =
     evb.localStorage_.find(key_) != evb.localStorage_.end();

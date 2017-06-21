@@ -492,6 +492,18 @@ class EventBase : private boost::noncopyable,
         std::this_thread::get_id();
   }
 
+  /**
+   * Equivalent to CHECK(isInEventBaseThread()) (and assert/DCHECK for
+   * dcheckIsInEventBaseThread), but it prints more information on
+   * failure.
+   */
+  void checkIsInEventBaseThread() const;
+  void dcheckIsInEventBaseThread() const {
+    if (kIsDebug) {
+      checkIsInEventBaseThread();
+    }
+  }
+
   HHWheelTimer& timer() {
     if (!wheelTimer_) {
       wheelTimer_ = HHWheelTimer::newTimer(this);
@@ -641,7 +653,7 @@ class EventBase : private boost::noncopyable,
 
  protected:
   void keepAliveRelease() override {
-    DCHECK(isInEventBaseThread());
+    dcheckIsInEventBaseThread();
     loopKeepAliveCount_--;
   }
 
