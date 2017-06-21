@@ -24,23 +24,20 @@
 using namespace std;
 using namespace folly;
 
-static bool expectedSetOtherThreadNameResult = folly::canSetOtherThreadName();
-static bool expectedSetSelfThreadNameResult = folly::canSetCurrentThreadName();
+namespace {
+
+const bool expectedSetOtherThreadNameResult = folly::canSetOtherThreadName();
+const bool expectedSetSelfThreadNameResult = folly::canSetCurrentThreadName();
+constexpr StringPiece kThreadName{"rockin-thread"};
+
+} // namespace
 
 TEST(ThreadName, getCurrentThreadName) {
-  static constexpr StringPiece kThreadName{"rockin-thread"};
   thread th([] {
     EXPECT_EQ(expectedSetSelfThreadNameResult, setThreadName(kThreadName));
     if (expectedSetSelfThreadNameResult) {
-      EXPECT_EQ(kThreadName.toString(), getCurrentThreadName().value());
+      EXPECT_EQ(kThreadName.toString(), *getCurrentThreadName());
     }
-  });
-  SCOPE_EXIT { th.join(); };
-}
-
-TEST(ThreadName, setThreadName_self) {
-  thread th([] {
-    EXPECT_EQ(expectedSetSelfThreadNameResult, setThreadName("rockin-thread"));
   });
   SCOPE_EXIT { th.join(); };
 }
@@ -58,19 +55,7 @@ TEST(ThreadName, setThreadName_other_pthread) {
   handle_set.wait();
   SCOPE_EXIT { let_thread_end.post(); };
   EXPECT_EQ(
-      expectedSetOtherThreadNameResult, setThreadName(handle, "rockin-thread"));
-}
-
-TEST(ThreadName, setThreadName_other_native) {
-  Baton<> let_thread_end;
-  thread th([&] {
-      let_thread_end.wait();
-  });
-  SCOPE_EXIT { th.join(); };
-  SCOPE_EXIT { let_thread_end.post(); };
-  EXPECT_EQ(
-      expectedSetOtherThreadNameResult,
-      setThreadName(th.native_handle(), "rockin-thread"));
+      expectedSetOtherThreadNameResult, setThreadName(handle, kThreadName));
 }
 
 TEST(ThreadName, setThreadName_other_id) {
@@ -82,5 +67,8 @@ TEST(ThreadName, setThreadName_other_id) {
   SCOPE_EXIT { let_thread_end.post(); };
   EXPECT_EQ(
       expectedSetOtherThreadNameResult,
-      setThreadName(th.get_id(), "rockin-thread"));
+      setThreadName(th.get_id(), kThreadName));
+  if (expectedSetOtherThreadNameResult) {
+    EXPECT_EQ(*getThreadName(th.get_id()), kThreadName);
+  }
 }

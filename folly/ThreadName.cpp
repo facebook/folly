@@ -40,6 +40,28 @@ namespace folly {
 #endif
 #endif
 
+namespace {
+
+#if FOLLY_HAVE_PTHREAD
+pthread_t stdTidToPthreadId(std::thread::id tid) {
+  static_assert(
+      std::is_same<pthread_t, std::thread::native_handle_type>::value,
+      "This assumes that the native handle type is pthread_t");
+  static_assert(
+      sizeof(std::thread::native_handle_type) == sizeof(std::thread::id),
+      "This assumes std::thread::id is a thin wrapper around "
+      "std::thread::native_handle_type, but that doesn't appear to be true.");
+  // In most implementations, std::thread::id is a thin wrapper around
+  // std::thread::native_handle_type, which means we can do unsafe things to
+  // extract it.
+  pthread_t id;
+  std::memcpy(&id, &tid, sizeof(id));
+  return id;
+}
+#endif
+
+} // namespace
+
 bool canSetCurrentThreadName() {
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
     FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
@@ -59,11 +81,11 @@ bool canSetOtherThreadName() {
 
 static constexpr size_t kMaxThreadNameLength = 16;
 
-Optional<std::string> getCurrentThreadName() {
+Optional<std::string> getThreadName(std::thread::id id) {
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
     FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
   std::array<char, kMaxThreadNameLength> buf;
-  if (pthread_getname_np(pthread_self(), buf.data(), buf.size()) != 0) {
+  if (pthread_getname_np(stdTidToPthreadId(id), buf.data(), buf.size()) != 0) {
     return Optional<std::string>();
   }
   return make_optional(std::string(buf.data()));
@@ -72,23 +94,16 @@ Optional<std::string> getCurrentThreadName() {
 #endif
 }
 
+Optional<std::string> getCurrentThreadName() {
+  return getThreadName(std::this_thread::get_id());
+}
+
 bool setThreadName(std::thread::id tid, StringPiece name) {
 #if !FOLLY_HAVE_PTHREAD || _WIN32
   return false;
 #else
-  static_assert(
-      std::is_same<pthread_t, std::thread::native_handle_type>::value,
-      "This assumes that the native handle type is pthread_t");
-  static_assert(
-      sizeof(std::thread::native_handle_type) == sizeof(std::thread::id),
-      "This assumes std::thread::id is a thin wrapper around "
-      "std::thread::native_handle_type, but that doesn't appear to be true.");
-  // In most implementations, std::thread::id is a thin wrapper around
-  // std::thread::native_handle_type, which means we can do unsafe things to
-  // extract it.
-  pthread_t id;
-  std::memcpy(&id, &tid, sizeof(id));
   auto trimmedName = name.fbstr().substr(0, kMaxThreadNameLength - 1);
+  auto id = stdTidToPthreadId(tid);
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
   return 0 == pthread_setname_np(id, trimmedName.c_str());
 #elif FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
@@ -99,6 +114,7 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
   }
   return false;
 #else
+  (void)id;
   return false;
 #endif
 #endif

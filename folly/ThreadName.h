@@ -25,24 +25,42 @@
 #include <folly/portability/PThread.h>
 
 namespace folly {
+
 /**
  * This returns true if the current platform supports setting the name of the
  * current thread.
  */
 bool canSetCurrentThreadName();
+
 /**
  * This returns true if the current platform supports setting the name of
  * threads other than the one currently executing.
  */
 bool canSetOtherThreadName();
+
 /**
- * Get the name of the current string, or nothing if an error occurs.
+ * Get the name of the given thread, or nothing if an error occurs
+ * or the functionality is not available.
+ */
+Optional<std::string> getThreadName(std::thread::id tid);
+
+/**
+ * Equivalent to getThreadName(std::this_thread::get_id());
  */
 Optional<std::string> getCurrentThreadName();
 
+/**
+ * Set the name of the given thread.
+ * Returns false on failure, if an error occurs or the functionality
+ * is not available.
+ */
 bool setThreadName(std::thread::id tid, StringPiece name);
 #if FOLLY_HAVE_PTHREAD
 bool setThreadName(pthread_t pid, StringPiece name);
 #endif
+
+/**
+ * Equivalent to setThreadName(std::this_thread::get_id(), name);
+ */
 bool setThreadName(StringPiece name);
 }
