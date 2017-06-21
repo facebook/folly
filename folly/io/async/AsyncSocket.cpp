@@ -520,6 +520,11 @@ int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
     // Ignore return value, errors are ok
     setsockopt(fd_, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
   }
+  if (noTSocks_) {
+    VLOG(4) << "Disabling TSOCKS for fd " << fd_;
+    // Ignore return value, errors are ok
+    setsockopt(fd_, SOL_SOCKET, SO_NO_TSOCKS, nullptr, 0);
+  }
 #endif
   int rv = fsp::connect(fd_, saddr, len);
   if (rv < 0) {

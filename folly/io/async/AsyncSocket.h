@@ -68,6 +68,10 @@ namespace folly {
 #define SO_NO_TRANSPARENT_TLS 200
 #endif
 
+#if defined __linux__ && !defined SO_NO_TSOCKS
+#define SO_NO_TSOCKS 201
+#endif
+
 #ifdef _MSC_VER
 // We do a dynamic_cast on this, in
 // AsyncTransportWrapper::getUnderlyingTransport so be safe and
@@ -761,6 +765,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     noTransparentTls_ = true;
   }
 
+  void disableTSocks() {
+    noTSocks_ = true;
+  }
+
   enum class StateEnum : uint8_t {
     UNINIT,
     CONNECTING,
@@ -1157,6 +1165,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool tfoAttempted_{false};
   bool tfoFinished_{false};
   bool noTransparentTls_{false};
+  bool noTSocks_{false};
   // Whether to track EOR or not.
   bool trackEor_{false};
 
