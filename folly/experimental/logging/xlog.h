@@ -20,6 +20,7 @@
 #include <folly/experimental/logging/LogStream.h>
 #include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/LoggerDB.h>
+#include <cstdlib>
 
 /*
  * This file contains the XLOG() and XLOGF() macros.
@@ -32,7 +33,7 @@
  * "src.foo.bar"
  *
  * If desired, the log category name used by XLOG() in a .cpp file may be
- * overridden using XLOG_SET_CATEGORY() macro.
+ * overridden using XLOG_SET_CATEGORY_NAME() macro.
  */
 
 /**
@@ -115,7 +116,7 @@
   (!XLOG_IS_ON_IMPL(level))                                            \
       ? static_cast<void>(0)                                           \
       : ::folly::LogStreamProcessorT<::folly::isLogLevelFatal(level)>( \
-            XLOG_GET_CATEGORY(),                                       \
+            XLOG_GET_CATEGORY_INTERNAL(),                              \
             (level),                                                   \
             __FILE__,                                                  \
             __LINE__,                                                  \
@@ -181,14 +182,32 @@
   }())
 
 /**
+ * Get the name of the log category that will be used by XLOG() statements
+ * in this file.
+ */
+#define XLOG_GET_CATEGORY_NAME() getXlogCategoryName(__FILE__)
+
+/**
  * Get a pointer to the LogCategory that will be used by XLOG() statements in
  * this file.
+ *
+ * This is just a small wrapper around a LoggerDB::getCategory() call.
+ * This must be implemented as a macro since it uses __FILE__, and that must
+ * expand to the correct filename based on where the macro is used.
+ */
+#define XLOG_GET_CATEGORY() \
+  folly::LoggerDB::get()->getCategory(XLOG_GET_CATEGORY_NAME())
+
+/**
+ * Internal version of XLOG_GET_CATEGORY() that is used in the XLOG() macro.
  *
  * This macro is used in the XLOG() implementation, and therefore must be as
  * cheap as possible.  It stores the LogCategory* pointer as a local static
  * variable.  Only the first invocation has to look up the log category by
  * name.  Subsequent invocations re-use the already looked-up LogCategory
  * pointer.
+ *
+ * This is only safe to call after XlogLevelInfo::init() has been called.
  *
  * Most of this code must live in the macro definition itself, and cannot be
  * moved into a helper function: The getXlogCategoryName() call must be made as
@@ -198,7 +217,7 @@
  *
  * See XlogCategoryInfo for the implementation details.
  */
-#define XLOG_GET_CATEGORY()                                                  \
+#define XLOG_GET_CATEGORY_INTERNAL()                                         \
   [] {                                                                       \
     static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE> _xlogCategory_; \
     if (!_xlogCategory_.isInitialized()) {                                   \
@@ -208,8 +227,8 @@
   }()
 
 /**
- * XLOG_SET_CATEGORY() can be used to explicitly define the log category name
- * used by all XLOG() and XLOGF() calls in this translation unit.
+ * XLOG_SET_CATEGORY_NAME() can be used to explicitly define the log category
+ * name used by all XLOG() and XLOGF() calls in this translation unit.
  *
  * This overrides the default behavior of picking a category name based on the
  * current filename.
@@ -217,20 +236,20 @@
  * This should be used at the top-level scope in a .cpp file, before any XLOG()
  * or XLOGF() macros have been used in the file.
  *
- * XLOG_SET_CATEGORY() cannot be used inside header files.
+ * XLOG_SET_CATEGORY_NAME() cannot be used inside header files.
  */
 #ifdef __INCLUDE_LEVEL__
-#define XLOG_SET_CATEGORY(category)                              \
-  namespace {                                                    \
-  static_assert(                                                 \
-      __INCLUDE_LEVEL__ == 0,                                    \
-      "XLOG_SET_CATEGORY() should not be used in header files"); \
-  inline std::string getXlogCategoryName(const char*) {          \
-    return category;                                             \
-  }                                                              \
+#define XLOG_SET_CATEGORY_NAME(category)                              \
+  namespace {                                                         \
+  static_assert(                                                      \
+      __INCLUDE_LEVEL__ == 0,                                         \
+      "XLOG_SET_CATEGORY_NAME() should not be used in header files"); \
+  inline std::string getXlogCategoryName(const char*) {               \
+    return category;                                                  \
+  }                                                                   \
   }
 #else
-#define XLOG_SET_CATEGORY(category)                     \
+#define XLOG_SET_CATEGORY_NAME(category)                \
   namespace {                                           \
   inline std::string getXlogCategoryName(const char*) { \
     return category;                                    \
@@ -288,7 +307,7 @@ struct XlogLevelInfo {
 template <bool IsInHeaderFile>
 struct XlogCategoryInfo {
  public:
-  bool isInitialized() {
+  bool isInitialized() const {
     return isInitialized_.load(std::memory_order_acquire);
   }
 
@@ -339,16 +358,15 @@ struct XlogLevelInfo<false> {
 template <>
 struct XlogCategoryInfo<false> {
  public:
-  constexpr bool isInitialized() {
-    // XlogLevelInfo<false>::check() is always called before XlogCategoryInfo
-    // is used, and it will will have already initialized fileScopeInfo.
+  constexpr bool isInitialized() const {
+    // XlogLevelInfo<false>::init() is always called before XlogCategoryInfo
+    // is used, and it will have already initialized fileScopeInfo.
     // Therefore we never have to check if it is initialized yet here.
     return true;
   }
-  LogCategory* init(folly::StringPiece) {
+  [[noreturn]] LogCategory* init(folly::StringPiece /* categoryName */) {
     // This method is never used given that isInitialized() always returns true
-    abort();
-    return nullptr;
+    ::std::abort();
   }
   LogCategory* getCategory(XlogFileScopeInfo* fileScopeInfo) {
     return fileScopeInfo->category;
@@ -360,7 +378,7 @@ struct XlogCategoryInfo<false> {
  * Get the default XLOG() category name for the given filename.
  *
  * This function returns the category name that will be used by XLOG() if
- * XLOG_SET_CATEGORY() has not been used.
+ * XLOG_SET_CATEGORY_NAME() has not been used.
  */
 std::string getXlogCategoryNameForFile(folly::StringPiece filename);
 }
@@ -374,11 +392,11 @@ std::string getXlogCategoryNameForFile(folly::StringPiece filename);
 namespace {
 /**
  * The default getXlogCategoryName() implementation.
- * This will be used if XLOG_SET_CATEGORY() has not been used yet.
+ * This will be used if XLOG_SET_CATEGORY_NAME() has not been used yet.
  *
- * This is a template purely so that XLOG_SET_CATEGORY() can define a more
- * specific version if desired, allowing XLOG_SET_CATEGORY() to override this
- * implementation once it has been used.  The template paramete
+ * This is a template purely so that XLOG_SET_CATEGORY_NAME() can define a more
+ * specific version if desired, allowing XLOG_SET_CATEGORY_NAME() to override
+ * this implementation once it has been used.
  */
 template <typename T>
 inline std::string getXlogCategoryName(const T* filename) {

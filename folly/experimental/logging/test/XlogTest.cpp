@@ -26,7 +26,7 @@
 using namespace folly;
 using std::make_shared;
 
-XLOG_SET_CATEGORY("xlog_test.main_file");
+XLOG_SET_CATEGORY_NAME("xlog_test.main_file");
 
 // Note that the XLOG* macros always use the main LoggerDB singleton.
 // There is no way to get them to use a test LoggerDB during unit tests.
