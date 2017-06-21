@@ -259,7 +259,6 @@ struct IndexedMemPool : boost::noncopyable {
   /// Gives up ownership previously granted by alloc()
   void recycleIndex(uint32_t idx) {
     assert(isAllocated(idx));
-    Traits::onRecycle(&slot(idx).elem);
     localPush(localHead(), idx);
   }
 
@@ -422,7 +421,8 @@ struct IndexedMemPool : boost::noncopyable {
     Slot& s = slot(idx);
     TaggedPtr h = head.load(std::memory_order_acquire);
     while (true) {
-      s.localNext.store(h.idx, std::memory_order_relaxed);
+      s.localNext.store(h.idx, std::memory_order_release);
+      Traits::onRecycle(&slot(idx).elem);
 
       if (h.size() == LocalListLimit) {
         // push will overflow local list, steal it instead

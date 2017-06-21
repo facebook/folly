@@ -357,7 +357,7 @@ void testTraits(TraitsTestPool& pool) {
 
   elem = nullptr;
   EXPECT_CALL(traits, onRecycle(_)).WillOnce(Invoke([&](std::string* s) {
-    EXPECT_TRUE(pool.isAllocated(pool.locateElem(s)));
+    EXPECT_FALSE(pool.isAllocated(pool.locateElem(s)));
     elem = s;
   }));
   pool.recycleIndex(pool.locateElem(ptr));
