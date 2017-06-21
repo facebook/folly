@@ -87,30 +87,30 @@ LogLevel stringToLogLevel(StringPiece name) {
 
 string logLevelToString(LogLevel level) {
   if (level == LogLevel::UNINITIALIZED) {
-    return "LogLevel::UNINITIALIZED";
+    return "UNINITIALIZED";
   } else if (level == LogLevel::NONE) {
-    return "LogLevel::NONE";
+    return "NONE";
   } else if (level == LogLevel::DEBUG) {
-    return "LogLevel::DEBUG";
+    return "DEBUG";
   } else if (level == LogLevel::INFO) {
-    return "LogLevel::INFO";
+    return "INFO";
   } else if (level == LogLevel::WARN) {
-    return "LogLevel::WARN";
+    return "WARN";
   } else if (level == LogLevel::ERR) {
-    return "LogLevel::ERR";
+    return "ERR";
   } else if (level == LogLevel::CRITICAL) {
-    return "LogLevel::CRITICAL";
+    return "CRITICAL";
   } else if (level == LogLevel::DFATAL) {
-    return "LogLevel::DFATAL";
+    return "DFATAL";
   } else if (level == LogLevel::FATAL) {
-    return "LogLevel::FATAL";
+    return "FATAL";
   }
 
   if (static_cast<uint32_t>(level) <= static_cast<uint32_t>(LogLevel::DBG0) &&
       static_cast<uint32_t>(level) > static_cast<uint32_t>(LogLevel::DEBUG)) {
     auto num =
         static_cast<uint32_t>(LogLevel::DBG0) - static_cast<uint32_t>(level);
-    return folly::to<string>("LogLevel::DBG", num);
+    return folly::to<string>("DBG", num);
   }
   return folly::to<string>("LogLevel(", static_cast<uint32_t>(level), ")");
 }

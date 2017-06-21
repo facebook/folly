@@ -83,7 +83,7 @@ TEST(StandardLogHandler, simple) {
   handler.handleMessage(msg, handlerCategory);
   ASSERT_EQ(1, writer->getMessages().size());
   EXPECT_EQ(
-      "LogLevel::DBG8::log_cat::handler_cat::src/test.cpp::1234::hello world",
+      "DBG8::log_cat::handler_cat::src/test.cpp::1234::hello world",
       writer->getMessages()[0]);
 }
 
@@ -109,11 +109,9 @@ TEST(StandardLogHandler, levelCheck) {
   auto& messages = writer->getMessages();
   ASSERT_EQ(2, messages.size());
   EXPECT_EQ(
-      "LogLevel::WARN::log_cat::handler_cat::src/test.cpp::1234::beware",
-      messages.at(0));
+      "WARN::log_cat::handler_cat::src/test.cpp::1234::beware", messages.at(0));
   EXPECT_EQ(
-      "LogLevel::ERR::log_cat::handler_cat::src/test.cpp::1234::whoops",
-      messages.at(1));
+      "ERR::log_cat::handler_cat::src/test.cpp::1234::whoops", messages.at(1));
   messages.clear();
 
   handler.setLevel(LogLevel::DBG2);
@@ -125,13 +123,11 @@ TEST(StandardLogHandler, levelCheck) {
 
   ASSERT_EQ(3, messages.size());
   EXPECT_EQ(
-      "LogLevel::DBG1::log_cat::handler_cat::src/test.cpp::1234::here",
-      messages.at(0));
+      "DBG1::log_cat::handler_cat::src/test.cpp::1234::here", messages.at(0));
   EXPECT_EQ(
-      "LogLevel::DBG2::log_cat::handler_cat::src/test.cpp::1234::and here",
+      "DBG2::log_cat::handler_cat::src/test.cpp::1234::and here",
       messages.at(1));
   EXPECT_EQ(
-      "LogLevel::ERR::log_cat::handler_cat::src/test.cpp::1234::oh noes",
-      messages.at(2));
+      "ERR::log_cat::handler_cat::src/test.cpp::1234::oh noes", messages.at(2));
   messages.clear();
 }

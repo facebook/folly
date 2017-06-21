@@ -81,25 +81,24 @@ TEST(LogLevel, fromString) {
 }
 
 TEST(LogLevel, toString) {
-  EXPECT_EQ(
-      "LogLevel::UNINITIALIZED", logLevelToString(LogLevel::UNINITIALIZED));
-  EXPECT_EQ("LogLevel::NONE", logLevelToString(LogLevel::NONE));
-  EXPECT_EQ("LogLevel::INFO", logLevelToString(LogLevel::INFO));
-  EXPECT_EQ("LogLevel::WARN", logLevelToString(LogLevel::WARN));
-  EXPECT_EQ("LogLevel::WARN", logLevelToString(LogLevel::WARNING));
-  EXPECT_EQ("LogLevel::DEBUG", logLevelToString(LogLevel::DEBUG));
-  EXPECT_EQ("LogLevel::ERR", logLevelToString(LogLevel::ERR));
-  EXPECT_EQ("LogLevel::CRITICAL", logLevelToString(LogLevel::CRITICAL));
-  EXPECT_EQ("LogLevel::DFATAL", logLevelToString(LogLevel::DFATAL));
-  EXPECT_EQ("LogLevel::FATAL", logLevelToString(LogLevel::FATAL));
-  EXPECT_EQ("LogLevel::FATAL", logLevelToString(LogLevel::MAX_LEVEL));
+  EXPECT_EQ("UNINITIALIZED", logLevelToString(LogLevel::UNINITIALIZED));
+  EXPECT_EQ("NONE", logLevelToString(LogLevel::NONE));
+  EXPECT_EQ("INFO", logLevelToString(LogLevel::INFO));
+  EXPECT_EQ("WARN", logLevelToString(LogLevel::WARN));
+  EXPECT_EQ("WARN", logLevelToString(LogLevel::WARNING));
+  EXPECT_EQ("DEBUG", logLevelToString(LogLevel::DEBUG));
+  EXPECT_EQ("ERR", logLevelToString(LogLevel::ERR));
+  EXPECT_EQ("CRITICAL", logLevelToString(LogLevel::CRITICAL));
+  EXPECT_EQ("DFATAL", logLevelToString(LogLevel::DFATAL));
+  EXPECT_EQ("FATAL", logLevelToString(LogLevel::FATAL));
+  EXPECT_EQ("FATAL", logLevelToString(LogLevel::MAX_LEVEL));
 
-  EXPECT_EQ("LogLevel::DBG0", logLevelToString(LogLevel::DBG0));
-  EXPECT_EQ("LogLevel::DBG2", logLevelToString(LogLevel::DBG2));
-  EXPECT_EQ("LogLevel::DBG5", logLevelToString(LogLevel::DBG5));
-  EXPECT_EQ("LogLevel::DBG9", logLevelToString(LogLevel::DBG9));
-  EXPECT_EQ("LogLevel::DBG97", logLevelToString(static_cast<LogLevel>(903)));
-  EXPECT_EQ("LogLevel::DBG64", logLevelToString(LogLevel::DBG4 - 60));
+  EXPECT_EQ("DBG0", logLevelToString(LogLevel::DBG0));
+  EXPECT_EQ("DBG2", logLevelToString(LogLevel::DBG2));
+  EXPECT_EQ("DBG5", logLevelToString(LogLevel::DBG5));
+  EXPECT_EQ("DBG9", logLevelToString(LogLevel::DBG9));
+  EXPECT_EQ("DBG97", logLevelToString(static_cast<LogLevel>(903)));
+  EXPECT_EQ("DBG64", logLevelToString(LogLevel::DBG4 - 60));
 
   EXPECT_EQ("LogLevel(1234)", logLevelToString(static_cast<LogLevel>(1234)));
 }
