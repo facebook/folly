@@ -15,11 +15,34 @@
  */
 #include <folly/experimental/logging/LogStreamProcessor.h>
 
-#include <cassert>
-
 #include <folly/experimental/logging/LogStream.h>
 
 namespace folly {
+
+LogStreamProcessor::LogStreamProcessor(
+    const LogCategory* category,
+    LogLevel level,
+    folly::StringPiece filename,
+    unsigned int lineNumber,
+    AppendType) noexcept
+    : category_{category},
+      level_{level},
+      filename_{filename},
+      lineNumber_{lineNumber} {}
+
+LogStreamProcessor::LogStreamProcessor(
+    const LogCategory* category,
+    LogLevel level,
+    const char* filename,
+    unsigned int lineNumber,
+    InternalType,
+    std::string&& msg) noexcept
+    : category_{category},
+      level_{level},
+      filename_{filename},
+      lineNumber_{lineNumber},
+      message_{std::move(msg)} {}
+
 void LogStreamProcessor::operator&(std::ostream& stream) noexcept {
   // Note that admitMessage() is not noexcept and theoretically may throw.
   // However, the only exception that should be possible is std::bad_alloc if

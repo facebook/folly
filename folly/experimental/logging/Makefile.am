@@ -15,6 +15,7 @@ libfollylogging_la_SOURCES = \
 	LogName.cpp \
 	LogStream.cpp \
 	LogStreamProcessor.cpp \
+	printf.cpp \
 	RateLimiter.cpp \
 	StandardLogHandler.cpp \
 	xlog.cpp

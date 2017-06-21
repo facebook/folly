@@ -18,6 +18,7 @@
 #include <folly/Conv.h>
 #include <folly/Demangle.h>
 #include <folly/Format.h>
+#include <folly/Portability.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogMessage.h>
 #include <cstdlib>
@@ -100,11 +101,7 @@ class LogStreamProcessor {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
-      AppendType) noexcept
-      : category_{category},
-        level_{level},
-        filename_{filename},
-        lineNumber_{lineNumber} {}
+      AppendType) noexcept;
 
   /**
    * LogStreamProcessor constructor for use with a LOG() macro with arguments
@@ -123,11 +120,12 @@ class LogStreamProcessor {
       unsigned int lineNumber,
       AppendType,
       Args&&... args) noexcept
-      : category_{category},
-        level_{level},
-        filename_{filename},
-        lineNumber_{lineNumber},
-        message_{createLogString(std::forward<Args>(args)...)} {}
+      : LogStreamProcessor{category,
+                           level,
+                           filename,
+                           lineNumber,
+                           INTERNAL,
+                           createLogString(std::forward<Args>(args)...)} {}
 
   /**
    * LogStreamProcessor constructor for use with a LOG() macro with arguments
@@ -147,11 +145,12 @@ class LogStreamProcessor {
       FormatType,
       folly::StringPiece fmt,
       Args&&... args) noexcept
-      : category_{category},
-        level_{level},
-        filename_{filename},
-        lineNumber_{lineNumber},
-        message_{formatLogString(fmt, std::forward<Args>(args)...)} {}
+      : LogStreamProcessor{category,
+                           level,
+                           filename,
+                           lineNumber,
+                           INTERNAL,
+                           formatLogString(fmt, std::forward<Args>(args)...)} {}
 
   /**
    * This version of operator&() is typically used when the user specifies
@@ -168,6 +167,15 @@ class LogStreamProcessor {
   void operator&(LogStream&& stream) noexcept;
 
  private:
+  enum InternalType { INTERNAL };
+  LogStreamProcessor(
+      const LogCategory* category,
+      LogLevel level,
+      const char* filename,
+      unsigned int lineNumber,
+      InternalType,
+      std::string&& msg) noexcept;
+
   std::string extractMessageString(LogStream& stream) noexcept;
 
   /**

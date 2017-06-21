@@ -139,6 +139,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/logging/LogStream.h \
 	experimental/logging/LogStreamProcessor.h \
 	experimental/logging/LogWriter.h \
+	experimental/logging/printf.h \
 	experimental/logging/RateLimiter.h \
 	experimental/logging/StandardLogHandler.h \
 	experimental/logging/xlog.h \
