@@ -22,6 +22,11 @@
 
 namespace folly {
 
+enum class AMBFlags {
+  NORMAL,
+  EXPEDITED,
+};
+
 FOLLY_ALWAYS_INLINE void asymmetricLightBarrier() {
   if (kIsLinux) {
     asm_volatile_memory();
@@ -30,5 +35,5 @@ FOLLY_ALWAYS_INLINE void asymmetricLightBarrier() {
   }
 }
 
-void asymmetricHeavyBarrier();
+void asymmetricHeavyBarrier(AMBFlags flags = AMBFlags::NORMAL);
 }

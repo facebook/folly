@@ -32,8 +32,7 @@ struct DummyPageCreator {
   }
 
   static void* get() {
-    static auto ptr =
-        kIsLinux && !detail::sysMembarrierAvailable() ? create() : nullptr;
+    static auto ptr = kIsLinux ? create() : nullptr;
     return ptr;
   }
 
@@ -81,10 +80,11 @@ void mprotectMembarrier() {
 }
 }
 
-void asymmetricHeavyBarrier() {
+void asymmetricHeavyBarrier(AMBFlags flags) {
   if (kIsLinux) {
     static const bool useSysMembarrier = detail::sysMembarrierAvailable();
-    if (useSysMembarrier) {
+    // sys_membarrier currently does not support EXPEDITED
+    if (useSysMembarrier && flags != AMBFlags::EXPEDITED) {
       auto r = detail::sysMembarrier();
       checkUnixError(r, "membarrier");
     } else {
