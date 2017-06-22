@@ -119,6 +119,22 @@ struct Extract<R(Class::*)(Args...)> {
   typedef typename ArgType<Args...>::FirstArg FirstArg;
 };
 
+template <typename R, typename... Args>
+struct Extract<R (*)(Args...)> {
+  typedef isFuture<R> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+  typedef typename ReturnsFuture::Inner RawReturn;
+  typedef typename ArgType<Args...>::FirstArg FirstArg;
+};
+
+template <typename R, typename... Args>
+struct Extract<R (&)(Args...)> {
+  typedef isFuture<R> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+  typedef typename ReturnsFuture::Inner RawReturn;
+  typedef typename ArgType<Args...>::FirstArg FirstArg;
+};
+
 // gcc-4.8 refuses to capture a function reference in a lambda. This can be
 // mitigated by casting them to function pointer types first. The following
 // helper is used in Future.h to achieve that where necessary.

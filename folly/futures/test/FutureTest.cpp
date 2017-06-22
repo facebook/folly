@@ -76,6 +76,15 @@ TEST(Future, makeFutureWithUnit) {
   EXPECT_EQ(1, count);
 }
 
+namespace {
+Future<int> onErrorHelperEggs(const eggs_t&) {
+  return makeFuture(10);
+}
+Future<int> onErrorHelperGeneric(const std::exception&) {
+  return makeFuture(20);
+}
+}
+
 TEST(Future, onError) {
   bool theFlag = false;
   auto flag = [&]{ theFlag = true; };
@@ -189,6 +198,28 @@ TEST(Future, onError) {
                  });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
+  }
+
+  // Function pointer
+  {
+    auto f = makeFuture()
+                 .then([]() -> int { throw eggs; })
+                 .onError(onErrorHelperEggs)
+                 .onError(onErrorHelperGeneric);
+    EXPECT_EQ(10, f.value());
+  }
+  {
+    auto f = makeFuture()
+                 .then([]() -> int { throw std::runtime_error("test"); })
+                 .onError(onErrorHelperEggs)
+                 .onError(onErrorHelperGeneric);
+    EXPECT_EQ(20, f.value());
+  }
+  {
+    auto f = makeFuture()
+                 .then([]() -> int { throw std::runtime_error("test"); })
+                 .onError(onErrorHelperEggs);
+    EXPECT_THROW(f.value(), std::runtime_error);
   }
 
   // No throw
