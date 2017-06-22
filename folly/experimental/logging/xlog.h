@@ -112,28 +112,31 @@
  *   initialized.  On all subsequent calls, disabled log statements can be
  *   skipped with just a single check of the LogLevel.
  */
-#define XLOG_IMPL(level, type, ...)                                      \
-  (!XLOG_IS_ON_IMPL(level))                                              \
-      ? static_cast<void>(0)                                             \
-      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &   \
-          ::folly::LogStreamProcessor(                                   \
-              [] {                                                       \
-                static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE> \
-                    _xlogCategory_;                                      \
-                return _xlogCategory_.getInfo(                           \
-                    &xlog_detail::xlogFileScopeInfo);                    \
-              }(),                                                       \
-              (level),                                                   \
-              xlog_detail::getXlogCategoryName(__FILE__, 0),             \
-              xlog_detail::isXlogCategoryOverridden(0),                  \
-              __FILE__,                                                  \
-              __LINE__,                                                  \
-              (type),                                                    \
-              ##__VA_ARGS__)                                             \
+#define XLOG_IMPL(level, type, ...)                                          \
+  (!XLOG_IS_ON_IMPL(level))                                                  \
+      ? ::folly::logDisabledHelper(                                          \
+            std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &       \
+          ::folly::LogStreamProcessor(                                       \
+              [] {                                                           \
+                static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE>     \
+                    _xlogCategory_;                                          \
+                return _xlogCategory_.getInfo(                               \
+                    &xlog_detail::xlogFileScopeInfo);                        \
+              }(),                                                           \
+              (level),                                                       \
+              xlog_detail::getXlogCategoryName(__FILE__, 0),                 \
+              xlog_detail::isXlogCategoryOverridden(0),                      \
+              __FILE__,                                                      \
+              __LINE__,                                                      \
+              (type),                                                        \
+              ##__VA_ARGS__)                                                 \
               .stream()
 
 /**
  * Check if and XLOG() statement with the given log level would be enabled.
+ *
+ * The level parameter must be an unqualified LogLevel enum value.
  */
 #define XLOG_IS_ON(level) XLOG_IS_ON_IMPL(::folly::LogLevel::level)
 

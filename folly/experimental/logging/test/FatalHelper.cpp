@@ -59,13 +59,8 @@ class InitChecker {
 static InitChecker initChecker;
 }
 
-/*
- * This is a simple helper program to exercise the LOG(FATAL) functionality.
- */
-int main(int argc, char* argv[]) {
-  // Call folly::init() and then initialize log levels and handlers
-  folly::init(&argc, &argv);
-
+namespace {
+int runHelper() {
   if (FLAGS_handler_style == "async") {
     initLoggingGlogStyle(FLAGS_logging, LogLevel::INFO, true);
   } else if (FLAGS_handler_style == "immediate") {
@@ -84,7 +79,31 @@ int main(int argc, char* argv[]) {
   }
 
   XLOG(FATAL) << "test program crashing!";
-  // Even though main() is defined to return an integer, the compiler
+  // Even though this function is defined to return an integer, the compiler
   // should be able to detect that XLOG(FATAL) never returns.  It shouldn't
   // complain that we don't return an integer here.
+}
+}
+
+std::string fbLogFatalCheck() {
+  folly::Logger logger("some.category");
+  FB_LOG(logger, FATAL) << "we always crash";
+  // This function mostly exists to make sure the compiler does not warn
+  // about a missing return statement here.
+}
+
+/*
+ * This is a simple helper program to exercise the LOG(FATAL) functionality.
+ */
+int main(int argc, char* argv[]) {
+  // Call folly::init() and then initialize log levels and handlers
+  folly::init(&argc, &argv);
+
+  // Do most of the work in a separate helper function.
+  //
+  // The main reason for putting this in a helper function is to ensure that
+  // the compiler does not warn about missing return statements on XLOG(FATAL)
+  // code paths.  Unfortunately it appears like some compilers always suppress
+  // this warning for main().
+  return runHelper();
 }

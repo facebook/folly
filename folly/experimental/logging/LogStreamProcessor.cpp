@@ -175,6 +175,19 @@ void LogStreamProcessor::logNow() noexcept {
                                      extractMessageString(stream_)});
 }
 
+std::string LogStreamProcessor::extractMessageString(
+    LogStream& stream) noexcept {
+  if (stream.empty()) {
+    return std::move(message_);
+  }
+
+  if (message_.empty()) {
+    return stream.extractString();
+  }
+  message_.append(stream.extractString());
+  return std::move(message_);
+}
+
 void LogStreamVoidify<true>::operator&(std::ostream& stream) {
   // Non-fatal log messages wait until the LogStreamProcessor destructor to log
   // the message.  However for fatal messages we log immediately in the &
@@ -189,16 +202,11 @@ void LogStreamVoidify<true>::operator&(std::ostream& stream) {
   abort();
 }
 
-std::string LogStreamProcessor::extractMessageString(
-    LogStream& stream) noexcept {
-  if (stream.empty()) {
-    return std::move(message_);
-  }
-
-  if (message_.empty()) {
-    return stream.extractString();
-  }
-  message_.append(stream.extractString());
-  return std::move(message_);
+void logDisabledHelper(std::integral_constant<bool, true>) noexcept {
+  // This function can only be reached if we had a disabled fatal log message.
+  // This should never happen: LogCategory::setLevelLocked() does not allow
+  // setting the threshold for a category lower than FATAL (in production
+  // builds) or DFATAL (in debug builds).
+  abort();
 }
 }

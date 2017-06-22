@@ -27,16 +27,17 @@
  *
  * This macro generally should not be used directly by end users.
  */
-#define FB_LOG_IMPL(logger, level, type, ...)                          \
-  (!(logger).getCategory()->logCheck(level))                           \
-      ? (void)0                                                        \
-      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} & \
-          ::folly::LogStreamProcessor{(logger).getCategory(),          \
-                                      (level),                         \
-                                      __FILE__,                        \
-                                      __LINE__,                        \
-                                      (type),                          \
-                                      ##__VA_ARGS__}                   \
+#define FB_LOG_IMPL(logger, level, type, ...)                                \
+  (!(logger).getCategory()->logCheck(level))                                 \
+      ? ::folly::logDisabledHelper(                                          \
+            std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &       \
+          ::folly::LogStreamProcessor{(logger).getCategory(),                \
+                                      (level),                               \
+                                      __FILE__,                              \
+                                      __LINE__,                              \
+                                      (type),                                \
+                                      ##__VA_ARGS__}                         \
               .stream()
 
 /**

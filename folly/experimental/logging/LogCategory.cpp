@@ -155,8 +155,13 @@ void LogCategory::setLevelLocked(LogLevel level, bool inherit) {
   //
   // This makes sure that UNINITIALIZED is always less than any valid level
   // value, and that level values cannot conflict with our flag bits.
-  if (level > LogLevel::MAX_LEVEL) {
-    level = LogLevel::MAX_LEVEL;
+  //
+  // In debug builds we clamp the maximum to DFATAL rather than MAX_LEVEL
+  // (FATAL), to ensure that fatal log messages can never be disabled.
+  constexpr LogLevel maxLogLevel =
+      kIsDebug ? LogLevel::DFATAL : LogLevel::MAX_LEVEL;
+  if (level > maxLogLevel) {
+    level = maxLogLevel;
   } else if (level < LogLevel::MIN_LEVEL) {
     level = LogLevel::MIN_LEVEL;
   }

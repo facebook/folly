@@ -463,4 +463,34 @@ class LogStreamVoidify<true> {
    */
   [[noreturn]] void operator&(std::ostream&);
 };
+
+/**
+ * logDisabledHelper() is invoked in FB_LOG() and XLOG() statements if the log
+ * admittance check fails.
+ *
+ * This function exists solely to ensure that both sides of the log check are
+ * marked [[noreturn]] for fatal log messages.  This allows the compiler to
+ * recognize that the full statement is noreturn, preventing warnings about
+ * missing return statements after fatal log messages.
+ *
+ * Unfortunately it does not appear possible to get the compiler to recognize
+ * that the disabled side of the log statement should never be reached for
+ * fatal messages.  Even if we make the check something like
+ * `(isLogLevelFatal(level) || realCheck)`, where isLogLevelFatal() is
+ * constexpr, this is not sufficient for gcc or clang to recognize that the
+ * full expression is noreturn.
+ *
+ * Ideally this would just be a template function specialized on a boolean
+ * IsFatal parameter.  Unfortunately this triggers a bug in clang, which does
+ * not like differing noreturn behavior for different template instantiations.
+ * Therefore we overload on integral_constant instead.
+ *
+ * clang-format also doesn't do a good job understanding this code and figuring
+ * out how to format it.
+ */
+// clang-format off
+inline void logDisabledHelper(std::integral_constant<bool, false>) noexcept {}
+[[noreturn]] void logDisabledHelper(
+        std::integral_constant<bool, true>) noexcept;
+// clang-format on
 }
