@@ -454,8 +454,8 @@ void AsyncSSLSocket::sslAccept(
   verifyPeer_ = verifyPeer;
 
   // Make sure we're in the uninitialized state
-  if (!server_ || (sslState_ != STATE_UNINIT &&
-                   sslState_ != STATE_UNENCRYPTED) ||
+  if (!server_ ||
+      (sslState_ != STATE_UNINIT && sslState_ != STATE_UNENCRYPTED) ||
       handshakeCallback_ != nullptr) {
     return invalidState(callback);
   }
@@ -697,13 +697,15 @@ void AsyncSSLSocket::connect(
     const folly::SocketAddress& bindAddr) noexcept {
   assert(!server_);
   assert(state_ == StateEnum::UNINIT);
-  assert(sslState_ == STATE_UNINIT);
+  assert(sslState_ == STATE_UNINIT || sslState_ == STATE_UNENCRYPTED);
   noTransparentTls_ = true;
   totalConnectTimeout_ = totalConnectTimeout;
-  AsyncSSLSocketConnector* connector = new AsyncSSLSocketConnector(
-      this, callback, int(totalConnectTimeout.count()));
+  if (sslState_ != STATE_UNENCRYPTED) {
+    callback = new AsyncSSLSocketConnector(
+        this, callback, int(totalConnectTimeout.count()));
+  }
   AsyncSocket::connect(
-      connector, address, int(connectTimeout.count()), options, bindAddr);
+      callback, address, int(connectTimeout.count()), options, bindAddr);
 }
 
 bool AsyncSSLSocket::needsPeerVerification() const {

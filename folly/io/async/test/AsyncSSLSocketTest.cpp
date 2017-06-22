@@ -1633,6 +1633,37 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
   EXPECT_EQ(AsyncSSLSocket::STATE_ESTABLISHED, client->getSSLState());
 }
 
+TEST(AsyncSSLSocketTest, ConnectUnencryptedTest) {
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  getctx(clientCtx, serverCtx);
+
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback);
+
+  EventBase evb;
+  std::shared_ptr<AsyncSSLSocket> socket =
+      AsyncSSLSocket::newSocket(clientCtx, &evb, true);
+  socket->connect(nullptr, server.getAddress(), 0);
+
+  evb.loop();
+
+  EXPECT_EQ(AsyncSSLSocket::STATE_UNENCRYPTED, socket->getSSLState());
+  socket->sslConn(nullptr);
+  evb.loop();
+  EXPECT_EQ(AsyncSSLSocket::STATE_ESTABLISHED, socket->getSSLState());
+
+  // write()
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  socket->write(nullptr, buf.data(), buf.size());
+
+  socket->close();
+}
+
 TEST(AsyncSSLSocketTest, ConnResetErrorString) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
