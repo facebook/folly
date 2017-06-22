@@ -16,6 +16,7 @@
 #include <folly/experimental/logging/Init.h>
 #include <folly/experimental/logging/xlog.h>
 #include <folly/init/Init.h>
+#include <folly/portability/Stdlib.h>
 
 DEFINE_string(logging, "", "Logging category configuration string");
 DEFINE_string(
@@ -27,8 +28,36 @@ DEFINE_string(
     category,
     "",
     "Crash with a message to this category instead of the default");
+DEFINE_bool(crash, true, "Crash with a fatal log message.");
 
 using folly::LogLevel;
+
+namespace {
+/**
+ * Helper class to optionally log a fatal message during static initialization
+ * or destruction.
+ *
+ * Since command line arguments have not been processed during static
+ * initialization, we check an environment variable.
+ */
+class InitChecker {
+ public:
+  InitChecker() : value_{getenv("CRASH_DURING_INIT")} {
+    if (value_ && strcmp(value_, "shutdown") != 0) {
+      XLOG(FATAL) << "crashing during static initialization";
+    }
+  }
+  ~InitChecker() {
+    if (value_) {
+      XLOG(FATAL) << "crashing during static destruction";
+    }
+  }
+
+  const char* value_{nullptr};
+};
+
+static InitChecker initChecker;
+}
 
 /*
  * This is a simple helper program to exercise the LOG(FATAL) functionality.
@@ -48,6 +77,10 @@ int main(int argc, char* argv[]) {
   if (!FLAGS_category.empty()) {
     folly::Logger logger{FLAGS_category};
     FB_LOG(logger, FATAL, "crashing to category ", FLAGS_category);
+  }
+
+  if (!FLAGS_crash) {
+    return 0;
   }
 
   XLOG(FATAL) << "test program crashing!";
