@@ -64,14 +64,14 @@ LoggerDB* LoggerDB::get() {
 }
 
 LoggerDB::LoggerDB() {
-  // Create the root log category, and set the level to ERROR by default
+  // Create the root log category, and set the level to ERR by default
   auto rootUptr = std::make_unique<LogCategory>(this);
   LogCategory* root = rootUptr.get();
   auto ret =
       loggersByName_.wlock()->emplace(root->getName(), std::move(rootUptr));
   DCHECK(ret.second);
 
-  root->setLevelLocked(LogLevel::ERROR, false);
+  root->setLevelLocked(LogLevel::ERR, false);
 }
 
 LoggerDB::LoggerDB(TestConstructorArg) : LoggerDB() {}

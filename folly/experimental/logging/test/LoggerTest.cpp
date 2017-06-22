@@ -67,14 +67,14 @@ TEST_F(LoggerTest, subCategory) {
   // Log from a sub-category.
   Logger subLogger{&db_, "test.foo.bar"};
   auto expectedLine = __LINE__ + 1;
-  FB_LOG(subLogger, ERROR, "sub-category\nlog message");
+  FB_LOG(subLogger, ERR, "sub-category\nlog message");
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("sub-category\nlog message", messages[0].first.getMessage());
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
-  EXPECT_EQ(LogLevel::ERROR, messages[0].first.getLevel());
+  EXPECT_EQ(LogLevel::ERR, messages[0].first.getLevel());
   EXPECT_TRUE(messages[0].first.containsNewlines());
   EXPECT_EQ(subLogger.getCategory(), messages[0].first.getCategory());
   EXPECT_EQ(logger_.getCategory(), messages[0].second);
@@ -294,13 +294,13 @@ TEST_F(LoggerTest, logMacros) {
   Logger footest{&db_, "test.foo.test"};
   Logger footest1234{&db_, "test.foo.test.1234"};
   Logger other{&db_, "test.other"};
-  db_.setLevel("test", LogLevel::ERROR);
+  db_.setLevel("test", LogLevel::ERR);
   db_.setLevel("test.foo", LogLevel::DBG2);
   db_.setLevel("test.foo.test", LogLevel::DBG7);
 
   auto& messages = handler_->getMessages();
 
-  // test.other's effective level should be ERROR, so a warning
+  // test.other's effective level should be ERR, so a warning
   // message to it should be discarded
   FB_LOG(other, WARN, "this should be discarded");
   ASSERT_EQ(0, messages.size());
@@ -332,7 +332,7 @@ TEST_F(LoggerTest, logMacros) {
   messages.clear();
 
   // Bad format arguments should not throw
-  FB_LOGF(footest1234, ERROR, "whoops: {}, {}", getValue());
+  FB_LOGF(footest1234, ERR, "whoops: {}, {}", getValue());
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ(
       "error formatting log message: "

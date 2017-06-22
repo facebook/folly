@@ -28,8 +28,8 @@
 namespace folly {
 
 LogCategory::LogCategory(LoggerDB* db)
-    : effectiveLevel_{LogLevel::ERROR},
-      level_{static_cast<uint32_t>(LogLevel::ERROR)},
+    : effectiveLevel_{LogLevel::ERR},
+      level_{static_cast<uint32_t>(LogLevel::ERR)},
       parent_{nullptr},
       name_{},
       db_{db} {}

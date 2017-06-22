@@ -149,7 +149,7 @@ TEST(GlogFormatter, unprintableChars) {
       tid);
   EXPECT_EQ(
       expected,
-      formatMsg(LogLevel::ERROR, "foo\abar\x1btest", "escapes.cpp", 97));
+      formatMsg(LogLevel::ERR, "foo\abar\x1btest", "escapes.cpp", 97));
   expected = folly::sformat(
       "I0417 13:45:56.123456 {:5d} escapes.cpp:98] foo\\\\bar\"test\n", tid);
   EXPECT_EQ(

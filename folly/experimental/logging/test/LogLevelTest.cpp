@@ -46,6 +46,7 @@ TEST(LogLevel, fromString) {
   EXPECT_EQ(LogLevel::ERR, stringToLogLevel("err"));
   EXPECT_EQ(LogLevel::ERR, stringToLogLevel("eRr"));
   EXPECT_EQ(LogLevel::ERR, stringToLogLevel("error"));
+  EXPECT_EQ(LogLevel::ERR, stringToLogLevel("ERR"));
   EXPECT_EQ(LogLevel::ERR, stringToLogLevel("ERROR"));
 
   EXPECT_EQ(LogLevel::CRITICAL, stringToLogLevel("critical"));

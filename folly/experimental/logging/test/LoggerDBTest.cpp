@@ -80,9 +80,9 @@ TEST(LoggerDB, processConfigString) {
   EXPECT_EQ(LogLevel::DBG5, db.getCategory("foo.bar")->getLevel());
   EXPECT_EQ(LogLevel::DBG5, db.getCategory("foo.bar")->getEffectiveLevel());
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo")->getLevel());
-  EXPECT_EQ(LogLevel::ERROR, db.getCategory("foo")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::ERROR, db.getCategory("")->getLevel());
-  EXPECT_EQ(LogLevel::ERROR, db.getCategory("")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::ERR, db.getCategory("foo")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getLevel());
+  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getEffectiveLevel());
 
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar.test")->getLevel());
   EXPECT_EQ(

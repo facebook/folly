@@ -34,13 +34,13 @@ TEST(PrintfTest, printfStyleMacros) {
   Logger footest{&db, "test.foo.test"};
   Logger footest1234{&db, "test.foo.test.1234"};
   Logger other{&db, "test.other"};
-  db.setLevel("test", LogLevel::ERROR);
+  db.setLevel("test", LogLevel::ERR);
   db.setLevel("test.foo", LogLevel::DBG2);
   db.setLevel("test.foo.test", LogLevel::DBG7);
 
   auto& messages = handler->getMessages();
 
-  // test.other's effective level should be ERROR, so a warning
+  // test.other's effective level should be ERR, so a warning
   // message to it should be discarded
   FB_LOGC(other, WARN, "this should be discarded: %d", 5);
   ASSERT_EQ(0, messages.size());
@@ -91,7 +91,7 @@ TEST(PrintfTest, printfStyleMacros) {
   messages.clear();
 
   // Errors attempting to format the message should not throw
-  FB_LOGC(footest1234, ERROR, "width overflow: %999999999999999999999d", 5);
+  FB_LOGC(footest1234, ERR, "width overflow: %999999999999999999999d", 5);
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ(
       "error formatting printf-style log message: "

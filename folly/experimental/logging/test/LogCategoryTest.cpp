@@ -31,11 +31,11 @@ TEST(LogCategory, effectiveLevel) {
   Logger foo2{&db, "..foo.."};
   EXPECT_EQ(foo.getCategory(), foo2.getCategory());
 
-  EXPECT_EQ(LogLevel::ERROR, db.getCategory("")->getLevel());
-  EXPECT_EQ(LogLevel::ERROR, db.getCategory("")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getLevel());
+  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getEffectiveLevel());
 
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar")->getLevel());
-  EXPECT_EQ(LogLevel::ERROR, db.getCategory("foo.bar")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::ERR, db.getCategory("foo.bar")->getEffectiveLevel());
 
   db.setLevel(".foo", LogLevel::WARN);
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar")->getLevel());
@@ -58,7 +58,7 @@ TEST(LogCategory, effectiveLevel) {
   EXPECT_EQ(LogLevel::CRITICAL, noinherit->getEffectiveLevel());
 
   // Modify the root logger's level
-  db.setLevel(".", LogLevel::ERROR);
+  db.setLevel(".", LogLevel::ERR);
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.test.1234")->getLevel());
   EXPECT_EQ(
       LogLevel::WARN, db.getCategory("foo.test.1234")->getEffectiveLevel());
@@ -73,8 +73,7 @@ TEST(LogCategory, effectiveLevel) {
       db.getCategory("foo.test.noinherit")->getEffectiveLevel());
 
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("bar.foo.test")->getLevel());
-  EXPECT_EQ(
-      LogLevel::ERROR, db.getCategory("bar.foo.test")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::ERR, db.getCategory("bar.foo.test")->getEffectiveLevel());
 }
 
 void testNumHandlers(size_t numHandlers) {
@@ -139,7 +138,7 @@ void testNumHandlers(size_t numHandlers) {
 
   // Log a message to a sibling of foobar
   Logger siblingLogger{&db, "foo.sibling"};
-  FB_LOG(siblingLogger, ERROR, "oh noes");
+  FB_LOG(siblingLogger, ERR, "oh noes");
   for (const auto& handler : handlers) {
     auto& messages = handler->getMessages();
     EXPECT_EQ(2, messages.size());
@@ -148,7 +147,7 @@ void testNumHandlers(size_t numHandlers) {
     auto& messages = rootHandler->getMessages();
     ASSERT_EQ(3, messages.size());
     EXPECT_EQ("oh noes", messages[2].first.getMessage());
-    EXPECT_EQ(LogLevel::ERROR, messages[2].first.getLevel());
+    EXPECT_EQ(LogLevel::ERR, messages[2].first.getLevel());
     EXPECT_EQ(siblingLogger.getCategory(), messages[2].first.getCategory());
     EXPECT_EQ(rootCategory, messages[2].second);
   }

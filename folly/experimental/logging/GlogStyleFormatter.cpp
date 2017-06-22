@@ -29,7 +29,7 @@ StringPiece getGlogLevelName(LogLevel level) {
     return "VERBOSE";
   } else if (level < LogLevel::WARN) {
     return "INFO";
-  } else if (level < LogLevel::ERROR) {
+  } else if (level < LogLevel::ERR) {
     return "WARNING";
   } else if (level < LogLevel::CRITICAL) {
     return "ERROR";

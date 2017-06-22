@@ -26,7 +26,7 @@ using namespace folly;
     SCOPED_TRACE(                                                             \
         "input string: \"" + folly::backslashify<std::string>(value) + "\""); \
     LogMessage checkMsg{                                                      \
-        category, LogLevel::ERROR, __FILE__, __LINE__, std::string{value}};   \
+        category, LogLevel::ERR, __FILE__, __LINE__, std::string{value}};     \
     EXPECT_EQ(expected, checkMsg.getMessage());                               \
     EXPECT_EQ(hasNewlines, checkMsg.containsNewlines());                      \
     EXPECT_EQ(__FILE__, checkMsg.getFileName());                              \

@@ -62,9 +62,6 @@ enum class LogLevel : uint32_t {
   // other log libraries that also use ERROR as their log level name (e.g.,
   // glog).
   ERR = 4000,
-#ifndef ERROR
-  ERROR = 4000,
-#endif
 
   CRITICAL = 5000,
 
