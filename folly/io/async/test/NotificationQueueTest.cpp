@@ -515,7 +515,7 @@ TEST(NotificationQueueTest, SendOneEventFD) {
 
 TEST(NotificationQueueTest, PutMessagesEventFD) {
   QueueTest qt(0, IntQueue::FdType::EVENTFD);
-  qt.sendOne();
+  qt.putMessages();
 }
 
 TEST(NotificationQueueTest, MultiConsumerEventFD) {
@@ -546,7 +546,7 @@ TEST(NotificationQueueTest, SendOnePipe) {
 
 TEST(NotificationQueueTest, PutMessagesPipe) {
   QueueTest qt(0, IntQueue::FdType::PIPE);
-  qt.sendOne();
+  qt.putMessages();
 }
 
 TEST(NotificationQueueTest, MultiConsumerPipe) {
