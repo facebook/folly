@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_INSTRUCTIONS_H
-#define FOLLY_EXPERIMENTAL_INSTRUCTIONS_H
+#pragma once
+
+#include <glog/logging.h>
+
+#ifdef _MSC_VER
+#include <immintrin.h>
+#endif
 
 #include <folly/CpuId.h>
+#include <folly/Portability.h>
+#include <folly/portability/Builtins.h>
 
-namespace folly { namespace compression { namespace instructions {
+namespace folly {
+namespace compression {
+namespace instructions {
 
 // NOTE: It's recommended to compile EF coding with -msse4.2, starting
 // with Nehalem, Intel CPUs support POPCNT instruction and gcc will emit
@@ -30,22 +39,46 @@ namespace folly { namespace compression { namespace instructions {
 // use explicitly.
 
 struct Default {
-  static bool supported(const folly::CpuId& cpuId = {}) {
+  static bool supported(const folly::CpuId& /* cpuId */ = {}) {
     return true;
   }
-  static inline uint64_t popcount(uint64_t value) {
-    return __builtin_popcountll(value);
+  static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
+    return uint64_t(__builtin_popcountll(value));
   }
-  static inline int ctz(uint64_t value) {
-    DCHECK_GT(value, 0);
+  static FOLLY_ALWAYS_INLINE int ctz(uint64_t value) {
+    DCHECK_GT(value, 0u);
     return __builtin_ctzll(value);
   }
-  static inline int clz(uint64_t value) {
-    DCHECK_GT(value, 0);
+  static FOLLY_ALWAYS_INLINE int clz(uint64_t value) {
+    DCHECK_GT(value, 0u);
     return __builtin_clzll(value);
   }
-  static inline uint64_t blsr(uint64_t value) {
+  static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
     return value & (value - 1);
+  }
+
+  // Extract `length` bits starting from `start` from value. Only bits [0:63]
+  // will be extracted. All higher order bits in the
+  // result will be zeroed. If no bits are extracted, return 0.
+  static FOLLY_ALWAYS_INLINE uint64_t
+  bextr(uint64_t value, uint32_t start, uint32_t length) {
+    if (start > 63) {
+      return 0ULL;
+    }
+    if (start + length > 64) {
+      length = 64 - start;
+    }
+
+    return (value >> start) &
+        ((length == 64) ? (~0ULL) : ((1ULL << length) - 1ULL));
+  }
+
+  // Clear high bits starting at position index.
+  static FOLLY_ALWAYS_INLINE uint64_t bzhi(uint64_t value, uint32_t index) {
+    if (index > 63) {
+      return 0;
+    }
+    return value & ((uint64_t(1) << index) - 1);
   }
 };
 
@@ -53,27 +86,67 @@ struct Nehalem : public Default {
   static bool supported(const folly::CpuId& cpuId = {}) {
     return cpuId.popcnt();
   }
-  static inline uint64_t popcount(uint64_t value) {
-    // POPCNT is supported starting with Intel Nehalem, AMD K10.
+
+  static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
+// POPCNT is supported starting with Intel Nehalem, AMD K10.
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
     uint64_t result;
-    asm ("popcntq %1, %0" : "=r" (result) : "r" (value));
+    asm("popcntq %1, %0" : "=r"(result) : "r"(value));
     return result;
+#else
+    return uint64_t(_mm_popcnt_u64(value));
+#endif
   }
 };
 
 struct Haswell : public Nehalem {
   static bool supported(const folly::CpuId& cpuId = {}) {
-    return Nehalem::supported(cpuId) && cpuId.bmi1();
+    return Nehalem::supported(cpuId) && cpuId.bmi1() && cpuId.bmi2();
   }
-  static inline uint64_t blsr(uint64_t value) {
-    // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
-    // BLSR combines two instuctions into one and reduces register pressure.
+
+  static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
+// BMI1 is supported starting with Intel Haswell, AMD Piledriver.
+// BLSR combines two instructions into one and reduces register pressure.
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
     uint64_t result;
-    asm ("blsrq %1, %0" : "=r" (result) : "r" (value));
+    asm("blsrq %1, %0" : "=r"(result) : "r"(value));
     return result;
+#else
+    return _blsr_u64(value);
+#endif
+  }
+
+  static FOLLY_ALWAYS_INLINE uint64_t
+  bextr(uint64_t value, uint32_t start, uint32_t length) {
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
+    // Encode parameters in `pattern` where `pattern[0:7]` is `start` and
+    // `pattern[8:15]` is `length`.
+    // Ref: Intel Advanced Vector Extensions Programming Reference
+    uint64_t pattern = start & 0xFF;
+    pattern = pattern | ((length & 0xFF) << 8);
+    uint64_t result;
+    asm("bextrq %2, %1, %0" : "=r"(result) : "r"(value), "r"(pattern));
+    return result;
+#else
+    return _bextr_u64(value, start, length);
+#endif
+  }
+
+  static FOLLY_ALWAYS_INLINE uint64_t bzhi(uint64_t value, uint32_t index) {
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
+    const uint64_t index64 = index;
+    uint64_t result;
+    asm("bzhiq %2, %1, %0" : "=r"(result) : "r"(value), "r"(index64));
+    return result;
+#else
+    return _bzhi_u64(value, index);
+#endif
   }
 };
-
-}}}  // namespaces
-
-#endif  // FOLLY_EXPERIMENTAL_INSTRUCTIONS_H
+}
+}
+} // namespaces

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
+
 #include <iosfwd>
 #include <random>
 #include <set>
@@ -24,9 +24,11 @@
 #include <folly/FBVector.h>
 #include <folly/MapUtil.h>
 #include <folly/Memory.h>
+#include <folly/String.h>
 #include <folly/dynamic.h>
-#include <folly/gen/Base.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/gen/Base.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::gen;
 using namespace folly;
@@ -46,12 +48,12 @@ EXPECT_SAME(int&, typename ArgumentReference<int&>::type);
 EXPECT_SAME(const int&, typename ArgumentReference<const int&>::type);
 EXPECT_SAME(const int&, typename ArgumentReference<const int>::type);
 
-template<typename T>
+template <typename T>
 ostream& operator<<(ostream& os, const set<T>& values) {
   return os << from(values);
 }
 
-template<typename T>
+template <typename T>
 ostream& operator<<(ostream& os, const vector<T>& values) {
   os << "[";
   for (auto& value : values) {
@@ -69,7 +71,7 @@ auto multiply = [](int a, int b) { return a * b; };
 
 auto product = foldl(1, multiply);
 
-template<typename A, typename B>
+template <typename A, typename B>
 ostream& operator<<(ostream& os, const pair<A, B>& pair) {
   return os << "(" << pair.first << ", " << pair.second << ")";
 }
@@ -348,6 +350,11 @@ TEST(Gen, Take) {
       | take(5)
       | as<vector>();
     EXPECT_EQ(expected, actual);
+  }
+  {
+    int64_t limit = 5;
+    take(limit - 5);
+    EXPECT_THROW(take(limit - 6), std::invalid_argument);
   }
 }
 
@@ -911,7 +918,7 @@ class TestIntSeq : public GenImpl<int, TestIntSeq> {
   TestIntSeq& operator=(const TestIntSeq&) = delete;
 };
 
-}  // namespace
+} // namespace
 
 TEST(Gen, NoGeneratorCopies) {
   EXPECT_EQ(15, TestIntSeq() | sum);
@@ -993,11 +1000,15 @@ TEST(Gen, CopyCount) {
 
 // test dynamics with various layers of nested arrays.
 TEST(Gen, Dynamic) {
-  dynamic array1 = {1, 2};
+  dynamic array1 = dynamic::array(1, 2);
   EXPECT_EQ(dynamic(3), from(array1) | sum);
-  dynamic array2 = {{1}, {1, 2}};
+  dynamic array2 = folly::dynamic::array(
+      folly::dynamic::array(1), folly::dynamic::array(1, 2));
   EXPECT_EQ(dynamic(4), from(array2) | rconcat | sum);
-  dynamic array3 = {{{1}}, {{1}, {1, 2}}};
+  dynamic array3 = folly::dynamic::array(
+      folly::dynamic::array(folly::dynamic::array(1)),
+      folly::dynamic::array(
+          folly::dynamic::array(1), folly::dynamic::array(1, 2)));
   EXPECT_EQ(dynamic(5), from(array3) | rconcat | rconcat | sum);
 }
 
@@ -1106,6 +1117,45 @@ TEST(Gen, Dereference) {
     EXPECT_EQ(10, from(ups) | dereference | sum);
     EXPECT_EQ(10, from(ups) | move | dereference | sum);
   }
+}
+
+namespace {
+struct DereferenceWrapper {
+  string data;
+  string& operator*() & {
+    return data;
+  }
+  string&& operator*() && {
+    return std::move(data);
+  }
+  explicit operator bool() {
+    return true;
+  }
+};
+bool operator==(const DereferenceWrapper& a, const DereferenceWrapper& b) {
+  return a.data == b.data;
+}
+void PrintTo(const DereferenceWrapper& a, std::ostream* o) {
+  *o << "Wrapper{\"" << cEscape<string>(a.data) << "\"}";
+}
+}
+
+TEST(Gen, DereferenceWithLValueRef) {
+  auto original = vector<DereferenceWrapper>{{"foo"}, {"bar"}};
+  auto copy = original;
+  auto expected = vector<string>{"foo", "bar"};
+  auto actual = from(original) | dereference | as<vector>();
+  EXPECT_EQ(expected, actual);
+  EXPECT_EQ(copy, original);
+}
+
+TEST(Gen, DereferenceWithRValueRef) {
+  auto original = vector<DereferenceWrapper>{{"foo"}, {"bar"}};
+  auto empty = vector<DereferenceWrapper>{{}, {}};
+  auto expected = vector<string>{"foo", "bar"};
+  auto actual = from(original) | move | dereference | as<vector>();
+  EXPECT_EQ(expected, actual);
+  EXPECT_EQ(empty, original);
 }
 
 TEST(Gen, Indirect) {
@@ -1224,29 +1274,29 @@ TEST(Gen, Unwrap) {
   EXPECT_EQ(4, o | unwrap);
   EXPECT_THROW(e | unwrap, OptionalEmptyException);
 
-  auto oup = folly::make_optional(folly::make_unique<int>(5));
+  auto oup = folly::make_optional(std::make_unique<int>(5));
   // optional has a value, and that value is non-null
-  EXPECT_TRUE(oup | unwrap);
+  EXPECT_TRUE(bool(oup | unwrap));
   EXPECT_EQ(5, *(oup | unwrap));
   EXPECT_TRUE(oup.hasValue()); // still has a pointer (null or not)
-  EXPECT_TRUE(oup.value()); // that value isn't null
+  EXPECT_TRUE(bool(oup.value())); // that value isn't null
 
-  auto moved1 = std::move(oup) | unwrapOr(folly::make_unique<int>(6));
+  auto moved1 = std::move(oup) | unwrapOr(std::make_unique<int>(6));
   // oup still has a value, but now it's now nullptr since the pointer was moved
   // into moved1
   EXPECT_TRUE(oup.hasValue());
   EXPECT_FALSE(oup.value());
-  EXPECT_TRUE(moved1);
+  EXPECT_TRUE(bool(moved1));
   EXPECT_EQ(5, *moved1);
 
-  auto moved2 = std::move(oup) | unwrapOr(folly::make_unique<int>(7));
+  auto moved2 = std::move(oup) | unwrapOr(std::make_unique<int>(7));
   // oup's still-valid nullptr value wins here, the pointer to 7 doesn't apply
   EXPECT_FALSE(moved2);
 
   oup.clear();
-  auto moved3 = std::move(oup) | unwrapOr(folly::make_unique<int>(8));
+  auto moved3 = std::move(oup) | unwrapOr(std::make_unique<int>(8));
   // oup is empty now, so the unwrapOr comes into play.
-  EXPECT_TRUE(moved3);
+  EXPECT_TRUE(bool(moved3));
   EXPECT_EQ(8, *moved3);
 
   {
@@ -1282,17 +1332,17 @@ TEST(Gen, Unwrap) {
 
   {
     auto opt = folly::make_optional(std::make_shared<int>(8));
-    auto fallback = unwrapOr(folly::make_unique<int>(9));
+    auto fallback = unwrapOr(std::make_unique<int>(9));
     // fallback must be std::move'd to be used
     EXPECT_EQ(8, *(opt | std::move(fallback)));
-    EXPECT_TRUE(opt.value()); // shared_ptr copied out, not moved
-    EXPECT_TRUE(opt); // value still present
-    EXPECT_TRUE(fallback.value()); // fallback value not needed
+    EXPECT_TRUE(bool(opt.value())); // shared_ptr copied out, not moved
+    EXPECT_TRUE(bool(opt)); // value still present
+    EXPECT_TRUE(bool(fallback.value())); // fallback value not needed
 
     EXPECT_EQ(8, *(std::move(opt) | std::move(fallback)));
     EXPECT_FALSE(opt.value()); // shared_ptr moved out
-    EXPECT_TRUE(opt); // gutted value still present
-    EXPECT_TRUE(fallback.value()); // fallback value not needed
+    EXPECT_TRUE(bool(opt)); // gutted value still present
+    EXPECT_TRUE(bool(fallback.value())); // fallback value not needed
 
     opt.clear();
 

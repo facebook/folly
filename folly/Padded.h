@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_PADDED_H_
-#define FOLLY_PADDED_H_
+#pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -345,8 +345,9 @@ class Adaptor {
       lastCount_(lastCount) {
   }
   explicit Adaptor(size_t n, const value_type& value = value_type())
-    : c_(Node::nodeCount(n), fullNode(value)),
-      lastCount_(n % Node::kElementCount ?: Node::kElementCount) {
+    : c_(Node::nodeCount(n), fullNode(value)) {
+    const auto count = n % Node::kElementCount;
+    lastCount_ = count != 0 ? count : Node::kElementCount;
   }
 
   Adaptor(const Adaptor&) = default;
@@ -384,7 +385,7 @@ class Adaptor {
   iterator end() {
     auto it = iterator(c_.end());
     if (lastCount_ != Node::kElementCount) {
-      it -= (Node::kElementCount - lastCount_);
+      it -= difference_type(Node::kElementCount - lastCount_);
     }
     return it;
   }
@@ -511,5 +512,3 @@ class Adaptor {
 
 }  // namespace padded
 }  // namespace folly
-
-#endif /* FOLLY_PADDED_H_ */

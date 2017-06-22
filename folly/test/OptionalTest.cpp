@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,17 @@
  */
 
 #include <folly/Optional.h>
+#include <folly/Portability.h>
+#include <folly/portability/GTest.h>
 
-#include <memory>
-#include <vector>
 #include <algorithm>
 #include <iomanip>
+#include <memory>
 #include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
 
-#include <glog/logging.h>
-#include <gtest/gtest.h>
 #include <boost/optional.hpp>
 
 using std::unique_ptr;
@@ -117,7 +119,11 @@ public:
     other.s_ = "";
   }
   MoveTester& operator=(const MoveTester&) = default;
-  MoveTester& operator=(MoveTester&&) = default;
+  MoveTester& operator=(MoveTester&& other) noexcept {
+    s_ = std::move(other.s_);
+    other.s_ = "";
+    return *this;
+  }
 private:
   friend bool operator==(const MoveTester& o1, const MoveTester& o2);
   std::string s_;
@@ -168,23 +174,9 @@ struct ExpectingDeleter {
   }
 };
 
-TEST(Optional, value_life_extention) {
-  // Extends the life of the value.
-  const auto& ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
-      {new int(42), ExpectingDeleter{1337}}).value();
-  *ptr = 1337;
-}
-
 TEST(Optional, value_move) {
   auto ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
       {new int(42), ExpectingDeleter{1337}}).value();
-  *ptr = 1337;
-}
-
-TEST(Optional, dereference_life_extention) {
-  // Extends the life of the value.
-  const auto& ptr = *Optional<std::unique_ptr<int, ExpectingDeleter>>(
-      {new int(42), ExpectingDeleter{1337}});
   *ptr = 1337;
 }
 
@@ -381,6 +373,67 @@ TEST(Optional, Comparisons) {
   EXPECT_FALSE(bob != false);
 }
 
+TEST(Optional, HeterogeneousComparisons) {
+  using opt8 = Optional<uint8_t>;
+  using opt64 = Optional<uint64_t>;
+
+  EXPECT_TRUE(opt8(4) == uint64_t(4));
+  EXPECT_FALSE(opt8(8) == uint64_t(4));
+  EXPECT_FALSE(opt8() == uint64_t(4));
+
+  EXPECT_TRUE(uint64_t(4) == opt8(4));
+  EXPECT_FALSE(uint64_t(4) == opt8(8));
+  EXPECT_FALSE(uint64_t(4) == opt8());
+
+  EXPECT_FALSE(opt8(4) != uint64_t(4));
+  EXPECT_TRUE(opt8(8) != uint64_t(4));
+  EXPECT_TRUE(opt8() != uint64_t(4));
+
+  EXPECT_FALSE(uint64_t(4) != opt8(4));
+  EXPECT_TRUE(uint64_t(4) != opt8(8));
+  EXPECT_TRUE(uint64_t(4) != opt8());
+
+  EXPECT_TRUE(opt8() == opt64());
+  EXPECT_TRUE(opt8(4) == opt64(4));
+  EXPECT_FALSE(opt8(8) == opt64(4));
+  EXPECT_FALSE(opt8() == opt64(4));
+  EXPECT_FALSE(opt8(4) == opt64());
+
+  EXPECT_FALSE(opt8() != opt64());
+  EXPECT_FALSE(opt8(4) != opt64(4));
+  EXPECT_TRUE(opt8(8) != opt64(4));
+  EXPECT_TRUE(opt8() != opt64(4));
+  EXPECT_TRUE(opt8(4) != opt64());
+
+  EXPECT_TRUE(opt8() < opt64(4));
+  EXPECT_TRUE(opt8(4) < opt64(8));
+  EXPECT_FALSE(opt8() < opt64());
+  EXPECT_FALSE(opt8(4) < opt64(4));
+  EXPECT_FALSE(opt8(8) < opt64(4));
+  EXPECT_FALSE(opt8(4) < opt64());
+
+  EXPECT_FALSE(opt8() > opt64(4));
+  EXPECT_FALSE(opt8(4) > opt64(8));
+  EXPECT_FALSE(opt8() > opt64());
+  EXPECT_FALSE(opt8(4) > opt64(4));
+  EXPECT_TRUE(opt8(8) > opt64(4));
+  EXPECT_TRUE(opt8(4) > opt64());
+
+  EXPECT_TRUE(opt8() <= opt64(4));
+  EXPECT_TRUE(opt8(4) <= opt64(8));
+  EXPECT_TRUE(opt8() <= opt64());
+  EXPECT_TRUE(opt8(4) <= opt64(4));
+  EXPECT_FALSE(opt8(8) <= opt64(4));
+  EXPECT_FALSE(opt8(4) <= opt64());
+
+  EXPECT_FALSE(opt8() >= opt64(4));
+  EXPECT_FALSE(opt8(4) >= opt64(8));
+  EXPECT_TRUE(opt8() >= opt64());
+  EXPECT_TRUE(opt8(4) >= opt64(4));
+  EXPECT_TRUE(opt8(8) >= opt64(4));
+  EXPECT_TRUE(opt8(4) >= opt64());
+}
+
 TEST(Optional, Conversions) {
   Optional<bool> mbool;
   Optional<short> mshort;
@@ -398,6 +451,7 @@ TEST(Optional, Conversions) {
 
   // intended explicit operator bool, for if (opt).
   bool b(mbool);
+  EXPECT_FALSE(b);
 
   // Truthy tests work and are not ambiguous
   if (mbool && mshort && mstr && mint) { // only checks not-empty
@@ -467,11 +521,9 @@ TEST(Optional, MakeOptional) {
   EXPECT_EQ(**optIntPtr, 3);
 }
 
-#ifdef __clang__
+#if __CLANG_PREREQ(3, 6)
 # pragma clang diagnostic push
-# if __clang_major__ > 3 || __clang_minor__ >= 6
-#  pragma clang diagnostic ignored "-Wself-move"
-# endif
+# pragma clang diagnostic ignored "-Wself-move"
 #endif
 
 TEST(Optional, SelfAssignment) {
@@ -484,8 +536,8 @@ TEST(Optional, SelfAssignment) {
   ASSERT_TRUE(b.hasValue() && b.value() == 23333333);
 }
 
-#ifdef __clang__
-#pragma clang diagnostic pop
+#if __CLANG_PREREQ(3, 6)
+# pragma clang diagnostic pop
 #endif
 
 class ContainsOptional {
@@ -537,4 +589,29 @@ TEST(Optional, Exceptions) {
   EXPECT_THROW(empty.value(), OptionalEmptyException);
 }
 
+TEST(Optional, NoThrowDefaultConstructible) {
+  EXPECT_TRUE(std::is_nothrow_default_constructible<Optional<bool>>::value);
+}
+
+struct NoDestructor {};
+
+struct WithDestructor {
+  ~WithDestructor();
+};
+
+TEST(Optional, TriviallyDestructible) {
+  // These could all be static_asserts but EXPECT_* give much nicer output on
+  // failure.
+  EXPECT_TRUE(std::is_trivially_destructible<Optional<NoDestructor>>::value);
+  EXPECT_TRUE(std::is_trivially_destructible<Optional<int>>::value);
+  EXPECT_FALSE(std::is_trivially_destructible<Optional<WithDestructor>>::value);
+}
+
+TEST(Optional, Hash) {
+  // Test it's usable in std::unordered map (compile time check)
+  std::unordered_map<Optional<int>, Optional<int>> obj;
+  // Also check the std::hash template can be instantiated by the compiler
+  std::hash<Optional<int>>()(none);
+  std::hash<Optional<int>>()(3);
+}
 }

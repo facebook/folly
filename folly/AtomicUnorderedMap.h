@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FOLLY_ATOMICUNORDEREDMAP_H
-#define FOLLY_ATOMICUNORDEREDMAP_H
+
+#pragma once
 
 #include <atomic>
 #include <functional>
@@ -22,13 +22,15 @@
 #include <system_error>
 #include <type_traits>
 #include <stdint.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <folly/Likely.h>
+
 #include <folly/Bits.h>
 #include <folly/Conv.h>
+#include <folly/Likely.h>
 #include <folly/Random.h>
 #include <folly/detail/AtomicUnorderedMapUtils.h>
+#include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
+
 #include <boost/type_traits/has_trivial_destructor.hpp>
 #include <limits>
 
@@ -55,10 +57,12 @@ namespace folly {
 ///   O(1/(1-actual_load_factor)).  Note that this is a pretty strong
 ///   limitation, because you can't remove existing keys.
 ///
-/// * 2^30 maximum capacity - you'll need to use something else if you
-///   have more than a billion entries.  If this limit bothers you let it
-///   wouldn't be too hard to parameterize the internal indexes between
-///   uint32_t and uint64_t.
+/// * 2^30 maximum default capacity - by default AtomicUnorderedInsertMap
+///   uses uint32_t internal indexes (and steals 2 bits), limiting you
+///   to about a billion entries.  If you need more you can fill in all
+///   of the template params so you change IndexType to uint64_t, or you
+///   can use AtomicUnorderedInsertMap64.  64-bit indexes will increase
+///   the space over of the map, of course.
 ///
 /// WHAT YOU GET IN EXCHANGE:
 ///
@@ -133,6 +137,7 @@ template <typename Key,
               (boost::has_trivial_destructor<Key>::value &&
                boost::has_trivial_destructor<Value>::value),
           template<typename> class Atom = std::atomic,
+          typename IndexType = uint32_t,
           typename Allocator = folly::detail::MMapAlloc>
 
 struct AtomicUnorderedInsertMap {
@@ -147,7 +152,7 @@ struct AtomicUnorderedInsertMap {
   typedef const value_type& const_reference;
 
   typedef struct ConstIterator {
-    ConstIterator(const AtomicUnorderedInsertMap& owner, uint32_t slot)
+    ConstIterator(const AtomicUnorderedInsertMap& owner, IndexType slot)
       : owner_(owner)
       , slot_(slot)
     {}
@@ -175,7 +180,7 @@ struct AtomicUnorderedInsertMap {
     }
 
     // post-increment
-    ConstIterator operator++ (int dummy) {
+    ConstIterator operator++(int /* dummy */) {
       auto prev = *this;
       ++*this;
       return prev;
@@ -190,31 +195,33 @@ struct AtomicUnorderedInsertMap {
 
    private:
     const AtomicUnorderedInsertMap& owner_;
-    uint32_t slot_;
+    IndexType slot_;
   } const_iterator;
 
   friend ConstIterator;
 
-  /// Constructs a map that will support the insertion of maxSize
-  /// key-value pairs without exceeding the max load factor.  Load
-  /// factors of greater than 1 are not supported, and once the actual load
-  /// factor of the map approaches 1 the insert performance will suffer.
-  /// The capacity is limited to 2^30 (about a billion), beyond which
-  /// we will throw invalid_argument.
+  /// Constructs a map that will support the insertion of maxSize key-value
+  /// pairs without exceeding the max load factor.  Load factors of greater
+  /// than 1 are not supported, and once the actual load factor of the
+  /// map approaches 1 the insert performance will suffer.  The capacity
+  /// is limited to 2^30 (about a billion) for the default IndexType,
+  /// beyond which we will throw invalid_argument.
   explicit AtomicUnorderedInsertMap(
       size_t maxSize,
       float maxLoadFactor = 0.8f,
       const Allocator& alloc = Allocator())
     : allocator_(alloc)
   {
-    size_t capacity = maxSize / std::max(1.0f, maxLoadFactor) + 128;
-    if (capacity > (1 << 30) && maxSize < (1 << 30)) {
+    size_t capacity = size_t(maxSize / std::min(1.0f, maxLoadFactor) + 128);
+    size_t avail = size_t{1} << (8 * sizeof(IndexType) - 2);
+    if (capacity > avail && maxSize < avail) {
       // we'll do our best
-      capacity = (1 << 30);
+      capacity = avail;
     }
-    if (capacity < maxSize || capacity > (1 << 30)) {
+    if (capacity < maxSize || capacity > avail) {
       throw std::invalid_argument(
-          "AtomicUnorderedInsertMap capacity must fit in 30 bits");
+          "AtomicUnorderedInsertMap capacity must fit in IndexType with 2 bits "
+          "left over");
     }
 
     numSlots_ = capacity;
@@ -319,7 +326,7 @@ struct AtomicUnorderedInsertMap {
   }
 
   const_iterator cbegin() const {
-    uint32_t slot = numSlots_ - 1;
+    IndexType slot = numSlots_ - 1;
     while (slot > 0 && slots_[slot].state() != LINKED) {
       --slot;
     }
@@ -331,12 +338,11 @@ struct AtomicUnorderedInsertMap {
   }
 
  private:
-
-  enum {
+  enum : IndexType {
     kMaxAllocationTries = 1000, // after this we throw
   };
 
-  enum BucketState : uint32_t {
+  enum BucketState : IndexType {
     EMPTY = 0,
     CONSTRUCTING = 1,
     LINKED = 2,
@@ -354,10 +360,10 @@ struct AtomicUnorderedInsertMap {
     /// of the first bucket for the chain whose keys map to this slot.
     /// When things are going well the head usually links to this slot,
     /// but that doesn't always have to happen.
-    Atom<uint32_t> headAndState_;
+    Atom<IndexType> headAndState_;
 
     /// The next bucket in the chain
-    uint32_t next_;
+    IndexType next_;
 
     /// Key and Value
     typename std::aligned_storage<sizeof(value_type),
@@ -407,7 +413,7 @@ struct AtomicUnorderedInsertMap {
   Allocator allocator_;
   Slot* slots_;
 
-  uint32_t keyToSlotIdx(const Key& key) const {
+  IndexType keyToSlotIdx(const Key& key) const {
     size_t h = hasher()(key);
     h &= slotMask_;
     while (h >= numSlots_) {
@@ -416,7 +422,7 @@ struct AtomicUnorderedInsertMap {
     return h;
   }
 
-  uint32_t find(const Key& key, uint32_t slot) const {
+  IndexType find(const Key& key, IndexType slot) const {
     KeyEqual ke = {};
     auto hs = slots_[slot].headAndState_.load(std::memory_order_acquire);
     for (slot = hs >> 2; slot != 0; slot = slots_[slot].next_) {
@@ -429,8 +435,8 @@ struct AtomicUnorderedInsertMap {
 
   /// Allocates a slot and returns its index.  Tries to put it near
   /// slots_[start].
-  uint32_t allocateNear(uint32_t start) {
-    for (auto tries = 0; tries < kMaxAllocationTries; ++tries) {
+  IndexType allocateNear(IndexType start) {
+    for (IndexType tries = 0; tries < kMaxAllocationTries; ++tries) {
       auto slot = allocationAttempt(start, tries);
       auto prev = slots_[slot].headAndState_.load(std::memory_order_acquire);
       if ((prev & 3) == EMPTY &&
@@ -445,11 +451,16 @@ struct AtomicUnorderedInsertMap {
   /// Returns the slot we should attempt to allocate after tries failed
   /// tries, starting from the specified slot.  This is pulled out so we
   /// can specialize it differently during deterministic testing
-  uint32_t allocationAttempt(uint32_t start, uint32_t tries) const {
+  IndexType allocationAttempt(IndexType start, IndexType tries) const {
     if (LIKELY(tries < 8 && start + tries < numSlots_)) {
-      return start + tries;
+      return IndexType(start + tries);
     } else {
-      uint32_t rv = folly::Random::rand32(numSlots_);
+      IndexType rv;
+      if (sizeof(IndexType) <= 4) {
+        rv = IndexType(folly::Random::rand32(numSlots_));
+      } else {
+        rv = IndexType(folly::Random::rand64(numSlots_));
+      }
       assert(rv < numSlots_);
       return rv;
     }
@@ -463,6 +474,28 @@ struct AtomicUnorderedInsertMap {
   }
 };
 
+/// AtomicUnorderedInsertMap64 is just a type alias that makes it easier
+/// to select a 64 bit slot index type.  Use this if you need a capacity
+/// bigger than 2^30 (about a billion).  This increases memory overheads,
+/// obviously.
+template <typename Key,
+          typename Value,
+          typename Hash = std::hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          bool SkipKeyValueDeletion =
+              (boost::has_trivial_destructor<Key>::value &&
+               boost::has_trivial_destructor<Value>::value),
+          template <typename> class Atom = std::atomic,
+          typename Allocator = folly::detail::MMapAlloc>
+using AtomicUnorderedInsertMap64 =
+    AtomicUnorderedInsertMap<Key,
+                             Value,
+                             Hash,
+                             KeyEqual,
+                             SkipKeyValueDeletion,
+                             Atom,
+                             uint64_t,
+                             Allocator>;
 
 /// MutableAtom is a tiny wrapper than gives you the option of atomically
 /// updating values inserted into an AtomicUnorderedInsertMap<K,
@@ -487,4 +520,3 @@ struct MutableData {
 
 
 }
-#endif

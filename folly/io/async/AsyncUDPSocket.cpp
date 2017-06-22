@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,19 @@
 
 #include <folly/io/async/EventBase.h>
 #include <folly/Likely.h>
+#include <folly/portability/Fcntl.h>
+#include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 
 #include <errno.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 // Due to the way kernel headers are included, this may or may not be defined.
 // Number pulled from 3.10 kernel headers.
 #ifndef SO_REUSEPORT
 #define SO_REUSEPORT 15
 #endif
+
+namespace fsp = folly::portability::sockets;
 
 namespace folly {
 
@@ -36,7 +39,7 @@ AsyncUDPSocket::AsyncUDPSocket(EventBase* evb)
       eventBase_(evb),
       fd_(-1),
       readCallback_(nullptr) {
-  DCHECK(evb->isInEventBaseThread());
+  evb->dcheckIsInEventBaseThread();
 }
 
 AsyncUDPSocket::~AsyncUDPSocket() {
@@ -46,7 +49,7 @@ AsyncUDPSocket::~AsyncUDPSocket() {
 }
 
 void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
-  int socket = ::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
+  int socket = fsp::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
   if (socket == -1) {
     throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
                               "error creating async udp socket",
@@ -85,7 +88,6 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
                    SO_REUSEPORT,
                    &value,
                    sizeof(value)) != 0) {
-      ::close(socket);
       throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
                                 "failed to put socket in reuse_port mode",
                                 errno);
@@ -96,8 +98,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   // If we're using IPv6, make sure we don't accept V4-mapped connections
   if (address.getFamily() == AF_INET6) {
     int flag = 1;
-    if (::setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
-                     &flag, sizeof(flag))) {
+    if (setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag))) {
       throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "Failed to set IPV6_V6ONLY",
@@ -109,7 +110,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
   sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (::bind(socket, saddr, address.getActualSize()) != 0) {
+  if (fsp::bind(socket, saddr, address.getActualSize()) != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "failed to bind the async udp socket for:" + address.describe(),
@@ -200,7 +201,7 @@ void AsyncUDPSocket::pauseRead() {
 }
 
 void AsyncUDPSocket::close() {
-  DCHECK(eventBase_->isInEventBaseThread());
+  eventBase_->dcheckIsInEventBaseThread();
 
   if (readCallback_) {
     auto cob = readCallback_;
@@ -247,11 +248,11 @@ void AsyncUDPSocket::handleRead() noexcept {
 
   struct sockaddr_storage addrStorage;
   socklen_t addrLen = sizeof(addrStorage);
-  memset(&addrStorage, 0, addrLen);
+  memset(&addrStorage, 0, size_t(addrLen));
   struct sockaddr* rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
   rawAddr->sa_family = localAddress_.getFamily();
 
-  ssize_t bytesRead = ::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+  ssize_t bytesRead = recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
   if (bytesRead >= 0) {
     clientAddress_.setFromSockaddr(rawAddr, addrLen);
 
@@ -259,10 +260,11 @@ void AsyncUDPSocket::handleRead() noexcept {
       bool truncated = false;
       if ((size_t)bytesRead > len) {
         truncated = true;
-        bytesRead = len;
+        bytesRead = ssize_t(len);
       }
 
-      readCallback_->onDataAvailable(clientAddress_, bytesRead, truncated);
+      readCallback_->onDataAvailable(
+          clientAddress_, size_t(bytesRead), truncated);
     }
   } else {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -292,7 +294,7 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
     flags |= READ;
   }
 
-  return registerHandler(flags | PERSIST);
+  return registerHandler(uint16_t(flags | PERSIST));
 }
 
 } // Namespace

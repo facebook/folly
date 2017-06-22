@@ -9,8 +9,8 @@ allocator. In particular, `fbstring` is designed to detect use of
 jemalloc and cooperate with it to achieve significant improvements in
 speed and memory usage.
 
-`fbstring` supports x32 and x64 architectures. Porting it to big endian
-architectures would require some changes.
+`fbstring` supports 32- and 64-bit and little- and big-endian
+architectures.
 
 ### Storage strategies
 ***

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@
 
 #include <folly/gen/Base.h>
 #include <folly/json.h>
-
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 #include <iostream>
 
@@ -30,7 +29,7 @@ using folly::TypeError;
 TEST(Dynamic, ArrayGenerator) {
   // Make sure arrays can be used with folly::gen.
   using namespace folly::gen;
-  dynamic arr { 1, 2, 3, 4 };
+  dynamic arr = dynamic::array(1, 2, 3, 4);
   EXPECT_EQ(from(arr) | take(3) | member(&dynamic::asInt) | sum, 6);
 }
 
@@ -102,7 +101,7 @@ TEST(Dynamic, FormattedIO) {
   EXPECT_EQ(out.str(), "0xd 1e+02\n");
 
   out.str("");
-  dynamic arrr = { 1, 2, 3 };
+  dynamic arrr = dynamic::array(1, 2, 3);
   out << arrr;
   EXPECT_EQ(out.str(), "[1,2,3]");
 
@@ -112,8 +111,9 @@ TEST(Dynamic, FormattedIO) {
   EXPECT_EQ(out.str(), R"({"a":12})");
 
   out.str("");
-  dynamic objy2 = { objy, dynamic::object(12, "str"),
-                          dynamic::object(true, false) };
+  dynamic objy2 = dynamic::array(objy,
+                                 dynamic::object(12, "str"),
+                                 dynamic::object(true, false));
   out << objy2;
   EXPECT_EQ(out.str(), R"([{"a":12},{12:"str"},{true:false}])");
 }

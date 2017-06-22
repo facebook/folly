@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,49 +15,38 @@
  */
 
 #include <folly/detail/MemoryIdler.h>
+
 #include <folly/Logging.h>
+#include <folly/MallctlHelper.h>
 #include <folly/Malloc.h>
+#include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/detail/CacheLocality.h>
+#include <folly/portability/PThread.h>
+#include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
+
 #include <limits.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/mman.h>
 #include <utility>
-
 
 namespace folly { namespace detail {
 
 AtomicStruct<std::chrono::steady_clock::duration>
 MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
 
-
-/// Calls mallctl, optionally reading and/or writing an unsigned value
-/// if in and/or out is non-null.  Logs on error
-static unsigned mallctlWrapper(const char* cmd, const unsigned* in,
-                               unsigned* out) {
-  size_t outLen = sizeof(unsigned);
-  int err = mallctl(cmd,
-                    out, out ? &outLen : nullptr,
-                    const_cast<unsigned*>(in), in ? sizeof(unsigned) : 0);
-  if (err != 0) {
-    FB_LOG_EVERY_MS(WARNING, 10000)
-      << "mallctl " << cmd << ": " << strerror(err) << " (" << err << ")";
-  }
-  return err;
-}
-
 void MemoryIdler::flushLocalMallocCaches() {
-  if (usingJEMalloc()) {
-    if (!mallctl || !mallctlnametomib || !mallctlbymib) {
-      FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl* weak link failed";
-      return;
-    }
+  if (!usingJEMalloc()) {
+    return;
+  }
+  if (!mallctl || !mallctlnametomib || !mallctlbymib) {
+    FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl* weak link failed";
+    return;
+  }
 
-    // "tcache.flush" was renamed to "thread.tcache.flush" in jemalloc 3
-    (void)mallctlWrapper("thread.tcache.flush", nullptr, nullptr);
+  try {
+    mallctlCall("thread.tcache.flush");
 
     // By default jemalloc has 4 arenas per cpu, and then assigns each
     // thread to one of those arenas.  This means that in any service
@@ -69,16 +58,20 @@ void MemoryIdler::flushLocalMallocCaches() {
     // purging the arenas is counter-productive.  We use the heuristic
     // that if narenas <= 2 * num_cpus then we shouldn't do anything here,
     // which detects when the narenas has been reduced from the default
-    unsigned narenas, arenaForCurrent;
+    unsigned narenas;
+    unsigned arenaForCurrent;
     size_t mib[3];
     size_t miblen = 3;
-    if (mallctlWrapper("opt.narenas", nullptr, &narenas) == 0 &&
-        narenas > 2 * CacheLocality::system().numCpus &&
-        mallctlWrapper("thread.arena", nullptr, &arenaForCurrent) == 0 &&
+
+    mallctlRead("opt.narenas", &narenas);
+    mallctlRead("thread.arena", &arenaForCurrent);
+    if (narenas > 2 * CacheLocality::system().numCpus &&
         mallctlnametomib("arena.0.purge", mib, &miblen) == 0) {
       mib[1] = size_t(arenaForCurrent);
       mallctlbymib(mib, miblen, nullptr, nullptr, nullptr, 0);
     }
+  } catch (const std::runtime_error& ex) {
+    FB_LOG_EVERY_MS(WARNING, 10000) << ex.what();
   }
 }
 
@@ -86,11 +79,16 @@ void MemoryIdler::flushLocalMallocCaches() {
 // Stack madvise isn't Linux or glibc specific, but the system calls
 // and arithmetic (and bug compatibility) are not portable.  The set of
 // platforms could be increased if it was useful.
-#if FOLLY_X64 && defined(_GNU_SOURCE) && defined(__linux__)
+#if (FOLLY_X64 || FOLLY_PPC64) && defined(_GNU_SOURCE) && \
+    defined(__linux__) && !FOLLY_MOBILE && !FOLLY_SANITIZE_ADDRESS
 
-static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
 static FOLLY_TLS uintptr_t tls_stackLimit;
 static FOLLY_TLS size_t tls_stackSize;
+
+static size_t pageSize() {
+  static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
+  return s_pageSize;
+}
 
 static void fetchStackLimits() {
   pthread_attr_t attr;
@@ -122,7 +120,7 @@ static void fetchStackLimits() {
   tls_stackLimit = uintptr_t(addr) + guardSize;
   tls_stackSize = rawSize - guardSize;
 
-  assert((tls_stackLimit & (s_pageSize - 1)) == 0);
+  assert((tls_stackLimit & (pageSize() - 1)) == 0);
 }
 
 FOLLY_NOINLINE static uintptr_t getStackPtr() {
@@ -144,14 +142,14 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
   assert(sp >= tls_stackLimit);
   assert(sp - tls_stackLimit < tls_stackSize);
 
-  auto end = (sp - retain) & ~(s_pageSize - 1);
+  auto end = (sp - retain) & ~(pageSize() - 1);
   if (end <= tls_stackLimit) {
     // no pages are eligible for unmapping
     return;
   }
 
   size_t len = end - tls_stackLimit;
-  assert((len & (s_pageSize - 1)) == 0);
+  assert((len & (pageSize() - 1)) == 0);
   if (madvise((void*)tls_stackLimit, len, MADV_DONTNEED) != 0) {
     // It is likely that the stack vma hasn't been fully grown.  In this
     // case madvise will apply dontneed to the present vmas, then return
@@ -164,8 +162,7 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
 
 #else
 
-void MemoryIdler::unmapUnusedStack(size_t retain) {
-}
+void MemoryIdler::unmapUnusedStack(size_t /* retain */) {}
 
 #endif
 

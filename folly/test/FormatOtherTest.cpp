@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 
 #include <folly/Format.h>
 
+#include <glog/logging.h>
+
 #include <folly/FBVector.h>
 #include <folly/FileUtil.h>
+#include <folly/Portability.h>
 #include <folly/dynamic.h>
 #include <folly/json.h>
+#include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
-
-#include <glog/logging.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
 
 using namespace folly;
 
@@ -34,7 +34,13 @@ TEST(FormatOther, file) {
   {
     int fds[2];
     CHECK_ERR(pipe(fds));
-    SCOPE_EXIT { closeNoInt(fds[1]); };
+    SCOPE_EXIT {
+      // fclose on Windows automatically closes the underlying
+      // file descriptor.
+      if (!kIsWindows) {
+        closeNoInt(fds[1]);
+      }
+    };
     {
       FILE* fp = fdopen(fds[1], "wb");
       PCHECK(fp);

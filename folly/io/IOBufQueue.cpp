@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -150,9 +150,9 @@ IOBufQueue::append(const void* buf, size_t len) {
   while (len != 0) {
     if ((head_ == nullptr) || head_->prev()->isSharedOne() ||
         (head_->prev()->tailroom() == 0)) {
-      appendToChain(head_, std::move(
+      appendToChain(head_,
           IOBuf::create(std::max(MIN_ALLOC_SIZE,
-              std::min(len, MAX_ALLOC_SIZE)))),
+              std::min(len, MAX_ALLOC_SIZE))),
           false);
     }
     IOBuf* last = head_->prev();
@@ -187,13 +187,16 @@ IOBufQueue::preallocateSlow(uint64_t min, uint64_t newAllocationSize,
                    std::min(max, last->tailroom()));
 }
 
-unique_ptr<IOBuf>
-IOBufQueue::split(size_t n) {
+unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
   unique_ptr<IOBuf> result;
   while (n != 0) {
     if (head_ == nullptr) {
-      throw std::underflow_error(
-          "Attempt to remove more bytes than are present in IOBufQueue");
+      if (throwOnUnderflow) {
+        throw std::underflow_error(
+            "Attempt to remove more bytes than are present in IOBufQueue");
+      } else {
+        break;
+      }
     } else if (head_->length() <= n) {
       n -= head_->length();
       chainLength_ -= head_->length();
@@ -209,35 +212,57 @@ IOBufQueue::split(size_t n) {
       break;
     }
   }
-  return std::move(result);
+  if (UNLIKELY(result == nullptr)) {
+    return IOBuf::create(0);
+  }
+  return result;
 }
 
 void IOBufQueue::trimStart(size_t amount) {
+  auto trimmed = trimStartAtMost(amount);
+  if (trimmed != amount) {
+    throw std::underflow_error(
+        "Attempt to trim more bytes than are present in IOBufQueue");
+  }
+}
+
+size_t IOBufQueue::trimStartAtMost(size_t amount) {
+  auto original = amount;
   while (amount > 0) {
     if (!head_) {
-      throw std::underflow_error(
-        "Attempt to trim more bytes than are present in IOBufQueue");
+      break;
     }
     if (head_->length() > amount) {
       head_->trimStart(amount);
       chainLength_ -= amount;
+      amount = 0;
       break;
     }
     amount -= head_->length();
     chainLength_ -= head_->length();
     head_ = head_->pop();
   }
+  return original - amount;
 }
 
 void IOBufQueue::trimEnd(size_t amount) {
+  auto trimmed = trimEndAtMost(amount);
+  if (trimmed != amount) {
+    throw std::underflow_error(
+        "Attempt to trim more bytes than are present in IOBufQueue");
+  }
+}
+
+size_t IOBufQueue::trimEndAtMost(size_t amount) {
+  auto original = amount;
   while (amount > 0) {
     if (!head_) {
-      throw std::underflow_error(
-        "Attempt to trim more bytes than are present in IOBufQueue");
+      break;
     }
     if (head_->prev()->length() > amount) {
       head_->prev()->trimEnd(amount);
       chainLength_ -= amount;
+      amount = 0;
       break;
     }
     amount -= head_->prev()->length();
@@ -249,6 +274,7 @@ void IOBufQueue::trimEnd(size_t amount) {
       head_.reset();
     }
   }
+  return original - amount;
 }
 
 std::unique_ptr<folly::IOBuf> IOBufQueue::pop_front() {
@@ -283,6 +309,12 @@ void IOBufQueue::appendToString(std::string& out) const {
 
   for (auto range : *head_) {
     out.append(reinterpret_cast<const char*>(range.data()), range.size());
+  }
+}
+
+void IOBufQueue::gather(uint64_t maxLength) {
+  if (head_ != nullptr) {
+    head_->gather(maxLength);
   }
 }
 

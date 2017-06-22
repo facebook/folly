@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_HISTOGRAM_DEFS_H_
-#define FOLLY_HISTOGRAM_DEFS_H_
+#pragma once
 
 #include <folly/Conv.h>
+#include <folly/stats/Histogram.h>
 
 #include <glog/logging.h>
 
@@ -38,35 +38,34 @@ HistogramBuckets<T, BucketT>::HistogramBuckets(ValueType bucketSize,
 
   // Deliberately make this a signed type, because we're about
   // to compare it against max-min, which is nominally signed, too.
-  int numBuckets = (max - min) / bucketSize;
+  int64_t numBuckets = int64_t((max - min) / bucketSize);
   // Round up if the bucket size does not fit evenly
   if (numBuckets * bucketSize < max - min) {
     ++numBuckets;
   }
   // Add 2 for the extra 'below min' and 'above max' buckets
   numBuckets += 2;
-  buckets_.assign(numBuckets, defaultBucket);
+  buckets_.assign(size_t(numBuckets), defaultBucket);
 }
 
 template <typename T, typename BucketType>
-unsigned int HistogramBuckets<T, BucketType>::getBucketIdx(
-    ValueType value) const {
+size_t HistogramBuckets<T, BucketType>::getBucketIdx(ValueType value) const {
   if (value < min_) {
     return 0;
   } else if (value >= max_) {
     return buckets_.size() - 1;
   } else {
     // the 1 is the below_min bucket
-    return ((value - min_) / bucketSize_) + 1;
+    return size_t(((value - min_) / bucketSize_) + 1);
   }
 }
 
 template <typename T, typename BucketType>
 template <typename CountFn>
-const uint64_t HistogramBuckets<T, BucketType>::computeTotalCount(
+uint64_t HistogramBuckets<T, BucketType>::computeTotalCount(
     CountFn countFromBucket) const {
   uint64_t count = 0;
-  for (unsigned int n = 0; n < buckets_.size(); ++n) {
+  for (size_t n = 0; n < buckets_.size(); ++n) {
     count += countFromBucket(const_cast<const BucketType&>(buckets_[n]));
   }
   return count;
@@ -74,19 +73,20 @@ const uint64_t HistogramBuckets<T, BucketType>::computeTotalCount(
 
 template <typename T, typename BucketType>
 template <typename CountFn>
-unsigned int HistogramBuckets<T, BucketType>::getPercentileBucketIdx(
+size_t HistogramBuckets<T, BucketType>::getPercentileBucketIdx(
     double pct,
     CountFn countFromBucket,
-    double* lowPct, double* highPct) const {
+    double* lowPct,
+    double* highPct) const {
   CHECK_GE(pct, 0.0);
   CHECK_LE(pct, 1.0);
 
-  unsigned int numBuckets = buckets_.size();
+  auto numBuckets = buckets_.size();
 
   // Compute the counts in each bucket
   std::vector<uint64_t> counts(numBuckets);
   uint64_t totalCount = 0;
-  for (unsigned int n = 0; n < numBuckets; ++n) {
+  for (size_t n = 0; n < numBuckets; ++n) {
     uint64_t bucketCount =
       countFromBucket(const_cast<const BucketType&>(buckets_[n]));
     counts[n] = bucketCount;
@@ -115,7 +115,7 @@ unsigned int HistogramBuckets<T, BucketType>::getPercentileBucketIdx(
   double prevPct = 0.0;
   double curPct = 0.0;
   uint64_t curCount = 0;
-  unsigned int idx;
+  size_t idx;
   for (idx = 0; idx < numBuckets; ++idx) {
     if (counts[idx] == 0) {
       // skip empty buckets
@@ -150,8 +150,8 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
   // Find the bucket where this percentile falls
   double lowPct;
   double highPct;
-  unsigned int bucketIdx = getPercentileBucketIdx(pct, countFromBucket,
-                                                  &lowPct, &highPct);
+  size_t bucketIdx =
+      getPercentileBucketIdx(pct, countFromBucket, &lowPct, &highPct);
   if (lowPct == 0.0 && highPct == 0.0) {
     // Invalid range -- the buckets must all be empty
     // Return the default value for ValueType.
@@ -236,12 +236,12 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
     // Assume that the data points lower than the median of this bucket
     // are uniformly distributed between low and avg
     double pctThroughSection = (pct - lowPct) / (medianPct - lowPct);
-    return low + ((avg - low) * pctThroughSection);
+    return T(low + ((avg - low) * pctThroughSection));
   } else {
     // Assume that the data points greater than the median of this bucket
     // are uniformly distributed between avg and high
     double pctThroughSection = (pct - medianPct) / (highPct - medianPct);
-    return avg + ((high - avg) * pctThroughSection);
+    return T(avg + ((high - avg) * pctThroughSection));
   }
 }
 
@@ -255,7 +255,7 @@ std::string Histogram<T>::debugString() const {
       ", bucketSize: ", buckets_.getBucketSize(),
       ", min: ", buckets_.getMin(), ", max: ", buckets_.getMax(), "\n");
 
-  for (unsigned int i = 0; i < buckets_.getNumBuckets(); ++i) {
+  for (size_t i = 0; i < buckets_.getNumBuckets(); ++i) {
     folly::toAppend("  ", buckets_.getBucketMin(i), ": ",
                     buckets_.getByIndex(i).count, "\n",
                     &ret);
@@ -266,7 +266,7 @@ std::string Histogram<T>::debugString() const {
 
 template <typename T>
 void Histogram<T>::toTSV(std::ostream& out, bool skipEmptyBuckets) const {
-  for (unsigned int i = 0; i < buckets_.getNumBuckets(); ++i) {
+  for (size_t i = 0; i < buckets_.getNumBuckets(); ++i) {
     // Do not output empty buckets in order to reduce data file size.
     if (skipEmptyBuckets && getBucketByIndex(i).count == 0) {
       continue;
@@ -278,5 +278,3 @@ void Histogram<T>::toTSV(std::ostream& out, bool skipEmptyBuckets) const {
 }
 
 } // folly
-
-#endif // FOLLY_HISTOGRAM_DEFS_H_

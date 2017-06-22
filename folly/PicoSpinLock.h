@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,24 @@
  * limitations under the License.
  */
 
+/*
+ * N.B. You most likely do _not_ want to use PicoSpinLock or any other
+ * kind of spinlock.  Consider MicroLock instead.
+ *
+ * In short, spinlocks in preemptive multi-tasking operating systems
+ * have serious problems and fast mutexes like std::mutex are almost
+ * certainly the better choice, because letting the OS scheduler put a
+ * thread to sleep is better for system responsiveness and throughput
+ * than wasting a timeslice repeatedly querying a lock held by a
+ * thread that's blocked, and you can't prevent userspace
+ * programs blocking.
+ *
+ * Spinlocks in an operating system kernel make much more sense than
+ * they do in userspace.
+ */
+
 #pragma once
+#define FOLLY_PICO_SPIN_LOCK_H_
 
 /*
  * @author Keith Adams <kma@fb.com>
@@ -22,19 +39,18 @@
  */
 
 #include <array>
-#include <cinttypes>
-#include <type_traits>
-#include <cstdlib>
-#include <pthread.h>
-#include <mutex>
 #include <atomic>
-
-#include <glog/logging.h>
-#include <folly/detail/Sleeper.h>
+#include <cinttypes>
+#include <cstdlib>
 #include <folly/Portability.h>
+#include <mutex>
+#include <type_traits>
 
-#if !FOLLY_X64 && !FOLLY_A64
-# error "PicoSpinLock.h is currently x64 and aarch64 only."
+#include <folly/detail/Sleeper.h>
+#include <glog/logging.h>
+
+#if !FOLLY_X64 && !FOLLY_A64 && !FOLLY_PPC64
+# error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
 #endif
 
 namespace folly {
@@ -65,7 +81,7 @@ struct PicoSpinLock {
 
  public:
   static const UIntType kLockBitMask_ = UIntType(1) << Bit;
-  UIntType lock_;
+  mutable UIntType lock_;
 
   /*
    * You must call this function before using this class, if you
@@ -77,7 +93,8 @@ struct PicoSpinLock {
    */
   void init(IntType initialValue = 0) {
     CHECK(!(initialValue & kLockBitMask_));
-    lock_ = initialValue;
+    reinterpret_cast<std::atomic<UIntType>*>(&lock_)->store(
+        UIntType(initialValue), std::memory_order_release);
   }
 
   /*
@@ -90,7 +107,10 @@ struct PicoSpinLock {
    * as you normally get.)
    */
   IntType getData() const {
-    return static_cast<IntType>(lock_ & ~kLockBitMask_);
+    auto res = reinterpret_cast<std::atomic<UIntType>*>(&lock_)->load(
+                   std::memory_order_relaxed) &
+        ~kLockBitMask_;
+    return res;
   }
 
   /*
@@ -101,7 +121,10 @@ struct PicoSpinLock {
    */
   void setData(IntType w) {
     CHECK(!(w & kLockBitMask_));
-    lock_ = (lock_ & kLockBitMask_) | w;
+    auto l = reinterpret_cast<std::atomic<UIntType>*>(&lock_);
+    l->store(
+        (l->load(std::memory_order_relaxed) & kLockBitMask_) | w,
+        std::memory_order_relaxed);
   }
 
   /*
@@ -111,7 +134,28 @@ struct PicoSpinLock {
   bool try_lock() const {
     bool ret = false;
 
-#if FOLLY_X64
+#if defined(FOLLY_SANITIZE_THREAD)
+    // TODO: Might be able to fully move to std::atomic when gcc emits lock btr:
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=49244
+    ret =
+        !(reinterpret_cast<std::atomic<UIntType>*>(&lock_)->fetch_or(
+              kLockBitMask_, std::memory_order_acquire) &
+          kLockBitMask_);
+#elif _MSC_VER
+    switch (sizeof(IntType)) {
+      case 2:
+        // There is no _interlockedbittestandset16 for some reason :(
+        ret = _InterlockedOr16(
+            (volatile short*)&lock_, (short)kLockBitMask_) & kLockBitMask_;
+        break;
+      case 4:
+        ret = _interlockedbittestandset((volatile long*)&lock_, Bit);
+        break;
+      case 8:
+        ret = _interlockedbittestandset64((volatile long long*)&lock_, Bit);
+        break;
+    }
+#elif FOLLY_X64
 #define FB_DOBTS(size)                                  \
   asm volatile("lock; bts" #size " %1, (%2); setnc %0"  \
                : "=r" (ret)                             \
@@ -127,9 +171,37 @@ struct PicoSpinLock {
 
 #undef FB_DOBTS
 #elif FOLLY_A64
-    ret = __atomic_fetch_or(&lock_, 1 << Bit, __ATOMIC_SEQ_CST);
+    ret =
+        !(__atomic_fetch_or(&lock_, kLockBitMask_, __ATOMIC_SEQ_CST) &
+          kLockBitMask_);
+#elif FOLLY_PPC64
+#define FB_DOBTS(size)                                 \
+    asm volatile("\teieio\n"                           \
+                 "\tl" #size "arx 14,0,%[lockPtr]\n"   \
+                 "\tli 15,1\n"                         \
+                 "\tsldi 15,15,%[bit]\n"               \
+                 "\tand. 16,15,14\n"                   \
+                 "\tbne 0f\n"                          \
+                 "\tor 14,14,15\n"                     \
+                 "\tst" #size "cx. 14,0,%[lockPtr]\n"  \
+                 "\tbne 0f\n"                          \
+                 "\tori %[output],%[output],1\n"       \
+                 "\tisync\n"                           \
+                 "0:\n"                                \
+                 : [output] "+r" (ret)                 \
+                 : [lockPtr] "r"(&lock_),              \
+                   [bit] "i" (Bit)                     \
+                 : "cr0", "memory", "r14", "r15", "r16")
+
+    switch (sizeof(IntType)) {
+    case 2: FB_DOBTS(h); break;
+    case 4: FB_DOBTS(w); break;
+    case 8: FB_DOBTS(d); break;
+    }
+
+#undef FB_DOBTS
 #else
-#error "x86 aarch64 only"
+#error "x86 aarch64 ppc64 only"
 #endif
 
     return ret;
@@ -150,7 +222,20 @@ struct PicoSpinLock {
    * integer.
    */
   void unlock() const {
-#if FOLLY_X64
+#ifdef _MSC_VER
+    switch (sizeof(IntType)) {
+      case 2:
+        // There is no _interlockedbittestandreset16 for some reason :(
+        _InterlockedAnd16((volatile short*)&lock_, (short)~kLockBitMask_);
+        break;
+      case 4:
+        _interlockedbittestandreset((volatile long*)&lock_, Bit);
+        break;
+      case 8:
+        _interlockedbittestandreset64((volatile long long*)&lock_, Bit);
+        break;
+    }
+#elif FOLLY_X64
 #define FB_DOBTR(size)                          \
   asm volatile("lock; btr" #size " %0, (%1)"    \
                :                                \
@@ -169,9 +254,31 @@ struct PicoSpinLock {
 
 #undef FB_DOBTR
 #elif FOLLY_A64
-    __atomic_fetch_and(&lock_, ~(1 << Bit), __ATOMIC_SEQ_CST);
+    __atomic_fetch_and(&lock_, ~kLockBitMask_, __ATOMIC_SEQ_CST);
+#elif FOLLY_PPC64
+#define FB_DOBTR(size)                                 \
+    asm volatile("\teieio\n"                           \
+                 "0:  l" #size "arx 14,0,%[lockPtr]\n" \
+                 "\tli 15,1\n"                         \
+                 "\tsldi 15,15,%[bit]\n"               \
+                 "\txor 14,14,15\n"                    \
+                 "\tst" #size "cx. 14,0,%[lockPtr]\n"  \
+                 "\tbne 0b\n"                          \
+                 "\tisync\n"                           \
+                 :                                     \
+                 : [lockPtr] "r"(&lock_),              \
+                   [bit] "i" (Bit)                     \
+                 : "cr0", "memory", "r14", "r15")
+
+    switch (sizeof(IntType)) {
+    case 2: FB_DOBTR(h); break;
+    case 4: FB_DOBTR(w); break;
+    case 8: FB_DOBTR(d); break;
+    }
+
+#undef FB_DOBTR
 #else
-# error "x64 aarch64 only"
+# error "x64 aarch64 ppc64 only"
 #endif
   }
 };

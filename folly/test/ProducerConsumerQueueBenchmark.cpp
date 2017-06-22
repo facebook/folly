@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@
 #include <stdio.h>
 #include <pthread.h>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <folly/Benchmark.h>
+#include <folly/ProducerConsumerQueue.h>
+#include <folly/portability/GFlags.h>
 #include <folly/stats/Histogram.h>
 #include <folly/stats/Histogram-defs.h>
-#include <folly/ProducerConsumerQueue.h>
+#include <glog/logging.h>
 
 namespace {
 
@@ -79,7 +79,7 @@ struct ThroughputTest {
 
   QueueType queue_;
   std::atomic<bool> done_;
-  int iters_;
+  const int iters_;
   int cpu0_;
   int cpu1_;
 };
@@ -97,16 +97,26 @@ struct LatencyTest {
       computeTimeCost();
     }
 
+  static uint64_t timespecDiff(timespec end, timespec start) {
+    if (end.tv_sec == start.tv_sec) {
+      assert(end.tv_nsec >= start.tv_nsec);
+      return uint64_t(end.tv_nsec - start.tv_nsec);
+    }
+    assert(end.tv_sec > start.tv_sec);
+    auto diff = uint64_t(end.tv_sec - start.tv_sec);
+    assert(diff < std::numeric_limits<uint64_t>::max() / 1000000000ULL);
+    return diff * 1000000000ULL + end.tv_nsec - start.tv_nsec;
+  }
+
   void computeTimeCost() {
-    int iterations = 1000;
     timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
-    for (int i = 0; i < iterations; ++i) {
+    for (int i = 0; i < iters_; ++i) {
       timespec tv;
       clock_gettime(CLOCK_REALTIME, &tv);
     }
     clock_gettime(CLOCK_REALTIME, &end);
-    time_cost_ = 2 * detail::timespecDiff(end, start) / iterations;
+    time_cost_ = 2 * timespecDiff(end, start) / iters_;
   }
 
   void producer() {
@@ -121,7 +131,7 @@ struct LatencyTest {
       clock_gettime(CLOCK_REALTIME, &sleepstart);
       do {
         clock_gettime(CLOCK_REALTIME, &sleeptime);
-      } while (detail::timespecDiff(sleeptime, sleepstart) < 1000000);
+      } while (timespecDiff(sleeptime, sleepstart) < 1000000);
 
       timespec tv;
       clock_gettime(CLOCK_REALTIME, &tv);
@@ -166,7 +176,7 @@ struct LatencyTest {
   QueueType queue_;
   std::atomic<bool> done_;
   int time_cost_;
-  int iters_;
+  const int iters_;
   int cpu0_;
   int cpu1_;
   Histogram<int> hist_;
@@ -204,7 +214,7 @@ void BM_ProducerConsumerAffinity(int iters, int size) {
   delete test;
 }
 
-void BM_ProducerConsumerLatency(int iters, int size) {
+void BM_ProducerConsumerLatency(int /* iters */, int size) {
   BenchmarkSuspender susp;
   CHECK_GT(size, 0);
   LatencyTest<LatencyQueueType> *test =
@@ -240,26 +250,53 @@ int main(int argc, char** argv) {
 
 #if 0
 /*
-Benchmark on Intel(R) Xeon(R) CPU E5-2660 0 @ 2.20GHz
-Latency histogram:
-  log(nsec)
-  min  max     count
-  6    7       5124
-  7    8       4799
-  8    9       49
-  9    10      2
-  10   11      1
-  11   12      5
-  12   13      3
-  13   14      9
-  14   15      8
+Benchmark
+
+$ lscpu
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                24
+On-line CPU(s) list:   0-23
+Thread(s) per core:    1
+Core(s) per socket:    1
+Socket(s):             24
+NUMA node(s):          1
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 60
+Model name:            Intel Core Processor (Haswell, no TSX)
+Stepping:              1
+CPU MHz:               2494.244
+BogoMIPS:              4988.48
+Hypervisor vendor:     KVM
+Virtualization type:   full
+L1d cache:             32K
+L1i cache:             32K
+L2 cache:              4096K
+NUMA node0 CPU(s):     0-23
+
+$ ../buck-out/gen/folly/test/producer_consumer_queue_benchmark
+5       6       1       5
+6       7       1893    11358
+7       8       39671   277697
+8       9       34921   279368
+9       10      17799   160191
+10      11      3685    36850
+11      12      1075    11825
+12      13      456     5472
+13      14      422     5486
+14      15      64      896
+15      16      7       105
+16      17      3       48
+17      18      3       51
 ============================================================================
 folly/test/ProducerConsumerQueueBenchmark.cpp   relative  time/iter  iters/s
 ============================================================================
 ----------------------------------------------------------------------------
-BM_ProducerConsumer(1048574)                                 7.52ns  132.90M
-BM_ProducerConsumerAffinity(1048574)                         8.28ns  120.75M
-BM_ProducerConsumerLatency(1048574)                          10.00s   99.98m
+BM_ProducerConsumer(1048574)                                 5.82ns  171.75M
+BM_ProducerConsumerAffinity(1048574)                         7.36ns  135.83M
+BM_ProducerConsumerLatency(1048574)                         1.67min    9.99m
 ============================================================================
 */
 #endif

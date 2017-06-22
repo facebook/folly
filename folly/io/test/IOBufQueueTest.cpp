@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,13 @@
  */
 
 #include <folly/io/IOBufQueue.h>
-#include <folly/Range.h>
-
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
 
 #include <iostream>
 #include <stdexcept>
 #include <string.h>
+
+#include <folly/Range.h>
+#include <folly/portability/GTest.h>
 
 using folly::IOBuf;
 using folly::IOBufQueue;
@@ -44,12 +43,11 @@ struct Initializer {
 };
 Initializer initializer;
 
-unique_ptr<IOBuf>
-stringToIOBuf(const char* s, uint32_t len) {
+unique_ptr<IOBuf> stringToIOBuf(const char* s, size_t len) {
   unique_ptr<IOBuf> buf = IOBuf::create(len);
   memcpy(buf->writableTail(), s, len);
   buf->append(len);
-  return std::move(buf);
+  return buf;
 }
 
 void checkConsistency(const IOBufQueue& queue) {
@@ -156,15 +154,30 @@ TEST(IOBufQueue, Split) {
   queue.append(stringToIOBuf(SCL("Hello,")));
   queue.append(stringToIOBuf(SCL(" World")));
   checkConsistency(queue);
-  bool exceptionFired = false;
   EXPECT_THROW({prefix = queue.split(13);}, std::underflow_error);
   checkConsistency(queue);
+}
+
+TEST(IOBufQueue, SplitAtMost) {
+  IOBufQueue queue(clOptions);
+  queue.append(stringToIOBuf(SCL("Hello,")));
+  queue.append(stringToIOBuf(SCL(" World")));
+  auto buf = queue.splitAtMost(9999);
+  EXPECT_EQ(buf->computeChainDataLength(), 12);
+  EXPECT_TRUE(queue.empty());
+}
+
+TEST(IOBufQueue, SplitZero) {
+  IOBufQueue queue(clOptions);
+  queue.append(stringToIOBuf(SCL("Hello world")));
+  auto buf = queue.split(0);
+  EXPECT_EQ(buf->computeChainDataLength(), 0);
 }
 
 TEST(IOBufQueue, Preallocate) {
   IOBufQueue queue(clOptions);
   queue.append(string("Hello"));
-  pair<void*,uint32_t> writable = queue.preallocate(2, 64, 64);
+  pair<void*, uint64_t> writable = queue.preallocate(2, 64, 64);
   checkConsistency(queue);
   EXPECT_NE((void*)nullptr, writable.first);
   EXPECT_LE(2, writable.second);
@@ -260,6 +273,76 @@ TEST(IOBufQueue, Trim) {
 
   EXPECT_THROW(queue.trimEnd(30), std::underflow_error);
   checkConsistency(queue);
+}
+
+TEST(IOBufQueue, TrimStartAtMost) {
+  IOBufQueue queue(clOptions);
+  unique_ptr<IOBuf> a = IOBuf::create(4);
+  a->append(4);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(6);
+  a->append(6);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(8);
+  a->append(8);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(10);
+  a->append(10);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(28, queue.front()->computeChainDataLength());
+  EXPECT_EQ(4, queue.front()->length());
+
+  queue.trimStartAtMost(1);
+  checkConsistency(queue);
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(27, queue.front()->computeChainDataLength());
+  EXPECT_EQ(3, queue.front()->length());
+
+  queue.trimStartAtMost(50);
+  checkConsistency(queue);
+  EXPECT_EQ(nullptr, queue.front());
+  EXPECT_EQ(0, queue.chainLength());
+}
+
+TEST(IOBufQueue, TrimEndAtMost) {
+  IOBufQueue queue(clOptions);
+  unique_ptr<IOBuf> a = IOBuf::create(4);
+  a->append(4);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(6);
+  a->append(6);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(8);
+  a->append(8);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(10);
+  a->append(10);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(28, queue.front()->computeChainDataLength());
+  EXPECT_EQ(4, queue.front()->length());
+
+  queue.trimEndAtMost(1);
+  checkConsistency(queue);
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(27, queue.front()->computeChainDataLength());
+  EXPECT_EQ(4, queue.front()->length());
+
+  queue.trimEndAtMost(50);
+  checkConsistency(queue);
+  EXPECT_EQ(nullptr, queue.front());
+  EXPECT_EQ(0, queue.chainLength());
 }
 
 TEST(IOBufQueue, TrimPack) {
@@ -387,9 +470,18 @@ TEST(IOBufQueue, AppendToString) {
   EXPECT_EQ("hello world", s);
 }
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+TEST(IOBufQueue, Gather) {
+  IOBufQueue queue;
 
-  return RUN_ALL_TESTS();
+  queue.append(stringToIOBuf(SCL("hello ")));
+  queue.append(stringToIOBuf(SCL("world")));
+
+  EXPECT_EQ(queue.front()->length(), 6);
+  queue.gather(11);
+  EXPECT_EQ(queue.front()->length(), 11);
+
+  StringPiece s(
+      reinterpret_cast<const char*>(queue.front()->data()),
+      queue.front()->length());
+  EXPECT_EQ("hello world", s);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 // DWARF record parser
 
-#ifndef FOLLY_EXPERIMENTAL_SYMBOLIZER_DWARF_H_
-#define FOLLY_EXPERIMENTAL_SYMBOLIZER_DWARF_H_
+#pragma once
 
 #include <boost/variant.hpp>
 
@@ -69,7 +68,7 @@ class Dwarf {
     Path(folly::StringPiece baseDir, folly::StringPiece subDir,
          folly::StringPiece file);
 
-    folly::StringPiece baseDir() const { return baseDir_; };
+    folly::StringPiece baseDir() const { return baseDir_; }
     folly::StringPiece subDir() const { return subDir_; }
     folly::StringPiece file() const { return file_; }
 
@@ -101,22 +100,40 @@ class Dwarf {
     folly::StringPiece file_;
   };
 
-  struct LocationInfo {
-    LocationInfo() : hasMainFile(false), hasFileAndLine(false), line(0) { }
-
-    bool hasMainFile;
-    Path mainFile;
-
-    bool hasFileAndLine;
-    Path file;
-    uint64_t line;
+  enum class LocationInfoMode {
+    // Don't resolve location info.
+    DISABLED,
+    // Perform CU lookup using .debug_aranges (might be incomplete).
+    FAST,
+    // Scan all CU in .debug_info (slow!) on .debug_aranges lookup failure.
+    FULL,
   };
 
-  /** Find the file and line number information corresponding to address */
-  bool findAddress(uintptr_t address, LocationInfo& info) const;
+  struct LocationInfo {
+    bool hasMainFile = false;
+    Path mainFile;
+
+    bool hasFileAndLine = false;
+    Path file;
+    uint64_t line = 0;
+  };
+
+  /**
+   * Find the file and line number information corresponding to address.
+   */
+  bool findAddress(uintptr_t address,
+                   LocationInfo& info,
+                   LocationInfoMode mode) const;
 
  private:
+  static bool findDebugInfoOffset(uintptr_t address,
+                                  StringPiece aranges,
+                                  uint64_t& offset);
+
   void init();
+  bool findLocation(uintptr_t address,
+                    StringPiece& infoEntry,
+                    LocationInfo& info) const;
 
   const ElfFile* elf_;
 
@@ -270,5 +287,3 @@ inline std::ostream& operator<<(std::ostream& out, const Dwarf::Path& path) {
 
 }  // namespace symbolizer
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_DWARF_H_ */

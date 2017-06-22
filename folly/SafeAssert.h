@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SAFEASSERT_H_
-#define FOLLY_SAFEASSERT_H_
+#pragma once
 
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
@@ -25,28 +24,26 @@
  * (containing msg) to stderr and abort()s. Just like CHECK(), but only
  * logs to stderr and only does async-signal-safe calls.
  */
-#define FOLLY_SAFE_CHECK(expr, msg) \
+#define FOLLY_SAFE_CHECK_IMPL(expr, expr_s, msg) \
   ((expr) ? static_cast<void>(0) : \
    ::folly::detail::assertionFailure( \
-       FB_STRINGIZE(expr), (msg), __FILE__, __LINE__, __PRETTY_FUNCTION__))
+       FB_STRINGIZE(expr_s), (msg), __FILE__, __LINE__, __PRETTY_FUNCTION__))
+#define FOLLY_SAFE_CHECK(expr, msg) FOLLY_SAFE_CHECK_IMPL((expr), (expr), (msg))
 
 /**
  * In debug mode, verify that the expression is true. Otherwise, do nothing
- * (do not even evaluate expr). Just like assert() or DCHECK(), but only
- * logs to stderr and only does async-signal-safe calls.
+ * (do not even evaluate expr). Just like DCHECK(), but only logs to stderr and
+ * only does async-signal-safe calls.
  */
-#ifdef NDEBUG
-#define FOLLY_SAFE_DCHECK(expr, msg) (static_cast<void>(0))
-#else
-#define FOLLY_SAFE_DCHECK FOLLY_SAFE_CHECK
-#endif
+#define FOLLY_SAFE_DCHECK(expr, msg) \
+  FOLLY_SAFE_CHECK_IMPL(!folly::kIsDebug || (expr), (expr), (msg))
 
 namespace folly { namespace detail {
 
-FOLLY_NORETURN void assertionFailure(const char* expr, const char* msg,
-                      const char* file, unsigned int line,
-                      const char* function);
-
+[[noreturn]] void assertionFailure(
+    const char* expr,
+    const char* msg,
+    const char* file,
+    unsigned int line,
+    const char* function);
 }}  // namespace folly
-
-#endif /* FOLLY_SAFEASSERT_H_ */

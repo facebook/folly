@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 
 #include <folly/Subprocess.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/GTest.h>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 namespace folly { namespace test {
 
@@ -32,7 +32,7 @@ std::string getHelperPath() {
   if (!fs::exists(path)) {
     path = path.parent_path().parent_path() / basename / basename;
   }
-  return path.native();
+  return path.string();
 }
 
 std::string callHelper(std::initializer_list<std::string> args,
@@ -47,7 +47,7 @@ std::string callHelper(std::initializer_list<std::string> args,
 
   Subprocess::Options options;
   if (stdoutFd != -1) {
-    options.stdout(stdoutFd);
+    options.stdoutFd(stdoutFd);
   } else {
     options.pipeStdout();
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace test {
 
@@ -81,7 +81,7 @@ TEST(MPMCPipeline, MultiThreaded) {
   std::vector<std::thread> threads;
   threads.reserve(numThreadsPerStage * 2 + 1);
   for (size_t i = 0; i < numThreadsPerStage; ++i) {
-    threads.emplace_back([&a, i] () {
+    threads.emplace_back([&a] {
       for (;;) {
         int val;
         auto ticket = a.blockingReadStage<0>(val);
@@ -97,7 +97,7 @@ TEST(MPMCPipeline, MultiThreaded) {
   }
 
   for (size_t i = 0; i < numThreadsPerStage; ++i) {
-    threads.emplace_back([&a, i] () {
+    threads.emplace_back([&a] {
       for (;;) {
         std::string val;
         auto ticket = a.blockingReadStage<1>(val);

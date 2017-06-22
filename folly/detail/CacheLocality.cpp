@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,8 @@
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 ///////////// CacheLocality
 
@@ -54,13 +55,13 @@ static CacheLocality getSystemLocalityInfo() {
     // wiggle room
     numCpus = 32;
   }
-  return CacheLocality::uniform(numCpus);
+  return CacheLocality::uniform(size_t(numCpus));
 }
 
 template <>
 const CacheLocality& CacheLocality::system<std::atomic>() {
-  static CacheLocality cache(getSystemLocalityInfo());
-  return cache;
+  static auto* cache = new CacheLocality(getSystemLocalityInfo());
+  return *cache;
 }
 
 // Each level of cache has sharing sets, which are the set of cpus
@@ -84,11 +85,11 @@ const CacheLocality& CacheLocality::system<std::atomic>() {
 /// '\n', or eos.
 static size_t parseLeadingNumber(const std::string& line) {
   auto raw = line.c_str();
-  char *end;
+  char* end;
   unsigned long val = strtoul(raw, &end, 10);
   if (end == raw || (*end != ',' && *end != '-' && *end != '\n' && *end != 0)) {
-    throw std::runtime_error(to<std::string>(
-        "error parsing list '", line, "'").c_str());
+    throw std::runtime_error(
+        to<std::string>("error parsing list '", line, "'").c_str());
   }
   return val;
 }
@@ -107,9 +108,9 @@ CacheLocality CacheLocality::readFromSysfsTree(
   while (true) {
     auto cpu = cpus.size();
     std::vector<size_t> levels;
-    for (size_t index = 0; ; ++index) {
-      auto dir = format("/sys/devices/system/cpu/cpu{}/cache/index{}/",
-                        cpu, index).str();
+    for (size_t index = 0;; ++index) {
+      auto dir =
+          sformat("/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index);
       auto cacheType = mapping(dir + "type");
       auto equivStr = mapping(dir + "shared_cpu_list");
       if (cacheType.size() == 0 || equivStr.size() == 0) {
@@ -146,22 +147,27 @@ CacheLocality CacheLocality::readFromSysfsTree(
     throw std::runtime_error("unable to load cache sharing info");
   }
 
-  std::sort(cpus.begin(), cpus.end(), [&](size_t lhs, size_t rhs) -> bool {
-    // sort first by equiv class of cache with highest index, direction
-    // doesn't matter.  If different cpus have different numbers of
-    // caches then this code might produce a sub-optimal ordering, but
-    // it won't crash
-    auto& lhsEquiv = equivClassesByCpu[lhs];
-    auto& rhsEquiv = equivClassesByCpu[rhs];
-    for (int i = std::min(lhsEquiv.size(), rhsEquiv.size()) - 1; i >= 0; --i) {
-      if (lhsEquiv[i] != rhsEquiv[i]) {
-        return lhsEquiv[i] < rhsEquiv[i];
-      }
-    }
+  std::sort(cpus.begin(),
+            cpus.end(),
+            [&](size_t lhs, size_t rhs) -> bool {
+              // sort first by equiv class of cache with highest index,
+              // direction doesn't matter.  If different cpus have
+              // different numbers of caches then this code might produce
+              // a sub-optimal ordering, but it won't crash
+              auto& lhsEquiv = equivClassesByCpu[lhs];
+              auto& rhsEquiv = equivClassesByCpu[rhs];
+              for (ssize_t i = ssize_t(std::min(lhsEquiv.size(), rhsEquiv.size())) - 1;
+                   i >= 0;
+                   --i) {
+                auto idx = size_t(i);
+                if (lhsEquiv[idx] != rhsEquiv[idx]) {
+                  return lhsEquiv[idx] < rhsEquiv[idx];
+                }
+              }
 
-    // break ties deterministically by cpu
-    return lhs < rhs;
-  });
+              // break ties deterministically by cpu
+              return lhs < rhs;
+            });
 
   // the cpus are now sorted by locality, with neighboring entries closer
   // to each other than entries that are far away.  For striping we want
@@ -172,7 +178,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
   }
 
   return CacheLocality{
-      cpus.size(), std::move(numCachesByLevel), std::move(indexes) };
+      cpus.size(), std::move(numCachesByLevel), std::move(indexes)};
 }
 
 CacheLocality CacheLocality::readFromSysfs() {
@@ -183,7 +189,6 @@ CacheLocality CacheLocality::readFromSysfs() {
     return rv;
   });
 }
-
 
 CacheLocality CacheLocality::uniform(size_t numCpus) {
   CacheLocality rv;
@@ -203,10 +208,8 @@ CacheLocality CacheLocality::uniform(size_t numCpus) {
 
 ////////////// Getcpu
 
-/// Resolves the dynamically loaded symbol __vdso_getcpu, returning null
-/// on failure
-static Getcpu::Func loadVdsoGetcpu() {
-#ifdef _MSC_VER
+Getcpu::Func Getcpu::resolveVdsoFunc() {
+#if !FOLLY_HAVE_LINUX_VDSO
   return nullptr;
 #else
   void* h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
@@ -227,58 +230,46 @@ static Getcpu::Func loadVdsoGetcpu() {
 #endif
 }
 
-Getcpu::Func Getcpu::vdsoFunc() {
-  static Func func = loadVdsoGetcpu();
-  return func;
-}
-
+#ifdef FOLLY_TLS
 /////////////// SequentialThreadId
-
-template<>
-std::atomic<size_t> SequentialThreadId<std::atomic>::prevId(0);
-
-template<>
-FOLLY_TLS size_t SequentialThreadId<std::atomic>::currentId(0);
+template struct SequentialThreadId<std::atomic>;
+#endif
 
 /////////////// AccessSpreader
+template struct AccessSpreader<std::atomic>;
 
-template<>
-const AccessSpreader<std::atomic>
-AccessSpreader<std::atomic>::stripeByCore(
-    CacheLocality::system<>().numCachesByLevel.front());
+SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
+    : allocSize_{allocSize}, sz_(sz) {}
 
-template<>
-const AccessSpreader<std::atomic>
-AccessSpreader<std::atomic>::stripeByChip(
-    CacheLocality::system<>().numCachesByLevel.back());
-
-template<>
-AccessSpreaderArray<std::atomic,128>
-AccessSpreaderArray<std::atomic,128>::sharedInstance = {};
-
-/// Always claims to be on CPU zero, node zero
-static int degenerateGetcpu(unsigned* cpu, unsigned* node, void* unused) {
-  if (cpu != nullptr) {
-    *cpu = 0;
-  }
-  if (node != nullptr) {
-    *node = 0;
-  }
-  return 0;
-}
-
-template<>
-Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc(size_t numStripes) {
-  if (numStripes == 1) {
-    // there's no need to call getcpu if there is only one stripe.
-    // This should not be common, so we don't want to waste a test and
-    // branch in the main code path, but we might as well use a faster
-    // function pointer
-    return &degenerateGetcpu;
-  } else {
-    auto best = Getcpu::vdsoFunc();
-    return best ? best : &SequentialThreadId<std::atomic>::getcpu;
+SimpleAllocator::~SimpleAllocator() {
+  std::lock_guard<std::mutex> g(m_);
+  for (auto& block : blocks_) {
+    aligned_free(block);
   }
 }
 
-} } // namespace folly::detail
+void* SimpleAllocator::allocateHard() {
+  // Allocate a new slab.
+  mem_ = static_cast<uint8_t*>(aligned_malloc(allocSize_, allocSize_));
+  if (!mem_) {
+    std::__throw_bad_alloc();
+  }
+  end_ = mem_ + allocSize_;
+  blocks_.push_back(mem_);
+
+  // Install a pointer to ourselves as the allocator.
+  *reinterpret_cast<SimpleAllocator**>(mem_) = this;
+  static_assert(
+      alignof(std::max_align_t) >= sizeof(SimpleAllocator*),
+      "alignment too small");
+  mem_ += std::min(sz_, alignof(std::max_align_t));
+
+  // New allocation.
+  auto mem = mem_;
+  mem_ += sz_;
+  assert(intptr_t(mem) % 128 != 0);
+  return mem;
+}
+
+} // namespace detail
+} // namespace folly

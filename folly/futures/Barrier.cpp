@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ Barrier::Barrier(uint32_t n)
 Barrier::~Barrier() {
   auto block = controlBlock_.load(std::memory_order_relaxed);
   auto prev = block->valueAndReaderCount.load(std::memory_order_relaxed);
-  DCHECK_EQ(prev >> kReaderShift, 0);
+  DCHECK_EQ(prev >> kReaderShift, 0u);
   auto val = prev & kValueMask;
   auto p = promises(block);
 

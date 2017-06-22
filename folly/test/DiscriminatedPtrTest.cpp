@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include <folly/DiscriminatedPtr.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -68,10 +68,10 @@ TEST(DiscriminatedPtr, Basic) {
 TEST(DiscriminatedPtr, Apply) {
   struct Foo { };
   struct Visitor {
-    std::string operator()(int* ptr) { return "int"; }
-    std::string operator()(const int* ptr) { return "const int"; }
-    std::string operator()(Foo* ptr) { return "Foo"; }
-    std::string operator()(const Foo* ptr) { return "const Foo"; }
+    std::string operator()(int* /* ptr */) { return "int"; }
+    std::string operator()(const int* /* ptr */) { return "const int"; }
+    std::string operator()(Foo* /* ptr */) { return "Foo"; }
+    std::string operator()(const Foo* /* ptr */) { return "const Foo"; }
   };
 
   typedef DiscriminatedPtr<int, Foo> Ptr;
@@ -86,6 +86,9 @@ TEST(DiscriminatedPtr, Apply) {
   p.set(&foo);
   EXPECT_EQ("Foo", p.apply(Visitor()));
   EXPECT_EQ("const Foo", static_cast<const Ptr&>(p).apply(Visitor()));
+  EXPECT_EQ("Foo", apply_visitor(Visitor(), p));
+  EXPECT_EQ("const Foo", apply_visitor(Visitor(), static_cast<const Ptr&>(p)));
+  EXPECT_EQ("Foo", apply_visitor(Visitor(), std::move(p)));
 
   p.clear();
   EXPECT_THROW({p.apply(Visitor());}, std::invalid_argument);
@@ -94,10 +97,10 @@ TEST(DiscriminatedPtr, Apply) {
 TEST(DiscriminatedPtr, ApplyVoid) {
   struct Foo { };
   struct Visitor {
-    void operator()(int* ptr) { result = "int"; }
-    void operator()(const int* ptr) { result = "const int"; }
-    void operator()(Foo* ptr) { result = "Foo"; }
-    void operator()(const Foo* ptr) { result = "const Foo"; }
+    void operator()(int* /* ptr */) { result = "int"; }
+    void operator()(const int* /* ptr */) { result = "const int"; }
+    void operator()(Foo* /* ptr */) { result = "Foo"; }
+    void operator()(const Foo* /* ptr */) { result = "const Foo"; }
 
     std::string result;
   };

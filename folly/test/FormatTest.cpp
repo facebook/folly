@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 #include <folly/Format.h>
 
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 #include <string>
 
@@ -127,20 +126,22 @@ TEST(Format, Simple) {
   EXPECT_EQ("0042", sformat("{0[3]:04}", defaulted(v2, 42)));
   EXPECT_EQ("0042", svformat("{3:04}", defaulted(v2, 42)));
 
-  const int p[] = {10, 20, 30};
-  const int* q = p;
-  EXPECT_EQ("0020", sformat("{0[1]:04}", p));
-  EXPECT_EQ("0020", svformat("{1:04}", p));
-  EXPECT_EQ("0020", sformat("{0[1]:04}", q));
-  EXPECT_EQ("0020", svformat("{1:04}", q));
-  EXPECT_NE("", sformat("{}", q));
+  {
+    const int p[] = { 10, 20, 30 };
+    const int* q = p;
+    EXPECT_EQ("0020", sformat("{0[1]:04}", p));
+    EXPECT_EQ("0020", svformat("{1:04}", p));
+    EXPECT_EQ("0020", sformat("{0[1]:04}", q));
+    EXPECT_EQ("0020", svformat("{1:04}", q));
+    EXPECT_NE("", sformat("{}", q));
 
-  EXPECT_EQ("0x", sformat("{}", p).substr(0, 2));
-  EXPECT_EQ("10", svformat("{}", p));
-  EXPECT_EQ("0x", sformat("{}", q).substr(0, 2));
-  EXPECT_EQ("10", svformat("{}", q));
-  q = nullptr;
-  EXPECT_EQ("(null)", sformat("{}", q));
+    EXPECT_EQ("0x", sformat("{}", p).substr(0, 2));
+    EXPECT_EQ("10", svformat("{}", p));
+    EXPECT_EQ("0x", sformat("{}", q).substr(0, 2));
+    EXPECT_EQ("10", svformat("{}", q));
+    q = nullptr;
+    EXPECT_EQ("(null)", sformat("{}", q));
+  }
 
   std::map<int, std::string> m { {10, "hello"}, {20, "world"} };
   EXPECT_EQ("worldXX", sformat("{[20]:X<7}", m));
@@ -201,7 +202,6 @@ TEST(Format, Simple) {
 }
 
 TEST(Format, Float) {
-  double d = 1;
   EXPECT_EQ("1", sformat("{}", 1.0));
   EXPECT_EQ("0.1", sformat("{}", 0.1));
   EXPECT_EQ("0.01", sformat("{}", 0.01));
@@ -454,8 +454,7 @@ TEST(Format, BogusFormatString) {
 
   // This one fails in detail::enforceWhitespace(), which throws
   // std::range_error
-  EXPECT_THROW_STR(sformat("{0[test}"), std::range_error,
-                   "Non-whitespace: [");
+  EXPECT_THROW_STR(sformat("{0[test}"), std::range_error, "Non-whitespace");
 }
 
 template <bool containerMode, class... Args>
@@ -508,10 +507,4 @@ TEST(Format, Extending) {
                        texsformat("a {}", "formatter"),
                        "another formatter"),
             "Extending {a {formatter}} in {another formatter}");
-}
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

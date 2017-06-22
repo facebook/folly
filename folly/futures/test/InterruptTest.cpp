@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,26 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/Baton.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
 TEST(Interrupt, raise) {
-  std::runtime_error eggs("eggs");
+  using eggs_t = std::runtime_error;
   Promise<Unit> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
-    EXPECT_THROW(e.throwException(), decltype(eggs));
+    EXPECT_THROW(e.throw_exception(), eggs_t);
   });
-  p.getFuture().raise(eggs);
+  p.getFuture().raise(eggs_t("eggs"));
 }
 
 TEST(Interrupt, cancel) {
   Promise<Unit> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
-    EXPECT_THROW(e.throwException(), FutureCancellation);
+    EXPECT_THROW(e.throw_exception(), FutureCancellation);
   });
   p.getFuture().cancel();
 }
@@ -42,7 +41,7 @@ TEST(Interrupt, cancel) {
 TEST(Interrupt, handleThenInterrupt) {
   Promise<int> p;
   bool flag = false;
-  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
   p.getFuture().cancel();
   EXPECT_TRUE(flag);
 }
@@ -51,14 +50,14 @@ TEST(Interrupt, interruptThenHandle) {
   Promise<int> p;
   bool flag = false;
   p.getFuture().cancel();
-  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
   EXPECT_TRUE(flag);
 }
 
 TEST(Interrupt, interruptAfterFulfilNoop) {
   Promise<Unit> p;
   bool flag = false;
-  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
   p.setValue();
   p.getFuture().cancel();
   EXPECT_FALSE(flag);
@@ -67,7 +66,7 @@ TEST(Interrupt, interruptAfterFulfilNoop) {
 TEST(Interrupt, secondInterruptNoop) {
   Promise<Unit> p;
   int count = 0;
-  p.setInterruptHandler([&](const exception_wrapper& e) { count++; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { count++; });
   auto f = p.getFuture();
   f.cancel();
   f.cancel();
@@ -77,7 +76,7 @@ TEST(Interrupt, secondInterruptNoop) {
 TEST(Interrupt, withinTimedOut) {
   Promise<int> p;
   Baton<> done;
-  p.setInterruptHandler([&](const exception_wrapper& e) { done.post(); });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { done.post(); });
   p.getFuture().within(std::chrono::milliseconds(1));
   // Give it 100ms to time out and call the interrupt handler
   auto t = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,16 @@
  */
 
 #include <folly/Random.h>
-#include <folly/Range.h>
-#include <folly/Benchmark.h>
-#include <folly/Foreach.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <thread>
 #include <vector>
 #include <random>
+#include <unordered_set>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -36,7 +35,7 @@ TEST(Random, StateSize) {
   EXPECT_EQ(sizeof(uint_fast32_t) / 4 + 3,
             StateSize<std::minstd_rand0>::value);
   EXPECT_EQ(624, StateSize<std::mt19937>::value);
-#if FOLLY_USE_SIMD_PRNG
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
   EXPECT_EQ(624, StateSize<__gnu_cxx::sfmt19937>::value);
 #endif
   EXPECT_EQ(24, StateSize<std::ranlux24_base>::value);
@@ -47,6 +46,35 @@ TEST(Random, Simple) {
   for (int i = 0; i < 1024; ++i) {
     EXPECT_NE(seed = randomNumberSeed(), prev);
     prev = seed;
+  }
+}
+
+TEST(Random, FixedSeed) {
+  // clang-format off
+  struct ConstantRNG {
+    typedef uint32_t result_type;
+    result_type operator()() {
+      return 4; // chosen by fair dice roll.
+                // guaranteed to be random.
+    }
+    static constexpr result_type min() {
+      return std::numeric_limits<result_type>::min();
+    }
+    static constexpr result_type max() {
+      return std::numeric_limits<result_type>::max();
+    }
+  };
+  // clang-format on
+
+  ConstantRNG gen;
+
+  // Pick a constant random number...
+  auto value = Random::rand32(10, gen);
+
+  // Loop to make sure it really is constant.
+  for (int i = 0; i < 1024; ++i) {
+    auto result = Random::rand32(10, gen);
+    EXPECT_EQ(value, result);
   }
 }
 
@@ -68,55 +96,45 @@ TEST(Random, MultiThreaded) {
   }
 }
 
-BENCHMARK(minstdrand, n) {
-  BenchmarkSuspender braces;
-  std::random_device rd;
-  std::minstd_rand rng(rd());
+TEST(Random, sanity) {
+  // edge cases
+  EXPECT_EQ(folly::Random::rand32(0), 0);
+  EXPECT_EQ(folly::Random::rand32(12, 12), 0);
+  EXPECT_EQ(folly::Random::rand64(0), 0);
+  EXPECT_EQ(folly::Random::rand64(12, 12), 0);
 
-  braces.dismiss();
-
-  FOR_EACH_RANGE (i, 0, n) {
-    doNotOptimizeAway(rng());
+  // 32-bit repeatability, uniqueness
+  constexpr int kTestSize = 1000;
+  {
+    std::vector<uint32_t> vals;
+    folly::Random::DefaultGenerator rng;
+    rng.seed(0xdeadbeef);
+    for (int i = 0; i < kTestSize; ++i) {
+      vals.push_back(folly::Random::rand32(rng));
+    }
+    rng.seed(0xdeadbeef);
+    for (int i = 0; i < kTestSize; ++i) {
+      EXPECT_EQ(vals[i], folly::Random::rand32(rng));
+    }
+    EXPECT_EQ(
+        vals.size(),
+        std::unordered_set<uint32_t>(vals.begin(), vals.end()).size());
   }
-}
 
-BENCHMARK(mt19937, n) {
-  BenchmarkSuspender braces;
-  std::random_device rd;
-  std::mt19937 rng(rd());
-
-  braces.dismiss();
-
-  FOR_EACH_RANGE (i, 0, n) {
-    doNotOptimizeAway(rng());
+  // 64-bit repeatability, uniqueness
+  {
+    std::vector<uint64_t> vals;
+    folly::Random::DefaultGenerator rng;
+    rng.seed(0xdeadbeef);
+    for (int i = 0; i < kTestSize; ++i) {
+      vals.push_back(folly::Random::rand64(rng));
+    }
+    rng.seed(0xdeadbeef);
+    for (int i = 0; i < kTestSize; ++i) {
+      EXPECT_EQ(vals[i], folly::Random::rand64(rng));
+    }
+    EXPECT_EQ(
+        vals.size(),
+        std::unordered_set<uint64_t>(vals.begin(), vals.end()).size());
   }
-}
-
-BENCHMARK(threadprng, n) {
-  BenchmarkSuspender braces;
-  ThreadLocalPRNG tprng;
-  tprng();
-
-  braces.dismiss();
-
-  FOR_EACH_RANGE (i, 0, n) {
-    doNotOptimizeAway(tprng());
-  }
-}
-
-BENCHMARK(RandomDouble) { doNotOptimizeAway(Random::randDouble01()); }
-BENCHMARK(Random32) { doNotOptimizeAway(Random::rand32()); }
-BENCHMARK(Random32Num) { doNotOptimizeAway(Random::rand32(100)); }
-BENCHMARK(Random64) { doNotOptimizeAway(Random::rand64()); }
-BENCHMARK(Random64Num) { doNotOptimizeAway(Random::rand64(100ul << 32)); }
-BENCHMARK(Random64OneIn) { doNotOptimizeAway(Random::oneIn(100)); }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return RUN_ALL_TESTS();
 }

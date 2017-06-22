@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,13 +24,26 @@ namespace folly {
 
 // AtomicHashMap constructor -- Atomic wrapper that allows growth
 // This class has a lot of overhead (184 Bytes) so only use for big maps
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-AtomicHashMap(size_t finalSizeEst, const Config& config)
-  : kGrowthFrac_(config.growthFactor < 0 ?
-                 1.0 - config.maxLoadFactor : config.growthFactor) {
-  CHECK(config.maxLoadFactor > 0.0 && config.maxLoadFactor < 1.0);
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
+AtomicHashMap<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::AtomicHashMap(size_t finalSizeEst, const Config& config)
+    : kGrowthFrac_(
+          config.growthFactor < 0 ? 1.0f - config.maxLoadFactor
+                                  : config.growthFactor) {
+  CHECK(config.maxLoadFactor > 0.0f && config.maxLoadFactor < 1.0f);
   subMaps_[0].store(SubMap::create(finalSizeEst, config).release(),
     std::memory_order_relaxed);
   auto subMapCount = kNumSubMaps_;
@@ -40,38 +53,53 @@ AtomicHashMap(size_t finalSizeEst, const Config& config)
   numMapsAllocated_.store(1, std::memory_order_relaxed);
 }
 
-// insert --
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-std::pair<typename AtomicHashMap<KeyT, ValueT, HashFcn,
-                                 EqualFcn, Allocator>::iterator, bool>
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-insert(key_type k, const mapped_type& v) {
-  SimpleRetT ret = insertInternal(k,v);
-  SubMap* subMap = subMaps_[ret.i].load(std::memory_order_relaxed);
-  return std::make_pair(iterator(this, ret.i, subMap->makeIter(ret.j)),
-                        ret.success);
-}
-
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-std::pair<typename AtomicHashMap<KeyT, ValueT, HashFcn,
-                                 EqualFcn, Allocator>::iterator, bool>
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-insert(key_type k, mapped_type&& v) {
-  SimpleRetT ret = insertInternal(k, std::move(v));
+// emplace --
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+template <typename LookupKeyT,
+          typename LookupHashFcn,
+          typename LookupEqualFcn,
+          typename LookupKeyToKeyFcn,
+          typename... ArgTs>
+std::pair<typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator,
+                                 ProbeFcn, KeyConvertFcn>::iterator, bool>
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::
+emplace(LookupKeyT k, ArgTs&&... vCtorArgs) {
+  SimpleRetT ret = insertInternal<LookupKeyT,
+                                  LookupHashFcn,
+                                  LookupEqualFcn,
+                                  LookupKeyToKeyFcn>(
+      k, std::forward<ArgTs>(vCtorArgs)...);
   SubMap* subMap = subMaps_[ret.i].load(std::memory_order_relaxed);
   return std::make_pair(iterator(this, ret.i, subMap->makeIter(ret.j)),
                         ret.success);
 }
 
 // insertInternal -- Allocates new sub maps as existing ones fill up.
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-template <class T>
-typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::SimpleRetT
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-insertInternal(key_type key, T&& value) {
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+template <typename LookupKeyT,
+          typename LookupHashFcn,
+          typename LookupEqualFcn,
+          typename LookupKeyToKeyFcn,
+          typename... ArgTs>
+typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                       Allocator, ProbeFcn, KeyConvertFcn>::
+    SimpleRetT
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::
+insertInternal(LookupKeyT key, ArgTs&&... vCtorArgs) {
  beginInsertInternal:
   auto nextMapIdx = // this maintains our state
     numMapsAllocated_.load(std::memory_order_acquire);
@@ -79,7 +107,11 @@ insertInternal(key_type key, T&& value) {
   FOR_EACH_RANGE(i, 0, nextMapIdx) {
     // insert in each map successively.  If one succeeds, we're done!
     SubMap* subMap = subMaps_[i].load(std::memory_order_relaxed);
-    ret = subMap->insertInternal(key, std::forward<T>(value));
+    ret = subMap->template insertInternal<LookupKeyT,
+                                          LookupHashFcn,
+                                          LookupEqualFcn,
+                                          LookupKeyToKeyFcn>(
+        key, std::forward<ArgTs>(vCtorArgs)...);
     if (ret.idx == subMap->capacity_) {
       continue;  //map is full, so try the next one
     }
@@ -103,7 +135,7 @@ insertInternal(key_type key, T&& value) {
     size_t numCellsAllocated = (size_t)
       (primarySubMap->capacity_ *
        std::pow(1.0 + kGrowthFrac_, nextMapIdx - 1));
-    size_t newSize = (int) (numCellsAllocated * kGrowthFrac_);
+    size_t newSize = size_t(numCellsAllocated * kGrowthFrac_);
     DCHECK(subMaps_[nextMapIdx].load(std::memory_order_relaxed) ==
       (SubMap*)kLockedPtr_);
     // create a new map using the settings stored in the first map
@@ -134,7 +166,7 @@ insertInternal(key_type key, T&& value) {
   // just did a spin wait with an acquire load on numMapsAllocated_.
   SubMap* loadedMap = subMaps_[nextMapIdx].load(std::memory_order_relaxed);
   DCHECK(loadedMap && loadedMap != (SubMap*)kLockedPtr_);
-  ret = loadedMap->insertInternal(key, std::forward<T>(value));
+  ret = loadedMap->insertInternal(key, std::forward<ArgTs>(vCtorArgs)...);
   if (ret.idx != loadedMap->capacity_) {
     return SimpleRetT(nextMapIdx, ret.idx, ret.success);
   }
@@ -144,12 +176,21 @@ insertInternal(key_type key, T&& value) {
 }
 
 // find --
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::iterator
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-find(KeyT k) {
-  SimpleRetT ret = findInternal(k);
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
+typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                       Allocator, ProbeFcn, KeyConvertFcn>::
+    iterator
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::find(
+    LookupKeyT k) {
+  SimpleRetT ret = findInternal<LookupKeyT, LookupHashFcn, LookupEqualFcn>(k);
   if (!ret.success) {
     return end();
   }
@@ -157,31 +198,55 @@ find(KeyT k) {
   return iterator(this, ret.i, subMap->makeIter(ret.j));
 }
 
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
 typename AtomicHashMap<KeyT, ValueT,
-         HashFcn, EqualFcn, Allocator>::const_iterator
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-find(KeyT k) const {
-  return const_cast<AtomicHashMap*>(this)->find(k);
+         HashFcn, EqualFcn, Allocator, ProbeFcn, KeyConvertFcn>::const_iterator
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::
+find(LookupKeyT k) const {
+  return const_cast<AtomicHashMap*>(this)->find<LookupKeyT,
+                                                LookupHashFcn,
+                                                LookupEqualFcn>(k);
 }
 
 // findInternal --
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::SimpleRetT
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-findInternal(const KeyT k) const {
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
+typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                       Allocator, ProbeFcn, KeyConvertFcn>::
+    SimpleRetT
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::
+    findInternal(const LookupKeyT k) const {
   SubMap* const primaryMap = subMaps_[0].load(std::memory_order_relaxed);
-  typename SubMap::SimpleRetT ret = primaryMap->findInternal(k);
+  typename SubMap::SimpleRetT ret =
+    primaryMap->template findInternal<LookupKeyT,
+                                      LookupHashFcn,
+                                      LookupEqualFcn>(k);
   if (LIKELY(ret.idx != primaryMap->capacity_)) {
     return SimpleRetT(0, ret.idx, ret.success);
   }
-  int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
+  const unsigned int numMaps =
+      numMapsAllocated_.load(std::memory_order_acquire);
   FOR_EACH_RANGE(i, 1, numMaps) {
     // Check each map successively.  If one succeeds, we're done!
     SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);
-    ret = thisMap->findInternal(k);
+    ret = thisMap->template findInternal<LookupKeyT,
+                                         LookupHashFcn,
+                                         LookupEqualFcn>(k);
     if (LIKELY(ret.idx != thisMap->capacity_)) {
       return SimpleRetT(i, ret.idx, ret.success);
     }
@@ -191,10 +256,18 @@ findInternal(const KeyT k) const {
 }
 
 // findAtInternal -- see encodeIndex() for details.
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::SimpleRetT
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                       Allocator, ProbeFcn, KeyConvertFcn>::
+    SimpleRetT
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::
 findAtInternal(uint32_t idx) const {
   uint32_t subMapIdx, subMapOffset;
   if (idx & kSecondaryMapBit_) {
@@ -212,10 +285,18 @@ findAtInternal(uint32_t idx) const {
 }
 
 // erase --
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::size_type
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                       Allocator, ProbeFcn, KeyConvertFcn>::
+    size_type
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::
 erase(const KeyT k) {
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
   FOR_EACH_RANGE(i, 0, numMaps) {
@@ -229,9 +310,15 @@ erase(const KeyT k) {
 }
 
 // capacity -- summation of capacities of all submaps
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                     Allocator, ProbeFcn, KeyConvertFcn>::
 capacity() const {
   size_t totalCap(0);
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
@@ -243,9 +330,15 @@ capacity() const {
 
 // spaceRemaining --
 // number of new insertions until current submaps are all at max load
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                     Allocator, ProbeFcn, KeyConvertFcn>::
 spaceRemaining() const {
   size_t spaceRem(0);
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
@@ -261,9 +354,15 @@ spaceRemaining() const {
 
 // clear -- Wipes all keys and values from primary map and destroys
 // all secondary maps.  Not thread safe.
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-void AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+void AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                   Allocator, ProbeFcn, KeyConvertFcn>::
 clear() {
   subMaps_[0].load(std::memory_order_relaxed)->clear();
   int const numMaps = numMapsAllocated_
@@ -278,9 +377,15 @@ clear() {
 }
 
 // size --
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                     Allocator, ProbeFcn, KeyConvertFcn>::
 size() const {
   size_t totalSize(0);
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
@@ -308,10 +413,17 @@ size() const {
 //         31              1
 //      27-30   which subMap
 //       0-26  subMap offset (index_ret input)
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-inline uint32_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-encodeIndex(uint32_t subMap, uint32_t offset) {
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+inline uint32_t
+AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+              Allocator, ProbeFcn, KeyConvertFcn>::
+    encodeIndex(uint32_t subMap, uint32_t offset) {
   DCHECK_EQ(offset & kSecondaryMapBit_, 0);  // offset can't be too big
   if (subMap == 0) return offset;
   // Make sure subMap isn't too big
@@ -326,14 +438,19 @@ encodeIndex(uint32_t subMap, uint32_t offset) {
 
 // Iterator implementation
 
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-template<class ContT, class IterVal, class SubIt>
-struct AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::ahm_iterator
-    : boost::iterator_facade<ahm_iterator<ContT,IterVal,SubIt>,
-                             IterVal,
-                             boost::forward_traversal_tag>
-{
+template <typename KeyT,
+          typename ValueT,
+          typename HashFcn,
+          typename EqualFcn,
+          typename Allocator,
+          typename ProbeFcn,
+          typename KeyConvertFcn>
+template <class ContT, class IterVal, class SubIt>
+struct AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
+                     Allocator, ProbeFcn, KeyConvertFcn>::
+    ahm_iterator : boost::iterator_facade<ahm_iterator<ContT, IterVal, SubIt>,
+                                          IterVal,
+                                          boost::forward_traversal_tag> {
   explicit ahm_iterator() : ahm_(0) {}
 
   // Conversion ctor for interoperability between const_iterator and

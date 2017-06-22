@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,36 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
 #include <folly/Traits.h>
 
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
+#include <cstring>
+#include <string>
+#include <type_traits>
+#include <utility>
+
+#include <folly/ScopeGuard.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace std;
+
+namespace {
+
+FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
+}
+
+TEST(Traits, has_member_type) {
+  struct membership_no {};
+  struct membership_yes {
+    using x = void;
+  };
+
+  EXPECT_TRUE((is_same<false_type, has_member_type_x<membership_no>>::value));
+  EXPECT_TRUE((is_same<true_type, has_member_type_x<membership_yes>>::value));
+}
+
+//  Note: FOLLY_CREATE_HAS_MEMBER_FN_TRAITS tests are in
+//  folly/test/HasMemberFnTraitsTest.cpp.
 
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
@@ -48,7 +70,7 @@ TEST(Traits, scalars) {
 
 TEST(Traits, containers) {
   EXPECT_TRUE  (IsRelocatable<vector<F1>>::value);
-  EXPECT_FALSE((IsRelocatable<pair<F1, F1>>::value));
+  EXPECT_TRUE((IsRelocatable<pair<F1, F1>>::value));
   EXPECT_TRUE ((IsRelocatable<pair<T1, T2>>::value));
 }
 
@@ -65,8 +87,8 @@ TEST(Traits, typedefd) {
 }
 
 TEST(Traits, unset) {
-  EXPECT_FALSE(IsRelocatable<F1>::value);
-  EXPECT_FALSE(IsRelocatable<F4>::value);
+  EXPECT_TRUE(IsRelocatable<F1>::value);
+  EXPECT_TRUE(IsRelocatable<F4>::value);
 }
 
 TEST(Traits, bitprop) {
@@ -79,6 +101,25 @@ TEST(Traits, bitAndInit) {
   EXPECT_FALSE(IsTriviallyCopyable<vector<int>>::value);
   EXPECT_TRUE (IsZeroInitializable<int>::value);
   EXPECT_FALSE(IsZeroInitializable<vector<int>>::value);
+}
+
+TEST(Trait, logicOperators) {
+  static_assert(Conjunction<true_type>::value, "");
+  static_assert(!Conjunction<false_type>::value, "");
+  static_assert(is_same<Conjunction<true_type>::type, true_type>::value, "");
+  static_assert(is_same<Conjunction<false_type>::type, false_type>::value, "");
+  static_assert(Conjunction<true_type, true_type>::value, "");
+  static_assert(!Conjunction<true_type, false_type>::value, "");
+
+  static_assert(Disjunction<true_type>::value, "");
+  static_assert(!Disjunction<false_type>::value, "");
+  static_assert(is_same<Disjunction<true_type>::type, true_type>::value, "");
+  static_assert(is_same<Disjunction<false_type>::type, false_type>::value, "");
+  static_assert(Disjunction<true_type, true_type>::value, "");
+  static_assert(Disjunction<true_type, false_type>::value, "");
+
+  static_assert(!Negation<true_type>::value, "");
+  static_assert(Negation<false_type>::value, "");
 }
 
 TEST(Traits, is_negative) {
@@ -110,20 +151,88 @@ TEST(Traits, relational) {
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(254u)));
 }
 
-struct membership_no {};
-struct membership_yes { using x = void; };
-FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
+#if FOLLY_HAVE_INT128_T
 
-TEST(Traits, has_member_type) {
-  EXPECT_FALSE(bool(has_member_type_x<membership_no>::value));
-  EXPECT_TRUE(bool(has_member_type_x<membership_yes>::value));
+TEST(Traits, int128) {
+  EXPECT_TRUE(
+      (::std::is_same<::std::make_unsigned<__int128_t>::type, __uint128_t>::
+           value));
+  EXPECT_TRUE((
+      ::std::is_same<::std::make_signed<__int128_t>::type, __int128_t>::value));
+  EXPECT_TRUE(
+      (::std::is_same<::std::make_unsigned<__uint128_t>::type, __uint128_t>::
+           value));
+  EXPECT_TRUE(
+      (::std::is_same<::std::make_signed<__uint128_t>::type, __int128_t>::
+           value));
+  EXPECT_TRUE((::std::is_arithmetic<__int128_t>::value));
+  EXPECT_TRUE((::std::is_arithmetic<__uint128_t>::value));
+  EXPECT_TRUE((::std::is_integral<__int128_t>::value));
+  EXPECT_TRUE((::std::is_integral<__uint128_t>::value));
+  EXPECT_FALSE((::std::is_unsigned<__int128_t>::value));
+  EXPECT_TRUE((::std::is_signed<__int128_t>::value));
+  EXPECT_TRUE((::std::is_unsigned<__uint128_t>::value));
+  EXPECT_FALSE((::std::is_signed<__uint128_t>::value));
+  EXPECT_TRUE((::std::is_fundamental<__int128_t>::value));
+  EXPECT_TRUE((::std::is_fundamental<__uint128_t>::value));
+  EXPECT_TRUE((::std::is_scalar<__int128_t>::value));
+  EXPECT_TRUE((::std::is_scalar<__uint128_t>::value));
 }
 
-int main(int argc, char ** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return RUN_ALL_TESTS();
+#endif // FOLLY_HAVE_INT128_T
+
+template <typename T, typename... Args>
+void testIsRelocatable(Args&&... args) {
+  if (!IsRelocatable<T>::value) return;
+
+  // We use placement new on zeroed memory to avoid garbage subsections
+  char vsrc[sizeof(T)] = { 0 };
+  char vdst[sizeof(T)] = { 0 };
+  char vcpy[sizeof(T)];
+
+  T* src = new (vsrc) T(std::forward<Args>(args)...);
+  SCOPE_EXIT { src->~T(); };
+  std::memcpy(vcpy, vsrc, sizeof(T));
+  T deep(*src);
+  T* dst = new (vdst) T(std::move(*src));
+  SCOPE_EXIT { dst->~T(); };
+
+  EXPECT_EQ(deep, *dst);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+  EXPECT_EQ(deep, *reinterpret_cast<T*>(vcpy));
+#pragma GCC diagnostic pop
+
+  // This test could technically fail; however, this is what relocation
+  // almost always means, so it's a good test to have
+  EXPECT_EQ(std::memcmp(vcpy, vdst, sizeof(T)), 0);
+}
+
+TEST(Traits, actuallyRelocatable) {
+  // Ensure that we test stack and heap allocation for strings with in-situ
+  // capacity
+  testIsRelocatable<std::string>("1");
+  testIsRelocatable<std::string>(sizeof(std::string) + 1, 'x');
+
+  testIsRelocatable<std::vector<char>>(5, 'g');
+}
+
+namespace {
+// has_value_type<T>::value is true if T has a nested type `value_type`
+template <class T, class = void>
+struct has_value_type : std::false_type {};
+
+template <class T>
+struct has_value_type<T, folly::void_t<typename T::value_type>>
+    : std::true_type {};
+}
+
+TEST(Traits, void_t) {
+  EXPECT_TRUE((::std::is_same<folly::void_t<>, void>::value));
+  EXPECT_TRUE((::std::is_same<folly::void_t<int>, void>::value));
+  EXPECT_TRUE((::std::is_same<folly::void_t<int, short>, void>::value));
+  EXPECT_TRUE(
+      (::std::is_same<folly::void_t<int, short, std::string>, void>::value));
+  EXPECT_TRUE((::has_value_type<std::string>::value));
+  EXPECT_FALSE((::has_value_type<int>::value));
 }

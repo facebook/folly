@@ -1,32 +1,95 @@
 Folly: Facebook Open-source Library
 -----------------------------------
 
-Folly is an open-source C++ library developed and used at Facebook.
+### What is `folly`?
 
-###[Get Started](folly/docs/Overview.md)
+Folly (acronymed loosely after Facebook Open Source Library) is a
+library of C++11 components designed with practicality and efficiency
+in mind. **Folly contains a variety of core library components used extensively
+at Facebook**. In particular, it's often a dependency of Facebook's other
+open source C++ efforts and place where those projects can share code.
 
-Folly is published on Github at https://github.com/facebook/folly; for
-discussions, there is a Google group at
-https://groups.google.com/d/forum/facebook-folly.
+It complements (as opposed to competing against) offerings
+such as Boost and of course `std`. In fact, we embark on defining our
+own component only when something we need is either not available, or
+does not meet the needed performance profile. We endeavor to remove
+things from folly if or when `std` or Boost obsoletes them.
 
-Dependencies
-------------
+Performance concerns permeate much of Folly, sometimes leading to
+designs that are more idiosyncratic than they would otherwise be (see
+e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
+scale is a unifying theme in all of Folly.
 
-folly requires gcc 4.8+ and a version of boost compiled with C++11 support.
+### Logical Design
+
+Folly is a collection of relatively independent components, some as
+simple as a few symbols. There is no restriction on internal
+dependencies, meaning that a given folly module may use any other
+folly components.
+
+All symbols are defined in the top-level namespace `folly`, except of
+course macros. Macro names are ALL_UPPERCASE and should be prefixed
+with `FOLLY_`. Namespace `folly` defines other internal namespaces
+such as `internal` or `detail`. User code should not depend on symbols
+in those namespaces.
+
+Folly has an `experimental` directory as well. This designation connotes
+primarily that we feel the API may change heavily over time. This code,
+typically, is still in heavy use and is well tested.
+
+### Physical Design
+
+At the top level Folly uses the classic "stuttering" scheme
+`folly/folly` used by Boost and others. The first directory serves as
+an installation root of the library (with possible versioning a la
+`folly-1.0/`), and the second is to distinguish the library when
+including files, e.g. `#include <folly/FBString.h>`.
+
+The directory structure is flat (mimicking the namespace structure),
+i.e. we don't have an elaborate directory hierarchy (it is possible
+this will change in future versions). The subdirectory `experimental`
+contains files that are used inside folly and possibly at Facebook but
+not considered stable enough for client use. Your code should not use
+files in `folly/experimental` lest it may break when you update Folly.
+
+The `folly/folly/test` subdirectory includes the unittests for all
+components, usually named `ComponentXyzTest.cpp` for each
+`ComponentXyz.*`. The `folly/folly/docs` directory contains
+documentation.
+
+### What's in it?
+
+Because of folly's fairly flat structure, the best way to see what's in it
+is to look at the headers in [top level `folly/` directory](https://github.com/facebook/folly/tree/master/folly). You can also
+check the [`docs` folder](folly/docs) for documentation, starting with the
+[overview](folly/docs/Overview.md).
+
+Folly is published on Github at https://github.com/facebook/folly
+
+### Build Notes
+
+#### Dependencies
+
+folly requires gcc 4.9+ and a version of boost compiled with C++14 support.
 
 Please download googletest from
-https://googletest.googlecode.com/files/gtest-1.7.0.zip and unzip it in the
-folly/test subdirectory.
+https://github.com/google/googletest/archive/release-1.8.0.tar.gz and unpack it into the
+folly/test subdirectory as `gtest`:
 
-Ubuntu 12.04
-------------
+    (cd folly/test && \
+     rm -rf gtest && \
+     wget https://github.com/google/googletest/archive/release-1.8.0.tar.gz && \
+     tar zxf release-1.8.0.tar.gz && \
+     rm -f release-1.8.0.tar.gz && \
+     mv googletest-release-1.8.0 gtest)
+
+#### Ubuntu 12.04
 
 This release is old, requiring many upgrades. However, since Travis CI runs
 on 12.04, `folly/build/deps_ubuntu_12.04.sh` is provided, and upgrades all
 the required packages.
 
-Ubuntu 13.10
-------------
+#### Ubuntu 13.10
 
 The following packages are required (feel free to cut and paste the apt-get
 command below):
@@ -50,11 +113,20 @@ sudo apt-get install \
     zlib1g-dev \
     binutils-dev \
     libjemalloc-dev \
-    libssl-dev
+    libssl-dev \
+    pkg-config
 ```
 
-Ubuntu 14.04 LTS
-----------------
+If advanced debugging functionality is required
+
+```
+sudo apt-get install \
+    libunwind8-dev \
+    libelf-dev \
+    libdwarf-dev
+```
+
+#### Ubuntu 14.04 LTS
 
 The packages listed above for Ubuntu 13.10 are required, as well as:
 
@@ -74,8 +146,8 @@ In the folly directory, run
   sudo make install
 ```
 
-OS X (Homebrew)
-----
+#### OS X (Homebrew)
+
 folly is available as a Formula and releases may be built via `brew install folly`.
 
 You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `master`:
@@ -83,12 +155,10 @@ You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `maste
 ```
   cd folly
   ./build/bootstrap-osx-homebrew.sh
-  make
-  make check
 ```
 
-OS X (MacPorts)
-----
+#### OS X (MacPorts)
+
 Install the required packages from MacPorts:
 
 ```
@@ -129,8 +199,7 @@ Download and install folly with the parameters listed below:
   sudo make install
 ```
 
-Other Linux distributions
--------------------------
+#### Other Linux distributions
 
 - double-conversion (https://github.com/google/double-conversion)
 
@@ -163,3 +232,8 @@ Other Linux distributions
     - double-conversion-devel
     - openssl-devel
     - libevent-devel
+
+  Optional
+    - libdwarf-dev
+    - libelf-dev
+    - libunwind8-dev

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,97 +25,140 @@
  *    ASSERT(x == 24);
  */
 
-#ifndef FOLLY_APPLYTUPLE_H_
-#define FOLLY_APPLYTUPLE_H_
+#pragma once
 
-#include <tuple>
 #include <functional>
-#include <type_traits>
+#include <tuple>
+#include <utility>
+
+#include <folly/Utility.h>
 
 namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
+namespace apply_tuple {
+
+inline constexpr std::size_t sum() {
+  return 0;
+}
+template <typename... Args>
+inline constexpr std::size_t sum(std::size_t v1, Args... vs) {
+  return v1 + sum(vs...);
+}
+
+template <typename... Tuples>
+struct TupleSizeSum {
+  static constexpr auto value = sum(std::tuple_size<Tuples>::value...);
+};
+
+template <typename... Tuples>
+using MakeIndexSequenceFromTuple = folly::make_index_sequence<
+    TupleSizeSum<typename std::decay<Tuples>::type...>::value>;
 
 // This is to allow using this with pointers to member functions,
 // where the first argument in the tuple will be the this pointer.
-template<class F> F& makeCallable(F& f) { return f; }
-template<class R, class C, class ...A>
-auto makeCallable(R (C::*d)(A...)) -> decltype(std::mem_fn(d)) {
+template <class F>
+inline constexpr F&& makeCallable(F&& f) {
+  return std::forward<F>(f);
+}
+template <class M, class C>
+inline constexpr auto makeCallable(M(C::*d)) -> decltype(std::mem_fn(d)) {
   return std::mem_fn(d);
 }
 
-template<class Tuple>
-struct DerefSize
-  : std::tuple_size<typename std::remove_reference<Tuple>::type>
-{};
-
-template<class Tuple, class ...Unpacked> struct ExprDoUnpack {
-  enum {
-    value = sizeof...(Unpacked) < DerefSize<Tuple>::value
-  };
-};
-
-template<class Tuple, class ...Unpacked> struct ExprIsUnpacked {
-  enum {
-    value = sizeof...(Unpacked) == DerefSize<Tuple>::value
-  };
-};
-
-// CallTuple recursively unpacks tuple arguments so we can forward
-// them into the function.
-template<class Ret>
-struct CallTuple {
-  template<class F, class Tuple, class ...Unpacked>
-  static typename std::enable_if<ExprDoUnpack<Tuple, Unpacked...>::value,
-    Ret
-  >::type call(const F& f, Tuple&& t, Unpacked&&... unp) {
-    typedef typename std::tuple_element<
-      sizeof...(Unpacked),
-      typename std::remove_reference<Tuple>::type
-    >::type ElementType;
-    return CallTuple<Ret>::call(f, std::forward<Tuple>(t),
-      std::forward<Unpacked>(unp)...,
-      std::forward<ElementType>(std::get<sizeof...(Unpacked)>(t))
-    );
-  }
-
-  template<class F, class Tuple, class ...Unpacked>
-  static typename std::enable_if<ExprIsUnpacked<Tuple, Unpacked...>::value,
-    Ret
-  >::type call(const F& f, Tuple&& t, Unpacked&&... unp) {
-    return makeCallable(f)(std::forward<Unpacked>(unp)...);
-  }
-};
-
-// The point of this meta function is to extract the contents of the
-// tuple as a parameter pack so we can pass it into std::result_of<>.
-template<class F, class Args> struct ReturnValue;
-template<class F, class ...Args>
-struct ReturnValue<F,std::tuple<Args...>> {
-  typedef typename std::result_of<F (Args...)>::type type;
-};
-
+template <class F, class Tuple, std::size_t... Indexes>
+inline constexpr auto call(F&& f, Tuple&& t, folly::index_sequence<Indexes...>)
+    -> decltype(
+        std::forward<F>(f)(std::get<Indexes>(std::forward<Tuple>(t))...)) {
+  return std::forward<F>(f)(std::get<Indexes>(std::forward<Tuple>(t))...);
 }
+
+template <class Tuple, std::size_t... Indexes>
+inline constexpr auto forwardTuple(Tuple&& t, folly::index_sequence<Indexes...>)
+    -> decltype(
+        std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...)) {
+  return std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...);
+}
+
+} // namespace apply_tuple
+} // namespace detail
 
 //////////////////////////////////////////////////////////////////////
 
-template<class Callable, class Tuple>
-typename detail::ReturnValue<
-  typename std::decay<Callable>::type,
-  typename std::decay<Tuple>::type
->::type
-applyTuple(const Callable& c, Tuple&& t) {
-  typedef typename detail::ReturnValue<
-    typename std::decay<Callable>::type,
-    typename std::decay<Tuple>::type
-  >::type RetT;
-  return detail::CallTuple<RetT>::call(c, std::forward<Tuple>(t));
+/**
+ * Invoke a callable object with a set of arguments passed as a tuple, or a
+ *     series of tuples
+ *
+ * Example: the following lines are equivalent
+ *     func(1, 2, 3, "foo");
+ *     applyTuple(func, std::make_tuple(1, 2, 3, "foo"));
+ *     applyTuple(func, std::make_tuple(1, 2), std::make_tuple(3, "foo"));
+ */
+
+template <class F, class... Tuples>
+inline constexpr auto applyTuple(F&& f, Tuples&&... t)
+    -> decltype(detail::apply_tuple::call(
+        detail::apply_tuple::makeCallable(std::forward<F>(f)),
+        std::tuple_cat(detail::apply_tuple::forwardTuple(
+            std::forward<Tuples>(t),
+            detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples>{})...),
+        detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples...>{})) {
+  return detail::apply_tuple::call(
+      detail::apply_tuple::makeCallable(std::forward<F>(f)),
+      std::tuple_cat(detail::apply_tuple::forwardTuple(
+          std::forward<Tuples>(t),
+          detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples>{})...),
+      detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples...>{});
+}
+
+namespace detail {
+namespace apply_tuple {
+
+template <class F>
+class Uncurry {
+ public:
+  explicit Uncurry(F&& func) : func_(std::move(func)) {}
+  explicit Uncurry(const F& func) : func_(func) {}
+
+  template <class Tuple>
+  auto operator()(Tuple&& tuple) const
+      -> decltype(applyTuple(std::declval<F>(), std::forward<Tuple>(tuple))) {
+    return applyTuple(func_, std::forward<Tuple>(tuple));
+  }
+
+ private:
+  F func_;
+};
+} // namespace apply_tuple
+} // namespace detail
+
+/**
+ * Wraps a function taking N arguments into a function which accepts a tuple of
+ * N arguments. Note: This function will also accept an std::pair if N == 2.
+ *
+ * For example, given the below code:
+ *
+ *    std::vector<std::tuple<int, int, int>> rows = ...;
+ *    auto test = [](std::tuple<int, int, int>& row) {
+ *      return std::get<0>(row) * std::get<1>(row) * std::get<2>(row) == 24;
+ *    };
+ *    auto found = std::find_if(rows.begin(), rows.end(), test);
+ *
+ *
+ * 'test' could be rewritten as:
+ *
+ *    auto test =
+ *        folly::uncurry([](int a, int b, int c) { return a * b * c == 24; });
+ *
+ */
+template <class F>
+auto uncurry(F&& f)
+    -> detail::apply_tuple::Uncurry<typename std::decay<F>::type> {
+  return detail::apply_tuple::Uncurry<typename std::decay<F>::type>(
+      std::forward<F>(f));
 }
 
 //////////////////////////////////////////////////////////////////////
-
 }
-
-#endif

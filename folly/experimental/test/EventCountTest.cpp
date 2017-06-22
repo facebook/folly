@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@
 #include <thread>
 #include <vector>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Random.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

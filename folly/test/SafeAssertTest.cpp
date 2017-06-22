@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 #include <folly/SafeAssert.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Benchmark.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
-void fail() {
-  FOLLY_SAFE_CHECK(0, "hello");
+[[noreturn]] void fail() {
+  FOLLY_SAFE_CHECK(0 + 0, "hello");
 }
 
 void succeed() {
@@ -33,5 +33,6 @@ void succeed() {
 
 TEST(SafeAssert, AssertionFailure) {
   succeed();
-  EXPECT_DEATH(fail(), ".*Assertion failure:.*hello.*");
+  EXPECT_DEATH(fail(), "Assertion failure: 0 \\+ 0");
+  EXPECT_DEATH(fail(), "Message: hello");
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,11 +36,19 @@ namespace folly {
  * These will be most helpful in tests, for instance if you need to pump a mock
  * EventBase until Futures complete.
  */
+
 class DrivableExecutor : public virtual Executor {
  public:
-  virtual ~DrivableExecutor() = default;
+  ~DrivableExecutor() override = default;
 
   // Make progress on this Executor's work.
+  //
+  // Drive *must not* busy wait if there is no work to do.  Instead,
+  // sleep (using a semaphore or similar) until at least one event is
+  // processed.
+  // I.e. make_future().via(foo).then(...).getVia(DrivableExecutor)
+  // must not spin, even though nothing happens on the drivable
+  // executor.
   virtual void drive() = 0;
 };
 

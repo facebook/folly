@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_
-#define FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_
+#pragma once
 
+#include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
-#include <unordered_map>
 
 #include <folly/FBString.h>
 #include <folly/Range.h>
@@ -39,14 +39,16 @@ class Symbolizer;
  * Frame information: symbol name and location.
  */
 struct SymbolizedFrame {
-  SymbolizedFrame() : found(false), name(nullptr) { }
+  SymbolizedFrame() { }
 
-  void set(const std::shared_ptr<ElfFile>& file, uintptr_t address);
+  void set(const std::shared_ptr<ElfFile>& file,
+           uintptr_t address,
+           Dwarf::LocationInfoMode mode);
+
   void clear() { *this = SymbolizedFrame(); }
 
-  bool isSignalFrame;
-  bool found;
-  const char* name;
+  bool found = false;
+  const char* name = nullptr;
   Dwarf::LocationInfo location;
 
   /**
@@ -55,15 +57,16 @@ struct SymbolizedFrame {
   fbstring demangledName() const {
     return name ? demangle(name) : fbstring();
   }
+
  private:
   std::shared_ptr<ElfFile> file_;
 };
 
 template <size_t N>
 struct FrameArray {
-  FrameArray() : frameCount(0) { }
+  FrameArray() { }
 
-  size_t frameCount;
+  size_t frameCount = 0;
   uintptr_t addresses[N];
   SymbolizedFrame frames[N];
 };
@@ -108,7 +111,14 @@ inline bool getStackTraceSafe(FrameArray<N>& fa) {
 
 class Symbolizer {
  public:
-  explicit Symbolizer(ElfCacheBase* cache = nullptr);
+  static constexpr Dwarf::LocationInfoMode kDefaultLocationInfoMode =
+      Dwarf::LocationInfoMode::FAST;
+
+  explicit Symbolizer(Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode)
+    : Symbolizer(nullptr, mode) {}
+
+  explicit Symbolizer(ElfCacheBase* cache,
+                      Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode);
 
   /**
    * Symbolize given addresses.
@@ -131,11 +141,12 @@ class Symbolizer {
   }
 
  private:
-  ElfCacheBase* cache_;
+  ElfCacheBase* const cache_;
+  const Dwarf::LocationInfoMode mode_;
 };
 
 /**
- * Format one address in the way it's usually printer by SymbolizePrinter.
+ * Format one address in the way it's usually printed by SymbolizePrinter.
  * Async-signal-safe.
  */
 class AddressFormatter {
@@ -204,9 +215,13 @@ class SymbolizePrinter {
 
     // Colorize output only if output is printed to a TTY (ANSI escape code)
     COLOR_IF_TTY = 1 << 3,
+
+    // Skip frame address information
+    NO_FRAME_ADDRESS = 1 << 4,
   };
 
-  enum Color { DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, WHITE, PURPLE };
+  // NOTE: enum values used as indexes in kColorMap.
+  enum Color { DEFAULT, RED, GREEN, YELLOW, BLUE, CYAN, WHITE, PURPLE, NUM };
   void color(Color c);
 
  protected:
@@ -221,6 +236,17 @@ class SymbolizePrinter {
  private:
   void printTerse(uintptr_t address, const SymbolizedFrame& frame);
   virtual void doPrint(StringPiece sp) = 0;
+
+  static constexpr std::array<const char*, Color::NUM> kColorMap = {{
+      "\x1B[0m",
+      "\x1B[31m",
+      "\x1B[32m",
+      "\x1B[33m",
+      "\x1B[34m",
+      "\x1B[36m",
+      "\x1B[37m",
+      "\x1B[35m",
+  }};
 };
 
 /**
@@ -243,12 +269,12 @@ class FDSymbolizePrinter : public SymbolizePrinter {
  public:
   explicit FDSymbolizePrinter(int fd, int options=0,
                               size_t bufferSize=0);
-  ~FDSymbolizePrinter();
+  ~FDSymbolizePrinter() override;
   void flush();
  private:
   void doPrint(StringPiece sp) override;
 
-  int fd_;
+  const int fd_;
   std::unique_ptr<IOBuf> buffer_;
 };
 
@@ -261,7 +287,7 @@ class FILESymbolizePrinter : public SymbolizePrinter {
   explicit FILESymbolizePrinter(FILE* file, int options=0);
  private:
   void doPrint(StringPiece sp) override;
-  FILE* file_;
+  FILE* const file_ = nullptr;
 };
 
 /**
@@ -281,7 +307,50 @@ class StringSymbolizePrinter : public SymbolizePrinter {
   fbstring buf_;
 };
 
+/**
+ * Use this class to print a stack trace from a signal handler, or other place
+ * where you shouldn't allocate memory on the heap, and fsync()ing your file
+ * descriptor is more important than performance.
+ *
+ * Make sure to create one of these on startup, not in the signal handler, as
+ * the constructo allocates on the heap, whereas the other methods don't.  Best
+ * practice is to just leak this object, rather than worry about destruction
+ * order.
+ *
+ * These methods aren't thread safe, so if you could have signals on multiple
+ * threads at the same time, you need to do your own locking to ensure you don't
+ * call these methods from multiple threads.  They are signal safe, however.
+ */
+class StackTracePrinter {
+ public:
+  static constexpr size_t kDefaultMinSignalSafeElfCacheSize = 500;
+
+  explicit StackTracePrinter(
+      size_t minSignalSafeElfCacheSize = kDefaultMinSignalSafeElfCacheSize,
+      int fd = STDERR_FILENO);
+
+  /**
+   * Only allocates on the stack and is signal-safe but not thread-safe.  Don't
+   * call printStackTrace() on the same StackTracePrinter object from multiple
+   * threads at the same time.
+   */
+  FOLLY_NOINLINE void printStackTrace(bool symbolize);
+
+  void print(StringPiece sp) {
+    printer_.print(sp);
+  }
+
+  // Flush printer_, also fsync, in case we're about to crash again...
+  void flush();
+
+ private:
+  static constexpr size_t kMaxStackTraceDepth = 100;
+
+  int fd_;
+  SignalSafeElfCache elfCache_;
+  FDSymbolizePrinter printer_;
+  std::unique_ptr<FrameArray<kMaxStackTraceDepth>> addresses_;
+};
+
 }  // namespace symbolizer
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_ */

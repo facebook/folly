@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,92 +14,53 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TIMESERIES_HISTOGRAM_DEF_H_
-#define FOLLY_TIMESERIES_HISTOGRAM_DEF_H_
+#pragma once
 
 #include <folly/Conv.h>
+#include <folly/stats/BucketedTimeSeries-defs.h>
 #include <folly/stats/Histogram-defs.h>
 #include <folly/stats/MultiLevelTimeSeries-defs.h>
-#include <folly/stats/BucketedTimeSeries-defs.h>
+#include <folly/stats/TimeseriesHistogram.h>
 
 namespace folly {
 
-template <class T, class TT, class C>
-template <typename ReturnType>
-ReturnType TimeseriesHistogram<T, TT, C>::avg(int level) const {
-  ValueType total = ValueType();
-  int64_t nsamples = 0;
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
-    total += levelObj.sum();
-    nsamples += levelObj.count();
-  }
-  return folly::detail::avgHelper<ReturnType>(total, nsamples);
-}
+template <typename T, typename CT, typename C>
+TimeseriesHistogram<T, CT, C>::TimeseriesHistogram(
+    ValueType bucketSize,
+    ValueType min,
+    ValueType max,
+    const ContainerType& copyMe)
+    : buckets_(bucketSize, min, max, copyMe),
+      haveNotSeenValue_(true),
+      singleUniqueValue_(false) {}
 
-template <class T, class TT, class C>
-template <typename ReturnType>
-ReturnType TimeseriesHistogram<T, TT, C>::avg(TimeType start,
-                                              TimeType end) const {
-  ValueType total = ValueType();
-  int64_t nsamples = 0;
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& levelObj = buckets_.getByIndex(b).getLevel(start, end);
-    total += levelObj.sum(start, end);
-    nsamples += levelObj.count(start, end);
-  }
-  return folly::detail::avgHelper<ReturnType>(total, nsamples);
-}
-
-template <class T, class TT, class C>
-template <typename ReturnType>
-ReturnType TimeseriesHistogram<T, TT, C>::rate(TimeType start,
-                                               TimeType end) const {
-  ValueType total = ValueType();
-  TimeType elapsed(0);
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& level = buckets_.getByIndex(b).getLevel(start);
-    total += level.sum(start, end);
-    elapsed = std::max(elapsed, level.elapsed(start, end));
-  }
-  return folly::detail::rateHelper<ReturnType, TimeType, TimeType>(
-      total, elapsed);
-}
-
-template <typename T, typename TT, typename C>
-TimeseriesHistogram<T, TT, C>::TimeseriesHistogram(ValueType bucketSize,
-                                            ValueType min,
-                                            ValueType max,
-                                            const ContainerType& copyMe)
-  : buckets_(bucketSize, min, max, copyMe),
-    haveNotSeenValue_(true),
-    singleUniqueValue_(false) {
-}
-
-template <typename T, typename TT, typename C>
-void TimeseriesHistogram<T, TT, C>::addValue(TimeType now,
-                                             const ValueType& value) {
+template <typename T, typename CT, typename C>
+void TimeseriesHistogram<T, CT, C>::addValue(
+    TimePoint now,
+    const ValueType& value) {
   buckets_.getByValue(value).addValue(now, value);
   maybeHandleSingleUniqueValue(value);
 }
 
-template <typename T, typename TT, typename C>
-void TimeseriesHistogram<T, TT, C>::addValue(TimeType now,
-                                      const ValueType& value,
-                                      int64_t times) {
+template <typename T, typename CT, typename C>
+void TimeseriesHistogram<T, CT, C>::addValue(
+    TimePoint now,
+    const ValueType& value,
+    uint64_t times) {
   buckets_.getByValue(value).addValue(now, value, times);
   maybeHandleSingleUniqueValue(value);
 }
 
-template <typename T, typename TT, typename C>
-void TimeseriesHistogram<T, TT, C>::addValues(
-    TimeType now, const folly::Histogram<ValueType>& hist) {
+template <typename T, typename CT, typename C>
+void TimeseriesHistogram<T, CT, C>::addValues(
+    TimePoint now,
+    const folly::Histogram<ValueType>& hist) {
   CHECK_EQ(hist.getMin(), getMin());
   CHECK_EQ(hist.getMax(), getMax());
   CHECK_EQ(hist.getBucketSize(), getBucketSize());
   CHECK_EQ(hist.getNumBuckets(), getNumBuckets());
 
-  for (unsigned int n = 0; n < hist.getNumBuckets(); ++n) {
+  for (size_t n = 0; n < hist.getNumBuckets(); ++n) {
     const typename folly::Histogram<ValueType>::Bucket& histBucket =
       hist.getBucketByIndex(n);
     Bucket& myBucket = buckets_.getByIndex(n);
@@ -111,9 +72,9 @@ void TimeseriesHistogram<T, TT, C>::addValues(
   singleUniqueValue_ = false;
 }
 
-template <typename T, typename TT, typename C>
-void TimeseriesHistogram<T, TT, C>::maybeHandleSingleUniqueValue(
-  const ValueType& value) {
+template <typename T, typename CT, typename C>
+void TimeseriesHistogram<T, CT, C>::maybeHandleSingleUniqueValue(
+    const ValueType& value) {
   if (haveNotSeenValue_) {
     firstValue_ = value;
     singleUniqueValue_ = true;
@@ -125,9 +86,9 @@ void TimeseriesHistogram<T, TT, C>::maybeHandleSingleUniqueValue(
   }
 }
 
-template <typename T, typename TT, typename C>
-T TimeseriesHistogram<T, TT, C>::getPercentileEstimate(double pct,
-                                                       int level) const {
+template <typename T, typename CT, typename C>
+T TimeseriesHistogram<T, CT, C>::getPercentileEstimate(double pct, size_t level)
+    const {
   if (singleUniqueValue_) {
     return firstValue_;
   }
@@ -136,10 +97,11 @@ T TimeseriesHistogram<T, TT, C>::getPercentileEstimate(double pct,
                                         AvgFromLevel(level));
 }
 
-template <typename T, typename TT, typename C>
-T TimeseriesHistogram<T, TT, C>::getPercentileEstimate(double pct,
-                                                TimeType start,
-                                                TimeType end) const {
+template <typename T, typename CT, typename C>
+T TimeseriesHistogram<T, CT, C>::getPercentileEstimate(
+    double pct,
+    TimePoint start,
+    TimePoint end) const {
   if (singleUniqueValue_) {
     return firstValue_;
   }
@@ -149,50 +111,38 @@ T TimeseriesHistogram<T, TT, C>::getPercentileEstimate(double pct,
                                         AvgFromInterval<T>(start, end));
 }
 
-template <typename T, typename TT, typename C>
-int TimeseriesHistogram<T, TT, C>::getPercentileBucketIdx(
-  double pct,
-  int level
-) const {
+template <typename T, typename CT, typename C>
+size_t TimeseriesHistogram<T, CT, C>::getPercentileBucketIdx(
+    double pct,
+    size_t level) const {
   return buckets_.getPercentileBucketIdx(pct / 100.0, CountFromLevel(level));
 }
 
-template <typename T, typename TT, typename C>
-int TimeseriesHistogram<T, TT, C>::getPercentileBucketIdx(double pct,
-                                                   TimeType start,
-                                                   TimeType end) const {
+template <typename T, typename CT, typename C>
+size_t TimeseriesHistogram<T, CT, C>::getPercentileBucketIdx(
+    double pct,
+    TimePoint start,
+    TimePoint end) const {
   return buckets_.getPercentileBucketIdx(pct / 100.0,
                                          CountFromInterval(start, end));
 }
 
-template <typename T, typename TT, typename C>
-T TimeseriesHistogram<T, TT, C>::rate(int level) const {
-  ValueType total = ValueType();
-  TimeType elapsed(0);
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
-    total += levelObj.sum();
-    elapsed = std::max(elapsed, levelObj.elapsed());
-  }
-  return elapsed == TimeType(0) ? 0 : (total / elapsed.count());
-}
-
-template <typename T, typename TT, typename C>
-void TimeseriesHistogram<T, TT, C>::clear() {
+template <typename T, typename CT, typename C>
+void TimeseriesHistogram<T, CT, C>::clear() {
   for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     buckets_.getByIndex(i).clear();
   }
 }
 
-template <typename T, typename TT, typename C>
-void TimeseriesHistogram<T, TT, C>::update(TimeType now) {
+template <typename T, typename CT, typename C>
+void TimeseriesHistogram<T, CT, C>::update(TimePoint now) {
   for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     buckets_.getByIndex(i).update(now);
   }
 }
 
-template <typename T, typename TT, typename C>
-std::string TimeseriesHistogram<T, TT, C>::getString(int level) const {
+template <typename T, typename CT, typename C>
+std::string TimeseriesHistogram<T, CT, C>::getString(size_t level) const {
   std::string result;
 
   for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
@@ -208,9 +158,10 @@ std::string TimeseriesHistogram<T, TT, C>::getString(int level) const {
   return result;
 }
 
-template <typename T, typename TT, typename C>
-std::string TimeseriesHistogram<T, TT, C>::getString(TimeType start,
-                                                     TimeType end) const {
+template <typename T, typename CT, typename C>
+std::string TimeseriesHistogram<T, CT, C>::getString(
+    TimePoint start,
+    TimePoint end) const {
   std::string result;
 
   for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
@@ -226,6 +177,54 @@ std::string TimeseriesHistogram<T, TT, C>::getString(TimeType start,
   return result;
 }
 
-}  // namespace folly
+template <class T, class CT, class C>
+void TimeseriesHistogram<T, CT, C>::computeAvgData(
+    ValueType* total,
+    uint64_t* nsamples,
+    size_t level) const {
+  for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
+    *total += levelObj.sum();
+    *nsamples += levelObj.count();
+  }
+}
 
-#endif
+template <class T, class CT, class C>
+void TimeseriesHistogram<T, CT, C>::computeAvgData(
+    ValueType* total,
+    uint64_t* nsamples,
+    TimePoint start,
+    TimePoint end) const {
+  for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& levelObj = buckets_.getByIndex(b).getLevel(start);
+    *total += levelObj.sum(start, end);
+    *nsamples += levelObj.count(start, end);
+  }
+}
+
+template <typename T, typename CT, typename C>
+void TimeseriesHistogram<T, CT, C>::computeRateData(
+    ValueType* total,
+    Duration* elapsed,
+    size_t level) const {
+  for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
+    *total += levelObj.sum();
+    *elapsed = std::max(*elapsed, levelObj.elapsed());
+  }
+}
+
+template <class T, class CT, class C>
+void TimeseriesHistogram<T, CT, C>::computeRateData(
+    ValueType* total,
+    Duration* elapsed,
+    TimePoint start,
+    TimePoint end) const {
+  for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& level = buckets_.getByIndex(b).getLevel(start);
+    *total += level.sum(start, end);
+    *elapsed = std::max(*elapsed, level.elapsed(start, end));
+  }
+}
+
+}  // namespace folly

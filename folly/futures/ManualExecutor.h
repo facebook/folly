@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ namespace folly {
 
     }
 
-    virtual void scheduleAt(Func&& f, TimePoint const& t) override {
+    void scheduleAt(Func&& f, TimePoint const& t) override {
       std::lock_guard<std::mutex> lock(lock_);
       scheduledFuncs_.emplace(t, std::move(f));
       sem_.post();
@@ -93,6 +93,21 @@ namespace folly {
 
     TimePoint now() override { return now_; }
 
+    /// Flush the function queue. Destroys all stored functions without
+    /// executing them. Returns number of removed functions.
+    std::size_t clear() {
+      std::queue<Func> funcs;
+      std::priority_queue<ScheduledFunc> scheduled_funcs;
+
+      {
+        std::lock_guard<std::mutex> lock(lock_);
+        funcs_.swap(funcs);
+        scheduledFuncs_.swap(scheduled_funcs);
+      }
+
+      return funcs.size() + scheduled_funcs.size();
+    }
+
    private:
     std::mutex lock_;
     std::queue<Func> funcs_;
@@ -103,7 +118,7 @@ namespace folly {
     struct ScheduledFunc {
       TimePoint time;
       size_t ordinal;
-      Func func;
+      Func mutable func;
 
       ScheduledFunc(TimePoint const& t, Func&& f)
         : time(t), func(std::move(f))
@@ -113,13 +128,19 @@ namespace folly {
       }
 
       bool operator<(ScheduledFunc const& b) const {
+        // Earlier-scheduled things must be *higher* priority
+        // in the max-based std::priority_queue
         if (time == b.time)
-          return ordinal < b.ordinal;
-        return time < b.time;
+          return ordinal > b.ordinal;
+        return time > b.time;
+      }
+
+      Func&& moveOutFunc() const {
+        return std::move(func);
       }
     };
     std::priority_queue<ScheduledFunc> scheduledFuncs_;
-    TimePoint now_ = now_.min();
+    TimePoint now_ = TimePoint::min();
   };
 
 }

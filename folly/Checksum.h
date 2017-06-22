@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_CHECKSUM_H_
-#define FOLLY_CHECKSUM_H_
+#pragma once
 
 #include <stdint.h>
 #include <cstddef>
@@ -38,6 +37,12 @@ namespace folly {
 uint32_t crc32c(const uint8_t* data, size_t nbytes,
     uint32_t startingChecksum = ~0U);
 
-} // folly
+/**
+ * Compute the CRC-32 checksum of a buffer, using a hardware-accelerated
+ * implementation if available or a portable software implementation as
+ * a default.
+ */
+uint32_t
+crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
-#endif /* FOLLY_CHECKSUM_H_ */
+} // folly

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <set>
 
 #include <folly/EvictingCacheMap.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -318,14 +317,14 @@ TEST(EvictingCacheMap, DestructorInvocationTest) {
     int* ref;
   };
 
+  int sum;
   EvictingCacheMap<int, SumInt> map(0);
+
   EXPECT_EQ(0, map.size());
   EXPECT_TRUE(map.empty());
   for (int i = 0; i < 100; i++) {
     EXPECT_FALSE(map.exists(i));
   }
-
-  int sum;
 
   for (int i = 0; i < 100; i++) {
     map.set(i, SumInt(i, &sum));
@@ -615,5 +614,22 @@ TEST(EvictingCacheMap, IteratorOrderingTest) {
       expected--;
     } while (it != map.rbegin());
     EXPECT_EQ(-1, expected);
+  }
+}
+
+TEST(EvictingCacheMap, MoveTest) {
+  const int nItems = 1000;
+  EvictingCacheMap<int, int> map(nItems);
+  for (int i = 0; i < nItems; i++) {
+    map.set(i, i);
+    EXPECT_TRUE(map.exists(i));
+    EXPECT_EQ(i, map.get(i));
+  }
+
+  EvictingCacheMap<int, int> map2 = std::move(map);
+  EXPECT_TRUE(map.empty());
+  for (int i = 0; i < nItems; i++) {
+    EXPECT_TRUE(map2.exists(i));
+    EXPECT_EQ(i, map2.get(i));
   }
 }

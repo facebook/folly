@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
  */
 #pragma once
 
-#include <gmock/gmock.h>
-
 #include <folly/Memory.h>
 #include <folly/io/async/AsyncTransport.h>
+#include <folly/portability/GMock.h>
 
 namespace folly { namespace test {
 
@@ -27,22 +26,14 @@ class MockAsyncTransport: public AsyncTransportWrapper {
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
   MOCK_CONST_METHOD0(getReadCallback, ReadCallback*());
   MOCK_CONST_METHOD0(getReadCB, ReadCallback*());
-  MOCK_METHOD4(write, void(WriteCallback*,
-                           const void*, size_t,
-                           WriteFlags));
-  MOCK_METHOD4(writev, void(WriteCallback*,
-                            const iovec*, size_t,
-                            WriteFlags));
+  MOCK_METHOD4(write, void(WriteCallback*, const void*, size_t, WriteFlags));
+  MOCK_METHOD4(writev, void(WriteCallback*, const iovec*, size_t, WriteFlags));
   MOCK_METHOD3(writeChain,
-               void(WriteCallback*,
-                    std::shared_ptr<folly::IOBuf>,
-                    WriteFlags));
-
+               void(WriteCallback*, std::shared_ptr<folly::IOBuf>, WriteFlags));
 
   void writeChain(WriteCallback* callback,
                   std::unique_ptr<folly::IOBuf>&& iob,
-                  WriteFlags flags =
-                  WriteFlags::NONE) override {
+                  WriteFlags flags = WriteFlags::NONE) override {
     writeChain(callback, std::shared_ptr<folly::IOBuf>(iob.release()), flags);
   }
 
@@ -69,7 +60,15 @@ class MockAsyncTransport: public AsyncTransportWrapper {
   MOCK_CONST_METHOD0(getRawBytesReceived, size_t());
   MOCK_CONST_METHOD0(isEorTrackingEnabled, bool());
   MOCK_METHOD1(setEorTracking, void(bool));
+  MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransportWrapper*());
+  MOCK_CONST_METHOD0(isReplaySafe, bool());
+  MOCK_METHOD1(setReplaySafetyCallback,
+               void(AsyncTransport::ReplaySafetyCallback*));
+};
 
+class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
+ public:
+  GMOCK_METHOD0_(, noexcept, , onReplaySafe, void());
 };
 
 class MockReadCallback: public AsyncTransportWrapper::ReadCallback {

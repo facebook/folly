@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 
 #include <folly/ContainerTraits.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;
 
 struct Node {
   size_t copies = 0;
-  Node() noexcept {};
+  Node() noexcept {}
   Node(const Node& n) noexcept { copies = n.copies; ++copies; }
   Node(Node&& n) noexcept { swap(copies, n.copies); ++copies; }
 };

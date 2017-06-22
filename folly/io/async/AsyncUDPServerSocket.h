@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/MoveWrapper.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/Memory.h>
 #include <folly/io/async/AsyncUDPSocket.h>
@@ -78,7 +77,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
         nextListener_(0) {
   }
 
-  ~AsyncUDPServerSocket() {
+  ~AsyncUDPServerSocket() override {
     if (socket_) {
       close();
     }
@@ -101,7 +100,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
     return socket_->address();
   }
 
-  void getAddress(SocketAddress* a) const {
+  void getAddress(SocketAddress* a) const override {
     *a = address();
   }
 
@@ -137,19 +136,20 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
     socket_.reset();
   }
 
-  EventBase* getEventBase() const {
+  EventBase* getEventBase() const override {
     return evb_;
   }
 
  private:
   // AsyncUDPSocket::ReadCallback
-  void getReadBuffer(void** buf, size_t* len) noexcept {
+  void getReadBuffer(void** buf, size_t* len) noexcept override {
     std::tie(*buf, *len) = buf_.preallocate(packetSize_, packetSize_);
   }
 
-  void onDataAvailable(const folly::SocketAddress& clientAddress,
-                       size_t len,
-                       bool truncated) noexcept {
+  void onDataAvailable(
+      const folly::SocketAddress& clientAddress,
+      size_t len,
+      bool truncated) noexcept override {
     buf_.postallocate(len);
     auto data = buf_.split(len);
 
@@ -165,29 +165,32 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
 
     auto client = clientAddress;
     auto callback = listeners_[nextListener_].second;
-    auto mvp =
-        folly::MoveWrapper<
-            std::unique_ptr<folly::IOBuf>>(std::move(data));
     auto socket = socket_;
 
     // Schedule it in the listener's eventbase
     // XXX: Speed this up
-    std::function<void()> f = [socket, client, callback, mvp, truncated] () mutable {
-      callback->onDataAvailable(socket, client, std::move(*mvp), truncated);
+    auto f = [
+      socket,
+      client,
+      callback,
+      data = std::move(data),
+      truncated
+    ]() mutable {
+      callback->onDataAvailable(socket, client, std::move(data), truncated);
     };
 
-    listeners_[nextListener_].first->runInEventBaseThread(f);
+    listeners_[nextListener_].first->runInEventBaseThread(std::move(f));
     ++nextListener_;
   }
 
-  void onReadError(const AsyncSocketException& ex) noexcept {
+  void onReadError(const AsyncSocketException& ex) noexcept override {
     LOG(ERROR) << ex.what();
 
     // Lets register to continue listening for packets
     socket_->resumeRead(this);
   }
 
-  void onReadClosed() noexcept {
+  void onReadClosed() noexcept override {
     for (auto& listener: listeners_) {
       auto callback = listener.second;
 

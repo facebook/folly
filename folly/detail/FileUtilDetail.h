@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_FILEUTILDETAIL_H_
-#define FOLLY_DETAIL_FILEUTILDETAIL_H_
+#pragma once
 
 #include <cerrno>
-#include <unistd.h>
 
-#include <sys/uio.h>
+#include <folly/portability/SysUio.h>
+#include <folly/portability/Unistd.h>
 
 /**
  * Helper functions and templates for FileUtil.cpp.  Declared here so
@@ -38,8 +37,8 @@ ssize_t wrapNoInt(F f, Args... args) {
   return r;
 }
 
-inline void incr(ssize_t n) { }
-inline void incr(ssize_t n, off_t& offset) { offset += n; }
+inline void incr(ssize_t /* n */) {}
+inline void incr(ssize_t n, off_t& offset) { offset += off_t(n); }
 
 // Wrap call to read/pread/write/pwrite(fd, buf, count, offset?) to retry on
 // incomplete reads / writes.  The variadic argument magic is there to support
@@ -74,10 +73,10 @@ ssize_t wrapFull(F f, int fd, void* buf, size_t count, Offset... offset) {
 template <class F, class... Offset>
 ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
   ssize_t totalBytes = 0;
-  size_t r;
+  ssize_t r;
   do {
-    r = f(fd, iov, count, offset...);
-    if (r == (size_t)-1) {
+    r = f(fd, iov, std::min<int>(count, kIovMax), offset...);
+    if (r == -1) {
       if (errno == EINTR) {
         continue;
       }
@@ -91,8 +90,8 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
     totalBytes += r;
     incr(r, offset...);
     while (r != 0 && count != 0) {
-      if (r >= iov->iov_len) {
-        r -= iov->iov_len;
+      if (r >= ssize_t(iov->iov_len)) {
+        r -= ssize_t(iov->iov_len);
         ++iov;
         --count;
       } else {
@@ -107,5 +106,3 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
 }
 
 }}  // namespaces
-
-#endif /* FOLLY_DETAIL_FILEUTILDETAIL_H_ */

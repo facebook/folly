@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/ManualExecutor.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/Baton.h>
 #include <folly/MPMCQueue.h>
+#include <folly/portability/GTest.h>
 
 #include <thread>
 
@@ -31,7 +30,7 @@ struct ManualWaiter : public DrivableExecutor {
   explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}
 
   void add(Func f) override {
-    ex->add(f);
+    ex->add(std::move(f));
   }
 
   void drive() override {
@@ -124,14 +123,16 @@ TEST(Via, thenFunction) {
 
 TEST_F(ViaFixture, threadHops) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = via(eastExecutor.get()).then([=](Try<Unit>&& t) {
-    EXPECT_NE(std::this_thread::get_id(), westThreadId);
-    return makeFuture<int>(1);
-  }).via(westExecutor.get()
-  ).then([=](Try<int>&& t) {
-    EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-    return t.value();
-  });
+  auto f = via(eastExecutor.get())
+               .then([=](Try<Unit>&& /* t */) {
+                 EXPECT_NE(std::this_thread::get_id(), westThreadId);
+                 return makeFuture<int>(1);
+               })
+               .via(westExecutor.get())
+               .then([=](Try<int>&& t) {
+                 EXPECT_EQ(std::this_thread::get_id(), westThreadId);
+                 return t.value();
+               });
   EXPECT_EQ(f.getVia(waiter.get()), 1);
 }
 
@@ -142,9 +143,9 @@ TEST_F(ViaFixture, chainVias) {
     return 1;
   }).then([=](int val) {
     return makeFuture(val).via(westExecutor.get())
-      .then([=](int val) mutable {
+      .then([=](int v) mutable {
         EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-        return val + 1;
+        return v + 1;
       });
   }).then([=](int val) {
     // even though ultimately the future that triggers this one executed in
@@ -189,7 +190,7 @@ TEST(Via, chain3) {
 }
 
 struct PriorityExecutor : public Executor {
-  void add(Func f) override {}
+  void add(Func /* f */) override {}
 
   void addWithPriority(Func f, int8_t priority) override {
     int mid = getNumPriorities() / 2;
@@ -334,9 +335,8 @@ class ThreadExecutor : public Executor {
 
 TEST(Via, viaThenGetWasRacy) {
   ThreadExecutor x;
-  std::unique_ptr<int> val = folly::via(&x)
-    .then([] { return folly::make_unique<int>(42); })
-    .get();
+  std::unique_ptr<int> val =
+      folly::via(&x).then([] { return std::make_unique<int>(42); }).get();
   ASSERT_TRUE(!!val);
   EXPECT_EQ(42, *val);
 }
@@ -371,7 +371,7 @@ TEST(Via, callbackRace) {
 
 class DummyDrivableExecutor : public DrivableExecutor {
  public:
-  void add(Func f) override {}
+  void add(Func /* f */) override {}
   void drive() override { ran = true; }
   bool ran{false};
 };
@@ -395,6 +395,32 @@ TEST(Via, getVia) {
     DummyDrivableExecutor x;
     auto f = makeFuture(true);
     EXPECT_TRUE(f.getVia(&x));
+    EXPECT_FALSE(x.ran);
+  }
+}
+
+TEST(Via, getTryVia) {
+  {
+    // non-void
+    ManualExecutor x;
+    auto f = via(&x).then([] { return 23; });
+    EXPECT_FALSE(f.isReady());
+    EXPECT_EQ(23, f.getTryVia(&x).value());
+  }
+
+  {
+    // void
+    ManualExecutor x;
+    auto f = via(&x).then();
+    EXPECT_FALSE(f.isReady());
+    auto t = f.getTryVia(&x);
+    EXPECT_TRUE(t.hasValue());
+  }
+
+  {
+    DummyDrivableExecutor x;
+    auto f = makeFuture(23);
+    EXPECT_EQ(23, f.getTryVia(&x).value());
     EXPECT_FALSE(x.ran);
   }
 }
@@ -445,6 +471,86 @@ TEST(Via, viaRaces) {
   t2.join();
 }
 
+TEST(Via, viaDummyExecutorFutureSetValueFirst) {
+  // The callback object will get destroyed when passed to the executor.
+
+  // A promise will be captured by the callback lambda so we can observe that
+  // it will be destroyed.
+  Promise<Unit> captured_promise;
+  auto captured_promise_future = captured_promise.getFuture();
+
+  DummyDrivableExecutor x;
+  auto future = makeFuture().via(&x).then(
+      [c = std::move(captured_promise)] { return 42; });
+
+  EXPECT_THROW(future.get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(
+      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+}
+
+TEST(Via, viaDummyExecutorFutureSetCallbackFirst) {
+  // The callback object will get destroyed when passed to the executor.
+
+  // A promise will be captured by the callback lambda so we can observe that
+  // it will be destroyed.
+  Promise<Unit> captured_promise;
+  auto captured_promise_future = captured_promise.getFuture();
+
+  DummyDrivableExecutor x;
+  Promise<Unit> trigger;
+  auto future = trigger.getFuture().via(&x).then(
+      [c = std::move(captured_promise)] { return 42; });
+  trigger.setValue();
+
+  EXPECT_THROW(future.get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(
+      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+}
+
+TEST(Via, viaExecutorDiscardsTaskFutureSetValueFirst) {
+  // The callback object will get destroyed when the ManualExecutor runs out
+  // of scope.
+
+  // A promise will be captured by the callback lambda so we can observe that
+  // it will be destroyed.
+  Promise<Unit> captured_promise;
+  auto captured_promise_future = captured_promise.getFuture();
+
+  Optional<Future<int>> future;
+  {
+    ManualExecutor x;
+    future = makeFuture().via(&x).then(
+        [c = std::move(captured_promise)] { return 42; });
+  }
+
+  EXPECT_THROW(future->get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(
+      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+}
+
+TEST(Via, viaExecutorDiscardsTaskFutureSetCallbackFirst) {
+  // The callback object will get destroyed when the ManualExecutor runs out
+  // of scope.
+
+  // A promise will be captured by the callback lambda so we can observe that
+  // it will be destroyed.
+  Promise<Unit> captured_promise;
+  auto captured_promise_future = captured_promise.getFuture();
+
+  Optional<Future<int>> future;
+  {
+    ManualExecutor x;
+    Promise<Unit> trigger;
+    future = trigger.getFuture().via(&x).then(
+        [c = std::move(captured_promise)] { return 42; });
+    trigger.setValue();
+  }
+
+  EXPECT_THROW(future->get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(
+      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+}
+
 TEST(ViaFunc, liftsVoid) {
   ManualExecutor x;
   int count = 0;
@@ -492,4 +598,11 @@ TEST(ViaFunc, isSticky) {
   EXPECT_EQ(1, count);
   x.run();
   EXPECT_EQ(2, count);
+}
+
+TEST(ViaFunc, moveOnly) {
+  ManualExecutor x;
+  auto intp = std::make_unique<int>(42);
+
+  EXPECT_EQ(42, via(&x, [intp = std::move(intp)] { return *intp; }).getVia(&x));
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,36 +16,23 @@
 
 // @author: Andrei Alexandrescu
 
-#ifndef FOLLY_PREPROCESSOR_
-#define FOLLY_PREPROCESSOR_
+#pragma once
 
 /**
  * Necessarily evil preprocessor-related amenities.
  */
+
+// MSVC's preprocessor is a pain, so we have to
+// forcefully expand the VA args in some places.
+#define FB_VA_GLUE(a, b) a b
 
 /**
  * FB_ONE_OR_NONE(hello, world) expands to hello and
  * FB_ONE_OR_NONE(hello) expands to nothing. This macro is used to
  * insert or eliminate text based on the presence of another argument.
  */
-#ifdef _MSC_VER
-
-#define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
-#define VA_NARGS(...) VA_NARGS_IMPL(X,##__VA_ARGS__, 4, 3, 2, 1, 0)
-#define VARARG_IMPL2(base, count, ...) base##count(__VA_ARGS__)
-#define VARARG_IMPL(base, count, ...) VARARG_IMPL2(base, count, __VA_ARGS__)
-#define VARARG(base, ...) VARARG_IMPL(base, VA_NARGS(__VA_ARGS__), __VA_ARGS__)
-
-#define FB_ONE_OR_NONE0() /* */
-#define FB_ONE_OR_NONE1(x) /* */
-#define FB_ONE_OR_NONE2(x, y) x
-#define FB_ONE_OR_NONE3(x, y, z) x
-#define FB_ONE_OR_NONE(...) VARARG(FB_ONE_OR_NONE, __VA_ARGS__)
-
-#else
-#define FB_ONE_OR_NONE(a, ...) FB_THIRD(a, ## __VA_ARGS__, a)
+#define FB_ONE_OR_NONE(a, ...) FB_VA_GLUE(FB_THIRD, (a, ## __VA_ARGS__, a))
 #define FB_THIRD(a, b, ...) __VA_ARGS__
-#endif
 
 /**
  * Helper macro that extracts the first argument out of a list of any
@@ -58,7 +45,14 @@
  * number of arguments. If only one argument is given, it returns
  * that.
  */
+#ifdef _MSC_VER
+// GCC refuses to expand this correctly if this macro itself was
+// called with FB_VA_GLUE :(
+#define FB_ARG_2_OR_1(...) \
+  FB_VA_GLUE(FB_ARG_2_OR_1_IMPL, (__VA_ARGS__, __VA_ARGS__))
+#else
 #define FB_ARG_2_OR_1(...) FB_ARG_2_OR_1_IMPL(__VA_ARGS__, __VA_ARGS__)
+#endif
 // Support macro for the above
 #define FB_ARG_2_OR_1_IMPL(a, b, ...) b
 
@@ -72,6 +66,16 @@
  *
  */
 #define FB_SINGLE_ARG(...) __VA_ARGS__
+
+/**
+ * Helper macro that just ignores its parameters.
+ */
+#define FOLLY_IGNORE(...)
+
+/**
+ * Helper macro that just ignores its parameters and inserts a semicolon.
+ */
+#define FOLLY_SEMICOLON(...) ;
 
 /**
  * FB_ANONYMOUS_VARIABLE(str) introduces an identifier starting with
@@ -92,5 +96,3 @@
  * another macro expansion.
  */
 #define FB_STRINGIZE(x) #x
-
-#endif // FOLLY_PREPROCESSOR_

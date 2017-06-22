@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@
  */
 
 #include <cinttypes>
-#include <ctime>
 
-#include <folly/Portability.h>
+#include <folly/portability/Asm.h>
+#include <folly/portability/Time.h>
 
 namespace folly {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
 #include <folly/experimental/symbolizer/Elf.h>
 
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <folly/portability/SysMman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <string>
 
@@ -58,8 +56,9 @@ void ElfFile::open(const char* name, bool readOnly) {
   }
 }
 
-int ElfFile::openNoThrow(const char* name, bool readOnly, const char** msg)
-  noexcept {
+int ElfFile::openNoThrow(const char* name,
+                         bool readOnly,
+                         const char** msg) noexcept {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
   fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
   if (fd_ == -1) {
@@ -93,6 +92,43 @@ int ElfFile::openNoThrow(const char* name, bool readOnly, const char** msg)
   }
   guard.dismiss();
   return kSuccess;
+}
+
+int ElfFile::openAndFollow(const char* name,
+                           bool readOnly,
+                           const char** msg) noexcept {
+  auto result = openNoThrow(name, readOnly, msg);
+  if (!readOnly || result != kSuccess) return result;
+
+  /* NOTE .gnu_debuglink specifies only the name of the debugging info file
+   * (with no directory components). GDB checks 3 different directories, but
+   * ElfFile only supports the first version:
+   *     - dirname(name)
+   *     - dirname(name) + /.debug/
+   *     - X/dirname(name)/ - where X is set in gdb's `debug-file-directory`.
+   */
+  auto dirend = strrchr(name, '/');
+  // include ending '/' if any.
+  auto dirlen = dirend != nullptr ? dirend + 1 - name : 0;
+
+  auto debuginfo = getSectionByName(".gnu_debuglink");
+  if (!debuginfo) return result;
+
+  // The section starts with the filename, with any leading directory
+  // components removed, followed by a zero byte.
+  auto debugFileName = getSectionBody(*debuginfo);
+  auto debugFileLen = strlen(debugFileName.begin());
+  if (dirlen + debugFileLen >= PATH_MAX) {
+    return result;
+  }
+
+  char linkname[PATH_MAX];
+  memcpy(linkname, name, dirlen);
+  memcpy(linkname + dirlen, debugFileName.begin(), debugFileLen + 1);
+  reset();
+  result = openNoThrow(linkname, readOnly, msg);
+  if (result == kSuccess) return result;
+  return openNoThrow(name, readOnly, msg);
 }
 
 ElfFile::~ElfFile() {
@@ -164,18 +200,12 @@ bool ElfFile::init(const char** msg) {
 #undef EXPECTED_CLASS
 
   // Validate ELF data encoding (LSB/MSB)
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-# define EXPECTED_ENCODING ELFDATA2LSB
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-# define EXPECTED_ENCODING ELFDATA2MSB
-#else
-# error Unsupported byte order
-#endif
-  if (elfHeader.e_ident[EI_DATA] != EXPECTED_ENCODING) {
+  static constexpr auto kExpectedEncoding =
+      kIsLittleEndian ? ELFDATA2LSB : ELFDATA2MSB;
+  if (elfHeader.e_ident[EI_DATA] != kExpectedEncoding) {
     if (msg) *msg = "invalid ELF encoding";
     return false;
   }
-#undef EXPECTED_ENCODING
 
   // Validate ELF version (1)
   if (elfHeader.e_ident[EI_VERSION] != EV_CURRENT ||

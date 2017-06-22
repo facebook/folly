@@ -215,3 +215,31 @@ is returned, which can be tested for as follows:
       // string could not be parsed
     }
 ```
+
+#### Non-throwing interfaces
+
+`tryTo<T>` is the non-throwing variant of `to<T>`. It returns
+an `Expected<T, ConversionCode>`. You can think of `Expected`
+as like an `Optional<T>`, but if the conversion failed, `Expected`
+stores an error code instead of a `T`.
+
+`tryTo<T>` has similar performance as `to<T>` when the
+conversion is successful. On the error path, you can expect
+`tryTo<T>` to be roughly three orders of magnitude faster than
+the throwing `to<T>` and to completely avoid any lock contention
+arising from stack unwinding.
+
+Here is how to use non-throwing conversions:
+
+``` Cpp
+    auto t1 = tryTo<int>(str);
+    if (t1.hasValue()) {
+      use(t1.value());
+    }
+```
+
+`Expected` has a composability feature to make the above pattern simpler.
+
+``` Cpp
+    tryTo<int>(str).then([](int i) { use(i); });
+```

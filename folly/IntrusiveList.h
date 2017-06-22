@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_INTRUSIVELIST_H_
-#define FOLLY_INTRUSIVELIST_H_
+#pragma once
 
 /*
- * This file contains convenience typedefs that make boost::intrusive::list
+ * This file contains convenience aliases that make boost::intrusive::list
  * easier to use.
  */
 
@@ -29,9 +28,8 @@ namespace folly {
 /**
  * An auto-unlink intrusive list hook.
  */
-typedef boost::intrusive::list_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::auto_unlink> >
-        IntrusiveListHook;
+using IntrusiveListHook = boost::intrusive::list_member_hook<
+      boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
 /**
  * An intrusive list.
@@ -50,7 +48,7 @@ typedef boost::intrusive::list_member_hook<
  *     IntrusiveListHook listHook;
  *   };
  *
- *   typedef IntrusiveList<Foo, &Foo::listHook> FooList;
+ *   using FooList = IntrusiveList<Foo, &Foo::listHook>;
  *
  *   Foo *foo = new Foo();
  *   FooList myList;
@@ -62,25 +60,18 @@ typedef boost::intrusive::list_member_hook<
  *
  * The elements stored in the list must contain an IntrusiveListHook member
  * variable.
- *
- * TODO: This should really be a template alias.  However, gcc doesn't support
- * template aliases yet.  A subclass is a reasonable workaround for now.  This
- * subclass only supports the default constructor, but we could add other
- * constructors if necessary.
  */
 template<typename T, IntrusiveListHook T::* PtrToMember>
-class IntrusiveList : public boost::intrusive::list<
+using IntrusiveList = boost::intrusive::list<
     T,
     boost::intrusive::member_hook<T, IntrusiveListHook, PtrToMember>,
-    boost::intrusive::constant_time_size<false> > {
-};
+    boost::intrusive::constant_time_size<false>>;
 
 /**
  * A safe-link intrusive list hook.
  */
-typedef boost::intrusive::list_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::safe_link> >
-        SafeIntrusiveListHook;
+using SafeIntrusiveListHook = boost::intrusive::list_member_hook<
+      boost::intrusive::link_mode<boost::intrusive::safe_link>>;
 
 /**
  * An intrusive list with const-time size() method.
@@ -104,7 +95,7 @@ typedef boost::intrusive::list_member_hook<
  *     SafeIntrusiveListHook listHook;
  *   };
  *
- *   typedef CountedIntrusiveList<Foo, &Foo::listHook> FooList;
+ *   using FooList = CountedIntrusiveList<Foo, &Foo::listHook> FooList;
  *
  *   Foo *foo = new Foo();
  *   FooList myList;
@@ -117,19 +108,11 @@ typedef boost::intrusive::list_member_hook<
  *
  * The elements stored in the list must contain an SafeIntrusiveListHook member
  * variable.
- *
- * TODO: This should really be a template alias.  However, gcc doesn't support
- * template aliases yet.  A subclass is a reasonable workaround for now.  This
- * subclass only supports the default constructor, but we could add other
- * constructors if necessary.
  */
 template<typename T, SafeIntrusiveListHook T::* PtrToMember>
-class CountedIntrusiveList : public boost::intrusive::list<
+using CountedIntrusiveList = boost::intrusive::list<
     T,
     boost::intrusive::member_hook<T, SafeIntrusiveListHook, PtrToMember>,
-    boost::intrusive::constant_time_size<true> > {
-};
+    boost::intrusive::constant_time_size<true>>;
 
 } // folly
-
-#endif // FOLLY_INTRUSIVELIST_H_

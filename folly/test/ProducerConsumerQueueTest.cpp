@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,15 @@
 
 #include <folly/ProducerConsumerQueue.h>
 
-#include <gtest/gtest.h>
-#include <vector>
 #include <atomic>
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <vector>
+
 #include <glog/logging.h>
+
+#include <folly/portability/GTest.h>
 
 //////////////////////////////////////////////////////////////////////
 
@@ -160,11 +162,11 @@ struct CorrectnessTest {
         } else {
           goto again;
         }
+        EXPECT_EQ(*data, expect);
       } else {
+        EXPECT_EQ(*data, expect);
         queue_.popFront();
       }
-
-      EXPECT_EQ(*data, expect);
     }
   }
 
@@ -205,7 +207,7 @@ void correctnessTestType(const std::string& type) {
 struct DtorChecker {
   static unsigned int numInstances;
   DtorChecker() { ++numInstances; }
-  DtorChecker(const DtorChecker& o) { ++numInstances; }
+  DtorChecker(const DtorChecker& /* o */) { ++numInstances; }
   ~DtorChecker() { --numInstances; }
 };
 

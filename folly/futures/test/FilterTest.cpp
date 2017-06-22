@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -30,8 +29,9 @@ TEST(Filter, alwaysFalse) {
 }
 
 TEST(Filter, moveOnlyValue) {
-  EXPECT_EQ(42,
-    *makeFuture(folly::make_unique<int>(42))
-     .filter([](std::unique_ptr<int> const&) { return true; })
-     .get());
+  EXPECT_EQ(
+      42,
+      *makeFuture(std::make_unique<int>(42))
+           .filter([](std::unique_ptr<int> const&) { return true; })
+           .get());
 }

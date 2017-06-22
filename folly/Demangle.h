@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,5 +58,8 @@ size_t demangle(const char* name, char* buf, size_t bufSize);
 inline size_t demangle(const std::type_info& type, char* buf, size_t bufSize) {
   return demangle(type.name(), buf, bufSize);
 }
+
+// glibc doesn't have strlcpy
+size_t strlcpy(char* dest, const char* const src, size_t size);
 
 }

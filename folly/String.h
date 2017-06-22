@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BASE_STRING_H_
-#define FOLLY_BASE_STRING_H_
+#pragma once
+#define FOLLY_STRING_H_
 
 #include <exception>
 #include <stdarg.h>
 #include <string>
+#include <vector>
 #include <boost/type_traits.hpp>
-
-#ifdef FOLLY_HAVE_DEPRECATED_ASSOC
-#ifdef _GLIBCXX_SYMVER
-#include <ext/hash_set>
-#include <ext/hash_map>
-#endif
-#endif
+#include <boost/regex/pending/unicode_iterator.hpp>
 
 #include <unordered_set>
 #include <unordered_map>
 
 #include <folly/Conv.h>
-#include <folly/Demangle.h>
+#include <folly/ExceptionString.h>
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
 #include <folly/Portability.h>
@@ -258,12 +253,38 @@ template<class InputString, class OutputString>
 bool hexlify(const InputString& input, OutputString& output,
              bool append=false);
 
+template <class OutputString = std::string>
+OutputString hexlify(ByteRange input) {
+  OutputString output;
+  if (!hexlify(input, output)) {
+    // hexlify() currently always returns true, so this can't really happen
+    throw std::runtime_error("hexlify failed");
+  }
+  return output;
+}
+
+template <class OutputString = std::string>
+OutputString hexlify(StringPiece input) {
+  return hexlify<OutputString>(ByteRange{input});
+}
+
 /**
  * Same functionality as Python's binascii.unhexlify.  Returns true
  * on successful conversion.
  */
 template<class InputString, class OutputString>
 bool unhexlify(const InputString& input, OutputString& output);
+
+template <class OutputString = std::string>
+OutputString unhexlify(StringPiece input) {
+  OutputString output;
+  if (!unhexlify(input, output)) {
+    // unhexlify() fails if the input has non-hexidecimal characters,
+    // or if it doesn't consist of a whole number of bytes
+    throw std::domain_error("unhexlify() called with non-hex input");
+  }
+  return output;
+}
 
 /*
  * A pretty-printer for numbers that appends suffixes of units of the
@@ -359,45 +380,6 @@ std::string hexDump(const void* ptr, size_t size);
  */
 fbstring errnoStr(int err);
 
-/**
- * Debug string for an exception: include type and what(), if
- * defined.
- */
-inline fbstring exceptionStr(const std::exception& e) {
-#ifdef FOLLY_HAS_RTTI
-  return folly::to<fbstring>(demangle(typeid(e)), ": ", e.what());
-#else
-  return folly::to<fbstring>("Exception (no RTTI available): ", e.what());
-#endif
-}
-
-// Empirically, this indicates if the runtime supports
-// std::exception_ptr, as not all (arm, for instance) do.
-#if defined(__GNUC__) && defined(__GCC_ATOMIC_INT_LOCK_FREE) && \
-  __GCC_ATOMIC_INT_LOCK_FREE > 1
-inline fbstring exceptionStr(std::exception_ptr ep) {
-  try {
-    std::rethrow_exception(ep);
-  } catch (const std::exception& e) {
-    return exceptionStr(e);
-  } catch (...) {
-    return "<unknown exception>";
-  }
-}
-#endif
-
-template<typename E>
-auto exceptionStr(const E& e)
-  -> typename std::enable_if<!std::is_base_of<std::exception, E>::value,
-                             fbstring>::type
-{
-#ifdef FOLLY_HAS_RTTI
-  return folly::to<fbstring>(demangle(typeid(e)));
-#else
-  return "Exception (no RTTI available)";
-#endif
-}
-
 /*
  * Split a string into a list of tokens by delimiter.
  *
@@ -431,28 +413,28 @@ template<class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            std::vector<OutputType>& out,
-           bool ignoreEmpty = false);
+           const bool ignoreEmpty = false);
 
 template<class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            folly::fbvector<OutputType>& out,
-           bool ignoreEmpty = false);
+           const bool ignoreEmpty = false);
 
 template<class OutputValueType, class Delim, class String,
          class OutputIterator>
 void splitTo(const Delim& delimiter,
              const String& input,
              OutputIterator out,
-             bool ignoreEmpty = false);
+             const bool ignoreEmpty = false);
 
 /*
  * Split a string into a fixed number of string pieces and/or numeric types
- * by delimiter. Any numeric type that folly::to<> can convert to from a
- * string piece is supported as a target. Returns 'true' if the fields were
- * all successfully populated.  Returns 'false' if there were too few fields
- * in the input, or too many fields if exact=true.  Casting exceptions will
- * not be caught.
+ * by delimiter. Conversions are supported for any type which folly:to<> can
+ * target, including all overloads of parseTo(). Returns 'true' if the fields
+ * were all successfully populated.  Returns 'false' if there were too few
+ * fields in the input, or too many fields if exact=true.  Casting exceptions
+ * will not be caught.
  *
  * Examples:
  *
@@ -480,21 +462,58 @@ void splitTo(const Delim& delimiter,
  * Note that this will likely not work if the last field's target is of numeric
  * type, in which case folly::to<> will throw an exception.
  */
-template <class T>
-using IsSplitTargetType = std::integral_constant<bool,
-  std::is_arithmetic<T>::value ||
-  std::is_same<T, StringPiece>::value ||
-  IsSomeString<T>::value>;
+template <class T, class Enable = void>
+struct IsSomeVector {
+  enum { value = false };
+};
 
-template<bool exact = true,
-         class Delim,
-         class OutputType,
-         class... OutputTypes>
-typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
-split(const Delim& delimiter,
-      StringPiece input,
-      OutputType& outHead,
-      OutputTypes&... outTail);
+template <class T>
+struct IsSomeVector<std::vector<T>, void> {
+  enum { value = true };
+};
+
+template <class T>
+struct IsSomeVector<fbvector<T>, void> {
+  enum { value = true };
+};
+
+template <class T, class Enable = void>
+struct IsConvertible {
+  enum { value = false };
+};
+
+template <class T>
+struct IsConvertible<
+    T,
+    decltype(static_cast<void>(
+        parseTo(std::declval<folly::StringPiece>(), std::declval<T&>())))> {
+  enum { value = true };
+};
+
+template <class... Types>
+struct AllConvertible;
+
+template <class Head, class... Tail>
+struct AllConvertible<Head, Tail...> {
+  enum { value = IsConvertible<Head>::value && AllConvertible<Tail...>::value };
+};
+
+template <>
+struct AllConvertible<> {
+  enum { value = true };
+};
+
+static_assert(AllConvertible<float>::value, "");
+static_assert(AllConvertible<int>::value, "");
+static_assert(AllConvertible<bool>::value, "");
+static_assert(AllConvertible<int>::value, "");
+static_assert(!AllConvertible<std::vector<int>>::value, "");
+
+template <bool exact = true, class Delim, class... OutputTypes>
+typename std::enable_if<
+    AllConvertible<OutputTypes...>::value && sizeof...(OutputTypes) >= 1,
+    bool>::type
+split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 
 /*
  * Join list of tokens.
@@ -580,6 +599,17 @@ inline StringPiece skipWhitespace(StringPiece sp) {
 }
 
 /**
+ *  Strips the leading and the trailing whitespace-only lines. Then looks for
+ *  the least indented non-whitespace-only line and removes its amount of
+ *  leading whitespace from every line. Assumes leading whitespace is either all
+ *  spaces or all tabs.
+ *
+ *  Purpose: including a multiline string literal in source code, indented to
+ *  the level expected from context.
+ */
+std::string stripLeftMargin(std::string s);
+
+/**
  * Fast, in-place lowercasing of ASCII alphabetic characters in strings.
  * Leaves all other characters unchanged, including those with the 0x80
  * bit set.
@@ -592,16 +622,21 @@ inline void toLowerAscii(MutableStringPiece str) {
   toLowerAscii(str.begin(), str.size());
 }
 
+template <class Iterator = const char*,
+          class Base = folly::Range<boost::u8_to_u32_iterator<Iterator>>>
+class UTF8Range : public Base {
+ public:
+  /* implicit */ UTF8Range(const folly::Range<Iterator> baseRange)
+      : Base(boost::u8_to_u32_iterator<Iterator>(
+                 baseRange.begin(), baseRange.begin(), baseRange.end()),
+             boost::u8_to_u32_iterator<Iterator>(
+                 baseRange.end(), baseRange.begin(), baseRange.end())) {}
+  /* implicit */ UTF8Range(const std::string& baseString)
+      : Base(folly::Range<Iterator>(baseString)) {}
+};
+
+using UTF8StringPiece = UTF8Range<const char*>;
+
 } // namespace folly
 
-// Hook into boost's type traits
-namespace boost {
-template <class T>
-struct has_nothrow_constructor<folly::basic_fbstring<T> > : true_type {
-  enum { value = true };
-};
-} // namespace boost
-
 #include <folly/String-inl.h>
-
-#endif

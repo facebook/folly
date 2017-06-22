@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,16 @@ namespace detail {
 template <typename T>
 template <typename Tag, typename VaultTag>
 SingletonHolder<T>& SingletonHolder<T>::singleton() {
-  static auto entry = new SingletonHolder<T>(
-    {typeid(T), typeid(Tag)},
-    *SingletonVault::singleton<VaultTag>());
+  /* library-local */ static auto entry =
+      createGlobal<SingletonHolder<T>, std::pair<Tag, VaultTag>>([]() {
+        return new SingletonHolder<T>({typeid(T), typeid(Tag)},
+                                      *SingletonVault::singleton<VaultTag>());
+      });
   return *entry;
 }
+
+[[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
+    const TypeDescriptor& type);
 
 template <typename T>
 void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
@@ -49,9 +54,7 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
      * Singleton<int> b([] { return new int(4); });
      *
      */
-    LOG(FATAL) << "Double registration of singletons of the same "
-               << "underlying type; check for multiple definitions "
-               << "of type folly::Singleton<" + type_.name() + ">";
+    singletonWarnDoubleRegistrationAndAbort(type());
   }
 
   create_ = std::move(c);
@@ -63,10 +66,21 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
 template <typename T>
 void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
   if (state_ == SingletonHolderState::NotRegistered) {
-    LOG(FATAL)
-        << "Registering mock before singleton was registered: " << type_.name();
+    LOG(FATAL) << "Registering mock before singleton was registered: "
+               << type().name();
   }
-  destroyInstance();
+  if (state_ == SingletonHolderState::Living) {
+    destroyInstance();
+  }
+
+  {
+    auto creationOrder = vault_.creationOrder_.wlock();
+
+    auto it = std::find(creationOrder->begin(), creationOrder->end(), type());
+    if (it != creationOrder->end()) {
+      creationOrder->erase(it);
+    }
+  }
 
   std::lock_guard<std::mutex> entry_lock(mutex_);
 
@@ -76,7 +90,8 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
 
 template <typename T>
 T* SingletonHolder<T>::get() {
-  if (LIKELY(state_ == SingletonHolderState::Living)) {
+  if (LIKELY(state_.load(std::memory_order_acquire) ==
+             SingletonHolderState::Living)) {
     return instance_ptr_;
   }
   createInstance();
@@ -85,7 +100,7 @@ T* SingletonHolder<T>::get() {
     throw std::runtime_error(
         "Raw pointer to a singleton requested after its destruction."
         " Singleton type is: " +
-        type_.name());
+        type().name());
   }
 
   return instance_ptr_;
@@ -93,7 +108,8 @@ T* SingletonHolder<T>::get() {
 
 template <typename T>
 std::weak_ptr<T> SingletonHolder<T>::get_weak() {
-  if (UNLIKELY(state_ != SingletonHolderState::Living)) {
+  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
+               SingletonHolderState::Living)) {
     createInstance();
   }
 
@@ -101,8 +117,23 @@ std::weak_ptr<T> SingletonHolder<T>::get_weak() {
 }
 
 template <typename T>
-TypeDescriptor SingletonHolder<T>::type() {
-  return type_;
+std::shared_ptr<T> SingletonHolder<T>::try_get() {
+  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
+               SingletonHolderState::Living)) {
+    createInstance();
+  }
+
+  return instance_weak_.lock();
+}
+
+template <typename T>
+folly::ReadMostlySharedPtr<T> SingletonHolder<T>::try_get_fast() {
+  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
+               SingletonHolderState::Living)) {
+    createInstance();
+  }
+
+  return instance_weak_fast_.lock();
 }
 
 template <typename T>
@@ -111,18 +142,31 @@ bool SingletonHolder<T>::hasLiveInstance() {
 }
 
 template <typename T>
+void SingletonHolder<T>::preDestroyInstance(
+    ReadMostlyMainPtrDeleter<>& deleter) {
+  instance_copy_ = instance_;
+  deleter.add(std::move(instance_));
+}
+
+template <typename T>
 void SingletonHolder<T>::destroyInstance() {
   state_ = SingletonHolderState::Dead;
   instance_.reset();
+  instance_copy_.reset();
   if (destroy_baton_) {
-    auto wait_result = destroy_baton_->timed_wait(
-      std::chrono::steady_clock::now() + kDestroyWaitTime);
-    if (!wait_result) {
+    constexpr std::chrono::seconds kDestroyWaitTime{5};
+    auto last_reference_released = destroy_baton_->timed_wait(
+        std::chrono::steady_clock::now() + kDestroyWaitTime);
+    if (last_reference_released) {
+      teardown_(instance_ptr_);
+    } else {
       print_destructor_stack_trace_->store(true);
-      LOG(ERROR) << "Singleton of type " << type_.name() << " has a "
+      LOG(ERROR) << "Singleton of type " << type().name() << " has a "
                  << "living reference at destroyInstances time; beware! Raw "
                  << "pointer is " << instance_ptr_ << ". It is very likely "
                  << "that some other singleton is holding a shared_ptr to it. "
+                 << "This singleton will be leaked (even if a shared_ptr to it "
+                 << "is eventually released)."
                  << "Make sure dependencies between these singletons are "
                  << "properly defined.";
     }
@@ -130,33 +174,49 @@ void SingletonHolder<T>::destroyInstance() {
 }
 
 template <typename T>
-SingletonHolder<T>::SingletonHolder(TypeDescriptor type__,
-                                    SingletonVault& vault) :
-    type_(type__), vault_(vault) {
+SingletonHolder<T>::SingletonHolder(
+    TypeDescriptor typeDesc,
+    SingletonVault& vault)
+    : SingletonHolderBase(typeDesc), vault_(vault) {}
+
+template <typename T>
+bool SingletonHolder<T>::creationStarted() {
+  // If alive, then creation was of course started.
+  // This is flipped after creating_thread_ was set, and before it was reset.
+  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
+    return true;
+  }
+
+  // Not yet built.  Is it currently in progress?
+  if (creating_thread_.load(std::memory_order_acquire) != std::thread::id()) {
+    return true;
+  }
+
+  return false;
 }
 
 template <typename T>
 void SingletonHolder<T>::createInstance() {
-  // There's no synchronization here, so we may not see the current value
-  // for creating_thread if it was set by other thread, but we only care about
-  // it if it was set by current thread anyways.
-  if (creating_thread_ == std::this_thread::get_id()) {
-    LOG(FATAL) << "circular singleton dependency: " << type_.name();
+  if (creating_thread_.load(std::memory_order_acquire) ==
+        std::this_thread::get_id()) {
+    LOG(FATAL) << "circular singleton dependency: " << type().name();
   }
 
   std::lock_guard<std::mutex> entry_lock(mutex_);
-  if (state_ == SingletonHolderState::Living) {
+  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
     return;
   }
-  if (state_ == SingletonHolderState::NotRegistered) {
+  if (state_.load(std::memory_order_acquire) ==
+        SingletonHolderState::NotRegistered) {
     auto ptr = SingletonVault::stackTraceGetter().load();
     LOG(FATAL) << "Creating instance for unregistered singleton: "
-               << type_.name() << "\n"
+               << type().name() << "\n"
                << "Stacktrace:"
-               << "\n" << (ptr ? (*ptr)() : "(not available)");
+               << "\n"
+               << (ptr ? (*ptr)() : "(not available)");
   }
 
-  if (state_ == SingletonHolderState::Living) {
+  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
     return;
   }
 
@@ -164,44 +224,56 @@ void SingletonHolder<T>::createInstance() {
     // Clean up creator thread when complete, and also, in case of errors here,
     // so that subsequent attempts don't think this is still in the process of
     // being built.
-    creating_thread_ = std::thread::id();
+    creating_thread_.store(std::thread::id(), std::memory_order_release);
   };
 
-  creating_thread_ = std::this_thread::get_id();
+  creating_thread_.store(std::this_thread::get_id(), std::memory_order_release);
 
-  RWSpinLock::ReadHolder rh(&vault_.stateMutex_);
-  if (vault_.state_ == SingletonVault::SingletonVaultState::Quiescing) {
+  auto state = vault_.state_.rlock();
+  if (vault_.type_ != SingletonVault::Type::Relaxed &&
+      !state->registrationComplete) {
+    auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
+    auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
+    if (!stack_trace.empty()) {
+      stack_trace = "Stack trace:\n" + stack_trace;
+    }
+
+    LOG(FATAL) << "Singleton " << type().name() << " requested before "
+               << "registrationComplete() call.\n"
+               << "This usually means that either main() never called "
+               << "folly::init, or singleton was requested before main() "
+               << "(which is not allowed).\n"
+               << stack_trace;
+  }
+  if (state->state == SingletonVault::SingletonVaultState::Quiescing) {
     return;
   }
 
   auto destroy_baton = std::make_shared<folly::Baton<>>();
   auto print_destructor_stack_trace =
     std::make_shared<std::atomic<bool>>(false);
-  auto teardown = teardown_;
-  auto type_name = type_.name();
 
   // Can't use make_shared -- no support for a custom deleter, sadly.
-  instance_ = std::shared_ptr<T>(
-    create_(),
-    [destroy_baton, print_destructor_stack_trace, teardown, type_name]
-    (T* instance_ptr) mutable {
-      teardown(instance_ptr);
-      destroy_baton->post();
-      if (print_destructor_stack_trace->load()) {
-        std::string output = "Singleton " + type_name + " was destroyed.\n";
+  std::shared_ptr<T> instance(
+      create_(),
+      [ destroy_baton, print_destructor_stack_trace, type = type() ](
+          T*) mutable {
+        destroy_baton->post();
+        if (print_destructor_stack_trace->load()) {
+          std::string output = "Singleton " + type.name() + " was released.\n";
 
-        auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
-        auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
-        if (stack_trace.empty()) {
-          output += "Failed to get destructor stack trace.";
-        } else {
-          output += "Destructor stack trace:\n";
-          output += stack_trace;
+          auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
+          auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
+          if (stack_trace.empty()) {
+            output += "Failed to get release stack trace.";
+          } else {
+            output += "Release stack trace:\n";
+            output += stack_trace;
+          }
+
+          LOG(ERROR) << output;
         }
-
-        LOG(ERROR) << output;
-      }
-    });
+      });
 
   // We should schedule destroyInstances() only after the singleton was
   // created. This will ensure it will be destroyed before singletons,
@@ -209,19 +281,19 @@ void SingletonHolder<T>::createInstance() {
   // constructor
   SingletonVault::scheduleDestroyInstances();
 
-  instance_weak_ = instance_;
-  instance_ptr_ = instance_.get();
+  instance_weak_ = instance;
+  instance_ptr_ = instance.get();
+  instance_.reset(std::move(instance));
+  instance_weak_fast_ = instance_;
+
   destroy_baton_ = std::move(destroy_baton);
   print_destructor_stack_trace_ = std::move(print_destructor_stack_trace);
 
   // This has to be the last step, because once state is Living other threads
   // may access instance and instance_weak w/o synchronization.
-  state_.store(SingletonHolderState::Living);
+  state_.store(SingletonHolderState::Living, std::memory_order_release);
 
-  {
-    RWSpinLock::WriteHolder wh(&vault_.mutex_);
-    vault_.creation_order_.push_back(type_);
-  }
+  vault_.creationOrder_.wlock()->push_back(type());
 }
 
 }

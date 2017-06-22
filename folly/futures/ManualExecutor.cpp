@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,11 @@
 #include <string>
 #include <tuple>
 
-#include <stdexcept>
-
 namespace folly {
 
 void ManualExecutor::add(Func callback) {
   std::lock_guard<std::mutex> lock(lock_);
-  funcs_.push(std::move(callback));
+  funcs_.emplace(std::move(callback));
   sem_.post();
 }
 
@@ -42,7 +40,7 @@ size_t ManualExecutor::run() {
       auto& sf = scheduledFuncs_.top();
       if (sf.time > now_)
         break;
-      funcs_.push(sf.func);
+      funcs_.emplace(sf.moveOutFunc());
       scheduledFuncs_.pop();
     }
 

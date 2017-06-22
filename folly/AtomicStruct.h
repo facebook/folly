@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_ATOMIC_STRUCT_H_
-#define FOLLY_ATOMIC_STRUCT_H_
+#pragma once
 
+#include <folly/Traits.h>
+#include <folly/detail/AtomicUtils.h>
+#include <stdint.h>
+#include <string.h>
 #include <atomic>
 #include <type_traits>
-#include <folly/Traits.h>
-#include <string.h>
-#include <stdint.h>
 
 namespace folly {
 
@@ -44,7 +44,10 @@ class AtomicStruct {
                 folly::IsTriviallyCopyable<T>::value,
       "target type must be trivially copyable");
 
-  Atom<Raw> data;
+  union {
+    Atom<Raw> data;
+    T typedData;
+  };
 
   static Raw encode(T v) noexcept {
     // we expect the compiler to optimize away the memcpy, but without
@@ -66,17 +69,26 @@ class AtomicStruct {
   AtomicStruct(AtomicStruct<T> const &) = delete;
   AtomicStruct<T>& operator= (AtomicStruct<T> const &) = delete;
 
-  constexpr /* implicit */ AtomicStruct(T v) noexcept : data(encode(v)) {}
+  constexpr /* implicit */ AtomicStruct(T v) noexcept : typedData(v) {}
 
   bool is_lock_free() const noexcept {
     return data.is_lock_free();
   }
 
   bool compare_exchange_strong(
-          T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0,
+      T v1,
+      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    return compare_exchange_strong(
+        v0, v1, mo, detail::default_failure_memory_order(mo));
+  }
+  bool compare_exchange_strong(
+      T& v0,
+      T v1,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
     Raw d0 = encode(v0);
-    bool rv = data.compare_exchange_strong(d0, encode(v1), mo);
+    bool rv = data.compare_exchange_strong(d0, encode(v1), success, failure);
     if (!rv) {
       v0 = decode(d0);
     }
@@ -84,10 +96,19 @@ class AtomicStruct {
   }
 
   bool compare_exchange_weak(
-          T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0,
+      T v1,
+      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    return compare_exchange_weak(
+        v0, v1, mo, detail::default_failure_memory_order(mo));
+  }
+  bool compare_exchange_weak(
+      T& v0,
+      T v1,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
     Raw d0 = encode(v0);
-    bool rv = data.compare_exchange_weak(d0, encode(v1), mo);
+    bool rv = data.compare_exchange_weak(d0, encode(v1), success, failure);
     if (!rv) {
       v0 = decode(d0);
     }
@@ -135,5 +156,3 @@ template <> struct AtomicStructIntPick<8> { typedef uint64_t type; };
 } // namespace detail
 
 } // namespace folly
-
-#endif

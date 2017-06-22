@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/AtomicUnorderedMap.h>
-#include <folly/test/DeterministicSchedule.h>
+
 #include <thread>
-#include <semaphore.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-#include <folly/Benchmark.h>
 #include <unordered_map>
+
+#include <folly/Benchmark.h>
+#include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/Semaphore.h>
+#include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
 using namespace folly::test;
@@ -35,27 +38,30 @@ struct non_atomic {
 
   T operator+=(T arg) { value += arg; return load();}
 
-  T load(std::memory_order order= std::memory_order_seq_cst) const {
+  T load(std::memory_order /* order */ = std::memory_order_seq_cst) const {
     return value;
   }
 
   /* implicit */
   operator T() const {return load();}
 
-  void store(T desired, std::memory_order order = std::memory_order_seq_cst) {
+  void store(T desired,
+             std::memory_order /* order */ = std::memory_order_seq_cst) {
     value = desired;
   }
 
-  T exchange(T desired, std::memory_order order = std::memory_order_seq_cst) {
+  T exchange(T desired,
+             std::memory_order /* order */ = std::memory_order_seq_cst) {
     T old = load();
     store(desired);
     return old;
   }
 
   bool compare_exchange_weak(
-      T& expected, T desired,
-      std::memory_order success = std::memory_order_seq_cst,
-      std::memory_order failure = std::memory_order_seq_cst) {
+      T& expected,
+      T desired,
+      std::memory_order /* success */ = std::memory_order_seq_cst,
+      std::memory_order /* failure */ = std::memory_order_seq_cst) {
     if (value == expected) {
       value = desired;
       return true;
@@ -66,9 +72,10 @@ struct non_atomic {
   }
 
   bool compare_exchange_strong(
-      T& expected, T desired,
-      std::memory_order success = std::memory_order_seq_cst,
-      std::memory_order failure = std::memory_order_seq_cst) {
+      T& expected,
+      T desired,
+      std::memory_order /* success */ = std::memory_order_seq_cst,
+      std::memory_order /* failure */ = std::memory_order_seq_cst) {
     if (value == expected) {
       value = desired;
       return true;
@@ -81,20 +88,38 @@ struct non_atomic {
   bool is_lock_free() const {return true;}
 };
 
-template<
-    typename Key, typename Value, template<typename> class Atom = non_atomic>
-using UnorderedInsertMap =  AtomicUnorderedInsertMap<
-    Key,
-    Value,
-    std::hash<Key>,
-    std::equal_to<Key>,
-    (boost::has_trivial_destructor<Key>::value &&
-     boost::has_trivial_destructor<Value>::value),
-    Atom,
-    std::allocator<char>>;
+template <typename Key,
+          typename Value,
+          typename IndexType,
+          template <typename> class Atom = std::atomic,
+          typename Allocator = std::allocator<char>>
+using UIM =
+    AtomicUnorderedInsertMap<Key,
+                             Value,
+                             std::hash<Key>,
+                             std::equal_to<Key>,
+                             (boost::has_trivial_destructor<Key>::value &&
+                              boost::has_trivial_destructor<Value>::value),
+                             Atom,
+                             IndexType,
+                             Allocator>;
 
-TEST(AtomicUnorderedInsertMap, basic) {
-  AtomicUnorderedInsertMap<std::string,std::string> m(100);
+namespace {
+template <typename T>
+struct AtomicUnorderedInsertMapTest : public ::testing::Test {};
+}
+
+// uint16_t doesn't make sense for most platforms, but we might as well
+// test it
+using IndexTypesToTest = ::testing::Types<uint16_t, uint32_t, uint64_t>;
+TYPED_TEST_CASE(AtomicUnorderedInsertMapTest, IndexTypesToTest);
+
+TYPED_TEST(AtomicUnorderedInsertMapTest, basic) {
+  UIM<std::string,
+      std::string,
+      TypeParam,
+      std::atomic,
+      folly::detail::MMapAlloc> m(100);
 
   m.emplace("abc", "ABC");
   EXPECT_TRUE(m.find("abc") != m.cend());
@@ -116,8 +141,28 @@ TEST(AtomicUnorderedInsertMap, basic) {
   EXPECT_TRUE(a != b);
 }
 
-TEST(AtomicUnorderedInsertMap, value_mutation) {
-  AtomicUnorderedInsertMap<int, MutableAtom<int>> m(100);
+TEST(AtomicUnorderedInsertMap, load_factor) {
+  AtomicUnorderedInsertMap<int, bool> m(5000, 0.5f);
+
+  // we should be able to put in much more than 5000 things because of
+  // our load factor request
+  for (int i = 0; i < 10000; ++i) {
+    m.emplace(i, true);
+  }
+}
+
+TEST(AtomicUnorderedInsertMap, capacity_exceeded) {
+  AtomicUnorderedInsertMap<int, bool> m(5000, 1.0f);
+
+  EXPECT_THROW({
+    for (int i = 0; i < 6000; ++i) {
+      m.emplace(i, false);
+    }
+  }, std::bad_alloc);
+}
+
+TYPED_TEST(AtomicUnorderedInsertMapTest, value_mutation) {
+  UIM<int, MutableAtom<int>, TypeParam> m(100);
 
   for (int i = 0; i < 50; ++i) {
     m.emplace(i, i);
@@ -127,7 +172,7 @@ TEST(AtomicUnorderedInsertMap, value_mutation) {
 }
 
 TEST(UnorderedInsertMap, value_mutation) {
-  UnorderedInsertMap<int, MutableData<int>> m(100);
+  UIM<int, MutableData<int>, uint32_t, non_atomic> m(100);
 
   for (int i = 0; i < 50; ++i) {
     m.emplace(i, i);
@@ -135,6 +180,24 @@ TEST(UnorderedInsertMap, value_mutation) {
 
   m.find(1)->second.data++;
   EXPECT_EQ(m.find(1)->second.data, 2);
+}
+
+// This test is too expensive to run automatically.  On my dev server it
+// takes about 10 minutes for dbg build, 2 for opt.
+TEST(AtomicUnorderedInsertMap, DISABLED_mega_map) {
+  size_t capacity = 2000000000;
+  AtomicUnorderedInsertMap64<size_t,size_t> big(capacity);
+  for (size_t i = 0; i < capacity * 2; i += 2) {
+    big.emplace(i, i * 10);
+  }
+  for (size_t i = 0; i < capacity * 3; i += capacity / 1000 + 1) {
+    auto iter = big.find(i);
+    if ((i & 1) == 0 && i < capacity * 2) {
+      EXPECT_EQ(iter->second, i * 10);
+    } else {
+      EXPECT_TRUE(iter == big.cend());
+    }
+  }
 }
 
 BENCHMARK(lookup_int_int_hit, iters) {
@@ -212,7 +275,7 @@ void contendedRW(size_t itersPerThread,
               if (!pr.second) {
                 pr.first->second.data++;
               }
-            } catch (std::bad_alloc& x) {
+            } catch (std::bad_alloc&) {
               LOG(INFO) << "bad alloc";
             }
           }
@@ -283,7 +346,7 @@ BENCHMARK(std_map) {
 }
 
 BENCHMARK(atomic_fast_map) {
-  UnorderedInsertMap<long, long, std::atomic> m(10000);
+  UIM<long, long, uint32_t, std::atomic> m(10000);
   for (int i=0; i<10000; ++i) {
     m.emplace(i,i);
   }
@@ -295,7 +358,31 @@ BENCHMARK(atomic_fast_map) {
 }
 
 BENCHMARK(fast_map) {
-  UnorderedInsertMap<long, long> m(10000);
+  UIM<long, long, uint32_t, non_atomic> m(10000);
+  for (int i=0; i<10000; ++i) {
+    m.emplace(i,i);
+  }
+
+  for (int i=0; i<10000; ++i) {
+    auto a = m.find(i);
+    folly::doNotOptimizeAway(&*a);
+  }
+}
+
+BENCHMARK(atomic_fast_map_64) {
+  UIM<long, long, uint64_t, std::atomic> m(10000);
+  for (int i=0; i<10000; ++i) {
+    m.emplace(i,i);
+  }
+
+  for (int i=0; i<10000; ++i) {
+    auto a = m.find(i);
+    folly::doNotOptimizeAway(&*a);
+  }
+}
+
+BENCHMARK(fast_map_64) {
+  UIM<long, long, uint64_t, non_atomic> m(10000);
   for (int i=0; i<10000; ++i) {
     m.emplace(i,i);
   }
@@ -309,7 +396,7 @@ BENCHMARK(fast_map) {
 
 int main(int argc, char ** argv) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   int rv = RUN_ALL_TESTS();
   folly::runBenchmarksOnFlag();
   return rv;

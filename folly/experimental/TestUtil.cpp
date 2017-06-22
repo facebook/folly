@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,18 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 
 #include <boost/regex.hpp>
-#include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
+#include <folly/Memory.h>
 #include <folly/String.h>
+#include <folly/portability/Fcntl.h>
+
+#ifdef _WIN32
+#include <crtdbg.h>
+#endif
 
 namespace folly {
 namespace test {
@@ -94,18 +97,20 @@ TemporaryFile::~TemporaryFile() {
   }
 }
 
-TemporaryDirectory::TemporaryDirectory(StringPiece namePrefix,
-                                       fs::path dir,
-                                       Scope scope)
-  : scope_(scope),
-    path_(generateUniquePath(std::move(dir), namePrefix)) {
-  fs::create_directory(path_);
+TemporaryDirectory::TemporaryDirectory(
+    StringPiece namePrefix,
+    fs::path dir,
+    Scope scope)
+    : scope_(scope),
+      path_(std::make_unique<fs::path>(
+          generateUniquePath(std::move(dir), namePrefix))) {
+  fs::create_directory(path());
 }
 
 TemporaryDirectory::~TemporaryDirectory() {
-  if (scope_ == Scope::DELETE_ON_DESTRUCTION) {
+  if (scope_ == Scope::DELETE_ON_DESTRUCTION && path_ != nullptr) {
     boost::system::error_code ec;
-    fs::remove_all(path_, ec);
+    fs::remove_all(path(), ec);
     if (ec) {
       LOG(WARNING) << "recursive delete on destruction failed: " << ec;
     }
@@ -124,6 +129,32 @@ ChangeToTempDir::~ChangeToTempDir() {
 
 namespace detail {
 
+SavedState disableInvalidParameters() {
+#ifdef _WIN32
+  SavedState ret;
+  ret.previousThreadLocalHandler = _set_thread_local_invalid_parameter_handler(
+      [](const wchar_t*,
+         const wchar_t*,
+         const wchar_t*,
+         unsigned int,
+         uintptr_t) {});
+  ret.previousCrtReportMode = _CrtSetReportMode(_CRT_ASSERT, 0);
+  return ret;
+#else
+  return SavedState();
+#endif
+}
+
+#ifdef _WIN32
+void enableInvalidParameters(SavedState state) {
+  _set_thread_local_invalid_parameter_handler(
+      (_invalid_parameter_handler)state.previousThreadLocalHandler);
+  _CrtSetReportMode(_CRT_ASSERT, state.previousCrtReportMode);
+}
+#else
+void enableInvalidParameters(SavedState) {}
+#endif
+
 bool hasPCREPatternMatch(StringPiece pattern, StringPiece target) {
   return boost::regex_match(
     target.begin(),
@@ -138,7 +169,8 @@ bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target) {
 
 }  // namespace detail
 
-CaptureFD::CaptureFD(int fd) : fd_(fd), readOffset_(0) {
+CaptureFD::CaptureFD(int fd, ChunkCob chunk_cob)
+    : chunkCob_(std::move(chunk_cob)), fd_(fd), readOffset_(0) {
   oldFDCopy_ = dup(fd_);
   PCHECK(oldFDCopy_ != -1) << "Could not copy FD " << fd_;
 
@@ -150,6 +182,7 @@ CaptureFD::CaptureFD(int fd) : fd_(fd), readOffset_(0) {
 
 void CaptureFD::release() {
   if (oldFDCopy_ != fd_) {
+    readIncremental();  // Feed chunkCob_
     PCHECK(dup2(oldFDCopy_, fd_) != -1) << "Could not restore old FD "
       << oldFDCopy_ << " into " << fd_;
     PCHECK(close(oldFDCopy_) != -1) << "Could not close " << oldFDCopy_;
@@ -161,7 +194,7 @@ CaptureFD::~CaptureFD() {
   release();
 }
 
-std::string CaptureFD::read() {
+std::string CaptureFD::read() const {
   std::string contents;
   std::string filename = file_.path().string();
   PCHECK(folly::readFile(filename.c_str(), contents));
@@ -172,42 +205,13 @@ std::string CaptureFD::readIncremental() {
   std::string filename = file_.path().string();
   // Yes, I know that I could just keep the file open instead. So sue me.
   folly::File f(openNoInt(filename.c_str(), O_RDONLY), true);
-  auto size = lseek(f.fd(), 0, SEEK_END) - readOffset_;
+  auto size = size_t(lseek(f.fd(), 0, SEEK_END) - readOffset_);
   std::unique_ptr<char[]> buf(new char[size]);
   auto bytes_read = folly::preadFull(f.fd(), buf.get(), size, readOffset_);
-  PCHECK(size == bytes_read);
-  readOffset_ += size;
+  PCHECK(ssize_t(size) == bytes_read);
+  readOffset_ += off_t(size);
+  chunkCob_(StringPiece(buf.get(), buf.get() + size));
   return std::string(buf.get(), size);
-}
-
-static std::map<std::string, std::string> getEnvVarMap() {
-  std::map<std::string, std::string> data;
-  for (auto it = environ; *it != nullptr; ++it) {
-    std::string key, value;
-    split("=", *it, key, value);
-    if (key.empty()) {
-      continue;
-    }
-    CHECK(!data.count(key)) << "already contains: " << key;
-    data.emplace(move(key), move(value));
-  }
-  return data;
-}
-
-EnvVarSaver::EnvVarSaver() {
-  saved_ = getEnvVarMap();
-}
-
-EnvVarSaver::~EnvVarSaver() {
-  for (const auto& kvp : getEnvVarMap()) {
-    if (saved_.count(kvp.first)) {
-      continue;
-    }
-    PCHECK(0 == unsetenv(kvp.first.c_str()));
-  }
-  for (const auto& kvp : saved_) {
-    PCHECK(0 == setenv(kvp.first.c_str(), kvp.second.c_str(), (int)true));
-  }
 }
 
 }  // namespace test

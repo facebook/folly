@@ -1,61 +1,10 @@
-`folly/`
-------
+### `folly/`
 
-### Introduction
-
-Folly (acronymed loosely after Facebook Open Source Library) is a
-library of C++11 components designed with practicality and efficiency
-in mind. It complements (as opposed to competing against) offerings
-such as Boost and of course `std`. In fact, we embark on defining our
-own component only when something we need is either not available, or
-does not meet the needed performance profile.
-
-Performance concerns permeate much of Folly, sometimes leading to
-designs that are more idiosyncratic than they would otherwise be (see
-e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
-scale is a unifying theme in all of Folly.
-
-### Logical Design
-
-Folly is a collection of relatively independent components, some as
-simple as a few symbols. There is no restriction on internal
-dependencies, meaning that a given folly module may use any other
-folly components.
-
-All symbols are defined in the top-level namespace `folly`, except of
-course macros. Macro names are ALL_UPPERCASE. Namespace `folly`
-defines other internal namespaces such as `internal` or `detail`. User
-code should not depend on symbols in those namespaces.
-
-### Physical Design
-
-At the top level Folly uses the classic "stuttering" scheme
-`folly/folly` used by Boost and others. The first directory serves as
-an installation root of the library (with possible versioning a la
-`folly-1.0/`), and the second is to distinguish the library when
-including files, e.g. `#include <folly/FBString.h>`.
-
-The directory structure is flat (mimicking the namespace structure),
-i.e. we don't have an elaborate directory hierarchy (it is possible
-this will change in future versions). The subdirectory `experimental`
-contains files that are used inside folly and possibly at Facebook but
-not considered stable enough for client use. Your code should not use
-files in `folly/experimental` lest it may break when you update Folly.
-
-The `folly/folly/test` subdirectory includes the unittests for all
-components, usually named `ComponentXyzTest.cpp` for each
-`ComponentXyz.*`. The `folly/folly/docs` directory contains
-documentation.
-
-### Compatibility
-
-Currently, `folly` has been tested on gcc 4.6 on 64-bit installations
-of Fedora 17, Ubuntu 12.04, and Debian wheezy. It might work unmodified
-on other 64-bit Linux platforms.
+For a high level overview see the [README](../../README.md)
 
 ### Components
 
-Below is a list of Folly components in alphabetical order, along with
+Below is a list of (some) Folly components in alphabetical order, along with
 a brief description of each.
 
 #### `Arena.h`, `ThreadCachedArena.h`
@@ -63,9 +12,17 @@ a brief description of each.
 Simple arena for memory allocation: multiple allocations get freed all
 at once. With threaded version.
 
-#### [`AtomicHashMap.h`, `AtomicHashArray.h`](AtomicHashMap.md)
+#### [`AtomicHashMap.h`, `AtomicHashArray.h`](AtomicHashMap.md), `AtomicHashArray.h`, `AtomicLinkedList.h`, ...
 
-High-performance atomic hash map with almost lock-free operation.
+High-performance atomic data-structures. Many of these are built with very specific
+tradeoffs and constraints in mind that make them faster than their more general
+counterparts. Each header should contain information about what these tradeoffs are.
+
+#### `Baton.h`
+
+A Baton allows a thread to block once and be awoken: it captures a single handoff. It is
+essentially a (very small, very fast) semaphore that supports only a single call to `sem_call`
+and `sem_wait`.
 
 #### [`Benchmark.h`](Benchmark.md)
 
@@ -94,6 +51,10 @@ by Herlihy et al.
 A variety of data conversion routines (notably to and from string),
 optimized for speed and safety.
 
+#### `Demangle.h`
+
+Pretty-printing C++ types.
+
 #### `DiscriminatedPtr.h`
 
 Similar to `boost::variant`, but restricted to pointers only. Uses the
@@ -102,21 +63,13 @@ highest-order unused 16 bits in a pointer as discriminator. So
 
 #### [`dynamic.h`](Dynamic.md)
 
-Dynamically-typed object, created with JSON objects in mind.
+Dynamically-typed object, created with JSON objects in mind. `DynamicConverter.h` is
+a utility for effeciently converting from a `dynamic` to a more concrete structure when
+the scheme is known (e.g. json -> `map<int,int>`).
 
-#### `Endian.h`
+#### `EvictingCacheMap.h`
 
-Endian conversion primitives.
-
-####`Escape.h`
-
-Escapes a string in C style.
-
-####`eventfd.h`
-
-Wrapper around the
-[`eventfd`](http://www.kernel.org/doc/man-pages/online/pages/man2/eventfd.2.html)
-system call.
+A simple LRU hash map.
 
 ####[`FBString.h`](FBString.md)
 
@@ -127,19 +80,45 @@ A drop-in implementation of `std::string` with a variety of optimizations.
 A mostly drop-in implementation of `std::vector` with a variety of
 optimizations.
 
-####`Foreach.h`
+#### `File.h`
 
-Pseudo-statements (implemented as macros) for iteration.
+A C++ abstraction around files.
+
+#### `Fingerprint.h`
+
+Rabin fingerprinting.
+
+### [`Function.h`](Function.md)
+
+A polymorphic wrapper for callables similar to `std::function` but not copyable and therefore able to wrap non-copyable callables, such as lambdas that capture move-only types like `std::unique_ptr` or `folly::Promise`.
+
+### [`futures/`](../futures/README.md)
+
+Futures is a framework for expressing asynchronous code in C++ using the Promise/Future pattern.
 
 ####[`Format.h`](Format.md)
 
 Python-style formatting utilities.
+
+#### `gen/`
+
+This library makes it possible to write declarative comprehensions for
+processing sequences of values efficiently in C++ akin to C#'s LINQ.
 
 ####[`GroupVarint.h`](GroupVarint.md)
 
 [Group Varint
 encoding](http://www.ir.uwaterloo.ca/book/addenda-06-index-compression.html)
 for 32-bit values.
+
+####`IpAddress.h`
+
+A collection of utilities to deal with IPAddresses, including ipv4 and ipv6.
+
+#### `io/`
+
+A collection of useful of abstractions for high-performance io. This is heavily relied upon
+in Facebook's internally networking code.
 
 ####`Hash.h`
 
@@ -161,14 +140,23 @@ JSON serializer and deserializer. Uses `dynamic.h`.
 
 Wrappers around [`__builtin_expect`](http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html).
 
-####`Malloc.h`
+####`Malloc.h`, `Memory.h`
 
 Memory allocation helpers, particularly when using jemalloc.
 
-####`MapUtil.h`
+####`MicroSpinLock.h`
 
-Helpers for finding items in associative containers (such as
-`std::map` and `std::unordered_map`).
+A really, *really* small spinlock for fine-grained locking of lots of teeny-tiny data.
+
+####`MPMCQueue.h`
+
+MPMCQueue<typename> is a high-performance bounded concurrent queue that
+supports multiple producers, multiple consumers, and optional blocking.
+The queue has a fixed capacity, for which all memory will be allocated
+ up front.
+
+The additional utility `MPMCPipeline.h` is an extension that lets you
+chain several queues together with processing steps in between.
 
 ####[`PackedSyncPtr.h`](PackedSyncPtr.md)
 
@@ -178,12 +166,6 @@ spin lock, and a 15-bit integral, all inside one 64-bit word.
 ####`Preprocessor.h`
 
 Necessarily evil stuff.
-
-####`PrettyPrint.h`
-
-Pretty-printer for numbers that appends suffixes of unit used: bytes
-(kb, MB, ...), metric suffixes (k, M, G, ...), and time (s, ms, us,
-ns, ...).
 
 ####[`ProducerConsumerQueue.h`](ProducerConsumerQueue.md)
 
@@ -205,6 +187,14 @@ Fast and compact reader-writer spin lock.
 
 C++11 incarnation of the old [ScopeGuard](http://drdobbs.com/184403758) idiom.
 
+####`Singleton.h`
+
+A singleton to rule the singletons. This is an attempt to insert a layer between
+C++ statics and the fiasco that ensues, so that things can be created, and destroyed,
+correctly upon program creation, program end and sometimes `dlopen` and `fork`.
+
+Singletons are bad for you, but this may help.
+
 ####[`SmallLocks.h`](SmallLocks.md)
 
 Very small spin locks (1 byte and 1 bit).
@@ -217,6 +207,11 @@ Vector with the small buffer optimization and an optional embedded
 ####`sorted_vector_types.h`
 
 Collections similar to `std::map` but implemented as sorted vectors.
+
+#### `stats/`
+
+A collection of efficient utilities for collecting statistics (often of
+time series data).
 
 ####`StlAllocator.h`
 
@@ -258,3 +253,7 @@ Type traits that complement those defined in the standard C++11 header
 ####`Unicode.h`
 
 Defines the `codePointToUtf8` function.
+
+####`Uri.h`
+
+A collection of utilities to deal with URIs.

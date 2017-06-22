@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,15 @@
 // Copyright 2013-present Facebook. All Rights Reserved.
 // @author: Pavlo Kushnir (pavlo)
 
-#ifndef FOLLY_EXPERIMENTAL_STRINGKEYEDUNORDEREDMAP_H_
-#define FOLLY_EXPERIMENTAL_STRINGKEYEDUNORDEREDMAP_H_
+#pragma once
 
+#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <unordered_map>
+#include <utility>
+
+#include <folly/Hash.h>
 #include <folly/Range.h>
 #include <folly/experimental/StringKeyedCommon.h>
 
@@ -34,13 +37,14 @@ namespace folly {
  * It uses kind of hack: string pointed by StringPiece is copied when
  * StringPiece is inserted into map
  */
-template <class Value,
-          class Hash = StringPieceHash,
-          class Eq = std::equal_to<StringPiece>,
-          class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
+template <
+    class Value,
+    class Hash = Hash,
+    class Eq = std::equal_to<StringPiece>,
+    class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
 class StringKeyedUnorderedMap
     : private std::unordered_map<StringPiece, Value, Hash, Eq, Alloc> {
-private:
+ private:
   using Base = std::unordered_map<StringPiece, Value, Hash, Eq, Alloc>;
 
 public:
@@ -108,9 +112,8 @@ public:
   }
 
   StringKeyedUnorderedMap(StringKeyedUnorderedMap&& other,
-                          const allocator_type& a) noexcept
-      : Base(std::move(other)/*, a*/ /* not supported by gcc */) {
-  }
+                          const allocator_type& /* a */) noexcept
+      : Base(std::move(other) /*, a*/ /* not supported by gcc */) {}
 
   StringKeyedUnorderedMap(std::initializer_list<value_type> il)
       : StringKeyedUnorderedMap(il.begin(), il.end()) {
@@ -148,9 +151,14 @@ public:
   using Base::cbegin;
   using Base::cend;
 
-  bool operator==(const StringKeyedUnorderedMap& rhs) {
-    const Base& lhs = *this;
+  bool operator==(StringKeyedUnorderedMap const& other) const {
+    Base const& lhs = *this;
+    Base const& rhs = static_cast<Base const&>(other);
     return lhs == rhs;
+  }
+
+  void swap(StringKeyedUnorderedMap& other) & {
+    return Base::swap(other);
   }
 
   // No need for copy/move overload as StringPiece is small struct.
@@ -166,6 +174,7 @@ public:
 
   using Base::at;
   using Base::find;
+  using Base::count;
 
   template <class... Args>
   std::pair<iterator, bool> emplace(StringPiece key, Args&&... args) {
@@ -228,5 +237,3 @@ public:
 };
 
 } // folly
-
-#endif /* FOLLY_EXPERIMENTAL_STRINGKEYEDUNORDEREDMAP_H_ */

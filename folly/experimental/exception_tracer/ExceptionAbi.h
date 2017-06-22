@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-
-#ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONABI_H_
-#define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONABI_H_
+#pragma once
 
 // A clone of the relevant parts of unwind-cxx.h from libstdc++
 // The layout of these structures is defined by the ABI.
@@ -56,5 +54,3 @@ __cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 }
 
 }  // namespace __cxxabiv1
-
-#endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONABI_H_ */

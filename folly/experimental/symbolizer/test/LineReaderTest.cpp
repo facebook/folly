@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@
 #include <folly/experimental/symbolizer/LineReader.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace symbolizer { namespace test {
 

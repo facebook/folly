@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 // On platforms where it's not supported, GroupVarint will be compiled out.
 #if HAVE_GROUP_VARINT
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -39,8 +39,6 @@ class StringAppender {
 
 typedef GroupVarintEncoder<uint32_t, StringAppender> GroupVarint32Encoder;
 typedef GroupVarintEncoder<uint64_t, StringAppender> GroupVarint64Encoder;
-typedef GroupVarintDecoder<uint32_t> GroupVarint32Decoder;
-typedef GroupVarintDecoder<uint32_t> GroupVarint64Decoder;
 
 // Expected bytes follow, terminate with -1
 void testGroupVarint32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, ...) {
@@ -60,7 +58,7 @@ void testGroupVarint32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, ...) {
 
   // ssse3 decoding requires that the source buffer have length >= 17,
   // so that it can read 128 bits from &start[1] via _mm_loadu_si128.
-  foundBytes.resize(std::max(size + 4, 17UL));
+  foundBytes.resize(std::max<size_t>(size + 4, 17UL));
   char* start = &(foundBytes.front());
   char* p = GroupVarint32::encode(start, a, b, c, d);
   EXPECT_EQ((void*)(start + size), (void*)p);

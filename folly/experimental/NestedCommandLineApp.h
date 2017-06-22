@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_NESTEDCOMMANDLINEAPP_H_
-#define FOLLY_NESTEDCOMMANDLINEAPP_H_
+#pragma once
 
 #include <functional>
 #include <stdexcept>
@@ -68,6 +67,8 @@ class NestedCommandLineApp {
   explicit NestedCommandLineApp(
       std::string programName = std::string(),
       std::string version = std::string(),
+      std::string programHeading = std::string(),
+      std::string programHelpFooter = std::string(),
       InitFunction initFunction = InitFunction());
 
   /**
@@ -143,6 +144,8 @@ class NestedCommandLineApp {
       const std::vector<std::string>& args);
 
   std::string programName_;
+  std::string programHeading_;
+  std::string programHelpFooter_;
   std::string version_;
   InitFunction initFunction_;
   boost::program_options::options_description globalOptions_;
@@ -151,5 +154,3 @@ class NestedCommandLineApp {
 };
 
 }  // namespaces
-
-#endif /* FOLLY_NESTEDCOMMANDLINEAPP_H_ */

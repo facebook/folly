@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
  */
 #pragma once
 
-#include <gmock/gmock.h>
-
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/portability/GMock.h>
 
 namespace folly {
 
@@ -46,6 +45,15 @@ class MockAsyncSocket : public AsyncSocket {
   MOCK_CONST_METHOD0(good, bool());
   MOCK_CONST_METHOD0(readable, bool());
   MOCK_CONST_METHOD0(hangup, bool());
+  MOCK_METHOD1(setReadCB, void(ReadCallback*));
+  MOCK_METHOD1(_setPreReceivedData, void(std::unique_ptr<IOBuf>&));
+  MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
+  MOCK_METHOD4(setSockOptVirtual, int(int, int, void const*, socklen_t));
+  MOCK_METHOD1(setErrMessageCB, void(AsyncSocket::ErrMessageCallback*));
+  MOCK_METHOD1(setSendMsgParamCB, void(AsyncSocket::SendMsgParamsCallback*));
+  void setPreReceivedData(std::unique_ptr<IOBuf> data) override {
+    return _setPreReceivedData(data);
+  }
 };
 
 }}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,7 @@
 // slower than MD5.
 //
 
-#ifndef FOLLY_SPOOKYHASHV2_H_
-#define FOLLY_SPOOKYHASHV2_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -114,8 +113,8 @@ public:
     // all the pieces concatenated into one message.
     //
     void Final(
-        uint64_t *hash1,    // out only: first 64 bits of hash value.
-        uint64_t *hash2);   // out only: second 64 bits of hash value.
+        uint64_t *hash1,          // out only: first 64 bits of hash value.
+        uint64_t *hash2) const;   // out only: second 64 bits of hash value.
 
     //
     // left rotate a 64-bit value by k bytes
@@ -282,13 +281,13 @@ private:
         uint64_t *hash2);       // in/out: in the seed, out the hash value
 
     // number of uint64_t's in internal state
-    static const size_t sc_numVars = 12;
+    static constexpr size_t sc_numVars = 12;
 
     // size of the internal state
-    static const size_t sc_blockSize = sc_numVars*8;
+    static constexpr size_t sc_blockSize = sc_numVars*8;
 
     // size of buffer of unhashed data, in bytes
-    static const size_t sc_bufSize = 2*sc_blockSize;
+    static constexpr size_t sc_bufSize = 2*sc_blockSize;
 
     //
     // sc_const: a constant which:
@@ -297,7 +296,7 @@ private:
     //  * is a not-very-regular mix of 1's and 0's
     //  * does not need any other special mathematical properties
     //
-    static const uint64_t sc_const = 0xdeadbeefdeadbeefLL;
+    static constexpr uint64_t sc_const = 0xdeadbeefdeadbeefULL;
 
     uint64_t m_data[2*sc_numVars];   // unhashed data, for partial messages
     uint64_t m_state[sc_numVars];  // internal state of the hash
@@ -307,5 +306,3 @@ private:
 
 }  // namespace hash
 }  // namespace folly
-
-#endif

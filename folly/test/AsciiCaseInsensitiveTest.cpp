@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 #include <folly/Range.h>
 
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 #include <algorithm>
 
 using namespace std;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,30 @@
 
 #include <folly/io/ShutdownSocketSet.h>
 
-#include <sys/socket.h>
-#include <sys/types.h>
-
 #include <chrono>
 #include <thread>
 
 #include <glog/logging.h>
 
 #include <folly/FileUtil.h>
-#include <folly/Malloc.h>
+#include <folly/portability/Sockets.h>
 
 namespace folly {
 
-ShutdownSocketSet::ShutdownSocketSet(size_t maxFd)
-  : maxFd_(maxFd),
-    data_(static_cast<std::atomic<uint8_t>*>(
-            folly::checkedCalloc(maxFd, sizeof(std::atomic<uint8_t>)))),
-    nullFile_("/dev/null", O_RDWR) {
-}
+ShutdownSocketSet::ShutdownSocketSet(int maxFd)
+    : maxFd_(maxFd),
+      data_(static_cast<std::atomic<uint8_t>*>(
+          folly::checkedCalloc(size_t(maxFd), sizeof(std::atomic<uint8_t>)))),
+      nullFile_("/dev/null", O_RDWR) {}
 
 void ShutdownSocketSet::add(int fd) {
   // Silently ignore any fds >= maxFd_, very unlikely
   DCHECK_GE(fd, 0);
-  if (size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     return;
   }
 
-  auto& sref = data_[fd];
+  auto& sref = data_[size_t(fd)];
   uint8_t prevState = FREE;
   CHECK(sref.compare_exchange_strong(prevState,
                                      IN_USE,
@@ -53,11 +49,11 @@ void ShutdownSocketSet::add(int fd) {
 
 void ShutdownSocketSet::remove(int fd) {
   DCHECK_GE(fd, 0);
-  if (size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     return;
   }
 
-  auto& sref = data_[fd];
+  auto& sref = data_[size_t(fd)];
   uint8_t prevState = 0;
 
 retry_load:
@@ -81,11 +77,11 @@ retry:
 
 int ShutdownSocketSet::close(int fd) {
   DCHECK_GE(fd, 0);
-  if (size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     return folly::closeNoInt(fd);
   }
 
-  auto& sref = data_[fd];
+  auto& sref = data_[size_t(fd)];
   uint8_t prevState = sref.load(std::memory_order_relaxed);
   uint8_t newState = 0;
 
@@ -113,12 +109,12 @@ retry:
 
 void ShutdownSocketSet::shutdown(int fd, bool abortive) {
   DCHECK_GE(fd, 0);
-  if (fd >= 0 && size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     doShutdown(fd, abortive);
     return;
   }
 
-  auto& sref = data_[fd];
+  auto& sref = data_[size_t(fd)];
   uint8_t prevState = IN_USE;
   if (!sref.compare_exchange_strong(prevState,
                                     IN_SHUTDOWN,
@@ -147,8 +143,8 @@ void ShutdownSocketSet::shutdown(int fd, bool abortive) {
 }
 
 void ShutdownSocketSet::shutdownAll(bool abortive) {
-  for (size_t i = 0; i < maxFd_; ++i) {
-    auto& sref = data_[i];
+  for (int i = 0; i < maxFd_; ++i) {
+    auto& sref = data_[size_t(i)];
     if (sref.load(std::memory_order_acquire) == IN_USE) {
       shutdown(i, abortive);
     }

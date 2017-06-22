@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,31 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_CORE_H
-#define FOLLY_GEN_CORE_H
+#pragma once
+#define FOLLY_GEN_CORE_H_
 
-namespace folly { namespace gen {
+namespace folly {
+namespace gen {
 
-template<class Value, class Self>
+template <class Value, class Self>
 class GenImpl;
 
-template<class Self>
+template <class Self>
 class Operator;
 
 namespace detail {
 
-template<class Self>
+template <class Self>
 struct FBounded;
 
-template<class First, class Second>
+template <class First, class Second>
 class Composed;
 
-template<class Value, class First, class Second>
+template <class Value, class First, class Second>
 class Chain;
 
 } // detail
-
-}} // folly::gen
+} // gen
+} // folly
 
 #include <folly/gen/Core-inl.h>
-
-#endif // FOLLY_GEN_CORE_H

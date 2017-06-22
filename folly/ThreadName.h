@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,29 +16,51 @@
 
 #pragma once
 
-#include <pthread.h>
+#include <string>
+#include <thread>
+
+#include <folly/Optional.h>
 #include <folly/Range.h>
+#include <folly/portability/Config.h>
+#include <folly/portability/PThread.h>
 
 namespace folly {
 
-// This looks a bit weird, but it's necessary to avoid
-// having an undefined compiler function called.
-#if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
-#if __GLIBC_PREREQ(2, 12)
-# define FOLLY_HAS_PTHREAD_SETNAME_NP
-#endif
+/**
+ * This returns true if the current platform supports setting the name of the
+ * current thread.
+ */
+bool canSetCurrentThreadName();
+
+/**
+ * This returns true if the current platform supports setting the name of
+ * threads other than the one currently executing.
+ */
+bool canSetOtherThreadName();
+
+/**
+ * Get the name of the given thread, or nothing if an error occurs
+ * or the functionality is not available.
+ */
+Optional<std::string> getThreadName(std::thread::id tid);
+
+/**
+ * Equivalent to getThreadName(std::this_thread::get_id());
+ */
+Optional<std::string> getCurrentThreadName();
+
+/**
+ * Set the name of the given thread.
+ * Returns false on failure, if an error occurs or the functionality
+ * is not available.
+ */
+bool setThreadName(std::thread::id tid, StringPiece name);
+#if FOLLY_HAVE_PTHREAD
+bool setThreadName(pthread_t pid, StringPiece name);
 #endif
 
-inline bool setThreadName(pthread_t id, StringPiece name) {
-#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP
-  return 0 == pthread_setname_np(id, name.fbstr().substr(0, 15).c_str());
-#else
-  return false;
-#endif
-}
-
-inline bool setThreadName(StringPiece name) {
-  return setThreadName(pthread_self(), name);
-}
-
+/**
+ * Equivalent to setThreadName(std::this_thread::get_id(), name);
+ */
+bool setThreadName(StringPiece name);
 }

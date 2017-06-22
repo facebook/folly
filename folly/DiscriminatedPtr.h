@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,7 @@
  * @author Tudor Bosman (tudorb@fb.com)
  */
 
-#ifndef FOLLY_DISCRIMINATEDPTR_H_
-#define FOLLY_DISCRIMINATEDPTR_H_
+#pragma once
 
 #include <limits>
 #include <stdexcept>
@@ -34,8 +33,8 @@
 #include <folly/Portability.h>
 #include <folly/detail/DiscriminatedPtrDetail.h>
 
-#if !FOLLY_X64
-# error "DiscriminatedPtr is x64-specific code."
+#if !FOLLY_X64 && !FOLLY_A64 && !FOLLY_PPC64
+# error "DiscriminatedPtr is x64, arm64 and ppc64 specific code."
 #endif
 
 namespace folly {
@@ -191,8 +190,8 @@ class DiscriminatedPtr {
    * Get the 1-based type index of T in Types.
    */
   template <typename T>
-  size_t typeIndex() const {
-    return dptr_detail::GetTypeIndex<T, Types...>::value;
+  uint16_t typeIndex() const {
+    return uint16_t(dptr_detail::GetTypeIndex<T, Types...>::value);
   }
 
   uint16_t index() const { return data_ >> 48; }
@@ -216,6 +215,25 @@ class DiscriminatedPtr {
   uintptr_t data_;
 };
 
-}  // namespace folly
+template <typename Visitor, typename... Args>
+decltype(auto) apply_visitor(
+    Visitor&& visitor,
+    const DiscriminatedPtr<Args...>& variant) {
+  return variant.apply(std::forward<Visitor>(visitor));
+}
 
-#endif /* FOLLY_DISCRIMINATEDPTR_H_ */
+template <typename Visitor, typename... Args>
+decltype(auto) apply_visitor(
+    Visitor&& visitor,
+    DiscriminatedPtr<Args...>& variant) {
+  return variant.apply(std::forward<Visitor>(visitor));
+}
+
+template <typename Visitor, typename... Args>
+decltype(auto) apply_visitor(
+    Visitor&& visitor,
+    DiscriminatedPtr<Args...>&& variant) {
+  return variant.apply(std::forward<Visitor>(visitor));
+}
+
+}  // namespace folly

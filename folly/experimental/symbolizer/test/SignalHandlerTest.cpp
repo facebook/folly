@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@
 #include <folly/experimental/symbolizer/test/SignalHandlerTest.h>
 #include <folly/experimental/symbolizer/SignalHandler.h>
 
-#include <gtest/gtest.h>
-
 #include <folly/FileUtil.h>
 #include <folly/Range.h>
 #include <folly/CPortability.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace symbolizer { namespace test {
 
@@ -60,17 +59,18 @@ TEST(SignalHandler, Simple) {
       "^\\*\\*\\* Aborted at [0-9]+ \\(Unix time, try 'date -d @[0-9]+'\\) "
       "\\*\\*\\*\n"
       "\\*\\*\\* Signal 11 \\(SIGSEGV\\) \\(0x2a\\) received by PID [0-9]+ "
-      "\\(pthread TID 0x[0-9a-f]+\\) \\(linux TID [0-9]+\\), "
+      "\\(pthread TID 0x[0-9a-f]+\\) \\(linux TID [0-9]+\\) "
+      "\\(maybe from PID [0-9]+, UID [0-9]+\\) "
+      "\\(code: address not mapped to object\\), "
       "stack trace: \\*\\*\\*\n"
       ".*\n"
-      "    @ [0-9a-f]+ folly::symbolizer::test::SignalHandler_Simple_Test"
-      "::TestBody\\(\\)\n"
+      ".*    @ [0-9a-f]+.* folly::symbolizer::test::SignalHandler_Simple_Test"
+      "::TestBody\\(\\).*\n"
       ".*\n"
-      "    @ [0-9a-f]+ main\n"
+      ".*    @ [0-9a-f]+.* main.*\n"
       ".*\n"
       "Callback1\n"
-      "Callback2\n"
-      );
+      "Callback2\n");
 #endif
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-
 #include <folly/experimental/symbolizer/Dwarf.h>
 
 #include <type_traits>
 
+#if FOLLY_HAVE_LIBDWARF_DWARF_H
+#include <libdwarf/dwarf.h>
+#else
 #include <dwarf.h>
+#endif
 
 namespace folly {
 namespace symbolizer {
@@ -300,7 +303,11 @@ bool Dwarf::getSection(const char* name, folly::StringPiece* section) const {
   if (!elfSection) {
     return false;
   }
-
+#ifdef SHF_COMPRESSED
+  if (elfSection->sh_flags & SHF_COMPRESSED) {
+    return false;
+  }
+#endif
   *section = elf_->getSectionBody(*elfSection);
   return true;
 }
@@ -309,13 +316,15 @@ void Dwarf::init() {
   // Make sure that all .debug_* sections exist
   if (!getSection(".debug_info", &info_) ||
       !getSection(".debug_abbrev", &abbrev_) ||
-      !getSection(".debug_aranges", &aranges_) ||
       !getSection(".debug_line", &line_) ||
       !getSection(".debug_str", &strings_)) {
     elf_ = nullptr;
     return;
   }
-  getSection(".debug_str", &strings_);
+
+  // Optional: fast address range lookup. If missing .debug_info can
+  // be used - but it's much slower (linear scan).
+  getSection(".debug_aranges", &aranges_);
 }
 
 bool Dwarf::readAbbreviation(folly::StringPiece& section,
@@ -423,23 +432,20 @@ folly::StringPiece Dwarf::getStringFromStringSection(uint64_t offset) const {
   return readNullTerminated(sp);
 }
 
-bool Dwarf::findAddress(uintptr_t address, LocationInfo& locationInfo) const {
-  locationInfo = LocationInfo();
-
-  if (!elf_) {  // no file
-    return false;
-  }
-
-  // Find address range in .debug_aranges, map to compilation unit
-  Section arangesSection(aranges_);
+/**
+ * Find @address in .debug_aranges and return the offset in
+ * .debug_info for compilation unit to which this address belongs.
+ */
+bool Dwarf::findDebugInfoOffset(uintptr_t address,
+                                StringPiece aranges,
+                                uint64_t& offset) {
+  Section arangesSection(aranges);
   folly::StringPiece chunk;
-  uint64_t debugInfoOffset;
-  bool found = false;
-  while (!found && arangesSection.next(chunk)) {
+  while (arangesSection.next(chunk)) {
     auto version = read<uint16_t>(chunk);
     FOLLY_SAFE_CHECK(version == 2, "invalid aranges version");
 
-    debugInfoOffset = readOffset(chunk, arangesSection.is64Bit());
+    offset = readOffset(chunk, arangesSection.is64Bit());
     auto addressSize = read<uint8_t>(chunk);
     FOLLY_SAFE_CHECK(addressSize == sizeof(uintptr_t), "invalid address size");
     auto segmentSize = read<uint8_t>(chunk);
@@ -448,31 +454,48 @@ bool Dwarf::findAddress(uintptr_t address, LocationInfo& locationInfo) const {
     // Padded to a multiple of 2 addresses.
     // Strangely enough, this is the only place in the DWARF spec that requires
     // padding.
-    skipPadding(chunk, aranges_.data(), 2 * sizeof(uintptr_t));
+    skipPadding(chunk, aranges.data(), 2 * sizeof(uintptr_t));
     for (;;) {
       auto start = read<uintptr_t>(chunk);
       auto length = read<uintptr_t>(chunk);
 
-      if (start == 0) {
+      if (start == 0 && length == 0) {
         break;
       }
 
       // Is our address in this range?
       if (address >= start && address < start + length) {
-        found = true;
-        break;
+        return true;
       }
     }
   }
+  return false;
+}
 
-  if (!found) {
-    return false;
-  }
+/**
+ * Find the @locationInfo for @address in the compilation unit represented
+ * by the @sp .debug_info entry.
+ * Returns whether the address was found.
+ * Advances @sp to the next entry in .debug_info.
+ */
+bool Dwarf::findLocation(uintptr_t address,
+                         StringPiece& infoEntry,
+                         LocationInfo& locationInfo) const {
+  // For each compilation unit compiled with a DWARF producer, a
+  // contribution is made to the .debug_info section of the object
+  // file. Each such contribution consists of a compilation unit
+  // header (see Section 7.5.1.1) followed by a single
+  // DW_TAG_compile_unit or DW_TAG_partial_unit debugging information
+  // entry, together with its children.
 
-  // Read compilation unit header from .debug_info
-  folly::StringPiece sp(info_);
-  sp.advance(debugInfoOffset);
-  Section debugInfoSection(sp);
+  // 7.5.1.1 Compilation Unit Header
+  //  1. unit_length (4B or 12B): read by Section::next
+  //  2. version (2B)
+  //  3. debug_abbrev_offset (4B or 8B): offset into the .debug_abbrev section
+  //  4. address_size (1B)
+
+  Section debugInfoSection(infoEntry);
+  folly::StringPiece chunk;
   FOLLY_SAFE_CHECK(debugInfoSection.next(chunk), "invalid debug info");
 
   auto version = read<uint16_t>(chunk);
@@ -481,14 +504,17 @@ bool Dwarf::findAddress(uintptr_t address, LocationInfo& locationInfo) const {
   auto addressSize = read<uint8_t>(chunk);
   FOLLY_SAFE_CHECK(addressSize == sizeof(uintptr_t), "invalid address size");
 
-  // We survived so far.  The first (and only) DIE should be
-  // DW_TAG_compile_unit
+  // We survived so far. The first (and only) DIE should be DW_TAG_compile_unit
+  // NOTE: - binutils <= 2.25 does not issue DW_TAG_partial_unit.
+  //       - dwarf compression tools like `dwz` may generate it.
   // TODO(tudorb): Handle DW_TAG_partial_unit?
   auto code = readULEB(chunk);
   FOLLY_SAFE_CHECK(code != 0, "invalid code");
   auto abbr = getAbbreviation(code, abbrevOffset);
   FOLLY_SAFE_CHECK(abbr.tag == DW_TAG_compile_unit,
                    "expecting compile unit entry");
+  // Skip children entries, advance to the next compilation unit entry.
+  infoEntry.advance(chunk.end() - infoEntry.begin());
 
   // Read attributes, extracting the few we care about
   bool foundLineOffset = false;
@@ -528,17 +554,63 @@ bool Dwarf::findAddress(uintptr_t address, LocationInfo& locationInfo) const {
     locationInfo.mainFile = Path(compilationDirectory, "", mainFileName);
   }
 
-  if (foundLineOffset) {
-    folly::StringPiece lineSection(line_);
-    lineSection.advance(lineOffset);
-    LineNumberVM lineVM(lineSection, compilationDirectory);
-
-    // Execute line number VM program to find file and line
-    locationInfo.hasFileAndLine =
-      lineVM.findAddress(address, locationInfo.file, locationInfo.line);
+  if (!foundLineOffset) {
+    return false;
   }
 
-  return true;
+  folly::StringPiece lineSection(line_);
+  lineSection.advance(lineOffset);
+  LineNumberVM lineVM(lineSection, compilationDirectory);
+
+  // Execute line number VM program to find file and line
+  locationInfo.hasFileAndLine =
+      lineVM.findAddress(address, locationInfo.file, locationInfo.line);
+  return locationInfo.hasFileAndLine;
+}
+
+bool Dwarf::findAddress(uintptr_t address,
+                        LocationInfo& locationInfo,
+                        LocationInfoMode mode) const {
+  locationInfo = LocationInfo();
+
+  if (mode == LocationInfoMode::DISABLED) {
+    return false;
+  }
+
+  if (!elf_) { // No file.
+    return false;
+  }
+
+  if (!aranges_.empty()) {
+    // Fast path: find the right .debug_info entry by looking up the
+    // address in .debug_aranges.
+    uint64_t offset = 0;
+    if (findDebugInfoOffset(address, aranges_, offset)) {
+      // Read compilation unit header from .debug_info
+      folly::StringPiece infoEntry(info_);
+      infoEntry.advance(offset);
+      findLocation(address, infoEntry, locationInfo);
+      return locationInfo.hasFileAndLine;
+    } else if (mode == LocationInfoMode::FAST) {
+      // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
+      // in .debug_aranges for some functions, but always generates
+      // .debug_info entries.  Scanning .debug_info is slow, so fall back to
+      // it only if such behavior is requested via LocationInfoMode.
+      return false;
+    } else {
+      DCHECK(mode == LocationInfoMode::FULL);
+      // Fall back to the linear scan.
+    }
+  }
+
+
+  // Slow path (linear scan): Iterate over all .debug_info entries
+  // and look for the address in each compilation unit.
+  folly::StringPiece infoEntry(info_);
+  while (!infoEntry.empty() && !locationInfo.hasFileAndLine) {
+    findLocation(address, infoEntry, locationInfo);
+  }
+  return locationInfo.hasFileAndLine;
 }
 
 Dwarf::LineNumberVM::LineNumberVM(folly::StringPiece data,

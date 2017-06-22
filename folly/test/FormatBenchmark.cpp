@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,54 +18,67 @@
 
 #include <glog/logging.h>
 
-#include <folly/FBVector.h>
 #include <folly/Benchmark.h>
+#include <folly/FBVector.h>
 #include <folly/dynamic.h>
+#include <folly/init/Init.h>
 #include <folly/json.h>
 
 using namespace folly;
 
 namespace {
 
-char bigBuf[300];
+std::array<char, 300> bigBuf;
 
-}  // namespace
+std::string getShortString() {
+  return "ABCDEFGHIJ";
+}
 
-BENCHMARK(octal_sprintf, iters) {
+std::string getLongString() {
+  return std::string(256, 'A');
+}
+
+} // namespace
+
+BENCHMARK(octal_snprintf, iters) {
   while (iters--) {
-    sprintf(bigBuf, "%o", static_cast<unsigned int>(iters));
+    snprintf(
+        bigBuf.data(), bigBuf.size(), "%o", static_cast<unsigned int>(iters));
   }
 }
 
 BENCHMARK_RELATIVE(octal_uintToOctal, iters) {
   while (iters--) {
-    detail::uintToOctal(bigBuf, detail::kMaxOctalLength,
-                        static_cast<unsigned int>(iters));
+    detail::uintToOctal(
+        bigBuf.data(),
+        detail::kMaxOctalLength,
+        static_cast<unsigned int>(iters));
   }
 }
 
 BENCHMARK_DRAW_LINE()
 
-BENCHMARK(hex_sprintf, iters) {
+BENCHMARK(hex_snprintf, iters) {
   while (iters--) {
-    sprintf(bigBuf, "%x", static_cast<unsigned int>(iters));
+    snprintf(
+        bigBuf.data(), bigBuf.size(), "%x", static_cast<unsigned int>(iters));
   }
 }
 
 BENCHMARK_RELATIVE(hex_uintToHex, iters) {
   while (iters--) {
-    detail::uintToHexLower(bigBuf, detail::kMaxHexLength,
-                           static_cast<unsigned int>(iters));
+    detail::uintToHexLower(
+        bigBuf.data(), detail::kMaxHexLength, static_cast<unsigned int>(iters));
   }
 }
 
 BENCHMARK_DRAW_LINE()
 
-BENCHMARK(intAppend_sprintf) {
+BENCHMARK(intAppend_snprintf) {
   fbstring out;
   for (int i = -1000; i < 1000; i++) {
-    sprintf(bigBuf, "%d", i);
-    out.append(bigBuf);
+    snprintf(bigBuf.data(), bigBuf.size(), "%d", i);
+    out.append(bigBuf.data());
   }
 }
 
@@ -85,40 +98,52 @@ BENCHMARK_RELATIVE(intAppend_format) {
 
 BENCHMARK_DRAW_LINE()
 
-BENCHMARK(bigFormat_sprintf, iters) {
+template <size_t... Indexes>
+int snprintf20Numbers(int i, std::index_sequence<Indexes...>) {
+  static_assert(20 == sizeof...(Indexes), "Must have exactly 20 indexes");
+  return snprintf(
+      bigBuf.data(),
+      bigBuf.size(),
+      "%d %d %d %d %d"
+      "%d %d %d %d %d"
+      "%d %d %d %d %d"
+      "%d %d %d %d %d",
+      (i + static_cast<int>(Indexes))...);
+}
+
+BENCHMARK(bigFormat_snprintf, iters) {
   while (iters--) {
     for (int i = -100; i < 100; i++) {
-      sprintf(bigBuf,
-              "%d %d %d %d %d"
-              "%d %d %d %d %d"
-              "%d %d %d %d %d"
-              "%d %d %d %d %d",
-              i, i+1, i+2, i+3, i+4,
-              i+5, i+6, i+7, i+8, i+9,
-              i+10, i+11, i+12, i+13, i+14,
-              i+15, i+16, i+17, i+18, i+19);
+      snprintf20Numbers(i, std::make_index_sequence<20>());
     }
   }
 }
 
+template <size_t... Indexes>
+decltype(auto) format20Numbers(int i, std::index_sequence<Indexes...>) {
+  static_assert(20 == sizeof...(Indexes), "Must have exactly 20 indexes");
+  return format(
+      "{} {} {} {} {}"
+      "{} {} {} {} {}"
+      "{} {} {} {} {}"
+      "{} {} {} {} {}",
+      (i + static_cast<int>(Indexes))...);
+}
+
 BENCHMARK_RELATIVE(bigFormat_format, iters) {
+  BenchmarkSuspender suspender;
   char* p;
-  auto writeToBuf = [&p] (StringPiece sp) mutable {
+  auto writeToBuf = [&p](StringPiece sp) mutable {
     memcpy(p, sp.data(), sp.size());
     p += sp.size();
   };
 
   while (iters--) {
     for (int i = -100; i < 100; i++) {
-      p = bigBuf;
-      format("{} {} {} {} {}"
-             "{} {} {} {} {}"
-             "{} {} {} {} {}"
-             "{} {} {} {} {}",
-              i, i+1, i+2, i+3, i+4,
-              i+5, i+6, i+7, i+8, i+9,
-              i+10, i+11, i+12, i+13, i+14,
-              i+15, i+16, i+17, i+18, i+19)(writeToBuf);
+      p = bigBuf.data();
+      suspender.dismissing([&] {
+        format20Numbers(i, std::make_index_sequence<20>())(writeToBuf);
+      });
     }
   }
 }
@@ -126,62 +151,184 @@ BENCHMARK_RELATIVE(bigFormat_format, iters) {
 BENCHMARK_DRAW_LINE()
 
 BENCHMARK(format_nested_strings, iters) {
+  BenchmarkSuspender suspender;
   while (iters--) {
-    fbstring out;
     for (int i = 0; i < 1000; ++i) {
-      out.clear();
-      format(&out, "{} {}",
-             format("{} {}", i, i + 1).str(),
-             format("{} {}", -i, -i - 1).str());
+      fbstring out;
+      suspender.dismissing([&] {
+        format(
+            &out,
+            "{} {}",
+            format("{} {}", i, i + 1).str(),
+            format("{} {}", -i, -i - 1).str());
+      });
     }
   }
 }
 
 BENCHMARK_RELATIVE(format_nested_fbstrings, iters) {
+  BenchmarkSuspender suspender;
   while (iters--) {
-    fbstring out;
     for (int i = 0; i < 1000; ++i) {
-      out.clear();
-      format(&out, "{} {}",
-             format("{} {}", i, i + 1).fbstr(),
-             format("{} {}", -i, -i - 1).fbstr());
+      fbstring out;
+      suspender.dismissing([&] {
+        format(
+            &out,
+            "{} {}",
+            format("{} {}", i, i + 1).fbstr(),
+            format("{} {}", -i, -i - 1).fbstr());
+      });
     }
   }
 }
 
 BENCHMARK_RELATIVE(format_nested_direct, iters) {
+  BenchmarkSuspender suspender;
   while (iters--) {
-    fbstring out;
     for (int i = 0; i < 1000; ++i) {
-      out.clear();
-      format(&out, "{} {}",
-             format("{} {}", i, i + 1),
-             format("{} {}", -i, -i - 1));
+      fbstring out;
+      suspender.dismissing([&] {
+        format(
+            &out,
+            "{} {}",
+            format("{} {}", i, i + 1),
+            format("{} {}", -i, -i - 1));
+      });
     }
   }
 }
 
-// Benchmark results on my dev server (dual-CPU Xeon L5520 @ 2.7GHz)
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(copy_short_string, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { out = shortString; });
+  }
+}
+
+BENCHMARK_RELATIVE(format_short_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, shortString); });
+  }
+}
+
+BENCHMARK_RELATIVE(format_short_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, "{}", shortString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_short_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat(shortString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_short_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat("{}", shortString); });
+  }
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(copy_long_string, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { out = longString; });
+  }
+}
+
+BENCHMARK_RELATIVE(format_long_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, longString); });
+  }
+}
+
+BENCHMARK_RELATIVE(format_long_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, "{}", longString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_long_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat(longString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_long_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat("{}", longString); });
+  }
+}
+
+// Benchmark results on my dev server (20-core Intel Xeon E5-2660 v2 @ 2.20GHz)
 //
 // ============================================================================
-// folly/test/FormatTest.cpp                         relative  ns/iter  iters/s
+// folly/test/FormatBenchmark.cpp                  relative  time/iter  iters/s
 // ============================================================================
-// octal_sprintf                                               100.57     9.94M
-// octal_uintToOctal                                 2599.47%    3.87   258.46M
+// octal_snprintf                                              79.30ns   12.61M
+// octal_uintToOctal                               3452.19%     2.30ns  435.35M
 // ----------------------------------------------------------------------------
-// hex_sprintf                                                 100.13     9.99M
-// hex_uintToHex                                     3331.75%    3.01   332.73M
+// hex_snprintf                                                73.59ns   13.59M
+// hex_uintToHex                                   4507.53%     1.63ns  612.49M
 // ----------------------------------------------------------------------------
-// intAppend_sprintf                                           406.07K    2.46K
-// intAppend_to                                       166.03%  244.58K    4.09K
-// intAppend_format                                   147.57%  275.17K    3.63K
+// intAppend_snprintf                                         191.50us    5.22K
+// intAppend_to                                     552.46%    34.66us   28.85K
+// intAppend_format                                 215.76%    88.76us   11.27K
 // ----------------------------------------------------------------------------
-// bigFormat_sprintf                                           255.40K    3.92K
-// bigFormat_format                                   102.18%  249.94K    4.00K
+// bigFormat_snprintf                                         178.03us    5.62K
+// bigFormat_format                                  90.41%   196.91us    5.08K
+// ----------------------------------------------------------------------------
+// format_nested_strings                                      317.65us    3.15K
+// format_nested_fbstrings                           99.89%   318.01us    3.14K
+// format_nested_direct                             116.52%   272.62us    3.67K
+// ----------------------------------------------------------------------------
+// copy_short_string                                           28.33ns   35.30M
+// format_short_string_unsafe                        82.51%    34.33ns   29.13M
+// format_short_string_safe                          58.92%    48.08ns   20.80M
+// sformat_short_string_unsafe                       73.90%    38.33ns   26.09M
+// sformat_short_string_safe                         54.97%    51.53ns   19.41M
+// ----------------------------------------------------------------------------
+// copy_long_string                                            57.56ns   17.37M
+// format_long_string_unsafe                         68.79%    83.68ns   11.95M
+// format_long_string_safe                           69.44%    82.89ns   12.06M
+// sformat_long_string_unsafe                        65.58%    87.77ns   11.39M
+// sformat_long_string_safe                          68.14%    84.47ns   11.84M
 // ============================================================================
 
-int main(int argc, char *argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+int main(int argc, char* argv[]) {
+  init(&argc, &argv, true);
   runBenchmarks();
   return 0;
 }

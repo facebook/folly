@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,17 +20,16 @@
 #include <folly/FBString.h>
 
 #include <cstdlib>
-
 #include <list>
 #include <fstream>
-#include <boost/algorithm/string.hpp>
+#include <sstream>
+
 #include <boost/random.hpp>
 
-#include <gflags/gflags.h>
-
+#include <folly/Benchmark.h>
 #include <folly/Foreach.h>
 #include <folly/Random.h>
-#include <folly/Benchmark.h>
+#include <folly/portability/GFlags.h>
 
 using namespace std;
 using namespace folly;
@@ -38,8 +37,6 @@ using namespace folly;
 static const int seed = folly::randomNumberSeed();
 typedef boost::mt19937 RandomT;
 static RandomT rng(seed);
-static const size_t maxString = 100;
-static const bool avoidAliasing = true;
 
 template <class Integral1, class Integral2>
 Integral2 random(Integral1 low, Integral2 up) {
@@ -48,18 +45,18 @@ Integral2 random(Integral1 low, Integral2 up) {
 }
 
 template <class String>
-void randomString(String* toFill, unsigned int maxSize = 1000) {
+void randomString(String* toFill, size_t size = 1000) {
   assert(toFill);
-  toFill->resize(random(0, maxSize));
+  toFill->resize(size);
   FOR_EACH (i, *toFill) {
     *i = random('a', 'z');
   }
 }
 
 template <class String>
-void randomBinaryString(String* toFill, unsigned int maxSize = 1000) {
+void randomBinaryString(String* toFill, size_t size = 1000) {
   assert(toFill);
-  toFill->resize(random(0, maxSize));
+  toFill->resize(size);
   FOR_EACH (i, *toFill) {
     *i = random('0', '1');
   }

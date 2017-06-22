@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,6 @@
 #include <sys/prctl.h>
 #endif
 #include <fcntl.h>
-#include <poll.h>
-
-#include <unistd.h>
 
 #include <array>
 #include <algorithm>
@@ -37,13 +34,17 @@
 
 #include <glog/logging.h>
 
+#include <folly/Assume.h>
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Shell.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
-
-extern char** environ;
+#include <folly/portability/Sockets.h>
+#include <folly/portability/Stdlib.h>
+#include <folly/portability/SysSyscall.h>
+#include <folly/portability/Unistd.h>
 
 constexpr int kExecFailure = 127;
 constexpr int kChildFailure = 126;
@@ -107,24 +108,28 @@ std::string ProcessReturnCode::str() const {
     return to<std::string>("killed by signal ", killSignal(),
                            (coreDumped() ? " (core dumped)" : ""));
   }
-  CHECK(false);  // unreached
-  return "";  // silence GCC warning
+  assume_unreachable();
 }
 
 CalledProcessError::CalledProcessError(ProcessReturnCode rc)
-  : returnCode_(rc),
-    what_(returnCode_.str()) {
+    : SubprocessError(rc.str()), returnCode_(rc) {}
+
+static inline std::string toSubprocessSpawnErrorMessage(
+    char const* executable,
+    int errCode,
+    int errnoValue) {
+  auto prefix = errCode == kExecFailure ? "failed to execute "
+                                        : "error preparing to execute ";
+  return to<std::string>(prefix, executable, ": ", errnoStr(errnoValue));
 }
 
-SubprocessSpawnError::SubprocessSpawnError(const char* executable,
-                                           int errCode,
-                                           int errnoValue)
-  : errnoValue_(errnoValue),
-    what_(to<std::string>(errCode == kExecFailure ?
-                            "failed to execute " :
-                            "error preparing to execute ",
-                          executable, ": ", errnoStr(errnoValue))) {
-}
+SubprocessSpawnError::SubprocessSpawnError(
+    const char* executable,
+    int errCode,
+    int errnoValue)
+    : SubprocessError(
+          toSubprocessSpawnErrorMessage(executable, errCode, errnoValue)),
+      errnoValue_(errnoValue) {}
 
 namespace {
 
@@ -163,13 +168,13 @@ Subprocess::Options& Subprocess::Options::fd(int fd, int action) {
   return *this;
 }
 
+Subprocess::Subprocess() {}
+
 Subprocess::Subprocess(
     const std::vector<std::string>& argv,
     const Options& options,
     const char* executable,
-    const std::vector<std::string>* env)
-  : pid_(-1),
-    returnCode_(RV_NOT_STARTED) {
+    const std::vector<std::string>* env) {
   if (argv.empty()) {
     throw std::invalid_argument("argv must not be empty");
   }
@@ -180,23 +185,13 @@ Subprocess::Subprocess(
 Subprocess::Subprocess(
     const std::string& cmd,
     const Options& options,
-    const std::vector<std::string>* env)
-  : pid_(-1),
-    returnCode_(RV_NOT_STARTED) {
+    const std::vector<std::string>* env) {
   if (options.usePath_) {
     throw std::invalid_argument("usePath() not allowed when running in shell");
   }
-  const char* shell = getenv("SHELL");
-  if (!shell) {
-    shell = "/bin/sh";
-  }
 
-  std::unique_ptr<const char*[]> argv(new const char*[4]);
-  argv[0] = shell;
-  argv[1] = "-c";
-  argv[2] = cmd.c_str();
-  argv[3] = nullptr;
-  spawn(std::move(argv), shell, options, env);
+  std::vector<std::string> argv = {"/bin/sh", "-c", cmd};
+  spawn(cloneStrings(argv), argv[0].c_str(), options, env);
 }
 
 Subprocess::~Subprocess() {
@@ -211,8 +206,7 @@ struct ChildErrorInfo {
   int errnoValue;
 };
 
-FOLLY_NORETURN void childError(int errFd, int errCode, int errnoValue);
-void childError(int errFd, int errCode, int errnoValue) {
+[[noreturn]] void childError(int errFd, int errCode, int errnoValue) {
   ChildErrorInfo info = {errCode, errnoValue};
   // Write the error information over the pipe to our parent process.
   // We can't really do anything else if this write call fails.
@@ -401,7 +395,19 @@ void Subprocess::spawnInternal(
   // Call c_str() here, as it's not necessarily safe after fork.
   const char* childDir =
     options.childDir_.empty() ? nullptr : options.childDir_.c_str();
-  pid_t pid = vfork();
+
+  pid_t pid;
+#ifdef __linux__
+  if (options.cloneFlags_) {
+    pid = syscall(SYS_clone, *options.cloneFlags_, 0, nullptr, nullptr);
+    checkUnixError(pid, errno, "clone");
+  } else {
+#endif
+    pid = vfork();
+    checkUnixError(pid, errno, "vfork");
+#ifdef __linux__
+  }
+#endif
   if (pid == 0) {
     int errnoValue = prepareChild(options, &oldSignals, childDir);
     if (errnoValue != 0) {
@@ -412,8 +418,6 @@ void Subprocess::spawnInternal(
     // If we get here, exec() failed.
     childError(errFd, kExecFailure, errnoValue);
   }
-  // In parent.  Make sure vfork() succeeded.
-  checkUnixError(pid, errno, "vfork");
 
   // Child is alive.  We have to be very careful about throwing after this
   // point.  We are inside the constructor, so if we throw the Subprocess
@@ -481,7 +485,9 @@ int Subprocess::prepareChild(const Options& options,
 #if __linux__
   // Opt to receive signal on parent death, if requested
   if (options.parentDeathSignal_ != 0) {
-    if (prctl(PR_SET_PDEATHSIG, options.parentDeathSignal_, 0, 0, 0) == -1) {
+    const auto parentDeathSignal =
+        static_cast<unsigned long>(options.parentDeathSignal_);
+    if (prctl(PR_SET_PDEATHSIG, parentDeathSignal, 0, 0, 0) == -1) {
       return errno;
     }
   }
@@ -490,6 +496,13 @@ int Subprocess::prepareChild(const Options& options,
   if (options.processGroupLeader_) {
     if (setpgrp() == -1) {
       return errno;
+    }
+  }
+
+  // The user callback comes last, so that the child is otherwise all set up.
+  if (options.dangerousPostForkPreExecCallback_) {
+    if (int error = (*options.dangerousPostForkPreExecCallback_)()) {
+      return error;
     }
   }
 
@@ -537,11 +550,11 @@ void Subprocess::readChildErrorPipe(int pfd, const char* executable) {
   throw SubprocessSpawnError(executable, info.errCode, info.errnoValue);
 }
 
-ProcessReturnCode Subprocess::poll() {
+ProcessReturnCode Subprocess::poll(struct rusage* ru) {
   returnCode_.enforce(ProcessReturnCode::RUNNING);
   DCHECK_GT(pid_, 0);
   int status;
-  pid_t found = ::waitpid(pid_, &status, WNOHANG);
+  pid_t found = ::wait4(pid_, &status, WNOHANG, ru);
   // The spec guarantees that EINTR does not occur with WNOHANG, so the only
   // two remaining errors are ECHILD (other code reaped the child?), or
   // EINVAL (cosmic rays?), both of which merit an abort:
@@ -599,21 +612,23 @@ pid_t Subprocess::pid() const {
 
 namespace {
 
-std::pair<const uint8_t*, size_t> queueFront(const IOBufQueue& queue) {
+ByteRange queueFront(const IOBufQueue& queue) {
   auto* p = queue.front();
-  if (!p) return std::make_pair(nullptr, 0);
-  return io::Cursor(p).peek();
+  if (!p) {
+    return ByteRange{};
+  }
+  return io::Cursor(p).peekBytes();
 }
 
 // fd write
 bool handleWrite(int fd, IOBufQueue& queue) {
   for (;;) {
-    auto p = queueFront(queue);
-    if (p.second == 0) {
+    auto b = queueFront(queue);
+    if (b.empty()) {
       return true;  // EOF
     }
 
-    ssize_t n = writeNoInt(fd, p.first, p.second);
+    ssize_t n = writeNoInt(fd, b.data(), b.size());
     if (n == -1 && errno == EAGAIN) {
       return false;
     }
@@ -826,7 +841,8 @@ std::vector<Subprocess::ChildPipe> Subprocess::takeOwnershipOfPipes() {
   for (auto& p : pipes_) {
     pipes.emplace_back(p.childFd, std::move(p.pipe));
   }
-  pipes_.clear();
+  // release memory
+  std::vector<Pipe>().swap(pipes_);
   return pipes;
 }
 

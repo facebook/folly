@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_CHECKSUMDETAIL_H_
-#define FOLLY_DETAIL_CHECKSUMDETAIL_H_
+#pragma once
+
+#include <folly/Portability.h>
+
+#if FOLLY_SSE_PREREQ(4, 2)
+#include <immintrin.h>
+#endif
+
+#include <stdint.h>
+#include <cstddef>
 
 namespace folly { namespace detail {
 
@@ -52,7 +60,41 @@ bool crc32c_hw_supported();
 uint32_t crc32c_sw(const uint8_t* data, size_t nbytes,
     uint32_t startingChecksum = ~0U);
 
+/**
+ * Compute a CRC-32 checksum of a buffer using a hardware-accelerated
+ * implementation.
+ *
+ * @note This function is exposed to support special cases where the
+ *       calling code is absolutely certain it ought to invoke a hardware-
+ *       accelerated CRC-32 implementation - unit tests, for example.  For
+ *       all other scenarios, please call crc32() and let it pick an
+ *       implementation based on the capabilities of the underlying CPU.
+ */
+uint32_t
+crc32_hw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
+#if FOLLY_SSE_PREREQ(4, 2)
+uint32_t
+crc32_hw_aligned(uint32_t remainder, const __m128i* p, size_t vec_count);
+#endif
+
+/**
+ * Check whether a hardware-accelerated CRC-32 implementation is
+ * supported on the current CPU.
+ */
+bool crc32_hw_supported();
+
+/**
+ * Compute a CRC-32 checksum of a buffer using a portable,
+ * software-only implementation.
+ *
+ * @note This function is exposed to support special cases where the
+ *       calling code is absolutely certain it wants to use the software
+ *       implementation instead of the hardware-accelerated code - unit
+ *       tests, for example.  For all other scenarios, please call crc32()
+ *       and let it pick an implementation based on the capabilities of
+ *       the underlying CPU.
+ */
+uint32_t
+crc32_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 }} // folly::detail
-
-#endif /* FOLLY_DETAIL_CHECKSUMDETAIL_H_ */

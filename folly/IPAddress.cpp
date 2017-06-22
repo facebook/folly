@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,9 @@
 #include <string>
 #include <vector>
 
+#include <folly/Conv.h>
 #include <folly/String.h>
+#include <folly/detail/IPAddressSource.h>
 
 using std::ostream;
 using std::string;
@@ -42,6 +44,10 @@ void toAppend(IPAddress addr, string* result) {
 }
 void toAppend(IPAddress addr, fbstring* result) {
   result->append(addr.str());
+}
+
+bool IPAddress::validate(StringPiece ip) {
+  return IPAddressV4::validate(ip) || IPAddressV6::validate(ip);
 }
 
 // public static
@@ -75,27 +81,41 @@ CIDRNetwork IPAddress::createNetwork(StringPiece ipSlashCidr,
 
   if (elemCount == 0 || // weird invalid string
       elemCount > 2) { // invalid string (IP/CIDR/extras)
-    throw IPAddressFormatException("Invalid ipSlashCidr specified. ",
-                                   "Expected IP/CIDR format, got ",
-                                   "'", ipSlashCidr, "'");
+    throw IPAddressFormatException(to<std::string>(
+        "Invalid ipSlashCidr specified. ",
+        "Expected IP/CIDR format, got ",
+        "'",
+        ipSlashCidr,
+        "'"));
   }
   IPAddress subnet(vec.at(0));
-  uint8_t cidr = (defaultCidr > -1) ? defaultCidr : (subnet.isV4() ? 32 : 128);
+  auto cidr =
+      uint8_t((defaultCidr > -1) ? defaultCidr : (subnet.isV4() ? 32 : 128));
 
   if (elemCount == 2) {
     try {
       cidr = to<uint8_t>(vec.at(1));
     } catch (...) {
-      throw IPAddressFormatException("Mask value ",
-                                     "'", vec.at(1), "' not a valid mask");
+      throw IPAddressFormatException(
+          to<std::string>("Mask value ", "'", vec.at(1), "' not a valid mask"));
     }
   }
   if (cidr > subnet.bitCount()) {
-    throw IPAddressFormatException("CIDR value '", cidr, "' ",
-                                   "is > network bit count ",
-                                   "'", subnet.bitCount(), "'");
+    throw IPAddressFormatException(to<std::string>(
+        "CIDR value '",
+        cidr,
+        "' ",
+        "is > network bit count ",
+        "'",
+        subnet.bitCount(),
+        "'"));
   }
   return std::make_pair(applyMask ? subnet.mask(cidr) : subnet, cidr);
+}
+
+// public static
+std::string IPAddress::networkToString(const CIDRNetwork& network) {
+  return network.first.str() + "/" + folly::to<std::string>(network.second);
 }
 
 // public static
@@ -106,8 +126,8 @@ IPAddress IPAddress::fromBinary(ByteRange bytes) {
     return IPAddress(IPAddressV6::fromBinary(bytes));
   } else {
     string hexval = detail::Bytes::toHex(bytes.data(), bytes.size());
-    throw IPAddressFormatException("Invalid address with hex value ",
-                                   "'", hexval, "'");
+    throw IPAddressFormatException(
+        to<std::string>("Invalid address with hex value ", "'", hexval, "'"));
   }
 }
 
@@ -133,7 +153,8 @@ IPAddress::IPAddress(StringPiece addr)
 {
   string ip = addr.str();  // inet_pton() needs NUL-terminated string
   auto throwFormatException = [&](const string& msg) {
-    throw IPAddressFormatException("Invalid IP '", ip, "': ", msg);
+    throw IPAddressFormatException(
+        to<std::string>("Invalid IP '", ip, "': ", msg));
   };
 
   if (ip.size() < 2) {
@@ -399,7 +420,19 @@ IPAddress::longestCommonPrefix(const CIDRNetwork& one, const CIDRNetwork& two) {
   } else {
     throw std::invalid_argument("Unknown address family");
   }
-  return {IPAddress(0), 0};
 }
+
+[[noreturn]] void IPAddress::asV4Throw() const {
+  auto fam = detail::familyNameStr(family());
+  throw InvalidAddressFamilyException(to<std::string>(
+      "Can't convert address with family ", fam, " to AF_INET address"));
+}
+
+[[noreturn]] void IPAddress::asV6Throw() const {
+  auto fam = detail::familyNameStr(family());
+  throw InvalidAddressFamilyException(to<std::string>(
+      "Can't convert address with family ", fam, " to AF_INET6 address"));
+}
+
 
 }  // folly

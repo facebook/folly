@@ -25,11 +25,11 @@ folly::dynamic;` was used):
     dynamic nul = nullptr;
     dynamic boolean = false;
 
-    // Arrays can be initialized with brackets.
-    dynamic array = { "array ", "of ", 4, " elements" };
+    // Arrays can be initialized with dynamic::array.
+    dynamic array = dynamic::array("array ", "of ", 4, " elements");
     assert(array.size() == 4);
-    dynamic emptyArray = {};
-    assert(array.empty());
+    dynamic emptyArray = dynamic::array;
+    assert(emptyArray.empty());
 
     // Maps from dynamics to dynamics are called objects.  The
     // dynamic::object constant is how you make an empty map from dynamics
@@ -81,7 +81,7 @@ For more complicated conversions, see [DynamicConverter](DynamicConverter.md).
 You can iterate over dynamic arrays as you would over any C++ sequence container.
 
 ``` Cpp
-    dynamic array = {2, 3, "foo"};
+    dynamic array = dynamic::array(2, 3, "foo");
 
     for (auto& val : array) {
       doSomethingWith(val);
@@ -120,7 +120,7 @@ which returns an iterator compatible with `items()`:
     // pos->first is "hello"
     // pos->second is "world"
 
-    auto pos = obj.find("no_such_key);
+    auto pos = obj.find("no_such_key");
     // pos == obj.items().end()
 ```
 
@@ -145,7 +145,7 @@ here's what it looks like:
     // Building the same document programatically.
     dynamic sonOfAJ = dynamic::object
       ("key", 12)
-      ("key2", { false, nullptr, true, "yay" });
+      ("key2", dynamic::array(false, nullptr, true, "yay"));
 
     // Printing.  (See also folly::toPrettyJson)
     auto str = folly::toJson(sonOfAJ);
@@ -172,19 +172,6 @@ static types, etc).
 
 ### Some Design Rationale
 ***
-
-**Q. Why is there no default constructor?**
-
-This is a bit of a limitation of `std::initializer_list<>` for
-this use case. The expression `dynamic d = {}` is required by the
-standard to call the default constructor if one exists (the
-reasoning for this makes sense, since `{}` is part of the concept
-of "uniform initialization", and is intended for use with things
-like `std::vector`). It would be surprising if this expression
-didn't leave `d.isArray()` true, but on the other hand it would
-also be surprising if `dynamic d` left `d.isArray()` as true. The
-solution was just to disallow uninitialized dynamics: every
-dynamic must start out being assigned to some value (or nullptr).
 
 **Q. Why doesn't a dynamic string support begin(), end(), and operator[]?**
 

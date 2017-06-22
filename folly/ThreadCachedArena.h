@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_THREADCACHEDARENA_H_
-#define FOLLY_THREADCACHEDARENA_H_
+#pragma once
 
-#include <utility>
-#include <mutex>
-#include <limits>
-#include <boost/intrusive/slist.hpp>
+#include <type_traits>
 
-#include <folly/Likely.h>
 #include <folly/Arena.h>
+#include <folly/Likely.h>
+#include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
 
 namespace folly {
@@ -54,11 +51,16 @@ class ThreadCachedArena {
     return arena->allocate(size);
   }
 
-  void deallocate(void* p) {
+  void deallocate(void* /* p */) {
     // Deallocate? Never!
   }
 
+  // Gets the total memory used by the arena
+  size_t totalSize() const;
+
  private:
+  struct ThreadLocalPtrTag {};
+
   ThreadCachedArena(const ThreadCachedArena&) = delete;
   ThreadCachedArena(ThreadCachedArena&&) = delete;
   ThreadCachedArena& operator=(const ThreadCachedArena&) = delete;
@@ -72,14 +74,14 @@ class ThreadCachedArena {
 
   const size_t minBlockSize_;
   const size_t maxAlign_;
-  SysArena zombies_;  // allocated from threads that are now dead
-  std::mutex zombiesMutex_;
-  ThreadLocalPtr<SysArena> arena_;  // per-thread arena
+
+  ThreadLocalPtr<SysArena, ThreadLocalPtrTag> arena_;  // Per-thread arena.
+
+  // Allocations from threads that are now dead.
+  Synchronized<SysArena> zombies_;
 };
 
 template <>
 struct IsArenaAllocator<ThreadCachedArena> : std::true_type { };
 
 }  // namespace folly
-
-#endif /* FOLLY_THREADCACHEDARENA_H_ */

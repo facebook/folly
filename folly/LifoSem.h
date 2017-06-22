@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_LIFOSEM_H
-#define FOLLY_LIFOSEM_H
+#pragma once
 
 #include <string.h>
 #include <stdint.h>
@@ -92,7 +91,7 @@ typedef LifoSemImpl<> LifoSem;
 /// The exception thrown when wait()ing on an isShutdown() LifoSem
 struct ShutdownSemError : public std::runtime_error {
   explicit ShutdownSemError(const std::string& msg);
-  virtual ~ShutdownSemError() noexcept;
+  ~ShutdownSemError() noexcept override;
 };
 
 namespace detail {
@@ -131,15 +130,21 @@ struct LifoSemRawNode {
   typedef folly::IndexedMemPool<LifoSemRawNode<Atom>,32,200,Atom> Pool;
 
   /// Storage for all of the waiter nodes for LifoSem-s that use Atom
-  static Pool pool;
+  static Pool& pool();
 };
 
 /// Use this macro to declare the static storage that backs the raw nodes
 /// for the specified atomic type
-#define LIFOSEM_DECLARE_POOL(Atom, capacity)                       \
-    template<>                                                     \
-    folly::detail::LifoSemRawNode<Atom>::Pool                      \
-        folly::detail::LifoSemRawNode<Atom>::pool((capacity));
+#define LIFOSEM_DECLARE_POOL(Atom, capacity)                 \
+  namespace folly {                                          \
+  namespace detail {                                         \
+  template <>                                                \
+  LifoSemRawNode<Atom>::Pool& LifoSemRawNode<Atom>::pool() { \
+    static Pool* instance = new Pool((capacity));            \
+    return *instance;                                        \
+  }                                                          \
+  }                                                          \
+  }
 
 /// Handoff is a type not bigger than a void* that knows how to perform a
 /// single post() -> wait() communication.  It must have a post() method.
@@ -180,8 +185,8 @@ template <typename Handoff, template<typename> class Atom>
 struct LifoSemNodeRecycler {
   void operator()(LifoSemNode<Handoff,Atom>* elem) const {
     elem->destroy();
-    auto idx = LifoSemRawNode<Atom>::pool.locateElem(elem);
-    LifoSemRawNode<Atom>::pool.recycleIndex(idx);
+    auto idx = LifoSemRawNode<Atom>::pool().locateElem(elem);
+    LifoSemRawNode<Atom>::pool().recycleIndex(idx);
   }
 };
 
@@ -313,11 +318,14 @@ class LifoSemHead {
 /// See LifoSemNode for more information on how to make your own.
 template <typename Handoff,
           template<typename> class Atom = std::atomic>
-struct LifoSemBase : boost::noncopyable {
+struct LifoSemBase {
 
   /// Constructor
-  explicit LifoSemBase(uint32_t initialValue = 0)
-    : head_(LifoSemHead::fresh(initialValue)) {}
+  constexpr explicit LifoSemBase(uint32_t initialValue = 0)
+      : head_(LifoSemHead::fresh(initialValue)), padding_() {}
+
+  LifoSemBase(LifoSemBase const&) = delete;
+  LifoSemBase& operator=(LifoSemBase const&) = delete;
 
   /// Silently saturates if value is already 2^32-1
   void post() {
@@ -475,14 +483,14 @@ struct LifoSemBase : boost::noncopyable {
   /// Returns a node that can be passed to decrOrLink
   template <typename... Args>
   UniquePtr allocateNode(Args&&... args) {
-    auto idx = LifoSemRawNode<Atom>::pool.allocIndex();
+    auto idx = LifoSemRawNode<Atom>::pool().allocIndex();
     if (idx != 0) {
       auto& node = idxToNode(idx);
       node.clearShutdownNotice();
       try {
         node.init(std::forward<Args>(args)...);
       } catch (...) {
-        LifoSemRawNode<Atom>::pool.recycleIndex(idx);
+        LifoSemRawNode<Atom>::pool().recycleIndex(idx);
         throw;
       }
       return UniquePtr(&node);
@@ -512,12 +520,12 @@ struct LifoSemBase : boost::noncopyable {
 
 
   static LifoSemNode<Handoff, Atom>& idxToNode(uint32_t idx) {
-    auto raw = &LifoSemRawNode<Atom>::pool[idx];
+    auto raw = &LifoSemRawNode<Atom>::pool()[idx];
     return *static_cast<LifoSemNode<Handoff, Atom>*>(raw);
   }
 
   static uint32_t nodeToIdx(const LifoSemNode<Handoff, Atom>& node) {
-    return LifoSemRawNode<Atom>::pool.locateElem(&node);
+    return LifoSemRawNode<Atom>::pool().locateElem(&node);
   }
 
   /// Either increments by n and returns 0, or pops a node and returns it.
@@ -591,10 +599,8 @@ struct LifoSemBase : boost::noncopyable {
 
 template <template<typename> class Atom, class BatonType>
 struct LifoSemImpl : public detail::LifoSemBase<BatonType, Atom> {
-  explicit LifoSemImpl(uint32_t v = 0)
+  constexpr explicit LifoSemImpl(uint32_t v = 0)
     : detail::LifoSemBase<BatonType, Atom>(v) {}
 };
 
 } // namespace folly
-
-#endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_SELECT64_H
-#define FOLLY_EXPERIMENTAL_SELECT64_H
+#pragma once
 
 #include <glog/logging.h>
+
+#include <folly/Portability.h>
+#include <folly/experimental/Instructions.h>
 
 namespace folly {
 
 namespace detail {
 extern const uint8_t kSelectInByte[2048];
-}
+} // namespace detail
 
 /**
  * Returns the position of the k-th 1 in the 64-bit word x.
@@ -61,5 +63,22 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
   return place + detail::kSelectInByte[((x >> place) & 0xFF) | (byteRank << 8)];
 }
 
-}
+template <>
+FOLLY_ALWAYS_INLINE uint64_t
+select64<compression::instructions::Haswell>(uint64_t x, uint64_t k) {
+#if defined(__GNUC__) || defined(__clang__)
+  // GCC and Clang won't inline the intrinsics.
+  uint64_t result = uint64_t(1) << k;
+
+  asm("pdep %1, %0, %0\n\t"
+      "tzcnt %0, %0"
+      : "+r"(result)
+      : "r"(x));
+
+  return result;
+#else
+  return _tzcnt_u64(_pdep_u64(1ULL << k, x));
 #endif
+}
+
+} // namespace folly

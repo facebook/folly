@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,12 +38,14 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
-#ifndef FOLLY_JSON_H_
-#define FOLLY_JSON_H_
+#pragma once
 
-#include <folly/dynamic.h>
-#include <folly/FBString.h>
+#include <iosfwd>
+#include <string>
+
+#include <folly/Function.h>
 #include <folly/Range.h>
+#include <folly/dynamic.h>
 
 namespace folly {
 
@@ -53,18 +55,20 @@ namespace json {
 
   struct serialization_opts {
     explicit serialization_opts()
-      : allow_non_string_keys(false)
-      , javascript_safe(false)
-      , pretty_formatting(false)
-      , encode_non_ascii(false)
-      , validate_utf8(false)
-      , allow_trailing_comma(false)
-      , sort_keys(false)
-      , skip_invalid_utf8(false)
-      , allow_nan_inf(false)
-      , double_mode(double_conversion::DoubleToStringConverter::SHORTEST)
-      , double_num_digits(0) // ignored when mode is SHORTEST
-    {}
+        : allow_non_string_keys(false),
+          javascript_safe(false),
+          pretty_formatting(false),
+          encode_non_ascii(false),
+          validate_utf8(false),
+          allow_trailing_comma(false),
+          sort_keys(false),
+          skip_invalid_utf8(false),
+          allow_nan_inf(false),
+          double_mode(double_conversion::DoubleToStringConverter::SHORTEST),
+          double_num_digits(0), // ignored when mode is SHORTEST
+          double_fallback(false),
+          parse_numbers_as_strings(false),
+          recursion_limit(100) {}
 
     // If true, keys in an object can be non-strings.  (In strict
     // JSON, object keys must be strings.)  This is used by dynamic's
@@ -92,7 +96,13 @@ namespace json {
     bool allow_trailing_comma;
 
     // Sort keys of all objects before printing out (potentially slow)
+    // using dynamic::operator<.
+    // Has no effect if sort_keys_by is set.
     bool sort_keys;
+
+    // Sort keys of all objects before printing out (potentially slow)
+    // using the provided less functor.
+    Function<bool(dynamic const&, dynamic const&) const> sort_keys_by;
 
     // Replace invalid utf8 characters with U+FFFD and continue
     bool skip_invalid_utf8;
@@ -104,6 +114,17 @@ namespace json {
     // toAppend implementation for floating point for more info
     double_conversion::DoubleToStringConverter::DtoaMode double_mode;
     unsigned int double_num_digits;
+
+    // Fallback to double when a value that looks like integer is too big to
+    // fit in an int64_t. Can result in loss a of precision.
+    bool double_fallback;
+
+    // Do not parse numbers. Instead, store them as strings and leave the
+    // conversion up to the user.
+    bool parse_numbers_as_strings;
+
+    // Recursion limit when parsing.
+    unsigned int recursion_limit;
   };
 
   /*
@@ -111,21 +132,22 @@ namespace json {
    * For the most common use cases there are simpler functions in the
    * main folly namespace below.
    */
-  fbstring serialize(dynamic const&, serialization_opts const&);
+  std::string serialize(dynamic const&, serialization_opts const&);
 
   /*
    * Escape a string so that it is legal to print it in JSON text and
    * append the result to out.
    */
 
-  void escapeString(StringPiece input,
-                    fbstring& out,
-                    const serialization_opts& opts);
+  void escapeString(
+      StringPiece input,
+      std::string& out,
+      const serialization_opts& opts);
 
   /*
    * Strip all C99-like comments (i.e. // and / * ... * /)
    */
-  fbstring stripComments(StringPiece jsonC);
+  std::string stripComments(StringPiece jsonC);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -140,16 +162,19 @@ dynamic parseJson(StringPiece);
 /*
  * Serialize a dynamic into a json string.
  */
-fbstring toJson(dynamic const&);
+std::string toJson(dynamic const&);
 
 /*
  * Same as the above, except format the json with some minimal
  * indentation.
  */
-fbstring toPrettyJson(dynamic const&);
+std::string toPrettyJson(dynamic const&);
 
+/*
+ * Printer for GTest.
+ * Uppercase name to fill GTest's API, which calls this method through ADL.
+ */
+void PrintTo(const dynamic&, std::ostream*);
 //////////////////////////////////////////////////////////////////////
 
 }
-
-#endif

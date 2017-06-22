@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
 #include <folly/futures/detail/Core.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
 TEST(Core, size) {
+  static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
   struct Gold {
-    char lambdaBuf_[8 * sizeof(void*)];
+    typename std::aligned_storage<lambdaBufSize>::type lambdaBuf_;
     folly::Optional<Try<Unit>> result_;
     std::function<void(Try<Unit>&&)> callback_;
     detail::FSM<detail::State> fsm_;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,30 @@
  * limitations under the License.
  */
 
-#include <folly/detail/Malloc.h>
+#include <folly/detail/MallocImpl.h>
 
 extern "C" {
 
-#if !FOLLY_HAVE_WEAK_SYMBOLS
+#ifdef _MSC_VER
+// MSVC doesn't have weak symbols, so do some linker magic
+// to emulate them. (the magic is in the header)
+const char* mallocxWeak = nullptr;
+const char* rallocxWeak = nullptr;
+const char* xallocxWeak = nullptr;
+const char* sallocxWeak = nullptr;
+const char* dallocxWeak = nullptr;
+const char* sdallocxWeak = nullptr;
+const char* nallocxWeak = nullptr;
+const char* mallctlWeak = nullptr;
+const char* mallctlnametomibWeak = nullptr;
+const char* mallctlbymibWeak = nullptr;
+#elif !FOLLY_HAVE_WEAK_SYMBOLS
 void* (*mallocx)(size_t, int) = nullptr;
 void* (*rallocx)(void*, size_t, int) = nullptr;
 size_t (*xallocx)(void*, size_t, size_t, int) = nullptr;
 size_t (*sallocx)(const void*, int) = nullptr;
 void (*dallocx)(void*, int) = nullptr;
+void (*sdallocx)(void*, size_t, int) = nullptr;
 size_t (*nallocx)(size_t, int) = nullptr;
 int (*mallctl)(const char*, void*, size_t*, void*, size_t) = nullptr;
 int (*mallctlnametomib)(const char*, size_t*, size_t*) = nullptr;

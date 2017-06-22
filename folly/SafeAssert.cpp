@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,18 @@
 namespace folly { namespace detail {
 
 namespace {
+void writeStderr(const char* s, size_t len) {
+  writeFull(STDERR_FILENO, s, len);
+}
 void writeStderr(const char* s) {
-  writeFull(STDERR_FILENO, s, strlen(s));
+  writeStderr(s, strlen(s));
 }
 }  // namespace
 
 void assertionFailure(const char* expr, const char* msg, const char* file,
                       unsigned int line, const char* function) {
   writeStderr("\n\nAssertion failure: ");
-  writeStderr(expr);
+  writeStderr(expr + 1, strlen(expr) - 2);
   writeStderr("\nMessage: ");
   writeStderr(msg);
   writeStderr("\nFile: ");

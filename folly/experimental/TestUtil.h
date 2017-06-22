@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TESTUTIL_H_
-#define FOLLY_TESTUTIL_H_
+#pragma once
 
 #include <map>
 #include <string>
 #include <folly/Range.h>
+#include <folly/ScopeGuard.h>
 #include <folly/experimental/io/FsUtil.h>
 
 namespace folly {
@@ -90,11 +90,13 @@ class TemporaryDirectory {
   TemporaryDirectory(TemporaryDirectory&&) = default;
   TemporaryDirectory& operator=(TemporaryDirectory&&) = default;
 
-  const fs::path& path() const { return path_; }
+  const fs::path& path() const {
+    return *path_;
+  }
 
  private:
   Scope scope_;
-  fs::path path_;
+  std::unique_ptr<fs::path> path_;
 };
 
 /**
@@ -116,6 +118,33 @@ private:
   fs::path initialPath_;
   TemporaryDirectory dir_;
 };
+
+namespace detail {
+struct SavedState {
+  void* previousThreadLocalHandler;
+  int previousCrtReportMode;
+};
+SavedState disableInvalidParameters();
+void enableInvalidParameters(SavedState state);
+}
+
+// Ok, so fun fact: The CRT on windows will actually abort
+// on certain failed parameter validation checks in debug
+// mode rather than simply returning -1 as it does in release
+// mode. We can however, ensure consistent behavior by
+// registering our own thread-local invalid parameter handler
+// for the duration of the call, and just have that handler
+// immediately return. We also have to disable CRT asertion
+// alerts for the duration of the call, otherwise we get
+// the abort-retry-ignore window.
+template <typename Func>
+auto msvcSuppressAbortOnInvalidParams(Func func) -> decltype(func()) {
+  auto savedState = detail::disableInvalidParameters();
+  SCOPE_EXIT {
+    detail::enableInvalidParameters(savedState);
+  };
+  return func();
+}
 
 /**
  * Easy PCRE regex matching. Note that pattern must match the ENTIRE target,
@@ -157,12 +186,22 @@ inline std::string glogErrOrWarnPattern() { return ".*(^|\n)[EW][0-9].*"; }
 
 /**
  * Temporarily capture a file descriptor by redirecting it into a file.
- * You can consume its output either all-at-once or incrementally.
+ * You can consume its entire output thus far via read(), incrementally
+ * via readIncremental(), or via callback using chunk_cob.
  * Great for testing logging (see also glog*Pattern()).
  */
 class CaptureFD {
+private:
+  struct NoOpChunkCob { void operator()(StringPiece) {} };
 public:
-  explicit CaptureFD(int fd);
+  using ChunkCob = std::function<void(folly::StringPiece)>;
+
+  /**
+   * chunk_cob is is guaranteed to consume all the captured output. It is
+   * invoked on each readIncremental(), and also on FD release to capture
+   * as-yet unread lines.  Chunks can be empty.
+   */
+  explicit CaptureFD(int fd, ChunkCob chunk_cob = NoOpChunkCob());
   ~CaptureFD();
 
   /**
@@ -175,7 +214,7 @@ public:
   /**
    * Reads the whole file into a string, but does not remove the redirect.
    */
-  std::string read();
+  std::string read() const;
 
   /**
    * Read any bytes that were appended to the file since the last
@@ -184,6 +223,7 @@ public:
   std::string readIncremental();
 
 private:
+  ChunkCob chunkCob_;
   TemporaryFile file_;
 
   int fd_;
@@ -192,15 +232,5 @@ private:
   off_t readOffset_;  // for incremental reading
 };
 
-class EnvVarSaver {
-public:
-  EnvVarSaver();
-  ~EnvVarSaver();
-private:
-  std::map<std::string, std::string> saved_;
-};
-
 }  // namespace test
 }  // namespace folly
-
-#endif /* FOLLY_TESTUTIL_H_ */

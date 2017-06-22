@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,24 +19,25 @@
 
 #include <folly/FBString.h>
 
+#include <atomic>
 #include <cstdlib>
 
-#include <list>
-#include <fstream>
 #include <iomanip>
+#include <list>
+#include <sstream>
 #include <boost/algorithm/string.hpp>
 #include <boost/random.hpp>
-#include <gtest/gtest.h>
-
-#include <gflags/gflags.h>
 
 #include <folly/Foreach.h>
 #include <folly/Portability.h>
 #include <folly/Random.h>
 #include <folly/Conv.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;
+
+namespace {
 
 static const int seed = folly::randomNumberSeed();
 typedef boost::mt19937 RandomT;
@@ -73,6 +74,7 @@ std::list<char> RandomList(unsigned int maxSize) {
     *i = random('a', 'z');
  }
   return lst;
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,9 +121,7 @@ template <class String> void clause11_21_4_2_e(String & test) {
 }
 template <class String> void clause11_21_4_2_f(String & test) {
   // Constructor from char*
-  const size_t
-    pos = random(0, test.size()),
-    n = random(0, test.size() - pos);
+  const size_t pos = random(0, test.size());
   String before(test.data(), test.size());
   String s(test.c_str() + pos);
   String after(test.data(), test.size());
@@ -208,7 +208,8 @@ template <class String> void clause11_21_4_2_lprime(String & test) {
 }
 template <class String> void clause11_21_4_2_m(String & test) {
   // Assignment from char
-  test = random('a', 'z');
+  using value_type = typename String::value_type;
+  test = random(static_cast<value_type>('a'), static_cast<value_type>('z'));
 }
 template <class String> void clause11_21_4_2_n(String & test) {
   // Assignment from initializer_list<char>
@@ -574,10 +575,10 @@ template <class String> void clause11_21_4_6_6(String & test) {
 template <class String> void clause11_21_4_6_7(String & test) {
   std::vector<typename String::value_type>
     vec(random(0, maxString));
-  test.copy(
-    &vec[0],
-    vec.size(),
-    random(0, test.size()));
+  if (vec.empty()) {
+    return;
+  }
+  test.copy(vec.data(), vec.size(), random(0, test.size()));
 }
 
 template <class String> void clause11_21_4_6_8(String & test) {
@@ -593,7 +594,7 @@ template <class String> void clause11_21_4_7_1(String & test) {
   // exercise get_allocator()
   String s;
   randomString(&s, maxString);
-  assert(test.get_allocator() == s.get_allocator());
+  DCHECK(test.get_allocator() == s.get_allocator());
 }
 
 template <class String> void clause11_21_4_7_2_a(String & test) {
@@ -983,9 +984,11 @@ template <class String> void clause11_21_4_8_9_a(String & test) {
 TEST(FBString, testAllClauses) {
   EXPECT_TRUE(1) << "Starting with seed: " << seed;
   std::string r;
-  std::wstring wr;
   folly::fbstring c;
+#if FOLLY_HAVE_WCHAR_SUPPORT
+  std::wstring wr;
   folly::basic_fbstring<wchar_t> wc;
+#endif
   int count = 0;
 
   auto l = [&](const char * const clause,
@@ -997,8 +1000,10 @@ TEST(FBString, testAllClauses) {
       randomString(&r);
       c = r;
       EXPECT_EQ(c, r);
+#if FOLLY_HAVE_WCHAR_SUPPORT
       wr = std::wstring(r.begin(), r.end());
       wc = folly::basic_fbstring<wchar_t>(wr.c_str());
+#endif
       auto localSeed = seed + count;
       rng = RandomT(localSeed);
       f_string(r);
@@ -1008,16 +1013,19 @@ TEST(FBString, testAllClauses) {
         << "Lengths: " << r.size() << " vs. " << c.size()
         << "\nReference: '" << r << "'"
         << "\nActual:    '" << c.data()[0] << "'";
+#if FOLLY_HAVE_WCHAR_SUPPORT
       rng = RandomT(localSeed);
       f_wfbstring(wc);
       int wret = wcslen(wc.c_str());
-      char mb[wret+1];
-      int ret = wcstombs(mb, wc.c_str(), sizeof(mb));
+      auto mbv = std::vector<char>(wret + 1);
+      auto mb = mbv.data();
+      int ret = wcstombs(mb, wc.c_str(), wret + 1);
       if (ret == wret) mb[wret] = '\0';
       const char *mc = c.c_str();
       std::string one(mb);
       std::string two(mc);
       EXPECT_EQ(one, two);
+#endif
     } while (++count % 100 != 0);
   };
 
@@ -1117,7 +1125,7 @@ TEST(FBString, testAllClauses) {
 }
 
 TEST(FBString, testGetline) {
-  fbstring s1 = "\
+  string s1 = "\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras accumsan \n\
 elit ut urna consectetur in sagittis mi auctor. Nulla facilisi. In nec \n\
 dolor leo, vitae imperdiet neque. Donec ut erat mauris, a faucibus \n\
@@ -1135,28 +1143,17 @@ massa, ut accumsan magna. Donec imperdiet tempor nisi et \n\
 laoreet. Phasellus lectus quam, ultricies ut tincidunt in, dignissim \n\
 id eros. Mauris vulputate tortor nec neque pellentesque sagittis quis \n\
 sed nisl. In diam lacus, lobortis ut posuere nec, ornare id quam.";
-  char f[] = "/tmp/fbstring_testing.XXXXXX";
-  int fd = mkstemp(f);
-  EXPECT_TRUE(fd > 0);
-  if (fd > 0) {
-    close(fd);  // Yeah
-    std::ofstream out(f);
-    if (!(out << s1)) {
-      EXPECT_TRUE(0) << "Couldn't write to temp file.";
-      return;
-    }
-  }
+
   vector<fbstring> v;
   boost::split(v, s1, boost::is_any_of("\n"));
   {
-    ifstream input(f);
+    istringstream input(s1);
     fbstring line;
     FOR_EACH (i, v) {
       EXPECT_TRUE(!getline(input, line).fail());
       EXPECT_EQ(line, *i);
     }
   }
-  unlink(f);
 }
 
 TEST(FBString, testMoveCtor) {
@@ -1260,6 +1257,32 @@ TEST(FBString, testFixedBugs) {
     copy.push_back('b');
     EXPECT_GE(copy.capacity(), 1);
   }
+  { // D2813713
+    fbstring s1("a");
+    s1.reserve(8); // Trigger the optimized code path.
+    auto test1 = '\0' + std::move(s1);
+    EXPECT_EQ(2, test1.size());
+
+    fbstring s2(1, '\0');
+    s2.reserve(8);
+    auto test2 = "a" + std::move(s2);
+    EXPECT_EQ(2, test2.size());
+  }
+  { // D3698862
+    EXPECT_EQ(fbstring().find(fbstring(), 4), fbstring::npos);
+  }
+  if (usingJEMalloc()) { // D4355440
+    fbstring str(1337, 'f');
+    str.reserve(3840);
+    EXPECT_NE(str.capacity(), 3840);
+
+    struct {
+      std::atomic<size_t> refCount_;
+    } dummyRefCounted;
+    EXPECT_EQ(
+        str.capacity(),
+        goodMallocSize(3840) - sizeof(dummyRefCounted) - sizeof(char));
+  }
 }
 
 TEST(FBString, findWithNpos) {
@@ -1278,6 +1301,20 @@ TEST(FBString, testHash) {
   EXPECT_NE(hashfunc(a), hashfunc(b));
 }
 
+#if FOLLY_HAVE_WCHAR_SUPPORT
+TEST(FBString, testHashChar16) {
+  using u16fbstring = folly::basic_fbstring<char16_t>;
+  u16fbstring a;
+  u16fbstring b;
+  a.push_back(0);
+  a.push_back(1);
+  b.push_back(0);
+  b.push_back(2);
+  std::hash<u16fbstring> hashfunc;
+  EXPECT_NE(hashfunc(a), hashfunc(b));
+}
+#endif
+
 TEST(FBString, testFrontBack) {
   fbstring str("hello");
   EXPECT_EQ(str.front(), 'h');
@@ -1291,15 +1328,12 @@ TEST(FBString, testFrontBack) {
 
 TEST(FBString, noexcept) {
   EXPECT_TRUE(noexcept(fbstring()));
-  // std::move is not marked noexcept in gcc 4.6, sigh
-#if __GNUC_PREREQ(4, 7)
   fbstring x;
   EXPECT_FALSE(noexcept(fbstring(x)));
   EXPECT_TRUE(noexcept(fbstring(std::move(x))));
   fbstring y;
   EXPECT_FALSE(noexcept(y = x));
   EXPECT_TRUE(noexcept(y = std::move(x)));
-#endif
 }
 
 TEST(FBString, iomanip) {
@@ -1354,8 +1388,263 @@ TEST(FBString, moveTerminator) {
   EXPECT_EQ('\0', *s.c_str());
 }
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
+namespace {
+/*
+ * t8968589: Clang 3.7 refused to compile w/ certain constructors (specifically
+ * those that were "explicit" and had a defaulted parameter, if they were used
+ * in structs which were default-initialized).  Exercise these just to ensure
+ * they compile.
+ *
+ * In diff D2632953 the old constructor:
+ *   explicit basic_fbstring(const A& a = A()) noexcept;
+ *
+ * was split into these two, as a workaround:
+ *   basic_fbstring() noexcept;
+ *   explicit basic_fbstring(const A& a) noexcept;
+ */
+
+struct TestStructDefaultAllocator {
+  folly::basic_fbstring<char> stringMember;
+};
+
+template <class A>
+struct TestStructWithAllocator {
+  folly::basic_fbstring<char, std::char_traits<char>, A> stringMember;
+};
+
+std::atomic<size_t> allocatorConstructedCount(0);
+struct TestStructStringAllocator : std::allocator<char> {
+  TestStructStringAllocator() {
+    ++ allocatorConstructedCount;
+  }
+};
+
+}  // anon namespace
+
+TEST(FBStringCtorTest, DefaultInitStructDefaultAlloc) {
+  TestStructDefaultAllocator t1 { };
+  EXPECT_TRUE(t1.stringMember.empty());
 }
+
+TEST(FBStringCtorTest, DefaultInitStructAlloc) {
+  EXPECT_EQ(allocatorConstructedCount.load(), 0);
+  TestStructWithAllocator<TestStructStringAllocator> t2;
+  EXPECT_TRUE(t2.stringMember.empty());
+  EXPECT_EQ(allocatorConstructedCount.load(), 1);
+}
+
+TEST(FBStringCtorTest, NullZeroConstruction) {
+  char* p = nullptr;
+  int n = 0;
+  folly::fbstring f(p, n);
+  EXPECT_EQ(f.size(), 0);
+}
+
+// Tests for the comparison operators. I use EXPECT_TRUE rather than EXPECT_LE
+// because what's under test is the operator rather than the relation between
+// the objects.
+
+TEST(FBString, compareToStdString) {
+  using folly::fbstring;
+  using namespace std::string_literals;
+  auto stdA = "a"s;
+  auto stdB = "b"s;
+  fbstring fbA("a");
+  fbstring fbB("b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(U16FBString, compareToStdU16String) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = u"a"s;
+  auto stdB = u"b"s;
+  basic_fbstring<char16_t> fbA(u"a");
+  basic_fbstring<char16_t> fbB(u"b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(U32FBString, compareToStdU32String) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = U"a"s;
+  auto stdB = U"b"s;
+  basic_fbstring<char32_t> fbA(U"a");
+  basic_fbstring<char32_t> fbB(U"b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(WFBString, compareToStdWString) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = L"a"s;
+  auto stdB = L"b"s;
+  basic_fbstring<wchar_t> fbA(L"a");
+  basic_fbstring<wchar_t> fbB(L"b");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+// Same again, but with a more challenging input - a common prefix and different
+// lengths.
+
+TEST(FBString, compareToStdStringLong) {
+  using folly::fbstring;
+  using namespace std::string_literals;
+  auto stdA = "1234567890a"s;
+  auto stdB = "1234567890ab"s;
+  fbstring fbA("1234567890a");
+  fbstring fbB("1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(U16FBString, compareToStdU16StringLong) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = u"1234567890a"s;
+  auto stdB = u"1234567890ab"s;
+  basic_fbstring<char16_t> fbA(u"1234567890a");
+  basic_fbstring<char16_t> fbB(u"1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+#if FOLLY_HAVE_WCHAR_SUPPORT
+TEST(U32FBString, compareToStdU32StringLong) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = U"1234567890a"s;
+  auto stdB = U"1234567890ab"s;
+  basic_fbstring<char32_t> fbA(U"1234567890a");
+  basic_fbstring<char32_t> fbB(U"1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+
+TEST(WFBString, compareToStdWStringLong) {
+  using folly::basic_fbstring;
+  using namespace std::string_literals;
+  auto stdA = L"1234567890a"s;
+  auto stdB = L"1234567890ab"s;
+  basic_fbstring<wchar_t> fbA(L"1234567890a");
+  basic_fbstring<wchar_t> fbB(L"1234567890ab");
+  EXPECT_TRUE(stdA == fbA);
+  EXPECT_TRUE(fbB == stdB);
+  EXPECT_TRUE(stdA != fbB);
+  EXPECT_TRUE(fbA != stdB);
+  EXPECT_TRUE(stdA < fbB);
+  EXPECT_TRUE(fbA < stdB);
+  EXPECT_TRUE(stdB > fbA);
+  EXPECT_TRUE(fbB > stdA);
+  EXPECT_TRUE(stdA <= fbB);
+  EXPECT_TRUE(fbA <= stdB);
+  EXPECT_TRUE(stdA <= fbA);
+  EXPECT_TRUE(fbA <= stdA);
+  EXPECT_TRUE(stdB >= fbA);
+  EXPECT_TRUE(fbB >= stdA);
+  EXPECT_TRUE(stdB >= fbB);
+  EXPECT_TRUE(fbB >= stdB);
+}
+#endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 #pragma once
 
 #include <folly/io/async/EventBase.h>
-#include <event.h>
+#include <folly/portability/Event.h>
 #include <map>
 
 namespace folly {
@@ -24,17 +24,19 @@ namespace folly {
 /**
  * A handler to receive notification about POSIX signals.
  *
- * TAsyncSignalHandler allows code to process signals from within a EventBase
- * loop.  Standard signal handlers interrupt execution of the main thread, and
+ * AsyncSignalHandler allows code to process signals from within a EventBase
+ * loop.
+ *
+ * Standard signal handlers interrupt execution of the main thread, and
  * are run while the main thread is paused.  As a result, great care must be
  * taken to avoid race conditions if the signal handler has to access or modify
  * any data used by the main thread.
  *
- * TAsyncSignalHandler solves this problem by running the TAsyncSignalHandler
+ * AsyncSignalHandler solves this problem by running the AsyncSignalHandler
  * callback in normal thread of execution, as a EventBase callback.
  *
- * TAsyncSignalHandler may only be used in a single thread.  It will only
- * process signals received by the thread where the TAsyncSignalHandler is
+ * AsyncSignalHandler may only be used in a single thread.  It will only
+ * process signals received by the thread where the AsyncSignalHandler is
  * registered.  It is the user's responsibility to ensure that signals are
  * delivered to the desired thread in multi-threaded programs.
  */
@@ -53,7 +55,7 @@ class AsyncSignalHandler {
    * signalReceived() will be called each time this thread receives this
    * signal.
    *
-   * Throws a TException if an error occurs, or if this handler is already
+   * Throws if an error occurs or if this handler is already
    * registered for this signal.
    */
   void registerSignalHandler(int signum);
@@ -61,8 +63,7 @@ class AsyncSignalHandler {
   /**
    * Unregister for callbacks about the specified signal.
    *
-   * Throws a TException if an error occurs, or if this signal was not
-   * registered.
+   * Throws if an error occurs, or if this signal was not registered.
    */
   void unregisterSignalHandler(int signum);
 
@@ -83,7 +84,7 @@ class AsyncSignalHandler {
   AsyncSignalHandler(AsyncSignalHandler const &);
   AsyncSignalHandler& operator=(AsyncSignalHandler const &);
 
-  static void libeventCallback(int signum, short events, void* arg);
+  static void libeventCallback(libevent_fd_t signum, short events, void* arg);
 
   EventBase* eventBase_;
   SignalEventMap signalEvents_;

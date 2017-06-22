@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_STRING_H
-#define FOLLY_GEN_STRING_H
+#pragma once
+#define FOLLY_GEN_STRING_H_
 
 #include <folly/Range.h>
 #include <folly/gen/Base.h>
@@ -27,21 +27,19 @@ namespace gen {
 namespace detail {
 class StringResplitter;
 
-template<class Delimiter>
+template <class Delimiter>
 class SplitStringSource;
 
-template<class Delimiter, class Output>
+template <class Delimiter, class Output>
 class Unsplit;
 
-template<class Delimiter, class OutputBuffer>
+template <class Delimiter, class OutputBuffer>
 class UnsplitBuffer;
 
-template<class TargetContainer,
-         class Delimiter,
-         class... Targets>
+template <class TargetContainer, class Delimiter, class... Targets>
 class SplitTo;
 
-}  // namespace detail
+} // namespace detail
 
 /**
  * Split the output from a generator into StringPiece "lines" delimited by
@@ -54,9 +52,9 @@ class SplitTo;
  */
 // make this a template so we don't require StringResplitter to be complete
 // until use
-template <class S=detail::StringResplitter>
-S resplit(char delimiter) {
-  return S(delimiter);
+template <class S = detail::StringResplitter>
+S resplit(char delimiter, bool keepDelimiter = false) {
+  return S(delimiter, keepDelimiter);
 }
 
 template <class S = detail::SplitStringSource<char>>
@@ -97,15 +95,17 @@ S lines(StringPiece source) {
 
 // NOTE: The template arguments are reversed to allow the user to cleanly
 // specify the output type while still inferring the type of the delimiter.
-template<class Output = folly::fbstring,
-         class Delimiter,
-         class Unsplit = detail::Unsplit<Delimiter, Output>>
+template <
+    class Output = folly::fbstring,
+    class Delimiter,
+    class Unsplit = detail::Unsplit<Delimiter, Output>>
 Unsplit unsplit(const Delimiter& delimiter) {
   return Unsplit(delimiter);
 }
 
-template<class Output = folly::fbstring,
-         class Unsplit = detail::Unsplit<fbstring, Output>>
+template <
+    class Output = folly::fbstring,
+    class Unsplit = detail::Unsplit<fbstring, Output>>
 Unsplit unsplit(const char* delimiter) {
   return Unsplit(delimiter);
 }
@@ -124,21 +124,22 @@ Unsplit unsplit(const char* delimiter) {
  *   split("a,b,c", ",") | unsplit(",", &anotherbuffer);
  *   assert(anotherBuffer == "initial,a,b,c");
  */
-template<class Delimiter,
-         class OutputBuffer,
-         class UnsplitBuffer = detail::UnsplitBuffer<Delimiter, OutputBuffer>>
+template <
+    class Delimiter,
+    class OutputBuffer,
+    class UnsplitBuffer = detail::UnsplitBuffer<Delimiter, OutputBuffer>>
 UnsplitBuffer unsplit(Delimiter delimiter, OutputBuffer* outputBuffer) {
   return UnsplitBuffer(delimiter, outputBuffer);
 }
 
-template<class OutputBuffer,
-         class UnsplitBuffer = detail::UnsplitBuffer<fbstring, OutputBuffer>>
+template <
+    class OutputBuffer,
+    class UnsplitBuffer = detail::UnsplitBuffer<fbstring, OutputBuffer>>
 UnsplitBuffer unsplit(const char* delimiter, OutputBuffer* outputBuffer) {
   return UnsplitBuffer(delimiter, outputBuffer);
 }
 
-
-template<class... Targets>
+template <class... Targets>
 detail::Map<detail::SplitTo<std::tuple<Targets...>, char, Targets...>>
 eachToTuple(char delim) {
   return detail::Map<
@@ -146,7 +147,7 @@ eachToTuple(char delim) {
     detail::SplitTo<std::tuple<Targets...>, char, Targets...>(delim));
 }
 
-template<class... Targets>
+template <class... Targets>
 detail::Map<detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>
 eachToTuple(StringPiece delim) {
   return detail::Map<
@@ -154,7 +155,7 @@ eachToTuple(StringPiece delim) {
     detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>(delim));
 }
 
-template<class First, class Second>
+template <class First, class Second>
 detail::Map<detail::SplitTo<std::pair<First, Second>, char, First, Second>>
 eachToPair(char delim) {
   return detail::Map<
@@ -162,7 +163,7 @@ eachToPair(char delim) {
     detail::SplitTo<std::pair<First, Second>, char, First, Second>(delim));
 }
 
-template<class First, class Second>
+template <class First, class Second>
 detail::Map<detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>>
 eachToPair(StringPiece delim) {
   return detail::Map<
@@ -242,9 +243,7 @@ StreamSplitter<Callback> streamSplitter(char delimiter,
   return StreamSplitter<Callback>(delimiter, std::move(pieceCb), capacity);
 }
 
-}  // namespace gen
-}  // namespace folly
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/String-inl.h>
-
-#endif // FOLLY_GEN_STRING_H

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 // @author Nicholas Ormrod <njormrod@fb.com>
 
-#ifndef DYNAMIC_CONVERTER_H
-#define DYNAMIC_CONVERTER_H
+#pragma once
 
 #include <folly/dynamic.h>
 namespace folly {
@@ -30,7 +29,9 @@ namespace folly {
  *
  * Example:
  *
- *   dynamic d = { { 1, 2, 3 }, { 4, 5 } }; // a vector of vector of int
+ *   dynamic d = dynamic::array(
+ *       dynamic::array(1, 2, 3),
+ *       dynamic::array(4, 5)); // a vector of vector of int
  *   auto vvi = convertTo<fbvector<fbvector<int>>>(d);
  *
  * See docs/DynamicConverter.md for supported types and customization
@@ -115,8 +116,8 @@ namespace dynamicconverter_detail {
 
 template<typename T>
 struct Dereferencer {
-  static inline void
-  derefToCache(T* mem, const dynamic::const_item_iterator& it) {
+  static inline void derefToCache(
+      T* /* mem */, const dynamic::const_item_iterator& /* it */) {
     throw TypeError("array", dynamic::Type::OBJECT);
   }
 
@@ -211,6 +212,16 @@ struct DynamicConverter<T,
   }
 };
 
+// enums
+template <typename T>
+struct DynamicConverter<T,
+                        typename std::enable_if<std::is_enum<T>::value>::type> {
+  static T convert(const dynamic& d) {
+    using type = typename std::underlying_type<T>::type;
+    return static_cast<T>(DynamicConverter<type>::convert(d));
+  }
+};
+
 // floating point
 template <typename T>
 struct DynamicConverter<T,
@@ -232,7 +243,7 @@ struct DynamicConverter<folly::fbstring> {
 template <>
 struct DynamicConverter<std::string> {
   static std::string convert(const dynamic& d) {
-    return d.asString().toStdString();
+    return d.asString();
   }
 };
 
@@ -287,14 +298,26 @@ struct DynamicConstructor {
   }
 };
 
+// identity
+template <typename C>
+struct DynamicConstructor<
+    C,
+    typename std::enable_if<std::is_same<C, dynamic>::value>::type> {
+  static dynamic construct(const C& x) {
+    return x;
+  }
+};
+
 // maps
-template<typename C>
-struct DynamicConstructor<C,
+template <typename C>
+struct DynamicConstructor<
+    C,
     typename std::enable_if<
-      dynamicconverter_detail::is_map<C>::value>::type> {
+        !std::is_same<C, dynamic>::value &&
+        dynamicconverter_detail::is_map<C>::value>::type> {
   static dynamic construct(const C& x) {
     dynamic d = dynamic::object;
-    for (auto& pair : x) {
+    for (const auto& pair : x) {
       d.insert(toDynamic(pair.first), toDynamic(pair.second));
     }
     return d;
@@ -302,15 +325,17 @@ struct DynamicConstructor<C,
 };
 
 // other ranges
-template<typename C>
-struct DynamicConstructor<C,
+template <typename C>
+struct DynamicConstructor<
+    C,
     typename std::enable_if<
-      !dynamicconverter_detail::is_map<C>::value &&
-      !std::is_constructible<StringPiece, const C&>::value &&
-      dynamicconverter_detail::is_range<C>::value>::type> {
+        !std::is_same<C, dynamic>::value &&
+        !dynamicconverter_detail::is_map<C>::value &&
+        !std::is_constructible<StringPiece, const C&>::value &&
+        dynamicconverter_detail::is_range<C>::value>::type> {
   static dynamic construct(const C& x) {
-    dynamic d = {};
-    for (auto& item : x) {
+    dynamic d = dynamic::array;
+    for (const auto& item : x) {
       d.push_back(toDynamic(item));
     }
     return d;
@@ -321,7 +346,7 @@ struct DynamicConstructor<C,
 template<typename A, typename B>
 struct DynamicConstructor<std::pair<A, B>, void> {
   static dynamic construct(const std::pair<A, B>& x) {
-    dynamic d = {};
+    dynamic d = dynamic::array;
     d.push_back(toDynamic(x.first));
     d.push_back(toDynamic(x.second));
     return d;
@@ -342,5 +367,3 @@ dynamic toDynamic(const T& x) {
 }
 
 } // namespace folly
-
-#endif // DYNAMIC_CONVERTER_H

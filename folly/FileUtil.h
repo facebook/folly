@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FILEUTIL_H_
-#define FOLLY_FILEUTIL_H_
+#pragma once
 
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/portability/Fcntl.h>
+#include <folly/portability/SysUio.h>
+#include <folly/portability/Unistd.h>
 
 #include <cassert>
 #include <limits>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/uio.h>
-#include <fcntl.h>
-#include <unistd.h>
 
 namespace folly {
 
@@ -81,9 +80,7 @@ ssize_t writevNoInt(int fd, const iovec* iov, int count);
 ssize_t readFull(int fd, void* buf, size_t n);
 ssize_t preadFull(int fd, void* buf, size_t n, off_t offset);
 ssize_t readvFull(int fd, iovec* iov, int count);
-#if FOLLY_HAVE_PREADV
 ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
-#endif
 
 /**
  * Similar to readFull and preadFull above, wrappers around write() and
@@ -98,13 +95,14 @@ ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
  * Note that writevFull and pwritevFull require iov to be non-const, unlike
  * writev and pwritev.  The contents of iov after these functions return
  * is unspecified.
+ *
+ * These functions return -1 on error, or the total number of bytes written
+ * (which is always the same as the number of requested bytes) on success.
  */
 ssize_t writeFull(int fd, const void* buf, size_t n);
 ssize_t pwriteFull(int fd, const void* buf, size_t n, off_t offset);
 ssize_t writevFull(int fd, iovec* iov, int count);
-#if FOLLY_HAVE_PWRITEV
 ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset);
-#endif
 
 /**
  * Read entire file (if num_bytes is defaulted) or no more than
@@ -117,21 +115,17 @@ ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset);
  * errno will be set appropriately by the failing system primitive.
  */
 template <class Container>
-bool readFile(const char* file_name, Container& out,
-              size_t num_bytes = std::numeric_limits<size_t>::max()) {
+bool readFile(
+    int fd,
+    Container& out,
+    size_t num_bytes = std::numeric_limits<size_t>::max()) {
   static_assert(sizeof(out[0]) == 1,
                 "readFile: only containers with byte-sized elements accepted");
-  assert(file_name);
-
-  const auto fd = openNoInt(file_name, O_RDONLY);
-  if (fd == -1) return false;
 
   size_t soFar = 0; // amount of bytes successfully read
   SCOPE_EXIT {
-    assert(out.size() >= soFar); // resize better doesn't throw
+    DCHECK(out.size() >= soFar); // resize better doesn't throw
     out.resize(soFar);
-    // Ignore errors when closing the file
-    closeNoInt(fd);
   };
 
   // Obtain file size:
@@ -167,6 +161,29 @@ bool readFile(const char* file_name, Container& out,
 }
 
 /**
+ * Same as above, but takes in a file name instead of fd
+ */
+template <class Container>
+bool readFile(
+    const char* file_name,
+    Container& out,
+    size_t num_bytes = std::numeric_limits<size_t>::max()) {
+  DCHECK(file_name);
+
+  const auto fd = openNoInt(file_name, O_RDONLY);
+  if (fd == -1) {
+    return false;
+  }
+
+  SCOPE_EXIT {
+    // Ignore errors when closing the file
+    closeNoInt(fd);
+  };
+
+  return readFile(fd, out, num_bytes);
+}
+
+/**
  * Writes container to file. The container is assumed to be
  * contiguous, with element size equal to 1, and offering STL-like
  * methods empty(), size(), and indexed access
@@ -177,6 +194,10 @@ bool readFile(const char* file_name, Container& out,
  *
  * Returns: true on success or false on failure. In the latter case
  * errno will be set appropriately by the failing system primitive.
+ *
+ * Note that this function may leave the file in a partially written state on
+ * failure.  Use writeFileAtomic() if you want to ensure that the existing file
+ * state will be unchanged on error.
  */
 template <class Container>
 bool writeFile(const Container& data, const char* filename,
@@ -192,6 +213,41 @@ bool writeFile(const Container& data, const char* filename,
   return closeNoInt(fd) == 0 && ok;
 }
 
-}  // namespaces
+/**
+ * Write file contents "atomically".
+ *
+ * This writes the data to a temporary file in the destination directory, and
+ * then renames it to the specified path.  This guarantees that the specified
+ * file will be replaced the the specified contents on success, or will not be
+ * modified on failure.
+ *
+ * Note that on platforms that do not provide atomic filesystem rename
+ * functionality (e.g., Windows) this behavior may not be truly atomic.
+ */
+void writeFileAtomic(
+    StringPiece filename,
+    iovec* iov,
+    int count,
+    mode_t permissions = 0644);
+void writeFileAtomic(
+    StringPiece filename,
+    ByteRange data,
+    mode_t permissions = 0644);
+void writeFileAtomic(
+    StringPiece filename,
+    StringPiece data,
+    mode_t permissions = 0644);
 
-#endif /* FOLLY_FILEUTIL_H_ */
+/**
+ * A version of writeFileAtomic() that returns an errno value instead of
+ * throwing on error.
+ *
+ * Returns 0 on success or an errno value on error.
+ */
+int writeFileAtomicNoThrow(
+    StringPiece filename,
+    iovec* iov,
+    int count,
+    mode_t permissions = 0644);
+
+}  // namespaces

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
+#include <numeric>
 
 #include <boost/thread/barrier.hpp>
 
 #include <folly/futures/Future.h>
 #include <folly/Random.h>
 #include <folly/small_vector.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -331,6 +332,73 @@ TEST(Collect, collectAny) {
   }
 }
 
+TEST(Collect, collectAnyWithoutException) {
+  {
+    std::vector<Promise<int>> promises(10);
+    std::vector<Future<int>> futures;
+
+    for (auto& p : promises) {
+      futures.push_back(p.getFuture());
+    }
+
+    auto onef = collectAnyWithoutException(futures);
+
+    /* futures were moved in, so these are invalid now */
+    EXPECT_FALSE(onef.isReady());
+
+    promises[7].setValue(42);
+    EXPECT_TRUE(onef.isReady());
+    auto& idx_fut = onef.value();
+    EXPECT_EQ(7, idx_fut.first);
+    EXPECT_EQ(42, idx_fut.second);
+  }
+
+  // some exception before ready
+  {
+    std::vector<Promise<int>> promises(10);
+    std::vector<Future<int>> futures;
+
+    for (auto& p : promises) {
+      futures.push_back(p.getFuture());
+    }
+
+    auto onef = collectAnyWithoutException(futures);
+
+    EXPECT_FALSE(onef.isReady());
+
+    promises[3].setException(eggs);
+    EXPECT_FALSE(onef.isReady());
+    promises[4].setException(eggs);
+    EXPECT_FALSE(onef.isReady());
+    promises[0].setValue(99);
+    EXPECT_TRUE(onef.isReady());
+    auto& idx_fut = onef.value();
+    EXPECT_EQ(0, idx_fut.first);
+    EXPECT_EQ(99, idx_fut.second);
+  }
+
+  // all exceptions
+  {
+    std::vector<Promise<int>> promises(10);
+    std::vector<Future<int>> futures;
+
+    for (auto& p : promises) {
+      futures.push_back(p.getFuture());
+    }
+
+    auto onef = collectAnyWithoutException(futures);
+
+    EXPECT_FALSE(onef.isReady());
+    for (int i = 0; i < 9; ++i) {
+      promises[i].setException(eggs);
+    }
+    EXPECT_FALSE(onef.isReady());
+
+    promises[9].setException(eggs);
+    EXPECT_TRUE(onef.isReady());
+    EXPECT_TRUE(onef.hasException());
+  }
+}
 
 TEST(Collect, alreadyCompleted) {
   {
@@ -616,7 +684,6 @@ TEST(Collect, collectVariadicWithException) {
   Promise<int> pi;
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
-  bool flag = false;
   auto f = collect(std::move(fb), std::move(fi));
   pb.setValue(true);
   EXPECT_FALSE(f.isReady());
@@ -630,4 +697,15 @@ TEST(Collect, collectAllNone) {
   std::vector<Future<int>> fs;
   auto f = collectAll(fs);
   EXPECT_TRUE(f.isReady());
+}
+
+TEST(Collect, noDefaultConstructor) {
+  struct A {
+    explicit A(size_t /* x */) {}
+  };
+
+  auto f1 = makeFuture(A(1));
+  auto f2 = makeFuture(A(2));
+
+  auto f = collect(std::move(f1), std::move(f2));
 }

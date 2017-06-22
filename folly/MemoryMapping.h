@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_MEMORYMAPPING_H_
-#define FOLLY_MEMORYMAPPING_H_
+#pragma once
 
-#include <folly/FBString.h>
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <glog/logging.h>
@@ -250,5 +248,3 @@ void alignedForwardMemcpy(void* dest, const void* src, size_t size);
 void mmapFileCopy(const char* src, const char* dest, mode_t mode = 0666);
 
 }  // namespace folly
-
-#endif /* FOLLY_MEMORYMAPPING_H_ */

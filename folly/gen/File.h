@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_FILE_H
-#define FOLLY_GEN_FILE_H
+#pragma once
+#define FOLLY_GEN_FILE_H_
 
 #include <folly/File.h>
 #include <folly/gen/Base.h>
@@ -27,7 +27,7 @@ namespace gen {
 namespace detail {
 class FileReader;
 class FileWriter;
-}  // namespace detail
+} // namespace detail
 
 /**
  * Generator that reads from a file with a buffer of the given size.
@@ -64,9 +64,7 @@ template <class S = detail::FileWriter>
 S toFile(File file, std::unique_ptr<IOBuf> buffer) {
   return S(std::move(file), std::move(buffer));
 }
-
-}}  // !folly::gen
+} // !gen
+} // !folly
 
 #include <folly/gen/File-inl.h>
-
-#endif // FOLLY_GEN_FILE_H

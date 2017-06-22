@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,9 @@
 #include <folly/Singleton.h>
 #include <folly/SingletonVault_c.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
-#include <thread>
-
-__thread long instance_counter_instances = 0;
+FOLLY_TLS long instance_counter_instances = 0;
 
 class InstanceCounter {
  public:

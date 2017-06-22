@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
+#include <folly/Unit.h>
 #include <folly/Memory.h>
 #include <folly/Executor.h>
 #include <folly/dynamic.h>
 #include <folly/Baton.h>
+#include <folly/portability/GTest.h>
 
 #include <algorithm>
 #include <atomic>
@@ -29,7 +29,6 @@
 #include <string>
 #include <thread>
 #include <type_traits>
-#include <unistd.h>
 
 using namespace folly;
 
@@ -40,6 +39,42 @@ typedef FutureException eggs_t;
 static eggs_t eggs("eggs");
 
 // Future
+
+TEST(Future, futureDefaultCtor) {
+  Future<Unit>();
+}
+
+TEST(Future, futureToUnit) {
+  Future<Unit> fu = makeFuture(42).unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<int>(eggs).unit().hasException());
+}
+
+TEST(Future, voidFutureToUnit) {
+  Future<Unit> fu = makeFuture().unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<Unit>(eggs).unit().hasException());
+}
+
+TEST(Future, unitFutureToUnitIdentity) {
+  Future<Unit> fu = makeFuture(Unit{}).unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<Unit>(eggs).unit().hasException());
+}
+
+TEST(Future, toUnitWhileInProgress) {
+  Promise<int> p;
+  Future<Unit> fu = p.getFuture().unit();
+  EXPECT_FALSE(fu.isReady());
+  p.setValue(42);
+  EXPECT_TRUE(fu.isReady());
+}
+
+TEST(Future, makeFutureWithUnit) {
+  int count = 0;
+  Future<Unit> fu = makeFutureWith([&] { count++; });
+  EXPECT_EQ(1, count);
+}
 
 TEST(Future, onError) {
   bool theFlag = false;
@@ -58,85 +93,100 @@ TEST(Future, onError) {
 
   // By reference
   {
-    auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (eggs_t& e) { flag(); });
+    auto f = makeFuture().then([] {
+      throw eggs;
+    }).onError([&](eggs_t& /* e */) { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (eggs_t& e) { flag(); return makeFuture(); });
+                 .then([] { throw eggs; })
+                 .onError([&](eggs_t& /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   // By value
   {
-    auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (eggs_t e) { flag(); });
+    auto f = makeFuture().then([] {
+      throw eggs;
+    }).onError([&](eggs_t /* e */) { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (eggs_t e) { flag(); return makeFuture(); });
+                 .then([] { throw eggs; })
+                 .onError([&](eggs_t /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   // Polymorphic
   {
-    auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (std::exception& e) { flag(); });
+    auto f = makeFuture().then([] {
+      throw eggs;
+    }).onError([&](std::exception& /* e */) { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (std::exception& e) { flag(); return makeFuture(); });
+                 .then([] { throw eggs; })
+                 .onError([&](std::exception& /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   // Non-exceptions
   {
-    auto f = makeFuture()
-      .then([] { throw -1; })
-      .onError([&] (int e) { flag(); });
+    auto f = makeFuture().then([] {
+      throw - 1;
+    }).onError([&](int /* e */) { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw -1; })
-      .onError([&] (int e) { flag(); return makeFuture(); });
+                 .then([] { throw - 1; })
+                 .onError([&](int /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   // Mutable lambda
   {
-    auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (eggs_t& e) mutable { flag(); });
+    auto f = makeFuture().then([] {
+      throw eggs;
+    }).onError([&](eggs_t& /* e */) mutable { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (eggs_t& e) mutable { flag(); return makeFuture(); });
+                 .then([] { throw eggs; })
+                 .onError([&](eggs_t& /* e */) mutable {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
@@ -144,73 +194,85 @@ TEST(Future, onError) {
   // No throw
   {
     auto f = makeFuture()
-      .then([] { return 42; })
-      .onError([&] (eggs_t& e) { flag(); return -1; });
+                 .then([] { return 42; })
+                 .onError([&](eggs_t& /* e */) {
+                   flag();
+                   return -1;
+                 });
     EXPECT_NO_FLAG();
     EXPECT_EQ(42, f.value());
   }
 
   {
     auto f = makeFuture()
-      .then([] { return 42; })
-      .onError([&] (eggs_t& e) { flag(); return makeFuture<int>(-1); });
+                 .then([] { return 42; })
+                 .onError([&](eggs_t& /* e */) {
+                   flag();
+                   return makeFuture<int>(-1);
+                 });
     EXPECT_NO_FLAG();
     EXPECT_EQ(42, f.value());
   }
 
   // Catch different exception
   {
-    auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (std::runtime_error& e) { flag(); });
+    auto f = makeFuture().then([] {
+      throw eggs;
+    }).onError([&](std::runtime_error& /* e */) { flag(); });
     EXPECT_NO_FLAG();
     EXPECT_THROW(f.value(), eggs_t);
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (std::runtime_error& e) { flag(); return makeFuture(); });
+                 .then([] { throw eggs; })
+                 .onError([&](std::runtime_error& /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_NO_FLAG();
     EXPECT_THROW(f.value(), eggs_t);
   }
 
   // Returned value propagates
   {
-    auto f = makeFuture()
-      .then([] { throw eggs; return 0; })
-      .onError([&] (eggs_t& e) { return 42; });
+    auto f = makeFuture().then([]() -> int {
+      throw eggs;
+    }).onError([&](eggs_t& /* e */) { return 42; });
     EXPECT_EQ(42, f.value());
   }
 
   // Returned future propagates
   {
-    auto f = makeFuture()
-      .then([] { throw eggs; return 0; })
-      .onError([&] (eggs_t& e) { return makeFuture<int>(42); });
+    auto f = makeFuture().then([]() -> int {
+      throw eggs;
+    }).onError([&](eggs_t& /* e */) { return makeFuture<int>(42); });
     EXPECT_EQ(42, f.value());
   }
 
   // Throw in callback
   {
     auto f = makeFuture()
-      .then([] { throw eggs; return 0; })
-      .onError([&] (eggs_t& e) { throw e; return -1; });
+      .then([]() -> int { throw eggs; })
+      .onError([&] (eggs_t& e) -> int { throw e; });
     EXPECT_THROW(f.value(), eggs_t);
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw eggs; return 0; })
-      .onError([&] (eggs_t& e) { throw e; return makeFuture<int>(-1); });
+      .then([]() -> int { throw eggs; })
+      .onError([&] (eggs_t& e) -> Future<int> { throw e; });
     EXPECT_THROW(f.value(), eggs_t);
   }
 
   // exception_wrapper, return Future<T>
   {
     auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (exception_wrapper e) { flag(); return makeFuture(); });
+                 .then([] { throw eggs; })
+                 .onError([&](exception_wrapper /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
@@ -218,12 +280,13 @@ TEST(Future, onError) {
   // exception_wrapper, return Future<T> but throw
   {
     auto f = makeFuture()
-      .then([]{ throw eggs; return 0; })
-      .onError([&] (exception_wrapper e) {
-        flag();
-        throw eggs;
-        return makeFuture<int>(-1);
-      });
+                 .then([]() -> int {
+                   throw eggs;
+                 })
+                 .onError([&](exception_wrapper /* e */) -> Future<int> {
+                   flag();
+                   throw eggs;
+                 });
     EXPECT_FLAG();
     EXPECT_THROW(f.value(), eggs_t);
   }
@@ -231,11 +294,13 @@ TEST(Future, onError) {
   // exception_wrapper, return T
   {
     auto f = makeFuture()
-      .then([]{ throw eggs; return 0; })
-      .onError([&] (exception_wrapper e) {
-        flag();
-        return -1;
-      });
+                 .then([]() -> int {
+                   throw eggs;
+                 })
+                 .onError([&](exception_wrapper /* e */) {
+                   flag();
+                   return -1;
+                 });
     EXPECT_FLAG();
     EXPECT_EQ(-1, f.value());
   }
@@ -243,12 +308,13 @@ TEST(Future, onError) {
   // exception_wrapper, return T but throw
   {
     auto f = makeFuture()
-      .then([]{ throw eggs; return 0; })
-      .onError([&] (exception_wrapper e) {
-        flag();
-        throw eggs;
-        return -1;
-      });
+                 .then([]() -> int {
+                   throw eggs;
+                 })
+                 .onError([&](exception_wrapper /* e */) -> int {
+                   flag();
+                   throw eggs;
+                 });
     EXPECT_FLAG();
     EXPECT_THROW(f.value(), eggs_t);
   }
@@ -256,11 +322,11 @@ TEST(Future, onError) {
   // const exception_wrapper&
   {
     auto f = makeFuture()
-      .then([] { throw eggs; })
-      .onError([&] (const exception_wrapper& e) {
-        flag();
-        return makeFuture();
-      });
+                 .then([] { throw eggs; })
+                 .onError([&](const exception_wrapper& /* e */) {
+                   flag();
+                   return makeFuture();
+                 });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
@@ -324,7 +390,7 @@ TEST(Future, thenTry) {
   EXPECT_TRUE(flag); flag = false;
 
   Promise<Unit> p;
-  auto f = p.getFuture().then([&](Try<Unit>&& t) { flag = true; });
+  auto f = p.getFuture().then([&](Try<Unit>&& /* t */) { flag = true; });
   EXPECT_FALSE(flag);
   EXPECT_FALSE(f.isReady());
   p.setValue();
@@ -350,7 +416,7 @@ TEST(Future, thenValue) {
   });
   EXPECT_TRUE(flag); flag = false;
 
-  auto f = makeFuture<int>(eggs).then([&](int i){});
+  auto f = makeFuture<int>(eggs).then([&](int /* i */) {});
   EXPECT_THROW(f.value(), eggs_t);
 
   f = makeFuture<Unit>(eggs).then([&]{});
@@ -364,9 +430,9 @@ TEST(Future, thenValueFuture) {
     .then([&](Try<int>&& t) { flag = true; EXPECT_EQ(42, t.value()); });
   EXPECT_TRUE(flag); flag = false;
 
-  makeFuture()
-    .then([]{ return makeFuture(); })
-    .then([&](Try<Unit>&& t) { flag = true; });
+  makeFuture().then([] {
+    return makeFuture();
+  }).then([&](Try<Unit>&& /* t */) { flag = true; });
   EXPECT_TRUE(flag); flag = false;
 }
 
@@ -520,21 +586,54 @@ TEST(Future, makeFuture) {
 
 TEST(Future, finish) {
   auto x = std::make_shared<int>(0);
-  {
-    Promise<int> p;
-    auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.value(); });
 
-    // The callback hasn't executed
-    EXPECT_EQ(0, *x);
+  Promise<int> p;
+  auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.value(); });
 
-    // The callback has a reference to x
-    EXPECT_EQ(2, x.use_count());
+  // The callback hasn't executed
+  EXPECT_EQ(0, *x);
 
-    p.setValue(42);
+  // The callback has a reference to x
+  EXPECT_EQ(2, x.use_count());
 
-    // the callback has executed
-    EXPECT_EQ(42, *x);
-  }
+  p.setValue(42);
+
+  // the callback has executed
+  EXPECT_EQ(42, *x);
+
+  // the callback has been destructed
+  // and has released its reference to x
+  EXPECT_EQ(1, x.use_count());
+}
+
+TEST(Future, finishBigLambda) {
+  auto x = std::make_shared<int>(0);
+
+  // bulk_data, to be captured in the lambda passed to Future::then.
+  // This is meant to force that the lambda can't be stored inside
+  // the Future object.
+  std::array<char, sizeof(detail::Core<int>)> bulk_data = {{0}};
+
+  // suppress gcc warning about bulk_data not being used
+  EXPECT_EQ(bulk_data[0], 0);
+
+  Promise<int> p;
+  auto f = p.getFuture().then([x, bulk_data](Try<int>&& t) {
+    (void)bulk_data;
+    *x = t.value();
+  });
+
+  // The callback hasn't executed
+  EXPECT_EQ(0, *x);
+
+  // The callback has a reference to x
+  EXPECT_EQ(2, x.use_count());
+
+  p.setValue(42);
+
+  // the callback has executed
+  EXPECT_EQ(42, *x);
+
   // the callback has been destructed
   // and has released its reference to x
   EXPECT_EQ(1, x.use_count());
@@ -626,8 +725,8 @@ TEST(Future, detachRace) {
   // slow test so I won't do that but if it ever fails, take it seriously, and
   // run the test binary with "--gtest_repeat=10000 --gtest_filter=*detachRace"
   // (Don't forget to enable ASAN)
-  auto p = folly::make_unique<Promise<bool>>();
-  auto f = folly::make_unique<Future<bool>>(p->getFuture());
+  auto p = std::make_unique<Promise<bool>>();
+  auto f = std::make_unique<Future<bool>>(p->getFuture());
   folly::Baton<> baton;
   std::thread t1([&]{
     baton.post();
@@ -645,15 +744,13 @@ TEST(Future, CircularDependencySharedPtrSelfReset) {
   Promise<int64_t> promise;
   auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
 
-  ptr->then(
-    [ptr] (folly::Try<int64_t>&& uid) mutable {
-      EXPECT_EQ(1, ptr.use_count());
+  ptr->then([ptr](folly::Try<int64_t>&& /* uid */) mutable {
+    EXPECT_EQ(1, ptr.use_count());
 
-      // Leaving no references to ourselves.
-      ptr.reset();
-      EXPECT_EQ(0, ptr.use_count());
-    }
-  );
+    // Leaving no references to ourselves.
+    ptr.reset();
+    EXPECT_EQ(0, ptr.use_count());
+  });
 
   EXPECT_EQ(2, ptr.use_count());
 
@@ -701,7 +798,9 @@ TEST(Future, RequestContext) {
       if (throwsOnAdd_) { throw std::exception(); }
       v_.emplace_back(std::move(f));
     }
-    void addWithPriority(Func f, int8_t prio) override { add(std::move(f)); }
+    void addWithPriority(Func f, int8_t /* prio */) override {
+      add(std::move(f));
+    }
     uint8_t getNumPriorities() const override { return numPriorities_; }
 
     void setHandlesPriorities() { numPriorities_ = 2; }
@@ -717,34 +816,82 @@ TEST(Future, RequestContext) {
     bool value;
   };
 
-  NewThreadExecutor e;
-  RequestContext::create();
-  RequestContext::get()->setContextData("key",
-      folly::make_unique<MyRequestData>(true));
-  auto checker = [](int lineno) {
-    return [lineno](Try<int>&& t) {
-      auto d = static_cast<MyRequestData*>(
-        RequestContext::get()->getContextData("key"));
-      EXPECT_TRUE(d && d->value) << "on line " << lineno;
-    };
-  };
-
-  makeFuture(1).via(&e).then(checker(__LINE__));
-
-  e.setHandlesPriorities();
-  makeFuture(2).via(&e).then(checker(__LINE__));
-
   Promise<int> p1, p2;
-  p1.getFuture().then(checker(__LINE__));
+  NewThreadExecutor e;
+  {
+    folly::RequestContextScopeGuard rctx;
+    RequestContext::get()->setContextData(
+        "key", std::make_unique<MyRequestData>(true));
+    auto checker = [](int lineno) {
+      return [lineno](Try<int>&& /* t */) {
+        auto d = static_cast<MyRequestData*>(
+            RequestContext::get()->getContextData("key"));
+        EXPECT_TRUE(d && d->value) << "on line " << lineno;
+      };
+    };
 
-  e.setThrowsOnAdd();
-  p2.getFuture().via(&e).then(checker(__LINE__));
+    makeFuture(1).via(&e).then(checker(__LINE__));
 
-  RequestContext::create();
+    e.setHandlesPriorities();
+    makeFuture(2).via(&e).then(checker(__LINE__));
+
+    p1.getFuture().then(checker(__LINE__));
+
+    e.setThrowsOnAdd();
+    p2.getFuture().via(&e).then(checker(__LINE__));
+  }
+  // Assert that no RequestContext is set
+  EXPECT_FALSE(RequestContext::saveContext());
   p1.setValue(3);
   p2.setValue(4);
 }
 
 TEST(Future, makeFutureNoThrow) {
   makeFuture().value();
+}
+
+TEST(Future, invokeCallbackReturningValueAsRvalue) {
+  struct Foo {
+    int operator()(int x) & {
+      return x + 1;
+    }
+    int operator()(int x) const& {
+      return x + 2;
+    }
+    int operator()(int x) && {
+      return x + 3;
+    }
+  };
+
+  Foo foo;
+  Foo const cfoo;
+
+  // The callback will be copied when given as lvalue or const ref, and moved
+  // if provided as rvalue. Either way, it should be executed as rvalue.
+  EXPECT_EQ(103, makeFuture<int>(100).then(foo).value());
+  EXPECT_EQ(203, makeFuture<int>(200).then(cfoo).value());
+  EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
+}
+
+TEST(Future, invokeCallbackReturningFutureAsRvalue) {
+  struct Foo {
+    Future<int> operator()(int x) & {
+      return x + 1;
+    }
+    Future<int> operator()(int x) const& {
+      return x + 2;
+    }
+    Future<int> operator()(int x) && {
+      return x + 3;
+    }
+  };
+
+  Foo foo;
+  Foo const cfoo;
+
+  // The callback will be copied when given as lvalue or const ref, and moved
+  // if provided as rvalue. Either way, it should be executed as rvalue.
+  EXPECT_EQ(103, makeFuture<int>(100).then(foo).value());
+  EXPECT_EQ(203, makeFuture<int>(200).then(cfoo).value());
+  EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
 }

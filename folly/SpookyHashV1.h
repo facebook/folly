@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,8 +42,7 @@
 // slower than MD5.
 //
 
-#ifndef FOLLY_SPOOKYHASHV1_H_
-#define FOLLY_SPOOKYHASHV1_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -292,7 +291,7 @@ private:
     //  * is a not-very-regular mix of 1's and 0's
     //  * does not need any other special mathematical properties
     //
-    static const uint64_t sc_const = 0xdeadbeefdeadbeefLL;
+    static const uint64_t sc_const = 0xdeadbeefdeadbeefULL;
 
     uint64_t m_data[2*sc_numVars];  // unhashed data, for partial messages
     uint64_t m_state[sc_numVars];   // internal state of the hash
@@ -302,5 +301,3 @@ private:
 
 }  // namespace hash
 }  // namespace folly
-
-#endif

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,11 +55,11 @@ class Concatenator {
   size_t lineNumber_ = 0;
 };
 
-FOLLY_NORETURN void throwOutputError() {
+[[noreturn]] void throwOutputError() {
   throw OutputError(folly::errnoStr(errno).toStdString());
 }
 
-FOLLY_NORETURN void throwInputError() {
+[[noreturn]] void throwInputError() {
   throw InputError(folly::errnoStr(errno).toStdString());
 }
 

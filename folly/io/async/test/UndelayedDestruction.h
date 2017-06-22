@@ -1,21 +1,19 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements. See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership. The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
+ * Copyright 2004-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 #pragma once
 
 #include <cstdlib>
@@ -58,16 +56,6 @@ class UndelayedDestruction : public TDD {
   template<typename ...Args>
   explicit UndelayedDestruction(Args&& ...args)
     : TDD(std::forward<Args>(args)...) {
-      this->TDD::onDestroy_ = [&, this] (bool delayed) {
-        if (delayed && !this->TDD::getDestroyPending()) {
-          return;
-        }
-        // Do nothing.  This will always be invoked from the call to destroy
-        // inside our destructor.
-        assert(!delayed);
-        // prevent unused variable warnings when asserts are compiled out.
-        (void)delayed;
-      };
   }
 
   /**
@@ -76,12 +64,12 @@ class UndelayedDestruction : public TDD {
    * The caller is responsible for ensuring that the object is only destroyed
    * where it is safe to do so.  (i.e., when the destructor guard count is 0).
    *
-   * The exact conditions for meeting this may be dependant upon your class
+   * The exact conditions for meeting this may be dependent upon your class
    * semantics.  Typically you are only guaranteed that it is safe to destroy
    * the object directly from the event loop (e.g., directly from a
-   * TEventBase::LoopCallback), or when the event loop is stopped.
+   * EventBase::LoopCallback), or when the event loop is stopped.
    */
-  virtual ~UndelayedDestruction() {
+  ~UndelayedDestruction() override {
     // Crash if the caller is destroying us with outstanding destructor guards.
     if (this->getDestructorGuardCount() != 0) {
       abort();
@@ -91,12 +79,23 @@ class UndelayedDestruction : public TDD {
     this->destroy();
   }
 
+  void onDelayedDestroy(bool delayed) override {
+    if (delayed && !this->TDD::getDestroyPending()) {
+      return;
+    }
+    // Do nothing.  This will always be invoked from the call to destroy
+    // inside our destructor.
+    assert(!delayed);
+    // prevent unused variable warnings when asserts are compiled out.
+    (void)delayed;
+  }
+
  protected:
   /**
    * Override our parent's destroy() method to make it protected.
    * Callers should use the normal destructor instead of destroy
    */
-  virtual void destroy() {
+  void destroy() override {
     this->TDD::destroy();
   }
 

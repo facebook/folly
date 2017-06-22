@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,67 +17,58 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 
 #include <thread>
-#include <folly/Memory.h>
+
+#include <folly/Function.h>
+#include <folly/Range.h>
+#include <folly/ThreadName.h>
+#include <folly/io/async/EventBaseManager.h>
 
 using namespace std;
 
 namespace folly {
 
-static void run(EventBaseManager* ebm, EventBase* eb) {
-  if (ebm) {
-    ebm->setEventBase(eb, false);
+static void run(
+    EventBaseManager* ebm,
+    EventBase* eb,
+    folly::Baton<>* stop,
+    const StringPiece& name) {
+  if (name.size()) {
+    folly::setThreadName(name);
   }
-  CHECK_NOTNULL(eb)->loopForever();
-  if (ebm) {
-    ebm->clearEventBase();
-  }
+
+  ebm->setEventBase(eb, false);
+  eb->loopForever();
+
+  // must destruct in io thread for on-destruction callbacks
+  EventBase::StackFunctionLoopCallback cb([=] { ebm->clearEventBase(); });
+  eb->runOnDestruction(&cb);
+  // wait until terminateLoopSoon() is complete
+  stop->wait();
+  eb->~EventBase();
 }
 
-ScopedEventBaseThread::ScopedEventBaseThread(
-    bool autostart,
-    EventBaseManager* ebm) :
-  ebm_(ebm) {
-  if (autostart) {
-    start();
-  }
-}
+ScopedEventBaseThread::ScopedEventBaseThread()
+    : ScopedEventBaseThread(nullptr, "") {}
+
+ScopedEventBaseThread::ScopedEventBaseThread(const StringPiece& name)
+    : ScopedEventBaseThread(nullptr, name) {}
+
+ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
+    : ScopedEventBaseThread(ebm, "") {}
 
 ScopedEventBaseThread::ScopedEventBaseThread(
-    EventBaseManager* ebm) :
-  ScopedEventBaseThread(true, ebm) {}
+    EventBaseManager* ebm,
+    const StringPiece& name)
+    : ebm_(ebm ? ebm : EventBaseManager::get()) {
+  new (&eb_) EventBase();
+  th_ = thread(run, ebm_, &eb_, &stop_, name);
+  eb_.waitUntilRunning();
+}
 
 ScopedEventBaseThread::~ScopedEventBaseThread() {
-  stop();
-}
-
-ScopedEventBaseThread::ScopedEventBaseThread(
-    ScopedEventBaseThread&& other) noexcept = default;
-
-ScopedEventBaseThread& ScopedEventBaseThread::operator=(
-    ScopedEventBaseThread&& other) noexcept = default;
-
-void ScopedEventBaseThread::start() {
-  if (running()) {
-    return;
-  }
-  eventBase_ = make_unique<EventBase>();
-  thread_ = make_unique<thread>(run, ebm_, eventBase_.get());
-  eventBase_->waitUntilRunning();
-}
-
-void ScopedEventBaseThread::stop() {
-  if (!running()) {
-    return;
-  }
-  eventBase_->terminateLoopSoon();
-  thread_->join();
-  eventBase_ = nullptr;
-  thread_ = nullptr;
-}
-
-bool ScopedEventBaseThread::running() {
-  CHECK(bool(eventBase_) == bool(thread_));
-  return eventBase_ && thread_;
+  eb_.terminateLoopSoon();
+  stop_.post();
+  th_.join();
 }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 #ifndef FOLLY_RANDOM_H_
 #error This file may only be included from folly/Random.h
 #endif
+
+#include <array>
 
 namespace folly {
 
@@ -67,7 +69,7 @@ constexpr size_t
 StateSize<std::mersenne_twister_engine<UIntType, w, n, m, r,
                                        a, u, d, s, b, t, c, l, f>>::value;
 
-#if FOLLY_USE_SIMD_PRNG
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
 
 template <class UIntType, size_t m, size_t pos1, size_t sl1, size_t sl2,
           size_t sr1, size_t sr2, uint32_t msk1, uint32_t msk2, uint32_t msk3,
@@ -116,15 +118,15 @@ struct SeedData {
 
 }  // namespace detail
 
-template <class RNG>
-void Random::seed(ValidRNG<RNG>& rng) {
+template <class RNG, class /* EnableIf */>
+void Random::seed(RNG& rng) {
   detail::SeedData<RNG> sd;
   std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
   rng.seed(s);
 }
 
-template <class RNG>
-auto Random::create() -> ValidRNG<RNG> {
+template <class RNG, class /* EnableIf */>
+auto Random::create() -> RNG {
   detail::SeedData<RNG> sd;
   std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
   return RNG(s);

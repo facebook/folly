@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,32 @@
 
 #include <folly/ThreadLocal.h>
 
-#include <sys/types.h>
+#ifndef _WIN32
+#include <dlfcn.h>
 #include <sys/wait.h>
-#include <unistd.h>
+#endif
+
+#include <sys/types.h>
 
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <limits.h>
 #include <map>
 #include <mutex>
 #include <set>
 #include <thread>
 #include <unordered_map>
 
-#include <boost/thread/tss.hpp>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
-#include <folly/Benchmark.h>
+#include <folly/Baton.h>
+#include <folly/Memory.h>
+#include <folly/ThreadId.h>
+#include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/Unistd.h>
 
 using namespace folly;
 
@@ -47,7 +53,7 @@ struct Widget {
   }
 
   static void customDeleter(Widget* w, TLPDestructionMode mode) {
-    totalVal_ += (mode == TLPDestructionMode::ALL_THREADS) * 1000;
+    totalVal_ += (mode == TLPDestructionMode::ALL_THREADS) ? 1000 : 1;
     delete w;
   }
 };
@@ -71,6 +77,37 @@ TEST(ThreadLocalPtr, CustomDeleter1) {
         w.reset(new Widget(), Widget::customDeleter);
         w.get()->val_ += 10;
       }).join();
+    EXPECT_EQ(11, Widget::totalVal_);
+  }
+  EXPECT_EQ(11, Widget::totalVal_);
+}
+
+TEST(ThreadLocalPtr, CustomDeleterOwnershipTransfer) {
+  Widget::totalVal_ = 0;
+  {
+    ThreadLocalPtr<Widget> w;
+    auto deleter = [](Widget* ptr) {
+      Widget::customDeleter(ptr, TLPDestructionMode::THIS_THREAD);
+    };
+    std::unique_ptr<Widget, decltype(deleter)> source(new Widget(), deleter);
+    std::thread([&w, &source]() {
+      w.reset(std::move(source));
+      w.get()->val_ += 10;
+    }).join();
+    EXPECT_EQ(11, Widget::totalVal_);
+  }
+  EXPECT_EQ(11, Widget::totalVal_);
+}
+
+TEST(ThreadLocalPtr, DefaultDeleterOwnershipTransfer) {
+  Widget::totalVal_ = 0;
+  {
+    ThreadLocalPtr<Widget> w;
+    auto source = std::make_unique<Widget>();
+    std::thread([&w, &source]() {
+      w.reset(std::move(source));
+      w.get()->val_ += 10;
+    }).join();
     EXPECT_EQ(10, Widget::totalVal_);
   }
   EXPECT_EQ(10, Widget::totalVal_);
@@ -107,14 +144,15 @@ TEST(ThreadLocalPtr, CreateOnThreadExit) {
   ThreadLocalPtr<int> tl;
 
   std::thread([&] {
-      tl.reset(new int(1), [&] (int* ptr, TLPDestructionMode mode) {
-        delete ptr;
-        // This test ensures Widgets allocated here are not leaked.
-        ++w.get()->val_;
-        ThreadLocal<Widget> wl;
-        ++wl.get()->val_;
-      });
-    }).join();
+    tl.reset(new int(1),
+             [&](int* ptr, TLPDestructionMode /* mode */) {
+               delete ptr;
+               // This test ensures Widgets allocated here are not leaked.
+               ++w.get()->val_;
+               ThreadLocal<Widget> wl;
+               ++wl.get()->val_;
+             });
+  }).join();
   EXPECT_EQ(2, Widget::totalVal_);
 }
 
@@ -275,10 +313,12 @@ TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
   std::atomic<int> totalAtomic(0);
   std::vector<std::thread> threads;
   for (int i = 0; i < kNumThreads; ++i) {
-    threads.push_back(std::thread([&,i]() {
+    threads.push_back(std::thread([&]() {
       stci.add(1);
       totalAtomic.fetch_add(1);
-      while (run.load()) { usleep(100); }
+      while (run.load()) {
+        usleep(100);
+      }
     }));
   }
   while (totalAtomic.load() != kNumThreads) { usleep(100); }
@@ -368,7 +408,7 @@ class FillObject {
 
  private:
   uint64_t val() const {
-    return (idx_ << 40) | uint64_t(pthread_self());
+    return (idx_ << 40) | folly::getCurrentThreadID();
   }
 
   uint64_t idx_;
@@ -377,18 +417,17 @@ class FillObject {
 
 }  // namespace
 
-#if FOLLY_HAVE_STD_THIS_THREAD_SLEEP_FOR
 TEST(ThreadLocal, Stress) {
-  constexpr size_t numFillObjects = 250;
+  static constexpr size_t numFillObjects = 250;
   std::array<ThreadLocalPtr<FillObject>, numFillObjects> objects;
 
-  constexpr size_t numThreads = 32;
-  constexpr size_t numReps = 20;
+  static constexpr size_t numThreads = 32;
+  static constexpr size_t numReps = 20;
 
   std::vector<std::thread> threads;
   threads.reserve(numThreads);
 
-  for (size_t i = 0; i < numThreads; ++i) {
+  for (size_t k = 0; k < numThreads; ++k) {
     threads.emplace_back([&objects] {
       for (size_t rep = 0; rep < numReps; ++rep) {
         for (size_t i = 0; i < objects.size(); ++i) {
@@ -408,7 +447,6 @@ TEST(ThreadLocal, Stress) {
 
   EXPECT_EQ(numFillObjects * numThreads * numReps, gDestroyed);
 }
-#endif
 
 // Yes, threads and fork don't mix
 // (http://cppwisdom.quora.com/Why-threads-and-fork-dont-mix) but if you're
@@ -509,6 +547,7 @@ TEST(ThreadLocal, Fork) {
 }
 #endif
 
+#ifndef _WIN32
 struct HoldsOneTag2 {};
 
 TEST(ThreadLocal, Fork2) {
@@ -538,75 +577,65 @@ TEST(ThreadLocal, Fork2) {
   }
 }
 
-// Simple reference implementation using pthread_get_specific
-template<typename T>
-class PThreadGetSpecific {
- public:
-  PThreadGetSpecific() : key_(0) {
-    pthread_key_create(&key_, OnThreadExit);
-  }
+// Elide this test when using any sanitizer. Otherwise, the dlopen'ed code
+// would end up running without e.g., ASAN-initialized data structures and
+// failing right away.
+#if !defined FOLLY_SANITIZE_ADDRESS && !defined UNDEFINED_SANITIZER && \
+    !defined FOLLY_SANITIZE_THREAD
 
-  T* get() const {
-    return static_cast<T*>(pthread_getspecific(key_));
-  }
+TEST(ThreadLocal, SharedLibrary) {
+  auto exe = fs::executable_path();
+  auto lib = exe.parent_path() / "thread_local_test_lib.so";
+  auto handle = dlopen(lib.string().c_str(), RTLD_LAZY);
+  EXPECT_NE(nullptr, handle);
 
-  void reset(T* t) {
-    delete get();
-    pthread_setspecific(key_, t);
-  }
-  static void OnThreadExit(void* obj) {
-    delete static_cast<T*>(obj);
-  }
- private:
-  pthread_key_t key_;
-};
+  typedef void (*useA_t)();
+  dlerror();
+  useA_t useA = (useA_t) dlsym(handle, "useA");
 
-DEFINE_int32(numThreads, 8, "Number simultaneous threads for benchmarks.");
+  const char *dlsym_error = dlerror();
+  EXPECT_EQ(nullptr, dlsym_error);
 
-#define REG(var)                                                \
-  BENCHMARK(FB_CONCATENATE(BM_mt_, var), iters) {               \
-    const int itersPerThread = iters / FLAGS_numThreads;        \
-    std::vector<std::thread> threads;                           \
-    for (int i = 0; i < FLAGS_numThreads; ++i) {                \
-      threads.push_back(std::thread([&]() {                     \
-        var.reset(new int(0));                                  \
-        for (int i = 0; i < itersPerThread; ++i) {              \
-          ++(*var.get());                                       \
-        }                                                       \
-      }));                                                      \
-    }                                                           \
-    for (auto& t : threads) {                                   \
-      t.join();                                                 \
-    }                                                           \
-  }
+  useA();
 
-ThreadLocalPtr<int> tlp;
-REG(tlp);
-PThreadGetSpecific<int> pthread_get_specific;
-REG(pthread_get_specific);
-boost::thread_specific_ptr<int> boost_tsp;
-REG(boost_tsp);
-BENCHMARK_DRAW_LINE();
+  folly::Baton<> b11, b12, b21, b22;
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  gflags::SetCommandLineOptionWithMode(
-    "bm_max_iters", "100000000", gflags::SET_FLAG_IF_DEFAULT
-  );
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return RUN_ALL_TESTS();
+  std::thread t1([&]() {
+      useA();
+      b11.post();
+      b12.wait();
+    });
+
+  std::thread t2([&]() {
+      useA();
+      b21.post();
+      b22.wait();
+    });
+
+  b11.wait();
+  b21.wait();
+
+  dlclose(handle);
+
+  b12.post();
+  b22.post();
+
+  t1.join();
+  t2.join();
 }
 
-/*
-Ran with 24 threads on dual 12-core Xeon(R) X5650 @ 2.67GHz with 12-MB caches
+#endif
+#endif
 
-Benchmark                               Iters   Total t    t/iter iter/sec
-------------------------------------------------------------------------------
-*       BM_mt_tlp                   100000000  39.88 ms  398.8 ps  2.335 G
- +5.91% BM_mt_pthread_get_specific  100000000  42.23 ms  422.3 ps  2.205 G
- + 295% BM_mt_boost_tsp             100000000  157.8 ms  1.578 ns  604.5 M
-------------------------------------------------------------------------------
-*/
+namespace folly { namespace threadlocal_detail {
+struct PthreadKeyUnregisterTester {
+  PthreadKeyUnregister p;
+  constexpr PthreadKeyUnregisterTester() = default;
+};
+}}
+
+TEST(ThreadLocal, UnregisterClassHasConstExprCtor) {
+  folly::threadlocal_detail::PthreadKeyUnregisterTester x;
+  // yep!
+  SUCCEED();
+}

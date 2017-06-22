@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,192 +15,270 @@
  */
 
 #include <folly/Baton.h>
+#include <folly/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/portability/GTest.h>
+
 #include <thread>
-#include <semaphore.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-#include <folly/Benchmark.h>
 
 using namespace folly;
 using namespace folly::test;
 using folly::detail::EmulatedFutexAtomic;
 
-typedef DeterministicSchedule DSched;
+/// Basic test
 
-TEST(Baton, basic) {
-  Baton<> b;
-  b.post();
-  b.wait();
+TEST(Baton, basic_single_poster_blocking) {
+  run_basic_test<std::atomic, true, true>();
+  run_basic_test<EmulatedFutexAtomic, true, true>();
+  run_basic_test<DeterministicAtomic, true, true>();
 }
 
-template <template<typename> class Atom>
-void run_pingpong_test(int numRounds) {
-  Baton<Atom> batons[17];
-  Baton<Atom>& a = batons[0];
-  Baton<Atom>& b = batons[16]; // to get it on a different cache line
-  auto thr = DSched::thread([&]{
-    for (int i = 0; i < numRounds; ++i) {
-      a.wait();
-      a.reset();
-      b.post();
-    }
-  });
-  for (int i = 0; i < numRounds; ++i) {
-    a.post();
-    b.wait();
-    b.reset();
-  }
-  DSched::join(thr);
+TEST(Baton, basic_single_poster_nonblocking) {
+  run_basic_test<std::atomic, true, false>();
+  run_basic_test<EmulatedFutexAtomic, true, false>();
+  run_basic_test<DeterministicAtomic, true, false>();
 }
 
-TEST(Baton, pingpong) {
+TEST(Baton, basic_multi_poster_blocking) {
+  run_basic_test<std::atomic, false, true>();
+}
+
+TEST(Baton, basic_multi_poster_nonblocking) {
+  run_basic_test<std::atomic, false, false>();
+}
+
+/// Ping pong tests
+
+TEST(Baton, pingpong_single_poster_blocking) {
   DSched sched(DSched::uniform(0));
 
-  run_pingpong_test<DeterministicAtomic>(1000);
+  run_pingpong_test<DeterministicAtomic, true, true>(1000);
 }
 
-BENCHMARK(baton_pingpong, iters) {
-  run_pingpong_test<std::atomic>(iters);
+TEST(Baton, pingpong_single_poster_nonblocking) {
+  DSched sched(DSched::uniform(0));
+
+  run_pingpong_test<DeterministicAtomic, true, false>(1000);
 }
 
-BENCHMARK(baton_pingpong_emulated_futex, iters) {
-  run_pingpong_test<EmulatedFutexAtomic>(iters);
+TEST(Baton, pingpong_multi_poster_blocking) {
+  DSched sched(DSched::uniform(0));
+
+  run_pingpong_test<DeterministicAtomic, false, true>(1000);
 }
 
-BENCHMARK(posix_sem_pingpong, iters) {
-  sem_t sems[3];
-  sem_t* a = sems + 0;
-  sem_t* b = sems + 2; // to get it on a different cache line
+TEST(Baton, pingpong_multi_poster_nonblocking) {
+  DSched sched(DSched::uniform(0));
 
-  sem_init(a, 0, 0);
-  sem_init(b, 0, 0);
-  auto thr = std::thread([=]{
-    for (size_t i = 0; i < iters; ++i) {
-      sem_wait(a);
-      sem_post(b);
-    }
-  });
-  for (size_t i = 0; i < iters; ++i) {
-    sem_post(a);
-    sem_wait(b);
-  }
-  thr.join();
+  run_pingpong_test<DeterministicAtomic, false, false>(1000);
 }
 
-template <template<typename> class Atom, typename Clock>
-void run_basic_timed_wait_tests() {
-  Baton<Atom> b;
-  b.post();
-  // tests if early delivery works fine
-  EXPECT_TRUE(b.timed_wait(Clock::now()));
+/// Timed wait tests - Nonblocking Baton does not support timed_wait()
+
+// Timed wait basic system clock tests
+
+TEST(Baton, timed_wait_basic_system_clock_single_poster) {
+  run_basic_timed_wait_tests<std::atomic, std::chrono::system_clock, true>();
+  run_basic_timed_wait_tests<
+      EmulatedFutexAtomic,
+      std::chrono::system_clock,
+      true>();
+  run_basic_timed_wait_tests<
+      DeterministicAtomic,
+      std::chrono::system_clock,
+      true>();
 }
 
-template <template<typename> class Atom, typename Clock>
-void run_timed_wait_tmo_tests() {
-  Baton<Atom> b;
-
-  auto thr = DSched::thread([&]{
-    bool rv = b.timed_wait(Clock::now() + std::chrono::milliseconds(1));
-    // main thread is guaranteed to not post until timeout occurs
-    EXPECT_FALSE(rv);
-  });
-  DSched::join(thr);
+TEST(Baton, timed_wait_basic_system_clock_multi_poster) {
+  run_basic_timed_wait_tests<std::atomic, std::chrono::system_clock, false>();
+  run_basic_timed_wait_tests<
+      EmulatedFutexAtomic,
+      std::chrono::system_clock,
+      false>();
+  run_basic_timed_wait_tests<
+      DeterministicAtomic,
+      std::chrono::system_clock,
+      false>();
 }
 
-template <template<typename> class Atom, typename Clock>
-void run_timed_wait_regular_test() {
-  Baton<Atom> b;
+// Timed wait timeout system clock tests
 
-  auto thr = DSched::thread([&] {
-    // To wait forever we'd like to use time_point<Clock>::max, but
-    // std::condition_variable does math to convert the timeout to
-    // system_clock without handling overflow.
-    auto farFuture = Clock::now() + std::chrono::hours(1000);
-    bool rv = b.timed_wait(farFuture);
-    if (!std::is_same<Atom<int>, DeterministicAtomic<int>>::value) {
-      // DeterministicAtomic ignores actual times, so doesn't guarantee
-      // a lack of timeout
-      EXPECT_TRUE(rv);
-    }
-  });
-
-  if (!std::is_same<Atom<int>, DeterministicAtomic<int>>::value) {
-    // If we are using std::atomic (or EmulatedFutexAtomic) then
-    // a sleep here guarantees to a large extent that 'thr' will
-    // execute wait before we post it, thus testing late delivery. For
-    // DeterministicAtomic, we just rely on DeterministicSchedule to do
-    // the scheduling.  The test won't fail if we lose the race, we just
-    // don't get coverage.
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
-  }
-
-  b.post();
-  DSched::join(thr);
+TEST(Baton, timed_wait_timeout_system_clock_single_poster) {
+  run_timed_wait_tmo_tests<std::atomic, std::chrono::system_clock, true>();
+  run_timed_wait_tmo_tests<
+      EmulatedFutexAtomic,
+      std::chrono::system_clock,
+      true>();
+  run_timed_wait_tmo_tests<
+      DeterministicAtomic,
+      std::chrono::system_clock,
+      true>();
 }
 
-TEST(Baton, timed_wait_basic_system_clock) {
-  run_basic_timed_wait_tests<std::atomic, std::chrono::system_clock>();
-  run_basic_timed_wait_tests<EmulatedFutexAtomic, std::chrono::system_clock>();
-  run_basic_timed_wait_tests<DeterministicAtomic, std::chrono::system_clock>();
+TEST(Baton, timed_wait_timeout_system_clock_multi_poster) {
+  run_timed_wait_tmo_tests<std::atomic, std::chrono::system_clock, false>();
+  run_timed_wait_tmo_tests<
+      EmulatedFutexAtomic,
+      std::chrono::system_clock,
+      false>();
+  run_timed_wait_tmo_tests<
+      DeterministicAtomic,
+      std::chrono::system_clock,
+      false>();
 }
 
-TEST(Baton, timed_wait_timeout_system_clock) {
-  run_timed_wait_tmo_tests<std::atomic, std::chrono::system_clock>();
-  run_timed_wait_tmo_tests<EmulatedFutexAtomic, std::chrono::system_clock>();
-  run_timed_wait_tmo_tests<DeterministicAtomic, std::chrono::system_clock>();
+// Timed wait regular system clock tests
+
+TEST(Baton, timed_wait_system_clock_single_poster) {
+  run_timed_wait_regular_test<std::atomic, std::chrono::system_clock, true>();
+  run_timed_wait_regular_test<
+      EmulatedFutexAtomic,
+      std::chrono::system_clock,
+      true>();
+  run_timed_wait_regular_test<
+      DeterministicAtomic,
+      std::chrono::system_clock,
+      true>();
 }
 
-TEST(Baton, timed_wait_system_clock) {
-  run_timed_wait_regular_test<std::atomic, std::chrono::system_clock>();
-  run_timed_wait_regular_test<EmulatedFutexAtomic, std::chrono::system_clock>();
-  run_timed_wait_regular_test<DeterministicAtomic, std::chrono::system_clock>();
+TEST(Baton, timed_wait_system_clock_multi_poster) {
+  run_timed_wait_regular_test<std::atomic, std::chrono::system_clock, false>();
+  run_timed_wait_regular_test<
+      EmulatedFutexAtomic,
+      std::chrono::system_clock,
+      false>();
+  run_timed_wait_regular_test<
+      DeterministicAtomic,
+      std::chrono::system_clock,
+      false>();
 }
 
-TEST(Baton, timed_wait_basic_steady_clock) {
-  run_basic_timed_wait_tests<std::atomic, std::chrono::steady_clock>();
-  run_basic_timed_wait_tests<EmulatedFutexAtomic, std::chrono::steady_clock>();
-  run_basic_timed_wait_tests<DeterministicAtomic, std::chrono::steady_clock>();
+// Timed wait basic steady clock tests
+
+TEST(Baton, timed_wait_basic_steady_clock_single_poster) {
+  run_basic_timed_wait_tests<std::atomic, std::chrono::steady_clock, true>();
+  run_basic_timed_wait_tests<
+      EmulatedFutexAtomic,
+      std::chrono::steady_clock,
+      true>();
+  run_basic_timed_wait_tests<
+      DeterministicAtomic,
+      std::chrono::steady_clock,
+      true>();
 }
 
-TEST(Baton, timed_wait_timeout_steady_clock) {
-  run_timed_wait_tmo_tests<std::atomic, std::chrono::steady_clock>();
-  run_timed_wait_tmo_tests<EmulatedFutexAtomic, std::chrono::steady_clock>();
-  run_timed_wait_tmo_tests<DeterministicAtomic, std::chrono::steady_clock>();
+TEST(Baton, timed_wait_basic_steady_clock_multi_poster) {
+  run_basic_timed_wait_tests<std::atomic, std::chrono::steady_clock, false>();
+  run_basic_timed_wait_tests<
+      EmulatedFutexAtomic,
+      std::chrono::steady_clock,
+      false>();
+  run_basic_timed_wait_tests<
+      DeterministicAtomic,
+      std::chrono::steady_clock,
+      false>();
 }
 
-TEST(Baton, timed_wait_steady_clock) {
-  run_timed_wait_regular_test<std::atomic, std::chrono::steady_clock>();
-  run_timed_wait_regular_test<EmulatedFutexAtomic, std::chrono::steady_clock>();
-  run_timed_wait_regular_test<DeterministicAtomic, std::chrono::steady_clock>();
+// Timed wait timeout steady clock tests
+
+TEST(Baton, timed_wait_timeout_steady_clock_single_poster) {
+  run_timed_wait_tmo_tests<std::atomic, std::chrono::steady_clock, true>();
+  run_timed_wait_tmo_tests<
+      EmulatedFutexAtomic,
+      std::chrono::steady_clock,
+      true>();
+  run_timed_wait_tmo_tests<
+      DeterministicAtomic,
+      std::chrono::steady_clock,
+      true>();
 }
 
-template <template<typename> class Atom>
-void run_try_wait_tests() {
-  Baton<Atom> b;
-  EXPECT_FALSE(b.try_wait());
-  b.post();
-  EXPECT_TRUE(b.try_wait());
+TEST(Baton, timed_wait_timeout_steady_clock_multi_poster) {
+  run_timed_wait_tmo_tests<std::atomic, std::chrono::steady_clock, false>();
+  run_timed_wait_tmo_tests<
+      EmulatedFutexAtomic,
+      std::chrono::steady_clock,
+      false>();
+  run_timed_wait_tmo_tests<
+      DeterministicAtomic,
+      std::chrono::steady_clock,
+      false>();
 }
 
-TEST(Baton, try_wait) {
-  run_try_wait_tests<std::atomic>();
-  run_try_wait_tests<EmulatedFutexAtomic>();
-  run_try_wait_tests<DeterministicAtomic>();
+// Timed wait regular steady clock tests
+
+TEST(Baton, timed_wait_steady_clock_single_poster) {
+  run_timed_wait_regular_test<std::atomic, std::chrono::steady_clock, true>();
+  run_timed_wait_regular_test<
+      EmulatedFutexAtomic,
+      std::chrono::steady_clock,
+      true>();
+  run_timed_wait_regular_test<
+      DeterministicAtomic,
+      std::chrono::steady_clock,
+      true>();
 }
 
-// I am omitting a benchmark result snapshot because these microbenchmarks
-// mainly illustrate that PreBlockAttempts is very effective for rapid
-// handoffs.  The performance of Baton and sem_t is essentially identical
-// to the required futex calls for the blocking case
+TEST(Baton, timed_wait_steady_clock_multi_poster) {
+  run_timed_wait_regular_test<std::atomic, std::chrono::steady_clock, false>();
+  run_timed_wait_regular_test<
+      EmulatedFutexAtomic,
+      std::chrono::steady_clock,
+      false>();
+  run_timed_wait_regular_test<
+      DeterministicAtomic,
+      std::chrono::steady_clock,
+      false>();
+}
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+/// Try wait tests
 
-  auto rv = RUN_ALL_TESTS();
-  if (!rv && FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return rv;
+TEST(Baton, try_wait_single_poster_blocking) {
+  run_try_wait_tests<std::atomic, true, true>();
+  run_try_wait_tests<EmulatedFutexAtomic, true, true>();
+  run_try_wait_tests<DeterministicAtomic, true, true>();
+}
+
+TEST(Baton, try_wait_single_poster_nonblocking) {
+  run_try_wait_tests<std::atomic, true, false>();
+  run_try_wait_tests<EmulatedFutexAtomic, true, false>();
+  run_try_wait_tests<DeterministicAtomic, true, false>();
+}
+
+TEST(Baton, try_wait_multi_poster_blocking) {
+  run_try_wait_tests<std::atomic, false, true>();
+  run_try_wait_tests<EmulatedFutexAtomic, false, true>();
+  run_try_wait_tests<DeterministicAtomic, false, true>();
+}
+
+TEST(Baton, try_wait_multi_poster_nonblocking) {
+  run_try_wait_tests<std::atomic, false, false>();
+  run_try_wait_tests<EmulatedFutexAtomic, false, false>();
+  run_try_wait_tests<DeterministicAtomic, false, false>();
+}
+
+/// Multi-producer tests
+
+TEST(Baton, multi_producer_single_poster_blocking) {
+  run_try_wait_tests<std::atomic, true, true>();
+  run_try_wait_tests<EmulatedFutexAtomic, true, true>();
+  run_try_wait_tests<DeterministicAtomic, true, true>();
+}
+
+TEST(Baton, multi_producer_single_poster_nonblocking) {
+  run_try_wait_tests<std::atomic, true, false>();
+  run_try_wait_tests<EmulatedFutexAtomic, true, false>();
+  run_try_wait_tests<DeterministicAtomic, true, false>();
+}
+
+TEST(Baton, multi_producer_multi_poster_blocking) {
+  run_try_wait_tests<std::atomic, false, true>();
+  run_try_wait_tests<EmulatedFutexAtomic, false, true>();
+  run_try_wait_tests<DeterministicAtomic, false, true>();
+}
+
+TEST(Baton, multi_producer_multi_poster_nonblocking) {
+  run_try_wait_tests<std::atomic, false, false>();
+  run_try_wait_tests<EmulatedFutexAtomic, false, false>();
+  run_try_wait_tests<DeterministicAtomic, false, false>();
 }

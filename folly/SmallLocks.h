@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SMALLLOCKS_H_
-#define FOLLY_SMALLLOCKS_H_
+#pragma once
 
 /*
  * This header defines a few very small mutex types.  These are useful
@@ -34,7 +33,10 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
+#include <folly/MicroLock.h>
 #include <folly/MicroSpinLock.h>
-#include <folly/PicoSpinLock.h>
 
+#include <folly/Portability.h>
+#if FOLLY_X64 || FOLLY_A64 || FOLLY_PPC64
+#include <folly/PicoSpinLock.h>
 #endif

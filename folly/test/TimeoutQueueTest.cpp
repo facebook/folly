@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <folly/TimeoutQueue.h>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -24,10 +25,8 @@ TEST(TimeoutQueue, Simple) {
   EventVec events;
 
   TimeoutQueue q;
-  TimeoutQueue::Callback cb =
-    [&events](TimeoutQueue::Id id, int64_t now) {
-      events.push_back(id);
-    };
+  TimeoutQueue::Callback cb = [&events](
+      TimeoutQueue::Id id, int64_t /* now */) { events.push_back(id); };
 
   EXPECT_EQ(1, q.add(0, 10, cb));
   EXPECT_EQ(2, q.add(0, 11, cb));
@@ -51,12 +50,12 @@ TEST(TimeoutQueue, Erase) {
 
   TimeoutQueue q;
   TimeoutQueue::Callback cb =
-    [&events, &q](TimeoutQueue::Id id, int64_t now) {
-      events.push_back(id);
-      if (id == 2) {
-        q.erase(1);
-      }
-    };
+      [&events, &q](TimeoutQueue::Id id, int64_t /* now */) {
+        events.push_back(id);
+        if (id == 2) {
+          q.erase(1);
+        }
+      };
 
   EXPECT_EQ(1, q.addRepeating(0, 10, cb));
   EXPECT_EQ(2, q.add(0, 35, cb));
@@ -74,11 +73,11 @@ TEST(TimeoutQueue, RunOnceRepeating) {
   int count = 0;
   TimeoutQueue q;
   TimeoutQueue::Callback cb =
-    [&count, &q](TimeoutQueue::Id id, int64_t now) {
-      if (++count == 100) {
-        EXPECT_TRUE(q.erase(id));
-      }
-    };
+      [&count, &q](TimeoutQueue::Id id, int64_t /* now */) {
+        if (++count == 100) {
+          EXPECT_TRUE(q.erase(id));
+        }
+      };
 
   EXPECT_EQ(1, q.addRepeating(0, 0, cb));
 
@@ -102,7 +101,6 @@ TEST(TimeoutQueue, RunOnceReschedule) {
 
   EXPECT_EQ(1, q.add(0, 0, cb));
 
-  int64_t now = 0;
   EXPECT_EQ(0, q.runOnce(0));
   EXPECT_EQ(1, count);
   EXPECT_EQ(0, q.runOnce(0));

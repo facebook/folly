@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <gflags/gflags.h>
+#include <boost/version.hpp>
 #include <glog/logging.h>
+
 #include <folly/Conv.h>
 #include <folly/Portability.h>
+#include <folly/portability/GFlags.h>
 
 namespace po = ::boost::program_options;
 
@@ -80,10 +82,15 @@ class GFlagValueSemanticBase : public po::value_semantic {
     : info_(std::move(info)) { }
 
   std::string name() const override { return "arg"; }
+#if BOOST_VERSION >= 105900
+  bool adjacent_tokens_only() const {
+    return false;
+  }
+#endif
   bool is_composing() const override { return false; }
   bool is_required() const override { return false; }
   // We handle setting the GFlags from parse(), so notify() does nothing.
-  void notify(const boost::any& valueStore) const override { }
+  void notify(const boost::any& /* valueStore */) const override {}
   bool apply_default(boost::any& valueStore) const override {
     // We're using the *current* rather than *default* value here, and
     // this is intentional; GFlags-using programs assign to FLAGS_foo
@@ -97,11 +104,11 @@ class GFlagValueSemanticBase : public po::value_semantic {
 
   void parse(boost::any& valueStore,
              const std::vector<std::string>& tokens,
-             bool utf8) const override;
+             bool /* utf8 */) const override;
 
  private:
   virtual T parseValue(const std::vector<std::string>& tokens) const = 0;
-  virtual void transform(T& val) const { }
+  virtual void transform(T& /* val */) const {}
 
   mutable std::shared_ptr<GFlagInfo<T>> info_;
 };
@@ -109,12 +116,12 @@ class GFlagValueSemanticBase : public po::value_semantic {
 template <class T>
 void GFlagValueSemanticBase<T>::parse(boost::any& valueStore,
                                       const std::vector<std::string>& tokens,
-                                      bool utf8) const {
+                                      bool /* utf8 */) const {
   T val;
   try {
     val = this->parseValue(tokens);
     this->transform(val);
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     throw po::invalid_option_value(
         tokens.empty() ? std::string() : tokens.front());
   }
@@ -162,29 +169,11 @@ class NegativeBoolGFlagValueSemantic : public BoolGFlagValueSemantic {
   }
 };
 
-static const std::unordered_set<std::string> gSkipFlags {
-  "flagfile",
-  "fromenv",
-  "tryfromenv",
-  "undefok",
-  "help",
-  "helpfull",
-  "helpshort",
-  "helpon",
-  "helpmatch",
-  "helppackage",
-  "helpxml",
-  "version",
-  "tab_completion_columns",
-  "tab_completion_word",
-};
-
-static const std::unordered_map<std::string, std::string> gFlagOverrides {
-  // Allow -v in addition to --v
-  {"v", "v,v"},
-};
-
 const std::string& getName(const std::string& name) {
+  static const std::unordered_map<std::string, std::string> gFlagOverrides{
+      // Allow -v in addition to --v
+      {"v", "v,v"},
+  };
   auto pos = gFlagOverrides.find(name);
   return pos != gFlagOverrides.end() ? pos->second : name;
 }
@@ -248,6 +237,7 @@ const std::unordered_map<std::string, FlagAdder> gFlagAdders = {
   X("bool",   bool)
   X("int32",  int32_t)
   X("int64",  int64_t)
+  X("uint32", uint32_t)
   X("uint64", uint64_t)
   X("double", double)
   X("string", std::string)
@@ -257,6 +247,23 @@ const std::unordered_map<std::string, FlagAdder> gFlagAdders = {
 }  // namespace
 
 po::options_description getGFlags(ProgramOptionsStyle style) {
+  static const std::unordered_set<std::string> gSkipFlags{
+      "flagfile",
+      "fromenv",
+      "tryfromenv",
+      "undefok",
+      "help",
+      "helpfull",
+      "helpshort",
+      "helpon",
+      "helpmatch",
+      "helppackage",
+      "helpxml",
+      "version",
+      "tab_completion_columns",
+      "tab_completion_word",
+  };
+
   po::options_description desc("GFlags");
 
   std::vector<gflags::CommandLineFlagInfo> allFlags;

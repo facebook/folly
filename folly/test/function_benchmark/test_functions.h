@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef TEST_FUNCTIONS_H_
-#define TEST_FUNCTIONS_H_
+#pragma once
 
 #include <exception>
+#include <functional>
 #include <string>
+
+#include <folly/Function.h>
 
 void doNothing();
 
-void throwException();
+[[noreturn]] void throwException();
 std::exception_ptr returnExceptionPtr();
 void exceptionPtrReturnParam(std::exception_ptr* excReturn);
 std::string returnString();
 std::string returnStringNoExcept() noexcept;
 int returnCode(int value);
 int returnCodeNoExcept(int value) noexcept;
+void invoke(std::function<void()>);
+void invoke(folly::Function<void()>);
 
 class TestClass {
  public:
@@ -41,4 +45,11 @@ class VirtualClass {
   virtual void doNothing();
 };
 
-#endif // TEST_FUNCTIONS_H_
+class LargeClass {
+ public:
+  LargeClass();
+  void operator()() const; // do nothing
+ private:
+  // Avoid small object optimization.
+  char data[1024];
+};

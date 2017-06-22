@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/SharedPromise.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -99,4 +98,30 @@ TEST(SharedPromise, moveMove) {
   auto p2 = std::move(p);
   p = std::move(p2);
   p.setValue(std::make_shared<int>(1));
+}
+
+TEST(SharedPromise, setWith) {
+  SharedPromise<int> p;
+  p.setWith([]{ return 1; });
+  EXPECT_EQ(1, p.getFuture().value());
+}
+
+TEST(SharedPromise, isFulfilled) {
+  SharedPromise<int> p;
+  EXPECT_FALSE(p.isFulfilled());
+  auto p2 = std::move(p);
+  EXPECT_FALSE(p2.isFulfilled());
+  p2.setValue(1);
+  EXPECT_TRUE(p2.isFulfilled());
+  p = std::move(p2);
+  EXPECT_TRUE(p.isFulfilled());
+}
+
+TEST(SharedPromise, interruptHandler) {
+  SharedPromise<int> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper&) { flag = true; });
+  auto f = p.getFuture();
+  f.cancel();
+  EXPECT_TRUE(flag);
 }

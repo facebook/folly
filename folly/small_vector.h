@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@
  *
  * @author Jordan DeLong <delong.j@fb.com>
  */
-#ifndef FOLLY_SMALL_VECTOR_H_
-#define FOLLY_SMALL_VECTOR_H_
+
+#pragma once
 
 #include <stdexcept>
 #include <cstdlib>
@@ -42,36 +42,21 @@
 #include <boost/mpl/empty.hpp>
 #include <boost/mpl/size.hpp>
 #include <boost/mpl/count.hpp>
-#include <boost/mpl/max.hpp>
 
+#include <folly/Assume.h>
 #include <folly/FormatTraits.h>
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
-
-#if defined(__GNUC__) && FOLLY_X64
-# include <folly/SmallLocks.h>
-# define FB_PACK_ATTR FOLLY_PACK_ATTR
-# define FB_PACK_PUSH FOLLY_PACK_PUSH
-# define FB_PACK_POP FOLLY_PACK_POP
-#else
-# define FB_PACK_ATTR
-# define FB_PACK_PUSH
-# define FB_PACK_POP
-#endif
-
-#if FOLLY_HAVE_MALLOC_SIZE
-  extern "C" std::size_t malloc_size(const void*);
-# if !FOLLY_HAVE_MALLOC_USABLE_SIZE
-#  define malloc_usable_size malloc_size
-# endif
-# ifndef malloc_usable_size
-#  define malloc_usable_size malloc_size
-# endif
-#endif
+#include <folly/SmallLocks.h>
+#include <folly/Traits.h>
+#include <folly/portability/BitsFunctexcept.h>
+#include <folly/portability/Constexpr.h>
+#include <folly/portability/Malloc.h>
+#include <folly/portability/TypeTraits.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 
@@ -134,6 +119,42 @@ namespace detail {
   >::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::memmove(out, first, (last - first) * sizeof *first);
+  }
+
+  /*
+   * Move a range to a range of uninitialized memory. Assumes the
+   * ranges don't overlap. Inserts an element at out + pos using emplaceFunc().
+   * out will contain (end - begin) + 1 elements on success and none on failure.
+   * If emplaceFunc() throws [begin, end) is unmodified.
+   */
+  template <class T, class Size, class EmplaceFunc>
+  void moveToUninitializedEmplace(
+      T* begin,
+      T* end,
+      T* out,
+      Size pos,
+      EmplaceFunc&& emplaceFunc) {
+    // Must be called first so that if it throws [begin, end) is unmodified.
+    // We have to support the strong exception guarantee for emplace_back().
+    emplaceFunc(out + pos);
+    // move old elements to the left of the new one
+    try {
+      detail::moveToUninitialized(begin, begin + pos, out);
+    } catch (...) {
+      out[pos].~T();
+      throw;
+    }
+    // move old elements to the right of the new one
+    try {
+      if (begin + pos < end) {
+        detail::moveToUninitialized(begin + pos, end, out + pos + 1);
+      }
+    } catch (...) {
+      for (Size i = 0; i <= pos; ++i) {
+        out[i].~T();
+      }
+      throw;
+    }
   }
 
   /*
@@ -342,7 +363,7 @@ namespace detail {
 }
 
 //////////////////////////////////////////////////////////////////////
-FB_PACK_PUSH
+FOLLY_PACK_PUSH
 template<class Value,
          std::size_t RequestedMaxInline    = 1,
          class PolicyA                     = void,
@@ -363,14 +384,10 @@ class small_vector
    * the user asks for less inlined elements than we can fit unioned
    * into our value_type*, we will inline more than they asked.)
    */
-  enum {
-    MaxInline = boost::mpl::max<
-                  boost::mpl::int_<sizeof(Value*) / sizeof(Value)>,
-                  boost::mpl::int_<RequestedMaxInline>
-                >::type::value
-  };
+  static constexpr std::size_t MaxInline{
+      constexpr_max(sizeof(Value*) / sizeof(Value), RequestedMaxInline)};
 
-public:
+ public:
   typedef std::size_t        size_type;
   typedef Value              value_type;
   typedef value_type&        reference;
@@ -414,8 +431,12 @@ public:
     constructImpl(il.begin(), il.end(), std::false_type());
   }
 
-  explicit small_vector(size_type n, value_type const& t = value_type()) {
-    doConstruct(n, t);
+  explicit small_vector(size_type n) {
+    doConstruct(n, [&](void* p) { new (p) value_type(); });
+  }
+
+  small_vector(size_type n, value_type const& t) {
+    doConstruct(n, [&](void* p) { new (p) value_type(t); });
   }
 
   template<class Arg>
@@ -458,7 +479,7 @@ public:
   }
 
   static constexpr size_type max_size() {
-    return !BaseType::kShouldUseHeap ? MaxInline
+    return !BaseType::kShouldUseHeap ? static_cast<size_type>(MaxInline)
                                      : BaseType::policyMaxSize();
   }
 
@@ -503,7 +524,9 @@ public:
       auto thisCapacity = this->capacity();
       auto oCapacity = o.capacity();
 
-      std::swap(unpackHack(&u.pdata_.heap_), unpackHack(&o.u.pdata_.heap_));
+      auto* tmp = u.pdata_.heap_;
+      u.pdata_.heap_ = o.u.pdata_.heap_;
+      o.u.pdata_.heap_ = tmp;
 
       this->setCapacity(oCapacity);
       o.setCapacity(thisCapacity);
@@ -636,7 +659,7 @@ public:
   size_type capacity() const {
     if (this->isExtern()) {
       if (u.hasCapacity()) {
-        return *u.getCapacity();
+        return u.getCapacity();
       }
       return malloc_usable_size(u.pdata_.heap_) / sizeof(value_type);
     }
@@ -652,44 +675,28 @@ public:
     tmp.swap(*this);
   }
 
-  template<class ...Args>
+  template <class... Args>
   void emplace_back(Args&&... args) {
-    // call helper function for static dispatch of special cases
-    emplaceBack(std::forward<Args>(args)...);
-  }
-
-  void emplace_back(const value_type& t) {
-    push_back(t);
-  }
-  void emplace_back(value_type& t) {
-    push_back(t);
-  }
-
-  void emplace_back(value_type&& t) {
-    push_back(std::move(t));
-  }
-
-  void push_back(value_type&& t) {
     if (capacity() == size()) {
-      makeSize(std::max(size_type(2), 3 * size() / 2), &t, size());
+      // Any of args may be references into the vector.
+      // When we are reallocating, we have to be careful to construct the new
+      // element before modifying the data in the old buffer.
+      makeSize(
+          size() + 1,
+          [&](void* p) { new (p) value_type(std::forward<Args>(args)...); },
+          size());
     } else {
-      new (end()) value_type(std::move(t));
+      new (end()) value_type(std::forward<Args>(args)...);
     }
     this->setSize(size() + 1);
   }
 
+  void push_back(value_type&& t) {
+    return emplace_back(std::move(t));
+  }
+
   void push_back(value_type const& t) {
-    // TODO: we'd like to make use of makeSize (it can be optimized better,
-    // because it manipulates the internals)
-    // unfortunately the current implementation only supports moving from
-    // a supplied rvalue, and doing an extra move just to reuse it is a perf
-    // net loss
-    if (size() == capacity()) {// && isInside(&t)) {
-      value_type tmp(t);
-      emplaceBack(std::move(tmp));
-    } else {
-      emplaceBack(t);
-    }
+    emplace_back(t);
   }
 
   void pop_back() {
@@ -707,10 +714,12 @@ public:
     auto offset = p - begin();
 
     if (capacity() == size()) {
-      makeSize(size() + 1, &t, offset);
+      makeSize(
+          size() + 1,
+          [&t](void* ptr) { new (ptr) value_type(std::move(t)); },
+          offset);
       this->setSize(this->size() + 1);
     } else {
-      makeSize(size() + 1);
       detail::moveObjectsRight(data() + offset,
                                data() + size(),
                                data() + size() + 1);
@@ -803,42 +812,22 @@ public:
 
   reference at(size_type i) {
     if (i >= size()) {
-      throw std::out_of_range("index out of range");
+      std::__throw_out_of_range("index out of range");
     }
     return (*this)[i];
   }
 
   const_reference at(size_type i) const {
     if (i >= size()) {
-      throw std::out_of_range("index out of range");
+      std::__throw_out_of_range("index out of range");
     }
     return (*this)[i];
   }
 
 private:
 
-  /*
-   * This is doing the same like emplace_back, but we need this helper
-   * to catch the special case - see the next overload function..
-   */
-  template<class ...Args>
-  void emplaceBack(Args&&... args) {
-    makeSize(size() + 1);
-    new (end()) value_type(std::forward<Args>(args)...);
-    this->setSize(size() + 1);
-  }
-
   static iterator unconst(const_iterator it) {
     return const_cast<iterator>(it);
-  }
-
-  /*
-   * g++ doesn't allow you to bind a non-const reference to a member
-   * of a packed structure, presumably because it would make it too
-   * easy to accidentally make an unaligned memory access?
-   */
-  template<class T> static T& unpackHack(T* p) {
-    return *p;
   }
 
   // The std::false_type argument is part of disambiguating the
@@ -883,7 +872,7 @@ private:
       // With iterators that only allow a single pass, we can't really
       // do anything sane here.
       while (first != last) {
-        push_back(*first++);
+        emplace_back(*first++);
       }
       return;
     }
@@ -903,13 +892,12 @@ private:
     }
   }
 
-  void doConstruct(size_type n, value_type const& val) {
+  template <typename InitFunc>
+  void doConstruct(size_type n, InitFunc&& func) {
     makeSize(n);
     this->setSize(n);
     try {
-      detail::populateMemForward(data(), n,
-        [&] (void* p) { new (p) value_type(val); }
-      );
+      detail::populateMemForward(data(), n, std::forward<InitFunc>(func));
     } catch (...) {
       if (this->isExtern()) {
         u.freeHeap();
@@ -921,33 +909,53 @@ private:
   // The true_type means we should forward to the size_t,value_type
   // overload.
   void constructImpl(size_type n, value_type const& val, std::true_type) {
-    doConstruct(n, val);
-  }
-
-  void makeSize(size_type size, value_type* v = nullptr) {
-    makeSize(size, v, size - 1);
+    doConstruct(n, [&](void* p) { new (p) value_type(val); });
   }
 
   /*
-   * Ensure we have a large enough memory region to be size `size'.
+   * Compute the size after growth.
+   */
+  size_type computeNewSize() const {
+    return std::min((3 * capacity()) / 2 + 1, max_size());
+  }
+
+  void makeSize(size_type newSize) {
+    makeSizeInternal(newSize, false, [](void*) { assume_unreachable(); }, 0);
+  }
+
+  template <typename EmplaceFunc>
+  void makeSize(size_type newSize, EmplaceFunc&& emplaceFunc, size_type pos) {
+    assert(size() == capacity());
+    makeSizeInternal(
+        newSize, true, std::forward<EmplaceFunc>(emplaceFunc), pos);
+  }
+
+  /*
+   * Ensure we have a large enough memory region to be size `newSize'.
    * Will move/copy elements if we are spilling to heap_ or needed to
    * allocate a new region, but if resized in place doesn't initialize
    * anything in the new region.  In any case doesn't change size().
    * Supports insertion of new element during reallocation by given
    * pointer to new element and position of new element.
-   * NOTE: If reallocation is not needed, and new element should be
-   * inserted in the middle of vector (not at the end), do the move
-   * objects and insertion outside the function, otherwise exception is thrown.
+   * NOTE: If reallocation is not needed, insert must be false,
+   * because we only know how to emplace elements into new memory.
    */
-  void makeSize(size_type size, value_type* v, size_type pos) {
-    if (size > this->max_size()) {
+  template <typename EmplaceFunc>
+  void makeSizeInternal(
+      size_type newSize,
+      bool insert,
+      EmplaceFunc&& emplaceFunc,
+      size_type pos) {
+    if (newSize > max_size()) {
       throw std::length_error("max_size exceeded in small_vector");
     }
-    if (size <= this->capacity()) {
+    if (newSize <= capacity()) {
+      assert(!insert);
       return;
     }
+    newSize = std::max(newSize, computeNewSize());
 
-    auto needBytes = size * sizeof(value_type);
+    auto needBytes = newSize * sizeof(value_type);
     // If the capacity isn't explicitly stored inline, but the heap
     // allocation is grown to over some threshold, we should store
     // a capacity at the front of the heap allocation.
@@ -967,44 +975,18 @@ private:
         detail::shiftPointer(newh, kHeapifyCapacitySize) :
         newh);
 
-    if (v != nullptr) {
-      // move new element
-      try {
-        new (&newp[pos]) value_type(std::move(*v));
-      } catch (...) {
-        free(newh);
-        throw;
-      }
-
-      // move old elements to the left of the new one
-      try {
-        detail::moveToUninitialized(begin(), begin() + pos, newp);
-      } catch (...) {
-        newp[pos].~value_type();
-        free(newh);
-        throw;
-      }
-
-      // move old elements to the right of the new one
-      try {
-        if (pos < size-1) {
-          detail::moveToUninitialized(begin() + pos, end(), newp + pos + 1);
-        }
-      } catch (...) {
-        for (size_type i = 0; i <= pos; ++i) {
-          newp[i].~value_type();
-        }
-        free(newh);
-        throw;
-      }
-    } else {
-      // move without inserting new element
-      try {
+    try {
+      if (insert) {
+        // move and insert the new element
+        detail::moveToUninitializedEmplace(
+            begin(), end(), newp, pos, std::forward<EmplaceFunc>(emplaceFunc));
+      } else {
+        // move without inserting new element
         detail::moveToUninitialized(begin(), end(), newp);
-      } catch (...) {
-        free(newh);
-        throw;
       }
+    } catch (...) {
+      free(newh);
+      throw;
     }
     for (auto& val : *this) {
       val.~value_type();
@@ -1032,7 +1014,7 @@ private:
     assert(this->isExtern());
     if (u.hasCapacity()) {
       assert(newCapacity < std::numeric_limits<InternalSizeType>::max());
-      *u.getCapacity() = InternalSizeType(newCapacity);
+      u.setCapacity(newCapacity);
     }
   }
 
@@ -1041,31 +1023,42 @@ private:
     void* heap_;
     InternalSizeType capacity_;
 
-    InternalSizeType* getCapacity() {
-      return &capacity_;
+    InternalSizeType getCapacity() const {
+      return capacity_;
     }
-  } FB_PACK_ATTR;
+    void setCapacity(InternalSizeType c) {
+      capacity_ = c;
+    }
+  } FOLLY_PACK_ATTR;
 
   struct HeapPtr {
     // Lower order bit of heap_ is used as flag to indicate whether capacity is
     // stored at the front of the heap allocation.
     void* heap_;
 
-    InternalSizeType* getCapacity() {
+    InternalSizeType getCapacity() const {
       assert(detail::pointerFlagGet(heap_));
-      return static_cast<InternalSizeType*>(
-        detail::pointerFlagClear(heap_));
+      return *static_cast<InternalSizeType*>(detail::pointerFlagClear(heap_));
     }
-  } FB_PACK_ATTR;
+    void setCapacity(InternalSizeType c) {
+      *static_cast<InternalSizeType*>(detail::pointerFlagClear(heap_)) = c;
+    }
+  } FOLLY_PACK_ATTR;
 
-#if FOLLY_X64
-  typedef unsigned char InlineStorageType[sizeof(value_type) * MaxInline];
+#if (FOLLY_X64 || FOLLY_PPC64)
+  typedef unsigned char InlineStorageDataType[sizeof(value_type) * MaxInline];
 #else
   typedef typename std::aligned_storage<
     sizeof(value_type) * MaxInline,
     alignof(value_type)
-  >::type InlineStorageType;
+  >::type InlineStorageDataType;
 #endif
+
+  typedef typename std::conditional<
+    sizeof(value_type) * MaxInline != 0,
+    InlineStorageDataType,
+    void*
+  >::type InlineStorageType;
 
   static bool const kHasInlineCapacity =
     sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
@@ -1114,20 +1107,20 @@ private:
     bool hasCapacity() const {
       return kHasInlineCapacity || detail::pointerFlagGet(pdata_.heap_);
     }
-    InternalSizeType* getCapacity() {
+    InternalSizeType getCapacity() const {
       return pdata_.getCapacity();
     }
-    InternalSizeType* getCapacity() const {
-      return const_cast<Data*>(this)->getCapacity();
+    void setCapacity(InternalSizeType c) {
+      pdata_.setCapacity(c);
     }
 
     void freeHeap() {
       auto vp = detail::pointerFlagClear(pdata_.heap_);
       free(vp);
     }
-  } FB_PACK_ATTR u;
-} FB_PACK_ATTR;
-FB_PACK_POP
+  } FOLLY_PACK_ATTR u;
+} FOLLY_PACK_ATTR;
+FOLLY_PACK_POP
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1153,12 +1146,4 @@ struct IndexableTraits<small_vector<T, M, A, B, C>>
 
 }  // namespace folly
 
-#pragma GCC diagnostic pop
-
-#ifdef FB_PACK_ATTR
-# undef FB_PACK_ATTR
-# undef FB_PACK_PUSH
-# undef FB_PACK_POP
-#endif
-
-#endif
+FOLLY_POP_WARNING

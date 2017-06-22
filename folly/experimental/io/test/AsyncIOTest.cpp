@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <poll.h>
 
 #include <cstdlib>
 #include <cstdio>
@@ -29,14 +28,17 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/Sockets.h>
 
 namespace fs = folly::fs;
+
 using folly::AsyncIO;
+using folly::AsyncIOOp;
 using folly::AsyncIOQueue;
 
 namespace {
@@ -85,7 +87,7 @@ class TemporaryFile {
 };
 
 TemporaryFile::TemporaryFile(size_t size)
-  : path_(fs::temp_directory_path() / fs::unique_path()) {
+    : path_(fs::temp_directory_path() / fs::unique_path()) {
   CHECK_EQ(size % sizeof(uint32_t), 0);
   size /= sizeof(uint32_t);
   const uint32_t seed = 42;
@@ -370,7 +372,7 @@ TEST(AsyncIO, NonBlockingWait) {
   SCOPE_EXIT {
     ::close(fd);
   };
-  size_t size = 2*kAlign;
+  size_t size = 2 * kAlign;
   auto buf = allocateAligned(size);
   op.pread(fd, buf.get(), size, 0);
   aioReader.submit(&op);
@@ -388,4 +390,66 @@ TEST(AsyncIO, NonBlockingWait) {
   EXPECT_LE(0, res) << folly::errnoStr(-res);
   EXPECT_EQ(size, res);
   EXPECT_EQ(aioReader.pending(), 0);
+}
+
+TEST(AsyncIO, Cancel) {
+  constexpr size_t kNumOpsBatch1 = 10;
+  constexpr size_t kNumOpsBatch2 = 10;
+
+  AsyncIO aioReader(kNumOpsBatch1 + kNumOpsBatch2, AsyncIO::NOT_POLLABLE);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
+  PCHECK(fd != -1);
+  SCOPE_EXIT {
+    ::close(fd);
+  };
+
+  size_t completed = 0;
+
+  std::vector<std::unique_ptr<AsyncIO::Op>> ops;
+  std::vector<ManagedBuffer> bufs;
+  const auto schedule = [&](size_t n) {
+    for (size_t i = 0; i < n; ++i) {
+      const size_t size = 2 * kAlign;
+      bufs.push_back(allocateAligned(size));
+
+      ops.push_back(std::make_unique<AsyncIO::Op>());
+      auto& op = *ops.back();
+
+      op.setNotificationCallback([&](AsyncIOOp*) { ++completed; });
+      op.pread(fd, bufs.back().get(), size, 0);
+      aioReader.submit(&op);
+    }
+  };
+
+  // Mix completed and canceled operations for this test.
+  // In order to achieve that, schedule in two batches and do partial
+  // wait() after the first one.
+
+  schedule(kNumOpsBatch1);
+  EXPECT_EQ(aioReader.pending(), kNumOpsBatch1);
+  EXPECT_EQ(completed, 0);
+
+  auto result = aioReader.wait(1);
+  EXPECT_GE(result.size(), 1);
+  EXPECT_EQ(completed, result.size());
+  EXPECT_EQ(aioReader.pending(), kNumOpsBatch1 - result.size());
+
+  schedule(kNumOpsBatch2);
+  EXPECT_EQ(aioReader.pending(), ops.size() - result.size());
+  EXPECT_EQ(completed, result.size());
+
+  auto canceled = aioReader.cancel();
+  EXPECT_EQ(canceled.size(), ops.size() - result.size());
+  EXPECT_EQ(aioReader.pending(), 0);
+  EXPECT_EQ(completed, result.size());
+
+  size_t foundCompleted = 0;
+  for (auto& op : ops) {
+    if (op->state() == AsyncIOOp::State::COMPLETED) {
+      ++foundCompleted;
+    } else {
+      EXPECT_TRUE(op->state() == AsyncIOOp::State::CANCELED) << *op;
+    }
+  }
+  EXPECT_EQ(foundCompleted, completed);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 // Copyright 2013-present Facebook. All Rights Reserved.
 // @author: Pavlo Kushnir (pavlo)
 
-#ifndef FOLLY_EXPERIMENTAL_STRINGKEYEDSET_H_
-#define FOLLY_EXPERIMENTAL_STRINGKEYEDSET_H_
+#pragma once
 
 #include <initializer_list>
 #include <memory>
@@ -128,8 +127,15 @@ public:
   using Base::cbegin;
   using Base::cend;
   using Base::find;
+  using Base::count;
   using Base::lower_bound;
   using Base::upper_bound;
+
+  bool operator==(StringKeyedSetBase const& other) const {
+    Base const& lhs = *this;
+    Base const& rhs = static_cast<Base const&>(other);
+    return lhs == rhs;
+  }
 
   template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
@@ -174,6 +180,10 @@ public:
 
   using Base::get_allocator;
 
+  void swap(StringKeyedSetBase& other) & {
+    return Base::swap(other);
+  }
+
   ~StringKeyedSetBase() {
     // Here we assume that set doesn't use keys in destructor
     for (auto it : *this) {
@@ -185,5 +195,3 @@ public:
 using StringKeyedSet = StringKeyedSetBase<>;
 
 } // folly
-
-#endif /* FOLLY_EXPERIMENTAL_STRINGKEYEDSET_H_ */

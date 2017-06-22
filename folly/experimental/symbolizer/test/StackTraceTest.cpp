@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::symbolizer;
@@ -67,7 +68,7 @@ void foo2() {
 }
 
 volatile bool handled = false;
-void handler(int num, siginfo_t* info, void* ctx) {
+void handler(int /* num */, siginfo_t* /* info */, void* /* ctx */) {
   // Yes, getStackTrace and VLOG aren't async-signal-safe, but signals
   // raised with raise() aren't "async" signals.
   foo1();

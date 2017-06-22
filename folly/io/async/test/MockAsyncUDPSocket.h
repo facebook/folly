@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,14 @@
  */
 #pragma once
 
-#include <gmock/gmock.h>
-
 #include <folly/io/async/AsyncUDPSocket.h>
+#include <folly/portability/GMock.h>
 
 namespace folly { namespace test {
 
 struct MockAsyncUDPSocket : public AsyncUDPSocket {
   explicit MockAsyncUDPSocket(EventBase* evb) : AsyncUDPSocket(evb) {}
-  virtual ~MockAsyncUDPSocket() {}
+  ~MockAsyncUDPSocket() override {}
 
   MOCK_CONST_METHOD0(address, const SocketAddress&());
   MOCK_METHOD1(bind, void(const SocketAddress&));

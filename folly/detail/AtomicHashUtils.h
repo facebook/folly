@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef incl_FOLLY_ATOMIC_HASH_UTILS_H
-#define incl_FOLLY_ATOMIC_HASH_UTILS_H
+#pragma once
 
-#include <folly/Portability.h>
 #include <thread>
+#include <folly/portability/Asm.h>
 
 // Some utilities used by AtomicHashArray and AtomicHashMap
 //
@@ -38,5 +37,3 @@ void atomic_hash_spin_wait(Cond condition) {
 }
 
 }} // namespace folly::detail
-
-#endif

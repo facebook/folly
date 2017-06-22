@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,24 @@
 
 #include <folly/small_vector.h>
 
-#include <gtest/gtest.h>
-#include <string>
-#include <memory>
 #include <iostream>
+#include <iterator>
 #include <limits>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include <boost/algorithm/string.hpp>
 
 #include <folly/Conv.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/TypeTraits.h>
 
 using folly::small_vector;
 using namespace folly::small_vector_policy;
 
-#if FOLLY_X64
+#if FOLLY_X64 || FOLLY_PPC64
 
 static_assert(sizeof(small_vector<int>) == 16,
               "Object size is not what we expect for small_vector<int>");
@@ -68,9 +72,7 @@ struct NontrivialType {
     ++ctored;
   }
 
-  NontrivialType(NontrivialType const& s) {
-    ++ctored;
-  }
+  NontrivialType(NontrivialType const& /* s */) { ++ctored; }
 
   NontrivialType& operator=(NontrivialType const& o) {
     a = o.a;
@@ -113,7 +115,7 @@ struct Thrower {
     --alive;
   }
 
-  Thrower& operator=(Thrower const& other) {
+  Thrower& operator=(Thrower const& /* other */) {
     EXPECT_EQ(magic, kMagic);
     MaybeThrow();
     return *this;
@@ -632,7 +634,7 @@ TEST(small_vector, Basic) {
 }
 
 TEST(small_vector, Capacity) {
-  folly::small_vector<unsigned long, 1> vec;
+  folly::small_vector<uint64_t, 1> vec;
   EXPECT_EQ(vec.size(), 0);
   EXPECT_EQ(vec.capacity(), 1);
 
@@ -644,8 +646,7 @@ TEST(small_vector, Capacity) {
   EXPECT_EQ(vec.size(), 2);
   EXPECT_GT(vec.capacity(), 1);
 
-
-  folly::small_vector<unsigned long, 2> vec2;
+  folly::small_vector<uint64_t, 2> vec2;
   EXPECT_EQ(vec2.size(), 0);
   EXPECT_EQ(vec2.capacity(), 2);
 
@@ -660,7 +661,7 @@ TEST(small_vector, Capacity) {
 
   // Test capacity heapifying logic
   folly::small_vector<unsigned char, 1> vec3;
-  const size_t hc_size = 1000000;
+  const size_t hc_size = 100000;
   for (size_t i = 0; i < hc_size; ++i) {
     auto v = (unsigned char)i;
     vec3.push_back(v);
@@ -738,6 +739,7 @@ struct CheckedInt {
   static const int DEFAULT_VALUE = (int)0xdeadbeef;
   CheckedInt(): value(DEFAULT_VALUE) {}
   explicit CheckedInt(int value): value(value) {}
+  CheckedInt(const CheckedInt& rhs, int) : value(rhs.value) {}
   CheckedInt(const CheckedInt& rhs): value(rhs.value) {}
   CheckedInt(CheckedInt&& rhs) noexcept: value(rhs.value) {
     rhs.value = DEFAULT_VALUE;
@@ -754,6 +756,15 @@ struct CheckedInt {
   ~CheckedInt() {}
   int value;
 };
+
+TEST(small_vector, ForwardingEmplaceInsideVector) {
+  folly::small_vector<CheckedInt> v;
+  v.push_back(CheckedInt(1));
+  for (int i = 1; i < 20; ++i) {
+    v.emplace_back(v[0], 42);
+    ASSERT_EQ(1, v.back().value);
+  }
+}
 
 TEST(small_vector, LVEmplaceInsideVector) {
   folly::small_vector<CheckedInt> v;
@@ -801,4 +812,187 @@ TEST(small_vector, RVPushValueInsideVector) {
     v.push_back(v[0]);
     ASSERT_EQ(1, v.back().value);
   }
+}
+
+TEST(small_vector, EmplaceIterCtor) {
+  std::vector<int*> v{new int(1), new int(2)};
+  std::vector<std::unique_ptr<int>> uv(v.begin(), v.end());
+
+  std::vector<int*> w{new int(1), new int(2)};
+  small_vector<std::unique_ptr<int>> uw(w.begin(), w.end());
+}
+
+TEST(small_vector, InputIterator) {
+  std::vector<int> expected{125, 320, 512, 750, 333};
+  std::string values = "125 320 512 750 333";
+  std::istringstream is1(values);
+  std::istringstream is2(values);
+
+  std::vector<int> stdV{std::istream_iterator<int>(is1),
+                        std::istream_iterator<int>()};
+  ASSERT_EQ(stdV.size(), expected.size());
+  for (size_t i = 0; i < expected.size(); i++) {
+    ASSERT_EQ(stdV[i], expected[i]);
+  }
+
+  small_vector<int> smallV{std::istream_iterator<int>(is2),
+                           std::istream_iterator<int>()};
+  ASSERT_EQ(smallV.size(), expected.size());
+  for (size_t i = 0; i < expected.size(); i++) {
+    ASSERT_EQ(smallV[i], expected[i]);
+  }
+}
+
+TEST(small_vector, NoCopyCtor) {
+  struct Test {
+    Test() = default;
+    Test(const Test&) = delete;
+    Test(Test&&) = default;
+
+    int field = 42;
+  };
+
+  small_vector<Test> test(10);
+  ASSERT_EQ(test.size(), 10);
+  for (const auto& element : test) {
+    EXPECT_EQ(element.field, 42);
+  }
+}
+
+TEST(small_vector, ZeroInitializable) {
+  small_vector<int> test(10);
+  ASSERT_EQ(test.size(), 10);
+  for (const auto& element : test) {
+    EXPECT_EQ(element, 0);
+  }
+}
+
+TEST(small_vector, InsertMoreThanGrowth) {
+  small_vector<int, 10> test;
+  test.insert(test.end(), 30, 0);
+  for (auto element : test) {
+    EXPECT_EQ(element, 0);
+  }
+}
+
+TEST(small_vector, EmplaceBackExponentialGrowth) {
+  small_vector<std::pair<int, int>> test;
+  std::vector<size_t> capacities;
+  capacities.push_back(test.capacity());
+  for (int i = 0; i < 10000; ++i) {
+    test.emplace_back(0, 0);
+    if (test.capacity() != capacities.back()) {
+      capacities.push_back(test.capacity());
+    }
+  }
+  EXPECT_LE(capacities.size(), 25);
+}
+
+TEST(small_vector, InsertExponentialGrowth) {
+  small_vector<std::pair<int, int>> test;
+  std::vector<size_t> capacities;
+  capacities.push_back(test.capacity());
+  for (int i = 0; i < 10000; ++i) {
+    test.insert(test.begin(), std::make_pair(0, 0));
+    if (test.capacity() != capacities.back()) {
+      capacities.push_back(test.capacity());
+    }
+  }
+  EXPECT_LE(capacities.size(), 25);
+}
+
+TEST(small_vector, InsertNExponentialGrowth) {
+  small_vector<int> test;
+  std::vector<size_t> capacities;
+  capacities.push_back(test.capacity());
+  for (int i = 0; i < 10000; ++i) {
+    test.insert(test.begin(), 100, 0);
+    if (test.capacity() != capacities.back()) {
+      capacities.push_back(test.capacity());
+    }
+  }
+  EXPECT_LE(capacities.size(), 25);
+}
+
+namespace {
+struct Counts {
+  size_t copyCount{0};
+  size_t moveCount{0};
+};
+
+class Counter {
+  Counts* counts;
+
+ public:
+  explicit Counter(Counts& counts) : counts(&counts) {}
+  Counter(Counter const& other) noexcept : counts(other.counts) {
+    ++counts->copyCount;
+  }
+  Counter(Counter&& other) noexcept : counts(other.counts) {
+    ++counts->moveCount;
+  }
+  Counter& operator=(Counter const& rhs) noexcept {
+    EXPECT_EQ(counts, rhs.counts);
+    ++counts->copyCount;
+    return *this;
+  }
+  Counter& operator=(Counter&& rhs) noexcept {
+    EXPECT_EQ(counts, rhs.counts);
+    ++counts->moveCount;
+    return *this;
+  }
+};
+}
+
+TEST(small_vector, EmplaceBackEfficiency) {
+  small_vector<Counter, 2> test;
+  Counts counts;
+  for (size_t i = 1; i <= test.capacity(); ++i) {
+    test.emplace_back(counts);
+    EXPECT_EQ(0, counts.copyCount);
+    EXPECT_EQ(0, counts.moveCount);
+  }
+  EXPECT_EQ(test.size(), test.capacity());
+  test.emplace_back(counts);
+  // Every element except the last has to be moved to the new position
+  EXPECT_EQ(0, counts.copyCount);
+  EXPECT_EQ(test.size() - 1, counts.moveCount);
+  EXPECT_LT(test.size(), test.capacity());
+}
+
+TEST(small_vector, RVPushBackEfficiency) {
+  small_vector<Counter, 2> test;
+  Counts counts;
+  for (size_t i = 1; i <= test.capacity(); ++i) {
+    test.push_back(Counter(counts));
+    // 1 copy for each push_back()
+    EXPECT_EQ(0, counts.copyCount);
+    EXPECT_EQ(i, counts.moveCount);
+  }
+  EXPECT_EQ(test.size(), test.capacity());
+  test.push_back(Counter(counts));
+  // 1 move for each push_back()
+  // Every element except the last has to be moved to the new position
+  EXPECT_EQ(0, counts.copyCount);
+  EXPECT_EQ(test.size() + test.size() - 1, counts.moveCount);
+  EXPECT_LT(test.size(), test.capacity());
+}
+
+TEST(small_vector, CLVPushBackEfficiency) {
+  small_vector<Counter, 2> test;
+  Counts counts;
+  Counter const counter(counts);
+  for (size_t i = 1; i <= test.capacity(); ++i) {
+    test.push_back(counter);
+    // 1 copy for each push_back()
+    EXPECT_EQ(i, counts.copyCount);
+    EXPECT_EQ(0, counts.moveCount);
+  }
+  EXPECT_EQ(test.size(), test.capacity());
+  test.push_back(counter);
+  // 1 copy for each push_back()
+  EXPECT_EQ(test.size(), counts.copyCount);
+  // Every element except the last has to be moved to the new position
+  EXPECT_EQ(test.size() - 1, counts.moveCount);
+  EXPECT_LT(test.size(), test.capacity());
 }

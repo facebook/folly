@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H
-#define FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H
+#pragma once
 
 #include <cstdlib>
 #include <limits>
@@ -26,23 +25,18 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/experimental/Bits.h>
+#include <folly/experimental/CodingDetail.h>
 #include <folly/experimental/Instructions.h>
 #include <folly/experimental/Select64.h>
 #include <glog/logging.h>
-
-#ifndef __GNUC__
-#error BitVectorCoding.h requires GCC
-#endif
 
 #if !FOLLY_X64
 #error BitVectorCoding.h requires x86_64
 #endif
 
-#if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
-#error BitVectorCoding.h requires little endianness
-#endif
-
 namespace folly { namespace compression {
+
+static_assert(kIsLittleEndian, "BitVectorCoding.h requires little endianness");
 
 template <class Pointer>
 struct BitVectorCompressedListBase {
@@ -101,7 +95,7 @@ struct BitVectorEncoder {
     if (begin == end) {
       return MutableCompressedList();
     }
-    BitVectorEncoder encoder(end - begin, *(end - 1));
+    BitVectorEncoder encoder(size_t(end - begin), *(end - 1));
     for (; begin != end; ++begin) {
       encoder.add(*begin);
     }
@@ -121,14 +115,18 @@ struct BitVectorEncoder {
             Layout::fromUpperBoundAndSize(upperBound, size).allocList()) {}
 
   void add(ValueType value) {
-    CHECK_GE(value, lastValue_);
+    CHECK_LT(value, std::numeric_limits<ValueType>::max());
+    // Also works when lastValue_ == -1.
+    CHECK_GT(value + 1, lastValue_ + 1)
+      << "BitVectorCoding only supports stricly monotone lists";
+
     auto block = bits_ + (value / 64) * sizeof(uint64_t);
     size_t inner = value % 64;
     folly::Bits<folly::Unaligned<uint64_t>>::set(
         reinterpret_cast<folly::Unaligned<uint64_t>*>(block), inner);
 
     if (skipQuantum != 0) {
-      size_t nextSkipPointerSize = value / (skipQuantum ?: 1);
+      size_t nextSkipPointerSize = value / skipQuantum;
       while (skipPointersSize_ < nextSkipPointerSize) {
         auto pos = skipPointersSize_++;
         folly::storeUnaligned<SkipValueType>(
@@ -137,8 +135,8 @@ struct BitVectorEncoder {
     }
 
     if (forwardQuantum != 0) {
-      if (size_ != 0 && (size_ % (forwardQuantum ?: 1) == 0)) {
-        const auto pos = size_ / (forwardQuantum ?: 1) - 1;
+      if (size_ != 0 && (size_ % forwardQuantum == 0)) {
+        const auto pos = size_ / forwardQuantum - 1;
         folly::storeUnaligned<SkipValueType>(
             forwardPointers_ + pos * sizeof(SkipValueType), value);
       }
@@ -160,7 +158,7 @@ struct BitVectorEncoder {
   uint8_t* const skipPointers_ = nullptr;
   uint8_t* const forwardPointers_ = nullptr;
 
-  ValueType lastValue_ = 0;
+  ValueType lastValue_ = -1;
   size_t size_ = 0;
   size_t skipPointersSize_ = 0;
 
@@ -182,11 +180,11 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
     layout.bits = bitVectorSizeInBytes;
 
     if (skipQuantum != 0) {
-      size_t numSkipPointers = upperBound / (skipQuantum ?: 1);
+      size_t numSkipPointers = upperBound / skipQuantum;
       layout.skipPointers = numSkipPointers * sizeof(SkipValueType);
     }
     if (forwardQuantum != 0) {
-      size_t numForwardPointers = size / (forwardQuantum ?: 1);
+      size_t numForwardPointers = size / forwardQuantum;
       layout.forwardPointers = numForwardPointers * sizeof(SkipValueType);
     }
 
@@ -236,20 +234,24 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
   size_t forwardPointers = 0;
 };
 
-template <class Encoder,
-          class Instructions = instructions::Default,
-          bool kUnchecked = false>
-class BitVectorReader {
+template <
+    class Encoder,
+    class Instructions = instructions::Default,
+    bool kUnchecked = false>
+class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
+                        detail::SkipPointers<Encoder::skipQuantum> {
  public:
   typedef Encoder EncoderType;
   typedef typename Encoder::ValueType ValueType;
+  // A bitvector can only be as large as its largest value.
+  typedef typename Encoder::ValueType SizeType;
   typedef typename Encoder::SkipValueType SkipValueType;
 
   explicit BitVectorReader(const typename Encoder::CompressedList& list)
-      : size_(list.size),
+      : detail::ForwardPointers<Encoder::forwardQuantum>(list.forwardPointers),
+        detail::SkipPointers<Encoder::skipQuantum>(list.skipPointers),
         bits_(list.bits),
-        skipPointers_(list.skipPointers),
-        forwardPointers_(list.forwardPointers) {
+        size_(list.size) {
     reset();
 
     if (kUnchecked || UNLIKELY(list.size == 0)) {
@@ -263,9 +265,8 @@ class BitVectorReader {
   void reset() {
     block_ = (bits_ != nullptr) ? folly::loadUnaligned<uint64_t>(bits_) : 0;
     outer_ = 0;
-    inner_ = -1;
     position_ = -1;
-    value_ = 0;
+    value_ = kInvalidValue;
   }
 
   bool next() {
@@ -279,13 +280,13 @@ class BitVectorReader {
     }
 
     ++position_;
-    inner_ = Instructions::ctz(block_);
+    auto inner = Instructions::ctz(block_);
     block_ = Instructions::blsr(block_);
 
-    return setValue();
+    return setValue(inner);
   }
 
-  bool skip(size_t n) {
+  bool skip(SizeType n) {
     CHECK_GT(n, 0);
 
     if (!kUnchecked && position() + n >= size_) {
@@ -303,16 +304,12 @@ class BitVectorReader {
 
     // Use forward pointer.
     if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
-      // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = Encoder::forwardQuantum ?: 1;
-
-      const size_t steps = position_ / q;
+      const size_t steps = position_ / Encoder::forwardQuantum;
       const size_t dest = folly::loadUnaligned<SkipValueType>(
-          forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
+          this->forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
 
       reposition(dest);
-      n = position_ + 1 - steps * q;
-      // Correct inner_ will be set at the end.
+      n = position_ + 1 - steps * Encoder::forwardQuantum;
     }
 
     size_t cnt;
@@ -325,18 +322,20 @@ class BitVectorReader {
 
     // Skip to the n-th one in the block.
     DCHECK_GT(n, 0);
-    inner_ = select64<Instructions>(block_, n - 1);
-    block_ &= (uint64_t(-1) << inner_) << 1;
+    auto inner = select64<Instructions>(block_, n - 1);
+    block_ &= (uint64_t(-1) << inner) << 1;
 
-    return setValue();
+    return setValue(inner);
   }
 
   bool skipTo(ValueType v) {
-    DCHECK_GE(v, value_);
-    if (v <= value_) {
-      return true;
-    } else if (!kUnchecked && v > upperBound_) {
+    // Also works when value_ == kInvalidValue.
+    if (v != kInvalidValue) { DCHECK_GE(v + 1, value_ + 1); }
+
+    if (!kUnchecked && v > upperBound_) {
       return setDone();
+    } else if (v == value_) {
+      return true;
     }
 
     // Small skip optimization.
@@ -350,8 +349,9 @@ class BitVectorReader {
 
     if (Encoder::skipQuantum > 0 && v - value_ > Encoder::skipQuantum) {
       size_t q = v / Encoder::skipQuantum;
-      position_ = folly::loadUnaligned<SkipValueType>(
-                      skipPointers_ + (q - 1) * sizeof(SkipValueType)) - 1;
+      auto skipPointer = folly::loadUnaligned<SkipValueType>(
+          this->skipPointers_ + (q - 1) * sizeof(SkipValueType));
+      position_ = static_cast<SizeType>(skipPointer) - 1;
 
       reposition(q * Encoder::skipQuantum);
     }
@@ -375,25 +375,32 @@ class BitVectorReader {
       block_ = folly::loadUnaligned<uint64_t>(bits_ + outer_);
     }
 
-    inner_ = Instructions::ctz(block_);
+    auto inner = Instructions::ctz(block_);
     block_ = Instructions::blsr(block_);
 
-    setValue();
+    setValue(inner);
     return true;
   }
 
-  size_t size() const { return size_; }
+  SizeType size() const {
+    return size_;
+  }
 
-  size_t position() const { return position_; }
-  ValueType value() const { return value_; }
+  bool valid() const {
+    return position() < size(); // Also checks that position() != -1.
+  }
 
-  bool jump(size_t n) {
+  SizeType position() const {
+    return position_;
+  }
+  ValueType value() const {
+    DCHECK(valid());
+    return value_;
+  }
+
+  bool jump(SizeType n) {
     reset();
-    if (n > 0) {
-      return skip(n);
-    } else {
-      return true;
-    }
+    return skip(n + 1);
   }
 
   bool jumpTo(ValueType v) {
@@ -402,14 +409,17 @@ class BitVectorReader {
   }
 
   bool setDone() {
-    value_ = std::numeric_limits<ValueType>::max();
+    value_ = kInvalidValue;
     position_ = size_;
     return false;
   }
 
  private:
-  bool setValue() {
-    value_ = static_cast<ValueType>(8 * outer_ + inner_);
+  constexpr static ValueType kInvalidValue =
+    std::numeric_limits<ValueType>::max();  // Must hold kInvalidValue + 1 == 0.
+
+  bool setValue(size_t inner) {
+    value_ = static_cast<ValueType>(8 * outer_ + inner);
     return true;
   }
 
@@ -422,19 +432,14 @@ class BitVectorReader {
 
   constexpr static size_t kLinearScanThreshold = 4;
 
-  size_t outer_;
-  size_t inner_;
-  size_t position_;
-  uint64_t block_;
-  ValueType value_ = 0;
-
-  size_t size_;
-  ValueType upperBound_;
   const uint8_t* const bits_;
-  const uint8_t* const skipPointers_;
-  const uint8_t* const forwardPointers_;
+  uint64_t block_;
+  SizeType outer_;
+  SizeType position_;
+  ValueType value_;
+
+  SizeType size_;
+  ValueType upperBound_;
 };
 
 }}  // namespaces
-
-#endif  // FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H

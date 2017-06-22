@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,17 @@
 // @author xliu (xliux@fb.com)
 //
 
+#include <folly/RWSpinLock.h>
+
 #include <stdlib.h>
-#include <unistd.h>
 #include <vector>
 #include <thread>
 
-#include <gtest/gtest.h>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <folly/RWSpinLock.h>
+
+#include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/Unistd.h>
 
 DEFINE_int32(num_threads, 8, "num threads");
 
@@ -233,10 +235,4 @@ TEST(RWSpinLock, concurrent_holder_test) {
     << "; upgrades: " << upgrades.load(std::memory_order_acquire);
 }
 
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

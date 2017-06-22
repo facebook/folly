@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BUILD_FINGERPRINTPOLYNOMIAL_H_
-#define FOLLY_BUILD_FINGERPRINTPOLYNOMIAL_H_
+#pragma once
 
 #include <cstdint>
 
@@ -58,7 +57,7 @@ class FingerprintPolynomial {
 
   // Multiply by X.  The actual degree must be < DEG.
   void mulX() {
-    CHECK_EQ(0, val_[0] & (1UL<<63));
+    CHECK_EQ(0u, val_[0] & (1ULL << 63));
     uint64_t b = 0;
     for (int i = size()-1; i >= 0; i--) {
       uint64_t nb = val_[i] >> 63;
@@ -92,8 +91,8 @@ class FingerprintPolynomial {
   //   the binary representation of A, left shift by 1,
   //   XOR p if a_(k-1) == 1
   void mulXmod(const FingerprintPolynomial<DEG>& p) {
-    bool needXOR = (val_[0] & (1UL<<63));
-    val_[0] &= ~(1UL<<63);
+    bool needXOR = (val_[0] & (1ULL<<63));
+    val_[0] &= ~(1ULL<<63);
     mulX();
     if (needXOR) {
       add(p);
@@ -113,7 +112,7 @@ class FingerprintPolynomial {
     DCHECK_LE(k, DEG);
     int word_offset = (DEG - k) / 64;
     int bit_offset = 63 - (DEG - k) % 64;
-    val_[word_offset] ^= (1UL << bit_offset);
+    val_[word_offset] ^= (1ULL << bit_offset);
   }
 
   // Set the highest 8 bits to val.
@@ -126,7 +125,7 @@ class FingerprintPolynomial {
     }
   }
 
-  static int size() {
+  static constexpr int size() {
     return 1 + DEG/64;
   }
  private:
@@ -141,5 +140,3 @@ class FingerprintPolynomial {
 
 }  // namespace detail
 }  // namespace folly
-
-#endif /* FOLLY_BUILD_FINGERPRINTPOLYNOMIAL_H_ */

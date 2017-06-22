@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ class AsyncUDPSocket : public EventHandler {
    * given eventbase
    */
   explicit AsyncUDPSocket(EventBase* evb);
-  ~AsyncUDPSocket();
+  ~AsyncUDPSocket() override;
 
   /**
    * Returns the address server is listening on
@@ -163,7 +163,7 @@ class AsyncUDPSocket : public EventHandler {
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
 
   // EventHandler
-  void handlerReady(uint16_t events) noexcept;
+  void handlerReady(uint16_t events) noexcept override;
 
   void handleRead() noexcept;
   bool updateRegistration() noexcept;

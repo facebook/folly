@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,6 +58,10 @@ void Promise<T>::throwIfRetrieved() {
     throw FutureAlreadyRetrieved();
   }
 }
+
+template <class T>
+Promise<T>::Promise(detail::EmptyConstruct) noexcept
+    : retrieved_(false), core_(nullptr) {}
 
 template <class T>
 Promise<T>::~Promise() {
@@ -134,7 +138,7 @@ void Promise<T>::setWith(F&& func) {
 }
 
 template <class T>
-bool Promise<T>::isFulfilled() {
+bool Promise<T>::isFulfilled() const noexcept {
   if (core_) {
     return core_->hasResult();
   }

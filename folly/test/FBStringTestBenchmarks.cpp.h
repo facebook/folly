@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,7 @@
  * override-include-guard
  */
 
-void BENCHFUN(initRNG)(size_t iters, size_t) {
-  srand(seed);
-}
+void BENCHFUN(initRNG)(size_t /* iters */, size_t) { srand(seed); }
 BENCHMARK_PARAM(BENCHFUN(initRNG), 0);
 
 void BENCHFUN(defaultCtor)(size_t iters, size_t) {
@@ -62,7 +60,7 @@ void BENCHFUN(ctorFromArray)(size_t iters, size_t arg) {
 BENCHMARK_PARAM(BENCHFUN(ctorFromArray), 32768);
 
 void BENCHFUN(ctorFromTwoPointers)(size_t iters, size_t arg) {
-  static STRING s;
+  /* library-local */ static STRING s;
   BENCHMARK_SUSPEND {
     if (s.size() < arg) s.resize(arg);
   }
@@ -119,7 +117,7 @@ void BENCHFUN(resize)(size_t iters, size_t arg) {
 }
 BENCHMARK_PARAM(BENCHFUN(resize), 524288);
 
-void BENCHFUN(findSuccessful)(size_t iters, size_t arg) {
+void BENCHFUN(findSuccessful)(size_t iters, size_t /* arg */) {
   size_t pos, len;
   STRING s;
 
@@ -158,7 +156,7 @@ expect to get a call for an interview.";
 }
 BENCHMARK_PARAM(BENCHFUN(findSuccessful), 524288);
 
-void BENCHFUN(findUnsuccessful)(size_t iters, size_t arg) {
+void BENCHFUN(findUnsuccessful)(size_t iters, size_t /* arg */) {
   STRING s, s1;
 
   BENCHMARK_SUSPEND {
@@ -252,3 +250,27 @@ void BENCHFUN(short_append)(size_t iters, size_t arg) {
 }
 BENCHMARK_PARAM(BENCHFUN(short_append), 23);
 BENCHMARK_PARAM(BENCHFUN(short_append), 1024);
+
+void BENCHFUN(getline)(size_t iters, size_t arg) {
+  string lines;
+
+  BENCHMARK_SUSPEND {
+    string line;
+    FOR_EACH_RANGE(i, 0, 512) {
+      randomString(&line, arg);
+      lines += line;
+      lines += '\n';
+    }
+  }
+
+  STRING line;
+  while (iters) {
+    std::istringstream is(lines);
+    while (iters && getline(is, line)) {
+      folly::doNotOptimizeAway(line.size());
+      iters--;
+    }
+  }
+}
+BENCHMARK_PARAM(BENCHFUN(getline), 23);
+BENCHMARK_PARAM(BENCHFUN(getline), 1000);

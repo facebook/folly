@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_VARINT_H_
-#define FOLLY_VARINT_H_
+#pragma once
 
 #include <type_traits>
+
 #include <folly/Conv.h>
+#include <folly/Expected.h>
+#include <folly/Likely.h>
 #include <folly/Range.h>
 
 namespace folly {
@@ -56,9 +58,23 @@ size_t encodeVarint(uint64_t val, uint8_t* buf);
 
 /**
  * Decode a value from a given buffer, advances data past the returned value.
+ * Throws on error.
  */
 template <class T>
 uint64_t decodeVarint(Range<T*>& data);
+
+enum class DecodeVarintError {
+  TooManyBytes = 0,
+  TooFewBytes = 1,
+};
+
+/**
+ * A variant of decodeVarint() that does not throw on error. Useful in contexts
+ * where only part of a serialized varint may be attempted to be decoded, e.g.,
+ * when a serialized varint arrives on the boundary of a network packet.
+ */
+template <class T>
+Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data);
 
 /**
  * ZigZag encoding that maps signed integers with a small absolute value
@@ -72,7 +88,8 @@ uint64_t decodeVarint(Range<T*>& data);
 inline uint64_t encodeZigZag(int64_t val) {
   // Bit-twiddling magic stolen from the Google protocol buffer document;
   // val >> 63 is an arithmetic shift because val is signed
-  return static_cast<uint64_t>((val << 1) ^ (val >> 63));
+  auto uval = static_cast<uint64_t>(val);
+  return static_cast<uint64_t>((uval << 1) ^ (val >> 63));
 }
 
 inline int64_t decodeZigZag(uint64_t val) {
@@ -87,12 +104,24 @@ inline size_t encodeVarint(uint64_t val, uint8_t* buf) {
     *p++ = 0x80 | (val & 0x7f);
     val >>= 7;
   }
-  *p++ = val;
-  return p - buf;
+  *p++ = uint8_t(val);
+  return size_t(p - buf);
 }
 
 template <class T>
 inline uint64_t decodeVarint(Range<T*>& data) {
+  auto expected = tryDecodeVarint(data);
+  if (!expected) {
+    throw std::invalid_argument(
+        expected.error() == DecodeVarintError::TooManyBytes
+            ? "Invalid varint value: too many bytes."
+            : "Invalid varint value: too few bytes.");
+  }
+  return *expected;
+}
+
+template <class T>
+inline Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data) {
   static_assert(
       std::is_same<typename std::remove_cv<T>::type, char>::value ||
           std::is_same<typename std::remove_cv<T>::type, unsigned char>::value,
@@ -117,7 +146,7 @@ inline uint64_t decodeVarint(Range<T*>& data) {
       b = *p++; val |= (b & 0x7f) << 49; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 56; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 63; if (b >= 0) break;
-      throw std::invalid_argument("Invalid varint value. Too big.");
+      return makeUnexpected(DecodeVarintError::TooManyBytes);
     } while (false);
   } else {
     int shift = 0;
@@ -126,17 +155,13 @@ inline uint64_t decodeVarint(Range<T*>& data) {
       shift += 7;
     }
     if (p == end) {
-      throw std::invalid_argument("Invalid varint value. Too small: " +
-                                  folly::to<std::string>(end - begin) +
-                                  " bytes");
+      return makeUnexpected(DecodeVarintError::TooFewBytes);
     }
     val |= static_cast<uint64_t>(*p++) << shift;
   }
 
-  data.advance(p - begin);
+  data.uncheckedAdvance(p - begin);
   return val;
 }
 
-}  // namespaces
-
-#endif /* FOLLY_VARINT_H_ */
+} // folly

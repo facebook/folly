@@ -2,8 +2,9 @@
 
 #include <atomic>
 #include <stdint.h>
-#include <sys/mman.h>
-#include <unistd.h>
+
+#include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly { namespace detail {
 
@@ -24,15 +25,23 @@ class MMapAlloc {
     // MAP_HUGETLB is a perf win, but requires cooperation from the
     // deployment environment (and a change to computeSize()).
     void* mem = static_cast<void*>(mmap(
-         nullptr,
-         len,
-         PROT_READ | PROT_WRITE,
-         MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE,
-         -1,
-         0));
+        nullptr,
+        len,
+        PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS
+#ifdef MAP_POPULATE
+            |
+            MAP_POPULATE
+#endif
+        ,
+        -1,
+        0));
     if (mem == reinterpret_cast<void*>(-1)) {
       throw std::system_error(errno, std::system_category());
     }
+#if !defined(MAP_POPULATE) && defined(MADV_WILLNEED)
+    madvise(mem, size, MADV_WILLNEED);
+#endif
 
     return mem;
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,9 @@
 #include <mutex>
 
 #include <folly/Random.h>
-#include <glog/logging.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
-DEFINE_int32(seed, 0, "Random seed");
+#include <glog/logging.h>
 
 namespace folly { namespace futures { namespace test {
 
@@ -113,7 +112,7 @@ TEST(BarrierTest, Random) {
   //
   // At the end, we verify that exactly one future returning true was seen
   // for each iteration.
-  constexpr uint32_t numIterations = 1;
+  static constexpr uint32_t numIterations = 1;
   auto numThreads = folly::Random::rand32(30, 91);
 
   struct ThreadInfo {
@@ -138,23 +137,21 @@ TEST(BarrierTest, Random) {
 
   for (auto& tinfo : threads) {
     auto pinfo = &tinfo;
-    tinfo.thread = std::thread(
-        [numIterations, pinfo, &barrier] () {
-          std::vector<folly::Future<bool>> futures;
-          futures.reserve(pinfo->numFutures);
-          for (uint32_t i = 0; i < numIterations; ++i, ++pinfo->iteration) {
-            futures.clear();
-            for (uint32_t j = 0; j < pinfo->numFutures; ++j) {
-              futures.push_back(barrier.wait());
-              auto nanos = folly::Random::rand32(10 * 1000 * 1000);
-              /* sleep override */
-              std::this_thread::sleep_for(std::chrono::nanoseconds(nanos));
-            }
-            auto results = folly::collect(futures).get();
-            pinfo->trueSeen[i] =
-              std::count(results.begin(), results.end(), true);
-          }
-        });
+    tinfo.thread = std::thread([pinfo, &barrier] {
+      std::vector<folly::Future<bool>> futures;
+      futures.reserve(pinfo->numFutures);
+      for (uint32_t i = 0; i < numIterations; ++i, ++pinfo->iteration) {
+        futures.clear();
+        for (uint32_t j = 0; j < pinfo->numFutures; ++j) {
+          futures.push_back(barrier.wait());
+          auto nanos = folly::Random::rand32(10 * 1000 * 1000);
+          /* sleep override */
+          std::this_thread::sleep_for(std::chrono::nanoseconds(nanos));
+        }
+        auto results = folly::collect(futures).get();
+        pinfo->trueSeen[i] = std::count(results.begin(), results.end(), true);
+      }
+    });
   }
 
   for (auto& tinfo : threads) {

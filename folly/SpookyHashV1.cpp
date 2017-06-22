@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@
 //   July 30 2012: I reintroduced the buffer overflow
 
 #include <folly/SpookyHashV1.h>
+
+#include <folly/CppAttributes.h>
 
 #include <cstring>
 
@@ -96,37 +98,48 @@ void SpookyHashV1::Short(
     switch (remainder)
     {
     case 15:
-    d += ((uint64_t)u.p8[14]) << 48;
+        d += ((uint64_t)u.p8[14]) << 48;
+        FOLLY_FALLTHROUGH;
     case 14:
         d += ((uint64_t)u.p8[13]) << 40;
+        FOLLY_FALLTHROUGH;
     case 13:
         d += ((uint64_t)u.p8[12]) << 32;
+        FOLLY_FALLTHROUGH;
     case 12:
         d += u.p32[2];
         c += u.p64[0];
         break;
     case 11:
         d += ((uint64_t)u.p8[10]) << 16;
+        FOLLY_FALLTHROUGH;
     case 10:
         d += ((uint64_t)u.p8[9]) << 8;
+        FOLLY_FALLTHROUGH;
     case 9:
         d += (uint64_t)u.p8[8];
+        FOLLY_FALLTHROUGH;
     case 8:
         c += u.p64[0];
         break;
     case 7:
         c += ((uint64_t)u.p8[6]) << 48;
+        FOLLY_FALLTHROUGH;
     case 6:
         c += ((uint64_t)u.p8[5]) << 40;
+        FOLLY_FALLTHROUGH;
     case 5:
         c += ((uint64_t)u.p8[4]) << 32;
+        FOLLY_FALLTHROUGH;
     case 4:
         c += u.p32[0];
         break;
     case 3:
         c += ((uint64_t)u.p8[2]) << 16;
+        FOLLY_FALLTHROUGH;
     case 2:
         c += ((uint64_t)u.p8[1]) << 8;
+        FOLLY_FALLTHROUGH;
     case 1:
         c += (uint64_t)u.p8[0];
         break;
@@ -196,7 +209,7 @@ void SpookyHashV1::Hash128(
     remainder = (length - ((const uint8_t *)end-(const uint8_t *)message));
     memcpy(buf, end, remainder);
     memset(((uint8_t *)buf)+remainder, 0, sc_blockSize-remainder);
-    ((uint8_t *)buf)[sc_blockSize-1] = remainder;
+    ((uint8_t*)buf)[sc_blockSize - 1] = uint8_t(remainder);
     Mix(buf, h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11);
 
     // do some final mixing

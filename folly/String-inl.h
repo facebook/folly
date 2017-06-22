@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STRING_INL_H_
-#define FOLLY_STRING_INL_H_
+#pragma once
 
 #include <stdexcept>
 #include <iterator>
 
-#ifndef FOLLY_BASE_STRING_H_
+#include <folly/CppAttributes.h>
+
+#ifndef FOLLY_STRING_H_
 #error This file may only be included from String.h
 #endif
 
@@ -51,7 +52,7 @@ void cEscape(StringPiece str, String& out) {
     if (e == 'P') {  // printable
       ++p;
     } else if (e == 'O') {  // octal
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       esc[1] = '0' + ((v >> 6) & 7);
       esc[2] = '0' + ((v >> 3) & 7);
       esc[3] = '0' + (v & 7);
@@ -59,14 +60,14 @@ void cEscape(StringPiece str, String& out) {
       ++p;
       last = p;
     } else {  // special 1-character escape
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       esc[1] = e;
       out.append(esc, 2);
       ++p;
       last = p;
     }
   }
-  out.append(&*last, p - last);
+  out.append(&*last, size_t(p - last));
 }
 
 namespace detail {
@@ -178,12 +179,12 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
     if (LIKELY(discriminator <= minEncode)) {
       ++p;
     } else if (mode == UriEscapeMode::QUERY && discriminator == 3) {
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       out.push_back('+');
       ++p;
       last = p;
     } else {
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       esc[1] = hexValues[v >> 4];
       esc[2] = hexValues[v & 0x0f];
       out.append(esc, 3);
@@ -191,7 +192,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
       last = p;
     }
   }
-  out.append(&*last, p - last);
+  out.append(&*last, size_t(p - last));
 }
 
 template <class String>
@@ -214,7 +215,7 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
         if (UNLIKELY(h1 == 16 || h2 == 16)) {
           throw std::invalid_argument("invalid percent encode sequence");
         }
-        out.append(&*last, p - last);
+        out.append(&*last, size_t(p - last));
         out.push_back((h1 << 4) | h2);
         p += 3;
         last = p;
@@ -222,19 +223,20 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
       }
     case '+':
       if (mode == UriEscapeMode::QUERY) {
-        out.append(&*last, p - last);
+        out.append(&*last, size_t(p - last));
         out.push_back(' ');
         ++p;
         last = p;
         break;
       }
       // else fallthrough
+      FOLLY_FALLTHROUGH;
     default:
       ++p;
       break;
     }
   }
-  out.append(&*last, p - last);
+  out.append(&*last, size_t(p - last));
 }
 
 namespace detail {
@@ -265,29 +267,6 @@ inline char delimFront(StringPiece s) {
 }
 
 /*
- * These output conversion templates allow us to support multiple
- * output string types, even when we are using an arbitrary
- * OutputIterator.
- */
-template<class OutStringT> struct OutputConverter {};
-
-template<> struct OutputConverter<std::string> {
-  std::string operator()(StringPiece sp) const {
-    return sp.toString();
-  }
-};
-
-template<> struct OutputConverter<fbstring> {
-  fbstring operator()(StringPiece sp) const {
-    return sp.toFbstring();
-  }
-};
-
-template<> struct OutputConverter<StringPiece> {
-  StringPiece operator()(StringPiece sp) const { return sp; }
-};
-
-/*
  * Shared implementation for all the split() overloads.
  *
  * This uses some external helpers that are overloaded to let this
@@ -305,11 +284,9 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
   const size_t strSize = sp.size();
   const size_t dSize = delimSize(delim);
 
-  OutputConverter<OutStringT> conv;
-
   if (dSize > strSize || dSize == 0) {
     if (!ignoreEmpty || strSize > 0) {
-      *out++ = conv(sp);
+      *out++ = to<OutStringT>(sp);
     }
     return;
   }
@@ -324,7 +301,7 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
   for (size_t i = 0; i <= strSize - dSize; ++i) {
     if (atDelim(&s[i], delim)) {
       if (!ignoreEmpty || tokenSize > 0) {
-        *out++ = conv(StringPiece(&s[tokenStartPos], tokenSize));
+        *out++ = to<OutStringT>(sp.subpiece(tokenStartPos, tokenSize));
       }
 
       tokenStartPos = i + dSize;
@@ -336,7 +313,7 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
   }
   tokenSize = strSize - tokenStartPos;
   if (!ignoreEmpty || tokenSize > 0) {
-    *out++ = conv(StringPiece(&s[tokenStartPos], tokenSize));
+    *out++ = to<OutStringT>(sp.subpiece(tokenStartPos, tokenSize));
   }
 }
 
@@ -345,36 +322,25 @@ template<class String> StringPiece prepareDelim(const String& s) {
 }
 inline char prepareDelim(char c) { return c; }
 
-template <class Dst>
-struct convertTo {
-  template <class Src>
-  static Dst from(const Src& src) { return folly::to<Dst>(src); }
-  static Dst from(const Dst& src) { return src; }
-};
-
-template<bool exact,
-         class Delim,
-         class OutputType>
-typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
-splitFixed(const Delim& delimiter,
-           StringPiece input,
-           OutputType& out) {
+template <bool exact, class Delim, class OutputType>
+bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
+  static_assert(
+      exact || std::is_same<OutputType, StringPiece>::value ||
+          IsSomeString<OutputType>::value,
+      "split<false>() requires that the last argument be a string type");
   if (exact && UNLIKELY(std::string::npos != input.find(delimiter))) {
     return false;
   }
-  out = convertTo<OutputType>::from(input);
+  output = folly::to<OutputType>(input);
   return true;
 }
 
-template<bool exact,
-         class Delim,
-         class OutputType,
-         class... OutputTypes>
-typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
-splitFixed(const Delim& delimiter,
-           StringPiece input,
-           OutputType& outHead,
-           OutputTypes&... outTail) {
+template <bool exact, class Delim, class OutputType, class... OutputTypes>
+bool splitFixed(
+    const Delim& delimiter,
+    StringPiece input,
+    OutputType& outHead,
+    OutputTypes&... outTail) {
   size_t cut = input.find(delimiter);
   if (UNLIKELY(cut == std::string::npos)) {
     return false;
@@ -383,7 +349,7 @@ splitFixed(const Delim& delimiter,
   StringPiece tail(input.begin() + cut + detail::delimSize(delimiter),
                    input.end());
   if (LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
-    outHead = convertTo<OutputType>::from(head);
+    outHead = folly::to<OutputType>(head);
     return true;
   }
   return false;
@@ -430,20 +396,13 @@ void splitTo(const Delim& delimiter,
     ignoreEmpty);
 }
 
-template<bool exact,
-         class Delim,
-         class OutputType,
-         class... OutputTypes>
-typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
-split(const Delim& delimiter,
-      StringPiece input,
-      OutputType& outHead,
-      OutputTypes&... outTail) {
+template <bool exact, class Delim, class... OutputTypes>
+typename std::enable_if<
+    AllConvertible<OutputTypes...>::value && sizeof...(OutputTypes) >= 1,
+    bool>::type
+split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs) {
   return detail::splitFixed<exact>(
-    detail::prepareDelim(delimiter),
-    input,
-    outHead,
-    outTail...);
+      detail::prepareDelim(delimiter), input, outputs...);
 }
 
 namespace detail {
@@ -631,17 +590,12 @@ bool unhexlify(const InputString& input, OutputString& output) {
   }
   output.resize(input.size() / 2);
   int j = 0;
-  auto unhex = [](char c) -> int {
-    return c >= '0' && c <= '9' ? c - '0' :
-           c >= 'A' && c <= 'F' ? c - 'A' + 10 :
-           c >= 'a' && c <= 'f' ? c - 'a' + 10 :
-           -1;
-  };
 
   for (size_t i = 0; i < input.size(); i += 2) {
-    int highBits = unhex(input[i]);
-    int lowBits = unhex(input[i + 1]);
-    if (highBits < 0 || lowBits < 0) {
+    int highBits = detail::hexTable[static_cast<uint8_t>(input[i])];
+    int lowBits = detail::hexTable[static_cast<uint8_t>(input[i + 1])];
+    if ((highBits | lowBits) & 0x10) {
+      // One of the characters wasn't a hex digit
       return false;
     }
     output[j++] = (highBits << 4) + lowBits;
@@ -669,5 +623,3 @@ void hexDump(const void* ptr, size_t size, OutIt out) {
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_STRING_INL_H_ */

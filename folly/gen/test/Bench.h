@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_BENCH_H_
-#define FOLLY_GEN_BENCH_H_
+#pragma once
 
 #include <folly/Benchmark.h>
 
@@ -31,5 +30,3 @@ static bool FB_ANONYMOUS_VARIABLE(benchGen) = (             \
     }), true)
 #define BENCH_GEN(gen) BENCH_GEN_IMPL(gen, "")
 #define BENCH_GEN_REL(gen) BENCH_GEN_IMPL(gen, "%")
-
-#endif

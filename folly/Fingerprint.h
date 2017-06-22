@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,8 +42,7 @@
  * @author Tudor Bosman (tudorb@facebook.com)
  */
 
-#ifndef FOLLY_FINGERPRINT_H_
-#define FOLLY_FINGERPRINT_H_
+#pragma once
 
 #include <cstdint>
 
@@ -52,12 +51,37 @@
 namespace folly {
 
 namespace detail {
+
 template <int BITS>
 struct FingerprintTable {
-  static const uint64_t poly[1 + (BITS-1)/64];
-  static const uint64_t table[8][256][1 + (BITS-1)/64];
+  static const uint64_t poly[1 + (BITS - 1) / 64];
+  static const uint64_t table[8][256][1 + (BITS - 1) / 64];
 };
-}  // namespace detail
+
+template <int BITS>
+const uint64_t FingerprintTable<BITS>::poly[1 + (BITS - 1) / 64] = {};
+template <int BITS>
+const uint64_t FingerprintTable<BITS>::table[8][256][1 + (BITS - 1) / 64] = {};
+
+#ifndef _MSC_VER
+// MSVC 2015 can't handle these extern specialization declarations,
+// but they aren't needed for things to work right, so we just don't
+// declare them in the header for MSVC.
+
+#define FOLLY_DECLARE_FINGERPRINT_TABLES(BITS)                      \
+  template <>                                                       \
+  const uint64_t FingerprintTable<BITS>::poly[1 + (BITS - 1) / 64]; \
+  template <>                                                       \
+  const uint64_t FingerprintTable<BITS>::table[8][256][1 + (BITS - 1) / 64]
+
+FOLLY_DECLARE_FINGERPRINT_TABLES(64);
+FOLLY_DECLARE_FINGERPRINT_TABLES(96);
+FOLLY_DECLARE_FINGERPRINT_TABLES(128);
+
+#undef FOLLY_DECLARE_FINGERPRINT_TABLES
+#endif
+
+} // namespace detail
 
 /**
  * Compute the Rabin fingerprint.
@@ -74,7 +98,7 @@ class Fingerprint {
  public:
   Fingerprint() {
     // Use a non-zero starting value. We'll use (1 << (BITS-1))
-    fp_[0] = 1UL << 63;
+    fp_[0] = 1ULL << 63;
     for (int i = 1; i < size(); i++)
       fp_[i] = 0;
   }
@@ -261,5 +285,3 @@ inline uint64_t Fingerprint<128>::shlor64(uint64_t v) {
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_FINGERPRINT_H_ */

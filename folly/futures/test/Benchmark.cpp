@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-
-#include <folly/Baton.h>
 #include <folly/Benchmark.h>
+#include <folly/Baton.h>
 #include <folly/futures/Future.h>
-#include <folly/futures/Promise.h>
 #include <folly/futures/InlineExecutor.h>
+#include <folly/futures/Promise.h>
+#include <folly/portability/GFlags.h>
+#include <folly/portability/Semaphore.h>
 
-#include <semaphore.h>
 #include <vector>
 
 using namespace folly;
@@ -190,10 +189,10 @@ void throwAndCatchImpl() {
 // will try to wrap, so no exception_ptrs/rethrows are necessary.
 void throwAndCatchWrappedImpl() {
   makeFuture()
-      .then([](Try<Unit>&&){ throw std::runtime_error("oh no"); })
+      .then([](Try<Unit>&&) { throw std::runtime_error("oh no"); })
       .then([](Try<Unit>&& t) {
         auto caught = t.withException<std::runtime_error>(
-            [](const std::runtime_error& e){
+            [](const std::runtime_error& /* e */) {
               // ...
             });
         CHECK(caught);
@@ -220,12 +219,12 @@ void throwWrappedAndCatchImpl() {
 // The new way. Wrap an exception, and access it via the wrapper upstream
 void throwWrappedAndCatchWrappedImpl() {
   makeFuture()
-      .then([](Try<Unit>&&){
+      .then([](Try<Unit>&&) {
         return makeFuture<Unit>(std::runtime_error("oh no"));
       })
-      .then([](Try<Unit>&& t){
+      .then([](Try<Unit>&& t) {
         auto caught = t.withException<std::runtime_error>(
-            [](const std::runtime_error& e){
+            [](const std::runtime_error& /* e */) {
               // ...
             });
         CHECK(caught);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,9 +30,9 @@ namespace folly {
      typedef std::chrono::microseconds Duration;
      typedef std::chrono::steady_clock::time_point TimePoint;
 
-     virtual ~ScheduledExecutor() = default;
+     ~ScheduledExecutor() override = default;
 
-     virtual void add(Func) override = 0;
+     void add(Func) override = 0;
 
      /// Alias for add() (for Rx consistency)
      void schedule(Func&& a) { add(std::move(a)); }
@@ -45,7 +45,7 @@ namespace folly {
 
      /// Schedule a Func to be executed at time t, or as soon afterward as
      /// possible. Expect millisecond resolution at best. Must be threadsafe.
-     virtual void scheduleAt(Func&& a, TimePoint const& t) {
+     virtual void scheduleAt(Func&& /* a */, TimePoint const& /* t */) {
        throw std::logic_error("unimplemented");
      }
 

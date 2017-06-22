@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,28 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <limits>
+
+#include <boost/next_prior.hpp>
 
 #include <folly/json.h>
-
-#include <gtest/gtest.h>
-#include <gflags/gflags.h>
-#include <limits>
-#include <boost/next_prior.hpp>
+#include <folly/portability/GTest.h>
 
 using folly::dynamic;
 using folly::parseJson;
 using folly::toJson;
 
 TEST(Json, Unicode) {
-  auto val = parseJson("\"I \u2665 UTF-8\"");
-  EXPECT_EQ("I \u2665 UTF-8", val.asString());
+  auto val = parseJson(u8"\"I \u2665 UTF-8\"");
+  EXPECT_EQ(u8"I \u2665 UTF-8", val.asString());
   val = parseJson("\"I \\u2665 UTF-8\"");
-  EXPECT_EQ("I \u2665 UTF-8", val.asString());
-  val = parseJson("\"I \U0001D11E playing in G-clef\"");
-  EXPECT_EQ("I \U0001D11E playing in G-clef", val.asString());
+  EXPECT_EQ(u8"I \u2665 UTF-8", val.asString());
+  val = parseJson(u8"\"I \U0001D11E playing in G-clef\"");
+  EXPECT_EQ(u8"I \U0001D11E playing in G-clef", val.asString());
 
   val = parseJson("\"I \\uD834\\uDD1E playing in G-clef\"");
-  EXPECT_EQ("I \U0001D11E playing in G-clef", val.asString());
+  EXPECT_EQ(u8"I \U0001D11E playing in G-clef", val.asString());
 }
 
 TEST(Json, Parse) {
@@ -103,14 +102,14 @@ TEST(Json, Parse) {
     ("junk", 12)
     ("another", 32.2)
     ("a",
-      {
+      dynamic::array(
         dynamic::object("a", "b")
                        ("c", "d"),
         12.5,
         "Yo Dawg",
-        { "heh" },
+        dynamic::array("heh"),
         nullptr
-      }
+      )
     )
     ;
 
@@ -133,7 +132,7 @@ TEST(Json, ParseTrailingComma) {
   on.allow_trailing_comma = true;
   off.allow_trailing_comma = false;
 
-  dynamic arr { 1, 2 };
+  dynamic arr = dynamic::array(1, 2);
   EXPECT_EQ(arr, parseJson("[1, 2]", on));
   EXPECT_EQ(arr, parseJson("[1, 2,]", on));
   EXPECT_EQ(arr, parseJson("[1, 2, ]", on));
@@ -150,17 +149,21 @@ TEST(Json, ParseTrailingComma) {
   EXPECT_THROW(parseJson("{\"a\":1,}", off), std::runtime_error);
 }
 
+TEST(Json, BoolConversion) {
+  EXPECT_TRUE(parseJson("42").asBool());
+}
+
 TEST(Json, JavascriptSafe) {
-  auto badDouble = (1ll << 63ll) + 1;
+  auto badDouble = int64_t((1ULL << 63ULL) + 1);
   dynamic badDyn = badDouble;
-  EXPECT_EQ(folly::toJson(badDouble), folly::to<folly::fbstring>(badDouble));
+  EXPECT_EQ(folly::toJson(badDouble), folly::to<std::string>(badDouble));
   folly::json::serialization_opts opts;
   opts.javascript_safe = true;
   EXPECT_ANY_THROW(folly::json::serialize(badDouble, opts));
 
-  auto okDouble = 1ll << 63ll;
+  auto okDouble = int64_t(1ULL << 63ULL);
   dynamic okDyn = okDouble;
-  EXPECT_EQ(folly::toJson(okDouble), folly::to<folly::fbstring>(okDouble));
+  EXPECT_EQ(folly::toJson(okDouble), folly::to<std::string>(okDouble));
 }
 
 TEST(Json, Produce) {
@@ -176,10 +179,8 @@ TEST(Json, Produce) {
   // Check Infinity/Nan
   folly::json::serialization_opts opts;
   opts.allow_nan_inf = true;
-  EXPECT_EQ("Infinity",
-            folly::json::serialize(parseJson("Infinity"), opts).toStdString());
-  EXPECT_EQ("NaN",
-            folly::json::serialize(parseJson("NaN"), opts).toStdString());
+  EXPECT_EQ("Infinity", folly::json::serialize(parseJson("Infinity"), opts));
+  EXPECT_EQ("NaN", folly::json::serialize(parseJson("NaN"), opts));
 }
 
 TEST(Json, JsonEscape) {
@@ -187,6 +188,53 @@ TEST(Json, JsonEscape) {
   EXPECT_EQ(
     folly::json::serialize("\b\f\n\r\x01\t\\\"/\v\a", opts),
     R"("\b\f\n\r\u0001\t\\\"/\u000b\u0007")");
+}
+
+TEST(Json, EscapeCornerCases) {
+  // The escaping logic uses some bitwise operations to determine
+  // which bytes need escaping 8 bytes at a time. Test that this logic
+  // is correct regardless of positions by planting 2 characters that
+  // may need escaping at each possible position and checking the
+  // result, for varying string lengths.
+
+  folly::json::serialization_opts opts;
+  opts.validate_utf8 = true;
+
+  std::string s;
+  std::string expected;
+  for (bool ascii : {true, false}) {
+    opts.encode_non_ascii = ascii;
+
+    for (size_t len = 2; len < 32; ++len) {
+      for (size_t i = 0; i < len; ++i) {
+        for (size_t j = 0; j < len; ++j) {
+          if (i == j) {
+            continue;
+          }
+
+          s.clear();
+          expected.clear();
+
+          expected.push_back('"');
+          for (size_t pos = 0; pos < len; ++pos) {
+            if (pos == i) {
+              s.push_back('\\');
+              expected.append("\\\\");
+            } else if (pos == j) {
+              s.append("\xe2\x82\xac");
+              expected.append(ascii ? "\\u20ac" : "\xe2\x82\xac");
+            } else {
+              s.push_back('x');
+              expected.push_back('x');
+            }
+          }
+          expected.push_back('"');
+
+          EXPECT_EQ(folly::json::serialize(s, opts), expected) << ascii;
+        }
+      }
+    }
+  }
 }
 
 TEST(Json, JsonNonAsciiEncoding) {
@@ -258,10 +306,10 @@ TEST(Json, JsonNonAsciiEncoding) {
 TEST(Json, UTF8Retention) {
 
   // test retention with valid utf8 strings
-  folly::fbstring input = "\u2665";
-  folly::fbstring jsonInput = folly::toJson(input);
-  folly::fbstring output = folly::parseJson(jsonInput).asString();
-  folly::fbstring jsonOutput = folly::toJson(output);
+  std::string input = u8"\u2665";
+  std::string jsonInput = folly::toJson(input);
+  std::string output = folly::parseJson(jsonInput).asString();
+  std::string jsonOutput = folly::toJson(output);
 
   EXPECT_EQ(input, output);
   EXPECT_EQ(jsonInput, jsonOutput);
@@ -280,10 +328,10 @@ TEST(Json, UTF8EncodeNonAsciiRetention) {
   opts.encode_non_ascii = true;
 
   // test encode_non_ascii valid utf8 strings
-  folly::fbstring input = "\u2665";
-  folly::fbstring jsonInput = folly::json::serialize(input, opts);
-  folly::fbstring output = folly::parseJson(jsonInput).asString();
-  folly::fbstring jsonOutput = folly::json::serialize(output, opts);
+  std::string input = u8"\u2665";
+  std::string jsonInput = folly::json::serialize(input, opts);
+  std::string output = folly::parseJson(jsonInput).asString();
+  std::string jsonOutput = folly::json::serialize(output, opts);
 
   EXPECT_EQ(input, output);
   EXPECT_EQ(jsonInput, jsonOutput);
@@ -313,12 +361,15 @@ TEST(Json, UTF8Validation) {
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xe0\x80\x80", opts));
 
   opts.skip_invalid_utf8 = true;
-  EXPECT_EQ(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts),
-            "\"a\xe0\xa0\x80z\ufffd\ufffd\"");
-  EXPECT_EQ(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80\x80", opts),
-            "\"a\xe0\xa0\x80z\ufffd\ufffd\ufffd\"");
-  EXPECT_EQ(folly::json::serialize("z\xc0\x80z\xe0\xa0\x80", opts),
-            "\"z\ufffd\ufffdz\xe0\xa0\x80\"");
+  EXPECT_EQ(
+      folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts),
+      u8"\"a\xe0\xa0\x80z\ufffd\ufffd\"");
+  EXPECT_EQ(
+      folly::json::serialize("a\xe0\xa0\x80z\xc0\x80\x80", opts),
+      u8"\"a\xe0\xa0\x80z\ufffd\ufffd\ufffd\"");
+  EXPECT_EQ(
+      folly::json::serialize("z\xc0\x80z\xe0\xa0\x80", opts),
+      u8"\"z\ufffd\ufffdz\xe0\xa0\x80\"");
 
   opts.encode_non_ascii = true;
   EXPECT_EQ(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts),
@@ -357,24 +408,107 @@ TEST(Json, ParseNonStringKeys) {
   EXPECT_EQ(1.5, dval.items().begin()->first.asDouble());
 }
 
+TEST(Json, ParseDoubleFallback) {
+  // default behavior
+  EXPECT_THROW(parseJson("{\"a\":847605071342477600000000000000}"),
+      std::range_error);
+  EXPECT_THROW(parseJson("{\"a\":-9223372036854775809}"),
+      std::range_error);
+  EXPECT_THROW(parseJson("{\"a\":9223372036854775808}"),
+      std::range_error);
+  EXPECT_EQ(std::numeric_limits<int64_t>::min(),
+      parseJson("{\"a\":-9223372036854775808}").items().begin()
+        ->second.asInt());
+  EXPECT_EQ(std::numeric_limits<int64_t>::max(),
+      parseJson("{\"a\":9223372036854775807}").items().begin()->second.asInt());
+  // with double_fallback
+  folly::json::serialization_opts opts;
+  opts.double_fallback = true;
+  EXPECT_EQ(847605071342477600000000000000.0,
+      parseJson("{\"a\":847605071342477600000000000000}",
+        opts).items().begin()->second.asDouble());
+  EXPECT_EQ(847605071342477600000000000000.0,
+      parseJson("{\"a\": 847605071342477600000000000000}",
+        opts).items().begin()->second.asDouble());
+  EXPECT_EQ(847605071342477600000000000000.0,
+      parseJson("{\"a\":847605071342477600000000000000 }",
+        opts).items().begin()->second.asDouble());
+  EXPECT_EQ(847605071342477600000000000000.0,
+      parseJson("{\"a\": 847605071342477600000000000000 }",
+        opts).items().begin()->second.asDouble());
+  EXPECT_EQ(std::numeric_limits<int64_t>::min(),
+      parseJson("{\"a\":-9223372036854775808}",
+        opts).items().begin()->second.asInt());
+  EXPECT_EQ(std::numeric_limits<int64_t>::max(),
+      parseJson("{\"a\":9223372036854775807}",
+        opts).items().begin()->second.asInt());
+  // show that some precision gets lost
+  EXPECT_EQ(847605071342477612345678900000.0,
+      parseJson("{\"a\":847605071342477612345678912345}",
+        opts).items().begin()->second.asDouble());
+  EXPECT_EQ(
+      toJson(parseJson(R"({"a":-9223372036854775808})", opts)),
+      R"({"a":-9223372036854775808})");
+}
+
+TEST(Json, ParseNumbersAsStrings) {
+  folly::json::serialization_opts opts;
+  opts.parse_numbers_as_strings = true;
+  auto parse = [&](std::string number) {
+    return parseJson(number, opts).asString();
+  };
+
+  EXPECT_EQ("0", parse("0"));
+  EXPECT_EQ("1234", parse("1234"));
+  EXPECT_EQ("3.00", parse("3.00"));
+  EXPECT_EQ("3.14", parse("3.14"));
+  EXPECT_EQ("0.1234", parse("0.1234"));
+  EXPECT_EQ("0.0", parse("0.0"));
+  EXPECT_EQ("46845131213548676854213265486468451312135486768542132",
+      parse("46845131213548676854213265486468451312135486768542132"));
+  EXPECT_EQ("-468451312135486768542132654864684513121354867685.5e4",
+      parse("-468451312135486768542132654864684513121354867685.5e4"));
+  EXPECT_EQ("6.62607004e-34", parse("6.62607004e-34"));
+  EXPECT_EQ("6.62607004E+34", parse("6.62607004E+34"));
+  EXPECT_EQ("Infinity", parse("Infinity"));
+  EXPECT_EQ("-Infinity", parse("-Infinity"));
+  EXPECT_EQ("NaN", parse("NaN"));
+
+  EXPECT_THROW(parse("ThisIsWrong"), std::runtime_error);
+  EXPECT_THROW(parse("34-2"), std::runtime_error);
+  EXPECT_THROW(parse(""), std::runtime_error);
+  EXPECT_THROW(parse("-"), std::runtime_error);
+  EXPECT_THROW(parse("34-e2"), std::runtime_error);
+  EXPECT_THROW(parse("34e2.4"), std::runtime_error);
+  EXPECT_THROW(parse("infinity"), std::runtime_error);
+  EXPECT_THROW(parse("nan"), std::runtime_error);
+}
+
 TEST(Json, SortKeys) {
-  folly::json::serialization_opts opts_on, opts_off;
+  folly::json::serialization_opts opts_on, opts_off, opts_custom_sort;
   opts_on.sort_keys = true;
   opts_off.sort_keys = false;
+
+  opts_custom_sort.sort_keys = false; // should not be required
+  opts_custom_sort.sort_keys_by = [](
+      folly::dynamic const& a, folly::dynamic const& b) {
+    // just an inverse sort
+    return b < a;
+  };
 
   dynamic value = dynamic::object
     ("foo", "bar")
     ("junk", 12)
     ("another", 32.2)
     ("a",
-      {
+      dynamic::array(
         dynamic::object("a", "b")
                        ("c", "d"),
         12.5,
         "Yo Dawg",
-        { "heh" },
+        dynamic::array("heh"),
         nullptr
-      }
+      )
     )
     ;
 
@@ -382,14 +516,89 @@ TEST(Json, SortKeys) {
     R"({"a":[{"a":"b","c":"d"},12.5,"Yo Dawg",["heh"],null],)"
     R"("another":32.2,"foo":"bar","junk":12})";
 
+  std::string inverse_sorted_keys =
+      R"({"junk":12,"foo":"bar","another":32.2,)"
+      R"("a":[{"c":"d","a":"b"},12.5,"Yo Dawg",["heh"],null]})";
+
   EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_on)));
   EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_off)));
+  EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_custom_sort)));
 
   EXPECT_EQ(sorted_keys, folly::json::serialize(value, opts_on));
+  EXPECT_NE(sorted_keys, folly::json::serialize(value, opts_off));
+  EXPECT_EQ(
+      inverse_sorted_keys, folly::json::serialize(value, opts_custom_sort));
 }
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
+TEST(Json, PrintTo) {
+  std::ostringstream oss;
+
+  dynamic value = dynamic::object
+    ("foo", "bar")
+    ("junk", 12)
+    ("another", 32.2)
+    (true, false) // include non-string keys
+    (false, true)
+    (2, 3)
+    (0, 1)
+    (1, 2)
+    (1.5, 2.25)
+    (0.5, 0.25)
+    (0, 1)
+    (1, 2)
+    ("a",
+      dynamic::array(
+        dynamic::object("a", "b")
+                       ("c", "d"),
+        12.5,
+        "Yo Dawg",
+        dynamic::array("heh"),
+        nullptr
+      )
+    )
+    ;
+
+  std::string expected =
+      R"({
+  false : true,
+  true : false,
+  0.5 : 0.25,
+  1.5 : 2.25,
+  0 : 1,
+  1 : 2,
+  2 : 3,
+  "a" : [
+    {
+      "a" : "b",
+      "c" : "d"
+    },
+    12.5,
+    "Yo Dawg",
+    [
+      "heh"
+    ],
+    null
+  ],
+  "another" : 32.2,
+  "foo" : "bar",
+  "junk" : 12
+})";
+  PrintTo(value, &oss);
+  EXPECT_EQ(expected, oss.str());
+}
+
+TEST(Json, RecursionLimit) {
+  std::string in;
+  for (int i = 0; i < 1000; i++) {
+    in.append("{\"x\":");
+  }
+  in.append("\"hi\"");
+  for (int i = 0; i < 1000; i++) {
+    in.append("}");
+  }
+  EXPECT_ANY_THROW(parseJson(in));
+
+  folly::json::serialization_opts opts_high_recursion_limit;
+  opts_high_recursion_limit.recursion_limit = 10000;
+  parseJson(in, opts_high_recursion_limit);
 }

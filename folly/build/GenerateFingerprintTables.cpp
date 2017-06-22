@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <gflags/gflags.h>
 
 #include <folly/Format.h>
+#include <folly/portability/GFlags.h>
 
 #include <folly/detail/FingerprintPolynomial.h>
 
@@ -71,9 +71,9 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
   // where k is the number of bits in the fingerprint (and deg(P)) and
   // Q(X) = q7*X^7 + q6*X^6 + ... + q1*X + q0 is a degree-7 polyonomial
   // whose coefficients are the bits of q.
-  for (int x = 0; x < 256; x++) {
+  for (uint16_t x = 0; x < 256; x++) {
     FingerprintPolynomial<DEG> t;
-    t.setHigh8Bits(x);
+    t.setHigh8Bits(uint8_t(x));
     for (int i = 0; i < 8; i++) {
       t.mulXkmod(8, poly);
       t.write(&(table[i][x][0]));

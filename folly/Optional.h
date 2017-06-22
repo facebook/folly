@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_OPTIONAL_H_
-#define FOLLY_OPTIONAL_H_
+#pragma once
 
 /*
  * Optional - For conditional initialization of values, like boost::optional,
@@ -55,32 +54,28 @@
  *  }
  */
 #include <cstddef>
+#include <functional>
+#include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-
-#include <boost/operators.hpp>
 
 #include <folly/Portability.h>
 
 namespace folly {
 
-namespace detail { struct NoneHelper {}; }
+namespace detail {
+struct NoneHelper {};
+
+// Allow each translation unit to control its own -fexceptions setting.
+// If exceptions are disabled, std::terminate() will be called instead of
+// throwing OptionalEmptyException when the condition fails.
+[[noreturn]] void throw_optional_empty_exception();
+}
 
 typedef int detail::NoneHelper::*None;
 
 const None none = nullptr;
-
-/**
- * gcc-4.7 warns about use of uninitialized memory around the use of storage_
- * even though this is explicitly initialized at each point.
- */
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-# pragma GCC diagnostic ignored "-Wpragmas"
-# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif // __GNUC__
 
 class OptionalEmptyException : public std::runtime_error {
  public:
@@ -91,13 +86,14 @@ class OptionalEmptyException : public std::runtime_error {
 template<class Value>
 class Optional {
  public:
+  typedef Value value_type;
+
   static_assert(!std::is_reference<Value>::value,
                 "Optional may not be used with reference types");
   static_assert(!std::is_abstract<Value>::value,
                 "Optional may not be used with abstract types");
 
-  Optional()
-    : hasValue_(false) {
+  Optional() noexcept {
   }
 
   Optional(const Optional& src)
@@ -105,8 +101,6 @@ class Optional {
 
     if (src.hasValue()) {
       construct(src.value());
-    } else {
-      hasValue_ = false;
     }
   }
 
@@ -116,13 +110,10 @@ class Optional {
     if (src.hasValue()) {
       construct(std::move(src.value()));
       src.clear();
-    } else {
-      hasValue_ = false;
     }
   }
 
-  /* implicit */ Optional(const None&) noexcept
-    : hasValue_(false) {
+  /* implicit */ Optional(const None&) noexcept {
   }
 
   /* implicit */ Optional(Value&& newValue)
@@ -133,10 +124,6 @@ class Optional {
   /* implicit */ Optional(const Value& newValue)
     noexcept(std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
-  }
-
-  ~Optional() noexcept {
-    clear();
   }
 
   void assign(const None&) {
@@ -164,7 +151,7 @@ class Optional {
 
   void assign(Value&& newValue) {
     if (hasValue()) {
-      value_ = std::move(newValue);
+      storage_.value = std::move(newValue);
     } else {
       construct(std::move(newValue));
     }
@@ -172,7 +159,7 @@ class Optional {
 
   void assign(const Value& newValue) {
     if (hasValue()) {
-      value_ = newValue;
+      storage_.value = newValue;
     } else {
       construct(newValue);
     }
@@ -205,40 +192,47 @@ class Optional {
   }
 
   void clear() {
-    if (hasValue()) {
-      hasValue_ = false;
-      value_.~Value();
-    }
+    storage_.clear();
   }
 
   const Value& value() const& {
     require_value();
-    return value_;
+    return storage_.value;
   }
 
   Value& value() & {
     require_value();
-    return value_;
+    return storage_.value;
   }
 
-  Value value() && {
+  Value&& value() && {
     require_value();
-    return std::move(value_);
+    return std::move(storage_.value);
   }
 
-  const Value* get_pointer() const&  { return hasValue_ ? &value_ : nullptr; }
-        Value* get_pointer()      &  { return hasValue_ ? &value_ : nullptr; }
-        Value* get_pointer()      && = delete;
+  const Value&& value() const&& {
+    require_value();
+    return std::move(storage_.value);
+  }
 
-  bool hasValue() const { return hasValue_; }
+  const Value* get_pointer() const&  {
+    return storage_.hasValue ? &storage_.value : nullptr;
+  }
+  Value* get_pointer() & {
+    return storage_.hasValue ? &storage_.value : nullptr;
+  }
+  Value* get_pointer() && = delete;
+
+  bool hasValue() const { return storage_.hasValue; }
 
   explicit operator bool() const {
     return hasValue();
   }
 
-  const Value& operator*() const&  { return value(); }
-        Value& operator*()      &  { return value(); }
-        Value  operator*()      && { return std::move(value()); }
+  const Value& operator*()  const&  { return value(); }
+        Value& operator*()       &  { return value(); }
+  const Value&& operator*() const&& { return std::move(value()); }
+        Value&& operator*()      && { return std::move(value()); }
 
   const Value* operator->() const { return &value(); }
         Value* operator->()       { return &value(); }
@@ -246,37 +240,94 @@ class Optional {
   // Return a copy of the value if set, or a given default if not.
   template <class U>
   Value value_or(U&& dflt) const& {
-    return hasValue_ ? value_ : std::forward<U>(dflt);
+    if (storage_.hasValue) {
+      return storage_.value;
+    }
+
+    return std::forward<U>(dflt);
   }
 
   template <class U>
   Value value_or(U&& dflt) && {
-    return hasValue_ ? std::move(value_) : std::forward<U>(dflt);
+    if (storage_.hasValue) {
+      return std::move(storage_.value);
+    }
+
+    return std::forward<U>(dflt);
   }
 
  private:
   void require_value() const {
-    if (!hasValue_) {
-      throw OptionalEmptyException();
+    if (!storage_.hasValue) {
+      detail::throw_optional_empty_exception();
     }
   }
 
   template<class... Args>
   void construct(Args&&... args) {
-    const void* ptr = &value_;
+    const void* ptr = &storage_.value;
     // for supporting const types
     new(const_cast<void*>(ptr)) Value(std::forward<Args>(args)...);
-    hasValue_ = true;
+    storage_.hasValue = true;
   }
 
-  // uninitialized
-  union { Value value_; };
-  bool hasValue_;
-};
+  struct StorageTriviallyDestructible {
+    // The union trick allows to initialize the Optional's memory,
+    // so that compiler/tools don't complain about uninitialized memory,
+    // without actually calling Value's default constructor.
+    // The rest of the implementation enforces that hasValue/value are
+    // synchronized.
+    union {
+      bool hasValue;
+      struct {
+        bool paddingForHasValue_[1];
+        Value value;
+      };
+    };
 
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
+    StorageTriviallyDestructible() : hasValue{false} {}
+
+    void clear() {
+      hasValue = false;
+    }
+  };
+
+  struct StorageNonTriviallyDestructible {
+    // See StorageTriviallyDestructible's union
+    union {
+      bool hasValue;
+      struct {
+        bool paddingForHasValue_[1];
+        Value value;
+      };
+    };
+
+    FOLLY_PUSH_WARNING
+    // These are both informational warnings, but they trigger rare enough
+    // that we've left them enabled.
+    FOLLY_MSVC_DISABLE_WARNING(4587) // constructor of .value is not called
+    FOLLY_MSVC_DISABLE_WARNING(4588) // destructor of .value is not called
+    StorageNonTriviallyDestructible() : hasValue{false} {}
+    ~StorageNonTriviallyDestructible() {
+      clear();
+    }
+    FOLLY_POP_WARNING
+
+    void clear() {
+      if (hasValue) {
+        hasValue = false;
+        value.~Value();
+      }
+    }
+  };
+
+  using Storage =
+    typename std::conditional<std::is_trivially_destructible<Value>::value,
+                              StorageTriviallyDestructible,
+                              StorageNonTriviallyDestructible>::type;
+
+  Storage storage_;
+};
 
 template<class T>
 const T* get_pointer(const Optional<T>& opt) {
@@ -308,57 +359,57 @@ Opt make_optional(T&& v) {
 ///////////////////////////////////////////////////////////////////////////////
 // Comparisons.
 
-template<class V>
-bool operator==(const Optional<V>& a, const V& b) {
+template <class U, class V>
+bool operator==(const Optional<U>& a, const V& b) {
   return a.hasValue() && a.value() == b;
 }
 
-template<class V>
-bool operator!=(const Optional<V>& a, const V& b) {
+template <class U, class V>
+bool operator!=(const Optional<U>& a, const V& b) {
   return !(a == b);
 }
 
-template<class V>
-bool operator==(const V& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator==(const U& a, const Optional<V>& b) {
   return b.hasValue() && b.value() == a;
 }
 
-template<class V>
-bool operator!=(const V& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator!=(const U& a, const Optional<V>& b) {
   return !(a == b);
 }
 
-template<class V>
-bool operator==(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator==(const Optional<U>& a, const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) { return false; }
   if (a.hasValue())                 { return a.value() == b.value(); }
   return true;
 }
 
-template<class V>
-bool operator!=(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator!=(const Optional<U>& a, const Optional<V>& b) {
   return !(a == b);
 }
 
-template<class V>
-bool operator< (const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator<(const Optional<U>& a, const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) { return a.hasValue() < b.hasValue(); }
   if (a.hasValue())                 { return a.value()    < b.value(); }
   return false;
 }
 
-template<class V>
-bool operator> (const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator>(const Optional<U>& a, const Optional<V>& b) {
   return b < a;
 }
 
-template<class V>
-bool operator<=(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator<=(const Optional<U>& a, const Optional<V>& b) {
   return !(b < a);
 }
 
-template<class V>
-bool operator>=(const Optional<V>& a, const Optional<V>& b) {
+template <class U, class V>
+bool operator>=(const Optional<U>& a, const Optional<V>& b) {
   return !(a < b);
 }
 
@@ -376,4 +427,15 @@ template<class V> bool operator> (const V& other, const Optional<V>&) = delete;
 
 } // namespace folly
 
-#endif // FOLLY_OPTIONAL_H_
+// Allow usage of Optional<T> in std::unordered_map and std::unordered_set
+FOLLY_NAMESPACE_STD_BEGIN
+template <class T>
+struct hash<folly::Optional<T>> {
+  size_t operator()(folly::Optional<T> const& obj) const {
+    if (!obj.hasValue()) {
+      return 0;
+    }
+    return hash<typename remove_const<T>::type>()(*obj);
+  }
+};
+FOLLY_NAMESPACE_STD_END

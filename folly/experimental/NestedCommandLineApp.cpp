@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ namespace {
 // Guess the program name as basename(executable)
 std::string guessProgramName() {
   try {
-    return fs::executable_path().filename().native();
+    return fs::executable_path().filename().string();
   } catch (const std::exception&) {
     return "UNKNOWN";
   }
@@ -48,11 +48,15 @@ ProgramExit::ProgramExit(int status, const std::string& msg)
 NestedCommandLineApp::NestedCommandLineApp(
     std::string programName,
     std::string version,
+    std::string programHeading,
+    std::string programHelpFooter,
     InitFunction initFunction)
-  : programName_(std::move(programName)),
-    version_(std::move(version)),
-    initFunction_(std::move(initFunction)),
-    globalOptions_("Global options") {
+    : programName_(std::move(programName)),
+      programHeading_(std::move(programHeading)),
+      programHelpFooter_(std::move(programHelpFooter)),
+      version_(std::move(version)),
+      initFunction_(std::move(initFunction)),
+      globalOptions_("Global options") {
   addCommand("help", "[command]",
              "Display help (globally or for a given command)",
              "Displays help (globally or for a given command).",
@@ -96,13 +100,15 @@ void NestedCommandLineApp::addAlias(std::string newName,
 }
 
 void NestedCommandLineApp::displayHelp(
-    const po::variables_map& globalOptions,
+    const po::variables_map& /* globalOptions */,
     const std::vector<std::string>& args) {
   if (args.empty()) {
     // General help
     printf(
-        "Usage: %s [global_options...] <command> [command_options...] "
-        "[command_args...]\n\n", programName_.c_str());
+        "%s\nUsage: %s [global_options...] <command> [command_options...] "
+        "[command_args...]\n\n",
+        programHeading_.c_str(),
+        programName_.c_str());
     std::cout << globalOptions_;
     printf("\nAvailable commands:\n");
 
@@ -126,12 +132,13 @@ void NestedCommandLineApp::displayHelp(
                int(maxLen), p.first.c_str(), resolveAlias(p.second).c_str());
       }
     }
+    std::cout << "\n" << programHelpFooter_ << "\n";
   } else {
     // Help for a given command
     auto& p = findCommand(args.front());
     if (p.first != args.front()) {
-      printf("`%1$s' is an alias for `%2$s'; showing help for `%2$s'\n",
-             args.front().c_str(), p.first.c_str());
+      printf("`%s' is an alias for `%s'; showing help for `%s'\n",
+             args.front().c_str(), p.first.c_str(), p.first.c_str());
     }
     auto& info = p.second;
 
@@ -143,14 +150,14 @@ void NestedCommandLineApp::displayHelp(
         info.argStr.empty() ? "" : " ",
         info.argStr.c_str());
 
+    printf("%s\n", info.fullHelp.c_str());
+
     std::cout << globalOptions_;
 
     if (!info.options.options().empty()) {
       printf("\n");
       std::cout << info.options;
     }
-
-    printf("\n%s\n", info.fullHelp.c_str());
   }
 }
 
@@ -181,7 +188,7 @@ auto NestedCommandLineApp::findCommand(const std::string& name) const
 
 int NestedCommandLineApp::run(int argc, const char* const argv[]) {
   if (programName_.empty()) {
-    programName_ = fs::path(argv[0]).filename().native();
+    programName_ = fs::path(argv[0]).filename().string();
   }
   return run(std::vector<std::string>(argv + 1, argv + argc));
 }

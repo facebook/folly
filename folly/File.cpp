@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 
 #include <folly/File.h>
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/file.h>
 
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
+#include <folly/portability/Fcntl.h>
+#include <folly/portability/SysFile.h>
+#include <folly/portability/Unistd.h>
 
 #include <system_error>
 
@@ -31,14 +31,9 @@
 
 namespace folly {
 
-File::File()
-  : fd_(-1)
-  , ownsFd_(false)
-{}
+File::File() noexcept : fd_(-1), ownsFd_(false) {}
 
-File::File(int fd, bool ownsFd)
-  : fd_(fd)
-  , ownsFd_(ownsFd) {
+File::File(int fd, bool ownsFd) noexcept : fd_(fd), ownsFd_(ownsFd) {
   CHECK_GE(fd, -1) << "fd must be -1 or non-negative";
   CHECK(fd != -1 || !ownsFd) << "cannot own -1";
 }

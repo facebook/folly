@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,16 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 
 #include <folly/Baton.h>
+#include <folly/portability/GTest.h>
+
 #include <list>
 #include <iostream>
 #include <thread>
 #include <sys/types.h>
-#include <sys/wait.h>
 
-#include <gtest/gtest.h>
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
 
 using namespace std;
 using namespace folly;
@@ -35,7 +38,7 @@ class QueueConsumer : public IntQueue::Consumer {
  public:
   QueueConsumer() {}
 
-  void messageAvailable(int&& value) override {
+  void messageAvailable(int&& value) noexcept override {
     messages.push_back(value);
     if (fn) {
       fn(value);
@@ -48,11 +51,8 @@ class QueueConsumer : public IntQueue::Consumer {
 
 class QueueTest {
  public:
-  explicit QueueTest(uint32_t maxSize = 0,
-                     IntQueue::FdType type = IntQueue::FdType::EVENTFD) :
-      queue(maxSize, type),
-      terminationQueue(maxSize, type)
-    {}
+  explicit QueueTest(uint32_t maxSize, IntQueue::FdType type)
+      : queue(maxSize, type), terminationQueue(maxSize, type) {}
 
   void sendOne();
   void putMessages();
@@ -81,7 +81,7 @@ void QueueTest::sendOne() {
   // Start a new EventBase thread to put a message on our queue
   ScopedEventBaseThread t1;
   t1.getEventBase()->runInEventBaseThread([&] {
-    queue.putMessage(5);
+    this->queue.putMessage(5);
   });
 
   // Loop until we receive the message
@@ -360,7 +360,7 @@ void QueueTest::destroyCallback() {
   // avoid destroying the function object.
   class DestroyTestConsumer : public IntQueue::Consumer {
    public:
-    void messageAvailable(int&& value) override {
+    void messageAvailable(int&& value) noexcept override {
       DestructorGuard g(this);
       if (fn && *fn) {
         (*fn)(value);
@@ -369,7 +369,7 @@ void QueueTest::destroyCallback() {
 
     std::function<void(int)> *fn;
    protected:
-    virtual ~DestroyTestConsumer() = default;
+    ~DestroyTestConsumer() override = default;
   };
 
   EventBase eventBase;
@@ -436,9 +436,7 @@ TEST(NotificationQueueTest, ConsumeUntilDrained) {
 
   // Make sure there can only be one drainer at once
   folly::Baton<> callbackBaton, threadStartBaton;
-  consumer.fn = [&](int i) {
-    callbackBaton.wait();
-  };
+  consumer.fn = [&](int /* i */) { callbackBaton.wait(); };
   QueueConsumer competingConsumer;
   competingConsumer.startConsuming(&eventBase, &queue);
   queue.putMessage(1);
@@ -468,10 +466,10 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
     EventBase eventBase;
     IntQueue queue;
     QueueConsumer consumer;
-    consumer.fn = [&](int i) {
-      EXPECT_THROW(queue.tryPutMessage(i), std::runtime_error);
-      EXPECT_FALSE(queue.tryPutMessageNoThrow(i));
-      EXPECT_THROW(queue.putMessage(i), std::runtime_error);
+    consumer.fn = [&](int j) {
+      EXPECT_THROW(queue.tryPutMessage(j), std::runtime_error);
+      EXPECT_FALSE(queue.tryPutMessageNoThrow(j));
+      EXPECT_THROW(queue.putMessage(j), std::runtime_error);
       std::vector<int> ints{1, 2, 3};
       EXPECT_THROW(
           queue.putMessages(ints.begin(), ints.end()),
@@ -479,17 +477,15 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
     };
     consumer.setMaxReadAtOnce(10); // We should ignore this
     consumer.startConsuming(&eventBase, &queue);
-    for (int i = 0; i < 20; i++) {
-      queue.putMessage(i);
+    for (int j = 0; j < 20; j++) {
+      queue.putMessage(j);
     }
     EXPECT_TRUE(consumer.consumeUntilDrained());
     EXPECT_EQ(20, consumer.messages.size());
 
     // Make sure there can only be one drainer at once
     folly::Baton<> callbackBaton, threadStartBaton;
-    consumer.fn = [&](int i) {
-      callbackBaton.wait();
-    };
+    consumer.fn = [&](int /* i */) { callbackBaton.wait(); };
     QueueConsumer competingConsumer;
     competingConsumer.startConsuming(&eventBase, &queue);
     queue.putMessage(1);
@@ -511,35 +507,37 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
   }
 }
 
-TEST(NotificationQueueTest, SendOne) {
-  QueueTest qt;
+#ifdef FOLLY_HAVE_EVENTFD
+TEST(NotificationQueueTest, SendOneEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.sendOne();
 }
 
-TEST(NotificationQueueTest, PutMessages) {
-  QueueTest qt;
+TEST(NotificationQueueTest, PutMessagesEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.sendOne();
 }
 
-TEST(NotificationQueueTest, MultiConsumer) {
-  QueueTest qt;
+TEST(NotificationQueueTest, MultiConsumerEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.multiConsumer();
 }
 
-TEST(NotificationQueueTest, MaxQueueSize) {
-  QueueTest qt(5);
+TEST(NotificationQueueTest, MaxQueueSizeEventFD) {
+  QueueTest qt(5, IntQueue::FdType::EVENTFD);
   qt.maxQueueSize();
 }
 
-TEST(NotificationQueueTest, MaxReadAtOnce) {
-  QueueTest qt;
+TEST(NotificationQueueTest, MaxReadAtOnceEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.maxReadAtOnce();
 }
 
-TEST(NotificationQueueTest, DestroyCallback) {
-  QueueTest qt;
+TEST(NotificationQueueTest, DestroyCallbackEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.destroyCallback();
 }
+#endif
 
 TEST(NotificationQueueTest, SendOnePipe) {
   QueueTest qt(0, IntQueue::FdType::PIPE);
@@ -571,6 +569,7 @@ TEST(NotificationQueueTest, DestroyCallbackPipe) {
   qt.destroyCallback();
 }
 
+#ifndef _WIN32
 /*
  * Test code that creates a NotificationQueue, then forks, and incorrectly
  * tries to send a message to the queue from the child process.
@@ -643,4 +642,23 @@ TEST(NotificationQueueTest, UseAfterFork) {
   consumer.messages.pop_front();
   EXPECT_EQ(5678, consumer.messages.front());
   consumer.messages.pop_front();
+}
+#endif
+
+TEST(NotificationQueueConsumer, make) {
+  int value = 0;
+  EventBase evb;
+  NotificationQueue<int> queue(32);
+
+  auto consumer = decltype(queue)::Consumer::make([&](
+      int&& msg) noexcept { value = msg; });
+
+  consumer->startConsuming(&evb, &queue);
+
+  int const newValue = 10;
+  queue.tryPutMessage(newValue);
+
+  evb.loopOnce();
+
+  EXPECT_EQ(newValue, value);
 }

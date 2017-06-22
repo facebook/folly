@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,28 +17,36 @@
 // Functions to provide smarter use of jemalloc, if jemalloc is being used.
 // http://www.canonware.com/download/jemalloc/jemalloc-latest/doc/jemalloc.html
 
-#ifndef FOLLY_MALLOC_H_
-#define FOLLY_MALLOC_H_
+#pragma once
+
+#include <folly/portability/Config.h>
 
 /**
  * Define various MALLOCX_* macros normally provided by jemalloc.  We define
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
  */
-#ifndef MALLOCX_LG_ALIGN
-#define MALLOCX_LG_ALIGN(la) (la)
-#endif
-#ifndef MALLOCX_ZERO
-#define MALLOCX_ZERO (static_cast<int>(0x40))
+#if defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)
+// We have JEMalloc, so use it.
+# include <jemalloc/jemalloc.h>
+#else
+# ifndef MALLOCX_LG_ALIGN
+#  define MALLOCX_LG_ALIGN(la) (la)
+# endif
+# ifndef MALLOCX_ZERO
+#  define MALLOCX_ZERO (static_cast<int>(0x40))
+# endif
 #endif
 
-// If using fbstring from libstdc++, then just define stub code
-// here to typedef the fbstring type into the folly namespace.
+// If using fbstring from libstdc++ (see comment in FBString.h), then
+// just define stub code here to typedef the fbstring type into the
+// folly namespace.
 // This provides backwards compatibility for code that explicitly
 // includes and uses fbstring.
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
 
-#include <folly/detail/Malloc.h>
+#include <folly/detail/MallocImpl.h>
+#include <folly/portability/BitsFunctexcept.h>
 
 #include <string>
 
@@ -59,7 +67,7 @@ namespace folly {
 
 /**
  * Declare *allocx() and mallctl*() as weak symbols. These will be provided by
- * jemalloc if we are using jemalloc, or will be NULL if we are using another
+ * jemalloc if we are using jemalloc, or will be nullptr if we are using another
  * malloc implementation.
  */
 extern "C" void* mallocx(size_t, int)
@@ -72,6 +80,8 @@ extern "C" size_t sallocx(const void*, int)
 __attribute__((__weak__));
 extern "C" void dallocx(void*, int)
 __attribute__((__weak__));
+extern "C" void sdallocx(void*, size_t, int)
+__attribute__((__weak__));
 extern "C" size_t nallocx(size_t, int)
 __attribute__((__weak__));
 extern "C" int mallctl(const char*, void*, size_t*, void*, size_t)
@@ -83,14 +93,18 @@ extern "C" int mallctlbymib(const size_t*, size_t, void*, size_t*, void*,
 __attribute__((__weak__));
 
 #include <bits/functexcept.h>
+
 #define FOLLY_HAVE_MALLOC_H 1
-#else
-#include <folly/detail/Malloc.h> /* nolint */
-#include <folly/Portability.h>
+
+#else // !defined(_LIBSTDCXX_FBSTRING)
+
+#include <folly/detail/MallocImpl.h> /* nolint */
+#include <folly/portability/BitsFunctexcept.h> /* nolint */
+
 #endif
 
 // for malloc_usable_size
-// NOTE: FreeBSD 9 doesn't have malloc.h.  It's defitions
+// NOTE: FreeBSD 9 doesn't have malloc.h.  Its definitions
 // are found in stdlib.h.
 #if FOLLY_HAVE_MALLOC_H
 #include <malloc.h>
@@ -100,9 +114,11 @@ __attribute__((__weak__));
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 
+#include <atomic>
 #include <new>
 
 #ifdef _LIBSTDCXX_FBSTRING
@@ -112,47 +128,87 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 namespace folly {
 #endif
 
-bool usingJEMallocSlow();
+// Cannot depend on Portability.h when _LIBSTDCXX_FBSTRING.
+#if defined(__GNUC__)
+#define FOLLY_MALLOC_NOINLINE __attribute__((__noinline__))
+#if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL) >= 40900
+// This is for checked malloc-like functions (returns non-null pointer
+// which cannot alias any outstanding pointer).
+#define FOLLY_MALLOC_CHECKED_MALLOC                     \
+  __attribute__((__returns_nonnull__, __malloc__))
+#else
+#define FOLLY_MALLOC_CHECKED_MALLOC __attribute__((__malloc__))
+#endif
+#else
+#define FOLLY_MALLOC_NOINLINE
+#define FOLLY_MALLOC_CHECKED_MALLOC
+#endif
 
 /**
  * Determine if we are using jemalloc or not.
  */
-inline bool usingJEMalloc() {
-  // Checking for rallocx != NULL is not sufficient; we may be in a dlopen()ed
-  // module that depends on libjemalloc, so rallocx is resolved, but the main
-  // program might be using a different memory allocator. Look at the
-  // implementation of usingJEMallocSlow() for the (hacky) details.
-  static const bool result = usingJEMallocSlow();
+FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
+  // Checking for rallocx != nullptr is not sufficient; we may be in a
+  // dlopen()ed module that depends on libjemalloc, so rallocx is resolved, but
+  // the main program might be using a different memory allocator.
+  // How do we determine that we're using jemalloc? In the hackiest
+  // way possible. We allocate memory using malloc() and see if the
+  // per-thread counter of allocated memory increases. This makes me
+  // feel dirty inside. Also note that this requires jemalloc to have
+  // been compiled with --enable-stats.
+  static const bool result = [] () noexcept {
+    // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
+    // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
+    // (!!). http://goo.gl/xpmctm
+    if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr
+        || sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr
+        || nallocx == nullptr || mallctl == nullptr
+        || mallctlnametomib == nullptr || mallctlbymib == nullptr) {
+      return false;
+    }
+
+    // "volatile" because gcc optimizes out the reads from *counter, because
+    // it "knows" malloc doesn't modify global state...
+    /* nolint */ volatile uint64_t* counter;
+    size_t counterLen = sizeof(uint64_t*);
+
+    if (mallctl("thread.allocatedp", static_cast<void*>(&counter), &counterLen,
+                nullptr, 0) != 0) {
+      return false;
+    }
+
+    if (counterLen != sizeof(uint64_t*)) {
+      return false;
+    }
+
+    uint64_t origAllocated = *counter;
+
+    // Static because otherwise clever compilers will find out that
+    // the ptr is not used and does not escape the scope, so they will
+    // just optimize away the malloc.
+    static const void* ptr = malloc(1);
+    if (!ptr) {
+      // wtf, failing to allocate 1 byte
+      return false;
+    }
+
+    return (origAllocated != *counter);
+  }();
+
   return result;
 }
 
-/**
- * For jemalloc's size classes, see
- * http://www.canonware.com/download/jemalloc/jemalloc-latest/doc/jemalloc.html
- */
 inline size_t goodMallocSize(size_t minSize) noexcept {
+  if (minSize == 0) {
+    return 0;
+  }
+
   if (!usingJEMalloc()) {
     // Not using jemalloc - no smarts
     return minSize;
   }
-  size_t goodSize;
-  if (minSize <= 64) {
-    // Choose smallest allocation to be 64 bytes - no tripping over
-    // cache line boundaries, and small string optimization takes care
-    // of short strings anyway.
-    goodSize = 64;
-  } else if (minSize <= 512) {
-    // Round up to the next multiple of 64; we don't want to trip over
-    // cache line boundaries.
-    goodSize = (minSize + 63) & ~size_t(63);
-  } else {
-    // Boundaries between size classes depend on numerious factors, some of
-    // which can even be modified at run-time. Determine the good allocation
-    // size by calling nallocx() directly.
-    goodSize = nallocx(minSize, 0);
-  }
-  assert(nallocx(goodSize, 0) == goodSize);
-  return goodSize;
+
+  return nallocx(minSize, 0);
 }
 
 // We always request "good" sizes for allocation, so jemalloc can
@@ -195,10 +251,11 @@ inline void* checkedRealloc(void* ptr, size_t size) {
  * routine just tries to call realloc() (thus benefitting of potential
  * copy-free coalescing) unless there's too much slack memory.
  */
-inline void* smartRealloc(void* p,
-                          const size_t currentSize,
-                          const size_t currentCapacity,
-                          const size_t newCapacity) {
+FOLLY_MALLOC_CHECKED_MALLOC FOLLY_MALLOC_NOINLINE inline void* smartRealloc(
+    void* p,
+    const size_t currentSize,
+    const size_t currentCapacity,
+    const size_t newCapacity) {
   assert(p);
   assert(currentSize <= currentCapacity &&
          currentCapacity < newCapacity);
@@ -244,5 +301,3 @@ _GLIBCXX_END_NAMESPACE_VERSION
 } // folly
 
 #endif // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)
-
-#endif // FOLLY_MALLOC_H_

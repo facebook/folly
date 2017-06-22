@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,11 @@
 #pragma once
 
 #include <functional>
-#include <iostream>
+#include <iosfwd>
 #include <memory>
 #include <string>
 #include <utility> // std::pair
 
-#include <boost/operators.hpp>
-
-#include <folly/Conv.h>
-#include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/IPAddressException.h>
 #include <folly/IPAddressV4.h>
@@ -68,8 +64,11 @@ typedef std::pair<IPAddress, uint8_t> CIDRNetwork;
  *   CHECK(IPAddress::createIPv6(v4addr) == v6map.asV6());
  * @encode
  */
-class IPAddress : boost::totally_ordered<IPAddress> {
+class IPAddress {
  public:
+  // returns true iff the input string can be parsed as an ip-address
+  static bool validate(StringPiece ip);
+
   // return the V4 representation of the address, converting it from V6 to V4 if
   // needed. Note that this will throw an IPAddressFormatException if the V6
   // address is not IPv4Mapped.
@@ -98,9 +97,7 @@ class IPAddress : boost::totally_ordered<IPAddress> {
    *
    * @return string representing the netblock
    */
-  static std::string networkToString(const CIDRNetwork& network) {
-    return network.first.str() + "/" + folly::to<std::string>(network.second);
-  }
+  static std::string networkToString(const CIDRNetwork& network);
 
   /**
    * Create a new IPAddress instance from the provided binary data
@@ -167,10 +164,8 @@ class IPAddress : boost::totally_ordered<IPAddress> {
    * @throws IPAddressFormatException is not a V4 instance
    */
   const IPAddressV4& asV4() const {
-    if (!isV4()) {
-      auto familyName = detail::familyNameStr(family());
-      throw InvalidAddressFamilyException("Can't convert address with family ",
-                                          familyName, " to AF_INET address");
+    if (UNLIKELY(!isV4())) {
+      asV4Throw();
     }
     return addr_.ipV4Addr;
   }
@@ -180,10 +175,8 @@ class IPAddress : boost::totally_ordered<IPAddress> {
    * @throws InvalidAddressFamilyException is not a V6 instance
    */
   const IPAddressV6& asV6() const {
-    if (!isV6()) {
-      auto familyName = detail::familyNameStr(family());
-      throw InvalidAddressFamilyException("Can't convert address with family ",
-                                          familyName, " to AF_INET6 address");
+    if (UNLIKELY(!isV6())) {
+      asV6Throw();
     }
     return addr_.ipV6Addr;
   }
@@ -198,16 +191,23 @@ class IPAddress : boost::totally_ordered<IPAddress> {
     }
     memset(dest, 0, sizeof(sockaddr_storage));
     dest->ss_family = family();
+
     if (isV4()) {
       sockaddr_in *sin = reinterpret_cast<sockaddr_in*>(dest);
       sin->sin_addr = asV4().toAddr();
       sin->sin_port = port;
+#if defined(__APPLE__)
+      sin->sin_len = sizeof(*sin);
+#endif
       return sizeof(*sin);
     } else if (isV6()) {
       sockaddr_in6 *sin = reinterpret_cast<sockaddr_in6*>(dest);
       sin->sin6_addr = asV6().toAddr();
       sin->sin6_port = port;
       sin->sin6_scope_id = asV6().getScopeId();
+#if defined(__APPLE__)
+      sin->sin6_len = sizeof(*sin);
+#endif
       return sizeof(*sin);
     } else {
       throw InvalidAddressFamilyException(family());
@@ -387,6 +387,12 @@ class IPAddress : boost::totally_ordered<IPAddress> {
                   : asV6().toFullyQualified();
   }
 
+  /// Same as toFullyQualified but append to an output string.
+  void toFullyQualifiedAppend(std::string& out) const {
+    return isV4() ? asV4().toFullyQualifiedAppend(out)
+                  : asV6().toFullyQualifiedAppend(out);
+  }
+
   // Address version (4 or 6)
   uint8_t version() const {
     return isV4() ? asV4().version()
@@ -401,6 +407,9 @@ class IPAddress : boost::totally_ordered<IPAddress> {
   }
 
  private:
+  [[noreturn]] void asV4Throw() const;
+  [[noreturn]] void asV6Throw() const;
+
   typedef union IPAddressV46 {
     IPAddressV4 ipV4Addr;
     IPAddressV6 ipV6Addr;
@@ -434,6 +443,19 @@ void toAppend(IPAddress addr, fbstring* result);
 bool operator==(const IPAddress& addr1, const IPAddress& addr2);
 // Return true if addr1 < addr2
 bool operator<(const IPAddress& addr1, const IPAddress& addr2);
+// Derived operators
+inline bool operator!=(const IPAddress& a, const IPAddress& b) {
+  return !(a == b);
+}
+inline bool operator>(const IPAddress& a, const IPAddress& b) {
+  return b < a;
+}
+inline bool operator<=(const IPAddress& a, const IPAddress& b) {
+  return !(a > b);
+}
+inline bool operator>=(const IPAddress& a, const IPAddress& b) {
+  return !(a < b);
+}
 
 }  // folly
 

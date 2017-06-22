@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,7 @@
  * @author Tudor Bosman (tudorb@fb.com)
  */
 
-#ifndef FOLLY_TIMEOUTQUEUE_H_
-#define FOLLY_TIMEOUTQUEUE_H_
+#pragma once
 
 #include <stdint.h>
 #include <functional>
@@ -127,5 +126,3 @@ class TimeoutQueue {
 };
 
 }  // namespace folly
-
-#endif /* FOLLY_TIMEOUTQUEUE_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DYNAMIC_INL_H_
-#define FOLLY_DYNAMIC_INL_H_
+#pragma once
 
 #include <functional>
 #include <boost/iterator/iterator_adaptor.hpp>
@@ -41,18 +40,35 @@ struct hash< ::folly::dynamic> {
 
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
-#define FB_DYNAMIC_APPLY(type, apply) do {         \
-  switch ((type)) {                             \
-  case NULLT:   apply(void*);          break;   \
-  case ARRAY:   apply(Array);          break;   \
-  case BOOL:    apply(bool);           break;   \
-  case DOUBLE:  apply(double);         break;   \
-  case INT64:   apply(int64_t);        break;   \
-  case OBJECT:  apply(ObjectImpl);     break;   \
-  case STRING:  apply(fbstring);       break;   \
-  default:      CHECK(0); abort();              \
-  }                                             \
-} while (0)
+#define FB_DYNAMIC_APPLY(type, apply) \
+  do {                                \
+    switch ((type)) {                 \
+      case NULLT:                     \
+        apply(std::nullptr_t);        \
+        break;                        \
+      case ARRAY:                     \
+        apply(Array);                 \
+        break;                        \
+      case BOOL:                      \
+        apply(bool);                  \
+        break;                        \
+      case DOUBLE:                    \
+        apply(double);                \
+        break;                        \
+      case INT64:                     \
+        apply(int64_t);               \
+        break;                        \
+      case OBJECT:                    \
+        apply(ObjectImpl);            \
+        break;                        \
+      case STRING:                    \
+        apply(std::string);           \
+        break;                        \
+      default:                        \
+        CHECK(0);                     \
+        abort();                      \
+    }                                 \
+  } while (0)
 
 //////////////////////////////////////////////////////////////////////
 
@@ -62,7 +78,7 @@ struct TypeError : std::runtime_error {
   explicit TypeError(const std::string& expected, dynamic::Type actual);
   explicit TypeError(const std::string& expected,
     dynamic::Type actual1, dynamic::Type actual2);
-  ~TypeError();
+  ~TypeError() override;
 };
 
 
@@ -74,41 +90,6 @@ namespace detail {
   // types like "int64_t" without a compiler error.
   struct Destroy {
     template<class T> static void destroy(T* t) { t->~T(); }
-  };
-
-  /*
-   * The enable_if junk here is necessary to avoid ambiguous
-   * conversions relating to bool and double when you implicitly
-   * convert an int or long to a dynamic.
-   */
-  template<class T, class Enable = void> struct ConversionHelper;
-  template<class T>
-  struct ConversionHelper<
-    T,
-    typename std::enable_if<
-      std::is_integral<T>::value && !std::is_same<T,bool>::value
-    >::type
-  > {
-    typedef int64_t type;
-  };
-  template<class T>
-  struct ConversionHelper<
-    T,
-    typename std::enable_if<
-      (!std::is_integral<T>::value || std::is_same<T,bool>::value) &&
-      !std::is_same<T,std::nullptr_t>::value
-    >::type
-  > {
-    typedef T type;
-  };
-  template<class T>
-  struct ConversionHelper<
-    T,
-    typename std::enable_if<
-      std::is_same<T,std::nullptr_t>::value
-    >::type
-  > {
-    typedef void* type;
   };
 
   /*
@@ -154,12 +135,7 @@ struct dynamic::ObjectMaker {
   friend struct dynamic;
 
   explicit ObjectMaker() : val_(dynamic::object) {}
-  explicit ObjectMaker(dynamic const& key, dynamic val)
-    : val_(dynamic::object)
-  {
-    val_.insert(key, std::move(val));
-  }
-  explicit ObjectMaker(dynamic&& key, dynamic val)
+  explicit ObjectMaker(dynamic key, dynamic val)
     : val_(dynamic::object)
   {
     val_.insert(std::move(key), std::move(val));
@@ -172,15 +148,10 @@ struct dynamic::ObjectMaker {
   ObjectMaker& operator=(ObjectMaker const&) = delete;
   ObjectMaker& operator=(ObjectMaker&&) = delete;
 
-  // These return rvalue-references instead of lvalue-references to allow
-  // constructs like this to moved instead of copied:
+  // This returns an rvalue-reference instead of an lvalue-reference
+  // to allow constructs like this to moved instead of copied:
   //  dynamic a = dynamic::object("a", "b")("c", "d")
-  ObjectMaker&& operator()(dynamic const& key, dynamic val) {
-    val_.insert(key, std::move(val));
-    return std::move(*this);
-  }
-
-  ObjectMaker&& operator()(dynamic&& key, dynamic val) {
+  ObjectMaker&& operator()(dynamic key, dynamic val) {
     val_.insert(std::move(key), std::move(val));
     return std::move(*this);
   }
@@ -189,30 +160,56 @@ private:
   dynamic val_;
 };
 
-// This looks like a case for perfect forwarding, but our use of
-// std::initializer_list for constructing dynamic arrays makes it less
-// functional than doing this manually.
+inline void dynamic::array(EmptyArrayTag) {}
+
+template <class... Args>
+inline dynamic dynamic::array(Args&& ...args) {
+  return dynamic(Array{std::forward<Args>(args)...});
+}
+
 inline dynamic::ObjectMaker dynamic::object() { return ObjectMaker(); }
-inline dynamic::ObjectMaker dynamic::object(dynamic&& a, dynamic&& b) {
+inline dynamic::ObjectMaker dynamic::object(dynamic a, dynamic b) {
   return ObjectMaker(std::move(a), std::move(b));
-}
-inline dynamic::ObjectMaker dynamic::object(dynamic const& a, dynamic&& b) {
-  return ObjectMaker(a, std::move(b));
-}
-inline dynamic::ObjectMaker dynamic::object(dynamic&& a, dynamic const& b) {
-  return ObjectMaker(std::move(a), b);
-}
-inline dynamic::ObjectMaker
-dynamic::object(dynamic const& a, dynamic const& b) {
-  return ObjectMaker(a, b);
 }
 
 //////////////////////////////////////////////////////////////////////
+
+struct dynamic::item_iterator : boost::iterator_adaptor<
+                                    dynamic::item_iterator,
+                                    dynamic::ObjectImpl::iterator> {
+  /* implicit */ item_iterator(base_type b) : iterator_adaptor_(b) {}
+
+  using object_type = dynamic::ObjectImpl;
+
+ private:
+  friend class boost::iterator_core_access;
+};
+
+struct dynamic::value_iterator : boost::iterator_adaptor<
+                                     dynamic::value_iterator,
+                                     dynamic::ObjectImpl::iterator,
+                                     dynamic> {
+  /* implicit */ value_iterator(base_type b) : iterator_adaptor_(b) {}
+
+  using object_type = dynamic::ObjectImpl;
+
+ private:
+  dynamic& dereference() const {
+    return base_reference()->second;
+  }
+  friend class boost::iterator_core_access;
+};
 
 struct dynamic::const_item_iterator
   : boost::iterator_adaptor<dynamic::const_item_iterator,
                             dynamic::ObjectImpl::const_iterator> {
   /* implicit */ const_item_iterator(base_type b) : iterator_adaptor_(b) { }
+  /* implicit */ const_item_iterator(item_iterator i)
+      : iterator_adaptor_(i.base()) {}
+  /* implicit */ const_item_iterator(dynamic::ObjectImpl::iterator i)
+      : iterator_adaptor_(i) {}
+
+  using object_type = dynamic::ObjectImpl const;
 
  private:
   friend class boost::iterator_core_access;
@@ -223,6 +220,8 @@ struct dynamic::const_key_iterator
                             dynamic::ObjectImpl::const_iterator,
                             dynamic const> {
   /* implicit */ const_key_iterator(base_type b) : iterator_adaptor_(b) { }
+
+  using object_type = dynamic::ObjectImpl const;
 
  private:
   dynamic const& dereference() const {
@@ -236,6 +235,12 @@ struct dynamic::const_value_iterator
                             dynamic::ObjectImpl::const_iterator,
                             dynamic const> {
   /* implicit */ const_value_iterator(base_type b) : iterator_adaptor_(b) { }
+  /* implicit */ const_value_iterator(value_iterator i)
+      : iterator_adaptor_(i.base()) {}
+  /* implicit */ const_value_iterator(dynamic::ObjectImpl::iterator i)
+      : iterator_adaptor_(i) {}
+
+  using object_type = dynamic::ObjectImpl const;
 
  private:
   dynamic const& dereference() const {
@@ -246,6 +251,16 @@ struct dynamic::const_value_iterator
 
 //////////////////////////////////////////////////////////////////////
 
+inline dynamic::dynamic() : dynamic(nullptr) {}
+
+inline dynamic::dynamic(std::nullptr_t) : type_(NULLT) {}
+
+inline dynamic::dynamic(void (*)(EmptyArrayTag))
+  : type_(ARRAY)
+{
+  new (&u_.array) Array();
+}
+
 inline dynamic::dynamic(ObjectMaker (*)())
   : type_(OBJECT)
 {
@@ -255,37 +270,19 @@ inline dynamic::dynamic(ObjectMaker (*)())
 inline dynamic::dynamic(StringPiece s)
   : type_(STRING)
 {
-  new (&u_.string) fbstring(s.data(), s.size());
+  new (&u_.string) std::string(s.data(), s.size());
 }
 
 inline dynamic::dynamic(char const* s)
   : type_(STRING)
 {
-  new (&u_.string) fbstring(s);
+  new (&u_.string) std::string(s);
 }
 
-inline dynamic::dynamic(std::string const& s)
+inline dynamic::dynamic(std::string s)
   : type_(STRING)
 {
-  new (&u_.string) fbstring(s);
-}
-
-inline dynamic::dynamic(fbstring const& s)
-  : type_(STRING)
-{
-  new (&u_.string) fbstring(s);
-}
-
-inline dynamic::dynamic(fbstring&& s)
-  : type_(STRING)
-{
-  new (&u_.string) fbstring(std::move(s));
-}
-
-inline dynamic::dynamic(std::initializer_list<dynamic> il)
-  : type_(ARRAY)
-{
-  new (&u_.array) Array(il.begin(), il.end());
+  new (&u_.string) std::string(std::move(s));
 }
 
 inline dynamic::dynamic(ObjectMaker&& maker)
@@ -309,14 +306,35 @@ inline dynamic::dynamic(dynamic&& o) noexcept
 
 inline dynamic::~dynamic() noexcept { destroy(); }
 
-template<class T>
+// Integral types except bool convert to int64_t, float types to double.
+template <class T>
+struct dynamic::NumericTypeHelper<
+    T, typename std::enable_if<std::is_integral<T>::value>::type> {
+  static_assert(
+      !kIsObjC || sizeof(T) > sizeof(char),
+      "char-sized types are ambiguous in objc; cast to bool or wider type");
+  using type = int64_t;
+};
+template <>
+struct dynamic::NumericTypeHelper<bool> {
+  using type = bool;
+};
+template <>
+struct dynamic::NumericTypeHelper<float> {
+  using type = double;
+};
+template <>
+struct dynamic::NumericTypeHelper<double> {
+  using type = double;
+};
+
+template<class T, class NumericType /* = typename NumericTypeHelper<T>::type */>
 dynamic::dynamic(T t) {
-  typedef typename detail::ConversionHelper<T>::type U;
-  type_ = TypeInfo<U>::type;
-  new (getAddress<U>()) U(std::move(t));
+  type_ = TypeInfo<NumericType>::type;
+  new (getAddress<NumericType>()) NumericType(NumericType(t));
 }
 
-template<class Iterator>
+template <class Iterator>
 dynamic::dynamic(Iterator first, Iterator last)
   : type_(ARRAY)
 {
@@ -332,12 +350,20 @@ inline dynamic::const_iterator dynamic::end() const {
   return get<Array>().end();
 }
 
+inline dynamic::iterator dynamic::begin() {
+  return get<Array>().begin();
+}
+inline dynamic::iterator dynamic::end() {
+  return get<Array>().end();
+}
+
 template <class It>
 struct dynamic::IterableProxy {
-  typedef It const_iterator;
+  typedef It iterator;
   typedef typename It::value_type value_type;
+  typedef typename It::object_type object_type;
 
-  /* implicit */ IterableProxy(const dynamic::ObjectImpl* o) : o_(o) { }
+  /* implicit */ IterableProxy(object_type* o) : o_(o) {}
 
   It begin() const {
     return o_->begin();
@@ -348,7 +374,7 @@ struct dynamic::IterableProxy {
   }
 
  private:
-  const dynamic::ObjectImpl* o_;
+  object_type* o_;
 };
 
 inline dynamic::IterableProxy<dynamic::const_key_iterator> dynamic::keys()
@@ -366,42 +392,86 @@ inline dynamic::IterableProxy<dynamic::const_item_iterator> dynamic::items()
   return &(get<ObjectImpl>());
 }
 
-inline bool dynamic::isString() const { return get_nothrow<fbstring>(); }
-inline bool dynamic::isObject() const { return get_nothrow<ObjectImpl>(); }
-inline bool dynamic::isBool()   const { return get_nothrow<bool>(); }
-inline bool dynamic::isArray()  const { return get_nothrow<Array>(); }
-inline bool dynamic::isDouble() const { return get_nothrow<double>(); }
-inline bool dynamic::isInt()    const { return get_nothrow<int64_t>(); }
-inline bool dynamic::isNull()   const { return get_nothrow<void*>(); }
-inline bool dynamic::isNumber() const { return isInt() || isDouble(); }
+inline dynamic::IterableProxy<dynamic::value_iterator> dynamic::values() {
+  return &(get<ObjectImpl>());
+}
+
+inline dynamic::IterableProxy<dynamic::item_iterator> dynamic::items() {
+  return &(get<ObjectImpl>());
+}
+
+inline bool dynamic::isString() const {
+  return get_nothrow<std::string>() != nullptr;
+}
+inline bool dynamic::isObject() const {
+  return get_nothrow<ObjectImpl>() != nullptr;
+}
+inline bool dynamic::isBool() const {
+  return get_nothrow<bool>() != nullptr;
+}
+inline bool dynamic::isArray() const {
+  return get_nothrow<Array>() != nullptr;
+}
+inline bool dynamic::isDouble() const {
+  return get_nothrow<double>() != nullptr;
+}
+inline bool dynamic::isInt() const {
+  return get_nothrow<int64_t>() != nullptr;
+}
+inline bool dynamic::isNull() const {
+  return get_nothrow<std::nullptr_t>() != nullptr;
+}
+inline bool dynamic::isNumber() const {
+  return isInt() || isDouble();
+}
 
 inline dynamic::Type dynamic::type() const {
   return type_;
 }
 
-inline fbstring dynamic::asString() const { return asImpl<fbstring>(); }
-inline double   dynamic::asDouble() const { return asImpl<double>(); }
-inline int64_t  dynamic::asInt()    const { return asImpl<int64_t>(); }
-inline bool     dynamic::asBool()   const { return asImpl<bool>(); }
+inline std::string dynamic::asString() const {
+  return asImpl<std::string>();
+}
+inline double dynamic::asDouble() const {
+  return asImpl<double>();
+}
+inline int64_t dynamic::asInt() const {
+  return asImpl<int64_t>();
+}
+inline bool dynamic::asBool() const {
+  return asImpl<bool>();
+}
 
-inline const fbstring& dynamic::getString() const& { return get<fbstring>(); }
+inline const std::string& dynamic::getString() const& {
+  return get<std::string>();
+}
 inline double          dynamic::getDouble() const& { return get<double>(); }
 inline int64_t         dynamic::getInt()    const& { return get<int64_t>(); }
 inline bool            dynamic::getBool()   const& { return get<bool>(); }
 
-inline fbstring& dynamic::getString() & { return get<fbstring>(); }
+inline std::string& dynamic::getString()& {
+  return get<std::string>();
+}
 inline double&   dynamic::getDouble() & { return get<double>(); }
 inline int64_t&  dynamic::getInt()    & { return get<int64_t>(); }
 inline bool&     dynamic::getBool()   & { return get<bool>(); }
 
-inline fbstring dynamic::getString() && { return std::move(get<fbstring>()); }
+inline std::string&& dynamic::getString()&& {
+  return std::move(get<std::string>());
+}
 inline double   dynamic::getDouble() && { return get<double>(); }
 inline int64_t  dynamic::getInt()    && { return get<int64_t>(); }
 inline bool     dynamic::getBool()   && { return get<bool>(); }
 
-inline const char* dynamic::data()  const& { return get<fbstring>().data();  }
-inline const char* dynamic::c_str() const& { return get<fbstring>().c_str(); }
-inline StringPiece dynamic::stringPiece() const { return get<fbstring>(); }
+inline const char* dynamic::data() const& {
+  return get<std::string>().data();
+}
+inline const char* dynamic::c_str() const& {
+  return get<std::string>().c_str();
+}
+inline StringPiece dynamic::stringPiece() const {
+  return get<std::string>();
+}
 
 template<class T>
 struct dynamic::CompareOp {
@@ -414,10 +484,16 @@ struct dynamic::CompareOp<dynamic::ObjectImpl> {
     return false;
   }
 };
+template<>
+struct dynamic::CompareOp<std::nullptr_t> {
+  static bool comp(std::nullptr_t const&, std::nullptr_t const&) {
+    return true;
+  }
+};
 
 inline dynamic& dynamic::operator+=(dynamic const& o) {
   if (type() == STRING && o.type() == STRING) {
-    *getAddress<fbstring>() += *o.getAddress<fbstring>();
+    *getAddress<std::string>() += *o.getAddress<std::string>();
     return *this;
   }
   *this = detail::numericOp<std::plus>(*this, o);
@@ -469,7 +545,7 @@ inline dynamic const& dynamic::operator[](dynamic const& idx) const& {
   return at(idx);
 }
 
-inline dynamic dynamic::operator[](dynamic const& idx) && {
+inline dynamic&& dynamic::operator[](dynamic const& idx) && {
   return std::move((*this)[idx]);
 }
 
@@ -477,6 +553,17 @@ template<class K, class V> inline dynamic& dynamic::setDefault(K&& k, V&& v) {
   auto& obj = get<ObjectImpl>();
   return obj.insert(std::make_pair(std::forward<K>(k),
                                    std::forward<V>(v))).first->second;
+}
+
+template<class K> inline dynamic& dynamic::setDefault(K&& k, dynamic&& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.insert(std::make_pair(std::forward<K>(k),
+                                   std::move(v))).first->second;
+}
+
+template<class K> inline dynamic& dynamic::setDefault(K&& k, const dynamic& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.insert(std::make_pair(std::forward<K>(k), v)).first->second;
 }
 
 inline dynamic* dynamic::get_ptr(dynamic const& idx) & {
@@ -487,7 +574,7 @@ inline dynamic& dynamic::at(dynamic const& idx) & {
   return const_cast<dynamic&>(const_cast<dynamic const*>(this)->at(idx));
 }
 
-inline dynamic dynamic::at(dynamic const& idx) && {
+inline dynamic&& dynamic::at(dynamic const& idx) && {
   return std::move(at(idx));
 }
 
@@ -499,10 +586,13 @@ inline bool dynamic::empty() const {
 }
 
 inline std::size_t dynamic::count(dynamic const& key) const {
-  return find(key) != items().end();
+  return find(key) != items().end() ? 1u : 0u;
 }
 
 inline dynamic::const_item_iterator dynamic::find(dynamic const& key) const {
+  return get<ObjectImpl>().find(key);
+}
+inline dynamic::item_iterator dynamic::find(dynamic const& key) {
   return get<ObjectImpl>().find(key);
 }
 
@@ -512,12 +602,47 @@ template<class K, class V> inline void dynamic::insert(K&& key, V&& val) {
   rv.first->second = std::forward<V>(val);
 }
 
+inline void dynamic::update(const dynamic& mergeObj) {
+  if (!isObject() || !mergeObj.isObject()) {
+    throw TypeError("object", type(), mergeObj.type());
+  }
+
+  for (const auto& pair : mergeObj.items()) {
+    (*this)[pair.first] = pair.second;
+  }
+}
+
+inline void dynamic::update_missing(const dynamic& mergeObj1) {
+  if (!isObject() || !mergeObj1.isObject()) {
+    throw TypeError("object", type(), mergeObj1.type());
+  }
+
+  // Only add if not already there
+  for (const auto& pair : mergeObj1.items()) {
+    if ((*this).find(pair.first) == (*this).items().end()) {
+      (*this)[pair.first] = pair.second;
+    }
+  }
+}
+
+inline dynamic dynamic::merge(
+    const dynamic& mergeObj1,
+    const dynamic& mergeObj2) {
+
+  // No checks on type needed here because they are done in update_missing
+  // Note that we do update_missing here instead of update() because
+  // it will prevent the extra writes that would occur with update()
+  auto ret = mergeObj2;
+  ret.update_missing(mergeObj1);
+  return ret;
+}
+
 inline std::size_t dynamic::erase(dynamic const& key) {
   auto& obj = get<ObjectImpl>();
   return obj.erase(key);
 }
 
-inline dynamic::const_iterator dynamic::erase(const_iterator it) {
+inline dynamic::iterator dynamic::erase(const_iterator it) {
   auto& arr = get<Array>();
   // std::vector doesn't have an erase method that works on const iterators,
   // even though the standard says it should, so this hack converts to a
@@ -529,72 +654,75 @@ inline dynamic::const_key_iterator dynamic::erase(const_key_iterator it) {
   return const_key_iterator(get<ObjectImpl>().erase(it.base()));
 }
 
-inline dynamic::const_key_iterator dynamic::erase(const_key_iterator first,
-                                                  const_key_iterator last) {
+inline dynamic::const_key_iterator dynamic::erase(
+    const_key_iterator first,
+    const_key_iterator last) {
   return const_key_iterator(get<ObjectImpl>().erase(first.base(),
                                                     last.base()));
 }
 
-inline dynamic::const_value_iterator dynamic::erase(const_value_iterator it) {
-  return const_value_iterator(get<ObjectImpl>().erase(it.base()));
+inline dynamic::value_iterator dynamic::erase(const_value_iterator it) {
+  return value_iterator(get<ObjectImpl>().erase(it.base()));
 }
 
-inline dynamic::const_value_iterator dynamic::erase(const_value_iterator first,
-                                                    const_value_iterator last) {
-  return const_value_iterator(get<ObjectImpl>().erase(first.base(),
-                                                      last.base()));
+inline dynamic::value_iterator dynamic::erase(
+    const_value_iterator first,
+    const_value_iterator last) {
+  return value_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
-inline dynamic::const_item_iterator dynamic::erase(const_item_iterator it) {
-  return const_item_iterator(get<ObjectImpl>().erase(it.base()));
+inline dynamic::item_iterator dynamic::erase(const_item_iterator it) {
+  return item_iterator(get<ObjectImpl>().erase(it.base()));
 }
 
-inline dynamic::const_item_iterator dynamic::erase(const_item_iterator first,
-                                                   const_item_iterator last) {
-  return const_item_iterator(get<ObjectImpl>().erase(first.base(),
-                                                     last.base()));
+inline dynamic::item_iterator dynamic::erase(
+    const_item_iterator first,
+    const_item_iterator last) {
+  return item_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
 inline void dynamic::resize(std::size_t sz, dynamic const& c) {
-  auto& array = get<Array>();
-  array.resize(sz, c);
+  auto& arr = get<Array>();
+  arr.resize(sz, c);
 }
 
 inline void dynamic::push_back(dynamic const& v) {
-  auto& array = get<Array>();
-  array.push_back(v);
+  auto& arr = get<Array>();
+  arr.push_back(v);
 }
 
 inline void dynamic::push_back(dynamic&& v) {
-  auto& array = get<Array>();
-  array.push_back(std::move(v));
+  auto& arr = get<Array>();
+  arr.push_back(std::move(v));
 }
 
 inline void dynamic::pop_back() {
-  auto& array = get<Array>();
-  array.pop_back();
+  auto& arr = get<Array>();
+  arr.pop_back();
 }
 
 //////////////////////////////////////////////////////////////////////
 
-template<class T> struct dynamic::TypeInfo {
-  static char const name[];
-  static Type const type;
-};
+inline dynamic::dynamic(Array&& r) : type_(ARRAY) {
+  new (&u_.array) Array(std::move(r));
+}
 
-#define FB_DEC_TYPE(T)                                      \
-  template<> char const dynamic::TypeInfo<T>::name[];       \
-  template<> dynamic::Type const dynamic::TypeInfo<T>::type
+#define FOLLY_DYNAMIC_DEC_TYPEINFO(T, str, val) \
+  template <> struct dynamic::TypeInfo<T> { \
+    static constexpr const char* name = str; \
+    static constexpr dynamic::Type type = val; \
+  }; \
+  //
 
-FB_DEC_TYPE(void*);
-FB_DEC_TYPE(bool);
-FB_DEC_TYPE(fbstring);
-FB_DEC_TYPE(dynamic::Array);
-FB_DEC_TYPE(double);
-FB_DEC_TYPE(int64_t);
-FB_DEC_TYPE(dynamic::ObjectImpl);
+FOLLY_DYNAMIC_DEC_TYPEINFO(std::nullptr_t,      "null",    dynamic::NULLT)
+FOLLY_DYNAMIC_DEC_TYPEINFO(bool,                "boolean", dynamic::BOOL)
+FOLLY_DYNAMIC_DEC_TYPEINFO(std::string,         "string",  dynamic::STRING)
+FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::Array,      "array",   dynamic::ARRAY)
+FOLLY_DYNAMIC_DEC_TYPEINFO(double,              "double",  dynamic::DOUBLE)
+FOLLY_DYNAMIC_DEC_TYPEINFO(int64_t,             "int64",   dynamic::INT64)
+FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::ObjectImpl, "object",  dynamic::OBJECT)
 
-#undef FB_DEC_TYPE
+#undef FOLLY_DYNAMIC_DEC_TYPEINFO
 
 template<class T>
 T dynamic::asImpl() const {
@@ -602,7 +730,8 @@ T dynamic::asImpl() const {
   case INT64:    return to<T>(*get_nothrow<int64_t>());
   case DOUBLE:   return to<T>(*get_nothrow<double>());
   case BOOL:     return to<T>(*get_nothrow<bool>());
-  case STRING:   return to<T>(*get_nothrow<fbstring>());
+  case STRING:
+    return to<T>(*get_nothrow<std::string>());
   default:
     throw TypeError("int/double/bool/string", type());
   }
@@ -635,8 +764,8 @@ T const* dynamic::getAddress() const noexcept {
 }
 
 template<class T> struct dynamic::GetAddrImpl {};
-template<> struct dynamic::GetAddrImpl<void*> {
-  static void** get(Data& d) noexcept { return &d.nul; }
+template<> struct dynamic::GetAddrImpl<std::nullptr_t> {
+  static std::nullptr_t* get(Data& d) noexcept { return &d.nul; }
 };
 template<> struct dynamic::GetAddrImpl<dynamic::Array> {
   static Array* get(Data& d) noexcept { return &d.array; }
@@ -650,8 +779,11 @@ template<> struct dynamic::GetAddrImpl<int64_t> {
 template<> struct dynamic::GetAddrImpl<double> {
   static double* get(Data& d) noexcept { return &d.doubl; }
 };
-template<> struct dynamic::GetAddrImpl<fbstring> {
-  static fbstring* get(Data& d) noexcept { return &d.string; }
+template <>
+struct dynamic::GetAddrImpl<std::string> {
+  static std::string* get(Data& d) noexcept {
+    return &d.string;
+  }
 };
 template<> struct dynamic::GetAddrImpl<dynamic::ObjectImpl> {
   static_assert(sizeof(ObjectImpl) <= sizeof(Data::objectBuffer),
@@ -688,6 +820,15 @@ template<class T>
 struct dynamic::PrintImpl {
   static void print(dynamic const&, std::ostream& out, T const& t) {
     out << t;
+  }
+};
+// Otherwise, null, being (void*)0, would print as 0.
+template <>
+struct dynamic::PrintImpl<std::nullptr_t> {
+  static void print(dynamic const& /* d */,
+                    std::ostream& out,
+                    std::nullptr_t const&) {
+    out << "null";
   }
 };
 template<>
@@ -739,7 +880,7 @@ class FormatValue<dynamic> {
       FormatValue<int64_t>(val_.asInt()).format(arg, cb);
       break;
     case dynamic::STRING:
-      FormatValue<fbstring>(val_.asString()).format(arg, cb);
+      FormatValue<std::string>(val_.asString()).format(arg, cb);
       break;
     case dynamic::DOUBLE:
       FormatValue<double>(val_.asDouble()).format(arg, cb);
@@ -748,7 +889,7 @@ class FormatValue<dynamic> {
       FormatValue(val_.at(arg.splitIntKey())).format(arg, cb);
       break;
     case dynamic::OBJECT:
-      FormatValue(val_.at(arg.splitKey().toFbstring())).format(arg, cb);
+      FormatValue(val_.at(arg.splitKey().toString())).format(arg, cb);
       break;
     }
   }
@@ -805,5 +946,3 @@ class FormatValue<detail::DefaultValueWrapper<dynamic, V>> {
 }  // namespaces
 
 #undef FB_DYNAMIC_APPLY
-
-#endif

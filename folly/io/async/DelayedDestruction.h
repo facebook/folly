@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ class DelayedDestruction : public DelayedDestructionBase {
     if (getDestructorGuardCount() != 0) {
       destroyPending_ = true;
     } else {
-      onDestroy_(false);
+      onDelayedDestroy(false);
     }
   }
 
@@ -94,28 +94,29 @@ class DelayedDestruction : public DelayedDestructionBase {
    * shared_ptr using a DelayedDestruction::Destructor as the second argument
    * to the shared_ptr constructor.
    */
-  virtual ~DelayedDestruction() = default;
+  ~DelayedDestruction() override = default;
 
   DelayedDestruction()
     : destroyPending_(false) {
-
-    onDestroy_ = [this] (bool delayed) {
-      // check if it is ok to destroy now
-      if (delayed && !destroyPending_) {
-        return;
-      }
-      delete this;
-    };
   }
 
  private:
   /**
    * destroyPending_ is set to true if destoy() is called while guardCount_ is
-   * non-zero.
+   * non-zero. It is set to false before the object is deleted.
    *
    * If destroyPending_ is true, the object will be destroyed the next time
    * guardCount_ drops to 0.
    */
   bool destroyPending_;
+
+  void onDelayedDestroy(bool delayed) override {
+    // check if it is ok to destroy now
+    if (delayed && !destroyPending_) {
+      return;
+    }
+    destroyPending_ = false;
+    delete this;
+  }
 };
 } // folly

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
 #include <iostream>
 #include <thread>
 
-#include <folly/detail/Futex.h>
 #include <folly/experimental/LockFreeRingBuffer.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 
@@ -95,10 +93,8 @@ TEST(LockFreeRingBuffer, readsCanBlock) {
 
 // expose the cursor raw value via a wrapper type
 template<typename T, template<typename> class Atom>
-uint64_t value(const typename LockFreeRingBuffer<T, Atom>::Cursor&& rbcursor) {
+uint64_t value(const typename LockFreeRingBuffer<T, Atom>::Cursor& rbcursor) {
   typedef typename LockFreeRingBuffer<T,Atom>::Cursor RBCursor;
-
-  RBCursor cursor = std::move(rbcursor);
 
   struct ExposedCursor : RBCursor {
     ExposedCursor(const RBCursor& cursor): RBCursor(cursor) {}
@@ -106,7 +102,7 @@ uint64_t value(const typename LockFreeRingBuffer<T, Atom>::Cursor&& rbcursor) {
       return this->ticket;
     }
   };
-  return ExposedCursor(cursor).value();
+  return ExposedCursor(rbcursor).value();
 }
 
 template<template<typename> class Atom>
@@ -224,6 +220,41 @@ TEST(LockFreeRingBuffer, currentTailRange) {
   auto midvalue = cursorValue(rb.currentTail(0.5));
   // both rounding behaviours are acceptable
   EXPECT_TRUE(midvalue == 1 || midvalue == 2);
+}
+
+TEST(LockFreeRingBuffer, cursorFromWrites) {
+  const int capacity = 3;
+  LockFreeRingBuffer<int> rb(capacity);
+
+  // Workaround for template deduction failure
+  auto (&cursorValue)(value<int, std::atomic>);
+
+  int val = 0xfaceb00c;
+  EXPECT_EQ(0, cursorValue(rb.writeAndGetCursor(val)));
+  EXPECT_EQ(1, cursorValue(rb.writeAndGetCursor(val)));
+  EXPECT_EQ(2, cursorValue(rb.writeAndGetCursor(val)));
+
+  // Check that rb is giving out actual cursors and not just
+  // pointing to the current slot.
+  EXPECT_EQ(3, cursorValue(rb.writeAndGetCursor(val)));
+}
+
+TEST(LockFreeRingBuffer, moveBackwardsCanFail) {
+  const int capacity = 3;
+  LockFreeRingBuffer<int> rb(capacity);
+
+  // Workaround for template deduction failure
+  auto (&cursorValue)(value<int, std::atomic>);
+
+  int val = 0xfaceb00c;
+  rb.write(val);
+  rb.write(val);
+
+  auto cursor = rb.currentHead(); // points to 2
+  EXPECT_EQ(2, cursorValue(cursor));
+  EXPECT_TRUE(cursor.moveBackward());
+  EXPECT_TRUE(cursor.moveBackward()); // now at 0
+  EXPECT_FALSE(cursor.moveBackward()); // moving back does nothing
 }
 
 } // namespace folly

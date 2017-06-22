@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 // Copyright 2013-present Facebook. All Rights Reserved.
 // @author: Pavlo Kushnir (pavlo)
 
-#ifndef FOLLY_EXPERIMENTAL_STRINGKEYEDMAP_H_
-#define FOLLY_EXPERIMENTAL_STRINGKEYEDMAP_H_
+#pragma once
 
 #include <initializer_list>
 #include <memory>
@@ -97,9 +96,8 @@ public:
     : Base(std::move(other)) {
   }
 
-  StringKeyedMap(StringKeyedMap&& other, const allocator_type& a) noexcept
-      : Base(std::move(other)/*, a*/ /* not supported by gcc */) {
-  }
+  StringKeyedMap(StringKeyedMap&& other, const allocator_type& /* a */) noexcept
+      : Base(std::move(other) /*, a*/ /* not supported by gcc */) {}
 
   StringKeyedMap(std::initializer_list<value_type> il,
      const key_compare& comp = key_compare(),
@@ -133,6 +131,12 @@ public:
   using Base::crbegin;
   using Base::crend;
 
+  bool operator==(StringKeyedMap const& other) const {
+    Base const& lhs = *this;
+    Base const& rhs = static_cast<Base const&>(other);
+    return lhs == rhs;
+  }
+
   // no need for copy/move overload as StringPiece is small struct
   mapped_type& operator[](StringPiece key) {
     auto it = find(key);
@@ -146,6 +150,7 @@ public:
 
   using Base::at;
   using Base::find;
+  using Base::count;
   using Base::lower_bound;
   using Base::upper_bound;
 
@@ -192,6 +197,10 @@ public:
     Base::clear();
   }
 
+  void swap(StringKeyedMap& other) & {
+    return Base::swap(other);
+  }
+
   ~StringKeyedMap() {
     // Here we assume that map doesn't use keys in destructor
     for (auto& it : *this) {
@@ -201,5 +210,3 @@ public:
 };
 
 } // folly
-
-#endif /* FOLLY_EXPERIMENTAL_STRINGKEYEDMAP_H_ */

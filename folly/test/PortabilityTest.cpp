@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/Portability.h>
-
 #include <memory>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 class Base {
  public:
@@ -28,7 +26,7 @@ class Base {
 
 class Derived : public Base {
  public:
-  int foo() const FOLLY_FINAL { return 2; }
+  int foo() const final { return 2; }
 };
 
 // A compiler that supports final will likely inline the call to p->foo()

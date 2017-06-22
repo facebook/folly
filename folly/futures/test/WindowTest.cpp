@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <boost/thread/barrier.hpp>
 
+#include <folly/Conv.h>
 #include <folly/futures/Future.h>
+#include <folly/portability/GTest.h>
 
 #include <vector>
 
@@ -58,16 +58,14 @@ TEST(Window, basic) {
   }
   {
     // int -> Future<Unit>
-    auto res = reduce(
-      window(
-        std::vector<int>({1, 2, 3}),
-        [](int i) { return makeFuture(); },
-        2),
-      0,
-      [](int sum, const Try<Unit>& b) {
-        EXPECT_TRUE(b.hasValue());
-        return sum + 1;
-      }).get();
+    auto res = reduce(window(std::vector<int>({1, 2, 3}),
+                             [](int /* i */) { return makeFuture(); },
+                             2),
+                      0,
+                      [](int sum, const Try<Unit>& b) {
+                        EXPECT_TRUE(b.hasValue());
+                        return sum + 1;
+                      }).get();
     EXPECT_EQ(3, res);
   }
   {

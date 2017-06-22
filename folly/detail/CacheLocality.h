@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,31 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_CACHELOCALITY_H_
-#define FOLLY_DETAIL_CACHELOCALITY_H_
+#pragma once
 
-#include <sched.h>
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <functional>
 #include <limits>
+#include <mutex>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
-#include <folly/Likely.h>
-#include <folly/Portability.h>
 
-namespace folly { namespace detail {
+#include <folly/Hash.h>
+#include <folly/Indestructible.h>
+#include <folly/Likely.h>
+#include <folly/Memory.h>
+#include <folly/Portability.h>
+#include <folly/ThreadId.h>
+#include <folly/portability/BitsFunctexcept.h>
+#include <folly/portability/Memory.h>
+
+namespace folly {
+namespace detail {
 
 // This file contains several classes that might be useful if you are
 // trying to dynamically optimize cache locality: CacheLocality reads
@@ -71,7 +81,6 @@ struct CacheLocality {
   /// cache and cpus with a locality index >= 16 will share the other.
   std::vector<size_t> localityIndexByCpu;
 
-
   /// Returns the best CacheLocality information available for the current
   /// system, cached for fast access.  This will be loaded from sysfs if
   /// possible, otherwise it will be correct in the number of CPUs but
@@ -86,9 +95,8 @@ struct CacheLocality {
   /// that transitively uses it, all components select between the default
   /// sysfs implementation and a deterministic implementation by keying
   /// off the type of the underlying atomic.  See DeterministicScheduler.
-  template <template<typename> class Atom = std::atomic>
+  template <template <typename> class Atom = std::atomic>
   static const CacheLocality& system();
-
 
   /// Reads CacheLocality information from a tree structured like
   /// the sysfs filesystem.  The provided function will be evaluated
@@ -119,7 +127,8 @@ struct CacheLocality {
     kFalseSharingRange = 128
   };
 
-  static_assert(kFalseSharingRange == 128,
+  static_assert(
+      kFalseSharingRange == 128,
       "FOLLY_ALIGN_TO_AVOID_FALSE_SHARING should track kFalseSharingRange");
 };
 
@@ -129,26 +138,24 @@ struct CacheLocality {
 /// it doesn't have false sharing with anything at a smaller memory address.
 #define FOLLY_ALIGN_TO_AVOID_FALSE_SHARING FOLLY_ALIGNED(128)
 
-/// Holds a function pointer to the VDSO implementation of getcpu(2),
-/// if available
+/// Knows how to derive a function pointer to the VDSO implementation of
+/// getcpu(2), if available
 struct Getcpu {
   /// Function pointer to a function with the same signature as getcpu(2).
   typedef int (*Func)(unsigned* cpu, unsigned* node, void* unused);
 
   /// Returns a pointer to the VDSO implementation of getcpu(2), if
-  /// available, or nullptr otherwise
-  static Func vdsoFunc();
+  /// available, or nullptr otherwise.  This function may be quite
+  /// expensive, be sure to cache the result.
+  static Func resolveVdsoFunc();
 };
 
-/// A class that lazily binds a unique (for each implementation of Atom)
-/// identifier to a thread.  This is a fallback mechanism for the access
-/// spreader if we are in testing (using DeterministicAtomic) or if
-/// __vdso_getcpu can't be dynamically loaded
-template <template<typename> class Atom>
+#ifdef FOLLY_TLS
+template <template <typename> class Atom>
 struct SequentialThreadId {
 
   /// Returns the thread id assigned to the current thread
-  static size_t get() {
+  static unsigned get() {
     auto rv = currentId;
     if (UNLIKELY(rv == 0)) {
       rv = currentId = ++prevId;
@@ -156,11 +163,39 @@ struct SequentialThreadId {
     return rv;
   }
 
+ private:
+  static Atom<unsigned> prevId;
+
+  static FOLLY_TLS unsigned currentId;
+};
+
+template <template <typename> class Atom>
+Atom<unsigned> SequentialThreadId<Atom>::prevId(0);
+
+template <template <typename> class Atom>
+FOLLY_TLS unsigned SequentialThreadId<Atom>::currentId(0);
+
+// Suppress this instantiation in other translation units. It is
+// instantiated in CacheLocality.cpp
+extern template struct SequentialThreadId<std::atomic>;
+#endif
+
+struct HashingThreadId {
+  static unsigned get() {
+    return hash::twang_32from64(getCurrentThreadID());
+  }
+};
+
+/// A class that lazily binds a unique (for each implementation of Atom)
+/// identifier to a thread.  This is a fallback mechanism for the access
+/// spreader if __vdso_getcpu can't be loaded
+template <typename ThreadId>
+struct FallbackGetcpu {
   /// Fills the thread id into the cpu and node out params (if they
   /// are non-null).  This method is intended to act like getcpu when a
   /// fast-enough form of getcpu isn't available or isn't desired
-  static int getcpu(unsigned* cpu, unsigned* node, void* unused) {
-    auto id = get();
+  static int getcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
+    auto id = ThreadId::get();
     if (cpu) {
       *cpu = id;
     }
@@ -169,29 +204,21 @@ struct SequentialThreadId {
     }
     return 0;
   }
-
- private:
-  static Atom<size_t> prevId;
-
-  static FOLLY_TLS size_t currentId;
 };
 
-template <template<typename> class Atom, size_t kMaxCpus>
-struct AccessSpreaderArray;
+#ifdef FOLLY_TLS
+typedef FallbackGetcpu<SequentialThreadId<std::atomic>> FallbackGetcpuType;
+#else
+typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
+#endif
 
 /// AccessSpreader arranges access to a striped data structure in such a
 /// way that concurrently executing threads are likely to be accessing
 /// different stripes.  It does NOT guarantee uncontended access.
 /// Your underlying algorithm must be thread-safe without spreading, this
 /// is merely an optimization.  AccessSpreader::current(n) is typically
-/// much faster than a cache miss (22 nanos on my dev box, tested fast
+/// much faster than a cache miss (12 nanos on my dev box, tested fast
 /// in both 2.6 and 3.2 kernels).
-///
-/// You are free to create your own AccessSpreader-s or to cache the
-/// results of AccessSpreader<>::shared(n), but you will probably want
-/// to use one of the system-wide shared ones.  Calling .current() on
-/// a particular AccessSpreader instance only saves about 1 nanosecond
-/// over calling AccessSpreader<>::shared(n).
 ///
 /// If available (and not using the deterministic testing implementation)
 /// AccessSpreader uses the getcpu system call via VDSO and the
@@ -207,10 +234,11 @@ struct AccessSpreaderArray;
 /// own stripe and there will be no cache sharing at all.
 ///
 /// AccessSpreader has a fallback mechanism for when __vdso_getcpu can't be
-/// loaded, or for use during deterministic testing.  Using sched_getcpu or
-/// the getcpu syscall would negate the performance advantages of access
-/// spreading, so we use a thread-local value and a shared atomic counter
-/// to spread access out.
+/// loaded, or for use during deterministic testing.  Using sched_getcpu
+/// or the getcpu syscall would negate the performance advantages of
+/// access spreading, so we use a thread-local value and a shared atomic
+/// counter to spread access out.  On systems lacking both a fast getcpu()
+/// and TLS, we hash the thread id to spread accesses.
 ///
 /// AccessSpreader is templated on the template type that is used
 /// to implement atomics, as a way to instantiate the underlying
@@ -218,80 +246,23 @@ struct AccessSpreaderArray;
 /// testing.  See DeterministicScheduler for more.  If you aren't using
 /// DeterministicScheduler, you can just use the default template parameter
 /// all of the time.
-template <template<typename> class Atom = std::atomic>
+template <template <typename> class Atom = std::atomic>
 struct AccessSpreader {
 
-  /// Returns a never-destructed shared AccessSpreader instance.
-  /// numStripes should be > 0.
-  static const AccessSpreader& shared(size_t numStripes) {
-    // sharedInstances[0] actually has numStripes == 1
+  /// Returns the stripe associated with the current CPU.  The returned
+  /// value will be < numStripes.
+  static size_t current(size_t numStripes) {
+    // widthAndCpuToStripe[0] will actually work okay (all zeros), but
+    // something's wrong with the caller
     assert(numStripes > 0);
 
-    // the last shared element handles all large sizes
-    return AccessSpreaderArray<Atom,kMaxCpus>::sharedInstance[
-        std::min(size_t(kMaxCpus), numStripes)];
-  }
-
-  /// Returns the stripe associated with the current CPU, assuming
-  /// that there are numStripes (non-zero) stripes.  Equivalent to
-  /// AccessSpreader::shared(numStripes)->current.
-  static size_t current(size_t numStripes) {
-    return shared(numStripes).current();
-  }
-
-  /// stripeByCore uses 1 stripe per L1 cache, according to
-  /// CacheLocality::system<>().  Use stripeByCore.numStripes() to see
-  /// its width, or stripeByCore.current() to get the current stripe
-  static const AccessSpreader stripeByCore;
-
-  /// stripeByChip uses 1 stripe per last-level cache, which is the fewest
-  /// number of stripes for which off-chip communication can be avoided
-  /// (assuming all caches are on-chip).  Use stripeByChip.numStripes()
-  /// to see its width, or stripeByChip.current() to get the current stripe
-  static const AccessSpreader stripeByChip;
-
-
-  /// Constructs an AccessSpreader that will return values from
-  /// 0 to numStripes-1 (inclusive), precomputing the mapping
-  /// from CPU to stripe.  There is no use in having more than
-  /// CacheLocality::system<Atom>().localityIndexByCpu.size() stripes or
-  /// kMaxCpus stripes
-  explicit AccessSpreader(size_t spreaderNumStripes,
-                          const CacheLocality& cacheLocality =
-                              CacheLocality::system<Atom>(),
-                          Getcpu::Func getcpuFunc = nullptr)
-    : getcpuFunc_(getcpuFunc ? getcpuFunc : pickGetcpuFunc(spreaderNumStripes))
-    , numStripes_(spreaderNumStripes)
-  {
-    auto n = cacheLocality.numCpus;
-    for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
-      auto index = cacheLocality.localityIndexByCpu[cpu];
-      assert(index < n);
-      // as index goes from 0..n, post-transform value goes from
-      // 0..numStripes
-      stripeByCpu[cpu] = (index * numStripes_) / n;
-      assert(stripeByCpu[cpu] < numStripes_);
-    }
-    for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {
-      stripeByCpu[cpu] = stripeByCpu[cpu - n];
-    }
-  }
-
-  /// Returns 1 more than the maximum value that can be returned from
-  /// current()
-  size_t numStripes() const {
-    return numStripes_;
-  }
-
-  /// Returns the stripe associated with the current CPU
-  size_t current() const {
     unsigned cpu;
-    getcpuFunc_(&cpu, nullptr, nullptr);
-    return stripeByCpu[cpu % kMaxCpus];
+    getcpuFunc(&cpu, nullptr, nullptr);
+    return widthAndCpuToStripe[std::min(size_t(kMaxCpus),
+                                        numStripes)][cpu % kMaxCpus];
   }
 
  private:
-
   /// If there are more cpus than this nothing will crash, but there
   /// might be unnecessary sharing
   enum { kMaxCpus = 128 };
@@ -299,71 +270,242 @@ struct AccessSpreader {
   typedef uint8_t CompactStripe;
 
   static_assert((kMaxCpus & (kMaxCpus - 1)) == 0,
-      "kMaxCpus should be a power of two so modulo is fast");
+                "kMaxCpus should be a power of two so modulo is fast");
   static_assert(kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
-      "stripeByCpu element type isn't wide enough");
-
+                "stripeByCpu element type isn't wide enough");
 
   /// Points to the getcpu-like function we are using to obtain the
   /// current cpu.  It should not be assumed that the returned cpu value
-  /// is in range.  We use a member for this instead of a static so that
-  /// this fetch preloads a prefix the stripeByCpu array
-  Getcpu::Func getcpuFunc_;
+  /// is in range.  We use a static for this so that we can prearrange a
+  /// valid value in the pre-constructed state and avoid the need for a
+  /// conditional on every subsequent invocation (not normally a big win,
+  /// but 20% on some inner loops here).
+  static Getcpu::Func getcpuFunc;
 
-  /// A precomputed map from cpu to stripe.  Rather than add a layer of
-  /// indirection requiring a dynamic bounds check and another cache miss,
-  /// we always precompute the whole array
-  CompactStripe stripeByCpu[kMaxCpus];
+  /// For each level of splitting up to kMaxCpus, maps the cpu (mod
+  /// kMaxCpus) to the stripe.  Rather than performing any inequalities
+  /// or modulo on the actual number of cpus, we just fill in the entire
+  /// array.
+  static CompactStripe widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus];
 
-  size_t numStripes_;
+  static bool initialized;
 
-  /// Returns the best getcpu implementation for this type and width
-  /// of AccessSpreader
-  static Getcpu::Func pickGetcpuFunc(size_t numStripes);
+  /// Returns the best getcpu implementation for Atom
+  static Getcpu::Func pickGetcpuFunc() {
+    auto best = Getcpu::resolveVdsoFunc();
+    return best ? best : &FallbackGetcpuType::getcpu;
+  }
+
+  /// Always claims to be on CPU zero, node zero
+  static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*) {
+    if (cpu != nullptr) {
+      *cpu = 0;
+    }
+    if (node != nullptr) {
+      *node = 0;
+    }
+    return 0;
+  }
+
+  // The function to call for fast lookup of getcpu is a singleton, as
+  // is the precomputed table of locality information.  AccessSpreader
+  // is used in very tight loops, however (we're trying to race an L1
+  // cache miss!), so the normal singleton mechanisms are noticeably
+  // expensive.  Even a not-taken branch guarding access to getcpuFunc
+  // slows AccessSpreader::current from 12 nanos to 14.  As a result, we
+  // populate the static members with simple (but valid) values that can
+  // be filled in by the linker, and then follow up with a normal static
+  // initializer call that puts in the proper version.  This means that
+  // when there are initialization order issues we will just observe a
+  // zero stripe.  Once a sanitizer gets smart enough to detect this as
+  // a race or undefined behavior, we can annotate it.
+
+  static bool initialize() {
+    getcpuFunc = pickGetcpuFunc();
+
+    auto& cacheLocality = CacheLocality::system<Atom>();
+    auto n = cacheLocality.numCpus;
+    for (size_t width = 0; width <= kMaxCpus; ++width) {
+      auto numStripes = std::max(size_t{1}, width);
+      for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
+        auto index = cacheLocality.localityIndexByCpu[cpu];
+        assert(index < n);
+        // as index goes from 0..n, post-transform value goes from
+        // 0..numStripes
+        widthAndCpuToStripe[width][cpu] =
+            CompactStripe((index * numStripes) / n);
+        assert(widthAndCpuToStripe[width][cpu] < numStripes);
+      }
+      for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {
+        widthAndCpuToStripe[width][cpu] = widthAndCpuToStripe[width][cpu - n];
+      }
+    }
+    return true;
+  }
 };
 
-template<>
-Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc(size_t);
+template <template <typename> class Atom>
+Getcpu::Func AccessSpreader<Atom>::getcpuFunc =
+    AccessSpreader<Atom>::degenerateGetcpu;
 
+template <template <typename> class Atom>
+typename AccessSpreader<Atom>::CompactStripe
+    AccessSpreader<Atom>::widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus] = {};
 
-/// An array of kMaxCpus+1 AccessSpreader<Atom> instances constructed
-/// with default params, with the zero-th element having 1 stripe
-template <template<typename> class Atom, size_t kMaxStripe>
-struct AccessSpreaderArray {
+template <template <typename> class Atom>
+bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
 
-  AccessSpreaderArray() {
-    for (size_t i = 0; i <= kMaxStripe; ++i) {
-      new (raw + i) AccessSpreader<Atom>(std::max(size_t(1), i));
+// Suppress this instantiation in other translation units. It is
+// instantiated in CacheLocality.cpp
+extern template struct AccessSpreader<std::atomic>;
+
+/**
+ * A simple freelist allocator.  Allocates things of size sz, from
+ * slabs of size allocSize.  Takes a lock on each
+ * allocation/deallocation.
+ */
+class SimpleAllocator {
+  std::mutex m_;
+  uint8_t* mem_{nullptr};
+  uint8_t* end_{nullptr};
+  void* freelist_{nullptr};
+  size_t allocSize_;
+  size_t sz_;
+  std::vector<void*> blocks_;
+
+ public:
+  SimpleAllocator(size_t allocSize, size_t sz);
+  ~SimpleAllocator();
+  void* allocateHard();
+
+  // Inline fast-paths.
+  void* allocate() {
+    std::lock_guard<std::mutex> g(m_);
+    // Freelist allocation.
+    if (freelist_) {
+      auto mem = freelist_;
+      freelist_ = *static_cast<void**>(freelist_);
+      return mem;
     }
-  }
 
-  ~AccessSpreaderArray() {
-    for (size_t i = 0; i <= kMaxStripe; ++i) {
-      auto p = static_cast<AccessSpreader<Atom>*>(static_cast<void*>(raw + i));
-      p->~AccessSpreader();
+    // Bump-ptr allocation.
+    if (intptr_t(mem_) % 128 == 0) {
+      // Avoid allocating pointers that may look like malloc
+      // pointers.
+      mem_ += std::min(sz_, alignof(std::max_align_t));
     }
-  }
+    if (mem_ && (mem_ + sz_ <= end_)) {
+      auto mem = mem_;
+      mem_ += sz_;
 
-  AccessSpreader<Atom> const& operator[] (size_t index) const {
-    return *static_cast<AccessSpreader<Atom> const*>(
-        static_cast<void const*>(raw + index));
+      assert(intptr_t(mem) % 128 != 0);
+      return mem;
+    }
+
+    return allocateHard();
+  }
+  void deallocate(void* mem) {
+    std::lock_guard<std::mutex> g(m_);
+    *static_cast<void**>(mem) = freelist_;
+    freelist_ = mem;
+  }
+};
+
+/**
+ * An allocator that can be used with CacheLocality to allocate
+ * core-local memory.
+ *
+ * There is actually nothing special about the memory itself (it is
+ * not bound to numa nodes or anything), but the allocator guarantees
+ * that memory allocatd from the same stripe will only come from cache
+ * lines also allocated to the same stripe.  This means multiple
+ * things using CacheLocality can allocate memory in smaller-than
+ * cacheline increments, and be assured that it won't cause more false
+ * sharing than it otherwise would.
+ *
+ * Note that allocation and deallocation takes a per-sizeclass lock.
+ */
+template <size_t Stripes>
+class CoreAllocator {
+ public:
+  class Allocator {
+    static constexpr size_t AllocSize{4096};
+
+    uint8_t sizeClass(size_t size) {
+      if (size <= 8) {
+        return 0;
+      } else if (size <= 16) {
+        return 1;
+      } else if (size <= 32) {
+        return 2;
+      } else if (size <= 64) {
+        return 3;
+      } else { // punt to malloc.
+        return 4;
+      }
+    }
+
+    std::array<SimpleAllocator, 4> allocators_{
+        {{AllocSize, 8}, {AllocSize, 16}, {AllocSize, 32}, {AllocSize, 64}}};
+
+   public:
+    void* allocate(size_t size) {
+      auto cl = sizeClass(size);
+      if (cl == 4) {
+        static_assert(
+            CacheLocality::kFalseSharingRange == 128,
+            "kFalseSharingRange changed");
+        // Align to a cacheline
+        size = size + (CacheLocality::kFalseSharingRange - 1);
+        size &= ~size_t(CacheLocality::kFalseSharingRange - 1);
+        void* mem = aligned_malloc(size, CacheLocality::kFalseSharingRange);
+        if (!mem) {
+          std::__throw_bad_alloc();
+        }
+        return mem;
+      }
+      return allocators_[cl].allocate();
+    }
+    void deallocate(void* mem) {
+      if (!mem) {
+        return;
+      }
+
+      // See if it came from this allocator or malloc.
+      if (intptr_t(mem) % 128 != 0) {
+        auto addr =
+            reinterpret_cast<void*>(intptr_t(mem) & ~intptr_t(AllocSize - 1));
+        auto allocator = *static_cast<SimpleAllocator**>(addr);
+        allocator->deallocate(mem);
+      } else {
+        aligned_free(mem);
+      }
+    }
+  };
+
+  Allocator* get(size_t stripe) {
+    assert(stripe < Stripes);
+    return &allocators_[stripe];
   }
 
  private:
-
-  // AccessSpreader uses sharedInstance
-  friend AccessSpreader<Atom>;
-
-  static AccessSpreaderArray<Atom,kMaxStripe> sharedInstance;
-
-
-  /// aligned_storage is uninitialized, we use placement new since there
-  /// is no AccessSpreader default constructor
-  typename std::aligned_storage<sizeof(AccessSpreader<Atom>),
-                                CacheLocality::kFalseSharingRange>::type
-      raw[kMaxStripe + 1];
+  Allocator allocators_[Stripes];
 };
 
-} }
+template <size_t Stripes>
+typename CoreAllocator<Stripes>::Allocator* getCoreAllocator(size_t stripe) {
+  // We cannot make sure that the allocator will be destroyed after
+  // all the objects allocated with it, so we leak it.
+  static Indestructible<CoreAllocator<Stripes>> allocator;
+  return allocator->get(stripe);
+}
 
-#endif /* FOLLY_DETAIL_CacheLocality_H_ */
+template <typename T, size_t Stripes>
+StlAllocator<typename CoreAllocator<Stripes>::Allocator, T> getCoreAllocatorStl(
+    size_t stripe) {
+  auto alloc = getCoreAllocator<Stripes>(stripe);
+  return StlAllocator<typename CoreAllocator<Stripes>::Allocator, T>(alloc);
+}
+
+} // namespace detail
+} // namespace folly

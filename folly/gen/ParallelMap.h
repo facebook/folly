@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_PARALLELMAP_H
-#define FOLLY_GEN_PARALLELMAP_H
+#pragma once
+#define FOLLY_GEN_PARALLELMAP_H_
 
 #include <folly/gen/Core.h>
 
-namespace folly { namespace gen {
+namespace folly {
+namespace gen {
 
 namespace detail {
 
-template<class Predicate>
+template <class Predicate>
 class PMap;
 
-}  // namespace detail
+} // namespace detail
 
 /**
  * Run `pred` in parallel in nThreads. Results are returned in the
@@ -37,14 +38,11 @@ class PMap;
  *       generator and the rest of the pipeline is executed in the
  *       caller thread.
  */
-template<class Predicate,
-         class PMap = detail::PMap<Predicate>>
+template <class Predicate, class PMap = detail::PMap<Predicate>>
   PMap pmap(Predicate pred = Predicate(), size_t nThreads = 0) {
   return PMap(std::move(pred), nThreads);
 }
-
-}}  // namespaces
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/ParallelMap-inl.h>
-
-#endif  // FOLLY_GEN_PARALLELMAP_H

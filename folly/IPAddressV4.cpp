@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV6.h>
+#include <folly/detail/IPAddressSource.h>
 
 using std::ostream;
 using std::string;
@@ -44,6 +45,15 @@ void toAppend(IPAddressV4 addr, fbstring* result) {
   result->append(addr.str());
 }
 
+bool IPAddressV4::validate(StringPiece ip) {
+  constexpr size_t kStrMaxLen = INET_ADDRSTRLEN;
+  std::array<char, kStrMaxLen + 1> ip_cstr;
+  const size_t len = std::min(ip.size(), kStrMaxLen);
+  std::memcpy(ip_cstr.data(), ip.data(), len);
+  ip_cstr[len] = 0;
+  struct in_addr addr;
+  return 1 == inet_pton(AF_INET, ip_cstr.data(), &addr);
+}
 
 // public static
 IPAddressV4 IPAddressV4::fromLong(uint32_t src) {
@@ -63,8 +73,8 @@ uint32_t IPAddressV4::toLong(StringPiece ip) {
   auto str = ip.str();
   in_addr addr;
   if (inet_pton(AF_INET, str.c_str(), &addr) != 1) {
-    throw IPAddressFormatException("Can't convert invalid IP '", ip, "' ",
-                                   "to long");
+    throw IPAddressFormatException(
+        to<std::string>("Can't convert invalid IP '", ip, "' ", "to long"));
   }
   return addr.s_addr;
 }
@@ -90,7 +100,8 @@ IPAddressV4::IPAddressV4(StringPiece addr)
 {
   auto ip = addr.str();
   if (inet_pton(AF_INET, ip.c_str(), &addr_.inAddr_) != 1) {
-    throw IPAddressFormatException("Invalid IPv4 address '", addr, "'");
+    throw IPAddressFormatException(
+        to<std::string>("Invalid IPv4 address '", addr, "'"));
   }
 }
 
@@ -103,18 +114,46 @@ IPAddressV4::IPAddressV4(const in_addr src)
 // public
 void IPAddressV4::setFromBinary(ByteRange bytes) {
   if (bytes.size() != 4) {
-    throw IPAddressFormatException("Invalid IPv4 binary data: length must "
-                                   "be 4 bytes, got ", bytes.size());
+    throw IPAddressFormatException(to<std::string>(
+        "Invalid IPv4 binary data: length must ",
+        "be 4 bytes, got ",
+        bytes.size()));
   }
   memcpy(&addr_.inAddr_.s_addr, bytes.data(), sizeof(in_addr));
 }
 
+// static
+IPAddressV4 IPAddressV4::fromInverseArpaName(const std::string& arpaname) {
+  auto piece = StringPiece(arpaname);
+  // input must be something like 1.0.168.192.in-addr.arpa
+  if (!piece.removeSuffix(".in-addr.arpa")) {
+    throw IPAddressFormatException(
+        sformat("input does not end with '.in-addr.arpa': '{}'", arpaname));
+  }
+  std::vector<StringPiece> pieces;
+  split(".", piece, pieces);
+  if (pieces.size() != 4) {
+    throw IPAddressFormatException(sformat("Invalid input. Got {}", piece));
+  }
+  // reverse 1.0.168.192 -> 192.168.0.1
+  return IPAddressV4(join(".", pieces.rbegin(), pieces.rend()));
+}
+
 // public
 IPAddressV6 IPAddressV4::createIPv6() const {
-  ByteArray16 ba{{0}};
+  ByteArray16 ba{};
   ba[10] = 0xff;
   ba[11] = 0xff;
   std::memcpy(&ba[12], bytes(), 4);
+  return IPAddressV6(ba);
+}
+
+// public
+IPAddressV6 IPAddressV4::getIPv6For6To4() const {
+  ByteArray16 ba{};
+  ba[0] = (uint8_t)((IPAddressV6::PREFIX_6TO4 & 0xFF00) >> 8);
+  ba[1] = (uint8_t)(IPAddressV6::PREFIX_6TO4 & 0x00FF);
+  std::memcpy(&ba[2], bytes(), 4);
   return IPAddressV6(ba);
 }
 
@@ -129,8 +168,8 @@ bool IPAddressV4::inSubnet(StringPiece cidrNetwork) const {
   auto subnetInfo = IPAddress::createNetwork(cidrNetwork);
   auto addr = subnetInfo.first;
   if (!addr.isV4()) {
-    throw IPAddressFormatException("Address '", addr.toJson(), "' ",
-                                   "is not a V4 address");
+    throw IPAddressFormatException(to<std::string>(
+        "Address '", addr.toJson(), "' ", "is not a V4 address"));
   }
   return inSubnetWithMask(addr.asV4(), fetchMask(subnetInfo.second));
 }
@@ -189,8 +228,8 @@ bool IPAddressV4::isMulticast() const {
 IPAddressV4 IPAddressV4::mask(size_t numBits) const {
   static const auto bits = bitCount();
   if (numBits > bits) {
-    throw IPAddressFormatException("numBits(", numBits,
-                                   ") > bitsCount(", bits, ")");
+    throw IPAddressFormatException(
+        to<std::string>("numBits(", numBits, ") > bitsCount(", bits, ")"));
   }
 
   ByteArray4 ba = detail::Bytes::mask(fetchMask(numBits), addr_.bytes_);
@@ -200,6 +239,21 @@ IPAddressV4 IPAddressV4::mask(size_t numBits) const {
 // public
 string IPAddressV4::str() const {
   return detail::fastIpv4ToString(addr_.inAddr_);
+}
+
+// public
+void IPAddressV4::toFullyQualifiedAppend(std::string& out) const {
+  detail::fastIpv4AppendToString(addr_.inAddr_, out);
+}
+
+// public
+string IPAddressV4::toInverseArpaName() const {
+  return sformat(
+      "{}.{}.{}.{}.in-addr.arpa",
+      addr_.bytes_[3],
+      addr_.bytes_[2],
+      addr_.bytes_[1],
+      addr_.bytes_[0]);
 }
 
 // public
@@ -214,12 +268,21 @@ uint8_t IPAddressV4::getNthMSByte(size_t byteIndex) const {
 }
 // protected
 const ByteArray4 IPAddressV4::fetchMask(size_t numBits) {
-  static const uint8_t bits = bitCount();
+  static const size_t bits = bitCount();
   if (numBits > bits) {
-    throw IPAddressFormatException("IPv4 addresses are 32 bits");
+    throw IPAddressFormatException(
+        to<std::string>("IPv4 addresses are 32 bits"));
   }
   // masks_ is backed by an array so is zero indexed
   return masks_[numBits];
+}
+// public static
+CIDRNetworkV4 IPAddressV4::longestCommonPrefix(
+    const CIDRNetworkV4& one,
+    const CIDRNetworkV4& two) {
+  auto prefix = detail::Bytes::longestCommonPrefix(
+      one.first.addr_.bytes_, one.second, two.first.addr_.bytes_, two.second);
+  return {IPAddressV4(prefix.first), prefix.second};
 }
 
 // static private

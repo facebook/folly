@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_HISTOGRAM_H_
-#define FOLLY_HISTOGRAM_H_
+#pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <ostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
-#include <folly/detail/Stats.h>
+#include <folly/CPortability.h>
+#include <folly/stats/detail/Bucket.h>
 
 namespace folly {
 
@@ -77,12 +78,12 @@ class HistogramBuckets {
    * plus 2 extra buckets, one for handling values less than min, and one for
    * values greater than max.
    */
-  unsigned int getNumBuckets() const {
+  size_t getNumBuckets() const {
     return buckets_.size();
   }
 
   /* Returns the bucket index into which the given value would fall. */
-  unsigned int getBucketIdx(ValueType value) const;
+  size_t getBucketIdx(ValueType value) const;
 
   /* Returns the bucket for the specified value */
   BucketType& getByValue(ValueType value) {
@@ -100,12 +101,12 @@ class HistogramBuckets {
    * Note that index 0 is the bucket for all values less than the specified
    * minimum.  Index 1 is the first bucket in the specified bucket range.
    */
-  BucketType& getByIndex(unsigned int idx) {
+  BucketType& getByIndex(size_t idx) {
     return buckets_[idx];
   }
 
   /* Returns the bucket at the specified index. */
-  const BucketType& getByIndex(unsigned int idx) const {
+  const BucketType& getByIndex(size_t idx) const {
     return buckets_[idx];
   }
 
@@ -116,7 +117,7 @@ class HistogramBuckets {
    * [bucketMin, bucketMin + bucketSize), or [bucketMin, max), if the overall
    * max is smaller than bucketMin + bucketSize.
    */
-  ValueType getBucketMin(unsigned int idx) const {
+  ValueType getBucketMin(size_t idx) const {
     if (idx == 0) {
       return std::numeric_limits<ValueType>::min();
     }
@@ -124,7 +125,7 @@ class HistogramBuckets {
       return max_;
     }
 
-    return min_ + ((idx - 1) * bucketSize_);
+    return ValueType(min_ + ((idx - 1) * bucketSize_));
   }
 
   /*
@@ -134,12 +135,12 @@ class HistogramBuckets {
    * [bucketMin, bucketMin + bucketSize), or [bucketMin, max), if the overall
    * max is smaller than bucketMin + bucketSize.
    */
-  ValueType getBucketMax(unsigned int idx) const {
+  ValueType getBucketMax(size_t idx) const {
     if (idx == buckets_.size() - 1) {
       return std::numeric_limits<ValueType>::max();
     }
 
-    return min_ + (idx * bucketSize_);
+    return ValueType(min_ + (idx * bucketSize_));
   }
 
   /**
@@ -152,7 +153,7 @@ class HistogramBuckets {
    * @return Returns the total number of values stored across all buckets
    */
   template <typename CountFn>
-  const uint64_t computeTotalCount(CountFn countFromBucket) const;
+  uint64_t computeTotalCount(CountFn countFromBucket) const;
 
   /**
    * Determine which bucket the specified percentile falls into.
@@ -171,10 +172,11 @@ class HistogramBuckets {
    *         data point.
    */
   template <typename CountFn>
-  unsigned int getPercentileBucketIdx(double pct,
-                                      CountFn countFromBucket,
-                                      double* lowPct = nullptr,
-                                      double* highPct = nullptr) const;
+  size_t getPercentileBucketIdx(
+      double pct,
+      CountFn countFromBucket,
+      double* lowPct = nullptr,
+      double* highPct = nullptr) const;
 
   /**
    * Estimate the value at the specified percentile.
@@ -243,17 +245,26 @@ class Histogram {
     : buckets_(bucketSize, min, max, Bucket()) {}
 
   /* Add a data point to the histogram */
-  void addValue(ValueType value) {
+  void addValue(ValueType value) FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(
+      "signed-integer-overflow",
+      "unsigned-integer-overflow") {
     Bucket& bucket = buckets_.getByValue(value);
-    // TODO: It would be nice to handle overflow here.
+    // NOTE: Overflow is handled elsewhere and tests check this
+    // behavior (see HistogramTest.cpp TestOverflow* tests).
+    // TODO: It would be nice to handle overflow here and redesign this class.
     bucket.sum += value;
     bucket.count += 1;
   }
 
   /* Add multiple same data points to the histogram */
-  void addRepeatedValue(ValueType value, uint64_t nSamples) {
+  void addRepeatedValue(ValueType value, uint64_t nSamples)
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(
+          "signed-integer-overflow",
+          "unsigned-integer-overflow") {
     Bucket& bucket = buckets_.getByValue(value);
-    // TODO: It would be nice to handle overflow here.
+    // NOTE: Overflow is handled elsewhere and tests check this
+    // behavior (see HistogramTest.cpp TestOverflow* tests).
+    // TODO: It would be nice to handle overflow here and redesign this class.
     bucket.sum += value * nSamples;
     bucket.count += nSamples;
   }
@@ -265,9 +276,13 @@ class Histogram {
    * had previously been added to the histogram; it merely subtracts the
    * requested value from the appropriate bucket's sum.
    */
-  void removeValue(ValueType value) {
+  void removeValue(ValueType value) FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(
+      "signed-integer-overflow",
+      "unsigned-integer-overflow") {
     Bucket& bucket = buckets_.getByValue(value);
-    // TODO: It would be nice to handle overflow here.
+    // NOTE: Overflow is handled elsewhere and tests check this
+    // behavior (see HistogramTest.cpp TestOverflow* tests).
+    // TODO: It would be nice to handle overflow here and redesign this class.
     if (bucket.count > 0) {
       bucket.sum -= value;
       bucket.count -= 1;
@@ -292,7 +307,7 @@ class Histogram {
 
   /* Remove all data points from the histogram */
   void clear() {
-    for (unsigned int i = 0; i < buckets_.getNumBuckets(); i++) {
+    for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
       buckets_.getByIndex(i).clear();
     }
   }
@@ -308,7 +323,7 @@ class Histogram {
       throw std::invalid_argument("Cannot subtract input histogram.");
     }
 
-    for (unsigned int i = 0; i < buckets_.getNumBuckets(); i++) {
+    for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
       buckets_.getByIndex(i) -= hist.buckets_.getByIndex(i);
     }
   }
@@ -324,7 +339,7 @@ class Histogram {
       throw std::invalid_argument("Cannot merge from input histogram.");
     }
 
-    for (unsigned int i = 0; i < buckets_.getNumBuckets(); i++) {
+    for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
       buckets_.getByIndex(i) += hist.buckets_.getByIndex(i);
     }
   }
@@ -339,7 +354,7 @@ class Histogram {
       throw std::invalid_argument("Cannot copy from input histogram.");
     }
 
-    for (unsigned int i = 0; i < buckets_.getNumBuckets(); i++) {
+    for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
       buckets_.getByIndex(i) = hist.buckets_.getByIndex(i);
     }
   }
@@ -357,12 +372,12 @@ class Histogram {
     return buckets_.getMax();
   }
   /* Returns the number of buckets */
-  unsigned int getNumBuckets() const {
+  size_t getNumBuckets() const {
     return buckets_.getNumBuckets();
   }
 
   /* Returns the specified bucket (for reading only!) */
-  const Bucket& getBucketByIndex(int idx) const {
+  const Bucket& getBucketByIndex(size_t idx) const {
     return buckets_.getByIndex(idx);
   }
 
@@ -373,7 +388,7 @@ class Histogram {
    * [bucketMin, bucketMin + bucketSize), or [bucketMin, max), if the overall
    * max is smaller than bucketMin + bucketSize.
    */
-  ValueType getBucketMin(unsigned int idx) const {
+  ValueType getBucketMin(size_t idx) const {
     return buckets_.getBucketMin(idx);
   }
 
@@ -384,7 +399,7 @@ class Histogram {
    * [bucketMin, bucketMin + bucketSize), or [bucketMin, max), if the overall
    * max is smaller than bucketMin + bucketSize.
    */
-  ValueType getBucketMax(unsigned int idx) const {
+  ValueType getBucketMax(size_t idx) const {
     return buckets_.getBucketMax(idx);
   }
 
@@ -393,7 +408,7 @@ class Histogram {
    *
    * Runs in O(numBuckets)
    */
-  const uint64_t computeTotalCount() const {
+  uint64_t computeTotalCount() const {
     CountFromBucket countFn;
     return buckets_.computeTotalCount(countFn);
   }
@@ -402,11 +417,12 @@ class Histogram {
    * Get the bucket that the specified percentile falls into
    *
    * The lowest and highest percentile data points in returned bucket will be
-   * returned in the lowPct and highPct arguments, if they are non-NULL.
+   * returned in the lowPct and highPct arguments, if they are not nullptr.
    */
-  unsigned int getPercentileBucketIdx(double pct,
-                                      double* lowPct = nullptr,
-                                      double* highPct = nullptr) const {
+  size_t getPercentileBucketIdx(
+      double pct,
+      double* lowPct = nullptr,
+      double* highPct = nullptr) const {
     // We unfortunately can't use lambdas here yet;
     // Some users of this code are still built with gcc-4.4.
     CountFromBucket countFn;
@@ -466,5 +482,3 @@ class Histogram {
 };
 
 } // folly
-
-#endif // FOLLY_HISTOGRAM_H_

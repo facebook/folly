@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,57 @@
  */
 #pragma once
 
-#include <folly/futures/Future.h>
+#include <atomic>
+#include <tuple>
+#include <utility>
+
 #include <folly/Portability.h>
+#include <folly/Try.h>
+#include <folly/futures/Future.h>
+#include <folly/futures/Promise.h>
 
 namespace folly {
+
+namespace detail {
+template <typename... Ts>
+struct CollectAllVariadicContext {
+  CollectAllVariadicContext() {}
+  template <typename T, size_t I>
+  inline void setPartialResult(Try<T>& t) {
+    std::get<I>(results) = std::move(t);
+  }
+  ~CollectAllVariadicContext() {
+    p.setValue(std::move(results));
+  }
+  Promise<std::tuple<Try<Ts>...>> p;
+  std::tuple<Try<Ts>...> results;
+  typedef Future<std::tuple<Try<Ts>...>> type;
+};
+
+template <typename... Ts>
+struct CollectVariadicContext {
+  CollectVariadicContext() {}
+  template <typename T, size_t I>
+  inline void setPartialResult(Try<T>& t) {
+    if (t.hasException()) {
+      if (!threw.exchange(true)) {
+        p.setException(std::move(t.exception()));
+      }
+    } else if (!threw) {
+      std::get<I>(results) = std::move(t);
+    }
+  }
+  ~CollectVariadicContext() noexcept {
+    if (!threw.exchange(true)) {
+      p.setValue(unwrapTryTuple(std::move(results)));
+    }
+  }
+  Promise<std::tuple<Ts...>> p;
+  std::tuple<folly::Try<Ts>...> results;
+  std::atomic<bool> threw{false};
+  typedef Future<std::tuple<Ts...>> type;
+};
+}
 
 /// This namespace is for utility functions that would usually be static
 /// members of Future, except they don't make sense there because they don't
@@ -147,8 +194,8 @@ inline Future<Unit> via(
 /// This is semantically equivalent to via(executor).then(func), but
 /// easier to read and slightly more efficient.
 template <class Func>
-auto via(Executor*, Func func)
-  -> Future<typename isFuture<decltype(func())>::Inner>;
+auto via(Executor*, Func&& func)
+    -> Future<typename isFuture<decltype(std::declval<Func>()())>::Inner>;
 
 /** When all the input Futures complete, the returned Future will complete.
   Errors do not cause early termination; this Future will always succeed
@@ -224,6 +271,23 @@ collectAny(InputIterator first, InputIterator last);
 template <class Collection>
 auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
   return collectAny(c.begin(), c.end());
+}
+
+/** Similar to collectAny, collectAnyWithoutException return the first Future to
+ * complete without exceptions. If none of the future complete without
+ * excpetions, the last exception will be returned as a result.
+  */
+template <class InputIterator>
+Future<std::pair<
+    size_t,
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collectAnyWithoutException(InputIterator first, InputIterator last);
+
+/// Sugar for the most common case
+template <class Collection>
+auto collectAnyWithoutException(Collection&& c)
+    -> decltype(collectAnyWithoutException(c.begin(), c.end())) {
+  return collectAnyWithoutException(c.begin(), c.end());
 }
 
 /** when n Futures have completed, the Future completes with a vector of
@@ -346,6 +410,9 @@ namespace futures {
  *  indicating that the failure was transitory.
  *
  *  Cancellation is not supported.
+ *
+ *  If both FF and Policy inline executes, then it is possible to hit a stack
+ *  overflow due to the recursive nature of the retry implementation
  */
 template <class Policy, class FF>
 typename std::result_of<FF(size_t)>::type
@@ -367,7 +434,7 @@ retryingPolicyCappedJitteredExponentialBackoff(
     Duration backoff_min,
     Duration backoff_max,
     double jitter_param,
-    URNG rng,
+    URNG&& rng,
     Policy&& p);
 
 inline

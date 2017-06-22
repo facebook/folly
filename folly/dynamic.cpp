@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,28 @@
 
 #include <folly/dynamic.h>
 
+#include <folly/Assume.h>
+#include <folly/Hash.h>
+#include <folly/portability/BitsFunctexcept.h>
+
 namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
-#define DEF_TYPE(T, str, typen)                                 \
-  template<> char const dynamic::TypeInfo<T>::name[] = str;       \
-  template<> dynamic::Type const dynamic::TypeInfo<T>::type = typen
+#define FOLLY_DYNAMIC_DEF_TYPEINFO(T) \
+  constexpr const char* dynamic::TypeInfo<T>::name; \
+  constexpr dynamic::Type dynamic::TypeInfo<T>::type; \
+  //
 
-DEF_TYPE(void*,               "null",    dynamic::NULLT);
-DEF_TYPE(bool,                "boolean", dynamic::BOOL);
-DEF_TYPE(fbstring,            "string",  dynamic::STRING);
-DEF_TYPE(dynamic::Array,      "array",   dynamic::ARRAY);
-DEF_TYPE(double,              "double",  dynamic::DOUBLE);
-DEF_TYPE(int64_t,             "int64",   dynamic::INT64);
-DEF_TYPE(dynamic::ObjectImpl, "object",  dynamic::OBJECT);
+FOLLY_DYNAMIC_DEF_TYPEINFO(std::nullptr_t)
+FOLLY_DYNAMIC_DEF_TYPEINFO(bool)
+FOLLY_DYNAMIC_DEF_TYPEINFO(std::string)
+FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::Array)
+FOLLY_DYNAMIC_DEF_TYPEINFO(double)
+FOLLY_DYNAMIC_DEF_TYPEINFO(int64_t)
+FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::ObjectImpl)
 
-#undef DEF_TYPE
+#undef FOLLY_DYNAMIC_DEF_TYPEINFO
 
 const char* dynamic::typeName() const {
   return typeName(type_);
@@ -56,18 +61,35 @@ TypeError::~TypeError() = default;
 
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
-#define FB_DYNAMIC_APPLY(type, apply) do {         \
-  switch ((type)) {                             \
-  case NULLT:   apply(void*);          break;   \
-  case ARRAY:   apply(Array);          break;   \
-  case BOOL:    apply(bool);           break;   \
-  case DOUBLE:  apply(double);         break;   \
-  case INT64:   apply(int64_t);        break;   \
-  case OBJECT:  apply(ObjectImpl);     break;   \
-  case STRING:  apply(fbstring);       break;   \
-  default:      CHECK(0); abort();              \
-  }                                             \
-} while (0)
+#define FB_DYNAMIC_APPLY(type, apply) \
+  do {                                \
+    switch ((type)) {                 \
+      case NULLT:                     \
+        apply(std::nullptr_t);        \
+        break;                        \
+      case ARRAY:                     \
+        apply(Array);                 \
+        break;                        \
+      case BOOL:                      \
+        apply(bool);                  \
+        break;                        \
+      case DOUBLE:                    \
+        apply(double);                \
+        break;                        \
+      case INT64:                     \
+        apply(int64_t);               \
+        break;                        \
+      case OBJECT:                    \
+        apply(ObjectImpl);            \
+        break;                        \
+      case STRING:                    \
+        apply(std::string);           \
+        break;                        \
+      default:                        \
+        CHECK(0);                     \
+        abort();                      \
+    }                                 \
+  } while (0)
 
 bool dynamic::operator<(dynamic const& o) const {
   if (UNLIKELY(type_ == OBJECT || o.type_ == OBJECT)) {
@@ -186,7 +208,7 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
     if (idx < 0 || idx >= parray->size()) {
       return nullptr;
     }
-    return &(*parray)[idx.asInt()];
+    return &(*parray)[size_t(idx.asInt())];
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
     auto it = pobject->find(idx);
     if (it == pobject->end()) {
@@ -204,9 +226,9 @@ dynamic const& dynamic::at(dynamic const& idx) const& {
       throw TypeError("int64", idx.type());
     }
     if (idx < 0 || idx >= parray->size()) {
-      throw std::out_of_range("out of range in dynamic array");
+      std::__throw_out_of_range("out of range in dynamic array");
     }
-    return (*parray)[idx.asInt()];
+    return (*parray)[size_t(idx.asInt())];
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
     auto it = pobject->find(idx);
     if (it == pobject->end()) {
@@ -226,14 +248,13 @@ std::size_t dynamic::size() const {
   if (auto* obj = get_nothrow<ObjectImpl>()) {
     return obj->size();
   }
-  if (auto* str = get_nothrow<fbstring>()) {
+  if (auto* str = get_nothrow<std::string>()) {
     return str->size();
   }
   throw TypeError("array/object", type());
 }
 
-dynamic::const_iterator
-dynamic::erase(const_iterator first, const_iterator last) {
+dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
   auto& arr = get<Array>();
   return get<Array>().erase(
     arr.begin() + (first - arr.begin()),
@@ -247,16 +268,18 @@ std::size_t dynamic::hash() const {
   case NULLT:
     throw TypeError("not null/object/array", type());
   case INT64:
-    return std::hash<int64_t>()(asInt());
+    return std::hash<int64_t>()(getInt());
   case DOUBLE:
-    return std::hash<double>()(asDouble());
+    return std::hash<double>()(getDouble());
   case BOOL:
-    return std::hash<bool>()(asBool());
-  case STRING:
-    return std::hash<fbstring>()(asString());
-  default:
-    CHECK(0); abort();
+    return std::hash<bool>()(getBool());
+  case STRING: {
+    // keep it compatible with FBString
+    const auto& str = getString();
+    return ::folly::hash::fnv32_buf(str.data(), str.size());
   }
+  }
+  assume_unreachable();
 }
 
 char const* dynamic::typeName(Type t) {

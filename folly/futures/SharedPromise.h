@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -105,12 +105,15 @@ public:
   template <class F>
   void setWith(F&& func);
 
+  bool isFulfilled();
+
 private:
   std::mutex mutex_;
   size_t size_{0};
   bool hasValue_{false};
   Try<T> try_;
   std::vector<Promise<T>> promises_;
+  std::function<void(exception_wrapper const&)> interruptHandler_;
 };
 
 }

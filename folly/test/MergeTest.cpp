@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,11 @@
  */
 
 #include <folly/Merge.h>
-#include <gtest/gtest.h>
+
 #include <map>
 #include <vector>
+
+#include <folly/portability/GTest.h>
 
 TEST(MergeTest, NonOverlapping) {
   std::vector<int> a = {0, 2, 4, 6};
@@ -28,7 +30,7 @@ TEST(MergeTest, NonOverlapping) {
                b.begin(), b.end(),
                std::back_inserter(c));
   EXPECT_EQ(8, c.size());
-  for (int i = 0; i < 8; ++i) {
+  for (size_t i = 0; i < 8; ++i) {
     EXPECT_EQ(i, c[i]);
   }
 }

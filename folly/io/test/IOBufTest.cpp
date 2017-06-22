@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,13 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/TypedIOBuf.h>
 
-#include <gflags/gflags.h>
+#include <cstddef>
+
 #include <boost/random.hpp>
-#include <gtest/gtest.h>
 
 #include <folly/Malloc.h>
 #include <folly/Range.h>
-
-#include <cstddef>
+#include <folly/portability/GTest.h>
 
 using folly::fbstring;
 using folly::fbvector;
@@ -187,6 +186,14 @@ TEST(IOBuf, WrapBuffer) {
   EXPECT_EQ(size3, iobuf3.length());
   EXPECT_EQ(buf3.get(), iobuf3.buffer());
   EXPECT_EQ(size3, iobuf3.capacity());
+
+  const uint32_t size4 = 2345;
+  unique_ptr<uint8_t[]> buf4(new uint8_t[size4]);
+  IOBuf iobuf4 = IOBuf::wrapBufferAsValue(buf4.get(), size4);
+  EXPECT_EQ(buf4.get(), iobuf4.data());
+  EXPECT_EQ(size4, iobuf4.length());
+  EXPECT_EQ(buf4.get(), iobuf4.buffer());
+  EXPECT_EQ(size4, iobuf4.capacity());
 }
 
 TEST(IOBuf, CreateCombined) {
@@ -524,6 +531,15 @@ TEST(IOBuf, Chaining) {
   gen.seed(fillSeed);
   checkChain(chainClone.get(), gen);
 
+  // cloneCoalesced
+  {
+    auto chainCloneCoalesced = chainClone->cloneCoalesced();
+    EXPECT_EQ(1, chainCloneCoalesced->countChainElements());
+    EXPECT_EQ(fullLength, chainCloneCoalesced->computeChainDataLength());
+    gen.seed(fillSeed);
+    checkChain(chainCloneCoalesced.get(), gen);
+  }
+
   // Coalesce the entire chain
   chainClone->coalesce();
   EXPECT_EQ(1, chainClone->countChainElements());
@@ -628,7 +644,6 @@ TEST(IOBuf, Reserve) {
     EXPECT_EQ(0, iob->headroom());
     EXPECT_EQ(100, iob->length());
     const void* p1 = iob->buffer();
-    const uint8_t* d1 = iob->data();
     iob->reserve(100, 2512);  // allocation sizes are multiples of 256
     EXPECT_LE(100, iob->headroom());
     if (folly::usingJEMalloc()) {
@@ -709,6 +724,11 @@ TEST(IOBuf, maybeCopyBuffer) {
 
   buf = IOBuf::maybeCopyBuffer("");
   EXPECT_EQ(nullptr, buf.get());
+}
+
+TEST(IOBuf, copyEmptyBuffer) {
+  auto buf = IOBuf::copyBuffer(nullptr, 0);
+  EXPECT_EQ(buf->length(), 0);
 }
 
 namespace {
@@ -877,7 +897,6 @@ class MoveToFbStringTest
       }
       default:
         throw std::invalid_argument("unexpected buffer type parameter");
-        break;
     }
     memset(buf->writableData(), 'x', elementSize_);
     return buf;
@@ -1150,6 +1169,53 @@ TEST(IOBuf, CopyConstructorAndAssignmentOperator) {
   EXPECT_FALSE(buf->isShared());
 }
 
+TEST(IOBuf, CloneAsValue) {
+  auto buf = IOBuf::create(4096);
+  append(buf, "hello world");
+  {
+    auto buf2 = IOBuf::create(4096);
+    append(buf2, " goodbye");
+    buf->prependChain(std::move(buf2));
+    EXPECT_FALSE(buf->isShared());
+  }
+
+  {
+    auto copy = buf->cloneOneAsValue();
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_TRUE(copy.isShared());
+    EXPECT_EQ((void*)buf->data(), (void*)copy.data());
+    EXPECT_TRUE(buf->isChained());
+    EXPECT_FALSE(copy.isChained());
+
+    auto copy2 = buf->cloneAsValue();
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_TRUE(copy.isShared());
+    EXPECT_TRUE(copy2.isShared());
+    EXPECT_TRUE(buf->isChained());
+    EXPECT_TRUE(copy2.isChained());
+
+    copy.unshareOne();
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_FALSE(copy.isShared());
+    EXPECT_NE((void*)buf->data(), (void*)copy.data());
+    EXPECT_TRUE(copy2.isShared());
+
+    auto p = reinterpret_cast<const char*>(copy.data());
+    EXPECT_EQ("hello world", std::string(p, copy.length()));
+
+    copy2.coalesce();
+    EXPECT_FALSE(buf->isShared());
+    EXPECT_FALSE(copy.isShared());
+    EXPECT_FALSE(copy2.isShared());
+    EXPECT_FALSE(copy2.isChained());
+
+    auto p2 = reinterpret_cast<const char*>(copy2.data());
+    EXPECT_EQ("hello world goodbye", std::string(p2, copy2.length()));
+  }
+
+  EXPECT_FALSE(buf->isShared());
+}
+
 namespace {
 // Use with string literals only
 std::unique_ptr<IOBuf> wrap(const char* str) {
@@ -1175,6 +1241,45 @@ char* writableStr(folly::IOBuf& buf) {
 }
 
 }  // namespace
+
+TEST(IOBuf, ExternallyShared) {
+  struct Item {
+    Item(const char* src, size_t len) : size(len) {
+      CHECK_LE(len, sizeof(buffer));
+      memcpy(buffer, src, len);
+    }
+    uint32_t refcount{0};
+    uint8_t size;
+    char buffer[256];
+  };
+
+  auto hello = "hello";
+  struct Item it(hello, strlen(hello));
+
+  {
+    auto freeFn = [](void* /* unused */, void* userData) {
+      auto it = static_cast<struct Item*>(userData);
+      it->refcount--;
+    };
+    it.refcount++;
+    auto buf1 = IOBuf::takeOwnership(it.buffer, it.size, freeFn, &it);
+    EXPECT_TRUE(buf1->isManagedOne());
+    EXPECT_FALSE(buf1->isSharedOne());
+
+    buf1->markExternallyShared();
+    EXPECT_TRUE(buf1->isSharedOne());
+
+    {
+      auto buf2 = buf1->clone();
+      EXPECT_TRUE(buf2->isManagedOne());
+      EXPECT_TRUE(buf2->isSharedOne());
+      EXPECT_EQ(buf1->data(), buf2->data());
+      EXPECT_EQ(it.refcount, 1);
+    }
+    EXPECT_EQ(it.refcount, 1);
+  }
+  EXPECT_EQ(it.refcount, 0);
+}
 
 TEST(IOBuf, Managed) {
   auto hello = "hello";
@@ -1235,9 +1340,57 @@ TEST(IOBuf, Managed) {
   EXPECT_EQ("jelloxorldhelloxorld", toString(*buf1));
 }
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+TEST(IOBuf, CoalesceEmptyBuffers) {
+  auto b1 = IOBuf::takeOwnership(nullptr, 0);
+  auto b2 = fromStr("hello");
+  auto b3 = IOBuf::takeOwnership(nullptr, 0);
 
-  return RUN_ALL_TESTS();
+  b2->appendChain(std::move(b3));
+  b1->appendChain(std::move(b2));
+
+  auto br = b1->coalesce();
+
+  EXPECT_TRUE(ByteRange(StringPiece("hello")) == br);
+}
+
+TEST(IOBuf, CloneCoalescedChain) {
+  auto b = IOBuf::createChain(1000, 100);
+  b->advance(10);
+  const uint32_t fillSeed = 0x12345678;
+  boost::mt19937 gen(fillSeed);
+  {
+    auto c = b.get();
+    uint64_t length = c->tailroom();
+    do {
+      length = std::min(length, c->tailroom());
+      c->append(length--);
+      fillBuf(c, gen);
+      c = c->next();
+    } while (c != b.get());
+  }
+  auto c = b->cloneCoalescedAsValue();
+  EXPECT_FALSE(c.isChained()); // Not chained
+  EXPECT_FALSE(c.isSharedOne()); // Not shared
+  EXPECT_EQ(b->headroom(), c.headroom()); // Preserves headroom
+  EXPECT_LE(b->prev()->tailroom(), c.tailroom()); // Preserves minimum tailroom
+  EXPECT_EQ(b->computeChainDataLength(), c.length()); // Same length
+  gen.seed(fillSeed);
+  checkBuf(&c, gen); // Same contents
+}
+
+TEST(IOBuf, CloneCoalescedSingle) {
+  auto b = IOBuf::create(1000);
+  b->advance(10);
+  b->append(900);
+  const uint32_t fillSeed = 0x12345678;
+  boost::mt19937 gen(fillSeed);
+  fillBuf(b.get(), gen);
+
+  auto c = b->cloneCoalesced();
+  EXPECT_FALSE(c->isChained()); // Not chained
+  EXPECT_TRUE(c->isSharedOne()); // Shared
+  EXPECT_EQ(b->buffer(), c->buffer());
+  EXPECT_EQ(b->capacity(), c->capacity());
+  EXPECT_EQ(b->data(), c->data());
+  EXPECT_EQ(b->length(), c->length());
 }

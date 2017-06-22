@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,30 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STATS_BUCKETEDTIMESERIES_H_
-#define FOLLY_STATS_BUCKETEDTIMESERIES_H_
+#pragma once
 
 #include <chrono>
 #include <vector>
 
-#include <folly/detail/Stats.h>
+#include <folly/stats/detail/Bucket.h>
 
 namespace folly {
+
+/*
+ * A helper clock type to helper older code using BucketedTimeSeries with
+ * std::chrono::seconds transition to properly using clock types and time_point
+ * objects.
+ */
+template <typename TT = std::chrono::seconds>
+class LegacyStatsClock {
+ public:
+  using duration = TT;
+  using time_point = std::chrono::time_point<LegacyStatsClock, TT>;
+
+  // This clock does not actually implement now(), since the older API
+  // did not really specify what clock should be used.  (In practice most
+  // callers unfortuantely used wall clock time rather than a monotonic clock.)
+};
 
 /*
  * This class represents a bucketed time series which keeps track of values
@@ -45,12 +60,14 @@ namespace folly {
  *
  * This class is not thread-safe -- use your own synchronization!
  */
-template <typename VT, typename TT=std::chrono::seconds>
+template <typename VT, typename CT = LegacyStatsClock<std::chrono::seconds>>
 class BucketedTimeSeries {
  public:
-  typedef VT ValueType;
-  typedef TT TimeType;
-  typedef detail::Bucket<ValueType> Bucket;
+  using ValueType = VT;
+  using Clock = CT;
+  using Duration = typename Clock::duration;
+  using TimePoint = typename Clock::time_point;
+  using Bucket = detail::Bucket<ValueType>;
 
   /*
    * Create a new BucketedTimeSeries.
@@ -62,7 +79,19 @@ class BucketedTimeSeries {
    * and does not need the rolling buckets.  The numBuckets parameter is
    * ignored when duration is 0.
    */
-  BucketedTimeSeries(size_t numBuckets, TimeType duration);
+  BucketedTimeSeries(size_t numBuckets, Duration duration);
+
+  /*
+   * Create a new BucketedTimeSeries.
+   *
+   * This constructor is used to reconstruct a timeseries using
+   * previously saved data
+   */
+  BucketedTimeSeries(
+      TimePoint theFirstTime,
+      TimePoint theLatestTime,
+      Duration maxDuration,
+      const std::vector<Bucket>& bucketsList);
 
   /*
    * Adds the value 'val' at time 'now'
@@ -82,17 +111,18 @@ class BucketedTimeSeries {
    * Returns true on success, or false if now was older than the tracked time
    * window.
    */
-  bool addValue(TimeType now, const ValueType& val);
+  bool addValue(TimePoint now, const ValueType& val);
 
   /*
    * Adds the value 'val' the given number of 'times' at time 'now'
    */
-  bool addValue(TimeType now, const ValueType& val, int64_t times);
+  bool addValue(TimePoint now, const ValueType& val, uint64_t times);
 
   /*
-   * Adds the value 'sum' as the sum of 'nsamples' samples
+   * Adds the value 'total' as the sum of 'nsamples' samples
    */
-  bool addValueAggregated(TimeType now, const ValueType& sum, int64_t nsamples);
+  bool
+  addValueAggregated(TimePoint now, const ValueType& total, uint64_t nsamples);
 
   /*
    * Updates the container to the specified time, doing all the necessary
@@ -105,7 +135,7 @@ class BucketedTimeSeries {
    *
    * Returns the current bucket index after the update.
    */
-  size_t update(TimeType now);
+  size_t update(TimePoint now);
 
   /*
    * Reset the timeseries to an empty state,
@@ -118,7 +148,7 @@ class BucketedTimeSeries {
    *
    * If no data has ever been added to this timeseries, 0 will be returned.
    */
-  TimeType getLatestTime() const {
+  TimePoint getLatestTime() const {
     return latestTime_;
   }
 
@@ -136,7 +166,7 @@ class BucketedTimeSeries {
    * in the timeseries.  This will never be older than (getLatestTime() -
    * duration()).
    */
-  TimeType getEarliestTime() const;
+  TimePoint getEarliestTime() const;
 
   /*
    * Return the number of buckets.
@@ -149,7 +179,7 @@ class BucketedTimeSeries {
    * Return the maximum duration of data that can be tracked by this
    * BucketedTimeSeries.
    */
-  TimeType duration() const {
+  Duration duration() const {
     return duration_;
   }
 
@@ -158,7 +188,7 @@ class BucketedTimeSeries {
    * ever rolling over into new buckets.
    */
   bool isAllTime() const {
-    return (duration_ == TimeType(0));
+    return (duration_ == Duration(0));
   }
 
   /*
@@ -172,6 +202,29 @@ class BucketedTimeSeries {
     // Once a data point has been added, latestTime_ will always be greater
     // than or equal to firstTime_.
     return firstTime_ > latestTime_;
+  }
+
+  /*
+   * Returns time of first update() since clear()/constructor.
+   * Note that the returned value is only meaningful when empty() is false.
+   */
+  TimePoint firstTime() const {
+    return firstTime_;
+  }
+
+  /*
+   * Returns time of last update().
+   * Note that the returned value is only meaningful when empty() is false.
+   */
+  TimePoint latestTime() const {
+    return latestTime_;
+  }
+
+  /*
+   * Returns actual buckets of values
+   */
+  const std::vector<Bucket>& buckets() const {
+    return buckets_;
   }
 
   /*
@@ -197,7 +250,7 @@ class BucketedTimeSeries {
    * Note that you generally should call update() before calling elapsed(), to
    * make sure you are not reading stale data.
    */
-  TimeType elapsed() const;
+  Duration elapsed() const;
 
   /*
    * Get the amount of time tracked by this timeseries, between the specified
@@ -207,7 +260,7 @@ class BucketedTimeSeries {
    * simply returns (end - start).  However, if start is earlier than
    * getEarliestTime(), this returns (end - getEarliestTime()).
    */
-  TimeType elapsed(TimeType start, TimeType end) const;
+  Duration elapsed(TimePoint start, TimePoint end) const;
 
   /*
    * Return the sum of all the data points currently tracked by this
@@ -251,9 +304,9 @@ class BucketedTimeSeries {
    * Note that you generally should call update() before calling rate(), to
    * make sure you are not reading stale data.
    */
-  template <typename ReturnType=double, typename Interval=TimeType>
+  template <typename ReturnType = double, typename Interval = Duration>
   ReturnType rate() const {
-    return rateHelper<ReturnType, Interval>(total_.sum, elapsed());
+    return rateHelper<ReturnType, Interval>(ReturnType(total_.sum), elapsed());
   }
 
   /*
@@ -268,9 +321,10 @@ class BucketedTimeSeries {
    * Note that you generally should call update() before calling countRate(),
    * to make sure you are not reading stale data.
    */
-  template <typename ReturnType=double, typename Interval=TimeType>
+  template <typename ReturnType = double, typename Interval = Duration>
   ReturnType countRate() const {
-    return rateHelper<ReturnType, Interval>(total_.count, elapsed());
+    return rateHelper<ReturnType, Interval>(
+        ReturnType(total_.count), elapsed());
   }
 
   /*
@@ -287,36 +341,36 @@ class BucketedTimeSeries {
    *
    * Note that the value returned is an estimate, and may not be precise.
    */
-  ValueType sum(TimeType start, TimeType end) const;
+  ValueType sum(TimePoint start, TimePoint end) const;
 
   /*
    * Estimate the number of data points that occurred in the specified time
    * period.
    *
-   * The same caveats documented in the sum(TimeType start, TimeType end)
+   * The same caveats documented in the sum(TimePoint start, TimePoint end)
    * comments apply here as well.
    */
-  uint64_t count(TimeType start, TimeType end) const;
+  uint64_t count(TimePoint start, TimePoint end) const;
 
   /*
    * Estimate the average value during the specified time period.
    *
-   * The same caveats documented in the sum(TimeType start, TimeType end)
+   * The same caveats documented in the sum(TimePoint start, TimePoint end)
    * comments apply here as well.
    */
-  template <typename ReturnType=double>
-  ReturnType avg(TimeType start, TimeType end) const;
+  template <typename ReturnType = double>
+  ReturnType avg(TimePoint start, TimePoint end) const;
 
   /*
    * Estimate the rate during the specified time period.
    *
-   * The same caveats documented in the sum(TimeType start, TimeType end)
+   * The same caveats documented in the sum(TimePoint start, TimePoint end)
    * comments apply here as well.
    */
-  template <typename ReturnType=double, typename Interval=TimeType>
-  ReturnType rate(TimeType start, TimeType end) const {
+  template <typename ReturnType = double, typename Interval = Duration>
+  ReturnType rate(TimePoint start, TimePoint end) const {
     ValueType intervalSum = sum(start, end);
-    TimeType interval = elapsed(start, end);
+    Duration interval = elapsed(start, end);
     return rateHelper<ReturnType, Interval>(intervalSum, interval);
   }
 
@@ -324,14 +378,15 @@ class BucketedTimeSeries {
    * Estimate the rate of data points being added during the specified time
    * period.
    *
-   * The same caveats documented in the sum(TimeType start, TimeType end)
+   * The same caveats documented in the sum(TimePoint start, TimePoint end)
    * comments apply here as well.
    */
-  template <typename ReturnType=double, typename Interval=TimeType>
-  ReturnType countRate(TimeType start, TimeType end) const {
+  template <typename ReturnType = double, typename Interval = Duration>
+  ReturnType countRate(TimePoint start, TimePoint end) const {
     uint64_t intervalCount = count(start, end);
-    TimeType interval = elapsed(start, end);
-    return rateHelper<ReturnType, Interval>(intervalCount, interval);
+    Duration interval = elapsed(start, end);
+    return rateHelper<ReturnType, Interval>(
+        ReturnType(intervalCount), interval);
   }
 
   /*
@@ -344,8 +399,8 @@ class BucketedTimeSeries {
    * to break out of the loop and stop, without calling the function on any
    * more buckets.
    *
-   * bool function(const Bucket& bucket, TimeType bucketStart,
-   *               TimeType nextBucketStart)
+   * bool function(const Bucket& bucket, TimePoint bucketStart,
+   *               TimePoint nextBucketStart)
    */
   template <typename Function>
   void forEachBucket(Function fn) const;
@@ -360,7 +415,7 @@ class BucketedTimeSeries {
    *
    * This method may not be called for all-time data.
    */
-  size_t getBucketIdx(TimeType time) const;
+  size_t getBucketIdx(TimePoint time) const;
 
   /*
    * Get the bucket at the specified index.
@@ -377,34 +432,59 @@ class BucketedTimeSeries {
    *
    * This method may not be called for all-time data.
    */
-  void getBucketInfo(TimeType time, size_t* bucketIdx,
-                     TimeType* bucketStart, TimeType* nextBucketStart) const;
+  void getBucketInfo(
+      TimePoint time,
+      size_t* bucketIdx,
+      TimePoint* bucketStart,
+      TimePoint* nextBucketStart) const;
 
- private:
-  template <typename ReturnType=double, typename Interval=TimeType>
-  ReturnType rateHelper(ReturnType numerator, TimeType elapsedTime) const {
-    return detail::rateHelper<ReturnType, TimeType, Interval>(numerator,
-                                                              elapsedTime);
+  /*
+   * Legacy APIs that accept a Duration parameters rather than TimePoint.
+   *
+   * These treat the Duration as relative to the clock epoch.
+   * Prefer using the correct TimePoint-based APIs instead.  These APIs will
+   * eventually be deprecated and removed.
+   */
+  bool addValue(Duration now, const ValueType& val) {
+    return addValueAggregated(TimePoint(now), val, 1);
+  }
+  bool addValue(Duration now, const ValueType& val, uint64_t times) {
+    return addValueAggregated(TimePoint(now), val * ValueType(times), times);
+  }
+  bool
+  addValueAggregated(Duration now, const ValueType& total, uint64_t nsamples) {
+    return addValueAggregated(TimePoint(now), total, nsamples);
+  }
+  size_t update(Duration now) {
+    return update(TimePoint(now));
   }
 
-  TimeType getEarliestTimeNonEmpty() const;
-  size_t updateBuckets(TimeType now);
+ private:
+  template <typename ReturnType = double, typename Interval = Duration>
+  ReturnType rateHelper(ReturnType numerator, Duration elapsedTime) const {
+    return detail::rateHelper<ReturnType, Duration, Interval>(
+        numerator, elapsedTime);
+  }
 
-  ValueType rangeAdjust(TimeType bucketStart, TimeType nextBucketStart,
-                        TimeType start, TimeType end,
-                        ValueType input) const;
+  TimePoint getEarliestTimeNonEmpty() const;
+  size_t updateBuckets(TimePoint now);
+
+  ValueType rangeAdjust(
+      TimePoint bucketStart,
+      TimePoint nextBucketStart,
+      TimePoint start,
+      TimePoint end,
+      ValueType input) const;
 
   template <typename Function>
-  void forEachBucket(TimeType start, TimeType end, Function fn) const;
+  void forEachBucket(TimePoint start, TimePoint end, Function fn) const;
 
-  TimeType firstTime_;   // time of first update() since clear()/constructor
-  TimeType latestTime_;  // time of last update()
-  TimeType duration_;    // total duration ("window length") of the time series
+  TimePoint firstTime_; // time of first update() since clear()/constructor
+  TimePoint latestTime_; // time of last update()
+  Duration duration_; // total duration ("window length") of the time series
 
   Bucket total_;                 // sum and count of everything in time series
   std::vector<Bucket> buckets_;  // actual buckets of values
 };
 
 } // folly
-
-#endif // FOLLY_STATS_BUCKETEDTIMESERIES_H_

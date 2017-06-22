@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,7 @@
 #include <folly/SingletonVault_c.h>
 #include <folly/Singleton.h>
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 SingletonVault_t *SingletonVault_singleton() {
   return folly::SingletonVault::singleton();
@@ -37,6 +35,4 @@ void SingletonVault_reenableInstances(SingletonVault_t *vault) {
   ((folly::SingletonVault*) vault)->reenableInstances();
 }
 
-#ifdef __cplusplus
 } // extern "C"
-#endif

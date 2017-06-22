@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,10 @@
 
 #include <folly/SpookyHashV2.h>
 
-#include <cstring>
+#include <folly/CppAttributes.h>
+#include <folly/Portability.h>
 
-#define ALLOW_UNALIGNED_READS 1
+#include <cstring>
 
 namespace folly {
 namespace hash {
@@ -56,7 +57,7 @@ void SpookyHashV2::Short(
 
     u.p8 = (const uint8_t *)message;
 
-    if (!ALLOW_UNALIGNED_READS && (u.i & 0x7))
+    if (!kHasUnalignedAccess && (u.i & 0x7))
     {
         memcpy(buf, message, length);
         u.p64 = buf;
@@ -98,37 +99,48 @@ void SpookyHashV2::Short(
     switch (remainder)
     {
     case 15:
-    d += ((uint64_t)u.p8[14]) << 48;
+        d += ((uint64_t)u.p8[14]) << 48;
+        FOLLY_FALLTHROUGH;
     case 14:
         d += ((uint64_t)u.p8[13]) << 40;
+        FOLLY_FALLTHROUGH;
     case 13:
         d += ((uint64_t)u.p8[12]) << 32;
+        FOLLY_FALLTHROUGH;
     case 12:
         d += u.p32[2];
         c += u.p64[0];
         break;
     case 11:
         d += ((uint64_t)u.p8[10]) << 16;
+        FOLLY_FALLTHROUGH;
     case 10:
         d += ((uint64_t)u.p8[9]) << 8;
+        FOLLY_FALLTHROUGH;
     case 9:
         d += (uint64_t)u.p8[8];
+        FOLLY_FALLTHROUGH;
     case 8:
         c += u.p64[0];
         break;
     case 7:
         c += ((uint64_t)u.p8[6]) << 48;
+        FOLLY_FALLTHROUGH;
     case 6:
         c += ((uint64_t)u.p8[5]) << 40;
+        FOLLY_FALLTHROUGH;
     case 5:
         c += ((uint64_t)u.p8[4]) << 32;
+        FOLLY_FALLTHROUGH;
     case 4:
         c += u.p32[0];
         break;
     case 3:
         c += ((uint64_t)u.p8[2]) << 16;
+        FOLLY_FALLTHROUGH;
     case 2:
         c += ((uint64_t)u.p8[1]) << 8;
+        FOLLY_FALLTHROUGH;
     case 1:
         c += (uint64_t)u.p8[0];
         break;
@@ -176,7 +188,7 @@ void SpookyHashV2::Hash128(
     end = u.p64 + (length/sc_blockSize)*sc_numVars;
 
     // handle all whole sc_blockSize blocks of bytes
-    if (ALLOW_UNALIGNED_READS || ((u.i & 0x7) == 0))
+    if (kHasUnalignedAccess || ((u.i & 0x7) == 0))
     {
         while (u.p64 < end)
         {
@@ -198,7 +210,7 @@ void SpookyHashV2::Hash128(
     remainder = (length - ((const uint8_t *)end-(const uint8_t *)message));
     memcpy(buf, end, remainder);
     memset(((uint8_t *)buf)+remainder, 0, sc_blockSize-remainder);
-    ((uint8_t *)buf)[sc_blockSize-1] = remainder;
+    ((uint8_t*)buf)[sc_blockSize - 1] = uint8_t(remainder);
 
     // do some final mixing
     End(buf, h0,h1,h2,h3,h4,h5,h6,h7,h8,h9,h10,h11);
@@ -284,7 +296,7 @@ void SpookyHashV2::Update(const void *message, size_t length)
     // handle all whole blocks of sc_blockSize bytes
     end = u.p64 + (length/sc_blockSize)*sc_numVars;
     remainder = (uint8_t)(length-((const uint8_t *)end-u.p8));
-    if (ALLOW_UNALIGNED_READS || (u.i & 0x7) == 0)
+    if (kHasUnalignedAccess || (u.i & 0x7) == 0)
     {
         while (u.p64 < end)
         {
@@ -323,7 +335,7 @@ void SpookyHashV2::Update(const void *message, size_t length)
 
 
 // report the hash for the concatenation of all message fragments so far
-void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2)
+void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2) const
 {
     // init the variables
     if (m_length < sc_bufSize)
@@ -334,7 +346,9 @@ void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2)
         return;
     }
 
-    const uint64_t *data = (const uint64_t *)m_data;
+    uint64_t buf[2*sc_numVars];
+    memcpy(buf, m_data, sizeof(buf));
+    uint64_t *data = buf;
     uint8_t remainder = m_remainder;
 
     uint64_t h0 = m_state[0];

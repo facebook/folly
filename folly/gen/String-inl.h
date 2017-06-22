@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_STRING_H
+#ifndef FOLLY_GEN_STRING_H_
 #error This file may only be included from folly/gen/String.h
 #endif
 
 #include <folly/Conv.h>
+#include <folly/Portability.h>
 #include <folly/String.h>
 
 namespace folly {
@@ -76,7 +77,7 @@ inline size_t splitPrefix(StringPiece& in,
   auto p = in.find_first_of(kCRLF);
   if (p != std::string::npos) {
     const auto in_start = in.data();
-    auto delim_len = 1;
+    size_t delim_len = 1;
     in.advance(p);
     // Either remove an MS-DOS CR-LF 2-byte newline, or eat 1 byte at a time.
     if (in.removePrefix(kCRLF)) {
@@ -213,16 +214,23 @@ namespace detail {
 
 class StringResplitter : public Operator<StringResplitter> {
   char delimiter_;
+  bool keepDelimiter_;
+
  public:
-  explicit StringResplitter(char delimiter) : delimiter_(delimiter) { }
+  explicit StringResplitter(char delimiter, bool keepDelimiter = false)
+      : delimiter_(delimiter), keepDelimiter_(keepDelimiter) {}
 
   template <class Source>
   class Generator : public GenImpl<StringPiece, Generator<Source>> {
     Source source_;
     char delimiter_;
+    bool keepDelimiter_;
+
    public:
-    Generator(Source source, char delimiter)
-      : source_(std::move(source)), delimiter_(delimiter) { }
+    Generator(Source source, char delimiter, bool keepDelimiter)
+        : source_(std::move(source)),
+          delimiter_(delimiter),
+          keepDelimiter_(keepDelimiter) {}
 
     template <class Body>
     bool apply(Body&& body) const {
@@ -236,7 +244,9 @@ class StringResplitter : public Operator<StringResplitter> {
             if (s.back() != this->delimiter_) {
               return body(s);
             }
-            s.pop_back();  // Remove the 1-character delimiter
+            if (!keepDelimiter_) {
+              s.pop_back(); // Remove the 1-character delimiter
+            }
             return body(s);
           });
       if (!source_.apply(splitter)) {
@@ -248,18 +258,14 @@ class StringResplitter : public Operator<StringResplitter> {
     static constexpr bool infinite = Source::infinite;
   };
 
-  template<class Source,
-           class Value,
-           class Gen = Generator<Source>>
+  template <class Source, class Value, class Gen = Generator<Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
-    return Gen(std::move(source.self()), delimiter_);
+    return Gen(std::move(source.self()), delimiter_, keepDelimiter_);
   }
 
-  template<class Source,
-           class Value,
-           class Gen = Generator<Source>>
+  template <class Source, class Value, class Gen = Generator<Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
-    return Gen(source.self(), delimiter_);
+    return Gen(source.self(), delimiter_, keepDelimiter_);
   }
 };
 
@@ -299,8 +305,7 @@ class SplitStringSource
  *
  * This type is primarily used through the 'unsplit' function.
  */
-template<class Delimiter,
-         class Output>
+template <class Delimiter, class Output>
 class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
   Delimiter delimiter_;
  public:
@@ -308,8 +313,7 @@ class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
     : delimiter_(delimiter) {
   }
 
-  template<class Source,
-           class Value>
+  template <class Source, class Value>
   Output compose(const GenImpl<Value, Source>& source) const {
     Output outputBuffer;
     UnsplitBuffer<Delimiter, Output> unsplitter(delimiter_, &outputBuffer);
@@ -324,8 +328,7 @@ class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
  *
  * This type is primarily used through the 'unsplit' function.
  */
-template<class Delimiter,
-         class OutputBuffer>
+template <class Delimiter, class OutputBuffer>
 class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
   Delimiter delimiter_;
   OutputBuffer* outputBuffer_;
@@ -336,8 +339,7 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
     CHECK(outputBuffer);
   }
 
-  template<class Source,
-           class Value>
+  template <class Source, class Value>
   void compose(const GenImpl<Value, Source>& source) const {
     // If the output buffer is empty, we skip inserting the delimiter for the
     // first element.
@@ -357,10 +359,10 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
 /**
  * Hack for static for-like constructs
  */
-template<class Target, class=void>
+template <class Target, class = void>
 inline Target passthrough(Target target) { return target; }
 
-#pragma GCC diagnostic push
+FOLLY_PUSH_WARNING
 #ifdef __clang__
 // Clang isn't happy with eatField() hack below.
 #pragma GCC diagnostic ignored "-Wreturn-stack-address"
@@ -376,9 +378,7 @@ inline Target passthrough(Target target) { return target; }
  *    | as<vector<tuple<int, string>>>();
  *
  */
-template<class TargetContainer,
-         class Delimiter,
-         class... Targets>
+template <class TargetContainer, class Delimiter, class... Targets>
 class SplitTo {
   Delimiter delimiter_;
  public:
@@ -401,9 +401,9 @@ class SplitTo {
   }
 };
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
-}  // namespace detail
+} // namespace detail
 
-}  // namespace gen
-}  // namespace folly
+} // namespace gen
+} // namespace folly

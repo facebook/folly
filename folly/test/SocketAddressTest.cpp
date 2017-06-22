@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,24 @@
 
 #include <folly/SocketAddress.h>
 
-#include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
+#include <system_error>
+
+#include <folly/experimental/TestUtil.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/Sockets.h>
+#include <folly/test/SocketAddressTestHelper.h>
 
 using namespace boost;
 using std::string;
 using std::cerr;
 using std::endl;
 using folly::SocketAddress;
+using folly::SocketAddressTestHelper;
+using folly::test::TemporaryDirectory;
+
+namespace fsp = folly::portability::sockets;
 
 TEST(SocketAddress, Size) {
   SocketAddress addr;
@@ -41,6 +50,15 @@ TEST(SocketAddress, ConstructFromIpv4) {
   const sockaddr_in* inaddr = reinterpret_cast<sockaddr_in*>(&addrStorage);
   EXPECT_EQ(inaddr->sin_addr.s_addr, htonl(0x01020304));
   EXPECT_EQ(inaddr->sin_port, htons(4321));
+}
+
+TEST(SocketAddress, StringConversion) {
+  SocketAddress addr("1.2.3.4", 4321);
+  EXPECT_EQ(addr.getFamily(), AF_INET);
+  EXPECT_EQ(addr.getAddressStr(), "1.2.3.4");
+  char buf[30];
+  addr.getAddressStr(buf, 2);
+  EXPECT_STREQ(buf, "1");
 }
 
 TEST(SocketAddress, IPv4ToStringConversion) {
@@ -138,9 +156,16 @@ TEST(SocketAddress, SetFromStrings) {
   EXPECT_EQ(addr.getPort(), 80);
 
   // Call setFromLocalIpPort() with an IP and port.
-  addr.setFromLocalIpPort("127.0.0.1:4321");
-  EXPECT_EQ(addr.getAddressStr(), "127.0.0.1");
-  EXPECT_EQ(addr.getPort(), 4321);
+  if (SocketAddressTestHelper::isIPv4Enabled()) {
+    addr.setFromLocalIpPort("127.0.0.1:4321");
+    EXPECT_EQ(addr.getAddressStr(), "127.0.0.1");
+    EXPECT_EQ(addr.getPort(), 4321);
+  }
+  if (SocketAddressTestHelper::isIPv6Enabled()) {
+    addr.setFromLocalIpPort("::1:4321");
+    EXPECT_EQ(addr.getAddressStr(), "::1");
+    EXPECT_EQ(addr.getPort(), 4321);
+  }
 
   // setFromIpPort() without an address should fail
   EXPECT_THROW(addr.setFromIpPort("4321"), std::invalid_argument);
@@ -652,7 +677,7 @@ void testSetFromSocket(const SocketAddress *serverBindAddr,
                        SocketAddress *serverPeerAddrRet,
                        SocketAddress *clientAddrRet,
                        SocketAddress *clientPeerAddrRet) {
-  int listenSock = socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
+  int listenSock = fsp::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
   REQUIRE_ERRNO(listenSock > 0, "failed to create listen socket");
   sockaddr_storage laddr;
   serverBindAddr->getAddress(&laddr);
@@ -670,7 +695,7 @@ void testSetFromSocket(const SocketAddress *serverBindAddr,
 
   // Note that we use the family from serverBindAddr here, since we allow
   // clientBindAddr to be nullptr.
-  int clientSock = socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
+  int clientSock = fsp::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
   REQUIRE_ERRNO(clientSock > 0, "failed to create client socket");
   if (clientBindAddr != nullptr) {
     sockaddr_storage clientAddr;
@@ -779,19 +804,9 @@ TEST(SocketAddress, SetFromSocketUnixAbstract) {
 
 TEST(SocketAddress, SetFromSocketUnixExplicit) {
   // Pick two temporary path names.
-  // We use mkstemp() just to avoid warnings about mktemp,
-  // but we need to remove the file to let the socket code bind to it.
-  char serverPath[] = "/tmp/SocketAddressTest.server.XXXXXX";
-  int serverPathFd = mkstemp(serverPath);
-  EXPECT_GE(serverPathFd, 0);
-  char clientPath[] = "/tmp/SocketAddressTest.client.XXXXXX";
-  int clientPathFd = mkstemp(clientPath);
-  EXPECT_GE(clientPathFd, 0);
-
-  int rc = unlink(serverPath);
-  EXPECT_EQ(rc, 0);
-  rc = unlink(clientPath);
-  EXPECT_EQ(rc, 0);
+  TemporaryDirectory tempDirectory("SocketAddressTest");
+  std::string serverPath = (tempDirectory.path() / "server").string();
+  std::string clientPath = (tempDirectory.path() / "client").string();
 
   SocketAddress serverBindAddr;
   SocketAddress clientBindAddr;
@@ -802,8 +817,8 @@ TEST(SocketAddress, SetFromSocketUnixExplicit) {
   SocketAddress clientAddr;
   SocketAddress clientPeerAddr;
   try {
-    serverBindAddr.setFromPath(serverPath);
-    clientBindAddr.setFromPath(clientPath);
+    serverBindAddr.setFromPath(serverPath.c_str());
+    clientBindAddr.setFromPath(clientPath.c_str());
 
     testSetFromSocket(&serverBindAddr, &clientBindAddr,
                       &listenAddr, &acceptAddr,
@@ -811,12 +826,12 @@ TEST(SocketAddress, SetFromSocketUnixExplicit) {
                       &clientAddr, &clientPeerAddr);
   } catch (...) {
     // Remove the socket files after we are done
-    unlink(serverPath);
-    unlink(clientPath);
+    unlink(serverPath.c_str());
+    unlink(clientPath.c_str());
     throw;
   }
-  unlink(serverPath);
-  unlink(clientPath);
+  unlink(serverPath.c_str());
+  unlink(clientPath.c_str());
 
   // The server socket's local address should be the same as the listen
   // address.
@@ -833,11 +848,8 @@ TEST(SocketAddress, SetFromSocketUnixExplicit) {
 
 TEST(SocketAddress, SetFromSocketUnixAnonymous) {
   // Test an anonymous client talking to a fixed-path unix socket.
-  char serverPath[] = "/tmp/SocketAddressTest.server.XXXXXX";
-  int serverPathFd = mkstemp(serverPath);
-  EXPECT_GE(serverPathFd, 0);
-  int rc = unlink(serverPath);
-  EXPECT_EQ(rc, 0);
+  TemporaryDirectory tempDirectory("SocketAddressTest");
+  std::string serverPath = (tempDirectory.path() / "server").string();
 
   SocketAddress serverBindAddr;
   SocketAddress listenAddr;
@@ -847,7 +859,7 @@ TEST(SocketAddress, SetFromSocketUnixAnonymous) {
   SocketAddress clientAddr;
   SocketAddress clientPeerAddr;
   try {
-    serverBindAddr.setFromPath(serverPath);
+    serverBindAddr.setFromPath(serverPath.c_str());
 
     testSetFromSocket(&serverBindAddr, nullptr,
                       &listenAddr, &acceptAddr,
@@ -855,10 +867,10 @@ TEST(SocketAddress, SetFromSocketUnixAnonymous) {
                       &clientAddr, &clientPeerAddr);
   } catch (...) {
     // Remove the socket file after we are done
-    unlink(serverPath);
+    unlink(serverPath.c_str());
     throw;
   }
-  unlink(serverPath);
+  unlink(serverPath.c_str());
 
   // The server socket's local address should be the same as the listen
   // address.
@@ -881,4 +893,31 @@ TEST(SocketAddress, ResetUnixAddress) {
 
   addy.reset();
   EXPECT_EQ(addy.getFamily(), AF_UNSPEC);
+}
+
+TEST(SocketAddress, ResetIPAddress) {
+  SocketAddress addr;
+  addr.setFromIpPort("127.0.0.1", 80);
+  addr.reset();
+  EXPECT_EQ(addr.getFamily(), AF_UNSPEC);
+  EXPECT_FALSE(addr.isInitialized());
+  EXPECT_TRUE(addr.empty());
+
+  addr.setFromIpPort("2620:0:1cfe:face:b00c::3:65535");
+  addr.reset();
+  EXPECT_EQ(addr.getFamily(), AF_UNSPEC);
+  EXPECT_FALSE(addr.isInitialized());
+  EXPECT_TRUE(addr.empty());
+}
+
+TEST(SocketAddress, ValidFamilyInet) {
+  SocketAddress addr;
+  EXPECT_FALSE(addr.isFamilyInet());
+  folly::IPAddress ipAddr("123.234.0.23");
+  addr.setFromIpAddrPort(ipAddr, 8888);
+  EXPECT_TRUE(addr.isFamilyInet());
+
+  folly::IPAddress ip6Addr("2620:0:1cfe:face:b00c::3");
+  SocketAddress addr6(ip6Addr, 8888);
+  EXPECT_TRUE(addr6.isFamilyInet());
 }

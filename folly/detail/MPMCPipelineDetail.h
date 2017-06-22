@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,8 +76,8 @@ class MPMCPipelineStageImpl {
   }
 
   uint64_t blockingRead(T& elem) noexcept {
-    uint64_t ticket = queue_.popTicket_++;
-    queue_.dequeueWithTicket(ticket, elem);
+    uint64_t ticket;
+    queue_.blockingReadWithTicket(ticket, elem);
     return ticket;
   }
 
@@ -87,12 +87,7 @@ class MPMCPipelineStageImpl {
 
   template <class... Args>
   bool readAndGetTicket(uint64_t& ticket, T& elem) noexcept {
-    if (queue_.tryObtainReadyPopTicket(ticket)) {
-      queue_.dequeueWithTicket(ticket, elem);
-      return true;
-    } else {
-      return false;
-    }
+    return queue_.readAndGetTicket(ticket, elem);
   }
 
   // See MPMCQueue<T>::writeCount; only works for the first stage

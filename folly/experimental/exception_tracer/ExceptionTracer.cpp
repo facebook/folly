@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,17 @@
 
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 
-#include <dlfcn.h>
 #include <exception>
 #include <iostream>
+
+#include <dlfcn.h>
+
 #include <glog/logging.h>
 
+#include <folly/String.h>
 #include <folly/experimental/exception_tracer/ExceptionAbi.h>
 #include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
-#include <folly/String.h>
 
 namespace {
 
@@ -44,6 +46,14 @@ namespace folly {
 namespace exception_tracer {
 
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
+  printExceptionInfo(out, info, SymbolizePrinter::COLOR_IF_TTY);
+  return out;
+}
+
+void printExceptionInfo(
+    std::ostream& out,
+    const ExceptionInfo& info,
+    int options) {
   out << "Exception type: ";
   if (info.type) {
     out << folly::demangle(*info.type);
@@ -55,20 +65,23 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       << ")\n";
   try {
     size_t frameCount = info.frames.size();
-    // Skip our own internal frames
-    static constexpr size_t skip = 3;
 
-    if (frameCount > skip) {
-      auto addresses = info.frames.data() + skip;
-      frameCount -= skip;
+    // Skip our own internal frames
+    static constexpr size_t kInternalFramesNumber = 3;
+    if (frameCount > kInternalFramesNumber) {
+      auto addresses = info.frames.data() + kInternalFramesNumber;
+      frameCount -= kInternalFramesNumber;
 
       std::vector<SymbolizedFrame> frames;
       frames.resize(frameCount);
 
-      Symbolizer symbolizer;
+      Symbolizer symbolizer(
+          (options & SymbolizePrinter::NO_FILE_AND_LINE)
+              ? Dwarf::LocationInfoMode::DISABLED
+              : Symbolizer::kDefaultLocationInfoMode);
       symbolizer.symbolize(addresses, frames.data(), frameCount);
 
-      OStreamSymbolizePrinter osp(out, SymbolizePrinter::COLOR_IF_TTY);
+      OStreamSymbolizePrinter osp(out, options);
       osp.println(addresses, frames.data(), frameCount);
     }
   } catch (const std::exception& e) {
@@ -76,7 +89,6 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
   } catch (...) {
     out << "\n !!! caught unexpected exception\n";
   }
-  return out;
 }
 
 namespace {
@@ -145,7 +157,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     // Dependent exceptions (thrown via std::rethrow_exception) aren't
     // standard ABI __cxa_exception objects, and are correctly labeled as
     // such in the exception_class field.  We could try to extract the
-    // primary exception type in horribly hacky ways, but, for now, NULL.
+    // primary exception type in horribly hacky ways, but, for now, nullptr.
     info.type =
       isAbiCppException(currentException) ?
       currentException->exceptionType :

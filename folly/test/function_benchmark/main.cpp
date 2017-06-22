@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@
 #include <folly/test/function_benchmark/benchmark_impl.h>
 #include <folly/test/function_benchmark/test_functions.h>
 
+#include <glog/logging.h>
+
 #include <folly/Benchmark.h>
 #include <folly/ScopeGuard.h>
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#include <folly/portability/GFlags.h>
 
 using folly::ScopeGuard;
 using folly::makeGuard;
@@ -43,6 +44,11 @@ BENCHMARK(fn_ptr_invoke, iters) {
 // Invoking a function through a std::function object
 BENCHMARK(std_function_invoke, iters) {
   BM_std_function_invoke_impl(iters, doNothing);
+}
+
+// Invoking a function through a folly::Function object
+BENCHMARK(Function_invoke, iters) {
+  BM_Function_invoke_impl(iters, doNothing);
 }
 
 // Invoking a member function through a member function pointer
@@ -111,6 +117,15 @@ BENCHMARK(std_function_create_invoke, iters) {
   }
 }
 
+// Creating a folly::Function object from a function pointer, and
+// invoking it
+BENCHMARK(Function_create_invoke, iters) {
+  for (size_t n = 0; n < iters; ++n) {
+    folly::Function<void()> fn = doNothing;
+    fn();
+  }
+}
+
 // Creating a pointer-to-member and invoking it
 BENCHMARK(mem_fn_create_invoke, iters) {
   TestClass tc;
@@ -152,6 +167,14 @@ BENCHMARK(scope_guard_std_function, iters) {
 BENCHMARK(scope_guard_std_function_rvalue, iters) {
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(std::function<void()>(doNothing));
+  }
+}
+
+// Using ScopeGuard to invoke a folly::Function,
+// but create the ScopeGuard with an rvalue to a folly::Function
+BENCHMARK(scope_guard_Function_rvalue, iters) {
+  for (size_t n = 0; n < iters; ++n) {
+    ScopeGuard g = makeGuard(folly::Function<void()>(doNothing));
   }
 }
 
@@ -257,6 +280,40 @@ BENCHMARK(return_code, iters) {
 BENCHMARK(return_code_noexcept, iters) {
   for (size_t n = 0; n < iters; ++n) {
     returnCodeNoExcept(false);
+  }
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(std_function_create_move_invoke, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    std::function<void()> f(a);
+    invoke(std::move(f));
+  }
+}
+
+BENCHMARK(Function_create_move_invoke, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    folly::Function<void()> f(a);
+    invoke(std::move(f));
+  }
+}
+
+BENCHMARK(std_function_create_move_invoke_ref, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    std::function<void()> f(std::ref(a));
+    invoke(std::move(f));
+  }
+}
+
+BENCHMARK(Function_create_move_invoke_ref, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    folly::Function<void()> f(std::ref(a));
+    invoke(std::move(f));
   }
 }
 

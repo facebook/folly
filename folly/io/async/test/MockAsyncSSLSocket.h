@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 #pragma once
-#include <gmock/gmock.h>
 
 #include <folly/io/async/AsyncSSLSocket.h>
+#include <folly/portability/GMock.h>
 
 namespace folly { namespace test {
 
@@ -42,22 +42,22 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   MOCK_CONST_METHOD0(good, bool());
   MOCK_CONST_METHOD0(readable, bool());
   MOCK_CONST_METHOD0(hangup, bool());
-  MOCK_CONST_METHOD2(
-   getSelectedNextProtocol,
-   void(const unsigned char**, unsigned*));
-  MOCK_CONST_METHOD2(
-   getSelectedNextProtocolNoThrow,
-   bool(const unsigned char**, unsigned*));
-  MOCK_METHOD1(setPeek, void(bool));
+  MOCK_CONST_METHOD3(getSelectedNextProtocol,
+                     void(const unsigned char**,
+                          unsigned*,
+                          SSLContext::NextProtocolType*));
+  MOCK_CONST_METHOD3(getSelectedNextProtocolNoThrow,
+                     bool(const unsigned char**,
+                          unsigned*,
+                          SSLContext::NextProtocolType*));
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
 
   void sslConn(
-    AsyncSSLSocket::HandshakeCB* cb,
-    uint64_t timeout,
-    const SSLContext::SSLVerifyPeerEnum& verify)
-      override {
-    if (timeout > 0) {
-      handshakeTimeout_.scheduleTimeout((uint32_t)timeout);
+      AsyncSSLSocket::HandshakeCB* cb,
+      std::chrono::milliseconds timeout,
+      const SSLContext::SSLVerifyPeerEnum& verify) override {
+    if (timeout > std::chrono::milliseconds::zero()) {
+      handshakeTimeout_.scheduleTimeout(timeout);
     }
 
     state_ = StateEnum::ESTABLISHED;
@@ -68,11 +68,10 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   }
 
   void sslAccept(
-    AsyncSSLSocket::HandshakeCB* cb,
-    uint32_t timeout,
-    const SSLContext::SSLVerifyPeerEnum& verify)
-      override {
-    if (timeout > 0) {
+      AsyncSSLSocket::HandshakeCB* cb,
+      std::chrono::milliseconds timeout,
+      const SSLContext::SSLVerifyPeerEnum& verify) override {
+    if (timeout > std::chrono::milliseconds::zero()) {
       handshakeTimeout_.scheduleTimeout(timeout);
     }
 
@@ -84,14 +83,18 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   }
 
   MOCK_METHOD3(
-   sslConnectMockable,
-   void(AsyncSSLSocket::HandshakeCB*, uint64_t,
-     const SSLContext::SSLVerifyPeerEnum&));
+      sslConnectMockable,
+      void(
+          AsyncSSLSocket::HandshakeCB*,
+          std::chrono::milliseconds,
+          const SSLContext::SSLVerifyPeerEnum&));
 
   MOCK_METHOD3(
-   sslAcceptMockable,
-   void(AsyncSSLSocket::HandshakeCB*, uint32_t,
-     const SSLContext::SSLVerifyPeerEnum&));
+      sslAcceptMockable,
+      void(
+          AsyncSSLSocket::HandshakeCB*,
+          std::chrono::milliseconds,
+          const SSLContext::SSLVerifyPeerEnum&));
 };
 
 }}

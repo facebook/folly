@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,16 @@
 
 #include <memory>
 #include <thread>
+
+#include <folly/Baton.h>
 #include <folly/io/async/EventBase.h>
-#include <folly/io/async/EventBaseManager.h>
 
 namespace folly {
+
+class EventBaseManager;
+template <class Iter>
+class Range;
+typedef Range<const char*> StringPiece;
 
 /**
  * A helper class to start a new thread running a EventBase loop.
@@ -32,34 +38,35 @@ namespace folly {
  */
 class ScopedEventBaseThread {
  public:
+  ScopedEventBaseThread();
+  explicit ScopedEventBaseThread(const StringPiece& name);
+  explicit ScopedEventBaseThread(EventBaseManager* ebm);
   explicit ScopedEventBaseThread(
-      bool autostart = true,
-      EventBaseManager* ebm = nullptr);
-  explicit ScopedEventBaseThread(
-      EventBaseManager* ebm);
+      EventBaseManager* ebm,
+      const StringPiece& name);
   ~ScopedEventBaseThread();
 
-  ScopedEventBaseThread(ScopedEventBaseThread&& other) noexcept;
-  ScopedEventBaseThread &operator=(ScopedEventBaseThread&& other) noexcept;
-
-  /**
-   * Get a pointer to the EventBase driving this thread.
-   */
   EventBase* getEventBase() const {
-    return eventBase_.get();
+    return &eb_;
   }
 
-  void start();
-  void stop();
-  bool running();
+  std::thread::id getThreadId() const {
+    return th_.get_id();
+  }
 
  private:
+  ScopedEventBaseThread(ScopedEventBaseThread&& other) = delete;
+  ScopedEventBaseThread& operator=(ScopedEventBaseThread&& other) = delete;
+
   ScopedEventBaseThread(const ScopedEventBaseThread& other) = delete;
   ScopedEventBaseThread& operator=(const ScopedEventBaseThread& other) = delete;
 
   EventBaseManager* ebm_;
-  std::unique_ptr<EventBase> eventBase_;
-  std::unique_ptr<std::thread> thread_;
+  union {
+    mutable EventBase eb_;
+  };
+  std::thread th_;
+  folly::Baton<> stop_;
 };
 
 }

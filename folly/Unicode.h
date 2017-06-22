@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 
 // Some utility routines relating to unicode.
 
-#ifndef FOLLY_UNICODE_H_
-#define FOLLY_UNICODE_H_
+#pragma once
 
-#include <folly/FBString.h>
+#include <string>
 
 namespace folly {
 
@@ -30,10 +29,16 @@ namespace folly {
  *
  * Return value is undefined if `cp' is an invalid code point.
  */
-fbstring codePointToUtf8(char32_t cp);
+std::string codePointToUtf8(char32_t cp);
+
+/*
+ * Decode a single unicode code point from UTF-8 byte sequence.
+ */
+char32_t utf8ToCodePoint(
+    const unsigned char*& p,
+    const unsigned char* const e,
+    bool skipOnError);
 
 //////////////////////////////////////////////////////////////////////
 
 }
-
-#endif

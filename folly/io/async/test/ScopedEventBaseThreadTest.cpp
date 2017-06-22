@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,13 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 
 #include <chrono>
-#include <folly/Baton.h>
+#include <string>
 
-#include <gtest/gtest.h>
+#include <folly/Baton.h>
+#include <folly/Optional.h>
+#include <folly/ThreadName.h>
+#include <folly/io/async/EventBaseManager.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace std::chrono;
@@ -32,59 +36,55 @@ TEST_F(ScopedEventBaseThreadTest, example) {
 
   Baton<> done;
   sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  done.timed_wait(steady_clock::now() + milliseconds(100));
+  ASSERT_TRUE(done.timed_wait(seconds(1)));
 }
 
-TEST_F(ScopedEventBaseThreadTest, start_stop) {
-  ScopedEventBaseThread sebt(false);
+TEST_F(ScopedEventBaseThreadTest, named_example) {
+  static constexpr StringPiece kThreadName{"named_example"};
 
-  for (size_t i = 0; i < 4; ++i) {
-    EXPECT_EQ(nullptr, sebt.getEventBase());
-    sebt.start();
-    EXPECT_NE(nullptr, sebt.getEventBase());
+  Optional<std::string> createdThreadName;
+  Baton<> done;
 
-    Baton<> done;
-    sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-    done.timed_wait(steady_clock::now() + milliseconds(100));
+  ScopedEventBaseThread sebt{kThreadName};
+  sebt.getEventBase()->runInEventBaseThread([&] {
+    createdThreadName = folly::getCurrentThreadName();
+    done.post();
+  });
 
-    EXPECT_NE(nullptr, sebt.getEventBase());
-    sebt.stop();
-    EXPECT_EQ(nullptr, sebt.getEventBase());
+  ASSERT_TRUE(done.timed_wait(seconds(1)));
+  if (createdThreadName) {
+    ASSERT_EQ(kThreadName.toString(), createdThreadName.value());
   }
 }
 
-TEST_F(ScopedEventBaseThreadTest, move) {
-  auto sebt0 = ScopedEventBaseThread();
-  auto sebt1 = std::move(sebt0);
-  auto sebt2 = std::move(sebt1);
-
-  EXPECT_EQ(nullptr, sebt0.getEventBase());
-  EXPECT_EQ(nullptr, sebt1.getEventBase());
-  EXPECT_NE(nullptr, sebt2.getEventBase());
-
-  Baton<> done;
-  sebt2.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  done.timed_wait(steady_clock::now() + milliseconds(100));
+TEST_F(ScopedEventBaseThreadTest, default_manager) {
+  auto ebm = EventBaseManager::get();
+  ScopedEventBaseThread sebt;
+  auto sebt_eb = sebt.getEventBase();
+  auto ebm_eb = static_cast<EventBase*>(nullptr);
+  sebt_eb->runInEventBaseThreadAndWait([&] { ebm_eb = ebm->getEventBase(); });
+  EXPECT_EQ(uintptr_t(sebt_eb), uintptr_t(ebm_eb));
 }
 
-TEST_F(ScopedEventBaseThreadTest, self_move) {
-  ScopedEventBaseThread sebt0;
-  auto sebt = std::move(sebt0);
-
-  EXPECT_NE(nullptr, sebt.getEventBase());
-
-  Baton<> done;
-  sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  done.timed_wait(steady_clock::now() + milliseconds(100));
-}
-
-TEST_F(ScopedEventBaseThreadTest, manager) {
+TEST_F(ScopedEventBaseThreadTest, custom_manager) {
   EventBaseManager ebm;
   ScopedEventBaseThread sebt(&ebm);
   auto sebt_eb = sebt.getEventBase();
-  auto ebm_eb = (EventBase*)nullptr;
-  sebt_eb->runInEventBaseThreadAndWait([&] {
-      ebm_eb = ebm.getEventBase();
-  });
+  auto ebm_eb = static_cast<EventBase*>(nullptr);
+  sebt_eb->runInEventBaseThreadAndWait([&] { ebm_eb = ebm.getEventBase(); });
   EXPECT_EQ(uintptr_t(sebt_eb), uintptr_t(ebm_eb));
+}
+
+TEST_F(ScopedEventBaseThreadTest, eb_dtor_in_io_thread) {
+  Optional<ScopedEventBaseThread> sebt;
+  sebt.emplace();
+  auto const io_thread_id = sebt->getThreadId();
+  EXPECT_NE(this_thread::get_id(), io_thread_id) << "sanity";
+
+  auto const eb = sebt->getEventBase();
+  thread::id eb_dtor_thread_id;
+  eb->runOnDestruction(new EventBase::FunctionLoopCallback(
+      [&] { eb_dtor_thread_id = this_thread::get_id(); }));
+  sebt.clear();
+  EXPECT_EQ(io_thread_id, eb_dtor_thread_id);
 }

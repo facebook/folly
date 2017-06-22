@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 #include <folly/MacAddress.h>
+
+#include <ostream>
 
 #include <folly/Exception.h>
 #include <folly/IPAddressV6.h>
@@ -126,7 +128,7 @@ void MacAddress::parse(StringPiece str) {
     }
 
     // Update parsed with the newly parsed byte
-    parsed[byteIndex] = ((upper << 4) | lower);
+    parsed[byteIndex] = uint8_t((upper << 4) | lower);
   }
 
   if (p != str.end()) {

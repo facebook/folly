@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ class RecordIOReader::Iterator : public boost::iterator_facade<
   bool equal(const Iterator& other) const { return range_ == other.range_; }
   void increment() {
     size_t skip = recordio_helpers::headerSize() + recordAndPos_.first.size();
-    recordAndPos_.second += skip;
+    recordAndPos_.second += off_t(skip);
     range_.advance(skip);
     advanceToValid();
   }

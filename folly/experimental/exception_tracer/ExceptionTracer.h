@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@
 //
 // Exception tracer library.
 
-#ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
-#define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
+#pragma once
 
 #include <cstdint>
 #include <iosfwd>
@@ -36,6 +35,10 @@ struct ExceptionInfo {
   std::vector<uintptr_t> frames;  // front() is top of stack
 };
 
+void printExceptionInfo(
+    std::ostream& out,
+    const ExceptionInfo& info,
+    int options);
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info);
 
 /**
@@ -51,5 +54,3 @@ void installHandlers();
 
 }  // namespace exception_tracer
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_ */

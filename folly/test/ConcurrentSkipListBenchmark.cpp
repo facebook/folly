@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,16 @@
 // @author: Xin Liu <xliux@fb.com>
 
 #include <map>
+#include <random>
 #include <set>
 #include <thread>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <folly/Benchmark.h>
 #include <folly/ConcurrentSkipList.h>
 #include <folly/Hash.h>
 #include <folly/RWSpinLock.h>
-
+#include <folly/portability/GFlags.h>
+#include <glog/logging.h>
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");
 
@@ -54,7 +54,7 @@ static void initData() {
   for (int i = 0; i < kMaxValue; ++i) {
     gData[i] = i;
   }
-  std::random_shuffle(gData.begin(), gData.end());
+  std::shuffle(gData.begin(), gData.end(), std::mt19937{});
 }
 
 // single thread benchmarks
@@ -375,22 +375,22 @@ class ConcurrentAccessData {
       // half new values and half already in the list
       writeValues_.push_back((rand() % 2) + 2 * i);
     }
-    std::random_shuffle(readValues_.begin(), readValues_.end());
-    std::random_shuffle(deleteValues_.begin(), deleteValues_.end());
-    std::random_shuffle(writeValues_.begin(), writeValues_.end());
+    std::shuffle(readValues_.begin(), readValues_.end(), std::mt19937{});
+    std::shuffle(deleteValues_.begin(), deleteValues_.end(), std::mt19937{});
+    std::shuffle(writeValues_.begin(), writeValues_.end(), std::mt19937{});
   }
 
   ~ConcurrentAccessData() {
     FOR_EACH(lock, locks_) delete *lock;
   }
 
-  inline bool skipListFind(int idx, ValueType val) {
+  inline bool skipListFind(int /* idx */, ValueType val) {
     return skipList_.contains(val);
   }
-  inline void skipListInsert(int idx, ValueType val) {
+  inline void skipListInsert(int /* idx */, ValueType val) {
     skipList_.add(val);
   }
-  inline void skipListErase(int idx, ValueType val) {
+  inline void skipListErase(int /* idx */, ValueType val) {
     skipList_.remove(val);
   }
 

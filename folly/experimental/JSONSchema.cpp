@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ struct SchemaValidatorContext final {
   explicit SchemaValidatorContext(const dynamic& s) : schema(s) {}
 
   const dynamic& schema;
-  std::unordered_map<fbstring, IValidator*> refs;
+  std::unordered_map<std::string, IValidator*> refs;
 };
 
 /**
@@ -117,7 +117,7 @@ struct SchemaValidator final : IValidator, public Validator {
     // We break apart the constructor and actually loading the schema so that
     // we can handle the case where a schema refers to itself, e.g. via
     // "$ref": "#".
-    auto v = make_unique<SchemaValidator>();
+    auto v = std::make_unique<SchemaValidator>();
     v->loadSchema(context, schema);
     return v;
   }
@@ -219,7 +219,7 @@ struct SizeValidator final : IValidator {
     if (value.type() != type_) {
       return none;
     }
-    if (!Comparison()(length_, value.size())) {
+    if (!Comparison()(length_, int64_t(value.size()))) {
       return makeError("different length string/array/object", value);
     }
     return none;
@@ -231,7 +231,7 @@ struct SizeValidator final : IValidator {
 struct StringPatternValidator final : IValidator {
   explicit StringPatternValidator(const dynamic& schema) {
     if (schema.isString()) {
-      regex_ = boost::regex(schema.getString().toStdString());
+      regex_ = boost::regex(schema.getString());
     }
   }
 
@@ -240,7 +240,7 @@ struct StringPatternValidator final : IValidator {
     if (!value.isString() || regex_.empty()) {
       return none;
     }
-    if (!boost::regex_search(value.getString().toStdString(), regex_)) {
+    if (!boost::regex_search(value.getString(), regex_)) {
       return makeError("string matching regex", value);
     }
     return none;
@@ -360,7 +360,7 @@ struct RequiredValidator final : IValidator {
   }
 
  private:
-  std::vector<fbstring> properties_;
+  std::vector<std::string> properties_;
 };
 
 struct PropertiesValidator final : IValidator {
@@ -381,7 +381,7 @@ struct PropertiesValidator final : IValidator {
       for (const auto& pair : patternProperties->items()) {
         if (pair.first.isString()) {
           patternPropertyValidators_.emplace_back(
-              boost::regex(pair.first.getString().toStdString()),
+              boost::regex(pair.first.getString()),
               SchemaValidator::make(context, pair.second));
         }
       }
@@ -405,7 +405,7 @@ struct PropertiesValidator final : IValidator {
       if (!pair.first.isString()) {
         continue;
       }
-      const fbstring& key = pair.first.getString();
+      const std::string& key = pair.first.getString();
       auto it = propertyValidators_.find(key);
       bool matched = false;
       if (it != propertyValidators_.end()) {
@@ -415,7 +415,7 @@ struct PropertiesValidator final : IValidator {
         matched = true;
       }
 
-      const std::string& strkey = key.toStdString();
+      const std::string& strkey = key;
       for (const auto& ppv : patternPropertyValidators_) {
         if (boost::regex_search(strkey, ppv.first)) {
           if (auto se = vc.validate(ppv.second.get(), pair.second)) {
@@ -440,7 +440,8 @@ struct PropertiesValidator final : IValidator {
     return none;
   }
 
-  std::unordered_map<fbstring, std::unique_ptr<IValidator>> propertyValidators_;
+  std::unordered_map<std::string, std::unique_ptr<IValidator>>
+      propertyValidators_;
   std::vector<std::pair<boost::regex, std::unique_ptr<IValidator>>>
       patternPropertyValidators_;
   std::unique_ptr<IValidator> additionalPropertyValidator_;
@@ -457,7 +458,7 @@ struct DependencyValidator final : IValidator {
         continue;
       }
       if (pair.second.isArray()) {
-        auto p = make_pair(pair.first.getString(), std::vector<fbstring>());
+        auto p = make_pair(pair.first.getString(), std::vector<std::string>());
         for (const auto& item : pair.second) {
           if (item.isString()) {
             p.second.push_back(item.getString());
@@ -496,8 +497,8 @@ struct DependencyValidator final : IValidator {
     return none;
   }
 
-  std::vector<std::pair<fbstring, std::vector<fbstring>>> propertyDep_;
-  std::vector<std::pair<fbstring, std::unique_ptr<IValidator>>> schemaDep_;
+  std::vector<std::pair<std::string, std::vector<std::string>>> propertyDep_;
+  std::vector<std::pair<std::string, std::unique_ptr<IValidator>>> schemaDep_;
 };
 
 struct EnumValidator final : IValidator {
@@ -615,7 +616,7 @@ struct AnyOfValidator final : IValidator {
         errors.emplace_back(*se);
       }
     }
-    const int success = validators_.size() - errors.size();
+    const auto success = validators_.size() - errors.size();
     if (success == 0) {
       return makeError("at least one valid schema", value);
     } else if (success > 1 && type_ == Type::EXACTLY_ONE) {
@@ -666,7 +667,7 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
     if (p->isString() && p->stringPiece()[0] == '#') {
       auto it = context.refs.find(p->getString());
       if (it != context.refs.end()) {
-        validators_.emplace_back(make_unique<RefValidator>(it->second));
+        validators_.emplace_back(std::make_unique<RefValidator>(it->second));
         return;
       }
 
@@ -690,7 +691,7 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
               s = s->get_ptr(pos);
               continue;
             }
-          } catch (const std::range_error& e) {
+          } catch (const std::range_error&) {
             // ignore
           }
         }
@@ -703,7 +704,7 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
       // future references to it will just see that pointer and won't try to
       // keep parsing further.
       if (s) {
-        auto v = make_unique<SchemaValidator>();
+        auto v = std::make_unique<SchemaValidator>();
         context.refs[p->getString()] = v.get();
         v->loadSchema(context, *s);
         validators_.emplace_back(std::move(v));
@@ -714,34 +715,34 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
 
   // Numeric validators
   if (const auto* p = schema.get_ptr("multipleOf")) {
-    validators_.emplace_back(make_unique<MultipleOfValidator>(*p));
+    validators_.emplace_back(std::make_unique<MultipleOfValidator>(*p));
   }
   if (const auto* p = schema.get_ptr("maximum")) {
-    validators_.emplace_back(
-        make_unique<ComparisonValidator>(*p,
-                                         schema.get_ptr("exclusiveMaximum"),
-                                         ComparisonValidator::Type::MAX));
+    validators_.emplace_back(std::make_unique<ComparisonValidator>(
+        *p,
+        schema.get_ptr("exclusiveMaximum"),
+        ComparisonValidator::Type::MAX));
   }
   if (const auto* p = schema.get_ptr("minimum")) {
-    validators_.emplace_back(
-        make_unique<ComparisonValidator>(*p,
-                                         schema.get_ptr("exclusiveMinimum"),
-                                         ComparisonValidator::Type::MIN));
+    validators_.emplace_back(std::make_unique<ComparisonValidator>(
+        *p,
+        schema.get_ptr("exclusiveMinimum"),
+        ComparisonValidator::Type::MIN));
   }
 
   // String validators
   if (const auto* p = schema.get_ptr("maxLength")) {
     validators_.emplace_back(
-        make_unique<SizeValidator<std::greater_equal<int64_t>>>(
+        std::make_unique<SizeValidator<std::greater_equal<int64_t>>>(
             *p, dynamic::Type::STRING));
   }
   if (const auto* p = schema.get_ptr("minLength")) {
     validators_.emplace_back(
-        make_unique<SizeValidator<std::less_equal<int64_t>>>(
+        std::make_unique<SizeValidator<std::less_equal<int64_t>>>(
             *p, dynamic::Type::STRING));
   }
   if (const auto* p = schema.get_ptr("pattern")) {
-    validators_.emplace_back(make_unique<StringPatternValidator>(*p));
+    validators_.emplace_back(std::make_unique<StringPatternValidator>(*p));
   }
 
   // Array validators
@@ -749,20 +750,20 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
   const auto* additionalItems = schema.get_ptr("additionalItems");
   if (items || additionalItems) {
     validators_.emplace_back(
-        make_unique<ArrayItemsValidator>(context, items, additionalItems));
+        std::make_unique<ArrayItemsValidator>(context, items, additionalItems));
   }
   if (const auto* p = schema.get_ptr("maxItems")) {
     validators_.emplace_back(
-        make_unique<SizeValidator<std::greater_equal<int64_t>>>(
+        std::make_unique<SizeValidator<std::greater_equal<int64_t>>>(
             *p, dynamic::Type::ARRAY));
   }
   if (const auto* p = schema.get_ptr("minItems")) {
     validators_.emplace_back(
-        make_unique<SizeValidator<std::less_equal<int64_t>>>(
+        std::make_unique<SizeValidator<std::less_equal<int64_t>>>(
             *p, dynamic::Type::ARRAY));
   }
   if (const auto* p = schema.get_ptr("uniqueItems")) {
-    validators_.emplace_back(make_unique<ArrayUniqueValidator>(*p));
+    validators_.emplace_back(std::make_unique<ArrayUniqueValidator>(*p));
   }
 
   // Object validators
@@ -770,46 +771,47 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
   const auto* patternProperties = schema.get_ptr("patternProperties");
   const auto* additionalProperties = schema.get_ptr("additionalProperties");
   if (properties || patternProperties || additionalProperties) {
-    validators_.emplace_back(make_unique<PropertiesValidator>(
+    validators_.emplace_back(std::make_unique<PropertiesValidator>(
         context, properties, patternProperties, additionalProperties));
   }
   if (const auto* p = schema.get_ptr("maxProperties")) {
     validators_.emplace_back(
-        make_unique<SizeValidator<std::greater_equal<int64_t>>>(
+        std::make_unique<SizeValidator<std::greater_equal<int64_t>>>(
             *p, dynamic::Type::OBJECT));
   }
   if (const auto* p = schema.get_ptr("minProperties")) {
     validators_.emplace_back(
-        make_unique<SizeValidator<std::less_equal<int64_t>>>(
+        std::make_unique<SizeValidator<std::less_equal<int64_t>>>(
             *p, dynamic::Type::OBJECT));
   }
   if (const auto* p = schema.get_ptr("required")) {
-    validators_.emplace_back(make_unique<RequiredValidator>(*p));
+    validators_.emplace_back(std::make_unique<RequiredValidator>(*p));
   }
 
   // Misc validators
   if (const auto* p = schema.get_ptr("dependencies")) {
-    validators_.emplace_back(make_unique<DependencyValidator>(context, *p));
+    validators_.emplace_back(
+        std::make_unique<DependencyValidator>(context, *p));
   }
   if (const auto* p = schema.get_ptr("enum")) {
-    validators_.emplace_back(make_unique<EnumValidator>(*p));
+    validators_.emplace_back(std::make_unique<EnumValidator>(*p));
   }
   if (const auto* p = schema.get_ptr("type")) {
-    validators_.emplace_back(make_unique<TypeValidator>(*p));
+    validators_.emplace_back(std::make_unique<TypeValidator>(*p));
   }
   if (const auto* p = schema.get_ptr("allOf")) {
-    validators_.emplace_back(make_unique<AllOfValidator>(context, *p));
+    validators_.emplace_back(std::make_unique<AllOfValidator>(context, *p));
   }
   if (const auto* p = schema.get_ptr("anyOf")) {
-    validators_.emplace_back(make_unique<AnyOfValidator>(
+    validators_.emplace_back(std::make_unique<AnyOfValidator>(
         context, *p, AnyOfValidator::Type::ONE_OR_MORE));
   }
   if (const auto* p = schema.get_ptr("oneOf")) {
-    validators_.emplace_back(make_unique<AnyOfValidator>(
+    validators_.emplace_back(std::make_unique<AnyOfValidator>(
         context, *p, AnyOfValidator::Type::EXACTLY_ONE));
   }
   if (const auto* p = schema.get_ptr("not")) {
-    validators_.emplace_back(make_unique<NotValidator>(context, *p));
+    validators_.emplace_back(std::make_unique<NotValidator>(context, *p));
   }
 }
 
@@ -1013,13 +1015,15 @@ folly::Singleton<Validator> schemaValidator([]() {
 Validator::~Validator() = default;
 
 std::unique_ptr<Validator> makeValidator(const dynamic& schema) {
-  auto v = make_unique<SchemaValidator>();
+  auto v = std::make_unique<SchemaValidator>();
   SchemaValidatorContext context(schema);
   context.refs["#"] = v.get();
   v->loadSchema(context, schema);
   return std::move(v);
 }
 
-Validator* makeSchemaValidator() { return schemaValidator.get(); }
+std::shared_ptr<Validator> makeSchemaValidator() {
+  return schemaValidator.try_get();
+}
 }
 }

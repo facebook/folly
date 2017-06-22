@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_CURSOR_H
-#define FOLLY_CURSOR_H
+#pragma once
 
 #include <assert.h>
 #include <cstdarg>
@@ -25,12 +24,13 @@
 #include <memory>
 
 #include <folly/Bits.h>
-#include <folly/io/IOBuf.h>
-#include <folly/io/IOBufQueue.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/io/IOBuf.h>
+#include <folly/io/IOBufQueue.h>
+#include <folly/portability/BitsFunctexcept.h>
 
 /**
  * Cursor class for fast iteration over IOBuf chains.
@@ -87,10 +87,10 @@ class CursorBase {
   /**
    * Return the remaining space available in the current IOBuf.
    *
-   * May return 0 if the cursor is at the end of an IOBuf.  Use peek() instead
-   * if you want to avoid this.  peek() will advance to the next non-empty
-   * IOBuf (up to the end of the chain) if the cursor is currently pointing at
-   * the end of a buffer.
+   * May return 0 if the cursor is at the end of an IOBuf.  Use peekBytes()
+   * instead if you want to avoid this.  peekBytes() will advance to the next
+   * non-empty IOBuf (up to the end of the chain) if the cursor is currently
+   * pointing at the end of a buffer.
    */
   size_t length() const {
     return crtBuf_->length() - offset_;
@@ -106,6 +106,27 @@ class CursorBase {
     CursorBase end(buffer_->prev());
     end.offset_ = end.buffer_->length();
     return end - *this;
+  }
+
+  /**
+   * Return true if the cursor could advance the specified number of bytes
+   * from its current position.
+   * This is useful for applications that want to do checked reads instead of
+   * catching exceptions and is more efficient than using totalLength as it
+   * walks the minimal set of buffers in the chain to determine the result.
+   */
+  bool canAdvance(size_t amount) const {
+    const IOBuf* nextBuf = crtBuf_;
+    size_t available = length();
+    do {
+      if (available >= amount) {
+        return true;
+      }
+      amount -= available;
+      nextBuf = nextBuf->next();
+      available = nextBuf->length();
+    } while (nextBuf != buffer_);
+    return false;
   }
 
   /*
@@ -132,6 +153,17 @@ class CursorBase {
     return true;
   }
 
+  /**
+   * Advances the cursor to the end of the entire IOBuf chain.
+   */
+  void advanceToEnd() {
+    offset_ = buffer_->prev()->length();
+    if (crtBuf_ != buffer_->prev()) {
+      crtBuf_ = buffer_->prev();
+      static_cast<Derived*>(this)->advanceDone();
+    }
+  }
+
   Derived& operator+=(size_t offset) {
     Derived* p = static_cast<Derived*>(this);
     p->skip(offset);
@@ -140,6 +172,17 @@ class CursorBase {
   Derived operator+(size_t offset) const {
     Derived other(*this);
     other.skip(offset);
+    return other;
+  }
+
+  Derived& operator-=(size_t offset) {
+    Derived* p = static_cast<Derived*>(this);
+    p->retreat(offset);
+    return *p;
+  }
+  Derived operator-(size_t offset) const {
+    Derived other(*this);
+    other.retreat(offset);
     return other;
   }
 
@@ -157,13 +200,36 @@ class CursorBase {
   }
 
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value, T>::type read() {
-    T val;
+  typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
+      T& val) {
     if (LIKELY(length() >= sizeof(T))) {
       val = loadUnaligned<T>(data());
       offset_ += sizeof(T);
-    } else {
-      pullSlow(&val, sizeof(T));
+      advanceBufferIfEmpty();
+      return true;
+    }
+    return pullAtMostSlow(&val, sizeof(T)) == sizeof(T);
+  }
+
+  template <class T>
+  bool tryReadBE(T& val) {
+    const bool result = tryRead(val);
+    val = Endian::big(val);
+    return result;
+  }
+
+  template <class T>
+  bool tryReadLE(T& val) {
+    const bool result = tryRead(val);
+    val = Endian::little(val);
+    return result;
+  }
+
+  template <class T>
+  T read() {
+    T val{};
+    if (!tryRead(val)) {
+      std::__throw_out_of_range("underflow");
     }
     return val;
   }
@@ -191,6 +257,7 @@ class CursorBase {
     if (LIKELY(length() >= len)) {
       str.append(reinterpret_cast<const char*>(data()), len);
       offset_ += len;
+      advanceBufferIfEmpty();
     } else {
       readFixedStringSlow(&str, len);
     }
@@ -207,41 +274,41 @@ class CursorBase {
    */
   std::string readTerminatedString(
       char termChar = '\0',
-      size_t maxLength = std::numeric_limits<size_t>::max()) {
-    std::string str;
+      size_t maxLength = std::numeric_limits<size_t>::max());
 
-    for (;;) {
-      const uint8_t* buf = data();
-      size_t buflen = length();
+  /*
+   * Read all bytes until the specified predicate returns true.
+   *
+   * The predicate will be called on each byte in turn, until it returns false
+   * or until the end of the IOBuf chain is reached.
+   *
+   * Returns the result as a string.
+   */
+  template <typename Predicate>
+  std::string readWhile(const Predicate& predicate);
 
-      size_t i = 0;
-      while (i < buflen && buf[i] != termChar) {
-        ++i;
+  /*
+   * Read all bytes until the specified predicate returns true.
+   *
+   * This is a more generic version of readWhile() takes an arbitrary Output
+   * object, and calls Output::append() with each chunk of matching data.
+   */
+  template <typename Predicate, typename Output>
+  void readWhile(const Predicate& predicate, Output& out);
 
-        // Do this check after incrementing 'i', as even though we start at the
-        // 0 byte, it still represents a single character
-        if (str.length() + i >= maxLength) {
-          throw std::length_error("string overflow");
-        }
-      }
-
-      str.append(reinterpret_cast<const char*>(buf), i);
-      if (i < buflen) {
-        skip(i + 1);
-        return str;
-      }
-
-      skip(i);
-
-      if (UNLIKELY(!tryAdvanceBuffer())) {
-        throw std::out_of_range("string underflow");
-      }
-    }
-  }
+  /*
+   * Skip all bytes until the specified predicate returns true.
+   *
+   * The predicate will be called on each byte in turn, until it returns false
+   * or until the end of the IOBuf chain is reached.
+   */
+  template <typename Predicate>
+  void skipWhile(const Predicate& predicate);
 
   size_t skipAtMost(size_t len) {
     if (LIKELY(length() >= len)) {
       offset_ += len;
+      advanceBufferIfEmpty();
       return len;
     }
     return skipAtMostSlow(len);
@@ -250,8 +317,25 @@ class CursorBase {
   void skip(size_t len) {
     if (LIKELY(length() >= len)) {
       offset_ += len;
+      advanceBufferIfEmpty();
     } else {
       skipSlow(len);
+    }
+  }
+
+  size_t retreatAtMost(size_t len) {
+    if (len <= offset_) {
+      offset_ -= len;
+      return len;
+    }
+    return retreatAtMostSlow(len);
+  }
+
+  void retreat(size_t len) {
+    if (len <= offset_) {
+      offset_ -= len;
+    } else {
+      retreatSlow(len);
     }
   }
 
@@ -260,6 +344,7 @@ class CursorBase {
     if (LIKELY(length() >= len)) {
       memcpy(buf, data(), len);
       offset_ += len;
+      advanceBufferIfEmpty();
       return len;
     }
     return pullAtMostSlow(buf, len);
@@ -269,6 +354,7 @@ class CursorBase {
     if (LIKELY(length() >= len)) {
       memcpy(buf, data(), len);
       offset_ += len;
+      advanceBufferIfEmpty();
     } else {
       pullSlow(buf, len);
     }
@@ -277,32 +363,41 @@ class CursorBase {
   /**
    * Return the available data in the current buffer.
    * If you want to gather more data from the chain into a contiguous region
-   * (for hopefully zero-copy access), use gather() before peek().
+   * (for hopefully zero-copy access), use gather() before peekBytes().
    */
-  std::pair<const uint8_t*, size_t> peek() {
+  ByteRange peekBytes() {
     // Ensure that we're pointing to valid data
     size_t available = length();
     while (UNLIKELY(available == 0 && tryAdvanceBuffer())) {
       available = length();
     }
-    return std::make_pair(data(), available);
+    return ByteRange{data(), available};
+  }
+
+  /**
+   * Alternate version of peekBytes() that returns a std::pair
+   * instead of a ByteRange.  (This method pre-dates ByteRange.)
+   *
+   * This function will eventually be deprecated.
+   */
+  std::pair<const uint8_t*, size_t> peek() {
+    auto bytes = peekBytes();
+    return std::make_pair(bytes.data(), bytes.size());
   }
 
   void clone(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
     if (UNLIKELY(cloneAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
     }
   }
 
   void clone(folly::IOBuf& buf, size_t len) {
     if (UNLIKELY(cloneAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
     }
   }
 
   size_t cloneAtMost(folly::IOBuf& buf, size_t len) {
-    buf = folly::IOBuf();
-
     std::unique_ptr<folly::IOBuf> tmp;
     size_t copied = 0;
     for (int loopCount = 0; true; ++loopCount) {
@@ -321,6 +416,7 @@ class CursorBase {
         }
 
         offset_ += len;
+        advanceBufferIfEmpty();
         return copied + len;
       }
 
@@ -343,7 +439,7 @@ class CursorBase {
 
   size_t cloneAtMost(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
     if (!buf) {
-      buf = make_unique<folly::IOBuf>();
+      buf = std::make_unique<folly::IOBuf>();
     }
     return cloneAtMost(*buf, len);
   }
@@ -365,13 +461,13 @@ class CursorBase {
       }
 
       if (otherBuf == other.buffer_) {
-        throw std::out_of_range("wrap-around");
+        std::__throw_out_of_range("wrap-around");
       }
 
       len += offset_;
     } else {
       if (offset_ < other.offset_) {
-        throw std::out_of_range("underflow");
+        std::__throw_out_of_range("underflow");
       }
 
       len += offset_ - other.offset_;
@@ -386,12 +482,12 @@ class CursorBase {
   size_t operator-(const BufType* buf) const {
     size_t len = 0;
 
-    BufType *curBuf = buf;
+    const BufType* curBuf = buf;
     while (curBuf != crtBuf_) {
       len += curBuf->length();
       curBuf = curBuf->next();
       if (curBuf == buf || curBuf == buffer_) {
-        throw std::out_of_range("wrap-around");
+        std::__throw_out_of_range("wrap-around");
       }
     }
 
@@ -419,6 +515,23 @@ class CursorBase {
     return true;
   }
 
+  bool tryRetreatBuffer() {
+    if (UNLIKELY(crtBuf_ == buffer_)) {
+      offset_ = 0;
+      return false;
+    }
+    crtBuf_ = crtBuf_->prev();
+    offset_ = crtBuf_->length();
+    static_cast<Derived*>(this)->advanceDone();
+    return true;
+  }
+
+  void advanceBufferIfEmpty() {
+    if (length() == 0) {
+      tryAdvanceBuffer();
+    }
+  }
+
   BufType* crtBuf_;
   size_t offset_ = 0;
 
@@ -427,12 +540,13 @@ class CursorBase {
     for (size_t available; (available = length()) < len; ) {
       str->append(reinterpret_cast<const char*>(data()), available);
       if (UNLIKELY(!tryAdvanceBuffer())) {
-        throw std::out_of_range("string underflow");
+        std::__throw_out_of_range("string underflow");
       }
       len -= available;
     }
     str->append(reinterpret_cast<const char*>(data()), len);
     offset_ += len;
+    advanceBufferIfEmpty();
   }
 
   size_t pullAtMostSlow(void* buf, size_t len) {
@@ -449,12 +563,13 @@ class CursorBase {
     }
     memcpy(p, data(), len);
     offset_ += len;
+    advanceBufferIfEmpty();
     return copied + len;
   }
 
   void pullSlow(void* buf, size_t len) {
     if (UNLIKELY(pullAtMostSlow(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
     }
   }
 
@@ -468,12 +583,32 @@ class CursorBase {
       len -= available;
     }
     offset_ += len;
+    advanceBufferIfEmpty();
     return skipped + len;
   }
 
   void skipSlow(size_t len) {
     if (UNLIKELY(skipAtMostSlow(len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
+    }
+  }
+
+  size_t retreatAtMostSlow(size_t len) {
+    size_t retreated = 0;
+    for (size_t available; (available = offset_) < len;) {
+      retreated += available;
+      if (UNLIKELY(!tryRetreatBuffer())) {
+        return retreated;
+      }
+      len -= available;
+    }
+    offset_ -= len;
+    return retreated + len;
+  }
+
+  void retreatSlow(size_t len) {
+    if (UNLIKELY(retreatAtMostSlow(len) != len)) {
+      std::__throw_out_of_range("underflow");
     }
   }
 
@@ -523,13 +658,13 @@ class Writable {
   void push(const uint8_t* buf, size_t len) {
     Derived* d = static_cast<Derived*>(this);
     if (d->pushAtMost(buf, len) != len) {
-      throw std::out_of_range("overflow");
+      std::__throw_out_of_range("overflow");
     }
   }
 
   void push(ByteRange buf) {
     if (this->pushAtMost(buf) != buf.size()) {
-      throw std::out_of_range("overflow");
+      std::__throw_out_of_range("overflow");
     }
   }
 
@@ -545,16 +680,16 @@ class Writable {
    */
   void push(Cursor cursor, size_t len) {
     if (this->pushAtMost(cursor, len) != len) {
-      throw std::out_of_range("overflow");
+      std::__throw_out_of_range("overflow");
     }
   }
 
   size_t pushAtMost(Cursor cursor, size_t len) {
     size_t written = 0;
     for(;;) {
-      auto currentBuffer = cursor.peek();
-      const uint8_t* crtData = currentBuffer.first;
-      size_t available = currentBuffer.second;
+      auto currentBuffer = cursor.peekBytes();
+      const uint8_t* crtData = currentBuffer.data();
+      size_t available = currentBuffer.size();
       if (available == 0) {
         // end of buffer chain
         return written;
@@ -739,7 +874,7 @@ class Appender : public detail::Writable<Appender> {
     // Waste the rest of the current buffer and allocate a new one.
     // Don't make it too small, either.
     if (growth_ == 0) {
-      throw std::out_of_range("can't grow buffer chain");
+      std::__throw_out_of_range("can't grow buffer chain");
     }
 
     n = std::max(n, growth_);
@@ -862,7 +997,15 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
   using detail::Writable<QueueAppender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
-    size_t remaining = len;
+    // Fill the current buffer
+    const size_t copyLength = std::min(len, length());
+    if (copyLength != 0) {
+      memcpy(writableData(), buf, copyLength);
+      append(copyLength);
+      buf += copyLength;
+    }
+    // Allocate more buffers as necessary
+    size_t remaining = len - copyLength;
     while (remaining != 0) {
       auto p = queue_->preallocate(std::min(remaining, growth_),
                                    growth_,
@@ -882,6 +1025,10 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     }
   }
 
+  void insert(const folly::IOBuf& buf) {
+    insert(buf.clone());
+  }
+
  private:
   folly::IOBufQueue* queue_;
   size_t growth_;
@@ -889,4 +1036,4 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
 }}  // folly::io
 
-#endif // FOLLY_CURSOR_H
+#include <folly/io/Cursor-inl.h>

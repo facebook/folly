@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,13 @@
  */
 
 #include <folly/detail/MemoryIdler.h>
+
 #include <folly/Baton.h>
+#include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
+
 #include <memory>
 #include <thread>
-#include <assert.h>
-#include <semaphore.h>
-#include <gflags/gflags.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <folly/Benchmark.h>
 
 using namespace folly;
 using namespace folly::detail;
@@ -181,28 +179,4 @@ TEST(MemoryIdler, futexWaitNeverFlush) {
       .WillOnce(Return(true));
   EXPECT_TRUE((MemoryIdler::futexWait<MockAtom, MockClock>(
       fut, 1, -1, MockClock::duration::max())));
-}
-
-
-BENCHMARK(releaseStack, iters) {
-  for (size_t i = 0; i < iters; ++i) {
-    MemoryIdler::unmapUnusedStack();
-  }
-}
-
-BENCHMARK(releaseMallocTLS, iters) {
-  for (size_t i = 0; i < iters; ++i) {
-    MemoryIdler::flushLocalMallocCaches();
-  }
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  auto rv = RUN_ALL_TESTS();
-  if (!rv && FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return rv;
 }

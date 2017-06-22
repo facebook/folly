@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,18 @@
 #include <folly/Random.h>
 
 #include <atomic>
-#include <unistd.h>
-#include <sys/time.h>
 #include <mutex>
 #include <random>
 #include <array>
 
-#include <glog/logging.h>
+#include <folly/CallOnce.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
+#include <folly/SingletonThreadLocal.h>
+#include <folly/ThreadLocal.h>
+#include <folly/portability/SysTime.h>
+#include <folly/portability/Unistd.h>
+#include <glog/logging.h>
 
 #ifdef _MSC_VER
 # include <wincrypt.h>
@@ -37,11 +40,24 @@ namespace {
 
 void readRandomDevice(void* data, size_t size) {
 #ifdef _MSC_VER
-  static std::once_flag flag;
+  static folly::once_flag flag;
   static HCRYPTPROV cryptoProv;
-  std::call_once(flag, [&] {
-    PCHECK(CryptAcquireContext(&cryptoProv, nullptr, nullptr,
-                               PROV_RSA_FULL, 0));
+  folly::call_once(flag, [&] {
+    if (!CryptAcquireContext(
+            &cryptoProv,
+            nullptr,
+            nullptr,
+            PROV_RSA_FULL,
+            CRYPT_VERIFYCONTEXT)) {
+      if (GetLastError() == NTE_BAD_KEYSET) {
+        // Mostly likely cause of this is that no key container
+        // exists yet, so try to create one.
+        PCHECK(CryptAcquireContext(
+            &cryptoProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_NEWKEYSET));
+      } else {
+        LOG(FATAL) << "Failed to acquire the default crypto context.";
+      }
+    }
   });
   CHECK(size <= std::numeric_limits<DWORD>::max());
   PCHECK(CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data));
@@ -73,7 +89,7 @@ class BufferedRandomDevice {
   void getSlow(unsigned char* data, size_t size);
 
   inline size_t remaining() const {
-    return buffer_.get() + bufferSize_ - ptr_;
+    return size_t(buffer_.get() + bufferSize_ - ptr_);
   }
 
   const size_t bufferSize_;
@@ -108,28 +124,30 @@ void BufferedRandomDevice::getSlow(unsigned char* data, size_t size) {
   ptr_ += size;
 }
 
+struct RandomTag {};
 
-}  // namespace
+} // namespace
 
 void Random::secureRandom(void* data, size_t size) {
-  static ThreadLocal<BufferedRandomDevice> bufferedRandomDevice;
-  bufferedRandomDevice->get(data, size);
-}
-
-ThreadLocalPRNG::ThreadLocalPRNG() {
-  static folly::ThreadLocal<ThreadLocalPRNG::LocalInstancePRNG> localInstance;
-  local_ = localInstance.get();
+  static SingletonThreadLocal<BufferedRandomDevice, RandomTag>
+      bufferedRandomDevice;
+  bufferedRandomDevice.get().get(data, size);
 }
 
 class ThreadLocalPRNG::LocalInstancePRNG {
  public:
-  LocalInstancePRNG() : rng(Random::create()) { }
+  LocalInstancePRNG() : rng(Random::create()) {}
 
   Random::DefaultGenerator rng;
 };
 
+ThreadLocalPRNG::ThreadLocalPRNG() {
+  static SingletonThreadLocal<ThreadLocalPRNG::LocalInstancePRNG, RandomTag>
+      localInstancePRNG;
+  local_ = &localInstancePRNG.get();
+}
+
 uint32_t ThreadLocalPRNG::getImpl(LocalInstancePRNG* local) {
   return local->rng();
 }
-
 }

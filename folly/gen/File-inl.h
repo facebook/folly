@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_FILE_H
+#ifndef FOLLY_GEN_FILE_H_
 #error This file may only be included from folly/gen/File.h
 #endif
 
@@ -47,7 +47,7 @@ class FileReader : public GenImpl<ByteRange, FileReader> {
       if (n == 0) {
         return true;
       }
-      if (!body(ByteRange(buffer_->tail(), n))) {
+      if (!body(ByteRange(buffer_->tail(), size_t(n)))) {
         return false;
       }
     }
@@ -105,7 +105,7 @@ class FileWriter : public Operator<FileWriter> {
         throw std::system_error(errno, std::system_category(),
                                 "write() failed");
       }
-      v.advance(n);
+      v.advance(size_t(n));
     }
   }
 
@@ -120,20 +120,40 @@ class FileWriter : public Operator<FileWriter> {
   std::unique_ptr<IOBuf> buffer_;
 };
 
-}  // !detail
+inline auto byLineImpl(File file, char delim, bool keepDelimiter)
+    -> decltype(fromFile(std::move(file))
+                | eachAs<StringPiece>()
+                | resplit(delim, keepDelimiter)) {
+  return fromFile(std::move(file))
+    | eachAs<StringPiece>()
+    | resplit(delim, keepDelimiter);
+}
+
+} // !detail
 
 /**
  * Generator which reads lines from a file.
  * Note: This produces StringPieces which reference temporary strings which are
  * only valid during iteration.
  */
+inline auto byLineFull(File file, char delim = '\n')
+    -> decltype(detail::byLineImpl(std::move(file), delim, true)) {
+  return detail::byLineImpl(std::move(file), delim, true);
+}
+
+inline auto byLineFull(int fd, char delim = '\n')
+    -> decltype(byLineFull(File(fd), delim)) {
+  return byLineFull(File(fd), delim);
+}
+
+inline auto byLineFull(const char* f, char delim = '\n')
+    -> decltype(byLineFull(File(f), delim)) {
+  return byLineFull(File(f), delim);
+}
+
 inline auto byLine(File file, char delim = '\n')
-    -> decltype(fromFile(std::move(file))
-                | eachAs<StringPiece>()
-                | resplit(delim)) {
-  return fromFile(std::move(file))
-       | eachAs<StringPiece>()
-       | resplit(delim);
+    -> decltype(detail::byLineImpl(std::move(file), delim, false)) {
+  return detail::byLineImpl(std::move(file), delim, false);
 }
 
 inline auto byLine(int fd, char delim = '\n')
@@ -141,5 +161,5 @@ inline auto byLine(int fd, char delim = '\n')
 
 inline auto byLine(const char* f, char delim = '\n')
   -> decltype(byLine(File(f), delim)) { return byLine(File(f), delim); }
-
-}}  // !folly::gen
+} // !gen
+} // !folly

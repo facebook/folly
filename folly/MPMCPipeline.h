@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -161,12 +161,15 @@ template <class In, class... Stages> class MPMCPipeline {
 #endif
         remainingUses_(amplification),
         value_(value * amplification) {
+      (void)owner; // -Wunused-parameter
     }
 
     uint64_t use(MPMCPipeline* owner) {
       CHECK_GT(remainingUses_--, 0);
 #ifndef NDEBUG
       CHECK(owner == owner_);
+#else
+      (void)owner; // -Wunused-parameter
 #endif
       return value_++;
     }
@@ -272,8 +275,9 @@ template <class In, class... Stages> class MPMCPipeline {
    * in any queue) are also counted.
    */
   ssize_t sizeGuess() const noexcept {
-    return (std::get<0>(stages_).writeCount() * kAmplification -
-            std::get<sizeof...(Stages)>(stages_).readCount());
+    return ssize_t(
+        std::get<0>(stages_).writeCount() * kAmplification -
+        std::get<sizeof...(Stages)>(stages_).readCount());
   }
 
  private:

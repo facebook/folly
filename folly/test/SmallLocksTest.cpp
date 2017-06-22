@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,22 +15,31 @@
  */
 
 #include <folly/SmallLocks.h>
+
+#include <folly/Random.h>
+
 #include <cassert>
 #include <cstdio>
 #include <mutex>
+#include <condition_variable>
 #include <string>
 #include <vector>
 #include <pthread.h>
-#include <unistd.h>
 
 #include <thread>
 
-#include <gtest/gtest.h>
+#include <folly/portability/Asm.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/Unistd.h>
 
-using std::string;
-using folly::MicroSpinLock;
-using folly::PicoSpinLock;
 using folly::MSLGuard;
+using folly::MicroLock;
+using folly::MicroSpinLock;
+using std::string;
+
+#ifdef FOLLY_PICO_SPIN_LOCK_H_
+using folly::PicoSpinLock;
+#endif
 
 namespace {
 
@@ -48,39 +57,43 @@ struct LockedVal {
 // these classes are POD).
 FOLLY_PACK_PUSH
 struct ignore1 { MicroSpinLock msl; int16_t foo; } FOLLY_PACK_ATTR;
-struct ignore2 { PicoSpinLock<uint32_t> psl; int16_t foo; } FOLLY_PACK_ATTR;
 static_assert(sizeof(ignore1) == 3, "Size check failed");
-static_assert(sizeof(ignore2) == 6, "Size check failed");
 static_assert(sizeof(MicroSpinLock) == 1, "Size check failed");
+#ifdef FOLLY_PICO_SPIN_LOCK_H_
+struct ignore2 { PicoSpinLock<uint32_t> psl; int16_t foo; } FOLLY_PACK_ATTR;
+static_assert(sizeof(ignore2) == 6, "Size check failed");
+#endif
 FOLLY_PACK_POP
 
 LockedVal v;
 void splock_test() {
 
   const int max = 1000;
-  unsigned int seed = (uintptr_t)pthread_self();
+  auto rng = folly::ThreadLocalPRNG();
   for (int i = 0; i < max; i++) {
     folly::asm_pause();
     MSLGuard g(v.lock);
 
     int first = v.ar[0];
-    for (size_t i = 1; i < sizeof v.ar / sizeof i; ++i) {
-      EXPECT_EQ(first, v.ar[i]);
+    for (size_t j = 1; j < sizeof v.ar / sizeof j; ++j) {
+      EXPECT_EQ(first, v.ar[j]);
     }
 
-    int byte = rand_r(&seed);
+    int byte = folly::Random::rand32(rng);
     memset(v.ar, char(byte), sizeof v.ar);
   }
 }
 
+#ifdef FOLLY_PICO_SPIN_LOCK_H_
 template<class T> struct PslTest {
   PicoSpinLock<T> lock;
 
   PslTest() { lock.init(); }
 
   void doTest() {
-    T ourVal = rand() % (T(1) << (sizeof(T) * 8 - 1));
-    for (int i = 0; i < 10000; ++i) {
+    using UT = typename std::make_unsigned<T>::type;
+    T ourVal = rand() % T(UT(1) << (sizeof(UT) * 8 - 1));
+    for (int i = 0; i < 100; ++i) {
       std::lock_guard<PicoSpinLock<T>> guard(lock);
       lock.setData(ourVal);
       for (int n = 0; n < 10; ++n) {
@@ -104,6 +117,7 @@ void doPslTest() {
     t.join();
   }
 }
+#endif
 
 struct TestClobber {
   TestClobber() {
@@ -136,6 +150,7 @@ TEST(SmallLocks, SpinLockCorrectness) {
   }
 }
 
+#ifdef FOLLY_PICO_SPIN_LOCK_H_
 TEST(SmallLocks, PicoSpinCorrectness) {
   doPslTest<int16_t>();
   doPslTest<uint16_t>();
@@ -159,7 +174,128 @@ TEST(SmallLocks, PicoSpinSigned) {
   }
   EXPECT_EQ(val.getData(), -8);
 }
+#endif
 
 TEST(SmallLocks, RegClobber) {
   TestClobber().go();
+}
+
+FOLLY_PACK_PUSH
+#if defined(__SANITIZE_ADDRESS__) && !defined(__clang__) && \
+    (defined(__GNUC__) || defined(__GNUG__))
+static_assert(sizeof(MicroLock) == 4, "Size check failed");
+#else
+static_assert(sizeof(MicroLock) == 1, "Size check failed");
+#endif
+FOLLY_PACK_POP
+
+namespace {
+
+struct SimpleBarrier {
+
+  SimpleBarrier() : lock_(), cv_(), ready_(false) {}
+
+  void wait() {
+    std::unique_lock<std::mutex> lockHeld(lock_);
+    while (!ready_) {
+      cv_.wait(lockHeld);
+    }
+  }
+
+  void run() {
+    {
+      std::unique_lock<std::mutex> lockHeld(lock_);
+      ready_ = true;
+    }
+
+    cv_.notify_all();
+  }
+
+ private:
+  std::mutex lock_;
+  std::condition_variable cv_;
+  bool ready_;
+};
+}
+
+TEST(SmallLocks, MicroLock) {
+  volatile uint64_t counters[4] = {0, 0, 0, 0};
+  std::vector<std::thread> threads;
+  static const unsigned nrThreads = 20;
+  static const unsigned iterPerThread = 10000;
+  SimpleBarrier startBarrier;
+
+  assert(iterPerThread % 4 == 0);
+
+  // Embed the lock in a larger structure to ensure that we do not
+  // affect bits outside the ones MicroLock is defined to affect.
+  struct {
+    uint8_t a;
+    std::atomic<uint8_t> b;
+    MicroLock alock;
+    std::atomic<uint8_t> d;
+  } x;
+
+  uint8_t origB = 'b';
+  uint8_t origD = 'd';
+
+  x.a = 'a';
+  x.b = origB;
+  x.alock.init();
+  x.d = origD;
+
+  // This thread touches other parts of the host word to show that
+  // MicroLock does not interfere with memory outside of the byte
+  // it owns.
+  std::thread adjacentMemoryToucher = std::thread([&] {
+    startBarrier.wait();
+    for (unsigned iter = 0; iter < iterPerThread; ++iter) {
+      if (iter % 2) {
+        x.b++;
+      } else {
+        x.d++;
+      }
+    }
+  });
+
+  for (unsigned i = 0; i < nrThreads; ++i) {
+    threads.emplace_back([&] {
+      startBarrier.wait();
+      for (unsigned iter = 0; iter < iterPerThread; ++iter) {
+        unsigned slotNo = iter % 4;
+        x.alock.lock(slotNo);
+        counters[slotNo] += 1;
+        // The occasional sleep makes it more likely that we'll
+        // exercise the futex-wait path inside MicroLock.
+        if (iter % 1000 == 0) {
+          struct timespec ts = {0, 10000};
+          (void)nanosleep(&ts, nullptr);
+        }
+        x.alock.unlock(slotNo);
+      }
+    });
+  }
+
+  startBarrier.run();
+
+  for (auto it = threads.begin(); it != threads.end(); ++it) {
+    it->join();
+  }
+
+  adjacentMemoryToucher.join();
+
+  EXPECT_EQ(x.a, 'a');
+  EXPECT_EQ(x.b, (uint8_t)(origB + iterPerThread / 2));
+  EXPECT_EQ(x.d, (uint8_t)(origD + iterPerThread / 2));
+  for (unsigned i = 0; i < 4; ++i) {
+    EXPECT_EQ(counters[i], ((uint64_t)nrThreads * iterPerThread) / 4);
+  }
+}
+
+TEST(SmallLocks, MicroLockTryLock) {
+  MicroLock lock;
+  lock.init();
+  EXPECT_TRUE(lock.try_lock());
+  EXPECT_FALSE(lock.try_lock());
+  lock.unlock();
 }

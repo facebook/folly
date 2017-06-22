@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_MEMORYIDLER_H
-#define FOLLY_DETAIL_MEMORYIDLER_H
+#pragma once
 
 #include <atomic>
 #include <chrono>
 #include <folly/AtomicStruct.h>
 #include <folly/Hash.h>
+#include <folly/ThreadId.h>
 #include <folly/Traits.h>
 #include <folly/detail/Futex.h>
 
@@ -85,7 +85,7 @@ struct MemoryIdler {
     if (idleTimeout.count() > 0 && timeoutVariationFrac > 0) {
       // hash the pthread_t and the time to get the adjustment.
       // Standard hash func isn't very good, so bit mix the result
-      auto pr = std::make_pair(pthread_self(),
+      auto pr = std::make_pair(getCurrentThreadID(),
                                Clock::now().time_since_epoch().count());
       std::hash<decltype(pr)> hash_fn;
       uint64_t h = folly::hash::twang_mix64(hash_fn(pr));
@@ -93,7 +93,7 @@ struct MemoryIdler {
       // multiplying the duration by a floating point doesn't work, grr..
       auto extraFrac =
         timeoutVariationFrac / std::numeric_limits<uint64_t>::max() * h;
-      uint64_t tics = idleTimeout.count() * (1 + extraFrac);
+      auto tics = uint64_t(idleTimeout.count() * (1 + extraFrac));
       idleTimeout = typename Clock::duration(tics);
     }
 
@@ -149,5 +149,3 @@ struct MemoryIdler {
 };
 
 }} // namespace folly::detail
-
-#endif

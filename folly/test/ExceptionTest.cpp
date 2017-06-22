@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 #include <folly/Exception.h>
 
+#include <folly/experimental/TestUtil.h>
+#include <folly/portability/GTest.h>
+
 #include <cstdio>
 #include <memory>
-
-#include <glog/logging.h>
-#include <gtest/gtest.h>
 
 namespace folly { namespace test {
 
@@ -72,15 +72,18 @@ TEST(ExceptionTest, Simple) {
   EXPECT_SYSTEM_ERROR({checkUnixErrorExplicit(-1, EIO, "hello", " world");},
                       EIO, "hello world");
 
-  std::shared_ptr<FILE> fp(tmpfile(), fclose);
+  TemporaryDirectory tmpdir;
+  auto exnpath = tmpdir.path() / "ExceptionTest";
+  auto fp = fopen(exnpath.string().c_str(), "w+b");
   ASSERT_TRUE(fp != nullptr);
+  SCOPE_EXIT { fclose(fp); };
 
-  EXPECT_NO_THROW({checkFopenError(fp.get(), "hello", " world");});
+  EXPECT_NO_THROW({ checkFopenError(fp, "hello", " world"); });
   errno = ERANGE;
   EXPECT_SYSTEM_ERROR({checkFopenError(nullptr, "hello", " world");},
                       ERANGE, "hello world");
 
-  EXPECT_NO_THROW({checkFopenErrorExplicit(fp.get(), EIO, "hello", " world");});
+  EXPECT_NO_THROW({ checkFopenErrorExplicit(fp, EIO, "hello", " world"); });
   errno = ERANGE;
   EXPECT_SYSTEM_ERROR({checkFopenErrorExplicit(nullptr, EIO,
                                                "hello", " world");},
@@ -88,9 +91,3 @@ TEST(ExceptionTest, Simple) {
 }
 
 }}  // namespaces
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}

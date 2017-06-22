@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,20 +21,33 @@
 #include <utility>
 
 #include <folly/Format.h>
+#include <folly/portability/GFlags.h>
+#include <folly/portability/SysMman.h>
 
 #ifdef __linux__
 #include <folly/experimental/io/HugePages.h>
 #endif
 
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <system_error>
-#include <gflags/gflags.h>
 
-DEFINE_int64(mlock_chunk_size, 1 << 20,  // 1MB
+static constexpr ssize_t kDefaultMlockChunkSize =
+#ifndef _MSC_VER
+    // Linux implementations of unmap/mlock/munlock take a kernel
+    // semaphore and block other threads from doing other memory
+    // operations. Split the operations in chunks.
+    (1 << 20) // 1MB
+#else // _MSC_VER
+    // MSVC doesn't have this problem, and calling munmap many times
+    // with the same address is a bad idea with the windows implementation.
+    (-1)
+#endif // _MSC_VER
+    ;
+
+DEFINE_int64(mlock_chunk_size, kDefaultMlockChunkSize,
              "Maximum bytes to mlock/munlock/munmap at once "
-             "(will be rounded up to PAGESIZE)");
+             "(will be rounded up to PAGESIZE). Ignored if negative.");
 
 #ifndef MAP_POPULATE
 #define MAP_POPULATE 0
@@ -81,8 +94,7 @@ void getDeviceOptions(dev_t device, off_t& pageSize, bool& autoExtend) {
   }
 }
 #else
-inline void getDeviceOptions(dev_t device, off_t& pageSize,
-                             bool& autoExtend) { }
+inline void getDeviceOptions(dev_t, off_t&, bool&) {}
 #endif
 
 }  // namespace
@@ -116,7 +128,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
   }
 
   if (pageSize == 0) {
-    pageSize = sysconf(_SC_PAGESIZE);
+    pageSize = off_t(sysconf(_SC_PAGESIZE));
   }
 
   CHECK_GT(pageSize, 0);
@@ -124,7 +136,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
   CHECK_GE(offset, 0);
 
   // Round down the start of the mapped region
-  size_t skipStart = offset % pageSize;
+  off_t skipStart = offset % pageSize;
   offset -= skipStart;
 
   mapLength_ = length;
@@ -175,13 +187,13 @@ void MemoryMapping::init(off_t offset, off_t length) {
               (options_.writable ? PROT_WRITE : 0));
     }
 
-    unsigned char* start = static_cast<unsigned char*>(
-      mmap(options_.address, mapLength_, prot, flags, file_.fd(), offset));
+    unsigned char* start = static_cast<unsigned char*>(mmap(
+        options_.address, size_t(mapLength_), prot, flags, file_.fd(), offset));
     PCHECK(start != MAP_FAILED)
       << " offset=" << offset
       << " length=" << mapLength_;
     mapStart_ = start;
-    data_.reset(start + skipStart, length);
+    data_.reset(start + skipStart, size_t(length));
   }
 }
 
@@ -193,7 +205,7 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
     return chunkSize;
   }
 
-  chunkSize = FLAGS_mlock_chunk_size;
+  chunkSize = off_t(FLAGS_mlock_chunk_size);
   off_t r = chunkSize % pageSize;
   if (r) {
     chunkSize += (pageSize - r);
@@ -211,14 +223,14 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
 bool memOpInChunks(std::function<int(void*, size_t)> op,
                    void* mem, size_t bufSize, off_t pageSize,
                    size_t& amountSucceeded) {
-  // unmap/mlock/munlock take a kernel semaphore and block other threads from
-  // doing other memory operations. If the size of the buffer is big the
+  // Linux' unmap/mlock/munlock take a kernel semaphore and block other threads
+  // from doing other memory operations. If the size of the buffer is big the
   // semaphore can be down for seconds (for benchmarks see
   // http://kostja-osipov.livejournal.com/42963.html).  Doing the operations in
   // chunks breaks the locking into intervals and lets other threads do memory
   // operations of their own.
 
-  size_t chunkSize = memOpChunkSize(bufSize, pageSize);
+  size_t chunkSize = size_t(memOpChunkSize(off_t(bufSize), pageSize));
 
   char* addr = static_cast<char*>(mem);
   amountSucceeded = 0;
@@ -238,17 +250,22 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
 
 bool MemoryMapping::mlock(LockMode lock) {
   size_t amountSucceeded = 0;
-  locked_ = memOpInChunks(::mlock, mapStart_, mapLength_, options_.pageSize,
-                          amountSucceeded);
+  locked_ = memOpInChunks(
+      ::mlock,
+      mapStart_,
+      size_t(mapLength_),
+      options_.pageSize,
+      amountSucceeded);
   if (locked_) {
     return true;
   }
 
   auto msg =
-    folly::sformat("mlock({}) failed at {}", mapLength_, amountSucceeded);
-
-  if (lock == LockMode::TRY_LOCK && (errno == EPERM || errno == ENOMEM)) {
+      folly::format("mlock({}) failed at {}", mapLength_, amountSucceeded);
+  if (lock == LockMode::TRY_LOCK && errno == EPERM) {
     PLOG(WARNING) << msg;
+  } else if (lock == LockMode::TRY_LOCK && errno == ENOMEM) {
+    VLOG(1) << msg;
   } else {
     PLOG(FATAL) << msg;
   }
@@ -266,12 +283,16 @@ void MemoryMapping::munlock(bool dontneed) {
   if (!locked_) return;
 
   size_t amountSucceeded = 0;
-  if (!memOpInChunks(::munlock, mapStart_, mapLength_, options_.pageSize,
-                     amountSucceeded)) {
+  if (!memOpInChunks(
+          ::munlock,
+          mapStart_,
+          size_t(mapLength_),
+          options_.pageSize,
+          amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
   if (mapLength_ && dontneed &&
-      ::madvise(mapStart_, mapLength_, MADV_DONTNEED)) {
+      ::madvise(mapStart_, size_t(mapLength_), MADV_DONTNEED)) {
     PLOG(WARNING) << "madvise()";
   }
   locked_ = false;
@@ -284,18 +305,24 @@ void MemoryMapping::hintLinearScan() {
 MemoryMapping::~MemoryMapping() {
   if (mapLength_) {
     size_t amountSucceeded = 0;
-    if (!memOpInChunks(::munmap, mapStart_, mapLength_, options_.pageSize,
-                       amountSucceeded)) {
+    if (!memOpInChunks(
+            ::munmap,
+            mapStart_,
+            size_t(mapLength_),
+            options_.pageSize,
+            amountSucceeded)) {
       PLOG(FATAL) << folly::format("munmap({}) failed at {}",
                                    mapLength_, amountSucceeded);
     }
   }
 }
 
-void MemoryMapping::advise(int advice) const { advise(advice, 0, mapLength_); }
+void MemoryMapping::advise(int advice) const {
+  advise(advice, 0, size_t(mapLength_));
+}
 
 void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
-  CHECK_LE(offset + length, mapLength_)
+  CHECK_LE(offset + length, size_t(mapLength_))
     << " offset: " << offset
     << " length: " << length
     << " mapLength_: " << mapLength_;
@@ -363,7 +390,7 @@ void mmapFileCopy(const char* src, const char* dest, mode_t mode) {
   MemoryMapping destMap(
       File(dest, O_RDWR | O_CREAT | O_TRUNC, mode),
       0,
-      srcMap.range().size(),
+      off_t(srcMap.range().size()),
       MemoryMapping::writable());
 
   alignedForwardMemcpy(destMap.writableRange().data(),

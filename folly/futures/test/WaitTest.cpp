@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
+#include <queue>
 
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/Baton.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using std::vector;
@@ -194,4 +195,17 @@ TEST(Wait, waitWithDuration) {
    EXPECT_TRUE(f.isReady());
    t.join();
  }
+}
+
+TEST(Wait, multipleWait) {
+  auto f = futures::sleep(milliseconds(100));
+  for (size_t i = 0; i < 5; ++i) {
+    EXPECT_FALSE(f.isReady());
+    f.wait(milliseconds(3));
+  }
+  EXPECT_FALSE(f.isReady());
+  f.wait();
+  EXPECT_TRUE(f.isReady());
+  f.wait();
+  EXPECT_TRUE(f.isReady());
 }

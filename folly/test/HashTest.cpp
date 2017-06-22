@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include <folly/Hash.h>
 #include <folly/MapUtil.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 #include <stdint.h>
 #include <unordered_map>
 #include <utility>
@@ -38,6 +38,12 @@ TEST(Hash, Fnv32) {
   const uint32_t s3_res = 2166136261UL;
   EXPECT_EQ(fnv32(s3), s3_res);
   EXPECT_EQ(fnv32(s3), fnv32_buf(s3, strlen(s3)));
+
+  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
+  const char* s4 = reinterpret_cast<const char*>(s4_data);
+  const uint32_t s4_res = 2420936562UL;
+  EXPECT_EQ(fnv32(s4), s4_res);
+  EXPECT_EQ(fnv32(s4), fnv32_buf(s4, strlen(s4)));
 }
 
 TEST(Hash, Fnv64) {
@@ -55,6 +61,12 @@ TEST(Hash, Fnv64) {
   const uint64_t s3_res = 14695981039346656037ULL;
   EXPECT_EQ(fnv64(s3), s3_res);
   EXPECT_EQ(fnv64(s3), fnv64_buf(s3, strlen(s3)));
+
+  const uint8_t s4_data[] = {0xFF, 0xFF, 0xFF, 0x00};
+  const char* s4 = reinterpret_cast<const char*>(s4_data);
+  const uint64_t s4_res = 2787597222566293202ULL;
+  EXPECT_EQ(fnv64(s4), s4_res);
+  EXPECT_EQ(fnv64(s4), fnv64_buf(s4, strlen(s4)));
 
   // note: Use fnv64_buf to make a single hash value from multiple
   // fields/datatypes.
@@ -122,9 +134,9 @@ void checkTWang(uint64_t r) {
 TEST(Hash, TWang_Unmix64) {
   // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
   for (int i = 1; i < 64; i++) {
-    checkTWang((1U << i) - 1);
-    checkTWang(1U << i);
-    checkTWang((1U << i) + 1);
+    checkTWang((uint64_t(1) << i) - 1);
+    checkTWang(uint64_t(1) << i);
+    checkTWang((uint64_t(1) << i) + 1);
   }
 }
 
@@ -229,6 +241,39 @@ TEST(Hash, hash_combine) {
   EXPECT_NE(hash_combine(1, 2), hash_combine(2, 1));
 }
 
+TEST(Hash, hash_bool) {
+  const auto hash = folly::Hash();
+  EXPECT_NE(hash(true), hash(false));
+}
+
+TEST(Hash, hash_bool10) {
+  const auto hash = folly::Hash();
+  std::set<size_t> values;
+  for (bool b1 : {false, true}) {
+    for (bool b2 : {false, true}) {
+      for (bool b3 : {false, true}) {
+        for (bool b4 : {false, true}) {
+          for (bool b5 : {false, true}) {
+            for (bool b6 : {false, true}) {
+              for (bool b7 : {false, true}) {
+                for (bool b8 : {false, true}) {
+                  for (bool b9 : {false, true}) {
+                    for (bool b10 : {false, true}) {
+                      values.insert(
+                          hash(b1, b2, b3, b4, b5, b6, b7, b8, b9, b10));
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  EXPECT_EQ(values.size(), 1 << 10);
+}
+
 TEST(Hash, std_tuple) {
   typedef std::tuple<int64_t, std::string, int32_t> tuple3;
   tuple3 t(42, "foo", 1);
@@ -303,7 +348,7 @@ TEST(Hash, std_tuple_different_hash) {
             std::hash<tuple3>()(t3));
 }
 
-TEST(Range, Hash) {
+TEST(Hash, Strings) {
   using namespace folly;
 
   StringPiece a1 = "10050517", b1 = "51107032",
@@ -312,12 +357,7 @@ TEST(Range, Hash) {
               a4 = "10050525", b4 = "51107040";
   Range<const wchar_t*> w1 = range(L"10050517"), w2 = range(L"51107032"),
                         w3 = range(L"10050518"), w4 = range(L"51107033");
-  StringPieceHash h1;
   Hash h2;
-  EXPECT_EQ(h1(a1), h1(b1));
-  EXPECT_EQ(h1(a2), h1(b2));
-  EXPECT_EQ(h1(a3), h1(b3));
-  EXPECT_EQ(h1(a4), h1(b4));
   EXPECT_NE(h2(a1), h2(b1));
   EXPECT_NE(h2(a1), h2(b1));
   EXPECT_NE(h2(a2), h2(b2));
@@ -329,4 +369,10 @@ TEST(Range, Hash) {
   EXPECT_NE(h2(w1), h2(w2));
   EXPECT_NE(h2(w1), h2(w3));
   EXPECT_NE(h2(w2), h2(w4));
+
+  // Check compatibility with std::string.
+  EXPECT_EQ(h2(a1), h2(a1.str()));
+  EXPECT_EQ(h2(a2), h2(a2.str()));
+  EXPECT_EQ(h2(a3), h2(a3.str()));
+  EXPECT_EQ(h2(a4), h2(a4.str()));
 }

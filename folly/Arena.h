@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_ARENA_H_
+#pragma once
 #define FOLLY_ARENA_H_
 
 #include <cassert>
@@ -99,7 +99,7 @@ class Arena {
     return r;
   }
 
-  void deallocate(void* p) {
+  void deallocate(void* /* p */) {
     // Deallocate? Never!
   }
 
@@ -215,14 +215,12 @@ struct IsArenaAllocator<Arena<Alloc>> : std::true_type { };
  */
 template <class Alloc>
 struct ArenaAllocatorTraits {
-  static size_t goodSize(const Alloc& alloc, size_t size) {
-    return size;
-  }
+  static size_t goodSize(const Alloc& /* alloc */, size_t size) { return size; }
 };
 
 template <>
 struct ArenaAllocatorTraits<SysAlloc> {
-  static size_t goodSize(const SysAlloc& alloc, size_t size) {
+  static size_t goodSize(const SysAlloc& /* alloc */, size_t size) {
     return goodMallocSize(size);
   }
 };
@@ -245,5 +243,3 @@ struct IsArenaAllocator<SysArena> : std::true_type { };
 }  // namespace folly
 
 #include <folly/Arena-inl.h>
-
-#endif /* FOLLY_ARENA_H_ */

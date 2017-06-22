@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,10 +80,11 @@ void AsyncSignalHandler::unregisterSignalHandler(int signum) {
   signalEvents_.erase(it);
 }
 
-void AsyncSignalHandler::libeventCallback(int signum, short events,
-                                           void* arg) {
+void AsyncSignalHandler::libeventCallback(libevent_fd_t signum,
+                                          short /* events */,
+                                          void* arg) {
   AsyncSignalHandler* handler = static_cast<AsyncSignalHandler*>(arg);
-  handler->signalReceived(signum);
+  handler->signalReceived(int(signum));
 }
 
 } // folly

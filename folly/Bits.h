@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,35 +52,25 @@
  * @author Tudor Bosman (tudorb@fb.com)
  */
 
-#ifndef FOLLY_BITS_H_
-#define FOLLY_BITS_H_
+#pragma once
 
-#if !defined(__clang__) && !defined(_MSC_VER)
+#if !defined(__clang__) && !(defined(_MSC_VER) && (_MSC_VER < 1900))
 #define FOLLY_INTRINSIC_CONSTEXPR constexpr
 #else
-// GCC is the only compiler with intrinsics constexpr.
+// GCC and MSVC 2015+ are the only compilers with
+// intrinsics constexpr.
 #define FOLLY_INTRINSIC_CONSTEXPR const
 #endif
 
 #include <folly/Portability.h>
+#include <folly/portability/Builtins.h>
 
-#include <folly/detail/BitsDetail.h>
+#include <folly/Assume.h>
 #include <folly/detail/BitIteratorDetail.h>
 #include <folly/Likely.h>
 
-#if FOLLY_HAVE_BYTESWAP_H
-# include <byteswap.h>
-#endif
-
-#ifdef _MSC_VER
-# include <intrin.h>
-# pragma intrinsic(_BitScanForward)
-# pragma intrinsic(_BitScanForward64)
-# pragma intrinsic(_BitScanReverse)
-# pragma intrinsic(_BitScanReverse64)
-#endif
-
 #include <cassert>
+#include <cstring>
 #include <cinttypes>
 #include <iterator>
 #include <limits>
@@ -100,12 +90,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findFirstSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  return _BitScanForward(&index, x) ? index : 0;
-#else
-  return __builtin_ffs(x);
-#endif
+  return static_cast<unsigned int>(__builtin_ffs(static_cast<int>(x)));
 }
 
 template <class T>
@@ -117,12 +102,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findFirstSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  return _BitScanForward(&index, x) ? index : 0;
-#else
-  return __builtin_ffsl(x);
-#endif
+  return static_cast<unsigned int>(__builtin_ffsl(static_cast<long>(x)));
 }
 
 template <class T>
@@ -134,12 +114,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findFirstSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  return _BitScanForward64(&index, x) ? index : 0;
-#else
-  return __builtin_ffsll(x);
-#endif
+  return static_cast<unsigned int>(__builtin_ffsll(static_cast<long long>(x)));
 }
 
 template <class T>
@@ -164,18 +139,9 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findLastSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  int clz;
-  if (_BitScanReverse(&index, x)) {
-    clz = static_cast<int>(31 - index);
-  } else {
-    clz = 32;
-  }
-  return x ? 8 * sizeof(unsigned int) - clz : 0;
-#else
-  return x ? 8 * sizeof(unsigned int) - __builtin_clz(x) : 0;
-#endif
+  // If X is a power of two X - Y = ((X - 1) ^ Y) + 1. Doing this transformation
+  // allows GCC to remove its own xor that it adds to implement clz using bsr
+  return x ? ((8 * sizeof(unsigned int) - 1) ^ __builtin_clz(x)) + 1 : 0;
 }
 
 template <class T>
@@ -187,18 +153,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findLastSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  int clz;
-  if (_BitScanReverse(&index, x)) {
-    clz = static_cast<int>(31 - index);
-  } else {
-    clz = 32;
-  }
-  return x ? 8 * sizeof(unsigned int) - clz : 0;
-#else
-  return x ? 8 * sizeof(unsigned long) - __builtin_clzl(x) : 0;
-#endif
+  return x ? ((8 * sizeof(unsigned long) - 1) ^ __builtin_clzl(x)) + 1 : 0;
 }
 
 template <class T>
@@ -210,18 +165,8 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findLastSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  unsigned long long clz;
-  if (_BitScanReverse(&index, x)) {
-    clz = static_cast<unsigned long long>(63 - index);
-  } else {
-    clz = 64;
-  }
-  return x ? 8 * sizeof(unsigned long long) - clz : 0;
-#else
-  return x ? 8 * sizeof(unsigned long long) - __builtin_clzll(x) : 0;
-#endif
+  return x ? ((8 * sizeof(unsigned long long) - 1) ^ __builtin_clzll(x)) + 1
+           : 0;
 }
 
 template <class T>
@@ -240,14 +185,20 @@ typename std::enable_if<
   std::is_integral<T>::value && std::is_unsigned<T>::value,
   T>::type
 nextPowTwo(T v) {
-  return v ? (1ul << findLastSet(v - 1)) : 1;
+  return v ? (T(1) << findLastSet(v - 1)) : 1;
 }
 
 template <class T>
-inline constexpr
-typename std::enable_if<
-  std::is_integral<T>::value && std::is_unsigned<T>::value,
-  bool>::type
+inline FOLLY_INTRINSIC_CONSTEXPR typename std::
+    enable_if<std::is_integral<T>::value && std::is_unsigned<T>::value, T>::type
+    prevPowTwo(T v) {
+  return v ? (T(1) << (findLastSet(v) - 1)) : 0;
+}
+
+template <class T>
+inline constexpr typename std::enable_if<
+    std::is_integral<T>::value && std::is_unsigned<T>::value,
+    bool>::type
 isPowTwo(T v) {
   return (v != 0) && !(v & (v - 1));
 }
@@ -262,7 +213,7 @@ inline typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   size_t>::type
   popcount(T x) {
-  return detail::popcount(x);
+  return size_t(__builtin_popcount(x));
 }
 
 template <class T>
@@ -273,7 +224,7 @@ inline typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   size_t>::type
   popcount(T x) {
-  return detail::popcountll(x);
+  return size_t(__builtin_popcountll(x));
 }
 
 /**
@@ -281,80 +232,55 @@ inline typename std::enable_if<
  */
 namespace detail {
 
-template <class T>
-struct EndianIntBase {
- public:
-  static T swap(T x);
-};
+template <size_t Size>
+struct uint_types_by_size;
 
-#ifndef _MSC_VER
+#define FB_GEN(sz, fn)                                      \
+  static inline uint##sz##_t byteswap_gen(uint##sz##_t v) { \
+    return fn(v);                                           \
+  }                                                         \
+  template <>                                               \
+  struct uint_types_by_size<sz / 8> {                       \
+    using type = uint##sz##_t;                              \
+  };
 
-/**
- * If we have the bswap_16 macro from byteswap.h, use it; otherwise, provide our
- * own definition.
- */
-#ifdef bswap_16
-# define our_bswap16 bswap_16
-#else
-
-template<class Int16>
-inline constexpr typename std::enable_if<
-  sizeof(Int16) == 2,
-  Int16>::type
-our_bswap16(Int16 x) {
-  return ((x >> 8) & 0xff) | ((x & 0xff) << 8);
-}
-#endif
-
-#endif
-
-#define FB_GEN(t, fn) \
-template<> inline t EndianIntBase<t>::swap(t x) { return fn(x); }
-
-// fn(x) expands to (x) if the second argument is empty, which is exactly
-// what we want for [u]int8_t. Also, gcc 4.7 on Intel doesn't have
-// __builtin_bswap16 for some reason, so we have to provide our own.
-FB_GEN( int8_t,)
-FB_GEN(uint8_t,)
+FB_GEN(8, uint8_t)
 #ifdef _MSC_VER
-FB_GEN( int64_t, _byteswap_uint64)
-FB_GEN(uint64_t, _byteswap_uint64)
-FB_GEN( int32_t, _byteswap_ulong)
-FB_GEN(uint32_t, _byteswap_ulong)
-FB_GEN( int16_t, _byteswap_ushort)
-FB_GEN(uint16_t, _byteswap_ushort)
+FB_GEN(64, _byteswap_uint64)
+FB_GEN(32, _byteswap_ulong)
+FB_GEN(16, _byteswap_ushort)
 #else
-FB_GEN( int64_t, __builtin_bswap64)
-FB_GEN(uint64_t, __builtin_bswap64)
-FB_GEN( int32_t, __builtin_bswap32)
-FB_GEN(uint32_t, __builtin_bswap32)
-FB_GEN( int16_t, our_bswap16)
-FB_GEN(uint16_t, our_bswap16)
+FB_GEN(64, __builtin_bswap64)
+FB_GEN(32, __builtin_bswap32)
+FB_GEN(16, __builtin_bswap16)
 #endif
 
 #undef FB_GEN
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-
 template <class T>
-struct EndianInt : public detail::EndianIntBase<T> {
- public:
-  static T big(T x) { return EndianInt::swap(x); }
-  static T little(T x) { return x; }
+struct EndianInt {
+  static_assert(
+      (std::is_integral<T>::value && !std::is_same<T, bool>::value) ||
+          std::is_floating_point<T>::value,
+      "template type parameter must be non-bool integral or floating point");
+  static T swap(T x) {
+    // we implement this with memcpy because that is defined behavior in C++
+    // we rely on compilers to optimize away the memcpy calls
+    constexpr auto s = sizeof(T);
+    using B = typename uint_types_by_size<s>::type;
+    B b;
+    std::memcpy(&b, &x, s);
+    b = byteswap_gen(b);
+    std::memcpy(&x, &b, s);
+    return x;
+  }
+  static T big(T x) {
+    return kIsLittleEndian ? EndianInt::swap(x) : x;
+  }
+  static T little(T x) {
+    return kIsBigEndian ? EndianInt::swap(x) : x;
+  }
 };
-
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-
-template <class T>
-struct EndianInt : public detail::EndianIntBase<T> {
- public:
-  static T big(T x) { return x; }
-  static T little(T x) { return EndianInt::swap(x); }
-};
-
-#else
-# error Your machine uses a weird endianness!
-#endif  /* __BYTE_ORDER__ */
 
 }  // namespace detail
 
@@ -383,23 +309,16 @@ class Endian {
     BIG
   };
 
-  static constexpr Order order =
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    Order::LITTLE;
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    Order::BIG;
-#else
-# error Your machine uses a weird endianness!
-#endif  /* __BYTE_ORDER__ */
+  static constexpr Order order = kIsLittleEndian ? Order::LITTLE : Order::BIG;
 
   template <class T> static T swap(T x) {
-    return detail::EndianInt<T>::swap(x);
+    return folly::detail::EndianInt<T>::swap(x);
   }
   template <class T> static T big(T x) {
-    return detail::EndianInt<T>::big(x);
+    return folly::detail::EndianInt<T>::big(x);
   }
   template <class T> static T little(T x) {
-    return detail::EndianInt<T>::little(x);
+    return folly::detail::EndianInt<T>::little(x);
   }
 
 #if !defined(__ANDROID__)
@@ -448,14 +367,11 @@ class BitIterator
    * Construct a BitIterator that points at a given bit offset (default 0)
    * in iter.
    */
-  #pragma GCC diagnostic push // bitOffset shadows a member
-  #pragma GCC diagnostic ignored "-Wshadow"
-  explicit BitIterator(const BaseIter& iter, size_t bitOffset=0)
+  explicit BitIterator(const BaseIter& iter, size_t bitOff=0)
     : bititerator_detail::BitIteratorBase<BaseIter>::type(iter),
-      bitOffset_(bitOffset) {
+      bitOffset_(bitOff) {
     assert(bitOffset_ < bitsPerBlock());
   }
-  #pragma GCC diagnostic pop
 
   size_t bitOffset() const {
     return bitOffset_;
@@ -492,7 +408,7 @@ class BitIterator
 
   void advance(ssize_t n) {
     size_t bpb = bitsPerBlock();
-    ssize_t blocks = n / bpb;
+    ssize_t blocks = n / ssize_t(bpb);
     bitOffset_ += n % bpb;
     if (bitOffset_ >= bpb) {
       bitOffset_ -= bpb;
@@ -520,12 +436,12 @@ class BitIterator
   }
 
   ssize_t distance_to(const BitIterator& other) const {
-    return
-      (other.base_reference() - this->base_reference()) * bitsPerBlock() +
-      other.bitOffset_ - bitOffset_;
+    return ssize_t(
+        (other.base_reference() - this->base_reference()) * bitsPerBlock() +
+        other.bitOffset_ - bitOffset_);
   }
 
-  unsigned int bitOffset_;
+  size_t bitOffset_;
 };
 
 /**
@@ -605,7 +521,13 @@ template <class T>
 inline T loadUnaligned(const void* p) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  return static_cast<const Unaligned<T>*>(p)->value;
+  if (kHasUnalignedAccess) {
+    return static_cast<const Unaligned<T>*>(p)->value;
+  } else {
+    T value;
+    memcpy(&value, p, sizeof(T));
+    return value;
+  }
 }
 
 /**
@@ -615,9 +537,17 @@ template <class T>
 inline void storeUnaligned(void* p, T value) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  new (p) Unaligned<T>(value);
+  if (kHasUnalignedAccess) {
+    // Prior to C++14, the spec says that a placement new like this
+    // is required to check that p is not nullptr, and to do nothing
+    // if p is a nullptr. By assuming it's not a nullptr, we get a
+    // nice loud segfault in optimized builds if p is nullptr, rather
+    // than just silently doing nothing.
+    folly::assume(p != nullptr);
+    new (p) Unaligned<T>(value);
+  } else {
+    memcpy(p, &value, sizeof(T));
+  }
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_BITS_H_ */

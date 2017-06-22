@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ SharedPromise<T>& SharedPromise<T>::operator=(
   std::swap(size_, other.size_);
   std::swap(hasValue_, other.hasValue_);
   std::swap(try_, other.try_);
+  std::swap(interruptHandler_, other.interruptHandler_);
   std::swap(promises_, other.promises_);
 
   return *this;
@@ -60,6 +61,9 @@ Future<T> SharedPromise<T>::getFuture() {
     return makeFuture<T>(Try<T>(try_));
   } else {
     promises_.emplace_back();
+    if (interruptHandler_) {
+      promises_.back().setInterruptHandler(interruptHandler_);
+    }
     return promises_.back().getFuture();
   }
 }
@@ -88,6 +92,7 @@ void SharedPromise<T>::setInterruptHandler(
   if (hasValue_) {
     return;
   }
+  interruptHandler_ = fn;
   for (auto& p : promises_) {
     p.setInterruptHandler(fn);
   }
@@ -102,7 +107,7 @@ void SharedPromise<T>::setValue(M&& v) {
 template <class T>
 template <class F>
 void SharedPromise<T>::setWith(F&& func) {
-  setTry(makeTryFunction(std::forward<F>(func)));
+  setTry(makeTryWith(std::forward<F>(func)));
 }
 
 template <class T>
@@ -122,6 +127,11 @@ void SharedPromise<T>::setTry(Try<T>&& t) {
   for (auto& p : promises) {
     p.setTry(Try<T>(try_));
   }
+}
+
+template <class T>
+bool SharedPromise<T>::isFulfilled() {
+  return hasValue_;
 }
 
 }

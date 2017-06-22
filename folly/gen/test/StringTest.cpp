@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
-#include <gtest/gtest.h>
 #include <iosfwd>
 #include <map>
 #include <vector>
 
+#include <folly/ApplyTuple.h>
 #include <folly/gen/String.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::gen;
 using namespace folly;
@@ -32,109 +32,117 @@ using std::tuple;
 using std::unique_ptr;
 using std::vector;
 
+using vec = vector<string>;
+
+static auto collect = eachTo<std::string>() | as<vector>();
+
 TEST(StringGen, EmptySplit) {
-  auto collect = eachTo<std::string>() | as<vector>();
   {
-    auto pieces = split("", ',') | collect;
-    EXPECT_EQ(0, pieces.size());
+    auto input = "";
+    auto expected = vec{};
+    EXPECT_EQ(expected, split("", ',') | collect);
   }
 
   // The last delimiter is eaten, just like std::getline
   {
-    auto pieces = split(",", ',') | collect;
-    EXPECT_EQ(1, pieces.size());
-    EXPECT_EQ("", pieces[0]);
+    auto input = ",";
+    auto expected = vec{""};
+    EXPECT_EQ(expected, split(input, ',') | collect);
   }
 
   {
-    auto pieces = split(",,", ',') | collect;
-    EXPECT_EQ(2, pieces.size());
-    EXPECT_EQ("", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
+    auto input = ",,";
+    auto expected = vec{"", ""};
+    EXPECT_EQ(expected, split(input, ',') | collect);
   }
 
   {
-    auto pieces = split(",,", ',') | take(1) | collect;
-    EXPECT_EQ(1, pieces.size());
-    EXPECT_EQ("", pieces[0]);
+    auto input = ",,";
+    auto expected = vec{""};
+    EXPECT_EQ(expected, split(input, ',') | take(1) | collect);
   }
 }
 
 TEST(StringGen, Split) {
-  auto collect = eachTo<std::string>() | as<vector>();
   {
-    auto pieces = split("hello,, world, goodbye, meow", ',') | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-    EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" meow", pieces[4]);
+    auto input = "hello,, world, goodbye, meow";
+    auto expected = vec{"hello", "", " world", " goodbye", " meow"};
+    EXPECT_EQ(expected, split(input, ',') | collect);
   }
 
   {
-    auto pieces = split("hello,, world, goodbye, meow", ',')
-                | take(3) | collect;
-    EXPECT_EQ(3, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
+    auto input = "hello,, world, goodbye, meow";
+    auto expected = vec{"hello", "", " world"};
+    EXPECT_EQ(expected, split(input, ',') | take(3) | collect);
   }
 
   {
-    auto pieces = split("hello,, world, goodbye, meow", ",")
-                | take(5) | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
+    auto input = "hello,, world, goodbye, meow";
+    auto expected = vec{"hello", "", " world", " goodbye", " meow"};
+    EXPECT_EQ(expected, split(input, ",") | take(5) | collect);
   }
 
   {
-    auto pieces = split("hello,, world, goodbye, meow", ", ")
-                | collect;
-    EXPECT_EQ(4, pieces.size());
-    EXPECT_EQ("hello,", pieces[0]);
-    EXPECT_EQ("world", pieces[1]);
-    EXPECT_EQ("goodbye", pieces[2]);
-    EXPECT_EQ("meow", pieces[3]);
+    auto input = "hello,, world, goodbye, meow";
+    auto expected = vec{"hello,", "world", "goodbye", "meow"};
+    EXPECT_EQ(expected, split(input, ", ") | collect);
   }
 }
 
 TEST(StringGen, SplitByNewLine) {
-  auto collect = eachTo<std::string>() | as<vector>();
   {
-    auto pieces = lines("hello\n\n world\r\n goodbye\r me\n\row") | collect;
-    EXPECT_EQ(7, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-    EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" me", pieces[4]);
-    EXPECT_EQ("", pieces[5]);
-    EXPECT_EQ("ow", pieces[6]);
+    auto input = "hello\n\n world\r\n goodbye\r me\n\row";
+    auto expected = vec{"hello", "", " world", " goodbye", " me", "", "ow"};
+    EXPECT_EQ(expected, lines(input) | collect);
   }
 }
 
 TEST(StringGen, EmptyResplit) {
-  auto collect = eachTo<std::string>() | as<vector>();
   {
-    auto pieces = from({""}) | resplit(',') | collect;
-    EXPECT_EQ(0, pieces.size());
+    auto input = vec{""};
+    auto expected = vec{};
+    EXPECT_EQ(expected, from(input) | resplit(',') | collect);
   }
 
   // The last delimiter is eaten, just like std::getline
   {
-    auto pieces = from({","}) | resplit(',') | collect;
-    EXPECT_EQ(1, pieces.size());
-    EXPECT_EQ("", pieces[0]);
+    auto input = vec{","};
+    auto expected = vec{""};
+    EXPECT_EQ(expected, from(input) | resplit(',') | collect);
   }
 
   {
-    auto pieces = from({",,"}) | resplit(',') | collect;
-    EXPECT_EQ(2, pieces.size());
-    EXPECT_EQ("", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
+    auto input = vec{",,"};
+    auto expected = vec{"", ""};
+    EXPECT_EQ(expected, from(input) | resplit(',') | collect);
+  }
+}
+
+TEST(StringGen, Resplit) {
+  {
+    auto input = vec{"hello,, world, goodbye, meow"};
+    auto expected = vec{"hello", "", " world", " goodbye", " meow"};
+    EXPECT_EQ(expected, from(input) | resplit(',') | collect);
+  }
+
+  {
+    auto input = vec{"hel", "lo,", ", world", ", goodbye, m", "eow"};
+    auto expected = vec{"hello", "", " world", " goodbye", " meow"};
+    EXPECT_EQ(expected, from(input) | resplit(',') | collect);
+  }
+}
+
+TEST(StringGen, ResplitKeepDelimiter) {
+  {
+    auto input = vec{"hello,, world, goodbye, meow"};
+    auto expected = vec{"hello,", ",", " world,", " goodbye,", " meow"};
+    EXPECT_EQ(expected, from(input) | resplit(',', true) | collect);
+  }
+
+  {
+    auto input = vec{"hel", "lo,", ", world", ", goodbye, m", "eow"};
+    auto expected = vec{"hello,", ",", " world,", " goodbye,", " meow"};
+    EXPECT_EQ(expected, from(input) | resplit(',', true) | collect);
   }
 }
 
@@ -236,30 +244,6 @@ TEST(StringGen, EachToPair) {
   }
 }
 
-TEST(StringGen, Resplit) {
-  auto collect = eachTo<std::string>() | as<vector>();
-  {
-    auto pieces = from({"hello,, world, goodbye, meow"}) |
-      resplit(',') | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-    EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" meow", pieces[4]);
-  }
-  {
-    auto pieces = from({"hel", "lo,", ", world", ", goodbye, m", "eow"}) |
-      resplit(',') | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-    EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" meow", pieces[4]);
-  }
-}
-
 void checkResplitMaxLength(vector<string> ins,
                            char delim,
                            uint64_t maxLength,
@@ -304,7 +288,7 @@ TEST(StringGen, ResplitMaxLength) {
   );
 }
 
-template<typename F>
+template <typename F>
 void runUnsplitSuite(F fn) {
   fn("hello, world");
   fn("hello,world,goodbye");
@@ -362,8 +346,18 @@ TEST(StringGen, Batch) {
                        batch(3) | rconcat | as<vector>());
 }
 
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
+TEST(StringGen, UncurryTuple) {
+  folly::StringPiece file = "1\t2\t3\n1\t4\t9";
+  auto rows = split(file, '\n') | eachToTuple<int, int, int>('\t');
+  auto productSum =
+      rows | map(uncurry([](int x, int y, int z) { return x * y * z; })) | sum;
+  EXPECT_EQ(42, productSum);
+}
+
+TEST(StringGen, UncurryPair) {
+  folly::StringPiece file = "2\t3\n4\t9";
+  auto rows = split(file, '\n') | eachToPair<int, int>('\t');
+  auto productSum =
+      rows | map(uncurry([](int x, int y) { return x * y; })) | sum;
+  EXPECT_EQ(42, productSum);
 }

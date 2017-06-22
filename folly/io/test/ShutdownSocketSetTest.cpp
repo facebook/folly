@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@
 #include <chrono>
 #include <thread>
 
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-
 #include <glog/logging.h>
-#include <gtest/gtest.h>
+
+#include <folly/portability/GTest.h>
+#include <folly/portability/Sockets.h>
 
 using folly::ShutdownSocketSet;
+
+namespace fsp = folly::portability::sockets;
 
 namespace folly { namespace test {
 
@@ -58,7 +58,7 @@ Server::Server()
   : acceptSocket_(-1),
     port_(0),
     stop_(NO_STOP) {
-  acceptSocket_ = socket(PF_INET, SOCK_STREAM, 0);
+  acceptSocket_ = fsp::socket(PF_INET, SOCK_STREAM, 0);
   CHECK_ERR(acceptSocket_);
   shutdownSocketSet.add(acceptSocket_);
 
@@ -132,7 +132,7 @@ void Server::join() {
 }
 
 int createConnectedSocket(int port) {
-  int sock = socket(PF_INET, SOCK_STREAM, 0);
+  int sock = fsp::socket(PF_INET, SOCK_STREAM, 0);
   CHECK_ERR(sock);
   sockaddr_in addr;
   addr.sin_family = AF_INET;
@@ -223,9 +223,3 @@ TEST(ShutdownSocketSetTest, AbortiveKill) {
 }
 
 }}  // namespaces
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}

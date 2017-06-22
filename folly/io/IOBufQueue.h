@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_IOBUF_QUEUE_H
-#define FOLLY_IO_IOBUF_QUEUE_H
+#pragma once
 
 #include <folly/io/IOBuf.h>
 
@@ -196,7 +195,17 @@ class IOBufQueue {
    * @throws std::underflow_error if n exceeds the number of bytes
    *         in the queue.
    */
-  std::unique_ptr<folly::IOBuf> split(size_t n);
+  std::unique_ptr<folly::IOBuf> split(size_t n) {
+    return split(n, true);
+  }
+
+  /**
+   * Similar to split, but will return the entire queue instead of throwing
+   * if n exceeds the number of bytes in the queue.
+   */
+  std::unique_ptr<folly::IOBuf> splitAtMost(size_t n) {
+    return split(n, false);
+  }
 
   /**
    * Similar to IOBuf::trimStart, but works on the whole queue.  Will
@@ -205,10 +214,22 @@ class IOBufQueue {
   void trimStart(size_t amount);
 
   /**
+   * Similar to trimStart, but will trim at most amount bytes and returns
+   * the number of bytes trimmed.
+   */
+  size_t trimStartAtMost(size_t amount);
+
+  /**
    * Similar to IOBuf::trimEnd, but works on the whole queue.  Will
    * pop off buffers that have been completely trimmed.
    */
   void trimEnd(size_t amount);
+
+  /**
+   * Similar to trimEnd, but will trim at most amount bytes and returns
+   * the number of bytes trimmed.
+   */
+  size_t trimEndAtMost(size_t amount);
 
   /**
    * Transfer ownership of the queue's entire IOBuf chain to the caller.
@@ -266,6 +287,11 @@ class IOBufQueue {
    */
   void appendToString(std::string& out) const;
 
+  /**
+   * Calls IOBuf::gather() on the head of the queue, if it exists.
+   */
+  void gather(uint64_t maxLength);
+
   /** Movable */
   IOBufQueue(IOBufQueue&&) noexcept;
   IOBufQueue& operator=(IOBufQueue&&);
@@ -278,6 +304,8 @@ class IOBufQueue {
   }
   std::pair<void*,uint64_t> preallocateSlow(
     uint64_t min, uint64_t newAllocationSize, uint64_t max);
+
+  std::unique_ptr<folly::IOBuf> split(size_t n, bool throwOnUnderflow);
 
   static const size_t kChainLengthNotCached = (size_t)-1;
   /** Not copyable */
@@ -295,5 +323,3 @@ class IOBufQueue {
 };
 
 } // folly
-
-#endif // FOLLY_IO_IOBUF_QUEUE_H

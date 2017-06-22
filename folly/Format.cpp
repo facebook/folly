@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2017 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
  */
 
 #include <folly/Format.h>
+
+#include <folly/CppAttributes.h>
+#include <folly/portability/Constexpr.h>
 
 #include <double-conversion/double-conversion.h>
 
@@ -48,12 +51,14 @@ void FormatValue<double>::formatHelper(
   }
 
   // 2+: for null terminator and optional sign shenanigans.
-  char buf[2 + std::max({
-      (2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
-       DoubleToStringConverter::kMaxFixedDigitsAfterPoint),
-      (8 + DoubleToStringConverter::kMaxExponentialDigits),
-      (7 + DoubleToStringConverter::kMaxPrecisionDigits)})];
-  StringBuilder builder(buf + 1, static_cast<int> (sizeof(buf) - 1));
+  constexpr int bufLen =
+      2 + constexpr_max(
+              2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
+                  DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
+              constexpr_max(8 + DoubleToStringConverter::kMaxExponentialDigits,
+                            7 + DoubleToStringConverter::kMaxPrecisionDigits));
+  char buf[bufLen];
+  StringBuilder builder(buf + 1, bufLen - 1);
 
   char plusSign;
   switch (arg.sign) {
@@ -77,6 +82,7 @@ void FormatValue<double>::formatHelper(
   switch (arg.presentation) {
   case '%':
     val *= 100;
+    FOLLY_FALLTHROUGH;
   case 'f':
   case 'F':
     {
@@ -155,7 +161,7 @@ void FormatValue<double>::formatHelper(
     prefixLen = 1;
   }
 
-  piece = fbstring(p, len);
+  piece = fbstring(p, size_t(len));
 }
 
 
@@ -164,7 +170,7 @@ void FormatArg::initSlow() {
   auto end = fullArgString.end();
 
   // Parse key
-  auto p = static_cast<const char*>(memchr(b, ':', end - b));
+  auto p = static_cast<const char*>(memchr(b, ':', size_t(end - b)));
   if (!p) {
     key_ = StringPiece(b, end);
     return;
@@ -210,11 +216,11 @@ void FormatArg::initSlow() {
     }
 
     auto readInt = [&] {
-      auto const b = p;
+      auto const c = p;
       do {
         ++p;
       } while (p != end && *p >= '0' && *p <= '9');
-      return to<int>(StringPiece(b, p));
+      return to<int>(StringPiece(c, p));
     };
 
     if (*p == '*') {
@@ -238,12 +244,12 @@ void FormatArg::initSlow() {
     }
 
     if (*p == '.') {
-      auto b = ++p;
+      auto d = ++p;
       while (p != end && *p >= '0' && *p <= '9') {
         ++p;
       }
-      if (p != b) {
-        precision = to<int>(StringPiece(b, p));
+      if (p != d) {
+        precision = to<int>(StringPiece(d, p));
         if (p != end && *p == '.') {
           trailingDot = true;
           ++p;
@@ -290,7 +296,7 @@ void FormatArg::validate(Type type) const {
 
 namespace detail {
 void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
-  uint32_t remaining_digits = *end_buffer - start_buffer;
+  uint32_t remaining_digits = uint32_t(*end_buffer - start_buffer);
   uint32_t separator_size = (remaining_digits - 1) / 3;
   uint32_t result_size = remaining_digits + separator_size;
   *end_buffer = *end_buffer + separator_size;
