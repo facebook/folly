@@ -208,7 +208,7 @@ TEST(AsyncFileWriter, flush) {
   AsyncFileWriter writer{std::move(writePipe)};
 
   // Write a message
-  writer.writeMessage(std::string{"test message"});
+  writer.writeMessage("test message: " + std::string(200, 'x'));
 
   // Call flush().  Use a separate thread, since this should block until we
   // consume data from the pipe.
@@ -217,8 +217,16 @@ TEST(AsyncFileWriter, flush) {
   auto flushFunction = [&] { writer.flush(); };
   std::thread flushThread{
       [&]() { promise.setTry(makeTryWith(flushFunction)); }};
+  // Detach the flush thread now rather than joining it at the end of the
+  // function.  This way if something goes wrong during the test we will fail
+  // with the real error, rather than crashing due to the std::thread
+  // destructor running on a still-joinable thread.
+  flushThread.detach();
 
   // Sleep briefly, and make sure flush() still hasn't completed.
+  // If it has completed this doesn't necessarily indicate a bug in
+  // AsyncFileWriter, but instead indicates that our test code failed to
+  // successfully cause a blocking write.
   /* sleep override */
   std::this_thread::sleep_for(10ms);
   EXPECT_FALSE(future.isReady());
@@ -230,7 +238,6 @@ TEST(AsyncFileWriter, flush) {
 
   // Make sure flush completes successfully now
   future.get(10ms);
-  flushThread.join();
 }
 #endif
 
