@@ -301,7 +301,7 @@ template <class T>
 template <class Executor, class Arg, class... Args>
 auto Future<T>::then(Executor* x, Arg&& arg, Args&&... args)
   -> decltype(then(std::forward<Arg>(arg),
-                         std::forward<Args>(args)...))
+                   std::forward<Args>(args)...))
 {
   auto oldX = getExecutor();
   setExecutor(x);
@@ -1193,7 +1193,7 @@ template <class T>
 template <class Callback, class... Callbacks>
 auto Future<T>::thenMulti(Callback&& fn, Callbacks&&... fns)
     -> decltype(then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...)) {
+                thenMulti(std::forward<Callbacks>(fns)...)) {
   // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
   return then(std::forward<Callback>(fn)).
          thenMulti(std::forward<Callbacks>(fns)...);
@@ -1204,7 +1204,7 @@ template <class Callback, class... Callbacks>
 auto Future<T>::thenMultiWithExecutor(Executor* x, Callback&& fn,
                                       Callbacks&&... fns)
     -> decltype(then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...)) {
+                thenMulti(std::forward<Callbacks>(fns)...)) {
   // thenMultiExecutor with two callbacks is
   // via(x).then(a).thenMulti(b, ...).via(oldX)
   auto oldX = getExecutor();

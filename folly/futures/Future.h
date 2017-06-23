@@ -212,7 +212,7 @@ class Future {
   template <class Executor, class Arg, class... Args>
   auto then(Executor* x, Arg&& arg, Args&&... args)
     -> decltype(then(std::forward<Arg>(arg),
-                           std::forward<Args>(args)...));
+                     std::forward<Args>(args)...));
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
@@ -404,7 +404,7 @@ class Future {
   template <class Callback, class... Callbacks>
   auto thenMulti(Callback&& fn, Callbacks&&... fns)
     -> decltype(then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...));
+                thenMulti(std::forward<Callbacks>(fns)...));
 
   // Nothing to see here, just thenMulti's base case
   template <class Callback>
@@ -422,7 +422,7 @@ class Future {
   template <class Callback, class... Callbacks>
   auto thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns)
     -> decltype(then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...));
+                thenMulti(std::forward<Callbacks>(fns)...));
 
   // Nothing to see here, just thenMultiWithExecutor's base case
   template <class Callback>
