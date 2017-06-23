@@ -811,8 +811,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void invokeConnectSuccess() override;
   void scheduleConnectTimeout() override;
 
-  void cacheLocalPeerAddr();
-
   void startSSLConnect();
 
   static void sslInfoCallback(const SSL *ssl, int type, int val);

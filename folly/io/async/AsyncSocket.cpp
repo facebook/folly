@@ -1285,17 +1285,39 @@ bool AsyncSocket::isDetachable() const {
   return !ioHandler_.isHandlerRegistered() && !writeTimeout_.isScheduled();
 }
 
-void AsyncSocket::getLocalAddress(folly::SocketAddress* address) const {
+void AsyncSocket::cacheAddresses() {
+  if (fd_ >= 0) {
+    try {
+      cacheLocalAddress();
+      cachePeerAddress();
+    } catch (const std::system_error& e) {
+      if (e.code() != std::error_code(ENOTCONN, std::system_category())) {
+        VLOG(1) << "Error caching addresses: " << e.code().value() << ", "
+                << e.code().message();
+      }
+    }
+  }
+}
+
+void AsyncSocket::cacheLocalAddress() const {
   if (!localAddr_.isInitialized()) {
     localAddr_.setFromLocalAddress(fd_);
   }
+}
+
+void AsyncSocket::cachePeerAddress() const {
+  if (!addr_.isInitialized()) {
+    addr_.setFromPeerAddress(fd_);
+  }
+}
+
+void AsyncSocket::getLocalAddress(folly::SocketAddress* address) const {
+  cacheLocalAddress();
   *address = localAddr_;
 }
 
 void AsyncSocket::getPeerAddress(folly::SocketAddress* address) const {
-  if (!addr_.isInitialized()) {
-    addr_.setFromPeerAddress(fd_);
-  }
+  cachePeerAddress();
   *address = addr_;
 }
 
