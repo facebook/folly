@@ -68,8 +68,8 @@ class shared_ptr_internals {
       return (T*)inplace;
     }
     // Could also be a _Sp_counted_deleter, but the layout is the same
-    auto ptr =
-        static_cast<std::_Sp_counted_ptr<const void*, std::_S_atomic>*>(base);
+    using derived_type = std::_Sp_counted_ptr<const void*, std::_S_atomic>;
+    auto ptr = reinterpret_cast<derived_type*>(base);
     return (T*)(ptr->*fieldPtr(access_counted_ptr_ptr{}));
   }
 
