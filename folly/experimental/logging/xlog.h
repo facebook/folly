@@ -112,11 +112,12 @@
  *   initialized.  On all subsequent calls, disabled log statements can be
  *   skipped with just a single check of the LogLevel.
  */
+/* clang-format off */
 #define XLOG_IMPL(level, type, ...)                                          \
   (!XLOG_IS_ON_IMPL(level))                                                  \
       ? ::folly::logDisabledHelper(                                          \
             std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
-      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &       \
+      : ::folly::LogStreamVoidify< ::folly::isLogLevelFatal(level)>{} &      \
           ::folly::LogStreamProcessor(                                       \
               [] {                                                           \
                 static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE>     \
@@ -132,6 +133,7 @@
               (type),                                                        \
               ##__VA_ARGS__)                                                 \
               .stream()
+/* clang-format on */
 
 /**
  * Check if and XLOG() statement with the given log level would be enabled.
