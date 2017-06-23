@@ -787,6 +787,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   }
 
   /**
+   * Attempt to cache the current local and peer addresses (if not already
+   * cached) so that they are available from getPeerAddress() and
+   * getLocalAddress() even after the socket is closed.
+   */
+  void cacheAddresses();
+
+  /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
    * If no data has been written, 0 is returned.
    * exception is a more specific exception that cause a write error.
@@ -1122,6 +1129,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void invalidState(WriteCallback* callback);
 
   std::string withAddr(const std::string& s);
+
+  void cacheLocalAddress() const;
+  void cachePeerAddress() const;
 
   StateEnum state_;                      ///< StateEnum describing current state
   uint8_t shutdownFlags_;                ///< Shutdown state (ShutdownFlags)
