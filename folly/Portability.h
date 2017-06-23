@@ -352,7 +352,9 @@ constexpr auto kIsLinux = false;
 
 #if defined(_WIN32)
 constexpr auto kIsWindows = true;
+constexpr auto kMscVer = _MSC_VER;
 #else
 constexpr auto kIsWindows = false;
+constexpr auto kMscVer = 0;
 #endif
 }

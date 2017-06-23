@@ -258,8 +258,12 @@ class exception_wrapper final {
         "Surprise! std::exception and std::type_info don't have alignment "
         "greater than one. as_int_ below will not work!");
 
-    static std::uintptr_t as_int_(std::exception const& e);
-    static std::uintptr_t as_int_(AnyException e);
+    static std::uintptr_t as_int_(
+        std::exception_ptr const& ptr,
+        std::exception const& e);
+    static std::uintptr_t as_int_(
+        std::exception_ptr const& ptr,
+        AnyException e);
     bool has_exception_() const;
     std::exception const* as_exception_() const;
     std::type_info const* as_type_() const;

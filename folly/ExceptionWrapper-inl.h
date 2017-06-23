@@ -18,6 +18,8 @@
  * Author: Eric Niebler <eniebler@fb.com>
  */
 
+#include <folly/Portability.h>
+
 namespace folly {
 
 template <class Fn>
@@ -90,11 +92,48 @@ inline std::exception const* exception_wrapper::as_exception_or_null_(
   return nullptr;
 }
 
+static_assert(
+    !kIsWindows || sizeof(void*) == 8,
+    "exception_wrapper is untested on 32 bit Windows.");
+static_assert(
+    !kIsWindows || (kMscVer >= 1900 && kMscVer <= 2000),
+    "exception_wrapper is untested and possibly broken on your version of "
+    "MSVC");
+
 inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
+    std::exception_ptr const& ptr,
     std::exception const& e) {
-  return reinterpret_cast<std::uintptr_t>(&e);
+  if (!kIsWindows) {
+    return reinterpret_cast<std::uintptr_t>(&e);
+  } else {
+    // On Windows, as of MSVC2017, all thrown exceptions are copied to the stack
+    // first. Thus, we cannot depend on exception references associated with an
+    // exception_ptr to be live for the duration of the exception_ptr. We need
+    // to directly access the heap allocated memory inside the exception_ptr.
+    //
+    // std::exception_ptr is an opaque reinterpret_cast of
+    // std::shared_ptr<__ExceptionPtr>
+    // __ExceptionPtr is a non-virtual class with two members, a union and a
+    // bool. The union contains the now-undocumented EHExceptionRecord, which
+    // contains a struct which contains a void* which points to the heap
+    // allocated exception.
+    // We derive the offset to pExceptionObject via manual means.
+    FOLLY_PACK_PUSH
+    struct Win32ExceptionPtr {
+      char offset[40];
+      void* exceptionObject;
+    } FOLLY_PACK_ATTR;
+    FOLLY_PACK_POP
+
+    auto* win32ExceptionPtr =
+        reinterpret_cast<std::shared_ptr<Win32ExceptionPtr> const*>(
+            &ptr)->get();
+    return reinterpret_cast<std::uintptr_t>(win32ExceptionPtr->exceptionObject);
+  }
 }
-inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(AnyException e) {
+inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
+    std::exception_ptr const&,
+    AnyException e) {
   return reinterpret_cast<std::uintptr_t>(e.typeinfo_) + 1;
 }
 inline bool exception_wrapper::ExceptionPtr::has_exception_() const {
@@ -282,7 +321,7 @@ inline exception_wrapper::~exception_wrapper() {
 
 template <class Ex>
 inline exception_wrapper::exception_wrapper(std::exception_ptr ptr, Ex& ex)
-    : eptr_{std::move(ptr), ExceptionPtr::as_int_(ex)},
+    : eptr_{ptr, ExceptionPtr::as_int_(ptr, ex)},
       vptr_(&ExceptionPtr::ops_) {
   assert(eptr_.ptr_);
 }
