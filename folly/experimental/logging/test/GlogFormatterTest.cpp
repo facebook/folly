@@ -21,6 +21,7 @@
 #include <folly/experimental/logging/LoggerDB.h>
 #include <folly/init/Init.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Stdlib.h>
 
 using namespace folly;
 
@@ -47,7 +48,8 @@ std::string formatMsg(
   GlogStyleFormatter formatter;
 
   std::chrono::system_clock::time_point logTimePoint{
-      std::chrono::nanoseconds{timestampNS}};
+      std::chrono::duration_cast<std::chrono::system_clock::duration>(
+          std::chrono::nanoseconds{timestampNS})};
   LogMessage logMessage{
       category, level, logTimePoint, filename, lineNumber, msg.str()};
 
