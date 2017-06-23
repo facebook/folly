@@ -21,7 +21,7 @@
 #if FOLLY_HAVE_LIBDWARF_DWARF_H
 #include <libdwarf/dwarf.h>
 #else
-#include <dwarf.h>
+#include <dwarf.h> // @manual
 #endif
 
 namespace folly {
