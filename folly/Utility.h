@@ -158,4 +158,27 @@ struct Identity {
     return static_cast<T&&>(x);
   }
 };
-}
+
+namespace moveonly_ { // Protection from unintended ADL.
+
+/**
+ * Disallow copy but not move in derived types. This is essentially
+ * boost::noncopyable (the implementation is almost identical) but it
+ * doesn't delete move constructor and move assignment.
+ */
+class MoveOnly {
+ protected:
+  constexpr MoveOnly() = default;
+  ~MoveOnly() = default;
+
+  MoveOnly(MoveOnly&&) = default;
+  MoveOnly& operator=(MoveOnly&&) = default;
+  MoveOnly(const MoveOnly&) = delete;
+  MoveOnly& operator=(const MoveOnly&) = delete;
+};
+
+} // namespace moveonly_
+
+using MoveOnly = moveonly_::MoveOnly;
+
+} // namespace folly
