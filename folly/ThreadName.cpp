@@ -42,7 +42,7 @@ namespace folly {
 
 namespace {
 
-#if FOLLY_HAVE_PTHREAD
+#if FOLLY_HAVE_PTHREAD && !_WIN32
 pthread_t stdTidToPthreadId(std::thread::id tid) {
   static_assert(
       std::is_same<pthread_t, std::thread::native_handle_type>::value,
