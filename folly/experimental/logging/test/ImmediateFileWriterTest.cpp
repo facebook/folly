@@ -40,7 +40,7 @@ TEST(ImmediateFileWriter, readBatch) {
 
   // Read the log file and confirm it contains all of the expected messages
   std::string data;
-  auto ret = folly::readFile(tmpFile.path().native().c_str(), data);
+  auto ret = folly::readFile(tmpFile.path().string().c_str(), data);
   ASSERT_TRUE(ret);
 
   std::string expected =
@@ -59,11 +59,11 @@ TEST(ImmediateFileWriter, readBatch) {
 
 TEST(ImmediateFileWriter, immediateRead) {
   TemporaryFile tmpFile{"logging_test"};
-  ImmediateFileWriter writer{tmpFile.path().native()};
+  ImmediateFileWriter writer{tmpFile.path().string()};
 
   // Write several messages, and read each one back immediately
   // after we write it.
-  folly::File readf{tmpFile.path().native()};
+  folly::File readf{tmpFile.path().string()};
   for (int n = 0; n < 10; ++n) {
     writer.writeMessage(folly::to<std::string>("message ", n, "\n"));
 

@@ -88,7 +88,7 @@ TEST(AsyncFileWriter, simpleMessages) {
   }
 
   std::string data;
-  auto ret = folly::readFile(tmpFile.path().native().c_str(), data);
+  auto ret = folly::readFile(tmpFile.path().string().c_str(), data);
   ASSERT_TRUE(ret);
 
   std::string expected =
