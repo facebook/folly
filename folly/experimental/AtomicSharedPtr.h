@@ -81,7 +81,7 @@ class atomic_shared_ptr {
   }
   explicit atomic_shared_ptr(SharedPtr foo) /* noexcept */
       : atomic_shared_ptr() {
-    store(foo);
+    store(std::move(foo));
   }
   atomic_shared_ptr(const atomic_shared_ptr<T>&) = delete;
 
@@ -89,7 +89,7 @@ class atomic_shared_ptr {
     store(SharedPtr(nullptr));
   }
   void operator=(SharedPtr desired) /* noexcept */ {
-    store(desired);
+    store(std::move(desired));
   }
   void operator=(const atomic_shared_ptr<T>&) = delete;
 
