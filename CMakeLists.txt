@@ -253,6 +253,9 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
+    ${FOLLY_DIR}/experimental/logging/test/TestLogHandler.h
+    ${FOLLY_DIR}/futures/test/TestExecutor.cpp
+    ${FOLLY_DIR}/futures/test/TestExecutor.h
     ${FOLLY_DIR}/io/async/test/BlockingSocket.h
     ${FOLLY_DIR}/io/async/test/MockAsyncServerSocket.h
     ${FOLLY_DIR}/io/async/test/MockAsyncSocket.h
@@ -314,24 +317,24 @@ if (BUILD_TESTS)
       TEST fs_util_test SOURCES FsUtilTest.cpp
 
     DIRECTORY experimental/logging/test/
-      TEST logging-test
+      TEST async_file_writer_test SOURCES AsyncFileWriterTest.cpp
+      TEST glog_formatter_test SOURCES GlogFormatterTest.cpp
+      TEST immediate_file_writer_test SOURCES ImmediateFileWriterTest.cpp
+      TEST log_category_test SOURCES LogCategoryTest.cpp
+      TEST logger_db_test SOURCES LoggerDBTest.cpp
+      TEST logger_test SOURCES LoggerTest.cpp
+      TEST log_level_test SOURCES LogLevelTest.cpp
+      TEST log_message_test SOURCES LogMessageTest.cpp
+      TEST log_name_test SOURCES LogNameTest.cpp
+      TEST log_stream_test SOURCES LogStreamTest.cpp
+      TEST printf_test SOURCES PrintfTest.cpp
+      TEST rate_limiter_test SOURCES RateLimiterTest.cpp
+      TEST standard_log_handler_test SOURCES StandardLogHandlerTest.cpp
+      TEST xlog_test
         HEADERS
-          TestLogHandler.h
           XlogHeader1.h
           XlogHeader2.h
         SOURCES
-          AsyncFileWriterTest.cpp
-          GlogFormatterTest.cpp
-          ImmediateFileWriterTest.cpp
-          LogCategoryTest.cpp
-          LoggerDBTest.cpp
-          LoggerTest.cpp
-          LogLevelTest.cpp
-          LogMessageTest.cpp
-          LogNameTest.cpp
-          LogStreamTest.cpp
-          RateLimiterTest.cpp
-          StandardLogHandlerTest.cpp
           XlogFile1.cpp
           XlogFile2.cpp
           XlogTest.cpp
@@ -340,42 +343,44 @@ if (BUILD_TESTS)
       TEST fibers_test SOURCES FibersTest.cpp
 
     DIRECTORY futures/test/
-      TEST futures-test
+      TEST barrier_test SOURCES BarrierTest.cpp
+      TEST collect_test SOURCES CollectTest.cpp
+      TEST context_test SOURCES ContextTest.cpp
+      TEST core_test SOURCES CoreTest.cpp
+      TEST ensure_test SOURCES EnsureTest.cpp
+      TEST executor_test SOURCES ExecutorTest.cpp
+      TEST fsm_test SOURCES FSMTest.cpp
+      TEST filter_test SOURCES FilterTest.cpp
+      TEST future_splitter_test SOURCES FutureSplitterTest.cpp
+      # MSVC SFINAE bug
+      #TEST future_test SOURCES FutureTest.cpp
+      TEST header_compile_test SOURCES HeaderCompileTest.cpp
+      TEST interrupt_test SOURCES InterruptTest.cpp
+      TEST map_test SOURCES MapTest.cpp
+      TEST non_copyable_lambda_test SOURCES NonCopyableLambdaTest.cpp
+      TEST poll_test SOURCES PollTest.cpp
+      TEST promise_test SOURCES PromiseTest.cpp
+      TEST reduce_test SOURCES ReduceTest.cpp
+      # MSVC SFINAE bug
+      #TEST retrying_test SOURCES RetryingTest.cpp
+      TEST self_destruct_test SOURCES SelfDestructTest.cpp
+      TEST shared_promise_test SOURCES SharedPromiseTest.cpp
+      TEST test_executor_test SOURCES TestExecutorTest.cpp
+      TEST then_compile_test
         HEADERS
           ThenCompileTest.h
         SOURCES
-          BarrierTest.cpp
-          CollectTest.cpp
-          ContextTest.cpp
-          CoreTest.cpp
-          EnsureTest.cpp
-          ExecutorTest.cpp
-          FSMTest.cpp
-          FilterTest.cpp
-          # MSVC SFINAE bug
-          #FutureTest.cpp
-          HeaderCompileTest.cpp
-          InterruptTest.cpp
-          MapTest.cpp
-          NonCopyableLambdaTest.cpp
-          PollTest.cpp
-          PromiseTest.cpp
-          ReduceTest.cpp
-          # MSVC SFINAE bug
-          #RetryingTest.cpp
-          SelfDestructTest.cpp
-          SharedPromiseTest.cpp
           ThenCompileTest.cpp
-          ThenTest.cpp
-          TimekeeperTest.cpp
-          TimesTest.cpp
-          UnwrapTest.cpp
-          ViaTest.cpp
-          WaitTest.cpp
-          WhenTest.cpp
-          WhileDoTest.cpp
-          WillEqualTest.cpp
-          WindowTest.cpp
+      TEST then_test SOURCES ThenTest.cpp
+      TEST timekeeper_test SOURCES TimekeeperTest.cpp
+      TEST times_test SOURCES TimesTest.cpp
+      TEST unwrap_test SOURCES UnwrapTest.cpp
+      TEST via_test SOURCES ViaTest.cpp
+      TEST wait_test SOURCES WaitTest.cpp
+      TEST when_test SOURCES WhenTest.cpp
+      TEST while_do_test SOURCES WhileDoTest.cpp
+      TEST will_equal_test SOURCES WillEqualTest.cpp
+      TEST window_test SOURCES WindowTest.cpp
 
     DIRECTORY gen/test/
       # MSVC bug can't resolve initializer_list constructor properly
