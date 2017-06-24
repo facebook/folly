@@ -81,6 +81,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "/experimental/exception_tracer/"
     "/experimental/hazptr/bench/"
     "/experimental/hazptr/example/"
+    "/experimental/logging/example/"
     "/experimental/symbolizer/"
     "/futures/exercises/"
     "/test/"
