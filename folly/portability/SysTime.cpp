@@ -20,10 +20,8 @@
 
 #include <cstdint>
 
-#include <Windows.h>
-
 extern "C" {
-int gettimeofday(timeval* tv, timezone*) {
+int gettimeofday(timeval* tv, struct timezone*) {
   constexpr auto posixWinFtOffset = 116444736000000000ULL;
 
   if (tv) {
