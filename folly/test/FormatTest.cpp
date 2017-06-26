@@ -15,7 +15,7 @@
  */
 
 #include <folly/Format.h>
-
+#include <folly/Utility.h>
 #include <folly/portability/GTest.h>
 
 #include <string>
@@ -352,7 +352,7 @@ template <> class FormatValue<KeyValue> {
   const KeyValue& kv_;
 };
 
-}  // namespace
+} // namespace folly
 
 TEST(Format, Custom) {
   KeyValue kv { "hello", 42 };
@@ -477,7 +477,7 @@ class TestExtendingFormatter
     auto appender = [&result](StringPiece s) {
       result.append(s.data(), s.size());
     };
-    std::get<K>(this->values_).format(arg, appender);
+    this->template getFormatValue<K>().format(arg, appender);
     result = sformat("{{{}}}", result);
     cb(StringPiece(result));
   }
@@ -507,4 +507,56 @@ TEST(Format, Extending) {
                        texsformat("a {}", "formatter"),
                        "another formatter"),
             "Extending {a {formatter}} in {another formatter}");
+}
+
+TEST(Format, Temporary) {
+  constexpr StringPiece kStr = "A long string that should go on the heap";
+  auto fmt = format("{}", kStr.str()); // Pass a temporary std::string.
+  EXPECT_EQ(fmt.str(), kStr);
+  // The formatter can be reused.
+  EXPECT_EQ(fmt.str(), kStr);
+}
+
+namespace {
+
+struct NoncopyableInt : MoveOnly {
+  explicit NoncopyableInt(int v) : value(v) {}
+  int value;
+};
+
+} // namespace
+
+namespace folly {
+
+template <>
+class FormatValue<NoncopyableInt> {
+ public:
+  explicit FormatValue(const NoncopyableInt& v) : v_(v) {}
+
+  template <class FormatCallback>
+  void format(FormatArg& arg, FormatCallback& cb) const {
+    FormatValue<int>(v_.value).format(arg, cb);
+  }
+
+ private:
+  const NoncopyableInt& v_;
+};
+
+} // namespace
+
+TEST(Format, NoncopyableArg) {
+  {
+    // Test that lvalues are held by reference.
+    NoncopyableInt v(1);
+    auto fmt = format("{}", v);
+    EXPECT_EQ(fmt.str(), "1");
+    // The formatter can be reused.
+    EXPECT_EQ(fmt.str(), "1");
+  }
+
+  {
+    // Test that rvalues are moved.
+    auto fmt = format("{}", NoncopyableInt(1));
+    EXPECT_EQ(fmt.str(), "1");
+  }
 }

@@ -51,9 +51,10 @@ class FormatterTag {};
 /**
  * Formatter class.
  *
- * Note that this class is tricky, as it keeps *references* to its arguments
- * (and doesn't copy the passed-in format string).  Thankfully, you can't use
- * this directly, you have to use format(...) below.
+ * Note that this class is tricky, as it keeps *references* to its lvalue
+ * arguments (while it takes ownership of the temporaries), and it doesn't
+ * copy the passed-in format string. Thankfully, you can't use this
+ * directly, you have to use format(...) below.
  */
 
 /* BaseFormatter class.
@@ -103,14 +104,13 @@ class BaseFormatter {
   }
 
   /**
-   * metadata to identify generated children of BaseFormatter
+   * Metadata to identify generated children of BaseFormatter
    */
   typedef detail::FormatterTag IsFormatter;
   typedef BaseFormatter BaseType;
 
  private:
-  typedef std::tuple<FormatValue<typename std::decay<Args>::type>...>
-      ValueTuple;
+  typedef std::tuple<Args...> ValueTuple;
   static constexpr size_t valueCount = std::tuple_size<ValueTuple>::value;
 
   Derived const& asDerived() const {
@@ -166,7 +166,7 @@ class BaseFormatter {
       K<valueCount, int>::type getSizeArgFrom(size_t i, const FormatArg& arg)
           const {
     if (i == K) {
-      return getValue(std::get<K>(values_), arg);
+      return getValue(getFormatValue<K>(), arg);
     }
     return getSizeArgFrom<K + 1>(i, arg);
   }
@@ -188,9 +188,18 @@ class BaseFormatter {
   // for the exclusive use of format() (below).  This way, you can't create
   // a Formatter object, but can handle references to it (for streaming,
   // conversion to string, etc) -- which is good, as Formatter objects are
-  // dangerous (they hold references, possibly to temporaries)
+  // dangerous (they may hold references).
   BaseFormatter(BaseFormatter&&) = default;
   BaseFormatter& operator=(BaseFormatter&&) = default;
+
+  template <size_t K>
+  using ArgType = typename std::tuple_element<K, ValueTuple>::type;
+
+  template <size_t K>
+  FormatValue<typename std::decay<ArgType<K>>::type> getFormatValue() const {
+    return FormatValue<typename std::decay<ArgType<K>>::type>(
+        std::get<K>(values_));
+  }
 
   ValueTuple values_;
 };
@@ -213,7 +222,7 @@ class Formatter : public BaseFormatter<
 
   template <size_t K, class Callback>
   void doFormatArg(FormatArg& arg, Callback& cb) const {
-    std::get<K>(this->values_).format(arg, cb);
+    this->template getFormatValue<K>().format(arg, cb);
   }
 
   friend class BaseFormatter<
