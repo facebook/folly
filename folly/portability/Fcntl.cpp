@@ -61,21 +61,20 @@ int fcntl(int fd, int cmd, ...) {
     }
     case F_SETFL: {
       int flags = va_arg(args, int);
-      if (flags & O_NONBLOCK) {
-        // If it's not a socket, it's probably a pipe.
-        if (folly::portability::sockets::is_fh_socket(fd)) {
-          SOCKET s = (SOCKET)_get_osfhandle(fd);
-          if (s != INVALID_SOCKET) {
-            u_long nonBlockingEnabled = 1;
-            res = ioctlsocket(s, FIONBIO, &nonBlockingEnabled);
-          }
-        } else {
-          HANDLE p = (HANDLE)_get_osfhandle(fd);
-          if (GetFileType(p) == FILE_TYPE_PIPE) {
-            DWORD newMode = PIPE_READMODE_BYTE | PIPE_NOWAIT;
-            if (SetNamedPipeHandleState(p, &newMode, nullptr, nullptr)) {
-              res = 0;
-            }
+      // If it's not a socket, it's probably a pipe.
+      if (folly::portability::sockets::is_fh_socket(fd)) {
+        SOCKET s = (SOCKET)_get_osfhandle(fd);
+        if (s != INVALID_SOCKET) {
+          u_long nonBlockingEnabled = (flags & O_NONBLOCK) ? 1 : 0;
+          res = ioctlsocket(s, FIONBIO, &nonBlockingEnabled);
+        }
+      } else {
+        HANDLE p = (HANDLE)_get_osfhandle(fd);
+        if (GetFileType(p) == FILE_TYPE_PIPE) {
+          DWORD newMode = PIPE_READMODE_BYTE;
+          newMode |= (flags & O_NONBLOCK) ? PIPE_NOWAIT : PIPE_WAIT;
+          if (SetNamedPipeHandleState(p, &newMode, nullptr, nullptr)) {
+            res = 0;
           }
         }
       }
