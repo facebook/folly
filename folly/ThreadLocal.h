@@ -45,18 +45,9 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
+#include <folly/detail/ThreadLocalDetail.h>
 #include <type_traits>
 #include <utility>
-
-namespace folly {
-enum class TLPDestructionMode {
-  THIS_THREAD,
-  ALL_THREADS
-};
-struct AccessModeStrict {};
-}  // namespace
-
-#include <folly/detail/ThreadLocalDetail.h>
 
 namespace folly {
 

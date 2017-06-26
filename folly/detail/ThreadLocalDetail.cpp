@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/ThreadLocal.h>
+#include <folly/detail/ThreadLocalDetail.h>
 
 #include <list>
 #include <mutex>
