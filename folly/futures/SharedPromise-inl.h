@@ -131,6 +131,7 @@ void SharedPromise<T>::setTry(Try<T>&& t) {
 
 template <class T>
 bool SharedPromise<T>::isFulfilled() {
+  std::lock_guard<std::mutex> g(mutex_);
   return hasValue_;
 }
 
