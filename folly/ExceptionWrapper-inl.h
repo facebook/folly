@@ -69,9 +69,9 @@ inline std::type_info const* exception_wrapper::uninit_type_(
   return &typeid(void);
 }
 
-template <class Ex, class DEx>
-inline exception_wrapper::Buffer::Buffer(in_place_t, Ex&& ex) {
-  ::new (static_cast<void*>(&buff_)) DEx(std::forward<Ex>(ex));
+template <class Ex, typename... As>
+inline exception_wrapper::Buffer::Buffer(in_place_type_t<Ex>, As&&... as_) {
+  ::new (static_cast<void*>(&buff_)) Ex(std::forward<As>(as_)...);
 }
 
 template <class Ex>
@@ -280,14 +280,15 @@ inline exception_wrapper exception_wrapper::SharedPtr::get_exception_ptr_(
   return that->sptr_.ptr_->get_exception_ptr_();
 }
 
-template <class Ex, class DEx>
-inline exception_wrapper::exception_wrapper(Ex&& ex, OnHeapTag)
-    : sptr_{std::make_shared<SharedPtr::Impl<DEx>>(std::forward<Ex>(ex))},
+template <class Ex, typename... As>
+inline exception_wrapper::exception_wrapper(OnHeapTag, in_place_type_t<Ex>, As&&... as)
+    : sptr_{std::make_shared<SharedPtr::Impl<Ex>>(std::forward<As>(as)...)},
       vptr_(&SharedPtr::ops_) {}
 
-template <class Ex, class DEx>
-inline exception_wrapper::exception_wrapper(Ex&& ex, InSituTag)
-    : buff_{in_place, std::forward<Ex>(ex)}, vptr_(&InPlace<DEx>::ops_) {}
+template <class Ex, typename... As>
+inline exception_wrapper::exception_wrapper(InSituTag, in_place_type_t<Ex>, As&&... as)
+    : buff_{in_place<Ex>, std::forward<As>(as)...},
+      vptr_(&InPlace<Ex>::ops_) {}
 
 inline exception_wrapper::exception_wrapper(exception_wrapper&& that) noexcept
     : exception_wrapper{} {
@@ -345,8 +346,9 @@ template <
             exception_wrapper::IsRegularExceptionType<Ex_>>::value)>
 inline exception_wrapper::exception_wrapper(Ex&& ex)
     : exception_wrapper{
-        exception_wrapper_detail::dont_slice(std::forward<Ex>(ex)),
-        PlacementOf<Ex_>{}} {
+        PlacementOf<Ex_>{},
+        in_place<Ex_>,
+        exception_wrapper_detail::dont_slice(std::forward<Ex>(ex))} {
 }
 
 template <
@@ -356,8 +358,21 @@ template <
         exception_wrapper::IsRegularExceptionType<Ex_>::value)>
 inline exception_wrapper::exception_wrapper(in_place_t, Ex&& ex)
     : exception_wrapper{
-        exception_wrapper_detail::dont_slice(std::forward<Ex>(ex)),
-        PlacementOf<Ex_>{}} {
+        PlacementOf<Ex_>{},
+        in_place<Ex_>,
+        exception_wrapper_detail::dont_slice(std::forward<Ex>(ex))} {
+}
+
+template <
+    class Ex,
+    typename... As,
+    FOLLY_REQUIRES_DEF(
+        exception_wrapper::IsRegularExceptionType<Ex>::value)>
+inline exception_wrapper::exception_wrapper(in_place_type_t<Ex>, As&&... as)
+    : exception_wrapper{
+        PlacementOf<Ex>{},
+        in_place<Ex>,
+        std::forward<As>(as)...} {
 }
 
 inline void exception_wrapper::swap(exception_wrapper& that) noexcept {

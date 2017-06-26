@@ -226,8 +226,8 @@ class exception_wrapper final {
 
     Buffer() : buff_{} {}
 
-    template <class Ex, class DEx = _t<std::decay<Ex>>>
-    Buffer(in_place_t, Ex&& ex);
+    template <class Ex, typename... As>
+    Buffer(in_place_type_t<Ex>, As&&... as_);
     template <class Ex>
     Ex& as() noexcept;
     template <class Ex>
@@ -309,10 +309,10 @@ class exception_wrapper final {
     struct Impl final : public Base {
       Ex ex_;
       Impl() = default;
-      explicit Impl(Ex const& ex) : Base{typeid(ex)}, ex_(ex) {}
-      explicit Impl(Ex&& ex)
-          : Base{typeid(ex)},
-            ex_(std::move(ex)){}[[noreturn]] void throw_() const override;
+      template <typename... As>
+      explicit Impl(As&&... as)
+          : Base{typeid(Ex)}, ex_(std::forward<As>(as)...) {}
+      [[noreturn]] void throw_() const override;
       std::exception const* get_exception_() const noexcept override;
       exception_wrapper get_exception_ptr_() const noexcept override;
     };
@@ -335,11 +335,11 @@ class exception_wrapper final {
   };
   VTable const* vptr_{&uninit_};
 
-  template <class Ex, class DEx = _t<std::decay<Ex>>>
-  exception_wrapper(Ex&& ex, OnHeapTag);
+  template <class Ex, typename... As>
+  exception_wrapper(OnHeapTag, in_place_type_t<Ex>, As&&... as);
 
-  template <class Ex, class DEx = _t<std::decay<Ex>>>
-  exception_wrapper(Ex&& ex, InSituTag);
+  template <class Ex, typename... As>
+  exception_wrapper(InSituTag, in_place_type_t<Ex>, As&&... as);
 
   template <class T>
   struct IsRegularExceptionType
@@ -433,6 +433,12 @@ class exception_wrapper final {
       class Ex_ = _t<std::decay<Ex>>,
       FOLLY_REQUIRES(IsRegularExceptionType<Ex_>::value)>
   exception_wrapper(in_place_t, Ex&& ex);
+
+  template <
+      class Ex,
+      typename... As,
+      FOLLY_REQUIRES(IsRegularExceptionType<Ex>::value)>
+  exception_wrapper(in_place_type_t<Ex>, As&&... as);
 
   //! Swaps the value of `*this` with the value of `that`
   void swap(exception_wrapper& that) noexcept;
@@ -598,7 +604,7 @@ constexpr exception_wrapper::VTable exception_wrapper::InPlace<Ex>::ops_;
  */
 template <class Ex, typename... As>
 exception_wrapper make_exception_wrapper(As&&... as) {
-  return exception_wrapper{Ex{std::forward<As>(as)...}};
+  return exception_wrapper{in_place<Ex>, std::forward<As>(as)...};
 }
 
 /**
