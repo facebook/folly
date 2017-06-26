@@ -128,7 +128,7 @@ critical sections:
     void RequestHandler::processRequest(const Request& request) {
       stop_watch<> watch;
       checkRequestValidity(request);
-      requestQueue_.withWLock([](auto& queue) {
+      requestQueue_.withWLock([&](auto& queue) {
         // withWLock() automatically holds the lock for the
         // duration of this lambda function
         queue.push_back(request);
