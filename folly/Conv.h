@@ -986,11 +986,12 @@ to(Src value) {
  * toDelim<SomeString>(SomeString str) returns itself.
  */
 template <class Tgt, class Delim, class Src>
-typename std::enable_if<IsSomeString<Tgt>::value &&
-                            std::is_same<Tgt, Src>::value,
-                        Tgt>::type
-toDelim(const Delim& /* delim */, const Src& value) {
-  return value;
+typename std::enable_if<
+    IsSomeString<Tgt>::value &&
+        std::is_same<Tgt, typename std::decay<Src>::type>::value,
+    Tgt>::type
+toDelim(const Delim& /* delim */, Src&& value) {
+  return std::forward<Src>(value);
 }
 
 /**
