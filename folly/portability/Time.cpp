@@ -43,10 +43,6 @@ static void duration_to_ts(
 #include <mach/thread_act.h>
 #include <mach/vm_map.h>
 
-namespace folly {
-namespace portability {
-namespace time {
-
 static std::chrono::nanoseconds time_value_to_ns(time_value_t t) {
   return std::chrono::seconds(t.seconds) +
       std::chrono::microseconds(t.microseconds);
@@ -140,10 +136,6 @@ int clock_getres(clockid_t clk_id, struct timespec* ts) {
 
   return 0;
 }
-
-} // namespace time
-} // namespace portability
-} // namespace folly
 #elif defined(_WIN32)
 #include <errno.h>
 #include <locale.h>
@@ -151,10 +143,6 @@ int clock_getres(clockid_t clk_id, struct timespec* ts) {
 #include <stdlib.h>
 
 #include <folly/portability/Windows.h>
-
-namespace folly {
-namespace portability {
-namespace time {
 
 using unsigned_nanos = std::chrono::duration<uint64_t, std::nano>;
 
@@ -284,10 +272,6 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
       return -1;
   }
 }
-
-} // namespace time
-} // namespace portability
-} // namespace folly
 #else
 #error No clock_gettime(3) compatibility wrapper available for this platform.
 #endif
