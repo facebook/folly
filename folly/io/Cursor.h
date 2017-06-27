@@ -756,6 +756,14 @@ class RWCursor
 
   using detail::Writable<RWCursor<access>>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
+    // We have to explicitly check for an input length of 0.
+    // We support buf being nullptr in this case, but we need to avoid calling
+    // memcpy() with a null source pointer, since that is undefined behavior
+    // even if the length is 0.
+    if (len == 0) {
+      return 0;
+    }
+
     size_t copied = 0;
     for (;;) {
       // Fast path: the current buffer is big enough.
@@ -884,6 +892,14 @@ class Appender : public detail::Writable<Appender> {
 
   using detail::Writable<Appender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
+    // We have to explicitly check for an input length of 0.
+    // We support buf being nullptr in this case, but we need to avoid calling
+    // memcpy() with a null source pointer, since that is undefined behavior
+    // even if the length is 0.
+    if (len == 0) {
+      return 0;
+    }
+
     size_t copied = 0;
     for (;;) {
       // Fast path: it all fits in one buffer.

@@ -286,7 +286,6 @@ TEST(IOBuf, pushCursorData) {
   EXPECT_EQ(1, rcursor2.readBE<uint64_t>());
   EXPECT_EQ(10, rcursor2.readBE<uint64_t>());
   EXPECT_EQ(20, rcursor2.readBE<uint32_t>());
-
 }
 
 TEST(IOBuf, Gather) {
@@ -1114,4 +1113,22 @@ TEST(IOBuf, readConsumesAllInputOnFailure) {
   Cursor rcursor(&buf);
   EXPECT_THROW(rcursor.read<uint32_t>(), std::out_of_range);
   EXPECT_EQ(0, rcursor.totalLength());
+}
+
+TEST(IOBuf, pushEmptyByteRange) {
+  // Test pushing an empty ByteRange.  This mainly tests that we do not
+  // trigger UBSAN warnings by calling memcpy() with an null source pointer,
+  // which is undefined behavior even if the length is 0.
+  IOBuf buf{IOBuf::CREATE, 2};
+  ByteRange emptyBytes;
+
+  // Test calling Cursor::push()
+  RWPrivateCursor wcursor(&buf);
+  wcursor.push(emptyBytes);
+  EXPECT_EQ(0, buf.computeChainDataLength());
+
+  // Test calling Appender::push()
+  Appender app(&buf, 16);
+  app.push(emptyBytes);
+  EXPECT_EQ(0, buf.computeChainDataLength());
 }
