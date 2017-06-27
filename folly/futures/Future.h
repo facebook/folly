@@ -211,8 +211,8 @@ class Future {
   /// via x, and c executes via the same executor (if any) that f had.
   template <class Executor, class Arg, class... Args>
   auto then(Executor* x, Arg&& arg, Args&&... args)
-    -> decltype(this->then(std::forward<Arg>(arg),
-                           std::forward<Args>(args)...));
+    -> decltype(then(std::forward<Arg>(arg),
+                     std::forward<Args>(args)...));
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
@@ -403,13 +403,13 @@ class Future {
   ///   f.thenMulti(a, b, c);
   template <class Callback, class... Callbacks>
   auto thenMulti(Callback&& fn, Callbacks&&... fns)
-    -> decltype(this->then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...));
+    -> decltype(then(std::forward<Callback>(fn)).
+                thenMulti(std::forward<Callbacks>(fns)...));
 
   // Nothing to see here, just thenMulti's base case
   template <class Callback>
   auto thenMulti(Callback&& fn)
-    -> decltype(this->then(std::forward<Callback>(fn)));
+    -> decltype(then(std::forward<Callback>(fn)));
 
   /// Create a Future chain from a sequence of callbacks. i.e.
   ///
@@ -421,13 +421,13 @@ class Future {
   ///   f.thenMultiWithExecutor(executor, a, b, c);
   template <class Callback, class... Callbacks>
   auto thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns)
-    -> decltype(this->then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...));
+    -> decltype(then(std::forward<Callback>(fn)).
+                thenMulti(std::forward<Callbacks>(fns)...));
 
   // Nothing to see here, just thenMultiWithExecutor's base case
   template <class Callback>
   auto thenMultiWithExecutor(Executor* x, Callback&& fn)
-    -> decltype(this->then(std::forward<Callback>(fn)));
+    -> decltype(then(std::forward<Callback>(fn)));
 
   /// Discard a result, but propagate an exception.
   Future<Unit> unit() {
