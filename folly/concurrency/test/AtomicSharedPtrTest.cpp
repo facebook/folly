@@ -17,8 +17,8 @@
 #include <memory>
 #include <thread>
 
-#include <folly/experimental/AtomicSharedPtr.h>
-#include <folly/experimental/test/AtomicSharedPtrCounted.h>
+#include <folly/concurrency/AtomicSharedPtr.h>
+#include <folly/concurrency/test/AtomicSharedPtrCounted.h>
 #include <folly/portability/GTest.h>
 
 #include <folly/test/DeterministicSchedule.h>

@@ -17,8 +17,8 @@
 
 #include <folly/AtomicStruct.h>
 #include <folly/PackedSyncPtr.h>
+#include <folly/concurrency/detail/AtomicSharedPtr-detail.h>
 #include <folly/detail/AtomicUtils.h>
-#include <folly/experimental/detail/AtomicSharedPtr-detail.h>
 #include <atomic>
 #include <thread>
 

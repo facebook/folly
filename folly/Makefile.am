@@ -97,9 +97,9 @@ nobase_follyinclude_HEADERS = \
 	ExceptionWrapper-inl.h \
 	Executor.h \
 	Expected.h \
+	concurrency/AtomicSharedPtr.h \
+	concurrency/detail/AtomicSharedPtr-detail.h \
 	experimental/AsymmetricMemoryBarrier.h \
-	experimental/AtomicSharedPtr.h \
-	experimental/detail/AtomicSharedPtr-detail.h \
 	experimental/AutoTimer.h \
 	experimental/ThreadedRepeatingFunctionRunner.h \
 	experimental/Bits.h \
