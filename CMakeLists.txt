@@ -407,6 +407,7 @@ if (BUILD_TESTS)
           AsyncSSLSocketTest.h
         SOURCES
           AsyncPipeTest.cpp
+          AsyncSignalHandlerTest.cpp
           AsyncSocketExceptionTest.cpp
           AsyncSocketTest.cpp
           AsyncSocketTest2.cpp

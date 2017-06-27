@@ -49,6 +49,30 @@ class AsyncSignalHandler {
   virtual ~AsyncSignalHandler();
 
   /**
+   * Attach this AsyncSignalHandler to an EventBase.
+   *
+   * This should only be called if the AsyncSignalHandler is not currently
+   * registered for any signals and is not currently attached to an existing
+   * EventBase.
+   */
+  void attachEventBase(EventBase* eventBase);
+
+  /**
+   * Detach this AsyncSignalHandler from its EventBase.
+   *
+   * This should only be called if the AsyncSignalHandler is not currently
+   * registered for any signals.
+   */
+  void detachEventBase();
+
+  /**
+   * Get the EventBase used by this AsyncSignalHandler.
+   */
+  EventBase* getEventBase() const {
+    return eventBase_;
+  }
+
+  /**
    * Register to receive callbacks about the specified signal.
    *
    * Once the handler has been registered for a particular signal,
@@ -86,7 +110,7 @@ class AsyncSignalHandler {
 
   static void libeventCallback(libevent_fd_t signum, short events, void* arg);
 
-  EventBase* eventBase_;
+  EventBase* eventBase_{nullptr};
   SignalEventMap signalEvents_;
 };
 
