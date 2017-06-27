@@ -195,3 +195,71 @@ TEST(Try, tryGetExceptionObject) {
     EXPECT_EQ(num, t.tryGetExceptionObject<int>());
   }
 }
+
+TEST(Try, withException) {
+  auto ew = make_exception_wrapper<std::range_error>("oops");
+
+  {
+    auto t = Try<bool>(true);
+    EXPECT_FALSE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException([](std::runtime_error&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error&) {}));
+  }
+
+  {
+    auto t = Try<bool>(ew);
+    EXPECT_TRUE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_TRUE(t.withException([](std::runtime_error&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error&) {}));
+  }
+
+  {
+    auto t = Try<void>();
+    EXPECT_FALSE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException([](std::runtime_error&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error&) {}));
+  }
+
+  {
+    auto t = Try<void>(ew);
+    EXPECT_TRUE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_TRUE(t.withException([](std::runtime_error&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error&) {}));
+  }
+
+  {
+    auto const t = Try<bool>(true);
+    EXPECT_FALSE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException([](std::runtime_error const&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error const&) {}));
+  }
+
+  {
+    auto const t = Try<bool>(ew);
+    EXPECT_TRUE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_TRUE(t.withException([](std::runtime_error const&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error const&) {}));
+  }
+
+  {
+    auto const t = Try<void>();
+    EXPECT_FALSE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException([](std::runtime_error const&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error const&) {}));
+  }
+
+  {
+    auto const t = Try<void>(ew);
+    EXPECT_TRUE(t.withException<std::runtime_error>([](auto&) {}));
+    EXPECT_FALSE(t.withException<std::logic_error>([](auto&) {}));
+    EXPECT_TRUE(t.withException([](std::runtime_error const&) {}));
+    EXPECT_FALSE(t.withException([](std::logic_error const&) {}));
+  }
+}

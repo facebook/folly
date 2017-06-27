@@ -248,9 +248,32 @@ class Try {
     if (!hasException()) {
       return false;
     }
-    return e_.with_exception(std::move(func));
+    return e_.with_exception<Ex>(std::move(func));
   }
   template <class Ex, class F>
+  bool withException(F func) const {
+    if (!hasException()) {
+      return false;
+    }
+    return e_.with_exception<Ex>(std::move(func));
+  }
+
+  /*
+   * If the Try contains an exception and it is of type compatible with Ex as
+   * deduced from the first parameter of func, execute func(Ex)
+   *
+   * @param func a function that takes a single parameter of type const Ex&
+   *
+   * @returns True if the Try held an Ex and func was executed, false otherwise
+   */
+  template <class F>
+  bool withException(F func) {
+    if (!hasException()) {
+      return false;
+    }
+    return e_.with_exception(std::move(func));
+  }
+  template <class F>
   bool withException(F func) const {
     if (!hasException()) {
       return false;
@@ -401,9 +424,32 @@ class Try<void> {
     if (!hasException()) {
       return false;
     }
-    return e_.with_exception(std::move(func));
+    return e_.with_exception<Ex>(std::move(func));
   }
   template <class Ex, class F>
+  bool withException(F func) const {
+    if (!hasException()) {
+      return false;
+    }
+    return e_.with_exception<Ex>(std::move(func));
+  }
+
+  /*
+   * If the Try contains an exception and it is of type compatible with Ex as
+   * deduced from the first parameter of func, execute func(Ex)
+   *
+   * @param func a function that takes a single parameter of type const Ex&
+   *
+   * @returns True if the Try held an Ex and func was executed, false otherwise
+   */
+  template <class F>
+  bool withException(F func) {
+    if (!hasException()) {
+      return false;
+    }
+    return e_.with_exception(std::move(func));
+  }
+  template <class F>
   bool withException(F func) const {
     if (!hasException()) {
       return false;
