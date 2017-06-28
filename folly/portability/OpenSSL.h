@@ -139,6 +139,7 @@ int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
 X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx);
+bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d);
 #endif
 
 #if FOLLY_OPENSSL_IS_110

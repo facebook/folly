@@ -207,6 +207,31 @@ void HMAC_CTX_free(HMAC_CTX* ctx) {
   }
 }
 
+bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d) {
+  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
+  /**
+   * If the fields n and e in r are NULL, the corresponding input parameters
+   * MUST be non-NULL for n and e. d may be left NULL (in case only the public
+   * key is used).
+   */
+  if ((r->n == nullptr && n == nullptr) || (r->e == nullptr && e == nullptr)) {
+    return false;
+  }
+  if (n != nullptr) {
+    BN_free(r->n);
+    r->n = n;
+  }
+  if (e != nullptr) {
+    BN_free(r->e);
+    r->e = e;
+  }
+  if (d != nullptr) {
+    BN_free(r->d);
+    r->d = d;
+  }
+  return true;
+}
+
 #endif
 }
 }

@@ -249,6 +249,11 @@ portability_constexpr_test_SOURCES = ../portability/test/ConstexprTest.cpp
 portability_constexpr_test_LDADD = libfollytestmain.la
 TESTS += portability_constexpr_test
 
+portability_openssl_test_SOURCES = ../portability/test/OpenSSLPortabilityTest.cpp
+portability_openssl_test_LDADD = libfollytestmain.la
+TESTS += portability_openssl_test
+
+
 try_test_SOURCES = TryTest.cpp
 try_test_LDADD = libfollytestmain.la
 TESTS += try_test
