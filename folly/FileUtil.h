@@ -200,11 +200,13 @@ bool readFile(
  * state will be unchanged on error.
  */
 template <class Container>
-bool writeFile(const Container& data, const char* filename,
-              int flags = O_WRONLY | O_CREAT | O_TRUNC) {
+bool writeFile(const Container& data,
+               const char* filename,
+               int flags = O_WRONLY | O_CREAT | O_TRUNC,
+               mode_t mode = 0666) {
   static_assert(sizeof(data[0]) == 1,
                 "writeFile works with element size equal to 1");
-  int fd = open(filename, flags, 0666);
+  int fd = open(filename, flags, mode);
   if (fd == -1) {
     return false;
   }
