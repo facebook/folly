@@ -298,18 +298,6 @@ Future<T>::then(R(Caller::*func)(Args...), Caller *instance) {
 }
 
 template <class T>
-template <class Executor, class Arg, class... Args>
-auto Future<T>::then(Executor* x, Arg&& arg, Args&&... args)
-  -> decltype(this->then(std::forward<Arg>(arg),
-                         std::forward<Args>(args)...))
-{
-  auto oldX = getExecutor();
-  setExecutor(x);
-  return this->then(std::forward<Arg>(arg), std::forward<Args>(args)...).
-               via(oldX);
-}
-
-template <class T>
 Future<Unit> Future<T>::then() {
   return then([] () {});
 }
@@ -1179,46 +1167,6 @@ Future<T> Future<T>::filter(F&& predicate) {
     }
     return val;
   });
-}
-
-template <class T>
-template <class Callback>
-auto Future<T>::thenMulti(Callback&& fn)
-    -> decltype(this->then(std::forward<Callback>(fn))) {
-  // thenMulti with one callback is just a then
-  return then(std::forward<Callback>(fn));
-}
-
-template <class T>
-template <class Callback, class... Callbacks>
-auto Future<T>::thenMulti(Callback&& fn, Callbacks&&... fns)
-    -> decltype(this->then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...)) {
-  // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
-  return then(std::forward<Callback>(fn)).
-         thenMulti(std::forward<Callbacks>(fns)...);
-}
-
-template <class T>
-template <class Callback, class... Callbacks>
-auto Future<T>::thenMultiWithExecutor(Executor* x, Callback&& fn,
-                                      Callbacks&&... fns)
-    -> decltype(this->then(std::forward<Callback>(fn)).
-                      thenMulti(std::forward<Callbacks>(fns)...)) {
-  // thenMultiExecutor with two callbacks is
-  // via(x).then(a).thenMulti(b, ...).via(oldX)
-  auto oldX = getExecutor();
-  setExecutor(x);
-  return then(std::forward<Callback>(fn)).
-         thenMulti(std::forward<Callbacks>(fns)...).via(oldX);
-}
-
-template <class T>
-template <class Callback>
-auto Future<T>::thenMultiWithExecutor(Executor* x, Callback&& fn)
-    -> decltype(this->then(std::forward<Callback>(fn))) {
-  // thenMulti with one callback is just a then with an executor
-  return then(x, std::forward<Callback>(fn));
 }
 
 template <class F>
