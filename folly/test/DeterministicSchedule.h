@@ -28,8 +28,8 @@
 #include <vector>
 
 #include <folly/ScopeGuard.h>
+#include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/AtomicUtils.h>
-#include <folly/detail/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Semaphore.h>
 
@@ -499,8 +499,9 @@ FutexResult Futex<test::DeterministicAtomic>::futexWaitImpl(
     std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
     std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
     uint32_t waitMask);
+}
 
 template <>
 Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc();
-}
+
 } // namespace folly::detail

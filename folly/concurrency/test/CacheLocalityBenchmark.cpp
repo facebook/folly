@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 
 #include <memory>
 #include <thread>
@@ -24,7 +24,7 @@
 
 #include <folly/Benchmark.h>
 
-using namespace folly::detail;
+using namespace folly;
 
 #define DECLARE_SPREADER_TAG(tag, locality, func)      \
   namespace {                                          \
@@ -32,7 +32,6 @@ using namespace folly::detail;
   struct tag {};                                       \
   }                                                    \
   namespace folly {                                    \
-  namespace detail {                                   \
   template <>                                          \
   const CacheLocality& CacheLocality::system<tag>() {  \
     static auto* inst = new CacheLocality(locality);   \
@@ -42,16 +41,16 @@ using namespace folly::detail;
   Getcpu::Func AccessSpreader<tag>::pickGetcpuFunc() { \
     return func;                                       \
   }                                                    \
-  }                                                    \
   }
 
 DECLARE_SPREADER_TAG(
     ThreadLocalTag,
     CacheLocality::system<>(),
-    folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu)
-DECLARE_SPREADER_TAG(PthreadSelfTag,
-                     CacheLocality::system<>(),
-                     folly::detail::FallbackGetcpu<HashingThreadId>::getcpu)
+    folly::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu)
+DECLARE_SPREADER_TAG(
+    PthreadSelfTag,
+    CacheLocality::system<>(),
+    folly::FallbackGetcpu<HashingThreadId>::getcpu)
 
 BENCHMARK(AccessSpreaderUse, iters) {
   for (unsigned long i = 0; i < iters; ++i) {

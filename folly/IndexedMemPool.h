@@ -16,14 +16,16 @@
 
 #pragma once
 
-#include <type_traits>
 #include <assert.h>
 #include <errno.h>
 #include <stdint.h>
+
+#include <type_traits>
+
 #include <boost/noncopyable.hpp>
 #include <folly/AtomicStruct.h>
 #include <folly/Portability.h>
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
@@ -497,7 +499,7 @@ struct IndexedMemPool : boost::noncopyable {
   }
 
   AtomicStruct<TaggedPtr,Atom>& localHead() {
-    auto stripe = detail::AccessSpreader<Atom>::current(NumLocalLists);
+    auto stripe = AccessSpreader<Atom>::current(NumLocalLists);
     return local_[stripe].head;
   }
 

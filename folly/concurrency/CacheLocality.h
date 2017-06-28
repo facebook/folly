@@ -38,7 +38,6 @@
 #include <folly/portability/Memory.h>
 
 namespace folly {
-namespace detail {
 
 // This file contains several classes that might be useful if you are
 // trying to dynamically optimize cache locality: CacheLocality reads
@@ -458,7 +457,8 @@ class CoreAllocator {
         // Align to a cacheline
         size = size + (CacheLocality::kFalseSharingRange - 1);
         size &= ~size_t(CacheLocality::kFalseSharingRange - 1);
-        void* mem = aligned_malloc(size, CacheLocality::kFalseSharingRange);
+        void* mem =
+            detail::aligned_malloc(size, CacheLocality::kFalseSharingRange);
         if (!mem) {
           std::__throw_bad_alloc();
         }
@@ -478,7 +478,7 @@ class CoreAllocator {
         auto allocator = *static_cast<SimpleAllocator**>(addr);
         allocator->deallocate(mem);
       } else {
-        aligned_free(mem);
+        detail::aligned_free(mem);
       }
     }
   };
@@ -507,5 +507,4 @@ StlAllocator<typename CoreAllocator<Stripes>::Allocator, T> getCoreAllocatorStl(
   return StlAllocator<typename CoreAllocator<Stripes>::Allocator, T>(alloc);
 }
 
-} // namespace detail
 } // namespace folly

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 
 #ifndef _MSC_VER
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
@@ -29,7 +29,6 @@
 #include <folly/ScopeGuard.h>
 
 namespace folly {
-namespace detail {
 
 ///////////// CacheLocality
 
@@ -244,13 +243,13 @@ SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
 SimpleAllocator::~SimpleAllocator() {
   std::lock_guard<std::mutex> g(m_);
   for (auto& block : blocks_) {
-    aligned_free(block);
+    detail::aligned_free(block);
   }
 }
 
 void* SimpleAllocator::allocateHard() {
   // Allocate a new slab.
-  mem_ = static_cast<uint8_t*>(aligned_malloc(allocSize_, allocSize_));
+  mem_ = static_cast<uint8_t*>(detail::aligned_malloc(allocSize_, allocSize_));
   if (!mem_) {
     std::__throw_bad_alloc();
   }
@@ -271,5 +270,4 @@ void* SimpleAllocator::allocateHard() {
   return mem;
 }
 
-} // namespace detail
 } // namespace folly

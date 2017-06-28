@@ -19,11 +19,13 @@
 #pragma once
 
 #include <stdint.h>
+
 #include <atomic>
 #include <thread>
 #include <type_traits>
+
 #include <folly/Likely.h>
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/SysResource.h>
@@ -1417,8 +1419,7 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
         // starting point for our empty-slot search, can change after
         // calling waitForZeroBits
         uint32_t bestSlot =
-            (uint32_t)folly::detail::AccessSpreader<Atom>::current(
-                kMaxDeferredReaders);
+            (uint32_t)folly::AccessSpreader<Atom>::current(kMaxDeferredReaders);
 
         // deferred readers are already enabled, or it is time to
         // enable them if we can find a slot

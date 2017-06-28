@@ -25,7 +25,7 @@
 #include <type_traits>
 
 #include <folly/Traits.h>
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/TurnSequencer.h>
 #include <folly/portability/Unistd.h>
 
@@ -647,11 +647,11 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     }
 
     // ideally this would be a static assert, but g++ doesn't allow it
-    assert(alignof(MPMCQueue<T,Atom>)
-           >= detail::CacheLocality::kFalseSharingRange);
-    assert(static_cast<uint8_t*>(static_cast<void*>(&popTicket_))
-           - static_cast<uint8_t*>(static_cast<void*>(&pushTicket_))
-           >= detail::CacheLocality::kFalseSharingRange);
+    assert(alignof(MPMCQueue<T, Atom>) >= CacheLocality::kFalseSharingRange);
+    assert(
+        static_cast<uint8_t*>(static_cast<void*>(&popTicket_)) -
+            static_cast<uint8_t*>(static_cast<void*>(&pushTicket_)) >=
+        CacheLocality::kFalseSharingRange);
   }
 
   /// A default-constructed queue is useful because a usable (non-zero
@@ -971,8 +971,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     /// To avoid false sharing in slots_ with neighboring memory
     /// allocations, we pad it with this many SingleElementQueue-s at
     /// each end
-    kSlotPadding = (detail::CacheLocality::kFalseSharingRange - 1)
-        / sizeof(Slot) + 1
+    kSlotPadding = (CacheLocality::kFalseSharingRange - 1) / sizeof(Slot) + 1
   };
 
   /// The maximum number of items in the queue at once
@@ -1024,8 +1023,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
 
   /// Alignment doesn't prevent false sharing at the end of the struct,
   /// so fill out the last cache line
-  char padding_[detail::CacheLocality::kFalseSharingRange -
-                sizeof(Atom<uint32_t>)];
+  char padding_[CacheLocality::kFalseSharingRange - sizeof(Atom<uint32_t>)];
 
   /// We assign tickets in increasing order, but we don't want to
   /// access neighboring elements of slots_ because that will lead to

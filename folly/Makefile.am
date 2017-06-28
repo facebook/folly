@@ -56,12 +56,12 @@ nobase_follyinclude_HEADERS = \
 	CppAttributes.h \
 	CpuId.h \
 	CPortability.h \
+	concurrency/CacheLocality.h \
 	concurrency/CoreCachedSharedPtr.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \
 	detail/BitIteratorDetail.h \
-	detail/CacheLocality.h \
 	detail/CachelinePaddedImpl.h \
 	detail/ChecksumDetail.h \
 	detail/DiscriminatedPtrDetail.h \
@@ -459,7 +459,7 @@ libfolly_la_SOURCES = \
 	Assume.cpp \
 	Checksum.cpp \
 	ClockGettimeWrappers.cpp \
-	detail/CacheLocality.cpp \
+	concurrency/CacheLocality.cpp \
 	detail/IPAddress.cpp \
 	dynamic.cpp \
 	ExceptionWrapper.cpp \

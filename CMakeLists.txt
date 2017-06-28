@@ -292,6 +292,8 @@ if (BUILD_TESTS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
+    DIRECTORY concurrency/
+      TEST cache_locality_test SOURCES CacheLocalityTest.cpp
     DIRECTORY experimental/test/
       TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp
@@ -467,7 +469,6 @@ if (BUILD_TESTS)
       TEST baton_test SOURCES BatonTest.cpp
       TEST bit_iterator_test SOURCES BitIteratorTest.cpp
       TEST bits_test SOURCES BitsTest.cpp
-      TEST cache_locality_test SOURCES CacheLocalityTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
       TEST checksum_test SOURCES ChecksumTest.cpp

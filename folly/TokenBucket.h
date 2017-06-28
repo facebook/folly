@@ -21,7 +21,7 @@
 #include <chrono>
 
 #include <folly/Likely.h>
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 
 namespace folly {
 

@@ -382,6 +382,7 @@ int Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
   DeterministicSchedule::afterSharedAccess();
   return rv;
 }
+}
 
 template <>
 CacheLocality const& CacheLocality::system<test::DeterministicAtomic>() {
@@ -391,7 +392,6 @@ CacheLocality const& CacheLocality::system<test::DeterministicAtomic>() {
 
 template <>
 Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc() {
-  return &DeterministicSchedule::getcpu;
-}
+  return &detail::DeterministicSchedule::getcpu;
 }
 }

@@ -20,7 +20,7 @@
 #include <memory>
 
 #include <folly/Enumerate.h>
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 
 namespace folly {
 
@@ -46,14 +46,14 @@ class CoreCachedSharedPtr {
     // prevent false sharing. Their control blocks will be adjacent
     // thanks to allocate_shared().
     for (auto slot : folly::enumerate(slots_)) {
-      auto alloc = detail::getCoreAllocatorStl<Holder, kNumSlots>(slot.index);
+      auto alloc = getCoreAllocatorStl<Holder, kNumSlots>(slot.index);
       auto holder = std::allocate_shared<Holder>(alloc, p);
       *slot = std::shared_ptr<T>(holder, p.get());
     }
   }
 
   std::shared_ptr<T> get() const {
-    return slots_[detail::AccessSpreader<>::current(kNumSlots)];
+    return slots_[AccessSpreader<>::current(kNumSlots)];
   }
 
  private:
@@ -75,7 +75,7 @@ class CoreCachedWeakPtr {
   }
 
   std::weak_ptr<T> get() const {
-    return slots_[detail::AccessSpreader<>::current(kNumSlots)];
+    return slots_[AccessSpreader<>::current(kNumSlots)];
   }
 
  private:

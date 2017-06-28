@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 
 namespace folly {
 
@@ -33,7 +33,7 @@ struct CachelinePaddedImpl;
 // We need alignas(T) alignas(kFalseSharingRange) for the case where alignof(T)
 // > alignof(kFalseSharingRange).
 template <typename T>
-struct alignas(T) alignas(detail::CacheLocality::kFalseSharingRange)
+struct alignas(T) alignas(CacheLocality::kFalseSharingRange)
     CachelinePaddedImpl<T, /* needsPadding = */ false> {
   template <typename... Args>
   explicit CachelinePaddedImpl(Args&&... args)
@@ -42,7 +42,7 @@ struct alignas(T) alignas(detail::CacheLocality::kFalseSharingRange)
 };
 
 template <typename T>
-struct alignas(T) alignas(detail::CacheLocality::kFalseSharingRange)
+struct alignas(T) alignas(CacheLocality::kFalseSharingRange)
     CachelinePaddedImpl<T, /* needsPadding = */ true> {
   template <typename... Args>
   explicit CachelinePaddedImpl(Args&&... args)

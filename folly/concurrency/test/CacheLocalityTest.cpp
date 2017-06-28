@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/detail/CacheLocality.h>
+#include <folly/concurrency/CacheLocality.h>
 
 #include <folly/portability/GTest.h>
 
@@ -24,7 +24,7 @@
 #include <unordered_map>
 #include <glog/logging.h>
 
-using namespace folly::detail;
+using namespace folly;
 
 /// This is the relevant nodes from a production box's sysfs tree.  If you
 /// think this map is ugly you should see the version of this test that
@@ -363,13 +363,12 @@ TEST(Getcpu, VdsoGetcpu) {
 #ifdef FOLLY_TLS
 TEST(ThreadId, SimpleTls) {
   unsigned cpu = 0;
-  auto rv =
-      folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
-          &cpu, nullptr, nullptr);
+  auto rv = folly::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
+      &cpu, nullptr, nullptr);
   EXPECT_EQ(rv, 0);
   EXPECT_TRUE(cpu > 0);
   unsigned again;
-  folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
+  folly::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
       &again, nullptr, nullptr);
   EXPECT_EQ(cpu, again);
 }
@@ -377,13 +376,12 @@ TEST(ThreadId, SimpleTls) {
 
 TEST(ThreadId, SimplePthread) {
   unsigned cpu = 0;
-  auto rv = folly::detail::FallbackGetcpu<HashingThreadId>::getcpu(
-      &cpu, nullptr, nullptr);
+  auto rv =
+      folly::FallbackGetcpu<HashingThreadId>::getcpu(&cpu, nullptr, nullptr);
   EXPECT_EQ(rv, 0);
   EXPECT_TRUE(cpu > 0);
   unsigned again;
-  folly::detail::FallbackGetcpu<HashingThreadId>::getcpu(
-      &again, nullptr, nullptr);
+  folly::FallbackGetcpu<HashingThreadId>::getcpu(&again, nullptr, nullptr);
   EXPECT_EQ(cpu, again);
 }
 
@@ -414,7 +412,6 @@ TEST(AccessSpreader, Simple) {
   struct tag {};                                       \
   }                                                    \
   namespace folly {                                    \
-  namespace detail {                                   \
   template <>                                          \
   const CacheLocality& CacheLocality::system<tag>() {  \
     static auto* inst = new CacheLocality(locality);   \
@@ -423,7 +420,6 @@ TEST(AccessSpreader, Simple) {
   template <>                                          \
   Getcpu::Func AccessSpreader<tag>::pickGetcpuFunc() { \
     return func;                                       \
-  }                                                    \
   }                                                    \
   }
 
