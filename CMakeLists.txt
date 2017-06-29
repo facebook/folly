@@ -443,6 +443,7 @@ if (BUILD_TESTS)
       TEST constexpr_test SOURCES ConstexprTest.cpp
       TEST libgen-test SOURCES LibgenTest.cpp
       TEST time-test SOURCES TimeTest.cpp
+      TEST openssl_portability_test SOURCES OpenSSLPortabilityTest.cpp
 
     DIRECTORY ssl/test/
       TEST openssl_hash_test SOURCES OpenSSLHashTest.cpp

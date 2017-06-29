@@ -15,34 +15,47 @@
  */
 
 #include <folly/portability/GTest.h>
-#include <folly/portability/OpenSSL.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 using namespace folly;
+using namespace folly::ssl;
 using namespace testing;
 
 TEST(OpenSSLPortabilityTest, TestRSASetter) {
-  RSA* r = RSA_new();
-  RSA* public_key = RSA_new();
+  RsaUniquePtr r(RSA_new());
   BIGNUM* n = BN_new();
   BIGNUM* e = BN_new();
   BIGNUM* d = BN_new();
-  const BIGNUM* n_actual = BN_new();
-  const BIGNUM* e_actual = BN_new();
-  const BIGNUM* d_actual = BN_new();
+  BIGNUM* n_actual;
+  BIGNUM* e_actual;
+  BIGNUM* d_actual;
   EXPECT_TRUE(BN_set_bit(n, 1));
   EXPECT_TRUE(BN_set_bit(e, 3));
   EXPECT_TRUE(BN_set_bit(d, 2));
-  RSA_set0_key(r, n, e, d);
-  RSA_get0_key(r, &n_actual, &e_actual, &d_actual);
+  RSA_set0_key(r.get(), n, e, d);
+  RSA_get0_key(
+      r.get(),
+      (const BIGNUM**)&n_actual,
+      (const BIGNUM**)&e_actual,
+      (const BIGNUM**)&d_actual);
   // BN_cmp returns 0 if the two BIGNUMs are equal
   EXPECT_FALSE(BN_cmp(n, n_actual));
   EXPECT_FALSE(BN_cmp(e, e_actual));
   EXPECT_FALSE(BN_cmp(d, d_actual));
 
-  RSA_set0_key(public_key, n, e, nullptr);
-  const BIGNUM* n_public = BN_new();
-  const BIGNUM* e_public = BN_new();
-  RSA_get0_key(public_key, &n_public, &e_public, nullptr);
-  EXPECT_FALSE(BN_cmp(n, n_public));
-  EXPECT_FALSE(BN_cmp(e, e_public));
+  RsaUniquePtr public_key(RSA_new());
+  BIGNUM* n_public = BN_new();
+  BIGNUM* e_public = BN_new();
+  EXPECT_TRUE(BN_set_bit(n_public, 1));
+  EXPECT_TRUE(BN_set_bit(e_public, 3));
+  RSA_set0_key(public_key.get(), n_public, e_public, nullptr);
+  BIGNUM* n_public_actual;
+  BIGNUM* e_public_actual;
+  RSA_get0_key(
+      public_key.get(),
+      (const BIGNUM**)&n_public_actual,
+      (const BIGNUM**)&e_public_actual,
+      nullptr);
+  EXPECT_FALSE(BN_cmp(n_public, n_public_actual));
+  EXPECT_FALSE(BN_cmp(e_public, e_public_actual));
 }
