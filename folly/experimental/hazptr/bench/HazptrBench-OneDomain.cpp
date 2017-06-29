@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-#define HAZPTR_AMB false
+#define HAZPTR_AMB true
 #define HAZPTR_TC true
 #define HAZPTR_PRIV true
+#define HAZPTR_ONE_DOMAIN true
 
 #include <folly/experimental/hazptr/bench/HazptrBench.h>
 #include <folly/portability/GFlags.h>
@@ -27,5 +28,5 @@ using namespace folly::hazptr;
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  benches("no amb -    tc");
+  benches("    one domain");
 }

@@ -17,9 +17,6 @@
 #define HAZPTR_H
 
 #include <atomic>
-#include <functional>
-#include <memory>
-#include <type_traits>
 
 /* Stand-in for C++17 std::pmr::memory_resource */
 #include <folly/experimental/hazptr/memory_resource.h>
@@ -51,9 +48,10 @@ class hazptr_domain {
   hazptr_domain& operator=(hazptr_domain&&) = delete;
 
  private:
+  friend class hazptr_holder;
   template <typename, typename>
   friend class hazptr_obj_base;
-  friend class hazptr_holder;
+  friend class hazptr_priv;
 
   memory_resource* mr_;
   std::atomic<hazptr_rec*> hazptrs_ = {nullptr};
@@ -65,6 +63,7 @@ class hazptr_domain {
   hazptr_rec* hazptrAcquire();
   void hazptrRelease(hazptr_rec*) noexcept;
   int pushRetired(hazptr_obj* head, hazptr_obj* tail, int count);
+  bool reachedThreshold(int rcount);
   void tryBulkReclaim();
   void bulkReclaim();
 };
@@ -77,6 +76,7 @@ class hazptr_obj {
   friend class hazptr_domain;
   template <typename, typename>
   friend class hazptr_obj_base;
+  friend class hazptr_priv;
 
   void (*reclaim_)(hazptr_obj*);
   hazptr_obj* next_;
@@ -84,17 +84,15 @@ class hazptr_obj {
 };
 
 /** Definition of hazptr_obj_base */
-template <typename T, typename Deleter = std::default_delete<T>>
+template <typename T, typename D = std::default_delete<T>>
 class hazptr_obj_base : public hazptr_obj {
  public:
   /* Retire a removed object and pass the responsibility for
    * reclaiming it to the hazptr library */
-  void retire(
-      hazptr_domain& domain = default_hazptr_domain(),
-      Deleter reclaim = {});
+  void retire(hazptr_domain& domain = default_hazptr_domain(), D reclaim = {});
 
  private:
-  Deleter deleter_;
+  D deleter_;
 };
 
 /** hazptr_holder: Class for automatic acquisition and release of

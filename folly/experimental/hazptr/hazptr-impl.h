@@ -34,7 +34,15 @@
 #endif
 
 #ifndef HAZPTR_TC_SIZE
-#define HAZPTR_TC_SIZE 2
+#define HAZPTR_TC_SIZE 10
+#endif
+
+#ifndef HAZPTR_PRIV
+#define HAZPTR_PRIV true
+#endif
+
+#ifndef HAZPTR_ONE_DOMAIN
+#define HAZPTR_ONE_DOMAIN false
 #endif
 
 #ifndef HAZPTR_SCAN_MULT
@@ -50,6 +58,7 @@
 #define HAZPTR_STATS false
 #endif
 
+#include <folly/concurrency/CacheLocality.h>
 #include <folly/experimental/AsymmetricMemoryBarrier.h>
 #include <folly/experimental/hazptr/debug.h>
 
@@ -82,7 +91,9 @@ class hazptr_mb {
   static void heavy();
 };
 
-/** hazptr_tc */
+/** hazptr_tc
+ *  Thread caching of hazptr_rec-s that belong to the default domain.
+ */
 
 class hazptr_tc_entry {
   friend class hazptr_tc;
@@ -95,17 +106,38 @@ class hazptr_tc_entry {
 };
 
 class hazptr_tc {
-  hazptr_domain* domain_{&default_hazptr_domain()};
   hazptr_tc_entry tc_[HAZPTR_TC_SIZE];
+  int count_{0};
 
  public:
   hazptr_tc();
   ~hazptr_tc();
-  hazptr_rec* get(hazptr_domain* domain);
-  bool put(hazptr_rec* hprec, hazptr_domain* domain);
+  hazptr_rec* get();
+  bool put(hazptr_rec* hprec);
 };
 
 hazptr_tc& hazptr_tc();
+
+/** hazptr_priv
+ *  Thread private lists of retired objects that belong to the default domain.
+ */
+
+class hazptr_priv {
+  hazptr_domain* domain_{&default_hazptr_domain()};
+  hazptr_obj* head_{nullptr};
+  hazptr_obj* tail_{nullptr};
+  int rcount_{0};
+
+ public:
+  hazptr_priv();
+  ~hazptr_priv();
+  void push(hazptr_obj* obj);
+
+ private:
+  void pushAllToDomain();
+};
+
+hazptr_priv& hazptr_priv();
 
 /**
  * public functions
@@ -127,7 +159,12 @@ inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
     auto obj = static_cast<T*>(hobp);
     hobp->deleter_(obj);
   };
-  domain.objRetire(this);
+  if (HAZPTR_PRIV &&
+      (HAZPTR_ONE_DOMAIN || (&domain == &default_hazptr_domain()))) {
+    hazptr_priv().push(this);
+  } else {
+    domain.objRetire(this);
+  }
 }
 
 /** hazptr_rec */
@@ -137,6 +174,7 @@ class hazptr_rec {
   friend class hazptr_holder;
   friend class hazptr_tc_entry;
 
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
   std::atomic<const void*> hazptr_{nullptr};
   hazptr_rec* next_{nullptr};
   std::atomic<bool> active_{false};
@@ -151,7 +189,7 @@ class hazptr_rec {
 
 /** hazptr_holder */
 
-inline hazptr_holder::hazptr_holder(hazptr_domain& domain) {
+FOLLY_ALWAYS_INLINE hazptr_holder::hazptr_holder(hazptr_domain& domain) {
   domain_ = &domain;
   hazptr_ = domain_->hazptrAcquire();
   DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
@@ -164,21 +202,22 @@ inline hazptr_holder::hazptr_holder(std::nullptr_t) {
   DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
 }
 
-hazptr_holder::~hazptr_holder() {
+FOLLY_ALWAYS_INLINE hazptr_holder::~hazptr_holder() {
   DEBUG_PRINT(this);
   if (domain_) {
+    hazptr_->clear();
     domain_->hazptrRelease(hazptr_);
   }
 }
 
-hazptr_holder::hazptr_holder(hazptr_holder&& rhs) noexcept {
+inline hazptr_holder::hazptr_holder(hazptr_holder&& rhs) noexcept {
   domain_ = rhs.domain_;
   hazptr_ = rhs.hazptr_;
   rhs.domain_ = nullptr;
   rhs.hazptr_ = nullptr;
 }
 
-hazptr_holder& hazptr_holder::operator=(hazptr_holder&& rhs) noexcept {
+inline hazptr_holder& hazptr_holder::operator=(hazptr_holder&& rhs) noexcept {
   /* Self-move is a no-op.  */
   if (this != &rhs) {
     this->~hazptr_holder();
@@ -188,7 +227,7 @@ hazptr_holder& hazptr_holder::operator=(hazptr_holder&& rhs) noexcept {
 }
 
 template <typename T>
-inline bool hazptr_holder::try_protect(
+FOLLY_ALWAYS_INLINE bool hazptr_holder::try_protect(
     T*& ptr,
     const std::atomic<T*>& src) noexcept {
   DEBUG_PRINT(this << " " << ptr << " " << &src);
@@ -204,7 +243,8 @@ inline bool hazptr_holder::try_protect(
 }
 
 template <typename T>
-inline T* hazptr_holder::get_protected(const std::atomic<T*>& src) noexcept {
+FOLLY_ALWAYS_INLINE T* hazptr_holder::get_protected(
+    const std::atomic<T*>& src) noexcept {
   T* p = src.load(std::memory_order_relaxed);
   while (!try_protect(p, src)) {}
   DEBUG_PRINT(this << " " << p << " " << &src);
@@ -212,38 +252,40 @@ inline T* hazptr_holder::get_protected(const std::atomic<T*>& src) noexcept {
 }
 
 template <typename T>
-inline void hazptr_holder::reset(const T* ptr) noexcept {
+FOLLY_ALWAYS_INLINE void hazptr_holder::reset(const T* ptr) noexcept {
   auto p = static_cast<hazptr_obj*>(const_cast<T*>(ptr));
   DEBUG_PRINT(this << " " << ptr << " p:" << p);
   DCHECK(hazptr_); // UB if *this is empty
   hazptr_->set(p);
 }
 
-inline void hazptr_holder::reset(std::nullptr_t) noexcept {
+FOLLY_ALWAYS_INLINE void hazptr_holder::reset(std::nullptr_t) noexcept {
   DEBUG_PRINT(this);
   DCHECK(hazptr_); // UB if *this is empty
   hazptr_->clear();
 }
 
-inline void hazptr_holder::swap(hazptr_holder& rhs) noexcept {
+FOLLY_ALWAYS_INLINE void hazptr_holder::swap(hazptr_holder& rhs) noexcept {
   DEBUG_PRINT(
     this << " " <<  this->hazptr_ << " " << this->domain_ << " -- "
     << &rhs << " " << rhs.hazptr_ << " " << rhs.domain_);
-  std::swap(this->domain_, rhs.domain_);
+  if (!HAZPTR_ONE_DOMAIN) {
+    std::swap(this->domain_, rhs.domain_);
+  }
   std::swap(this->hazptr_, rhs.hazptr_);
 }
 
-inline void swap(hazptr_holder& lhs, hazptr_holder& rhs) noexcept {
+FOLLY_ALWAYS_INLINE void swap(hazptr_holder& lhs, hazptr_holder& rhs) noexcept {
   lhs.swap(rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // [TODO]:
-// - Private storage of retired objects
 // - Control of reclamation (when and by whom)
 // - End-to-end lock-free implementation
 
 /** Definition of default_hazptr_domain() */
+
 inline hazptr_domain& default_hazptr_domain() {
   static hazptr_domain d;
   DEBUG_PRINT(&d);
@@ -285,7 +327,6 @@ inline bool hazptr_rec::tryAcquire() noexcept {
 
 inline void hazptr_rec::release() noexcept {
   DEBUG_PRINT(this);
-  clear();
   active_.store(false, std::memory_order_release);
 }
 
@@ -321,9 +362,9 @@ inline hazptr_domain::~hazptr_domain() {
   }
 }
 
-inline hazptr_rec* hazptr_domain::hazptrAcquire() {
-  if (HAZPTR_TC) {
-    hazptr_rec* hprec = hazptr_tc().get(this);
+FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_domain::hazptrAcquire() {
+  if (HAZPTR_TC && (HAZPTR_ONE_DOMAIN || this == &default_hazptr_domain())) {
+    auto hprec = hazptr_tc().get();
     if (hprec) {
       return hprec;
     }
@@ -350,8 +391,9 @@ inline hazptr_rec* hazptr_domain::hazptrAcquire() {
   return p;
 }
 
-inline void hazptr_domain::hazptrRelease(hazptr_rec* p) noexcept {
-  if (HAZPTR_TC && hazptr_tc().put(p, this)) {
+FOLLY_ALWAYS_INLINE void hazptr_domain::hazptrRelease(hazptr_rec* p) noexcept {
+  if (HAZPTR_TC && (HAZPTR_ONE_DOMAIN || this == &default_hazptr_domain()) &&
+      hazptr_tc().put(p)) {
     return;
   }
   DEBUG_PRINT(this << " " << p);
@@ -368,13 +410,18 @@ hazptr_domain::pushRetired(hazptr_obj* head, hazptr_obj* tail, int count) {
       std::memory_order_release,
       std::memory_order_acquire)) {
   }
-  return rcount_.fetch_add(count);
+  return rcount_.fetch_add(count) + count;
+}
+
+inline bool hazptr_domain::reachedThreshold(int rcount) {
+  return (
+      rcount >= HAZPTR_SCAN_THRESHOLD &&
+      rcount >= HAZPTR_SCAN_MULT * hcount_.load(std::memory_order_acquire));
 }
 
 inline void hazptr_domain::objRetire(hazptr_obj* p) {
-  auto rcount = pushRetired(p, p, 1) + 1;
-  if (rcount >= HAZPTR_SCAN_THRESHOLD &&
-      rcount >= HAZPTR_SCAN_MULT * hcount_.load(std::memory_order_acquire)) {
+  auto rcount = pushRetired(p, p, 1);
+  if (reachedThreshold(rcount)) {
     tryBulkReclaim();
   }
 }
@@ -448,7 +495,7 @@ inline hazptr_stats::~hazptr_stats() {
   DEBUG_PRINT(this << " seq_cst " << seq_cst_.load());
 }
 
-inline void hazptr_stats::light() {
+FOLLY_ALWAYS_INLINE void hazptr_stats::light() {
   if (HAZPTR_STATS) {
     /* atomic */ ++light_;
   }
@@ -505,20 +552,15 @@ inline void hazptr_tc_entry::fill(hazptr_rec* hprec) {
 
 inline hazptr_rec* hazptr_tc_entry::get() {
   auto hprec = hprec_;
-  if (hprec) {
-    hprec_ = nullptr;
-    DEBUG_PRINT(this << " " << hprec);
-    return hprec;
-  }
-  return nullptr;
+  hprec_ = nullptr;
+  DEBUG_PRINT(this << " " << hprec);
+  return hprec;
 }
 
 inline void hazptr_tc_entry::evict() {
   auto hprec = hprec_;
-  if (hprec) {
-    hprec_ = nullptr;
-    hprec->release();
-  }
+  hprec_ = nullptr;
+  hprec->release();
   DEBUG_PRINT(this << " " << hprec);
 }
 
@@ -528,36 +570,26 @@ inline hazptr_tc::hazptr_tc() {
 
 inline hazptr_tc::~hazptr_tc() {
   DEBUG_PRINT(this);
-  for (int i = 0; i < HAZPTR_TC_SIZE; ++i) {
+  for (int i = 0; i < count_; ++i) {
     tc_[i].evict();
   }
 }
 
-inline hazptr_rec* hazptr_tc::get(hazptr_domain* domain) {
-  if (domain != domain_) {
-    return nullptr;
-  }
-  for (int i = 0; i < HAZPTR_TC_SIZE; ++i) {
-    auto hprec = tc_[i].get();
-    if (hprec) {
-      DEBUG_PRINT(this << " " << hprec);
-      return hprec;
-    }
+inline hazptr_rec* hazptr_tc::get() {
+  if (count_ > 0) {
+    auto hprec = tc_[--count_].get();
+    DEBUG_PRINT(this << " " << hprec);
+    return hprec;
   }
   DEBUG_PRINT(this << " nullptr");
   return nullptr;
 }
 
-inline bool hazptr_tc::put(hazptr_rec* hprec, hazptr_domain* domain) {
-  if (domain != domain_) {
-    return false;
-  }
-  for (int i = 0; i < HAZPTR_TC_SIZE; ++i) {
-    if (tc_[i].hprec_ == nullptr) {
-      tc_[i].fill(hprec);
-      DEBUG_PRINT(this << " " << i);
-      return true;
-    }
+inline bool hazptr_tc::put(hazptr_rec* hprec) {
+  if (count_ < HAZPTR_TC_SIZE) {
+    tc_[count_++].fill(hprec);
+    DEBUG_PRINT(this << " " << count_ - 1);
+    return true;
   }
   return false;
 }
@@ -568,10 +600,45 @@ inline class hazptr_tc& hazptr_tc() {
   return tc;
 }
 
-inline std::mutex& hazptr_tc_lock() {
-  static std::mutex m;
-  DEBUG_PRINT(&m);
-  return m;
+/** hazptr_priv - functions */
+
+inline hazptr_priv::hazptr_priv() {
+  DEBUG_PRINT(this);
+}
+
+inline hazptr_priv::~hazptr_priv() {
+  DEBUG_PRINT(this);
+  if (tail_) {
+    pushAllToDomain();
+  }
+}
+
+inline void hazptr_priv::push(hazptr_obj* obj) {
+  obj->next_ = nullptr;
+  if (tail_) {
+    tail_->next_ = obj;
+  } else {
+    head_ = obj;
+  }
+  tail_ = obj;
+  ++rcount_;
+  if (domain_->reachedThreshold(rcount_)) {
+    pushAllToDomain();
+  }
+}
+
+inline void hazptr_priv::pushAllToDomain() {
+  domain_->pushRetired(head_, tail_, rcount_);
+  head_ = nullptr;
+  tail_ = nullptr;
+  rcount_ = 0;
+  domain_->tryBulkReclaim();
+}
+
+inline class hazptr_priv& hazptr_priv() {
+  static thread_local class hazptr_priv priv;
+  DEBUG_PRINT(&priv);
+  return priv;
 }
 
 } // namespace folly

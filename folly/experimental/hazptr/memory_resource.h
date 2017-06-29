@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <folly/experimental/hazptr/debug.h>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Disclaimer: This is intended only as a partial stand-in for
 /// std::pmr::memory_resource (C++17) as needed for developing a
@@ -45,7 +47,6 @@ memory_resource* new_delete_resource();
 ////////////////////////////////////////////////////////////////////////////////
 /// Implementation
 ////////////////////////////////////////////////////////////////////////////////
-#include <folly/experimental/hazptr/debug.h>
 
 inline memory_resource** default_mr_ptr() {
   /* library-local */ static memory_resource* default_mr =
