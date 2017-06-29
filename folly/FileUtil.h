@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/Conv.h>
 #include <folly/Portability.h>
+#include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/SysUio.h>
@@ -139,8 +139,7 @@ bool readFile(
   constexpr size_t initialAlloc = 1024 * 4;
   out.resize(
     std::min(
-      buf.st_size > 0 ? folly::to<size_t>(buf.st_size + 1) : initialAlloc,
-      num_bytes));
+      buf.st_size > 0 ? (size_t(buf.st_size) + 1) : initialAlloc, num_bytes));
 
   while (soFar < out.size()) {
     const auto actual = readFull(fd, &out[soFar], out.size() - soFar);
