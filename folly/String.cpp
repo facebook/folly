@@ -16,7 +16,6 @@
 
 #include <folly/String.h>
 
-#include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
 #include <cerrno>
@@ -29,6 +28,42 @@
 #include <glog/logging.h>
 
 namespace folly {
+
+static inline bool is_oddspace(char c) {
+  return c == '\n' || c == '\t' || c == '\r';
+}
+
+StringPiece ltrimWhitespace(StringPiece sp) {
+  // Spaces other than ' ' characters are less common but should be
+  // checked.  This configuration where we loop on the ' '
+  // separately from oddspaces was empirically fastest.
+
+loop:
+  for (; !sp.empty() && sp.front() == ' '; sp.pop_front()) {
+  }
+  if (!sp.empty() && is_oddspace(sp.front())) {
+    sp.pop_front();
+    goto loop;
+  }
+
+  return sp;
+}
+
+StringPiece rtrimWhitespace(StringPiece sp) {
+  // Spaces other than ' ' characters are less common but should be
+  // checked.  This configuration where we loop on the ' '
+  // separately from oddspaces was empirically fastest.
+
+loop:
+  for (; !sp.empty() && sp.back() == ' '; sp.pop_back()) {
+  }
+  if (!sp.empty() && is_oddspace(sp.back())) {
+    sp.pop_back();
+    goto loop;
+  }
+
+  return sp;
+}
 
 namespace {
 
@@ -507,6 +542,7 @@ namespace detail {
 
 size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
                    std::string& line) {
+  static char hexValues[] = "0123456789abcdef";
   // Line layout:
   // 8: address
   // 1: space
@@ -520,13 +556,24 @@ size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
   line.reserve(78);
   const uint8_t* p = reinterpret_cast<const uint8_t*>(ptr) + offset;
   size_t n = std::min(size - offset, size_t(16));
-  format("{:08x} ", offset).appendTo(line);
+  line.push_back(hexValues[(offset >> 28) & 0xf]);
+  line.push_back(hexValues[(offset >> 24) & 0xf]);
+  line.push_back(hexValues[(offset >> 20) & 0xf]);
+  line.push_back(hexValues[(offset >> 16) & 0xf]);
+  line.push_back(hexValues[(offset >> 12) & 0xf]);
+  line.push_back(hexValues[(offset >> 8) & 0xf]);
+  line.push_back(hexValues[(offset >> 4) & 0xf]);
+  line.push_back(hexValues[offset & 0xf]);
+  line.push_back(' ');
 
   for (size_t i = 0; i < n; i++) {
     if (i == 8) {
       line.push_back(' ');
     }
-    format(" {:02x}", p[i]).appendTo(line);
+
+    line.push_back(' ');
+    line.push_back(hexValues[(p[i] >> 4) & 0xf]);
+    line.push_back(hexValues[p[i] & 0xf]);
   }
 
   // 3 spaces for each byte we're not printing, one separating the halves
