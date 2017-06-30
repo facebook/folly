@@ -179,13 +179,6 @@ constexpr bool kIsSanitizeThread = false;
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
 #endif
 
-#if defined(__GNUC__) && !defined(__APPLE__) && !__GNUC_PREREQ(4,9)
-// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56019
-// gcc 4.8.x incorrectly placed max_align_t in the root namespace
-// Alias it into std (where it's found in 4.9 and later)
-namespace std { typedef ::max_align_t max_align_t; }
-#endif
-
 // portable version check for clang
 #ifndef __CLANG_PREREQ
 # if defined __clang__ && defined __clang_major__ && defined __clang_minor__
