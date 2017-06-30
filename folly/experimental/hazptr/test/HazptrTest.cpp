@@ -262,23 +262,32 @@ TEST_F(HazptrTest, VirtualTest) {
   }
 }
 
-TEST_F(HazptrTest, DestructionTest) {
-  hazptr_domain myDomain0;
+void destructionTest(hazptr_domain& domain) {
   struct Thing : public hazptr_obj_base<Thing> {
     Thing* next;
-    Thing(Thing* n) : next(n) {}
+    hazptr_domain* domain;
+    int val;
+    Thing(int v, Thing* n, hazptr_domain* d) : next(n), domain(d), val(v) {}
     ~Thing() {
-      DEBUG_PRINT("this: " << this << " next: " << next);
+      DEBUG_PRINT("this: " << this << " val: " << val << " next: " << next);
       if (next) {
-        next->retire();
+        next->retire(*domain);
       }
     }
   };
   Thing* last{nullptr};
   for (int i = 0; i < 2000; i++) {
-    last = new Thing(last);
+    last = new Thing(i, last, &domain);
   }
-  last->retire();
+  last->retire(domain);
+}
+
+TEST_F(HazptrTest, DestructionTest) {
+  {
+    hazptr_domain myDomain0;
+    destructionTest(myDomain0);
+  }
+  destructionTest(default_hazptr_domain());
 }
 
 TEST_F(HazptrTest, Move) {

@@ -127,6 +127,7 @@ class hazptr_priv {
   hazptr_obj* head_{nullptr};
   hazptr_obj* tail_{nullptr};
   int rcount_{0};
+  bool active_{true};
 
  public:
   hazptr_priv();
@@ -608,6 +609,8 @@ inline hazptr_priv::hazptr_priv() {
 
 inline hazptr_priv::~hazptr_priv() {
   DEBUG_PRINT(this);
+  DCHECK(active_);
+  active_ = false;
   if (tail_) {
     pushAllToDomain();
   }
@@ -618,6 +621,10 @@ inline void hazptr_priv::push(hazptr_obj* obj) {
   if (tail_) {
     tail_->next_ = obj;
   } else {
+    if (!active_) {
+      default_hazptr_domain().objRetire(obj);
+      return;
+    }
     head_ = obj;
   }
   tail_ = obj;
