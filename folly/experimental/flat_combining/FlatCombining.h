@@ -35,7 +35,7 @@ namespace folly {
 ///
 /// FC is an alternative to coarse-grained locking for making
 /// sequential data structures thread-safe while minimizing the
-/// synchroniation overheads and cache coherence traffic associated
+/// synchronization overheads and cache coherence traffic associated
 /// with locking.
 ///
 /// Under FC, when a thread finds the lock contended, it can
@@ -50,7 +50,7 @@ namespace folly {
 ///   and acquiring the lock are eliminated from the critical path of
 ///   operating on the data structure.
 /// - Opportunities for smart combining, where executing multiple
-///   operations together may take less time than executng the
+///   operations together may take less time than executing the
 ///   operations separately, e.g., K delete_min operations on a
 ///   priority queue may be combined to take O(K + log N) time instead
 ///   of O(K * log N).
@@ -59,13 +59,13 @@ namespace folly {
 
 /// - A simple interface that requires minimal extra code by the
 ///   user. To use this interface efficiently the user-provided
-///   functions must be copyable to folly::Functio without dynamic
+///   functions must be copyable to folly::Function without dynamic
 ///   allocation. If this is impossible or inconvenient, the user is
 ///   encouraged to use the custom interface described below.
-/// - A custom interface that supports custom combinining and custom
+/// - A custom interface that supports custom combining and custom
 ///   request structure, either for the sake of smart combining or for
 ///   efficiently supporting operations that are not be copyable to
-///   folly::Function without synamic allocation.
+///   folly::Function without dynamic allocation.
 /// - Both synchronous and asynchronous operations.
 /// - Request records with and without thread-caching.
 /// - Combining with and without a dedicated combiner thread.
