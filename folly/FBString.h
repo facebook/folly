@@ -33,7 +33,7 @@
 
 #pragma GCC system_header
 
-#include "basic_fbstring_malloc.h"
+#include "basic_fbstring_malloc.h" // @manual
 
 // When used as std::string replacement always disable assertions.
 #define FBSTRING_ASSERT(expr) /* empty */

@@ -52,7 +52,7 @@ constexpr bool kHasUnalignedAccess = false;
 # endif
 /* nolint */
 # define _USE_ATTRIBUTES_FOR_SAL 1
-# include <sal.h>
+# include <sal.h> // @manual
 # define FOLLY_PRINTF_FORMAT _Printf_format_string_
 # define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) /**/
 #else
@@ -220,7 +220,7 @@ namespace std { typedef ::max_align_t max_align_t; }
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
 #if FOLLY_USE_LIBCPP
-#include <__config>
+#include <__config> // @manual
 #define FOLLY_NAMESPACE_STD_BEGIN     _LIBCPP_BEGIN_NAMESPACE_STD
 #define FOLLY_NAMESPACE_STD_END       _LIBCPP_END_NAMESPACE_STD
 #else
@@ -318,7 +318,7 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 
 // for TARGET_OS_IPHONE
 #ifdef __APPLE__
-#include <TargetConditionals.h>
+#include <TargetConditionals.h> // @manual
 #endif
 
 // RTTI may not be enabled for this compilation unit.

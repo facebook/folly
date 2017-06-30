@@ -28,7 +28,7 @@
 #include <folly/portability/Fcntl.h>
 
 #ifdef _WIN32
-#include <crtdbg.h>
+#include <crtdbg.h> // @manual
 #endif
 
 namespace folly {

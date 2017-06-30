@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <urcu.h>
+#include <urcu.h> // @manual
 
 namespace folly {
 

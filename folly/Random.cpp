@@ -31,7 +31,7 @@
 #include <glog/logging.h>
 
 #ifdef _MSC_VER
-# include <wincrypt.h>
+# include <wincrypt.h> // @manual
 #endif
 
 namespace folly {
