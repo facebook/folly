@@ -108,8 +108,58 @@ class LogStreamProcessor {
       AppendType) noexcept;
 
   /**
-   * LogStreamProcessor constructors for use with XLOG() macros with no extra
-   * arguments.
+   * LogStreamProcessor constructor for use with a LOG() macro with arguments
+   * to be concatenated with folly::to<std::string>()
+   *
+   * Note that the filename argument is not copied.  The caller should ensure
+   * that it points to storage that will remain valid for the lifetime of the
+   * LogStreamProcessor.  (This is always the case for the __FILE__
+   * preprocessor macro.)
+   */
+  template <typename... Args>
+  LogStreamProcessor(
+      const LogCategory* category,
+      LogLevel level,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      AppendType,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            category,
+            level,
+            filename,
+            lineNumber,
+            INTERNAL,
+            createLogString(std::forward<Args>(args)...)) {}
+
+  /**
+   * LogStreamProcessor constructor for use with a LOG() macro with arguments
+   * to be concatenated with folly::to<std::string>()
+   *
+   * Note that the filename argument is not copied.  The caller should ensure
+   * that it points to storage that will remain valid for the lifetime of the
+   * LogStreamProcessor.  (This is always the case for the __FILE__
+   * preprocessor macro.)
+   */
+  template <typename... Args>
+  LogStreamProcessor(
+      const LogCategory* category,
+      LogLevel level,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      FormatType,
+      folly::StringPiece fmt,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            category,
+            level,
+            filename,
+            lineNumber,
+            INTERNAL,
+            formatLogString(fmt, std::forward<Args>(args)...)) {}
+
+  /*
+   * Versions of the above constructors for use in XLOG() statements.
    *
    * These are defined separately from the above constructor so that the work
    * of initializing the XLOG LogCategory data is done in a separate function
@@ -125,6 +175,57 @@ class LogStreamProcessor {
       folly::StringPiece filename,
       unsigned int lineNumber,
       AppendType) noexcept;
+  template <typename... Args>
+  LogStreamProcessor(
+      XlogCategoryInfo<true>* categoryInfo,
+      LogLevel level,
+      folly::StringPiece categoryName,
+      bool isCategoryNameOverridden,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      AppendType,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            categoryInfo,
+            level,
+            categoryName,
+            isCategoryNameOverridden,
+            filename,
+            lineNumber,
+            INTERNAL,
+            createLogString(std::forward<Args>(args)...)) {}
+  template <typename... Args>
+  LogStreamProcessor(
+      XlogCategoryInfo<true>* categoryInfo,
+      LogLevel level,
+      folly::StringPiece categoryName,
+      bool isCategoryNameOverridden,
+      folly::StringPiece filename,
+      unsigned int lineNumber,
+      FormatType,
+      folly::StringPiece fmt,
+      Args&&... args) noexcept
+      : LogStreamProcessor(
+            categoryInfo,
+            level,
+            categoryName,
+            isCategoryNameOverridden,
+            filename,
+            lineNumber,
+            INTERNAL,
+            formatLogString(fmt, std::forward<Args>(args)...)) {}
+
+#ifdef __INCLUDE_LEVEL__
+  /*
+   * Versions of the above constructors to use in XLOG() macros that appear in
+   * .cpp files.  These are only used if the compiler supports the
+   * __INCLUDE_LEVEL__ macro, which we need to determine that the XLOG()
+   * statement is not in a header file.
+   *
+   * These behave identically to the XlogCategoryInfo<true> versions of the
+   * APIs, but slightly more optimized, and allow the XLOG() code to avoid
+   * storing category information at each XLOG() call site.
+   */
   LogStreamProcessor(
       XlogFileScopeInfo* fileScopeInfo,
       LogLevel level,
@@ -141,54 +242,6 @@ class LogStreamProcessor {
       AppendType) noexcept
       : LogStreamProcessor(fileScopeInfo, level, filename, lineNumber, APPEND) {
   }
-
-  /**
-   * LogStreamProcessor constructor for use with a LOG() macro with arguments
-   * to be concatenated with folly::to<std::string>()
-   *
-   * Note that the filename argument is not copied.  The caller should ensure
-   * that it points to storage that will remain valid for the lifetime of the
-   * LogStreamProcessor.  (This is always the case for the __FILE__
-   * preprocessor macro.)
-   */
-  template <typename... Args>
-  LogStreamProcessor(
-      const LogCategory* category,
-      LogLevel level,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      AppendType,
-      Args&&... args) noexcept
-      : LogStreamProcessor(
-            category,
-            level,
-            filename,
-            lineNumber,
-            INTERNAL,
-            createLogString(std::forward<Args>(args)...)) {}
-
-  /**
-   * Versions of the above constructor for use in XLOG() statements.
-   */
-  template <typename... Args>
-  LogStreamProcessor(
-      XlogCategoryInfo<true>* categoryInfo,
-      LogLevel level,
-      folly::StringPiece categoryName,
-      bool isCategoryNameOverridden,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      AppendType,
-      Args&&... args) noexcept
-      : LogStreamProcessor(
-            categoryInfo,
-            level,
-            categoryName,
-            isCategoryNameOverridden,
-            filename,
-            lineNumber,
-            INTERNAL,
-            createLogString(std::forward<Args>(args)...)) {}
   template <typename... Args>
   LogStreamProcessor(
       XlogFileScopeInfo* fileScopeInfo,
@@ -206,57 +259,6 @@ class LogStreamProcessor {
             lineNumber,
             INTERNAL,
             createLogString(std::forward<Args>(args)...)) {}
-
-  /**
-   * LogStreamProcessor constructor for use with a LOG() macro with arguments
-   * to be concatenated with folly::to<std::string>()
-   *
-   * Note that the filename argument is not copied.  The caller should ensure
-   * that it points to storage that will remain valid for the lifetime of the
-   * LogStreamProcessor.  (This is always the case for the __FILE__
-   * preprocessor macro.)
-   */
-  template <typename... Args>
-  LogStreamProcessor(
-      const LogCategory* category,
-      LogLevel level,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      FormatType,
-      folly::StringPiece fmt,
-      Args&&... args) noexcept
-      : LogStreamProcessor(
-            category,
-            level,
-            filename,
-            lineNumber,
-            INTERNAL,
-            formatLogString(fmt, std::forward<Args>(args)...)) {}
-
-  /**
-   * Versions of the above constructor for use in XLOG() statements.
-   */
-  template <typename... Args>
-  LogStreamProcessor(
-      XlogCategoryInfo<true>* categoryInfo,
-      LogLevel level,
-      folly::StringPiece categoryName,
-      bool isCategoryNameOverridden,
-      folly::StringPiece filename,
-      unsigned int lineNumber,
-      FormatType,
-      folly::StringPiece fmt,
-      Args&&... args) noexcept
-      : LogStreamProcessor(
-            categoryInfo,
-            level,
-            categoryName,
-            isCategoryNameOverridden,
-            filename,
-            lineNumber,
-            INTERNAL,
-            formatLogString(fmt, std::forward<Args>(args)...)) {}
-
   template <typename... Args>
   LogStreamProcessor(
       XlogFileScopeInfo* fileScopeInfo,
@@ -275,6 +277,7 @@ class LogStreamProcessor {
             lineNumber,
             INTERNAL,
             formatLogString(fmt, std::forward<Args>(args)...)) {}
+#endif
 
   ~LogStreamProcessor() noexcept;
 

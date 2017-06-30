@@ -53,20 +53,6 @@ LogStreamProcessor::LogStreamProcessor(
           std::string()) {}
 
 LogStreamProcessor::LogStreamProcessor(
-    XlogFileScopeInfo* fileScopeInfo,
-    LogLevel level,
-    folly::StringPiece filename,
-    unsigned int lineNumber,
-    AppendType) noexcept
-    : LogStreamProcessor(
-          fileScopeInfo,
-          level,
-          filename,
-          lineNumber,
-          INTERNAL,
-          std::string()) {}
-
-LogStreamProcessor::LogStreamProcessor(
     const LogCategory* category,
     LogLevel level,
     folly::StringPiece filename,
@@ -89,13 +75,6 @@ LogCategory* getXlogCategory(
     return categoryInfo->init(categoryName, isCategoryNameOverridden);
   }
   return categoryInfo->getCategory(&xlog_detail::xlogFileScopeInfo);
-}
-
-LogCategory* getXlogCategory(XlogFileScopeInfo* fileScopeInfo) {
-  // By the time a LogStreamProcessor is created, the XlogFileScopeInfo object
-  // should have already been initialized to perform the log level check.
-  // Therefore we never need to check if it is initialized here.
-  return fileScopeInfo->category;
 }
 }
 
@@ -125,12 +104,28 @@ LogStreamProcessor::LogStreamProcessor(
       message_{std::move(msg)},
       stream_{this} {}
 
+#ifdef __INCLUDE_LEVEL__
+namespace {
+LogCategory* getXlogCategory(XlogFileScopeInfo* fileScopeInfo) {
+  // By the time a LogStreamProcessor is created, the XlogFileScopeInfo object
+  // should have already been initialized to perform the log level check.
+  // Therefore we never need to check if it is initialized here.
+  return fileScopeInfo->category;
+}
+}
+
 /**
  * Construct a LogStreamProcessor from an XlogFileScopeInfo.
  *
  * We intentionally define this in LogStreamProcessor.cpp instead of
  * LogStreamProcessor.h to avoid having it inlined at every XLOG() call site,
  * to reduce the emitted code size.
+ *
+ * This is only defined if __INCLUDE_LEVEL__ is available.  The
+ * XlogFileScopeInfo APIs are only invoked if we can use __INCLUDE_LEVEL__ to
+ * tell that an XLOG() statement occurs in a non-header file.  For compilers
+ * that do not support __INCLUDE_LEVEL__, the category information is always
+ * passed in as XlogCategoryInfo<true> rather than as XlogFileScopeInfo.
  */
 LogStreamProcessor::LogStreamProcessor(
     XlogFileScopeInfo* fileScopeInfo,
@@ -145,6 +140,21 @@ LogStreamProcessor::LogStreamProcessor(
       lineNumber_{lineNumber},
       message_{std::move(msg)},
       stream_{this} {}
+
+LogStreamProcessor::LogStreamProcessor(
+    XlogFileScopeInfo* fileScopeInfo,
+    LogLevel level,
+    folly::StringPiece filename,
+    unsigned int lineNumber,
+    AppendType) noexcept
+    : LogStreamProcessor(
+          fileScopeInfo,
+          level,
+          filename,
+          lineNumber,
+          INTERNAL,
+          std::string()) {}
+#endif
 
 /*
  * We intentionally define the LogStreamProcessor destructor in
