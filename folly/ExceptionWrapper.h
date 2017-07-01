@@ -34,6 +34,7 @@
 #include <folly/Demangle.h>
 #include <folly/ExceptionString.h>
 #include <folly/FBString.h>
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 
 #ifdef __GNUC__
@@ -42,8 +43,7 @@
 #pragma GCC diagnostic ignored "-Wpotentially-evaluated-expression"
 // GCC gets confused about lambda scopes and issues shadow-local warnings for
 // parameters in totally different functions.
-#pragma GCC diagnostic ignored "-Wshadow-local"
-#pragma GCC diagnostic ignored "-Wshadow-compatible-local"
+FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 #endif
 
 #define FOLLY_EXCEPTION_WRAPPER_H_INCLUDED
