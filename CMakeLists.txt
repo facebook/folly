@@ -347,6 +347,7 @@ if (BUILD_TESTS)
 
     DIRECTORY futures/test/
       TEST barrier_test SOURCES BarrierTest.cpp
+      TEST callback_lifetime_test SOURCES CallbackLifetimeTest.cpp
       TEST collect_test SOURCES CollectTest.cpp
       TEST context_test SOURCES ContextTest.cpp
       TEST core_test SOURCES CoreTest.cpp
