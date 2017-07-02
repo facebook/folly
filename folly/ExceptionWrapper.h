@@ -604,7 +604,7 @@ constexpr exception_wrapper::VTable exception_wrapper::InPlace<Ex>::ops_;
  */
 template <class Ex, typename... As>
 exception_wrapper make_exception_wrapper(As&&... as) {
-  return exception_wrapper{in_place<Ex>, std::forward<As>(as)...};
+  return exception_wrapper{in_place_type<Ex>, std::forward<As>(as)...};
 }
 
 /**

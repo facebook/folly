@@ -636,13 +636,13 @@ inline traits_detail::InPlaceTag in_place(traits_detail::InPlaceTag = {}) {
 }
 
 template <class T>
-inline traits_detail::InPlaceTypeTag<T> in_place(
+inline traits_detail::InPlaceTypeTag<T> in_place_type(
     traits_detail::InPlaceTypeTag<T> = {}) {
   return {};
 }
 
 template <std::size_t I>
-inline traits_detail::InPlaceIndexTag<I> in_place(
+inline traits_detail::InPlaceIndexTag<I> in_place_index(
     traits_detail::InPlaceIndexTag<I> = {}) {
   return {};
 }
