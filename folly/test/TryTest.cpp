@@ -19,28 +19,44 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
+#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
 
+namespace {
+
+class A {
+ public:
+  explicit A(int x) : x_(x) {}
+
+  int x() const {
+    return x_;
+  }
+ private:
+  int x_;
+};
+}
+
 TEST(Try, basic) {
-  class A {
-   public:
-    A(int x) : x_(x) {}
-
-    int x() const {
-      return x_;
-    }
-   private:
-    int x_;
-  };
-
   A a(5);
   Try<A> t_a(std::move(a));
 
   Try<Unit> t_void;
 
   EXPECT_EQ(5, t_a.value().x());
+}
+
+TEST(Try, in_place) {
+  Try<A> t_a(in_place, 5);
+
+  EXPECT_EQ(5, t_a.value().x());
+}
+
+TEST(Try, in_place_nested) {
+  Try<Try<A>> t_t_a(in_place, in_place, 5);
+
+  EXPECT_EQ(5, t_t_a.value().value().x());
 }
 
 // Make sure we can copy Trys for copyable types

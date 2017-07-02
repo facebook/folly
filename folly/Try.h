@@ -21,6 +21,7 @@
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Unit.h>
+#include <folly/Utility.h>
 #include <exception>
 #include <stdexcept>
 #include <type_traits>
@@ -80,6 +81,11 @@ class Try {
    * @param v The value to move in
    */
   explicit Try(T&& v) : contains_(Contains::VALUE), value_(std::move(v)) {}
+
+  template <typename... Args>
+  explicit Try(in_place_t, Args&&... args) noexcept(
+      noexcept(::new (nullptr) T(std::declval<Args&&>()...)))
+      : contains_(Contains::VALUE), value_(std::forward<Args>(args)...) {}
 
   /// Implicit conversion from Try<void> to Try<Unit>
   template <class T2 = T>
