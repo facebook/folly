@@ -647,14 +647,6 @@ inline traits_detail::InPlaceIndexTag<I> in_place_index(
   return {};
 }
 
-// For backwards compatibility:
-using construct_in_place_t = in_place_t;
-
-inline traits_detail::InPlaceTag construct_in_place(
-    traits_detail::InPlaceTag = {}) {
-  return {};
-}
-
 /**
  * Initializer lists are a powerful compile time syntax introduced in C++11
  * but due to their often conflicting syntax they are not used by APIs for

@@ -491,10 +491,10 @@ struct Synchronized : public SynchronizedBase<
 
   /**
    * Lets you construct non-movable types in-place. Use the constexpr
-   * instance `construct_in_place` as the first argument.
+   * instance `in_place` as the first argument.
    */
   template <typename... Args>
-  explicit Synchronized(construct_in_place_t, Args&&... args)
+  explicit Synchronized(in_place_t, Args&&... args)
       : datum_(std::forward<Args>(args)...) {}
 
   /**

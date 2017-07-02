@@ -32,7 +32,7 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
-#include <folly/Traits.h> // for construct_in_place_t
+#include <folly/Traits.h> // for in_place_t
 #include <folly/Unit.h>
 
 #define FOLLY_EXPECTED_ID(X) FB_CONCATENATE(FB_CONCATENATE(Folly, X), __LINE__)
