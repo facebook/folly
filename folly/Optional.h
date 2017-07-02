@@ -61,6 +61,7 @@
 #include <utility>
 
 #include <folly/Portability.h>
+#include <folly/Utility.h>
 
 namespace folly {
 
@@ -124,6 +125,12 @@ class Optional {
   /* implicit */ Optional(const Value& newValue)
     noexcept(std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
+  }
+
+  template <typename... Args>
+  explicit Optional(in_place_t, Args&&... args)
+    noexcept(noexcept(::new (nullptr) Value(std::declval<Args&&>()...))) {
+    construct(std::forward<Args>(args)...);
   }
 
   void assign(const None&) {

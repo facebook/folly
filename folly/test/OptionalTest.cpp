@@ -195,6 +195,21 @@ TEST(Optional, EmptyConstruct) {
   EXPECT_FALSE(bool(test2));
 }
 
+TEST(Optional, InPlaceConstruct) {
+  using A = std::pair<int, double>;
+  Optional<A> opt(in_place, 5, 3.2);
+  EXPECT_TRUE(bool(opt));
+  EXPECT_EQ(5, opt->first);
+}
+
+TEST(Optional, InPlaceNestedConstruct) {
+  using A = std::pair<int, double>;
+  Optional<Optional<A>> opt(in_place, in_place, 5, 3.2);
+  EXPECT_TRUE(bool(opt));
+  EXPECT_TRUE(bool(*opt));
+  EXPECT_EQ(5, (*opt)->first);
+}
+
 TEST(Optional, Unique) {
   Optional<unique_ptr<int>> opt;
 
