@@ -133,6 +133,85 @@ using make_index_sequence = detail::make_index_sequence<N>;
 #endif
 
 /**
+ *  Backports from C++17 of:
+ *    std::in_place_t
+ *    std::in_place_type_t
+ *    std::in_place_index_t
+ *    std::in_place
+ *    std::in_place_type
+ *    std::in_place_index
+ */
+
+struct in_place_tag {};
+template <class>
+struct in_place_type_tag {};
+template <std::size_t>
+struct in_place_index_tag {};
+
+using in_place_t = in_place_tag (&)(in_place_tag);
+template <class T>
+using in_place_type_t = in_place_type_tag<T> (&)(in_place_type_tag<T>);
+template <std::size_t I>
+using in_place_index_t = in_place_index_tag<I> (&)(in_place_index_tag<I>);
+
+inline in_place_tag in_place(in_place_tag = {}) {
+  return {};
+}
+template <class T>
+inline in_place_type_tag<T> in_place_type(in_place_type_tag<T> = {}) {
+  return {};
+}
+template <std::size_t I>
+inline in_place_index_tag<I> in_place_index(in_place_index_tag<I> = {}) {
+  return {};
+}
+
+/**
+ * Initializer lists are a powerful compile time syntax introduced in C++11
+ * but due to their often conflicting syntax they are not used by APIs for
+ * construction.
+ *
+ * Further standard conforming compilers *strongly* favor an
+ * std::initalizer_list overload for construction if one exists.  The
+ * following is a simple tag used to disambiguate construction with
+ * initializer lists and regular uniform initialization.
+ *
+ * For example consider the following case
+ *
+ *  class Something {
+ *  public:
+ *    explicit Something(int);
+ *    Something(std::intiializer_list<int>);
+ *
+ *    operator int();
+ *  };
+ *
+ *  ...
+ *  Something something{1}; // SURPRISE!!
+ *
+ * The last call to instantiate the Something object will go to the
+ * initializer_list overload.  Which may be surprising to users.
+ *
+ * If however this tag was used to disambiguate such construction it would be
+ * easy for users to see which construction overload their code was referring
+ * to.  For example
+ *
+ *  class Something {
+ *  public:
+ *    explicit Something(int);
+ *    Something(folly::initlist_construct_t, std::initializer_list<int>);
+ *
+ *    operator int();
+ *  };
+ *
+ *  ...
+ *  Something something_one{1}; // not the initializer_list overload
+ *  Something something_two{folly::initlist_construct, {1}}; // correct
+ */
+struct initlist_construct_t {};
+constexpr initlist_construct_t initlist_construct{};
+
+/**
  * A simple function object that passes its argument through unchanged.
  *
  * Example:

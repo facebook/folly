@@ -36,6 +36,7 @@
 #include <folly/FBString.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
