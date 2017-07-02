@@ -70,11 +70,18 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
     return -1;
   }
 
-  if (lockf(fd, F_LOCK, 0) == -1) {
+  // We only need to worry about locking if the file descriptor is
+  // not a socket. We have no way of locking sockets :(
+  // The correct way to do this for sockets is via sendmsg/recvmsg,
+  // but this is good enough for now.
+  bool shouldLock = !folly::portability::sockets::is_fh_socket(fd);
+  if (shouldLock && lockf(fd, F_LOCK, 0) == -1) {
     return -1;
   }
   SCOPE_EXIT {
-    lockf(fd, F_ULOCK, 0);
+    if (shouldLock) {
+      lockf(fd, F_ULOCK, 0);
+    }
   };
 
   ssize_t bytesProcessed = 0;
