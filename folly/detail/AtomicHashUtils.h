@@ -29,7 +29,7 @@ void atomic_hash_spin_wait(Cond condition) {
   constexpr size_t kPauseLimit = 10000;
   for (size_t i = 0; condition(); ++i) {
     if (i < kPauseLimit) {
-      folly::asm_pause();
+      folly::asm_volatile_pause();
     } else {
       std::this_thread::yield();
     }

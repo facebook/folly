@@ -42,7 +42,7 @@ void spinlockTestThread(LockedVal<LOCK>* v) {
   const int max = 1000;
   auto rng = folly::ThreadLocalPRNG();
   for (int i = 0; i < max; i++) {
-    folly::asm_pause();
+    folly::asm_volatile_pause();
     SpinLockGuardImpl<LOCK> g(v->lock);
 
     int first = v->ar[0];
@@ -67,7 +67,7 @@ struct TryLockState {
 template <typename LOCK>
 void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
   while (true) {
-    folly::asm_pause();
+    folly::asm_volatile_pause();
     bool ret = state->lock2.try_lock();
     SpinLockGuardImpl<LOCK> g(state->lock1);
     if (state->obtained >= count) {
@@ -89,7 +89,7 @@ void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
       auto oldFailed = state->failed;
       while (state->failed == oldFailed && state->obtained < count) {
         state->lock1.unlock();
-        folly::asm_pause();
+        folly::asm_volatile_pause();
         state->lock1.lock();
       }
 

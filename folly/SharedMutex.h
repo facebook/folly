@@ -991,7 +991,7 @@ class SharedMutexImpl {
           return;
         }
       }
-      asm_pause();
+      asm_volatile_pause();
       if (UNLIKELY(++spinCount >= kMaxSpinCount)) {
         applyDeferredReaders(state, ctx, slot);
         return;

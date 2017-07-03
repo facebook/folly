@@ -71,7 +71,7 @@ void splock_test() {
   const int max = 1000;
   auto rng = folly::ThreadLocalPRNG();
   for (int i = 0; i < max; i++) {
-    folly::asm_pause();
+    folly::asm_volatile_pause();
     MSLGuard g(v.lock);
 
     int first = v.ar[0];

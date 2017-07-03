@@ -51,7 +51,7 @@ retry:
       // sched_yield(), but more portable
       std::this_thread::yield();
     } else {
-      folly::asm_pause();
+      folly::asm_volatile_pause();
     }
     oldWord = wordPtr->load(std::memory_order_relaxed);
     goto retry;
