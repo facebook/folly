@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include <folly/ScopeGuard.h>
+#include <folly/portability/Sockets.h>
 #include <folly/portability/SysFile.h>
 #include <folly/portability/Unistd.h>
 
