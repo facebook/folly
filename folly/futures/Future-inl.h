@@ -24,7 +24,6 @@
 #include <folly/Baton.h>
 #include <folly/Optional.h>
 #include <folly/Random.h>
-#include <folly/Traits.h>
 #include <folly/futures/detail/Core.h>
 #include <folly/futures/Timekeeper.h>
 
@@ -1251,14 +1250,9 @@ struct retrying_policy_fut_tag {};
 
 template <class Policy>
 struct retrying_policy_traits {
-  using ew = exception_wrapper;
-  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS(has_op_call, operator());
-  template <class Ret>
-  using has_op = typename std::integral_constant<bool,
-        has_op_call<Policy, Ret(size_t, const ew&)>::value ||
-        has_op_call<Policy, Ret(size_t, const ew&) const>::value>;
-  using is_raw = has_op<bool>;
-  using is_fut = has_op<Future<bool>>;
+  using result = std::result_of_t<Policy(size_t, const exception_wrapper&)>;
+  using is_raw = std::is_same<result, bool>;
+  using is_fut = std::is_same<result, Future<bool>>;
   using tag = typename std::conditional<
         is_raw::value, retrying_policy_raw_tag, typename std::conditional<
         is_fut::value, retrying_policy_fut_tag, void>::type>::type;
