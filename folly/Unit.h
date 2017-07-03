@@ -45,8 +45,12 @@ struct Unit {
   template <typename T>
   struct Drop : std::conditional<std::is_same<T, Unit>::value, void, T> {};
 
-  bool operator==(const Unit& /*other*/) const { return true; }
-  bool operator!=(const Unit& /*other*/) const { return false; }
+  constexpr bool operator==(const Unit& /*other*/) const {
+    return true;
+  }
+  constexpr bool operator!=(const Unit& /*other*/) const {
+    return false;
+  }
 };
 
 constexpr Unit unit {};
