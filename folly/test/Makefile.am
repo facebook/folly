@@ -270,6 +270,7 @@ futures_test_SOURCES = \
     ../futures/test/CallbackLifetimeTest.cpp \
     ../futures/test/CollectTest.cpp \
     ../futures/test/ContextTest.cpp \
+    ../futures/test/ConversionOperatorTest.cpp \
     ../futures/test/CoreTest.cpp \
     ../futures/test/EnsureTest.cpp \
     ../futures/test/ExecutorTest.cpp \

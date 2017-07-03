@@ -21,6 +21,7 @@
 
 using namespace folly;
 
+namespace {
 struct Widget {
   int v_, copied_, moved_;
   /* implicit */ Widget(int v) : v_(v), copied_(0), moved_(0) {}
@@ -35,6 +36,7 @@ struct Widget {
     throw std::logic_error("unexpected move assignment");
   }
 };
+}
 
 TEST(Then, tryConstructor) {
   auto t = Try<Widget>(23);

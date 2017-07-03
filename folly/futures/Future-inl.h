@@ -137,6 +137,40 @@ Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
+template <
+    class T2,
+    typename std::enable_if<
+        !std::is_same<T, typename std::decay<T2>::type>::value &&
+            std::is_constructible<T, T2&&>::value &&
+            std::is_convertible<T2&&, T>::value,
+        int>::type>
+Future<T>::Future(Future<T2>&& other)
+    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
+
+template <class T>
+template <
+    class T2,
+    typename std::enable_if<
+        !std::is_same<T, typename std::decay<T2>::type>::value &&
+            std::is_constructible<T, T2&&>::value &&
+            !std::is_convertible<T2&&, T>::value,
+        int>::type>
+Future<T>::Future(Future<T2>&& other)
+    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
+
+template <class T>
+template <
+    class T2,
+    typename std::enable_if<
+        !std::is_same<T, typename std::decay<T2>::type>::value &&
+            std::is_constructible<T, T2&&>::value,
+        int>::type>
+Future<T>& Future<T>::operator=(Future<T2>&& other) {
+  return operator=(
+      std::move(other).then([](T2&& v) { return T(std::move(v)); }));
+}
+
+template <class T>
 template <class T2, typename>
 Future<T>::Future(T2&& val)
     : core_(new detail::Core<T>(Try<T>(std::forward<T2>(val)))) {}

@@ -53,6 +53,31 @@ class Future {
   Future(Future&&) noexcept;
   Future& operator=(Future&&) noexcept;
 
+  // converting move
+  template <
+      class T2,
+      typename std::enable_if<
+          !std::is_same<T, typename std::decay<T2>::type>::value &&
+              std::is_constructible<T, T2&&>::value &&
+              std::is_convertible<T2&&, T>::value,
+          int>::type = 0>
+  /* implicit */ Future(Future<T2>&&);
+  template <
+      class T2,
+      typename std::enable_if<
+          !std::is_same<T, typename std::decay<T2>::type>::value &&
+              std::is_constructible<T, T2&&>::value &&
+              !std::is_convertible<T2&&, T>::value,
+          int>::type = 0>
+  explicit Future(Future<T2>&&);
+  template <
+      class T2,
+      typename std::enable_if<
+          !std::is_same<T, typename std::decay<T2>::type>::value &&
+              std::is_constructible<T, T2&&>::value,
+          int>::type = 0>
+  Future& operator=(Future<T2>&&);
+
   /// Construct a Future from a value (perfect forwarding)
   template <class T2 = T, typename =
             typename std::enable_if<
