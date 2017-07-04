@@ -15,11 +15,11 @@
  */
 
 #include <folly/stats/TimeseriesHistogram.h>
-#include <folly/stats/TimeseriesHistogram-defs.h>
 
 #include <random>
 
 #include <folly/portability/GTest.h>
+#include <folly/stats/TimeseriesHistogram-defs.h>
 
 using namespace std;
 using namespace folly;
@@ -27,30 +27,35 @@ using std::chrono::seconds;
 
 namespace {
 namespace IntMTMHTS {
-  enum Levels {
-    MINUTE,
-    TEN_MINUTE,
-    HOUR,
-    ALLTIME,
-    NUM_LEVELS,
-  };
+enum Levels {
+  MINUTE,
+  TEN_MINUTE,
+  HOUR,
+  ALLTIME,
+  NUM_LEVELS,
+};
 
-  const seconds kDurations[] = {
-    seconds(60), seconds(600), seconds(3600), seconds(0)
-  };
+const seconds kDurations[] = {
+    seconds(60),
+    seconds(600),
+    seconds(3600),
+    seconds(0),
+};
 };
 
 namespace IntMHTS {
-  enum Levels {
-    MINUTE,
-    HOUR,
-    ALLTIME,
-    NUM_LEVELS,
-  };
+enum Levels {
+  MINUTE,
+  HOUR,
+  ALLTIME,
+  NUM_LEVELS,
+};
 
-  const seconds kDurations[] = {
-    seconds(60), seconds(3600), seconds(0)
-  };
+const seconds kDurations[] = {
+    seconds(60),
+    seconds(3600),
+    seconds(0),
+};
 };
 
 typedef std::mt19937 RandomInt32;
@@ -65,10 +70,12 @@ TEST(TimeseriesHistogram, Percentile) {
   RandomInt32 random(5);
   // [10, 109], 12 buckets including above and below
   {
-    TimeseriesHistogram<int> h(10, 10, 110,
-                               MultiLevelTimeSeries<int>(
-                                 60, IntMTMHTS::NUM_LEVELS,
-                                 IntMTMHTS::kDurations));
+    TimeseriesHistogram<int> h(
+        10,
+        10,
+        110,
+        MultiLevelTimeSeries<int>(
+            60, IntMTMHTS::NUM_LEVELS, IntMTMHTS::kDurations));
 
     EXPECT_EQ(0, h.getPercentileEstimate(0, IntMTMHTS::ALLTIME));
 
@@ -91,8 +98,9 @@ TEST(TimeseriesHistogram, Percentile) {
     h.update(mkTimePoint(1500000000));
     // bucket 0 stores everything below min, so its minimum
     // is the lowest possible number
-    EXPECT_EQ(std::numeric_limits<int>::min(),
-              h.getPercentileBucketMin(1, IntMTMHTS::ALLTIME));
+    EXPECT_EQ(
+        std::numeric_limits<int>::min(),
+        h.getPercentileBucketMin(1, IntMTMHTS::ALLTIME));
     EXPECT_EQ(110, h.getPercentileBucketMin(99, IntMTMHTS::ALLTIME));
 
     EXPECT_EQ(-2, h.getPercentileEstimate(0, IntMTMHTS::ALLTIME));
@@ -106,10 +114,12 @@ TEST(TimeseriesHistogram, String) {
   RandomInt32 random(5);
   // [10, 109], 12 buckets including above and below
   {
-    TimeseriesHistogram<int> hist(10, 10, 110,
-                                  MultiLevelTimeSeries<int>(
-                                    60, IntMTMHTS::NUM_LEVELS,
-                                    IntMTMHTS::kDurations));
+    TimeseriesHistogram<int> hist(
+        10,
+        10,
+        110,
+        MultiLevelTimeSeries<int>(
+            60, IntMTMHTS::NUM_LEVELS, IntMTMHTS::kDurations));
 
     int maxVal = 120;
     hist.addValue(mkTimePoint(0), 0);
@@ -120,14 +130,14 @@ TEST(TimeseriesHistogram, String) {
 
     hist.update(mkTimePoint(0));
 
-    const char* const kStringValues1[IntMTMHTS::NUM_LEVELS] =  {
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+    const char* const kStringValues1[IntMTMHTS::NUM_LEVELS] = {
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
     };
 
@@ -137,14 +147,14 @@ TEST(TimeseriesHistogram, String) {
       EXPECT_EQ(kStringValues1[level], hist.getString(level));
     }
 
-    const char* const kStringValues2[IntMTMHTS::NUM_LEVELS] =  {
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+    const char* const kStringValues2[IntMTMHTS::NUM_LEVELS] = {
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
-      "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
+        "-2147483648:12:4,10:8:13,20:8:24,30:6:34,40:13:46,50:8:54,60:7:64,"
         "70:7:74,80:8:84,90:10:94,100:3:103,110:10:115",
     };
 
@@ -158,10 +168,12 @@ TEST(TimeseriesHistogram, String) {
 
 TEST(TimeseriesHistogram, Clear) {
   {
-    TimeseriesHistogram<int> hist(10, 0, 100,
-                                  MultiLevelTimeSeries<int>(
-                                    60, IntMTMHTS::NUM_LEVELS,
-                                    IntMTMHTS::kDurations));
+    TimeseriesHistogram<int> hist(
+        10,
+        0,
+        100,
+        MultiLevelTimeSeries<int>(
+            60, IntMTMHTS::NUM_LEVELS, IntMTMHTS::kDurations));
 
     for (int now = 0; now < 3600; now++) {
       for (int i = 0; i < 100; i++) {
@@ -193,13 +205,14 @@ TEST(TimeseriesHistogram, Clear) {
   }
 }
 
-
 TEST(TimeseriesHistogram, Basic) {
   {
-    TimeseriesHistogram<int> hist(10, 0, 100,
-                                  MultiLevelTimeSeries<int>(
-                                    60, IntMTMHTS::NUM_LEVELS,
-                                    IntMTMHTS::kDurations));
+    TimeseriesHistogram<int> hist(
+        10,
+        0,
+        100,
+        MultiLevelTimeSeries<int>(
+            60, IntMTMHTS::NUM_LEVELS, IntMTMHTS::kDurations));
 
     for (int now = 0; now < 3600; now++) {
       for (int i = 0; i < 100; i++) {
@@ -211,8 +224,8 @@ TEST(TimeseriesHistogram, Basic) {
     for (int pct = 1; pct <= 100; pct++) {
       int expected = (pct - 1) / 10 * 10;
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::MINUTE));
-      EXPECT_EQ(expected, hist.getPercentileBucketMin(pct,
-                                                      IntMTMHTS::TEN_MINUTE));
+      EXPECT_EQ(
+          expected, hist.getPercentileBucketMin(pct, IntMTMHTS::TEN_MINUTE));
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::HOUR));
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::ALLTIME));
     }
@@ -224,8 +237,8 @@ TEST(TimeseriesHistogram, Basic) {
       EXPECT_EQ(36000, hist.getBucket(b).count(IntMTMHTS::ALLTIME));
     }
     EXPECT_EQ(0, hist.getBucket(0).count(IntMTMHTS::MINUTE));
-    EXPECT_EQ(0, hist.getBucket(hist.getNumBuckets() - 1).count(
-                IntMTMHTS::MINUTE));
+    EXPECT_EQ(
+        0, hist.getBucket(hist.getNumBuckets() - 1).count(IntMTMHTS::MINUTE));
 
     EXPECT_EQ(6000, hist.count(IntMTMHTS::MINUTE));
     EXPECT_EQ(60000, hist.count(IntMTMHTS::TEN_MINUTE));
@@ -275,10 +288,12 @@ TEST(TimeseriesHistogram, Basic) {
   // -----------------
 
   {
-    TimeseriesHistogram<int> hist(10, 0, 100,
-                                  MultiLevelTimeSeries<int>(
-                                    60, IntMTMHTS::NUM_LEVELS,
-                                    IntMTMHTS::kDurations));
+    TimeseriesHistogram<int> hist(
+        10,
+        0,
+        100,
+        MultiLevelTimeSeries<int>(
+            60, IntMTMHTS::NUM_LEVELS, IntMTMHTS::kDurations));
 
     for (int now = 0; now < 3600; now++) {
       for (int i = 0; i < 100; i++) {
@@ -290,30 +305,32 @@ TEST(TimeseriesHistogram, Basic) {
     for (int pct = 1; pct <= 100; pct++) {
       int expected = (pct - 1) / 10 * 10;
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::MINUTE));
-      EXPECT_EQ(expected, hist.getPercentileBucketMin(pct,
-                                                      IntMTMHTS::TEN_MINUTE));
+      EXPECT_EQ(
+          expected, hist.getPercentileBucketMin(pct, IntMTMHTS::TEN_MINUTE));
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::HOUR));
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::ALLTIME));
-   }
+    }
 
-   for (size_t b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
-     EXPECT_EQ(600 * 2, hist.getBucket(b).count(IntMTMHTS::MINUTE));
-     EXPECT_EQ(6000 * 2, hist.getBucket(b).count(IntMTMHTS::TEN_MINUTE));
-     EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::HOUR));
-     EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::ALLTIME));
+    for (size_t b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
+      EXPECT_EQ(600 * 2, hist.getBucket(b).count(IntMTMHTS::MINUTE));
+      EXPECT_EQ(6000 * 2, hist.getBucket(b).count(IntMTMHTS::TEN_MINUTE));
+      EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::HOUR));
+      EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::ALLTIME));
     }
     EXPECT_EQ(0, hist.getBucket(0).count(IntMTMHTS::MINUTE));
-    EXPECT_EQ(0, hist.getBucket(hist.getNumBuckets() - 1).count(
-                IntMTMHTS::MINUTE));
+    EXPECT_EQ(
+        0, hist.getBucket(hist.getNumBuckets() - 1).count(IntMTMHTS::MINUTE));
   }
 
   // -----------------
 
   {
-    TimeseriesHistogram<int> hist(10, 0, 100,
-                                  MultiLevelTimeSeries<int>(
-                                    60, IntMTMHTS::NUM_LEVELS,
-                                    IntMTMHTS::kDurations));
+    TimeseriesHistogram<int> hist(
+        10,
+        0,
+        100,
+        MultiLevelTimeSeries<int>(
+            60, IntMTMHTS::NUM_LEVELS, IntMTMHTS::kDurations));
 
     for (int now = 0; now < 3600; now++) {
       for (int i = 0; i < 50; i++) {
@@ -325,8 +342,8 @@ TEST(TimeseriesHistogram, Basic) {
     for (int pct = 1; pct <= 100; pct++) {
       int expected = (pct - 1) / 10 * 10;
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::MINUTE));
-      EXPECT_EQ(expected, hist.getPercentileBucketMin(pct,
-                                                      IntMTMHTS::TEN_MINUTE));
+      EXPECT_EQ(
+          expected, hist.getPercentileBucketMin(pct, IntMTMHTS::TEN_MINUTE));
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::HOUR));
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::ALLTIME));
     }
@@ -335,16 +352,15 @@ TEST(TimeseriesHistogram, Basic) {
     EXPECT_EQ(0, hist.getBucket(0).count(IntMTMHTS::TEN_MINUTE));
     EXPECT_EQ(0, hist.getBucket(0).count(IntMTMHTS::HOUR));
     EXPECT_EQ(0, hist.getBucket(0).count(IntMTMHTS::ALLTIME));
-    EXPECT_EQ(0, hist.getBucket(hist.getNumBuckets() - 1).count(
-                IntMTMHTS::MINUTE));
-    EXPECT_EQ(0,
-              hist.getBucket(hist.getNumBuckets() - 1).
-                count(IntMTMHTS::TEN_MINUTE));
-    EXPECT_EQ(0, hist.getBucket(hist.getNumBuckets() - 1).count(
-                IntMTMHTS::HOUR));
-    EXPECT_EQ(0,
-              hist.getBucket(hist.getNumBuckets() - 1).count(
-                IntMTMHTS::ALLTIME));
+    EXPECT_EQ(
+        0, hist.getBucket(hist.getNumBuckets() - 1).count(IntMTMHTS::MINUTE));
+    EXPECT_EQ(
+        0,
+        hist.getBucket(hist.getNumBuckets() - 1).count(IntMTMHTS::TEN_MINUTE));
+    EXPECT_EQ(
+        0, hist.getBucket(hist.getNumBuckets() - 1).count(IntMTMHTS::HOUR));
+    EXPECT_EQ(
+        0, hist.getBucket(hist.getNumBuckets() - 1).count(IntMTMHTS::ALLTIME));
 
     for (size_t b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
       EXPECT_EQ(600, hist.getBucket(b).count(IntMTMHTS::MINUTE));
@@ -357,18 +373,18 @@ TEST(TimeseriesHistogram, Basic) {
       hist.addValue(mkTimePoint(3599), 200 + i);
     }
     hist.update(mkTimePoint(3599));
-    EXPECT_EQ(100,
-              hist.getBucket(hist.getNumBuckets() - 1).count(
-                IntMTMHTS::ALLTIME));
-
+    EXPECT_EQ(
+        100,
+        hist.getBucket(hist.getNumBuckets() - 1).count(IntMTMHTS::ALLTIME));
   }
 }
 
 TEST(TimeseriesHistogram, QueryByInterval) {
-  TimeseriesHistogram<int> mhts(8, 8, 120,
-                                MultiLevelTimeSeries<int>(
-                                  60, IntMHTS::NUM_LEVELS,
-                                  IntMHTS::kDurations));
+  TimeseriesHistogram<int> mhts(
+      8,
+      8,
+      120,
+      MultiLevelTimeSeries<int>(60, IntMHTS::NUM_LEVELS, IntMHTS::kDurations));
 
   mhts.update(mkTimePoint(0));
 
@@ -392,27 +408,37 @@ TEST(TimeseriesHistogram, QueryByInterval) {
     StatsClock::time_point end;
   };
   TimeInterval intervals[12] = {
-    { curTime - 60, curTime },
-    { curTime - 3600, curTime },
-    { curTime - 7200, curTime },
-    { curTime - 3600, curTime - 60 },
-    { curTime - 7200, curTime - 60 },
-    { curTime - 7200, curTime - 3600 },
-    { curTime - 50, curTime - 20 },
-    { curTime - 3020, curTime - 20 },
-    { curTime - 7200, curTime - 20 },
-    { curTime - 3000, curTime - 1000 },
-    { curTime - 7200, curTime - 1000 },
-    { curTime - 7200, curTime - 3600 },
+      {curTime - 60, curTime},
+      {curTime - 3600, curTime},
+      {curTime - 7200, curTime},
+      {curTime - 3600, curTime - 60},
+      {curTime - 7200, curTime - 60},
+      {curTime - 7200, curTime - 3600},
+      {curTime - 50, curTime - 20},
+      {curTime - 3020, curTime - 20},
+      {curTime - 7200, curTime - 20},
+      {curTime - 3000, curTime - 1000},
+      {curTime - 7200, curTime - 1000},
+      {curTime - 7200, curTime - 3600},
   };
 
   int expectedSums[12] = {
-    6000, 41400, 32400, 35400, 32129, 16200, 3000, 33600, 32308, 20000, 27899,
-    16200
+      6000,
+      41400,
+      32400,
+      35400,
+      32129,
+      16200,
+      3000,
+      33600,
+      32308,
+      20000,
+      27899,
+      16200,
   };
 
   int expectedCounts[12] = {
-    60, 3600, 7200, 3540, 7139, 3600, 30, 3000, 7178, 2000, 6199, 3600
+      60, 3600, 7200, 3540, 7139, 3600, 30, 3000, 7178, 2000, 6199, 3600,
   };
 
   // The first 7200 values added all fell below the histogram minimum,
@@ -421,18 +447,18 @@ TEST(TimeseriesHistogram, QueryByInterval) {
   int belowMinBucket = std::numeric_limits<int>::min();
 
   int expectedValues[12][3] = {
-    {96, 96, 96},
-    { 8,  8, 96},
-    { belowMinBucket,  belowMinBucket,  8}, // alltime
-    { 8,  8,  8},
-    { belowMinBucket,  belowMinBucket,  8}, // alltime
-    { belowMinBucket,  belowMinBucket,  8}, // alltime
-    {96, 96, 96},
-    { 8,  8, 96},
-    { belowMinBucket,  belowMinBucket,  8}, // alltime
-    { 8,  8,  8},
-    { belowMinBucket,  belowMinBucket,  8}, // alltime
-    { belowMinBucket,  belowMinBucket,  8}  // alltime
+      {96, 96, 96},
+      {8, 8, 96},
+      {belowMinBucket, belowMinBucket, 8}, // alltime
+      {8, 8, 8},
+      {belowMinBucket, belowMinBucket, 8}, // alltime
+      {belowMinBucket, belowMinBucket, 8}, // alltime
+      {96, 96, 96},
+      {8, 8, 96},
+      {belowMinBucket, belowMinBucket, 8}, // alltime
+      {8, 8, 8},
+      {belowMinBucket, belowMinBucket, 8}, // alltime
+      {belowMinBucket, belowMinBucket, 8} // alltime
   };
 
   for (int i = 0; i < 12; i++) {
@@ -502,10 +528,12 @@ TEST(TimeseriesHistogram, SingleUniqueValue) {
   int values[] = {-1, 0, 500, 1000, 1500};
   for (int ii = 0; ii < 5; ++ii) {
     int value = values[ii];
-    TimeseriesHistogram<int> h(10, 0, 1000,
-                               MultiLevelTimeSeries<int>(
-                                 60, IntMTMHTS::NUM_LEVELS,
-                                 IntMTMHTS::kDurations));
+    TimeseriesHistogram<int> h(
+        10,
+        0,
+        1000,
+        MultiLevelTimeSeries<int>(
+            60, IntMTMHTS::NUM_LEVELS, IntMTMHTS::kDurations));
 
     const int kNumIters = 1000;
     for (int jj = 0; jj < kNumIters; ++jj) {
@@ -520,20 +548,20 @@ TEST(TimeseriesHistogram, SingleUniqueValue) {
 
     // Things get trickier if there are multiple unique values.
     const int kNewValue = 750;
-    for (int kk = 0; kk < 2*kNumIters; ++kk) {
+    for (int kk = 0; kk < 2 * kNumIters; ++kk) {
       h.addValue(mkTimePoint(1), kNewValue);
     }
     h.update(mkTimePoint(1));
-    EXPECT_NEAR(h.getPercentileEstimate(50, 0), kNewValue+5, 5);
+    EXPECT_NEAR(h.getPercentileEstimate(50, 0), kNewValue + 5, 5);
     if (value >= 0 && value <= 1000) {
       // only do further testing if value is within our bucket range,
       // else estimates can be wildly off
       if (kNewValue > value) {
-        EXPECT_NEAR(h.getPercentileEstimate(10, 0), value+5, 5);
-        EXPECT_NEAR(h.getPercentileEstimate(99, 0), kNewValue+5, 5);
+        EXPECT_NEAR(h.getPercentileEstimate(10, 0), value + 5, 5);
+        EXPECT_NEAR(h.getPercentileEstimate(99, 0), kNewValue + 5, 5);
       } else {
-        EXPECT_NEAR(h.getPercentileEstimate(10, 0), kNewValue+5, 5);
-        EXPECT_NEAR(h.getPercentileEstimate(99, 0), value+5, 5);
+        EXPECT_NEAR(h.getPercentileEstimate(10, 0), kNewValue + 5, 5);
+        EXPECT_NEAR(h.getPercentileEstimate(99, 0), value + 5, 5);
       }
     }
   }

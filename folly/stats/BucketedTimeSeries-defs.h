@@ -173,8 +173,8 @@ size_t BucketedTimeSeries<VT, CT>::updateBuckets(TimePoint now) {
   size_t currentBucket;
   TimePoint currentBucketStart;
   TimePoint nextBucketStart;
-  getBucketInfo(latestTime_, &currentBucket,
-                &currentBucketStart, &nextBucketStart);
+  getBucketInfo(
+      latestTime_, &currentBucket, &currentBucketStart, &nextBucketStart);
 
   // Update latestTime_
   latestTime_ = now;
@@ -246,8 +246,8 @@ typename CT::time_point BucketedTimeSeries<VT, CT>::getEarliestTimeNonEmpty()
   size_t currentBucket;
   TimePoint currentBucketStart;
   TimePoint nextBucketStart;
-  getBucketInfo(latestTime_, &currentBucket,
-                &currentBucketStart, &nextBucketStart);
+  getBucketInfo(
+      latestTime_, &currentBucket, &currentBucketStart, &nextBucketStart);
 
   // Subtract 1 duration from the start of the next bucket to find the
   // earliest possible data point we could be tracking.
@@ -500,7 +500,7 @@ VT BucketedTimeSeries<VT, CT>::rangeAdjust(
   TimePoint intervalStart = std::max(start, bucketStart);
   TimePoint intervalEnd = std::min(end, nextBucketStart);
   return input * (intervalEnd - intervalStart) /
-    (nextBucketStart - bucketStart);
+      (nextBucketStart - bucketStart);
 }
 
 template <typename VT, typename CT>

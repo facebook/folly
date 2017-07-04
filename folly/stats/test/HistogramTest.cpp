@@ -15,9 +15,9 @@
  */
 
 #include <folly/stats/Histogram.h>
-#include <folly/stats/Histogram-defs.h>
 
 #include <folly/portability/GTest.h>
+#include <folly/stats/Histogram-defs.h>
 
 using folly::Histogram;
 
@@ -42,8 +42,8 @@ TEST(Histogram, Test100) {
     if (n < 100) {
       double lowPct = -1.0;
       double highPct = -1.0;
-      unsigned int bucketIdx = h.getPercentileBucketIdx(pct + epsilon,
-                                                        &lowPct, &highPct);
+      unsigned int bucketIdx =
+          h.getPercentileBucketIdx(pct + epsilon, &lowPct, &highPct);
       EXPECT_EQ(n + 1, bucketIdx);
       EXPECT_FLOAT_EQ(n / 100.0, lowPct);
       EXPECT_FLOAT_EQ((n + 1) / 100.0, highPct);
@@ -53,8 +53,8 @@ TEST(Histogram, Test100) {
     if (n > 0) {
       double lowPct = -1.0;
       double highPct = -1.0;
-      unsigned int bucketIdx = h.getPercentileBucketIdx(pct - epsilon,
-                                                        &lowPct, &highPct);
+      unsigned int bucketIdx =
+          h.getPercentileBucketIdx(pct - epsilon, &lowPct, &highPct);
       EXPECT_EQ(n, bucketIdx);
       EXPECT_FLOAT_EQ((n - 1) / 100.0, lowPct);
       EXPECT_FLOAT_EQ(n / 100.0, highPct);
@@ -212,7 +212,7 @@ TEST(Histogram, Counts) {
   // Add one to each bucket, make sure the counts match
   for (int32_t i = 0; i < 10; i++) {
     h.addValue(i);
-    EXPECT_EQ(i+1, h.computeTotalCount());
+    EXPECT_EQ(i + 1, h.computeTotalCount());
   }
 
   // Add a lot to one bucket, make sure the counts still make sense

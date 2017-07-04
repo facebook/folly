@@ -20,7 +20,8 @@
 #include <cstdint>
 #include <type_traits>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 /*
  * Helper function to compute the average, given a specified input type and
@@ -31,7 +32,9 @@ namespace folly { namespace detail {
 // precision.
 template <typename ReturnType>
 ReturnType avgHelper(long double sum, uint64_t count) {
-  if (count == 0) { return ReturnType(0); }
+  if (count == 0) {
+    return ReturnType(0);
+  }
   const long double countf = count;
   return static_cast<ReturnType>(sum / countf);
 }
@@ -39,11 +42,13 @@ ReturnType avgHelper(long double sum, uint64_t count) {
 // In all other cases divide using double precision.
 // This should be relatively fast, and accurate enough for most use cases.
 template <typename ReturnType, typename ValueType>
-typename std::enable_if<!std::is_same<typename std::remove_cv<ValueType>::type,
-                                      long double>::value,
-                        ReturnType>::type
+typename std::enable_if<
+    !std::is_same<typename std::remove_cv<ValueType>::type, long double>::value,
+    ReturnType>::type
 avgHelper(ValueType sum, uint64_t count) {
-  if (count == 0) { return ReturnType(0); }
+  if (count == 0) {
+    return ReturnType(0);
+  }
   const double sumf = double(sum);
   const double countf = double(count);
   return static_cast<ReturnType>(sumf / countf);
@@ -73,23 +78,21 @@ ReturnType rateHelper(ReturnType count, Duration elapsed) {
       std::ratio<Duration::period::den, Duration::period::num>>
       NativeRate;
   typedef std::chrono::duration<
-      ReturnType, std::ratio<Interval::period::den,
-                             Interval::period::num>> DesiredRate;
+      ReturnType,
+      std::ratio<Interval::period::den, Interval::period::num>>
+      DesiredRate;
 
   NativeRate native(count / elapsed.count());
   DesiredRate desired = std::chrono::duration_cast<DesiredRate>(native);
   return desired.count();
 }
 
-
-template<typename T>
+template <typename T>
 struct Bucket {
  public:
   typedef T ValueType;
 
-  Bucket()
-    : sum(ValueType()),
-      count(0) {}
+  Bucket() : sum(ValueType()), count(0) {}
 
   void clear() {
     sum = ValueType();
@@ -122,5 +125,5 @@ struct Bucket {
   ValueType sum;
   uint64_t count;
 };
-
-}} // folly::detail
+} // namespace detail
+} // namespace folly

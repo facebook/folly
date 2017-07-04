@@ -40,14 +40,16 @@ template size_t detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>::
         Histogram<int64_t>::CountFromBucket countFromBucket,
         double* lowPct,
         double* highPct) const;
-template int64_t detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>
-  ::getPercentileEstimate<Histogram<int64_t>::CountFromBucket,
-                          Histogram<int64_t>::AvgFromBucket>(
-    double pct,
-    Histogram<int64_t>::CountFromBucket countFromBucket,
-    Histogram<int64_t>::AvgFromBucket avgFromBucket) const;
-template uint64_t detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>
-  ::computeTotalCount<Histogram<int64_t>::CountFromBucket>(
-    Histogram<int64_t>::CountFromBucket countFromBucket) const;
+template int64_t detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>::
+    getPercentileEstimate<
+        Histogram<int64_t>::CountFromBucket,
+        Histogram<int64_t>::AvgFromBucket>(
+        double pct,
+        Histogram<int64_t>::CountFromBucket countFromBucket,
+        Histogram<int64_t>::AvgFromBucket avgFromBucket) const;
+template uint64_t
+detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>::
+    computeTotalCount<Histogram<int64_t>::CountFromBucket>(
+        Histogram<int64_t>::CountFromBucket countFromBucket) const;
 
 } // folly

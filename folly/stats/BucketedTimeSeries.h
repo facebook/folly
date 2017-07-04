@@ -293,7 +293,7 @@ class BucketedTimeSeries {
    * Note that you generally should call update() before calling avg(), to
    * make sure you are not reading stale data.
    */
-  template <typename ReturnType=double>
+  template <typename ReturnType = double>
   ReturnType avg() const {
     return total_.template avg<ReturnType>();
   }
@@ -483,8 +483,8 @@ class BucketedTimeSeries {
   TimePoint latestTime_; // time of last update()
   Duration duration_; // total duration ("window length") of the time series
 
-  Bucket total_;                 // sum and count of everything in time series
-  std::vector<Bucket> buckets_;  // actual buckets of values
+  Bucket total_; // sum and count of everything in time series
+  std::vector<Bucket> buckets_; // actual buckets of values
 };
 
 } // folly

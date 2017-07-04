@@ -113,7 +113,7 @@ void MultiLevelTimeSeries<VT, CT>::flush() {
 
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::clear() {
-  for (auto & level : levels_) {
+  for (auto& level : levels_) {
     level.clear();
   }
 
@@ -122,4 +122,4 @@ void MultiLevelTimeSeries<VT, CT>::clear() {
   cachedCount_ = 0;
 }
 
-}  // folly
+} // namespace folly

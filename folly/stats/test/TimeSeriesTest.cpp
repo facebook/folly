@@ -69,16 +69,16 @@ struct TestData {
   vector<TimePoint> bucketStarts;
 };
 vector<TestData> testData = {
-  // 71 seconds x 4 buckets
-  { 71, 4, {0, 18, 36, 54}},
-  // 100 seconds x 10 buckets
-  { 100, 10, {0, 10, 20, 30, 40, 50, 60, 70, 80, 90}},
-  // 10 seconds x 10 buckets
-  { 10, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-  // 10 seconds x 1 buckets
-  { 10, 1, {0}},
-  // 1 second x 1 buckets
-  { 1, 1, {0}},
+    // 71 seconds x 4 buckets
+    {71, 4, {0, 18, 36, 54}},
+    // 100 seconds x 10 buckets
+    {100, 10, {0, 10, 20, 30, 40, 50, 60, 70, 80, 90}},
+    // 10 seconds x 10 buckets
+    {10, 10, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+    // 10 seconds x 1 buckets
+    {10, 1, {0}},
+    // 1 second x 1 buckets
+    {1, 1, {0}},
 };
 }
 
@@ -119,11 +119,11 @@ TEST(BucketedTimeSeries, getBucketInfo) {
           size_t returnedIdx;
           TimePoint returnedStart;
           TimePoint returnedNextStart;
-          ts.getBucketInfo(expectedStart, &returnedIdx,
-                           &returnedStart, &returnedNextStart);
-          EXPECT_EQ(idx, returnedIdx) << data.duration << "x" << data.numBuckets
-                                      << ": " << point.first << "="
-                                      << point.second;
+          ts.getBucketInfo(
+              expectedStart, &returnedIdx, &returnedStart, &returnedNextStart);
+          EXPECT_EQ(idx, returnedIdx)
+              << data.duration << "x" << data.numBuckets << ": " << point.first
+              << "=" << point.second;
           EXPECT_EQ(expectedStart, returnedStart)
               << data.duration << "x" << data.numBuckets << ": " << point.first
               << "=" << point.second;
@@ -167,7 +167,7 @@ void testUpdate100x10(size_t offset) {
   setup();
   ts.update(seconds(151 + offset));
   EXPECT_EQ(4, ts.count());
-  //EXPECT_EQ(6, ts.sum());
+  // EXPECT_EQ(6, ts.sum());
   EXPECT_EQ(6, ts.avg());
 
   // The last time we added was 95.
@@ -399,9 +399,10 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
   {
     // Test uint64_t values that would overflow int64_t
     BucketedTimeSeries<uint64_t> ts(60, seconds(600));
-    ts.addValueAggregated(seconds(0),
-                          std::numeric_limits<uint64_t>::max(),
-                          std::numeric_limits<uint64_t>::max());
+    ts.addValueAggregated(
+        seconds(0),
+        std::numeric_limits<uint64_t>::max(),
+        std::numeric_limits<uint64_t>::max());
 
     EXPECT_DOUBLE_EQ(1.0, ts.avg());
     EXPECT_DOUBLE_EQ(1.0, ts.avg<float>());
@@ -443,9 +444,7 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
     // but the average fits in an int64_t
     BucketedTimeSeries<double> ts(60, seconds(600));
     uint64_t value = 0x3fffffffffffffff;
-    FOR_EACH_RANGE(i, 0, 16) {
-      ts.addValue(seconds(0), value);
-    }
+    FOR_EACH_RANGE (i, 0, 16) { ts.addValue(seconds(0), value); }
 
     EXPECT_DOUBLE_EQ(value, ts.avg());
     EXPECT_DOUBLE_EQ(value, ts.avg<float>());
@@ -458,9 +457,7 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
   {
     // Test BucketedTimeSeries with a smaller integer type
     BucketedTimeSeries<int16_t> ts(60, seconds(600));
-    FOR_EACH_RANGE(i, 0, 101) {
-      ts.addValue(seconds(0), i);
-    }
+    FOR_EACH_RANGE (i, 0, 101) { ts.addValue(seconds(0), i); }
 
     EXPECT_DOUBLE_EQ(50.0, ts.avg());
     EXPECT_DOUBLE_EQ(50.0, ts.avg<float>());
@@ -513,10 +510,9 @@ TEST(BucketedTimeSeries, forEachBucket) {
     BucketedTimeSeries<int64_t> ts(data.numBuckets, seconds(data.duration));
 
     vector<BucketInfo> info;
-    auto fn = [&](
-        const Bucket& bucket,
-        TimePoint bucketStart,
-        TimePoint bucketEnd) -> bool {
+    auto fn = [&](const Bucket& bucket,
+                  TimePoint bucketStart,
+                  TimePoint bucketEnd) -> bool {
       info.emplace_back(&bucket, bucketStart, bucketEnd);
       return true;
     };
@@ -589,24 +585,26 @@ TEST(BucketedTimeSeries, queryByInterval) {
   // 0: time=[0, 2): values=(0, 1), sum=1, count=2
   // 1: time=[2, 4): values=(2, 3), sum=5, count=1
   // 2: time=[4, 6): values=(4, 5), sum=9, count=2
+  // clang-format off
   double expectedSums1[kDuration + 1][kDuration + 1] = {
-    {0,  4.5,   9, 11.5,  14, 14.5,  15},
-    {0,  4.5,   7,  9.5,  10, 10.5,  -1},
-    {0,  2.5,   5,  5.5,   6,   -1,  -1},
-    {0,  2.5,   3,  3.5,  -1,   -1,  -1},
-    {0,  0.5,   1,   -1,  -1,   -1,  -1},
-    {0,  0.5,  -1,   -1,  -1,   -1,  -1},
-    {0,   -1,  -1,   -1,  -1,   -1,  -1}
+      {0,  4.5,   9, 11.5,  14, 14.5,  15},
+      {0,  4.5,   7,  9.5,  10, 10.5,  -1},
+      {0,  2.5,   5,  5.5,   6,   -1,  -1},
+      {0,  2.5,   3,  3.5,  -1,   -1,  -1},
+      {0,  0.5,   1,   -1,  -1,   -1,  -1},
+      {0,  0.5,  -1,   -1,  -1,   -1,  -1},
+      {0,   -1,  -1,   -1,  -1,   -1,  -1},
   };
   int expectedCounts1[kDuration + 1][kDuration + 1] = {
-    {0,  1,  2,  3,  4,  5,  6},
-    {0,  1,  2,  3,  4,  5, -1},
-    {0,  1,  2,  3,  4, -1, -1},
-    {0,  1,  2,  3, -1, -1, -1},
-    {0,  1,  2, -1, -1, -1, -1},
-    {0,  1, -1, -1, -1, -1, -1},
-    {0, -1, -1, -1, -1, -1, -1}
+      {0,  1,  2,  3,  4,  5,  6},
+      {0,  1,  2,  3,  4,  5, -1},
+      {0,  1,  2,  3,  4, -1, -1},
+      {0,  1,  2,  3, -1, -1, -1},
+      {0,  1,  2, -1, -1, -1, -1},
+      {0,  1, -1, -1, -1, -1, -1},
+      {0, -1, -1, -1, -1, -1, -1},
   };
+  // clang-format on
 
   TimePoint currentTime = b.getLatestTime() + seconds(1);
   for (int i = 0; i <= kDuration + 1; i++) {
@@ -646,24 +644,26 @@ TEST(BucketedTimeSeries, queryByInterval) {
   // 0: time=[6,  8): values=(6, 7), sum=13, count=2
   // 1: time=[8, 10): values=(8),    sum=8, count=1
   // 2: time=[4,  6): values=(4, 5), sum=9, count=2
+  // clang-format off
   double expectedSums2[kDuration + 1][kDuration + 1] = {
-    {0,    8, 14.5,   21, 25.5,  30,  30},
-    {0,  6.5,   13, 17.5,   22,  22,  -1},
-    {0,  6.5,   11, 15.5, 15.5,  -1,  -1},
-    {0,  4.5,    9,    9,   -1,  -1,  -1},
-    {0,  4.5,  4.5,   -1,   -1,  -1,  -1},
-    {0,    0,   -1,   -1,   -1,  -1,  -1},
-    {0,   -1,   -1,   -1,   -1,  -1,  -1}
+      {0,    8, 14.5,   21, 25.5,  30,  30},
+      {0,  6.5,   13, 17.5,   22,  22,  -1},
+      {0,  6.5,   11, 15.5, 15.5,  -1,  -1},
+      {0,  4.5,    9,    9,   -1,  -1,  -1},
+      {0,  4.5,  4.5,   -1,   -1,  -1,  -1},
+      {0,    0,   -1,   -1,   -1,  -1,  -1},
+      {0,   -1,   -1,   -1,   -1,  -1,  -1},
   };
   int expectedCounts2[kDuration + 1][kDuration + 1] = {
-    {0,  1,  2,  3,  4,  5,  5},
-    {0,  1,  2,  3,  4,  4, -1},
-    {0,  1,  2,  3,  3, -1, -1},
-    {0,  1,  2,  2, -1, -1, -1},
-    {0,  1,  1, -1, -1, -1, -1},
-    {0,  0, -1, -1, -1, -1, -1},
-    {0, -1, -1, -1, -1, -1, -1}
+      {0,  1,  2,  3,  4,  5,  5},
+      {0,  1,  2,  3,  4,  4, -1},
+      {0,  1,  2,  3,  3, -1, -1},
+      {0,  1,  2,  2, -1, -1, -1},
+      {0,  1,  1, -1, -1, -1, -1},
+      {0,  0, -1, -1, -1, -1, -1},
+      {0, -1, -1, -1, -1, -1, -1},
   };
+  // clang-format on
 
   currentTime = b.getLatestTime() + seconds(1);
   for (int i = 0; i <= kDuration + 1; i++) {
@@ -692,8 +692,8 @@ TEST(BucketedTimeSeries, queryByInterval) {
           << "i=" << i << ", j=" << j << ", interval=[" << start << ", " << end
           << ")";
 
-      double expectedRate = expectedInterval.count() ?
-        expectedSum / expectedInterval.count() : 0;
+      double expectedRate =
+          expectedInterval.count() ? expectedSum / expectedInterval.count() : 0;
       EXPECT_EQ(expectedRate, b.rate(start, end))
           << "i=" << i << ", j=" << j << ", interval=[" << start << ", " << end
           << ")";
@@ -890,21 +890,19 @@ TEST(BucketedTimeSeries, reConstructWithCorruptedData) {
 }
 
 namespace IntMHTS {
-  enum Levels {
-    MINUTE,
-    HOUR,
-    ALLTIME,
-    NUM_LEVELS,
-  };
+enum Levels {
+  MINUTE,
+  HOUR,
+  ALLTIME,
+  NUM_LEVELS,
+};
 
-  const seconds kMinuteHourDurations[] = {
-    seconds(60), seconds(3600), seconds(0)
-  };
+const seconds kMinuteHourDurations[] = {seconds(60), seconds(3600), seconds(0)};
 };
 
 TEST(MinuteHourTimeSeries, Basic) {
-  folly::MultiLevelTimeSeries<int> mhts(60, IntMHTS::NUM_LEVELS,
-                                        IntMHTS::kMinuteHourDurations);
+  folly::MultiLevelTimeSeries<int> mhts(
+      60, IntMHTS::NUM_LEVELS, IntMHTS::kMinuteHourDurations);
   EXPECT_EQ(mhts.numLevels(), IntMHTS::NUM_LEVELS);
   EXPECT_EQ(mhts.numLevels(), 3);
 
@@ -943,8 +941,8 @@ TEST(MinuteHourTimeSeries, Basic) {
   EXPECT_EQ(mhts.getLevel(IntMHTS::ALLTIME).elapsed().count(), 300);
 
   EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 600);
-  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 300*10);
-  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 300*10);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 300 * 10);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 300 * 10);
 
   EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 10);
   EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 10);
@@ -954,18 +952,18 @@ TEST(MinuteHourTimeSeries, Basic) {
   EXPECT_EQ(mhts.rate(IntMHTS::HOUR), 10);
   EXPECT_EQ(mhts.rate(IntMHTS::ALLTIME), 10);
 
-  for (int i = 0; i < 3600*3 - 300; ++i) {
+  for (int i = 0; i < 3600 * 3 - 300; ++i) {
     mhts.addValue(cur_time++, 10);
   }
   mhts.flush();
 
   EXPECT_EQ(mhts.getLevel(IntMHTS::MINUTE).elapsed().count(), 60);
   EXPECT_EQ(mhts.getLevel(IntMHTS::HOUR).elapsed().count(), 3600);
-  EXPECT_EQ(mhts.getLevel(IntMHTS::ALLTIME).elapsed().count(), 3600*3);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::ALLTIME).elapsed().count(), 3600 * 3);
 
   EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 600);
-  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 3600*10);
-  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 3600*3*10);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 3600 * 10);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 3600 * 3 * 10);
 
   EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 10);
   EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 10);
@@ -980,10 +978,9 @@ TEST(MinuteHourTimeSeries, Basic) {
   }
   mhts.flush();
 
-  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60*100);
-  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 3600*100);
-  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME),
-            3600*3*10 + 3600*100);
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60 * 100);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 3600 * 100);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 3600 * 3 * 10 + 3600 * 100);
 
   EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 100);
   EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 100);
@@ -1000,30 +997,29 @@ TEST(MinuteHourTimeSeries, Basic) {
   }
   mhts.flush();
 
-  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60*120);
-  EXPECT_EQ(mhts.sum(IntMHTS::HOUR),
-            1800*100 + 1800*120);
-  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME),
-            3600*3*10 + 3600*100 + 1800*120);
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60 * 120);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 1800 * 100 + 1800 * 120);
+  EXPECT_EQ(
+      mhts.sum(IntMHTS::ALLTIME), 3600 * 3 * 10 + 3600 * 100 + 1800 * 120);
 
   for (int i = 0; i < 60; ++i) {
     mhts.addValue(cur_time++, 1000);
   }
   mhts.flush();
 
-  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60*1000);
-  EXPECT_EQ(mhts.sum(IntMHTS::HOUR),
-            1740*100 + 1800*120 + 60*1000);
-  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME),
-            3600*3*10 + 3600*100 + 1800*120 + 60*1000);
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60 * 1000);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 1740 * 100 + 1800 * 120 + 60 * 1000);
+  EXPECT_EQ(
+      mhts.sum(IntMHTS::ALLTIME),
+      3600 * 3 * 10 + 3600 * 100 + 1800 * 120 + 60 * 1000);
 
   mhts.clear();
   EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 0);
 }
 
 TEST(MinuteHourTimeSeries, QueryByInterval) {
-  folly::MultiLevelTimeSeries<int> mhts(60, IntMHTS::NUM_LEVELS,
-                                        IntMHTS::kMinuteHourDurations);
+  folly::MultiLevelTimeSeries<int> mhts(
+      60, IntMHTS::NUM_LEVELS, IntMHTS::kMinuteHourDurations);
 
   TimePoint curTime;
   for (curTime = mkTimePoint(0); curTime < mkTimePoint(7200);
@@ -1045,27 +1041,37 @@ TEST(MinuteHourTimeSeries, QueryByInterval) {
     TimePoint end;
   };
   TimeInterval intervals[12] = {
-    { curTime - seconds(60), curTime },
-    { curTime - seconds(3600), curTime },
-    { curTime - seconds(7200), curTime },
-    { curTime - seconds(3600), curTime - seconds(60) },
-    { curTime - seconds(7200), curTime - seconds(60) },
-    { curTime - seconds(7200), curTime - seconds(3600) },
-    { curTime - seconds(50), curTime - seconds(20) },
-    { curTime - seconds(3020), curTime - seconds(20) },
-    { curTime - seconds(7200), curTime - seconds(20) },
-    { curTime - seconds(3000), curTime - seconds(1000) },
-    { curTime - seconds(7200), curTime - seconds(1000) },
-    { curTime - seconds(7200), curTime - seconds(3600) },
+      {curTime - seconds(60), curTime},
+      {curTime - seconds(3600), curTime},
+      {curTime - seconds(7200), curTime},
+      {curTime - seconds(3600), curTime - seconds(60)},
+      {curTime - seconds(7200), curTime - seconds(60)},
+      {curTime - seconds(7200), curTime - seconds(3600)},
+      {curTime - seconds(50), curTime - seconds(20)},
+      {curTime - seconds(3020), curTime - seconds(20)},
+      {curTime - seconds(7200), curTime - seconds(20)},
+      {curTime - seconds(3000), curTime - seconds(1000)},
+      {curTime - seconds(7200), curTime - seconds(1000)},
+      {curTime - seconds(7200), curTime - seconds(3600)},
   };
 
   int expectedSums[12] = {
-    6000, 41400, 32400, 35400, 32130, 16200, 3000, 33600, 32310, 20000, 27900,
-    16200
+      6000,
+      41400,
+      32400,
+      35400,
+      32130,
+      16200,
+      3000,
+      33600,
+      32310,
+      20000,
+      27900,
+      16200,
   };
 
   int expectedCounts[12] = {
-    60, 3600, 7200, 3540, 7140, 3600, 30, 3000, 7180, 2000, 6200, 3600
+      60, 3600, 7200, 3540, 7140, 3600, 30, 3000, 7180, 2000, 6200, 3600,
   };
 
   for (int i = 0; i < 12; ++i) {
@@ -1078,13 +1084,11 @@ TEST(MinuteHourTimeSeries, QueryByInterval) {
     EXPECT_EQ(expectedCounts[i], c);
 
     int a = mhts.avg<int>(interval.start, interval.end);
-    EXPECT_EQ(expectedCounts[i] ?
-              (expectedSums[i] / expectedCounts[i]) : 0,
-              a);
+    EXPECT_EQ(expectedCounts[i] ? (expectedSums[i] / expectedCounts[i]) : 0, a);
 
     int r = mhts.rate<int>(interval.start, interval.end);
     int expectedRate =
-      expectedSums[i] / (interval.end - interval.start).count();
+        expectedSums[i] / (interval.end - interval.start).count();
     EXPECT_EQ(expectedRate, r);
   }
 }

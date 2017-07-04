@@ -89,7 +89,9 @@ class MultiLevelTimeSeries {
   /*
    * Return the number of levels tracked by MultiLevelTimeSeries.
    */
-  size_t numLevels() const { return levels_.size(); }
+  size_t numLevels() const {
+    return levels_.size();
+  }
 
   /*
    * Get the BucketedTimeSeries backing the specified level.

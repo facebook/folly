@@ -13,20 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/stats/BucketedTimeSeries.h>
-#include <folly/stats/BucketedTimeSeries-defs.h>
 
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
+#include <folly/stats/BucketedTimeSeries-defs.h>
 
 using std::chrono::seconds;
 using folly::BenchmarkSuspender;
 using folly::BucketedTimeSeries;
 
-void addValue(unsigned int iters,
-              seconds duration, size_t numBuckets,
-              size_t callsPerSecond) {
+void addValue(
+    unsigned int iters,
+    seconds duration,
+    size_t numBuckets,
+    size_t callsPerSecond) {
   BenchmarkSuspender suspend;
   BucketedTimeSeries<int64_t> ts(numBuckets, duration);
   suspend.dismiss();
@@ -70,7 +73,7 @@ BENCHMARK_NAMED_PARAM(addValue, 100x10_100perSec, seconds(100), 10, 100);
 BENCHMARK_NAMED_PARAM(addValue, 71x5_100perSec, seconds(71), 5, 100);
 BENCHMARK_NAMED_PARAM(addValue, 1x1_100perSec, seconds(1), 1, 100);
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
