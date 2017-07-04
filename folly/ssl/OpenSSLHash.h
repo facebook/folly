@@ -18,8 +18,8 @@
 
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
-#include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
 namespace ssl {
@@ -28,7 +28,6 @@ namespace ssl {
 /// These functions are not thread-safe unless you initialize OpenSSL.
 class OpenSSLHash {
  public:
-
   class Digest {
    public:
     Digest() : ctx_(EVP_MD_CTX_new()) {}
@@ -74,19 +73,13 @@ class OpenSSLHash {
     EvpMdCtxUniquePtr ctx_{nullptr};
   };
 
-  static void hash(
-      MutableByteRange out,
-      const EVP_MD* md,
-      ByteRange data) {
+  static void hash(MutableByteRange out, const EVP_MD* md, ByteRange data) {
     Digest hash;
     hash.hash_init(md);
     hash.hash_update(data);
     hash.hash_final(out);
   }
-  static void hash(
-      MutableByteRange out,
-      const EVP_MD* md,
-      const IOBuf& data) {
+  static void hash(MutableByteRange out, const EVP_MD* md, const IOBuf& data) {
     Digest hash;
     hash.hash_init(md);
     hash.hash_update(data);
@@ -131,16 +124,14 @@ class OpenSSLHash {
       check_libssl_result(size, int(len));
       md_ = nullptr;
     }
+
    private:
     const EVP_MD* md_ = nullptr;
     HmacCtxUniquePtr ctx_{nullptr};
   };
 
-  static void hmac(
-      MutableByteRange out,
-      const EVP_MD* md,
-      ByteRange key,
-      ByteRange data) {
+  static void
+  hmac(MutableByteRange out, const EVP_MD* md, ByteRange key, ByteRange data) {
     Hmac hmac;
     hmac.hash_init(md, key);
     hmac.hash_update(data);
@@ -156,20 +147,18 @@ class OpenSSLHash {
     hmac.hash_update(data);
     hmac.hash_final(out);
   }
-  static void hmac_sha1(
-      MutableByteRange out, ByteRange key, ByteRange data) {
+  static void hmac_sha1(MutableByteRange out, ByteRange key, ByteRange data) {
     hmac(out, EVP_sha1(), key, data);
   }
-  static void hmac_sha1(
-      MutableByteRange out, ByteRange key, const IOBuf& data) {
+  static void
+  hmac_sha1(MutableByteRange out, ByteRange key, const IOBuf& data) {
     hmac(out, EVP_sha1(), key, data);
   }
-  static void hmac_sha256(
-      MutableByteRange out, ByteRange key, ByteRange data) {
+  static void hmac_sha256(MutableByteRange out, ByteRange key, ByteRange data) {
     hmac(out, EVP_sha256(), key, data);
   }
-  static void hmac_sha256(
-      MutableByteRange out, ByteRange key, const IOBuf& data) {
+  static void
+  hmac_sha256(MutableByteRange out, ByteRange key, const IOBuf& data) {
     hmac(out, EVP_sha256(), key, data);
   }
 
@@ -192,6 +181,5 @@ class OpenSSLHash {
   }
   [[noreturn]] static void check_libssl_result_throw();
 };
-
 }
 }

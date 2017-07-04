@@ -71,7 +71,9 @@ using BioDeleter = folly::static_function_deleter<BIO, &BIO_vfree>;
 using BioUniquePtr = std::unique_ptr<BIO, BioDeleter>;
 using BioChainDeleter = folly::static_function_deleter<BIO, &BIO_free_all>;
 using BioChainUniquePtr = std::unique_ptr<BIO, BioChainDeleter>;
-inline void BIO_free_fb(BIO* bio) { CHECK_EQ(1, BIO_free(bio)); }
+inline void BIO_free_fb(BIO* bio) {
+  CHECK_EQ(1, BIO_free(bio));
+}
 using BioDeleterFb = folly::static_function_deleter<BIO, &BIO_free_fb>;
 using BioUniquePtrFb = std::unique_ptr<BIO, BioDeleterFb>;
 
