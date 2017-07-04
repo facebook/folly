@@ -18,11 +18,11 @@
 
 #include <folly/portability/GTest.h>
 
+#include <glog/logging.h>
 #include <memory>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
-#include <glog/logging.h>
 
 using namespace folly;
 
@@ -304,40 +304,11 @@ static std::unordered_map<std::string, std::string> fakeSysfsTree = {
     {"/sys/devices/system/cpu/cpu31/cache/index3/type", "Unified"}};
 
 /// This is the expected CacheLocality structure for fakeSysfsTree
-static const CacheLocality nonUniformExampleLocality = {32,
-                                                        {16, 16, 2},
-                                                        {0,
-                                                         2,
-                                                         4,
-                                                         6,
-                                                         8,
-                                                         10,
-                                                         11,
-                                                         12,
-                                                         14,
-                                                         16,
-                                                         18,
-                                                         20,
-                                                         22,
-                                                         24,
-                                                         26,
-                                                         28,
-                                                         30,
-                                                         1,
-                                                         3,
-                                                         5,
-                                                         7,
-                                                         9,
-                                                         13,
-                                                         15,
-                                                         17,
-                                                         19,
-                                                         21,
-                                                         23,
-                                                         25,
-                                                         27,
-                                                         29,
-                                                         31}};
+static const CacheLocality nonUniformExampleLocality = {
+    32,
+    {16, 16, 2},
+    {0,  2, 4, 6, 8, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28,
+     30, 1, 3, 5, 7, 9,  13, 15, 17, 19, 21, 23, 25, 27, 29, 31}};
 
 TEST(CacheLocality, FakeSysfs) {
   auto parsed = CacheLocality::readFromSysfsTree([](std::string name) {
@@ -435,8 +406,8 @@ TEST(AccessSpreader, Wrapping) {
       auto observed = AccessSpreader<ManualTag>::current(s);
       testingCpu = c % numCpus;
       auto expected = AccessSpreader<ManualTag>::current(s);
-      EXPECT_EQ(expected, observed) << "numCpus=" << numCpus << ", s=" << s
-                                    << ", c=" << c;
+      EXPECT_EQ(expected, observed)
+          << "numCpus=" << numCpus << ", s=" << s << ", c=" << c;
     }
   }
 }

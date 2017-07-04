@@ -146,27 +146,25 @@ CacheLocality CacheLocality::readFromSysfsTree(
     throw std::runtime_error("unable to load cache sharing info");
   }
 
-  std::sort(cpus.begin(),
-            cpus.end(),
-            [&](size_t lhs, size_t rhs) -> bool {
-              // sort first by equiv class of cache with highest index,
-              // direction doesn't matter.  If different cpus have
-              // different numbers of caches then this code might produce
-              // a sub-optimal ordering, but it won't crash
-              auto& lhsEquiv = equivClassesByCpu[lhs];
-              auto& rhsEquiv = equivClassesByCpu[rhs];
-              for (ssize_t i = ssize_t(std::min(lhsEquiv.size(), rhsEquiv.size())) - 1;
-                   i >= 0;
-                   --i) {
-                auto idx = size_t(i);
-                if (lhsEquiv[idx] != rhsEquiv[idx]) {
-                  return lhsEquiv[idx] < rhsEquiv[idx];
-                }
-              }
+  std::sort(cpus.begin(), cpus.end(), [&](size_t lhs, size_t rhs) -> bool {
+    // sort first by equiv class of cache with highest index,
+    // direction doesn't matter.  If different cpus have
+    // different numbers of caches then this code might produce
+    // a sub-optimal ordering, but it won't crash
+    auto& lhsEquiv = equivClassesByCpu[lhs];
+    auto& rhsEquiv = equivClassesByCpu[rhs];
+    for (ssize_t i = ssize_t(std::min(lhsEquiv.size(), rhsEquiv.size())) - 1;
+         i >= 0;
+         --i) {
+      auto idx = size_t(i);
+      if (lhsEquiv[idx] != rhsEquiv[idx]) {
+        return lhsEquiv[idx] < rhsEquiv[idx];
+      }
+    }
 
-              // break ties deterministically by cpu
-              return lhs < rhs;
-            });
+    // break ties deterministically by cpu
+    return lhs < rhs;
+  });
 
   // the cpus are now sorted by locality, with neighboring entries closer
   // to each other than entries that are far away.  For striping we want

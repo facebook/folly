@@ -197,9 +197,8 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
   }
 }
 
-static void atomicIncrBaseline(size_t iters,
-                               size_t work,
-                               size_t numThreads = 32) {
+static void
+atomicIncrBaseline(size_t iters, size_t work, size_t numThreads = 32) {
   folly::BenchmarkSuspender braces;
 
   std::atomic<bool> go(false);
@@ -233,15 +232,13 @@ static void contentionAtWidthGetcpu(size_t iters, size_t stripes, size_t work) {
   contentionAtWidth<std::atomic>(iters, stripes, work);
 }
 
-static void contentionAtWidthThreadLocal(size_t iters,
-                                         size_t stripes,
-                                         size_t work) {
+static void
+contentionAtWidthThreadLocal(size_t iters, size_t stripes, size_t work) {
   contentionAtWidth<ThreadLocalTag>(iters, stripes, work);
 }
 
-static void contentionAtWidthPthreadSelf(size_t iters,
-                                         size_t stripes,
-                                         size_t work) {
+static void
+contentionAtWidthPthreadSelf(size_t iters, size_t stripes, size_t work) {
   contentionAtWidth<PthreadSelfTag>(iters, stripes, work);
 }
 

@@ -58,7 +58,6 @@ namespace folly {
 // perfect L1 spreading in a system with hyperthreading enabled.
 
 struct CacheLocality {
-
   /// 1 more than the maximum value that can be returned from sched_getcpu
   /// or getcpu.  This is the number of hardware thread contexts provided
   /// by the processors
@@ -152,7 +151,6 @@ struct Getcpu {
 #ifdef FOLLY_TLS
 template <template <typename> class Atom>
 struct SequentialThreadId {
-
   /// Returns the thread id assigned to the current thread
   static unsigned get() {
     auto rv = currentId;
@@ -247,7 +245,6 @@ typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
 /// all of the time.
 template <template <typename> class Atom = std::atomic>
 struct AccessSpreader {
-
   /// Returns the stripe associated with the current CPU.  The returned
   /// value will be < numStripes.
   static size_t current(size_t numStripes) {
@@ -257,8 +254,8 @@ struct AccessSpreader {
 
     unsigned cpu;
     getcpuFunc(&cpu, nullptr, nullptr);
-    return widthAndCpuToStripe[std::min(size_t(kMaxCpus),
-                                        numStripes)][cpu % kMaxCpus];
+    return widthAndCpuToStripe[std::min(size_t(kMaxCpus), numStripes)]
+                              [cpu % kMaxCpus];
   }
 
  private:
@@ -268,10 +265,12 @@ struct AccessSpreader {
 
   typedef uint8_t CompactStripe;
 
-  static_assert((kMaxCpus & (kMaxCpus - 1)) == 0,
-                "kMaxCpus should be a power of two so modulo is fast");
-  static_assert(kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
-                "stripeByCpu element type isn't wide enough");
+  static_assert(
+      (kMaxCpus & (kMaxCpus - 1)) == 0,
+      "kMaxCpus should be a power of two so modulo is fast");
+  static_assert(
+      kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
+      "stripeByCpu element type isn't wide enough");
 
   /// Points to the getcpu-like function we are using to obtain the
   /// current cpu.  It should not be assumed that the returned cpu value
