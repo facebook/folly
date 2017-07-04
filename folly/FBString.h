@@ -88,11 +88,18 @@ FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
 #define throw FOLLY_FBSTRING_MAY_NOT_USE_THROW
 
 #ifdef _LIBSTDCXX_FBSTRING
-namespace std _GLIBCXX_VISIBILITY(default) {
-_GLIBCXX_BEGIN_NAMESPACE_VERSION
+#define FOLLY_FBSTRING_BEGIN_NAMESPACE         \
+  namespace std _GLIBCXX_VISIBILITY(default) { \
+    _GLIBCXX_BEGIN_NAMESPACE_VERSION
+#define FOLLY_FBSTRING_END_NAMESPACE \
+  _GLIBCXX_END_NAMESPACE_VERSION     \
+  } // namespace std
 #else
-namespace folly {
+#define FOLLY_FBSTRING_BEGIN_NAMESPACE namespace folly {
+#define FOLLY_FBSTRING_END_NAMESPACE } // namespace folly
 #endif
+
+FOLLY_FBSTRING_BEGIN_NAMESPACE
 
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)
@@ -2840,11 +2847,9 @@ typedef basic_fbstring<char> fbstring;
 template <class T, class R, class A, class S>
 FOLLY_ASSUME_RELOCATABLE(basic_fbstring<T, R, A, S>);
 
-#else
-_GLIBCXX_END_NAMESPACE_VERSION
 #endif
 
-} // namespace folly
+FOLLY_FBSTRING_END_NAMESPACE
 
 #ifndef _LIBSTDCXX_FBSTRING
 
