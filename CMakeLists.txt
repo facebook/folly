@@ -292,7 +292,7 @@ if (BUILD_TESTS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
-    DIRECTORY concurrency/
+    DIRECTORY concurrency/test/
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
     DIRECTORY experimental/test/
       TEST autotimer_test SOURCES AutoTimerTest.cpp
