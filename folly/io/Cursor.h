@@ -48,7 +48,8 @@
  * Appender with a buffer chain; for this reason, Appenders assume private
  * access to the buffer (you need to call unshare() yourself if necessary).
  **/
-namespace folly { namespace io {
+namespace folly {
+namespace io {
 
 namespace detail {
 
@@ -618,7 +619,7 @@ class CursorBase {
   BufType* buffer_;
 };
 
-}  // namespace detail
+} // namespace detail
 
 class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
  public:
@@ -1049,7 +1050,7 @@ class QueueAppender : public detail::Writable<QueueAppender> {
   folly::IOBufQueue* queue_;
   size_t growth_;
 };
-
-}}  // folly::io
+} // namespace io
+} // namespace folly
 
 #include <folly/io/Cursor-inl.h>

@@ -30,7 +30,8 @@
  * Compression / decompression over IOBufs
  */
 
-namespace folly { namespace io {
+namespace folly {
+namespace io {
 
 enum class CodecType {
   /**
@@ -466,4 +467,5 @@ bool hasCodec(CodecType type);
  * Check if a specified codec is supported and supports streaming.
  */
 bool hasStreamCodec(CodecType type);
-}} // namespaces
+} // namespace io
+} // namespace folly

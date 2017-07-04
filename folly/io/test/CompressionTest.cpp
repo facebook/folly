@@ -38,7 +38,9 @@
 #include <zstd.h>
 #endif
 
-namespace folly { namespace io { namespace test {
+namespace folly {
+namespace io {
+namespace test {
 
 class DataHolder : private boost::noncopyable {
  public:
@@ -1127,7 +1129,9 @@ TEST(ZstdTest, BackwardCompatible) {
 }
 
 #endif
-}}}  // namespaces
+} // namespace test
+} // namespace io
+} // namespace folly
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);

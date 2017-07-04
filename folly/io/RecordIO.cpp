@@ -138,7 +138,7 @@ uint64_t dataHash(ByteRange range) {
   return hash::SpookyHashV2::Hash64(range.data(), range.size(), kHashSeed);
 }
 
-}  // namespace
+} // namespace
 
 size_t prependHeader(std::unique_ptr<IOBuf>& buf, uint32_t fileId) {
   if (fileId == 0) {
@@ -229,6 +229,6 @@ RecordInfo findRecord(ByteRange searchRange,
   return {0, {}};
 }
 
-}  // namespace
+} // namespace recordio_helpers
 
-}  // namespaces
+} // namespace folly

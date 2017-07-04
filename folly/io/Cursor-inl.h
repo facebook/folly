@@ -105,6 +105,6 @@ void CursorBase<Derived, BufType>::skipWhile(const Predicate& predicate) {
   CursorNoopAppender appender;
   readWhile(predicate, appender);
 }
-}
-}
-} // folly::io::detail
+} // namespace detail
+} // namespace io
+} // namespace folly

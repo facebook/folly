@@ -190,7 +190,7 @@ std::string toString(const IOBuf& buf) {
   return str;
 }
 
-}  // namespace
+} // namespace
 
 TEST(IOBuf, PullAndPeek) {
   std::unique_ptr<IOBuf> iobuf1(IOBuf::create(10));

@@ -28,7 +28,8 @@ using folly::ShutdownSocketSet;
 
 namespace fsp = folly::portability::sockets;
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
 ShutdownSocketSet shutdownSocketSet;
 
@@ -221,5 +222,5 @@ TEST(ShutdownSocketSetTest, OrderlyKill) {
 TEST(ShutdownSocketSetTest, AbortiveKill) {
   runKillTest(true);
 }
-
-}}  // namespaces
+} // namespace test
+} // namespace folly

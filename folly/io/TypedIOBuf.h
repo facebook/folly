@@ -212,4 +212,4 @@ class TypedIOBuf {
   IOBuf* buf_;
 };
 
-}  // namespace folly
+} // namespace folly

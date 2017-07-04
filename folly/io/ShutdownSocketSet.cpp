@@ -176,4 +176,4 @@ void ShutdownSocketSet::doShutdown(int fd, bool abortive) {
   folly::dup2NoInt(nullFile_.fd(), fd);
 }
 
-}  // namespaces
+} // namespace folly

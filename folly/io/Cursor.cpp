@@ -18,7 +18,8 @@
 #include <cstdio>
 #include <folly/ScopeGuard.h>
 
-namespace folly { namespace io {
+namespace folly {
+namespace io {
 
 void Appender::printf(const char* fmt, ...) {
   va_list ap;
@@ -68,5 +69,5 @@ void Appender::vprintf(const char* fmt, va_list ap) {
   }
   append(len);
 }
-
-}}  // folly::io
+} // namespace io
+} // namespace folly

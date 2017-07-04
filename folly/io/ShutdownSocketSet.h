@@ -117,4 +117,4 @@ class ShutdownSocketSet : private boost::noncopyable {
   folly::File nullFile_;
 };
 
-}  // namespaces
+} // namespace folly

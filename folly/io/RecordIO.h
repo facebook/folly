@@ -172,8 +172,8 @@ RecordInfo findRecord(ByteRange range, uint32_t fileId);
  */
 RecordInfo validateRecord(ByteRange range, uint32_t fileId);
 
-}  // namespace recordio_helpers
+} // namespace recordio_helpers
 
-}  // namespaces
+} // namespace folly
 
 #include <folly/io/RecordIO-inl.h>

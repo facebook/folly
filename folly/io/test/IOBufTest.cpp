@@ -755,7 +755,7 @@ void customDeleteArray(OwnershipTestClass* p) {
   delete[] p;
 }
 
-}  // namespace
+} // namespace
 
 TEST(IOBuf, takeOwnershipUniquePtr) {
   destructorCount = 0;
@@ -1041,7 +1041,7 @@ namespace {
 std::unique_ptr<IOBuf> fromStr(StringPiece sp) {
   return IOBuf::copyBuffer(ByteRange(sp));
 }
-}  // namespace
+} // namespace
 
 TEST(IOBuf, HashAndEqual) {
   folly::IOBufEqual eq;
@@ -1240,7 +1240,7 @@ char* writableStr(folly::IOBuf& buf) {
   return reinterpret_cast<char*>(buf.writableData());
 }
 
-}  // namespace
+} // namespace
 
 TEST(IOBuf, ExternallyShared) {
   struct Item {

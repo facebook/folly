@@ -58,7 +58,8 @@
 #include <algorithm>
 #include <unordered_set>
 
-namespace folly { namespace io {
+namespace folly {
+namespace io {
 
 Codec::Codec(CodecType type) : type_(type) { }
 
@@ -512,7 +513,7 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
   return val;
 }
 
-}  // namespace
+} // namespace
 
 #endif  // FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA
 
@@ -2323,4 +2324,5 @@ std::unique_ptr<Codec> getAutoUncompressionCodec(
     std::vector<std::unique_ptr<Codec>> customCodecs) {
   return AutomaticCodec::create(std::move(customCodecs));
 }
-}}  // namespaces
+} // namespace io
+} // namespace folly
