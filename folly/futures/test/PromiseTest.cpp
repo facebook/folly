@@ -24,6 +24,11 @@ using std::string;
 typedef FutureException eggs_t;
 static eggs_t eggs("eggs");
 
+TEST(Promise, makeEmpty) {
+  auto p = Promise<int>::makeEmpty();
+  EXPECT_TRUE(p.isFulfilled());
+}
+
 TEST(Promise, special) {
   EXPECT_FALSE(std::is_copy_constructible<Promise<int>>::value);
   EXPECT_FALSE(std::is_copy_assignable<Promise<int>>::value);

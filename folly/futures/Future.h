@@ -45,6 +45,8 @@ class Future {
  public:
   typedef T value_type;
 
+  static Future<T> makeEmpty(); // equivalent to moved-from
+
   // not copyable
   Future(Future const&) = delete;
   Future& operator=(Future const&) = delete;
@@ -480,6 +482,8 @@ class Future {
 
   explicit
   Future(corePtr obj) : core_(obj) {}
+
+  explicit Future(detail::EmptyConstruct) noexcept;
 
   void detach();
 

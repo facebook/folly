@@ -34,6 +34,8 @@ class CoreCallbackState;
 template <class T>
 class Promise {
  public:
+  static Promise<T> makeEmpty() noexcept; // equivalent to moved-from
+
   Promise();
   ~Promise();
 

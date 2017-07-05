@@ -111,7 +111,7 @@ class CoreCallbackState {
   union {
     F func_;
   };
-  Promise<T> promise_{detail::EmptyConstruct{}};
+  Promise<T> promise_{Promise<T>::makeEmpty()};
 };
 
 template <typename T, typename F>
@@ -122,6 +122,11 @@ inline auto makeCoreCallbackState(Promise<T>&& p, F&& f) noexcept(
   return CoreCallbackState<T, _t<std::decay<F>>>(
       std::move(p), std::forward<F>(f));
 }
+}
+
+template <class T>
+Future<T> Future<T>::makeEmpty() {
+  return Future<T>(detail::EmptyConstruct{});
 }
 
 template <class T>
@@ -558,6 +563,10 @@ template <class T>
 void Future<T>::raise(exception_wrapper exception) {
   core_->raise(std::move(exception));
 }
+
+template <class T>
+Future<T>::Future(detail::EmptyConstruct) noexcept
+    : core_(nullptr) {}
 
 // makeFuture
 

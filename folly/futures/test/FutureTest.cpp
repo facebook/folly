@@ -40,6 +40,11 @@ static eggs_t eggs("eggs");
 
 // Future
 
+TEST(Future, makeEmpty) {
+  auto f = Future<int>::makeEmpty();
+  EXPECT_THROW(f.isReady(), NoState);
+}
+
 TEST(Future, futureDefaultCtor) {
   Future<Unit>();
 }

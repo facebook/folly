@@ -25,6 +25,11 @@
 namespace folly {
 
 template <class T>
+Promise<T> Promise<T>::makeEmpty() noexcept {
+  return Promise<T>(detail::EmptyConstruct{});
+}
+
+template <class T>
 Promise<T>::Promise() : retrieved_(false), core_(new detail::Core<T>())
 {}
 
