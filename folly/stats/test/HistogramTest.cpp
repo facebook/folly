@@ -200,7 +200,7 @@ TEST(Histogram, TestDoubleWidthTooBig) {
   EXPECT_EQ(1, h.getBucketByIndex(0).count);
   h.addValue(7.5);
   EXPECT_EQ(1, h.getBucketByIndex(2).count);
-  EXPECT_EQ(3.0, h.getPercentileEstimate(0.5));
+  EXPECT_NEAR(3.0, h.getPercentileEstimate(0.5), 1e-14);
 }
 
 // Test that we get counts right
