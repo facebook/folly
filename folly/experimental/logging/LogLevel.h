@@ -84,12 +84,11 @@ enum class LogLevel : uint32_t {
  * adjusted log level values.
  */
 inline constexpr LogLevel operator+(LogLevel level, uint32_t value) {
-  auto newValue = static_cast<uint32_t>(level) + value;
   // Cap the result at LogLevel::MAX_LEVEL
-  if (newValue > static_cast<uint32_t>(LogLevel::MAX_LEVEL)) {
-    return LogLevel::MAX_LEVEL;
-  }
-  return static_cast<LogLevel>(newValue);
+  return ((static_cast<uint32_t>(level) + value) >
+          static_cast<uint32_t>(LogLevel::MAX_LEVEL))
+      ? LogLevel::MAX_LEVEL
+      : static_cast<LogLevel>(static_cast<uint32_t>(level) + value);
 }
 inline LogLevel& operator+=(LogLevel& level, uint32_t value) {
   level = level + value;
