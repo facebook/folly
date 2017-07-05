@@ -325,7 +325,8 @@ class Core final {
 
   void doCallback() {
     Executor* x = executor_;
-    int8_t priority;
+    // initialize, solely to appease clang's -Wconditional-uninitialized
+    int8_t priority = 0;
     if (x) {
       if (!executorLock_.try_lock()) {
         executorLock_.lock();
