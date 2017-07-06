@@ -146,6 +146,10 @@ bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d);
 // Note: this was a type and has been fixed upstream, so the next 1.1.0
 // minor version upgrade will need to remove this
 #define OPENSSL_lh_new OPENSSL_LH_new
+
+// OpenSSL v1.1.0 removed support for SSLv2, and also removed the define that
+// indicates it isn't supported.
+#define OPENSSL_NO_SSL2
 #endif
 }
 }
