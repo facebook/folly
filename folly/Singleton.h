@@ -669,6 +669,21 @@ class LeakySingleton {
 
   static T& get() { return instance(); }
 
+  static void make_mock(std::nullptr_t /* c */ = nullptr) {
+    make_mock([]() { return new T; });
+  }
+
+  static void make_mock(CreateFunc createFunc) {
+    auto& entry = entryInstance();
+    if (createFunc == nullptr) {
+      throw std::logic_error(
+          "nullptr_t should be passed if you want T to be default constructed");
+    }
+
+    entry.createFunc = createFunc;
+    entry.state = State::Dead;
+  }
+
  private:
   enum class State { NotRegistered, Dead, Living };
 
