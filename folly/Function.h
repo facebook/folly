@@ -410,13 +410,13 @@ bool execBig(Op o, Data* src, Data* dst) {
 
 // Invoke helper
 template <typename F, typename... Args>
-inline auto invoke(F&& f, Args&&... args)
+inline constexpr auto invoke(F&& f, Args&&... args)
     -> decltype(std::forward<F>(f)(std::forward<Args>(args)...)) {
   return std::forward<F>(f)(std::forward<Args>(args)...);
 }
 
 template <typename M, typename C, typename... Args>
-inline auto invoke(M(C::*d), Args&&... args)
+inline constexpr auto invoke(M(C::*d), Args&&... args)
     -> decltype(std::mem_fn(d)(std::forward<Args>(args)...)) {
   return std::mem_fn(d)(std::forward<Args>(args)...);
 }
@@ -740,6 +740,25 @@ Function<ReturnType(Args...) const> constCastFunction(
   return std::move(that);
 }
 
+namespace detail {
+namespace function {
+template <typename Fun, typename FunctionType, typename = void>
+struct IsCallableAsImpl : std::false_type {};
+
+template <typename Fun, typename ReturnType, typename... Args>
+struct IsCallableAsImpl<
+    Fun,
+    ReturnType(Args...),
+    void_t<typename std::result_of<Fun && (Args && ...)>::type>>
+    : std::is_convertible<
+          typename std::result_of<Fun && (Args && ...)>::type,
+          ReturnType> {};
+
+template <typename Fun, typename FunctionType>
+struct IsCallableAs : IsCallableAsImpl<Fun, FunctionType> {};
+}
+}
+
 /**
  * @class FunctionRef
  *
@@ -767,18 +786,20 @@ template <typename ReturnType, typename... Args>
 class FunctionRef<ReturnType(Args...)> final {
   using Call = ReturnType (*)(void*, Args&&...);
 
-  void* object_{nullptr};
-  Call call_{&FunctionRef::uninitCall};
-
   static ReturnType uninitCall(void*, Args&&...) {
     throw std::bad_function_call();
   }
 
   template <typename Fun>
   static ReturnType call(void* object, Args&&... args) {
+    using Pointer = _t<std::add_pointer<Fun>>;
     return static_cast<ReturnType>(detail::function::invoke(
-        *static_cast<Fun*>(object), static_cast<Args&&>(args)...));
+        static_cast<Fun&&>(*static_cast<Pointer>(object)),
+        static_cast<Args&&>(args)...));
   }
+
+  void* object_{nullptr};
+  Call call_{&FunctionRef::uninitCall};
 
  public:
   /**
@@ -794,31 +815,24 @@ class FunctionRef<ReturnType(Args...)> final {
   template <
       typename Fun,
       typename std::enable_if<
-          !std::is_same<FunctionRef, typename std::decay<Fun>::type>::value,
+          Conjunction<
+              Negation<std::is_same<FunctionRef, _t<std::decay<Fun>>>>,
+              detail::function::IsCallableAs<Fun, ReturnType(Args...)>>::value,
           int>::type = 0>
-  /* implicit */ FunctionRef(Fun&& fun) noexcept {
-    using ReferencedType = typename std::remove_reference<Fun>::type;
-
-    static_assert(
-        std::is_convertible<
-            typename std::result_of<ReferencedType&(Args && ...)>::type,
-            ReturnType>::value,
-        "FunctionRef cannot be constructed from object with "
-        "incompatible function signature");
-
-    // `Fun` may be a const type, in which case we have to do a const_cast
-    // to store the address in a `void*`. This is safe because the `void*`
-    // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
-    // is a const type) inside `FunctionRef::call`
-    object_ = const_cast<void*>(static_cast<void const*>(std::addressof(fun)));
-    call_ = &FunctionRef::call<ReferencedType>;
-  }
+  constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept
+      // `Fun` may be a const type, in which case we have to do a const_cast
+      // to store the address in a `void*`. This is safe because the `void*`
+      // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
+      // is a const type) inside `FunctionRef::call`
+      : object_(
+            const_cast<void*>(static_cast<void const*>(std::addressof(fun)))),
+        call_(&FunctionRef::call<Fun>) {}
 
   ReturnType operator()(Args... args) const {
     return call_(object_, static_cast<Args&&>(args)...);
   }
 
-  explicit operator bool() const {
+  constexpr explicit operator bool() const {
     return object_;
   }
 };
