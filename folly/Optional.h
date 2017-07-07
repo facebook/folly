@@ -128,8 +128,8 @@ class Optional {
   }
 
   template <typename... Args>
-  explicit Optional(in_place_t, Args&&... args)
-    noexcept(noexcept(::new (nullptr) Value(std::declval<Args&&>()...))) {
+  explicit Optional(in_place_t, Args&&... args) noexcept(
+      std::is_nothrow_constructible<Value, Args...>::value) {
     construct(std::forward<Args>(args)...);
   }
 
