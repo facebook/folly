@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Range.h>
 #include <memory>
 
 namespace folly {
@@ -27,7 +28,10 @@ class ScopedEventBaseThread;
 class EventBaseThread {
  public:
   EventBaseThread();
-  explicit EventBaseThread(bool autostart, EventBaseManager* ebm = nullptr);
+  explicit EventBaseThread(
+      bool autostart,
+      EventBaseManager* ebm = nullptr,
+      folly::StringPiece threadName = folly::StringPiece());
   explicit EventBaseThread(EventBaseManager* ebm);
   ~EventBaseThread();
 
@@ -37,7 +41,7 @@ class EventBaseThread {
   EventBase* getEventBase() const;
 
   bool running() const;
-  void start();
+  void start(folly::StringPiece threadName = folly::StringPiece());
   void stop();
 
  private:

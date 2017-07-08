@@ -19,6 +19,7 @@
 #include <chrono>
 
 #include <folly/Baton.h>
+#include <folly/ThreadName.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/portability/GTest.h>
 
@@ -29,10 +30,13 @@ using namespace folly;
 class EventBaseThreadTest : public testing::Test {};
 
 TEST_F(EventBaseThreadTest, example) {
-  EventBaseThread ebt;
+  EventBaseThread ebt(true, nullptr, "monkey");
 
   Baton<> done;
-  ebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
+  ebt.getEventBase()->runInEventBaseThread([&] {
+    EXPECT_EQ(getCurrentThreadName().value(), "monkey");
+    done.post();
+  });
   ASSERT_TRUE(done.timed_wait(seconds(1)));
 }
 
