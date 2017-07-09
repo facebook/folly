@@ -25,10 +25,11 @@
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
-#include <folly/futures/DrivableExecutor.h>
-#include <folly/futures/Promise.h>
 #include <folly/Try.h>
+#include <folly/Utility.h>
+#include <folly/futures/DrivableExecutor.h>
 #include <folly/futures/FutureException.h>
+#include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 
 // boring predeclarations and details
@@ -89,6 +90,12 @@ class Future {
   template <class T2 = T>
   /* implicit */ Future(
       typename std::enable_if<std::is_same<Unit, T2>::value>::type* = nullptr);
+
+  template <
+      class... Args,
+      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
+          type = 0>
+  explicit Future(in_place_t, Args&&... args);
 
   ~Future();
 

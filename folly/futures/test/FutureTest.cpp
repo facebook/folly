@@ -810,6 +810,11 @@ TEST(Future, ImplicitConstructor) {
   //auto f2 = []() -> Future<Unit> { }();
 }
 
+TEST(Future, InPlaceConstructor) {
+  auto f = Future<std::pair<int, double>>(in_place, 5, 3.2);
+  EXPECT_EQ(5, f.value().first);
+}
+
 TEST(Future, thenDynamic) {
   // folly::dynamic has a constructor that takes any T, this test makes
   // sure that we call the then lambda with folly::dynamic and not

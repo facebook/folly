@@ -19,6 +19,7 @@
 #include <atomic>
 #include <mutex>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include <folly/Executor.h>
@@ -27,6 +28,7 @@
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
+#include <folly/Utility.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/detail/FSM.h>
 
@@ -86,6 +88,13 @@ class Core final {
     : result_(std::move(t)),
       fsm_(State::OnlyResult),
       attached_(1) {}
+
+  template <typename... Args>
+  explicit Core(in_place_t, Args&&... args) noexcept(
+      noexcept(::new (nullptr) T(std::declval<Args&&>()...)))
+      : result_(in_place, in_place, std::forward<Args>(args)...),
+        fsm_(State::OnlyResult),
+        attached_(1) {}
 
   ~Core() {
     DCHECK(attached_ == 0);

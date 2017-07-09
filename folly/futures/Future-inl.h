@@ -185,6 +185,14 @@ Future<T>::Future(typename std::enable_if<std::is_same<Unit, T2>::value>::type*)
     : core_(new detail::Core<T>(Try<T>(T()))) {}
 
 template <class T>
+template <
+    class... Args,
+    typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
+        type>
+Future<T>::Future(in_place_t, Args&&... args)
+    : core_(new detail::Core<T>(in_place, std::forward<Args>(args)...)) {}
+
+template <class T>
 Future<T>::~Future() {
   detach();
 }
