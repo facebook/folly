@@ -405,10 +405,15 @@ IPAddressV6 IPAddressV6::mask(size_t numBits) const {
 string IPAddressV6::str() const {
   char buffer[INET6_ADDRSTRLEN] = {0};
   sockaddr_in6 sock = toSockAddr();
-  if (!getnameinfo(
-        (sockaddr*)&sock, sizeof(sock),
-        buffer, INET6_ADDRSTRLEN,
-        nullptr, 0, NI_NUMERICHOST)) {
+  int error = getnameinfo(
+      (sockaddr*)&sock,
+      sizeof(sock),
+      buffer,
+      INET6_ADDRSTRLEN,
+      nullptr,
+      0,
+      NI_NUMERICHOST);
+  if (!error) {
     string ip(buffer);
     return ip;
   } else {
@@ -416,7 +421,11 @@ string IPAddressV6::str() const {
         "Invalid address with hex ",
         "'",
         detail::Bytes::toHex(bytes(), 16),
-        "'"));
+        "%",
+        sock.sin6_scope_id,
+        "'",
+        " , with error ",
+        gai_strerror(error)));
   }
 }
 
