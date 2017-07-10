@@ -115,6 +115,8 @@ void RSA_get0_key(
     const BIGNUM** e,
     const BIGNUM** d);
 RSA* EVP_PKEY_get0_RSA(EVP_PKEY* pkey);
+DSA* EVP_PKEY_get0_DSA(EVP_PKEY* pkey);
+DH* EVP_PKEY_get0_DH(EVP_PKEY* pkey);
 EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey);
 #endif
 
@@ -135,11 +137,33 @@ void HMAC_CTX_free(HMAC_CTX* ctx);
 unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
 int SSL_SESSION_has_ticket(const SSL_SESSION* s);
 int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
+void DH_get0_pqg(
+    const DH* dh,
+    const BIGNUM** p,
+    const BIGNUM** q,
+    const BIGNUM** g);
+void DH_get0_key(const DH* dh, const BIGNUM** pub_key, const BIGNUM** priv_key);
+
+void DSA_get0_pqg(
+    const DSA* dsa,
+    const BIGNUM** p,
+    const BIGNUM** q,
+    const BIGNUM** g);
+void DSA_get0_key(
+    const DSA* dsa,
+    const BIGNUM** pub_key,
+    const BIGNUM** priv_key);
 
 X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx);
 bool RSA_set0_key(RSA* r, BIGNUM* n, BIGNUM* e, BIGNUM* d);
+void RSA_get0_factors(const RSA* r, const BIGNUM** p, const BIGNUM** q);
+void RSA_get0_crt_params(
+    const RSA* r,
+    const BIGNUM** dmp1,
+    const BIGNUM** dmq1,
+    const BIGNUM** iqmp);
 #endif
 
 #if FOLLY_OPENSSL_IS_110
