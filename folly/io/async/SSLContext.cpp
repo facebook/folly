@@ -102,7 +102,6 @@ SSLContext::~SSLContext() {
 }
 
 void SSLContext::ciphers(const std::string& ciphers) {
-  providedCiphersString_ = ciphers;
   setCiphersOrThrow(ciphers);
 }
 
@@ -188,6 +187,7 @@ void SSLContext::setCiphersOrThrow(const std::string& ciphers) {
   if (rc == 0) {
     throw std::runtime_error("SSL_CTX_set_cipher_list: " + getErrors());
   }
+  providedCiphersString_ = ciphers;
 }
 
 void SSLContext::setVerificationOption(const SSLContext::SSLVerifyPeerEnum&
