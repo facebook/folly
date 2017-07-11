@@ -246,13 +246,14 @@ class FiberUnwinder(gdb.unwinder.Unwinder):
         return unwind_info
 
 
-def fiber_activate(fiber_ptr):
+def fiber_activate(fiber):
     fiber_type = gdb.lookup_type("folly::fibers::Fiber")
-    fiber = fiber_ptr.cast(fiber_type.pointer()).dereference()
+    if fiber.type != fiber_type:
+        fiber = fiber.cast(fiber_type.pointer()).dereference()
     if not FiberPrinter(fiber).backtrace_available():
         return "Can not activate a non-waiting fiber."
     FiberUnwinder.set_fiber(fiber)
-    return "Fiber " + str(fiber_ptr) + " activated. You can call 'bt' now."
+    return "Fiber 0x{:12x} activated. You can call 'bt' now.".format(int(fiber.address))
 
 
 def fiber_deactivate():
