@@ -7,6 +7,7 @@ import gdb.types
 import gdb.unwinder
 import gdb.xmethod
 import collections
+import itertools
 
 
 class FiberPrinter:
@@ -55,6 +56,59 @@ class FiberPrinter:
         return "folly::fibers::Fiber"
 
 
+class GetFiberXMethodWorker(gdb.xmethod.XMethodWorker):
+    def get_arg_types(self):
+        return gdb.lookup_type('int')
+
+    def get_result_type(self):
+        return gdb.lookup_type('int')
+
+    def __call__(self, *args):
+        fm = args[0]
+        index = int(args[1])
+        fiber = next(itertools.islice(fiber_manager_active_fibers(fm),
+                                      index,
+                                      None))
+        if fiber is None:
+            raise gdb.GdbError("Index out of range")
+        else:
+            return fiber
+
+
+class GetFiberXMethodMatcher(gdb.xmethod.XMethodMatcher):
+    def __init__(self):
+        super(GetFiberXMethodMatcher, self).__init__("Fiber address method matcher")
+        self.worker = GetFiberXMethodWorker()
+
+    def match(self, class_type, method_name):
+        if class_type.name == "folly::fibers::FiberManager" and \
+           method_name == "get_fiber":
+            return self.worker
+        return None
+
+
+def fiber_manager_active_fibers(fm):
+    all_fibers = \
+        fm['allFibers_']['data_']['root_plus_size_']['m_header']
+    fiber_hook = all_fibers['next_']
+
+    fiber_count = 0
+
+    while fiber_hook != all_fibers.address:
+        fiber = fiber_hook.cast(gdb.lookup_type("int64_t"))
+        fiber = fiber - gdb.parse_and_eval(
+            "(int64_t)&'folly::fibers::Fiber'::globalListHook_")
+        fiber = fiber.cast(
+            gdb.lookup_type('folly::fibers::Fiber').pointer()).dereference()
+
+        if FiberPrinter(fiber).state != "folly::fibers::Fiber::INVALID":
+            yield fiber
+
+        fiber_hook = fiber_hook.dereference()['next_']
+
+        fiber_count = fiber_count + 1
+
+
 class FiberManagerPrinter:
     """Print a folly::fibers::Fiber"""
 
@@ -64,33 +118,17 @@ class FiberManagerPrinter:
         self.fm = fm
 
     def children(self):
-        all_fibers = \
-            self.fm['allFibers_']['data_']['root_plus_size_']['m_header']
-        fiber_hook = all_fibers['next_']
+        def limit_with_dots(fibers_iterator):
+            num_items = 0
+            for fiber in fibers_iterator:
+                if num_items >= self.fiber_print_limit:
+                    yield ('...', '...')
+                    return
 
-        active_fibers = collections.OrderedDict()
+                yield (str(fiber.address), fiber)
+                num_items += 1
 
-        fiber_count = 0
-
-        while fiber_hook != all_fibers.address:
-            if fiber_count == FiberManagerPrinter.fiber_print_limit:
-                active_fibers["..."] = "..."
-                break
-
-            fiber = fiber_hook.cast(gdb.lookup_type("int64_t"))
-            fiber = fiber - gdb.parse_and_eval(
-                "(int64_t)&'folly::fibers::Fiber'::globalListHook_")
-            fiber = fiber.cast(
-                gdb.lookup_type('folly::fibers::Fiber').pointer()).dereference()
-
-            if FiberPrinter(fiber).state != "folly::fibers::Fiber::INVALID":
-                active_fibers[str(fiber.address)] = fiber
-
-            fiber_hook = fiber_hook.dereference()['next_']
-
-            fiber_count = fiber_count + 1
-
-        return active_fibers.items()
+        return limit_with_dots(fiber_manager_active_fibers(self.fm))
 
     def to_string(self):
         return "folly::fibers::FiberManager"
@@ -297,6 +335,7 @@ def get_fiber_manager_map(evb_type):
     global_cache_instance = global_cache_instance_ptr.dereference()
     return global_cache_instance['map_']
 
+
 def get_fiber_manager_map_evb():
     return get_fiber_manager_map("folly::EventBase")
 
@@ -316,6 +355,7 @@ def build_pretty_printer():
 def load():
     gdb.printing.register_pretty_printer(gdb, build_pretty_printer())
     gdb.xmethod.register_xmethod_matcher(gdb, FiberXMethodMatcher())
+    gdb.xmethod.register_xmethod_matcher(gdb, GetFiberXMethodMatcher())
     FiberPrintLimitCommand()
     FiberActivateCommand()
     FiberDeactivateCommand()
