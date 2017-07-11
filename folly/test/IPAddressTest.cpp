@@ -21,6 +21,7 @@
 #include <folly/MacAddress.h>
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -1251,3 +1252,66 @@ INSTANTIATE_TEST_CASE_P(IPAddress,
 INSTANTIATE_TEST_CASE_P(IPAddress,
                         IPAddressBitAccessorTest,
                         ::testing::ValuesIn(validAddressProvider));
+
+TEST(IPAddressV6, fetchMask) {
+  using ByteArray8 = std::array<uint8_t, 8>;
+
+  struct X : private IPAddressV6 {
+    using IPAddressV6::fetchMask;
+  };
+
+  auto join = [](std::array<ByteArray8, 2> parts) {
+    ByteArray16 _return;
+    std::memcpy(_return.data(), parts.data(), _return.size());
+    return _return;
+  };
+
+  EXPECT_THAT(
+      X::fetchMask(0),
+      ::testing::ElementsAreArray(join({{
+          ByteArray8{{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+          ByteArray8{{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      }})));
+
+  EXPECT_THAT(
+      X::fetchMask(1),
+      ::testing::ElementsAreArray(join({{
+          ByteArray8{{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+          ByteArray8{{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      }})));
+
+  EXPECT_THAT(
+      X::fetchMask(63),
+      ::testing::ElementsAreArray(join({{
+          ByteArray8{{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}},
+          ByteArray8{{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      }})));
+
+  EXPECT_THAT(
+      X::fetchMask(64),
+      ::testing::ElementsAreArray(join({{
+          ByteArray8{{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+          ByteArray8{{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      }})));
+
+  EXPECT_THAT(
+      X::fetchMask(65),
+      ::testing::ElementsAreArray(join({{
+          ByteArray8{{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+          ByteArray8{{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      }})));
+
+  EXPECT_THAT(
+      X::fetchMask(127),
+      ::testing::ElementsAreArray(join({{
+          ByteArray8{{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+          ByteArray8{{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}},
+      }})));
+
+  EXPECT_THAT(
+      X::fetchMask(128),
+      ::testing::ElementsAreArray(join({{
+          ByteArray8{{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+          ByteArray8{{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+      }})));
+}

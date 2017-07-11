@@ -354,8 +354,6 @@ class IPAddressV6 {
   // are *not* link-local.
   uint16_t scope_{0};
 
-  static const std::array<ByteArray16, 129> masks_;
-
   /**
    * Set the current IPAddressV6 object to have the address specified by bytes.
    * @throws IPAddressFormatException if bytes.size() is not 16.
