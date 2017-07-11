@@ -19,17 +19,18 @@
 #endif
 
 #include <folly/io/async/EventBase.h>
-#include <folly/io/async/VirtualEventBase.h>
 
+#include <fcntl.h>
+
+#include <mutex>
+#include <thread>
+
+#include <folly/Baton.h>
 #include <folly/Memory.h>
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
-
-#include <condition_variable>
-#include <fcntl.h>
-#include <mutex>
-#include <thread>
 
 namespace folly {
 
@@ -572,22 +573,14 @@ bool EventBase::runInEventBaseThreadAndWait(FuncRef fn) {
     return false;
   }
 
-  bool ready = false;
-  std::mutex m;
-  std::condition_variable cv;
+  Baton<> ready;
   runInEventBaseThread([&] {
-      SCOPE_EXIT {
-        std::unique_lock<std::mutex> l(m);
-        ready = true;
-        cv.notify_one();
-        // We cannot release the lock before notify_one, because a spurious
-        // wakeup in the waiting thread may lead to cv and m going out of scope
-        // prematurely.
-      };
-      fn();
+    SCOPE_EXIT {
+      ready.post();
+    };
+    fn();
   });
-  std::unique_lock<std::mutex> l(m);
-  cv.wait(l, [&] { return ready; });
+  ready.wait();
 
   return true;
 }
