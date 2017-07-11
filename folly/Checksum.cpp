@@ -179,4 +179,9 @@ uint32_t crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   }
 }
 
+uint32_t
+crc32_type(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
+  return ~crc32(data, nbytes, startingChecksum);
+}
+
 } // folly

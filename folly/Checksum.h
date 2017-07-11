@@ -45,4 +45,16 @@ uint32_t crc32c(const uint8_t* data, size_t nbytes,
 uint32_t
 crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
+/**
+ * Compute the CRC-32 checksum of a buffer, using a hardware-accelerated
+ * implementation if available or a portable software implementation as
+ * a default.
+ *
+ * @note compared to crc32(), crc32_type() uses a different set of default
+ *       parameters to match the results returned by boost::crc_32_type and
+ *       php's built-in crc32 implementation
+ */
+uint32_t
+crc32_type(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
+
 } // folly

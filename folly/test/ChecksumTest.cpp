@@ -16,7 +16,7 @@
 
 #include <folly/Checksum.h>
 
-
+#include <boost/crc.hpp>
 #include <folly/Benchmark.h>
 #include <folly/Hash.h>
 #include <folly/detail/ChecksumDetail.h>
@@ -86,6 +86,17 @@ void testCRC32CContinuation(
         buffer + expected.offset + partialLength,
         expected.length - partialLength, partialChecksum);
     EXPECT_EQ(expected.crc32c, result);
+  }
+}
+
+void testMatchesBoost32Type() {
+  for (auto expected : expectedResults) {
+    boost::crc_32_type result;
+    result.process_bytes(buffer + expected.offset, expected.length);
+    const uint32_t boostResult = result.checksum();
+    const uint32_t follyResult =
+        folly::crc32_type(buffer + expected.offset, expected.length);
+    EXPECT_EQ(follyResult, boostResult);
   }
 }
 
@@ -167,6 +178,11 @@ TEST(Checksum, crc32_continuation) {
     LOG(WARNING) << "skipping hardware-accelerated CRC-32 tests"
                  << " (not supported on this CPU)";
   }
+}
+
+TEST(Checksum, crc32_type) {
+  // Test that crc32_type matches boost::crc_32_type
+  testMatchesBoost32Type();
 }
 
 void benchmarkHardwareCRC32C(unsigned long iters, size_t blockSize) {
