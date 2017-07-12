@@ -605,12 +605,30 @@ TEST(Conv, StringPieceToDouble) {
   } catch (const std::range_error &) {
   }
 
+  EXPECT_TRUE(std::isnan(to<double>("nan")));
   EXPECT_TRUE(std::isnan(to<double>("NaN")));
+  EXPECT_TRUE(std::isnan(to<double>("NAN")));
+  EXPECT_TRUE(std::isnan(to<double>("-nan")));
+  EXPECT_TRUE(std::isnan(to<double>("-NaN")));
+  EXPECT_TRUE(std::isnan(to<double>("-NAN")));
+
   EXPECT_EQ(to<double>("inf"), numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("Inf"), numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("INF"), numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("inF"), numeric_limits<double>::infinity());
   EXPECT_EQ(to<double>("infinity"), numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("Infinity"), numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("INFINITY"), numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("iNfInItY"), numeric_limits<double>::infinity());
   EXPECT_THROW(to<double>("infinitX"), std::range_error);
   EXPECT_EQ(to<double>("-inf"), -numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("-Inf"), -numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("-INF"), -numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("-inF"), -numeric_limits<double>::infinity());
   EXPECT_EQ(to<double>("-infinity"), -numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("-Infinity"), -numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("-INFINITY"), -numeric_limits<double>::infinity());
+  EXPECT_EQ(to<double>("-iNfInItY"), -numeric_limits<double>::infinity());
   EXPECT_THROW(to<double>("-infinitX"), std::range_error);
 }
 
