@@ -259,12 +259,4 @@ class MoveOnly {
 } // namespace moveonly_
 
 using MoveOnly = moveonly_::MoveOnly;
-
-/**
- * Backport from C++17 of std::launder
- */
-template <typename T>
-constexpr T* launder(T* in) {
-  return (in + 1) - 1;
-}
 } // namespace folly
