@@ -411,7 +411,18 @@ TEST(DynamicConverter, partial_dynamics) {
   EXPECT_EQ(d, toDynamic(c));
 
   std::unordered_map<std::string, dynamic> m{{"one", 1}, {"two", 2}};
-
   dynamic md = dynamic::object("one", 1)("two", 2);
   EXPECT_EQ(md, toDynamic(m));
+}
+
+TEST(DynamicConverter, asan_exception_case_umap) {
+  EXPECT_THROW(
+      (convertTo<std::unordered_map<int, int>>(dynamic::array(1))), TypeError);
+}
+
+TEST(DynamicConverter, asan_exception_case_uset) {
+  EXPECT_THROW(
+      (convertTo<std::unordered_set<int>>(
+          dynamic::array(1, dynamic::array(), 3))),
+      TypeError);
 }

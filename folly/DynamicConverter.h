@@ -19,6 +19,8 @@
 #pragma once
 
 #include <folly/dynamic.h>
+#include <folly/Traits.h>
+
 namespace folly {
   template <typename T> T convertTo(const dynamic&);
   template <typename T> dynamic toDynamic(const T&);
@@ -54,6 +56,7 @@ namespace dynamicconverter_detail {
 BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type);
 BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator);
 BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type);
+BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type);
 
 template <typename T> struct iterator_class_is_container {
   typedef std::reverse_iterator<typename T::iterator> some_iterator;
@@ -62,38 +65,20 @@ template <typename T> struct iterator_class_is_container {
 };
 
 template <typename T>
-using class_is_container = typename
-  std::conditional<
-    has_iterator<T>::value,
-    iterator_class_is_container<T>,
-    std::false_type
-  >::type;
+using class_is_container =
+    Conjunction<has_iterator<T>, iterator_class_is_container<T>>;
 
-template <typename T> struct class_is_range {
-  enum { value = has_value_type<T>::value &&
-                 has_iterator<T>::value };
-};
+template <typename T>
+using is_range = StrictConjunction<has_value_type<T>, has_iterator<T>>;
 
+template <typename T>
+using is_container = StrictConjunction<std::is_class<T>, class_is_container<T>>;
 
-template <typename T> struct is_container
-  : std::conditional<
-      std::is_class<T>::value,
-      class_is_container<T>,
-      std::false_type
-    >::type {};
+template <typename T>
+using is_map = StrictConjunction<is_range<T>, has_mapped_type<T>>;
 
-template <typename T> struct is_range
-  : std::conditional<
-      std::is_class<T>::value,
-      class_is_range<T>,
-      std::false_type
-    >::type {};
-
-template <typename T> struct is_map
-  : std::integral_constant<
-      bool,
-      is_range<T>::value && has_mapped_type<T>::value
-    > {};
+template <typename T>
+using is_associative = StrictConjunction<is_range<T>, has_key_type<T>>;
 
 } // namespace dynamicconverter_detail
 
@@ -143,11 +128,9 @@ struct Dereferencer<std::pair<F, S>> {
 };
 
 template <typename T, typename It>
-class Transformer : public boost::iterator_adaptor<
-                             Transformer<T, It>,
-                             It,
-                             typename T::value_type
-                           > {
+class Transformer
+    : public boost::
+          iterator_adaptor<Transformer<T, It>, It, typename T::value_type> {
   friend class boost::iterator_core_access;
 
   typedef typename T::value_type ttype;
@@ -169,15 +152,14 @@ class Transformer : public boost::iterator_adaptor<
     return cache_;
   }
 
-public:
+ public:
   explicit Transformer(const It& it)
-    : Transformer::iterator_adaptor_(it), valid_(false) {}
+      : Transformer::iterator_adaptor_(it), valid_(false) {}
 };
 
 // conversion factory
 template <typename T, typename It>
-inline std::move_iterator<Transformer<T, It>>
-conversionIterator(const It& it) {
+inline std::move_iterator<Transformer<T, It>> conversionIterator(const It& it) {
   return std::make_move_iterator(Transformer<T, It>(it));
 }
 
@@ -204,9 +186,10 @@ struct DynamicConverter<bool> {
 
 // integrals
 template <typename T>
-struct DynamicConverter<T,
-    typename std::enable_if<std::is_integral<T>::value &&
-                            !std::is_same<T, bool>::value>::type> {
+struct DynamicConverter<
+    T,
+    typename std::enable_if<
+        std::is_integral<T>::value && !std::is_same<T, bool>::value>::type> {
   static T convert(const dynamic& d) {
     return folly::to<T>(d.asInt());
   }
@@ -214,8 +197,9 @@ struct DynamicConverter<T,
 
 // enums
 template <typename T>
-struct DynamicConverter<T,
-                        typename std::enable_if<std::is_enum<T>::value>::type> {
+struct DynamicConverter<
+    T,
+    typename std::enable_if<std::is_enum<T>::value>::type> {
   static T convert(const dynamic& d) {
     using type = typename std::underlying_type<T>::type;
     return static_cast<T>(DynamicConverter<type>::convert(d));
@@ -224,7 +208,8 @@ struct DynamicConverter<T,
 
 // floating point
 template <typename T>
-struct DynamicConverter<T,
+struct DynamicConverter<
+    T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   static T convert(const dynamic& d) {
     return folly::to<T>(d.asDouble());
@@ -249,7 +234,7 @@ struct DynamicConverter<std::string> {
 
 // std::pair
 template <typename F, typename S>
-struct DynamicConverter<std::pair<F,S>> {
+struct DynamicConverter<std::pair<F, S>> {
   static std::pair<F, S> convert(const dynamic& d) {
     if (d.isArray() && d.size() == 2) {
       return std::make_pair(convertTo<F>(d[0]), convertTo<S>(d[1]));
@@ -262,11 +247,13 @@ struct DynamicConverter<std::pair<F,S>> {
   }
 };
 
-// containers
+// non-associative containers
 template <typename C>
-struct DynamicConverter<C,
+struct DynamicConverter<
+    C,
     typename std::enable_if<
-      dynamicconverter_detail::is_container<C>::value>::type> {
+        dynamicconverter_detail::is_container<C>::value &&
+        !dynamicconverter_detail::is_associative<C>::value>::type> {
   static C convert(const dynamic& d) {
     if (d.isArray()) {
       return C(dynamicconverter_detail::conversionIterator<C>(d.begin()),
@@ -279,6 +266,31 @@ struct DynamicConverter<C,
     } else {
       throw TypeError("object or array", d.type());
     }
+  }
+};
+
+// associative containers
+template <typename C>
+struct DynamicConverter<
+    C,
+    typename std::enable_if<
+        dynamicconverter_detail::is_container<C>::value &&
+        dynamicconverter_detail::is_associative<C>::value>::type> {
+  static C convert(const dynamic& d) {
+    C ret; // avoid direct initialization due to unordered_map's constructor
+           // causing memory corruption if the iterator throws an exception
+    if (d.isArray()) {
+      ret.insert(
+          dynamicconverter_detail::conversionIterator<C>(d.begin()),
+          dynamicconverter_detail::conversionIterator<C>(d.end()));
+    } else if (d.isObject()) {
+      ret.insert(
+          dynamicconverter_detail::conversionIterator<C>(d.items().begin()),
+          dynamicconverter_detail::conversionIterator<C>(d.items().end()));
+    } else {
+      throw TypeError("object or array", d.type());
+    }
+    return ret;
   }
 };
 
