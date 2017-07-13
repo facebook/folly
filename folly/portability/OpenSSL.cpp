@@ -333,6 +333,30 @@ void RSA_get0_crt_params(
   }
 }
 
+int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s) {
+  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
+  if (r == nullptr || s == nullptr) {
+    return 0;
+  }
+  BN_clear_free(sig->r);
+  BN_clear_free(sig->s);
+  sig->r = r;
+  sig->s = s;
+  return 1;
+}
+
+void ECDSA_SIG_get0(
+    const ECDSA_SIG* sig,
+    const BIGNUM** pr,
+    const BIGNUM** ps) {
+  // Based off of https://wiki.openssl.org/index.php/OpenSSL_1.1.0_Changes
+  if (pr != nullptr) {
+    *pr = sig->r;
+  }
+  if (ps != nullptr) {
+    *ps = sig->s;
+  }
+}
 #endif
 }
 }

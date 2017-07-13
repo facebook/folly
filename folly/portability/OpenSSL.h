@@ -164,6 +164,8 @@ void RSA_get0_crt_params(
     const BIGNUM** dmp1,
     const BIGNUM** dmq1,
     const BIGNUM** iqmp);
+int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s);
+void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps);
 #endif
 
 #if FOLLY_OPENSSL_IS_110

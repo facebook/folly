@@ -59,3 +59,19 @@ TEST(OpenSSLPortabilityTest, TestRSASetter) {
   EXPECT_FALSE(BN_cmp(n_public, n_public_actual));
   EXPECT_FALSE(BN_cmp(e_public, e_public_actual));
 }
+
+TEST(OpenSSLPortabilityTest, TestEcdsaSigPortability) {
+  EcdsaSigUniquePtr ecdsa(ECDSA_SIG_new());
+  BIGNUM* r = BN_new();
+  BIGNUM* s = BN_new();
+  BIGNUM* r_actual;
+  BIGNUM* s_actual;
+  EXPECT_TRUE(BN_set_bit(r, 1));
+  EXPECT_TRUE(BN_set_bit(s, 2));
+  EXPECT_TRUE(ECDSA_SIG_set0(ecdsa.get(), r, s));
+  ECDSA_SIG_get0(
+      ecdsa.get(), (const BIGNUM**)&r_actual, (const BIGNUM**)&s_actual);
+  // BN_cmp returns 0 if the two BIGNUMs are equal
+  EXPECT_FALSE(BN_cmp(r, r_actual));
+  EXPECT_FALSE(BN_cmp(s, s_actual));
+}
