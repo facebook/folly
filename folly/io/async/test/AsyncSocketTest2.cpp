@@ -2868,6 +2868,42 @@ enum SOF_TIMESTAMPING {
   SOF_TIMESTAMPING_OPT_TSONLY = (1 << 11),
 };
 
+class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
+ public:
+  TestErrMessageCallback()
+      : exception_(folly::AsyncSocketException::UNKNOWN, "none") {}
+
+  void errMessage(const cmsghdr& cmsg) noexcept override {
+    if (cmsg.cmsg_level == SOL_SOCKET && cmsg.cmsg_type == SCM_TIMESTAMPING) {
+      gotTimestamp_++;
+      checkResetCallback();
+    } else if (
+        (cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
+        (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
+      gotByteSeq_++;
+      checkResetCallback();
+    }
+  }
+
+  void errMessageError(
+      const folly::AsyncSocketException& ex) noexcept override {
+    exception_ = ex;
+  }
+
+  void checkResetCallback() noexcept {
+    if (socket_ != nullptr && resetAfter_ != -1 &&
+        gotTimestamp_ + gotByteSeq_ == resetAfter_) {
+      socket_->setErrMessageCB(nullptr);
+    }
+  }
+
+  folly::AsyncSocket* socket_{nullptr};
+  folly::AsyncSocketException exception_;
+  int gotTimestamp_{0};
+  int gotByteSeq_{0};
+  int resetAfter_{-1};
+};
+
 TEST(AsyncSocketTest, ErrMessageCallback) {
   TestServer server;
 
@@ -3076,6 +3112,7 @@ TEST(AsyncSocket, PreReceivedDataTakeover) {
   evb.loop();
 }
 
+#ifdef MSG_NOSIGNAL
 TEST(AsyncSocketTest, SendMessageFlags) {
   TestServer server;
   TestSendMsgParamsCallback sendMsgCB(
@@ -3228,3 +3265,4 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
       magicString.end(),
       transferredMagicString.begin()));
 }
+#endif

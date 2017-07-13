@@ -30,13 +30,16 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
-#include <sys/utsname.h>
 
 #include <fstream>
 #include <iostream>
 #include <list>
 #include <set>
 #include <thread>
+
+#ifdef MSG_ERRQUEUE
+#include <sys/utsname.h>
+#endif
 
 using std::string;
 using std::vector;
