@@ -16,9 +16,9 @@
 
 #include <folly/io/IOBufQueue.h>
 
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
-#include <string.h>
 
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>

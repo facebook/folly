@@ -18,10 +18,10 @@
 
 #include <boost/thread/barrier.hpp>
 
-#include <folly/futures/Future.h>
 #include <folly/Random.h>
-#include <folly/small_vector.h>
+#include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
+#include <folly/small_vector.h>
 
 using namespace folly;
 

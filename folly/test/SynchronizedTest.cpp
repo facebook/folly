@@ -24,8 +24,8 @@
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 #include <folly/Synchronized.h>
-#include <folly/test/SynchronizedTestLib.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/SynchronizedTestLib.h>
 
 using namespace folly::sync_tests;
 

@@ -15,9 +15,9 @@
  */
 #include <folly/Lazy.h>
 
-#include <map>
 #include <functional>
 #include <iostream>
+#include <map>
 
 #include <folly/portability/GTest.h>
 

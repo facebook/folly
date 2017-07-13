@@ -17,7 +17,6 @@
 #pragma once
 
 #include <sys/types.h>
-#include <libaio.h>
 
 #include <atomic>
 #include <cstdint>
@@ -29,6 +28,7 @@
 #include <vector>
 
 #include <boost/noncopyable.hpp>
+#include <libaio.h>
 
 #include <folly/Portability.h>
 #include <folly/Range.h>

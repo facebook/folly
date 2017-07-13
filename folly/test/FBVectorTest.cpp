@@ -17,17 +17,19 @@
 //
 // Author: andrei.alexandrescu@fb.com
 
-#include <folly/Foreach.h>
-#include <folly/Traits.h>
-#include <folly/Random.h>
-#include <folly/FBString.h>
 #include <folly/FBVector.h>
-#include <folly/portability/GTest.h>
 
 #include <list>
 #include <map>
 #include <memory>
+
 #include <boost/random.hpp>
+
+#include <folly/FBString.h>
+#include <folly/Foreach.h>
+#include <folly/Random.h>
+#include <folly/Traits.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;

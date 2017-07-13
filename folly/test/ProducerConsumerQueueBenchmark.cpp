@@ -16,17 +16,20 @@
 
 // @author: Bert Maher <bertrand@fb.com>
 
-#include <thread>
-#include <iostream>
-#include <stdio.h>
+#include <folly/ProducerConsumerQueue.h>
+
 #include <pthread.h>
 
+#include <cstdio>
+#include <iostream>
+#include <thread>
+
+#include <glog/logging.h>
+
 #include <folly/Benchmark.h>
-#include <folly/ProducerConsumerQueue.h>
 #include <folly/portability/GFlags.h>
 #include <folly/stats/Histogram.h>
 #include <folly/stats/Histogram-defs.h>
-#include <glog/logging.h>
 
 namespace {
 

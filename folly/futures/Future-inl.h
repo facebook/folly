@@ -21,11 +21,12 @@
 #include <chrono>
 #include <random>
 #include <thread>
+
 #include <folly/Baton.h>
 #include <folly/Optional.h>
 #include <folly/Random.h>
-#include <folly/futures/detail/Core.h>
 #include <folly/futures/Timekeeper.h>
+#include <folly/futures/detail/Core.h>
 
 #if FOLLY_MOBILE || defined(__APPLE__)
 #define FOLLY_FUTURE_USING_FIBER 0

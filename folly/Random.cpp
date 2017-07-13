@@ -16,10 +16,10 @@
 
 #include <folly/Random.h>
 
+#include <array>
 #include <atomic>
 #include <mutex>
 #include <random>
-#include <array>
 
 #include <folly/CallOnce.h>
 #include <folly/File.h>
@@ -31,7 +31,7 @@
 #include <glog/logging.h>
 
 #ifdef _MSC_VER
-# include <wincrypt.h> // @manual
+#include <wincrypt.h> // @manual
 #endif
 
 namespace folly {

@@ -20,6 +20,11 @@
 
 #include <folly/io/IOBuf.h>
 
+#include <cassert>
+#include <cstdint>
+#include <cstdlib>
+#include <stdexcept>
+
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Malloc.h>
@@ -27,11 +32,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/SpookyHashV2.h>
 #include <folly/io/Cursor.h>
-
-#include <stdexcept>
-#include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
 
 using std::unique_ptr;
 

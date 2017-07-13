@@ -16,9 +16,9 @@
 #pragma once
 
 #include <folly/Range.h>
-#include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
 namespace ssl {

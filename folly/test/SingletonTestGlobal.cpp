@@ -17,10 +17,10 @@
 #include <memory>
 #include <vector>
 
-#include <folly/Singleton.h>
 #include <folly/Benchmark.h>
-#include <folly/test/SingletonTestStructs.h>
+#include <folly/Singleton.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/SingletonTestStructs.h>
 
 /*
  * This test needs to be in its own file, as a standalone program.

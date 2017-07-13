@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/io/async/AsyncTransport.h>
-#include <folly/io/async/AsyncSocket.h>
 
+#include <folly/io/async/AsyncTransport.h>
+
+#include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/test/MockAsyncTransport.h>
 #include <folly/portability/GTest.h>
 

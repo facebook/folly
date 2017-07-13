@@ -18,8 +18,8 @@
 
 #include <mutex>
 
-#include <glog/logging.h>
 #include <boost/thread/locks.hpp>
+#include <glog/logging.h>
 
 #include <folly/String.h>
 #include <folly/Subprocess.h>

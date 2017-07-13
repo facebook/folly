@@ -26,8 +26,8 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <climits>
 #include <condition_variable>
-#include <limits.h>
 #include <map>
 #include <mutex>
 #include <set>

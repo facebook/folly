@@ -168,18 +168,18 @@ THOUGHTS:
 
 //#define USING_STD_VECTOR
 
-#include <iostream>
-#include <sstream>
-#include <typeinfo>
-#include <type_traits>
-#include <map>
-#include <set>
-#include <string>
-#include <stdexcept>
-#include <exception>
 #include <climits>
 #include <cstddef>
+#include <exception>
 #include <iomanip>
+#include <iostream>
+#include <map>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <typeinfo>
 
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/preprocessor.hpp>

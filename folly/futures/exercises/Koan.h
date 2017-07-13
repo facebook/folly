@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #pragma once
-#include <folly/Portability.h>
-#include <gtest/gtest.h>
+
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
+#include <folly/Portability.h>

@@ -17,8 +17,8 @@
 #pragma once
 
 #include <folly/ExceptionWrapper.h>
-#include <folly/dynamic.h>
 #include <folly/Range.h>
+#include <folly/dynamic.h>
 
 /**
  * Validation according to the draft v4 standard: http://json-schema.org/

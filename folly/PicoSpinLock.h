@@ -42,15 +42,16 @@
 #include <atomic>
 #include <cinttypes>
 #include <cstdlib>
-#include <folly/Portability.h>
 #include <mutex>
 #include <type_traits>
 
-#include <folly/detail/Sleeper.h>
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
+#include <folly/detail/Sleeper.h>
+
 #if !FOLLY_X64 && !FOLLY_A64 && !FOLLY_PPC64
-# error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
+#error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
 #endif
 
 namespace folly {

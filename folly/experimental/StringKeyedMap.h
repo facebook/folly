@@ -19,8 +19,9 @@
 #pragma once
 
 #include <initializer_list>
-#include <memory>
 #include <map>
+#include <memory>
+
 #include <folly/Range.h>
 #include <folly/experimental/StringKeyedCommon.h>
 

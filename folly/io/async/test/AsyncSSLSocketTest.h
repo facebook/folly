@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include <signal.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>

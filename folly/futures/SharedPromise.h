@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/futures/Promise.h>
 #include <folly/Portability.h>
+#include <folly/futures/Promise.h>
 
 namespace folly {
 

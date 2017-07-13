@@ -15,11 +15,12 @@
  */
 
 #include <folly/Baton.h>
-#include <folly/test/BatonTestHelpers.h>
-#include <folly/test/DeterministicSchedule.h>
-#include <folly/portability/GTest.h>
 
 #include <thread>
+
+#include <folly/portability/GTest.h>
+#include <folly/test/BatonTestHelpers.h>
+#include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
 using namespace folly::test;

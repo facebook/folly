@@ -26,6 +26,7 @@
 #include <mutex>
 #include <type_traits>
 #include <vector>
+
 #include <boost/noncopyable.hpp>
 #include <boost/random.hpp>
 #include <boost/type_traits.hpp>

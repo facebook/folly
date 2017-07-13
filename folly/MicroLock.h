@@ -16,11 +16,12 @@
 
 #pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <climits>
-#include <stdint.h>
-#include <folly/detail/Futex.h>
+#include <cstdint>
+
 #include <folly/Portability.h>
+#include <folly/detail/Futex.h>
 
 #if defined(__clang__)
 #define NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))

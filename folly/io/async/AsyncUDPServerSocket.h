@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/io/IOBufQueue.h>
 #include <folly/Memory.h>
+#include <folly/io/IOBufQueue.h>
 #include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/io/async/EventBase.h>
 

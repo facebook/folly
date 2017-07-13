@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+
 #include <folly/Portability.h>
 
 #ifdef _MSC_VER

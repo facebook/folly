@@ -17,9 +17,10 @@
 #pragma once
 #define FOLLY_RANDOM_H_
 
-#include <type_traits>
+#include <cstdint>
 #include <random>
-#include <stdint.h>
+#include <type_traits>
+
 #include <folly/Portability.h>
 
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937

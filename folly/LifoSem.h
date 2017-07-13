@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <string.h>
-#include <stdint.h>
-#include <atomic>
 #include <algorithm>
+#include <atomic>
+#include <cstdint>
+#include <cstring>
 #include <memory>
 #include <system_error>
 

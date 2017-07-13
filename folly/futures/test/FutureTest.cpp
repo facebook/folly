@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/futures/Future.h>
-#include <folly/Unit.h>
-#include <folly/Memory.h>
-#include <folly/Executor.h>
-#include <folly/dynamic.h>
 #include <folly/Baton.h>
+#include <folly/Executor.h>
+#include <folly/Memory.h>
+#include <folly/Unit.h>
+#include <folly/dynamic.h>
+#include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 
 #include <algorithm>

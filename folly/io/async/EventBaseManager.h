@@ -16,10 +16,11 @@
 
 #pragma once
 
+#include <list>
+#include <set>
+
 #include <folly/ThreadLocal.h>
 #include <folly/io/async/EventBase.h>
-#include <set>
-#include <list>
 
 namespace folly {
 

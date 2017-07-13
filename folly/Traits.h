@@ -18,10 +18,10 @@
 
 #pragma once
 
-#include <memory>
-#include <limits>
-#include <type_traits>
 #include <functional>
+#include <limits>
+#include <memory>
+#include <type_traits>
 
 #include <folly/Portability.h>
 

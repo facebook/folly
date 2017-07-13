@@ -16,13 +16,13 @@
 
 #include <folly/Random.h>
 
-#include <glog/logging.h>
-
 #include <algorithm>
-#include <thread>
-#include <vector>
 #include <random>
+#include <thread>
 #include <unordered_set>
+#include <vector>
+
+#include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
 

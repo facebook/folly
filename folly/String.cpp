@@ -16,16 +16,16 @@
 
 #include <folly/String.h>
 
-#include <folly/ScopeGuard.h>
-
+#include <cctype>
 #include <cerrno>
 #include <cstdarg>
 #include <cstring>
-#include <stdexcept>
 #include <iterator>
-#include <cctype>
-#include <string.h>
+#include <stdexcept>
+
 #include <glog/logging.h>
+
+#include <folly/ScopeGuard.h>
 
 namespace folly {
 

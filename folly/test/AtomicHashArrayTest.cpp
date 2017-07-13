@@ -22,8 +22,8 @@
 #include <folly/Conv.h>
 #include <folly/Hash.h>
 #include <folly/Memory.h>
-#include <folly/portability/SysMman.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysMman.h>
 
 using namespace std;
 using namespace folly;

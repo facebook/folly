@@ -18,8 +18,8 @@
 #define __STDC_FORMAT_MACROS 1
 #endif
 
-#include <cstdio>
 #include <cinttypes>
+#include <cstdio>
 
 #include <string>
 

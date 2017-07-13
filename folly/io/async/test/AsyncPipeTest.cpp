@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+#include <folly/Memory.h>
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/EventBase.h>
-#include <folly/Memory.h>
 #include <folly/portability/GTest.h>
 
 #include <fcntl.h>

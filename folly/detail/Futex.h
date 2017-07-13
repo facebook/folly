@@ -17,9 +17,10 @@
 #pragma once
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <limits>
-#include <assert.h>
+
 #include <boost/noncopyable.hpp>
 
 #include <folly/portability/Unistd.h>

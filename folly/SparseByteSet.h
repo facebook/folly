@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+
 #include <glog/logging.h>
 
 namespace folly {

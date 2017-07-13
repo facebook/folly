@@ -25,8 +25,8 @@
 #endif
 #include <fcntl.h>
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <system_error>
 
 #include <boost/container/flat_set.hpp>

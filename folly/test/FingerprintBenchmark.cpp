@@ -15,10 +15,11 @@
  */
 
 #include <random>
+
 #include <folly/Benchmark.h>
+#include <folly/Fingerprint.h>
 #include <folly/Format.h>
 #include <folly/detail/SlowFingerprint.h>
-#include <folly/Fingerprint.h>
 
 using namespace std;
 using namespace folly;

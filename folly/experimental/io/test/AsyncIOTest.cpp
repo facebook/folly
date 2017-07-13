@@ -16,12 +16,12 @@
 
 #include <folly/experimental/io/AsyncIO.h>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <fcntl.h>
 
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <random>
 #include <thread>
@@ -29,9 +29,9 @@
 
 #include <glog/logging.h>
 
-#include <folly/experimental/io/FsUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 

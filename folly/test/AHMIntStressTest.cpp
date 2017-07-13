@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <thread>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 #include <folly/AtomicHashMap.h>
-#include <folly/ScopeGuard.h>
 #include <folly/Memory.h>
+#include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 
 namespace {

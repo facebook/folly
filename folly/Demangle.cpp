@@ -17,13 +17,13 @@
 #include <folly/Demangle.h>
 
 #include <algorithm>
-#include <string.h>
+#include <cstring>
 
 #include <folly/Malloc.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
-# include <cxxabi.h>
+#include <cxxabi.h>
 
 // From libiberty
 //

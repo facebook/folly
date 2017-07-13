@@ -86,9 +86,9 @@
 #include <boost/noncopyable.hpp>
 #include <boost/type_traits/is_convertible.hpp>
 
-#include <stdexcept>
-#include <functional>
 #include <atomic>
+#include <functional>
+#include <stdexcept>
 
 #include <folly/AtomicHashArray.h>
 #include <folly/Foreach.h>

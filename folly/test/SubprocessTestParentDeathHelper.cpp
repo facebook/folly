@@ -22,9 +22,9 @@
 // will verify that the file actually gets created, which means that everything
 // worked as intended.
 
-#include <sys/types.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/types.h>
 
 #include <glog/logging.h>
 

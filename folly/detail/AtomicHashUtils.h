@@ -17,6 +17,7 @@
 #pragma once
 
 #include <thread>
+
 #include <folly/portability/Asm.h>
 
 // Some utilities used by AtomicHashArray and AtomicHashMap

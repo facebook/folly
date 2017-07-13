@@ -15,13 +15,15 @@
  */
 
 #pragma once
-#include <folly/LifoSem.h>
-#include <folly/futures/DrivableExecutor.h>
-#include <folly/futures/ScheduledExecutor.h>
+
+#include <cstdio>
 #include <memory>
 #include <mutex>
 #include <queue>
-#include <cstdio>
+
+#include <folly/LifoSem.h>
+#include <folly/futures/DrivableExecutor.h>
+#include <folly/futures/ScheduledExecutor.h>
 
 namespace folly {
   /// A ManualExecutor only does work when you turn the crank, by calling

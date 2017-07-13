@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <utility>
 #include <type_traits>
+#include <utility>
 
 namespace folly {
 namespace dptr_detail {

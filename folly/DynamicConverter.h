@@ -18,8 +18,15 @@
 
 #pragma once
 
-#include <folly/dynamic.h>
+#include <iterator>
+#include <type_traits>
+
+#include <boost/iterator/iterator_adaptor.hpp>
+#include <boost/mpl/has_xxx.hpp>
+
+#include <folly/Likely.h>
 #include <folly/Traits.h>
+#include <folly/dynamic.h>
 
 namespace folly {
   template <typename T> T convertTo(const dynamic&);
@@ -38,13 +45,6 @@ namespace folly {
  *
  * See docs/DynamicConverter.md for supported types and customization
  */
-
-
-#include <type_traits>
-#include <iterator>
-#include <boost/iterator/iterator_adaptor.hpp>
-#include <boost/mpl/has_xxx.hpp>
-#include <folly/Likely.h>
 
 namespace folly {
 

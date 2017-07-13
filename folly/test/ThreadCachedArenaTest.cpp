@@ -15,20 +15,20 @@
  */
 
 #include <folly/ThreadCachedArena.h>
-#include <folly/Memory.h>
 
+#include <algorithm>
+#include <iterator>
 #include <map>
 #include <mutex>
-#include <thread>
-#include <iterator>
-#include <algorithm>
 #include <random>
+#include <thread>
 #include <unordered_map>
 
 #include <glog/logging.h>
 
-#include <folly/Range.h>
 #include <folly/Benchmark.h>
+#include <folly/Memory.h>
+#include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

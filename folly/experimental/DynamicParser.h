@@ -24,8 +24,8 @@
  */
 #pragma once
 
-#include <folly/dynamic.h>
 #include <folly/ScopeGuard.h>
+#include <folly/dynamic.h>
 
 namespace folly {
 

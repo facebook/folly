@@ -20,17 +20,18 @@
 
 #include <folly/SocketAddress.h>
 
-#include <folly/CppAttributes.h>
-#include <folly/Exception.h>
-#include <folly/Hash.h>
-
-#include <boost/functional/hash.hpp>
-#include <string.h>
-#include <stdio.h>
-#include <errno.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
 #include <sstream>
 #include <string>
 #include <system_error>
+
+#include <boost/functional/hash.hpp>
+
+#include <folly/CppAttributes.h>
+#include <folly/Exception.h>
+#include <folly/Hash.h>
 
 namespace {
 

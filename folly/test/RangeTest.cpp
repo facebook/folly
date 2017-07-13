@@ -19,10 +19,6 @@
 
 #include <folly/Range.h>
 
-#include <folly/portability/GTest.h>
-#include <folly/portability/Memory.h>
-#include <folly/portability/SysMman.h>
-
 #include <array>
 #include <iterator>
 #include <limits>
@@ -30,8 +26,13 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <boost/range/concepts.hpp>
+
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/range/concepts.hpp>
+
+#include <folly/portability/GTest.h>
+#include <folly/portability/Memory.h>
+#include <folly/portability/SysMman.h>
 
 using namespace folly;
 using namespace folly::detail;

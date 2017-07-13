@@ -16,15 +16,15 @@
 
 #pragma once
 
-#include <folly/io/IOBuf.h>
-#include <folly/ScopeGuard.h>
-#include <folly/io/async/AsyncSocketException.h>
-#include <folly/io/async/AsyncSocketBase.h>
-#include <folly/io/async/EventHandler.h>
-#include <folly/io/async/EventBase.h>
-#include <folly/SocketAddress.h>
-
 #include <memory>
+
+#include <folly/ScopeGuard.h>
+#include <folly/SocketAddress.h>
+#include <folly/io/IOBuf.h>
+#include <folly/io/async/AsyncSocketBase.h>
+#include <folly/io/async/AsyncSocketException.h>
+#include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventHandler.h>
 
 namespace folly {
 

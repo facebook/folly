@@ -21,8 +21,8 @@
 #include <folly/RWSpinLock.h>
 
 #include <stdlib.h>
-#include <vector>
 #include <thread>
+#include <vector>
 
 #include <glog/logging.h>
 

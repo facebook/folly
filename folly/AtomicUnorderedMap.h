@@ -17,11 +17,14 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <stdexcept>
 #include <system_error>
 #include <type_traits>
-#include <stdint.h>
+
+#include <boost/type_traits/has_trivial_destructor.hpp>
 
 #include <folly/Bits.h>
 #include <folly/Conv.h>
@@ -30,9 +33,6 @@
 #include <folly/detail/AtomicUnorderedMapUtils.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
-
-#include <boost/type_traits/has_trivial_destructor.hpp>
-#include <limits>
 
 namespace folly {
 

@@ -16,17 +16,17 @@
 
 #pragma once
 
+#include <climits> // for PATH_MAX
 #include <cstring>
-#include <limits.h>  // for PATH_MAX
 #include <memory>
 #include <mutex>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
-#include <boost/operators.hpp>
 #include <boost/container/flat_map.hpp>
 #include <boost/intrusive/list.hpp>
+#include <boost/operators.hpp>
 #include <glog/logging.h>
 
 #include <folly/Hash.h>

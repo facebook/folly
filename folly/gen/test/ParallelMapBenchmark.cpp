@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <thread>
 #include <vector>
 

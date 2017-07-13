@@ -18,11 +18,12 @@
 
 #include <algorithm>
 #include <atomic>
-#include <assert.h>
-#include <boost/noncopyable.hpp>
+#include <cassert>
+#include <cstring>
 #include <limits>
-#include <string.h>
 #include <type_traits>
+
+#include <boost/noncopyable.hpp>
 
 #include <folly/Traits.h>
 #include <folly/concurrency/CacheLocality.h>

@@ -22,10 +22,10 @@
 #include <string>
 #include <utility> // std::pair
 
-#include <folly/Range.h>
 #include <folly/IPAddressException.h>
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
+#include <folly/Range.h>
 #include <folly/detail/IPAddress.h>
 
 namespace folly {

@@ -16,10 +16,11 @@
 
 #include <folly/AtomicHashMap.h>
 
-#include <glog/logging.h>
-#include <thread>
 #include <atomic>
 #include <memory>
+#include <thread>
+
+#include <glog/logging.h>
 
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>

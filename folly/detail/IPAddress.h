@@ -16,8 +16,10 @@
 
 #pragma once
 
-#include <string>
 #include <sys/types.h>
+
+#include <string>
+
 #include <folly/portability/Sockets.h>
 
 namespace folly { namespace detail {

@@ -17,13 +17,13 @@
 #define HAZPTR_STATS true
 #define HAZPTR_SCAN_THRESHOLD 10
 
-#include <folly/experimental/hazptr/test/HazptrUse1.h>
-#include <folly/experimental/hazptr/test/HazptrUse2.h>
+#include <folly/experimental/hazptr/debug.h>
 #include <folly/experimental/hazptr/example/LockFreeLIFO.h>
 #include <folly/experimental/hazptr/example/SWMRList.h>
 #include <folly/experimental/hazptr/example/WideCAS.h>
-#include <folly/experimental/hazptr/debug.h>
 #include <folly/experimental/hazptr/hazptr.h>
+#include <folly/experimental/hazptr/test/HazptrUse1.h>
+#include <folly/experimental/hazptr/test/HazptrUse2.h>
 
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>

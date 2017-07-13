@@ -18,8 +18,8 @@
 #include <thread>
 
 #include <folly/experimental/LockFreeRingBuffer.h>
-#include <folly/test/DeterministicSchedule.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/DeterministicSchedule.h>
 
 namespace folly {
 

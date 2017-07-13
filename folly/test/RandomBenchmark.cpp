@@ -16,13 +16,13 @@
 
 #include <folly/Random.h>
 
-#include <folly/Benchmark.h>
-#include <folly/Foreach.h>
+#include <random>
+#include <thread>
 
 #include <glog/logging.h>
 
-#include <thread>
-#include <random>
+#include <folly/Benchmark.h>
+#include <folly/Foreach.h>
 
 using namespace folly;
 

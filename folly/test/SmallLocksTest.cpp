@@ -16,18 +16,17 @@
 
 #include <folly/SmallLocks.h>
 
-#include <folly/Random.h>
-
-#include <cassert>
-#include <cstdio>
-#include <mutex>
-#include <condition_variable>
-#include <string>
-#include <vector>
 #include <pthread.h>
 
+#include <cassert>
+#include <condition_variable>
+#include <cstdio>
+#include <mutex>
+#include <string>
 #include <thread>
+#include <vector>
 
+#include <folly/Random.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>

@@ -17,11 +17,11 @@
 #pragma once
 
 #include <atomic>
+#include <cerrno>
+#include <cmath>
 #include <cstdlib>
-#include <errno.h>
 #include <functional>
 #include <list>
-#include <math.h>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -33,6 +33,7 @@
 
 #include <boost/intrusive/list.hpp>
 #include <boost/utility.hpp>
+#include <glog/logging.h>
 
 #include <folly/CallOnce.h>
 #include <folly/Executor.h>
@@ -46,7 +47,6 @@
 #include <folly/io/async/Request.h>
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/portability/Event.h>
-#include <glog/logging.h>
 
 
 namespace folly {

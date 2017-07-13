@@ -16,10 +16,11 @@
 
 #include <folly/experimental/TestUtil.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <boost/regex.hpp>
+
 #include <folly/Exception.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>

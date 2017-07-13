@@ -38,16 +38,17 @@
  */
 
 #include <array>
+#include <atomic>
 #include <cinttypes>
-#include <type_traits>
-#include <boost/noncopyable.hpp>
 #include <cstdlib>
 #include <mutex>
-#include <atomic>
+#include <type_traits>
 
+#include <boost/noncopyable.hpp>
 #include <glog/logging.h>
-#include <folly/detail/Sleeper.h>
+
 #include <folly/Portability.h>
+#include <folly/detail/Sleeper.h>
 
 namespace folly {
 

@@ -31,8 +31,8 @@
 #include <sys/types.h>
 
 #include <chrono>
-#include <memory>
 #include <map>
+#include <memory>
 
 namespace folly {
 

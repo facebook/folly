@@ -16,11 +16,13 @@
 
 #pragma once
 
+#include <cstddef>
+
+#include <boost/noncopyable.hpp>
 #include <glog/logging.h>
+
 #include <folly/io/async/EventUtil.h>
 #include <folly/portability/Event.h>
-#include <boost/noncopyable.hpp>
-#include <stddef.h>
 
 namespace folly {
 

@@ -16,10 +16,15 @@
 
 #pragma once
 
+#include <type_traits>
+
+#include <glog/logging.h>
+
 #include <folly/Portability.h>
+#include <folly/SmallLocks.h>
 
 #if !FOLLY_X64 && !FOLLY_PPC64 && !FOLLY_A64
-# error "PackedSyncPtr is x64, ppc64 or aarch64 specific code."
+#error "PackedSyncPtr is x64, ppc64 or aarch64 specific code."
 #endif
 
 /*
@@ -51,10 +56,6 @@
  * @author Spencer Ahrens <sahrens@fb.com>
  * @author Jordan DeLong <delong.j@fb.com>
  */
-
-#include <folly/SmallLocks.h>
-#include <type_traits>
-#include <glog/logging.h>
 
 namespace folly {
 

@@ -21,8 +21,8 @@
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
-#include <folly/String.h>
 #include <folly/Singleton.h>
+#include <folly/String.h>
 #include <folly/json.h>
 
 namespace folly {

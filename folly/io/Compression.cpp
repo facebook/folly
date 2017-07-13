@@ -27,8 +27,8 @@
 #include <glog/logging.h>
 
 #if FOLLY_HAVE_LIBSNAPPY
-#include <snappy.h>
 #include <snappy-sinksource.h>
+#include <snappy.h>
 #endif
 
 #if FOLLY_HAVE_LIBZ

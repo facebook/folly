@@ -21,16 +21,17 @@
 #endif
 
 #include <folly/SpookyHashV1.h>
-#include <folly/portability/GTest.h>
-#include <folly/portability/Time.h>
 
 #include <cinttypes>
-#include <cstdio>
 #include <cstddef>
-#include <cstring>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #include <glog/logging.h>
+
+#include <folly/portability/GTest.h>
+#include <folly/portability/Time.h>
 
 using namespace ::folly::hash;
 

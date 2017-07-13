@@ -93,8 +93,9 @@
 
 #pragma once
 
-#include <sys/types.h>
 #include <signal.h>
+#include <sys/types.h>
+
 #if __APPLE__
 #include <sys/wait.h>
 #else
@@ -102,8 +103,8 @@
 #endif
 
 #include <exception>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include <boost/container/flat_map.hpp>
 

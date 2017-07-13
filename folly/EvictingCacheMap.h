@@ -20,10 +20,11 @@
 #include <exception>
 #include <functional>
 
-#include <boost/utility.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/unordered_set.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
+#include <boost/utility.hpp>
+
 #include <folly/portability/BitsFunctexcept.h>
 
 namespace folly {

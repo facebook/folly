@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-#include <stdarg.h>
-#include <algorithm>
 #include <folly/GroupVarint.h>
+
+#include <algorithm>
+#include <cstdarg>
 
 // On platforms where it's not supported, GroupVarint will be compiled out.
 #if HAVE_GROUP_VARINT

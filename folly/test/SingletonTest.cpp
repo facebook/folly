@@ -16,6 +16,9 @@
 
 #include <thread>
 
+#include <boost/thread/barrier.hpp>
+#include <glog/logging.h>
+
 #include <folly/Singleton.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/io/async/EventBase.h>
@@ -26,9 +29,6 @@
 #ifndef _MSC_VER
 #include <folly/Subprocess.h>
 #endif
-
-#include <glog/logging.h>
-#include <boost/thread/barrier.hpp>
 
 FOLLY_GCC_DISABLE_WARNING("-Wdeprecated-declarations")
 

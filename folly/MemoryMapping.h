@@ -16,10 +16,11 @@
 
 #pragma once
 
+#include <boost/noncopyable.hpp>
+#include <glog/logging.h>
+
 #include <folly/File.h>
 #include <folly/Range.h>
-#include <glog/logging.h>
-#include <boost/noncopyable.hpp>
 
 namespace folly {
 

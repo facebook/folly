@@ -20,8 +20,8 @@
 #include <folly/FBString.h>
 
 #include <cstdlib>
-#include <list>
 #include <fstream>
+#include <list>
 #include <sstream>
 
 #include <boost/random.hpp>

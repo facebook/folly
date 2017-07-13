@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <mutex>
 #include <list>
 #include <map>
-#include <vector>
 #include <memory>
-#include <string>
+#include <mutex>
 #include <random>
+#include <string>
+#include <vector>
 
 #include <glog/logging.h>
 
@@ -31,9 +31,9 @@
 #endif
 
 #include <folly/Range.h>
-#include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
 

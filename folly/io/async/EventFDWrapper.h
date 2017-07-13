@@ -26,7 +26,7 @@
 #endif
 
 #ifdef FOLLY_HAVE_FEATURES_H
-# include <features.h>
+#include <features.h>
 #endif
 
 #if defined(__GLIBC__) && !defined(__APPLE__)
@@ -40,9 +40,9 @@
 #include <sys/eventfd.h>
 #else /* !def FOLLY_GLIBC_2_9 */
 
+#include <fcntl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 // Use existing __NR_eventfd2 if already defined
 // Values from the Linux kernel source:

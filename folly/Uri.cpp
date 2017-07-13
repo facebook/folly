@@ -16,7 +16,8 @@
 
 #include <folly/Uri.h>
 
-#include <ctype.h>
+#include <cctype>
+
 #include <boost/regex.hpp>
 
 namespace folly {

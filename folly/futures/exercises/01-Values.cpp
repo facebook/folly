@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "Koan.h"
+
 #include <folly/futures/Future.h>
+
+#include "Koan.h"
 
 using folly::Future;
 using folly::makeFuture;

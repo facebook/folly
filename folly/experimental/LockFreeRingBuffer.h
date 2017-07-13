@@ -17,11 +17,12 @@
 #pragma once
 
 #include <atomic>
-#include <boost/noncopyable.hpp>
 #include <cmath>
+#include <cstring>
 #include <memory>
-#include <string.h>
 #include <type_traits>
+
+#include <boost/noncopyable.hpp>
 
 #include <folly/Portability.h>
 #include <folly/detail/TurnSequencer.h>

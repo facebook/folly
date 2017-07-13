@@ -16,12 +16,12 @@
 /* -*- Mode: C++; tab-width: 2; c-basic-offset: 2; indent-tabs-mode: nil -*- */
 
 #include <atomic>
-#include <thread>
-#include <mutex>
-#include <folly/Memory.h>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
 
 #include <folly/Baton.h>
+#include <folly/Memory.h>
 #include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/portability/GTest.h>

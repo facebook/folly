@@ -17,6 +17,11 @@
 //
 // Author: andrei.alexandrescu@fb.com
 
+#include <list>
+#include <memory>
+
+#include <boost/random.hpp>
+
 #include <folly/Benchmark.h>
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
@@ -25,10 +30,6 @@
 #include <folly/Traits.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-
-#include <list>
-#include <memory>
-#include <boost/random.hpp>
 
 using namespace std;
 using namespace folly;

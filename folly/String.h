@@ -17,15 +17,15 @@
 #pragma once
 #define FOLLY_STRING_H_
 
+#include <cstdarg>
 #include <exception>
-#include <stdarg.h>
 #include <string>
-#include <vector>
-#include <boost/type_traits.hpp>
-#include <boost/regex/pending/unicode_iterator.hpp>
-
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include <boost/regex/pending/unicode_iterator.hpp>
+#include <boost/type_traits.hpp>
 
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>

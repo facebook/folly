@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <cassert>
 #include <cstdlib>
 #include <type_traits>
 #include <utility>
-#include <cassert>
 
 namespace folly {
 

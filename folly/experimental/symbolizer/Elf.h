@@ -19,10 +19,10 @@
 #pragma once
 #define FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
 
-#include <stdio.h>
 #include <elf.h>
-#include <link.h>  // For ElfW()
+#include <link.h> // For ElfW()
 
+#include <cstdio>
 #include <stdexcept>
 #include <system_error>
 

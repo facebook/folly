@@ -15,15 +15,16 @@
  */
 
 #include <folly/io/async/NotificationQueue.h>
-#include <folly/io/async/ScopedEventBaseThread.h>
+
+#include <sys/types.h>
+
+#include <iostream>
+#include <list>
+#include <thread>
 
 #include <folly/Baton.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
-
-#include <list>
-#include <iostream>
-#include <thread>
-#include <sys/types.h>
 
 #ifndef _WIN32
 #include <sys/wait.h>

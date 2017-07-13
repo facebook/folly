@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
-#include <iostream>
 #include <array>
-#include <vector>
 #include <future>
+#include <iostream>
+#include <vector>
+
+#include <glog/logging.h>
 
 #include <folly/gen/Base.h>
 #include <folly/gen/Parallel.h>

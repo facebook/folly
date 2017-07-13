@@ -22,8 +22,8 @@
 #include <cinttypes>
 #include <cstddef>
 #include <cstring>
-#include <memory>
 #include <limits>
+#include <memory>
 #include <type_traits>
 
 #include <boost/iterator/iterator_facade.hpp>

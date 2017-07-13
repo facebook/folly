@@ -17,9 +17,9 @@
 #include <folly/experimental/symbolizer/test/SignalHandlerTest.h>
 #include <folly/experimental/symbolizer/SignalHandler.h>
 
+#include <folly/CPortability.h>
 #include <folly/FileUtil.h>
 #include <folly/Range.h>
-#include <folly/CPortability.h>
 #include <folly/portability/GTest.h>
 
 namespace folly { namespace symbolizer { namespace test {

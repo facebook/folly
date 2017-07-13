@@ -17,18 +17,20 @@
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
 #include <folly/Benchmark.h>
-#include <folly/Foreach.h>
-#include <folly/json.h>
-#include <folly/String.h>
 
 #include <algorithm>
-#include <boost/regex.hpp>
 #include <cmath>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <utility>
 #include <vector>
-#include <cstring>
+
+#include <boost/regex.hpp>
+
+#include <folly/Foreach.h>
+#include <folly/String.h>
+#include <folly/json.h>
 
 using namespace std;
 

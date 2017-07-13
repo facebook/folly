@@ -16,9 +16,9 @@
 
 #include <folly/experimental/io/HugePages.h>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <fcntl.h>
 
 #include <cctype>
 #include <cstring>

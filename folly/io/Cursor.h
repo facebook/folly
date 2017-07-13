@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <assert.h>
+#include <cassert>
 #include <cstdarg>
-#include <stdexcept>
-#include <string.h>
-#include <type_traits>
+#include <cstring>
 #include <memory>
+#include <stdexcept>
+#include <type_traits>
 
 #include <folly/Bits.h>
 #include <folly/Likely.h>

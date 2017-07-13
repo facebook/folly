@@ -16,12 +16,12 @@
 
 #include <folly/Foreach.h>
 
-#include <folly/portability/GTest.h>
-
+#include <list>
 #include <map>
 #include <string>
 #include <vector>
-#include <list>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::detail;

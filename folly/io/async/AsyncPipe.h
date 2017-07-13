@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
 
-#include <folly/io/async/AsyncTransport.h>
-#include <folly/io/async/EventHandler.h>
-#include <folly/io/async/DelayedDestruction.h>
-#include <folly/io/IOBufQueue.h>
+#pragma once
 
 #include <list>
 #include <system_error>
+
+#include <folly/io/IOBufQueue.h>
+#include <folly/io/async/AsyncTransport.h>
+#include <folly/io/async/DelayedDestruction.h>
+#include <folly/io/async/EventHandler.h>
 
 namespace folly {
 
