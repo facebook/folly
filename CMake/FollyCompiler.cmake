@@ -72,6 +72,7 @@ function(apply_folly_compile_options_to_target THETARGET)
   target_compile_options(${THETARGET}
     PUBLIC
       /EHa # Enable both SEH and C++ Exceptions.
+      /GF # There are bugs with constexpr StringPiece when string pooling is disabled.
       /Zc:referenceBinding # Disallow temporaries from binding to non-const lvalue references.
       /Zc:rvalueCast # Enforce the standard rules for explicit type conversion.
       /Zc:implicitNoexcept # Enable implicit noexcept specifications where required, such as destructors.
@@ -95,14 +96,12 @@ function(apply_folly_compile_options_to_target THETARGET)
       # Debug builds
       $<$<CONFIG:DEBUG>:
         /Gy- # Disable function level linking.
-        /GF- # Disable string pooling.
 
         $<$<BOOL:${MSVC_ENABLE_DEBUG_INLINING}>:/Ob2> # Add /Ob2 if allowing inlining in debug mode.
       >
 
       # Non-debug builds
       $<$<NOT:$<CONFIG:DEBUG>>:
-        /GF # Enable string pooling. (this is enabled by default by the optimization level, but we enable it here for clarity)
         /Gw # Optimize global data. (-fdata-sections)
         /Gy # Enable function level linking. (-ffunction-sections)
         /Qpar # Enable parallel code generation.
