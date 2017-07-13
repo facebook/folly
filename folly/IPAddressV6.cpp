@@ -19,8 +19,6 @@
 #include <ostream>
 #include <string>
 
-#include <net/if.h>
-
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV4.h>
@@ -406,21 +404,28 @@ IPAddressV6 IPAddressV6::mask(size_t numBits) const {
 // public
 string IPAddressV6::str() const {
   char buffer[INET6_ADDRSTRLEN] = {0};
-
-  if (inet_ntop(AF_INET6, toAddr().s6_addr, buffer, INET6_ADDRSTRLEN)) {
+  sockaddr_in6 sock = toSockAddr();
+  int error = getnameinfo(
+      (sockaddr*)&sock,
+      sizeof(sock),
+      buffer,
+      INET6_ADDRSTRLEN,
+      nullptr,
+      0,
+      NI_NUMERICHOST);
+  if (!error) {
     string ip(buffer);
-    char ifname[IFNAMSIZ] = {0};
-    if (if_indextoname(getScopeId(), ifname)) {
-      ip += "%";
-      ip += ifname;
-    }
     return ip;
   } else {
     throw IPAddressFormatException(to<std::string>(
         "Invalid address with hex ",
         "'",
         detail::Bytes::toHex(bytes(), 16),
-        "'"));
+        "%",
+        sock.sin6_scope_id,
+        "'",
+        " , with error ",
+        gai_strerror(error)));
   }
 }
 
