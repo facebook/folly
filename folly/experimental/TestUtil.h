@@ -54,6 +54,7 @@ class TemporaryFile {
   TemporaryFile(TemporaryFile&&) = default;
   TemporaryFile& operator=(TemporaryFile&&) = default;
 
+  void close();
   int fd() const { return fd_; }
   const fs::path& path() const;
 

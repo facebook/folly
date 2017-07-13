@@ -74,6 +74,13 @@ TemporaryFile::TemporaryFile(StringPiece namePrefix,
   }
 }
 
+void TemporaryFile::close() {
+  if (::close(fd_) == -1) {
+    PLOG(ERROR) << "close failed";
+  }
+  fd_ = -1;
+}
+
 const fs::path& TemporaryFile::path() const {
   CHECK(scope_ != Scope::UNLINK_IMMEDIATELY);
   DCHECK(!path_.empty());
@@ -82,7 +89,7 @@ const fs::path& TemporaryFile::path() const {
 
 TemporaryFile::~TemporaryFile() {
   if (fd_ != -1 && closeOnDestruction_) {
-    if (close(fd_) == -1) {
+    if (::close(fd_) == -1) {
       PLOG(ERROR) << "close failed";
     }
   }
