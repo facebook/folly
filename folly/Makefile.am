@@ -62,7 +62,6 @@ nobase_follyinclude_HEADERS = \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \
 	detail/BitIteratorDetail.h \
-	detail/CachelinePaddedImpl.h \
 	detail/ChecksumDetail.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
