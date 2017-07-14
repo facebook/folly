@@ -18,8 +18,6 @@
 
 #include <folly/ProducerConsumerQueue.h>
 
-#include <pthread.h>
-
 #include <cstdio>
 #include <iostream>
 #include <thread>
@@ -28,6 +26,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/PThread.h>
 #include <folly/stats/Histogram.h>
 #include <folly/stats/Histogram-defs.h>
 

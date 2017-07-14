@@ -15,8 +15,6 @@
  */
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 
-#include <pthread.h>
-
 #include <folly/futures/Promise.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/AsyncSSLSocket.h>
@@ -24,6 +22,7 @@
 #include <folly/io/async/SSLContext.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/PThread.h>
 
 using std::string;
 using std::vector;

@@ -16,8 +16,6 @@
 
 #include <folly/SmallLocks.h>
 
-#include <pthread.h>
-
 #include <cassert>
 #include <condition_variable>
 #include <cstdio>
@@ -29,6 +27,7 @@
 #include <folly/Random.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/PThread.h>
 #include <folly/portability/Unistd.h>
 
 using folly::MSLGuard;

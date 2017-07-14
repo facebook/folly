@@ -18,7 +18,6 @@
 
 #include <folly/experimental/symbolizer/SignalHandler.h>
 
-#include <pthread.h>
 #include <signal.h>
 #include <sys/types.h>
 
@@ -34,6 +33,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/portability/PThread.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 

@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <pthread.h>
 #include <signal.h>
 
 #include <folly/ExceptionWrapper.h>
@@ -30,6 +29,7 @@
 #include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/async/test/TestSSLServer.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/PThread.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
