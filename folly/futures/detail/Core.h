@@ -91,7 +91,7 @@ class Core final {
 
   template <typename... Args>
   explicit Core(in_place_t, Args&&... args) noexcept(
-      noexcept(::new (nullptr) T(std::declval<Args&&>()...)))
+      std::is_nothrow_constructible<T, Args&&...>::value)
       : result_(in_place, in_place, std::forward<Args>(args)...),
         fsm_(State::OnlyResult),
         attached_(1) {}
