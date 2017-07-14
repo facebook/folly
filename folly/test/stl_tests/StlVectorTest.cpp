@@ -1682,8 +1682,8 @@ STL_TEST("23.2.1 Table 96.10-11", copyConstruction,
   ) << "only a shallow copy was made";
 
   if (false) {
-    Vector(ca);
-    Vector u = ca;
+    Vector(ca2);
+    Vector u2 = ca2;
   }
 }
 
@@ -1699,7 +1699,7 @@ STL_TEST("23.2.1 Table 96.12", moveConstruction, is_destructible, a) {
   ASSERT_TRUE(dsa == u);
 
   if (false) {
-    Vector u = move(a);
+    Vector u2 = move(a);
   }
 }
 
