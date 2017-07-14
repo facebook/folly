@@ -25,9 +25,9 @@
 
 #include <folly/AtomicStruct.h>
 #include <folly/Baton.h>
+#include <folly/CachelinePadded.h>
 #include <folly/IndexedMemPool.h>
 #include <folly/Likely.h>
-#include <folly/concurrency/CacheLocality.h>
 
 namespace folly {
 
@@ -322,7 +322,7 @@ struct LifoSemBase {
 
   /// Constructor
   constexpr explicit LifoSemBase(uint32_t initialValue = 0)
-      : head_(LifoSemHead::fresh(initialValue)), padding_() {}
+      : head_(LifoSemHead::fresh(initialValue)) {}
 
   LifoSemBase(LifoSemBase const&) = delete;
   LifoSemBase& operator=(LifoSemBase const&) = delete;
@@ -355,7 +355,7 @@ struct LifoSemBase {
 
   /// Returns true iff shutdown() has been called
   bool isShutdown() const {
-    return UNLIKELY(head_.load(std::memory_order_acquire).isShutdown());
+    return UNLIKELY(head_->load(std::memory_order_acquire).isShutdown());
   }
 
   /// Prevents blocking on this semaphore, causing all blocking wait()
@@ -365,9 +365,9 @@ struct LifoSemBase {
   /// has already occurred will proceed normally.
   void shutdown() {
     // first set the shutdown bit
-    auto h = head_.load(std::memory_order_acquire);
+    auto h = head_->load(std::memory_order_acquire);
     while (!h.isShutdown()) {
-      if (head_.compare_exchange_strong(h, h.withShutdown())) {
+      if (head_->compare_exchange_strong(h, h.withShutdown())) {
         // success
         h = h.withShutdown();
         break;
@@ -379,7 +379,7 @@ struct LifoSemBase {
     while (h.isNodeIdx()) {
       auto& node = idxToNode(h.idx());
       auto repl = h.withPop(node.next);
-      if (head_.compare_exchange_strong(h, repl)) {
+      if (head_->compare_exchange_strong(h, repl)) {
         // successful pop, wake up the waiter and move on.  The next
         // field is used to convey that this wakeup didn't consume a value
         node.setShutdownNotice();
@@ -463,7 +463,7 @@ struct LifoSemBase {
     // this is actually linearizable, but we don't promise that because
     // we may want to add striping in the future to help under heavy
     // contention
-    auto h = head_.load(std::memory_order_acquire);
+    auto h = head_->load(std::memory_order_acquire);
     return h.isNodeIdx() ? 0 : h.value();
   }
 
@@ -511,11 +511,7 @@ struct LifoSemBase {
   }
 
  private:
-
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-  folly::AtomicStruct<LifoSemHead,Atom> head_;
-
-  char padding_[folly::CacheLocality::kFalseSharingRange - sizeof(LifoSemHead)];
+  CachelinePadded<folly::AtomicStruct<LifoSemHead, Atom>> head_;
 
   static LifoSemNode<Handoff, Atom>& idxToNode(uint32_t idx) {
     auto raw = &LifoSemRawNode<Atom>::pool()[idx];
@@ -533,16 +529,16 @@ struct LifoSemBase {
     while (true) {
       assert(n > 0);
 
-      auto head = head_.load(std::memory_order_acquire);
+      auto head = head_->load(std::memory_order_acquire);
       if (head.isNodeIdx()) {
         auto& node = idxToNode(head.idx());
-        if (head_.compare_exchange_strong(head, head.withPop(node.next))) {
+        if (head_->compare_exchange_strong(head, head.withPop(node.next))) {
           // successful pop
           return head.idx();
         }
       } else {
         auto after = head.withValueIncr(n);
-        if (head_.compare_exchange_strong(head, after)) {
+        if (head_->compare_exchange_strong(head, after)) {
           // successful incr
           return 0;
         }
@@ -562,12 +558,12 @@ struct LifoSemBase {
     assert(n > 0);
 
     while (true) {
-      auto head = head_.load(std::memory_order_acquire);
+      auto head = head_->load(std::memory_order_acquire);
 
       if (!head.isNodeIdx() && head.value() > 0) {
         // decr
         auto delta = std::min(n, head.value());
-        if (head_.compare_exchange_strong(head, head.withValueDecr(delta))) {
+        if (head_->compare_exchange_strong(head, head.withValueDecr(delta))) {
           n -= delta;
           return WaitResult::DECR;
         }
@@ -583,7 +579,7 @@ struct LifoSemBase {
 
         auto& node = idxToNode(idx);
         node.next = head.isNodeIdx() ? head.idx() : 0;
-        if (head_.compare_exchange_strong(head, head.withPush(idx))) {
+        if (head_->compare_exchange_strong(head, head.withPush(idx))) {
           // push succeeded
           return WaitResult::PUSH;
         }
