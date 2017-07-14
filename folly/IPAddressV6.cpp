@@ -19,6 +19,8 @@
 #include <ostream>
 #include <string>
 
+#include <net/if.h>
+
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV4.h>
@@ -403,30 +405,36 @@ IPAddressV6 IPAddressV6::mask(size_t numBits) const {
 
 // public
 string IPAddressV6::str() const {
-  char buffer[INET6_ADDRSTRLEN] = {0};
-  sockaddr_in6 sock = toSockAddr();
-  int error = getnameinfo(
-      (sockaddr*)&sock,
-      sizeof(sock),
-      buffer,
-      INET6_ADDRSTRLEN,
-      nullptr,
-      0,
-      NI_NUMERICHOST);
-  if (!error) {
-    string ip(buffer);
-    return ip;
-  } else {
+  char buffer[INET6_ADDRSTRLEN + IFNAMSIZ + 1];
+
+  if (!inet_ntop(AF_INET6, toAddr().s6_addr, buffer, INET6_ADDRSTRLEN)) {
     throw IPAddressFormatException(to<std::string>(
         "Invalid address with hex ",
         "'",
         detail::Bytes::toHex(bytes(), 16),
-        "%",
-        sock.sin6_scope_id,
         "'",
-        " , with error ",
-        gai_strerror(error)));
+        " with error ",
+        strerror(errno)));
   }
+
+  auto scopeId = getScopeId();
+  if (scopeId != 0) {
+    auto len = strlen(buffer);
+    buffer[len] = '%';
+    if (!if_indextoname(scopeId, buffer + len + 1)) {
+      throw IPAddressFormatException(to<std::string>(
+          "Invalid scope for address with hex ",
+          "'",
+          detail::Bytes::toHex(bytes(), 16),
+          "%",
+          scopeId,
+          "'",
+          " with error ",
+          strerror(errno)));
+    }
+  }
+
+  return string(buffer);
 }
 
 // public
