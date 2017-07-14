@@ -602,7 +602,8 @@ class SSLContext {
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
 
-std::ostream& operator<<(std::ostream& os, const folly::PasswordCollector& collector);
-
+std::ostream& operator<<(
+    std::ostream& os,
+    const folly::PasswordCollector& collector);
 
 } // folly

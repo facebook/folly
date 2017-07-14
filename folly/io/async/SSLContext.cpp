@@ -230,7 +230,8 @@ void SSLContext::authenticate(bool checkPeerCert, bool checkPeerName,
                               const std::string& peerName) {
   int mode;
   if (checkPeerCert) {
-    mode  = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE;
+    mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT |
+        SSL_VERIFY_CLIENT_ONCE;
     checkPeerName_ = checkPeerName;
     peerFixedName_ = peerName;
   } else {
@@ -256,7 +257,8 @@ void SSLContext::loadCertificate(const char* path, const char* format) {
       throw std::runtime_error(reason);
     }
   } else {
-    throw std::runtime_error("Unsupported certificate format: " + std::string(format));
+    throw std::runtime_error(
+        "Unsupported certificate format: " + std::string(format));
   }
 }
 
@@ -296,7 +298,8 @@ void SSLContext::loadPrivateKey(const char* path, const char* format) {
       throw std::runtime_error("SSL_CTX_use_PrivateKey_file: " + getErrors());
     }
   } else {
-    throw std::runtime_error("Unsupported private key format: " + std::string(format));
+    throw std::runtime_error(
+        "Unsupported private key format: " + std::string(format));
   }
 }
 
@@ -353,7 +356,8 @@ void SSLContext::randomize() {
   RAND_poll();
 }
 
-void SSLContext::passwordCollector(std::shared_ptr<PasswordCollector> collector) {
+void SSLContext::passwordCollector(
+    std::shared_ptr<PasswordCollector> collector) {
   if (collector == nullptr) {
     LOG(ERROR) << "passwordCollector: ignore invalid password collector";
     return;
