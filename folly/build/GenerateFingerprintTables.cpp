@@ -89,7 +89,7 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
       "const uint64_t FingerprintTable<%d>::poly[%d] = {",
       DEG+1, FingerprintPolynomial<DEG>::size()));
   for (int j = 0; j < FingerprintPolynomial<DEG>::size(); j++) {
-    CHECK_ERR(fprintf(file, "%s%" PRIu64 "LU", j ? ", " : "", poly_val[j]));
+    CHECK_ERR(fprintf(file, "%s%" PRIu64 "LLU", j ? ", " : "", poly_val[j]));
   }
   CHECK_ERR(fprintf(file, "};\n\n"));
 
@@ -106,8 +106,8 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
     for (int x = 0; x < 256; x++) {
       CHECK_ERR(fprintf(file, "    {"));
       for (int j = 0; j < FingerprintPolynomial<DEG>::size(); j++) {
-        CHECK_ERR(fprintf(
-          file, "%s%" PRIu64 "LU", (j ? ", " : ""), table[i][x][j]));
+        CHECK_ERR(
+            fprintf(file, "%s%" PRIu64 "LLU", (j ? ", " : ""), table[i][x][j]));
       }
       CHECK_ERR(fprintf(file, "},\n"));
     }
