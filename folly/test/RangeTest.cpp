@@ -1009,7 +1009,7 @@ void createProtectedBuf(StringPiece& contents, char** buf) {
   const size_t kSuccess = 0;
   char* pageAlignedBuf = (char*)aligned_malloc(2 * kPageSize, kPageSize);
   if (pageAlignedBuf == nullptr) {
-    ASSERT_FALSE(true);
+    FAIL();
   }
   // Protect the page after the first full page-aligned region of the
   // malloc'ed buffer

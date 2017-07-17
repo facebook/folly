@@ -530,7 +530,7 @@ TEST(ThreadLocal, Fork) {
     EXPECT_TRUE(WIFEXITED(status));
     EXPECT_EQ(0, WEXITSTATUS(status));
   } else {
-    EXPECT_TRUE(false) << "fork failed";
+    ADD_FAILURE() << "fork failed";
   }
 
   EXPECT_EQ(2, totalValue());
@@ -573,7 +573,7 @@ TEST(ThreadLocal, Fork2) {
     EXPECT_TRUE(WIFEXITED(status));
     EXPECT_EQ(0, WEXITSTATUS(status));
   } else {
-    EXPECT_TRUE(false) << "fork failed";
+    ADD_FAILURE() << "fork failed";
   }
 }
 

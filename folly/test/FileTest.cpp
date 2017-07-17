@@ -118,21 +118,21 @@ TEST(File, Truthy) {
   if (temp) {
     ;
   } else {
-    EXPECT_FALSE(true);
+    ADD_FAILURE();
   }
 
   if (File file = File::temporary()) {
     ;
   } else {
-    EXPECT_FALSE(true);
+    ADD_FAILURE();
   }
 
   EXPECT_FALSE(bool(File()));
   if (File()) {
-    EXPECT_TRUE(false);
+    ADD_FAILURE();
   }
   if (File notOpened = File()) {
-    EXPECT_TRUE(false);
+    ADD_FAILURE();
   }
 }
 

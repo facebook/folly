@@ -127,7 +127,7 @@ TEST(Enumerate, EmptyRange) {
   std::vector<std::string> v;
   for (auto it : folly::enumerate(v)) {
     (void)it; // Silence warnings.
-    EXPECT_TRUE(false);
+    ADD_FAILURE();
   }
 }
 

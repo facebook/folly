@@ -676,7 +676,7 @@ TEST(Expected, Then) {
     // Error case:
     Expected<int, E> ex = Expected<std::unique_ptr<int>, E>{
         unexpected, E::E1}.then([](std::unique_ptr<int> p) -> int {
-      EXPECT_TRUE(false);
+      ADD_FAILURE();
       return *p;
     });
     EXPECT_FALSE(bool(ex));

@@ -227,7 +227,7 @@ TEST(LifoSem, shutdown_multi) {
       threads.push_back(DSched::thread([&]{
         try {
           a.wait();
-          EXPECT_TRUE(false);
+          ADD_FAILURE();
         } catch (ShutdownSemError&) {
           // expected
           EXPECT_TRUE(a.isShutdown());

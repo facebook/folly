@@ -22,5 +22,5 @@
 #include <folly/portability/GTest.h>
 
 TEST(Basic, compiles) {
-  EXPECT_TRUE(true);
+  SUCCEED();
 }
