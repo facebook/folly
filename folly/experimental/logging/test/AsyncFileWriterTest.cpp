@@ -86,6 +86,7 @@ TEST(AsyncFileWriter, simpleMessages) {
       sched_yield();
     }
   }
+  tmpFile.close();
 
   std::string data;
   auto ret = folly::readFile(tmpFile.path().string().c_str(), data);
@@ -105,7 +106,6 @@ TEST(AsyncFileWriter, simpleMessages) {
   EXPECT_EQ(expected, data);
 }
 
-#ifndef _WIN32
 namespace {
 static std::vector<std::string>* internalWarnings;
 
@@ -127,7 +127,9 @@ TEST(AsyncFileWriter, ioError) {
   std::array<int, 2> fds;
   auto rc = pipe(fds.data());
   folly::checkUnixError(rc, "failed to create pipe");
+#ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
+#endif
   ::close(fds[0]);
 
   // Log a bunch of messages to the writer
@@ -145,11 +147,23 @@ TEST(AsyncFileWriter, ioError) {
   // AsyncFileWriter should have some internal warning messages about the
   // log failures.  This will generally be many fewer than the number of
   // messages we wrote, though, since it performs write batching.
+  //
+  // GTest on Windows doesn't support alternation in the regex syntax -_-....
+  const std::string kExpectedErrorMessage =
+#if _WIN32
+      // The `pipe` call above is actually implemented via sockets, so we get
+      // a different error message.
+      "An established connection was aborted by the software in your host machine\\.";
+#else
+      "Broken pipe";
+#endif
+
   for (const auto& msg : logErrors) {
     EXPECT_THAT(
         msg,
         testing::ContainsRegex(
-            "error writing to log file .* in AsyncFileWriter.*: Broken pipe"));
+            "error writing to log file .* in AsyncFileWriter.*: " +
+            kExpectedErrorMessage));
   }
   EXPECT_GT(logErrors.size(), 0);
   EXPECT_LE(logErrors.size(), numMessages);
@@ -239,7 +253,6 @@ TEST(AsyncFileWriter, flush) {
   // Make sure flush completes successfully now
   future.get(10ms);
 }
-#endif
 
 // A large-ish message suffix, just to consume space and help fill up
 // log buffers faster.
