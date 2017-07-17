@@ -23,7 +23,7 @@
 #include <cstdlib>
 #include <iostream>
 
-#ifdef __GNUC__
+#ifdef __GLIBCXX__
 #include <ext/stdio_filebuf.h>
 #include <ext/stdio_sync_filebuf.h>
 #endif
