@@ -410,7 +410,6 @@ if (BUILD_TESTS)
           AsyncSSLSocketTest.h
         SOURCES
           AsyncPipeTest.cpp
-          AsyncSignalHandlerTest.cpp
           AsyncSocketExceptionTest.cpp
           AsyncSocketTest.cpp
           AsyncSocketTest2.cpp
@@ -421,6 +420,8 @@ if (BUILD_TESTS)
           # This is disabled because it depends on things that don't exist
           # on Windows.
           #EventHandlerTest.cpp
+          # The async signal handler is not supported on Windows.
+          #AsyncSignalHandlerTest.cpp
       TEST async_timeout_test SOURCES AsyncTimeoutTest.cpp
       TEST AsyncUDPSocketTest SOURCES AsyncUDPSocketTest.cpp
       TEST DelayedDestructionTest SOURCES DelayedDestructionTest.cpp
