@@ -76,11 +76,11 @@ exception_wrapper::exception_wrapper(std::exception_ptr ptr) noexcept
   }
 }
 
-[[noreturn]] void exception_wrapper::onNoExceptionError() {
+[[noreturn]] void exception_wrapper::onNoExceptionError(
+    char const* const name) {
   std::ios_base::Init ioinit_; // ensure std::cerr is alive
-  std::cerr
-      << "Cannot use `throw_exception` with an empty folly::exception_wrapper"
-      << std::endl;
+  std::cerr << "Cannot use `" << name
+            << "` with an empty folly::exception_wrapper" << std::endl;
   std::terminate();
 }
 

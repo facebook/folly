@@ -197,7 +197,7 @@ class exception_wrapper final {
     exception_wrapper (*get_exception_ptr_)(exception_wrapper const*);
   };
 
-  [[noreturn]] static void onNoExceptionError();
+  [[noreturn]] static void onNoExceptionError(char const* name);
 
   template <class Ret, class... Args>
   static Ret noop_(Args...);

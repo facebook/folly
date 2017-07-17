@@ -459,7 +459,7 @@ inline bool exception_wrapper::is_compatible_with() const noexcept {
 
 [[noreturn]] inline void exception_wrapper::throw_exception() const {
   vptr_->throw_(this);
-  onNoExceptionError();
+  onNoExceptionError(__func__);
 }
 
 template <class CatchFn, bool IsConst>
@@ -645,7 +645,7 @@ inline void exception_wrapper::handle(CatchFns... fns) {
   using AllStdEx =
       exception_wrapper_detail::AllOf<IsStdException, arg_type<CatchFns>...>;
   if (!*this) {
-    onNoExceptionError();
+    onNoExceptionError(__func__);
   }
   this->handle_(AllStdEx{}, *this, fns...);
 }
@@ -654,7 +654,7 @@ inline void exception_wrapper::handle(CatchFns... fns) const {
   using AllStdEx =
       exception_wrapper_detail::AllOf<IsStdException, arg_type<CatchFns>...>;
   if (!*this) {
-    onNoExceptionError();
+    onNoExceptionError(__func__);
   }
   this->handle_(AllStdEx{}, *this, fns...);
 }
