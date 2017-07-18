@@ -88,7 +88,8 @@ struct Initializer {
       // exceptions.
       // In the rethrow case, we've already popped the exception off the
       // caught stack, so we don't do anything here.
-      if (top->handlerCount == 1) {
+      // For Lua interop, we see the handlerCount = 0
+      if ((top->handlerCount == 1) || (top->handlerCount == 0)) {
         if (!caughtExceptions.pop()) {
           activeExceptions.clear();
           invalid = true;
