@@ -19,13 +19,24 @@
 #include <ostream>
 #include <string>
 
-#include <net/if.h>
-
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV4.h>
 #include <folly/MacAddress.h>
 #include <folly/detail/IPAddressSource.h>
+
+#if !_WIN32
+#include <net/if.h>
+#else
+// Because of the massive pain that is libnl, this can't go into the socket
+// portability header as you can't include <linux/if.h> and <net/if.h> in
+// the same translation unit without getting errors -_-...
+#include <iphlpapi.h>
+#include <ntddndis.h>
+
+// Alias the max size of an interface name to what posix expects.
+#define IFNAMSIZ IF_NAMESIZE
+#endif
 
 using std::ostream;
 using std::string;
