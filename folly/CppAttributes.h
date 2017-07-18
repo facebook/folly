@@ -54,6 +54,26 @@
 #endif
 
 /**
+ *  Maybe_unused indicates that a function, variable or parameter might or
+ *  might not be used, e.g.
+ *
+ *  int foo(FOLLY_MAYBE_UNUSED int x) {
+ *    #ifdef USE_X
+ *      return x;
+ *    #else
+ *      return 0;
+ *    #endif
+ *  }
+ */
+#if FOLLY_HAS_CPP_ATTRIBUTE(maybe_unused)
+#define FOLLY_MAYBE_UNUSED [[maybe_unused]]
+#elif FOLLY_HAS_CPP_ATTRIBUTE(gnu::unused)
+#define FOLLY_MAYBE_UNUSED [[gnu::unused]]
+#else
+#define FOLLY_MAYBE_UNUSED
+#endif
+
+/**
  * Nullable indicates that a return value or a parameter may be a `nullptr`,
  * e.g.
  *
