@@ -32,8 +32,8 @@ namespace folly {
 template <typename T>
 class CachelinePadded {
   static_assert(
-      alignof(T) <= alignof(std::max_align_t),
-      "CachelinePadded does not support over-aligned types");
+      alignof(T) < CacheLocality::kFalseSharingRange,
+      "CachelinePadded does not support types aligned >= a cache-line.");
 
  public:
   template <typename... Args>
@@ -66,8 +66,8 @@ class CachelinePadded {
 
  private:
   static constexpr size_t paddingSize() noexcept {
-    return folly::CacheLocality::kFalseSharingRange -
-        (alignof(T) % folly::CacheLocality::kFalseSharingRange);
+    return CacheLocality::kFalseSharingRange -
+        (alignof(T) % CacheLocality::kFalseSharingRange);
   }
   char paddingPre_[paddingSize()];
   T inner_;
