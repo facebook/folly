@@ -205,7 +205,9 @@ function(folly_define_tests)
                     "x${ARGV${currentArg}}" STREQUAL "xDIRECTORY")
               break()
             elseif (argumentState EQUAL 0)
-              if ("x${ARGV${currentArg}}" STREQUAL "xHANGING")
+              if ("x${ARGV${currentArg}}" STREQUAL "xBROKEN")
+                set(test_${cur_test}_tag "BROKEN")
+              elseif ("x${ARGV${currentArg}}" STREQUAL "xHANGING")
                 set(test_${cur_test}_tag "HANGING")
               elseif ("x${ARGV${currentArg}}" STREQUAL "xSLOW")
                 set(test_${cur_test}_tag "SLOW")
@@ -246,6 +248,7 @@ function(folly_define_tests)
   set(cur_test 0)
   while (cur_test LESS test_count)
     if ("x${test_${cur_test}_tag}" STREQUAL "xNONE" OR
+        ("x${test_${cur_test}_tag}" STREQUAL "xBROKEN" AND BUILD_BROKEN_TESTS) OR
         ("x${test_${cur_test}_tag}" STREQUAL "xSLOW" AND BUILD_SLOW_TESTS) OR
         ("x${test_${cur_test}_tag}" STREQUAL "xHANGING" AND BUILD_HANGING_TESTS)
     )

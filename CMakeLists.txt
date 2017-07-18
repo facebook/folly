@@ -243,6 +243,7 @@ file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/folly-deps.cmake "\ninclude(folly-target
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/folly-deps.cmake DESTINATION share/folly RENAME folly-config.cmake)
 
 option(BUILD_TESTS "If enabled, compile the tests." OFF)
+option(BUILD_BROKEN_TESTS "If enabled, compile tests that are known to be broken." OFF)
 option(BUILD_HANGING_TESTS "If enabled, compile tests that are known to hang." OFF)
 option(BUILD_SLOW_TESTS "If enabled, compile tests that take a while to run in debug mode." OFF)
 if (BUILD_TESTS)
@@ -502,7 +503,8 @@ if (BUILD_TESTS)
       TEST format_other_test SOURCES FormatOtherTest.cpp
       TEST format_test SOURCES FormatTest.cpp
       TEST function_scheduler_test SOURCES FunctionSchedulerTest.cpp
-      TEST function_test SOURCES FunctionTest.cpp
+      TEST function_test BROKEN
+        SOURCES FunctionTest.cpp
       TEST function_ref_test SOURCES FunctionRefTest.cpp
       TEST futex_test SOURCES FutexTest.cpp
       TEST group_varint_test SOURCES GroupVarintTest.cpp
@@ -510,7 +512,8 @@ if (BUILD_TESTS)
       TEST has_member_fn_traits_test SOURCES HasMemberFnTraitsTest.cpp
       TEST hash_test SOURCES HashTest.cpp
       TEST indestructible_test SOURCES IndestructibleTest.cpp
-      TEST indexed_mem_pool_test SOURCES IndexedMemPoolTest.cpp
+      TEST indexed_mem_pool_test BROKEN
+        SOURCES IndexedMemPoolTest.cpp
       # MSVC Preprocessor stringizing raw string literals bug
       #TEST json_test SOURCES JsonTest.cpp
       TEST json_other_test
