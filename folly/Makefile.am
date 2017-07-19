@@ -269,6 +269,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/ssl/TLSDefinitions.h \
 	io/async/Request.h \
 	io/async/SSLContext.h \
+	io/async/SSLOptions.h \
 	io/async/ScopedEventBaseThread.h \
 	io/async/TimeoutManager.h \
 	io/async/VirtualEventBase.h \
@@ -502,6 +503,7 @@ libfolly_la_SOURCES = \
 	io/async/EventHandler.cpp \
 	io/async/Request.cpp \
 	io/async/SSLContext.cpp \
+	io/async/SSLOptions.cpp \
 	io/async/ScopedEventBaseThread.cpp \
 	io/async/VirtualEventBase.cpp \
 	io/async/HHWheelTimer.cpp \
