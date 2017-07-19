@@ -65,10 +65,8 @@
  *    #endif
  *  }
  */
-#if FOLLY_HAS_CPP_ATTRIBUTE(maybe_unused)
-#define FOLLY_MAYBE_UNUSED [[maybe_unused]]
-#elif FOLLY_HAS_CPP_ATTRIBUTE(gnu::unused)
-#define FOLLY_MAYBE_UNUSED [[gnu::unused]]
+#if FOLLY_HAS_CPP_ATTRIBUTE(__unused__)
+#define FOLLY_MAYBE_UNUSED __attribute__((__unused__))
 #else
 #define FOLLY_MAYBE_UNUSED
 #endif
