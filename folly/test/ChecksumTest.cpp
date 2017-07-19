@@ -121,6 +121,19 @@ TEST(Checksum, crc32c_hardware) {
   }
 }
 
+TEST(Checksum, crc32c_hardware_eq) {
+  if (folly::detail::crc32c_hw_supported()) {
+    for (int i = 0; i < 1000; i++) {
+      auto sw = folly::detail::crc32c_sw(buffer, i, 0);
+      auto hw = folly::detail::crc32c_hw(buffer, i, 0);
+      EXPECT_EQ(sw, hw);
+    }
+  } else {
+    LOG(WARNING) << "skipping hardware-accelerated CRC-32C tests"
+                 << " (not supported on this CPU)";
+  }
+}
+
 TEST(Checksum, crc32c_continuation_hardware) {
   if (folly::detail::crc32c_hw_supported()) {
     testCRC32CContinuation(folly::detail::crc32c_hw);

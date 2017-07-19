@@ -440,6 +440,7 @@ GroupVarintTables.cpp: build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
 
 libfollybasesse42_la_SOURCES = \
+	detail/Crc32cDetail.cpp \
 	detail/ChecksumDetail.cpp \
 	detail/RangeSse42.cpp
 

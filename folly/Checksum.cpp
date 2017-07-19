@@ -33,40 +33,6 @@ uint32_t
 crc32c_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum);
 #if FOLLY_SSE_PREREQ(4, 2)
 
-// Fast SIMD implementation of CRC-32C for x86 with SSE 4.2
-FOLLY_TARGET_ATTRIBUTE("sse4.2")
-uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,
-    uint32_t startingChecksum) {
-  uint32_t sum = startingChecksum;
-  size_t offset = 0;
-
-  // Process bytes one at a time until we reach an 8-byte boundary and can
-  // start doing aligned 64-bit reads.
-  static uintptr_t ALIGN_MASK = sizeof(uint64_t) - 1;
-  size_t mask = (size_t)((uintptr_t)data & ALIGN_MASK);
-  if (mask != 0) {
-    size_t limit = std::min(nbytes, sizeof(uint64_t) - mask);
-    while (offset < limit) {
-      sum = (uint32_t)_mm_crc32_u8(sum, data[offset]);
-      offset++;
-    }
-  }
-
-  // Process 8 bytes at a time until we have fewer than 8 bytes left.
-  while (offset + sizeof(uint64_t) <= nbytes) {
-    const uint64_t* src = (const uint64_t*)(data + offset);
-    sum = uint32_t(_mm_crc32_u64(sum, *src));
-    offset += sizeof(uint64_t);
-  }
-
-  // Process any bytes remaining after the last aligned 8-byte block.
-  while (offset < nbytes) {
-    sum = (uint32_t)_mm_crc32_u8(sum, data[offset]);
-    offset++;
-  }
-  return sum;
-}
-
 uint32_t
 crc32_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum);
 
@@ -105,11 +71,6 @@ bool crc32_hw_supported() {
 }
 
 #else
-
-uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,
-    uint32_t startingChecksum) {
-  throw std::runtime_error("crc32_hw is not implemented on this platform");
-}
 
 uint32_t crc32_hw(const uint8_t *data, size_t nbytes,
     uint32_t startingChecksum) {
