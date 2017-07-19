@@ -72,6 +72,25 @@ TEST(IPAddress, Scope) {
   EXPECT_TRUE(a2 < a1);
 }
 
+TEST(IPAddress, ScopeNumeric) {
+  // it's very unlikely that the host running these
+  // tests will have 42 network interfaces
+  auto str = "fe80::62eb:69ff:fe9b:ba60%42";
+  IPAddressV6 a2(str);
+  EXPECT_EQ(str, a2.str());
+
+  sockaddr_in6 sock = a2.toSockAddr();
+  EXPECT_NE(0, sock.sin6_scope_id);
+
+  IPAddress a1(str);
+  EXPECT_EQ(str, a1.str());
+
+  a2.setScopeId(0);
+  EXPECT_NE(a1, a2);
+
+  EXPECT_TRUE(a2 < a1);
+}
+
 TEST(IPAddress, Ordering) {
   IPAddress a1("0.1.1.1");
   IPAddress a2("1.1.1.0");

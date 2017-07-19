@@ -432,17 +432,14 @@ string IPAddressV6::str() const {
   if (scopeId != 0) {
     auto len = strlen(buffer);
     buffer[len] = '%';
+
+    auto errsv = errno;
     if (!if_indextoname(scopeId, buffer + len + 1)) {
-      throw IPAddressFormatException(to<std::string>(
-          "Invalid scope for address with hex ",
-          "'",
-          detail::Bytes::toHex(bytes(), 16),
-          "%",
-          scopeId,
-          "'",
-          " with error ",
-          strerror(errno)));
+      // if we can't map the if because eg. it no longer exists,
+      // append the if index instead
+      snprintf(buffer + len + 1, IFNAMSIZ, "%u", scopeId);
     }
+    errno = errsv;
   }
 
   return string(buffer);
