@@ -67,7 +67,8 @@ TEST(Bser, RoundTrip) {
     } catch (const std::exception& err) {
       LOG(ERROR) << err.what() << "\nInput: " << dyn.typeName() << ": " << dyn
                  << " decoded back as " << decoded.typeName() << ": " << decoded
-                 << "\n" << folly::hexDump(str.data(), str.size());
+                 << "\n"
+                 << folly::hexDump(str.data(), str.size());
       throw;
     }
   }
@@ -80,8 +81,8 @@ TEST(Bser, Template) {
   decoded = folly::bser::parseBser(
       folly::ByteRange(template_blob, sizeof(template_blob) - 1));
   EXPECT_EQ(decoded, template_dynamic)
-      << "Didn't load template value."
-         "\nInput: " << template_dynamic.typeName() << ": " << template_dynamic
+      << "Didn't load template value.\n"
+      << "Input: " << template_dynamic.typeName() << ": " << template_dynamic
       << " decoded back as " << decoded.typeName() << ": " << decoded << "\n"
       << folly::hexDump(template_blob, sizeof(template_blob) - 1);
 
@@ -92,21 +93,24 @@ TEST(Bser, Template) {
   opts.templates = templates;
 
   str = folly::bser::toBser(decoded, opts);
-  EXPECT_EQ(folly::ByteRange((const uint8_t*)str.data(), str.size()),
-            folly::ByteRange(template_blob, sizeof(template_blob) - 1))
+  EXPECT_EQ(
+      folly::ByteRange((const uint8_t*)str.data(), str.size()),
+      folly::ByteRange(template_blob, sizeof(template_blob) - 1))
       << "Expected:\n"
       << folly::hexDump(template_blob, sizeof(template_blob) - 1) << "\nGot:\n"
       << folly::hexDump(str.data(), str.size());
 }
 
 TEST(Bser, PduLength) {
-  EXPECT_THROW([] {
-    // Try to decode PDU for a short buffer that doesn't even have the
-    // complete length available
-    auto buf = folly::IOBuf::wrapBuffer(template_blob, 3);
-    auto len = folly::bser::decodePduLength(&*buf);
-    LOG(ERROR) << "managed to return a length, but only had 3 bytes";
-  }(), std::out_of_range);
+  EXPECT_THROW(
+      [] {
+        // Try to decode PDU for a short buffer that doesn't even have the
+        // complete length available
+        auto buf = folly::IOBuf::wrapBuffer(template_blob, 3);
+        auto len = folly::bser::decodePduLength(&*buf);
+        LOG(ERROR) << "managed to return a length, but only had 3 bytes";
+      }(),
+      std::out_of_range);
 
   auto buf = folly::IOBuf::wrapBuffer(template_blob, sizeof(template_blob));
   auto len = folly::bser::decodePduLength(&*buf);

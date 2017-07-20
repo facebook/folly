@@ -94,8 +94,9 @@ folly::dynamic parseBser(const folly::IOBuf*);
 size_t decodePduLength(const folly::IOBuf*);
 
 folly::fbstring toBser(folly::dynamic const&, const serialization_opts&);
-std::unique_ptr<folly::IOBuf> toBserIOBuf(folly::dynamic const&,
-                                          const serialization_opts&);
+std::unique_ptr<folly::IOBuf> toBserIOBuf(
+    folly::dynamic const&,
+    const serialization_opts&);
 }
 }
 
