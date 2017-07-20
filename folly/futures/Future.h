@@ -202,20 +202,9 @@ class Future {
     value(), which may rethrow if this has captured an exception. If func
     throws, the exception will be captured in the Future that is returned.
     */
-  // gcc 4.8 requires that we cast function reference types to function pointer
-  // types. Fore more details see the comment on FunctionReferenceToPointer
-  // in Future-pre.h.
-  // gcc versions 4.9 and above (as well as clang) do not require this hack.
-  // For those, the FF tenplate parameter can be removed and occurences of FF
-  // replaced with F.
-  template <
-      typename F,
-      typename FF =
-          typename futures::detail::FunctionReferenceToPointer<F>::type,
-      typename R = futures::detail::callableResult<T, FF>>
+  template <typename F, typename R = futures::detail::callableResult<T, F>>
   typename R::Return then(F&& func) {
-    typedef typename R::Arg Arguments;
-    return thenImplementation<FF, R>(std::forward<FF>(func), Arguments());
+    return thenImplementation<F, R>(std::forward<F>(func), typename R::Arg());
   }
 
   /// Variant where func is an member function
