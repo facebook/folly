@@ -67,7 +67,7 @@ using CachelinePaddedTypes = ::testing::Types<
     SizedData<kCachelineSize / 2>,
     SizedData<kCachelineSize + kCachelineSize / 2>,
     // Mimic single basic types:
-    SizedDataMimic<std::max_align_t>,
+    SizedDataMimic<folly::max_align_t>,
     SizedDataMimic<void*>,
     SizedDataMimic<long double>,
     SizedDataMimic<double>,
@@ -78,7 +78,7 @@ using CachelinePaddedTypes = ::testing::Types<
     SizedDataMimic<short>,
     SizedDataMimic<char>,
     // Mimic small arrays of basic types:
-    SizedDataMimic<std::max_align_t, 3>,
+    SizedDataMimic<folly::max_align_t, 3>,
     SizedDataMimic<void*, 3>,
     SizedDataMimic<long double, 3>,
     SizedDataMimic<double, 3>,
@@ -89,7 +89,7 @@ using CachelinePaddedTypes = ::testing::Types<
     SizedDataMimic<short, 3>,
     SizedDataMimic<char, 3>,
     // Mimic large arrays of basic types:
-    SizedDataMimic<std::max_align_t, kCachelineSize + 3>,
+    SizedDataMimic<folly::max_align_t, kCachelineSize + 3>,
     SizedDataMimic<void*, kCachelineSize + 3>,
     SizedDataMimic<long double, kCachelineSize + 3>,
     SizedDataMimic<double, kCachelineSize + 3>,

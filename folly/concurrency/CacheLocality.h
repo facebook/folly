@@ -390,7 +390,7 @@ class SimpleAllocator {
     if (intptr_t(mem_) % 128 == 0) {
       // Avoid allocating pointers that may look like malloc
       // pointers.
-      mem_ += std::min(sz_, alignof(std::max_align_t));
+      mem_ += std::min(sz_, folly::max_align_v);
     }
     if (mem_ && (mem_ + sz_ <= end_)) {
       auto mem = mem_;

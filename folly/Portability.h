@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include <cstddef>
+#include <type_traits>
 
 #include <folly/portability/Config.h>
 
@@ -31,7 +32,75 @@ constexpr bool kHasUnalignedAccess = true;
 #else
 constexpr bool kHasUnalignedAccess = false;
 #endif
-}
+
+namespace detail {
+
+template <typename I, I A, I... Bs>
+struct integral_max
+    : std::integral_constant<
+          I,
+          (A > integral_max<I, Bs...>::value) ? A
+                                              : integral_max<I, Bs...>::value> {
+};
+
+template <typename I, size_t A>
+struct integral_max<I, A> : std::integral_constant<I, A> {};
+
+template <typename... Ts>
+using max_alignment = integral_max<size_t, alignof(Ts)...>;
+
+using max_basic_alignment = max_alignment<
+    std::max_align_t,
+    long double,
+    double,
+    float,
+    long long int,
+    long int,
+    int,
+    short int,
+    bool,
+    char,
+    char16_t,
+    char32_t,
+    wchar_t,
+    std::nullptr_t>;
+} // namespace detail
+
+constexpr size_t max_align_v = detail::max_basic_alignment::value;
+
+// max_align_t is a type which is aligned at least as strictly as the
+// most-aligned basic type (see the specification of std::max_align_t). This
+// implementation exists because 32-bit iOS platforms have a broken
+// std::max_align_t (see below).
+//
+// You should refer to this as `::folly::max_align_t` in portable code, even if
+// you have `using namespace folly;` because C11 defines a global namespace
+// `max_align_t` type.
+//
+// To be certain, we consider every non-void fundamental type specified by the
+// standard. On most platforms `long double` would be enough, but iOS 32-bit
+// has an 8-byte aligned `double` and `long long int` and a 4-byte aligned
+// `long double`.
+//
+// So far we've covered locals and other non-allocated storage, but we also need
+// confidence that allocated storage from `malloc`, `new`, etc will also be
+// suitable for objects with this alignment reuirement.
+//
+// Apple document that their implementation of malloc will issue 16-byte
+// granularity chunks for small allocations (large allocations are page-size
+// granularity and page-aligned). We think that allocated storage will be
+// suitable for these objects based on the following assumptions:
+//
+// 1. 16-byte granularity also means 16-byte aligned.
+// 2. `new` and other allocators follow the `malloc` rules.
+//
+// We also have some anecdotal evidence: we don't see lots of misaligned-storage
+// crashes on 32-bit iOS apps that use `double`.
+//
+// Apple's allocation reference: http://bit.ly/malloc-small
+struct alignas(max_align_v) max_align_t {};
+
+} // namespace folly
 
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
@@ -43,7 +112,7 @@ constexpr bool kHasUnalignedAccess = false;
 #else
 # error Cannot define FOLLY_ALIGNED on this platform
 #endif
-#define FOLLY_ALIGNED_MAX FOLLY_ALIGNED(alignof(std::max_align_t))
+#define FOLLY_ALIGNED_MAX FOLLY_ALIGNED(::folly::max_align_v)
 
 // NOTE: this will only do checking in msvc with versions that support /analyze
 #if _MSC_VER

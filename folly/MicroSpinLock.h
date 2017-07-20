@@ -142,10 +142,11 @@ struct FOLLY_ALIGNED_MAX SpinLockArray {
                 "Invalid size of PaddedSpinLock");
 
   // Check if T can theoretically cross a cache line.
-  static_assert(alignof(std::max_align_t) > 0 &&
-                FOLLY_CACHE_LINE_SIZE % alignof(std::max_align_t) == 0 &&
-                sizeof(T) <= alignof(std::max_align_t),
-                "T can cross cache line boundaries");
+  static_assert(
+      folly::max_align_v > 0 &&
+          FOLLY_CACHE_LINE_SIZE % folly::max_align_v == 0 &&
+          sizeof(T) <= folly::max_align_v,
+      "T can cross cache line boundaries");
 
   char padding_[FOLLY_CACHE_LINE_SIZE];
   std::array<PaddedSpinLock, N> data_;

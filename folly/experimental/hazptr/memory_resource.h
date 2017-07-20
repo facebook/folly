@@ -22,7 +22,7 @@
 /// std::pmr::memory_resource (C++17) as needed for developing a
 /// hazptr prototype.
 ////////////////////////////////////////////////////////////////////////////////
-#include <cstddef>
+#include <folly/Portability.h>
 #include <memory>
 
 namespace folly {
@@ -33,11 +33,11 @@ class memory_resource {
   virtual ~memory_resource() = default;
   virtual void* allocate(
       const size_t bytes,
-      const size_t alignment = alignof(std::max_align_t)) = 0;
+      const size_t alignment = folly::max_align_v) = 0;
   virtual void deallocate(
       void* p,
       const size_t bytes,
-      const size_t alignment = alignof(std::max_align_t)) = 0;
+      const size_t alignment = folly::max_align_v) = 0;
 };
 
 memory_resource* get_default_resource();
@@ -70,7 +70,7 @@ inline memory_resource* new_delete_resource() {
    public:
     void* allocate(
         const size_t bytes,
-        const size_t alignment = alignof(std::max_align_t)) override {
+        const size_t alignment = folly::max_align_v) override {
       (void)alignment;
       void* p = static_cast<void*>(new char[bytes]);
       DEBUG_PRINT(this << " " << p << " " << bytes);
@@ -79,7 +79,7 @@ inline memory_resource* new_delete_resource() {
     void deallocate(
         void* p,
         const size_t bytes,
-        const size_t alignment = alignof(std::max_align_t)) override {
+        const size_t alignment = folly::max_align_v) override {
       (void)alignment;
       (void)bytes;
       DEBUG_PRINT(p << " " << bytes);

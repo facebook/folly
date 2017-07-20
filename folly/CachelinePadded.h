@@ -18,6 +18,7 @@
 
 #include <cstddef>
 
+#include <folly/Portability.h>
 #include <folly/concurrency/CacheLocality.h>
 
 namespace folly {
@@ -32,8 +33,8 @@ namespace folly {
 template <typename T>
 class CachelinePadded {
   static_assert(
-      alignof(T) < CacheLocality::kFalseSharingRange,
-      "CachelinePadded does not support types aligned >= a cache-line.");
+      alignof(T) <= folly::max_align_v,
+      "CachelinePadded does not support over-aligned types.");
 
  public:
   template <typename... Args>
