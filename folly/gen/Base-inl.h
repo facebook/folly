@@ -470,7 +470,7 @@ class SingleCopy : public GenImpl<const Value&, SingleCopy<Value>> {
  *
  * This type is usually used through the 'map' or 'mapped' helper function:
  *
- *   auto squares = seq(1, 10) | map(square) | asVector;
+ *   auto squares = seq(1, 10) | map(square) | as<std::vector>();
  */
 template <class Predicate>
 class Map : public Operator<Map<Predicate>> {
@@ -597,7 +597,7 @@ class Filter : public Operator<Filter<Predicate>> {
  *
  *   auto best = from(sortedItems)
  *             | until([](Item& item) { return item.score > 100; })
- *             | asVector;
+ *             | as<std::vector>();
  */
 template <class Predicate>
 class Until : public Operator<Until<Predicate>> {
@@ -700,6 +700,65 @@ class Take : public Operator<Take> {
   template <class Source, class Value, class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), count_);
+  }
+};
+
+/**
+ * Visit - For calling a function on each item before passing it down the
+ * pipeline.
+ *
+ * This type is usually used through the 'visit' helper function:
+ *
+ *   auto printedValues = seq(1) | visit(debugPrint);
+ *   // nothing printed yet
+ *   auto results = take(10) | as<std::vector>();
+ *   // results now populated, 10 values printed
+ */
+template <class Visitor>
+class Visit : public Operator<Visit<Visitor>> {
+  Visitor visitor_;
+
+ public:
+  Visit() = default;
+
+  explicit Visit(Visitor visitor) : visitor_(std::move(visitor)) {}
+
+  template <class Value, class Source>
+  class Generator : public GenImpl<Value, Generator<Value, Source>> {
+    Source source_;
+    Visitor visitor_;
+
+   public:
+    explicit Generator(Source source, const Visitor& visitor)
+        : source_(std::move(source)), visitor_(visitor) {}
+
+    template <class Body>
+    void foreach(Body&& body) const {
+      source_.foreach([&](Value value) {
+        visitor_(value); // not forwarding to avoid accidental moves
+        body(std::forward<Value>(value));
+      });
+    }
+
+    template <class Handler>
+    bool apply(Handler&& handler) const {
+      return source_.apply([&](Value value) {
+        visitor_(value); // not forwarding to avoid accidental moves
+        return handler(std::forward<Value>(value));
+      });
+    }
+
+    static constexpr bool infinite = Source::infinite;
+  };
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), visitor_);
+  }
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), visitor_);
   }
 };
 

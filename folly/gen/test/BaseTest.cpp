@@ -475,7 +475,35 @@ TEST(Gen, Until) {
       | as<vector<int>>();
     EXPECT_EQ(expected, actual);
   }
-  */
+    */
+}
+
+TEST(Gen, Visit) {
+  auto increment = [](int& i) { ++i; };
+  auto clone = map([](int i) { return i; });
+  { // apply()
+    auto expected = 10;
+    auto actual = seq(0) | clone | visit(increment) | take(4) | sum;
+    EXPECT_EQ(expected, actual);
+  }
+  { // foreach()
+    auto expected = 10;
+    auto actual = seq(0, 3) | clone | visit(increment) | sum;
+    EXPECT_EQ(expected, actual);
+  }
+  { // tee-like
+    std::vector<int> x2, x4;
+    std::vector<int> expected2{0, 1, 4, 9};
+    std::vector<int> expected4{0, 1, 16, 81};
+
+    auto tee = [](std::vector<int>& container) {
+      return visit([&](int value) { container.push_back(value); });
+    };
+    EXPECT_EQ(
+        98, seq(0, 3) | map(square) | tee(x2) | map(square) | tee(x4) | sum);
+    EXPECT_EQ(expected2, x2);
+    EXPECT_EQ(expected4, x4);
+  }
 }
 
 TEST(Gen, Composed) {
@@ -664,7 +692,7 @@ TEST(Gen, FromRValue) {
     // reference of a std::vector when it is used as the 'other' for an rvalue
     // constructor.  Use fbvector because we're sure its size will be zero in
     // this case.
-    fbvector<int> v({1,2,3,4});
+    fbvector<int> v({1, 2, 3, 4});
     auto q1 = from(v);
     EXPECT_EQ(v.size(), 4);  // ensure that the lvalue version was called!
     auto expected = 1 * 2 * 3 * 4;
@@ -676,11 +704,11 @@ TEST(Gen, FromRValue) {
   }
   {
     auto expected = 7;
-    auto q = from([] {return vector<int>({3,7,5}); }());
+    auto q = from([] { return vector<int>({3, 7, 5}); }());
     EXPECT_EQ(expected, q | max);
   }
   {
-    for (auto size: {5, 1024, 16384, 1<<20}) {
+    for (auto size : {5, 1024, 16384, 1 << 20}) {
       auto q1 = from(vector<int>(size, 2));
       auto q2 = from(vector<int>(size, 3));
       // If the rvalue specialization is broken/gone, then the compiler will
