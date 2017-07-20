@@ -38,6 +38,7 @@ struct isTry : std::false_type {};
 template <typename T>
 struct isTry<Try<T>> : std::true_type {};
 
+namespace futures {
 namespace detail {
 
 template <class> class Core;
@@ -154,7 +155,8 @@ struct FunctionReferenceToPointer<R (&)(Args...)> {
   using type = R (*)(Args...);
 };
 
-} // detail
+} // namespace detail
+} // namespace futures
 
 class Timekeeper;
 

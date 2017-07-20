@@ -34,7 +34,9 @@
 
 #include <folly/io/async/Request.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace futures {
+namespace detail {
 
 /*
         OnlyCallback
@@ -450,4 +452,6 @@ void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& ctx,
   collectVariadicHelper(ctx, std::forward<TTail>(tail)...);
 }
 
-}} // folly::detail
+} // namespace detail
+} // namespace futures
+} // namespace folly

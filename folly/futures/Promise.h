@@ -25,11 +25,13 @@ namespace folly {
 // forward declaration
 template <class T> class Future;
 
+namespace futures {
 namespace detail {
 struct EmptyConstruct {};
 template <typename T, typename F>
 class CoreCallbackState;
-}
+} // namespace detail
+} // namespace futures
 
 template <class T>
 class Promise {
@@ -107,7 +109,7 @@ class Promise {
   typedef typename Future<T>::corePtr corePtr;
   template <class> friend class Future;
   template <class, class>
-  friend class detail::CoreCallbackState;
+  friend class futures::detail::CoreCallbackState;
 
   // Whether the Future has been retrieved (a one-time operation).
   bool retrieved_;
@@ -115,7 +117,7 @@ class Promise {
   // shared core state object
   corePtr core_;
 
-  explicit Promise(detail::EmptyConstruct) noexcept;
+  explicit Promise(futures::detail::EmptyConstruct) noexcept;
 
   void throwIfFulfilled();
   void throwIfRetrieved();

@@ -21,7 +21,9 @@
 
 #include <folly/MicroSpinLock.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace futures {
+namespace detail {
 
 /// Finite State Machine helper base class.
 /// Inherit from this.
@@ -126,5 +128,6 @@ public:
 #define FSM_BREAK done = true; break;
 #define FSM_END }}}
 
-
-}} // folly::detail
+} // namespace detail
+} // namespace futures
+} // namespace folly

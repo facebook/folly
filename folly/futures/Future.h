@@ -210,8 +210,9 @@ class Future {
   // replaced with F.
   template <
       typename F,
-      typename FF = typename detail::FunctionReferenceToPointer<F>::type,
-      typename R = detail::callableResult<T, FF>>
+      typename FF =
+          typename futures::detail::FunctionReferenceToPointer<F>::type,
+      typename R = futures::detail::callableResult<T, FF>>
   typename R::Return then(F&& func) {
     typedef typename R::Arg Arguments;
     return thenImplementation<FF, R>(std::forward<FF>(func), Arguments());
@@ -271,33 +272,33 @@ class Future {
   ///   });
   template <class F>
   typename std::enable_if<
-    !detail::callableWith<F, exception_wrapper>::value &&
-    !detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
+      !futures::detail::callableWith<F, exception_wrapper>::value &&
+          !futures::detail::Extract<F>::ReturnsFuture::value,
+      Future<T>>::type
   onError(F&& func);
 
   /// Overload of onError where the error callback returns a Future<T>
   template <class F>
   typename std::enable_if<
-    !detail::callableWith<F, exception_wrapper>::value &&
-    detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
+      !futures::detail::callableWith<F, exception_wrapper>::value &&
+          futures::detail::Extract<F>::ReturnsFuture::value,
+      Future<T>>::type
   onError(F&& func);
 
   /// Overload of onError that takes exception_wrapper and returns Future<T>
   template <class F>
   typename std::enable_if<
-    detail::callableWith<F, exception_wrapper>::value &&
-    detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
+      futures::detail::callableWith<F, exception_wrapper>::value &&
+          futures::detail::Extract<F>::ReturnsFuture::value,
+      Future<T>>::type
   onError(F&& func);
 
   /// Overload of onError that takes exception_wrapper and returns T
   template <class F>
   typename std::enable_if<
-    detail::callableWith<F, exception_wrapper>::value &&
-    !detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
+      futures::detail::callableWith<F, exception_wrapper>::value &&
+          !futures::detail::Extract<F>::ReturnsFuture::value,
+      Future<T>>::type
   onError(F&& func);
 
   /// func is like std::function<void()> and is executed unconditionally, and
@@ -482,7 +483,7 @@ class Future {
   }
 
  protected:
-  typedef detail::Core<T>* corePtr;
+  typedef futures::detail::Core<T>* corePtr;
 
   // shared core state object
   corePtr core_;
@@ -490,7 +491,7 @@ class Future {
   explicit
   Future(corePtr obj) : core_(obj) {}
 
-  explicit Future(detail::EmptyConstruct) noexcept;
+  explicit Future(futures::detail::EmptyConstruct) noexcept;
 
   void detach();
 
@@ -529,13 +530,13 @@ class Future {
   // e.g. f.then([](Try<T> t){ return t.value(); });
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
 
   // Variant: returns a Future
   // e.g. f.then([](Try<T> t){ return makeFuture<T>(t); });
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
 
   Executor* getExecutor() { return core_->getExecutor(); }
   void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {

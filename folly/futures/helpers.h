@@ -26,6 +26,7 @@
 
 namespace folly {
 
+namespace futures {
 namespace detail {
 template <typename... Ts>
 struct CollectAllVariadicContext {
@@ -65,7 +66,8 @@ struct CollectVariadicContext {
   std::atomic<bool> threw{false};
   typedef Future<std::tuple<Ts...>> type;
 };
-}
+} // namespace detail
+} // namespace futures
 
 /// This namespace is for utility functions that would usually be static
 /// members of Future, except they don't make sense there because they don't
@@ -228,17 +230,16 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
 /// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
 /// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
-typename detail::CollectAllVariadicContext<
-  typename std::decay<Fs>::type::value_type...>::type
+typename futures::detail::CollectAllVariadicContext<
+    typename std::decay<Fs>::type::value_type...>::type
 collectAll(Fs&&... fs);
 
 /// Like collectAll, but will short circuit on the first exception. Thus, the
 /// type of the returned Future is std::vector<T> instead of
 /// std::vector<Try<T>>
 template <class InputIterator>
-Future<typename detail::CollectContext<
-  typename std::iterator_traits<InputIterator>::value_type::value_type
->::result_type>
+Future<typename futures::detail::CollectContext<typename std::iterator_traits<
+    InputIterator>::value_type::value_type>::result_type>
 collect(InputIterator first, InputIterator last);
 
 /// Sugar for the most common case
@@ -251,8 +252,8 @@ auto collect(Collection&& c) -> decltype(collect(c.begin(), c.end())) {
 /// type of the returned Future is std::tuple<T1, T2, ...> instead of
 /// std::tuple<Try<T1>, Try<T2>, ...>
 template <typename... Fs>
-typename detail::CollectVariadicContext<
-  typename std::decay<Fs>::type::value_type...>::type
+typename futures::detail::CollectVariadicContext<
+    typename std::decay<Fs>::type::value_type...>::type
 collect(Fs&&... fs);
 
 /** The result is a pair of the index of the first Future to complete and
@@ -317,16 +318,19 @@ auto collectN(Collection&& c, size_t n)
 
     func must return a Future for each value in input
   */
-template <class Collection, class F,
-          class ItT = typename std::iterator_traits<
-            typename Collection::iterator>::value_type,
-          class Result = typename detail::resultOf<F, ItT&&>::value_type>
-std::vector<Future<Result>>
-window(Collection input, F func, size_t n);
+template <
+    class Collection,
+    class F,
+    class ItT = typename std::iterator_traits<
+        typename Collection::iterator>::value_type,
+    class Result = typename futures::detail::resultOf<F, ItT&&>::value_type>
+std::vector<Future<Result>> window(Collection input, F func, size_t n);
 
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::conditional<
-  detail::callableWith<F, T&&, Try<ItT>&&>::value, Try<ItT>, ItT>::type;
+    futures::detail::callableWith<F, T&&, Try<ItT>&&>::value,
+    Try<ItT>,
+    ItT>::type;
 
 template<typename F, typename T, typename Arg>
 using isFutureResult = isFuture<typename std::result_of<F(T&&, Arg&&)>::type>;

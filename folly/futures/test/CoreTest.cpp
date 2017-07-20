@@ -26,7 +26,7 @@ TEST(Core, size) {
     typename std::aligned_storage<lambdaBufSize>::type lambdaBuf_;
     folly::Optional<Try<Unit>> result_;
     std::function<void(Try<Unit>&&)> callback_;
-    detail::FSM<detail::State> fsm_;
+    futures::detail::FSM<futures::detail::State> fsm_;
     std::atomic<unsigned char> attached_;
     std::atomic<bool> active_;
     std::atomic<bool> interruptHandlerSet_;
@@ -40,5 +40,5 @@ TEST(Core, size) {
   };
   // If this number goes down, it's fine!
   // If it goes up, please seek professional advice ;-)
-  EXPECT_GE(sizeof(Gold), sizeof(detail::Core<Unit>));
+  EXPECT_GE(sizeof(Gold), sizeof(futures::detail::Core<Unit>));
 }
