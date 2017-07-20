@@ -444,7 +444,7 @@ class exception_wrapper final {
   //! Swaps the value of `*this` with the value of `that`
   void swap(exception_wrapper& that) noexcept;
 
-  //! \return `true` if `*this` is not holding an exception.
+  //! \return `true` if `*this` is holding an exception.
   explicit operator bool() const noexcept;
 
   //! \return `!bool(*this)`
