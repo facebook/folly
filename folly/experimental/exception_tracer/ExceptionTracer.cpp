@@ -162,16 +162,25 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
       isAbiCppException(currentException) ?
       currentException->exceptionType :
       nullptr;
+
     if (traceStack) {
-      CHECK(trace) << "Invalid trace stack!";
-      info.frames.assign(trace->addresses,
-                         trace->addresses + trace->frameCount);
+      LOG_IF(DFATAL, !trace)
+          << "Invalid trace stack for exception of type: "
+          << (info.type ? folly::demangle(*info.type) : "null");
+
+      if (!trace) {
+        return {};
+      }
+
+      info.frames.assign(
+          trace->addresses, trace->addresses + trace->frameCount);
       trace = traceStack->next(trace);
     }
     currentException = currentException->nextException;
     exceptions.push_back(std::move(info));
   }
-  CHECK(!trace) << "Invalid trace stack!";
+
+  LOG_IF(DFATAL, trace) << "Invalid trace stack!";
 
   return exceptions;
 }
