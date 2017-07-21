@@ -33,21 +33,20 @@ constexpr bool kHasUnalignedAccess = true;
 constexpr bool kHasUnalignedAccess = false;
 #endif
 
-namespace detail {
+namespace portability_detail {
+
+template <typename I, I A, I B>
+using integral_max = std::integral_constant<I, (A < B) ? B : A>;
 
 template <typename I, I A, I... Bs>
-struct integral_max
-    : std::integral_constant<
-          I,
-          (A > integral_max<I, Bs...>::value) ? A
-                                              : integral_max<I, Bs...>::value> {
-};
+struct integral_sequence_max
+    : integral_max<I, A, integral_sequence_max<I, Bs...>::value> {};
 
-template <typename I, size_t A>
-struct integral_max<I, A> : std::integral_constant<I, A> {};
+template <typename I, I A>
+struct integral_sequence_max<I, A> : std::integral_constant<I, A> {};
 
 template <typename... Ts>
-using max_alignment = integral_max<size_t, alignof(Ts)...>;
+using max_alignment = integral_sequence_max<size_t, alignof(Ts)...>;
 
 using max_basic_alignment = max_alignment<
     std::max_align_t,
@@ -66,7 +65,7 @@ using max_basic_alignment = max_alignment<
     std::nullptr_t>;
 } // namespace detail
 
-constexpr size_t max_align_v = detail::max_basic_alignment::value;
+constexpr size_t max_align_v = portability_detail::max_basic_alignment::value;
 
 // max_align_t is a type which is aligned at least as strictly as the
 // most-aligned basic type (see the specification of std::max_align_t). This
