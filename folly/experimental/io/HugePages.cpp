@@ -50,16 +50,15 @@ size_t getDefaultHugePageSize() {
   size_t pageSize = 0;
   boost::cmatch match;
 
-  bool error = gen::byLine("/proc/meminfo") |
-    [&] (StringPiece line) -> bool {
-      if (boost::regex_match(line.begin(), line.end(), match, regex)) {
-        StringPiece numStr(
-            line.begin() + match.position(1), size_t(match.length(1)));
-        pageSize = to<size_t>(numStr) * 1024;  // in KiB
-        return false;  // stop
-      }
-      return true;
-    };
+  bool error = gen::byLine("/proc/meminfo") | [&](StringPiece line) -> bool {
+    if (boost::regex_match(line.begin(), line.end(), match, regex)) {
+      StringPiece numStr(
+          line.begin() + match.position(1), size_t(match.length(1)));
+      pageSize = to<size_t>(numStr) * 1024; // in KiB
+      return false; // stop
+    }
+    return true;
+  };
 
   if (error) {
     throw std::runtime_error("Can't find default huge page size");
@@ -123,7 +122,7 @@ size_t parsePageSizeValue(StringPiece value) {
 HugePageSizeVec readHugePageSizes() {
   HugePageSizeVec sizeVec = readRawHugePageSizes();
   if (sizeVec.empty()) {
-    return sizeVec;  // nothing to do
+    return sizeVec; // nothing to do
   }
   std::sort(sizeVec.begin(), sizeVec.end());
 
@@ -143,61 +142,61 @@ HugePageSizeVec readHugePageSizes() {
   std::vector<StringPiece> options;
 
   gen::byLine("/proc/mounts") | gen::eachAs<StringPiece>() |
-    [&](StringPiece line) {
-      parts.clear();
-      split(" ", line, parts);
-      // device path fstype options uid gid
-      if (parts.size() != 6) {
-        throw std::runtime_error("Invalid /proc/mounts line");
-      }
-      if (parts[2] != "hugetlbfs") {
-        return;  // we only care about hugetlbfs
-      }
-
-      options.clear();
-      split(",", parts[3], options);
-      size_t pageSize = defaultHugePageSize;
-      // Search for the "pagesize" option, which must have a value
-      for (auto& option : options) {
-        // key=value
-        const char* p = static_cast<const char*>(
-            memchr(option.data(), '=', option.size()));
-        if (!p) {
-          continue;
+      [&](StringPiece line) {
+        parts.clear();
+        split(" ", line, parts);
+        // device path fstype options uid gid
+        if (parts.size() != 6) {
+          throw std::runtime_error("Invalid /proc/mounts line");
         }
-        if (StringPiece(option.data(), p) != "pagesize") {
-          continue;
+        if (parts[2] != "hugetlbfs") {
+          return; // we only care about hugetlbfs
         }
-        pageSize = parsePageSizeValue(StringPiece(p + 1, option.end()));
-        break;
-      }
 
-      auto pos = std::lower_bound(sizeVec.begin(), sizeVec.end(), pageSize,
-                                  PageSizeLess());
-      if (pos == sizeVec.end() || pos->size != pageSize) {
-        throw std::runtime_error("Mount page size not found");
-      }
-      if (!pos->mountPoint.empty()) {
-        // Only one mount point per page size is allowed
-        return;
-      }
+        options.clear();
+        split(",", parts[3], options);
+        size_t pageSize = defaultHugePageSize;
+        // Search for the "pagesize" option, which must have a value
+        for (auto& option : options) {
+          // key=value
+          const char* p = static_cast<const char*>(
+              memchr(option.data(), '=', option.size()));
+          if (!p) {
+            continue;
+          }
+          if (StringPiece(option.data(), p) != "pagesize") {
+            continue;
+          }
+          pageSize = parsePageSizeValue(StringPiece(p + 1, option.end()));
+          break;
+        }
 
-      // Store mount point
-      fs::path path(parts[1].begin(), parts[1].end());
-      struct stat st;
-      const int ret = stat(path.string().c_str(), &st);
-      if (ret == -1 && errno == ENOENT) {
-        return;
-      }
-      checkUnixError(ret, "stat hugepage mountpoint failed");
-      pos->mountPoint = fs::canonical(path);
-      pos->device = st.st_dev;
-    };
+        auto pos = std::lower_bound(
+            sizeVec.begin(), sizeVec.end(), pageSize, PageSizeLess());
+        if (pos == sizeVec.end() || pos->size != pageSize) {
+          throw std::runtime_error("Mount page size not found");
+        }
+        if (!pos->mountPoint.empty()) {
+          // Only one mount point per page size is allowed
+          return;
+        }
+
+        // Store mount point
+        fs::path path(parts[1].begin(), parts[1].end());
+        struct stat st;
+        const int ret = stat(path.string().c_str(), &st);
+        if (ret == -1 && errno == ENOENT) {
+          return;
+        }
+        checkUnixError(ret, "stat hugepage mountpoint failed");
+        pos->mountPoint = fs::canonical(path);
+        pos->device = st.st_dev;
+      };
 
   return sizeVec;
 }
 
-}  // namespace
+} // namespace
 
 const HugePageSizeVec& getHugePageSizes() {
   static HugePageSizeVec sizes = readHugePageSizes();
@@ -230,4 +229,4 @@ const HugePageSize* getHugePageSizeForDevice(dev_t device) {
   return nullptr;
 }
 
-}  // namespace folly
+} // namespace folly

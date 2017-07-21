@@ -56,16 +56,19 @@ void list() {
   }
 }
 
-}  // namespace
+} // namespace
 
-
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_cp) {
-    if (argc != 3) usage(argv[0]);
+    if (argc != 3) {
+      usage(argv[0]);
+    }
     copy(argv[1], argv[2]);
   } else {
-    if (argc != 1) usage(argv[0]);
+    if (argc != 1) {
+      usage(argv[0]);
+    }
     list();
   }
   return 0;

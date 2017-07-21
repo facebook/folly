@@ -65,5 +65,5 @@ path canonical_parent(const path& p, const path& basePath = current_path());
  */
 path executable_path();
 
-}  // namespace fs
-}  // namespace folly
+} // namespace fs
+} // namespace folly

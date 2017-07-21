@@ -77,7 +77,9 @@ class AsyncIOOp : private boost::noncopyable {
   /**
    * Return the current operation state.
    */
-  State state() const { return state_; }
+  State state() const {
+    return state_;
+  }
 
   /**
    * Reset the operation for reuse.  It is an error to call reset() on
@@ -85,8 +87,12 @@ class AsyncIOOp : private boost::noncopyable {
    */
   void reset(NotificationCallback cb = NotificationCallback());
 
-  void setNotificationCallback(NotificationCallback cb) { cb_ = std::move(cb); }
-  const NotificationCallback& notificationCallback() const { return cb_; }
+  void setNotificationCallback(NotificationCallback cb) {
+    cb_ = std::move(cb);
+  }
+  const NotificationCallback& notificationCallback() const {
+    return cb_;
+  }
 
   /**
    * Retrieve the result of this operation.  Returns >=0 on success,
@@ -164,26 +170,34 @@ class AsyncIO : private boost::noncopyable {
   /**
    * Return the number of pending requests.
    */
-  size_t pending() const { return pending_; }
+  size_t pending() const {
+    return pending_;
+  }
 
   /**
    * Return the maximum number of requests that can be kept outstanding
    * at any one time.
    */
-  size_t capacity() const { return capacity_; }
+  size_t capacity() const {
+    return capacity_;
+  }
 
   /**
    * Return the accumulative number of submitted I/O, since this object
    * has been created.
    */
-  size_t totalSubmits() const { return submitted_; }
+  size_t totalSubmits() const {
+    return submitted_;
+  }
 
   /**
    * If POLLABLE, return a file descriptor that can be passed to poll / epoll
    * and will become readable when any async IO operations have completed.
    * If NOT_POLLABLE, return -1.
    */
-  int pollFd() const { return pollFd_; }
+  int pollFd() const {
+    return pollFd_;
+  }
 
   /**
    * If POLLABLE, call instead of wait after the file descriptor returned
@@ -235,7 +249,9 @@ class AsyncIOQueue {
   explicit AsyncIOQueue(AsyncIO* asyncIO);
   ~AsyncIOQueue();
 
-  size_t queued() const { return queue_.size(); }
+  size_t queued() const {
+    return queue_.size();
+  }
 
   /**
    * Submit an op to the AsyncIO queue.  The op will be queued until
@@ -260,4 +276,4 @@ class AsyncIOQueue {
   std::deque<OpFactory> queue_;
 };
 
-}  // namespace folly
+} // namespace folly

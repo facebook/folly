@@ -31,7 +31,7 @@ namespace {
 void expectPathEq(const path& a, const path& b) {
   EXPECT_TRUE(a == b) << "expected path=" << a << "\nactual path=" << b;
 }
-}  // namespace
+} // namespace
 
 TEST(Simple, Path) {
   path root("/");
@@ -40,7 +40,7 @@ TEST(Simple, Path) {
   EXPECT_TRUE(starts_with(abs1, root));
   EXPECT_FALSE(starts_with(rel1, root));
   expectPathEq(path("hello/world"), remove_prefix(abs1, root));
-  EXPECT_THROW({remove_prefix(rel1, root);}, filesystem_error);
+  EXPECT_THROW({ remove_prefix(rel1, root); }, filesystem_error);
 
   path abs2("/hello");
   path abs3("/hello/");
@@ -55,8 +55,8 @@ TEST(Simple, Path) {
   expectPathEq(path("world"), remove_prefix(abs1, abs2));
   expectPathEq(path("world"), remove_prefix(abs1, abs3));
   expectPathEq(path(), remove_prefix(abs1, abs4));
-  EXPECT_THROW({remove_prefix(abs1, abs5);}, filesystem_error);
-  EXPECT_THROW({remove_prefix(abs1, abs6);}, filesystem_error);
+  EXPECT_THROW({ remove_prefix(abs1, abs5); }, filesystem_error);
+  EXPECT_THROW({ remove_prefix(abs1, abs6); }, filesystem_error);
 }
 
 TEST(Simple, CanonicalizeParent) {
@@ -69,8 +69,8 @@ TEST(Simple, CanonicalizeParent) {
   expectPathEq(a, canonical_parent(b));
   expectPathEq(a, canonical(b));
   expectPathEq(a, canonical_parent(b));
-  EXPECT_THROW({canonical(c);}, filesystem_error);
-  EXPECT_THROW({canonical(d);}, filesystem_error);
+  EXPECT_THROW({ canonical(c); }, filesystem_error);
+  EXPECT_THROW({ canonical(d); }, filesystem_error);
   expectPathEq(c, canonical_parent(c));
   expectPathEq(c, canonical_parent(d));
 }
