@@ -19,9 +19,11 @@
 #if defined(__ELF__) && (defined(__x86_64__) || defined(__i386__))
 #include <folly/tracing/StaticTracepoint-ELFx86.h>
 
-#define FOLLY_SDT(provider, name, ...)                                         \
-  FOLLY_SDT_PROBE_N(                                                           \
-    provider, name, FOLLY_SDT_NARG(0, ##__VA_ARGS__), ##__VA_ARGS__)
+#define FOLLY_SDT(provider, name, ...) \
+  FOLLY_SDT_PROBE_N(                   \
+      provider, name, FOLLY_SDT_NARG(0, ##__VA_ARGS__), ##__VA_ARGS__)
 #else
-#define FOLLY_SDT(provider, name, ...) do {} while(0)
+#define FOLLY_SDT(provider, name, ...) \
+  do {                                 \
+  } while (0)
 #endif

@@ -16,6 +16,8 @@
 
 #pragma once
 
+// clang-format off
+
 // Default constraint for the probe arguments as operands.
 #ifndef FOLLY_SDT_ARG_CONSTRAINT
 #define FOLLY_SDT_ARG_CONSTRAINT      "nor"
