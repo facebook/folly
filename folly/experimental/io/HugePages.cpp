@@ -98,14 +98,22 @@ size_t parsePageSizeValue(StringPiece value) {
     c = char(tolower(value[size_t(match.position(2))]));
   }
   StringPiece numStr(value.data() + match.position(1), size_t(match.length(1)));
-  size_t size = to<size_t>(numStr);
-  switch (c) {
-  case 't': size *= 1024; FOLLY_FALLTHROUGH;
-  case 'g': size *= 1024; FOLLY_FALLTHROUGH;
-  case 'm': size *= 1024; FOLLY_FALLTHROUGH;
-  case 'k': size *= 1024;
-  }
-  return size;
+  auto const size = to<size_t>(numStr);
+  auto const mult = [c] {
+    switch (c) {
+      case 't':
+        return 1ull << 40;
+      case 'g':
+        return 1ull << 30;
+      case 'm':
+        return 1ull << 20;
+      case 'k':
+        return 1ull << 10;
+      default:
+        return 1ull << 0;
+    }
+  }();
+  return size * mult;
 }
 
 /**
