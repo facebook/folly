@@ -58,11 +58,12 @@ ElfCache* defaultElfCache() {
   return cache;
 }
 
-}  // namespace
+} // namespace
 
-void SymbolizedFrame::set(const std::shared_ptr<ElfFile>& file,
-                          uintptr_t address,
-                          Dwarf::LocationInfoMode mode) {
+void SymbolizedFrame::set(
+    const std::shared_ptr<ElfFile>& file,
+    uintptr_t address,
+    Dwarf::LocationInfoMode mode) {
   clear();
   found = true;
 
@@ -79,12 +80,12 @@ void SymbolizedFrame::set(const std::shared_ptr<ElfFile>& file,
 }
 
 Symbolizer::Symbolizer(ElfCacheBase* cache, Dwarf::LocationInfoMode mode)
-  : cache_(cache ? cache : defaultElfCache()), mode_(mode) {
-}
+    : cache_(cache ? cache : defaultElfCache()), mode_(mode) {}
 
-void Symbolizer::symbolize(const uintptr_t* addresses,
-                           SymbolizedFrame* frames,
-                           size_t addrCount) {
+void Symbolizer::symbolize(
+    const uintptr_t* addresses,
+    SymbolizedFrame* frames,
+    size_t addrCount) {
   size_t remaining = 0;
   for (size_t i = 0; i < addrCount; ++i) {
     auto& frame = frames[i];
@@ -94,7 +95,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
     }
   }
 
-  if (remaining == 0) {  // we're done
+  if (remaining == 0) { // we're done
     return;
   }
 
@@ -110,8 +111,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
   }
   selfPath[selfSize] = '\0';
 
-  for (auto lmap = _r_debug.r_map;
-       lmap != nullptr && remaining != 0;
+  for (auto lmap = _r_debug.r_map; lmap != nullptr && remaining != 0;
        lmap = lmap->l_next) {
     // The empty string is used in place of the filename for the link_map
     // corresponding to the running executable.  Additionally, the `l_addr' is
@@ -129,9 +129,8 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
     // header for the running executable, since its `l_addr' is zero, but we
     // should use `l_addr' for everything else---in particular, if the object
     // is position-independent, getBaseAddress() (which is p_vaddr) will be 0.
-    auto const base = lmap->l_addr != 0
-      ? lmap->l_addr
-      : elfFile->getBaseAddress();
+    auto const base =
+        lmap->l_addr != 0 ? lmap->l_addr : elfFile->getBaseAddress();
 
     for (size_t i = 0; i < addrCount && remaining != 0; ++i) {
       auto& frame = frames[i];
@@ -156,7 +155,7 @@ constexpr char kHexChars[] = "0123456789abcdef";
 constexpr auto kAddressColor = SymbolizePrinter::Color::BLUE;
 constexpr auto kFunctionColor = SymbolizePrinter::Color::PURPLE;
 constexpr auto kFileColor = SymbolizePrinter::Color::DEFAULT;
-}  // namespace
+} // namespace
 
 constexpr char AddressFormatter::bufTemplate[];
 constexpr std::array<const char*, SymbolizePrinter::Color::NUM>
@@ -186,7 +185,9 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
     return;
   }
 
-  SCOPE_EXIT { color(Color::DEFAULT); };
+  SCOPE_EXIT {
+    color(Color::DEFAULT);
+  };
 
   if (!(options_ & NO_FRAME_ADDRESS)) {
     color(kAddressColor);
@@ -196,8 +197,8 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   }
 
   const char padBuf[] = "                       ";
-  folly::StringPiece pad(padBuf,
-                         sizeof(padBuf) - 1 - (16 - 2 * sizeof(uintptr_t)));
+  folly::StringPiece pad(
+      padBuf, sizeof(padBuf) - 1 - (16 - 2 * sizeof(uintptr_t)));
 
   color(kFunctionColor);
   if (!frame.found) {
@@ -245,8 +246,7 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
 }
 
 void SymbolizePrinter::color(SymbolizePrinter::Color color) {
-  if ((options_ & COLOR) == 0 &&
-      ((options_ & COLOR_IF_TTY) == 0 || !isTty_)) {
+  if ((options_ & COLOR) == 0 && ((options_ & COLOR_IF_TTY) == 0 || !isTty_)) {
     return;
   }
   if (color < 0 || color >= kColorMap.size()) {
@@ -255,14 +255,16 @@ void SymbolizePrinter::color(SymbolizePrinter::Color color) {
   doPrint(kColorMap[color]);
 }
 
-void SymbolizePrinter::println(uintptr_t address,
-                               const SymbolizedFrame& frame) {
+void SymbolizePrinter::println(
+    uintptr_t address,
+    const SymbolizedFrame& frame) {
   print(address, frame);
   doPrint("\n");
 }
 
-void SymbolizePrinter::printTerse(uintptr_t address,
-                                  const SymbolizedFrame& frame) {
+void SymbolizePrinter::printTerse(
+    uintptr_t address,
+    const SymbolizedFrame& frame) {
   if (frame.found && frame.name && frame.name[0] != '\0') {
     char demangledBuf[2048] = {0};
     demangle(frame.name, demangledBuf, sizeof(demangledBuf));
@@ -282,9 +284,10 @@ void SymbolizePrinter::printTerse(uintptr_t address,
   }
 }
 
-void SymbolizePrinter::println(const uintptr_t* addresses,
-                               const SymbolizedFrame* frames,
-                               size_t frameCount) {
+void SymbolizePrinter::println(
+    const uintptr_t* addresses,
+    const SymbolizedFrame* frames,
+    size_t frameCount) {
   for (size_t i = 0; i < frameCount; ++i) {
     println(addresses[i], frames[i]);
   }
@@ -309,36 +312,34 @@ int getFD(const std::ios& stream) {
       return sbuf->fd();
     }
   }
-#endif  // __GNUC__
+#endif // __GNUC__
   return -1;
 }
 
 bool isColorfulTty(int options, int fd) {
   if ((options & SymbolizePrinter::TERSE) != 0 ||
-      (options & SymbolizePrinter::COLOR_IF_TTY) == 0 ||
-      fd < 0 || !::isatty(fd)) {
+      (options & SymbolizePrinter::COLOR_IF_TTY) == 0 || fd < 0 ||
+      !::isatty(fd)) {
     return false;
   }
   auto term = ::getenv("TERM");
   return !(term == nullptr || term[0] == '\0' || strcmp(term, "dumb") == 0);
 }
 
-}  // anonymous namespace
+} // anonymous namespace
 
 OStreamSymbolizePrinter::OStreamSymbolizePrinter(std::ostream& out, int options)
-  : SymbolizePrinter(options, isColorfulTty(options, getFD(out))),
-    out_(out) {
-}
+    : SymbolizePrinter(options, isColorfulTty(options, getFD(out))),
+      out_(out) {}
 
 void OStreamSymbolizePrinter::doPrint(StringPiece sp) {
   out_ << sp;
 }
 
 FDSymbolizePrinter::FDSymbolizePrinter(int fd, int options, size_t bufferSize)
-  : SymbolizePrinter(options, isColorfulTty(options, fd)),
-    fd_(fd),
-    buffer_(bufferSize ? IOBuf::create(bufferSize) : nullptr) {
-}
+    : SymbolizePrinter(options, isColorfulTty(options, fd)),
+      fd_(fd),
+      buffer_(bufferSize ? IOBuf::create(bufferSize) : nullptr) {}
 
 FDSymbolizePrinter::~FDSymbolizePrinter() {
   flush();
@@ -366,9 +367,8 @@ void FDSymbolizePrinter::flush() {
 }
 
 FILESymbolizePrinter::FILESymbolizePrinter(FILE* file, int options)
-  : SymbolizePrinter(options, isColorfulTty(options, fileno(file))),
-    file_(file) {
-}
+    : SymbolizePrinter(options, isColorfulTty(options, fileno(file))),
+      file_(file) {}
 
 void FILESymbolizePrinter::doPrint(StringPiece sp) {
   fwrite(sp.data(), 1, sp.size(), file_);
@@ -422,5 +422,5 @@ void StackTracePrinter::printStackTrace(bool symbolize) {
   }
 }
 
-}  // namespace symbolizer
-}  // namespace folly
+} // namespace symbolizer
+} // namespace folly

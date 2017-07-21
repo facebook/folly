@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include <folly/experimental/symbolizer/Elf.h>
 
 #include <stdio.h>
@@ -26,7 +25,7 @@
 using namespace folly;
 using namespace folly::symbolizer;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_GE(argc, 2);
 
@@ -34,9 +33,7 @@ int main(int argc, char *argv[]) {
 
   if (argc > 2) {
     auto section = elf.getSectionByName(argv[2]);
-    printf("Section %s: %s\n",
-           argv[2],
-           (section ? "found" : "not found"));
+    printf("Section %s: %s\n", argv[2], (section ? "found" : "not found"));
   }
 
   auto sym = elf.getDefinitionByAddress(reinterpret_cast<uintptr_t>(main));

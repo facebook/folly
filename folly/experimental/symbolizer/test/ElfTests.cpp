@@ -29,8 +29,7 @@ class ElfTest : public ::testing::Test {
   // Path to the test binary itself; set by main()
   static std::string binaryPath;
 
-  ElfTest() : elfFile_(binaryPath.c_str()) {
-  }
+  ElfTest() : elfFile_(binaryPath.c_str()) {}
   ~ElfTest() override {}
 
  protected:
@@ -41,17 +40,15 @@ std::string ElfTest::binaryPath;
 
 TEST_F(ElfTest, IntegerValue) {
   auto sym = elfFile_.getSymbolByName("kIntegerValue");
-  EXPECT_NE(nullptr, sym.first) <<
-    "Failed to look up symbol kIntegerValue";
+  EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kIntegerValue";
   EXPECT_EQ(kIntegerValue, elfFile_.getSymbolValue<uint64_t>(sym.second));
 }
 
 TEST_F(ElfTest, PointerValue) {
   auto sym = elfFile_.getSymbolByName("kStringValue");
-  EXPECT_NE(nullptr, sym.first) <<
-    "Failed to look up symbol kStringValue";
+  EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kStringValue";
   ElfW(Addr) addr = elfFile_.getSymbolValue<ElfW(Addr)>(sym.second);
-  const char *str = &elfFile_.getAddressValue<const char>(addr);
+  const char* str = &elfFile_.getAddressValue<const char>(addr);
   EXPECT_STREQ(kStringValue, str);
 }
 

@@ -19,7 +19,8 @@
 #include <cstdint>
 #include <cstdlib>
 
-namespace folly { namespace symbolizer {
+namespace folly {
+namespace symbolizer {
 
 /**
  * Get the current stack trace into addresses, which has room for at least
@@ -42,5 +43,5 @@ ssize_t getStackTrace(uintptr_t* addresses, size_t maxAddresses);
  * Async-signal-safe, but likely slower.
  */
 ssize_t getStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
-
-}}  // namespaces
+} // namespace symbolizer
+} // namespace folly

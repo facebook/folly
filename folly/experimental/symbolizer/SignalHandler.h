@@ -18,7 +18,8 @@
 
 #include <functional>
 
-namespace folly { namespace symbolizer {
+namespace folly {
+namespace symbolizer {
 
 /**
  * Install handler for fatal signals. The list of signals being handled is in
@@ -47,5 +48,5 @@ void addFatalSignalCallback(SignalCallback callback);
  * callbacks in the order in which they were added.
  */
 void installFatalSignalCallbacks();
-
-}}  // namespaces
+} // namespace symbolizer
+} // namespace folly

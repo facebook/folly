@@ -26,7 +26,8 @@
  */
 extern struct r_debug _r_debug;
 
-namespace folly { namespace symbolizer {
+namespace folly {
+namespace symbolizer {
 
 size_t countLoadedElfFiles() {
   // _r_debug synchronization is... lacking to say the least. It's
@@ -88,7 +89,7 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   return f;
 }
 
-ElfCache::ElfCache(size_t capacity) : capacity_(capacity) { }
+ElfCache::ElfCache(size_t capacity) : capacity_(capacity) {}
 
 std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -129,5 +130,5 @@ std::shared_ptr<ElfFile> ElfCache::filePtr(const std::shared_ptr<Entry>& e) {
   // share ownership
   return std::shared_ptr<ElfFile>(e, &e->file);
 }
-
-}}  // namespaces
+} // namespace symbolizer
+} // namespace folly

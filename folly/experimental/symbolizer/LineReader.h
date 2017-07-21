@@ -22,7 +22,8 @@
 
 #include <folly/Range.h>
 
-namespace folly { namespace symbolizer {
+namespace folly {
+namespace symbolizer {
 
 /**
  * Async-signal-safe line reader.
@@ -38,7 +39,7 @@ class LineReader : private boost::noncopyable {
   enum State {
     kReading,
     kEof,
-    kError
+    kError,
   };
   /**
    * Read the next line from the file.
@@ -83,5 +84,5 @@ class LineReader : private boost::noncopyable {
   char* end_;
   State state_;
 };
-
-}}  // namespaces
+} // namespace symbolizer
+} // namespace folly

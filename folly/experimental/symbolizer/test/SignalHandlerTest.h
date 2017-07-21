@@ -16,10 +16,13 @@
 
 #pragma once
 
-namespace folly { namespace symbolizer { namespace test {
+namespace folly {
+namespace symbolizer {
+namespace test {
 
 inline void failHard() {
-  *(/* nolint */ volatile char*)42;  // SIGSEGV
+  *(/* nolint */ volatile char*)42; // SIGSEGV
 }
-
-}}}  // namespaces
+} // namespace test
+} // namespace symbolizer
+} // namespace folly

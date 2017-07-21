@@ -33,7 +33,8 @@
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 
-namespace folly { namespace symbolizer {
+namespace folly {
+namespace symbolizer {
 
 /**
  * Number of ELF files loaded by the dynamic loader.
@@ -43,7 +44,7 @@ size_t countLoadedElfFiles();
 class ElfCacheBase {
  public:
   virtual std::shared_ptr<ElfFile> getFile(StringPiece path) = 0;
-  virtual ~ElfCacheBase() { }
+  virtual ~ElfCacheBase() {}
 };
 
 /**
@@ -139,8 +140,9 @@ class ElfCache : public ElfCacheBase {
   typedef boost::intrusive::list<
       Entry,
       boost::intrusive::member_hook<Entry, LruLink, &Entry::lruLink>,
-      boost::intrusive::constant_time_size<false>> LruList;
+      boost::intrusive::constant_time_size<false>>
+      LruList;
   LruList lruList_;
 };
-
-}}  // namespaces
+} // namespace symbolizer
+} // namespace folly
