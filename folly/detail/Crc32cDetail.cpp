@@ -29,6 +29,8 @@
  * other code cleanup
  */
 
+#include <stdexcept>
+
 #include <folly/detail/ChecksumDetail.h>
 
 #include <folly/CppAttributes.h>
