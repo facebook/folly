@@ -21,7 +21,7 @@
 
 #include <folly/FBString.h>
 #include <folly/Portability.h>
-#include <folly/SpookyHashV2.h>
+#include <folly/hash/SpookyHashV2.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/String.h>
