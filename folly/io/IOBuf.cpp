@@ -30,7 +30,7 @@
 #include <folly/Malloc.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
-#include <folly/hash/SpookyHashV2.h>
+#include <folly/SpookyHashV2.h>
 #include <folly/io/Cursor.h>
 
 using std::unique_ptr;

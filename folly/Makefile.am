@@ -207,8 +207,6 @@ nobase_follyinclude_HEADERS = \
 	futures/detail/FSM.h \
 	futures/detail/Types.h \
 	futures/test/TestExecutor.h \
-	hash/SpookyHashV1.h \
-	hash/SpookyHashV2.h \
 	gen/Base.h \
 	gen/Base-inl.h \
 	gen/Combine.h \
@@ -378,6 +376,8 @@ nobase_follyinclude_HEADERS = \
 	sorted_vector_types.h \
 	SparseByteSet.h \
 	SpinLock.h \
+	SpookyHashV1.h \
+	SpookyHashV2.h \
 	ssl/OpenSSLCertUtils.h \
 	ssl/OpenSSLHash.h \
 	ssl/OpenSSLPtrTypes.h \
@@ -477,8 +477,6 @@ libfolly_la_SOURCES = \
 	detail/Futex.cpp \
 	detail/StaticSingletonManager.cpp \
 	detail/ThreadLocalDetail.cpp \
-	hash/SpookyHashV1.cpp \
-	hash/SpookyHashV2.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
 	IPAddress.cpp \
@@ -550,6 +548,8 @@ libfolly_la_SOURCES = \
 	Optional.cpp \
 	Singleton.cpp \
 	SocketAddress.cpp \
+	SpookyHashV1.cpp \
+	SpookyHashV2.cpp \
 	ssl/OpenSSLCertUtils.cpp \
 	ssl/OpenSSLHash.cpp \
 	ssl/detail/SSLSessionImpl.cpp \

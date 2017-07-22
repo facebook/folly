@@ -217,11 +217,11 @@ portability_test_SOURCES = PortabilityTest.cpp
 portability_test_LDADD = libfollytestmain.la
 TESTS += portability_test
 
-spooky_hash_v1_test_SOURCES = ../hash/test/SpookyHashV1Test.cpp
+spooky_hash_v1_test_SOURCES = SpookyHashV1Test.cpp
 spooky_hash_v1_test_LDADD = libfollytestmain.la  $(top_builddir)/libfollybenchmark.la
 TESTS += spooky_hash_v1_test
 
-spooky_hash_v2_test_SOURCES = ../hash/test/SpookyHashV2Test.cpp
+spooky_hash_v2_test_SOURCES = SpookyHashV2Test.cpp
 spooky_hash_v2_test_LDADD = libfollytestmain.la  $(top_builddir)/libfollybenchmark.la
 TESTS += spooky_hash_v2_test
 

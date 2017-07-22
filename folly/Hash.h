@@ -26,8 +26,8 @@
 
 #include <folly/ApplyTuple.h>
 #include <folly/Bits.h>
-#include <folly/hash/SpookyHashV1.h>
-#include <folly/hash/SpookyHashV2.h>
+#include <folly/SpookyHashV1.h>
+#include <folly/SpookyHashV2.h>
 
 /*
  * Various hashing functions.
