@@ -376,3 +376,45 @@ TEST(Hash, Strings) {
   EXPECT_EQ(h2(a3), h2(a3.str()));
   EXPECT_EQ(h2(a4), h2(a4.str()));
 }
+
+struct FNVTestParam {
+  std::string in;
+  uint64_t out;
+};
+
+class FNVTest : public ::testing::TestWithParam<FNVTestParam> {};
+
+TEST_P(FNVTest, Fnva64Buf) {
+  EXPECT_EQ(GetParam().out,
+            fnva64_buf(GetParam().in.data(), GetParam().in.size()));
+}
+
+TEST_P(FNVTest, Fnva64) {
+  EXPECT_EQ(GetParam().out, fnva64(GetParam().in));
+}
+
+TEST_P(FNVTest, Fnva64Partial) {
+  size_t partialLen = GetParam().in.size() / 2;
+  auto data = GetParam().in.data();
+  auto partial = fnva64_buf(data, partialLen);
+  EXPECT_EQ(GetParam().out,
+            fnva64_buf(
+                data + partialLen, GetParam().in.size() - partialLen, partial));
+}
+
+// Taken from http://www.isthe.com/chongo/src/fnv/test_fnv.c
+INSTANTIATE_TEST_CASE_P(
+    FNVTesting,
+    FNVTest,
+    ::testing::Values(
+        (FNVTestParam){"foobar", // 11
+                       0x85944171f73967e8},
+        (FNVTestParam){"chongo was here!\n", // 39
+                       0x46810940eff5f915},
+        (FNVTestParam){"127.0.0.3", // 106,
+                       0xaabafc7104d91158},
+        (FNVTestParam){
+            "http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash", // 126
+            0xd9b957fb7fe794c5},
+        (FNVTestParam){"http://norvig.com/21-days.html", // 136
+                       0x07aaa640476e0b9a}));

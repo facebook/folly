@@ -214,6 +214,7 @@ inline uint32_t jenkins_rev_unmix32(uint32_t key) {
 
 const uint32_t FNV_32_HASH_START = 2166136261UL;
 const uint64_t FNV_64_HASH_START = 14695981039346656037ULL;
+const uint64_t FNVA_64_HASH_START = 14695981039346656037ULL;
 
 inline uint32_t fnv32(const char* buf, uint32_t hash = FNV_32_HASH_START) {
   // forcing signed char, since other platforms can use unsigned
@@ -276,6 +277,24 @@ inline uint64_t fnv64_buf(const void* buf,
 inline uint64_t fnv64(const std::string& str,
                       uint64_t hash = FNV_64_HASH_START) {
   return fnv64_buf(str.data(), str.size(), hash);
+}
+
+inline uint64_t fnva64_buf(const void* buf,
+                           size_t n,
+                           uint64_t hash = FNVA_64_HASH_START) {
+  const uint8_t* char_buf = reinterpret_cast<const uint8_t*>(buf);
+
+  for (size_t i = 0; i < n; ++i) {
+    hash ^= char_buf[i];
+    hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) +
+            (hash << 8) + (hash << 40);
+  }
+  return hash;
+}
+
+inline uint64_t fnva64(const std::string& str,
+                       uint64_t hash = FNVA_64_HASH_START) {
+  return fnva64_buf(str.data(), str.size(), hash);
 }
 
 /*
