@@ -39,6 +39,11 @@ class UsingUninitializedTry : public TryException {
   UsingUninitializedTry() : TryException("Using uninitialized try") {}
 };
 
+namespace try_detail {
+[[noreturn]] void throwTryDoesNotContainException();
+[[noreturn]] void throwUsingUninitializedTry();
+} // namespace try_detail
+
 /*
  * Try<T> is a wrapper that contains either an instance of T, an exception, or
  * nothing. Exceptions are stored as exception_wrappers so that the user can
@@ -204,15 +209,15 @@ class Try {
   }
 
   exception_wrapper& exception() {
-    if (UNLIKELY(!hasException())) {
-      throw TryException("exception(): Try does not contain an exception");
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
     }
     return e_;
   }
 
   const exception_wrapper& exception() const {
-    if (UNLIKELY(!hasException())) {
-      throw TryException("exception(): Try does not contain an exception");
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
     }
     return e_;
   }
@@ -380,15 +385,15 @@ class Try<void> {
    * @returns mutable reference to the exception contained by this Try
    */
   exception_wrapper& exception() {
-    if (UNLIKELY(!hasException())) {
-      throw TryException("exception(): Try does not contain an exception");
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
     }
     return e_;
   }
 
   const exception_wrapper& exception() const {
-    if (UNLIKELY(!hasException())) {
-      throw TryException("exception(): Try does not contain an exception");
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
     }
     return e_;
   }

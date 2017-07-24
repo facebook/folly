@@ -561,6 +561,7 @@ libfolly_la_SOURCES = \
 	ThreadCachedArena.cpp \
 	ThreadName.cpp \
 	TimeoutQueue.cpp \
+	Try.cpp \
 	Uri.cpp \
 	Version.cpp \
 	experimental/AsymmetricMemoryBarrier.cpp \

@@ -117,12 +117,13 @@ const T& Try<T>::value() const & {
 
 template <class T>
 void Try<T>::throwIfFailed() const {
-  if (contains_ != Contains::VALUE) {
-    if (contains_ == Contains::EXCEPTION) {
+  switch (contains_) {
+    case Contains::VALUE:
+      return;
+    case Contains::EXCEPTION:
       e_.throw_exception();
-    } else {
-      throw UsingUninitializedTry();
-    }
+    default:
+      try_detail::throwUsingUninitializedTry();
   }
 }
 
