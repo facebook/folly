@@ -21,9 +21,9 @@
 
 #include <folly/RWSpinLock.h>
 #include <folly/Range.h>
-#include <folly/SpookyHashV2.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
+#include <folly/hash/SpookyHashV2.h>
 
 #include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
 #include <folly/experimental/exception_tracer/StackTrace.h>
