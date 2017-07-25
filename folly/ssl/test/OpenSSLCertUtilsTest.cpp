@@ -20,8 +20,8 @@
 #include <folly/String.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/Init.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
-#include <folly/ssl/Init.H>
 
 using namespace testing;
 using namespace folly;
