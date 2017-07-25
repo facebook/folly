@@ -190,58 +190,13 @@ TEST(AsyncSSLSocketTest2, AttachDetachSSLContext) {
   EXPECT_TRUE(f.within(std::chrono::seconds(3)).get());
 }
 
-TEST(AsyncSSLSocketTest2, SSLContextLocks) {
-  SSLContext::initializeOpenSSL();
-// these are checks based on the locks that are set in the main below
-#ifdef CRYPTO_LOCK_EVP_PKEY
-  EXPECT_TRUE(SSLContext::isSSLLockDisabled(CRYPTO_LOCK_EVP_PKEY));
-#endif
-#ifdef CRYPTO_LOCK_SSL_SESSION
-  EXPECT_FALSE(SSLContext::isSSLLockDisabled(CRYPTO_LOCK_SSL_SESSION));
-#endif
-#ifdef CRYPTO_LOCK_ERR
-  EXPECT_FALSE(SSLContext::isSSLLockDisabled(CRYPTO_LOCK_ERR));
-#endif
-}
 
-TEST(AsyncSSLSocketTest2, SSLContextLocksSetAfterInitIgnored) {
-  SSLContext::initializeOpenSSL();
-  SSLContext::setSSLLockTypes({});
-#ifdef CRYPTO_LOCK_EVP_PKEY
-  EXPECT_TRUE(SSLContext::isSSLLockDisabled(CRYPTO_LOCK_EVP_PKEY));
-#endif
-}
-
-TEST(AsyncSSLSocketTest2, SSLContextSetLocksAndInitialize) {
-  SSLContext::cleanupOpenSSL();
-  SSLContext::setSSLLockTypesAndInitOpenSSL({});
-  EXPECT_DEATH(
-      SSLContext::setSSLLockTypesAndInitOpenSSL({}),
-      "OpenSSL is already initialized");
-
-  SSLContext::cleanupOpenSSL();
-  SSLContext::initializeOpenSSL();
-  EXPECT_DEATH(
-      SSLContext::setSSLLockTypesAndInitOpenSSL({}),
-      "OpenSSL is already initialized");
-}
 }  // folly
 
 int main(int argc, char *argv[]) {
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 #endif
-  folly::SSLContext::setSSLLockTypes({
-#ifdef CRYPTO_LOCK_EVP_PKEY
-      {CRYPTO_LOCK_EVP_PKEY, folly::SSLContext::LOCK_NONE},
-#endif
-#ifdef CRYPTO_LOCK_SSL_SESSION
-      {CRYPTO_LOCK_SSL_SESSION, folly::SSLContext::LOCK_SPINLOCK},
-#endif
-#ifdef CRYPTO_LOCK_SSL_CTX
-      {CRYPTO_LOCK_SSL_CTX, folly::SSLContext::LOCK_NONE}
-#endif
-  });
   testing::InitGoogleTest(&argc, argv);
   folly::init(&argc, &argv);
   return RUN_ALL_TESTS();

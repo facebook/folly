@@ -30,9 +30,11 @@
 #include <folly/folly-config.h>
 #endif
 
+#include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/OpenSSLLockTypes.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
@@ -421,8 +423,6 @@ class SSLContext {
     return ctx_;
   }
 
-  enum SSLLockType { LOCK_MUTEX, LOCK_SPINLOCK, LOCK_SHAREDMUTEX, LOCK_NONE };
-
   /**
    * Set preferences for how to treat locks in OpenSSL.  This must be
    * called before the instantiation of any SSLContext objects, otherwise
@@ -443,24 +443,8 @@ class SSLContext {
    *
    * setSSLLockTypes({{CRYPTO_LOCK_SSL_SESSION, SSLContext::LOCK_NONE}})
    */
-  static void setSSLLockTypes(std::map<int, SSLLockType> lockTypes);
-
-  /**
-   * Set the lock types and initialize OpenSSL in an atomic fashion.  This
-   * aborts if the library has already been initialized.
-   */
-  static void setSSLLockTypesAndInitOpenSSL(
-      std::map<int, SSLLockType> lockTypes);
-
-  /**
-   * Determine if the SSL lock with the specified id (i.e.
-   * CRYPTO_LOCK_SSL_SESSION) is disabled.  This should be called after
-   * initializeOpenSSL.  This will only check if the specified lock has been
-   * explicitly set to LOCK_NONE.
-   *
-   * This is not safe to call while setSSLLockTypes is being called.
-   */
-  static bool isSSLLockDisabled(int lockId);
+  FOLLY_DEPRECATED("Use folly::ssl::setLockTypes")
+  static void setSSLLockTypes(std::map<int, ssl::LockType> lockTypes);
 
   /**
    * Examine OpenSSL's error stack, and return a string description of the
@@ -498,24 +482,8 @@ class SSLContext {
    */
   static bool matchName(const char* host, const char* pattern, int size);
 
-  /**
-   * Functions for setting up and cleaning up openssl.
-   * They can be invoked during the start of the application.
-   */
+  FOLLY_DEPRECATED("Use folly::ssl::init")
   static void initializeOpenSSL();
-  static void cleanupOpenSSL();
-
-  /**
-   * Mark openssl as initialized without actually performing any initialization.
-   * Please use this only if you are using a library which requires that it must
-   * make its own calls to SSL_library_init() and related functions.
-   */
-  static void markInitialized();
-
-  /**
-   * Default randomize method.
-   */
-  static void randomize();
 
  protected:
   SSL_CTX* ctx_;
@@ -551,8 +519,6 @@ class SSLContext {
   std::vector<AdvertisedNextProtocolsItem> advertisedNextProtocols_;
   std::vector<int> advertisedNextProtocolWeights_;
   std::discrete_distribution<int> nextProtocolDistribution_;
-
-  static int sNextProtocolsExDataIndex_;
 
   static int advertisedNextProtocolCallback(SSL* ssl,
       const unsigned char** out, unsigned int* outlen, void* data);
@@ -593,11 +559,6 @@ class SSLContext {
 #endif
 
   std::string providedCiphersString_;
-
-  // Functions are called when locked by the calling function.
-  static void initializeOpenSSLLocked();
-  static void cleanupOpenSSLLocked();
-  static void setSSLLockTypesLocked(std::map<int, SSLLockType> inLockTypes);
 };
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;

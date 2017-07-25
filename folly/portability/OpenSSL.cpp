@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/detail/OpenSSLThreading.h>
 
 #include <stdexcept>
 
@@ -357,7 +358,41 @@ void ECDSA_SIG_get0(
     *ps = sig->s;
   }
 }
-#endif
+
+/**
+ * Compatibility shim for OpenSSL < 1.1.0.
+ *
+ * For now, options and settings are ignored. We implement the most common
+ * behavior, which is to add all digests, ciphers, and strings.
+ */
+int OPENSSL_init_ssl(uint64_t, const OPENSSL_INIT_SETTINGS*) {
+  // OpenSSL >= 1.1.0 handles initializing the library, adding digests &
+  // ciphers, loading strings. Additionally, OpenSSL >= 1.1.0 uses platform
+  // native threading & mutexes, which means that we should handle setting up
+  // the necessary threading initialization in the compat layer as well.
+  SSL_library_init();
+  OpenSSL_add_all_ciphers();
+  OpenSSL_add_all_digests();
+  OpenSSL_add_all_algorithms();
+
+  SSL_load_error_strings();
+  ERR_load_crypto_strings();
+
+  // The caller should have used SSLContext::setLockTypes() prior to calling
+  // this function.
+  folly::ssl::detail::installThreadingLocks();
+  return 0;
+}
+
+void OPENSSL_cleanup() {
+  folly::ssl::detail::cleanupThreadingLocks();
+  CRYPTO_cleanup_all_ex_data();
+  ERR_free_strings();
+  EVP_cleanup();
+  ERR_clear_error();
+}
+
+#endif // !FOLLY_OPENSSL_IS_110
 }
 }
 }

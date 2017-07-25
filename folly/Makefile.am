@@ -379,11 +379,14 @@ nobase_follyinclude_HEADERS = \
 	sorted_vector_types.h \
 	SparseByteSet.h \
 	SpinLock.h \
+	ssl/Init.h \
 	ssl/OpenSSLCertUtils.h \
 	ssl/OpenSSLHash.h \
 	ssl/OpenSSLPtrTypes.h \
 	ssl/OpenSSLVersionFinder.h \
 	ssl/SSLSession.h \
+	ssl/OpenSSLLockTypes.h \
+	ssl/detail/OpenSSLThreading.h \
 	ssl/detail/SSLSessionImpl.h \
 	stats/detail/Bucket.h \
 	stats/BucketedTimeSeries-defs.h \
@@ -551,8 +554,10 @@ libfolly_la_SOURCES = \
 	Optional.cpp \
 	Singleton.cpp \
 	SocketAddress.cpp \
+	ssl/Init.cpp \
 	ssl/OpenSSLCertUtils.cpp \
 	ssl/OpenSSLHash.cpp \
+	ssl/detail/OpenSSLThreading.cpp \
 	ssl/detail/SSLSessionImpl.cpp \
 	stats/BucketedTimeSeries.cpp \
 	stats/Histogram.cpp \

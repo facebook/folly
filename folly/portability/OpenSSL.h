@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 // This must come before the OpenSSL includes.
 #include <folly/portability/Windows.h>
 
@@ -166,6 +168,11 @@ void RSA_get0_crt_params(
     const BIGNUM** iqmp);
 int ECDSA_SIG_set0(ECDSA_SIG* sig, BIGNUM* r, BIGNUM* s);
 void ECDSA_SIG_get0(const ECDSA_SIG* sig, const BIGNUM** pr, const BIGNUM** ps);
+
+using OPENSSL_INIT_SETTINGS = void;
+int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS* settings);
+void OPENSSL_cleanup();
+
 #endif
 
 #if FOLLY_OPENSSL_IS_110
