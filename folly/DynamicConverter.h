@@ -25,6 +25,7 @@
 #include <boost/mpl/has_xxx.hpp>
 
 #include <folly/Likely.h>
+#include <folly/Optional.h>
 #include <folly/Traits.h>
 #include <folly/dynamic.h>
 
@@ -102,28 +103,32 @@ namespace dynamicconverter_detail {
 template<typename T>
 struct Dereferencer {
   static inline void derefToCache(
-      T* /* mem */, const dynamic::const_item_iterator& /* it */) {
+      Optional<T>* /* mem */,
+      const dynamic::const_item_iterator& /* it */) {
     throw TypeError("array", dynamic::Type::OBJECT);
   }
 
-  static inline void derefToCache(T* mem, const dynamic::const_iterator& it) {
-    new (mem) T(convertTo<T>(*it));
+  static inline void derefToCache(
+      Optional<T>* mem,
+      const dynamic::const_iterator& it) {
+    mem->emplace(convertTo<T>(*it));
   }
 };
 
 template<typename F, typename S>
 struct Dereferencer<std::pair<F, S>> {
-  static inline void
-  derefToCache(std::pair<F, S>* mem, const dynamic::const_item_iterator& it) {
-    new (mem) std::pair<F, S>(
-        convertTo<F>(it->first), convertTo<S>(it->second)
-    );
+  static inline void derefToCache(
+      Optional<std::pair<F, S>>* mem,
+      const dynamic::const_item_iterator& it) {
+    mem->emplace(convertTo<F>(it->first), convertTo<S>(it->second));
   }
 
   // Intentional duplication of the code in Dereferencer
   template <typename T>
-  static inline void derefToCache(T* mem, const dynamic::const_iterator& it) {
-    new (mem) T(convertTo<T>(*it));
+  static inline void derefToCache(
+      Optional<T>* mem,
+      const dynamic::const_iterator& it) {
+    mem->emplace(convertTo<T>(*it));
   }
 };
 
@@ -135,26 +140,22 @@ class Transformer
 
   typedef typename T::value_type ttype;
 
-  mutable ttype cache_;
-  mutable bool valid_;
+  mutable Optional<ttype> cache_;
 
   void increment() {
     ++this->base_reference();
-    valid_ = false;
+    cache_ = none;
   }
 
   ttype& dereference() const {
-    if (LIKELY(!valid_)) {
-      cache_.~ttype();
+    if (!cache_) {
       Dereferencer<ttype>::derefToCache(&cache_, this->base_reference());
-      valid_ = true;
     }
-    return cache_;
+    return cache_.value();
   }
 
  public:
-  explicit Transformer(const It& it)
-      : Transformer::iterator_adaptor_(it), valid_(false) {}
+  explicit Transformer(const It& it) : Transformer::iterator_adaptor_(it) {}
 };
 
 // conversion factory
