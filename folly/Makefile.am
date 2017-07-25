@@ -364,6 +364,7 @@ nobase_follyinclude_HEADERS = \
 	Random.h \
 	Random-inl.h \
 	Range.h \
+	Replaceable.h \
 	RWSpinLock.h \
 	SafeAssert.h \
 	ScopeGuard.h \
