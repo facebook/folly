@@ -16,6 +16,7 @@
 #include <folly/experimental/logging/Init.h>
 #include <folly/experimental/logging/xlog.h>
 #include <folly/init/Init.h>
+#include <folly/portability/GFlags.h>
 
 #include <folly/experimental/logging/example/lib.h>
 
