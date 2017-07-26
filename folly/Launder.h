@@ -16,17 +16,10 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/Portability.h>
 
 namespace folly {
-
-#ifdef __GNUC__
-#ifdef __has_builtin
-#if __has_builtin(__builtin_launder)
-#define FOLLY_USE_BUILTIN_LAUNDER 1
-#endif
-#endif
-#endif
 
 /**
  * Approximate backport from C++17 of std::launder. It should be `constexpr`
@@ -34,25 +27,19 @@ namespace folly {
  */
 template <typename T>
 FOLLY_NODISCARD inline T* launder(T* in) noexcept {
-#ifdef __GNUC__
-#ifdef FOLLY_USE_BUILTIN_LAUNDER
-  // Newer GCC versions have a builtin for this with no unwanted side-effects
+#if FOLLY_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
+  // The builtin has no unwanted side-effects.
   return __builtin_launder(in);
-#else
+#elif __GNUC__
   // This inline assembler block declares that `in` is an input and an output,
   // so the compiler has to assume that it has been changed inside the block.
   __asm__("" : "+r"(in));
   return in;
-#endif
 #else
   static_assert(
       false, "folly::launder is not implemented for this environment");
 #endif
 }
-
-#ifdef FOLLY_USE_BUILTIN_LAUNDER
-#undef FOLLY_USE_BUILTIN_LAUNDER
-#endif
 
 /* The standard explicitly forbids laundering these */
 void launder(void*) = delete;

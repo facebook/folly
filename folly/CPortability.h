@@ -45,6 +45,12 @@
 # endif
 #endif
 
+#if defined(__has_builtin)
+#define FOLLY_HAS_BUILTIN(...) __has_builtin(__VA_ARGS__)
+#else
+#define FOLLY_HAS_BUILTIN(...) 0
+#endif
+
 /* Define a convenience macro to test when address sanitizer is being used
  * across the different compilers (e.g. clang, gcc) */
 #if defined(__clang__)
