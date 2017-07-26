@@ -387,55 +387,6 @@ int SSLContext::baseServerNameOpenSSLCallback(SSL* ssl, int* al, void* data) {
 
   return SSL_TLSEXT_ERR_NOACK;
 }
-
-void SSLContext::switchCiphersIfTLS11(
-    SSL* ssl,
-    const std::string& tls11CipherString,
-    const std::vector<std::pair<std::string, int>>& tls11AltCipherlist) {
-  CHECK(!(tls11CipherString.empty() && tls11AltCipherlist.empty()))
-      << "Shouldn't call if empty ciphers / alt ciphers";
-
-  if (TLS1_get_client_version(ssl) <= TLS1_VERSION) {
-    // We only do this for TLS v 1.1 and later
-    return;
-  }
-
-  const std::string* ciphers = &tls11CipherString;
-  if (!tls11AltCipherlist.empty()) {
-    if (!cipherListPicker_) {
-      std::vector<int> weights;
-      std::for_each(
-          tls11AltCipherlist.begin(),
-          tls11AltCipherlist.end(),
-          [&](const std::pair<std::string, int>& e) {
-            weights.push_back(e.second);
-          });
-      cipherListPicker_.reset(
-          new std::discrete_distribution<int>(weights.begin(), weights.end()));
-    }
-    auto rng = ThreadLocalPRNG();
-    auto index = (*cipherListPicker_)(rng);
-    if ((size_t)index >= tls11AltCipherlist.size()) {
-      LOG(ERROR) << "Trying to pick alt TLS11 cipher index " << index
-                 << ", but tls11AltCipherlist is of length "
-                 << tls11AltCipherlist.size();
-    } else {
-      ciphers = &tls11AltCipherlist[size_t(index)].first;
-    }
-  }
-
-  // Prefer AES for TLS versions 1.1 and later since these are not
-  // vulnerable to BEAST attacks on AES.  Note that we're setting the
-  // cipher list on the SSL object, not the SSL_CTX object, so it will
-  // only last for this request.
-  int rc = SSL_set_cipher_list(ssl, ciphers->c_str());
-  if ((rc == 0) || ERR_peek_error() != 0) {
-    // This shouldn't happen since we checked for this when proxygen
-    // started up.
-    LOG(WARNING) << "ssl_cipher: No specified ciphers supported for switch";
-    SSL_set_cipher_list(ssl, providedCiphersString_.c_str());
-  }
-}
 #endif // FOLLY_OPENSSL_HAS_SNI
 
 #if FOLLY_OPENSSL_HAS_ALPN
