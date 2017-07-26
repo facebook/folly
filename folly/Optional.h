@@ -84,46 +84,44 @@ class OptionalEmptyException : public std::runtime_error {
       : std::runtime_error("Empty Optional cannot be unwrapped") {}
 };
 
-template<class Value>
+template <class Value>
 class Optional {
  public:
   typedef Value value_type;
 
-  static_assert(!std::is_reference<Value>::value,
-                "Optional may not be used with reference types");
-  static_assert(!std::is_abstract<Value>::value,
-                "Optional may not be used with abstract types");
+  static_assert(
+      !std::is_reference<Value>::value,
+      "Optional may not be used with reference types");
+  static_assert(
+      !std::is_abstract<Value>::value,
+      "Optional may not be used with abstract types");
 
-  Optional() noexcept {
-  }
+  Optional() noexcept {}
 
-  Optional(const Optional& src)
-    noexcept(std::is_nothrow_copy_constructible<Value>::value) {
-
+  Optional(const Optional& src) noexcept(
+      std::is_nothrow_copy_constructible<Value>::value) {
     if (src.hasValue()) {
       construct(src.value());
     }
   }
 
-  Optional(Optional&& src)
-    noexcept(std::is_nothrow_move_constructible<Value>::value) {
-
+  Optional(Optional&& src) noexcept(
+      std::is_nothrow_move_constructible<Value>::value) {
     if (src.hasValue()) {
       construct(std::move(src.value()));
       src.clear();
     }
   }
 
-  /* implicit */ Optional(const None&) noexcept {
-  }
+  /* implicit */ Optional(const None&) noexcept {}
 
-  /* implicit */ Optional(Value&& newValue)
-    noexcept(std::is_nothrow_move_constructible<Value>::value) {
+  /* implicit */ Optional(Value&& newValue) noexcept(
+      std::is_nothrow_move_constructible<Value>::value) {
     construct(std::move(newValue));
   }
 
-  /* implicit */ Optional(const Value& newValue)
-    noexcept(std::is_nothrow_copy_constructible<Value>::value) {
+  /* implicit */ Optional(const Value& newValue) noexcept(
+      std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
   }
 
@@ -172,27 +170,25 @@ class Optional {
     }
   }
 
-  template<class Arg>
+  template <class Arg>
   Optional& operator=(Arg&& arg) {
     assign(std::forward<Arg>(arg));
     return *this;
   }
 
-  Optional& operator=(Optional &&other)
-    noexcept (std::is_nothrow_move_assignable<Value>::value) {
-
+  Optional& operator=(Optional&& other) noexcept(
+      std::is_nothrow_move_assignable<Value>::value) {
     assign(std::move(other));
     return *this;
   }
 
-  Optional& operator=(const Optional &other)
-    noexcept (std::is_nothrow_copy_assignable<Value>::value) {
-
+  Optional& operator=(const Optional& other) noexcept(
+      std::is_nothrow_copy_assignable<Value>::value) {
     assign(other);
     return *this;
   }
 
-  template<class... Args>
+  template <class... Args>
   void emplace(Args&&... args) {
     clear();
     construct(std::forward<Args>(args)...);
@@ -202,7 +198,7 @@ class Optional {
     storage_.clear();
   }
 
-  const Value& value() const& {
+  const Value& value() const & {
     require_value();
     return storage_.value;
   }
@@ -217,12 +213,12 @@ class Optional {
     return std::move(storage_.value);
   }
 
-  const Value&& value() const&& {
+  const Value&& value() const && {
     require_value();
     return std::move(storage_.value);
   }
 
-  const Value* get_pointer() const&  {
+  const Value* get_pointer() const & {
     return storage_.hasValue ? &storage_.value : nullptr;
   }
   Value* get_pointer() & {
@@ -230,23 +226,37 @@ class Optional {
   }
   Value* get_pointer() && = delete;
 
-  bool hasValue() const { return storage_.hasValue; }
+  bool hasValue() const {
+    return storage_.hasValue;
+  }
 
   explicit operator bool() const {
     return hasValue();
   }
 
-  const Value& operator*()  const&  { return value(); }
-        Value& operator*()       &  { return value(); }
-  const Value&& operator*() const&& { return std::move(value()); }
-        Value&& operator*()      && { return std::move(value()); }
+  const Value& operator*() const & {
+    return value();
+  }
+  Value& operator*() & {
+    return value();
+  }
+  const Value&& operator*() const && {
+    return std::move(value());
+  }
+  Value&& operator*() && {
+    return std::move(value());
+  }
 
-  const Value* operator->() const { return &value(); }
-        Value* operator->()       { return &value(); }
+  const Value* operator->() const {
+    return &value();
+  }
+  Value* operator->() {
+    return &value();
+  }
 
   // Return a copy of the value if set, or a given default if not.
   template <class U>
-  Value value_or(U&& dflt) const& {
+  Value value_or(U&& dflt) const & {
     if (storage_.hasValue) {
       return storage_.value;
     }
@@ -270,11 +280,11 @@ class Optional {
     }
   }
 
-  template<class... Args>
+  template <class... Args>
   void construct(Args&&... args) {
     const void* ptr = &storage_.value;
     // for supporting const types
-    new(const_cast<void*>(ptr)) Value(std::forward<Args>(args)...);
+    new (const_cast<void*>(ptr)) Value(std::forward<Args>(args)...);
     storage_.hasValue = true;
   }
 
@@ -328,25 +338,25 @@ class Optional {
     }
   };
 
-  using Storage =
-    typename std::conditional<std::is_trivially_destructible<Value>::value,
-                              StorageTriviallyDestructible,
-                              StorageNonTriviallyDestructible>::type;
+  using Storage = typename std::conditional<
+      std::is_trivially_destructible<Value>::value,
+      StorageTriviallyDestructible,
+      StorageNonTriviallyDestructible>::type;
 
   Storage storage_;
 };
 
-template<class T>
+template <class T>
 const T* get_pointer(const Optional<T>& opt) {
   return opt.get_pointer();
 }
 
-template<class T>
+template <class T>
 T* get_pointer(Optional<T>& opt) {
   return opt.get_pointer();
 }
 
-template<class T>
+template <class T>
 void swap(Optional<T>& a, Optional<T>& b) {
   if (a.hasValue() && b.hasValue()) {
     // both full
@@ -357,8 +367,7 @@ void swap(Optional<T>& a, Optional<T>& b) {
   }
 }
 
-template<class T,
-         class Opt = Optional<typename std::decay<T>::type>>
+template <class T, class Opt = Optional<typename std::decay<T>::type>>
 Opt make_optional(T&& v) {
   return Opt(std::forward<T>(v));
 }
@@ -388,8 +397,12 @@ bool operator!=(const U& a, const Optional<V>& b) {
 
 template <class U, class V>
 bool operator==(const Optional<U>& a, const Optional<V>& b) {
-  if (a.hasValue() != b.hasValue()) { return false; }
-  if (a.hasValue())                 { return a.value() == b.value(); }
+  if (a.hasValue() != b.hasValue()) {
+    return false;
+  }
+  if (a.hasValue()) {
+    return a.value() == b.value();
+  }
   return true;
 }
 
@@ -400,8 +413,12 @@ bool operator!=(const Optional<U>& a, const Optional<V>& b) {
 
 template <class U, class V>
 bool operator<(const Optional<U>& a, const Optional<V>& b) {
-  if (a.hasValue() != b.hasValue()) { return a.hasValue() < b.hasValue(); }
-  if (a.hasValue())                 { return a.value()    < b.value(); }
+  if (a.hasValue() != b.hasValue()) {
+    return a.hasValue() < b.hasValue();
+  }
+  if (a.hasValue()) {
+    return a.value() < b.value();
+  }
   return false;
 }
 
@@ -421,14 +438,22 @@ bool operator>=(const Optional<U>& a, const Optional<V>& b) {
 }
 
 // Suppress comparability of Optional<T> with T, despite implicit conversion.
-template<class V> bool operator< (const Optional<V>&, const V& other) = delete;
-template<class V> bool operator<=(const Optional<V>&, const V& other) = delete;
-template<class V> bool operator>=(const Optional<V>&, const V& other) = delete;
-template<class V> bool operator> (const Optional<V>&, const V& other) = delete;
-template<class V> bool operator< (const V& other, const Optional<V>&) = delete;
-template<class V> bool operator<=(const V& other, const Optional<V>&) = delete;
-template<class V> bool operator>=(const V& other, const Optional<V>&) = delete;
-template<class V> bool operator> (const V& other, const Optional<V>&) = delete;
+template <class V>
+bool operator<(const Optional<V>&, const V& other) = delete;
+template <class V>
+bool operator<=(const Optional<V>&, const V& other) = delete;
+template <class V>
+bool operator>=(const Optional<V>&, const V& other) = delete;
+template <class V>
+bool operator>(const Optional<V>&, const V& other) = delete;
+template <class V>
+bool operator<(const V& other, const Optional<V>&) = delete;
+template <class V>
+bool operator<=(const V& other, const Optional<V>&) = delete;
+template <class V>
+bool operator>=(const V& other, const Optional<V>&) = delete;
+template <class V>
+bool operator>(const V& other, const Optional<V>&) = delete;
 
 ///////////////////////////////////////////////////////////////////////////////
 
