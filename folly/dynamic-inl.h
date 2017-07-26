@@ -78,11 +78,20 @@ namespace folly {
 
 struct TypeError : std::runtime_error {
   explicit TypeError(const std::string& expected, dynamic::Type actual);
-  explicit TypeError(const std::string& expected,
-    dynamic::Type actual1, dynamic::Type actual2);
+  explicit TypeError(
+      const std::string& expected,
+      dynamic::Type actual1,
+      dynamic::Type actual2);
   ~TypeError() override;
 };
 
+[[noreturn]] void throwTypeError_(
+    std::string const& expected,
+    dynamic::Type actual);
+[[noreturn]] void throwTypeError_(
+    std::string const& expected,
+    dynamic::Type actual1,
+    dynamic::Type actual2);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -102,7 +111,7 @@ namespace detail {
   template<template<class> class Op>
   dynamic numericOp(dynamic const& a, dynamic const& b) {
     if (!a.isNumber() || !b.isNumber()) {
-      throw TypeError("numeric", a.type(), b.type());
+      throwTypeError_("numeric", a.type(), b.type());
     }
     if (a.type() != b.type()) {
       auto& integ  = a.isInt() ? a : b;
@@ -517,13 +526,13 @@ inline dynamic& dynamic::operator/=(dynamic const& o) {
   return *this;
 }
 
-#define FB_DYNAMIC_INTEGER_OP(op)                           \
-  inline dynamic& dynamic::operator op(dynamic const& o) {  \
-    if (!isInt() || !o.isInt()) {                           \
-      throw TypeError("int64", type(), o.type());           \
-    }                                                       \
-    *getAddress<int64_t>() op o.asInt();                    \
-    return *this;                                           \
+#define FB_DYNAMIC_INTEGER_OP(op)                          \
+  inline dynamic& dynamic::operator op(dynamic const& o) { \
+    if (!isInt() || !o.isInt()) {                          \
+      throwTypeError_("int64", type(), o.type());          \
+    }                                                      \
+    *getAddress<int64_t>() op o.asInt();                   \
+    return *this;                                          \
   }
 
 FB_DYNAMIC_INTEGER_OP(%=)
@@ -606,7 +615,7 @@ template<class K, class V> inline void dynamic::insert(K&& key, V&& val) {
 
 inline void dynamic::update(const dynamic& mergeObj) {
   if (!isObject() || !mergeObj.isObject()) {
-    throw TypeError("object", type(), mergeObj.type());
+    throwTypeError_("object", type(), mergeObj.type());
   }
 
   for (const auto& pair : mergeObj.items()) {
@@ -616,7 +625,7 @@ inline void dynamic::update(const dynamic& mergeObj) {
 
 inline void dynamic::update_missing(const dynamic& mergeObj1) {
   if (!isObject() || !mergeObj1.isObject()) {
-    throw TypeError("object", type(), mergeObj1.type());
+    throwTypeError_("object", type(), mergeObj1.type());
   }
 
   // Only add if not already there
@@ -735,7 +744,7 @@ T dynamic::asImpl() const {
   case STRING:
     return to<T>(*get_nothrow<std::string>());
   default:
-    throw TypeError("int/double/bool/string", type());
+    throwTypeError_("int/double/bool/string", type());
   }
 }
 
@@ -804,7 +813,7 @@ T& dynamic::get() {
   if (auto* p = get_nothrow<T>()) {
     return *p;
   }
-  throw TypeError(TypeInfo<T>::name, type());
+  throwTypeError_(TypeInfo<T>::name, type());
 }
 
 template<class T>
