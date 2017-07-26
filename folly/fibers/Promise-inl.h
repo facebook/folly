@@ -110,7 +110,7 @@ typename Promise<T, BatonT>::value_type Promise<T, BatonT>::await(F&& func) {
     std::rethrow_exception(funcException);
   }
 
-  return folly::moveFromTry(result);
+  return std::move(result).value();
 }
 }
 }

@@ -133,15 +133,6 @@ void Try<void>::throwIfFailed() const {
   }
 }
 
-template <typename T>
-inline T moveFromTry(Try<T>& t) {
-  return std::move(t.value());
-}
-
-inline void moveFromTry(Try<void>& t) {
-  return t.value();
-}
-
 template <typename F>
 typename std::enable_if<
   !std::is_same<typename std::result_of<F()>::type, void>::value,
