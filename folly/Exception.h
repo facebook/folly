@@ -103,18 +103,15 @@ void checkFopenErrorExplicit(FILE* fp, int savedErrno, Args&&... args) {
   }
 }
 
-template <typename E, typename V, typename... Args>
-void throwOnFail(V&& value, Args&&... args) {
-  if (!value) {
-    throw E(std::forward<Args>(args)...);
-  }
-}
-
 /**
  * If cond is not true, raise an exception of type E.  E must have a ctor that
  * works with const char* (a description of the failure).
  */
-#define CHECK_THROW(cond, E) \
-  ::folly::throwOnFail<E>((cond), "Check failed: " #cond)
+#define CHECK_THROW(cond, E)           \
+  do {                                 \
+    if (!(cond)) {                     \
+      throw E("Check failed: " #cond); \
+    }                                  \
+  } while (0)
 
 }  // namespace folly
