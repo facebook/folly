@@ -611,7 +611,7 @@ inline bool hazptr_tc::put(hazptr_rec* hprec) {
   return false;
 }
 
-inline class hazptr_tc& hazptr_tc() {
+FOLLY_ALWAYS_INLINE class hazptr_tc& hazptr_tc() {
   static thread_local class hazptr_tc tc;
   DEBUG_PRINT(&tc);
   return tc;
