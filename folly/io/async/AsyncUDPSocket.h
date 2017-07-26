@@ -158,6 +158,10 @@ class AsyncUDPSocket : public EventHandler {
     reuseAddr_ = reuseAddr;
   }
 
+  EventBase* getEventBase() const {
+    return eventBase_;
+  }
+
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
