@@ -239,7 +239,7 @@ constexpr bool kIsSanitizeThread = false;
 # define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
 #endif
 
-#ifdef HAVE_SHADOW_LOCAL_WARNINGS
+#ifdef FOLLY_HAVE_SHADOW_LOCAL_WARNINGS
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS        \
   FOLLY_GCC_DISABLE_WARNING("-Wshadow-compatible-local") \
   FOLLY_GCC_DISABLE_WARNING("-Wshadow-local")
