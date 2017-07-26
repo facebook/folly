@@ -1095,10 +1095,10 @@ private:
     value_type* heap() noexcept {
       if (kHasInlineCapacity || !detail::pointerFlagGet(pdata_.heap_)) {
         return static_cast<value_type*>(pdata_.heap_);
+      } else {
+        return static_cast<value_type*>(detail::shiftPointer(
+            detail::pointerFlagClear(pdata_.heap_), kHeapifyCapacitySize));
       }
-      return static_cast<value_type*>(
-        detail::shiftPointer(
-          detail::pointerFlagClear(pdata_.heap_), kHeapifyCapacitySize));
     }
     value_type const* heap() const noexcept {
       return const_cast<Data*>(this)->heap();
