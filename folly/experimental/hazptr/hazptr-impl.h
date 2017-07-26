@@ -231,8 +231,16 @@ template <typename T>
 FOLLY_ALWAYS_INLINE bool hazptr_holder::try_protect(
     T*& ptr,
     const std::atomic<T*>& src) noexcept {
+  return try_protect(ptr, src, [](T* t) { return t; });
+}
+
+template <typename T, typename Func>
+FOLLY_ALWAYS_INLINE bool hazptr_holder::try_protect(
+    T*& ptr,
+    const std::atomic<T*>& src,
+    Func f) noexcept {
   DEBUG_PRINT(this << " " << ptr << " " << &src);
-  reset(ptr);
+  reset(f(ptr));
   /*** Full fence ***/ hazptr_mb::light();
   T* p = src.load(std::memory_order_acquire);
   if (p != ptr) {
@@ -246,8 +254,16 @@ FOLLY_ALWAYS_INLINE bool hazptr_holder::try_protect(
 template <typename T>
 FOLLY_ALWAYS_INLINE T* hazptr_holder::get_protected(
     const std::atomic<T*>& src) noexcept {
+  return get_protected(src, [](T* t) { return t; });
+}
+
+template <typename T, typename Func>
+FOLLY_ALWAYS_INLINE T* hazptr_holder::get_protected(
+    const std::atomic<T*>& src,
+    Func f) noexcept {
   T* p = src.load(std::memory_order_relaxed);
-  while (!try_protect(p, src)) {}
+  while (!try_protect(p, src, f)) {
+  }
   DEBUG_PRINT(this << " " << p << " " << &src);
   return p;
 }

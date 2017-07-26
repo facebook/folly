@@ -119,10 +119,20 @@ class hazptr_holder {
   /* Returns a protected pointer from the source */
   template <typename T>
   T* get_protected(const std::atomic<T*>& src) noexcept;
+  /* Returns a protected pointer from the source, filtering
+     the protected pointer through function Func.  Useful for
+     stealing bits of the pointer word */
+  template <typename T, typename Func>
+  T* get_protected(const std::atomic<T*>& src, Func f) noexcept;
   /* Return true if successful in protecting ptr if src == ptr after
    * setting the hazard pointer.  Otherwise sets ptr to src. */
   template <typename T>
   bool try_protect(T*& ptr, const std::atomic<T*>& src) noexcept;
+  /* Return true if successful in protecting ptr if src == ptr after
+   * setting the hazard pointer, filtering the pointer through Func.
+   * Otherwise sets ptr to src. */
+  template <typename T, typename Func>
+  bool try_protect(T*& ptr, const std::atomic<T*>& src, Func f) noexcept;
   /* Set the hazard pointer to ptr */
   template <typename T>
   void reset(const T* ptr) noexcept;
