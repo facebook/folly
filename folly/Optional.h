@@ -285,7 +285,8 @@ class Optional {
   struct StorageTriviallyDestructible {
    protected:
     bool hasValue_;
-    std::aligned_storage_t<sizeof(Value), alignof(Value)> value_[1];
+    typename std::aligned_storage<sizeof(Value), alignof(Value)>::type
+        value_[1];
 
    public:
     StorageTriviallyDestructible() : hasValue_{false} {}
@@ -297,7 +298,8 @@ class Optional {
   struct StorageNonTriviallyDestructible {
    protected:
     bool hasValue_;
-    std::aligned_storage_t<sizeof(Value), alignof(Value)> value_[1];
+    typename std::aligned_storage<sizeof(Value), alignof(Value)>::type
+        value_[1];
 
    public:
     StorageNonTriviallyDestructible() : hasValue_{false} {}
@@ -313,10 +315,10 @@ class Optional {
     }
   };
 
-  struct Storage : std::conditional_t<
+  struct Storage : std::conditional<
                        std::is_trivially_destructible<Value>::value,
                        StorageTriviallyDestructible,
-                       StorageNonTriviallyDestructible> {
+                       StorageNonTriviallyDestructible>::type {
     bool hasValue() const {
       return this->hasValue_;
     }
@@ -371,7 +373,7 @@ void swap(Optional<T>& a, Optional<T>& b) {
   }
 }
 
-template <class T, class Opt = Optional<std::decay_t<T>>>
+template <class T, class Opt = Optional<typename std::decay<T>::type>>
 Opt make_optional(T&& v) {
   return Opt(std::forward<T>(v));
 }
@@ -471,7 +473,7 @@ struct hash<folly::Optional<T>> {
     if (!obj.hasValue()) {
       return 0;
     }
-    return hash<remove_const_t<T>>()(*obj);
+    return hash<typename remove_const<T>::type>()(*obj);
   }
 };
 FOLLY_NAMESPACE_STD_END
