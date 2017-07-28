@@ -386,8 +386,14 @@ struct Bools {
 
 // Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
 template <class... Ts>
-struct StrictConjunction
-    : std::is_same<Bools<Ts::value..., true>, Bools<true, Ts::value...>> {};
+struct StrictConjunction 
+  : std::is_same<Bools<Ts::value...>, Bools<(Ts::value || true)...>> {};
+
+template <class... Ts>
+struct StrictDisjunction 
+  : Negation<
+      std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>
+    > {};
 
 } // namespace folly
 
@@ -509,15 +515,8 @@ struct IsRelocatable< std::pair<T, U> >
         IsRelocatable<U>::value> {};
 
 // Is T one of T1, T2, ..., Tn?
-template <class T, class... Ts>
-struct IsOneOf {
-  enum { value = false };
-};
-
-template <class T, class T1, class... Ts>
-struct IsOneOf<T, T1, Ts...> {
-  enum { value = std::is_same<T, T1>::value || IsOneOf<T, Ts...>::value };
-};
+template <typename T, typename... Ts>
+using IsOneOf = StrictDisjunction<std::is_same<T, Ts>...>;
 
 /*
  * Complementary type traits for integral comparisons.
