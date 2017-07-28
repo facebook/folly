@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <ctime>
+
 #include <folly/portability/GTest.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
@@ -74,4 +76,34 @@ TEST(OpenSSLPortabilityTest, TestEcdsaSigPortability) {
   // BN_cmp returns 0 if the two BIGNUMs are equal
   EXPECT_FALSE(BN_cmp(r, r_actual));
   EXPECT_FALSE(BN_cmp(s, s_actual));
+}
+
+TEST(OpenSSLPortabilityTest, TestX509RevokedApi) {
+  X509_REVOKED* rev = X509_REVOKED_new();
+
+  ASN1_INTEGER* serial = ASN1_INTEGER_new();
+  ASN1_INTEGER_set(serial, 1234L);
+
+  ASN1_TIME* revocation_date = ASN1_TIME_new();
+  time_t t = time(nullptr);
+  ASN1_TIME_set(revocation_date, t);
+
+  X509_REVOKED_set_serialNumber(rev, serial);
+  X509_REVOKED_set_revocationDate(rev, revocation_date);
+
+  const ASN1_INTEGER* retrieved_serial = X509_REVOKED_get0_serialNumber(rev);
+  const ASN1_TIME* retrieved_date = X509_REVOKED_get0_revocationDate(rev);
+
+  EXPECT_EQ(0, ASN1_INTEGER_cmp(serial, retrieved_serial));
+
+  int diff_days;
+  int diff_secs;
+
+  ASN1_TIME_diff(&diff_days, &diff_secs, revocation_date, retrieved_date);
+  EXPECT_EQ(0, diff_days);
+  EXPECT_EQ(0, diff_secs);
+
+  ASN1_INTEGER_free(serial);
+  ASN1_TIME_free(revocation_date);
+  X509_REVOKED_free(rev);
 }

@@ -392,6 +392,14 @@ void OPENSSL_cleanup() {
   ERR_clear_error();
 }
 
+const ASN1_INTEGER* X509_REVOKED_get0_serialNumber(const X509_REVOKED* r) {
+  return r->serialNumber;
+}
+
+const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r) {
+  return r->revocationDate;
+}
+
 #endif // !FOLLY_OPENSSL_IS_110
 }
 }
