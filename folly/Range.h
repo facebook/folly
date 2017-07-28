@@ -970,15 +970,19 @@ typedef Range<char*> MutableStringPiece;
 typedef Range<const unsigned char*> ByteRange;
 typedef Range<unsigned char*> MutableByteRange;
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const StringPiece piece) {
-  os.write(piece.start(), std::streamsize(piece.size()));
+template <class C>
+std::basic_ostream<C>& operator<<(
+    std::basic_ostream<C>& os,
+    Range<C const*> piece) {
+  using StreamSize = decltype(os.width());
+  os.write(piece.start(), static_cast<StreamSize>(piece.size()));
   return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const MutableStringPiece piece) {
-  os.write(piece.start(), std::streamsize(piece.size()));
+template <class C>
+std::basic_ostream<C>& operator<<(std::basic_ostream<C>& os, Range<C*> piece) {
+  using StreamSize = decltype(os.width());
+  os.write(piece.start(), static_cast<StreamSize>(piece.size()));
   return os;
 }
 
