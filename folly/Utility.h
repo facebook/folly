@@ -20,6 +20,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CPortability.h>
+
 namespace folly {
 
 /**
@@ -98,13 +100,58 @@ void as_const(T const&&) = delete;
 
 #endif
 
+namespace utility_detail {
+template <typename...>
+struct make_seq_cat;
+template <
+    template <typename T, T...> class S,
+    typename T,
+    T... Ta,
+    T... Tb,
+    T... Tc>
+struct make_seq_cat<S<T, Ta...>, S<T, Tb...>, S<T, Tc...>> {
+  using type =
+      S<T,
+        Ta...,
+        (sizeof...(Ta) + Tb)...,
+        (sizeof...(Ta) + sizeof...(Tb) + Tc)...>;
+};
+
+// Not parameterizing by `template <typename T, T...> class, typename` because
+// clang precisely v4.0 fails to compile that. Note that clang v3.9 and v5.0
+// handle that code correctly.
+//
+// For this to work, `S0` is required to be `Sequence<T>` and `S1` is required
+// to be `Sequence<T, 0>`.
+
+template <std::size_t Size>
+struct make_seq {
+  template <typename S0, typename S1>
+  using apply = typename make_seq_cat<
+      typename make_seq<Size / 2>::template apply<S0, S1>,
+      typename make_seq<Size / 2>::template apply<S0, S1>,
+      typename make_seq<Size % 2>::template apply<S0, S1>>::type;
+};
+template <>
+struct make_seq<1> {
+  template <typename S0, typename S1>
+  using apply = S1;
+};
+template <>
+struct make_seq<0> {
+  template <typename S0, typename S1>
+  using apply = S0;
+};
+}
+
 #if __cpp_lib_integer_sequence || _MSC_VER
 
 /* using override */ using std::integer_sequence;
 /* using override */ using std::index_sequence;
-/* using override */ using std::make_index_sequence;
 
 #else
+
+// TODO: Remove after upgrading to C++14 baseline
 
 template <class T, T... Ints>
 struct integer_sequence {
@@ -116,21 +163,25 @@ struct integer_sequence {
 };
 
 template <std::size_t... Ints>
-using index_sequence = folly::integer_sequence<std::size_t, Ints...>;
-
-namespace detail {
-template <std::size_t N, std::size_t... Ints>
-struct make_index_sequence
-    : detail::make_index_sequence<N - 1, N - 1, Ints...> {};
-
-template <std::size_t... Ints>
-struct make_index_sequence<0, Ints...> : folly::index_sequence<Ints...> {};
-}
-
-template <std::size_t N>
-using make_index_sequence = detail::make_index_sequence<N>;
+using index_sequence = integer_sequence<std::size_t, Ints...>;
 
 #endif
+
+#if FOLLY_HAS_BUILTIN(__make_integer_seq) || _MSC_FULL_VER >= 190023918
+
+template <typename T, std::size_t Size>
+using make_integer_sequence = __make_integer_seq<integer_sequence, T, Size>;
+
+#else
+
+template <typename T, std::size_t Size>
+using make_integer_sequence = typename utility_detail::make_seq<
+    Size>::template apply<integer_sequence<T>, integer_sequence<T, 0>>;
+
+#endif
+
+template <std::size_t Size>
+using make_index_sequence = make_integer_sequence<std::size_t, Size>;
 
 /**
  *  Backports from C++17 of:
