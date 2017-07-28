@@ -2938,6 +2938,15 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   }
 };
 
+template <class C, std::size_t N>
+inline std::basic_ostream<C>& operator<<(
+    std::basic_ostream<C>& os,
+    const BasicFixedString<C, N>& string) {
+  using StreamSize = decltype(os.width());
+  os.write(string.begin(), static_cast<StreamSize>(string.size()));
+  return os;
+}
+
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
  * Symmetric relational operators
  */
