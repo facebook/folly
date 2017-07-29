@@ -1272,6 +1272,28 @@ INSTANTIATE_TEST_CASE_P(IPAddress,
                         IPAddressBitAccessorTest,
                         ::testing::ValuesIn(validAddressProvider));
 
+TEST(IPAddressV4, fetchMask) {
+  struct X : private IPAddressV4 {
+    using IPAddressV4::fetchMask;
+  };
+
+  EXPECT_THAT(
+      X::fetchMask(0),
+      ::testing::ElementsAreArray(ByteArray4{{0x00, 0x00, 0x00, 0x00}}));
+
+  EXPECT_THAT(
+      X::fetchMask(1),
+      ::testing::ElementsAreArray(ByteArray4{{0x80, 0x00, 0x00, 0x00}}));
+
+  EXPECT_THAT(
+      X::fetchMask(31),
+      ::testing::ElementsAreArray(ByteArray4{{0xff, 0xff, 0xff, 0xfe}}));
+
+  EXPECT_THAT(
+      X::fetchMask(32),
+      ::testing::ElementsAreArray(ByteArray4{{0xff, 0xff, 0xff, 0xff}}));
+}
+
 TEST(IPAddressV6, fetchMask) {
   using ByteArray8 = std::array<uint8_t, 8>;
 

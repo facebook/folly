@@ -269,8 +269,6 @@ class IPAddressV4 {
     explicit AddressStorage(const in_addr addr): inAddr_(addr) {}
   } addr_;
 
-  static const std::array<ByteArray4, 33> masks_;
-
   /**
    * Set the current IPAddressV4 object to have the address specified by bytes.
    * @throws IPAddressFormatException if bytes.size() is not 4.
