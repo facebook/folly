@@ -330,13 +330,39 @@ class IPAddressV6 {
   }
 
   const unsigned char* bytes() const { return addr_.in6Addr_.s6_addr; }
-  protected:
+
+ protected:
   /**
    * Helper that returns true if the address is in the binary subnet specified
    * by addr.
    */
   bool inBinarySubnet(const std::array<uint8_t, 2> addr,
                       size_t numBits) const;
+
+ private:
+  auto tie() const {
+    return std::tie(addr_.bytes_, scope_);
+  }
+
+ public:
+  friend inline bool operator==(const IPAddressV6& a, const IPAddressV6& b) {
+    return a.tie() == b.tie();
+  }
+  friend inline bool operator!=(const IPAddressV6& a, const IPAddressV6& b) {
+    return a.tie() != b.tie();
+  }
+  friend inline bool operator<(const IPAddressV6& a, const IPAddressV6& b) {
+    return a.tie() < b.tie();
+  }
+  friend inline bool operator>(const IPAddressV6& a, const IPAddressV6& b) {
+    return a.tie() > b.tie();
+  }
+  friend inline bool operator<=(const IPAddressV6& a, const IPAddressV6& b) {
+    return a.tie() <= b.tie();
+  }
+  friend inline bool operator>=(const IPAddressV6& a, const IPAddressV6& b) {
+    return a.tie() >= b.tie();
+  }
 
  private:
   union AddressStorage {
@@ -368,37 +394,6 @@ std::ostream& operator<<(std::ostream& os, const IPAddressV6& addr);
 // Define toAppend() to allow IPAddressV6 to be used with to<string>
 void toAppend(IPAddressV6 addr, std::string* result);
 void toAppend(IPAddressV6 addr, fbstring* result);
-
-/**
- * Return true if two addresses are equal.
- */
-inline bool operator==(const IPAddressV6& addr1, const IPAddressV6& addr2) {
-  return (std::memcmp(addr1.toAddr().s6_addr, addr2.toAddr().s6_addr, 16) == 0)
-    && addr1.getScopeId() == addr2.getScopeId();
-}
-// Return true if addr1 < addr2
-inline bool operator<(const IPAddressV6& addr1, const IPAddressV6& addr2) {
-  auto cmp = std::memcmp(addr1.toAddr().s6_addr,
-                         addr2.toAddr().s6_addr, 16) < 0;
-  if (!cmp) {
-    return addr1.getScopeId() < addr2.getScopeId();
-  } else {
-    return cmp;
-  }
-}
-// Derived operators
-inline bool operator!=(const IPAddressV6& a, const IPAddressV6& b) {
-  return !(a == b);
-}
-inline bool operator>(const IPAddressV6& a, const IPAddressV6& b) {
-  return b < a;
-}
-inline bool operator<=(const IPAddressV6& a, const IPAddressV6& b) {
-  return !(a > b);
-}
-inline bool operator>=(const IPAddressV6& a, const IPAddressV6& b) {
-  return !(a < b);
-}
 
 }  // folly
 
