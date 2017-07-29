@@ -22,6 +22,7 @@ using namespace ::testing;
 using namespace ::folly;
 
 namespace {
+struct Basic {};
 struct alignas(128) BigAlign {};
 struct HasConst final {
   bool const b1;
@@ -81,6 +82,7 @@ using StaticAttributeTypes = ::testing::Types<
     float,
     double,
     char[11],
+    Basic,
     BigAlign,
     HasConst,
     HasRef,
@@ -248,6 +250,18 @@ TEST(ReplaceableTest, Basics) {
   rHasConstA = std::move(rHasConstB);
   EXPECT_TRUE(rHasConstA->b1);
   EXPECT_TRUE(rHasConstB->b1);
+}
+
+TEST(ReplaceableTest, Constructors) {
+  Basic b{};
+  // From existing `T`
+  auto rBasicCopy1 = Replaceable<Basic>(b);
+  auto rBasicMove1 = Replaceable<Basic>(std::move(b));
+  // From existing `Replaceable<T>`
+  auto rBasicCopy2 = Replaceable<Basic>(rBasicCopy1);
+  auto rBasicMove2 = Replaceable<Basic>(std::move(rBasicMove1));
+  (void)rBasicCopy2;
+  (void)rBasicMove2;
 }
 
 TEST(ReplaceableTest, DestructsWhenExpected) {

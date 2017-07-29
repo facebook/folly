@@ -307,7 +307,8 @@ struct copy_ctor_mixin<T, true> {
   copy_ctor_mixin() = default;
   inline copy_ctor_mixin(copy_ctor_mixin const& other) noexcept(
       std::is_nothrow_constructible<T, T const&>::value) {
-    ::new (reinterpret_cast<Replaceable<T>*>(this)->storage_) T(*other);
+    ::new (reinterpret_cast<Replaceable<T>*>(this)->storage_)
+        T(*reinterpret_cast<Replaceable<T> const&>(other));
   }
   copy_ctor_mixin(copy_ctor_mixin&&) = default;
   copy_ctor_mixin& operator=(copy_ctor_mixin&&) = default;
