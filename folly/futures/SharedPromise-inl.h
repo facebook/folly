@@ -117,7 +117,7 @@ void SharedPromise<T>::setTry(Try<T>&& t) {
   {
     std::lock_guard<std::mutex> g(mutex_);
     if (hasValue_) {
-      throw PromiseAlreadySatisfied();
+      throwPromiseAlreadySatisfied();
     }
     hasValue_ = true;
     try_ = std::move(t);

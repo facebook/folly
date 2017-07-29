@@ -39,20 +39,28 @@ class NoState : public FutureException {
   NoState() : FutureException("No state") {}
 };
 
+[[noreturn]] void throwNoState();
+
 class PromiseAlreadySatisfied : public FutureException {
  public:
   PromiseAlreadySatisfied() : FutureException("Promise already satisfied") {}
 };
+
+[[noreturn]] void throwPromiseAlreadySatisfied();
 
 class FutureNotReady : public FutureException {
  public:
   FutureNotReady() : FutureException("Future not ready") {}
 };
 
+[[noreturn]] void throwFutureNotReady();
+
 class FutureAlreadyRetrieved : public FutureException {
  public:
   FutureAlreadyRetrieved() : FutureException("Future already retrieved") {}
 };
+
+[[noreturn]] void throwFutureAlreadyRetrieved();
 
 class FutureCancellation : public FutureException {
  public:
@@ -64,12 +72,18 @@ class TimedOut : public FutureException {
   TimedOut() : FutureException("Timed out") {}
 };
 
+[[noreturn]] void throwTimedOut();
+
 class PredicateDoesNotObtain : public FutureException {
  public:
   PredicateDoesNotObtain() : FutureException("Predicate does not obtain") {}
 };
 
+[[noreturn]] void throwPredicateDoesNotObtain();
+
 struct NoFutureInSplitter : FutureException {
   NoFutureInSplitter() : FutureException("No Future in this FutureSplitter") {}
 };
+
+[[noreturn]] void throwNoFutureInSplitter();
 }

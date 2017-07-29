@@ -217,7 +217,7 @@ void Future<T>::detach() {
 template <class T>
 void Future<T>::throwIfInvalid() const {
   if (!core_)
-    throw NoState();
+    throwNoState();
 }
 
 template <class T>
@@ -1202,7 +1202,7 @@ T Future<T>::get(Duration dur) {
   if (isReady()) {
     return std::move(value());
   } else {
-    throw TimedOut();
+    throwTimedOut();
   }
 }
 
@@ -1240,7 +1240,7 @@ Future<T> Future<T>::filter(F&& predicate) {
   return this->then([p = std::forward<F>(predicate)](T val) {
     T const& valConstRef = val;
     if (!p(valConstRef)) {
-      throw PredicateDoesNotObtain();
+      throwPredicateDoesNotObtain();
     }
     return val;
   });

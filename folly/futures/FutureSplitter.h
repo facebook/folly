@@ -55,8 +55,8 @@ class FutureSplitter {
    * This can be called an unlimited number of times per FutureSplitter.
    */
   Future<T> getFuture() {
-    if (UNLIKELY(promise_ == nullptr)) {
-      throw NoFutureInSplitter();
+    if (promise_ == nullptr) {
+      throwNoFutureInSplitter();
     }
     return promise_->getFuture();
   }
