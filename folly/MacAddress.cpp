@@ -20,6 +20,7 @@
 
 #include <folly/Exception.h>
 #include <folly/IPAddressV6.h>
+#include <folly/String.h>
 
 using std::invalid_argument;
 using std::string;
@@ -71,12 +72,6 @@ string MacAddress::toString() const {
 
 void MacAddress::parse(StringPiece str) {
   // Helper function to convert a single hex char into an integer
-  auto unhex = [](char c) -> int {
-    return c >= '0' && c <= '9' ? c - '0' :
-           c >= 'A' && c <= 'F' ? c - 'A' + 10 :
-           c >= 'a' && c <= 'f' ? c - 'a' + 10 :
-           -1;
-  };
   auto isSeparatorChar = [](char c) {
     return c == ':' || c == '-';
   };
@@ -99,21 +94,21 @@ void MacAddress::parse(StringPiece str) {
     }
 
     // Parse the upper nibble
-    int upper = unhex(*p);
-    if (upper < 0) {
+    uint8_t upper = detail::hexTable[static_cast<uint8_t>(*p)];
+    if (upper & 0x10) {
       throw invalid_argument(to<string>("invalid MAC address \"", str,
                                         "\": contains non-hex digit"));
     }
     ++p;
 
     // Parse the lower nibble
-    int lower;
+    uint8_t lower;
     if (p == str.end()) {
       lower = upper;
       upper = 0;
     } else {
-      lower = unhex(*p);
-      if (lower < 0) {
+      lower = detail::hexTable[static_cast<uint8_t>(*p)];
+      if (lower & 0x10) {
         // Also accept ':', '-', or '\0', to handle the case where one
         // of the bytes was represented by just a single digit.
         if (isSeparatorChar(*p)) {
@@ -128,7 +123,7 @@ void MacAddress::parse(StringPiece str) {
     }
 
     // Update parsed with the newly parsed byte
-    parsed[byteIndex] = uint8_t((upper << 4) | lower);
+    parsed[byteIndex] = (upper << 4) | lower;
   }
 
   if (p != str.end()) {
