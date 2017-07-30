@@ -34,7 +34,7 @@
  * example growth policy that grows one element at a time:
  *
  *    struct OneAtATimePolicy {
- *      template<class Container>
+ *      template <class Container>
  *      void increase_capacity(Container& c) {
  *        if (c.size() == c.capacity()) {
  *          c.reserve(c.size() + 1);
@@ -79,9 +79,9 @@ namespace detail {
   // This wrapper goes around a GrowthPolicy and provides iterator
   // preservation semantics, but only if the growth policy is not the
   // default (i.e. nothing).
-  template<class Policy>
+  template <class Policy>
   struct growth_policy_wrapper : private Policy {
-    template<class Container, class Iterator>
+    template <class Container, class Iterator>
     Iterator increase_capacity(Container& c, Iterator desired_insertion)
     {
       typedef typename Container::difference_type diff_t;
@@ -90,9 +90,9 @@ namespace detail {
       return c.begin() + d;
     }
   };
-  template<>
+  template <>
   struct growth_policy_wrapper<void> {
-    template<class Container, class Iterator>
+    template <class Container, class Iterator>
     Iterator increase_capacity(Container&, Iterator it) {
       return it;
     }
@@ -104,7 +104,7 @@ namespace detail {
    * (i.e. unless they are InputIterators).  Otherwise this returns
    * -1.
    */
-  template<class Iterator>
+  template <class Iterator>
   int distance_if_multipass(Iterator first, Iterator last) {
     typedef typename std::iterator_traits<Iterator>::iterator_category categ;
     if (std::is_same<categ,std::input_iterator_tag>::value)
@@ -112,7 +112,7 @@ namespace detail {
     return std::distance(first, last);
   }
 
-  template<class OurContainer, class Vector, class GrowthPolicy>
+  template <class OurContainer, class Vector, class GrowthPolicy>
   typename OurContainer::iterator
   insert_with_hint(OurContainer& sorted,
                    Vector& cont,
@@ -198,10 +198,11 @@ namespace detail {
  * @author Akhil Wable    <akhil@fb.com>
  * @author Jordan DeLong  <delong.j@fb.com>
  */
-template<class T,
-         class Compare      = std::less<T>,
-         class Allocator    = std::allocator<T>,
-         class GrowthPolicy = void>
+template <
+    class T,
+    class Compare = std::less<T>,
+    class Allocator = std::allocator<T>,
+    class GrowthPolicy = void>
 class sorted_vector_set
   : boost::totally_ordered1<
       sorted_vector_set<T,Compare,Allocator,GrowthPolicy>
@@ -238,7 +239,7 @@ public:
     : m_(comp, alloc)
   {}
 
-  template<class InputIterator>
+  template <class InputIterator>
   explicit sorted_vector_set(
       InputIterator first,
       InputIterator last,
@@ -320,7 +321,7 @@ public:
       get_growth_policy());
   }
 
-  template<class InputIterator>
+  template <class InputIterator>
   void insert(InputIterator first, InputIterator last) {
     detail::bulk_insert(*this, m_.cont_, first, last);
   }
@@ -424,7 +425,7 @@ private:
 };
 
 // Swap function that can be found using ADL.
-template<class T, class C, class A, class G>
+template <class T, class C, class A, class G>
 inline void swap(sorted_vector_set<T,C,A,G>& a,
                  sorted_vector_set<T,C,A,G>& b) {
   return a.swap(b);
@@ -447,11 +448,12 @@ inline void swap(sorted_vector_set<T,C,A,G>& a,
  * @author Akhil Wable    <akhil@fb.com>
  * @author Jordan DeLong  <delong.j@fb.com>
  */
-template<class Key,
-         class Value,
-         class Compare        = std::less<Key>,
-         class Allocator      = std::allocator<std::pair<Key,Value> >,
-         class GrowthPolicy   = void>
+template <
+    class Key,
+    class Value,
+    class Compare = std::less<Key>,
+    class Allocator = std::allocator<std::pair<Key, Value>>,
+    class GrowthPolicy = void>
 class sorted_vector_map
   : boost::totally_ordered1<
       sorted_vector_map<Key,Value,Compare,Allocator,GrowthPolicy>
@@ -493,7 +495,7 @@ public:
     : m_(value_compare(comp), alloc)
   {}
 
-  template<class InputIterator>
+  template <class InputIterator>
   explicit sorted_vector_map(
       InputIterator first,
       InputIterator last,
@@ -573,7 +575,7 @@ public:
       get_growth_policy());
   }
 
-  template<class InputIterator>
+  template <class InputIterator>
   void insert(InputIterator first, InputIterator last) {
     detail::bulk_insert(*this, m_.cont_, first, last);
   }
@@ -717,7 +719,7 @@ private:
 };
 
 // Swap function that can be found using ADL.
-template<class K, class V, class C, class A, class G>
+template <class K, class V, class C, class A, class G>
 inline void swap(sorted_vector_map<K,V,C,A,G>& a,
                  sorted_vector_map<K,V,C,A,G>& b) {
   return a.swap(b);

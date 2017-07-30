@@ -493,7 +493,7 @@ TEST(System, errnoStr) {
 
 namespace {
 
-template<template<class,class> class VectorType>
+template <template <class, class> class VectorType>
 void splitTest() {
   VectorType<string,std::allocator<string> > parts;
 
@@ -642,7 +642,7 @@ void splitTest() {
   EXPECT_EQ(parts[3], "");
 }
 
-template<template<class,class> class VectorType>
+template <template <class, class> class VectorType>
 void piecesTest() {
   VectorType<StringPiece,std::allocator<StringPiece> > pieces;
   VectorType<StringPiece,std::allocator<StringPiece> > pieces2;

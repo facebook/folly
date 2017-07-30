@@ -782,7 +782,7 @@ TEST(Conv, IntegralToBool) {
   EXPECT_TRUE(to<bool>(42ul));
 }
 
-template<typename Src>
+template <typename Src>
 void testStr2Bool() {
   EXPECT_FALSE(to<bool>(Src("0")));
   EXPECT_FALSE(to<bool>(Src("  000  ")));

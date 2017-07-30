@@ -519,8 +519,7 @@ struct RWTicketIntTrait<32> {
 };
 }  // detail
 
-
-template<size_t kBitWidth, bool kFavorWriter=false>
+template <size_t kBitWidth, bool kFavorWriter = false>
 class RWTicketSpinLockT {
   typedef detail::RWTicketIntTrait<kBitWidth> IntTraitType;
   typedef typename detail::RWTicketIntTrait<kBitWidth>::FullInt FullInt;
@@ -540,13 +539,13 @@ class RWTicketSpinLockT {
   } ticket;
 
  private: // Some x64-specific utilities for atomic access to ticket.
-  template<class T> static T load_acquire(T* addr) {
+  template <class T> static T load_acquire(T* addr) {
     T t = *addr; // acquire barrier
     asm_volatile_memory();
     return t;
   }
 
-  template<class T>
+  template <class T>
   static void store_release(T* addr, T v) {
     asm_volatile_memory();
     *addr = v; // release barrier

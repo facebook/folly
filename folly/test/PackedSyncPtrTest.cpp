@@ -66,7 +66,7 @@ TEST(PackedSyncPtr, Basic) {
 }
 
 // Here we use the PackedSyncPtr to lock the whole SyncVec (base, *base, and sz)
-template<typename T>
+template <typename T>
 struct SyncVec {
   PackedSyncPtr<T> base;
   SyncVec() { base.init(); }

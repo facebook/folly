@@ -62,9 +62,9 @@ void Num2String(String& str, Integral /* n */) {
   str.resize(strlen(str.c_str()));
 }
 
-template<class T> T randomObject();
+template <class T> T randomObject();
 
-template<> int randomObject<int>() {
+template <> int randomObject<int>() {
   return random(0, 1024);
 }
 }

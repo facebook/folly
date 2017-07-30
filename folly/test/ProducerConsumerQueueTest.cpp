@@ -30,17 +30,17 @@
 
 namespace {
 
-template<class T> struct TestTraits {
+template <class T> struct TestTraits {
   T limit() const { return 1 << 24; }
   T generate() const { return rand() % 26; }
 };
 
-template<> struct TestTraits<std::string> {
+template <> struct TestTraits<std::string> {
   unsigned int limit() const { return 1 << 22; }
   std::string generate() const { return std::string(12, ' '); }
 };
 
-template<class QueueType, size_t Size, bool Pop = false>
+template <class QueueType, size_t Size, bool Pop = false>
 struct PerfTest {
   typedef typename QueueType::value_type T;
 
@@ -92,13 +92,13 @@ struct PerfTest {
   TestTraits<T> traits_;
 };
 
-template<class TestType> void doTest(const char* name) {
+template <class TestType> void doTest(const char* name) {
   LOG(INFO) << "  testing: " << name;
   std::unique_ptr<TestType> const t(new TestType());
   (*t)();
 }
 
-template<class T, bool Pop = false>
+template <class T, bool Pop = false>
 void perfTestType(const char* type) {
   const size_t size = 0xfffe;
 
@@ -107,7 +107,7 @@ void perfTestType(const char* type) {
     "ProducerConsumerQueue");
 }
 
-template<class QueueType, size_t Size, bool Pop>
+template <class QueueType, size_t Size, bool Pop>
 struct CorrectnessTest {
   typedef typename QueueType::value_type T;
 
@@ -197,7 +197,7 @@ struct CorrectnessTest {
   std::atomic<bool> done_;
 };
 
-template<class T, bool Pop = false>
+template <class T, bool Pop = false>
 void correctnessTestType(const std::string& type) {
   LOG(INFO) << "Type: " << type;
   doTest<CorrectnessTest<folly::ProducerConsumerQueue<T>,0xfffe,Pop> >(

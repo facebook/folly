@@ -35,7 +35,7 @@ namespace folly {
  * ProducerConsumerQueue is a one producer and one consumer queue
  * without locks.
  */
-template<class T>
+template <class T>
 struct ProducerConsumerQueue {
   typedef T value_type;
 
@@ -77,7 +77,7 @@ struct ProducerConsumerQueue {
     std::free(records_);
   }
 
-  template<class ...Args>
+  template <class... Args>
   bool write(Args&&... recordArgs) {
     auto const currentWrite = writeIndex_.load(std::memory_order_relaxed);
     auto nextRecord = currentWrite + 1;

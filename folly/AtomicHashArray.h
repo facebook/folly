@@ -127,7 +127,7 @@ class AtomicHashArray : boost::noncopyable {
   const KeyT    kLockedKey_;
   const KeyT    kErasedKey_;
 
-  template<class ContT, class IterVal>
+  template <class ContT, class IterVal>
   struct aha_iterator;
 
   typedef aha_iterator<const AtomicHashArray,const value_type> const_iterator;

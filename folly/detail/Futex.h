@@ -144,20 +144,20 @@ struct EmulatedFutexAtomic : public std::atomic<T> {
 
 /* Available specializations, with definitions elsewhere */
 
-template<>
+template <>
 int Futex<std::atomic>::futexWake(int count, uint32_t wakeMask);
 
-template<>
+template <>
 FutexResult Futex<std::atomic>::futexWaitImpl(
       uint32_t expected,
       std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
       std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
       uint32_t waitMask);
 
-template<>
+template <>
 int Futex<EmulatedFutexAtomic>::futexWake(int count, uint32_t wakeMask);
 
-template<>
+template <>
 FutexResult Futex<EmulatedFutexAtomic>::futexWaitImpl(
       uint32_t expected,
       std::chrono::time_point<std::chrono::system_clock>* absSystemTime,

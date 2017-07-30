@@ -1091,7 +1091,7 @@ constexpr T* dataPtr(T (&arr)[N]) noexcept {
   return &arr[0];
 }
 
-template<class C>
+template <class C>
 void testRangeFunc(C&& x, size_t n) {
   const auto& cx = x;
   // type, conversion checks

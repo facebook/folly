@@ -69,7 +69,7 @@ namespace folly {
  * have a real constructor because we want this to be a POD type so we
  * can put it into packed structs.
  */
-template<class IntType, int Bit = sizeof(IntType) * 8 - 1>
+template <class IntType, int Bit = sizeof(IntType) * 8 - 1>
 struct PicoSpinLock {
   // Internally we deal with the unsigned version of the type.
   typedef typename std::make_unsigned<IntType>::type UIntType;

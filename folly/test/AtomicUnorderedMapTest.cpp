@@ -28,7 +28,7 @@
 using namespace folly;
 using namespace folly::test;
 
-template<class T>
+template <class T>
 struct non_atomic {
   T value;
 

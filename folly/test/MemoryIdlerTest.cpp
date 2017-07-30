@@ -93,7 +93,7 @@ namespace folly { namespace detail {
 /// method signatures differ from the real Futex because we have elided
 /// unused default params and collapsed templated methods into the
 /// used type
-template<>
+template <>
 struct Futex<MockAtom> {
   MOCK_METHOD2(futexWait, bool(uint32_t, uint32_t));
   MOCK_METHOD3(futexWaitUntil,

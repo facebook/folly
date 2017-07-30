@@ -370,7 +370,7 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
   // Conversion ctor for interoperability between const_iterator and
   // iterator.  The enable_if<> magic keeps us well-behaved for
   // is_convertible<> (v. the iterator_facade documentation).
-  template<class OtherContT, class OtherVal>
+  template <class OtherContT, class OtherVal>
   aha_iterator(const aha_iterator<OtherContT,OtherVal>& o,
                typename std::enable_if<
                std::is_convertible<OtherVal*,IterVal*>::value >::type* = 0)

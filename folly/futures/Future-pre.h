@@ -46,7 +46,7 @@ template <class...> struct CollectAllVariadicContext;
 template <class...> struct CollectVariadicContext;
 template <class> struct CollectContext;
 
-template<typename F, typename... Args>
+template <typename F, typename... Args>
 using resultOf = decltype(std::declval<F>()(std::declval<Args>()...));
 
 template <typename...>
@@ -67,14 +67,13 @@ struct argResult {
   using Result = resultOf<F, Args...>;
 };
 
-template<typename F, typename... Args>
+template <typename F, typename... Args>
 struct callableWith {
-    template<typename T,
-             typename = detail::resultOf<T, Args...>>
+    template <typename T, typename = detail::resultOf<T, Args...>>
     static constexpr std::true_type
     check(std::nullptr_t) { return std::true_type{}; }
 
-    template<typename>
+    template <typename>
     static constexpr std::false_type
     check(...) { return std::false_type{}; }
 
@@ -82,7 +81,7 @@ struct callableWith {
     static constexpr bool value = type::value;
 };
 
-template<typename T, typename F>
+template <typename T, typename F>
 struct callableResult {
   typedef typename std::conditional<
     callableWith<F>::value,

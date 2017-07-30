@@ -33,7 +33,7 @@ using std::shared_ptr;
 
 namespace folly {
 
-template<class V>
+template <class V>
 std::ostream& operator<<(std::ostream& os, const Optional<V>& v) {
   if (v) {
     os << "Optional(" << v.value() << ')';

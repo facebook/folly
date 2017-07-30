@@ -621,7 +621,7 @@ std::ostream& operator<<(std::ostream& os, const SocketAddress& addr);
 namespace std {
 
 // Provide an implementation for std::hash<SocketAddress>
-template<>
+template <>
 struct hash<folly::SocketAddress> {
   size_t operator()(
       const folly::SocketAddress& addr) const {

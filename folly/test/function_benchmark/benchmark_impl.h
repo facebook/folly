@@ -43,7 +43,7 @@ inline void BM_fn_ptr_invoke_inlined_impl(int iters, void (*fn)()) {
 
 // Invoke a function object as a template parameter.
 // This can be used to directly invoke lambda functions
-template<typename T>
+template <typename T>
 void BM_invoke_fn_template_impl(int iters, const T& fn) {
   for (int n = 0; n < iters; ++n) {
     fn();

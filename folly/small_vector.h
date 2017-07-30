@@ -78,7 +78,7 @@ struct NoHeap;
 
 //////////////////////////////////////////////////////////////////////
 
-template<class T, std::size_t M, class A, class B, class C>
+template <class T, std::size_t M, class A, class B, class C>
 class small_vector;
 
 //////////////////////////////////////////////////////////////////////
@@ -89,7 +89,7 @@ namespace detail {
    * Move a range to a range of uninitialized memory.  Assumes the
    * ranges don't overlap.
    */
-  template<class T>
+  template <class T>
   typename std::enable_if<
     !FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
@@ -113,7 +113,7 @@ namespace detail {
   }
 
   // Specialization for trivially copyable types.
-  template<class T>
+  template <class T>
   typename std::enable_if<
     FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
@@ -163,7 +163,7 @@ namespace detail {
    * std::move_backward because move_backward only works if all the
    * memory is initialized to type T already.
    */
-  template<class T>
+  template <class T>
   typename std::enable_if<
     !FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
@@ -202,7 +202,7 @@ namespace detail {
   // Specialization for trivially copyable types.  The call to
   // std::move_backward here will just turn into a memmove.  (TODO:
   // change to std::is_trivially_copyable when that works.)
-  template<class T>
+  template <class T>
   typename std::enable_if<
     FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
@@ -214,7 +214,7 @@ namespace detail {
    * Populate a region of memory using `op' to construct elements.  If
    * anything throws, undo what we did.
    */
-  template<class T, class Function>
+  template <class T, class Function>
   void populateMemForward(T* mem, std::size_t n, Function const& op) {
     std::size_t idx = 0;
     try {
@@ -230,7 +230,7 @@ namespace detail {
     }
   }
 
-  template<class SizeType, bool ShouldUseHeap>
+  template <class SizeType, bool ShouldUseHeap>
   struct IntegralSizePolicy {
     typedef SizeType InternalSizeType;
 
@@ -289,11 +289,12 @@ namespace detail {
    * Apologies for all the black magic.
    */
   namespace mpl = boost::mpl;
-  template<class Value,
-           std::size_t RequestedMaxInline,
-           class InPolicyA,
-           class InPolicyB,
-           class InPolicyC>
+  template <
+      class Value,
+      std::size_t RequestedMaxInline,
+      class InPolicyA,
+      class InPolicyB,
+      class InPolicyC>
   struct small_vector_base {
     typedef mpl::vector<InPolicyA,InPolicyB,InPolicyC> PolicyList;
 
@@ -364,11 +365,12 @@ namespace detail {
 
 //////////////////////////////////////////////////////////////////////
 FOLLY_PACK_PUSH
-template<class Value,
-         std::size_t RequestedMaxInline    = 1,
-         class PolicyA                     = void,
-         class PolicyB                     = void,
-         class PolicyC                     = void>
+template <
+    class Value,
+    std::size_t RequestedMaxInline = 1,
+    class PolicyA = void,
+    class PolicyB = void,
+    class PolicyC = void>
 class small_vector
   : public detail::small_vector_base<
       Value,RequestedMaxInline,PolicyA,PolicyB,PolicyC
@@ -439,7 +441,7 @@ class small_vector
     doConstruct(n, [&](void* p) { new (p) value_type(t); });
   }
 
-  template<class Arg>
+  template <class Arg>
   explicit small_vector(Arg arg1, Arg arg2)  {
     // Forward using std::is_arithmetic to get to the proper
     // implementation; this disambiguates between the iterators and
@@ -626,7 +628,7 @@ class small_vector
     return this->isExtern() ? u.heap() : u.buffer();
   }
 
-  template<class ...Args>
+  template <class... Args>
   iterator emplace(const_iterator p, Args&&... args) {
     if (p == cend()) {
       emplace_back(std::forward<Args>(args)...);
@@ -747,7 +749,7 @@ class small_vector
     return begin() + offset;
   }
 
-  template<class Arg>
+  template <class Arg>
   iterator insert(const_iterator p, Arg arg1, Arg arg2) {
     // Forward using std::is_arithmetic to get to the proper
     // implementation; this disambiguates between the iterators and
@@ -780,7 +782,7 @@ class small_vector
     erase(begin(), end());
   }
 
-  template<class Arg>
+  template <class Arg>
   void assign(Arg first, Arg last) {
     clear();
     insert(end(), first, last);
@@ -832,7 +834,7 @@ private:
 
   // The std::false_type argument is part of disambiguating the
   // iterator insert functions from integral types (see insert().)
-  template<class It>
+  template <class It>
   iterator insertImpl(iterator pos, It first, It last, std::false_type) {
     typedef typename std::iterator_traits<It>::iterator_category categ;
     if (std::is_same<categ,std::input_iterator_tag>::value) {
@@ -865,7 +867,7 @@ private:
   // The std::false_type argument came from std::is_arithmetic as part
   // of disambiguating an overload (see the comment in the
   // constructor).
-  template<class It>
+  template <class It>
   void constructImpl(It first, It last, std::false_type) {
     typedef typename std::iterator_traits<It>::iterator_category categ;
     if (std::is_same<categ,std::input_iterator_tag>::value) {
@@ -1126,7 +1128,7 @@ FOLLY_PACK_POP
 
 // Basic guarantee only, or provides the nothrow guarantee iff T has a
 // nothrow move or copy constructor.
-template<class T, std::size_t MaxInline, class A, class B, class C>
+template <class T, std::size_t MaxInline, class A, class B, class C>
 void swap(small_vector<T,MaxInline,A,B,C>& a,
           small_vector<T,MaxInline,A,B,C>& b) {
   a.swap(b);

@@ -68,10 +68,10 @@ class MMapAlloc {
   }
 };
 
-template<typename Allocator>
+template <typename Allocator>
 struct GivesZeroFilledMemory : public std::false_type {};
 
-template<>
+template <>
 struct GivesZeroFilledMemory<MMapAlloc> : public std::true_type{};
 
 }}

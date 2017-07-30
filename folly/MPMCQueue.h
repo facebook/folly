@@ -34,7 +34,7 @@ namespace folly {
 
 namespace detail {
 
-template<typename T, template<typename> class Atom>
+template <typename T, template <typename> class Atom>
 struct SingleElementQueue;
 
 template <typename T> class MPMCPipelineStageImpl;
@@ -97,8 +97,10 @@ template <typename> class MPMCQueueBase;
 /// are you can enqueue one sentinel and then have each consumer requeue
 /// two sentinels after it receives it (by requeuing 2 the shutdown can
 /// complete in O(log P) time instead of O(P)).
-template<typename T, template<typename> class Atom = std::atomic,
-         bool Dynamic = false>
+template <
+    typename T,
+    template <typename> class Atom = std::atomic,
+    bool Dynamic = false>
 class MPMCQueue : public detail::MPMCQueueBase<MPMCQueue<T,Atom,Dynamic>> {
   friend class detail::MPMCPipelineStageImpl<T>;
   using Slot = detail::SingleElementQueue<T,Atom>;
@@ -169,7 +171,7 @@ class MPMCQueue : public detail::MPMCQueueBase<MPMCQueue<T,Atom,Dynamic>> {
 ///
 /// The dynamic version is a partial specialization of MPMCQueue with
 /// Dynamic == true
-template <typename T, template<typename> class Atom>
+template <typename T, template <typename> class Atom>
 class MPMCQueue<T,Atom,true> :
       public detail::MPMCQueueBase<MPMCQueue<T,Atom,true>> {
   friend class detail::MPMCQueueBase<MPMCQueue<T,Atom,true>>;
@@ -613,10 +615,12 @@ class MPMCQueue<T,Atom,true> :
 namespace detail {
 
 /// CRTP specialization of MPMCQueueBase
-template<
-  template<
-    typename T, template<typename> class Atom, bool Dynamic> class Derived,
-  typename T, template<typename> class Atom, bool Dynamic>
+template <
+    template <typename T, template <typename> class Atom, bool Dynamic>
+    class Derived,
+    typename T,
+    template <typename> class Atom,
+    bool Dynamic>
 class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
 
 // Note: Using CRTP static casts in several functions of this base

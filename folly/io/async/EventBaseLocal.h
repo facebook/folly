@@ -70,7 +70,7 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
  * by the get() method after set/erase is called.  If shared ownership is
  * needed, use a EventBaseLocal<shared_ptr<...>>.
  */
-template<typename T>
+template <typename T>
 class EventBaseLocal : public detail::EventBaseLocalBase {
  public:
   EventBaseLocal(): EventBaseLocalBase() {}

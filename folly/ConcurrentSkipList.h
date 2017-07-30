@@ -135,12 +135,13 @@ Sample usage:
 
 namespace folly {
 
-template<typename T,
-         typename Comp = std::less<T>,
-         // All nodes are allocated using provided SimpleAllocator,
-         // it should be thread-safe.
-         typename NodeAlloc = SysAlloc,
-         int MAX_HEIGHT = 24>
+template <
+    typename T,
+    typename Comp = std::less<T>,
+    // All nodes are allocated using provided SimpleAllocator,
+    // it should be thread-safe.
+    typename NodeAlloc = SysAlloc,
+    int MAX_HEIGHT = 24>
 class ConcurrentSkipList {
   // MAX_HEIGHT needs to be at least 2 to suppress compiler
   // warnings/errors (Werror=uninitialized tiggered due to preds_[1]
@@ -297,7 +298,7 @@ class ConcurrentSkipList {
   //     list with the same key.
   //   pair.second stores whether the data is added successfully:
   //     0 means not added, otherwise reutrns the new size.
-  template<typename U>
+  template <typename U>
   std::pair<NodeType*, size_t> addOrGetData(U &&data) {
     NodeType *preds[MAX_HEIGHT], *succs[MAX_HEIGHT];
     NodeType *newNode;
@@ -518,7 +519,7 @@ class ConcurrentSkipList {
   std::atomic<size_t> size_;
 };
 
-template<typename T, typename Comp, typename NodeAlloc, int MAX_HEIGHT>
+template <typename T, typename Comp, typename NodeAlloc, int MAX_HEIGHT>
 class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   typedef detail::SkipListNode<T> NodeType;
   typedef ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT> SkipListType;
@@ -593,8 +594,10 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   const_iterator cbegin() const { return begin(); }
   const_iterator cend() const { return end(); }
 
-  template<typename U,
-    typename=typename std::enable_if<std::is_convertible<U, T>::value>::type>
+  template <
+      typename U,
+      typename =
+          typename std::enable_if<std::is_convertible<U, T>::value>::type>
   std::pair<iterator, bool> insert(U&& data) {
     auto ret = sl_->addOrGetData(std::forward<U>(data));
     return std::make_pair(iterator(ret.first), ret.second);
@@ -652,7 +655,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
 };
 
 // implements forward iterator concept.
-template<typename ValT, typename NodeT>
+template <typename ValT, typename NodeT>
 class detail::csl_iterator :
   public boost::iterator_facade<csl_iterator<ValT, NodeT>,
     ValT, boost::forward_traversal_tag> {
@@ -664,7 +667,7 @@ class detail::csl_iterator :
 
   explicit csl_iterator(NodeT* node = nullptr) : node_(node) {}
 
-  template<typename OtherVal, typename OtherNode>
+  template <typename OtherVal, typename OtherNode>
   csl_iterator(const csl_iterator<OtherVal, OtherNode> &other,
       typename std::enable_if<std::is_convertible<OtherVal, ValT>::value>::type*
       = 0) : node_(other.node_) {}
@@ -678,7 +681,7 @@ class detail::csl_iterator :
 
  private:
   friend class boost::iterator_core_access;
-  template<class,class> friend class csl_iterator;
+  template <class, class> friend class csl_iterator;
 
   void increment() { node_ = node_->next(); }
   bool equal(const csl_iterator& other) const { return node_ == other.node_; }
@@ -688,7 +691,7 @@ class detail::csl_iterator :
 };
 
 // Skipper interface
-template<typename T, typename Comp, typename NodeAlloc, int MAX_HEIGHT>
+template <typename T, typename Comp, typename NodeAlloc, int MAX_HEIGHT>
 class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
   typedef detail::SkipListNode<T> NodeType;
   typedef ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT> SkipListType;

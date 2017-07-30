@@ -100,7 +100,7 @@ using is_associative = StrictConjunction<is_range<T>, has_key_type<T>>;
 
 namespace dynamicconverter_detail {
 
-template<typename T>
+template <typename T>
 struct Dereferencer {
   static inline void derefToCache(
       Optional<T>* /* mem */,
@@ -115,7 +115,7 @@ struct Dereferencer {
   }
 };
 
-template<typename F, typename S>
+template <typename F, typename S>
 struct Dereferencer<std::pair<F, S>> {
   static inline void derefToCache(
       Optional<std::pair<F, S>>* mem,
@@ -356,7 +356,7 @@ struct DynamicConstructor<
 };
 
 // pair
-template<typename A, typename B>
+template <typename A, typename B>
 struct DynamicConstructor<std::pair<A, B>, void> {
   static dynamic construct(const std::pair<A, B>& x) {
     dynamic d = dynamic::array;
@@ -374,7 +374,7 @@ T convertTo(const dynamic& d) {
   return DynamicConverter<typename std::remove_cv<T>::type>::convert(d);
 }
 
-template<typename T>
+template <typename T>
 dynamic toDynamic(const T& x) {
   return DynamicConstructor<typename std::remove_cv<T>::type>::construct(x);
 }

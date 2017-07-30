@@ -81,7 +81,7 @@ struct GuardObjBase {
 };
 typedef GuardObjBase const& Guard;
 
-template<class F, class Tuple>
+template <class F, class Tuple>
 struct GuardObj : GuardObjBase {
   explicit GuardObj(F&& f, Tuple&& args)
     : f_(std::forward<F>(f))
@@ -105,7 +105,7 @@ private:
   Tuple args_;
 };
 
-template<class F, class ...Args>
+template <class F, class... Args>
 GuardObj<typename std::decay<F>::type,std::tuple<Args...>>
 guard(F&& f, Args&&... args) {
   return GuardObj<typename std::decay<F>::type,std::tuple<Args...>>(

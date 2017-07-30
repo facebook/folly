@@ -155,8 +155,14 @@ struct AtomicHashMapFullError : std::runtime_error {
   {}
 };
 
-template<class KeyT, class ValueT, class HashFcn, class EqualFcn,
-         class Allocator, class ProbeFcn, class KeyConvertFcn>
+template <
+    class KeyT,
+    class ValueT,
+    class HashFcn,
+    class EqualFcn,
+    class Allocator,
+    class ProbeFcn,
+    class KeyConvertFcn>
 class AtomicHashMap : boost::noncopyable {
 typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
                         Allocator, ProbeFcn, KeyConvertFcn>
@@ -176,7 +182,7 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
   typedef std::size_t         size_type;
   typedef typename SubMap::Config Config;
 
-  template<class ContT, class IterVal, class SubIt>
+  template <class ContT, class IterVal, class SubIt>
   struct ahm_iterator;
 
   typedef ahm_iterator<const AtomicHashMap,

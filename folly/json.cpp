@@ -217,7 +217,7 @@ struct Input {
 
   // Parse ahead for as long as the supplied predicate is satisfied,
   // returning a range of what was skipped.
-  template<class Predicate>
+  template <class Predicate>
   StringPiece skipWhile(const Predicate& p) {
     std::size_t skipped = 0;
     for (; skipped < range_.size(); ++skipped) {
@@ -273,7 +273,7 @@ struct Input {
     storeCurrent();
   }
 
-  template<class T>
+  template <class T>
   T extract() {
     try {
       return to<T>(&range_);

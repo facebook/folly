@@ -402,12 +402,12 @@ struct StrictDisjunction
  * regular type, use it like this:
  *
  * // Make sure you're at namespace ::folly scope
- * template<> FOLLY_ASSUME_RELOCATABLE(MyType)
+ * template <> FOLLY_ASSUME_RELOCATABLE(MyType)
  *
  * When using it with a template type, use it like this:
  *
  * // Make sure you're at namespace ::folly scope
- * template<class T1, class T2>
+ * template <class T1, class T2>
  * FOLLY_ASSUME_RELOCATABLE(MyType<T1, T2>)
  */
 #define FOLLY_ASSUME_RELOCATABLE(...) \

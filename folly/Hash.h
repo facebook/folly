@@ -370,7 +370,7 @@ inline uint32_t hsieh_hash32_str(const std::string& str) {
 
 } // namespace hash
 
-template<class Key, class Enable = void>
+template <class Key, class Enable = void>
 struct hasher;
 
 struct Hash {
@@ -393,43 +393,43 @@ struct hasher<bool> {
   }
 };
 
-template<> struct hasher<int32_t> {
+template <> struct hasher<int32_t> {
   size_t operator()(int32_t key) const {
     return hash::jenkins_rev_mix32(uint32_t(key));
   }
 };
 
-template<> struct hasher<uint32_t> {
+template <> struct hasher<uint32_t> {
   size_t operator()(uint32_t key) const {
     return hash::jenkins_rev_mix32(key);
   }
 };
 
-template<> struct hasher<int16_t> {
+template <> struct hasher<int16_t> {
   size_t operator()(int16_t key) const {
     return hasher<int32_t>()(key); // as impl accident, sign-extends
   }
 };
 
-template<> struct hasher<uint16_t> {
+template <> struct hasher<uint16_t> {
   size_t operator()(uint16_t key) const {
     return hasher<uint32_t>()(key);
   }
 };
 
-template<> struct hasher<int8_t> {
+template <> struct hasher<int8_t> {
   size_t operator()(int8_t key) const {
     return hasher<int32_t>()(key); // as impl accident, sign-extends
   }
 };
 
-template<> struct hasher<uint8_t> {
+template <> struct hasher<uint8_t> {
   size_t operator()(uint8_t key) const {
     return hasher<uint32_t>()(key);
   }
 };
 
-template<> struct hasher<char> {
+template <> struct hasher<char> {
   using explicit_type =
       std::conditional<std::is_signed<char>::value, int8_t, uint8_t>::type;
   size_t operator()(char key) const {
@@ -437,19 +437,19 @@ template<> struct hasher<char> {
   }
 };
 
-template<> struct hasher<int64_t> {
+template <> struct hasher<int64_t> {
   size_t operator()(int64_t key) const {
     return static_cast<size_t>(hash::twang_mix64(uint64_t(key)));
   }
 };
 
-template<> struct hasher<uint64_t> {
+template <> struct hasher<uint64_t> {
   size_t operator()(uint64_t key) const {
     return static_cast<size_t>(hash::twang_mix64(key));
   }
 };
 
-template<> struct hasher<std::string> {
+template <> struct hasher<std::string> {
   size_t operator()(const std::string& key) const {
     return static_cast<size_t>(
         hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));

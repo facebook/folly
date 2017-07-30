@@ -275,7 +275,7 @@ inline char delimFront(StringPiece s) {
  *
  * @param ignoreEmpty iff true, don't copy empty segments to output
  */
-template<class OutStringT, class DelimT, class OutputIterator>
+template <class OutStringT, class DelimT, class OutputIterator>
 void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
     bool ignoreEmpty) {
   assert(sp.empty() || sp.start() != nullptr);
@@ -317,7 +317,7 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
   }
 }
 
-template<class String> StringPiece prepareDelim(const String& s) {
+template <class String> StringPiece prepareDelim(const String& s) {
   return StringPiece(s);
 }
 inline char prepareDelim(char c) { return c; }
@@ -359,7 +359,7 @@ bool splitFixed(
 
 //////////////////////////////////////////////////////////////////////
 
-template<class Delim, class String, class OutputType>
+template <class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            std::vector<OutputType>& out,
@@ -371,7 +371,7 @@ void split(const Delim& delimiter,
     ignoreEmpty);
 }
 
-template<class Delim, class String, class OutputType>
+template <class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            fbvector<OutputType>& out,
@@ -383,8 +383,11 @@ void split(const Delim& delimiter,
     ignoreEmpty);
 }
 
-template<class OutputValueType, class Delim, class String,
-         class OutputIterator>
+template <
+    class OutputValueType,
+    class Delim,
+    class String,
+    class OutputIterator>
 void splitTo(const Delim& delimiter,
              const String& input,
              OutputIterator out,
@@ -567,7 +570,7 @@ void humanify(const String1& input, String2& output) {
   }
 }
 
-template<class InputString, class OutputString>
+template <class InputString, class OutputString>
 bool hexlify(const InputString& input, OutputString& output,
              bool append_output) {
   if (!append_output) output.clear();
@@ -583,7 +586,7 @@ bool hexlify(const InputString& input, OutputString& output,
   return true;
 }
 
-template<class InputString, class OutputString>
+template <class InputString, class OutputString>
 bool unhexlify(const InputString& input, OutputString& output) {
   if (input.size() % 2 != 0) {
     return false;

@@ -31,8 +31,9 @@
 
 namespace folly {
 
-template <template<typename> class Atom = std::atomic,
-          class BatonType = Baton<Atom>>
+template <
+    template <typename> class Atom = std::atomic,
+    class BatonType = Baton<Atom>>
 struct LifoSemImpl;
 
 /// LifoSem is a semaphore that wakes its waiters in a manner intended to
@@ -114,7 +115,7 @@ namespace detail {
 /// LifoSemRawNode is the actual pooled storage that backs LifoSemNode
 /// for user-specified Handoff types.  This is done so that we can have
 /// a large static IndexedMemPool of nodes, instead of per-type pools
-template <template<typename> class Atom>
+template <template <typename> class Atom>
 struct LifoSemRawNode {
   std::aligned_storage<sizeof(void*),alignof(void*)>::type raw;
 
@@ -151,7 +152,7 @@ struct LifoSemRawNode {
 /// If it has a wait() method then LifoSemBase's wait() implementation
 /// will work out of the box, otherwise you will need to specialize
 /// LifoSemBase::wait accordingly.
-template <typename Handoff, template<typename> class Atom>
+template <typename Handoff, template <typename> class Atom>
 struct LifoSemNode : public LifoSemRawNode<Atom> {
 
   static_assert(sizeof(Handoff) <= sizeof(LifoSemRawNode<Atom>::raw),
@@ -181,7 +182,7 @@ struct LifoSemNode : public LifoSemRawNode<Atom> {
   }
 };
 
-template <typename Handoff, template<typename> class Atom>
+template <typename Handoff, template <typename> class Atom>
 struct LifoSemNodeRecycler {
   void operator()(LifoSemNode<Handoff,Atom>* elem) const {
     elem->destroy();
@@ -316,8 +317,7 @@ class LifoSemHead {
 ///
 /// The Handoff type is responsible for arranging one wakeup notification.
 /// See LifoSemNode for more information on how to make your own.
-template <typename Handoff,
-          template<typename> class Atom = std::atomic>
+template <typename Handoff, template <typename> class Atom = std::atomic>
 struct LifoSemBase {
 
   /// Constructor
@@ -591,7 +591,7 @@ struct LifoSemBase {
 
 } // namespace detail
 
-template <template<typename> class Atom, class BatonType>
+template <template <typename> class Atom, class BatonType>
 struct LifoSemImpl : public detail::LifoSemBase<BatonType, Atom> {
   constexpr explicit LifoSemImpl(uint32_t v = 0)
     : detail::LifoSemBase<BatonType, Atom>(v) {}

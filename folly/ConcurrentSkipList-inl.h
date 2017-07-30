@@ -38,9 +38,9 @@
 
 namespace folly { namespace detail {
 
-template<typename ValT, typename NodeT> class csl_iterator;
+template <typename ValT, typename NodeT> class csl_iterator;
 
-template<typename T>
+template <typename T>
 class SkipListNode : private boost::noncopyable {
   enum : uint16_t {
     IS_HEAD_NODE = 1,
@@ -51,8 +51,11 @@ class SkipListNode : private boost::noncopyable {
  public:
   typedef T value_type;
 
-  template<typename NodeAlloc, typename U,
-    typename=typename std::enable_if<std::is_convertible<U, T>::value>::type>
+  template <
+      typename NodeAlloc,
+      typename U,
+      typename =
+          typename std::enable_if<std::is_convertible<U, T>::value>::type>
   static SkipListNode* create(
       NodeAlloc& alloc, int height, U&& data, bool isHead = false) {
     DCHECK(height >= 1 && height < 64) << height;
@@ -65,13 +68,13 @@ class SkipListNode : private boost::noncopyable {
     return node;
   }
 
-  template<typename NodeAlloc>
+  template <typename NodeAlloc>
   static void destroy(NodeAlloc& alloc, SkipListNode* node) {
     node->~SkipListNode();
     alloc.deallocate(node);
   }
 
-  template<typename NodeAlloc>
+  template <typename NodeAlloc>
   struct DestroyIsNoOp : std::integral_constant<bool,
     IsArenaAllocator<NodeAlloc>::value &&
     boost::has_trivial_destructor<SkipListNode>::value> { };
@@ -130,7 +133,7 @@ class SkipListNode : private boost::noncopyable {
 
  private:
   // Note! this can only be called from create() as a placement new.
-  template<typename U>
+  template <typename U>
   SkipListNode(uint8_t height, U&& data, bool isHead) :
       height_(height), data_(std::forward<U>(data)) {
     spinLock_.init();
@@ -226,10 +229,10 @@ class SkipListRandomHeight {
   size_t sizeLimitTable_[kMaxHeight];
 };
 
-template<typename NodeType, typename NodeAlloc, typename = void>
+template <typename NodeType, typename NodeAlloc, typename = void>
 class NodeRecycler;
 
-template<typename NodeType, typename NodeAlloc>
+template <typename NodeType, typename NodeAlloc>
 class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
   !NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
  public:
@@ -315,7 +318,7 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
 
 // In case of arena allocator, no recycling is necessary, and it's possible
 // to save on ConcurrentSkipList size.
-template<typename NodeType, typename NodeAlloc>
+template <typename NodeType, typename NodeAlloc>
 class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
   NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
  public:

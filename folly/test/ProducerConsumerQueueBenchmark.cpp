@@ -40,7 +40,7 @@ typedef ProducerConsumerQueue<ThroughputType> ThroughputQueueType;
 typedef unsigned long LatencyType;
 typedef ProducerConsumerQueue<LatencyType> LatencyQueueType;
 
-template<class QueueType>
+template <class QueueType>
 struct ThroughputTest {
   explicit ThroughputTest(size_t size, int iters, int cpu0, int cpu1)
   : queue_(size),
@@ -86,7 +86,7 @@ struct ThroughputTest {
   int cpu1_;
 };
 
-template<class QueueType>
+template <class QueueType>
 struct LatencyTest {
   explicit LatencyTest(size_t size, int iters, int cpu0, int cpu1)
   : queue_(size),

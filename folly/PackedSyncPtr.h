@@ -59,7 +59,7 @@
 
 namespace folly {
 
-template<class T>
+template <class T>
 class PackedSyncPtr {
   // This just allows using this class even with T=void.  Attempting
   // to use the operator* or operator[] on a PackedSyncPtr<void> will

@@ -1404,7 +1404,7 @@ public:
 
   basic_fbstring& append(size_type n, value_type c);
 
-  template<class InputIterator>
+  template <class InputIterator>
   basic_fbstring& append(InputIterator first, InputIterator last) {
     insert(end(), first, last);
     return *this;

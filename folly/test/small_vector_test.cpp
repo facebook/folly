@@ -169,7 +169,7 @@ struct TestBasicGuarantee {
     throwCounter = 1000;
   }
 
-  template<class Operation>
+  template <class Operation>
   void operator()(int insertCount, Operation const& op) {
     bool done = false;
 

@@ -34,13 +34,13 @@ using namespace std::chrono;
 
 typedef DeterministicSchedule DSched;
 
-template <template<typename> class Atom>
+template <template <typename> class Atom>
 void run_basic_thread(
     Futex<Atom>& f) {
   EXPECT_TRUE(f.futexWait(0));
 }
 
-template <template<typename> class Atom>
+template <template <typename> class Atom>
 void run_basic_tests() {
   Futex<Atom> f(0);
 
@@ -56,7 +56,7 @@ void run_basic_tests() {
   DSched::join(thr);
 }
 
-template <template<typename> class Atom, typename Clock, typename Duration>
+template <template <typename> class Atom, typename Clock, typename Duration>
 void liveClockWaitUntilTests() {
   Futex<Atom> f(0);
 
@@ -113,7 +113,7 @@ void deterministicAtomicWaitUntilTests() {
   EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::INTERRUPTED);
 }
 
-template<template<typename> class Atom>
+template <template <typename> class Atom>
 void run_wait_until_tests() {
   liveClockWaitUntilTests<Atom, system_clock, system_clock::duration>();
   liveClockWaitUntilTests<Atom, steady_clock, steady_clock::duration>();

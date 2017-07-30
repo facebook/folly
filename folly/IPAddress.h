@@ -460,7 +460,7 @@ inline bool operator>=(const IPAddress& a, const IPAddress& b) {
 }  // folly
 
 namespace std {
-template<>
+template <>
 struct hash<folly::IPAddress> {
   size_t operator()(const folly::IPAddress& addr) const {
     return addr.hash();

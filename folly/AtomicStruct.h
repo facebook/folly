@@ -33,7 +33,7 @@ template <int N> struct AtomicStructIntPick {};
 /// type <= 8 bytes.
 template <
     typename T,
-    template<typename> class Atom = std::atomic,
+    template <typename> class Atom = std::atomic,
     typename Raw = typename detail::AtomicStructIntPick<sizeof(T)>::type>
 class AtomicStruct {
   static_assert(alignof(T) <= alignof(Raw),

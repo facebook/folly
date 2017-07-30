@@ -28,7 +28,7 @@
 namespace folly { namespace fileutil_detail {
 
 // Wrap call to f(args) in loop to retry on EINTR
-template<class F, class... Args>
+template <class F, class... Args>
 ssize_t wrapNoInt(F f, Args... args) {
   ssize_t r;
   do {

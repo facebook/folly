@@ -1259,7 +1259,7 @@ inline size_t qfind_first_of(const Range<const unsigned char*>& haystack,
                                      StringPiece(needles));
 }
 
-template<class Key, class Enable>
+template <class Key, class Enable>
 struct hasher;
 
 template <class T>

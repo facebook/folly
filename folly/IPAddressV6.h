@@ -398,7 +398,7 @@ void toAppend(IPAddressV6 addr, fbstring* result);
 }  // folly
 
 namespace std {
-template<>
+template <>
 struct hash<folly::IPAddressV6> {
   size_t operator()(const folly::IPAddressV6& addr) const {
     return addr.hash();

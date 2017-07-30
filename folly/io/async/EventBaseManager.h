@@ -102,7 +102,7 @@ class EventBaseManager {
    * this moment in time.  Locks a mutex so that these EventBase set cannot
    * be changed, and also the caller can rely on no instances being destructed.
    */
-  template<typename FunctionType>
+  template <typename FunctionType>
   void withEventBaseSet(const FunctionType& runnable) {
     // grab the mutex for the caller
     std::lock_guard<std::mutex> g(*&eventBaseSetMutex_);

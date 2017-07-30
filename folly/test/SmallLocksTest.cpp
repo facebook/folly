@@ -83,7 +83,7 @@ void splock_test() {
 }
 
 #ifdef FOLLY_PICO_SPIN_LOCK_H_
-template<class T> struct PslTest {
+template <class T> struct PslTest {
   PicoSpinLock<T> lock;
 
   PslTest() { lock.init(); }
@@ -102,7 +102,7 @@ template<class T> struct PslTest {
   }
 };
 
-template<class T>
+template <class T>
 void doPslTest() {
   PslTest<T> testObj;
 

@@ -42,7 +42,7 @@
 
 namespace folly {
 
-template<class InputIt1, class InputIt2, class OutputIt, class Compare>
+template <class InputIt1, class InputIt2, class OutputIt, class Compare>
 OutputIt merge(InputIt1 first1, InputIt1 last1,
                InputIt2 first2, InputIt2 last2,
                OutputIt d_first, Compare comp) {
@@ -61,7 +61,7 @@ OutputIt merge(InputIt1 first1, InputIt1 last1,
   return std::copy(first2, last2, d_first);
 }
 
-template<class InputIt1, class InputIt2, class OutputIt>
+template <class InputIt1, class InputIt2, class OutputIt>
 OutputIt merge(InputIt1 first1, InputIt1 last1,
                InputIt2 first2, InputIt2 last2,
                OutputIt d_first) {

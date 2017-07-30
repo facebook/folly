@@ -61,7 +61,7 @@ using IntrusiveListHook = boost::intrusive::list_member_hook<
  * The elements stored in the list must contain an IntrusiveListHook member
  * variable.
  */
-template<typename T, IntrusiveListHook T::* PtrToMember>
+template <typename T, IntrusiveListHook T::*PtrToMember>
 using IntrusiveList = boost::intrusive::list<
     T,
     boost::intrusive::member_hook<T, IntrusiveListHook, PtrToMember>,
@@ -109,7 +109,7 @@ using SafeIntrusiveListHook = boost::intrusive::list_member_hook<
  * The elements stored in the list must contain an SafeIntrusiveListHook member
  * variable.
  */
-template<typename T, SafeIntrusiveListHook T::* PtrToMember>
+template <typename T, SafeIntrusiveListHook T::*PtrToMember>
 using CountedIntrusiveList = boost::intrusive::list<
     T,
     boost::intrusive::member_hook<T, SafeIntrusiveListHook, PtrToMember>,

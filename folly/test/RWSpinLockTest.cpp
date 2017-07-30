@@ -38,7 +38,7 @@ static const int kMaxReaders = 50;
 static std::atomic<bool> stopThread;
 using namespace folly;
 
-template<typename RWSpinLockT> struct RWSpinLockTest: public testing::Test {
+template <typename RWSpinLockT> struct RWSpinLockTest: public testing::Test {
   typedef RWSpinLockT RWSpinLockType;
 };
 
@@ -53,7 +53,7 @@ typedef testing::Types<RWSpinLock
 
 TYPED_TEST_CASE(RWSpinLockTest, Implementations);
 
-template<typename RWSpinLockType>
+template <typename RWSpinLockType>
 static void run(RWSpinLockType* lock) {
   int64_t reads = 0;
   int64_t writes = 0;

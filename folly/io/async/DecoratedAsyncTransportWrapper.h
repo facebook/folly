@@ -23,7 +23,7 @@ namespace folly {
  * Convenience class so that AsyncTransportWrapper can be decorated without
  * having to redefine every single method.
  */
-template<class T>
+template <class T>
 class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
  public:
   explicit DecoratedAsyncTransportWrapper(typename T::UniquePtr transport):

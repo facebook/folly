@@ -249,7 +249,7 @@ String humanify(const String& input) {
  * If append_output is true, append data to the output rather than
  * replace it.
  */
-template<class InputString, class OutputString>
+template <class InputString, class OutputString>
 bool hexlify(const InputString& input, OutputString& output,
              bool append=false);
 
@@ -272,7 +272,7 @@ OutputString hexlify(StringPiece input) {
  * Same functionality as Python's binascii.unhexlify.  Returns true
  * on successful conversion.
  */
-template<class InputString, class OutputString>
+template <class InputString, class OutputString>
 bool unhexlify(const InputString& input, OutputString& output);
 
 template <class OutputString = std::string>
@@ -409,20 +409,23 @@ fbstring errnoStr(int err);
  * or not (generating empty tokens).
  */
 
-template<class Delim, class String, class OutputType>
+template <class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            std::vector<OutputType>& out,
            const bool ignoreEmpty = false);
 
-template<class Delim, class String, class OutputType>
+template <class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            folly::fbvector<OutputType>& out,
            const bool ignoreEmpty = false);
 
-template<class OutputValueType, class Delim, class String,
-         class OutputIterator>
+template <
+    class OutputValueType,
+    class Delim,
+    class String,
+    class OutputIterator>
 void splitTo(const Delim& delimiter,
              const String& input,
              OutputIterator out,

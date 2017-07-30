@@ -35,7 +35,7 @@ struct less_invert {
   }
 };
 
-template<class Container>
+template <class Container>
 void check_invariant(Container& c) {
   auto it = c.begin();
   auto end = c.end();
@@ -49,7 +49,7 @@ void check_invariant(Container& c) {
 }
 
 struct OneAtATimePolicy {
-  template<class Container>
+  template <class Container>
   void increase_capacity(Container& c) {
     if (c.size() == c.capacity()) {
       c.reserve(c.size() + 1);

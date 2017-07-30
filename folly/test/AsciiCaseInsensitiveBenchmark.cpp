@@ -89,7 +89,7 @@ struct AsciiCaseInsensitiveLegacy {
   }
 };
 
-template<typename Cmp>
+template <typename Cmp>
 inline void test_operator_on_search(int iters) {
   Cmp cmp;
   int dummy = 0;

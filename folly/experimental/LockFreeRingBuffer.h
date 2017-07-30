@@ -32,8 +32,7 @@
 namespace folly {
 namespace detail {
 
-template<typename T,
-         template<typename> class Atom>
+template <typename T, template <typename> class Atom>
 class RingBufferSlot;
 } // namespace detail
 
@@ -56,7 +55,7 @@ class RingBufferSlot;
 /// "future" can optionally block but reads from the "past" will always fail.
 ///
 
-template<typename T, template<typename> class Atom = std::atomic>
+template <typename T, template <typename> class Atom = std::atomic>
 class LockFreeRingBuffer: boost::noncopyable {
 
    static_assert(std::is_nothrow_default_constructible<T>::value,
@@ -180,7 +179,7 @@ private:
 }; // LockFreeRingBuffer
 
 namespace detail {
-template<typename T, template<typename> class Atom>
+template <typename T, template <typename> class Atom>
 class RingBufferSlot {
 public:
   explicit RingBufferSlot() noexcept

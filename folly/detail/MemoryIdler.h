@@ -29,7 +29,7 @@ namespace folly {
 
 // gcc 4.7 doesn't do std::is_trivial correctly, override so we can use
 // AtomicStruct<duration>
-template<>
+template <>
 struct IsTriviallyCopyable<std::chrono::steady_clock::duration>
   : std::true_type {};
 

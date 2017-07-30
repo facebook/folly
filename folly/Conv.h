@@ -400,7 +400,7 @@ void toAppend(char value, Tgt * result) {
   *result += value;
 }
 
-template<class T>
+template <class T>
 constexpr typename std::enable_if<
   std::is_same<T, char>::value,
   size_t>::type
@@ -435,7 +435,7 @@ typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
   return 0;
 }
 
-template<class Src>
+template <class Src>
 typename std::enable_if<
   (std::is_convertible<Src, folly::StringPiece>::value ||
   IsSomeString<Src>::value) &&
@@ -450,7 +450,7 @@ inline size_t estimateSpaceNeeded(std::nullptr_t /* value */) {
   return 0;
 }
 
-template<class Src>
+template <class Src>
 typename std::enable_if<
   std::is_pointer<Src>::value &&
   IsSomeString<std::remove_pointer<Src>>::value,
@@ -523,7 +523,7 @@ toAppend(unsigned __int128 value, Tgt * result) {
   result->append(buffer + p, buffer + sizeof(buffer));
 }
 
-template<class T>
+template <class T>
 constexpr typename std::enable_if<
   std::is_same<T, __int128>::value,
   size_t>::type
@@ -531,7 +531,7 @@ estimateSpaceNeeded(T) {
   return detail::digitsEnough<__int128>();
 }
 
-template<class T>
+template <class T>
 constexpr typename std::enable_if<
   std::is_same<T, unsigned __int128>::value,
   size_t>::type
@@ -742,7 +742,7 @@ estimateSpaceNeeded(Src value) {
  * for estimateSpaceNeed for your type, so that we allocate
  * as much as you need instead of the default
  */
-template<class Src>
+template <class Src>
 struct HasLengthEstimator : std::false_type {};
 
 template <class Src>
@@ -776,12 +776,12 @@ size_t estimateSpaceToReserve(size_t sofar, const T& v, const Ts&... vs) {
   return estimateSpaceToReserve(sofar + estimateSpaceNeeded(v), vs...);
 }
 
-template<class...Ts>
+template <class... Ts>
 void reserveInTarget(const Ts&...vs) {
   getLastElement(vs...)->reserve(estimateSpaceToReserve(0, vs...));
 }
 
-template<class Delimiter, class...Ts>
+template <class Delimiter, class... Ts>
 void reserveInTargetDelim(const Delimiter& d, const Ts&...vs) {
   static_assert(sizeof...(vs) >= 2, "Needs at least 2 args");
   size_t fordelim = (sizeof...(vs) - 2) *

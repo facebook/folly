@@ -40,7 +40,7 @@ namespace folly {
  * destroy a UndelayedDestruction object while it has a non-zero destructor
  * guard count will abort the program.
  */
-template<typename TDD>
+template <typename TDD>
 class UndelayedDestruction : public TDD {
  public:
   // We could just use constructor inheritance, but not all compilers
@@ -53,7 +53,7 @@ class UndelayedDestruction : public TDD {
   // gcc code it looks like it has been fixed to return false.  (The language
   // in the standard seems to indicate that returning false is the correct
   // behavior for non-destructible types, which is unfortunate.)
-  template<typename ...Args>
+  template <typename... Args>
   explicit UndelayedDestruction(Args&& ...args)
     : TDD(std::forward<Args>(args)...) {
   }

@@ -68,7 +68,7 @@ namespace detail {
 /// cutoffs for different operations (read versus write, for example).
 /// To avoid contention, the spin cutoff is only updated when requested
 /// by the caller.
-template <template<typename> class Atom>
+template <template <typename> class Atom>
 struct TurnSequencer {
   explicit TurnSequencer(const uint32_t firstTurn = 0) noexcept
       : state_(encode(firstTurn << kTurnShift, 0))

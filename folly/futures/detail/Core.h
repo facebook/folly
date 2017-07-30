@@ -77,7 +77,7 @@ enum class State : uint8_t {
 /// first blush, but it's the same principle. In general, as long as the user
 /// doesn't access a Future or Promise object from more than one thread at a
 /// time there won't be any problems.
-template<typename T>
+template <typename T>
 class Core final {
   static_assert(!std::is_void<T>::value,
                 "void futures are not supported. Use Unit instead.");
