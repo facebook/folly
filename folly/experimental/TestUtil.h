@@ -106,7 +106,7 @@ class TemporaryDirectory {
  * upon destruction, also changing back to the original working directory.
  */
 class ChangeToTempDir {
-public:
+ public:
   ChangeToTempDir();
   ~ChangeToTempDir();
 
@@ -116,7 +116,7 @@ public:
 
   const fs::path& path() const { return dir_.path(); }
 
-private:
+ private:
   fs::path initialPath_;
   TemporaryDirectory dir_;
 };
@@ -193,9 +193,10 @@ inline std::string glogErrOrWarnPattern() { return ".*(^|\n)[EW][0-9].*"; }
  * Great for testing logging (see also glog*Pattern()).
  */
 class CaptureFD {
-private:
+ private:
   struct NoOpChunkCob { void operator()(StringPiece) {} };
-public:
+
+ public:
   using ChunkCob = std::function<void(folly::StringPiece)>;
 
   /**
@@ -224,7 +225,7 @@ public:
    */
   std::string readIncremental();
 
-private:
+ private:
   ChunkCob chunkCob_;
   TemporaryFile file_;
 

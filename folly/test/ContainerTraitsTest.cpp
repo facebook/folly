@@ -30,7 +30,7 @@ struct Node {
 
 template <class T>
 class VectorWrapper {
-public:
+ public:
   using value_type = T;
   vector<T>& underlying;
   explicit VectorWrapper(vector<T>& v) : underlying(v) {}

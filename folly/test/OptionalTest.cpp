@@ -111,7 +111,7 @@ TEST(Optional, Simple) {
 }
 
 class MoveTester {
-public:
+ public:
   /* implicit */ MoveTester(const char* s) : s_(s) {}
   MoveTester(const MoveTester&) = default;
   MoveTester(MoveTester&& other) noexcept {
@@ -124,7 +124,8 @@ public:
     other.s_ = "";
     return *this;
   }
-private:
+
+ private:
   friend bool operator==(const MoveTester& o1, const MoveTester& o2);
   std::string s_;
 };

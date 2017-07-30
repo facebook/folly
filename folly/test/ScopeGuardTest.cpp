@@ -228,7 +228,7 @@ TEST(ScopeGuard, TEST_SCOPE_EXIT) {
 }
 
 class Foo {
-public:
+ public:
   Foo() {}
   ~Foo() {
     try {

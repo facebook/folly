@@ -57,14 +57,15 @@ class RingBufferSlot;
 
 template <typename T, template <typename> class Atom = std::atomic>
 class LockFreeRingBuffer: boost::noncopyable {
+  static_assert(
+      std::is_nothrow_default_constructible<T>::value,
+      "Element type must be nothrow default constructible");
 
-   static_assert(std::is_nothrow_default_constructible<T>::value,
-       "Element type must be nothrow default constructible");
+  static_assert(
+      FOLLY_IS_TRIVIALLY_COPYABLE(T),
+      "Element type must be trivially copyable");
 
-   static_assert(FOLLY_IS_TRIVIALLY_COPYABLE(T),
-       "Element type must be trivially copyable");
-
-public:
+ public:
   /// Opaque pointer to a past or future write.
   /// Can be moved relative to its current location but not in absolute terms.
   struct Cursor {
@@ -90,7 +91,7 @@ public:
       return prevTicket != ticket;
     }
 
-  protected: // for test visibility reasons
+   protected: // for test visibility reasons
     uint64_t ticket;
     friend class LockFreeRingBuffer;
   };
@@ -162,7 +163,7 @@ public:
   ~LockFreeRingBuffer() {
   }
 
-private:
+ private:
   const uint32_t capacity_;
 
   const std::unique_ptr<detail::RingBufferSlot<T,Atom>[]> slots_;
@@ -181,7 +182,7 @@ private:
 namespace detail {
 template <typename T, template <typename> class Atom>
 class RingBufferSlot {
-public:
+ public:
   explicit RingBufferSlot() noexcept
     : sequencer_()
     , data()
@@ -224,8 +225,7 @@ public:
     return sequencer_.isTurn((turn + 1) * 2);
   }
 
-
-private:
+ private:
   TurnSequencer<Atom> sequencer_;
   T data;
 }; // RingBufferSlot

@@ -65,7 +65,7 @@ aStdFunction(typename std::enable_if<isFuture<Ret>::value, bool>::type = true) {
 }
 
 class SomeClass {
-public:
+ public:
   template <class Ret, class... Params>
   static
   typename std::enable_if<!isFuture<Ret>::value, Ret>::type

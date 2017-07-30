@@ -120,7 +120,8 @@ class HasLess {
   struct BiggerThanChar { char unused[2]; };
   template <typename C, typename D> static char test(decltype(C() < D())*);
   template <typename, typename> static BiggerThanChar test(...);
-public:
+
+ public:
   enum { value = sizeof(test<T, U>(0)) == 1 };
 };
 

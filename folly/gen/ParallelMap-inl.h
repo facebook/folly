@@ -146,7 +146,7 @@ class PMap : public Operator<PMap<Predicate>> {
       }
     };
 
-  public:
+   public:
     Generator(Source source, const Predicate& pred, size_t nThreads)
       : source_(std::move(source)),
         pred_(pred),

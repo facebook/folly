@@ -39,11 +39,12 @@ namespace folly {
 // DynamicParser.h.
 namespace detail {
 class IdentifyCallable {
-public:
+ public:
   enum class Kind { Function, MemberFunction };
   template <typename Fn>
   constexpr static Kind getKind() { return test<Fn>(nullptr); }
-private:
+
+ private:
   template <typename Fn>
   using IsMemFn = typename boost::function_types::template is_member_pointer<
     decltype(&Fn::operator())

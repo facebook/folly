@@ -85,7 +85,7 @@ struct Printer {
     }
   }
 
-private:
+ private:
   void printKV(const std::pair<const dynamic, dynamic>& p) const {
     if (!opts_.allow_non_string_keys && !p.first.isString()) {
       throw std::runtime_error("folly::toJson: JSON object key was not a "
@@ -156,7 +156,7 @@ private:
     out_ += ']';
   }
 
-private:
+ private:
   void outdent() const {
     if (indentLevel_) {
       --*indentLevel_;
@@ -179,10 +179,10 @@ private:
     out_ += indentLevel_ ? " : " : ":";
   }
 
-private:
- std::string& out_;
- unsigned* const indentLevel_;
- serialization_opts const& opts_;
+ private:
+  std::string& out_;
+  unsigned* const indentLevel_;
+  serialization_opts const& opts_;
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -319,7 +319,7 @@ struct Input {
     current_ = range_.empty() ? EOF : range_.front();
   }
 
-private:
+ private:
   StringPiece range_;
   json::serialization_opts const& opts_;
   unsigned lineNum_;

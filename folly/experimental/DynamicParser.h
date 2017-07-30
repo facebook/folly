@@ -207,7 +207,8 @@ struct DynamicParserParseError : public std::runtime_error {
    *   {"nested": {"key1": {"key_errors": {"key3": "err"}, "value": 7}}}
    */
   const folly::dynamic& error() const { return error_; }
-private:
+
+ private:
   folly::dynamic error_;
 };
 
@@ -223,7 +224,7 @@ struct DynamicParserLogicError : public std::logic_error {
 };
 
 class DynamicParser {
-public:
+ public:
   enum class OnError {
     // After parsing, releaseErrors() reports all parse errors.
     // Throws DynamicParserLogicError on programmer errors.
@@ -294,7 +295,7 @@ public:
     return *this;
   }
 
-private:
+ private:
   /**
    * If `fn` throws an exception, wrapError() catches it and inserts an
    * enriched description into stack_.errors_.  If lookup_key is non-null,
@@ -321,7 +322,7 @@ private:
       explicit Pop(ParserStack* sp)
         : key_(sp->key_), value_(sp->value_), stackPtr_(sp) {}
       void operator()() noexcept;  // ScopeGuard requires noexcept
-    private:
+     private:
       const folly::dynamic* key_;
       const folly::dynamic* value_;
       ParserStack* stackPtr_;

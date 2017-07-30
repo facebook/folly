@@ -505,7 +505,7 @@ namespace std {
   // items in the pair.
   template <typename T1, typename T2>
   struct hash<std::pair<T1, T2> > {
-  public:
+   public:
     size_t operator()(const std::pair<T1, T2>& x) const {
       return folly::hash::hash_combine(x.first, x.second);
     }

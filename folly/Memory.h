@@ -317,7 +317,7 @@ class allocator_delete
 {
   typedef typename std::remove_reference<Allocator>::type allocator_type;
 
-public:
+ public:
   typedef typename Allocator::pointer pointer;
 
   allocator_delete() = default;
@@ -356,7 +356,7 @@ class is_simple_allocator {
   typedef typename std::remove_reference<T>::type value_type;
   typedef value_type* pointer;
 
-public:
+ public:
   constexpr static bool value = !has_destroy<allocator, void(pointer)>::value
     && !has_destroy<allocator, void(void*)>::value;
 };
@@ -491,7 +491,7 @@ template <class T> struct IsArenaAllocator : std::false_type { };
  */
 template <typename T>
 class enable_shared_from_this : public std::enable_shared_from_this<T> {
-public:
+ public:
   constexpr enable_shared_from_this() noexcept = default;
 
   std::weak_ptr<T> weak_from_this() noexcept {
@@ -502,7 +502,7 @@ public:
     return weak_from_this_<T>(this);
   }
 
-private:
+ private:
   // Uses SFINAE to detect and call
   // std::enable_shared_from_this<T>::weak_from_this() if available. Falls
   // back to std::enable_shared_from_this<T>::shared_from_this() otherwise.

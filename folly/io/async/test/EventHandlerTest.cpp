@@ -47,7 +47,7 @@ void runInThreadsAndWait(vector<function<void()>> cbs) {
 }
 
 class EventHandlerMock : public EventHandler {
-public:
+ public:
   EventHandlerMock(EventBase* eb, int fd) : EventHandler(eb, fd) {}
   // gmock can't mock noexcept methods, so we need an intermediary
   MOCK_METHOD1(_handlerReady, void(uint16_t));
@@ -57,7 +57,7 @@ public:
 };
 
 class EventHandlerTest : public Test {
-public:
+ public:
   int efd = 0;
 
   void SetUp() override {

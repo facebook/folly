@@ -231,7 +231,7 @@ enum class AcquireMallocatedString {};
 
 template <class Char>
 class fbstring_core_model {
-public:
+ public:
   fbstring_core_model();
   fbstring_core_model(const fbstring_core_model &);
   ~fbstring_core_model();
@@ -280,7 +280,7 @@ public:
   // the string without reallocation. For reference-counted strings,
   // it should fork the data even if minCapacity < size().
   void reserve(size_t minCapacity);
-private:
+ private:
   // Do not implement
   fbstring_core_model& operator=(const fbstring_core_model &);
 };
@@ -313,7 +313,7 @@ private:
  * to extract capacity/category.
  */
 template <class Char> class fbstring_core {
-protected:
+ protected:
 // It's MSVC, so we just have to guess ... and allow an override
 #ifdef _MSC_VER
 # ifdef FOLLY_ENDIAN_BE
@@ -325,7 +325,7 @@ protected:
   static constexpr auto kIsLittleEndian =
       __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
 #endif
-public:
+ public:
   fbstring_core() noexcept { reset(); }
 
   fbstring_core(const fbstring_core & rhs) {
@@ -512,7 +512,7 @@ public:
     return category() == Category::isLarge && RefCounted::refs(ml_.data_) > 1;
   }
 
-private:
+ private:
   // Disabled
   fbstring_core & operator=(const fbstring_core & rhs);
 
@@ -989,7 +989,7 @@ inline void fbstring_core<Char>::shrinkLarge(const size_t delta) {
  */
 template <class Char>
 class dummy_fbstring_core {
-public:
+ public:
   dummy_fbstring_core() {
   }
   dummy_fbstring_core(const dummy_fbstring_core& another)
@@ -1032,7 +1032,7 @@ public:
     backend_.reserve(minCapacity);
   }
 
-private:
+ private:
   std::basic_string<Char> backend_;
 };
 #endif // !_LIBSTDCXX_FBSTRING
@@ -1113,7 +1113,7 @@ class basic_fbstring {
   static constexpr size_type npos = size_type(-1);
   typedef std::true_type IsRelocatable;
 
-private:
+ private:
   static void procrustes(size_type& n, size_type nmax) {
     if (n > nmax) {
       n = nmax;
@@ -1122,7 +1122,7 @@ private:
 
   static size_type traitsLength(const value_type* s);
 
-public:
+ public:
   // C++11 21.4.2 construct/copy/destroy
 
   // Note: while the following two constructors can be (and previously were)
@@ -1495,29 +1495,29 @@ public:
   }
 #endif
 
-private:
- iterator
- insertImplDiscr(const_iterator i, size_type n, value_type c, std::true_type);
+ private:
+  iterator
+  insertImplDiscr(const_iterator i, size_type n, value_type c, std::true_type);
 
- template <class InputIter>
- iterator
- insertImplDiscr(const_iterator i, InputIter b, InputIter e, std::false_type);
+  template <class InputIter>
+  iterator
+  insertImplDiscr(const_iterator i, InputIter b, InputIter e, std::false_type);
 
- template <class FwdIterator>
- iterator insertImpl(
-     const_iterator i,
-     FwdIterator s1,
-     FwdIterator s2,
-     std::forward_iterator_tag);
+  template <class FwdIterator>
+  iterator insertImpl(
+      const_iterator i,
+      FwdIterator s1,
+      FwdIterator s2,
+      std::forward_iterator_tag);
 
- template <class InputIterator>
- iterator insertImpl(
-     const_iterator i,
-     InputIterator b,
-     InputIterator e,
-     std::input_iterator_tag);
+  template <class InputIterator>
+  iterator insertImpl(
+      const_iterator i,
+      InputIterator b,
+      InputIterator e,
+      std::input_iterator_tag);
 
-public:
+ public:
   template <class ItOrLength, class ItOrChar>
   iterator insert(const_iterator p, ItOrLength first_or_n, ItOrChar last_or_c) {
     using Sel = std::integral_constant<
@@ -1601,36 +1601,37 @@ public:
     return replace(i1, i2, s, traitsLength(s));
   }
 
-private:
- basic_fbstring& replaceImplDiscr(
-     iterator i1,
-     iterator i2,
-     const value_type* s,
-     size_type n,
-     std::integral_constant<int, 2>);
+ private:
+  basic_fbstring& replaceImplDiscr(
+      iterator i1,
+      iterator i2,
+      const value_type* s,
+      size_type n,
+      std::integral_constant<int, 2>);
 
- basic_fbstring& replaceImplDiscr(
-     iterator i1,
-     iterator i2,
-     size_type n2,
-     value_type c,
-     std::integral_constant<int, 1>);
+  basic_fbstring& replaceImplDiscr(
+      iterator i1,
+      iterator i2,
+      size_type n2,
+      value_type c,
+      std::integral_constant<int, 1>);
 
- template <class InputIter>
- basic_fbstring& replaceImplDiscr(
-     iterator i1,
-     iterator i2,
-     InputIter b,
-     InputIter e,
-     std::integral_constant<int, 0>);
+  template <class InputIter>
+  basic_fbstring& replaceImplDiscr(
+      iterator i1,
+      iterator i2,
+      InputIter b,
+      InputIter e,
+      std::integral_constant<int, 0>);
 
-private:
- template <class FwdIterator>
- bool replaceAliased(iterator /* i1 */,
-                     iterator /* i2 */,
-                     FwdIterator /* s1 */,
-                     FwdIterator /* s2 */,
-                     std::false_type) {
+ private:
+  template <class FwdIterator>
+  bool replaceAliased(
+      iterator /* i1 */,
+      iterator /* i2 */,
+      FwdIterator /* s1 */,
+      FwdIterator /* s2 */,
+      std::false_type) {
     return false;
   }
 
@@ -1842,7 +1843,7 @@ private:
     return r != 0 ? r : n1 > n2 ? 1 : n1 < n2 ? -1 : 0;
   }
 
-private:
+ private:
   // Data
   Storage store_;
 };

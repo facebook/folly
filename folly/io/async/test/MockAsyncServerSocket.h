@@ -24,7 +24,7 @@ namespace folly {
 namespace test {
 
 class MockAsyncServerSocket : public AsyncServerSocket {
-public:
+ public:
   typedef std::unique_ptr<MockAsyncServerSocket, Destructor> UniquePtr;
 
   // We explicitly do not mock destroy(), since the base class implementation

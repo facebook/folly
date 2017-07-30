@@ -595,7 +595,7 @@ struct Data : DataTracker<(f & IS_RELOCATABLE) != 0>,
   Data& operator=(const Data&) = default;
   Data& operator=(Data&&) = default;
 
-private:
+ private:
   int operator&() const;
 };
 
@@ -1473,7 +1473,8 @@ class DataState {
   typedef typename Vector::size_type size_type;
   size_type size_;
   int* data_;
-public:
+
+ public:
   /* implicit */ DataState(const Vector& v) {
     size_ = v.size();
     if (size_ != 0) {
@@ -1519,7 +1520,7 @@ class Transformer : public boost::iterator_adaptor<
   friend class boost::iterator_core_access;
   shared_ptr<set<It>> dereferenced;
 
-public:
+ public:
   explicit Transformer(const It& it)
     : Transformer::iterator_adaptor_(it)
     , dereferenced(new set<It>()) {}

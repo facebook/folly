@@ -41,7 +41,7 @@ namespace detail {
 
     uint32_t spinCount;
 
-  public:
+   public:
     Sleeper() : spinCount(0) {}
 
     void wait() {

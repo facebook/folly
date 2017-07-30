@@ -96,9 +96,10 @@ struct dynamic : private boost::operators<dynamic> {
    * Object value iterators dereference as the values in the object.
    * Object item iterators dereference as pairs of (key, value).
    */
-private:
+ private:
   typedef std::vector<dynamic> Array;
-public:
+
+ public:
   typedef Array::iterator iterator;
   typedef Array::const_iterator const_iterator;
   typedef dynamic value_type;
@@ -129,11 +130,11 @@ public:
    *   d["key"] = 12;
    *   d["something_else"] = dynamic::array(1, 2, 3, nullptr);
    */
-private:
+ private:
   struct EmptyArrayTag {};
   struct ObjectMaker;
 
-public:
+ public:
   static void array(EmptyArrayTag);
   template <class... Args>
   static dynamic array(Args&& ...args);
@@ -328,13 +329,13 @@ public:
   iterator begin();
   iterator end();
 
-private:
+ private:
   /*
    * Helper object returned by keys(), values(), and items().
    */
   template <class T> struct IterableProxy;
 
-public:
+ public:
   /*
    * You can iterate over the keys, values, or items (std::pair of key and
    * value) in an object.  Calling these on non-objects will throw a TypeError.
@@ -521,7 +522,7 @@ public:
    */
   std::size_t hash() const;
 
-private:
+ private:
   friend struct TypeError;
   struct ObjectImpl;
   template <class T> struct TypeInfo;
@@ -546,7 +547,7 @@ private:
   void print(std::ostream&) const;
   void print_as_pseudo_json(std::ostream&) const; // see json.cpp
 
-private:
+ private:
   Type type_;
   union Data {
     explicit Data() : nul(nullptr) {}

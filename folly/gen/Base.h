@@ -84,7 +84,7 @@ namespace folly {
 namespace gen {
 
 class Less {
-public:
+ public:
   template <class First, class Second>
   auto operator()(const First& first, const Second& second) const ->
   decltype(first < second) {
@@ -93,7 +93,7 @@ public:
 };
 
 class Greater {
-public:
+ public:
   template <class First, class Second>
   auto operator()(const First& first, const Second& second) const ->
   decltype(first > second) {
@@ -103,7 +103,7 @@ public:
 
 template <int n>
 class Get {
-public:
+ public:
   template <class Value>
   auto operator()(Value&& value) const ->
   decltype(std::get<n>(std::forward<Value>(value))) {
@@ -188,7 +188,7 @@ class Field {
 };
 
 class Move {
-public:
+ public:
   template <class Value>
   auto operator()(Value&& value) const ->
   decltype(std::move(std::forward<Value>(value))) {

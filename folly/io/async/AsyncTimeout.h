@@ -256,7 +256,7 @@ struct async_timeout_wrapper:
     callback_();
   }
 
-private:
+ private:
   TCallback callback_;
 };
 

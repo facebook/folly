@@ -213,7 +213,7 @@ class sorted_vector_set
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
 
-public:
+ public:
   typedef T       value_type;
   typedef T       key_type;
   typedef Compare key_compare;
@@ -403,7 +403,7 @@ public:
     return m_.cont_ < other.m_.cont_;
   }
 
-private:
+ private:
   /*
    * This structure derives from the comparison object in order to
    * make use of the empty base class optimization if our comparison
@@ -464,7 +464,7 @@ class sorted_vector_map
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
 
-public:
+ public:
   typedef Key                                       key_type;
   typedef Value                                     mapped_type;
   typedef std::pair<key_type,mapped_type>           value_type;
@@ -475,7 +475,7 @@ public:
       return Compare::operator()(a.first, b.first);
     }
 
-  protected:
+   protected:
     friend class sorted_vector_map;
     explicit value_compare(const Compare& c) : Compare(c) {}
   };
@@ -706,7 +706,7 @@ public:
     return m_.cont_ < other.m_.cont_;
   }
 
-private:
+ private:
   // This is to get the empty base optimization; see the comment in
   // sorted_vector_set.
   struct EBO : value_compare {

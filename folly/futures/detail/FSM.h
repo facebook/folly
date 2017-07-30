@@ -30,7 +30,7 @@ namespace detail {
 /// For best results, use an "enum class" for Enum.
 template <class Enum>
 class FSM {
-private:
+ private:
   // I am not templatizing this because folly::MicroSpinLock needs to be
   // zero-initialized (or call init) which isn't generic enough for something
   // that behaves like std::mutex. :(
@@ -43,7 +43,7 @@ private:
   // An optimization would be to use a static conditional on the Enum type.
   std::atomic<Enum> state_;
 
-public:
+ public:
   explicit FSM(Enum startState) : state_(startState) {}
 
   Enum getState() const noexcept {

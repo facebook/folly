@@ -66,7 +66,7 @@ class PackedSyncPtr {
   // still properly result in a compile error.
   typedef typename std::add_lvalue_reference<T>::type reference;
 
-public:
+ public:
   /*
    * If you default construct one of these, you must call this init()
    * function before using it.

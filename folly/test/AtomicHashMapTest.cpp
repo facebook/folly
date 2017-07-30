@@ -262,13 +262,13 @@ TEST(Ahm, iterator) {
 }
 
 class Counters {
-private:
+ private:
   // Note: Unfortunately can't currently put a std::atomic<int64_t> in
   // the value in ahm since it doesn't support types that are both non-copy
   // and non-move constructible yet.
   AtomicHashMap<int64_t,int64_t> ahm;
 
-public:
+ public:
   explicit Counters(size_t numCounters) : ahm(numCounters) {}
 
   void increment(int64_t obj_id) {

@@ -57,7 +57,8 @@ class IsCompatibleSignature<Candidate, ExpectedReturn(ArgTypes...)> {
   static constexpr bool testArgs(...) {
     return false;
   }
-public:
+
+ public:
   static constexpr bool value = testArgs<Candidate>(nullptr);
 };
 
@@ -351,7 +352,8 @@ class Chain : public GenImpl<Value,
                              Chain<Value, First, Second>> {
   First first_;
   Second second_;
-public:
+
+ public:
   explicit Chain(First first, Second second)
       : first_(std::move(first))
       , second_(std::move(second)) {}

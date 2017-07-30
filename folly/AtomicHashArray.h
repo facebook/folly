@@ -179,7 +179,6 @@ class AtomicHashArray : boost::noncopyable {
     uint32_t entryCountThreadCacheSize;
     size_t capacity; // if positive, overrides maxLoadFactor
 
-  public:
     //  Cannot have constexpr ctor because some compilers rightly complain.
     Config() : emptyKey((KeyT)-1),
                lockedKey((KeyT)-2),

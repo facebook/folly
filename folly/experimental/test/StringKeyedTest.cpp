@@ -106,7 +106,7 @@ struct MemoryLeakCheckerAllocator {
     return alloc_ == other.alloc_;
   }
 
-private:
+ private:
   Alloc alloc_;
 };
 

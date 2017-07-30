@@ -111,7 +111,7 @@ struct Lazy {
     return *value_;
   }
 
-private:
+ private:
   Optional<result_type> value_;
   Func func_;
 };

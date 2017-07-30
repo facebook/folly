@@ -77,8 +77,7 @@ class fbvector {
   //===========================================================================
   //---------------------------------------------------------------------------
   // implementation
-private:
-
+ private:
   typedef std::allocator_traits<Allocator> A;
 
   struct Impl : public Allocator {
@@ -192,8 +191,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // types and constants
-public:
-
+ public:
   typedef T                                           value_type;
   typedef value_type&                                 reference;
   typedef const value_type&                           const_reference;
@@ -207,8 +205,7 @@ public:
   typedef std::reverse_iterator<iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
-private:
-
+ private:
   typedef std::integral_constant<bool,
       IsTriviallyCopyable<T>::value &&
       sizeof(T) <= 16 // don't force large structures to be passed by value
@@ -227,8 +224,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // allocator helpers
-private:
-
+ private:
   //---------------------------------------------------------------------------
   // allocate
 
@@ -332,8 +328,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // algorithmic helpers
-private:
-
+ private:
   //---------------------------------------------------------------------------
   // destroy_range
 
@@ -582,8 +577,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // relocation helpers
-private:
-
+ private:
   // Relocation is divided into three parts:
   //
   //  1: relocate_move
@@ -689,8 +683,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // construct/copy/destroy
-public:
-
+ public:
   fbvector() = default;
 
   explicit fbvector(const Allocator& a) : impl_(a) {}
@@ -794,8 +787,7 @@ public:
     return impl_;
   }
 
-private:
-
+ private:
   // contract dispatch for iterator types fbvector(It first, It last)
   template <class ForwardIterator>
   fbvector(ForwardIterator first, ForwardIterator last,
@@ -868,8 +860,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // iterators
-public:
-
+ public:
   iterator begin() noexcept {
     return impl_.b_;
   }
@@ -911,8 +902,7 @@ public:
   //===========================================================================
   //---------------------------------------------------------------------------
   // capacity
-public:
-
+ public:
   size_type size() const noexcept {
     return size_type(impl_.e_ - impl_.b_);
   }
@@ -1011,8 +1001,7 @@ public:
     }
   }
 
-private:
-
+ private:
   bool reserve_in_place(size_type n) {
     if (!usingStdAllocator::value || !usingJEMalloc()) return false;
 
@@ -1032,8 +1021,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // element access
-public:
-
+ public:
   reference operator[](size_type n) {
     assert(n < size());
     return impl_.b_[n];
@@ -1072,8 +1060,7 @@ public:
   //===========================================================================
   //---------------------------------------------------------------------------
   // data access
-public:
-
+ public:
   T* data() noexcept {
     return impl_.b_;
   }
@@ -1084,8 +1071,7 @@ public:
   //===========================================================================
   //---------------------------------------------------------------------------
   // modifiers (common)
-public:
-
+ public:
   template <class... Args>
   void emplace_back(Args&&... args)  {
     if (impl_.e_ != impl_.z_) {
@@ -1133,8 +1119,7 @@ public:
     M_destroy_range_e(impl_.b_);
   }
 
-private:
-
+ private:
   // std::vector implements a similar function with a different growth
   //  strategy: empty() ? 1 : capacity() * 2.
   //
@@ -1172,8 +1157,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // modifiers (erase)
-public:
-
+ public:
   iterator erase(const_iterator position) {
     return erase(position, position + 1);
   }
@@ -1207,8 +1191,7 @@ public:
   //===========================================================================
   //---------------------------------------------------------------------------
   // modifiers (insert)
-private: // we have the private section first because it defines some macros
-
+ private: // we have the private section first because it defines some macros
   bool isValid(const_iterator it) {
     return cbegin() <= it && it <= cend();
   }
@@ -1476,8 +1459,7 @@ private: // we have the private section first because it defines some macros
 
   //---------------------------------------------------------------------------
   // insert dispatch for iterator types
-private:
-
+ private:
   template <class FIt>
   iterator insert(const_iterator cpos, FIt first, FIt last,
                   std::forward_iterator_tag) {
@@ -1511,8 +1493,7 @@ private:
   //===========================================================================
   //---------------------------------------------------------------------------
   // lexicographical functions
-public:
-
+ public:
   bool operator==(const fbvector& other) const {
     return size() == other.size() && std::equal(begin(), end(), other.begin());
   }
@@ -1541,8 +1522,7 @@ public:
   //===========================================================================
   //---------------------------------------------------------------------------
   // friends
-private:
-
+ private:
   template <class _T, class _A>
   friend _T* relinquish(fbvector<_T, _A>&);
 

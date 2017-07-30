@@ -746,7 +746,7 @@ class AsyncServerSocket : public DelayedDestruction
    */
   class RemoteAcceptor
       : private NotificationQueue<QueueMessage>::Consumer {
-  public:
+   public:
     explicit RemoteAcceptor(AcceptCallback *callback,
                             ConnectionEventCallback *connectionEventCallback)
       : callback_(callback),
@@ -763,7 +763,7 @@ class AsyncServerSocket : public DelayedDestruction
       return &queue_;
     }
 
-  private:
+   private:
     AcceptCallback *callback_;
     ConnectionEventCallback* connectionEventCallback_;
 

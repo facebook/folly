@@ -236,7 +236,7 @@ namespace detail {
 
     IntegralSizePolicy() : size_(0) {}
 
-  protected:
+   protected:
     static constexpr std::size_t policyMaxSize() {
       return SizeType(~kExternMask);
     }
@@ -266,10 +266,10 @@ namespace detail {
       std::swap(size_, o.size_);
     }
 
-  protected:
+   protected:
     static bool const kShouldUseHeap = ShouldUseHeap;
 
-  private:
+   private:
     static SizeType const kExternMask =
       kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 1)
                      : 0;
@@ -826,8 +826,7 @@ class small_vector
     return (*this)[i];
   }
 
-private:
-
+ private:
   static iterator unconst(const_iterator it) {
     return const_cast<iterator>(it);
   }
@@ -1020,7 +1019,7 @@ private:
     }
   }
 
-private:
+ private:
   struct HeapPtrWithCapacity {
     void* heap_;
     InternalSizeType capacity_;

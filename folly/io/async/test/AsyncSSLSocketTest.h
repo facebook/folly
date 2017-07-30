@@ -126,7 +126,7 @@ class SendMsgDataCallback : public SendMsgFlagsCallback {
 
 class WriteCallbackBase :
 public AsyncTransportWrapper::WriteCallback {
-public:
+ public:
   explicit WriteCallbackBase(SendMsgParamsCallbackBase* mcb = nullptr)
       : state(STATE_WAITING)
       , bytesWritten(0)
@@ -171,7 +171,7 @@ public:
 
 class ExpectWriteErrorCallback :
 public WriteCallbackBase {
-public:
+ public:
   explicit ExpectWriteErrorCallback(SendMsgParamsCallbackBase* mcb = nullptr)
       : WriteCallbackBase(mcb) {}
 
@@ -198,8 +198,8 @@ enum SOF_TIMESTAMPING {
 };
 
 class WriteCheckTimestampCallback :
- public WriteCallbackBase {
-public:
+  public WriteCallbackBase {
+ public:
   explicit WriteCheckTimestampCallback(SendMsgParamsCallbackBase* mcb = nullptr)
     : WriteCallbackBase(mcb) {}
 
@@ -318,7 +318,7 @@ public AsyncTransportWrapper::ReadCallback {
 };
 
 class ReadCallback : public ReadCallbackBase {
-public:
+ public:
   explicit ReadCallback(WriteCallbackBase *wcb)
       : ReadCallbackBase(wcb)
       , buffers() {}
@@ -356,7 +356,7 @@ public:
   }
 
   class Buffer {
-  public:
+   public:
     Buffer() : buffer(nullptr), length(0) {}
     Buffer(char* buf, size_t len) : buffer(buf), length(len) {}
 
@@ -383,7 +383,7 @@ public:
 };
 
 class ReadErrorCallback : public ReadCallbackBase {
-public:
+ public:
   explicit ReadErrorCallback(WriteCallbackBase *wcb)
       : ReadCallbackBase(wcb) {}
 
@@ -428,7 +428,7 @@ class ReadEOFCallback : public ReadCallbackBase {
 };
 
 class WriteErrorCallback : public ReadCallback {
-public:
+ public:
   explicit WriteErrorCallback(WriteCallbackBase *wcb)
       : ReadCallback(wcb) {}
 
@@ -464,7 +464,7 @@ public:
 };
 
 class EmptyReadCallback : public ReadCallback {
-public:
+ public:
   explicit EmptyReadCallback()
       : ReadCallback(nullptr) {}
 
@@ -489,7 +489,7 @@ public:
 
 class HandshakeCallback :
 public AsyncSSLSocket::HandshakeCB {
-public:
+ public:
   enum ExpectType {
     EXPECT_SUCCESS,
     EXPECT_ERROR
@@ -562,7 +562,7 @@ public:
 };
 
 class SSLServerAcceptCallback: public SSLServerAcceptCallbackBase {
-public:
+ public:
   uint32_t timeout_;
 
   explicit SSLServerAcceptCallback(HandshakeCallback *hcb,
@@ -595,7 +595,7 @@ public:
 };
 
 class SSLServerAcceptCallbackDelay: public SSLServerAcceptCallback {
-public:
+ public:
   explicit SSLServerAcceptCallbackDelay(HandshakeCallback *hcb):
       SSLServerAcceptCallback(hcb) {}
 
@@ -636,7 +636,7 @@ public:
 };
 
 class SSLServerAsyncCacheAcceptCallback: public SSLServerAcceptCallback {
-public:
+ public:
   explicit SSLServerAsyncCacheAcceptCallback(HandshakeCallback *hcb,
                                              uint32_t timeout = 0):
     SSLServerAcceptCallback(hcb, timeout) {}
@@ -662,7 +662,7 @@ public:
 
 
 class HandshakeErrorCallback: public SSLServerAcceptCallbackBase {
-public:
+ public:
   explicit HandshakeErrorCallback(HandshakeCallback *hcb):
   SSLServerAcceptCallbackBase(hcb)  {}
 
@@ -698,7 +698,7 @@ public:
 };
 
 class HandshakeTimeoutCallback: public SSLServerAcceptCallbackBase {
-public:
+ public:
   explicit HandshakeTimeoutCallback(HandshakeCallback *hcb):
   SSLServerAcceptCallbackBase(hcb)  {}
 

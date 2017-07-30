@@ -40,7 +40,7 @@ struct global_counter {
 
   unsigned count() const { return count_; }
 
-private:
+ private:
   unsigned count_;
 };
 
@@ -55,7 +55,7 @@ struct Foo {
     counter_.decrease();
   }
 
-private:
+ private:
   global_counter& counter_;
 };
 

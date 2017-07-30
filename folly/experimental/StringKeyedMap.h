@@ -39,10 +39,10 @@ template <class Value,
           class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
 class StringKeyedMap
     : private std::map<StringPiece, Value, Compare, Alloc> {
-private:
+ private:
   using Base = std::map<StringPiece, Value, Compare, Alloc>;
 
-public:
+ public:
   typedef typename Base::key_type key_type;
   typedef typename Base::mapped_type mapped_type;
   typedef typename Base::value_type value_type;

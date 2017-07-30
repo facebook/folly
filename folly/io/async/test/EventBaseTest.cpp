@@ -1701,7 +1701,7 @@ TEST(EventBaseTest, RunBeforeLoopWait) {
 }
 
 class PipeHandler : public EventHandler {
-public:
+ public:
   PipeHandler(EventBase* eventBase, int fd)
     : EventHandler(eventBase, fd) {}
 

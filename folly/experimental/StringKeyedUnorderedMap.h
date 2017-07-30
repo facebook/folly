@@ -47,7 +47,7 @@ class StringKeyedUnorderedMap
  private:
   using Base = std::unordered_map<StringPiece, Value, Hash, Eq, Alloc>;
 
-public:
+ public:
   typedef typename Base::key_type key_type;
   typedef typename Base::mapped_type mapped_type;
   typedef typename Base::value_type value_type;

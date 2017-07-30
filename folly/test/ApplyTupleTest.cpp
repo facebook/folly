@@ -100,7 +100,7 @@ struct GuardObj : GuardObjBase {
   GuardObj(const GuardObj&) = delete;
   GuardObj& operator=(const GuardObj&) = delete;
 
-private:
+ private:
   F f_;
   Tuple args_;
 };

@@ -45,7 +45,7 @@ class BasicStringKeyedUnorderedSet
     : private std::unordered_set<StringPiece, Hasher, Eq, Alloc> {
   using Base = std::unordered_set<StringPiece, Hasher, Eq, Alloc>;
 
-public:
+ public:
   typedef typename Base::key_type key_type;
   typedef typename Base::value_type value_type;
   typedef typename Base::hasher hasher;
