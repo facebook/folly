@@ -34,3 +34,7 @@ folly/FormatTables.cpp
 folly/EscapeTables.cpp
 folly/GroupVarintTables.cpp
 folly/FingerprintTables.cpp
+
+# Cedexis
+.vagrant/
+build.cdx

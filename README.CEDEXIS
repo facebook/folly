@@ -1,0 +1,57 @@
+INTRODUCTION
+
+There might be a few commits patching folly,
+but the main differences are the following
+
+ * Makefile.cdx
+   Plain `Makefile` was already in .gitignore,
+   so we do this crazy
+
+ * folly/VERSION
+   We use our own versioning scheme mapping the
+   external package name (1.4.0) to the version
+   embedded in the shared library files
+
+ * Vagrantfile, Dockerfile
+   Setup for vagrant and docker, respectively
+
+ * build_preq.sh
+   Build Dependencies
+
+ * .gitignore
+   Added: build.cdx .vagrant
+
+STRUCTURE
+
+There are three interlocking projects, folly is
+a set of general-purpose utility code, wangle is
+a network-service framework and proxygen is an
+HTTP server library.
+
+ - proxygen depends on wangle and folly
+ - wangle depends on folly
+
+So, build folly first.  Folly and proxygen
+emit installable packages, wangle does not and
+it statically linked to proxygen.
+
+BUILDING
+
+The `Vagrant` file in each of the projects is
+identical.  One can use a different vagrant for
+each or just the same one (recommended).  You'll
+want to update the version file in each project.
+
+folly# make -f Makefile.cdxs package
+
+then install folly from the generated package
+
+wange# make -f Makefile.cdxs package
+
+then install wangle from the generated package
+
+proxygen# make -f Makefile.cdxs package
+
+the proxygen & folly packages should be uploaded
+to our `apt` service
+
