@@ -26,10 +26,11 @@
 namespace folly {
 
 class BadFormatArg : public std::invalid_argument {
- public:
-  explicit BadFormatArg(const std::string& msg)
-    : std::invalid_argument(msg) {}
+  using invalid_argument::invalid_argument;
 };
+
+[[noreturn]] void throwBadFormatArg(char const* msg);
+[[noreturn]] void throwBadFormatArg(std::string const& msg);
 
 /**
  * Parsed format argument.
@@ -213,7 +214,7 @@ inline std::string FormatArg::errorStr(Args&&... args) const {
 
 template <typename... Args>
 [[noreturn]] inline void FormatArg::error(Args&&... args) const {
-  throw BadFormatArg(errorStr(std::forward<Args>(args)...));
+  throwBadFormatArg(errorStr(std::forward<Args>(args)...));
 }
 
 template <bool emptyOk>

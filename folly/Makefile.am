@@ -454,6 +454,7 @@ libfollybase_la_SOURCES = \
 	detail/RangeCommon.cpp \
 	EscapeTables.cpp \
 	Format.cpp \
+	FormatArg.cpp \
 	FormatTables.cpp \
 	MallctlHelper.cpp \
 	portability/BitsFunctexcept.cpp \
