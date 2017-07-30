@@ -84,9 +84,7 @@ void takeOwnershipError(bool freeOnError, void* buf,
 namespace folly {
 
 struct IOBuf::HeapPrefix {
-  HeapPrefix(uint16_t flg)
-    : magic(kHeapMagic),
-      flags(flg) {}
+  explicit HeapPrefix(uint16_t flg) : magic(kHeapMagic), flags(flg) {}
   ~HeapPrefix() {
     // Reset magic to 0 on destruction.  This is solely for debugging purposes
     // to help catch bugs where someone tries to use HeapStorage after it has
