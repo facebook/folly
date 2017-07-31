@@ -17,11 +17,13 @@
 #pragma once
 #define FOLLY_RANDOM_H_
 
+#include <array>
 #include <cstdint>
 #include <random>
 #include <type_traits>
 
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
