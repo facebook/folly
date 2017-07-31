@@ -358,10 +358,6 @@ struct is_constructible_from_replaceable
               std::is_constructible<T, const Replaceable<T>&&>::value> {};
 
 template <typename T>
-constexpr bool is_constructible_from_replaceable_v{
-    is_constructible_from_replaceable<T>::value};
-
-template <typename T>
 struct is_convertible_from_replaceable
     : std::integral_constant<
           bool,
@@ -369,10 +365,6 @@ struct is_convertible_from_replaceable
               std::is_convertible<Replaceable<T>&&, T>::value ||
               std::is_convertible<const Replaceable<T>&, T>::value ||
               std::is_convertible<const Replaceable<T>&&, T>::value> {};
-
-template <typename T>
-constexpr bool is_convertible_from_replaceable_v{
-    is_convertible_from_replaceable<T>::value};
 } // namespace replaceable_detail
 
 // Type trait template to statically test whether a type is a specialization of
@@ -382,9 +374,6 @@ struct is_replaceable : std::false_type {};
 
 template <class T>
 struct is_replaceable<Replaceable<T>> : std::true_type {};
-
-template <class T>
-constexpr bool is_replaceable_v{is_replaceable<T>::value};
 
 // Function to make a Replaceable with a type deduced from its input
 template <class T>
@@ -525,8 +514,9 @@ class alignas(T) Replaceable
       class U,
       std::enable_if_t<
           std::is_constructible<T, const U&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable_v<T> &&
-              !replaceable_detail::is_convertible_from_replaceable_v<T> &&
+              !replaceable_detail::is_constructible_from_replaceable<
+                  T>::value &&
+              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
               std::is_convertible<const U&, T>::value,
           int> = 0>
   /* implicit */ Replaceable(const Replaceable<U>& other)
@@ -541,8 +531,9 @@ class alignas(T) Replaceable
       class U,
       std::enable_if_t<
           std::is_constructible<T, const U&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable_v<T> &&
-              !replaceable_detail::is_convertible_from_replaceable_v<T> &&
+              !replaceable_detail::is_constructible_from_replaceable<
+                  T>::value &&
+              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
               !std::is_convertible<const U&, T>::value,
           int> = 0>
   explicit Replaceable(const Replaceable<U>& other)
@@ -557,8 +548,9 @@ class alignas(T) Replaceable
       class U,
       std::enable_if_t<
           std::is_constructible<T, U&&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable_v<T> &&
-              !replaceable_detail::is_convertible_from_replaceable_v<T> &&
+              !replaceable_detail::is_constructible_from_replaceable<
+                  T>::value &&
+              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
               std::is_convertible<U&&, T>::value,
           int> = 0>
   /* implicit */ Replaceable(Replaceable<U>&& other)
@@ -573,8 +565,9 @@ class alignas(T) Replaceable
       class U,
       std::enable_if_t<
           std::is_constructible<T, U&&>::value &&
-              !replaceable_detail::is_constructible_from_replaceable_v<T> &&
-              !replaceable_detail::is_convertible_from_replaceable_v<T> &&
+              !replaceable_detail::is_constructible_from_replaceable<
+                  T>::value &&
+              !replaceable_detail::is_convertible_from_replaceable<T>::value &&
               !std::is_convertible<U&&, T>::value,
           int> = 0>
   explicit Replaceable(Replaceable<U>&& other)
