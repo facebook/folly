@@ -176,7 +176,7 @@ ssize_t AsyncUDPSocket::writev(const folly::SocketAddress& address,
   msg.msg_controllen = 0;
   msg.msg_flags = 0;
 
-  return ::sendmsg(fd_, &msg, 0);
+  return sendmsg(fd_, &msg, 0);
 }
 
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {

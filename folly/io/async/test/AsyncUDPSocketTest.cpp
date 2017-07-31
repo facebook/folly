@@ -21,6 +21,7 @@
 #include <folly/io/async/EventBase.h>
 
 #include <folly/io/IOBuf.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 #include <thread>
@@ -31,6 +32,7 @@ using folly::AsyncTimeout;
 using folly::EventBase;
 using folly::SocketAddress;
 using folly::IOBuf;
+using namespace testing;
 
 class UDPAcceptor
     : public AsyncUDPServerSocket::Callback {
@@ -289,3 +291,10 @@ TEST(AsyncSocketTest, PingPong) {
   // Wait for server thread to joib
   serverThread.join();
 }
+
+class TestAsyncUDPSocket : public AsyncUDPSocket {
+ public:
+  explicit TestAsyncUDPSocket(EventBase* evb) : AsyncUDPSocket(evb) {}
+
+  MOCK_METHOD3(sendmsg, ssize_t(int, const struct msghdr*, int));
+};

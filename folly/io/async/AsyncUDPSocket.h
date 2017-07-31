@@ -162,6 +162,11 @@ class AsyncUDPSocket : public EventHandler {
     return eventBase_;
   }
 
+ protected:
+  virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
+    return ::sendmsg(socket, message, flags);
+  }
+
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
