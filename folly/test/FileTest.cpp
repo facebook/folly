@@ -32,7 +32,7 @@ void expectOK(ssize_t r) {
   int savedErrno = errno;
   EXPECT_LE(0, r) << ": errno=" << errnoStr(savedErrno);
 }
-}  // namespace
+} // namespace
 
 TEST(File, Simple) {
   // Open a file, ensure it's indeed open for reading

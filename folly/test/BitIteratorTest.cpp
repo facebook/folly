@@ -55,7 +55,7 @@ void checkRange(INT exp, IT begin, IT end) {
   }
 }
 
-}  // namespace
+} // namespace
 
 TEST(BitIterator, Simple) {
   std::vector<int> v;

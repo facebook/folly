@@ -72,5 +72,5 @@ void Fiber::LocalData::dataHeapDestructor(void* ptr) {
   reinterpret_cast<T*>(ptr)->~T();
   freeHeapBuffer(ptr);
 }
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

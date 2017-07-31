@@ -333,7 +333,7 @@ struct KeyValue {
   int value;
 };
 
-}  // namespace
+} // namespace
 
 namespace folly {
 

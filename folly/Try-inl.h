@@ -169,4 +169,4 @@ std::tuple<Ts...> unwrapTryTuple(std::tuple<folly::Try<Ts>...>&& ts) {
       std::forward<std::tuple<folly::Try<Ts>...>>(ts));
 }
 
-} // folly
+} // namespace folly

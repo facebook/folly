@@ -98,5 +98,5 @@ TEST(Overload, Pattern) {
   EXPECT_FALSE(variant_match(two, is_one_copy));
   EXPECT_FALSE(variant_match(two, is_one_const_copy));
 }
-}
-} // folly::test
+} // namespace test
+} // namespace folly

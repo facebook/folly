@@ -87,4 +87,4 @@ EventBase * EventBaseManager::getEventBase() const {
   return info->eventBase;
 }
 
-} // folly
+} // namespace folly

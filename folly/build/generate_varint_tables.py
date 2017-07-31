@@ -96,8 +96,8 @@ alignas(16) extern const uint64_t groupVarintSSEMasks[512] = {
     f.write("""
 };
 
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly
 """)
 
 def main():

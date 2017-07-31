@@ -235,4 +235,4 @@ void writeFileAtomic(
   writeFileAtomic(filename, ByteRange(data), permissions);
 }
 
-}  // namespaces
+} // namespace folly

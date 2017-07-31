@@ -52,5 +52,5 @@ std::vector<ExceptionInfo> getCurrentExceptions();
  */
 void installHandlers();
 
-}  // namespace exception_tracer
-}  // namespace folly
+} // namespace exception_tracer
+} // namespace folly

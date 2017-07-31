@@ -148,4 +148,4 @@ void File::unlock() {
 }
 void File::unlock_shared() { unlock(); }
 
-}  // namespace folly
+} // namespace folly

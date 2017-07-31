@@ -122,5 +122,5 @@ class OpenSSLUtils {
   static void setBioFd(BIO* b, int fd, int flags);
 };
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

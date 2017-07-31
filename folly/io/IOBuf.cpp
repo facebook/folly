@@ -79,7 +79,7 @@ void takeOwnershipError(bool freeOnError, void* buf,
   }
 }
 
-} // unnamed namespace
+} // namespace
 
 namespace folly {
 
@@ -1048,4 +1048,4 @@ bool IOBufEqual::operator()(const IOBuf& a, const IOBuf& b) const {
   }
 }
 
-} // folly
+} // namespace folly

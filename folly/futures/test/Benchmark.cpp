@@ -40,7 +40,7 @@ void someThens(size_t n) {
   }
 }
 
-} // anonymous namespace
+} // namespace
 
 BENCHMARK(constantFuture) {
   makeFuture(42);

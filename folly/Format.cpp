@@ -27,7 +27,7 @@ namespace detail {
 extern const FormatArg::Align formatAlignTable[];
 extern const FormatArg::Sign formatSignTable[];
 
-}  // namespace detail
+} // namespace detail
 
 using namespace folly::detail;
 
@@ -328,6 +328,6 @@ void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
     remaining_digits -= current_group_size;
   }
 }
-} // detail
+} // namespace detail
 
-}  // namespace folly
+} // namespace folly

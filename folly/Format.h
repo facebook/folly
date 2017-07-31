@@ -432,7 +432,7 @@ struct IsFormatter<
     typename std::enable_if<
         std::is_same<typename T::IsFormatter, detail::FormatterTag>::value>::
         type> : public std::true_type {};
-} // folly::detail
+} // namespace detail
 
 // Deprecated API. formatChecked() et. al. now behave identically to their
 // non-Checked counterparts.

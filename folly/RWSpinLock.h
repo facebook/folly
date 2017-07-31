@@ -517,7 +517,7 @@ struct RWTicketIntTrait<32> {
   }
 #endif
 };
-}  // detail
+} // namespace detail
 
 template <size_t kBitWidth, bool kFavorWriter = false>
 class RWTicketSpinLockT {
@@ -761,7 +761,7 @@ typedef RWTicketSpinLockT<64> RWTicketSpinLock64;
 
 #endif  // RW_SPINLOCK_USE_X86_INTRINSIC_
 
-}  // namespace folly
+} // namespace folly
 
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
 #undef RW_SPINLOCK_USE_X86_INTRINSIC_

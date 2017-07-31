@@ -62,7 +62,7 @@ std::string callHelper(ProgramOptionsStyle style,
   return p.first;
 }
 
-}  // namespace
+} // namespace
 
 // name value
 

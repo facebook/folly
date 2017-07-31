@@ -55,7 +55,7 @@ std::string formatMsg(
 
   return formatter.formatMessage(logMessage, category);
 }
-} // unnamed namespace
+} // namespace
 
 TEST(GlogFormatter, log) {
   auto tid = getOSThreadID();

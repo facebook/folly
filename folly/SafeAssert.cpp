@@ -28,7 +28,7 @@ void writeStderr(const char* s, size_t len) {
 void writeStderr(const char* s) {
   writeStderr(s, strlen(s));
 }
-}  // namespace
+} // namespace
 
 void assertionFailure(const char* expr, const char* msg, const char* file,
                       unsigned int line, const char* function) {

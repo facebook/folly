@@ -179,4 +179,4 @@ class AsyncPipeWriter : public EventHandler,
   }
 };
 
-} // folly
+} // namespace folly

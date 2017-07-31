@@ -24,4 +24,4 @@ namespace folly {
 struct TokenBucketTest :
     public ::testing::TestWithParam<std::pair<double,double> > {};
 
-} // folly
+} // namespace folly

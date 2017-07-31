@@ -383,7 +383,7 @@ std::ostream& operator<<(std::ostream& os, const iocb& cb) {
   return os;
 }
 
-} // anonymous namespace
+} // namespace
 
 std::ostream& operator<<(std::ostream& os, const AsyncIOOp& op) {
   os << "{" << op.state_ << ", ";

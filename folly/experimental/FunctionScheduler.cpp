@@ -83,7 +83,7 @@ struct UniformDistributionFunctor {
   milliseconds operator()() { return milliseconds(dist(generator)); }
 };
 
-} // anonymous namespace
+} // namespace
 
 FunctionScheduler::FunctionScheduler() {}
 

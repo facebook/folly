@@ -121,7 +121,7 @@ crc32_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   return crc_sw<CRC32_POLYNOMIAL>(data, nbytes, startingChecksum);
 }
 
-} // folly::detail
+} // namespace detail
 
 uint32_t crc32c(const uint8_t *data, size_t nbytes,
     uint32_t startingChecksum) {
@@ -145,4 +145,4 @@ crc32_type(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   return ~crc32(data, nbytes, startingChecksum);
 }
 
-} // folly
+} // namespace folly

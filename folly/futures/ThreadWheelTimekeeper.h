@@ -45,4 +45,4 @@ class ThreadWheelTimekeeper : public Timekeeper {
   HHWheelTimer::UniquePtr wheelTimer_;
 };
 
-} // folly
+} // namespace folly

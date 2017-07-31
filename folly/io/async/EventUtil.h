@@ -56,4 +56,4 @@ class EventUtil {
   }
 };
 
-} // folly
+} // namespace folly

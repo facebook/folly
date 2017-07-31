@@ -42,4 +42,4 @@ void stringPieceDel(StringPiece piece, const Alloc& alloc) {
     .deallocate(const_cast<char*>(piece.data()), piece.size());
 }
 
-} // folly
+} // namespace folly

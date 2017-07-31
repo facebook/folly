@@ -104,7 +104,7 @@ void writeStringToFileOrDie(const std::string& str, int fd) {
   } while (r != 0 && count);
 }
 
-}  // anonymous namespace
+} // namespace
 
 TEST(MemoryMapping, Simple) {
   File f = File::temporary();

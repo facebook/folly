@@ -30,6 +30,6 @@ namespace detail {
       sformat("mallctl {}: {} ({})", cmd, errnoStr(err), err));
 }
 
-} // detail
+} // namespace detail
 
-} // folly
+} // namespace folly

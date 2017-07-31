@@ -482,8 +482,8 @@ struct DeterministicMutex {
     m.unlock();
   }
 };
-}
-} // namespace folly::test
+} // namespace test
+} // namespace folly
 
 /* Specialization declarations */
 
@@ -499,9 +499,9 @@ FutexResult Futex<test::DeterministicAtomic>::futexWaitImpl(
     std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
     std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
     uint32_t waitMask);
-}
+} // namespace detail
 
 template <>
 Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc();
 
-} // namespace folly::detail
+} // namespace folly

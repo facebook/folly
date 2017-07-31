@@ -487,4 +487,4 @@ class BucketedTimeSeries {
   std::vector<Bucket> buckets_; // actual buckets of values
 };
 
-} // folly
+} // namespace folly

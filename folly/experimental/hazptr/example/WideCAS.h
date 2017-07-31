@@ -62,5 +62,5 @@ class WideCAS {
   }
 };
 
-} // namespace folly {
-} // namespace hazptr {
+} // namespace folly
+} // namespace hazptr

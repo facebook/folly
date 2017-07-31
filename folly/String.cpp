@@ -118,7 +118,7 @@ void stringAppendfImpl(std::string& output, const char* format, va_list args) {
   output.append(heap_buffer.get(), size_t(final_bytes_used));
 }
 
-} // anon namespace
+} // namespace
 
 std::string stringPrintf(const char* format, ...) {
   va_list ap;
@@ -274,7 +274,7 @@ const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
   kPrettySISuffixes,
 };
 
-}  // namespace
+} // namespace
 
 std::string prettyPrint(double val, PrettyType type, bool addSpace) {
   char buf[100];
@@ -489,7 +489,7 @@ void toLowerAscii64(uint64_t& c) {
   c += rotated;
 }
 
-} // anon namespace
+} // namespace
 
 void toLowerAscii(char* str, size_t length) {
   static const size_t kAlignMask64 = 7;
@@ -638,7 +638,7 @@ std::string stripLeftMargin(std::string s) {
   return join("\n", piecer);
 }
 
-}   // namespace folly
+} // namespace folly
 
 #ifdef FOLLY_DEFINED_DMGL
 # undef FOLLY_DEFINED_DMGL

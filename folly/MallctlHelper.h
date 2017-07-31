@@ -42,7 +42,7 @@ void mallctlHelper(const char* cmd, T* out, T* in) {
   }
 }
 
-} // detail
+} // namespace detail
 
 template <typename T>
 void mallctlRead(const char* cmd, T* out) {
@@ -64,4 +64,4 @@ inline void mallctlCall(const char* cmd) {
   mallctlRead<unsigned>(cmd, nullptr);
 }
 
-} // folly
+} // namespace folly

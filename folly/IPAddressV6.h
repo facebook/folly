@@ -395,7 +395,7 @@ std::ostream& operator<<(std::ostream& os, const IPAddressV6& addr);
 void toAppend(IPAddressV6 addr, std::string* result);
 void toAppend(IPAddressV6 addr, fbstring* result);
 
-}  // folly
+} // namespace folly
 
 namespace std {
 template <>
@@ -404,4 +404,4 @@ struct hash<folly::IPAddressV6> {
     return addr.hash();
   }
 };
-}  // std
+} // namespace std

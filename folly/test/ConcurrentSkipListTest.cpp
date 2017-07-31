@@ -492,7 +492,7 @@ TEST(ConcurrentSkipList, NonTrivialDeallocationWithSysArena) {
   TestNonTrivialDeallocation(list);
 }
 
-}  // namespace
+} // namespace
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);

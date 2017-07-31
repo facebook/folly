@@ -28,5 +28,5 @@ enum class LockType { MUTEX, SPINLOCK, SHAREDMUTEX, NONE };
  */
 using LockTypeMapping = std::map<int, LockType>;
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

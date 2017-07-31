@@ -220,5 +220,5 @@ uint64_t run_test(
   }
 }
 
-} // namespace test {
-} // namespace folly {
+} // namespace test
+} // namespace folly

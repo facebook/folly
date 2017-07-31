@@ -75,5 +75,5 @@ void bridgeFuture(
       getExecutor(), std::move(futureFrom), std::move(callback), userData);
 }
 
-} // python
-} // folly
+} // namespace python
+} // namespace folly

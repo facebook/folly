@@ -2357,7 +2357,7 @@ inline detail::Skip skip(size_t count) { return detail::Skip(count); }
 inline detail::Batch batch(size_t batchSize) {
   return detail::Batch(batchSize);
 }
-} // gen
-} // folly
+} // namespace gen
+} // namespace folly
 
 FOLLY_POP_WARNING

@@ -118,6 +118,6 @@ class Uri {
   std::vector<std::pair<std::string, std::string>> queryParams_;
 };
 
-}  // namespace folly
+} // namespace folly
 
 #include <folly/Uri-inl.h>

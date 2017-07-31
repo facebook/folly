@@ -2188,5 +2188,5 @@ struct Initializer {
   }
 };
 Initializer initializer;
-} // anonymous
+} // namespace
 #endif

@@ -106,7 +106,7 @@ struct HostAndPort {
   char* allocated;
 };
 
-} // unnamed namespace
+} // namespace
 
 namespace folly {
 
@@ -772,4 +772,4 @@ std::ostream& operator<<(std::ostream& os, const SocketAddress& addr) {
   return os;
 }
 
-} // folly
+} // namespace folly

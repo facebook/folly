@@ -157,7 +157,7 @@ void runEcho(const po::variables_map& options,
   }
 }
 
-}  // namespace
+} // namespace
 
 int main(int argc, char *argv[]) {
   // Initialize a NestedCommandLineApp object.

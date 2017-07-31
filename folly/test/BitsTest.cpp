@@ -63,7 +63,7 @@ void testFLS() {
   }
 }
 
-}  // namespace
+} // namespace
 
 TEST(Bits, FindFirstSet) {
   testFFS<char>();

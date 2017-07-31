@@ -514,4 +514,4 @@ bool IPAddressV6::inBinarySubnet(const std::array<uint8_t, 2> addr,
   auto masked = mask(numBits);
   return (std::memcmp(addr.data(), masked.bytes(), 2) == 0);
 }
-} // folly
+} // namespace folly

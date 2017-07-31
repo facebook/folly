@@ -150,5 +150,4 @@ class File {
 
 void swap(File& a, File& b);
 
-
-}  // namespace folly
+} // namespace folly

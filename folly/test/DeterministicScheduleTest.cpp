@@ -104,7 +104,7 @@ TEST(DeterministicSchedule, buggyAdd) {
       }
     }
   } // for bug
-} // TEST
+}
 
 /// Test DSched support for auxiliary data and global invariants
 ///

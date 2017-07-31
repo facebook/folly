@@ -31,7 +31,8 @@
 
 using namespace std::chrono;
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 namespace {
 
@@ -268,8 +269,7 @@ FutexResult emulatedFutexWaitImpl(
   return FutexResult::AWOKEN;
 }
 
-} // anon namespace
-
+} // namespace
 
 /////////////////////////////////
 // Futex<> specializations
@@ -316,4 +316,5 @@ Futex<EmulatedFutexAtomic>::futexWaitImpl(
       this, expected, absSystemTime, absSteadyTime, waitMask);
 }
 
-}} // namespace folly::detail
+} // namespace detail
+} // namespace folly

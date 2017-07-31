@@ -97,7 +97,7 @@ TEST(SSLContextInitializationTest, SSLContextLocksSetAfterInitIgnored) {
       ::testing::ExitedWithCode(0),
       "SSLContextLocksSetAfterInitIgnored passed");
 }
-} // folly
+} // namespace folly
 
 int main(int argc, char* argv[]) {
 #ifdef SIGPIPE

@@ -52,4 +52,4 @@ detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>::
     computeTotalCount<Histogram<int64_t>::CountFromBucket>(
         Histogram<int64_t>::CountFromBucket countFromBucket) const;
 
-} // folly
+} // namespace folly

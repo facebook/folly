@@ -80,7 +80,7 @@ inline void checkLegalKeyIfKeyTImpl(KeyT key_in, KeyT emptyKey,
   DCHECK_NE(key_in, lockedKey);
   DCHECK_NE(key_in, erasedKey);
 }
-}  // namespace detail
+} // namespace detail
 
 template <
     class KeyT,

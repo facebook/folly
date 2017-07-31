@@ -37,7 +37,7 @@ std::string guessProgramName() {
   }
 }
 
-}  // namespace
+} // namespace
 
 ProgramExit::ProgramExit(int status, const std::string& msg)
   : std::runtime_error(msg),
@@ -271,4 +271,4 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   info.command(vm, cmdArgs);
 }
 
-}  // namespaces
+} // namespace folly

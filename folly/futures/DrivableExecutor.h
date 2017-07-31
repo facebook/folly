@@ -52,4 +52,4 @@ class DrivableExecutor : public virtual Executor {
   virtual void drive() = 0;
 };
 
-} // folly
+} // namespace folly

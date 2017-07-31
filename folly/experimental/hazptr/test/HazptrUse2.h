@@ -49,5 +49,5 @@ inline void mineReclaimFnDelete(Node2* p) {
   delete p;
 }
 
-} // namespace folly {
-} // namespace hazptr {
+} // namespace folly
+} // namespace hazptr

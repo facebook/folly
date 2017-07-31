@@ -60,7 +60,7 @@ std::string callHelper(std::initializer_list<std::string> args,
   return p.first;
 }
 
-}  // namespace
+} // namespace
 
 TEST(ProgramOptionsTest, Errors) {
   callHelper({}, 1);

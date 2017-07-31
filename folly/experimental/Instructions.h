@@ -147,6 +147,6 @@ struct Haswell : public Nehalem {
 #endif
   }
 };
-}
-}
-} // namespaces
+} // namespace instructions
+} // namespace compression
+} // namespace folly

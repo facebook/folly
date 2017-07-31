@@ -40,15 +40,15 @@
 namespace folly {
 namespace detail {
 alignas(16) extern const uint64_t groupVarintSSEMasks[];
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly
 #endif
 
 namespace folly {
 namespace detail {
 extern const uint8_t groupVarintLengths[];
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly
 
 namespace folly {
 
@@ -625,6 +625,6 @@ class GroupVarintDecoder {
 typedef GroupVarintDecoder<uint32_t> GroupVarint32Decoder;
 typedef GroupVarintDecoder<uint64_t> GroupVarint64Decoder;
 
-}  // namespace folly
+} // namespace folly
 
 #endif /* FOLLY_X64 || defined(__i386__) || FOLLY_PPC64 */

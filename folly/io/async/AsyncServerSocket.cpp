@@ -1070,6 +1070,4 @@ void AsyncServerSocket::backoffTimeoutExpired() {
   }
 }
 
-
-
-} // folly
+} // namespace folly

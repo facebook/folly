@@ -174,8 +174,8 @@ inline void benches(std::string name) {
   std::cout << "----------------------------------------------------------\n";
 }
 
-} // namespace hazptr {
-} // namespace folly {
+} // namespace hazptr
+} // namespace folly
 
 /*
 ------------------------------------------- no amb - no tc

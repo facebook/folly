@@ -50,7 +50,7 @@ fs::path generateUniquePath(fs::path path, StringPiece namePrefix) {
   return path;
 }
 
-}  // namespace
+} // namespace
 
 TemporaryFile::TemporaryFile(StringPiece namePrefix,
                              fs::path dir,
@@ -175,7 +175,7 @@ bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target) {
   return !hasPCREPatternMatch(pattern, target);
 }
 
-}  // namespace detail
+} // namespace detail
 
 CaptureFD::CaptureFD(int fd, ChunkCob chunk_cob)
     : chunkCob_(std::move(chunk_cob)), fd_(fd), readOffset_(0) {
@@ -222,5 +222,5 @@ std::string CaptureFD::readIncremental() {
   return std::string(buf.get(), size);
 }
 
-}  // namespace test
-}  // namespace folly
+} // namespace test
+} // namespace folly

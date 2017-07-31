@@ -30,4 +30,4 @@ std::string shellQuote(StringPiece argument) {
   return quoted + "'";
 }
 
-} // folly
+} // namespace folly

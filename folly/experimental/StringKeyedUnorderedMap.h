@@ -236,4 +236,4 @@ class StringKeyedUnorderedMap
   }
 };
 
-} // folly
+} // namespace folly

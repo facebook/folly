@@ -185,4 +185,4 @@ class EventHandler : private boost::noncopyable {
   EventBase* eventBase_;
 };
 
-} // folly
+} // namespace folly

@@ -62,5 +62,5 @@ void setSignatureAlgorithms(SSLContext& ctx) {
   }
 }
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

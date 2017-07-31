@@ -23,7 +23,7 @@ using folly::demangle;
 namespace folly_test {
 struct ThisIsAVeryLongStructureName {
 };
-}  // namespace folly_test
+} // namespace folly_test
 
 #if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
 TEST(Demangle, demangle) {

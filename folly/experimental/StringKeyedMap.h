@@ -211,4 +211,4 @@ class StringKeyedMap
   }
 };
 
-} // folly
+} // namespace folly

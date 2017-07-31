@@ -437,4 +437,4 @@ class MultiLevelTimeSeries {
   uint64_t cachedCount_;
 };
 
-} // folly
+} // namespace folly

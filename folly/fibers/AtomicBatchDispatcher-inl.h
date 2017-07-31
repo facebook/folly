@@ -222,4 +222,4 @@ AtomicBatchDispatcher<InputT, ResultT> createAtomicBatchDispatcher(
 }
 
 } // namespace fibers
-} // manespace folly
+} // namespace folly

@@ -266,4 +266,4 @@ void AsyncPipeWriter::handleWrite() {
   }
 }
 
-} // folly
+} // namespace folly

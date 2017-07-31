@@ -89,7 +89,7 @@ void ArenaTester::merge(ArenaTester&& other) {
   other.areas_.clear();
 }
 
-}  // namespace
+} // namespace
 
 TEST(ThreadCachedArena, BlockSize) {
   static const size_t alignment = folly::max_align_v;
@@ -241,8 +241,7 @@ BENCHMARK(bmMArena, iters) {
 
 BENCHMARK_DRAW_LINE()
 
-}  // namespace
-
+} // namespace
 
 // Benchmark                               Iters   Total t    t/iter iter/sec
 // ----------------------------------------------------------------------------

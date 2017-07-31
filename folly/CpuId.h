@@ -214,4 +214,4 @@ class CpuId {
   uint32_t f7c_ = 0;
 };
 
-}  // namespace folly
+} // namespace folly

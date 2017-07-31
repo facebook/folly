@@ -756,4 +756,4 @@ VirtualEventBase& EventBase::getVirtualEventBase() {
   return *virtualEventBase_;
 }
 
-} // folly
+} // namespace folly

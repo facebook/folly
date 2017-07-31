@@ -150,4 +150,4 @@ std::ostream& operator<<(std::ostream& os, MacAddress address) {
   return os;
 }
 
-} // folly
+} // namespace folly

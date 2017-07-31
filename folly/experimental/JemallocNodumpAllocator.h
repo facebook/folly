@@ -115,4 +115,4 @@ class JemallocNodumpAllocator {
  */
 JemallocNodumpAllocator& globalJemallocNodumpAllocator();
 
-} // folly
+} // namespace folly

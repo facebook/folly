@@ -38,7 +38,7 @@ namespace fibers {
  */
 template <class InputIterator, class F>
 inline void forEach(InputIterator first, InputIterator last, F&& f);
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly
 
 #include <folly/fibers/ForEach-inl.h>

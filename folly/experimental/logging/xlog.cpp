@@ -52,7 +52,7 @@ StringPiece stripBuckOutPrefix(StringPiece filename) {
     idx = end + 1;
   }
 }
-} // unnamed namespace
+} // namespace
 
 std::string getXlogCategoryNameForFile(StringPiece filename) {
   // Buck mangles the directory layout for header files.  Rather than including

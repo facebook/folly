@@ -68,4 +68,4 @@ FOLLY_ALWAYS_INLINE void assume(bool cond) {
 #endif
 }
 
-}  // namespace folly
+} // namespace folly

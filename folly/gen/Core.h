@@ -37,8 +37,8 @@ class Composed;
 template <class Value, class First, class Second>
 class Chain;
 
-} // detail
-} // gen
-} // folly
+} // namespace detail
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/Core-inl.h>

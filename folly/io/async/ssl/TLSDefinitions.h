@@ -88,5 +88,5 @@ struct ClientHelloInfo {
   std::vector<uint16_t> clientHelloSupportedVersions_;
 };
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

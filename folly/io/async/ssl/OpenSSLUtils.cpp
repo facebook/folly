@@ -310,8 +310,8 @@ void OpenSSLUtils::setBioFd(BIO* b, int fd, int flags) {
   BIO_set_fd(b, sock, flags);
 }
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly
 
 namespace {
 #ifdef OPENSSL_IS_BORINGSSL

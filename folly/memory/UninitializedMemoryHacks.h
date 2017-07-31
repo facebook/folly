@@ -30,7 +30,7 @@ namespace {
 // allowing the resulting methods to be inline-able.  If you think that
 // seems hacky keep reading...
 struct FollyMemoryDetailTranslationUnitTag {};
-} // anon namespace
+} // namespace
 namespace folly {
 namespace detail {
 void unsafeStringSetLargerSize(std::string& s, std::size_t n);

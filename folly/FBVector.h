@@ -1624,7 +1624,7 @@ struct IndexableTraits<fbvector<T, A>>
   : public IndexableTraitsSeq<fbvector<T, A>> {
 };
 
-}  // namespace detail
+} // namespace detail
 
 template <class T, class A>
 void compactResize(fbvector<T, A>* v, size_t sz) {

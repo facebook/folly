@@ -73,4 +73,4 @@ int64_t TimeoutQueue::runInternal(int64_t now, bool onceOnly) {
   return nextExp;
 }
 
-}  // namespace folly
+} // namespace folly

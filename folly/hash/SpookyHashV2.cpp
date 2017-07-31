@@ -384,5 +384,5 @@ void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2) const
     *hash2 = h1;
 }
 
-}  // namespace hash
-}  // namespace folly
+} // namespace hash
+} // namespace folly

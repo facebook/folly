@@ -338,7 +338,7 @@ struct LockTraitsImpl<Mutex, MutexLevel::UPGRADE, true>
   }
 };
 
-} // detail
+} // namespace detail
 
 /**
  * LockTraits describes details about a particular mutex type.
@@ -637,4 +637,4 @@ struct LockPolicyFromExclusiveToShared : public LockPolicyShared {
   }
 };
 
-} // folly
+} // namespace folly

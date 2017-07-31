@@ -105,7 +105,7 @@ struct BitsTraits<T, typename std::enable_if<
   }
 };
 
-}  // namespace detail
+} // namespace detail
 
 /**
  * Wrapper class with static methods for various bit-level operations,
@@ -312,4 +312,4 @@ inline size_t Bits<T, Traits>::count(const T* begin, const T* end) {
   return n;
 }
 
-}  // namespace folly
+} // namespace folly

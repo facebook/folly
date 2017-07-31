@@ -90,5 +90,5 @@ inline memory_resource* new_delete_resource() {
   return &mr;
 }
 
-} // namespace folly {
-} // namespace hazptr {
+} // namespace folly
+} // namespace hazptr

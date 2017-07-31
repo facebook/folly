@@ -74,5 +74,5 @@ void SSLCommonOptions::setClientOptions(SSLContext& ctx) {
   setSignatureAlgorithms<SSLCommonOptions>(ctx);
 }
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

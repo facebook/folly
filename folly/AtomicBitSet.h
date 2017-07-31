@@ -156,4 +156,4 @@ inline bool AtomicBitSet<N>::operator[](size_t idx) const {
   return test(idx);
 }
 
-}  // namespaces
+} // namespace folly

@@ -47,5 +47,5 @@ class Node1 : public hazptr_obj_base<Node1, MyReclaimerFree<Node1>> {
   char a[100];
 };
 
-} // namespace folly {
-} // namespace hazptr {
+} // namespace folly
+} // namespace hazptr

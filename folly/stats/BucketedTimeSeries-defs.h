@@ -525,4 +525,4 @@ void BucketedTimeSeries<VT, CT>::forEachBucket(
       });
 }
 
-} // folly
+} // namespace folly

@@ -190,8 +190,7 @@ TEST(AsyncSSLSocketTest2, AttachDetachSSLContext) {
   EXPECT_TRUE(f.within(std::chrono::seconds(3)).get());
 }
 
-
-}  // folly
+} // namespace folly
 
 int main(int argc, char *argv[]) {
 #ifdef SIGPIPE

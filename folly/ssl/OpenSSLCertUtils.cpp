@@ -196,5 +196,5 @@ std::unique_ptr<IOBuf> OpenSSLCertUtils::derEncode(X509& x509) {
   buf->append(len);
   return buf;
 }
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

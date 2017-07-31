@@ -362,7 +362,7 @@ constexpr auto kIsBigEndian = !kIsLittleEndian;
 namespace FOLLY_GFLAGS_NAMESPACE { }
 namespace gflags {
 using namespace FOLLY_GFLAGS_NAMESPACE;
-}  // namespace gflags
+} // namespace gflags
 #endif
 
 // for TARGET_OS_IPHONE

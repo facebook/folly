@@ -248,4 +248,4 @@ void alignedForwardMemcpy(void* dest, const void* src, size_t size);
  */
 void mmapFileCopy(const char* src, const char* dest, mode_t mode = 0666);
 
-}  // namespace folly
+} // namespace folly

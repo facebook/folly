@@ -130,5 +130,5 @@ class FiberImpl {
   FiberContext fiberContext_;
   MainContext mainContext_;
 };
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

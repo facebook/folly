@@ -236,4 +236,4 @@ class FcCustomExample : public FlatCombining<
   Data data_;
 };
 
-} // namespace folly {
+} // namespace folly

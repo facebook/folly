@@ -398,7 +398,7 @@ class emplace_iterator_impl
   emplace_iterator_impl& operator=(const emplace_iterator_impl&) = default;
   emplace_iterator_impl& operator=(emplace_iterator_impl&&) noexcept = default;
 };
-} // folly::detail
+} // namespace detail
 
 /**
  * Behaves just like std::insert_iterator except that it calls emplace()

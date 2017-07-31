@@ -57,4 +57,4 @@ crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 uint32_t
 crc32_type(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
-} // folly
+} // namespace folly

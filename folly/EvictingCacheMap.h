@@ -495,4 +495,4 @@ class EvictingCacheMap {
   std::size_t clearSize_;
 };
 
-} // folly
+} // namespace folly

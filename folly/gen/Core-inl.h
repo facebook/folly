@@ -373,8 +373,8 @@ class Chain : public GenImpl<Value,
   static constexpr bool infinite = First::infinite || Second::infinite;
 };
 
-} // detail
-} // gen
-} // folly
+} // namespace detail
+} // namespace gen
+} // namespace folly
 
 FOLLY_POP_WARNING

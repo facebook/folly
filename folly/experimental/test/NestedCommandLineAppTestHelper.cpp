@@ -38,7 +38,7 @@ void foo(const po::variables_map& options,
   }
 }
 
-}  // namespace
+} // namespace
 
 int main(int argc, char *argv[]) {
   folly::NestedCommandLineApp app("", "0.1", "", "", init);

@@ -757,7 +757,7 @@ using LockedPtrType = typename std::conditional<
     std::is_const<SynchronizedType>::value,
     typename SynchronizedType::ConstLockedPtr,
     typename SynchronizedType::LockedPtr>::type;
-} // detail
+} // namespace detail
 
 /**
  * A helper base class for implementing LockedPtr.

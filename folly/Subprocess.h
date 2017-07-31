@@ -882,4 +882,4 @@ class Subprocess {
   std::vector<Pipe> pipes_;
 };
 
-}  // namespace folly
+} // namespace folly

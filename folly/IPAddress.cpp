@@ -434,5 +434,4 @@ IPAddress::longestCommonPrefix(const CIDRNetwork& one, const CIDRNetwork& two) {
       "Can't convert address with family ", fam, " to AF_INET6 address"));
 }
 
-
-}  // folly
+} // namespace folly

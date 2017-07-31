@@ -36,7 +36,7 @@ void toLower(String& s) {
   }
 }
 
-}  // namespace
+} // namespace
 
 Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
   static const boost::regex uriRegex(
@@ -159,4 +159,4 @@ const std::vector<std::pair<std::string, std::string>>& Uri::getQueryParams() {
   return queryParams_;
 }
 
-}  // namespace folly
+} // namespace folly

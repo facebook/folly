@@ -47,7 +47,7 @@ inline FiberManager::Options preprocessOptions(FiberManager::Options opts) {
   return opts;
 }
 
-} // anonymous
+} // namespace
 
 inline void FiberManager::ensureLoopScheduled() {
   if (isLoopScheduled_) {

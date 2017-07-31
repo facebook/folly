@@ -694,4 +694,4 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
   virtual std::string getSecurityProtocol() const { return ""; }
 };
 
-} // folly
+} // namespace folly

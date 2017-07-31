@@ -297,4 +297,4 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
   return registerHandler(uint16_t(flags | PERSIST));
 }
 
-} // Namespace
+} // namespace folly

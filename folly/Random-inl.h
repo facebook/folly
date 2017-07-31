@@ -67,7 +67,7 @@ struct SeedData {
   std::array<uint32_t, stateSize> seedData;
 };
 
-}  // namespace detail
+} // namespace detail
 
 template <class RNG, class /* EnableIf */>
 void Random::seed(RNG& rng) {
@@ -83,4 +83,4 @@ auto Random::create() -> RNG {
   return RNG(s);
 }
 
-}  // namespaces
+} // namespace folly

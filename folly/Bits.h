@@ -282,7 +282,7 @@ struct EndianInt {
   }
 };
 
-}  // namespace detail
+} // namespace detail
 
 // big* convert between native and big-endian representations
 // little* convert between native and little-endian representations
@@ -550,4 +550,4 @@ inline void storeUnaligned(void* p, T value) {
   }
 }
 
-}  // namespace folly
+} // namespace folly

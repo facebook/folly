@@ -738,5 +738,5 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
   Atom<Buckets*> buckets_{nullptr};
   Mutex m_;
 };
-}
-} // folly::detail namespace
+} // namespace detail
+} // namespace folly

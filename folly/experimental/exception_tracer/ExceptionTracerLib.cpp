@@ -84,8 +84,8 @@ DECLARE_CALLBACK(CxaRethrow);
 DECLARE_CALLBACK(CxaEndCatch);
 DECLARE_CALLBACK(RethrowException);
 
-} // exception_tracer
-} // folly
+} // namespace exception_tracer
+} // namespace folly
 
 // Clang is smart enough to understand that the symbols we're loading
 // are [[noreturn]], but GCC is not. In order to be able to build with

@@ -124,8 +124,7 @@ std::unique_ptr<folly::IOBuf> getBuf(const std::string& data) {
   return buf;
 }
 
-} // anonymous namespace
-
+} // namespace
 
 TEST_F(AsyncPipeTest, simple) {
   for (int pass = 0; pass < 2; ++pass) {

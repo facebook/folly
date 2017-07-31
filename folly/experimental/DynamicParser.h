@@ -188,7 +188,7 @@ namespace detail {
 // Firstly, the input dynamic need not correspond to valid JSON.  Secondly,
 // wrapError() uses integer-keyed objects to report arrary-indexing errors.
 std::string toPseudoJson(const folly::dynamic& d);
-}  // namespace detail
+} // namespace detail
 
 /**
  * With DynamicParser::OnError::THROW, reports the first error.
@@ -392,6 +392,6 @@ class DynamicParser {
   bool allowNonStringKeyErrors_{false};  // See the setter's docblock.
 };
 
-}  // namespace folly
+} // namespace folly
 
 #include <folly/experimental/DynamicParser-inl.h>

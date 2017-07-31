@@ -29,5 +29,5 @@ const uint64_t GroupVarint64::kMask[] = {
   0xffffffffffffffffULL
 };
 
-}  // namespace folly
+} // namespace folly
 #endif

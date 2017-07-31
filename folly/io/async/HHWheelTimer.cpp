@@ -314,4 +314,4 @@ int64_t HHWheelTimer::calcNextTick() {
   }
 }
 
-} // folly
+} // namespace folly

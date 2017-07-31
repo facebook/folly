@@ -52,5 +52,5 @@ class GuardPageAllocator {
   std::allocator<unsigned char> fallbackAllocator_;
   bool useGuardPages_{true};
 };
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

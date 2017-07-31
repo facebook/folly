@@ -96,7 +96,7 @@ void testFormatSeq() {
   EXPECT_EQ("10 20 0030", svformat("{} {} {:04}", v));
 }
 
-}  // namespace
+} // namespace
 
 TEST(FormatOther, fbvector) {
   testFormatSeq<fbvector<int>>();

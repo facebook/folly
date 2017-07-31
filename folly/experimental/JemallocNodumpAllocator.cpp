@@ -165,4 +165,4 @@ JemallocNodumpAllocator& globalJemallocNodumpAllocator() {
   return *instance;
 }
 
-} // folly
+} // namespace folly

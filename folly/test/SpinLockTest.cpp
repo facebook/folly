@@ -134,7 +134,7 @@ void trylockTest() {
   EXPECT_GE(state.failed + 1, state.obtained);
 }
 
-} // unnamed namespace
+} // namespace
 
 TEST(SpinLock, Correctness) {
   correctnessTest<folly::SpinLock>();

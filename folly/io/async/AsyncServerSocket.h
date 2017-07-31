@@ -876,4 +876,4 @@ class AsyncServerSocket : public DelayedDestruction
   ConnectionEventCallback* connectionEventCallback_{nullptr};
 };
 
-} // folly
+} // namespace folly

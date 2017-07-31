@@ -113,7 +113,7 @@ void initDelims(int len) {
   }
 }
 
-}  // anonymous namespace
+} // namespace
 
 BENCHMARK(FindSingleCharMemchr, n) {
   StringPiece haystack(str);

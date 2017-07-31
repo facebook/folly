@@ -287,4 +287,4 @@ CIDRNetworkV4 IPAddressV4::longestCommonPrefix(
   return {IPAddressV4(prefix.first), prefix.second};
 }
 
-} // folly
+} // namespace folly

@@ -30,4 +30,4 @@ namespace folly {
 
 void init(int* argc, char*** argv, bool removeFlags = true);
 
-} // folly
+} // namespace folly

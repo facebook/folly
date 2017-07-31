@@ -82,5 +82,5 @@ bool isLockDisabled(int lockId);
 
 void randomize();
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

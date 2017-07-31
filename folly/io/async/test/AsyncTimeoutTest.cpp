@@ -89,4 +89,4 @@ TEST(AsyncTimeout, cancel_schedule) {
   EXPECT_NE(expected, value);
 }
 
-} // namespace folly {
+} // namespace folly

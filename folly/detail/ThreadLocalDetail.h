@@ -397,5 +397,5 @@ struct StaticMeta : StaticMetaBase {
   }
 };
 
-}  // namespace threadlocal_detail
-}  // namespace folly
+} // namespace threadlocal_detail
+} // namespace folly

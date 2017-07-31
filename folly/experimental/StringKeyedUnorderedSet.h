@@ -230,4 +230,4 @@ class BasicStringKeyedUnorderedSet
 
 typedef BasicStringKeyedUnorderedSet<> StringKeyedUnorderedSet;
 
-} // folly
+} // namespace folly

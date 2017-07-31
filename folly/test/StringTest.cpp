@@ -224,7 +224,7 @@ void expectPrintable(StringPiece s) {
     EXPECT_GE(127, c);
   }
 }
-}  // namespace
+} // namespace
 
 TEST(Escape, uriEscapeAllCombinations) {
   char c[3];
@@ -252,7 +252,7 @@ bool isHex(int v) {
           (v >= 'A' && v <= 'F') ||
           (v >= 'a' && v <= 'f'));
 }
-}  // namespace
+} // namespace
 
 TEST(Escape, uriUnescapePercentDecoding) {
   char c[4] = {'%', '\0', '\0', '\0'};
@@ -283,7 +283,7 @@ double pow2(int exponent) {
   return double(int64_t(1) << exponent);
 }
 
-}  // namespace
+} // namespace
 struct PrettyTestCase{
   std::string prettyString;
   double realValue;
@@ -1119,7 +1119,7 @@ void testToLowerAscii(Range<const char*> src) {
   }
 }
 
-} // anon namespace
+} // namespace
 
 TEST(String, toLowerAsciiAligned) {
   static const size_t kSize = 256;

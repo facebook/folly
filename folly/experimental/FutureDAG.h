@@ -225,4 +225,4 @@ class FutureDAGFunctor {
   virtual ~FutureDAGFunctor(){}
 };
 
-} // folly
+} // namespace folly

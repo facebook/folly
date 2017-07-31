@@ -275,4 +275,4 @@ inline int FormatArg::splitIntKey() {
   }
 }
 
-}  // namespace folly
+} // namespace folly

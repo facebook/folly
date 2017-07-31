@@ -116,7 +116,7 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
   CHECK_ERR(fprintf(file, "\n};\n\n"));
 }
 
-}  // namespace
+} // namespace
 
 int main(int argc, char *argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

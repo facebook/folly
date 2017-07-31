@@ -319,5 +319,5 @@ void GuardPageAllocator::deallocate(unsigned char* limit, size_t size) {
     fallbackAllocator_.deallocate(limit, size);
   }
 }
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

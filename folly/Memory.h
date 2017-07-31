@@ -546,4 +546,4 @@ class enable_shared_from_this : public std::enable_shared_from_this<T> {
 
 #endif
 
-}  // namespace folly
+} // namespace folly

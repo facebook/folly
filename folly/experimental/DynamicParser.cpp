@@ -42,7 +42,7 @@ folly::dynamic& insertAtKey(
     "Unsupported key type ", key.typeName(), " of ", detail::toPseudoJson(key)
   );
 }
-}  // anonymous namespace
+} // namespace
 
 void DynamicParser::reportError(
     const folly::dynamic* lookup_k,
@@ -187,6 +187,6 @@ std::string toPseudoJson(const folly::dynamic& d) {
   ss << d;
   return ss.str();
 }
-}  // namespace detail
+} // namespace detail
 
-}  // namespace folly
+} // namespace folly

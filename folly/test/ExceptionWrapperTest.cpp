@@ -458,7 +458,7 @@ class TestException : public std::exception { };
 void testEW(const exception_wrapper& ew) {
   EXPECT_THROW(ew.throw_exception(), TestException);
 }
-}  // namespace
+} // namespace
 
 TEST(ExceptionWrapper, implicitConstruction) {
   // Try with both lvalue and rvalue references

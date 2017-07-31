@@ -237,7 +237,7 @@ struct DoNotOptimizeAwayNeedsIndirect {
   constexpr static bool value = !folly::IsTriviallyCopyable<Decayed>::value ||
       sizeof(Decayed) > sizeof(long) || std::is_pointer<Decayed>::value;
 };
-} // detail namespace
+} // namespace detail
 
 template <typename T>
 auto doNotOptimizeAway(const T& datum) -> typename std::enable_if<

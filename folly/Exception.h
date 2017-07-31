@@ -114,4 +114,4 @@ void checkFopenErrorExplicit(FILE* fp, int savedErrno, Args&&... args) {
     }                                  \
   } while (0)
 
-}  // namespace folly
+} // namespace folly

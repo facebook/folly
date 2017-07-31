@@ -884,4 +884,4 @@ NotificationQueue<MessageT>::Consumer::make(TCallback&& callback) {
           std::forward<TCallback>(callback)));
 }
 
-} // folly
+} // namespace folly

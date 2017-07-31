@@ -533,6 +533,6 @@ class Future {
   }
 };
 
-} // folly
+} // namespace folly
 
 #include <folly/futures/Future-inl.h>

@@ -90,4 +90,4 @@ std::vector<std::string> shellify(
   return detail::shellify(format, std::forward<Arguments>(arguments)...);
 }
 
-} // folly
+} // namespace folly

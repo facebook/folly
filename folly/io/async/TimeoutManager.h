@@ -103,4 +103,4 @@ class TimeoutManager {
   std::unique_ptr<CobTimeouts> cobTimeouts_;
 };
 
-} // folly
+} // namespace folly

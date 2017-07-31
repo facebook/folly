@@ -518,7 +518,7 @@ class TestEagerInitParallelExecutor : public folly::Executor {
   std::vector<std::shared_ptr<std::thread>> threads_;
   std::atomic<size_t> counter_ {0};
 };
-}  // namespace
+} // namespace
 
 namespace {
 struct EagerInitParallelTag {};

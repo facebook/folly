@@ -299,4 +299,4 @@ class HHWheelTimer : private folly::AsyncTimeout,
   }
 };
 
-} // folly
+} // namespace folly

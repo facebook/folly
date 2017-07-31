@@ -779,4 +779,4 @@ bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(
   return runImmediatelyOrRunInEventBaseThreadAndWait([=] { fn(arg); });
 }
 
-} // folly
+} // namespace folly

@@ -40,7 +40,7 @@ typedef StackTraceStack* (*GetExceptionStackTraceStackType)(void);
 GetExceptionStackTraceStackType getExceptionStackTraceStackFn;
 }
 
-}  // namespace
+} // namespace
 
 namespace folly {
 namespace exception_tracer {
@@ -110,7 +110,7 @@ bool isAbiCppException(const __cxa_exception* exc) {
   return (exc->unwindHeader.exception_class & 0xffffffff) == cppClass;
 }
 
-}  // namespace
+} // namespace
 
 std::vector<ExceptionInfo> getCurrentExceptions() {
   struct Once {
@@ -212,7 +212,7 @@ void unexpectedHandler() {
   origUnexpected();
 }
 
-}  // namespace
+} // namespace
 
 void installHandlers() {
   struct Once {
@@ -224,5 +224,5 @@ void installHandlers() {
   static Once once;
 }
 
-}  // namespace exception_tracer
-}  // namespace folly
+} // namespace exception_tracer
+} // namespace folly

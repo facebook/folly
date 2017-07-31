@@ -280,7 +280,7 @@ operator+(detail::ScopeGuardOnExit, FunctionType&& fn) {
 }
 } // namespace detail
 
-} // folly
+} // namespace folly
 
 #define SCOPE_EXIT \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) \

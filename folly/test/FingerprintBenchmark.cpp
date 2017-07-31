@@ -117,8 +117,7 @@ void fastFingerprintTerms128(int num_iterations, int num_ids) {
   fingerprintTerms<Fingerprint<128> >(num_iterations, num_ids);
 }
 
-
-}  // namespace
+} // namespace
 
 // Only benchmark one size of slowFingerprint; it's significantly slower
 // than fastFingeprint (as you can see for 64 bits) and it just slows down

@@ -699,4 +699,4 @@ operator<<(std::ostream& os, const PasswordCollector& collector) {
   return os;
 }
 
-} // folly
+} // namespace folly

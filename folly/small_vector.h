@@ -74,7 +74,7 @@ struct NoHeap;
 
 //////////////////////////////////////////////////////////////////////
 
-} // small_vector_policy
+} // namespace small_vector_policy
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1143,8 +1143,8 @@ struct IndexableTraits<small_vector<T, M, A, B, C>>
   : public IndexableTraitsSeq<small_vector<T, M, A, B, C>> {
 };
 
-}  // namespace detail
+} // namespace detail
 
-}  // namespace folly
+} // namespace folly
 
 FOLLY_POP_WARNING

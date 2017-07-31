@@ -156,4 +156,4 @@ void AsyncTimeout::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   timeout->timeoutExpired();
 }
 
-} // folly
+} // namespace folly

@@ -90,4 +90,4 @@ Arena<Alloc>::~Arena() {
   }
 }
 
-}  // namespace folly
+} // namespace folly

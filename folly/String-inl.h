@@ -33,7 +33,7 @@ namespace detail {
 // an octal escape sequence, or 'P' if the character is printable and
 // should be printed as is.
 extern const char cEscapeTable[];
-}  // namespace detail
+} // namespace detail
 
 template <class String>
 void cEscape(StringPiece str, String& out) {
@@ -80,7 +80,7 @@ extern const char cUnescapeTable[];
 
 // Map from the character code to the hex value, or 16 if invalid hex char.
 extern const unsigned char hexTable[];
-}  // namespace detail
+} // namespace detail
 
 template <class String>
 void cUnescape(StringPiece str, String& out, bool strict) {
@@ -158,7 +158,7 @@ namespace detail {
 // 3 = space, replace with '+' in QUERY mode
 // 4 = percent-encode
 extern const unsigned char uriEscapeTable[];
-}  // namespace detail
+} // namespace detail
 
 template <class String>
 void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
@@ -477,7 +477,7 @@ internalJoin(Delim delimiter,
   internalJoinAppend(delimiter, begin, end, output);
 }
 
-}  // namespace detail
+} // namespace detail
 
 template <class Delim, class Iterator, class String>
 void join(const Delim& delimiter,
@@ -613,7 +613,7 @@ namespace detail {
  */
 size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
                    std::string& line);
-}  // namespace detail
+} // namespace detail
 
 template <class OutIt>
 void hexDump(const void* ptr, size_t size, OutIt out) {
@@ -625,4 +625,4 @@ void hexDump(const void* ptr, size_t size, OutIt out) {
   }
 }
 
-}  // namespace folly
+} // namespace folly

@@ -84,4 +84,4 @@ class ThreadCachedArena {
 template <>
 struct IsArenaAllocator<ThreadCachedArena> : std::true_type { };
 
-}  // namespace folly
+} // namespace folly

@@ -62,4 +62,4 @@ class InvalidAddressFamilyException : public IPAddressFormatException {
       default;
 };
 
-}  // folly
+} // namespace folly

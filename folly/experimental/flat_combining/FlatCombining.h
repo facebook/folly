@@ -679,4 +679,4 @@ class FlatCombining {
   }
 };
 
-} // namespace folly {
+} // namespace folly

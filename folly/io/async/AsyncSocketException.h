@@ -124,4 +124,4 @@ class AsyncSocketException : public std::runtime_error {
   }
 };
 
-} // folly
+} // namespace folly

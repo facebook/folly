@@ -141,6 +141,6 @@ std::shared_ptr<Timekeeper> getTimekeeperSingleton() {
   return timekeeperSingleton_.try_get();
 }
 
-} // detail
+} // namespace detail
 
-} // folly
+} // namespace folly

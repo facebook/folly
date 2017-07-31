@@ -1185,4 +1185,4 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 #pragma vtordisp(pop)
 #endif
 
-} // folly
+} // namespace folly

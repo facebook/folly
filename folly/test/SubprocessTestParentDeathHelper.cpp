@@ -39,7 +39,7 @@ DEFINE_bool(child, false, "");
 
 namespace {
 constexpr int kSignal = SIGUSR1;
-}  // namespace
+} // namespace
 
 void runChild(const char* file) {
   // Block SIGUSR1 so it's queued

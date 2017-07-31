@@ -164,4 +164,4 @@ inline Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data) {
   return val;
 }
 
-} // folly
+} // namespace folly

@@ -304,4 +304,4 @@ inline bool operator !=(
     const DelayedDestructionBase::IntrusivePtr<RightAliasType>& right) {
   return left != right.get();
 }
-} // folly
+} // namespace folly

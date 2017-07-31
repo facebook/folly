@@ -516,7 +516,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   ValueType value_;
 };
 
-}  // namespace detail
+} // namespace detail
 
 // If kUnchecked = true the caller must guarantee that all the
 // operations return valid elements, i.e., they would never return

@@ -36,7 +36,7 @@ void print(const po::variables_map& vm, const std::string& name) {
          name.c_str(),
          folly::to<std::string>(v.as<T>()).c_str());
 }
-}  // namespace
+} // namespace
 
 int main(int argc, char *argv[]) {
   po::options_description desc;

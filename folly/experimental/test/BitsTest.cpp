@@ -253,7 +253,7 @@ T testValue(int bits) {
   CHECK_LE(value, std::numeric_limits<T>::max());
   return static_cast<T>(value);
 }
-} // anonymous namespace
+} // namespace
 
 TEST(Bits, Boundaries) {
   uint8_t buf[20];

@@ -63,4 +63,4 @@ inline int uncaught_exceptions() noexcept {
 #endif
 }
 
-} // namespaces
+} // namespace folly

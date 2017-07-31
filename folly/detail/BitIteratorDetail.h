@@ -85,6 +85,5 @@ struct BitIteratorBase {
     ssize_t> type;
 };
 
-
-}  // namespace bititerator_detail
-}  // namespace folly
+} // namespace bititerator_detail
+} // namespace folly

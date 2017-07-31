@@ -85,5 +85,5 @@ class SlowFingerprint {
   FingerprintPolynomial<BITS-1> fp_;
 };
 
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly

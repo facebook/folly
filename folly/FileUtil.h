@@ -252,4 +252,4 @@ int writeFileAtomicNoThrow(
     int count,
     mode_t permissions = 0644);
 
-}  // namespaces
+} // namespace folly

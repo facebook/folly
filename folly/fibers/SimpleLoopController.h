@@ -109,5 +109,5 @@ class SimpleLoopController : public LoopController {
 
   friend class FiberManager;
 };
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

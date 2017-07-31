@@ -67,7 +67,7 @@ struct NodeValid<T, NS,
                      NS % alignof(T) == 0)>::type> {
   typedef void type;
 };
-}  // namespace detail
+} // namespace detail
 
 template <class T, size_t NS>
 class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
@@ -190,7 +190,7 @@ struct IteratorBase {
   > type;
 };
 
-}  // namespace detail
+} // namespace detail
 
 /**
  * Wrapper around iterators to Node to return iterators to the underlying
@@ -510,5 +510,5 @@ class Adaptor {
   size_t lastCount_;  // number of elements in last Node
 };
 
-}  // namespace padded
-}  // namespace folly
+} // namespace padded
+} // namespace folly

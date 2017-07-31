@@ -656,7 +656,7 @@ estimateSpaceNeeded(Src value) {
 namespace detail {
 constexpr int kConvMaxDecimalInShortestLow = -6;
 constexpr int kConvMaxDecimalInShortestHigh = 21;
-} // folly::detail
+} // namespace detail
 
 /** Wrapper around DoubleToStringConverter **/
 template <class Tgt, class Src>
@@ -830,8 +830,7 @@ toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
   toAppend(delim, detail::getLastElement(vs...));
   toAppendDelimStrImpl(delim, vs...);
 }
-} // folly::detail
-
+} // namespace detail
 
 /**
  * Variadic conversion to string. Appends each element in turn.

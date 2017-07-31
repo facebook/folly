@@ -64,5 +64,5 @@ class LoopController {
    */
   virtual void timedSchedule(std::function<void()> func, TimePoint time) = 0;
 };
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

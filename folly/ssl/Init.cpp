@@ -92,5 +92,5 @@ bool isLockDisabled(int lockId) {
   return detail::isSSLLockDisabled(lockId);
 }
 
-} // ssl
-} // folly
+} // namespace ssl
+} // namespace folly

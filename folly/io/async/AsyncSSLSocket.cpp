@@ -199,7 +199,7 @@ void* initsslBioMethod(void) {
   return nullptr;
 }
 
-} // anonymous namespace
+} // namespace
 
 namespace folly {
 

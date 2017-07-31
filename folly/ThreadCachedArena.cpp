@@ -50,4 +50,4 @@ size_t ThreadCachedArena::totalSize() const {
   return result;
 }
 
-}  // namespace folly
+} // namespace folly

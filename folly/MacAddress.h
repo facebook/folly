@@ -229,4 +229,4 @@ toAppend(MacAddress address, Tgt* result) {
 
 std::ostream& operator<<(std::ostream& os, MacAddress address);
 
-}  // folly
+} // namespace folly

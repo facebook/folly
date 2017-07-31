@@ -106,7 +106,7 @@ struct SSLLock {
   std::mutex mutex;
   SharedMutex sharedMutex;
 };
-} // end anonymous namespace
+} // namespace
 
 // Statics are unsafe in environments that call exit().
 // If one thread calls exit() while another thread is
@@ -173,6 +173,6 @@ void cleanupThreadingLocks() {
   locks().reset();
 }
 
-} // detail
-} // ssl
-} // folly
+} // namespace detail
+} // namespace ssl
+} // namespace folly

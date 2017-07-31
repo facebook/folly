@@ -158,4 +158,4 @@ class EventBaseManager {
   std::shared_ptr<folly::EventBaseObserver> observer_;
 };
 
-} // folly
+} // namespace folly

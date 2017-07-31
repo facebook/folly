@@ -153,4 +153,4 @@ class NestedCommandLineApp {
   std::map<std::string, std::string> aliases_;
 };
 
-}  // namespaces
+} // namespace folly

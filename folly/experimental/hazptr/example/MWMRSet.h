@@ -247,5 +247,5 @@ class MWMRListSet {
   }
 };
 
-} // namespace folly {
-} // namespace hazptr {
+} // namespace folly
+} // namespace hazptr

@@ -96,6 +96,6 @@ struct LockTraits<boost::recursive_timed_mutex>
     return mutex.try_lock_for(detail::toBoostDuration(timeout));
   }
 };
-} // folly
+} // namespace folly
 
 #endif // FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES

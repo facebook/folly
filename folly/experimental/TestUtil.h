@@ -167,9 +167,9 @@ auto msvcSuppressAbortOnInvalidParams(Func func) -> decltype(func()) {
   )
 
 namespace detail {
-  bool hasPCREPatternMatch(StringPiece pattern, StringPiece target);
-  bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target);
-}  // namespace detail
+bool hasPCREPatternMatch(StringPiece pattern, StringPiece target);
+bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target);
+} // namespace detail
 
 /**
  * Use these patterns together with CaptureFD and EXPECT_PCRE_MATCH() to
@@ -235,5 +235,5 @@ class CaptureFD {
   off_t readOffset_;  // for incremental reading
 };
 
-}  // namespace test
-}  // namespace folly
+} // namespace test
+} // namespace folly

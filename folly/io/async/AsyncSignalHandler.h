@@ -114,4 +114,4 @@ class AsyncSignalHandler {
   SignalEventMap signalEvents_;
 };
 
-} // folly
+} // namespace folly

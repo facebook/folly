@@ -70,7 +70,7 @@ struct OddA {
 struct Indestructible {
   ~Indestructible() = delete;
 };
-} // anonymous namespace
+} // namespace
 
 template <typename T>
 struct ReplaceableStaticAttributeTest : Test {};

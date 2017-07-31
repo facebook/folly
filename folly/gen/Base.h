@@ -822,7 +822,7 @@ UnwrapOr unwrapOr(Fallback&& fallback) {
   return UnwrapOr(std::forward<Fallback>(fallback));
 }
 
-} // gen
-} // folly
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/Base-inl.h>

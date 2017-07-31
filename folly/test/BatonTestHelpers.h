@@ -167,5 +167,5 @@ void run_multi_producer_tests() {
   DSched::join(cons);
 }
 
-} // namespace test {
-} // namespace folly {
+} // namespace test
+} // namespace folly

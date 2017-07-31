@@ -2879,7 +2879,7 @@ namespace std {
 
 FOLLY_FBSTRING_HASH
 
-}  // namespace std
+} // namespace std
 
 #undef FOLLY_FBSTRING_HASH
 #undef FOLLY_FBSTRING_HASH1

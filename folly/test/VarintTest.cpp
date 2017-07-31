@@ -183,8 +183,7 @@ BENCHMARK(VarintDecoding, iters) {
   }
 }
 
-}  // namespace
-
+} // namespace
 }}  // namespaces
 
 int main(int argc, char *argv[]) {

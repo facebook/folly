@@ -35,7 +35,7 @@ typename std::enable_if<
   g(id);
 }
 
-} // anonymous namespace
+} // namespace
 
 template <class InputIterator, class F>
 inline void forEach(InputIterator first, InputIterator last, F&& f) {
@@ -83,5 +83,5 @@ inline void forEach(InputIterator first, InputIterator last, F&& f) {
     std::rethrow_exception(e);
   }
 }
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

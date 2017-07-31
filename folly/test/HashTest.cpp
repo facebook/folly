@@ -129,7 +129,7 @@ void checkTWang(uint64_t r) {
   uint64_t result = twang_mix64(r);
   EXPECT_EQ(r, twang_unmix64(result));
 }
-}  // namespace
+} // namespace
 
 TEST(Hash, TWang_Unmix64) {
   // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
@@ -167,7 +167,7 @@ void checkJenkins(uint32_t r) {
   uint32_t result = jenkins_rev_mix32(r);
   EXPECT_EQ(r, jenkins_rev_unmix32(result));
 }
-}  // namespace
+} // namespace
 
 TEST(Hash, Jenkins_Rev_Unmix32) {
   // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1

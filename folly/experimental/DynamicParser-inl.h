@@ -213,7 +213,7 @@ template <typename Fn> EnableForArgTypes<Fn, int64_t, std::string>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
   fn(k.asInt(), v.asString());
 }
-}  // namespace detail
+} // namespace detail
 
 template <typename Fn>
 void DynamicParser::optional(const folly::dynamic& key, Fn fn) {
@@ -300,4 +300,4 @@ inline const folly::dynamic& DynamicParser::ParserStack::value() const{
   return *value_;
 }
 
-}  // namespace folly
+} // namespace folly

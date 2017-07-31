@@ -36,4 +36,4 @@ class QueuedImmediateExecutor : public Executor {
   }
 };
 
-} // folly
+} // namespace folly

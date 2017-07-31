@@ -196,4 +196,4 @@ class StringKeyedSetBase
 
 using StringKeyedSet = StringKeyedSetBase<>;
 
-} // folly
+} // namespace folly

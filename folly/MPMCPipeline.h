@@ -284,5 +284,4 @@ template <class In, class... Stages> class MPMCPipeline {
   StageTuple stages_;
 };
 
-
-}  // namespaces
+} // namespace folly

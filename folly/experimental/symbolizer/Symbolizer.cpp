@@ -326,7 +326,7 @@ bool isColorfulTty(int options, int fd) {
   return !(term == nullptr || term[0] == '\0' || strcmp(term, "dumb") == 0);
 }
 
-} // anonymous namespace
+} // namespace
 
 OStreamSymbolizePrinter::OStreamSymbolizePrinter(std::ostream& out, int options)
     : SymbolizePrinter(options, isColorfulTty(options, getFD(out))),

@@ -218,7 +218,7 @@ struct IsUniquePtrToSL<
   std::unique_ptr<T, D>,
   typename std::enable_if<std::is_standard_layout<T>::value>::type>
   : public std::true_type { };
-}  // namespace detail
+} // namespace detail
 
 class IOBuf {
  public:
@@ -1543,6 +1543,6 @@ class IOBuf::Iterator : public boost::iterator_facade<
 inline IOBuf::Iterator IOBuf::begin() const { return cbegin(); }
 inline IOBuf::Iterator IOBuf::end() const { return cend(); }
 
-} // folly
+} // namespace folly
 
 FOLLY_POP_WARNING

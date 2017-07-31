@@ -178,4 +178,4 @@ bool EventHandler::isPending() const {
   return false;
 }
 
-} // folly
+} // namespace folly

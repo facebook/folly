@@ -956,6 +956,6 @@ class FormatValue<detail::DefaultValueWrapper<dynamic, V>> {
   const detail::DefaultValueWrapper<dynamic, V>& val_;
 };
 
-}  // namespaces
+} // namespace folly
 
 #undef FB_DYNAMIC_APPLY

@@ -244,7 +244,7 @@ const std::unordered_map<std::string, FlagAdder> gFlagAdders = {
 #undef X
 };
 
-}  // namespace
+} // namespace
 
 po::options_description getGFlags(ProgramOptionsStyle style) {
   static const std::unordered_set<std::string> gSkipFlags{
@@ -316,7 +316,7 @@ NestedCommandLineParseResult doParseNestedCommandLine(
   return result;
 }
 
-}  // namespace
+} // namespace
 
 NestedCommandLineParseResult parseNestedCommandLine(
     int argc, const char* const argv[],
@@ -330,4 +330,4 @@ NestedCommandLineParseResult parseNestedCommandLine(
   return doParseNestedCommandLine(po::command_line_parser(cmdline), desc);
 }
 
-}  // namespaces
+} // namespace folly

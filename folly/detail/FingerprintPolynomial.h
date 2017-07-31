@@ -138,5 +138,5 @@ class FingerprintPolynomial {
   uint64_t val_[1 + DEG/64];
 };
 
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly

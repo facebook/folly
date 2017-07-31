@@ -393,4 +393,4 @@ class ThreadLocalPtr {
   mutable typename StaticMeta::EntryID id_;
 };
 
-}  // namespace folly
+} // namespace folly

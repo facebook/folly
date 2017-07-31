@@ -74,7 +74,7 @@ void randomPartition(Random& random, T key, int n,
   }
 }
 
-}  // namespace
+} // namespace
 
 TEST(EventCount, Simple) {
   // We're basically testing for no deadlock.

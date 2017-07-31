@@ -119,7 +119,7 @@ void testGroupVarint64(uint64_t a, uint64_t b, uint64_t c, uint64_t d,
   EXPECT_EQ(e, fe);
 }
 
-}  // namespace
+} // namespace
 
 TEST(GroupVarint, GroupVarint32) {
   EXPECT_EQ(0, GroupVarint32::maxSize(0));

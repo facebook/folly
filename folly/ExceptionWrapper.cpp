@@ -88,4 +88,4 @@ fbstring exceptionStr(exception_wrapper const& ew) {
   return ew.what();
 }
 
-} // folly
+} // namespace folly

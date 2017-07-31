@@ -298,6 +298,6 @@ FOLLY_MALLOC_CHECKED_MALLOC FOLLY_MALLOC_NOINLINE inline void* smartRealloc(
 _GLIBCXX_END_NAMESPACE_VERSION
 #endif
 
-} // folly
+} // namespace folly
 
 #endif // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)

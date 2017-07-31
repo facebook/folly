@@ -69,4 +69,4 @@ void TestExecutor::addImpl(Func f) {
   cv_.notify_one();
 }
 
-} // folly
+} // namespace folly

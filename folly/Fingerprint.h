@@ -284,4 +284,4 @@ inline uint64_t Fingerprint<128>::shlor64(uint64_t v) {
   return out;
 }
 
-}  // namespace folly
+} // namespace folly

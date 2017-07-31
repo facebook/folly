@@ -334,4 +334,4 @@ inline bool FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::tryPeek(
   } // outer while loop
 }
 
-} // namespace folly {
+} // namespace folly

@@ -243,7 +243,7 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
   }
 }
 
-} // detail
+} // namespace detail
 
 template <typename T>
 std::string Histogram<T>::debugString() const {
@@ -284,4 +284,4 @@ void Histogram<T>::toTSV(std::ostream& out, bool skipEmptyBuckets) const {
   }
 }
 
-} // folly
+} // namespace folly

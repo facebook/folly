@@ -284,7 +284,7 @@ void testReads(const std::vector<TestSpec>& specs, AsyncIO::PollMode pollMode) {
   testReadsQueued(specs, pollMode);
 }
 
-} // anonymous namespace
+} // namespace
 
 TEST(AsyncIO, ZeroAsyncDataNotPollable) {
   testReads({{0, 0}}, AsyncIO::NOT_POLLABLE);

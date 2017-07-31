@@ -98,4 +98,4 @@ class Executor {
   }
 };
 
-} // folly
+} // namespace folly

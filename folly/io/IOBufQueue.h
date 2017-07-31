@@ -322,4 +322,4 @@ class IOBufQueue {
   std::unique_ptr<folly::IOBuf> head_;
 };
 
-} // folly
+} // namespace folly

@@ -2523,4 +2523,4 @@ void AsyncSocket::setBufferCallback(BufferCallback* cb) {
   bufferCallback_ = cb;
 }
 
-} // folly
+} // namespace folly

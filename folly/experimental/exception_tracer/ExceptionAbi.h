@@ -53,4 +53,4 @@ __cxa_eh_globals* __cxa_get_globals(void) noexcept;
 __cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 }
 
-}  // namespace __cxxabiv1
+} // namespace __cxxabiv1

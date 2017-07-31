@@ -124,5 +124,5 @@ inline void EventBaseLoopController::timedSchedule(
   delay_ms = std::max<decltype(delay_ms)>(delay_ms, 0);
   eventBase_->tryRunAfterDelay(func, uint32_t(delay_ms));
 }
-}
-} // folly::fibers
+} // namespace fibers
+} // namespace folly

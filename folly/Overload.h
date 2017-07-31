@@ -34,7 +34,7 @@
 
 namespace folly {
 
-namespace details {
+namespace detail {
 template <typename...>
 struct Overload;
 
@@ -53,14 +53,14 @@ struct Overload<Case> : Case {
 
   using Case::operator();
 };
-} // details
+} // namespace detail
 
 /*
  * Combine multiple `Cases` in one function object
  */
 template <typename... Cases>
 decltype(auto) overload(Cases&&... cases) {
-  return details::Overload<typename std::decay<Cases>::type...>{
+  return detail::Overload<typename std::decay<Cases>::type...>{
       std::forward<Cases>(cases)...};
 }
 
@@ -76,4 +76,4 @@ decltype(auto) variant_match(Variant&& variant, Cases&&... cases) {
       overload(std::forward<Cases>(cases)...), std::forward<Variant>(variant));
 }
 
-} // folly
+} // namespace folly

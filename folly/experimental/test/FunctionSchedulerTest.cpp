@@ -52,7 +52,7 @@ void delay(int n) {
   usleep(usec.count());
 }
 
-} // unnamed namespace
+} // namespace
 
 TEST(FunctionScheduler, StartAndShutdown) {
   FunctionScheduler fs;
@@ -516,7 +516,7 @@ class PThreadCreateFailure {
 };
 
 std::atomic<int> PThreadCreateFailure::forceFailure_{0};
-} // unnamed namespce
+} // namespace
 
 // Replace the system pthread_create() function with our own stub, so we can
 // trigger failures in the StartThrows() test.

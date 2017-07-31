@@ -99,4 +99,4 @@ void AsyncSignalHandler::libeventCallback(libevent_fd_t signum,
   handler->signalReceived(int(signum));
 }
 
-} // folly
+} // namespace folly

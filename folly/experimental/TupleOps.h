@@ -93,7 +93,7 @@ struct TupleSelect<TemplateSeq<std::size_t, Ns...>> {
   }
 };
 
-}  // namespace detail
+} // namespace detail
 
 // Return a tuple consisting of the elements at a range of indices.
 //
@@ -122,4 +122,4 @@ auto tuplePrepend(T&& car, U&& cdr)
                         std::forward<U>(cdr));
 }
 
-}  // namespaces
+} // namespace folly

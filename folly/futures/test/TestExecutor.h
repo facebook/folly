@@ -47,4 +47,4 @@ class TestExecutor : public Executor {
   std::vector<std::thread> workers_;
 };
 
-} // folly
+} // namespace folly

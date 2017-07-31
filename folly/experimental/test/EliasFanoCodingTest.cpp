@@ -41,7 +41,7 @@ uint8_t slowDefaultNumLowerBits(size_t upperBound, size_t size) {
   return uint8_t(folly::findLastSet(upperBound / size) - 1);
 }
 
-}  // namespace
+} // namespace
 
 TEST(EliasFanoCoding, defaultNumLowerBits) {
   // Verify that slowDefaultNumLowerBits and optimized
@@ -207,7 +207,7 @@ void free() {
   list.free();
 }
 
-}  // namespace bm
+} // namespace bm
 
 BENCHMARK(Next, iters) {
   bmNext<bm::Reader>(bm::list, bm::data, iters);

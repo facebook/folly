@@ -238,4 +238,4 @@ decltype(auto) apply_visitor(
   return variant.apply(std::forward<Visitor>(visitor));
 }
 
-}  // namespace folly
+} // namespace folly

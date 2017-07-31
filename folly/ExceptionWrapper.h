@@ -643,7 +643,7 @@ inline exception_wrapper try_and_catch_(F&& f) {
     return exception_wrapper(std::current_exception(), ex);
   }
 }
-} // detail
+} // namespace detail
 
 //! `try_and_catch` is a simple replacement for `try {} catch(){}`` that allows
 //! you to specify which derived exceptions you would like to catch and store in
@@ -684,7 +684,7 @@ template <typename... Exceptions, typename F>
 exception_wrapper try_and_catch(F&& fn) {
   return detail::try_and_catch_<F, Exceptions...>(std::forward<F>(fn));
 }
-} // folly
+} // namespace folly
 
 #include <folly/ExceptionWrapper-inl.h>
 

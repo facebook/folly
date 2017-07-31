@@ -553,4 +553,4 @@ std::ostream& operator<<(
     std::ostream& os,
     const folly::PasswordCollector& collector);
 
-} // folly
+} // namespace folly

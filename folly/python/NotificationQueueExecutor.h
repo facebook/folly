@@ -55,5 +55,5 @@ class NotificationQueueExecutor : public folly::DrivableExecutor {
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
 }; // NotificationQueueExecutor
 
-} // python
-} // folly
+} // namespace python
+} // namespace folly

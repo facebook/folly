@@ -570,7 +570,7 @@ bool greater_than_impl(LHS const lhs) {
 
 FOLLY_POP_WARNING
 
-} // namespace detail {
+} // namespace detail
 
 // same as `x < 0`
 template <typename T>

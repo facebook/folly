@@ -115,4 +115,4 @@ using CountedIntrusiveList = boost::intrusive::list<
     boost::intrusive::member_hook<T, SafeIntrusiveListHook, PtrToMember>,
     boost::intrusive::constant_time_size<true>>;
 
-} // folly
+} // namespace folly

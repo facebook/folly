@@ -226,7 +226,7 @@ class HistogramBuckets {
   std::vector<BucketType> buckets_;
 };
 
-} // detail
+} // namespace detail
 
 /*
  * A basic histogram class.
@@ -478,4 +478,4 @@ class Histogram {
   detail::HistogramBuckets<ValueType, Bucket> buckets_;
 };
 
-} // folly
+} // namespace folly

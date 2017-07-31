@@ -82,4 +82,4 @@ NestedCommandLineParseResult parseNestedCommandLine(
     const std::vector<std::string>& cmdline,
     const boost::program_options::options_description& desc);
 
-}  // namespaces
+} // namespace folly

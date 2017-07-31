@@ -119,4 +119,4 @@ class DelayedDestruction : public DelayedDestructionBase {
     delete this;
   }
 };
-} // folly
+} // namespace folly

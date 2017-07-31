@@ -505,6 +505,6 @@ makeTryWith(F&& f);
 template <typename... Ts>
 std::tuple<Ts...> unwrapTryTuple(std::tuple<folly::Try<Ts>...>&& ts);
 
-} // folly
+} // namespace folly
 
 #include <folly/Try-inl.h>

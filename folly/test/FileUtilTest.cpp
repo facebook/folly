@@ -128,7 +128,7 @@ ssize_t Reader::operator()(int fd, const iovec* iov, int count, off_t offset) {
   return operator()(fd, iov, count);
 }
 
-}  // namespace
+} // namespace
 
 class FileUtilTest : public ::testing::Test {
  protected:

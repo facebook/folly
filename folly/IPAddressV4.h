@@ -308,7 +308,7 @@ inline bool operator>=(const IPAddressV4& a, const IPAddressV4& b) {
   return !(a < b);
 }
 
-}  // folly
+} // namespace folly
 
 namespace std {
 template <>
@@ -317,4 +317,4 @@ struct hash<folly::IPAddressV4> {
     return addr.hash();
   }
 };
-}  // std
+} // namespace std

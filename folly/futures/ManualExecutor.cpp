@@ -87,4 +87,4 @@ void ManualExecutor::advanceTo(TimePoint const& t) {
   run();
 }
 
-} // folly
+} // namespace folly

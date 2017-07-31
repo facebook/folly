@@ -195,4 +195,4 @@ void EventCount::await(Condition condition) {
   }
 }
 
-}  // namespace folly
+} // namespace folly

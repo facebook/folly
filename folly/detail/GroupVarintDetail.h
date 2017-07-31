@@ -96,5 +96,5 @@ class GroupVarintBase {
   enum { kFullGroupSize = kHeaderSize + kGroupSize * sizeof(type) };
 };
 
-}  // namespace detail
-}  // namespace folly
+} // namespace detail
+} // namespace folly

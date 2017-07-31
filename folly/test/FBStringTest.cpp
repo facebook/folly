@@ -1419,7 +1419,7 @@ struct TestStructStringAllocator : std::allocator<char> {
   }
 };
 
-}  // anon namespace
+} // namespace
 
 TEST(FBStringCtorTest, DefaultInitStructDefaultAlloc) {
   TestStructDefaultAllocator t1 { };

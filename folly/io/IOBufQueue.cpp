@@ -62,7 +62,7 @@ appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
   }
 }
 
-} // anonymous namespace
+} // namespace
 
 namespace folly {
 
@@ -318,4 +318,4 @@ void IOBufQueue::gather(uint64_t maxLength) {
   }
 }
 
-} // folly
+} // namespace folly

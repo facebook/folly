@@ -49,7 +49,7 @@ static size_t nonMagicInBytes(unsigned char* stackLimit, size_t stackSize) {
   return (end - firstNonMagic) * sizeof(uint64_t);
 }
 
-} // anonymous namespace
+} // namespace
 
 void Fiber::resume() {
   DCHECK_EQ(state_, AWAITING);

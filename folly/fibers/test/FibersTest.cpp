@@ -1916,7 +1916,7 @@ void validateResults(
   EXPECT_EQ(numResultsFilled, expectedNumResults);
 }
 
-} // AtomicBatchDispatcherTesting
+} // namespace AtomicBatchDispatcherTesting
 
 #define SET_UP_TEST_FUNC                                        \
   using namespace AtomicBatchDispatcherTesting;                 \
