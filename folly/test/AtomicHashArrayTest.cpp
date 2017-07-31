@@ -89,10 +89,11 @@ pair<KeyT,ValueT> createEntry(int i) {
                            to<ValueT>(i + 3));
 }
 
-template <class KeyT,
-          class ValueT,
-          class Allocator = std::allocator<char>,
-          class ProbeFcn = AtomicHashArrayLinearProbeFcn>
+template <
+    class KeyT,
+    class ValueT,
+    class Allocator = std::allocator<char>,
+    class ProbeFcn = AtomicHashArrayLinearProbeFcn>
 void testMap() {
   typedef AtomicHashArray<KeyT, ValueT, std::hash<KeyT>,
                           std::equal_to<KeyT>, Allocator, ProbeFcn> MyArr;

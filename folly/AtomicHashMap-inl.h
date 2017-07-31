@@ -54,18 +54,20 @@ AtomicHashMap<
 }
 
 // emplace --
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
-template <typename LookupKeyT,
-          typename LookupHashFcn,
-          typename LookupEqualFcn,
-          typename LookupKeyToKeyFcn,
-          typename... ArgTs>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
+template <
+    typename LookupKeyT,
+    typename LookupHashFcn,
+    typename LookupEqualFcn,
+    typename LookupKeyToKeyFcn,
+    typename... ArgTs>
 std::pair<typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator,
                                  ProbeFcn, KeyConvertFcn>::iterator, bool>
 AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
@@ -82,18 +84,20 @@ emplace(LookupKeyT k, ArgTs&&... vCtorArgs) {
 }
 
 // insertInternal -- Allocates new sub maps as existing ones fill up.
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
-template <typename LookupKeyT,
-          typename LookupHashFcn,
-          typename LookupEqualFcn,
-          typename LookupKeyToKeyFcn,
-          typename... ArgTs>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
+template <
+    typename LookupKeyT,
+    typename LookupHashFcn,
+    typename LookupEqualFcn,
+    typename LookupKeyToKeyFcn,
+    typename... ArgTs>
 typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                        Allocator, ProbeFcn, KeyConvertFcn>::
     SimpleRetT
@@ -176,13 +180,14 @@ insertInternal(LookupKeyT key, ArgTs&&... vCtorArgs) {
 }
 
 // find --
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
 typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                        Allocator, ProbeFcn, KeyConvertFcn>::
@@ -198,13 +203,14 @@ AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
   return iterator(this, ret.i, subMap->makeIter(ret.j));
 }
 
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
 typename AtomicHashMap<KeyT, ValueT,
          HashFcn, EqualFcn, Allocator, ProbeFcn, KeyConvertFcn>::const_iterator
@@ -217,13 +223,14 @@ find(LookupKeyT k) const {
 }
 
 // findInternal --
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
 typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                        Allocator, ProbeFcn, KeyConvertFcn>::
@@ -256,13 +263,14 @@ AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
 }
 
 // findAtInternal -- see encodeIndex() for details.
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                        Allocator, ProbeFcn, KeyConvertFcn>::
     SimpleRetT
@@ -285,13 +293,14 @@ findAtInternal(uint32_t idx) const {
 }
 
 // erase --
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                        Allocator, ProbeFcn, KeyConvertFcn>::
     size_type
@@ -310,13 +319,14 @@ erase(const KeyT k) {
 }
 
 // capacity -- summation of capacities of all submaps
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                      Allocator, ProbeFcn, KeyConvertFcn>::
 capacity() const {
@@ -330,13 +340,14 @@ capacity() const {
 
 // spaceRemaining --
 // number of new insertions until current submaps are all at max load
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                      Allocator, ProbeFcn, KeyConvertFcn>::
 spaceRemaining() const {
@@ -354,13 +365,14 @@ spaceRemaining() const {
 
 // clear -- Wipes all keys and values from primary map and destroys
 // all secondary maps.  Not thread safe.
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 void AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                    Allocator, ProbeFcn, KeyConvertFcn>::
 clear() {
@@ -377,13 +389,14 @@ clear() {
 }
 
 // size --
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 size_t AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                      Allocator, ProbeFcn, KeyConvertFcn>::
 size() const {
@@ -413,13 +426,14 @@ size() const {
 //         31              1
 //      27-30   which subMap
 //       0-26  subMap offset (index_ret input)
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 inline uint32_t
 AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
               Allocator, ProbeFcn, KeyConvertFcn>::
@@ -438,13 +452,14 @@ AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
 
 // Iterator implementation
 
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
 template <class ContT, class IterVal, class SubIt>
 struct AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
                      Allocator, ProbeFcn, KeyConvertFcn>::

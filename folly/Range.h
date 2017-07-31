@@ -69,8 +69,9 @@ template <class Iter> class Range;
  * as Boyer-Moore. On the upside, it does not do any upfront
  * preprocessing and does not allocate memory.
  */
-template <class Iter,
-          class Comp = std::equal_to<typename Range<Iter>::value_type>>
+template <
+    class Iter,
+    class Comp = std::equal_to<typename Range<Iter>::value_type>>
 inline size_t qfind(const Range<Iter> & haystack,
                     const Range<Iter> & needle,
                     Comp eq = Comp());

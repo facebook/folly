@@ -70,10 +70,11 @@ struct BitVectorCompressedListBase {
 typedef BitVectorCompressedListBase<const uint8_t*> BitVectorCompressedList;
 typedef BitVectorCompressedListBase<uint8_t*> MutableBitVectorCompressedList;
 
-template <class Value,
-          class SkipValue,
-          size_t kSkipQuantum = 0,
-          size_t kForwardQuantum = 0>
+template <
+    class Value,
+    class SkipValue,
+    size_t kSkipQuantum = 0,
+    size_t kForwardQuantum = 0>
 struct BitVectorEncoder {
   static_assert(std::is_integral<Value>::value &&
                     std::is_unsigned<Value>::value,
@@ -165,10 +166,11 @@ struct BitVectorEncoder {
   MutableCompressedList result_;
 };
 
-template <class Value,
-          class SkipValue,
-          size_t kSkipQuantum,
-          size_t kForwardQuantum>
+template <
+    class Value,
+    class SkipValue,
+    size_t kSkipQuantum,
+    size_t kForwardQuantum>
 struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
     Layout {
   static Layout fromUpperBoundAndSize(size_t upperBound, size_t size) {

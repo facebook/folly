@@ -1307,9 +1307,10 @@ struct SingleElementQueue {
   }
 
   /// enqueue using in-place noexcept construction
-  template <typename ...Args,
-            typename = typename std::enable_if<
-              std::is_nothrow_constructible<T,Args...>::value>::type>
+  template <
+      typename... Args,
+      typename = typename std::enable_if<
+          std::is_nothrow_constructible<T, Args...>::value>::type>
   void enqueue(const uint32_t turn,
                Atom<uint32_t>& spinCutoff,
                const bool updateSpinCutoff,

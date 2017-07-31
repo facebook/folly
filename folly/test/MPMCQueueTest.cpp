@@ -381,9 +381,10 @@ struct WriteCaller : public WriteMethodCaller<Q> {
   string methodName() override { return "write"; }
 };
 
-template <typename Q,
-          class Clock = steady_clock,
-          class Duration = typename Clock::duration>
+template <
+    typename Q,
+    class Clock = steady_clock,
+    class Duration = typename Clock::duration>
 struct TryWriteUntilCaller : public WriteMethodCaller<Q> {
   const Duration duration_;
   explicit TryWriteUntilCaller(Duration&& duration) : duration_(duration) {}

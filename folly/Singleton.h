@@ -532,9 +532,10 @@ class SingletonVault {
 // singletons.  Create instances of this class in the global scope of
 // type Singleton<T> to register your singleton for later access via
 // Singleton<T>::try_get().
-template <typename T,
-          typename Tag = detail::DefaultTag,
-          typename VaultTag = detail::DefaultTag /* for testing */>
+template <
+    typename T,
+    typename Tag = detail::DefaultTag,
+    typename VaultTag = detail::DefaultTag /* for testing */>
 class Singleton {
  public:
   typedef std::function<T*(void)> CreateFunc;

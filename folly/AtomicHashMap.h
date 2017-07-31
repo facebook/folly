@@ -254,11 +254,12 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
    *   equal key is already present, this method converts 'key_in' to a key of
    *   type KeyT using the provided LookupKeyToKeyFcn.
    */
-  template <typename LookupKeyT = key_type,
-            typename LookupHashFcn = hasher,
-            typename LookupEqualFcn = key_equal,
-            typename LookupKeyToKeyFcn = key_convert,
-            typename... ArgTs>
+  template <
+      typename LookupKeyT = key_type,
+      typename LookupHashFcn = hasher,
+      typename LookupEqualFcn = key_equal,
+      typename LookupKeyToKeyFcn = key_convert,
+      typename... ArgTs>
   std::pair<iterator,bool> emplace(LookupKeyT k, ArgTs&&... vCtorArg);
 
   /*
@@ -277,14 +278,16 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
    *
    *   See folly/test/ArrayHashMapTest.cpp for sample usage.
    */
-  template <typename LookupKeyT = key_type,
-            typename LookupHashFcn = hasher,
-            typename LookupEqualFcn = key_equal>
+  template <
+      typename LookupKeyT = key_type,
+      typename LookupHashFcn = hasher,
+      typename LookupEqualFcn = key_equal>
   iterator find(LookupKeyT k);
 
-  template <typename LookupKeyT = key_type,
-            typename LookupHashFcn = hasher,
-            typename LookupEqualFcn = key_equal>
+  template <
+      typename LookupKeyT = key_type,
+      typename LookupHashFcn = hasher,
+      typename LookupEqualFcn = key_equal>
   const_iterator find(LookupKeyT k) const;
 
   /*
@@ -437,16 +440,18 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
     SimpleRetT() = default;
   };
 
-  template <typename LookupKeyT = key_type,
-            typename LookupHashFcn = hasher,
-            typename LookupEqualFcn = key_equal,
-            typename LookupKeyToKeyFcn = key_convert,
-            typename... ArgTs>
+  template <
+      typename LookupKeyT = key_type,
+      typename LookupHashFcn = hasher,
+      typename LookupEqualFcn = key_equal,
+      typename LookupKeyToKeyFcn = key_convert,
+      typename... ArgTs>
   SimpleRetT insertInternal(LookupKeyT key, ArgTs&&... value);
 
-  template <typename LookupKeyT = key_type,
-            typename LookupHashFcn = hasher,
-            typename LookupEqualFcn = key_equal>
+  template <
+      typename LookupKeyT = key_type,
+      typename LookupHashFcn = hasher,
+      typename LookupEqualFcn = key_equal>
   SimpleRetT findInternal(const LookupKeyT k) const;
 
   SimpleRetT findAtInternal(uint32_t idx) const;
@@ -464,11 +469,12 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
 
 }; // AtomicHashMap
 
-template <class KeyT,
-          class ValueT,
-          class HashFcn = std::hash<KeyT>,
-          class EqualFcn = std::equal_to<KeyT>,
-          class Allocator = std::allocator<char>>
+template <
+    class KeyT,
+    class ValueT,
+    class HashFcn = std::hash<KeyT>,
+    class EqualFcn = std::equal_to<KeyT>,
+    class Allocator = std::allocator<char>>
 using QuadraticProbingAtomicHashMap =
     AtomicHashMap<KeyT,
                   ValueT,

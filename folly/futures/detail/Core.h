@@ -439,8 +439,11 @@ void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& /* ctx */) {
   // base case
 }
 
-template <template <typename ...> class T, typename... Ts,
-          typename THead, typename... TTail>
+template <
+    template <typename...> class T,
+    typename... Ts,
+    typename THead,
+    typename... TTail>
 void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& ctx,
                            THead&& head, TTail&&... tail) {
   using ValueType = typename std::decay<THead>::type::value_type;

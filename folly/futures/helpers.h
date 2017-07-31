@@ -93,10 +93,12 @@ namespace futures {
    * Set func as the callback for each input Future and return a vector of
    * Futures containing the results in the input order.
    */
-  template <class It, class F,
-            class ItT = typename std::iterator_traits<It>::value_type,
-            class Result
-      = typename decltype(std::declval<ItT>().then(std::declval<F>()))::value_type>
+  template <
+      class It,
+      class F,
+      class ItT = typename std::iterator_traits<It>::value_type,
+      class Result = typename decltype(
+          std::declval<ItT>().then(std::declval<F>()))::value_type>
   std::vector<Future<Result>> map(It first, It last, F func);
 
   // Sugar for the most common case
@@ -363,9 +365,12 @@ auto reduce(Collection&& c, T&& initial, F&& func)
 /** like reduce, but calls func on finished futures as they complete
     does NOT keep the order of the input
   */
-template <class It, class T, class F,
-          class ItT = typename std::iterator_traits<It>::value_type::value_type,
-          class Arg = MaybeTryArg<F, T, ItT>>
+template <
+    class It,
+    class T,
+    class F,
+    class ItT = typename std::iterator_traits<It>::value_type::value_type,
+    class Arg = MaybeTryArg<F, T, ItT>>
 Future<T> unorderedReduce(It first, It last, T initial, F func);
 
 /// Sugar for the most common case

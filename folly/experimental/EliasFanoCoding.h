@@ -86,10 +86,11 @@ struct EliasFanoCompressedListBase {
 typedef EliasFanoCompressedListBase<const uint8_t*> EliasFanoCompressedList;
 typedef EliasFanoCompressedListBase<uint8_t*> MutableEliasFanoCompressedList;
 
-template <class Value,
-          class SkipValue = size_t,
-          size_t kSkipQuantum = 0,     // 0 = disabled
-          size_t kForwardQuantum = 0>  // 0 = disabled
+template <
+    class Value,
+    class SkipValue = size_t,
+    size_t kSkipQuantum = 0, // 0 = disabled
+    size_t kForwardQuantum = 0> // 0 = disabled
 struct EliasFanoEncoderV2 {
   static_assert(std::is_integral<Value>::value &&
                     std::is_unsigned<Value>::value,
@@ -216,10 +217,11 @@ struct EliasFanoEncoderV2 {
   MutableCompressedList result_;
 };
 
-template <class Value,
-          class SkipValue,
-          size_t kSkipQuantum,
-          size_t kForwardQuantum>
+template <
+    class Value,
+    class SkipValue,
+    size_t kSkipQuantum,
+    size_t kForwardQuantum>
 struct EliasFanoEncoderV2<Value,
                           SkipValue,
                           kSkipQuantum,

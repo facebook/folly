@@ -34,9 +34,10 @@ namespace folly {
  * It uses kind of hack: string pointed by StringPiece is copied when
  * StringPiece is inserted into map
  */
-template <class Value,
-          class Compare = std::less<StringPiece>,
-          class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
+template <
+    class Value,
+    class Compare = std::less<StringPiece>,
+    class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
 class StringKeyedMap
     : private std::map<StringPiece, Value, Compare, Alloc> {
  private:

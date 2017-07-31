@@ -479,15 +479,16 @@ struct AtomicUnorderedInsertMap {
 /// to select a 64 bit slot index type.  Use this if you need a capacity
 /// bigger than 2^30 (about a billion).  This increases memory overheads,
 /// obviously.
-template <typename Key,
-          typename Value,
-          typename Hash = std::hash<Key>,
-          typename KeyEqual = std::equal_to<Key>,
-          bool SkipKeyValueDeletion =
-              (boost::has_trivial_destructor<Key>::value &&
-               boost::has_trivial_destructor<Value>::value),
-          template <typename> class Atom = std::atomic,
-          typename Allocator = folly::detail::MMapAlloc>
+template <
+    typename Key,
+    typename Value,
+    typename Hash = std::hash<Key>,
+    typename KeyEqual = std::equal_to<Key>,
+    bool SkipKeyValueDeletion =
+        (boost::has_trivial_destructor<Key>::value &&
+         boost::has_trivial_destructor<Value>::value),
+    template <typename> class Atom = std::atomic,
+    typename Allocator = folly::detail::MMapAlloc>
 using AtomicUnorderedInsertMap64 =
     AtomicUnorderedInsertMap<Key,
                              Value,

@@ -66,12 +66,13 @@ struct TemplateRange<
 // where k = min(tuple_size<T>::value - start, n)
 // (that is, it's a TemplateSeq of at most n elements, but won't extend
 // past the end of the given tuple)
-template <class T,
-          std::size_t start = 0,
-          std::size_t n = std::numeric_limits<std::size_t>::max(),
-          std::size_t size =
-            std::tuple_size<typename std::remove_reference<T>::type>::value,
-          class Enable = typename std::enable_if<(start <= size)>::type>
+template <
+    class T,
+    std::size_t start = 0,
+    std::size_t n = std::numeric_limits<std::size_t>::max(),
+    std::size_t size =
+        std::tuple_size<typename std::remove_reference<T>::type>::value,
+    class Enable = typename std::enable_if<(start <= size)>::type>
 struct TemplateTupleRange {
   using type = typename TemplateRange<
       std::size_t,

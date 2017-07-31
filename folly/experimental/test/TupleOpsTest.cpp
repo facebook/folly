@@ -119,10 +119,12 @@ struct TupleTo2<TemplateSeq<std::size_t, Ns...>> {
   }
 };
 
-template <class U, class T,
-          class Seq = typename TemplateTupleRange<U>::type,
-          class Enable = typename std::enable_if<
-            (std::tuple_size<U>::value == std::tuple_size<T>::value)>::type>
+template <
+    class U,
+    class T,
+    class Seq = typename TemplateTupleRange<U>::type,
+    class Enable = typename std::enable_if<
+        (std::tuple_size<U>::value == std::tuple_size<T>::value)>::type>
 U tupleTo2(const T& input) {
   return TupleTo2<Seq>::template convert<U>(input);
 }

@@ -561,11 +561,12 @@ std::string join(const Delim& delimiter,
   return output;
 }
 
-template <class Delim,
-          class Iterator,
-          typename std::enable_if<std::is_same<
-              typename std::iterator_traits<Iterator>::iterator_category,
-              std::random_access_iterator_tag>::value>::type* = nullptr>
+template <
+    class Delim,
+    class Iterator,
+    typename std::enable_if<std::is_same<
+        typename std::iterator_traits<Iterator>::iterator_category,
+        std::random_access_iterator_tag>::value>::type* = nullptr>
 std::string join(const Delim& delimiter, Iterator begin, Iterator end) {
   std::string output;
   join(delimiter, begin, end, output);
@@ -625,8 +626,9 @@ inline void toLowerAscii(MutableStringPiece str) {
   toLowerAscii(str.begin(), str.size());
 }
 
-template <class Iterator = const char*,
-          class Base = folly::Range<boost::u8_to_u32_iterator<Iterator>>>
+template <
+    class Iterator = const char*,
+    class Base = folly::Range<boost::u8_to_u32_iterator<Iterator>>>
 class UTF8Range : public Base {
  public:
   /* implicit */ UTF8Range(const folly::Range<Iterator> baseRange)

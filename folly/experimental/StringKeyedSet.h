@@ -34,8 +34,9 @@ namespace folly {
  * It uses kind of hack: string pointed by StringPiece is copied when
  * StringPiece is inserted into set
  */
-template <class Compare = std::less<StringPiece>,
-          class Alloc = std::allocator<StringPiece>>
+template <
+    class Compare = std::less<StringPiece>,
+    class Alloc = std::allocator<StringPiece>>
 class StringKeyedSetBase
     : private std::set<StringPiece, Compare, Alloc> {
  private:

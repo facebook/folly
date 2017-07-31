@@ -236,10 +236,11 @@ struct SharedMutexToken {
   uint16_t slot_;
 };
 
-template <bool ReaderPriority,
-          typename Tag_ = void,
-          template <typename> class Atom = std::atomic,
-          bool BlockImmediately = false>
+template <
+    bool ReaderPriority,
+    typename Tag_ = void,
+    template <typename> class Atom = std::atomic,
+    bool BlockImmediately = false>
 class SharedMutexImpl {
  public:
   static constexpr bool kReaderPriority = ReaderPriority;

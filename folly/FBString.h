@@ -1045,10 +1045,11 @@ class dummy_fbstring_core {
 #ifdef _LIBSTDCXX_FBSTRING
 template <typename E, class T, class A, class Storage>
 #else
-template <typename E,
-          class T = std::char_traits<E>,
-          class A = std::allocator<E>,
-          class Storage = fbstring_core<E> >
+template <
+    typename E,
+    class T = std::char_traits<E>,
+    class A = std::allocator<E>,
+    class Storage = fbstring_core<E>>
 #endif
 class basic_fbstring {
   static void enforce(
