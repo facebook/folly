@@ -641,12 +641,9 @@ int SSLContext::passwordCallback(char* password,
   std::string userPassword;
   // call user defined password collector to get password
   context->passwordCollector()->getPassword(userPassword, size);
-  auto length = int(userPassword.size());
-  if (length > size) {
-    length = size;
-  }
-  strncpy(password, userPassword.c_str(), size_t(length));
-  return length;
+  auto const length = std::min(userPassword.size(), size_t(size));
+  std::memcpy(password, userPassword.data(), length);
+  return int(length);
 }
 
 void SSLContext::setSSLLockTypes(std::map<int, LockType> inLockTypes) {
