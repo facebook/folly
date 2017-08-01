@@ -111,6 +111,8 @@ class TestSSLServer {
     return evb_;
   }
 
+  void loadTestCerts();
+
   const SocketAddress& getAddress() const {
     return address_;
   }

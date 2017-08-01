@@ -68,11 +68,11 @@ class PasswordCollector {
  */
 class SSLContext {
  public:
-
   enum SSLVersion {
-     SSLv2,
-     SSLv3,
-     TLSv1
+    SSLv2,
+    SSLv3,
+    TLSv1, // support TLS 1.0+
+    TLSv1_2, // support for only TLS 1.2+
   };
 
   /**

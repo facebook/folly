@@ -40,6 +40,11 @@ TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
   init(enableTFO);
 }
 
+void TestSSLServer::loadTestCerts() {
+  ctx_->loadCertificate(kTestCert);
+  ctx_->loadPrivateKey(kTestKey);
+}
+
 TestSSLServer::TestSSLServer(
     SSLServerAcceptCallbackBase* acb,
     std::shared_ptr<SSLContext> ctx,

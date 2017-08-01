@@ -190,6 +190,93 @@ TEST(AsyncSSLSocketTest2, AttachDetachSSLContext) {
   EXPECT_TRUE(f.within(std::chrono::seconds(3)).get());
 }
 
+class ConnectClient : public AsyncSocket::ConnectCallback {
+ public:
+  ConnectClient() = default;
+
+  Future<bool> getFuture() {
+    return promise_.getFuture();
+  }
+
+  void connect(const folly::SocketAddress& addr) {
+    t1_.getEventBase()->runInEventBaseThread([&] {
+      socket_ = t1_.createSocket();
+      socket_->connect(this, addr);
+    });
+  }
+
+  void connectSuccess() noexcept override {
+    promise_.setValue(true);
+    socket_.reset();
+  }
+
+  void connectErr(const AsyncSocketException& /* ex */) noexcept override {
+    promise_.setValue(false);
+    socket_.reset();
+  }
+
+  void setCtx(std::shared_ptr<SSLContext> ctx) {
+    t1_.ctx_ = ctx;
+  }
+
+ private:
+  EvbAndContext t1_;
+  // promise to fulfill when done with a value of true if connect succeeded
+  folly::Promise<bool> promise_;
+  std::shared_ptr<AsyncSSLSocket> socket_;
+};
+
+class NoopReadCallback : public ReadCallbackBase {
+ public:
+  NoopReadCallback() : ReadCallbackBase(nullptr) {
+    state = STATE_SUCCEEDED;
+  }
+
+  void getReadBuffer(void** buf, size_t* lenReturn) override {
+    *buf = &buffer_;
+    *lenReturn = 1;
+  }
+  void readDataAvailable(size_t) noexcept override {}
+
+  uint8_t buffer_{0};
+};
+
+TEST(AsyncSSLSocketTest2, TestTLS12DefaultClient) {
+  // Start listening on a local port
+  NoopReadCallback readCallback;
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallbackDelay acceptCallback(&handshakeCallback);
+  auto ctx = std::make_shared<SSLContext>(SSLContext::TLSv1_2);
+  TestSSLServer server(&acceptCallback, ctx);
+  server.loadTestCerts();
+
+  // create a default client
+  auto c1 = std::make_unique<ConnectClient>();
+  auto f1 = c1->getFuture();
+  c1->connect(server.getAddress());
+  EXPECT_TRUE(f1.within(std::chrono::seconds(3)).get());
+}
+
+TEST(AsyncSSLSocketTest2, TestTLS12BadClient) {
+  // Start listening on a local port
+  NoopReadCallback readCallback;
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::EXPECT_ERROR);
+  SSLServerAcceptCallbackDelay acceptCallback(&handshakeCallback);
+  auto ctx = std::make_shared<SSLContext>(SSLContext::TLSv1_2);
+  TestSSLServer server(&acceptCallback, ctx);
+  server.loadTestCerts();
+
+  // create a client that doesn't speak TLS 1.2
+  auto c2 = std::make_unique<ConnectClient>();
+  auto clientCtx = std::make_shared<SSLContext>();
+  clientCtx->setOptions(SSL_OP_NO_TLSv1_2);
+  c2->setCtx(clientCtx);
+  auto f2 = c2->getFuture();
+  c2->connect(server.getAddress());
+  EXPECT_FALSE(f2.within(std::chrono::seconds(3)).get());
+}
+
 } // namespace folly
 
 int main(int argc, char *argv[]) {
