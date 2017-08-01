@@ -170,6 +170,10 @@ TYPED_TEST(ReplaceableStaticAttributeTest, nothrow_copy_assignable) {
           std::is_nothrow_copy_constructible<TypeParam>::value,
       std::is_nothrow_copy_assignable<Replaceable<TypeParam>>::value);
 }
+TYPED_TEST(ReplaceableStaticAttributeTest, replaceable) {
+  EXPECT_FALSE(is_replaceable<TypeParam>::value);
+  EXPECT_TRUE(is_replaceable<Replaceable<TypeParam>>::value);
+}
 
 TYPED_TEST(ReplaceableStaticAttributePairTest, copy_construct) {
   using T = typename TypeParam::first_type;
