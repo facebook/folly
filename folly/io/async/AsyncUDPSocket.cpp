@@ -36,9 +36,9 @@ namespace folly {
 
 AsyncUDPSocket::AsyncUDPSocket(EventBase* evb)
     : EventHandler(CHECK_NOTNULL(evb)),
+      readCallback_(nullptr),
       eventBase_(evb),
-      fd_(-1),
-      readCallback_(nullptr) {
+      fd_(-1) {
   evb->dcheckIsInEventBaseThread();
 }
 

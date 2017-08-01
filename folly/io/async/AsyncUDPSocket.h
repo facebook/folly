@@ -167,6 +167,9 @@ class AsyncUDPSocket : public EventHandler {
     return ::sendmsg(socket, message, flags);
   }
 
+  // Non-null only when we are reading
+  ReadCallback* readCallback_;
+
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
@@ -185,9 +188,6 @@ class AsyncUDPSocket : public EventHandler {
 
   // Temp space to receive client address
   folly::SocketAddress clientAddress_;
-
-  // Non-null only when we are reading
-  ReadCallback* readCallback_;
 
   bool reuseAddr_{true};
   bool reusePort_{false};
