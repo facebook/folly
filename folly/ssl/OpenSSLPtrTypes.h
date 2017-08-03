@@ -32,6 +32,10 @@ using ASN1TimeUniquePtr = std::unique_ptr<ASN1_TIME, ASN1TimeDeleter>;
 // X509
 using X509Deleter = folly::static_function_deleter<X509, &X509_free>;
 using X509UniquePtr = std::unique_ptr<X509, X509Deleter>;
+using X509ExtensionDeleter =
+    folly::static_function_deleter<X509_EXTENSION, &X509_EXTENSION_free>;
+using X509ExtensionUniquePtr =
+    std::unique_ptr<X509_EXTENSION, X509ExtensionDeleter>;
 using X509StoreDeleter =
     folly::static_function_deleter<X509_STORE, &X509_STORE_free>;
 using X509StoreUniquePtr = std::unique_ptr<X509_STORE, X509StoreDeleter>;
