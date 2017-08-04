@@ -69,15 +69,15 @@ void getfds(int fds[2]) {
              << strerror(errno);
     }
     if (fcntl(fds[idx], F_SETFL, flags | O_NONBLOCK) != 0) {
-      FAIL() << "failed to put socket " << idx << " in non-blocking mode: "
-             << strerror(errno);
+      FAIL() << "failed to put socket " << idx
+             << " in non-blocking mode: " << strerror(errno);
     }
   }
 }
 
 void getctx(
-  std::shared_ptr<folly::SSLContext> clientCtx,
-  std::shared_ptr<folly::SSLContext> serverCtx) {
+    std::shared_ptr<folly::SSLContext> clientCtx,
+    std::shared_ptr<folly::SSLContext> serverCtx) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
@@ -86,36 +86,40 @@ void getctx(
 }
 
 void sslsocketpair(
-  EventBase* eventBase,
-  AsyncSSLSocket::UniquePtr* clientSock,
-  AsyncSSLSocket::UniquePtr* serverSock) {
+    EventBase* eventBase,
+    AsyncSSLSocket::UniquePtr* clientSock,
+    AsyncSSLSocket::UniquePtr* serverSock) {
   auto clientCtx = std::make_shared<folly::SSLContext>();
   auto serverCtx = std::make_shared<folly::SSLContext>();
   int fds[2];
   getfds(fds);
   getctx(clientCtx, serverCtx);
-  clientSock->reset(new AsyncSSLSocket(
-                      clientCtx, eventBase, fds[0], false));
-  serverSock->reset(new AsyncSSLSocket(
-                      serverCtx, eventBase, fds[1], true));
+  clientSock->reset(new AsyncSSLSocket(clientCtx, eventBase, fds[0], false));
+  serverSock->reset(new AsyncSSLSocket(serverCtx, eventBase, fds[1], true));
 
   // (*clientSock)->setSendTimeout(100);
   // (*serverSock)->setSendTimeout(100);
 }
 
 // client protocol filters
-bool clientProtoFilterPickPony(unsigned char** client,
-  unsigned int* client_len, const unsigned char*, unsigned int ) {
-  //the protocol string in length prefixed byte string. the
-  //length byte is not included in the length
-  static unsigned char p[7] = {6,'p','o','n','i','e','s'};
+bool clientProtoFilterPickPony(
+    unsigned char** client,
+    unsigned int* client_len,
+    const unsigned char*,
+    unsigned int) {
+  // the protocol string in length prefixed byte string. the
+  // length byte is not included in the length
+  static unsigned char p[7] = {6, 'p', 'o', 'n', 'i', 'e', 's'};
   *client = p;
   *client_len = 7;
   return true;
 }
 
-bool clientProtoFilterPickNone(unsigned char**, unsigned int*,
-  const unsigned char*, unsigned int) {
+bool clientProtoFilterPickNone(
+    unsigned char**,
+    unsigned int*,
+    const unsigned char*,
+    unsigned int) {
   return false;
 }
 
@@ -149,12 +153,12 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
   // Set up SSL context.
   std::shared_ptr<SSLContext> sslContext(new SSLContext());
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  //sslContext->loadTrustedCertificates("./trusted-ca-certificate.pem");
-  //sslContext->authenticate(true, false);
+  // sslContext->loadTrustedCertificates("./trusted-ca-certificate.pem");
+  // sslContext->authenticate(true, false);
 
   // connect
-  auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
-                                                 sslContext);
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open(std::chrono::milliseconds(10000));
 
   // write()
@@ -269,8 +273,8 @@ TEST(AsyncSSLSocketTest, HandshakeError) {
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   // connect
-  auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
-                                                 sslContext);
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   // read()
   bool ex = false;
   try {
@@ -305,8 +309,8 @@ TEST(AsyncSSLSocketTest, ReadError) {
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   // connect
-  auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
-                                                 sslContext);
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
   // write something to trigger ssl handshake
@@ -334,8 +338,8 @@ TEST(AsyncSSLSocketTest, WriteError) {
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   // connect
-  auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
-                                                 sslContext);
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
   // write something to trigger ssl handshake
@@ -363,8 +367,8 @@ TEST(AsyncSSLSocketTest, SocketWithDelay) {
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   // connect
-  auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
-                                                 sslContext);
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
   // write()
@@ -390,7 +394,9 @@ using NextProtocolTypePair =
 class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
   // For matching protos
  public:
-  void SetUp() override { getctx(clientCtx, serverCtx); }
+  void SetUp() override {
+    getctx(clientCtx, serverCtx);
+  }
 
   void connect(bool unset = false) {
     getfds(fds);
@@ -402,9 +408,9 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
     }
 
     AsyncSSLSocket::UniquePtr clientSock(
-      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+        new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
     AsyncSSLSocket::UniquePtr serverSock(
-      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+        new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
     client = std::make_unique<NpnClient>(std::move(clientSock));
     server = std::make_unique<NpnServer>(std::move(serverSock));
 
@@ -485,8 +491,8 @@ class NextProtocolMismatchTest : public NextProtocolTest {
 
 TEST_P(NextProtocolTest, NpnTestOverlap) {
   clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
-                                        GetParam().second);
+  serverCtx->setAdvertisedNextProtocols(
+      {"foo", "bar", "baz"}, GetParam().second);
 
   connect();
 
@@ -498,8 +504,8 @@ TEST_P(NextProtocolTest, NpnTestUnset) {
   // Identical to above test, except that we want unset NPN before
   // looping.
   clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
-                                        GetParam().second);
+  serverCtx->setAdvertisedNextProtocols(
+      {"foo", "bar", "baz"}, GetParam().second);
 
   connect(true /* unset */);
 
@@ -510,8 +516,8 @@ TEST_P(NextProtocolTest, NpnTestUnset) {
 
 TEST_P(NextProtocolMismatchTest, NpnAlpnTestNoOverlap) {
   clientCtx->setAdvertisedNextProtocols({"foo"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
-                                        GetParam().second);
+  serverCtx->setAdvertisedNextProtocols(
+      {"foo", "bar", "baz"}, GetParam().second);
 
   connect();
 
@@ -524,8 +530,8 @@ TEST_P(NextProtocolMismatchTest, NpnAlpnTestNoOverlap) {
 // will fail on 1.0.2 before that.
 TEST_P(NextProtocolTest, NpnTestNoOverlap) {
   clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
-                                        GetParam().second);
+  serverCtx->setAdvertisedNextProtocols(
+      {"foo", "bar", "baz"}, GetParam().second);
   connect();
 
   if (GetParam().first == SSLContext::NextProtocolType::ALPN ||
@@ -539,19 +545,19 @@ TEST_P(NextProtocolTest, NpnTestNoOverlap) {
   else if (
       GetParam().first == SSLContext::NextProtocolType::ANY &&
       GetParam().second == SSLContext::NextProtocolType::ANY) {
-# if FOLLY_OPENSSL_IS_110
+#if FOLLY_OPENSSL_IS_110
     // OpenSSL 1.1.0 sends a fatal alert on mismatch, which is probavbly the
     // correct behavior per RFC7301
     expectHandshakeError();
-# else
+#else
     // BoringSSL also doesn't fatal on mismatch but behaves slightly differently
     // from OpenSSL 1.0.2h+ - it doesn't select a protocol if both ends support
     // NPN *and* ALPN
     expectNoProtocol();
-# endif
+#endif
   }
 #endif
-   else {
+  else {
     expectProtocol("blub");
     expectProtocolType(
         {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
@@ -561,8 +567,8 @@ TEST_P(NextProtocolTest, NpnTestNoOverlap) {
 TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterHit) {
   clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
   clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickPony);
-  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
-                                        GetParam().second);
+  serverCtx->setAdvertisedNextProtocols(
+      {"foo", "bar", "baz"}, GetParam().second);
 
   connect();
 
@@ -573,8 +579,8 @@ TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterHit) {
 TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterMiss) {
   clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
   clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickNone);
-  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
-                                        GetParam().second);
+  serverCtx->setAdvertisedNextProtocols(
+      {"foo", "bar", "baz"}, GetParam().second);
 
   connect();
 
@@ -587,10 +593,10 @@ TEST_P(NextProtocolTest, RandomizedNpnTest) {
   // as negligible.
   const int kTries = 64;
 
-  clientCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
-                                        GetParam().first);
-  serverCtx->setRandomizedAdvertisedNextProtocols({{1, {"foo"}}, {1, {"bar"}}},
-                                                  GetParam().second);
+  clientCtx->setAdvertisedNextProtocols(
+      {"foo", "bar", "baz"}, GetParam().first);
+  serverCtx->setRandomizedAdvertisedNextProtocols(
+      {{1, {"foo"}}, {1, {"bar"}}}, GetParam().second);
 
   std::set<string> selectedProtocols;
   for (int i = 0; i < kTries; ++i) {
@@ -641,17 +647,21 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     AsyncSSLSocketTest,
     NextProtocolNPNOnlyTest,
-    ::testing::Values(NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
-                                           SSLContext::NextProtocolType::NPN)));
+    ::testing::Values(NextProtocolTypePair(
+        SSLContext::NextProtocolType::NPN,
+        SSLContext::NextProtocolType::NPN)));
 
 #if FOLLY_OPENSSL_HAS_ALPN
 INSTANTIATE_TEST_CASE_P(
     AsyncSSLSocketTest,
     NextProtocolMismatchTest,
-    ::testing::Values(NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
-                                           SSLContext::NextProtocolType::ALPN),
-                      NextProtocolTypePair(SSLContext::NextProtocolType::ALPN,
-                                           SSLContext::NextProtocolType::NPN)));
+    ::testing::Values(
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::NPN,
+            SSLContext::NextProtocolType::ALPN),
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ALPN,
+            SSLContext::NextProtocolType::NPN)));
 #endif
 
 #ifndef OPENSSL_NO_TLSEXT
@@ -674,14 +684,12 @@ TEST(AsyncSSLSocketTest, SNITestMatch) {
   getctx(clientCtx, dfServerCtx);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
   SNIClient client(std::move(clientSock));
-  SNIServer server(std::move(serverSock),
-                   dfServerCtx,
-                   hskServerCtx,
-                   serverName);
+  SNIServer server(
+      std::move(serverSock), dfServerCtx, hskServerCtx, serverName);
 
   eventBase.loop();
 
@@ -709,18 +717,16 @@ TEST(AsyncSSLSocketTest, SNITestNotMatch) {
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
-  AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx,
-                        &eventBase,
-                        fds[0],
-                        clientRequestingServerName));
+  AsyncSSLSocket::UniquePtr clientSock(new AsyncSSLSocket(
+      clientCtx, &eventBase, fds[0], clientRequestingServerName));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
   SNIClient client(std::move(clientSock));
-  SNIServer server(std::move(serverSock),
-                   dfServerCtx,
-                   hskServerCtx,
-                   serverExpectedServerName);
+  SNIServer server(
+      std::move(serverSock),
+      dfServerCtx,
+      hskServerCtx,
+      serverExpectedServerName);
 
   eventBase.loop();
 
@@ -734,7 +740,7 @@ TEST(AsyncSSLSocketTest, SNITestNotMatch) {
  */
 
 TEST(AsyncSSLSocketTest, SNITestChangeServerName) {
-   EventBase eventBase;
+  EventBase eventBase;
   std::shared_ptr<SSLContext> clientCtx(new SSLContext);
   std::shared_ptr<SSLContext> dfServerCtx(new SSLContext);
   // Use the same SSLContext to continue the handshake after
@@ -746,17 +752,15 @@ TEST(AsyncSSLSocketTest, SNITestChangeServerName) {
   getctx(clientCtx, dfServerCtx);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
-  //Change the server name
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
+  // Change the server name
   std::string newName("new.com");
   clientSock->setServerName(newName);
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
   SNIClient client(std::move(clientSock));
-  SNIServer server(std::move(serverSock),
-                   dfServerCtx,
-                   hskServerCtx,
-                   serverName);
+  SNIServer server(
+      std::move(serverSock), dfServerCtx, hskServerCtx, serverName);
 
   eventBase.loop();
 
@@ -781,14 +785,15 @@ TEST(AsyncSSLSocketTest, SNITestClientHelloNoHostname) {
   getctx(clientCtx, dfServerCtx);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
   SNIClient client(std::move(clientSock));
-  SNIServer server(std::move(serverSock),
-                   dfServerCtx,
-                   hskServerCtx,
-                   serverExpectedServerName);
+  SNIServer server(
+      std::move(serverSock),
+      dfServerCtx,
+      hskServerCtx,
+      serverExpectedServerName);
 
   eventBase.loop();
 
@@ -822,7 +827,6 @@ TEST(AsyncSSLSocketTest, SSLClientTest) {
   cerr << "SSLClientTest test completed" << endl;
 }
 
-
 /**
  * Test SSL client socket session re-use
  */
@@ -855,8 +859,8 @@ TEST(AsyncSSLSocketTest, SSLClientTestReuse) {
 TEST(AsyncSSLSocketTest, SSLClientTimeoutTest) {
   // Start listening on a local port
   EmptyReadCallback readCallback;
-  HandshakeCallback handshakeCallback(&readCallback,
-                                      HandshakeCallback::EXPECT_ERROR);
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::EXPECT_ERROR);
   HandshakeTimeoutCallback acceptCallback(&handshakeCallback);
   TestSSLServer server(&acceptCallback);
 
@@ -973,8 +977,8 @@ TEST(AsyncSSLSocketTest, SSLServerCacheCloseTest) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   ReadCallback readCallback(&writeCallback);
-  HandshakeCallback handshakeCallback(&readCallback,
-                                      HandshakeCallback::EXPECT_ERROR);
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::EXPECT_ERROR);
   SSLServerAsyncCacheAcceptCallback acceptCallback(&handshakeCallback);
   TestSSLAsyncCacheServer server(&acceptCallback, 500);
 
@@ -987,8 +991,8 @@ TEST(AsyncSSLSocketTest, SSLServerCacheCloseTest) {
   EventBaseAborter eba(&eventBase, 3000);
   eventBase.loop();
 
-  server.getEventBase().runInEventBaseThread([&handshakeCallback]{
-      handshakeCallback.closeSocket();});
+  server.getEventBase().runInEventBaseThread(
+      [&handshakeCallback] { handshakeCallback.closeSocket(); });
   // give time for the cache lookup to come back and find it closed
   handshakeCallback.waitForHandshake();
 
@@ -1073,7 +1077,9 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloOnePacket) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
-  SCOPE_EXIT { SSL_free(ssl); };
+  SCOPE_EXIT {
+    SSL_free(ssl);
+  };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -1113,7 +1119,9 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloTwoPackets) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
-  SCOPE_EXIT { SSL_free(ssl); };
+  SCOPE_EXIT {
+    SSL_free(ssl);
+  };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -1121,13 +1129,23 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloTwoPackets) {
   // Test parsing with two packets with first packet size < 3
   auto bufCopy = folly::IOBuf::copyBuffer(buf->data(), 2);
   AsyncSSLSocket::clientHelloParsingCallback(
-      0, 0, SSL3_RT_HANDSHAKE, bufCopy->data(), bufCopy->length(),
-      ssl, sock.get());
+      0,
+      0,
+      SSL3_RT_HANDSHAKE,
+      bufCopy->data(),
+      bufCopy->length(),
+      ssl,
+      sock.get());
   bufCopy.reset();
   bufCopy = folly::IOBuf::copyBuffer(buf->data() + 2, buf->length() - 2);
   AsyncSSLSocket::clientHelloParsingCallback(
-      0, 0, SSL3_RT_HANDSHAKE, bufCopy->data(), bufCopy->length(),
-      ssl, sock.get());
+      0,
+      0,
+      SSL3_RT_HANDSHAKE,
+      bufCopy->data(),
+      bufCopy->length(),
+      ssl,
+      sock.get());
   bufCopy.reset();
 
   auto parsedClientHello = sock->getClientHelloInfo();
@@ -1160,7 +1178,9 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
-  SCOPE_EXIT { SSL_free(ssl); };
+  SCOPE_EXIT {
+    SSL_free(ssl);
+  };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -1170,8 +1190,13 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
     auto bufCopy = folly::IOBuf::copyBuffer(
         buf->data() + i, std::min((uint64_t)3, buf->length() - i));
     AsyncSSLSocket::clientHelloParsingCallback(
-        0, 0, SSL3_RT_HANDSHAKE, bufCopy->data(), bufCopy->length(),
-        ssl, sock.get());
+        0,
+        0,
+        SSL3_RT_HANDSHAKE,
+        bufCopy->data(),
+        bufCopy->length(),
+        ssl,
+        sock.get());
     bufCopy.reset();
   }
 
@@ -1197,9 +1222,9 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSuccess) {
   dfServerCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), true, true);
   clientCtx->loadTrustedCertificates(kTestCA);
@@ -1235,9 +1260,9 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationFailure) {
   dfServerCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), true, false);
   clientCtx->loadTrustedCertificates(kTestCA);
@@ -1275,9 +1300,9 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxDisableVerify) {
   dfServerCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClientNoVerify client(std::move(clientSock), false, false);
   clientCtx->loadTrustedCertificates(kTestCA);
@@ -1358,9 +1383,9 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationOverride) {
   dfServerCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), false, true);
   SSLHandshakeServer server(std::move(serverSock), true, true);
@@ -1395,9 +1420,9 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSkip) {
   dfServerCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
 
   AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), false, false);
   SSLHandshakeServer server(std::move(serverSock), false, false);
@@ -1457,7 +1482,6 @@ TEST(AsyncSSLSocketTest, ClientCertHandshakeSuccess) {
   EXPECT_FALSE(server.handshakeError_);
   EXPECT_LE(0, server.handshakeTime.count());
 }
-
 
 /**
  * Test requireClientCert with no client cert
@@ -1557,9 +1581,8 @@ TEST(AsyncSSLSocketTest, MinWriteSizeTest) {
 
 class ReadCallbackTerminator : public ReadCallback {
  public:
-  ReadCallbackTerminator(EventBase* base, WriteCallbackBase *wcb)
-      : ReadCallback(wcb)
-      , base_(base) {}
+  ReadCallbackTerminator(EventBase* base, WriteCallbackBase* wcb)
+      : ReadCallback(wcb), base_(base) {}
 
   // Do not write data back, terminate the loop.
   void readDataAvailable(size_t len) noexcept override {
@@ -1574,10 +1597,10 @@ class ReadCallbackTerminator : public ReadCallback {
     socket_->setReadCB(nullptr);
     base_->terminateLoopSoon();
   }
+
  private:
   EventBase* base_;
 };
-
 
 /**
  * Test a full unencrypted codepath
@@ -1590,10 +1613,9 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
   int fds[2];
   getfds(fds);
   getctx(clientCtx, serverCtx);
-  auto client = AsyncSSLSocket::newSocket(
-                  clientCtx, &base, fds[0], false, true);
-  auto server = AsyncSSLSocket::newSocket(
-                  serverCtx, &base, fds[1], true, true);
+  auto client =
+      AsyncSSLSocket::newSocket(clientCtx, &base, fds[0], false, true);
+  auto server = AsyncSSLSocket::newSocket(serverCtx, &base, fds[1], true, true);
 
   ReadCallbackTerminator readCallback(&base, nullptr);
   server->setReadCB(&readCallback);
@@ -1628,7 +1650,6 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
   char c2;
   EXPECT_EQ(1, recv(fds[1], &c2, 1, MSG_PEEK));
   EXPECT_NE('a', c2);
-
 
   base.loop();
 
@@ -1671,8 +1692,8 @@ TEST(AsyncSSLSocketTest, ConnResetErrorString) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   WriteErrorCallback readCallback(&writeCallback);
-  HandshakeCallback handshakeCallback(&readCallback,
-                                      HandshakeCallback::EXPECT_ERROR);
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::EXPECT_ERROR);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
   TestSSLServer server(&acceptCallback);
 
@@ -1692,8 +1713,8 @@ TEST(AsyncSSLSocketTest, ConnEOFErrorString) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   WriteErrorCallback readCallback(&writeCallback);
-  HandshakeCallback handshakeCallback(&readCallback,
-                                      HandshakeCallback::EXPECT_ERROR);
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::EXPECT_ERROR);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
   TestSSLServer server(&acceptCallback);
 
@@ -1717,8 +1738,8 @@ TEST(AsyncSSLSocketTest, ConnOpenSSLErrorString) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   WriteErrorCallback readCallback(&writeCallback);
-  HandshakeCallback handshakeCallback(&readCallback,
-                                      HandshakeCallback::EXPECT_ERROR);
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::EXPECT_ERROR);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback);
   TestSSLServer server(&acceptCallback);
 
@@ -1730,18 +1751,20 @@ TEST(AsyncSSLSocketTest, ConnOpenSSLErrorString) {
   socket->close();
 
   handshakeCallback.waitForHandshake();
-  EXPECT_NE(handshakeCallback.errorString_.find("SSL routines"),
-            std::string::npos);
+  EXPECT_NE(
+      handshakeCallback.errorString_.find("SSL routines"), std::string::npos);
 #if defined(OPENSSL_IS_BORINGSSL)
   EXPECT_NE(
       handshakeCallback.errorString_.find("ENCRYPTED_LENGTH_TOO_LONG"),
       std::string::npos);
 #elif FOLLY_OPENSSL_IS_110
-  EXPECT_NE(handshakeCallback.errorString_.find("packet length too long"),
-            std::string::npos);
+  EXPECT_NE(
+      handshakeCallback.errorString_.find("packet length too long"),
+      std::string::npos);
 #else
-  EXPECT_NE(handshakeCallback.errorString_.find("unknown protocol"),
-            std::string::npos);
+  EXPECT_NE(
+      handshakeCallback.errorString_.find("unknown protocol"),
+      std::string::npos);
 #endif
 }
 
@@ -2077,8 +2100,8 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   // connect
-  auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
-                                                 sslContext);
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
   // Setting flags to "-1" to trigger "Invalid argument" error
@@ -2108,7 +2131,7 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
   int major, minor;
   folly::StringPiece extra;
   if (folly::split<false>(
-        '.', std::string(s_uname.release) + ".", major, minor, extra)) {
+          '.', std::string(s_uname.release) + ".", major, minor, extra)) {
     if (major < 4 || (major == 4 && minor < 6)) {
       LOG(INFO) << "Kernel version: 4.6 and newer required for this test ("
                 << "kernel ver. " << s_uname.release << " detected).";
@@ -2129,13 +2152,13 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
   sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   // connect
-  auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
-                                                 sslContext);
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
   // Adding MSG_EOR flag to the message flags - it'll trigger
   // timestamp generation for the last byte of the message.
-  msgCallback.resetFlags(MSG_DONTWAIT|MSG_NOSIGNAL|MSG_EOR);
+  msgCallback.resetFlags(MSG_DONTWAIT | MSG_NOSIGNAL | MSG_EOR);
 
   // Init ancillary data buffer to trigger timestamp notification
   union {
@@ -2145,9 +2168,7 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
   u.cmsg.cmsg_level = SOL_SOCKET;
   u.cmsg.cmsg_type = SO_TIMESTAMPING;
   u.cmsg.cmsg_len = CMSG_LEN(sizeof(uint32_t));
-  uint32_t flags =
-      SOF_TIMESTAMPING_TX_SCHED |
-      SOF_TIMESTAMPING_TX_SOFTWARE |
+  uint32_t flags = SOF_TIMESTAMPING_TX_SCHED | SOF_TIMESTAMPING_TX_SOFTWARE |
       SOF_TIMESTAMPING_TX_ACK;
   memcpy(CMSG_DATA(&u.cmsg), &flags, sizeof(uint32_t));
   std::vector<char> ctrl(CMSG_LEN(sizeof(uint32_t)));
