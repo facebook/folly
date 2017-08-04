@@ -18,7 +18,7 @@
 
 #include <exception>
 
-#if defined(__GNUG__) || defined(__CLANG__)
+#if defined(__GNUG__) || defined(__clang__)
 #define FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS
 namespace __cxxabiv1 {
 // forward declaration (originally defined in unwind-cxx.h from from libstdc++)
