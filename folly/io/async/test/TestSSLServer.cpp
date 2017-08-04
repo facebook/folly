@@ -21,6 +21,10 @@ const char* kTestCert = "folly/io/async/test/certs/tests-cert.pem";
 const char* kTestKey = "folly/io/async/test/certs/tests-key.pem";
 const char* kTestCA = "folly/io/async/test/certs/ca-cert.pem";
 
+const char* kClientTestCert = "folly/io/async/test/certs/client_cert.pem";
+const char* kClientTestKey = "folly/io/async/test/certs/client_key.pem";
+const char* kClientTestCA = "folly/io/async/test/certs/client_ca_cert.pem";
+
 TestSSLServer::~TestSSLServer() {
   if (thread_.joinable()) {
     evb_.runInEventBaseThread([&]() { socket_->stopAccepting(); });

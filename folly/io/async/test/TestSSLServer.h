@@ -38,6 +38,10 @@ extern const char* kTestCert;
 extern const char* kTestKey;
 extern const char* kTestCA;
 
+extern const char* kClientTestCert;
+extern const char* kClientTestKey;
+extern const char* kClientTestCA;
+
 enum StateEnum { STATE_WAITING, STATE_SUCCEEDED, STATE_FAILED };
 
 class HandshakeCallback;

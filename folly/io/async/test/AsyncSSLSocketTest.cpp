@@ -1053,6 +1053,59 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   EXPECT_TRUE(!server.handshakeError_);
 }
 
+/**
+ * Verify that server is able to get client cert by getPeerCert() API.
+ */
+TEST(AsyncSSLSocketTest, GetClientCertificate) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  serverCtx->ciphers("ECDHE-RSA-AES128-SHA:AES128-SHA:AES256-SHA");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kClientTestCA);
+  serverCtx->loadClientCAList(kClientTestCA);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("AES256-SHA:AES128-SHA");
+  clientCtx->loadPrivateKey(kClientTestKey);
+  clientCtx->loadCertificate(kClientTestCert);
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  std::array<int, 2> fds;
+  getfds(fds.data());
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServerParseClientHello server(std::move(serverSock), true, true);
+
+  eventBase.loop();
+
+  // Handshake should succeed.
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeSuccess_);
+
+  // Reclaim the sockets from SSLHandshakeBase.
+  auto cliSocket = std::move(client).moveSocket();
+  auto srvSocket = std::move(server).moveSocket();
+
+  // Client cert retrieved from server side.
+  folly::ssl::X509UniquePtr serverPeerCert = srvSocket->getPeerCert();
+  CHECK(serverPeerCert);
+
+  // Client cert retrieved from client side.
+  const X509* clientSelfCert = cliSocket->getSelfCert();
+  CHECK(clientSelfCert);
+
+  // The two certs should be the same.
+  EXPECT_EQ(0, X509_cmp(clientSelfCert, serverPeerCert.get()));
+}
+
 TEST(AsyncSSLSocketTest, SSLParseClientHelloOnePacket) {
   EventBase eventBase;
   auto ctx = std::make_shared<SSLContext>();
