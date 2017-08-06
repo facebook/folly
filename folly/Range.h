@@ -50,8 +50,8 @@
 #endif
 
 #include <folly/CpuId.h>
-#include <folly/Traits.h>
 #include <folly/Likely.h>
+#include <folly/Traits.h>
 #include <folly/detail/RangeCommon.h>
 #include <folly/detail/RangeSse42.h>
 
@@ -61,7 +61,8 @@ FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 
-template <class Iter> class Range;
+template <class Iter>
+class Range;
 
 /**
  * Finds the first occurrence of needle in haystack. The algorithm is on
@@ -72,9 +73,8 @@ template <class Iter> class Range;
 template <
     class Iter,
     class Comp = std::equal_to<typename Range<Iter>::value_type>>
-inline size_t qfind(const Range<Iter> & haystack,
-                    const Range<Iter> & needle,
-                    Comp eq = Comp());
+inline size_t
+qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq = Comp());
 
 /**
  * Finds the first occurrence of needle in haystack. The result is the
@@ -82,8 +82,9 @@ inline size_t qfind(const Range<Iter> & haystack,
  * needle wasn't found.
  */
 template <class Iter>
-size_t qfind(const Range<Iter> & haystack,
-             const typename Range<Iter>::value_type& needle);
+size_t qfind(
+    const Range<Iter>& haystack,
+    const typename Range<Iter>::value_type& needle);
 
 /**
  * Finds the last occurrence of needle in haystack. The result is the
@@ -91,17 +92,18 @@ size_t qfind(const Range<Iter> & haystack,
  * needle wasn't found.
  */
 template <class Iter>
-size_t rfind(const Range<Iter> & haystack,
-             const typename Range<Iter>::value_type& needle);
-
+size_t rfind(
+    const Range<Iter>& haystack,
+    const typename Range<Iter>::value_type& needle);
 
 /**
  * Finds the first occurrence of any element of needle in
  * haystack. The algorithm is O(haystack.size() * needle.size()).
  */
 template <class Iter>
-inline size_t qfind_first_of(const Range<Iter> & haystack,
-                             const Range<Iter> & needle);
+inline size_t qfind_first_of(
+    const Range<Iter>& haystack,
+    const Range<Iter>& needle);
 
 /**
  * Small internal helper - returns the value just before an iterator.
@@ -113,9 +115,10 @@ namespace detail {
  */
 template <class Iter>
 typename std::enable_if<
-  std::is_same<typename std::iterator_traits<Iter>::iterator_category,
-               std::random_access_iterator_tag>::value,
-  typename std::iterator_traits<Iter>::reference>::type
+    std::is_same<
+        typename std::iterator_traits<Iter>::iterator_category,
+        std::random_access_iterator_tag>::value,
+    typename std::iterator_traits<Iter>::reference>::type
 value_before(Iter i) {
   return i[-1];
 }
@@ -125,9 +128,10 @@ value_before(Iter i) {
  */
 template <class Iter>
 typename std::enable_if<
-  !std::is_same<typename std::iterator_traits<Iter>::iterator_category,
-                std::random_access_iterator_tag>::value,
-  typename std::iterator_traits<Iter>::reference>::type
+    !std::is_same<
+        typename std::iterator_traits<Iter>::iterator_category,
+        std::random_access_iterator_tag>::value,
+    typename std::iterator_traits<Iter>::reference>::type
 value_before(Iter i) {
   return *--i;
 }
@@ -136,7 +140,8 @@ value_before(Iter i) {
  * Use IsCharPointer<T>::type to enable const char* or char*.
  * Use IsCharPointer<T>::const_type to enable only const char*.
  */
-template <class T> struct IsCharPointer {};
+template <class T>
+struct IsCharPointer {};
 
 template <>
 struct IsCharPointer<char*> {
@@ -163,14 +168,13 @@ struct IsCharPointer<const char*> {
  * wouldn't.)
  */
 template <class Iter>
-class Range : private boost::totally_ordered<Range<Iter> > {
+class Range : private boost::totally_ordered<Range<Iter>> {
  public:
   typedef std::size_t size_type;
   typedef Iter iterator;
   typedef Iter const_iterator;
   typedef typename std::remove_reference<
-    typename std::iterator_traits<Iter>::reference>::type
-  value_type;
+      typename std::iterator_traits<Iter>::reference>::type value_type;
   using difference_type = typename std::iterator_traits<Iter>::difference_type;
   typedef typename std::iterator_traits<Iter>::reference reference;
 
@@ -181,35 +185,32 @@ class Range : private boost::totally_ordered<Range<Iter> > {
    * args which are const.
    */
   typedef typename std::conditional<
-    std::is_same<Iter, char*>::value
-      || std::is_same<Iter, unsigned char*>::value,
-    Range<const value_type*>,
-    Range<Iter>>::type const_range_type;
+      std::is_same<Iter, char*>::value ||
+          std::is_same<Iter, unsigned char*>::value,
+      Range<const value_type*>,
+      Range<Iter>>::type const_range_type;
 
   typedef std::char_traits<typename std::remove_const<value_type>::type>
-    traits_type;
+      traits_type;
 
   static const size_type npos;
 
   // Works for all iterators
-  constexpr Range() : b_(), e_() {
-  }
+  constexpr Range() : b_(), e_() {}
 
   constexpr Range(const Range&) = default;
   constexpr Range(Range&&) = default;
 
  public:
   // Works for all iterators
-  constexpr Range(Iter start, Iter end) : b_(start), e_(end) {
-  }
+  constexpr Range(Iter start, Iter end) : b_(start), e_(end) {}
 
   // Works only for random-access iterators
-  constexpr Range(Iter start, size_t size)
-      : b_(start), e_(start + size) { }
+  constexpr Range(Iter start, size_t size) : b_(start), e_(start + size) {}
 
-# if !__clang__ || __CLANG_PREREQ(3, 7) // Clang 3.6 crashes on this line
+#if !__clang__ || __CLANG_PREREQ(3, 7) // Clang 3.6 crashes on this line
   /* implicit */ Range(std::nullptr_t) = delete;
-# endif
+#endif
 
   template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
   constexpr /* implicit */ Range(Iter str)
@@ -229,9 +230,10 @@ class Range : private boost::totally_ordered<Range<Iter> > {
   }
 
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
-  Range(const std::string& str,
-        std::string::size_type startFrom,
-        std::string::size_type size) {
+  Range(
+      const std::string& str,
+      std::string::size_type startFrom,
+      std::string::size_type size) {
     if (UNLIKELY(startFrom > str.size())) {
       std::__throw_out_of_range("index out of range");
     }
@@ -243,15 +245,12 @@ class Range : private boost::totally_ordered<Range<Iter> > {
     }
   }
 
-  Range(const Range& other,
-        size_type first,
-        size_type length = npos)
-      : Range(other.subpiece(first, length))
-    { }
+  Range(const Range& other, size_type first, size_type length = npos)
+      : Range(other.subpiece(first, length)) {}
 
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   /* implicit */ Range(const fbstring& str)
-    : b_(str.data()), e_(b_ + str.size()) { }
+      : b_(str.data()), e_(b_ + str.size()) {}
 
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const fbstring& str, fbstring::size_type startFrom) {
@@ -263,8 +262,10 @@ class Range : private boost::totally_ordered<Range<Iter> > {
   }
 
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
-  Range(const fbstring& str, fbstring::size_type startFrom,
-        fbstring::size_type size) {
+  Range(
+      const fbstring& str,
+      fbstring::size_type startFrom,
+      fbstring::size_type size) {
     if (UNLIKELY(startFrom > str.size())) {
       std::__throw_out_of_range("index out of range");
     }
@@ -280,60 +281,70 @@ class Range : private boost::totally_ordered<Range<Iter> > {
   // Range<const unsigned char*> (aka ByteRange), as they're both frequently
   // used to represent ranges of bytes.  Allow explicit conversion in the other
   // direction.
-  template <class OtherIter, typename std::enable_if<
-      (std::is_same<Iter, const unsigned char*>::value &&
-       (std::is_same<OtherIter, const char*>::value ||
-        std::is_same<OtherIter, char*>::value)), int>::type = 0>
+  template <
+      class OtherIter,
+      typename std::enable_if<
+          (std::is_same<Iter, const unsigned char*>::value &&
+           (std::is_same<OtherIter, const char*>::value ||
+            std::is_same<OtherIter, char*>::value)),
+          int>::type = 0>
   /* implicit */ Range(const Range<OtherIter>& other)
-    : b_(reinterpret_cast<const unsigned char*>(other.begin())),
-      e_(reinterpret_cast<const unsigned char*>(other.end())) {
-  }
+      : b_(reinterpret_cast<const unsigned char*>(other.begin())),
+        e_(reinterpret_cast<const unsigned char*>(other.end())) {}
 
-  template <class OtherIter, typename std::enable_if<
-      (std::is_same<Iter, unsigned char*>::value &&
-       std::is_same<OtherIter, char*>::value), int>::type = 0>
+  template <
+      class OtherIter,
+      typename std::enable_if<
+          (std::is_same<Iter, unsigned char*>::value &&
+           std::is_same<OtherIter, char*>::value),
+          int>::type = 0>
   /* implicit */ Range(const Range<OtherIter>& other)
-    : b_(reinterpret_cast<unsigned char*>(other.begin())),
-      e_(reinterpret_cast<unsigned char*>(other.end())) {
-  }
+      : b_(reinterpret_cast<unsigned char*>(other.begin())),
+        e_(reinterpret_cast<unsigned char*>(other.end())) {}
 
-  template <class OtherIter, typename std::enable_if<
-      (std::is_same<Iter, const char*>::value &&
-       (std::is_same<OtherIter, const unsigned char*>::value ||
-        std::is_same<OtherIter, unsigned char*>::value)), int>::type = 0>
+  template <
+      class OtherIter,
+      typename std::enable_if<
+          (std::is_same<Iter, const char*>::value &&
+           (std::is_same<OtherIter, const unsigned char*>::value ||
+            std::is_same<OtherIter, unsigned char*>::value)),
+          int>::type = 0>
   explicit Range(const Range<OtherIter>& other)
-    : b_(reinterpret_cast<const char*>(other.begin())),
-      e_(reinterpret_cast<const char*>(other.end())) {
-  }
+      : b_(reinterpret_cast<const char*>(other.begin())),
+        e_(reinterpret_cast<const char*>(other.end())) {}
 
-  template <class OtherIter, typename std::enable_if<
-      (std::is_same<Iter, char*>::value &&
-       std::is_same<OtherIter, unsigned char*>::value), int>::type = 0>
+  template <
+      class OtherIter,
+      typename std::enable_if<
+          (std::is_same<Iter, char*>::value &&
+           std::is_same<OtherIter, unsigned char*>::value),
+          int>::type = 0>
   explicit Range(const Range<OtherIter>& other)
-    : b_(reinterpret_cast<char*>(other.begin())),
-      e_(reinterpret_cast<char*>(other.end())) {
-  }
+      : b_(reinterpret_cast<char*>(other.begin())),
+        e_(reinterpret_cast<char*>(other.end())) {}
 
   // Allow implicit conversion from Range<From> to Range<To> if From is
   // implicitly convertible to To.
-  template <class OtherIter, typename std::enable_if<
-     (!std::is_same<Iter, OtherIter>::value &&
-      std::is_convertible<OtherIter, Iter>::value), int>::type = 0>
+  template <
+      class OtherIter,
+      typename std::enable_if<
+          (!std::is_same<Iter, OtherIter>::value &&
+           std::is_convertible<OtherIter, Iter>::value),
+          int>::type = 0>
   constexpr /* implicit */ Range(const Range<OtherIter>& other)
-    : b_(other.begin()),
-      e_(other.end()) {
-  }
+      : b_(other.begin()), e_(other.end()) {}
 
   // Allow explicit conversion from Range<From> to Range<To> if From is
   // explicitly convertible to To.
-  template <class OtherIter, typename std::enable_if<
-    (!std::is_same<Iter, OtherIter>::value &&
-     !std::is_convertible<OtherIter, Iter>::value &&
-     std::is_constructible<Iter, const OtherIter&>::value), int>::type = 0>
+  template <
+      class OtherIter,
+      typename std::enable_if<
+          (!std::is_same<Iter, OtherIter>::value &&
+           !std::is_convertible<OtherIter, Iter>::value &&
+           std::is_constructible<Iter, const OtherIter&>::value),
+          int>::type = 0>
   constexpr explicit Range(const Range<OtherIter>& other)
-    : b_(other.begin()),
-      e_(other.end()) {
-  }
+      : b_(other.begin()), e_(other.end()) {}
 
   /**
    * Allow explicit construction of Range() from a std::array of a
@@ -435,11 +446,19 @@ class Range : private boost::totally_ordered<Range<Iter> > {
     return detail::value_before(e_);
   }
   // Works only for Range<const char*> and Range<char*>
-  std::string str() const { return std::string(b_, size()); }
-  std::string toString() const { return str(); }
+  std::string str() const {
+    return std::string(b_, size());
+  }
+  std::string toString() const {
+    return str();
+  }
   // Works only for Range<const char*> and Range<char*>
-  fbstring fbstr() const { return fbstring(b_, size()); }
-  fbstring toFbstring() const { return fbstr(); }
+  fbstring fbstr() const {
+    return fbstring(b_, size());
+  }
+  fbstring toFbstring() const {
+    return fbstr();
+  }
 
   const_range_type castToConst() const {
     return const_range_type(*this);
@@ -455,8 +474,9 @@ class Range : private boost::totally_ordered<Range<Iter> > {
       // We check the signed bit of the subtraction and bit shift it
       // to produce either 0 or 2. The subtraction yields the
       // comparison values of either -1 or 1.
-      r = (static_cast<int>(
-             (osize - tsize) >> (CHAR_BIT * sizeof(size_t) - 1)) << 1) - 1;
+      r = (static_cast<int>((osize - tsize) >> (CHAR_BIT * sizeof(size_t) - 1))
+           << 1) -
+          1;
     }
     return r;
   }
@@ -472,12 +492,16 @@ class Range : private boost::totally_ordered<Range<Iter> > {
   }
 
   value_type& at(size_t i) {
-    if (i >= size()) std::__throw_out_of_range("index out of range");
+    if (i >= size()) {
+      std::__throw_out_of_range("index out of range");
+    }
     return b_[i];
   }
 
   const value_type& at(size_t i) const {
-    if (i >= size()) std::__throw_out_of_range("index out of range");
+    if (i >= size()) {
+      std::__throw_out_of_range("index out of range");
+    }
     return b_[i];
   }
 
@@ -564,13 +588,17 @@ class Range : private boost::totally_ordered<Range<Iter> > {
   }
 
   size_type find(const_range_type str, size_t pos) const {
-    if (pos > size()) return std::string::npos;
+    if (pos > size()) {
+      return std::string::npos;
+    }
     size_t ret = qfind(castToConst().subpiece(pos), str);
     return ret == npos ? ret : ret + pos;
   }
 
   size_type find(Iter s, size_t pos, size_t n) const {
-    if (pos > size()) return std::string::npos;
+    if (pos > size()) {
+      return std::string::npos;
+    }
     auto forFinding = castToConst();
     size_t ret = qfind(
         pos ? forFinding.subpiece(pos) : forFinding, const_range_type(s, n));
@@ -584,7 +612,9 @@ class Range : private boost::totally_ordered<Range<Iter> > {
 
   // Works only for Range<(const) (unsigned) char*> which have Range(Iter) ctor
   size_type find(const Iter s, size_t pos) const {
-    if (pos > size()) return std::string::npos;
+    if (pos > size()) {
+      return std::string::npos;
+    }
     size_type ret = qfind(castToConst().subpiece(pos), const_range_type(s));
     return ret == npos ? ret : ret + pos;
   }
@@ -598,7 +628,9 @@ class Range : private boost::totally_ordered<Range<Iter> > {
   }
 
   size_type find(value_type c, size_t pos) const {
-    if (pos > size()) return std::string::npos;
+    if (pos > size()) {
+      return std::string::npos;
+    }
     size_type ret = qfind(castToConst().subpiece(pos), c);
     return ret == npos ? ret : ret + pos;
   }
@@ -608,7 +640,9 @@ class Range : private boost::totally_ordered<Range<Iter> > {
   }
 
   size_type find_first_of(const_range_type needles, size_t pos) const {
-    if (pos > size()) return std::string::npos;
+    if (pos > size()) {
+      return std::string::npos;
+    }
     size_type ret = qfind_first_of(castToConst().subpiece(pos), needles);
     return ret == npos ? ret : ret + pos;
   }
@@ -657,8 +691,8 @@ class Range : private boost::totally_ordered<Range<Iter> > {
    * Does this Range start with another range?
    */
   bool startsWith(const const_range_type& other) const {
-    return size() >= other.size()
-      && castToConst().subpiece(0, other.size()) == other;
+    return size() >= other.size() &&
+        castToConst().subpiece(0, other.size()) == other;
   }
   bool startsWith(value_type c) const {
     return !empty() && front() == c;
@@ -678,8 +712,8 @@ class Range : private boost::totally_ordered<Range<Iter> > {
    * Does this Range end with another range?
    */
   bool endsWith(const const_range_type& other) const {
-    return size() >= other.size()
-      && castToConst().subpiece(size() - other.size()) == other;
+    return size() >= other.size() &&
+        castToConst().subpiece(size() - other.size()) == other;
   }
   bool endsWith(value_type c) const {
     return !empty() && back() == c;
@@ -915,14 +949,16 @@ class Range : private boost::totally_ordered<Range<Iter> > {
    * @author: Marcelo Juchem <marcelo@fb.com>
    */
   template <typename TProcess, typename... Args>
-  auto split_step(value_type delimiter, TProcess &&process, Args &&...args)
-    -> decltype(process(std::declval<Range>(), std::forward<Args>(args)...))
-  { return process(split_step(delimiter), std::forward<Args>(args)...); }
+  auto split_step(value_type delimiter, TProcess&& process, Args&&... args)
+      -> decltype(process(std::declval<Range>(), std::forward<Args>(args)...)) {
+    return process(split_step(delimiter), std::forward<Args>(args)...);
+  }
 
   template <typename TProcess, typename... Args>
-  auto split_step(Range delimiter, TProcess &&process, Args &&...args)
-    -> decltype(process(std::declval<Range>(), std::forward<Args>(args)...))
-  { return process(split_step(delimiter), std::forward<Args>(args)...); }
+  auto split_step(Range delimiter, TProcess&& process, Args&&... args)
+      -> decltype(process(std::declval<Range>(), std::forward<Args>(args)...)) {
+    return process(split_step(delimiter), std::forward<Args>(args)...);
+  }
 
  private:
   Iter b_, e_;
@@ -1010,12 +1046,10 @@ namespace detail {
 template <class A, class B>
 struct ComparableAsStringPiece {
   enum {
-    value =
-    (std::is_convertible<A, StringPiece>::value
-     && std::is_same<B, StringPiece>::value)
-    ||
-    (std::is_convertible<B, StringPiece>::value
-     && std::is_same<A, StringPiece>::value)
+    value = (std::is_convertible<A, StringPiece>::value &&
+             std::is_same<B, StringPiece>::value) ||
+        (std::is_convertible<B, StringPiece>::value &&
+         std::is_same<A, StringPiece>::value)
   };
 };
 
@@ -1025,8 +1059,7 @@ struct ComparableAsStringPiece {
  * operator== through conversion for Range<const char*>
  */
 template <class T, class U>
-typename
-std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
 operator==(const T& lhs, const U& rhs) {
   return StringPiece(lhs) == StringPiece(rhs);
 }
@@ -1035,8 +1068,7 @@ operator==(const T& lhs, const U& rhs) {
  * operator< through conversion for Range<const char*>
  */
 template <class T, class U>
-typename
-std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
 operator<(const T& lhs, const U& rhs) {
   return StringPiece(lhs) < StringPiece(rhs);
 }
@@ -1045,8 +1077,7 @@ operator<(const T& lhs, const U& rhs) {
  * operator> through conversion for Range<const char*>
  */
 template <class T, class U>
-typename
-std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
 operator>(const T& lhs, const U& rhs) {
   return StringPiece(lhs) > StringPiece(rhs);
 }
@@ -1055,8 +1086,7 @@ operator>(const T& lhs, const U& rhs) {
  * operator< through conversion for Range<const char*>
  */
 template <class T, class U>
-typename
-std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
 operator<=(const T& lhs, const U& rhs) {
   return StringPiece(lhs) <= StringPiece(rhs);
 }
@@ -1065,8 +1095,7 @@ operator<=(const T& lhs, const U& rhs) {
  * operator> through conversion for Range<const char*>
  */
 template <class T, class U>
-typename
-std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
 operator>=(const T& lhs, const U& rhs) {
   return StringPiece(lhs) >= StringPiece(rhs);
 }
@@ -1075,16 +1104,16 @@ operator>=(const T& lhs, const U& rhs) {
  * Finds substrings faster than brute force by borrowing from Boyer-Moore
  */
 template <class Iter, class Comp>
-size_t qfind(const Range<Iter>& haystack,
-             const Range<Iter>& needle,
-             Comp eq) {
+size_t qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq) {
   // Don't use std::search, use a Boyer-Moore-like trick by comparing
   // the last characters first
   auto const nsize = needle.size();
   if (haystack.size() < nsize) {
     return std::string::npos;
   }
-  if (!nsize) return 0;
+  if (!nsize) {
+    return 0;
+  }
   auto const nsize_1 = nsize - 1;
   auto const lastNeedle = needle[nsize_1];
 
@@ -1106,7 +1135,7 @@ size_t qfind(const Range<Iter>& haystack,
     }
     // Here we know that the last char matches
     // Continue in pedestrian mode
-    for (size_t j = 0; ; ) {
+    for (size_t j = 0;;) {
       assert(j < nsize);
       if (!eq(i[j], needle[j])) {
         // Not found, we can skip
@@ -1132,23 +1161,24 @@ size_t qfind(const Range<Iter>& haystack,
 
 namespace detail {
 
-inline size_t qfind_first_byte_of(const StringPiece haystack,
-                                  const StringPiece needles) {
-  static auto const qfind_first_byte_of_fn =
-    folly::CpuId().sse42() ? qfind_first_byte_of_sse42
-                           : qfind_first_byte_of_nosse;
+inline size_t qfind_first_byte_of(
+    const StringPiece haystack,
+    const StringPiece needles) {
+  static auto const qfind_first_byte_of_fn = folly::CpuId().sse42()
+      ? qfind_first_byte_of_sse42
+      : qfind_first_byte_of_nosse;
   return qfind_first_byte_of_fn(haystack, needles);
 }
 
 } // namespace detail
 
 template <class Iter, class Comp>
-size_t qfind_first_of(const Range<Iter> & haystack,
-                      const Range<Iter> & needles,
-                      Comp eq) {
-  auto ret = std::find_first_of(haystack.begin(), haystack.end(),
-                                needles.begin(), needles.end(),
-                                eq);
+size_t qfind_first_of(
+    const Range<Iter>& haystack,
+    const Range<Iter>& needles,
+    Comp eq) {
+  auto ret = std::find_first_of(
+      haystack.begin(), haystack.end(), needles.begin(), needles.end(), eq);
   return ret == haystack.end() ? std::string::npos : ret - haystack.begin();
 }
 
@@ -1166,24 +1196,30 @@ struct AsciiCaseSensitive {
 struct AsciiCaseInsensitive {
   bool operator()(char lhs, char rhs) const {
     char k = lhs ^ rhs;
-    if (k == 0) return true;
-    if (k != 32) return false;
+    if (k == 0) {
+      return true;
+    }
+    if (k != 32) {
+      return false;
+    }
     k = lhs | rhs;
     return (k >= 'a' && k <= 'z');
   }
 };
 
 template <class Iter>
-size_t qfind(const Range<Iter>& haystack,
-             const typename Range<Iter>::value_type& needle) {
+size_t qfind(
+    const Range<Iter>& haystack,
+    const typename Range<Iter>::value_type& needle) {
   auto pos = std::find(haystack.begin(), haystack.end(), needle);
   return pos == haystack.end() ? std::string::npos : pos - haystack.data();
 }
 
 template <class Iter>
-size_t rfind(const Range<Iter>& haystack,
-             const typename Range<Iter>::value_type& needle) {
-  for (auto i = haystack.size(); i-- > 0; ) {
+size_t rfind(
+    const Range<Iter>& haystack,
+    const typename Range<Iter>::value_type& needle) {
+  for (auto i = haystack.size(); i-- > 0;) {
     if (haystack[i] == needle) {
       return i;
     }
@@ -1199,7 +1235,7 @@ inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
     return std::string::npos;
   }
   auto pos = static_cast<const char*>(
-    ::memchr(haystack.data(), needle, haystack.size()));
+      ::memchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
@@ -1210,62 +1246,66 @@ inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
     return std::string::npos;
   }
   auto pos = static_cast<const char*>(
-    ::memrchr(haystack.data(), needle, haystack.size()));
+      ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
 // specialization for ByteRange
 template <>
-inline size_t qfind(const Range<const unsigned char*>& haystack,
-                    const unsigned char& needle) {
+inline size_t qfind(
+    const Range<const unsigned char*>& haystack,
+    const unsigned char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
   if (haystack.empty()) {
     return std::string::npos;
   }
   auto pos = static_cast<const unsigned char*>(
-    ::memchr(haystack.data(), needle, haystack.size()));
+      ::memchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
 template <>
-inline size_t rfind(const Range<const unsigned char*>& haystack,
-                    const unsigned char& needle) {
+inline size_t rfind(
+    const Range<const unsigned char*>& haystack,
+    const unsigned char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
   if (haystack.empty()) {
     return std::string::npos;
   }
   auto pos = static_cast<const unsigned char*>(
-    ::memrchr(haystack.data(), needle, haystack.size()));
+      ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
 template <class Iter>
-size_t qfind_first_of(const Range<Iter>& haystack,
-                      const Range<Iter>& needles) {
+size_t qfind_first_of(const Range<Iter>& haystack, const Range<Iter>& needles) {
   return qfind_first_of(haystack, needles, AsciiCaseSensitive());
 }
 
 // specialization for StringPiece
 template <>
-inline size_t qfind_first_of(const Range<const char*>& haystack,
-                             const Range<const char*>& needles) {
+inline size_t qfind_first_of(
+    const Range<const char*>& haystack,
+    const Range<const char*>& needles) {
   return detail::qfind_first_byte_of(haystack, needles);
 }
 
 // specialization for ByteRange
 template <>
-inline size_t qfind_first_of(const Range<const unsigned char*>& haystack,
-                             const Range<const unsigned char*>& needles) {
-  return detail::qfind_first_byte_of(StringPiece(haystack),
-                                     StringPiece(needles));
+inline size_t qfind_first_of(
+    const Range<const unsigned char*>& haystack,
+    const Range<const unsigned char*>& needles) {
+  return detail::qfind_first_byte_of(
+      StringPiece(haystack), StringPiece(needles));
 }
 
 template <class Key, class Enable>
 struct hasher;
 
 template <class T>
-struct hasher<folly::Range<T*>,
-              typename std::enable_if<std::is_pod<T>::value, void>::type> {
+struct hasher<
+    folly::Range<T*>,
+    typename std::enable_if<std::is_pod<T>::value, void>::type> {
   size_t operator()(folly::Range<T*> r) const {
     return hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0);
   }
@@ -1274,12 +1314,15 @@ struct hasher<folly::Range<T*>,
 /**
  * Ubiquitous helper template for knowing what's a string
  */
-template <class T> struct IsSomeString {
-  enum { value = std::is_same<T, std::string>::value
-         || std::is_same<T, fbstring>::value };
+template <class T>
+struct IsSomeString {
+  enum {
+    value =
+        std::is_same<T, std::string>::value || std::is_same<T, fbstring>::value
+  };
 };
 
-}  // !namespace folly
+} // namespace folly
 
 FOLLY_POP_WARNING
 
