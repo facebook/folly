@@ -87,7 +87,7 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
   // Allow addresses surrounded in brackets
   if (ip.size() < 2) {
     throw IPAddressFormatException(
-        to<std::string>("Invalid IPv6 address '", ip, "': address too short"));
+        sformat("Invalid IPv6 address '{}': address too short", ip));
   }
   if (ip.front() == '[' && ip.back() == ']') {
     ip = ip.substr(1, ip.size() - 2);
@@ -105,8 +105,7 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
     scope_ = uint16_t(ipAddr->sin6_scope_id);
     freeaddrinfo(result);
   } else {
-    throw IPAddressFormatException(
-        to<std::string>("Invalid IPv6 address '", ip, "'"));
+    throw IPAddressFormatException(sformat("Invalid IPv6 address '{}'", ip));
   }
 }
 
@@ -177,9 +176,8 @@ Optional<MacAddress> IPAddressV6::getMacAddressFromLinkLocal() const {
 
 void IPAddressV6::setFromBinary(ByteRange bytes) {
   if (bytes.size() != 16) {
-    throw IPAddressFormatException(to<std::string>(
-        "Invalid IPv6 binary data: length must ",
-        "be 16 bytes, got ",
+    throw IPAddressFormatException(sformat(
+        "Invalid IPv6 binary data: length must be 16 bytes, got {}",
         bytes.size()));
   }
   memcpy(&addr_.in6Addr_.s6_addr, bytes.data(), sizeof(in6_addr));
@@ -243,8 +241,8 @@ static inline void unpackInto(const unsigned char* src,
 // public
 IPAddressV4 IPAddressV6::getIPv4For6To4() const {
   if (!is6To4()) {
-    throw IPAddressV6::TypeError(format(
-            "Invalid IP '{}': not a 6to4 address", str()).str());
+    throw IPAddressV6::TypeError(
+        sformat("Invalid IP '{}': not a 6to4 address", str()));
   }
   // convert 16x8 bytes into first 4x16 bytes
   uint16_t ints[4] = {0,0,0,0};
@@ -299,8 +297,7 @@ IPAddressV6::Type IPAddressV6::type() const {
 
 // public
 string IPAddressV6::toJson() const {
-  return format(
-      "{{family:'AF_INET6', addr:'{}', hash:{}}}", str(), hash()).str();
+  return sformat("{{family:'AF_INET6', addr:'{}', hash:{}}}", str(), hash());
 }
 
 // public
@@ -323,8 +320,8 @@ bool IPAddressV6::inSubnet(StringPiece cidrNetwork) const {
   auto subnetInfo = IPAddress::createNetwork(cidrNetwork);
   auto addr = subnetInfo.first;
   if (!addr.isV6()) {
-    throw IPAddressFormatException(to<std::string>(
-        "Address '", addr.toJson(), "' ", "is not a V6 address"));
+    throw IPAddressFormatException(
+        sformat("Address '{}' is not a V6 address", addr.toJson()));
   }
   return inSubnetWithMask(addr.asV6(), fetchMask(subnetInfo.second));
 }
@@ -408,7 +405,7 @@ IPAddressV6 IPAddressV6::mask(size_t numBits) const {
   static const auto bits = bitCount();
   if (numBits > bits) {
     throw IPAddressFormatException(
-        to<std::string>("numBits(", numBits, ") > bitCount(", bits, ")"));
+        sformat("numBits({}) > bitCount({})", numBits, bits));
   }
   ByteArray16 ba = detail::Bytes::mask(fetchMask(numBits), addr_.bytes_);
   return IPAddressV6(ba);
@@ -419,12 +416,9 @@ string IPAddressV6::str() const {
   char buffer[INET6_ADDRSTRLEN + IFNAMSIZ + 1];
 
   if (!inet_ntop(AF_INET6, toAddr().s6_addr, buffer, INET6_ADDRSTRLEN)) {
-    throw IPAddressFormatException(to<std::string>(
-        "Invalid address with hex ",
-        "'",
+    throw IPAddressFormatException(sformat(
+        "Invalid address with hex '{}' with error {}",
         detail::Bytes::toHex(bytes(), 16),
-        "'",
-        " with error ",
         strerror(errno)));
   }
 
@@ -472,8 +466,9 @@ string IPAddressV6::toInverseArpaName() const {
 uint8_t IPAddressV6::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {
-    throw std::invalid_argument(to<string>("Byte index must be <= ",
-        to<string>(highestIndex), " for addresses of type :",
+    throw std::invalid_argument(sformat(
+        "Byte index must be <= {} for addresses of type: {}",
+        highestIndex,
         detail::familyNameStr(AF_INET6)));
   }
   return bytes()[byteIndex];

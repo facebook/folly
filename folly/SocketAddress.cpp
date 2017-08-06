@@ -31,6 +31,7 @@
 
 #include <folly/CppAttributes.h>
 #include <folly/Exception.h>
+#include <folly/Format.h>
 #include <folly/Hash.h>
 
 namespace {
@@ -625,9 +626,11 @@ struct addrinfo* SocketAddress::getAddrInfo(const char* host,
   struct addrinfo *results;
   int error = getaddrinfo(host, port, &hints, &results);
   if (error != 0) {
-    auto os = folly::to<std::string>(
-      "Failed to resolve address for \"", host,  "\": ",
-      gai_strerror(error), " (error=", error,  ")");
+    auto os = folly::sformat(
+        "Failed to resolve address for '{}': {} (error={})",
+        host,
+        gai_strerror(error),
+        error);
     throw std::system_error(error, std::generic_category(), os);
   }
 
@@ -685,9 +688,8 @@ void SocketAddress::getIpString(char *buf, size_t buflen, int flags) const {
   int rc = getnameinfo((sockaddr*)&tmp_sock, sizeof(sockaddr_storage),
                        buf, buflen, nullptr, 0, flags);
   if (rc != 0) {
-    auto os = folly::to<std::string>(
-      "getnameinfo() failed in getIpString() error = ",
-      gai_strerror(rc));
+    auto os = sformat(
+        "getnameinfo() failed in getIpString() error = {}", gai_strerror(rc));
     throw std::system_error(rc, std::generic_category(), os);
   }
 }

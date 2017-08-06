@@ -74,7 +74,7 @@ uint32_t IPAddressV4::toLong(StringPiece ip) {
   in_addr addr;
   if (inet_pton(AF_INET, str.c_str(), &addr) != 1) {
     throw IPAddressFormatException(
-        to<std::string>("Can't convert invalid IP '", ip, "' ", "to long"));
+        sformat("Can't convert invalid IP '{}' to long", ip));
   }
   return addr.s_addr;
 }
@@ -100,8 +100,7 @@ IPAddressV4::IPAddressV4(StringPiece addr)
 {
   auto ip = addr.str();
   if (inet_pton(AF_INET, ip.c_str(), &addr_.inAddr_) != 1) {
-    throw IPAddressFormatException(
-        to<std::string>("Invalid IPv4 address '", addr, "'"));
+    throw IPAddressFormatException(sformat("Invalid IPv4 address '{}'", addr));
   }
 }
 
@@ -114,9 +113,8 @@ IPAddressV4::IPAddressV4(const in_addr src)
 // public
 void IPAddressV4::setFromBinary(ByteRange bytes) {
   if (bytes.size() != 4) {
-    throw IPAddressFormatException(to<std::string>(
-        "Invalid IPv4 binary data: length must ",
-        "be 4 bytes, got ",
+    throw IPAddressFormatException(sformat(
+        "Invalid IPv4 binary data: length must be 4 bytes, got {}",
         bytes.size()));
   }
   memcpy(&addr_.inAddr_.s_addr, bytes.data(), sizeof(in_addr));
@@ -159,8 +157,7 @@ IPAddressV6 IPAddressV4::getIPv6For6To4() const {
 
 // public
 string IPAddressV4::toJson() const {
-  return format(
-      "{{family:'AF_INET', addr:'{}', hash:{}}}", str(), hash()).str();
+  return sformat("{{family:'AF_INET', addr:'{}', hash:{}}}", str(), hash());
 }
 
 // public
@@ -168,8 +165,8 @@ bool IPAddressV4::inSubnet(StringPiece cidrNetwork) const {
   auto subnetInfo = IPAddress::createNetwork(cidrNetwork);
   auto addr = subnetInfo.first;
   if (!addr.isV4()) {
-    throw IPAddressFormatException(to<std::string>(
-        "Address '", addr.toJson(), "' ", "is not a V4 address"));
+    throw IPAddressFormatException(
+        sformat("Address '{}' is not a V4 address", addr.toJson()));
   }
   return inSubnetWithMask(addr.asV4(), fetchMask(subnetInfo.second));
 }
@@ -229,7 +226,7 @@ IPAddressV4 IPAddressV4::mask(size_t numBits) const {
   static const auto bits = bitCount();
   if (numBits > bits) {
     throw IPAddressFormatException(
-        to<std::string>("numBits(", numBits, ") > bitsCount(", bits, ")"));
+        sformat("numBits({}) > bitsCount({})", numBits, bits));
   }
 
   ByteArray4 ba = detail::Bytes::mask(fetchMask(numBits), addr_.bytes_);
@@ -260,8 +257,9 @@ string IPAddressV4::toInverseArpaName() const {
 uint8_t IPAddressV4::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {
-    throw std::invalid_argument(to<string>("Byte index must be <= ",
-        to<string>(highestIndex), " for addresses of type :",
+    throw std::invalid_argument(sformat(
+        "Byte index must be <= {} for addresses of type: {}",
+        highestIndex,
         detail::familyNameStr(AF_INET)));
   }
   return bytes()[byteIndex];
@@ -270,8 +268,7 @@ uint8_t IPAddressV4::getNthMSByte(size_t byteIndex) const {
 const ByteArray4 IPAddressV4::fetchMask(size_t numBits) {
   static const size_t bits = bitCount();
   if (numBits > bits) {
-    throw IPAddressFormatException(
-        to<std::string>("IPv4 addresses are 32 bits"));
+    throw IPAddressFormatException("IPv4 addresses are 32 bits");
   }
   auto const val = Endian::big(uint32_t(~uint64_t(0) << (32 - numBits)));
   ByteArray4 arr;

@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include <folly/Conv.h>
+#include <folly/Format.h>
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
 
@@ -81,12 +81,9 @@ CIDRNetwork IPAddress::createNetwork(StringPiece ipSlashCidr,
 
   if (elemCount == 0 || // weird invalid string
       elemCount > 2) { // invalid string (IP/CIDR/extras)
-    throw IPAddressFormatException(to<std::string>(
-        "Invalid ipSlashCidr specified. ",
-        "Expected IP/CIDR format, got ",
-        "'",
-        ipSlashCidr,
-        "'"));
+    throw IPAddressFormatException(sformat(
+        "Invalid ipSlashCidr specified. Expected IP/CIDR format, got '{}'",
+        ipSlashCidr));
   }
   IPAddress subnet(vec.at(0));
   auto cidr =
@@ -97,25 +94,21 @@ CIDRNetwork IPAddress::createNetwork(StringPiece ipSlashCidr,
       cidr = to<uint8_t>(vec.at(1));
     } catch (...) {
       throw IPAddressFormatException(
-          to<std::string>("Mask value ", "'", vec.at(1), "' not a valid mask"));
+          sformat("Mask value '{}' not a valid mask", vec.at(1)));
     }
   }
   if (cidr > subnet.bitCount()) {
-    throw IPAddressFormatException(to<std::string>(
-        "CIDR value '",
+    throw IPAddressFormatException(sformat(
+        "CIDR value '{}' is > network bit count '{}'",
         cidr,
-        "' ",
-        "is > network bit count ",
-        "'",
-        subnet.bitCount(),
-        "'"));
+        subnet.bitCount()));
   }
   return std::make_pair(applyMask ? subnet.mask(cidr) : subnet, cidr);
 }
 
 // public static
 std::string IPAddress::networkToString(const CIDRNetwork& network) {
-  return network.first.str() + "/" + folly::to<std::string>(network.second);
+  return sformat("{}/{}", network.first.str(), network.second);
 }
 
 // public static
@@ -127,7 +120,7 @@ IPAddress IPAddress::fromBinary(ByteRange bytes) {
   } else {
     string hexval = detail::Bytes::toHex(bytes.data(), bytes.size());
     throw IPAddressFormatException(
-        to<std::string>("Invalid address with hex value ", "'", hexval, "'"));
+        sformat("Invalid address with hex value '{}'", hexval));
   }
 }
 
@@ -153,8 +146,7 @@ IPAddress::IPAddress(StringPiece addr)
 {
   string ip = addr.str();  // inet_pton() needs NUL-terminated string
   auto throwFormatException = [&](const string& msg) {
-    throw IPAddressFormatException(
-        to<std::string>("Invalid IP '", ip, "': ", msg));
+    throw IPAddressFormatException(sformat("Invalid IP '{}': {}", ip, msg));
   };
 
   if (ip.size() < 2) {
@@ -333,8 +325,9 @@ bool IPAddress::inSubnetWithMask(const IPAddress& subnet,
 uint8_t IPAddress::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {
-    throw std::invalid_argument(to<string>("Byte index must be <= ",
-        to<string>(highestIndex), " for addresses of type :",
+    throw std::invalid_argument(sformat(
+        "Byte index must be <= {} for addresses of type: {}",
+        highestIndex,
         detail::familyNameStr(family())));
   }
   if (isV4()) {
@@ -402,10 +395,11 @@ bool operator<(const IPAddress& addr1, const IPAddress& addr2) {
 CIDRNetwork
 IPAddress::longestCommonPrefix(const CIDRNetwork& one, const CIDRNetwork& two) {
   if (one.first.family() != two.first.family()) {
-      throw std::invalid_argument(to<string>("Can't compute "
-            "longest common prefix between addresses of different families. "
-            "Passed: ", detail::familyNameStr(one.first.family()), " and ",
-            detail::familyNameStr(two.first.family())));
+    throw std::invalid_argument(sformat(
+        "Can't compute longest common prefix between addresses of different"
+        "families. Passed: {} and {}",
+        detail::familyNameStr(one.first.family()),
+        detail::familyNameStr(two.first.family())));
   }
   if (one.first.isV4()) {
     auto prefix = IPAddressV4::longestCommonPrefix(
@@ -424,14 +418,14 @@ IPAddress::longestCommonPrefix(const CIDRNetwork& one, const CIDRNetwork& two) {
 
 [[noreturn]] void IPAddress::asV4Throw() const {
   auto fam = detail::familyNameStr(family());
-  throw InvalidAddressFamilyException(to<std::string>(
-      "Can't convert address with family ", fam, " to AF_INET address"));
+  throw InvalidAddressFamilyException(
+      sformat("Can't convert address with family {} to AF_INET address", fam));
 }
 
 [[noreturn]] void IPAddress::asV6Throw() const {
   auto fam = detail::familyNameStr(family());
-  throw InvalidAddressFamilyException(to<std::string>(
-      "Can't convert address with family ", fam, " to AF_INET6 address"));
+  throw InvalidAddressFamilyException(
+      sformat("Can't convert address with family {} to AF_INET6 address", fam));
 }
 
 } // namespace folly

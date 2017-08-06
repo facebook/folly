@@ -19,6 +19,7 @@
 #include <ostream>
 
 #include <folly/Exception.h>
+#include <folly/Format.h>
 #include <folly/IPAddressV6.h>
 #include <folly/String.h>
 
@@ -80,24 +81,24 @@ void MacAddress::parse(StringPiece str) {
   auto p = str.begin();
   for (unsigned int byteIndex = 0; byteIndex < SIZE; ++byteIndex) {
     if (p == str.end()) {
-      throw invalid_argument(to<string>("invalid MAC address \"", str,
-                                        "\": not enough digits"));
+      throw invalid_argument(
+          sformat("invalid MAC address '{}': not enough digits", str));
     }
 
     // Skip over ':' or '-' separators between bytes
     if (byteIndex != 0 && isSeparatorChar(*p)) {
       ++p;
       if (p == str.end()) {
-        throw invalid_argument(to<string>("invalid MAC address \"", str,
-                                          "\": not enough digits"));
+        throw invalid_argument(
+            sformat("invalid MAC address '{}': not enough digits", str));
       }
     }
 
     // Parse the upper nibble
     uint8_t upper = detail::hexTable[static_cast<uint8_t>(*p)];
     if (upper & 0x10) {
-      throw invalid_argument(to<string>("invalid MAC address \"", str,
-                                        "\": contains non-hex digit"));
+      throw invalid_argument(
+          sformat("invalid MAC address '{}': contains non-hex digit", str));
     }
     ++p;
 
@@ -115,8 +116,8 @@ void MacAddress::parse(StringPiece str) {
           lower = upper;
           upper = 0;
         } else {
-          throw invalid_argument(to<string>("invalid MAC address \"", str,
-                                            "\": contains non-hex digit"));
+          throw invalid_argument(
+              sformat("invalid MAC address '{}': contains non-hex digit", str));
         }
       }
       ++p;
@@ -128,8 +129,8 @@ void MacAddress::parse(StringPiece str) {
 
   if (p != str.end()) {
     // String is too long to be a MAC address
-    throw invalid_argument(to<string>("invalid MAC address \"", str,
-                                      "\": found trailing characters"));
+    throw invalid_argument(
+        sformat("invalid MAC address '{}': found trailing characters", str));
   }
 
   // Only update now that we have successfully parsed the entire
@@ -139,8 +140,8 @@ void MacAddress::parse(StringPiece str) {
 
 void MacAddress::setFromBinary(ByteRange value) {
   if (value.size() != SIZE) {
-    throw invalid_argument(to<string>("MAC address must be 6 bytes "
-                                      "long, got ", value.size()));
+    throw invalid_argument(
+        sformat("MAC address must be 6 bytes long, got ", value.size()));
   }
   memcpy(bytes_ + 2, value.begin(), SIZE);
 }

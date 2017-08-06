@@ -781,8 +781,7 @@ TEST(IPAddress, V6Types) {
         EXPECT_FALSE(ipv6.isTeredo()) << "isTeredo was true";
         break;
       default:
-        throw std::range_error("Invalid expected type: " +
-                               folly::to<std::string>(tc.second));
+        FAIL() << "Invalid expected type: " << to<std::string>(tc.second);
     }
   }
 }

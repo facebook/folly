@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Conv.h>
+#include <folly/Format.h>
 #include <folly/IPAddress.h>
 
 #include <glog/logging.h>
@@ -50,7 +50,7 @@ BENCHMARK_DRAW_LINE()
 BENCHMARK(ipv4_to_fully_qualified_port, iters) {
   IPAddressV4 ip("255.255.255.255");
   while (iters--) {
-    string outputString = to<std::string>(ip.toFullyQualified(), ':', 65535);
+    string outputString = folly::sformat("{}:{}", ip.toFullyQualified(), 65535);
     folly::doNotOptimizeAway(outputString);
     folly::doNotOptimizeAway(outputString.data());
   }
@@ -99,7 +99,7 @@ BENCHMARK_DRAW_LINE()
 BENCHMARK(ipv6_to_fully_qualified_port, iters) {
   IPAddressV6 ip("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
   while (iters--) {
-    string outputString = to<std::string>(ip.toFullyQualified(), ':', 65535);
+    string outputString = folly::sformat("{}:{}", ip.toFullyQualified(), 65535);
     folly::doNotOptimizeAway(outputString);
     folly::doNotOptimizeAway(outputString.data());
   }

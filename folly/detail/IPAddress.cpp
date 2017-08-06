@@ -21,14 +21,13 @@
 namespace folly { namespace detail {
 
 std::string familyNameStrDefault(sa_family_t family) {
-  return folly::sformat("sa_family_t({})", folly::to<std::string>(family));
+  return sformat("sa_family_t({})", family);
 }
 
 [[noreturn]] void getNthMSBitImplThrow(size_t bitCount, sa_family_t family) {
-  throw std::invalid_argument(folly::to<std::string>(
-      "Bit index must be < ",
+  throw std::invalid_argument(sformat(
+      "Bit index must be < {} for addresses of type: {}",
       bitCount,
-      " for addresses of type :",
       familyNameStr(family)));
 }
 

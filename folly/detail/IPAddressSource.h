@@ -24,7 +24,7 @@
 #include <string>
 #include <type_traits>
 
-#include <folly/Conv.h>
+#include <folly/Format.h>
 #include <folly/detail/IPAddress.h>
 
 // BSDish platforms don't provide standard access to s6_addr16
@@ -74,11 +74,9 @@ struct Bytes {
         0xff // /8
     }};
     if (oneMask > kBitCount || twoMask > kBitCount) {
-      throw std::invalid_argument(folly::to<std::string>(
-          "Invalid mask "
-          "length: ",
-          oneMask > twoMask ? oneMask : twoMask,
-          ". Mask length must be <= ",
+      throw std::invalid_argument(sformat(
+          "Invalid mask length: {}. Mask length must be <= {}",
+          std::max(oneMask, twoMask),
           kBitCount));
     }
 
