@@ -366,6 +366,7 @@ template <class T>
 template <class F>
 typename std::enable_if<
     !futures::detail::callableWith<F, exception_wrapper>::value &&
+        !futures::detail::callableWith<F, exception_wrapper&>::value &&
         !futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
 Future<T>::onError(F&& func) {
@@ -398,6 +399,7 @@ template <class T>
 template <class F>
 typename std::enable_if<
     !futures::detail::callableWith<F, exception_wrapper>::value &&
+        !futures::detail::callableWith<F, exception_wrapper&>::value &&
         futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
 Future<T>::onError(F&& func) {
