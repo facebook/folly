@@ -1357,3 +1357,21 @@ TEST(Range, ConstexprAccessors) {
   static_assert(*piece.begin() == 'h', "");
   static_assert(*(piece.end() - 1) == '\0', "");
 }
+
+TEST(Range, LiteralSuffix) {
+  constexpr auto literalPiece = "hello"_sp;
+  constexpr StringPiece piece = "hello";
+  EXPECT_EQ(literalPiece, piece);
+  constexpr auto literalPiece8 = u8"hello"_sp;
+  constexpr Range<char const*> piece8 = u8"hello";
+  EXPECT_EQ(literalPiece8, piece8);
+  constexpr auto literalPiece16 = u"hello"_sp;
+  constexpr Range<char16_t const*> piece16{u"hello", 5};
+  EXPECT_EQ(literalPiece16, piece16);
+  constexpr auto literalPiece32 = U"hello"_sp;
+  constexpr Range<char32_t const*> piece32{U"hello", 5};
+  EXPECT_EQ(literalPiece32, piece32);
+  constexpr auto literalPieceW = L"hello"_sp;
+  constexpr Range<wchar_t const*> pieceW{L"hello", 5};
+  EXPECT_EQ(literalPieceW, pieceW);
+}

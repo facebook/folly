@@ -1322,6 +1322,40 @@ struct IsSomeString {
   };
 };
 
+/**
+ * _sp is a user-defined literal suffix to make an appropriate Range
+ * specialization from a literal string.
+ *
+ * Modeled after C++17's `sv` suffix.
+ */
+inline namespace literals {
+inline namespace string_piece_literals {
+constexpr Range<char const*> operator"" _sp(
+    char const* str,
+    size_t len) noexcept {
+  return Range<char const*>(str, len);
+}
+
+constexpr Range<char16_t const*> operator"" _sp(
+    char16_t const* str,
+    size_t len) noexcept {
+  return Range<char16_t const*>(str, len);
+}
+
+constexpr Range<char32_t const*> operator"" _sp(
+    char32_t const* str,
+    size_t len) noexcept {
+  return Range<char32_t const*>(str, len);
+}
+
+constexpr Range<wchar_t const*> operator"" _sp(
+    wchar_t const* str,
+    size_t len) noexcept {
+  return Range<wchar_t const*>(str, len);
+}
+} // inline namespace string_piece_literals
+} // inline namespace literals
+
 } // namespace folly
 
 FOLLY_POP_WARNING
