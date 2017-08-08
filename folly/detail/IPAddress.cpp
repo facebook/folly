@@ -18,7 +18,8 @@
 
 #include <folly/Format.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 std::string familyNameStrDefault(sa_family_t family) {
   return sformat("sa_family_t({})", family);
@@ -30,5 +31,5 @@ std::string familyNameStrDefault(sa_family_t family) {
       bitCount,
       familyNameStr(family)));
 }
-
-}}
+} // namespace detail
+} // namespace folly

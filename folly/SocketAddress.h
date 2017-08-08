@@ -47,8 +47,7 @@ class SocketAddress {
    *        This is potentially a very slow operation, so is disabled by
    *        default.
    */
-  SocketAddress(const char* host, uint16_t port,
-                 bool allowNameLookup = false) {
+  SocketAddress(const char* host, uint16_t port, bool allowNameLookup = false) {
     // Initialize the address family first,
     // since setFromHostPort() and setFromIpPort() will check it.
 
@@ -59,8 +58,10 @@ class SocketAddress {
     }
   }
 
-  SocketAddress(const std::string& host, uint16_t port,
-                 bool allowNameLookup = false) {
+  SocketAddress(
+      const std::string& host,
+      uint16_t port,
+      bool allowNameLookup = false) {
     // Initialize the address family first,
     // since setFromHostPort() and setFromIpPort() will check it.
 
@@ -342,8 +343,7 @@ class SocketAddress {
    *                 enough for the full address type required by
    *                 address->sa_family.
    */
-  void setFromSockaddr(const struct sockaddr* address,
-                       socklen_t addrlen);
+  void setFromSockaddr(const struct sockaddr* address, socklen_t addrlen);
 
   /**
    * Initialize this SocketAddress from a struct sockaddr_in.
@@ -367,9 +367,7 @@ class SocketAddress {
    *                 the valid bytes of sun_path, not including any NUL
    *                 terminator.
    */
-  void setFromSockaddr(const struct sockaddr_un* address,
-                       socklen_t addrlen);
-
+  void setFromSockaddr(const struct sockaddr_un* address, socklen_t addrlen);
 
   /**
    * Fill in a given sockaddr_storage with the ip or unix address.
@@ -445,8 +443,7 @@ class SocketAddress {
    * Return true if this is an IPv4-mapped IPv6 address.
    */
   bool isIPv4Mapped() const {
-    return (getFamily() == AF_INET6 &&
-            storage_.addr.isIPv4Mapped());
+    return (getFamily() == AF_INET6 && storage_.addr.isIPv4Mapped());
   }
 
   /**
@@ -540,7 +537,7 @@ class SocketAddress {
    * the heap.
    */
   struct ExternalUnixAddr {
-    struct sockaddr_un *addr;
+    struct sockaddr_un* addr;
     socklen_t len;
 
     socklen_t pathLength() const {
@@ -552,12 +549,12 @@ class SocketAddress {
       addr->sun_family = AF_UNIX;
       len = 0;
     }
-    void init(const ExternalUnixAddr &other) {
+    void init(const ExternalUnixAddr& other) {
       addr = new struct sockaddr_un;
       len = other.len;
       memcpy(addr, other.addr, size_t(len));
     }
-    void copy(const ExternalUnixAddr &other) {
+    void copy(const ExternalUnixAddr& other) {
       len = other.len;
       memcpy(addr, other.addr, size_t(len));
     }
@@ -572,7 +569,7 @@ class SocketAddress {
   void setFromLocalAddr(const struct addrinfo* results);
   void setFromSocket(int socket, int (*fn)(int, struct sockaddr*, socklen_t*));
   std::string getIpString(int flags) const;
-  void getIpString(char *buf, size_t buflen, int flags) const;
+  void getIpString(char* buf, size_t buflen, int flags) const;
 
   void updateUnixAddressLength(socklen_t addrlen);
 
@@ -603,7 +600,6 @@ class SocketAddress {
 size_t hash_value(const SocketAddress& address);
 
 std::ostream& operator<<(std::ostream& os, const SocketAddress& addr);
-
 }
 
 namespace std {
@@ -611,10 +607,8 @@ namespace std {
 // Provide an implementation for std::hash<SocketAddress>
 template <>
 struct hash<folly::SocketAddress> {
-  size_t operator()(
-      const folly::SocketAddress& addr) const {
+  size_t operator()(const folly::SocketAddress& addr) const {
     return addr.hash();
   }
 };
-
 }

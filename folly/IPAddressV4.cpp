@@ -29,7 +29,6 @@ using std::string;
 
 namespace folly {
 
-
 // free functions
 size_t hash_value(const IPAddressV4& addr) {
   return addr.hash();
@@ -85,19 +84,13 @@ uint32_t IPAddressV4::toLongHBO(StringPiece ip) {
 }
 
 // public default constructor
-IPAddressV4::IPAddressV4() {
-}
+IPAddressV4::IPAddressV4() {}
 
 // ByteArray4 constructor
-IPAddressV4::IPAddressV4(const ByteArray4& src)
-  : addr_(src)
-{
-}
+IPAddressV4::IPAddressV4(const ByteArray4& src) : addr_(src) {}
 
 // public string constructor
-IPAddressV4::IPAddressV4(StringPiece addr)
-  : addr_()
-{
+IPAddressV4::IPAddressV4(StringPiece addr) : addr_() {
   auto ip = addr.str();
   if (inet_pton(AF_INET, ip.c_str(), &addr_.inAddr_) != 1) {
     throw IPAddressFormatException(sformat("Invalid IPv4 address '{}'", addr));
@@ -105,10 +98,7 @@ IPAddressV4::IPAddressV4(StringPiece addr)
 }
 
 // in_addr constructor
-IPAddressV4::IPAddressV4(const in_addr src)
-  : addr_(src)
-{
-}
+IPAddressV4::IPAddressV4(const in_addr src) : addr_(src) {}
 
 // public
 void IPAddressV4::setFromBinary(ByteRange bytes) {
@@ -172,11 +162,11 @@ bool IPAddressV4::inSubnet(StringPiece cidrNetwork) const {
 }
 
 // public
-bool IPAddressV4::inSubnetWithMask(const IPAddressV4& subnet,
-                                   const ByteArray4 cidrMask) const {
-  const ByteArray4 mask = detail::Bytes::mask(toByteArray(), cidrMask);
-  const ByteArray4 subMask = detail::Bytes::mask(subnet.toByteArray(),
-                                                 cidrMask);
+bool IPAddressV4::inSubnetWithMask(
+    const IPAddressV4& subnet,
+    const ByteArray4 cidrMask) const {
+  const auto mask = detail::Bytes::mask(toByteArray(), cidrMask);
+  const auto subMask = detail::Bytes::mask(subnet.toByteArray(), cidrMask);
   return (mask == subMask);
 }
 
@@ -196,24 +186,26 @@ bool IPAddressV4::isLinkLocal() const {
 bool IPAddressV4::isNonroutable() const {
   auto ip = toLongHBO();
   return isPrivate() ||
-      (ip <= 0x00FFFFFF)                     || // 0.0.0.0-0.255.255.255
+      (/* align */ true && ip <= 0x00FFFFFF) || // 0.0.0.0-0.255.255.255
       (ip >= 0xC0000000 && ip <= 0xC00000FF) || // 192.0.0.0-192.0.0.255
       (ip >= 0xC0000200 && ip <= 0xC00002FF) || // 192.0.2.0-192.0.2.255
       (ip >= 0xC6120000 && ip <= 0xC613FFFF) || // 198.18.0.0-198.19.255.255
       (ip >= 0xC6336400 && ip <= 0xC63364FF) || // 198.51.100.0-198.51.100.255
       (ip >= 0xCB007100 && ip <= 0xCB0071FF) || // 203.0.113.0-203.0.113.255
-      (ip >= 0xE0000000 && ip <= 0xFFFFFFFF);   // 224.0.0.0-255.255.255.255
+      (ip >= 0xE0000000 && ip <= 0xFFFFFFFF) || // 224.0.0.0-255.255.255.255
+      false;
 }
 
 // public
 bool IPAddressV4::isPrivate() const {
   auto ip = toLongHBO();
-  return
+  return // some ranges below
       (ip >= 0x0A000000 && ip <= 0x0AFFFFFF) || // 10.0.0.0-10.255.255.255
       (ip >= 0x7F000000 && ip <= 0x7FFFFFFF) || // 127.0.0.0-127.255.255.255
       (ip >= 0xA9FE0000 && ip <= 0xA9FEFFFF) || // 169.254.0.0-169.254.255.255
       (ip >= 0xAC100000 && ip <= 0xAC1FFFFF) || // 172.16.0.0-172.31.255.255
-      (ip >= 0xC0A80000 && ip <= 0xC0A8FFFF);   // 192.168.0.0-192.168.255.255
+      (ip >= 0xC0A80000 && ip <= 0xC0A8FFFF) || // 192.168.0.0-192.168.255.255
+      false;
 }
 
 // public

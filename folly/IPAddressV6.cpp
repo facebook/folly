@@ -77,8 +77,7 @@ bool IPAddressV6::validate(StringPiece ip) {
 }
 
 // public default constructor
-IPAddressV6::IPAddressV6() {
-}
+IPAddressV6::IPAddressV6() {}
 
 // public string constructor
 IPAddressV6::IPAddressV6(StringPiece addr) {
@@ -110,28 +109,17 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
 }
 
 // in6_addr constructor
-IPAddressV6::IPAddressV6(const in6_addr& src)
-  : addr_(src)
-{
-}
+IPAddressV6::IPAddressV6(const in6_addr& src) : addr_(src) {}
 
 // sockaddr_in6 constructor
 IPAddressV6::IPAddressV6(const sockaddr_in6& src)
-  : addr_(src.sin6_addr)
-  , scope_(uint16_t(src.sin6_scope_id))
-{
-}
+    : addr_(src.sin6_addr), scope_(uint16_t(src.sin6_scope_id)) {}
 
 // ByteArray16 constructor
-IPAddressV6::IPAddressV6(const ByteArray16& src)
-  : addr_(src)
-{
-}
+IPAddressV6::IPAddressV6(const ByteArray16& src) : addr_(src) {}
 
 // link-local constructor
-IPAddressV6::IPAddressV6(LinkLocalTag, MacAddress mac)
-  : addr_(mac) {
-}
+IPAddressV6::IPAddressV6(LinkLocalTag, MacAddress mac) : addr_(mac) {}
 
 IPAddressV6::AddressStorage::AddressStorage(MacAddress mac) {
   // The link-local address uses modified EUI-64 format,
@@ -228,9 +216,8 @@ static inline uint16_t unpack(uint8_t lobyte, uint8_t hibyte) {
 
 // given a src string, unpack count*2 bytes into dest
 // dest must have as much storage as count
-static inline void unpackInto(const unsigned char* src,
-                              uint16_t* dest,
-                              size_t count) {
+static inline void
+unpackInto(const unsigned char* src, uint16_t* dest, size_t count) {
   for (size_t i = 0, hi = 1, lo = 0; i < count; i++) {
     dest[i] = unpack(src[hi], src[lo]);
     hi += 2;
@@ -245,7 +232,7 @@ IPAddressV4 IPAddressV6::getIPv4For6To4() const {
         sformat("Invalid IP '{}': not a 6to4 address", str()));
   }
   // convert 16x8 bytes into first 4x16 bytes
-  uint16_t ints[4] = {0,0,0,0};
+  uint16_t ints[4] = {0, 0, 0, 0};
   unpackInto(bytes(), ints, 4);
   // repack into 4x8
   union {
@@ -281,7 +268,7 @@ bool IPAddressV6::isIPv4Mapped() const {
 // public
 IPAddressV6::Type IPAddressV6::type() const {
   // convert 16x8 bytes into first 2x16 bytes
-  uint16_t ints[2] = {0,0};
+  uint16_t ints[2] = {0, 0};
   unpackInto(bytes(), ints, 2);
 
   if ((((uint32_t)ints[0] << 16) | ints[1]) == IPAddressV6::PREFIX_TEREDO) {
@@ -327,11 +314,11 @@ bool IPAddressV6::inSubnet(StringPiece cidrNetwork) const {
 }
 
 // public
-bool IPAddressV6::inSubnetWithMask(const IPAddressV6& subnet,
-                                   const ByteArray16& cidrMask) const {
-  const ByteArray16 mask = detail::Bytes::mask(toByteArray(), cidrMask);
-  const ByteArray16 subMask = detail::Bytes::mask(subnet.toByteArray(),
-                                                  cidrMask);
+bool IPAddressV6::inSubnetWithMask(
+    const IPAddressV6& subnet,
+    const ByteArray16& cidrMask) const {
+  const auto mask = detail::Bytes::mask(toByteArray(), cidrMask);
+  const auto subMask = detail::Bytes::mask(subnet.toByteArray(), cidrMask);
   return (mask == subMask);
 }
 
@@ -347,11 +334,11 @@ bool IPAddressV6::isLoopback() const {
 
 bool IPAddressV6::isRoutable() const {
   return
-    // 2000::/3 is the only assigned global unicast block
-    inBinarySubnet({{0x20, 0x00}}, 3) ||
-    // ffxe::/16 are global scope multicast addresses,
-    // which are eligible to be routed over the internet
-    (isMulticast() && getMulticastScope() == 0xe);
+      // 2000::/3 is the only assigned global unicast block
+      inBinarySubnet({{0x20, 0x00}}, 3) ||
+      // ffxe::/16 are global scope multicast addresses,
+      // which are eligible to be routed over the internet
+      (isMulticast() && getMulticastScope() == 0xe);
 }
 
 bool IPAddressV6::isLinkLocalBroadcast() const {
@@ -392,11 +379,24 @@ IPAddressV6 IPAddressV6::getSolicitedNodeAddress() const {
   // addresses
   DCHECK(!isMulticast());
 
-  uint8_t bytes[16] = { 0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                        0x00, 0x00, 0x00, 0x01, 0xff, 0x00, 0x00, 0x00 };
-  bytes[13] = addr_.bytes_[13];
-  bytes[14] = addr_.bytes_[14];
-  bytes[15] = addr_.bytes_[15];
+  uint8_t bytes[16] = {
+      0xff,
+      0x02,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x01,
+      0xff,
+      addr_.bytes_[13],
+      addr_.bytes_[14],
+      addr_.bytes_[15],
+  };
   return IPAddressV6::fromBinary(ByteRange(bytes, 16));
 }
 
@@ -504,8 +504,9 @@ CIDRNetworkV6 IPAddressV6::longestCommonPrefix(
 }
 
 // protected
-bool IPAddressV6::inBinarySubnet(const std::array<uint8_t, 2> addr,
-                                 size_t numBits) const {
+bool IPAddressV6::inBinarySubnet(
+    const std::array<uint8_t, 2> addr,
+    size_t numBits) const {
   auto masked = mask(numBits);
   return (std::memcmp(addr.data(), masked.bytes(), 2) == 0);
 }

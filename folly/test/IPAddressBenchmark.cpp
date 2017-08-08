@@ -30,11 +30,8 @@ BENCHMARK(ipv4_to_string_inet_ntop, iters) {
   char outputString[INET_ADDRSTRLEN] = {0};
 
   while (iters--) {
-    const char* val = inet_ntop(
-      AF_INET,
-      &ip,
-      outputString,
-      sizeof(outputString));
+    const char* val =
+        inet_ntop(AF_INET, &ip, outputString, sizeof(outputString));
   }
 }
 
@@ -78,11 +75,8 @@ BENCHMARK(ipv6_to_string_inet_ntop, iters) {
   bool checkResult = (iters == 1);
 
   while (iters--) {
-    const char* val = inet_ntop(
-      AF_INET6,
-      &ip,
-      outputString,
-      sizeof(outputString));
+    const char* val =
+        inet_ntop(AF_INET6, &ip, outputString, sizeof(outputString));
   }
 }
 
@@ -135,7 +129,7 @@ BENCHMARK_RELATIVE(ipv6_append_to_fully_qualified_port, iters) {
 // ipv6_append_to_fully_qualified_port              178.73%    84.35ns   11.86M
 // ============================================================================
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
   return 0;

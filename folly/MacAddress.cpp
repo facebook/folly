@@ -73,9 +73,7 @@ string MacAddress::toString() const {
 
 void MacAddress::parse(StringPiece str) {
   // Helper function to convert a single hex char into an integer
-  auto isSeparatorChar = [](char c) {
-    return c == ':' || c == '-';
-  };
+  auto isSeparatorChar = [](char c) { return c == ':' || c == '-'; };
 
   uint8_t parsed[SIZE];
   auto p = str.begin();

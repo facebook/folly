@@ -95,7 +95,9 @@ class IPAddress {
    * @return pair with IPAddress network and uint8_t mask
    */
   static CIDRNetwork createNetwork(
-    StringPiece ipSlashCidr, int defaultCidr = -1, bool mask = true);
+      StringPiece ipSlashCidr,
+      int defaultCidr = -1,
+      bool mask = true);
 
   /**
    * Return a string representation of a CIDR block created with createNetwork.
@@ -122,8 +124,9 @@ class IPAddress {
 
   // Given 2 IPAddress,mask pairs extract the longest common IPAddress,
   // mask pair
-  static CIDRNetwork longestCommonPrefix(const CIDRNetwork& one,
-                                         const CIDRNetwork& two);
+  static CIDRNetwork longestCommonPrefix(
+      const CIDRNetwork& one,
+      const CIDRNetwork& two);
 
   /**
    * Constructs an uninitialized IPAddress.
@@ -188,10 +191,12 @@ class IPAddress {
   }
 
   // Return sa_family_t of IPAddress
-  sa_family_t family() const { return family_; }
+  sa_family_t family() const {
+    return family_;
+  }
 
   // Populate sockaddr_storage with an appropriate value
-  int toSockaddrStorage(sockaddr_storage *dest, uint16_t port = 0) const {
+  int toSockaddrStorage(sockaddr_storage* dest, uint16_t port = 0) const {
     if (dest == nullptr) {
       throw IPAddressFormatException("dest must not be null");
     }
@@ -199,7 +204,7 @@ class IPAddress {
     dest->ss_family = family();
 
     if (isV4()) {
-      sockaddr_in *sin = reinterpret_cast<sockaddr_in*>(dest);
+      sockaddr_in* sin = reinterpret_cast<sockaddr_in*>(dest);
       sin->sin_addr = asV4().toAddr();
       sin->sin_port = port;
 #if defined(__APPLE__)
@@ -207,7 +212,7 @@ class IPAddress {
 #endif
       return sizeof(*sin);
     } else if (isV6()) {
-      sockaddr_in6 *sin = reinterpret_cast<sockaddr_in6*>(dest);
+      sockaddr_in6* sin = reinterpret_cast<sockaddr_in6*>(dest);
       sin->sin6_addr = asV6().toAddr();
       sin->sin6_port = port;
       sin->sin6_scope_id = asV6().getScopeId();
@@ -260,16 +265,24 @@ class IPAddress {
   }
 
   // @return true if address is uninitialized
-  bool empty() const { return (family_ == AF_UNSPEC); }
+  bool empty() const {
+    return (family_ == AF_UNSPEC);
+  }
 
   // @return true if address is initialized
-  explicit operator bool() const { return !empty(); }
+  explicit operator bool() const {
+    return !empty();
+  }
 
   // @return true if this is an IPAddressV4 instance
-  bool isV4() const { return (family_ == AF_INET); }
+  bool isV4() const {
+    return (family_ == AF_INET);
+  }
 
   // @return true if this is an IPAddressV6 instance
-  bool isV6() const { return (family_ == AF_INET6); }
+  bool isV6() const {
+    return (family_ == AF_INET6);
+  }
 
   // @return true if this address is all zeros
   bool isZero() const {
@@ -284,17 +297,17 @@ class IPAddress {
   size_t byteCount() const {
     return bitCount() / 8;
   }
-  //get nth most significant bit - 0 indexed
+  // get nth most significant bit - 0 indexed
   bool getNthMSBit(size_t bitIndex) const {
     return detail::getNthMSBitImpl(*this, bitIndex, family());
   }
-  //get nth most significant byte - 0 indexed
+  // get nth most significant byte - 0 indexed
   uint8_t getNthMSByte(size_t byteIndex) const;
-  //get nth bit - 0 indexed
+  // get nth bit - 0 indexed
   bool getNthLSBit(size_t bitIndex) const {
     return getNthMSBit(bitCount() - bitIndex - 1);
   }
-  //get nth byte - 0 indexed
+  // get nth byte - 0 indexed
   uint8_t getNthLSByte(size_t byteIndex) const {
     return getNthMSByte(byteCount() - byteIndex - 1);
   }
@@ -408,8 +421,8 @@ class IPAddress {
     IPAddressV46() {
       std::memset(this, 0, sizeof(IPAddressV46));
     }
-    explicit IPAddressV46(const IPAddressV4& addr): ipV4Addr(addr) {}
-    explicit IPAddressV46(const IPAddressV6& addr): ipV6Addr(addr) {}
+    explicit IPAddressV46(const IPAddressV4& addr) : ipV4Addr(addr) {}
+    explicit IPAddressV46(const IPAddressV6& addr) : ipV6Addr(addr) {}
   } IPAddressV46;
   IPAddressV46 addr_;
   sa_family_t family_;

@@ -22,7 +22,8 @@
 
 #include <folly/portability/Sockets.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 std::string familyNameStrDefault(sa_family_t family);
 
@@ -49,8 +50,8 @@ getNthMSBitImpl(const IPAddrType& ip, size_t bitIndex, sa_family_t family) {
   if (bitIndex >= ip.bitCount()) {
     getNthMSBitImplThrow(ip.bitCount(), family);
   }
-  //Underlying bytes are in n/w byte order
+  // Underlying bytes are in n/w byte order
   return (ip.getNthMSByte(bitIndex / 8) & (0x80 >> (bitIndex % 8))) != 0;
 }
-
-}}  // folly::detail
+} // namespace detail
+} // namespace folly

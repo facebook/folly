@@ -94,8 +94,8 @@ TEST(MacAddress, fromBinary) {
 }
 
 TEST(MacAddress, toString) {
-  EXPECT_EQ("12:34:56:78:9a:bc",
-            MacAddress::fromHBO(0x123456789abc).toString());
+  EXPECT_EQ(
+      "12:34:56:78:9a:bc", MacAddress::fromHBO(0x123456789abc).toString());
   EXPECT_EQ("12:34:56:78:9a:bc", MacAddress("12:34:56:78:9a:bc").toString());
   EXPECT_EQ("01:23:45:67:89:ab", MacAddress("01-23-45-67-89-ab").toString());
   EXPECT_EQ("01:23:45:67:89:ab", MacAddress("0123456789ab").toString());
@@ -131,10 +131,12 @@ TEST(MacAddress, attributes) {
 }
 
 TEST(MacAddress, createMulticast) {
-  EXPECT_EQ(MacAddress("33:33:00:01:00:03"),
-            MacAddress::createMulticast(IPAddressV6("ff02:dead:beef::1:3")));
-  EXPECT_EQ(MacAddress("33:33:12:34:56:78"),
-            MacAddress::createMulticast(IPAddressV6("ff02::abcd:1234:5678")));
+  EXPECT_EQ(
+      MacAddress("33:33:00:01:00:03"),
+      MacAddress::createMulticast(IPAddressV6("ff02:dead:beef::1:3")));
+  EXPECT_EQ(
+      MacAddress("33:33:12:34:56:78"),
+      MacAddress::createMulticast(IPAddressV6("ff02::abcd:1234:5678")));
 }
 
 void testCmp(const char* str1, const char* str2) {
