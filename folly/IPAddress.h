@@ -266,7 +266,7 @@ class IPAddress {
 
   // @return true if address is uninitialized
   bool empty() const {
-    return (family_ == AF_UNSPEC);
+    return family_ == AF_UNSPEC;
   }
 
   // @return true if address is initialized
@@ -276,12 +276,12 @@ class IPAddress {
 
   // @return true if this is an IPAddressV4 instance
   bool isV4() const {
-    return (family_ == AF_INET);
+    return family_ == AF_INET;
   }
 
   // @return true if this is an IPAddressV6 instance
   bool isV6() const {
-    return (family_ == AF_INET6);
+    return family_ == AF_INET6;
   }
 
   // @return true if this address is all zeros
