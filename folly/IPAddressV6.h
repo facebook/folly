@@ -173,7 +173,7 @@ class IPAddressV6 {
    * @see IPAddress#bitCount
    * @returns 128
    */
-  static size_t bitCount() {
+  static constexpr size_t bitCount() {
     return 128;
   }
 

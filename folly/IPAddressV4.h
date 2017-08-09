@@ -140,7 +140,7 @@ class IPAddressV4 {
    * @see IPAddress#bitCount
    * @returns 32
    */
-  static size_t bitCount() {
+  static constexpr size_t bitCount() {
     return 32;
   }
 
