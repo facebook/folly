@@ -167,7 +167,7 @@ namespace detail {
     if (!std::is_sorted(middle, cont.end(), cmp)) {
       std::sort(middle, cont.end(), cmp);
     }
-    if (middle != cont.begin() && cmp(*middle, *(middle - 1))) {
+    if (middle != cont.begin() && !cmp(*(middle - 1), *middle)) {
       std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
       cont.erase(
           std::unique(
