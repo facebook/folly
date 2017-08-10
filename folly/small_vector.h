@@ -401,7 +401,7 @@ class small_vector
   typedef std::reverse_iterator<iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  explicit small_vector() = default;
+  small_vector() = default;
 
   small_vector(small_vector const& o) {
     auto n = o.size();
