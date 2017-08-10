@@ -94,7 +94,7 @@ char32_t utf8ToCodePoint(
 
   fst <<= 1;
 
-  for (unsigned int i = 1; i != 3 && p + i < e; ++i) {
+  for (unsigned int i = 1; i != 4 && p + i < e; ++i) {
     unsigned char tmp = p[i];
 
     if ((tmp & 0xC0) != 0x80) {
@@ -116,8 +116,8 @@ char32_t utf8ToCodePoint(
           to<std::string>("folly::utf8ToCodePoint i=", i, " d=", d));
       }
 
-      // check for surrogates only needed for 3 bytes
-      if (i == 2) {
+      // check for surrogates only needed for 3rd and 4th bytes
+      if (i >= 2) {
         if ((d >= 0xD800 && d <= 0xDFFF) || d > 0x10FFFF) {
           if (skipOnError) return skip();
           throw std::runtime_error(
