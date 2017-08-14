@@ -228,11 +228,11 @@ class Optional {
   }
   Value* get_pointer() && = delete;
 
-  bool hasValue() const {
+  bool hasValue() const noexcept {
     return storage_.hasValue();
   }
 
-  explicit operator bool() const {
+  explicit operator bool() const noexcept {
     return hasValue();
   }
 
@@ -319,7 +319,7 @@ class Optional {
                        std::is_trivially_destructible<Value>::value,
                        StorageTriviallyDestructible,
                        StorageNonTriviallyDestructible>::type {
-    bool hasValue() const {
+    bool hasValue() const noexcept {
       return this->hasValue_;
     }
 
@@ -460,6 +460,48 @@ template <class V>
 bool operator>=(const V& other, const Optional<V>&) = delete;
 template <class V>
 bool operator>(const V& other, const Optional<V>&) = delete;
+
+// Comparisons with none
+template <class V>
+bool operator==(const Optional<V>& a, None) noexcept {
+  return !a.hasValue();
+}
+template <class V>
+bool operator==(None, const Optional<V>& a) noexcept {
+  return !a.hasValue();
+}
+template <class V>
+bool operator<(const Optional<V>&, None) noexcept {
+  return false;
+}
+template <class V>
+bool operator<(None, const Optional<V>& a) noexcept {
+  return a.hasValue();
+}
+template <class V>
+bool operator>(const Optional<V>& a, None) noexcept {
+  return a.hasValue();
+}
+template <class V>
+bool operator>(None, const Optional<V>&) noexcept {
+  return false;
+}
+template <class V>
+bool operator<=(None, const Optional<V>&) noexcept {
+  return true;
+}
+template <class V>
+bool operator<=(const Optional<V>& a, None) noexcept {
+  return !a.hasValue();
+}
+template <class V>
+bool operator>=(const Optional<V>&, None) noexcept {
+  return true;
+}
+template <class V>
+bool operator>=(None, const Optional<V>& a) noexcept {
+  return !a.hasValue();
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 

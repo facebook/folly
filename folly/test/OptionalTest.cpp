@@ -450,6 +450,39 @@ TEST(Optional, HeterogeneousComparisons) {
   EXPECT_TRUE(opt8(4) >= opt64());
 }
 
+TEST(Optional, NoneComparisons) {
+  using opt = Optional<int>;
+  EXPECT_TRUE(opt() == none);
+  EXPECT_TRUE(none == opt());
+  EXPECT_FALSE(opt(1) == none);
+  EXPECT_FALSE(none == opt(1));
+
+  EXPECT_FALSE(opt() != none);
+  EXPECT_FALSE(none != opt());
+  EXPECT_TRUE(opt(1) != none);
+  EXPECT_TRUE(none != opt(1));
+
+  EXPECT_FALSE(opt() < none);
+  EXPECT_FALSE(none < opt());
+  EXPECT_FALSE(opt(1) < none);
+  EXPECT_TRUE(none < opt(1));
+
+  EXPECT_FALSE(opt() > none);
+  EXPECT_FALSE(none > opt());
+  EXPECT_FALSE(none > opt(1));
+  EXPECT_TRUE(opt(1) > none);
+
+  EXPECT_TRUE(opt() <= none);
+  EXPECT_TRUE(none <= opt());
+  EXPECT_FALSE(opt(1) <= none);
+  EXPECT_TRUE(none <= opt(1));
+
+  EXPECT_TRUE(opt() >= none);
+  EXPECT_TRUE(none >= opt());
+  EXPECT_TRUE(opt(1) >= none);
+  EXPECT_FALSE(none >= opt(1));
+}
+
 TEST(Optional, Conversions) {
   Optional<bool> mbool;
   Optional<short> mshort;
