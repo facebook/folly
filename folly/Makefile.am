@@ -56,10 +56,10 @@ nobase_follyinclude_HEADERS = \
 	CppAttributes.h \
 	CpuId.h \
 	CPortability.h \
-	concurrency/ConcurrentHashMap.h \
-	concurrency/detail/ConcurrentHashMap-detail.h \
 	concurrency/CacheLocality.h \
+	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
+	concurrency/detail/ConcurrentHashMap-detail.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \
@@ -100,10 +100,6 @@ nobase_follyinclude_HEADERS = \
 	Expected.h \
 	concurrency/AtomicSharedPtr.h \
 	concurrency/detail/AtomicSharedPtr-detail.h \
-	experimental/hazptr/hazptr.h \
-	experimental/hazptr/debug.h \
-	experimental/hazptr/hazptr-impl.h \
-	experimental/hazptr/memory_resource.h \
 	experimental/AsymmetricMemoryBarrier.h \
 	experimental/AutoTimer.h \
 	experimental/ThreadedRepeatingFunctionRunner.h \
@@ -125,6 +121,10 @@ nobase_follyinclude_HEADERS = \
 	experimental/exception_tracer/StackTrace.h \
 	experimental/FunctionScheduler.h \
 	experimental/FutureDAG.h \
+	experimental/hazptr/debug.h \
+	experimental/hazptr/hazptr.h \
+	experimental/hazptr/hazptr-impl.h \
+	experimental/hazptr/memory_resource.h \
 	experimental/io/FsUtil.h \
 	experimental/JemallocNodumpAllocator.h \
 	experimental/JSONSchema.h \
