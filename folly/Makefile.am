@@ -57,7 +57,7 @@ nobase_follyinclude_HEADERS = \
 	CpuId.h \
 	CPortability.h \
 	concurrency/ConcurrentHashMap.h \
-    concurrency/detail/ConcurrentHashMap-detail.h \
+	concurrency/detail/ConcurrentHashMap-detail.h \
 	concurrency/CacheLocality.h \
 	concurrency/CoreCachedSharedPtr.h \
 	detail/AtomicHashUtils.h \
@@ -100,10 +100,10 @@ nobase_follyinclude_HEADERS = \
 	Expected.h \
 	concurrency/AtomicSharedPtr.h \
 	concurrency/detail/AtomicSharedPtr-detail.h \
-    experimental/hazptr/hazptr.h \
+	experimental/hazptr/hazptr.h \
 	experimental/hazptr/debug.h \
-    experimental/hazptr/hazptr-impl.h \
-    experimental/hazptr/memory_resource.h \
+	experimental/hazptr/hazptr-impl.h \
+	experimental/hazptr/memory_resource.h \
 	experimental/AsymmetricMemoryBarrier.h \
 	experimental/AutoTimer.h \
 	experimental/ThreadedRepeatingFunctionRunner.h \
