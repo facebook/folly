@@ -57,7 +57,9 @@ nobase_follyinclude_HEADERS = \
 	CpuId.h \
 	CPortability.h \
 	concurrency/CacheLocality.h \
+	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
+	concurrency/detail/ConcurrentHashMap-detail.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \
@@ -119,6 +121,10 @@ nobase_follyinclude_HEADERS = \
 	experimental/exception_tracer/StackTrace.h \
 	experimental/FunctionScheduler.h \
 	experimental/FutureDAG.h \
+	experimental/hazptr/debug.h \
+	experimental/hazptr/hazptr.h \
+	experimental/hazptr/hazptr-impl.h \
+	experimental/hazptr/memory_resource.h \
 	experimental/io/FsUtil.h \
 	experimental/JemallocNodumpAllocator.h \
 	experimental/JSONSchema.h \
@@ -484,6 +490,8 @@ libfolly_la_SOURCES = \
 	futures/QueuedImmediateExecutor.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
 	futures/test/TestExecutor.cpp \
+	experimental/hazptr/hazptr.cpp \
+	experimental/hazptr/memory_resource.cpp \
 	GlobalThreadPoolList.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
