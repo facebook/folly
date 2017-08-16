@@ -489,6 +489,8 @@ libfolly_la_SOURCES = \
 	detail/Futex.cpp \
 	detail/StaticSingletonManager.cpp \
 	detail/ThreadLocalDetail.cpp \
+	experimental/hazptr/hazptr.cpp \
+	experimental/hazptr/memory_resource.cpp \
 	hash/SpookyHashV1.cpp \
 	hash/SpookyHashV2.cpp \
 	GroupVarint.cpp \
