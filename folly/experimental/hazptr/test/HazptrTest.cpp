@@ -198,12 +198,11 @@ TEST_F(HazptrTest, LIFO) {
 
 TEST_F(HazptrTest, SWMRLIST) {
   using T = uint64_t;
-  hazptr_domain custom_domain;
 
   CHECK_GT(FLAGS_num_threads, 0);
   for (int i = 0; i < FLAGS_num_reps; ++i) {
     DEBUG_PRINT("========== start of rep scope");
-    SWMRListSet<T> s(custom_domain);
+    SWMRListSet<T> s;
     std::vector<std::thread> threads(FLAGS_num_threads);
     for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
       threads[tid] = std::thread([&s, tid]() {

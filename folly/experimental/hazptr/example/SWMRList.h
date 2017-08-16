@@ -53,7 +53,6 @@ class SWMRListSet {
   };
 
   std::atomic<Node*> head_ = {nullptr};
-  hazptr_domain& domain_;
 
   /* Used by the single writer */
   void locate_lower_bound(const T& v, std::atomic<Node*>*& prev) const {
@@ -67,9 +66,6 @@ class SWMRListSet {
   }
 
  public:
-  explicit SWMRListSet(hazptr_domain& domain = default_hazptr_domain())
-      : domain_(domain) {}
-
   ~SWMRListSet() {
     Node* next;
     for (auto p = head_.load(); p; p = next) {
@@ -97,14 +93,15 @@ class SWMRListSet {
     prev->store(curr_next, std::memory_order_release);
     // ...and only then null out the removed node.
     curr->next_.store(nullptr, std::memory_order_release);
-    curr->retire(domain_);
+    curr->retire();
     return true;
   }
+
   /* Used by readers */
   bool contains(const T& val) const {
     /* Acquire two hazard pointers for hand-over-hand traversal. */
-    hazptr_holder hptr_prev(domain_);
-    hazptr_holder hptr_curr(domain_);
+    hazptr_holder hptr_prev;
+    hazptr_holder hptr_curr;
     while (true) {
       auto prev = &head_;
       auto curr = prev->load(std::memory_order_acquire);

@@ -69,16 +69,15 @@ namespace folly {
 namespace hazptr {
 
 /**
- * helper classes and functions
+ *  Helper classes and functions
  */
 
 /** hazptr_stats */
 
 class hazptr_stats;
-hazptr_stats& hazptr_stats();
 
 #if HAZPTR_STATS
-#define INC_HAZPTR_STATS(x) hazptr_stats().x()
+#define INC_HAZPTR_STATS(x) hazptr_stats_.x()
 #else
 #define INC_HAZPTR_STATS(x)
 #endif
@@ -91,65 +90,97 @@ class hazptr_mb {
   static void heavy();
 };
 
-/** hazptr_tc
+/**
+ *  TLS structures
+ */
+
+/** TLS life state */
+
+enum hazptr_tls_state { TLS_ALIVE, TLS_UNINITIALIZED, TLS_DESTROYED };
+
+/** hazptr_tc structures
  *  Thread caching of hazptr_rec-s that belong to the default domain.
  */
 
-class hazptr_tc_entry {
-  friend class hazptr_tc;
-  hazptr_rec* hprec_{nullptr};
+struct hazptr_tc_entry {
+  hazptr_rec* hprec_;
 
- public:
   void fill(hazptr_rec* hprec);
   hazptr_rec* get();
   void evict();
 };
 
-class hazptr_tc {
-  hazptr_tc_entry tc_[HAZPTR_TC_SIZE];
-  int count_{0};
+static_assert(
+    std::is_trivial<hazptr_tc_entry>::value,
+    "hazptr_tc_entry must be trivial"
+    " to avoid a branch to check initialization");
+
+struct hazptr_tc {
+  hazptr_tc_entry entry_[HAZPTR_TC_SIZE];
+  int count_;
 
  public:
-  hazptr_tc();
-  ~hazptr_tc();
   hazptr_rec* get();
   bool put(hazptr_rec* hprec);
 };
 
-hazptr_tc& hazptr_tc();
+static_assert(
+    std::is_trivial<hazptr_tc>::value,
+    "hazptr_tc must be trivial to avoid a branch to check initialization");
 
-/** hazptr_priv
+void hazptr_tc_init();
+void hazptr_tc_shutdown();
+hazptr_rec* hazptr_tc_try_get();
+bool hazptr_tc_try_put(hazptr_rec* hprec);
+
+/** hazptr_priv structures
  *  Thread private lists of retired objects that belong to the default domain.
  */
 
-class hazptr_priv {
-  hazptr_domain* domain_{&default_hazptr_domain()};
-  hazptr_obj* head_{nullptr};
-  hazptr_obj* tail_{nullptr};
-  int rcount_{0};
-  bool active_{true};
+struct hazptr_priv {
+  hazptr_obj* head_;
+  hazptr_obj* tail_;
+  int rcount_;
+  bool active_;
 
- public:
-  hazptr_priv();
-  ~hazptr_priv();
   void push(hazptr_obj* obj);
-
- private:
   void pushAllToDomain();
 };
 
-hazptr_priv& hazptr_priv();
+static_assert(
+    std::is_trivial<hazptr_priv>::value,
+    "hazptr_priv must be trivial to avoid a branch to check initialization");
+
+void hazptr_priv_init();
+void hazptr_priv_shutdown();
+bool hazptr_priv_try_retire(hazptr_obj* obj);
+
+/** hazptr_tls_life */
+
+struct hazptr_tls_life {
+  hazptr_tls_life();
+  ~hazptr_tls_life();
+};
+
+void tls_life_odr_use();
+
+/** tls globals */
+
+extern thread_local hazptr_tls_state tls_state_;
+extern thread_local hazptr_tc tls_tc_data_;
+extern thread_local hazptr_priv tls_priv_data_;
+extern thread_local hazptr_tls_life tls_life_; // last
 
 /**
- * public functions
+ *  hazptr_domain
  */
 
-/** hazptr_domain */
-
-constexpr hazptr_domain::hazptr_domain(memory_resource* mr) noexcept
+inline constexpr hazptr_domain::hazptr_domain(memory_resource* mr) noexcept
     : mr_(mr) {}
 
-/** hazptr_obj_base */
+/**
+ *  hazptr_obj_base
+ */
 
 template <typename T, typename D>
 inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
@@ -162,18 +193,21 @@ inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
   };
   if (HAZPTR_PRIV &&
       (HAZPTR_ONE_DOMAIN || (&domain == &default_hazptr_domain()))) {
-    hazptr_priv().push(this);
-  } else {
-    domain.objRetire(this);
+    if (hazptr_priv_try_retire(this)) {
+      return;
+    }
   }
+  domain.objRetire(this);
 }
 
-/** hazptr_rec */
+/**
+ *  hazptr_rec
+ */
 
 class hazptr_rec {
   friend class hazptr_domain;
   friend class hazptr_holder;
-  friend class hazptr_tc_entry;
+  friend struct hazptr_tc_entry;
 
   FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
   std::atomic<const void*> hazptr_{nullptr};
@@ -188,16 +222,28 @@ class hazptr_rec {
   void release() noexcept;
 };
 
-/** hazptr_holder */
+/**
+ *  hazptr_holder
+ */
 
 FOLLY_ALWAYS_INLINE hazptr_holder::hazptr_holder(hazptr_domain& domain) {
   domain_ = &domain;
+  if (LIKELY(
+          HAZPTR_TC &&
+          (HAZPTR_ONE_DOMAIN || &domain == &default_hazptr_domain()))) {
+    auto hprec = hazptr_tc_try_get();
+    if (LIKELY(hprec != nullptr)) {
+      hazptr_ = hprec;
+      DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
+      return;
+    }
+  }
   hazptr_ = domain_->hazptrAcquire();
   DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
   if (hazptr_ == nullptr) { std::bad_alloc e; throw e; }
 }
 
-inline hazptr_holder::hazptr_holder(std::nullptr_t) {
+FOLLY_ALWAYS_INLINE hazptr_holder::hazptr_holder(std::nullptr_t) {
   domain_ = nullptr;
   hazptr_ = nullptr;
   DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
@@ -205,22 +251,30 @@ inline hazptr_holder::hazptr_holder(std::nullptr_t) {
 
 FOLLY_ALWAYS_INLINE hazptr_holder::~hazptr_holder() {
   DEBUG_PRINT(this);
-  if (domain_) {
+  if (LIKELY(hazptr_ != nullptr)) {
     hazptr_->clear();
+    if (LIKELY(
+            HAZPTR_TC &&
+            (HAZPTR_ONE_DOMAIN || domain_ == &default_hazptr_domain()))) {
+      if (LIKELY(hazptr_tc_try_put(hazptr_))) {
+        return;
+      }
+    }
     domain_->hazptrRelease(hazptr_);
   }
 }
 
-inline hazptr_holder::hazptr_holder(hazptr_holder&& rhs) noexcept {
+FOLLY_ALWAYS_INLINE hazptr_holder::hazptr_holder(hazptr_holder&& rhs) noexcept {
   domain_ = rhs.domain_;
   hazptr_ = rhs.hazptr_;
   rhs.domain_ = nullptr;
   rhs.hazptr_ = nullptr;
 }
 
-inline hazptr_holder& hazptr_holder::operator=(hazptr_holder&& rhs) noexcept {
+FOLLY_ALWAYS_INLINE
+hazptr_holder& hazptr_holder::operator=(hazptr_holder&& rhs) noexcept {
   /* Self-move is a no-op.  */
-  if (this != &rhs) {
+  if (LIKELY(this != &rhs)) {
     this->~hazptr_holder();
     new (this) hazptr_holder(std::move(rhs));
   }
@@ -243,7 +297,7 @@ FOLLY_ALWAYS_INLINE bool hazptr_holder::try_protect(
   reset(f(ptr));
   /*** Full fence ***/ hazptr_mb::light();
   T* p = src.load(std::memory_order_acquire);
-  if (p != ptr) {
+  if (UNLIKELY(p != ptr)) {
     ptr = p;
     reset();
     return false;
@@ -303,15 +357,14 @@ FOLLY_ALWAYS_INLINE void swap(hazptr_holder& lhs, hazptr_holder& rhs) noexcept {
 
 /** Definition of default_hazptr_domain() */
 
-inline hazptr_domain& default_hazptr_domain() {
-  static hazptr_domain d;
-  DEBUG_PRINT(&d);
-  return d;
+FOLLY_ALWAYS_INLINE hazptr_domain& default_hazptr_domain() {
+  DEBUG_PRINT(&default_domain_);
+  return default_domain_;
 }
 
 /** hazptr_rec */
 
-inline void hazptr_rec::set(const void* p) noexcept {
+FOLLY_ALWAYS_INLINE void hazptr_rec::set(const void* p) noexcept {
   DEBUG_PRINT(this << " " << p);
   hazptr_.store(p, std::memory_order_release);
 }
@@ -322,7 +375,7 @@ inline const void* hazptr_rec::get() const noexcept {
   return p;
 }
 
-inline void hazptr_rec::clear() noexcept {
+FOLLY_ALWAYS_INLINE void hazptr_rec::clear() noexcept {
   DEBUG_PRINT(this);
   hazptr_.store(nullptr, std::memory_order_release);
 }
@@ -369,7 +422,11 @@ inline hazptr_domain::~hazptr_domain() {
       retired = retired_.exchange(nullptr);
     }
   }
-  { /* free all hazptr_rec-s */
+  /* Leak the data for the default domain to avoid destruction order
+   * issues with thread caches.
+   */
+  if (this != &default_hazptr_domain()) {
+    /* free all hazptr_rec-s */
     hazptr_rec* next;
     for (auto p = hazptrs_.load(std::memory_order_acquire); p; p = next) {
       next = p->next_;
@@ -379,13 +436,7 @@ inline hazptr_domain::~hazptr_domain() {
   }
 }
 
-FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_domain::hazptrAcquire() {
-  if (HAZPTR_TC && (HAZPTR_ONE_DOMAIN || this == &default_hazptr_domain())) {
-    auto hprec = hazptr_tc().get();
-    if (hprec) {
-      return hprec;
-    }
-  }
+inline hazptr_rec* hazptr_domain::hazptrAcquire() {
   hazptr_rec* p;
   hazptr_rec* next;
   for (p = hazptrs_.load(std::memory_order_acquire); p; p = next) {
@@ -395,6 +446,7 @@ FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_domain::hazptrAcquire() {
     }
   }
   p = static_cast<hazptr_rec*>(mr_->allocate(sizeof(hazptr_rec)));
+  DEBUG_PRINT(this << " " << p << " " << sizeof(hazptr_rec));
   if (p == nullptr) {
     return nullptr;
   }
@@ -408,11 +460,7 @@ FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_domain::hazptrAcquire() {
   return p;
 }
 
-FOLLY_ALWAYS_INLINE void hazptr_domain::hazptrRelease(hazptr_rec* p) noexcept {
-  if (HAZPTR_TC && (HAZPTR_ONE_DOMAIN || this == &default_hazptr_domain()) &&
-      hazptr_tc().put(p)) {
-    return;
-  }
+inline void hazptr_domain::hazptrRelease(hazptr_rec* p) noexcept {
   DEBUG_PRINT(this << " " << p);
   p->release();
 }
@@ -506,6 +554,8 @@ class hazptr_stats {
   std::atomic<uint64_t> seq_cst_{0};
 };
 
+extern hazptr_stats hazptr_stats_;
+
 inline hazptr_stats::~hazptr_stats() {
   DEBUG_PRINT(this << " light " << light_.load());
   DEBUG_PRINT(this << " heavy " << heavy_.load());
@@ -530,15 +580,9 @@ inline void hazptr_stats::seq_cst() {
   }
 }
 
-inline class hazptr_stats& hazptr_stats() {
-  static class hazptr_stats stats_;
-  DEBUG_PRINT(&stats_);
-  return stats_;
-}
-
 /** hazptr_mb */
 
-inline void hazptr_mb::light() {
+FOLLY_ALWAYS_INLINE void hazptr_mb::light() {
   DEBUG_PRINT("");
   if (HAZPTR_AMB) {
     folly::asymmetricLightBarrier();
@@ -560,41 +604,38 @@ inline void hazptr_mb::heavy() {
   }
 }
 
-/** hazptr_tc - functions */
+/**
+ *  TLS structures
+ */
 
-inline void hazptr_tc_entry::fill(hazptr_rec* hprec) {
+/**
+ *  hazptr_tc structures
+ */
+
+/** hazptr_tc_entry */
+
+FOLLY_ALWAYS_INLINE void hazptr_tc_entry::fill(hazptr_rec* hprec) {
   hprec_ = hprec;
   DEBUG_PRINT(this << " " << hprec);
 }
 
-inline hazptr_rec* hazptr_tc_entry::get() {
+FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_tc_entry::get() {
   auto hprec = hprec_;
-  hprec_ = nullptr;
   DEBUG_PRINT(this << " " << hprec);
   return hprec;
 }
 
 inline void hazptr_tc_entry::evict() {
   auto hprec = hprec_;
-  hprec_ = nullptr;
   hprec->release();
   DEBUG_PRINT(this << " " << hprec);
 }
 
-inline hazptr_tc::hazptr_tc() {
-  DEBUG_PRINT(this);
-}
+/** hazptr_tc */
 
-inline hazptr_tc::~hazptr_tc() {
-  DEBUG_PRINT(this);
-  for (int i = 0; i < count_; ++i) {
-    tc_[i].evict();
-  }
-}
-
-inline hazptr_rec* hazptr_tc::get() {
-  if (count_ > 0) {
-    auto hprec = tc_[--count_].get();
+FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_tc::get() {
+  if (LIKELY(count_ != 0)) {
+    auto hprec = entry_[--count_].get();
     DEBUG_PRINT(this << " " << hprec);
     return hprec;
   }
@@ -602,66 +643,147 @@ inline hazptr_rec* hazptr_tc::get() {
   return nullptr;
 }
 
-inline bool hazptr_tc::put(hazptr_rec* hprec) {
-  if (count_ < HAZPTR_TC_SIZE) {
-    tc_[count_++].fill(hprec);
+FOLLY_ALWAYS_INLINE bool hazptr_tc::put(hazptr_rec* hprec) {
+  if (LIKELY(count_ < HAZPTR_TC_SIZE)) {
+    entry_[count_++].fill(hprec);
     DEBUG_PRINT(this << " " << count_ - 1);
     return true;
   }
   return false;
 }
 
-FOLLY_ALWAYS_INLINE class hazptr_tc& hazptr_tc() {
-  static thread_local class hazptr_tc tc;
+/** hazptr_tc free functions */
+
+FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_tc_try_get() {
+  DEBUG_PRINT(TLS_UNINITIALIZED << TLS_ALIVE << TLS_DESTROYED);
+  DEBUG_PRINT(tls_state_);
+  if (LIKELY(tls_state_ == TLS_ALIVE)) {
+    DEBUG_PRINT(tls_state_);
+    return tls_tc_data_.get();
+  } else if (tls_state_ == TLS_UNINITIALIZED) {
+    tls_life_odr_use();
+    return tls_tc_data_.get();
+  }
+  return nullptr;
+}
+
+FOLLY_ALWAYS_INLINE bool hazptr_tc_try_put(hazptr_rec* hprec) {
+  DEBUG_PRINT(tls_state_);
+  if (LIKELY(tls_state_ == TLS_ALIVE)) {
+    DEBUG_PRINT(tls_state_);
+    return tls_tc_data_.put(hprec);
+  }
+  return false;
+}
+
+inline void hazptr_tc_init() {
+  DEBUG_PRINT("");
+  auto& tc = tls_tc_data_;
   DEBUG_PRINT(&tc);
-  return tc;
-}
-
-/** hazptr_priv - functions */
-
-inline hazptr_priv::hazptr_priv() {
-  DEBUG_PRINT(this);
-}
-
-inline hazptr_priv::~hazptr_priv() {
-  DEBUG_PRINT(this);
-  DCHECK(active_);
-  active_ = false;
-  if (tail_) {
-    pushAllToDomain();
+  tc.count_ = 0;
+  for (int i = 0; i < HAZPTR_TC_SIZE; ++i) {
+    tc.entry_[i].hprec_ = nullptr;
   }
 }
 
+inline void hazptr_tc_shutdown() {
+  auto& tc = tls_tc_data_;
+  DEBUG_PRINT(&tc);
+  for (int i = 0; i < tc.count_; ++i) {
+    tc.entry_[i].evict();
+  }
+}
+
+/**
+ *  hazptr_priv
+ */
+
 inline void hazptr_priv::push(hazptr_obj* obj) {
+  auto& domain = default_hazptr_domain();
   obj->next_ = nullptr;
   if (tail_) {
     tail_->next_ = obj;
   } else {
     if (!active_) {
-      default_hazptr_domain().objRetire(obj);
+      domain.objRetire(obj);
       return;
     }
     head_ = obj;
   }
   tail_ = obj;
   ++rcount_;
-  if (domain_->reachedThreshold(rcount_)) {
+  if (domain.reachedThreshold(rcount_)) {
     pushAllToDomain();
   }
 }
 
 inline void hazptr_priv::pushAllToDomain() {
-  domain_->pushRetired(head_, tail_, rcount_);
+  auto& domain = default_hazptr_domain();
+  domain.pushRetired(head_, tail_, rcount_);
   head_ = nullptr;
   tail_ = nullptr;
   rcount_ = 0;
-  domain_->tryBulkReclaim();
+  domain.tryBulkReclaim();
 }
 
-inline class hazptr_priv& hazptr_priv() {
-  static thread_local class hazptr_priv priv;
+inline void hazptr_priv_init() {
+  auto& priv = tls_priv_data_;
   DEBUG_PRINT(&priv);
-  return priv;
+  priv.head_ = nullptr;
+  priv.tail_ = nullptr;
+  priv.rcount_ = 0;
+  priv.active_ = true;
+}
+
+inline void hazptr_priv_shutdown() {
+  auto& priv = tls_priv_data_;
+  DEBUG_PRINT(&priv);
+  DCHECK(priv.active_);
+  priv.active_ = false;
+  if (priv.tail_) {
+    priv.pushAllToDomain();
+  }
+}
+
+inline bool hazptr_priv_try_retire(hazptr_obj* obj) {
+  DEBUG_PRINT(tls_state_);
+  if (tls_state_ == TLS_ALIVE) {
+    DEBUG_PRINT(tls_state_);
+    tls_priv_data_.push(obj);
+    return true;
+  } else if (tls_state_ == TLS_UNINITIALIZED) {
+    DEBUG_PRINT(tls_state_);
+    tls_life_odr_use();
+    tls_priv_data_.push(obj);
+    return true;
+  }
+  return false;
+}
+
+/** hazptr_tls_life */
+
+inline void tls_life_odr_use() {
+  DEBUG_PRINT(tls_state_);
+  CHECK(tls_state_ == TLS_UNINITIALIZED);
+  auto volatile tlsOdrUse = &tls_life_;
+  CHECK(tlsOdrUse != nullptr);
+  DEBUG_PRINT(tlsOdrUse);
+}
+
+inline hazptr_tls_life::hazptr_tls_life() {
+  DEBUG_PRINT(this);
+  CHECK(tls_state_ == TLS_UNINITIALIZED);
+  hazptr_tc_init();
+  hazptr_priv_init();
+  tls_state_ = TLS_ALIVE;
+}
+
+inline hazptr_tls_life::~hazptr_tls_life() {
+  DEBUG_PRINT(this);
+  CHECK(tls_state_ == TLS_ALIVE);
+  hazptr_tc_shutdown();
+  hazptr_priv_shutdown();
+  tls_state_ = TLS_DESTROYED;
 }
 
 } // namespace folly

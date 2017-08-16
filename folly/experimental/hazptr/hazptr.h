@@ -51,7 +51,7 @@ class hazptr_domain {
   friend class hazptr_holder;
   template <typename, typename>
   friend class hazptr_obj_base;
-  friend class hazptr_priv;
+  friend struct hazptr_priv;
 
   memory_resource* mr_;
   std::atomic<hazptr_rec*> hazptrs_ = {nullptr};
@@ -71,12 +71,14 @@ class hazptr_domain {
 /** Get the default hazptr_domain */
 hazptr_domain& default_hazptr_domain();
 
+extern hazptr_domain default_domain_;
+
 /** Definition of hazptr_obj */
 class hazptr_obj {
   friend class hazptr_domain;
   template <typename, typename>
   friend class hazptr_obj_base;
-  friend class hazptr_priv;
+  friend struct hazptr_priv;
 
   void (*reclaim_)(hazptr_obj*);
   hazptr_obj* next_;
