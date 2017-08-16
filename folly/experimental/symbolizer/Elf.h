@@ -123,6 +123,14 @@ class ElfFile {
   const char* iterateStrings(const ElfShdr& stringTable, Fn fn) const;
 
   /**
+   * Iterate over program headers as long as fn(section) returns false.
+   * Returns a pointer to the current ("found") section when fn returned
+   * true, or nullptr if fn returned false for all sections.
+   */
+  template <class Fn>
+  const ElfPhdr* iterateProgramHeaders(Fn fn) const;
+
+  /**
    * Iterate over all sections for as long as fn(section) returns false.
    * Returns a pointer to the current ("found") section when fn returned
    * true, or nullptr if fn returned false for all sections.
