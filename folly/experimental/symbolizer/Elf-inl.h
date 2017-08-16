@@ -22,6 +22,18 @@ namespace folly {
 namespace symbolizer {
 
 template <class Fn>
+const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const {
+  const ElfPhdr* ptr = &at<ElfPhdr>(elfHeader().e_phoff);
+  for (size_t i = 0; i < elfHeader().e_phnum; i++, ptr++) {
+    if (fn(*ptr)) {
+      return ptr;
+    }
+  }
+
+  return nullptr;
+}
+
+template <class Fn>
 const ElfShdr* ElfFile::iterateSections(Fn fn) const {
   const ElfShdr* ptr = &at<ElfShdr>(elfHeader().e_shoff);
   for (size_t i = 0; i < elfHeader().e_shnum; i++, ptr++) {

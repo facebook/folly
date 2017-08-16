@@ -263,24 +263,18 @@ bool ElfFile::init(const char** msg) {
     }
   }
 
-  const ElfPhdr* programHeader = &at<ElfPhdr>(elfHeader.e_phoff);
-  bool foundBase = false;
-  for (size_t i = 0; i < elfHeader.e_phnum; programHeader++, i++) {
-    // Program headers are sorted by load address, so the first PT_LOAD
-    // header gives us the base address.
-    if (programHeader->p_type == PT_LOAD) {
-      baseAddress_ = programHeader->p_vaddr;
-      foundBase = true;
-      break;
-    }
-  }
+  // Program headers are sorted by load address, so the first PT_LOAD
+  // header gives us the base address.
+  const ElfPhdr* programHeader =
+      iterateProgramHeaders([](auto& h) { return h.p_type == PT_LOAD; });
 
-  if (!foundBase) {
+  if (!programHeader) {
     if (msg) {
       *msg = "could not find base address";
     }
     return false;
   }
+  baseAddress_ = programHeader->p_vaddr;
 
   return true;
 }

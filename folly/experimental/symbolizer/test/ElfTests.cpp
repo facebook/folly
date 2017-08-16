@@ -52,6 +52,13 @@ TEST_F(ElfTest, PointerValue) {
   EXPECT_STREQ(kStringValue, str);
 }
 
+TEST_F(ElfTest, iterateProgramHeaders) {
+  auto phdr = elfFile_.iterateProgramHeaders(
+      [](auto& h) { return h.p_type == PT_LOAD; });
+  EXPECT_NE(nullptr, phdr);
+  EXPECT_GE(phdr->p_filesz, 0);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
