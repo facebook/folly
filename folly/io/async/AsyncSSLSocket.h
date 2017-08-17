@@ -557,6 +557,18 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void detachSSLContext();
 #endif
 
+  /**
+   * Returns the original folly::SSLContext associated with this socket.
+   *
+   * Suitable for use in AsyncSSLSocket constructor to construct a new
+   * AsyncSSLSocket using an existing socket's context.
+   *
+   * switchServerSSLContext() does not affect this return value.
+   */
+  const std::shared_ptr<folly::SSLContext>& getSSLContext() const {
+    return ctx_;
+  }
+
 #if FOLLY_OPENSSL_HAS_SNI
   /**
    * Switch the SSLContext to continue the SSL handshake.
