@@ -212,9 +212,12 @@ class Range : private boost::totally_ordered<Range<Iter>> {
   /* implicit */ Range(std::nullptr_t) = delete;
 #endif
 
-  template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
   constexpr /* implicit */ Range(Iter str)
-      : b_(str), e_(str + constexpr_strlen(str)) {}
+      : b_(str), e_(str + constexpr_strlen(str)) {
+    static_assert(
+        std::is_same<int, typename detail::IsCharPointer<Iter>::type>::value,
+        "This constructor is only available for character ranges");
+  }
 
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   /* implicit */ Range(const std::string& str)
