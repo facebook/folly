@@ -282,6 +282,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::string getApplicationProtocol() noexcept override;
 
   std::string getSecurityProtocol() const override {
+    if (sslState_ == STATE_UNENCRYPTED) {
+      return "";
+    }
     return "TLS";
   }
 
