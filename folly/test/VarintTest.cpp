@@ -98,6 +98,17 @@ TEST(Varint, Simple) {
              {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01});
 }
 
+void testVarintFail(std::initializer_list<uint8_t> bytes) {
+  size_t n = bytes.size();
+  ByteRange data(&*bytes.begin(), n);
+  auto ret = tryDecodeVarint(data);
+  EXPECT_FALSE(ret.hasValue());
+}
+
+TEST(Varint, Fail) {
+  testVarintFail({0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
+}
+
 TEST(ZigZag, Simple) {
   EXPECT_EQ(0, encodeZigZag(0));
   EXPECT_EQ(1, encodeZigZag(-1));

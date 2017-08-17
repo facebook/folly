@@ -145,7 +145,7 @@ inline Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data) {
       b = *p++; val |= (b & 0x7f) << 42; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 49; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 56; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 63; if (b >= 0) break;
+      b = *p++; val |= (b & 0x01) << 63; if (b >= 0) break;
       return makeUnexpected(DecodeVarintError::TooManyBytes);
     } while (false);
   } else {
