@@ -341,7 +341,7 @@ an explicit pool of EventBases.
 ### SSLContext
 
 SSL helper routines to load / verify certs.  Used with
-AsyncSSL[Server]Socket.
+AsyncSSLSocket.
 
 ## Generic Multithreading Advice
 

@@ -578,7 +578,6 @@ class SSLServerAcceptCallback: public SSLServerAcceptCallbackBase {
     }
   }
 
-  // Functions inherited from TAsyncSSLServerSocket::SSLAcceptCallback
   void connAccepted(
     const std::shared_ptr<folly::AsyncSSLSocket> &s)
     noexcept override {
@@ -599,7 +598,6 @@ class SSLServerAcceptCallbackDelay: public SSLServerAcceptCallback {
   explicit SSLServerAcceptCallbackDelay(HandshakeCallback *hcb):
       SSLServerAcceptCallback(hcb) {}
 
-  // Functions inherited from TAsyncSSLServerSocket::SSLAcceptCallback
   void connAccepted(
     const std::shared_ptr<folly::AsyncSSLSocket> &s)
     noexcept override {
@@ -641,7 +639,6 @@ class SSLServerAsyncCacheAcceptCallback: public SSLServerAcceptCallback {
                                              uint32_t timeout = 0):
     SSLServerAcceptCallback(hcb, timeout) {}
 
-  // Functions inherited from TAsyncSSLServerSocket::SSLAcceptCallback
   void connAccepted(
     const std::shared_ptr<folly::AsyncSSLSocket> &s)
     noexcept override {
@@ -666,7 +663,6 @@ class HandshakeErrorCallback: public SSLServerAcceptCallbackBase {
   explicit HandshakeErrorCallback(HandshakeCallback *hcb):
   SSLServerAcceptCallbackBase(hcb)  {}
 
-  // Functions inherited from TAsyncSSLServerSocket::SSLAcceptCallback
   void connAccepted(
     const std::shared_ptr<folly::AsyncSSLSocket> &s)
     noexcept override {
@@ -702,7 +698,6 @@ class HandshakeTimeoutCallback: public SSLServerAcceptCallbackBase {
   explicit HandshakeTimeoutCallback(HandshakeCallback *hcb):
   SSLServerAcceptCallbackBase(hcb)  {}
 
-  // Functions inherited from TAsyncSSLServerSocket::SSLAcceptCallback
   void connAccepted(
     const std::shared_ptr<folly::AsyncSSLSocket> &s)
     noexcept override {
@@ -738,7 +733,6 @@ class ConnectTimeoutCallback : public SSLServerAcceptCallbackBase {
     state = STATE_SUCCEEDED;
   }
 
-  // Functions inherited from TAsyncSSLServerSocket::SSLAcceptCallback
   void connAccepted(
       const std::shared_ptr<folly::AsyncSSLSocket>& s) noexcept override {
     std::cerr << "ConnectTimeoutCallback::connAccepted" << std::endl;
