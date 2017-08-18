@@ -29,6 +29,7 @@ void logDfatal(std::exception const& e) {
 
 constexpr std::array<const char*, 12> SSLCommonOptions::kCipherList;
 constexpr std::array<const char*, 8> SSLCommonOptions::kSignatureAlgorithms;
+constexpr std::array<const char*, 12> SSLServerOptions::kCipherList;
 
 void SSLCommonOptions::setClientOptions(SSLContext& ctx) {
 #ifdef SSL_MODE_HANDSHAKE_CUTTHROUGH

@@ -67,6 +67,28 @@ struct SSLCommonOptions {
 };
 
 /**
+ * Recommended SSL options for server-side scenario.
+ */
+struct SSLServerOptions {
+  /**
+   * The list of ciphers recommended for server use.
+   */
+  static constexpr auto kCipherList = folly::make_array(
+      "ECDHE-ECDSA-AES128-GCM-SHA256",
+      "ECDHE-ECDSA-AES256-GCM-SHA384",
+      "ECDHE-ECDSA-AES128-SHA",
+      "ECDHE-ECDSA-AES256-SHA",
+      "ECDHE-RSA-AES128-GCM-SHA256",
+      "ECDHE-RSA-AES256-GCM-SHA384",
+      "ECDHE-RSA-AES128-SHA",
+      "ECDHE-RSA-AES256-SHA",
+      "AES128-GCM-SHA256",
+      "AES256-GCM-SHA384",
+      "AES128-SHA",
+      "AES256-SHA");
+};
+
+/**
  * Set the cipher suite of ctx to that in TSSLOptions, and print any runtime
  * error it catches.
  * @param ctx The SSLContext to apply the desired SSL options to.
