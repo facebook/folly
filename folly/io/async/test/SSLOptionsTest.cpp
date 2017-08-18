@@ -26,18 +26,15 @@ namespace folly {
 
 class SSLOptionsTest : public testing::Test {};
 
-void verifySSLCipherList(SSLContext& ctx, const vector<string>& ciphers) {
-  int i = 0;
-  ssl::SSLUniquePtr ssl(ctx.createSSL());
-  for (auto& cipher : ciphers) {
-    ASSERT_STREQ(cipher.c_str(), SSL_get_cipher_list(ssl.get(), i++));
-  }
-  ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
-}
-
 TEST_F(SSLOptionsTest, TestSetCommonCipherList) {
   SSLContext ctx;
   ssl::setCipherSuites<ssl::SSLCommonOptions>(ctx);
-  verifySSLCipherList(ctx, ssl::SSLCommonOptions::getCipherList());
+
+  int i = 0;
+  ssl::SSLUniquePtr ssl(ctx.createSSL());
+  for (auto& cipher : ssl::SSLCommonOptions::kCipherList) {
+    ASSERT_STREQ(cipher, SSL_get_cipher_list(ssl.get(), i++));
+  }
+  ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
 }
 }

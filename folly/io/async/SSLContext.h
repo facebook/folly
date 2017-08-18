@@ -32,6 +32,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/String.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLLockTypes.h>
@@ -131,25 +132,63 @@ class SSLContext {
   virtual void ciphers(const std::string& ciphers);
 
   /**
-   * Set default ciphers to be used in SSL handshake process.
-   *
-   * @param ciphers A list of ciphers to use for TLS.
-   */
-  virtual void setCipherList(const std::vector<std::string>& ciphers);
-
-  /**
    * Low-level method that attempts to set the provided ciphers on the
    * SSL_CTX object, and throws if something goes wrong.
    */
   virtual void setCiphersOrThrow(const std::string& ciphers);
 
   /**
-   * Sets the signature algorithms to be used during SSL negotiation
-   * for TLS1.2+
-   *
-   * @param sigalgs A list of signature algorithms, eg. RSA+SHA512
+   * Set default ciphers to be used in SSL handshake process.
    */
-  void setSignatureAlgorithms(const std::vector<std::string>& sigalgs);
+
+  template <typename Iterator>
+  void setCipherList(Iterator ibegin, Iterator iend) {
+    if (ibegin != iend) {
+      std::string opensslCipherList;
+      folly::join(":", ibegin, iend, opensslCipherList);
+      setCiphersOrThrow(opensslCipherList);
+    }
+  }
+
+  template <typename Container>
+  void setCipherList(const Container& cipherList) {
+    using namespace std;
+    setCipherList(begin(cipherList), end(cipherList));
+  }
+
+  template <typename Value>
+  void setCipherList(const std::initializer_list<Value>& cipherList) {
+    setCipherList(cipherList.begin(), cipherList.end());
+  }
+
+  /**
+   * Sets the signature algorithms to be used during SSL negotiation
+   * for TLS1.2+.
+   */
+
+  template <typename Iterator>
+  void setSignatureAlgorithms(Iterator ibegin, Iterator iend) {
+    if (ibegin != iend) {
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
+      std::string opensslSigAlgsList;
+      join(":", ibegin, iend, opensslSigAlgsList);
+      if (!SSL_CTX_set1_sigalgs_list(ctx_, opensslSigAlgsList.c_str())) {
+        throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
+      }
+#endif
+    }
+  }
+
+  template <typename Container>
+  void setSignatureAlgorithms(const Container& sigalgs) {
+    using namespace std;
+    setSignatureAlgorithms(begin(sigalgs), end(sigalgs));
+  }
+
+  template <typename Value>
+  void setSignatureAlgorithms(const std::initializer_list<Value>& sigalgs) {
+    setSignatureAlgorithms(sigalgs.begin(), sigalgs.end());
+  }
 
   /**
    * Sets the list of EC curves supported by the client.

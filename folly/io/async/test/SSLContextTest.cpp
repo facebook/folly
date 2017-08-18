@@ -16,6 +16,7 @@
 
 #include <folly/io/async/SSLContext.h>
 #include <folly/portability/GTest.h>
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 using namespace std;
 using namespace testing;
@@ -30,12 +31,11 @@ class SSLContextTest : public testing::Test {
 
 void SSLContextTest::verifySSLCipherList(const vector<string>& ciphers) {
   int i = 0;
-  SSL* ssl = ctx.createSSL();
+  ssl::SSLUniquePtr ssl(ctx.createSSL());
   for (auto& cipher : ciphers) {
-    ASSERT_STREQ(cipher.c_str(), SSL_get_cipher_list(ssl, i++));
+    ASSERT_STREQ(cipher.c_str(), SSL_get_cipher_list(ssl.get(), i++));
   }
-  ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl, i));
-  SSL_free(ssl);
+  ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
 }
 
 TEST_F(SSLContextTest, TestSetCipherString) {

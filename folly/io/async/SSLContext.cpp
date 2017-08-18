@@ -87,30 +87,6 @@ void SSLContext::ciphers(const std::string& ciphers) {
   setCiphersOrThrow(ciphers);
 }
 
-void SSLContext::setCipherList(const std::vector<std::string>& ciphers) {
-  if (ciphers.size() == 0) {
-    return;
-  }
-  std::string opensslCipherList;
-  join(":", ciphers, opensslCipherList);
-  setCiphersOrThrow(opensslCipherList);
-}
-
-void SSLContext::setSignatureAlgorithms(
-    const std::vector<std::string>& sigalgs) {
-  if (sigalgs.size() == 0) {
-    return;
-  }
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
-  std::string opensslSigAlgsList;
-  join(":", sigalgs, opensslSigAlgsList);
-  int rc = SSL_CTX_set1_sigalgs_list(ctx_, opensslSigAlgsList.c_str());
-  if (rc == 0) {
-    throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
-  }
-#endif
-}
-
 void SSLContext::setClientECCurvesList(
     const std::vector<std::string>& ecCurves) {
   if (ecCurves.size() == 0) {

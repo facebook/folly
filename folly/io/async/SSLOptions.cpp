@@ -14,42 +14,21 @@
  * limitations under the License.
  */
 
-#include "SSLOptions.h"
+#include <folly/io/async/SSLOptions.h>
+#include <folly/Format.h>
+#include <folly/Logging.h>
 
 namespace folly {
 namespace ssl {
 
-const std::vector<std::string>& SSLCommonOptions::getCipherList() {
-  static const std::vector<std::string> kCommonCipherList = {
-      "ECDHE-ECDSA-AES128-GCM-SHA256",
-      "ECDHE-RSA-AES128-GCM-SHA256",
-      "ECDHE-ECDSA-AES256-GCM-SHA384",
-      "ECDHE-RSA-AES256-GCM-SHA384",
-      "ECDHE-ECDSA-AES256-SHA",
-      "ECDHE-RSA-AES256-SHA",
-      "ECDHE-ECDSA-AES128-SHA",
-      "ECDHE-RSA-AES128-SHA",
-      "ECDHE-RSA-AES256-SHA384",
-      "AES128-GCM-SHA256",
-      "AES256-SHA",
-      "AES128-SHA",
-  };
-  return kCommonCipherList;
+namespace ssl_options_detail {
+void logDfatal(std::exception const& e) {
+  LOG(DFATAL) << exceptionStr(e);
+}
 }
 
-const std::vector<std::string>& SSLCommonOptions::getSignatureAlgorithms() {
-  static const std::vector<std::string> kCommonSigAlgs = {
-      "RSA+SHA512",
-      "ECDSA+SHA512",
-      "RSA+SHA384",
-      "ECDSA+SHA384",
-      "RSA+SHA256",
-      "ECDSA+SHA256",
-      "RSA+SHA1",
-      "ECDSA+SHA1",
-  };
-  return kCommonSigAlgs;
-}
+constexpr std::array<const char*, 12> SSLCommonOptions::kCipherList;
+constexpr std::array<const char*, 8> SSLCommonOptions::kSignatureAlgorithms;
 
 void SSLCommonOptions::setClientOptions(SSLContext& ctx) {
 #ifdef SSL_MODE_HANDSHAKE_CUTTHROUGH

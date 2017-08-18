@@ -16,25 +16,47 @@
 
 #pragma once
 
-#include <folly/Format.h>
+#include <folly/Array.h>
 #include <folly/io/async/SSLContext.h>
-
-#include <glog/logging.h>
 
 namespace folly {
 namespace ssl {
 
+namespace ssl_options_detail {
+void logDfatal(std::exception const&);
+}
+
 struct SSLCommonOptions {
   /**
-   * Return the cipher list recommended for this options configuration.
+   * The cipher list recommended for this options configuration.
    */
-  static const std::vector<std::string>& getCipherList();
+  static constexpr auto kCipherList = folly::make_array(
+      "ECDHE-ECDSA-AES128-GCM-SHA256",
+      "ECDHE-RSA-AES128-GCM-SHA256",
+      "ECDHE-ECDSA-AES256-GCM-SHA384",
+      "ECDHE-RSA-AES256-GCM-SHA384",
+      "ECDHE-ECDSA-AES256-SHA",
+      "ECDHE-RSA-AES256-SHA",
+      "ECDHE-ECDSA-AES128-SHA",
+      "ECDHE-RSA-AES128-SHA",
+      "ECDHE-RSA-AES256-SHA384",
+      "AES128-GCM-SHA256",
+      "AES256-SHA",
+      "AES128-SHA");
 
   /**
-   * Return the list of signature algorithms recommended for this options
+   * The list of signature algorithms recommended for this options
    * configuration.
    */
-  static const std::vector<std::string>& getSignatureAlgorithms();
+  static constexpr auto kSignatureAlgorithms = folly::make_array(
+      "RSA+SHA512",
+      "ECDSA+SHA512",
+      "RSA+SHA384",
+      "ECDSA+SHA384",
+      "RSA+SHA256",
+      "ECDSA+SHA256",
+      "RSA+SHA1",
+      "ECDSA+SHA1");
 
   /**
    * Set common parameters on a client SSL context, for example,
@@ -44,21 +66,31 @@ struct SSLCommonOptions {
   static void setClientOptions(SSLContext& ctx);
 };
 
+/**
+ * Set the cipher suite of ctx to that in TSSLOptions, and print any runtime
+ * error it catches.
+ * @param ctx The SSLContext to apply the desired SSL options to.
+ */
 template <typename TSSLOptions>
 void setCipherSuites(SSLContext& ctx) {
   try {
-    ctx.setCipherList(TSSLOptions::getCipherList());
+    ctx.setCipherList(TSSLOptions::kCipherList);
   } catch (std::runtime_error const& e) {
-    LOG(DFATAL) << exceptionStr(e);
+    ssl_options_detail::logDfatal(e);
   }
 }
 
+/**
+ * Set the signature algorithm list of ctx to that in TSSLOptions, and print
+ * any runtime errors it catche.
+ * @param ctx The SSLContext to apply the desired SSL options to.
+ */
 template <typename TSSLOptions>
 void setSignatureAlgorithms(SSLContext& ctx) {
   try {
-    ctx.setSignatureAlgorithms(TSSLOptions::getSignatureAlgorithms());
+    ctx.setSignatureAlgorithms(TSSLOptions::kSignatureAlgorithms);
   } catch (std::runtime_error const& e) {
-    LOG(DFATAL) << exceptionStr(e);
+    ssl_options_detail::logDfatal(e);
   }
 }
 
