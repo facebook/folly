@@ -244,12 +244,10 @@ inline void* checkedRealloc(void* ptr, size_t size) {
  * currentSize bytes are used. The problem with using realloc is that
  * if currentSize is relatively small _and_ if realloc decides it
  * needs to move the memory chunk to a new buffer, then realloc ends
- * up copying data that is not used. It's impossible to hook into
- * GNU's malloc to figure whether expansion will occur in-place or as
- * a malloc-copy-free troika. (If an expand_in_place primitive would
- * be available, smartRealloc would use it.) As things stand, this
- * routine just tries to call realloc() (thus benefitting of potential
- * copy-free coalescing) unless there's too much slack memory.
+ * up copying data that is not used. It's generally not a win to try
+ * to hook in to realloc() behavior to avoid copies - at least in
+ * jemalloc, realloc() almost always ends up doing a copy, because
+ * there is little fragmentation / slack space to take advantage of.
  */
 FOLLY_MALLOC_CHECKED_MALLOC FOLLY_MALLOC_NOINLINE inline void* smartRealloc(
     void* p,
@@ -260,28 +258,6 @@ FOLLY_MALLOC_CHECKED_MALLOC FOLLY_MALLOC_NOINLINE inline void* smartRealloc(
   assert(currentSize <= currentCapacity &&
          currentCapacity < newCapacity);
 
-  if (usingJEMalloc()) {
-    // using jemalloc's API. Don't forget that jemalloc can never grow
-    // in place blocks smaller than 4096 bytes.
-    //
-    // NB: newCapacity may not be precisely equal to a jemalloc size class,
-    // i.e. newCapacity is not guaranteed to be the result of a
-    // goodMallocSize() call, therefore xallocx() may return more than
-    // newCapacity bytes of space.  Use >= rather than == to check whether
-    // xallocx() successfully expanded in place.
-    if (currentCapacity >= jemallocMinInPlaceExpandable &&
-        xallocx(p, newCapacity, 0, 0) >= newCapacity) {
-      // Managed to expand in place
-      return p;
-    }
-    // Cannot expand; must move
-    auto const result = checkedMalloc(newCapacity);
-    std::memcpy(result, p, currentSize);
-    free(p);
-    return result;
-  }
-
-  // No jemalloc no honey
   auto const slack = currentCapacity - currentSize;
   if (slack * 2 > currentSize) {
     // Too much slack, malloc-copy-free cycle:
