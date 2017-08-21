@@ -209,6 +209,28 @@ TEST(ExceptionWrapper, get_or_make_exception_ptr_test) {
   EXPECT_FALSE(eptr);
 }
 
+TEST(ExceptionWrapper, from_exception_ptr_empty) {
+  auto ep = std::exception_ptr();
+  auto ew = exception_wrapper::from_exception_ptr(ep);
+  EXPECT_FALSE(bool(ew));
+}
+
+TEST(ExceptionWrapper, from_exception_ptr_exn) {
+  auto ep = std::make_exception_ptr(std::runtime_error("foo"));
+  auto ew = exception_wrapper::from_exception_ptr(ep);
+  EXPECT_TRUE(bool(ew));
+  EXPECT_EQ(ep, ew.to_exception_ptr());
+  EXPECT_TRUE(ew.is_compatible_with<std::runtime_error>());
+}
+
+TEST(ExceptionWrapper, from_exception_ptr_any) {
+  auto ep = std::make_exception_ptr<int>(12);
+  auto ew = exception_wrapper::from_exception_ptr(ep);
+  EXPECT_TRUE(bool(ew));
+  EXPECT_EQ(ep, ew.to_exception_ptr());
+  EXPECT_TRUE(ew.is_compatible_with<int>());
+}
+
 TEST(ExceptionWrapper, with_exception_ptr_empty) {
   auto ew = exception_wrapper(std::exception_ptr());
   EXPECT_EQ(exception_wrapper::none(), ew.type());

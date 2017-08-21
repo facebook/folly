@@ -368,6 +368,9 @@ class exception_wrapper final {
   static bool with_exception_(This& this_, Fn fn_);
 
  public:
+  static exception_wrapper from_exception_ptr(
+      std::exception_ptr const& eptr) noexcept;
+
   //! Default-constructs an empty `exception_wrapper`
   //! \post `type() == none()`
   exception_wrapper() noexcept {}
