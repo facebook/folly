@@ -409,6 +409,7 @@ nobase_follyinclude_HEADERS = \
 	String-inl.h \
 	Subprocess.h \
 	Synchronized.h \
+	SynchronizedPtr.h \
 	test/FBStringTestBenchmarks.cpp.h \
 	test/FBVectorTestBenchmarks.cpp.h \
 	test/function_benchmark/benchmark_impl.h \
