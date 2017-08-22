@@ -298,6 +298,8 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
+	io/compression/Utils.h \
+	io/compression/Zlib.h \
 	Iterator.h \
 	json.h \
 	Launder.h \
@@ -533,6 +535,7 @@ libfolly_la_SOURCES = \
 	io/async/test/TimeUtil.cpp \
 	io/async/ssl/OpenSSLUtils.cpp \
 	io/async/ssl/SSLErrors.cpp \
+	io/compression/Zlib.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
 	detail/SocketFastOpen.cpp \

@@ -38,6 +38,12 @@
 #include <zstd.h>
 #endif
 
+#if FOLLY_HAVE_LIBZ
+#include <folly/io/compression/Zlib.h>
+#endif
+
+namespace zlib = folly::io::zlib;
+
 namespace folly {
 namespace io {
 namespace test {
@@ -1129,6 +1135,118 @@ TEST(ZstdTest, BackwardCompatible) {
 }
 
 #endif
+
+#if FOLLY_HAVE_LIBZ
+
+using ZlibFormat = zlib::Options::Format;
+
+TEST(ZlibTest, Auto) {
+  size_t const uncompressedLength_ = (size_t)1 << 15;
+  auto const original = std::string(
+      reinterpret_cast<const char*>(
+          randomDataHolder.data(uncompressedLength_).data()),
+      uncompressedLength_);
+  auto optionCodec = zlib::getCodec(zlib::Options(ZlibFormat::AUTO));
+
+  // Test the codec can uncompress zlib data.
+  {
+    auto codec = getCodec(CodecType::ZLIB);
+    auto const compressed = codec->compress(original);
+    auto const uncompressed = optionCodec->uncompress(compressed);
+    EXPECT_EQ(original, uncompressed);
+  }
+
+  // Test the codec can uncompress gzip data.
+  {
+    auto codec = getCodec(CodecType::GZIP);
+    auto const compressed = codec->compress(original);
+    auto const uncompressed = optionCodec->uncompress(compressed);
+    EXPECT_EQ(original, uncompressed);
+  }
+}
+
+TEST(ZlibTest, DefaultOptions) {
+  size_t const uncompressedLength_ = (size_t)1 << 20;
+  auto const original = std::string(
+      reinterpret_cast<const char*>(
+          randomDataHolder.data(uncompressedLength_).data()),
+      uncompressedLength_);
+  {
+    auto codec = getCodec(CodecType::ZLIB);
+    auto optionCodec = zlib::getCodec(zlib::defaultZlibOptions());
+    auto const compressed = optionCodec->compress(original);
+    auto uncompressed = codec->uncompress(compressed);
+    EXPECT_EQ(original, uncompressed);
+    uncompressed = optionCodec->uncompress(compressed);
+    EXPECT_EQ(original, uncompressed);
+  }
+
+  {
+    auto codec = getCodec(CodecType::GZIP);
+    auto optionCodec = zlib::getCodec(zlib::defaultGzipOptions());
+    auto const compressed = optionCodec->compress(original);
+    auto uncompressed = codec->uncompress(compressed);
+    EXPECT_EQ(original, uncompressed);
+    uncompressed = optionCodec->uncompress(compressed);
+    EXPECT_EQ(original, uncompressed);
+  }
+}
+
+class ZlibOptionsTest : public testing::TestWithParam<
+                            std::tr1::tuple<ZlibFormat, int, int, int>> {
+ protected:
+  void SetUp() override {
+    auto tup = GetParam();
+    options_.format = std::tr1::get<0>(tup);
+    options_.windowSize = std::tr1::get<1>(tup);
+    options_.memLevel = std::tr1::get<2>(tup);
+    options_.strategy = std::tr1::get<3>(tup);
+    codec_ = zlib::getStreamCodec(options_);
+  }
+
+  void runSimpleRoundTripTest(const DataHolder& dh);
+
+ private:
+  zlib::Options options_;
+  std::unique_ptr<StreamCodec> codec_;
+};
+
+void ZlibOptionsTest::runSimpleRoundTripTest(const DataHolder& dh) {
+  size_t const uncompressedLength = (size_t)1 << 16;
+  auto const original = std::string(
+      reinterpret_cast<const char*>(dh.data(uncompressedLength).data()),
+      uncompressedLength);
+
+  auto const compressed = codec_->compress(original);
+  auto const uncompressed = codec_->uncompress(compressed);
+  EXPECT_EQ(uncompressed, original);
+}
+
+TEST_P(ZlibOptionsTest, simpleRoundTripTest) {
+  runSimpleRoundTripTest(constantDataHolder);
+  runSimpleRoundTripTest(randomDataHolder);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ZlibOptionsTest,
+    ZlibOptionsTest,
+    testing::Combine(
+        testing::Values(
+            ZlibFormat::ZLIB,
+            ZlibFormat::GZIP,
+            ZlibFormat::RAW,
+            ZlibFormat::AUTO),
+        testing::Values(9, 12, 15),
+        testing::Values(1, 8, 9),
+        testing::Values(
+            Z_DEFAULT_STRATEGY,
+            Z_FILTERED,
+            Z_HUFFMAN_ONLY,
+            Z_RLE,
+            Z_FIXED)));
+
+#endif // FOLLY_HAVE_LIBZ
+
 } // namespace test
 } // namespace io
 } // namespace folly
