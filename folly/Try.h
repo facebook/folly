@@ -114,15 +114,8 @@ class Try {
    */
   FOLLY_DEPRECATED("use Try(exception_wrapper)")
   explicit Try(std::exception_ptr ep)
-    : contains_(Contains::EXCEPTION) {
-    try {
-      std::rethrow_exception(ep);
-    } catch (std::exception& e) {
-      e_ = exception_wrapper(std::current_exception(), e);
-    } catch (...) {
-      e_ = exception_wrapper(std::current_exception());
-    }
-  }
+      : contains_(Contains::EXCEPTION),
+        e_(exception_wrapper::from_exception_ptr(ep)) {}
 
   // Move constructor
   Try(Try<T>&& t) noexcept;
@@ -339,15 +332,8 @@ class Try<void> {
    * @param ep The exception_pointer. Will be rethrown.
    */
   FOLLY_DEPRECATED("use Try(exception_wrapper)")
-  explicit Try(std::exception_ptr ep) : hasValue_(false) {
-    try {
-      std::rethrow_exception(ep);
-    } catch (const std::exception& e) {
-      e_ = exception_wrapper(std::current_exception(), e);
-    } catch (...) {
-      e_ = exception_wrapper(std::current_exception());
-    }
-  }
+  explicit Try(std::exception_ptr ep)
+      : hasValue_(false), e_(exception_wrapper::from_exception_ptr(ep)) {}
 
   // Copy assigner
   Try& operator=(const Try<void>& t) {
