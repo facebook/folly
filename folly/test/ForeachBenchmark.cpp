@@ -32,12 +32,236 @@ using namespace folly::detail;
 // 3. Use FOR_EACH_KV loop to iterate through the map.
 
 std::map<int, std::string> bmMap; // For use in benchmarks below.
+std::vector<int> vec_one;
+std::vector<int> vec_two;
 
 void setupBenchmark(size_t iters) {
   bmMap.clear();
   for (size_t i = 0; i < iters; ++i) {
     bmMap[i] = "teststring";
   }
+
+  vec_one.clear();
+  vec_two.clear();
+  vec_one.resize(iters);
+  vec_two.resize(iters);
+}
+
+BENCHMARK(ForEachFunctionNoAssign, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    folly::for_each(bmMap, [&](auto& key_val_pair) {
+      sumKeys += key_val_pair.first;
+      sumValues += key_val_pair.second;
+    });
+    doNotOptimizeAway(sumKeys);
+  });
+}
+
+BENCHMARK(StdForEachFunctionNoAssign, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    std::for_each(bmMap.begin(), bmMap.end(), [&](auto& key_val_pair) {
+      sumKeys += key_val_pair.first;
+      sumValues += key_val_pair.second;
+    });
+    doNotOptimizeAway(sumKeys);
+  });
+}
+
+BENCHMARK(RangeBasedForLoopNoAssign, iters) {
+  BenchmarkSuspender suspender;
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    for (auto& key_val_pair : bmMap) {
+      sumKeys += key_val_pair.first;
+      sumValues += key_val_pair.second;
+    }
+    doNotOptimizeAway(sumKeys);
+  });
+}
+
+BENCHMARK(ManualLoopNoAssign, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    for (auto iter = bmMap.begin(); iter != bmMap.end(); ++iter) {
+      sumKeys += iter->first;
+      sumValues += iter->second;
+    }
+    doNotOptimizeAway(sumKeys);
+  });
+}
+
+BENCHMARK(ForEachFunctionAssign, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    folly::for_each(bmMap, [&](auto& key_val_pair) {
+      const int k = key_val_pair.first;
+      const std::string v = key_val_pair.second;
+      sumKeys += k;
+      sumValues += v;
+    });
+  });
+}
+
+BENCHMARK(StdForEachFunctionAssign, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    std::for_each(bmMap.begin(), bmMap.end(), [&](auto& key_val_pair) {
+      const int k = key_val_pair.first;
+      const std::string v = key_val_pair.second;
+      sumKeys += k;
+      sumValues += v;
+    });
+  });
+}
+
+BENCHMARK(RangeBasedForLoopAssign, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    for (auto& key_val_pair : bmMap) {
+      const int k = key_val_pair.first;
+      const std::string v = key_val_pair.second;
+      sumKeys += k;
+      sumValues += v;
+    }
+  });
+}
+
+BENCHMARK(ManualLoopAssign, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    for (auto iter = bmMap.begin(); iter != bmMap.end(); ++iter) {
+      const int k = iter->first;
+      const std::string v = iter->second;
+      sumKeys += k;
+      sumValues += v;
+    }
+  });
+}
+
+BENCHMARK(ForEachFunctionNoAssignWithIndexManipulation, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    folly::for_each(bmMap, [&](auto& key_val_pair, auto index) {
+      sumKeys += key_val_pair.first;
+      sumValues += key_val_pair.second;
+      sumValues += index;
+    });
+  });
+}
+
+BENCHMARK(StdForEachFunctionNoAssignWithIndexManipulation, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    auto index = std::size_t{0};
+    std::for_each(bmMap.begin(), bmMap.end(), [&](auto& key_val_pair) {
+      sumKeys += key_val_pair.first;
+      sumValues += key_val_pair.second;
+      sumValues += index;
+      ++index;
+    });
+  });
+}
+
+BENCHMARK(RangeBasedForLoopNoAssignWithIndexManipulation, iters) {
+  BenchmarkSuspender suspender;
+
+  int sumKeys = 0;
+  std::string sumValues;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    auto index = std::size_t{0};
+    for (auto& key_val_pair : bmMap) {
+      sumKeys += key_val_pair.first;
+      sumValues += key_val_pair.second;
+      sumValues += index;
+    }
+  });
+}
+
+BENCHMARK(ForEachFunctionFetch, iters) {
+  BenchmarkSuspender suspender;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    folly::for_each(bmMap, [&](auto& key_val_pair, auto index) {
+      folly::fetch(vec_one, index) = key_val_pair.first;
+    });
+  });
+}
+
+BENCHMARK(StdForEachFunctionFetch, iters) {
+  BenchmarkSuspender suspender;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    auto index = std::size_t{0};
+    std::for_each(bmMap.begin(), bmMap.end(), [&](auto& key_val_pair) {
+      *(vec_one.begin() + index++) = key_val_pair.first;
+    });
+  });
+}
+
+BENCHMARK(ForLoopFetch, iters) {
+  BenchmarkSuspender suspender;
+  setupBenchmark(iters);
+
+  suspender.dismissing([&]() {
+    auto index = std::size_t{0};
+    for (auto& key_val_pair : bmMap) {
+      *(vec_one.begin() + index++) = key_val_pair.first;
+    }
+  });
 }
 
 BENCHMARK(ForEachKVNoMacroAssign, iters) {
@@ -61,18 +285,6 @@ BENCHMARK(ForEachKVNoMacroNoAssign, iters) {
   BENCHMARK_SUSPEND { setupBenchmark(iters); }
 
   FOR_EACH(iter, bmMap) {
-    sumKeys += iter->first;
-    sumValues += iter->second;
-  }
-}
-
-BENCHMARK(ManualLoopNoAssign, iters) {
-  int sumKeys = 0;
-  std::string sumValues;
-
-  BENCHMARK_SUSPEND { setupBenchmark(iters); }
-
-  for (auto iter = bmMap.begin(); iter != bmMap.end(); ++iter) {
     sumKeys += iter->first;
     sumValues += iter->second;
   }

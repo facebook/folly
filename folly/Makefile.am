@@ -187,6 +187,7 @@ nobase_follyinclude_HEADERS = \
 	FixedString.h \
 	folly-config.h \
 	Foreach.h \
+	Foreach-inl.h \
 	FormatArg.h \
 	FormatTraits.h \
 	Format.h \
