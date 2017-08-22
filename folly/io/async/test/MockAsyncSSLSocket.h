@@ -23,11 +23,11 @@ namespace folly { namespace test {
 class MockAsyncSSLSocket : public AsyncSSLSocket {
  public:
   MockAsyncSSLSocket(
-   const std::shared_ptr<SSLContext>& ctx,
-   EventBase* base,
-   bool deferSecurityNegotiation = false) :
-    AsyncSSLSocket(ctx, base, deferSecurityNegotiation) {
-  }
+      const std::shared_ptr<SSLContext>& ctx,
+      EventBase* base,
+      bool deferSecurityNegotiation = false)
+      : AsyncSocket(base),
+        AsyncSSLSocket(ctx, base, deferSecurityNegotiation) {}
 
   GMOCK_METHOD5_(, noexcept, ,
    connect,
