@@ -95,13 +95,13 @@ TEST(Promise, setException) {
   {
     Promise<Unit> p;
     auto f = p.getFuture();
-    try {
-      throw eggs;
-    } catch (const std::exception& e) {
-      p.setException(exception_wrapper(std::current_exception(), e));
-    } catch (...) {
-      p.setException(exception_wrapper(std::current_exception()));
-    }
+    p.setException(std::make_exception_ptr(eggs));
+    EXPECT_THROW(f.value(), eggs_t);
+  }
+  {
+    Promise<Unit> p;
+    auto f = p.getFuture();
+    p.setException(exception_wrapper(eggs));
     EXPECT_THROW(f.value(), eggs_t);
   }
 }
