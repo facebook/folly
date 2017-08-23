@@ -428,6 +428,7 @@ nobase_follyinclude_HEADERS = \
 	TimeoutQueue.h \
 	TokenBucket.h \
 	tracing/StaticTracepoint.h \
+	tracing/ScopedTraceSection.h \
 	Traits.h \
 	Try-inl.h \
 	Try.h \
