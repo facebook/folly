@@ -232,6 +232,16 @@ class IPAddressV6 {
   Optional<MacAddress> getMacAddressFromLinkLocal() const;
 
   /**
+   * Return the mac address if this is an auto-configured IPv6 address based on
+   * EUI-64
+   *
+   * @return an Optional<MacAddress> union representing the mac address.
+   * If the address is not based on EUI-64 it will return an empty Optional.
+   * You can use Optional::value() to check whether the mac address is not null.
+   */
+  Optional<MacAddress> getMacAddressFromEUI64() const;
+
+  /**
    * Return true if this is a multicast address.
    */
   bool isMulticast() const;

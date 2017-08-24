@@ -1140,6 +1140,20 @@ TEST(IPAddress, getMacAddressFromLinkLocal_Negative) {
   EXPECT_FALSE(no_link_local_ip6.getMacAddressFromLinkLocal().hasValue());
 }
 
+TEST(IPAddress, getMacAddressFromEUI64) {
+  IPAddressV6 ip6("2401:db00:3020:51dc:4a57:ddff:fe04:5643");
+  EXPECT_TRUE(ip6.getMacAddressFromEUI64().hasValue());
+  EXPECT_EQ("48:57:dd:04:56:43", ip6.getMacAddressFromEUI64()->toString());
+  ip6 = IPAddressV6("fe80::4a57:ddff:fe04:5643");
+  EXPECT_TRUE(ip6.getMacAddressFromEUI64().hasValue());
+  EXPECT_EQ("48:57:dd:04:56:43", ip6.getMacAddressFromEUI64()->toString());
+}
+
+TEST(IPAddress, getMacAddressFromEUI64_Negative) {
+  IPAddressV6 not_eui64_ip6("2401:db00:3020:51dc:face:0000:009a:0000");
+  EXPECT_FALSE(not_eui64_ip6.getMacAddressFromEUI64().hasValue());
+}
+
 TEST(IPAddress, LongestCommonPrefix) {
   IPAddress ip10("10.0.0.0");
   IPAddress ip11("11.0.0.0");
