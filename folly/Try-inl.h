@@ -118,6 +118,12 @@ const T& Try<T>::value() const & {
 }
 
 template <class T>
+const T&& Try<T>::value() const && {
+  throwIfFailed();
+  return std::move(value_);
+}
+
+template <class T>
 void Try<T>::throwIfFailed() const {
   switch (contains_) {
     case Contains::VALUE:

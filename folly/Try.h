@@ -135,21 +135,28 @@ class Try {
    *
    * @returns mutable reference to the contained value
    */
-  T& value()&;
+  T& value() &;
   /*
    * Get a rvalue reference to the contained value. If the Try contains an
    * exception it will be rethrown.
    *
    * @returns rvalue reference to the contained value
    */
-  T&& value()&&;
+  T&& value() &&;
   /*
    * Get a const reference to the contained value. If the Try contains an
    * exception it will be rethrown.
    *
    * @returns const reference to the contained value
    */
-  const T& value() const&;
+  const T& value() const &;
+  /*
+   * Get a const rvalue reference to the contained value. If the Try contains an
+   * exception it will be rethrown.
+   *
+   * @returns const rvalue reference to the contained value
+   */
+  const T&& value() const &&;
 
   /*
    * If the Try contains an exception, rethrow it. Otherwise do nothing.
@@ -162,13 +169,35 @@ class Try {
    *
    * @returns const reference to the contained value
    */
-  const T& operator*() const { return value(); }
+  const T& operator*() const & {
+    return value();
+  }
   /*
    * Dereference operator. If the Try contains an exception it will be rethrown.
    *
    * @returns mutable reference to the contained value
    */
-  T& operator*() { return value(); }
+  T& operator*() & {
+    return value();
+  }
+  /*
+   * Mutable rvalue dereference operator.  If the Try contains an exception it
+   * will be rethrown.
+   *
+   * @returns rvalue reference to the contained value
+   */
+  T&& operator*() && {
+    return std::move(value());
+  }
+  /*
+   * Const rvalue dereference operator.  If the Try contains an exception it
+   * will be rethrown.
+   *
+   * @returns rvalue reference to the contained value
+   */
+  const T&& operator*() const && {
+    return std::move(value());
+  }
 
   /*
    * Const arrow operator. If the Try contains an exception it will be

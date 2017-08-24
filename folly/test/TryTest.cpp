@@ -36,6 +36,18 @@ class A {
  private:
   int x_;
 };
+
+class MoveConstructOnly {
+ public:
+  MoveConstructOnly() = default;
+  MoveConstructOnly(const MoveConstructOnly&) = delete;
+  MoveConstructOnly(MoveConstructOnly&&) = default;
+};
+
+class MutableContainer {
+ public:
+  mutable MoveConstructOnly val;
+};
 }
 
 TEST(Try, basic) {
@@ -57,6 +69,64 @@ TEST(Try, in_place_nested) {
   Try<Try<A>> t_t_a(in_place, in_place, 5);
 
   EXPECT_EQ(5, t_t_a.value().value().x());
+}
+
+TEST(Try, MoveDereference) {
+  auto ptr = std::make_unique<int>(1);
+  auto t = Try<std::unique_ptr<int>>{std::move(ptr)};
+  auto result = *std::move(t);
+  EXPECT_EQ(*result, 1);
+}
+
+TEST(Try, MoveConstRvalue) {
+  // tests to see if Try returns a const Rvalue, this is required in the case
+  // where for example MutableContainer has a mutable memebr that is move only
+  // and you want to fetch the value from the Try and move it into a member
+  {
+    const Try<MutableContainer> t{in_place};
+    auto val = MoveConstructOnly{std::move(t).value().val};
+    static_cast<void>(val);
+  }
+  {
+    const Try<MutableContainer> t{in_place};
+    auto val = (*(std::move(t))).val;
+    static_cast<void>(val);
+  }
+}
+
+TEST(Try, ValueOverloads) {
+  using ML = int&;
+  using MR = int&&;
+  using CL = const int&;
+  using CR = const int&&;
+
+  {
+    auto obj = Try<int>{};
+    using ActualML = decltype(obj.value());
+    using ActualMR = decltype(std::move(obj).value());
+    using ActualCL = decltype(as_const(obj).value());
+    using ActualCR = decltype(std::move(as_const(obj)).value());
+    EXPECT_TRUE((std::is_same<ML, ActualML>::value));
+    EXPECT_TRUE((std::is_same<MR, ActualMR>::value));
+    EXPECT_TRUE((std::is_same<CL, ActualCL>::value));
+    EXPECT_TRUE((std::is_same<CR, ActualCR>::value));
+  }
+
+  {
+    auto obj = Try<int>{3};
+    EXPECT_EQ(obj.value(), 3);
+    EXPECT_EQ(std::move(obj).value(), 3);
+    EXPECT_EQ(as_const(obj).value(), 3);
+    EXPECT_EQ(std::move(as_const(obj)).value(), 3);
+  }
+
+  {
+    auto obj = Try<int>{make_exception_wrapper<std::range_error>("oops")};
+    EXPECT_THROW(obj.value(), std::range_error);
+    EXPECT_THROW(std::move(obj.value()), std::range_error);
+    EXPECT_THROW(as_const(obj.value()), std::range_error);
+    EXPECT_THROW(std::move(as_const(obj.value())), std::range_error);
+  }
 }
 
 // Make sure we can copy Trys for copyable types
