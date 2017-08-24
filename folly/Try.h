@@ -201,18 +201,32 @@ class Try {
     return hasException() && e_.is_compatible_with<Ex>();
   }
 
-  exception_wrapper& exception() {
+  exception_wrapper& exception() & {
     if (!hasException()) {
       try_detail::throwTryDoesNotContainException();
     }
     return e_;
   }
 
-  const exception_wrapper& exception() const {
+  exception_wrapper&& exception() && {
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
+    }
+    return std::move(e_);
+  }
+
+  const exception_wrapper& exception() const & {
     if (!hasException()) {
       try_detail::throwTryDoesNotContainException();
     }
     return e_;
+  }
+
+  const exception_wrapper&& exception() const && {
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
+    }
+    return std::move(e_);
   }
 
   /*
@@ -370,18 +384,32 @@ class Try<void> {
    *
    * @returns mutable reference to the exception contained by this Try
    */
-  exception_wrapper& exception() {
+  exception_wrapper& exception() & {
     if (!hasException()) {
       try_detail::throwTryDoesNotContainException();
     }
     return e_;
   }
 
-  const exception_wrapper& exception() const {
+  exception_wrapper&& exception() && {
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
+    }
+    return std::move(e_);
+  }
+
+  const exception_wrapper& exception() const & {
     if (!hasException()) {
       try_detail::throwTryDoesNotContainException();
     }
     return e_;
+  }
+
+  const exception_wrapper&& exception() const && {
+    if (!hasException()) {
+      try_detail::throwTryDoesNotContainException();
+    }
+    return std::move(e_);
   }
 
   /*

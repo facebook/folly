@@ -109,6 +109,69 @@ TEST(Try, makeTryWithVoidThrow) {
   EXPECT_TRUE(result.hasException<std::runtime_error>());
 }
 
+TEST(Try, exception) {
+  using ML = exception_wrapper&;
+  using MR = exception_wrapper&&;
+  using CL = exception_wrapper const&;
+  using CR = exception_wrapper const&&;
+
+  {
+    auto obj = Try<int>();
+    using ActualML = decltype(obj.exception());
+    using ActualMR = decltype(std::move(obj).exception());
+    using ActualCL = decltype(as_const(obj).exception());
+    using ActualCR = decltype(std::move(as_const(obj)).exception());
+    EXPECT_TRUE((std::is_same<ML, ActualML>::value));
+    EXPECT_TRUE((std::is_same<MR, ActualMR>::value));
+    EXPECT_TRUE((std::is_same<CL, ActualCL>::value));
+    EXPECT_TRUE((std::is_same<CR, ActualCR>::value));
+  }
+
+  {
+    auto obj = Try<int>(3);
+    EXPECT_THROW(obj.exception(), TryException);
+    EXPECT_THROW(std::move(obj).exception(), TryException);
+    EXPECT_THROW(as_const(obj).exception(), TryException);
+    EXPECT_THROW(std::move(as_const(obj)).exception(), TryException);
+  }
+
+  {
+    auto obj = Try<int>(make_exception_wrapper<int>(-3));
+    EXPECT_EQ(-3, *obj.exception().get_exception<int>());
+    EXPECT_EQ(-3, *std::move(obj).exception().get_exception<int>());
+    EXPECT_EQ(-3, *as_const(obj).exception().get_exception<int>());
+    EXPECT_EQ(-3, *std::move(as_const(obj)).exception().get_exception<int>());
+  }
+
+  {
+    auto obj = Try<void>();
+    using ActualML = decltype(obj.exception());
+    using ActualMR = decltype(std::move(obj).exception());
+    using ActualCL = decltype(as_const(obj).exception());
+    using ActualCR = decltype(std::move(as_const(obj)).exception());
+    EXPECT_TRUE((std::is_same<ML, ActualML>::value));
+    EXPECT_TRUE((std::is_same<MR, ActualMR>::value));
+    EXPECT_TRUE((std::is_same<CL, ActualCL>::value));
+    EXPECT_TRUE((std::is_same<CR, ActualCR>::value));
+  }
+
+  {
+    auto obj = Try<void>();
+    EXPECT_THROW(obj.exception(), TryException);
+    EXPECT_THROW(std::move(obj).exception(), TryException);
+    EXPECT_THROW(as_const(obj).exception(), TryException);
+    EXPECT_THROW(std::move(as_const(obj)).exception(), TryException);
+  }
+
+  {
+    auto obj = Try<void>(make_exception_wrapper<int>(-3));
+    EXPECT_EQ(-3, *obj.exception().get_exception<int>());
+    EXPECT_EQ(-3, *std::move(obj).exception().get_exception<int>());
+    EXPECT_EQ(-3, *as_const(obj).exception().get_exception<int>());
+    EXPECT_EQ(-3, *std::move(as_const(obj)).exception().get_exception<int>());
+  }
+}
+
 template <typename E>
 static E* get_exception(std::exception_ptr eptr) {
   try {
