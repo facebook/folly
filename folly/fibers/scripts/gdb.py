@@ -77,7 +77,8 @@ class GetFiberXMethodWorker(gdb.xmethod.XMethodWorker):
 
 class GetFiberXMethodMatcher(gdb.xmethod.XMethodMatcher):
     def __init__(self):
-        super(GetFiberXMethodMatcher, self).__init__("Fiber address method matcher")
+        super(GetFiberXMethodMatcher, self).__init__(
+            "Fiber address method matcher")
         self.worker = GetFiberXMethodWorker()
 
     def match(self, class_type, method_name):
