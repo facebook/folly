@@ -82,7 +82,6 @@ nobase_follyinclude_HEADERS = \
 	detail/SocketFastOpen.h \
 	detail/StaticSingletonManager.h \
 	detail/ThreadLocalDetail.h \
-	detail/TryDetail.h \
 	detail/TurnSequencer.h \
 	detail/UncaughtExceptionCounter.h \
 	Demangle.h \

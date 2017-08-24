@@ -342,3 +342,24 @@ TEST(Try, withException) {
     EXPECT_FALSE(t.withException([](std::logic_error const&) {}));
   }
 }
+
+TEST(Try, TestUnwrapTuple) {
+  auto original = std::make_tuple(Try<int>{1}, Try<int>{2});
+  EXPECT_EQ(std::make_tuple(1, 2), unwrapTryTuple(original));
+  EXPECT_EQ(std::make_tuple(1, 2), unwrapTryTuple(folly::copy(original)));
+  EXPECT_EQ(std::make_tuple(1, 2), unwrapTryTuple(folly::as_const(original)));
+}
+
+TEST(Try, TestUnwrapPair) {
+  auto original = std::make_pair(Try<int>{1}, Try<int>{2});
+  EXPECT_EQ(std::make_pair(1, 2), unwrapTryTuple(original));
+  EXPECT_EQ(std::make_pair(1, 2), unwrapTryTuple(folly::copy(original)));
+  EXPECT_EQ(std::make_pair(1, 2), unwrapTryTuple(folly::as_const(original)));
+}
+
+TEST(Try, TestUnwrapForward) {
+  using UPtr_t = std::unique_ptr<int>;
+  auto original = std::make_tuple(Try<UPtr_t>{std::make_unique<int>(1)});
+  auto unwrapped = unwrapTryTuple(std::move(original));
+  EXPECT_EQ(*std::get<0>(unwrapped), 1);
+}

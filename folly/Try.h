@@ -516,8 +516,14 @@ typename std::enable_if<
   Try<void>>::type
 makeTryWith(F&& f);
 
-template <typename... Ts>
-std::tuple<Ts...> unwrapTryTuple(std::tuple<folly::Try<Ts>...>&& ts);
+/**
+ * Tuple<Try<Type>...> -> std::tuple<Type...>
+ *
+ * Unwraps a tuple-like type containing a sequence of Try<Type> instances to
+ * std::tuple<Type>
+ */
+template <typename Tuple>
+auto unwrapTryTuple(Tuple&&);
 
 } // namespace folly
 
