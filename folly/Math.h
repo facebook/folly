@@ -106,7 +106,7 @@ using IdivResultType = typename std::enable_if<
     decltype(N{1} / D{1})>::type;
 }
 
-#if defined(__arm__) && !FOLLY_A64
+#if defined(__arm__) && !FOLLY_AARCH64
 constexpr auto kIntegerDivisionGivesRemainder = false;
 #else
 constexpr auto kIntegerDivisionGivesRemainder = true;

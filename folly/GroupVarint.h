@@ -27,7 +27,7 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_X64 || defined(__i386__) || FOLLY_PPC64 || FOLLY_A64
+#if FOLLY_X64 || defined(__i386__) || FOLLY_PPC64 || FOLLY_AARCH64
 #define HAVE_GROUP_VARINT 1
 
 #include <folly/Bits.h>

@@ -23,7 +23,7 @@
 #include <folly/Portability.h>
 #include <folly/SmallLocks.h>
 
-#if !FOLLY_X64 && !FOLLY_PPC64 && !FOLLY_A64
+#if !FOLLY_X64 && !FOLLY_PPC64 && !FOLLY_AARCH64
 #error "PackedSyncPtr is x64, ppc64 or aarch64 specific code."
 #endif
 

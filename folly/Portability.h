@@ -169,9 +169,9 @@ struct alignas(max_align_v) max_align_t {};
 #endif
 
 #if defined(__aarch64__)
-# define FOLLY_A64 1
+# define FOLLY_AARCH64 1
 #else
-# define FOLLY_A64 0
+# define FOLLY_AARCH64 0
 #endif
 
 #if defined (__powerpc64__)
@@ -182,7 +182,7 @@ struct alignas(max_align_v) max_align_t {};
 
 namespace folly {
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
-constexpr bool kIsArchAArch64 = FOLLY_A64 == 1;
+constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 }
 

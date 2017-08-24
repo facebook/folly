@@ -50,7 +50,7 @@
 #include <folly/Portability.h>
 #include <folly/detail/Sleeper.h>
 
-#if !FOLLY_X64 && !FOLLY_A64 && !FOLLY_PPC64
+#if !FOLLY_X64 && !FOLLY_AARCH64 && !FOLLY_PPC64
 #error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
 #endif
 
@@ -171,7 +171,7 @@ struct PicoSpinLock {
     }
 
 #undef FB_DOBTS
-#elif FOLLY_A64
+#elif FOLLY_AARCH64
     ret =
         !(__atomic_fetch_or(&lock_, kLockBitMask_, __ATOMIC_SEQ_CST) &
           kLockBitMask_);
@@ -254,7 +254,7 @@ struct PicoSpinLock {
     }
 
 #undef FB_DOBTR
-#elif FOLLY_A64
+#elif FOLLY_AARCH64
     __atomic_fetch_and(&lock_, ~kLockBitMask_, __ATOMIC_SEQ_CST);
 #elif FOLLY_PPC64
 #define FB_DOBTR(size)                                 \
