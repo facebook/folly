@@ -175,20 +175,22 @@ static std::vector<CodecType> availableStreamCodecs() {
 }
 
 TEST(CompressionTestNeedsUncompressedLength, Simple) {
-  static const struct { CodecType type; bool needsUncompressedLength; }
-    expectations[] = {
-      { CodecType::NO_COMPRESSION, false },
-      { CodecType::LZ4, true },
-      { CodecType::SNAPPY, false },
-      { CodecType::ZLIB, false },
-      { CodecType::LZ4_VARINT_SIZE, false },
-      { CodecType::LZMA2, false },
-      { CodecType::LZMA2_VARINT_SIZE, false },
-      { CodecType::ZSTD, false },
-      { CodecType::GZIP, false },
-      { CodecType::LZ4_FRAME, false },
-      { CodecType::BZIP2, false },
-    };
+  static const struct {
+    CodecType type;
+    bool needsUncompressedLength;
+  } expectations[] = {
+      {CodecType::NO_COMPRESSION, false},
+      {CodecType::LZ4, true},
+      {CodecType::SNAPPY, false},
+      {CodecType::ZLIB, false},
+      {CodecType::LZ4_VARINT_SIZE, false},
+      {CodecType::LZMA2, false},
+      {CodecType::LZMA2_VARINT_SIZE, false},
+      {CodecType::ZSTD, false},
+      {CodecType::GZIP, false},
+      {CodecType::LZ4_FRAME, false},
+      {CodecType::BZIP2, false},
+  };
 
   for (auto const& test : expectations) {
     if (hasCodec(test.type)) {
@@ -360,7 +362,19 @@ INSTANTIATE_TEST_CASE_P(
         testing::ValuesIn(supportedCodecs({
             CodecType::LZ4_VARINT_SIZE,
             CodecType::LZMA2_VARINT_SIZE,
-            }))));
+        }))));
+
+TEST(LZMATest, UncompressBadVarint) {
+  if (hasStreamCodec(CodecType::LZMA2_VARINT_SIZE)) {
+    std::string const str(kMaxVarintLength64 * 2, '\xff');
+    ByteRange input((folly::StringPiece(str)));
+    auto codec = getStreamCodec(CodecType::LZMA2_VARINT_SIZE);
+    auto buffer = IOBuf::create(16);
+    buffer->append(buffer->capacity());
+    MutableByteRange output{buffer->writableData(), buffer->length()};
+    EXPECT_THROW(codec->uncompressStream(input, output), std::runtime_error);
+  }
+}
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
@@ -449,6 +463,26 @@ class StreamingUnitTest : public testing::TestWithParam<CodecType> {
   std::unique_ptr<StreamCodec> codec_;
 };
 
+TEST(StreamingUnitTest, needsDataLength) {
+  static const struct {
+    CodecType type;
+    bool needsDataLength;
+  } expectations[] = {
+      {CodecType::ZLIB, false},
+      {CodecType::GZIP, false},
+      {CodecType::LZMA2, false},
+      {CodecType::LZMA2_VARINT_SIZE, true},
+      {CodecType::ZSTD, false},
+  };
+
+  for (auto const& test : expectations) {
+    if (hasStreamCodec(test.type)) {
+      EXPECT_EQ(
+          getStreamCodec(test.type)->needsDataLength(), test.needsDataLength);
+    }
+  }
+}
+
 TEST_P(StreamingUnitTest, maxCompressedLength) {
   EXPECT_EQ(0, codec_->maxCompressedLength(0));
   for (uint64_t const length : {1, 10, 100, 1000, 10000, 100000, 1000000}) {
@@ -483,22 +517,24 @@ TEST_P(StreamingUnitTest, emptyData) {
   MutableByteRange output{};
 
   // Test compressing empty data in one pass
-  EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
+  if (!codec_->needsDataLength()) {
+    EXPECT_TRUE(
+        codec_->compressStream(input, output, StreamCodec::FlushOp::END));
+  }
   codec_->resetStream(0);
   EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
-  codec_->resetStream();
   output = {buffer->writableData(), buffer->length()};
   EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
   EXPECT_EQ(buffer->length(), output.size());
 
   // Test compressing empty data with multiple calls to compressStream()
-  codec_->resetStream();
+  codec_->resetStream(0);
   output = {};
   EXPECT_FALSE(codec_->compressStream(input, output));
   EXPECT_TRUE(
       codec_->compressStream(input, output, StreamCodec::FlushOp::FLUSH));
   EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
-  codec_->resetStream();
+  codec_->resetStream(0);
   output = {buffer->writableData(), buffer->length()};
   EXPECT_FALSE(codec_->compressStream(input, output));
   EXPECT_TRUE(
@@ -541,7 +577,11 @@ TEST_P(StreamingUnitTest, noForwardProgressOkay) {
   MutableByteRange emptyOutput;
 
   // Compress some data to avoid empty data special casing
-  codec_->resetStream();
+  if (codec_->needsDataLength()) {
+    codec_->resetStream(inBuffer->computeChainDataLength());
+  } else {
+    codec_->resetStream();
+  }
   while (!input.empty()) {
     codec_->compressStream(input, output);
   }
@@ -549,7 +589,11 @@ TEST_P(StreamingUnitTest, noForwardProgressOkay) {
   codec_->compressStream(emptyInput, emptyOutput);
   codec_->compressStream(emptyInput, emptyOutput, StreamCodec::FlushOp::FLUSH);
 
-  codec_->resetStream();
+  if (codec_->needsDataLength()) {
+    codec_->resetStream(inBuffer->computeChainDataLength());
+  } else {
+    codec_->resetStream();
+  }
   input = inBuffer->coalesce();
   output = {outBuffer->writableTail(), outBuffer->tailroom()};
   while (!input.empty()) {
@@ -590,6 +634,20 @@ TEST_P(StreamingUnitTest, stateTransitions) {
     auto output = empty ? MutableByteRange{} : out;
     return codec_->compressStream(input, output, flushOp);
   };
+  auto compress_all = [&](bool expect,
+                          StreamCodec::FlushOp flushOp =
+                              StreamCodec::FlushOp::NONE,
+                          bool empty = false) {
+    auto input = in;
+    auto output = empty ? MutableByteRange{} : out;
+    while (!input.empty()) {
+      if (expect) {
+        EXPECT_TRUE(codec_->compressStream(input, output, flushOp));
+      } else {
+        EXPECT_FALSE(codec_->compressStream(input, output, flushOp));
+      }
+    }
+  };
   auto uncompress = [&](
       StreamCodec::FlushOp flushOp = StreamCodec::FlushOp::NONE,
       bool empty = false) {
@@ -599,12 +657,21 @@ TEST_P(StreamingUnitTest, stateTransitions) {
   };
 
   // compression flow
-  codec_->resetStream();
-  EXPECT_FALSE(compress());
-  EXPECT_FALSE(compress());
-  EXPECT_TRUE(compress(StreamCodec::FlushOp::FLUSH));
-  EXPECT_FALSE(compress());
-  EXPECT_TRUE(compress(StreamCodec::FlushOp::END));
+  if (!codec_->needsDataLength()) {
+    codec_->resetStream();
+    EXPECT_FALSE(compress());
+    EXPECT_FALSE(compress());
+    EXPECT_TRUE(compress(StreamCodec::FlushOp::FLUSH));
+    EXPECT_FALSE(compress());
+    EXPECT_TRUE(compress(StreamCodec::FlushOp::END));
+  }
+  codec_->resetStream(in.size() * 5);
+  compress_all(false);
+  compress_all(false);
+  compress_all(true, StreamCodec::FlushOp::FLUSH);
+  compress_all(false);
+  compress_all(true, StreamCodec::FlushOp::END);
+
   // uncompression flow
   codec_->resetStream();
   EXPECT_FALSE(uncompress(StreamCodec::FlushOp::NONE, true));
@@ -617,34 +684,40 @@ TEST_P(StreamingUnitTest, stateTransitions) {
   codec_->resetStream();
   EXPECT_TRUE(uncompress(StreamCodec::FlushOp::FLUSH));
   // compress -> uncompress
-  codec_->resetStream();
+  codec_->resetStream(in.size());
   EXPECT_FALSE(compress());
   EXPECT_THROW(uncompress(), std::logic_error);
   // uncompress -> compress
-  codec_->resetStream();
+  codec_->resetStream(inBuffer->computeChainDataLength());
   EXPECT_TRUE(uncompress(StreamCodec::FlushOp::FLUSH));
   EXPECT_THROW(compress(), std::logic_error);
   // end -> compress
-  codec_->resetStream();
-  EXPECT_FALSE(compress());
-  EXPECT_TRUE(compress(StreamCodec::FlushOp::END));
+  if (!codec_->needsDataLength()) {
+    codec_->resetStream();
+    EXPECT_FALSE(compress());
+    EXPECT_TRUE(compress(StreamCodec::FlushOp::END));
+    EXPECT_THROW(compress(), std::logic_error);
+  }
+  codec_->resetStream(in.size() * 2);
+  compress_all(false);
+  compress_all(true, StreamCodec::FlushOp::END);
   EXPECT_THROW(compress(), std::logic_error);
   // end -> uncompress
   codec_->resetStream();
   EXPECT_TRUE(uncompress(StreamCodec::FlushOp::FLUSH));
   EXPECT_THROW(uncompress(), std::logic_error);
   // flush -> compress
-  codec_->resetStream();
+  codec_->resetStream(in.size());
   EXPECT_FALSE(compress(StreamCodec::FlushOp::FLUSH, true));
   EXPECT_THROW(compress(), std::logic_error);
   // flush -> end
-  codec_->resetStream();
+  codec_->resetStream(in.size());
   EXPECT_FALSE(compress(StreamCodec::FlushOp::FLUSH, true));
   EXPECT_THROW(compress(StreamCodec::FlushOp::END), std::logic_error);
   // undefined -> compress
   codec_->compress(inBuffer.get());
   EXPECT_THROW(compress(), std::logic_error);
-  codec_->uncompress(compressed.get());
+  codec_->uncompress(compressed.get(), inBuffer->computeChainDataLength());
   EXPECT_THROW(compress(), std::logic_error);
   // undefined -> undefined
   codec_->uncompress(compressed.get());
@@ -738,7 +811,11 @@ void StreamingCompressionTest::runResetStreamTest(DataHolder const& dh) {
   codec_->resetStream(uncompressedLength_);
   compressSome(codec_.get(), input, chunkSize_, StreamCodec::FlushOp::NONE);
   // Reset stream and compress all
-  codec_->resetStream();
+  if (codec_->needsDataLength()) {
+    codec_->resetStream(uncompressedLength_);
+  } else {
+    codec_->resetStream();
+  }
   auto compressed =
       compressSome(codec_.get(), input, chunkSize_, StreamCodec::FlushOp::END);
   auto const uncompressed = codec_->uncompress(compressed.get(), input.size());
@@ -820,7 +897,11 @@ void StreamingCompressionTest::runFlushTest(DataHolder const& dh) {
   auto const inputs = split(dh.data(uncompressedLength_));
   auto uncodec = getStreamCodec(codec_->type());
 
-  codec_->resetStream();
+  if (codec_->needsDataLength()) {
+    codec_->resetStream(uncompressedLength_);
+  } else {
+    codec_->resetStream();
+  }
   for (auto input : inputs) {
     // Compress some data and flush the stream
     auto compressed = compressSome(

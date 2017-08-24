@@ -251,6 +251,9 @@ bool StreamCodec::compressStream(
     }
     return true;
   }
+  if (!uncompressedLength() && needsDataLength()) {
+    throw std::runtime_error("Codec: uncompressed length required");
+  }
   if (state_ == State::RESET && !input.empty() &&
       uncompressedLength() == uint64_t(0)) {
     throw std::runtime_error("Codec: invalid uncompressed length");
@@ -459,13 +462,13 @@ std::unique_ptr<Codec> NoCompressionCodec::create(int level, CodecType type) {
 }
 
 NoCompressionCodec::NoCompressionCodec(int level, CodecType type)
-  : Codec(type) {
+    : Codec(type) {
   DCHECK(type == CodecType::NO_COMPRESSION);
   switch (level) {
-  case COMPRESSION_LEVEL_DEFAULT:
-  case COMPRESSION_LEVEL_FASTEST:
-  case COMPRESSION_LEVEL_BEST:
-    level = 0;
+    case COMPRESSION_LEVEL_DEFAULT:
+    case COMPRESSION_LEVEL_FASTEST:
+    case COMPRESSION_LEVEL_BEST:
+      level = 0;
   }
   if (level != 0) {
     throw std::invalid_argument(to<std::string>(
@@ -556,13 +559,13 @@ LZ4Codec::LZ4Codec(int level, CodecType type) : Codec(type) {
   DCHECK(type == CodecType::LZ4 || type == CodecType::LZ4_VARINT_SIZE);
 
   switch (level) {
-  case COMPRESSION_LEVEL_FASTEST:
-  case COMPRESSION_LEVEL_DEFAULT:
-    level = 1;
-    break;
-  case COMPRESSION_LEVEL_BEST:
-    level = 2;
-    break;
+    case COMPRESSION_LEVEL_FASTEST:
+    case COMPRESSION_LEVEL_DEFAULT:
+      level = 1;
+      break;
+    case COMPRESSION_LEVEL_BEST:
+      level = 2;
+      break;
   }
   if (level < 1 || level > 2) {
     throw std::invalid_argument(to<std::string>(
@@ -913,10 +916,10 @@ std::unique_ptr<Codec> SnappyCodec::create(int level, CodecType type) {
 SnappyCodec::SnappyCodec(int level, CodecType type) : Codec(type) {
   DCHECK(type == CodecType::SNAPPY);
   switch (level) {
-  case COMPRESSION_LEVEL_FASTEST:
-  case COMPRESSION_LEVEL_DEFAULT:
-  case COMPRESSION_LEVEL_BEST:
-    level = 1;
+    case COMPRESSION_LEVEL_FASTEST:
+    case COMPRESSION_LEVEL_DEFAULT:
+    case COMPRESSION_LEVEL_BEST:
+      level = 1;
   }
   if (level != 1) {
     throw std::invalid_argument(to<std::string>(
@@ -983,44 +986,71 @@ std::unique_ptr<IOBuf> SnappyCodec::doUncompress(
 /**
  * LZMA2 compression
  */
-class LZMA2Codec final : public Codec {
+class LZMA2StreamCodec final : public StreamCodec {
  public:
-  static std::unique_ptr<Codec> create(int level, CodecType type);
-  explicit LZMA2Codec(int level, CodecType type);
+  static std::unique_ptr<Codec> createCodec(int level, CodecType type);
+  static std::unique_ptr<StreamCodec> createStream(int level, CodecType type);
+  explicit LZMA2StreamCodec(int level, CodecType type);
+  ~LZMA2StreamCodec() override;
 
   std::vector<std::string> validPrefixes() const override;
   bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
       const override;
 
  private:
-  bool doNeedsUncompressedLength() const override;
+  bool doNeedsDataLength() const override;
   uint64_t doMaxUncompressedLength() const override;
   uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
 
-  bool encodeSize() const { return type() == CodecType::LZMA2_VARINT_SIZE; }
+  bool encodeSize() const {
+    return type() == CodecType::LZMA2_VARINT_SIZE;
+  }
 
-  std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
-  std::unique_ptr<IOBuf> doUncompress(
-      const IOBuf* data,
-      Optional<uint64_t> uncompressedLength) override;
+  void doResetStream() override;
+  bool doCompressStream(
+      ByteRange& input,
+      MutableByteRange& output,
+      StreamCodec::FlushOp flushOp) override;
+  bool doUncompressStream(
+      ByteRange& input,
+      MutableByteRange& output,
+      StreamCodec::FlushOp flushOp) override;
 
-  std::unique_ptr<IOBuf> addOutputBuffer(lzma_stream* stream, size_t length);
-  bool doInflate(lzma_stream* stream, IOBuf* head, size_t bufferLength);
+  void resetCStream();
+  void resetDStream();
+
+  size_t decodeVarint(ByteRange& input);
+  bool flushVarintBuffer(MutableByteRange& output);
+  void resetVarintBuffer();
+
+  Optional<lzma_stream> cstream_{};
+  Optional<lzma_stream> dstream_{};
+
+  std::array<uint8_t, kMaxVarintLength64> varintBuffer_;
+  ByteRange varintToEncode_;
+  size_t varintBufferPos_{0};
 
   int level_;
+  bool needReset_{true};
+  bool needDecodeSize_{false};
 };
 
 static constexpr uint64_t kLZMA2MagicLE = 0x005A587A37FD;
 static constexpr unsigned kLZMA2MagicBytes = 6;
 
-std::vector<std::string> LZMA2Codec::validPrefixes() const {
+std::vector<std::string> LZMA2StreamCodec::validPrefixes() const {
   if (type() == CodecType::LZMA2_VARINT_SIZE) {
     return {};
   }
   return {prefixToStringLE(kLZMA2MagicLE, kLZMA2MagicBytes)};
 }
 
-bool LZMA2Codec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
+bool LZMA2StreamCodec::doNeedsDataLength() const {
+  return encodeSize();
+}
+
+bool LZMA2StreamCodec::canUncompress(const IOBuf* data, Optional<uint64_t>)
+    const {
   if (type() == CodecType::LZMA2_VARINT_SIZE) {
     return false;
   }
@@ -1029,220 +1059,258 @@ bool LZMA2Codec::canUncompress(const IOBuf* data, Optional<uint64_t>) const {
   return dataStartsWithLE(data, kLZMA2MagicLE, kLZMA2MagicBytes);
 }
 
-std::unique_ptr<Codec> LZMA2Codec::create(int level, CodecType type) {
-  return std::make_unique<LZMA2Codec>(level, type);
+std::unique_ptr<Codec> LZMA2StreamCodec::createCodec(
+    int level,
+    CodecType type) {
+  return make_unique<LZMA2StreamCodec>(level, type);
 }
 
-LZMA2Codec::LZMA2Codec(int level, CodecType type) : Codec(type) {
+std::unique_ptr<StreamCodec> LZMA2StreamCodec::createStream(
+    int level,
+    CodecType type) {
+  return make_unique<LZMA2StreamCodec>(level, type);
+}
+
+LZMA2StreamCodec::LZMA2StreamCodec(int level, CodecType type)
+    : StreamCodec(type) {
   DCHECK(type == CodecType::LZMA2 || type == CodecType::LZMA2_VARINT_SIZE);
   switch (level) {
-  case COMPRESSION_LEVEL_FASTEST:
-    level = 0;
-    break;
-  case COMPRESSION_LEVEL_DEFAULT:
-    level = LZMA_PRESET_DEFAULT;
-    break;
-  case COMPRESSION_LEVEL_BEST:
-    level = 9;
-    break;
+    case COMPRESSION_LEVEL_FASTEST:
+      level = 0;
+      break;
+    case COMPRESSION_LEVEL_DEFAULT:
+      level = LZMA_PRESET_DEFAULT;
+      break;
+    case COMPRESSION_LEVEL_BEST:
+      level = 9;
+      break;
   }
   if (level < 0 || level > 9) {
-    throw std::invalid_argument(to<std::string>(
-        "LZMA2Codec: invalid level: ", level));
+    throw std::invalid_argument(
+        to<std::string>("LZMA2Codec: invalid level: ", level));
   }
   level_ = level;
 }
 
-bool LZMA2Codec::doNeedsUncompressedLength() const {
-  return false;
+LZMA2StreamCodec::~LZMA2StreamCodec() {
+  if (cstream_) {
+    lzma_end(cstream_.get_pointer());
+    cstream_.clear();
+  }
+  if (dstream_) {
+    lzma_end(dstream_.get_pointer());
+    dstream_.clear();
+  }
 }
 
-uint64_t LZMA2Codec::doMaxUncompressedLength() const {
+uint64_t LZMA2StreamCodec::doMaxUncompressedLength() const {
   // From lzma/base.h: "Stream is roughly 8 EiB (2^63 bytes)"
   return uint64_t(1) << 63;
 }
 
-uint64_t LZMA2Codec::doMaxCompressedLength(uint64_t uncompressedLength) const {
+uint64_t LZMA2StreamCodec::doMaxCompressedLength(
+    uint64_t uncompressedLength) const {
   return lzma_stream_buffer_bound(uncompressedLength) +
       (encodeSize() ? kMaxVarintLength64 : 0);
 }
 
-std::unique_ptr<IOBuf> LZMA2Codec::addOutputBuffer(
-    lzma_stream* stream,
-    size_t length) {
-
-  CHECK_EQ(stream->avail_out, 0);
-
-  auto buf = IOBuf::create(length);
-  buf->append(buf->capacity());
-
-  stream->next_out = buf->writableData();
-  stream->avail_out = buf->length();
-
-  return buf;
+void LZMA2StreamCodec::doResetStream() {
+  needReset_ = true;
 }
 
-std::unique_ptr<IOBuf> LZMA2Codec::doCompress(const IOBuf* data) {
-  lzma_ret rc;
-  lzma_stream stream = LZMA_STREAM_INIT;
-
-  rc = lzma_easy_encoder(&stream, level_, LZMA_CHECK_NONE);
+void LZMA2StreamCodec::resetCStream() {
+  if (!cstream_) {
+    cstream_.assign(LZMA_STREAM_INIT);
+  }
+  lzma_ret const rc =
+      lzma_easy_encoder(cstream_.get_pointer(), level_, LZMA_CHECK_NONE);
   if (rc != LZMA_OK) {
     throw std::runtime_error(folly::to<std::string>(
-      "LZMA2Codec: lzma_easy_encoder error: ", rc));
+        "LZMA2StreamCodec: lzma_easy_encoder error: ", rc));
   }
-
-  SCOPE_EXIT { lzma_end(&stream); };
-
-  uint64_t uncompressedLength = data->computeChainDataLength();
-  uint64_t maxCompressedLength = lzma_stream_buffer_bound(uncompressedLength);
-
-  // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
-
-  auto out = addOutputBuffer(
-    &stream,
-    (maxCompressedLength <= maxSingleStepLength ?
-     maxCompressedLength :
-     defaultBufferLength));
-
-  if (encodeSize()) {
-    auto size = IOBuf::createCombined(kMaxVarintLength64);
-    encodeVarintToIOBuf(uncompressedLength, size.get());
-    size->appendChain(std::move(out));
-    out = std::move(size);
-  }
-
-  for (auto& range : *data) {
-    if (range.empty()) {
-      continue;
-    }
-
-    stream.next_in = const_cast<uint8_t*>(range.data());
-    stream.avail_in = range.size();
-
-    while (stream.avail_in != 0) {
-      if (stream.avail_out == 0) {
-        out->prependChain(addOutputBuffer(&stream, defaultBufferLength));
-      }
-
-      rc = lzma_code(&stream, LZMA_RUN);
-
-      if (rc != LZMA_OK) {
-        throw std::runtime_error(folly::to<std::string>(
-          "LZMA2Codec: lzma_code error: ", rc));
-      }
-    }
-  }
-
-  do {
-    if (stream.avail_out == 0) {
-      out->prependChain(addOutputBuffer(&stream, defaultBufferLength));
-    }
-
-    rc = lzma_code(&stream, LZMA_FINISH);
-  } while (rc == LZMA_OK);
-
-  if (rc != LZMA_STREAM_END) {
-    throw std::runtime_error(folly::to<std::string>(
-      "LZMA2Codec: lzma_code ended with error: ", rc));
-  }
-
-  out->prev()->trimEnd(stream.avail_out);
-
-  return out;
 }
 
-bool LZMA2Codec::doInflate(lzma_stream* stream,
-                          IOBuf* head,
-                          size_t bufferLength) {
-  if (stream->avail_out == 0) {
-    head->prependChain(addOutputBuffer(stream, bufferLength));
+void LZMA2StreamCodec::resetDStream() {
+  if (!dstream_) {
+    dstream_.assign(LZMA_STREAM_INIT);
   }
+  lzma_ret const rc = lzma_auto_decoder(
+      dstream_.get_pointer(), std::numeric_limits<uint64_t>::max(), 0);
+  if (rc != LZMA_OK) {
+    throw std::runtime_error(folly::to<std::string>(
+        "LZMA2StreamCodec: lzma_auto_decoder error: ", rc));
+  }
+}
 
-  lzma_ret rc = lzma_code(stream, LZMA_RUN);
-
+static lzma_ret lzmaThrowOnError(lzma_ret const rc) {
   switch (rc) {
-  case LZMA_OK:
-    break;
-  case LZMA_STREAM_END:
+    case LZMA_OK:
+    case LZMA_STREAM_END:
+    case LZMA_BUF_ERROR: // not fatal: returned if no progress was made twice
+      return rc;
+    default:
+      throw std::runtime_error(
+          to<std::string>("LZMA2StreamCodec: error: ", rc));
+  }
+}
+
+static lzma_action lzmaTranslateFlush(StreamCodec::FlushOp flush) {
+  switch (flush) {
+    case StreamCodec::FlushOp::NONE:
+      return LZMA_RUN;
+    case StreamCodec::FlushOp::FLUSH:
+      return LZMA_SYNC_FLUSH;
+    case StreamCodec::FlushOp::END:
+      return LZMA_FINISH;
+    default:
+      throw std::invalid_argument("LZMA2StreamCodec: Invalid flush");
+  }
+}
+
+/**
+ * Flushes the varint buffer.
+ * Advances output by the number of bytes written.
+ * Returns true when flushing is complete.
+ */
+bool LZMA2StreamCodec::flushVarintBuffer(MutableByteRange& output) {
+  if (varintToEncode_.empty()) {
     return true;
-  default:
-    throw std::runtime_error(to<std::string>(
-        "LZMA2Codec: lzma_code error: ", rc));
   }
-
-  return false;
+  const size_t numBytesToCopy = std::min(varintToEncode_.size(), output.size());
+  if (numBytesToCopy > 0) {
+    memcpy(output.data(), varintToEncode_.data(), numBytesToCopy);
+  }
+  varintToEncode_.advance(numBytesToCopy);
+  output.advance(numBytesToCopy);
+  return varintToEncode_.empty();
 }
 
-std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(
-    const IOBuf* data,
-    Optional<uint64_t> uncompressedLength) {
+bool LZMA2StreamCodec::doCompressStream(
+    ByteRange& input,
+    MutableByteRange& output,
+    StreamCodec::FlushOp flushOp) {
+  if (needReset_) {
+    resetCStream();
+    if (encodeSize()) {
+      varintBufferPos_ = 0;
+      size_t const varintSize =
+          encodeVarint(*uncompressedLength(), varintBuffer_.data());
+      varintToEncode_ = {varintBuffer_.data(), varintSize};
+    }
+    needReset_ = false;
+  }
+
+  if (!flushVarintBuffer(output)) {
+    return false;
+  }
+
+  cstream_->next_in = const_cast<uint8_t*>(input.data());
+  cstream_->avail_in = input.size();
+  cstream_->next_out = output.data();
+  cstream_->avail_out = output.size();
+  SCOPE_EXIT {
+    input.uncheckedAdvance(input.size() - cstream_->avail_in);
+    output.uncheckedAdvance(output.size() - cstream_->avail_out);
+  };
+  lzma_ret const rc = lzmaThrowOnError(
+      lzma_code(cstream_.get_pointer(), lzmaTranslateFlush(flushOp)));
+  switch (flushOp) {
+    case StreamCodec::FlushOp::NONE:
+      return false;
+    case StreamCodec::FlushOp::FLUSH:
+      return cstream_->avail_in == 0 && cstream_->avail_out != 0;
+    case StreamCodec::FlushOp::END:
+      return rc == LZMA_STREAM_END;
+    default:
+      throw std::invalid_argument("LZMA2StreamCodec: invalid FlushOp");
+  }
+}
+
+/**
+ * Attempts to decode a varint from input.
+ * The function advances input by the number of bytes read.
+ *
+ * If there are too many bytes and the varint is not valid, throw a
+ * runtime_error.
+ * Returns the decoded size or 0 if more bytes are needed.
+ */
+size_t LZMA2StreamCodec::decodeVarint(ByteRange& input) {
+  if (input.empty()) {
+    return 0;
+  }
+  size_t const numBytesToCopy =
+      std::min(kMaxVarintLength64 - varintBufferPos_, input.size());
+  memcpy(varintBuffer_.data() + varintBufferPos_, input.data(), numBytesToCopy);
+
+  size_t const rangeSize = varintBufferPos_ + numBytesToCopy;
+  ByteRange range{varintBuffer_.data(), rangeSize};
+  auto const ret = tryDecodeVarint(range);
+
+  if (ret.hasValue()) {
+    size_t const varintSize = rangeSize - range.size();
+    input.advance(varintSize - varintBufferPos_);
+    return ret.value();
+  } else if (ret.error() == DecodeVarintError::TooManyBytes) {
+    throw std::runtime_error("LZMA2StreamCodec: invalid uncompressed length");
+  } else {
+    // Too few bytes
+    input.advance(numBytesToCopy);
+    varintBufferPos_ += numBytesToCopy;
+    return 0;
+  }
+}
+
+bool LZMA2StreamCodec::doUncompressStream(
+    ByteRange& input,
+    MutableByteRange& output,
+    StreamCodec::FlushOp flushOp) {
+  if (needReset_) {
+    resetDStream();
+    needReset_ = false;
+    needDecodeSize_ = encodeSize();
+    if (encodeSize()) {
+      // Reset buffer
+      varintBufferPos_ = 0;
+    }
+  }
+
+  if (needDecodeSize_) {
+    // Try decoding the varint. If the input does not contain the entire varint,
+    // buffer the input. If the varint can not be decoded, fail.
+    size_t const size = decodeVarint(input);
+    if (!size) {
+      return false;
+    }
+    if (uncompressedLength() && *uncompressedLength() != size) {
+      throw std::runtime_error("LZMA2StreamCodec: invalid uncompressed length");
+    }
+    needDecodeSize_ = false;
+  }
+
+  dstream_->next_in = const_cast<uint8_t*>(input.data());
+  dstream_->avail_in = input.size();
+  dstream_->next_out = output.data();
+  dstream_->avail_out = output.size();
+  SCOPE_EXIT {
+    input.advance(input.size() - dstream_->avail_in);
+    output.advance(output.size() - dstream_->avail_out);
+  };
+
   lzma_ret rc;
-  lzma_stream stream = LZMA_STREAM_INIT;
-
-  rc = lzma_auto_decoder(&stream, std::numeric_limits<uint64_t>::max(), 0);
-  if (rc != LZMA_OK) {
-    throw std::runtime_error(folly::to<std::string>(
-      "LZMA2Codec: lzma_auto_decoder error: ", rc));
+  switch (flushOp) {
+    case StreamCodec::FlushOp::NONE:
+    case StreamCodec::FlushOp::FLUSH:
+      rc = lzmaThrowOnError(lzma_code(dstream_.get_pointer(), LZMA_RUN));
+      break;
+    case StreamCodec::FlushOp::END:
+      rc = lzmaThrowOnError(lzma_code(dstream_.get_pointer(), LZMA_FINISH));
+      break;
+    default:
+      throw std::invalid_argument("LZMA2StreamCodec: invalid flush");
   }
-
-  SCOPE_EXIT { lzma_end(&stream); };
-
-  // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20; // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(256) << 10; // 256 KiB
-
-  folly::io::Cursor cursor(data);
-  if (encodeSize()) {
-    const uint64_t actualUncompressedLength = decodeVarintFromCursor(cursor);
-    if (uncompressedLength && *uncompressedLength != actualUncompressedLength) {
-      throw std::runtime_error("LZMA2Codec: invalid uncompressed length");
-    }
-    uncompressedLength = actualUncompressedLength;
-  }
-
-  auto out = addOutputBuffer(
-      &stream,
-      ((uncompressedLength && *uncompressedLength <= maxSingleStepLength)
-           ? *uncompressedLength
-           : defaultBufferLength));
-
-  bool streamEnd = false;
-  auto buf = cursor.peekBytes();
-  while (!buf.empty()) {
-    stream.next_in = const_cast<uint8_t*>(buf.data());
-    stream.avail_in = buf.size();
-
-    while (stream.avail_in != 0) {
-      if (streamEnd) {
-        throw std::runtime_error(to<std::string>(
-            "LZMA2Codec: junk after end of data"));
-      }
-
-      streamEnd = doInflate(&stream, out.get(), defaultBufferLength);
-    }
-
-    cursor.skip(buf.size());
-    buf = cursor.peekBytes();
-  }
-
-  while (!streamEnd) {
-    streamEnd = doInflate(&stream, out.get(), defaultBufferLength);
-  }
-
-  out->prev()->trimEnd(stream.avail_out);
-
-  if (uncompressedLength && *uncompressedLength != stream.total_out) {
-    throw std::runtime_error(
-        to<std::string>("LZMA2Codec: invalid uncompressed length"));
-  }
-
-  return out;
+  return rc == LZMA_STREAM_END;
 }
-
-#endif  // FOLLY_HAVE_LIBLZMA
+#endif // FOLLY_HAVE_LIBLZMA
 
 #ifdef FOLLY_HAVE_LIBZSTD
 
@@ -1945,8 +2013,8 @@ constexpr Factory
 #endif
 
 #if FOLLY_HAVE_LIBLZMA
-        {LZMA2Codec::create, nullptr},
-        {LZMA2Codec::create, nullptr},
+        {LZMA2StreamCodec::createCodec, LZMA2StreamCodec::createStream},
+        {LZMA2StreamCodec::createCodec, LZMA2StreamCodec::createStream},
 #else
         {},
         {},
