@@ -506,6 +506,9 @@ struct IndexedMemPool : boost::noncopyable {
   void markAllocated(Slot& slot) {
     slot.localNext.store(uint32_t(-1), std::memory_order_release);
   }
+
+ public:
+  static constexpr std::size_t kSlotSize = sizeof(Slot);
 };
 
 namespace detail {
