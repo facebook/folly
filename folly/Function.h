@@ -580,7 +580,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * then `*this` is left in a valid but unspecified state.
    */
   Function& operator=(Function&& that) noexcept {
-    // Q: Why is is safe to destroy and reconstruct this object in place?
+    // Q: Why is it safe to destroy and reconstruct this object in place?
     // A: Two reasons: First, `Function` is a final class, so in doing this
     //    we aren't slicing off any derived parts. And second, the move
     //    operation is guaranteed not to throw so we always leave the object
