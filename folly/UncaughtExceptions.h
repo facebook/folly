@@ -18,7 +18,8 @@
 
 #include <exception>
 
-#if defined(__GNUG__) || defined(__clang__)
+#if !defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) && \
+    (defined(__GNUG__) || defined(__clang__))
 #define FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS
 namespace __cxxabiv1 {
 // forward declaration (originally defined in unwind-cxx.h from from libstdc++)
@@ -32,7 +33,8 @@ extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
 // forward declaration (originally defined in mtdll.h from MSVCRT)
 struct _tiddata;
 extern "C" _tiddata* _getptd(); // declared in mtdll.h from MSVCRT
-#elif defined(_MSC_VER) && (_MSC_VER >= 1900) // MSVC++ 2015
+#elif defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) || \
+    (defined(_MSC_VER) && (_MSC_VER >= 1900)) // MSVC++ 2015
 #define FOLLY_EXCEPTION_COUNT_USE_STD
 #else
 // Raise an error when trying to use this on unsupported platforms.
