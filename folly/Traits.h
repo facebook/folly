@@ -172,11 +172,45 @@ using _t = typename T::type;
  *    struct has_value_type<T, folly::void_t<typename T::value_type>>
  *        : std::true_type {};
  */
-#if defined(__cpp_lib_void_t) || defined(_MSC_VER)
+
+/**
+ * There is a bug in gcc that causes it to ignore unused template parameter
+ * arguments in template aliases and does not cause substitution failures.
+ * This defect has been recorded here:
+ * http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558.
+ *
+ * This causes the implementation of std::void_t to be buggy, as it is likely
+ * defined as something like the following:
+ *
+ *  template <typename...>
+ *  using void_t = void;
+ *
+ * This causes the compiler to ignore all the template arguments and does not
+ * help when one wants to cause substitution failures.  Rather declarations
+ * which have void_t in orthogonal specializations are treated as the same.
+ * For example, assuming the possible `T` types are only allowed to have
+ * either the alias `one` or `two` and never both or none:
+ *
+ *  template <typename T,
+ *            typename std::void_t<std::decay_t<T>::one>* = nullptr>
+ *  void foo(T&&) {}
+ *  template <typename T,
+ *            typename std::void_t<std::decay_t<T>::two>* = nullptr>
+ *  void foo(T&&) {}
+ *
+ * The second foo() will be a redefinition because it conflicts with the first
+ * one; void_t does not cause substitution failures - the template types are
+ * just ignored.
+ *
+ * Till then only the non-buggy MSVC std::void_t can be used, and for the rest
+ * folly::void_t will continue to be used because it does not use unnamed
+ * template parameters for the top level implementation of void_t.
+ */
+#if defined(_MSC_VER)
 
 /* using override */ using std::void_t;
 
-#else // defined(__cpp_lib_void_t) || defined(_MSC_VER)
+#else // defined(_MSC_VER)
 
 namespace traits_detail {
 template <class...>
@@ -188,7 +222,7 @@ struct void_t_ {
 template <class... Ts>
 using void_t = _t<traits_detail::void_t_<Ts...>>;
 
-#endif // defined(__cpp_lib_void_t) || defined(_MSC_VER)
+#endif // defined(_MSC_VER)
 
 /**
  * IsRelocatable<T>::value describes the ability of moving around
@@ -386,11 +420,11 @@ struct Bools {
 
 // Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
 template <class... Ts>
-struct StrictConjunction 
-  : std::is_same<Bools<Ts::value...>, Bools<(Ts::value || true)...>> {};
+struct StrictConjunction
+    : std::is_same<Bools<Ts::value...>, Bools<(Ts::value || true)...>> {};
 
 template <class... Ts>
-struct StrictDisjunction 
+struct StrictDisjunction
   : Negation<
       std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>
     > {};
