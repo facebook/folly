@@ -562,66 +562,68 @@ TEST_P(StreamingUnitTest, emptyData) {
       codec_->uncompressStream(input, output, StreamCodec::FlushOp::END));
 }
 
-TEST_P(StreamingUnitTest, noForwardProgressOkay) {
+TEST_P(StreamingUnitTest, noForwardProgress) {
   auto inBuffer = IOBuf::create(2);
   inBuffer->writableData()[0] = 'a';
-  inBuffer->writableData()[0] = 'a';
+  inBuffer->writableData()[1] = 'a';
   inBuffer->append(2);
-  auto input = inBuffer->coalesce();
-  auto compressed = codec_->compress(inBuffer.get());
-
+  const auto compressed = codec_->compress(inBuffer.get());
   auto outBuffer = IOBuf::create(codec_->maxCompressedLength(2));
-  MutableByteRange output{outBuffer->writableTail(), outBuffer->tailroom()};
 
   ByteRange emptyInput;
   MutableByteRange emptyOutput;
 
-  // Compress some data to avoid empty data special casing
-  if (codec_->needsDataLength()) {
-    codec_->resetStream(inBuffer->computeChainDataLength());
-  } else {
-    codec_->resetStream();
-  }
-  while (!input.empty()) {
-    codec_->compressStream(input, output);
-  }
-  // empty input and output is okay for flush NONE and FLUSH.
-  codec_->compressStream(emptyInput, emptyOutput);
-  codec_->compressStream(emptyInput, emptyOutput, StreamCodec::FlushOp::FLUSH);
+  const std::array<StreamCodec::FlushOp, 3> flushOps = {{
+      StreamCodec::FlushOp::NONE,
+      StreamCodec::FlushOp::FLUSH,
+      StreamCodec::FlushOp::END,
+  }};
 
-  if (codec_->needsDataLength()) {
-    codec_->resetStream(inBuffer->computeChainDataLength());
-  } else {
-    codec_->resetStream();
+  // No progress is not okay twice in a row for all flush operations when
+  // compressing
+  for (const auto flushOp : flushOps) {
+    if (codec_->needsDataLength()) {
+      codec_->resetStream(inBuffer->computeChainDataLength());
+    } else {
+      codec_->resetStream();
+    }
+    auto input = inBuffer->coalesce();
+    MutableByteRange output = {outBuffer->writableTail(),
+                               outBuffer->tailroom()};
+    // Compress some data to avoid empty data special casing
+    while (!input.empty()) {
+      codec_->compressStream(input, output);
+    }
+    EXPECT_FALSE(codec_->compressStream(emptyInput, emptyOutput, flushOp));
+    EXPECT_THROW(
+        codec_->compressStream(emptyInput, emptyOutput, flushOp),
+        std::runtime_error);
   }
-  input = inBuffer->coalesce();
-  output = {outBuffer->writableTail(), outBuffer->tailroom()};
-  while (!input.empty()) {
-    codec_->compressStream(input, output);
-  }
-  // empty input and output is okay for flush END.
-  codec_->compressStream(emptyInput, emptyOutput, StreamCodec::FlushOp::END);
 
-  codec_->resetStream();
-  input = compressed->coalesce();
-  input.uncheckedSubtract(1); // Remove last byte so the operation is incomplete
-  output = {inBuffer->writableData(), inBuffer->length()};
-  // Uncompress some data to avoid empty data special casing
-  while (!input.empty()) {
-    EXPECT_FALSE(codec_->uncompressStream(input, output));
+  // No progress is not okay twice in a row for all flush operations when
+  // uncompressing
+  for (const auto flushOp : flushOps) {
+    codec_->resetStream();
+    auto input = compressed->coalesce();
+    // Remove the last byte so the operation is incomplete
+    input.uncheckedSubtract(1);
+    MutableByteRange output = {inBuffer->writableData(), inBuffer->length()};
+    // Uncompress some data to avoid empty data special casing
+    while (!input.empty()) {
+      EXPECT_FALSE(codec_->uncompressStream(input, output));
+    }
+    EXPECT_FALSE(codec_->uncompressStream(emptyInput, emptyOutput, flushOp));
+    EXPECT_THROW(
+        codec_->uncompressStream(emptyInput, emptyOutput, flushOp),
+        std::runtime_error);
   }
-  // empty input and output is okay for all flush values.
-  EXPECT_FALSE(codec_->uncompressStream(emptyInput, emptyOutput));
-  EXPECT_FALSE(codec_->uncompressStream(
-      emptyInput, emptyOutput, StreamCodec::FlushOp::FLUSH));
-  EXPECT_FALSE(codec_->uncompressStream(
-      emptyInput, emptyOutput, StreamCodec::FlushOp::END));
 }
 
 TEST_P(StreamingUnitTest, stateTransitions) {
-  auto inBuffer = IOBuf::create(1);
+  auto inBuffer = IOBuf::create(2);
   inBuffer->writableData()[0] = 'a';
-  inBuffer->append(1);
+  inBuffer->writableData()[1] = 'a';
+  inBuffer->append(2);
   auto compressed = codec_->compress(inBuffer.get());
   ByteRange const in = compressed->coalesce();
   auto outBuffer = IOBuf::create(codec_->maxCompressedLength(in.size()));

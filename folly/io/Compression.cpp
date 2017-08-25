@@ -234,6 +234,7 @@ void StreamCodec::assertStateIs(State expected) const {
 void StreamCodec::resetStream(Optional<uint64_t> uncompressedLength) {
   state_ = State::RESET;
   uncompressedLength_ = uncompressedLength;
+  progressMade_ = true;
   doResetStream();
 }
 
@@ -279,7 +280,18 @@ bool StreamCodec::compressStream(
       assertStateIs(State::COMPRESS_END);
       break;
   }
+  size_t const inputSize = input.size();
+  size_t const outputSize = output.size();
   bool const done = doCompressStream(input, output, flushOp);
+  if (!done && inputSize == input.size() && outputSize == output.size()) {
+    if (!progressMade_) {
+      throw std::runtime_error("Codec: No forward progress made");
+    }
+    // Throw an exception if there is no progress again next time
+    progressMade_ = false;
+  } else {
+    progressMade_ = true;
+  }
   // Handle output state transitions
   if (done) {
     if (state_ == State::COMPRESS_FLUSH) {
@@ -309,7 +321,18 @@ bool StreamCodec::uncompressStream(
     state_ = State::UNCOMPRESS;
   }
   assertStateIs(State::UNCOMPRESS);
+  size_t const inputSize = input.size();
+  size_t const outputSize = output.size();
   bool const done = doUncompressStream(input, output, flushOp);
+  if (!done && inputSize == input.size() && outputSize == output.size()) {
+    if (!progressMade_) {
+      throw std::runtime_error("Codec: no forward progress made");
+    }
+    // Throw an exception if there is no progress again next time
+    progressMade_ = false;
+  } else {
+    progressMade_ = true;
+  }
   // Handle output state transitions
   if (done) {
     state_ = State::END;
@@ -345,7 +368,8 @@ std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
   IOBuf const* current = data;
   ByteRange input{current->data(), current->length()};
   StreamCodec::FlushOp flushOp = StreamCodec::FlushOp::NONE;
-  for (;;) {
+  bool done = false;
+  while (!done) {
     while (input.empty() && current->next() != data) {
       current = current->next();
       input = {current->data(), current->length()};
@@ -357,17 +381,11 @@ std::unique_ptr<IOBuf> StreamCodec::doCompress(IOBuf const* data) {
     if (output.empty()) {
       buffer->prependChain(addOutputBuffer(output, kDefaultBufferLength));
     }
-    size_t const inputSize = input.size();
-    size_t const outputSize = output.size();
-    bool const done = compressStream(input, output, flushOp);
+    done = compressStream(input, output, flushOp);
     if (done) {
       DCHECK(input.empty());
       DCHECK(flushOp == StreamCodec::FlushOp::END);
       DCHECK_EQ(current->next(), data);
-      break;
-    }
-    if (inputSize == input.size() && outputSize == output.size()) {
-      throw std::runtime_error("Codec: No forward progress made");
     }
   }
   buffer->prev()->trimEnd(output.size());
@@ -404,7 +422,8 @@ std::unique_ptr<IOBuf> StreamCodec::doUncompress(
   IOBuf const* current = data;
   ByteRange input{current->data(), current->length()};
   StreamCodec::FlushOp flushOp = StreamCodec::FlushOp::NONE;
-  for (;;) {
+  bool done = false;
+  while (!done) {
     while (input.empty() && current->next() != data) {
       current = current->next();
       input = {current->data(), current->length()};
@@ -416,15 +435,7 @@ std::unique_ptr<IOBuf> StreamCodec::doUncompress(
     if (output.empty()) {
       buffer->prependChain(addOutputBuffer(output, defaultBufferLength));
     }
-    size_t const inputSize = input.size();
-    size_t const outputSize = output.size();
-    bool const done = uncompressStream(input, output, flushOp);
-    if (done) {
-      break;
-    }
-    if (inputSize == input.size() && outputSize == output.size()) {
-      throw std::runtime_error("Codec: Truncated data");
-    }
+    done = uncompressStream(input, output, flushOp);
   }
   if (!input.empty()) {
     throw std::runtime_error("Codec: Junk after end of data");

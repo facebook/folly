@@ -304,7 +304,8 @@ class StreamCodec : public Codec {
    * flushOp.
    *
    * A std::logic_error is thrown on incorrect usage of the API.
-   * A std::runtime_error is thrown upon error conditions.
+   * A std::runtime_error is thrown upon error conditions or if no forward
+   * progress could be made twice in a row.
    */
   bool compressStream(
       folly::ByteRange& input,
@@ -339,6 +340,10 @@ class StreamCodec : public Codec {
    * across a network, and it should be used in conjunction with
    * compressStream() with flushOp FLUSH. Most users don't need to use this
    * flushOp.
+   *
+   * A std::runtime_error is thrown upon error conditions or if no forward
+   * progress could be made upon two consecutive calls to the function (only the
+   * second call will throw an exception).
    *
    * Returns true at the end of a frame. At this point resetStream() must be
    * called to reuse the codec.
@@ -390,6 +395,7 @@ class StreamCodec : public Codec {
   State state_{State::RESET};
   ByteRange previousInput_{};
   folly::Optional<uint64_t> uncompressedLength_{};
+  bool progressMade_{true};
 };
 
 constexpr int COMPRESSION_LEVEL_FASTEST = -1;
