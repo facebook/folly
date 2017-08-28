@@ -30,7 +30,7 @@
 #include <folly/portability/SysTypes.h>
 #include <folly/portability/Windows.h>
 
-#include <WS2tcpip.h>
+#include <WS2tcpip.h> // @manual
 
 using nfds_t = int;
 using sa_family_t = ADDRESS_FAMILY;

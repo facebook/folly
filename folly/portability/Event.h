@@ -24,7 +24,7 @@
 #include <event.h>
 
 #ifdef _MSC_VER
-#include <event2/event_compat.h>
+#include <event2/event_compat.h> // @manual
 #include <folly/portability/Fcntl.h>
 #endif
 

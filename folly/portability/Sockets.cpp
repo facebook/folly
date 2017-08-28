@@ -21,9 +21,9 @@
 #include <errno.h>
 #include <fcntl.h>
 
-#include <event2/util.h>
+#include <event2/util.h> // @manual
 
-#include <MSWSock.h>
+#include <MSWSock.h> // @manual
 
 #include <folly/ScopeGuard.h>
 

@@ -25,13 +25,13 @@
 #endif
 
 #if FOLLY_HAVE_FEATURES_H
-#include <features.h>
+#include <features.h> // @manual
 #endif
 
 #ifdef __ANDROID__
-#include <android/api-level.h>
+#include <android/api-level.h> // @manual
 #endif
 
 #ifdef __APPLE__
-#include <Availability.h>
+#include <Availability.h> // @manual
 #endif

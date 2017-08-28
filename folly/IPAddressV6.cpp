@@ -31,8 +31,8 @@
 // Because of the massive pain that is libnl, this can't go into the socket
 // portability header as you can't include <linux/if.h> and <net/if.h> in
 // the same translation unit without getting errors -_-...
-#include <iphlpapi.h>
-#include <ntddndis.h>
+#include <iphlpapi.h> // @manual
+#include <ntddndis.h> // @manual
 
 // Alias the max size of an interface name to what posix expects.
 #define IFNAMSIZ IF_NAMESIZE

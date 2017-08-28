@@ -35,13 +35,13 @@ static void duration_to_ts(
 #if !FOLLY_HAVE_CLOCK_GETTIME || FOLLY_FORCE_CLOCK_GETTIME_DEFINITION
 #if __MACH__
 #include <errno.h>
-#include <mach/mach_init.h>
-#include <mach/mach_port.h>
-#include <mach/mach_time.h>
-#include <mach/mach_types.h>
-#include <mach/task.h>
-#include <mach/thread_act.h>
-#include <mach/vm_map.h>
+#include <mach/mach_init.h> // @manual
+#include <mach/mach_port.h> // @manual
+#include <mach/mach_time.h> // @manual
+#include <mach/mach_types.h> // @manual
+#include <mach/task.h> // @manual
+#include <mach/thread_act.h> // @manual
+#include <mach/vm_map.h> // @manual
 
 static std::chrono::nanoseconds time_value_to_ns(time_value_t t) {
   return std::chrono::seconds(t.seconds) +

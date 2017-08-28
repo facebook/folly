@@ -29,7 +29,7 @@
 #define MEMBARRIER_CMD_QUERY 0
 #define MEMBARRIER_CMD_SHARED 1
 #elif FOLLY_HAVE_LINUX_MEMBARRIER_H
-#include <linux/membarrier.h>
+#include <linux/membarrier.h> // @manual
 #endif
 #endif
 

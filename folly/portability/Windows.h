@@ -29,12 +29,12 @@
 #ifndef __STDC__
 /* nolint */
 #define __STDC__ 1
-#include <direct.h> // nolint
-#include <io.h> // nolint
+#include <direct.h> // @manual nolint
+#include <io.h> // @manual nolint
 #undef __STDC__
 #else
-#include <direct.h> // nolint
-#include <io.h> // nolint
+#include <direct.h> // @manual nolint
+#include <io.h> // @manual nolint
 #endif
 
 #if defined(min) || defined(max)
@@ -49,8 +49,8 @@
 #define NOMINMAX 1
 #endif
 
-#include <WinSock2.h>
-#include <Windows.h>
+#include <WinSock2.h> // @manual
+#include <Windows.h> // @manual
 
 #ifdef CAL_GREGORIAN
 #undef CAL_GREGORIAN

@@ -24,7 +24,7 @@
 
 #include <cstdint>
 
-#include <sys/locking.h>
+#include <sys/locking.h> // @manual
 
 #include <folly/portability/SysTypes.h>
 

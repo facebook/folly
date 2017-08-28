@@ -18,7 +18,7 @@
 
 #if !defined(USE_JEMALLOC) && !defined(FOLLY_USE_JEMALLOC)
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
-#include <malloc/malloc.h>
+#include <malloc/malloc.h> // @manual
 
 extern "C" size_t malloc_usable_size(void* ptr) {
   return malloc_size(ptr);
