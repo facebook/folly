@@ -1076,20 +1076,26 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
   auto ctx = std::make_shared<Context>(std::move(e));
 
   ctx->thisFuture = this->then([ctx](Try<T>&& t) mutable {
-    // TODO: "this" completed first, cancel "after"
     if (ctx->token.exchange(true) == false) {
       ctx->promise.setTry(std::move(t));
     }
   });
 
-  tk->after(dur).then([ctx](Try<Unit> const& t) mutable {
+  // Have time keeper use a weak ptr to hold ctx,
+  // so that ctx can be deallocated as soon as the future job finished.
+  tk->after(dur).then([weakCtx = to_weak_ptr(ctx)](Try<Unit> const& t) mutable {
+    auto lockedCtx = weakCtx.lock();
+    if (!lockedCtx) {
+      // ctx already released. "this" completed first, cancel "after"
+      return;
+    }
     // "after" completed first, cancel "this"
-    ctx->thisFuture.raise(TimedOut());
-    if (ctx->token.exchange(true) == false) {
+    lockedCtx->thisFuture.raise(TimedOut());
+    if (lockedCtx->token.exchange(true) == false) {
       if (t.hasException()) {
-        ctx->promise.setException(std::move(t.exception()));
+        lockedCtx->promise.setException(std::move(t.exception()));
       } else {
-        ctx->promise.setException(std::move(ctx->exception));
+        lockedCtx->promise.setException(std::move(lockedCtx->exception));
       }
     }
   });

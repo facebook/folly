@@ -936,3 +936,35 @@ TEST(Future, invokeCallbackReturningFutureAsRvalue) {
   EXPECT_EQ(203, makeFuture<int>(200).then(cfoo).value());
   EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
 }
+
+TEST(Future, futureWithinCtxCleanedUpWhenTaskFinishedInTime) {
+  // Used to track the use_count of callbackInput even outside of its scope
+  std::weak_ptr<int> target;
+  {
+    Promise<std::shared_ptr<int>> promise;
+    auto input = std::make_shared<int>(1);
+    auto longEnough = std::chrono::milliseconds(1000);
+
+    promise.getFuture()
+        .within(longEnough)
+        .then([&target](
+                  folly::Try<std::shared_ptr<int>>&& callbackInput) mutable {
+          target = callbackInput.value();
+        });
+    promise.setValue(input);
+  }
+  // After promise's life cycle is finished, make sure no one is holding the
+  // input anymore, in other words, ctx should have been cleaned up.
+  EXPECT_EQ(0, target.use_count());
+}
+
+TEST(Future, futureWithinNoValueReferenceWhenTimeOut) {
+  Promise<std::shared_ptr<int>> promise;
+  auto veryShort = std::chrono::milliseconds(1);
+
+  promise.getFuture().within(veryShort).then(
+      [](folly::Try<std::shared_ptr<int>>&& callbackInput) {
+        // Timeout is fired. Verify callbackInput is not referenced
+        EXPECT_EQ(0, callbackInput.value().use_count());
+      });
+}
