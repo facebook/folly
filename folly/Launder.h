@@ -35,6 +35,11 @@ FOLLY_NODISCARD inline T* launder(T* in) noexcept {
   // so the compiler has to assume that it has been changed inside the block.
   __asm__("" : "+r"(in));
   return in;
+#elif defined(_WIN32)
+  // MSVC does not currently have optimizations around const members of structs.
+  // _ReadWriteBarrier() will prevent compiler reordering memory accesses.
+  _ReadWriteBarrier();
+  return in;
 #else
   static_assert(
       false, "folly::launder is not implemented for this environment");
