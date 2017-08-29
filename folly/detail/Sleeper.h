@@ -21,7 +21,7 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
-#include <cstdint>
+#include <cinttypes>
 
 #include <folly/portability/Asm.h>
 #include <folly/portability/Time.h>

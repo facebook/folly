@@ -39,17 +39,16 @@
 
 #include <array>
 #include <atomic>
-#include <cassert>
-#include <cstdint>
+#include <cinttypes>
+#include <cstdlib>
+#include <mutex>
 #include <type_traits>
+
+#include <boost/noncopyable.hpp>
+#include <glog/logging.h>
 
 #include <folly/Portability.h>
 #include <folly/detail/Sleeper.h>
-
-FOLLY_NAMESPACE_STD_BEGIN
-template <class Mutex>
-class lock_guard;
-FOLLY_NAMESPACE_STD_END
 
 namespace folly {
 
@@ -87,11 +86,11 @@ struct MicroSpinLock {
         sleeper.wait();
       }
     } while (!try_lock());
-    assert(payload()->load() == LOCKED);
+    DCHECK(payload()->load() == LOCKED);
   }
 
   void unlock() {
-    assert(payload()->load() == LOCKED);
+    CHECK(payload()->load() == LOCKED);
     payload()->store(FREE, std::memory_order_release);
   }
 
