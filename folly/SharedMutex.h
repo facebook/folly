@@ -850,6 +850,7 @@ class SharedMutexImpl {
                             WaitContext& ctx) {
 #ifdef RUSAGE_THREAD
     struct rusage usage;
+    std::memset(&usage, 0, sizeof(usage));
     long before = -1;
 #endif
     for (uint32_t yieldCount = 0; yieldCount < kMaxSoftYieldCount;
@@ -1005,6 +1006,7 @@ class SharedMutexImpl {
 
 #ifdef RUSAGE_THREAD
     struct rusage usage;
+    std::memset(&usage, 0, sizeof(usage));
     long before = -1;
 #endif
     for (uint32_t yieldCount = 0; yieldCount < kMaxSoftYieldCount;
