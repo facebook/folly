@@ -29,7 +29,7 @@ void recurse(int level) {
     throw std::runtime_error("");
   }
   recurse(level - 1);
-  folly::doNotOptimizeAway(0);  // prevent tail recursion
+  folly::doNotOptimizeAway(0); // prevent tail recursion
 }
 
 void loop(int iters) {
@@ -47,7 +47,7 @@ BENCHMARK(ExceptionTracer, iters) {
   constexpr size_t kNumThreads = 10;
   threads.resize(10);
   for (auto& t : threads) {
-    t = std::thread([iters] () { loop(iters); });
+    t = std::thread([iters]() { loop(iters); });
   }
   for (auto& t : threads) {
     t.join();

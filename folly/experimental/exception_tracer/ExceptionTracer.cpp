@@ -61,8 +61,7 @@ void printExceptionInfo(
     out << "(unknown type)";
   }
   out << " (" << info.frames.size()
-      << (info.frames.size() == 1 ? " frame" : " frames")
-      << ")\n";
+      << (info.frames.size() == 1 ? " frame" : " frames") << ")\n";
   try {
     size_t frameCount = info.frames.size();
 
@@ -104,9 +103,7 @@ namespace {
 bool isAbiCppException(const __cxa_exception* exc) {
   // The least significant four bytes must be "C++\0"
   static const uint64_t cppClass =
-    ((uint64_t)'C' << 24) |
-    ((uint64_t)'+' << 16) |
-    ((uint64_t)'+' << 8);
+      ((uint64_t)'C' << 24) | ((uint64_t)'+' << 16) | ((uint64_t)'+' << 8);
   return (exc->unwindHeader.exception_class & 0xffffffff) == cppClass;
 }
 
@@ -120,9 +117,8 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
 
       if (!getExceptionStackTraceStackFn) {
         // Nope, see if it's in a shared library
-        getExceptionStackTraceStackFn =
-          (GetExceptionStackTraceStackType)dlsym(
-              RTLD_NEXT, "getExceptionStackTraceStack");
+        getExceptionStackTraceStackFn = (GetExceptionStackTraceStackType)dlsym(
+            RTLD_NEXT, "getExceptionStackTraceStack");
       }
     }
   };
@@ -139,14 +135,14 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     static bool logged = false;
     if (!logged) {
       LOG(WARNING)
-        << "Exception tracer library not linked, stack traces not available";
+          << "Exception tracer library not linked, stack traces not available";
       logged = true;
     }
   } else if ((traceStack = getExceptionStackTraceStackFn()) == nullptr) {
     static bool logged = false;
     if (!logged) {
       LOG(WARNING)
-        << "Exception stack trace invalid, stack traces not available";
+          << "Exception stack trace invalid, stack traces not available";
       logged = true;
     }
   }
@@ -158,10 +154,9 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     // standard ABI __cxa_exception objects, and are correctly labeled as
     // such in the exception_class field.  We could try to extract the
     // primary exception type in horribly hacky ways, but, for now, nullptr.
-    info.type =
-      isAbiCppException(currentException) ?
-      currentException->exceptionType :
-      nullptr;
+    info.type = isAbiCppException(currentException)
+        ? currentException->exceptionType
+        : nullptr;
 
     if (traceStack) {
       LOG_IF(DFATAL, !trace)

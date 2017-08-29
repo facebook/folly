@@ -77,11 +77,12 @@ std::vector<ExceptionStats> getExceptionStatistics() {
     result.push_back(std::move(item.second));
   }
 
-  std::sort(result.begin(),
-            result.end(),
-            [](const ExceptionStats& lhs, const ExceptionStats& rhs) {
-              return lhs.count > rhs.count;
-            });
+  std::sort(
+      result.begin(),
+      result.end(),
+      [](const ExceptionStats& lhs, const ExceptionStats& rhs) {
+        return lhs.count > rhs.count;
+      });
 
   return result;
 }
@@ -133,7 +134,9 @@ void throwHandler(void*, std::type_info* exType, void (*)(void*)) noexcept {
 }
 
 struct Initializer {
-  Initializer() { registerCxaThrowCallback(throwHandler); }
+  Initializer() {
+    registerCxaThrowCallback(throwHandler);
+  }
 };
 
 Initializer initializer;

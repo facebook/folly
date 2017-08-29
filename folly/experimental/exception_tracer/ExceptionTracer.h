@@ -32,7 +32,7 @@ struct ExceptionInfo {
   // The values in frames are IP (instruction pointer) addresses.
   // They are only filled if the low-level exception tracer library is
   // linked in or LD_PRELOADed.
-  std::vector<uintptr_t> frames;  // front() is top of stack
+  std::vector<uintptr_t> frames; // front() is top of stack
 };
 
 void printExceptionInfo(

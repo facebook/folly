@@ -47,7 +47,9 @@ template <typename Function>
 class CallbackHolder {
  public:
   void registerCallback(Function f) {
-    SYNCHRONIZED(callbacks_) { callbacks_.push_back(std::move(f)); }
+    SYNCHRONIZED(callbacks_) {
+      callbacks_.push_back(std::move(f));
+    }
   }
 
   // always inline to enforce kInternalFramesNumber
@@ -93,14 +95,15 @@ DECLARE_CALLBACK(RethrowException);
 // calls need to go away. Everything else is messy though, so just
 // #define it to an empty macro under Clang and be done with it.
 #ifdef __clang__
-# define __builtin_unreachable()
+#define __builtin_unreachable()
 #endif
 
 namespace __cxxabiv1 {
 
-void __cxa_throw(void* thrownException,
-                 std::type_info* type,
-                 void (*destructor)(void*)) {
+void __cxa_throw(
+    void* thrownException,
+    std::type_info* type,
+    void (*destructor)(void*)) {
   static auto orig_cxa_throw =
       reinterpret_cast<decltype(&__cxa_throw)>(dlsym(RTLD_NEXT, "__cxa_throw"));
   getCxaThrowCallbacks().invoke(thrownException, type, destructor);
@@ -146,9 +149,9 @@ void rethrow_exception(std::exception_ptr ep) {
   // TODO(tudorb): Dicey, as it relies on the fact that std::exception_ptr
   // is typedef'ed to a type in namespace __exception_ptr
   static auto orig_rethrow_exception =
-      reinterpret_cast<decltype(&rethrow_exception)>(
-          dlsym(RTLD_NEXT,
-                "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"));
+      reinterpret_cast<decltype(&rethrow_exception)>(dlsym(
+          RTLD_NEXT,
+          "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"));
   getRethrowExceptionCallbacks().invoke(ep);
   orig_rethrow_exception(ep);
   __builtin_unreachable(); // orig_rethrow_exception never returns

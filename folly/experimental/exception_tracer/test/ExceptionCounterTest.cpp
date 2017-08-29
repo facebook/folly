@@ -111,8 +111,8 @@ TEST(ExceptionCounter, multyThreads) {
 
   {
     std::unique_lock<std::mutex> lock(preparedMutex);
-    preparedBarrier.wait(lock,
-                         [&]() { return preparedThreads == kNumThreads; });
+    preparedBarrier.wait(
+        lock, [&]() { return preparedThreads == kNumThreads; });
   }
 
   auto stats = getExceptionStatistics();
