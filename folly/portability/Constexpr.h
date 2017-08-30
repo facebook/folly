@@ -81,6 +81,11 @@ constexpr auto constexpr_abs(T t)
   return detail::constexpr_abs_helper<T>::go(t);
 }
 
+template <typename T>
+constexpr T constexpr_log2(T t) {
+  return t == T(1) ? T(0) : T(1) + constexpr_log2(t / T(2));
+}
+
 namespace detail {
 
 template <typename Char>

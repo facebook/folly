@@ -71,3 +71,24 @@ TEST_F(ConstexprTest, constexpr_abs_double_negative) {
   EXPECT_EQ(17.5, a);
   EXPECT_TRUE((std::is_same<const double, decltype(a)>::value));
 }
+
+TEST_F(ConstexprTest, constexpr_log2_1) {
+  constexpr auto v = 1ull;
+  constexpr auto a = folly::constexpr_log2(v);
+  EXPECT_EQ(0ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprTest, constexpr_log2_2) {
+  constexpr auto v = 2ull;
+  constexpr auto a = folly::constexpr_log2(v);
+  EXPECT_EQ(1ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprTest, constexpr_log2_64) {
+  constexpr auto v = 64ull;
+  constexpr auto a = folly::constexpr_log2(v);
+  EXPECT_EQ(6ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
