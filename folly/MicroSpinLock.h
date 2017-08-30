@@ -39,13 +39,10 @@
 
 #include <array>
 #include <atomic>
-#include <cinttypes>
-#include <cstdlib>
+#include <cassert>
+#include <cstdint>
 #include <mutex>
 #include <type_traits>
-
-#include <boost/noncopyable.hpp>
-#include <glog/logging.h>
 
 #include <folly/Portability.h>
 #include <folly/detail/Sleeper.h>
@@ -86,11 +83,11 @@ struct MicroSpinLock {
         sleeper.wait();
       }
     } while (!try_lock());
-    DCHECK(payload()->load() == LOCKED);
+    assert(payload()->load() == LOCKED);
   }
 
   void unlock() {
-    CHECK(payload()->load() == LOCKED);
+    assert(payload()->load() == LOCKED);
     payload()->store(FREE, std::memory_order_release);
   }
 
