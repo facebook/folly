@@ -54,7 +54,6 @@ namespace folly {
 class HHWheelTimer : private folly::AsyncTimeout,
                      public folly::DelayedDestruction {
  public:
-  // This type has always been a misnomer, because it is not a unique pointer.
   using UniquePtr = std::unique_ptr<HHWheelTimer, Destructor>;
   using SharedPtr = std::shared_ptr<HHWheelTimer>;
 
