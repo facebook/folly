@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 
 #include <type_traits>
@@ -79,7 +80,7 @@ namespace folly {
  *  });
  */
 template <typename Range, typename Func>
-constexpr Func for_each(Range&& range, Func func);
+FOLLY_CPP14_CONSTEXPR Func for_each(Range&& range, Func func);
 
 /**
  * The user should return loop_break and loop_continue if they want to iterate
@@ -115,7 +116,7 @@ constexpr auto loop_continue = for_each_detail::LoopControl::CONTINUE;
  * (operator[]) to fetch the required element
  */
 template <typename Sequence, typename Index>
-constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index);
+FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
 
 } // namespace folly
 

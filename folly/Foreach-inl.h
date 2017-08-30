@@ -22,6 +22,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 
 namespace folly {
@@ -378,14 +379,14 @@ struct FetchImpl<S, EnableIfRange<S>> {
 } // namespace for_each_detail
 
 template <typename Sequence, typename Func>
-constexpr Func for_each(Sequence&& range, Func func) {
+FOLLY_CPP14_CONSTEXPR Func for_each(Sequence&& range, Func func) {
   for_each_detail::ForEachImpl<typename std::decay<Sequence>::type>::impl(
       std::forward<Sequence>(range), func);
   return func;
 }
 
 template <typename Sequence, typename Index>
-constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index) {
+FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index) {
   return for_each_detail::FetchImpl<Sequence>::impl(
       std::forward<Sequence>(sequence), std::forward<Index>(index));
 }
