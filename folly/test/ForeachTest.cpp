@@ -16,6 +16,7 @@
 
 #include <folly/Foreach.h>
 
+#include <array>
 #include <initializer_list>
 #include <iterator>
 #include <list>
