@@ -49,6 +49,7 @@ class File {
 
   /**
    * Open and create a file object.  Throws on error.
+   * Owns the file descriptor implicitly.
    */
   explicit File(const char* name, int flags = O_RDONLY, mode_t mode = 0666);
   explicit File(
