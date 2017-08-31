@@ -49,6 +49,10 @@ array_test_SOURCES = ArrayTest.cpp
 array_test_LDADD = libfollytestmain.la
 TESTS += array_test
 
+constexpr_math_test_SOURCES = ConstexprMathTest.cpp
+constexpr_math_test_LDADD = libfollytestmain.la
+TESTS += constexpr_math_test
+
 if RUN_ARCH_SPECIFIC_TESTS
 small_locks_test_SOURCES = SmallLocksTest.cpp
 small_locks_test_LDADD = libfollytestmain.la

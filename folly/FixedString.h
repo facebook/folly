@@ -28,6 +28,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/ConstexprMath.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/Utility.h>
@@ -314,18 +315,6 @@ FOLLY_CPP14_CONSTEXPR void constexpr_swap(T& a, T& b) noexcept(
   b = std::move(tmp);
 }
 
-// FUTURE: use const_log2 to fold instantiations of BasicFixedString together.
-// All BasicFixedString<C, N> instantiations could share the implementation
-// of BasicFixedString<C, M>, where M is the next highest power of 2 after N.
-//
-// Also, because of alignment of the data_ and size_ members, N should never be
-// smaller than `(alignof(std::size_t)/sizeof(C))-1` (-1 because of the null
-// terminator). OR, create a specialization for BasicFixedString<C, 0u> that
-// does not have a size_ member, since it is unnecessary.
-constexpr std::size_t const_log2(std::size_t N, std::size_t log2 = 0u) {
-  return N / 2u == 0u ? log2 : const_log2(N / 2u, log2 + 1u);
-}
-
 // For constexpr reverse iteration over a BasicFixedString
 template <class T>
 struct ReverseIterator {
@@ -528,6 +517,15 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend class BasicFixedString;
   friend struct detail::fixedstring::Helper;
 
+  // FUTURE: use constexpr_log2 to fold instantiations of BasicFixedString
+  // together. All BasicFixedString<C, N> instantiations could share the
+  // implementation of BasicFixedString<C, M>, where M is the next highest power
+  // of 2 after N.
+  //
+  // Also, because of alignment of the data_ and size_ members, N should never
+  // be smaller than `(alignof(std::size_t)/sizeof(C))-1` (-1 because of the
+  // null terminator). OR, create a specialization for BasicFixedString<C, 0u>
+  // that does not have a size_ member, since it is unnecessary.
   Char data_[N + 1u]; // +1 for the null terminator
   std::size_t size_; // Nbr of chars, not incl. null terminator. size_ <= N.
 

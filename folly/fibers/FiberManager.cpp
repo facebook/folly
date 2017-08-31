@@ -25,6 +25,7 @@
 #include <folly/fibers/Fiber.h>
 #include <folly/fibers/LoopController.h>
 
+#include <folly/ConstexprMath.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>

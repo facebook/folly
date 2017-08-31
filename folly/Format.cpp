@@ -16,8 +16,8 @@
 
 #include <folly/Format.h>
 
+#include <folly/ConstexprMath.h>
 #include <folly/CppAttributes.h>
-#include <folly/portability/Constexpr.h>
 
 #include <double-conversion/double-conversion.h>
 

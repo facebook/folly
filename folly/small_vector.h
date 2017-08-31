@@ -44,13 +44,13 @@
 #include <boost/type_traits.hpp>
 
 #include <folly/Assume.h>
+#include <folly/ConstexprMath.h>
 #include <folly/FormatTraits.h>
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
 #include <folly/SmallLocks.h>
 #include <folly/Traits.h>
 #include <folly/portability/BitsFunctexcept.h>
-#include <folly/portability/Constexpr.h>
 #include <folly/portability/Malloc.h>
 #include <folly/portability/TypeTraits.h>
 

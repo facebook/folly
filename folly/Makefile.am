@@ -60,6 +60,7 @@ nobase_follyinclude_HEADERS = \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
 	concurrency/detail/ConcurrentHashMap-detail.h \
+	ConstexprMath.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \
