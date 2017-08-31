@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/symbolizer/SignalHandler.h>
+
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/init/Init.h>
 

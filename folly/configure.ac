@@ -547,12 +547,8 @@ AC_ARG_ENABLE([follytestmain],
    [use_follytestmain=${enableval}], [use_follytestmain=yes])
 
 # libdwarf used to install in /usr/include, now installs in /usr/include/libdwarf.
-AC_CHECK_HEADERS([libdwarf/dwarf.h dwarf.h], [break])
-# Check whether we have both the library and the header
 have_libdwarf=no
-AS_IF([test "x${ac_cv_header_libdwarf_dwarf_h}" = xyes], [have_libdwarf=yes])
-AS_IF([test "x${ac_cv_header_dwarf_h}" = xyes], [have_libdwarf=yes])
-
+AC_CHECK_HEADERS([libdwarf/dwarf.h dwarf.h], [have_libdwarf=yes])
 
 AC_ARG_ENABLE([mobile],
    AS_HELP_STRING([--enable-mobile],
@@ -566,6 +562,24 @@ AS_IF([test "x${mobile}" = "xyes"], [
 AC_ARG_ENABLE([exception-tracer],
     AS_HELP_STRING([--enable-exception-tracer], [enables building exception tracer]),
     [build_exception_tracer=${enableval}], [build_exception_tracer=no])
+
+AC_ARG_ENABLE([symbolizer],
+    AS_HELP_STRING([--enable-symbolizer], [try to build symbolizer if possible]),
+    [folly_try_use_symbolizer=${enableval}], [folly_try_use_symbolizer=yes])
+
+folly_use_symbolizer=no
+if test "$folly_try_use_symbolizer" = yes; then
+  if test "$build_os" = "linux-gnu" && test "$have_libdwarf" = yes; then
+      AC_CHECK_HEADER(
+        [elf.h],
+        AC_CHECK_LIB([unwind], [backtrace], [folly_use_symbolizer=yes]),
+      )
+  fi
+fi
+if test "$folly_use_symbolizer" = yes; then
+  AC_DEFINE([USE_SYMBOLIZER], [1], [Define to 1 if we should use the symbolizer in init])
+fi
+
 
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
@@ -594,6 +608,7 @@ AM_CONDITIONAL([FOLLY_TESTMAIN], [test "x${use_follytestmain}" = "xyes"])
 AM_CONDITIONAL([HAVE_LIBDWARF], [test "x${have_libdwarf}" = "xyes"])
 AM_CONDITIONAL([HAVE_BOOST_CONTEXT], [test "x${ax_cv_boost_context}" = "xyes"])
 AM_CONDITIONAL([EXCEPTION_TRACER], [test "x${build_exception_tracer}" = "xyes"])
+AM_CONDITIONAL([USE_SYMBOLIZER], [test "x${folly_use_symbolizer}" = "xyes"])
 
 # remove pkg-config deps from dependent libraries
 # (at least for pkg-config file purposes)

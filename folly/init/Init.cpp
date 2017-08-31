@@ -19,9 +19,10 @@
 #include <glog/logging.h>
 
 #include <folly/Singleton.h>
+#include <folly/portability/Config.h>
 
 #ifdef FOLLY_USE_SYMBOLIZER
-#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/experimental/symbolizer/SignalHandler.h> // @manual
 #endif
 #include <folly/portability/GFlags.h>
 

@@ -160,14 +160,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/observer/SimpleObservable-inl.h \
 	experimental/ProgramOptions.h \
 	experimental/ReadMostlySharedPtr.h \
-	experimental/symbolizer/Elf.h \
-	experimental/symbolizer/Elf-inl.h \
-	experimental/symbolizer/ElfCache.h \
-	experimental/symbolizer/Dwarf.h \
-	experimental/symbolizer/LineReader.h \
-	experimental/symbolizer/SignalHandler.h \
-	experimental/symbolizer/StackTrace.h \
-	experimental/symbolizer/Symbolizer.h \
 	experimental/Select64.h \
 	experimental/StampedPtr.h \
 	experimental/StringKeyedCommon.h \
@@ -660,6 +652,27 @@ libfolly_la_SOURCES += \
 	fibers/GuardPageAllocator.cpp \
 	fibers/Semaphore.cpp \
 	fibers/TimeoutController.cpp
+endif
+
+if USE_SYMBOLIZER
+nobase_follyinclude_HEADERS += \
+	experimental/symbolizer/Elf.h \
+	experimental/symbolizer/Elf-inl.h \
+	experimental/symbolizer/ElfCache.h \
+	experimental/symbolizer/Dwarf.h \
+	experimental/symbolizer/LineReader.h \
+	experimental/symbolizer/SignalHandler.h \
+	experimental/symbolizer/StackTrace.h \
+	experimental/symbolizer/Symbolizer.h
+
+libfolly_la_SOURCES += \
+	experimental/symbolizer/Elf.cpp \
+	experimental/symbolizer/ElfCache.cpp \
+	experimental/symbolizer/Dwarf.cpp \
+	experimental/symbolizer/LineReader.cpp \
+	experimental/symbolizer/SignalHandler.cpp \
+	experimental/symbolizer/StackTrace.cpp \
+	experimental/symbolizer/Symbolizer.cpp
 endif
 
 libfollybasesse42_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
