@@ -206,13 +206,13 @@ class ConnectClient : public AsyncSocket::ConnectCallback {
   }
 
   void connectSuccess() noexcept override {
-    promise_.setValue(true);
     socket_.reset();
+    promise_.setValue(true);
   }
 
   void connectErr(const AsyncSocketException& /* ex */) noexcept override {
-    promise_.setValue(false);
     socket_.reset();
+    promise_.setValue(false);
   }
 
   void setCtx(std::shared_ptr<SSLContext> ctx) {
