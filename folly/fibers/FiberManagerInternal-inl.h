@@ -37,8 +37,9 @@ namespace fibers {
 namespace {
 
 inline FiberManager::Options preprocessOptions(FiberManager::Options opts) {
-#if defined(FOLLY_SANITIZE_ADDRESS) || defined(UNDEFINED_SANITIZER)
-  /* ASAN/UBSAN needs a lot of extra stack space.
+#if defined(FOLLY_SANITIZE_ADDRESS) || defined(UNDEFINED_SANITIZER) || \
+    defined(FOLLY_SANITIZE_THREAD)
+  /* Sanitizers need a lot of extra stack space.
      16x is a conservative estimate, 8x also worked with tests
      where it mattered.  Note that overallocating here does not necessarily
      increase RSS, since unused memory is pretty much free. */
