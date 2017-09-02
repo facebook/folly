@@ -23,6 +23,24 @@ namespace {
 class ConstexprMathTest : public testing::Test {};
 }
 
+TEST_F(ConstexprMathTest, constexpr_min) {
+  constexpr auto x = uint16_t(3);
+  constexpr auto y = uint16_t(7);
+  constexpr auto z = uint16_t(4);
+  constexpr auto a = folly::constexpr_min(x, y, z);
+  EXPECT_EQ(3, a);
+  EXPECT_TRUE((std::is_same<const uint16_t, decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_max) {
+  constexpr auto x = uint16_t(3);
+  constexpr auto y = uint16_t(7);
+  constexpr auto z = uint16_t(4);
+  constexpr auto a = folly::constexpr_max(x, y, z);
+  EXPECT_EQ(7, a);
+  EXPECT_TRUE((std::is_same<const uint16_t, decltype(a)>::value));
+}
+
 TEST_F(ConstexprMathTest, constexpr_abs_unsigned) {
   constexpr auto v = uint32_t(17);
   constexpr auto a = folly::constexpr_abs(v);

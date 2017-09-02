@@ -41,7 +41,7 @@ constexpr T constexpr_min(T a) {
 }
 template <typename T, typename... Ts>
 constexpr T constexpr_min(T a, T b, Ts... ts) {
-  return b < a ? constexpr_max(b, ts...) : constexpr_max(a, ts...);
+  return b < a ? constexpr_min(b, ts...) : constexpr_min(a, ts...);
 }
 
 namespace detail {
