@@ -131,9 +131,6 @@ class Codec {
    * Compress data, returning an IOBuf (which may share storage with data).
    * Throws std::invalid_argument if data is larger than
    * maxUncompressedLength().
-   *
-   * Regardless of the behavior of the underlying compressor, compressing
-   * an empty IOBuf chain will return an empty IOBuf chain.
    */
   std::unique_ptr<IOBuf> compress(const folly::IOBuf* data);
 

@@ -75,9 +75,6 @@ std::unique_ptr<IOBuf> Codec::compress(const IOBuf* data) {
     throw std::invalid_argument("Codec: data must not be nullptr");
   }
   uint64_t len = data->computeChainDataLength();
-  if (len == 0) {
-    return IOBuf::create(0);
-  }
   if (len > maxUncompressedLength()) {
     throw std::runtime_error("Codec: uncompressed length too large");
   }
@@ -87,9 +84,6 @@ std::unique_ptr<IOBuf> Codec::compress(const IOBuf* data) {
 
 std::string Codec::compress(const StringPiece data) {
   const uint64_t len = data.size();
-  if (len == 0) {
-    return "";
-  }
   if (len > maxUncompressedLength()) {
     throw std::runtime_error("Codec: uncompressed length too large");
   }
@@ -191,9 +185,6 @@ std::string Codec::doUncompressString(
 }
 
 uint64_t Codec::maxCompressedLength(uint64_t uncompressedLength) const {
-  if (uncompressedLength == 0) {
-    return 0;
-  }
   return doMaxCompressedLength(uncompressedLength);
 }
 
@@ -201,8 +192,8 @@ Optional<uint64_t> Codec::getUncompressedLength(
     const folly::IOBuf* data,
     Optional<uint64_t> uncompressedLength) const {
   auto const compressedLength = data->computeChainDataLength();
-  if (uncompressedLength == uint64_t(0) || compressedLength == 0) {
-    if (uncompressedLength.value_or(0) != 0 || compressedLength != 0) {
+  if (compressedLength == 0) {
+    if (uncompressedLength.value_or(0) != 0) {
       throw std::runtime_error("Invalid uncompressed length");
     }
     return 0;
@@ -242,16 +233,12 @@ bool StreamCodec::compressStream(
     ByteRange& input,
     MutableByteRange& output,
     StreamCodec::FlushOp flushOp) {
-  if (state_ == State::RESET && input.empty()) {
-    if (flushOp == StreamCodec::FlushOp::NONE) {
-      return false;
-    }
-    if (flushOp == StreamCodec::FlushOp::END &&
-        uncompressedLength().value_or(0) != 0) {
-      throw std::runtime_error("Codec: invalid uncompressed length");
-    }
-    return true;
+  if (state_ == State::RESET && input.empty() &&
+      flushOp == StreamCodec::FlushOp::END &&
+      uncompressedLength().value_or(0) != 0) {
+    throw std::runtime_error("Codec: invalid uncompressed length");
   }
+
   if (!uncompressedLength() && needsDataLength()) {
     throw std::runtime_error("Codec: uncompressed length required");
   }
@@ -1030,7 +1017,7 @@ class LZMA2StreamCodec final : public StreamCodec {
   void resetCStream();
   void resetDStream();
 
-  size_t decodeVarint(ByteRange& input);
+  bool decodeAndCheckVarint(ByteRange& input);
   bool flushVarintBuffer(MutableByteRange& output);
   void resetVarintBuffer();
 
@@ -1243,11 +1230,16 @@ bool LZMA2StreamCodec::doCompressStream(
  *
  * If there are too many bytes and the varint is not valid, throw a
  * runtime_error.
- * Returns the decoded size or 0 if more bytes are needed.
+ *
+ * If the uncompressed length was provided and a decoded varint does not match
+ * the provided length, throw a runtime_error.
+ *
+ * Returns true if the varint was successfully decoded and matches the
+ * uncompressed length if provided, and false if more bytes are needed.
  */
-size_t LZMA2StreamCodec::decodeVarint(ByteRange& input) {
+bool LZMA2StreamCodec::decodeAndCheckVarint(ByteRange& input) {
   if (input.empty()) {
-    return 0;
+    return false;
   }
   size_t const numBytesToCopy =
       std::min(kMaxVarintLength64 - varintBufferPos_, input.size());
@@ -1260,14 +1252,17 @@ size_t LZMA2StreamCodec::decodeVarint(ByteRange& input) {
   if (ret.hasValue()) {
     size_t const varintSize = rangeSize - range.size();
     input.advance(varintSize - varintBufferPos_);
-    return ret.value();
+    if (uncompressedLength() && *uncompressedLength() != ret.value()) {
+      throw std::runtime_error("LZMA2StreamCodec: invalid uncompressed length");
+    }
+    return true;
   } else if (ret.error() == DecodeVarintError::TooManyBytes) {
     throw std::runtime_error("LZMA2StreamCodec: invalid uncompressed length");
   } else {
     // Too few bytes
     input.advance(numBytesToCopy);
     varintBufferPos_ += numBytesToCopy;
-    return 0;
+    return false;
   }
 }
 
@@ -1288,12 +1283,8 @@ bool LZMA2StreamCodec::doUncompressStream(
   if (needDecodeSize_) {
     // Try decoding the varint. If the input does not contain the entire varint,
     // buffer the input. If the varint can not be decoded, fail.
-    size_t const size = decodeVarint(input);
-    if (!size) {
+    if (!decodeAndCheckVarint(input)) {
       return false;
-    }
-    if (uncompressedLength() && *uncompressedLength() != size) {
-      throw std::runtime_error("LZMA2StreamCodec: invalid uncompressed length");
     }
     needDecodeSize_ = false;
   }

@@ -205,7 +205,10 @@ class CompressionTest
  protected:
   void SetUp() override {
     auto tup = GetParam();
-    uncompressedLength_ = uint64_t(1) << std::tr1::get<0>(tup);
+    int lengthLog = std::tr1::get<0>(tup);
+    // Small hack to test empty data
+    uncompressedLength_ =
+        (lengthLog < 0) ? 0 : uint64_t(1) << std::tr1::get<0>(tup);
     chunks_ = std::tr1::get<1>(tup);
     codec_ = getCodec(std::tr1::get<2>(tup));
   }
@@ -225,6 +228,9 @@ class CompressionTest
 void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
   const auto original = split(IOBuf::wrapBuffer(dh.data(uncompressedLength_)));
   const auto compressed = split(codec_->compress(original.get()));
+  EXPECT_LE(
+      compressed->computeChainDataLength(),
+      codec_->maxCompressedLength(uncompressedLength_));
   if (!codec_->needsUncompressedLength()) {
     auto uncompressed = codec_->uncompress(compressed.get());
     EXPECT_EQ(uncompressedLength_, uncompressed->computeChainDataLength());
@@ -243,6 +249,9 @@ void CompressionTest::runSimpleStringTest(const DataHolder& dh) {
       reinterpret_cast<const char*>(dh.data(uncompressedLength_).data()),
       uncompressedLength_);
   const auto compressed = codec_->compress(original);
+  EXPECT_LE(
+      compressed.length(), codec_->maxCompressedLength(uncompressedLength_));
+
   if (!codec_->needsUncompressedLength()) {
     auto uncompressed = codec_->uncompress(compressed);
     EXPECT_EQ(uncompressedLength_, uncompressed.length());
@@ -301,7 +310,7 @@ INSTANTIATE_TEST_CASE_P(
     CompressionTest,
     CompressionTest,
     testing::Combine(
-        testing::Values(0, 1, 12, 22, 25, 27),
+        testing::Values(-1, 0, 1, 12, 22, 25, 27),
         testing::Values(1, 2, 3, 8, 65),
         testing::ValuesIn(availableCodecs())));
 
@@ -484,7 +493,6 @@ TEST(StreamingUnitTest, needsDataLength) {
 }
 
 TEST_P(StreamingUnitTest, maxCompressedLength) {
-  EXPECT_EQ(0, codec_->maxCompressedLength(0));
   for (uint64_t const length : {1, 10, 100, 1000, 10000, 100000, 1000000}) {
     EXPECT_GE(codec_->maxCompressedLength(length), length);
   }
@@ -494,11 +502,11 @@ TEST_P(StreamingUnitTest, getUncompressedLength) {
   auto const empty = IOBuf::create(0);
   EXPECT_EQ(uint64_t(0), codec_->getUncompressedLength(empty.get()));
   EXPECT_EQ(uint64_t(0), codec_->getUncompressedLength(empty.get(), 0));
+  EXPECT_ANY_THROW(codec_->getUncompressedLength(empty.get(), 1));
 
   auto const data = IOBuf::wrapBuffer(randomDataHolder.data(100));
   auto const compressed = codec_->compress(data.get());
 
-  EXPECT_ANY_THROW(codec_->getUncompressedLength(data.get(), 0));
   if (auto const length = codec_->getUncompressedLength(data.get())) {
     EXPECT_EQ(100, *length);
   }
@@ -512,35 +520,46 @@ TEST_P(StreamingUnitTest, getUncompressedLength) {
 
 TEST_P(StreamingUnitTest, emptyData) {
   ByteRange input{};
-  auto buffer = IOBuf::create(1);
+  auto buffer = IOBuf::create(codec_->maxCompressedLength(0));
   buffer->append(buffer->capacity());
-  MutableByteRange output{};
+  MutableByteRange output;
 
   // Test compressing empty data in one pass
   if (!codec_->needsDataLength()) {
+    output = {buffer->writableData(), buffer->length()};
     EXPECT_TRUE(
         codec_->compressStream(input, output, StreamCodec::FlushOp::END));
   }
   codec_->resetStream(0);
-  EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
   output = {buffer->writableData(), buffer->length()};
   EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
-  EXPECT_EQ(buffer->length(), output.size());
+
+  // Test uncompressing the compressed empty data is equivalent to the empty
+  // string
+  {
+    size_t compressedSize = buffer->length() - output.size();
+    auto const compressed =
+        IOBuf::copyBuffer(buffer->writableData(), compressedSize);
+    auto inputRange = compressed->coalesce();
+    codec_->resetStream(0);
+    output = {buffer->writableData(), buffer->length()};
+    EXPECT_TRUE(codec_->uncompressStream(
+        inputRange, output, StreamCodec::FlushOp::END));
+    EXPECT_EQ(output.size(), buffer->length());
+  }
 
   // Test compressing empty data with multiple calls to compressStream()
-  codec_->resetStream(0);
-  output = {};
-  EXPECT_FALSE(codec_->compressStream(input, output));
-  EXPECT_TRUE(
-      codec_->compressStream(input, output, StreamCodec::FlushOp::FLUSH));
-  EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
-  codec_->resetStream(0);
-  output = {buffer->writableData(), buffer->length()};
-  EXPECT_FALSE(codec_->compressStream(input, output));
-  EXPECT_TRUE(
-      codec_->compressStream(input, output, StreamCodec::FlushOp::FLUSH));
-  EXPECT_TRUE(codec_->compressStream(input, output, StreamCodec::FlushOp::END));
-  EXPECT_EQ(buffer->length(), output.size());
+  {
+    auto largeBuffer = IOBuf::create(codec_->maxCompressedLength(0) * 2);
+    largeBuffer->append(largeBuffer->capacity());
+    codec_->resetStream(0);
+    output = {largeBuffer->writableData(), largeBuffer->length()};
+    EXPECT_FALSE(codec_->compressStream(input, output));
+    EXPECT_TRUE(
+        codec_->compressStream(input, output, StreamCodec::FlushOp::FLUSH));
+    EXPECT_TRUE(
+        codec_->compressStream(input, output, StreamCodec::FlushOp::END));
+  }
 
   // Test uncompressing empty data
   output = {};

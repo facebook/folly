@@ -176,7 +176,10 @@ bool ZlibStreamCodec::canUncompress(const IOBuf* data, Optional<uint64_t>)
 
 uint64_t ZlibStreamCodec::doMaxCompressedLength(
     uint64_t uncompressedLength) const {
-  return deflateBound(nullptr, uncompressedLength);
+  // When passed a nullptr, deflateBound() adds 6 bytes for a zlib wrapper. A
+  // gzip wrapper is 18 bytes, so we add the 12 byte difference.
+  return deflateBound(nullptr, uncompressedLength) +
+      (options_.format == Options::Format::GZIP ? 12 : 0);
 }
 
 std::unique_ptr<Codec> ZlibStreamCodec::createCodec(
