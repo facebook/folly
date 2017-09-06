@@ -405,7 +405,7 @@ class SingletonVault {
    *
    * Sample usage:
    *
-   *   wangle::IOThreadPoolExecutor executor(max_concurrency_level);
+   *   folly::IOThreadPoolExecutor executor(max_concurrency_level);
    *   folly::Baton<> done;
    *   doEagerInitVia(executor, &done);
    *   done.wait();  // or 'timed_wait', or spin with 'try_wait'

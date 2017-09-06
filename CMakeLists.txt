@@ -296,6 +296,15 @@ if (BUILD_TESTS)
   folly_define_tests(
     DIRECTORY concurrency/test/
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
+    DIRECTORY executors/test/
+      TEST async_test SOURCES AsyncTest.cpp
+      TEST codel_test SOURCES CodelTest.cpp
+      TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
+      TEST global_executor_test SOURCES GlobalExecutorTest.cpp
+      TEST serial_executor_test SOURCES SerialExecutorTest.cpp
+      TEST thread_pool_executor_test SOURCES ThreadPoolExecutorTest.cpp
+      TEST threaded_executor_test SOURCES ThreadedExecutorTest.cpp
+      TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
     DIRECTORY experimental/test/
       TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp

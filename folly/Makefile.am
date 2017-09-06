@@ -85,6 +85,25 @@ nobase_follyinclude_HEADERS = \
 	detail/ThreadLocalDetail.h \
 	detail/TurnSequencer.h \
 	detail/UncaughtExceptionCounter.h \
+	executors/Async.h \
+	executors/BlockingQueue.h \
+	executors/CPUThreadPoolExecutor.h \
+	executors/Codel.h \
+	executors/FiberIOExecutor.h \
+	executors/FutureExecutor.h \
+	executors/GlobalExecutor.h \
+	executors/IOExecutor.h \
+	executors/IOObjectCache.h \
+	executors/IOThreadPoolExecutor.h \
+	executors/LifoSemMPMCQueue.h \
+	executors/NamedThreadFactory.h \
+	executors/PriorityLifoSemMPMCQueue.h \
+	executors/PriorityThreadFactory.h \
+	executors/SerialExecutor.h \
+	executors/ThreadFactory.h \
+	executors/ThreadPoolExecutor.h \
+	executors/ThreadedExecutor.h \
+	executors/UnboundedBlockingQueue.h \
 	Demangle.h \
 	DiscriminatedPtr.h \
 	DynamicConverter.h \
@@ -487,6 +506,13 @@ libfolly_la_SOURCES = \
 	futures/QueuedImmediateExecutor.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
 	futures/test/TestExecutor.cpp \
+	executors/CPUThreadPoolExecutor.cpp \
+	executors/Codel.cpp \
+	executors/GlobalExecutor.cpp \
+	executors/IOThreadPoolExecutor.cpp \
+	executors/SerialExecutor.cpp \
+	executors/ThreadPoolExecutor.cpp \
+	executors/ThreadedExecutor.cpp \
 	experimental/hazptr/hazptr.cpp \
 	experimental/hazptr/memory_resource.cpp \
 	GlobalThreadPoolList.cpp \
