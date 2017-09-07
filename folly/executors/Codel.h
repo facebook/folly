@@ -80,8 +80,8 @@ class Codel {
   std::chrono::milliseconds getSloughTimeout();
 
  private:
-  std::chrono::nanoseconds codelMinDelay_;
-  std::chrono::time_point<std::chrono::steady_clock> codelIntervalTime_;
+  std::atomic<uint64_t> codelMinDelayNs_;
+  std::atomic<uint64_t> codelIntervalTimeNs_;
 
   // flag to make overloaded() thread-safe, since we only want
   // to reset the delay once per time period

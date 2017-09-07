@@ -22,30 +22,33 @@
 DEFINE_int32(codel_interval, 100, "Codel default interval time in ms");
 DEFINE_int32(codel_target_delay, 5, "Target codel queueing delay in ms");
 
-using std::chrono::nanoseconds;
-using std::chrono::milliseconds;
+using namespace std::chrono;
 
 namespace folly {
 
 Codel::Codel()
-    : codelMinDelay_(0),
-      codelIntervalTime_(std::chrono::steady_clock::now()),
+    : codelMinDelayNs_(0),
+      codelIntervalTimeNs_(
+          duration_cast<nanoseconds>(steady_clock::now().time_since_epoch())
+              .count()),
       codelResetDelay_(true),
       overloaded_(false) {}
 
-bool Codel::overloaded(std::chrono::nanoseconds delay) {
+bool Codel::overloaded(nanoseconds delay) {
   bool ret = false;
-  auto now = std::chrono::steady_clock::now();
+  auto now = steady_clock::now();
 
   // Avoid another thread updating the value at the same time we are using it
   // to calculate the overloaded state
-  auto minDelay = codelMinDelay_;
+  auto minDelay = nanoseconds(codelMinDelayNs_);
 
-  if (now > codelIntervalTime_ &&
+  if (now > steady_clock::time_point(nanoseconds(codelIntervalTimeNs_)) &&
       // testing before exchanging is more cacheline-friendly
       (!codelResetDelay_.load(std::memory_order_acquire) &&
        !codelResetDelay_.exchange(true))) {
-    codelIntervalTime_ = now + getInterval();
+    codelIntervalTimeNs_ =
+        duration_cast<nanoseconds>((now + getInterval()).time_since_epoch())
+            .count();
 
     if (minDelay > getTargetDelay()) {
       overloaded_ = true;
@@ -57,12 +60,12 @@ bool Codel::overloaded(std::chrono::nanoseconds delay) {
   // and that it happens after the interval reset above
   if (codelResetDelay_.load(std::memory_order_acquire) &&
       codelResetDelay_.exchange(false)) {
-    codelMinDelay_ = delay;
+    codelMinDelayNs_ = delay.count();
     // More than one request must come in during an interval before codel
     // starts dropping requests
     return false;
-  } else if (delay < codelMinDelay_) {
-    codelMinDelay_ = delay;
+  } else if (delay < nanoseconds(codelMinDelayNs_)) {
+    codelMinDelayNs_ = delay.count();
   }
 
   // Here is where we apply different logic than codel proper. Instead of
@@ -84,7 +87,7 @@ int Codel::getLoad() {
 }
 
 nanoseconds Codel::getMinDelay() {
-  return codelMinDelay_;
+  return nanoseconds(codelMinDelayNs_);
 }
 
 milliseconds Codel::getInterval() {
