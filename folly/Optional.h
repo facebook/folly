@@ -104,7 +104,7 @@ class Optional {
       !std::is_abstract<Value>::value,
       "Optional may not be used with abstract types");
 
-  Optional() noexcept {}
+  FOLLY_CPP14_CONSTEXPR Optional() noexcept {}
 
   Optional(const Optional& src) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
@@ -121,20 +121,20 @@ class Optional {
     }
   }
 
-  /* implicit */ Optional(const None&) noexcept {}
+  FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(const None&) noexcept {}
 
-  /* implicit */ Optional(Value&& newValue) noexcept(
+  FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(Value&& newValue) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
     storage_.construct(std::move(newValue));
   }
 
-  /* implicit */ Optional(const Value& newValue) noexcept(
+  FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(const Value& newValue) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
     storage_.construct(newValue);
   }
 
   template <typename... Args>
-  explicit Optional(in_place_t, Args&&... args) noexcept(
+  FOLLY_CPP14_CONSTEXPR explicit Optional(in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<Value, Args...>::value) {
     storage_.construct(std::forward<Args>(args)...);
   }
@@ -212,22 +212,22 @@ class Optional {
     storage_.clear();
   }
 
-  const Value& value() const & {
+  FOLLY_CPP14_CONSTEXPR const Value& value() const & {
     require_value();
     return *storage_.value_pointer();
   }
 
-  Value& value() & {
+  FOLLY_CPP14_CONSTEXPR Value& value() & {
     require_value();
     return *storage_.value_pointer();
   }
 
-  Value&& value() && {
+  FOLLY_CPP14_CONSTEXPR Value&& value() && {
     require_value();
     return std::move(*storage_.value_pointer());
   }
 
-  const Value&& value() const && {
+  FOLLY_CPP14_CONSTEXPR const Value&& value() const && {
     require_value();
     return std::move(*storage_.value_pointer());
   }
@@ -240,37 +240,37 @@ class Optional {
   }
   Value* get_pointer() && = delete;
 
-  bool hasValue() const noexcept {
+  FOLLY_CPP14_CONSTEXPR bool hasValue() const noexcept {
     return storage_.hasValue();
   }
 
-  explicit operator bool() const noexcept {
+  FOLLY_CPP14_CONSTEXPR explicit operator bool() const noexcept {
     return hasValue();
   }
 
-  const Value& operator*() const & {
+  FOLLY_CPP14_CONSTEXPR const Value& operator*() const & {
     return value();
   }
-  Value& operator*() & {
+  FOLLY_CPP14_CONSTEXPR Value& operator*() & {
     return value();
   }
-  const Value&& operator*() const && {
+  FOLLY_CPP14_CONSTEXPR const Value&& operator*() const && {
     return std::move(value());
   }
-  Value&& operator*() && {
+  FOLLY_CPP14_CONSTEXPR Value&& operator*() && {
     return std::move(value());
   }
 
-  const Value* operator->() const {
+  FOLLY_CPP14_CONSTEXPR const Value* operator->() const {
     return &value();
   }
-  Value* operator->() {
+  FOLLY_CPP14_CONSTEXPR Value* operator->() {
     return &value();
   }
 
   // Return a copy of the value if set, or a given default if not.
   template <class U>
-  Value value_or(U&& dflt) const & {
+  FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) const & {
     if (storage_.hasValue()) {
       return *storage_.value_pointer();
     }
@@ -279,7 +279,7 @@ class Optional {
   }
 
   template <class U>
-  Value value_or(U&& dflt) && {
+  FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) && {
     if (storage_.hasValue()) {
       return std::move(*storage_.value_pointer());
     }
@@ -386,7 +386,7 @@ void swap(Optional<T>& a, Optional<T>& b) {
 }
 
 template <class T, class Opt = Optional<typename std::decay<T>::type>>
-Opt make_optional(T&& v) {
+constexpr Opt make_optional(T&& v) {
   return Opt(std::forward<T>(v));
 }
 
@@ -394,27 +394,29 @@ Opt make_optional(T&& v) {
 // Comparisons.
 
 template <class U, class V>
-bool operator==(const Optional<U>& a, const V& b) {
+constexpr bool operator==(const Optional<U>& a, const V& b) {
   return a.hasValue() && a.value() == b;
 }
 
 template <class U, class V>
-bool operator!=(const Optional<U>& a, const V& b) {
+constexpr bool operator!=(const Optional<U>& a, const V& b) {
   return !(a == b);
 }
 
 template <class U, class V>
-bool operator==(const U& a, const Optional<V>& b) {
+constexpr bool operator==(const U& a, const Optional<V>& b) {
   return b.hasValue() && b.value() == a;
 }
 
 template <class U, class V>
-bool operator!=(const U& a, const Optional<V>& b) {
+constexpr bool operator!=(const U& a, const Optional<V>& b) {
   return !(a == b);
 }
 
 template <class U, class V>
-bool operator==(const Optional<U>& a, const Optional<V>& b) {
+FOLLY_CPP14_CONSTEXPR bool operator==(
+    const Optional<U>& a,
+    const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) {
     return false;
   }
@@ -425,12 +427,14 @@ bool operator==(const Optional<U>& a, const Optional<V>& b) {
 }
 
 template <class U, class V>
-bool operator!=(const Optional<U>& a, const Optional<V>& b) {
+constexpr bool operator!=(const Optional<U>& a, const Optional<V>& b) {
   return !(a == b);
 }
 
 template <class U, class V>
-bool operator<(const Optional<U>& a, const Optional<V>& b) {
+FOLLY_CPP14_CONSTEXPR bool operator<(
+    const Optional<U>& a,
+    const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) {
     return a.hasValue() < b.hasValue();
   }
@@ -441,17 +445,17 @@ bool operator<(const Optional<U>& a, const Optional<V>& b) {
 }
 
 template <class U, class V>
-bool operator>(const Optional<U>& a, const Optional<V>& b) {
+constexpr bool operator>(const Optional<U>& a, const Optional<V>& b) {
   return b < a;
 }
 
 template <class U, class V>
-bool operator<=(const Optional<U>& a, const Optional<V>& b) {
+constexpr bool operator<=(const Optional<U>& a, const Optional<V>& b) {
   return !(b < a);
 }
 
 template <class U, class V>
-bool operator>=(const Optional<U>& a, const Optional<V>& b) {
+constexpr bool operator>=(const Optional<U>& a, const Optional<V>& b) {
   return !(a < b);
 }
 
@@ -475,43 +479,43 @@ bool operator>(const V& other, const Optional<V>&) = delete;
 
 // Comparisons with none
 template <class V>
-bool operator==(const Optional<V>& a, None) noexcept {
+constexpr bool operator==(const Optional<V>& a, None) noexcept {
   return !a.hasValue();
 }
 template <class V>
-bool operator==(None, const Optional<V>& a) noexcept {
+constexpr bool operator==(None, const Optional<V>& a) noexcept {
   return !a.hasValue();
 }
 template <class V>
-bool operator<(const Optional<V>&, None) noexcept {
+constexpr bool operator<(const Optional<V>&, None) noexcept {
   return false;
 }
 template <class V>
-bool operator<(None, const Optional<V>& a) noexcept {
+constexpr bool operator<(None, const Optional<V>& a) noexcept {
   return a.hasValue();
 }
 template <class V>
-bool operator>(const Optional<V>& a, None) noexcept {
+constexpr bool operator>(const Optional<V>& a, None) noexcept {
   return a.hasValue();
 }
 template <class V>
-bool operator>(None, const Optional<V>&) noexcept {
+constexpr bool operator>(None, const Optional<V>&) noexcept {
   return false;
 }
 template <class V>
-bool operator<=(None, const Optional<V>&) noexcept {
+constexpr bool operator<=(None, const Optional<V>&) noexcept {
   return true;
 }
 template <class V>
-bool operator<=(const Optional<V>& a, None) noexcept {
+constexpr bool operator<=(const Optional<V>& a, None) noexcept {
   return !a.hasValue();
 }
 template <class V>
-bool operator>=(const Optional<V>&, None) noexcept {
+constexpr bool operator>=(const Optional<V>&, None) noexcept {
   return true;
 }
 template <class V>
-bool operator>=(None, const Optional<V>& a) noexcept {
+constexpr bool operator>=(None, const Optional<V>& a) noexcept {
   return !a.hasValue();
 }
 
