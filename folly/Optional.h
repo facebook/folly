@@ -67,6 +67,9 @@
 
 namespace folly {
 
+template <class Value>
+class Optional;
+
 namespace detail {
 struct NoneHelper {};
 
@@ -74,7 +77,10 @@ struct NoneHelper {};
 // If exceptions are disabled, std::terminate() will be called instead of
 // throwing OptionalEmptyException when the condition fails.
 [[noreturn]] void throw_optional_empty_exception();
-}
+
+template <class Value>
+struct OptionalPromiseReturn;
+} // namespace detail
 
 typedef int detail::NoneHelper::*None;
 
@@ -131,6 +137,12 @@ class Optional {
   explicit Optional(in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<Value, Args...>::value) {
     storage_.construct(std::forward<Args>(args)...);
+  }
+
+  // Used only when an Optional is used with coroutines on MSVC
+  /* implicit */ Optional(const detail::OptionalPromiseReturn<Value>& p)
+      : Optional{} {
+    p.promise_->value_ = this;
   }
 
   void assign(const None&) {
@@ -519,3 +531,95 @@ struct hash<folly::Optional<T>> {
   }
 };
 FOLLY_NAMESPACE_STD_END
+
+// Enable the use of folly::Optional with `co_await`
+// Inspired by https://github.com/toby-allsopp/coroutine_monad
+#if FOLLY_HAS_COROUTINES
+#include <experimental/coroutine>
+
+namespace folly {
+namespace detail {
+template <typename Value>
+struct OptionalPromise;
+
+template <typename Value>
+struct OptionalPromiseReturn {
+  Optional<Value> storage_;
+  OptionalPromise<Value>* promise_;
+  /* implicit */ OptionalPromiseReturn(OptionalPromise<Value>& promise) noexcept
+      : promise_(&promise) {
+    promise.value_ = &storage_;
+  }
+  OptionalPromiseReturn(OptionalPromiseReturn&& that) noexcept
+      : OptionalPromiseReturn{*that.promise_} {}
+  ~OptionalPromiseReturn() {}
+  /* implicit */ operator Optional<Value>() & {
+    return std::move(storage_);
+  }
+};
+
+template <typename Value>
+struct OptionalPromise {
+  Optional<Value>* value_ = nullptr;
+  OptionalPromise() = default;
+  OptionalPromise(OptionalPromise const&) = delete;
+  // This should work regardless of whether the compiler generates:
+  //    folly::Optional<Value> retobj{ p.get_return_object(); } // MSVC
+  // or:
+  //    auto retobj = p.get_return_object(); // clang
+  OptionalPromiseReturn<Value> get_return_object() noexcept {
+    return *this;
+  }
+  std::experimental::suspend_never initial_suspend() const noexcept {
+    return {};
+  }
+  std::experimental::suspend_never final_suspend() const {
+    return {};
+  }
+  template <typename U>
+  void return_value(U&& u) {
+    *value_ = static_cast<U&&>(u);
+  }
+  void unhandled_exception() {
+    // Technically, throwing from unhandled_exception is underspecified:
+    // https://github.com/GorNishanov/CoroutineWording/issues/17
+    throw;
+  }
+};
+
+template <typename Value>
+struct OptionalAwaitable {
+  Optional<Value> o_;
+  bool await_ready() const noexcept {
+    return o_.hasValue();
+  }
+  Value await_resume() {
+    return o_.value();
+  }
+  template <typename CoroHandle>
+  void await_suspend(CoroHandle h) const {
+    // make sure the coroutine returns an empty Optional:
+    h.promise().value_->clear();
+    // Abort the rest of the coroutine:
+    h.destroy();
+  }
+};
+} // namespace detail
+
+template <typename Value>
+detail::OptionalAwaitable<Value>
+/* implicit */ operator co_await(Optional<Value> o) {
+  return {std::move(o)};
+}
+} // namespace folly
+
+// This makes std::optional<Value> useable as a coroutine return type..
+FOLLY_NAMESPACE_STD_BEGIN
+namespace experimental {
+template <typename Value, typename... Args>
+struct coroutine_traits<folly::Optional<Value>, Args...> {
+  using promise_type = folly::detail::OptionalPromise<Value>;
+};
+} // experimental
+FOLLY_NAMESPACE_STD_END
+#endif // FOLLY_HAS_COROUTINES
