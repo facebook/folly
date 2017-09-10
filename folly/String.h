@@ -626,6 +626,11 @@ inline void toLowerAscii(MutableStringPiece str) {
   toLowerAscii(str.begin(), str.size());
 }
 
+inline void toLowerAscii(std::string& str) {
+  // str[0] is legal also if the string is empty.
+  toLowerAscii(&str[0], str.size());
+}
+
 template <
     class Iterator = const char*,
     class Base = folly::Range<boost::u8_to_u32_iterator<Iterator>>>
