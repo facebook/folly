@@ -573,8 +573,7 @@ void SSLContext::setSessionCacheContext(const std::string& context) {
       ctx_,
       reinterpret_cast<const unsigned char*>(context.data()),
       std::min<unsigned int>(
-          static_cast<unsigned int>(context.length()),
-          SSL_MAX_SSL_SESSION_ID_LENGTH));
+          static_cast<unsigned int>(context.length()), SSL_MAX_SID_CTX_LENGTH));
 }
 
 /**
