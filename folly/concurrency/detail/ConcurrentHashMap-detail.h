@@ -215,17 +215,13 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
       size_t initial_buckets,
       float load_factor,
       size_t max_size)
-      : load_factor_(load_factor) {
+      : load_factor_(load_factor), max_size_(max_size) {
     auto buckets = (Buckets*)Allocator().allocate(sizeof(Buckets));
     initial_buckets = folly::nextPowTwo(initial_buckets);
-    if (max_size != 0) {
-      max_size_ = folly::nextPowTwo(max_size);
-    }
-    if (max_size_ > max_size) {
-      max_size_ >> 1;
-    }
-
-    CHECK(max_size_ == 0 || (folly::popcount(max_size_ - 1) + ShardBits <= 32));
+    DCHECK(
+        max_size_ == 0 ||
+        (isPowTwo(max_size_) &&
+         (folly::popcount(max_size_ - 1) + ShardBits <= 32)));
     new (buckets) Buckets(initial_buckets);
     buckets_.store(buckets, std::memory_order_release);
     load_factor_nodes_ = initial_buckets * load_factor_;
@@ -734,7 +730,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
   float load_factor_;
   size_t load_factor_nodes_;
   size_t size_{0};
-  size_t max_size_{0};
+  size_t const max_size_;
   Atom<Buckets*> buckets_{nullptr};
   Mutex m_;
 };

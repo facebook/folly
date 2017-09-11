@@ -467,7 +467,7 @@ class ConcurrentHashMap {
     auto seg = segments_[i].load(std::memory_order_acquire);
     if (!seg) {
       auto newseg = (SegmentT*)Allocator().allocate(sizeof(SegmentT));
-      new (newseg)
+      newseg = new (newseg)
           SegmentT(size_ >> ShardBits, load_factor_, max_size_ >> ShardBits);
       if (!segments_[i].compare_exchange_strong(seg, newseg)) {
         // seg is updated with new value, delete ours.
