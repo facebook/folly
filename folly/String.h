@@ -618,7 +618,7 @@ std::string stripLeftMargin(std::string s);
  * Leaves all other characters unchanged, including those with the 0x80
  * bit set.
  * @param str String to convert
- * @param len Length of str, in bytes
+ * @param length Length of str, in bytes
  */
 void toLowerAscii(char* str, size_t length);
 
