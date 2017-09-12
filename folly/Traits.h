@@ -174,9 +174,9 @@ using _t = typename T::type;
  */
 
 /**
- * There is a bug in gcc that causes it to ignore unused template parameter
- * arguments in template aliases and does not cause substitution failures.
- * This defect has been recorded here:
+ * There is a bug in libstdc++, libc++, and MSVC's STL that causes it to
+ * ignore unused template parameter arguments in template aliases and does not
+ * cause substitution failures. This defect has been recorded here:
  * http://open-std.org/JTC1/SC22/WG21/docs/cwg_defects.html#1558.
  *
  * This causes the implementation of std::void_t to be buggy, as it is likely
@@ -201,16 +201,7 @@ using _t = typename T::type;
  * The second foo() will be a redefinition because it conflicts with the first
  * one; void_t does not cause substitution failures - the template types are
  * just ignored.
- *
- * Till then only the non-buggy MSVC std::void_t can be used, and for the rest
- * folly::void_t will continue to be used because it does not use unnamed
- * template parameters for the top level implementation of void_t.
  */
-#if defined(_MSC_VER)
-
-/* using override */ using std::void_t;
-
-#else // defined(_MSC_VER)
 
 namespace traits_detail {
 template <class...>
@@ -221,8 +212,6 @@ struct void_t_ {
 
 template <class... Ts>
 using void_t = _t<traits_detail::void_t_<Ts...>>;
-
-#endif // defined(_MSC_VER)
 
 /**
  * IsRelocatable<T>::value describes the ability of moving around
