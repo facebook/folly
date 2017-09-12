@@ -296,8 +296,9 @@ if (BUILD_TESTS)
   folly_define_tests(
     DIRECTORY concurrency/test/
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
-    DIRECTORY executors/test/
-      TEST async_test SOURCES AsyncTest.cpp
+
+      DIRECTORY executors/test/
+      TEST async_helpers_test SOURCES AsyncTest.cpp
       TEST codel_test SOURCES CodelTest.cpp
       TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
       TEST global_executor_test SOURCES GlobalExecutorTest.cpp
@@ -305,6 +306,7 @@ if (BUILD_TESTS)
       TEST thread_pool_executor_test SOURCES ThreadPoolExecutorTest.cpp
       TEST threaded_executor_test SOURCES ThreadedExecutorTest.cpp
       TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
+
     DIRECTORY experimental/test/
       TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp
@@ -403,6 +405,10 @@ if (BUILD_TESTS)
       TEST combine_test SOURCES CombineTest.cpp
       TEST parallel_map_test SOURCES ParallelMapTest.cpp
       TEST parallel_test SOURCES ParallelTest.cpp
+
+    DIRECTORY hash/test/
+      TEST spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
+      TEST spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
 
     DIRECTORY io/test/
       TEST compression_test SOURCES CompressionTest.cpp
@@ -575,8 +581,6 @@ if (BUILD_TESTS)
       TEST small_vector_test SOURCES small_vector_test.cpp
       TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
-      TEST spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
-      TEST spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
       TEST string_test SOURCES StringTest.cpp
       #TEST subprocess_test SOURCES SubprocessTest.cpp
       TEST synchronized_test SOURCES SynchronizedTest.cpp
