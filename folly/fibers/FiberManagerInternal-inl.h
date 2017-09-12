@@ -113,7 +113,6 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       fiber->state_ == Fiber::NOT_STARTED ||
       fiber->state_ == Fiber::READY_TO_RUN);
   currentFiber_ = fiber;
-  fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
   if (observer_) {
     observer_->starting(reinterpret_cast<uintptr_t>(fiber));
   }
@@ -139,7 +138,6 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
-    fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
   } else if (fiber->state_ == Fiber::INVALID) {
     assert(fibersActive_ > 0);
     --fibersActive_;
@@ -161,7 +159,6 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
-    fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
     fiber->localData_.reset();
     fiber->rcontext_.reset();
 
@@ -179,7 +176,6 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
-    fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
     fiber->state_ = Fiber::READY_TO_RUN;
     yieldedFibers_.push_back(*fiber);
   }
@@ -200,8 +196,20 @@ inline void FiberManager::loopUntilNoReadyImpl() {
   auto originalFiberManager = this;
   std::swap(currentFiberManager_, originalFiberManager);
 
+  RequestContext::Provider oldRequestContextProvider;
+  auto newRequestContextProvider =
+      [this, &oldRequestContextProvider]() -> std::shared_ptr<RequestContext>& {
+    return currentFiber_ ? currentFiber_->rcontext_
+                         : oldRequestContextProvider();
+  };
+  oldRequestContextProvider = RequestContext::setRequestContextProvider(
+      std::ref(newRequestContextProvider));
+
   SCOPE_EXIT {
     isLoopScheduled_ = false;
+    // Restore RequestContext provider before call to ensureLoopScheduled()
+    RequestContext::setRequestContextProvider(
+        std::move(oldRequestContextProvider));
     if (!readyFibers_.empty()) {
       ensureLoopScheduled();
     }

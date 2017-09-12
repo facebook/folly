@@ -33,6 +33,7 @@
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/fibers/TimedMutex.h>
 #include <folly/fibers/WhenN.h>
+#include <folly/io/async/Request.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
@@ -1233,6 +1234,107 @@ TEST(FiberManager, fiberLocalDestructor) {
   fm.addTask([]() { local<CrazyData>().data = 41; });
 
   fm.loopUntilNoReady();
+  EXPECT_FALSE(fm.hasTasks());
+}
+
+TEST(FiberManager, fiberRequestContext) {
+  folly::EventBase evb;
+  FiberManager fm(std::make_unique<EventBaseLoopController>());
+  dynamic_cast<EventBaseLoopController&>(fm.loopController())
+      .attachEventBase(evb);
+
+  struct TestContext : public folly::RequestData {
+    explicit TestContext(std::string s) : data(std::move(s)) {}
+    std::string data;
+  };
+
+  class AfterFibersCallback : public folly::EventBase::LoopCallback {
+   public:
+    AfterFibersCallback(
+        folly::EventBase& evb,
+        const bool& fibersDone,
+        folly::Function<void()> afterFibersFunc)
+        : evb_(evb),
+          fibersDone_(fibersDone),
+          afterFibersFunc_(std::move(afterFibersFunc)) {}
+
+    void runLoopCallback() noexcept override {
+      if (fibersDone_) {
+        afterFibersFunc_();
+        delete this;
+      } else {
+        evb_.runInLoop(this);
+      }
+    }
+
+   private:
+    folly::EventBase& evb_;
+    const bool& fibersDone_;
+    folly::Function<void()> afterFibersFunc_;
+  };
+
+  bool fibersDone = false;
+  size_t tasksRun = 0;
+  evb.runInEventBaseThread([&evb, &fm, &tasksRun, &fibersDone]() {
+    ++tasksRun;
+    auto* const evbCtx = folly::RequestContext::get();
+    EXPECT_NE(nullptr, evbCtx);
+    EXPECT_EQ(nullptr, evbCtx->getContextData("key"));
+    evbCtx->setContextData("key", std::make_unique<TestContext>("evb_value"));
+
+    // This callback allows us to check that FiberManager has restored the
+    // RequestContext provider as expected after a fiber loop.
+    auto* afterFibersCallback =
+        new AfterFibersCallback(evb, fibersDone, [&tasksRun, evbCtx]() {
+          ++tasksRun;
+          EXPECT_EQ(evbCtx, folly::RequestContext::get());
+          EXPECT_EQ(
+              "evb_value",
+              dynamic_cast<TestContext*>(evbCtx->getContextData("key"))->data);
+        });
+    evb.runInLoop(afterFibersCallback);
+
+    // Launching a fiber allows us to hit FiberManager RequestContext
+    // setup/teardown logic.
+    fm.addTask([&evb, &tasksRun, &fibersDone, evbCtx]() {
+      ++tasksRun;
+
+      // Initially, fiber starts with same RequestContext as its parent task.
+      EXPECT_EQ(evbCtx, folly::RequestContext::get());
+      EXPECT_NE(nullptr, evbCtx->getContextData("key"));
+      EXPECT_EQ(
+          "evb_value",
+          dynamic_cast<TestContext*>(evbCtx->getContextData("key"))->data);
+
+      // Create a new RequestContext for this fiber so we can distinguish from
+      // RequestContext first EventBase callback started with.
+      folly::RequestContext::create();
+      auto* const fiberCtx = folly::RequestContext::get();
+      EXPECT_NE(nullptr, fiberCtx);
+      EXPECT_EQ(nullptr, fiberCtx->getContextData("key"));
+      fiberCtx->setContextData(
+          "key", std::make_unique<TestContext>("fiber_value"));
+
+      // Task launched from within fiber should share current fiber's
+      // RequestContext
+      evb.runInEventBaseThread([&tasksRun, fiberCtx]() {
+        ++tasksRun;
+        auto* const evbCtx2 = folly::RequestContext::get();
+        EXPECT_EQ(fiberCtx, evbCtx2);
+        EXPECT_NE(nullptr, evbCtx2->getContextData("key"));
+        EXPECT_EQ(
+            "fiber_value",
+            dynamic_cast<TestContext*>(evbCtx2->getContextData("key"))->data);
+      });
+
+      fibersDone = true;
+    });
+  });
+
+  evb.loop();
+
+  EXPECT_EQ(4, tasksRun);
+  EXPECT_TRUE(fibersDone);
   EXPECT_FALSE(fm.hasTasks());
 }
 
