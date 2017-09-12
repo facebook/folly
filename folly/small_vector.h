@@ -85,282 +85,270 @@ class small_vector;
 
 namespace detail {
 
+/*
+ * Move a range to a range of uninitialized memory.  Assumes the
+ * ranges don't overlap.
+ */
+template <class T>
+typename std::enable_if<!FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+moveToUninitialized(T* first, T* last, T* out) {
+  std::size_t idx = 0;
+  try {
+    for (; first != last; ++first, ++idx) {
+      new (&out[idx]) T(std::move(*first));
+    }
+  } catch (...) {
+    // Even for callers trying to give the strong guarantee
+    // (e.g. push_back) it's ok to assume here that we don't have to
+    // move things back and that it was a copy constructor that
+    // threw: if someone throws from a move constructor the effects
+    // are unspecified.
+    for (std::size_t i = 0; i < idx; ++i) {
+      out[i].~T();
+    }
+    throw;
+  }
+}
+
+// Specialization for trivially copyable types.
+template <class T>
+typename std::enable_if<FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+moveToUninitialized(T* first, T* last, T* out) {
+  std::memmove(out, first, (last - first) * sizeof *first);
+}
+
+/*
+ * Move a range to a range of uninitialized memory. Assumes the
+ * ranges don't overlap. Inserts an element at out + pos using emplaceFunc().
+ * out will contain (end - begin) + 1 elements on success and none on failure.
+ * If emplaceFunc() throws [begin, end) is unmodified.
+ */
+template <class T, class Size, class EmplaceFunc>
+void moveToUninitializedEmplace(
+    T* begin,
+    T* end,
+    T* out,
+    Size pos,
+    EmplaceFunc&& emplaceFunc) {
+  // Must be called first so that if it throws [begin, end) is unmodified.
+  // We have to support the strong exception guarantee for emplace_back().
+  emplaceFunc(out + pos);
+  // move old elements to the left of the new one
+  try {
+    detail::moveToUninitialized(begin, begin + pos, out);
+  } catch (...) {
+    out[pos].~T();
+    throw;
+  }
+  // move old elements to the right of the new one
+  try {
+    if (begin + pos < end) {
+      detail::moveToUninitialized(begin + pos, end, out + pos + 1);
+    }
+  } catch (...) {
+    for (Size i = 0; i <= pos; ++i) {
+      out[i].~T();
+    }
+    throw;
+  }
+}
+
+/*
+ * Move objects in memory to the right into some uninitialized
+ * memory, where the region overlaps.  This doesn't just use
+ * std::move_backward because move_backward only works if all the
+ * memory is initialized to type T already.
+ */
+template <class T>
+typename std::enable_if<!FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
+  if (lastConstructed == realLast) {
+    return;
+  }
+
+  T* end = first - 1; // Past the end going backwards.
+  T* out = realLast - 1;
+  T* in = lastConstructed - 1;
+  try {
+    for (; in != end && out >= lastConstructed; --in, --out) {
+      new (out) T(std::move(*in));
+    }
+    for (; in != end; --in, --out) {
+      *out = std::move(*in);
+    }
+    for (; out >= lastConstructed; --out) {
+      new (out) T();
+    }
+  } catch (...) {
+    // We want to make sure the same stuff is uninitialized memory
+    // if we exit via an exception (this is to make sure we provide
+    // the basic exception safety guarantee for insert functions).
+    if (out < lastConstructed) {
+      out = lastConstructed - 1;
+    }
+    for (auto it = out + 1; it != realLast; ++it) {
+      it->~T();
+    }
+    throw;
+  }
+}
+
+// Specialization for trivially copyable types.  The call to
+// std::move_backward here will just turn into a memmove.  (TODO:
+// change to std::is_trivially_copyable when that works.)
+template <class T>
+typename std::enable_if<FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
+  std::move_backward(first, lastConstructed, realLast);
+}
+
+/*
+ * Populate a region of memory using `op' to construct elements.  If
+ * anything throws, undo what we did.
+ */
+template <class T, class Function>
+void populateMemForward(T* mem, std::size_t n, Function const& op) {
+  std::size_t idx = 0;
+  try {
+    for (size_t i = 0; i < n; ++i) {
+      op(&mem[idx]);
+      ++idx;
+    }
+  } catch (...) {
+    for (std::size_t i = 0; i < idx; ++i) {
+      mem[i].~T();
+    }
+    throw;
+  }
+}
+
+template <class SizeType, bool ShouldUseHeap>
+struct IntegralSizePolicy {
+  typedef SizeType InternalSizeType;
+
+  IntegralSizePolicy() : size_(0) {}
+
+ protected:
+  static constexpr std::size_t policyMaxSize() {
+    return SizeType(~kExternMask);
+  }
+
+  std::size_t doSize() const {
+    return size_ & ~kExternMask;
+  }
+
+  std::size_t isExtern() const {
+    return kExternMask & size_;
+  }
+
+  void setExtern(bool b) {
+    if (b) {
+      size_ |= kExternMask;
+    } else {
+      size_ &= ~kExternMask;
+    }
+  }
+
+  void setSize(std::size_t sz) {
+    assert(sz <= policyMaxSize());
+    size_ = (kExternMask & size_) | SizeType(sz);
+  }
+
+  void swapSizePolicy(IntegralSizePolicy& o) {
+    std::swap(size_, o.size_);
+  }
+
+ protected:
+  static bool const kShouldUseHeap = ShouldUseHeap;
+
+ private:
+  static SizeType const kExternMask =
+      kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 1) : 0;
+
+  SizeType size_;
+};
+
+/*
+ * If you're just trying to use this class, ignore everything about
+ * this next small_vector_base class thing.
+ *
+ * The purpose of this junk is to minimize sizeof(small_vector<>)
+ * and allow specifying the template parameters in whatever order is
+ * convenient for the user.  There's a few extra steps here to try
+ * to keep the error messages at least semi-reasonable.
+ *
+ * Apologies for all the black magic.
+ */
+namespace mpl = boost::mpl;
+template <
+    class Value,
+    std::size_t RequestedMaxInline,
+    class InPolicyA,
+    class InPolicyB,
+    class InPolicyC>
+struct small_vector_base {
+  typedef mpl::vector<InPolicyA, InPolicyB, InPolicyC> PolicyList;
+
   /*
-   * Move a range to a range of uninitialized memory.  Assumes the
-   * ranges don't overlap.
+   * Determine the size type
    */
-  template <class T>
-  typename std::enable_if<
-    !FOLLY_IS_TRIVIALLY_COPYABLE(T)
-  >::type
-  moveToUninitialized(T* first, T* last, T* out) {
-    std::size_t idx = 0;
-    try {
-      for (; first != last; ++first, ++idx) {
-        new (&out[idx]) T(std::move(*first));
-      }
-    } catch (...) {
-      // Even for callers trying to give the strong guarantee
-      // (e.g. push_back) it's ok to assume here that we don't have to
-      // move things back and that it was a copy constructor that
-      // threw: if someone throws from a move constructor the effects
-      // are unspecified.
-      for (std::size_t i = 0; i < idx; ++i) {
-        out[i].~T();
-      }
-      throw;
-    }
-  }
-
-  // Specialization for trivially copyable types.
-  template <class T>
-  typename std::enable_if<
-    FOLLY_IS_TRIVIALLY_COPYABLE(T)
-  >::type
-  moveToUninitialized(T* first, T* last, T* out) {
-    std::memmove(out, first, (last - first) * sizeof *first);
-  }
-
-  /*
-   * Move a range to a range of uninitialized memory. Assumes the
-   * ranges don't overlap. Inserts an element at out + pos using emplaceFunc().
-   * out will contain (end - begin) + 1 elements on success and none on failure.
-   * If emplaceFunc() throws [begin, end) is unmodified.
-   */
-  template <class T, class Size, class EmplaceFunc>
-  void moveToUninitializedEmplace(
-      T* begin,
-      T* end,
-      T* out,
-      Size pos,
-      EmplaceFunc&& emplaceFunc) {
-    // Must be called first so that if it throws [begin, end) is unmodified.
-    // We have to support the strong exception guarantee for emplace_back().
-    emplaceFunc(out + pos);
-    // move old elements to the left of the new one
-    try {
-      detail::moveToUninitialized(begin, begin + pos, out);
-    } catch (...) {
-      out[pos].~T();
-      throw;
-    }
-    // move old elements to the right of the new one
-    try {
-      if (begin + pos < end) {
-        detail::moveToUninitialized(begin + pos, end, out + pos + 1);
-      }
-    } catch (...) {
-      for (Size i = 0; i <= pos; ++i) {
-        out[i].~T();
-      }
-      throw;
-    }
-  }
-
-  /*
-   * Move objects in memory to the right into some uninitialized
-   * memory, where the region overlaps.  This doesn't just use
-   * std::move_backward because move_backward only works if all the
-   * memory is initialized to type T already.
-   */
-  template <class T>
-  typename std::enable_if<
-    !FOLLY_IS_TRIVIALLY_COPYABLE(T)
-  >::type
-  moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
-    if (lastConstructed == realLast) {
-      return;
-    }
-
-    T* end = first - 1; // Past the end going backwards.
-    T* out = realLast - 1;
-    T* in = lastConstructed - 1;
-    try {
-      for (; in != end && out >= lastConstructed; --in, --out) {
-        new (out) T(std::move(*in));
-      }
-      for (; in != end; --in, --out) {
-        *out = std::move(*in);
-      }
-      for (; out >= lastConstructed; --out) {
-        new (out) T();
-      }
-    } catch (...) {
-      // We want to make sure the same stuff is uninitialized memory
-      // if we exit via an exception (this is to make sure we provide
-      // the basic exception safety guarantee for insert functions).
-      if (out < lastConstructed) {
-        out = lastConstructed - 1;
-      }
-      for (auto it = out + 1; it != realLast; ++it) {
-        it->~T();
-      }
-      throw;
-    }
-  }
-
-  // Specialization for trivially copyable types.  The call to
-  // std::move_backward here will just turn into a memmove.  (TODO:
-  // change to std::is_trivially_copyable when that works.)
-  template <class T>
-  typename std::enable_if<
-    FOLLY_IS_TRIVIALLY_COPYABLE(T)
-  >::type
-  moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
-    std::move_backward(first, lastConstructed, realLast);
-  }
-
-  /*
-   * Populate a region of memory using `op' to construct elements.  If
-   * anything throws, undo what we did.
-   */
-  template <class T, class Function>
-  void populateMemForward(T* mem, std::size_t n, Function const& op) {
-    std::size_t idx = 0;
-    try {
-      for (size_t i = 0; i < n; ++i) {
-        op(&mem[idx]);
-        ++idx;
-      }
-    } catch (...) {
-      for (std::size_t i = 0; i < idx; ++i) {
-        mem[i].~T();
-      }
-      throw;
-    }
-  }
-
-  template <class SizeType, bool ShouldUseHeap>
-  struct IntegralSizePolicy {
-    typedef SizeType InternalSizeType;
-
-    IntegralSizePolicy() : size_(0) {}
-
-   protected:
-    static constexpr std::size_t policyMaxSize() {
-      return SizeType(~kExternMask);
-    }
-
-    std::size_t doSize() const {
-      return size_ & ~kExternMask;
-    }
-
-    std::size_t isExtern() const {
-      return kExternMask & size_;
-    }
-
-    void setExtern(bool b) {
-      if (b) {
-        size_ |= kExternMask;
-      } else {
-        size_ &= ~kExternMask;
-      }
-    }
-
-    void setSize(std::size_t sz) {
-      assert(sz <= policyMaxSize());
-      size_ = (kExternMask & size_) | SizeType(sz);
-    }
-
-    void swapSizePolicy(IntegralSizePolicy& o) {
-      std::swap(size_, o.size_);
-    }
-
-   protected:
-    static bool const kShouldUseHeap = ShouldUseHeap;
-
-   private:
-    static SizeType const kExternMask =
-      kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 1)
-                     : 0;
-
-    SizeType size_;
-  };
-
-  /*
-   * If you're just trying to use this class, ignore everything about
-   * this next small_vector_base class thing.
-   *
-   * The purpose of this junk is to minimize sizeof(small_vector<>)
-   * and allow specifying the template parameters in whatever order is
-   * convenient for the user.  There's a few extra steps here to try
-   * to keep the error messages at least semi-reasonable.
-   *
-   * Apologies for all the black magic.
-   */
-  namespace mpl = boost::mpl;
-  template <
-      class Value,
-      std::size_t RequestedMaxInline,
-      class InPolicyA,
-      class InPolicyB,
-      class InPolicyC>
-  struct small_vector_base {
-    typedef mpl::vector<InPolicyA,InPolicyB,InPolicyC> PolicyList;
-
-    /*
-     * Determine the size type
-     */
-    typedef typename mpl::filter_view<
+  typedef typename mpl::filter_view<
       PolicyList,
-      boost::is_integral<mpl::placeholders::_1>
-    >::type Integrals;
-    typedef typename mpl::eval_if<
+      boost::is_integral<mpl::placeholders::_1>>::type Integrals;
+  typedef typename mpl::eval_if<
       mpl::empty<Integrals>,
       mpl::identity<std::size_t>,
-      mpl::front<Integrals>
-    >::type SizeType;
+      mpl::front<Integrals>>::type SizeType;
 
-    static_assert(std::is_unsigned<SizeType>::value,
-                  "Size type should be an unsigned integral type");
-    static_assert(mpl::size<Integrals>::value == 0 ||
-                    mpl::size<Integrals>::value == 1,
-                  "Multiple size types specified in small_vector<>");
+  static_assert(
+      std::is_unsigned<SizeType>::value,
+      "Size type should be an unsigned integral type");
+  static_assert(
+      mpl::size<Integrals>::value == 0 || mpl::size<Integrals>::value == 1,
+      "Multiple size types specified in small_vector<>");
 
-    /*
-     * Determine whether we should allow spilling to the heap or not.
-     */
-    typedef typename mpl::count<
-      PolicyList,small_vector_policy::NoHeap
-    >::type HasNoHeap;
+  /*
+   * Determine whether we should allow spilling to the heap or not.
+   */
+  typedef typename mpl::count<PolicyList, small_vector_policy::NoHeap>::type
+      HasNoHeap;
 
-    static_assert(HasNoHeap::value == 0 || HasNoHeap::value == 1,
-                  "Multiple copies of small_vector_policy::NoHeap "
-                  "supplied; this is probably a mistake");
+  static_assert(
+      HasNoHeap::value == 0 || HasNoHeap::value == 1,
+      "Multiple copies of small_vector_policy::NoHeap "
+      "supplied; this is probably a mistake");
 
-    /*
-     * Make the real policy base classes.
-     */
-    typedef IntegralSizePolicy<SizeType,!HasNoHeap::value>
-      ActualSizePolicy;
+  /*
+   * Make the real policy base classes.
+   */
+  typedef IntegralSizePolicy<SizeType, !HasNoHeap::value> ActualSizePolicy;
 
-    /*
-     * Now inherit from them all.  This is done in such a convoluted
-     * way to make sure we get the empty base optimizaton on all these
-     * types to keep sizeof(small_vector<>) minimal.
-     */
-    typedef boost::totally_ordered1<
-      small_vector<Value,RequestedMaxInline,InPolicyA,InPolicyB,InPolicyC>,
-      ActualSizePolicy
-    > type;
-  };
+  /*
+   * Now inherit from them all.  This is done in such a convoluted
+   * way to make sure we get the empty base optimizaton on all these
+   * types to keep sizeof(small_vector<>) minimal.
+   */
+  typedef boost::totally_ordered1<
+      small_vector<Value, RequestedMaxInline, InPolicyA, InPolicyB, InPolicyC>,
+      ActualSizePolicy>
+      type;
+};
 
-  template <class T>
-  T* pointerFlagSet(T* p) {
-    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(p) | 1);
-  }
-  template <class T>
-  bool pointerFlagGet(T* p) {
-    return reinterpret_cast<uintptr_t>(p) & 1;
-  }
-  template <class T>
-  T* pointerFlagClear(T* p) {
-    return reinterpret_cast<T*>(
-      reinterpret_cast<uintptr_t>(p) & ~uintptr_t(1));
-  }
-  inline void* shiftPointer(void* p, size_t sizeBytes) {
-    return static_cast<char*>(p) + sizeBytes;
-  }
+template <class T>
+T* pointerFlagSet(T* p) {
+  return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(p) | 1);
+}
+template <class T>
+bool pointerFlagGet(T* p) {
+  return reinterpret_cast<uintptr_t>(p) & 1;
+}
+template <class T>
+T* pointerFlagClear(T* p) {
+  return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(p) & ~uintptr_t(1));
+}
+inline void* shiftPointer(void* p, size_t sizeBytes) {
+  return static_cast<char*>(p) + sizeBytes;
+}
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -371,14 +359,15 @@ template <
     class PolicyA = void,
     class PolicyB = void,
     class PolicyC = void>
-class small_vector
-  : public detail::small_vector_base<
-      Value,RequestedMaxInline,PolicyA,PolicyB,PolicyC
-    >::type
-{
-  typedef typename detail::small_vector_base<
-    Value,RequestedMaxInline,PolicyA,PolicyB,PolicyC
-  >::type BaseType;
+class small_vector : public detail::small_vector_base<
+                         Value,
+                         RequestedMaxInline,
+                         PolicyA,
+                         PolicyB,
+                         PolicyC>::type {
+  typedef typename detail::
+      small_vector_base<Value, RequestedMaxInline, PolicyA, PolicyB, PolicyC>::
+          type BaseType;
   typedef typename BaseType::InternalSizeType InternalSizeType;
 
   /*
@@ -390,15 +379,15 @@ class small_vector
       constexpr_max(sizeof(Value*) / sizeof(Value), RequestedMaxInline)};
 
  public:
-  typedef std::size_t        size_type;
-  typedef Value              value_type;
-  typedef value_type&        reference;
-  typedef value_type const&  const_reference;
-  typedef value_type*        iterator;
-  typedef value_type const*  const_iterator;
-  typedef std::ptrdiff_t     difference_type;
+  typedef std::size_t size_type;
+  typedef Value value_type;
+  typedef value_type& reference;
+  typedef value_type const& const_reference;
+  typedef value_type* iterator;
+  typedef value_type const* const_iterator;
+  typedef std::ptrdiff_t difference_type;
 
-  typedef std::reverse_iterator<iterator>       reverse_iterator;
+  typedef std::reverse_iterator<iterator> reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   small_vector() = default;
@@ -417,14 +406,15 @@ class small_vector
     this->setSize(n);
   }
 
-  small_vector(small_vector&& o)
-  noexcept(std::is_nothrow_move_constructible<Value>::value) {
+  small_vector(small_vector&& o) noexcept(
+      std::is_nothrow_move_constructible<Value>::value) {
     if (o.isExtern()) {
       swap(o);
     } else {
-      std::uninitialized_copy(std::make_move_iterator(o.begin()),
-                              std::make_move_iterator(o.end()),
-                              begin());
+      std::uninitialized_copy(
+          std::make_move_iterator(o.begin()),
+          std::make_move_iterator(o.end()),
+          begin());
       this->setSize(o.size());
     }
   }
@@ -442,7 +432,7 @@ class small_vector
   }
 
   template <class Arg>
-  explicit small_vector(Arg arg1, Arg arg2)  {
+  explicit small_vector(Arg arg1, Arg arg2) {
     // Forward using std::is_arithmetic to get to the proper
     // implementation; this disambiguates between the iterators and
     // (size_t, value_type) meaning for this constructor.
@@ -466,7 +456,9 @@ class small_vector
   small_vector& operator=(small_vector&& o) {
     // TODO: optimization:
     // if both are internal, use move assignment where possible
-    if (this == &o) return *this;
+    if (this == &o) {
+      return *this;
+    }
     clear();
     swap(o);
     return *this;
@@ -485,18 +477,38 @@ class small_vector
                                      : BaseType::policyMaxSize();
   }
 
-  size_type size()         const { return this->doSize(); }
-  bool      empty()        const { return !size(); }
+  size_type size() const {
+    return this->doSize();
+  }
+  bool empty() const {
+    return !size();
+  }
 
-  iterator       begin()         { return data(); }
-  iterator       end()           { return data() + size(); }
-  const_iterator begin()   const { return data(); }
-  const_iterator end()     const { return data() + size(); }
-  const_iterator cbegin()  const { return begin(); }
-  const_iterator cend()    const { return end(); }
+  iterator begin() {
+    return data();
+  }
+  iterator end() {
+    return data() + size();
+  }
+  const_iterator begin() const {
+    return data();
+  }
+  const_iterator end() const {
+    return data() + size();
+  }
+  const_iterator cbegin() const {
+    return begin();
+  }
+  const_iterator cend() const {
+    return end();
+  }
 
-  reverse_iterator       rbegin()        { return reverse_iterator(end()); }
-  reverse_iterator       rend()          { return reverse_iterator(begin()); }
+  reverse_iterator rbegin() {
+    return reverse_iterator(end());
+  }
+  reverse_iterator rend() {
+    return reverse_iterator(begin());
+  }
 
   const_reverse_iterator rbegin() const {
     return const_reverse_iterator(end());
@@ -506,8 +518,12 @@ class small_vector
     return const_reverse_iterator(begin());
   }
 
-  const_reverse_iterator crbegin() const { return rbegin(); }
-  const_reverse_iterator crend()   const { return rend(); }
+  const_reverse_iterator crbegin() const {
+    return rbegin();
+  }
+  const_reverse_iterator crend() const {
+    return rend();
+  }
 
   /*
    * Usually one of the simplest functions in a Container-like class
@@ -570,7 +586,7 @@ class small_vector
     auto& oldIntern = o.isExtern() ? *this : o;
 
     auto oldExternCapacity = oldExtern.capacity();
-    auto oldExternHeap     = oldExtern.u.pdata_.heap_;
+    auto oldExternHeap = oldExtern.u.pdata_.heap_;
 
     auto buff = oldExtern.u.buffer();
     size_type i = 0;
@@ -602,9 +618,8 @@ class small_vector
       return;
     }
     makeSize(sz);
-    detail::populateMemForward(begin() + size(), sz - size(),
-      [&] (void* p) { new (p) value_type(); }
-    );
+    detail::populateMemForward(
+        begin() + size(), sz - size(), [&](void* p) { new (p) value_type(); });
     this->setSize(sz);
   }
 
@@ -614,9 +629,8 @@ class small_vector
       return;
     }
     makeSize(sz);
-    detail::populateMemForward(begin() + size(), sz - size(),
-      [&] (void* p) { new (p) value_type(v); }
-    );
+    detail::populateMemForward(
+        begin() + size(), sz - size(), [&](void* p) { new (p) value_type(v); });
     this->setSize(sz);
   }
 
@@ -722,14 +736,12 @@ class small_vector
           offset);
       this->setSize(this->size() + 1);
     } else {
-      detail::moveObjectsRight(data() + offset,
-                               data() + size(),
-                               data() + size() + 1);
+      detail::moveObjectsRight(
+          data() + offset, data() + size(), data() + size() + 1);
       this->setSize(size() + 1);
       data()[offset] = std::move(t);
     }
     return begin() + offset;
-
   }
 
   iterator insert(const_iterator p, value_type const& t) {
@@ -741,9 +753,8 @@ class small_vector
   iterator insert(const_iterator pos, size_type n, value_type const& val) {
     auto offset = pos - begin();
     makeSize(size() + n);
-    detail::moveObjectsRight(data() + offset,
-                             data() + size(),
-                             data() + size() + n);
+    detail::moveObjectsRight(
+        data() + offset, data() + size(), data() + size() + n);
     this->setSize(size() + n);
     std::generate_n(begin() + offset, n, [&] { return val; });
     return begin() + offset;
@@ -769,7 +780,9 @@ class small_vector
   }
 
   iterator erase(const_iterator q1, const_iterator q2) {
-    if (q1 == q2) return unconst(q1);
+    if (q1 == q2) {
+      return unconst(q1);
+    }
     std::move(unconst(q2), end(), unconst(q1));
     for (auto it = (end() - std::distance(q1, q2)); it != end(); ++it) {
       it->~value_type();
@@ -797,10 +810,22 @@ class small_vector
     insert(end(), n, t);
   }
 
-  reference front()             { assert(!empty()); return *begin(); }
-  reference back()              { assert(!empty()); return *(end() - 1); }
-  const_reference front() const { assert(!empty()); return *begin(); }
-  const_reference back() const  { assert(!empty()); return *(end() - 1); }
+  reference front() {
+    assert(!empty());
+    return *begin();
+  }
+  reference back() {
+    assert(!empty());
+    return *(end() - 1);
+  }
+  const_reference front() const {
+    assert(!empty());
+    return *begin();
+  }
+  const_reference back() const {
+    assert(!empty());
+    return *(end() - 1);
+  }
 
   reference operator[](size_type i) {
     assert(i < size());
@@ -836,7 +861,7 @@ class small_vector
   template <class It>
   iterator insertImpl(iterator pos, It first, It last, std::false_type) {
     typedef typename std::iterator_traits<It>::iterator_category categ;
-    if (std::is_same<categ,std::input_iterator_tag>::value) {
+    if (std::is_same<categ, std::input_iterator_tag>::value) {
       auto offset = pos - begin();
       while (first != last) {
         pos = insert(pos, *first++);
@@ -848,16 +873,15 @@ class small_vector
     auto distance = std::distance(first, last);
     auto offset = pos - begin();
     makeSize(size() + distance);
-    detail::moveObjectsRight(data() + offset,
-                             data() + size(),
-                             data() + size() + distance);
+    detail::moveObjectsRight(
+        data() + offset, data() + size(), data() + size() + distance);
     this->setSize(size() + distance);
     std::copy_n(first, distance, begin() + offset);
     return begin() + offset;
   }
 
-  iterator insertImpl(iterator pos, size_type n, const value_type& val,
-      std::true_type) {
+  iterator
+  insertImpl(iterator pos, size_type n, const value_type& val, std::true_type) {
     // The true_type means this should call the size_t,value_type
     // overload.  (See insert().)
     return insert(pos, n, val);
@@ -869,7 +893,7 @@ class small_vector
   template <class It>
   void constructImpl(It first, It last, std::false_type) {
     typedef typename std::iterator_traits<It>::iterator_category categ;
-    if (std::is_same<categ,std::input_iterator_tag>::value) {
+    if (std::is_same<categ, std::input_iterator_tag>::value) {
       // With iterators that only allow a single pass, we can't really
       // do anything sane here.
       while (first != last) {
@@ -882,9 +906,8 @@ class small_vector
     makeSize(distance);
     this->setSize(distance);
     try {
-      detail::populateMemForward(data(), distance,
-        [&] (void* p) { new (p) value_type(*first++); }
-      );
+      detail::populateMemForward(
+          data(), distance, [&](void* p) { new (p) value_type(*first++); });
     } catch (...) {
       if (this->isExtern()) {
         u.freeHeap();
@@ -961,7 +984,7 @@ class small_vector
     // allocation is grown to over some threshold, we should store
     // a capacity at the front of the heap allocation.
     bool heapifyCapacity =
-      !kHasInlineCapacity && needBytes > kHeapifyCapacityThreshold;
+        !kHasInlineCapacity && needBytes > kHeapifyCapacityThreshold;
     if (heapifyCapacity) {
       needBytes += kHeapifyCapacitySize;
     }
@@ -972,9 +995,8 @@ class small_vector
     assert(!detail::pointerFlagGet(newh));
 
     value_type* newp = static_cast<value_type*>(
-      heapifyCapacity ?
-        detail::shiftPointer(newh, kHeapifyCapacitySize) :
-        newh);
+        heapifyCapacity ? detail::shiftPointer(newh, kHeapifyCapacitySize)
+                        : newh);
 
     try {
       if (insert) {
@@ -1050,38 +1072,33 @@ class small_vector
   typedef unsigned char InlineStorageDataType[sizeof(value_type) * MaxInline];
 #else
   typedef typename std::aligned_storage<
-    sizeof(value_type) * MaxInline,
-    alignof(value_type)
-  >::type InlineStorageDataType;
+      sizeof(value_type) * MaxInline,
+      alignof(value_type)>::type InlineStorageDataType;
 #endif
 
   typedef typename std::conditional<
-    sizeof(value_type) * MaxInline != 0,
-    InlineStorageDataType,
-    void*
-  >::type InlineStorageType;
+      sizeof(value_type) * MaxInline != 0,
+      InlineStorageDataType,
+      void*>::type InlineStorageType;
 
   static bool const kHasInlineCapacity =
-    sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
+      sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
 
   // This value should we multiple of word size.
   static size_t const kHeapifyCapacitySize = sizeof(
-    typename std::aligned_storage<
-      sizeof(InternalSizeType),
-      alignof(value_type)
-    >::type);
+      typename std::
+          aligned_storage<sizeof(InternalSizeType), alignof(value_type)>::type);
   // Threshold to control capacity heapifying.
-  static size_t const kHeapifyCapacityThreshold =
-    100 * kHeapifyCapacitySize;
+  static size_t const kHeapifyCapacityThreshold = 100 * kHeapifyCapacitySize;
 
-  typedef typename std::conditional<
-    kHasInlineCapacity,
-    HeapPtrWithCapacity,
-    HeapPtr
-  >::type PointerType;
+  typedef typename std::
+      conditional<kHasInlineCapacity, HeapPtrWithCapacity, HeapPtr>::type
+          PointerType;
 
   union Data {
-    explicit Data() { pdata_.heap_ = 0; }
+    explicit Data() {
+      pdata_.heap_ = 0;
+    }
 
     PointerType pdata_;
     InlineStorageType storage_;
@@ -1128,8 +1145,9 @@ FOLLY_PACK_POP
 // Basic guarantee only, or provides the nothrow guarantee iff T has a
 // nothrow move or copy constructor.
 template <class T, std::size_t MaxInline, class A, class B, class C>
-void swap(small_vector<T,MaxInline,A,B,C>& a,
-          small_vector<T,MaxInline,A,B,C>& b) {
+void swap(
+    small_vector<T, MaxInline, A, B, C>& a,
+    small_vector<T, MaxInline, A, B, C>& b) {
   a.swap(b);
 }
 
@@ -1140,8 +1158,7 @@ namespace detail {
 // Format support.
 template <class T, size_t M, class A, class B, class C>
 struct IndexableTraits<small_vector<T, M, A, B, C>>
-  : public IndexableTraitsSeq<small_vector<T, M, A, B, C>> {
-};
+    : public IndexableTraitsSeq<small_vector<T, M, A, B, C>> {};
 
 } // namespace detail
 
