@@ -12,22 +12,9 @@ get_ldflags() {
   done
 }
 
-get_boost_libdirs() {
-  # autoconf's boost detection seems to require a path to boost libs
-  # if they're not in the system directories
-  for i in "$@"; do
-    echo "$i" | perl -n -e 'print if s,(.*)/libboost_.*\.(so|dylib|dll).*,\1,'
-  done
-}
-
 # This is an extra linker flag that buck appends on OSX that's not valid
 # This probably requires a patch to buck
 LDFLAGS=$(get_ldflags "$@" | uniq | tr '\n' ' ' | perl -pe 's;-Xlinker \@executable_path\S*;;g')
-
-boost_libdir=$(get_boost_libdirs "$@"| head -n 1)
-if [ ! -z "$boost_libdir" ]; then
-  BOOST_FLAG="--with-boost-libdir=$boost_libdir"
-fi
 
 export LDFLAGS
 export BOOST_LDFLAGS="$LDFLAGS"
