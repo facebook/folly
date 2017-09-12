@@ -259,10 +259,10 @@ struct IntegralSizePolicy {
   }
 
  protected:
-  static bool const kShouldUseHeap = ShouldUseHeap;
+  static bool constexpr kShouldUseHeap = ShouldUseHeap;
 
  private:
-  static SizeType const kExternMask =
+  static SizeType constexpr kExternMask =
       kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 1) : 0;
 
   SizeType size_;
@@ -1081,15 +1081,17 @@ class small_vector : public detail::small_vector_base<
       InlineStorageDataType,
       void*>::type InlineStorageType;
 
-  static bool const kHasInlineCapacity =
+  static bool constexpr kHasInlineCapacity =
       sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
 
   // This value should we multiple of word size.
-  static size_t const kHeapifyCapacitySize = sizeof(
+  static size_t constexpr kHeapifyCapacitySize = sizeof(
       typename std::
           aligned_storage<sizeof(InternalSizeType), alignof(value_type)>::type);
+
   // Threshold to control capacity heapifying.
-  static size_t const kHeapifyCapacityThreshold = 100 * kHeapifyCapacitySize;
+  static size_t constexpr kHeapifyCapacityThreshold =
+      100 * kHeapifyCapacitySize;
 
   typedef typename std::
       conditional<kHasInlineCapacity, HeapPtrWithCapacity, HeapPtr>::type
