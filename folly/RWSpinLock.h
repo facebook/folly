@@ -190,7 +190,7 @@ class RWSpinLock {
 
   // Lockable Concept
   void lock() {
-    int count = 0;
+    uint_fast32_t count = 0;
     while (!LIKELY(try_lock())) {
       if (++count > 1000) std::this_thread::yield();
     }
@@ -204,7 +204,7 @@ class RWSpinLock {
 
   // SharedLockable Concept
   void lock_shared() {
-    int count = 0;
+    uint_fast32_t count = 0;
     while (!LIKELY(try_lock_shared())) {
       if (++count > 1000) std::this_thread::yield();
     }
@@ -222,7 +222,7 @@ class RWSpinLock {
 
   // UpgradeLockable Concept
   void lock_upgrade() {
-    int count = 0;
+    uint_fast32_t count = 0;
     while (!try_lock_upgrade()) {
       if (++count > 1000) std::this_thread::yield();
     }
@@ -603,7 +603,7 @@ class RWTicketSpinLockT {
     // cores allocated to this process. This is less likely than the
     // corresponding situation in lock_shared(), but we still want to
     // avoid it
-    int count = 0;
+    uint_fast32_t count = 0;
     QuarterInt val = __sync_fetch_and_add(&ticket.users, 1);
     while (val != load_acquire(&ticket.write)) {
       asm_volatile_pause();
@@ -653,7 +653,7 @@ class RWTicketSpinLockT {
     // std::this_thread::yield() is important here because we can't grab the
     // shared lock if there is a pending writeLockAggressive, so we
     // need to let threads that already have a shared lock complete
-    int count = 0;
+    uint_fast32_t count = 0;
     while (!LIKELY(try_lock_shared())) {
       asm_volatile_pause();
       if (UNLIKELY((++count & 1023) == 0)) std::this_thread::yield();
