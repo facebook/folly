@@ -19,7 +19,6 @@
 #include <map>
 #include <memory>
 
-#include <folly/Function.h>
 #include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
 
@@ -46,8 +45,6 @@ class RequestContext;
 // copied between threads.
 class RequestContext {
  public:
-  using Provider = folly::Function<std::shared_ptr<RequestContext>&()>;
-
   // Create a unique request context for this request.
   // It will be passed between queues / threads (where implemented),
   // so it should be valid for the lifetime of the request.
@@ -98,22 +95,8 @@ class RequestContext {
     return getStaticContext();
   }
 
-  // This API allows one to override the default behavior of getStaticContext()
-  // by providing a custom RequestContext provider. The old provider is
-  // returned, and the user must restore the old provider via a subsequent call
-  // to setRequestContextProvider() once the new provider is no longer needed.
-  //
-  // Using custom RequestContext providers can be more efficient than having to
-  // setContext() whenever context must be switched. This is especially true in
-  // applications that do not actually use RequestContext, but where library
-  // code must still support RequestContext for other use cases.  See
-  // FiberManager for an example of how a custom RequestContext provider can
-  // reduce calls to setContext().
-  static Provider setRequestContextProvider(Provider f);
-
  private:
   static std::shared_ptr<RequestContext>& getStaticContext();
-  static Provider& requestContextProvider();
 
   using Data = std::map<std::string, std::unique_ptr<RequestData>>;
   folly::Synchronized<Data, folly::SharedMutex> data_;
