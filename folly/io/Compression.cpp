@@ -62,8 +62,6 @@
 using folly::io::compression::detail::dataStartsWithLE;
 using folly::io::compression::detail::prefixToStringLE;
 
-namespace zlib = folly::io::zlib;
-
 namespace folly {
 namespace io {
 
