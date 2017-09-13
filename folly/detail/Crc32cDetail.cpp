@@ -40,9 +40,11 @@
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>
 
 namespace folly {
-namespace crc32_detail {
+namespace detail {
 
 #if FOLLY_SSE_PREREQ(4, 2)
+
+namespace crc32_detail {
 
 #define CRCtriplet(crc, buf, offset)                  \
   crc##0 = _mm_crc32_u64(crc##0, *(buf##0 + offset)); \
@@ -228,8 +230,6 @@ void triplet_loop(
 
 } // namespace crc32c_detail
 
-namespace detail {
-
 /* Compute CRC-32C using the Intel hardware instruction. */
 FOLLY_TARGET_ATTRIBUTE("sse4.2")
 uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
@@ -281,11 +281,11 @@ uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
 
 #else
 
-uint32_t
-crc32c_hw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
+uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
   throw std::runtime_error("crc32_hw is not implemented on this platform");
 }
 
 #endif
-}
-} // namespace
+
+} // namespace detail
+} // namespace folly
