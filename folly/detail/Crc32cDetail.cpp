@@ -281,6 +281,9 @@ uint32_t crc32c_hw(const uint8_t* buf, size_t len, uint32_t crc) {
 
 #else
 
+} // namespace crc32_detail
+namespace detail {
+  
 uint32_t
 crc32c_hw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   throw std::runtime_error("crc32_hw is not implemented on this platform");
