@@ -1249,6 +1249,31 @@ TEST(Gen, BatchMove) {
   EXPECT_EQ(expected, actual);
 }
 
+TEST(Gen, Window) {
+  auto expected = seq(0, 10) | as<std::vector>();
+  for (size_t windowSize = 1; windowSize <= 20; ++windowSize) {
+    // no early stop
+    auto actual = seq(0, 10) |
+        mapped([](int i) { return std::unique_ptr<int>(new int(i)); }) |
+        window(4) | dereference | as<std::vector>();
+    EXPECT_EQ(expected, actual) << windowSize;
+  }
+  for (size_t windowSize = 1; windowSize <= 20; ++windowSize) {
+    // pre-window take
+    auto actual = seq(0) |
+        mapped([](int i) { return std::unique_ptr<int>(new int(i)); }) |
+        take(11) | window(4) | dereference | as<std::vector>();
+    EXPECT_EQ(expected, actual) << windowSize;
+  }
+  for (size_t windowSize = 1; windowSize <= 20; ++windowSize) {
+    // post-window take
+    auto actual = seq(0) |
+        mapped([](int i) { return std::unique_ptr<int>(new int(i)); }) |
+        window(4) | take(11) | dereference | as<std::vector>();
+    EXPECT_EQ(expected, actual) << windowSize;
+  }
+}
+
 TEST(Gen, Just) {
   {
     int x = 3;

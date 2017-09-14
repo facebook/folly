@@ -357,6 +357,8 @@ class Cycle;
 
 class Batch;
 
+class Window;
+
 class Dereference;
 
 class Indirect;
