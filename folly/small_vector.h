@@ -26,9 +26,11 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <iterator>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 #include <boost/mpl/count.hpp>
 #include <boost/mpl/empty.hpp>
@@ -84,74 +86,6 @@ class small_vector;
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
-
-/*
- * Move a range to a range of uninitialized memory.  Assumes the
- * ranges don't overlap.
- */
-template <class T>
-typename std::enable_if<!FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
-moveToUninitialized(T* first, T* last, T* out) {
-  std::size_t idx = 0;
-  try {
-    for (; first != last; ++first, ++idx) {
-      new (&out[idx]) T(std::move(*first));
-    }
-  } catch (...) {
-    // Even for callers trying to give the strong guarantee
-    // (e.g. push_back) it's ok to assume here that we don't have to
-    // move things back and that it was a copy constructor that
-    // threw: if someone throws from a move constructor the effects
-    // are unspecified.
-    for (std::size_t i = 0; i < idx; ++i) {
-      out[i].~T();
-    }
-    throw;
-  }
-}
-
-// Specialization for trivially copyable types.
-template <class T>
-typename std::enable_if<FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
-moveToUninitialized(T* first, T* last, T* out) {
-  std::memmove(out, first, (last - first) * sizeof *first);
-}
-
-/*
- * Move a range to a range of uninitialized memory. Assumes the
- * ranges don't overlap. Inserts an element at out + pos using emplaceFunc().
- * out will contain (end - begin) + 1 elements on success and none on failure.
- * If emplaceFunc() throws [begin, end) is unmodified.
- */
-template <class T, class Size, class EmplaceFunc>
-void moveToUninitializedEmplace(
-    T* begin,
-    T* end,
-    T* out,
-    Size pos,
-    EmplaceFunc&& emplaceFunc) {
-  // Must be called first so that if it throws [begin, end) is unmodified.
-  // We have to support the strong exception guarantee for emplace_back().
-  emplaceFunc(out + pos);
-  // move old elements to the left of the new one
-  try {
-    detail::moveToUninitialized(begin, begin + pos, out);
-  } catch (...) {
-    out[pos].~T();
-    throw;
-  }
-  // move old elements to the right of the new one
-  try {
-    if (begin + pos < end) {
-      detail::moveToUninitialized(begin + pos, end, out + pos + 1);
-    }
-  } catch (...) {
-    for (Size i = 0; i <= pos; ++i) {
-      out[i].~T();
-    }
-    throw;
-  }
-}
 
 /*
  * Move objects in memory to the right into some uninitialized
@@ -223,10 +157,10 @@ void populateMemForward(T* mem, std::size_t n, Function const& op) {
 }
 
 template <class SizeType, bool ShouldUseHeap>
-struct IntegralSizePolicy {
+struct IntegralSizePolicyBase {
   typedef SizeType InternalSizeType;
 
-  IntegralSizePolicy() : size_(0) {}
+  IntegralSizePolicyBase() : size_(0) {}
 
  protected:
   static constexpr std::size_t policyMaxSize() {
@@ -254,7 +188,7 @@ struct IntegralSizePolicy {
     size_ = (kExternMask & size_) | SizeType(sz);
   }
 
-  void swapSizePolicy(IntegralSizePolicy& o) {
+  void swapSizePolicy(IntegralSizePolicyBase& o) {
     std::swap(size_, o.size_);
   }
 
@@ -266,6 +200,101 @@ struct IntegralSizePolicy {
       kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 1) : 0;
 
   SizeType size_;
+};
+
+template <class SizeType, bool ShouldUseHeap>
+struct IntegralSizePolicy;
+
+template <class SizeType>
+struct IntegralSizePolicy<SizeType, true>
+    : public IntegralSizePolicyBase<SizeType, true> {
+ public:
+  /*
+   * Move a range to a range of uninitialized memory.  Assumes the
+   * ranges don't overlap.
+   */
+  template <class T>
+  typename std::enable_if<!FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+  moveToUninitialized(T* first, T* last, T* out) {
+    std::size_t idx = 0;
+    try {
+      for (; first != last; ++first, ++idx) {
+        new (&out[idx]) T(std::move(*first));
+      }
+    } catch (...) {
+      // Even for callers trying to give the strong guarantee
+      // (e.g. push_back) it's ok to assume here that we don't have to
+      // move things back and that it was a copy constructor that
+      // threw: if someone throws from a move constructor the effects
+      // are unspecified.
+      for (std::size_t i = 0; i < idx; ++i) {
+        out[i].~T();
+      }
+      throw;
+    }
+  }
+
+  // Specialization for trivially copyable types.
+  template <class T>
+  typename std::enable_if<FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+  moveToUninitialized(T* first, T* last, T* out) {
+    std::memmove(out, first, (last - first) * sizeof *first);
+  }
+
+  /*
+   * Move a range to a range of uninitialized memory. Assumes the
+   * ranges don't overlap. Inserts an element at out + pos using
+   * emplaceFunc(). out will contain (end - begin) + 1 elements on success and
+   * none on failure. If emplaceFunc() throws [begin, end) is unmodified.
+   */
+  template <class T, class EmplaceFunc>
+  void moveToUninitializedEmplace(
+      T* begin,
+      T* end,
+      T* out,
+      SizeType pos,
+      EmplaceFunc&& emplaceFunc) {
+    // Must be called first so that if it throws [begin, end) is unmodified.
+    // We have to support the strong exception guarantee for emplace_back().
+    emplaceFunc(out + pos);
+    // move old elements to the left of the new one
+    try {
+      this->moveToUninitialized(begin, begin + pos, out);
+    } catch (...) {
+      out[pos].~T();
+      throw;
+    }
+    // move old elements to the right of the new one
+    try {
+      if (begin + pos < end) {
+        this->moveToUninitialized(begin + pos, end, out + pos + 1);
+      }
+    } catch (...) {
+      for (SizeType i = 0; i <= pos; ++i) {
+        out[i].~T();
+      }
+      throw;
+    }
+  }
+};
+
+template <class SizeType>
+struct IntegralSizePolicy<SizeType, false>
+    : public IntegralSizePolicyBase<SizeType, false> {
+ public:
+  template <class T>
+  void moveToUninitialized(T* /*first*/, T* /*last*/, T* /*out*/) {
+    assume_unreachable();
+  }
+  template <class T, class EmplaceFunc>
+  void moveToUninitializedEmplace(
+      T* /* begin */,
+      T* /* end */,
+      T* /* out */,
+      SizeType /* pos */,
+      EmplaceFunc&& /* emplaceFunc */) {
+    assume_unreachable();
+  }
 };
 
 /*
@@ -977,6 +1006,15 @@ class small_vector : public detail::small_vector_base<
       assert(!insert);
       return;
     }
+
+    assert(this->kShouldUseHeap);
+    // This branch isn't needed for correctness, but allows the optimizer to
+    // skip generating code for the rest of this function in NoHeap
+    // small_vectors.
+    if (!this->kShouldUseHeap) {
+      return;
+    }
+
     newSize = std::max(newSize, computeNewSize());
 
     auto needBytes = newSize * sizeof(value_type);
@@ -1001,11 +1039,11 @@ class small_vector : public detail::small_vector_base<
     try {
       if (insert) {
         // move and insert the new element
-        detail::moveToUninitializedEmplace(
+        this->moveToUninitializedEmplace(
             begin(), end(), newp, pos, std::forward<EmplaceFunc>(emplaceFunc));
       } else {
         // move without inserting new element
-        detail::moveToUninitialized(begin(), end(), newp);
+        this->moveToUninitialized(begin(), end(), newp);
       }
     } catch (...) {
       free(newh);
