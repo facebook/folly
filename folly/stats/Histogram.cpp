@@ -24,6 +24,7 @@
 #include <folly/stats/Histogram.h>
 #include <folly/stats/Histogram-defs.h>
 
+#if !FOLLY_MSVC_USE_WORKAROUND_FOR_C5037
 namespace folly {
 
 template class Histogram<int64_t>;
@@ -53,3 +54,4 @@ detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>::
         Histogram<int64_t>::CountFromBucket countFromBucket) const;
 
 } // namespace folly
+#endif
