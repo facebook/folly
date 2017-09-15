@@ -183,14 +183,14 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
 
     uint64_t origAllocated = *counter;
 
-    // Static because otherwise clever compilers will find out that
-    // the ptr is not used and does not escape the scope, so they will
-    // just optimize away the malloc.
-    static const void* ptr = malloc(1);
+    const void* ptr = malloc(1);
     if (!ptr) {
       // wtf, failing to allocate 1 byte
       return false;
     }
+
+    /* Avoid optimizing away the malloc.  */
+    asm volatile("" ::"m"(ptr) : "memory");
 
     return (origAllocated != *counter);
   }();
