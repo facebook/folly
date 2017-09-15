@@ -958,17 +958,46 @@ INSTANTIATE_TEST_CASE_P(
         testing::Values(12, 17, 20),
         testing::ValuesIn(availableStreamCodecs())));
 
+namespace {
+
+// Codec types included in the codec returned by getAutoUncompressionCodec() by
+// default.
+std::vector<CodecType> autoUncompressionCodecTypes = {{
+    CodecType::LZ4_FRAME,
+    CodecType::ZSTD,
+    CodecType::ZLIB,
+    CodecType::GZIP,
+    CodecType::LZMA2,
+    CodecType::BZIP2,
+}};
+
+} // namespace
+
 class AutomaticCodecTest : public testing::TestWithParam<CodecType> {
  protected:
   void SetUp() override {
-    codec_ = getCodec(GetParam());
-    auto_ = getAutoUncompressionCodec();
+    codecType_ = GetParam();
+    codec_ = getCodec(codecType_);
+    autoType_ = std::any_of(
+        autoUncompressionCodecTypes.begin(),
+        autoUncompressionCodecTypes.end(),
+        [&](CodecType o) { return codecType_ == o; });
+    // Add the codec with type codecType_ as the terminal codec if it is not in
+    // autoUncompressionCodecTypes.
+    auto_ = getAutoUncompressionCodec({}, getTerminalCodec());
   }
 
   void runSimpleTest(const DataHolder& dh);
 
+  std::unique_ptr<Codec> getTerminalCodec() {
+    return (autoType_ ? nullptr : getCodec(codecType_));
+  }
+
   std::unique_ptr<Codec> codec_;
   std::unique_ptr<Codec> auto_;
+  CodecType codecType_;
+  // true if codecType_ is in autoUncompressionCodecTypes
+  bool autoType_;
 };
 
 void AutomaticCodecTest::runSimpleTest(const DataHolder& dh) {
@@ -1034,10 +1063,17 @@ TEST_P(AutomaticCodecTest, DefaultCodec) {
   const uint64_t length = 42;
   std::vector<std::unique_ptr<Codec>> codecs;
   codecs.push_back(getCodec(CodecType::ZSTD));
-  auto automatic = getAutoUncompressionCodec(std::move(codecs));
+  auto automatic =
+      getAutoUncompressionCodec(std::move(codecs), getTerminalCodec());
   auto original = IOBuf::wrapBuffer(constantDataHolder.data(length));
   auto compressed = codec_->compress(original.get());
-  auto decompressed = automatic->uncompress(compressed.get());
+  std::unique_ptr<IOBuf> decompressed;
+
+  if (automatic->needsUncompressedLength()) {
+    decompressed = automatic->uncompress(compressed.get(), length);
+  } else {
+    decompressed = automatic->uncompress(compressed.get());
+  }
 
   EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(decompressed.get()));
 }
@@ -1096,17 +1132,28 @@ TEST_P(AutomaticCodecTest, CustomCodec) {
   auto ab = CustomCodec::create("ab", CodecType::ZSTD);
   std::vector<std::unique_ptr<Codec>> codecs;
   codecs.push_back(CustomCodec::create("ab", CodecType::ZSTD));
-  auto automatic = getAutoUncompressionCodec(std::move(codecs));
+  auto automatic =
+      getAutoUncompressionCodec(std::move(codecs), getTerminalCodec());
   auto original = IOBuf::wrapBuffer(constantDataHolder.data(length));
 
   auto abCompressed = ab->compress(original.get());
-  auto abDecompressed = automatic->uncompress(abCompressed.get());
+  std::unique_ptr<IOBuf> abDecompressed;
+  if (automatic->needsUncompressedLength()) {
+    abDecompressed = automatic->uncompress(abCompressed.get(), length);
+  } else {
+    abDecompressed = automatic->uncompress(abCompressed.get());
+  }
   EXPECT_TRUE(automatic->canUncompress(abCompressed.get()));
   EXPECT_FALSE(auto_->canUncompress(abCompressed.get()));
   EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(abDecompressed.get()));
 
   auto compressed = codec_->compress(original.get());
-  auto decompressed = automatic->uncompress(compressed.get());
+  std::unique_ptr<IOBuf> decompressed;
+  if (automatic->needsUncompressedLength()) {
+    decompressed = automatic->uncompress(compressed.get(), length);
+  } else {
+    decompressed = automatic->uncompress(compressed.get());
+  }
   EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(decompressed.get()));
 }
 
@@ -1116,17 +1163,28 @@ TEST_P(AutomaticCodecTest, CustomDefaultCodec) {
   std::vector<std::unique_ptr<Codec>> codecs;
   codecs.push_back(CustomCodec::create("none", CodecType::NO_COMPRESSION));
   codecs.push_back(getCodec(CodecType::LZ4_FRAME));
-  auto automatic = getAutoUncompressionCodec(std::move(codecs));
+  auto automatic =
+      getAutoUncompressionCodec(std::move(codecs), getTerminalCodec());
   auto original = IOBuf::wrapBuffer(constantDataHolder.data(length));
 
   auto noneCompressed = none->compress(original.get());
-  auto noneDecompressed = automatic->uncompress(noneCompressed.get());
+  std::unique_ptr<IOBuf> noneDecompressed;
+  if (automatic->needsUncompressedLength()) {
+    noneDecompressed = automatic->uncompress(noneCompressed.get(), length);
+  } else {
+    noneDecompressed = automatic->uncompress(noneCompressed.get());
+  }
   EXPECT_TRUE(automatic->canUncompress(noneCompressed.get()));
   EXPECT_FALSE(auto_->canUncompress(noneCompressed.get()));
   EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(noneDecompressed.get()));
 
   auto compressed = codec_->compress(original.get());
-  auto decompressed = automatic->uncompress(compressed.get());
+  std::unique_ptr<IOBuf> decompressed;
+  if (automatic->needsUncompressedLength()) {
+    decompressed = automatic->uncompress(compressed.get(), length);
+  } else {
+    decompressed = automatic->uncompress(compressed.get());
+  }
   EXPECT_EQ(constantDataHolder.hash(length), hashIOBuf(decompressed.get()));
 }
 
@@ -1143,13 +1201,92 @@ TEST_P(AutomaticCodecTest, canUncompressOneBytes) {
 INSTANTIATE_TEST_CASE_P(
     AutomaticCodecTest,
     AutomaticCodecTest,
-    testing::Values(
-        CodecType::LZ4_FRAME,
-        CodecType::ZSTD,
-        CodecType::ZLIB,
-        CodecType::GZIP,
-        CodecType::LZMA2,
-        CodecType::BZIP2));
+    testing::ValuesIn(availableCodecs()));
+
+namespace {
+
+// Codec that always "uncompresses" to the same string.
+class ConstantCodec : public Codec {
+ public:
+  static std::unique_ptr<Codec> create(
+      std::string uncompressed,
+      CodecType type) {
+    return std::make_unique<ConstantCodec>(std::move(uncompressed), type);
+  }
+  explicit ConstantCodec(std::string uncompressed, CodecType type)
+      : Codec(type), uncompressed_(std::move(uncompressed)) {}
+
+ private:
+  uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override {
+    return uncompressedLength;
+  }
+
+  std::unique_ptr<IOBuf> doCompress(const IOBuf*) override {
+    throw std::runtime_error("ConstantCodec error: compress() not supported.");
+  }
+
+  std::unique_ptr<IOBuf> doUncompress(const IOBuf*, Optional<uint64_t>)
+      override {
+    return IOBuf::copyBuffer(uncompressed_);
+  }
+
+  std::string uncompressed_;
+  std::unique_ptr<Codec> codec_;
+};
+
+} // namespace
+
+class TerminalCodecTest : public testing::TestWithParam<CodecType> {
+ protected:
+  void SetUp() override {
+    codecType_ = GetParam();
+    codec_ = getCodec(codecType_);
+    auto_ = getAutoUncompressionCodec();
+  }
+
+  CodecType codecType_;
+  std::unique_ptr<Codec> codec_;
+  std::unique_ptr<Codec> auto_;
+};
+
+// Test that the terminal codec's uncompress() function is called when the
+// default chosen automatic codec throws.
+TEST_P(TerminalCodecTest, uncompressIfDefaultThrows) {
+  std::string const original = "abc";
+  auto const compressed = codec_->compress(original);
+
+  // Sanity check: the automatic codec can uncompress the original string.
+  auto const uncompressed = auto_->uncompress(compressed);
+  EXPECT_EQ(uncompressed, original);
+
+  // Truncate the compressed string.
+  auto const truncated = compressed.substr(0, compressed.size() - 1);
+  auto const truncatedBuf =
+      IOBuf::wrapBuffer(truncated.data(), truncated.size());
+  EXPECT_TRUE(auto_->canUncompress(truncatedBuf.get()));
+  EXPECT_ANY_THROW(auto_->uncompress(truncated));
+
+  // Expect the terminal codec to successfully uncompress the string.
+  std::unique_ptr<Codec> terminal = getAutoUncompressionCodec(
+      {}, ConstantCodec::create("dummyString", CodecType::USER_DEFINED));
+  EXPECT_TRUE(terminal->canUncompress(truncatedBuf.get()));
+  EXPECT_EQ(terminal->uncompress(truncated), "dummyString");
+}
+
+// If the terminal codec has one of the "default types" automatically added in
+// the AutomaticCodec, check that the default codec is no longer added.
+TEST_P(TerminalCodecTest, terminalOverridesDefaults) {
+  std::unique_ptr<Codec> terminal = getAutoUncompressionCodec(
+      {}, ConstantCodec::create("dummyString", codecType_));
+  std::string const original = "abc";
+  auto const compressed = codec_->compress(original);
+  EXPECT_EQ(terminal->uncompress(compressed), "dummyString");
+}
+
+INSTANTIATE_TEST_CASE_P(
+    TerminalCodecTest,
+    TerminalCodecTest,
+    testing::ValuesIn(autoUncompressionCodecTypes));
 
 TEST(ValidPrefixesTest, CustomCodec) {
   std::vector<std::unique_ptr<Codec>> codecs;

@@ -443,11 +443,28 @@ std::unique_ptr<StreamCodec> getStreamCodec(
  * Returns a codec that can uncompress any of the given codec types as well as
  * {LZ4_FRAME, ZSTD, ZLIB, GZIP, LZMA2, BZIP2}. Appends each default codec to
  * customCodecs in order, so long as a codec with the same type() isn't already
- * present. When uncompress() is called, each codec's canUncompress() is called
- * in the order that they are given. Appended default codecs are checked last.
- * uncompress() is called on the first codec whose canUncompress() returns true.
- * An exception is thrown if no codec canUncompress() the data.
- * An exception is thrown if the chosen codec's uncompress() throws on the data.
+ * present in customCodecs or as the terminalCodec. When uncompress() is called,
+ * each codec's canUncompress() is called in the order that they are given.
+ * Appended default codecs are checked last.  uncompress() is called on the
+ * first codec whose canUncompress() returns true.
+ *
+ * In addition, an optional `terminalCodec` can be provided. This codec's
+ * uncompress() will be called either when no other codec canUncompress() the
+ * data or the chosen codec throws an exception on the data. The terminalCodec
+ * is intended for ambiguous headers, when canUncompress() is false for some
+ * data it can actually uncompress. The terminalCodec does not need to override
+ * validPrefixes() or canUncompress() and overriding these functions will have
+ * no effect on the returned codec's validPrefixes() or canUncompress()
+ * functions. The terminalCodec's needsUncompressedLength() and
+ * maxUncompressedLength() will affect the returned codec's respective
+ * functions. The terminalCodec must not be duplicated in customCodecs.
+ *
+ * An exception is thrown if no codec canUncompress() the data and either no
+ * terminal codec was provided or a terminal codec was provided and it throws on
+ * the data.
+ * An exception is thrown if the chosen codec's uncompress() throws on the data
+ * and either no terminal codec was provided or a terminal codec was provided
+ * and it also throws on the data.
  * An exception is thrown if compress() is called on the returned codec.
  *
  * Requirements are checked in debug mode and are as follows:
@@ -457,9 +474,12 @@ std::unique_ptr<StreamCodec> getStreamCodec(
  *  3. No header in headers may be empty.
  *  4. headers must not contain any duplicate elements.
  *  5. No strict non-empty prefix of any header in headers may be in headers.
+ *  6. The terminalCodec's type must not be the same as any other codec's type
+ *     (with USER_DEFINED being the exception).
  */
 std::unique_ptr<Codec> getAutoUncompressionCodec(
-    std::vector<std::unique_ptr<Codec>> customCodecs = {});
+    std::vector<std::unique_ptr<Codec>> customCodecs = {},
+    std::unique_ptr<Codec> terminalCodec = {});
 
 /**
  * Check if a specified codec is supported.
