@@ -16,6 +16,7 @@
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -27,8 +28,10 @@ Optional<int> f1() {
 Optional<double> f2(int x) {
   return 2.0 * x;
 }
-Optional<int> f3(int x, double y) {
-  return (int)(x + y);
+
+// move-only type
+Optional<std::unique_ptr<int>> f3(int x, double y) {
+  return std::make_unique<int>((int)(x + y));
 }
 
 TEST(Optional, CoroutineSuccess) {
@@ -38,8 +41,8 @@ TEST(Optional, CoroutineSuccess) {
     auto y = co_await f2(x);
     EXPECT_EQ(2.0 * 7, y);
     auto z = co_await f3(x, y);
-    EXPECT_EQ((int)(2.0 * 7 + 7), z);
-    co_return z;
+    EXPECT_EQ((int)(2.0 * 7 + 7), *z);
+    co_return* z;
   }();
   EXPECT_TRUE(r0.hasValue());
   EXPECT_EQ(21, *r0);
@@ -54,7 +57,7 @@ TEST(Optional, CoroutineFailure) {
     auto x = co_await f1();
     auto y = co_await f2(x);
     auto z = co_await f4(x, y);
-    EXPECT_FALSE(true);
+    ADD_FAILURE();
     co_return z;
   }();
   EXPECT_TRUE(!r1.hasValue());
@@ -68,14 +71,30 @@ TEST(Optional, CoroutineException) {
   try {
     auto r2 = []() -> Optional<int> {
       auto x = co_await throws();
-      EXPECT_FALSE(true);
+      ADD_FAILURE();
       co_return x;
     }();
-    EXPECT_FALSE(true);
+    ADD_FAILURE();
   } catch (/* nolint */ int i) {
     EXPECT_EQ(42, i);
   } catch (...) {
-    EXPECT_FALSE(true);
+    ADD_FAILURE();
   }
 }
+
+// this test makes sure that the coroutine is destroyed properly
+TEST(Optional, CoroutineCleanedUp) {
+  int count_dest = 0;
+  auto r = [&]() -> Optional<int> {
+    SCOPE_EXIT {
+      ++count_dest;
+    };
+    auto x = co_await folly::Optional<int>();
+    ADD_FAILURE() << "Should not be resuming";
+    co_return x;
+  }();
+  EXPECT_FALSE(r.hasValue());
+  EXPECT_EQ(1, count_dest);
+}
+
 #endif

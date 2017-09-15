@@ -598,13 +598,14 @@ struct OptionalAwaitable {
     return o_.hasValue();
   }
   Value await_resume() {
-    return o_.value();
+    return std::move(o_.value());
   }
-  template <typename CoroHandle>
-  void await_suspend(CoroHandle h) const {
-    // make sure the coroutine returns an empty Optional:
-    h.promise().value_->clear();
-    // Abort the rest of the coroutine:
+
+  // Explicitly only allow suspension into an OptionalPromise
+  template <typename U>
+  void await_suspend(
+      std::experimental::coroutine_handle<OptionalPromise<U>> h) const {
+    // Abort the rest of the coroutine. resume() is not going to be called
     h.destroy();
   }
 };
@@ -617,7 +618,7 @@ detail::OptionalAwaitable<Value>
 }
 } // namespace folly
 
-// This makes std::optional<Value> useable as a coroutine return type..
+// This makes folly::Optional<Value> useable as a coroutine return type..
 FOLLY_NAMESPACE_STD_BEGIN
 namespace experimental {
 template <typename Value, typename... Args>
