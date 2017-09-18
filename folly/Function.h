@@ -246,22 +246,21 @@ union Data {
   std::aligned_storage<6 * sizeof(void*)>::type tiny;
 };
 
-template <typename Fun, typename FunT = typename std::decay<Fun>::type>
+template <typename Fun, typename = Fun*>
 using IsSmall = Conjunction<
-    std::integral_constant<bool, (sizeof(FunT) <= sizeof(Data::tiny))>,
-    std::is_nothrow_move_constructible<FunT>>;
+    std::integral_constant<bool, (sizeof(Fun) <= sizeof(Data::tiny))>,
+    std::is_nothrow_move_constructible<Fun>>;
 using SmallTag = std::true_type;
 using HeapTag = std::false_type;
 
-template <class T>
+template <typename T>
 struct NotFunction : std::true_type {};
-template <class T>
+template <typename T>
 struct NotFunction<Function<T>> : std::false_type {};
 
-template <typename Fun, typename FunT = typename std::decay<Fun>::type>
-using DecayIfConstructible = typename std::enable_if<
-    Conjunction<NotFunction<FunT>, std::is_constructible<FunT, Fun>>::value,
-    FunT>::type;
+template <typename T>
+using EnableIfNotFunction =
+    typename std::enable_if<NotFunction<T>::value>::type;
 
 struct CoerceTag {};
 
@@ -310,17 +309,16 @@ struct FunctionTraits<ReturnType(Args...)> {
   }
 
   ReturnType operator()(Args... args) {
-    auto& fn = *static_cast<Function<ReturnType(Args...)>*>(this);
+    auto& fn = *static_cast<Function<NonConstSignature>*>(this);
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
   class SharedProxy {
-    std::shared_ptr<Function<ReturnType(Args...)>> sp_;
+    std::shared_ptr<Function<NonConstSignature>> sp_;
 
    public:
-    explicit SharedProxy(Function<ReturnType(Args...)>&& func)
-        : sp_(std::make_shared<Function<ReturnType(Args...)>>(
-              std::move(func))) {}
+    explicit SharedProxy(Function<NonConstSignature>&& func)
+        : sp_(std::make_shared<Function<NonConstSignature>>(std::move(func))) {}
     ReturnType operator()(Args&&... args) const {
       return (*sp_)(static_cast<Args&&>(args)...);
     }
@@ -356,17 +354,16 @@ struct FunctionTraits<ReturnType(Args...) const> {
   }
 
   ReturnType operator()(Args... args) const {
-    auto& fn = *static_cast<const Function<ReturnType(Args...) const>*>(this);
+    auto& fn = *static_cast<const Function<ConstSignature>*>(this);
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
   class SharedProxy {
-    std::shared_ptr<Function<ReturnType(Args...) const>> sp_;
+    std::shared_ptr<Function<ConstSignature>> sp_;
 
    public:
-    explicit SharedProxy(Function<ReturnType(Args...) const>&& func)
-        : sp_(std::make_shared<Function<ReturnType(Args...) const>>(
-              std::move(func))) {}
+    explicit SharedProxy(Function<ConstSignature>&& func)
+        : sp_(std::make_shared<Function<ConstSignature>>(std::move(func))) {}
     ReturnType operator()(Args&&... args) const {
       return (*sp_)(static_cast<Args&&>(args)...);
     }
@@ -529,10 +526,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Fun,
-      typename FunT = detail::function::DecayIfConstructible<Fun>,
+      typename = detail::function::EnableIfNotFunction<Fun>,
       typename = typename Traits::template ResultOf<Fun>>
-  /* implicit */ Function(Fun&& fun) noexcept(
-      IsSmall<Fun>::value && noexcept(FunT(std::declval<Fun>())))
+  /* implicit */ Function(Fun fun) noexcept(
+      IsSmall<Fun>::value && noexcept(Fun(std::declval<Fun>())))
       : Function(static_cast<Fun&&>(fun), IsSmall<Fun>{}) {}
 
   /**
@@ -603,7 +600,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * selected by overload resolution when `fun` is not a compatible function.
    */
   template <typename Fun, typename = decltype(Function(std::declval<Fun>()))>
-  Function& operator=(Fun&& fun) noexcept(
+  Function& operator=(Fun fun) noexcept(
       noexcept(/* implicit */ Function(std::declval<Fun>()))) {
     // Doing this in place is more efficient when we can do so safely.
     if (noexcept(/* implicit */ Function(std::declval<Fun>()))) {

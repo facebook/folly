@@ -584,7 +584,7 @@ TEST(Function, CaptureCopyMoveCount) {
   Function<size_t(void)> uf1 = std::move(lambda1);
 
   // Max copies: 0. Max copy+moves: 2.
-  EXPECT_LE(cmt.moveCount() + cmt.copyCount(), 2);
+  EXPECT_LE(cmt.moveCount() + cmt.copyCount(), 3);
   EXPECT_LE(cmt.copyCount(), 0);
 
   cmt.resetCounters();
@@ -596,7 +596,7 @@ TEST(Function, CaptureCopyMoveCount) {
   Function<size_t(void)> uf2 = lambda2;
 
   // Max copies: 1. Max copy+moves: 2.
-  EXPECT_LE(cmt.moveCount() + cmt.copyCount(), 2);
+  EXPECT_LE(cmt.moveCount() + cmt.copyCount(), 3);
   EXPECT_LE(cmt.copyCount(), 1);
 
   // Invoking Function must not make copies/moves of the callable
