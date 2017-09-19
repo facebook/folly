@@ -33,10 +33,12 @@ class NamedThreadFactory : public ThreadFactory {
       : prefix_(prefix.str()), suffix_(0) {}
 
   std::thread newThread(Func&& func) override {
-    auto thread = std::thread(std::move(func));
-    folly::setThreadName(
-        thread.native_handle(), folly::to<std::string>(prefix_, suffix_++));
-    return thread;
+    auto name = folly::to<std::string>(prefix_, suffix_++);
+    return std::thread(
+        [ func = std::move(func), name = std::move(name) ]() mutable {
+          folly::setThreadName(name);
+          func();
+        });
   }
 
   void setNamePrefix(folly::StringPiece prefix) {
