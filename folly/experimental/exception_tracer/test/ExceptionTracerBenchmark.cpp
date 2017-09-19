@@ -45,7 +45,7 @@ void loop(int iters) {
 BENCHMARK(ExceptionTracer, iters) {
   std::vector<std::thread> threads;
   constexpr size_t kNumThreads = 10;
-  threads.resize(10);
+  threads.resize(kNumThreads);
   for (auto& t : threads) {
     t = std::thread([iters]() { loop(iters); });
   }

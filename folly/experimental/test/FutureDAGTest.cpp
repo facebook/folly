@@ -107,6 +107,7 @@ TEST_F(FutureDAGTest, SingleNode) {
 TEST_F(FutureDAGTest, RemoveSingleNode) {
   auto h1 = add();
   auto h2 = add();
+  (void)h1;
   remove(h2);
   ASSERT_NO_THROW(dag->go().get());
   checkOrder();

@@ -43,6 +43,7 @@ TestExecutor::TestExecutor(size_t numThreads) {
 
 TestExecutor::~TestExecutor() {
   for (auto& worker : workers_) {
+    (void)worker;
     addImpl({});
   }
 

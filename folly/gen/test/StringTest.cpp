@@ -40,7 +40,7 @@ TEST(StringGen, EmptySplit) {
   {
     auto input = "";
     auto expected = vec{};
-    EXPECT_EQ(expected, split("", ',') | collect);
+    EXPECT_EQ(expected, split(input, ',') | collect);
   }
 
   // The last delimiter is eaten, just like std::getline

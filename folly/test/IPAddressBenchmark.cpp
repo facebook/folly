@@ -32,6 +32,7 @@ BENCHMARK(ipv4_to_string_inet_ntop, iters) {
   while (iters--) {
     const char* val =
         inet_ntop(AF_INET, &ip, outputString, sizeof(outputString));
+    folly::doNotOptimizeAway(val);
   }
 }
 
@@ -39,6 +40,8 @@ BENCHMARK_RELATIVE(ipv4_to_fully_qualified, iters) {
   IPAddressV4 ip("127.0.0.1");
   while (iters--) {
     string outputString = ip.toFullyQualified();
+    folly::doNotOptimizeAway(outputString);
+    folly::doNotOptimizeAway(outputString.data());
   }
 }
 
@@ -72,19 +75,20 @@ BENCHMARK(ipv6_to_string_inet_ntop, iters) {
   IPAddressV6 ipv6Addr("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
   in6_addr ip = ipv6Addr.toAddr();
   char outputString[INET6_ADDRSTRLEN] = {0};
-  bool checkResult = (iters == 1);
 
   while (iters--) {
     const char* val =
         inet_ntop(AF_INET6, &ip, outputString, sizeof(outputString));
+    folly::doNotOptimizeAway(val);
   }
 }
 
 BENCHMARK_RELATIVE(ipv6_to_fully_qualified, iters) {
   IPAddressV6 ip("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
-  string outputString;
   while (iters--) {
-    outputString = ip.toFullyQualified();
+    string outputString = ip.toFullyQualified();
+    folly::doNotOptimizeAway(outputString);
+    folly::doNotOptimizeAway(outputString.data());
   }
 }
 

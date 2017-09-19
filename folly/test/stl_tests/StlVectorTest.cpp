@@ -194,6 +194,7 @@ THOUGHTS:
 // but it also means we have some parameters that may not be used.
 FOLLY_PUSH_WARNING
 FOLLY_GCC_DISABLE_WARNING("-Wunused-parameter")
+FOLLY_GCC_DISABLE_WARNING("-Wunused-variable")
 
 using namespace std;
 using namespace folly;
@@ -928,6 +929,7 @@ uint64_t ReadTSC() {
     return true;                                                         \
     auto f = test_ ## name <Vector,                                      \
       typename Vector::value_type, typename Vector::allocator_type>;     \
+    (void)f;                                                             \
     return true;                                                         \
   }                                                                      \
   template <class Vector> bool test_I_ ## name ## 3 () {                 \

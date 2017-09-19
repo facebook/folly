@@ -46,8 +46,6 @@ static vector<fbstring> strings =
   | as<vector>();
 
 auto square = [](int x) { return x * x; };
-auto add = [](int a, int b) { return a + b; };
-auto multiply = [](int a, int b) { return a * b; };
 
 BENCHMARK(Sum_Basic_NoGen, iters) {
   int limit = testSize.load();

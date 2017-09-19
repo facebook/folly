@@ -513,7 +513,6 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
       auto head = &buckets->buckets_[idx];
       node = head->load(std::memory_order_relaxed);
       Node* prev = nullptr;
-      auto headnode = node;
       while (node) {
         if (KeyEqual()(key, node->getItem().first)) {
           auto next = node->next_.load(std::memory_order_relaxed);

@@ -74,6 +74,7 @@ TEST(Optional, CoroutineException) {
       ADD_FAILURE();
       co_return x;
     }();
+    (void)r2;
     ADD_FAILURE();
   } catch (/* nolint */ int i) {
     EXPECT_EQ(42, i);

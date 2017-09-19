@@ -1003,7 +1003,6 @@ const size_t kPageSize = 4096;
 // This function will also initialize buf, which caller must free().
 void createProtectedBuf(StringPiece& contents, char** buf) {
   ASSERT_LE(contents.size(), kPageSize);
-  const size_t kSuccess = 0;
   char* pageAlignedBuf = (char*)aligned_malloc(2 * kPageSize, kPageSize);
   if (pageAlignedBuf == nullptr) {
     FAIL();

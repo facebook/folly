@@ -108,6 +108,7 @@ TEST(Bser, PduLength) {
         // complete length available
         auto buf = folly::IOBuf::wrapBuffer(template_blob, 3);
         auto len = folly::bser::decodePduLength(&*buf);
+        (void)len;
         LOG(ERROR) << "managed to return a length, but only had 3 bytes";
       }(),
       std::out_of_range);

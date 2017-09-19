@@ -159,6 +159,7 @@ BENCHMARK(scope_guard_std_function, iters) {
   std::function<void()> fn(doNothing);
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(fn);
+    (void)g;
   }
 }
 
@@ -167,6 +168,7 @@ BENCHMARK(scope_guard_std_function, iters) {
 BENCHMARK(scope_guard_std_function_rvalue, iters) {
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(std::function<void()>(doNothing));
+    (void)g;
   }
 }
 
@@ -175,6 +177,7 @@ BENCHMARK(scope_guard_std_function_rvalue, iters) {
 BENCHMARK(scope_guard_Function_rvalue, iters) {
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(folly::Function<void()>(doNothing));
+    (void)g;
   }
 }
 
@@ -182,6 +185,7 @@ BENCHMARK(scope_guard_Function_rvalue, iters) {
 BENCHMARK(scope_guard_fn_ptr, iters) {
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(doNothing);
+    (void)g;
   }
 }
 
@@ -189,6 +193,7 @@ BENCHMARK(scope_guard_fn_ptr, iters) {
 BENCHMARK(scope_guard_lambda_noop, iters) {
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard([] {});
+    (void)g;
   }
 }
 
@@ -196,6 +201,7 @@ BENCHMARK(scope_guard_lambda_noop, iters) {
 BENCHMARK(scope_guard_lambda_function, iters) {
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard([] { doNothing(); });
+    (void)g;
   }
 }
 
@@ -212,6 +218,7 @@ BENCHMARK(scope_guard_lambda_local_var, iters) {
         ++count;
       }
     });
+    (void)g;
   }
 
   // Check that the value of count is what we expect.

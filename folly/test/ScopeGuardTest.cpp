@@ -48,6 +48,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
     // There is implicit conversion from func pointer
     // double (*)() to function<void()>.
     ScopeGuard g = makeGuard(returnsDouble);
+    (void)g;
   }
 
   vector<int> v;
@@ -57,36 +58,42 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   {
     // binding to member function.
     ScopeGuard g = makeGuard(std::bind(&vector<int>::pop_back, &v));
+    (void)g;
   }
   EXPECT_EQ(0, v.size());
 
   {
     // bind member function with args. v is passed-by-value!
     ScopeGuard g = makeGuard(std::bind(push_back, v, 2));
+    (void)g;
   }
   EXPECT_EQ(0, v.size()); // push_back happened on a copy of v... fail!
 
   // pass in an argument by pointer so to avoid copy.
   {
     ScopeGuard g = makeGuard(std::bind(push_back, &v, 4));
+    (void)g;
   }
   EXPECT_EQ(1, v.size());
 
   {
     // pass in an argument by reference so to avoid copy.
     ScopeGuard g = makeGuard(std::bind(push_back, std::ref(v), 4));
+    (void)g;
   }
   EXPECT_EQ(2, v.size());
 
   // lambda with a reference to v
   {
     ScopeGuard g = makeGuard([&] { v.push_back(5); });
+    (void)g;
   }
   EXPECT_EQ(3, v.size());
 
   // lambda with a copy of v
   {
     ScopeGuard g = makeGuard([v] () mutable { v.push_back(6); });
+    (void)g;
   }
   EXPECT_EQ(3, v.size());
 
@@ -95,6 +102,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   {
     MyFunctor f(&n);
     ScopeGuard g = makeGuard(f);
+    (void)g;
   }
   EXPECT_EQ(1, n);
 
@@ -102,6 +110,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   n = 0;
   {
     ScopeGuard g = makeGuard(MyFunctor(&n));
+    (void)g;
   }
   EXPECT_EQ(1, n);
 
@@ -109,6 +118,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   n = 2;
   {
     auto g = makeGuard(MyFunctor(&n));
+    (void)g;
   }
   EXPECT_EQ(3, n);
 
@@ -116,6 +126,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   n = 10;
   {
     const auto& g = makeGuard(MyFunctor(&n));
+    (void)g;
   }
   EXPECT_EQ(11, n);
 }
@@ -125,6 +136,7 @@ TEST(ScopeGuard, GuardException) {
     ScopeGuard g = makeGuard([&] {
       throw std::runtime_error("destructors should never throw!");
     });
+    (void)g;
   },
   "destructors should never throw!"
   );
@@ -196,6 +208,7 @@ void testFinally(ErrorBehavior error) {
 
   try {
     ScopeGuard guard = makeGuard([&] { cleanupOccurred = true; });
+    (void)guard;
 
     try {
       if (error == ErrorBehavior::HANDLED_ERROR) {

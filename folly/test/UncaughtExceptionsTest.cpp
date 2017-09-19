@@ -109,6 +109,7 @@ struct ThrowInDestructor {
   ~ThrowInDestructor() {
     try {
       InnerThrowInDestructor stackObjectThrowingOnUnwind;
+      (void)stackObjectThrowingOnUnwind;
       Validator validator(
           N - I + 1, "validating in " + folly::to<std::string>(I));
       LOG(INFO) << "throwing in ~ThrowInDestructor " << I;

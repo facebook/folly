@@ -294,7 +294,6 @@ TEST(ConcurrentHashMap, EraseStressTest) {
       int offset = (iters * t / num_threads);
       for (uint i = 0; i < iters / num_threads; i++) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
-        unsigned long val;
         auto res = m.insert(k, k).second;
         if (res) {
           res = m.erase(k);
@@ -357,7 +356,6 @@ TEST(ConcurrentHashMap, IterateStressTest) {
       int offset = (iters * t / num_threads);
       for (uint i = 0; i < iters / num_threads; i++) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
-        unsigned long val;
         auto res = m.insert(k, k).second;
         if (res) {
           res = m.erase(k);

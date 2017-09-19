@@ -123,7 +123,7 @@ std::vector<std::string> LoggerDB::processConfigString(
     LogLevel level;
     try {
       level = stringToLogLevel(level_str);
-    } catch (const std::exception& ex) {
+    } catch (const std::exception&) {
       errors.emplace_back(folly::sformat(
           "invalid log level \"{}\" for category \"{}\"", level_str, category));
       continue;

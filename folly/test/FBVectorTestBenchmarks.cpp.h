@@ -121,7 +121,6 @@ TESTFUN(clause_23_3_6_2_9) {
   FOR_EACH (i, v) {
     EXPECT_EQ(*i, VECTOR::value_type());
   }
-  auto const n2 = random(0U, 10000U);
   FOR_EACH (i, v) {
     EXPECT_EQ(*i, VECTOR::value_type());
   }

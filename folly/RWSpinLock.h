@@ -678,7 +678,7 @@ class RWTicketSpinLockT {
   }
 
   void unlock_shared() {
-    QuarterInt val = __sync_fetch_and_add(&ticket.write, 1);
+    __sync_fetch_and_add(&ticket.write, 1);
   }
 
   class WriteHolder;
