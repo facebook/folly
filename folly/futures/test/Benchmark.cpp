@@ -290,6 +290,44 @@ BENCHMARK_RELATIVE(throwWrappedAndCatchWrappedContended) {
   contend(throwWrappedAndCatchWrappedImpl);
 }
 
+BENCHMARK_DRAW_LINE();
+
+namespace {
+struct Bulky {
+  explicit Bulky(std::string message) : message_(message) {}
+  std::string message() & {
+    return message_;
+  }
+  std::string&& message() && {
+    return std::move(message_);
+  }
+
+ private:
+  std::string message_;
+  std::array<int, 1024> ints_;
+};
+} // anonymous namespace
+
+BENCHMARK(lvalue_get) {
+  BenchmarkSuspender suspender;
+  Optional<Future<Bulky>> future;
+  future = makeFuture(Bulky("Hello"));
+  suspender.dismissing([&] {
+    std::string message = future.value().get().message();
+    doNotOptimizeAway(message);
+  });
+}
+
+BENCHMARK_RELATIVE(rvalue_get) {
+  BenchmarkSuspender suspender;
+  Optional<Future<Bulky>> future;
+  future = makeFuture(Bulky("Hello"));
+  suspender.dismissing([&] {
+    std::string message = std::move(future.value()).get().message();
+    doNotOptimizeAway(message);
+  });
+}
+
 InlineExecutor exe;
 
 template <class T>
