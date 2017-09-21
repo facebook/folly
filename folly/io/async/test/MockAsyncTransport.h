@@ -77,15 +77,15 @@ class MockReadCallback: public AsyncTransportWrapper::ReadCallback {
   GMOCK_METHOD1_(, noexcept, , readDataAvailable, void(size_t));
   GMOCK_METHOD0_(, noexcept, , isBufferMovable, bool());
   GMOCK_METHOD1_(, noexcept, ,
-      readBufferAvailableInternal, void(std::shared_ptr<folly::IOBuf>));
+      readBufferAvailableInternal,
+      void(std::unique_ptr<folly::IOBuf>&));
   GMOCK_METHOD0_(, noexcept, , readEOF, void());
   GMOCK_METHOD1_(, noexcept, , readErr,
                  void(const AsyncSocketException&));
 
   void readBufferAvailable(std::unique_ptr<folly::IOBuf> readBuf)
     noexcept override {
-    readBufferAvailableInternal(
-        folly::to_shared_ptr(std::move(readBuf)));
+    readBufferAvailableInternal(readBuf);
   }
 };
 
