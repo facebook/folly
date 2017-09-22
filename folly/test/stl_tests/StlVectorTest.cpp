@@ -657,9 +657,9 @@ struct Alloc : AllocTracker, Ticker {
   int id;
   explicit Alloc(int i = 8) : a(), id(i) {}
   Alloc(const Alloc& o) : a(o.a), id(o.id) {}
-  Alloc(Alloc&& o) : a(move(o.a)), id(o.id) {}
+  Alloc(Alloc&& o) noexcept : a(move(o.a)), id(o.id) {}
   Alloc& operator=(const Alloc&) = default;
-  Alloc& operator=(Alloc&&) = default;
+  Alloc& operator=(Alloc&&) noexcept = default;
   bool operator==(const Alloc& o) const { return a == o.a && id == o.id; }
   bool operator!=(const Alloc& o) const { return !(*this == o); }
 
@@ -1179,7 +1179,9 @@ static const vector<pair<int, int>> VectorSizes = {
   {  1, -1},
   {  2, -1},
   { 10, -1}, { 10, 1}, { 10, 0},
+#if !FOLLY_SANITIZE_ADDRESS
   {100, -1}, {100, 1},
+#endif
 
   //{   10, -1}, {   10, 0}, {   10, 1}, {   10, 2}, {   10, 10},
   //{  100, -1}, {  100, 0}, {  100, 1}, {  100, 2}, {  100, 10}, {  100, 100},
@@ -2817,10 +2819,18 @@ STL_TEST("relinquish", relinquish, is_destructible, a) {
   ASSERT_EQ(0, a.capacity());
 
   auto alloc = a.get_allocator();
-  for (size_t i = 0; i < sz; ++i)
+  for (size_t i = 0; i < sz; ++i) {
     std::allocator_traits<decltype(alloc)>::destroy(alloc, guts + i);
-  if (guts != nullptr)
-    std::allocator_traits<decltype(alloc)>::deallocate(alloc, guts, cap);
+  }
+  if (guts != nullptr) {
+    if (std::is_same<
+            decltype(alloc),
+            std::allocator<typename decltype(alloc)::value_type>>::value) {
+      free(guts);
+    } else {
+      std::allocator_traits<decltype(alloc)>::deallocate(alloc, guts, cap);
+    }
+  }
 }
 
 STL_TEST("attach", attach, is_destructible, a) {
