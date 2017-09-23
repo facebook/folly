@@ -249,7 +249,7 @@ void SymbolizePrinter::color(SymbolizePrinter::Color color) {
   if ((options_ & COLOR) == 0 && ((options_ & COLOR_IF_TTY) == 0 || !isTty_)) {
     return;
   }
-  if (color < 0 || color >= kColorMap.size()) {
+  if (static_cast<size_t>(color) >= kColorMap.size()) { // catches underflow too
     return;
   }
   doPrint(kColorMap[color]);
