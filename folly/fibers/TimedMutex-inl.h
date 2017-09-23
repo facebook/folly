@@ -64,7 +64,9 @@ TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
       std::lock_guard<folly::SpinLock> lg(lock_);
 
       auto stolen = notifiedFiber_ != &waiter;
-      notifiedFiber_ = nullptr;
+      if (!stolen) {
+        notifiedFiber_ = nullptr;
+      }
       return stolen;
     }();
 

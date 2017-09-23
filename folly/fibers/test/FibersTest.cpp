@@ -2073,6 +2073,43 @@ TEST(FiberManager, VirtualEventBase) {
   EXPECT_TRUE(done2);
 }
 
+TEST(TimedMutex, ThreadsAndFibersDontDeadlock) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  TimedMutex mutex;
+  std::thread testThread([&] {
+    for (int i = 0; i < 100; i++) {
+      mutex.lock();
+      mutex.unlock();
+      {
+        Baton b;
+        b.timed_wait(std::chrono::milliseconds(1));
+      }
+    }
+  });
+
+  for (int numFibers = 0; numFibers < 100; numFibers++) {
+    fm.addTask([&] {
+      for (int i = 0; i < 20; i++) {
+        mutex.lock();
+        {
+          Baton b;
+          b.timed_wait(std::chrono::milliseconds(1));
+        }
+        mutex.unlock();
+        {
+          Baton b;
+          b.timed_wait(std::chrono::milliseconds(1));
+        }
+      }
+    });
+  }
+
+  evb.loop();
+  EXPECT_EQ(0, fm.hasTasks());
+  testThread.join();
+}
+
 TEST(TimedMutex, ThreadFiberDeadlockOrder) {
   folly::EventBase evb;
   auto& fm = getFiberManager(evb);
