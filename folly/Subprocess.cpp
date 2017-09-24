@@ -51,6 +51,14 @@ constexpr int kChildFailure = 126;
 
 namespace folly {
 
+ProcessReturnCode ProcessReturnCode::make(int status) {
+  if (!WIFEXITED(status) && !WIFSIGNALED(status)) {
+    throw std::runtime_error(
+        to<std::string>("Invalid ProcessReturnCode: ", status));
+  }
+  return ProcessReturnCode(status);
+}
+
 ProcessReturnCode::ProcessReturnCode(ProcessReturnCode&& p) noexcept
   : rawStatus_(p.rawStatus_) {
   p.rawStatus_ = ProcessReturnCode::RV_NOT_STARTED;
@@ -68,8 +76,7 @@ ProcessReturnCode::State ProcessReturnCode::state() const {
   if (rawStatus_ == RV_RUNNING) return RUNNING;
   if (WIFEXITED(rawStatus_)) return EXITED;
   if (WIFSIGNALED(rawStatus_)) return KILLED;
-  throw std::runtime_error(to<std::string>(
-      "Invalid ProcessReturnCode: ", rawStatus_));
+  assume_unreachable();
 }
 
 void ProcessReturnCode::enforce(State expected) const {
@@ -427,7 +434,7 @@ void Subprocess::spawnInternal(
   // child has exited and can be immediately waited for.  In all other cases,
   // we have no way of cleaning up the child.
   pid_ = pid;
-  returnCode_ = ProcessReturnCode(RV_RUNNING);
+  returnCode_ = ProcessReturnCode::makeRunning();
 }
 
 int Subprocess::prepareChild(const Options& options,
@@ -562,7 +569,7 @@ ProcessReturnCode Subprocess::poll(struct rusage* ru) {
   if (found != 0) {
     // Though the child process had quit, this call does not close the pipes
     // since its descendants may still be using them.
-    returnCode_ = ProcessReturnCode(status);
+    returnCode_ = ProcessReturnCode::make(status);
     pid_ = -1;
   }
   return returnCode_;
@@ -590,7 +597,7 @@ ProcessReturnCode Subprocess::wait() {
   // Though the child process had quit, this call does not close the pipes
   // since its descendants may still be using them.
   DCHECK_EQ(found, pid_);
-  returnCode_ = ProcessReturnCode(status);
+  returnCode_ = ProcessReturnCode::make(status);
   pid_ = -1;
   return returnCode_;
 }

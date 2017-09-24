@@ -127,7 +127,6 @@ namespace folly {
  */
 class Subprocess;
 class ProcessReturnCode {
-  friend class Subprocess;
  public:
   enum State {
     // Subprocess starts in the constructor, so this state designates only
@@ -135,12 +134,22 @@ class ProcessReturnCode {
     NOT_STARTED,
     RUNNING,
     EXITED,
-    KILLED
+    KILLED,
   };
+
+  static ProcessReturnCode makeNotStarted() {
+    return ProcessReturnCode(RV_NOT_STARTED);
+  }
+
+  static ProcessReturnCode makeRunning() {
+    return ProcessReturnCode(RV_RUNNING);
+  }
+
+  static ProcessReturnCode make(int status);
 
   // Default-initialized for convenience. Subprocess::returnCode() will
   // never produce this value.
-  ProcessReturnCode() : ProcessReturnCode(RV_NOT_STARTED) {}
+  ProcessReturnCode() : rawStatus_(RV_NOT_STARTED) {}
 
   // Trivially copyable
   ProcessReturnCode(const ProcessReturnCode& p) = default;
@@ -813,9 +822,6 @@ class Subprocess {
   std::vector<ChildPipe> takeOwnershipOfPipes();
 
  private:
-  static const int RV_RUNNING = ProcessReturnCode::RV_RUNNING;
-  static const int RV_NOT_STARTED = ProcessReturnCode::RV_NOT_STARTED;
-
   // spawn() sets up a pipe to read errors from the child,
   // then calls spawnInternal() to do the bulk of the work.  Once
   // spawnInternal() returns it reads the error pipe to see if the child
@@ -851,7 +857,7 @@ class Subprocess {
   size_t findByChildFd(const int childFd) const;
 
   pid_t pid_{-1};
-  ProcessReturnCode returnCode_{RV_NOT_STARTED};
+  ProcessReturnCode returnCode_;
 
   /**
    * Represents a pipe between this process, and the child process (or its
