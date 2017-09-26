@@ -111,7 +111,7 @@ processing sequences of values efficiently in C++ akin to C#'s LINQ.
 encoding](http://www.ir.uwaterloo.ca/book/addenda-06-index-compression.html)
 for 32-bit values.
 
-####`IpAddress.h`
+#### `IpAddress.h`
 
 A collection of utilities to deal with IPAddresses, including ipv4 and ipv6.
 
