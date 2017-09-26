@@ -491,6 +491,12 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // not copyable
   Function(const Function&) = delete;
 
+#if __OBJC__
+  // Delete conversion from Objective-C blocks
+  template <class ReturnType, class... Args>
+  Function(ReturnType (^)(Args...)) = delete;
+#endif
+
   /**
    * Move constructor
    */
@@ -569,6 +575,12 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   }
 
   Function& operator=(const Function&) = delete;
+
+#if __OBJC__
+  // Delete conversion from Objective-C blocks
+  template <class ReturnType, class... Args>
+  Function& operator=(ReturnType (^)(Args...)) = delete;
+#endif
 
   /**
    * Move assignment operator
