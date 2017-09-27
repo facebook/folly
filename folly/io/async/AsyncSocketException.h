@@ -40,7 +40,8 @@ class AsyncSocketException : public std::runtime_error {
     SSL_ERROR = 12,
     COULD_NOT_BIND = 13,
     SASL_HANDSHAKE_TIMEOUT = 14,
-    NETWORK_ERROR = 15
+    NETWORK_ERROR = 15,
+    EARLY_DATA_REJECTED = 16,
   };
 
   AsyncSocketException(AsyncSocketExceptionType type,
@@ -100,6 +101,8 @@ class AsyncSocketException : public std::runtime_error {
         return "SASL handshake timeout";
       case NETWORK_ERROR:
         return "Network error";
+      case EARLY_DATA_REJECTED:
+        return "Early data rejected";
       default:
         return "(Invalid exception type)";
     }
