@@ -1067,6 +1067,10 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
     std::atomic<bool> token {false};
   };
 
+  if (this->isReady()) {
+    return std::move(*this);
+  }
+
   std::shared_ptr<Timekeeper> tks;
   if (!tk) {
     tks = folly::detail::getTimekeeperSingleton();

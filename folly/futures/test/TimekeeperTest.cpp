@@ -133,6 +133,14 @@ TEST(Timekeeper, onTimeout) {
   EXPECT_TRUE(flag);
 }
 
+TEST(Timekeeper, onTimeoutComplete) {
+  bool flag = false;
+  makeFuture(42)
+    .onTimeout(zero_ms, [&]{ flag = true; return -1; })
+    .get();
+  EXPECT_FALSE(flag);
+}
+
 TEST(Timekeeper, onTimeoutReturnsFuture) {
   bool flag = false;
   makeFuture(42).delayed(10 * one_ms)
@@ -177,9 +185,11 @@ TEST(Timekeeper, executor) {
     std::atomic<int> count{0};
   };
 
-  auto f = makeFuture();
+  Promise<Unit> p;
   ExecutorTester tester;
-  f.via(&tester).within(one_ms).then([&](){}).wait();
+  auto f = p.getFuture().via(&tester).within(one_ms).then([&](){});
+  p.setValue();
+  f.wait();
   EXPECT_EQ(2, tester.count);
 }
 
