@@ -463,29 +463,6 @@ class SSLContext {
   }
 
   /**
-   * Set preferences for how to treat locks in OpenSSL.  This must be
-   * called before the instantiation of any SSLContext objects, otherwise
-   * the defaults will be used.
-   *
-   * OpenSSL has a lock for each module rather than for each object or
-   * data that needs locking.  Some locks protect only refcounts, and
-   * might be better as spinlocks rather than mutexes.  Other locks
-   * may be totally unnecessary if the objects being protected are not
-   * shared between threads in the application.
-   *
-   * By default, all locks are initialized as mutexes.  OpenSSL's lock usage
-   * may change from version to version and you should know what you are doing
-   * before disabling any locks entirely.
-   *
-   * Example: if you don't share SSL sessions between threads in your
-   * application, you may be able to do this
-   *
-   * setSSLLockTypes({{CRYPTO_LOCK_SSL_SESSION, SSLContext::LOCK_NONE}})
-   */
-  FOLLY_DEPRECATED("Use folly::ssl::setLockTypes")
-  static void setSSLLockTypes(std::map<int, ssl::LockType> lockTypes);
-
-  /**
    * Examine OpenSSL's error stack, and return a string description of the
    * errors.
    *

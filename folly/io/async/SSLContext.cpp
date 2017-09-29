@@ -625,10 +625,6 @@ int SSLContext::passwordCallback(char* password,
   return int(length);
 }
 
-void SSLContext::setSSLLockTypes(std::map<int, LockType> inLockTypes) {
-  folly::ssl::setLockTypes(inLockTypes);
-}
-
 #if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH)
 void SSLContext::enableFalseStart() {
   SSL_CTX_set_mode(ctx_, SSL_MODE_HANDSHAKE_CUTTHROUGH);
