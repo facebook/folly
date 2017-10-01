@@ -95,8 +95,9 @@ inline uint64_t bench(std::string name, int ops, const RepFunc& repFn) {
   return res;
 }
 
+const int ops = 1000000;
+
 inline uint64_t listBench(std::string name, int nthreads, int size) {
-  int ops = 100000;
   auto repFn = [&] {
     SWMRListSet<uint64_t> s;
     auto init = [&] {
@@ -116,7 +117,6 @@ inline uint64_t listBench(std::string name, int nthreads, int size) {
 }
 
 inline uint64_t holderBench(std::string name, int nthreads) {
-  int ops = 100000;
   auto repFn = [&] {
     auto init = [] {};
     auto fn = [&](int tid) {
@@ -130,11 +130,40 @@ inline uint64_t holderBench(std::string name, int nthreads) {
   return bench(name, ops, repFn);
 }
 
+template <size_t M>
+inline uint64_t arrayBench(std::string name, int nthreads) {
+  auto repFn = [&] {
+    auto init = [] {};
+    auto fn = [&](int tid) {
+      for (int j = tid; j < 10 * ops; j += nthreads) {
+        hazptr_array<M> a;
+      }
+    };
+    auto endFn = [] {};
+    return run_once(nthreads, init, fn, endFn);
+  };
+  return bench(name, ops, repFn);
+}
+
+template <size_t M>
+inline uint64_t localBench(std::string name, int nthreads) {
+  auto repFn = [&] {
+    auto init = [] {};
+    auto fn = [&](int tid) {
+      for (int j = tid; j < 10 * ops; j += nthreads) {
+        hazptr_local<10> a;
+      }
+    };
+    auto endFn = [] {};
+    return run_once(nthreads, init, fn, endFn);
+  };
+  return bench(name, ops, repFn);
+}
+
 inline uint64_t retireBench(std::string name, int nthreads) {
   struct Foo : hazptr_obj_base<Foo> {
     int x;
   };
-  int ops = 100000;
   auto repFn = [&] {
     auto init = [] {};
     auto fn = [&](int tid) {
@@ -155,10 +184,26 @@ const int sizes[] = {10, 100};
 inline void benches(std::string name) {
   std::cout << "------------------------------------------- " << name << "\n";
   for (int i : nthr) {
-    std::cout << i << " threads -- construct/destruct 10 hazptr_holder-s"
+    std::cout << i << " threads -- 10x construct/destruct hazptr_holder"
               << std::endl;
     holderBench(name + "              ", i);
     holderBench(name + " - dup        ", i);
+    std::cout << i << " threads -- 10x construct/destruct hazptr_array<10>"
+              << std::endl;
+    arrayBench<10>(name + "              ", i);
+    arrayBench<10>(name + " - dup        ", i);
+    std::cout << i << " threads -- 10x construct/destruct hazptr_array<3>"
+              << std::endl;
+    arrayBench<3>(name + "              ", i);
+    arrayBench<3>(name + " - dup        ", i);
+    std::cout << i << " threads -- 10x construct/destruct hazptr_local<10>"
+              << std::endl;
+    localBench<10>(name + "              ", i);
+    localBench<10>(name + " - dup        ", i);
+    std::cout << i << " threads -- 10x construct/destruct hazptr_local<1>"
+              << std::endl;
+    localBench<1>(name + "              ", i);
+    localBench<1>(name + " - dup        ", i);
     std::cout << i << " threads -- allocate/retire/reclaim object" << std::endl;
     retireBench(name + "              ", i);
     retireBench(name + " - dup        ", i);
@@ -175,6 +220,56 @@ inline void benches(std::string name) {
 } // namespace folly
 
 /*
+-------------------------------------------    amb -    tc
+1 threads -- 10x construct/destruct hazptr_holder
+   amb -    tc                   49 ns     46 ns     44 ns
+   amb -    tc - dup             47 ns     45 ns     44 ns
+1 threads -- 10x construct/destruct hazptr_array<10>
+   amb -    tc                  132 ns    122 ns    117 ns
+   amb -    tc - dup            130 ns    122 ns    117 ns
+1 threads -- 10x construct/destruct hazptr_array<3>
+   amb -    tc                   66 ns     64 ns     63 ns
+   amb -    tc - dup             64 ns     64 ns     63 ns
+1 threads -- 10x construct/destruct hazptr_local<10>
+   amb -    tc                   29 ns     27 ns     27 ns
+   amb -    tc - dup             28 ns     27 ns     27 ns
+1 threads -- 10x construct/destruct hazptr_local<1>
+   amb -    tc                   27 ns     27 ns     27 ns
+   amb -    tc - dup             28 ns     28 ns     27 ns
+1 threads -- allocate/retire/reclaim object
+   amb -    tc                   65 ns     62 ns     60 ns
+   amb -    tc - dup             65 ns     60 ns     59 ns
+1 threads -- 10-item list
+   amb -    tc                   21 ns     21 ns     20 ns
+   amb -    tc - dup             22 ns     21 ns     21 ns
+1 threads -- 100-item list
+   amb -    tc                  229 ns    224 ns    220 ns
+   amb -    tc - dup            223 ns    219 ns    216 ns
+10 threads -- 10x construct/destruct hazptr_holder
+   amb -    tc                    9 ns      8 ns      7 ns
+   amb -    tc - dup              9 ns      8 ns      8 ns
+10 threads -- 10x construct/destruct hazptr_array<10>
+   amb -    tc                   27 ns     23 ns     15 ns
+   amb -    tc - dup             26 ns     20 ns     13 ns
+10 threads -- 10x construct/destruct hazptr_array<3>
+   amb -    tc                   11 ns     11 ns      7 ns
+   amb -    tc - dup             11 ns      9 ns      7 ns
+10 threads -- 10x construct/destruct hazptr_local<10>
+   amb -    tc                    5 ns      3 ns      3 ns
+   amb -    tc - dup              3 ns      3 ns      3 ns
+10 threads -- 10x construct/destruct hazptr_local<1>
+   amb -    tc                    3 ns      3 ns      3 ns
+   amb -    tc - dup              5 ns      4 ns      3 ns
+10 threads -- allocate/retire/reclaim object
+   amb -    tc                   17 ns     15 ns     14 ns
+   amb -    tc - dup             17 ns     15 ns     14 ns
+10 threads -- 10-item list
+   amb -    tc                    4 ns      4 ns      2 ns
+   amb -    tc - dup              4 ns      4 ns      3 ns
+10 threads -- 100-item list
+   amb -    tc                   33 ns     31 ns     24 ns
+   amb -    tc - dup             33 ns     32 ns     30 ns
+----------------------------------------------------------
 ------------------------------------------- no amb - no tc
 1 threads -- construct/destruct 10 hazptr_holder-s
 no amb - no tc                 2518 ns   2461 ns   2431 ns
@@ -252,57 +347,5 @@ no amb -    tc - dup             24 ns     23 ns     21 ns
 10 threads -- 100-item list
 no amb -    tc                  215 ns    208 ns    188 ns
 no amb -    tc - dup            215 ns    209 ns    197 ns
-----------------------------------------------------------
--------------------------------------------    amb -    tc
-1 threads -- construct/destruct 10 hazptr_holder-s
-   amb -    tc                   56 ns     54 ns     54 ns
-   amb -    tc - dup             55 ns     54 ns     53 ns
-1 threads -- allocate/retire/reclaim object
-   amb -    tc                   62 ns     61 ns     61 ns
-   amb -    tc - dup             62 ns     61 ns     61 ns
-1 threads -- 10-item list
-   amb -    tc                   36 ns     35 ns     33 ns
-   amb -    tc - dup             37 ns     35 ns     34 ns
-1 threads -- 100-item list
-   amb -    tc                  262 ns    247 ns    230 ns
-   amb -    tc - dup            249 ns    238 ns    230 ns
-10 threads -- construct/destruct 10 hazptr_holder-s
-   amb -    tc                   14 ns     12 ns     11 ns
-   amb -    tc - dup             12 ns     11 ns     11 ns
-10 threads -- allocate/retire/reclaim object
-   amb -    tc                   18 ns     17 ns     15 ns
-   amb -    tc - dup             18 ns     17 ns     15 ns
-10 threads -- 10-item list
-   amb -    tc                    9 ns      8 ns      8 ns
-   amb -    tc - dup              8 ns      8 ns      7 ns
-10 threads -- 100-item list
-   amb -    tc                   52 ns     42 ns     28 ns
-   amb -    tc - dup             44 ns     37 ns     28 ns
-----------------------------------------------------------
--------------------------------------------     one domain
-1 threads -- construct/destruct 10 hazptr_holder-s
-    one domain                   57 ns     56 ns     55 ns
-    one domain - dup             56 ns     54 ns     53 ns
-1 threads -- allocate/retire/reclaim object
-    one domain                   87 ns     71 ns     64 ns
-    one domain - dup             69 ns     68 ns     68 ns
-1 threads -- 10-item list
-    one domain                   32 ns     30 ns     29 ns
-    one domain - dup             31 ns     30 ns     29 ns
-1 threads -- 100-item list
-    one domain                  269 ns    238 ns    226 ns
-    one domain - dup            237 ns    232 ns    227 ns
-10 threads -- construct/destruct 10 hazptr_holder-s
-    one domain                   16 ns     12 ns     10 ns
-    one domain - dup             11 ns     10 ns     10 ns
-10 threads -- allocate/retire/reclaim object
-    one domain                   19 ns     17 ns     16 ns
-    one domain - dup             19 ns     17 ns     15 ns
-10 threads -- 10-item list
-    one domain                    6 ns      5 ns      5 ns
-    one domain - dup              6 ns      5 ns      5 ns
-10 threads -- 100-item list
-    one domain                   40 ns     39 ns     35 ns
-    one domain - dup             40 ns     39 ns     35 ns
 ----------------------------------------------------------
  */

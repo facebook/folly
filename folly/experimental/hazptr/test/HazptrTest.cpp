@@ -348,3 +348,49 @@ TEST_F(HazptrTest, Move) {
     hptr2.reset();
   }
 }
+
+TEST_F(HazptrTest, Array) {
+  struct Foo : hazptr_obj_base<Foo> {
+    int a;
+  };
+  for (int i = 0; i < 100; ++i) {
+    Foo* x = new Foo;
+    x->a = i;
+    hazptr_array<10> hptr;
+    // Protect object
+    hptr[9].reset(x);
+    // Empty array
+    hazptr_array<10> h;
+    // Move assignment
+    h = std::move(hptr);
+    // Retire object
+    x->retire();
+    // Unprotect object - hptr2 is nonempty
+    h[9].reset();
+  }
+  {
+    // Abnormal case
+    hazptr_array<HAZPTR_TC_SIZE + 1> h;
+  }
+}
+
+TEST_F(HazptrTest, Local) {
+  struct Foo : hazptr_obj_base<Foo> {
+    int a;
+  };
+  for (int i = 0; i < 100; ++i) {
+    Foo* x = new Foo;
+    x->a = i;
+    hazptr_local<10> hptr;
+    // Protect object
+    hptr[9].reset(x);
+    // Retire object
+    x->retire();
+    // Unprotect object - hptr2 is nonempty
+    hptr[9].reset();
+  }
+  {
+    // Abnormal case
+    hazptr_local<HAZPTR_TC_SIZE + 1> h;
+  }
+}

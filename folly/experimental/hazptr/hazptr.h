@@ -34,6 +34,15 @@ class hazptr_obj;
 template <typename T, typename Deleter>
 class hazptr_obj_base;
 
+/** hazptr_local: Optimized template for bulk construction and destruction of
+ *  hazard pointers */
+template <size_t M>
+class hazptr_array;
+
+/** hazptr_local: Optimized template for locally-used hazard pointers */
+template <size_t M>
+class hazptr_local;
+
 /** hazptr_domain: Class of hazard pointer domains. Each domain manages a set
  *  of hazard pointers and a set of retired objects. */
 class hazptr_domain {
@@ -100,12 +109,17 @@ class hazptr_obj_base : public hazptr_obj {
 /** hazptr_holder: Class for automatic acquisition and release of
  *  hazard pointers, and interface for hazard pointer operations. */
 class hazptr_holder {
+  template <size_t M>
+  friend class hazptr_array;
+  template <size_t M>
+  friend class hazptr_local;
+
  public:
   /* Constructor automatically acquires a hazard pointer. */
   explicit hazptr_holder(hazptr_domain& domain = default_hazptr_domain());
   /* Construct an empty hazptr_holder. */
   // Note: This diverges from the proposal in P0233R4
-  explicit hazptr_holder(std::nullptr_t);
+  explicit hazptr_holder(std::nullptr_t) noexcept;
 
   /* Destructor automatically clears and releases the owned hazard pointer. */
   ~hazptr_holder();
@@ -153,6 +167,69 @@ class hazptr_holder {
 };
 
 void swap(hazptr_holder&, hazptr_holder&) noexcept;
+
+using aligned_hazptr_holder = typename std::
+    aligned_storage<sizeof(hazptr_holder), alignof(hazptr_holder)>::type;
+
+/**
+ *  hazptr_array: Optimized for bulk construction and destruction of
+ *  hazptr_holder-s.
+ *
+ *  WARNING: Do not move from or to individual hazptr_holder-s.
+ *  Only move the whole hazptr_array.
+ */
+template <size_t M = 1>
+class hazptr_array {
+  static_assert(M > 0, "M must be a positive integer.");
+
+ public:
+  hazptr_array();
+  explicit hazptr_array(std::nullptr_t) noexcept;
+
+  hazptr_array(const hazptr_array&) = delete;
+  hazptr_array& operator=(const hazptr_array&) = delete;
+  hazptr_array(hazptr_array&& other) noexcept;
+  hazptr_array& operator=(hazptr_array&& other) noexcept;
+
+  ~hazptr_array();
+
+  hazptr_holder& operator[](size_t i) noexcept;
+
+ private:
+  aligned_hazptr_holder raw_[M];
+  bool empty_{false};
+};
+
+/**
+ *  hazptr_local: Optimized for construction and destruction of
+ *  one or more hazptr_holder-s with local scope.
+ *
+ *  WARNING 1: Do not move from or to individual hazptr_holder-s.
+ *
+ *  WARNING 2: There can only be one hazptr_local active for the same
+ *  thread at any time. This is not tracked and checked by the
+ *  implementation because it would negate the performance gains of
+ *  this class.
+ */
+template <size_t M = 1>
+class hazptr_local {
+  static_assert(M > 0, "M must be a positive integer.");
+
+ public:
+  hazptr_local();
+  hazptr_local(const hazptr_local&) = delete;
+  hazptr_local& operator=(const hazptr_local&) = delete;
+  hazptr_local(hazptr_local&&) = delete;
+  hazptr_local& operator=(hazptr_local&&) = delete;
+
+  ~hazptr_local();
+
+  hazptr_holder& operator[](size_t i) noexcept;
+
+ private:
+  aligned_hazptr_holder raw_[M];
+  bool need_destruct_{false};
+};
 
 } // namespace hazptr
 } // namespace folly
