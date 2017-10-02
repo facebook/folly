@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Merge.h>
+#include <folly/algorithm/Merge.h>
 
 #include <map>
 #include <vector>
