@@ -1972,7 +1972,7 @@ STL_TEST("23.2.1 Table 99.4", customAllocator, is_destructible, m) {
   ASSERT_TRUE(u.get_allocator() == m);
 
   if (false) {
-    Vector(m);
+    Vector t(m);
   }
 }
 
