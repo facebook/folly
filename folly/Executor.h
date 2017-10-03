@@ -81,8 +81,7 @@ class Executor {
   };
 
   /// Returns a keep-alive token which guarantees that Executor will keep
-  /// processing tasks until the token is released. keep-alive token can only
-  /// be destroyed from within the task, scheduled to be run on an executor.
+  /// processing tasks until the token is released.
   ///
   /// If executor does not support keep-alive functionality - dummy token will
   /// be returned.

@@ -604,8 +604,6 @@ class EventBase : private boost::noncopyable,
 
   /// Implements the DrivableExecutor interface
   void drive() override {
-    // We can't use loopKeepAlive() here since LoopKeepAlive token can only be
-    // released inside a loop.
     ++loopKeepAliveCount_;
     SCOPE_EXIT {
       --loopKeepAliveCount_;
@@ -615,8 +613,7 @@ class EventBase : private boost::noncopyable,
 
   /// Returns you a handle which make loop() behave like loopForever() until
   /// destroyed. loop() will return to its original behavior only when all
-  /// loop keep-alives are released. Loop holder is safe to release only from
-  /// EventBase thread.
+  /// loop keep-alives are released.
   KeepAlive getKeepAliveToken() override {
     if (inRunningEventBaseThread()) {
       loopKeepAliveCount_++;
@@ -653,8 +650,11 @@ class EventBase : private boost::noncopyable,
 
  protected:
   void keepAliveRelease() override {
-    dcheckIsInEventBaseThread();
-    loopKeepAliveCount_--;
+    if (inRunningEventBaseThread()) {
+      loopKeepAliveCount_--;
+    } else {
+      add([=] { loopKeepAliveCount_--; });
+    }
   }
 
  private:
