@@ -427,7 +427,7 @@ FOLLY_ALWAYS_INLINE hazptr_array<M>::~hazptr_array() {
     if (LIKELY(ptc != nullptr)) {
       auto& tc = *ptc;
       auto count = tc.count();
-      if (count + M <= HAZPTR_TC_SIZE) {
+      if ((M <= HAZPTR_TC_SIZE) && (count + M <= HAZPTR_TC_SIZE)) {
         for (size_t i = 0; i < M; ++i) {
           tc[count + i].hprec_ = h[i].hazptr_;
           DEBUG_PRINT(i << " " << &h[i]);
@@ -455,6 +455,8 @@ FOLLY_ALWAYS_INLINE hazptr_array<M>& hazptr_array<M>::operator=(
     h[i] = std::move(other[i]);
     DEBUG_PRINT(i << " " << &h[i] << " " << &other[i]);
   }
+  empty_ = other.empty_;
+  other.empty_ = true;
   return *this;
 }
 

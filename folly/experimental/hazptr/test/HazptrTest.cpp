@@ -360,7 +360,7 @@ TEST_F(HazptrTest, Array) {
     // Protect object
     hptr[9].reset(x);
     // Empty array
-    hazptr_array<10> h;
+    hazptr_array<10> h(nullptr);
     // Move assignment
     h = std::move(hptr);
     // Retire object
