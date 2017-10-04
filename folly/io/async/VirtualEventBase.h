@@ -118,7 +118,6 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
 
   /**
    * Returns you a handle which prevents VirtualEventBase from being destroyed.
-   * KeepAlive handle can be released from EventBase loop only.
    */
   KeepAlive getKeepAliveToken() override {
     DCHECK(loopKeepAliveCount_ + loopKeepAliveCountAtomic_.load() > 0);
@@ -137,7 +136,9 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
 
  protected:
   void keepAliveRelease() override {
-    getEventBase().dcheckIsInEventBaseThread();
+    if (!getEventBase().inRunningEventBaseThread()) {
+      return getEventBase().add([=] { keepAliveRelease(); });
+    }
     if (loopKeepAliveCountAtomic_.load()) {
       loopKeepAliveCount_ += loopKeepAliveCountAtomic_.exchange(0);
     }
