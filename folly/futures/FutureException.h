@@ -19,14 +19,16 @@
 #include <stdexcept>
 #include <string>
 
+#include <folly/CPortability.h>
+
 namespace folly {
 
-class FutureException : public std::logic_error {
+class FOLLY_EXPORT FutureException : public std::logic_error {
  public:
   using std::logic_error::logic_error;
 };
 
-class BrokenPromise : public FutureException {
+class FOLLY_EXPORT BrokenPromise : public FutureException {
  public:
   explicit BrokenPromise(const std::string& type)
       : FutureException("Broken promise for type name `" + type + '`') {}
@@ -34,54 +36,54 @@ class BrokenPromise : public FutureException {
   explicit BrokenPromise(const char* type) : BrokenPromise(std::string(type)) {}
 };
 
-class NoState : public FutureException {
+class FOLLY_EXPORT NoState : public FutureException {
  public:
   NoState() : FutureException("No state") {}
 };
 
 [[noreturn]] void throwNoState();
 
-class PromiseAlreadySatisfied : public FutureException {
+class FOLLY_EXPORT PromiseAlreadySatisfied : public FutureException {
  public:
   PromiseAlreadySatisfied() : FutureException("Promise already satisfied") {}
 };
 
 [[noreturn]] void throwPromiseAlreadySatisfied();
 
-class FutureNotReady : public FutureException {
+class FOLLY_EXPORT FutureNotReady : public FutureException {
  public:
   FutureNotReady() : FutureException("Future not ready") {}
 };
 
 [[noreturn]] void throwFutureNotReady();
 
-class FutureAlreadyRetrieved : public FutureException {
+class FOLLY_EXPORT FutureAlreadyRetrieved : public FutureException {
  public:
   FutureAlreadyRetrieved() : FutureException("Future already retrieved") {}
 };
 
 [[noreturn]] void throwFutureAlreadyRetrieved();
 
-class FutureCancellation : public FutureException {
+class FOLLY_EXPORT FutureCancellation : public FutureException {
  public:
   FutureCancellation() : FutureException("Future was cancelled") {}
 };
 
-class TimedOut : public FutureException {
+class FOLLY_EXPORT TimedOut : public FutureException {
  public:
   TimedOut() : FutureException("Timed out") {}
 };
 
 [[noreturn]] void throwTimedOut();
 
-class PredicateDoesNotObtain : public FutureException {
+class FOLLY_EXPORT PredicateDoesNotObtain : public FutureException {
  public:
   PredicateDoesNotObtain() : FutureException("Predicate does not obtain") {}
 };
 
 [[noreturn]] void throwPredicateDoesNotObtain();
 
-struct NoFutureInSplitter : FutureException {
+struct FOLLY_EXPORT NoFutureInSplitter : FutureException {
   NoFutureInSplitter() : FutureException("No Future in this FutureSplitter") {}
 };
 
