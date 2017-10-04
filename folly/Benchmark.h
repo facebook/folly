@@ -55,6 +55,19 @@ namespace detail {
 
 using TimeIterPair =
     std::pair<std::chrono::high_resolution_clock::duration, unsigned int>;
+using BenchmarkFun = std::function<detail::TimeIterPair(unsigned int)>;
+
+struct BenchmarkRegistration {
+  std::string file;
+  std::string name;
+  BenchmarkFun func;
+};
+
+struct BenchmarkResult {
+  std::string file;
+  std::string name;
+  double timeInNs;
+};
 
 /**
  * Adds a benchmark wrapped in a std::function. Only used
@@ -279,6 +292,20 @@ auto makeUnpredictable(T& datum) -> typename std::enable_if<
 }
 
 #endif
+
+struct dynamic;
+
+void benchmarkResultsToDynamic(
+    const std::vector<detail::BenchmarkResult>& data,
+    dynamic&);
+
+void benchmarkResultsFromDynamic(
+    const dynamic&,
+    std::vector<detail::BenchmarkResult>&);
+
+void printResultComparison(
+    const std::vector<detail::BenchmarkResult>& base,
+    const std::vector<detail::BenchmarkResult>& test);
 
 } // namespace folly
 

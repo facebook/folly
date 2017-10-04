@@ -23,12 +23,14 @@
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <utility>
 #include <vector>
 
 #include <boost/regex.hpp>
 
 #include <folly/Foreach.h>
+#include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/json.h>
 
@@ -36,6 +38,7 @@ using namespace std;
 
 DEFINE_bool(benchmark, false, "Run benchmarks.");
 DEFINE_bool(json, false, "Output in JSON format.");
+DEFINE_bool(json_verbose, false, "Output in verbose JSON format.");
 
 DEFINE_string(
     bm_regex,
@@ -68,9 +71,8 @@ std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
 
 typedef function<detail::TimeIterPair(unsigned int)> BenchmarkFun;
 
-
-vector<tuple<string, string, BenchmarkFun>>& benchmarks() {
-  static vector<tuple<string, string, BenchmarkFun>> _benchmarks;
+vector<detail::BenchmarkRegistration>& benchmarks() {
+  static vector<detail::BenchmarkRegistration> _benchmarks;
   return _benchmarks;
 }
 
@@ -89,12 +91,11 @@ BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE) {
 size_t getGlobalBenchmarkBaselineIndex() {
   const char *global = FB_STRINGIZE_X2(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE);
   auto it = std::find_if(
-    benchmarks().begin(),
-    benchmarks().end(),
-    [global](const tuple<string, string, BenchmarkFun> &v) {
-      return get<1>(v) == global;
-    }
-  );
+      benchmarks().begin(),
+      benchmarks().end(),
+      [global](const detail::BenchmarkRegistration& v) {
+        return v.name == global;
+      });
   CHECK(it != benchmarks().end());
   return size_t(std::distance(benchmarks().begin(), it));
 }
@@ -104,7 +105,7 @@ size_t getGlobalBenchmarkBaselineIndex() {
 
 void detail::addBenchmarkImpl(const char* file, const char* name,
                               BenchmarkFun fun) {
-  benchmarks().emplace_back(file, name, std::move(fun));
+  benchmarks().push_back({file, name, std::move(fun)});
 }
 
 /**
@@ -243,14 +244,14 @@ static string metricReadable(double n, unsigned int decimals) {
 }
 
 static void printBenchmarkResultsAsTable(
-  const vector<tuple<string, string, double> >& data) {
+    const vector<detail::BenchmarkResult>& data) {
   // Width available
   static const unsigned int columns = 76;
 
   // Compute the longest benchmark name
   size_t longestName = 0;
-  FOR_EACH_RANGE (i, 1, benchmarks().size()) {
-    longestName = max(longestName, get<1>(benchmarks()[i]).size());
+  for (auto& bm : benchmarks()) {
+    longestName = max(longestName, bm.name.size());
   }
 
   // Print a horizontal rule
@@ -270,14 +271,14 @@ static void printBenchmarkResultsAsTable(
   string lastFile;
 
   for (auto& datum : data) {
-    auto file = get<0>(datum);
+    auto file = datum.file;
     if (file != lastFile) {
       // New file starting
       header(file);
       lastFile = file;
     }
 
-    string s = get<1>(datum);
+    string s = datum.name;
     if (s == "-") {
       separator('-');
       continue;
@@ -287,11 +288,11 @@ static void printBenchmarkResultsAsTable(
       s.erase(0, 1);
       useBaseline = true;
     } else {
-      baselineNsPerIter = get<2>(datum);
+      baselineNsPerIter = datum.timeInNs;
       useBaseline = false;
     }
     s.resize(columns - 29, ' ');
-    auto nsPerIter = get<2>(datum);
+    auto nsPerIter = datum.timeInNs;
     auto secPerIter = nsPerIter / 1E9;
     auto itersPerSec = (secPerIter == 0)
                            ? std::numeric_limits<double>::infinity()
@@ -316,29 +317,136 @@ static void printBenchmarkResultsAsTable(
 }
 
 static void printBenchmarkResultsAsJson(
-  const vector<tuple<string, string, double> >& data) {
+    const vector<detail::BenchmarkResult>& data) {
   dynamic d = dynamic::object;
   for (auto& datum: data) {
-    d[std::get<1>(datum)] = std::get<2>(datum) * 1000.;
+    d[datum.name] = datum.timeInNs * 1000.;
   }
 
   printf("%s\n", toPrettyJson(d).c_str());
 }
 
-static void printBenchmarkResults(
-  const vector<tuple<string, string, double> >& data) {
+static void printBenchmarkResultsAsVerboseJson(
+    const vector<detail::BenchmarkResult>& data) {
+  dynamic d;
+  benchmarkResultsToDynamic(data, d);
+  printf("%s\n", toPrettyJson(d).c_str());
+}
 
-  if (FLAGS_json) {
+static void printBenchmarkResults(const vector<detail::BenchmarkResult>& data) {
+  if (FLAGS_json_verbose) {
+    printBenchmarkResultsAsVerboseJson(data);
+  } else if (FLAGS_json) {
     printBenchmarkResultsAsJson(data);
   } else {
     printBenchmarkResultsAsTable(data);
   }
 }
 
+void benchmarkResultsToDynamic(
+    const vector<detail::BenchmarkResult>& data,
+    dynamic& out) {
+  out = dynamic::array;
+  for (auto& datum : data) {
+    out.push_back(dynamic::array(datum.file, datum.name, datum.timeInNs));
+  }
+}
+
+void benchmarkResultsFromDynamic(
+    const dynamic& d,
+    vector<detail::BenchmarkResult>& results) {
+  for (auto& datum : d) {
+    results.push_back(
+        {datum[0].asString(), datum[1].asString(), datum[2].asDouble()});
+  }
+}
+
+static pair<StringPiece, StringPiece> resultKey(
+    const detail::BenchmarkResult& result) {
+  return pair<StringPiece, StringPiece>(result.file, result.name);
+}
+
+void printResultComparison(
+    const vector<detail::BenchmarkResult>& base,
+    const vector<detail::BenchmarkResult>& test) {
+  map<pair<StringPiece, StringPiece>, double> baselines;
+
+  for (auto& baseResult : base) {
+    baselines[resultKey(baseResult)] = baseResult.timeInNs;
+  }
+  //
+  // Width available
+  static const unsigned int columns = 76;
+
+  // Compute the longest benchmark name
+  size_t longestName = 0;
+  for (auto& datum : test) {
+    longestName = max(longestName, datum.name.size());
+  }
+
+  // Print a horizontal rule
+  auto separator = [&](char pad) { puts(string(columns, pad).c_str()); };
+
+  // Print header for a file
+  auto header = [&](const string& file) {
+    separator('=');
+    printf("%-*srelative  time/iter  iters/s\n", columns - 28, file.c_str());
+    separator('=');
+  };
+
+  string lastFile;
+
+  for (auto& datum : test) {
+    folly::Optional<double> baseline =
+        folly::get_optional(baselines, resultKey(datum));
+    auto file = datum.file;
+    if (file != lastFile) {
+      // New file starting
+      header(file);
+      lastFile = file;
+    }
+
+    string s = datum.name;
+    if (s == "-") {
+      separator('-');
+      continue;
+    }
+    if (s[0] == '%') {
+      s.erase(0, 1);
+    }
+    s.resize(columns - 29, ' ');
+    auto nsPerIter = datum.timeInNs;
+    auto secPerIter = nsPerIter / 1E9;
+    auto itersPerSec = (secPerIter == 0)
+        ? std::numeric_limits<double>::infinity()
+        : (1 / secPerIter);
+    if (!baseline) {
+      // Print without baseline
+      printf(
+          "%*s           %9s  %7s\n",
+          static_cast<int>(s.size()),
+          s.c_str(),
+          readableTime(secPerIter, 2).c_str(),
+          metricReadable(itersPerSec, 2).c_str());
+    } else {
+      // Print with baseline
+      auto rel = *baseline / nsPerIter * 100.0;
+      printf(
+          "%*s %7.2f%%  %9s  %7s\n",
+          static_cast<int>(s.size()),
+          s.c_str(),
+          rel,
+          readableTime(secPerIter, 2).c_str(),
+          metricReadable(itersPerSec, 2).c_str());
+    }
+  }
+  separator('=');
+}
+
 void runBenchmarks() {
   CHECK(!benchmarks().empty());
 
-  vector<tuple<string, string, double>> results;
+  vector<detail::BenchmarkResult> results;
   results.reserve(benchmarks().size() - 1);
 
   std::unique_ptr<boost::regex> bmRegex;
@@ -351,21 +459,20 @@ void runBenchmarks() {
   size_t baselineIndex = getGlobalBenchmarkBaselineIndex();
 
   auto const globalBaseline =
-      runBenchmarkGetNSPerIteration(get<2>(benchmarks()[baselineIndex]), 0);
+      runBenchmarkGetNSPerIteration(benchmarks()[baselineIndex].func, 0);
   FOR_EACH_RANGE (i, 0, benchmarks().size()) {
     if (i == baselineIndex) {
       continue;
     }
     double elapsed = 0.0;
-    if (get<1>(benchmarks()[i]) != "-") { // skip separators
-      if (bmRegex && !boost::regex_search(get<1>(benchmarks()[i]), *bmRegex)) {
+    auto& bm = benchmarks()[i];
+    if (bm.name != "-") { // skip separators
+      if (bmRegex && !boost::regex_search(bm.name, *bmRegex)) {
         continue;
       }
-      elapsed = runBenchmarkGetNSPerIteration(get<2>(benchmarks()[i]),
-                                              globalBaseline);
+      elapsed = runBenchmarkGetNSPerIteration(bm.func, globalBaseline);
     }
-    results.emplace_back(get<0>(benchmarks()[i]),
-                         get<1>(benchmarks()[i]), elapsed);
+    results.push_back({bm.file, bm.name, elapsed});
   }
 
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
