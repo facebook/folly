@@ -615,11 +615,7 @@ class EventBase : private boost::noncopyable,
   /// destroyed. loop() will return to its original behavior only when all
   /// loop keep-alives are released.
   KeepAlive getKeepAliveToken() override {
-    if (inRunningEventBaseThread()) {
-      loopKeepAliveCount_++;
-    } else {
-      loopKeepAliveCountAtomic_.fetch_add(1, std::memory_order_relaxed);
-    }
+    keepAliveAcquire();
     return makeKeepAlive();
   }
 
@@ -649,6 +645,14 @@ class EventBase : private boost::noncopyable,
   folly::VirtualEventBase& getVirtualEventBase();
 
  protected:
+  void keepAliveAcquire() override {
+    if (inRunningEventBaseThread()) {
+      loopKeepAliveCount_++;
+    } else {
+      loopKeepAliveCountAtomic_.fetch_add(1, std::memory_order_relaxed);
+    }
+  }
+
   void keepAliveRelease() override {
     if (inRunningEventBaseThread()) {
       loopKeepAliveCount_--;

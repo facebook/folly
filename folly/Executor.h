@@ -90,6 +90,7 @@ class Executor {
   }
 
  protected:
+  virtual void keepAliveAcquire();
   virtual void keepAliveRelease();
 
   KeepAlive makeKeepAlive() {
