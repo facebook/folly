@@ -140,8 +140,8 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
   }
 
   void keepAliveRelease() override {
-    if (!getEventBase().inRunningEventBaseThread()) {
-      return getEventBase().add([=] { keepAliveRelease(); });
+    if (!inRunningEventBaseThread()) {
+      return add([=] { keepAliveRelease(); });
     }
     if (loopKeepAliveCountAtomic_.load()) {
       loopKeepAliveCount_ += loopKeepAliveCountAtomic_.exchange(0);

@@ -654,11 +654,10 @@ class EventBase : private boost::noncopyable,
   }
 
   void keepAliveRelease() override {
-    if (inRunningEventBaseThread()) {
-      loopKeepAliveCount_--;
-    } else {
-      add([=] { loopKeepAliveCount_--; });
+    if (!inRunningEventBaseThread()) {
+      return add([=] { keepAliveRelease(); });
     }
+    loopKeepAliveCount_--;
   }
 
  private:
