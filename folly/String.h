@@ -211,12 +211,15 @@ std::string& stringVAppendf(std::string* out, const char* format, va_list ap);
  * C++, use cEscape instead.  This function is for display purposes
  * only.
  */
-template <class String1, class String2>
-void backslashify(const String1& input, String2& output, bool hex_style=false);
+template <class OutputString>
+void backslashify(
+    folly::StringPiece input,
+    OutputString& output,
+    bool hex_style = false);
 
-template <class String>
-String backslashify(const String& input, bool hex_style=false) {
-  String output;
+template <class OutputString = std::string>
+OutputString backslashify(StringPiece input, bool hex_style = false) {
+  OutputString output;
   backslashify(input, output, hex_style);
   return output;
 }

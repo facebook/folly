@@ -1047,6 +1047,10 @@ TEST(String, backslashify) {
   EXPECT_EQ("abc\\r", backslashify(string("abc\r")));
   EXPECT_EQ("abc\\x0d", backslashify(string("abc\r"), true));
   EXPECT_EQ("\\0\\0", backslashify(string(2, '\0')));
+
+  StringPiece input1 = "abc\r";
+  std::string output1 = backslashify(input1);
+  EXPECT_EQ("abc\\r", output1);
 }
 
 TEST(String, humanify) {

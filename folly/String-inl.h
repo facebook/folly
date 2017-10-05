@@ -491,8 +491,11 @@ void join(const Delim& delimiter,
     output);
 }
 
-template <class String1, class String2>
-void backslashify(const String1& input, String2& output, bool hex_style) {
+template <class OutputString>
+void backslashify(
+    folly::StringPiece input,
+    OutputString& output,
+    bool hex_style) {
   static const char hexValues[] = "0123456789abcdef";
   output.clear();
   output.reserve(3 * input.size());
