@@ -59,6 +59,7 @@ nobase_follyinclude_HEADERS = \
 	concurrency/CacheLocality.h \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
+	concurrency/GlobalThreadPoolList.h \
 	concurrency/detail/ConcurrentHashMap-detail.h \
 	ConstexprMath.h \
 	detail/AtomicHashUtils.h \
@@ -241,7 +242,6 @@ nobase_follyinclude_HEADERS = \
 	gen/ParallelMap-inl.h \
 	gen/String.h \
 	gen/String-inl.h \
-	GlobalThreadPoolList.h \
 	GroupVarint.h \
 	Hash.h \
 	IPAddress.h \
@@ -489,6 +489,7 @@ libfolly_la_SOURCES = \
 	Checksum.cpp \
 	ClockGettimeWrappers.cpp \
 	concurrency/CacheLocality.cpp \
+	concurrency/GlobalThreadPoolList.cpp \
 	detail/Futex.cpp \
 	detail/IPAddress.cpp \
 	detail/StaticSingletonManager.cpp \
@@ -515,7 +516,6 @@ libfolly_la_SOURCES = \
 	executors/ThreadedExecutor.cpp \
 	experimental/hazptr/hazptr.cpp \
 	experimental/hazptr/memory_resource.cpp \
-	GlobalThreadPoolList.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
 	hash/SpookyHashV1.cpp \
