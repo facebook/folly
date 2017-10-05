@@ -42,62 +42,45 @@
 namespace folly {
 
 template <class T>
-class Future {
+class Future;
+
+template <class T>
+class SemiFuture {
  public:
   typedef T value_type;
 
-  static Future<T> makeEmpty(); // equivalent to moved-from
+  static SemiFuture<T> makeEmpty(); // equivalent to moved-from
 
   // not copyable
-  Future(Future const&) = delete;
-  Future& operator=(Future const&) = delete;
+  SemiFuture(SemiFuture const&) = delete;
+  SemiFuture& operator=(SemiFuture const&) = delete;
 
   // movable
-  Future(Future&&) noexcept;
-  Future& operator=(Future&&) noexcept;
+  SemiFuture(SemiFuture&&) noexcept;
+  SemiFuture& operator=(SemiFuture&&) noexcept;
 
-  // converting move
-  template <
-      class T2,
-      typename std::enable_if<
-          !std::is_same<T, typename std::decay<T2>::type>::value &&
-              std::is_constructible<T, T2&&>::value &&
-              std::is_convertible<T2&&, T>::value,
-          int>::type = 0>
-  /* implicit */ Future(Future<T2>&&);
-  template <
-      class T2,
-      typename std::enable_if<
-          !std::is_same<T, typename std::decay<T2>::type>::value &&
-              std::is_constructible<T, T2&&>::value &&
-              !std::is_convertible<T2&&, T>::value,
-          int>::type = 0>
-  explicit Future(Future<T2>&&);
-  template <
-      class T2,
-      typename std::enable_if<
-          !std::is_same<T, typename std::decay<T2>::type>::value &&
-              std::is_constructible<T, T2&&>::value,
-          int>::type = 0>
-  Future& operator=(Future<T2>&&);
+  // safe move-constructabilty from Future
+  /* implicit */ SemiFuture(Future<T>&&) noexcept;
+  SemiFuture& operator=(Future<T>&&) noexcept;
 
   /// Construct a Future from a value (perfect forwarding)
-  template <class T2 = T, typename =
-            typename std::enable_if<
-              !isFuture<typename std::decay<T2>::type>::value>::type>
-  /* implicit */ Future(T2&& val);
+  template <
+      class T2 = T,
+      typename = typename std::enable_if<
+          !isFuture<typename std::decay<T2>::type>::value>::type>
+  /* implicit */ SemiFuture(T2&& val);
 
   template <class T2 = T>
-  /* implicit */ Future(
+  /* implicit */ SemiFuture(
       typename std::enable_if<std::is_same<Unit, T2>::value>::type* = nullptr);
 
   template <
       class... Args,
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
-  explicit Future(in_place_t, Args&&... args);
+  explicit SemiFuture(in_place_t, Args&&... args);
 
-  ~Future();
+  ~SemiFuture();
 
   /** Return the reference to result. Should not be called if !isReady().
     Will rethrow the exception if an exception has been
@@ -151,11 +134,6 @@ class Future {
   /** A reference to the Try of the value */
   Try<T>& getTry();
 
-  /// Call e->drive() repeatedly until the future is fulfilled. Examples
-  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
-  /// reference to the Try of the value.
-  Try<T>& getTryVia(DrivableExecutor* e);
-
   /// If the promise has been fulfilled, return an Optional with the Try<T>.
   /// Otherwise return an empty Optional.
   /// Note that this moves the Try<T> out.
@@ -169,6 +147,158 @@ class Future {
   /// value (moved out), or throws the exception (which might be a TimedOut
   /// exception).
   T get(Duration dur);
+
+  /// Block until this Future is complete. Returns a reference to this Future.
+  SemiFuture<T>& wait() &;
+
+  /// Overload of wait() for rvalue Futures
+  SemiFuture<T>&& wait() &&;
+
+  /// Block until this Future is complete or until the given Duration passes.
+  /// Returns a reference to this Future
+  SemiFuture<T>& wait(Duration) &;
+
+  /// Overload of wait(Duration) for rvalue Futures
+  SemiFuture<T>&& wait(Duration) &&;
+
+  /// This is not the method you're looking for.
+  ///
+  /// This needs to be public because it's used by make* and when*, and it's
+  /// not worth listing all those and their fancy template signatures as
+  /// friends. But it's not for public consumption.
+  template <class F>
+  void setCallback_(F&& func);
+
+  bool isActive() {
+    return core_->isActive();
+  }
+
+  template <class E>
+  void raise(E&& exception) {
+    raise(make_exception_wrapper<typename std::remove_reference<E>::type>(
+        std::forward<E>(exception)));
+  }
+
+  /// Raise an interrupt. If the promise holder has an interrupt
+  /// handler it will be called and potentially stop asynchronous work from
+  /// being done. This is advisory only - a promise holder may not set an
+  /// interrupt handler, or may do anything including ignore. But, if you know
+  /// your future supports this the most likely result is stopping or
+  /// preventing the asynchronous operation (if in time), and the promise
+  /// holder setting an exception on the future. (That may happen
+  /// asynchronously, of course.)
+  void raise(exception_wrapper interrupt);
+
+  void cancel() {
+    raise(FutureCancellation());
+  }
+
+ protected:
+  typedef futures::detail::Core<T>* corePtr;
+
+  // shared core state object
+  corePtr core_;
+
+  explicit SemiFuture(corePtr obj) : core_(obj) {}
+
+  explicit SemiFuture(futures::detail::EmptyConstruct) noexcept;
+
+  void detach();
+
+  void throwIfInvalid() const;
+
+  friend class Promise<T>;
+  template <class>
+  friend class SemiFuture;
+
+  template <class T2>
+  friend SemiFuture<T2> makeSemiFuture(Try<T2>&&);
+
+  Executor* getExecutor() {
+    return core_->getExecutor();
+  }
+
+  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
+    core_->setExecutor(x, priority);
+  }
+
+  // Variant: returns a value
+  // e.g. f.then([](Try<T> t){ return t.value(); });
+  template <typename F, typename R, bool isTry, typename... Args>
+  typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
+  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
+
+  // Variant: returns a Future
+  // e.g. f.then([](Try<T> t){ return makeFuture<T>(t); });
+  template <typename F, typename R, bool isTry, typename... Args>
+  typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
+  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
+};
+
+template <class T>
+class Future : public SemiFuture<T> {
+ public:
+  typedef T value_type;
+
+  static Future<T> makeEmpty(); // equivalent to moved-from
+
+  // not copyable
+  Future(Future const&) = delete;
+  Future& operator=(Future const&) = delete;
+
+  // movable
+  Future(Future&&) noexcept;
+  Future& operator=(Future&&) noexcept;
+
+  // converting move
+  template <
+      class T2,
+      typename std::enable_if<
+          !std::is_same<T, typename std::decay<T2>::type>::value &&
+              std::is_constructible<T, T2&&>::value &&
+              std::is_convertible<T2&&, T>::value,
+          int>::type = 0>
+  /* implicit */ Future(Future<T2>&&);
+  template <
+      class T2,
+      typename std::enable_if<
+          !std::is_same<T, typename std::decay<T2>::type>::value &&
+              std::is_constructible<T, T2&&>::value &&
+              !std::is_convertible<T2&&, T>::value,
+          int>::type = 0>
+  explicit Future(Future<T2>&&);
+  template <
+      class T2,
+      typename std::enable_if<
+          !std::is_same<T, typename std::decay<T2>::type>::value &&
+              std::is_constructible<T, T2&&>::value,
+          int>::type = 0>
+  Future& operator=(Future<T2>&&);
+
+  /// Construct a Future from a value (perfect forwarding)
+  template <
+      class T2 = T,
+      typename = typename std::enable_if<
+          !isFuture<typename std::decay<T2>::type>::value &&
+          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
+  /* implicit */ Future(T2&& val);
+
+  template <class T2 = T>
+  /* implicit */ Future(
+      typename std::enable_if<std::is_same<Unit, T2>::value>::type* = nullptr);
+
+  template <
+      class... Args,
+      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
+          type = 0>
+  explicit Future(in_place_t, Args&&... args);
+
+  ~Future();
+
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
+  /// reference to the Try of the value.
+  Try<T>& getTryVia(DrivableExecutor* e);
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
@@ -204,7 +334,8 @@ class Future {
     */
   template <typename F, typename R = futures::detail::callableResult<T, F>>
   typename R::Return then(F&& func) {
-    return thenImplementation<F, R>(std::forward<F>(func), typename R::Arg());
+    return this->template thenImplementation<F, R>(
+        std::forward<F>(func), typename R::Arg());
   }
 
   /// Variant where func is an member function
@@ -235,8 +366,8 @@ class Future {
   /// via x, and c executes via the same executor (if any) that f had.
   template <class Executor, class Arg, class... Args>
   auto then(Executor* x, Arg&& arg, Args&&... args) {
-    auto oldX = getExecutor();
-    setExecutor(x);
+    auto oldX = this->getExecutor();
+    this->setExecutor(x);
     return this->then(std::forward<Arg>(arg), std::forward<Args>(args)...)
         .via(oldX);
   }
@@ -315,58 +446,26 @@ class Future {
   template <class F>
   Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr);
 
-  /// This is not the method you're looking for.
-  ///
-  /// This needs to be public because it's used by make* and when*, and it's
-  /// not worth listing all those and their fancy template signatures as
-  /// friends. But it's not for public consumption.
-  template <class F>
-  void setCallback_(F&& func);
-
   /// A Future's callback is executed when all three of these conditions have
   /// become true: it has a value (set by the Promise), it has a callback (set
   /// by then), and it is active (active by default).
   ///
   /// Inactive Futures will activate upon destruction.
   FOLLY_DEPRECATED("do not use") Future<T>& activate() & {
-    core_->activate();
+    this->core_->activate();
     return *this;
   }
   FOLLY_DEPRECATED("do not use") Future<T>& deactivate() & {
-    core_->deactivate();
+    this->core_->deactivate();
     return *this;
   }
   FOLLY_DEPRECATED("do not use") Future<T> activate() && {
-    core_->activate();
+    this->core_->activate();
     return std::move(*this);
   }
   FOLLY_DEPRECATED("do not use") Future<T> deactivate() && {
-    core_->deactivate();
+    this->core_->deactivate();
     return std::move(*this);
-  }
-
-  bool isActive() {
-    return core_->isActive();
-  }
-
-  template <class E>
-  void raise(E&& exception) {
-    raise(make_exception_wrapper<typename std::remove_reference<E>::type>(
-        std::forward<E>(exception)));
-  }
-
-  /// Raise an interrupt. If the promise holder has an interrupt
-  /// handler it will be called and potentially stop asynchronous work from
-  /// being done. This is advisory only - a promise holder may not set an
-  /// interrupt handler, or may do anything including ignore. But, if you know
-  /// your future supports this the most likely result is stopping or
-  /// preventing the asynchronous operation (if in time), and the promise
-  /// holder setting an exception on the future. (That may happen
-  /// asynchronously, of course.)
-  void raise(exception_wrapper interrupt);
-
-  void cancel() {
-    raise(FutureCancellation());
   }
 
   /// Throw TimedOut if this Future does not complete within the given
@@ -455,8 +554,8 @@ class Future {
   auto thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns) {
     // thenMultiExecutor with two callbacks is
     // via(x).then(a).thenMulti(b, ...).via(oldX)
-    auto oldX = getExecutor();
-    setExecutor(x);
+    auto oldX = this->getExecutor();
+    this->setExecutor(x);
     return then(std::forward<Callback>(fn))
         .thenMulti(std::forward<Callbacks>(fns)...)
         .via(oldX);
@@ -473,23 +572,22 @@ class Future {
     return then([]{ return Unit{}; });
   }
 
+  // Convert this Future to a SemiFuture to safely export from a library
+  // without exposing a continuation interface
+  SemiFuture<T> semi() {
+    return SemiFuture<T>{std::move(*this)};
+  }
+
  protected:
   typedef futures::detail::Core<T>* corePtr;
 
-  // shared core state object
-  corePtr core_;
-
-  explicit
-  Future(corePtr obj) : core_(obj) {}
+  explicit Future(corePtr obj) : SemiFuture<T>(obj) {}
 
   explicit Future(futures::detail::EmptyConstruct) noexcept;
 
-  void detach();
-
-  void throwIfInvalid() const;
-
   friend class Promise<T>;
   template <class> friend class Future;
+  friend class SemiFuture<T>;
 
   template <class T2>
   friend Future<T2> makeFuture(Try<T2>&&);
@@ -516,23 +614,6 @@ class Future {
   /// predicate behaves like std::function<bool(void)>
   template <class P, class F>
   friend Future<Unit> whileDo(P&& predicate, F&& thunk);
-
-  // Variant: returns a value
-  // e.g. f.then([](Try<T> t){ return t.value(); });
-  template <typename F, typename R, bool isTry, typename... Args>
-  typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
-
-  // Variant: returns a Future
-  // e.g. f.then([](Try<T> t){ return makeFuture<T>(t); });
-  template <typename F, typename R, bool isTry, typename... Args>
-  typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
-
-  Executor* getExecutor() { return core_->getExecutor(); }
-  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
-    core_->setExecutor(x, priority);
-  }
 };
 
 } // namespace folly

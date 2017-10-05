@@ -232,9 +232,12 @@ TEST(Executor, RunnablePtr) {
 
 TEST(Executor, ThrowableThen) {
   InlineExecutor x;
+  auto f = Future<Unit>().then([]() { throw std::runtime_error("Faildog"); });
+
+  /*
   auto f = Future<Unit>().via(&x).then([](){
     throw std::runtime_error("Faildog");
-  });
+  });*/
   EXPECT_THROW(f.value(), std::exception);
 }
 

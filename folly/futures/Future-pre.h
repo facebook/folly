@@ -22,6 +22,24 @@ namespace folly {
 
 template <class> class Promise;
 
+template <class T>
+class SemiFuture;
+
+template <typename T>
+struct isSemiFuture : std::false_type {
+  using Inner = typename Unit::Lift<T>::type;
+};
+
+template <typename T>
+struct isSemiFuture<SemiFuture<T>> : std::true_type {
+  typedef T Inner;
+};
+
+template <typename T>
+struct isSemiFuture<Future<T>> : std::true_type {
+  typedef T Inner;
+};
+
 template <typename T>
 struct isFuture : std::false_type {
   using Inner = typename Unit::Lift<T>::type;

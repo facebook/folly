@@ -23,6 +23,8 @@
 namespace folly {
 
 // forward declaration
+template <class T>
+class SemiFuture;
 template <class T> class Future;
 
 namespace futures {
@@ -107,6 +109,8 @@ class Promise {
 
  private:
   typedef typename Future<T>::corePtr corePtr;
+  template <class>
+  friend class SemiFuture;
   template <class> friend class Future;
   template <class, class>
   friend class futures::detail::CoreCallbackState;
