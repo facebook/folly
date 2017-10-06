@@ -217,19 +217,6 @@ TEST(Executor, Runnable) {
   EXPECT_EQ(counter, 1);
 }
 
-TEST(Executor, RunnablePtr) {
-  InlineExecutor x;
-  struct Runnable {
-    std::function<void()> fn;
-    void operator()() { fn(); }
-  };
-  size_t counter = 0;
-  auto fnp = std::make_shared<Runnable>();
-  fnp->fn = [&]{ counter++; };
-  x.addPtr(fnp);
-  EXPECT_EQ(counter, 1);
-}
-
 TEST(Executor, ThrowableThen) {
   InlineExecutor x;
   auto f = Future<Unit>().then([]() { throw std::runtime_error("Faildog"); });

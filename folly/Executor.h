@@ -46,16 +46,6 @@ class Executor {
   static const int8_t MID_PRI = 0;
   static const int8_t HI_PRI  = SCHAR_MAX;
 
-  /// A convenience function for shared_ptr to legacy functors.
-  ///
-  /// Sometimes you have a functor that is move-only, and therefore can't be
-  /// converted to a std::function (e.g. std::packaged_task). In that case,
-  /// wrap it in a shared_ptr (or maybe folly::MoveWrapper) and use this.
-  template <class P>
-  void addPtr(P fn) {
-    this->add([fn]() mutable { (*fn)(); });
-  }
-
   class KeepAlive {
    public:
     KeepAlive() {}
