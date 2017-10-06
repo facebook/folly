@@ -374,7 +374,15 @@ class Future : public SemiFuture<T> {
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
+  /// This function is identical to .unit().
   Future<Unit> then();
+
+  /// Convenience method for ignoring the value and creating a Future<Unit>.
+  /// Exceptions still propagate.
+  /// This function is identical to parameterless .then().
+  Future<Unit> unit() {
+    return then();
+  }
 
   /// Set an error callback for this Future. The callback should take a single
   /// argument of the type that you want to catch, and should return a value of
@@ -565,11 +573,6 @@ class Future : public SemiFuture<T> {
   auto thenMultiWithExecutor(Executor* x, Callback&& fn) {
     // thenMulti with one callback is just a then with an executor
     return then(x, std::forward<Callback>(fn));
-  }
-
-  /// Discard a result, but propagate an exception.
-  Future<Unit> unit() {
-    return then([]{ return Unit{}; });
   }
 
   // Convert this Future to a SemiFuture to safely export from a library
