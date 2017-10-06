@@ -464,9 +464,9 @@ class ConcurrentHashMap {
   }
 
   SegmentT* ensureSegment(uint64_t i) const {
-    auto seg = segments_[i].load(std::memory_order_acquire);
+    SegmentT* seg = segments_[i].load(std::memory_order_acquire);
     if (!seg) {
-      auto newseg = (SegmentT*)Allocator().allocate(sizeof(SegmentT));
+      SegmentT* newseg = (SegmentT*)Allocator().allocate(sizeof(SegmentT));
       newseg = new (newseg)
           SegmentT(size_ >> ShardBits, load_factor_, max_size_ >> ShardBits);
       if (!segments_[i].compare_exchange_strong(seg, newseg)) {
