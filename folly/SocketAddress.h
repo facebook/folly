@@ -307,6 +307,19 @@ class SocketAddress {
   }
 
   /**
+   * Construct a SocketAddress from a local unix socket path.
+   *
+   * Raises std::invalid_argument on error.
+   *
+   * @param path The Unix domain socket path.
+   */
+  static SocketAddress makeFromPath(StringPiece path) {
+    SocketAddress addr;
+    addr.setFromPath(path);
+    return addr;
+  }
+
+  /**
    * Initialize this SocketAddress from a socket's peer address.
    *
    * Raises std::system_error on error.

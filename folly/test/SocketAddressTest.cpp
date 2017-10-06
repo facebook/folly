@@ -268,16 +268,26 @@ TEST(SocketAddress, EqualityAndHash) {
   unix3.setFromPath("/bar");
   SocketAddress unixAnon;
   unixAnon.setFromPath("");
+  auto unix5 = SocketAddress::makeFromPath("/foo");
+  auto unixAnon2 = SocketAddress::makeFromPath("");
 
   EXPECT_EQ(unix1, unix2);
+  EXPECT_EQ(unix1, unix5);
   EXPECT_EQ(unix1.hash(), unix2.hash());
+  EXPECT_EQ(unix1.hash(), unix5.hash());
   EXPECT_NE(unix1, unix3);
   EXPECT_NE(unix1, unixAnon);
+  EXPECT_NE(unix1, unixAnon2);
   EXPECT_NE(unix2, unix3);
+  EXPECT_NE(unix5, unix3);
   EXPECT_NE(unix2, unixAnon);
+  EXPECT_NE(unix2, unixAnon2);
+  EXPECT_NE(unix5, unixAnon);
+  EXPECT_NE(unix5, unixAnon2);
   // anonymous addresses aren't equal to any other address,
   // including themselves
   EXPECT_NE(unixAnon, unixAnon);
+  EXPECT_NE(unixAnon2, unixAnon2);
 
   // It isn't strictly required that hashes for different addresses be
   // different, but we should have very few collisions.  It generally indicates
@@ -285,6 +295,8 @@ TEST(SocketAddress, EqualityAndHash) {
   EXPECT_NE(unix1.hash(), unix3.hash());
   EXPECT_NE(unix1.hash(), unixAnon.hash());
   EXPECT_NE(unix3.hash(), unixAnon.hash());
+  EXPECT_NE(unix1.hash(), unixAnon2.hash());
+  EXPECT_NE(unix3.hash(), unixAnon2.hash());
 }
 
 TEST(SocketAddress, IsPrivate) {
