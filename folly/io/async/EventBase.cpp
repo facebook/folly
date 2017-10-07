@@ -566,7 +566,7 @@ bool EventBase::runInEventBaseThread(Func fn) {
   return true;
 }
 
-bool EventBase::runInEventBaseThreadAndWait(FuncRef fn) {
+bool EventBase::runInEventBaseThreadAndWait(Func fn) {
   if (inRunningEventBaseThread()) {
     LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "
                << "allowed";
@@ -574,18 +574,20 @@ bool EventBase::runInEventBaseThreadAndWait(FuncRef fn) {
   }
 
   Baton<> ready;
-  runInEventBaseThread([&] {
+  runInEventBaseThread([&ready, fn = std::move(fn)]() mutable {
     SCOPE_EXIT {
       ready.post();
     };
-    fn();
+    // A trick to force the stored functor to be executed and then destructed
+    // before posting the baton and waking the waiting thread.
+    copy(std::move(fn))();
   });
   ready.wait();
 
   return true;
 }
 
-bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(FuncRef fn) {
+bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) {
   if (isInEventBaseThread()) {
     fn();
     return true;
