@@ -319,6 +319,11 @@ class AsyncServerSocket : public DelayedDestruction
     }
   }
 
+  /* enable zerocopy support for the server sockets - the s = accept sockets
+   * inherit it
+   */
+  bool setZeroCopy(bool enable);
+
   /**
    * Bind to the specified address.
    *

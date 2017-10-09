@@ -156,8 +156,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
      *
      * @param flags     Write flags requested for the given write operation
      */
-    int getFlags(folly::WriteFlags flags) noexcept {
-      return getFlagsImpl(flags, getDefaultFlags(flags));
+    int getFlags(folly::WriteFlags flags, bool zeroCopyEnabled) noexcept {
+      return getFlagsImpl(flags, getDefaultFlags(flags, zeroCopyEnabled));
     }
 
     /**
@@ -211,7 +211,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
      *
      * @param flags     Write flags requested for the given write operation
      */
-    int getDefaultFlags(folly::WriteFlags flags) noexcept;
+    int getDefaultFlags(folly::WriteFlags flags, bool zeroCopyEnabled) noexcept;
   };
 
   explicit AsyncSocket();
@@ -503,6 +503,21 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
+
+  static const size_t kDefaultZeroCopyThreshold = 32768; // 32KB
+
+  bool setZeroCopy(bool enable);
+  bool getZeroCopy() const {
+    return zeroCopyEnabled_;
+  }
+
+  void setZeroCopyWriteChainThreshold(size_t threshold);
+  size_t getZeroCopyWriteChainThreshold() const {
+    return zeroCopyWriteChainThreshold_;
+  }
+
+  bool isZeroCopyMsg(const cmsghdr& cmsg) const;
+  void processZeroCopyMsg(const cmsghdr& cmsg);
 
   void write(WriteCallback* callback, const void* buf, size_t bytes,
              WriteFlags flags = WriteFlags::NONE) override;
@@ -1133,6 +1148,32 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void cacheLocalAddress() const;
   void cachePeerAddress() const;
 
+  bool isZeroCopyRequest(WriteFlags flags);
+  uint32_t getNextZeroCopyBuffId() {
+    return zeroCopyBuffId_++;
+  }
+  void adjustZeroCopyFlags(folly::IOBuf* buf, folly::WriteFlags& flags);
+  void adjustZeroCopyFlags(
+      const iovec* vec,
+      uint32_t count,
+      folly::WriteFlags& flags);
+  void addZeroCopyBuff(std::unique_ptr<folly::IOBuf>&& buf);
+  void addZeroCopyBuff(folly::IOBuf* ptr);
+  void setZeroCopyBuff(std::unique_ptr<folly::IOBuf>&& buf);
+  bool containsZeroCopyBuff(folly::IOBuf* ptr);
+  void releaseZeroCopyBuff(uint32_t id);
+
+  // a folly::IOBuf can be used in multiple partial requests
+  // so we keep a map that maps a buffer id to a raw folly::IOBuf ptr
+  // and one more map that adds a ref count for a folly::IOBuf that is either
+  // the original ptr or nullptr
+  uint32_t zeroCopyBuffId_{0};
+  std::unordered_map<uint32_t, folly::IOBuf*> idZeroCopyBufPtrMap_;
+  std::unordered_map<
+      folly::IOBuf*,
+      std::pair<uint32_t, std::unique_ptr<folly::IOBuf>>>
+      idZeroCopyBufPtrToBufMap_;
+
   StateEnum state_;                      ///< StateEnum describing current state
   uint8_t shutdownFlags_;                ///< Shutdown state (ShutdownFlags)
   uint16_t eventFlags_;                  ///< EventBase::HandlerFlags settings
@@ -1149,8 +1190,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   ConnectCallback* connectCallback_;     ///< ConnectCallback
   ErrMessageCallback* errMessageCallback_; ///< TimestampCallback
-  SendMsgParamsCallback*                 ///< Callback for retreaving
-      sendMsgParamCallback_;             ///< ::sendmsg() parameters
+  SendMsgParamsCallback* ///< Callback for retrieving
+      sendMsgParamCallback_; ///< ::sendmsg() parameters
   ReadCallback* readCallback_;           ///< ReadCallback
   WriteRequest* writeReqHead_;           ///< Chain of WriteRequests
   WriteRequest* writeReqTail_;           ///< End of WriteRequest chain
@@ -1178,6 +1219,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool noTSocks_{false};
   // Whether to track EOR or not.
   bool trackEor_{false};
+  bool zeroCopyEnabled_{false};
+  bool zeroCopyVal_{false};
+  size_t zeroCopyWriteChainThreshold_{kDefaultZeroCopyThreshold};
 
   std::unique_ptr<EvbChangeCallback> evbChangeCb_{nullptr};
 };

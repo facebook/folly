@@ -1646,7 +1646,8 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
     flags |= WriteFlags::CORK;
   }
 
-  int msg_flags = tsslSock->getSendMsgParamsCB()->getFlags(flags);
+  int msg_flags = tsslSock->getSendMsgParamsCB()->getFlags(
+      flags, false /*zeroCopyEnabled*/);
   msg.msg_controllen =
       tsslSock->getSendMsgParamsCB()->getAncillaryDataSize(flags);
   CHECK_GE(AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,

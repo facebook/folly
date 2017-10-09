@@ -60,7 +60,7 @@ class SendMsgParamsCallbackBase :
 
   int getFlagsImpl(folly::WriteFlags flags, int /*defaultFlags*/) noexcept
                                                                      override {
-    return oldCallback_->getFlags(flags);
+    return oldCallback_->getFlags(flags, false /*zeroCopyEnabled*/);
   }
 
   void getAncillaryData(folly::WriteFlags flags, void* data) noexcept override {
@@ -88,7 +88,7 @@ class SendMsgFlagsCallback : public SendMsgParamsCallbackBase {
     if (flags_) {
       return flags_;
     } else {
-      return oldCallback_->getFlags(flags);
+      return oldCallback_->getFlags(flags, false /*zeroCopyEnabled*/);
     }
   }
 

@@ -60,6 +60,10 @@ enum class WriteFlags : uint32_t {
    * this indicates that only the write side of socket should be shutdown
    */
   WRITE_SHUTDOWN = 0x04,
+  /*
+   * use msg zerocopy if allowed
+   */
+  WRITE_MSG_ZEROCOPY = 0x08,
 };
 
 /*

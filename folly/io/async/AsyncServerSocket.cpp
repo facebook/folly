@@ -39,6 +39,13 @@ namespace fsp = folly::portability::sockets;
 
 namespace folly {
 
+static constexpr bool msgErrQueueSupported =
+#ifdef MSG_ERRQUEUE
+    true;
+#else
+    false;
+#endif // MSG_ERRQUEUE
+
 const uint32_t AsyncServerSocket::kDefaultMaxAcceptAtOnce;
 const uint32_t AsyncServerSocket::kDefaultCallbackAcceptAtOnce;
 const uint32_t AsyncServerSocket::kDefaultMaxMessagesInQueue;
@@ -329,6 +336,18 @@ void AsyncServerSocket::bindSocket(
   if (!isExistingSocket) {
     sockets_.emplace_back(eventBase_, fd, this, address.getFamily());
   }
+}
+
+bool AsyncServerSocket::setZeroCopy(bool enable) {
+  if (msgErrQueueSupported) {
+    int fd = getSocket();
+    int val = enable ? 1 : 0;
+    int ret = setsockopt(fd, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
+
+    return (0 == ret);
+  }
+
+  return false;
 }
 
 void AsyncServerSocket::bind(const SocketAddress& address) {

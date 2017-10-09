@@ -25,6 +25,24 @@
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+
+#ifdef MSG_ERRQUEUE
+/* for struct sock_extended_err*/
+#include <linux/errqueue.h>
+#endif
+
+#ifndef SO_EE_ORIGIN_ZEROCOPY
+#define SO_EE_ORIGIN_ZEROCOPY 5
+#endif
+
+#ifndef SO_ZEROCOPY
+#define SO_ZEROCOPY 60
+#endif
+
+#ifndef MSG_ZEROCOPY
+#define MSG_ZEROCOPY 0x4000000
+#endif
+
 #else
 #include <folly/portability/IOVec.h>
 #include <folly/portability/SysTypes.h>
@@ -34,6 +52,11 @@
 
 using nfds_t = int;
 using sa_family_t = ADDRESS_FAMILY;
+
+// these are not supported
+#define SO_EE_ORIGIN_ZEROCOPY 0
+#define SO_ZEROCOPY 0
+#define MSG_ZEROCOPY 0x0
 
 // We don't actually support either of these flags
 // currently.
@@ -198,5 +221,6 @@ int setsockopt(
 
 #ifdef _WIN32
 // Add our helpers to the overload set.
-/* using override */ using namespace folly::portability::sockets;
+/* using override */
+using namespace folly::portability::sockets;
 #endif
