@@ -41,8 +41,13 @@ Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;
   if (LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
-    tk = DCHECK_NOTNULL(tks.get());
+    tk = tks.get();
   }
+
+  if (UNLIKELY(!tk)) {
+    return makeFuture<Unit>(NoTimekeeper());
+  }
+
   return tk->after(dur);
 }
 

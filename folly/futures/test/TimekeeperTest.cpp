@@ -15,6 +15,8 @@
  */
 
 #include <folly/futures/Timekeeper.h>
+#include <folly/Singleton.h>
+#include <folly/futures/ThreadWheelTimekeeper.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -76,6 +78,14 @@ TEST(Timekeeper, futureSleep) {
   auto t1 = now();
   futures::sleep(one_ms).get();
   EXPECT_GE(now() - t1, one_ms);
+}
+
+TEST(Timekeeper, futureSleepHandlesNullTimekeeperSingleton) {
+  Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
+  SCOPE_EXIT {
+    Singleton<ThreadWheelTimekeeper>::make_mock();
+  };
+  EXPECT_THROW(futures::sleep(one_ms).get(), NoTimekeeper);
 }
 
 TEST(Timekeeper, futureDelayed) {

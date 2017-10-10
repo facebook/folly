@@ -83,9 +83,15 @@ class FOLLY_EXPORT PredicateDoesNotObtain : public FutureException {
 
 [[noreturn]] void throwPredicateDoesNotObtain();
 
-struct FOLLY_EXPORT NoFutureInSplitter : FutureException {
+class FOLLY_EXPORT NoFutureInSplitter : FutureException {
+ public:
   NoFutureInSplitter() : FutureException("No Future in this FutureSplitter") {}
 };
 
 [[noreturn]] void throwNoFutureInSplitter();
+
+class FOLLY_EXPORT NoTimekeeper : public FutureException {
+ public:
+  NoTimekeeper() : FutureException("No timekeeper available") {}
+};
 }
