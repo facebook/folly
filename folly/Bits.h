@@ -54,12 +54,11 @@
 
 #pragma once
 
-#if !defined(__clang__) && !(defined(_MSC_VER) && (_MSC_VER < 1900))
-#define FOLLY_INTRINSIC_CONSTEXPR constexpr
-#else
-// GCC and MSVC 2015+ are the only compilers with
-// intrinsics constexpr.
+// MSVC does not support intrinsics constexpr
+#if defined(_MSC_VER)
 #define FOLLY_INTRINSIC_CONSTEXPR const
+#else
+#define FOLLY_INTRINSIC_CONSTEXPR constexpr
 #endif
 
 #include <cassert>
