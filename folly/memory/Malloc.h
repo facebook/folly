@@ -189,8 +189,13 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
       return false;
     }
 
+#if defined(__GNUC__) || defined(__clang__)
     /* Avoid optimizing away the malloc.  */
     asm volatile("" ::"m"(ptr) : "memory");
+#elif defined(_MSC_VER)
+    detail::useCharPointer(&reinterpret_cast<char const volatile&>(ptr));
+    _ReadWriteBarrier();
+#endif
 
     return (origAllocated != *counter);
   }();
