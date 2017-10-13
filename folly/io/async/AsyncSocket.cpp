@@ -17,6 +17,7 @@
 #include <folly/io/async/AsyncSocket.h>
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/Cursor.h>

@@ -26,6 +26,7 @@
 #include <chrono>
 
 #include <folly/Bits.h>
+#include <folly/Format.h>
 #include <folly/SocketAddress.h>
 #include <folly/SpinLock.h>
 #include <folly/io/Cursor.h>
