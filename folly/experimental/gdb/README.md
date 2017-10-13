@@ -8,7 +8,7 @@ These scripts use the [gdb extension Python API](https://sourceware.org/gdb/curr
 
 To run the scripts, fire up `gdb` and load a script with `source -v`. Example:
 
-```bash
+```lang=bash
 $ gdb -p 123456
 (gdb) source -v ./folly/experimental/gdb/deadlock.py
 Type "deadlock" to detect deadlocks.
@@ -24,7 +24,7 @@ Found deadlock!
 
 Consider the following program that always deadlocks:
 
-```cpp
+```lang=cpp
 void deadlock3() {
   std::mutex m1, m2, m3;
   folly::Baton<> b1, b2, b3;
@@ -59,7 +59,7 @@ void deadlock3() {
 The `deadlock.py` script introduces a new `deadlock` command that can help
 us identify the threads and mutexes involved with the deadlock.
 
-```bash
+```lang=bash
 $ gdb -p 2174496
 (gdb) source -v ./folly/experimental/gdb/deadlock.py
 Type "deadlock" to detect deadlocks.
