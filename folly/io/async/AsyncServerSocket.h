@@ -227,7 +227,7 @@ class AsyncServerSocket : public DelayedDestruction
                                                  Destructor());
   }
 
-  void setShutdownSocketSet(ShutdownSocketSet* newSS);
+  void setShutdownSocketSet(const std::weak_ptr<ShutdownSocketSet>& wNewSS);
 
   /**
    * Destroy the socket.
@@ -877,7 +877,7 @@ class AsyncServerSocket : public DelayedDestruction
   bool tfo_{false};
   bool noTransparentTls_{false};
   uint32_t tfoMaxQueueSize_{0};
-  ShutdownSocketSet* shutdownSocketSet_;
+  std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   ConnectionEventCallback* connectionEventCallback_{nullptr};
 };
 

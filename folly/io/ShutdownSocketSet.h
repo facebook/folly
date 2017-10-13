@@ -39,6 +39,10 @@ class ShutdownSocketSet : private boost::noncopyable {
    */
   explicit ShutdownSocketSet(int maxFd = 1 << 18);
 
+  // Singleton instance used by all thrift servers.
+  // May return nullptr on startup/shutdown.
+  static std::shared_ptr<ShutdownSocketSet> getInstance();
+
   /**
    * Add an already open socket to the list of sockets managed by
    * ShutdownSocketSet. You MUST close the socket by calling
@@ -73,8 +77,24 @@ class ShutdownSocketSet : private boost::noncopyable {
   void shutdown(int fd, bool abortive=false);
 
   /**
-   * Shut down all sockets managed by ShutdownSocketSet. This is
-   * async-signal-safe and ignores errors.
+   * Immediate shutdown of all connections. This is a hard-hitting hammer;
+   * all reads and writes will return errors and no new connections will
+   * be accepted.
+   *
+   * To be used only in dire situations. We're using it from the failure
+   * signal handler to close all connections quickly, even though the server
+   * might take multiple seconds to finish crashing.
+   *
+   * The optional bool parameter indicates whether to set the active
+   * connections in to not linger.  The effect of that includes RST packets
+   * being immediately sent to clients which will result
+   * in errors (and not normal EOF) on the client side.  This also causes
+   * the local (ip, tcp port number) tuple to be reusable immediately, instead
+   * of having to wait the standard amount of time.  For full details see
+   * the `shutdown` method of `ShutdownSocketSet` (incl. notes about the
+   * `abortive` parameter).
+   *
+   * This is async-signal-safe and ignores errors.
    */
   void shutdownAll(bool abortive=false);
 

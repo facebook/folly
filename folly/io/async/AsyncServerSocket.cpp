@@ -146,37 +146,42 @@ class AsyncServerSocket::BackoffTimeout : public AsyncTimeout {
  */
 
 AsyncServerSocket::AsyncServerSocket(EventBase* eventBase)
-:   eventBase_(eventBase),
-    accepting_(false),
-    maxAcceptAtOnce_(kDefaultMaxAcceptAtOnce),
-    maxNumMsgsInQueue_(kDefaultMaxMessagesInQueue),
-    acceptRateAdjustSpeed_(0),
-    acceptRate_(1),
-    lastAccepTimestamp_(std::chrono::steady_clock::now()),
-    numDroppedConnections_(0),
-    callbackIndex_(0),
-    backoffTimeout_(nullptr),
-    callbacks_(),
-    keepAliveEnabled_(true),
-    closeOnExec_(true),
-    shutdownSocketSet_(nullptr) {
-}
+    : eventBase_(eventBase),
+      accepting_(false),
+      maxAcceptAtOnce_(kDefaultMaxAcceptAtOnce),
+      maxNumMsgsInQueue_(kDefaultMaxMessagesInQueue),
+      acceptRateAdjustSpeed_(0),
+      acceptRate_(1),
+      lastAccepTimestamp_(std::chrono::steady_clock::now()),
+      numDroppedConnections_(0),
+      callbackIndex_(0),
+      backoffTimeout_(nullptr),
+      callbacks_(),
+      keepAliveEnabled_(true),
+      closeOnExec_(true) {}
 
-void AsyncServerSocket::setShutdownSocketSet(ShutdownSocketSet* newSS) {
-  if (shutdownSocketSet_ == newSS) {
+void AsyncServerSocket::setShutdownSocketSet(
+    const std::weak_ptr<ShutdownSocketSet>& wNewSS) {
+  const auto newSS = wNewSS.lock();
+  const auto shutdownSocketSet = wShutdownSocketSet_.lock();
+
+  if (shutdownSocketSet == newSS) {
     return;
   }
-  if (shutdownSocketSet_) {
+
+  if (shutdownSocketSet) {
     for (auto& h : sockets_) {
-      shutdownSocketSet_->remove(h.socket_);
+      shutdownSocketSet->remove(h.socket_);
     }
   }
-  shutdownSocketSet_ = newSS;
-  if (shutdownSocketSet_) {
+
+  if (newSS) {
     for (auto& h : sockets_) {
-      shutdownSocketSet_->add(h.socket_);
+      newSS->add(h.socket_);
     }
   }
+
+  wShutdownSocketSet_ = wNewSS;
 }
 
 AsyncServerSocket::~AsyncServerSocket() {
@@ -203,8 +208,8 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   for (; !sockets_.empty(); sockets_.pop_back()) {
     auto& handler = sockets_.back();
     handler.unregisterHandler();
-    if (shutdownSocketSet_) {
-      shutdownSocketSet_->close(handler.socket_);
+    if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
+      shutdownSocketSet->close(handler.socket_);
     } else if (shutdownFlags >= 0) {
       result = shutdownNoInt(handler.socket_, shutdownFlags);
       pendingCloseSockets_.push_back(handler.socket_);
@@ -504,8 +509,9 @@ void AsyncServerSocket::bind(uint16_t port) {
         for (const auto& socket : sockets_) {
           if (socket.socket_ <= 0) {
             continue;
-          } else if (shutdownSocketSet_) {
-            shutdownSocketSet_->close(socket.socket_);
+          } else if (
+              const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
+            shutdownSocketSet->close(socket.socket_);
           } else {
             closeNoInt(socket.socket_);
           }
@@ -793,8 +799,8 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
   }
 #endif
 
-  if (shutdownSocketSet_) {
-    shutdownSocketSet_->add(fd);
+  if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
+    shutdownSocketSet->add(fd);
   }
 }
 
