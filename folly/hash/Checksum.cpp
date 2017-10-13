@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/Checksum.h>
+#include <folly/hash/Checksum.h>
 #include <boost/crc.hpp>
 #include <folly/CpuId.h>
-#include <folly/detail/ChecksumDetail.h>
+#include <folly/hash/detail/ChecksumDetail.h>
 #include <algorithm>
 #include <stdexcept>
 

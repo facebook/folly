@@ -46,7 +46,6 @@ nobase_follyinclude_HEADERS = \
 	Bits.h \
 	CachelinePadded.h \
 	CallOnce.h \
-	Checksum.h \
 	Chrono.h \
 	ClockGettimeWrappers.h \
 	ConcurrentSkipList.h \
@@ -66,7 +65,6 @@ nobase_follyinclude_HEADERS = \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/AtomicUtils.h \
 	detail/BitIteratorDetail.h \
-	detail/ChecksumDetail.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
@@ -226,6 +224,8 @@ nobase_follyinclude_HEADERS = \
 	futures/detail/FSM.h \
 	futures/detail/Types.h \
 	futures/test/TestExecutor.h \
+	hash/Checksum.h \
+	hash/detail/ChecksumDetail.h \
 	hash/SpookyHashV1.h \
 	hash/SpookyHashV2.h \
 	gen/Base.h \
@@ -467,9 +467,9 @@ GroupVarintTables.cpp: build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
 
 libfollybasesse42_la_SOURCES = \
-	detail/Crc32cDetail.cpp \
-	detail/ChecksumDetail.cpp \
-	detail/RangeSse42.cpp
+	detail/RangeSse42.cpp \
+	hash/detail/ChecksumDetail.cpp \
+	hash/detail/Crc32cDetail.cpp
 
 libfollybase_la_SOURCES = \
 	Conv.cpp \
@@ -486,7 +486,6 @@ libfollybase_la_SOURCES = \
 
 libfolly_la_SOURCES = \
 	Assume.cpp \
-	Checksum.cpp \
 	ClockGettimeWrappers.cpp \
 	concurrency/CacheLocality.cpp \
 	concurrency/GlobalThreadPoolList.cpp \
@@ -518,6 +517,7 @@ libfolly_la_SOURCES = \
 	experimental/hazptr/memory_resource.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
+	hash/Checksum.cpp \
 	hash/SpookyHashV1.cpp \
 	hash/SpookyHashV2.cpp \
 	IPAddress.cpp \

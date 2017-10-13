@@ -110,7 +110,7 @@
  *    fast-crc-computation-generic-polynomials-pclmulqdq-paper.pdf
  */
 
-#include <folly/detail/ChecksumDetail.h>
+#include <folly/hash/detail/ChecksumDetail.h>
 
 namespace folly {
 namespace detail {

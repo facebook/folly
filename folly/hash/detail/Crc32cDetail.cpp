@@ -31,7 +31,7 @@
 
 #include <stdexcept>
 
-#include <folly/detail/ChecksumDetail.h>
+#include <folly/hash/detail/ChecksumDetail.h>
 
 #include <folly/CppAttributes.h>
 
