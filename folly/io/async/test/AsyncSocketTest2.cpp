@@ -2857,7 +2857,7 @@ TEST(AsyncSocketTest, EvbCallbacks) {
   socket->attachEventBase(&evb);
 }
 
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
 /* copied from include/uapi/linux/net_tstamp.h */
 /* SO_TIMESTAMPING gets an integer bit field comprised of these values */
 enum SOF_TIMESTAMPING {

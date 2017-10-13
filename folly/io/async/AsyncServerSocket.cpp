@@ -40,7 +40,7 @@ namespace fsp = folly::portability::sockets;
 namespace folly {
 
 static constexpr bool msgErrQueueSupported =
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
     true;
 #else
     false;
