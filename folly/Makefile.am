@@ -537,6 +537,7 @@ libfolly_la_SOURCES = \
 	io/async/AsyncServerSocket.cpp \
 	io/async/AsyncSignalHandler.cpp \
 	io/async/AsyncSocket.cpp \
+	io/async/AsyncSocketException.cpp \
 	io/async/AsyncSSLSocket.cpp \
 	io/async/EventBase.cpp \
 	io/async/EventBaseLocal.cpp \
