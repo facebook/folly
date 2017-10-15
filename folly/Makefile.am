@@ -215,6 +215,7 @@ nobase_follyinclude_HEADERS = \
 	futures/Promise-inl.h \
 	futures/Promise.h \
 	futures/QueuedImmediateExecutor.h \
+	futures/Retrying.h \
 	futures/ScheduledExecutor.h \
 	futures/SharedPromise.h \
 	futures/SharedPromise-inl.h \

@@ -18,7 +18,7 @@
 #include <atomic>
 #include <vector>
 
-#include <folly/futures/Future.h>
+#include <folly/futures/Retrying.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
 #include "TestExecutor.h"
