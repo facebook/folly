@@ -77,6 +77,11 @@ TEST(SemiFuture, value) {
   EXPECT_EQ(42, *up);
 
   EXPECT_THROW(makeSemiFuture<int>(eggs).value(), eggs_t);
+
+  EXPECT_TYPE(std::declval<SemiFuture<int>&>().value(), int&);
+  EXPECT_TYPE(std::declval<SemiFuture<int> const&>().value(), int const&);
+  EXPECT_TYPE(std::declval<SemiFuture<int>&&>().value(), int&&);
+  EXPECT_TYPE(std::declval<SemiFuture<int> const&&>().value(), int const&&);
 }
 
 TEST(SemiFuture, hasException) {

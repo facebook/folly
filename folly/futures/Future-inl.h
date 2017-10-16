@@ -247,17 +247,31 @@ SemiFuture<T>::~SemiFuture() {
 }
 
 template <class T>
-typename std::add_lvalue_reference<T>::type SemiFuture<T>::value() {
+T& SemiFuture<T>::value() & {
   throwIfInvalid();
 
   return core_->getTry().value();
 }
 
 template <class T>
-typename std::add_lvalue_reference<const T>::type SemiFuture<T>::value() const {
+T const& SemiFuture<T>::value() const& {
   throwIfInvalid();
 
   return core_->getTry().value();
+}
+
+template <class T>
+T&& SemiFuture<T>::value() && {
+  throwIfInvalid();
+
+  return std::move(core_->getTry().value());
+}
+
+template <class T>
+T const&& SemiFuture<T>::value() const&& {
+  throwIfInvalid();
+
+  return std::move(core_->getTry().value());
 }
 
 template <class T>

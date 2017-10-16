@@ -82,14 +82,19 @@ class SemiFuture {
 
   ~SemiFuture();
 
-  /** Return the reference to result. Should not be called if !isReady().
-    Will rethrow the exception if an exception has been
-    captured.
-    */
-  typename std::add_lvalue_reference<T>::type
-  value();
-  typename std::add_lvalue_reference<const T>::type
-  value() const;
+  /// Returns a reference to the result, with a reference category and const-
+  /// qualification equivalent to the reference category and const-qualification
+  /// of the receiver.
+  ///
+  /// If moved-from, throws NoState.
+  ///
+  /// If !isReady(), throws FutureNotReady.
+  ///
+  /// If an exception has been captured, throws that exception.
+  T& value() &;
+  T const& value() const&;
+  T&& value() &&;
+  T const&& value() const&&;
 
   /// Returns an inactive Future which will call back on the other side of
   /// executor (when it is activated).
