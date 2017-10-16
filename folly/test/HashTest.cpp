@@ -19,6 +19,7 @@
 #include <folly/portability/GTest.h>
 #include <stdint.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 using namespace folly::hash;
@@ -183,6 +184,37 @@ TEST(Hash, hasher) {
   std::unordered_map<int32_t,int32_t,folly::hasher<int32_t>> m;
   m.insert(std::make_pair(4, 5));
   EXPECT_EQ(get_default(m, 4), 5);
+}
+
+TEST(Hash, integral_types) {
+  // Basically just confirms that things compile ok.
+  std::unordered_set<size_t> hashes;
+  folly::Hash hasher;
+  hashes.insert(hasher((char)1));
+  hashes.insert(hasher((signed char)2));
+  hashes.insert(hasher((unsigned char)3));
+  hashes.insert(hasher((short)4));
+  hashes.insert(hasher((signed short)5));
+  hashes.insert(hasher((unsigned short)6));
+  hashes.insert(hasher((int)7));
+  hashes.insert(hasher((signed int)8));
+  hashes.insert(hasher((unsigned int)9));
+  hashes.insert(hasher((long)10));
+  hashes.insert(hasher((signed long)11));
+  hashes.insert(hasher((unsigned long)12));
+  hashes.insert(hasher((long long)13));
+  hashes.insert(hasher((signed long long)14));
+  hashes.insert(hasher((unsigned long long)15));
+  hashes.insert(hasher((int8_t)16));
+  hashes.insert(hasher((uint8_t)17));
+  hashes.insert(hasher((int16_t)18));
+  hashes.insert(hasher((uint16_t)19));
+  hashes.insert(hasher((int32_t)20));
+  hashes.insert(hasher((uint32_t)21));
+  hashes.insert(hasher((int64_t)22));
+  hashes.insert(hasher((uint64_t)23));
+  hashes.insert(hasher((size_t)24));
+  EXPECT_EQ(24, hashes.size());
 }
 
 // Not a full hasher since only handles one type
