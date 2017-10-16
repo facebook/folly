@@ -17,6 +17,7 @@
 #include <folly/Uri.h>
 
 #include <cctype>
+#include <utility>
 
 #include <boost/regex.hpp>
 
@@ -121,7 +122,7 @@ std::string Uri::authority() const {
     toAppend(port(), &result);
   }
 
-  return result;
+  return std::move(result);
 }
 
 std::string Uri::hostname() const {
