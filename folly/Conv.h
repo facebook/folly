@@ -408,6 +408,11 @@ estimateSpaceNeeded(T) {
   return 1;
 }
 
+template <size_t N>
+constexpr size_t estimateSpaceNeeded(const char (&)[N]) {
+  return N;
+}
+
 /**
  * Everything implicitly convertible to const char* gets appended.
  */
