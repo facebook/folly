@@ -441,11 +441,17 @@ typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
 }
 
 template <class Src>
+typename std::enable_if<IsSomeString<Src>::value, size_t>::type
+estimateSpaceNeeded(Src const& value) {
+  return value.size();
+}
+
+template <class Src>
 typename std::enable_if<
-  (std::is_convertible<Src, folly::StringPiece>::value ||
-  IsSomeString<Src>::value) &&
-  !std::is_convertible<Src, const char*>::value,
-  size_t>::type
+    std::is_convertible<Src, folly::StringPiece>::value &&
+        !IsSomeString<Src>::value &&
+        !std::is_convertible<Src, const char*>::value,
+    size_t>::type
 estimateSpaceNeeded(Src value) {
   return folly::StringPiece(value).size();
 }
@@ -1480,6 +1486,14 @@ tryTo(StringPiece src) {
   });
 }
 
+template <class Tgt, class Src>
+inline typename std::enable_if<
+    IsSomeString<Src>::value && !std::is_same<StringPiece, Tgt>::value,
+    Tgt>::type
+to(Src const& src) {
+  return to<Tgt>(StringPiece(src.data(), src.size()));
+}
+
 template <class Tgt>
 inline
     typename std::enable_if<!std::is_same<StringPiece, Tgt>::value, Tgt>::type
@@ -1557,8 +1571,10 @@ to(const Src& value) {
 
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
-to(const Src & value) {
+    !IsSomeString<Src>::value && std::is_enum<Tgt>::value &&
+        !std::is_same<Src, Tgt>::value,
+    Tgt>::type
+to(const Src& value) {
   return static_cast<Tgt>(to<typename std::underlying_type<Tgt>::type>(value));
 }
 
