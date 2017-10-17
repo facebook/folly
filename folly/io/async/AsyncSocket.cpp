@@ -861,7 +861,8 @@ bool AsyncSocket::isZeroCopyRequest(WriteFlags flags) {
 void AsyncSocket::adjustZeroCopyFlags(
     folly::IOBuf* buf,
     folly::WriteFlags& flags) {
-  if (zeroCopyEnabled_ && zeroCopyWriteChainThreshold_ && buf) {
+  if (zeroCopyEnabled_ && zeroCopyWriteChainThreshold_ && buf &&
+      buf->isManaged()) {
     if (buf->computeChainDataLength() >= zeroCopyWriteChainThreshold_) {
       flags |= folly::WriteFlags::WRITE_MSG_ZEROCOPY;
     } else {
