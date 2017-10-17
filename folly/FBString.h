@@ -2894,3 +2894,13 @@ FOLLY_POP_WARNING
 #undef FBSTRING_LIKELY
 #undef FBSTRING_UNLIKELY
 #undef FBSTRING_ASSERT
+
+#ifndef _LIBSTDCXX_FBSTRING
+namespace folly {
+template <class T>
+struct IsSomeString;
+
+template <>
+struct IsSomeString<fbstring> : std::true_type {};
+} // namespace folly
+#endif

@@ -931,7 +931,7 @@ template <>
 struct KeyFromStringPiece<fbstring> : public FormatTraitsBase {
   typedef fbstring key_type;
   static fbstring convert(StringPiece s) {
-    return s.toFbstring();
+    return s.to<fbstring>();
   }
 };
 

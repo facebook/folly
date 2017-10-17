@@ -792,29 +792,6 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Conversion to folly::Range
-   * \return `Range<Iter>{begin(), end()}`
-   */
-  template <
-      class Iter,
-      class = typename std::enable_if<
-          std::is_convertible<Char*, Iter>::value>::type>
-  FOLLY_CPP14_CONSTEXPR /* implicit */ operator Range<Iter>() noexcept {
-    return {begin(), end()};
-  }
-
-  /**
-   * \overload
-   */
-  template <
-      class Iter,
-      class = typename std::enable_if<
-          std::is_convertible<const Char*, Iter>::value>::type>
-  constexpr /* implicit */ operator Range<Iter>() const noexcept {
-    return {begin(), end()};
-  }
-
-  /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
-   * Conversion to folly::Range
    * \return `Range<Char*>{begin(), end()}`
    */
   FOLLY_CPP14_CONSTEXPR Range<Char*> toRange() noexcept {

@@ -24,6 +24,7 @@
 #include <map>
 #include <stdexcept>
 
+#include <folly/FBString.h>
 #include <folly/Hash.h>
 #include <folly/Optional.h>
 #include <folly/Range.h>
