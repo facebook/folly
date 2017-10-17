@@ -481,15 +481,11 @@ class Range : private boost::totally_ordered<Range<Iter>> {
     return Tgt(b_, size());
   }
   // Works only for Range<const char*> and Range<char*>
-  template <typename Tgt = std::string>
-  auto str() const
-      -> decltype(Tgt(std::declval<Iter const&>(), std::declval<size_type>())) {
-    return to<Tgt>();
+  std::string str() const {
+    return to<std::string>();
   }
-  template <typename Tgt = std::string>
-  auto toString() const
-      -> decltype(Tgt(std::declval<Iter const&>(), std::declval<size_type>())) {
-    return to<Tgt>();
+  std::string toString() const {
+    return to<std::string>();
   }
 
   const_range_type castToConst() const {
