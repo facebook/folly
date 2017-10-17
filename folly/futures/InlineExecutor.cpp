@@ -14,21 +14,15 @@
  * limitations under the License.
  */
 
-#pragma once
-#include <folly/Executor.h>
+#include <folly/futures/InlineExecutor.h>
+
+#include <folly/Indestructible.h>
 
 namespace folly {
 
-/// When work is "queued", execute it immediately inline.
-/// Usually when you think you want this, you actually want a
-/// QueuedImmediateExecutor.
-class InlineExecutor : public Executor {
- public:
-  static InlineExecutor& instance();
-
-  void add(Func f) override {
-    f();
-  }
-};
+InlineExecutor& InlineExecutor::instance() {
+  static auto instance = Indestructible<InlineExecutor>{};
+  return *instance;
+}
 
 } // namespace folly
