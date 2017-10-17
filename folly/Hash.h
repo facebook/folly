@@ -371,18 +371,20 @@ inline uint32_t hsieh_hash32_str(const std::string& str) {
 } // namespace hash
 
 namespace detail {
-template <typename I>
-size_t integral_hash(I const& i) {
-  static_assert(sizeof(I) <= 8, "input type is too wide");
-  if (sizeof(I) <= 4) { // the branch taken is known at compile time
-    auto const i32 = static_cast<int32_t>(i); // as impl accident, sign-extends
-    auto const u32 = static_cast<uint32_t>(i32);
-    return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
-  } else {
-    auto const u64 = static_cast<uint64_t>(i);
-    return static_cast<size_t>(hash::twang_mix64(u64));
+struct integral_hasher {
+  template <typename I>
+  size_t operator()(I const& i) const {
+    static_assert(sizeof(I) <= 8, "input type is too wide");
+    if (sizeof(I) <= 4) { // the branch taken is known at compile time
+      auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
+      auto const u32 = static_cast<uint32_t>(i32);
+      return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
+    } else {
+      auto const u64 = static_cast<uint64_t>(i);
+      return static_cast<size_t>(hash::twang_mix64(u64));
+    }
   }
-}
+};
 } // namespace detail
 
 template <class Key, class Enable = void>
@@ -409,86 +411,37 @@ struct hasher<bool> {
 };
 
 template <>
-struct hasher<unsigned long long> {
-  size_t operator()(unsigned long long key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<unsigned long long> : detail::integral_hasher {};
 
 template <>
-struct hasher<signed long long> {
-  size_t operator()(signed long long key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<signed long long> : detail::integral_hasher {};
 
 template <>
-struct hasher<unsigned long> {
-  size_t operator()(unsigned long key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<unsigned long> : detail::integral_hasher {};
 
 template <>
-struct hasher<signed long> {
-  size_t operator()(signed long key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<signed long> : detail::integral_hasher {};
 
 template <>
-struct hasher<unsigned int> {
-  size_t operator()(unsigned int key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<unsigned int> : detail::integral_hasher {};
 
 template <>
-struct hasher<signed int> {
-  size_t operator()(signed int key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<signed int> : detail::integral_hasher {};
 
 template <>
-struct hasher<unsigned short> {
-  size_t operator()(unsigned short key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<unsigned short> : detail::integral_hasher {};
 
 template <>
-struct hasher<signed short> {
-  size_t operator()(signed short key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<signed short> : detail::integral_hasher {};
 
 template <>
-struct hasher<unsigned char> {
-  size_t operator()(unsigned char key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<unsigned char> : detail::integral_hasher {};
 
 template <>
-struct hasher<signed char> {
-  size_t operator()(signed char key) const {
-    return detail::integral_hash(key);
-  }
-};
+struct hasher<signed char> : detail::integral_hasher {};
 
-// char is different type from both signed char and unsigned char.
-template <>
-struct hasher<char> {
-  using explicit_type = std::conditional<
-      std::is_signed<char>::value,
-      signed char,
-      unsigned char>::type;
-  size_t operator()(char key) const {
-    return detail::integral_hash(explicit_type(key));
-  }
-};
+template <> // char is a different type from both signed char and unsigned char
+struct hasher<char> : detail::integral_hasher {};
 
 template <> struct hasher<std::string> {
   size_t operator()(const std::string& key) const {
