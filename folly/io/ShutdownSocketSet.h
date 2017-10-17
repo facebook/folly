@@ -117,12 +117,20 @@ class ShutdownSocketSet : private boost::noncopyable {
   //   (::shutdown())
   //   IN_SHUTDOWN -> SHUT_DOWN
   //   MUST_CLOSE -> (::close()) -> FREE
+  //
+  // State atomic operation memory orders:
+  // All atomic operations on per-socket states use std::memory_order_relaxed
+  // because there is no associated per-socket data guarded by the state and
+  // the states for different sockets are unrelated. If there were associated
+  // per-socket data, acquire and release orders would be desired; and if the
+  // states for different sockets were related, it could be that sequential
+  // consistent orders would be desired.
   enum State : uint8_t {
     FREE = 0,
     IN_USE,
     IN_SHUTDOWN,
     SHUT_DOWN,
-    MUST_CLOSE
+    MUST_CLOSE,
   };
 
   struct Free {
