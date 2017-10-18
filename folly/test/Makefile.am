@@ -92,6 +92,8 @@ check_PROGRAMS += foreach_benchmark
 hash_test_SOURCES = HashTest.cpp
 hash_test_LDADD = libfollytestmain.la
 
+invoke_test_SOURCES = ../functional/test/InvokeTest.cpp
+invoke_test_LDADD = libfollytestmain.la
 
 fbstring_test_using_jemalloc_SOURCES = FBStringTest.cpp
 fbstring_test_using_jemalloc_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la

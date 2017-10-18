@@ -203,6 +203,7 @@ nobase_follyinclude_HEADERS = \
 	FormatTraits.h \
 	Format.h \
 	Format-inl.h \
+	functional/Invoke.h \
 	futures/Barrier.h \
 	futures/DrivableExecutor.h \
 	futures/Future-pre.h \

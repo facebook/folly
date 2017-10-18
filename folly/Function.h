@@ -226,6 +226,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 
@@ -403,19 +404,6 @@ bool execBig(Op o, Data* src, Data* dst) {
       break;
   }
   return true;
-}
-
-// Invoke helper
-template <typename F, typename... Args>
-inline constexpr auto invoke(F&& f, Args&&... args)
-    -> decltype(std::forward<F>(f)(std::forward<Args>(args)...)) {
-  return std::forward<F>(f)(std::forward<Args>(args)...);
-}
-
-template <typename M, typename C, typename... Args>
-inline constexpr auto invoke(M(C::*d), Args&&... args)
-    -> decltype(std::mem_fn(d)(std::forward<Args>(args)...)) {
-  return std::mem_fn(d)(std::forward<Args>(args)...);
 }
 
 } // namespace function
@@ -802,7 +790,7 @@ class FunctionRef<ReturnType(Args...)> final {
   template <typename Fun>
   static ReturnType call(void* object, Args&&... args) {
     using Pointer = _t<std::add_pointer<Fun>>;
-    return static_cast<ReturnType>(detail::function::invoke(
+    return static_cast<ReturnType>(invoke(
         static_cast<Fun&&>(*static_cast<Pointer>(object)),
         static_cast<Args&&>(args)...));
   }
