@@ -310,7 +310,7 @@ inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) {
   uint32_t tmp;
   size_t rem;
 
-  if (len <= 0 || buf == 0) {
+  if (len <= 0 || buf == nullptr) {
     return 0;
   }
 

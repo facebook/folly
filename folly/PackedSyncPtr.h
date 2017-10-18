@@ -74,7 +74,7 @@ class PackedSyncPtr {
    * (We are avoiding a constructor to ensure gcc allows us to put
    * this class in packed structures.)
    */
-  void init(T* initialPtr = 0, uint16_t initialExtra = 0) {
+  void init(T* initialPtr = nullptr, uint16_t initialExtra = 0) {
     auto intPtr = reinterpret_cast<uintptr_t>(initialPtr);
     CHECK(!(intPtr >> 48));
     data_.init(intPtr);

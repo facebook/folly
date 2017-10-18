@@ -305,7 +305,7 @@ void DoTimingBig(int seed)
     for (int i=0; i<NUMBUF; ++i)
     {
         free(buf[i]);
-        buf[i] = 0;
+        buf[i] = nullptr;
     }
 }
 #undef NUMBUF

@@ -44,7 +44,7 @@ const int maxBMElements = int(FLAGS_numBMElements * LF); // hit our target LF.
 
 static int64_t nowInUsec() {
   timeval tv;
-  gettimeofday(&tv, 0);
+  gettimeofday(&tv, nullptr);
   return int64_t(tv.tv_sec) * 1000 * 1000 + tv.tv_usec;
 }
 

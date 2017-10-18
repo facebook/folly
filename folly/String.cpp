@@ -181,7 +181,7 @@ const PrettySuffix kPrettyTimeSuffixes[] = {
   { "ns", 1e-9L },
   { "ps", 1e-12L },
   { "s ", 0 },
-  { 0, 0 },
+  { nullptr, 0 },
 };
 
 const PrettySuffix kPrettyBytesMetricSuffixes[] = {
@@ -190,7 +190,7 @@ const PrettySuffix kPrettyBytesMetricSuffixes[] = {
   { "MB", 1e6L },
   { "kB", 1e3L },
   { "B ", 0L },
-  { 0, 0 },
+  { nullptr, 0 },
 };
 
 const PrettySuffix kPrettyBytesBinarySuffixes[] = {
@@ -199,7 +199,7 @@ const PrettySuffix kPrettyBytesBinarySuffixes[] = {
   { "MB", int64_t(1) << 20 },
   { "kB", int64_t(1) << 10 },
   { "B ", 0L },
-  { 0, 0 },
+  { nullptr, 0 },
 };
 
 const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
@@ -208,7 +208,7 @@ const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
   { "MiB", int64_t(1) << 20 },
   { "KiB", int64_t(1) << 10 },
   { "B  ", 0L },
-  { 0, 0 },
+  { nullptr, 0 },
 };
 
 const PrettySuffix kPrettyUnitsMetricSuffixes[] = {
@@ -217,7 +217,7 @@ const PrettySuffix kPrettyUnitsMetricSuffixes[] = {
   { "M",    1e6L },
   { "k",    1e3L },
   { " ",      0  },
-  { 0, 0 },
+  { nullptr, 0 },
 };
 
 const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
@@ -226,7 +226,7 @@ const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
   { "M", int64_t(1) << 20 },
   { "k", int64_t(1) << 10 },
   { " ", 0 },
-  { 0, 0 },
+  { nullptr, 0 },
 };
 
 const PrettySuffix kPrettyUnitsBinaryIECSuffixes[] = {
@@ -235,7 +235,7 @@ const PrettySuffix kPrettyUnitsBinaryIECSuffixes[] = {
   { "Mi", int64_t(1) << 20 },
   { "Ki", int64_t(1) << 10 },
   { "  ", 0 },
-  { 0, 0 },
+  { nullptr, 0 },
 };
 
 const PrettySuffix kPrettySISuffixes[] = {
@@ -260,7 +260,7 @@ const PrettySuffix kPrettySISuffixes[] = {
   { "z", 1e-21L },
   { "y", 1e-24L },
   { " ", 0 },
-  { 0, 0}
+  { nullptr, 0}
 };
 
 const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
