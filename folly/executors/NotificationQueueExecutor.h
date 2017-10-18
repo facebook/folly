@@ -21,7 +21,6 @@
 #include <folly/io/async/NotificationQueue.h>
 
 namespace folly {
-namespace python {
 
 class NotificationQueueExecutor : public folly::DrivableExecutor {
  public:
@@ -55,5 +54,4 @@ class NotificationQueueExecutor : public folly::DrivableExecutor {
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
 }; // NotificationQueueExecutor
 
-} // namespace python
 } // namespace folly

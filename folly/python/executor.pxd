@@ -1,8 +1,8 @@
 from libcpp.memory cimport unique_ptr
 from folly cimport cFollyExecutor
 
-cdef extern from "folly/python/NotificationQueueExecutor.h" namespace "folly::python":
-    cdef cppclass cNotificationQueueExecutor "folly::python::NotificationQueueExecutor"(cFollyExecutor):
+cdef extern from "folly/executors/NotificationQueueExecutor.h" namespace "folly":
+    cdef cppclass cNotificationQueueExecutor "folly::NotificationQueueExecutor"(cFollyExecutor):
         int fileno()
         void drive()
 

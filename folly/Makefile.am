@@ -96,6 +96,7 @@ nobase_follyinclude_HEADERS = \
 	executors/IOThreadPoolExecutor.h \
 	executors/LifoSemMPMCQueue.h \
 	executors/NamedThreadFactory.h \
+	executors/NotificationQueueExecutor.h \
 	executors/PriorityLifoSemMPMCQueue.h \
 	executors/PriorityThreadFactory.h \
 	executors/SerialExecutor.h \
