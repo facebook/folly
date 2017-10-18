@@ -15,11 +15,14 @@
  */
 
 #include <folly/Baton.h>
+#include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/ManualExecutor.h>
-#include <folly/futures/QueuedImmediateExecutor.h>
 #include <folly/portability/GTest.h>
+
+// TODO(jsedgwick) move this test to executors/test/ once the tested executors
+// have all moved
 
 using namespace folly;
 

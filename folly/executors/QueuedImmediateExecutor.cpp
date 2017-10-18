@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/futures/QueuedImmediateExecutor.h>
+#include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/ThreadLocal.h>
 #include <queue>
 

@@ -106,6 +106,7 @@ nobase_follyinclude_HEADERS = \
 	executors/ThreadPoolExecutor.h \
 	executors/ThreadedExecutor.h \
 	executors/UnboundedBlockingQueue.h \
+	executors/QueuedImmediateExecutor.h \
 	Demangle.h \
 	DiscriminatedPtr.h \
 	DynamicConverter.h \
@@ -218,7 +219,6 @@ nobase_follyinclude_HEADERS = \
 	futures/ManualExecutor.h \
 	futures/Promise-inl.h \
 	futures/Promise.h \
-	futures/QueuedImmediateExecutor.h \
 	futures/SharedPromise.h \
 	futures/SharedPromise-inl.h \
 	futures/ThreadWheelTimekeeper.h \
@@ -505,7 +505,6 @@ libfolly_la_SOURCES = \
 	futures/Future.cpp \
 	futures/FutureException.cpp \
 	futures/ManualExecutor.cpp \
-	futures/QueuedImmediateExecutor.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
 	futures/test/TestExecutor.cpp \
 	executors/CPUThreadPoolExecutor.cpp \
@@ -515,6 +514,7 @@ libfolly_la_SOURCES = \
 	executors/SerialExecutor.cpp \
 	executors/ThreadPoolExecutor.cpp \
 	executors/ThreadedExecutor.cpp \
+	executors/QueuedImmediateExecutor.cpp \
 	experimental/hazptr/hazptr.cpp \
 	experimental/hazptr/memory_resource.cpp \
 	GroupVarint.cpp \
