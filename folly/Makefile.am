@@ -100,6 +100,7 @@ nobase_follyinclude_HEADERS = \
 	executors/NotificationQueueExecutor.h \
 	executors/PriorityLifoSemMPMCQueue.h \
 	executors/PriorityThreadFactory.h \
+	executors/ScheduledExecutor.h \
 	executors/SerialExecutor.h \
 	executors/ThreadFactory.h \
 	executors/ThreadPoolExecutor.h \
@@ -218,8 +219,6 @@ nobase_follyinclude_HEADERS = \
 	futures/Promise-inl.h \
 	futures/Promise.h \
 	futures/QueuedImmediateExecutor.h \
-	futures/Retrying.h \
-	futures/ScheduledExecutor.h \
 	futures/SharedPromise.h \
 	futures/SharedPromise-inl.h \
 	futures/ThreadWheelTimekeeper.h \

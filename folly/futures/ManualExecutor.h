@@ -23,7 +23,7 @@
 
 #include <folly/LifoSem.h>
 #include <folly/executors/DrivableExecutor.h>
-#include <folly/futures/ScheduledExecutor.h>
+#include <folly/executors/ScheduledExecutor.h>
 
 namespace folly {
   /// A ManualExecutor only does work when you turn the crank, by calling
