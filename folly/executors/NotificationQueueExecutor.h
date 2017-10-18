@@ -17,7 +17,7 @@
 
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
-#include <folly/futures/DrivableExecutor.h>
+#include <folly/executors/DrivableExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
 
 namespace folly {

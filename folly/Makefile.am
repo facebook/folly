@@ -88,6 +88,7 @@ nobase_follyinclude_HEADERS = \
 	executors/BlockingQueue.h \
 	executors/CPUThreadPoolExecutor.h \
 	executors/Codel.h \
+	executors/DrivableExecutor.h \
 	executors/FiberIOExecutor.h \
 	executors/FutureExecutor.h \
 	executors/GlobalExecutor.h \
@@ -205,7 +206,6 @@ nobase_follyinclude_HEADERS = \
 	Format-inl.h \
 	functional/Invoke.h \
 	futures/Barrier.h \
-	futures/DrivableExecutor.h \
 	futures/Future-pre.h \
 	futures/helpers.h \
 	futures/Future.h \

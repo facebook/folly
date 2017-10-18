@@ -18,7 +18,7 @@
 
 #include <folly/Baton.h>
 #include <folly/MPMCQueue.h>
-#include <folly/futures/DrivableExecutor.h>
+#include <folly/executors/DrivableExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/ManualExecutor.h>

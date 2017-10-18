@@ -22,7 +22,7 @@
 #include <queue>
 
 #include <folly/LifoSem.h>
-#include <folly/futures/DrivableExecutor.h>
+#include <folly/executors/DrivableExecutor.h>
 #include <folly/futures/ScheduledExecutor.h>
 
 namespace folly {

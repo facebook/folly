@@ -27,7 +27,7 @@
 #include <folly/Portability.h>
 #include <folly/Try.h>
 #include <folly/Utility.h>
-#include <folly/futures/DrivableExecutor.h>
+#include <folly/executors/DrivableExecutor.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
