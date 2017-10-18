@@ -17,11 +17,11 @@
 #include <folly/detail/MemoryIdler.h>
 
 #include <folly/Logging.h>
-#include <folly/MallctlHelper.h>
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>
+#include <folly/memory/MallctlHelper.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>

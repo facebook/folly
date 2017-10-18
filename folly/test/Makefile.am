@@ -329,7 +329,7 @@ ssl_test_SOURCES = \
 ssl_test_LDADD = libfollytestmain.la -lcrypto
 TESTS += ssl_test
 
-mallctl_helper_test_SOURCES = MallctlHelperTest.cpp
+mallctl_helper_test_SOURCES = ../memory/test/MallctlHelperTest.cpp
 mallctl_helper_test_LDADD = libfollytestmain.la
 TESTS += mallctl_helper_test
 

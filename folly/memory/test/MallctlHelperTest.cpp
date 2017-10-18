@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/MallctlHelper.h>
+#include <folly/memory/MallctlHelper.h>
 #include <folly/Malloc.h>
 #include <folly/init/Init.h>
 #include <folly/portability/GTest.h>

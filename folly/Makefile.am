@@ -326,12 +326,12 @@ nobase_follyinclude_HEADERS = \
 	LockTraitsBoost.h \
 	Logging.h \
 	MacAddress.h \
-	MallctlHelper.h \
 	Malloc.h \
 	MapUtil.h \
 	Math.h \
 	Memory.h \
 	MemoryMapping.h \
+	memory/MallctlHelper.h \
 	memory/UninitializedMemoryHacks.h \
 	MicroSpinLock.h \
 	MicroLock.h \
@@ -482,7 +482,7 @@ libfollybase_la_SOURCES = \
 	Format.cpp \
 	FormatArg.cpp \
 	FormatTables.cpp \
-	MallctlHelper.cpp \
+	memory/MallctlHelper.cpp \
 	portability/BitsFunctexcept.cpp \
 	String.cpp \
 	Unicode.cpp

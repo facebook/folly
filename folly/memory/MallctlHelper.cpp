@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/MallctlHelper.h>
+#include <folly/memory/MallctlHelper.h>
 #include <folly/Format.h>
 #include <folly/String.h>
 
