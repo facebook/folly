@@ -17,7 +17,7 @@
 #include <memory>
 
 #include <folly/Function.h>
-#include <folly/Partial.h>
+#include <folly/functional/Partial.h>
 
 #include <folly/portability/GTest.h>
 

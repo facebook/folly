@@ -205,6 +205,7 @@ nobase_follyinclude_HEADERS = \
 	Format.h \
 	Format-inl.h \
 	functional/Invoke.h \
+	functional/Partial.h \
 	futures/Barrier.h \
 	futures/Future-pre.h \
 	futures/helpers.h \
@@ -341,7 +342,6 @@ nobase_follyinclude_HEADERS = \
 	Overload.h \
 	PackedSyncPtr.h \
 	Padded.h \
-	Partial.h \
 	PicoSpinLock.h \
 	Portability.h \
 	portability/Asm.h \
