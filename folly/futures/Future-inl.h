@@ -136,10 +136,6 @@ SemiFuture<typename std::decay<T>::type> makeSemiFuture(T&& t) {
   return makeSemiFuture(Try<typename std::decay<T>::type>(std::forward<T>(t)));
 }
 
-inline SemiFuture<Unit> makeSemiFuture() {
-  return makeSemiFuture(Unit{});
-}
-
 // makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
 template <class F>
 typename std::enable_if<
@@ -244,6 +240,12 @@ SemiFuture<T>::SemiFuture(in_place_t, Args&&... args)
 template <class T>
 SemiFuture<T>::~SemiFuture() {
   detach();
+}
+
+// This must be defined after the constructors to avoid a bug in MSVC
+// https://connect.microsoft.com/VisualStudio/feedback/details/3142777/out-of-line-constructor-definition-after-implicit-reference-causes-incorrect-c2244
+inline SemiFuture<Unit> makeSemiFuture() {
+  return makeSemiFuture(Unit{});
 }
 
 template <class T>
