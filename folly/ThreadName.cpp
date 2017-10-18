@@ -102,20 +102,17 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
 #if !FOLLY_HAVE_PTHREAD || _WIN32
   return false;
 #else
-  auto const piece = name.subpiece(0, kMaxThreadNameLength - 1);
-  auto const data = piece.data();
-  auto const size = piece.size();
-  char trimmedName[kMaxThreadNameLength];
-  std::memcpy(trimmedName, data, size);
-  std::memset(trimmedName + size, 0, kMaxThreadNameLength - size);
+  name = name.subpiece(0, kMaxThreadNameLength - 1);
+  char buf[kMaxThreadNameLength] = {};
+  std::memcpy(buf, name.data(), name.size());
   auto id = stdTidToPthreadId(tid);
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
-  return 0 == pthread_setname_np(id, const_cast<char const*>(trimmedName));
+  return 0 == pthread_setname_np(id, buf);
 #elif FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
   // Since OS X 10.6 it is possible for a thread to set its own name,
   // but not that of some other thread.
   if (pthread_equal(pthread_self(), id)) {
-    return 0 == pthread_setname_np(const_cast<char const*>(trimmedName));
+    return 0 == pthread_setname_np(buf);
   }
   return false;
 #else
