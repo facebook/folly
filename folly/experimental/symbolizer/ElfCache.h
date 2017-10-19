@@ -29,9 +29,9 @@
 #include <boost/operators.hpp>
 #include <glog/logging.h>
 
-#include <folly/Hash.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
+#include <folly/hash/Hash.h>
 
 namespace folly {
 namespace symbolizer {

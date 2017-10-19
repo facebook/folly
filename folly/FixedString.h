@@ -409,7 +409,7 @@ struct ReverseIterator {
 } // namespace fixedstring
 } // namespace detail
 
-// Defined in folly/Hash.h
+// Defined in folly/hash/Hash.h
 std::uint32_t hsieh_hash32_buf(const void* buf, std::size_t len);
 
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** *

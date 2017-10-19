@@ -24,9 +24,9 @@
 #include <unordered_set>
 #include <utility>
 
-#include <folly/Hash.h>
 #include <folly/Range.h>
 #include <folly/experimental/StringKeyedCommon.h>
+#include <folly/hash/Hash.h>
 
 namespace folly {
 

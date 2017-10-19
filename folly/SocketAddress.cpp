@@ -32,7 +32,7 @@
 #include <folly/CppAttributes.h>
 #include <folly/Exception.h>
 #include <folly/Format.h>
-#include <folly/Hash.h>
+#include <folly/hash/Hash.h>
 
 namespace {
 

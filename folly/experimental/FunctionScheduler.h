@@ -18,13 +18,13 @@
 
 #include <folly/Function.h>
 #include <folly/Range.h>
-#include <folly/Hash.h>
+#include <folly/hash/Hash.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 namespace folly {
 

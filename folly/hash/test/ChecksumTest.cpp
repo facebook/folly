@@ -19,7 +19,7 @@
 #include <boost/crc.hpp>
 
 #include <folly/Benchmark.h>
-#include <folly/Hash.h>
+#include <folly/hash/Hash.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
