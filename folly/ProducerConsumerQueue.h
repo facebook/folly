@@ -167,6 +167,11 @@ struct ProducerConsumerQueue {
     return ret;
   }
 
+  // maximum number of items in the queue.
+  size_t capacity() const {
+    return size_ - 1;
+  }
+
  private:
   char pad0_[CacheLocality::kFalseSharingRange];
   const uint32_t size_;

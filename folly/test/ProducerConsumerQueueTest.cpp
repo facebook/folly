@@ -288,3 +288,8 @@ TEST(PCQ, EmptyFull) {
   EXPECT_FALSE(queue.write(3));
   EXPECT_EQ(queue.sizeGuess(), 2);
 }
+
+TEST(PCQ, Capacity) {
+  folly::ProducerConsumerQueue<int> queue(3);
+  EXPECT_EQ(queue.capacity(), 2); // PCQ max size is buffer size - 1.
+}
