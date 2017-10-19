@@ -1218,9 +1218,13 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
   }
 
   std::shared_ptr<Timekeeper> tks;
-  if (!tk) {
+  if (LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
-    tk = DCHECK_NOTNULL(tks.get());
+    tk = tks.get();
+  }
+
+  if (UNLIKELY(!tk)) {
+    return makeFuture<T>(NoTimekeeper());
   }
 
   auto ctx = std::make_shared<Context>(std::move(e));

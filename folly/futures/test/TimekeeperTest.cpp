@@ -88,6 +88,16 @@ TEST(Timekeeper, futureSleepHandlesNullTimekeeperSingleton) {
   EXPECT_THROW(futures::sleep(one_ms).get(), NoTimekeeper);
 }
 
+TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
+  Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
+  SCOPE_EXIT {
+    Singleton<ThreadWheelTimekeeper>::make_mock();
+  };
+  Promise<int> p;
+  auto f = p.getFuture().within(one_ms);
+  EXPECT_THROW(f.get(), NoTimekeeper);
+}
+
 TEST(Timekeeper, futureDelayed) {
   auto t1 = now();
   auto dur = makeFuture()
