@@ -1183,6 +1183,11 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
                                          ///< The address we are connecting from
   uint32_t sendTimeout_;                 ///< The send timeout, in milliseconds
   uint16_t maxReadsPerEvent_;            ///< Max reads per event loop iteration
+
+  bool isBufferMovable_{false};
+
+  int8_t readErr_{READ_NO_ERROR}; ///< The read error encountered, if any
+
   EventBase* eventBase_;                 ///< The EventBase
   WriteTimeout writeTimeout_;            ///< A timeout for connect and write
   IoHandler ioHandler_;                  ///< A EventHandler to monitor the fd
@@ -1198,18 +1203,17 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   size_t appBytesReceived_;              ///< Num of bytes received from socket
   size_t appBytesWritten_;               ///< Num of bytes written to socket
-  bool isBufferMovable_{false};
 
   // Pre-received data, to be returned to read callback before any data from the
   // socket.
   std::unique_ptr<IOBuf> preReceivedData_;
 
-  int8_t readErr_{READ_NO_ERROR};        ///< The read error encountered, if any
-
   std::chrono::steady_clock::time_point connectStartTime_;
   std::chrono::steady_clock::time_point connectEndTime_;
 
   std::chrono::milliseconds connectTimeout_{0};
+
+  std::unique_ptr<EvbChangeCallback> evbChangeCb_{nullptr};
 
   BufferCallback* bufferCallback_{nullptr};
   bool tfoEnabled_{false};
@@ -1222,8 +1226,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool zeroCopyEnabled_{false};
   bool zeroCopyVal_{false};
   size_t zeroCopyWriteChainThreshold_{kDefaultZeroCopyThreshold};
-
-  std::unique_ptr<EvbChangeCallback> evbChangeCb_{nullptr};
 };
 #ifdef _MSC_VER
 #pragma vtordisp(pop)

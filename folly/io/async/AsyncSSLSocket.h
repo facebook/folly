@@ -877,8 +877,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   SSL_SESSION *sslSession_{nullptr};
   Timeout handshakeTimeout_;
   Timeout connectionTimeout_;
-  // whether the SSL session was resumed using session ID or not
-  bool sessionIDResumed_{false};
 
   // The app byte num that we are tracking for the MSG_EOR
   // Only one app EOR byte can be tracked.
@@ -918,10 +916,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::chrono::steady_clock::time_point handshakeStartTime_;
   std::chrono::steady_clock::time_point handshakeEndTime_;
   std::chrono::milliseconds handshakeConnectTimeout_{0};
-  bool sessionResumptionAttempted_{false};
   std::chrono::milliseconds totalConnectTimeout_{0};
 
   std::string sslVerificationAlert_;
+
+  bool sessionResumptionAttempted_{false};
+  // whether the SSL session was resumed using session ID or not
+  bool sessionIDResumed_{false};
 };
 
 } // namespace
