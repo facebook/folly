@@ -328,6 +328,15 @@ template <
     class Result = typename futures::detail::resultOf<F, ItT&&>::value_type>
 std::vector<Future<Result>> window(Collection input, F func, size_t n);
 
+template <
+    class Collection,
+    class F,
+    class ItT = typename std::iterator_traits<
+        typename Collection::iterator>::value_type,
+    class Result = typename futures::detail::resultOf<F, ItT&&>::value_type>
+std::vector<Future<Result>>
+window(Executor* executor, Collection input, F func, size_t n);
+
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::conditional<
     futures::detail::callableWith<F, T&&, Try<ItT>&&>::value,
