@@ -503,6 +503,7 @@ libfolly_la_SOURCES = \
 	futures/Barrier.cpp \
 	futures/Future.cpp \
 	futures/FutureException.cpp \
+	futures/InlineExecutor.cpp \
 	futures/ManualExecutor.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
 	futures/test/TestExecutor.cpp \
