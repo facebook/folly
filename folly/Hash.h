@@ -24,8 +24,8 @@
 #include <type_traits>
 #include <utility>
 
-#include <folly/ApplyTuple.h>
 #include <folly/Bits.h>
+#include <folly/functional/ApplyTuple.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
 

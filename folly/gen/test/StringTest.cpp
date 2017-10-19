@@ -18,7 +18,7 @@
 #include <map>
 #include <vector>
 
-#include <folly/ApplyTuple.h>
+#include <folly/functional/ApplyTuple.h>
 #include <folly/gen/String.h>
 #include <folly/portability/GTest.h>
 

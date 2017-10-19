@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include <folly/ApplyTuple.h>
+#include <folly/functional/ApplyTuple.h>
 #include <folly/portability/GTest.h>
 
 #include <array>

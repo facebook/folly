@@ -27,7 +27,6 @@ lib_LTLIBRARIES = \
 follyincludedir = $(includedir)/folly
 
 nobase_follyinclude_HEADERS = \
-	ApplyTuple.h \
 	Arena.h \
 	Arena-inl.h \
 	Array.h \
@@ -106,7 +105,7 @@ nobase_follyinclude_HEADERS = \
 	executors/ThreadPoolExecutor.h \
 	executors/ThreadedExecutor.h \
 	executors/UnboundedBlockingQueue.h \
-	executors/QueuedImmediateExecutor.h \
+	functional/ApplyTuple.h \
 	Demangle.h \
 	DiscriminatedPtr.h \
 	DynamicConverter.h \

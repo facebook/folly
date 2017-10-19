@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/ApplyTuple.h>
+#include <folly/functional/ApplyTuple.h>
 
 namespace folly {
 

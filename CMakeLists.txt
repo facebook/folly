@@ -358,6 +358,9 @@ if (BUILD_TESTS)
     DIRECTORY fibers/test/
       TEST fibers_test SOURCES FibersTest.cpp
 
+    DIRECTORY functional/test/
+      TEST apply_tuple_test SOURCES ApplyTupleTest.cpp
+
     DIRECTORY futures/test/
       TEST barrier_test SOURCES BarrierTest.cpp
       TEST callback_lifetime_test SOURCES CallbackLifetimeTest.cpp
@@ -474,7 +477,6 @@ if (BUILD_TESTS)
 
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
-      TEST apply_tuple_test SOURCES ApplyTupleTest.cpp
       TEST arena_test SOURCES ArenaTest.cpp
       TEST arena_smartptr_test SOURCES ArenaSmartPtrTest.cpp
       TEST array_test SOURCES ArrayTest.cpp
