@@ -138,7 +138,9 @@ class SkipListNode : private boost::noncopyable {
       height_(height), data_(std::forward<U>(data)) {
     spinLock_.init();
     setFlags(0);
-    if (isHead) setIsHeadNode();
+    if (isHead) {
+      setIsHeadNode();
+    }
     // need to explicitly init the dynamic atomic pointer array
     for (uint8_t i = 0; i < height_; ++i) {
       new (&skip_[i]) std::atomic<SkipListNode*>(nullptr);

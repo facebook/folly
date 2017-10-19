@@ -94,18 +94,23 @@ BENCHMARK(no_contention) {
 
   BENCHMARK_SUSPEND {
     folly::Baton<> b1, b2;
-    for (auto& p : promises)
+    for (auto& p : promises) {
       futures.push_back(p.getFuture());
+    }
 
     consumer = std::thread([&]{
       b1.post();
-      for (auto& f : futures) f.then(incr<int>);
+      for (auto& f : futures) {
+        f.then(incr<int>);
+      }
     });
     consumer.join();
 
     producer = std::thread([&]{
       b2.post();
-      for (auto& p : promises) p.setValue(42);
+      for (auto& p : promises) {
+        p.setValue(42);
+      }
     });
 
     b1.wait();
@@ -125,8 +130,9 @@ BENCHMARK_RELATIVE(contention) {
 
   BENCHMARK_SUSPEND {
     folly::Baton<> b1, b2;
-    for (auto& p : promises)
+    for (auto& p : promises) {
       futures.push_back(p.getFuture());
+    }
 
     consumer = std::thread([&]{
       b1.post();

@@ -606,8 +606,9 @@ class EliasFanoReader {
 
     if (kUnchecked || LIKELY(position() + n < size_)) {
       if (LIKELY(n < kLinearScanThreshold)) {
-        for (SizeType i = 0; i < n; ++i)
+        for (SizeType i = 0; i < n; ++i) {
           upper_.next();
+        }
       } else {
         upper_.skip(n);
       }
@@ -735,7 +736,9 @@ class EliasFanoReader {
     while (true) {
       value_ = readLowerPart(upper_.position()) |
         (upper_.value() << numLowerBits_);
-      if (LIKELY(value_ >= value)) break;
+      if (LIKELY(value_ >= value)) {
+        break;
+      }
       upper_.next();
     }
   }

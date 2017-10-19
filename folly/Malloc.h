@@ -223,19 +223,25 @@ static const size_t jemallocMinInPlaceExpandable = 4096;
  */
 inline void* checkedMalloc(size_t size) {
   void* p = malloc(size);
-  if (!p) std::__throw_bad_alloc();
+  if (!p) {
+    std::__throw_bad_alloc();
+  }
   return p;
 }
 
 inline void* checkedCalloc(size_t n, size_t size) {
   void* p = calloc(n, size);
-  if (!p) std::__throw_bad_alloc();
+  if (!p) {
+    std::__throw_bad_alloc();
+  }
   return p;
 }
 
 inline void* checkedRealloc(void* ptr, size_t size) {
   void* p = realloc(ptr, size);
-  if (!p) std::__throw_bad_alloc();
+  if (!p) {
+    std::__throw_bad_alloc();
+  }
   return p;
 }
 

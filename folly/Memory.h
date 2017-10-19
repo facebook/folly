@@ -171,7 +171,9 @@ class SysAlloc {
  public:
   void* allocate(size_t size) {
     void* p = ::malloc(size);
-    if (!p) throw std::bad_alloc();
+    if (!p) {
+      throw std::bad_alloc();
+    }
     return p;
   }
   void deallocate(void* p) {
@@ -340,7 +342,9 @@ class allocator_delete
   }
 
   void operator()(pointer p) const {
-    if (!p) return;
+    if (!p) {
+      return;
+    }
     const_cast<allocator_delete*>(this)->destroy(p);
     const_cast<allocator_delete*>(this)->deallocate(p, 1);
   }

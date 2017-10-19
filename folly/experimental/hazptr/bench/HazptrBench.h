@@ -43,14 +43,16 @@ inline uint64_t run_once(
   for (int tid = 0; tid < nthreads; ++tid) {
     threads[tid] = std::thread([&, tid] {
       started.fetch_add(1);
-      while (!start.load())
+      while (!start.load()) {
         /* spin */;
+      }
       fn(tid);
     });
   }
 
-  while (started.load() < nthreads)
+  while (started.load() < nthreads) {
     /* spin */;
+  }
 
   // begin time measurement
   auto tbegin = std::chrono::steady_clock::now();

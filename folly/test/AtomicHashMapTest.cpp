@@ -134,7 +134,9 @@ struct EqTraits {
 struct HashTraits {
   size_t operator()(const char* a) {
     size_t result = 0;
-    while (a[0] != 0) result += static_cast<size_t>(*(a++));
+    while (a[0] != 0) {
+      result += static_cast<size_t>(*(a++));
+    }
     return result;
   }
   size_t operator()(const char& a) {
@@ -142,7 +144,9 @@ struct HashTraits {
   }
   size_t operator()(const StringPiece a) {
     size_t result = 0;
-    for (const auto& ch : a) result += static_cast<size_t>(ch);
+    for (const auto& ch : a) {
+      result += static_cast<size_t>(ch);
+    }
     return result;
   }
 };
@@ -619,7 +623,9 @@ void* testEraseEraseThread(void*) {
     int currentLevel;
     do {
       currentLevel = insertedLevel.load(std::memory_order_acquire);
-      if (currentLevel == kTestEraseInsertions) currentLevel += lag + 1;
+      if (currentLevel == kTestEraseInsertions) {
+        currentLevel += lag + 1;
+      }
     } while (currentLevel - lag < i);
 
     KeyT key = randomizeKey(i);
@@ -673,7 +679,9 @@ auto atomicHashArrayInsertRaceArray = AHA::create(2, configRace);
 void* atomicHashArrayInsertRaceThread(void* /* j */) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
   uintptr_t numInserted = 0;
-  while (!runThreadsCreatedAllThreads.load());
+  while (!runThreadsCreatedAllThreads.load()) {
+    ;
+  }
   for (int i = 0; i < 2; i++) {
     if (arr->insert(RecordT(randomizeKey(i), 0)).first != arr->end()) {
       numInserted++;
@@ -867,7 +875,9 @@ BENCHMARK(mt_ahm_miss, iters) {
   numOpsPerThread = iters / FLAGS_numThreads;
   runThreads([](void* jj) -> void* {
     int64_t j = (int64_t) jj;
-    while (!runThreadsCreatedAllThreads.load());
+    while (!runThreadsCreatedAllThreads.load()) {
+      ;
+    }
     for (int i = 0; i < numOpsPerThread; ++i) {
       KeyT key = i + j * numOpsPerThread * 100;
       folly::doNotOptimizeAway(globalAHM->find(key) == globalAHM->end());
@@ -881,7 +891,9 @@ BENCHMARK(mt_qpahm_miss, iters) {
   numOpsPerThread = iters / FLAGS_numThreads;
   runThreads([](void* jj) -> void* {
     int64_t j = (int64_t) jj;
-    while (!runThreadsCreatedAllThreads.load());
+    while (!runThreadsCreatedAllThreads.load()) {
+      ;
+    }
     for (int i = 0; i < numOpsPerThread; ++i) {
       KeyT key = i + j * numOpsPerThread * 100;
       folly::doNotOptimizeAway(globalQPAHM->find(key) == globalQPAHM->end());
@@ -911,7 +923,9 @@ BENCHMARK(mt_ahm_find_insert_mix, iters) {
   numOpsPerThread = iters / FLAGS_numThreads;
   runThreads([](void* jj) -> void* {
     int64_t j = (int64_t) jj;
-    while (!runThreadsCreatedAllThreads.load());
+    while (!runThreadsCreatedAllThreads.load()) {
+      ;
+    }
     for (int i = 0; i < numOpsPerThread; ++i) {
       if (i % 128) {  // ~1% insert mix
         KeyT key = randomizeKey(i + j * numOpsPerThread);
@@ -931,7 +945,9 @@ BENCHMARK(mt_qpahm_find_insert_mix, iters) {
   numOpsPerThread = iters / FLAGS_numThreads;
   runThreads([](void* jj) -> void* {
     int64_t j = (int64_t) jj;
-    while (!runThreadsCreatedAllThreads.load());
+    while (!runThreadsCreatedAllThreads.load()) {
+      ;
+    }
     for (int i = 0; i < numOpsPerThread; ++i) {
       if (i % 128) {  // ~1% insert mix
         KeyT key = randomizeKey(i + j * numOpsPerThread);
@@ -950,7 +966,9 @@ BENCHMARK(mt_aha_find, iters) {
   numOpsPerThread = iters / FLAGS_numThreads;
   runThreads([](void* jj) -> void* {
       int64_t j = (int64_t) jj;
-      while (!runThreadsCreatedAllThreads.load());
+      while (!runThreadsCreatedAllThreads.load()) {
+        ;
+      }
       for (int i = 0; i < numOpsPerThread; ++i) {
         KeyT key = randomizeKey(i + j * numOpsPerThread);
         folly::doNotOptimizeAway(globalAHA->find(key)->second);
@@ -964,7 +982,9 @@ BENCHMARK(mt_ahm_find, iters) {
   numOpsPerThread = iters / FLAGS_numThreads;
   runThreads([](void* jj) -> void* {
     int64_t j = (int64_t) jj;
-    while (!runThreadsCreatedAllThreads.load());
+    while (!runThreadsCreatedAllThreads.load()) {
+      ;
+    }
     for (int i = 0; i < numOpsPerThread; ++i) {
       KeyT key = randomizeKey(i + j * numOpsPerThread);
       folly::doNotOptimizeAway(globalAHM->find(key)->second);
@@ -978,7 +998,9 @@ BENCHMARK(mt_qpahm_find, iters) {
   numOpsPerThread = iters / FLAGS_numThreads;
   runThreads([](void* jj) -> void* {
     int64_t j = (int64_t) jj;
-    while (!runThreadsCreatedAllThreads.load());
+    while (!runThreadsCreatedAllThreads.load()) {
+      ;
+    }
     for (int i = 0; i < numOpsPerThread; ++i) {
       KeyT key = randomizeKey(i + j * numOpsPerThread);
       folly::doNotOptimizeAway(globalQPAHM->find(key)->second);

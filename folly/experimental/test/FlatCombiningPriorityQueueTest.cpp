@@ -129,14 +129,16 @@ static uint64_t run_once(PriorityQueue& pq, const Func& fn) {
   for (uint32_t tid = 0; tid < nthreads; ++tid) {
     threads[tid] = std::thread([&, tid] {
       started.fetch_add(1);
-      while (!start.load())
+      while (!start.load()) {
         /* nothing */;
+      }
       fn(tid);
     });
   }
 
-  while (started.load() < nthreads)
+  while (started.load() < nthreads) {
     /* nothing */;
+  }
   auto tbegin = std::chrono::steady_clock::now();
 
   // begin time measurement

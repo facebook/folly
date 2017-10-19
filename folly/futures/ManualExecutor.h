@@ -132,8 +132,9 @@ namespace folly {
       bool operator<(ScheduledFunc const& b) const {
         // Earlier-scheduled things must be *higher* priority
         // in the max-based std::priority_queue
-        if (time == b.time)
+        if (time == b.time) {
           return ordinal > b.ordinal;
+        }
         return time > b.time;
       }
 

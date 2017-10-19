@@ -138,7 +138,9 @@ void File::doLock(int op) {
 bool File::doTryLock(int op) {
   int r = flockNoInt(fd_, op | LOCK_NB);
   // flock returns EWOULDBLOCK if already locked
-  if (r == -1 && errno == EWOULDBLOCK) return false;
+  if (r == -1 && errno == EWOULDBLOCK) {
+    return false;
+  }
   checkUnixError(r, "flock() failed (try_lock)");
   return true;
 }

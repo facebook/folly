@@ -439,7 +439,9 @@ TEST(Foreach, ForEachEnumerateBreak) {
     sumAA += aa;
     sumIter += *iter;
     ++numIterations;
-    if (aa == 1) break;
+    if (aa == 1) {
+      break;
+    }
   }
   EXPECT_EQ(sumAA, 1);   // 0 + 1
   EXPECT_EQ(sumIter, 3); // 1 + 2

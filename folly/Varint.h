@@ -136,16 +136,56 @@ inline Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data) {
   if (LIKELY(size_t(end - begin) >= kMaxVarintLength64)) {  // fast path
     int64_t b;
     do {
-      b = *p++; val  = (b & 0x7f)      ; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) <<  7; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 14; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 21; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 28; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 35; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 42; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 49; if (b >= 0) break;
-      b = *p++; val |= (b & 0x7f) << 56; if (b >= 0) break;
-      b = *p++; val |= (b & 0x01) << 63; if (b >= 0) break;
+      b = *p++;
+      val = (b & 0x7f);
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 7;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 14;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 21;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 28;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 35;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 42;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 49;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x7f) << 56;
+      if (b >= 0) {
+        break;
+      }
+      b = *p++;
+      val |= (b & 0x01) << 63;
+      if (b >= 0) {
+        break;
+      }
       return makeUnexpected(DecodeVarintError::TooManyBytes);
     } while (false);
   } else {

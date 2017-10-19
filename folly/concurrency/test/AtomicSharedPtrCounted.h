@@ -49,13 +49,15 @@ class counted_ptr : public counted_ptr_base<Atom> {
   T* p_;
   counted_ptr() : p_(nullptr) {}
   counted_ptr(counted_shared_tag, T* p) : p_(p) {
-    if (p_)
+    if (p_) {
       counted_ptr_base<Atom>::getRef(p_)->add_ref();
+    }
   }
 
   counted_ptr(const counted_ptr& o) : p_(o.p_) {
-    if (p_)
+    if (p_) {
       counted_ptr_base<Atom>::getRef(p_)->add_ref();
+    }
   }
   counted_ptr& operator=(const counted_ptr& o) {
     if (p_ && counted_ptr_base<Atom>::getRef(p_)->release_ref() == 1) {
@@ -63,8 +65,9 @@ class counted_ptr : public counted_ptr_base<Atom> {
       free(counted_ptr_base<Atom>::getRef(p_));
     }
     p_ = o.p_;
-    if (p_)
+    if (p_) {
       counted_ptr_base<Atom>::getRef(p_)->add_ref();
+    }
     return *this;
   }
   explicit counted_ptr(T* p) : p_(p) {

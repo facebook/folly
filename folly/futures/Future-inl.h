@@ -334,8 +334,9 @@ Try<T>& SemiFuture<T>::getTry() {
 
 template <class T>
 void SemiFuture<T>::throwIfInvalid() const {
-  if (!core_)
+  if (!core_) {
     throwNoState();
+}
 }
 
 template <class T>
@@ -1269,7 +1270,9 @@ namespace detail {
 template <class FutureType, typename T = typename FutureType::value_type>
 void waitImpl(FutureType& f) {
   // short-circuit if there's nothing to do
-  if (f.isReady()) return;
+  if (f.isReady()) {
+    return;
+  }
 
   FutureBatonType baton;
   f.setCallback_([&](const Try<T>& /* t */) { baton.post(); });
@@ -1302,8 +1305,9 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
   // Set callback so to ensure that the via executor has something on it
   // so that once the preceding future triggers this callback, drive will
   // always have a callback to satisfy it
-  if (f.isReady())
+  if (f.isReady()) {
     return;
+  }
   f = f.via(e).then([](T&& t) { return std::move(t); });
   while (!f.isReady()) {
     e->drive();

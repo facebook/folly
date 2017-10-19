@@ -72,10 +72,18 @@ ProcessReturnCode& ProcessReturnCode::operator=(ProcessReturnCode&& p)
 }
 
 ProcessReturnCode::State ProcessReturnCode::state() const {
-  if (rawStatus_ == RV_NOT_STARTED) return NOT_STARTED;
-  if (rawStatus_ == RV_RUNNING) return RUNNING;
-  if (WIFEXITED(rawStatus_)) return EXITED;
-  if (WIFSIGNALED(rawStatus_)) return KILLED;
+  if (rawStatus_ == RV_NOT_STARTED) {
+    return NOT_STARTED;
+  }
+  if (rawStatus_ == RV_RUNNING) {
+    return RUNNING;
+  }
+  if (WIFEXITED(rawStatus_)) {
+    return EXITED;
+  }
+  if (WIFSIGNALED(rawStatus_)) {
+    return KILLED;
+  }
   assume_unreachable();
 }
 
@@ -185,7 +193,9 @@ Subprocess::Subprocess(
   if (argv.empty()) {
     throw std::invalid_argument("argv must not be empty");
   }
-  if (!executable) executable = argv[0].c_str();
+  if (!executable) {
+    executable = argv[0].c_str();
+  }
   spawn(cloneStrings(argv), executable, options, env);
 }
 

@@ -280,8 +280,9 @@ TEST(IndexedMemPool, construction_destruction) {
     for (auto i = 0; i < nthreads; ++i) {
       thr[i] = std::thread([&]() {
         started.fetch_add(1);
-        while (!start.load())
+        while (!start.load()) {
           ;
+        }
         for (auto j = 0; j < count; ++j) {
           uint32_t idx = pool.allocIndex();
           if (idx != 0) {
@@ -291,8 +292,9 @@ TEST(IndexedMemPool, construction_destruction) {
       });
     }
 
-    while (started.load() < nthreads)
+    while (started.load() < nthreads) {
       ;
+    }
     start.store(true);
 
     for (auto& t : thr) {

@@ -641,8 +641,9 @@ constexpr std::size_t countSpacesReverse(folly::FixedString<50> s) {
   std::size_t count = 0u;
   auto i = s.rbegin();
   for( ; i != s.rend(); ++i, --i, i++, i--, i+=1, i-=1, i+=1 ) {
-    if (' ' == *i)
+    if (' ' == *i) {
       ++count;
+    }
   }
   return count;
 }

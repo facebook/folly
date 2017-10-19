@@ -173,7 +173,9 @@ class DiscriminatedPtr {
   template <typename V>
   typename dptr_detail::VisitorResult<V, Types...>::type apply(V&& visitor) {
     size_t n = index();
-    if (n == 0) throw std::invalid_argument("Empty DiscriminatedPtr");
+    if (n == 0) {
+      throw std::invalid_argument("Empty DiscriminatedPtr");
+    }
     return dptr_detail::ApplyVisitor<V, Types...>()(
       n, std::forward<V>(visitor), ptr());
   }
@@ -182,7 +184,9 @@ class DiscriminatedPtr {
   typename dptr_detail::ConstVisitorResult<V, Types...>::type apply(V&& visitor)
   const {
     size_t n = index();
-    if (n == 0) throw std::invalid_argument("Empty DiscriminatedPtr");
+    if (n == 0) {
+      throw std::invalid_argument("Empty DiscriminatedPtr");
+    }
     return dptr_detail::ApplyConstVisitor<V, Types...>()(
       n, std::forward<V>(visitor), ptr());
   }

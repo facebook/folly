@@ -177,8 +177,12 @@ void MemoryMapping::init(off_t offset, off_t length) {
     mapStart_ = nullptr;
   } else {
     int flags = options_.shared ? MAP_SHARED : MAP_PRIVATE;
-    if (anon) flags |= MAP_ANONYMOUS;
-    if (options_.prefault) flags |= MAP_POPULATE;
+    if (anon) {
+      flags |= MAP_ANONYMOUS;
+    }
+    if (options_.prefault) {
+      flags |= MAP_POPULATE;
+    }
 
     // The standard doesn't actually require PROT_NONE to be zero...
     int prot = PROT_NONE;
@@ -280,7 +284,9 @@ bool MemoryMapping::mlock(LockMode lock) {
 }
 
 void MemoryMapping::munlock(bool dontneed) {
-  if (!locked_) return;
+  if (!locked_) {
+    return;
+  }
 
   size_t amountSucceeded = 0;
   if (!memOpInChunks(

@@ -131,7 +131,9 @@ bool readFile(
 
   // Obtain file size:
   struct stat buf;
-  if (fstat(fd, &buf) == -1) return false;
+  if (fstat(fd, &buf) == -1) {
+    return false;
+  }
   // Some files (notably under /proc and /sys on Linux) lie about
   // their size, so treat the size advertised by fstat under advise
   // but don't rely on it. In particular, if the size is zero, we

@@ -258,7 +258,9 @@ class ConcurrentSkipList {
   // Returns the node if found, nullptr otherwise.
   NodeType* find(const value_type &data) {
     auto ret = findNode(data);
-    if (ret.second && !ret.first->markedForRemoval()) return ret.first;
+    if (ret.second && !ret.first->markedForRemoval()) {
+      return ret.first;
+    }
     return nullptr;
   }
 
@@ -369,7 +371,9 @@ class ConcurrentSkipList {
         nodeToDelete = succs[layer];
         nodeHeight = nodeToDelete->height();
         nodeGuard = nodeToDelete->acquireGuard();
-        if (nodeToDelete->markedForRemoval()) return false;
+        if (nodeToDelete->markedForRemoval()) {
+          return false;
+        }
         nodeToDelete->setMarkedForRemoval();
         isMarked = true;
       }
@@ -402,7 +406,9 @@ class ConcurrentSkipList {
     for (int layer = maxLayer(); layer >= 0; --layer) {
       do {
         node = pred->skip(layer);
-        if (node) pred = node;
+        if (node) {
+          pred = node;
+        }
       } while (node != nullptr);
     }
     return pred == head_.load(std::memory_order_relaxed)
@@ -445,7 +451,9 @@ class ConcurrentSkipList {
     while (!found) {
       // stepping down
       for (; ht > 0 && less(data, node = pred->skip(ht - 1)); --ht) {}
-      if (ht == 0) return std::make_pair(node, 0);  // not found
+      if (ht == 0) {
+        return std::make_pair(node, 0); // not found
+      }
       // node <= data now, but we need to fix up ht
       --ht;
 
@@ -773,7 +781,9 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
    */
   bool to(const value_type &data) {
     int layer = curHeight() - 1;
-    if (layer < 0) return false;   // reaches the end of the list
+    if (layer < 0) {
+      return false; // reaches the end of the list
+    }
 
     int lyr = hints_[layer];
     int max_layer = maxLayer();
@@ -784,7 +794,9 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
 
     int foundLayer = SkipListType::
       findInsertionPoint(preds_[lyr], lyr, data, preds_, succs_);
-    if (foundLayer < 0) return false;
+    if (foundLayer < 0) {
+      return false;
+    }
 
     DCHECK(succs_[0] != nullptr) << "lyr=" << lyr
                                  << "; max_layer=" << max_layer;

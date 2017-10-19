@@ -53,7 +53,9 @@ class WideCAS {
     do {
       p = hptr.get_protected(p_);
       if (p->val_ != u) { delete n; return false; }
-      if (p_.compare_exchange_weak(p, n)) break;
+      if (p_.compare_exchange_weak(p, n)) {
+        break;
+      }
     } while (true);
     hptr.reset();
     p->retire();

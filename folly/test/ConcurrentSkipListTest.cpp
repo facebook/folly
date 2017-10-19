@@ -115,7 +115,9 @@ static void concurrentSkip(const vector<ValueType> *values,
   int64_t sum = 0;
   SkipListAccessor::Skipper skipper(skipList);
   FOR_EACH(it, *values) {
-    if (skipper.to(*it)) sum += *it;
+    if (skipper.to(*it)) {
+      sum += *it;
+    }
   }
   VLOG(20) << "sum = " << sum;
 }
@@ -266,8 +268,12 @@ TEST(ConcurrentSkipList, TestStringType) {
 struct UniquePtrComp {
   bool operator ()(
       const std::unique_ptr<int> &x, const std::unique_ptr<int> &y) const {
-    if (!x) return false;
-    if (!y) return true;
+    if (!x) {
+      return false;
+    }
+    if (!y) {
+      return true;
+    }
     return *x < *y;
   }
 };

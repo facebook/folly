@@ -351,7 +351,9 @@ void bmJump(const List& list, const std::vector<uint32_t>& data,
 
   Reader reader(list);
   for (size_t i = 0, j = 0; i < iters; ++i, ++j) {
-    if (j == order.size()) j = 0;
+    if (j == order.size()) {
+      j = 0;
+    }
     reader.jump(order[j]);
     folly::doNotOptimizeAway(reader.value());
   }
@@ -365,7 +367,9 @@ void bmJumpTo(const List& list, const std::vector<uint32_t>& data,
 
   Reader reader(list);
   for (size_t i = 0, j = 0; i < iters; ++i, ++j) {
-    if (j == order.size()) j = 0;
+    if (j == order.size()) {
+      j = 0;
+    }
     reader.jumpTo(data[order[j]]);
     folly::doNotOptimizeAway(reader.value());
   }

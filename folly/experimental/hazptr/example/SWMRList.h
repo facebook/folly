@@ -58,7 +58,9 @@ class SWMRListSet {
   void locate_lower_bound(const T& v, std::atomic<Node*>*& prev) const {
     auto curr = prev->load(std::memory_order_relaxed);
     while (curr) {
-      if (curr->elem_ >= v) break;
+      if (curr->elem_ >= v) {
+        break;
+      }
       prev = &(curr->next_);
       curr = curr->next_.load(std::memory_order_relaxed);
     }
@@ -78,7 +80,9 @@ class SWMRListSet {
     auto prev = &head_;
     locate_lower_bound(v, prev);
     auto curr = prev->load(std::memory_order_relaxed);
-    if (curr && curr->elem_ == v) return false;
+    if (curr && curr->elem_ == v) {
+      return false;
+    }
     prev->store(new Node(std::move(v), curr));
     return true;
   }
@@ -87,7 +91,9 @@ class SWMRListSet {
     auto prev = &head_;
     locate_lower_bound(v, prev);
     auto curr = prev->load(std::memory_order_relaxed);
-    if (!curr || curr->elem_ != v) return false;
+    if (!curr || curr->elem_ != v) {
+      return false;
+    }
     Node *curr_next = curr->next_.load();
     // Patch up the actual list...
     prev->store(curr_next, std::memory_order_release);
@@ -108,11 +114,13 @@ class SWMRListSet {
       auto curr = prev->load(std::memory_order_acquire);
       while (true) {
         if (!curr) { return false; }
-        if (!hptr_curr->try_protect(curr, *prev))
+        if (!hptr_curr->try_protect(curr, *prev)) {
           break;
+        }
         auto next = curr->next_.load(std::memory_order_acquire);
-        if (prev->load(std::memory_order_acquire) != curr)
+        if (prev->load(std::memory_order_acquire) != curr) {
           break;
+        }
         if (curr->elem_ == val) {
             return true;
         } else if (!(curr->elem_ < val)) {

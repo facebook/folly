@@ -38,8 +38,9 @@ size_t ManualExecutor::run() {
 
     while (!scheduledFuncs_.empty()) {
       auto& sf = scheduledFuncs_.top();
-      if (sf.time > now_)
+      if (sf.time > now_) {
         break;
+      }
       funcs_.emplace(sf.moveOutFunc());
       scheduledFuncs_.pop();
     }
@@ -72,8 +73,9 @@ void ManualExecutor::wait() {
   while (true) {
     {
       std::lock_guard<std::mutex> lock(lock_);
-      if (!funcs_.empty())
+      if (!funcs_.empty()) {
         break;
+      }
     }
 
     sem_.wait();

@@ -67,7 +67,9 @@ char32_t utf8ToCodePoint(
   auto skip = [&] { ++p; return U'\ufffd'; };
 
   if (p >= e) {
-    if (skipOnError) return skip();
+    if (skipOnError) {
+      return skip();
+    }
     throw std::runtime_error("folly::utf8ToCodePoint empty/invalid string");
   }
 
@@ -88,7 +90,9 @@ char32_t utf8ToCodePoint(
   uint32_t d = fst;
 
   if ((fst & 0xC0) != 0xC0) {
-    if (skipOnError) return skip();
+    if (skipOnError) {
+      return skip();
+    }
     throw std::runtime_error(to<std::string>("folly::utf8ToCodePoint i=0 d=", d));
   }
 
@@ -98,7 +102,9 @@ char32_t utf8ToCodePoint(
     unsigned char tmp = p[i];
 
     if ((tmp & 0xC0) != 0x80) {
-      if (skipOnError) return skip();
+      if (skipOnError) {
+        return skip();
+      }
       throw std::runtime_error(
         to<std::string>("folly::utf8ToCodePoint i=", i, " tmp=", (uint32_t)tmp));
     }
@@ -111,7 +117,9 @@ char32_t utf8ToCodePoint(
 
       // overlong, could have been encoded with i bytes
       if ((d & ~bitMask[i - 1]) == 0) {
-        if (skipOnError) return skip();
+        if (skipOnError) {
+          return skip();
+        }
         throw std::runtime_error(
           to<std::string>("folly::utf8ToCodePoint i=", i, " d=", d));
       }
@@ -119,7 +127,9 @@ char32_t utf8ToCodePoint(
       // check for surrogates only needed for 3 bytes
       if (i == 2) {
         if ((d >= 0xD800 && d <= 0xDFFF) || d > 0x10FFFF) {
-          if (skipOnError) return skip();
+          if (skipOnError) {
+            return skip();
+          }
           throw std::runtime_error(
             to<std::string>("folly::utf8ToCodePoint i=", i, " d=", d));
         }
@@ -130,7 +140,9 @@ char32_t utf8ToCodePoint(
     }
   }
 
-  if (skipOnError) return skip();
+  if (skipOnError) {
+    return skip();
+  }
   throw std::runtime_error("folly::utf8ToCodePoint encoding length maxed out");
 }
 

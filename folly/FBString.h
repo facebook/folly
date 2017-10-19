@@ -1420,7 +1420,9 @@ class basic_fbstring {
   }
 
   basic_fbstring& assign(const basic_fbstring& str) {
-    if (&str == this) return *this;
+    if (&str == this) {
+      return *this;
+    }
     return assign(str.data(), str.size());
   }
 

@@ -39,8 +39,9 @@ template <class Container>
 void check_invariant(Container& c) {
   auto it = c.begin();
   auto end = c.end();
-  if (it == end)
+  if (it == end) {
     return;
+  }
   auto prev = it;
   ++it;
   for (; it != end; ++it, ++prev) {
@@ -267,13 +268,15 @@ TEST(SortedVectorTypes, InitializerLists) {
 
 TEST(SortedVectorTypes, CustomCompare) {
   sorted_vector_set<int,less_invert<int> > s;
-  for (int i = 0; i < 200; ++i)
+  for (int i = 0; i < 200; ++i) {
     s.insert(i);
+  }
   check_invariant(s);
 
   sorted_vector_map<int,float,less_invert<int> > m;
-  for (int i = 0; i < 200; ++i)
+  for (int i = 0; i < 200; ++i) {
     m[i] = 12.0;
+  }
   check_invariant(m);
 }
 

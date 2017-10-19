@@ -1211,7 +1211,9 @@ TEST(EventBaseTest, RunInEventBaseThreadAndWait) {
     th.join();
   }
   size_t sum = 0;
-  for (auto& atom : atoms) sum += *atom;
+  for (auto& atom : atoms) {
+    sum += *atom;
+  }
   EXPECT_EQ(c, sum);
 }
 

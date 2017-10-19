@@ -310,7 +310,9 @@ char const* dynamic::typeName(Type t) {
 
 void dynamic::destroy() noexcept {
   // This short-circuit speeds up some microbenchmarks.
-  if (type_ == NULLT) return;
+  if (type_ == NULLT) {
+    return;
+  }
 
 #define FB_X(T) detail::Destroy::destroy(getAddress<T>())
   FB_DYNAMIC_APPLY(type_, FB_X);

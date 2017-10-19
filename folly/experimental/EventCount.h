@@ -175,7 +175,9 @@ inline void EventCount::wait(Key key) noexcept {
 
 template <class Condition>
 void EventCount::await(Condition condition) {
-  if (condition()) return;  // fast path
+  if (condition()) {
+    return; // fast path
+  }
 
   // condition() is the only thing that may throw, everything else is
   // noexcept, so we can hoist the try/catch block outside of the loop

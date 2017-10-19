@@ -490,15 +490,17 @@ TEST(ThreadPoolExecutorTest, BugD3527722) {
 
   std::thread producer1([&] {
     ++turn;
-    while (turn < 4)
+    while (turn < 4) {
       ;
+    }
     ++turn;
     q.add(SlowMover(true));
   });
   std::thread producer2([&] {
     ++turn;
-    while (turn < 5)
+    while (turn < 5) {
       ;
+    }
     q.add(SlowMover(false));
   });
 

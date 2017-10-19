@@ -73,7 +73,9 @@ TESTFUN(clause_23_3_6_1_11) {
   EXPECT_EQ(v.size(), lst.size() / 2);
   j = 0;
   FOR_EACH (i, lst) {
-    if (j == v.size()) break;
+    if (j == v.size()) {
+      break;
+    }
     EXPECT_EQ(v[j], *i);
     j++;
   }
@@ -373,7 +375,9 @@ void BENCHFUN(erase)(int iters, int /* size */) {
   auto const obj1 = randomObject<VECTOR::value_type>();
   VECTOR v(random(0U, 100U), obj1);
   FOR_EACH_RANGE (i, 0, iters) {
-    if (v.empty()) continue;
+    if (v.empty()) {
+      continue;
+    }
     v.erase(v.begin());
   }
 }

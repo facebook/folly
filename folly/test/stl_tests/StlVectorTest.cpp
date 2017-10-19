@@ -1419,21 +1419,31 @@ void verifyAllocator(int ele, int cap) {
 // Master verifier
 template <class Vector>
 void verify(int extras) {
-  if (!is_arithmetic<typename Vector::value_type>::value)
+  if (!is_arithmetic<typename Vector::value_type>::value) {
     ASSERT_EQ(0 + extras, getTotal()) << "there exist Data but no vectors";
+  }
   isSane();
-  if (::testing::Test::HasFatalFailure()) return;
-  if (customAllocator<Vector>::value) verifyAllocator(0, 0);
+  if (::testing::Test::HasFatalFailure()) {
+    return;
+  }
+  if (customAllocator<Vector>::value) {
+    verifyAllocator(0, 0);
+  }
 }
 template <class Vector>
 void verify(int extras, const Vector& v) {
   verifyVector(v);
-  if (!is_arithmetic<typename Vector::value_type>::value)
+  if (!is_arithmetic<typename Vector::value_type>::value) {
     ASSERT_EQ(v.size() + extras, getTotal())
       << "not all Data are in the vector";
+  }
   isSane();
-  if (::testing::Test::HasFatalFailure()) return;
-  if (customAllocator<Vector>::value) verifyAllocator(v.size(), v.capacity());
+  if (::testing::Test::HasFatalFailure()) {
+    return;
+  }
+  if (customAllocator<Vector>::value) {
+    verifyAllocator(v.size(), v.capacity());
+  }
 }
 template <class Vector>
 void verify(int extras, const Vector& v1, const Vector& v2) {
@@ -1445,11 +1455,16 @@ void verify(int extras, const Vector& v1, const Vector& v2) {
     size += v2.size();
     cap += v2.capacity();
   }
-  if (!is_arithmetic<typename Vector::value_type>::value)
+  if (!is_arithmetic<typename Vector::value_type>::value) {
     ASSERT_EQ(size + extras, getTotal()) << "not all Data are in the vector(s)";
+  }
   isSane();
-  if (::testing::Test::HasFatalFailure()) return;
-  if (customAllocator<Vector>::value) verifyAllocator(size, cap);
+  if (::testing::Test::HasFatalFailure()) {
+    return;
+  }
+  if (customAllocator<Vector>::value) {
+    verifyAllocator(size, cap);
+  }
 }
 
 //=============================================================================
@@ -1495,9 +1510,13 @@ class DataState {
   }
 
   bool operator==(const DataState& o) const {
-    if (size_ != o.size_) return false;
+    if (size_ != o.size_) {
+      return false;
+    }
     for (size_type i = 0; i < size_; ++i) {
-      if (data_[i] != o.data_[i]) return false;
+      if (data_[i] != o.data_[i]) {
+        return false;
+      }
     }
     return true;
   }
@@ -2071,7 +2090,9 @@ STL_TEST("23.2.1-7", inputIteratorAllocConstruction,
 
 STL_TEST("23.2.1-7", ilAllocConstruction, is_arithmetic, m) {
   // gcc fail
-  if (Ticker::TicksLeft >= 0) return;
+  if (Ticker::TicksLeft >= 0) {
+    return;
+  }
 
   const auto& cm = m;
 
@@ -2123,8 +2144,10 @@ STL_TEST("23.2.3 Table 100.1", nCopyConstruction,
 
   ASSERT_TRUE(Allocator() == u.get_allocator());
   ASSERT_EQ(n, u.size()) << "Vector(n, t).size() != n" << endl;
-  for (const auto& val : u) ASSERT_EQ(convertToInt(t), convertToInt(val))
-    << "not all elements of Vector(n, t) are equal to t";
+  for (const auto& val : u) {
+    ASSERT_EQ(convertToInt(t), convertToInt(val))
+        << "not all elements of Vector(n, t) are equal to t";
+  }
 }
 
 STL_TEST("23.2.3 Table 100.2", forwardIteratorConstruction,
@@ -2143,8 +2166,9 @@ STL_TEST("23.2.3 Table 100.2", forwardIteratorConstruction,
   ASSERT_LE(Counter::CountTotalOps, j-i);
 
   ASSERT_EQ(j - i, u.size()) << "u(i,j).size() != j-i";
-  for (auto it = u.begin(); it != u.end(); ++it, ++i)
+  for (auto it = u.begin(); it != u.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it)) << "u(i,j) constructed incorrectly";
+}
 }
 
 STL_TEST("23.2.3 Table 100.2", inputIteratorConstruction,
@@ -2162,8 +2186,9 @@ STL_TEST("23.2.3 Table 100.2", inputIteratorConstruction,
 
   ASSERT_TRUE(Allocator() == u.get_allocator());
   ASSERT_EQ(j - i, u.size()) << "u(i,j).size() != j-i";
-  for (auto it = u.begin(); it != u.end(); ++it, ++i)
+  for (auto it = u.begin(); it != u.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it)) << "u(i,j) constructed incorrectly";
+}
 }
 
 STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
@@ -2171,7 +2196,9 @@ STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
   // Vector(il.begin(), il.end())
 
   // gcc fail
-  if (Ticker::TicksLeft >= 0) return;
+  if (Ticker::TicksLeft >= 0) {
+    return;
+  }
 
   Vector u = { 1, 4, 7 };
 
@@ -2179,8 +2206,9 @@ STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
   ASSERT_EQ(3, u.size()) << "u(il).size() fail";
   int i = 1;
   auto it = u.begin();
-  for (; it != u.end(); ++it, i += 3)
+  for (; it != u.end(); ++it, i += 3) {
     ASSERT_EQ(i, convertToInt(*it)) << "u(il) constructed incorrectly";
+}
 }
 
 STL_TEST("23.2.3 Table 100.4", ilAssignment,
@@ -2189,7 +2217,9 @@ STL_TEST("23.2.3 Table 100.4", ilAssignment,
   // assign(il.begin(), il.end())
 
   // gcc fail
-  if (Ticker::TicksLeft >= 0) return;
+  if (Ticker::TicksLeft >= 0) {
+    return;
+  }
 
   auto am = a.get_allocator();
 
@@ -2201,8 +2231,9 @@ STL_TEST("23.2.3 Table 100.4", ilAssignment,
   ASSERT_EQ(3, a.size()) << "u(il).size() fail";
   int i = 1;
   auto it = a.begin();
-  for (; it != a.end(); ++it, i += 3)
+  for (; it != a.end(); ++it, i += 3) {
     ASSERT_EQ(i, convertToInt(*it)) << "u(il) constructed incorrectly";
+}
 }
 
 //----------------------------
@@ -2255,7 +2286,9 @@ STL_TEST("23.2.3 Table 100.6", iteratorInsertion,
 STL_TEST("23.2.3 Table 100.7", iteratorInsertionRV,
          is_move_constructibleAndAssignable, a, p, t) {
   // rvalue-references cannot have their address checked for aliased inserts
-  if (a.data() <= addressof(t) && addressof(t) < a.data() + a.size()) return;
+  if (a.data() <= addressof(t) && addressof(t) < a.data() + a.size()) {
+    return;
+  }
 
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
@@ -2360,7 +2393,9 @@ STL_TEST("23.2.3 Table 100.9", iteratorInsertionInputIterator,
 STL_TEST("23.2.3 Table 100.10", iteratorInsertIL,
          is_arithmetic, a, p) {
   // gcc fail
-  if (Ticker::TicksLeft >= 0) return;
+  if (Ticker::TicksLeft >= 0) {
+    return;
+  }
 
   // whitebox: ensure that insert(p, il) is implemented in terms of
   // insert(p, il.begin(), il.end())
@@ -2392,13 +2427,17 @@ void eraseCheck(Vector& a, DataState<Vector>& dsa, int idx, int n) {
   int i = 0;
   auto it = a.begin();
   for (; it != a.end(); ++it, ++i) {
-    if (i == idx) i += n;
+    if (i == idx) {
+      i += n;
+    }
     ASSERT_EQ(dsa[i], convertToInt(*it));
   }
 }
 
 STL_TEST("23.2.3 Table 100.11", iteratorErase, is_move_assignable, a, p) {
-  if (p == a.end()) return;
+  if (p == a.end()) {
+    return;
+  }
 
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
@@ -2413,7 +2452,9 @@ STL_TEST("23.2.3 Table 100.11", iteratorErase, is_move_assignable, a, p) {
 
 STL_TEST("23.2.3 Table 100.12", iteratorEraseRange,
          is_move_assignable, a, p, q) {
-  if (p == a.end()) return;
+  if (p == a.end()) {
+    return;
+  }
 
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
@@ -2454,8 +2495,9 @@ STL_TEST("23.2.3 Table 100.14", assignRange, is_move_assignable, a, i, j) {
 
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_EQ(distance(i, j), a.size());
-  for (auto it = a.begin(); it != a.end(); ++it, ++i)
+  for (auto it = a.begin(); it != a.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it));
+}
 }
 
 STL_TEST("23.2.3 Table 100.14", assignInputRange,
@@ -2470,8 +2512,9 @@ STL_TEST("23.2.3 Table 100.14", assignInputRange,
 
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_EQ(distance(i, j), a.size());
-  for (auto it = a.begin(); it != a.end(); ++it, ++i)
+  for (auto it = a.begin(); it != a.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it));
+}
 }
 
 STL_TEST("23.2.3 Table 100.15", assignIL,
@@ -2481,7 +2524,9 @@ STL_TEST("23.2.3 Table 100.15", assignIL,
   // assign(il.begin(), il.end())
 
   // gcc fail
-  if (Ticker::TicksLeft >= 0) return;
+  if (Ticker::TicksLeft >= 0) {
+    return;
+  }
 
   auto am = a.get_allocator();
 
@@ -2492,8 +2537,9 @@ STL_TEST("23.2.3 Table 100.15", assignIL,
   int* i = ila;
 
   ASSERT_EQ(3, a.size());
-  for (auto it = a.begin(); it != a.end(); ++it, ++i)
+  for (auto it = a.begin(); it != a.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it));
+}
 }
 
 STL_TEST("23.2.3 Table 100.16", assignN,
@@ -2506,12 +2552,15 @@ STL_TEST("23.2.3 Table 100.16", assignN,
 
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_EQ(n, a.size());
-  for (auto it = a.begin(); it != a.end(); ++it)
+  for (auto it = a.begin(); it != a.end(); ++it) {
     ASSERT_EQ(tval, convertToInt(*it));
+}
 }
 
 STL_TEST("23.2.3 Table 101.1", front, is_destructible, a) {
-  if (a.empty()) return;
+  if (a.empty()) {
+    return;
+  }
 
   ASSERT_TRUE(addressof(a.front()) == a.data());
 
@@ -2525,7 +2574,9 @@ STL_TEST("23.2.3 Table 101.1", front, is_destructible, a) {
 }
 
 STL_TEST("23.2.3 Table 101.2", back, is_destructible, a) {
-  if (a.empty()) return;
+  if (a.empty()) {
+    return;
+  }
 
   ASSERT_TRUE(addressof(a.back()) == a.data() + a.size() - 1);
 
@@ -2553,12 +2604,15 @@ STL_TEST("23.2.3 Table 101.4", emplaceBack,
   }
 
   ASSERT_TRUE(am == a.get_allocator());
-  if (excess > 0) ASSERT_TRUE(a.data() == adata) << "unnecessary relocation";
+  if (excess > 0) {
+    ASSERT_TRUE(a.data() == adata) << "unnecessary relocation";
+  }
   ASSERT_EQ(dsa.size() + 1, a.size());
   size_t i = 0;
   auto it = a.begin();
-  for (; i < dsa.size(); ++i, ++it)
+  for (; i < dsa.size(); ++i, ++it) {
     ASSERT_EQ(dsa[i], convertToInt(*it));
+  }
   ASSERT_EQ(44, convertToInt(a.back()));
 }
 
@@ -2578,12 +2632,15 @@ STL_TEST("23.2.3 Table 101.7", pushBack, is_copy_constructible, a, t) {
   }
 
   ASSERT_TRUE(am == a.get_allocator());
-  if (excess > 0) ASSERT_TRUE(a.data() == adata) << "unnecessary relocation";
+  if (excess > 0) {
+    ASSERT_TRUE(a.data() == adata) << "unnecessary relocation";
+  }
   ASSERT_EQ(dsa.size() + 1, a.size());
   size_t i = 0;
   auto it = a.begin();
-  for (; i < dsa.size(); ++i, ++it)
+  for (; i < dsa.size(); ++i, ++it) {
     ASSERT_EQ(dsa[i], convertToInt(*it));
+  }
   ASSERT_EQ(tval, convertToInt(a.back()));
 }
 
@@ -2603,17 +2660,22 @@ STL_TEST("23.2.3 Table 101.8", pushBackRV,
   }
 
   ASSERT_TRUE(am == a.get_allocator());
-  if (excess > 0) ASSERT_TRUE(a.data() == adata) << "unnecessary relocation";
+  if (excess > 0) {
+    ASSERT_TRUE(a.data() == adata) << "unnecessary relocation";
+  }
   ASSERT_EQ(dsa.size() + 1, a.size());
   size_t i = 0;
   auto it = a.begin();
-  for (; i < dsa.size(); ++i, ++it)
+  for (; i < dsa.size(); ++i, ++it) {
     ASSERT_EQ(dsa[i], convertToInt(*it));
+  }
   ASSERT_EQ(tval, convertToInt(a.back()));
 }
 
 STL_TEST("23.2.3 Table 100.10", popBack, is_destructible, a) {
-  if (a.empty()) return;
+  if (a.empty()) {
+    return;
+  }
 
   DataState<Vector> dsa(a);
   auto am = a.get_allocator();
@@ -2624,14 +2686,16 @@ STL_TEST("23.2.3 Table 100.10", popBack, is_destructible, a) {
   ASSERT_EQ(dsa.size() - 1, a.size());
   size_t i = 0;
   auto it = a.begin();
-  for (; it != a.end(); ++it, ++i)
+  for (; it != a.end(); ++it, ++i) {
     ASSERT_EQ(dsa[i], convertToInt(*it));
+}
 }
 
 STL_TEST("23.2.3 Table 100.11", operatorBrace, is_destructible, a) {
   const auto& ca = a;
-  for (size_t i = 0; i < ca.size(); ++i)
+  for (size_t i = 0; i < ca.size(); ++i) {
     ASSERT_TRUE(addressof(ca[i]) == ca.data()+i);
+  }
 
   ASSERT_EQ(0, Counter::CountTotalOps);
 
@@ -2642,8 +2706,9 @@ STL_TEST("23.2.3 Table 100.11", operatorBrace, is_destructible, a) {
 
 STL_TEST("23.2.3 Table 100.12", at, is_destructible, a) {
   const auto& ca = a;
-  for (size_t i = 0; i < ca.size(); ++i)
+  for (size_t i = 0; i < ca.size(); ++i) {
     ASSERT_TRUE(addressof(ca.at(i)) == ca.data()+i);
+  }
 
   ASSERT_EQ(0, Counter::CountTotalOps);
 
@@ -2710,7 +2775,9 @@ STL_TEST("23.3.6.3", reserve, is_move_constructible, a, n) {
 STL_TEST("23.3.6.3", lengthError, is_move_constructible) {
   auto mx = Vector().max_size();
   auto big = mx+1;
-  if (mx >= big) return; // max_size is the biggest size_type; overflowed
+  if (mx >= big) {
+    return; // max_size is the biggest size_type; overflowed
+  }
 
   Vector u;
   try {

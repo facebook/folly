@@ -877,10 +877,12 @@ TEST(Gen, MapYielders) {
            | map([](int n) {
                return GENERATOR(int) {
                  int i;
-                 for (i = 1; i < n; ++i)
+                 for (i = 1; i < n; ++i) {
                    yield(i);
-                 for (; i >= 1; --i)
+                 }
+                 for (; i >= 1; --i) {
                    yield(i);
+                 }
                };
              })
            | concat;

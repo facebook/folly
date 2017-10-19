@@ -2692,7 +2692,9 @@ void AsyncSocket::invalidState(WriteCallback* callback) {
 }
 
 void AsyncSocket::doClose() {
-  if (fd_ == -1) return;
+  if (fd_ == -1) {
+    return;
+  }
   if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
     shutdownSocketSet->close(fd_);
   } else {

@@ -74,7 +74,9 @@ class MmapAllocator {
   T *allocate(size_t n) {
     void *p = mmap(nullptr, n * sizeof(T), PROT_READ | PROT_WRITE,
         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (p == MAP_FAILED) throw std::bad_alloc();
+    if (p == MAP_FAILED) {
+      throw std::bad_alloc();
+    }
     return (T *)p;
   }
 
@@ -264,7 +266,9 @@ struct EqTraits {
 struct HashTraits {
   size_t operator()(char* a) {
     size_t result = 0;
-    while (a[0] != 0) result += static_cast<size_t>(*(a++));
+    while (a[0] != 0) {
+      result += static_cast<size_t>(*(a++));
+    }
     return result;
   }
   size_t operator()(const char& a) {
@@ -272,7 +276,9 @@ struct HashTraits {
   }
   size_t operator()(const StringPiece a) {
     size_t result = 0;
-    for (const auto& ch : a) result += static_cast<size_t>(ch);
+    for (const auto& ch : a) {
+      result += static_cast<size_t>(ch);
+    }
     return result;
   }
 };

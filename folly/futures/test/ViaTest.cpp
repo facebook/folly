@@ -50,8 +50,9 @@ struct ViaFixture : public testing::Test {
   {
     t = std::thread([=] {
         ManualWaiter eastWaiter(eastExecutor);
-        while (!done)
+        while (!done) {
           eastWaiter.drive();
+        }
       });
   }
 
@@ -466,7 +467,9 @@ TEST(Via, viaRaces) {
     p.setValue();
   });
 
-  while (!done) x.run();
+  while (!done) {
+    x.run();
+  }
   t1.join();
   t2.join();
 }

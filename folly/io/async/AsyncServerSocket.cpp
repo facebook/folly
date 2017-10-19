@@ -55,15 +55,17 @@ int setCloseOnExec(int fd, int value) {
   int old_flags = fcntl(fd, F_GETFD, 0);
 
   // If reading the flags failed, return error indication now
-  if (old_flags < 0)
+  if (old_flags < 0) {
     return -1;
+  }
 
   // Set just the flag we want to set
   int new_flags;
-  if (value != 0)
+  if (value != 0) {
     new_flags = old_flags | FD_CLOEXEC;
-  else
+  } else {
     new_flags = old_flags & ~FD_CLOEXEC;
+  }
 
   // Store modified flag word in the descriptor
   return fcntl(fd, F_SETFD, new_flags);

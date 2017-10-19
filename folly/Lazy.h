@@ -107,7 +107,9 @@ struct Lazy {
   }
 
   result_type& operator()() {
-    if (!value_) value_ = func_();
+    if (!value_) {
+      value_ = func_();
+    }
     return *value_;
   }
 

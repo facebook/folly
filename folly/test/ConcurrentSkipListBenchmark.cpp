@@ -72,7 +72,9 @@ void BM_IterateOverSet(int iters, int size) {
   auto iter = a_set.begin();
   for (int i = 0; i < iters; ++i) {
     sum += *iter++;
-    if (iter == a_set.end()) iter = a_set.begin();
+    if (iter == a_set.end()) {
+      iter = a_set.begin();
+    }
   }
   BENCHMARK_SUSPEND {
     // VLOG(20) << "sum = " << sum;
@@ -92,7 +94,9 @@ void BM_IterateSkipList(int iters, int size) {
   auto iter = skipList.begin();
   for (int i = 0; i < iters; ++i) {
     sum += *iter++;
-    if (iter == skipList.end()) iter = skipList.begin();
+    if (iter == skipList.end()) {
+      iter = skipList.begin();
+    }
   }
 
   BENCHMARK_SUSPEND {
@@ -114,7 +118,9 @@ void BM_SetMerge(int iters, int size) {
 
   int64_t mergedSum = 0;
   FOR_EACH(it, a_set) {
-    if (b_set.find(*it) != b_set.end()) mergedSum += *it;
+    if (b_set.find(*it) != b_set.end()) {
+      mergedSum += *it;
+    }
   }
   BENCHMARK_SUSPEND {
     // VLOG(20) << mergedSum;
@@ -137,7 +143,9 @@ void BM_CSLMergeLookup(int iters, int size) {
 
   SkipListType::Skipper skipper(skipList2);
   FOR_EACH(it, skipList) {
-    if (skipper.to(*it)) mergedSum += *it;
+    if (skipper.to(*it)) {
+      mergedSum += *it;
+    }
   }
 
   BENCHMARK_SUSPEND {
@@ -347,7 +355,9 @@ class ConcurrentAccessData {
 
     for (int i = 0; i < FLAGS_num_sets; ++i) {
       locks_[i] = new RWSpinLock();
-      if (i > 0) sets_[i] = sets_[0];
+      if (i > 0) {
+        sets_[i] = sets_[0];
+      }
     }
 
 // This requires knowledge of the C++ library internals. Only use it if we're

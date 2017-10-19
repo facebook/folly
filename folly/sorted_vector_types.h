@@ -107,8 +107,9 @@ namespace detail {
   template <class Iterator>
   int distance_if_multipass(Iterator first, Iterator last) {
     typedef typename std::iterator_traits<Iterator>::iterator_category categ;
-    if (std::is_same<categ,std::input_iterator_tag>::value)
+    if (std::is_same<categ, std::input_iterator_tag>::value) {
       return -1;
+    }
     return std::distance(first, last);
   }
 
@@ -345,15 +346,17 @@ class sorted_vector_set
 
   iterator find(const key_type& key) {
     iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, *it))
+    if (it == end() || !key_comp()(key, *it)) {
       return it;
+    }
     return end();
   }
 
   const_iterator find(const key_type& key) const {
     const_iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, *it))
+    if (it == end() || !key_comp()(key, *it)) {
       return it;
+    }
     return end();
   }
 
@@ -599,15 +602,17 @@ class sorted_vector_map
 
   iterator find(const key_type& key) {
     iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, it->first))
+    if (it == end() || !key_comp()(key, it->first)) {
       return it;
+    }
     return end();
   }
 
   const_iterator find(const key_type& key) const {
     const_iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, it->first))
+    if (it == end() || !key_comp()(key, it->first)) {
       return it;
+    }
     return end();
   }
 

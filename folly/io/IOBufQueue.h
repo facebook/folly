@@ -298,7 +298,9 @@ class IOBufQueue {
 
  private:
   IOBuf* tailBuf() const {
-    if (UNLIKELY(!head_)) return nullptr;
+    if (UNLIKELY(!head_)) {
+      return nullptr;
+    }
     IOBuf* buf = head_->prev();
     return LIKELY(!buf->isSharedOne()) ? buf : nullptr;
   }

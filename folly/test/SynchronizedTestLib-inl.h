@@ -763,7 +763,7 @@ template <class Mutex> void testTimedSynchronized() {
     v->push_back(2 * threadIdx);
 
     // Aaand test the TIMED_SYNCHRONIZED macro
-    for (;;)
+    for (;;) {
       TIMED_SYNCHRONIZED(5, lv, v) {
         if (lv) {
           // Sleep for a random time to ensure we trigger timeouts
@@ -776,6 +776,7 @@ template <class Mutex> void testTimedSynchronized() {
 
         ++(*numTimeouts.contextualLock());
       }
+    }
   };
 
   static const size_t numThreads = 100;

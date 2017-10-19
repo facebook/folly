@@ -60,8 +60,9 @@ public:
     {
         m_a = 0xdeadbeef;
         m_b = m_c = m_d = seed;
-        for (int i=0; i<20; ++i)
-            (void)Value();
+        for (int i = 0; i < 20; ++i) {
+          (void)Value();
+        }
     }
 
 private:
@@ -447,10 +448,14 @@ void TestDeltas(int seed)
                         for (int m=0; m<MEASURES; ++m)
                         {
                             counter[m][l] |= measure[m][l];
-                            if (~counter[m][l]) done = 0;
+                            if (~counter[m][l]) {
+                              done = 0;
+                            }
                         }
                     }
-                    if (done) break;
+                    if (done) {
+                      break;
+                    }
                 }
                 if (k == TRIES)
                 {

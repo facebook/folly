@@ -192,7 +192,9 @@ class RWSpinLock {
   void lock() {
     uint_fast32_t count = 0;
     while (!LIKELY(try_lock())) {
-      if (++count > 1000) std::this_thread::yield();
+      if (++count > 1000) {
+        std::this_thread::yield();
+      }
     }
   }
 
@@ -206,7 +208,9 @@ class RWSpinLock {
   void lock_shared() {
     uint_fast32_t count = 0;
     while (!LIKELY(try_lock_shared())) {
-      if (++count > 1000) std::this_thread::yield();
+      if (++count > 1000) {
+        std::this_thread::yield();
+      }
     }
   }
 
@@ -224,7 +228,9 @@ class RWSpinLock {
   void lock_upgrade() {
     uint_fast32_t count = 0;
     while (!try_lock_upgrade()) {
-      if (++count > 1000) std::this_thread::yield();
+      if (++count > 1000) {
+        std::this_thread::yield();
+      }
     }
   }
 
@@ -236,7 +242,9 @@ class RWSpinLock {
   void unlock_upgrade_and_lock() {
     int64_t count = 0;
     while (!try_unlock_upgrade_and_lock()) {
-      if (++count > 1000) std::this_thread::yield();
+      if (++count > 1000) {
+        std::this_thread::yield();
+      }
     }
   }
 
@@ -306,7 +314,9 @@ class RWSpinLock {
   class ReadHolder {
    public:
     explicit ReadHolder(RWSpinLock* lock) : lock_(lock) {
-      if (lock_) lock_->lock_shared();
+      if (lock_) {
+        lock_->lock_shared();
+      }
     }
 
     explicit ReadHolder(RWSpinLock& lock) : lock_(&lock) {
@@ -320,12 +330,16 @@ class RWSpinLock {
     // down-grade
     explicit ReadHolder(UpgradedHolder&& upgraded) : lock_(upgraded.lock_) {
       upgraded.lock_ = nullptr;
-      if (lock_) lock_->unlock_upgrade_and_lock_shared();
+      if (lock_) {
+        lock_->unlock_upgrade_and_lock_shared();
+      }
     }
 
     explicit ReadHolder(WriteHolder&& writer) : lock_(writer.lock_) {
       writer.lock_ = nullptr;
-      if (lock_) lock_->unlock_and_lock_shared();
+      if (lock_) {
+        lock_->unlock_and_lock_shared();
+      }
     }
 
     ReadHolder& operator=(ReadHolder&& other) {
@@ -337,13 +351,23 @@ class RWSpinLock {
     ReadHolder(const ReadHolder& other) = delete;
     ReadHolder& operator=(const ReadHolder& other) = delete;
 
-    ~ReadHolder() { if (lock_) lock_->unlock_shared(); }
+    ~ReadHolder() {
+      if (lock_) {
+        lock_->unlock_shared();
+      }
+    }
 
     void reset(RWSpinLock* lock = nullptr) {
-      if (lock == lock_) return;
-      if (lock_) lock_->unlock_shared();
+      if (lock == lock_) {
+        return;
+      }
+      if (lock_) {
+        lock_->unlock_shared();
+      }
       lock_ = lock;
-      if (lock_) lock_->lock_shared();
+      if (lock_) {
+        lock_->lock_shared();
+      }
     }
 
     void swap(ReadHolder* other) {
@@ -359,7 +383,9 @@ class RWSpinLock {
   class UpgradedHolder {
    public:
     explicit UpgradedHolder(RWSpinLock* lock) : lock_(lock) {
-      if (lock_) lock_->lock_upgrade();
+      if (lock_) {
+        lock_->lock_upgrade();
+      }
     }
 
     explicit UpgradedHolder(RWSpinLock& lock) : lock_(&lock) {
@@ -369,7 +395,9 @@ class RWSpinLock {
     explicit UpgradedHolder(WriteHolder&& writer) {
       lock_ = writer.lock_;
       writer.lock_ = nullptr;
-      if (lock_) lock_->unlock_and_lock_upgrade();
+      if (lock_) {
+        lock_->unlock_and_lock_upgrade();
+      }
     }
 
     UpgradedHolder(UpgradedHolder&& other) noexcept : lock_(other.lock_) {
@@ -385,13 +413,23 @@ class RWSpinLock {
     UpgradedHolder(const UpgradedHolder& other) = delete;
     UpgradedHolder& operator =(const UpgradedHolder& other) = delete;
 
-    ~UpgradedHolder() { if (lock_) lock_->unlock_upgrade(); }
+    ~UpgradedHolder() {
+      if (lock_) {
+        lock_->unlock_upgrade();
+      }
+    }
 
     void reset(RWSpinLock* lock = nullptr) {
-      if (lock == lock_) return;
-      if (lock_) lock_->unlock_upgrade();
+      if (lock == lock_) {
+        return;
+      }
+      if (lock_) {
+        lock_->unlock_upgrade();
+      }
       lock_ = lock;
-      if (lock_) lock_->lock_upgrade();
+      if (lock_) {
+        lock_->lock_upgrade();
+      }
     }
 
     void swap(UpgradedHolder* other) {
@@ -408,7 +446,9 @@ class RWSpinLock {
   class WriteHolder {
    public:
     explicit WriteHolder(RWSpinLock* lock) : lock_(lock) {
-      if (lock_) lock_->lock();
+      if (lock_) {
+        lock_->lock();
+      }
     }
 
     explicit WriteHolder(RWSpinLock& lock) : lock_(&lock) {
@@ -419,7 +459,9 @@ class RWSpinLock {
     explicit WriteHolder(UpgradedHolder&& upgraded) {
       lock_ = upgraded.lock_;
       upgraded.lock_ = nullptr;
-      if (lock_) lock_->unlock_upgrade_and_lock();
+      if (lock_) {
+        lock_->unlock_upgrade_and_lock();
+      }
     }
 
     WriteHolder(WriteHolder&& other) noexcept : lock_(other.lock_) {
@@ -435,13 +477,23 @@ class RWSpinLock {
     WriteHolder(const WriteHolder& other) = delete;
     WriteHolder& operator =(const WriteHolder& other) = delete;
 
-    ~WriteHolder () { if (lock_) lock_->unlock(); }
+    ~WriteHolder() {
+      if (lock_) {
+        lock_->unlock();
+      }
+    }
 
     void reset(RWSpinLock* lock = nullptr) {
-      if (lock == lock_) return;
-      if (lock_) lock_->unlock();
+      if (lock == lock_) {
+        return;
+      }
+      if (lock_) {
+        lock_->unlock();
+      }
       lock_ = lock;
-      if (lock_) lock_->lock();
+      if (lock_) {
+        lock_->lock();
+      }
     }
 
     void swap(WriteHolder* other) {
@@ -586,7 +638,9 @@ class RWTicketSpinLockT {
   bool try_lock() {
     RWTicket t;
     FullInt old = t.whole = load_acquire(&ticket.whole);
-    if (t.users != t.write) return false;
+    if (t.users != t.write) {
+      return false;
+    }
     ++t.users;
     return __sync_bool_compare_and_swap(&ticket.whole, old, t.whole);
   }
@@ -607,7 +661,9 @@ class RWTicketSpinLockT {
     QuarterInt val = __sync_fetch_and_add(&ticket.users, 1);
     while (val != load_acquire(&ticket.write)) {
       asm_volatile_pause();
-      if (UNLIKELY(++count > 1000)) std::this_thread::yield();
+      if (UNLIKELY(++count > 1000)) {
+        std::this_thread::yield();
+      }
     }
   }
 
@@ -656,7 +712,9 @@ class RWTicketSpinLockT {
     uint_fast32_t count = 0;
     while (!LIKELY(try_lock_shared())) {
       asm_volatile_pause();
-      if (UNLIKELY((++count & 1023) == 0)) std::this_thread::yield();
+      if (UNLIKELY((++count & 1023) == 0)) {
+        std::this_thread::yield();
+      }
     }
   }
 
@@ -690,11 +748,15 @@ class RWTicketSpinLockT {
     ReadHolder& operator=(ReadHolder const&) = delete;
 
     explicit ReadHolder(RWSpinLock* lock) : lock_(lock) {
-      if (lock_) lock_->lock_shared();
+      if (lock_) {
+        lock_->lock_shared();
+      }
     }
 
     explicit ReadHolder(RWSpinLock &lock) : lock_ (&lock) {
-      if (lock_) lock_->lock_shared();
+      if (lock_) {
+        lock_->lock_shared();
+      }
     }
 
     // atomically unlock the write-lock from writer and acquire the read-lock
@@ -706,13 +768,19 @@ class RWTicketSpinLockT {
     }
 
     ~ReadHolder() {
-      if (lock_) lock_->unlock_shared();
+      if (lock_) {
+        lock_->unlock_shared();
+      }
     }
 
     void reset(RWSpinLock *lock = nullptr) {
-      if (lock_) lock_->unlock_shared();
+      if (lock_) {
+        lock_->unlock_shared();
+      }
       lock_ = lock;
-      if (lock_) lock_->lock_shared();
+      if (lock_) {
+        lock_->lock_shared();
+      }
     }
 
     void swap(ReadHolder *other) {
@@ -729,21 +797,33 @@ class RWTicketSpinLockT {
     WriteHolder& operator=(WriteHolder const&) = delete;
 
     explicit WriteHolder(RWSpinLock* lock) : lock_(lock) {
-      if (lock_) lock_->lock();
+      if (lock_) {
+        lock_->lock();
+      }
     }
     explicit WriteHolder(RWSpinLock &lock) : lock_ (&lock) {
-      if (lock_) lock_->lock();
+      if (lock_) {
+        lock_->lock();
+      }
     }
 
     ~WriteHolder() {
-      if (lock_) lock_->unlock();
+      if (lock_) {
+        lock_->unlock();
+      }
     }
 
     void reset(RWSpinLock *lock = nullptr) {
-      if (lock == lock_) return;
-      if (lock_) lock_->unlock();
+      if (lock == lock_) {
+        return;
+      }
+      if (lock_) {
+        lock_->unlock();
+      }
       lock_ = lock;
-      if (lock_) lock_->lock();
+      if (lock_) {
+        lock_->lock();
+      }
     }
 
     void swap(WriteHolder *other) {

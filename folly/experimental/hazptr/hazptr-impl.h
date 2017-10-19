@@ -638,8 +638,9 @@ inline hazptr_rec* hazptr_domain::hazptrAcquire() {
   p->active_.store(true, std::memory_order_relaxed);
   p->next_ = hazptrs_.load(std::memory_order_acquire);
   while (!hazptrs_.compare_exchange_weak(
-      p->next_, p, std::memory_order_release, std::memory_order_acquire))
+      p->next_, p, std::memory_order_release, std::memory_order_acquire)) {
     /* keep trying */;
+  }
   auto hcount = hcount_.fetch_add(1);
   DEBUG_PRINT(this << " " << p << " " << sizeof(hazptr_rec) << " " << hcount);
   return p;

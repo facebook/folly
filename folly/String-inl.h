@@ -507,14 +507,21 @@ void backslashify(
       if (hex_style) {
         hex_append = true;
       } else {
-        if (c == '\r') output += 'r';
-        else if (c == '\n') output += 'n';
-        else if (c == '\t') output += 't';
-        else if (c == '\a') output += 'a';
-        else if (c == '\b') output += 'b';
-        else if (c == '\0') output += '0';
-        else if (c == '\\') output += '\\';
-        else {
+        if (c == '\r') {
+          output += 'r';
+        } else if (c == '\n') {
+          output += 'n';
+        } else if (c == '\t') {
+          output += 't';
+        } else if (c == '\a') {
+          output += 'a';
+        } else if (c == '\b') {
+          output += 'b';
+        } else if (c == '\0') {
+          output += '0';
+        } else if (c == '\\') {
+          output += '\\';
+        } else {
           hex_append = true;
         }
       }
@@ -576,7 +583,9 @@ void humanify(const String1& input, String2& output) {
 template <class InputString, class OutputString>
 bool hexlify(const InputString& input, OutputString& output,
              bool append_output) {
-  if (!append_output) output.clear();
+  if (!append_output) {
+    output.clear();
+  }
 
   static char hexValues[] = "0123456789abcdef";
   auto j = output.size();

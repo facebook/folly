@@ -62,7 +62,9 @@ BENCHMARK_PARAM(BENCHFUN(ctorFromArray), 32768);
 void BENCHFUN(ctorFromTwoPointers)(size_t iters, size_t arg) {
   /* library-local */ static STRING s;
   BENCHMARK_SUSPEND {
-    if (s.size() < arg) s.resize(arg);
+    if (s.size() < arg) {
+      s.resize(arg);
+    }
   }
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s1(s.begin(), s.end());

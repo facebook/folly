@@ -291,7 +291,9 @@ downTo(T& iter, const U& begin) {
 template <class T, class U>
 typename std::enable_if<!HasLess<U, T>::value, bool>::type
 downTo(T& iter, const U& begin) {
-  if (iter == begin) return false;
+  if (iter == begin) {
+    return false;
+  }
   --iter;
   return true;
 }

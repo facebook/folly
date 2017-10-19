@@ -76,8 +76,9 @@ Promise<T>::~Promise() {
 template <class T>
 void Promise<T>::detach() {
   if (core_) {
-    if (!retrieved_)
+    if (!retrieved_) {
       core_->detachFuture();
+    }
     core_->detachPromise();
     core_ = nullptr;
   }

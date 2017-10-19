@@ -183,7 +183,9 @@ TEST(Traits, int128) {
 
 template <typename T, typename... Args>
 void testIsRelocatable(Args&&... args) {
-  if (!IsRelocatable<T>::value) return;
+  if (!IsRelocatable<T>::value) {
+    return;
+  }
 
   // We use placement new on zeroed memory to avoid garbage subsections
   char vsrc[sizeof(T)] = { 0 };

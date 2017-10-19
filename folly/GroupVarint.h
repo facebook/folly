@@ -107,13 +107,21 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     uint8_t v = uint8_t(*p);
     size_t s = kHeaderSize;
     s += 1 + b0key(v);
-    if (s > size) return 0;
+    if (s > size) {
+      return 0;
+    }
     s += 1 + b1key(v);
-    if (s > size) return 1;
+    if (s > size) {
+      return 1;
+    }
     s += 1 + b2key(v);
-    if (s > size) return 2;
+    if (s > size) {
+      return 2;
+    }
     s += 1 + b3key(v);
-    if (s > size) return 3;
+    if (s > size) {
+      return 3;
+    }
     return 4;
   }
 
@@ -312,15 +320,25 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
     uint16_t v = loadUnaligned<uint16_t>(p);
     size_t s = kHeaderSize;
     s += 1 + b0key(v);
-    if (s > size) return 0;
+    if (s > size) {
+      return 0;
+    }
     s += 1 + b1key(v);
-    if (s > size) return 1;
+    if (s > size) {
+      return 1;
+    }
     s += 1 + b2key(v);
-    if (s > size) return 2;
+    if (s > size) {
+      return 2;
+    }
     s += 1 + b3key(v);
-    if (s > size) return 3;
+    if (s > size) {
+      return 3;
+    }
     s += 1 + b4key(v);
-    if (s > size) return 4;
+    if (s > size) {
+      return 4;
+    }
     return 5;
   }
 

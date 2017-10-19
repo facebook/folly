@@ -1242,8 +1242,9 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t count,
       Char ch) noexcept(false) {
     detail::fixedstring::checkOverflow(count, N - size_);
-    for (std::size_t i = 0u; i < count; ++i)
+    for (std::size_t i = 0u; i < count; ++i) {
       data_[size_ + i] = ch;
+    }
     size_ += count;
     data_[size_] = Char(0);
     return *this;
@@ -1290,8 +1291,9 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     detail::fixedstring::checkOverflow(pos, that.size_);
     count = detail::fixedstring::checkOverflowOrNpos(count, that.size_ - pos);
     detail::fixedstring::checkOverflow(count, N - size_);
-    for (std::size_t i = 0u; i < count; ++i)
+    for (std::size_t i = 0u; i < count; ++i) {
       data_[size_ + i] = that.data_[pos + i];
+    }
     size_ += count;
     data_[size_] = Char(0);
     return *this;
@@ -1318,8 +1320,9 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const Char* that,
       std::size_t count) noexcept(false) {
     detail::fixedstring::checkOverflow(count, N - size_);
-    for (std::size_t i = 0u; i < count; ++i)
+    for (std::size_t i = 0u; i < count; ++i) {
       data_[size_ + i] = that[i];
+    }
     size_ += count;
     data_[size_] = Char(0);
     return *this;
@@ -2027,8 +2030,9 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   copy(Char* dest, std::size_t count, std::size_t pos) const noexcept(false) {
     detail::fixedstring::checkOverflow(pos, size_);
     for (std::size_t i = 0u; i < count; ++i) {
-      if (i + pos == size_)
+      if (i + pos == size_) {
         return size_;
+      }
       dest[i] = data_[i + pos];
     }
     return count;

@@ -39,12 +39,16 @@ TEST(FSM, example) {
   };
 
   // keep retrying until success (like a cas)
-  while (!tryTransition()) ;
+  while (!tryTransition()) {
+    ;
+  }
   EXPECT_EQ(State::B, fsm.getState());
   EXPECT_EQ(1, count);
   EXPECT_EQ(0, unprotectedCount);
 
-  while (!tryTransition()) ;
+  while (!tryTransition()) {
+    ;
+  }
   EXPECT_EQ(State::A, fsm.getState());
   EXPECT_EQ(0, count);
   EXPECT_EQ(-1, unprotectedCount);

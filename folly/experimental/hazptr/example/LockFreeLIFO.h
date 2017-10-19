@@ -49,7 +49,9 @@ class LockFreeLIFO {
   void push(T val) {
     DEBUG_PRINT(this);
     auto pnode = new Node(val, head_.load());
-    while (!head_.compare_exchange_weak(pnode->next_, pnode));
+    while (!head_.compare_exchange_weak(pnode->next_, pnode)) {
+      ;
+    }
   }
 
   bool pop(T& val) {
@@ -57,12 +59,16 @@ class LockFreeLIFO {
     hazptr_holder hptr;
     Node* pnode = head_.load();
     do {
-      if (pnode == nullptr)
+      if (pnode == nullptr) {
         return false;
-      if (!hptr.try_protect(pnode, head_))
+      }
+      if (!hptr.try_protect(pnode, head_)) {
         continue;
+      }
       auto next = pnode->next_;
-      if (head_.compare_exchange_weak(pnode, next)) break;
+      if (head_.compare_exchange_weak(pnode, next)) {
+        break;
+      }
     } while (true);
     hptr.reset();
     val = pnode->value_;

@@ -99,8 +99,9 @@ class Fingerprint {
   Fingerprint() {
     // Use a non-zero starting value. We'll use (1 << (BITS-1))
     fp_[0] = 1ULL << 63;
-    for (int i = 1; i < size(); i++)
+    for (int i = 1; i < size(); i++) {
       fp_[i] = 0;
+    }
   }
 
   Fingerprint& update8(uint8_t v) {

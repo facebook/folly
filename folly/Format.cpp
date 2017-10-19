@@ -179,7 +179,9 @@ void FormatArg::initSlow() {
 
   if (*p == ':') {
     // parse format spec
-    if (++p == end) return;
+    if (++p == end) {
+      return;
+    }
 
     // fill/align, or just align
     Align a;
@@ -189,30 +191,40 @@ void FormatArg::initSlow() {
       fill = *p;
       align = a;
       p += 2;
-      if (p == end) return;
+      if (p == end) {
+        return;
+      }
     } else if ((a = formatAlignTable[static_cast<unsigned char>(*p)]) !=
                Align::INVALID) {
       align = a;
-      if (++p == end) return;
+      if (++p == end) {
+        return;
+      }
     }
 
     Sign s;
     unsigned char uSign = static_cast<unsigned char>(*p);
     if ((s = formatSignTable[uSign]) != Sign::INVALID) {
       sign = s;
-      if (++p == end) return;
+      if (++p == end) {
+        return;
+      }
     }
 
     if (*p == '#') {
       basePrefix = true;
-      if (++p == end) return;
+      if (++p == end) {
+        return;
+      }
     }
 
     if (*p == '0') {
       enforce(align == Align::DEFAULT, "alignment specified twice");
       fill = '0';
       align = Align::PAD_AFTER_SIGN;
-      if (++p == end) return;
+      if (++p == end) {
+        return;
+      }
     }
 
     auto readInt = [&] {
@@ -227,20 +239,30 @@ void FormatArg::initSlow() {
       width = kDynamicWidth;
       ++p;
 
-      if (p == end) return;
+      if (p == end) {
+        return;
+      }
 
-      if (*p >= '0' && *p <= '9') widthIndex = readInt();
+      if (*p >= '0' && *p <= '9') {
+        widthIndex = readInt();
+      }
 
-      if (p == end) return;
+      if (p == end) {
+        return;
+      }
     } else if (*p >= '0' && *p <= '9') {
       width = readInt();
 
-      if (p == end) return;
+      if (p == end) {
+        return;
+      }
     }
 
     if (*p == ',') {
       thousandsSeparator = true;
-      if (++p == end) return;
+      if (++p == end) {
+        return;
+      }
     }
 
     if (*p == '.') {
@@ -258,11 +280,15 @@ void FormatArg::initSlow() {
         trailingDot = true;
       }
 
-      if (p == end) return;
+      if (p == end) {
+        return;
+      }
     }
 
     presentation = *p;
-    if (++p == end) return;
+    if (++p == end) {
+      return;
+    }
   }
 
   error("extra characters in format string");

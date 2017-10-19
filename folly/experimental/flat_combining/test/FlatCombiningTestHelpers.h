@@ -80,8 +80,9 @@ uint64_t fc_test(
       started.fetch_add(1);
       Rec* myrec = (combining && tc) ? ex.allocRec() : nullptr;
       uint64_t sum = 0;
-      while (!start.load())
+      while (!start.load()) {
         ;
+      }
 
       if (!combining) {
         // no combining
@@ -141,8 +142,9 @@ uint64_t fc_test(
     });
   }
 
-  while (started.load() < nthreads)
+  while (started.load() < nthreads) {
     ;
+  }
   auto tbegin = std::chrono::steady_clock::now();
 
   // begin time measurement

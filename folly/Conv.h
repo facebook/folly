@@ -1426,8 +1426,9 @@ using ParseToResult = decltype(parseTo(StringPiece{}, std::declval<Tgt&>()));
 struct CheckTrailingSpace {
   Expected<Unit, ConversionCode> operator()(StringPiece sp) const {
     auto e = enforceWhitespaceErr(sp);
-    if (UNLIKELY(e != ConversionCode::SUCCESS))
+    if (UNLIKELY(e != ConversionCode::SUCCESS)) {
       return makeUnexpected(e);
+    }
     return unit;
   }
 };
