@@ -62,9 +62,9 @@ using monotonic_clock = std::chrono::steady_clock;
  *
  * Example 1:
  *
- *  coarse_stop_watch<std::seconds> watch;
+ *  coarse_stop_watch<std::chrono::seconds> watch;
  *  do_something();
- *  std::cout << "time elapsed: " << watch.elapsed() << std::endl;
+ *  std::cout << "time elapsed: " << watch.elapsed().count() << std::endl;
  *
  *  auto const ttl = 60_s;
  *  if (watch.elapsed(ttl)) {
@@ -293,9 +293,9 @@ struct custom_stop_watch {
  *
  * Example:
  *
- *  coarse_stop_watch<std::seconds> watch;
+ *  coarse_stop_watch<std::chrono::seconds> watch;
  *  do_something();
- *  std::cout << "time elapsed: " << watch.elapsed() << std::endl;
+ *  std::cout << "time elapsed: " << watch.elapsed().count() << std::endl;
  *
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
@@ -313,9 +313,9 @@ using coarse_stop_watch = custom_stop_watch<monotonic_coarse_clock, Duration>;
  *
  * Example:
  *
- *  stop_watch<std::seconds> watch;
+ *  stop_watch<std::chrono::seconds> watch;
  *  do_something();
- *  std::cout << "time elapsed: " << watch.elapsed() << std::endl;
+ *  std::cout << "time elapsed: " << watch.elapsed().count() << std::endl;
  *
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
