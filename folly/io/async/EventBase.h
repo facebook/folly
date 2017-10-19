@@ -35,7 +35,6 @@
 #include <boost/utility.hpp>
 #include <glog/logging.h>
 
-#include <folly/CallOnce.h>
 #include <folly/Executor.h>
 #include <folly/Function.h>
 #include <folly/Portability.h>
@@ -47,6 +46,7 @@
 #include <folly/io/async/Request.h>
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/portability/Event.h>
+#include <folly/synchronization/CallOnce.h>
 
 namespace folly {
 

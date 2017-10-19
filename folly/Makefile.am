@@ -44,7 +44,6 @@ nobase_follyinclude_HEADERS = \
 	Benchmark.h \
 	Bits.h \
 	CachelinePadded.h \
-	CallOnce.h \
 	Chrono.h \
 	ClockGettimeWrappers.h \
 	ConcurrentSkipList.h \
@@ -419,6 +418,7 @@ nobase_follyinclude_HEADERS = \
 	stats/MultiLevelTimeSeries.h \
 	stats/TimeseriesHistogram-defs.h \
 	stats/TimeseriesHistogram.h \
+	synchronization/CallOnce.h \
 	stop_watch.h \
 	String.h \
 	String-inl.h \

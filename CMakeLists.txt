@@ -475,6 +475,9 @@ if (BUILD_TESTS)
       TEST timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
       TEST timeseries_test SOURCES TimeseriesTest.cpp
 
+    DIRECTORY synchronization/test/
+      TEST call_once_test SOURCES CallOnceTest.cpp
+
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
       TEST arena_test SOURCES ArenaTest.cpp
@@ -492,7 +495,6 @@ if (BUILD_TESTS)
       TEST bit_iterator_test SOURCES BitIteratorTest.cpp
       TEST bits_test SOURCES BitsTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
-      TEST call_once_test SOURCES CallOnceTest.cpp
       TEST checksum_test SOURCES ChecksumTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
