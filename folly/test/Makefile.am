@@ -89,7 +89,7 @@ foreach_benchmark_SOURCES = ForeachBenchmark.cpp
 foreach_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 check_PROGRAMS += foreach_benchmark
 
-hash_test_SOURCES = ../hash/test/HashTest.cpp
+hash_test_SOURCES = HashTest.cpp
 hash_test_LDADD = libfollytestmain.la
 
 invoke_test_SOURCES = ../functional/test/InvokeTest.cpp

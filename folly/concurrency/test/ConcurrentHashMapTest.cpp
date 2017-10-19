@@ -17,8 +17,8 @@
 #include <memory>
 #include <thread>
 
+#include <folly/Hash.h>
 #include <folly/concurrency/ConcurrentHashMap.h>
-#include <folly/hash/Hash.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
 

@@ -20,8 +20,8 @@
 
 #include <folly/AtomicHashArray.h>
 #include <folly/Conv.h>
+#include <folly/Hash.h>
 #include <folly/Memory.h>
-#include <folly/hash/Hash.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
 

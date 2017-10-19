@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/hash/Hash.h>
+#include <folly/Hash.h>
 #include <folly/MapUtil.h>
 #include <folly/portability/GTest.h>
 #include <stdint.h>

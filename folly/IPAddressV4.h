@@ -23,9 +23,9 @@
 #include <iosfwd>
 
 #include <folly/FBString.h>
+#include <folly/Hash.h>
 #include <folly/Range.h>
 #include <folly/detail/IPAddress.h>
-#include <folly/hash/Hash.h>
 
 namespace folly {
 

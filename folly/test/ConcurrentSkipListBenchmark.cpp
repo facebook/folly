@@ -23,8 +23,8 @@
 
 #include <folly/Benchmark.h>
 #include <folly/ConcurrentSkipList.h>
+#include <folly/Hash.h>
 #include <folly/RWSpinLock.h>
-#include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
 #include <glog/logging.h>
 

@@ -22,7 +22,7 @@
 #include <tuple>
 
 #include <folly/Conv.h>
-#include <folly/hash/Hash.h>
+#include <folly/Hash.h>
 
 namespace folly {
 

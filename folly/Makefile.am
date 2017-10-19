@@ -229,7 +229,6 @@ nobase_follyinclude_HEADERS = \
 	futures/test/TestExecutor.h \
 	hash/Checksum.h \
 	hash/detail/ChecksumDetail.h \
-	hash/Hash.h \
 	hash/SpookyHashV1.h \
 	hash/SpookyHashV2.h \
 	gen/Base.h \
@@ -247,6 +246,7 @@ nobase_follyinclude_HEADERS = \
 	gen/String.h \
 	gen/String-inl.h \
 	GroupVarint.h \
+	Hash.h \
 	IPAddress.h \
 	IPAddressV4.h \
 	IPAddressV6.h \

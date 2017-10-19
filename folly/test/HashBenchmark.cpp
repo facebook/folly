@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/hash/Hash.h>
+#include <folly/Hash.h>
 
 #include <stdint.h>
 #include <deque>

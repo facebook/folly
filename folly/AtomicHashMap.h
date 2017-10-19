@@ -92,9 +92,9 @@
 
 #include <folly/AtomicHashArray.h>
 #include <folly/Foreach.h>
+#include <folly/Hash.h>
 #include <folly/Likely.h>
 #include <folly/ThreadCachedInt.h>
-#include <folly/hash/Hash.h>
 
 namespace folly {
 

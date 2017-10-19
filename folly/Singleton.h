@@ -125,12 +125,12 @@
 #include <folly/Demangle.h>
 #include <folly/Exception.h>
 #include <folly/Executor.h>
+#include <folly/Hash.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
 #include <folly/Synchronized.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
-#include <folly/hash/Hash.h>
 
 #include <algorithm>
 #include <atomic>

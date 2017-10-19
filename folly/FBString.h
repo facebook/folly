@@ -54,9 +54,9 @@
 #include <string>
 #include <utility>
 
+#include <folly/Hash.h>
 #include <folly/Malloc.h>
 #include <folly/Traits.h>
-#include <folly/hash/Hash.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 // When used in folly, assertions are not disabled.
