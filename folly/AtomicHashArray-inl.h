@@ -414,18 +414,17 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
                              IterVal,
                              boost::forward_traversal_tag>
 {
-  explicit aha_iterator() : aha_(0) {}
+  explicit aha_iterator() : aha_(nullptr) {}
 
   // Conversion ctor for interoperability between const_iterator and
   // iterator.  The enable_if<> magic keeps us well-behaved for
   // is_convertible<> (v. the iterator_facade documentation).
   template <class OtherContT, class OtherVal>
-  aha_iterator(const aha_iterator<OtherContT,OtherVal>& o,
-               typename std::enable_if<
-               std::is_convertible<OtherVal*,IterVal*>::value >::type* = 0)
-      : aha_(o.aha_)
-      , offset_(o.offset_)
-  {}
+  aha_iterator(
+      const aha_iterator<OtherContT, OtherVal>& o,
+      typename std::enable_if<
+          std::is_convertible<OtherVal*, IterVal*>::value>::type* = nullptr)
+      : aha_(o.aha_), offset_(o.offset_) {}
 
   explicit aha_iterator(ContT* array, size_t offset)
       : aha_(array)

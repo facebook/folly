@@ -676,9 +676,11 @@ class detail::csl_iterator :
   explicit csl_iterator(NodeT* node = nullptr) : node_(node) {}
 
   template <typename OtherVal, typename OtherNode>
-  csl_iterator(const csl_iterator<OtherVal, OtherNode> &other,
-      typename std::enable_if<std::is_convertible<OtherVal, ValT>::value>::type*
-      = 0) : node_(other.node_) {}
+  csl_iterator(
+      const csl_iterator<OtherVal, OtherNode>& other,
+      typename std::enable_if<
+          std::is_convertible<OtherVal, ValT>::value>::type* = nullptr)
+      : node_(other.node_) {}
 
   size_t nodeSize() const {
     return node_ == nullptr ? 0 :

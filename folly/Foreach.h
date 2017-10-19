@@ -216,7 +216,7 @@ class HasLess {
   template <typename, typename> static BiggerThanChar test(...);
 
  public:
-  enum { value = sizeof(test<T, U>(0)) == 1 };
+  enum { value = sizeof(test<T, U>(nullptr)) == 1 };
 };
 
 /**

@@ -1137,7 +1137,7 @@ class small_vector : public detail::small_vector_base<
 
   union Data {
     explicit Data() {
-      pdata_.heap_ = 0;
+      pdata_.heap_ = nullptr;
     }
 
     PointerType pdata_;

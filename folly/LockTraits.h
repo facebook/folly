@@ -106,11 +106,11 @@ class LockInterfaceDispatcher {
  public:
   static constexpr bool has_lock_unique = true;
   static constexpr bool has_lock_timed =
-      decltype(timed_lock_test<Mutex>(0))::value;
+      decltype(timed_lock_test<Mutex>(nullptr))::value;
   static constexpr bool has_lock_shared =
-      decltype(lock_shared_test<Mutex>(0))::value;
+      decltype(lock_shared_test<Mutex>(nullptr))::value;
   static constexpr bool has_lock_upgrade =
-      decltype(lock_upgrade_test<Mutex>(0))::value;
+      decltype(lock_upgrade_test<Mutex>(nullptr))::value;
 };
 
 /**

@@ -1236,7 +1236,7 @@ TEST(FBString, testMoveOperatorPlusRhs) {
 //      other than libstdc++. Someday if we deem it important to present
 //      identical undefined behavior for other platforms, we can re-visit this.
 TEST(FBString, testConstructionFromLiteralZero) {
-  EXPECT_THROW(fbstring s(0), std::logic_error);
+  EXPECT_THROW(fbstring s(nullptr), std::logic_error);
 }
 
 TEST(FBString, testFixedBugs) {

@@ -2333,7 +2333,7 @@ basic_fbstring<E, T, A, S>::find_first_of(
   }
   const_iterator i(begin() + pos), finish(end());
   for (; i != finish; ++i) {
-    if (traits_type::find(s, n, *i) != 0) {
+    if (traits_type::find(s, n, *i) != nullptr) {
       return i - begin();
     }
   }
@@ -2348,7 +2348,7 @@ basic_fbstring<E, T, A, S>::find_last_of(
     pos = std::min(pos, length() - 1);
     const_iterator i(begin() + pos);
     for (;; --i) {
-      if (traits_type::find(s, n, *i) != 0) {
+      if (traits_type::find(s, n, *i) != nullptr) {
         return i - begin();
       }
       if (i == begin()) {
@@ -2366,7 +2366,7 @@ basic_fbstring<E, T, A, S>::find_first_not_of(
   if (pos < length()) {
     const_iterator i(begin() + pos), finish(end());
     for (; i != finish; ++i) {
-      if (traits_type::find(s, n, *i) == 0) {
+      if (traits_type::find(s, n, *i) == nullptr) {
         return i - begin();
       }
     }
@@ -2382,7 +2382,7 @@ basic_fbstring<E, T, A, S>::find_last_not_of(
     pos = std::min(pos, size() - 1);
     const_iterator i(begin() + pos);
     for (;; --i) {
-      if (traits_type::find(s, n, *i) == 0) {
+      if (traits_type::find(s, n, *i) == nullptr) {
         return i - begin();
       }
       if (i == begin()) {
