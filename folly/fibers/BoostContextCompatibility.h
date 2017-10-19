@@ -106,9 +106,9 @@ class FiberImpl {
         boost::context::jump_fcontext(&fiberContext_, mainContext_, 0);
 #elif BOOST_VERSION >= 105200
     auto context =
-        boost::context::jump_fcontext(fiberContext_, &mainContext_, nullptr);
+        boost::context::jump_fcontext(fiberContext_, &mainContext_, 0);
 #else
-    auto context = jump_fcontext(&fiberContext_, &mainContext_, nullptr);
+    auto context = jump_fcontext(&fiberContext_, &mainContext_, 0);
 #endif
     DCHECK_EQ(this, reinterpret_cast<FiberImpl*>(context));
   }
