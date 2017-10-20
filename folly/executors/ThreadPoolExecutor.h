@@ -50,7 +50,7 @@ class ThreadPoolExecutor : public virtual folly::Executor {
     threadFactory_ = std::move(threadFactory);
   }
 
-  std::shared_ptr<ThreadFactory> getThreadFactory(void) {
+  std::shared_ptr<ThreadFactory> getThreadFactory() {
     return threadFactory_;
   }
 

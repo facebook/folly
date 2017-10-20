@@ -184,7 +184,7 @@ static BIO_METHOD* getSSLBioMethod() {
   return instance;
 }
 
-void* initsslBioMethod(void) {
+void* initsslBioMethod() {
   auto sslBioMethod = getSSLBioMethod();
   // override the bwrite method for MSG_EOR support
   OpenSSLUtils::setCustomBioWriteMethod(sslBioMethod, AsyncSSLSocket::bioWrite);

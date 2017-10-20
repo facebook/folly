@@ -51,7 +51,7 @@ SSLSessionImpl::~SSLSessionImpl() {
   downRef();
 }
 
-std::string SSLSessionImpl::serialize(void) const {
+std::string SSLSessionImpl::serialize() const {
   std::string ret;
 
   // Get the length first, then we know how much space to allocate.

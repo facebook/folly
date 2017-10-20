@@ -36,7 +36,7 @@ using namespace __cxxabiv1;
 
 extern "C" {
 StackTraceStack* getExceptionStackTraceStack(void) __attribute__((__weak__));
-typedef StackTraceStack* (*GetExceptionStackTraceStackType)(void);
+typedef StackTraceStack* (*GetExceptionStackTraceStackType)();
 GetExceptionStackTraceStackType getExceptionStackTraceStackFn;
 }
 

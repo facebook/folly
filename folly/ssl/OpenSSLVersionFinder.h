@@ -22,7 +22,7 @@
 // OPENSSL_VERSION_NUMBER is insufficient as runtime version may be different
 // from the compile-time version
 struct OpenSSLVersionFinder {
-  static std::string getOpenSSLLongVersion(void) {
+  static std::string getOpenSSLLongVersion() {
 #ifdef OPENSSL_VERSION_TEXT
     return SSLeay_version(SSLEAY_VERSION);
 #elif defined(OPENSSL_VERSION_NUMBER)
@@ -32,7 +32,7 @@ struct OpenSSLVersionFinder {
 #endif
   }
 
-  uint64_t getOpenSSLNumericVersion(void) {
+  uint64_t getOpenSSLNumericVersion() {
 #ifdef OPENSSL_VERSION_NUMBER
     return SSLeay();
 #else

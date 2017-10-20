@@ -379,13 +379,15 @@ struct StaticMeta : StaticMetaBase {
 #endif
   }
 
-  static void preFork(void) {
+  static void preFork() {
     instance().lock_.lock();  // Make sure it's created
   }
 
-  static void onForkParent(void) { instance().lock_.unlock(); }
+  static void onForkParent() {
+    instance().lock_.unlock();
+  }
 
-  static void onForkChild(void) {
+  static void onForkChild() {
     // only the current thread survives
     instance().head_.next = instance().head_.prev = &instance().head_;
     ThreadEntry* threadEntry = getThreadEntry();

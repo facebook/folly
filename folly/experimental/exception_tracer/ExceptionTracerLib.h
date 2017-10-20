@@ -31,8 +31,8 @@ namespace detail {
  */
 void dummyCxaThrow(void*, std::type_info*, void (*)(void*)) noexcept;
 void dummyCxaBeginCatch(void*) noexcept;
-void dummyCxaRethrow(void) noexcept;
-void dummyCxaEndCatch(void) noexcept;
+void dummyCxaRethrow() noexcept;
+void dummyCxaEndCatch() noexcept;
 void dummyRethrowException(std::exception_ptr) noexcept;
 }
 

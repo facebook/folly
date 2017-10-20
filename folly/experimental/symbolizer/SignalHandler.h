@@ -40,7 +40,7 @@ void installFatalSignalHandler();
  * All these fatal callback must be added before calling
  * installFatalSignalCallbacks(), below.
  */
-typedef void (*SignalCallback)(void);
+typedef void (*SignalCallback)();
 void addFatalSignalCallback(SignalCallback callback);
 
 /**

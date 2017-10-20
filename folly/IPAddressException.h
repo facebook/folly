@@ -38,7 +38,7 @@ class IPAddressFormatException : public std::exception {
   IPAddressFormatException& operator=(IPAddressFormatException&&) = default;
 
   ~IPAddressFormatException() noexcept override {}
-  const char* what(void) const noexcept override {
+  const char* what() const noexcept override {
     return msg_.c_str();
   }
 
