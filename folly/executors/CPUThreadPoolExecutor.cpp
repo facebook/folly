@@ -15,7 +15,7 @@
  */
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/executors/PriorityLifoSemMPMCQueue.h>
+#include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 
 namespace folly {
 

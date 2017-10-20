@@ -83,7 +83,6 @@ nobase_follyinclude_HEADERS = \
 	detail/TurnSequencer.h \
 	detail/UncaughtExceptionCounter.h \
 	executors/Async.h \
-	executors/BlockingQueue.h \
 	executors/CPUThreadPoolExecutor.h \
 	executors/Codel.h \
 	executors/DrivableExecutor.h \
@@ -93,17 +92,18 @@ nobase_follyinclude_HEADERS = \
 	executors/IOExecutor.h \
 	executors/IOObjectCache.h \
 	executors/IOThreadPoolExecutor.h \
-	executors/LifoSemMPMCQueue.h \
-	executors/NamedThreadFactory.h \
 	executors/NotificationQueueExecutor.h \
-	executors/PriorityLifoSemMPMCQueue.h \
-	executors/PriorityThreadFactory.h \
 	executors/ScheduledExecutor.h \
 	executors/SerialExecutor.h \
-	executors/ThreadFactory.h \
 	executors/ThreadPoolExecutor.h \
 	executors/ThreadedExecutor.h \
-	executors/UnboundedBlockingQueue.h \
+	executors/task_queue/BlockingQueue.h \
+	executors/task_queue/LifoSemMPMCQueue.h \
+	executors/task_queue/PriorityLifoSemMPMCQueue.h \
+	executors/task_queue/UnboundedBlockingQueue.h \
+	executors/thread_factory/NamedThreadFactory.h \
+	executors/thread_factory/PriorityThreadFactory.h \
+	executors/thread_factory/ThreadFactory.h \
 	functional/ApplyTuple.h \
 	Demangle.h \
 	DiscriminatedPtr.h \

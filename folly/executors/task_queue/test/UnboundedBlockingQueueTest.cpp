@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/Baton.h>
-#include <folly/executors/UnboundedBlockingQueue.h>
 #include <gtest/gtest.h>
 #include <thread>
 

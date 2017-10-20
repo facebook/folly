@@ -19,9 +19,9 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
-#include <folly/executors/LifoSemMPMCQueue.h>
-#include <folly/executors/PriorityThreadFactory.h>
 #include <folly/executors/ThreadPoolExecutor.h>
+#include <folly/executors/task_queue/LifoSemMPMCQueue.h>
+#include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <gtest/gtest.h>
 
 using namespace folly;

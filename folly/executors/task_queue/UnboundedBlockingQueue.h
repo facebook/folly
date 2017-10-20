@@ -18,7 +18,7 @@
 
 #include <folly/LifoSem.h>
 #include <folly/Synchronized.h>
-#include <folly/executors/BlockingQueue.h>
+#include <folly/executors/task_queue/BlockingQueue.h>
 #include <queue>
 
 namespace folly {

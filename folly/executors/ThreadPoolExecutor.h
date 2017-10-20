@@ -20,8 +20,8 @@
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
 #include <folly/concurrency/GlobalThreadPoolList.h>
-#include <folly/executors/LifoSemMPMCQueue.h>
-#include <folly/executors/NamedThreadFactory.h>
+#include <folly/executors/task_queue/LifoSemMPMCQueue.h>
+#include <folly/executors/thread_factory/NamedThreadFactory.h>
 #include <folly/io/async/Request.h>
 
 #include <algorithm>

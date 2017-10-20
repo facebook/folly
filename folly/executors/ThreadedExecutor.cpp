@@ -21,7 +21,7 @@
 #include <glog/logging.h>
 
 #include <folly/ThreadName.h>
-#include <folly/executors/NamedThreadFactory.h>
+#include <folly/executors/thread_factory/NamedThreadFactory.h>
 
 namespace folly {
 

@@ -19,7 +19,7 @@
 #include <folly/Executor.h>
 #include <folly/LifoSem.h>
 #include <folly/MPMCQueue.h>
-#include <folly/executors/BlockingQueue.h>
+#include <folly/executors/task_queue/BlockingQueue.h>
 
 namespace folly {
 
