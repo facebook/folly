@@ -353,10 +353,10 @@ void Subprocess::spawnInternal(
       int cfd;
       if (p.second == PIPE_IN) {
         // Child gets reading end
-        pipe.pipe = folly::File(fds[1], /*owns_fd=*/ true);
+        pipe.pipe = folly::File(fds[1], /*ownsFd=*/true);
         cfd = fds[0];
       } else {
-        pipe.pipe = folly::File(fds[0], /*owns_fd=*/ true);
+        pipe.pipe = folly::File(fds[0], /*ownsFd=*/true);
         cfd = fds[1];
       }
       p.second = cfd;  // ensure it gets dup2()ed
