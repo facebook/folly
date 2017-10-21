@@ -19,9 +19,9 @@
 #include <chrono>
 
 #include <folly/Baton.h>
-#include <folly/ThreadName.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/portability/GTest.h>
+#include <folly/system/ThreadName.h>
 
 using namespace std;
 using namespace std::chrono;

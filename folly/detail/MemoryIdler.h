@@ -21,9 +21,9 @@
 
 #include <folly/AtomicStruct.h>
 #include <folly/Hash.h>
-#include <folly/ThreadId.h>
 #include <folly/Traits.h>
 #include <folly/detail/Futex.h>
+#include <folly/system/ThreadId.h>
 
 namespace folly {
 

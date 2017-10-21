@@ -17,7 +17,7 @@
 // Make sure we include ThreadId.h before anything else.
 // There is no ThreadId.cpp file, so this test is the only thing that verifies
 // that ThreadId.h compiles by itself when included first.
-#include <folly/ThreadId.h>
+#include <folly/system/ThreadId.h>
 
 #include <thread>
 

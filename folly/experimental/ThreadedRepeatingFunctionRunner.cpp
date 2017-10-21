@@ -15,7 +15,7 @@
  */
 #include "folly/experimental/ThreadedRepeatingFunctionRunner.h"
 
-#include <folly/ThreadName.h>
+#include <folly/system/ThreadName.h>
 #include <glog/logging.h>
 #include <iostream>
 

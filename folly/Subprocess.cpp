@@ -38,13 +38,13 @@
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
-#include <folly/Shell.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/Shell.h>
 
 constexpr int kExecFailure = 127;
 constexpr int kChildFailure = 126;

@@ -38,10 +38,10 @@
 
 #include <folly/Baton.h>
 #include <folly/Memory.h>
-#include <folly/ThreadId.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/ThreadId.h>
 
 using namespace folly;
 

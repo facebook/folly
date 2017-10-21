@@ -31,9 +31,9 @@
 #include <mutex>
 
 #include <folly/File.h>
-#include <folly/MemoryMapping.h>
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
+#include <folly/system/MemoryMapping.h>
 
 namespace folly {
 

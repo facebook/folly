@@ -480,6 +480,13 @@ if (BUILD_TESTS)
     DIRECTORY synchronization/test/
       TEST call_once_test SOURCES CallOnceTest.cpp
 
+    DIRECTORY system/test/
+      TEST memory_mapping_test SOURCES MemoryMappingTest.cpp
+      TEST shell_test SOURCES ShellTest.cpp
+      #TEST subprocess_test SOURCES SubprocessTest.cpp
+      TEST thread_id_test SOURCES ThreadIdTest.cpp
+      TEST thread_name_test SOURCES ThreadNameTest.cpp
+
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
       TEST arena_test SOURCES ArenaTest.cpp
@@ -552,7 +559,6 @@ if (BUILD_TESTS)
       TEST map_util_test SOURCES MapUtilTest.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
-      TEST memory_mapping_test SOURCES MemoryMappingTest.cpp
       TEST memory_test SOURCES MemoryTest.cpp
       TEST merge SOURCES MergeTest.cpp
       TEST move_wrapper_test SOURCES MoveWrapperTest.cpp
@@ -579,7 +585,6 @@ if (BUILD_TESTS)
       TEST scope_guard_test SOURCES ScopeGuardTest.cpp
       # Heavily dependent on drand and srand48
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
-      TEST shell_test SOURCES ShellTest.cpp
       TEST singleton_test SOURCES SingletonTest.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
       TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp
@@ -588,13 +593,10 @@ if (BUILD_TESTS)
       TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
       TEST string_test SOURCES StringTest.cpp
-      #TEST subprocess_test SOURCES SubprocessTest.cpp
       TEST synchronized_test SOURCES SynchronizedTest.cpp
       TEST thread_cached_arena_test SOURCES ThreadCachedArenaTest.cpp
       TEST thread_cached_int_test SOURCES ThreadCachedIntTest.cpp
-      TEST thread_id_test SOURCES ThreadIdTest.cpp
       TEST thread_local_test SOURCES ThreadLocalTest.cpp
-      TEST thread_name_test SOURCES ThreadNameTest.cpp
       TEST timeout_queue_test SOURCES TimeoutQueueTest.cpp
       TEST token_bucket_test SOURCES TokenBucketTest.cpp
       TEST traits_test SOURCES TraitsTest.cpp

@@ -27,10 +27,10 @@
 
 #include <folly/Baton.h>
 #include <folly/Memory.h>
-#include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/ThreadName.h>
 
 namespace folly {
 

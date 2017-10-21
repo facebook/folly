@@ -20,8 +20,8 @@
 
 #include <glog/logging.h>
 
-#include <folly/ThreadName.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
+#include <folly/system/ThreadName.h>
 
 namespace folly {
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/ThreadName.h>
+#include <folly/system/ThreadName.h>
 
 #include <type_traits>
 

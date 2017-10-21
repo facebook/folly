@@ -17,10 +17,10 @@
 #include <cstdlib>
 
 #include <folly/FileUtil.h>
-#include <folly/MemoryMapping.h>
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
+#include <folly/system/MemoryMapping.h>
 
 static constexpr double kSomeDouble = 3.14;
 

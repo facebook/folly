@@ -102,7 +102,7 @@ TESTS += fbstring_test_using_jemalloc
 thread_cached_int_test_SOURCES = ThreadCachedIntTest.cpp
 thread_cached_int_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 
-thread_id_test_SOURCES = ThreadIdTest.cpp
+thread_id_test_SOURCES = system/test/ThreadIdTest.cpp
 thread_id_test_LDADD = libfollytestmain.la
 TESTS += thread_id_test
 
@@ -239,7 +239,7 @@ token_bucket_test_SOURCES = TokenBucketTest.cpp
 token_bucket_test_LDADD = libfollytestmain.la  $(top_builddir)/libfollybenchmark.la
 TESTS += token_bucket_test
 
-thread_name_test_SOURCES = ThreadNameTest.cpp
+thread_name_test_SOURCES = system/ThreadNameTest.cpp
 thread_name_test_LDADD = libfollytestmain.la
 TESTS += thread_name_test
 

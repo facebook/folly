@@ -14,10 +14,20 @@
  * limitations under the License.
  */
 
-#include <folly/VersionCheck.h>
+#include <folly/system/Shell.h>
 
-namespace folly { namespace detail {
+namespace folly {
 
-FOLLY_VERSION_CHECK(folly, FOLLY_VERSION)
+std::string shellQuote(StringPiece argument) {
+  std::string quoted = "'";
+  for (auto c : argument) {
+    if (c == '\'') {
+      quoted += "'\\''";
+    } else {
+      quoted += c;
+    }
+  }
+  return quoted + "'";
+}
 
-}}  // namespaces
+} // namespace folly

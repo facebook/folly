@@ -18,10 +18,10 @@
 #include <stdexcept>
 
 #include <folly/Format.h>
-#include <folly/MemoryMapping.h>
 #include <folly/Range.h>
 #include <folly/experimental/io/HugePages.h>
 #include <folly/portability/GFlags.h>
+#include <folly/system/MemoryMapping.h>
 
 DEFINE_bool(cp, false, "Copy file");
 

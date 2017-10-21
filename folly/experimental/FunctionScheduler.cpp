@@ -21,7 +21,7 @@
 #include <folly/Conv.h>
 #include <folly/Random.h>
 #include <folly/String.h>
-#include <folly/ThreadName.h>
+#include <folly/system/ThreadName.h>
 
 using std::chrono::milliseconds;
 using std::chrono::steady_clock;

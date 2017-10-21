@@ -33,8 +33,8 @@
 
 #include <folly/Conv.h>
 #include <folly/ScopeGuard.h>
-#include <folly/ThreadId.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/ThreadId.h>
 
 #include <glog/logging.h>
 

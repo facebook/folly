@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/MemoryMapping.h>
+#include <folly/system/MemoryMapping.h>
 
 #include <algorithm>
 #include <functional>

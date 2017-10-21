@@ -24,9 +24,9 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Hash.h>
-#include <folly/ThreadId.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/system/ThreadId.h>
 
 using namespace folly;
 

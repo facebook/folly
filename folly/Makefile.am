@@ -327,7 +327,6 @@ nobase_follyinclude_HEADERS = \
 	MapUtil.h \
 	Math.h \
 	Memory.h \
-	MemoryMapping.h \
 	memory/MallctlHelper.h \
 	memory/UninitializedMemoryHacks.h \
 	MicroSpinLock.h \
@@ -390,7 +389,6 @@ nobase_follyinclude_HEADERS = \
 	SafeAssert.h \
 	ScopeGuard.h \
 	SharedMutex.h \
-	Shell.h \
 	Singleton.h \
 	Singleton-inl.h \
 	SingletonThreadLocal.h \
@@ -419,6 +417,11 @@ nobase_follyinclude_HEADERS = \
 	stats/TimeseriesHistogram-defs.h \
 	stats/TimeseriesHistogram.h \
 	synchronization/CallOnce.h \
+	system/MemoryMapping.h \
+	system/Shell.h \
+	system/ThreadId.h \
+	system/ThreadName.h \
+	system/VersionCheck.h \
 	stop_watch.h \
 	String.h \
 	String-inl.h \
@@ -434,9 +437,7 @@ nobase_follyinclude_HEADERS = \
 	test/TestUtils.h \
 	ThreadCachedArena.h \
 	ThreadCachedInt.h \
-	ThreadId.h \
 	ThreadLocal.h \
-	ThreadName.h \
 	TimeoutQueue.h \
 	TokenBucket.h \
 	tracing/StaticTracepoint.h \
@@ -452,8 +453,7 @@ nobase_follyinclude_HEADERS = \
 	Uri.h \
 	Uri-inl.h \
 	Utility.h \
-	Varint.h \
-	VersionCheck.h
+	Varint.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	$(PYTHON) build/generate_format_tables.py
@@ -563,7 +563,6 @@ libfolly_la_SOURCES = \
 	detail/MemoryIdler.cpp \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
-	MemoryMapping.cpp \
 	portability/Dirent.cpp \
 	portability/Fcntl.cpp \
 	portability/Libgen.cpp \
@@ -588,7 +587,6 @@ libfolly_la_SOURCES = \
 	SafeAssert.cpp \
 	ScopeGuard.cpp \
 	SharedMutex.cpp \
-	Shell.cpp \
 	MicroLock.cpp \
 	Optional.cpp \
 	Singleton.cpp \
@@ -602,13 +600,15 @@ libfolly_la_SOURCES = \
 	stats/Histogram.cpp \
 	stats/MultiLevelTimeSeries.cpp \
 	stats/TimeseriesHistogram.cpp \
+	system/MemoryMapping.cpp \
+	system/Shell.cpp \
+	system/ThreadName.cpp \
+	system/VersionCheck.cpp \
 	Subprocess.cpp \
 	ThreadCachedArena.cpp \
-	ThreadName.cpp \
 	TimeoutQueue.cpp \
 	Try.cpp \
 	Uri.cpp \
-	Version.cpp \
 	experimental/AsymmetricMemoryBarrier.cpp \
 	experimental/ThreadedRepeatingFunctionRunner.cpp \
 	experimental/bser/Dump.cpp \

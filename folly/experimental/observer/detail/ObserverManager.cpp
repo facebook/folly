@@ -20,8 +20,8 @@
 #include <folly/MPMCQueue.h>
 #include <folly/Range.h>
 #include <folly/Singleton.h>
-#include <folly/ThreadName.h>
 #include <folly/portability/GFlags.h>
+#include <folly/system/ThreadName.h>
 
 namespace folly {
 namespace observer_detail {
