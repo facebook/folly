@@ -294,6 +294,9 @@ if (BUILD_TESTS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
+    DIRECTORY compression/test/
+      TEST compression_test SOURCES CompressionTest.cpp
+
     DIRECTORY concurrency/test/
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
 
@@ -414,7 +417,6 @@ if (BUILD_TESTS)
       TEST spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
 
     DIRECTORY io/test/
-      TEST compression_test SOURCES CompressionTest.cpp
       TEST iobuf_test SOURCES IOBufTest.cpp
       TEST iobuf_cursor_test SOURCES IOBufCursorTest.cpp
       TEST iobuf_queue_test SOURCES IOBufQueueTest.cpp

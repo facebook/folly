@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/io/Compression.h>
+#include <folly/compression/Compression.h>
 
 #include <algorithm>
 #include <random>
@@ -39,7 +39,7 @@
 #endif
 
 #if FOLLY_HAVE_LIBZ
-#include <folly/io/compression/Zlib.h>
+#include <folly/compression/Zlib.h>
 #endif
 
 namespace zlib = folly::io::zlib;

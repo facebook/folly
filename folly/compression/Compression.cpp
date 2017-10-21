@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/io/Compression.h>
+#include <folly/compression/Compression.h>
 
 #if FOLLY_HAVE_LIBLZ4
 #include <lz4.h>
@@ -32,7 +32,7 @@
 #endif
 
 #if FOLLY_HAVE_LIBZ
-#include <folly/io/compression/Zlib.h>
+#include <folly/compression/Zlib.h>
 #endif
 
 #if FOLLY_HAVE_LIBLZMA
@@ -54,8 +54,8 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Varint.h>
+#include <folly/compression/Utils.h>
 #include <folly/io/Cursor.h>
-#include <folly/io/compression/Utils.h>
 #include <algorithm>
 #include <unordered_set>
 

@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Portability.h>
-#include <folly/io/Compression.h>
+#include <folly/compression/Compression.h>
 
 #if FOLLY_HAVE_LIBZ
 

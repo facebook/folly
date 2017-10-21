@@ -53,6 +53,9 @@ nobase_follyinclude_HEADERS = \
 	CppAttributes.h \
 	CpuId.h \
 	CPortability.h \
+	compression/Compression.h \
+	compression/Utils.h \
+	compression/Zlib.h \
 	concurrency/CacheLocality.h \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
@@ -253,7 +256,6 @@ nobase_follyinclude_HEADERS = \
 	IndexedMemPool.h \
 	init/Init.h \
 	IntrusiveList.h \
-	io/Compression.h \
 	io/Cursor.h \
 	io/Cursor-inl.h \
 	io/IOBuf.h \
@@ -311,8 +313,6 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
-	io/compression/Utils.h \
-	io/compression/Zlib.h \
 	Iterator.h \
 	json.h \
 	Launder.h \
@@ -488,6 +488,8 @@ libfollybase_la_SOURCES = \
 libfolly_la_SOURCES = \
 	Assume.cpp \
 	ClockGettimeWrappers.cpp \
+	compression/Compression.cpp \
+	compression/Zlib.cpp \
 	concurrency/CacheLocality.cpp \
 	concurrency/GlobalThreadPoolList.cpp \
 	detail/Futex.cpp \
@@ -527,7 +529,6 @@ libfolly_la_SOURCES = \
 	IPAddressV6.cpp \
 	LifoSem.cpp \
 	init/Init.cpp \
-	io/Compression.cpp \
 	io/Cursor.cpp \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
@@ -558,7 +559,6 @@ libfolly_la_SOURCES = \
 	io/async/test/TimeUtil.cpp \
 	io/async/ssl/OpenSSLUtils.cpp \
 	io/async/ssl/SSLErrors.cpp \
-	io/compression/Zlib.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
 	detail/SocketFastOpen.cpp \
