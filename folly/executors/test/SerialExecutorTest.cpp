@@ -18,8 +18,8 @@
 
 #include <folly/Baton.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/executors/InlineExecutor.h>
 #include <folly/executors/SerialExecutor.h>
-#include <folly/futures/InlineExecutor.h>
 #include <folly/portability/GTest.h>
 
 using namespace std::chrono;

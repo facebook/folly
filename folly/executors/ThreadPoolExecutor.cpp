@@ -16,7 +16,7 @@
 
 #include <folly/executors/ThreadPoolExecutor.h>
 
-#include <folly/concurrency/GlobalThreadPoolList.h>
+#include <folly/executors/GlobalThreadPoolList.h>
 
 namespace folly {
 

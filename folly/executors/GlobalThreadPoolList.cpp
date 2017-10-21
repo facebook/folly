@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/concurrency/GlobalThreadPoolList.h>
+#include <folly/executors/GlobalThreadPoolList.h>
 
 #include <memory>
 #include <string>

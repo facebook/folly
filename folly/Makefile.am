@@ -59,7 +59,6 @@ nobase_follyinclude_HEADERS = \
 	concurrency/CacheLocality.h \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
-	concurrency/GlobalThreadPoolList.h \
 	concurrency/detail/ConcurrentHashMap-detail.h \
 	ConstexprMath.h \
 	detail/AtomicHashUtils.h \
@@ -92,6 +91,8 @@ nobase_follyinclude_HEADERS = \
 	executors/FiberIOExecutor.h \
 	executors/FutureExecutor.h \
 	executors/GlobalExecutor.h \
+	executors/GlobalThreadPoolList.h \
+	executors/InlineExecutor.h \
 	executors/IOExecutor.h \
 	executors/IOObjectCache.h \
 	executors/IOThreadPoolExecutor.h \
@@ -216,8 +217,6 @@ nobase_follyinclude_HEADERS = \
 	futures/Future-inl.h \
 	futures/FutureException.h \
 	futures/FutureSplitter.h \
-	futures/InlineExecutor.h \
-	futures/ManualExecutor.h \
 	futures/Promise-inl.h \
 	futures/Promise.h \
 	futures/SharedPromise.h \
@@ -491,7 +490,6 @@ libfolly_la_SOURCES = \
 	compression/Compression.cpp \
 	compression/Zlib.cpp \
 	concurrency/CacheLocality.cpp \
-	concurrency/GlobalThreadPoolList.cpp \
 	detail/Futex.cpp \
 	detail/IPAddress.cpp \
 	detail/StaticSingletonManager.cpp \
@@ -505,14 +503,15 @@ libfolly_la_SOURCES = \
 	futures/Barrier.cpp \
 	futures/Future.cpp \
 	futures/FutureException.cpp \
-	futures/InlineExecutor.cpp \
-	futures/ManualExecutor.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
 	futures/test/TestExecutor.cpp \
 	executors/CPUThreadPoolExecutor.cpp \
 	executors/Codel.cpp \
 	executors/GlobalExecutor.cpp \
+	executors/GlobalThreadPoolList.cpp \
 	executors/IOThreadPoolExecutor.cpp \
+	executors/InlineExecutor.cpp \
+	executors/ManualExecutor.cpp \
 	executors/SerialExecutor.cpp \
 	executors/ThreadPoolExecutor.cpp \
 	executors/ThreadedExecutor.cpp \

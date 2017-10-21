@@ -17,7 +17,7 @@
 #include <folly/Singleton.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
-#include <folly/futures/InlineExecutor.h>
+#include <folly/executors/InlineExecutor.h>
 
 using namespace folly;
 

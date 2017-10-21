@@ -23,7 +23,7 @@
 
 #include <folly/Baton.h>
 #include <folly/Optional.h>
-#include <folly/futures/InlineExecutor.h>
+#include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Timekeeper.h>
 #include <folly/futures/detail/Core.h>
 

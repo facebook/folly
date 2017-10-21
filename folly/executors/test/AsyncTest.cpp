@@ -15,7 +15,7 @@
  */
 
 #include <folly/executors/Async.h>
-#include <folly/futures/ManualExecutor.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

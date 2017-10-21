@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/futures/InlineExecutor.h>
+#include <folly/executors/InlineExecutor.h>
 
 #include <folly/Indestructible.h>
 
