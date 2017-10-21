@@ -22,7 +22,7 @@
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace std::chrono;

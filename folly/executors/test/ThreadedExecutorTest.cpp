@@ -16,11 +16,10 @@
 
 #include <folly/executors/ThreadedExecutor.h>
 
-#include <gtest/gtest.h>
-
 #include <folly/Conv.h>
 #include <folly/futures/Future.h>
 #include <folly/gen/Base.h>
+#include <folly/portability/GTest.h>
 
 namespace {
 

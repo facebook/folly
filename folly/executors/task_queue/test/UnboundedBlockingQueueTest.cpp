@@ -15,7 +15,7 @@
  */
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/Baton.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 #include <thread>
 
 using namespace folly;

@@ -16,7 +16,7 @@
 
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/IOExecutor.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

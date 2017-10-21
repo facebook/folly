@@ -15,7 +15,7 @@
  */
 
 #include <folly/executors/Codel.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 #include <chrono>
 #include <thread>
 
