@@ -300,9 +300,10 @@ if (BUILD_TESTS)
     DIRECTORY concurrency/test/
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
 
-      DIRECTORY executors/test/
+    DIRECTORY executors/test/
       TEST async_helpers_test SOURCES AsyncTest.cpp
       TEST codel_test SOURCES CodelTest.cpp
+      TEST executor_test SOURCES ExecutorTest.cpp
       TEST fiber_io_executor_test SOURCES FiberIOExecutorTest.cpp
       TEST global_executor_test SOURCES GlobalExecutorTest.cpp
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
@@ -371,7 +372,6 @@ if (BUILD_TESTS)
       TEST context_test SOURCES ContextTest.cpp
       TEST core_test SOURCES CoreTest.cpp
       TEST ensure_test SOURCES EnsureTest.cpp
-      TEST executor_test SOURCES ExecutorTest.cpp
       TEST fsm_test SOURCES FSMTest.cpp
       TEST filter_test SOURCES FilterTest.cpp
       TEST future_splitter_test SOURCES FutureSplitterTest.cpp
