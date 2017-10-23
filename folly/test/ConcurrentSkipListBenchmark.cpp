@@ -17,6 +17,7 @@
 // @author: Xin Liu <xliux@fb.com>
 
 #include <map>
+#include <memory>
 #include <random>
 #include <set>
 #include <thread>
@@ -485,8 +486,7 @@ static std::map<int, std::shared_ptr<ConcurrentAccessData> > g_data;
 static ConcurrentAccessData *mayInitTestData(int size) {
   auto it = g_data.find(size);
   if (it == g_data.end()) {
-    auto ptr = std::shared_ptr<ConcurrentAccessData>(
-        new ConcurrentAccessData(size));
+    auto ptr = std::make_shared<ConcurrentAccessData>(size);
     g_data[size] = ptr;
     return ptr.get();
   }

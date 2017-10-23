@@ -20,6 +20,7 @@
 #include <folly/portability/Sockets.h>
 
 #include <boost/scoped_array.hpp>
+#include <memory>
 
 enum StateEnum {
   STATE_WAITING,
@@ -370,7 +371,7 @@ class TestServer {
 
   std::shared_ptr<BlockingSocket> accept(int timeout=50) {
     int fd = acceptFD(timeout);
-    return std::shared_ptr<BlockingSocket>(new BlockingSocket(fd));
+    return std::make_shared<BlockingSocket>(fd);
   }
 
   std::shared_ptr<folly::AsyncSocket> acceptAsync(folly::EventBase* evb,
