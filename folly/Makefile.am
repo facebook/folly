@@ -58,6 +58,12 @@ nobase_follyinclude_HEADERS = \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
 	concurrency/detail/ConcurrentHashMap-detail.h \
+	container/Iterator.h \
+	container/Enumerate.h \
+	container/EvictingCacheMap.h \
+	container/Foreach.h \
+	container/Foreach-inl.h \
+	container/SparseByteSet.h \
 	ConstexprMath.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
@@ -111,8 +117,6 @@ nobase_follyinclude_HEADERS = \
 	DynamicConverter.h \
 	dynamic.h \
 	dynamic-inl.h \
-	Enumerate.h \
-	EvictingCacheMap.h \
 	Exception.h \
 	ExceptionString.h \
 	ExceptionWrapper.h \
@@ -199,8 +203,6 @@ nobase_follyinclude_HEADERS = \
 	Fingerprint.h \
 	FixedString.h \
 	folly-config.h \
-	Foreach.h \
-	Foreach-inl.h \
 	FormatArg.h \
 	FormatTraits.h \
 	Format.h \
@@ -309,7 +311,6 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
-	Iterator.h \
 	json.h \
 	Launder.h \
 	Lazy.h \
@@ -396,7 +397,6 @@ nobase_follyinclude_HEADERS = \
 	small_vector.h \
 	SocketAddress.h \
 	sorted_vector_types.h \
-	SparseByteSet.h \
 	SpinLock.h \
 	ssl/Init.h \
 	ssl/OpenSSLCertUtils.h \

@@ -26,7 +26,7 @@
 #include <utility>
 #include <vector>
 
-#include <folly/Iterator.h>
+#include <folly/container/Iterator.h>
 #include <folly/portability/GTest.h>
 
 namespace {

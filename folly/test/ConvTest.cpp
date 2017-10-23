@@ -21,7 +21,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <folly/Conv.h>
-#include <folly/Foreach.h>
+#include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 
 #include <algorithm>

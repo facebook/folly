@@ -20,7 +20,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Format.h>
-#include <folly/SparseByteSet.h>
+#include <folly/container/SparseByteSet.h>
 #include <folly/portability/GFlags.h>
 #include <bitset>
 #include <random>

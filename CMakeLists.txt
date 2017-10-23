@@ -311,6 +311,13 @@ if (BUILD_TESTS)
       TEST threaded_executor_test SOURCES ThreadedExecutorTest.cpp
       TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
 
+    DIRECTORY container/test/
+      TEST enumerate_test SOURCES EnumerateTest.cpp
+      TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
+      TEST foreach_test SOURCES ForeachTest.cpp
+      TEST merge_test SOURCES MergeTest.cpp
+      TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
+
     DIRECTORY experimental/test/
       TEST autotimer_test SOURCES AutoTimerTest.cpp
       TEST bits_test_2 SOURCES BitsTest.cpp
@@ -520,8 +527,6 @@ if (BUILD_TESTS)
       TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
       TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
       TEST endian_test SOURCES EndianTest.cpp
-      TEST enumerate_test SOURCES EnumerateTest.cpp
-      TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
       TEST exception_test SOURCES ExceptionTest.cpp
       TEST exception_wrapper_test SOURCES ExceptionWrapperTest.cpp
       TEST expected_test SOURCES ExpectedTest.cpp
@@ -531,7 +536,6 @@ if (BUILD_TESTS)
       TEST file_util_test HANGING
         SOURCES FileUtilTest.cpp
       TEST fingerprint_test SOURCES FingerprintTest.cpp
-      TEST foreach_test SOURCES ForeachTest.cpp
       TEST format_other_test SOURCES FormatOtherTest.cpp
       TEST format_test SOURCES FormatTest.cpp
       TEST function_scheduler_test SOURCES FunctionSchedulerTest.cpp
@@ -563,7 +567,6 @@ if (BUILD_TESTS)
       TEST memcpy_test SOURCES MemcpyTest.cpp
       TEST memory_idler_test SOURCES MemoryIdlerTest.cpp
       TEST memory_test SOURCES MemoryTest.cpp
-      TEST merge SOURCES MergeTest.cpp
       TEST move_wrapper_test SOURCES MoveWrapperTest.cpp
       TEST mpmc_pipeline_test SOURCES MPMCPipelineTest.cpp
       TEST mpmc_queue_test SLOW
@@ -594,7 +597,6 @@ if (BUILD_TESTS)
       TEST singletonvault_c_test SOURCES SingletonVaultCTest.cpp
       TEST small_vector_test SOURCES small_vector_test.cpp
       TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
-      TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
       TEST string_test SOURCES StringTest.cpp
       TEST synchronized_test SOURCES SynchronizedTest.cpp
       TEST thread_cached_int_test SOURCES ThreadCachedIntTest.cpp

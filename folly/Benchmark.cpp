@@ -30,9 +30,9 @@
 
 #include <boost/regex.hpp>
 
-#include <folly/Foreach.h>
 #include <folly/MapUtil.h>
 #include <folly/String.h>
+#include <folly/container/Foreach.h>
 #include <folly/json.h>
 
 using namespace std;

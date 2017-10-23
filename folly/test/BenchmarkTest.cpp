@@ -15,8 +15,8 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/Foreach.h>
 #include <folly/String.h>
+#include <folly/container/Foreach.h>
 #include <algorithm>
 #include <iostream>
 #include <numeric>

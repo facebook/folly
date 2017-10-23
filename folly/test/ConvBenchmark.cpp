@@ -20,7 +20,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/CppAttributes.h>
-#include <folly/Foreach.h>
+#include <folly/container/Foreach.h>
 
 #include <array>
 #include <limits>

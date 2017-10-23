@@ -26,9 +26,9 @@
 #include <boost/random.hpp>
 
 #include <folly/FBString.h>
-#include <folly/Foreach.h>
 #include <folly/Random.h>
 #include <folly/Traits.h>
+#include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 
 using namespace std;

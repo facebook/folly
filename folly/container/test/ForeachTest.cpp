@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Foreach.h>
+#include <folly/container/Foreach.h>
 
 #include <array>
 #include <initializer_list>

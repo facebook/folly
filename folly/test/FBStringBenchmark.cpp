@@ -27,8 +27,8 @@
 #include <boost/random.hpp>
 
 #include <folly/Benchmark.h>
-#include <folly/Foreach.h>
 #include <folly/Random.h>
+#include <folly/container/Foreach.h>
 #include <folly/portability/GFlags.h>
 
 using namespace std;

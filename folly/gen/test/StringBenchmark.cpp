@@ -19,8 +19,8 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/Foreach.h>
 #include <folly/String.h>
+#include <folly/container/Foreach.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/String.h>
 

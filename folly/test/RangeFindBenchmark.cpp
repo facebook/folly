@@ -22,7 +22,7 @@
 #include <string>
 
 #include <folly/Benchmark.h>
-#include <folly/Foreach.h>
+#include <folly/container/Foreach.h>
 
 using namespace folly;
 using namespace std;

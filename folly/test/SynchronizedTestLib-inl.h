@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/Foreach.h>
 #include <folly/Random.h>
 #include <folly/Synchronized.h>
+#include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 #include <glog/logging.h>
 #include <algorithm>

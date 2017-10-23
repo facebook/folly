@@ -22,7 +22,7 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/Foreach.h>
+#include <folly/container/Foreach.h>
 
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>

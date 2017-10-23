@@ -18,7 +18,7 @@
 
 #include <bitset>
 
-#include <folly/SparseByteSet.h>
+#include <folly/container/SparseByteSet.h>
 
 namespace folly {
 

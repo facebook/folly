@@ -82,10 +82,10 @@ sorted_vector_types_test_SOURCES = sorted_vector_test.cpp
 sorted_vector_types_test_LDADD = libfollytestmain.la
 
 
-foreach_test_SOURCES = ForeachTest.cpp
+foreach_test_SOURCES = ../container/test/ForeachTest.cpp
 foreach_test_LDADD = libfollytestmain.la
 
-foreach_benchmark_SOURCES = ForeachBenchmark.cpp
+foreach_benchmark_SOURCES = ../container/test/ForeachBenchmark.cpp
 foreach_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 check_PROGRAMS += foreach_benchmark
 

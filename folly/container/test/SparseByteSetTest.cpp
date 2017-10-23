@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/SparseByteSet.h>
+#include <folly/container/SparseByteSet.h>
 
 #include <cstdint>
 #include <limits>

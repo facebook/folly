@@ -16,7 +16,7 @@
 
 #include <set>
 
-#include <folly/EvictingCacheMap.h>
+#include <folly/container/EvictingCacheMap.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

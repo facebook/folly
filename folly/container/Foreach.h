@@ -320,4 +320,4 @@ downTo(T& iter, const U& begin) {
 #define FOR_EACH_RANGE_R(i, begin, end) \
   for (auto i = (false ? (begin) : (end)); ::folly::detail::downTo(i, (begin));)
 
-#include <folly/Foreach-inl.h>
+#include <folly/container/Foreach-inl.h>

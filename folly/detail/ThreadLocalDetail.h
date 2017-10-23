@@ -27,12 +27,12 @@
 #include <glog/logging.h>
 
 #include <folly/Exception.h>
-#include <folly/Foreach.h>
 #include <folly/Function.h>
 #include <folly/MicroSpinLock.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
+#include <folly/container/Foreach.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 

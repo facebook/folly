@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Foreach.h>
+#include <folly/container/Foreach.h>
 
 #include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>

@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include <folly/Enumerate.h>
 #include <folly/Range.h>
+#include <folly/container/Enumerate.h>
 #include <folly/portability/GTest.h>
 
 TEST(Enumerate, Basic) {

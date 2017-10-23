@@ -24,7 +24,7 @@
 
 #include <glog/logging.h>
 
-#include <folly/Foreach.h>
+#include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 
 using std::chrono::seconds;

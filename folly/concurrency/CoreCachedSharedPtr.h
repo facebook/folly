@@ -19,9 +19,9 @@
 #include <array>
 #include <memory>
 
-#include <folly/Enumerate.h>
 #include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CacheLocality.h>
+#include <folly/container/Enumerate.h>
 #include <folly/experimental/hazptr/hazptr.h>
 
 namespace folly {
