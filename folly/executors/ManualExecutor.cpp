@@ -69,6 +69,15 @@ size_t ManualExecutor::run() {
   return count;
 }
 
+size_t ManualExecutor::drain() {
+  size_t tasksRun = 0;
+  size_t tasksForSingleRun = 0;
+  while ((tasksForSingleRun = run()) != 0) {
+    tasksRun += tasksForSingleRun;
+  }
+  return tasksRun;
+}
+
 void ManualExecutor::wait() {
   while (true) {
     {

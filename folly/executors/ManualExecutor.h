@@ -47,6 +47,14 @@ namespace folly {
     /// moment that this returns.
     size_t run();
 
+    // Do work until there is no more work to do.
+    // Returns the number of functions that were executed (maybe 0).
+    // Unlike run, this method is not stable. It will chase an infinite tail of
+    // work so should be used with care.
+    // There will be no work available to perform at the moment that this
+    // returns.
+    size_t drain();
+
     /// Wait for work to do.
     void wait();
 

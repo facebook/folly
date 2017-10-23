@@ -33,6 +33,20 @@ TEST(ManualExecutor, runIsStable) {
   auto f2 = [&]() { x.add(f1); x.add(f1); };
   x.add(f2);
   x.run();
+  EXPECT_EQ(count, 0);
+}
+
+TEST(ManualExecutor, drainIsNotStable) {
+  ManualExecutor x;
+  size_t count = 0;
+  auto f1 = [&]() { count++; };
+  auto f2 = [&]() {
+    x.add(f1);
+    x.add(f1);
+  };
+  x.add(f2);
+  x.drain();
+  EXPECT_EQ(count, 2);
 }
 
 TEST(ManualExecutor, scheduleDur) {
