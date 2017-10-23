@@ -46,7 +46,8 @@ void MemoryIdler::flushLocalMallocCaches() {
   }
 
   try {
-    mallctlCall("thread.tcache.flush");
+    // Not using mallctlCall as this will fail if tcache is disabled.
+    mallctl("thread.tcache.flush", nullptr, nullptr, nullptr, 0);
 
     // By default jemalloc has 4 arenas per cpu, and then assigns each
     // thread to one of those arenas.  This means that in any service
@@ -67,7 +68,7 @@ void MemoryIdler::flushLocalMallocCaches() {
     mallctlRead("thread.arena", &arenaForCurrent);
     if (narenas > 2 * CacheLocality::system().numCpus &&
         mallctlnametomib("arena.0.purge", mib, &miblen) == 0) {
-      mib[1] = size_t(arenaForCurrent);
+      mib[1] = static_cast<size_t>(arenaForCurrent);
       mallctlbymib(mib, miblen, nullptr, nullptr, nullptr, 0);
     }
   } catch (const std::runtime_error& ex) {
@@ -117,7 +118,7 @@ static void fetchStackLimits() {
   assert(rawSize > guardSize);
 
   // stack goes down, so guard page adds to the base addr
-  tls_stackLimit = uintptr_t(addr) + guardSize;
+  tls_stackLimit = reinterpret_cast<uintptr_t>(addr) + guardSize;
   tls_stackSize = rawSize - guardSize;
 
   assert((tls_stackLimit & (pageSize() - 1)) == 0);
@@ -125,7 +126,7 @@ static void fetchStackLimits() {
 
 FOLLY_NOINLINE static uintptr_t getStackPtr() {
   char marker;
-  auto rv = uintptr_t(&marker);
+  auto rv = reinterpret_cast<uintptr_t>(&marker);
   return rv;
 }
 
@@ -133,7 +134,7 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
   if (tls_stackSize == 0) {
     fetchStackLimits();
   }
-  if (tls_stackSize <= std::max(size_t(1), retain)) {
+  if (tls_stackSize <= std::max(static_cast<size_t>(1), retain)) {
     // covers both missing stack info, and impossibly large retain
     return;
   }
