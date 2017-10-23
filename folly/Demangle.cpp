@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <cstring>
 
-#include <folly/Malloc.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK

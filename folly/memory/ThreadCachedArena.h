@@ -18,10 +18,10 @@
 
 #include <type_traits>
 
-#include <folly/Arena.h>
 #include <folly/Likely.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
+#include <folly/memory/Arena.h>
 
 namespace folly {
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Arena.h>
+#include <folly/memory/Arena.h>
 #include <folly/Memory.h>
 #include <folly/portability/GTest.h>
 

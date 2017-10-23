@@ -37,8 +37,8 @@
 
 #include <folly/FormatTraits.h>
 #include <folly/Likely.h>
-#include <folly/Malloc.h>
 #include <folly/Traits.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 //=============================================================================

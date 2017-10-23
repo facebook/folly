@@ -26,8 +26,8 @@
 
 #include <folly/Conv.h>
 #include <folly/Likely.h>
-#include <folly/Malloc.h>
 #include <folly/Memory.h>
+#include <folly/memory/Malloc.h>
 
 namespace folly {
 
@@ -243,4 +243,4 @@ struct IsArenaAllocator<SysArena> : std::true_type { };
 
 } // namespace folly
 
-#include <folly/Arena-inl.h>
+#include <folly/memory/Arena-inl.h>

@@ -27,11 +27,11 @@
 
 #include <folly/Conv.h>
 #include <folly/Likely.h>
-#include <folly/Malloc.h>
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/io/Cursor.h>
+#include <folly/memory/Malloc.h>
 
 using std::unique_ptr;
 
@@ -791,7 +791,7 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
   //   - If using jemalloc, we can try to expand in place, avoiding a memcpy()
   //   - If not using jemalloc and we don't have too much to copy,
   //     we'll use realloc() (note that realloc might have to copy
-  //     headroom + data + tailroom, see smartRealloc in folly/Malloc.h)
+  //     headroom + data + tailroom, see smartRealloc in folly/memory/Malloc.h)
   // - Otherwise, bite the bullet and reallocate.
   if (headroom() + tailroom() >= minHeadroom + minTailroom) {
     uint8_t* newData = writableBuffer() + minHeadroom;

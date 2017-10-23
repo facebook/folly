@@ -21,8 +21,8 @@
 
 #include <glog/logging.h>
 
-#include <folly/Arena.h>
 #include <folly/String.h>
+#include <folly/memory/Arena.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

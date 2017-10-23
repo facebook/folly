@@ -27,8 +27,6 @@ lib_LTLIBRARIES = \
 follyincludedir = $(includedir)/folly
 
 nobase_follyinclude_HEADERS = \
-	Arena.h \
-	Arena-inl.h \
 	Array.h \
 	Assume.h \
 	AtomicBitSet.h \
@@ -72,7 +70,6 @@ nobase_follyinclude_HEADERS = \
 	detail/GroupVarintDetail.h \
 	detail/IPAddress.h \
 	detail/IPAddressSource.h \
-	detail/MallocImpl.h \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
 	detail/RangeCommon.h \
@@ -322,12 +319,16 @@ nobase_follyinclude_HEADERS = \
 	LockTraitsBoost.h \
 	Logging.h \
 	MacAddress.h \
-	Malloc.h \
 	MapUtil.h \
 	Math.h \
 	Memory.h \
+	memory/Arena.h \
+	memory/Arena-inl.h \
 	memory/MallctlHelper.h \
+	memory/Malloc.h \
+	memory/ThreadCachedArena.h \
 	memory/UninitializedMemoryHacks.h \
+	memory/detail/MallocImpl.h \
 	MicroSpinLock.h \
 	MicroLock.h \
 	MoveWrapper.h \
@@ -434,7 +435,6 @@ nobase_follyinclude_HEADERS = \
 	test/SynchronizedTestLib.h \
 	test/SynchronizedTestLib-inl.h \
 	test/TestUtils.h \
-	ThreadCachedArena.h \
 	ThreadCachedInt.h \
 	ThreadLocal.h \
 	TimeoutQueue.h \
@@ -562,6 +562,7 @@ libfolly_la_SOURCES = \
 	detail/MemoryIdler.cpp \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
+	memory/ThreadCachedArena.cpp \
 	portability/Dirent.cpp \
 	portability/Fcntl.cpp \
 	portability/Libgen.cpp \
@@ -604,7 +605,6 @@ libfolly_la_SOURCES = \
 	system/ThreadName.cpp \
 	system/VersionCheck.cpp \
 	Subprocess.cpp \
-	ThreadCachedArena.cpp \
 	TimeoutQueue.cpp \
 	Try.cpp \
 	Uri.cpp \
@@ -633,7 +633,7 @@ libfolly_la_SOURCES += \
 endif
 
 if !HAVE_WEAK_SYMBOLS
-libfollybase_la_SOURCES += detail/MallocImpl.cpp
+libfollybase_la_SOURCES += memory/detail/MallocImpl.cpp
 endif
 
 if HAVE_BOOST_CONTEXT

@@ -20,8 +20,8 @@
 #include <iterator>
 #include <type_traits>
 
-#include <folly/Malloc.h>
 #include <folly/io/IOBuf.h>
+#include <folly/memory/Malloc.h>
 
 namespace folly {
 

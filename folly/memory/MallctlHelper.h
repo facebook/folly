@@ -19,7 +19,7 @@
 #pragma once
 
 #include <folly/Likely.h>
-#include <folly/Malloc.h>
+#include <folly/memory/Malloc.h>
 
 #include <stdexcept>
 

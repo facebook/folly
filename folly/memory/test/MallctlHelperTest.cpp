@@ -15,8 +15,8 @@
  */
 
 #include <folly/memory/MallctlHelper.h>
-#include <folly/Malloc.h>
 #include <folly/init/Init.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
 #ifdef FOLLY_HAVE_LIBJEMALLOC

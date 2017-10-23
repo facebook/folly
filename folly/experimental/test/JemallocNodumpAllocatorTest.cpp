@@ -16,8 +16,8 @@
 
 #include <folly/experimental/JemallocNodumpAllocator.h>
 
-#include <folly/Malloc.h>
 #include <folly/io/IOBuf.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
 TEST(JemallocNodumpAllocatorTest, Basic) {

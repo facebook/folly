@@ -463,6 +463,10 @@ if (BUILD_TESTS)
     DIRECTORY io/async/ssl/test/
       TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
 
+    DIRECTORY memory/test/
+      TEST thread_cached_arena_test SOURCES ThreadCachedArenaTest.cpp
+      TEST arena_test SOURCES ArenaTest.cpp
+
     DIRECTORY portability/test/
       TEST constexpr_test SOURCES ConstexprTest.cpp
       TEST libgen-test SOURCES LibgenTest.cpp
@@ -489,7 +493,6 @@ if (BUILD_TESTS)
 
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
-      TEST arena_test SOURCES ArenaTest.cpp
       TEST arena_smartptr_test SOURCES ArenaSmartPtrTest.cpp
       TEST array_test SOURCES ArrayTest.cpp
       TEST ascii_check_test SOURCES AsciiCaseInsensitiveTest.cpp
@@ -594,7 +597,6 @@ if (BUILD_TESTS)
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
       TEST string_test SOURCES StringTest.cpp
       TEST synchronized_test SOURCES SynchronizedTest.cpp
-      TEST thread_cached_arena_test SOURCES ThreadCachedArenaTest.cpp
       TEST thread_cached_int_test SOURCES ThreadCachedIntTest.cpp
       TEST thread_local_test SOURCES ThreadLocalTest.cpp
       TEST timeout_queue_test SOURCES TimeoutQueueTest.cpp

@@ -21,8 +21,8 @@
 
 #include <boost/random.hpp>
 
-#include <folly/Malloc.h>
 #include <folly/Range.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
 using folly::fbstring;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/ThreadCachedArena.h>
+#include <folly/memory/ThreadCachedArena.h>
 
 #include <memory>
 
