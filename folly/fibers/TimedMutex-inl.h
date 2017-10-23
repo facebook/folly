@@ -26,7 +26,7 @@ namespace fibers {
 
 template <typename WaitFunc>
 TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
-  std::unique_lock<folly::SpinLock> lock(lock_);
+  std::unique_lock<folly::SpinLock> ulock(lock_);
   if (!locked_) {
     locked_ = true;
     return LockResult::SUCCESS;
@@ -53,7 +53,7 @@ TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
     threadWaiters_.push_back(waiter);
   }
 
-  lock.unlock();
+  ulock.unlock();
 
   if (!waitFunc(waiter)) {
     return LockResult::TIMEOUT;
@@ -155,11 +155,11 @@ inline void TimedMutex::unlock() {
 
 template <typename BatonType>
 void TimedRWMutex<BatonType>::read_lock() {
-  std::unique_lock<folly::SpinLock> lock{lock_};
+  std::unique_lock<folly::SpinLock> ulock{lock_};
   if (state_ == State::WRITE_LOCKED) {
     MutexWaiter waiter;
     read_waiters_.push_back(waiter);
-    lock.unlock();
+    ulock.unlock();
     waiter.baton.wait();
     assert(state_ == State::READ_LOCKED);
     return;
@@ -176,11 +176,11 @@ template <typename BatonType>
 template <typename Rep, typename Period>
 bool TimedRWMutex<BatonType>::timed_read_lock(
     const std::chrono::duration<Rep, Period>& duration) {
-  std::unique_lock<folly::SpinLock> lock{lock_};
+  std::unique_lock<folly::SpinLock> ulock{lock_};
   if (state_ == State::WRITE_LOCKED) {
     MutexWaiter waiter;
     read_waiters_.push_back(waiter);
-    lock.unlock();
+    ulock.unlock();
 
     if (!waiter.baton.timed_wait(duration)) {
       // We timed out. Two cases:
@@ -222,7 +222,7 @@ bool TimedRWMutex<BatonType>::try_read_lock() {
 
 template <typename BatonType>
 void TimedRWMutex<BatonType>::write_lock() {
-  std::unique_lock<folly::SpinLock> lock{lock_};
+  std::unique_lock<folly::SpinLock> ulock{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
     state_ = State::WRITE_LOCKED;
@@ -230,7 +230,7 @@ void TimedRWMutex<BatonType>::write_lock() {
   }
   MutexWaiter waiter;
   write_waiters_.push_back(waiter);
-  lock.unlock();
+  ulock.unlock();
   waiter.baton.wait();
 }
 
@@ -238,7 +238,7 @@ template <typename BatonType>
 template <typename Rep, typename Period>
 bool TimedRWMutex<BatonType>::timed_write_lock(
     const std::chrono::duration<Rep, Period>& duration) {
-  std::unique_lock<folly::SpinLock> lock{lock_};
+  std::unique_lock<folly::SpinLock> ulock{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
     state_ = State::WRITE_LOCKED;
@@ -246,7 +246,7 @@ bool TimedRWMutex<BatonType>::timed_write_lock(
   }
   MutexWaiter waiter;
   write_waiters_.push_back(waiter);
-  lock.unlock();
+  ulock.unlock();
 
   if (!waiter.baton.timed_wait(duration)) {
     // We timed out. Two cases:
