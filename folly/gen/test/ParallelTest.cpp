@@ -16,6 +16,7 @@
 
 #include <array>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include <glog/logging.h>
@@ -52,7 +53,7 @@ static auto isPrime = [](int n) {
 struct {
   template <class T>
   std::unique_ptr<T> operator()(T t) const {
-    return std::unique_ptr<T>(new T(std::move(t)));
+    return std::make_unique<T>(std::move(t));
   }
 } makeUnique;
 

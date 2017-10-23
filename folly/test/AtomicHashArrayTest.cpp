@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <map>
+#include <memory>
 #include <stdexcept>
 
 #include <folly/AtomicHashArray.h>
@@ -154,7 +155,7 @@ void testNoncopyableMap() {
 
   auto arr = MyArr::create(250);
   for (int i = 0; i < 100; i++) {
-    arr->insert(make_pair(i,std::unique_ptr<ValueT>(new ValueT(i))));
+    arr->insert(make_pair(i, std::make_unique<ValueT>(i)));
   }
   for (int i = 100; i < 150; i++) {
     arr->emplace(i,new ValueT(i));

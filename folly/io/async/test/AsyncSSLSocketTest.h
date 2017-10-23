@@ -38,6 +38,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <list>
+#include <memory>
 
 namespace folly {
 
@@ -824,13 +825,13 @@ class BlockingWriteClient :
       bufLen_(2500),
       iovCount_(2000) {
     // Fill buf_
-    buf_.reset(new uint8_t[bufLen_]);
+    buf_ = std::make_unique<uint8_t[]>(bufLen_);
     for (uint32_t n = 0; n < sizeof(buf_); ++n) {
       buf_[n] = n % 0xff;
     }
 
     // Initialize iov_
-    iov_.reset(new struct iovec[iovCount_]);
+    iov_ = std::make_unique<struct iovec[]>(iovCount_);
     for (uint32_t n = 0; n < iovCount_; ++n) {
       iov_[n].iov_base = buf_.get() + n;
       if (n & 0x1) {
@@ -885,7 +886,7 @@ class BlockingWriteServer :
     : socket_(std::move(socket)),
       bufSize_(2500 * 2000),
       bytesRead_(0) {
-    buf_.reset(new uint8_t[bufSize_]);
+    buf_ = std::make_unique<uint8_t[]>(bufSize_);
     socket_->sslAccept(this, std::chrono::milliseconds(100));
   }
 

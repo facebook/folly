@@ -223,10 +223,10 @@ TEST(Optional, Unique) {
 
   opt.clear();
   // empty->moved
-  opt = unique_ptr<int>(new int(6));
+  opt = std::make_unique<int>(6);
   EXPECT_EQ(6, **opt);
   // full->moved
-  opt = unique_ptr<int>(new int(7));
+  opt = std::make_unique<int>(7);
   EXPECT_EQ(7, **opt);
 
   // move it out by move construct

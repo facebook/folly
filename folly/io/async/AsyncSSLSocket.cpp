@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <chrono>
+#include <memory>
 
 #include <folly/Bits.h>
 #include <folly/Format.h>
@@ -1716,7 +1717,7 @@ int AsyncSSLSocket::sslVerifyCallback(
 
 void AsyncSSLSocket::enableClientHelloParsing()  {
     parseClientHello_ = true;
-    clientHelloInfo_.reset(new ssl::ClientHelloInfo());
+    clientHelloInfo_ = std::make_unique<ssl::ClientHelloInfo>();
 }
 
 void AsyncSSLSocket::resetClientHelloParsing(SSL *ssl)  {

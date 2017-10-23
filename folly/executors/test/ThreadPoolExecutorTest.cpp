@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <memory>
 #include <thread>
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
@@ -445,8 +446,7 @@ TEST(ThreadPoolExecutorTest, RequestContext) {
 
   RequestContextScopeGuard rctx; // create new request context for this scope
   EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
-  RequestContext::get()->setContextData(
-      "test", std::unique_ptr<TestData>(new TestData(42)));
+  RequestContext::get()->setContextData("test", std::make_unique<TestData>(42));
   auto data = RequestContext::get()->getContextData("test");
   EXPECT_EQ(42, dynamic_cast<TestData*>(data)->data_);
 

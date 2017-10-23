@@ -72,7 +72,7 @@ TEST(SemiFuture, special) {
 }
 
 TEST(SemiFuture, value) {
-  auto f = makeSemiFuture(std::unique_ptr<int>(new int(42)));
+  auto f = makeSemiFuture(std::make_unique<int>(42));
   auto up = std::move(f.value());
   EXPECT_EQ(42, *up);
 
@@ -159,8 +159,8 @@ TEST(SemiFuture, MakeSemiFutureFromFutureWithUnit) {
 }
 
 TEST(SemiFuture, MakeSemiFutureFromFutureWithValue) {
-  auto f = SemiFuture<std::unique_ptr<int>>{
-      makeFuture(std::unique_ptr<int>(new int(42)))};
+  auto f =
+      SemiFuture<std::unique_ptr<int>>{makeFuture(std::make_unique<int>(42))};
   auto up = std::move(f.value());
   EXPECT_EQ(42, *up);
 }

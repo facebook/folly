@@ -286,7 +286,7 @@ TEST(ConcurrentSkipList, TestMovableData) {
 
   static const int N = 10;
   for (int i = 0; i < N; ++i) {
-    accessor.insert(std::unique_ptr<int>(new int(i)));
+    accessor.insert(std::make_unique<int>(i));
   }
 
   for (int i = 0; i < N; ++i) {

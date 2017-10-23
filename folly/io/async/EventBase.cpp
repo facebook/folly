@@ -22,6 +22,7 @@
 
 #include <fcntl.h>
 
+#include <memory>
 #include <mutex>
 #include <thread>
 
@@ -626,12 +627,12 @@ bool EventBase::runLoopCallbacks() {
 
 void EventBase::initNotificationQueue() {
   // Infinite size queue
-  queue_.reset(new NotificationQueue<Func>());
+  queue_ = std::make_unique<NotificationQueue<Func>>();
 
   // We allocate fnRunner_ separately, rather than declaring it directly
   // as a member of EventBase solely so that we don't need to include
   // NotificationQueue.h from EventBase.h
-  fnRunner_.reset(new FunctionRunner());
+  fnRunner_ = std::make_unique<FunctionRunner>();
 
   // Mark this as an internal event, so event_base_loop() will return if
   // there are no other events besides this one installed.

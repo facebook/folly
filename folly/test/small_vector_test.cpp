@@ -176,7 +176,7 @@ struct TestBasicGuarantee {
     std::unique_ptr<folly::small_vector<Thrower,3> > workingVec;
     for (int counter = 1; !done; ++counter) {
       throwCounter = 1000;
-      workingVec.reset(new folly::small_vector<Thrower,3>(vec));
+      workingVec = std::make_unique<folly::small_vector<Thrower, 3>>(vec);
       throwCounter = counter;
       EXPECT_EQ(Thrower::alive, prepopulate * 2);
       try {

@@ -191,7 +191,7 @@ TEST(fbvector, unique_ptr) {
 
   v[0] = std::move(p);
   EXPECT_FALSE(v[0].get());
-  v[0].reset(new int(32));
+  v[0] = std::make_unique<int>(32);
   std::unique_ptr<int> somePtr;
   v.insert(v.begin(), std::move(somePtr));
   EXPECT_EQ(*v[1], 32);

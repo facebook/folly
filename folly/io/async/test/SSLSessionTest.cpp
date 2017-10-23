@@ -19,6 +19,8 @@
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/SSLSession.h>
 
+#include <memory>
+
 using namespace std;
 using namespace testing;
 using folly::ssl::SSLSession;
@@ -97,7 +99,7 @@ TEST_F(SSLSessionTest, BasicTest) {
     eventBase.loop();
     ASSERT_TRUE(client.handshakeSuccess_);
 
-    sess.reset(new SSLSession(clientPtr->getSSLSession()));
+    sess = std::make_unique<SSLSession>(clientPtr->getSSLSession());
     ASSERT_NE(sess.get(), nullptr);
   }
 

@@ -29,6 +29,7 @@
 #include <climits>
 #include <condition_variable>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <thread>
@@ -269,7 +270,7 @@ TEST(ThreadLocal, InterleavedDestructors) {
     {
       std::lock_guard<std::mutex> g(lock);
       thIterPrev = thIter;
-      w.reset(new ThreadLocal<Widget>());
+      w = std::make_unique<ThreadLocal<Widget>>();
       ++wVersion;
     }
     while (true) {

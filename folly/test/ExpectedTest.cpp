@@ -230,10 +230,10 @@ TEST(Expected, Unique) {
 
   ex = makeUnexpected(-1);
   // empty->moved
-  ex = unique_ptr<int>(new int(6));
+  ex = std::make_unique<int>(6);
   EXPECT_EQ(6, **ex);
   // full->moved
-  ex = unique_ptr<int>(new int(7));
+  ex = std::make_unique<int>(7);
   EXPECT_EQ(7, **ex);
 
   // move it out by move construct

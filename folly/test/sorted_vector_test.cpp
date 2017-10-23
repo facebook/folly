@@ -330,8 +330,8 @@ TEST(SortedVectorTest, EmptyTest) {
 
 TEST(SortedVectorTest, MoveTest) {
   sorted_vector_set<std::unique_ptr<int>> s;
-  s.insert(std::unique_ptr<int>(new int(5)));
-  s.insert(s.end(), std::unique_ptr<int>(new int(10)));
+  s.insert(std::make_unique<int>(5));
+  s.insert(s.end(), std::make_unique<int>(10));
   EXPECT_EQ(s.size(), 2);
 
   for (const auto& p : s) {
@@ -339,8 +339,8 @@ TEST(SortedVectorTest, MoveTest) {
   }
 
   sorted_vector_map<int, std::unique_ptr<int>> m;
-  m.insert(std::make_pair(5, std::unique_ptr<int>(new int(5))));
-  m.insert(m.end(), std::make_pair(10, std::unique_ptr<int>(new int(10))));
+  m.insert(std::make_pair(5, std::make_unique<int>(5)));
+  m.insert(m.end(), std::make_pair(10, std::make_unique<int>(10)));
 
   EXPECT_EQ(*m[5], 5);
   EXPECT_EQ(*m[10], 10);

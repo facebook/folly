@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <iosfwd>
+#include <memory>
 #include <random>
 #include <set>
 #include <vector>
@@ -604,13 +605,13 @@ TEST(Gen, DistinctBy) {   //  0  1  4  9  6  5  6  9  4  1  0
 
 TEST(Gen, DistinctMove) {   //  0  1  4  9  6  5  6  9  4  1  0
   auto expected = vector<int>{0, 1, 2, 3, 4, 5};
-  auto actual =
-      seq(0, 100)
-    | mapped([](int i) { return std::unique_ptr<int>(new int(i)); })
+  auto actual = seq(0, 100) |
+      mapped([](int i) { return std::make_unique<int>(i); })
       // see comment below about selector parameters for Distinct
-    | distinctBy([](const std::unique_ptr<int>& pi) { return *pi * *pi % 10; })
-    | mapped([](std::unique_ptr<int> pi) { return *pi; })
-    | as<vector>();
+      | distinctBy([](const std::unique_ptr<int>& pi) {
+                  return *pi * *pi % 10;
+                }) |
+      mapped([](std::unique_ptr<int> pi) { return *pi; }) | as<vector>();
 
   // NOTE(tjackson): the following line intentionally doesn't work:
   //  | distinctBy([](std::unique_ptr<int> pi) { return *pi * *pi % 10; })
@@ -917,11 +918,10 @@ TEST(Gen, CustomType) {
 }
 
 TEST(Gen, NoNeedlessCopies) {
-  auto gen = seq(1, 5)
-           | map([](int x) { return unique_ptr<int>(new int(x)); })
-           | map([](unique_ptr<int> p) { return p; })
-           | map([](unique_ptr<int>&& p) { return std::move(p); })
-           | map([](const unique_ptr<int>& p) { return *p; });
+  auto gen = seq(1, 5) | map([](int x) { return std::make_unique<int>(x); }) |
+      map([](unique_ptr<int> p) { return p; }) |
+      map([](unique_ptr<int>&& p) { return std::move(p); }) |
+      map([](const unique_ptr<int>& p) { return *p; });
   EXPECT_EQ(15, gen | sum);
   EXPECT_EQ(6, gen | take(3) | sum);
 }
@@ -1236,18 +1236,16 @@ TEST(Gen, Batch) {
 
 TEST(Gen, BatchMove) {
   auto expected = vector<vector<int>>{ {0, 1}, {2, 3}, {4} };
-  auto actual =
-      seq(0, 4)
-    | mapped([](int i) { return std::unique_ptr<int>(new int(i)); })
-    | batch(2)
-    | mapped([](std::vector<std::unique_ptr<int>>& pVector) {
-        std::vector<int> iVector;
-        for (const auto& p : pVector) {
-          iVector.push_back(*p);
-        };
-        return iVector;
-      })
-    | as<vector>();
+  auto actual = seq(0, 4) |
+      mapped([](int i) { return std::make_unique<int>(i); }) | batch(2) |
+      mapped([](std::vector<std::unique_ptr<int>>& pVector) {
+                  std::vector<int> iVector;
+                  for (const auto& p : pVector) {
+                    iVector.push_back(*p);
+                  };
+                  return iVector;
+                }) |
+      as<vector>();
   EXPECT_EQ(expected, actual);
 }
 
@@ -1256,22 +1254,22 @@ TEST(Gen, Window) {
   for (size_t windowSize = 1; windowSize <= 20; ++windowSize) {
     // no early stop
     auto actual = seq(0, 10) |
-        mapped([](int i) { return std::unique_ptr<int>(new int(i)); }) |
-        window(4) | dereference | as<std::vector>();
+        mapped([](int i) { return std::make_unique<int>(i); }) | window(4) |
+        dereference | as<std::vector>();
     EXPECT_EQ(expected, actual) << windowSize;
   }
   for (size_t windowSize = 1; windowSize <= 20; ++windowSize) {
     // pre-window take
     auto actual = seq(0) |
-        mapped([](int i) { return std::unique_ptr<int>(new int(i)); }) |
-        take(11) | window(4) | dereference | as<std::vector>();
+        mapped([](int i) { return std::make_unique<int>(i); }) | take(11) |
+        window(4) | dereference | as<std::vector>();
     EXPECT_EQ(expected, actual) << windowSize;
   }
   for (size_t windowSize = 1; windowSize <= 20; ++windowSize) {
     // post-window take
     auto actual = seq(0) |
-        mapped([](int i) { return std::unique_ptr<int>(new int(i)); }) |
-        window(4) | take(11) | dereference | as<std::vector>();
+        mapped([](int i) { return std::make_unique<int>(i); }) | window(4) |
+        take(11) | dereference | as<std::vector>();
     EXPECT_EQ(expected, actual) << windowSize;
   }
 }

@@ -17,6 +17,8 @@
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 
+#include <memory>
+
 using namespace folly;
 using std::unique_ptr;
 using std::string;
@@ -75,7 +77,7 @@ TEST(Promise, setValue) {
 
   Promise<unique_ptr<int>> mov;
   auto fmov = mov.getFuture();
-  mov.setValue(unique_ptr<int>(new int(42)));
+  mov.setValue(std::make_unique<int>(42));
   unique_ptr<int> ptr = std::move(fmov.value());
   EXPECT_EQ(42, *ptr);
 

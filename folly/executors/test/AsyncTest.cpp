@@ -18,6 +18,8 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/portability/GTest.h>
 
+#include <memory>
+
 using namespace folly;
 
 TEST(AsyncFunc, manual_executor) {
@@ -45,7 +47,7 @@ TEST(AsyncFunc, void_lambda) {
 }
 
 TEST(AsyncFunc, moveonly_lambda) {
-  auto lambda = [] { return std::unique_ptr<int>(new int(42)); };
+  auto lambda = [] { return std::make_unique<int>(42); };
   auto future = async(lambda);
   EXPECT_EQ(42, *future.get());
 }

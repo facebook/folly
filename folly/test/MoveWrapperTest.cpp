@@ -28,7 +28,7 @@ TEST(makeMoveWrapper, Empty) {
 }
 
 TEST(makeMoveWrapper, NonEmpty) {
-  auto u = std::unique_ptr<int>(new int(5));
+  auto u = std::make_unique<int>(5);
   EXPECT_EQ(*u, 5);
   auto p = makeMoveWrapper(std::move(u));
   EXPECT_TRUE(!u);

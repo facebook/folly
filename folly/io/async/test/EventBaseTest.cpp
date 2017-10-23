@@ -1610,7 +1610,7 @@ TEST(EventBaseTest, IdleTime) {
     ASSERT_EQ(6, tos0.getTimeouts());
     ASSERT_GE(6100, eventBase.getAvgLoopTime() - 1200);
     ASSERT_LE(6100, eventBase.getAvgLoopTime() + 1200);
-    tos.reset(new IdleTimeTimeoutSeries(&eventBase, timeouts));
+    tos = std::make_unique<IdleTimeTimeoutSeries>(&eventBase, timeouts);
   });
 
   // Kick things off with an "immedite" timeout

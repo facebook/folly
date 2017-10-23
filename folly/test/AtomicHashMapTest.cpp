@@ -76,10 +76,10 @@ TEST(Ahm, BasicNoncopyable) {
   EXPECT_TRUE(myMap.begin() == myMap.end());
 
   for (int i = 0; i < 50; ++i) {
-    myMap.insert(make_pair(i, std::unique_ptr<int>(new int(i))));
+    myMap.insert(make_pair(i, std::make_unique<int>(i)));
   }
   for (int i = 50; i < 100; ++i) {
-    myMap.insert(i, std::unique_ptr<int>(new int (i)));
+    myMap.insert(i, std::make_unique<int>(i));
   }
   for (int i = 100; i < 150; ++i) {
     myMap.emplace(i, new int (i));
@@ -482,7 +482,7 @@ TEST(Ahm, collision_test) {
     " Byte entries replicated in " << FLAGS_numThreads <<
     " threads with " << FLAGS_maxLoadFactor * 100.0 << "% max load factor.";
 
-  globalAHM.reset(new AHMapT(int(numInserts * sizeFactor), config));
+  globalAHM = std::make_unique<AHMapT>(int(numInserts * sizeFactor), config);
 
   size_t sizeInit = globalAHM->capacity();
   VLOG(1) << "  Initial capacity: " << sizeInit;
@@ -571,7 +571,7 @@ TEST(Ahm, race_insert_iterate_thread_test) {
   VLOG(1) << "Testing iteration and insertion with " << kInsertThreads
     << " threads inserting and " << kIterateThreads << " threads iterating.";
 
-  globalAHM.reset(new AHMapT(raceFinalSizeEstimate / 9, config));
+  globalAHM = std::make_unique<AHMapT>(raceFinalSizeEstimate / 9, config);
 
   vector<pthread_t> threadIds;
   for (int j = 0; j < kInsertThreads + kIterateThreads; j++) {
@@ -649,7 +649,7 @@ TEST(Ahm, thread_erase_insert_race) {
   VLOG(1) << "Testing insertion and erase with " << kInsertThreads
     << " thread inserting and " << kEraseThreads << " threads erasing.";
 
-  globalAHM.reset(new AHMapT(kTestEraseInsertions / 4, config));
+  globalAHM = std::make_unique<AHMapT>(kTestEraseInsertions / 4, config);
 
   vector<pthread_t> threadIds;
   for (int64_t j = 0; j < kInsertThreads + kEraseThreads; j++) {
@@ -820,7 +820,7 @@ void loadGlobalAhm() {
   std::cout << "loading global AHM with " << FLAGS_numThreads
             << " threads...\n";
   uint64_t start = nowInUsec();
-  globalAHM.reset(new AHMapT(maxBMElements, config));
+  globalAHM = std::make_unique<AHMapT>(maxBMElements, config);
   numOpsPerThread = FLAGS_numBMElements / FLAGS_numThreads;
   runThreads(insertThread);
   uint64_t elapsed = nowInUsec() - start;
@@ -833,7 +833,7 @@ void loadGlobalQPAhm() {
   std::cout << "loading global QPAHM with " << FLAGS_numThreads
             << " threads...\n";
   uint64_t start = nowInUsec();
-  globalQPAHM.reset(new QPAHMapT(maxBMElements, qpConfig));
+  globalQPAHM = std::make_unique<QPAHMapT>(maxBMElements, qpConfig);
   numOpsPerThread = FLAGS_numBMElements / FLAGS_numThreads;
   runThreads(qpInsertThread);
   uint64_t elapsed = nowInUsec() - start;
@@ -1020,7 +1020,7 @@ BENCHMARK(st_baseline_modulus_and_random, iters) {
 
 BENCHMARK(mt_ahm_insert, iters) {
   BENCHMARK_SUSPEND {
-    globalAHM.reset(new AHMapT(int(iters * LF), config));
+    globalAHM = std::make_unique<AHMapT>(int(iters * LF), config);
     numOpsPerThread = iters / FLAGS_numThreads;
   }
   runThreads(insertThread);
@@ -1028,7 +1028,7 @@ BENCHMARK(mt_ahm_insert, iters) {
 
 BENCHMARK(mt_qpahm_insert, iters) {
   BENCHMARK_SUSPEND {
-    globalQPAHM.reset(new QPAHMapT(int(iters * LF), qpConfig));
+    globalQPAHM = std::make_unique<QPAHMapT>(int(iters * LF), qpConfig);
     numOpsPerThread = iters / FLAGS_numThreads;
   }
   runThreads(qpInsertThread);

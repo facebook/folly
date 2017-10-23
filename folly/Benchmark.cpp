@@ -24,6 +24,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -451,7 +452,7 @@ void runBenchmarks() {
 
   std::unique_ptr<boost::regex> bmRegex;
   if (!FLAGS_bm_regex.empty()) {
-    bmRegex.reset(new boost::regex(FLAGS_bm_regex));
+    bmRegex = std::make_unique<boost::regex>(FLAGS_bm_regex);
   }
 
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.

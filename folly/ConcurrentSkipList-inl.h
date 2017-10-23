@@ -255,7 +255,7 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
   void add(NodeType* node) {
     std::lock_guard<MicroSpinLock> g(lock_);
     if (nodes_.get() == nullptr) {
-      nodes_.reset(new std::vector<NodeType*>(1, node));
+      nodes_ = std::make_unique<std::vector<NodeType*>>(1, node);
     } else {
       nodes_->push_back(node);
     }

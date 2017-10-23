@@ -17,6 +17,8 @@
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 
+#include <memory>
+
 using namespace folly;
 
 class TestData : public RequestData {
@@ -34,9 +36,7 @@ TEST(Context, basic) {
   EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
 
   // Set some test data
-  RequestContext::get()->setContextData(
-    "test",
-    std::unique_ptr<TestData>(new TestData(10)));
+  RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
 
   // Start a future
   Promise<Unit> p;

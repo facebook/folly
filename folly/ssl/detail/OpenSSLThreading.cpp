@@ -16,6 +16,7 @@
 
 #include <folly/ssl/detail/OpenSSLThreading.h>
 
+#include <memory>
 #include <mutex>
 
 #include <folly/Portability.h>
@@ -152,7 +153,7 @@ static void dyn_destroy(struct CRYPTO_dynlock_value* lock, const char*, int) {
 
 void installThreadingLocks() {
   // static locking
-  locks().reset(new SSLLock[size_t(CRYPTO_num_locks())]);
+  locks() = std::make_unique<SSLLock[]>(size_t(CRYPTO_num_locks()));
   for (auto it : lockTypes()) {
     locks()[size_t(it.first)].lockType = it.second;
   }

@@ -561,7 +561,7 @@ TEST(Future, thenBindTry) {
 }
 
 TEST(Future, value) {
-  auto f = makeFuture(std::unique_ptr<int>(new int(42)));
+  auto f = makeFuture(std::make_unique<int>(42));
   auto up = std::move(f.value());
   EXPECT_EQ(42, *up);
 
