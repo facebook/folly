@@ -113,7 +113,7 @@ void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
   this->threadPoolHook_.registerThread();
 
   thread->startupBaton.post();
-  while (1) {
+  while (true) {
     auto task = taskQueue_->take();
     if (UNLIKELY(task.poison)) {
       CHECK(threadsToStop_-- > 0);

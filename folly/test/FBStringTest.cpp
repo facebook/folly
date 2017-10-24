@@ -1018,7 +1018,7 @@ TEST(FBString, testAllClauses) {
                void(*f_fbstring)(folly::fbstring&),
                void(*f_wfbstring)(folly::basic_fbstring<wchar_t>&)) {
     do {
-      if (1) {
+      if (true) {
       } else {
         EXPECT_TRUE(1) << "Testing clause " << clause;
       }

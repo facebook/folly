@@ -446,7 +446,7 @@ class ConcurrentAccessData {
         } else {
           skipListInsert(0, writeValues_[t]);
         }
-        return 0;
+        return false;
       default:
         return skipListFind(0, readValues_[t]);
     }
@@ -465,7 +465,7 @@ class ConcurrentAccessData {
         } else {
           setInsert(idx, writeValues_[t]);
         }
-        return 0;
+        return false;
       default:
         return setFind(idx, readValues_[t]);
     }

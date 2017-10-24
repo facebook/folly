@@ -214,7 +214,7 @@ void ThreadPoolExecutor::StoppedThreadQueue::add(
 }
 
 ThreadPoolExecutor::ThreadPtr ThreadPoolExecutor::StoppedThreadQueue::take() {
-  while (1) {
+  while (true) {
     {
       std::lock_guard<std::mutex> guard(mutex_);
       if (queue_.size() > 0) {
