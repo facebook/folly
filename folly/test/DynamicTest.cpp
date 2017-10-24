@@ -22,6 +22,7 @@
 
 using folly::dynamic;
 
+#ifndef FOLLY_SANITIZE_ADDRESS
 // This test runs without any external dependencies, including json.
 // This means that if there's a test failure, there's no way to print
 // a useful runtime representation of the folly::dynamic.  We will
@@ -30,6 +31,7 @@ using folly::dynamic;
 void dynamic::print_as_pseudo_json(std::ostream& out) const {
   out << "<folly::dynamic object of type " << type_ << ">";
 }
+#endif
 
 TEST(Dynamic, Default) {
   dynamic obj;
