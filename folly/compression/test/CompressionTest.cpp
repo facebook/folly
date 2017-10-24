@@ -27,10 +27,10 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/Hash.h>
 #include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/Varint.h>
+#include <folly/hash/Hash.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/portability/GTest.h>
 

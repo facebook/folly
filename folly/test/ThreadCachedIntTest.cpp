@@ -24,7 +24,7 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/Hash.h>
+#include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/system/ThreadId.h>
