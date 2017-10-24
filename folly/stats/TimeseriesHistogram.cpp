@@ -19,4 +19,4 @@
 
 namespace folly {
 template class TimeseriesHistogram<int64_t>;
-}
+} // namespace folly

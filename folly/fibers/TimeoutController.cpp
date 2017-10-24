@@ -104,5 +104,5 @@ void TimeoutController::cancel(intptr_t p) {
     list.pop();
   }
 }
-}
-}
+} // namespace fibers
+} // namespace folly

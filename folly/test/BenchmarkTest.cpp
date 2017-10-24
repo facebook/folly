@@ -155,7 +155,7 @@ class NonTrivialLong {
   long value_;
   long otherStuff_[3];
 };
-}
+} // namespace
 
 BENCHMARK(optimizerCanDiscardNonTrivial, n) {
   NonTrivialLong x(0);

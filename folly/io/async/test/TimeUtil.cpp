@@ -280,4 +280,4 @@ bool checkTimeout(
   return true;
 }
 
-}
+} // namespace folly

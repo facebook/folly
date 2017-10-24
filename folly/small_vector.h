@@ -378,7 +378,7 @@ T* pointerFlagClear(T* p) {
 inline void* shiftPointer(void* p, size_t sizeBytes) {
   return static_cast<char*>(p) + sizeBytes;
 }
-}
+} // namespace detail
 
 //////////////////////////////////////////////////////////////////////
 FOLLY_PACK_PUSH

@@ -34,4 +34,4 @@ void QueuedImmediateExecutor::addStatic(Func callback) {
   }
 }
 
-} // namespace
+} // namespace folly

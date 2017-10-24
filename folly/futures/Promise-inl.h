@@ -145,4 +145,4 @@ bool Promise<T>::isFulfilled() const noexcept {
   return true;
 }
 
-}
+} // namespace folly

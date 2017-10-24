@@ -67,5 +67,5 @@ class TimeoutController
   TimePoint nextTimeout_;
   LoopController& loopController_;
 };
-}
-}
+} // namespace fibers
+} // namespace folly

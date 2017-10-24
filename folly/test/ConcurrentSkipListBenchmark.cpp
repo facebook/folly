@@ -605,7 +605,7 @@ BENCHMARK_PARAM(BM_ContentionStdSet, 1048576);
 BENCHMARK_PARAM(BM_ContentionCSL,    1048576);
 BENCHMARK_DRAW_LINE();
 
-}
+} // namespace
 
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);

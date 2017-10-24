@@ -744,4 +744,4 @@ TEST(Expected, ThenOrThrow) {
         Unexpected<E>::BadExpectedAccess);
   }
 }
-}
+} // namespace folly

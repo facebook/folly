@@ -229,4 +229,4 @@ void LogCategory::parentLevelUpdated(LogLevel parentEffectiveLevel) {
 void LogCategory::registerXlogLevel(std::atomic<LogLevel>* levelPtr) {
   xlogLevels_.push_back(levelPtr);
 }
-}
+} // namespace folly

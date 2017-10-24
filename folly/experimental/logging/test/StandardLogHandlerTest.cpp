@@ -65,7 +65,7 @@ class TestLogWriter : public LogWriter {
  private:
   std::vector<std::string> messages_;
 };
-}
+} // namespace
 
 TEST(StandardLogHandler, simple) {
   auto writer = make_shared<TestLogWriter>();

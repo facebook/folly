@@ -150,7 +150,7 @@ void runRealFFSTest(int iters) {
   }
 }
 
-}
+} // namespace
 
 TEST(BitIterator, SimpleFindFirstSet) {
   runSimpleFFSTest(1);

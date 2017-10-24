@@ -37,4 +37,4 @@ ScopedBoundPort::~ScopedBoundPort() {
 SocketAddress ScopedBoundPort::getAddress() const {
   return sock_->getAddress();
 }
-}
+} // namespace folly

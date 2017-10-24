@@ -21,7 +21,7 @@
 namespace {
 
 class ConstexprMathTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(ConstexprMathTest, constexpr_min) {
   constexpr auto x = uint16_t(3);

@@ -33,7 +33,7 @@ using namespace folly;
 
 namespace {
 Singleton<GlobalWatchdog> global_watchdog;
-}
+} // namespace
 
 // Test basic global usage (the default way singletons will generally
 // be used).

@@ -24,4 +24,4 @@ namespace folly {
 [[noreturn]] void throwBadFormatArg(std::string const& msg) {
   throw BadFormatArg(msg);
 }
-}
+} // namespace folly

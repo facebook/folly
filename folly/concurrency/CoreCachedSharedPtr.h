@@ -146,4 +146,4 @@ class AtomicCoreCachedSharedPtr {
   std::atomic<Slots*> slots_{nullptr};
 };
 
-} // namespace
+} // namespace folly

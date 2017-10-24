@@ -44,7 +44,7 @@ class SimpleObservable {
   std::once_flag observerInit_;
   folly::Optional<Observer<T>> observer_;
 };
-}
-}
+} // namespace observer
+} // namespace folly
 
 #include <folly/experimental/observer/SimpleObservable-inl.h>

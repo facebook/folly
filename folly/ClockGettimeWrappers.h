@@ -25,5 +25,5 @@ namespace chrono {
 
 extern int (*clock_gettime)(clockid_t, timespec* ts);
 extern int64_t (*clock_gettime_ns)(clockid_t);
-}
-}
+} // namespace chrono
+} // namespace folly

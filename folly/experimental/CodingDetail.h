@@ -58,6 +58,6 @@ class SkipPointers<0> {
   explicit SkipPointers(const unsigned char*) {}
   constexpr static const unsigned char* const skipPointers_{};
 };
-}
-}
-}
+} // namespace detail
+} // namespace compression
+} // namespace folly

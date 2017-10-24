@@ -62,4 +62,4 @@ class LoggingConfigError : public std::invalid_argument {
  private:
   std::string computeMessage(const std::vector<std::string>& errors);
 };
-}
+} // namespace folly

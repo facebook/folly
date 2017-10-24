@@ -37,7 +37,7 @@ struct Foo {
 };
 using FooSingletonTL = SingletonThreadLocal<Foo>;
 FooSingletonTL theFooSingleton;
-}
+} // namespace
 
 TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   static constexpr std::size_t targetThreadCount{64};

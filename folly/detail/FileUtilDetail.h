@@ -105,4 +105,5 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
   return totalBytes;
 }
 
-}}  // namespaces
+} // namespace fileutil_detail
+} // namespace folly

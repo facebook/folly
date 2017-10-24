@@ -38,7 +38,7 @@ namespace folly {
 namespace detail {
 template <typename Pool>
 struct IndexedMemPoolRecycler;
-}
+} // namespace detail
 
 template <
     typename T,
@@ -532,7 +532,7 @@ struct IndexedMemPoolRecycler {
   }
 };
 
-}
+} // namespace detail
 
 } // namespace folly
 

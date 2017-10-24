@@ -134,5 +134,5 @@ class SWMRListSet {
   }
 };
 
-} // namespace folly
 } // namespace hazptr
+} // namespace folly

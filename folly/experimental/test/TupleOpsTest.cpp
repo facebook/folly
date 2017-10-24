@@ -148,4 +148,5 @@ TEST(TupleOps, TupleTo2) {
 
 #undef CHECK_TUPLE_TO
 
-}}  // namespaces
+} // namespace test
+} // namespace folly

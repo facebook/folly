@@ -50,5 +50,5 @@ auto FiberManager::addTaskRemoteFuture(F&& func) -> folly::Future<
       });
   return f;
 }
-}
-}
+} // namespace fibers
+} // namespace folly

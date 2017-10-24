@@ -24,7 +24,7 @@
 namespace {
 
 class FiberIOExecutorTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(FiberIOExecutorTest, event_base) {
   auto tpe = std::make_shared<folly::IOThreadPoolExecutor>(1);

@@ -93,4 +93,5 @@ class Barrier {
   std::atomic<ControlBlock*> controlBlock_;
 };
 
-}}  // namespaces
+} // namespace futures
+} // namespace folly

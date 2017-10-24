@@ -193,5 +193,5 @@ void Baton::TimeoutHandler::cancelTimeout() {
     fiberManager_->timeoutManager_->cancel(timeoutPtr_);
   }
 }
-}
-}
+} // namespace fibers
+} // namespace folly

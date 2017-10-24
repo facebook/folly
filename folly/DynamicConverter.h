@@ -30,9 +30,11 @@
 #include <folly/dynamic.h>
 
 namespace folly {
-  template <typename T> T convertTo(const dynamic&);
-  template <typename T> dynamic toDynamic(const T&);
-}
+template <typename T>
+T convertTo(const dynamic&);
+template <typename T>
+dynamic toDynamic(const T&);
+} // namespace folly
 
 /**
  * convertTo returns a well-typed representation of the input dynamic.

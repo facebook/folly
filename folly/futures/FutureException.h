@@ -94,4 +94,4 @@ class FOLLY_EXPORT NoTimekeeper : public FutureException {
  public:
   NoTimekeeper() : FutureException("No timekeeper available") {}
 };
-}
+} // namespace folly

@@ -74,4 +74,4 @@ MoveWrapper<T0> makeMoveWrapper(T&& t) {
   return MoveWrapper<T0>(std::forward<T0>(t));
 }
 
-} // namespace
+} // namespace folly

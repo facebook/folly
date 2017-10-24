@@ -444,4 +444,5 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
   ValueType upperBound_;
 };
 
-}}  // namespaces
+} // namespace compression
+} // namespace folly

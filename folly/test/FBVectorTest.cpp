@@ -67,7 +67,7 @@ template <class T> T randomObject();
 template <> int randomObject<int>() {
   return random(0, 1024);
 }
-}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // Tests begin here
@@ -123,7 +123,7 @@ TEST(fbvector, works_with_std_string) {
 
 namespace {
 class UserDefinedType { int whatevs_; };
-}
+} // namespace
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE(UserDefinedType);
 

@@ -64,7 +64,7 @@ template <class S = detail::FileWriter>
 S toFile(File file, std::unique_ptr<IOBuf> buffer) {
   return S(std::move(file), std::move(buffer));
 }
-} // !gen
-} // !folly
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/File-inl.h>

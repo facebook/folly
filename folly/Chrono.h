@@ -74,7 +74,7 @@ template <typename To, typename Duration>
 constexpr To round_impl(Duration const& d, To const& t0) {
   return round_impl(d, t0, t0 + To{1});
 }
-}
+} // namespace detail
 
 //  mimic: std::chrono::ceil, C++17
 //  from: http://en.cppreference.com/w/cpp/chrono/duration/ceil, CC-BY-SA
@@ -148,7 +148,7 @@ constexpr std::chrono::time_point<Clock, To> round(
     std::chrono::time_point<Clock, Duration> const& tp) {
   return std::chrono::time_point<Clock, To>{round<To>(tp.time_since_epoch())};
 }
-}
-}
+} // namespace chrono
+} // namespace folly
 
 #endif

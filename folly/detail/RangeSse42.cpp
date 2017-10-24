@@ -33,8 +33,8 @@ size_t qfind_first_byte_of_sse42(
     const StringPieceLite needles) {
   return qfind_first_byte_of_nosse(haystack, needles);
 }
-}
-}
+} // namespace detail
+} // namespace folly
 #else
 #include <cstdint>
 #include <limits>

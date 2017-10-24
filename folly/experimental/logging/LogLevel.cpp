@@ -119,4 +119,4 @@ std::ostream& operator<<(std::ostream& os, LogLevel level) {
   os << logLevelToString(level);
   return os;
 }
-}
+} // namespace folly

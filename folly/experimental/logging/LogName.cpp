@@ -124,4 +124,4 @@ StringPiece LogName::getParent(StringPiece name) {
 
   return StringPiece(name.begin(), idx);
 }
-}
+} // namespace folly

@@ -753,8 +753,8 @@ struct IsCallableAsImpl<
 
 template <typename Fun, typename FunctionType>
 struct IsCallableAs : IsCallableAsImpl<Fun, FunctionType> {};
-}
-}
+} // namespace function
+} // namespace detail
 
 /**
  * @class FunctionRef

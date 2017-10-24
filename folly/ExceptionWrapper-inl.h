@@ -335,7 +335,7 @@ Ex&& dont_slice(Ex&& ex) {
         "be sliced when storing in exception_wrapper.");
   return std::forward<Ex>(ex);
 }
-}
+} // namespace exception_wrapper_detail
 
 template <
     class Ex,

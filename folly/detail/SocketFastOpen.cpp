@@ -121,5 +121,5 @@ bool tfo_succeeded(int /* sockfd */) {
 }
 
 #endif
-}
-}
+} // namespace detail
+} // namespace folly

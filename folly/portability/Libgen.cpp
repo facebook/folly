@@ -49,8 +49,8 @@ char* internal_dirname(char* path) {
   }
   return path;
 }
-}
-}
+} // namespace portability
+} // namespace folly
 
 #ifdef _WIN32
 extern "C" char* dirname(char* path) {

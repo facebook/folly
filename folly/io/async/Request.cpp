@@ -130,4 +130,4 @@ RequestContext* RequestContext::get() {
   }
   return context.get();
 }
-}
+} // namespace folly

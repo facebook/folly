@@ -59,4 +59,4 @@ struct Unit {
 
 constexpr Unit unit {};
 
-}
+} // namespace folly

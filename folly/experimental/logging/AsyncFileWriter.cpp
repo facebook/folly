@@ -170,4 +170,4 @@ std::string AsyncFileWriter::getNumDiscardedMsg(size_t numDiscarded) {
       numDiscarded,
       " log messages discarded: logging faster than we can write\n");
 }
-}
+} // namespace folly

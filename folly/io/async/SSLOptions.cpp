@@ -25,7 +25,7 @@ namespace ssl_options_detail {
 void logDfatal(std::exception const& e) {
   LOG(DFATAL) << exceptionStr(e);
 }
-}
+} // namespace ssl_options_detail
 
 constexpr std::array<const char*, 12> SSLCommonOptions::kCipherList;
 constexpr std::array<const char*, 8> SSLCommonOptions::kSignatureAlgorithms;

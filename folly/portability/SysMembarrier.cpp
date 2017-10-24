@@ -60,5 +60,5 @@ int sysMembarrier() {
   return -1;
 #endif
 }
-}
-}
+} // namespace detail
+} // namespace folly

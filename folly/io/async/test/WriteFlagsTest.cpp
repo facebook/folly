@@ -109,4 +109,4 @@ TEST(WriteFlagsTest, compoundAssignmentIntersectionOperator) {
   ASSERT_EQ(flags, WriteFlags::NONE);
 }
 
-} // namespace
+} // namespace folly

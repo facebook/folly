@@ -116,7 +116,7 @@ class SharedPromise {
   std::function<void(exception_wrapper const&)> interruptHandler_;
 };
 
-}
+} // namespace folly
 
 #include <folly/futures/Future.h>
 #include <folly/futures/SharedPromise-inl.h>

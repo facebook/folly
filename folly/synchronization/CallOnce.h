@@ -81,4 +81,4 @@ call_once_impl_no_inline(once_flag& flag, Callable&& f, Args&&... args) {
 
   flag.called_.store(true, std::memory_order_release);
 }
-}
+} // namespace folly

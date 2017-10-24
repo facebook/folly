@@ -165,7 +165,7 @@ class FormatValue<FormattableButNoToString> {
     throw std::runtime_error("test");
   }
 };
-}
+} // namespace folly
 
 TEST_F(LoggerTest, toStringError) {
   // Use the folly::to<string> log API, with an object that will throw

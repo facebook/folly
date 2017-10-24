@@ -89,7 +89,7 @@ void runDivTests(const F& func, size_t iters) {
     }
   }
 }
-}
+} // namespace
 
 BENCHMARK_DRAW_LINE();
 BENCHMARK(divTruncInt8, iters) {

@@ -57,7 +57,7 @@ void checkConsistency(const IOBufQueue& queue) {
   }
 }
 
-}
+} // namespace
 
 TEST(IOBufQueue, Simple) {
   IOBufQueue queue(clOptions);

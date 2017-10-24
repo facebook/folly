@@ -494,7 +494,8 @@ TEST_F(WriteFileAtomic, multipleFiles) {
   EXPECT_EQ(0440, getPerms(tmpPath("foo_txt")));
   EXPECT_EQ(0444, getPerms(tmpPath("foo.txt2")));
 }
-}}  // namespaces
+} // namespace test
+} // namespace folly
 
 #if defined(__linux__)
 namespace {
@@ -520,7 +521,7 @@ class FChmodFailure {
 };
 
 std::atomic<int> FChmodFailure::forceFailure_{0};
-}
+} // namespace
 
 // Replace the system fchmod() function with our own stub, so we can
 // trigger failures in the writeFileAtomic() tests.
@@ -570,6 +571,6 @@ TEST_F(WriteFileAtomic, chmodFailure) {
   EXPECT_EQ(0600, getPerms(path));
   EXPECT_EQ(set<string>{"foo"}, listTmpDir());
 }
-}
-}
+} // namespace test
+} // namespace folly
 #endif

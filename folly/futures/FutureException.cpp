@@ -45,4 +45,4 @@ namespace folly {
 [[noreturn]] void throwNoFutureInSplitter() {
   throw NoFutureInSplitter();
 }
-}
+} // namespace folly

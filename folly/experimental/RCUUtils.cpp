@@ -33,7 +33,7 @@ struct RCURegisterThreadHelper {
   bool alive{false};
 };
 
-}
+} // namespace
 
 bool RCURegisterThread() {
   static folly::ThreadLocal<RCURegisterThreadHelper>* rcuRegisterThreadHelper =
@@ -53,4 +53,4 @@ RCUReadLock& RCUReadLock::instance() {
   static RCUReadLock instance;
   return instance;
 }
-}
+} // namespace folly

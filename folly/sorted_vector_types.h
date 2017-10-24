@@ -76,112 +76,110 @@ namespace folly {
 
 namespace detail {
 
-  // This wrapper goes around a GrowthPolicy and provides iterator
-  // preservation semantics, but only if the growth policy is not the
-  // default (i.e. nothing).
-  template <class Policy>
-  struct growth_policy_wrapper : private Policy {
-    template <class Container, class Iterator>
-    Iterator increase_capacity(Container& c, Iterator desired_insertion)
-    {
-      typedef typename Container::difference_type diff_t;
-      diff_t d = desired_insertion - c.begin();
-      Policy::increase_capacity(c);
-      return c.begin() + d;
-    }
-  };
-  template <>
-  struct growth_policy_wrapper<void> {
-    template <class Container, class Iterator>
-    Iterator increase_capacity(Container&, Iterator it) {
-      return it;
-    }
-  };
+// This wrapper goes around a GrowthPolicy and provides iterator
+// preservation semantics, but only if the growth policy is not the
+// default (i.e. nothing).
+template <class Policy>
+struct growth_policy_wrapper : private Policy {
+  template <class Container, class Iterator>
+  Iterator increase_capacity(Container& c, Iterator desired_insertion) {
+    typedef typename Container::difference_type diff_t;
+    diff_t d = desired_insertion - c.begin();
+    Policy::increase_capacity(c);
+    return c.begin() + d;
+  }
+};
+template <>
+struct growth_policy_wrapper<void> {
+  template <class Container, class Iterator>
+  Iterator increase_capacity(Container&, Iterator it) {
+    return it;
+  }
+};
 
-  /*
-   * This helper returns the distance between two iterators if it is
-   * possible to figure it out without messing up the range
-   * (i.e. unless they are InputIterators).  Otherwise this returns
-   * -1.
-   */
-  template <class Iterator>
-  int distance_if_multipass(Iterator first, Iterator last) {
-    typedef typename std::iterator_traits<Iterator>::iterator_category categ;
-    if (std::is_same<categ, std::input_iterator_tag>::value) {
-      return -1;
+/*
+ * This helper returns the distance between two iterators if it is
+ * possible to figure it out without messing up the range
+ * (i.e. unless they are InputIterators).  Otherwise this returns
+ * -1.
+ */
+template <class Iterator>
+int distance_if_multipass(Iterator first, Iterator last) {
+  typedef typename std::iterator_traits<Iterator>::iterator_category categ;
+  if (std::is_same<categ, std::input_iterator_tag>::value) {
+    return -1;
+  }
+  return std::distance(first, last);
+}
+
+template <class OurContainer, class Vector, class GrowthPolicy>
+typename OurContainer::iterator insert_with_hint(
+    OurContainer& sorted,
+    Vector& cont,
+    typename OurContainer::iterator hint,
+    typename OurContainer::value_type&& value,
+    GrowthPolicy& po) {
+  const typename OurContainer::value_compare& cmp(sorted.value_comp());
+  if (hint == cont.end() || cmp(value, *hint)) {
+    if (hint == cont.begin() || cmp(*(hint - 1), value)) {
+      hint = po.increase_capacity(cont, hint);
+      return cont.insert(hint, std::move(value));
+    } else {
+      return sorted.insert(std::move(value)).first;
     }
-    return std::distance(first, last);
   }
 
-  template <class OurContainer, class Vector, class GrowthPolicy>
-  typename OurContainer::iterator
-  insert_with_hint(OurContainer& sorted,
-                   Vector& cont,
-                   typename OurContainer::iterator hint,
-                   typename OurContainer::value_type&& value,
-                   GrowthPolicy& po)
-  {
-    const typename OurContainer::value_compare& cmp(sorted.value_comp());
-    if (hint == cont.end() || cmp(value, *hint)) {
-      if (hint == cont.begin() || cmp(*(hint - 1), value)) {
-        hint = po.increase_capacity(cont, hint);
-        return cont.insert(hint, std::move(value));
-      } else {
-        return sorted.insert(std::move(value)).first;
-      }
+  if (cmp(*hint, value)) {
+    if (hint + 1 == cont.end() || cmp(value, *(hint + 1))) {
+      hint = po.increase_capacity(cont, hint + 1);
+      return cont.insert(hint, std::move(value));
+    } else {
+      return sorted.insert(std::move(value)).first;
     }
-
-    if (cmp(*hint, value)) {
-      if (hint + 1 == cont.end() || cmp(value, *(hint + 1))) {
-        hint = po.increase_capacity(cont, hint + 1);
-        return cont.insert(hint, std::move(value));
-      } else {
-        return sorted.insert(std::move(value)).first;
-      }
-    }
-
-    // Value and *hint did not compare, so they are equal keys.
-    return hint;
   }
 
-  template <class OurContainer, class Vector, class InputIterator>
-  void bulk_insert(
-      OurContainer& sorted,
-      Vector& cont,
-      InputIterator first,
-      InputIterator last) {
-    // prevent deref of middle where middle == cont.end()
-    if (first == last) {
-      return;
-    }
+  // Value and *hint did not compare, so they are equal keys.
+  return hint;
+}
 
-    auto const& cmp(sorted.value_comp());
+template <class OurContainer, class Vector, class InputIterator>
+void bulk_insert(
+    OurContainer& sorted,
+    Vector& cont,
+    InputIterator first,
+    InputIterator last) {
+  // prevent deref of middle where middle == cont.end()
+  if (first == last) {
+    return;
+  }
 
-    int const d = distance_if_multipass(first, last);
-    if (d != -1) {
-      cont.reserve(cont.size() + d);
-    }
-    auto const prev_size = cont.size();
+  auto const& cmp(sorted.value_comp());
 
-    std::copy(first, last, std::back_inserter(cont));
-    auto const middle = cont.begin() + prev_size;
-    if (!std::is_sorted(middle, cont.end(), cmp)) {
-      std::sort(middle, cont.end(), cmp);
-    }
-    if (middle != cont.begin() && !cmp(*(middle - 1), *middle)) {
-      std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
-      cont.erase(
-          std::unique(
-              cont.begin(),
-              cont.end(),
-              [&](typename OurContainer::value_type const& a,
-                  typename OurContainer::value_type const& b) {
-                return !cmp(a, b) && !cmp(b, a);
-              }),
-          cont.end());
-    }
+  int const d = distance_if_multipass(first, last);
+  if (d != -1) {
+    cont.reserve(cont.size() + d);
+  }
+  auto const prev_size = cont.size();
+
+  std::copy(first, last, std::back_inserter(cont));
+  auto const middle = cont.begin() + prev_size;
+  if (!std::is_sorted(middle, cont.end(), cmp)) {
+    std::sort(middle, cont.end(), cmp);
+  }
+  if (middle != cont.begin() && !cmp(*(middle - 1), *middle)) {
+    std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
+    cont.erase(
+        std::unique(
+            cont.begin(),
+            cont.end(),
+            [&](typename OurContainer::value_type const& a,
+                typename OurContainer::value_type const& b) {
+              return !cmp(a, b) && !cmp(b, a);
+            }),
+        cont.end());
   }
 }
+} // namespace detail
 
 //////////////////////////////////////////////////////////////////////
 
@@ -732,4 +730,4 @@ inline void swap(sorted_vector_map<K,V,C,A,G>& a,
 
 //////////////////////////////////////////////////////////////////////
 
-}
+} // namespace folly

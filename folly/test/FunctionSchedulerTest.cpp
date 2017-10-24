@@ -318,4 +318,4 @@ TEST(FunctionScheduler, SteadyCatchup) {
   EXPECT_NEAR(100, ticks.load(), 10);
 }
 
-}
+} // namespace folly

@@ -96,4 +96,5 @@ class MockWriteCallback: public AsyncTransportWrapper::WriteCallback {
                  void(size_t, const AsyncSocketException&));
 };
 
-}}
+} // namespace test
+} // namespace folly

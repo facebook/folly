@@ -150,4 +150,4 @@ std::ostream& operator<<(std::ostream& os, const PackedSyncPtr<T>& ptr) {
   os << "PackedSyncPtr(" << ptr.get() << ", " << ptr.extra() << ")";
   return os;
 }
-}
+} // namespace folly

@@ -65,4 +65,4 @@ retry:
     goto retry;
   }
 }
-}
+} // namespace folly

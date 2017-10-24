@@ -191,5 +191,5 @@ FiberManager& getFiberManager(
     const FiberManager::Options& opts) {
   return ThreadLocalCache<VirtualEventBase>::get(evb, opts);
 }
-}
-}
+} // namespace fibers
+} // namespace folly

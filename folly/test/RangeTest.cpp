@@ -1197,7 +1197,7 @@ bool operator==(MutableStringPiece mp, StringPiece sp) {
 bool operator==(StringPiece sp, MutableStringPiece mp) {
   return mp.compare(sp) == 0;
 }
-}
+} // namespace folly
 
 TEST(ReplaceAt, exhaustiveTest) {
   char input[] = "this is nice and long input";

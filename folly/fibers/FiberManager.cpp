@@ -354,7 +354,7 @@ class ScopedAlternateSignalStack {
   using AltStackBuffer = std::array<char, kAltStackSize>;
   std::unique_ptr<AltStackBuffer> stack_;
 };
-}
+} // namespace
 
 void FiberManager::registerAlternateSignalStack() {
   static folly::SingletonThreadLocal<ScopedAlternateSignalStack> singleton;
@@ -363,5 +363,5 @@ void FiberManager::registerAlternateSignalStack() {
   alternateSignalStackRegistered_ = true;
 }
 #endif
-}
-}
+} // namespace fibers
+} // namespace folly

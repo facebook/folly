@@ -46,4 +46,4 @@ TEST(AsyncTransportTest, getSocketFromWrappedTransport) {
   ASSERT_EQ(transportAddr, sock);
 }
 
-} // namespace
+} // namespace folly

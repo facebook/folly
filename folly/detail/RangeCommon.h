@@ -104,5 +104,5 @@ inline size_t qfind_first_byte_of_nosse(
   }
   return qfind_first_byte_of_std(haystack, needles);
 }
-}
-}
+} // namespace detail
+} // namespace folly

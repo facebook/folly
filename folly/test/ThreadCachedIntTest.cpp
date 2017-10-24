@@ -71,7 +71,7 @@ void Runner(Counter* counter, uint32_t iterations) {
     }
   }
 }
-}
+} // namespace
 
 // Slow test with fewer threads where there are more busy waits and
 // many calls to readFull().  This attempts to test as many of the

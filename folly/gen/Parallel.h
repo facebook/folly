@@ -34,7 +34,7 @@ class Sub;
 template <class Iterator>
 class ChunkedRangeSource;
 
-}
+} // namespace detail
 
 /**
  * chunked() - For producing values from a container in slices.
@@ -105,7 +105,7 @@ template <class Sink, class Sub = detail::Sub<Sink>>
 Sub sub(Sink sink) {
   return Sub(std::move(sink));
 }
-} // !namespace gen
-} // !namespace folly
+} // namespace gen
+} // namespace folly
 
 #include <folly/gen/Parallel-inl.h>

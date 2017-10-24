@@ -19,4 +19,4 @@
 
 namespace folly {
 template class BucketedTimeSeries<int64_t>;
-}
+} // namespace folly

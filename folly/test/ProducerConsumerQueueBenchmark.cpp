@@ -240,7 +240,7 @@ BENCHMARK_PARAM(BM_ProducerConsumer, 1048574);
 BENCHMARK_PARAM(BM_ProducerConsumerAffinity, 1048574);
 BENCHMARK_PARAM(BM_ProducerConsumerLatency, 1048574);
 
-}
+} // namespace
 
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);

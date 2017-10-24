@@ -123,7 +123,7 @@ struct Mover {
 
 void move_only_func(Mover&&) {}
 
-}
+} // namespace
 
 TEST(ApplyTuple, Test) {
   auto argsTuple = std::make_tuple(1, 2, 3.0);

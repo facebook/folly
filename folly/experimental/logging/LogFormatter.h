@@ -43,4 +43,4 @@ class LogFormatter {
       const LogMessage& message,
       const LogCategory* handlerCategory) = 0;
 };
-}
+} // namespace folly

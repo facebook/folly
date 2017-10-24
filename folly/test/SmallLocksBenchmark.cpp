@@ -63,7 +63,7 @@ struct SimpleBarrier {
   size_t num_{0};
   size_t count_;
 };
-}
+} // namespace
 
 template <typename Lock>
 class InitLock {

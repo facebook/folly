@@ -108,4 +108,4 @@ bool ThreadedExecutor::controlPerformAll() {
   controlLaunchEnqueuedTasks();
   return !stopping || !running_.empty();
 }
-}
+} // namespace folly

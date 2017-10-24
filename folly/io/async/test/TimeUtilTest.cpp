@@ -36,8 +36,8 @@ namespace chrono {
 static inline void PrintTo(nanoseconds ns, ::std::ostream* os) {
   *os << ns.count() << "ns";
 }
-}
-}
+} // namespace chrono
+} // namespace std
 
 #ifdef __linux__
 void runThread(nanoseconds duration, nanoseconds* timeWaiting) {

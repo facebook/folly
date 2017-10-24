@@ -23,7 +23,7 @@ using namespace folly::chrono;
 namespace {
 
 class ChronoTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(ChronoTest, ceil_duration) {
   EXPECT_EQ(seconds(7), ceil<seconds>(seconds(7)));

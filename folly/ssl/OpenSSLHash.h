@@ -181,5 +181,5 @@ class OpenSSLHash {
   }
   [[noreturn]] static void check_libssl_result_throw();
 };
-}
-}
+} // namespace ssl
+} // namespace folly

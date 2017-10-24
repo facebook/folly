@@ -223,7 +223,7 @@ template <> struct DynamicConverter<A> {
     return { convertTo<int>(d["i"]) };
   }
 };
-}
+} // namespace folly
 TEST(DynamicConverter, custom_class) {
   dynamic d1 = dynamic::object("i", 17);
   auto i1 = convertTo<A>(d1);
@@ -324,7 +324,7 @@ template <> struct DynamicConverter<Token> {
     return Token(k, lex);
   }
 };
-}
+} // namespace folly
 
 TEST(DynamicConverter, example) {
   dynamic d1 = dynamic::object("KIND", 2)("LEXEME", "a token");
@@ -454,7 +454,7 @@ struct DynamicConverter<B> {
     return B(convertTo<int>(d));
   }
 };
-}
+} // namespace folly
 
 TEST(DynamicConverter, double_destroy) {
   dynamic d = dynamic::array(1, 3, 5, 7, 9, 11, 13, 15, 17);

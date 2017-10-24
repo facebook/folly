@@ -83,4 +83,4 @@ bool checkTimeout(
     std::chrono::nanoseconds expected,
     bool allowSmaller,
     std::chrono::nanoseconds tolerance = std::chrono::milliseconds(5));
-}
+} // namespace folly

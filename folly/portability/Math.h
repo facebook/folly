@@ -68,4 +68,4 @@ inline long double nextafter(long double x, long double y) {
 #endif // __GNUC__
 
 #endif // __ANDROID__
-}
+} // namespace folly

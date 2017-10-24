@@ -237,7 +237,7 @@ int AsyncSocket::SendMsgParamsCallback::getDefaultFlags(
 
 namespace {
 static AsyncSocket::SendMsgParamsCallback defaultSendMsgParamsCallback;
-}
+} // namespace
 
 AsyncSocket::AsyncSocket()
     : eventBase_(nullptr),

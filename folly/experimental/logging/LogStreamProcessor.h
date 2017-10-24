@@ -68,7 +68,7 @@ inline void fallbackFormatOneArg(std::string* str, const Arg* arg, long) {
 #endif
   str->append("<no_string_conversion>)");
 }
-}
+} // namespace detail
 
 template <bool IsInHeaderFile>
 class XlogCategoryInfo;
@@ -496,4 +496,4 @@ inline void logDisabledHelper(std::integral_constant<bool, false>) noexcept {}
 [[noreturn]] void logDisabledHelper(
         std::integral_constant<bool, true>) noexcept;
 // clang-format on
-}
+} // namespace folly

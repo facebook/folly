@@ -31,5 +31,5 @@ namespace ssl {
 [[noreturn]] void OpenSSLHash::check_libssl_result_throw() {
   throw std::runtime_error("openssl crypto function failed");
 }
-}
-}
+} // namespace ssl
+} // namespace folly

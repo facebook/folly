@@ -21,7 +21,7 @@
 namespace {
 
 class ConstexprTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(ConstexprTest, constexpr_strlen_cstr) {
   constexpr auto v = "hello";

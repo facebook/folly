@@ -135,7 +135,7 @@ struct TestClobber {
   MicroSpinLock lock_;
 };
 
-}
+} // namespace
 
 TEST(SmallLocks, SpinLockCorrectness) {
   EXPECT_EQ(sizeof(MicroSpinLock), 1);
@@ -216,7 +216,7 @@ struct SimpleBarrier {
   std::condition_variable cv_;
   bool ready_;
 };
-}
+} // namespace
 
 TEST(SmallLocks, MicroLock) {
   volatile uint64_t counters[4] = {0, 0, 0, 0};

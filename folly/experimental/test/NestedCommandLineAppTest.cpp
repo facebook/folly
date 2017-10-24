@@ -127,4 +127,5 @@ TEST(ProgramOptionsTest, Aliases) {
                   "a", "b"}));
 }
 
-}}  // namespaces
+} // namespace test
+} // namespace folly

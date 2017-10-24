@@ -86,7 +86,7 @@ void handleLoggingError(
     std::string&& msg) {
   internalWarnings->emplace_back(std::move(msg));
 }
-}
+} // namespace
 
 TEST(ImmediateFileWriter, ioError) {
   std::array<int, 2> fds;

@@ -753,4 +753,5 @@ class EliasFanoReader {
   uint8_t numLowerBits_;
 };
 
-}}  // namespaces
+} // namespace compression
+} // namespace folly

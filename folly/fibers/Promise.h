@@ -99,7 +99,7 @@ class Promise {
       std::is_same<T, void>::value>::type
   fulfilHelper(F&& func);
 };
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #include <folly/fibers/Promise-inl.h>

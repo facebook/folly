@@ -37,7 +37,7 @@ struct Widget {
     return v_;
   }
 };
-}
+} // namespace
 
 TEST(ConverstionOperator, DirectInitialization) {
   auto future = makeFuture<Widget>(23);

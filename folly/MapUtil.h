@@ -207,7 +207,7 @@ auto extract_default(const KeysDefault&... keysDefault) ->
     typename DefaultType<KeysDefault...>::type const& {
   return std::get<sizeof...(KeysDefault)-1>(std::tie(keysDefault...));
 }
-}
+} // namespace detail
 
 /**
  * Given a map of maps and a path of keys, return a pointer to the nested value,

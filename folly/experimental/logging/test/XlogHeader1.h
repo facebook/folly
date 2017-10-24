@@ -32,4 +32,4 @@ inline void testXlogHdrLoop(size_t numIters, folly::StringPiece arg) {
 // Prototypes for functions defined in XlogFile1.cpp and XlogFile2.cpp
 void testXlogFile1Dbg1(folly::StringPiece msg);
 void testXlogFile2Dbg1(folly::StringPiece msg);
-}
+} // namespace logging_test

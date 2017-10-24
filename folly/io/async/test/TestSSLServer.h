@@ -132,4 +132,4 @@ class TestSSLServer {
  private:
   void init(bool);
 };
-}
+} // namespace folly

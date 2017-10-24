@@ -128,7 +128,7 @@ class Promise {
   void detach();
 };
 
-}
+} // namespace folly
 
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise-inl.h>

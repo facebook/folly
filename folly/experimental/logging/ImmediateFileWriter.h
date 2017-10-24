@@ -56,4 +56,4 @@ class ImmediateFileWriter : public LogWriter {
 
   folly::File file_;
 };
-}
+} // namespace folly

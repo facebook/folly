@@ -215,5 +215,5 @@ class ObserverManager {
   using CycleDetector = GraphCycleDetector<const Core*>;
   folly::Synchronized<CycleDetector, std::mutex> cycleDetector_;
 };
-}
-}
+} // namespace observer_detail
+} // namespace folly

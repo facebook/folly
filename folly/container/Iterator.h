@@ -107,7 +107,7 @@ decltype(auto) unwrap_emplace_arg(
     folly::rvalue_reference_wrapper<Arg> arg) noexcept {
   return std::move(arg).get();
 }
-}
+} // namespace detail
 
 /**
  * Getter function for unpacking a single emplace argument.
@@ -492,4 +492,4 @@ template <bool implicit_unpack = true, typename Container>
 back_emplace_iterator<Container, implicit_unpack> back_emplacer(Container& c) {
   return back_emplace_iterator<Container, implicit_unpack>(c);
 }
-}
+} // namespace folly

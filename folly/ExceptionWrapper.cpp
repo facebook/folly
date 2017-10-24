@@ -58,7 +58,7 @@ std::exception const* get_std_exception_(std::exception_ptr eptr) noexcept {
     return nullptr;
   }
 }
-}
+} // namespace
 
 exception_wrapper exception_wrapper::from_exception_ptr(
     std::exception_ptr const& ptr) noexcept {

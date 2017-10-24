@@ -40,4 +40,4 @@ void StandardLogHandler::handleMessage(
 void StandardLogHandler::flush() {
   writer_->flush();
 }
-}
+} // namespace folly

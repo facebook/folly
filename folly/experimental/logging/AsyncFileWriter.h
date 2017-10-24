@@ -115,4 +115,4 @@ class AsyncFileWriter : public LogWriter {
    */
   std::thread ioThread_;
 };
-}
+} // namespace folly

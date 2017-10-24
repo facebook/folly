@@ -132,4 +132,4 @@ LogLevel XlogLevelInfo<false>::loadLevelFull(
 // compiled or not.
 template class XlogLevelInfo<true>;
 template class XlogCategoryInfo<true>;
-}
+} // namespace folly

@@ -290,7 +290,7 @@ struct is_trivially_copyable : std::is_trivial<T> {};
 template <class T>
 using is_trivially_copyable = std::is_trivially_copyable<T>;
 #endif
-}
+} // namespace traits_detail
 
 struct Ignore {
   template <class T>
@@ -311,7 +311,7 @@ struct IsEqualityComparable
           decltype(std::declval<T>() == std::declval<U>()),
           bool
       > {};
-}
+} // namespace traits_detail_IsEqualityComparable
 
 /* using override */ using traits_detail_IsEqualityComparable::
     IsEqualityComparable;
@@ -325,7 +325,7 @@ struct IsLessThanComparable
           decltype(std::declval<T>() < std::declval<U>()),
           bool
       > {};
-}
+} // namespace traits_detail_IsLessThanComparable
 
 /* using override */ using traits_detail_IsLessThanComparable::
     IsLessThanComparable;
@@ -353,7 +353,7 @@ struct IsNothrowSwappable
         noexcept(swap(std::declval<T&>(), std::declval<T&>()))
       > {};
 #endif
-}
+} // namespace traits_detail_IsNothrowSwappable
 
 /* using override */ using traits_detail_IsNothrowSwappable::IsNothrowSwappable;
 

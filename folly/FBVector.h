@@ -45,9 +45,9 @@
 // forward declaration
 
 namespace folly {
-  template <class T, class Allocator = std::allocator<T>>
-  class fbvector;
-}
+template <class T, class Allocator = std::allocator<T>>
+class fbvector;
+} // namespace folly
 
 //=============================================================================
 // unrolling

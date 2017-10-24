@@ -20,4 +20,4 @@ namespace logging_test {
 void testXlogFile2Dbg1(folly::StringPiece msg) {
   XLOG(DBG1, "file2: ", msg);
 }
-}
+} // namespace logging_test

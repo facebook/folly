@@ -230,7 +230,7 @@ void installSignalHandler() {
     sigaction(SIGSEGV, &sa, &oldSigsegvAction);
   });
 }
-}
+} // namespace
 
 #endif
 

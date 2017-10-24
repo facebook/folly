@@ -45,4 +45,4 @@ class SSLException : public folly::AsyncSocketException {
  private:
   SSLError sslError;
 };
-}
+} // namespace folly

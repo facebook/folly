@@ -221,8 +221,8 @@ folly::dynamic parseBser(ByteRange str) {
 folly::dynamic parseBser(StringPiece str) {
   return parseBser(ByteRange((uint8_t*)str.data(), str.size()));
 }
-}
-}
+} // namespace bser
+} // namespace folly
 
 /* vim:ts=2:sw=2:et:
  */

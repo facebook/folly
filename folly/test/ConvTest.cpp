@@ -935,7 +935,7 @@ void testConvError(
     }
   }
 }
-}
+} // namespace
 
 #define EXPECT_CONV_ERROR_QUOTE(expr, code, value, quoted) \
   testConvError(                                           \
@@ -1033,7 +1033,7 @@ std::string prefixWithType(V value) {
   oss << to<std::string>(value);
   return oss.str();
 }
-}
+} // namespace
 
 #define EXPECT_CONV_ERROR_ARITH(type, val, code) \
   EXPECT_CONV_ERROR_QUOTE(                       \
@@ -1239,7 +1239,7 @@ size_t estimateSpaceNeeded(const Dimensions&in) {
   return 2000 + folly::estimateSpaceNeeded(in.w) +
       folly::estimateSpaceNeeded(in.h);
 }
-}
+} // namespace my
 
 TEST(Conv, custom_kkproviders) {
   my::Dimensions expected{7, 8};

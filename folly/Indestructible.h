@@ -119,4 +119,4 @@ class Indestructible final {
   Storage storage_{};
   bool erased_{false};
 };
-}
+} // namespace folly

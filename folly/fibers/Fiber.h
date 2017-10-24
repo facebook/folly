@@ -183,7 +183,7 @@ class Fiber {
   size_t asanMainStackSize_{0};
 #endif
 };
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #include <folly/fibers/Fiber-inl.h>

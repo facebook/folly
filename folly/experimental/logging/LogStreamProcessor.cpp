@@ -76,7 +76,7 @@ LogCategory* getXlogCategory(
   }
   return categoryInfo->getCategory(&xlog_detail::xlogFileScopeInfo);
 }
-}
+} // namespace
 
 /**
  * Construct a LogStreamProcessor from an XlogCategoryInfo.
@@ -112,7 +112,7 @@ LogCategory* getXlogCategory(XlogFileScopeInfo* fileScopeInfo) {
   // Therefore we never need to check if it is initialized here.
   return fileScopeInfo->category;
 }
-}
+} // namespace
 
 /**
  * Construct a LogStreamProcessor from an XlogFileScopeInfo.
@@ -219,4 +219,4 @@ void logDisabledHelper(std::integral_constant<bool, true>) noexcept {
   // builds) or DFATAL (in debug builds).
   abort();
 }
-}
+} // namespace folly

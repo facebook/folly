@@ -63,7 +63,7 @@ using max_basic_alignment = max_alignment<
     char32_t,
     wchar_t,
     std::nullptr_t>;
-} // namespace detail
+} // namespace portability_detail
 
 constexpr size_t max_align_v = portability_detail::max_basic_alignment::value;
 
@@ -184,7 +184,7 @@ namespace folly {
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
-}
+} // namespace folly
 
 namespace folly {
 
@@ -199,7 +199,7 @@ constexpr bool kIsSanitizeThread = true;
 #else
 constexpr bool kIsSanitizeThread = false;
 #endif
-}
+} // namespace folly
 
 // packing is very ugly in msvc
 #ifdef _MSC_VER
@@ -313,7 +313,7 @@ constexpr auto kIsDebug = false;
 #else
 constexpr auto kIsDebug = true;
 #endif
-}
+} // namespace folly
 
 // Endianness
 namespace folly {
@@ -328,7 +328,7 @@ constexpr auto kIsLittleEndian = true;
 constexpr auto kIsLittleEndian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
 #endif
 constexpr auto kIsBigEndian = !kIsLittleEndian;
-}
+} // namespace folly
 
 #ifndef FOLLY_SSE
 # if defined(__SSE4_2__)
@@ -406,7 +406,7 @@ constexpr auto kMscVer = _MSC_VER;
 constexpr auto kIsWindows = false;
 constexpr auto kMscVer = 0;
 #endif
-}
+} // namespace folly
 
 // Define FOLLY_USE_CPP14_CONSTEXPR to be true if the compiler's C++14
 // constexpr support is "good enough".

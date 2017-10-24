@@ -88,4 +88,4 @@ inline uint64_t getOSThreadID() {
   return uint64_t(syscall(FOLLY_SYS_gettid));
 #endif
 }
-}
+} // namespace folly

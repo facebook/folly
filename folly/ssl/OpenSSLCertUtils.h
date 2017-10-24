@@ -79,5 +79,5 @@ class OpenSSLCertUtils {
  private:
   static std::string getDateTimeStr(const ASN1_TIME* time);
 };
-}
-}
+} // namespace ssl
+} // namespace folly

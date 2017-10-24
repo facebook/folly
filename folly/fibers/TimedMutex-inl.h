@@ -333,5 +333,5 @@ void TimedRWMutex<BatonType>::downgrade() {
     }
   }
 }
-}
-}
+} // namespace fibers
+} // namespace folly

@@ -44,7 +44,7 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
   uint64_t key_{keyCounter_++};
 };
 
-}
+} // namespace detail
 
 /**
  * A storage abstraction for data that should be tied to an EventBase.
@@ -116,5 +116,4 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
   }
 };
 
-
-}
+} // namespace folly

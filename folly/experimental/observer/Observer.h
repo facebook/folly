@@ -201,7 +201,7 @@ struct ObserverTraits<T, true> {
 
 template <typename T, bool CacheInThreadLocal>
 using ObserverT = typename ObserverTraits<T, CacheInThreadLocal>::type;
-}
-}
+} // namespace observer
+} // namespace folly
 
 #include <folly/experimental/observer/Observer-inl.h>

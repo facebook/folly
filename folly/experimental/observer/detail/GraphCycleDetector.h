@@ -76,5 +76,5 @@ class GraphCycleDetector {
 
   std::unordered_map<NodeId, NodeSet> edges_;
 };
-}
-}
+} // namespace observer_detail
+} // namespace folly

@@ -47,4 +47,5 @@ class UncaughtExceptionCounter {
   int exceptionCount_;
 };
 
-}} // namespaces
+} // namespace detail
+} // namespace folly

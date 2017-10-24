@@ -75,7 +75,7 @@ std::list<char> RandomList(unsigned int maxSize) {
  }
   return lst;
 }
-}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // Tests begin here

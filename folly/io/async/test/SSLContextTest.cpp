@@ -48,4 +48,4 @@ TEST_F(SSLContextTest, TestSetCipherList) {
   ctx.setCipherList(ciphers);
   verifySSLCipherList(ciphers);
 }
-}
+} // namespace folly

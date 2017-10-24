@@ -58,12 +58,12 @@ struct ParanoidArenaAlloc {
   ParentAlloc* arena_;
   std::set<void*> allocated_;
 };
-}
+} // namespace
 
 namespace folly {
 template <>
 struct IsArenaAllocator<ParanoidArenaAlloc<SysArena>> : std::true_type {};
-}
+} // namespace folly
 
 namespace {
 

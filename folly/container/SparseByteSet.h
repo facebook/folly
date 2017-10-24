@@ -85,4 +85,4 @@ class SparseByteSet {
   uint8_t dense_[kCapacity];
 };
 
-}
+} // namespace folly

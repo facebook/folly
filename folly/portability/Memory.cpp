@@ -62,5 +62,5 @@ void aligned_free(void* aligned_ptr) {
   free(aligned_ptr);
 }
 #endif
-}
-}
+} // namespace detail
+} // namespace folly

@@ -188,4 +188,4 @@ TEST_F(SSLSessionTest, GetSessionID) {
   auto sessID = sess->getSessionID();
   ASSERT_GE(sessID.length(), 0);
 }
-}
+} // namespace folly

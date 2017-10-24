@@ -542,7 +542,7 @@ class FormatValue<NoncopyableInt> {
   const NoncopyableInt& v_;
 };
 
-} // namespace
+} // namespace folly
 
 TEST(Format, NoncopyableArg) {
   {

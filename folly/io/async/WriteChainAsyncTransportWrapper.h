@@ -71,4 +71,4 @@ class WriteChainAsyncTransportWrapper :
       folly::WriteFlags flags = folly::WriteFlags::NONE) override = 0;
 };
 
-}
+} // namespace folly

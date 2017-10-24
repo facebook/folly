@@ -115,7 +115,7 @@ void handleLoggingError(
     std::string&& msg) {
   internalWarnings->emplace_back(std::move(msg));
 }
-}
+} // namespace
 
 TEST(AsyncFileWriter, ioError) {
   // Set the LoggerDB internal warning handler so we can record the messages
@@ -205,7 +205,7 @@ size_t fillUpPipe(int fd) {
 
   return totalBytes;
 }
-}
+} // namespace
 
 TEST(AsyncFileWriter, flush) {
   // Set up a pipe(), then write data to the write endpoint until it fills up

@@ -94,7 +94,7 @@ class ReadMostlySharedPtrCore {
   std::shared_ptr<T> ptr_;
 };
 
-}
+} // namespace detail
 
 template <typename T, typename RefCount = DefaultRefCount>
 class ReadMostlyMainPtr {
@@ -451,4 +451,4 @@ inline bool operator!=(
     const ReadMostlySharedPtr<T, RefCount>& ptr) {
   return !(ptr == nullptr);
 }
-}
+} // namespace folly

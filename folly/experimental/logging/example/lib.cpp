@@ -21,4 +21,4 @@ ExampleObject::~ExampleObject() {
   // folly.experimental.logging.example.lib
   XLOGF(DBG1, "ExampleObject({}) at {} destroyed", value_, this);
 }
-}
+} // namespace example

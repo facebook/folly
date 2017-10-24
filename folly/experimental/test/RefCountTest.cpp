@@ -131,4 +131,4 @@ TEST(TLRefCount, Stress) {
   // do it that many times.
   stressTest<TLRefCount>(500);
 }
-}
+} // namespace folly

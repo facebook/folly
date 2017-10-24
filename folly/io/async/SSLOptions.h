@@ -24,7 +24,7 @@ namespace ssl {
 
 namespace ssl_options_detail {
 void logDfatal(std::exception const&);
-}
+} // namespace ssl_options_detail
 
 struct SSLCommonOptions {
   /**

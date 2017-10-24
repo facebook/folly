@@ -97,8 +97,8 @@ folly::fbstring toBser(folly::dynamic const&, const serialization_opts&);
 std::unique_ptr<folly::IOBuf> toBserIOBuf(
     folly::dynamic const&,
     const serialization_opts&);
-}
-}
+} // namespace bser
+} // namespace folly
 
 /* vim:ts=2:sw=2:et:
  */

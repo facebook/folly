@@ -633,7 +633,7 @@ struct ExpectedHelper {
   }
   FOLLY_POP_WARNING
 };
-}
+} // namespace expected_detail_ExpectedHelper
 /* using override */ using expected_detail_ExpectedHelper::ExpectedHelper;
 
 struct UnexpectedTag {};

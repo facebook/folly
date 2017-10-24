@@ -925,4 +925,4 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool sessionIDResumed_{false};
 };
 
-} // namespace
+} // namespace folly

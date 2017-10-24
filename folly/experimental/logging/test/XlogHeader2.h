@@ -22,4 +22,4 @@ namespace logging_test {
 inline void testXlogHdrFunction(folly::StringPiece str, int value) {
   XLOG(DBG3, "test: ", str, "=", value);
 }
-}
+} // namespace logging_test

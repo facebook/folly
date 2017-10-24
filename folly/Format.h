@@ -46,7 +46,7 @@ class FormatValue;
 // meta-attribute to identify formatters in this sea of template weirdness
 namespace detail {
 class FormatterTag {};
-};
+} // namespace detail
 
 /**
  * Formatter class.
@@ -322,7 +322,7 @@ struct DefaultValueWrapper {
   const Container& container;
   const Value& defaultValue;
 };
-} // namespace
+} // namespace detail
 
 template <class Container, class Value>
 detail::DefaultValueWrapper<Container, Value> defaulted(

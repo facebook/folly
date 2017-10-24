@@ -3010,7 +3010,7 @@ inline namespace {
 // "const std::size_t&" is so that folly::npos has the same address in every
 // translation unit. This is to avoid potential violations of the ODR.
 constexpr const std::size_t& npos = detail::fixedstring::FixedStringBase::npos;
-}
+} // namespace
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -3063,8 +3063,8 @@ FOLLY_DEFINE_FIXED_STRING_UDL(64)
 FOLLY_DEFINE_FIXED_STRING_UDL(128)
 
 #undef FOLLY_DEFINE_FIXED_STRING_UDL
-}
-}
+} // namespace string_literals
+} // namespace literals
 
 // TODO:
 // // numeric conversions:
@@ -3099,4 +3099,4 @@ FOLLY_DEFINE_FIXED_STRING_UDL(128)
 // constexpr FixedString</*...*/> to_fixed_string_ll() noexcept
 // template <unsigned long long val>
 // constexpr FixedString</*...*/> to_fixed_string_ull() noexcept;
-}
+} // namespace folly

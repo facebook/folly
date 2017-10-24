@@ -337,4 +337,5 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
   NodeAlloc alloc_;
 };
 
-}}  // namespaces
+} // namespace detail
+} // namespace folly

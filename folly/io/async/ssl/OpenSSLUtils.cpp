@@ -31,7 +31,7 @@ namespace {
 static int boringssl_bio_fd_should_retry(int err);
 #endif
 
-}
+} // namespace
 
 namespace folly {
 namespace ssl {
@@ -369,4 +369,4 @@ int boringssl_bio_fd_should_retry(int i) {
 
 #endif // OEPNSSL_IS_BORINGSSL
 
-}
+} // namespace

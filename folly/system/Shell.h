@@ -67,8 +67,8 @@ constexpr detail::ShellCmdFormat operator"" _shellify(
     std::size_t length) {
   return {folly::StringPiece(name, length)};
 }
-} // inline namespace shell_literals
-} // inline namespace literals
+} // namespace shell_literals
+} // namespace literals
 
 /**
   * Create argument array for `Subprocess()` for a process running in a

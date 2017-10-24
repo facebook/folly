@@ -493,4 +493,4 @@ void FunctionScheduler::setThreadName(StringPiece threadName) {
   threadName_ = threadName.str();
 }
 
-}
+} // namespace folly

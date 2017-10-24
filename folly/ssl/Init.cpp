@@ -49,7 +49,7 @@ void cleanupOpenSSLLocked() {
   OPENSSL_cleanup();
   initialized_ = false;
 }
-}
+} // namespace
 
 void init() {
   std::lock_guard<std::mutex> g(initMutex());

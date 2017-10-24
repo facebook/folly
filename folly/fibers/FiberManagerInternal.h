@@ -576,7 +576,7 @@ inline void yield() {
     std::this_thread::yield();
   }
 }
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #include <folly/fibers/FiberManagerInternal-inl.h>

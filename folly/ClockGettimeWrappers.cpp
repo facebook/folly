@@ -82,8 +82,8 @@ struct VdsoInitializer {
 };
 
 static const VdsoInitializer vdso_initializer;
-}
+} // namespace
 
 #endif
-}
-}
+} // namespace chrono
+} // namespace folly

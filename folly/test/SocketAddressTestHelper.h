@@ -41,4 +41,4 @@ class SocketAddressTestHelper {
  private:
   static bool isFamilyOfAddrEnabled(const char* addr);
 };
-}
+} // namespace folly

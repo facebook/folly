@@ -328,7 +328,7 @@ struct SingletonHolder : public SingletonHolderBase {
   SingletonHolder(SingletonHolder&&) = delete;
 };
 
-}
+} // namespace detail
 
 class SingletonVault {
  public:
@@ -734,6 +734,6 @@ class LeakySingleton {
     entry.state = State::Living;
   }
 };
-}
+} // namespace folly
 
 #include <folly/Singleton-inl.h>

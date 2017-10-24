@@ -32,5 +32,5 @@ inline std::memory_order default_failure_memory_order(
       return successMode;
   }
 }
-}
-} // namespace
+} // namespace detail
+} // namespace folly

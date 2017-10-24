@@ -36,7 +36,7 @@ struct Widget {
     throw std::logic_error("unexpected move assignment");
   }
 };
-}
+} // namespace
 
 TEST(Then, tryConstructor) {
   auto t = Try<Widget>(23);

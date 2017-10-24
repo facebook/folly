@@ -223,4 +223,4 @@ void MicroLockBase<MaxSpins, MaxYields>::lock(unsigned slot) {
 }
 
 typedef MicroLockBase<> MicroLock;
-}
+} // namespace folly

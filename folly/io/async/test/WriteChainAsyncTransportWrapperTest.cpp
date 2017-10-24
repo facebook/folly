@@ -82,4 +82,5 @@ TEST(WriteChainAsyncTransportWrapperTest, TestSimpleBuf) {
   transport.write(nullptr, buf->data(), buf->length());
 }
 
-}}
+} // namespace test
+} // namespace folly

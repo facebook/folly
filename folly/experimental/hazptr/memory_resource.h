@@ -45,5 +45,5 @@ memory_resource* get_default_resource();
 void set_default_resource(memory_resource*);
 memory_resource* new_delete_resource();
 
-} // namespace folly
 } // namespace hazptr
+} // namespace folly

@@ -172,4 +172,4 @@ class ThreadCachedInt : boost::noncopyable {
   };
 };
 
-}
+} // namespace folly

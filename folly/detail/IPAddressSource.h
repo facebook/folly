@@ -273,5 +273,5 @@ inline void fastIpv6AppendToString(const in6_addr& in6Addr, std::string& out) {
   char str[sizeof("2001:0db8:0000:0000:0000:ff00:0042:8329")];
   out.append(str, fastIpv6ToBufferUnsafe(in6Addr, str));
 }
-}
-}
+} // namespace detail
+} // namespace folly

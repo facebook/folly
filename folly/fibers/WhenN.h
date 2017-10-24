@@ -139,7 +139,7 @@ typename std::enable_if<
             typename std::iterator_traits<InputIterator>::value_type()>::type,
         void>::value,
     size_t>::type inline collectAny(InputIterator first, InputIterator last);
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #include <folly/fibers/WhenN-inl.h>

@@ -576,6 +576,6 @@ struct dynamic : private boost::operators<dynamic> {
 
 //////////////////////////////////////////////////////////////////////
 
-}
+} // namespace folly
 
 #include <folly/dynamic-inl.h>

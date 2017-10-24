@@ -60,7 +60,7 @@ namespace detail {
             << type.name() << ">\n";
   std::abort();
 }
-}
+} // namespace detail
 
 namespace {
 
@@ -88,7 +88,7 @@ FatalHelper fatalHelper;
 FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
 #endif
 
-}
+} // namespace
 
 SingletonVault::~SingletonVault() { destroyInstances(); }
 
@@ -266,4 +266,4 @@ void SingletonVault::scheduleDestroyInstances() {
   static SingletonVaultDestructor singletonVaultDestructor;
 }
 
-}
+} // namespace folly

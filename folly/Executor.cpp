@@ -36,4 +36,4 @@ void Executor::keepAliveRelease() {
   LOG(FATAL) << __func__ << "() should not be called for folly::Executor types "
              << "which do not override getKeepAliveToken()";
 }
-}
+} // namespace folly

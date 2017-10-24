@@ -32,33 +32,33 @@ namespace folly {
 
 namespace detail {
 
-  /*
-   * A helper object for the contended case. Starts off with eager
-   * spinning, and falls back to sleeping for small quantums.
-   */
-  class Sleeper {
-    static const uint32_t kMaxActiveSpin = 4000;
+/*
+ * A helper object for the contended case. Starts off with eager
+ * spinning, and falls back to sleeping for small quantums.
+ */
+class Sleeper {
+  static const uint32_t kMaxActiveSpin = 4000;
 
-    uint32_t spinCount;
+  uint32_t spinCount;
 
-   public:
-    Sleeper() : spinCount(0) {}
+ public:
+  Sleeper() : spinCount(0) {}
 
-    void wait() {
-      if (spinCount < kMaxActiveSpin) {
-        ++spinCount;
-        asm_volatile_pause();
-      } else {
-        /*
-         * Always sleep 0.5ms, assuming this will make the kernel put
-         * us down for whatever its minimum timer resolution is (in
-         * linux this varies by kernel version from 1ms to 10ms).
-         */
-        struct timespec ts = { 0, 500000 };
-        nanosleep(&ts, nullptr);
-      }
+  void wait() {
+    if (spinCount < kMaxActiveSpin) {
+      ++spinCount;
+      asm_volatile_pause();
+    } else {
+      /*
+       * Always sleep 0.5ms, assuming this will make the kernel put
+       * us down for whatever its minimum timer resolution is (in
+       * linux this varies by kernel version from 1ms to 10ms).
+       */
+      struct timespec ts = {0, 500000};
+      nanosleep(&ts, nullptr);
     }
-  };
+  }
+};
 
-}
-}
+} // namespace detail
+} // namespace folly

@@ -80,5 +80,5 @@ class LockFreeLIFO {
   std::atomic<Node*> head_ = {nullptr};
 };
 
-} // namespace folly
 } // namespace hazptr
+} // namespace folly

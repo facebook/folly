@@ -53,4 +53,4 @@ class TestLogHandler : public LogHandler {
   std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
   uint64_t flushCount_{0};
 };
-}
+} // namespace folly

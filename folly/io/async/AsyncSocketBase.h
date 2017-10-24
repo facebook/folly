@@ -27,4 +27,4 @@ class AsyncSocketBase {
   virtual void getAddress(SocketAddress*) const = 0;
 };
 
-} // namespace
+} // namespace folly

@@ -157,5 +157,5 @@ ObserverCreator<Observable, Traits>::getObserver()&& {
 
   return observer;
 }
-}
-}
+} // namespace observer
+} // namespace folly

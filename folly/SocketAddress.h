@@ -613,7 +613,7 @@ class SocketAddress {
 size_t hash_value(const SocketAddress& address);
 
 std::ostream& operator<<(std::ostream& os, const SocketAddress& addr);
-}
+} // namespace folly
 
 namespace std {
 
@@ -624,4 +624,4 @@ struct hash<folly::SocketAddress> {
     return addr.hash();
   }
 };
-}
+} // namespace std

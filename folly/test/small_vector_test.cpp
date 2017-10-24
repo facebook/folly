@@ -198,7 +198,7 @@ struct TestBasicGuarantee {
   }
 };
 
-}
+} // namespace
 
 TEST(small_vector, BasicGuarantee) {
   for (int prepop = 1; prepop < 30; ++prepop) {
@@ -942,7 +942,7 @@ class Counter {
     return *this;
   }
 };
-}
+} // namespace
 
 TEST(small_vector, EmplaceBackEfficiency) {
   small_vector<Counter, 2> test;

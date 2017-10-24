@@ -321,4 +321,4 @@ using coarse_stop_watch = custom_stop_watch<monotonic_coarse_clock, Duration>;
  */
 template <typename Duration = monotonic_clock::duration>
 using stop_watch = custom_stop_watch<monotonic_clock, Duration>;
-}
+} // namespace folly

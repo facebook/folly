@@ -298,7 +298,8 @@ downTo(T& iter, const U& begin) {
   return true;
 }
 
-} }
+} // namespace detail
+} // namespace folly
 
 /*
  * Look at the Ranges-v3 views and you'll probably find an easier way to build

@@ -106,4 +106,4 @@ TEST(Lazy, Consty) {
   EXPECT_EQ(lz(), 12);
 }
 
-}
+} // namespace folly

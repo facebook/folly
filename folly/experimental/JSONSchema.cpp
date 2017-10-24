@@ -1010,7 +1010,7 @@ const char* metaschemaJson =
 folly::Singleton<Validator> schemaValidator([]() {
   return makeValidator(parseJson(metaschemaJson)).release();
 });
-}
+} // namespace
 
 Validator::~Validator() = default;
 
@@ -1025,5 +1025,5 @@ std::unique_ptr<Validator> makeValidator(const dynamic& schema) {
 std::shared_ptr<Validator> makeSchemaValidator() {
   return schemaValidator.try_get();
 }
-}
-}
+} // namespace jsonschema
+} // namespace folly

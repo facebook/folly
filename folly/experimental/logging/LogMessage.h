@@ -149,4 +149,4 @@ class LogMessage {
    */
   std::string message_;
 };
-}
+} // namespace folly

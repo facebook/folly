@@ -113,4 +113,4 @@ void TimeoutManager::clearCobTimeouts() {
 TimeoutManager::~TimeoutManager() {
   clearCobTimeouts();
 }
-}
+} // namespace folly

@@ -49,7 +49,7 @@ std::ostream& operator<<(std::ostream& os, TimePoint tp) {
   os << tp.time_since_epoch().count();
   return os;
 }
-}
+} // namespace std
 
 namespace {
 TimePoint mkTimePoint(int value) {
@@ -80,7 +80,7 @@ vector<TestData> testData = {
     // 1 second x 1 buckets
     {1, 1, {0}},
 };
-}
+} // namespace
 
 TEST(BucketedTimeSeries, getBucketInfo) {
   for (const auto& data : testData) {
@@ -898,7 +898,7 @@ enum Levels {
 };
 
 const seconds kMinuteHourDurations[] = {seconds(60), seconds(3600), seconds(0)};
-};
+} // namespace IntMHTS
 
 TEST(MinuteHourTimeSeries, Basic) {
   folly::MultiLevelTimeSeries<int> mhts(

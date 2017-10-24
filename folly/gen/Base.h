@@ -407,7 +407,7 @@ class UnwrapOr;
 
 class Unwrap;
 
-}
+} // namespace detail
 
 /**
  * Polymorphic wrapper

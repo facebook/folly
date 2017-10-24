@@ -52,4 +52,4 @@ LogStream::LogStream(LogStreamProcessor* processor)
 }
 
 LogStream::~LogStream() {}
-}
+} // namespace folly

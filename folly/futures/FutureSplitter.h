@@ -73,4 +73,4 @@ template <class T>
 FutureSplitter<T> splitFuture(Future<T>&& future) {
   return FutureSplitter<T>{std::move(future)};
 }
-}
+} // namespace folly

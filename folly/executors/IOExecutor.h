@@ -20,7 +20,7 @@
 
 namespace folly {
 class EventBase;
-}
+} // namespace folly
 
 namespace folly {
 

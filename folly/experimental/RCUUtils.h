@@ -45,4 +45,4 @@ class RCUReadLock {
   RCUReadLock() {}
 };
 
-}
+} // namespace folly

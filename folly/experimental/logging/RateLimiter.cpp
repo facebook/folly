@@ -43,5 +43,5 @@ bool IntervalRateLimiter::checkSlow() {
   count_.store(1, std::memory_order_release);
   return true;
 }
-}
-}
+} // namespace logging
+} // namespace folly

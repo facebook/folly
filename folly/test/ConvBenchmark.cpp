@@ -244,8 +244,8 @@ __int128 int128Neg[] = {
 };
 
 #endif
-}
-}
+} // namespace conv_bench_detail
+} // namespace folly
 
 using namespace folly::conv_bench_detail;
 
@@ -255,7 +255,7 @@ template <typename T>
 void checkArrayIndex(const T& array, size_t index) {
   DCHECK_LT(index, sizeof(array) / sizeof(array[0]));
 }
-}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // Benchmarks for ASCII to int conversion
@@ -511,8 +511,8 @@ char reallyShort[] = "meh";
 std::string stdString = "std::strings are very nice";
 float fValue = 1.2355f;
 double dValue = 345345345.435;
-}
-}
+} // namespace conv_bench_detail
+} // namespace folly
 
 BENCHMARK(preallocateTestNoFloat, n) {
   for (size_t i = 0; i < n; ++i) {
@@ -586,8 +586,8 @@ uint64_t u64s[] = {
     static_cast<uint64_t>(1) << 50,
     static_cast<uint64_t>(1) << 63,
 };
-}
-}
+} // namespace conv_bench_detail
+} // namespace folly
 
 BENCHMARK(preallocateTestInt8, n) {
   for (size_t i = 0; i < n; ++i) {
@@ -675,7 +675,7 @@ unsigned __int128 u128s[] = {
     static_cast<unsigned __int128>(1) << 100,
     static_cast<unsigned __int128>(1) << 127,
 };
-}
+} // namespace
 
 BENCHMARK(preallocateTestInt128, n) {
   for (size_t i = 0; i < n; ++i) {
@@ -1012,8 +1012,8 @@ std::array<double, 4> double2FloatGood{{1.0, 1.25, 2.5, 1000.0}};
 std::array<double, 4> double2FloatBad{{1e100, 1e101, 1e102, 1e103}};
 std::array<double, 4> double2IntGood{{1.0, 10.0, 100.0, 1000.0}};
 std::array<double, 4> double2IntBad{{1e100, 1.25, 2.5, 100.00001}};
-}
-}
+} // namespace conv_bench_detail
+} // namespace folly
 
 #define STRING_TO_TYPE_BENCHMARK(type, name, pass, fail) \
   BENCHMARK(stringTo##name##Classic, n) {                \

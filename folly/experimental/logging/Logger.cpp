@@ -31,4 +31,4 @@ Logger::Logger(LogCategory* cat) : category_(cat) {}
 
 Logger::Logger(LoggerDB* db, StringPiece name)
     : Logger{db->getCategory(name)} {}
-}
+} // namespace folly

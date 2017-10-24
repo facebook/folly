@@ -37,4 +37,4 @@ ShutdownSemError::ShutdownSemError(const std::string& msg)
 ShutdownSemError::~ShutdownSemError() noexcept {
 }
 
-}
+} // namespace folly

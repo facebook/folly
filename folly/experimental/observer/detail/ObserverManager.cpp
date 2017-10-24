@@ -40,7 +40,7 @@ static constexpr StringPiece kObserverManagerThreadNamePrefix{"ObserverMngr"};
 namespace {
 constexpr size_t kCurrentQueueSize{10 * 1024};
 constexpr size_t kNextQueueSize{10 * 1024};
-}
+} // namespace
 
 class ObserverManager::CurrentQueue {
  public:
@@ -201,5 +201,5 @@ folly::Singleton<ObserverManager> ObserverManager::Singleton::instance(
 std::shared_ptr<ObserverManager> ObserverManager::getInstance() {
   return Singleton::instance.try_get();
 }
-}
-}
+} // namespace observer_detail
+} // namespace folly

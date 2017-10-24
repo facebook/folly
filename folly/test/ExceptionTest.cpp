@@ -90,4 +90,5 @@ TEST(ExceptionTest, Simple) {
                       EIO, "hello world");
 }
 
-}}  // namespaces
+} // namespace test
+} // namespace folly

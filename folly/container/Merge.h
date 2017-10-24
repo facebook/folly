@@ -80,4 +80,4 @@ OutputIt merge(InputIt1 first1, InputIt1 last1,
   return std::copy(first2, last2, d_first);
 }
 
-}
+} // namespace folly

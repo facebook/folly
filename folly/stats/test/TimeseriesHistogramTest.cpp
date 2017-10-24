@@ -41,7 +41,7 @@ const seconds kDurations[] = {
     seconds(3600),
     seconds(0),
 };
-};
+} // namespace IntMTMHTS
 
 namespace IntMHTS {
 enum Levels {
@@ -56,7 +56,7 @@ const seconds kDurations[] = {
     seconds(3600),
     seconds(0),
 };
-};
+} // namespace IntMHTS
 
 typedef std::mt19937 RandomInt32;
 
@@ -64,7 +64,7 @@ using StatsClock = folly::LegacyStatsClock<std::chrono::seconds>;
 StatsClock::time_point mkTimePoint(int value) {
   return StatsClock::time_point(StatsClock::duration(value));
 }
-}
+} // namespace
 
 TEST(TimeseriesHistogram, Percentile) {
   RandomInt32 random(5);

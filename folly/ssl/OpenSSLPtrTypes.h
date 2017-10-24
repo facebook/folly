@@ -106,5 +106,5 @@ using BIGNUMUniquePtr = std::unique_ptr<BIGNUM, BIGNUMDeleter>;
 // SSL and SSL_CTX
 using SSLDeleter = folly::static_function_deleter<SSL, &SSL_free>;
 using SSLUniquePtr = std::unique_ptr<SSL, SSLDeleter>;
-}
-}
+} // namespace ssl
+} // namespace folly

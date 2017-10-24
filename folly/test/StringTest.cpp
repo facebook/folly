@@ -789,7 +789,7 @@ void piecesTest() {
   EXPECT_EQ(blah.size(), 6);
 }
 
-}
+} // namespace
 
 TEST(Split, split_vector) {
   splitTest<std::vector>();
@@ -949,7 +949,7 @@ Expected<StringPiece, ColorErrorCode> parseTo(
   }
   return StringPiece(in.end(), in.end());
 }
-}
+} // namespace my
 
 TEST(Split, fixed_convert_custom) {
   my::Color c1, c2;

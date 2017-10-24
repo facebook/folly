@@ -34,7 +34,7 @@ void dummyCxaBeginCatch(void*) noexcept;
 void dummyCxaRethrow() noexcept;
 void dummyCxaEndCatch() noexcept;
 void dummyRethrowException(std::exception_ptr) noexcept;
-}
+} // namespace detail
 
 using CxaThrowType = decltype(&detail::dummyCxaThrow);
 using CxaBeginCatchType = decltype(&detail::dummyCxaBeginCatch);
@@ -47,5 +47,5 @@ void registerCxaBeginCatchCallback(CxaBeginCatchType callback);
 void registerCxaRethrowCallback(CxaRethrowType callback);
 void registerCxaEndCatchCallback(CxaEndCatchType callback);
 void registerRethrowExceptionCallback(RethrowExceptionType callback);
-}
-}
+} // namespace exception_tracer
+} // namespace folly

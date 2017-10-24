@@ -74,4 +74,4 @@ class StandardLogHandler : public LogHandler {
   std::shared_ptr<LogFormatter> formatter_;
   std::shared_ptr<LogWriter> writer_;
 };
-}
+} // namespace folly

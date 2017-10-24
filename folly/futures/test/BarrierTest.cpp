@@ -168,4 +168,6 @@ TEST(BarrierTest, Random) {
   }
 }
 
-}}}  // namespaces
+} // namespace test
+} // namespace futures
+} // namespace folly

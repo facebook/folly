@@ -57,7 +57,7 @@ class InitChecker {
 };
 
 static InitChecker initChecker;
-}
+} // namespace
 
 namespace {
 int runHelper() {
@@ -83,7 +83,7 @@ int runHelper() {
   // should be able to detect that XLOG(FATAL) never returns.  It shouldn't
   // complain that we don't return an integer here.
 }
-}
+} // namespace
 
 std::string fbLogFatalCheck() {
   folly::Logger logger("some.category");

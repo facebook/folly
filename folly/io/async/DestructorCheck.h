@@ -133,4 +133,4 @@ class DestructorCheck {
   ForwardLink rootGuard_;
 };
 
-}
+} // namespace folly

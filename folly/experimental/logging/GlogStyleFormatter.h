@@ -56,4 +56,4 @@ class GlogStyleFormatter : public LogFormatter {
       const LogMessage& message,
       const LogCategory* handlerCategory) override;
 };
-}
+} // namespace folly

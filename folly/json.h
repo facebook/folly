@@ -53,102 +53,102 @@ namespace folly {
 
 namespace json {
 
-  struct serialization_opts {
-    explicit serialization_opts()
-        : allow_non_string_keys(false),
-          javascript_safe(false),
-          pretty_formatting(false),
-          encode_non_ascii(false),
-          validate_utf8(false),
-          allow_trailing_comma(false),
-          sort_keys(false),
-          skip_invalid_utf8(false),
-          allow_nan_inf(false),
-          double_mode(double_conversion::DoubleToStringConverter::SHORTEST),
-          double_num_digits(0), // ignored when mode is SHORTEST
-          double_fallback(false),
-          parse_numbers_as_strings(false),
-          recursion_limit(100) {}
+struct serialization_opts {
+  explicit serialization_opts()
+      : allow_non_string_keys(false),
+        javascript_safe(false),
+        pretty_formatting(false),
+        encode_non_ascii(false),
+        validate_utf8(false),
+        allow_trailing_comma(false),
+        sort_keys(false),
+        skip_invalid_utf8(false),
+        allow_nan_inf(false),
+        double_mode(double_conversion::DoubleToStringConverter::SHORTEST),
+        double_num_digits(0), // ignored when mode is SHORTEST
+        double_fallback(false),
+        parse_numbers_as_strings(false),
+        recursion_limit(100) {}
 
-    // If true, keys in an object can be non-strings.  (In strict
-    // JSON, object keys must be strings.)  This is used by dynamic's
-    // operator<<.
-    bool allow_non_string_keys;
-
-    /*
-     * If true, refuse to serialize 64-bit numbers that cannot be
-     * precisely represented by fit a double---instead, throws an
-     * exception if the document contains this.
-     */
-    bool javascript_safe;
-
-    // If true, the serialized json will contain space and newlines to
-    // try to be minimally "pretty".
-    bool pretty_formatting;
-
-    // If true, non-ASCII utf8 characters would be encoded as \uXXXX.
-    bool encode_non_ascii;
-
-    // Check that strings are valid utf8
-    bool validate_utf8;
-
-    // Allow trailing comma in lists of values / items
-    bool allow_trailing_comma;
-
-    // Sort keys of all objects before printing out (potentially slow)
-    // using dynamic::operator<.
-    // Has no effect if sort_keys_by is set.
-    bool sort_keys;
-
-    // Sort keys of all objects before printing out (potentially slow)
-    // using the provided less functor.
-    Function<bool(dynamic const&, dynamic const&) const> sort_keys_by;
-
-    // Replace invalid utf8 characters with U+FFFD and continue
-    bool skip_invalid_utf8;
-
-    // true to allow NaN or INF values
-    bool allow_nan_inf;
-
-    // Options for how to print floating point values.  See Conv.h
-    // toAppend implementation for floating point for more info
-    double_conversion::DoubleToStringConverter::DtoaMode double_mode;
-    unsigned int double_num_digits;
-
-    // Fallback to double when a value that looks like integer is too big to
-    // fit in an int64_t. Can result in loss a of precision.
-    bool double_fallback;
-
-    // Do not parse numbers. Instead, store them as strings and leave the
-    // conversion up to the user.
-    bool parse_numbers_as_strings;
-
-    // Recursion limit when parsing.
-    unsigned int recursion_limit;
-  };
+  // If true, keys in an object can be non-strings.  (In strict
+  // JSON, object keys must be strings.)  This is used by dynamic's
+  // operator<<.
+  bool allow_non_string_keys;
 
   /*
-   * Main JSON serialization routine taking folly::dynamic parameters.
-   * For the most common use cases there are simpler functions in the
-   * main folly namespace below.
+   * If true, refuse to serialize 64-bit numbers that cannot be
+   * precisely represented by fit a double---instead, throws an
+   * exception if the document contains this.
    */
-  std::string serialize(dynamic const&, serialization_opts const&);
+  bool javascript_safe;
 
-  /*
-   * Escape a string so that it is legal to print it in JSON text and
-   * append the result to out.
-   */
+  // If true, the serialized json will contain space and newlines to
+  // try to be minimally "pretty".
+  bool pretty_formatting;
 
-  void escapeString(
-      StringPiece input,
-      std::string& out,
-      const serialization_opts& opts);
+  // If true, non-ASCII utf8 characters would be encoded as \uXXXX.
+  bool encode_non_ascii;
 
-  /*
-   * Strip all C99-like comments (i.e. // and / * ... * /)
-   */
-  std::string stripComments(StringPiece jsonC);
-}
+  // Check that strings are valid utf8
+  bool validate_utf8;
+
+  // Allow trailing comma in lists of values / items
+  bool allow_trailing_comma;
+
+  // Sort keys of all objects before printing out (potentially slow)
+  // using dynamic::operator<.
+  // Has no effect if sort_keys_by is set.
+  bool sort_keys;
+
+  // Sort keys of all objects before printing out (potentially slow)
+  // using the provided less functor.
+  Function<bool(dynamic const&, dynamic const&) const> sort_keys_by;
+
+  // Replace invalid utf8 characters with U+FFFD and continue
+  bool skip_invalid_utf8;
+
+  // true to allow NaN or INF values
+  bool allow_nan_inf;
+
+  // Options for how to print floating point values.  See Conv.h
+  // toAppend implementation for floating point for more info
+  double_conversion::DoubleToStringConverter::DtoaMode double_mode;
+  unsigned int double_num_digits;
+
+  // Fallback to double when a value that looks like integer is too big to
+  // fit in an int64_t. Can result in loss a of precision.
+  bool double_fallback;
+
+  // Do not parse numbers. Instead, store them as strings and leave the
+  // conversion up to the user.
+  bool parse_numbers_as_strings;
+
+  // Recursion limit when parsing.
+  unsigned int recursion_limit;
+};
+
+/*
+ * Main JSON serialization routine taking folly::dynamic parameters.
+ * For the most common use cases there are simpler functions in the
+ * main folly namespace below.
+ */
+std::string serialize(dynamic const&, serialization_opts const&);
+
+/*
+ * Escape a string so that it is legal to print it in JSON text and
+ * append the result to out.
+ */
+
+void escapeString(
+    StringPiece input,
+    std::string& out,
+    const serialization_opts& opts);
+
+/*
+ * Strip all C99-like comments (i.e. // and / * ... * /)
+ */
+std::string stripComments(StringPiece jsonC);
+} // namespace json
 
 //////////////////////////////////////////////////////////////////////
 
@@ -177,4 +177,4 @@ std::string toPrettyJson(dynamic const&);
 void PrintTo(const dynamic&, std::ostream*);
 //////////////////////////////////////////////////////////////////////
 
-}
+} // namespace folly

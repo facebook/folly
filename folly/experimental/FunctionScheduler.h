@@ -298,4 +298,4 @@ class FunctionScheduler {
   bool cancellingCurrentFunction_{false};
 };
 
-}
+} // namespace folly

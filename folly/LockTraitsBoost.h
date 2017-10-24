@@ -37,7 +37,7 @@ boost::chrono::duration<Rep, boost::ratio<Num, Denom>> toBoostDuration(
     const std::chrono::duration<Rep, std::ratio<Num, Denom>>& d) {
   return boost::chrono::duration<Rep, boost::ratio<Num, Denom>>(d.count());
 }
-}
+} // namespace detail
 
 /**
  * LockTraits specialization for boost::shared_mutex

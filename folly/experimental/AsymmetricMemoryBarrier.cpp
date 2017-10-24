@@ -78,7 +78,7 @@ void mprotectMembarrier() {
   r = mprotect(dummyPage, 1, PROT_READ);
   checkUnixError(r, "mprotect");
 }
-}
+} // namespace
 
 void asymmetricHeavyBarrier(AMBFlags flags) {
   if (kIsLinux) {
@@ -94,4 +94,4 @@ void asymmetricHeavyBarrier(AMBFlags flags) {
     std::atomic_thread_fence(std::memory_order_seq_cst);
   }
 }
-}
+} // namespace folly

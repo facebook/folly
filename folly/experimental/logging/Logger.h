@@ -125,4 +125,4 @@ class Logger {
  private:
   LogCategory* const category_{nullptr};
 };
-}
+} // namespace folly

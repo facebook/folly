@@ -178,5 +178,5 @@ void Core::removeStaleDependents() {
     }
   });
 }
-}
-}
+} // namespace observer_detail
+} // namespace folly

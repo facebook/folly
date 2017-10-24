@@ -46,4 +46,5 @@ namespace folly { namespace detail {
     const char* file,
     unsigned int line,
     const char* function);
-}}  // namespace folly
+} // namespace detail
+} // namespace folly

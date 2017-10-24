@@ -34,4 +34,4 @@ class ExampleObject {
  private:
   std::string value_;
 };
-}
+} // namespace example

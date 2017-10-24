@@ -102,4 +102,5 @@ const uint8_t kSelectInByte[2048] = {
   8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7
 };
 
-}}
+} // namespace detail
+} // namespace folly

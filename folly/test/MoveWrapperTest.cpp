@@ -50,4 +50,4 @@ TEST(makeMoveWrapper, lvalue_copyable) {
   makeMoveWrapper(p);
 }
 
-} // namespace
+} // namespace folly

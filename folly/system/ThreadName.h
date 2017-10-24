@@ -63,4 +63,4 @@ bool setThreadName(pthread_t pid, StringPiece name);
  * Equivalent to setThreadName(std::this_thread::get_id(), name);
  */
 bool setThreadName(StringPiece name);
-}
+} // namespace folly

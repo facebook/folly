@@ -66,4 +66,4 @@ void SocketPair::closeFD1() {
   }
 }
 
-}
+} // namespace folly

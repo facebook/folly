@@ -203,4 +203,4 @@ class LoggerDB {
 
   static std::atomic<InternalWarningHandler> warningHandler_;
 };
-}
+} // namespace folly

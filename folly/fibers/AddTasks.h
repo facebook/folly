@@ -128,7 +128,7 @@ class TaskIterator {
 
   folly::Try<T> awaitNextResult();
 };
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #include <folly/fibers/AddTasks-inl.h>

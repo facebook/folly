@@ -468,7 +468,7 @@ void runThreads(void *(*mainFunc)(void*)) {
   runThreads(mainFunc, FLAGS_numThreads, nullptr);
 }
 
-}
+} // namespace
 
 TEST(Ahm, collision_test) {
   const int numInserts = 1000000 / 4;
@@ -559,7 +559,7 @@ void* raceInsertRandomThread(void*) {
   return nullptr;
 }
 
-}
+} // namespace
 
 // Test for race conditions when inserting and iterating at the same time and
 // creating multiple submaps.
@@ -638,7 +638,7 @@ void* testEraseEraseThread(void*) {
   return nullptr;
 }
 
-}
+} // namespace
 
 // Here we have a single thread inserting some values, and several threads
 // racing to delete the values in the order they were inserted.
@@ -842,7 +842,7 @@ void loadGlobalQPAhm() {
   EXPECT_EQ(globalQPAHM->size(), FLAGS_numBMElements);
 }
 
-}
+} // namespace
 
 BENCHMARK(st_aha_find, iters) {
   CHECK_LE(iters, FLAGS_numBMElements);

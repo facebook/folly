@@ -105,4 +105,5 @@ folly::Future<bool> Barrier::wait() {
   return future;
 }
 
-}}  // namespaces
+} // namespace futures
+} // namespace folly

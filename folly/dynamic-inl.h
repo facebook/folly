@@ -36,7 +36,7 @@ struct hash<::folly::dynamic> {
   }
 };
 
-}
+} // namespace std
 
 //////////////////////////////////////////////////////////////////////
 
@@ -97,34 +97,37 @@ struct TypeError : std::runtime_error {
 
 namespace detail {
 
-  // This helper is used in destroy() to be able to run destructors on
-  // types like "int64_t" without a compiler error.
-  struct Destroy {
-    template <class T> static void destroy(T* t) { t->~T(); }
-  };
-
-  /*
-   * Helper for implementing numeric conversions in operators on
-   * numbers.  Just promotes to double when one of the arguments is
-   * double, or throws if either is not a numeric type.
-   */
-  template <template <class> class Op>
-  dynamic numericOp(dynamic const& a, dynamic const& b) {
-    if (!a.isNumber() || !b.isNumber()) {
-      throwTypeError_("numeric", a.type(), b.type());
-    }
-    if (a.type() != b.type()) {
-      auto& integ  = a.isInt() ? a : b;
-      auto& nonint = a.isInt() ? b : a;
-      return Op<double>()(to<double>(integ.asInt()), nonint.asDouble());
-    }
-    if (a.isDouble()) {
-      return Op<double>()(a.asDouble(), b.asDouble());
-    }
-    return Op<int64_t>()(a.asInt(), b.asInt());
+// This helper is used in destroy() to be able to run destructors on
+// types like "int64_t" without a compiler error.
+struct Destroy {
+  template <class T>
+  static void destroy(T* t) {
+    t->~T();
   }
+};
 
+/*
+ * Helper for implementing numeric conversions in operators on
+ * numbers.  Just promotes to double when one of the arguments is
+ * double, or throws if either is not a numeric type.
+ */
+template <template <class> class Op>
+dynamic numericOp(dynamic const& a, dynamic const& b) {
+  if (!a.isNumber() || !b.isNumber()) {
+    throwTypeError_("numeric", a.type(), b.type());
+  }
+  if (a.type() != b.type()) {
+    auto& integ = a.isInt() ? a : b;
+    auto& nonint = a.isInt() ? b : a;
+    return Op<double>()(to<double>(integ.asInt()), nonint.asDouble());
+  }
+  if (a.isDouble()) {
+    return Op<double>()(a.asDouble(), b.asDouble());
+  }
+  return Op<int64_t>()(a.asInt(), b.asInt());
 }
+
+} // namespace detail
 
 //////////////////////////////////////////////////////////////////////
 

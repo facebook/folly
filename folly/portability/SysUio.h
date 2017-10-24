@@ -38,4 +38,4 @@ constexpr size_t kIovMax = IOV_MAX;
 #else
 constexpr size_t kIovMax = UIO_MAXIOV;
 #endif
-}
+} // namespace folly

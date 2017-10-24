@@ -273,5 +273,5 @@ _128_bits_at_a_time:
 }
 
 #endif
-}
-} // namespace
+} // namespace detail
+} // namespace folly

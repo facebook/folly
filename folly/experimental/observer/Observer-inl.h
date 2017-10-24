@@ -72,5 +72,5 @@ const Snapshot<T>& TLObserver<T>::getSnapshotRef() const {
 
   return snapshot;
 }
-}
-}
+} // namespace observer
+} // namespace folly

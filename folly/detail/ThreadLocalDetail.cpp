@@ -305,7 +305,7 @@ class AtForkList {
 #endif
   }
 };
-}
+} // namespace
 
 void StaticMetaBase::initAtFork() {
   AtForkList::instance();
@@ -322,4 +322,5 @@ void StaticMetaBase::registerAtFork(
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;
-}}
+} // namespace threadlocal_detail
+} // namespace folly

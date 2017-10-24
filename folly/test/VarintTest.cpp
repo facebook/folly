@@ -195,7 +195,8 @@ BENCHMARK(VarintDecoding, iters) {
 }
 
 } // namespace
-}}  // namespaces
+} // namespace test
+} // namespace folly
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);

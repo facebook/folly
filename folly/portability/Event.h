@@ -63,4 +63,4 @@ folly_event_set(event* e, int fd, short s, EventSetCallback f, void* arg) {
   auto lfd = getLibeventFd(fd);
   event_set(e, lfd, s, f, arg);
 }
-}
+} // namespace folly

@@ -73,4 +73,4 @@ std::string LoggingConfigError::computeMessage(const vector<string>& errors) {
   }
   return msg;
 }
-}
+} // namespace folly

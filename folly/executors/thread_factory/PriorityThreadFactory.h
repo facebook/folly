@@ -57,4 +57,4 @@ class PriorityThreadFactory : public ThreadFactory {
   int priority_;
 };
 
-} // folly
+} // namespace folly

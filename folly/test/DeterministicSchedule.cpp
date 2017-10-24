@@ -277,8 +277,8 @@ void DeterministicSchedule::wait(sem_t* sem) {
     // we're not busy waiting because this is a deterministic schedule
   }
 }
-}
-}
+} // namespace test
+} // namespace folly
 
 namespace folly {
 namespace detail {
@@ -382,7 +382,7 @@ int Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
   DeterministicSchedule::afterSharedAccess();
   return rv;
 }
-}
+} // namespace detail
 
 template <>
 CacheLocality const& CacheLocality::system<test::DeterministicAtomic>() {
@@ -394,4 +394,4 @@ template <>
 Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc() {
   return &detail::DeterministicSchedule::getcpu;
 }
-}
+} // namespace folly

@@ -60,4 +60,5 @@ struct IndexableTraitsAssoc : public FormatTraitsBase {
   }
 };
 
-}}  // namespaces
+} // namespace detail
+} // namespace folly

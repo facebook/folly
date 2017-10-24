@@ -72,7 +72,7 @@ class CallbackLifetimeTest : public testing::Test {
 
   TestExecutor executor{2}; // need at least 2 threads for internal futures
 };
-}
+} // namespace
 
 TEST_F(CallbackLifetimeTest, thenReturnsValue) {
   auto c = mkC();

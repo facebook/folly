@@ -179,4 +179,4 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
 
   folly::Synchronized<LoopCallbackList> onDestructionCallbacks_;
 };
-}
+} // namespace folly

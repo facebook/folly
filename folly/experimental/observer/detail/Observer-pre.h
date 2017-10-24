@@ -41,5 +41,5 @@ using ResultOf =
 template <typename F>
 using ResultOfUnwrapSharedPtr =
     typename UnwrapSharedPtr<typename std::result_of<F()>::type>::type;
-}
-}
+} // namespace observer_detail
+} // namespace folly

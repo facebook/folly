@@ -256,4 +256,4 @@ class LogCategory {
    */
   std::vector<std::atomic<LogLevel>*> xlogLevels_;
 };
-}
+} // namespace folly

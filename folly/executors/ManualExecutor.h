@@ -154,4 +154,4 @@ namespace folly {
     TimePoint now_ = TimePoint::min();
   };
 
-}
+  } // namespace folly

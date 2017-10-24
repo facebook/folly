@@ -74,4 +74,5 @@ struct GivesZeroFilledMemory : public std::false_type {};
 template <>
 struct GivesZeroFilledMemory<MMapAlloc> : public std::true_type{};
 
-}}
+} // namespace detail
+} // namespace folly

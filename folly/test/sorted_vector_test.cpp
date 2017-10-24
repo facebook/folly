@@ -76,7 +76,7 @@ struct CountCopyCtor {
   int count_;
 };
 
-}
+} // namespace
 
 TEST(SortedVectorTypes, SimpleSetTest) {
   sorted_vector_set<int> s;

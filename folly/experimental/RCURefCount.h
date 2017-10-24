@@ -167,4 +167,4 @@ class RCURefCount {
   std::atomic<int64_t> globalCount_{1};
 };
 
-}
+} // namespace folly

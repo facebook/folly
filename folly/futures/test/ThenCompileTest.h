@@ -95,4 +95,4 @@ class SomeClass {
   }
 };
 
-}
+} // namespace folly

@@ -58,4 +58,4 @@ class ThreadPoolListHook {
   ThreadPoolListHook();
 };
 
-} // folly
+} // namespace folly

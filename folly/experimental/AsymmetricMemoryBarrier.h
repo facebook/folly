@@ -36,4 +36,4 @@ FOLLY_ALWAYS_INLINE void asymmetricLightBarrier() {
 }
 
 void asymmetricHeavyBarrier(AMBFlags flags = AMBFlags::NORMAL);
-}
+} // namespace folly

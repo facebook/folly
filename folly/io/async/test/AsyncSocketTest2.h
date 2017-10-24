@@ -220,5 +220,5 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
 
   std::deque<EventInfo> events_;
 };
-}
-}
+} // namespace test
+} // namespace folly

@@ -61,4 +61,4 @@ void VirtualEventBase::runOnDestruction(EventBase::LoopCallback* callback) {
     callbacks.push_back(*callback);
   });
 }
-}
+} // namespace folly

@@ -434,7 +434,7 @@ TEST(ExceptionWrapper, with_exception_deduction_returning) {
 namespace {
 template <typename T>
 T& r_to_l(T v) { return std::ref(v); }
-}
+} // namespace
 
 TEST(ExceptionWrapper, with_exception_deduction_functor_lvalue) {
   auto ew = make_exception_wrapper<std::runtime_error>("hi");
@@ -501,7 +501,7 @@ exception_wrapper testNonStdException() {
     return exception_wrapper{std::current_exception(), e};
   }
 }
-}
+} // namespace
 
 TEST(ExceptionWrapper, base_derived_non_std_exception_test) {
   auto ew = testNonStdException();
@@ -519,7 +519,7 @@ struct BigRuntimeError : std::runtime_error {
 struct BigNonStdError {
   char data_[sizeof(exception_wrapper) + 1]{};
 };
-}
+} // namespace
 
 TEST(ExceptionWrapper, handle_std_exception) {
   auto ep = std::make_exception_ptr(std::runtime_error{"hello world"});

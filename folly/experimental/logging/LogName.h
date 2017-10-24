@@ -84,4 +84,4 @@ class LogName {
     }
   };
 };
-}
+} // namespace folly

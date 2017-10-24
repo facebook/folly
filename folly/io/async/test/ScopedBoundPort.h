@@ -57,4 +57,4 @@ class ScopedBoundPort {
   std::unique_ptr<ScopedEventBaseThread> ebth_;
   std::shared_ptr<AsyncServerSocket> sock_;
 };
-}
+} // namespace folly

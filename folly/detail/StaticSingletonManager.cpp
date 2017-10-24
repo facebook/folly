@@ -23,5 +23,5 @@ StaticSingletonManager& StaticSingletonManager::instance() {
   static StaticSingletonManager* instance = new StaticSingletonManager();
   return *instance;
 }
-}
-}
+} // namespace detail
+} // namespace folly

@@ -26,7 +26,7 @@ using namespace folly::ssl;
 namespace {
 
 class OpenSSLHashTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(OpenSSLHashTest, sha256) {
   IOBuf buf;

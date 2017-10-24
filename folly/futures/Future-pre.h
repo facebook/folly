@@ -158,4 +158,4 @@ struct Extract<R (&)(Args...)> {
 
 class Timekeeper;
 
-} // namespace
+} // namespace folly

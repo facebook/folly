@@ -1125,7 +1125,7 @@ class CustomCodec : public Codec {
   std::string prefix_;
   std::unique_ptr<Codec> codec_;
 };
-}
+} // namespace
 
 TEST_P(AutomaticCodecTest, CustomCodec) {
   const uint64_t length = 42;

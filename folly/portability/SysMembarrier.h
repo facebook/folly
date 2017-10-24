@@ -21,5 +21,5 @@ namespace detail {
 
 int sysMembarrier();
 bool sysMembarrierAvailable();
-}
-}
+} // namespace detail
+} // namespace folly

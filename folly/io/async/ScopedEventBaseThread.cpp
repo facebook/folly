@@ -71,4 +71,4 @@ ScopedEventBaseThread::~ScopedEventBaseThread() {
   th_.join();
 }
 
-}
+} // namespace folly

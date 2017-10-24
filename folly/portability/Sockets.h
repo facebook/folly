@@ -215,9 +215,9 @@ int setsockopt(
     const char* optval,
     socklen_t optlen);
 #endif
-}
-}
-}
+} // namespace sockets
+} // namespace portability
+} // namespace folly
 
 #ifdef _WIN32
 // Add our helpers to the overload set.

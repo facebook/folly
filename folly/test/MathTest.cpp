@@ -146,7 +146,7 @@ void runDivTests() {
     }
   }
 }
-}
+} // namespace
 
 TEST(Bits, divTestInt8) {
   runDivTests<int8_t, int8_t, int64_t>();

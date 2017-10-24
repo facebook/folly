@@ -213,7 +213,7 @@ struct DtorChecker {
 
 unsigned int DtorChecker::numInstances = 0;
 
-}
+} // namespace
 
 //////////////////////////////////////////////////////////////////////
 

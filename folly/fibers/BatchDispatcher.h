@@ -135,5 +135,5 @@ class BatchDispatcher {
   ExecutorT& executor_;
   std::shared_ptr<DispatchState> state_;
 };
-}
-}
+} // namespace fibers
+} // namespace folly

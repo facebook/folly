@@ -88,4 +88,4 @@ TEST(AsyncSocketTest, duplicateBind) {
   EXPECT_THROW(server2->bind(address.getPort()), std::exception);
 }
 
-} // namespace
+} // namespace folly

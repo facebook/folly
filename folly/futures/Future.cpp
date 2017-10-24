@@ -33,7 +33,7 @@ template class Future<int>;
 template class Future<int64_t>;
 template class Future<std::string>;
 template class Future<double>;
-}
+} // namespace folly
 
 namespace folly { namespace futures {
 
@@ -51,4 +51,5 @@ Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   return tk->after(dur);
 }
 
-}}
+} // namespace futures
+} // namespace folly

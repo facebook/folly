@@ -1370,8 +1370,8 @@ constexpr Range<wchar_t const*> operator"" _sp(
     size_t len) noexcept {
   return Range<wchar_t const*>(str, len);
 }
-} // inline namespace string_piece_literals
-} // inline namespace literals
+} // namespace string_piece_literals
+} // namespace literals
 
 } // namespace folly
 

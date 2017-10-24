@@ -23,5 +23,5 @@ namespace folly {
 namespace fibers {
 
 typedef Baton GenericBaton;
-}
-}
+} // namespace fibers
+} // namespace folly

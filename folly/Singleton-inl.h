@@ -296,6 +296,6 @@ void SingletonHolder<T>::createInstance() {
   vault_.creationOrder_.wlock()->push_back(type());
 }
 
-}
+} // namespace detail
 
-}
+} // namespace folly

@@ -187,9 +187,9 @@ const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r);
 // indicates it isn't supported.
 #define OPENSSL_NO_SSL2
 #endif
-}
-}
-}
+} // namespace ssl
+} // namespace portability
+} // namespace folly
 
 FOLLY_PUSH_WARNING
 #if __CLANG_PREREQ(3, 0)

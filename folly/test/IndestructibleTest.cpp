@@ -47,7 +47,7 @@ struct Magic {
 };
 
 class IndestructibleTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(IndestructibleTest, access) {
   static const Indestructible<map<string, int>> data{

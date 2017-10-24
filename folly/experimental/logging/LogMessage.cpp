@@ -131,4 +131,4 @@ void LogMessage::sanitizeMessage() {
     }
   }
 }
-}
+} // namespace folly

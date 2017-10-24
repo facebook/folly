@@ -128,4 +128,4 @@ class RequestContextScopeGuard {
     RequestContext::setContext(std::move(prev_));
   }
 };
-}
+} // namespace folly

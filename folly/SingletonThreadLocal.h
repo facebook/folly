@@ -92,4 +92,4 @@ class SingletonThreadLocal {
 
   SingletonT singleton_;
 };
-}
+} // namespace folly

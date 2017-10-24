@@ -69,4 +69,4 @@ class ScopedEventBaseThread {
   folly::Baton<> stop_;
 };
 
-}
+} // namespace folly

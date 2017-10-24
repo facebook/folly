@@ -31,7 +31,7 @@ class TestSignalHandler : public AsyncSignalHandler {
 
   bool called{false};
 };
-}
+} // namespace
 
 TEST(AsyncSignalHandler, basic) {
   EventBase evb;

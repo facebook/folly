@@ -38,4 +38,4 @@ std::string loggingFormatPrintf(const char* format, ...) noexcept {
         "error formatting printf-style log message: ", format);
   }
 }
-}
+} // namespace folly

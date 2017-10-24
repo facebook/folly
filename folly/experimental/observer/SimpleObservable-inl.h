@@ -78,5 +78,5 @@ Observer<T> SimpleObservable<T>::getObserver() {
   });
   return *observer_;
 }
-}
-}
+} // namespace observer
+} // namespace folly

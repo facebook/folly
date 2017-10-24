@@ -34,7 +34,7 @@ class SparseByteSetTest : public testing::Test {
   SparseByteSet s;
 };
 
-}
+} // namespace
 
 TEST_F(SparseByteSetTest, empty) {
   for (auto c = lims::min(); c < lims::max(); ++c) {

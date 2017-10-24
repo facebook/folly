@@ -64,5 +64,5 @@ class IntervalRateLimiter : public RateLimiter {
   // since time_point's constructor is not noexcept
   std::atomic<std::chrono::steady_clock::rep> timestamp_;
 };
-}
-}
+} // namespace logging
+} // namespace folly

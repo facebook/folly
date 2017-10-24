@@ -124,4 +124,4 @@ inline constexpr bool isLogLevelFatal(LogLevel level) {
   return folly::kIsDebug ? (level >= LogLevel::DFATAL)
                          : (level >= LogLevel::FATAL);
 }
-}
+} // namespace folly

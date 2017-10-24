@@ -56,4 +56,4 @@ namespace folly {
        return std::chrono::steady_clock::now();
      }
   };
-}
+  } // namespace folly

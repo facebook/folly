@@ -105,4 +105,4 @@ class UndelayedDestruction : public TDD {
   UndelayedDestruction& operator=(UndelayedDestruction const &) = delete;
 };
 
-}
+} // namespace folly

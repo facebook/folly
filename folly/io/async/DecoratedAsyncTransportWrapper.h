@@ -195,4 +195,4 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
   typename T::UniquePtr transport_;
 };
 
-}
+} // namespace folly

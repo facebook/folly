@@ -146,4 +146,4 @@ struct GoogleLogger final {
     }
   }
 };
-}
+} // namespace folly

@@ -35,4 +35,4 @@ namespace folly {
 ///   futures::sleep(std::chrono::seconds(1));
 using Duration = std::chrono::milliseconds;
 
-}
+} // namespace folly

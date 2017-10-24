@@ -128,7 +128,7 @@ struct SavedState {
 };
 SavedState disableInvalidParameters();
 void enableInvalidParameters(SavedState state);
-}
+} // namespace detail
 
 // Ok, so fun fact: The CRT on windows will actually abort
 // on certain failed parameter validation checks in debug

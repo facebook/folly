@@ -62,7 +62,7 @@ class EventBaseLocalBaseBase {
   virtual void onEventBaseDestruction(EventBase& evb) = 0;
   virtual ~EventBaseLocalBaseBase() = default;
 };
-}
+} // namespace detail
 template <typename T>
 class EventBaseLocal;
 

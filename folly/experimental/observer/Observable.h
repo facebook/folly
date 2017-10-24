@@ -54,7 +54,7 @@ class ObserverCreator {
 
   std::shared_ptr<Context> context_;
 };
-}
-}
+} // namespace observer
+} // namespace folly
 
 #include <folly/experimental/observer/Observable-inl.h>

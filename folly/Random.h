@@ -294,6 +294,6 @@ inline uint32_t randomNumberSeed() {
   return Random::rand32();
 }
 
-}
+} // namespace folly
 
 #include <folly/Random-inl.h>

@@ -381,7 +381,7 @@ class XlogCategoryInfo<false> {
  * XLOG_SET_CATEGORY_NAME() has not been used.
  */
 std::string getXlogCategoryNameForFile(folly::StringPiece filename);
-}
+} // namespace folly
 
 /*
  * We intentionally use an unnamed namespace inside a header file here.
@@ -440,5 +440,5 @@ constexpr inline bool isXlogCategoryOverridden(T) {
  * statement.
  */
 ::folly::XlogFileScopeInfo xlogFileScopeInfo;
-}
-}
+} // namespace xlog_detail
+} // namespace

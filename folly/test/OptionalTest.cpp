@@ -663,4 +663,4 @@ TEST(Optional, Hash) {
   std::hash<Optional<int>>()(none);
   std::hash<Optional<int>>()(3);
 }
-}
+} // namespace folly

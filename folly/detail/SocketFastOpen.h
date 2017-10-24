@@ -44,5 +44,5 @@ int tfo_enable(int sockfd, size_t max_queue_size);
  * Check if TFO succeeded in being used.
  */
 bool tfo_succeeded(int sockfd);
-}
-}
+} // namespace detail
+} // namespace folly

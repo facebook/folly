@@ -45,7 +45,7 @@ AreWithinSecs(T1 val1, T2 val2, std::chrono::seconds acceptableDeltaSecs) {
         << acceptableDeltaSecs.count() << " secs of each other";
   }
 }
-}
+} // namespace test
 
 // Define a PrintTo() function for StringPiece, so that gtest checks
 // will print it as a string.  Without this gtest identifies StringPiece as a
@@ -58,4 +58,4 @@ inline void PrintTo(StringPiece sp, ::std::ostream* os) {
   // standard string types.
   *os << ::testing::PrintToString(sp.str());
 }
-}
+} // namespace folly

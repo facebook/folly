@@ -1168,7 +1168,7 @@ bool operator==(const DereferenceWrapper& a, const DereferenceWrapper& b) {
 void PrintTo(const DereferenceWrapper& a, std::ostream* o) {
   *o << "Wrapper{\"" << cEscape<string>(a.data) << "\"}";
 }
-}
+} // namespace
 
 TEST(Gen, DereferenceWithLValueRef) {
   auto original = vector<DereferenceWrapper>{{"foo"}, {"bar"}};

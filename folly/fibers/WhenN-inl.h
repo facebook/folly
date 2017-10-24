@@ -204,5 +204,5 @@ typename std::enable_if<
   assert(result.size() == 1);
   return std::move(result[0]);
 }
-}
-}
+} // namespace fibers
+} // namespace folly

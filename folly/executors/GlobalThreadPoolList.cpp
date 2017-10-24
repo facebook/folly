@@ -215,4 +215,4 @@ void ThreadPoolListHook::registerThread() {
       this, std::this_thread::get_id());
 }
 
-} // folly
+} // namespace folly

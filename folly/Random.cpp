@@ -150,4 +150,4 @@ ThreadLocalPRNG::ThreadLocalPRNG() {
 uint32_t ThreadLocalPRNG::getImpl(LocalInstancePRNG* local) {
   return local->rng();
 }
-}
+} // namespace folly

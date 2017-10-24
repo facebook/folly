@@ -247,8 +247,8 @@ fbstring toBser(dynamic const& dyn, const serialization_opts& opts) {
   auto buf = toBserIOBuf(dyn, opts);
   return buf->moveToFbString();
 }
-}
-}
+} // namespace bser
+} // namespace folly
 
 /* vim:ts=2:sw=2:et:
  */

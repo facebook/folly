@@ -83,4 +83,4 @@ class LogStream : public std::ostream {
   LogStreamBuffer buffer_;
   LogStreamProcessor* const processor_;
 };
-}
+} // namespace folly

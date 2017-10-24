@@ -210,4 +210,4 @@ class TLRefCount {
   std::shared_ptr<void> collectGuard_;
 };
 
-}
+} // namespace folly

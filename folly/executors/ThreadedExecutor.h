@@ -96,4 +96,4 @@ class ThreadedExecutor : public virtual folly::Executor {
   std::mutex finishedm_;
   std::deque<std::thread::id> finished_;
 };
-}
+} // namespace folly

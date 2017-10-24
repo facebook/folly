@@ -993,5 +993,5 @@ inline hazptr_tls_life::~hazptr_tls_life() {
   tls_state_ = TLS_DESTROYED;
 }
 
-} // namespace folly
 } // namespace hazptr
+} // namespace folly

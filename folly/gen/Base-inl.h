@@ -2332,7 +2332,7 @@ const T& operator|(const Optional<T>& opt, const Unwrap&) {
   return opt.value();
 }
 
-} //::detail
+} // namespace detail
 
 /**
  * VirtualGen<T> - For wrapping template types in simple polymorphic wrapper.

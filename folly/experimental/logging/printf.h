@@ -35,7 +35,7 @@ namespace folly {
 std::string loggingFormatPrintf(
     FOLLY_PRINTF_FORMAT const char* format,
     ...) noexcept FOLLY_PRINTF_FORMAT_ATTR(1, 2);
-}
+} // namespace folly
 
 /**
  * Log a message to the specified logger using a printf-style format string.

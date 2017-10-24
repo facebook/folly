@@ -151,4 +151,4 @@ rvalue_reference_wrapper<T> rref(T&& value) noexcept {
 }
 template <typename T>
 rvalue_reference_wrapper<T> rref(T&) noexcept = delete;
-}
+} // namespace folly

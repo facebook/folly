@@ -83,7 +83,7 @@ BENCHMARK(TLRefCountFourThreads, n) {
   benchmark<TLRefCount, 4>(n);
 }
 
-}
+} // namespace folly
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

@@ -385,4 +385,4 @@ class ParameterizedTokenBucket {
 
 using TokenBucket = ParameterizedTokenBucket<>;
 using DynamicTokenBucket = ParameterizedDynamicTokenBucket<>;
-}
+} // namespace folly

@@ -80,4 +80,4 @@ class LogHandler {
    */
   virtual void flush() = 0;
 };
-}
+} // namespace folly

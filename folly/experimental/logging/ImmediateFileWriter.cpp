@@ -49,4 +49,4 @@ void ImmediateFileWriter::writeMessage(
 }
 
 void ImmediateFileWriter::flush() {}
-}
+} // namespace folly

@@ -183,4 +183,4 @@ struct ProducerConsumerQueue {
   char pad1_[CacheLocality::kFalseSharingRange - sizeof(writeIndex_)];
 };
 
-}
+} // namespace folly

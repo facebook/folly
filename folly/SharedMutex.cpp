@@ -20,4 +20,4 @@ namespace folly {
 // Explicitly instantiate SharedMutex here:
 template class SharedMutexImpl<true>;
 template class SharedMutexImpl<false>;
-}
+} // namespace folly

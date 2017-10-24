@@ -174,4 +174,5 @@ TEST(ProgramOptionsTest, GNUStyleSubCommandUnrecognizedOptionFirst) {
           "-xy"}));
 }
 
-}}  // namespaces
+} // namespace test
+} // namespace folly

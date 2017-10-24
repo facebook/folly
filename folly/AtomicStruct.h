@@ -27,7 +27,7 @@ namespace folly {
 
 namespace detail {
 template <int N> struct AtomicStructIntPick {};
-}
+} // namespace detail
 
 /// AtomicStruct<T> work like C++ atomics, but can be used on any POD
 /// type <= 8 bytes.

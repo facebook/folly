@@ -284,4 +284,4 @@ struct PicoSpinLock {
   }
 };
 
-}
+} // namespace folly

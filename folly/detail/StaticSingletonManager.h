@@ -84,5 +84,5 @@ template <typename T, typename Tag>
 inline T* createGlobal() {
   return createGlobal<T, Tag>([]() { return new T(); });
 }
-}
-}
+} // namespace detail
+} // namespace folly

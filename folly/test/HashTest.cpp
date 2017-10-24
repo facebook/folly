@@ -360,7 +360,7 @@ template <class T>
 size_t hash_vector(const std::vector<T>& v) {
   return hash_range(v.begin(), v.end());
 }
-}
+} // namespace
 
 TEST(Hash, hash_range) {
   EXPECT_EQ(hash_vector<int32_t>({1, 2}), hash_vector<int16_t>({1, 2}));

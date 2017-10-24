@@ -58,7 +58,7 @@ template <class Mutex>
 void testConstCopy();
 template <class Mutex>
 void testInPlaceConstruction();
-}
-}
+} // namespace sync_tests
+} // namespace folly
 
 #include <folly/test/SynchronizedTestLib-inl.h>

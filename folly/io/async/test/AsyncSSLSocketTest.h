@@ -1502,4 +1502,4 @@ class EventBaseAborter : public AsyncTimeout {
   EventBase* eventBase_;
 };
 
-}
+} // namespace folly

@@ -19,4 +19,4 @@
 
 namespace folly {
 template class MultiLevelTimeSeries<int64_t>;
-}
+} // namespace folly

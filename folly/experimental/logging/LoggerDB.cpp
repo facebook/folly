@@ -55,7 +55,7 @@ class LoggerDBSingleton {
  private:
   LoggerDB* db_;
 };
-}
+} // namespace
 
 LoggerDB* LoggerDB::get() {
   // Intentionally leaky singleton
@@ -316,4 +316,4 @@ void LoggerDB::defaultInternalWarningImpl(
     folly::writeFull(STDERR_FILENO, fullMsg.data(), fullMsg.size());
   }
 }
-}
+} // namespace folly

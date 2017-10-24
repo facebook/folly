@@ -375,4 +375,5 @@ void bmJumpTo(const List& list, const std::vector<uint32_t>& data,
   }
 }
 
-}}  // namespaces
+} // namespace compression
+} // namespace folly

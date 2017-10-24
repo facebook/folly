@@ -133,7 +133,7 @@ inline void enforceWhitespace(StringPiece sp) {
     throw makeConversionError(err, sp);
   }
 }
-}
+} // namespace detail
 
 /**
  * The identity conversion function.
@@ -283,7 +283,7 @@ unsafeTelescope128(char * buffer, size_t room, unsigned __int128 x) {
   return p;
 }
 
-}
+} // namespace detail
 #endif
 
 /**

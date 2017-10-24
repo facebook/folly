@@ -396,4 +396,4 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor3) {
   sock_->checkEor(0, 0);
 }
 
-}
+} // namespace folly

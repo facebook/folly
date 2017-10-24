@@ -164,4 +164,5 @@ FutexResult Futex<EmulatedFutexAtomic>::futexWaitImpl(
       std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
       uint32_t waitMask);
 
-}}
+} // namespace detail
+} // namespace folly

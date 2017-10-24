@@ -30,7 +30,7 @@ void init() {
     dst[i] = static_cast<char>(255 - i);
   }
 }
-}
+} // namespace
 
 TEST(memcpy, zero_len)
     FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("nonnull-attribute") {

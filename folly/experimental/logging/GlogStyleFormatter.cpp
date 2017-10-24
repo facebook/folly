@@ -36,7 +36,7 @@ StringPiece getGlogLevelName(LogLevel level) {
   }
   return "CRITICAL";
 }
-}
+} // namespace
 
 namespace folly {
 
@@ -126,4 +126,4 @@ std::string GlogStyleFormatter::formatMessage(
 
   return buffer;
 }
-}
+} // namespace folly

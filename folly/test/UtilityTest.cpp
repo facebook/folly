@@ -22,7 +22,7 @@
 namespace {
 
 class UtilityTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(UtilityTest, copy) {
   struct MyData {};

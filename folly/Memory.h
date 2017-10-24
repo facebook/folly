@@ -146,7 +146,7 @@ namespace detail {
 inline void SysFree(void* p) {
   ::free(p);
 }
-}
+} // namespace detail
 
 using SysBufferDeleter = static_function_deleter<void, &detail::SysFree>;
 using SysBufferUniquePtr = std::unique_ptr<void, SysBufferDeleter>;

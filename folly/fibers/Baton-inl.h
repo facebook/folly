@@ -109,5 +109,5 @@ bool Baton::timed_wait(const std::chrono::time_point<C, D>& timeout) {
     return timed_wait(TimeoutController::Duration(0));
   }
 }
-}
-}
+} // namespace fibers
+} // namespace folly

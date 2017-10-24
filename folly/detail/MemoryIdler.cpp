@@ -167,4 +167,5 @@ void MemoryIdler::unmapUnusedStack(size_t /* retain */) {}
 
 #endif
 
-}}
+} // namespace detail
+} // namespace folly

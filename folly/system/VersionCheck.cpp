@@ -20,4 +20,5 @@ namespace folly { namespace detail {
 
 FOLLY_VERSION_CHECK(folly, FOLLY_VERSION)
 
-}}  // namespaces
+} // namespace detail
+} // namespace folly

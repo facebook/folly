@@ -74,4 +74,4 @@ class CachelinePadded {
   T inner_;
   char paddingPost_[paddingSize()];
 };
-}
+} // namespace folly

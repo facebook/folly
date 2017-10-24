@@ -37,4 +37,5 @@ void atomic_hash_spin_wait(Cond condition) {
   }
 }
 
-}} // namespace folly::detail
+} // namespace detail
+} // namespace folly

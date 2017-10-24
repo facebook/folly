@@ -70,4 +70,5 @@ void EventBaseLocalBase::setVoid(EventBase& evb, std::shared_ptr<void>&& ptr) {
 }
 
 std::atomic<uint64_t> EventBaseLocalBase::keyCounter_{0};
-}}
+} // namespace detail
+} // namespace folly

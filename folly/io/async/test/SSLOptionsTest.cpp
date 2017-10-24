@@ -37,4 +37,4 @@ TEST_F(SSLOptionsTest, TestSetCommonCipherList) {
   }
   ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
 }
-}
+} // namespace folly

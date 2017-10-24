@@ -46,7 +46,7 @@ Singleton<std::shared_ptr<IOThreadPoolExecutor>> globalIOThreadPool([] {
           sysconf(_SC_NPROCESSORS_ONLN),
           std::make_shared<NamedThreadFactory>("GlobalIOThreadPool")));
 });
-}
+} // namespace
 
 namespace folly {
 

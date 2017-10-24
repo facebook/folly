@@ -74,4 +74,4 @@ class SpinLockGuardImpl : private boost::noncopyable {
 
 typedef SpinLockGuardImpl<SpinLock> SpinLockGuard;
 
-}
+} // namespace folly

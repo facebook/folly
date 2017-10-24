@@ -1322,7 +1322,7 @@ void zstdFreeCStream(ZSTD_CStream* zcs) {
 void zstdFreeDStream(ZSTD_DStream* zds) {
   ZSTD_freeDStream(zds);
 }
-}
+} // namespace
 
 /**
  * ZSTD compression

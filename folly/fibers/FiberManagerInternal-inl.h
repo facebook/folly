@@ -541,5 +541,5 @@ typename FirstArgOf<F>::type::value_type inline await(F&& func) {
 
   return Promise<Result, BatonT>::await(std::forward<F>(func));
 }
-}
-}
+} // namespace fibers
+} // namespace folly

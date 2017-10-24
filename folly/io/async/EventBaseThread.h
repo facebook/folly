@@ -51,4 +51,4 @@ class EventBaseThread {
   EventBaseManager* ebm_;
   std::unique_ptr<ScopedEventBaseThread> th_;
 };
-}
+} // namespace folly

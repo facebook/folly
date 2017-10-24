@@ -51,4 +51,4 @@ class SocketPair {
   int fds_[2];
 };
 
-}
+} // namespace folly

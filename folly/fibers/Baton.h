@@ -185,7 +185,7 @@ class Baton {
     } futex_;
   };
 };
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #include <folly/fibers/Baton-inl.h>

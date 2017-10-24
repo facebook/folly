@@ -97,4 +97,5 @@ bool crc32_hw_supported();
  */
 uint32_t
 crc32_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
-}} // folly::detail
+} // namespace detail
+} // namespace folly

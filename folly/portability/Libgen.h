@@ -19,8 +19,8 @@
 namespace folly {
 namespace portability {
 char* internal_dirname(char* path);
-}
-}
+} // namespace portability
+} // namespace folly
 
 #ifndef _WIN32
 #include <libgen.h>

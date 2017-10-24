@@ -447,7 +447,7 @@ TEST(Singleton, SingletonConcurrencyStress) {
 
 namespace {
 struct EagerInitSyncTag {};
-}
+} // namespace
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonEagerInitSync = Singleton<T, Tag, EagerInitSyncTag>;
 TEST(Singleton, SingletonEagerInitSync) {
@@ -465,7 +465,7 @@ TEST(Singleton, SingletonEagerInitSync) {
 
 namespace {
 struct EagerInitAsyncTag {};
-}
+} // namespace
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonEagerInitAsync = Singleton<T, Tag, EagerInitAsyncTag>;
 TEST(Singleton, SingletonEagerInitAsync) {
@@ -522,7 +522,7 @@ class TestEagerInitParallelExecutor : public folly::Executor {
 
 namespace {
 struct EagerInitParallelTag {};
-}
+} // namespace
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonEagerInitParallel = Singleton<T, Tag, EagerInitParallelTag>;
 TEST(Singleton, SingletonEagerInitParallel) {

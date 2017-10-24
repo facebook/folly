@@ -142,7 +142,7 @@ struct make_seq<0> {
   template <typename S0, typename S1>
   using apply = S0;
 };
-}
+} // namespace utility_detail
 
 #if __cpp_lib_integer_sequence || _MSC_VER
 

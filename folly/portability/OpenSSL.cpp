@@ -401,6 +401,6 @@ const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r) {
 }
 
 #endif // !FOLLY_OPENSSL_IS_110
-}
-}
-}
+} // namespace ssl
+} // namespace portability
+} // namespace folly

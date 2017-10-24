@@ -633,7 +633,8 @@ struct PthreadKeyUnregisterTester {
   PthreadKeyUnregister p;
   constexpr PthreadKeyUnregisterTester() = default;
 };
-}}
+} // namespace threadlocal_detail
+} // namespace folly
 
 TEST(ThreadLocal, UnregisterClassHasConstExprCtor) {
   folly::threadlocal_detail::PthreadKeyUnregisterTester x;

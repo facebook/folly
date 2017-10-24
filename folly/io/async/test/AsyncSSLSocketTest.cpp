@@ -2267,7 +2267,7 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
 
 #endif
 
-} // namespace
+} // namespace folly
 
 #ifdef SIGPIPE
 ///////////////////////////////////////////////////////////////////////////

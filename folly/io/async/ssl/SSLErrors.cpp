@@ -98,7 +98,7 @@ AsyncSocketException::AsyncSocketExceptionType exTypefromSSLErr(SSLError err) {
       return AsyncSocketException::SSL_ERROR;
   }
 }
-}
+} // namespace
 
 namespace folly {
 
@@ -127,4 +127,4 @@ SSLException::SSLException(SSLError error)
           getSSLErrorString(error).str(),
           0),
       sslError(error) {}
-}
+} // namespace folly

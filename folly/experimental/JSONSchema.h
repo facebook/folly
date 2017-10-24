@@ -69,5 +69,5 @@ std::unique_ptr<Validator> makeValidator(const dynamic& schema);
  * this before you use makeValidator().
  */
 std::shared_ptr<Validator> makeSchemaValidator();
-}
-}
+} // namespace jsonschema
+} // namespace folly

@@ -237,4 +237,4 @@ TEST(RWSpinLock, concurrent_holder_test) {
     << "; upgrades: " << upgrades.load(std::memory_order_acquire);
 }
 
-}
+} // namespace

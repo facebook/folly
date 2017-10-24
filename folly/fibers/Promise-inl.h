@@ -112,5 +112,5 @@ typename Promise<T, BatonT>::value_type Promise<T, BatonT>::await(F&& func) {
 
   return std::move(result).value();
 }
-}
-}
+} // namespace fibers
+} // namespace folly

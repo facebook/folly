@@ -33,7 +33,7 @@ template <>
 struct IsTriviallyCopyable<std::chrono::steady_clock::duration>
   : std::true_type {};
 
-}
+} // namespace folly
 
 namespace folly { namespace detail {
 
@@ -150,4 +150,5 @@ struct MemoryIdler {
   }
 };
 
-}} // namespace folly::detail
+} // namespace detail
+} // namespace folly

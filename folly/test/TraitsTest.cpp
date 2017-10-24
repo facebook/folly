@@ -30,7 +30,7 @@ using namespace std;
 namespace {
 
 FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
-}
+} // namespace
 
 TEST(Traits, has_member_type) {
   struct membership_no {};
@@ -57,9 +57,11 @@ struct F3 : T3 { typedef std::false_type IsRelocatable; };
 struct F4 : T1 {};
 
 namespace folly {
-  template <> struct IsRelocatable<T1> : std::true_type {};
-  template <> FOLLY_ASSUME_RELOCATABLE(T2);
-}
+template <>
+struct IsRelocatable<T1> : std::true_type {};
+template <>
+FOLLY_ASSUME_RELOCATABLE(T2);
+} // namespace folly
 
 TEST(Traits, scalars) {
   EXPECT_TRUE(IsRelocatable<int>::value);
@@ -227,7 +229,7 @@ struct has_value_type : std::false_type {};
 template <class T>
 struct has_value_type<T, folly::void_t<typename T::value_type>>
     : std::true_type {};
-}
+} // namespace
 
 TEST(Traits, void_t) {
   EXPECT_TRUE((::std::is_same<folly::void_t<>, void>::value));

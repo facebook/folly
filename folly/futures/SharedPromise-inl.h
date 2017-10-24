@@ -135,4 +135,4 @@ bool SharedPromise<T>::isFulfilled() {
   return hasValue_;
 }
 
-}
+} // namespace folly

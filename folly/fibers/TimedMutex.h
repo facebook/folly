@@ -228,7 +228,7 @@ class TimedRWMutex {
   MutexWaiterList read_waiters_; //< List of thread / fibers waiting for
   //  shared access
 };
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #include "TimedMutex-inl.h"

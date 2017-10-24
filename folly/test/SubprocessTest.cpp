@@ -195,7 +195,7 @@ void checkFdLeak(const Runnable& r) {
   auto fdsAfter = getOpenFds();
   EXPECT_EQ(fdsAfter.size(), fdsBefore.size());
 }
-}
+} // namespace
 
 // Make sure Subprocess doesn't leak any file descriptors
 TEST(SimpleSubprocessTest, FdLeakTest) {

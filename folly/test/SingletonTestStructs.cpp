@@ -23,7 +23,7 @@ namespace {
 // subclasses are created, and the ordering.  Also tracks a global
 // unique counter for each object.
 std::atomic<size_t> global_counter(19770326);
-}
+} // namespace
 
 std::vector<Watchdog*>& Watchdog::creation_order() {
   static std::vector<Watchdog*> ret;

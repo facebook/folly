@@ -88,7 +88,7 @@ Future<int> onErrorHelperEggs(const eggs_t&) {
 Future<int> onErrorHelperGeneric(const std::exception&) {
   return makeFuture(20);
 }
-}
+} // namespace
 
 TEST(Future, onError) {
   bool theFlag = false;

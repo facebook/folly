@@ -914,7 +914,7 @@ void expectMainContext(bool& ran, int* mainLocation, int* fiberLocation) {
   EXPECT_FALSE(ran);
   ran = true;
 }
-}
+} // namespace
 
 TEST(FiberManager, runInMainContext) {
   FiberManager manager(std::make_unique<SimpleLoopController>());

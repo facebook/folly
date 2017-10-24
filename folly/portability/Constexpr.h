@@ -48,4 +48,4 @@ constexpr size_t constexpr_strlen(const char* s) {
   return std::strlen(s);
 #endif
 }
-}
+} // namespace folly

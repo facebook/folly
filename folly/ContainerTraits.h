@@ -39,4 +39,4 @@ container_emplace_back_or_push_back(Container& container, Args&&... args) {
   container.push_back(v(std::forward<Args>(args)...));
 }
 
-}
+} // namespace folly

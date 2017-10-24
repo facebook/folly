@@ -625,6 +625,6 @@ template <typename Value, typename... Args>
 struct coroutine_traits<folly::Optional<Value>, Args...> {
   using promise_type = folly::detail::OptionalPromise<Value>;
 };
-} // experimental
+} // namespace experimental
 FOLLY_NAMESPACE_STD_END
 #endif // FOLLY_HAS_COROUTINES

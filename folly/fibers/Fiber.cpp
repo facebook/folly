@@ -235,5 +235,5 @@ void* Fiber::LocalData::allocateHeapBuffer(size_t size) {
 void Fiber::LocalData::freeHeapBuffer(void* buffer) {
   delete[] reinterpret_cast<char*>(buffer);
 }
-}
-}
+} // namespace fibers
+} // namespace folly

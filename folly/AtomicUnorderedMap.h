@@ -519,5 +519,4 @@ struct MutableData {
   explicit MutableData(const T& init) : data(init) {}
 };
 
-
-}
+} // namespace folly

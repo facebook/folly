@@ -34,7 +34,7 @@ struct ignore { PackedSyncPtr<int> foo; char c; } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
 static_assert(sizeof(ignore) == 9, "PackedSyncPtr wasn't packable");
 
-}
+} // namespace
 
 TEST(PackedSyncPtr, Basic) {
   PackedSyncPtr<std::pair<int,int>> sp;

@@ -54,4 +54,4 @@ void init(int* argc, char*** argv, bool removeFlags) {
   folly::symbolizer::installFatalSignalCallbacks();
 #endif
 }
-} //!folly
+} // namespace folly

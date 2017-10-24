@@ -26,6 +26,6 @@ bool isSSLLockDisabled(int lockId);
 void setLockTypes(std::map<int, LockType> inLockTypes);
 void installThreadingLocks();
 void cleanupThreadingLocks();
-}
-}
-}
+} // namespace detail
+} // namespace ssl
+} // namespace folly

@@ -143,7 +143,7 @@ void emplace_test(Container<Object>& q, Iterator it) {
   EXPECT_EQ(gMoveOpCnt, 0);
   EXPECT_EQ(gConvertOpCnt, 0);
 }
-}
+} // namespace
 
 using namespace folly;
 

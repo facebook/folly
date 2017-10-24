@@ -26,7 +26,7 @@ namespace detail {
 
 extern void assume_check(bool cond);
 
-}
+} // namespace detail
 
 /**
  * Inform the compiler that the argument can be assumed true. It is

@@ -100,7 +100,8 @@ struct Futex<MockAtom> {
                FutexResult(uint32_t, const MockClock::time_point&, uint32_t));
 };
 
-}}
+} // namespace detail
+} // namespace folly
 
 TEST(MemoryIdler, futexWaitValueChangedEarly) {
   StrictMock<Futex<MockAtom>> fut;

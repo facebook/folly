@@ -164,7 +164,7 @@ struct Compiles<
         std::declval<std::map<int, element_type_t<T>>>(),
         std::declval<int>(),
         std::declval<T>()))>> : std::true_type {};
-}
+} // namespace
 
 TEST(MapUtil, get_default_temporary) {
   EXPECT_TRUE(Compiles<const int&>::value);
@@ -238,7 +238,7 @@ struct GetRefDefaultPathCompiles<
         std::declval<int>(),
         std::declval<int>(),
         std::declval<T>()))>> : std::true_type {};
-}
+} // namespace
 
 TEST(MapUtil, get_ref_default_path_temporary) {
   EXPECT_TRUE(GetRefDefaultPathCompiles<const int&>::value);

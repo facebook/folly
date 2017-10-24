@@ -26,6 +26,6 @@ void assume_check(bool cond) {
   CHECK(cond) << "compiler-hint assumption fails at runtime";
 }
 
-}
+} // namespace detail
 
-}
+} // namespace folly

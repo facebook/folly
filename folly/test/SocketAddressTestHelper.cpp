@@ -47,4 +47,4 @@ bool SocketAddressTestHelper::isFamilyOfAddrEnabled(const char* addr) {
   freeaddrinfo(resultsp);
   return !err;
 }
-}
+} // namespace folly

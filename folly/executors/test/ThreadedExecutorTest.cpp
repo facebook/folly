@@ -24,7 +24,7 @@
 namespace {
 
 class ThreadedExecutorTest : public testing::Test {};
-}
+} // namespace
 
 TEST_F(ThreadedExecutorTest, example) {
   folly::ThreadedExecutor x;

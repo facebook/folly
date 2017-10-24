@@ -111,5 +111,5 @@ class Core : public std::enable_shared_from_this<Core> {
 
   std::mutex refreshMutex_;
 };
-}
-}
+} // namespace observer_detail
+} // namespace folly

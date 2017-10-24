@@ -47,7 +47,7 @@ struct return_type_helper<void, TList...> {
 template <typename D, typename... TList>
 using return_type = std::
     array<typename return_type_helper<D, TList...>::type, sizeof...(TList)>;
-} // !array_detail
+} // namespace array_detail
 
 template <typename D = void, typename... TList>
 constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
@@ -56,4 +56,4 @@ constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
   return {{static_cast<value_type>(std::forward<TList>(t))...}};
 }
 
-} // !folly
+} // namespace folly

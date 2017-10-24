@@ -48,7 +48,7 @@ class MutableContainer {
  public:
   mutable MoveConstructOnly val;
 };
-}
+} // namespace
 
 TEST(Try, basic) {
   A a(5);

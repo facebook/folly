@@ -485,4 +485,4 @@ class ConcurrentHashMap {
   size_t max_size_{0};
 };
 
-} // namespace
+} // namespace folly

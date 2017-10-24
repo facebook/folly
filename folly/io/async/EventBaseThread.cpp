@@ -60,4 +60,4 @@ void EventBaseThread::start(folly::StringPiece threadName) {
 void EventBaseThread::stop() {
   th_ = nullptr;
 }
-}
+} // namespace folly

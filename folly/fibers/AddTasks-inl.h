@@ -127,5 +127,5 @@ addTasks(InputIterator first, InputIterator last) {
 
   return std::move(iterator);
 }
-}
-}
+} // namespace fibers
+} // namespace folly

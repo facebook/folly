@@ -109,7 +109,7 @@ using UIM =
 namespace {
 template <typename T>
 struct AtomicUnorderedInsertMapTest : public ::testing::Test {};
-}
+} // namespace
 
 // uint16_t doesn't make sense for most platforms, but we might as well
 // test it

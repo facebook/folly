@@ -117,4 +117,5 @@ struct AmplificationProduct<std::tuple<T, Ts...>> {
     AmplificationProduct<std::tuple<Ts...>>::value;
 };
 
-}}  // namespaces
+} // namespace detail
+} // namespace folly
