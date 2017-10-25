@@ -553,7 +553,6 @@ bool EventBase::runInEventBaseThread(Func fn) {
   if (inRunningEventBaseThread()) {
     runInLoop(std::move(fn));
     return true;
-
   }
 
   try {
