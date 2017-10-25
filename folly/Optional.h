@@ -63,6 +63,7 @@
 
 #include <folly/Launder.h>
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 #include <folly/Utility.h>
 
 namespace folly {
@@ -203,13 +204,39 @@ class Optional {
   }
 
   template <class... Args>
-  void emplace(Args&&... args) {
+  Value& emplace(Args&&... args) {
     clear();
-    storage_.construct(std::forward<Args>(args)...);
+    return storage_.construct(std::forward<Args>(args)...);
   }
 
-  void clear() {
+  template <class U, class... Args>
+  typename std::enable_if<
+      std::is_constructible<Value, std::initializer_list<U>&, Args&&...>::value,
+      Value&>::type
+  emplace(std::initializer_list<U> ilist, Args&&... args) {
+    clear();
+    return storage_.construct(ilist, std::forward<Args>(args)...);
+  }
+
+  void reset() noexcept {
     storage_.clear();
+  }
+
+  void clear() noexcept {
+    reset();
+  }
+
+  void swap(Optional& that) noexcept(IsNothrowSwappable<Value>::value) {
+    if (hasValue() && that.hasValue()) {
+      using std::swap;
+      swap(value(), that.value());
+    } else if (hasValue()) {
+      that.emplace(std::move(value()));
+      reset();
+    } else if (that.hasValue()) {
+      emplace(std::move(that.value()));
+      that.reset();
+    }
   }
 
   FOLLY_CPP14_CONSTEXPR const Value& value() const & {
@@ -240,12 +267,16 @@ class Optional {
   }
   Value* get_pointer() && = delete;
 
-  FOLLY_CPP14_CONSTEXPR bool hasValue() const noexcept {
+  FOLLY_CPP14_CONSTEXPR bool has_value() const noexcept {
     return storage_.hasValue();
   }
 
+  FOLLY_CPP14_CONSTEXPR bool hasValue() const noexcept {
+    return has_value();
+  }
+
   FOLLY_CPP14_CONSTEXPR explicit operator bool() const noexcept {
-    return hasValue();
+    return has_value();
   }
 
   FOLLY_CPP14_CONSTEXPR const Value& operator*() const & {
@@ -350,9 +381,10 @@ class Optional {
     }
 
     template <class... Args>
-    void construct(Args&&... args) {
+    Value& construct(Args&&... args) {
       new (raw_pointer()) Value(std::forward<Args>(args)...);
       this->hasValue_ = true;
+      return *launder(reinterpret_cast<Value*>(this->value_));
     }
 
    private:
@@ -375,14 +407,8 @@ T* get_pointer(Optional<T>& opt) {
 }
 
 template <class T>
-void swap(Optional<T>& a, Optional<T>& b) {
-  if (a.hasValue() && b.hasValue()) {
-    // both full
-    using std::swap;
-    swap(a.value(), b.value());
-  } else if (a.hasValue() || b.hasValue()) {
-    std::swap(a, b); // fall back to default implementation if they're mixed.
-  }
+void swap(Optional<T>& a, Optional<T>& b) noexcept(noexcept(a.swap(b))) {
+  a.swap(b);
 }
 
 template <class T, class Opt = Optional<typename std::decay<T>::type>>
