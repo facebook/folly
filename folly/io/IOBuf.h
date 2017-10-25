@@ -211,13 +211,10 @@ namespace folly {
  */
 namespace detail {
 // Is T a unique_ptr<> to a standard-layout type?
-template <class T, class Enable=void> struct IsUniquePtrToSL
-  : public std::false_type { };
-template <class T, class D>
-struct IsUniquePtrToSL<
-  std::unique_ptr<T, D>,
-  typename std::enable_if<std::is_standard_layout<T>::value>::type>
-  : public std::true_type { };
+template <typename T>
+struct IsUniquePtrToSL : std::false_type {};
+template <typename T, typename D>
+struct IsUniquePtrToSL<std::unique_ptr<T, D>> : std::is_standard_layout<T> {};
 } // namespace detail
 
 class IOBuf {
