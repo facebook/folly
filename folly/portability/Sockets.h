@@ -35,6 +35,10 @@
 #define SO_EE_ORIGIN_ZEROCOPY 5
 #endif
 
+#ifndef SO_EE_CODE_ZEROCOPY_COPIED
+#define SO_EE_CODE_ZEROCOPY_COPIED 1
+#endif
+
 #ifndef SO_ZEROCOPY
 #define SO_ZEROCOPY 60
 #endif

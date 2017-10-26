@@ -809,6 +809,12 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void cacheAddresses();
 
   /**
+   * Returns true if there is any zero copy write in progress
+   * Needs to be called from within the socket's EVB thread
+   */
+  bool isZeroCopyWriteInProgress() const noexcept;
+
+  /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
    * If no data has been written, 0 is returned.
    * exception is a more specific exception that cause a write error.
@@ -1157,22 +1163,25 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       const iovec* vec,
       uint32_t count,
       folly::WriteFlags& flags);
-  void addZeroCopyBuff(std::unique_ptr<folly::IOBuf>&& buf);
-  void addZeroCopyBuff(folly::IOBuf* ptr);
-  void setZeroCopyBuff(std::unique_ptr<folly::IOBuf>&& buf);
-  bool containsZeroCopyBuff(folly::IOBuf* ptr);
-  void releaseZeroCopyBuff(uint32_t id);
+  void addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
+  void addZeroCopyBuf(folly::IOBuf* ptr);
+  void setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
+  bool containsZeroCopyBuf(folly::IOBuf* ptr);
+  void releaseZeroCopyBuf(uint32_t id);
 
   // a folly::IOBuf can be used in multiple partial requests
-  // so we keep a map that maps a buffer id to a raw folly::IOBuf ptr
-  // and one more map that adds a ref count for a folly::IOBuf that is either
+  // there is a that maps a buffer id to a raw folly::IOBuf ptr
+  // and another one that adds a ref count for a folly::IOBuf that is either
   // the original ptr or nullptr
   uint32_t zeroCopyBuffId_{0};
+
+  struct IOBufInfo {
+    uint32_t count_{0};
+    std::unique_ptr<folly::IOBuf> buf_;
+  };
+
   std::unordered_map<uint32_t, folly::IOBuf*> idZeroCopyBufPtrMap_;
-  std::unordered_map<
-      folly::IOBuf*,
-      std::pair<uint32_t, std::unique_ptr<folly::IOBuf>>>
-      idZeroCopyBufPtrToBufMap_;
+  std::unordered_map<folly::IOBuf*, IOBufInfo> idZeroCopyBufInfoMap_;
 
   StateEnum state_;                      ///< StateEnum describing current state
   uint8_t shutdownFlags_;                ///< Shutdown state (ShutdownFlags)
