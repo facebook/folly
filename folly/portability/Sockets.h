@@ -26,7 +26,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
 #endif

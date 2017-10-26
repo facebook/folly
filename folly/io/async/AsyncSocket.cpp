@@ -42,7 +42,7 @@ namespace fsp = folly::portability::sockets;
 namespace folly {
 
 static constexpr bool msgErrQueueSupported =
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
     true;
 #else
     false;
@@ -934,7 +934,7 @@ bool AsyncSocket::containsZeroCopyBuff(folly::IOBuf* ptr) {
 }
 
 bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
   if (zeroCopyEnabled_ &&
       ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
        (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR))) {
@@ -1750,7 +1750,7 @@ void AsyncSocket::handleErrMessages() noexcept {
     return;
   }
 
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
   uint8_t ctrl[1024];
   unsigned char data;
   struct msghdr msg;

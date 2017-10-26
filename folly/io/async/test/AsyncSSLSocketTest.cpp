@@ -37,7 +37,7 @@
 #include <set>
 #include <thread>
 
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
 #include <sys/utsname.h>
 #endif
 
@@ -2189,7 +2189,7 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
   cerr << "SendMsgParamsCallback test completed" << endl;
 }
 
-#ifdef MSG_ERRQUEUE
+#if defined(MSG_ERRQUEUE) && !defined(_WIN32)
 /**
  * Test connecting to, writing to, reading from, and closing the
  * connection to the SSL server.
