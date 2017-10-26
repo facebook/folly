@@ -29,7 +29,10 @@
 #include <type_traits>
 #include <utility>
 
+#include <glog/logging.h>
+
 #include <folly/Likely.h>
+#include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 #include <folly/Traits.h>
@@ -93,6 +96,10 @@ using ExpectedErrorType =
 
 // Details...
 namespace expected_detail {
+
+template <typename Value, typename Error>
+struct PromiseReturn;
+
 #ifdef _MSC_VER
 // MSVC 2015 can't handle the StrictConjunction, so we have
 // to use std::conjunction instead.
@@ -1034,6 +1041,12 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     return *this;
   }
 
+  // Used only when an Expected is used with coroutines on MSVC
+  /* implicit */ Expected(const expected_detail::PromiseReturn<Value, Error>& p)
+      : Expected{} {
+    p.promise_->value_ = this;
+  }
+
   template <class... Ts FOLLY_REQUIRES_TRAILING(
       std::is_constructible<Value, Ts&&...>::value)>
   void emplace(Ts&&... ts) {
@@ -1413,3 +1426,99 @@ bool operator>(const Value& other, const Expected<Value, Error>&) = delete;
 
 #undef FOLLY_REQUIRES
 #undef FOLLY_REQUIRES_TRAILING
+
+// Enable the use of folly::Expected with `co_await`
+// Inspired by https://github.com/toby-allsopp/coroutine_monad
+#if FOLLY_HAS_COROUTINES
+#include <experimental/coroutine>
+
+namespace folly {
+namespace expected_detail {
+template <typename Value, typename Error>
+struct Promise;
+
+template <typename Value, typename Error>
+struct PromiseReturn {
+  Optional<Expected<Value, Error>> storage_;
+  Promise<Value, Error>* promise_;
+  /* implicit */ PromiseReturn(Promise<Value, Error>& promise) noexcept
+      : promise_(&promise) {
+    promise_->value_ = &storage_;
+  }
+  PromiseReturn(PromiseReturn&& that) noexcept
+      : PromiseReturn{*that.promise_} {}
+  ~PromiseReturn() {}
+  /* implicit */ operator Expected<Value, Error>() & {
+    return std::move(*storage_);
+  }
+};
+
+template <typename Value, typename Error>
+struct Promise {
+  Optional<Expected<Value, Error>>* value_ = nullptr;
+  Promise() = default;
+  Promise(Promise const&) = delete;
+  // This should work regardless of whether the compiler generates:
+  //    folly::Expected<Value, Error> retobj{ p.get_return_object(); } // MSVC
+  // or:
+  //    auto retobj = p.get_return_object(); // clang
+  PromiseReturn<Value, Error> get_return_object() noexcept {
+    return *this;
+  }
+  std::experimental::suspend_never initial_suspend() const noexcept {
+    return {};
+  }
+  std::experimental::suspend_never final_suspend() const {
+    return {};
+  }
+  template <typename U>
+  void return_value(U&& u) {
+    value_->emplace(static_cast<U&&>(u));
+  }
+  void unhandled_exception() {
+    // Technically, throwing from unhandled_exception is underspecified:
+    // https://github.com/GorNishanov/CoroutineWording/issues/17
+    throw;
+  }
+};
+
+template <typename Value, typename Error>
+struct Awaitable {
+  Expected<Value, Error> o_;
+
+  explicit Awaitable(Expected<Value, Error> o) : o_(std::move(o)) {}
+
+  bool await_ready() const noexcept {
+    return o_.hasValue();
+  }
+  Value await_resume() {
+    return std::move(o_.value());
+  }
+
+  // Explicitly only allow suspension into a Promise
+  template <typename U>
+  void await_suspend(std::experimental::coroutine_handle<Promise<U, Error>> h) {
+    *h.promise().value_ = makeUnexpected(std::move(o_.error()));
+    // Abort the rest of the coroutine. resume() is not going to be called
+    h.destroy();
+  }
+};
+} // namespace expected_detail
+
+template <typename Value, typename Error>
+expected_detail::Awaitable<Value, Error>
+/* implicit */ operator co_await(Expected<Value, Error> o) {
+  return expected_detail::Awaitable<Value, Error>{std::move(o)};
+}
+} // namespace folly
+
+// This makes folly::Optional<Value> useable as a coroutine return type..
+FOLLY_NAMESPACE_STD_BEGIN
+namespace experimental {
+template <typename Value, typename Error, typename... Args>
+struct coroutine_traits<folly::Expected<Value, Error>, Args...> {
+  using promise_type = folly::expected_detail::Promise<Value, Error>;
+};
+} // namespace experimental
+FOLLY_NAMESPACE_STD_END
+#endif // FOLLY_HAS_COROUTINES
