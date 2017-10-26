@@ -42,11 +42,11 @@ namespace fsp = folly::portability::sockets;
 namespace folly {
 
 static constexpr bool msgErrQueueSupported =
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
     true;
 #else
     false;
-#endif // MSG_ERRQUEUE
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
 
 // static members initializers
 const AsyncSocket::OptionMap AsyncSocket::emptyOptionMap;
@@ -933,7 +933,7 @@ bool AsyncSocket::containsZeroCopyBuf(folly::IOBuf* ptr) {
 }
 
 bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if (zeroCopyEnabled_ &&
       ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
        (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR))) {
@@ -947,7 +947,7 @@ bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
 }
 
 void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   const struct sock_extended_err* serr =
       reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
   uint32_t hi = serr->ee_data;
@@ -1761,7 +1761,7 @@ void AsyncSocket::handleErrMessages() noexcept {
     return;
   }
 
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   uint8_t ctrl[1024];
   unsigned char data;
   struct msghdr msg;
@@ -1808,7 +1808,7 @@ void AsyncSocket::handleErrMessages() noexcept {
       }
     }
   }
-#endif //MSG_ERRQUEUE
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
 }
 
 void AsyncSocket::handleRead() noexcept {

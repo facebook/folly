@@ -27,6 +27,7 @@
 #include <sys/un.h>
 
 #ifdef MSG_ERRQUEUE
+#define FOLLY_HAVE_MSG_ERRQUEUE 1
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
 #endif

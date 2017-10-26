@@ -186,7 +186,7 @@ public WriteCallbackBase {
   }
 };
 
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
 /* copied from include/uapi/linux/net_tstamp.h */
 /* SO_TIMESTAMPING gets an integer bit field comprised of these values */
 enum SOF_TIMESTAMPING {
@@ -276,7 +276,7 @@ class WriteCheckTimestampCallback :
   bool gotTimestamp_{false};
   bool gotByteSeq_{false};
 };
-#endif // MSG_ERRQUEUE
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
 
 class ReadCallbackBase :
 public AsyncTransportWrapper::ReadCallback {

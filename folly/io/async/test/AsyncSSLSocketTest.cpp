@@ -37,7 +37,7 @@
 #include <set>
 #include <thread>
 
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
 #include <sys/utsname.h>
 #endif
 
@@ -2189,7 +2189,7 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
   cerr << "SendMsgParamsCallback test completed" << endl;
 }
 
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
 /**
  * Test connecting to, writing to, reading from, and closing the
  * connection to the SSL server.
@@ -2263,7 +2263,7 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
 
   cerr << "SendMsgDataCallback test completed" << endl;
 }
-#endif // MSG_ERRQUEUE
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
 
 #endif
 
