@@ -87,7 +87,7 @@ class Codel {
   // to reset the delay once per time period
   std::atomic<bool> codelResetDelay_;
 
-  bool overloaded_;
+  std::atomic<bool> overloaded_;
 };
 
 } // namespace folly
