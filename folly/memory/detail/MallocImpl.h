@@ -20,6 +20,16 @@
 
 #include <folly/Portability.h>
 
+namespace folly {
+
+namespace detail {
+
+void useCharPointer(char const volatile*);
+
+}
+
+}
+
 extern "C" {
 
 #if FOLLY_HAVE_WEAK_SYMBOLS

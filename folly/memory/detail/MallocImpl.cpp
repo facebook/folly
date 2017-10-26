@@ -16,6 +16,16 @@
 
 #include <folly/memory/detail/MallocImpl.h>
 
+namespace folly {
+
+namespace detail {
+
+void useCharPointer(char const volatile*) {}
+
+}
+
+}
+
 extern "C" {
 
 #ifdef _MSC_VER
