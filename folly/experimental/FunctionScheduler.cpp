@@ -292,14 +292,10 @@ void FunctionScheduler::cancelAllFunctionsAndWait() {
 bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
   std::unique_lock<std::mutex> l(mutex_);
   if (currentFunction_ && currentFunction_->name == nameID) {
-    // TODO: This moves out of RepeatFunc object while folly:Function can
-    // potentially be executed. This might be unsafe.
-    auto funcPtrCopy = std::make_unique<RepeatFunc>(std::move(*currentFunction_));
-    // This function is currently being run. Clear currentFunction_
-    // to avoid rescheduling it, and add the function again to honor the
-    // startDelay.
-    currentFunction_ = nullptr;
-    addFunctionToHeap(l, std::move(funcPtrCopy));
+    if (cancellingCurrentFunction_ || currentFunction_->runOnce) {
+      return false;
+    }
+    currentFunction_->resetNextRunTime(steady_clock::now());
     return true;
   }
 
