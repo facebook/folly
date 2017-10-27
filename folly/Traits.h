@@ -156,10 +156,26 @@ template <typename T>
 using _t = typename T::type;
 
 /**
+ *  type_t
+ *
+ *  A type alias for the first template type argument. `type_t` is useful for
+ *  controlling class-template and function-template partial specialization.
+ *
+ *  Example:
+ *
+ *    template <typename Value>
+ *    class Container {
+ *     public:
+ *      template <typename... Args>
+ *      Container(
+ *          type_t<in_place_t, decltype(Value(std::declval<Args>()...))>,
+ *          Args&&...);
+ *    };
+ *
  *  void_t
  *
  *  A type alias for `void`. `void_t` is useful for controling class-template
- *  partial specialization.
+ *  and function-template partial specialization.
  *
  *  Example:
  *
@@ -205,13 +221,16 @@ using _t = typename T::type;
 
 namespace traits_detail {
 template <class...>
-struct void_t_ {
-  using type = void;
+struct type_t_ {
+  template <class T>
+  using apply = T;
 };
 } // namespace traits_detail
 
+template <class T, class... Ts>
+using type_t = typename traits_detail::type_t_<Ts...>::template apply<T>;
 template <class... Ts>
-using void_t = _t<traits_detail::void_t_<Ts...>>;
+using void_t = type_t<void, Ts...>;
 
 /**
  * IsRelocatable<T>::value describes the ability of moving around
