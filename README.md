@@ -216,6 +216,12 @@ Download and install folly with the parameters listed below:
   sudo make install
 ```
 
+#### Windows (Vcpkg)
+
+folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg-) and releases may be built via `vcpkg install folly`.
+
+You may also use `vcpkg install folly --head` to build against `master`.
+
 #### Other Linux distributions
 
 - double-conversion (https://github.com/google/double-conversion)
