@@ -962,8 +962,8 @@ void AsyncServerSocket::dispatchSocket(int socket,
       // should use pauseAccepting() to temporarily back off accepting new
       // connections, before they reach the point where their threads can't
       // even accept new messages.
-      LOG(ERROR) << "failed to dispatch newly accepted socket:"
-                 << " all accept callback queues are full";
+      LOG_EVERY_N(ERROR, 100) << "failed to dispatch newly accepted socket:"
+                              << " all accept callback queues are full";
       closeNoInt(socket);
       if (connectionEventCallback_) {
         connectionEventCallback_->onConnectionDropped(socket, addr);
@@ -1002,9 +1002,10 @@ void AsyncServerSocket::dispatchError(const char *msgstr, int errnoValue) {
     if (callbackIndex_ == startingIndex) {
       // The notification queues for all of the callbacks were full.
       // We can't really do anything at this point.
-      LOG(ERROR) << "failed to dispatch accept error: all accept callback "
-        "queues are full: error msg:  " <<
-        msg.msg.c_str() << errnoValue;
+      LOG_EVERY_N(ERROR, 100)
+          << "failed to dispatch accept error: all accept"
+          << " callback queues are full: error msg:  " << msg.msg << ": "
+          << errnoValue;
       return;
     }
     info = nextCallback();
