@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Bits.h>
+#include <folly/BitIterator.h>
 
 #include <algorithm>
 #include <limits>

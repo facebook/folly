@@ -18,6 +18,7 @@
 
 #include <string>
 
+#include <folly/BitIterator.h>
 #include <folly/Bits.h>
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
