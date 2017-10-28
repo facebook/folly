@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Traits.h>
-#include <folly/detail/AtomicUtils.h>
+#include <folly/synchronization/detail/AtomicUtils.h>
 #include <stdint.h>
 #include <string.h>
 #include <atomic>

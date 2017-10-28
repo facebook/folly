@@ -67,7 +67,6 @@ nobase_follyinclude_HEADERS = \
 	ConstexprMath.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
-	detail/AtomicUtils.h \
 	detail/BitIteratorDetail.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
@@ -418,6 +417,7 @@ nobase_follyinclude_HEADERS = \
 	stats/TimeseriesHistogram-defs.h \
 	stats/TimeseriesHistogram.h \
 	synchronization/CallOnce.h \
+	synchronization/detail/AtomicUtils.h \
 	system/MemoryMapping.h \
 	system/Shell.h \
 	system/ThreadId.h \

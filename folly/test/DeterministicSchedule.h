@@ -29,9 +29,9 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>
-#include <folly/detail/AtomicUtils.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Semaphore.h>
+#include <folly/synchronization/detail/AtomicUtils.h>
 
 namespace folly {
 namespace test {
