@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/Array.h>
+#include <folly/container/Array.h>
 #include <folly/io/async/SSLContext.h>
 
 namespace folly {

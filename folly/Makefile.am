@@ -27,7 +27,6 @@ lib_LTLIBRARIES = \
 follyincludedir = $(includedir)/folly
 
 nobase_follyinclude_HEADERS = \
-	Array.h \
 	Assume.h \
 	AtomicBitSet.h \
 	AtomicHashArray.h \
@@ -58,6 +57,7 @@ nobase_follyinclude_HEADERS = \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
 	concurrency/detail/ConcurrentHashMap-detail.h \
+	container/Array.h \
 	container/Iterator.h \
 	container/Enumerate.h \
 	container/EvictingCacheMap.h \

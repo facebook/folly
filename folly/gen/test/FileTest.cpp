@@ -16,9 +16,9 @@
 #include <string>
 #include <vector>
 
-#include <folly/Array.h>
 #include <folly/File.h>
 #include <folly/Range.h>
+#include <folly/container/Array.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/File.h>

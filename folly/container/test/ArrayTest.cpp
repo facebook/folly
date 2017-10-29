@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/Array.h>
+#include <folly/container/Array.h>
 #include <folly/portability/GTest.h>
 #include <string>
 

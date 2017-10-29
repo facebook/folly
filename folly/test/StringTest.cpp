@@ -24,7 +24,7 @@
 
 #include <boost/regex.hpp>
 
-#include <folly/Array.h>
+#include <folly/container/Array.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

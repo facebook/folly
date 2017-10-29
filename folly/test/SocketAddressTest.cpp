@@ -20,8 +20,8 @@
 #include <sstream>
 #include <system_error>
 
-#include <folly/Array.h>
 #include <folly/String.h>
+#include <folly/container/Array.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
