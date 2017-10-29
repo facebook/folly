@@ -61,10 +61,10 @@
 #include <type_traits>
 #include <utility>
 
-#include <folly/Launder.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/lang/Launder.h>
 
 namespace folly {
 

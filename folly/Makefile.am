@@ -313,7 +313,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/Util.h \
 	json.h \
 	lang/Assume.h \
-	Launder.h \
+	lang/Launder.h \
 	Lazy.h \
 	LifoSem.h \
 	Likely.h \

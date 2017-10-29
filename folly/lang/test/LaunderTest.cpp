@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Launder.h>
+#include <folly/lang/Launder.h>
 #include <folly/portability/GTest.h>
 
 using namespace ::testing;
