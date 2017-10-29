@@ -60,8 +60,8 @@
 #include <limits>
 #include <type_traits>
 
-#include <folly/Assume.h>
 #include <folly/Portability.h>
+#include <folly/lang/Assume.h>
 #include <folly/portability/Builtins.h>
 
 namespace folly {

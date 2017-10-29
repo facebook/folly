@@ -16,9 +16,9 @@
 
 #include <folly/dynamic.h>
 
-#include <folly/Assume.h>
 #include <folly/Format.h>
 #include <folly/Hash.h>
+#include <folly/lang/Assume.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 namespace folly {

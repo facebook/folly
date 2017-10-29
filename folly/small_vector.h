@@ -45,12 +45,12 @@
 #include <boost/operators.hpp>
 #include <boost/type_traits.hpp>
 
-#include <folly/Assume.h>
 #include <folly/ConstexprMath.h>
 #include <folly/FormatTraits.h>
 #include <folly/Portability.h>
 #include <folly/SmallLocks.h>
 #include <folly/Traits.h>
+#include <folly/lang/Assume.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Malloc.h>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Assume.h>
+#include <folly/lang/Assume.h>
 
 #include <glog/logging.h>
 

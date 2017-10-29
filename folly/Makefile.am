@@ -312,6 +312,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
 	json.h \
+	lang/Assume.h \
 	Launder.h \
 	Lazy.h \
 	LifoSem.h \
@@ -486,7 +487,6 @@ libfollybase_la_SOURCES = \
 	Unicode.cpp
 
 libfolly_la_SOURCES = \
-	Assume.cpp \
 	ClockGettimeWrappers.cpp \
 	compression/Compression.cpp \
 	compression/Zlib.cpp \
@@ -560,6 +560,7 @@ libfolly_la_SOURCES = \
 	io/async/ssl/OpenSSLUtils.cpp \
 	io/async/ssl/SSLErrors.cpp \
 	json.cpp \
+	lang/Assume.cpp \
 	detail/MemoryIdler.cpp \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \

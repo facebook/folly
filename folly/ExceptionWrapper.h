@@ -29,7 +29,6 @@
 #include <typeinfo>
 #include <utility>
 
-#include <folly/Assume.h>
 #include <folly/CPortability.h>
 #include <folly/Demangle.h>
 #include <folly/ExceptionString.h>
@@ -37,6 +36,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/lang/Assume.h>
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
