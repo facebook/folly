@@ -28,11 +28,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include <folly/Hash.h>
 #include <folly/Indestructible.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
+#include <folly/hash/Hash.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Memory.h>
 #include <folly/system/ThreadId.h>
