@@ -87,10 +87,10 @@ const fs::path& TemporaryFile::path() const {
   return path_;
 }
 
-TemporaryFile::~TemporaryFile() {
+void TemporaryFile::reset() {
   if (fd_ != -1 && closeOnDestruction_) {
     if (::close(fd_) == -1) {
-      PLOG(ERROR) << "close failed";
+      PLOG(ERROR) << "close failed (fd = " << fd_ << "): ";
     }
   }
 
@@ -103,6 +103,10 @@ TemporaryFile::~TemporaryFile() {
       LOG(WARNING) << "unlink on destruction failed: " << ec;
     }
   }
+}
+
+TemporaryFile::~TemporaryFile() {
+  reset();
 }
 
 TemporaryDirectory::TemporaryDirectory(
