@@ -16,12 +16,12 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(${PACKAGE_NAME} CXX)
 
-if (MSVC_VERSION EQUAL 1910 OR MSVC_VERSION EQUAL 1911)
+if (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS 1920)
   set(MSVC_IS_2017 ON)
 elseif (MSVC_VERSION EQUAL 1900)
   set(MSVC_IS_2017 OFF)
 else()
-  message(FATAL_ERROR "This build script only supports building '${MSVC_VERSION}' Folly on 64-bit Windows with Visual Studio 2015 or Visual Studio 2017.")
+  message(FATAL_ERROR "This build script only supports building Folly on 64-bit Windows with Visual Studio 2015 or Visual Studio 2017. MSVC version '${MSVC_VERSION}' is not supported.")
 endif()
 
 # Check architecture OS
@@ -85,12 +85,14 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "/experimental/symbolizer/"
     "/futures/exercises/"
     "/test/"
+    "/tools/"
     "Benchmark.cpp$"
     "Test.cpp$"
   IGNORE_MATCHES
     "/Benchmark.cpp$"
 )
 list(REMOVE_ITEM files
+  ${FOLLY_DIR}/Poly.cpp
   ${FOLLY_DIR}/Subprocess.cpp
   ${FOLLY_DIR}/SingletonStackTrace.cpp
   ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
@@ -101,11 +103,17 @@ list(REMOVE_ITEM files
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/Fingerprint.h
+  ${FOLLY_DIR}/Poly.h
+  ${FOLLY_DIR}/Poly-inl.h
+  ${FOLLY_DIR}/detail/PolyDetail.h
+  ${FOLLY_DIR}/detail/TypeList.h
   ${FOLLY_DIR}/detail/SlowFingerprint.h
   ${FOLLY_DIR}/detail/FingerprintPolynomial.h
   ${FOLLY_DIR}/experimental/RCURefCount.h
   ${FOLLY_DIR}/experimental/RCUUtils.h
   ${FOLLY_DIR}/experimental/io/AsyncIO.h
+  ${FOLLY_DIR}/poly/Nullable.h
+  ${FOLLY_DIR}/poly/Regular.h
 )
 
 add_library(folly_base OBJECT
@@ -297,6 +305,14 @@ if (BUILD_TESTS)
     DIRECTORY compression/test/
       TEST compression_test SOURCES CompressionTest.cpp
 
+    DIRECTORY container/test/
+      TEST array_test SOURCES ArrayTest.cpp
+      TEST enumerate_test SOURCES EnumerateTest.cpp
+      TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
+      TEST foreach_test SOURCES ForeachTest.cpp
+      TEST merge_test SOURCES MergeTest.cpp
+      TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
+
     DIRECTORY concurrency/test/
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
 
@@ -309,14 +325,9 @@ if (BUILD_TESTS)
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
       TEST thread_pool_executor_test SOURCES ThreadPoolExecutorTest.cpp
       TEST threaded_executor_test SOURCES ThreadedExecutorTest.cpp
-      TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
 
-    DIRECTORY container/test/
-      TEST enumerate_test SOURCES EnumerateTest.cpp
-      TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
-      TEST foreach_test SOURCES ForeachTest.cpp
-      TEST merge_test SOURCES MergeTest.cpp
-      TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
+    DIRECTORY executors/task_queue/test/
+      TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
 
     DIRECTORY experimental/test/
       TEST autotimer_test SOURCES AutoTimerTest.cpp
@@ -371,6 +382,7 @@ if (BUILD_TESTS)
 
     DIRECTORY functional/test/
       TEST apply_tuple_test SOURCES ApplyTupleTest.cpp
+      TEST partial_test SOURCES PartialTest.cpp
 
     DIRECTORY futures/test/
       TEST barrier_test SOURCES BarrierTest.cpp
@@ -420,6 +432,8 @@ if (BUILD_TESTS)
       TEST parallel_test SOURCES ParallelTest.cpp
 
     DIRECTORY hash/test/
+      TEST checksum_test SOURCES ChecksumTest.cpp
+      TEST hash_test SOURCES HashTest.cpp
       TEST spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
       TEST spooky_hash_v2_test SOURCES SpookyHashV2Test.cpp
 
@@ -471,14 +485,15 @@ if (BUILD_TESTS)
       TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
 
     DIRECTORY memory/test/
-      TEST thread_cached_arena_test SOURCES ThreadCachedArenaTest.cpp
       TEST arena_test SOURCES ArenaTest.cpp
+      TEST thread_cached_arena_test SOURCES ThreadCachedArenaTest.cpp
+      TEST mallctl_helper_test SOURCES MallctlHelperTest.cpp
 
     DIRECTORY portability/test/
       TEST constexpr_test SOURCES ConstexprTest.cpp
       TEST libgen-test SOURCES LibgenTest.cpp
-      TEST time-test SOURCES TimeTest.cpp
       TEST openssl_portability_test SOURCES OpenSSLPortabilityTest.cpp
+      TEST time-test SOURCES TimeTest.cpp
 
     DIRECTORY ssl/test/
       TEST openssl_hash_test SOURCES OpenSSLHashTest.cpp
@@ -501,7 +516,6 @@ if (BUILD_TESTS)
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
       TEST arena_smartptr_test SOURCES ArenaSmartPtrTest.cpp
-      TEST array_test SOURCES ArrayTest.cpp
       TEST ascii_check_test SOURCES AsciiCaseInsensitiveTest.cpp
       TEST atomic_bit_set_test SOURCES AtomicBitSetTest.cpp
       TEST atomic_hash_array_test SOURCES AtomicHashArrayTest.cpp
@@ -514,7 +528,6 @@ if (BUILD_TESTS)
       TEST bit_iterator_test SOURCES BitIteratorTest.cpp
       TEST bits_test SOURCES BitsTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
-      TEST checksum_test SOURCES ChecksumTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
       TEST container_traits_test SOURCES ContainerTraitsTest.cpp
@@ -546,7 +559,6 @@ if (BUILD_TESTS)
       TEST group_varint_test SOURCES GroupVarintTest.cpp
       TEST group_varint_test_ssse3 SOURCES GroupVarintTest.cpp
       TEST has_member_fn_traits_test SOURCES HasMemberFnTraitsTest.cpp
-      TEST hash_test SOURCES HashTest.cpp
       TEST indestructible_test SOURCES IndestructibleTest.cpp
       TEST indexed_mem_pool_test BROKEN
         SOURCES IndexedMemPoolTest.cpp
@@ -561,7 +573,6 @@ if (BUILD_TESTS)
       TEST lock_traits_test SOURCES LockTraitsTest.cpp
       TEST locks_test SOURCES SmallLocksTest.cpp SpinLockTest.cpp
       TEST logging_test SOURCES LoggingTest.cpp
-      TEST mallctl_helper_test SOURCES MallctlHelperTest.cpp
       TEST math_test SOURCES MathTest.cpp
       TEST map_util_test SOURCES MapUtilTest.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp
@@ -580,7 +591,7 @@ if (BUILD_TESTS)
       TEST packed_sync_ptr_test HANGING
         SOURCES PackedSyncPtrTest.cpp
       TEST padded_test SOURCES PaddedTest.cpp
-      TEST partial_test SOURCES PartialTest.cpp
+      #TEST poly_test SOURCES PolyTest.cpp
       TEST portability_test SOURCES PortabilityTest.cpp
       TEST producer_consumer_queue_test SLOW
         SOURCES ProducerConsumerQueueTest.cpp
