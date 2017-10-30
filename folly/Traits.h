@@ -312,8 +312,9 @@ using is_trivially_copyable = std::is_trivially_copyable<T>;
 } // namespace traits_detail
 
 struct Ignore {
+  Ignore() = default;
   template <class T>
-  /* implicit */ Ignore(const T&) {}
+  constexpr /* implicit */ Ignore(const T&) {}
   template <class T>
   const Ignore& operator=(T const&) const { return *this; }
 };

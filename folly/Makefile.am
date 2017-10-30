@@ -77,6 +77,7 @@ nobase_follyinclude_HEADERS = \
 	detail/IPAddressSource.h \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
+	detail/PolyDetail.h \
 	detail/RangeCommon.h \
 	detail/RangeSse42.h \
 	detail/Sleeper.h \
@@ -84,6 +85,7 @@ nobase_follyinclude_HEADERS = \
 	detail/SocketFastOpen.h \
 	detail/StaticSingletonManager.h \
 	detail/ThreadLocalDetail.h \
+	detail/TypeList.h \
 	detail/TurnSequencer.h \
 	detail/UncaughtExceptionCounter.h \
 	executors/Async.h \
@@ -341,6 +343,10 @@ nobase_follyinclude_HEADERS = \
 	PackedSyncPtr.h \
 	Padded.h \
 	PicoSpinLock.h \
+	Poly.h \
+	Poly-inl.h \
+	poly/Nullable.h \
+	poly/Regular.h \
 	Portability.h \
 	portability/Asm.h \
 	portability/Atomic.h \
@@ -565,6 +571,7 @@ libfolly_la_SOURCES = \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
 	memory/ThreadCachedArena.cpp \
+	Poly.cpp \
 	portability/Dirent.cpp \
 	portability/Fcntl.cpp \
 	portability/Libgen.cpp \

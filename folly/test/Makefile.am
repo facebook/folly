@@ -223,6 +223,10 @@ fingerprint_test_SOURCES = FingerprintTest.cpp
 fingerprint_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += fingerprint_test
 
+poly_test_SOURCES = PolyTest.cpp
+poly_test_LDADD = libfollytestmain.la
+TESTS += poly_test
+
 portability_test_SOURCES = PortabilityTest.cpp
 portability_test_LDADD = libfollytestmain.la
 TESTS += portability_test
@@ -267,6 +271,10 @@ TESTS += portability_openssl_test
 try_test_SOURCES = TryTest.cpp
 try_test_LDADD = libfollytestmain.la
 TESTS += try_test
+
+typelist_test_SOURCES = TypeListTest.cpp
+typelist_test_LDADD = libfollytestmain.la
+TESTS += typelist_test
 
 uncaught_exceptions_test_SOURCES = UncaughtExceptionsTest.cpp
 uncaught_exceptions_test_LDADD = libfollytestmain.la

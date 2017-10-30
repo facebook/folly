@@ -310,4 +310,11 @@ class MoveOnly {
 } // namespace moveonly_
 
 using MoveOnly = moveonly_::MoveOnly;
+
+/**
+ * A pithy alias for std::integral_constant<bool, B>.
+ */
+template <bool B>
+using Bool = std::integral_constant<bool, B>;
+
 } // namespace folly
