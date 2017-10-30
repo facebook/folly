@@ -220,15 +220,14 @@ using _t = typename T::type;
  */
 
 namespace traits_detail {
-template <class...>
+template <class T, class...>
 struct type_t_ {
-  template <class T>
-  using apply = T;
+  using type = T;
 };
 } // namespace traits_detail
 
 template <class T, class... Ts>
-using type_t = typename traits_detail::type_t_<Ts...>::template apply<T>;
+using type_t = typename traits_detail::type_t_<T, Ts...>::type;
 template <class... Ts>
 using void_t = type_t<void, Ts...>;
 
