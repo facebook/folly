@@ -27,42 +27,40 @@ Singleton<ThreadWheelTimekeeper> timekeeperSingleton_;
 // Our Callback object for HHWheelTimer
 struct WTCallback : public std::enable_shared_from_this<WTCallback>,
                     public folly::HHWheelTimer::Callback {
+  struct PrivateConstructorTag {};
+
  public:
+  WTCallback(PrivateConstructorTag, EventBase* base) : base_(base) {}
+
   // Only allow creation by this factory, to ensure heap allocation.
   static std::shared_ptr<WTCallback> create(EventBase* base) {
     // optimization opportunity: memory pool
-    auto cob = std::shared_ptr<WTCallback>(new WTCallback(base));
+    auto cob = std::make_shared<WTCallback>(PrivateConstructorTag{}, base);
     // Capture shared_ptr of cob in lambda so that Core inside Promise will
     // hold a ref count to it. The ref count will be released when Core goes
     // away which happens when both Promise and Future go away
-    cob->promise_->setInterruptHandler([cob](const folly::exception_wrapper&) {
-        cob->interruptHandler();
-      });
+    cob->promise_.setInterruptHandler(
+        [cob](const folly::exception_wrapper&) { cob->interruptHandler(); });
     return cob;
   }
 
   Future<Unit> getFuture() {
-    return promise_->getFuture();
+    return promise_.getFuture();
   }
 
   void releasePromise() {
     // Don't need promise anymore. Break the circular reference as promise_
     // is holding a ref count to us via Core. Core won't go away until both
     // Promise and Future go away.
-    promise_.reset();
+    promise_ = Promise<Unit>::makeEmpty();
   }
 
  protected:
   EventBase* base_;
-  std::shared_ptr<Promise<Unit>> promise_;
-
-  explicit WTCallback(EventBase* base)
-      : base_(base) {
-    promise_ = std::make_shared<Promise<Unit>>();
-  }
+  Promise<Unit> promise_;
 
   void timeoutExpired() noexcept override {
-    promise_->setValue();
+    promise_.setValue();
     // Don't need Promise anymore, break the circular reference
     releasePromise();
   }
@@ -73,12 +71,11 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     // This is not racing with timeoutExpired anymore because this is called
     // through Future, which means Core is still alive and keeping a ref count
     // on us, so what timeouExpired is doing won't make the object go away
-    auto me = shared_from_this();
-    base_->runInEventBaseThread([me] {
-        me->cancelTimeout();
-        // Don't need Promise anymore, break the circular reference
-        me->releasePromise();
-      });
+    base_->runInEventBaseThread([me = shared_from_this()] {
+      me->cancelTimeout();
+      // Don't need Promise anymore, break the circular reference
+      me->releasePromise();
+    });
   }
 };
 
