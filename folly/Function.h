@@ -480,9 +480,11 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   Function(const Function&) = delete;
 
 #if __OBJC__
-  // Delete conversion from Objective-C blocks
+  // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
-  Function(ReturnType (^)(Args...)) = delete;
+  /*implicit*/ Function(ReturnType (^objCBlock)(Args... args))
+      : Function([blockCopy = (ReturnType (^)(Args...))[objCBlock copy]](
+                     Args... args) { return blockCopy(args...); }){};
 #endif
 
   /**
@@ -565,9 +567,13 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   Function& operator=(const Function&) = delete;
 
 #if __OBJC__
-  // Delete conversion from Objective-C blocks
+  // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
-  Function& operator=(ReturnType (^)(Args...)) = delete;
+  /* implicit */ Function &operator=(ReturnType (^objCBlock)(Args... args)) {
+    (*this) = [blockCopy = (ReturnType (^)(Args...))[objCBlock copy]](
+                  Args... args) { return blockCopy(args...); };
+    return *this;
+  }
 #endif
 
   /**
