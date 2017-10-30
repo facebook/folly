@@ -203,7 +203,7 @@ TEST(SemiFuture, MakeFutureFromSemiFutureLValue) {
   Promise<int> p;
   std::atomic<int> result{0};
   auto f = SemiFuture<int>{p.getFuture()};
-  auto future = f.via(&e).then([&](int value) {
+  auto future = std::move(f).via(&e).then([&](int value) {
     result = value;
     return value;
   });

@@ -29,6 +29,8 @@ template <class T> class Future;
 
 namespace futures {
 namespace detail {
+template <class T>
+class FutureBase;
 struct EmptyConstruct {};
 template <typename T, typename F>
 class CoreCallbackState;
@@ -110,8 +112,11 @@ class Promise {
  private:
   typedef typename Future<T>::corePtr corePtr;
   template <class>
+  friend class futures::detail::FutureBase;
+  template <class>
   friend class SemiFuture;
-  template <class> friend class Future;
+  template <class>
+  friend class Future;
   template <class, class>
   friend class futures::detail::CoreCallbackState;
 

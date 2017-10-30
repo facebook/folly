@@ -129,102 +129,25 @@ inline auto makeCoreCallbackState(Promise<T>&& p, F&& f) noexcept(
   return CoreCallbackState<T, _t<std::decay<F>>>(
       std::move(p), std::forward<F>(f));
 }
-} // namespace detail
-} // namespace futures
 
 template <class T>
-SemiFuture<typename std::decay<T>::type> makeSemiFuture(T&& t) {
-  return makeSemiFuture(Try<typename std::decay<T>::type>(std::forward<T>(t)));
-}
-
-// makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
-template <class F>
-typename std::enable_if<
-    isSemiFuture<typename std::result_of<F()>::type>::value,
-    typename std::result_of<F()>::type>::type
-makeSemiFutureWith(F&& func) {
-  using InnerType =
-      typename isSemiFuture<typename std::result_of<F()>::type>::Inner;
-  try {
-    return std::forward<F>(func)();
-  } catch (std::exception& e) {
-    return makeSemiFuture<InnerType>(
-        exception_wrapper(std::current_exception(), e));
-  } catch (...) {
-    return makeSemiFuture<InnerType>(
-        exception_wrapper(std::current_exception()));
-  }
-}
-
-// makeSemiFutureWith(T()) -> SemiFuture<T>
-// makeSemiFutureWith(void()) -> SemiFuture<Unit>
-template <class F>
-typename std::enable_if<
-    !(isSemiFuture<typename std::result_of<F()>::type>::value),
-    SemiFuture<Unit::LiftT<typename std::result_of<F()>::type>>>::type
-makeSemiFutureWith(F&& func) {
-  using LiftedResult = Unit::LiftT<typename std::result_of<F()>::type>;
-  return makeSemiFuture<LiftedResult>(
-      makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
-}
-
-template <class T>
-SemiFuture<T> makeSemiFuture(std::exception_ptr const& e) {
-  return makeSemiFuture(Try<T>(e));
-}
-
-template <class T>
-SemiFuture<T> makeSemiFuture(exception_wrapper ew) {
-  return makeSemiFuture(Try<T>(std::move(ew)));
-}
-
-template <class T, class E>
-typename std::
-    enable_if<std::is_base_of<std::exception, E>::value, SemiFuture<T>>::type
-    makeSemiFuture(E const& e) {
-  return makeSemiFuture(Try<T>(make_exception_wrapper<E>(e)));
-}
-
-template <class T>
-SemiFuture<T> makeSemiFuture(Try<T>&& t) {
-  return SemiFuture<T>(new futures::detail::Core<T>(std::move(t)));
-}
-
-template <class T>
-SemiFuture<T> SemiFuture<T>::makeEmpty() {
-  return SemiFuture<T>(futures::detail::EmptyConstruct{});
-}
-
-template <class T>
-SemiFuture<T>::SemiFuture(SemiFuture<T>&& other) noexcept : core_(other.core_) {
+FutureBase<T>::FutureBase(SemiFuture<T>&& other) noexcept : core_(other.core_) {
   other.core_ = nullptr;
 }
 
 template <class T>
-SemiFuture<T>& SemiFuture<T>::operator=(SemiFuture<T>&& other) noexcept {
-  std::swap(core_, other.core_);
-  return *this;
-}
-
-template <class T>
-SemiFuture<T>::SemiFuture(Future<T>&& other) noexcept : core_(other.core_) {
+FutureBase<T>::FutureBase(Future<T>&& other) noexcept : core_(other.core_) {
   other.core_ = nullptr;
-}
-
-template <class T>
-SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
-  std::swap(core_, other.core_);
-  return *this;
 }
 
 template <class T>
 template <class T2, typename>
-SemiFuture<T>::SemiFuture(T2&& val)
+FutureBase<T>::FutureBase(T2&& val)
     : core_(new futures::detail::Core<T>(Try<T>(std::forward<T2>(val)))) {}
 
 template <class T>
 template <typename T2>
-SemiFuture<T>::SemiFuture(
+FutureBase<T>::FutureBase(
     typename std::enable_if<std::is_same<Unit, T2>::value>::type*)
     : core_(new futures::detail::Core<T>(Try<T>(T()))) {}
 
@@ -233,52 +156,52 @@ template <
     class... Args,
     typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
         type>
-SemiFuture<T>::SemiFuture(in_place_t, Args&&... args)
+FutureBase<T>::FutureBase(in_place_t, Args&&... args)
     : core_(
           new futures::detail::Core<T>(in_place, std::forward<Args>(args)...)) {
 }
 
 template <class T>
-SemiFuture<T>::~SemiFuture() {
+template <class FutureType>
+void FutureBase<T>::assign(FutureType& other) noexcept {
+  std::swap(core_, other.core_);
+}
+
+template <class T>
+FutureBase<T>::~FutureBase() {
   detach();
 }
 
-// This must be defined after the constructors to avoid a bug in MSVC
-// https://connect.microsoft.com/VisualStudio/feedback/details/3142777/out-of-line-constructor-definition-after-implicit-reference-causes-incorrect-c2244
-inline SemiFuture<Unit> makeSemiFuture() {
-  return makeSemiFuture(Unit{});
-}
-
 template <class T>
-T& SemiFuture<T>::value() & {
+T& FutureBase<T>::value() & {
   throwIfInvalid();
 
   return core_->getTry().value();
 }
 
 template <class T>
-T const& SemiFuture<T>::value() const& {
+T const& FutureBase<T>::value() const& {
   throwIfInvalid();
 
   return core_->getTry().value();
 }
 
 template <class T>
-T&& SemiFuture<T>::value() && {
+T&& FutureBase<T>::value() && {
   throwIfInvalid();
 
   return std::move(core_->getTry().value());
 }
 
 template <class T>
-T const&& SemiFuture<T>::value() const&& {
+T const&& FutureBase<T>::value() const&& {
   throwIfInvalid();
 
   return std::move(core_->getTry().value());
 }
 
 template <class T>
-inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
+inline Future<T> FutureBase<T>::via(Executor* executor, int8_t priority) && {
   throwIfInvalid();
 
   setExecutor(executor, priority);
@@ -289,36 +212,23 @@ inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
 }
 
 template <class T>
-inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) & {
-  throwIfInvalid();
-  Promise<T> p;
-  auto f = p.getFuture();
-  auto func = [p = std::move(p)](Try<T>&& t) mutable {
-    p.setTry(std::move(t));
-  };
-  using R = futures::detail::callableResult<T, decltype(func)>;
-  thenImplementation<decltype(func), R>(std::move(func), typename R::Arg());
-  return std::move(f).via(executor, priority);
-}
-
-template <class T>
-bool SemiFuture<T>::isReady() const {
+bool FutureBase<T>::isReady() const {
   throwIfInvalid();
   return core_->ready();
 }
 
 template <class T>
-bool SemiFuture<T>::hasValue() {
+bool FutureBase<T>::hasValue() {
   return getTry().hasValue();
 }
 
 template <class T>
-bool SemiFuture<T>::hasException() {
+bool FutureBase<T>::hasException() {
   return getTry().hasException();
 }
 
 template <class T>
-void SemiFuture<T>::detach() {
+void FutureBase<T>::detach() {
   if (core_) {
     core_->detachFuture();
     core_ = nullptr;
@@ -326,21 +236,21 @@ void SemiFuture<T>::detach() {
 }
 
 template <class T>
-Try<T>& SemiFuture<T>::getTry() {
+Try<T>& FutureBase<T>::getTry() {
   throwIfInvalid();
 
   return core_->getTry();
 }
 
 template <class T>
-void SemiFuture<T>::throwIfInvalid() const {
+void FutureBase<T>::throwIfInvalid() const {
   if (!core_) {
     throwNoState();
-}
+  }
 }
 
 template <class T>
-Optional<Try<T>> SemiFuture<T>::poll() {
+Optional<Try<T>> FutureBase<T>::poll() {
   Optional<Try<T>> o;
   if (core_->ready()) {
     o = std::move(core_->getTry());
@@ -349,103 +259,20 @@ Optional<Try<T>> SemiFuture<T>::poll() {
 }
 
 template <class T>
-void SemiFuture<T>::raise(exception_wrapper exception) {
+void FutureBase<T>::raise(exception_wrapper exception) {
   core_->raise(std::move(exception));
 }
 
 template <class T>
 template <class F>
-void SemiFuture<T>::setCallback_(F&& func) {
+void FutureBase<T>::setCallback_(F&& func) {
   throwIfInvalid();
   core_->setCallback(std::forward<F>(func));
 }
 
 template <class T>
-SemiFuture<T>::SemiFuture(futures::detail::EmptyConstruct) noexcept
+FutureBase<T>::FutureBase(futures::detail::EmptyConstruct) noexcept
     : core_(nullptr) {}
-
-template <class T>
-Future<T> Future<T>::makeEmpty() {
-  return Future<T>(futures::detail::EmptyConstruct{});
-}
-
-template <class T>
-Future<T>::Future(Future<T>&& other) noexcept
-    : SemiFuture<T>(std::move(other)) {}
-
-template <class T>
-Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
-  SemiFuture<T>::operator=(SemiFuture<T>{std::move(other)});
-  return *this;
-}
-
-template <class T>
-template <
-    class T2,
-    typename std::enable_if<
-        !std::is_same<T, typename std::decay<T2>::type>::value &&
-            std::is_constructible<T, T2&&>::value &&
-            std::is_convertible<T2&&, T>::value,
-        int>::type>
-Future<T>::Future(Future<T2>&& other)
-    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
-
-template <class T>
-template <
-    class T2,
-    typename std::enable_if<
-        !std::is_same<T, typename std::decay<T2>::type>::value &&
-            std::is_constructible<T, T2&&>::value &&
-            !std::is_convertible<T2&&, T>::value,
-        int>::type>
-Future<T>::Future(Future<T2>&& other)
-    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
-
-template <class T>
-template <
-    class T2,
-    typename std::enable_if<
-        !std::is_same<T, typename std::decay<T2>::type>::value &&
-            std::is_constructible<T, T2&&>::value,
-        int>::type>
-Future<T>& Future<T>::operator=(Future<T2>&& other) {
-  return operator=(
-      std::move(other).then([](T2&& v) { return T(std::move(v)); }));
-}
-
-// TODO: isSemiFuture
-template <class T>
-template <class T2, typename>
-Future<T>::Future(T2&& val) : SemiFuture<T>(std::forward<T2>(val)) {}
-
-template <class T>
-template <typename T2>
-Future<T>::Future(typename std::enable_if<std::is_same<Unit, T2>::value>::type*)
-    : SemiFuture<T>() {}
-
-template <class T>
-template <
-    class... Args,
-    typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
-        type>
-Future<T>::Future(in_place_t, Args&&... args)
-    : SemiFuture<T>(in_place, std::forward<Args>(args)...) {}
-
-template <class T>
-Future<T>::~Future() {
-}
-
-// unwrap
-
-template <class T>
-template <class F>
-typename std::enable_if<isFuture<F>::value,
-                        Future<typename isFuture<T>::Inner>>::type
-Future<T>::unwrap() {
-  return then([](Future<typename isFuture<T>::Inner> internal_future) {
-      return internal_future;
-  });
-}
 
 // then
 
@@ -454,7 +281,7 @@ Future<T>::unwrap() {
 template <class T>
 template <typename F, typename R, bool isTry, typename... Args>
 typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
-SemiFuture<T>::thenImplementation(
+FutureBase<T>::thenImplementation(
     F&& func,
     futures::detail::argResult<isTry, F, Args...>) {
   static_assert(sizeof...(Args) <= 1, "Then must take zero/one argument");
@@ -517,7 +344,7 @@ SemiFuture<T>::thenImplementation(
 template <class T>
 template <typename F, typename R, bool isTry, typename... Args>
 typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
-SemiFuture<T>::thenImplementation(
+FutureBase<T>::thenImplementation(
     F&& func,
     futures::detail::argResult<isTry, F, Args...>) {
   static_assert(sizeof...(Args) <= 1, "Then must take zero/one argument");
@@ -549,6 +376,181 @@ SemiFuture<T>::thenImplementation(
       });
 
   return f;
+}
+} // namespace detail
+} // namespace futures
+
+template <class T>
+SemiFuture<typename std::decay<T>::type> makeSemiFuture(T&& t) {
+  return makeSemiFuture(Try<typename std::decay<T>::type>(std::forward<T>(t)));
+}
+
+// makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
+template <class F>
+typename std::enable_if<
+    isSemiFuture<typename std::result_of<F()>::type>::value,
+    typename std::result_of<F()>::type>::type
+makeSemiFutureWith(F&& func) {
+  using InnerType =
+      typename isSemiFuture<typename std::result_of<F()>::type>::Inner;
+  try {
+    return std::forward<F>(func)();
+  } catch (std::exception& e) {
+    return makeSemiFuture<InnerType>(
+        exception_wrapper(std::current_exception(), e));
+  } catch (...) {
+    return makeSemiFuture<InnerType>(
+        exception_wrapper(std::current_exception()));
+  }
+}
+
+// makeSemiFutureWith(T()) -> SemiFuture<T>
+// makeSemiFutureWith(void()) -> SemiFuture<Unit>
+template <class F>
+typename std::enable_if<
+    !(isSemiFuture<typename std::result_of<F()>::type>::value),
+    SemiFuture<Unit::LiftT<typename std::result_of<F()>::type>>>::type
+makeSemiFutureWith(F&& func) {
+  using LiftedResult = Unit::LiftT<typename std::result_of<F()>::type>;
+  return makeSemiFuture<LiftedResult>(
+      makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
+}
+
+template <class T>
+SemiFuture<T> makeSemiFuture(std::exception_ptr const& e) {
+  return makeSemiFuture(Try<T>(e));
+}
+
+template <class T>
+SemiFuture<T> makeSemiFuture(exception_wrapper ew) {
+  return makeSemiFuture(Try<T>(std::move(ew)));
+}
+
+template <class T, class E>
+typename std::
+    enable_if<std::is_base_of<std::exception, E>::value, SemiFuture<T>>::type
+    makeSemiFuture(E const& e) {
+  return makeSemiFuture(Try<T>(make_exception_wrapper<E>(e)));
+}
+
+template <class T>
+SemiFuture<T> makeSemiFuture(Try<T>&& t) {
+  return SemiFuture<T>(new futures::detail::Core<T>(std::move(t)));
+}
+
+// This must be defined after the constructors to avoid a bug in MSVC
+// https://connect.microsoft.com/VisualStudio/feedback/details/3142777/out-of-line-constructor-definition-after-implicit-reference-causes-incorrect-c2244
+inline SemiFuture<Unit> makeSemiFuture() {
+  return makeSemiFuture(Unit{});
+}
+
+template <class T>
+SemiFuture<T> SemiFuture<T>::makeEmpty() {
+  return SemiFuture<T>(futures::detail::EmptyConstruct{});
+}
+
+template <class T>
+SemiFuture<T>::SemiFuture(SemiFuture<T>&& other) noexcept
+    : futures::detail::FutureBase<T>(std::move(other)) {}
+
+template <class T>
+SemiFuture<T>::SemiFuture(Future<T>&& other) noexcept
+    : futures::detail::FutureBase<T>(std::move(other)) {
+  // SemiFuture should not have an executor on construction
+  if (this->core_) {
+    this->setExecutor(nullptr);
+  }
+}
+
+template <class T>
+SemiFuture<T>& SemiFuture<T>::operator=(SemiFuture<T>&& other) noexcept {
+  this->assign(other);
+  return *this;
+}
+
+template <class T>
+SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
+  this->assign(other);
+  // SemiFuture should not have an executor on construction
+  if (this->core_) {
+    this->setExecutor(nullptr);
+  }
+  return *this;
+}
+
+template <class T>
+Future<T> Future<T>::makeEmpty() {
+  return Future<T>(futures::detail::EmptyConstruct{});
+}
+
+template <class T>
+Future<T>::Future(Future<T>&& other) noexcept
+    : futures::detail::FutureBase<T>(std::move(other)) {}
+
+template <class T>
+Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
+  this->assign(other);
+  return *this;
+}
+
+template <class T>
+template <
+    class T2,
+    typename std::enable_if<
+        !std::is_same<T, typename std::decay<T2>::type>::value &&
+            std::is_constructible<T, T2&&>::value &&
+            std::is_convertible<T2&&, T>::value,
+        int>::type>
+Future<T>::Future(Future<T2>&& other)
+    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
+
+template <class T>
+template <
+    class T2,
+    typename std::enable_if<
+        !std::is_same<T, typename std::decay<T2>::type>::value &&
+            std::is_constructible<T, T2&&>::value &&
+            !std::is_convertible<T2&&, T>::value,
+        int>::type>
+Future<T>::Future(Future<T2>&& other)
+    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
+
+template <class T>
+template <
+    class T2,
+    typename std::enable_if<
+        !std::is_same<T, typename std::decay<T2>::type>::value &&
+            std::is_constructible<T, T2&&>::value,
+        int>::type>
+Future<T>& Future<T>::operator=(Future<T2>&& other) {
+  return operator=(
+      std::move(other).then([](T2&& v) { return T(std::move(v)); }));
+}
+
+// unwrap
+
+template <class T>
+template <class F>
+typename std::
+    enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
+    Future<T>::unwrap() {
+  return then([](Future<typename isFuture<T>::Inner> internal_future) {
+    return internal_future;
+  });
+}
+
+template <class T>
+inline Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
+  this->throwIfInvalid();
+  Promise<T> p;
+  auto f = p.getFuture();
+  auto func = [p = std::move(p)](Try<T>&& t) mutable {
+    p.setTry(std::move(t));
+  };
+  using R = futures::detail::callableResult<T, decltype(func)>;
+  this->template thenImplementation<decltype(func), R>(
+      std::move(func), typename R::Arg());
+  return std::move(f).via(executor, priority);
 }
 
 template <typename T>
@@ -732,10 +734,6 @@ auto via(Executor* x, Func&& func)
   // TODO make this actually more performant. :-P #7260175
   return via(x).then(std::forward<Func>(func));
 }
-
-template <class T>
-Future<T>::Future(futures::detail::EmptyConstruct) noexcept
-    : SemiFuture<T>(futures::detail::EmptyConstruct{}) {}
 
 // makeFuture
 
@@ -1262,10 +1260,10 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 template <class T>
 Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
   return collectAll(*this, futures::sleep(dur, tk))
-    .then([](std::tuple<Try<T>, Try<Unit>> tup) {
-      Try<T>& t = std::get<0>(tup);
-      return makeFuture<T>(std::move(t));
-    });
+      .then([](std::tuple<Try<T>, Try<Unit>> tup) {
+        Try<T>& t = std::get<0>(tup);
+        return makeFuture<T>(std::move(t));
+      });
 }
 
 namespace futures {
@@ -1294,7 +1292,7 @@ void waitImpl(FutureType& f, Duration dur) {
   Promise<T> promise;
   auto ret = promise.getFuture();
   auto baton = std::make_shared<FutureBatonType>();
-  f.setCallback_([ baton, promise = std::move(promise) ](Try<T> && t) mutable {
+  f.setCallback_([baton, promise = std::move(promise)](Try<T>&& t) mutable {
     promise.setTry(std::move(t));
     baton->post();
   });
@@ -1347,12 +1345,12 @@ SemiFuture<T>&& SemiFuture<T>::wait(Duration dur) && {
 }
 
 template <class T>
-T SemiFuture<T>::get() {
+T SemiFuture<T>::get() && {
   return std::move(wait().value());
 }
 
 template <class T>
-T SemiFuture<T>::get(Duration dur) {
+T SemiFuture<T>::get(Duration dur) && {
   wait(dur);
   if (this->isReady()) {
     return std::move(this->value());
@@ -1395,6 +1393,21 @@ template <class T>
 Future<T>&& Future<T>::waitVia(DrivableExecutor* e) && {
   futures::detail::waitViaImpl(*this, e);
   return std::move(*this);
+}
+
+template <class T>
+T Future<T>::get() {
+  return std::move(wait().value());
+}
+
+template <class T>
+T Future<T>::get(Duration dur) {
+  wait(dur);
+  if (this->isReady()) {
+    return std::move(this->value());
+  } else {
+    throwTimedOut();
+  }
 }
 
 template <class T>

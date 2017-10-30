@@ -45,42 +45,41 @@ template <class T>
 class Future;
 
 template <class T>
-class SemiFuture {
+class SemiFuture;
+
+namespace futures {
+namespace detail {
+template <class T>
+class FutureBase {
  public:
   typedef T value_type;
-
-  static SemiFuture<T> makeEmpty(); // equivalent to moved-from
-
-  // not copyable
-  SemiFuture(SemiFuture const&) = delete;
-  SemiFuture& operator=(SemiFuture const&) = delete;
-
-  // movable
-  SemiFuture(SemiFuture&&) noexcept;
-  SemiFuture& operator=(SemiFuture&&) noexcept;
-
-  // safe move-constructabilty from Future
-  /* implicit */ SemiFuture(Future<T>&&) noexcept;
-  SemiFuture& operator=(Future<T>&&) noexcept;
 
   /// Construct a Future from a value (perfect forwarding)
   template <
       class T2 = T,
       typename = typename std::enable_if<
           !isFuture<typename std::decay<T2>::type>::value>::type>
-  /* implicit */ SemiFuture(T2&& val);
+  /* implicit */ FutureBase(T2&& val);
 
   template <class T2 = T>
-  /* implicit */ SemiFuture(
-      typename std::enable_if<std::is_same<Unit, T2>::value>::type* = nullptr);
+  /* implicit */ FutureBase(
+      typename std::enable_if<std::is_same<Unit, T2>::value>::type*);
 
   template <
       class... Args,
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
-  explicit SemiFuture(in_place_t, Args&&... args);
+  explicit FutureBase(in_place_t, Args&&... args);
 
-  ~SemiFuture();
+  FutureBase(FutureBase<T> const&) = delete;
+  FutureBase(SemiFuture<T>&&) noexcept;
+  FutureBase(Future<T>&&) noexcept;
+
+  // not copyable
+  FutureBase(Future<T> const&) = delete;
+  FutureBase(SemiFuture<T> const&) = delete;
+
+  ~FutureBase();
 
   /// Returns a reference to the result, with a reference category and const-
   /// qualification equivalent to the reference category and const-qualification
@@ -120,13 +119,6 @@ class SemiFuture {
       Executor* executor,
       int8_t priority = Executor::MID_PRI) &&;
 
-  /// This variant creates a new future, where the ref-qualifier && version
-  /// moves `this` out. This one is less efficient but avoids confusing users
-  /// when "return f.via(x);" fails.
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &;
-
   /** True when the result (or exception) is ready. */
   bool isReady() const;
 
@@ -143,28 +135,6 @@ class SemiFuture {
   /// Otherwise return an empty Optional.
   /// Note that this moves the Try<T> out.
   Optional<Try<T>> poll();
-
-  /// Block until the future is fulfilled. Returns the value (moved out), or
-  /// throws the exception. The future must not already have a callback.
-  T get();
-
-  /// Block until the future is fulfilled, or until timed out. Returns the
-  /// value (moved out), or throws the exception (which might be a TimedOut
-  /// exception).
-  T get(Duration dur);
-
-  /// Block until this Future is complete. Returns a reference to this Future.
-  SemiFuture<T>& wait() &;
-
-  /// Overload of wait() for rvalue Futures
-  SemiFuture<T>&& wait() &&;
-
-  /// Block until this Future is complete or until the given Duration passes.
-  /// Returns a reference to this Future
-  SemiFuture<T>& wait(Duration) &;
-
-  /// Overload of wait(Duration) for rvalue Futures
-  SemiFuture<T>&& wait(Duration) &&;
 
   /// This is not the method you're looking for.
   ///
@@ -199,25 +169,27 @@ class SemiFuture {
   }
 
  protected:
-  typedef futures::detail::Core<T>* corePtr;
+  friend class Promise<T>;
+  template <class>
+  friend class SemiFuture;
+  template <class>
+  friend class Future;
+
+  using corePtr = futures::detail::Core<T>*;
 
   // shared core state object
   corePtr core_;
 
-  explicit SemiFuture(corePtr obj) : core_(obj) {}
+  explicit FutureBase(corePtr obj) : core_(obj) {}
 
-  explicit SemiFuture(futures::detail::EmptyConstruct) noexcept;
+  explicit FutureBase(futures::detail::EmptyConstruct) noexcept;
 
   void detach();
 
   void throwIfInvalid() const;
 
-  friend class Promise<T>;
-  template <class>
-  friend class SemiFuture;
-
-  template <class T2>
-  friend SemiFuture<T2> makeSemiFuture(Try<T2>&&);
+  template <class FutureType>
+  void assign(FutureType&) noexcept;
 
   Executor* getExecutor() {
     return core_->getExecutor();
@@ -239,21 +211,133 @@ class SemiFuture {
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
 };
+} // namespace detail
+} // namespace futures
 
 template <class T>
-class Future : public SemiFuture<T> {
+class SemiFuture : private futures::detail::FutureBase<T> {
+ private:
+  using Base = futures::detail::FutureBase<T>;
+
  public:
-  typedef T value_type;
+  static SemiFuture<T> makeEmpty(); // equivalent to moved-from
 
-  static Future<T> makeEmpty(); // equivalent to moved-from
+  // Export public interface of FutureBase
+  // FutureBase is inherited privately to avoid subclasses being cast to
+  // a FutureBase pointer
+  using typename Base::value_type;
 
-  // not copyable
-  Future(Future const&) = delete;
-  Future& operator=(Future const&) = delete;
+  /// Construct a Future from a value (perfect forwarding)
+  template <
+      class T2 = T,
+      typename = typename std::enable_if<
+          !isFuture<typename std::decay<T2>::type>::value>::type>
+  /* implicit */ SemiFuture(T2&& val) : Base(std::forward<T2>(val)) {}
 
+  template <class T2 = T>
+  /* implicit */ SemiFuture(
+      typename std::enable_if<std::is_same<Unit, T2>::value>::type* p = nullptr)
+      : Base(p) {}
+
+  template <
+      class... Args,
+      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
+          type = 0>
+  explicit SemiFuture(in_place_t, Args&&... args)
+      : Base(in_place, std::forward<Args>(args)...) {}
+
+  SemiFuture(SemiFuture<T> const&) = delete;
   // movable
-  Future(Future&&) noexcept;
-  Future& operator=(Future&&) noexcept;
+  SemiFuture(SemiFuture<T>&&) noexcept;
+  // safe move-constructabilty from Future
+  /* implicit */ SemiFuture(Future<T>&&) noexcept;
+
+  using Base::cancel;
+  using Base::getTry;
+  using Base::hasException;
+  using Base::hasValue;
+  using Base::isActive;
+  using Base::isReady;
+  using Base::poll;
+  using Base::raise;
+  using Base::setCallback_;
+  using Base::value;
+  using Base::via;
+
+  SemiFuture& operator=(SemiFuture const&) = delete;
+  SemiFuture& operator=(SemiFuture&&) noexcept;
+  SemiFuture& operator=(Future<T>&&) noexcept;
+
+  /// Block until the future is fulfilled. Returns the value (moved out), or
+  /// throws the exception. The future must not already have a callback.
+  T get() &&;
+
+  /// Block until the future is fulfilled, or until timed out. Returns the
+  /// value (moved out), or throws the exception (which might be a TimedOut
+  /// exception).
+  T get(Duration dur) &&;
+
+  /// Block until this Future is complete. Returns a reference to this Future.
+  SemiFuture<T>& wait() &;
+
+  /// Overload of wait() for rvalue Futures
+  SemiFuture<T>&& wait() &&;
+
+  /// Block until this Future is complete or until the given Duration passes.
+  /// Returns a reference to this Future
+  SemiFuture<T>& wait(Duration) &;
+
+  /// Overload of wait(Duration) for rvalue Futures
+  SemiFuture<T>&& wait(Duration) &&;
+
+ private:
+  template <class>
+  friend class futures::detail::FutureBase;
+
+  using typename Base::corePtr;
+
+  template <class T2>
+  friend SemiFuture<T2> makeSemiFuture(Try<T2>&&);
+
+  explicit SemiFuture(corePtr obj) : Base(obj) {}
+
+  explicit SemiFuture(futures::detail::EmptyConstruct) noexcept
+      : Base(futures::detail::EmptyConstruct{}) {}
+};
+
+template <class T>
+class Future : private futures::detail::FutureBase<T> {
+ private:
+  using Base = futures::detail::FutureBase<T>;
+
+ public:
+  // Export public interface of FutureBase
+  // FutureBase is inherited privately to avoid subclasses being cast to
+  // a FutureBase pointer
+  using typename Base::value_type;
+
+  /// Construct a Future from a value (perfect forwarding)
+  template <
+      class T2 = T,
+      typename = typename std::enable_if<
+          !isFuture<typename std::decay<T2>::type>::value>::type>
+  /* implicit */ Future(T2&& val) : Base(std::forward<T2>(val)) {}
+
+  template <class T2 = T>
+  /* implicit */ Future(
+      typename std::enable_if<std::is_same<Unit, T2>::value>::type* p = nullptr)
+      : Base(p) {}
+
+  template <
+      class... Args,
+      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
+          type = 0>
+  explicit Future(in_place_t, Args&&... args)
+      : Base(in_place, std::forward<Args>(args)...) {}
+
+  Future(Future<T> const&) = delete;
+  // movable
+  Future(Future<T>&&) noexcept;
 
   // converting move
   template <
@@ -280,25 +364,25 @@ class Future : public SemiFuture<T> {
           int>::type = 0>
   Future& operator=(Future<T2>&&);
 
-  /// Construct a Future from a value (perfect forwarding)
-  template <
-      class T2 = T,
-      typename = typename std::enable_if<
-          !isFuture<typename std::decay<T2>::type>::value &&
-          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
-  /* implicit */ Future(T2&& val);
+  using Base::cancel;
+  using Base::getTry;
+  using Base::hasException;
+  using Base::hasValue;
+  using Base::isActive;
+  using Base::isReady;
+  using Base::poll;
+  using Base::raise;
+  using Base::setCallback_;
+  using Base::value;
+  using Base::via;
 
-  template <class T2 = T>
-  /* implicit */ Future(
-      typename std::enable_if<std::is_same<Unit, T2>::value>::type* = nullptr);
+  static Future<T> makeEmpty(); // equivalent to moved-from
 
-  template <
-      class... Args,
-      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
-          type = 0>
-  explicit Future(in_place_t, Args&&... args);
+  // not copyable
+  Future& operator=(Future const&) = delete;
 
-  ~Future();
+  // movable
+  Future& operator=(Future&&) noexcept;
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
@@ -313,9 +397,16 @@ class Future : public SemiFuture<T> {
   /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
   /// Future<T> instance.
   template <class F = T>
-  typename std::enable_if<isFuture<F>::value,
-                          Future<typename isFuture<T>::Inner>>::type
-  unwrap();
+  typename std::
+      enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
+      unwrap();
+
+  /// This variant creates a new future, where the ref-qualifier && version
+  /// moves `this` out. This one is less efficient but avoids confusing users
+  /// when "return f.via(x);" fails.
+  inline Future<T> via(
+      Executor* executor,
+      int8_t priority = Executor::MID_PRI) &;
 
   /** When this Future has completed, execute func which is a function that
     takes one of:
@@ -354,8 +445,9 @@ class Future : public SemiFuture<T> {
   ///
   ///   f1.then(std::bind(&Worker::doWork, w));
   template <typename R, typename Caller, typename... Args>
-  Future<typename isFuture<R>::Inner>
-  then(R(Caller::*func)(Args...), Caller *instance);
+  Future<typename isFuture<R>::Inner> then(
+      R (Caller::*func)(Args...),
+      Caller* instance);
 
   /// Execute the callback via the given Executor. The executor doesn't stick.
   ///
@@ -495,6 +587,15 @@ class Future : public SemiFuture<T> {
   /// now. The optional Timekeeper is as with futures::sleep().
   Future<T> delayed(Duration, Timekeeper* = nullptr);
 
+  /// Block until the future is fulfilled. Returns the value (moved out), or
+  /// throws the exception. The future must not already have a callback.
+  T get();
+
+  /// Block until the future is fulfilled, or until timed out. Returns the
+  /// value (moved out), or throws the exception (which might be a TimedOut
+  /// exception).
+  T get(Duration dur);
+
   /// Block until this Future is complete. Returns a reference to this Future.
   Future<T>& wait() &;
 
@@ -587,15 +688,18 @@ class Future : public SemiFuture<T> {
   }
 
  protected:
-  typedef futures::detail::Core<T>* corePtr;
-
-  explicit Future(corePtr obj) : SemiFuture<T>(obj) {}
-
-  explicit Future(futures::detail::EmptyConstruct) noexcept;
-
   friend class Promise<T>;
-  template <class> friend class Future;
-  friend class SemiFuture<T>;
+  template <class>
+  friend class futures::detail::FutureBase;
+  template <class>
+  friend class Future;
+
+  using typename Base::corePtr;
+
+  explicit Future(corePtr obj) : Base(obj) {}
+
+  explicit Future(futures::detail::EmptyConstruct) noexcept
+      : Base(futures::detail::EmptyConstruct{}) {}
 
   template <class T2>
   friend Future<T2> makeFuture(Try<T2>&&);
