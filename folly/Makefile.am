@@ -503,6 +503,7 @@ libfolly_la_SOURCES = \
 	dynamic.cpp \
 	ExceptionWrapper.cpp \
 	Executor.cpp \
+	Expected.cpp \
 	File.cpp \
 	FileUtil.cpp \
 	FingerprintTables.cpp \
