@@ -25,7 +25,6 @@
 
 #include <glog/logging.h>
 
-#include <folly/Format.h>
 #include <folly/portability/GFlags.h>
 
 #include <folly/detail/FingerprintPolynomial.h>
@@ -122,8 +121,7 @@ int main(int argc, char *argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  std::string name = folly::format("{}/{}", FLAGS_install_dir,
-                                   "FingerprintTables.cpp").str();
+  std::string name = FLAGS_install_dir + "/" + "FingerprintTables.cpp";
   FILE* file = fopen(name.c_str(), "w");
   PCHECK(file);
 
