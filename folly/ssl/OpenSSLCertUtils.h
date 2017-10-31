@@ -76,6 +76,12 @@ class OpenSSLCertUtils {
    */
   static std::unique_ptr<IOBuf> derEncode(X509&);
 
+  /**
+   * Reads certificates from memory and returns them as a vector of X509
+   * pointers.
+   */
+  static std::vector<X509UniquePtr> readCertsFromBuffer(ByteRange);
+
  private:
   static std::string getDateTimeStr(const ASN1_TIME* time);
 };

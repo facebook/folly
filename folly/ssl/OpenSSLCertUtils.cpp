@@ -196,5 +196,24 @@ std::unique_ptr<IOBuf> OpenSSLCertUtils::derEncode(X509& x509) {
   buf->append(len);
   return buf;
 }
+
+std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
+    ByteRange range) {
+  BioUniquePtr b(BIO_new_mem_buf(range.data(), range.size()));
+  if (!b) {
+    throw std::runtime_error("failed to create BIO");
+  }
+  std::vector<X509UniquePtr> certs;
+  while (true) {
+    X509UniquePtr x509(PEM_read_bio_X509(b.get(), nullptr, nullptr, nullptr));
+    if (!x509) {
+      break;
+    }
+    certs.push_back(std::move(x509));
+  }
+
+  return certs;
+}
+
 } // namespace ssl
 } // namespace folly
