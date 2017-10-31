@@ -59,8 +59,8 @@
 #endif
 
 #include <folly/concurrency/CacheLocality.h>
-#include <folly/experimental/AsymmetricMemoryBarrier.h>
 #include <folly/experimental/hazptr/debug.h>
+#include <folly/synchronization/AsymmetricMemoryBarrier.h>
 
 #include <mutex> // for thread caching
 #include <unordered_set> // for hash set in bulk reclamation

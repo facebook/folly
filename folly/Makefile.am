@@ -126,7 +126,6 @@ nobase_follyinclude_HEADERS = \
 	Expected.h \
 	concurrency/AtomicSharedPtr.h \
 	concurrency/detail/AtomicSharedPtr-detail.h \
-	experimental/AsymmetricMemoryBarrier.h \
 	experimental/AutoTimer.h \
 	experimental/ThreadedRepeatingFunctionRunner.h \
 	experimental/Bits.h \
@@ -423,6 +422,7 @@ nobase_follyinclude_HEADERS = \
 	stats/MultiLevelTimeSeries.h \
 	stats/TimeseriesHistogram-defs.h \
 	stats/TimeseriesHistogram.h \
+	synchronization/AsymmetricMemoryBarrier.h \
 	synchronization/CallOnce.h \
 	synchronization/detail/AtomicUtils.h \
 	system/MemoryMapping.h \
@@ -609,6 +609,7 @@ libfolly_la_SOURCES = \
 	stats/Histogram.cpp \
 	stats/MultiLevelTimeSeries.cpp \
 	stats/TimeseriesHistogram.cpp \
+	synchronization/AsymmetricMemoryBarrier.cpp \
 	system/MemoryMapping.cpp \
 	system/Shell.cpp \
 	system/ThreadName.cpp \
@@ -617,7 +618,6 @@ libfolly_la_SOURCES = \
 	TimeoutQueue.cpp \
 	Try.cpp \
 	Uri.cpp \
-	experimental/AsymmetricMemoryBarrier.cpp \
 	experimental/ThreadedRepeatingFunctionRunner.cpp \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
