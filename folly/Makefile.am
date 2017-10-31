@@ -45,7 +45,6 @@ nobase_follyinclude_HEADERS = \
 	ClockGettimeWrappers.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
-	ContainerTraits.h \
 	Conv.h \
 	CppAttributes.h \
 	CpuId.h \
