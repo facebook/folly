@@ -35,7 +35,8 @@ template class Future<std::string>;
 template class Future<double>;
 } // namespace folly
 
-namespace folly { namespace futures {
+namespace folly {
+namespace futures {
 
 Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;

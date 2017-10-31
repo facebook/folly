@@ -59,6 +59,10 @@ class Executor {
       return executor_ != nullptr;
     }
 
+    Executor* get() const {
+      return executor_.get();
+    }
+
    private:
     friend class Executor;
     explicit KeepAlive(folly::Executor* executor) : executor_(executor) {}

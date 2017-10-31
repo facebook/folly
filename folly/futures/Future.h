@@ -25,6 +25,7 @@
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
 #include <folly/Try.h>
 #include <folly/Utility.h>
 #include <folly/executors/DrivableExecutor.h>
@@ -94,30 +95,6 @@ class FutureBase {
   T const& value() const&;
   T&& value() &&;
   T const&& value() const&&;
-
-  /// Returns an inactive Future which will call back on the other side of
-  /// executor (when it is activated).
-  ///
-  /// NB remember that Futures activate when they destruct. This is good,
-  /// it means that this will work:
-  ///
-  ///   f.via(e).then(a).then(b);
-  ///
-  /// a and b will execute in the same context (the far side of e), because
-  /// the Future (temporary variable) created by via(e) does not call back
-  /// until it destructs, which is after then(a) and then(b) have been wired
-  /// up.
-  ///
-  /// But this is still racy:
-  ///
-  ///   f = f.via(e).then(a);
-  ///   f.then(b);
-  // The ref-qualifier allows for `this` to be moved out so we
-  // don't get access-after-free situations in chaining.
-  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &&;
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
@@ -218,6 +195,7 @@ template <class T>
 class SemiFuture : private futures::detail::FutureBase<T> {
  private:
   using Base = futures::detail::FutureBase<T>;
+  using DeferredExecutor = futures::detail::DeferredExecutor;
 
  public:
   static SemiFuture<T> makeEmpty(); // equivalent to moved-from
@@ -262,7 +240,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::setCallback_;
   using Base::value;
-  using Base::via;
 
   SemiFuture& operator=(SemiFuture const&) = delete;
   SemiFuture& operator=(SemiFuture&&) noexcept;
@@ -290,11 +267,57 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Overload of wait(Duration) for rvalue Futures
   SemiFuture<T>&& wait(Duration) &&;
 
+  /// Returns an inactive Future which will call back on the other side of
+  /// executor (when it is activated).
+  ///
+  /// NB remember that Futures activate when they destruct. This is good,
+  /// it means that this will work:
+  ///
+  ///   f.via(e).then(a).then(b);
+  ///
+  /// a and b will execute in the same context (the far side of e), because
+  /// the Future (temporary variable) created by via(e) does not call back
+  /// until it destructs, which is after then(a) and then(b) have been wired
+  /// up.
+  ///
+  /// But this is still racy:
+  ///
+  ///   f = f.via(e).then(a);
+  ///   f.then(b);
+  // The ref-qualifier allows for `this` to be moved out so we
+  // don't get access-after-free situations in chaining.
+  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
+  inline Future<T> via(
+      Executor* executor,
+      int8_t priority = Executor::MID_PRI) &&;
+
+  /**
+   * Defer work to run on the consumer of the future.
+   * This work will be run eithe ron an executor that the caller sets on the
+   * SemiFuture, or inline with the call to .get().
+   * NB: This is a custom method because boost-blocking executors is a
+   * special-case for work deferral in folly. With more general boost-blocking
+   * support all executors would boost block and we would simply use some form
+   * of driveable executor here.
+   */
+  template <typename F>
+  SemiFuture<typename futures::detail::callableResult<T, F>::Return::value_type>
+  defer(F&& func) &&;
+
+  // Public as for setCallback_
+  // Ensure that a boostable executor performs work to chain deferred work
+  // cleanly
+  void boost_();
+
  private:
   template <class>
   friend class futures::detail::FutureBase;
+  template <class>
+  friend class SemiFuture;
 
   using typename Base::corePtr;
+  using Base::setExecutor;
+  using Base::throwIfInvalid;
 
   template <class T2>
   friend SemiFuture<T2> makeSemiFuture(Try<T2>&&);
@@ -374,7 +397,6 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::setCallback_;
   using Base::value;
-  using Base::via;
 
   static Future<T> makeEmpty(); // equivalent to moved-from
 
@@ -400,6 +422,30 @@ class Future : private futures::detail::FutureBase<T> {
   typename std::
       enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
       unwrap();
+
+  /// Returns an inactive Future which will call back on the other side of
+  /// executor (when it is activated).
+  ///
+  /// NB remember that Futures activate when they destruct. This is good,
+  /// it means that this will work:
+  ///
+  ///   f.via(e).then(a).then(b);
+  ///
+  /// a and b will execute in the same context (the far side of e), because
+  /// the Future (temporary variable) created by via(e) does not call back
+  /// until it destructs, which is after then(a) and then(b) have been wired
+  /// up.
+  ///
+  /// But this is still racy:
+  ///
+  ///   f = f.via(e).then(a);
+  ///   f.then(b);
+  // The ref-qualifier allows for `this` to be moved out so we
+  // don't get access-after-free situations in chaining.
+  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
+  inline Future<T> via(
+      Executor* executor,
+      int8_t priority = Executor::MID_PRI) &&;
 
   /// This variant creates a new future, where the ref-qualifier && version
   /// moves `this` out. This one is less efficient but avoids confusing users
@@ -693,7 +739,11 @@ class Future : private futures::detail::FutureBase<T> {
   friend class futures::detail::FutureBase;
   template <class>
   friend class Future;
+  template <class>
+  friend class SemiFuture;
 
+  using Base::setExecutor;
+  using Base::throwIfInvalid;
   using typename Base::corePtr;
 
   explicit Future(corePtr obj) : Base(obj) {}

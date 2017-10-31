@@ -216,3 +216,86 @@ TEST(SemiFuture, MakeFutureFromSemiFutureLValue) {
   ASSERT_EQ(future.value(), 42);
   ASSERT_EQ(result, 42);
 }
+
+TEST(SemiFuture, SimpleDefer) {
+  std::atomic<int> innerResult{0};
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { innerResult = 17; });
+  p.setValue();
+  // Run "F" here inline in the calling thread
+  std::move(sf).get();
+  ASSERT_EQ(innerResult, 17);
+}
+
+TEST(SemiFuture, DeferWithVia) {
+  std::atomic<int> innerResult{0};
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { innerResult = 17; });
+  // Run "F" here inline in the calling thread
+  auto tf = std::move(sf).via(&e2);
+  p.setValue();
+  tf.getVia(&e2);
+  ASSERT_EQ(innerResult, 17);
+}
+
+TEST(SemiFuture, ChainingDefertoThen) {
+  std::atomic<int> innerResult{0};
+  std::atomic<int> result{0};
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { innerResult = 17; });
+  // Run "F" here inline in a task running on the eventbase
+  auto tf = std::move(sf).via(&e2).then([&]() { result = 42; });
+  p.setValue();
+  tf.getVia(&e2);
+  ASSERT_EQ(innerResult, 17);
+  ASSERT_EQ(result, 42);
+}
+
+TEST(SemiFuture, SimpleDeferWithValue) {
+  std::atomic<int> innerResult{0};
+  Promise<int> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&](int a) { innerResult = a; });
+  p.setValue(7);
+  // Run "F" here inline in the calling thread
+  std::move(sf).get();
+  ASSERT_EQ(innerResult, 7);
+}
+
+TEST(SemiFuture, ChainingDefertoThenWithValue) {
+  std::atomic<int> innerResult{0};
+  std::atomic<int> result{0};
+  EventBase e2;
+  Promise<int> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&](int a) {
+    innerResult = a;
+    return a;
+  });
+  // Run "F" here inline in a task running on the eventbase
+  auto tf = std::move(sf).via(&e2).then([&](int a) { result = a; });
+  p.setValue(7);
+  tf.getVia(&e2);
+  ASSERT_EQ(innerResult, 7);
+  ASSERT_EQ(result, 7);
+}
+
+TEST(SemiFuture, MakeSemiFutureFromFutureWithTry) {
+  Promise<int> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&](Try<int> t) {
+    if (auto err = t.tryGetExceptionObject<std::logic_error>()) {
+      return Try<std::string>(err->what());
+    }
+    return Try<std::string>(
+        make_exception_wrapper<std::logic_error>("Exception"));
+  });
+  p.setException(make_exception_wrapper<std::logic_error>("Try"));
+  auto tryResult = std::move(sf).get();
+  ASSERT_EQ(tryResult.value(), "Try");
+}
