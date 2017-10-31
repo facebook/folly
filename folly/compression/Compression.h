@@ -388,7 +388,6 @@ class StreamCodec : public Codec {
   };
   void assertStateIs(State expected) const;
 
-  CodecType type_;
   State state_{State::RESET};
   ByteRange previousInput_{};
   folly::Optional<uint64_t> uncompressedLength_{};
