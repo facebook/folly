@@ -24,63 +24,81 @@
 
 namespace folly {
 
+bool RequestContext::doSetContextData(
+    const std::string& val,
+    std::unique_ptr<RequestData>& data,
+    bool strict) {
+  auto ulock = state_.ulock();
+
+  bool conflict = false;
+  auto it = ulock->requestData_.find(val);
+  if (it != ulock->requestData_.end()) {
+    if (strict) {
+      return false;
+    } else {
+      LOG_FIRST_N(WARNING, 1) << "Calling RequestContext::setContextData for "
+                              << val << " but it is already set";
+      conflict = true;
+    }
+  }
+
+  auto wlock = ulock.moveFromUpgradeToWrite();
+  if (conflict) {
+    if (it->second) {
+      if (it->second->hasCallback()) {
+        wlock->callbackData_.erase(it->second.get());
+      }
+      it->second.reset(nullptr);
+    }
+    return true;
+  }
+
+  if (data && data->hasCallback()) {
+    wlock->callbackData_.insert(data.get());
+  }
+  wlock->requestData_[val] = std::move(data);
+
+  return true;
+}
+
 void RequestContext::setContextData(
     const std::string& val,
     std::unique_ptr<RequestData> data) {
-  auto wlock = data_.wlock();
-  if (wlock->count(val)) {
-    LOG_FIRST_N(WARNING, 1)
-        << "Called RequestContext::setContextData with data already set";
-
-    (*wlock)[val] = nullptr;
-  } else {
-    (*wlock)[val] = std::move(data);
-  }
+  doSetContextData(val, data, false /* strict */);
 }
 
 bool RequestContext::setContextDataIfAbsent(
     const std::string& val,
     std::unique_ptr<RequestData> data) {
-  auto ulock = data_.ulock();
-  if (ulock->count(val)) {
-    return false;
-  }
-
-  auto wlock = ulock.moveFromUpgradeToWrite();
-  (*wlock)[val] = std::move(data);
-  return true;
+  return doSetContextData(val, data, true /* strict */);
 }
 
 bool RequestContext::hasContextData(const std::string& val) const {
-  return data_.rlock()->count(val);
+  return state_.rlock()->requestData_.count(val);
 }
 
 RequestData* RequestContext::getContextData(const std::string& val) {
   const std::unique_ptr<RequestData> dflt{nullptr};
-  return get_ref_default(*data_.rlock(), val, dflt).get();
+  return get_ref_default(state_.rlock()->requestData_, val, dflt).get();
 }
 
 const RequestData* RequestContext::getContextData(
     const std::string& val) const {
   const std::unique_ptr<RequestData> dflt{nullptr};
-  return get_ref_default(*data_.rlock(), val, dflt).get();
+  return get_ref_default(state_.rlock()->requestData_, val, dflt).get();
 }
 
 void RequestContext::onSet() {
-  auto rlock = data_.rlock();
-  for (auto const& ent : *rlock) {
-    if (auto& data = ent.second) {
-      data->onSet();
-    }
+  auto rlock = state_.rlock();
+  for (const auto& data : rlock->callbackData_) {
+    data->onSet();
   }
 }
 
 void RequestContext::onUnset() {
-  auto rlock = data_.rlock();
-  for (auto const& ent : *rlock) {
-    if (auto& data = ent.second) {
-      data->onUnset();
-    }
+  auto rlock = state_.rlock();
+  for (const auto& data : rlock->callbackData_) {
+    data->onUnset();
   }
 }
 
@@ -89,12 +107,19 @@ void RequestContext::clearContextData(const std::string& val) {
   // Delete the RequestData after giving up the wlock just in case one of the
   // RequestData destructors will try to grab the lock again.
   {
-    auto wlock = data_.wlock();
-    auto it = wlock->find(val);
-    if (it != wlock->end()) {
-      requestData = std::move(it->second);
-      wlock->erase(it);
+    auto ulock = state_.ulock();
+    auto it = ulock->requestData_.find(val);
+    if (it == ulock->requestData_.end()) {
+      return;
     }
+
+    auto wlock = ulock.moveFromUpgradeToWrite();
+    if (it->second && it->second->hasCallback()) {
+      wlock->callbackData_.erase(it->second.get());
+    }
+
+    requestData = std::move(it->second);
+    wlock->requestData_.erase(it);
   }
 }
 

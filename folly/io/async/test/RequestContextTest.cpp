@@ -27,12 +27,19 @@ class TestData : public RequestData {
  public:
   explicit TestData(int data) : data_(data) {}
   ~TestData() override {}
+
+  bool hasCallback() override {
+    return true;
+  }
+
   void onSet() override {
     set_++;
   }
+
   void onUnset() override {
     unset_++;
   }
+
   int set_ = 0, unset_ = 0;
   int data_;
 };
@@ -136,9 +143,9 @@ TEST(RequestContext, deadlockTest) {
           val_, std::make_unique<TestData>(1));
     }
 
-    void onSet() override {}
-
-    void onUnset() override {}
+    bool hasCallback() override {
+      return false;
+    }
 
     std::string val_;
   };

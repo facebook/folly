@@ -25,6 +25,11 @@ class TestData : public RequestData {
  public:
   explicit TestData(int data) : data_(data) {}
   ~TestData() override {}
+
+  bool hasCallback() override {
+    return false;
+  }
+
   int data_;
 };
 

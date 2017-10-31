@@ -95,6 +95,10 @@ class RequestEventBase : public RequestData {
         std::unique_ptr<RequestEventBase>(new RequestEventBase(eb)));
   }
 
+  bool hasCallback() override {
+    return false;
+  }
+
  private:
   explicit RequestEventBase(EventBase* eb) : eb_(eb) {}
   EventBase* eb_;
