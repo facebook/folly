@@ -89,7 +89,7 @@ foreach_benchmark_SOURCES = ../container/test/ForeachBenchmark.cpp
 foreach_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 check_PROGRAMS += foreach_benchmark
 
-hash_test_SOURCES = HashTest.cpp
+hash_test_SOURCES = ../hash/test/HashTest.cpp
 hash_test_LDADD = libfollytestmain.la
 
 invoke_test_SOURCES = ../functional/test/InvokeTest.cpp
@@ -102,7 +102,7 @@ TESTS += fbstring_test_using_jemalloc
 thread_cached_int_test_SOURCES = ThreadCachedIntTest.cpp
 thread_cached_int_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 
-thread_id_test_SOURCES = system/test/ThreadIdTest.cpp
+thread_id_test_SOURCES = ../system/test/ThreadIdTest.cpp
 thread_id_test_LDADD = libfollytestmain.la
 TESTS += thread_id_test
 
@@ -243,7 +243,7 @@ token_bucket_test_SOURCES = TokenBucketTest.cpp
 token_bucket_test_LDADD = libfollytestmain.la  $(top_builddir)/libfollybenchmark.la
 TESTS += token_bucket_test
 
-thread_name_test_SOURCES = system/ThreadNameTest.cpp
+thread_name_test_SOURCES = ../system/test/ThreadNameTest.cpp
 thread_name_test_LDADD = libfollytestmain.la
 TESTS += thread_name_test
 
@@ -340,11 +340,11 @@ mallctl_helper_test_SOURCES = ../memory/test/MallctlHelperTest.cpp
 mallctl_helper_test_LDADD = libfollytestmain.la
 TESTS += mallctl_helper_test
 
-apply_tuple_test_SOURCES = ApplyTupleTest.cpp
+apply_tuple_test_SOURCES = ../functional/test/ApplyTupleTest.cpp
 apply_tuple_test_LDADD = libfollytestmain.la
 TESTS += apply_tuple_test
 
-partial_test_SOURCES = PartialTest.cpp
+partial_test_SOURCES = ../functional/test/PartialTest.cpp
 partial_test_LDADD = libfollytestmain.la
 TESTS += partial_test
 
@@ -356,7 +356,7 @@ utility_test_SOURCES = UtilityTest.cpp
 utility_test_LDADD = libfollytestmain.la
 TESTS += utility_test
 
-iterator_test_SOURCES = IteratorTest.cpp
+iterator_test_SOURCES = ../container/test/IteratorTest.cpp
 iterator_test_LDADD = libfollytestmain.la
 TESTS += iterator_test
 
