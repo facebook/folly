@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <atomic>
+
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/io/async/EventBaseManager.h>
@@ -86,7 +88,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   void stopThreads(size_t n) override;
   uint64_t getPendingTaskCountImpl(const RWSpinLock::ReadHolder&) override;
 
-  size_t nextThread_;
+  std::atomic<size_t> nextThread_;
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   folly::EventBaseManager* eventBaseManager_;
 };

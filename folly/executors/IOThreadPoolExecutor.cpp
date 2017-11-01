@@ -119,11 +119,12 @@ IOThreadPoolExecutor::pickThread() {
   if (n == 0) {
     return me;
   }
-  auto thread = ths[nextThread_++ % n];
+  auto thread = ths[nextThread_.fetch_add(1, std::memory_order_relaxed) % n];
   return std::static_pointer_cast<IOThread>(thread);
 }
 
 EventBase* IOThreadPoolExecutor::getEventBase() {
+  RWSpinLock::ReadHolder r{&threadListLock_};
   return pickThread()->eventBase;
 }
 
