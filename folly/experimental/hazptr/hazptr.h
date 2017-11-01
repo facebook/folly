@@ -34,6 +34,12 @@ class hazptr_obj;
 template <typename T, typename Deleter>
 class hazptr_obj_base;
 
+/** hazptr_obj_base_refcounted:
+ *  Base template for reference counted objects protected by hazard pointers.
+ */
+template <typename T, typename Deleter>
+class hazptr_obj_base_refcounted;
+
 /** hazptr_local: Optimized template for bulk construction and destruction of
  *  hazard pointers */
 template <size_t M>
@@ -60,6 +66,8 @@ class hazptr_domain {
   friend class hazptr_holder;
   template <typename, typename>
   friend class hazptr_obj_base;
+  template <typename, typename>
+  friend class hazptr_obj_base_refcounted;
   friend struct hazptr_priv;
 
   memory_resource* mr_;
@@ -87,10 +95,13 @@ class hazptr_obj {
   friend class hazptr_domain;
   template <typename, typename>
   friend class hazptr_obj_base;
+  template <typename, typename>
+  friend class hazptr_obj_base_refcounted;
   friend struct hazptr_priv;
 
   void (*reclaim_)(hazptr_obj*);
   hazptr_obj* next_;
+
   const void* getObjPtr() const;
 };
 
@@ -103,6 +114,33 @@ class hazptr_obj_base : public hazptr_obj {
   void retire(hazptr_domain& domain = default_hazptr_domain(), D reclaim = {});
 
  private:
+  D deleter_;
+};
+
+/** Definition of hazptr_recounted_obj_base */
+template <typename T, typename D = std::default_delete<T>>
+class hazptr_obj_base_refcounted : public hazptr_obj {
+ public:
+  /* Retire a removed object and pass the responsibility for
+   * reclaiming it to the hazptr library */
+  void retire(hazptr_domain& domain = default_hazptr_domain(), D reclaim = {});
+
+  /* aquire_ref() increments the reference count
+   *
+   * acquire_ref_safe() is the same as acquire_ref() except that in
+   * addition the caller guarantees that the call is made in a
+   * thread-safe context, e.g., the object is not yet shared. This is
+   * just an optimization to save an atomic operation.
+   *
+   * release_ref() decrements the reference count and returns true if
+   * the object is safe to reclaim.
+   */
+  void acquire_ref();
+  void acquire_ref_safe();
+  bool release_ref();
+
+ private:
+  std::atomic<uint32_t> refcount_{0};
   D deleter_;
 };
 

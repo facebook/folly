@@ -118,9 +118,7 @@ static_assert(
 struct hazptr_tc {
   hazptr_tc_entry entry_[HAZPTR_TC_SIZE];
   size_t count_;
-#ifndef NDEBUG
-  bool local_;
-#endif
+  bool local_; // for debug mode only
 
  public:
   hazptr_tc_entry& operator[](size_t i);
@@ -204,6 +202,63 @@ inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
     }
   }
   domain.objRetire(this);
+}
+
+/**
+ *  hazptr_obj_base_refcounted
+ */
+
+template <typename T, typename D>
+inline void hazptr_obj_base_refcounted<T, D>::retire(
+    hazptr_domain& domain,
+    D deleter) {
+  DEBUG_PRINT(this << " " << &domain);
+  deleter_ = std::move(deleter);
+  reclaim_ = [](hazptr_obj* p) {
+    auto hrobp = static_cast<hazptr_obj_base_refcounted*>(p);
+    if (hrobp->release_ref()) {
+      auto obj = static_cast<T*>(hrobp);
+      hrobp->deleter_(obj);
+    }
+  };
+  if (HAZPTR_PRIV &&
+      (HAZPTR_ONE_DOMAIN || (&domain == &default_hazptr_domain()))) {
+    if (hazptr_priv_try_retire(this)) {
+      return;
+    }
+  }
+  domain.objRetire(this);
+}
+
+template <typename T, typename D>
+inline void hazptr_obj_base_refcounted<T, D>::acquire_ref() {
+  DEBUG_PRINT(this);
+  auto oldval = refcount_.fetch_add(1);
+  DCHECK(oldval >= 0);
+}
+
+template <typename T, typename D>
+inline void hazptr_obj_base_refcounted<T, D>::acquire_ref_safe() {
+  DEBUG_PRINT(this);
+  auto oldval = refcount_.load(std::memory_order_acquire);
+  DCHECK(oldval >= 0);
+  refcount_.store(oldval + 1, std::memory_order_release);
+}
+
+template <typename T, typename D>
+inline bool hazptr_obj_base_refcounted<T, D>::release_ref() {
+  DEBUG_PRINT(this);
+  auto oldval = refcount_.load(std::memory_order_acquire);
+  if (oldval > 0) {
+    oldval = refcount_.fetch_sub(1);
+  } else {
+    if (kIsDebug) {
+      refcount_.store(-1);
+    }
+  }
+  DEBUG_PRINT(this << " " << oldval);
+  DCHECK(oldval >= 0);
+  return oldval == 0;
 }
 
 /**
@@ -481,10 +536,10 @@ FOLLY_ALWAYS_INLINE hazptr_local<M>::hazptr_local() {
       auto& tc = *ptc;
       auto count = tc.count();
       if (M <= count) {
-#ifndef NDEBUG
-        DCHECK(!tc.local_);
-        tc.local_ = true;
-#endif
+        if (kIsDebug) {
+          DCHECK(!tc.local_);
+          tc.local_ = true;
+        }
         // Fast path
         for (size_t i = 0; i < M; ++i) {
           auto hprec = tc[i].hprec_;
@@ -511,13 +566,13 @@ FOLLY_ALWAYS_INLINE hazptr_local<M>::hazptr_local() {
 template <size_t M>
 FOLLY_ALWAYS_INLINE hazptr_local<M>::~hazptr_local() {
   if (LIKELY(!need_destruct_)) {
-#ifndef NDEBUG
-    auto ptc = hazptr_tc_tls();
-    DCHECK(ptc != nullptr);
-    auto& tc = *ptc;
-    DCHECK(tc.local_);
-    tc.local_ = false;
-#endif
+    if (kIsDebug) {
+      auto ptc = hazptr_tc_tls();
+      DCHECK(ptc != nullptr);
+      auto& tc = *ptc;
+      DCHECK(tc.local_);
+      tc.local_ = false;
+    }
     return;
   }
   // Slow path
@@ -602,6 +657,7 @@ inline hazptr_domain::~hazptr_domain() {
     while (retired) {
       for (auto p = retired; p; p = next) {
         next = p->next_;
+        DEBUG_PRINT(this << " " << p << " " << p->reclaim_);
         (*(p->reclaim_))(p);
       }
       retired = retired_.exchange(nullptr);
@@ -866,9 +922,9 @@ inline void hazptr_tc_init() {
   auto& tc = tls_tc_data_;
   DEBUG_PRINT(&tc);
   tc.count_ = 0;
-#ifndef NDEBUG
-  tc.local_ = false;
-#endif
+  if (kIsDebug) {
+    tc.local_ = false;
+  }
 }
 
 inline void hazptr_tc_shutdown() {

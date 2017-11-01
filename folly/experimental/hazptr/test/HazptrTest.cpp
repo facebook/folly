@@ -50,12 +50,16 @@ class HazptrTest : public testing::Test {
 TEST_F(HazptrTest, Test1) {
   DEBUG_PRINT("");
   Node1* node0 = (Node1*)malloc(sizeof(Node1));
-  DEBUG_PRINT("=== new    node0 " << node0 << " " << sizeof(*node0));
+  node0 = new (node0) Node1;
+  DEBUG_PRINT("=== malloc node0 " << node0 << " " << sizeof(*node0));
   Node1* node1 = (Node1*)malloc(sizeof(Node1));
+  node1 = new (node1) Node1;
   DEBUG_PRINT("=== malloc node1 " << node1 << " " << sizeof(*node1));
   Node1* node2 = (Node1*)malloc(sizeof(Node1));
+  node2 = new (node2) Node1;
   DEBUG_PRINT("=== malloc node2 " << node2 << " " << sizeof(*node2));
   Node1* node3 = (Node1*)malloc(sizeof(Node1));
+  node3 = new (node3) Node1;
   DEBUG_PRINT("=== malloc node3 " << node3 << " " << sizeof(*node3));
 
   DEBUG_PRINT("");
@@ -90,12 +94,12 @@ TEST_F(HazptrTest, Test1) {
   Node1* n2 = shared2.load();
   Node1* n3 = shared3.load();
 
-  if (hptr0.try_protect(n0, shared0)) {}
-  if (hptr1.try_protect(n1, shared1)) {}
+  CHECK(hptr0.try_protect(n0, shared0));
+  CHECK(hptr1.try_protect(n1, shared1));
   hptr1.reset();
   hptr1.reset(nullptr);
   hptr1.reset(n2);
-  if (hptr2.try_protect(n3, shared3)) {}
+  CHECK(hptr2.try_protect(n3, shared3));
   swap(hptr1, hptr2);
   hptr3.reset();
 
@@ -115,10 +119,13 @@ TEST_F(HazptrTest, Test2) {
   Node2* node0 = new Node2;
   DEBUG_PRINT("=== new    node0 " << node0 << " " << sizeof(*node0));
   Node2* node1 = (Node2*)malloc(sizeof(Node2));
+  node1 = new (node1) Node2;
   DEBUG_PRINT("=== malloc node1 " << node1 << " " << sizeof(*node1));
   Node2* node2 = (Node2*)malloc(sizeof(Node2));
+  node2 = new (node2) Node2;
   DEBUG_PRINT("=== malloc node2 " << node2 << " " << sizeof(*node2));
   Node2* node3 = (Node2*)malloc(sizeof(Node2));
+  node3 = new (node3) Node2;
   DEBUG_PRINT("=== malloc node3 " << node3 << " " << sizeof(*node3));
 
   DEBUG_PRINT("");
@@ -153,11 +160,11 @@ TEST_F(HazptrTest, Test2) {
   Node2* n2 = shared2.load();
   Node2* n3 = shared3.load();
 
-  if (hptr0.try_protect(n0, shared0)) {}
-  if (hptr1.try_protect(n1, shared1)) {}
+  CHECK(hptr0.try_protect(n0, shared0));
+  CHECK(hptr1.try_protect(n1, shared1));
   hptr1.reset();
   hptr1.reset(n2);
-  if (hptr2.try_protect(n3, shared3)) {}
+  CHECK(hptr2.try_protect(n3, shared3));
   swap(hptr1, hptr2);
   hptr3.reset();
 
@@ -185,7 +192,9 @@ TEST_F(HazptrTest, LIFO) {
         for (int j = tid; j < FLAGS_num_ops; j += FLAGS_num_threads) {
           s.push(j);
           T res;
-          while (!s.pop(res)) {}
+          while (!s.pop(res)) {
+            /* keep trying */
+          }
         }
       });
     }
@@ -393,4 +402,152 @@ TEST_F(HazptrTest, Local) {
     // Abnormal case
     hazptr_local<HAZPTR_TC_SIZE + 1> h;
   }
+}
+
+/* Test ref counting */
+
+std::atomic<int> constructed;
+std::atomic<int> destroyed;
+
+struct Foo : hazptr_obj_base_refcounted<Foo> {
+  int val_;
+  bool marked_;
+  Foo* next_;
+  Foo(int v, Foo* n) : val_(v), marked_(false), next_(n) {
+    DEBUG_PRINT("");
+    ++constructed;
+  }
+  ~Foo() {
+    DEBUG_PRINT("");
+    ++destroyed;
+    if (marked_) {
+      return;
+    }
+    auto next = next_;
+    while (next) {
+      if (!next->release_ref()) {
+        return;
+      }
+      auto p = next;
+      next = p->next_;
+      p->marked_ = true;
+      delete p;
+    }
+  }
+};
+
+struct Dummy : hazptr_obj_base<Dummy> {};
+
+TEST_F(HazptrTest, basic_refcount) {
+  constructed.store(0);
+  destroyed.store(0);
+
+  Foo* p = nullptr;
+  int num = 20;
+  for (int i = 0; i < num; ++i) {
+    p = new Foo(i, p);
+    if (i & 1) {
+      p->acquire_ref_safe();
+    } else {
+      p->acquire_ref();
+    }
+  }
+  hazptr_holder hptr;
+  hptr.reset(p);
+  for (auto q = p->next_; q; q = q->next_) {
+    q->retire();
+  }
+  int v = num;
+  for (auto q = p; q; q = q->next_) {
+    CHECK_GT(v, 0);
+    --v;
+    CHECK_EQ(q->val_, v);
+  }
+  CHECK(!p->release_ref());
+  CHECK_EQ(constructed.load(), num);
+  CHECK_EQ(destroyed.load(), 0);
+  p->retire();
+  CHECK_EQ(constructed.load(), num);
+  CHECK_EQ(destroyed.load(), 0);
+  hptr.reset();
+
+  /* retire enough objects to guarantee reclamation of Foo objects */
+  for (int i = 0; i < 100; ++i) {
+    auto a = new Dummy;
+    a->retire();
+  }
+
+  CHECK_EQ(constructed.load(), num);
+  CHECK_EQ(destroyed.load(), num);
+}
+
+TEST_F(HazptrTest, mt_refcount) {
+  constructed.store(0);
+  destroyed.store(0);
+
+  std::atomic<bool> ready(false);
+  std::atomic<int> setHazptrs(0);
+  std::atomic<Foo*> head;
+
+  int num = 20;
+  int nthr = 10;
+  std::vector<std::thread> thr(nthr);
+  for (int i = 0; i < nthr; ++i) {
+    thr[i] = std::thread([&] {
+      while (!ready.load()) {
+        /* spin */
+      }
+      hazptr_holder hptr;
+      auto p = hptr.get_protected(head);
+      ++setHazptrs;
+      /* Concurrent with removal */
+      int v = num;
+      for (auto q = p; q; q = q->next_) {
+        CHECK_GT(v, 0);
+        --v;
+        CHECK_EQ(q->val_, v);
+      }
+      CHECK_EQ(v, 0);
+    });
+  }
+
+  Foo* p = nullptr;
+  for (int i = 0; i < num; ++i) {
+    p = new Foo(i, p);
+    p->acquire_ref_safe();
+  }
+  head.store(p);
+
+  ready.store(true);
+
+  while (setHazptrs.load() < nthr) {
+    /* spin */
+  }
+
+  /* this is concurrent with traversal by reader */
+  head.store(nullptr);
+  for (auto q = p; q; q = q->next_) {
+    q->retire();
+  }
+  DEBUG_PRINT("Foo should not be destroyed");
+  CHECK_EQ(constructed.load(), num);
+  CHECK_EQ(destroyed.load(), 0);
+
+  DEBUG_PRINT("Foo may be destroyed after releasing the last reference");
+  if (p->release_ref()) {
+    delete p;
+  }
+
+  /* retire enough objects to guarantee reclamation of Foo objects */
+  for (int i = 0; i < 100; ++i) {
+    auto a = new Dummy;
+    a->retire();
+  }
+
+  for (int i = 0; i < nthr; ++i) {
+    thr[i].join();
+  }
+
+  CHECK_EQ(constructed.load(), num);
+  CHECK_EQ(destroyed.load(), num);
 }
