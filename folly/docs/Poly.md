@@ -33,7 +33,7 @@ The distinguishing characteristic of type-erasing wrappers are:
     inheritance-based callable solution like
     `shared_ptr<ICallable<void(int)>>`. )
 
-### Example: Defining a type-erasing function wrapper with `folly::Poly`
+### Examples: Defining a type-erasing function wrapper with `folly::Poly`
 ***
 
 Defining a polymorphic wrapper with `Poly` is a matter of defining two
@@ -42,7 +42,52 @@ things:
 * An *interface*, consisting of public member functions, and
 * A *mapping* from a concrete type to a set of member function bindings.
 
-Below is a (heavily commented) example of a simple implementation of a
+Below is a simple example program that defines a `drawable` wrapper for any type
+that provides a `draw` member function. (The details will be explained later.)
+
+``` Cpp
+    // This example is an adaptation of one found in Louis Dione's dyno library.
+    #include <folly/Poly.h>
+    #include <iostream>
+
+    struct IDrawable {
+      // Define the interface of something that can be drawn:
+      template <class Base> struct Interface : Base {
+        void draw(std::ostream& out) const { folly::poly_call<0>(*this, out);}
+      };
+      // Define how concrete types can fulfill that interface (in C++17):
+      template <class T> using Members = folly::PolyMembers<&T::draw>;
+    };
+
+    // Define an object that can hold anything that can be drawn:
+    using drawable = folly::Poly<IDrawable>;
+
+    struct Square {
+      void draw(std::ostream& out) const { out << "Square\n"; }
+    };
+
+    struct Circle {
+      void draw(std::ostream& out) const { out << "Circle\n"; }
+    };
+
+    void f(drawable const& d) {
+      d.draw(std::cout);
+    }
+
+    int main() {
+      f(Square{}); // prints Square
+      f(Circle{}); // prints Circle
+    }
+```
+
+The above program prints:
+
+```
+    Square
+    Circle
+```
+
+Here is another (heavily commented) example of a simple implementation of a
 `std::function`-like polymorphic wrapper. Its interface has only a single
 member function: `operator()`
 
@@ -146,7 +191,7 @@ using a C++17 compiler, our interface would look something like this:
     };
 
     template <class Value>
-    using JavaIterator = Poly<IJavaIterator>;
+    using JavaIterator = Poly<IJavaIterator<Value>>;
 ```
 
 Given the above definition, `JavaIterator<int>` can be used to hold instances
@@ -199,7 +244,7 @@ The two examples above would look like this:
     };
 
     template <class Value>
-    using JavaIterator = Poly<IJavaIterator>;
+    using JavaIterator = Poly<IJavaIterator<Value>>;
 ```
 
 and
@@ -227,7 +272,7 @@ and
 One typical advantage of inheritance-based solutions to runtime polymorphism
 is that one polymorphic interface could extend another through inheritance.
 The same can be accomplished with type-erasing polymorphic wrappers. In
-the `Poly` library, you can use `folly::Extends` to say that one interface
+the `Poly` library, you can use `folly::PolyExtends` to say that one interface
 extends another.
 
 ``` Cpp
@@ -241,7 +286,7 @@ extends another.
     };
 
     // The IFooBar interface extends the IFoo interface
-    struct IFooBar : Extends<IFoo> {
+    struct IFooBar : PolyExtends<IFoo> {
       template <class Base>
       struct Interface : Base {
         void Bar() const { return folly::poly_call<0>(*this); }
@@ -253,11 +298,11 @@ extends another.
     using FooBar = Poly<IFooBar>;
 ```
 
-Given the above defintion, instances of type `FooBar` have both `Foo()` and
+Given the above definition, instances of type `FooBar` have both `Foo()` and
 `Bar()` member functions.
 
 The sensible conversions exist between a wrapped derived type and a wrapped
-base type. For instance, assuming `IDerived` extends `IBase` with `Extends`:
+base type. For instance, assuming `IDerived` extends `IBase` with `PolyExtends`:
 
 ``` Cpp
     Poly<IDerived> derived = ...;
@@ -355,7 +400,7 @@ below:
       };
       template <class T>
       using Members = folly::PolyMembers<
-        +[](T const& t) -> decltype(!t) { return !t; }>;
+        +[](T const& t) -> decltype(bool(!t)) { return bool(!t); }>;
     };
 ```
 
@@ -372,7 +417,7 @@ implicitly the `this` parameter. It will receive the type-erased object.
 ### Non-member functions (C++14)
 ***
 
-If you are using a C++14 compiler, the defintion of `ILogicallyNegatable`
+If you are using a C++14 compiler, the definition of `ILogicallyNegatable`
 above will fail because lambdas are not `constexpr`. We can get the same
 effect by writing the lambda as a named free function, as show below:
 
@@ -383,7 +428,8 @@ effect by writing the lambda as a named free function, as show below:
         bool operator!() const { return folly::poly_call<0>(*this); }
       };
       template <class T>
-      static auto negate(T const& t) -> decltype(!t) { return !t; }
+      static auto negate(T const& t)
+        -> decltype(bool(!t)) { return bool(!t); }
       template <class T>
       using Members = FOLLY_POLY_MEMBERS(&negate<T>);
     };
