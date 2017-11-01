@@ -155,6 +155,11 @@ struct Extract<R (&)(Args...)> {
 
 /**
  * Defer work until executor is actively boosted.
+ *
+ * NOTE: that this executor is a private implementation detail belonging to the
+ * Folly Futures library and not intended to be used elsewhere. It is designed
+ * specifically for the use case of deferring work on a SemiFuture. It is NOT
+ * thread safe. Please do not use for any other purpose without great care.
  */
 class DeferredExecutor final : public Executor {
  public:
