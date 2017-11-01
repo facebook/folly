@@ -27,6 +27,7 @@
 
 #include <folly/Exception.h>
 #include <folly/FormatTraits.h>
+#include <folly/MapUtil.h>
 #include <folly/Traits.h>
 #include <folly/portability/Windows.h>
 
@@ -950,7 +951,10 @@ struct KeyableTraitsAssoc : public FormatTraitsBase {
   typedef typename T::key_type key_type;
   typedef typename T::value_type::second_type value_type;
   static const value_type& at(const T& map, StringPiece key) {
-    return map.at(KeyFromStringPiece<key_type>::convert(key));
+    if (auto ptr = get_ptr(map, KeyFromStringPiece<key_type>::convert(key))) {
+      return *ptr;
+    }
+    detail::throwFormatKeyNotFoundException(key);
   }
   static const value_type&
   at(const T& map, StringPiece key, const value_type& dflt) {

@@ -356,4 +356,15 @@ void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
 }
 } // namespace detail
 
+FormatKeyNotFoundException::FormatKeyNotFoundException(StringPiece key)
+    : std::out_of_range(kMessagePrefix.str() + key.str()) {}
+
+constexpr StringPiece const FormatKeyNotFoundException::kMessagePrefix;
+
+namespace detail {
+[[noreturn]] void throwFormatKeyNotFoundException(StringPiece key) {
+  throw FormatKeyNotFoundException(key);
+}
+} // namespace detail
+
 } // namespace folly
