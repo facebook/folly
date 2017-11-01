@@ -160,3 +160,129 @@ struct is_nothrow_invocable_r
 } // namespace folly
 
 #endif
+
+/***
+ *  FOLLY_CREATE_MEMBER_INVOKE_TRAITS
+ *
+ *  Used to create traits container, bound to a specific member-invocable name,
+ *  with the following member traits types and aliases:
+ *
+ *  * invoke_result
+ *  * invoke_result_t
+ *  * is_invocable
+ *  * is_invocable_r
+ *  * is_nothrow_invocable
+ *  * is_nothrow_invocable_r
+ *
+ *  The container also has a static member function:
+ *
+ *  * invoke
+ *
+ *  These members have behavior matching the behavior of C++17's corresponding
+ *  invocation traits types, aliases, and functions, but substituting canonical
+ *  invocation with member invocation.
+ *
+ *  Example:
+ *
+ *    FOLLY_CREATE_MEMBER_INVOKE_TRAITS(foo_invoke_traits, foo);
+ *
+ *  The traits container type `foo_invoke_traits` is generated in the current
+ *  namespace and has the listed member types and aliases. They may be used as
+ *  follows:
+ *
+ *    struct CanFoo {
+ *      int foo(Bar const&) { return 1; }
+ *      int foo(Car&&) noexcept { return 2; }
+ *    };
+ *
+ *    using traits = foo_invoke_traits;
+ *
+ *    traits::invoke(CanFoo{}, Bar{}) // 1
+ *
+ *    traits::invoke_result<CanFoo, Bar&&> // has member
+ *    traits::invoke_result_t<CanFoo, Bar&&> // int
+ *    traits::invoke_result<CanFoo, Bar&> // empty
+ *    traits::invoke_result_t<CanFoo, Bar&> // error
+ *
+ *    traits::is_invocable<CanFoo, Bar&&>::value // true
+ *    traits::is_invocable<CanFoo, Bar&>::value // false
+ *
+ *    traits::is_invocable_r<int, CanFoo, Bar&&>::value // true
+ *    traits::is_invocable_r<char*, CanFoo, Bar&&>::value // false
+ *
+ *    traits::is_nothrow_invocable<CanFoo, Bar&&>::value // false
+ *    traits::is_nothrow_invocable<CanFoo, Car&&>::value // true
+ *
+ *    traits::is_nothrow_invocable<int, CanFoo, Bar&&>::value // false
+ *    traits::is_nothrow_invocable<char*, CanFoo, Bar&&>::value // false
+ *    traits::is_nothrow_invocable<int, CanFoo, Car&&>::value // true
+ *    traits::is_nothrow_invocable<char*, CanFoo, Car&&>::value // false
+ */
+#define FOLLY_CREATE_MEMBER_INVOKE_TRAITS(classname, membername)              \
+  struct classname {                                                          \
+   private:                                                                   \
+    template <typename T>                                                     \
+    using v_ = ::folly::void_t<T>;                                            \
+    template <typename F, typename... Args>                                   \
+    using result_ =                                                           \
+        decltype(::std::declval<F>().membername(::std::declval<Args>()...));  \
+    template <typename F, typename... Args>                                   \
+    using nothrow_ = ::std::integral_constant<                                \
+        bool,                                                                 \
+        noexcept(::std::declval<F>().membername(::std::declval<Args>()...))>; \
+                                                                              \
+    template <typename, typename F, typename... Args>                         \
+    struct invoke_result_ {};                                                 \
+    template <typename F, typename... Args>                                   \
+    struct invoke_result_<v_<result_<F, Args...>>, F, Args...> {              \
+      using type = result_<F, Args...>;                                       \
+    };                                                                        \
+                                                                              \
+    template <typename, typename F, typename... Args>                         \
+    struct is_invocable_ : ::std::false_type {};                              \
+    template <typename F, typename... Args>                                   \
+    struct is_invocable_<v_<result_<F, Args...>>, F, Args...>                 \
+        : ::std::true_type {};                                                \
+                                                                              \
+    template <typename, typename R, typename F, typename... Args>             \
+    struct is_invocable_r_ : ::std::false_type {};                            \
+    template <typename R, typename F, typename... Args>                       \
+    struct is_invocable_r_<v_<result_<F, Args...>>, R, F, Args...>            \
+        : ::std::is_convertible<result_<F, Args...>, R> {};                   \
+                                                                              \
+    template <typename, typename F, typename... Args>                         \
+    struct is_nothrow_invocable_ : ::std::false_type {};                      \
+    template <typename F, typename... Args>                                   \
+    struct is_nothrow_invocable_<v_<result_<F, Args...>>, F, Args...>         \
+        : nothrow_<F, Args...> {};                                            \
+                                                                              \
+    template <typename, typename R, typename F, typename... Args>             \
+    struct is_nothrow_invocable_r_ : ::std::false_type {};                    \
+    template <typename R, typename F, typename... Args>                       \
+    struct is_nothrow_invocable_r_<v_<result_<F, Args...>>, R, F, Args...>    \
+        : ::folly::StrictConjunction<                                         \
+              ::std::is_convertible<result_<F, Args...>, R>,                  \
+              nothrow_<F, Args...>> {};                                       \
+                                                                              \
+   public:                                                                    \
+    template <typename F, typename... Args>                                   \
+    struct invoke_result : invoke_result_<void, F, Args...> {};               \
+    template <typename F, typename... Args>                                   \
+    using invoke_result_t = typename invoke_result<F, Args...>::type;         \
+    template <typename F, typename... Args>                                   \
+    struct is_invocable : is_invocable_<void, F, Args...> {};                 \
+    template <typename R, typename F, typename... Args>                       \
+    struct is_invocable_r : is_invocable_r_<void, R, F, Args...> {};          \
+    template <typename F, typename... Args>                                   \
+    struct is_nothrow_invocable : is_nothrow_invocable_<void, F, Args...> {}; \
+    template <typename R, typename F, typename... Args>                       \
+    struct is_nothrow_invocable_r                                             \
+        : is_nothrow_invocable_r_<void, R, F, Args...> {};                    \
+                                                                              \
+    template <typename F, typename... Args>                                   \
+    static constexpr result_<F, Args...> invoke(                              \
+        F&& f,                                                                \
+        Args&&... args) noexcept(nothrow_<F, Args...>::value) {               \
+      return std::forward<F>(f).membername(std::forward<Args>(args)...);      \
+    }                                                                         \
+  }

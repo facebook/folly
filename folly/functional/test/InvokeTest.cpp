@@ -33,6 +33,22 @@ struct Fn {
   }
   int volatile x_ = 17;
 };
+
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(test_invoke_traits, test);
+
+struct Obj {
+  char test(int, int) noexcept {
+    return 'a';
+  }
+  int volatile&& test(int, char const*) {
+    return std::move(x_);
+  }
+  float test(float, float) {
+    return 3.14;
+  }
+  int volatile x_ = 17;
+};
+
 } // namespace
 
 TEST_F(InvokeTest, invoke) {
@@ -80,4 +96,58 @@ TEST_F(InvokeTest, is_nothrow_invocable_r) {
   EXPECT_TRUE((folly::is_nothrow_invocable_r<int, Fn, int, char>::value));
   EXPECT_FALSE((folly::is_nothrow_invocable_r<int, Fn, int, char*>::value));
   EXPECT_FALSE((folly::is_nothrow_invocable_r<int, Fn, int>::value));
+}
+
+TEST_F(InvokeTest, member_invoke) {
+  using traits = test_invoke_traits;
+
+  Obj fn;
+
+  EXPECT_TRUE(noexcept(traits::invoke(fn, 1, 2)));
+  EXPECT_FALSE(noexcept(traits::invoke(fn, 1, "2")));
+
+  EXPECT_EQ('a', traits::invoke(fn, 1, 2));
+  EXPECT_EQ(17, traits::invoke(fn, 1, "2"));
+}
+
+TEST_F(InvokeTest, member_invoke_result) {
+  using traits = test_invoke_traits;
+
+  EXPECT_TRUE(
+      (std::is_same<char, traits::invoke_result_t<Obj, int, char>>::value));
+  EXPECT_TRUE(
+      (std::is_same<int volatile&&, traits::invoke_result_t<Obj, int, char*>>::
+           value));
+}
+
+TEST_F(InvokeTest, member_is_invocable) {
+  using traits = test_invoke_traits;
+
+  EXPECT_TRUE((traits::is_invocable<Obj, int, char>::value));
+  EXPECT_TRUE((traits::is_invocable<Obj, int, char*>::value));
+  EXPECT_FALSE((traits::is_invocable<Obj, int>::value));
+}
+
+TEST_F(InvokeTest, member_is_invocable_r) {
+  using traits = test_invoke_traits;
+
+  EXPECT_TRUE((traits::is_invocable_r<int, Obj, int, char>::value));
+  EXPECT_TRUE((traits::is_invocable_r<int, Obj, int, char*>::value));
+  EXPECT_FALSE((traits::is_invocable_r<int, Obj, int>::value));
+}
+
+TEST_F(InvokeTest, member_is_nothrow_invocable) {
+  using traits = test_invoke_traits;
+
+  EXPECT_TRUE((traits::is_nothrow_invocable<Obj, int, char>::value));
+  EXPECT_FALSE((traits::is_nothrow_invocable<Obj, int, char*>::value));
+  EXPECT_FALSE((traits::is_nothrow_invocable<Obj, int>::value));
+}
+
+TEST_F(InvokeTest, member_is_nothrow_invocable_r) {
+  using traits = test_invoke_traits;
+
+  EXPECT_TRUE((traits::is_nothrow_invocable_r<int, Obj, int, char>::value));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r<int, Obj, int, char*>::value));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r<int, Obj, int>::value));
 }
