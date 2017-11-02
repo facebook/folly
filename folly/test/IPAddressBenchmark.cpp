@@ -116,6 +116,52 @@ BENCHMARK_RELATIVE(ipv6_append_to_fully_qualified_port, iters) {
   }
 }
 
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(ipv6_ctor_valid, iters) {
+  while (iters--) {
+    try {
+      IPAddressV6 ip("2803:6082:18e0:2c49:1a23:9ee0:5c87:9800");
+      doNotOptimizeAway(ip);
+    } catch (const IPAddressFormatException& ex) {
+      doNotOptimizeAway(ex);
+    }
+  }
+}
+
+BENCHMARK_RELATIVE(ipv6_ctor_invalid, iters) {
+  while (iters--) {
+    try {
+      IPAddressV6 ip("2803:6082:18e0:2c49:1a23:9ee0:5c87:980r");
+      doNotOptimizeAway(ip);
+    } catch (const IPAddressFormatException& ex) {
+      doNotOptimizeAway(ex);
+    }
+  }
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(ipv6_try_from_string_valid, iters) {
+  while (iters--) {
+    auto maybeIp =
+        IPAddressV6::tryFromString("2803:6082:18e0:2c49:1a23:9ee0:5c87:9800");
+    CHECK(maybeIp.hasValue());
+    doNotOptimizeAway(maybeIp);
+    doNotOptimizeAway(maybeIp.value());
+  }
+}
+
+BENCHMARK_RELATIVE(ipv6_try_from_string_invalid, iters) {
+  while (iters--) {
+    auto maybeIp =
+        IPAddressV6::tryFromString("2803:6082:18e0:2c49:1a23:9ee0:5c87:980r");
+    CHECK(maybeIp.hasError());
+    doNotOptimizeAway(maybeIp);
+    doNotOptimizeAway(maybeIp.error());
+  }
+}
+
 // Benchmark results on Intel Xeon CPU E5-2660 @ 2.20GHz
 // ============================================================================
 // folly/test/IPAddressBenchmark.cpp               relative  time/iter  iters/s
@@ -131,6 +177,12 @@ BENCHMARK_RELATIVE(ipv6_append_to_fully_qualified_port, iters) {
 // ----------------------------------------------------------------------------
 // ipv6_to_fully_qualified_port                               150.76ns    6.63M
 // ipv6_append_to_fully_qualified_port              178.73%    84.35ns   11.86M
+// ----------------------------------------------------------------------------
+// ipv6_ctor_valid                                            379.97ns    2.63M
+// ipv6_ctor_invalid                                 10.38%     3.66us  273.22K
+// ----------------------------------------------------------------------------
+// ipv6_try_from_string_valid                                 375.34ns    2.66M
+// ipv6_try_from_string_invalid                     111.93%   335.34ns    2.98M
 // ============================================================================
 
 int main(int argc, char* argv[]) {

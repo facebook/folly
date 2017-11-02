@@ -44,14 +44,8 @@ void toAppend(IPAddressV4 addr, fbstring* result) {
   result->append(addr.str());
 }
 
-bool IPAddressV4::validate(StringPiece ip) {
-  constexpr size_t kStrMaxLen = INET_ADDRSTRLEN;
-  std::array<char, kStrMaxLen + 1> ip_cstr;
-  const size_t len = std::min(ip.size(), kStrMaxLen);
-  std::memcpy(ip_cstr.data(), ip.data(), len);
-  ip_cstr[len] = 0;
-  struct in_addr addr;
-  return 1 == inet_pton(AF_INET, ip_cstr.data(), &addr);
+bool IPAddressV4::validate(StringPiece ip) noexcept {
+  return tryFromString(ip).hasValue();
 }
 
 // public static
@@ -87,27 +81,57 @@ uint32_t IPAddressV4::toLongHBO(StringPiece ip) {
 IPAddressV4::IPAddressV4() {}
 
 // ByteArray4 constructor
-IPAddressV4::IPAddressV4(const ByteArray4& src) : addr_(src) {}
+IPAddressV4::IPAddressV4(const ByteArray4& src) noexcept : addr_(src) {}
 
 // public string constructor
 IPAddressV4::IPAddressV4(StringPiece addr) : addr_() {
-  auto ip = addr.str();
-  if (inet_pton(AF_INET, ip.c_str(), &addr_.inAddr_) != 1) {
-    throw IPAddressFormatException(sformat("Invalid IPv4 address '{}'", addr));
+  auto maybeIp = tryFromString(addr);
+  if (maybeIp.hasError()) {
+    throw IPAddressFormatException(
+        to<std::string>("Invalid IPv4 address '", addr, "'"));
   }
+  *this = std::move(maybeIp.value());
+}
+
+Expected<IPAddressV4, IPAddressFormatError> IPAddressV4::tryFromString(
+    StringPiece str) noexcept {
+  struct in_addr inAddr;
+  if (inet_pton(AF_INET, str.str().c_str(), &inAddr) != 1) {
+    return makeUnexpected(IPAddressFormatError::INVALID_IP);
+  }
+  return IPAddressV4(inAddr);
 }
 
 // in_addr constructor
-IPAddressV4::IPAddressV4(const in_addr src) : addr_(src) {}
+IPAddressV4::IPAddressV4(const in_addr src) noexcept : addr_(src) {}
 
-// public
-void IPAddressV4::setFromBinary(ByteRange bytes) {
-  if (bytes.size() != 4) {
-    throw IPAddressFormatException(sformat(
-        "Invalid IPv4 binary data: length must be 4 bytes, got {}",
+IPAddressV4 IPAddressV4::fromBinary(ByteRange bytes) {
+  auto maybeIp = tryFromBinary(bytes);
+  if (maybeIp.hasError()) {
+    throw IPAddressFormatException(to<std::string>(
+        "Invalid IPv4 binary data: length must be 4 bytes, got ",
         bytes.size()));
   }
+  return maybeIp.value();
+}
+
+Expected<IPAddressV4, IPAddressFormatError> IPAddressV4::tryFromBinary(
+    ByteRange bytes) noexcept {
+  IPAddressV4 addr;
+  auto setResult = addr.trySetFromBinary(bytes);
+  if (setResult.hasError()) {
+    return makeUnexpected(std::move(setResult.error()));
+  }
+  return addr;
+}
+
+Expected<Unit, IPAddressFormatError> IPAddressV4::trySetFromBinary(
+    ByteRange bytes) noexcept {
+  if (bytes.size() != 4) {
+    return makeUnexpected(IPAddressFormatError::INVALID_IP);
+  }
   memcpy(&addr_.inAddr_.s_addr, bytes.data(), sizeof(in_addr));
+  return folly::unit;
 }
 
 // static
@@ -126,8 +150,6 @@ IPAddressV4 IPAddressV4::fromInverseArpaName(const std::string& arpaname) {
   // reverse 1.0.168.192 -> 192.168.0.1
   return IPAddressV4(join(".", pieces.rbegin(), pieces.rend()));
 }
-
-// public
 IPAddressV6 IPAddressV4::createIPv6() const {
   ByteArray16 ba{};
   ba[10] = 0xff;

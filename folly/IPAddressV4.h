@@ -22,7 +22,9 @@
 #include <functional>
 #include <iosfwd>
 
+#include <folly/Expected.h>
 #include <folly/FBString.h>
+#include <folly/IPAddressException.h>
 #include <folly/Range.h>
 #include <folly/detail/IPAddress.h>
 #include <folly/hash/Hash.h>
@@ -60,7 +62,7 @@ class IPAddressV4 {
       4 /*words*/ * 3 /*max chars per word*/ + 3 /*separators*/;
 
   // returns true iff the input string can be parsed as an ipv4-address
-  static bool validate(StringPiece ip);
+  static bool validate(StringPiece ip) noexcept;
 
   // create an IPAddressV4 instance from a uint32_t (network byte order)
   static IPAddressV4 fromLong(uint32_t src);
@@ -71,11 +73,21 @@ class IPAddressV4 {
    * Create a new IPAddress instance from the provided binary data.
    * @throws IPAddressFormatException if the input length is not 4 bytes.
    */
-  static IPAddressV4 fromBinary(ByteRange bytes) {
-    IPAddressV4 addr;
-    addr.setFromBinary(bytes);
-    return addr;
-  }
+  static IPAddressV4 fromBinary(ByteRange bytes);
+
+  /**
+   * Non-throwing version of fromBinary().
+   * On failure returns IPAddressFormatError.
+   */
+  static Expected<IPAddressV4, IPAddressFormatError> tryFromBinary(
+      ByteRange bytes) noexcept;
+
+  /**
+   * Tries to create a new IPAddressV4 instance from provided string and
+   * returns it on success. Returns IPAddressFormatError on failure.
+   */
+  static Expected<IPAddressV4, IPAddressFormatError> tryFromString(
+      StringPiece str) noexcept;
 
   /**
    * Returns the address as a Range.
@@ -113,10 +125,10 @@ class IPAddressV4 {
   explicit IPAddressV4(StringPiece ip);
 
   // ByteArray4 constructor
-  explicit IPAddressV4(const ByteArray4& src);
+  explicit IPAddressV4(const ByteArray4& src) noexcept;
 
   // in_addr constructor
-  explicit IPAddressV4(const in_addr src);
+  explicit IPAddressV4(const in_addr src) noexcept;
 
   // Return the V6 mapped representation of the address.
   IPAddressV6 createIPv6() const;
@@ -285,9 +297,10 @@ class IPAddressV4 {
 
   /**
    * Set the current IPAddressV4 object to have the address specified by bytes.
-   * @throws IPAddressFormatException if bytes.size() is not 4.
+   * Returns IPAddressFormatError if bytes.size() is not 4.
    */
-  void setFromBinary(ByteRange bytes);
+  Expected<Unit, IPAddressFormatError> trySetFromBinary(
+      ByteRange bytes) noexcept;
 };
 
 // boost::hash uses hash_value() so this allows boost::hash to work

@@ -25,6 +25,11 @@
 namespace folly {
 
 /**
+ * Error codes for non-throwing interface of IPAddress family of functions.
+ */
+enum class IPAddressFormatError { INVALID_IP, UNSUPPORTED_ADDR_FAMILY };
+
+/**
  * Exception for invalid IP addresses.
  */
 class IPAddressFormatException : public std::exception {

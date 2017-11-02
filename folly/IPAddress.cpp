@@ -46,7 +46,7 @@ void toAppend(IPAddress addr, fbstring* result) {
   result->append(addr.str());
 }
 
-bool IPAddress::validate(StringPiece ip) {
+bool IPAddress::validate(StringPiece ip) noexcept {
   return IPAddressV4::validate(ip) || IPAddressV6::validate(ip);
 }
 
@@ -125,6 +125,18 @@ IPAddress IPAddress::fromBinary(ByteRange bytes) {
   }
 }
 
+Expected<IPAddress, IPAddressFormatError> IPAddress::tryFromBinary(
+    ByteRange bytes) noexcept {
+  // Check IPv6 first since it's our main protocol.
+  if (bytes.size() == 16) {
+    return IPAddressV6::tryFromBinary(bytes);
+  } else if (bytes.size() == 4) {
+    return IPAddressV4::tryFromBinary(bytes);
+  } else {
+    return makeUnexpected(IPAddressFormatError::UNSUPPORTED_ADDR_FAMILY);
+  }
+}
+
 // public static
 IPAddress IPAddress::fromLong(uint32_t src) {
   return IPAddress(IPAddressV4::fromLong(src));
@@ -137,45 +149,25 @@ IPAddress IPAddress::fromLongHBO(uint32_t src) {
 IPAddress::IPAddress() : addr_(), family_(AF_UNSPEC) {}
 
 // public string constructor
-IPAddress::IPAddress(StringPiece addr) : addr_(), family_(AF_UNSPEC) {
-  string ip = addr.str(); // inet_pton() needs NUL-terminated string
-  auto throwFormatException = [&](const string& msg) {
-    throw IPAddressFormatException(sformat("Invalid IP '{}': {}", ip, msg));
-  };
-
-  if (ip.size() < 2) {
-    throwFormatException("address too short");
+IPAddress::IPAddress(StringPiece str) : addr_(), family_(AF_UNSPEC) {
+  auto maybeIp = tryFromString(str);
+  if (maybeIp.hasError()) {
+    throw IPAddressFormatException(
+        to<std::string>("Invalid IP address '", str, "'"));
   }
-  if (ip.front() == '[' && ip.back() == ']') {
-    ip = ip.substr(1, ip.size() - 2);
-  }
+  *this = std::move(maybeIp.value());
+}
 
+Expected<IPAddress, IPAddressFormatError> IPAddress::tryFromString(
+    StringPiece str) noexcept {
   // need to check for V4 address second, since IPv4-mapped IPv6 addresses may
   // contain a period
-  if (ip.find(':') != string::npos) {
-    struct addrinfo* result;
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET6;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_NUMERICHOST;
-    if (!getaddrinfo(ip.c_str(), nullptr, &hints, &result)) {
-      struct sockaddr_in6* ipAddr = (struct sockaddr_in6*)result->ai_addr;
-      addr_ = IPAddressV46(IPAddressV6(*ipAddr));
-      family_ = AF_INET6;
-      freeaddrinfo(result);
-    } else {
-      throwFormatException("getsockaddr failed for V6 address");
-    }
-  } else if (ip.find('.') != string::npos) {
-    in_addr ipAddr;
-    if (inet_pton(AF_INET, ip.c_str(), &ipAddr) != 1) {
-      throwFormatException("inet_pton failed for V4 address");
-    }
-    addr_ = IPAddressV46(IPAddressV4(ipAddr));
-    family_ = AF_INET;
+  if (str.find(':') != string::npos) {
+    return IPAddressV6::tryFromString(str);
+  } else if (str.find('.') != string::npos) {
+    return IPAddressV4::tryFromString(str);
   } else {
-    throwFormatException("invalid address format");
+    return makeUnexpected(IPAddressFormatError::UNSUPPORTED_ADDR_FAMILY);
   }
 }
 
@@ -202,30 +194,30 @@ IPAddress::IPAddress(const sockaddr* addr) : addr_(), family_(AF_UNSPEC) {
 }
 
 // public ipv4 constructor
-IPAddress::IPAddress(const IPAddressV4 ipV4Addr)
+IPAddress::IPAddress(const IPAddressV4 ipV4Addr) noexcept
     : addr_(ipV4Addr), family_(AF_INET) {}
 
 // public ipv4 constructor
-IPAddress::IPAddress(const in_addr ipV4Addr)
+IPAddress::IPAddress(const in_addr ipV4Addr) noexcept
     : addr_(IPAddressV4(ipV4Addr)), family_(AF_INET) {}
 
 // public ipv6 constructor
-IPAddress::IPAddress(const IPAddressV6& ipV6Addr)
+IPAddress::IPAddress(const IPAddressV6& ipV6Addr) noexcept
     : addr_(ipV6Addr), family_(AF_INET6) {}
 
 // public ipv6 constructor
-IPAddress::IPAddress(const in6_addr& ipV6Addr)
+IPAddress::IPAddress(const in6_addr& ipV6Addr) noexcept
     : addr_(IPAddressV6(ipV6Addr)), family_(AF_INET6) {}
 
 // Assign from V4 address
-IPAddress& IPAddress::operator=(const IPAddressV4& ipv4_addr) {
+IPAddress& IPAddress::operator=(const IPAddressV4& ipv4_addr) noexcept {
   addr_ = IPAddressV46(ipv4_addr);
   family_ = AF_INET;
   return *this;
 }
 
 // Assign from V6 address
-IPAddress& IPAddress::operator=(const IPAddressV6& ipv6_addr) {
+IPAddress& IPAddress::operator=(const IPAddressV6& ipv6_addr) noexcept {
   addr_ = IPAddressV46(ipv6_addr);
   family_ = AF_INET6;
   return *this;

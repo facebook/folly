@@ -154,6 +154,38 @@ struct IPAddressSerializeTest : TestWithParam<SerializeData> {};
 struct IPAddressByteAccessorTest : TestWithParam<AddressData> {};
 struct IPAddressBitAccessorTest : TestWithParam<AddressData> {};
 
+struct StringTestParam {
+  std::string in;
+  folly::Optional<std::string> out;
+  folly::Optional<std::string> out4;
+  folly::Optional<std::string> out6;
+};
+
+struct TryFromStringTest : TestWithParam<StringTestParam> {
+  static std::vector<StringTestParam> ipInOutProvider() {
+    const std::string lo6{"::1"};
+    const std::string lo6brackets{"[::1]"};
+    const std::string ip6{"1234::abcd"};
+    const std::string invalid6{"[::aaaR]"};
+
+    const std::string lo4{"127.0.0.1"};
+    const std::string ip4{"192.168.0.1"};
+    const std::string invalid4{"127.0.0.256"};
+
+    const static std::vector<StringTestParam> ret = {
+        {lo6, lo6, none, lo6},
+        {lo6brackets, lo6, none, lo6},
+        {ip6, ip6, none, ip6},
+        {invalid6, none, none, none},
+        {lo4, lo4, lo4, none},
+        {ip4, ip4, ip4, none},
+        {invalid4, none, none, none},
+    };
+
+    return ret;
+  }
+};
+
 // tests code example
 TEST(IPAddress, CodeExample) {
   EXPECT_EQ(4, sizeof(IPAddressV4));
@@ -531,6 +563,44 @@ TEST(IPAddress, ToSockaddrStorage) {
   }
 }
 
+TEST_P(TryFromStringTest, IPAddress) {
+  auto param = GetParam();
+  auto maybeIp = IPAddress::tryFromString(param.in);
+  if (param.out) {
+    EXPECT_TRUE(maybeIp.hasValue());
+    EXPECT_EQ(param.out, maybeIp.value().str());
+  } else {
+    EXPECT_TRUE(maybeIp.hasError());
+    EXPECT_TRUE(
+        IPAddressFormatError::INVALID_IP == maybeIp.error() ||
+        IPAddressFormatError::UNSUPPORTED_ADDR_FAMILY == maybeIp.error());
+  }
+}
+
+TEST_P(TryFromStringTest, IPAddressV4) {
+  auto param = GetParam();
+  auto maybeIp = IPAddressV4::tryFromString(param.in);
+  if (param.out4) {
+    EXPECT_TRUE(maybeIp.hasValue());
+    EXPECT_EQ(param.out4, maybeIp.value().str());
+  } else {
+    EXPECT_TRUE(maybeIp.hasError());
+    EXPECT_EQ(IPAddressFormatError::INVALID_IP, maybeIp.error());
+  }
+}
+
+TEST_P(TryFromStringTest, IPAddressV6) {
+  auto param = GetParam();
+  auto maybeIp = IPAddressV6::tryFromString(param.in);
+  if (param.out6) {
+    EXPECT_TRUE(maybeIp.hasValue());
+    EXPECT_EQ(param.out6, maybeIp.value().str());
+  } else {
+    EXPECT_TRUE(maybeIp.hasError());
+    EXPECT_EQ(IPAddressFormatError::INVALID_IP, maybeIp.error());
+  }
+}
+
 TEST(IPAddress, ToString) {
   // Test with IPAddressV4
   IPAddressV4 addr_10_0_0_1("10.0.0.1");
@@ -587,12 +657,18 @@ TEST_P(IPAddressCtorTest, InvalidCreation) {
       << "should have thrown an IPAddressFormatException";
 }
 
-// Test that invalid binary values throw an exception
+// Test that invalid binary values throw or return an exception
 TEST_P(IPAddressCtorBinaryTest, InvalidBinary) {
   auto bin = GetParam();
-  EXPECT_THROW(
-      IPAddress::fromBinary(ByteRange(&bin[0], bin.size())),
-      IPAddressFormatException);
+  auto byteRange = ByteRange(&bin[0], bin.size());
+  // Throwing versions.
+  EXPECT_THROW(IPAddress::fromBinary(byteRange), IPAddressFormatException);
+  EXPECT_THROW(IPAddressV4::fromBinary(byteRange), IPAddressFormatException);
+  EXPECT_THROW(IPAddressV6::fromBinary(byteRange), IPAddressFormatException);
+  // Non-throwing versions.
+  EXPECT_TRUE(IPAddress::tryFromBinary(byteRange).hasError());
+  EXPECT_TRUE(IPAddressV4::tryFromBinary(byteRange).hasError());
+  EXPECT_TRUE(IPAddressV6::tryFromBinary(byteRange).hasError());
 }
 
 TEST(IPAddressSource, ToHex) {
@@ -837,6 +913,10 @@ TEST(IPAddress, fromBinaryV4) {
     addr2 = IPAddressV4::fromBinary(bytes);
     EXPECT_EQ(fromStr, addr2);
 
+    auto maybeAddr3 = IPAddressV4::tryFromBinary(bytes);
+    EXPECT_TRUE(maybeAddr3.hasValue());
+    EXPECT_EQ(fromStr, maybeAddr3.value());
+
     IPAddress genericAddr = IPAddress::fromBinary(bytes);
     ASSERT_TRUE(genericAddr.isV4());
     EXPECT_EQ(fromStr, genericAddr.asV4());
@@ -920,6 +1000,10 @@ TEST(IPAddress, fromBinaryV6) {
     IPAddressV6 addr2("::0");
     addr2 = IPAddressV6::fromBinary(bytes);
     EXPECT_EQ(fromStr, addr2);
+
+    auto maybeAddr3 = IPAddressV6::tryFromBinary(bytes);
+    EXPECT_TRUE(maybeAddr3.hasValue());
+    EXPECT_EQ(fromStr, maybeAddr3.value());
 
     IPAddress genericAddr = IPAddress::fromBinary(bytes);
     ASSERT_TRUE(genericAddr.isV6());
@@ -1458,6 +1542,10 @@ INSTANTIATE_TEST_CASE_P(
     IPAddress,
     IPAddressBitAccessorTest,
     ::testing::ValuesIn(validAddressProvider));
+INSTANTIATE_TEST_CASE_P(
+    IPAddress,
+    TryFromStringTest,
+    ::testing::ValuesIn(TryFromStringTest::ipInOutProvider()));
 
 TEST(IPAddressV4, fetchMask) {
   struct X : private IPAddressV4 {

@@ -73,7 +73,7 @@ class IPAddress {
 
  public:
   // returns true iff the input string can be parsed as an ip-address
-  static bool validate(StringPiece ip);
+  static bool validate(StringPiece ip) noexcept;
 
   // return the V4 representation of the address, converting it from V6 to V4 if
   // needed. Note that this will throw an IPAddressFormatException if the V6
@@ -115,6 +115,20 @@ class IPAddress {
   static IPAddress fromBinary(ByteRange bytes);
 
   /**
+   * Non-throwing version of fromBinary().
+   * On failure returns IPAddressFormatError.
+   */
+  static Expected<IPAddress, IPAddressFormatError> tryFromBinary(
+      ByteRange bytes) noexcept;
+
+  /**
+   * Tries to create a new IPAddress instance from provided string and
+   * returns it on success. Returns IPAddressFormatError on failure.
+   */
+  static Expected<IPAddress, IPAddressFormatError> tryFromString(
+      StringPiece str) noexcept;
+
+  /**
    * Create an IPAddress from a 32bit long (network byte order).
    * @throws IPAddressFormatException
    */
@@ -152,25 +166,25 @@ class IPAddress {
   explicit IPAddress(const sockaddr* addr);
 
   // Create an IPAddress from a V4 address
-  /* implicit */ IPAddress(const IPAddressV4 ipV4Addr);
-  /* implicit */ IPAddress(const in_addr addr);
+  /* implicit */ IPAddress(const IPAddressV4 ipV4Addr) noexcept;
+  /* implicit */ IPAddress(const in_addr addr) noexcept;
 
   // Create an IPAddress from a V6 address
-  /* implicit */ IPAddress(const IPAddressV6& ipV6Addr);
-  /* implicit */ IPAddress(const in6_addr& addr);
+  /* implicit */ IPAddress(const IPAddressV6& ipV6Addr) noexcept;
+  /* implicit */ IPAddress(const in6_addr& addr) noexcept;
 
   // Assign from V4 address
-  IPAddress& operator=(const IPAddressV4& ipV4Addr);
+  IPAddress& operator=(const IPAddressV4& ipV4Addr) noexcept;
 
   // Assign from V6 address
-  IPAddress& operator=(const IPAddressV6& ipV6Addr);
+  IPAddress& operator=(const IPAddressV6& ipV6Addr) noexcept;
 
   /**
    * Converts an IPAddress to an IPAddressV4 instance.
    * @note This is not some handy convenience wrapper to convert an IPv4 address
    *       to a mapped IPv6 address. If you want that use
    *       IPAddress::createIPv6(addr)
-   * @throws IPAddressFormatException is not a V4 instance
+   * @throws InvalidAddressFamilyException is not a V4 instance
    */
   const IPAddressV4& asV4() const {
     if (UNLIKELY(!isV4())) {
@@ -418,11 +432,11 @@ class IPAddress {
     IPAddressV4 ipV4Addr;
     IPAddressV6 ipV6Addr;
     // default constructor
-    IPAddressV46() {
+    IPAddressV46() noexcept {
       std::memset(this, 0, sizeof(IPAddressV46));
     }
-    explicit IPAddressV46(const IPAddressV4& addr) : ipV4Addr(addr) {}
-    explicit IPAddressV46(const IPAddressV6& addr) : ipV6Addr(addr) {}
+    explicit IPAddressV46(const IPAddressV4& addr) noexcept : ipV4Addr(addr) {}
+    explicit IPAddressV46(const IPAddressV6& addr) noexcept : ipV6Addr(addr) {}
   } IPAddressV46;
   IPAddressV46 addr_;
   sa_family_t family_;

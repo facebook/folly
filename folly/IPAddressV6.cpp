@@ -62,18 +62,8 @@ void toAppend(IPAddressV6 addr, fbstring* result) {
   result->append(addr.str());
 }
 
-bool IPAddressV6::validate(StringPiece ip) {
-  if (ip.size() > 0 && ip.front() == '[' && ip.back() == ']') {
-    ip = ip.subpiece(1, ip.size() - 2);
-  }
-
-  constexpr size_t kStrMaxLen = INET6_ADDRSTRLEN;
-  std::array<char, kStrMaxLen + 1> ip_cstr;
-  const size_t len = std::min(ip.size(), kStrMaxLen);
-  std::memcpy(ip_cstr.data(), ip.data(), len);
-  ip_cstr[len] = 0;
-  struct in6_addr addr;
-  return 1 == inet_pton(AF_INET6, ip_cstr.data(), &addr);
+bool IPAddressV6::validate(StringPiece ip) noexcept {
+  return tryFromString(ip).hasValue();
 }
 
 // public default constructor
@@ -81,12 +71,21 @@ IPAddressV6::IPAddressV6() {}
 
 // public string constructor
 IPAddressV6::IPAddressV6(StringPiece addr) {
-  auto ip = addr.str();
+  auto maybeIp = tryFromString(addr);
+  if (maybeIp.hasError()) {
+    throw IPAddressFormatException(
+        to<std::string>("Invalid IPv6 address '", addr, "'"));
+  }
+  *this = std::move(maybeIp.value());
+}
+
+Expected<IPAddressV6, IPAddressFormatError> IPAddressV6::tryFromString(
+    StringPiece str) noexcept {
+  auto ip = str.str();
 
   // Allow addresses surrounded in brackets
   if (ip.size() < 2) {
-    throw IPAddressFormatException(
-        sformat("Invalid IPv6 address '{}': address too short", ip));
+    return makeUnexpected(IPAddressFormatError::INVALID_IP);
   }
   if (ip.front() == '[' && ip.back() == ']') {
     ip = ip.substr(1, ip.size() - 2);
@@ -98,25 +97,26 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
   hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_NUMERICHOST;
-  if (!getaddrinfo(ip.c_str(), nullptr, &hints, &result)) {
-    struct sockaddr_in6* ipAddr = (struct sockaddr_in6*)result->ai_addr;
-    addr_.in6Addr_ = ipAddr->sin6_addr;
-    scope_ = uint16_t(ipAddr->sin6_scope_id);
-    freeaddrinfo(result);
-  } else {
-    throw IPAddressFormatException(sformat("Invalid IPv6 address '{}'", ip));
+  if (::getaddrinfo(ip.c_str(), nullptr, &hints, &result) == 0) {
+    SCOPE_EXIT {
+      ::freeaddrinfo(result);
+    };
+    const struct sockaddr_in6* sa =
+        reinterpret_cast<struct sockaddr_in6*>(result->ai_addr);
+    return IPAddressV6(*sa);
   }
+  return makeUnexpected(IPAddressFormatError::INVALID_IP);
 }
 
 // in6_addr constructor
-IPAddressV6::IPAddressV6(const in6_addr& src) : addr_(src) {}
+IPAddressV6::IPAddressV6(const in6_addr& src) noexcept : addr_(src) {}
 
 // sockaddr_in6 constructor
-IPAddressV6::IPAddressV6(const sockaddr_in6& src)
+IPAddressV6::IPAddressV6(const sockaddr_in6& src) noexcept
     : addr_(src.sin6_addr), scope_(uint16_t(src.sin6_scope_id)) {}
 
 // ByteArray16 constructor
-IPAddressV6::IPAddressV6(const ByteArray16& src) : addr_(src) {}
+IPAddressV6::IPAddressV6(const ByteArray16& src) noexcept : addr_(src) {}
 
 // link-local constructor
 IPAddressV6::IPAddressV6(LinkLocalTag, MacAddress mac) : addr_(mac) {}
@@ -165,14 +165,34 @@ Optional<MacAddress> IPAddressV6::getMacAddressFromEUI64() const {
   return Optional<MacAddress>(MacAddress::fromBinary(range(bytes)));
 }
 
-void IPAddressV6::setFromBinary(ByteRange bytes) {
-  if (bytes.size() != 16) {
-    throw IPAddressFormatException(sformat(
-        "Invalid IPv6 binary data: length must be 16 bytes, got {}",
+IPAddressV6 IPAddressV6::fromBinary(ByteRange bytes) {
+  auto maybeIp = tryFromBinary(bytes);
+  if (maybeIp.hasError()) {
+    throw IPAddressFormatException(to<std::string>(
+        "Invalid IPv6 binary data: length must be 16 bytes, got ",
         bytes.size()));
+  }
+  return maybeIp.value();
+}
+
+Expected<IPAddressV6, IPAddressFormatError> IPAddressV6::tryFromBinary(
+    ByteRange bytes) noexcept {
+  IPAddressV6 addr;
+  auto setResult = addr.trySetFromBinary(bytes);
+  if (setResult.hasError()) {
+    return makeUnexpected(std::move(setResult.error()));
+  }
+  return addr;
+}
+
+Expected<Unit, IPAddressFormatError> IPAddressV6::trySetFromBinary(
+    ByteRange bytes) noexcept {
+  if (bytes.size() != 16) {
+    return makeUnexpected(IPAddressFormatError::INVALID_IP);
   }
   memcpy(&addr_.in6Addr_.s6_addr, bytes.data(), sizeof(in6_addr));
   scope_ = 0;
+  return unit;
 }
 
 // static
