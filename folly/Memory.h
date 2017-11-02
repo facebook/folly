@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 
 #include <cstddef>
 #include <cstdlib>
@@ -24,6 +25,7 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace folly {
@@ -344,25 +346,23 @@ class allocator_delete
   }
 };
 
-template <typename T, typename Allocator>
-class is_simple_allocator {
-  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS(has_destroy, destroy);
+namespace detail {
 
-  typedef typename std::remove_const<
-    typename std::remove_reference<Allocator>::type
-  >::type allocator;
-  typedef typename std::remove_reference<T>::type value_type;
-  typedef value_type* pointer;
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(destroy_invoke_traits, destroy);
 
- public:
-  constexpr static bool value = !has_destroy<allocator, void(pointer)>::value
-    && !has_destroy<allocator, void(void*)>::value;
-};
+} // namespace detail
+
+template <typename Allocator, typename Value>
+using is_simple_allocator =
+    Negation<detail::destroy_invoke_traits::is_invocable<Allocator, Value*>>;
 
 template <typename T, typename Allocator>
 struct as_stl_allocator {
   typedef typename std::conditional<
-    is_simple_allocator<T, Allocator>::value,
+    is_simple_allocator<
+      typename std::remove_reference<Allocator>::type,
+      typename std::remove_reference<T>::type
+    >::value,
     folly::StlAllocator<
       typename std::remove_reference<Allocator>::type,
       typename std::remove_reference<T>::type
@@ -373,7 +373,10 @@ struct as_stl_allocator {
 
 template <typename T, typename Allocator>
 typename std::enable_if<
-  is_simple_allocator<T, Allocator>::value,
+  is_simple_allocator<
+    typename std::remove_reference<Allocator>::type,
+    typename std::remove_reference<T>::type
+  >::value,
   folly::StlAllocator<
     typename std::remove_reference<Allocator>::type,
     typename std::remove_reference<T>::type
@@ -387,7 +390,10 @@ typename std::enable_if<
 
 template <typename T, typename Allocator>
 typename std::enable_if<
-  !is_simple_allocator<T, Allocator>::value,
+  !is_simple_allocator<
+    typename std::remove_reference<Allocator>::type,
+    typename std::remove_reference<T>::type
+  >::value,
   typename std::remove_reference<Allocator>::type
 >::type make_stl_allocator(Allocator&& allocator) {
   return std::move(allocator);
@@ -405,7 +411,10 @@ struct AllocatorUniquePtr {
   typedef std::unique_ptr<T,
     folly::allocator_delete<
       typename std::conditional<
-        is_simple_allocator<T, Allocator>::value,
+        is_simple_allocator<
+          typename std::remove_reference<Allocator>::type,
+          typename std::remove_reference<T>::type
+        >::value,
         folly::StlAllocator<typename std::remove_reference<Allocator>::type, T>,
         typename std::remove_reference<Allocator>::type
       >::type

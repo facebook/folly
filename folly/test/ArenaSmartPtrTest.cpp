@@ -25,7 +25,7 @@
 using namespace folly;
 
 static_assert(
-  is_simple_allocator<int,SysArena>::value,
+  is_simple_allocator<SysArena, int>::value,
   "SysArena should be a simple allocator"
 );
 
