@@ -429,3 +429,8 @@ constexpr auto kMscVer = 0;
 #if __cpp_coroutines >= 201703L || (_MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED)
 #define FOLLY_HAS_COROUTINES 1
 #endif
+
+// MSVC 2017.5
+#if __cpp_noexcept_function_type >= 201510 || _MSC_FULL_VER >= 191225816
+#define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
+#endif

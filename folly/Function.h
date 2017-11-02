@@ -237,6 +237,12 @@ template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const> constCastFunction(
     Function<ReturnType(Args...)>&&) noexcept;
 
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+template <typename ReturnType, typename... Args>
+Function<ReturnType(Args...) const noexcept> constCastFunction(
+    Function<ReturnType(Args...) noexcept>&&) noexcept;
+#endif
+
 namespace detail {
 namespace function {
 
@@ -370,6 +376,98 @@ struct FunctionTraits<ReturnType(Args...) const> {
     }
   };
 };
+
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+template <typename ReturnType, typename... Args>
+struct FunctionTraits<ReturnType(Args...) noexcept> {
+  using Call = ReturnType (*)(Data&, Args&&...) noexcept;
+  using IsConst = std::false_type;
+  using ConstSignature = ReturnType(Args...) const noexcept;
+  using NonConstSignature = ReturnType(Args...) noexcept;
+  using OtherSignature = ConstSignature;
+
+  template <typename F, typename G = typename std::decay<F>::type>
+  using ResultOf = decltype(
+      static_cast<ReturnType>(std::declval<G&>()(std::declval<Args>()...)));
+
+  template <typename Fun>
+  static ReturnType callSmall(Data& p, Args&&... args) noexcept {
+    return static_cast<ReturnType>((*static_cast<Fun*>(
+        static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
+  }
+
+  template <typename Fun>
+  static ReturnType callBig(Data& p, Args&&... args) noexcept {
+    return static_cast<ReturnType>(
+        (*static_cast<Fun*>(p.big))(static_cast<Args&&>(args)...));
+  }
+
+  static ReturnType uninitCall(Data&, Args&&...) noexcept {
+    throw std::bad_function_call();
+  }
+
+  ReturnType operator()(Args... args) noexcept {
+    auto& fn = *static_cast<Function<NonConstSignature>*>(this);
+    return fn.call_(fn.data_, static_cast<Args&&>(args)...);
+  }
+
+  class SharedProxy {
+    std::shared_ptr<Function<NonConstSignature>> sp_;
+
+   public:
+    explicit SharedProxy(Function<NonConstSignature>&& func)
+        : sp_(std::make_shared<Function<NonConstSignature>>(std::move(func))) {}
+    ReturnType operator()(Args&&... args) const {
+      return (*sp_)(static_cast<Args&&>(args)...);
+    }
+  };
+};
+
+template <typename ReturnType, typename... Args>
+struct FunctionTraits<ReturnType(Args...) const noexcept> {
+  using Call = ReturnType (*)(Data&, Args&&...) noexcept;
+  using IsConst = std::true_type;
+  using ConstSignature = ReturnType(Args...) const noexcept;
+  using NonConstSignature = ReturnType(Args...) noexcept;
+  using OtherSignature = NonConstSignature;
+
+  template <typename F, typename G = typename std::decay<F>::type>
+  using ResultOf = decltype(static_cast<ReturnType>(
+      std::declval<const G&>()(std::declval<Args>()...)));
+
+  template <typename Fun>
+  static ReturnType callSmall(Data& p, Args&&... args) noexcept {
+    return static_cast<ReturnType>((*static_cast<const Fun*>(
+        static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
+  }
+
+  template <typename Fun>
+  static ReturnType callBig(Data& p, Args&&... args) noexcept {
+    return static_cast<ReturnType>(
+        (*static_cast<const Fun*>(p.big))(static_cast<Args&&>(args)...));
+  }
+
+  static ReturnType uninitCall(Data&, Args&&...) noexcept {
+    throw std::bad_function_call();
+  }
+
+  ReturnType operator()(Args... args) const noexcept {
+    auto& fn = *static_cast<const Function<ConstSignature>*>(this);
+    return fn.call_(fn.data_, static_cast<Args&&>(args)...);
+  }
+
+  class SharedProxy {
+    std::shared_ptr<Function<ConstSignature>> sp_;
+
+   public:
+    explicit SharedProxy(Function<ConstSignature>&& func)
+        : sp_(std::make_shared<Function<ConstSignature>>(std::move(func))) {}
+    ReturnType operator()(Args&&... args) const {
+      return (*sp_)(static_cast<Args&&>(args)...);
+    }
+  };
+};
+#endif
 
 template <typename Fun>
 bool execSmall(Op o, Data* src, Data* dst) {
@@ -742,6 +840,21 @@ Function<ReturnType(Args...) const> constCastFunction(
     Function<ReturnType(Args...) const>&& that) noexcept {
   return std::move(that);
 }
+
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+template <typename ReturnType, typename... Args>
+Function<ReturnType(Args...) const noexcept> constCastFunction(
+    Function<ReturnType(Args...) noexcept>&& that) noexcept {
+  return Function<ReturnType(Args...) const noexcept>{
+      std::move(that), detail::function::CoerceTag{}};
+}
+
+template <typename ReturnType, typename... Args>
+Function<ReturnType(Args...) const noexcept> constCastFunction(
+    Function<ReturnType(Args...) const noexcept>&& that) noexcept {
+  return std::move(that);
+}
+#endif
 
 namespace detail {
 namespace function {
