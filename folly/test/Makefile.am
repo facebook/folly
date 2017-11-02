@@ -223,9 +223,11 @@ fingerprint_test_SOURCES = FingerprintTest.cpp
 fingerprint_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += fingerprint_test
 
+if HAVE_VARIABLE_TEMPLATES
 poly_test_SOURCES = PolyTest.cpp
 poly_test_LDADD = libfollytestmain.la
 TESTS += poly_test
+endif
 
 portability_test_SOURCES = PortabilityTest.cpp
 portability_test_LDADD = libfollytestmain.la

@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
+#pragma message "Folly.Poly requires gcc-5 or greater"
+#else
+
 #include <folly/Poly.h>
 
 namespace folly {
@@ -22,3 +26,5 @@ namespace detail {
 [[noreturn]] void throwBadPolyCast() { throw BadPolyCast(); }
 } // namespace detail
 } // namespace folly
+
+#endif

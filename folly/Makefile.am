@@ -571,7 +571,6 @@ libfolly_la_SOURCES = \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
 	memory/ThreadCachedArena.cpp \
-	Poly.cpp \
 	portability/Dirent.cpp \
 	portability/Fcntl.cpp \
 	portability/Libgen.cpp \
@@ -711,6 +710,11 @@ libfolly_la_SOURCES += \
 	experimental/symbolizer/SignalHandler.cpp \
 	experimental/symbolizer/StackTrace.cpp \
 	experimental/symbolizer/Symbolizer.cpp
+endif
+
+if HAVE_VARIABLE_TEMPLATES
+libfolly_la_SOURCES += \
+	Poly.cpp
 endif
 
 libfollybasesse42_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)

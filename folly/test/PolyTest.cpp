@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
+#pragma message "Folly.Poly requires gcc-5 or greater"
+#else
 #include <folly/Poly.h>
 
 #include <folly/Conv.h>
@@ -560,3 +563,4 @@ TEST(Poly, Addable) {
   cc = aref + bref;
   EXPECT_EQ(6, poly_cast<int>(cc));
 }
+#endif

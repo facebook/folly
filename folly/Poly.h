@@ -25,6 +25,10 @@
 
 #pragma once
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
+#error Folly.Poly requires gcc-5 or greater
+#endif
+
 #include <cassert>
 #include <new>
 #include <type_traits>

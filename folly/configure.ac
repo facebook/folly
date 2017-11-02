@@ -525,6 +525,22 @@ AC_DEFINE_UNQUOTED(
   [Define to 1 if the compiler has VLA (variable-length array) support,
    otherwise define to 0])
 
+AC_CACHE_CHECK(
+  [for variable template support],
+  [folly_cv_prog_cc_have_variable_templates],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      template <class> constexpr bool g = true;
+      int main() {}
+    ]],
+    [folly_cv_prog_cc_have_variable_templates=yes],
+    [folly_cv_prog_cc_have_variable_templates=no])])
+
+AM_CONDITIONAL(
+  [HAVE_VARIABLE_TEMPLATES],
+  [test "x${folly_cv_prog_cc_have_variable_templates}" = "xyes"],
+  [Define to 1 if the compiler supports variable templates])
+
 # Checks for library functions.
 AC_CHECK_FUNCS([malloc_size \
                 malloc_usable_size \
