@@ -26,7 +26,7 @@ namespace folly {
  * but that can't be done without specific support from the compiler.
  */
 template <typename T>
-FOLLY_NODISCARD inline T* launder(T* in) noexcept {
+FOLLY_NODISCARD inline T* Launder(T* in) noexcept {
 #if FOLLY_HAS_BUILTIN(__builtin_launder) || __GNUC__ >= 7
   // The builtin has no unwanted side-effects.
   return __builtin_launder(in);
@@ -42,15 +42,15 @@ FOLLY_NODISCARD inline T* launder(T* in) noexcept {
   return in;
 #else
   static_assert(
-      false, "folly::launder is not implemented for this environment");
+      false, "folly::Launder is not implemented for this environment");
 #endif
 }
 
 /* The standard explicitly forbids laundering these */
-void launder(void*) = delete;
-void launder(void const*) = delete;
-void launder(void volatile*) = delete;
-void launder(void const volatile*) = delete;
+void Launder(void*) = delete;
+void Launder(void const*) = delete;
+void Launder(void volatile*) = delete;
+void Launder(void const volatile*) = delete;
 template <typename T, typename... Args>
-void launder(T (*)(Args...)) = delete;
+void Launder(T (*)(Args...)) = delete;
 } // namespace folly

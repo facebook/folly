@@ -23,6 +23,6 @@ using namespace folly;
 TEST(LaunderTest, Basics) {
   int a;
   int* pa = &a;
-  EXPECT_EQ(pa, launder(pa));
-  EXPECT_TRUE(noexcept(launder(pa)));
+  EXPECT_EQ(pa, Launder(pa));
+  EXPECT_TRUE(noexcept(Launder(pa)));
 }
