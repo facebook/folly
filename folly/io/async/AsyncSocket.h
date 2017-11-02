@@ -504,7 +504,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
 
-  static const size_t kDefaultZeroCopyThreshold = 32768; // 32KB
+  static const size_t kDefaultZeroCopyThreshold = 0;
 
   bool setZeroCopy(bool enable);
   bool getZeroCopy() const {

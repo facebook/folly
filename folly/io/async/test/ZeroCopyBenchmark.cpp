@@ -27,6 +27,8 @@
 
 using namespace folly;
 
+static constexpr auto const kZeroCopyThreshold = 4096;
+
 class TestAsyncSocket {
  public:
   explicit TestAsyncSocket(
@@ -77,6 +79,9 @@ class TestAsyncSocket {
     zeroCopy_ = enable;
     if (sock_) {
       sock_->setZeroCopy(zeroCopy_);
+      if (zeroCopy_) {
+        sock_->setZeroCopyWriteChainThreshold(kZeroCopyThreshold);
+      }
     }
   }
 
@@ -162,8 +167,12 @@ class TestAsyncSocket {
   }
 
   bool writeBuffer() {
+    // use calloc to make sure the memory is touched
+    // if the memory is just malloc'd, running the zeroCopyOn
+    // and the zeroCopyOff back to back on a system that does not support
+    // zerocopy leads to the second test being much slower
     writeBuffer_ =
-        folly::IOBuf::takeOwnership(::malloc(bufferSize_), bufferSize_);
+        folly::IOBuf::takeOwnership(::calloc(1, bufferSize_), bufferSize_);
 
     if (sock_ && writeBuffer_) {
       sock_->writeChain(
