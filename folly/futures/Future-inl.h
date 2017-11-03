@@ -523,7 +523,7 @@ SemiFuture<T>::defer(F&& func) && {
   // case
   auto sf =
       std::move(*this)
-          .via(defKeepAlive.get())
+          .via(e)
           // Then add the work, with a wrapper function that captures the
           // keepAlive so the executor is destroyed at the right time.
           .then(
