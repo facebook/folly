@@ -353,7 +353,7 @@ class Optional {
     void clear() {
       if (hasValue_) {
         hasValue_ = false;
-        launder(reinterpret_cast<Value*>(value_))->~Value();
+        Launder(reinterpret_cast<Value*>(value_))->~Value();
       }
     }
   };
@@ -368,14 +368,14 @@ class Optional {
 
     Value* value_pointer() {
       if (this->hasValue_) {
-        return launder(reinterpret_cast<Value*>(this->value_));
+        return Launder(reinterpret_cast<Value*>(this->value_));
       }
       return nullptr;
     }
 
     Value const* value_pointer() const {
       if (this->hasValue_) {
-        return launder(reinterpret_cast<Value const*>(this->value_));
+        return Launder(reinterpret_cast<Value const*>(this->value_));
       }
       return nullptr;
     }
@@ -384,7 +384,7 @@ class Optional {
     Value& construct(Args&&... args) {
       new (raw_pointer()) Value(std::forward<Args>(args)...);
       this->hasValue_ = true;
-      return *launder(reinterpret_cast<Value*>(this->value_));
+      return *Launder(reinterpret_cast<Value*>(this->value_));
     }
 
    private:

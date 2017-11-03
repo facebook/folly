@@ -157,7 +157,7 @@ struct dtor_mixin<T, true, false> {
   dtor_mixin& operator=(dtor_mixin&&) = default;
   dtor_mixin& operator=(dtor_mixin const&) = default;
   ~dtor_mixin() noexcept(std::is_nothrow_destructible<T>::value) {
-    T* destruct_ptr = launder(reinterpret_cast<T*>(
+    T* destruct_ptr = Launder(reinterpret_cast<T*>(
         reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();
   }
@@ -279,7 +279,7 @@ struct move_assignment_mixin<T, true> {
   operator=(move_assignment_mixin&& other) noexcept(
       std::is_nothrow_destructible<T>::value&&
           std::is_nothrow_move_constructible<T>::value) {
-    T* destruct_ptr = launder(reinterpret_cast<T*>(
+    T* destruct_ptr = Launder(reinterpret_cast<T*>(
         reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();
     ::new (reinterpret_cast<Replaceable<T>*>(this)->storage_)
@@ -340,7 +340,7 @@ struct copy_assignment_mixin<T, true> {
   operator=(copy_assignment_mixin const& other) noexcept(
       std::is_nothrow_destructible<T>::value&&
           std::is_nothrow_copy_constructible<T>::value) {
-    T* destruct_ptr = launder(reinterpret_cast<T*>(
+    T* destruct_ptr = Launder(reinterpret_cast<T*>(
         reinterpret_cast<Replaceable<T>*>(this)->storage_));
     destruct_ptr->~T();
     ::new (reinterpret_cast<Replaceable<T>*>(this)->storage_)
@@ -593,14 +593,14 @@ class alignas(T) Replaceable
    */
   template <class... Args>
   T& emplace(Args&&... args) noexcept {
-    T* destruct_ptr = launder(reinterpret_cast<T*>(storage_));
+    T* destruct_ptr = Launder(reinterpret_cast<T*>(storage_));
     destruct_ptr->~T();
     return *::new (storage_) T(std::forward<Args>(args)...);
   }
 
   template <class U, class... Args>
   T& emplace(std::initializer_list<U> il, Args&&... args) noexcept {
-    T* destruct_ptr = launder(reinterpret_cast<T*>(storage_));
+    T* destruct_ptr = Launder(reinterpret_cast<T*>(storage_));
     destruct_ptr->~T();
     return *::new (storage_) T(il, std::forward<Args>(args)...);
   }
@@ -620,27 +620,27 @@ class alignas(T) Replaceable
    * Methods to access the contained object. Intended to be very unsurprising.
    */
   constexpr const T* operator->() const {
-    return launder(reinterpret_cast<T const*>(storage_));
+    return Launder(reinterpret_cast<T const*>(storage_));
   }
 
   FOLLY_CPP14_CONSTEXPR T* operator->() {
-    return launder(reinterpret_cast<T*>(storage_));
+    return Launder(reinterpret_cast<T*>(storage_));
   }
 
   constexpr const T& operator*() const & {
-    return *launder(reinterpret_cast<T const*>(storage_));
+    return *Launder(reinterpret_cast<T const*>(storage_));
   }
 
   FOLLY_CPP14_CONSTEXPR T& operator*() & {
-    return *launder(reinterpret_cast<T*>(storage_));
+    return *Launder(reinterpret_cast<T*>(storage_));
   }
 
   FOLLY_CPP14_CONSTEXPR T&& operator*() && {
-    return std::move(*launder(reinterpret_cast<T*>(storage_)));
+    return std::move(*Launder(reinterpret_cast<T*>(storage_)));
   }
 
   constexpr const T&& operator*() const && {
-    return std::move(*launder(reinterpret_cast<T const*>(storage_)));
+    return std::move(*Launder(reinterpret_cast<T const*>(storage_)));
   }
 
  private:
