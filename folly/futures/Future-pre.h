@@ -36,11 +36,6 @@ struct isSemiFuture<SemiFuture<T>> : std::true_type {
 };
 
 template <typename T>
-struct isSemiFuture<Future<T>> : std::true_type {
-  typedef T Inner;
-};
-
-template <typename T>
 struct isFuture : std::false_type {
   using Inner = typename Unit::Lift<T>::type;
 };

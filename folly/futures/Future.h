@@ -209,7 +209,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <
       class T2 = T,
       typename = typename std::enable_if<
-          !isFuture<typename std::decay<T2>::type>::value>::type>
+          !isFuture<typename std::decay<T2>::type>::value &&
+          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
   /* implicit */ SemiFuture(T2&& val) : Base(std::forward<T2>(val)) {}
 
   template <class T2 = T>
@@ -343,7 +344,8 @@ class Future : private futures::detail::FutureBase<T> {
   template <
       class T2 = T,
       typename = typename std::enable_if<
-          !isFuture<typename std::decay<T2>::type>::value>::type>
+          !isFuture<typename std::decay<T2>::type>::value &&
+          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
   /* implicit */ Future(T2&& val) : Base(std::forward<T2>(val)) {}
 
   template <class T2 = T>
