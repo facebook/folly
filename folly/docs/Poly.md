@@ -46,7 +46,7 @@ Below is a simple example program that defines a `drawable` wrapper for any type
 that provides a `draw` member function. (The details will be explained later.)
 
 ``` Cpp
-    // This example is an adaptation of one found in Louis Dione's dyno library.
+    // This example is an adaptation of one found in Louis Dionne's dyno library.
     #include <folly/Poly.h>
     #include <iostream>
 
