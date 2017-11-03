@@ -272,13 +272,14 @@ AsyncSocket::AsyncSocket(EventBase* evb,
   connect(nullptr, ip, port, connectTimeout);
 }
 
-AsyncSocket::AsyncSocket(EventBase* evb, int fd)
-    : eventBase_(evb),
+AsyncSocket::AsyncSocket(EventBase* evb, int fd, uint32_t zeroCopyBufId)
+    : zeroCopyBufId_(zeroCopyBufId),
+      eventBase_(evb),
       writeTimeout_(this, evb),
       ioHandler_(this, evb, fd),
       immediateReadHandler_(this) {
-  VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd="
-          << fd << ")";
+  VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd=" << fd
+          << ", zeroCopyBufId=" << zeroCopyBufId << ")";
   init();
   fd_ = fd;
   setCloseOnExec();
@@ -286,7 +287,10 @@ AsyncSocket::AsyncSocket(EventBase* evb, int fd)
 }
 
 AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
-    : AsyncSocket(oldAsyncSocket->getEventBase(), oldAsyncSocket->detachFd()) {
+    : AsyncSocket(
+          oldAsyncSocket->getEventBase(),
+          oldAsyncSocket->detachFd(),
+          oldAsyncSocket->getZeroCopyBufId()) {
   preReceivedData_ = std::move(oldAsyncSocket->preReceivedData_);
 }
 
@@ -892,7 +896,7 @@ void AsyncSocket::adjustZeroCopyFlags(
 }
 
 void AsyncSocket::addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
-  uint32_t id = getNextZeroCopyBuffId();
+  uint32_t id = getNextZeroCopyBufId();
   folly::IOBuf* ptr = buf.get();
 
   idZeroCopyBufPtrMap_[id] = ptr;
@@ -903,7 +907,7 @@ void AsyncSocket::addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
 }
 
 void AsyncSocket::addZeroCopyBuf(folly::IOBuf* ptr) {
-  uint32_t id = getNextZeroCopyBuffId();
+  uint32_t id = getNextZeroCopyBufId();
   idZeroCopyBufPtrMap_[id] = ptr;
 
   idZeroCopyBufInfoMap_[ptr].count_++;

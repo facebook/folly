@@ -261,8 +261,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    *
    * @param evb EventBase that will manage this socket.
    * @param fd  File descriptor to take over (should be a connected socket).
+   * @param zeroCopyBufId Zerocopy buf id to start with.
    */
-  AsyncSocket(EventBase* evb, int fd);
+  AsyncSocket(EventBase* evb, int fd, uint32_t zeroCopyBufId = 0);
 
   /**
    * Create an AsyncSocket from a different, already connected AsyncSocket.
@@ -516,8 +517,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return zeroCopyWriteChainThreshold_;
   }
 
-  bool isZeroCopyMsg(const cmsghdr& cmsg) const;
-  void processZeroCopyMsg(const cmsghdr& cmsg);
+  uint32_t getZeroCopyBufId() const {
+    return zeroCopyBufId_;
+  }
 
   void write(WriteCallback* callback, const void* buf, size_t bytes,
              WriteFlags flags = WriteFlags::NONE) override;
@@ -1155,8 +1157,12 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void cachePeerAddress() const;
 
   bool isZeroCopyRequest(WriteFlags flags);
-  uint32_t getNextZeroCopyBuffId() {
-    return zeroCopyBuffId_++;
+
+  bool isZeroCopyMsg(const cmsghdr& cmsg) const;
+  void processZeroCopyMsg(const cmsghdr& cmsg);
+
+  uint32_t getNextZeroCopyBufId() {
+    return zeroCopyBufId_++;
   }
   void adjustZeroCopyFlags(folly::IOBuf* buf, folly::WriteFlags& flags);
   void adjustZeroCopyFlags(
@@ -1173,7 +1179,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   // there is a that maps a buffer id to a raw folly::IOBuf ptr
   // and another one that adds a ref count for a folly::IOBuf that is either
   // the original ptr or nullptr
-  uint32_t zeroCopyBuffId_{0};
+  uint32_t zeroCopyBufId_{0};
 
   struct IOBufInfo {
     uint32_t count_{0};
