@@ -16,8 +16,25 @@
 
 #pragma once
 
+#include <new>
+
 #include <folly/CPortability.h>
 #include <folly/Portability.h>
+
+/***
+ *  include or backport:
+ *  * std::launder
+ */
+
+#if __cpp_lib_launder >= 201606
+
+namespace folly {
+
+/* using override */ using std::launder;
+
+} // namespace folly
+
+#else
 
 namespace folly {
 
@@ -54,3 +71,5 @@ void launder(void const volatile*) = delete;
 template <typename T, typename... Args>
 void launder(T (*)(Args...)) = delete;
 } // namespace folly
+
+#endif
