@@ -29,7 +29,7 @@
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
-#include <folly/SafeAssert.h>
+#include <folly/lang/SafeAssert.h>
 
 namespace folly {
 namespace symbolizer {

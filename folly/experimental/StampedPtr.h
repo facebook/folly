@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/SafeAssert.h>
+#include <folly/lang/SafeAssert.h>
 
 #include <stdint.h>
 

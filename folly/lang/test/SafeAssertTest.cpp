@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/SafeAssert.h>
+#include <folly/lang/SafeAssert.h>
 
 #include <glog/logging.h>
 

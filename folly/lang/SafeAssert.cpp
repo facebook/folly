@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/SafeAssert.h>
+#include <folly/lang/SafeAssert.h>
 
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>

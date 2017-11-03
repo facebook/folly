@@ -314,6 +314,7 @@ nobase_follyinclude_HEADERS = \
 	json.h \
 	lang/Assume.h \
 	lang/Launder.h \
+	lang/SafeAssert.h \
 	Lazy.h \
 	LifoSem.h \
 	Likely.h \
@@ -392,7 +393,6 @@ nobase_follyinclude_HEADERS = \
 	Range.h \
 	Replaceable.h \
 	RWSpinLock.h \
-	SafeAssert.h \
 	ScopeGuard.h \
 	SharedMutex.h \
 	Singleton.h \
@@ -567,6 +567,7 @@ libfolly_la_SOURCES = \
 	io/async/ssl/SSLErrors.cpp \
 	json.cpp \
 	lang/Assume.cpp \
+	lang/SafeAssert.cpp \
 	detail/MemoryIdler.cpp \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
@@ -592,7 +593,6 @@ libfolly_la_SOURCES = \
 	portability/Time.cpp \
 	portability/Unistd.cpp \
 	Random.cpp \
-	SafeAssert.cpp \
 	ScopeGuard.cpp \
 	SharedMutex.cpp \
 	MicroLock.cpp \
