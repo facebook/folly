@@ -94,4 +94,11 @@ class FOLLY_EXPORT NoTimekeeper : public FutureException {
  public:
   NoTimekeeper() : FutureException("No timekeeper available") {}
 };
+
+[[noreturn]] void throwNoExecutor();
+
+class FOLLY_EXPORT NoExecutor : public FutureException {
+ public:
+  NoExecutor() : FutureException("No executor provided to via") {}
+};
 } // namespace folly

@@ -483,6 +483,9 @@ void SemiFuture<T>::boost_() {
 template <class T>
 inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
   throwIfInvalid();
+  if (!executor) {
+    throwNoExecutor();
+  }
 
   // If current executor is deferred, boost block to ensure that work
   // progresses and is run on the new executor.

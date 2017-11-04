@@ -42,7 +42,9 @@ namespace folly {
   throw PredicateDoesNotObtain();
 }
 
-[[noreturn]] void throwNoFutureInSplitter() {
-  throw NoFutureInSplitter();
+[[noreturn]] void throwNoFutureInSplitter() { throw NoFutureInSplitter(); }
+
+    [[noreturn]] void throwNoExecutor() {
+  throw NoExecutor();
 }
 } // namespace folly

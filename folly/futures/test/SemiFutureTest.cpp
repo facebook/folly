@@ -143,6 +143,10 @@ TEST(SemiFuture, makeSemiFutureNoThrow) {
   makeSemiFuture().value();
 }
 
+TEST(SemiFuture, ViaThrowOnNull) {
+  EXPECT_THROW(makeSemiFuture().via(nullptr), NoExecutor);
+}
+
 TEST(SemiFuture, ConstructSemiFutureFromEmptyFuture) {
   auto f = SemiFuture<int>{Future<int>::makeEmpty()};
   EXPECT_THROW(f.isReady(), NoState);
