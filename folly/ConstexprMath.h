@@ -44,6 +44,22 @@ constexpr T constexpr_min(T a, T b, Ts... ts) {
   return b < a ? constexpr_min(b, ts...) : constexpr_min(a, ts...);
 }
 
+template <typename T, typename Less>
+constexpr T const&
+constexpr_clamp(T const& v, T const& lo, T const& hi, Less less) {
+  return less(v, lo) ? lo : less(hi, v) ? hi : v;
+}
+
+template <typename T>
+constexpr T const& constexpr_clamp(T const& v, T const& lo, T const& hi) {
+  struct Less {
+    constexpr bool operator()(T const& a, T const& b) const {
+      return a < b;
+    }
+  };
+  return constexpr_clamp(v, lo, hi, Less{});
+}
+
 namespace detail {
 
 template <typename T, typename = void>
