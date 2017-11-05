@@ -314,6 +314,7 @@ nobase_follyinclude_HEADERS = \
 	json.h \
 	lang/Assume.h \
 	lang/Launder.h \
+	lang/RValueReferenceWrapper.h \
 	lang/SafeAssert.h \
 	Lazy.h \
 	LifoSem.h \
@@ -453,7 +454,6 @@ nobase_follyinclude_HEADERS = \
 	Try.h \
 	Unicode.h \
 	Function.h \
-	Functional.h \
 	UncaughtExceptions.h \
 	Unit.h \
 	Uri.h \

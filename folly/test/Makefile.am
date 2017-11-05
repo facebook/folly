@@ -328,10 +328,10 @@ function_test_SOURCES = \
 function_test_LDADD = libfollytestmain.la
 TESTS += function_test
 
-functional_test_SOURCES = \
-		FunctionalTest.cpp
-functional_test_LDADD = libfollytestmain.la
-TESTS += functional_test
+rvalue_reference_wrapper_test_SOURCES = \
+		../lang/RValueReferenceWrapperTest.cpp
+rvalue_reference_wrapper_test_LDADD = libfollytestmain.la
+TESTS += rvalue_reference_wrapper_test
 
 ssl_test_SOURCES = \
 		../ssl/test/OpenSSLHashTest.cpp

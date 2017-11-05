@@ -23,7 +23,7 @@
 #include <type_traits>
 #include <utility>
 
-#include <folly/Functional.h>
+#include <folly/lang/RValueReferenceWrapper.h>
 
 namespace folly {
 

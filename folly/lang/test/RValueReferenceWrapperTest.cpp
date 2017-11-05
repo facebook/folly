@@ -16,7 +16,7 @@
 
 #include <utility>
 
-#include <folly/Functional.h>
+#include <folly/lang/RValueReferenceWrapper.h>
 #include <folly/portability/GTest.h>
 
 TEST(RvalueReferenceWrapper, MoveAndConvert) {
