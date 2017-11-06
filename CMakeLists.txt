@@ -505,6 +505,7 @@ if (BUILD_TESTS)
 
     DIRECTORY synchronization/test/
       TEST call_once_test SOURCES CallOnceTest.cpp
+      TEST lifo_sem_test SOURCES LifoSemTests.cpp
 
     DIRECTORY system/test/
       TEST memory_mapping_test SOURCES MemoryMappingTest.cpp
@@ -569,7 +570,6 @@ if (BUILD_TESTS)
         SOURCES
           JsonOtherTest.cpp
       TEST lazy_test SOURCES LazyTest.cpp
-      TEST lifosem_test SOURCES LifoSemTests.cpp
       TEST lock_traits_test SOURCES LockTraitsTest.cpp
       TEST locks_test SOURCES SmallLocksTest.cpp SpinLockTest.cpp
       TEST logging_test SOURCES LoggingTest.cpp

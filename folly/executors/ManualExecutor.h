@@ -21,9 +21,9 @@
 #include <mutex>
 #include <queue>
 
-#include <folly/LifoSem.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/ScheduledExecutor.h>
+#include <folly/synchronization/LifoSem.h>
 
 namespace folly {
   /// A ManualExecutor only does work when you turn the crank, by calling

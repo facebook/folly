@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/LifoSem.h>
+#include <folly/synchronization/LifoSem.h>
 
 #include <thread>
 

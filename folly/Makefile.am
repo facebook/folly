@@ -317,7 +317,6 @@ nobase_follyinclude_HEADERS = \
 	lang/RValueReferenceWrapper.h \
 	lang/SafeAssert.h \
 	Lazy.h \
-	LifoSem.h \
 	Likely.h \
 	LockTraits.h \
 	LockTraitsBoost.h \
@@ -424,6 +423,7 @@ nobase_follyinclude_HEADERS = \
 	stats/TimeseriesHistogram.h \
 	synchronization/AsymmetricMemoryBarrier.h \
 	synchronization/CallOnce.h \
+	synchronization/LifoSem.h \
 	synchronization/detail/AtomicUtils.h \
 	system/MemoryMapping.h \
 	system/Shell.h \
@@ -533,7 +533,6 @@ libfolly_la_SOURCES = \
 	IPAddress.cpp \
 	IPAddressV4.cpp \
 	IPAddressV6.cpp \
-	LifoSem.cpp \
 	init/Init.cpp \
 	io/Cursor.cpp \
 	io/IOBuf.cpp \
@@ -609,6 +608,7 @@ libfolly_la_SOURCES = \
 	stats/MultiLevelTimeSeries.cpp \
 	stats/TimeseriesHistogram.cpp \
 	synchronization/AsymmetricMemoryBarrier.cpp \
+	synchronization/LifoSem.cpp \
 	system/MemoryMapping.cpp \
 	system/Shell.cpp \
 	system/ThreadName.cpp \

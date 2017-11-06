@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/LifoSem.h>
 #include <folly/MPMCQueue.h>
 #include <folly/executors/task_queue/BlockingQueue.h>
+#include <folly/synchronization/LifoSem.h>
 
 namespace folly {
 
