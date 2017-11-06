@@ -103,3 +103,15 @@
 #define FOLLY_NULLABLE
 #define FOLLY_NONNULL
 #endif
+
+/**
+ * "Cold" indicates to the compiler that a function is only expected to be
+ * called from unlikely code paths. It can affect decisions made by the
+ * optimizer both when processing the function body and when analyzing
+ * call-sites.
+ */
+#if __GNUC__
+#define FOLLY_COLD __attribute__((__cold__))
+#else
+#define FOLLY_COLD
+#endif

@@ -31,6 +31,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/Likely.h>
 #include <folly/Optional.h>
 #include <folly/Portability.h>
@@ -711,8 +712,10 @@ class Unexpected final {
   Unexpected(Unexpected&&) = default;
   Unexpected& operator=(const Unexpected&) = default;
   Unexpected& operator=(Unexpected&&) = default;
-  constexpr /* implicit */ Unexpected(const Error& err) : error_(err) {}
-  constexpr /* implicit */ Unexpected(Error&& err) : error_(std::move(err)) {}
+  FOLLY_COLD constexpr /* implicit */ Unexpected(const Error& err)
+      : error_(err) {}
+  FOLLY_COLD constexpr /* implicit */ Unexpected(Error&& err)
+      : error_(std::move(err)) {}
 
   template <class Other FOLLY_REQUIRES_TRAILING(
       std::is_constructible<Error, Other&&>::value)>
