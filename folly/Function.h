@@ -529,7 +529,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // invoking undefined behavior. Const-correctness is only violated when
   // `FunctionType` is a const function type (e.g., `int() const`) and `*this`
   // is the result of calling `constCastFunction`.
-  mutable Data data_;
+  mutable Data data_{};
   Call call_{&Traits::uninitCall};
   Exec exec_{&detail::function::uninitNoop};
 

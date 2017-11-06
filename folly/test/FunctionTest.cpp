@@ -1095,3 +1095,7 @@ TEST(Function, CtorWithCopy) {
   EXPECT_TRUE(noexcept(Function<void()>(lx)));
   EXPECT_FALSE(noexcept(Function<void()>(ly)));
 }
+
+TEST(Function, Bug_T23346238) {
+  const Function<void()> nullfun;
+}
