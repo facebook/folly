@@ -173,7 +173,6 @@ BENCHMARK_RELATIVE(StringUnsplit_Old_ReusedBuffer, iters) {
 
 BENCHMARK_RELATIVE(StringUnsplit_Gen, iters) {
   size_t s = 0;
-  StringPiece line(kLine);
   while (iters--) {
     fbstring joined = from(testStrVector) | unsplit(',');
     s += joined.size();

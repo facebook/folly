@@ -50,6 +50,7 @@ TEST(FixedStringCtorTest, Default) {
 
 TEST(FixedStringCtorTest, FromLiterals) {
   constexpr folly::FixedString<42> s{"hello world"};
+  static_assert(s[0] == 'h', "");
   constexpr folly::FixedString<11> s2{"hello world"};
   static_assert(s2[0] == 'h', "");
   static_assert(s2[10] == 'd', "");
