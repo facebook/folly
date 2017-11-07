@@ -201,25 +201,27 @@ class ConcurrentHashMap {
     return res;
   }
 
-  std::pair<ConstIterator, bool> insert(const KeyType& k, const ValueType& v) {
+  template <typename Key, typename Value>
+  std::pair<ConstIterator, bool> insert(Key&& k, Value&& v) {
     auto segment = pickSegment(k);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
-    res.second = ensureSegment(segment)->insert(res.first.it_, k, v);
+    res.second = ensureSegment(segment)->insert(
+        res.first.it_, std::forward<Key>(k), std::forward<Value>(v));
     return res;
   }
 
-  template <typename... Args>
-  std::pair<ConstIterator, bool> try_emplace(const KeyType& k, Args&&... args) {
+  template <typename Key, typename... Args>
+  std::pair<ConstIterator, bool> try_emplace(Key&& k, Args&&... args) {
     auto segment = pickSegment(k);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
     res.second = ensureSegment(segment)->try_emplace(
-        res.first.it_, k, std::forward<Args>(args)...);
+        res.first.it_, std::forward<Key>(k), std::forward<Args>(args)...);
     return res;
   }
 
@@ -242,26 +244,28 @@ class ConcurrentHashMap {
     return res;
   }
 
-  std::pair<ConstIterator, bool> insert_or_assign(
-      const KeyType& k,
-      const ValueType& v) {
+  template <typename Key, typename Value>
+  std::pair<ConstIterator, bool> insert_or_assign(Key&& k, Value&& v) {
     auto segment = pickSegment(k);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
         std::forward_as_tuple(this, segment),
         std::forward_as_tuple(false));
-    res.second = ensureSegment(segment)->insert_or_assign(res.first.it_, k, v);
+    res.second = ensureSegment(segment)->insert_or_assign(
+        res.first.it_, std::forward<Key>(k), std::forward<Value>(v));
     return res;
   }
 
-  folly::Optional<ConstIterator> assign(const KeyType& k, const ValueType& v) {
+  template <typename Key, typename Value>
+  folly::Optional<ConstIterator> assign(Key&& k, Value&& v) {
     auto segment = pickSegment(k);
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
       return folly::Optional<ConstIterator>();
     } else {
-      auto r = seg->assign(res.it_, k, v);
+      auto r =
+          seg->assign(res.it_, std::forward<Key>(k), std::forward<Value>(v));
       if (!r) {
         return folly::Optional<ConstIterator>();
       }
@@ -270,17 +274,20 @@ class ConcurrentHashMap {
   }
 
   // Assign to desired if and only if key k is equal to expected
-  folly::Optional<ConstIterator> assign_if_equal(
-      const KeyType& k,
-      const ValueType& expected,
-      const ValueType& desired) {
+  template <typename Key, typename Value>
+  folly::Optional<ConstIterator>
+  assign_if_equal(Key&& k, const ValueType& expected, Value&& desired) {
     auto segment = pickSegment(k);
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
       return folly::Optional<ConstIterator>();
     } else {
-      auto r = seg->assign_if_equal(res.it_, k, expected, desired);
+      auto r = seg->assign_if_equal(
+          res.it_,
+          std::forward<Key>(k),
+          expected,
+          std::forward<Value>(desired));
       if (!r) {
         return folly::Optional<ConstIterator>();
       }

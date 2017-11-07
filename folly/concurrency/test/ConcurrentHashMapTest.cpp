@@ -114,7 +114,8 @@ int foo::copied{0};
 
 TEST(ConcurrentHashMap, EmplaceTest) {
   ConcurrentHashMap<uint64_t, foo> foomap(200);
-  foomap.insert(1, foo());
+  foo bar; // Make sure to test copy
+  foomap.insert(1, bar);
   EXPECT_EQ(foo::moved, 0);
   EXPECT_EQ(foo::copied, 1);
   foo::copied = 0;
@@ -151,12 +152,21 @@ TEST(ConcurrentHashMap, MapResizeTest) {
 // Ensure we can insert objects without copy constructors.
 TEST(ConcurrentHashMap, MapNoCopiesTest) {
   struct Uncopyable {
+    int i_;
     Uncopyable(int i) {
-      (void*)&i;
+      i_ = i;
     }
     Uncopyable(const Uncopyable& that) = delete;
+    bool operator==(const Uncopyable& o) const {
+      return i_ == o.i_;
+    }
   };
-  ConcurrentHashMap<uint64_t, Uncopyable> foomap(2);
+  struct Hasher {
+    size_t operator()(const Uncopyable&) const {
+      return 0;
+    }
+  };
+  ConcurrentHashMap<Uncopyable, Uncopyable, Hasher> foomap(2);
   EXPECT_TRUE(foomap.try_emplace(1, 1).second);
   EXPECT_TRUE(foomap.try_emplace(2, 2).second);
   auto res = foomap.find(2);
@@ -167,6 +177,37 @@ TEST(ConcurrentHashMap, MapNoCopiesTest) {
   auto res2 = foomap.find(2);
   EXPECT_NE(res2, foomap.cend());
   EXPECT_EQ(&(res->second), &(res2->second));
+}
+
+TEST(ConcurrentHashMap, MapMovableKeysTest) {
+  struct Movable {
+    int i_;
+    Movable(int i) {
+      i_ = i;
+    }
+    Movable(const Movable&) = delete;
+    Movable(Movable&& o) {
+      i_ = o.i_;
+      o.i_ = 0;
+    }
+    bool operator==(const Movable& o) const {
+      return i_ == o.i_;
+    }
+  };
+  struct Hasher {
+    size_t operator()(const Movable&) const {
+      return 0;
+    }
+  };
+  ConcurrentHashMap<Movable, Movable, Hasher> foomap(2);
+  EXPECT_TRUE(foomap.insert(std::make_pair(Movable(10), Movable(1))).second);
+  EXPECT_TRUE(foomap.assign(Movable(10), Movable(2)));
+  EXPECT_TRUE(foomap.insert(Movable(11), Movable(1)).second);
+  EXPECT_TRUE(foomap.emplace(Movable(12), Movable(1)).second);
+  EXPECT_TRUE(foomap.insert_or_assign(Movable(10), Movable(3)).second);
+  EXPECT_TRUE(foomap.assign_if_equal(Movable(10), Movable(3), Movable(4)));
+  EXPECT_FALSE(foomap.try_emplace(Movable(10), Movable(3)).second);
+  EXPECT_TRUE(foomap.try_emplace(Movable(13), Movable(3)).second);
 }
 
 TEST(ConcurrentHashMap, MapUpdateTest) {

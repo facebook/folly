@@ -47,11 +47,11 @@ class ValueHolder {
 
   explicit ValueHolder(const ValueHolder& other) : item_(other.item_) {}
 
-  template <typename... Args>
-  ValueHolder(const KeyType& k, Args&&... args)
+  template <typename Arg, typename... Args>
+  ValueHolder(std::piecewise_construct_t, Arg&& k, Args&&... args)
       : item_(
             std::piecewise_construct,
-            std::forward_as_tuple(k),
+            std::forward_as_tuple(std::forward<Arg>(k)),
             std::forward_as_tuple(std::forward<Args>(args)...)) {}
   value_type& getItem() {
     return item_;
@@ -69,7 +69,9 @@ class ValueHolder<
     KeyType,
     ValueType,
     Allocator,
-    std::enable_if_t<!std::is_nothrow_copy_constructible<ValueType>::value>> {
+    std::enable_if_t<
+        !std::is_nothrow_copy_constructible<ValueType>::value ||
+        !std::is_nothrow_copy_constructible<KeyType>::value>> {
  public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
@@ -78,12 +80,12 @@ class ValueHolder<
     item_ = other.item_;
   }
 
-  template <typename... Args>
-  ValueHolder(const KeyType& k, Args&&... args) {
+  template <typename Arg, typename... Args>
+  ValueHolder(std::piecewise_construct_t, Arg&& k, Args&&... args) {
     item_ = (value_type*)Allocator().allocate(sizeof(value_type));
     new (item_) value_type(
         std::piecewise_construct,
-        std::forward_as_tuple(k),
+        std::forward_as_tuple(std::forward<Arg>(k)),
         std::forward_as_tuple(std::forward<Args>(args)...));
   }
 
@@ -116,9 +118,12 @@ class NodeT : public folly::hazptr::hazptr_obj_base<
 
   explicit NodeT(NodeT* other) : item_(other->item_) {}
 
-  template <typename... Args>
-  NodeT(const KeyType& k, Args&&... args)
-      : item_(k, std::forward<Args>(args)...) {}
+  template <typename Arg, typename... Args>
+  NodeT(Arg&& k, Args&&... args)
+      : item_(
+            std::piecewise_construct,
+            std::forward<Arg>(k),
+            std::forward<Args>(args)...) {}
 
   /* Nodes are refcounted: If a node is retired() while a writer is
      traversing the chain, the rest of the chain must remain valid
@@ -244,19 +249,20 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
   }
 
   bool insert(Iterator& it, std::pair<key_type, mapped_type>&& foo) {
-    return insert(it, foo.first, foo.second);
+    return insert(it, std::move(foo.first), std::move(foo.second));
   }
 
-  bool insert(Iterator& it, const KeyType& k, const ValueType& v) {
+  template <typename Key, typename Value>
+  bool insert(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(k, v);
+    new (node) Node(std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
-        k,
+        node->getItem().first,
         InsertType::DOES_NOT_EXIST,
         [](const ValueType&) { return false; },
         node,
-        v);
+        node);
     if (!res) {
       node->~Node();
       Allocator().deallocate((uint8_t*)node, sizeof(Node));
@@ -264,14 +270,17 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
     return res;
   }
 
-  template <typename... Args>
-  bool try_emplace(Iterator& it, const KeyType& k, Args&&... args) {
+  template <typename Key, typename... Args>
+  bool try_emplace(Iterator& it, Key&& k, Args&&... args) {
+    // Note: first key is only ever compared.  Second is moved in to
+    // create the node, and the first key is never touched again.
     return insert_internal(
         it,
-        k,
+        std::forward<Key>(k),
         InsertType::DOES_NOT_EXIST,
         [](const ValueType&) { return false; },
         nullptr,
+        std::forward<Key>(k),
         std::forward<Args>(args)...);
   }
 
@@ -282,29 +291,21 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
         k,
         InsertType::DOES_NOT_EXIST,
         [](const ValueType&) { return false; },
+        node,
         node);
   }
 
-  bool insert_or_assign(Iterator& it, const KeyType& k, const ValueType& v) {
-    return insert_internal(
-        it,
-        k,
-        InsertType::ANY,
-        [](const ValueType&) { return false; },
-        nullptr,
-        v);
-  }
-
-  bool assign(Iterator& it, const KeyType& k, const ValueType& v) {
+  template <typename Key, typename Value>
+  bool insert_or_assign(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(k, v);
+    new (node) Node(std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
-        k,
-        InsertType::MUST_EXIST,
+        node->getItem().first,
+        InsertType::ANY,
         [](const ValueType&) { return false; },
         node,
-        v);
+        node);
     if (!res) {
       node->~Node();
       Allocator().deallocate((uint8_t*)node, sizeof(Node));
@@ -312,18 +313,44 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
     return res;
   }
 
+  template <typename Key, typename Value>
+  bool assign(Iterator& it, Key&& k, Value&& v) {
+    auto node = (Node*)Allocator().allocate(sizeof(Node));
+    new (node) Node(std::forward<Key>(k), std::forward<Value>(v));
+    auto res = insert_internal(
+        it,
+        node->getItem().first,
+        InsertType::MUST_EXIST,
+        [](const ValueType&) { return false; },
+        node,
+        node);
+    if (!res) {
+      node->~Node();
+      Allocator().deallocate((uint8_t*)node, sizeof(Node));
+    }
+    return res;
+  }
+
+  template <typename Key, typename Value>
   bool assign_if_equal(
       Iterator& it,
-      const KeyType& k,
+      Key&& k,
       const ValueType& expected,
-      const ValueType& desired) {
-    return insert_internal(
+      Value&& desired) {
+    auto node = (Node*)Allocator().allocate(sizeof(Node));
+    new (node) Node(std::forward<Key>(k), std::forward<Value>(desired));
+    auto res = insert_internal(
         it,
-        k,
+        node->getItem().first,
         InsertType::MATCH,
-        [expected](const ValueType& v) { return v == expected; },
-        nullptr,
-        desired);
+        [&expected](const ValueType& v) { return v == expected; },
+        node,
+        node);
+    if (!res) {
+      node->~Node();
+      Allocator().deallocate((uint8_t*)node, sizeof(Node));
+    }
+    return res;
   }
 
   template <typename MatchFunc, typename... Args>
@@ -369,7 +396,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
         } else {
           if (!cur) {
             cur = (Node*)Allocator().allocate(sizeof(Node));
-            new (cur) Node(k, std::forward<Args>(args)...);
+            new (cur) Node(std::forward<Args>(args)...);
           }
           auto next = node->next_.load(std::memory_order_relaxed);
           cur->next_.store(next, std::memory_order_relaxed);
@@ -415,7 +442,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
       // OR DOES_NOT_EXIST, but only in the try_emplace case
       DCHECK(type == InsertType::ANY || type == InsertType::DOES_NOT_EXIST);
       cur = (Node*)Allocator().allocate(sizeof(Node));
-      new (cur) Node(k, std::forward<Args>(args)...);
+      new (cur) Node(std::forward<Args>(args)...);
     }
     cur->next_.store(headnode, std::memory_order_relaxed);
     head->store(cur, std::memory_order_release);
