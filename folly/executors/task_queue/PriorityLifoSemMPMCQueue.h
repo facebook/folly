@@ -18,8 +18,10 @@
 
 #include <folly/Executor.h>
 #include <folly/MPMCQueue.h>
+#include <folly/Range.h>
 #include <folly/executors/task_queue/BlockingQueue.h>
 #include <folly/synchronization/LifoSem.h>
+#include <glog/logging.h>
 
 namespace folly {
 
@@ -33,6 +35,15 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
     queues_.reserve(numPriorities);
     for (int8_t i = 0; i < numPriorities; i++) {
       queues_.emplace_back(max_capacity);
+    }
+  }
+
+  PriorityLifoSemMPMCQueue(folly::Range<const size_t*> capacities) {
+    CHECK_LT(capacities.size(), 256) << "At most 255 priorities supported";
+
+    queues_.reserve(capacities.size());
+    for (auto capacity : capacities) {
+      queues_.emplace_back(capacity);
     }
   }
 

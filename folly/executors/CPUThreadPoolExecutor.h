@@ -29,6 +29,14 @@ namespace folly {
  * the same queue. MPMC queue excels in this situation but dictates a max queue
  * size.
  *
+ * @note The default queue throws when full (folly::QueueBehaviorIfFull::THROW),
+ * so add() can fail. Furthermore, join() can also fail if the queue is full,
+ * because it enqueues numThreads poison tasks to stop the threads. If join() is
+ * needed to be guaranteed to succeed PriorityLifoSemMPMCQueue can be used
+ * instead, initializing the lowest priority's (LO_PRI) capacity to at least
+ * numThreads. Poisons use LO_PRI so if that priority is not used for any user
+ * task join() is guaranteed not to encounter a full queue.
+ *
  * @note If a blocking queue (folly::QueueBehaviorIfFull::BLOCK) is used, and
  * tasks executing on a given thread pool schedule more tasks, deadlock is
  * possible if the queue becomes full.  Deadlock is also possible if there is
