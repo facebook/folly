@@ -208,6 +208,14 @@ TEST(ConcurrentHashMap, MapIterateTest) {
   EXPECT_EQ(count, 2);
 }
 
+TEST(ConcurrentHashMap, EraseTest) {
+  ConcurrentHashMap<uint64_t, uint64_t> foomap(3);
+  foomap.insert(1, 0);
+  auto f1 = foomap.find(1);
+  EXPECT_EQ(1, foomap.erase(1));
+  foomap.erase(f1);
+}
+
 // TODO: hazptrs must support DeterministicSchedule
 
 #define Atom std::atomic // DeterministicAtomic

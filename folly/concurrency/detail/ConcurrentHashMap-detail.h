@@ -543,7 +543,6 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
       node->release();
       return 1;
     }
-    DCHECK(!iter);
 
     return 0;
   }
@@ -555,8 +554,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
   // This is a small departure from standard stl containers: erase may
   // throw if hash or key_eq functions throw.
   void erase(Iterator& res, Iterator& pos) {
-    auto cnt = erase_internal(pos->first, &res);
-    DCHECK(cnt == 1);
+    erase_internal(pos->first, &res);
   }
 
   void clear() {
