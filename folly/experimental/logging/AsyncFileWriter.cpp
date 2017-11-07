@@ -18,6 +18,7 @@
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/experimental/logging/LoggerDB.h>
+#include <folly/system/ThreadName.h>
 
 using folly::File;
 using folly::StringPiece;
@@ -80,6 +81,8 @@ void AsyncFileWriter::flush() {
 }
 
 void AsyncFileWriter::ioThread() {
+  folly::setThreadName("log_writer");
+
   while (true) {
     // With the lock held, grab a pointer to the current queue, then increment
     // the ioThreadCounter index so that other threads will write into the
