@@ -227,9 +227,10 @@ struct is_nothrow_invocable_r
     using result_ =                                                           \
         decltype(::std::declval<F>().membername(::std::declval<Args>()...));  \
     template <typename F, typename... Args>                                   \
-    using nothrow_ = ::std::integral_constant<                                \
-        bool,                                                                 \
-        noexcept(::std::declval<F>().membername(::std::declval<Args>()...))>; \
+    struct nothrow_ : std::integral_constant<                                 \
+                          bool,                                               \
+                          noexcept(::std::declval<F>().membername(            \
+                              ::std::declval<Args>()...))> {};                \
                                                                               \
     template <typename, typename F, typename... Args>                         \
     struct invoke_result_ {};                                                 \
