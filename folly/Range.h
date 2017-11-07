@@ -1012,22 +1012,43 @@ constexpr Range<Iter> range(Iter first, Iter last) {
  * Creates a range to reference the contents of a contiguous-storage container.
  */
 // Use pointers for types with '.data()' member
-template <
-    class Collection,
-    class T = typename std::remove_pointer<
-        decltype(std::declval<Collection>().data())>::type>
-constexpr Range<T*> range(Collection&& v) {
-  return Range<T*>(v.data(), v.data() + v.size());
+template <class Collection>
+constexpr auto range(Collection& v) -> Range<decltype(v.data())> {
+  return Range<decltype(v.data())>(v.data(), v.data() + v.size());
+}
+template <class Collection>
+constexpr auto range(Collection const& v) -> Range<decltype(v.data())> {
+  return Range<decltype(v.data())>(v.data(), v.data() + v.size());
+}
+template <class Collection>
+constexpr auto crange(Collection const& v) -> Range<decltype(v.data())> {
+  return Range<decltype(v.data())>(v.data(), v.data() + v.size());
 }
 
 template <class T, size_t n>
 constexpr Range<T*> range(T (&array)[n]) {
   return Range<T*>(array, array + n);
 }
+template <class T, size_t n>
+constexpr Range<T const*> range(T const (&array)[n]) {
+  return Range<T const*>(array, array + n);
+}
+template <class T, size_t n>
+constexpr Range<T const*> crange(T const (&array)[n]) {
+  return Range<T const*>(array, array + n);
+}
 
 template <class T, size_t n>
-constexpr Range<const T*> range(const std::array<T, n>& array) {
-  return Range<const T*>{array};
+constexpr Range<T*> range(std::array<T, n>& array) {
+  return Range<T*>{array};
+}
+template <class T, size_t n>
+constexpr Range<T const*> range(std::array<T, n> const& array) {
+  return Range<T const*>{array};
+}
+template <class T, size_t n>
+constexpr Range<T const*> crange(std::array<T, n> const& array) {
+  return Range<T const*>{array};
 }
 
 typedef Range<const char*> StringPiece;
