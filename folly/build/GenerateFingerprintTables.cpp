@@ -25,6 +25,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/portability/GFlags.h>
 
 #include <folly/detail/FingerprintPolynomial.h>
