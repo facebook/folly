@@ -68,6 +68,8 @@
 #include <vector>
 
 #include <boost/operators.hpp>
+
+#include <folly/Traits.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 namespace folly {
@@ -75,6 +77,18 @@ namespace folly {
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
+
+template <typename, typename Compare, typename Key, typename T>
+struct sorted_vector_enable_if_is_transparent {};
+
+template <typename Compare, typename Key, typename T>
+struct sorted_vector_enable_if_is_transparent<
+    void_t<typename Compare::is_transparent>,
+    Compare,
+    Key,
+    T> {
+  using type = T;
+};
 
 // This wrapper goes around a GrowthPolicy and provides iterator
 // preservation semantics, but only if the growth policy is not the
@@ -212,6 +226,10 @@ class sorted_vector_set
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
 
+  template <typename K, typename V, typename C = Compare>
+  using if_is_transparent =
+      _t<detail::sorted_vector_enable_if_is_transparent<void, C, K, V>>;
+
  public:
   typedef T       value_type;
   typedef T       key_type;
@@ -343,22 +361,29 @@ class sorted_vector_set
   }
 
   iterator find(const key_type& key) {
-    iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, *it)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
   }
 
   const_iterator find(const key_type& key) const {
-    const_iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, *it)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, iterator> find(const K& key) {
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> find(const K& key) const {
+    return find(*this, key);
   }
 
   size_type count(const key_type& key) const {
+    return find(key) == end() ? 0 : 1;
+  }
+
+  template <typename K>
+  if_is_transparent<K, size_type> count(const K& key) const {
     return find(key) == end() ? 0 : 1;
   }
 
@@ -370,6 +395,16 @@ class sorted_vector_set
     return std::lower_bound(begin(), end(), key, key_comp());
   }
 
+  template <typename K>
+  if_is_transparent<K, iterator> lower_bound(const K& key) {
+    return std::lower_bound(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> lower_bound(const K& key) const {
+    return std::lower_bound(begin(), end(), key, key_comp());
+  }
+
   iterator upper_bound(const key_type& key) {
     return std::upper_bound(begin(), end(), key, key_comp());
   }
@@ -378,12 +413,34 @@ class sorted_vector_set
     return std::upper_bound(begin(), end(), key, key_comp());
   }
 
-  std::pair<iterator,iterator> equal_range(const key_type& key) {
+  template <typename K>
+  if_is_transparent<K, iterator> upper_bound(const K& key) {
+    return std::upper_bound(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> upper_bound(const K& key) const {
+    return std::upper_bound(begin(), end(), key, key_comp());
+  }
+
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
     return std::equal_range(begin(), end(), key, key_comp());
   }
 
-  std::pair<const_iterator,const_iterator>
-  equal_range(const key_type& key) const {
+  std::pair<const_iterator, const_iterator> equal_range(
+      const key_type& key) const {
+    return std::equal_range(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<iterator, iterator>> equal_range(
+      const K& key) {
+    return std::equal_range(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<const_iterator, const_iterator>> equal_range(
+      const K& key) const {
     return std::equal_range(begin(), end(), key, key_comp());
   }
 
@@ -423,6 +480,20 @@ class sorted_vector_set
     {}
     ContainerT cont_;
   } m_;
+
+  template <typename Self>
+  using self_iterator_t = _t<
+      std::conditional<std::is_const<Self>::value, const_iterator, iterator>>;
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> find(Self& self, K const& key) {
+    auto end = self.end();
+    auto it = self.lower_bound(key);
+    if (it == end || !self.key_comp()(key, *it)) {
+      return it;
+    }
+    return end;
+  }
 };
 
 // Swap function that can be found using ADL.
@@ -464,6 +535,10 @@ class sorted_vector_map
 
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
+
+  template <typename K, typename V, typename C = Compare>
+  using if_is_transparent =
+      _t<detail::sorted_vector_enable_if_is_transparent<void, C, K, V>>;
 
  public:
   typedef Key                                       key_type;
@@ -599,19 +674,21 @@ class sorted_vector_map
   }
 
   iterator find(const key_type& key) {
-    iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, it->first)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
   }
 
   const_iterator find(const key_type& key) const {
-    const_iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, it->first)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, iterator> find(const K& key) {
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> find(const K& key) const {
+    return find(*this, key);
   }
 
   mapped_type& at(const key_type& key) {
@@ -634,54 +711,66 @@ class sorted_vector_map
     return find(key) == end() ? 0 : 1;
   }
 
+  template <typename K>
+  if_is_transparent<K, size_type> count(const K& key) const {
+    return find(key) == end() ? 0 : 1;
+  }
+
   iterator lower_bound(const key_type& key) {
-    auto c = key_comp();
-    auto f = [&](const value_type& a, const key_type& b) {
-      return c(a.first, b);
-    };
-    return std::lower_bound(begin(), end(), key, f);
+    return lower_bound(*this, key);
   }
 
   const_iterator lower_bound(const key_type& key) const {
-    auto c = key_comp();
-    auto f = [&](const value_type& a, const key_type& b) {
-      return c(a.first, b);
-    };
-    return std::lower_bound(begin(), end(), key, f);
+    return lower_bound(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, iterator> lower_bound(const K& key) {
+    return lower_bound(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> lower_bound(const K& key) const {
+    return lower_bound(*this, key);
   }
 
   iterator upper_bound(const key_type& key) {
-    auto c = key_comp();
-    auto f = [&](const key_type& a, const value_type& b) {
-      return c(a, b.first);
-    };
-    return std::upper_bound(begin(), end(), key, f);
+    return upper_bound(*this, key);
   }
 
   const_iterator upper_bound(const key_type& key) const {
-    auto c = key_comp();
-    auto f = [&](const key_type& a, const value_type& b) {
-      return c(a, b.first);
-    };
-    return std::upper_bound(begin(), end(), key, f);
+    return upper_bound(*this, key);
   }
 
-  std::pair<iterator,iterator> equal_range(const key_type& key) {
-    // Note: std::equal_range can't be passed a functor that takes
-    // argument types different from the iterator value_type, so we
-    // have to do this.
-    iterator low = lower_bound(key);
-    auto c = key_comp();
-    auto f = [&](const key_type& a, const value_type& b) {
-      return c(a, b.first);
-    };
-    iterator high = std::upper_bound(low, end(), key, f);
-    return std::make_pair(low, high);
+  template <typename K>
+  if_is_transparent<K, iterator> upper_bound(const K& key) {
+    return upper_bound(*this, key);
   }
 
-  std::pair<const_iterator,const_iterator>
-  equal_range(const key_type& key) const {
-    return const_cast<sorted_vector_map*>(this)->equal_range(key);
+  template <typename K>
+  if_is_transparent<K, const_iterator> upper_bound(const K& key) const {
+    return upper_bound(*this, key);
+  }
+
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
+    return equal_range(*this, key);
+  }
+
+  std::pair<const_iterator, const_iterator> equal_range(
+      const key_type& key) const {
+    return equal_range(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<iterator, iterator>> equal_range(
+      const K& key) {
+    return equal_range(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<const_iterator, const_iterator>> equal_range(
+      const K& key) const {
+    return equal_range(*this, key);
   }
 
   // Nothrow as long as swap() on the Compare type is nothrow.
@@ -719,6 +808,46 @@ class sorted_vector_map
     {}
     ContainerT cont_;
   } m_;
+
+  template <typename Self>
+  using self_iterator_t = _t<
+      std::conditional<std::is_const<Self>::value, const_iterator, iterator>>;
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> find(Self& self, K const& key) {
+    auto end = self.end();
+    auto it = self.lower_bound(key);
+    if (it == end || !self.key_comp()(key, it->first)) {
+      return it;
+    }
+    return end;
+  }
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> lower_bound(Self& self, K const& key) {
+    auto f = [c = self.key_comp()](value_type const& a, K const& b) {
+      return c(a.first, b);
+    };
+    return std::lower_bound(self.begin(), self.end(), key, f);
+  }
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> upper_bound(Self& self, K const& key) {
+    auto f = [c = self.key_comp()](K const& a, value_type const& b) {
+      return c(a, b.first);
+    };
+    return std::upper_bound(self.begin(), self.end(), key, f);
+  }
+
+  template <typename Self, typename K>
+  static std::pair<self_iterator_t<Self>, self_iterator_t<Self>> equal_range(
+      Self& self,
+      K const& key) {
+    // Note: std::equal_range can't be passed a functor that takes
+    // argument types different from the iterator value_type, so we
+    // have to do this.
+    return {lower_bound(self, key), upper_bound(self, key)};
+  }
 };
 
 // Swap function that can be found using ADL.

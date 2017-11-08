@@ -76,6 +76,27 @@ struct CountCopyCtor {
   int count_;
 };
 
+struct Opaque {
+  int value;
+  friend bool operator==(Opaque a, Opaque b) {
+    return a.value == b.value;
+  }
+  friend bool operator<(Opaque a, Opaque b) {
+    return a.value < b.value;
+  }
+  struct Compare : std::less<int>, std::less<Opaque> {
+    using is_transparent = void;
+    using std::less<int>::operator();
+    using std::less<Opaque>::operator();
+    bool operator()(int a, Opaque b) const {
+      return std::less<int>::operator()(a, b.value);
+    }
+    bool operator()(Opaque a, int b) const {
+      return std::less<int>::operator()(a.value, b);
+    }
+  };
+};
+
 } // namespace
 
 TEST(SortedVectorTypes, SimpleSetTest) {
@@ -133,6 +154,73 @@ TEST(SortedVectorTypes, SimpleSetTest) {
   EXPECT_TRUE(cpy == s);
   sorted_vector_set<int> cpy2(s);
   cpy2.insert(100001);
+  EXPECT_TRUE(cpy2 != cpy);
+  EXPECT_TRUE(cpy2 != s);
+  check_invariant(cpy2);
+  EXPECT_TRUE(cpy2.count(100001) == 1);
+  s.swap(cpy2);
+  check_invariant(cpy2);
+  check_invariant(s);
+  EXPECT_TRUE(s != cpy);
+  EXPECT_TRUE(s != cpy2);
+  EXPECT_TRUE(cpy2 == cpy);
+}
+
+TEST(SortedVectorTypes, TransparentSetTest) {
+  sorted_vector_set<Opaque, Opaque::Compare> s;
+  EXPECT_TRUE(s.empty());
+  for (int i = 0; i < 1000; ++i) {
+    s.insert(Opaque{rand() % 100000});
+  }
+  EXPECT_FALSE(s.empty());
+  check_invariant(s);
+
+  sorted_vector_set<Opaque, Opaque::Compare> s2;
+  s2.insert(s.begin(), s.end());
+  check_invariant(s2);
+  EXPECT_TRUE(s == s2);
+
+  auto it = s2.lower_bound(32);
+  if (it->value == 32) {
+    s2.erase(it);
+    it = s2.lower_bound(32);
+  }
+  check_invariant(s2);
+  auto oldSz = s2.size();
+  s2.insert(it, Opaque{32});
+  EXPECT_TRUE(s2.size() == oldSz + 1);
+  check_invariant(s2);
+
+  const sorted_vector_set<Opaque, Opaque::Compare>& cs2 = s2;
+  auto range = cs2.equal_range(32);
+  auto lbound = cs2.lower_bound(32);
+  auto ubound = cs2.upper_bound(32);
+  EXPECT_TRUE(range.first == lbound);
+  EXPECT_TRUE(range.second == ubound);
+  EXPECT_TRUE(range.first != cs2.end());
+  EXPECT_TRUE(range.second != cs2.end());
+  EXPECT_TRUE(cs2.count(32) == 1);
+  EXPECT_FALSE(cs2.find(32) == cs2.end());
+
+  // Bad insert hint.
+  s2.insert(s2.begin() + 3, Opaque{33});
+  EXPECT_TRUE(s2.find(33) != s2.begin());
+  EXPECT_TRUE(s2.find(33) != s2.end());
+  check_invariant(s2);
+  s2.erase(Opaque{33});
+  check_invariant(s2);
+
+  it = s2.find(32);
+  EXPECT_FALSE(it == s2.end());
+  s2.erase(it);
+  EXPECT_TRUE(s2.size() == oldSz);
+  check_invariant(s2);
+
+  sorted_vector_set<Opaque, Opaque::Compare> cpy(s);
+  check_invariant(cpy);
+  EXPECT_TRUE(cpy == s);
+  sorted_vector_set<Opaque, Opaque::Compare> cpy2(s);
+  cpy2.insert(Opaque{100001});
   EXPECT_TRUE(cpy2 != cpy);
   EXPECT_TRUE(cpy2 != s);
   check_invariant(cpy2);
@@ -218,6 +306,67 @@ TEST(SortedVectorTypes, SimpleMapTest) {
 
   // Bad insert hint.
   m.insert(m.begin() + 3, std::make_pair(1 << 15, 1.0f));
+  check_invariant(m);
+}
+
+TEST(SortedVectorTypes, TransparentMapTest) {
+  sorted_vector_map<Opaque, float, Opaque::Compare> m;
+  for (int i = 0; i < 1000; ++i) {
+    m[Opaque{i}] = i / 1000.0;
+  }
+  check_invariant(m);
+
+  m[Opaque{32}] = 100.0;
+  check_invariant(m);
+  EXPECT_TRUE(m.count(32) == 1);
+  EXPECT_DOUBLE_EQ(100.0, m.at(Opaque{32}));
+  EXPECT_FALSE(m.find(32) == m.end());
+  m.erase(Opaque{32});
+  EXPECT_TRUE(m.find(32) == m.end());
+  check_invariant(m);
+  EXPECT_THROW(m.at(Opaque{32}), std::out_of_range);
+
+  sorted_vector_map<Opaque, float, Opaque::Compare> m2 = m;
+  EXPECT_TRUE(m2 == m);
+  EXPECT_FALSE(m2 != m);
+  auto it = m2.lower_bound(1 << 20);
+  EXPECT_TRUE(it == m2.end());
+  m2.insert(it, std::make_pair(Opaque{1 << 20}, 10.0f));
+  check_invariant(m2);
+  EXPECT_TRUE(m2.count(1 << 20) == 1);
+  EXPECT_TRUE(m < m2);
+  EXPECT_TRUE(m <= m2);
+
+  const sorted_vector_map<Opaque, float, Opaque::Compare>& cm = m;
+  auto range = cm.equal_range(42);
+  auto lbound = cm.lower_bound(42);
+  auto ubound = cm.upper_bound(42);
+  EXPECT_TRUE(range.first == lbound);
+  EXPECT_TRUE(range.second == ubound);
+  EXPECT_FALSE(range.first == cm.end());
+  EXPECT_FALSE(range.second == cm.end());
+  m.erase(m.lower_bound(42));
+  check_invariant(m);
+
+  sorted_vector_map<Opaque, float, Opaque::Compare> m3;
+  m3.insert(m2.begin(), m2.end());
+  check_invariant(m3);
+  EXPECT_TRUE(m3 == m2);
+  EXPECT_FALSE(m3 == m);
+
+  EXPECT_TRUE(m != m2);
+  EXPECT_TRUE(m2 == m3);
+  EXPECT_TRUE(m3 != m);
+  m.swap(m3);
+  check_invariant(m);
+  check_invariant(m2);
+  check_invariant(m3);
+  EXPECT_TRUE(m3 != m2);
+  EXPECT_TRUE(m3 != m);
+  EXPECT_TRUE(m == m2);
+
+  // Bad insert hint.
+  m.insert(m.begin() + 3, std::make_pair(Opaque{1 << 15}, 1.0f));
   check_invariant(m);
 }
 
