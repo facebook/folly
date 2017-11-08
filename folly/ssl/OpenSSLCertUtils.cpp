@@ -199,7 +199,8 @@ std::unique_ptr<IOBuf> OpenSSLCertUtils::derEncode(X509& x509) {
 
 std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
     ByteRange range) {
-  BioUniquePtr b(BIO_new_mem_buf(range.data(), range.size()));
+  BioUniquePtr b(
+      BIO_new_mem_buf(const_cast<unsigned char*>(range.data()), range.size()));
   if (!b) {
     throw std::runtime_error("failed to create BIO");
   }
