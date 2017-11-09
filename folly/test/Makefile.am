@@ -329,7 +329,7 @@ function_test_LDADD = libfollytestmain.la
 TESTS += function_test
 
 rvalue_reference_wrapper_test_SOURCES = \
-		../lang/RValueReferenceWrapperTest.cpp
+		../lang/test/RValueReferenceWrapperTest.cpp
 rvalue_reference_wrapper_test_LDADD = libfollytestmain.la
 TESTS += rvalue_reference_wrapper_test
 
