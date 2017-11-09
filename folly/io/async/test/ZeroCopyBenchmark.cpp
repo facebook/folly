@@ -27,8 +27,6 @@
 
 using namespace folly;
 
-static constexpr auto const kZeroCopyThreshold = 4096;
-
 class TestAsyncSocket {
  public:
   explicit TestAsyncSocket(
@@ -79,9 +77,6 @@ class TestAsyncSocket {
     zeroCopy_ = enable;
     if (sock_) {
       sock_->setZeroCopy(zeroCopy_);
-      if (zeroCopy_) {
-        sock_->setZeroCopyWriteChainThreshold(kZeroCopyThreshold);
-      }
     }
   }
 

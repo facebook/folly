@@ -106,7 +106,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
       writeFlags |= WriteFlags::CORK;
     }
 
-    socket_->adjustZeroCopyFlags(getOps(), getOpCount(), writeFlags);
+    socket_->adjustZeroCopyFlags(writeFlags);
 
     auto writeResult = socket_->performWrite(
         getOps(), getOpCount(), writeFlags, &opsWritten_, &partialBytes_);
@@ -854,44 +854,13 @@ bool AsyncSocket::setZeroCopy(bool enable) {
   return false;
 }
 
-void AsyncSocket::setZeroCopyWriteChainThreshold(size_t threshold) {
-  zeroCopyWriteChainThreshold_ = threshold;
-}
-
 bool AsyncSocket::isZeroCopyRequest(WriteFlags flags) {
   return (zeroCopyEnabled_ && isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY));
 }
 
-void AsyncSocket::adjustZeroCopyFlags(
-    folly::IOBuf* buf,
-    folly::WriteFlags& flags) {
-  if (zeroCopyEnabled_ && zeroCopyWriteChainThreshold_ && buf &&
-      buf->isManaged()) {
-    if (buf->computeChainDataLength() >= zeroCopyWriteChainThreshold_) {
-      flags |= folly::WriteFlags::WRITE_MSG_ZEROCOPY;
-    } else {
-      flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
-    }
-  }
-}
-
-void AsyncSocket::adjustZeroCopyFlags(
-    const iovec* vec,
-    uint32_t count,
-    folly::WriteFlags& flags) {
-  if (zeroCopyEnabled_ && zeroCopyWriteChainThreshold_) {
-    count = std::min<uint32_t>(count, kIovMax);
-    size_t sum = 0;
-    for (uint32_t i = 0; i < count; ++i) {
-      const iovec* v = vec + i;
-      sum += v->iov_len;
-    }
-
-    if (sum >= zeroCopyWriteChainThreshold_) {
-      flags |= folly::WriteFlags::WRITE_MSG_ZEROCOPY;
-    } else {
-      flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
-    }
+void AsyncSocket::adjustZeroCopyFlags(folly::WriteFlags& flags) {
+  if (!zeroCopyEnabled_) {
+    flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
   }
 }
 
@@ -987,7 +956,7 @@ void AsyncSocket::writev(WriteCallback* callback,
 
 void AsyncSocket::writeChain(WriteCallback* callback, unique_ptr<IOBuf>&& buf,
                               WriteFlags flags) {
-  adjustZeroCopyFlags(buf.get(), flags);
+  adjustZeroCopyFlags(flags);
 
   constexpr size_t kSmallSizeMax = 64;
   size_t count = buf->countChainElements();
@@ -1758,8 +1727,7 @@ void AsyncSocket::handleErrMessages() noexcept {
   // supporting per-socket error queues.
   VLOG(5) << "AsyncSocket::handleErrMessages() this=" << this << ", fd=" << fd_
           << ", state=" << state_;
-  if (errMessageCallback_ == nullptr &&
-      (!zeroCopyEnabled_ || idZeroCopyBufPtrMap_.empty())) {
+  if (errMessageCallback_ == nullptr && idZeroCopyBufPtrMap_.empty()) {
     VLOG(7) << "AsyncSocket::handleErrMessages(): "
             << "no callback installed - exiting.";
     return;
@@ -2358,6 +2326,14 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     // this bug is fixed.
     tryAgain |= (errno == ENOTCONN);
 #endif
+
+    // workaround for running with zerocopy enabled but without a proper
+    // memlock value - see ulimit -l
+    if (zeroCopyEnabled_ && (errno == ENOBUFS)) {
+      tryAgain = true;
+      zeroCopyEnabled_ = false;
+    }
+
     if (!writeResult.exception && tryAgain) {
       // TCP buffer is full; we can't write any more data right now.
       *countWritten = 0;

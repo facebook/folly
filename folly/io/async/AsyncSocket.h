@@ -505,16 +505,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
 
-  static const size_t kDefaultZeroCopyThreshold = 0;
-
   bool setZeroCopy(bool enable);
   bool getZeroCopy() const {
     return zeroCopyEnabled_;
-  }
-
-  void setZeroCopyWriteChainThreshold(size_t threshold);
-  size_t getZeroCopyWriteChainThreshold() const {
-    return zeroCopyWriteChainThreshold_;
   }
 
   uint32_t getZeroCopyBufId() const {
@@ -1164,11 +1157,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   uint32_t getNextZeroCopyBufId() {
     return zeroCopyBufId_++;
   }
-  void adjustZeroCopyFlags(folly::IOBuf* buf, folly::WriteFlags& flags);
-  void adjustZeroCopyFlags(
-      const iovec* vec,
-      uint32_t count,
-      folly::WriteFlags& flags);
+  void adjustZeroCopyFlags(folly::WriteFlags& flags);
   void addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
   void addZeroCopyBuf(folly::IOBuf* ptr);
   void setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
@@ -1240,7 +1229,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool trackEor_{false};
   bool zeroCopyEnabled_{false};
   bool zeroCopyVal_{false};
-  size_t zeroCopyWriteChainThreshold_{kDefaultZeroCopyThreshold};
 };
 #ifdef _MSC_VER
 #pragma vtordisp(pop)
