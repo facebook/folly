@@ -52,6 +52,16 @@ const ElfShdr* ElfFile::iterateSectionsWithType(uint32_t type, Fn fn) const {
 }
 
 template <class Fn>
+const ElfShdr* ElfFile::iterateSectionsWithTypes(
+    std::initializer_list<uint32_t> types,
+    Fn fn) const {
+  return iterateSections([&](const ElfShdr& sh) {
+    auto const it = std::find(types.begin(), types.end(), sh.sh_type);
+    return it != types.end() && fn(sh);
+  });
+}
+
+template <class Fn>
 const char* ElfFile::iterateStrings(const ElfShdr& stringTable, Fn fn) const {
   validateStringTable(stringTable);
 

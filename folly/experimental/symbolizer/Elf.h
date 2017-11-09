@@ -140,11 +140,20 @@ class ElfFile {
   const ElfShdr* iterateSections(Fn fn) const;
 
   /**
-   * Iterate over all sections with a given type.  Similar to
+   * Iterate over all sections with a given type. Similar to
    * iterateSections(), but filtered only for sections with the given type.
    */
   template <class Fn>
   const ElfShdr* iterateSectionsWithType(uint32_t type, Fn fn) const;
+
+  /**
+   * Iterate over all sections with a given types. Similar to
+   * iterateSectionWithTypes(), but filtered on multiple types.
+   */
+  template <class Fn>
+  const ElfShdr* iterateSectionsWithTypes(
+      std::initializer_list<uint32_t> types,
+      Fn fn) const;
 
   /**
    * Iterate over all symbols witin a given section.
