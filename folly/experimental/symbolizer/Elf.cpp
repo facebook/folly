@@ -360,8 +360,8 @@ ElfFile::Symbol ElfFile::getDefinitionByAddress(uintptr_t address) const {
       return false;
     };
 
-    return iterateSymbolsWithType(section, STT_OBJECT, findSymbols) ||
-        iterateSymbolsWithType(section, STT_FUNC, findSymbols);
+    return iterateSymbolsWithTypes(
+        section, {STT_OBJECT, STT_FUNC}, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.
@@ -399,8 +399,8 @@ ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const {
       return false;
     };
 
-    return iterateSymbolsWithType(section, STT_OBJECT, findSymbols) ||
-        iterateSymbolsWithType(section, STT_FUNC, findSymbols);
+    return iterateSymbolsWithTypes(
+        section, {STT_OBJECT, STT_FUNC}, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.

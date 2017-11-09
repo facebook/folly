@@ -23,6 +23,7 @@
 #include <link.h> // For ElfW()
 
 #include <cstdio>
+#include <initializer_list>
 #include <stdexcept>
 #include <system_error>
 
@@ -156,6 +157,11 @@ class ElfFile {
   template <class Fn>
   const ElfSym*
   iterateSymbolsWithType(const ElfShdr& section, uint32_t type, Fn fn) const;
+  template <class Fn>
+  const ElfSym* iterateSymbolsWithTypes(
+      const ElfShdr& section,
+      std::initializer_list<uint32_t> types,
+      Fn fn) const;
 
   /**
    * Find symbol definition by address.
