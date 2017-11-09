@@ -21,23 +21,38 @@
 
 using folly::ColdClass;
 
-TEST(ColdClass, inheritance) {
+template <class TestClass>
+static void validateInheritedClass() {
   // The only verifiable property of ColdClass is that it must not disrupt the
   // default constructor/destructor, default copy/move constructors and default
   // copy/move assignment operators when a class derives from it.
-  struct TestStruct : ColdClass {};
-  EXPECT_TRUE(std::is_nothrow_default_constructible<TestStruct>::value);
-  EXPECT_TRUE(std::is_trivially_copy_constructible<TestStruct>::value);
-  EXPECT_TRUE(std::is_trivially_move_constructible<TestStruct>::value);
-  EXPECT_TRUE(std::is_trivially_copy_assignable<TestStruct>::value);
-  EXPECT_TRUE(std::is_trivially_move_assignable<TestStruct>::value);
-  EXPECT_TRUE(std::is_trivially_destructible<TestStruct>::value);
-  // Same again, but private inheritance. Should make no difference.
-  class TestClass : ColdClass {};
   EXPECT_TRUE(std::is_nothrow_default_constructible<TestClass>::value);
+#if !defined(__GLIBCXX__) || __GNUC__ >= 5
   EXPECT_TRUE(std::is_trivially_copy_constructible<TestClass>::value);
   EXPECT_TRUE(std::is_trivially_move_constructible<TestClass>::value);
   EXPECT_TRUE(std::is_trivially_copy_assignable<TestClass>::value);
   EXPECT_TRUE(std::is_trivially_move_assignable<TestClass>::value);
+#endif
+  EXPECT_TRUE(std::is_nothrow_copy_constructible<TestClass>::value);
+  EXPECT_TRUE(std::is_nothrow_move_constructible<TestClass>::value);
+  EXPECT_TRUE(std::is_nothrow_copy_assignable<TestClass>::value);
+  EXPECT_TRUE(std::is_nothrow_move_assignable<TestClass>::value);
   EXPECT_TRUE(std::is_trivially_destructible<TestClass>::value);
+}
+
+TEST(ColdClassTest, publicInheritance) {
+  struct TestPublic : ColdClass {};
+  validateInheritedClass<TestPublic>();
+}
+
+TEST(ColdClassTest, protectedInheritance) {
+  // Same again, but protected inheritance. Should make no difference.
+  class TestProtected : protected ColdClass {};
+  validateInheritedClass<TestProtected>();
+}
+
+TEST(ColdClassTest, privateInheritance) {
+  // Same again, but private inheritance. Should make no difference.
+  class TestPrivate : ColdClass {};
+  validateInheritedClass<TestPrivate>();
 }
