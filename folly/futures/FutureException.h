@@ -83,7 +83,7 @@ class FOLLY_EXPORT PredicateDoesNotObtain : public FutureException {
 
 [[noreturn]] void throwPredicateDoesNotObtain();
 
-class FOLLY_EXPORT NoFutureInSplitter : FutureException {
+class FOLLY_EXPORT NoFutureInSplitter : public FutureException {
  public:
   NoFutureInSplitter() : FutureException("No Future in this FutureSplitter") {}
 };
