@@ -28,6 +28,10 @@
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 
+#ifndef STT_GNU_IFUNC
+#define STT_GNU_IFUNC 10
+#endif
+
 namespace folly {
 namespace symbolizer {
 
@@ -361,7 +365,7 @@ ElfFile::Symbol ElfFile::getDefinitionByAddress(uintptr_t address) const {
     };
 
     return iterateSymbolsWithTypes(
-        section, {STT_OBJECT, STT_FUNC}, findSymbols);
+        section, {STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.
@@ -400,7 +404,7 @@ ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const {
     };
 
     return iterateSymbolsWithTypes(
-        section, {STT_OBJECT, STT_FUNC}, findSymbols);
+        section, {STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.
