@@ -473,7 +473,7 @@ void SemiFuture<T>::boost_() {
   if (auto e = this->getExecutor()) {
     // We know in a SemiFuture that if we have an executor it should be
     // DeferredExecutor. Verify this in debug mode.
-    DCHECK(dynamic_cast<DeferredExecutor*>(e));
+    DCHECK(nullptr != dynamic_cast<DeferredExecutor*>(e));
 
     auto ka = static_cast<DeferredExecutor*>(e)->getKeepAliveToken();
     static_cast<DeferredExecutor*>(e)->boost();
@@ -493,7 +493,7 @@ inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
   if (oldExecutor && executor && (executor != oldExecutor)) {
     // We know in a SemiFuture that if we have an executor it should be
     // DeferredExecutor. Verify this in debug mode.
-    DCHECK(dynamic_cast<DeferredExecutor*>(this->getExecutor()));
+    DCHECK(nullptr != dynamic_cast<DeferredExecutor*>(this->getExecutor()));
     if (static_cast<DeferredExecutor*>(oldExecutor)) {
       executor->add([oldExecutorKA = oldExecutor->getKeepAliveToken()]() {
         static_cast<DeferredExecutor*>(oldExecutorKA.get())->boost();
@@ -520,7 +520,7 @@ SemiFuture<T>::defer(F&& func) && {
   // We know in a SemiFuture that if we have an executor it should be
   // DeferredExecutor (either it was that way before, or we just created it).
   // Verify this in debug mode.
-  DCHECK(dynamic_cast<DeferredExecutor*>(e));
+  DCHECK(nullptr != dynamic_cast<DeferredExecutor*>(e));
   // Convert to a folly::future with a deferred executor
   // Will be low-cost if this is not a new executor as via optimises for that
   // case
