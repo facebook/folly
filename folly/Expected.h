@@ -39,6 +39,7 @@
 #include <folly/Traits.h>
 #include <folly/Unit.h>
 #include <folly/Utility.h>
+#include <folly/lang/ColdClass.h>
 
 #define FOLLY_EXPECTED_ID(X) FB_CONCATENATE(FB_CONCATENATE(Folly, X), __LINE__)
 
@@ -675,7 +676,7 @@ namespace expected_detail {
  * Expected objects in the error state.
  */
 template <class Error>
-class Unexpected final {
+class Unexpected final : ColdClass {
   template <class E>
   friend class Unexpected;
   template <class V, class E>
@@ -712,10 +713,8 @@ class Unexpected final {
   Unexpected(Unexpected&&) = default;
   Unexpected& operator=(const Unexpected&) = default;
   Unexpected& operator=(Unexpected&&) = default;
-  FOLLY_COLD constexpr /* implicit */ Unexpected(const Error& err)
-      : error_(err) {}
-  FOLLY_COLD constexpr /* implicit */ Unexpected(Error&& err)
-      : error_(std::move(err)) {}
+  constexpr /* implicit */ Unexpected(const Error& err) : error_(err) {}
+  constexpr /* implicit */ Unexpected(Error&& err) : error_(std::move(err)) {}
 
   template <class Other FOLLY_REQUIRES_TRAILING(
       std::is_constructible<Error, Other&&>::value)>
