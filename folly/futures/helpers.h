@@ -111,6 +111,73 @@ namespace futures {
 } // namespace futures
 
 /**
+  Make a completed SemiFuture by moving in a value. e.g.
+
+    string foo = "foo";
+    auto f = makeSemiFuture(std::move(foo));
+
+  or
+
+    auto f = makeSemiFuture<string>("foo");
+*/
+template <class T>
+SemiFuture<typename std::decay<T>::type> makeSemiFuture(T&& t);
+
+/** Make a completed void SemiFuture. */
+SemiFuture<Unit> makeSemiFuture();
+
+/**
+  Make a SemiFuture by executing a function.
+
+  If the function returns a value of type T, makeSemiFutureWith
+  returns a completed SemiFuture<T>, capturing the value returned
+  by the function.
+
+  If the function returns a SemiFuture<T> already, makeSemiFutureWith
+  returns just that.
+
+  Either way, if the function throws, a failed Future is
+  returned that captures the exception.
+*/
+
+// makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
+template <class F>
+typename std::enable_if<isSemiFuture<typename std::result_of<F()>::type>::value,
+                        typename std::result_of<F()>::type>::type
+makeSemiFutureWith(F&& func);
+
+// makeSemiFutureWith(T()) -> SemiFuture<T>
+// makeSemiFutureWith(void()) -> SemiFuture<Unit>
+template <class F>
+typename std::enable_if<
+    !(isSemiFuture<typename std::result_of<F()>::type>::value),
+    SemiFuture<typename Unit::Lift<typename std::result_of<F()>::type>::type>>::type
+makeSemiFutureWith(F&& func);
+
+/// Make a failed Future from an exception_ptr.
+/// Because the Future's type cannot be inferred you have to specify it, e.g.
+///
+///   auto f = makeSemiFuture<string>(std::current_exception());
+template <class T>
+FOLLY_DEPRECATED("use makeSemiFuture(exception_wrapper)")
+SemiFuture<T> makeSemiFuture(std::exception_ptr const& e);
+
+/// Make a failed SemiFuture from an exception_wrapper.
+template <class T>
+SemiFuture<T> makeSemiFuture(exception_wrapper ew);
+
+/** Make a SemiFuture from an exception type E that can be passed to
+  std::make_exception_ptr(). */
+template <class T, class E>
+typename std::enable_if<std::is_base_of<std::exception, E>::value,
+                        SemiFuture<T>>::type
+makeSemiFuture(E const& e);
+
+/** Make a Future out of a Try */
+template <class T>
+SemiFuture<T> makeSemiFuture(Try<T>&& t);
+
+/**
   Make a completed Future by moving in a value. e.g.
 
     string foo = "foo";
