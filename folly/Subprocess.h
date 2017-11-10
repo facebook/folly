@@ -362,7 +362,7 @@ class Subprocess {
 
     /**
      * Child will be made a process group leader when it starts. Upside: one
-     * can reliably all its kill non-daemonizing descendants.  Downside: the
+     * can reliably kill all its non-daemonizing descendants.  Downside: the
      * child will not receive Ctrl-C etc during interactive use.
      */
     Options& processGroupLeader() {
