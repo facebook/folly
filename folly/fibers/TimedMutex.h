@@ -29,7 +29,7 @@ namespace fibers {
  **/
 class TimedMutex {
  public:
-  TimedMutex() {}
+  TimedMutex() noexcept {}
 
   ~TimedMutex() {
     DCHECK(threadWaiters_.empty());

@@ -39,40 +39,17 @@
 #include <folly/SharedMutex.h>
 
 namespace folly {
-
-class once_flag {
- public:
-  constexpr once_flag() noexcept = default;
-  once_flag(const once_flag&) = delete;
-  once_flag& operator=(const once_flag&) = delete;
-
-  template <typename Callable, class... Args>
-  friend void call_once(once_flag& flag, Callable&& f, Args&&... args);
-  template <typename Callable, class... Args>
-  friend void call_once_impl_no_inline(once_flag& flag,
-                                       Callable&& f,
-                                       Args&&... args);
-
- private:
-  std::atomic<bool> called_{false};
-  folly::SharedMutex mutex_;
-};
-
-template <class Callable, class... Args>
-void FOLLY_ALWAYS_INLINE
-call_once(once_flag& flag, Callable&& f, Args&&... args) {
-  if (LIKELY(flag.called_.load(std::memory_order_acquire))) {
-    return;
-  }
-  call_once_impl_no_inline(
-      flag, std::forward<Callable>(f), std::forward<Args>(args)...);
-}
+namespace detail {
+template <typename Mutex>
+class once_flag;
 
 // Implementation detail: out-of-line slow path
-template <class Callable, class... Args>
-void FOLLY_NOINLINE
-call_once_impl_no_inline(once_flag& flag, Callable&& f, Args&&... args) {
-  std::lock_guard<folly::SharedMutex> lg(flag.mutex_);
+template <class Mutex, class Callable, class... Args>
+void FOLLY_NOINLINE call_once_impl_no_inline(
+    detail::once_flag<Mutex>& flag,
+    Callable&& f,
+    Args&&... args) {
+  std::lock_guard<Mutex> lg(flag.mutex_);
   if (flag.called_) {
     return;
   }
@@ -81,4 +58,44 @@ call_once_impl_no_inline(once_flag& flag, Callable&& f, Args&&... args) {
 
   flag.called_.store(true, std::memory_order_release);
 }
+} // namespace detail
+
+using once_flag = detail::once_flag<folly::SharedMutex>;
+
+template <class Mutex, class Callable, class... Args>
+void FOLLY_ALWAYS_INLINE
+call_once(detail::once_flag<Mutex>& flag, Callable&& f, Args&&... args) {
+  if (LIKELY(flag.called_.load(std::memory_order_acquire))) {
+    return;
+  }
+  call_once_impl_no_inline(
+      flag, std::forward<Callable>(f), std::forward<Args>(args)...);
+}
+
+namespace detail {
+
+template <typename Mutex>
+class once_flag {
+ public:
+  constexpr once_flag() noexcept = default;
+  once_flag(const once_flag&) = delete;
+  once_flag& operator=(const once_flag&) = delete;
+
+  template <typename Mutex_, typename Callable, class... Args>
+  friend void ::folly::call_once(
+      once_flag<Mutex_>& flag,
+      Callable&& f,
+      Args&&... args);
+  template <typename Mutex_, typename Callable, class... Args>
+  friend void call_once_impl_no_inline(
+      once_flag<Mutex_>& flag,
+      Callable&& f,
+      Args&&... args);
+
+ private:
+  std::atomic<bool> called_{false};
+  Mutex mutex_;
+};
+} // namespace detail
+
 } // namespace folly
