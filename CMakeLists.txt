@@ -24,12 +24,12 @@ else()
   message(FATAL_ERROR "This build script only supports building Folly on 64-bit Windows with Visual Studio 2015 or Visual Studio 2017. MSVC version '${MSVC_VERSION}' is not supported.")
 endif()
 
-# Check architecture OS
+# Check target architecture
 if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-  message(FATAL_ERROR "Folly requires a 64bit OS")
+  message(FATAL_ERROR "Folly requires a 64bit target architecture.")
 endif()
 if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
-  message(FATAL_ERROR "You should only be using CMake to build Folly if you are on Windows!")
+  message(FATAL_ERROR "The CMake build should only be used on Windows. For every other platform, use the makefile.")
 endif()
 
 set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")

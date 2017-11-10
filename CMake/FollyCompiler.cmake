@@ -121,6 +121,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd4366 # result of unary '&' operator may be unaligned
       /wd4587 # behavior change; constructor no longer implicitly called
       /wd4592 # symbol will be dynamically initialized (implementation limitation)
+      /wd4628 # digraphs not supported with -Ze
       /wd4723 # potential divide by 0
       /wd4724 # potential mod by 0
       /wd4868 # compiler may not enforce left-to-right evaluation order
