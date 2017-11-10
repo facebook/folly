@@ -26,10 +26,12 @@
 #define FOLLY_USE_SYS_MEMBARRIER 1
 #if !defined(__NR_membarrier)
 #define __NR_membarrier 324
+#endif
+#if FOLLY_HAVE_LINUX_MEMBARRIER_H
+#include <linux/membarrier.h> // @manual
+#else
 #define MEMBARRIER_CMD_QUERY 0
 #define MEMBARRIER_CMD_SHARED 1
-#elif FOLLY_HAVE_LINUX_MEMBARRIER_H
-#include <linux/membarrier.h> // @manual
 #endif
 #endif
 
