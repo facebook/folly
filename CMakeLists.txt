@@ -331,6 +331,7 @@ if (BUILD_TESTS)
       TEST compression_test SOURCES CompressionTest.cpp
 
     DIRECTORY container/test/
+      TEST access_test SOURCES AccessTest.cpp
       TEST array_test SOURCES ArrayTest.cpp
       TEST enumerate_test SOURCES EnumerateTest.cpp
       TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp

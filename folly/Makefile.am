@@ -56,6 +56,7 @@ nobase_follyinclude_HEADERS = \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
 	concurrency/detail/ConcurrentHashMap-detail.h \
+	container/Access.h \
 	container/Array.h \
 	container/Iterator.h \
 	container/Enumerate.h \
