@@ -230,7 +230,7 @@ static void expiration() {
   std::atomic<int> expireCbCount(0);
   auto expireCb = [&]() { expireCbCount++; };
   tpe.add(burnMs(10), seconds(60), expireCb);
-  tpe.add(burnMs(10), milliseconds(10), expireCb);
+  tpe.add(burnMs(11), milliseconds(10), expireCb);
   tpe.join();
   EXPECT_EQ(2, statCbCount);
   EXPECT_EQ(1, expireCbCount);
@@ -269,6 +269,35 @@ static void futureExecutor() {
         c++;
         EXPECT_THROW(t.value(), std::runtime_error);
       });
+
+  auto expireCb = [&]() { expireCbCount++; };
+  fe.addFuture( [] () {
+         folly:Promise<bool> result;
+         auto future = prom.getFuture();
+         std::this_thread::sleep_for(milliseconds(10));
+         future.setValue(true);
+         return future;
+  }, milliseconds(5), expireCb)
+  .then( [] (bool val) {
+    EXPECT_EQ(true, val);
+  });
+
+  EXPECT_EQ(1, expireCbCount);
+
+  auto expireCb = [&]() { expireCbCount++; };
+  fe.addFuture( [] () {
+         std::this_thread::sleep_for(milliseconds(5));
+         future.setValue(true);
+         return true;
+  }, milliseconds(10), expireCb)
+  .then( [] (bool val) {
+    EXPECT_EQ(true, val);
+  });
+
+  EXPECT_EQ(1, expireCbCount);
+
+
+
   // Test doing actual async work
   folly::Baton<> baton;
   fe.addFuture([&]() {
