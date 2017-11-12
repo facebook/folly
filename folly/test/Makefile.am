@@ -80,6 +80,7 @@ endif
 
 sorted_vector_types_test_SOURCES = sorted_vector_test.cpp
 sorted_vector_types_test_LDADD = libfollytestmain.la
+TESTS += sorted_vector_types_test
 
 container_access_test_SOURCES = ../container/test/AccessTets.cpp
 container_access_test_LDADD = libfollytestmain.la
@@ -87,6 +88,7 @@ TESTS += container_access_test
 
 foreach_test_SOURCES = ../container/test/ForeachTest.cpp
 foreach_test_LDADD = libfollytestmain.la
+TESTS += foreach_test
 
 foreach_benchmark_SOURCES = ../container/test/ForeachBenchmark.cpp
 foreach_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
@@ -94,9 +96,11 @@ check_PROGRAMS += foreach_benchmark
 
 hash_test_SOURCES = ../hash/test/HashTest.cpp
 hash_test_LDADD = libfollytestmain.la
+TESTS += hash_test
 
 invoke_test_SOURCES = ../functional/test/InvokeTest.cpp
 invoke_test_LDADD = libfollytestmain.la
+TESTS += invoke_test
 
 fbstring_test_using_jemalloc_SOURCES = FBStringTest.cpp
 fbstring_test_using_jemalloc_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
@@ -104,6 +108,7 @@ TESTS += fbstring_test_using_jemalloc
 
 thread_cached_int_test_SOURCES = ThreadCachedIntTest.cpp
 thread_cached_int_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+TESTS += thread_cached_int_test
 
 thread_id_test_SOURCES = ../system/test/ThreadIdTest.cpp
 thread_id_test_LDADD = libfollytestmain.la
@@ -139,24 +144,31 @@ TESTS += scope_guard_test
 
 timeout_queue_test_SOURCES = TimeoutQueueTest.cpp
 timeout_queue_test_LDADD = libfollytestmain.la
+TESTS += timeout_queue_test
 
 conv_test_SOURCES = ConvTest.cpp
 conv_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+TESTS += conv_test
 
 expected_test_SOURCES = ExpectedTest.cpp
 expected_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+TESTS += expected_test
 
 range_test_SOURCES = RangeTest.cpp
 range_test_LDADD = libfollytestmain.la
+TESTS += range_test
 
 math_test_SOURCES = MathTest.cpp
 math_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+TESTS += math_test
 
 bits_test_SOURCES = BitsTest.cpp
 bits_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+TESTS += bits_test
 
 bit_iterator_test_SOURCES = BitIteratorTest.cpp
 bit_iterator_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+TESTS += bit_iterator_test
 
 endian_test_SOURCES = EndianTest.cpp
 endian_test_LDADD = libfollytestmain.la
