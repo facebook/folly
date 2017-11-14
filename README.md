@@ -218,9 +218,9 @@ Download and install folly with the parameters listed below:
 
 #### Windows (Vcpkg)
 
-folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg-) and releases may be built via `vcpkg install folly`.
+folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg) and releases may be built via `vcpkg install folly:x64-windows`.
 
-You may also use `vcpkg install folly --head` to build against `master`.
+You may also use `vcpkg install folly:x64-windows --head` to build against `master`.
 
 #### Other Linux distributions
 
