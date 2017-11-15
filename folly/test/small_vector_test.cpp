@@ -15,6 +15,7 @@
  */
 
 #include <folly/small_vector.h>
+#include <folly/sorted_vector_types.h>
 
 #include <iostream>
 #include <iterator>
@@ -63,6 +64,43 @@ static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(std::unique_ptr<int>),
               "std::unique_ptr<> is trivially copyable");
 
 namespace {
+
+template <typename Key, typename Value, size_t N>
+using small_sorted_vector_map = folly::sorted_vector_map<
+    Key,
+    Value,
+    std::less<Key>,
+    std::allocator<std::pair<Key, Value>>,
+    void,
+    folly::small_vector<std::pair<Key, Value>, N>>;
+
+template <typename Key, typename Value, size_t N>
+using noheap_sorted_vector_map = folly::sorted_vector_map<
+    Key,
+    Value,
+    std::less<Key>,
+    std::allocator<std::pair<Key, Value>>,
+    void,
+    folly::small_vector<
+        std::pair<Key, Value>,
+        N,
+        folly::small_vector_policy::NoHeap>>;
+
+template <typename T, size_t N>
+using small_sorted_vector_set = folly::sorted_vector_set<
+    T,
+    std::less<T>,
+    std::allocator<T>,
+    void,
+    folly::small_vector<T, N>>;
+
+template <typename T, size_t N>
+using noheap_sorted_vector_set = folly::sorted_vector_set<
+    T,
+    std::less<T>,
+    std::allocator<T>,
+    void,
+    folly::small_vector<T, N, folly::small_vector_policy::NoHeap>>;
 
 struct NontrivialType {
   static int ctored;
@@ -995,4 +1033,52 @@ TEST(small_vector, CLVPushBackEfficiency) {
   // Every element except the last has to be moved to the new position
   EXPECT_EQ(test.size() - 1, counts.moveCount);
   EXPECT_LT(test.size(), test.capacity());
+}
+
+TEST(small_vector, StorageForSortedVectorMap) {
+  small_sorted_vector_map<int32_t, int32_t, 2> test;
+  test.insert(std::make_pair(10, 10));
+  EXPECT_EQ(test.size(), 1);
+  test.insert(std::make_pair(10, 10));
+  EXPECT_EQ(test.size(), 1);
+  test.insert(std::make_pair(20, 10));
+  EXPECT_EQ(test.size(), 2);
+  test.insert(std::make_pair(30, 10));
+  EXPECT_EQ(test.size(), 3);
+}
+
+TEST(small_vector, NoHeapStorageForSortedVectorMap) {
+  noheap_sorted_vector_map<int32_t, int32_t, 2> test;
+  test.insert(std::make_pair(10, 10));
+  EXPECT_EQ(test.size(), 1);
+  test.insert(std::make_pair(10, 10));
+  EXPECT_EQ(test.size(), 1);
+  test.insert(std::make_pair(20, 10));
+  EXPECT_EQ(test.size(), 2);
+  EXPECT_THROW(test.insert(std::make_pair(30, 10)), std::length_error);
+  EXPECT_EQ(test.size(), 2);
+}
+
+TEST(small_vector, StorageForSortedVectorSet) {
+  small_sorted_vector_set<int32_t, 2> test;
+  test.insert(10);
+  EXPECT_EQ(test.size(), 1);
+  test.insert(10);
+  EXPECT_EQ(test.size(), 1);
+  test.insert(20);
+  EXPECT_EQ(test.size(), 2);
+  test.insert(30);
+  EXPECT_EQ(test.size(), 3);
+}
+
+TEST(small_vector, NoHeapStorageForSortedVectorSet) {
+  noheap_sorted_vector_set<int32_t, 2> test;
+  test.insert(10);
+  EXPECT_EQ(test.size(), 1);
+  test.insert(10);
+  EXPECT_EQ(test.size(), 1);
+  test.insert(20);
+  EXPECT_EQ(test.size(), 2);
+  EXPECT_THROW(test.insert(30), std::length_error);
+  EXPECT_EQ(test.size(), 2);
 }

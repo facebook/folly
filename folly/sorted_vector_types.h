@@ -215,14 +215,12 @@ template <
     class T,
     class Compare = std::less<T>,
     class Allocator = std::allocator<T>,
-    class GrowthPolicy = void>
+    class GrowthPolicy = void,
+    class Container = std::vector<T, Allocator>>
 class sorted_vector_set
-  : boost::totally_ordered1<
-      sorted_vector_set<T,Compare,Allocator,GrowthPolicy>
-    , detail::growth_policy_wrapper<GrowthPolicy> >
-{
-  typedef std::vector<T,Allocator> ContainerT;
-
+    : boost::totally_ordered1<
+          sorted_vector_set<T, Compare, Allocator, GrowthPolicy>,
+          detail::growth_policy_wrapper<GrowthPolicy>> {
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
 
@@ -236,20 +234,20 @@ class sorted_vector_set
   typedef Compare key_compare;
   typedef Compare value_compare;
 
-  typedef typename ContainerT::pointer                pointer;
-  typedef typename ContainerT::reference              reference;
-  typedef typename ContainerT::const_reference        const_reference;
+  typedef typename Container::pointer pointer;
+  typedef typename Container::reference reference;
+  typedef typename Container::const_reference const_reference;
   /*
    * XXX: Our normal iterator ought to also be a constant iterator
    * (cf. Defect Report 103 for std::set), but this is a bit more of a
    * pain.
    */
-  typedef typename ContainerT::iterator               iterator;
-  typedef typename ContainerT::const_iterator         const_iterator;
-  typedef typename ContainerT::difference_type        difference_type;
-  typedef typename ContainerT::size_type              size_type;
-  typedef typename ContainerT::reverse_iterator       reverse_iterator;
-  typedef typename ContainerT::const_reverse_iterator const_reverse_iterator;
+  typedef typename Container::iterator iterator;
+  typedef typename Container::const_iterator const_iterator;
+  typedef typename Container::difference_type difference_type;
+  typedef typename Container::size_type size_type;
+  typedef typename Container::reverse_iterator reverse_iterator;
+  typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
   explicit sorted_vector_set(const Compare& comp = Compare(),
                              const Allocator& alloc = Allocator())
@@ -284,10 +282,10 @@ class sorted_vector_set
   // those performed by the caller. (The iterator range constructor performs at
   // least one allocation).
   //
-  // Note that `sorted_vector_set(const ContainerT& container)` is not provided,
+  // Note that `sorted_vector_set(const Container& container)` is not provided,
   // since the purpose of this constructor is to avoid an unnecessary copy.
   explicit sorted_vector_set(
-      ContainerT&& container,
+      Container&& container,
       const Compare& comp = Compare())
       : m_(comp, container.get_allocator()) {
     std::sort(container.begin(), container.end(), value_comp());
@@ -478,7 +476,7 @@ class sorted_vector_set
       : Compare(c)
       , cont_(alloc)
     {}
-    ContainerT cont_;
+    Container cont_;
   } m_;
 
   template <typename Self>
@@ -525,14 +523,12 @@ template <
     class Value,
     class Compare = std::less<Key>,
     class Allocator = std::allocator<std::pair<Key, Value>>,
-    class GrowthPolicy = void>
+    class GrowthPolicy = void,
+    class Container = std::vector<std::pair<Key, Value>, Allocator>>
 class sorted_vector_map
-  : boost::totally_ordered1<
-      sorted_vector_map<Key,Value,Compare,Allocator,GrowthPolicy>
-    , detail::growth_policy_wrapper<GrowthPolicy> >
-{
-  typedef std::vector<std::pair<Key,Value>,Allocator> ContainerT;
-
+    : boost::totally_ordered1<
+          sorted_vector_map<Key, Value, Compare, Allocator, GrowthPolicy>,
+          detail::growth_policy_wrapper<GrowthPolicy>> {
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
 
@@ -556,15 +552,15 @@ class sorted_vector_map
     explicit value_compare(const Compare& c) : Compare(c) {}
   };
 
-  typedef typename ContainerT::pointer                pointer;
-  typedef typename ContainerT::reference              reference;
-  typedef typename ContainerT::const_reference        const_reference;
-  typedef typename ContainerT::iterator               iterator;
-  typedef typename ContainerT::const_iterator         const_iterator;
-  typedef typename ContainerT::difference_type        difference_type;
-  typedef typename ContainerT::size_type              size_type;
-  typedef typename ContainerT::reverse_iterator       reverse_iterator;
-  typedef typename ContainerT::const_reverse_iterator const_reverse_iterator;
+  typedef typename Container::pointer pointer;
+  typedef typename Container::reference reference;
+  typedef typename Container::const_reference const_reference;
+  typedef typename Container::iterator iterator;
+  typedef typename Container::const_iterator const_iterator;
+  typedef typename Container::difference_type difference_type;
+  typedef typename Container::size_type size_type;
+  typedef typename Container::reverse_iterator reverse_iterator;
+  typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
   explicit sorted_vector_map(const Compare& comp = Compare(),
                              const Allocator& alloc = Allocator())
@@ -597,10 +593,10 @@ class sorted_vector_map
   // those performed by the caller. (The iterator range constructor performs at
   // least one allocation).
   //
-  // Note that `sorted_vector_map(const ContainerT& container)` is not provided,
+  // Note that `sorted_vector_map(const Container& container)` is not provided,
   // since the purpose of this constructor is to avoid an unnecessary copy.
   explicit sorted_vector_map(
-      ContainerT&& container,
+      Container&& container,
       const Compare& comp = Compare())
       : m_(value_compare(comp), container.get_allocator()) {
     std::sort(container.begin(), container.end(), value_comp());
@@ -806,7 +802,7 @@ class sorted_vector_map
       : value_compare(c)
       , cont_(alloc)
     {}
-    ContainerT cont_;
+    Container cont_;
   } m_;
 
   template <typename Self>

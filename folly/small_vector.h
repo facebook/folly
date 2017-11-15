@@ -413,6 +413,7 @@ class small_vector : public detail::small_vector_base<
   typedef value_type& reference;
   typedef value_type const& const_reference;
   typedef value_type* iterator;
+  typedef value_type* pointer;
   typedef value_type const* const_iterator;
   typedef std::ptrdiff_t difference_type;
 
@@ -420,6 +421,9 @@ class small_vector : public detail::small_vector_base<
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   small_vector() = default;
+  // Allocator is unused here. It is taken in for compatibility with std::vector
+  // interface, but it will be ignored.
+  small_vector(const std::allocator<Value>&) {}
 
   small_vector(small_vector const& o) {
     auto n = o.size();
