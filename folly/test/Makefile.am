@@ -82,7 +82,7 @@ sorted_vector_types_test_SOURCES = sorted_vector_test.cpp
 sorted_vector_types_test_LDADD = libfollytestmain.la
 TESTS += sorted_vector_types_test
 
-container_access_test_SOURCES = ../container/test/AccessTets.cpp
+container_access_test_SOURCES = ../container/test/AccessTest.cpp
 container_access_test_LDADD = libfollytestmain.la
 TESTS += container_access_test
 
