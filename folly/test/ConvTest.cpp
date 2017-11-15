@@ -1249,6 +1249,9 @@ TEST(Conv, custom_kkproviders) {
   // make sure above implementation of estimateSpaceNeeded() is used.
   EXPECT_GT(str.capacity(), 2000);
   EXPECT_LT(str.capacity(), 2500);
+  // toAppend with other arguments
+  toAppend("|", expected, &str);
+  EXPECT_EQ("7x8|7x8", str);
 }
 
 TEST(Conv, TryToThenWithVoid) {
