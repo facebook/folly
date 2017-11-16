@@ -53,6 +53,20 @@ TEST(AsyncTimeout, schedule) {
   EXPECT_EQ(expected, value);
 }
 
+TEST(AsyncTimeout, schedule_immediate) {
+  int value = 0;
+  int const expected = 10;
+  EventBase manager;
+
+  auto observer = AsyncTimeout::schedule(
+      std::chrono::milliseconds(0), manager, [&]() noexcept {
+        value = expected;
+      });
+
+  manager.loop();
+  EXPECT_EQ(expected, value);
+}
+
 TEST(AsyncTimeout, cancel_make) {
   int value = 0;
   int const expected = 10;
