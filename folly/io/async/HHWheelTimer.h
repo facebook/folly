@@ -104,6 +104,15 @@ class HHWheelTimer : private folly::AsyncTimeout,
       return wheel_ != nullptr;
     }
 
+    /**
+     * Get the time remaining until this timeout expires. Return 0 if this
+     * timeout is not scheduled or expired. Otherwise, return expiration time
+     * minus getCurTime().
+     */
+    std::chrono::milliseconds getTimeRemaining() {
+      return getTimeRemaining(getCurTime());
+    }
+
    protected:
     /**
      * Don't override this unless you're doing a test. This is mainly here so
