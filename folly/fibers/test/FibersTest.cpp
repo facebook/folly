@@ -903,12 +903,18 @@ namespace {
 void expectMainContext(bool& ran, int* mainLocation, int* fiberLocation) {
   int here;
   /* 2 pages is a good guess */
-  constexpr ssize_t DISTANCE = 0x2000 / sizeof(int);
+  constexpr auto const kHereToFiberMaxDist = 0x2000 / sizeof(int);
+
+  // With ASAN's detect_stack_use_after_return=1, this must be much larger
+  // I measured 410028 on x86_64, so allow for quadruple that, just in case.
+  constexpr auto const kHereToMainMaxDist =
+      folly::kIsSanitizeAddress ? 4 * 410028 : kHereToFiberMaxDist;
+
   if (fiberLocation) {
-    EXPECT_TRUE(std::abs(&here - fiberLocation) > DISTANCE);
+    EXPECT_GT(std::abs(&here - fiberLocation), kHereToFiberMaxDist);
   }
   if (mainLocation) {
-    EXPECT_TRUE(std::abs(&here - mainLocation) < DISTANCE);
+    EXPECT_LT(std::abs(&here - mainLocation), kHereToMainMaxDist);
   }
 
   EXPECT_FALSE(ran);
