@@ -17,7 +17,6 @@ EventBase base;
 auto thread = std::thread([&](){
   base.loopForever();
 });
-
 ```
 
 EventBase has built-in support for message passing between threads.
