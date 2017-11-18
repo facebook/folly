@@ -53,8 +53,12 @@
  *     FOLLY_FALLTHROUGH; // no warning: annotated fall-through
  * }
  */
-#if FOLLY_HAS_CPP_ATTRIBUTE(clang::fallthrough)
+#if FOLLY_HAS_CPP_ATTRIBUTE(fallthrough)
+#define FOLLY_FALLTHROUGH [[fallthrough]]
+#elif FOLLY_HAS_CPP_ATTRIBUTE(clang::fallthrough)
 #define FOLLY_FALLTHROUGH [[clang::fallthrough]]
+#elif FOLLY_HAS_CPP_ATTRIBUTE(gnu::fallthrough)
+#define FOLLY_FALLTHROUGH [[gnu::fallthrough]]
 #else
 #define FOLLY_FALLTHROUGH
 #endif
