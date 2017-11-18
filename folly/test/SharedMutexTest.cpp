@@ -1052,14 +1052,14 @@ TEST(SharedMutex, deterministic_lost_wakeup_write_prio) {
 }
 
 TEST(SharedMutex, mixed_mostly_write_read_prio) {
-  for (int pass = 0; pass < 5; ++pass) {
+  for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 5); ++pass) {
     runMixed<atomic, SharedMutexReadPriority, TokenLocker>(
         50000, 300, 0.9, false);
   }
 }
 
 TEST(SharedMutex, mixed_mostly_write_write_prio) {
-  for (int pass = 0; pass < 5; ++pass) {
+  for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 5); ++pass) {
     runMixed<atomic, SharedMutexWritePriority, TokenLocker>(
         50000, 300, 0.9, false);
   }
@@ -1229,7 +1229,7 @@ TEST(SharedMutex, remote_write_prio) {
 }
 
 TEST(SharedMutex, remote_read_prio) {
-  for (int pass = 0; pass < 100; ++pass) {
+  for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 100); ++pass) {
     runRemoteUnlock<SharedMutexReadPriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
