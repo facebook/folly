@@ -114,7 +114,6 @@ EventBase::EventBase(bool enableTimeMeasurement)
   }
   VLOG(5) << "EventBase(): Created.";
   initNotificationQueue();
-  RequestContext::saveContext();
 }
 
 // takes ownership of the event_base
@@ -140,7 +139,6 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
   }
   initNotificationQueue();
-  RequestContext::saveContext();
 }
 
 EventBase::~EventBase() {

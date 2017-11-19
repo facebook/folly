@@ -266,8 +266,6 @@ class NotificationQueue {
         pid_(pid_t(getpid())),
         queue_() {
 
-    RequestContext::saveContext();
-
 #ifdef FOLLY_HAVE_EVENTFD
     if (fdType == FdType::EVENTFD) {
       eventfd_ = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
