@@ -5,7 +5,7 @@ endif
 # Note that the order of SUBDIRS matters.
 # Many subdirectories depend on libfollytest from the test directory,
 # so it must appear before other directories
-SUBDIRS = . test experimental $(MAYBE_INIT) io/test stats/test
+SUBDIRS = . test experimental $(MAYBE_INIT) chrono/test io/test stats/test
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -42,6 +42,7 @@ nobase_follyinclude_HEADERS = \
 	Bits.h \
 	CachelinePadded.h \
 	Chrono.h \
+	chrono/Conv.h \
 	ClockGettimeWrappers.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \

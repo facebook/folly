@@ -327,6 +327,9 @@ if (BUILD_TESTS)
   apply_folly_compile_options_to_target(folly_test_support)
 
   folly_define_tests(
+    DIRECTORY chrono/test/
+      TEST chrono_conv_test SOURCES ConvTest.cpp
+
     DIRECTORY compression/test/
       TEST compression_test SOURCES CompressionTest.cpp
 
