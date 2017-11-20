@@ -645,12 +645,12 @@ detail::OptionalAwaitable<Value>
 } // namespace folly
 
 // This makes folly::Optional<Value> useable as a coroutine return type..
-FOLLY_NAMESPACE_STD_BEGIN
+namespace std {
 namespace experimental {
 template <typename Value, typename... Args>
 struct coroutine_traits<folly::Optional<Value>, Args...> {
   using promise_type = folly::detail::OptionalPromise<Value>;
 };
 } // namespace experimental
-FOLLY_NAMESPACE_STD_END
+} // namespace std
 #endif // FOLLY_HAS_COROUTINES

@@ -1519,13 +1519,13 @@ expected_detail::Awaitable<Value, Error>
 }
 } // namespace folly
 
-// This makes folly::Optional<Value> useable as a coroutine return type..
-FOLLY_NAMESPACE_STD_BEGIN
+// This makes folly::Expected<Value> useable as a coroutine return type...
+namespace std {
 namespace experimental {
 template <typename Value, typename Error, typename... Args>
 struct coroutine_traits<folly::Expected<Value, Error>, Args...> {
   using promise_type = folly::expected_detail::Promise<Value, Error>;
 };
 } // namespace experimental
-FOLLY_NAMESPACE_STD_END
+} // namespace std
 #endif // FOLLY_HAS_COROUTINES
