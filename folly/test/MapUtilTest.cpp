@@ -16,6 +16,7 @@
 
 #include <folly/MapUtil.h>
 
+#include <cstddef>
 #include <map>
 #include <unordered_map>
 
@@ -238,6 +239,7 @@ struct GetRefDefaultPathCompiles<
         std::declval<int>(),
         std::declval<int>(),
         std::declval<T>()))>> : std::true_type {};
+
 } // namespace
 
 TEST(MapUtil, get_ref_default_path_temporary) {
@@ -245,4 +247,42 @@ TEST(MapUtil, get_ref_default_path_temporary) {
   EXPECT_TRUE(GetRefDefaultPathCompiles<int&>::value);
   EXPECT_FALSE(GetRefDefaultPathCompiles<const int&&>::value);
   EXPECT_FALSE(GetRefDefaultPathCompiles<int&&>::value);
+}
+
+namespace {
+
+class TestConstruction {
+ public:
+  static std::size_t numberDefaultConstructs;
+  TestConstruction() {
+    ++numberDefaultConstructs;
+  }
+  TestConstruction(TestConstruction&&) = default;
+  TestConstruction(const TestConstruction&) = default;
+
+  TestConstruction& operator=(const TestConstruction&) = delete;
+  TestConstruction& operator=(TestConstruction&&) = delete;
+};
+
+std::size_t TestConstruction::numberDefaultConstructs = 0;
+
+} // namespace
+
+TEST(MapUtil, test_get_default_deferred_construction) {
+  auto map = std::unordered_map<int, TestConstruction>{};
+  map.insert({1, TestConstruction{}});
+
+  EXPECT_EQ(TestConstruction::numberDefaultConstructs, 1);
+
+  {
+    auto val = get_default(map, 1);
+    EXPECT_EQ(TestConstruction::numberDefaultConstructs, 1);
+    static_cast<void>(val);
+  }
+
+  {
+    auto val = get_default(map, 1, TestConstruction{});
+    EXPECT_EQ(TestConstruction::numberDefaultConstructs, 2);
+    static_cast<void>(val);
+  }
 }
