@@ -551,3 +551,25 @@ TEST_F(HazptrTest, mt_refcount) {
   CHECK_EQ(constructed.load(), num);
   CHECK_EQ(destroyed.load(), num);
 }
+
+TEST_F(HazptrTest, FreeFunctionRetire) {
+  auto foo = new int;
+  hazptr_retire(foo);
+  auto foo2 = new int;
+  hazptr_retire(foo2, [](int* obj) { delete obj; });
+
+  bool retired = false;
+  {
+    hazptr_domain myDomain0;
+    struct delret {
+      bool* retired_;
+      delret(bool* retire) : retired_(retire) {}
+      ~delret() {
+        *retired_ = true;
+      }
+    };
+    auto foo3 = new delret(&retired);
+    myDomain0.retire(foo3);
+  }
+  EXPECT_TRUE(retired);
+}

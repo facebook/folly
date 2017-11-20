@@ -602,6 +602,11 @@ FOLLY_ALWAYS_INLINE hazptr_domain& default_hazptr_domain() {
   return default_domain_;
 }
 
+template <typename T, typename D>
+FOLLY_ALWAYS_INLINE void hazptr_retire(T* obj, D reclaim) {
+  default_hazptr_domain().retire(obj, std::move(reclaim));
+}
+
 /** hazptr_rec */
 
 FOLLY_ALWAYS_INLINE void hazptr_rec::set(const void* p) noexcept {
@@ -648,6 +653,21 @@ inline const void* hazptr_obj::getObjPtr() const {
 }
 
 /** hazptr_domain */
+
+template <typename T, typename D>
+void hazptr_domain::retire(T* obj, D reclaim) {
+  struct hazptr_retire_node : hazptr_obj {
+    std::unique_ptr<T, D> obj_;
+
+    hazptr_retire_node(T* obj, D reclaim) : obj_{obj, std::move(reclaim)} {}
+  };
+
+  auto node = new hazptr_retire_node(obj, std::move(reclaim));
+  node->reclaim_ = [](hazptr_obj* p) {
+    delete static_cast<hazptr_retire_node*>(p);
+  };
+  objRetire(node);
+}
 
 inline hazptr_domain::~hazptr_domain() {
   DEBUG_PRINT(this);

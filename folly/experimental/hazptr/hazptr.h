@@ -62,6 +62,10 @@ class hazptr_domain {
   hazptr_domain& operator=(const hazptr_domain&) = delete;
   hazptr_domain& operator=(hazptr_domain&&) = delete;
 
+  /** Free-function retire.  May allocate memory */
+  template <typename T, typename D = std::default_delete<T>>
+  void retire(T* obj, D reclaim = {});
+
  private:
   friend class hazptr_holder;
   template <typename, typename>
@@ -89,6 +93,10 @@ class hazptr_domain {
 hazptr_domain& default_hazptr_domain();
 
 extern hazptr_domain default_domain_;
+
+/** Free-function retire, that operates on the default domain */
+template <typename T, typename D = std::default_delete<T>>
+void hazptr_retire(T* obj, D reclaim = {});
 
 /** Definition of hazptr_obj */
 class hazptr_obj {
