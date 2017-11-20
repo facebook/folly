@@ -262,8 +262,9 @@ TEST(Singleton, SharedPtrUsage) {
     auto start_time = std::chrono::steady_clock::now();
     vault.destroyInstances();
     auto duration = std::chrono::steady_clock::now() - start_time;
-    EXPECT_TRUE(duration > std::chrono::seconds{4} &&
-                duration < std::chrono::seconds{6});
+    EXPECT_TRUE(
+        duration > std::chrono::seconds{4} &&
+        duration < std::chrono::seconds{folly::kIsSanitizeAddress ? 30 : 6});
   }
   EXPECT_EQ(vault.registeredSingletonCount(), 4);
   EXPECT_EQ(vault.livingSingletonCount(), 0);
