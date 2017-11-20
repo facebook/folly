@@ -83,12 +83,12 @@ class once_flag {
 
   template <typename Mutex_, typename Callable, class... Args>
   friend void ::folly::call_once(
-      once_flag<Mutex_>& flag,
+      detail::once_flag<Mutex_>& flag,
       Callable&& f,
       Args&&... args);
   template <typename Mutex_, typename Callable, class... Args>
   friend void call_once_impl_no_inline(
-      once_flag<Mutex_>& flag,
+      detail::once_flag<Mutex_>& flag,
       Callable&& f,
       Args&&... args);
 
