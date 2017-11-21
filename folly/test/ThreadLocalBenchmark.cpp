@@ -80,6 +80,43 @@ boost::thread_specific_ptr<int> boost_tsp;
 REG(boost_tsp);
 BENCHMARK_DRAW_LINE();
 
+struct foo {
+  int a{0};
+  int b{0};
+};
+
+template <typename TL>
+void run_multi(uint32_t iters) {
+  const int itersPerThread = iters / FLAGS_numThreads;
+  std::vector<std::thread> threads;
+  TL var;
+  for (int i = 0; i < FLAGS_numThreads; ++i) {
+    threads.push_back(std::thread([&]() {
+      var.reset(new foo);
+      for (int j = 0; j < itersPerThread; ++j) {
+        ++var.get()->a;
+        var.get()->b += var.get()->a;
+        --var.get()->a;
+        var.get()->b += var.get()->a;
+      }
+    }));
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
+BENCHMARK(BM_mt_tlp_multi, iters) {
+  run_multi<ThreadLocalPtr<foo>>(iters);
+}
+BENCHMARK(BM_mt_pthread_get_specific_multi, iters) {
+  run_multi<PThreadGetSpecific<foo>>(iters);
+}
+BENCHMARK(BM_mt_boost_tsp_multi, iters) {
+  run_multi<boost::thread_specific_ptr<foo>>(iters);
+}
+BENCHMARK_DRAW_LINE();
+
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
@@ -89,12 +126,19 @@ int main(int argc, char** argv) {
 }
 
 /*
-Ran with 24 threads on dual 12-core Xeon(R) X5650 @ 2.67GHz with 12-MB caches
+./buck-out/gen/folly/test/thread_local_benchmark --bm_min_iters=10000000
+--numThreads=1
 
-Benchmark                               Iters   Total t    t/iter iter/sec
-------------------------------------------------------------------------------
-*       BM_mt_tlp                   100000000  39.88 ms  398.8 ps  2.335 G
- +5.91% BM_mt_pthread_get_specific  100000000  42.23 ms  422.3 ps  2.205 G
- + 295% BM_mt_boost_tsp             100000000  157.8 ms  1.578 ns  604.5 M
-------------------------------------------------------------------------------
+============================================================================
+folly/test/ThreadLocalBenchmark.cpp             relative  time/iter  iters/s
+============================================================================
+BM_mt_tlp                                                    2.30ns  434.53M
+BM_mt_pthread_get_specific                                   2.69ns  371.75M
+BM_mt_boost_tsp                                             11.66ns   85.78M
+----------------------------------------------------------------------------
+BM_mt_tlp_multi                                             12.46ns   80.25M
+BM_mt_pthread_get_specific_multi                            16.58ns   60.32M
+BM_mt_boost_tsp_multi                                       70.85ns   14.12M
+----------------------------------------------------------------------------
+============================================================================
 */
