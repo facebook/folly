@@ -8,8 +8,12 @@ libfollylogging_la_SOURCES = \
 	ImmediateFileWriter.cpp \
 	Init.cpp \
 	LogCategory.cpp \
+	LogCategoryConfig.cpp \
+	LogConfig.cpp \
+	LogConfigParser.cpp \
 	Logger.cpp \
 	LoggerDB.cpp \
+	LogHandlerConfig.cpp \
 	LogLevel.cpp \
 	LogMessage.cpp \
 	LogName.cpp \
