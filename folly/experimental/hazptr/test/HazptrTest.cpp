@@ -380,6 +380,7 @@ TEST_F(HazptrTest, Array) {
   {
     // Abnormal case
     hazptr_array<HAZPTR_TC_SIZE + 1> h;
+    hazptr_array<HAZPTR_TC_SIZE + 1> h2(std::move(h));
   }
 }
 

@@ -452,9 +452,10 @@ FOLLY_ALWAYS_INLINE hazptr_array<M>::hazptr_array(
     hazptr_array&& other) noexcept {
   DEBUG_PRINT(this << " " << M << " " << &other);
   auto h = reinterpret_cast<hazptr_holder*>(&raw_);
+  auto hother = reinterpret_cast<hazptr_holder*>(&other.raw_);
   for (size_t i = 0; i < M; ++i) {
-    new (&h[i]) hazptr_holder(std::move(other.h_[i]));
-    DEBUG_PRINT(i << " " << &h[i] << " " << &other.h_[i]);
+    new (&h[i]) hazptr_holder(std::move(hother[i]));
+    DEBUG_PRINT(i << " " << &h[i] << " " << &hother[i]);
   }
   empty_ = other.empty_;
   other.empty_ = true;
