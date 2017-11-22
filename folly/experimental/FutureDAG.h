@@ -134,10 +134,9 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
     }
 
     nodes[sourceHandle].promise.setValue();
-    auto that = shared_from_this();
-    return nodes[sinkHandle].promise.getFuture().ensure([that] {}).then(
-        [this, sourceHandle, sinkHandle]() {
-          clean_state(sourceHandle, sinkHandle);
+    return nodes[sinkHandle].promise.getFuture().then(
+        [that = shared_from_this(), sourceHandle, sinkHandle]() {
+          that->clean_state(sourceHandle, sinkHandle);
         });
   }
 
