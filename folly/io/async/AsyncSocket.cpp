@@ -1434,6 +1434,9 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
 
   eventBase_ = eventBase;
   ioHandler_.attachEventBase(eventBase);
+
+  updateEventRegistration();
+
   writeTimeout_.attachEventBase(eventBase);
   if (evbChangeCb_) {
     evbChangeCb_->evbAttached(this);
@@ -1448,6 +1451,9 @@ void AsyncSocket::detachEventBase() {
   eventBase_->dcheckIsInEventBaseThread();
 
   eventBase_ = nullptr;
+
+  ioHandler_.unregisterHandler();
+
   ioHandler_.detachEventBase();
   writeTimeout_.detachEventBase();
   if (evbChangeCb_) {
@@ -1459,7 +1465,7 @@ bool AsyncSocket::isDetachable() const {
   DCHECK(eventBase_ != nullptr);
   eventBase_->dcheckIsInEventBaseThread();
 
-  return !ioHandler_.isHandlerRegistered() && !writeTimeout_.isScheduled();
+  return !writeTimeout_.isScheduled();
 }
 
 void AsyncSocket::cacheAddresses() {

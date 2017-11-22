@@ -2857,6 +2857,39 @@ TEST(AsyncSocketTest, EvbCallbacks) {
   socket->attachEventBase(&evb);
 }
 
+TEST(AsyncSocketTest, TestEvbDetachWtRegisteredIOHandlers) {
+  // Start listening on a local port
+  TestServer server;
+
+  // Connect using a AsyncSocket
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  ConnCallback cb;
+  socket->connect(&cb, server.getAddress(), 30);
+
+  evb.loop();
+
+  ASSERT_EQ(cb.state, STATE_SUCCEEDED);
+  EXPECT_LE(0, socket->getConnectTime().count());
+  EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(30));
+
+  // After the ioHandlers are registered, still should be able to detach/attach
+  ReadCallback rcb;
+  socket->setReadCB(&rcb);
+
+  auto cbEvbChg = std::make_unique<MockEvbChangeCallback>();
+  InSequence seq;
+  EXPECT_CALL(*cbEvbChg, evbDetached(socket.get())).Times(1);
+  EXPECT_CALL(*cbEvbChg, evbAttached(socket.get())).Times(1);
+
+  socket->setEvbChangedCallback(std::move(cbEvbChg));
+  EXPECT_TRUE(socket->isDetachable());
+  socket->detachEventBase();
+  socket->attachEventBase(&evb);
+
+  socket->close();
+}
+
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
 /* copied from include/uapi/linux/net_tstamp.h */
 /* SO_TIMESTAMPING gets an integer bit field comprised of these values */
