@@ -161,7 +161,7 @@ class ThreadLocalPtr {
   }
 
   T* get() const {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
     return static_cast<T*>(w.ptr);
   }
 
@@ -174,14 +174,14 @@ class ThreadLocalPtr {
   }
 
   T* release() {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
 
     return static_cast<T*>(w.release());
   }
 
   void reset(T* newPtr = nullptr) {
     auto guard = makeGuard([&] { delete newPtr; });
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
 
     w.dispose(TLPDestructionMode::THIS_THREAD);
     guard.dismiss();
@@ -235,7 +235,7 @@ class ThreadLocalPtr {
         deleter(newPtr, TLPDestructionMode::THIS_THREAD);
       }
     });
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
     w.dispose(TLPDestructionMode::THIS_THREAD);
     guard.dismiss();
     w.set(newPtr, deleter);

@@ -132,13 +132,13 @@ int main(int argc, char** argv) {
 ============================================================================
 folly/test/ThreadLocalBenchmark.cpp             relative  time/iter  iters/s
 ============================================================================
-BM_mt_tlp                                                    2.30ns  434.53M
-BM_mt_pthread_get_specific                                   2.69ns  371.75M
-BM_mt_boost_tsp                                             11.66ns   85.78M
+BM_mt_tlp                                                    1.92ns  520.02M
+BM_mt_pthread_get_specific                                   2.69ns  372.15M
+BM_mt_boost_tsp                                             11.81ns   84.67M
 ----------------------------------------------------------------------------
-BM_mt_tlp_multi                                             12.46ns   80.25M
-BM_mt_pthread_get_specific_multi                            16.58ns   60.32M
-BM_mt_boost_tsp_multi                                       70.85ns   14.12M
+BM_mt_tlp_multi                                              7.53ns  132.79M
+BM_mt_pthread_get_specific_multi                            15.80ns   63.29M
+BM_mt_boost_tsp_multi                                       71.70ns   13.95M
 ----------------------------------------------------------------------------
 ============================================================================
 */
