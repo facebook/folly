@@ -217,6 +217,24 @@ TEST(Hash, integral_types) {
   EXPECT_EQ(24, hashes.size());
 }
 
+TEST(Hash, float_types) {
+  folly::Hash hasher;
+
+  EXPECT_EQ(hasher(0.0f), hasher(-0.0f));
+  EXPECT_EQ(hasher(0.0), hasher(-0.0));
+
+  // Basically just confirms that things compile ok.
+  std::unordered_set<size_t> hashes;
+  hashes.insert(hasher(0.0f));
+  hashes.insert(hasher(0.1f));
+  hashes.insert(hasher(0.2));
+  hashes.insert(hasher(0.2f));
+  hashes.insert(hasher(-0.3));
+  hashes.insert(hasher(-0.3f));
+
+  EXPECT_EQ(6, hashes.size());
+}
+
 // Not a full hasher since only handles one type
 class TestHasher {
  public:

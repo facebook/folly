@@ -371,11 +371,12 @@ inline uint32_t hsieh_hash32_str(const std::string& str) {
 } // namespace hash
 
 namespace detail {
+
 struct integral_hasher {
   template <typename I>
   size_t operator()(I const& i) const {
-    static_assert(sizeof(I) <= 8, "input type is too wide");
-    if (sizeof(I) <= 4) { // the branch taken is known at compile time
+    static_assert(sizeof(I) <= 8, "Input type is too wide");
+    /* constexpr */ if (sizeof(I) <= 4) {
       auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
       auto const u32 = static_cast<uint32_t>(i32);
       return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
@@ -385,6 +386,28 @@ struct integral_hasher {
     }
   }
 };
+
+struct float_hasher {
+  template <typename F>
+  size_t operator()(F const& f) const {
+    static_assert(sizeof(F) <= 8, "Input type is too wide");
+
+    if (f == F{}) { // Ensure 0 and -0 get the same hash.
+      return 0;
+    }
+
+    /* constexpr */ if (sizeof(F) <= 4) {
+      uint32_t u32 = 0;
+      memcpy(&u32, &f, sizeof(F));
+      return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
+    } else {
+      uint64_t u64 = 0;
+      memcpy(&u64, &f, sizeof(F));
+      return static_cast<size_t>(hash::twang_mix64(u64));
+    }
+  }
+};
+
 } // namespace detail
 
 template <class Key, class Enable = void>
@@ -442,6 +465,12 @@ struct hasher<signed char> : detail::integral_hasher {};
 
 template <> // char is a different type from both signed char and unsigned char
 struct hasher<char> : detail::integral_hasher {};
+
+template <>
+struct hasher<float> : detail::float_hasher {};
+
+template <>
+struct hasher<double> : detail::float_hasher {};
 
 template <> struct hasher<std::string> {
   size_t operator()(const std::string& key) const {
