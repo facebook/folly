@@ -380,12 +380,14 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
     auto node = head->load(std::memory_order_relaxed);
     auto headnode = node;
     auto prev = head;
-    it.buckets_hazptr_.reset(buckets);
+    auto& hazbuckets = it.hazptrs_[0];
+    auto& haznode = it.hazptrs_[1];
+    hazbuckets.reset(buckets);
     while (node) {
       // Is the key found?
       if (KeyEqual()(k, node->getItem().first)) {
         it.setNode(node, buckets, idx);
-        it.node_hazptr_.reset(node);
+        haznode.reset(node);
         if (type == InsertType::MATCH) {
           if (!match(node->getItem().second)) {
             return false;
@@ -415,8 +417,8 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
       node = node->next_.load(std::memory_order_relaxed);
     }
     if (type != InsertType::DOES_NOT_EXIST && type != InsertType::ANY) {
-      it.node_hazptr_.reset();
-      it.buckets_hazptr_.reset();
+      haznode.reset();
+      hazbuckets.reset();
       return false;
     }
     // Node not found, check for rehash on ANY
@@ -429,7 +431,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
 
       // Reload correct bucket.
       buckets = buckets_.load(std::memory_order_relaxed);
-      it.buckets_hazptr_.reset(buckets);
+      hazbuckets.reset(buckets);
       idx = getIdx(buckets, h);
       head = &buckets->buckets_[idx];
       headnode = head->load(std::memory_order_relaxed);
@@ -507,19 +509,23 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
   }
 
   bool find(Iterator& res, const KeyType& k) {
-    folly::hazptr::hazptr_holder haznext;
+    auto hazcurr = &res.hazptrs_[1];
+    folly::hazptr::hazptr_local<1> hlocal;
+    auto haznext = &hlocal[0];
     auto h = HashFn()(k);
-    auto buckets = res.buckets_hazptr_.get_protected(buckets_);
+    auto buckets = res.hazptrs_[0].get_protected(buckets_);
     auto idx = getIdx(buckets, h);
     auto prev = &buckets->buckets_[idx];
-    auto node = res.node_hazptr_.get_protected(*prev);
+    auto node = hazcurr->get_protected(*prev);
     while (node) {
       if (KeyEqual()(k, node->getItem().first)) {
+        // We may be using hlocal, make sure we are using hazptrs_
+        res.hazptrs_[1].reset(node);
         res.setNode(node, buckets, idx);
         return true;
       }
-      node = haznext.get_protected(node->next_);
-      haznext.swap(res.node_hazptr_);
+      node = haznext[0].get_protected(node->next_);
+      std::swap(hazcurr, haznext);
     }
     return false;
   }
@@ -554,7 +560,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
           }
 
           if (iter) {
-            iter->buckets_hazptr_.reset(buckets);
+            iter->hazptrs_[0].reset(buckets);
             iter->setNode(
                 node->next_.load(std::memory_order_acquire), buckets, idx);
           }
@@ -607,7 +613,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
 
   Iterator cbegin() {
     Iterator res;
-    auto buckets = res.buckets_hazptr_.get_protected(buckets_);
+    auto buckets = res.hazptrs_[0].get_protected(buckets_);
     res.setNode(nullptr, buckets, 0);
     res.next();
     return res;
@@ -650,8 +656,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
   class Iterator {
    public:
     FOLLY_ALWAYS_INLINE Iterator() {}
-    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t)
-        : buckets_hazptr_(nullptr), node_hazptr_(nullptr) {}
+    FOLLY_ALWAYS_INLINE explicit Iterator(std::nullptr_t) : hazptrs_(nullptr) {}
     FOLLY_ALWAYS_INLINE ~Iterator() {}
 
     void setNode(Node* node, Buckets* buckets, uint64_t idx) {
@@ -672,7 +677,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
 
     const Iterator& operator++() {
       DCHECK(node_);
-      node_ = node_hazptr_.get_protected(node_->next_);
+      node_ = hazptrs_[1].get_protected(node_->next_);
       if (!node_) {
         ++idx_;
         next();
@@ -687,7 +692,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
         }
         DCHECK(buckets_);
         DCHECK(buckets_->buckets_);
-        node_ = node_hazptr_.get_protected(buckets_->buckets_[idx_]);
+        node_ = hazptrs_[1].get_protected(buckets_->buckets_[idx_]);
         if (node_) {
           break;
         }
@@ -711,32 +716,30 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
 
     Iterator& operator=(const Iterator& o) {
       node_ = o.node_;
-      node_hazptr_.reset(node_);
+      hazptrs_[1].reset(node_);
       idx_ = o.idx_;
       buckets_ = o.buckets_;
-      buckets_hazptr_.reset(buckets_);
+      hazptrs_[0].reset(buckets_);
       return *this;
     }
 
     /* implicit */ Iterator(const Iterator& o) {
       node_ = o.node_;
-      node_hazptr_.reset(node_);
+      hazptrs_[1].reset(node_);
       idx_ = o.idx_;
       buckets_ = o.buckets_;
-      buckets_hazptr_.reset(buckets_);
+      hazptrs_[0].reset(buckets_);
     }
 
     /* implicit */ Iterator(Iterator&& o) noexcept
-        : buckets_hazptr_(std::move(o.buckets_hazptr_)),
-          node_hazptr_(std::move(o.node_hazptr_)) {
+        : hazptrs_(std::move(o.hazptrs_)) {
       node_ = o.node_;
       buckets_ = o.buckets_;
       idx_ = o.idx_;
     }
 
     // These are accessed directly from the functions above
-    folly::hazptr::hazptr_holder buckets_hazptr_;
-    folly::hazptr::hazptr_holder node_hazptr_;
+    folly::hazptr::hazptr_array<2> hazptrs_;
 
    private:
     Node* node_{nullptr};
