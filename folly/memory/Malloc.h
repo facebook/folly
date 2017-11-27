@@ -147,6 +147,11 @@ namespace folly {
 /**
  * Determine if we are using jemalloc or not.
  */
+#ifdef USE_JEMALLOC
+inline bool usingJEMalloc() noexcept {
+  return true;
+}
+#else
 FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
   // Checking for rallocx != nullptr is not sufficient; we may be in a
   // dlopen()ed module that depends on libjemalloc, so rallocx is resolved, but
@@ -194,6 +199,7 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
 
   return result;
 }
+#endif
 
 inline size_t goodMallocSize(size_t minSize) noexcept {
   if (minSize == 0) {
