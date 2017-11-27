@@ -193,18 +193,23 @@ void ElfFile::reset() {
 }
 
 bool ElfFile::init(const char** msg) {
-  auto& elfHeader = this->elfHeader();
+  if (length_ < 4) {
+    if (msg) {
+      *msg = "not an ELF file (too short)";
+    }
+    return false;
+  }
 
   // Validate ELF magic numbers
-  if (!(elfHeader.e_ident[EI_MAG0] == ELFMAG0 &&
-        elfHeader.e_ident[EI_MAG1] == ELFMAG1 &&
-        elfHeader.e_ident[EI_MAG2] == ELFMAG2 &&
-        elfHeader.e_ident[EI_MAG3] == ELFMAG3)) {
+  if (file_[EI_MAG0] != ELFMAG0 || file_[EI_MAG1] != ELFMAG1 ||
+      file_[EI_MAG2] != ELFMAG2 || file_[EI_MAG3] != ELFMAG3) {
     if (msg) {
       *msg = "invalid ELF magic";
     }
     return false;
   }
+
+  auto& elfHeader = this->elfHeader();
 
 #define EXPECTED_CLASS P1(ELFCLASS, __ELF_NATIVE_CLASS)
 #define P1(a, b) P2(a, b)
