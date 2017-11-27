@@ -287,6 +287,26 @@ void SSLContext::loadPrivateKeyFromBufferPEM(folly::StringPiece pkey) {
   }
 }
 
+void SSLContext::loadCertKeyPairFromBufferPEM(
+    folly::StringPiece cert,
+    folly::StringPiece pkey) {
+  loadCertificateFromBufferPEM(cert);
+  loadPrivateKeyFromBufferPEM(pkey);
+}
+
+void SSLContext::loadCertKeyPairFromFiles(
+    const char* certPath,
+    const char* keyPath,
+    const char* certFormat,
+    const char* keyFormat) {
+  loadCertificate(certPath, certFormat);
+  loadPrivateKey(keyPath, keyFormat);
+}
+
+bool SSLContext::isCertKeyPairValid() const {
+  return SSL_CTX_check_private_key(ctx_) == 1;
+}
+
 void SSLContext::loadTrustedCertificates(const char* path) {
   if (path == nullptr) {
     throw std::invalid_argument("loadTrustedCertificates: <path> is nullptr");

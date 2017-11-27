@@ -275,6 +275,7 @@ class SSLContext {
    * @param cert  A PEM formatted certificate
    */
   virtual void loadCertificateFromBufferPEM(folly::StringPiece cert);
+
   /**
    * Load private key.
    *
@@ -288,6 +289,41 @@ class SSLContext {
    * @param pkey  A PEM formatted key
    */
   virtual void loadPrivateKeyFromBufferPEM(folly::StringPiece pkey);
+
+  /**
+   * Load cert and key from PEM buffers. Guaranteed to throw if cert and
+   * private key mismatch so no need to call isCertKeyPairValid.
+   *
+   * @param cert A PEM formatted certificate
+   * @param pkey A PEM formatted key
+   */
+  virtual void loadCertKeyPairFromBufferPEM(
+      folly::StringPiece cert,
+      folly::StringPiece pkey);
+
+  /**
+   * Load cert and key from files. Guaranteed to throw if cert and key mismatch.
+   * Equivalent to calling loadCertificate() and loadPrivateKey().
+   *
+   * @param certPath   Path to the certificate file
+   * @param keyPath   Path to the private key file
+   * @param certFormat Certificate file format
+   * @param keyFormat Private key file format
+   */
+  virtual void loadCertKeyPairFromFiles(
+      const char* certPath,
+      const char* keyPath,
+      const char* certFormat = "PEM",
+      const char* keyFormat = "PEM");
+
+  /**
+   * Call after both cert and key are loaded to check if cert matches key.
+   * Must call if private key is loaded before loading the cert.
+   * No need to call if cert is loaded first before private key.
+   * @return true if matches, or false if mismatch.
+   */
+  virtual bool isCertKeyPairValid() const;
+
   /**
    * Load trusted certificates from specified file.
    *
