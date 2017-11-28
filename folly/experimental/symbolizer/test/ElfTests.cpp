@@ -25,18 +25,9 @@ uint64_t kIntegerValue = 1234567890UL;
 const char* kStringValue = "coconuts";
 
 class ElfTest : public ::testing::Test {
- public:
-  // Path to the test binary itself; set by main()
-  static std::string binaryPath;
-
-  ElfTest() : elfFile_(binaryPath.c_str()) {}
-  ~ElfTest() override {}
-
  protected:
-  ElfFile elfFile_;
+  ElfFile elfFile_{"/proc/self/exe"};
 };
-
-std::string ElfTest::binaryPath;
 
 TEST_F(ElfTest, IntegerValue) {
   auto sym = elfFile_.getSymbolByName("kIntegerValue");
@@ -57,11 +48,4 @@ TEST_F(ElfTest, iterateProgramHeaders) {
       [](auto& h) { return h.p_type == PT_LOAD; });
   EXPECT_NE(nullptr, phdr);
   EXPECT_GE(phdr->p_filesz, 0);
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  ElfTest::binaryPath = argv[0];
-  return RUN_ALL_TESTS();
 }
