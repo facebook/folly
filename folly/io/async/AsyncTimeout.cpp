@@ -90,6 +90,7 @@ bool AsyncTimeout::scheduleTimeout(uint32_t milliseconds) {
 void AsyncTimeout::cancelTimeout() {
   if (isScheduled()) {
     timeoutManager_->cancelTimeout(this);
+    context_.reset();
   }
 }
 
