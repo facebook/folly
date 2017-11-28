@@ -503,9 +503,8 @@ Yield generator(Source&& source) {
  *
  *  auto gen = GENERATOR(int) { yield(1); yield(2); };
  */
-#define GENERATOR(TYPE)                            \
-  ::folly::gen::detail::GeneratorBuilder<TYPE>() + \
-   [=](const std::function<void(TYPE)>& yield)
+#define GENERATOR(TYPE) \
+  ::folly::gen::detail::GeneratorBuilder<TYPE>() + [=](auto&& yield)
 
 /*
  * empty() - for producing empty sequences.
