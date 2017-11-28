@@ -20,6 +20,7 @@
 #include <folly/dynamic.h>
 #include <folly/experimental/logging/LogName.h>
 #include <folly/json.h>
+#include <folly/lang/SafeAssert.h>
 #include <cassert>
 
 using std::shared_ptr;
@@ -330,7 +331,9 @@ LogConfig::CategoryConfigMap parseCategoryConfigs(StringPiece value) {
 
     auto emplaceResult =
         categoryConfigs.emplace(canonicalName, std::move(categoryConfig));
-    assert(emplaceResult.second);
+    FOLLY_SAFE_DCHECK(
+        emplaceResult.second,
+        "category name must be new since it was not in seenCategories");
   }
 
   return categoryConfigs;
