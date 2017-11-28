@@ -21,7 +21,6 @@
 #include <folly/experimental/logging/LogName.h>
 #include <folly/json.h>
 #include <folly/lang/SafeAssert.h>
-#include <cassert>
 
 using std::shared_ptr;
 using std::string;
@@ -277,8 +276,9 @@ LogConfig::CategoryConfigMap parseCategoryConfigs(StringPiece value) {
     // Split the configString into level and handler information.
     std::vector<StringPiece> handlerPieces;
     folly::split(":", configString, handlerPieces);
-    // folly::split() always returns a list of length 1
-    assert(handlerPieces.size() >= 1);
+    FOLLY_SAFE_DCHECK(
+        handlerPieces.size() >= 1,
+        "folly::split() always returns a list of length 1");
     auto levelString = trimWhitespace(handlerPieces[0]);
 
     bool hasHandlerConfig = handlerPieces.size() > 1;
@@ -359,8 +359,8 @@ bool splitNameValue(
 std::pair<std::string, LogHandlerConfig> parseHandlerConfig(StringPiece value) {
   std::vector<StringPiece> pieces;
   folly::split(",", value, pieces);
-  // "folly::split() always returns a list of length 1";
-  assert(pieces.size() >= 1);
+  FOLLY_SAFE_DCHECK(
+      pieces.size() >= 1, "folly::split() always returns a list of length 1");
 
   StringPiece handlerName;
   StringPiece handlerType;
@@ -419,8 +419,8 @@ LogConfig parseLogConfig(StringPiece value) {
   // From then on each section specifies a single LogHandler config.
   std::vector<StringPiece> pieces;
   folly::split(";", value, pieces);
-  // "folly::split() always returns a list of length 1";
-  assert(pieces.size() >= 1);
+  FOLLY_SAFE_DCHECK(
+      pieces.size() >= 1, "folly::split() always returns a list of length 1");
 
   auto categoryConfigs = parseCategoryConfigs(pieces[0]);
   LogConfig::HandlerConfigMap handlerConfigs;

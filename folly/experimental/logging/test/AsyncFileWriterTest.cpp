@@ -29,6 +29,7 @@
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/init/Init.h>
+#include <folly/lang/SafeAssert.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -294,7 +295,9 @@ class ReadStats {
   }
   void writerFinished(size_t threadID, size_t messagesWritten, uint32_t flags) {
     auto map = perThreadWriteData_.wlock();
-    assert(map->find(threadID) == map->end());
+    FOLLY_SAFE_CHECK(
+        map->find(threadID) == map->end(),
+        "multiple writer threads with same ID");
     auto& data = (*map)[threadID];
     data.numMessagesWritten = messagesWritten;
     data.flags = flags;
