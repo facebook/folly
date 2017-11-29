@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/FileUtil.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/portability/GTest.h>
 
@@ -48,4 +50,29 @@ TEST_F(ElfTest, iterateProgramHeaders) {
       [](auto& h) { return h.p_type == PT_LOAD; });
   EXPECT_NE(nullptr, phdr);
   EXPECT_GE(phdr->p_filesz, 0);
+}
+
+TEST_F(ElfTest, TinyNonElfFile) {
+  folly::test::TemporaryFile tmpFile;
+  const static folly::StringPiece contents = "!";
+  folly::writeFull(tmpFile.fd(), contents.data(), contents.size());
+
+  ElfFile elfFile;
+  const char* msg = nullptr;
+  auto res = elfFile.openNoThrow(tmpFile.path().c_str(), true, &msg);
+  EXPECT_EQ(ElfFile::kInvalidElfFile, res);
+  EXPECT_STREQ("not an ELF file (too short)", msg);
+}
+
+TEST_F(ElfTest, NonElfScript) {
+  folly::test::TemporaryFile tmpFile;
+  const static folly::StringPiece contents =
+      "#!/bin/sh\necho I'm small non-ELF executable\n";
+  folly::writeFull(tmpFile.fd(), contents.data(), contents.size());
+
+  ElfFile elfFile;
+  const char* msg = nullptr;
+  auto res = elfFile.openNoThrow(tmpFile.path().c_str(), true, &msg);
+  EXPECT_EQ(ElfFile::kInvalidElfFile, res);
+  EXPECT_STREQ("invalid ELF magic", msg);
 }
