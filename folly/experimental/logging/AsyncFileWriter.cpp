@@ -25,6 +25,8 @@ using folly::StringPiece;
 
 namespace folly {
 
+constexpr size_t AsyncFileWriter::kDefaultMaxBufferSize;
+
 AsyncFileWriter::AsyncFileWriter(StringPiece path)
     : AsyncFileWriter{File{path.str(), O_WRONLY | O_APPEND | O_CREAT}} {}
 
@@ -78,6 +80,16 @@ void AsyncFileWriter::flush() {
     // Wait for notification from the I/O thread that it has done work.
     ioCV_.wait(data.getUniqueLock());
   }
+}
+
+void AsyncFileWriter::setMaxBufferSize(size_t size) {
+  auto data = data_.lock();
+  data->maxBufferBytes = size;
+}
+
+size_t AsyncFileWriter::getMaxBufferSize() const {
+  auto data = data_.lock();
+  return data->maxBufferBytes;
 }
 
 void AsyncFileWriter::ioThread() {

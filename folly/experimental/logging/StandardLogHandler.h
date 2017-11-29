@@ -45,6 +45,20 @@ class StandardLogHandler : public LogHandler {
   ~StandardLogHandler();
 
   /**
+   * Get the LogFormatter used by this handler.
+   */
+  const std::shared_ptr<LogFormatter>& getFormatter() const {
+    return formatter_;
+  }
+
+  /**
+   * Get the LogWriter used by this handler.
+   */
+  const std::shared_ptr<LogWriter>& getWriter() const {
+    return writer_;
+  }
+
+  /**
    * Get the handler's current LogLevel.
    *
    * Messages less than this LogLevel will be ignored.  This defaults to
@@ -71,7 +85,14 @@ class StandardLogHandler : public LogHandler {
 
  private:
   std::atomic<LogLevel> level_{LogLevel::NONE};
-  std::shared_ptr<LogFormatter> formatter_;
-  std::shared_ptr<LogWriter> writer_;
+
+  // The formatter_ and writer_ member variables are const, and cannot be
+  // modified after the StandardLogHandler is constructed.  This allows them to
+  // be accessed without locking when handling a message.  To change these
+  // values, create a new StandardLogHandler object and replace the old handler
+  // with the new one in the LoggerDB.
+
+  const std::shared_ptr<LogFormatter> formatter_;
+  const std::shared_ptr<LogWriter> writer_;
 };
 } // namespace folly

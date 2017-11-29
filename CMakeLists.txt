@@ -386,6 +386,7 @@ if (BUILD_TESTS)
     DIRECTORY experimental/logging/test/
       TEST async_file_writer_test SOURCES AsyncFileWriterTest.cpp
       TEST config_parser_test SOURCES ConfigParserTest.cpp
+      TEST file_handler_factory_test SOURCES FileHandlerFactoryTest.cpp
       TEST glog_formatter_test SOURCES GlogFormatterTest.cpp
       TEST immediate_file_writer_test SOURCES ImmediateFileWriterTest.cpp
       TEST log_category_test SOURCES LogCategoryTest.cpp

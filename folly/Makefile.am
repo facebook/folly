@@ -156,6 +156,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
 	experimental/logging/AsyncFileWriter.h \
+	experimental/logging/FileHandlerFactory.h \
 	experimental/logging/GlogStyleFormatter.h \
 	experimental/logging/ImmediateFileWriter.h \
 	experimental/logging/Init.h \
@@ -167,6 +168,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/logging/Logger.h \
 	experimental/logging/LoggerDB.h \
 	experimental/logging/LogHandler.h \
+	experimental/logging/LogHandlerFactory.h \
 	experimental/logging/LogHandlerConfig.h \
 	experimental/logging/LogLevel.h \
 	experimental/logging/LogMessage.h \
