@@ -335,45 +335,37 @@ struct StaticMeta : StaticMetaBase {
     return *instance;
   }
 
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-  // Eliminate as many branches as possible:
-  // One branch on capacityCache, vs. three:
-  // 1) instance() static initializer
-  // 2) getThreadEntry null check
-  // 3) elementsCapacity size check.
-  // 3 will never be true if 1 or 2 are false.
   FOLLY_ALWAYS_INLINE static ElementWrapper& get(EntryID* ent) {
     uint32_t id = ent->getOrInvalid();
-    if (UNLIKELY(capacityCache_ <= id)) {
-      return getSlow(ent);
-    } else {
-      return threadEntryCache_->elements[id];
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
+    static FOLLY_TLS ThreadEntry* threadEntry{};
+    static FOLLY_TLS size_t capacity{};
+    // Eliminate as many branches and as much extra code as possible in the
+    // cached fast path, leaving only one branch here and one indirection below.
+    if (UNLIKELY(capacity <= id)) {
+      getSlowReserveAndCache(ent, id, threadEntry, capacity);
     }
-  }
-
-  static ElementWrapper& getSlow(EntryID* ent) {
-    ElementWrapper& res = instance().getElement(ent);
-    // Cache new capacity
-    capacityCache_ = getThreadEntry()->elementsCapacity;
-    return res;
-  }
 #else
-  static ElementWrapper& get(EntryID* ent) {
-    return instance().getElement(ent);
-  }
+    ThreadEntry* threadEntry{};
+    size_t capacity{};
+    getSlowReserveAndCache(ent, id, threadEntry, capacity);
 #endif
-
-  ElementWrapper& getElement(EntryID* ent) {
-    ThreadEntry* threadEntry = getThreadEntry();
-    uint32_t id = ent->getOrInvalid();
-    // if id is invalid, it is equal to uint32_t's max value.
-    // x <= max value is always true
-    if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
-      reserve(ent);
-      id = ent->getOrInvalid();
-      assert(threadEntry->elementsCapacity > id);
-    }
     return threadEntry->elements[id];
+  }
+
+  static void getSlowReserveAndCache(
+      EntryID* ent,
+      uint32_t& id,
+      ThreadEntry*& threadEntry,
+      size_t& capacity) {
+    auto& inst = instance();
+    threadEntry = inst.threadEntry_();
+    if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
+      inst.reserve(ent);
+      id = ent->getOrInvalid();
+    }
+    capacity = threadEntry->elementsCapacity;
+    assert(capacity > id);
   }
 
   static ThreadEntry* getThreadEntrySlow() {
@@ -395,17 +387,6 @@ struct StaticMeta : StaticMetaBase {
     return threadEntry;
   }
 
-  inline static ThreadEntry* getThreadEntry() {
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-    if (UNLIKELY(threadEntryCache_ == nullptr)) {
-      threadEntryCache_ = instance().threadEntry_();
-    }
-    return threadEntryCache_;
-#else
-    return instance().threadEntry_();
-#endif
-  }
-
   static void preFork() {
     instance().lock_.lock();  // Make sure it's created
   }
@@ -417,25 +398,13 @@ struct StaticMeta : StaticMetaBase {
   static void onForkChild() {
     // only the current thread survives
     instance().head_.next = instance().head_.prev = &instance().head_;
-    ThreadEntry* threadEntry = getThreadEntry();
+    ThreadEntry* threadEntry = instance().threadEntry_();
     // If this thread was in the list before the fork, add it back.
     if (threadEntry->elementsCapacity != 0) {
       instance().push_back(threadEntry);
     }
     instance().lock_.unlock();
   }
-
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-  static FOLLY_TLS ThreadEntry* threadEntryCache_;
-  static FOLLY_TLS size_t capacityCache_;
-#endif
 };
-
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-template <class Tag, class AccessMode>
-FOLLY_TLS ThreadEntry* StaticMeta<Tag, AccessMode>::threadEntryCache_{nullptr};
-template <class Tag, class AccessMode>
-FOLLY_TLS size_t StaticMeta<Tag, AccessMode>::capacityCache_{0};
-#endif
 } // namespace threadlocal_detail
 } // namespace folly
