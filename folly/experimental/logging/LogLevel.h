@@ -56,11 +56,8 @@ enum class LogLevel : uint32_t {
   WARN = 3000,
   WARNING = 3000,
 
-  // Unfortunately Windows headers #define ERROR
-  // On Windows platforms we avoid defining ERROR.  However we make it
-  // available on other platforms, to make it easier to convert code from
-  // other log libraries that also use ERROR as their log level name (e.g.,
-  // glog).
+  // Unfortunately Windows headers #define ERROR, so we cannot use
+  // it as an enum value name.  We only provide ERR instead.
   ERR = 4000,
 
   CRITICAL = 5000,
