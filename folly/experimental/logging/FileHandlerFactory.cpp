@@ -119,7 +119,8 @@ std::shared_ptr<LogHandler> FileHandlerFactory::createHandler(
     writer = make_shared<ImmediateFileWriter>(std::move(outputFile));
   }
 
-  return make_shared<StandardLogHandler>(formatter, writer);
+  return make_shared<StandardLogHandler>(
+      LogHandlerConfig{getType(), options}, formatter, writer);
 }
 
 } // namespace folly

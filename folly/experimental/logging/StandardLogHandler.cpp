@@ -22,9 +22,12 @@
 namespace folly {
 
 StandardLogHandler::StandardLogHandler(
+    LogHandlerConfig config,
     std::shared_ptr<LogFormatter> formatter,
     std::shared_ptr<LogWriter> writer)
-    : formatter_{std::move(formatter)}, writer_{std::move(writer)} {}
+    : formatter_{std::move(formatter)},
+      writer_{std::move(writer)},
+      config_{config} {}
 
 StandardLogHandler::~StandardLogHandler() {}
 
@@ -40,4 +43,9 @@ void StandardLogHandler::handleMessage(
 void StandardLogHandler::flush() {
   writer_->flush();
 }
+
+LogHandlerConfig StandardLogHandler::getConfig() const {
+  return config_;
+}
+
 } // namespace folly

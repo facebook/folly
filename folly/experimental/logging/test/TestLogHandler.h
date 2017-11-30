@@ -15,10 +15,13 @@
  */
 #pragma once
 
+#include <map>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <folly/experimental/logging/LogHandler.h>
+#include <folly/experimental/logging/LogHandlerConfig.h>
 #include <folly/experimental/logging/LogMessage.h>
 
 namespace folly {
@@ -31,6 +34,10 @@ namespace folly {
  */
 class TestLogHandler : public LogHandler {
  public:
+  TestLogHandler() : config_{"test"} {}
+  explicit TestLogHandler(LogHandlerConfig config)
+      : config_{std::move(config)} {}
+
   std::vector<std::pair<LogMessage, const LogCategory*>>& getMessages() {
     return messages_;
   }
@@ -49,8 +56,14 @@ class TestLogHandler : public LogHandler {
     return flushCount_;
   }
 
+  LogHandlerConfig getConfig() const override {
+    return config_;
+  }
+
  private:
   std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
   uint64_t flushCount_{0};
+  std::map<std::string, std::string> options_;
+  LogHandlerConfig config_;
 };
 } // namespace folly

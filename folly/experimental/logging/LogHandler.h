@@ -22,6 +22,7 @@
 namespace folly {
 
 class LogCategory;
+class LogHandlerConfig;
 class LogMessage;
 
 /**
@@ -79,5 +80,11 @@ class LogHandler {
    * started will not necessarily be processed by the flush call.
    */
   virtual void flush() = 0;
+
+  /**
+   * Return a LogHandlerConfig object describing the configuration of this
+   * LogHandler.
+   */
+  virtual LogHandlerConfig getConfig() const = 0;
 };
 } // namespace folly

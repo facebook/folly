@@ -20,6 +20,7 @@
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <folly/experimental/logging/LogHandler.h>
+#include <folly/experimental/logging/LogHandlerConfig.h>
 
 namespace folly {
 
@@ -40,6 +41,7 @@ class LogWriter;
 class StandardLogHandler : public LogHandler {
  public:
   StandardLogHandler(
+      LogHandlerConfig config,
       std::shared_ptr<LogFormatter> formatter,
       std::shared_ptr<LogWriter> writer);
   ~StandardLogHandler();
@@ -83,16 +85,19 @@ class StandardLogHandler : public LogHandler {
 
   void flush() override;
 
+  LogHandlerConfig getConfig() const override;
+
  private:
   std::atomic<LogLevel> level_{LogLevel::NONE};
 
-  // The formatter_ and writer_ member variables are const, and cannot be
-  // modified after the StandardLogHandler is constructed.  This allows them to
-  // be accessed without locking when handling a message.  To change these
-  // values, create a new StandardLogHandler object and replace the old handler
-  // with the new one in the LoggerDB.
+  // The following variables are const, and cannot be modified after the
+  // log handler is constructed.  This allows us to access them without
+  // locking when handling a message.  To change these values, create a new
+  // StandardLogHandler object and replace the old handler with the new one in
+  // the LoggerDB.
 
   const std::shared_ptr<LogFormatter> formatter_;
   const std::shared_ptr<LogWriter> writer_;
+  const LogHandlerConfig config_;
 };
 } // namespace folly

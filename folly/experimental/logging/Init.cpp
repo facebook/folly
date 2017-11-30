@@ -19,6 +19,7 @@
 #include <folly/experimental/logging/GlogStyleFormatter.h>
 #include <folly/experimental/logging/ImmediateFileWriter.h>
 #include <folly/experimental/logging/LogCategory.h>
+#include <folly/experimental/logging/LogHandlerConfig.h>
 #include <folly/experimental/logging/LoggerDB.h>
 #include <folly/experimental/logging/StandardLogHandler.h>
 
@@ -51,13 +52,16 @@ void initLoggingGlogStyle(
   // Create the LogHandler
   std::shared_ptr<LogWriter> writer;
   folly::File file{STDERR_FILENO, false};
+  LogHandlerConfig handlerConfig{"file", {{"stream", "stderr"}}};
   if (asyncWrites) {
     writer = std::make_shared<AsyncFileWriter>(std::move(file));
+    handlerConfig.options.emplace("async", "true");
   } else {
     writer = std::make_shared<ImmediateFileWriter>(std::move(file));
+    handlerConfig.options.emplace("async", "false");
   }
   auto handler = std::make_shared<StandardLogHandler>(
-      std::make_shared<GlogStyleFormatter>(), std::move(writer));
+      handlerConfig, std::make_shared<GlogStyleFormatter>(), std::move(writer));
 
   // Add the handler to the root category.
   LoggerDB::get()->getCategory(".")->addHandler(std::move(handler));
