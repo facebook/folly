@@ -26,6 +26,7 @@ using DSched = folly::test::DeterministicSchedule;
 template <bool MayBlock, template <typename> class Atom = std::atomic>
 void run_basic_test() {
   SaturatingSemaphore<MayBlock, Atom> f;
+  ASSERT_FALSE(f.ready());
   ASSERT_FALSE(f.try_wait());
   ASSERT_FALSE(f.try_wait_until(
       std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
@@ -36,6 +37,7 @@ void run_basic_test() {
   f.post();
   f.wait();
   f.wait(f.wait_options().pre_block(std::chrono::nanoseconds(100)));
+  ASSERT_TRUE(f.ready());
   ASSERT_TRUE(f.try_wait());
   ASSERT_TRUE(f.try_wait_until(
       std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
@@ -89,6 +91,7 @@ void run_multi_poster_multi_waiter_test(int np, int nw) {
 
   for (int i = 0; i < nw; ++i) {
     cons[i] = DSched::thread([&] {
+      ASSERT_FALSE(f.ready());
       ASSERT_FALSE(f.try_wait());
       ASSERT_FALSE(f.try_wait_for(std::chrono::microseconds(1)));
       ASSERT_FALSE(f.try_wait_until(
@@ -100,6 +103,7 @@ void run_multi_poster_multi_waiter_test(int np, int nw) {
       while (!go_wait.load()) {
         /* spin */;
       }
+      ASSERT_TRUE(f.ready());
       ASSERT_TRUE(f.try_wait());
       ASSERT_TRUE(f.try_wait_for(std::chrono::microseconds(1)));
       ASSERT_TRUE(f.try_wait_until(

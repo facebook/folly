@@ -68,6 +68,9 @@ namespace folly {
 ///   pre block option is applicable only if MayBlock is true.
 ///
 /// Functions:
+///   bool ready():
+///     Returns true if the flag is set by a call to post, otherwise false.
+///     Equivalent to try_wait, but available on const receivers.
 ///   void reset();
 ///     Clears the flag.
 ///   void post();
@@ -149,6 +152,11 @@ class SaturatingSemaphore {
   /** destructor */
   ~SaturatingSemaphore() {}
 
+  /** ready */
+  FOLLY_ALWAYS_INLINE bool ready() const noexcept {
+    return state_.load(std::memory_order_acquire) == READY;
+  }
+
   /** reset */
   void reset() noexcept {
     state_.store(NOTREADY, std::memory_order_relaxed);
@@ -170,8 +178,8 @@ class SaturatingSemaphore {
   }
 
   /** try_wait */
-  FOLLY_ALWAYS_INLINE bool try_wait() const noexcept {
-    return state_.load(std::memory_order_acquire) == READY;
+  FOLLY_ALWAYS_INLINE bool try_wait() noexcept {
+    return ready();
   }
 
   /** try_wait_until */
