@@ -208,6 +208,229 @@ LogConfig LoggerDB::getConfig() const {
   return LogConfig{std::move(handlerConfigs), std::move(categoryConfigs)};
 }
 
+/**
+ * Process handler config information when starting a config update operation.
+ */
+void LoggerDB::startConfigUpdate(
+    const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
+    const LogConfig& config,
+    NewHandlerMap* handlers,
+    OldToNewHandlerMap* oldToNewHandlerMap) {
+  // Get a map of all currently existing LogHandlers.
+  // This resolves weak_ptrs to shared_ptrs, and ignores expired weak_ptrs.
+  // This prevents any of these LogHandler pointers from expiring during the
+  // config update.
+  for (const auto& entry : handlerInfo->handlers) {
+    auto handler = entry.second.lock();
+    if (handler) {
+      handlers->emplace(entry.first, std::move(handler));
+    }
+  }
+
+  // Create all of the new LogHandlers needed from this configuration
+  for (const auto& entry : config.getHandlerConfigs()) {
+    // Look up the LogHandlerFactory
+    auto factoryIter = handlerInfo->factories.find(entry.second.type);
+    if (factoryIter == handlerInfo->factories.end()) {
+      throw std::invalid_argument(to<std::string>(
+          "unknown log handler type \"", entry.second.type, "\""));
+    }
+
+    // Check to see if there is an existing LogHandler with this name
+    std::shared_ptr<LogHandler> oldHandler;
+    auto iter = handlers->find(entry.first);
+    if (iter != handlers->end()) {
+      oldHandler = iter->second;
+    }
+
+    // Create the new log handler
+    const auto& factory = factoryIter->second;
+    std::shared_ptr<LogHandler> handler;
+    if (oldHandler) {
+      handler = factory->updateHandler(oldHandler, entry.second.options);
+      if (handler != oldHandler) {
+        oldToNewHandlerMap->emplace(oldHandler, handler);
+      }
+    } else {
+      handler = factory->createHandler(entry.second.options);
+    }
+    handlerInfo->handlers[entry.first] = handler;
+    (*handlers)[entry.first] = handler;
+  }
+
+  // Before we start making any LogCategory changes, confirm that all handlers
+  // named in the category configs are known handlers.
+  for (const auto& entry : config.getCategoryConfigs()) {
+    if (!entry.second.handlers.hasValue()) {
+      continue;
+    }
+    for (const auto& handlerName : entry.second.handlers.value()) {
+      auto iter = handlers->find(handlerName);
+      if (iter == handlers->end()) {
+        throw std::invalid_argument(to<std::string>(
+            "unknown log handler \"",
+            handlerName,
+            "\" configured for log category \"",
+            entry.first,
+            "\""));
+      }
+    }
+  }
+}
+
+/**
+ * Update handlerInfo_ at the end of a config update operation.
+ */
+void LoggerDB::finishConfigUpdate(
+    const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
+    NewHandlerMap* handlers,
+    OldToNewHandlerMap* oldToNewHandlerMap) {
+  // Build a new map to replace handlerInfo->handlers
+  // This will contain only the LogHandlers that are still in use by the
+  // current LogCategory settings.
+  std::unordered_map<std::string, std::weak_ptr<LogHandler>> newHandlerMap;
+  for (const auto& entry : *handlers) {
+    newHandlerMap.emplace(entry.first, entry.second);
+  }
+  // Drop all of our shared_ptr references to LogHandler objects,
+  // and then remove entries in newHandlerMap that are unreferenced.
+  handlers->clear();
+  oldToNewHandlerMap->clear();
+  handlerInfo->handlers.clear();
+  for (auto iter = newHandlerMap.begin(); iter != newHandlerMap.end(); /**/) {
+    if (iter->second.expired()) {
+      iter = newHandlerMap.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
+  handlerInfo->handlers.swap(newHandlerMap);
+}
+
+std::vector<std::shared_ptr<LogHandler>> LoggerDB::buildCategoryHandlerList(
+    const NewHandlerMap& handlerMap,
+    StringPiece categoryName,
+    const std::vector<std::string>& categoryHandlerNames) {
+  std::vector<std::shared_ptr<LogHandler>> catHandlers;
+  for (const auto& handlerName : categoryHandlerNames) {
+    auto iter = handlerMap.find(handlerName);
+    if (iter == handlerMap.end()) {
+      // This really shouldn't be possible; the checks in startConfigUpdate()
+      // should have already bailed out if there was an unknown handler.
+      throw std::invalid_argument(to<std::string>(
+          "bug: unknown log handler \"",
+          handlerName,
+          "\" configured for log category \"",
+          categoryName,
+          "\""));
+    }
+    catHandlers.push_back(iter->second);
+  }
+
+  return catHandlers;
+}
+
+void LoggerDB::updateConfig(const LogConfig& config) {
+  // Grab the handlerInfo_ lock.
+  // We hold it in write mode for the entire config update operation.  This
+  // ensures that only a single config update operation ever runs at once.
+  auto handlerInfo = handlerInfo_.wlock();
+
+  NewHandlerMap handlers;
+  OldToNewHandlerMap oldToNewHandlerMap;
+  startConfigUpdate(handlerInfo, config, &handlers, &oldToNewHandlerMap);
+
+  // If an existing LogHandler was replaced with a new one,
+  // walk all current LogCategories and replace this handler.
+  if (!oldToNewHandlerMap.empty()) {
+    auto loggerMap = loggersByName_.rlock();
+    for (const auto& entry : *loggerMap) {
+      entry.second->updateHandlers(oldToNewHandlerMap);
+    }
+  }
+
+  // Update log levels and handlers mentioned in the config update
+  auto loggersByName = loggersByName_.wlock();
+  for (const auto& entry : config.getCategoryConfigs()) {
+    LogCategory* category =
+        getOrCreateCategoryLocked(*loggersByName, entry.first);
+
+    // Update the log handlers
+    if (entry.second.handlers.hasValue()) {
+      auto catHandlers = buildCategoryHandlerList(
+          handlers, entry.first, entry.second.handlers.value());
+      category->replaceHandlers(std::move(catHandlers));
+    }
+
+    // Update the level settings
+    category->setLevelLocked(
+        entry.second.level, entry.second.inheritParentLevel);
+  }
+
+  finishConfigUpdate(handlerInfo, &handlers, &oldToNewHandlerMap);
+}
+
+void LoggerDB::resetConfig(const LogConfig& config) {
+  // Grab the handlerInfo_ lock.
+  // We hold it in write mode for the entire config update operation.  This
+  // ensures that only a single config update operation ever runs at once.
+  auto handlerInfo = handlerInfo_.wlock();
+
+  NewHandlerMap handlers;
+  OldToNewHandlerMap oldToNewHandlerMap;
+  startConfigUpdate(handlerInfo, config, &handlers, &oldToNewHandlerMap);
+
+  // Make sure all log categories mentioned in the new config exist.
+  // This ensures that we will cover them in our walk below.
+  LogCategory* rootCategory;
+  {
+    auto loggersByName = loggersByName_.wlock();
+    rootCategory = getOrCreateCategoryLocked(*loggersByName, "");
+    for (const auto& entry : config.getCategoryConfigs()) {
+      getOrCreateCategoryLocked(*loggersByName, entry.first);
+    }
+  }
+
+  {
+    // Update all log categories
+    auto loggersByName = loggersByName_.rlock();
+    for (const auto& entry : *loggersByName) {
+      auto* category = entry.second.get();
+
+      auto configIter = config.getCategoryConfigs().find(category->getName());
+      if (configIter == config.getCategoryConfigs().end()) {
+        // This category is not listed in the config settings.
+        // Reset it to the default settings.
+        category->clearHandlers();
+
+        if (category == rootCategory) {
+          category->setLevelLocked(LogLevel::ERR, false);
+        } else {
+          category->setLevelLocked(LogLevel::MAX_LEVEL, true);
+        }
+        continue;
+      }
+
+      const auto& catConfig = configIter->second;
+
+      // Update the category log level
+      category->setLevelLocked(catConfig.level, catConfig.inheritParentLevel);
+
+      // Update the category handlers list.
+      // If the handler list is not set in the config, clear out any existing
+      // handlers rather than leaving it as-is.
+      std::vector<std::shared_ptr<LogHandler>> catHandlers;
+      if (catConfig.handlers.hasValue()) {
+        catHandlers = buildCategoryHandlerList(
+            handlers, entry.first, catConfig.handlers.value());
+      }
+      category->replaceHandlers(std::move(catHandlers));
+    }
+  }
+
+  finishConfigUpdate(handlerInfo, &handlers, &oldToNewHandlerMap);
+}
+
 LogCategory* LoggerDB::getOrCreateCategoryLocked(
     LoggerNameMap& loggersByName,
     StringPiece name) {

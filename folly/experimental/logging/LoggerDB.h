@@ -89,6 +89,29 @@ class LoggerDB {
   LogConfig getConfig() const;
 
   /**
+   * Update the current LoggerDB state with the specified LogConfig settings.
+   *
+   * Log categories and handlers listed in the LogConfig object will be updated
+   * to the new state listed in the LogConfig.  Settings on categories and
+   * handlers not listed in the config will be left as-is.
+   */
+  void updateConfig(const LogConfig& config);
+
+  /**
+   * Reset the current LoggerDB state to the specified LogConfig settings.
+   *
+   * All LogCategories not mentioned in the new LogConfig will have all
+   * currently configured log handlers removed and their log level set to its
+   * default state.  For the root category the default log level is ERR; for
+   * all other categories the default level is MAX_LEVEL with log level
+   * inheritance enabled.
+   *
+   * LogCategories listed in the new config but without LogHandler information
+   * defined will have all existing handlers removed.
+   */
+  void resetConfig(const LogConfig& config);
+
+  /**
    * Apply a configuration string specifying a series a log levels.
    *
    * The string format is a comma separated list of <name>=<level> sections.
@@ -237,6 +260,24 @@ class LoggerDB {
       folly::StringPiece name,
       LogCategory* parent);
 
+  using NewHandlerMap =
+      std::unordered_map<std::string, std::shared_ptr<LogHandler>>;
+  using OldToNewHandlerMap = std::
+      unordered_map<std::shared_ptr<LogHandler>, std::shared_ptr<LogHandler>>;
+  void startConfigUpdate(
+      const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
+      const LogConfig& config,
+      NewHandlerMap* handlers,
+      OldToNewHandlerMap* oldToNewHandlerMap);
+  void finishConfigUpdate(
+      const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
+      NewHandlerMap* handlers,
+      OldToNewHandlerMap* oldToNewHandlerMap);
+  std::vector<std::shared_ptr<LogHandler>> buildCategoryHandlerList(
+      const NewHandlerMap& handlerMap,
+      StringPiece categoryName,
+      const std::vector<std::string>& categoryHandlerNames);
+
   static void internalWarningImpl(
       folly::StringPiece filename,
       int lineNumber,
@@ -256,6 +297,9 @@ class LoggerDB {
 
   /**
    * The LogHandlers and LogHandlerFactories.
+   *
+   * For lock ordering purposes, if you need to acquire both the loggersByName_
+   * and handlerInfo_ locks, the handlerInfo_ lock must be acquired first.
    */
   folly::Synchronized<HandlerInfo> handlerInfo_;
 

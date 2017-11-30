@@ -21,6 +21,7 @@
 #include <folly/ConstexprMath.h>
 #include <folly/ExceptionString.h>
 #include <folly/FileUtil.h>
+#include <folly/MapUtil.h>
 #include <folly/experimental/logging/LogHandler.h>
 #include <folly/experimental/logging/LogMessage.h>
 #include <folly/experimental/logging/LogName.h>
@@ -142,6 +143,23 @@ void LogCategory::clearHandlers() {
 
 std::vector<std::shared_ptr<LogHandler>> LogCategory::getHandlers() const {
   return *(handlers_.rlock());
+}
+
+void LogCategory::replaceHandlers(
+    std::vector<std::shared_ptr<LogHandler>> handlers) {
+  return handlers_.wlock()->swap(handlers);
+}
+
+void LogCategory::updateHandlers(const std::unordered_map<
+                                 std::shared_ptr<LogHandler>,
+                                 std::shared_ptr<LogHandler>>& handlerMap) {
+  auto handlers = handlers_.wlock();
+  for (auto& entry : *handlers) {
+    auto* ptr = get_ptr(handlerMap, entry);
+    if (ptr) {
+      entry = *ptr;
+    }
+  }
 }
 
 void LogCategory::setLevel(LogLevel level, bool inherit) {

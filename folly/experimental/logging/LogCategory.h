@@ -164,6 +164,26 @@ class LogCategory {
    */
   std::vector<std::shared_ptr<LogHandler>> getHandlers() const;
 
+  /**
+   * Replace the list of LogHandlers with a completely new list.
+   */
+  void replaceHandlers(std::vector<std::shared_ptr<LogHandler>> handlers);
+
+  /**
+   * Update the LogHandlers attached to this LogCategory by replacing
+   * currently attached handlers with new LogHandler objects.
+   *
+   * The handlerMap argument is a map of (old_handler -> new_handler)
+   * If any of the LogHandlers currently attached to this category are found in
+   * the handlerMap, replace them with the new handler indicated in the map.
+   *
+   * This is used when the LogHandler configuration is changed requiring one or
+   * more LogHandler objects to be replaced with new ones.
+   */
+  void updateHandlers(const std::unordered_map<
+                      std::shared_ptr<LogHandler>,
+                      std::shared_ptr<LogHandler>>& handlerMap);
+
   /* Internal methods for use by other parts of the logging library code */
 
   /**
