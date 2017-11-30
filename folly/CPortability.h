@@ -94,6 +94,15 @@
 #endif
 
 /**
+ * Define a convenience macro to test when ASAN, UBSAN or TSAN sanitizer are
+ * being used
+ */
+#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) || \
+    defined(UNDEFINED_SANITIZER)
+#define FOLLY_SANITIZE 1
+#endif
+
+/**
  * ASAN/MSAN/TSAN define pre-processor symbols:
  * ADDRESS_SANITIZER/MEMORY_SANITIZER/THREAD_SANITIZER.
  *

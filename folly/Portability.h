@@ -199,6 +199,12 @@ constexpr bool kIsSanitizeThread = true;
 #else
 constexpr bool kIsSanitizeThread = false;
 #endif
+
+#if FOLLY_SANITIZE
+constexpr bool kIsSanitize = true;
+#else
+constexpr bool kIsSanitize = false;
+#endif
 } // namespace folly
 
 // packing is very ugly in msvc
