@@ -15,11 +15,12 @@
  */
 
 #include <folly/memory/MallctlHelper.h>
+#include <folly/CPortability.h>
 #include <folly/init/Init.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
-#ifdef FOLLY_HAVE_LIBJEMALLOC
+#if defined(FOLLY_HAVE_LIBJEMALLOC) && !defined(FOLLY_SANITIZE)
 #include <jemalloc/jemalloc.h>
 #endif
 

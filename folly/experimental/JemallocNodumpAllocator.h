@@ -18,9 +18,10 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/portability/Config.h>
 
-#ifdef FOLLY_HAVE_LIBJEMALLOC
+#if defined(FOLLY_HAVE_LIBJEMALLOC) && !defined(FOLLY_SANITIZE)
 
 #include <folly/portability/SysMman.h>
 #include <jemalloc/jemalloc.h>
