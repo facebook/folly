@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include <folly/ConstexprMath.h>
 #include <folly/ExceptionString.h>
 #include <folly/FileUtil.h>
 #include <folly/experimental/logging/LogHandler.h>
@@ -155,16 +156,7 @@ void LogCategory::setLevelLocked(LogLevel level, bool inherit) {
   //
   // This makes sure that UNINITIALIZED is always less than any valid level
   // value, and that level values cannot conflict with our flag bits.
-  //
-  // In debug builds we clamp the maximum to DFATAL rather than MAX_LEVEL
-  // (FATAL), to ensure that fatal log messages can never be disabled.
-  constexpr LogLevel maxLogLevel =
-      kIsDebug ? LogLevel::DFATAL : LogLevel::MAX_LEVEL;
-  if (level > maxLogLevel) {
-    level = maxLogLevel;
-  } else if (level < LogLevel::MIN_LEVEL) {
-    level = LogLevel::MIN_LEVEL;
-  }
+  level = constexpr_clamp(level, LogLevel::MIN_LEVEL, LogLevel::MAX_LEVEL);
 
   // Make sure the inherit flag is always off for the root logger.
   if (!parent_) {
