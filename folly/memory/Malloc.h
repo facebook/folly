@@ -144,10 +144,11 @@ namespace folly {
 #define FOLLY_MALLOC_CHECKED_MALLOC
 #endif
 
+#include <folly/CPortability.h>
 /**
  * Determine if we are using jemalloc or not.
  */
-#ifdef USE_JEMALLOC
+#if defined(USE_JEMALLOC) && !FOLLY_SANITIZE
 inline bool usingJEMalloc() noexcept {
   return true;
 }
