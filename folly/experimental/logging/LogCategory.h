@@ -76,6 +76,15 @@ class LogCategory {
   }
 
   /**
+   * Get the log level and inheritance flag.
+   */
+  std::pair<LogLevel, bool> getLevelInfo() const {
+    auto value = level_.load(std::memory_order_acquire);
+    return {static_cast<LogLevel>(value & ~FLAG_INHERIT),
+            bool(value & FLAG_INHERIT)};
+  }
+
+  /**
    * Get the effective level for this log category.
    *
    * This is the minimum log level of this category and all of its parents.

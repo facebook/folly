@@ -21,11 +21,14 @@
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/experimental/logging/LogCategory.h>
+#include <folly/experimental/logging/LogConfig.h>
 #include <folly/experimental/logging/LogHandler.h>
 #include <folly/experimental/logging/LogHandlerFactory.h>
 #include <folly/experimental/logging/LogLevel.h>
 #include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/RateLimiter.h>
+
+using std::string;
 
 namespace folly {
 
@@ -136,6 +139,73 @@ std::vector<std::string> LoggerDB::processConfigString(
   }
 
   return errors;
+}
+
+LogConfig LoggerDB::getConfig() const {
+  auto handlerInfo = handlerInfo_.rlock();
+
+  LogConfig::HandlerConfigMap handlerConfigs;
+  std::unordered_map<std::shared_ptr<LogHandler>, string> handlersToName;
+  for (const auto& entry : handlerInfo->handlers) {
+    auto handler = entry.second.lock();
+    if (!handler) {
+      continue;
+    }
+    handlersToName.emplace(handler, entry.first);
+    handlerConfigs.emplace(entry.first, handler->getConfig());
+  }
+
+  size_t anonymousNameIndex = 1;
+  auto generateAnonymousHandlerName = [&]() {
+    // Return a unique name of the form "anonymousHandlerN"
+    // Keep incrementing N until we find a name that isn't currently taken.
+    while (true) {
+      auto name = to<string>("anonymousHandler", anonymousNameIndex);
+      ++anonymousNameIndex;
+      if (handlerInfo->handlers.find(name) == handlerInfo->handlers.end()) {
+        return name;
+      }
+    }
+  };
+
+  LogConfig::CategoryConfigMap categoryConfigs;
+  {
+    auto loggersByName = loggersByName_.rlock();
+    for (const auto& entry : *loggersByName) {
+      auto* category = entry.second.get();
+      auto levelInfo = category->getLevelInfo();
+      auto handlers = category->getHandlers();
+
+      // Don't report categories that have default settings.
+      if (handlers.empty() && levelInfo.first == LogLevel::MAX_LEVEL &&
+          levelInfo.second) {
+        continue;
+      }
+
+      // Translate the handler pointers to names
+      std::vector<string> handlerNames;
+      for (const auto& handler : handlers) {
+        auto iter = handlersToName.find(handler);
+        if (iter == handlersToName.end()) {
+          // This LogHandler must have been manually attached to the category,
+          // rather than defined with `updateConfig()` or `resetConfig()`.
+          // Generate a unique name to use for reporting it in the config.
+          auto name = generateAnonymousHandlerName();
+          handlersToName.emplace(handler, name);
+          handlerConfigs.emplace(name, handler->getConfig());
+          handlerNames.emplace_back(name);
+        } else {
+          handlerNames.emplace_back(iter->second);
+        }
+      }
+
+      LogCategoryConfig categoryConfig(
+          levelInfo.first, levelInfo.second, handlerNames);
+      categoryConfigs.emplace(category->getName(), std::move(categoryConfig));
+    }
+  }
+
+  return LogConfig{std::move(handlerConfigs), std::move(categoryConfigs)};
 }
 
 LogCategory* LoggerDB::getOrCreateCategoryLocked(

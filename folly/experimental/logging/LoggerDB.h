@@ -29,6 +29,7 @@
 namespace folly {
 
 class LogCategory;
+class LogConfig;
 class LogHandler;
 class LogHandlerFactory;
 enum class LogLevel : uint32_t;
@@ -75,6 +76,17 @@ class LoggerDB {
    */
   void setLevel(folly::StringPiece name, LogLevel level, bool inherit = true);
   void setLevel(LogCategory* category, LogLevel level, bool inherit = true);
+
+  /**
+   * Get a LogConfig object describing the current state of the LoggerDB.
+   *
+   * Note that this may not 100% accurately describe the current configuration
+   * if callers have manually added LogHandlers to some categories without
+   * using the updateConfig() or resetConfig() functions.  In this case
+   * getConfig() will simply report these handlers as "unknown_handler" when
+   * returning handler names for the categories in question.
+   */
+  LogConfig getConfig() const;
 
   /**
    * Apply a configuration string specifying a series a log levels.
