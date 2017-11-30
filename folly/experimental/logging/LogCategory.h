@@ -221,6 +221,12 @@ class LogCategory {
  private:
   enum : uint32_t { FLAG_INHERIT = 0x80000000 };
 
+  // FLAG_INHERIT is the stored in the uppermost bit of the LogLevel field.
+  // assert that it does not conflict with valid LogLevel values.
+  static_assert(
+      static_cast<uint32_t>(LogLevel::MAX_LEVEL) < FLAG_INHERIT,
+      "The FLAG_INHERIT bit must not be set in any valid LogLevel value");
+
   // Forbidden copy constructor and assignment operator
   LogCategory(LogCategory const&) = delete;
   LogCategory& operator=(LogCategory const&) = delete;
