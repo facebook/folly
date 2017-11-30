@@ -1546,7 +1546,8 @@ Tgt to(StringPiece* src) {
 
 template <class Tgt, class Src>
 typename std::enable_if<
-    std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value,
+    std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value &&
+        !std::is_convertible<Tgt, StringPiece>::value,
     Expected<Tgt, ConversionCode>>::type
 tryTo(const Src& value) {
   using I = typename std::underlying_type<Src>::type;
@@ -1555,7 +1556,8 @@ tryTo(const Src& value) {
 
 template <class Tgt, class Src>
 typename std::enable_if<
-    std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value,
+    !std::is_convertible<Src, StringPiece>::valuea &&
+        std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value,
     Expected<Tgt, ConversionCode>>::type
 tryTo(const Src& value) {
   using I = typename std::underlying_type<Tgt>::type;
@@ -1564,7 +1566,8 @@ tryTo(const Src& value) {
 
 template <class Tgt, class Src>
 typename std::enable_if<
-    std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value,
+    std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value &&
+        !std::is_convertible<Tgt, StringPiece>::value,
     Tgt>::type
 to(const Src& value) {
   return to<Tgt>(static_cast<typename std::underlying_type<Src>::type>(value));
@@ -1572,7 +1575,7 @@ to(const Src& value) {
 
 template <class Tgt, class Src>
 typename std::enable_if<
-    !IsSomeString<Src>::value && std::is_enum<Tgt>::value &&
+    !std::is_convertible<Src, StringPiece>::value && std::is_enum<Tgt>::value &&
         !std::is_same<Src, Tgt>::value,
     Tgt>::type
 to(const Src& value) {

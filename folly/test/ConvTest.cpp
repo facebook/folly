@@ -1239,6 +1239,22 @@ size_t estimateSpaceNeeded(const Dimensions&in) {
   return 2000 + folly::estimateSpaceNeeded(in.w) +
       folly::estimateSpaceNeeded(in.h);
 }
+
+enum class SmallEnum {};
+
+Expected<StringPiece, ConversionCode> parseTo(StringPiece in, SmallEnum& out) {
+  out = {};
+  if (in == "SmallEnum") {
+    return in.removePrefix(in), in;
+  } else {
+    return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+  }
+}
+
+template <class String>
+void toAppend(SmallEnum, String* result) {
+  folly::toAppend("SmallEnum", result);
+}
 } // namespace my
 
 TEST(Conv, custom_kkproviders) {
@@ -1252,6 +1268,14 @@ TEST(Conv, custom_kkproviders) {
   // toAppend with other arguments
   toAppend("|", expected, &str);
   EXPECT_EQ("7x8|7x8", str);
+}
+
+TEST(conv, custom_enumclass) {
+  EXPECT_EQ(my::SmallEnum{}, folly::to<my::SmallEnum>("SmallEnum"));
+  EXPECT_EQ(my::SmallEnum{}, folly::tryTo<my::SmallEnum>("SmallEnum").value());
+  auto str = to<string>(my::SmallEnum{});
+  toAppend("|", my::SmallEnum{}, &str);
+  EXPECT_EQ("SmallEnum|SmallEnum", str);
 }
 
 TEST(Conv, TryToThenWithVoid) {
