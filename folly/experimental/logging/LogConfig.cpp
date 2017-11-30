@@ -26,4 +26,32 @@ bool LogConfig::operator!=(const LogConfig& other) const {
   return !(*this == other);
 }
 
+void LogConfig::update(const LogConfig& other) {
+  // Update handlerConfigs_ with all of the entries from the other LogConfig.
+  // Any entries already present in our handlerConfigs_ are replaced wholesale.
+  for (const auto& entry : other.handlerConfigs_) {
+    auto result = handlerConfigs_.insert(entry);
+    if (!result.second) {
+      result.first->second = entry.second;
+    }
+  }
+
+  // Update categoryConfigs_ with all of the entries from the other LogConfig.
+  //
+  // Any entries already present in our categoryConfigs_ are merged: if the new
+  // configuration does not include handler settings our entry's settings are
+  // maintained.
+  for (const auto& entry : other.categoryConfigs_) {
+    auto result = categoryConfigs_.insert(entry);
+    if (!result.second) {
+      auto* existingEntry = &result.first->second;
+      auto oldHandlers = std::move(existingEntry->handlers);
+      *existingEntry = entry.second;
+      if (!existingEntry->handlers.hasValue()) {
+        existingEntry->handlers = std::move(oldHandlers);
+      }
+    }
+  }
+}
+
 } // namespace folly

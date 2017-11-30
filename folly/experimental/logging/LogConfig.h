@@ -52,6 +52,35 @@ class LogConfig {
   bool operator==(const LogConfig& other) const;
   bool operator!=(const LogConfig& other) const;
 
+  /**
+   * Update this LogConfig object by merging in settings from another
+   * LogConfig.
+   *
+   * All LogHandler settings from the other LogConfig will be inserted into
+   * this LogConfig.  If a log handler with the same name was already defined
+   * in this LogConfig it will be replaced with the new settings.
+   *
+   * All LogCategory settings from the other LogConfig will be inserted into
+   * this LogConfig.  If a log category with the same name was already defined
+   * in this LogConfig, its settings will be updated with settings from the
+   * other LogConfig.  However, if the other LogConfig does not define handler
+   * settings for the category it will retain its current handler settings.
+   *
+   * This method allows LogConfig objects to be combined before applying them.
+   * Using LogConfig::update() will produce the same results as if
+   * LoggerDB::updateConfig() had been called with both configs sequentially.
+   * In other words, this operation:
+   *
+   *   configA.update(configB);
+   *   loggerDB.updateConfig(configA);
+   *
+   * will produce the same results as:
+   *
+   *   loggerDB.updateConfig(configA);
+   *   loggerDB.updateConfig(configA);
+   */
+  void update(const LogConfig& other);
+
  private:
   HandlerConfigMap handlerConfigs_;
   CategoryConfigMap categoryConfigs_;

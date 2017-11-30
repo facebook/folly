@@ -572,3 +572,75 @@ TEST(LogConfig, toJson) {
 })JSON");
   EXPECT_EQ(expectedJson, logConfigToDynamic(config));
 }
+
+TEST(LogConfig, mergeConfigs) {
+  auto config = parseLogConfig("bar=ERR:");
+  config.update(parseLogConfig("foo:=INFO"));
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(
+          Pair("foo", LogCategoryConfig{LogLevel::INFO, false}),
+          Pair("bar", LogCategoryConfig{LogLevel::ERR, true, {}})));
+  EXPECT_THAT(config.getHandlerConfigs(), UnorderedElementsAre());
+
+  config =
+      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+  config.update(parseLogConfig("folly.io=DBG2,foo=INFO"));
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(
+          Pair("", LogCategoryConfig{LogLevel::WARN, true, {"default"}}),
+          Pair("foo", LogCategoryConfig{LogLevel::INFO, true}),
+          Pair("folly.io", LogCategoryConfig{LogLevel::DBG2, true})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(Pair(
+          "default",
+          LogHandlerConfig(
+              "custom", {{"opt1", "value1"}, {"opt2", "value2"}}))));
+
+  // Updating the root category's log level without specifying
+  // handlers should leave its current handler list intact
+  config =
+      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+  config.update(parseLogConfig("ERR"));
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(
+          Pair("", LogCategoryConfig{LogLevel::ERR, true, {"default"}})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(Pair(
+          "default",
+          LogHandlerConfig(
+              "custom", {{"opt1", "value1"}, {"opt2", "value2"}}))));
+
+  config =
+      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+  config.update(parseLogConfig(".:=ERR"));
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(
+          Pair("", LogCategoryConfig{LogLevel::ERR, false, {"default"}})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(Pair(
+          "default",
+          LogHandlerConfig(
+              "custom", {{"opt1", "value1"}, {"opt2", "value2"}}))));
+
+  // Test clearing the root category's log handlers
+  config =
+      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+  config.update(parseLogConfig("FATAL:"));
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(
+          Pair("", LogCategoryConfig{LogLevel::FATAL, true, {}})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(Pair(
+          "default",
+          LogHandlerConfig(
+              "custom", {{"opt1", "value1"}, {"opt2", "value2"}}))));
+}
