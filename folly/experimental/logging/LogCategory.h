@@ -169,8 +169,9 @@ class LogCategory {
   void admitMessage(const LogMessage& message) const;
 
   /**
-   * Note: setLevelLocked() may only be called while holding the main
-   * LoggerDB lock.
+   * Note: setLevelLocked() may only be called while holding the
+   * LoggerDB loggersByName_ lock.  It is safe to call this while holding the
+   * loggersByName_ lock in read-mode; holding it exclusively is not required.
    *
    * This method should only be invoked by LoggerDB.
    */
@@ -240,9 +241,9 @@ class LogCategory {
 
   /**
    * Pointers to children and sibling loggers.
-   * These pointers should only ever be accessed while holding the main
-   * LoggerDB lock.  (These are only modified when creating new loggers,
-   * which occurs with the main LoggerDB lock held.)
+   * These pointers should only ever be accessed while holding the
+   * LoggerDB::loggersByName_ lock.  (These are only modified when creating new
+   * loggers, which occurs with the main LoggerDB lock held.)
    */
   LogCategory* firstChild_{nullptr};
   LogCategory* nextSibling_{nullptr};

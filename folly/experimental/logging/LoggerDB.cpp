@@ -22,6 +22,7 @@
 #include <folly/String.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogHandler.h>
+#include <folly/experimental/logging/LogHandlerFactory.h>
 #include <folly/experimental/logging/LogLevel.h>
 #include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/RateLimiter.h>
@@ -75,6 +76,8 @@ LoggerDB::LoggerDB() {
 }
 
 LoggerDB::LoggerDB(TestConstructorArg) : LoggerDB() {}
+
+LoggerDB::~LoggerDB() {}
 
 LogCategory* LoggerDB::getCategory(StringPiece name) {
   return getOrCreateCategoryLocked(*loggersByName_.wlock(), name);
@@ -173,6 +176,18 @@ void LoggerDB::cleanupHandlers() {
     }
   }
 
+  // Also extract our HandlerFactoryMap and HandlerMap, so we can clear them
+  // later without holding the handlerInfo_ lock.
+  HandlerFactoryMap factories;
+  HandlerMap handlers;
+  {
+    auto handlerInfo = handlerInfo_.wlock();
+    factories.swap(handlerInfo->factories);
+    handlers.swap(handlerInfo->handlers);
+  }
+
+  // Remove all of the LogHandlers from all log categories,
+  // to drop any shared_ptr references to the LogHandlers
   for (auto* category : categories) {
     category->clearHandlers();
   }
@@ -197,6 +212,31 @@ size_t LoggerDB::flushAllHandlers() {
     handler->flush();
   }
   return handlers.size();
+}
+
+void LoggerDB::registerHandlerFactory(
+    std::unique_ptr<LogHandlerFactory> factory,
+    bool replaceExisting) {
+  auto type = factory->getType();
+  auto handlerInfo = handlerInfo_.wlock();
+  if (replaceExisting) {
+    handlerInfo->factories[type.str()] = std::move(factory);
+  } else {
+    auto ret = handlerInfo->factories.emplace(type.str(), std::move(factory));
+    if (!ret.second) {
+      throw std::range_error(to<std::string>(
+          "a LogHandlerFactory for the type \"", type, "\" already exists"));
+    }
+  }
+}
+
+void LoggerDB::unregisterHandlerFactory(StringPiece type) {
+  auto handlerInfo = handlerInfo_.wlock();
+  auto numRemoved = handlerInfo->factories.erase(type.str());
+  if (numRemoved != 1) {
+    throw std::range_error(
+        to<std::string>("no LogHandlerFactory for type \"", type, "\" found"));
+  }
 }
 
 LogLevel LoggerDB::xlogInit(

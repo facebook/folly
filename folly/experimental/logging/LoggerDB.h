@@ -29,6 +29,8 @@
 namespace folly {
 
 class LogCategory;
+class LogHandler;
+class LogHandlerFactory;
 enum class LogLevel : uint32_t;
 
 /**
@@ -40,6 +42,8 @@ class LoggerDB {
    * Get the main LoggerDB singleton.
    */
   static LoggerDB* get();
+
+  ~LoggerDB();
 
   /**
    * Get the LogCategory for the specified name.
@@ -98,6 +102,35 @@ class LoggerDB {
    * Returns the number of registered LogHandlers.
    */
   size_t flushAllHandlers();
+
+  /**
+   * Register a LogHandlerFactory.
+   *
+   * The LogHandlerFactory will be used to create LogHandler objects from a
+   * LogConfig object during updateConfig() and resetConfig() calls.
+   *
+   * Only one factory can be registered for a given handler type name.
+   * LogHandlerFactory::getType() returns the handler type supported by this
+   * LogHandlerFactory.
+   *
+   * If an existing LogHandlerFactory is already registered with this type name
+   * and replaceExisting is false a std::range_error will be thrown.
+   * Otherwise, if replaceExisting is true, the new factory will replace the
+   * existing factory.
+   */
+  void registerHandlerFactory(
+      std::unique_ptr<LogHandlerFactory> factory,
+      bool replaceExisting = false);
+
+  /**
+   * Remove a registered LogHandlerFactory.
+   *
+   * The type parameter should be the name of the handler type, as returned by
+   * LogHandlerFactory::getType().
+   *
+   * Throws std::range_error if no handler factory with this type name exists.
+   */
+  void unregisterHandlerFactory(folly::StringPiece type);
 
   /**
    * Initialize the LogCategory* and std::atomic<LogLevel> used by an XLOG()
@@ -171,6 +204,14 @@ class LoggerDB {
       LogName::Hash,
       LogName::Equals>;
 
+  using HandlerFactoryMap =
+      std::unordered_map<std::string, std::unique_ptr<LogHandlerFactory>>;
+  using HandlerMap = std::unordered_map<std::string, std::weak_ptr<LogHandler>>;
+  struct HandlerInfo {
+    HandlerFactoryMap factories;
+    HandlerMap handlers;
+  };
+
   // Forbidden copy constructor and assignment operator
   LoggerDB(LoggerDB const&) = delete;
   LoggerDB& operator=(LoggerDB const&) = delete;
@@ -200,6 +241,11 @@ class LoggerDB {
    * have to be in canonical form.
    */
   folly::Synchronized<LoggerNameMap> loggersByName_;
+
+  /**
+   * The LogHandlers and LogHandlerFactories.
+   */
+  folly::Synchronized<HandlerInfo> handlerInfo_;
 
   static std::atomic<InternalWarningHandler> warningHandler_;
 };
