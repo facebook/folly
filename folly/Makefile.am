@@ -66,6 +66,7 @@ nobase_follyinclude_HEADERS = \
 	container/Foreach-inl.h \
 	container/SparseByteSet.h \
 	ConstexprMath.h \
+	detail/AtFork.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
 	detail/BitIteratorDetail.h \
@@ -505,6 +506,7 @@ libfolly_la_SOURCES = \
 	compression/Compression.cpp \
 	compression/Zlib.cpp \
 	concurrency/CacheLocality.cpp \
+	detail/AtFork.cpp \
 	detail/Futex.cpp \
 	detail/IPAddress.cpp \
 	detail/StaticSingletonManager.cpp \

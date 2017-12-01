@@ -33,6 +33,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
 #include <folly/container/Foreach.h>
+#include <folly/detail/AtFork.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 
@@ -292,12 +293,6 @@ struct StaticMetaBase {
 
   ElementWrapper& getElement(EntryID* ent);
 
-  static void initAtFork();
-  static void registerAtFork(
-      folly::Function<void()> prepare,
-      folly::Function<void()> parent,
-      folly::Function<void()> child);
-
   uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
   std::mutex lock_;
@@ -321,7 +316,7 @@ struct StaticMeta : StaticMetaBase {
       : StaticMetaBase(
             &StaticMeta::getThreadEntrySlow,
             std::is_same<AccessMode, AccessModeStrict>::value) {
-    registerAtFork(
+    detail::AtFork::registerHandler(
         /*prepare*/ &StaticMeta::preFork,
         /*parent*/ &StaticMeta::onForkParent,
         /*child*/ &StaticMeta::onForkChild);
