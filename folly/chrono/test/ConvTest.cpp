@@ -124,6 +124,24 @@ TEST(Conv, timespecToStdChrono) {
   ts.tv_nsec = 0;
   auto doubleMinutes = to<duration<double, std::ratio<60>>>(ts);
   EXPECT_EQ(1.5, doubleMinutes.count());
+
+  // Test with unusual durations where neither the numerator nor denominator
+  // are 1.
+  using five_sevenths = std::chrono::duration<int64_t, std::ratio<5, 7>>;
+  ts.tv_sec = 1;
+  ts.tv_nsec = 0;
+  EXPECT_EQ(1, to<five_sevenths>(ts).count());
+  ts.tv_sec = 1;
+  ts.tv_nsec = 428571500;
+  EXPECT_EQ(2, to<five_sevenths>(ts).count());
+
+  using thirteen_thirds = std::chrono::duration<double, std::ratio<13, 3>>;
+  ts.tv_sec = 39;
+  ts.tv_nsec = 0;
+  EXPECT_NEAR(9.0, to<thirteen_thirds>(ts).count(), 0.000000001);
+  ts.tv_sec = 1;
+  ts.tv_nsec = 0;
+  EXPECT_NEAR(0.230769230, to<thirteen_thirds>(ts).count(), 0.000000001);
 }
 
 TEST(Conv, timespecToStdChronoOverflow) {
@@ -241,6 +259,22 @@ TEST(Conv, timespecToStdChronoOverflow) {
   EXPECT_EQ(
       std::numeric_limits<decltype(ts.tv_sec)>::max() / 3600,
       to<hours_u64>(ts).count());
+
+  // Test overflow with an unusual duration where neither the numerator nor
+  // denominator are 1.
+  using unusual_time = std::chrono::duration<int16_t, std::ratio<13, 3>>;
+  ts.tv_sec = 141994;
+  ts.tv_nsec = 666666666;
+  EXPECT_EQ(32767, to<unusual_time>(ts).count());
+  ts.tv_nsec = 666666667;
+  EXPECT_THROW(to<unusual_time>(ts), std::range_error);
+
+  ts.tv_sec = -141998;
+  ts.tv_nsec = 999999999;
+  EXPECT_EQ(-32768, to<unusual_time>(ts).count());
+  ts.tv_sec = -141999;
+  ts.tv_nsec = 0;
+  EXPECT_THROW(to<unusual_time>(ts), std::range_error);
 }
 
 TEST(Conv, timevalToStdChrono) {
@@ -334,6 +368,20 @@ TEST(Conv, stdChronoToTimespec) {
   ts = to<struct timespec>(createTimePoint<system_clock>(123ns));
   EXPECT_EQ(0, ts.tv_sec);
   EXPECT_EQ(123, ts.tv_nsec);
+
+  // Test with some unusual durations where neither the numerator nor
+  // denominator are 1.
+  using five_sevenths = std::chrono::duration<int64_t, std::ratio<5, 7>>;
+  ts = to<struct timespec>(five_sevenths(7));
+  EXPECT_EQ(5, ts.tv_sec);
+  EXPECT_EQ(0, ts.tv_nsec);
+  ts = to<struct timespec>(five_sevenths(19));
+  EXPECT_EQ(13, ts.tv_sec);
+  EXPECT_EQ(571428571, ts.tv_nsec);
+  using seven_fifths = std::chrono::duration<int64_t, std::ratio<7, 5>>;
+  ts = to<struct timespec>(seven_fifths(5));
+  EXPECT_EQ(7, ts.tv_sec);
+  EXPECT_EQ(0, ts.tv_nsec);
 }
 
 TEST(Conv, stdChronoToTimespecOverflow) {
@@ -359,6 +407,13 @@ TEST(Conv, stdChronoToTimespecOverflow) {
     EXPECT_EQ(ts.tv_nsec, 0);
     EXPECT_THROW(
         to<struct timespec>(hours_i64(2562047788015216LL)), std::range_error);
+
+    // Test overflows from an unusual duration where neither the numerator nor
+    // denominator are 1.
+    using three_halves = std::chrono::duration<uint64_t, std::ratio<3, 2>>;
+    EXPECT_THROW(
+        to<struct timespec>(three_halves(6148914691236517206ULL)),
+        std::range_error);
   }
 
   // Test for overflow.

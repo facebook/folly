@@ -187,6 +187,36 @@ static Expected<std::pair<time_t, long>, ConversionCode> durationToPosixTime(
   return std::pair<time_t, long>{sec, subsec};
 }
 
+/*
+ * Helper classes for picking an intermediate duration type to use
+ * when doing conversions to/from durations where neither the numerator nor
+ * denominator are 1.
+ */
+template <typename T, bool IsFloatingPoint, bool IsSigned>
+struct IntermediateTimeRep {};
+template <typename T, bool IsSigned>
+struct IntermediateTimeRep<T, true, IsSigned> {
+  using type = T;
+};
+template <typename T>
+struct IntermediateTimeRep<T, false, true> {
+  using type = intmax_t;
+};
+template <typename T>
+struct IntermediateTimeRep<T, false, false> {
+  using type = uintmax_t;
+};
+// For IntermediateDuration we always use 1 as the numerator, and the original
+// Period denominator.  This ensures that we do not lose precision when
+// performing the conversion.
+template <typename Rep, typename Period>
+using IntermediateDuration = std::chrono::duration<
+    typename IntermediateTimeRep<
+        Rep,
+        std::is_floating_point<Rep>::value,
+        std::is_signed<Rep>::value>::type,
+    std::ratio<1, Period::den>>;
+
 /**
  * Convert a std::chrono::duration to a pair of (seconds, subseconds)
  *
@@ -201,18 +231,28 @@ Expected<std::pair<time_t, long>, ConversionCode> durationToPosixTime(
   static_assert(
       SubsecondRatio::num == 1, "subsecond numerator should always be 1");
 
-  // TODO: We need to implement an overflow-checking tryTo() function for
-  // duration-to-duration casts for the code above to work.
-  //
-  // For now this is unimplemented, and we just have a static_assert that
-  // will always fail if someone tries to instantiate this.  Unusual duration
-  // types should be extremely rare, and I'm not aware of any code at the
-  // moment that actually needs this.
-  static_assert(
-      Period::num == 1,
-      "conversion from unusual duration types is not implemented yet");
-  (void)duration;
-  return makeUnexpected(ConversionCode::SUCCESS);
+  // Perform this conversion by first converting to a duration where the
+  // numerator is 1, then convert to the output type.
+  using IntermediateType = IntermediateDuration<Rep, Period>;
+  using IntermediateRep = typename IntermediateType::rep;
+
+  // Check to see if we would have overflow converting to the intermediate
+  // type.
+  constexpr auto maxInput =
+      std::numeric_limits<IntermediateRep>::max() / Period::num;
+  if (duration.count() > maxInput) {
+    return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
+  }
+  constexpr auto minInput =
+      std::numeric_limits<IntermediateRep>::min() / Period::num;
+  if (duration.count() < minInput) {
+    return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
+  }
+  auto intermediate =
+      IntermediateType{static_cast<IntermediateRep>(duration.count()) *
+                       static_cast<IntermediateRep>(Period::num)};
+
+  return durationToPosixTime<SubsecondRatio>(intermediate);
 }
 
 /**
@@ -489,19 +529,25 @@ auto posixTimeToDuration(
   static_assert(
       SubsecondRatio::num == 1, "subsecond numerator should always be 1");
 
-  // TODO: We need to implement an overflow-checking tryTo() function for
-  // duration-to-duration casts for the code above to work.
+  // Cast through an intermediate type with subsecond granularity.
+  // Note that this could fail due to overflow during the initial conversion
+  // even if the result is representable in the output POSIX-style types.
   //
-  // For now this is unimplemented, and we just have a static_assert that
-  // will always fail if someone tries to instantiate this.  Unusual duration
-  // types should be extremely rare, and I'm not aware of any code at the
-  // moment that actually needs this.
-  static_assert(
-      Tgt::period::num == 1,
-      "conversion to unusual duration types is not implemented yet");
-  (void)seconds;
-  (void)subseconds;
-  return makeUnexpected(ConversionCode::SUCCESS);
+  // Note that for integer type conversions going through this intermediate
+  // type can result in slight imprecision due to truncating the intermediate
+  // calculation to an integer.
+  using IntermediateType =
+      IntermediateDuration<typename Tgt::rep, typename Tgt::period>;
+  auto intermediate = posixTimeToDuration<SubsecondRatio>(
+      seconds, subseconds, IntermediateType{});
+  if (intermediate.hasError()) {
+    return makeUnexpected(intermediate.error());
+  }
+  // Now convert back to the target duration.  Use tryTo() to confirm that the
+  // result fits in the target representation type.
+  return tryTo<typename Tgt::rep>(
+             intermediate.value().count() / Tgt::period::num)
+      .then([](typename Tgt::rep tgt) { return Tgt{tgt}; });
 }
 
 template <
