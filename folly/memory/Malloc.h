@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/portability/Config.h>
 
 /**
@@ -26,7 +27,7 @@
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
  */
-#if defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)
+#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 // We have JEMalloc, so use it.
 # include <jemalloc/jemalloc.h>
 #else
@@ -149,9 +150,9 @@ namespace folly {
  * Determine if we are using jemalloc or not.
  */
 #if defined(USE_JEMALLOC) && !FOLLY_SANITIZE
-inline bool usingJEMalloc() noexcept {
-  return true;
-}
+  inline bool usingJEMalloc() noexcept {
+    return true;
+  }
 #else
 FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
   // Checking for rallocx != nullptr is not sufficient; we may be in a

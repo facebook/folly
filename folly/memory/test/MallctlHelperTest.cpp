@@ -20,7 +20,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
-#if defined(FOLLY_HAVE_LIBJEMALLOC) && !defined(FOLLY_SANITIZE)
+#if defined(FOLLY_HAVE_LIBJEMALLOC) && !FOLLY_SANITIZE
 #include <jemalloc/jemalloc.h>
 #endif
 

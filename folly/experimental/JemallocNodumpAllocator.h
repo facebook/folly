@@ -21,7 +21,7 @@
 #include <folly/CPortability.h>
 #include <folly/portability/Config.h>
 
-#if defined(FOLLY_HAVE_LIBJEMALLOC) && !defined(FOLLY_SANITIZE)
+#if defined(FOLLY_HAVE_LIBJEMALLOC) && !FOLLY_SANITIZE
 
 #include <folly/portability/SysMman.h>
 #include <jemalloc/jemalloc.h>

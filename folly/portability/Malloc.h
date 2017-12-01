@@ -16,10 +16,12 @@
 
 #pragma once
 
-#include <folly/portability/Config.h>
 #include <stdlib.h>
 
-#if defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)
+#include <folly/CPortability.h>
+#include <folly/portability/Config.h>
+
+#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 // JEMalloc provides it's own implementation of
 // malloc_usable_size, and that's what we should be using.
 #include <jemalloc/jemalloc.h>
