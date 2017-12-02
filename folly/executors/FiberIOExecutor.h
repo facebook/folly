@@ -30,12 +30,14 @@ namespace folly {
  */
 class FiberIOExecutor : public IOExecutor {
  public:
-  explicit FiberIOExecutor(const std::shared_ptr<IOExecutor>& ioExecutor)
-      : ioExecutor_(ioExecutor) {}
+  explicit FiberIOExecutor(
+      const std::shared_ptr<IOExecutor>& ioExecutor,
+      fibers::FiberManager::Options opts = fibers::FiberManager::Options())
+      : ioExecutor_(ioExecutor), options_(std::move(opts)) {}
 
   virtual void add(folly::Function<void()> f) override {
     auto eventBase = ioExecutor_->getEventBase();
-    folly::fibers::getFiberManager(*eventBase).add(std::move(f));
+    folly::fibers::getFiberManager(*eventBase, options_).add(std::move(f));
   }
 
   virtual folly::EventBase* getEventBase() override {
@@ -44,6 +46,7 @@ class FiberIOExecutor : public IOExecutor {
 
  private:
   std::shared_ptr<IOExecutor> ioExecutor_;
+  fibers::FiberManager::Options options_;
 };
 
 } // namespace folly
