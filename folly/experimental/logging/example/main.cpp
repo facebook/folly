@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
 
   // Call folly::init() and then initialize log levels and handlers
   folly::init(&argc, &argv);
-  initLoggingGlogStyle(FLAGS_logging, LogLevel::INFO);
+  folly::initLogging(FLAGS_logging);
 
   // All XLOG() statements in this file will log to the category
   // folly.experimental.logging.example.main

@@ -20,46 +20,26 @@
  * during program start-up.
  */
 
-#include <stdexcept>
-#include <string>
-#include <vector>
-
 #include <folly/Range.h>
-#include <folly/experimental/logging/LogLevel.h>
 
 namespace folly {
 
 /**
- * Configure log category levels based on a configuration string.
+ * Initialize the logging library.
  *
- * This can be used to process a logging configuration string (such as received
- * via a command line flag) during program start-up.
- */
-void initLogLevels(
-    folly::StringPiece configString = "",
-    LogLevel defaultRootLevel = LogLevel::WARNING);
-
-/**
- * Initialize the logging library to write glog-style messages to stderr.
+ * The input string will be parsed with parseLogConfig() and then applied to
+ * the main LoggerDB singleton.
  *
- * This initializes the log category levels as specified (using
- * initLogLevels()), and adds a log handler that prints messages in glog-style
- * format to stderr.
+ * Before it is applied, the input configuration settings are first combined
+ * with some basic defaults on the root log category.  The defaults set the
+ * root log level to WARN, and attach a log handler named "default" that writes
+ * messages to stderr.  However, these base settings can be overridden if the
+ * input string specifies alternate settings for the root log category.
+ *
+ * Note that it is safe for code to use logging functions before calling
+ * initLogging().  However, messages logged before initLogging() is called will
+ * be ignored since no log handler objects have been defined.
  */
-void initLoggingGlogStyle(
-    folly::StringPiece configString = "",
-    LogLevel defaultRootLevel = LogLevel::WARNING,
-    bool asyncWrites = true);
+void initLogging(folly::StringPiece configString = "");
 
-/**
- * LoggingConfigError may be thrown by initLogLevels() if an error occurs
- * parsing the configuration string.
- */
-class LoggingConfigError : public std::invalid_argument {
- public:
-  explicit LoggingConfigError(const std::vector<std::string>& errors);
-
- private:
-  std::string computeMessage(const std::vector<std::string>& errors);
-};
 } // namespace folly

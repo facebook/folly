@@ -15,66 +15,58 @@
  */
 #include <folly/experimental/logging/Init.h>
 
-#include <folly/experimental/logging/AsyncFileWriter.h>
-#include <folly/experimental/logging/GlogStyleFormatter.h>
-#include <folly/experimental/logging/ImmediateFileWriter.h>
-#include <folly/experimental/logging/LogCategory.h>
-#include <folly/experimental/logging/LogHandlerConfig.h>
+#include <folly/experimental/logging/FileHandlerFactory.h>
+#include <folly/experimental/logging/LogConfig.h>
+#include <folly/experimental/logging/LogConfigParser.h>
 #include <folly/experimental/logging/LoggerDB.h>
-#include <folly/experimental/logging/StandardLogHandler.h>
-
-using std::shared_ptr;
-using std::string;
-using std::vector;
 
 namespace folly {
 
-void initLogLevels(StringPiece configString, LogLevel defaultRootLevel) {
-  // Set the default root category log level first
-  LoggerDB::get()->getCategory(".")->setLevel(defaultRootLevel);
+/**
+ * The base logging settings to be applied in initLogging(),
+ * before any user-specified settings.
+ *
+ * This defines a log handler named "default" that writes to stderr,
+ * and configures the root log category to log to this handler and have a log
+ * level setting of WARN.
+ *
+ * Note that the default log handler uses async=false, so that log messages are
+ * written immediately to stderr from the thread that generated the log
+ * message.  This is often undesirable, as it can slow down normal processing
+ * waiting for logging I/O.  However, using async=true has some trade-offs of
+ * its own: it causes a new thread to be started, and not all message may get
+ * flushed to stderr if the program crashes.  For now, using async=false seems
+ * like the safer trade-off here, but many programs may wish to change this
+ * default.
+ *
+ * The user-specified config string may override any of these values.
+ * If the user-specified config string ends up not using the default log
+ * handler, the handler will be automatically forgotten by the LoggerDB code.
+ */
+constexpr StringPiece kDefaultLoggingConfig =
+    ".=WARN:default; default=file,stream=stderr,async=false";
+
+void initLogging(StringPiece configString) {
+  // Register the FileHandlerFactory
+  //
+  // TODO: In the future it would be nice to build a better mechanism so that
+  // additional LogHandlerFactory objects could be automatically registered on
+  // startup if they are linked into our current executable.
+  LoggerDB::get()->registerHandlerFactory(
+      std::make_unique<FileHandlerFactory>());
+
+  // Parse the default log level settings before processing the input config
+  // string.
+  auto config = parseLogConfig(kDefaultLoggingConfig);
 
   // Then apply the configuration string
   if (!configString.empty()) {
-    auto ret = LoggerDB::get()->processConfigString(configString);
-    if (!ret.empty()) {
-      throw LoggingConfigError(ret);
-    }
+    auto inputConfig = parseLogConfig(configString);
+    config.update(inputConfig);
   }
+
+  // Now apply the configuration to the LoggerDB
+  LoggerDB::get()->updateConfig(config);
 }
 
-void initLoggingGlogStyle(
-    StringPiece configString,
-    LogLevel defaultRootLevel,
-    bool asyncWrites) {
-  // Configure log levels
-  initLogLevels(configString, defaultRootLevel);
-
-  // Create the LogHandler
-  std::shared_ptr<LogWriter> writer;
-  folly::File file{STDERR_FILENO, false};
-  LogHandlerConfig handlerConfig{"file", {{"stream", "stderr"}}};
-  if (asyncWrites) {
-    writer = std::make_shared<AsyncFileWriter>(std::move(file));
-    handlerConfig.options.emplace("async", "true");
-  } else {
-    writer = std::make_shared<ImmediateFileWriter>(std::move(file));
-    handlerConfig.options.emplace("async", "false");
-  }
-  auto handler = std::make_shared<StandardLogHandler>(
-      handlerConfig, std::make_shared<GlogStyleFormatter>(), std::move(writer));
-
-  // Add the handler to the root category.
-  LoggerDB::get()->getCategory(".")->addHandler(std::move(handler));
-}
-
-LoggingConfigError::LoggingConfigError(const vector<string>& errors)
-    : invalid_argument{computeMessage(errors)} {}
-
-std::string LoggingConfigError::computeMessage(const vector<string>& errors) {
-  string msg = "error parsing logging configuration:";
-  for (const auto& error : errors) {
-    msg += "\n" + error;
-  }
-  return msg;
-}
 } // namespace folly

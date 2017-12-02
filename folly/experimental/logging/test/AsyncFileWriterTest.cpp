@@ -615,8 +615,7 @@ TEST(AsyncFileWriter, discard) {
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   folly::init(&argc, &argv);
-  // Don't use async logging in the async logging tests :-)
-  folly::initLoggingGlogStyle(FLAGS_logging, LogLevel::INFO, /* async */ false);
+  folly::initLogging(FLAGS_logging);
 
   return RUN_ALL_TESTS();
 }

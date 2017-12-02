@@ -112,18 +112,6 @@ class LoggerDB {
   void resetConfig(const LogConfig& config);
 
   /**
-   * Apply a configuration string specifying a series a log levels.
-   *
-   * The string format is a comma separated list of <name>=<level> sections.
-   * e.g.: "foo=DBG3,log.bar=WARN"
-   *
-   * Returns a list of error messages for each error encountered trying to
-   * parse the config string.  The return value will be an empty vector if no
-   * errors were encountered.
-   */
-  std::vector<std::string> processConfigString(folly::StringPiece config);
-
-  /**
    * Remove all registered LogHandlers on all LogCategory objects.
    *
    * This is called on the main LoggerDB object during shutdown.

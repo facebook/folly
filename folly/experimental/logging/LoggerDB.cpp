@@ -107,40 +107,6 @@ void LoggerDB::setLevel(LogCategory* category, LogLevel level, bool inherit) {
   category->setLevelLocked(level, inherit);
 }
 
-std::vector<std::string> LoggerDB::processConfigString(
-    folly::StringPiece config) {
-  std::vector<std::string> errors;
-  if (config.empty()) {
-    return errors;
-  }
-
-  std::vector<StringPiece> pieces;
-  folly::split(",", config, pieces);
-  for (const auto& p : pieces) {
-    auto idx = p.rfind('=');
-    if (idx == folly::StringPiece::npos) {
-      errors.emplace_back(
-          folly::sformat("missing '=' in logger configuration: \"{}\"", p));
-      continue;
-    }
-
-    auto category = p.subpiece(0, idx);
-    auto level_str = p.subpiece(idx + 1);
-    LogLevel level;
-    try {
-      level = stringToLogLevel(level_str);
-    } catch (const std::exception&) {
-      errors.emplace_back(folly::sformat(
-          "invalid log level \"{}\" for category \"{}\"", level_str, category));
-      continue;
-    }
-
-    setLevel(category, level);
-  }
-
-  return errors;
-}
-
 LogConfig LoggerDB::getConfig() const {
   auto handlerInfo = handlerInfo_.rlock();
 
