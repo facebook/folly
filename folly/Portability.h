@@ -399,6 +399,12 @@ constexpr auto kIsObjC = true;
 constexpr auto kIsObjC = false;
 #endif
 
+#if FOLLY_MOBILE
+constexpr auto kIsMobile = true;
+#else
+constexpr auto kIsMobile = false;
+#endif
+
 #if defined(__linux__) && !FOLLY_MOBILE
 constexpr auto kIsLinux = true;
 #else

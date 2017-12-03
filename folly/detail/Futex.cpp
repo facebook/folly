@@ -16,11 +16,13 @@
 
 #include <folly/detail/Futex.h>
 #include <boost/intrusive/list.hpp>
+#include <folly/Indestructible.h>
 #include <folly/ScopeGuard.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/SysSyscall.h>
 #include <stdint.h>
 #include <string.h>
+#include <array>
 #include <cerrno>
 #include <condition_variable>
 #include <mutex>
@@ -186,13 +188,17 @@ struct EmulatedFutexBucket {
   std::mutex mutex_;
   boost::intrusive::list<EmulatedFutexWaitNode> waiters_;
 
-  static const size_t kNumBuckets = 4096;
+  static constexpr size_t const kNumBuckets = kIsMobile ? 256 : 4096;
 
   static EmulatedFutexBucket& bucketFor(void* addr) {
-    static auto gBuckets = new EmulatedFutexBucket[kNumBuckets];
-    uint64_t mixedBits = folly::hash::twang_mix64(
-        reinterpret_cast<uintptr_t>(addr));
-    return gBuckets[mixedBits % kNumBuckets];
+    // Statically allocating this lets us use this in allocation-sensitive
+    // contexts. This relies on the assumption that std::mutex won't dynamically
+    // allocate memory, which we assume to be the case on Linux and iOS.
+    static Indestructible<std::array<EmulatedFutexBucket, kNumBuckets>>
+        gBuckets;
+    uint64_t mixedBits =
+        folly::hash::twang_mix64(reinterpret_cast<uintptr_t>(addr));
+    return (*gBuckets)[mixedBits % kNumBuckets];
   }
 };
 
