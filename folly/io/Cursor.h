@@ -982,34 +982,43 @@ class QueueAppender : public detail::Writable<QueueAppender> {
    * space in the queue, we grow no more than growth bytes at once
    * (unless you call ensure() with a bigger value yourself).
    */
-  QueueAppender(IOBufQueue* queue, uint64_t growth) {
-    reset(queue, growth);
-  }
+  QueueAppender(IOBufQueue* queue, uint64_t growth)
+      : queueCache_(queue), growth_(growth) {}
 
   void reset(IOBufQueue* queue, uint64_t growth) {
-    queue_ = queue;
+    queueCache_.reset(queue);
     growth_ = growth;
   }
 
   uint8_t* writableData() {
-    return static_cast<uint8_t*>(queue_->writableTail());
+    return queueCache_.writableData();
   }
 
-  size_t length() const { return queue_->tailroom(); }
+  size_t length() {
+    return queueCache_.length();
+  }
 
-  void append(size_t n) { queue_->postallocate(n); }
+  void append(size_t n) {
+    queueCache_.append(n);
+  }
 
   // Ensure at least n contiguous; can go above growth_, throws if
   // not enough room.
-  void ensure(uint64_t n) { queue_->preallocate(n, growth_); }
+  void ensure(size_t n) {
+    if (length() < n) {
+      ensureSlow(n);
+    }
+  }
 
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value>::type
-  write(T value) {
+  typename std::enable_if<std::is_arithmetic<T>::value>::type write(T value) {
     // We can't fail.
-    auto p = queue_->preallocate(sizeof(T), growth_);
-    storeUnaligned(p.first, value);
-    queue_->postallocate(sizeof(T));
+    if (length() >= sizeof(T)) {
+      storeUnaligned(queueCache_.writableData(), value);
+      queueCache_.appendUnsafe(sizeof(T));
+    } else {
+      writeSlow<T>(value);
+    }
   }
 
   using detail::Writable<QueueAppender>::pushAtMost;
@@ -1018,27 +1027,25 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     const size_t copyLength = std::min(len, length());
     if (copyLength != 0) {
       memcpy(writableData(), buf, copyLength);
-      append(copyLength);
+      queueCache_.appendUnsafe(copyLength);
       buf += copyLength;
     }
-    // Allocate more buffers as necessary
     size_t remaining = len - copyLength;
+    // Allocate more buffers as necessary
     while (remaining != 0) {
-      auto p = queue_->preallocate(std::min(remaining, growth_),
-                                   growth_,
-                                   remaining);
+      auto p = queueCache_.queue()->preallocate(
+          std::min(remaining, growth_), growth_, remaining);
       memcpy(p.first, buf, p.second);
-      queue_->postallocate(p.second);
+      queueCache_.queue()->postallocate(p.second);
       buf += p.second;
       remaining -= p.second;
     }
-
     return len;
   }
 
   void insert(std::unique_ptr<folly::IOBuf> buf) {
     if (buf) {
-      queue_->append(std::move(buf), true);
+      queueCache_.queue()->append(std::move(buf), true);
     }
   }
 
@@ -1047,9 +1054,25 @@ class QueueAppender : public detail::Writable<QueueAppender> {
   }
 
  private:
-  folly::IOBufQueue* queue_;
-  size_t growth_;
+  folly::IOBufQueue::WritableRangeCache queueCache_{nullptr};
+  size_t growth_{0};
+
+  FOLLY_NOINLINE void ensureSlow(size_t n) {
+    queueCache_.queue()->preallocate(n, growth_);
+    queueCache_.fillCache();
+  }
+
+  template <class T>
+  typename std::enable_if<std::is_arithmetic<T>::value>::type FOLLY_NOINLINE
+  writeSlow(T value) {
+    queueCache_.queue()->preallocate(sizeof(T), growth_);
+    queueCache_.fillCache();
+
+    storeUnaligned(queueCache_.writableData(), value);
+    queueCache_.appendUnsafe(sizeof(T));
+  }
 };
+
 } // namespace io
 } // namespace folly
 
