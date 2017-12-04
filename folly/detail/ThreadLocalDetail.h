@@ -317,6 +317,7 @@ struct StaticMeta : StaticMetaBase {
             &StaticMeta::getThreadEntrySlow,
             std::is_same<AccessMode, AccessModeStrict>::value) {
     detail::AtFork::registerHandler(
+        this,
         /*prepare*/ &StaticMeta::preFork,
         /*parent*/ &StaticMeta::onForkParent,
         /*child*/ &StaticMeta::onForkChild);

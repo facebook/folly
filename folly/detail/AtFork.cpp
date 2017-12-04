@@ -27,6 +27,7 @@ namespace detail {
 namespace {
 
 struct AtForkTask {
+  void* object;
   folly::Function<void()> prepare;
   folly::Function<void()> parent;
   folly::Function<void()> child;
@@ -89,12 +90,24 @@ void AtFork::init() {
 }
 
 void AtFork::registerHandler(
+    void* object,
     folly::Function<void()> prepare,
     folly::Function<void()> parent,
     folly::Function<void()> child) {
   std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);
   AtForkList::instance().tasks.push_back(
-      {std::move(prepare), std::move(parent), std::move(child)});
+      {object, std::move(prepare), std::move(parent), std::move(child)});
+}
+
+void AtFork::unregisterHandler(void* object) {
+  auto& list = AtForkList::instance();
+  std::lock_guard<std::mutex> lg(list.tasksLock);
+  for (auto it = list.tasks.begin(); it != list.tasks.end(); ++it) {
+    if (it->object == object) {
+      list.tasks.erase(it);
+      return;
+    }
+  }
 }
 
 } // namespace detail
