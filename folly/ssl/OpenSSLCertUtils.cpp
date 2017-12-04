@@ -216,5 +216,30 @@ std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
   return certs;
 }
 
+std::array<uint8_t, SHA_DIGEST_LENGTH> OpenSSLCertUtils::getDigestSha1(
+    X509& x509) {
+  unsigned int len;
+  std::array<uint8_t, SHA_DIGEST_LENGTH> md;
+  int rc = X509_digest(&x509, EVP_sha1(), md.data(), &len);
+
+  if (rc <= 0) {
+    throw std::runtime_error("Could not calculate SHA1 digest for cert");
+  }
+  return md;
+}
+
+std::array<uint8_t, SHA256_DIGEST_LENGTH> OpenSSLCertUtils::getDigestSha256(
+    X509& x509) {
+  unsigned int len;
+  std::array<uint8_t, SHA256_DIGEST_LENGTH> md;
+  int rc = X509_digest(&x509, EVP_sha256(), md.data(), &len);
+
+  if (rc <= 0) {
+    throw std::runtime_error("Could not calculate SHA256 digest for cert");
+  }
+  return md;
+}
+
+
 } // namespace ssl
 } // namespace folly

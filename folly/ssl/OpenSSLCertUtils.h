@@ -82,6 +82,14 @@ class OpenSSLCertUtils {
    */
   static std::vector<X509UniquePtr> readCertsFromBuffer(ByteRange);
 
+  /**
+   * Return the output of the X509_digest for chosen message-digest algo
+   * NOTE: The returned digest will be in binary, and may need to be
+   * hex-encoded
+   */
+  static std::array<uint8_t, SHA_DIGEST_LENGTH> getDigestSha1(X509& x509);
+  static std::array<uint8_t, SHA256_DIGEST_LENGTH> getDigestSha256(X509& x509);
+
  private:
   static std::string getDateTimeStr(const ASN1_TIME* time);
 };
