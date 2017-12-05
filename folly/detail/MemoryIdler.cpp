@@ -25,6 +25,7 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
+#include <folly/synchronization/CallOnce.h>
 
 #include <limits.h>
 #include <stdio.h>
@@ -92,13 +93,22 @@ static size_t pageSize() {
 }
 
 static void fetchStackLimits() {
+  int err;
   pthread_attr_t attr;
-  pthread_getattr_np(pthread_self(), &attr);
+  if ((err = pthread_getattr_np(pthread_self(), &attr))) {
+    // some restricted environments can't access /proc
+    static folly::once_flag flag;
+    folly::call_once(flag, [err]() {
+      LOG(WARNING) << "pthread_getaddr_np failed errno=" << err;
+    });
+
+    tls_stackSize = 1;
+    return;
+  }
   SCOPE_EXIT { pthread_attr_destroy(&attr); };
 
   void* addr;
   size_t rawSize;
-  int err;
   if ((err = pthread_attr_getstack(&attr, &addr, &rawSize))) {
     // unexpected, but it is better to continue in prod than do nothing
     FB_LOG_EVERY_MS(ERROR, 10000) << "pthread_attr_getstack error " << err;
