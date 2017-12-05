@@ -18,6 +18,7 @@
 
 #include <folly/Bits.h>
 
+#include <folly/Random.h>
 #include <random>
 
 #include <folly/portability/GTest.h>
@@ -184,4 +185,26 @@ TEST(Bits, Endian_swap_real) {
   auto d = std::uniform_real_distribution<double>()(rng);
   EXPECT_NE(d, Endian::swap(d));
   EXPECT_EQ(d, Endian::swap(Endian::swap(d)));
+}
+
+uint64_t reverse_simple(uint64_t v) {
+  uint64_t r = 0;
+
+  for (int i = 0; i < 64; i++) {
+    r <<= 1;
+    r |= v & 1;
+    v >>= 1;
+  }
+  return r;
+}
+
+TEST(Bits, BitReverse) {
+  EXPECT_EQ(folly::bitReverse<uint8_t>(0), 0);
+  EXPECT_EQ(folly::bitReverse<uint8_t>(1), 128);
+  for (int i = 0; i < 100; i++) {
+    uint64_t v = folly::Random::rand64();
+    EXPECT_EQ(folly::bitReverse(v), reverse_simple(v));
+    uint32_t b = folly::Random::rand32();
+    EXPECT_EQ(folly::bitReverse(b), reverse_simple(b) >> 32);
+  }
 }

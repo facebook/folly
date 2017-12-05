@@ -372,4 +372,13 @@ inline void storeUnaligned(void* p, T value) {
   }
 }
 
+template <typename T>
+T bitReverse(T n) {
+  auto m = static_cast<typename std::make_unsigned<T>::type>(n);
+  m = ((m & 0xAAAAAAAAAAAAAAAA) >> 1) | ((m & 0x5555555555555555) << 1);
+  m = ((m & 0xCCCCCCCCCCCCCCCC) >> 2) | ((m & 0x3333333333333333) << 2);
+  m = ((m & 0xF0F0F0F0F0F0F0F0) >> 4) | ((m & 0x0F0F0F0F0F0F0F0F) << 4);
+  return static_cast<T>(Endian::swap(m));
+}
+
 } // namespace folly

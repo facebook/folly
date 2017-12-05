@@ -38,6 +38,15 @@ BENCHMARK(isPowTwo, iters) {
   }
 }
 
+BENCHMARK_DRAW_LINE();
+BENCHMARK(reverse, iters) {
+  uint64_t b = 0;
+  for (unsigned long i = 0; i < iters; ++i) {
+    b = folly::bitReverse(i + b);
+    folly::doNotOptimizeAway(b);
+  }
+}
+
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
@@ -48,7 +57,13 @@ int main(int argc, char** argv) {
 Benchmarks run on dual Xeon X5650's @ 2.67GHz w/hyperthreading enabled
   (12 physical cores, 12 MB cache, 72 GB RAM)
 
-Benchmark                               Iters   Total t    t/iter iter/sec
-------------------------------------------------------------------------------
-*       nextPowTwoClz                 1000000  1.659 ms  1.659 ns  574.8 M
+============================================================================
+folly/test/BitsBenchmark.cpp                    relative  time/iter  iters/s
+============================================================================
+nextPowTwoClz                                                0.00fs  Infinity
+----------------------------------------------------------------------------
+isPowTwo                                                   731.61ps    1.37G
+----------------------------------------------------------------------------
+reverse                                                      4.84ns  206.58M
+============================================================================
 */
