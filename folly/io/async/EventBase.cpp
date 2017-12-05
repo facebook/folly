@@ -612,7 +612,7 @@ bool EventBase::runLoopCallbacks() {
     while (!currentCallbacks.empty()) {
       LoopCallback* callback = &currentCallbacks.front();
       currentCallbacks.pop_front();
-      folly::RequestContextScopeGuard rctx(callback->context_);
+      folly::RequestContextScopeGuard rctx(std::move(callback->context_));
       callback->runLoopCallback();
     }
 
