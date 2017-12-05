@@ -662,6 +662,22 @@ void AsyncSocket::setErrMessageCB(ErrMessageCallback* callback) {
           << ", fd=" << fd_ << ", callback=" << callback
           << ", state=" << state_;
 
+  // In the latest stable kernel 4.14.3 as of 2017-12-04, unix domain
+  // socket does not support MSG_ERRQUEUE. So recvmsg(MSG_ERRQUEUE)
+  // will read application data from unix doamin socket as error
+  // message, which breaks the message flow in application.  Feel free
+  // to remove the next code block if MSG_ERRQUEUE is added for unix
+  // domain socket in the future.
+  if (callback != nullptr) {
+    cacheLocalAddress();
+    if (localAddr_.getFamily() == AF_UNIX) {
+      LOG(ERROR) << "Failed to set ErrMessageCallback=" << callback
+                 << " for Unix Doamin Socket where MSG_ERRQUEUE is unsupported,"
+                 << " fd=" << fd_;
+      return;
+    }
+  }
+
   // Short circuit if callback is the same as the existing errMessageCallback_.
   if (callback == errMessageCallback_) {
     return;

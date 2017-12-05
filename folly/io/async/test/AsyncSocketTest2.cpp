@@ -3298,4 +3298,73 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
       magicString.end(),
       transferredMagicString.begin()));
 }
+
+TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
+  // In the latest stable kernel 4.14.3 as of 2017-12-04, Unix Domain
+  // Socket (UDS) does not support MSG_ERRQUEUE. So
+  // recvmsg(MSG_ERRQUEUE) will read application data from UDS which
+  // breaks application message flow.  To avoid this problem,
+  // AsyncSocket currently disables setErrMessageCB for UDS.
+  //
+  // This tests two things for UDS
+  // 1. setErrMessageCB fails
+  // 2. recvmsg(MSG_ERRQUEUE) reads application data
+  //
+  // Feel free to remove this test if UDS supports MSG_ERRQUEUE in the future.
+
+  int fd[2];
+  EXPECT_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, fd), 0);
+  ASSERT_NE(fd[0], -1);
+  ASSERT_NE(fd[1], -1);
+  SCOPE_EXIT {
+    close(fd[1]);
+  };
+
+  EXPECT_EQ(fcntl(fd[0], F_SETFL, O_NONBLOCK), 0);
+  EXPECT_EQ(fcntl(fd[1], F_SETFL, O_NONBLOCK), 0);
+
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb, fd[0]);
+
+  // setErrMessageCB should fail for unix domain socket
+  TestErrMessageCallback errMsgCB;
+  ASSERT_NE(&errMsgCB, nullptr);
+  socket->setErrMessageCB(&errMsgCB);
+  ASSERT_EQ(socket->getErrMessageCallback(), nullptr);
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  // The following verifies that MSG_ERRQUEUE does not work for UDS,
+  // and recvmsg reads application data
+  union {
+    // Space large enough to hold an 'int'
+    char control[CMSG_SPACE(sizeof(int))];
+    struct cmsghdr cmh;
+  } r_u;
+  struct msghdr msgh;
+  struct iovec iov;
+  int recv_data = 0;
+
+  msgh.msg_control = r_u.control;
+  msgh.msg_controllen = sizeof(r_u.control);
+  msgh.msg_name = nullptr;
+  msgh.msg_namelen = 0;
+  msgh.msg_iov = &iov;
+  msgh.msg_iovlen = 1;
+  iov.iov_base = &recv_data;
+  iov.iov_len = sizeof(recv_data);
+
+  // there is no data, recvmsg should fail
+  EXPECT_EQ(recvmsg(fd[1], &msgh, MSG_ERRQUEUE), -1);
+  EXPECT_TRUE(errno == EAGAIN || errno == EWOULDBLOCK);
+
+  // provide some application data, error queue should be empty if it exists
+  // However, UDS reads application data as error message
+  int test_data = 123456;
+  WriteCallback wcb;
+  socket->write(&wcb, &test_data, sizeof(test_data));
+  recv_data = 0;
+  ASSERT_NE(recvmsg(fd[1], &msgh, MSG_ERRQUEUE), -1);
+  ASSERT_EQ(recv_data, test_data);
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
+}
 #endif
