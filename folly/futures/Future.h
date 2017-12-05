@@ -59,7 +59,8 @@ class FutureBase {
   template <
       class T2 = T,
       typename = typename std::enable_if<
-          !isFuture<typename std::decay<T2>::type>::value>::type>
+          !isFuture<typename std::decay<T2>::type>::value &&
+          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
   /* implicit */ FutureBase(T2&& val);
 
   template <class T2 = T>
