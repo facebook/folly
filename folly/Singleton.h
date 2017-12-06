@@ -121,7 +121,6 @@
 // should call reenableInstances.
 
 #pragma once
-#include <folly/Baton.h>
 #include <folly/Demangle.h>
 #include <folly/Exception.h>
 #include <folly/Executor.h>
@@ -131,6 +130,7 @@
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/hash/Hash.h>
+#include <folly/synchronization/Baton.h>
 
 #include <algorithm>
 #include <atomic>

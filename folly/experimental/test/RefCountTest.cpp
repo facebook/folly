@@ -15,10 +15,10 @@
  */
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/TLRefCount.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 

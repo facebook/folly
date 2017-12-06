@@ -16,13 +16,13 @@
 
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/MPMCQueue.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace folly;
 

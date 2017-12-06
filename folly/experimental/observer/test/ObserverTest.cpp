@@ -16,9 +16,9 @@
 
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/experimental/observer/SimpleObservable.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace folly::observer;
 

@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <folly/Baton.h>
 #include <folly/Function.h>
 #include <folly/IndexedMemPool.h>
 #include <folly/Portability.h>
 #include <folly/concurrency/CacheLocality.h>
+#include <folly/synchronization/Baton.h>
 
 #include <atomic>
 #include <cassert>

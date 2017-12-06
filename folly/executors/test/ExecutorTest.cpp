@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/Baton.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 // TODO(jsedgwick) move this test to executors/test/ once the tested executors
 // have all moved

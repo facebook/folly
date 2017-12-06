@@ -15,7 +15,6 @@
  */
 
 #pragma once
-#include <folly/Baton.h>
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
@@ -23,6 +22,7 @@
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
 #include <folly/io/async/Request.h>
+#include <folly/synchronization/Baton.h>
 
 #include <algorithm>
 #include <mutex>

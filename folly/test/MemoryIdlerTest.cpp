@@ -16,9 +16,9 @@
 
 #include <folly/detail/MemoryIdler.h>
 
-#include <folly/Baton.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 #include <memory>
 #include <thread>

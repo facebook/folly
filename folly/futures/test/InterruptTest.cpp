@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/Baton.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace folly;
 

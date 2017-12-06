@@ -16,9 +16,9 @@
 
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 #include <folly/system/ThreadName.h>
 
 using namespace std;

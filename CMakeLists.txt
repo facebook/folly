@@ -537,6 +537,7 @@ if (BUILD_TESTS)
       TEST timeseries_test SOURCES TimeseriesTest.cpp
 
     DIRECTORY synchronization/test/
+      TEST baton_test SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
       TEST lifo_sem_test SOURCES LifoSemTests.cpp
 
@@ -558,7 +559,6 @@ if (BUILD_TESTS)
       TEST atomic_linked_list_test SOURCES AtomicLinkedListTest.cpp
       TEST atomic_struct_test SOURCES AtomicStructTest.cpp
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
-      TEST baton_test SOURCES BatonTest.cpp
       TEST bit_iterator_test SOURCES BitIteratorTest.cpp
       TEST bits_test SOURCES BitsTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp

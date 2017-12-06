@@ -16,11 +16,11 @@
 
 #include <chrono>
 
-#include <folly/Baton.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/SerialExecutor.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace std::chrono;
 using folly::SerialExecutor;

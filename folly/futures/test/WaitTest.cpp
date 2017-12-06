@@ -16,10 +16,10 @@
 
 #include <queue>
 
-#include <folly/Baton.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace folly;
 using std::vector;

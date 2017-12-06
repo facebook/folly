@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/Baton.h>
+#include <folly/futures/Future.h>
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Unit.h>
 #include <folly/dynamic.h>
-#include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 #include <algorithm>
 #include <atomic>

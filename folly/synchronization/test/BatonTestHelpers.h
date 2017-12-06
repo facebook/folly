@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/Baton.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 #include <folly/test/DeterministicSchedule.h>
 
 namespace folly {

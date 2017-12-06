@@ -21,11 +21,11 @@
 #include <chrono>
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/Optional.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Timekeeper.h>
 #include <folly/futures/detail/Core.h>
+#include <folly/synchronization/Baton.h>
 
 #ifndef FOLLY_FUTURE_USING_FIBER
 #if FOLLY_MOBILE || defined(__APPLE__)

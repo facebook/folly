@@ -20,8 +20,8 @@
 #include <memory>
 #include <mutex>
 
-#include <folly/Baton.h>
 #include <folly/experimental/flat_combining/FlatCombining.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 

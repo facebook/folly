@@ -22,9 +22,9 @@
 #include <list>
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 #ifndef _WIN32
 #include <sys/wait.h>

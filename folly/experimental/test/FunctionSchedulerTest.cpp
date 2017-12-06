@@ -21,10 +21,10 @@
 
 #include <boost/thread.hpp>
 
-#include <folly/Baton.h>
 #include <folly/Random.h>
 #include <folly/experimental/FunctionScheduler.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 #if defined(__linux__)
 #include <dlfcn.h>
