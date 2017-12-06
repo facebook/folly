@@ -45,6 +45,7 @@ class MockAsyncSocket : public AsyncSocket {
   MOCK_CONST_METHOD0(good, bool());
   MOCK_CONST_METHOD0(readable, bool());
   MOCK_CONST_METHOD0(hangup, bool());
+  MOCK_CONST_METHOD1(getLocalAddress, void(SocketAddress*));
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
   MOCK_METHOD1(_setPreReceivedData, void(std::unique_ptr<IOBuf>&));
   MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
