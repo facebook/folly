@@ -135,8 +135,8 @@ class ChangeToTempDir {
   const fs::path& path() const { return dir_.path(); }
 
  private:
-  fs::path initialPath_;
   TemporaryDirectory dir_;
+  fs::path orig_;
 };
 
 namespace detail {
