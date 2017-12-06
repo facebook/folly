@@ -250,19 +250,59 @@ struct Baton {
     }
   }
 
+  /// Similar to wait, but doesn't block the thread if it hasn't been posted.
+  ///
+  /// try_wait has the following semantics:
+  /// - It is ok to call try_wait any number times on the same baton until
+  ///   try_wait reports that the baton has been posted.
+  /// - It is ok to call timed_wait or wait on the same baton if try_wait
+  ///   reports that baton hasn't been posted.
+  /// - If try_wait indicates that the baton has been posted, it is invalid to
+  ///   call wait, try_wait or timed_wait on the same baton without resetting
+  ///
+  /// @return       true if baton has been posted, false othewise
+  bool try_wait() const {
+    auto s = state_.load(std::memory_order_acquire);
+    assert(s == INIT || s == EARLY_DELIVERY);
+    return s == EARLY_DELIVERY;
+  }
+
   /// Similar to wait, but with a timeout. The thread is unblocked if the
   /// timeout expires.
-  /// Note: Only a single call to timed_wait/wait is allowed during a baton's
-  /// life-cycle (from construction/reset to destruction/reset). In other
-  /// words, after timed_wait the caller can't invoke wait/timed_wait/try_wait
+  /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
+  /// during a baton's life-cycle (from ctor/reset to dtor/reset). In other
+  /// words, after try_wait_for the caller can't invoke
+  /// wait/try_wait/try_wait_for/try_wait_until
+  /// again on the same baton without resetting it.
+  ///
+  /// @param  timeout       Time until which the thread can block
+  /// @return               true if the baton was posted to before timeout,
+  ///                       false otherwise
+  template <typename Rep, typename Period>
+  bool try_wait_for(const std::chrono::duration<Rep, Period>& timeout) {
+    static_assert(
+        Blocking, "Non-blocking Baton does not support try_wait_for.");
+
+    auto deadline = std::chrono::steady_clock::now() + timeout;
+    return try_wait_until(deadline);
+  }
+
+  /// Similar to wait, but with a deadline. The thread is unblocked if the
+  /// deadline expires.
+  /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
+  /// during a baton's life-cycle (from ctor/reset to dtor/reset). In other
+  /// words, after try_wait_until the caller can't invoke
+  /// wait/try_wait/try_wait_for/try_wait_until
   /// again on the same baton without resetting it.
   ///
   /// @param  deadline      Time until which the thread can block
-  /// @return               true if the baton was posted to before timeout,
+  /// @return               true if the baton was posted to before deadline,
   ///                       false otherwise
-  template <typename Clock, typename Duration = typename Clock::duration>
-  bool timed_wait(const std::chrono::time_point<Clock,Duration>& deadline) {
-    static_assert(Blocking, "Non-blocking Baton does not support timed wait.");
+  template <typename Clock, typename Duration>
+  bool try_wait_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    static_assert(
+        Blocking, "Non-blocking Baton does not support try_wait_until.");
 
     if (spinWaitForEarlyDelivery()) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
@@ -292,28 +332,16 @@ struct Baton {
     }
   }
 
-  /// Similar to timed_wait, but with a duration.
-  template <typename Clock = std::chrono::steady_clock, typename Duration>
-  bool timed_wait(const Duration& duration) {
-    auto deadline = Clock::now() + duration;
-    return timed_wait(deadline);
+  /// Alias to try_wait_for. Deprecated.
+  template <typename Rep, typename Period>
+  bool timed_wait(const std::chrono::duration<Rep, Period>& timeout) {
+    return try_wait_for(timeout);
   }
 
-  /// Similar to wait, but doesn't block the thread if it hasn't been posted.
-  ///
-  /// try_wait has the following semantics:
-  /// - It is ok to call try_wait any number times on the same baton until
-  ///   try_wait reports that the baton has been posted.
-  /// - It is ok to call timed_wait or wait on the same baton if try_wait
-  ///   reports that baton hasn't been posted.
-  /// - If try_wait indicates that the baton has been posted, it is invalid to
-  ///   call wait, try_wait or timed_wait on the same baton without resetting
-  ///
-  /// @return       true if baton has been posted, false othewise
-  bool try_wait() const {
-    auto s = state_.load(std::memory_order_acquire);
-    assert(s == INIT || s == EARLY_DELIVERY);
-    return s == EARLY_DELIVERY;
+  /// Alias to try_wait_until. Deprecated.
+  template <typename Clock, typename Duration>
+  bool timed_wait(const std::chrono::time_point<Clock, Duration>& deadline) {
+    return try_wait_until(deadline);
   }
 
  private:
