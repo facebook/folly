@@ -236,7 +236,8 @@ class IOBufQueue {
 
     void dcheckIntegrity() {
       // Tail start should always be less than tail end.
-      DCHECK_LE(data_.cachedRange.first, data_.cachedRange.second);
+      DCHECK_LE(
+          (void*)data_.cachedRange.first, (void*)data_.cachedRange.second);
       DCHECK(
           data_.cachedRange.first != nullptr ||
           data_.cachedRange.second == nullptr);
@@ -376,7 +377,9 @@ class IOBufQueue {
    */
   void postallocate(uint64_t n) {
     dcheckCacheIntegrity();
-    DCHECK_LE(cachePtr_->cachedRange.first + n, cachePtr_->cachedRange.second);
+    DCHECK_LE(
+        (void*)(cachePtr_->cachedRange.first + n),
+        (void*)cachePtr_->cachedRange.second);
     cachePtr_->cachedRange.first += n;
   }
 
@@ -553,8 +556,10 @@ class IOBufQueue {
 
   void dcheckCacheIntegrity() const {
     // Tail start should always be less than tail end.
-    DCHECK_LE(tailStart_, cachePtr_->cachedRange.first);
-    DCHECK_LE(cachePtr_->cachedRange.first, cachePtr_->cachedRange.second);
+    DCHECK_LE((void*)tailStart_, (void*)cachePtr_->cachedRange.first);
+    DCHECK_LE(
+        (void*)cachePtr_->cachedRange.first,
+        (void*)cachePtr_->cachedRange.second);
     DCHECK(
         cachePtr_->cachedRange.first != nullptr ||
         cachePtr_->cachedRange.second == nullptr);
@@ -606,7 +611,8 @@ class IOBufQueue {
     if (tailStart_ != cachePtr_->cachedRange.first) {
       auto buf = head_->prev();
       DCHECK_EQ(
-          buf->writableTail() + buf->tailroom(), cachePtr_->cachedRange.second);
+          (void*)(buf->writableTail() + buf->tailroom()),
+          (void*)cachePtr_->cachedRange.second);
       auto len = cachePtr_->cachedRange.first - tailStart_;
       buf->append(len);
       chainLength_ += len;
