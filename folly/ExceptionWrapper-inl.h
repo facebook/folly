@@ -281,12 +281,18 @@ inline exception_wrapper exception_wrapper::SharedPtr::get_exception_ptr_(
 }
 
 template <class Ex, typename... As>
-inline exception_wrapper::exception_wrapper(OnHeapTag, in_place_type_t<Ex>, As&&... as)
+inline exception_wrapper::exception_wrapper(
+    OnHeapTag,
+    in_place_type_t<Ex>,
+    As&&... as)
     : sptr_{std::make_shared<SharedPtr::Impl<Ex>>(std::forward<As>(as)...)},
       vptr_(&SharedPtr::ops_) {}
 
 template <class Ex, typename... As>
-inline exception_wrapper::exception_wrapper(InSituTag, in_place_type_t<Ex>, As&&... as)
+inline exception_wrapper::exception_wrapper(
+    InSituTag,
+    in_place_type_t<Ex>,
+    As&&... as)
     : buff_{in_place_type<Ex>, std::forward<As>(as)...},
       vptr_(&InPlace<Ex>::ops_) {}
 

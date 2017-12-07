@@ -235,18 +235,16 @@ class exception_wrapper final {
     Ex const& as() const noexcept;
   };
 
-  enum class Placement { kInSitu, kOnHeap };
-  template <class T>
-  using PlacementOf = std::integral_constant<
-      Placement,
-      sizeof(T) <= sizeof(Buffer::Storage) &&
-              alignof(T) <= alignof(Buffer::Storage) &&
-              noexcept(T(std::declval<T&&>()))
-          ? Placement::kInSitu
-          : Placement::kOnHeap>;
+  struct InSituTag {};
+  struct OnHeapTag {};
 
-  using InSituTag = std::integral_constant<Placement, Placement::kInSitu>;
-  using OnHeapTag = std::integral_constant<Placement, Placement::kOnHeap>;
+  template <class T>
+  using PlacementOf = _t<std::conditional<
+      sizeof(T) <= sizeof(Buffer::Storage) &&
+          alignof(T) <= alignof(Buffer::Storage) &&
+          noexcept(T(std::declval<T&&>())),
+      InSituTag,
+      OnHeapTag>>;
 
   static std::exception const* as_exception_or_null_(std::exception const& ex);
   static std::exception const* as_exception_or_null_(AnyException);
