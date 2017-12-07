@@ -41,7 +41,7 @@ std::ostream& operator<<(std::ostream& os, const LogCategoryConfig& config) {
 }
 
 std::ostream& operator<<(std::ostream& os, const LogHandlerConfig& config) {
-  os << config.type;
+  os << (config.type ? config.type.value() : "[no type]");
   bool first = true;
   for (const auto& opt : config.options) {
     if (!first) {
@@ -106,7 +106,7 @@ TEST(LogConfig, parseBasic) {
           Pair("", LogCategoryConfig{LogLevel::ERR, true, {}})));
   EXPECT_THAT(config.getHandlerConfigs(), UnorderedElementsAre());
 
-  config = parseLogConfig(" ERR:stderr; stderr=file,stream=stderr ");
+  config = parseLogConfig(" ERR:stderr; stderr=stream:stream=stderr ");
   EXPECT_THAT(
       config.getCategoryConfigs(),
       UnorderedElementsAre(
@@ -114,12 +114,12 @@ TEST(LogConfig, parseBasic) {
   EXPECT_THAT(
       config.getHandlerConfigs(),
       UnorderedElementsAre(
-          Pair("stderr", LogHandlerConfig{"file", {{"stream", "stderr"}}})));
+          Pair("stderr", LogHandlerConfig{"stream", {{"stream", "stderr"}}})));
 
   config = parseLogConfig(
       "ERR:myfile:custom, folly=DBG2, folly.io:=WARN:other;"
-      "myfile=file,path=/tmp/x.log; "
-      "custom=custom,foo=bar,hello=world,a = b = c; "
+      "myfile=file:path=/tmp/x.log; "
+      "custom=custom:foo=bar,hello=world,a = b = c; "
       "other=custom2");
   EXPECT_THAT(
       config.getCategoryConfigs(),
@@ -141,8 +141,36 @@ TEST(LogConfig, parseBasic) {
                   {{"foo", "bar"}, {"hello", "world"}, {"a", "b = c"}}}),
           Pair("other", LogHandlerConfig{"custom2"})));
 
+  // Test updating existing handler configs, with no handler type
+  config = parseLogConfig("ERR;foo");
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(Pair("", LogCategoryConfig{LogLevel::ERR, true})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(Pair("foo", LogHandlerConfig{})));
+
+  config = parseLogConfig("ERR;foo:a=b,c=d");
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(Pair("", LogCategoryConfig{LogLevel::ERR, true})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(Pair(
+          "foo", LogHandlerConfig{folly::none, {{"a", "b"}, {"c", "d"}}})));
+
+  config = parseLogConfig("ERR;test=file:path=/tmp/test.log;foo:a=b,c=d");
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(Pair("", LogCategoryConfig{LogLevel::ERR, true})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(
+          Pair("foo", LogHandlerConfig{folly::none, {{"a", "b"}, {"c", "d"}}}),
+          Pair("test", LogHandlerConfig{"file", {{"path", "/tmp/test.log"}}})));
+
   // Log handler changes with no category changes
-  config = parseLogConfig("; myhandler=custom,foo=bar");
+  config = parseLogConfig("; myhandler=custom:foo=bar");
   EXPECT_THAT(config.getCategoryConfigs(), UnorderedElementsAre());
   EXPECT_THAT(
       config.getHandlerConfigs(),
@@ -219,13 +247,7 @@ TEST(LogConfig, parseBasicErrors) {
   EXPECT_THROW_RE(
       parseLogConfig("ERR;"),
       LogConfigParseError,
-      "error parsing log handler configuration \"\": "
-      "expected data in the form NAME=TYPE");
-  EXPECT_THROW_RE(
-      parseLogConfig("ERR;foo"),
-      LogConfigParseError,
-      "error parsing log handler configuration \"foo\": "
-      "expected data in the form NAME=TYPE");
+      "error parsing log handler configuration: empty log handler name");
   EXPECT_THROW_RE(
       parseLogConfig("ERR;foo="),
       LogConfigParseError,
@@ -238,8 +260,18 @@ TEST(LogConfig, parseBasicErrors) {
   EXPECT_THROW_RE(
       parseLogConfig("ERR;handler1=file;"),
       LogConfigParseError,
-      "error parsing log handler configuration \"\": "
-      "expected data in the form NAME=TYPE");
+      "error parsing log handler configuration: empty log handler name");
+  EXPECT_THROW_RE(
+      parseLogConfig("ERR;test=file,path=/tmp/test.log;foo:a=b,c=d"),
+      LogConfigParseError,
+      "error parsing configuration for log handler \"test\": "
+      "invalid type \"file,path=/tmp/test.log\": type name cannot contain "
+      "a comma when using the basic config format");
+  EXPECT_THROW_RE(
+      parseLogConfig("ERR;test,path=/tmp/test.log;foo:a=b,c=d"),
+      LogConfigParseError,
+      "error parsing configuration for log handler \"test,path\": "
+      "name cannot contain a comma when using the basic config format");
 }
 
 TEST(LogConfig, parseJson) {
@@ -545,7 +577,7 @@ TEST(LogConfig, toJson) {
 
   config = parseLogConfig(
       "ERROR:h1,foo.bar:=FATAL,folly=INFO:; "
-      "h1=custom,foo=bar");
+      "h1=custom:foo=bar");
   expectedJson = folly::parseJson(R"JSON({
   "categories" : {
     "" : {
@@ -584,7 +616,7 @@ TEST(LogConfig, mergeConfigs) {
   EXPECT_THAT(config.getHandlerConfigs(), UnorderedElementsAre());
 
   config =
-      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+      parseLogConfig("WARN:default; default=custom:opt1=value1,opt2=value2");
   config.update(parseLogConfig("folly.io=DBG2,foo=INFO"));
   EXPECT_THAT(
       config.getCategoryConfigs(),
@@ -602,7 +634,7 @@ TEST(LogConfig, mergeConfigs) {
   // Updating the root category's log level without specifying
   // handlers should leave its current handler list intact
   config =
-      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+      parseLogConfig("WARN:default; default=custom:opt1=value1,opt2=value2");
   config.update(parseLogConfig("ERR"));
   EXPECT_THAT(
       config.getCategoryConfigs(),
@@ -616,7 +648,7 @@ TEST(LogConfig, mergeConfigs) {
               "custom", {{"opt1", "value1"}, {"opt2", "value2"}}))));
 
   config =
-      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+      parseLogConfig("WARN:default; default=custom:opt1=value1,opt2=value2");
   config.update(parseLogConfig(".:=ERR"));
   EXPECT_THAT(
       config.getCategoryConfigs(),
@@ -631,7 +663,7 @@ TEST(LogConfig, mergeConfigs) {
 
   // Test clearing the root category's log handlers
   config =
-      parseLogConfig("WARN:default; default=custom,opt1=value1,opt2=value2");
+      parseLogConfig("WARN:default; default=custom:opt1=value1,opt2=value2");
   config.update(parseLogConfig("FATAL:"));
   EXPECT_THAT(
       config.getCategoryConfigs(),
@@ -643,4 +675,28 @@ TEST(LogConfig, mergeConfigs) {
           "default",
           LogHandlerConfig(
               "custom", {{"opt1", "value1"}, {"opt2", "value2"}}))));
+
+  // Test updating the settings on a log handler
+  config =
+      parseLogConfig("WARN:default; default=stream:stream=stderr,async=false");
+  config.update(parseLogConfig("INFO; default:async=true"));
+  EXPECT_THAT(
+      config.getCategoryConfigs(),
+      UnorderedElementsAre(
+          Pair("", LogCategoryConfig{LogLevel::INFO, true, {"default"}})));
+  EXPECT_THAT(
+      config.getHandlerConfigs(),
+      UnorderedElementsAre(Pair(
+          "default",
+          LogHandlerConfig(
+              "stream", {{"stream", "stderr"}, {"async", "true"}}))));
+
+  // Updating the settings for a non-existent log handler should fail
+  config =
+      parseLogConfig("WARN:default; default=stream:stream=stderr,async=false");
+  EXPECT_THROW_RE(
+      config.update(parseLogConfig("INFO; other:async=true")),
+      std::invalid_argument,
+      "cannot update configuration for "
+      "unknown log handler \"other\"");
 }

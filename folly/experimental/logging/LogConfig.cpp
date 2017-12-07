@@ -15,6 +15,8 @@
  */
 #include <folly/experimental/logging/LogConfig.h>
 
+#include <folly/Conv.h>
+
 namespace folly {
 
 bool LogConfig::operator==(const LogConfig& other) const {
@@ -30,9 +32,24 @@ void LogConfig::update(const LogConfig& other) {
   // Update handlerConfigs_ with all of the entries from the other LogConfig.
   // Any entries already present in our handlerConfigs_ are replaced wholesale.
   for (const auto& entry : other.handlerConfigs_) {
-    auto result = handlerConfigs_.insert(entry);
-    if (!result.second) {
-      result.first->second = entry.second;
+    if (entry.second.type.hasValue()) {
+      // This is a complete LogHandlerConfig that should be inserted
+      // or completely replace an existing handler config with this name.
+      auto result = handlerConfigs_.insert(entry);
+      if (!result.second) {
+        result.first->second = entry.second;
+      }
+    } else {
+      // This config is updating an existing LogHandlerConfig rather than
+      // completely replacing it.
+      auto iter = handlerConfigs_.find(entry.first);
+      if (iter == handlerConfigs_.end()) {
+        throw std::invalid_argument(to<std::string>(
+            "cannot update configuration for unknown log handler \"",
+            entry.first,
+            "\""));
+      }
+      iter->second.update(entry.second);
     }
   }
 

@@ -64,7 +64,7 @@ std::ostream& operator<<(
   }
 
   auto config = configHandler->getConfig();
-  os << "ConfigHandler(" << config.type;
+  os << "ConfigHandler(" << (config.type ? config.type.value() : "[no type]");
   for (const auto& entry : config.options) {
     os << ", " << entry.first << "=" << entry.second;
   }
@@ -125,14 +125,14 @@ TEST(ConfigUpdate, updateConfig) {
   EXPECT_EQ(parseLogConfig(".:=ERROR:"), db.getConfig());
 
   // Apply an update
-  db.updateConfig(parseLogConfig("INFO:stderr; stderr=handlerA,stream=stderr"));
+  db.updateConfig(parseLogConfig("INFO:stderr; stderr=handlerA:stream=stderr"));
   EXPECT_EQ(LogLevel::INFO, db.getCategory("")->getLevel());
   EXPECT_THAT(
       db.getCategory("")->getHandlers(),
       UnorderedElementsAre(
           MatchLogHandler("handlerA", {{"stream", "stderr"}})));
   EXPECT_EQ(
-      parseLogConfig(".:=INFO:stderr; stderr=handlerA,stream=stderr"),
+      parseLogConfig(".:=INFO:stderr; stderr=handlerA:stream=stderr"),
       db.getConfig());
 
   // Update the log level for category "foo"
@@ -146,14 +146,14 @@ TEST(ConfigUpdate, updateConfig) {
   EXPECT_EQ(1, db.getCategory("")->getHandlers().size());
   EXPECT_EQ(
       parseLogConfig(
-          ".:=INFO:stderr, foo:=DBG2:; stderr=handlerA,stream=stderr"),
+          ".:=INFO:stderr, foo:=DBG2:; stderr=handlerA:stream=stderr"),
       db.getConfig());
 
   // Add 2 log handlers to the "bar" log category.
   db.updateConfig(
       parseLogConfig("bar=ERROR:new:h2; "
-                     "new=handlerB,key=value; "
-                     "h2=handlerA,foo=bar"));
+                     "new=handlerB:key=value; "
+                     "h2=handlerA:foo=bar"));
   EXPECT_EQ(LogLevel::INFO, db.getCategory("")->getLevel());
   EXPECT_THAT(
       db.getCategory("")->getHandlers(),
@@ -167,15 +167,15 @@ TEST(ConfigUpdate, updateConfig) {
           MatchLogHandler("handlerA", {{"foo", "bar"}})));
   EXPECT_EQ(
       parseLogConfig(".:=INFO:stderr, foo:=DBG2:, bar=ERROR:new:h2; "
-                     "stderr=handlerA,stream=stderr; "
-                     "new=handlerB,key=value; "
-                     "h2=handlerA,foo=bar"),
+                     "stderr=handlerA: stream=stderr; "
+                     "new=handlerB: key=value; "
+                     "h2=handlerA: foo=bar"),
       db.getConfig());
 
   // Updating the "new" log handler settings should automatically update
   // the settings we see on the "bar" category, even if we don't explicitly
   // list "bar" in the config update
-  db.updateConfig(parseLogConfig("; new=handlerB,newkey=newvalue"));
+  db.updateConfig(parseLogConfig("; new=handlerB:newkey=newvalue"));
   EXPECT_EQ(LogLevel::INFO, db.getCategory("")->getLevel());
   EXPECT_THAT(
       db.getCategory("")->getHandlers(),
@@ -189,9 +189,9 @@ TEST(ConfigUpdate, updateConfig) {
           MatchLogHandler("handlerA", {{"foo", "bar"}})));
   EXPECT_EQ(
       parseLogConfig(".:=INFO:stderr, foo:=DBG2:, bar=ERROR:new:h2; "
-                     "stderr=handlerA,stream=stderr; "
-                     "new=handlerB,newkey=newvalue; "
-                     "h2=handlerA,foo=bar"),
+                     "stderr=handlerA: stream=stderr; "
+                     "new=handlerB: newkey=newvalue; "
+                     "h2=handlerA: foo=bar"),
       db.getConfig());
 
   // Updating the level settings for the "bar" handler should leave its
@@ -210,16 +210,16 @@ TEST(ConfigUpdate, updateConfig) {
           MatchLogHandler("handlerA", {{"foo", "bar"}})));
   EXPECT_EQ(
       parseLogConfig(".:=INFO:stderr, foo:=DBG2:, bar=WARN:new:h2; "
-                     "stderr=handlerA,stream=stderr; "
-                     "new=handlerB,newkey=newvalue; "
-                     "h2=handlerA,foo=bar"),
+                     "stderr=handlerA: stream=stderr; "
+                     "new=handlerB: newkey=newvalue; "
+                     "h2=handlerA: foo=bar"),
       db.getConfig());
 
   // Update the options for the h2 handler in place, and also add it to the
   // "test.foo" category.  The changes should also be reflected on the "bar"
   // category.
   db.updateConfig(
-      parseLogConfig("test.foo=INFO:h2; h2=handlerA,reuse_handler=1,foo=xyz"));
+      parseLogConfig("test.foo=INFO:h2; h2=handlerA:reuse_handler=1,foo=xyz"));
   EXPECT_EQ(LogLevel::INFO, db.getCategory("")->getLevel());
   EXPECT_THAT(
       db.getCategory("")->getHandlers(),
@@ -240,10 +240,70 @@ TEST(ConfigUpdate, updateConfig) {
   EXPECT_EQ(
       parseLogConfig(".:=INFO:stderr, foo:=DBG2:, bar=WARN:new:h2, "
                      "test.foo=INFO:h2; "
-                     "stderr=handlerA,stream=stderr; "
-                     "new=handlerB,newkey=newvalue; "
-                     "h2=handlerA,reuse_handler=1,foo=xyz"),
+                     "stderr=handlerA: stream=stderr; "
+                     "new=handlerB: newkey=newvalue; "
+                     "h2=handlerA: reuse_handler=1,foo=xyz"),
       db.getConfig());
+
+  // Update the options for the h2 handler using partial options
+  db.updateConfig(parseLogConfig("; h2:abc=def"));
+  EXPECT_EQ(LogLevel::INFO, db.getCategory("")->getLevel());
+  EXPECT_THAT(
+      db.getCategory("")->getHandlers(),
+      UnorderedElementsAre(
+          MatchLogHandler("handlerA", {{"stream", "stderr"}})));
+  EXPECT_EQ(LogLevel::WARN, db.getCategory("bar")->getLevel());
+  EXPECT_THAT(
+      db.getCategory("bar")->getHandlers(),
+      UnorderedElementsAre(
+          MatchLogHandler("handlerB", {{"newkey", "newvalue"}}),
+          MatchLogHandler(
+              "handlerA",
+              {{"abc", "def"}, {"foo", "xyz"}, {"reuse_handler", "1"}})));
+  EXPECT_EQ(LogLevel::INFO, db.getCategory("test.foo")->getLevel());
+  EXPECT_THAT(
+      db.getCategory("test.foo")->getHandlers(),
+      UnorderedElementsAre(MatchLogHandler(
+          "handlerA",
+          {{"abc", "def"}, {"foo", "xyz"}, {"reuse_handler", "1"}})));
+  EXPECT_EQ(
+      parseLogConfig(".:=INFO:stderr, foo:=DBG2:, bar=WARN:new:h2, "
+                     "test.foo=INFO:h2; "
+                     "stderr=handlerA: stream=stderr; "
+                     "new=handlerB: newkey=newvalue; "
+                     "h2=handlerA: reuse_handler=1,abc=def,foo=xyz"),
+      db.getConfig());
+
+  // Update the options for the "new" handler using partial options
+  db.updateConfig(parseLogConfig("; new:opt1=value1"));
+  EXPECT_EQ(LogLevel::WARN, db.getCategory("bar")->getLevel());
+  EXPECT_THAT(
+      db.getCategory("bar")->getHandlers(),
+      UnorderedElementsAre(
+          MatchLogHandler(
+              "handlerB", {{"opt1", "value1"}, {"newkey", "newvalue"}}),
+          MatchLogHandler(
+              "handlerA",
+              {{"abc", "def"}, {"foo", "xyz"}, {"reuse_handler", "1"}})));
+  EXPECT_EQ(LogLevel::INFO, db.getCategory("test.foo")->getLevel());
+  EXPECT_THAT(
+      db.getCategory("test.foo")->getHandlers(),
+      UnorderedElementsAre(MatchLogHandler(
+          "handlerA",
+          {{"abc", "def"}, {"foo", "xyz"}, {"reuse_handler", "1"}})));
+  EXPECT_EQ(
+      parseLogConfig(".:=INFO:stderr, foo:=DBG2:, bar=WARN:new:h2, "
+                     "test.foo=INFO:h2; "
+                     "stderr=handlerA: stream=stderr; "
+                     "new=handlerB: newkey=newvalue,opt1=value1; "
+                     "h2=handlerA: reuse_handler=1,abc=def,foo=xyz"),
+      db.getConfig());
+
+  // Supplying partial options for a non-existent log handler should fail
+  EXPECT_THROW_RE(
+      db.updateConfig(parseLogConfig("; no_such_handler:foo=bar")),
+      std::invalid_argument,
+      "cannot update unknown log handler \"no_such_handler\"");
 
   // Explicitly clear the handlers for the "bar" category
   // This should remove the "new" handler from the LoggerDB since bar was the
@@ -259,17 +319,17 @@ TEST(ConfigUpdate, updateConfig) {
   EXPECT_EQ(
       parseLogConfig(".:=INFO:stderr, foo:=DBG2:, bar=WARN:, "
                      "test.foo=INFO:h2; "
-                     "stderr=handlerA,stream=stderr; "
-                     "h2=handlerA,reuse_handler=1,foo=xyz"),
+                     "stderr=handlerA: stream=stderr; "
+                     "h2=handlerA: reuse_handler=1,abc=def,foo=xyz"),
       db.getConfig());
 
   // Now test resetConfig()
   db.resetConfig(
       parseLogConfig("bar=INFO:h2, test.abc=DBG3; "
-                     "h2=handlerB,abc=xyz"));
+                     "h2=handlerB: abc=xyz"));
   EXPECT_EQ(
       parseLogConfig(".:=ERR:, bar=INFO:h2, test.abc=DBG3:; "
-                     "h2=handlerB,abc=xyz"),
+                     "h2=handlerB: abc=xyz"),
       db.getConfig());
 }
 
@@ -289,7 +349,7 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
   db.getCategory("x.y.z")->addHandler(handlerFoo);
   EXPECT_EQ(
       parseLogConfig(".:=ERR:, x.y.z=DBG2:anonymousHandler1; "
-                     "anonymousHandler1=foo,abc=xyz"),
+                     "anonymousHandler1=foo:abc=xyz"),
       db.getConfig());
 
   // If we attach the same handler to another category it should still only be
@@ -300,20 +360,20 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
       parseLogConfig(".:=ERR:, "
                      "x.y.z=DBG2:anonymousHandler1, "
                      "test.category=DBG1:anonymousHandler1; "
-                     "anonymousHandler1=foo,abc=xyz"),
+                     "anonymousHandler1=foo:abc=xyz"),
       db.getConfig());
 
   // If we use updateConfig() to explicitly define a handler named
   // "anonymousHandler1", the unnamed handler will be reported as
   // "anonymousHandler2" instead now.
   db.updateConfig(parseLogConfig(
-      "a.b.c=INFO:anonymousHandler1; anonymousHandler1=handlerA,key=value"));
+      "a.b.c=INFO:anonymousHandler1; anonymousHandler1=handlerA:key=value"));
   EXPECT_EQ(
       parseLogConfig(".:=ERR:, "
                      "a.b.c=INFO:anonymousHandler1, "
                      "x.y.z=DBG2:anonymousHandler2, "
                      "test.category=DBG1:anonymousHandler2; "
-                     "anonymousHandler1=handlerA,key=value; "
-                     "anonymousHandler2=foo,abc=xyz"),
+                     "anonymousHandler1=handlerA: key=value; "
+                     "anonymousHandler2=foo: abc=xyz"),
       db.getConfig());
 }

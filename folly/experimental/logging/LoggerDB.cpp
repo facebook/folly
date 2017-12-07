@@ -195,13 +195,6 @@ void LoggerDB::startConfigUpdate(
 
   // Create all of the new LogHandlers needed from this configuration
   for (const auto& entry : config.getHandlerConfigs()) {
-    // Look up the LogHandlerFactory
-    auto factoryIter = handlerInfo->factories.find(entry.second.type);
-    if (factoryIter == handlerInfo->factories.end()) {
-      throw std::invalid_argument(to<std::string>(
-          "unknown log handler type \"", entry.second.type, "\""));
-    }
-
     // Check to see if there is an existing LogHandler with this name
     std::shared_ptr<LogHandler> oldHandler;
     auto iter = handlers->find(entry.first);
@@ -209,17 +202,49 @@ void LoggerDB::startConfigUpdate(
       oldHandler = iter->second;
     }
 
+    LogHandlerConfig updatedConfig;
+    const LogHandlerConfig* handlerConfig;
+    if (entry.second.type.hasValue()) {
+      handlerConfig = &entry.second;
+    } else {
+      // This configuration is intended to update an existing LogHandler
+      if (!oldHandler) {
+        throw std::invalid_argument(to<std::string>(
+            "cannot update unknown log handler \"", entry.first, "\""));
+      }
+
+      updatedConfig = oldHandler->getConfig();
+      if (!updatedConfig.type.hasValue()) {
+        // This normally should not happen unless someone improperly manually
+        // constructed a LogHandler object.  All existing LogHandler objects
+        // should indicate their type.
+        throw std::invalid_argument(to<std::string>(
+            "existing log handler \"",
+            entry.first,
+            "\" is missing type information"));
+      }
+      updatedConfig.update(entry.second);
+      handlerConfig = &updatedConfig;
+    }
+
+    // Look up the LogHandlerFactory
+    auto factoryIter = handlerInfo->factories.find(handlerConfig->type.value());
+    if (factoryIter == handlerInfo->factories.end()) {
+      throw std::invalid_argument(to<std::string>(
+          "unknown log handler type \"", handlerConfig->type.value(), "\""));
+    }
+
     // Create the new log handler
     const auto& factory = factoryIter->second;
     std::shared_ptr<LogHandler> handler;
     try {
       if (oldHandler) {
-        handler = factory->updateHandler(oldHandler, entry.second.options);
+        handler = factory->updateHandler(oldHandler, handlerConfig->options);
         if (handler != oldHandler) {
           oldToNewHandlerMap->emplace(oldHandler, handler);
         }
       } else {
-        handler = factory->createHandler(entry.second.options);
+        handler = factory->createHandler(handlerConfig->options);
       }
     } catch (const std::exception& ex) {
       // Errors creating or updating the the log handler are generally due to

@@ -44,7 +44,7 @@ namespace folly {
  * handler, the handler will be automatically forgotten by the LoggerDB code.
  */
 constexpr StringPiece kDefaultLoggingConfig =
-    ".=WARN:default; default=stream,stream=stderr,async=false";
+    ".=WARN:default; default=stream:stream=stderr,async=false";
 
 void initLogging(StringPiece configString) {
   // Register the StreamHandlerFactory

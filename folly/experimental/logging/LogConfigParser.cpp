@@ -357,49 +357,84 @@ bool splitNameValue(
 }
 
 std::pair<std::string, LogHandlerConfig> parseHandlerConfig(StringPiece value) {
-  std::vector<StringPiece> pieces;
-  folly::split(",", value, pieces);
-  FOLLY_SAFE_DCHECK(
-      pieces.size() >= 1, "folly::split() always returns a list of length 1");
+  // Parse the handler name and optional type
+  auto colonIndex = value.find(':');
+  StringPiece namePortion;
+  StringPiece optionsStr;
+  if (colonIndex == StringPiece::npos) {
+    namePortion = value;
+  } else {
+    namePortion = StringPiece{value.begin(), value.begin() + colonIndex};
+    optionsStr = StringPiece{value.begin() + colonIndex + 1, value.end()};
+  }
 
   StringPiece handlerName;
-  StringPiece handlerType;
-  if (!splitNameValue(pieces[0], &handlerName, &handlerType)) {
-    throw LogConfigParseError{to<string>(
-        "error parsing log handler configuration \"",
-        pieces[0],
-        "\": expected data in the form NAME=TYPE")};
+  Optional<StringPiece> handlerType(in_place);
+  if (!splitNameValue(namePortion, &handlerName, &handlerType.value())) {
+    handlerName = trimWhitespace(namePortion);
+    handlerType = folly::none;
   }
+
+  // Make sure the handler name and type are not empty.
+  // Also disallow commas in the name: this helps catch accidental errors where
+  // the user left out the ':' and intended to be specifying options instead of
+  // part of the name or type.
   if (handlerName.empty()) {
     throw LogConfigParseError{
         "error parsing log handler configuration: empty log handler name"};
   }
-  if (handlerType.empty()) {
+  if (handlerName.contains(',')) {
     throw LogConfigParseError{to<string>(
         "error parsing configuration for log handler \"",
         handlerName,
-        "\": empty log handler type")};
+        "\": name cannot contain a comma when using the basic config format")};
+  }
+  if (handlerType.hasValue()) {
+    if (handlerType->empty()) {
+      throw LogConfigParseError{to<string>(
+          "error parsing configuration for log handler \"",
+          handlerName,
+          "\": empty log handler type")};
+    }
+    if (handlerType->contains(',')) {
+      throw LogConfigParseError{to<string>(
+          "error parsing configuration for log handler \"",
+          handlerName,
+          "\": invalid type \"",
+          handlerType.value(),
+          "\": type name cannot contain a comma when using "
+          "the basic config format")};
+    }
   }
 
+  // Parse the options
   LogHandlerConfig config{handlerType};
-  for (size_t n = 1; n < pieces.size(); ++n) {
-    StringPiece optionName;
-    StringPiece optionValue;
-    if (!splitNameValue(pieces[n], &optionName, &optionValue)) {
-      throw LogConfigParseError{to<string>(
-          "error parsing configuration for log handler \"",
-          handlerName,
-          "\": options must be of the form NAME=VALUE")};
-    }
+  optionsStr = trimWhitespace(optionsStr);
+  if (!optionsStr.empty()) {
+    std::vector<StringPiece> pieces;
+    folly::split(",", optionsStr, pieces);
+    FOLLY_SAFE_DCHECK(
+        pieces.size() >= 1, "folly::split() always returns a list of length 1");
 
-    auto ret = config.options.emplace(optionName.str(), optionValue.str());
-    if (!ret.second) {
-      throw LogConfigParseError{to<string>(
-          "error parsing configuration for log handler \"",
-          handlerName,
-          "\": duplicate configuration for option \"",
-          optionName,
-          "\"")};
+    for (const auto& piece : pieces) {
+      StringPiece optionName;
+      StringPiece optionValue;
+      if (!splitNameValue(piece, &optionName, &optionValue)) {
+        throw LogConfigParseError{to<string>(
+            "error parsing configuration for log handler \"",
+            handlerName,
+            "\": options must be of the form NAME=VALUE")};
+      }
+
+      auto ret = config.options.emplace(optionName.str(), optionValue.str());
+      if (!ret.second) {
+        throw LogConfigParseError{to<string>(
+            "error parsing configuration for log handler \"",
+            handlerName,
+            "\": duplicate configuration for option \"",
+            optionName,
+            "\"")};
+      }
     }
   }
 
@@ -535,7 +570,11 @@ dynamic logConfigToDynamic(const LogHandlerConfig& config) {
   for (const auto& opt : config.options) {
     options.insert(opt.first, opt.second);
   }
-  return dynamic::object("type", config.type)("options", options);
+  auto result = dynamic::object("options", options);
+  if (config.type.hasValue()) {
+    result("type", config.type.value());
+  }
+  return std::move(result);
 }
 
 dynamic logConfigToDynamic(const LogCategoryConfig& config) {

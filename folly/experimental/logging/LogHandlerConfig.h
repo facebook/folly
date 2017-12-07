@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <folly/Optional.h>
 #include <folly/Range.h>
 
 namespace folly {
@@ -29,13 +30,32 @@ class LogHandlerConfig {
  public:
   using Options = std::unordered_map<std::string, std::string>;
 
-  explicit LogHandlerConfig(folly::StringPiece type);
-  LogHandlerConfig(folly::StringPiece type, Options options);
+  LogHandlerConfig();
+  explicit LogHandlerConfig(StringPiece type);
+  explicit LogHandlerConfig(Optional<StringPiece> type);
+  LogHandlerConfig(StringPiece type, Options options);
+  LogHandlerConfig(Optional<StringPiece> type, Options options);
+
+  /**
+   * Update this LogHandlerConfig object by merging in settings from another
+   * LogConfig.
+   *
+   * The other LogHandlerConfig must not have a type set.
+   */
+  void update(const LogHandlerConfig& other);
 
   bool operator==(const LogHandlerConfig& other) const;
   bool operator!=(const LogHandlerConfig& other) const;
 
-  std::string type;
+  /**
+   * The handler type name.
+   *
+   * If this field is unset than this configuration object is intended to be
+   * used to update an existing LogHandler object.  This field must always
+   * be set in the configuration for all existing LogHandler objects.
+   */
+  Optional<std::string> type;
+
   Options options;
 };
 
