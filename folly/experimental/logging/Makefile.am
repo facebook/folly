@@ -23,6 +23,7 @@ libfollylogging_la_SOURCES = \
 	printf.cpp \
 	RateLimiter.cpp \
 	StandardLogHandler.cpp \
+	StandardLogHandlerFactory.cpp \
 	xlog.cpp
 
 libfollylogging_la_LIBADD = $(top_builddir)/libfolly.la

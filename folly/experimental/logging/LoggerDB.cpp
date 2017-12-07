@@ -212,13 +212,27 @@ void LoggerDB::startConfigUpdate(
     // Create the new log handler
     const auto& factory = factoryIter->second;
     std::shared_ptr<LogHandler> handler;
-    if (oldHandler) {
-      handler = factory->updateHandler(oldHandler, entry.second.options);
-      if (handler != oldHandler) {
-        oldToNewHandlerMap->emplace(oldHandler, handler);
+    try {
+      if (oldHandler) {
+        handler = factory->updateHandler(oldHandler, entry.second.options);
+        if (handler != oldHandler) {
+          oldToNewHandlerMap->emplace(oldHandler, handler);
+        }
+      } else {
+        handler = factory->createHandler(entry.second.options);
       }
-    } else {
-      handler = factory->createHandler(entry.second.options);
+    } catch (const std::exception& ex) {
+      // Errors creating or updating the the log handler are generally due to
+      // bad configuration options.  It is useful to update the exception
+      // message to include the name of the log handler we were trying to
+      // update or create.
+      throw std::invalid_argument(to<string>(
+          "error ",
+          oldHandler ? "updating" : "creating",
+          " log handler \"",
+          entry.first,
+          "\": ",
+          exceptionStr(ex)));
     }
     handlerInfo->handlers[entry.first] = handler;
     (*handlers)[entry.first] = handler;

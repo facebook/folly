@@ -33,6 +33,9 @@ class FileHandlerFactory : public LogHandlerFactory {
   }
 
   std::shared_ptr<LogHandler> createHandler(const Options& options) override;
+
+ private:
+  class WriterFactory;
 };
 
 } // namespace folly

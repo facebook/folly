@@ -180,6 +180,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/logging/printf.h \
 	experimental/logging/RateLimiter.h \
 	experimental/logging/StandardLogHandler.h \
+	experimental/logging/StandardLogHandlerFactory.h \
 	experimental/logging/xlog.h \
 	experimental/NestedCommandLineApp.h \
 	experimental/observer/detail/Core.h \

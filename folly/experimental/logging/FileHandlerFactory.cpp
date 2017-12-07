@@ -15,14 +15,11 @@
  */
 #include <folly/experimental/logging/FileHandlerFactory.h>
 
-#include <set>
-
 #include <folly/Conv.h>
-#include <folly/MapUtil.h>
 #include <folly/experimental/logging/AsyncFileWriter.h>
-#include <folly/experimental/logging/GlogStyleFormatter.h>
 #include <folly/experimental/logging/ImmediateFileWriter.h>
 #include <folly/experimental/logging/StandardLogHandler.h>
+#include <folly/experimental/logging/StandardLogHandlerFactory.h>
 
 using std::make_shared;
 using std::shared_ptr;
@@ -30,97 +27,85 @@ using std::string;
 
 namespace folly {
 
-std::shared_ptr<LogHandler> FileHandlerFactory::createHandler(
-    const Options& options) {
-  // Raise an error if we receive unexpected options
-  auto knownOptions =
-      std::set<std::string>{"path", "stream", "async", "max_buffer_size"};
-  for (const auto& entry : options) {
-    if (knownOptions.find(entry.first) == knownOptions.end()) {
-      throw std::invalid_argument(to<string>(
-          "unknown parameter \"", entry.first, "\" for FileHandlerFactory"));
+class FileHandlerFactory::WriterFactory
+    : public StandardLogHandlerFactory::WriterFactory {
+ public:
+  bool processOption(StringPiece name, StringPiece value) override {
+    if (name == "path") {
+      if (!stream_.empty()) {
+        throw std::invalid_argument(
+            "cannot specify both \"path\" and \"stream\" "
+            "parameters for FileHandlerFactory");
+      }
+      path_ = value.str();
+      return true;
+    } else if (name == "stream") {
+      if (!path_.empty()) {
+        throw std::invalid_argument(
+            "cannot specify both \"path\" and \"stream\" "
+            "parameters for FileHandlerFactory");
+      }
+      stream_ = value.str();
+      return true;
+    } else if (name == "async") {
+      async_ = to<bool>(value);
+      return true;
+    } else if (name == "max_buffer_size") {
+      auto size = to<size_t>(value);
+      if (size == 0) {
+        throw std::invalid_argument(to<string>("must be a postive number"));
+      }
+      maxBufferSize_ = size;
+      return true;
+    } else {
+      return false;
     }
   }
 
-  // Construct the formatter
-  // TODO: We should eventually support parameters to control the formatter
-  // behavior.
-  auto formatter = make_shared<GlogStyleFormatter>();
-
-  // Get the output file to use
-  File outputFile;
-  auto* path = get_ptr(options, "path");
-  auto* stream = get_ptr(options, "stream");
-  if (path && stream) {
-    throw std::invalid_argument(
-        "cannot specify both \"path\" and \"stream\" "
-        "parameters for FileHandlerFactory");
-  } else if (path) {
-    outputFile = File{*path, O_WRONLY | O_APPEND | O_CREAT};
-  } else if (stream) {
-    if (*stream == "stderr") {
+  std::shared_ptr<LogWriter> createWriter() override {
+    // Get the output file to use
+    File outputFile;
+    if (!path_.empty()) {
+      outputFile = File{path_, O_WRONLY | O_APPEND | O_CREAT};
+    } else if (stream_ == "stderr") {
       outputFile = File{STDERR_FILENO, /* ownsFd */ false};
-    } else if (*stream == "stdout") {
+    } else if (stream_ == "stdout") {
       outputFile = File{STDOUT_FILENO, /* ownsFd */ false};
     } else {
       throw std::invalid_argument(to<string>(
           "unknown stream for FileHandlerFactory: \"",
-          *stream,
+          stream_,
           "\" expected one of stdout or stderr"));
     }
-  } else {
-    throw std::invalid_argument(
-        "must specify a \"path\" or \"stream\" "
-        "parameter for FileHandlerFactory");
+
+    // Determine whether we should use ImmediateFileWriter or AsyncFileWriter
+    if (async_) {
+      auto asyncWriter = make_shared<AsyncFileWriter>(std::move(outputFile));
+      if (maxBufferSize_.hasValue()) {
+        asyncWriter->setMaxBufferSize(maxBufferSize_.value());
+      }
+      return asyncWriter;
+    } else {
+      if (maxBufferSize_.hasValue()) {
+        throw std::invalid_argument(to<string>(
+            "the \"max_buffer_size\" option is only valid for async file "
+            "handlers"));
+      }
+      return make_shared<ImmediateFileWriter>(std::move(outputFile));
+    }
   }
 
-  // Determine whether we should use ImmediateFileWriter or AsyncFileWriter
-  shared_ptr<LogWriter> writer;
-  bool async = true;
-  auto* asyncOption = get_ptr(options, "async");
-  if (asyncOption) {
-    try {
-      async = to<bool>(*asyncOption);
-    } catch (const std::exception& ex) {
-      throw std::invalid_argument(to<string>(
-          "expected a boolean value for FileHandlerFactory \"async\" "
-          "parameter: ",
-          *asyncOption));
-    }
-  }
-  auto* maxBufferOption = get_ptr(options, "max_buffer_size");
-  if (async) {
-    auto asyncWriter = make_shared<AsyncFileWriter>(std::move(outputFile));
-    if (maxBufferOption) {
-      size_t maxBufferSize;
-      try {
-        maxBufferSize = to<size_t>(*maxBufferOption);
-      } catch (const std::exception& ex) {
-        throw std::invalid_argument(to<string>(
-            "expected an integer value for FileHandlerFactory "
-            "\"max_buffer_size\": ",
-            *maxBufferOption));
-      }
-      if (maxBufferSize == 0) {
-        throw std::invalid_argument(to<string>(
-            "expected a positive value for FileHandlerFactory "
-            "\"max_buffer_size\": ",
-            *maxBufferOption));
-      }
-      asyncWriter->setMaxBufferSize(maxBufferSize);
-    }
-    writer = std::move(asyncWriter);
-  } else {
-    if (maxBufferOption) {
-      throw std::invalid_argument(to<string>(
-          "the \"max_buffer_size\" option is only valid for async file "
-          "handlers"));
-    }
-    writer = make_shared<ImmediateFileWriter>(std::move(outputFile));
-  }
+  std::string path_;
+  std::string stream_;
+  bool async_{true};
+  Optional<size_t> maxBufferSize_;
+};
 
-  return make_shared<StandardLogHandler>(
-      LogHandlerConfig{getType(), options}, formatter, writer);
+std::shared_ptr<LogHandler> FileHandlerFactory::createHandler(
+    const Options& options) {
+  WriterFactory writerFactory;
+  return StandardLogHandlerFactory::createHandler(
+      getType(), &writerFactory, options);
 }
 
 } // namespace folly
