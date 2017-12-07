@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,12 @@
 #include <folly/IndexedMemPool.h>
 #include <folly/Portability.h>
 #include <folly/concurrency/CacheLocality.h>
-#include <folly/synchronization/Baton.h>
+#include <folly/synchronization/SaturatingSemaphore.h>
 
 #include <atomic>
 #include <cassert>
 #include <mutex>
+#include <thread>
 
 namespace folly {
 
@@ -112,9 +113,9 @@ class FlatCombining {
   /// Combining request record.
   class Rec {
     FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-    folly::Baton<Atom, true, false> valid_;
-    folly::Baton<Atom, true, false> done_;
-    folly::Baton<Atom, true, false> disconnected_;
+    folly::SaturatingSemaphore<false, Atom> valid_;
+    folly::SaturatingSemaphore<false, Atom> done_;
+    folly::SaturatingSemaphore<false, Atom> disconnected_;
     size_t index_;
     size_t next_;
     uint64_t last_;
@@ -136,7 +137,7 @@ class FlatCombining {
     }
 
     bool isValid() const {
-      return valid_.try_wait();
+      return valid_.ready();
     }
 
     void setDone() {
@@ -148,7 +149,7 @@ class FlatCombining {
     }
 
     bool isDone() const {
-      return done_.try_wait();
+      return done_.ready();
     }
 
     void awaitDone() {
@@ -164,7 +165,7 @@ class FlatCombining {
     }
 
     bool isDisconnected() const {
-      return disconnected_.try_wait();
+      return disconnected_.ready();
     }
 
     void setIndex(const size_t index) {
@@ -424,7 +425,7 @@ class FlatCombining {
   Mutex m_;
 
   FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-  folly::Baton<Atom, false, true> pending_;
+  folly::SaturatingSemaphore<true, Atom> pending_;
   Atom<bool> shutdown_{false};
 
   FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
@@ -541,7 +542,7 @@ class FlatCombining {
   }
 
   bool isPending() const {
-    return pending_.try_wait();
+    return pending_.ready();
   }
 
   void awaitPending() {
