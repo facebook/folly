@@ -13,43 +13,51 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/logging/FileHandlerFactory.h>
+#include <folly/experimental/logging/StreamHandlerFactory.h>
 
+#include <folly/Conv.h>
 #include <folly/experimental/logging/FileWriterFactory.h>
 #include <folly/experimental/logging/StandardLogHandler.h>
 #include <folly/experimental/logging/StandardLogHandlerFactory.h>
 
 namespace folly {
 
-class FileHandlerFactory::WriterFactory
+class StreamHandlerFactory::WriterFactory
     : public StandardLogHandlerFactory::WriterFactory {
  public:
   bool processOption(StringPiece name, StringPiece value) override {
-    if (name == "path") {
-      path_ = value.str();
+    if (name == "stream") {
+      stream_ = value.str();
       return true;
     }
-
-    // TODO: In the future it would be nice to support log rotation, and
-    // add parameters to control when the log file should be rotated.
-
     return fileWriterFactory_.processOption(name, value);
   }
 
   std::shared_ptr<LogWriter> createWriter() override {
     // Get the output file to use
-    if (path_.empty()) {
-      throw std::invalid_argument("no path specified for file handler");
+    File outputFile;
+    if (stream_.empty()) {
+      throw std::invalid_argument(
+          "no stream name specified for stream handler");
+    } else if (stream_ == "stderr") {
+      outputFile = File{STDERR_FILENO, /* ownsFd */ false};
+    } else if (stream_ == "stdout") {
+      outputFile = File{STDOUT_FILENO, /* ownsFd */ false};
+    } else {
+      throw std::invalid_argument(to<std::string>(
+          "unknown stream \"",
+          stream_,
+          "\": expected one of stdout or stderr"));
     }
-    return fileWriterFactory_.createWriter(
-        File{path_, O_WRONLY | O_APPEND | O_CREAT});
+
+    return fileWriterFactory_.createWriter(std::move(outputFile));
   }
 
-  std::string path_;
+  std::string stream_;
   FileWriterFactory fileWriterFactory_;
 };
 
-std::shared_ptr<LogHandler> FileHandlerFactory::createHandler(
+std::shared_ptr<LogHandler> StreamHandlerFactory::createHandler(
     const Options& options) {
   WriterFactory writerFactory;
   return StandardLogHandlerFactory::createHandler(

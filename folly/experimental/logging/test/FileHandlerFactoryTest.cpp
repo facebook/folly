@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <folly/experimental/logging/FileHandlerFactory.h>
+#include <folly/experimental/logging/StreamHandlerFactory.h>
 
 #include <folly/Exception.h>
 #include <folly/experimental/TestUtil.h>
@@ -22,6 +23,7 @@
 #include <folly/experimental/logging/ImmediateFileWriter.h>
 #include <folly/experimental/logging/StandardLogHandler.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 using namespace folly;
 using folly::test::TemporaryFile;
@@ -33,7 +35,7 @@ void checkAsyncWriter(
     size_t expectedMaxBufferSize) {
   auto asyncWriter = dynamic_cast<const AsyncFileWriter*>(writer);
   ASSERT_TRUE(asyncWriter)
-      << "FileHandlerFactory should have created an AsyncFileWriter";
+      << "handler factory should have created an AsyncFileWriter";
   EXPECT_EQ(expectedMaxBufferSize, asyncWriter->getMaxBufferSize());
 
   // Make sure this refers to the expected output file
@@ -52,7 +54,7 @@ void checkAsyncWriter(
     size_t expectedMaxBufferSize) {
   auto asyncWriter = dynamic_cast<const AsyncFileWriter*>(writer);
   ASSERT_TRUE(asyncWriter)
-      << "FileHandlerFactory should have created an AsyncFileWriter";
+      << "handler factory should have created an AsyncFileWriter";
   EXPECT_EQ(expectedMaxBufferSize, asyncWriter->getMaxBufferSize());
   EXPECT_EQ(expectedFD, asyncWriter->getFile().fd());
 }
@@ -61,7 +63,7 @@ TEST(FileHandlerFactory, pathOnly) {
   FileHandlerFactory factory;
 
   TemporaryFile tmpFile{"logging_test"};
-  auto options = FileHandlerFactory::Options{
+  auto options = LogHandlerFactory::Options{
       make_pair("path", tmpFile.path().string()),
   };
   auto handler = factory.createHandler(options);
@@ -72,7 +74,7 @@ TEST(FileHandlerFactory, pathOnly) {
   auto formatter =
       std::dynamic_pointer_cast<GlogStyleFormatter>(stdHandler->getFormatter());
   EXPECT_TRUE(formatter)
-      << "FileHandlerFactory should have created a GlogStyleFormatter";
+      << "handler factory should have created a GlogStyleFormatter";
 
   checkAsyncWriter(
       stdHandler->getWriter().get(),
@@ -80,11 +82,11 @@ TEST(FileHandlerFactory, pathOnly) {
       AsyncFileWriter::kDefaultMaxBufferSize);
 }
 
-TEST(FileHandlerFactory, stderrStream) {
-  FileHandlerFactory factory;
+TEST(StreamHandlerFactory, stderrStream) {
+  StreamHandlerFactory factory;
 
   TemporaryFile tmpFile{"logging_test"};
-  auto options = FileHandlerFactory::Options{
+  auto options = StreamHandlerFactory::Options{
       make_pair("stream", "stderr"),
   };
   auto handler = factory.createHandler(options);
@@ -95,7 +97,7 @@ TEST(FileHandlerFactory, stderrStream) {
   auto formatter =
       std::dynamic_pointer_cast<GlogStyleFormatter>(stdHandler->getFormatter());
   EXPECT_TRUE(formatter)
-      << "FileHandlerFactory should have created a GlogStyleFormatter";
+      << "handler factory should have created a GlogStyleFormatter";
 
   checkAsyncWriter(
       stdHandler->getWriter().get(),
@@ -103,11 +105,11 @@ TEST(FileHandlerFactory, stderrStream) {
       AsyncFileWriter::kDefaultMaxBufferSize);
 }
 
-TEST(FileHandlerFactory, stdoutWithMaxBuffer) {
-  FileHandlerFactory factory;
+TEST(StreamHandlerFactory, stdoutWithMaxBuffer) {
+  StreamHandlerFactory factory;
 
   TemporaryFile tmpFile{"logging_test"};
-  auto options = FileHandlerFactory::Options{
+  auto options = StreamHandlerFactory::Options{
       make_pair("stream", "stdout"),
       make_pair("max_buffer_size", "4096"),
   };
@@ -119,7 +121,7 @@ TEST(FileHandlerFactory, stdoutWithMaxBuffer) {
   auto formatter =
       std::dynamic_pointer_cast<GlogStyleFormatter>(stdHandler->getFormatter());
   EXPECT_TRUE(formatter)
-      << "FileHandlerFactory should have created a GlogStyleFormatter";
+      << "handler factory should have created a GlogStyleFormatter";
 
   checkAsyncWriter(stdHandler->getWriter().get(), STDOUT_FILENO, 4096);
 }
@@ -128,7 +130,7 @@ TEST(FileHandlerFactory, pathWithMaxBufferSize) {
   FileHandlerFactory factory;
 
   TemporaryFile tmpFile{"logging_test"};
-  auto options = FileHandlerFactory::Options{
+  auto options = LogHandlerFactory::Options{
       make_pair("path", tmpFile.path().string()),
       make_pair("max_buffer_size", "4096000"),
   };
@@ -140,17 +142,17 @@ TEST(FileHandlerFactory, pathWithMaxBufferSize) {
   auto formatter =
       std::dynamic_pointer_cast<GlogStyleFormatter>(stdHandler->getFormatter());
   EXPECT_TRUE(formatter)
-      << "FileHandlerFactory should have created a GlogStyleFormatter";
+      << "handler factory should have created a GlogStyleFormatter";
 
   checkAsyncWriter(
       stdHandler->getWriter().get(), tmpFile.path().string().c_str(), 4096000);
 }
 
-TEST(FileHandlerFactory, nonAsyncStderr) {
-  FileHandlerFactory factory;
+TEST(StreamHandlerFactory, nonAsyncStderr) {
+  StreamHandlerFactory factory;
 
   TemporaryFile tmpFile{"logging_test"};
-  auto options = FileHandlerFactory::Options{
+  auto options = LogHandlerFactory::Options{
       make_pair("stream", "stderr"),
       make_pair("async", "no"),
   };
@@ -162,7 +164,7 @@ TEST(FileHandlerFactory, nonAsyncStderr) {
   auto formatter =
       std::dynamic_pointer_cast<GlogStyleFormatter>(stdHandler->getFormatter());
   EXPECT_TRUE(formatter)
-      << "FileHandlerFactory should have created a GlogStyleFormatter";
+      << "handler factory should have created a GlogStyleFormatter";
 
   auto writer =
       std::dynamic_pointer_cast<ImmediateFileWriter>(stdHandler->getWriter());
@@ -173,73 +175,185 @@ TEST(FileHandlerFactory, nonAsyncStderr) {
 TEST(FileHandlerFactory, errors) {
   FileHandlerFactory factory;
   TemporaryFile tmpFile{"logging_test"};
+  using Options = LogHandlerFactory::Options;
 
   {
-    auto options = FileHandlerFactory::Options{};
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "one of path or stream required";
+    auto options = Options{};
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "no path specified for file handler");
   }
 
   {
-    auto options = FileHandlerFactory::Options{
-        make_pair("path", tmpFile.path().string()),
-        make_pair("stream", "stderr"),
+    auto options = Options{
+        {"path", tmpFile.path().string()},
+        {"stream", "stderr"},
     };
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "path and stream cannot both be specified";
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "unknown option \"stream\"");
   }
 
   {
-    auto options = FileHandlerFactory::Options{
-        make_pair("stream", "nonstdout"),
+    auto options = Options{
+        {"stream", "nonstdout"},
     };
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "invalid stream";
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "unknown option \"stream\"");
   }
 
   {
-    auto options = FileHandlerFactory::Options{
-        make_pair("stream", "stderr"),
-        make_pair("async", "foobar"),
+    auto options = Options{
+        {"path", tmpFile.path().string()},
+        {"async", "xyz"},
     };
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "invalid async value";
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^error processing option \"async\": Invalid value for bool: \"xyz\"$");
   }
 
   {
-    auto options = FileHandlerFactory::Options{
-        make_pair("stream", "stderr"),
-        make_pair("async", "false"),
-        make_pair("max_buffer_size", "1234"),
+    auto options = Options{
+        {"path", tmpFile.path().string()},
+        {"async", "false"},
+        {"max_buffer_size", "1234"},
     };
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "max_buffer_size only valid for async writers";
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "the \"max_buffer_size\" option is only valid for async file handlers");
   }
 
   {
-    auto options = FileHandlerFactory::Options{
-        make_pair("stream", "stderr"),
-        make_pair("max_buffer_size", "hello"),
+    auto options = Options{
+        {"path", tmpFile.path().string()},
+        {"max_buffer_size", "hello"},
     };
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "max_buffer_size must be an integer";
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^error processing option \"max_buffer_size\": "
+        "Non-digit character found: \"hello\"$");
   }
 
   {
-    auto options = FileHandlerFactory::Options{
-        make_pair("stream", "stderr"),
-        make_pair("max_buffer_size", "0"),
+    auto options = Options{
+        {"path", tmpFile.path().string()},
+        {"max_buffer_size", "0"},
     };
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "max_buffer_size must be a positive integer";
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^error processing option \"max_buffer_size\": "
+        "must be a positive integer$");
   }
 
   {
-    auto options = FileHandlerFactory::Options{
+    auto options = Options{
+        {"path", tmpFile.path().string()},
+        {"foo", "bar"},
+    };
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^unknown option \"foo\"$");
+  }
+}
+
+TEST(StreamHandlerFactory, errors) {
+  StreamHandlerFactory factory;
+  using Options = LogHandlerFactory::Options;
+
+  {
+    auto options = Options{};
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "no stream name specified for stream handler");
+  }
+
+  {
+    auto options = Options{
+        {"path", "/tmp/log.txt"},
+        {"stream", "stderr"},
+    };
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "unknown option \"path\"");
+  }
+
+  {
+    auto options = Options{
+        {"stream", "nonstdout"},
+    };
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "unknown stream \"nonstdout\": expected one of stdout or stderr");
+  }
+
+  {
+    auto options = Options{
+        {"stream", "stderr"},
+        {"async", "xyz"},
+    };
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^error processing option \"async\": Invalid value for bool: \"xyz\"$");
+  }
+
+  {
+    auto options = Options{
+        {"stream", "stderr"},
+        {"async", "false"},
+        {"max_buffer_size", "1234"},
+    };
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^the \"max_buffer_size\" option is only valid for "
+        "async file handlers$");
+  }
+
+  {
+    auto options = Options{
+        {"stream", "stderr"},
+        {"max_buffer_size", "hello"},
+    };
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^error processing option \"max_buffer_size\": "
+        "Non-digit character found: \"hello\"$");
+  }
+
+  {
+    auto options = Options{
+        {"stream", "stderr"},
+        {"max_buffer_size", "0"},
+    };
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "^error processing option \"max_buffer_size\": "
+        "must be a positive integer$");
+  }
+
+  {
+    auto options = Options{
         make_pair("stream", "stderr"),
         make_pair("foo", "bar"),
     };
-    EXPECT_THROW(factory.createHandler(options), std::invalid_argument)
-        << "unknown parameter foo";
+    EXPECT_THROW_RE(
+        factory.createHandler(options),
+        std::invalid_argument,
+        "unknown option \"foo\"");
   }
 }

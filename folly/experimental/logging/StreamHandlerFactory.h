@@ -20,21 +20,19 @@
 namespace folly {
 
 /**
- * FileHandlerFactory is a LogHandlerFactory that constructs log handlers
- * that write to a file.
+ * StreamHandlerFactory is a LogHandlerFactory that constructs log handlers
+ * that write to stdout or stderr.
  *
- * Note that FileHandlerFactory allows opening and appending to arbitrary files
- * based on the handler options.  This may make it unsafe to use
- * FileHandlerFactory in some contexts: for instance, a setuid binary should
- * generally avoid registering the FileHandlerFactory if they allow log
- * handlers to be configured via command line parameters, since otherwise this
- * may allow non-root users to append to files that they otherwise would not
- * have write permissions for.
+ * This is quite similar to FileHandlerFactory, but it always writes to an
+ * existing open file descriptor rather than opening a new file.  This handler
+ * factory is separate from FileHandlerFactory primarily for safety reasons:
+ * FileHandlerFactory supports appending to arbitrary files via config
+ * parameters, while StreamHandlerFactory does not.
  */
-class FileHandlerFactory : public LogHandlerFactory {
+class StreamHandlerFactory : public LogHandlerFactory {
  public:
   StringPiece getType() const override {
-    return "file";
+    return "stream";
   }
 
   std::shared_ptr<LogHandler> createHandler(const Options& options) override;

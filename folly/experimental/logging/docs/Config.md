@@ -143,21 +143,21 @@ Example log configuration strings:
   therefore be discarded, even though they are enabled for one of its parent
   categories.
 
-* `ERROR:stderr, folly=INFO; stderr=file,stream=stderr`
+* `ERROR:stderr, folly=INFO; stderr=stream,stream=stderr`
 
   Sets the root log category level to ERROR, and sets its handler list to
   use the "stderr" handler.  Sets the folly log level to INFO.  Defines
   a log handler named "stderr" which writes to stderr.
 
-* `ERROR:default,folly=INFO:x;default=file,stream=stderr;x=file,path=/tmp/x.log`
+* `ERROR:x,folly=INFO:y;x=stream,stream=stderr;y=file,path=/tmp/y.log`
 
-  Defines two log handlers: "default" which writes to stderr and "x" which
-  writes to the file /tmp/x.log
+  Defines two log handlers: "x" which writes to stderr and "y" which
+  writes to the file /tmp/y.log
   Sets the root log catgory level to ERROR, and configures it to use the
-  "default" handler.  Sets the log level for the "folly" category to INFO and
-  configures it to use the "x" handler.
+  "x" handler.  Sets the log level for the "folly" category to INFO and
+  configures it to use the "y" handler.
 
-* `ERROR:default:x; default=file,stream=stderr; x=file,path=/tmp/x.log`
+* `ERROR:default:x; default=stream,stream=stderr; x=file,path=/tmp/x.log`
 
   Defines two log handlers: "default" which writes to stderr and "x" which
   writes to the file /tmp/x.log
@@ -172,7 +172,7 @@ Example log configuration strings:
   to the empty list.  Not specifying handler information at all (no ':')
   will leave any pre-existing handlers as-is.
 
-* `;default=file,stream=stdout`
+* `;default=stream,stream=stdout`
 
   Does not change any log category settings, and defines a "default" handler
   that writes to stdout.  This format is useful to update log handler settings
@@ -252,7 +252,7 @@ following fields:
   }
   "handlers": {
     "stderr": {
-      "type": "file",
+      "type": "stream",
       "options": {
         "stream": "stderr",
         "async": true,

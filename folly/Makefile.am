@@ -158,6 +158,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/LockFreeRingBuffer.h \
 	experimental/logging/AsyncFileWriter.h \
 	experimental/logging/FileHandlerFactory.h \
+	experimental/logging/FileWriterFactory.h \
 	experimental/logging/GlogStyleFormatter.h \
 	experimental/logging/ImmediateFileWriter.h \
 	experimental/logging/Init.h \
@@ -181,6 +182,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/logging/RateLimiter.h \
 	experimental/logging/StandardLogHandler.h \
 	experimental/logging/StandardLogHandlerFactory.h \
+	experimental/logging/StreamHandlerFactory.h \
 	experimental/logging/xlog.h \
 	experimental/NestedCommandLineApp.h \
 	experimental/observer/detail/Core.h \

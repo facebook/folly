@@ -15,10 +15,10 @@
  */
 #include <folly/experimental/logging/Init.h>
 
-#include <folly/experimental/logging/FileHandlerFactory.h>
 #include <folly/experimental/logging/LogConfig.h>
 #include <folly/experimental/logging/LogConfigParser.h>
 #include <folly/experimental/logging/LoggerDB.h>
+#include <folly/experimental/logging/StreamHandlerFactory.h>
 
 namespace folly {
 
@@ -44,16 +44,24 @@ namespace folly {
  * handler, the handler will be automatically forgotten by the LoggerDB code.
  */
 constexpr StringPiece kDefaultLoggingConfig =
-    ".=WARN:default; default=file,stream=stderr,async=false";
+    ".=WARN:default; default=stream,stream=stderr,async=false";
 
 void initLogging(StringPiece configString) {
-  // Register the FileHandlerFactory
-  //
+  // Register the StreamHandlerFactory
+  LoggerDB::get()->registerHandlerFactory(
+      std::make_unique<StreamHandlerFactory>());
+
   // TODO: In the future it would be nice to build a better mechanism so that
   // additional LogHandlerFactory objects could be automatically registered on
   // startup if they are linked into our current executable.
-  LoggerDB::get()->registerHandlerFactory(
-      std::make_unique<FileHandlerFactory>());
+  //
+  // For now we register only the StreamHandlerFactory.  There is a
+  // FileHandlerFactory, but we do not register it by default: it allows
+  // appending to arbitrary files based on the config settings, and we do not
+  // want to allow this by default for security reasons.  (In the future
+  // maybe it would be worth enabling the FileHandlerFactory by default if we
+  // confirm that we are not a setuid or setgid binary.  i.e., if the real
+  // UID+GID is the same as the effective UID+GID.)
 
   // Parse the default log level settings before processing the input config
   // string.

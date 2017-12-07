@@ -69,12 +69,12 @@ class FatalTests(unittest.TestCase):
         subprocess.check_output([self.helper, '--crash=no'])
 
     def test_async(self):
-        handler_setings = 'default=file,stream=stderr,async=true'
+        handler_setings = 'default=stream,stream=stderr,async=true'
         err = self.run_helper('--logging=;' + handler_setings)
         self.assertRegex(err, self.get_crash_regex())
 
     def test_immediate(self):
-        handler_setings = 'default=file,stream=stderr,async=false'
+        handler_setings = 'default=stream,stream=stderr,async=false'
         err = self.run_helper('--logging=;' + handler_setings)
         self.assertRegex(err, self.get_crash_regex())
 
