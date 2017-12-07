@@ -235,16 +235,20 @@ class exception_wrapper final {
     Ex const& as() const noexcept;
   };
 
+  struct ThrownTag {};
   struct InSituTag {};
   struct OnHeapTag {};
 
   template <class T>
   using PlacementOf = _t<std::conditional<
-      sizeof(T) <= sizeof(Buffer::Storage) &&
-          alignof(T) <= alignof(Buffer::Storage) &&
-          noexcept(T(std::declval<T&&>())),
-      InSituTag,
-      OnHeapTag>>;
+      !IsStdException<T>::value,
+      ThrownTag,
+      _t<std::conditional<
+          sizeof(T) <= sizeof(Buffer::Storage) &&
+              alignof(T) <= alignof(Buffer::Storage) &&
+              noexcept(T(std::declval<T&&>())),
+          InSituTag,
+          OnHeapTag>>>>;
 
   static std::exception const* as_exception_or_null_(std::exception const& ex);
   static std::exception const* as_exception_or_null_(AnyException);
@@ -278,6 +282,7 @@ class exception_wrapper final {
 
   template <class Ex>
   struct InPlace {
+    static_assert(IsStdException<Ex>::value, "only deriving std::exception");
     static void copy_(exception_wrapper const* from, exception_wrapper* to);
     static void move_(exception_wrapper* from, exception_wrapper* to);
     static void delete_(exception_wrapper* that);
@@ -306,6 +311,7 @@ class exception_wrapper final {
     };
     template <class Ex>
     struct Impl final : public Base {
+      static_assert(IsStdException<Ex>::value, "only deriving std::exception");
       Ex ex_;
       Impl() = default;
       template <typename... As>
@@ -333,6 +339,9 @@ class exception_wrapper final {
     SharedPtr sptr_;
   };
   VTable const* vptr_{&uninit_};
+
+  template <class Ex, typename... As>
+  exception_wrapper(ThrownTag, in_place_type_t<Ex>, As&&... as);
 
   template <class Ex, typename... As>
   exception_wrapper(OnHeapTag, in_place_type_t<Ex>, As&&... as);

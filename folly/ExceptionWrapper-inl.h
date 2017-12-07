@@ -282,6 +282,15 @@ inline exception_wrapper exception_wrapper::SharedPtr::get_exception_ptr_(
 
 template <class Ex, typename... As>
 inline exception_wrapper::exception_wrapper(
+    ThrownTag,
+    in_place_type_t<Ex>,
+    As&&... as)
+    : eptr_{std::make_exception_ptr(Ex(std::forward<As>(as)...)),
+            reinterpret_cast<std::uintptr_t>(std::addressof(typeid(Ex))) + 1u},
+      vptr_(&ExceptionPtr::ops_) {}
+
+template <class Ex, typename... As>
+inline exception_wrapper::exception_wrapper(
     OnHeapTag,
     in_place_type_t<Ex>,
     As&&... as)
