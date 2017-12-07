@@ -48,13 +48,6 @@ TEST(SignalHandler, Simple) {
   installFatalSignalHandler();
   installFatalSignalCallbacks();
 
-#ifdef FOLLY_SANITIZE_ADDRESS
-  EXPECT_DEATH(
-      failHard(),
-      // Testing an ASAN-enabled binary evokes a different diagnostic.
-      // Use a regexp that requires only the first line of that output:
-      "^ASAN:SIGSEGV\n.*");
-#else
   EXPECT_DEATH(
       failHard(),
       "^\\*\\*\\* Aborted at [0-9]+ \\(Unix time, try 'date -d @[0-9]+'\\) "
@@ -71,8 +64,8 @@ TEST(SignalHandler, Simple) {
       ".*    @ [0-9a-f]+.* main.*\n"
       ".*\n"
       "Callback1\n"
-      "Callback2\n");
-#endif
+      "Callback2\n"
+      ".*");
 }
 } // namespace test
 } // namespace symbolizer
