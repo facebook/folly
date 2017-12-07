@@ -52,7 +52,6 @@ class TemporaryFile {
 
   // Movable, but not copyable
   TemporaryFile(TemporaryFile&& other) noexcept {
-    reset();
     assign(other);
   }
 
