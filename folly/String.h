@@ -469,21 +469,6 @@ void splitTo(const Delim& delimiter,
  * type, in which case folly::to<> will throw an exception.
  */
 template <class T, class Enable = void>
-struct IsSomeVector {
-  enum { value = false };
-};
-
-template <class T>
-struct IsSomeVector<std::vector<T>, void> {
-  enum { value = true };
-};
-
-template <class T>
-struct IsSomeVector<fbvector<T>, void> {
-  enum { value = true };
-};
-
-template <class T, class Enable = void>
 struct IsConvertible {
   enum { value = false };
 };
