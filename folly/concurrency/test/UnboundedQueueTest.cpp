@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 DEFINE_bool(bench, false, "run benchmark");
 DEFINE_int32(reps, 10, "number of reps");
 DEFINE_int32(ops, 1000000, "number of operations per rep");
+DEFINE_int64(capacity, 256 * 1024, "capacity");
 
 template <typename T, bool MayBlock>
 using USPSC = folly::USPSCQueue<T, MayBlock>;
@@ -81,7 +82,7 @@ TEST(UnboundedQueue, basic) {
 template <template <typename, bool> class Q, bool MayBlock>
 void timeout_test() {
   Q<int, MayBlock> q;
-  int v = -1;
+  int v;
   ASSERT_FALSE(q.try_dequeue_until(
       v, std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
   ASSERT_FALSE(q.try_dequeue_for(v, std::chrono::microseconds(1)));
@@ -189,9 +190,8 @@ void enq_deq_test(const int nprod, const int ncons) {
           /* keep trying */;
         }
       } else if ((i % 3) == 1) {
-        std::chrono::steady_clock::time_point deadline =
-            std::chrono::steady_clock::now() + std::chrono::milliseconds(1);
-        while (!q.try_dequeue_until(v, deadline)) {
+        auto duration = std::chrono::milliseconds(1);
+        while (!q.try_dequeue_for(v, duration)) {
           /* keep trying */;
         }
       } else {
@@ -293,8 +293,6 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
       }
     };
     auto cons = [&](int tid) {
-      std::chrono::steady_clock::time_point deadline =
-          std::chrono::steady_clock::now() + std::chrono::hours(24);
       uint64_t mysum = 0;
       for (int i = tid; i < ops; i += ncons) {
         T v;
@@ -303,7 +301,8 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
             /* keep trying */;
           }
         } else if (Op == 1 || Op == 4) {
-          while (UNLIKELY(!q.try_dequeue_until(v, deadline))) {
+          auto duration = std::chrono::microseconds(1000);
+          while (UNLIKELY(!q.try_dequeue_for(v, duration))) {
             /* keep trying */;
           }
         } else {
@@ -329,12 +328,12 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
 }
 
 /* For performance comparison */
-template <typename T, size_t capacity>
+template <typename T>
 class MPMC {
   folly::MPMCQueue<T> q_;
 
  public:
-  MPMC() : q_(capacity) {}
+  MPMC() : q_(FLAGS_capacity) {}
 
   template <typename... Args>
   void enqueue(Args&&... args) {
@@ -349,23 +348,24 @@ class MPMC {
     return q_.read(item);
   }
 
-  template <typename Clock, typename Duration>
-  bool try_dequeue_until(
+  template <typename Rep, typename Period>
+  bool try_dequeue_for(
       T& item,
-      const std::chrono::time_point<Clock, Duration>& deadline) {
+      const std::chrono::duration<Rep, Period>& duration) noexcept {
+    auto deadline = std::chrono::steady_clock::now() + duration;
     return q_.tryReadUntil(deadline, item);
   }
 };
 
 template <typename T, bool ignore>
-using FMPMC = MPMC<T, 256 * 1024>;
+using FMPMC = MPMC<T>;
 
-template <typename T, size_t capacity>
+template <typename T>
 class PCQ {
   folly::ProducerConsumerQueue<T> q_;
 
  public:
-  PCQ() : q_(capacity) {}
+  PCQ() : q_(FLAGS_capacity) {}
 
   template <typename... Args>
   void enqueue(Args&&... args) {
@@ -382,14 +382,14 @@ class PCQ {
     return q_.read(item);
   }
 
-  template <typename Clock, typename Duration>
-  bool try_dequeue_until(T&, const std::chrono::time_point<Clock, Duration>&) {
+  template <typename Rep, typename Period>
+  bool try_dequeue_for(T&, const std::chrono::duration<Rep, Period>&) noexcept {
     return false;
   }
 };
 
 template <typename T, bool ignore>
-using FPCQ = PCQ<T, 256 * 1024>;
+using FPCQ = PCQ<T>;
 
 template <size_t M>
 struct IntArray {
@@ -479,8 +479,9 @@ TEST(UnboundedQueue, bench) {
   dottedLine();
   std::cout << "$ numactl -N 1 $dir/unbounded_queue_test --bench\n";
   dottedLine();
-  std::cout << "Using a capacity of 256K for folly::ProducerConsumerQueue\n"
-            << "and folly::MPMCQueue\n";
+  std::cout << "Using capacity " << FLAGS_capacity
+            << " for folly::ProducerConsumerQueue and\n"
+            << "folly::MPMCQueue\n";
   std::cout << "=============================================================="
             << std::endl;
   std::cout << "Test name                         Max time  Avg time  Min time"
@@ -509,8 +510,8 @@ TEST(UnboundedQueue, bench) {
 ..............................................................
 $ numactl -N 1 $dir/unbounded_queue_test --bench
 ..............................................................
-Using a capacity of 256K for folly::ProducerConsumerQueue
-and folly::MPMCQueue
+Using capacity 262144 for folly::ProducerConsumerQueue and
+folly::MPMCQueue
 ==============================================================
 Test name                         Max time  Avg time  Min time
 ======================  1 prod   1 cons ======================
@@ -616,14 +617,14 @@ Unbounded SPMC timed spin only      202 ns    198 ns    193 ns
 Unbounded SPMC wait  spin only       36 ns     36 ns     35 ns
 Unbounded SPMC try   may block      202 ns    195 ns    190 ns
 Unbounded SPMC timed may block      208 ns    197 ns    190 ns
-Unbounded SPMC wait  may block     1645 ns   1427 ns     36 ns
+Unbounded SPMC wait  may block       96 ns     77 ns     64 ns
 ..............................................................
 Unbounded MPMC try   spin only      204 ns    198 ns    194 ns
 Unbounded MPMC timed spin only      202 ns    195 ns    190 ns
 Unbounded MPMC wait  spin only       61 ns     59 ns     57 ns
 Unbounded MPMC try   may block      206 ns    196 ns    191 ns
 Unbounded MPMC timed may block      204 ns    198 ns    192 ns
-Unbounded MPMC wait  may block     1658 ns   1293 ns     70 ns
+Unbounded MPMC wait  may block      100 ns     88 ns     84 ns
 ..............................................................
 folly::MPMC  read                   210 ns    191 ns    182 ns
 folly::MPMC  tryReadUntil           574 ns    248 ns    192 ns
@@ -636,14 +637,14 @@ Unbounded SPMC timed spin only      208 ns    205 ns    200 ns
 Unbounded SPMC wait  spin only      175 ns     51 ns     33 ns
 Unbounded SPMC try   may block      215 ns    203 ns    186 ns
 Unbounded SPMC timed may block      453 ns    334 ns    204 ns
-Unbounded SPMC wait  may block     1601 ns   1514 ns   1373 ns
+Unbounded SPMC wait  may block      110 ns     87 ns     55 ns
 ..............................................................
 Unbounded MPMC try   spin only      328 ns    218 ns    197 ns
 Unbounded MPMC timed spin only      217 ns    206 ns    200 ns
 Unbounded MPMC wait  spin only      147 ns     85 ns     58 ns
 Unbounded MPMC try   may block      310 ns    223 ns    199 ns
 Unbounded MPMC timed may block      461 ns    275 ns    196 ns
-Unbounded MPMC wait  may block     1623 ns   1526 ns    888 ns
+Unbounded MPMC wait  may block      148 ns    111 ns     78 ns
 ..............................................................
 folly::MPMC  read                   280 ns    215 ns    194 ns
 folly::MPMC  tryReadUntil          28740 ns   13508 ns    212 ns
