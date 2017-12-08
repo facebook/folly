@@ -20,8 +20,8 @@
 
 #include <type_traits>
 
-#include <folly/Bits.h>
 #include <folly/detail/AtomicHashUtils.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 

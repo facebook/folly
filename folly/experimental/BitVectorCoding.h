@@ -20,7 +20,6 @@
 #include <limits>
 #include <type_traits>
 
-#include <folly/Bits.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
@@ -28,6 +27,7 @@
 #include <folly/experimental/CodingDetail.h>
 #include <folly/experimental/Instructions.h>
 #include <folly/experimental/Select64.h>
+#include <folly/lang/Bits.h>
 #include <glog/logging.h>
 
 #if !FOLLY_X64

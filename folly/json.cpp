@@ -22,8 +22,8 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/next_prior.hpp>
-#include <folly/Bits.h>
 #include <folly/Portability.h>
+#include <folly/lang/Bits.h>
 
 #include <folly/Conv.h>
 #include <folly/Range.h>

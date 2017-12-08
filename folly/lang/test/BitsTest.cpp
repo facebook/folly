@@ -16,7 +16,7 @@
 
 // @author Tudor Bosman (tudorb@fb.com)
 
-#include <folly/Bits.h>
+#include <folly/lang/Bits.h>
 
 #include <folly/Random.h>
 #include <random>

@@ -18,7 +18,6 @@
 
 #include <iomanip>
 
-#include <folly/Bits.h>
 #include <folly/Optional.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
@@ -30,6 +29,7 @@
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/async/ssl/TLSDefinitions.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>

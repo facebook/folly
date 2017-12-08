@@ -22,9 +22,9 @@
 
 #include <glog/logging.h>
 
-#include <folly/Bits.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 

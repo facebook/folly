@@ -26,12 +26,12 @@
 #include <chrono>
 #include <memory>
 
-#include <folly/Bits.h>
 #include <folly/Format.h>
 #include <folly/SocketAddress.h>
 #include <folly/SpinLock.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
 
 using folly::SocketAddress;

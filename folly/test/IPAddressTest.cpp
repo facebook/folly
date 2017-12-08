@@ -19,12 +19,12 @@
 #include <string>
 
 #include <folly/BitIterator.h>
-#include <folly/Bits.h>
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/MacAddress.h>
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 

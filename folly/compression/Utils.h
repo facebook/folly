@@ -18,9 +18,9 @@
 
 #include <type_traits>
 
-#include <folly/Bits.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/lang/Bits.h>
 
 /**
  * Helper functions for compression codecs.

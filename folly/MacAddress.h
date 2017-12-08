@@ -18,8 +18,8 @@
 
 #include <iosfwd>
 
-#include <folly/Bits.h>
 #include <folly/Range.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 

@@ -517,6 +517,9 @@ if (BUILD_TESTS)
     DIRECTORY io/async/ssl/test/
       TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
 
+    DIRECTORY lang/test/
+      TEST bits_test SOURCES BitsTest.cpp
+
     DIRECTORY memory/test/
       TEST arena_test SOURCES ArenaTest.cpp
       TEST thread_cached_arena_test SOURCES ThreadCachedArenaTest.cpp
@@ -560,7 +563,6 @@ if (BUILD_TESTS)
       TEST atomic_struct_test SOURCES AtomicStructTest.cpp
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
       TEST bit_iterator_test SOURCES BitIteratorTest.cpp
-      TEST bits_test SOURCES BitsTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp

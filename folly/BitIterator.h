@@ -38,9 +38,9 @@
 
 #include <boost/iterator/iterator_adaptor.hpp>
 
-#include <folly/Bits.h>
 #include <folly/Portability.h>
 #include <folly/detail/BitIteratorDetail.h>
+#include <folly/lang/Bits.h>
 
 namespace folly {
 

@@ -22,7 +22,7 @@
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 
-#include <folly/Bits.h>
+#include <folly/lang/Bits.h>
 
 #include <cassert>
 

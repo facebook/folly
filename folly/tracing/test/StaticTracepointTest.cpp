@@ -22,12 +22,12 @@
 #include <vector>
 
 #include <boost/filesystem.hpp>
-#include <folly/Bits.h>
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Random.h>
 #include <folly/String.h>
 #include <folly/Subprocess.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/tracing/StaticTracepoint.h>

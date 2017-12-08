@@ -23,13 +23,13 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include <folly/Bits.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 /**

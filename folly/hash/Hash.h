@@ -24,10 +24,10 @@
 #include <type_traits>
 #include <utility>
 
-#include <folly/Bits.h>
 #include <folly/functional/ApplyTuple.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
+#include <folly/lang/Bits.h>
 
 /*
  * Various hashing functions.

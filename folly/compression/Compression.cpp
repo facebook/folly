@@ -48,7 +48,6 @@
 #include <bzlib.h>
 #endif
 
-#include <folly/Bits.h>
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
@@ -56,6 +55,7 @@
 #include <folly/Varint.h>
 #include <folly/compression/Utils.h>
 #include <folly/io/Cursor.h>
+#include <folly/lang/Bits.h>
 #include <algorithm>
 #include <unordered_set>
 
