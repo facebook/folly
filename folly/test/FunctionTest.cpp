@@ -175,6 +175,25 @@ static_assert(
         Function<short(int) const>>::value,
     "");
 
+static_assert(
+    !std::is_constructible<Function<int const&()>, int (*)()>::value,
+    "");
+
+static_assert(
+    !std::is_constructible<Function<int const&() const>, int (*)()>::value,
+    "");
+
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+static_assert(
+    !std::is_constructible<Function<int const&() noexcept>, int (*)()>::value,
+    "");
+
+static_assert(
+    !std::is_constructible<Function<int const&() const noexcept>, int (*)()>::
+        value,
+    "");
+#endif
+
 // TEST =====================================================================
 // InvokeFunctor & InvokeReference
 

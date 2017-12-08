@@ -284,6 +284,16 @@ inline bool uninitNoop(Op, Data*, Data*) {
   return false;
 }
 
+template <typename F, typename... Args>
+using CallableResult = decltype(std::declval<F>()(std::declval<Args>()...));
+
+template <
+    typename From,
+    typename To,
+    typename = typename std::enable_if<
+        !std::is_reference<To>::value || std::is_reference<From>::value>::type>
+using SafeResultOf = decltype(static_cast<To>(std::declval<From>()));
+
 template <typename FunctionType>
 struct FunctionTraits;
 
@@ -295,9 +305,9 @@ struct FunctionTraits<ReturnType(Args...)> {
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = ConstSignature;
 
-  template <typename F, typename G = typename std::decay<F>::type>
-  using ResultOf = decltype(
-      static_cast<ReturnType>(std::declval<G&>()(std::declval<Args>()...)));
+  template <typename F>
+  using ResultOf =
+      SafeResultOf<CallableResult<_t<std::decay<F>>&, Args...>, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) {
@@ -340,9 +350,10 @@ struct FunctionTraits<ReturnType(Args...) const> {
   using NonConstSignature = ReturnType(Args...);
   using OtherSignature = NonConstSignature;
 
-  template <typename F, typename G = typename std::decay<F>::type>
-  using ResultOf = decltype(static_cast<ReturnType>(
-      std::declval<const G&>()(std::declval<Args>()...)));
+  template <typename F>
+  using ResultOf = SafeResultOf<
+      CallableResult<const _t<std::decay<F>>&, Args...>,
+      ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) {
@@ -386,9 +397,9 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = ConstSignature;
 
-  template <typename F, typename G = typename std::decay<F>::type>
-  using ResultOf = decltype(
-      static_cast<ReturnType>(std::declval<G&>()(std::declval<Args>()...)));
+  template <typename F>
+  using ResultOf =
+      SafeResultOf<CallableResult<_t<std::decay<F>>&, Args...>, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) noexcept {
@@ -431,9 +442,10 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   using NonConstSignature = ReturnType(Args...) noexcept;
   using OtherSignature = NonConstSignature;
 
-  template <typename F, typename G = typename std::decay<F>::type>
-  using ResultOf = decltype(static_cast<ReturnType>(
-      std::declval<const G&>()(std::declval<Args>()...)));
+  template <typename F>
+  using ResultOf = SafeResultOf<
+      CallableResult<const _t<std::decay<F>>&, Args...>,
+      ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) noexcept {
@@ -607,14 +619,15 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * signature matches (i.e. it returns an object convertible to `R` when called
    * with `Args...`).
    *
-   * \note `typename = ResultOf<Fun>` prevents this overload from being
-   * selected by overload resolution when `fun` is not a compatible function.
+   * \note `typename Traits::template ResultOf<Fun>` prevents this overload
+   * from being selected by overload resolution when `fun` is not a compatible
+   * function.
    *
-   * \note The noexcept requires some explanation. IsSmall is true when the
+   * \note The noexcept requires some explanation. `IsSmall` is true when the
    * decayed type fits within the internal buffer and is noexcept-movable. But
    * this ctor might copy, not move. What we need here, if this ctor does a
    * copy, is that this ctor be noexcept when the copy is noexcept. That is not
-   * checked in IsSmall, and shouldn't be, because once the Function is
+   * checked in `IsSmall`, and shouldn't be, because once the `Function` is
    * constructed, the contained object is never copied. This check is for this
    * ctor only, in the case that this ctor does a copy.
    */
@@ -624,7 +637,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename = typename Traits::template ResultOf<Fun>>
   /* implicit */ Function(Fun fun) noexcept(
       IsSmall<Fun>::value && noexcept(Fun(std::declval<Fun>())))
-      : Function(static_cast<Fun&&>(fun), IsSmall<Fun>{}) {}
+      : Function(std::move(fun), IsSmall<Fun>{}) {}
 
   /**
    * For move-constructing from a `folly::Function<X(Ys...) [const?]>`.
@@ -700,8 +713,9 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * Assigns a callable object to this `Function`. If the operation fails,
    * `*this` is left unmodified.
    *
-   * \note `typename = ResultOf<Fun>` prevents this overload from being
-   * selected by overload resolution when `fun` is not a compatible function.
+   * \note `typename = decltype(Function(std::declval<Fun>()))` prevents this
+   * overload from being selected by overload resolution when `fun` is not a
+   * compatible function.
    */
   template <typename Fun, typename = decltype(Function(std::declval<Fun>()))>
   Function& operator=(Fun fun) noexcept(
@@ -711,10 +725,10 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       // Q: Why is is safe to destroy and reconstruct this object in place?
       // A: See the explanation in the move assignment operator.
       this->~Function();
-      ::new (this) Function(static_cast<Fun&&>(fun));
+      ::new (this) Function(std::move(fun));
     } else {
       // Construct a temporary and (nothrow) swap.
-      Function(static_cast<Fun&&>(fun)).swap(*this);
+      Function(std::move(fun)).swap(*this);
     }
     return *this;
   }
