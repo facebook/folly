@@ -303,7 +303,7 @@ TEST(ConfigUpdate, updateConfig) {
   EXPECT_THROW_RE(
       db.updateConfig(parseLogConfig("; no_such_handler:foo=bar")),
       std::invalid_argument,
-      "cannot update unknown log handler \"no_such_handler\"");
+      R"(cannot update unknown log handler "no_such_handler")");
 
   // Explicitly clear the handlers for the "bar" category
   // This should remove the "new" handler from the LoggerDB since bar was the

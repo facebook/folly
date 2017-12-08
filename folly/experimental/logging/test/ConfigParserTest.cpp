@@ -183,65 +183,65 @@ TEST(LogConfig, parseBasicErrors) {
   EXPECT_THROW_RE(
       parseLogConfig("=="),
       LogConfigParseError,
-      "invalid log level \"=\" for category \"\"");
+      R"(invalid log level "=" for category "")");
   EXPECT_THROW_RE(
       parseLogConfig("bogus_level"),
       LogConfigParseError,
-      "invalid log level \"bogus_level\" for category \".\"");
+      R"(invalid log level "bogus_level" for category ".")");
   EXPECT_THROW_RE(
       parseLogConfig("foo=bogus_level"),
       LogConfigParseError,
-      "invalid log level \"bogus_level\" for category \"foo\"");
+      R"(invalid log level "bogus_level" for category "foo")");
   EXPECT_THROW_RE(
       parseLogConfig("foo=WARN,bar=invalid"),
       LogConfigParseError,
-      "invalid log level \"invalid\" for category \"bar\"");
+      R"(invalid log level "invalid" for category "bar")");
   EXPECT_THROW_RE(
       parseLogConfig("foo=WARN,bar="),
       LogConfigParseError,
-      "invalid log level \"\" for category \"bar\"");
+      R"(invalid log level "" for category "bar")");
   EXPECT_THROW_RE(
       parseLogConfig("foo=WARN,bar:="),
       LogConfigParseError,
-      "invalid log level \"\" for category \"bar\"");
+      R"(invalid log level "" for category "bar")");
   EXPECT_THROW_RE(
       parseLogConfig("foo:=,bar:=WARN"),
       LogConfigParseError,
-      "invalid log level \"\" for category \"foo\"");
+      R"(invalid log level "" for category "foo")");
   EXPECT_THROW_RE(
       parseLogConfig("x"),
       LogConfigParseError,
-      "invalid log level \"x\" for category \".\"");
+      R"(invalid log level "x" for category ".")");
   EXPECT_THROW_RE(
       parseLogConfig("x,y,z"),
       LogConfigParseError,
-      "invalid log level \"x\" for category \".\"");
+      R"(invalid log level "x" for category ".")");
   EXPECT_THROW_RE(
       parseLogConfig("foo=WARN,"),
       LogConfigParseError,
-      "invalid log level \"\" for category \".\"");
+      R"(invalid log level "" for category ".")");
   EXPECT_THROW_RE(
       parseLogConfig("="),
       LogConfigParseError,
-      "invalid log level \"\" for category \"\"");
+      R"(invalid log level "" for category "")");
   EXPECT_THROW_RE(
       parseLogConfig(":="),
       LogConfigParseError,
-      "invalid log level \"\" for category \"\"");
+      R"(invalid log level "" for category "")");
   EXPECT_THROW_RE(
       parseLogConfig("foo=bar=ERR"),
       LogConfigParseError,
-      "invalid log level \"bar=ERR\" for category \"foo\"");
+      R"(invalid log level "bar=ERR" for category "foo")");
   EXPECT_THROW_RE(
       parseLogConfig("foo.bar=ERR,foo..bar=INFO"),
       LogConfigParseError,
-      "category \"foo\\.bar\" listed multiple times under different names: "
-      "\"foo\\.+bar\" and \"foo\\.+bar\"");
+      R"(category "foo\.bar" listed multiple times under different names: )"
+      R"("foo\.+bar" and "foo\.+bar")");
   EXPECT_THROW_RE(
       parseLogConfig("=ERR,.=INFO"),
       LogConfigParseError,
-      "category \"\" listed multiple times under different names: "
-      "\"\\.?\" and \"\\.?\"");
+      R"(category "" listed multiple times under different names: )"
+      R"("\.?" and "\.?")");
 
   // Errors in the log handler settings
   EXPECT_THROW_RE(
@@ -251,7 +251,7 @@ TEST(LogConfig, parseBasicErrors) {
   EXPECT_THROW_RE(
       parseLogConfig("ERR;foo="),
       LogConfigParseError,
-      "error parsing configuration for log handler \"foo\": "
+      R"(error parsing configuration for log handler "foo": )"
       "empty log handler type");
   EXPECT_THROW_RE(
       parseLogConfig("ERR;=file"),
@@ -264,13 +264,13 @@ TEST(LogConfig, parseBasicErrors) {
   EXPECT_THROW_RE(
       parseLogConfig("ERR;test=file,path=/tmp/test.log;foo:a=b,c=d"),
       LogConfigParseError,
-      "error parsing configuration for log handler \"test\": "
-      "invalid type \"file,path=/tmp/test.log\": type name cannot contain "
+      R"(error parsing configuration for log handler "test": )"
+      R"(invalid type "file,path=/tmp/test.log": type name cannot contain )"
       "a comma when using the basic config format");
   EXPECT_THROW_RE(
       parseLogConfig("ERR;test,path=/tmp/test.log;foo:a=b,c=d"),
       LogConfigParseError,
-      "error parsing configuration for log handler \"test,path\": "
+      R"(error parsing configuration for log handler "test,path": )"
       "name cannot contain a comma when using the basic config format");
 }
 
@@ -377,7 +377,7 @@ TEST(LogConfig, parseJsonErrors) {
       LogConfigParseError,
       "JSON config input must be an object");
   EXPECT_THROW_RE(
-      parseLogConfigJson("\"hello\""),
+      parseLogConfigJson(R"("hello")"),
       LogConfigParseError,
       "JSON config input must be an object");
   EXPECT_THROW_RE(
@@ -408,7 +408,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for configuration of category \"foo\": "
+      R"(unexpected data type for configuration of category "foo": )"
       "got boolean, expected an object, string, or integer");
 
   input = R"JSON({
@@ -419,7 +419,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for configuration of category \"foo\": "
+      R"(unexpected data type for configuration of category "foo": )"
       "got array, expected an object, string, or integer");
 
   input = R"JSON({
@@ -431,7 +431,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for inherit field of category \"folly\": "
+      R"(unexpected data type for inherit field of category "folly": )"
       "got integer, expected a boolean");
   input = R"JSON({
     "categories": {
@@ -441,7 +441,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for level field of category \"folly\": "
+      R"(unexpected data type for level field of category "folly": )"
       "got array, expected a string or integer");
   input = R"JSON({
     "categories": {
@@ -460,8 +460,8 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "category \"foo\\.bar\" listed multiple times under different names: "
-      "\"foo\\.\\.+bar\" and \"foo\\.+bar\"");
+      R"(category "foo\.bar" listed multiple times under different names: )"
+      R"("foo\.\.+bar" and "foo\.+bar")");
   input = R"JSON({
     "categories": {
       "...": { "level": "ERR", },
@@ -471,8 +471,8 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "category \"\" listed multiple times under different names: "
-      "\"(\\.\\.\\.|)\" and \"(\\.\\.\\.|)\"");
+      R"(category "" listed multiple times under different names: )"
+      R"X("(\.\.\.|)" and "(\.\.\.|)")X");
 
   input = R"JSON({
     "categories": { "folly": { "level": "ERR" } },
@@ -493,7 +493,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for configuration of handler \"foo\": "
+      R"(unexpected data type for configuration of handler "foo": )"
       "got string, expected an object");
 
   input = R"JSON({
@@ -505,7 +505,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "no handler type specified for log handler \"foo\"");
+      R"(no handler type specified for log handler "foo")");
 
   input = R"JSON({
     "categories": { "folly": { "level": "ERR" } },
@@ -518,7 +518,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for \"type\" field of handler \"foo\": "
+      R"(unexpected data type for "type" field of handler "foo": )"
       "got integer, expected a string");
 
   input = R"JSON({
@@ -533,7 +533,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for \"options\" field of handler \"foo\": "
+      R"(unexpected data type for "options" field of handler "foo": )"
       "got boolean, expected an object");
 
   input = R"JSON({
@@ -548,7 +548,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for \"options\" field of handler \"foo\": "
+      R"(unexpected data type for "options" field of handler "foo": )"
       "got array, expected an object");
 
   input = R"JSON({
@@ -563,7 +563,7 @@ TEST(LogConfig, parseJsonErrors) {
   EXPECT_THROW_RE(
       parseLogConfig(input),
       LogConfigParseError,
-      "unexpected data type for option \"bar\" of handler \"foo\": "
+      R"(unexpected data type for option "bar" of handler "foo": )"
       "got integer, expected a string");
 }
 
@@ -698,5 +698,5 @@ TEST(LogConfig, mergeConfigs) {
       config.update(parseLogConfig("INFO; other:async=true")),
       std::invalid_argument,
       "cannot update configuration for "
-      "unknown log handler \"other\"");
+      R"(unknown log handler "other")");
 }
