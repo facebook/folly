@@ -22,6 +22,7 @@
 #include <atomic>
 #include <thread>
 
+#include <folly/Likely.h>
 #include <folly/detail/Futex.h>
 #include <folly/detail/MemoryIdler.h>
 #include <folly/portability/Asm.h>
@@ -199,7 +200,146 @@ struct Baton {
   /// could be relaxed somewhat without any perf or size regressions,
   /// but by making this condition very restrictive we can provide better
   /// checking in debug builds.
-  void wait() {
+  FOLLY_ALWAYS_INLINE void wait() {
+    if (try_wait()) {
+      return;
+    }
+
+    waitSlow();
+  }
+
+  /// Similar to wait, but doesn't block the thread if it hasn't been posted.
+  ///
+  /// try_wait has the following semantics:
+  /// - It is ok to call try_wait any number times on the same baton until
+  ///   try_wait reports that the baton has been posted.
+  /// - It is ok to call timed_wait or wait on the same baton if try_wait
+  ///   reports that baton hasn't been posted.
+  /// - If try_wait indicates that the baton has been posted, it is invalid to
+  ///   call wait, try_wait or timed_wait on the same baton without resetting
+  ///
+  /// @return       true if baton has been posted, false othewise
+  FOLLY_ALWAYS_INLINE bool try_wait() const {
+    auto s = state_.load(std::memory_order_acquire);
+    assert(s == INIT || s == EARLY_DELIVERY);
+    return LIKELY(s == EARLY_DELIVERY);
+  }
+
+  /// Similar to wait, but with a timeout. The thread is unblocked if the
+  /// timeout expires.
+  /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
+  /// during a baton's life-cycle (from ctor/reset to dtor/reset). In other
+  /// words, after try_wait_for the caller can't invoke
+  /// wait/try_wait/try_wait_for/try_wait_until
+  /// again on the same baton without resetting it.
+  ///
+  /// @param  timeout       Time until which the thread can block
+  /// @return               true if the baton was posted to before timeout,
+  ///                       false otherwise
+  template <typename Rep, typename Period>
+  FOLLY_ALWAYS_INLINE bool try_wait_for(
+      const std::chrono::duration<Rep, Period>& timeout) {
+    static_assert(
+        Blocking, "Non-blocking Baton does not support try_wait_for.");
+
+    if (try_wait()) {
+      return true;
+    }
+
+    auto deadline = std::chrono::steady_clock::now() + timeout;
+    return tryWaitUntilSlow(deadline);
+  }
+
+  /// Similar to wait, but with a deadline. The thread is unblocked if the
+  /// deadline expires.
+  /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
+  /// during a baton's life-cycle (from ctor/reset to dtor/reset). In other
+  /// words, after try_wait_until the caller can't invoke
+  /// wait/try_wait/try_wait_for/try_wait_until
+  /// again on the same baton without resetting it.
+  ///
+  /// @param  deadline      Time until which the thread can block
+  /// @return               true if the baton was posted to before deadline,
+  ///                       false otherwise
+  template <typename Clock, typename Duration>
+  FOLLY_ALWAYS_INLINE bool try_wait_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    static_assert(
+        Blocking, "Non-blocking Baton does not support try_wait_until.");
+
+    if (try_wait()) {
+      return true;
+    }
+
+    return tryWaitUntilSlow(deadline);
+  }
+
+  /// Alias to try_wait_for. Deprecated.
+  template <typename Rep, typename Period>
+  FOLLY_ALWAYS_INLINE bool timed_wait(
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return try_wait_for(timeout);
+  }
+
+  /// Alias to try_wait_until. Deprecated.
+  template <typename Clock, typename Duration>
+  FOLLY_ALWAYS_INLINE bool timed_wait(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    return try_wait_until(deadline);
+  }
+
+ private:
+  enum State : uint32_t {
+    INIT = 0,
+    EARLY_DELIVERY = 1,
+    WAITING = 2,
+    LATE_DELIVERY = 3,
+    TIMED_OUT = 4,
+  };
+
+  enum {
+    // Must be positive.  If multiple threads are actively using a
+    // higher-level data structure that uses batons internally, it is
+    // likely that the post() and wait() calls happen almost at the same
+    // time.  In this state, we lose big 50% of the time if the wait goes
+    // to sleep immediately.  On circa-2013 devbox hardware it costs about
+    // 7 usec to FUTEX_WAIT and then be awoken (half the t/iter as the
+    // posix_sem_pingpong test in BatonTests).  We can improve our chances
+    // of EARLY_DELIVERY by spinning for a bit, although we have to balance
+    // this against the loss if we end up sleeping any way.  Spins on this
+    // hw take about 7 nanos (all but 0.5 nanos is the pause instruction).
+    // We give ourself 300 spins, which is about 2 usec of waiting.  As a
+    // partial consolation, since we are using the pause instruction we
+    // are giving a speed boost to the colocated hyperthread.
+    PreBlockAttempts = 300,
+  };
+
+  // Spin for "some time" (see discussion on PreBlockAttempts) waiting
+  // for a post.
+  //
+  // @return       true if we received an early delivery during the wait,
+  //               false otherwise. If the function returns true then
+  //               state_ is guaranteed to be EARLY_DELIVERY
+  bool spinWaitForEarlyDelivery() {
+    static_assert(
+        PreBlockAttempts > 0,
+        "isn't this assert clearer than an uninitialized variable warning?");
+    for (int i = 0; i < PreBlockAttempts; ++i) {
+      if (try_wait()) {
+        return true;
+      }
+
+      // The pause instruction is the polite way to spin, but it doesn't
+      // actually affect correctness to omit it if we don't have it.
+      // Pausing donates the full capabilities of the current core to
+      // its other hyperthreads for a dozen cycles or so
+      asm_volatile_pause();
+    }
+
+    return false;
+  }
+
+  FOLLY_NOINLINE void waitSlow() {
     if (spinWaitForEarlyDelivery()) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return;
@@ -250,60 +390,9 @@ struct Baton {
     }
   }
 
-  /// Similar to wait, but doesn't block the thread if it hasn't been posted.
-  ///
-  /// try_wait has the following semantics:
-  /// - It is ok to call try_wait any number times on the same baton until
-  ///   try_wait reports that the baton has been posted.
-  /// - It is ok to call timed_wait or wait on the same baton if try_wait
-  ///   reports that baton hasn't been posted.
-  /// - If try_wait indicates that the baton has been posted, it is invalid to
-  ///   call wait, try_wait or timed_wait on the same baton without resetting
-  ///
-  /// @return       true if baton has been posted, false othewise
-  bool try_wait() const {
-    auto s = state_.load(std::memory_order_acquire);
-    assert(s == INIT || s == EARLY_DELIVERY);
-    return s == EARLY_DELIVERY;
-  }
-
-  /// Similar to wait, but with a timeout. The thread is unblocked if the
-  /// timeout expires.
-  /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
-  /// during a baton's life-cycle (from ctor/reset to dtor/reset). In other
-  /// words, after try_wait_for the caller can't invoke
-  /// wait/try_wait/try_wait_for/try_wait_until
-  /// again on the same baton without resetting it.
-  ///
-  /// @param  timeout       Time until which the thread can block
-  /// @return               true if the baton was posted to before timeout,
-  ///                       false otherwise
-  template <typename Rep, typename Period>
-  bool try_wait_for(const std::chrono::duration<Rep, Period>& timeout) {
-    static_assert(
-        Blocking, "Non-blocking Baton does not support try_wait_for.");
-
-    auto deadline = std::chrono::steady_clock::now() + timeout;
-    return try_wait_until(deadline);
-  }
-
-  /// Similar to wait, but with a deadline. The thread is unblocked if the
-  /// deadline expires.
-  /// Note: Only a single call to wait/try_wait_for/try_wait_until is allowed
-  /// during a baton's life-cycle (from ctor/reset to dtor/reset). In other
-  /// words, after try_wait_until the caller can't invoke
-  /// wait/try_wait/try_wait_for/try_wait_until
-  /// again on the same baton without resetting it.
-  ///
-  /// @param  deadline      Time until which the thread can block
-  /// @return               true if the baton was posted to before deadline,
-  ///                       false otherwise
   template <typename Clock, typename Duration>
-  bool try_wait_until(
+  FOLLY_NOINLINE bool tryWaitUntilSlow(
       const std::chrono::time_point<Clock, Duration>& deadline) {
-    static_assert(
-        Blocking, "Non-blocking Baton does not support try_wait_until.");
-
     if (spinWaitForEarlyDelivery()) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return true;
@@ -330,69 +419,6 @@ struct Baton {
         return true;
       }
     }
-  }
-
-  /// Alias to try_wait_for. Deprecated.
-  template <typename Rep, typename Period>
-  bool timed_wait(const std::chrono::duration<Rep, Period>& timeout) {
-    return try_wait_for(timeout);
-  }
-
-  /// Alias to try_wait_until. Deprecated.
-  template <typename Clock, typename Duration>
-  bool timed_wait(const std::chrono::time_point<Clock, Duration>& deadline) {
-    return try_wait_until(deadline);
-  }
-
- private:
-  enum State : uint32_t {
-    INIT = 0,
-    EARLY_DELIVERY = 1,
-    WAITING = 2,
-    LATE_DELIVERY = 3,
-    TIMED_OUT = 4
-  };
-
-  enum {
-    // Must be positive.  If multiple threads are actively using a
-    // higher-level data structure that uses batons internally, it is
-    // likely that the post() and wait() calls happen almost at the same
-    // time.  In this state, we lose big 50% of the time if the wait goes
-    // to sleep immediately.  On circa-2013 devbox hardware it costs about
-    // 7 usec to FUTEX_WAIT and then be awoken (half the t/iter as the
-    // posix_sem_pingpong test in BatonTests).  We can improve our chances
-    // of EARLY_DELIVERY by spinning for a bit, although we have to balance
-    // this against the loss if we end up sleeping any way.  Spins on this
-    // hw take about 7 nanos (all but 0.5 nanos is the pause instruction).
-    // We give ourself 300 spins, which is about 2 usec of waiting.  As a
-    // partial consolation, since we are using the pause instruction we
-    // are giving a speed boost to the colocated hyperthread.
-    PreBlockAttempts = 300,
-  };
-
-  // Spin for "some time" (see discussion on PreBlockAttempts) waiting
-  // for a post.
-  //
-  // @return       true if we received an early delivery during the wait,
-  //               false otherwise. If the function returns true then
-  //               state_ is guaranteed to be EARLY_DELIVERY
-  bool spinWaitForEarlyDelivery() {
-
-    static_assert(PreBlockAttempts > 0,
-        "isn't this assert clearer than an uninitialized variable warning?");
-    for (int i = 0; i < PreBlockAttempts; ++i) {
-      if (try_wait()) {
-        // hooray!
-        return true;
-      }
-      // The pause instruction is the polite way to spin, but it doesn't
-      // actually affect correctness to omit it if we don't have it.
-      // Pausing donates the full capabilities of the current core to
-      // its other hyperthreads for a dozen cycles or so
-      asm_volatile_pause();
-    }
-
-    return false;
   }
 
   detail::Futex<Atom> state_;
