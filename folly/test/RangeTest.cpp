@@ -1201,7 +1201,7 @@ TEST(CRangeFunc, StdArrayZero) {
   auto const numArrayRange = crange(numArray);
   EXPECT_TRUE(
       (std::is_same<int const*, decltype(numArrayRange)::iterator>::value));
-  EXPECT_THAT(numArrayRange, testing::ElementsAreArray(numArray));
+  EXPECT_THAT(numArrayRange, testing::IsEmpty());
 }
 
 TEST(CRangeFunc, Collection) {
