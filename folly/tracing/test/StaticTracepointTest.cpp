@@ -234,11 +234,11 @@ static bool getTracepointArguments(
   return false;
 }
 
-static int arrayTestFunc() {
-  int v1 = folly::Random::rand32();
-  int v2 = folly::Random::rand32();
-  int64_t v3 = v1 + v2;
-  int a[4] = {v1, v2, v1, v2};
+static uint32_t arrayTestFunc() {
+  uint32_t v1 = folly::Random::rand32();
+  uint32_t v2 = folly::Random::rand32();
+  uint64_t v3 = v1 + v2;
+  uint32_t a[4] = {v1, v2, v1, v2};
   FOLLY_SDT(folly, test_static_tracepoint_array, a, v1, v3);
   return v1 + v2;
 }
@@ -253,9 +253,9 @@ TEST(StaticTracepoint, TestArray) {
   checkTracepointArguments(arguments, expected);
 }
 
-static int pointerTestFunc() {
-  int v1 = folly::Random::rand32();
-  int v2 = folly::Random::rand32();
+static uint32_t pointerTestFunc() {
+  uint32_t v1 = folly::Random::rand32();
+  uint32_t v2 = folly::Random::rand32();
   std::string str = "test string";
   const char* a = str.c_str();
   FOLLY_SDT(folly, test_static_tracepoint_pointer, a, v2, &v1);
@@ -285,7 +285,7 @@ TEST(StaticTracepoint, TestEmpty) {
   EXPECT_TRUE(arguments.empty());
 }
 
-static int manyArgTypesTestFunc() {
+static uint32_t manyArgTypesTestFunc() {
   uint32_t a = folly::Random::rand32();
   uint32_t b = folly::Random::rand32();
   bool bool_ = (a % 2) == (b % 2);
@@ -327,7 +327,7 @@ TEST(StaticTracepoint, TestManyArgTypes) {
   checkTracepointArguments(arguments, expected);
 }
 
-FOLLY_ALWAYS_INLINE static int alwaysInlineTestFunc() {
+FOLLY_ALWAYS_INLINE static uint32_t alwaysInlineTestFunc() {
   uint32_t a = folly::Random::rand32();
   uint32_t b = folly::Random::rand32();
   FOLLY_SDT(folly, test_static_tracepoint_always_inline, a, b);
@@ -346,7 +346,7 @@ TEST(StaticTracepoint, TestAlwaysInline) {
 
 static void branchTestFunc() {
   uint32_t a = folly::Random::rand32();
-  uint32_t b = folly::Random::rand32();
+  uint32_t b = std::max(1u, folly::Random::rand32());
   if (a > b) {
     FOLLY_SDT(folly, test_static_tracepoint_branch_1, a / b);
   } else {
