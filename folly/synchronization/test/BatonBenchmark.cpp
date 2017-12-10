@@ -19,8 +19,6 @@
 #include <thread>
 
 #include <folly/Benchmark.h>
-#include <folly/portability/GFlags.h>
-#include <folly/portability/GTest.h>
 #include <folly/portability/Semaphore.h>
 #include <folly/synchronization/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
@@ -31,38 +29,22 @@ using folly::detail::EmulatedFutexAtomic;
 
 typedef DeterministicSchedule DSched;
 
-BENCHMARK(baton_pingpong_single_poster_blocking, iters) {
-  run_pingpong_test<std::atomic, true, true>(iters);
+BENCHMARK(baton_pingpong_blocking, iters) {
+  run_pingpong_test<std::atomic, true>(iters);
 }
 
-BENCHMARK(baton_pingpong_multi_poster_blocking, iters) {
-  run_pingpong_test<std::atomic, false, true>(iters);
-}
-
-BENCHMARK(baton_pingpong_single_poster_nonblocking, iters) {
-  run_pingpong_test<std::atomic, true, false>(iters);
-}
-
-BENCHMARK(baton_pingpong_multi_poster_nonblocking, iters) {
-  run_pingpong_test<std::atomic, false, false>(iters);
+BENCHMARK(baton_pingpong_nonblocking, iters) {
+  run_pingpong_test<std::atomic, false>(iters);
 }
 
 BENCHMARK_DRAW_LINE()
 
-BENCHMARK(baton_pingpong_emulated_futex_single_poster_blocking, iters) {
-  run_pingpong_test<EmulatedFutexAtomic, true, true>(iters);
+BENCHMARK(baton_pingpong_emulated_futex_blocking, iters) {
+  run_pingpong_test<EmulatedFutexAtomic, true>(iters);
 }
 
-BENCHMARK(baton_pingpong_emulated_futex_multi_poster_blocking, iters) {
-  run_pingpong_test<EmulatedFutexAtomic, false, true>(iters);
-}
-
-BENCHMARK(baton_pingpong_emulated_futex_single_poster_nonblocking, iters) {
-  run_pingpong_test<EmulatedFutexAtomic, true, false>(iters);
-}
-
-BENCHMARK(baton_pingpong_emulated_futex_multi_poster_nonblocking, iters) {
-  run_pingpong_test<EmulatedFutexAtomic, false, false>(iters);
+BENCHMARK(baton_pingpong_emulated_futex_nonblocking, iters) {
+  run_pingpong_test<EmulatedFutexAtomic, false>(iters);
 }
 
 BENCHMARK_DRAW_LINE()
@@ -93,12 +75,7 @@ BENCHMARK(posix_sem_pingpong, iters) {
 // to the required futex calls for the blocking case
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  auto rv = RUN_ALL_TESTS();
-  if (!rv && FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return rv;
+  folly::runBenchmarks();
+  return 0;
 }
