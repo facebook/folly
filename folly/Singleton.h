@@ -408,7 +408,7 @@ class SingletonVault {
    *   folly::IOThreadPoolExecutor executor(max_concurrency_level);
    *   folly::Baton<> done;
    *   doEagerInitVia(executor, &done);
-   *   done.wait();  // or 'timed_wait', or spin with 'try_wait'
+   *   done.wait();  // or 'try_wait_for', etc.
    *
    */
   void doEagerInitVia(Executor& exe, folly::Baton<>* done = nullptr);

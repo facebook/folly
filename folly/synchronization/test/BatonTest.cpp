@@ -54,7 +54,7 @@ TEST(Baton, pingpong_nonblocking) {
   run_pingpong_test<DeterministicAtomic, false>(1000);
 }
 
-/// Timed wait tests - Nonblocking Baton does not support timed_wait()
+/// Timed wait tests - Nonblocking Baton does not support try_wait_until()
 
 // Timed wait basic system clock tests
 

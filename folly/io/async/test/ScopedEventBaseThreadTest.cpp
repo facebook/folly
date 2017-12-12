@@ -36,7 +36,7 @@ TEST_F(ScopedEventBaseThreadTest, example) {
 
   Baton<> done;
   sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  ASSERT_TRUE(done.timed_wait(seconds(1)));
+  ASSERT_TRUE(done.try_wait_for(seconds(1)));
 }
 
 TEST_F(ScopedEventBaseThreadTest, named_example) {
@@ -51,7 +51,7 @@ TEST_F(ScopedEventBaseThreadTest, named_example) {
     done.post();
   });
 
-  ASSERT_TRUE(done.timed_wait(seconds(1)));
+  ASSERT_TRUE(done.try_wait_for(seconds(1)));
   if (createdThreadName) {
     ASSERT_EQ(kThreadName.toString(), createdThreadName.value());
   }

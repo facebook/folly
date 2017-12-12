@@ -155,8 +155,8 @@ void SingletonHolder<T>::destroyInstance() {
   instance_copy_.reset();
   if (destroy_baton_) {
     constexpr std::chrono::seconds kDestroyWaitTime{5};
-    auto last_reference_released = destroy_baton_->timed_wait(
-        std::chrono::steady_clock::now() + kDestroyWaitTime);
+    auto last_reference_released =
+        destroy_baton_->try_wait_for(kDestroyWaitTime);
     if (last_reference_released) {
       teardown_(instance_ptr_);
     } else {

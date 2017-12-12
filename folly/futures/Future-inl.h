@@ -1379,7 +1379,7 @@ void waitImpl(FutureType& f, Duration dur) {
   });
   doBoost(f);
   f = std::move(ret);
-  if (baton->timed_wait(dur)) {
+  if (baton->try_wait_for(dur)) {
     assert(f.isReady());
   }
 }

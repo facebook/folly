@@ -629,7 +629,7 @@ TEST(FunctionScheduler, CancelAndWaitOnRunningFunc) {
     baton.post();
   });
 
-  ASSERT_TRUE(baton.timed_wait(testInterval(15)));
+  ASSERT_TRUE(baton.try_wait_for(testInterval(15)));
   th.join();
 }
 
@@ -644,7 +644,7 @@ TEST(FunctionScheduler, CancelAllAndWaitWithRunningFunc) {
     baton.post();
   });
 
-  ASSERT_TRUE(baton.timed_wait(testInterval(15)));
+  ASSERT_TRUE(baton.try_wait_for(testInterval(15)));
   th.join();
 }
 
@@ -675,7 +675,7 @@ TEST(FunctionScheduler, CancelAllAndWaitWithOneRunningAndOneWaiting) {
     baton.post();
   });
 
-  ASSERT_TRUE(baton.timed_wait(testInterval(15)));
+  ASSERT_TRUE(baton.try_wait_for(testInterval(15)));
   th.join();
 }
 

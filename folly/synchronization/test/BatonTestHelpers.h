@@ -58,7 +58,7 @@ void run_basic_timed_wait_tests() {
   Baton<Atom> b;
   b.post();
   // tests if early delivery works fine
-  EXPECT_TRUE(b.timed_wait(Clock::now()));
+  EXPECT_TRUE(b.try_wait_until(Clock::now()));
 }
 
 template <template <typename> class Atom, typename Clock>
@@ -66,7 +66,7 @@ void run_timed_wait_tmo_tests() {
   Baton<Atom> b;
 
   auto thr = DSched::thread([&] {
-    bool rv = b.timed_wait(Clock::now() + std::chrono::milliseconds(1));
+    bool rv = b.try_wait_until(Clock::now() + std::chrono::milliseconds(1));
     // main thread is guaranteed to not post until timeout occurs
     EXPECT_FALSE(rv);
   });
@@ -82,7 +82,7 @@ void run_timed_wait_regular_test() {
     // std::condition_variable does math to convert the timeout to
     // system_clock without handling overflow.
     auto farFuture = Clock::now() + std::chrono::hours(1000);
-    bool rv = b.timed_wait(farFuture);
+    bool rv = b.try_wait_until(farFuture);
     if (!std::is_same<Atom<int>, DeterministicAtomic<int>>::value) {
       // DeterministicAtomic ignores actual times, so doesn't guarantee
       // a lack of timeout

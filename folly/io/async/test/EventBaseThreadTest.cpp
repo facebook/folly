@@ -37,7 +37,7 @@ TEST_F(EventBaseThreadTest, example) {
     EXPECT_EQ(getCurrentThreadName().value(), "monkey");
     done.post();
   });
-  ASSERT_TRUE(done.timed_wait(seconds(1)));
+  ASSERT_TRUE(done.try_wait_for(seconds(1)));
 }
 
 TEST_F(EventBaseThreadTest, start_stop) {
@@ -50,7 +50,7 @@ TEST_F(EventBaseThreadTest, start_stop) {
 
     Baton<> done;
     ebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-    ASSERT_TRUE(done.timed_wait(seconds(1)));
+    ASSERT_TRUE(done.try_wait_for(seconds(1)));
 
     EXPECT_NE(nullptr, ebt.getEventBase());
     ebt.stop();
@@ -69,7 +69,7 @@ TEST_F(EventBaseThreadTest, move) {
 
   Baton<> done;
   ebt2.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  ASSERT_TRUE(done.timed_wait(seconds(1)));
+  ASSERT_TRUE(done.try_wait_for(seconds(1)));
 }
 
 TEST_F(EventBaseThreadTest, self_move) {
@@ -80,7 +80,7 @@ TEST_F(EventBaseThreadTest, self_move) {
 
   Baton<> done;
   ebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  ASSERT_TRUE(done.timed_wait(seconds(1)));
+  ASSERT_TRUE(done.try_wait_for(seconds(1)));
 }
 
 TEST_F(EventBaseThreadTest, default_manager) {

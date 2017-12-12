@@ -79,6 +79,5 @@ TEST(Interrupt, withinTimedOut) {
   p.setInterruptHandler([&](const exception_wrapper& /* e */) { done.post(); });
   p.getFuture().within(std::chrono::milliseconds(1));
   // Give it 100ms to time out and call the interrupt handler
-  auto t = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
-  EXPECT_TRUE(done.timed_wait(t));
+  EXPECT_TRUE(done.try_wait_for(std::chrono::milliseconds(100)));
 }

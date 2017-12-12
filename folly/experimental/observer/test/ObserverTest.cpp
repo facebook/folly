@@ -38,7 +38,7 @@ TEST(Observer, Observable) {
 
   observable.setValue(24);
 
-  EXPECT_TRUE(baton.timed_wait(std::chrono::seconds{1}));
+  EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
 
   EXPECT_EQ(24, **observer);
 }
@@ -62,7 +62,7 @@ TEST(Observer, MakeObserver) {
 
   observable.setValue(24);
 
-  EXPECT_TRUE(baton.timed_wait(std::chrono::seconds{1}));
+  EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
 
   EXPECT_EQ(25, **observer);
 }
@@ -93,7 +93,7 @@ TEST(Observer, MakeObserverDiamond) {
 
   observable.setValue(24);
 
-  EXPECT_TRUE(baton.timed_wait(std::chrono::seconds{1}));
+  EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
 
   EXPECT_EQ(25 * 26, **observer);
 }
@@ -136,14 +136,14 @@ TEST(Observer, NullValue) {
   observable.setValue(2);
 
   // Waiting observer shouldn't be updated
-  EXPECT_FALSE(baton.timed_wait(std::chrono::seconds{1}));
+  EXPECT_FALSE(baton.try_wait_for(std::chrono::seconds{1}));
   baton.reset();
 
   EXPECT_EQ(82, **oddObserver);
 
   observable.setValue(23);
 
-  EXPECT_TRUE(baton.timed_wait(std::chrono::seconds{1}));
+  EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
 
   EXPECT_EQ(46, **oddObserver);
 }
@@ -199,7 +199,7 @@ TEST(Observer, Cycle) {
   for (size_t i = 1; i <= 3; ++i) {
     observable.setValue(i);
 
-    EXPECT_TRUE(baton.timed_wait(std::chrono::seconds{1}));
+    EXPECT_TRUE(baton.try_wait_for(std::chrono::seconds{1}));
     baton.reset();
 
     EXPECT_EQ(i, **collectObserver);
