@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,10 +39,6 @@ void Baton::wait(TimeoutHandler& timeoutHandler) {
   timeoutHandler.fiberManager_ = FiberManager::getFiberManagerUnsafe();
   wait();
   timeoutHandler.cancelTimeout();
-}
-
-bool Baton::timed_wait(TimeoutController::Duration timeout) {
-  return timed_wait(timeout, []() {});
 }
 
 void Baton::waitThread() {

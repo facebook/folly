@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ TEST(FiberManager, batonTimedWaitTimeout) {
       manager.addTask([&]() {
         Baton baton;
 
-        auto res = baton.timed_wait(std::chrono::milliseconds(230));
+        auto res = baton.try_wait_for(std::chrono::milliseconds(230));
 
         EXPECT_FALSE(res);
         EXPECT_EQ(5, iterations);
@@ -63,7 +63,7 @@ TEST(FiberManager, batonTimedWaitTimeout) {
       manager.addTask([&]() {
         Baton baton;
 
-        auto res = baton.timed_wait(std::chrono::milliseconds(130));
+        auto res = baton.try_wait_for(std::chrono::milliseconds(130));
 
         EXPECT_FALSE(res);
         EXPECT_EQ(3, iterations);
@@ -95,7 +95,7 @@ TEST(FiberManager, batonTimedWaitPost) {
         Baton baton;
         baton_ptr = &baton;
 
-        auto res = baton.timed_wait(std::chrono::milliseconds(130));
+        auto res = baton.try_wait_for(std::chrono::milliseconds(130));
 
         EXPECT_TRUE(res);
         EXPECT_EQ(2, iterations);
@@ -128,7 +128,7 @@ TEST(FiberManager, batonTimedWaitTimeoutEvb) {
     Baton baton;
 
     auto start = EventBaseLoopController::Clock::now();
-    auto res = baton.timed_wait(std::chrono::milliseconds(timeout_ms));
+    auto res = baton.try_wait_for(std::chrono::milliseconds(timeout_ms));
     auto finish = EventBaseLoopController::Clock::now();
 
     EXPECT_FALSE(res);
@@ -170,7 +170,7 @@ TEST(FiberManager, batonTimedWaitPostEvb) {
       evb.tryRunAfterDelay([&]() { baton.post(); }, 100);
 
       auto start = EventBaseLoopController::Clock::now();
-      auto res = baton.timed_wait(std::chrono::milliseconds(130));
+      auto res = baton.try_wait_for(std::chrono::milliseconds(130));
       auto finish = EventBaseLoopController::Clock::now();
 
       EXPECT_TRUE(res);
@@ -2057,14 +2057,14 @@ TEST(FiberManager, VirtualEventBase) {
 
     getFiberManager(*evb1).addTaskRemote([&] {
       Baton baton;
-      baton.timed_wait(std::chrono::milliseconds{100});
+      baton.try_wait_for(std::chrono::milliseconds{100});
 
       done1 = true;
     });
 
     getFiberManager(evb2).addTaskRemote([&] {
       Baton baton;
-      baton.timed_wait(std::chrono::milliseconds{200});
+      baton.try_wait_for(std::chrono::milliseconds{200});
 
       done2 = true;
     });
@@ -2089,7 +2089,7 @@ TEST(TimedMutex, ThreadsAndFibersDontDeadlock) {
       mutex.unlock();
       {
         Baton b;
-        b.timed_wait(std::chrono::milliseconds(1));
+        b.try_wait_for(std::chrono::milliseconds(1));
       }
     }
   });
@@ -2100,12 +2100,12 @@ TEST(TimedMutex, ThreadsAndFibersDontDeadlock) {
         mutex.lock();
         {
           Baton b;
-          b.timed_wait(std::chrono::milliseconds(1));
+          b.try_wait_for(std::chrono::milliseconds(1));
         }
         mutex.unlock();
         {
           Baton b;
-          b.timed_wait(std::chrono::milliseconds(1));
+          b.try_wait_for(std::chrono::milliseconds(1));
         }
       }
     });
