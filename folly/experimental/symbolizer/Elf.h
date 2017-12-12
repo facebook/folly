@@ -241,9 +241,19 @@ class ElfFile {
   template <class T>
   const typename std::enable_if<std::is_pod<T>::value, T>::type& at(
       ElfOff offset) const {
-    FOLLY_SAFE_CHECK(
-        offset + sizeof(T) <= length_,
-        "Offset is not contained within our mmapped file");
+    if (offset + sizeof(T) > length_) {
+      char msg[kFilepathMaxLen + 128];
+      snprintf(
+          msg,
+          sizeof(msg),
+          "Offset (%lu + %lu) is not contained within our mmapped"
+          " file (%s) of length %zu",
+          offset,
+          sizeof(T),
+          filepath_,
+          length_);
+      FOLLY_SAFE_CHECK(offset + sizeof(T) <= length_, msg);
+    }
 
     return *reinterpret_cast<T*>(file_ + offset);
   }
@@ -270,6 +280,8 @@ class ElfFile {
     return at<T>(section.sh_offset + (addr - section.sh_addr));
   }
 
+  static constexpr size_t kFilepathMaxLen = 512;
+  char filepath_[kFilepathMaxLen] = {};
   int fd_;
   char* file_; // mmap() location
   size_t length_; // mmap() length

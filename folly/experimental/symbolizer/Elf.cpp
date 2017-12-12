@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <cstring>
 #include <string>
 
 #include <glog/logging.h>
@@ -64,6 +65,7 @@ int ElfFile::openNoThrow(
     bool readOnly,
     const char** msg) noexcept {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
+  strncat(filepath_, name, kFilepathMaxLen - 1);
   fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
   if (fd_ == -1) {
     if (msg) {
@@ -157,6 +159,9 @@ ElfFile::ElfFile(ElfFile&& other) noexcept
       file_(other.file_),
       length_(other.length_),
       baseAddress_(other.baseAddress_) {
+  // copy other.filepath_, leaving filepath_ zero-terminated, always.
+  strncat(filepath_, other.filepath_, kFilepathMaxLen - 1);
+  other.filepath_[0] = 0;
   other.fd_ = -1;
   other.file_ = static_cast<char*>(MAP_FAILED);
   other.length_ = 0;
@@ -167,11 +172,14 @@ ElfFile& ElfFile::operator=(ElfFile&& other) {
   assert(this != &other);
   reset();
 
+  // copy other.filepath_, leaving filepath_ zero-terminated, always.
+  strncat(filepath_, other.filepath_, kFilepathMaxLen - 1);
   fd_ = other.fd_;
   file_ = other.file_;
   length_ = other.length_;
   baseAddress_ = other.baseAddress_;
 
+  other.filepath_[0] = 0;
   other.fd_ = -1;
   other.file_ = static_cast<char*>(MAP_FAILED);
   other.length_ = 0;
@@ -181,6 +189,8 @@ ElfFile& ElfFile::operator=(ElfFile&& other) {
 }
 
 void ElfFile::reset() {
+  filepath_[0] = 0;
+
   if (file_ != MAP_FAILED) {
     munmap(file_, length_);
     file_ = static_cast<char*>(MAP_FAILED);
