@@ -206,7 +206,7 @@ void SSLContext::loadCertificate(const char* path, const char* format) {
          "loadCertificateChain: either <path> or <format> is nullptr");
   }
   if (strcmp(format, "PEM") == 0) {
-    if (SSL_CTX_use_certificate_chain_file(ctx_, path) == 0) {
+    if (SSL_CTX_use_certificate_chain_file(ctx_, path) != 1) {
       int errnoCopy = errno;
       std::string reason("SSL_CTX_use_certificate_chain_file: ");
       reason.append(path);
@@ -292,6 +292,9 @@ void SSLContext::loadCertKeyPairFromBufferPEM(
     folly::StringPiece pkey) {
   loadCertificateFromBufferPEM(cert);
   loadPrivateKeyFromBufferPEM(pkey);
+  if (!isCertKeyPairValid()) {
+    throw std::runtime_error("SSL certificate and private key do not match");
+  }
 }
 
 void SSLContext::loadCertKeyPairFromFiles(
@@ -301,6 +304,9 @@ void SSLContext::loadCertKeyPairFromFiles(
     const char* keyFormat) {
   loadCertificate(certPath, certFormat);
   loadPrivateKey(keyPath, keyFormat);
+  if (!isCertKeyPairValid()) {
+    throw std::runtime_error("SSL certificate and private key do not match");
+  }
 }
 
 bool SSLContext::isCertKeyPairValid() const {
