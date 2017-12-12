@@ -1473,12 +1473,25 @@ void ZSTDStreamCodec::resetCStream() {
       throw std::bad_alloc{};
     }
   }
+  // As of 1.3.2 ZSTD_initCStream_advanced() interprets content size 0 as
+  // unknown if contentSizeFlag == 0, but this behavior is deprecated, and will
+  // be removed in the future. Starting with version 1.3.2 start passing the
+  // correct value, ZSTD_CONTENTSIZE_UNKNOWN.
+#if ZSTD_VERSION_NUMBER >= 10302
+  constexpr uint64_t kZstdUnknownContentSize = ZSTD_CONTENTSIZE_UNKNOWN;
+#else
+  constexpr uint64_t kZstdUnknownContentSize = 0;
+#endif
   // Advanced API usage works for all supported versions of zstd.
   // Required to set contentSizeFlag.
   auto params = ZSTD_getParams(level_, uncompressedLength().value_or(0), 0);
   params.fParams.contentSizeFlag = uncompressedLength().hasValue();
   zstdThrowIfError(ZSTD_initCStream_advanced(
-      cstream_.get(), nullptr, 0, params, uncompressedLength().value_or(0)));
+      cstream_.get(),
+      nullptr,
+      0,
+      params,
+      uncompressedLength().value_or(kZstdUnknownContentSize)));
 }
 
 bool ZSTDStreamCodec::doCompressStream(
