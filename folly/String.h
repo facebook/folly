@@ -34,6 +34,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Traits.h>
 
 // Compatibility function, to make sure toStdString(s) can be called
 // to convert a std::string or fbstring variable s into type std::string
@@ -468,41 +469,22 @@ void splitTo(const Delim& delimiter,
  * Note that this will likely not work if the last field's target is of numeric
  * type, in which case folly::to<> will throw an exception.
  */
-template <class T, class Enable = void>
-struct IsConvertible {
-  enum { value = false };
-};
+namespace detail {
+template <typename Void, typename OutputType>
+struct IsConvertible : std::false_type {};
 
-template <class T>
+template <typename OutputType>
 struct IsConvertible<
-    T,
-    decltype(static_cast<void>(
-        parseTo(std::declval<folly::StringPiece>(), std::declval<T&>())))> {
-  enum { value = true };
-};
-
-template <class... Types>
-struct AllConvertible;
-
-template <class Head, class... Tail>
-struct AllConvertible<Head, Tail...> {
-  enum { value = IsConvertible<Head>::value && AllConvertible<Tail...>::value };
-};
-
-template <>
-struct AllConvertible<> {
-  enum { value = true };
-};
-
-static_assert(AllConvertible<float>::value, "");
-static_assert(AllConvertible<int>::value, "");
-static_assert(AllConvertible<bool>::value, "");
-static_assert(AllConvertible<int>::value, "");
-static_assert(!AllConvertible<std::vector<int>>::value, "");
+    void_t<decltype(parseTo(StringPiece{}, std::declval<OutputType&>()))>,
+    OutputType> : std::true_type {};
+} // namespace detail
+template <typename OutputType>
+struct IsConvertible : detail::IsConvertible<void, OutputType> {};
 
 template <bool exact = true, class Delim, class... OutputTypes>
 typename std::enable_if<
-    AllConvertible<OutputTypes...>::value && sizeof...(OutputTypes) >= 1,
+    StrictConjunction<IsConvertible<OutputTypes>...>::value &&
+        sizeof...(OutputTypes) >= 1,
     bool>::type
 split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 

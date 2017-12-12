@@ -29,6 +29,12 @@
 
 namespace folly {
 
+static_assert(IsConvertible<float>::value, "");
+static_assert(IsConvertible<int>::value, "");
+static_assert(IsConvertible<bool>::value, "");
+static_assert(IsConvertible<int>::value, "");
+static_assert(!IsConvertible<std::vector<int>>::value, "");
+
 static inline bool is_oddspace(char c) {
   return c == '\n' || c == '\t' || c == '\r';
 }
