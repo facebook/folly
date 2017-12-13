@@ -27,12 +27,11 @@
  *
  * This macro generally should not be used directly by end users.
  */
-/* clang-format off */
 #define FB_LOG_IMPL(logger, level, type, ...)                                \
   (!(logger).getCategory()->logCheck(level))                                 \
       ? ::folly::logDisabledHelper(                                          \
             std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
-      : ::folly::LogStreamVoidify< ::folly::isLogLevelFatal(level)>{} &      \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &       \
           ::folly::LogStreamProcessor{(logger).getCategory(),                \
                                       (level),                               \
                                       __FILE__,                              \
@@ -40,7 +39,6 @@
                                       (type),                                \
                                       ##__VA_ARGS__}                         \
               .stream()
-/* clang-format on */
 
 /**
  * Log a message to the specified logger.
@@ -85,12 +83,12 @@ class LoggerDB;
 class LogMessage;
 
 /**
- * Logger is the class you will normally use to log messages.
+ * Logger is the class you will use to specify the log category when logging
+ * messages with FB_LOG().
  *
- * The Logger is really just a small wrapper class that contains a pointer
- * to the appropriate LogCategory object.  It exists to allow for easy static
- * initialization of log categories, as well as to provide fast checking of the
- * current effective log level.
+ * Logger is really just a small wrapper class that contains a pointer to the
+ * appropriate LogCategory object.  It primarily exists as syntactic sugar to
+ * allow for easily looking up LogCategory objects.
  */
 class Logger {
  public:
