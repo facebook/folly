@@ -93,7 +93,9 @@ special character like a comma or semicolon use the JSON format instead.
 The log category configurations are a comma-separated list.  Each element in
 this list has the form
 
-  NAME=LEVEL:HANDLER1:HANDLER2
+```
+NAME=LEVEL:HANDLER1:HANDLER2
+```
 
 The log category name and '=' sign can be omitted, in which case the setting
 applies to the root log category.  The root log category can also be
@@ -114,7 +116,9 @@ for this category to be cleared instead.
 
 Each log handler configuration section takes the form
 
-  NAME=TYPE:OPTION1=VALUE1,OPTION2=VALUE2
+```
+NAME=TYPE:OPTION1=VALUE1,OPTION2=VALUE2
+```
 
 NAME specifies the log handler name, and TYPE specifies the log handler
 type.  A comma separated list of name=value options may follow the log
@@ -124,7 +128,9 @@ LogHandlerFactory for the specified handler type.
 The log handler type may be omitted to update the settings of an existing log
 handler object:
 
-  NAME:OPTION1=VALUE1
+```
+NAME:OPTION1=VALUE1
+```
 
 A log handler with this name must already exist.  Options specified in the
 configuration will be updated with their new values, and any option names not
