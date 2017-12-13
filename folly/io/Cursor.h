@@ -39,7 +39,7 @@
  *
  * RWPrivateCursor - Read-write access, assumes private access to IOBuf chain
  * RWUnshareCursor - Read-write access, calls unshare on write (COW)
- * Appender        - Write access, assumes private access to IOBuf chian
+ * Appender        - Write access, assumes private access to IOBuf chain
  *
  * Note that RW cursors write in the preallocated part of buffers (that is,
  * between the buffer's data() and tail()), while Appenders append to the end
