@@ -128,7 +128,11 @@ struct Baton {
     assert(before == INIT || before == WAITING || before == TIMED_OUT);
 
     if (before == INIT &&
-        state_.compare_exchange_strong(before, EARLY_DELIVERY)) {
+        state_.compare_exchange_strong(
+            before,
+            EARLY_DELIVERY,
+            std::memory_order_release,
+            std::memory_order_relaxed)) {
       return;
     }
 
