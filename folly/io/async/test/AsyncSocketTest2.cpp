@@ -16,6 +16,7 @@
 
 #include <folly/io/async/test/AsyncSocketTest2.h>
 
+#include <folly/ConstexprMath.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/SocketAddress.h>
@@ -1139,13 +1140,13 @@ TEST(AsyncSocketTest, WriteAfterReadEOF) {
  */
 TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   // Send and receive buffer sizes for the sockets.
-  const int sockBufSize = 8 * 1024;
+  constexpr size_t kSockBufSize = 8 * 1024;
 
-  TestServer server(false, sockBufSize);
+  TestServer server(false, kSockBufSize);
 
   AsyncSocket::OptionMap options{
-      {{SOL_SOCKET, SO_SNDBUF}, sockBufSize},
-      {{SOL_SOCKET, SO_RCVBUF}, sockBufSize},
+      {{SOL_SOCKET, SO_SNDBUF}, kSockBufSize},
+      {{SOL_SOCKET, SO_RCVBUF}, kSockBufSize},
       {{IPPROTO_TCP, TCP_NODELAY}, 1},
   };
 
@@ -1172,32 +1173,47 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   // bytes are written when the socket is reset. Having at least 3 writes
   // ensures that the total size (45KB) would be exceeed in case of overcounting
   // based on the initial write size of 16KB.
-  constexpr size_t sendSize = 45 * 1024;
-  auto const sendBuf = std::vector<char>(sendSize, 'a');
+  constexpr size_t kSendSize = 45 * 1024;
+  auto const sendBuf = std::vector<char>(kSendSize, 'a');
 
   WriteCallback wcb;
 
   senderEvb.runInEventBaseThreadAndWait(
-      [&]() { socket->write(&wcb, sendBuf.data(), sendSize); });
+      [&]() { socket->write(&wcb, sendBuf.data(), kSendSize); });
 
   // Reading 20KB would cause three additional writes of 8KB, but less
   // than 45KB total, so the socket is reset before all bytes are written.
-  constexpr size_t recvSize = 20 * 1024;
-  uint8_t recvBuf[recvSize];
+  constexpr size_t kRecvSize = 20 * 1024;
+  uint8_t recvBuf[kRecvSize];
   int bytesRead = acceptedSocket->readAll(recvBuf, sizeof(recvBuf));
+  ASSERT_EQ(kRecvSize, bytesRead);
 
+  constexpr size_t kMinExpectedBytesWritten = // 20 ACK + 8 send buf
+      kRecvSize + kSockBufSize;
+  static_assert(kMinExpectedBytesWritten == 28 * 1024, "bad math");
+  static_assert(kMinExpectedBytesWritten > kRecvSize, "bad math");
+
+  constexpr size_t kMaxExpectedBytesWritten = // 24 ACK + 8 sent + 8 send buf
+      constexpr_ceil(kRecvSize, kSockBufSize) + 2 * kSockBufSize;
+  static_assert(kMaxExpectedBytesWritten == 40 * 1024, "bad math");
+  static_assert(kMaxExpectedBytesWritten < kSendSize, "bad math");
+
+  // Need to delay after receiving 20KB and before closing the receive side so
+  // that the send side has a chance to fill the send buffer past.
+  using clock = std::chrono::steady_clock;
+  auto const deadline = clock::now() + std::chrono::seconds(2);
+  while (wcb.bytesWritten < kMinExpectedBytesWritten &&
+         clock::now() < deadline) {
+    std::this_thread::yield();
+  }
   acceptedSocket->closeWithReset();
 
   senderEvb.terminateLoopSoon();
   senderThread.join();
 
-  LOG(INFO) << "Bytes written: " << wcb.bytesWritten;
-
   ASSERT_EQ(STATE_FAILED, wcb.state);
-  ASSERT_GE(wcb.bytesWritten, bytesRead);
-  ASSERT_LE(wcb.bytesWritten, sendSize);
-  ASSERT_EQ(recvSize, bytesRead);
-  ASSERT(32 * 1024 == wcb.bytesWritten || 40 * 1024 == wcb.bytesWritten);
+  ASSERT_LE(kMinExpectedBytesWritten, wcb.bytesWritten);
+  ASSERT_GE(kMaxExpectedBytesWritten, wcb.bytesWritten);
 }
 
 /**

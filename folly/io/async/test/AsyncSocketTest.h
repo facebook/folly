@@ -83,7 +83,7 @@ class WriteCallback : public folly::AsyncTransportWrapper::WriteCallback {
   }
 
   StateEnum state;
-  size_t bytesWritten;
+  std::atomic<size_t> bytesWritten;
   folly::AsyncSocketException exception;
   VoidCallback successCallback;
   VoidCallback errorCallback;
