@@ -391,6 +391,22 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   }
 
   /**
+   * Return the application protocol being used by the underlying transport
+   * protocol. This is useful for transports which are used to tunnel other
+   * protocols.
+   */
+  virtual std::string getApplicationProtocol() noexcept {
+    return "";
+  }
+
+  /**
+   * Returns the name of the security protocol being used.
+   */
+  virtual std::string getSecurityProtocol() const {
+    return "";
+  }
+
+  /**
    * @return True iff end of record tracking is enabled
    */
   virtual bool isEorTrackingEnabled() const = 0;
@@ -682,20 +698,6 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
     return const_cast<T*>(static_cast<const AsyncTransportWrapper*>(this)
         ->getUnderlyingTransport<T>());
   }
-
-  /**
-   * Return the application protocol being used by the underlying transport
-   * protocol. This is useful for transports which are used to tunnel other
-   * protocols.
-   */
-  virtual std::string getApplicationProtocol() noexcept {
-    return "";
-  }
-
-  /**
-   * Returns the name of the security protocol being used.
-   */
-  virtual std::string getSecurityProtocol() const { return ""; }
 };
 
 } // namespace folly
