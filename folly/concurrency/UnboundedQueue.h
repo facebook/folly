@@ -216,11 +216,9 @@ class UnboundedQueue {
   static_assert(LgSegmentSize < 32, "LgSegmentSize must be < 32");
   static_assert(LgAlign < 16, "LgAlign must be < 16");
 
-  FOLLY_ALIGNED(Align)
-  Atom<Segment*> head_;
+  alignas(Align) Atom<Segment*> head_;
   Atom<Ticket> consumerTicket_;
-  FOLLY_ALIGNED(Align)
-  Atom<Segment*> tail_;
+  alignas(Align) Atom<Segment*> tail_;
   Atom<Ticket> producerTicket_;
 
  public:
