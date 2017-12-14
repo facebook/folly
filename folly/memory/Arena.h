@@ -27,6 +27,7 @@
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
+#include <folly/lang/Align.h>
 #include <folly/memory/Malloc.h>
 
 namespace folly {
@@ -133,7 +134,7 @@ class Arena {
   typedef boost::intrusive::slist_member_hook<
     boost::intrusive::tag<Arena>> BlockLink;
 
-  struct FOLLY_ALIGNED_MAX Block {
+  struct alignas(max_align_v) Block {
     BlockLink link;
 
     // Allocate a block with at least size bytes of storage.

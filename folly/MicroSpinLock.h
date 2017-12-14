@@ -46,6 +46,7 @@
 
 #include <folly/Portability.h>
 #include <folly/detail/Sleeper.h>
+#include <folly/lang/Align.h>
 
 namespace folly {
 
@@ -118,7 +119,7 @@ static_assert(
 #define FOLLY_CACHE_LINE_SIZE 64
 
 template <class T, size_t N>
-struct FOLLY_ALIGNED_MAX SpinLockArray {
+struct alignas(max_align_v) SpinLockArray {
   T& operator[](size_t i) {
     return data_[i].lock;
   }
@@ -140,9 +141,8 @@ struct FOLLY_ALIGNED_MAX SpinLockArray {
 
   // Check if T can theoretically cross a cache line.
   static_assert(
-      folly::max_align_v > 0 &&
-          FOLLY_CACHE_LINE_SIZE % folly::max_align_v == 0 &&
-          sizeof(T) <= folly::max_align_v,
+      max_align_v > 0 && FOLLY_CACHE_LINE_SIZE % max_align_v == 0 &&
+          sizeof(T) <= max_align_v,
       "T can cross cache line boundaries");
 
   char padding_[FOLLY_CACHE_LINE_SIZE];

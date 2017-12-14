@@ -256,9 +256,8 @@ void* SimpleAllocator::allocateHard() {
 
   // Install a pointer to ourselves as the allocator.
   *reinterpret_cast<SimpleAllocator**>(mem_) = this;
-  static_assert(
-      folly::max_align_v >= sizeof(SimpleAllocator*), "alignment too small");
-  mem_ += std::min(sz_, folly::max_align_v);
+  static_assert(max_align_v >= sizeof(SimpleAllocator*), "alignment too small");
+  mem_ += std::min(sz_, max_align_v);
 
   // New allocation.
   auto mem = mem_;

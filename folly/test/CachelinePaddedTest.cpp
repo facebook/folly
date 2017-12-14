@@ -18,6 +18,7 @@
 
 #include <type_traits>
 
+#include <folly/lang/Align.h>
 #include <folly/portability/GTest.h>
 
 using folly::CachelinePadded;

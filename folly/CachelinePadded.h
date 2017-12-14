@@ -20,6 +20,7 @@
 
 #include <folly/Portability.h>
 #include <folly/concurrency/CacheLocality.h>
+#include <folly/lang/Align.h>
 
 namespace folly {
 
@@ -33,7 +34,7 @@ namespace folly {
 template <typename T>
 class CachelinePadded {
   static_assert(
-      alignof(T) <= folly::max_align_v,
+      alignof(T) <= max_align_v,
       "CachelinePadded does not support over-aligned types.");
 
  public:

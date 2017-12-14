@@ -324,6 +324,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
 	json.h \
+	lang/Align.h \
 	lang/Assume.h \
 	lang/Bits.h \
 	lang/ColdClass.h \

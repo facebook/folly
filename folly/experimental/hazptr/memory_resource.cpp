@@ -39,9 +39,8 @@ void set_default_resource(memory_resource* mr) {
 memory_resource* new_delete_resource() {
   class new_delete : public memory_resource {
    public:
-    void* allocate(
-        const size_t bytes,
-        const size_t alignment = folly::max_align_v) override {
+    void* allocate(const size_t bytes, const size_t alignment = max_align_v)
+        override {
       (void)alignment;
       void* p = static_cast<void*>(new char[bytes]);
       DEBUG_PRINT(this << " " << p << " " << bytes);
@@ -50,7 +49,7 @@ memory_resource* new_delete_resource() {
     void deallocate(
         void* p,
         const size_t bytes,
-        const size_t alignment = folly::max_align_v) override {
+        const size_t alignment = max_align_v) override {
       (void)alignment;
       (void)bytes;
       DEBUG_PRINT(p << " " << bytes);

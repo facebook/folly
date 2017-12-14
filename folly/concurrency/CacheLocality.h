@@ -33,6 +33,7 @@
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/hash/Hash.h>
+#include <folly/lang/Align.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Memory.h>
 #include <folly/system/ThreadId.h>
@@ -390,7 +391,7 @@ class SimpleAllocator {
     if (intptr_t(mem_) % 128 == 0) {
       // Avoid allocating pointers that may look like malloc
       // pointers.
-      mem_ += std::min(sz_, folly::max_align_v);
+      mem_ += std::min(sz_, max_align_v);
     }
     if (mem_ && (mem_ + sz_ <= end_)) {
       auto mem = mem_;
