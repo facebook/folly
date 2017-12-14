@@ -34,7 +34,7 @@ Other advantages of folly logging over glog:
   diminished functionality on Windows, since it cannot be controlled on a
   per-module basis.
 
-Advantages of glog over folly logging over glog:
+Advantages of glog over folly logging:
 
 * Smaller generated code size.  Due to automatically picking a log category
   name, folly logging's `XLOG()` macros currently result in slightly larger
