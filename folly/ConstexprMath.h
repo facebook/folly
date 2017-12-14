@@ -115,4 +115,11 @@ constexpr T constexpr_log2(T t) {
   return detail::constexpr_log2(T(0), t);
 }
 
+template <typename T>
+constexpr T constexpr_ceil(T t, T round) {
+  return round == T(0)
+      ? t
+      : ((t + (t < T(0) ? T(0) : round - T(1))) / round) * round;
+}
+
 } // namespace folly

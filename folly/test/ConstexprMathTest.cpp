@@ -122,3 +122,24 @@ TEST_F(ConstexprMathTest, constexpr_log2_64) {
   EXPECT_EQ(6ull, a);
   EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
 }
+
+TEST_F(ConstexprMathTest, constexpr_ceil) {
+  {
+    constexpr auto roundable = 20ull;
+    constexpr auto round = 6ull;
+    constexpr auto rounded = folly::constexpr_ceil(roundable, round);
+    EXPECT_EQ(24ull, rounded);
+  }
+  {
+    constexpr auto roundable = -20ll;
+    constexpr auto round = 6ll;
+    constexpr auto rounded = folly::constexpr_ceil(roundable, round);
+    EXPECT_EQ(-18ll, rounded);
+  }
+  {
+    constexpr auto roundable = -20ll;
+    constexpr auto round = 0ll;
+    constexpr auto rounded = folly::constexpr_ceil(roundable, round);
+    EXPECT_EQ(-20ll, rounded);
+  }
+}
