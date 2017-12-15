@@ -907,6 +907,8 @@ void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
   if (0 == --iter1->second.count_) {
     idZeroCopyBufInfoMap_.erase(iter1);
   }
+
+  idZeroCopyBufPtrMap_.erase(iter);
 }
 
 void AsyncSocket::setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
@@ -1046,7 +1048,7 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
         return failWrite(__func__, callback, 0, ex);
       } else if (countWritten == count) {
         // done, add the whole buffer
-        if (isZeroCopyRequest(flags)) {
+        if (countWritten && isZeroCopyRequest(flags)) {
           addZeroCopyBuf(std::move(ioBuf));
         }
         // We successfully wrote everything.
@@ -1057,7 +1059,7 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
         return;
       } else { // continue writing the next writeReq
         // add just the ptr
-        if (isZeroCopyRequest(flags)) {
+        if (bytesWritten && isZeroCopyRequest(flags)) {
           addZeroCopyBuf(ioBuf.get());
         }
         if (bufferCallback_) {
@@ -1803,6 +1805,17 @@ void AsyncSocket::handleErrMessages() noexcept {
     }
   }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
+}
+
+bool AsyncSocket::processZeroCopyWriteInProgress() noexcept {
+  eventBase_->dcheckIsInEventBaseThread();
+  if (idZeroCopyBufPtrMap_.empty()) {
+    return true;
+  }
+
+  handleErrMessages();
+
+  return idZeroCopyBufPtrMap_.empty();
 }
 
 void AsyncSocket::handleRead() noexcept {

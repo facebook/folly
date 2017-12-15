@@ -810,6 +810,12 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool isZeroCopyWriteInProgress() const noexcept;
 
   /**
+   * Tries to process the msg error queue
+   * And returns true if there are no more zero copy writes in progress
+   */
+  bool processZeroCopyWriteInProgress() noexcept;
+
+  /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
    * If no data has been written, 0 is returned.
    * exception is a more specific exception that cause a write error.
