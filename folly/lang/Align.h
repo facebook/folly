@@ -22,22 +22,34 @@ namespace folly {
 
 namespace detail {
 
-union max_align_ {
-  std::max_align_t mat;
-  long double ld;
-  double d;
-  float f;
-  long long int lli;
-  long int li;
-  int i;
-  short int si;
-  bool b;
-  char c;
-  char16_t c16;
-  char32_t c32;
-  wchar_t wc;
-  std::nullptr_t n;
+// Implemented this way because of a bug in Clang for ARMv7, which gives the
+// wrong result for `alignof` a `union` with a field of each scalar type.
+constexpr size_t max_align_(std::size_t a) {
+  return a;
+}
+template <typename... Es>
+constexpr std::size_t max_align_(std::size_t a, std::size_t e, Es... es) {
+  return !(a < e) ? a : max_align_(e, es...);
+}
+template <typename... Ts>
+struct max_align_t_ {
+  static constexpr std::size_t value = max_align_(0u, alignof(Ts)...);
 };
+using max_align_v_ = max_align_t_<
+    long double,
+    double,
+    float,
+    long long int,
+    long int,
+    int,
+    short int,
+    bool,
+    char,
+    char16_t,
+    char32_t,
+    wchar_t,
+    void*,
+    std::max_align_t>;
 
 } // namespace detail
 
@@ -73,7 +85,7 @@ union max_align_ {
 // crashes on 32-bit iOS apps that use `double`.
 //
 // Apple's allocation reference: http://bit.ly/malloc-small
-constexpr std::size_t max_align_v = alignof(detail::max_align_);
+constexpr std::size_t max_align_v = detail::max_align_v_::value;
 struct alignas(max_align_v) max_align_t {};
 
 } // namespace folly
