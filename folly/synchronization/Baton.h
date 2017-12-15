@@ -54,7 +54,7 @@ template <
     template <typename> class Atom = std::atomic,
     bool Blocking = true> // blocking vs spinning
 struct Baton {
-  constexpr Baton() : state_(INIT) {}
+  constexpr Baton() noexcept : state_(INIT) {}
 
   Baton(Baton const&) = delete;
   Baton& operator=(Baton const&) = delete;
@@ -62,7 +62,7 @@ struct Baton {
   /// It is an error to destroy a Baton on which a thread is currently
   /// wait()ing.  In practice this means that the waiter usually takes
   /// responsibility for destroying the Baton.
-  ~Baton() {
+  ~Baton() noexcept {
     // The docblock for this function says that it can't be called when
     // there is a concurrent waiter.  We assume a strong version of this
     // requirement in which the caller must _know_ that this is true, they
@@ -82,7 +82,7 @@ struct Baton {
   /// Equivalent to destroying the Baton and creating a new one.  It is
   /// a bug to call this while there is a waiting thread, so in practice
   /// the waiter will be the one that resets the baton.
-  void reset() {
+  void reset() noexcept {
     // See ~Baton for a discussion about why relaxed is okay here
     assert(state_.load(std::memory_order_relaxed) != WAITING);
 
@@ -109,7 +109,7 @@ struct Baton {
   /// lifetime starts at construction or reset() and ends at
   /// destruction or reset()) there can be at most one call to post(),
   /// in the single poster version.  Any thread may call post().
-  void post() {
+  void post() noexcept {
     if (!Blocking) {
       /// Non-blocking version
       ///
@@ -156,7 +156,7 @@ struct Baton {
   /// could be relaxed somewhat without any perf or size regressions,
   /// but by making this condition very restrictive we can provide better
   /// checking in debug builds.
-  FOLLY_ALWAYS_INLINE void wait() {
+  FOLLY_ALWAYS_INLINE void wait() noexcept {
     if (try_wait()) {
       return;
     }
@@ -175,7 +175,7 @@ struct Baton {
   ///   call wait, try_wait or timed_wait on the same baton without resetting
   ///
   /// @return       true if baton has been posted, false othewise
-  FOLLY_ALWAYS_INLINE bool try_wait() const {
+  FOLLY_ALWAYS_INLINE bool try_wait() const noexcept {
     auto s = state_.load(std::memory_order_acquire);
     assert(s == INIT || s == EARLY_DELIVERY);
     return LIKELY(s == EARLY_DELIVERY);
@@ -194,7 +194,7 @@ struct Baton {
   ///                       false otherwise
   template <typename Rep, typename Period>
   FOLLY_ALWAYS_INLINE bool try_wait_for(
-      const std::chrono::duration<Rep, Period>& timeout) {
+      const std::chrono::duration<Rep, Period>& timeout) noexcept {
     static_assert(
         Blocking, "Non-blocking Baton does not support try_wait_for.");
 
@@ -219,7 +219,7 @@ struct Baton {
   ///                       false otherwise
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool try_wait_until(
-      const std::chrono::time_point<Clock, Duration>& deadline) {
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     static_assert(
         Blocking, "Non-blocking Baton does not support try_wait_until.");
 
@@ -233,14 +233,14 @@ struct Baton {
   /// Alias to try_wait_for. Deprecated.
   template <typename Rep, typename Period>
   FOLLY_ALWAYS_INLINE bool timed_wait(
-      const std::chrono::duration<Rep, Period>& timeout) {
+      const std::chrono::duration<Rep, Period>& timeout) noexcept {
     return try_wait_for(timeout);
   }
 
   /// Alias to try_wait_until. Deprecated.
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool timed_wait(
-      const std::chrono::time_point<Clock, Duration>& deadline) {
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     return try_wait_until(deadline);
   }
 
@@ -276,7 +276,7 @@ struct Baton {
   // @return       true if we received an early delivery during the wait,
   //               false otherwise. If the function returns true then
   //               state_ is guaranteed to be EARLY_DELIVERY
-  bool spinWaitForEarlyDelivery() {
+  bool spinWaitForEarlyDelivery() noexcept {
     static_assert(
         PreBlockAttempts > 0,
         "isn't this assert clearer than an uninitialized variable warning?");
@@ -295,7 +295,7 @@ struct Baton {
     return false;
   }
 
-  FOLLY_NOINLINE void waitSlow() {
+  FOLLY_NOINLINE void waitSlow() noexcept {
     if (spinWaitForEarlyDelivery()) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return;
@@ -348,7 +348,7 @@ struct Baton {
 
   template <typename Clock, typename Duration>
   FOLLY_NOINLINE bool tryWaitUntilSlow(
-      const std::chrono::time_point<Clock, Duration>& deadline) {
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     if (spinWaitForEarlyDelivery()) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return true;
