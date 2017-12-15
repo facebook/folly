@@ -172,9 +172,10 @@ struct PicoSpinLock {
 
 #undef FB_DOBTS
 #elif FOLLY_AARCH64
-    ret =
-        !(__atomic_fetch_or(&lock_, kLockBitMask_, __ATOMIC_SEQ_CST) &
-          kLockBitMask_);
+    using SIntType = typename std::make_signed<UIntType>::type;
+    auto const lock = reinterpret_cast<SIntType*>(&lock_);
+    auto const mask = static_cast<SIntType>(kLockBitMask_);
+    return !(mask & __atomic_fetch_or(lock, mask, __ATOMIC_ACQUIRE));
 #elif FOLLY_PPC64
 #define FB_DOBTS(size)                                 \
     asm volatile("\teieio\n"                           \
@@ -255,7 +256,10 @@ struct PicoSpinLock {
 
 #undef FB_DOBTR
 #elif FOLLY_AARCH64
-    __atomic_fetch_and(&lock_, ~kLockBitMask_, __ATOMIC_SEQ_CST);
+    using SIntType = typename std::make_signed<UIntType>::type;
+    auto const lock = reinterpret_cast<SIntType*>(&lock_);
+    auto const mask = static_cast<SIntType>(kLockBitMask_);
+    __atomic_fetch_and(lock, ~mask, __ATOMIC_RELEASE);
 #elif FOLLY_PPC64
 #define FB_DOBTR(size)                                 \
     asm volatile("\teieio\n"                           \
