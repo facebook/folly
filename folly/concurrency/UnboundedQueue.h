@@ -43,7 +43,7 @@ namespace folly {
 /// - SingleConsumer: true if there can be only one consumer at a
 ///   time.
 /// - MayBlock: true if consumers may block, false if they only
-///   spins. A performance tuning parameter.
+///   spin. A performance tuning parameter.
 /// - LgSegmentSize (default 8): Log base 2 of number of elements per
 ///   segment. A performance tuning parameter. See below.
 /// - LgAlign (default 7): Log base 2 of alignment directive; can be
@@ -79,16 +79,16 @@ namespace folly {
 ///         Extracts an element from the front of the queue. Waits
 ///         until an element is available if needed.
 ///     bool try_dequeue(T&);
-///         Tries to extracts an element from the front of the queue
+///         Tries to extract an element from the front of the queue
 ///         if available. Returns true if successful, false otherwise.
 ///     bool try_dequeue_until(T&, time_point& deadline);
-///         Tries to extracts an element from the front of the queue
+///         Tries to extract an element from the front of the queue
 ///         if available until the specified deadline.  Returns true
 ///         if successful, false otherwise.
 ///     bool try_dequeue_for(T&, duration&);
-///         Tries to extracts an element from the front of the queue
-///         if available for for the specified duration.  Returns true
-///         if successful, false otherwise.
+///         Tries to extract an element from the front of the queue if
+///         available for until the expiration of the specified
+///         duration.  Returns true if successful, false otherwise.
 ///
 ///   Secondary functions:
 ///     size_t size();
@@ -126,7 +126,7 @@ namespace folly {
 ///   exactly once.
 /// - Each entry is composed of a futex and a single element.
 /// - The queue contains two 64-bit ticket variables. The producer
-///   ticket counts the number of producer tickets isued so far, and
+///   ticket counts the number of producer tickets issued so far, and
 ///   the same for the consumer ticket. Each ticket number corresponds
 ///   to a specific entry in a specific segment.
 /// - The queue maintains two pointers, head and tail. Head points to
@@ -150,17 +150,17 @@ namespace folly {
 ///   one or two more segment than fits its contents.
 /// - Removed segments are not reclaimed until there are no threads,
 ///   producers or consumers, have references to them or their
-///   predessors. That is, a lagging thread may delay the reclamation
+///   predecessors. That is, a lagging thread may delay the reclamation
 ///   of a chain of removed segments.
 /// - The template parameter LgAlign can be used to reduce memory usage
 ///   at the cost of increased chance of false sharing.
 ///
 /// Performance considerations:
 /// - All operations take constant time, excluding the costs of
-///   allocation, reclamation, interence from other threads, and
+///   allocation, reclamation, interference from other threads, and
 ///   waiting for actions by other threads.
 /// - In general, using the single producer and or single consumer
-///   variants yields better performance than the MP and MC
+///   variants yield better performance than the MP and MC
 ///   alternatives.
 /// - SPSC without blocking is the fastest configuration. It doesn't
 ///   include any read-modify-write atomic operations, full fences, or
@@ -169,7 +169,7 @@ namespace folly {
 /// - MC adds a fetch_add or compare_exchange to the critical path of
 ///   each consumer operation.
 /// - The possibility of consumers blocking, even if they never do,
-///   adds a compare_exchange to the crtical path of each producer
+///   adds a compare_exchange to the critical path of each producer
 ///   operation.
 /// - MPMC, SPMC, MPSC require the use of a deferred reclamation
 ///   mechanism to guarantee that segments removed from the linked
@@ -184,11 +184,11 @@ namespace folly {
 /// - Another consideration is that the queue is guaranteed to have
 ///   enough space for a number of consumers equal to 2^LgSegmentSize
 ///   for local blocking. Excess waiting consumers spin.
-/// - It is recommended to measure perforamnce with different variants
+/// - It is recommended to measure performance with different variants
 ///   when applicable, e.g., UMPMC vs UMPSC. Depending on the use
 ///   case, sometimes the variant with the higher sequential overhead
 ///   may yield better results due to, for example, more favorable
-///   producer-consumer balance or favorable timining for avoiding
+///   producer-consumer balance or favorable timing for avoiding
 ///   costly blocking.
 
 template <

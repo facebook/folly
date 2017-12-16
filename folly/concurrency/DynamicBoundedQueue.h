@@ -27,7 +27,6 @@
 namespace folly {
 
 /// DynamicBoundedQueue supports:
-
 /// - Dynamic memory usage that grows and shrink in proportion to the
 ///   number of elements in the queue.
 /// - Adjustable capacity that helps throttle pathological cases of
@@ -87,7 +86,7 @@ namespace folly {
 ///   costly blocking.
 /// - See DynamicBoundedQueueTest.cpp for some benchmark results.
 ///
-/// Template prameters:
+/// Template parameters:
 /// - T: element type
 /// - SingleProducer: true if there can be only one producer at a
 ///   time.
@@ -122,16 +121,16 @@ namespace folly {
 ///         Tries to add an element to the end of the queue if
 ///         capacity allows it. Returns true if successful. Otherwise
 ///         Returns false.
-///     bool try_enqueue_until(const T&, time_point&);
-///     bool try_enqueue_until(T&&, time_point&);
+///     bool try_enqueue_until(const T&, time_point& deadline);
+///     bool try_enqueue_until(T&&, time_point& deadline);
 ///         Tries to add an element to the end of the queue if
-///         capacity allows it until the specified timepoint. Returns
+///         capacity allows it until the specified deadline. Returns
 ///         true if successful, otherwise false.
 ///     bool try_enqueue_for(const T&, duration&);
 ///     bool try_enqueue_for(T&&, duration&);
 ///         Tries to add an element to the end of the queue if
-///         capacity allows it until the specified timepoint. Returns
-///         true if successful, otherwise false.
+///         capacity allows until the expiration of the specified
+///         duration. Returns true if successful, otherwise false.
 ///
 ///   Consumer functions:
 ///     void dequeue(T&);
@@ -140,9 +139,9 @@ namespace folly {
 ///     bool try_dequeue(T&);
 ///         Tries to extracts an element from the front of the queue
 ///         if available. Returns true if successful, otherwise false.
-///     bool try_dequeue_until(T&, time_point&);
+///     bool try_dequeue_until(T&, time_point& deadline);
 ///         Tries to extracts an element from the front of the queue
-///         if available until the specified time_point. Returns true
+///         if available until the specified daedline. Returns true
 ///         if successful. Otherwise Returns false.
 ///     bool try_dequeue_for(T&, duration&);
 ///         Tries to extracts an element from the front of the queue
