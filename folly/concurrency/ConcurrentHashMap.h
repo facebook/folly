@@ -421,9 +421,7 @@ class ConcurrentHashMap {
     }
 
     ConstIterator(const ConcurrentHashMap* parent, uint64_t segment)
-        : it_(parent->ensureSegment(segment)->cbegin()),
-          segment_(segment),
-          parent_(parent) {}
+        : segment_(segment), parent_(parent) {}
 
    private:
     // cbegin iterator
