@@ -500,6 +500,13 @@ class UnboundedQueue {
     auto deadline = std::chrono::steady_clock::time_point::max();
     Segment* next = tryGetNextSegmentUntil(s, deadline);
     DCHECK(next != nullptr);
+    while (head() != s) {
+      // Wait for head to advance to the current segment first before
+      // advancing head to the next segment. Otherwise, a lagging
+      // consumer responsible for advancing head from an earlier
+      // segment may incorrectly set head back.
+      asm_volatile_pause();
+    }
     setHead(next);
     reclaimSegment(s);
   }
