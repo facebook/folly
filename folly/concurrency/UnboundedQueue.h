@@ -377,11 +377,11 @@ class UnboundedQueue {
       // possible to call ~T() and it may happen to use hazard pointers.
       folly::hazptr::hazptr_holder hptr;
       Segment* s = hptr.get_protected(c_.head);
-      return ryDequeueUntilMC(s, item, deadline);
+      return tryDequeueUntilMC(s, item, deadline);
     }
   }
 
-  /** ryDequeueUntilSC */
+  /** tryDequeueUntilSC */
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool tryDequeueUntilSC(
       Segment* s,
@@ -392,7 +392,7 @@ class UnboundedQueue {
     DCHECK_LT(t, (s->minTicket() + SegmentSize));
     size_t idx = index(t);
     Entry& e = s->entry(idx);
-    if (!e.tryWaitUntil(deadline)) {
+    if (UNLIKELY(!tryDequeueWaitElem(e, t, deadline))) {
       return false;
     }
     setConsumerTicket(t + 1);
@@ -405,7 +405,7 @@ class UnboundedQueue {
 
   /** tryDequeueUntilMC */
   template <typename Clock, typename Duration>
-  FOLLY_ALWAYS_INLINE bool ryDequeueUntilMC(
+  FOLLY_ALWAYS_INLINE bool tryDequeueUntilMC(
       Segment* s,
       T& item,
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
@@ -420,7 +420,7 @@ class UnboundedQueue {
       }
       size_t idx = index(t);
       Entry& e = s->entry(idx);
-      if (!e.tryWaitUntil(deadline)) {
+      if (UNLIKELY(!tryDequeueWaitElem(e, t, deadline))) {
         return false;
       }
       if (!c_.ticket.compare_exchange_weak(
@@ -432,6 +432,23 @@ class UnboundedQueue {
         advanceHead(s);
       }
       return true;
+    }
+  }
+
+  /** tryDequeueWaitElem */
+  template <typename Clock, typename Duration>
+  FOLLY_ALWAYS_INLINE bool tryDequeueWaitElem(
+      Entry& e,
+      Ticket t,
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
+    while (true) {
+      if (LIKELY(e.tryWaitUntil(deadline))) {
+        return true;
+      }
+      if (t >= producerTicket()) {
+        return false;
+      }
+      asm_volatile_pause();
     }
   }
 
