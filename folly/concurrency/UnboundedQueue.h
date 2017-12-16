@@ -216,10 +216,17 @@ class UnboundedQueue {
   static_assert(LgSegmentSize < 32, "LgSegmentSize must be < 32");
   static_assert(LgAlign < 16, "LgAlign must be < 16");
 
-  alignas(Align) Atom<Segment*> head_;
-  Atom<Ticket> consumerTicket_;
-  alignas(Align) Atom<Segment*> tail_;
-  Atom<Ticket> producerTicket_;
+  struct Consumer {
+    Atom<Segment*> head;
+    Atom<Ticket> ticket;
+  };
+  struct Producer {
+    Atom<Segment*> tail;
+    Atom<Ticket> ticket;
+  };
+
+  alignas(Align) Consumer c_;
+  alignas(Align) Producer p_;
 
  public:
   /** constructor */
@@ -303,7 +310,7 @@ class UnboundedQueue {
       // Using hazptr_holder instead of hazptr_local because it is
       // possible that the T ctor happens to use hazard pointers.
       folly::hazptr::hazptr_holder hptr;
-      Segment* s = hptr.get_protected(tail_);
+      Segment* s = hptr.get_protected(p_.tail);
       enqueueCommon(s, std::forward<Arg>(arg));
     }
   }
@@ -338,7 +345,7 @@ class UnboundedQueue {
       // possible to call the T dtor and it may happen to use hazard
       // pointers.
       folly::hazptr::hazptr_holder hptr;
-      Segment* s = hptr.get_protected(head_);
+      Segment* s = hptr.get_protected(c_.head);
       dequeueCommon(s, item);
     }
   }
@@ -369,7 +376,7 @@ class UnboundedQueue {
       // Using hazptr_holder instead of hazptr_local because it is
       // possible to call ~T() and it may happen to use hazard pointers.
       folly::hazptr::hazptr_holder hptr;
-      Segment* s = hptr.get_protected(head_);
+      Segment* s = hptr.get_protected(c_.head);
       return ryDequeueUntilMC(s, item, deadline);
     }
   }
@@ -416,7 +423,7 @@ class UnboundedQueue {
       if (!e.tryWaitUntil(deadline)) {
         return false;
       }
-      if (!consumerTicket_.compare_exchange_weak(
+      if (!c_.ticket.compare_exchange_weak(
               t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
         continue;
       }
@@ -519,35 +526,35 @@ class UnboundedQueue {
   }
 
   FOLLY_ALWAYS_INLINE Segment* head() const noexcept {
-    return head_.load(std::memory_order_acquire);
+    return c_.head.load(std::memory_order_acquire);
   }
 
   FOLLY_ALWAYS_INLINE Segment* tail() const noexcept {
-    return tail_.load(std::memory_order_acquire);
+    return p_.tail.load(std::memory_order_acquire);
   }
 
   FOLLY_ALWAYS_INLINE Ticket producerTicket() const noexcept {
-    return producerTicket_.load(std::memory_order_acquire);
+    return p_.ticket.load(std::memory_order_acquire);
   }
 
   FOLLY_ALWAYS_INLINE Ticket consumerTicket() const noexcept {
-    return consumerTicket_.load(std::memory_order_acquire);
+    return c_.ticket.load(std::memory_order_acquire);
   }
 
   void setHead(Segment* s) noexcept {
-    head_.store(s, std::memory_order_release);
+    c_.head.store(s, std::memory_order_release);
   }
 
   void setTail(Segment* s) noexcept {
-    tail_.store(s, std::memory_order_release);
+    p_.tail.store(s, std::memory_order_release);
   }
 
   FOLLY_ALWAYS_INLINE void setProducerTicket(Ticket t) noexcept {
-    producerTicket_.store(t, std::memory_order_release);
+    p_.ticket.store(t, std::memory_order_release);
   }
 
   FOLLY_ALWAYS_INLINE void setConsumerTicket(Ticket t) noexcept {
-    consumerTicket_.store(t, std::memory_order_release);
+    c_.ticket.store(t, std::memory_order_release);
   }
 
   FOLLY_ALWAYS_INLINE Ticket fetchIncrementConsumerTicket() noexcept {
@@ -556,7 +563,7 @@ class UnboundedQueue {
       setConsumerTicket(oldval + 1);
       return oldval;
     } else { // MC
-      return consumerTicket_.fetch_add(1, std::memory_order_acq_rel);
+      return c_.ticket.fetch_add(1, std::memory_order_acq_rel);
     }
   }
 
@@ -566,7 +573,7 @@ class UnboundedQueue {
       setProducerTicket(oldval + 1);
       return oldval;
     } else { // MP
-      return producerTicket_.fetch_add(1, std::memory_order_acq_rel);
+      return p_.ticket.fetch_add(1, std::memory_order_acq_rel);
     }
   }
 
