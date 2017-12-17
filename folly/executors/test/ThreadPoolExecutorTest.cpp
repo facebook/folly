@@ -22,6 +22,7 @@
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
+#include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
 
@@ -478,10 +479,11 @@ struct SlowMover {
   bool slow;
 };
 
-TEST(ThreadPoolExecutorTest, BugD3527722) {
+template <typename Q>
+void bugD3527722_test() {
   // Test that the queue does not get stuck if writes are completed in
   // order opposite to how they are initiated.
-  LifoSemMPMCQueue<SlowMover> q(1024);
+  Q q(1024);
   std::atomic<int> turn{};
 
   std::thread consumer1([&] {
@@ -513,6 +515,19 @@ TEST(ThreadPoolExecutorTest, BugD3527722) {
   producer2.join();
   consumer1.join();
   consumer2.join();
+}
+
+TEST(ThreadPoolExecutorTest, LifoSemMPMCQueueBugD3527722) {
+  bugD3527722_test<LifoSemMPMCQueue<SlowMover>>();
+}
+
+template <typename T>
+struct UBQ : public UnboundedBlockingQueue<T> {
+  explicit UBQ(int) {}
+};
+
+TEST(ThreadPoolExecutorTest, UnboundedBlockingQueueBugD3527722) {
+  bugD3527722_test<UBQ<SlowMover>>();
 }
 
 template <typename TPE, typename ERR_T>
