@@ -27,7 +27,6 @@ lib_LTLIBRARIES = \
 follyincludedir = $(includedir)/folly
 
 nobase_follyinclude_HEADERS = \
-	Assume.h \
 	AtomicBitSet.h \
 	AtomicHashArray.h \
 	AtomicHashArray-inl.h \

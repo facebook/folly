@@ -35,10 +35,10 @@
 #include <typeinfo>
 #include <utility>
 
-#include <folly/Assume.h>
 #include <folly/CppAttributes.h>
 #include <folly/Traits.h>
 #include <folly/detail/TypeList.h>
+#include <folly/lang/Assume.h>
 
 #if !defined(__cpp_inline_variables)
 #define FOLLY_INLINE_CONSTEXPR constexpr
