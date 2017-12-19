@@ -107,8 +107,10 @@ void run_timed_wait_regular_test() {
 template <template <typename> class Atom, bool Blocking>
 void run_try_wait_tests() {
   Baton<Atom, Blocking> b;
+  EXPECT_FALSE(b.ready());
   EXPECT_FALSE(b.try_wait());
   b.post();
+  EXPECT_TRUE(b.ready());
   EXPECT_TRUE(b.try_wait());
 }
 

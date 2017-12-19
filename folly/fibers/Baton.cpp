@@ -153,8 +153,7 @@ void Baton::postHelper(intptr_t new_value) {
 }
 
 bool Baton::try_wait() {
-  auto state = waitingFiber_.load();
-  return state == POSTED;
+  return ready();
 }
 
 void Baton::postThread() {

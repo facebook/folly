@@ -40,6 +40,11 @@ class Baton {
 
   ~Baton() {}
 
+  bool ready() const {
+    auto state = waitingFiber_.load();
+    return state == POSTED;
+  }
+
   /**
    * Puts active fiber to sleep. Returns when post is called.
    */

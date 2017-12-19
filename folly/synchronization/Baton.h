@@ -79,6 +79,12 @@ struct Baton {
     assert(state_.load(std::memory_order_relaxed) != WAITING);
   }
 
+  FOLLY_ALWAYS_INLINE bool ready() const noexcept {
+    auto s = state_.load(std::memory_order_acquire);
+    assert(s == INIT || s == EARLY_DELIVERY);
+    return LIKELY(s == EARLY_DELIVERY);
+  }
+
   /// Equivalent to destroying the Baton and creating a new one.  It is
   /// a bug to call this while there is a waiting thread, so in practice
   /// the waiter will be the one that resets the baton.
@@ -176,9 +182,7 @@ struct Baton {
   ///
   /// @return       true if baton has been posted, false othewise
   FOLLY_ALWAYS_INLINE bool try_wait() const noexcept {
-    auto s = state_.load(std::memory_order_acquire);
-    assert(s == INIT || s == EARLY_DELIVERY);
-    return LIKELY(s == EARLY_DELIVERY);
+    return ready();
   }
 
   /// Similar to wait, but with a timeout. The thread is unblocked if the
