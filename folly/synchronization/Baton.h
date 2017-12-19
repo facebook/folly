@@ -40,7 +40,7 @@ namespace folly {
 /// This is basically a stripped-down semaphore that supports only a
 /// single call to sem_post and a single call to sem_wait.
 ///
-/// The non-blocking version (Blocking == false) provides more speed
+/// The non-blocking version (MayBlock == false) provides more speed
 /// by using only load acquire and store release operations in the
 /// critical path, at the cost of disallowing blocking and timing out.
 ///
@@ -50,9 +50,7 @@ namespace folly {
 /// DeterministicSchedule.  By having a much more restrictive
 /// lifecycle we can also add a bunch of assertions that can help to
 /// catch race conditions ahead of time.
-template <
-    template <typename> class Atom = std::atomic,
-    bool Blocking = true> // blocking vs spinning
+template <bool MayBlock = true, template <typename> class Atom = std::atomic>
 struct Baton {
   constexpr Baton() noexcept : state_(INIT) {}
 
@@ -116,8 +114,8 @@ struct Baton {
   /// destruction or reset()) there can be at most one call to post(),
   /// in the single poster version.  Any thread may call post().
   void post() noexcept {
-    if (!Blocking) {
-      /// Non-blocking version
+    if (!MayBlock) {
+      /// Spin-only version
       ///
       assert([&] {
         auto state = state_.load(std::memory_order_relaxed);
@@ -127,7 +125,7 @@ struct Baton {
       return;
     }
 
-    /// Blocking versions
+    /// May-block versions
     ///
     uint32_t before = state_.load(std::memory_order_acquire);
 
@@ -200,7 +198,7 @@ struct Baton {
   FOLLY_ALWAYS_INLINE bool try_wait_for(
       const std::chrono::duration<Rep, Period>& timeout) noexcept {
     static_assert(
-        Blocking, "Non-blocking Baton does not support try_wait_for.");
+        MayBlock, "Non-blocking Baton does not support try_wait_for.");
 
     if (try_wait()) {
       return true;
@@ -225,7 +223,7 @@ struct Baton {
   FOLLY_ALWAYS_INLINE bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     static_assert(
-        Blocking, "Non-blocking Baton does not support try_wait_until.");
+        MayBlock, "Non-blocking Baton does not support try_wait_until.");
 
     if (try_wait()) {
       return true;
@@ -305,7 +303,7 @@ struct Baton {
       return;
     }
 
-    if (!Blocking) {
+    if (!MayBlock) {
       while (!try_wait()) {
         std::this_thread::yield();
       }

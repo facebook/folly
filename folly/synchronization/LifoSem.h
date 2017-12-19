@@ -33,7 +33,7 @@ namespace folly {
 
 template <
     template <typename> class Atom = std::atomic,
-    class BatonType = Baton<Atom>>
+    class BatonType = Baton<true, Atom>>
 struct LifoSemImpl;
 
 /// LifoSem is a semaphore that wakes its waiters in a manner intended to

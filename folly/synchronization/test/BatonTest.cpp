@@ -29,15 +29,15 @@ using folly::detail::EmulatedFutexAtomic;
 /// Basic test
 
 TEST(Baton, basic_blocking) {
-  run_basic_test<std::atomic, true>();
-  run_basic_test<EmulatedFutexAtomic, true>();
-  run_basic_test<DeterministicAtomic, true>();
+  run_basic_test<true, std::atomic>();
+  run_basic_test<true, EmulatedFutexAtomic>();
+  run_basic_test<true, DeterministicAtomic>();
 }
 
 TEST(Baton, basic_nonblocking) {
-  run_basic_test<std::atomic, false>();
-  run_basic_test<EmulatedFutexAtomic, false>();
-  run_basic_test<DeterministicAtomic, false>();
+  run_basic_test<false, std::atomic>();
+  run_basic_test<false, EmulatedFutexAtomic>();
+  run_basic_test<false, DeterministicAtomic>();
 }
 
 /// Ping pong tests
@@ -45,13 +45,13 @@ TEST(Baton, basic_nonblocking) {
 TEST(Baton, pingpong_blocking) {
   DSched sched(DSched::uniform(0));
 
-  run_pingpong_test<DeterministicAtomic, true>(1000);
+  run_pingpong_test<true, DeterministicAtomic>(1000);
 }
 
 TEST(Baton, pingpong_nonblocking) {
   DSched sched(DSched::uniform(0));
 
-  run_pingpong_test<DeterministicAtomic, false>(1000);
+  run_pingpong_test<false, DeterministicAtomic>(1000);
 }
 
 /// Timed wait tests - Nonblocking Baton does not support try_wait_until()
@@ -107,13 +107,13 @@ TEST(Baton, timed_wait_steady_clock) {
 /// Try wait tests
 
 TEST(Baton, try_wait_blocking) {
-  run_try_wait_tests<std::atomic, true>();
-  run_try_wait_tests<EmulatedFutexAtomic, true>();
-  run_try_wait_tests<DeterministicAtomic, true>();
+  run_try_wait_tests<true, std::atomic>();
+  run_try_wait_tests<true, EmulatedFutexAtomic>();
+  run_try_wait_tests<true, DeterministicAtomic>();
 }
 
 TEST(Baton, try_wait_nonblocking) {
-  run_try_wait_tests<std::atomic, false>();
-  run_try_wait_tests<EmulatedFutexAtomic, false>();
-  run_try_wait_tests<DeterministicAtomic, false>();
+  run_try_wait_tests<false, std::atomic>();
+  run_try_wait_tests<false, EmulatedFutexAtomic>();
+  run_try_wait_tests<false, DeterministicAtomic>();
 }

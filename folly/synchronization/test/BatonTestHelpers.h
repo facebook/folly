@@ -25,16 +25,16 @@ namespace test {
 
 typedef DeterministicSchedule DSched;
 
-template <template <typename> class Atom, bool Blocking>
+template <bool MayBlock, template <typename> class Atom>
 void run_basic_test() {
-  Baton<Atom, Blocking> b;
+  Baton<MayBlock, Atom> b;
   b.post();
   b.wait();
 }
 
-template <template <typename> class Atom, bool Blocking>
+template <bool MayBlock, template <typename> class Atom>
 void run_pingpong_test(int numRounds) {
-  using B = Baton<Atom, Blocking>;
+  using B = Baton<MayBlock, Atom>;
   B batons[17];
   B& a = batons[0];
   B& b = batons[16]; // to get it on a different cache line
@@ -55,7 +55,7 @@ void run_pingpong_test(int numRounds) {
 
 template <template <typename> class Atom, typename Clock>
 void run_basic_timed_wait_tests() {
-  Baton<Atom> b;
+  Baton<true, Atom> b;
   b.post();
   // tests if early delivery works fine
   EXPECT_TRUE(b.try_wait_until(Clock::now()));
@@ -63,7 +63,7 @@ void run_basic_timed_wait_tests() {
 
 template <template <typename> class Atom, typename Clock>
 void run_timed_wait_tmo_tests() {
-  Baton<Atom> b;
+  Baton<true, Atom> b;
 
   auto thr = DSched::thread([&] {
     bool rv = b.try_wait_until(Clock::now() + std::chrono::milliseconds(1));
@@ -75,7 +75,7 @@ void run_timed_wait_tmo_tests() {
 
 template <template <typename> class Atom, typename Clock>
 void run_timed_wait_regular_test() {
-  Baton<Atom> b;
+  Baton<true, Atom> b;
 
   auto thr = DSched::thread([&] {
     // To wait forever we'd like to use time_point<Clock>::max, but
@@ -104,9 +104,9 @@ void run_timed_wait_regular_test() {
   DSched::join(thr);
 }
 
-template <template <typename> class Atom, bool Blocking>
+template <bool MayBlock, template <typename> class Atom>
 void run_try_wait_tests() {
-  Baton<Atom, Blocking> b;
+  Baton<MayBlock, Atom> b;
   EXPECT_FALSE(b.ready());
   EXPECT_FALSE(b.try_wait());
   b.post();

@@ -30,21 +30,21 @@ using folly::detail::EmulatedFutexAtomic;
 typedef DeterministicSchedule DSched;
 
 BENCHMARK(baton_pingpong_blocking, iters) {
-  run_pingpong_test<std::atomic, true>(iters);
+  run_pingpong_test<true, std::atomic>(iters);
 }
 
 BENCHMARK(baton_pingpong_nonblocking, iters) {
-  run_pingpong_test<std::atomic, false>(iters);
+  run_pingpong_test<false, std::atomic>(iters);
 }
 
 BENCHMARK_DRAW_LINE()
 
 BENCHMARK(baton_pingpong_emulated_futex_blocking, iters) {
-  run_pingpong_test<EmulatedFutexAtomic, true>(iters);
+  run_pingpong_test<true, EmulatedFutexAtomic>(iters);
 }
 
 BENCHMARK(baton_pingpong_emulated_futex_nonblocking, iters) {
-  run_pingpong_test<EmulatedFutexAtomic, false>(iters);
+  run_pingpong_test<false, EmulatedFutexAtomic>(iters);
 }
 
 BENCHMARK_DRAW_LINE()
