@@ -563,6 +563,7 @@ class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
             iter->hazptrs_[0].reset(buckets);
             iter->setNode(
                 node->next_.load(std::memory_order_acquire), buckets, idx);
+            iter->next();
           }
           size_--;
           break;

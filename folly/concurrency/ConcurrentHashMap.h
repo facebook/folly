@@ -326,7 +326,6 @@ class ConcurrentHashMap {
   ConstIterator erase(ConstIterator& pos) {
     auto segment = pickSegment(pos->first);
     ConstIterator res(this, segment);
-    res.next();
     ensureSegment(segment)->erase(res.it_, pos.it_);
     res.next(); // May point to segment end, and need to advance.
     return res;
