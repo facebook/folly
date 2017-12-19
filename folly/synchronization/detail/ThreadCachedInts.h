@@ -36,9 +36,8 @@ namespace detail {
 
 template <typename Tag>
 class ThreadCachedInts {
-  // These are only accessed under the ThreadLocal lock.
-  int64_t orphan_inc_[2]{0, 0};
-  int64_t orphan_dec_[2]{0, 0};
+  std::atomic<int64_t> orphan_inc_[2];
+  std::atomic<int64_t> orphan_dec_[2];
   folly::detail::Futex<> waiting_;
 
   class Integer {
@@ -49,10 +48,16 @@ class ThreadCachedInts {
     std::atomic<int64_t> inc_[2];
     std::atomic<int64_t> dec_[2];
     ~Integer() noexcept {
-      ints_->orphan_inc_[0] += inc_[0].load(std::memory_order_relaxed);
-      ints_->orphan_inc_[1] += inc_[1].load(std::memory_order_relaxed);
-      ints_->orphan_dec_[0] += dec_[0].load(std::memory_order_relaxed);
-      ints_->orphan_dec_[1] += dec_[1].load(std::memory_order_relaxed);
+      // Increment counts must be set before decrement counts
+      ints_->orphan_inc_[0].fetch_add(
+          inc_[0].load(std::memory_order_relaxed), std::memory_order_relaxed);
+      ints_->orphan_inc_[1].fetch_add(
+          inc_[1].load(std::memory_order_relaxed), std::memory_order_relaxed);
+      folly::asymmetricLightBarrier(); // B
+      ints_->orphan_dec_[0].fetch_add(
+          dec_[0].load(std::memory_order_relaxed), std::memory_order_relaxed);
+      ints_->orphan_dec_[1].fetch_add(
+          dec_[1].load(std::memory_order_relaxed), std::memory_order_relaxed);
       ints_->waiting_.store(0, std::memory_order_release);
       ints_->waiting_.futexWake();
     }
@@ -99,7 +104,7 @@ class ThreadCachedInts {
   }
 
   int64_t readFull(uint8_t epoch) {
-    int64_t full = 0;
+    int64_t full = -orphan_dec_[epoch].load(std::memory_order_relaxed);
 
     // Matches A - ensure all threads have seen new value of version,
     // *and* that we see current values of counters in readFull()
@@ -125,8 +130,7 @@ class ThreadCachedInts {
     }
 
     // orphan is read behind accessAllThreads lock
-    auto res = full + orphan_inc_[epoch] - orphan_dec_[epoch];
-    return res;
+    return full + orphan_inc_[epoch].load(std::memory_order_relaxed);
   }
 
   void waitForZero(uint8_t phase) {
@@ -158,10 +162,10 @@ class ThreadCachedInts {
       int_cache_->inc_[0].store(0, std::memory_order_relaxed);
       int_cache_->inc_[1].store(0, std::memory_order_relaxed);
     }
-    orphan_inc_[0] = 0;
-    orphan_inc_[1] = 0;
-    orphan_dec_[0] = 0;
-    orphan_dec_[1] = 0;
+    orphan_inc_[0].store(0, std::memory_order_relaxed);
+    orphan_inc_[1].store(0, std::memory_order_relaxed);
+    orphan_dec_[0].store(0, std::memory_order_relaxed);
+    orphan_dec_[1].store(0, std::memory_order_relaxed);
   }
 };
 

@@ -19,6 +19,7 @@
 #include <atomic>
 
 #include <folly/Function.h>
+#include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
 #include <glog/logging.h>
 
@@ -81,7 +82,7 @@ class ThreadCachedLists : public ThreadCachedListsBase {
   // Push list to the global list.
   void pushGlobal(ListHead& list);
 
-  ListHead ghead_;
+  folly::Synchronized<ListHead> ghead_;
 
   struct TLHead : public AtomicListHead {
     ThreadCachedLists* parent_;
@@ -90,7 +91,7 @@ class ThreadCachedLists : public ThreadCachedListsBase {
     TLHead(ThreadCachedLists* parent) : parent_(parent) {}
 
     ~TLHead() {
-      parent_->ghead_.splice(*this);
+      parent_->ghead_->splice(*this);
     }
   };
 
@@ -146,7 +147,7 @@ void ThreadCachedLists<Tag>::collect(ListHead& list) {
     list.splice(thr);
   }
 
-  list.splice(ghead_);
+  list.splice(*ghead_.wlock());
 }
 
 template <typename Tag>

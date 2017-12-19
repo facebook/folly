@@ -24,12 +24,11 @@
 #include <folly/Random.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-#include <folly/synchronization/Baton.h>
 
 using namespace folly;
 
 DEFINE_int64(iters, 100000, "Number of iterations");
-DEFINE_int64(threads, 32, "Number of threads");
+DEFINE_uint64(threads, 32, "Number of threads");
 
 TEST(RcuTest, Basic) {
   auto foo = new int(2);
@@ -116,7 +115,7 @@ TEST(RcuTest, Stress) {
   for (uint i = 0; i < sz; i++) {
     ints[i].store(new int(0));
   }
-  for (int th = 0; th < FLAGS_threads; th++) {
+  for (unsigned th = 0; th < FLAGS_threads; th++) {
     threads.push_back(std::thread([&]() {
       for (int i = 0; i < FLAGS_iters / 100; i++) {
         rcu_reader g;
@@ -148,11 +147,16 @@ TEST(RcuTest, Stress) {
   }
   done = true;
   updater.join();
+  // Cleanup for asan
+  synchronize_rcu();
+  for (uint i = 0; i < sz; i++) {
+    delete ints[i].exchange(nullptr);
+  }
 }
 
 TEST(RcuTest, Synchronize) {
   std::vector<std::thread> threads;
-  for (int th = 0; th < FLAGS_threads; th++) {
+  for (unsigned th = 0; th < FLAGS_threads; th++) {
     threads.push_back(std::thread([&]() {
       for (int i = 0; i < 10; i++) {
         synchronize_rcu();
@@ -197,14 +201,11 @@ TEST(RcuTest, MoveReaderBetweenThreads) {
 }
 
 TEST(RcuTest, ForkTest) {
-  folly::Baton<> b;
   rcu_token epoch;
   std::thread t([&]() {
     epoch = rcu_default_domain()->lock_shared();
-    b.post();
   });
-  t.detach();
-  b.wait();
+  t.join();
   auto pid = fork();
   if (pid) {
     // parent
@@ -221,22 +222,21 @@ TEST(RcuTest, ForkTest) {
   }
 }
 
-TEST(RcuTest, CoreLocalList) {
+TEST(RcuTest, ThreadLocalList) {
   struct TTag;
   folly::detail::ThreadCachedLists<TTag> lists;
-  int numthreads = 32;
-  std::vector<std::thread> threads;
-  std::atomic<int> done{0};
-  for (int tr = 0; tr < numthreads; tr++) {
-    threads.push_back(std::thread([&]() {
+  std::vector<std::thread> threads{FLAGS_threads};
+  std::atomic<unsigned long> done{FLAGS_threads};
+  for (auto& tr : threads) {
+    tr = std::thread([&]() {
       for (int i = 0; i < FLAGS_iters; i++) {
         auto node = new folly::detail::ThreadCachedListsBase::Node;
         lists.push(node);
       }
-      done++;
-    }));
+      --done;
+    });
   }
-  while (done.load() != numthreads) {
+  while (done.load() > 0) {
     folly::detail::ThreadCachedLists<TTag>::ListHead list{};
     lists.collect(list);
     list.forEach([](folly::detail::ThreadCachedLists<TTag>::Node* node) {
@@ -246,6 +246,11 @@ TEST(RcuTest, CoreLocalList) {
   for (auto& thread : threads) {
     thread.join();
   }
+  // Run cleanup pass one more time to make ASAN happy
+  folly::detail::ThreadCachedLists<TTag>::ListHead list{};
+  lists.collect(list);
+  list.forEach(
+      [](folly::detail::ThreadCachedLists<TTag>::Node* node) { delete node; });
 }
 
 TEST(RcuTest, ThreadDeath) {
