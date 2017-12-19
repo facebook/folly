@@ -50,9 +50,9 @@ namespace folly {
  */
 class ThreadLocalPRNG {
  public:
-  typedef uint32_t result_type;
+  using result_type = uint32_t;
 
-  uint32_t operator()() {
+  result_type operator()() {
     // Using a static method allows the compiler to avoid allocating stack space
     // for this class.
     return getImpl(local_);
@@ -75,14 +75,32 @@ class ThreadLocalPRNG {
   LocalInstancePRNG* local_;
 };
 
-
 class Random {
-
  private:
   template <class RNG>
   using ValidRNG = typename std::enable_if<
       std::is_unsigned<typename std::result_of<RNG&()>::type>::value,
       RNG>::type;
+
+  template <class T>
+  class SecureRNG {
+   public:
+    using result_type = typename std::enable_if<
+        std::is_integral<T>::value && !std::is_same<T, bool>::value,
+        T>::type;
+
+    result_type operator()() {
+      return Random::secureRandom<result_type>();
+    }
+
+    static constexpr result_type min() {
+      return std::numeric_limits<result_type>::min();
+    }
+
+    static constexpr result_type max() {
+      return std::numeric_limits<result_type>::max();
+    }
+  };
 
  public:
   // Default generator type.
@@ -102,12 +120,82 @@ class Random {
    */
   template <class T>
   static typename std::enable_if<
-    std::is_integral<T>::value && !std::is_same<T,bool>::value,
-    T>::type
+      std::is_integral<T>::value && !std::is_same<T, bool>::value,
+      T>::type
   secureRandom() {
     T val;
     secureRandom(&val, sizeof(val));
     return val;
+  }
+
+  /**
+   * Returns a secure random uint32_t
+   */
+  static uint32_t secureRand32() {
+    return secureRandom<uint32_t>();
+  }
+
+  /**
+   * Returns a secure random uint32_t in [0, max). If max == 0, returns 0.
+   */
+  static uint32_t secureRand32(uint32_t max) {
+    SecureRNG<uint32_t> srng;
+    return rand32(max, srng);
+  }
+
+  /**
+   * Returns a secure random uint32_t in [min, max). If min == max, returns 0.
+   */
+  static uint32_t secureRand32(uint32_t min, uint32_t max) {
+    SecureRNG<uint32_t> srng;
+    return rand32(min, max, srng);
+  }
+
+  /**
+   * Returns a secure random uint64_t
+   */
+  static uint64_t secureRand64() {
+    return secureRandom<uint64_t>();
+  }
+
+  /**
+   * Returns a secure random uint64_t in [0, max). If max == 0, returns 0.
+   */
+  static uint64_t secureRand64(uint64_t max) {
+    SecureRNG<uint64_t> srng;
+    return rand64(max, srng);
+  }
+
+  /**
+   * Returns a secure random uint64_t in [min, max). If min == max, returns 0.
+   */
+  static uint64_t secureRand64(uint64_t min, uint64_t max) {
+    SecureRNG<uint64_t> srng;
+    return rand64(min, max, srng);
+  }
+
+  /**
+   * Returns true 1/n of the time. If n == 0, always returns false
+   */
+  static bool secureOneIn(uint32_t n) {
+    SecureRNG<uint32_t> srng;
+    return rand32(0, n, srng) == 0;
+  }
+
+  /**
+   * Returns a secure double in [0, 1)
+   */
+  static double secureRandDouble01() {
+    SecureRNG<uint64_t> srng;
+    return randDouble01(srng);
+  }
+
+  /**
+   * Returns a secure double in [min, max), if min == max, returns 0.
+   */
+  static double secureRandDouble(double min, double max) {
+    SecureRNG<uint64_t> srng;
+    return randDouble(min, max, srng);
   }
 
   /**
@@ -265,15 +353,15 @@ class Random {
   }
 
   /**
-    * Returns a double in [min, max), if min == max, returns 0.
-    */
+   * Returns a double in [min, max), if min == max, returns 0.
+   */
   static double randDouble(double min, double max) {
     return randDouble(min, max, ThreadLocalPRNG());
   }
 
   /**
-    * Returns a double in [min, max), if min == max, returns 0.
-    */
+   * Returns a double in [min, max), if min == max, returns 0.
+   */
   template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
   static double randDouble(double min, double max, RNG&& rng) {
     if (std::fabs(max - min) < std::numeric_limits<double>::epsilon()) {
@@ -281,7 +369,6 @@ class Random {
     }
     return std::uniform_real_distribution<double>(min, max)(rng);
   }
-
 };
 
 /*
