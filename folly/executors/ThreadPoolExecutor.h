@@ -129,7 +129,8 @@ class ThreadPoolExecutor : public virtual folly::Executor {
 
   struct TaskStatsCallbackRegistry;
 
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Thread : public ThreadHandle {
+  struct alignas(hardware_destructive_interference_size) Thread
+      : public ThreadHandle {
     explicit Thread(ThreadPoolExecutor* pool)
         : id(nextId++),
           handle(),

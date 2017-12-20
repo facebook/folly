@@ -73,7 +73,8 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   folly::EventBaseManager* getEventBaseManager();
 
  private:
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING IOThread : public Thread {
+  struct alignas(hardware_destructive_interference_size) IOThread
+      : public Thread {
     IOThread(IOThreadPoolExecutor* pool)
         : Thread(pool), shouldRun(true), pendingTasks(0) {}
     std::atomic<bool> shouldRun;

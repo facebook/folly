@@ -303,7 +303,7 @@ inline uint32_t digits10(uint64_t v) {
   // 10^i, defined for i 0 through 19.
   // This is 20 * 8 == 160 bytes, which fits neatly into 5 cache lines
   // (assuming a cache line size of 64).
-  static const uint64_t powersOf10[20] FOLLY_ALIGNED(64) = {
+  alignas(64) static const uint64_t powersOf10[20] = {
       1,
       10,
       100,

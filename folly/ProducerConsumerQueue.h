@@ -177,8 +177,10 @@ struct ProducerConsumerQueue {
   const uint32_t size_;
   T* const records_;
 
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING std::atomic<unsigned int> readIndex_;
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING std::atomic<unsigned int> writeIndex_;
+  alignas(hardware_destructive_interference_size)
+      std::atomic<unsigned int> readIndex_;
+  alignas(hardware_destructive_interference_size)
+      std::atomic<unsigned int> writeIndex_;
 
   char pad1_[hardware_destructive_interference_size - sizeof(writeIndex_)];
 };

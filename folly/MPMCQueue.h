@@ -981,7 +981,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
   };
 
   /// The maximum number of items in the queue at once
-  size_t FOLLY_ALIGN_TO_AVOID_FALSE_SHARING capacity_;
+  alignas(hardware_destructive_interference_size) size_t capacity_;
 
   /// Anonymous union for use when Dynamic = false and true, respectively
   union {
@@ -1014,18 +1014,19 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
   Atom<size_t> dcapacity_;
 
   /// Enqueuers get tickets from here
-  Atom<uint64_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING pushTicket_;
+  alignas(hardware_destructive_interference_size) Atom<uint64_t> pushTicket_;
 
   /// Dequeuers get tickets from here
-  Atom<uint64_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING popTicket_;
+  alignas(hardware_destructive_interference_size) Atom<uint64_t> popTicket_;
 
   /// This is how many times we will spin before using FUTEX_WAIT when
   /// the queue is full on enqueue, adaptively computed by occasionally
   /// spinning for longer and smoothing with an exponential moving average
-  Atom<uint32_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING pushSpinCutoff_;
+  alignas(
+      hardware_destructive_interference_size) Atom<uint32_t> pushSpinCutoff_;
 
   /// The adaptive spin cutoff when the queue is empty on dequeue
-  Atom<uint32_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING popSpinCutoff_;
+  alignas(hardware_destructive_interference_size) Atom<uint32_t> popSpinCutoff_;
 
   /// Alignment doesn't prevent false sharing at the end of the struct,
   /// so fill out the last cache line

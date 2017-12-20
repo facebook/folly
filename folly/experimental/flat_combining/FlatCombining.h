@@ -112,8 +112,8 @@ class FlatCombining {
  public:
   /// Combining request record.
   class Rec {
-    FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-    folly::SaturatingSemaphore<false, Atom> valid_;
+    alignas(hardware_destructive_interference_size)
+        folly::SaturatingSemaphore<false, Atom> valid_;
     folly::SaturatingSemaphore<false, Atom> done_;
     folly::SaturatingSemaphore<false, Atom> disconnected_;
     size_t index_;
@@ -421,23 +421,20 @@ class FlatCombining {
   const uint64_t kDefaultNumRecs = 64;
   const uint64_t kIdleThreshold = 10;
 
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-  Mutex m_;
+  alignas(hardware_destructive_interference_size) Mutex m_;
 
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-  folly::SaturatingSemaphore<true, Atom> pending_;
+  alignas(hardware_destructive_interference_size)
+      folly::SaturatingSemaphore<true, Atom> pending_;
   Atom<bool> shutdown_{false};
 
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-  uint32_t numRecs_;
+  alignas(hardware_destructive_interference_size) uint32_t numRecs_;
   uint32_t maxOps_;
   Atom<size_t> recs_;
   bool dedicated_;
   std::thread combiner_;
   Pool recsPool_;
 
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-  uint64_t uncombined_ = 0;
+  alignas(hardware_destructive_interference_size) uint64_t uncombined_ = 0;
   uint64_t combined_ = 0;
   uint64_t passes_ = 0;
   uint64_t sessions_ = 0;

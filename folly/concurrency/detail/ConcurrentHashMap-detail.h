@@ -197,7 +197,7 @@ template <
     typename Allocator = std::allocator<uint8_t>,
     template <typename> class Atom = std::atomic,
     class Mutex = std::mutex>
-class FOLLY_ALIGNED(64) ConcurrentHashMapSegment {
+class alignas(64) ConcurrentHashMapSegment {
   enum class InsertType {
     DOES_NOT_EXIST, // insert/emplace operations.  If key exists, return false.
     MUST_EXIST, // assign operations.  If key does not exist, return false.

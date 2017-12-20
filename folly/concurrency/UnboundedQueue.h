@@ -648,8 +648,7 @@ class UnboundedQueue {
     Atom<Segment*> next_;
     const Ticket min_;
     bool marked_; // used for iterative deletion
-    FOLLY_ALIGNED(Align)
-    Entry b_[SegmentSize];
+    alignas(Align) Entry b_[SegmentSize];
 
    public:
     explicit Segment(const Ticket t)

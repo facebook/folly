@@ -25,8 +25,7 @@
 
 namespace folly {
 
-struct Line {
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
+struct alignas(hardware_destructive_interference_size) Line {
   uint64_t val_;
 };
 

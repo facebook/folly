@@ -265,12 +265,11 @@ inline bool hazptr_obj_base_refcounted<T, D>::release_ref() {
  *  hazptr_rec
  */
 
-class hazptr_rec {
+class alignas(hardware_destructive_interference_size) hazptr_rec {
   friend class hazptr_domain;
   friend class hazptr_holder;
   friend struct hazptr_tc_entry;
 
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
   std::atomic<const void*> hazptr_{nullptr};
   hazptr_rec* next_{nullptr};
   std::atomic<bool> active_{false};

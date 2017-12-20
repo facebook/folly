@@ -86,7 +86,7 @@ template <> const char *const MaxString<__uint128_t>::value =
 // still not overflow uint16_t.
 constexpr int32_t OOR = 10000;
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift1[] = {
+alignas(16) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -115,7 +115,7 @@ FOLLY_ALIGNED(16) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift10[] = {
+alignas(16) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -144,7 +144,7 @@ FOLLY_ALIGNED(16) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift100[] = {
+alignas(16) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -173,7 +173,7 @@ FOLLY_ALIGNED(16) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift1000[] = {
+alignas(16) constexpr uint16_t shift1000[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20

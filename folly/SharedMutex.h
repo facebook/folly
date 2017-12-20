@@ -738,9 +738,8 @@ class SharedMutexImpl {
   typedef Atom<uintptr_t> DeferredReaderSlot;
 
  private:
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING static DeferredReaderSlot deferredReaders
-      [kMaxDeferredReaders *
-       kDeferredSeparationFactor];
+  alignas(hardware_destructive_interference_size) static DeferredReaderSlot
+      deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor];
 
   // Performs an exclusive lock, waiting for state_ & waitMask to be
   // zero first
@@ -1350,11 +1349,11 @@ template <
     typename Tag_,
     template <typename> class Atom,
     bool BlockImmediately>
-typename SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-    DeferredReaderSlot
-        SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-            deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor] =
-                {};
+alignas(hardware_destructive_interference_size)
+    typename SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+        DeferredReaderSlot
+    SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+        deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor] = {};
 
 template <
     bool ReaderPriority,
