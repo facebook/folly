@@ -17,9 +17,8 @@
 #pragma once
 
 #include <cstddef>
+#include <utility>
 
-#include <folly/Portability.h>
-#include <folly/concurrency/CacheLocality.h>
 #include <folly/lang/Align.h>
 
 namespace folly {
@@ -68,8 +67,8 @@ class CachelinePadded {
 
  private:
   static constexpr size_t paddingSize() noexcept {
-    return CacheLocality::kFalseSharingRange -
-        (alignof(T) % CacheLocality::kFalseSharingRange);
+    return hardware_destructive_interference_size -
+        (alignof(T) % hardware_destructive_interference_size);
   }
   char paddingPre_[paddingSize()];
   T inner_;

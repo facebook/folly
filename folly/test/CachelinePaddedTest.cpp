@@ -27,7 +27,8 @@ static_assert(
     std::is_standard_layout<CachelinePadded<int>>::value,
     "CachelinePadded<T> must be standard-layout if T is.");
 
-static constexpr int kCachelineSize = folly::CacheLocality::kFalseSharingRange;
+static constexpr int kCachelineSize =
+    folly::hardware_destructive_interference_size;
 
 template <size_t dataSize, size_t alignment = alignof(void*)>
 struct alignas(alignment) SizedData {

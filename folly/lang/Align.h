@@ -18,6 +18,8 @@
 
 #include <cstddef>
 
+#include <folly/Portability.h>
+
 namespace folly {
 
 namespace detail {
@@ -87,5 +89,33 @@ using max_align_v_ = max_align_t_<
 // Apple's allocation reference: http://bit.ly/malloc-small
 constexpr std::size_t max_align_v = detail::max_align_v_::value;
 struct alignas(max_align_v) max_align_t {};
+
+//  Memory locations within the same cache line are subject to destructive
+//  interference, also known as false sharing, which is when concurrent
+//  accesses to these different memory locations from different cores, where at
+//  least one of the concurrent accesses is or involves a store operation,
+//  induce contention and harm performance.
+//
+//  Microbenchmarks indicate that pairs of cache lines also see destructive
+//  interference under heavy use of atomic operations, as observed for atomic
+//  increment on Sandy Bridge.
+//
+//  We assume a cache line size of 64, so we use a cache line pair size of 128
+//  to avoid destructive interference.
+//
+//  mimic: std::hardware_destructive_interference_size, C++17
+constexpr std::size_t hardware_destructive_interference_size =
+    kIsArchArm ? 64 : 128;
+static_assert(hardware_destructive_interference_size >= max_align_v, "math?");
+
+//  Memory locations within the same cache line are subject to constructive
+//  interference, also known as true sharing, which is when accesses to some
+//  memory locations induce all memory locations within the same cache line to
+//  be cached, benefiting subsequent accesses to different memory locations
+//  within the same cache line and heping performance.
+//
+//  mimic: std::hardware_constructive_interference_size, C++17
+constexpr std::size_t hardware_constructive_interference_size = 64;
+static_assert(hardware_constructive_interference_size >= max_align_v, "math?");
 
 } // namespace folly

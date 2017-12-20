@@ -97,6 +97,12 @@ constexpr bool kHasUnalignedAccess = false;
 # define FOLLY_X64 0
 #endif
 
+#if defined(__arm__)
+#define FOLLY_ARM 1
+#else
+#define FOLLY_ARM 0
+#endif
+
 #if defined(__aarch64__)
 # define FOLLY_AARCH64 1
 #else
@@ -110,6 +116,7 @@ constexpr bool kHasUnalignedAccess = false;
 #endif
 
 namespace folly {
+constexpr bool kIsArchArm = FOLLY_ARM == 1;
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
