@@ -126,8 +126,10 @@ class propagate_const {
     pointer_ = static_cast<OtherPointer&&>(other);
   }
 
-  FOLLY_CPP14_CONSTEXPR void swap(propagate_const& other) noexcept(noexcept(
-      detail::propagate_const_adl::adl_swap(pointer_, other.pointer_))) {
+  FOLLY_CPP14_CONSTEXPR void swap(propagate_const& other) noexcept(
+      noexcept(detail::propagate_const_adl::adl_swap(
+          std::declval<Pointer&>(),
+          other.pointer_))) {
     detail::propagate_const_adl::adl_swap(pointer_, other.pointer_);
   }
 
