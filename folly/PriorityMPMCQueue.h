@@ -66,6 +66,10 @@ class PriorityMPMCQueue {
     return false;
   }
 
+  bool readWithPriority(T& item, size_t priority) {
+    return queues_[priority].readIfNotEmpty(item);
+  }
+
   size_t size() const {
     size_t total_size = 0;
     for (auto& q : queues_) {
