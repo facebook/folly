@@ -23,25 +23,37 @@ namespace symbolizer {
 
 template <class Fn>
 const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const {
+  // there exist ELF binaries which execute correctly, but have invalid internal
+  // offset(s) to program/section headers; most probably due to invalid
+  // stripping of symbols
+  if (elfHeader().e_phoff + sizeof(ElfPhdr) >= length_) {
+    return nullptr;
+  }
+
   const ElfPhdr* ptr = &at<ElfPhdr>(elfHeader().e_phoff);
   for (size_t i = 0; i < elfHeader().e_phnum; i++, ptr++) {
     if (fn(*ptr)) {
       return ptr;
     }
   }
-
   return nullptr;
 }
 
 template <class Fn>
 const ElfShdr* ElfFile::iterateSections(Fn fn) const {
+  // there exist ELF binaries which execute correctly, but have invalid internal
+  // offset(s) to program/section headers; most probably due to invalid
+  // stripping of symbols
+  if (elfHeader().e_shoff + sizeof(ElfShdr) >= length_) {
+    return nullptr;
+  }
+
   const ElfShdr* ptr = &at<ElfShdr>(elfHeader().e_shoff);
   for (size_t i = 0; i < elfHeader().e_shnum; i++, ptr++) {
     if (fn(*ptr)) {
       return ptr;
     }
   }
-
   return nullptr;
 }
 
