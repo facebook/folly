@@ -124,6 +124,7 @@ class propagate_const {
           std::is_convertible<OtherPointer&&, Pointer>::value>>>
   FOLLY_CPP14_CONSTEXPR propagate_const& operator=(OtherPointer&& other) {
     pointer_ = static_cast<OtherPointer&&>(other);
+    return *this;
   }
 
   FOLLY_CPP14_CONSTEXPR void swap(propagate_const& other) noexcept(

@@ -68,6 +68,14 @@ TEST_F(PropagateConstTest, construct_assign) {
   EXPECT_FALSE((std::is_assignable<pc<Explicit>, pc<Source>>::value));
 }
 
+TEST_F(PropagateConstTest, op_assign_move) {
+  auto ptr = pc<std::unique_ptr<int>>{std::make_unique<int>(1)};
+  EXPECT_EQ(*ptr, 1);
+
+  ptr = std::make_unique<int>(2);
+  EXPECT_EQ(*ptr, 2);
+}
+
 TEST_F(PropagateConstTest, get) {
   int a = 3;
   auto pc_a = pc<int*>(&a);
