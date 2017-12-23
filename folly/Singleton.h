@@ -121,7 +121,7 @@
 // should call reenableInstances.
 
 #pragma once
-#include <folly/Demangle.h>
+
 #include <folly/Exception.h>
 #include <folly/Executor.h>
 #include <folly/Memory.h>
@@ -206,14 +206,7 @@ class TypeDescriptor {
     return *this;
   }
 
-  std::string name() const {
-    auto ret = demangle(ti_.name());
-    if (tag_ti_ != std::type_index(typeid(DefaultTag))) {
-      ret += "/";
-      ret += demangle(tag_ti_.name());
-    }
-    return ret.toStdString();
-  }
+  std::string name() const;
 
   friend class TypeDescriptorHasher;
 
@@ -231,6 +224,59 @@ class TypeDescriptorHasher {
   size_t operator()(const TypeDescriptor& ti) const {
     return folly::hash::hash_combine(ti.ti_, ti.tag_ti_);
   }
+};
+
+[[noreturn]] void singletonWarnLeakyDoubleRegistrationAndAbort(
+    const TypeDescriptor& type);
+
+[[noreturn]] void singletonWarnLeakyInstantiatingNotRegisteredAndAbort(
+    const TypeDescriptor& type);
+
+[[noreturn]] void singletonWarnRegisterMockEarlyAndAbort(
+    const TypeDescriptor& type);
+
+void singletonWarnDestroyInstanceLeak(
+    const TypeDescriptor& type,
+    const void* ptr);
+
+[[noreturn]] void singletonWarnCreateCircularDependencyAndAbort(
+    const TypeDescriptor& type);
+
+[[noreturn]] void singletonWarnCreateUnregisteredAndAbort(
+    const TypeDescriptor& type);
+
+[[noreturn]] void singletonWarnCreateBeforeRegistrationCompleteAndAbort(
+    const TypeDescriptor& type);
+
+void singletonPrintDestructionStackTrace(const TypeDescriptor& type);
+
+[[noreturn]] void singletonThrowNullCreator(const std::type_info& type);
+
+[[noreturn]] void singletonThrowGetInvokedAfterDestruction(
+    const TypeDescriptor& type);
+
+struct SingletonVaultState {
+  // The two stages of life for a vault, as mentioned in the class comment.
+  enum class Type {
+    Running,
+    Quiescing,
+  };
+
+  Type state{Type::Running};
+  bool registrationComplete{false};
+
+  // Each singleton in the vault can be in two states: dead
+  // (registered but never created), living (CreateFunc returned an instance).
+
+  void check(
+      Type expected,
+      const char* msg = "Unexpected singleton state change") const {
+    if (expected != state) {
+      throwUnexpectedState(msg);
+    }
+  }
+
+  [[noreturn]] static void throwUnexpectedState(const char* msg);
 };
 
 // This interface is used by SingletonVault to interact with SingletonHolders.
@@ -475,29 +521,6 @@ class SingletonVault {
   template <typename T>
   friend struct detail::SingletonHolder;
 
-  // The two stages of life for a vault, as mentioned in the class comment.
-  enum class SingletonVaultState {
-    Running,
-    Quiescing,
-  };
-
-  struct State {
-    SingletonVaultState state{SingletonVaultState::Running};
-    bool registrationComplete{false};
-  };
-
-  // Each singleton in the vault can be in two states: dead
-  // (registered but never created), living (CreateFunc returned an instance).
-
-  static void stateCheck(
-      SingletonVaultState expected,
-      const State& state,
-      const char* msg = "Unexpected singleton state change") {
-    if (expected != state.state) {
-      throw std::logic_error(msg);
-    }
-  }
-
   // This method only matters if registrationComplete() is never called.
   // Otherwise destroyInstances is scheduled to be executed atexit.
   //
@@ -514,15 +537,15 @@ class SingletonVault {
   typedef std::unordered_map<detail::TypeDescriptor,
                              detail::SingletonHolderBase*,
                              detail::TypeDescriptorHasher> SingletonMap;
-  folly::Synchronized<SingletonMap> singletons_;
-  folly::Synchronized<std::unordered_set<detail::SingletonHolderBase*>>
+  Synchronized<SingletonMap> singletons_;
+  Synchronized<std::unordered_set<detail::SingletonHolderBase*>>
       eagerInitSingletons_;
-  folly::Synchronized<std::vector<detail::TypeDescriptor>> creationOrder_;
+  Synchronized<std::vector<detail::TypeDescriptor>> creationOrder_;
 
   // Using SharedMutexReadPriority is important here, because we want to make
   // sure we don't block nested singleton creation happening concurrently with
   // destroyInstances().
-  folly::Synchronized<State, folly::SharedMutexReadPriority> state_;
+  Synchronized<detail::SingletonVaultState, SharedMutexReadPriority> state_;
 
   Type type_;
 };
@@ -576,8 +599,7 @@ class Singleton {
   explicit Singleton(typename Singleton::CreateFunc c,
                      typename Singleton::TeardownFunc t = nullptr) {
     if (c == nullptr) {
-      throw std::logic_error(
-        "nullptr_t should be passed if you want T to be default constructed");
+      detail::singletonThrowNullCreator(typeid(T));
     }
 
     auto vault = SingletonVault::singleton<VaultTag>();
@@ -625,8 +647,7 @@ class Singleton {
   static void make_mock(CreateFunc c,
                         typename Singleton<T>::TeardownFunc t = nullptr) {
     if (c == nullptr) {
-      throw std::logic_error(
-        "nullptr_t should be passed if you want T to be default constructed");
+      detail::singletonThrowNullCreator(typeid(T));
     }
 
     auto& entry = getEntry();
@@ -660,9 +681,7 @@ class LeakySingleton {
   explicit LeakySingleton(CreateFunc createFunc) {
     auto& entry = entryInstance();
     if (entry.state != State::NotRegistered) {
-      LOG(FATAL) << "Double registration of singletons of the same "
-                 << "underlying type; check for multiple definitions "
-                 << "of type folly::LeakySingleton<" + entry.type_.name() + ">";
+      detail::singletonWarnLeakyDoubleRegistrationAndAbort(entry.type_);
     }
     entry.createFunc = createFunc;
     entry.state = State::Dead;
@@ -675,12 +694,11 @@ class LeakySingleton {
   }
 
   static void make_mock(CreateFunc createFunc) {
-    auto& entry = entryInstance();
     if (createFunc == nullptr) {
-      throw std::logic_error(
-          "nullptr_t should be passed if you want T to be default constructed");
+      detail::singletonThrowNullCreator(typeid(T));
     }
 
+    auto& entry = entryInstance();
     entry.createFunc = createFunc;
     entry.state = State::Dead;
   }
@@ -723,11 +741,7 @@ class LeakySingleton {
     }
 
     if (entry.state == State::NotRegistered) {
-      auto ptr = SingletonVault::stackTraceGetter().load();
-      LOG(FATAL) << "Creating instance for unregistered singleton: "
-                 << entry.type_.name() << "\n"
-                 << "Stacktrace:"
-                 << "\n" << (ptr ? (*ptr)() : "(not available)");
+      detail::singletonWarnLeakyInstantiatingNotRegisteredAndAbort(entry.type_);
     }
 
     entry.ptr = entry.createFunc();

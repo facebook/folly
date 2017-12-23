@@ -26,6 +26,8 @@
 #include <iostream>
 #include <string>
 
+#include <folly/Demangle.h>
+#include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
@@ -57,6 +59,15 @@ SingletonVault::Type SingletonVault::defaultVaultType() {
 
 namespace detail {
 
+std::string TypeDescriptor::name() const {
+  auto ret = demangle(ti_.name());
+  if (tag_ti_ != std::type_index(typeid(DefaultTag))) {
+    ret += "/";
+    ret += demangle(tag_ti_.name());
+  }
+  return ret.toStdString();
+}
+
 [[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
     const TypeDescriptor& type) {
   // Ensure the availability of std::cerr
@@ -67,6 +78,111 @@ namespace detail {
             << type.name() << ">\n";
   std::abort();
 }
+
+[[noreturn]] void singletonWarnLeakyDoubleRegistrationAndAbort(
+    const TypeDescriptor& type) {
+  // Ensure the availability of std::cerr
+  std::ios_base::Init ioInit;
+  std::cerr << "Double registration of singletons of the same "
+               "underlying type; check for multiple definitions "
+               "of type folly::LeakySingleton<"
+            << type.name() << ">\n";
+  std::abort();
+}
+
+[[noreturn]] void singletonWarnLeakyInstantiatingNotRegisteredAndAbort(
+    const TypeDescriptor& type) {
+  auto ptr = SingletonVault::stackTraceGetter().load();
+  LOG(FATAL) << "Creating instance for unregistered singleton: "
+             << type.name() << "\n"
+             << "Stacktrace:"
+             << "\n" << (ptr ? (*ptr)() : "(not available)");
+}
+
+[[noreturn]] void singletonWarnRegisterMockEarlyAndAbort(
+    const TypeDescriptor& type) {
+  LOG(FATAL) << "Registering mock before singleton was registered: "
+             << type.name();
+}
+
+void singletonWarnDestroyInstanceLeak(
+    const TypeDescriptor& type,
+    const void* ptr) {
+  LOG(ERROR) << "Singleton of type " << type.name() << " has a "
+             << "living reference at destroyInstances time; beware! Raw "
+             << "pointer is " << ptr << ". It is very likely "
+             << "that some other singleton is holding a shared_ptr to it. "
+             << "This singleton will be leaked (even if a shared_ptr to it "
+             << "is eventually released)."
+             << "Make sure dependencies between these singletons are "
+             << "properly defined.";
+}
+
+[[noreturn]] void singletonWarnCreateCircularDependencyAndAbort(
+    const TypeDescriptor& type) {
+  LOG(FATAL) << "circular singleton dependency: " << type.name();
+}
+
+[[noreturn]] void singletonWarnCreateUnregisteredAndAbort(
+    const TypeDescriptor& type) {
+  auto ptr = SingletonVault::stackTraceGetter().load();
+  LOG(FATAL) << "Creating instance for unregistered singleton: "
+             << type.name() << "\n"
+             << "Stacktrace:"
+             << "\n"
+             << (ptr ? (*ptr)() : "(not available)");
+}
+
+[[noreturn]] void singletonWarnCreateBeforeRegistrationCompleteAndAbort(
+    const TypeDescriptor& type) {
+  auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
+  auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
+  if (!stack_trace.empty()) {
+    stack_trace = "Stack trace:\n" + stack_trace;
+  }
+
+  LOG(FATAL) << "Singleton " << type.name() << " requested before "
+             << "registrationComplete() call.\n"
+             << "This usually means that either main() never called "
+             << "folly::init, or singleton was requested before main() "
+             << "(which is not allowed).\n"
+             << stack_trace;
+}
+
+void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
+  std::string output = "Singleton " + type.name() + " was released.\n";
+
+  auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
+  auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
+  if (stack_trace.empty()) {
+    output += "Failed to get release stack trace.";
+  } else {
+    output += "Release stack trace:\n";
+    output += stack_trace;
+  }
+
+  LOG(ERROR) << output;
+}
+
+[[noreturn]] void singletonThrowNullCreator(const std::type_info& type) {
+  auto const msg = sformat(
+      "nullptr_t should be passed if you want {} to be default constructed",
+      demangle(type));
+  throw std::logic_error(msg);
+}
+
+[[noreturn]] void singletonThrowGetInvokedAfterDestruction(
+    const TypeDescriptor& type) {
+  throw std::runtime_error(
+      "Raw pointer to a singleton requested after its destruction."
+      " Singleton type is: " +
+      type.name());
+}
+
+[[noreturn]] void SingletonVaultState::throwUnexpectedState(const char* msg) {
+  throw std::logic_error(msg);
+}
+
 } // namespace detail
 
 namespace {
@@ -101,7 +217,7 @@ SingletonVault::~SingletonVault() { destroyInstances(); }
 
 void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
-  stateCheck(SingletonVaultState::Running, *state);
+  state->check(detail::SingletonVaultState::Type::Running);
 
   if (UNLIKELY(state->registrationComplete)) {
     LOG(ERROR) << "Registering singleton after registrationComplete().";
@@ -114,7 +230,7 @@ void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
 
 void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
-  stateCheck(SingletonVaultState::Running, *state);
+  state->check(detail::SingletonVaultState::Type::Running);
 
   if (UNLIKELY(state->registrationComplete)) {
     LOG(ERROR) << "Registering for eager-load after registrationComplete().";
@@ -130,7 +246,7 @@ void SingletonVault::registrationComplete() {
   std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
 
   auto state = state_.wlock();
-  stateCheck(SingletonVaultState::Running, *state);
+  state->check(detail::SingletonVaultState::Type::Running);
 
   if (state->registrationComplete) {
     return;
@@ -153,7 +269,7 @@ void SingletonVault::registrationComplete() {
 void SingletonVault::doEagerInit() {
   {
     auto state = state_.rlock();
-    stateCheck(SingletonVaultState::Running, *state);
+    state->check(detail::SingletonVaultState::Type::Running);
     if (UNLIKELY(!state->registrationComplete)) {
       throw std::logic_error("registrationComplete() not yet called");
     }
@@ -168,7 +284,7 @@ void SingletonVault::doEagerInit() {
 void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
   {
     auto state = state_.rlock();
-    stateCheck(SingletonVaultState::Running, *state);
+    state->check(detail::SingletonVaultState::Type::Running);
     if (UNLIKELY(!state->registrationComplete)) {
       throw std::logic_error("registrationComplete() not yet called");
     }
@@ -204,10 +320,10 @@ void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
 
 void SingletonVault::destroyInstances() {
   auto stateW = state_.wlock();
-  if (stateW->state == SingletonVaultState::Quiescing) {
+  if (stateW->state == detail::SingletonVaultState::Type::Quiescing) {
     return;
   }
-  stateW->state = SingletonVaultState::Quiescing;
+  stateW->state = detail::SingletonVaultState::Type::Quiescing;
 
   auto stateR = stateW.moveFromWriteToRead();
   {
@@ -249,9 +365,9 @@ void SingletonVault::destroyInstances() {
 void SingletonVault::reenableInstances() {
   auto state = state_.wlock();
 
-  stateCheck(SingletonVaultState::Quiescing, *state);
+  state->check(detail::SingletonVaultState::Type::Quiescing);
 
-  state->state = SingletonVaultState::Running;
+  state->state = detail::SingletonVaultState::Type::Running;
 }
 
 void SingletonVault::scheduleDestroyInstances() {
