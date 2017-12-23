@@ -171,7 +171,7 @@ TEST(SemiFuture, MakeSemiFutureFromFutureWithValue) {
 
 TEST(SemiFuture, MakeSemiFutureFromReadyFuture) {
   Promise<int> p;
-  auto f = SemiFuture<int>{p.getFuture()};
+  auto f = p.getSemiFuture();
   EXPECT_FALSE(f.isReady());
   p.setValue(42);
   EXPECT_TRUE(f.isReady());
@@ -179,7 +179,7 @@ TEST(SemiFuture, MakeSemiFutureFromReadyFuture) {
 
 TEST(SemiFuture, MakeSemiFutureFromNotReadyFuture) {
   Promise<int> p;
-  auto f = SemiFuture<int>{p.getFuture()};
+  auto f = p.getSemiFuture();
   EXPECT_THROW(f.value(), eggs_t);
 }
 
@@ -187,7 +187,7 @@ TEST(SemiFuture, MakeFutureFromSemiFuture) {
   folly::EventBase e;
   Promise<int> p;
   std::atomic<int> result{0};
-  auto f = SemiFuture<int>{p.getFuture()};
+  auto f = p.getSemiFuture();
   auto future = std::move(f).via(&e).then([&](int value) {
     result = value;
     return value;
@@ -206,7 +206,7 @@ TEST(SemiFuture, MakeFutureFromSemiFutureLValue) {
   folly::EventBase e;
   Promise<int> p;
   std::atomic<int> result{0};
-  auto f = SemiFuture<int>{p.getFuture()};
+  auto f = p.getSemiFuture();
   auto future = std::move(f).via(&e).then([&](int value) {
     result = value;
     return value;

@@ -312,6 +312,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   void boost_();
 
  private:
+  friend class Promise<T>;
   template <class>
   friend class futures::detail::FutureBase;
   template <class>

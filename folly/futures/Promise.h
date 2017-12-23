@@ -53,8 +53,15 @@ class Promise {
   Promise(Promise<T>&&) noexcept;
   Promise& operator=(Promise<T>&&) noexcept;
 
+  /** Return a SemiFuture tied to the shared core state. This can be called only
+    once, thereafter FutureAlreadyRetrieved exception will be raised. */
+  SemiFuture<T> getSemiFuture();
+
   /** Return a Future tied to the shared core state. This can be called only
-    once, thereafter Future already retrieved exception will be raised. */
+    once, thereafter FutureAlreadyRetrieved exception will be raised.
+    NOTE: This function is deprecated. Please use getSemiFuture and pass the
+          appropriate executor to .via on the returned SemiFuture to get a
+          valid Future where necessary. */
   Future<T> getFuture();
 
   /** Fulfill the Promise with an exception_wrapper */

@@ -19,6 +19,7 @@
 #include <atomic>
 #include <thread>
 
+#include <folly/executors/InlineExecutor.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/detail/Core.h>
 
@@ -85,10 +86,17 @@ void Promise<T>::detach() {
 }
 
 template <class T>
-Future<T> Promise<T>::getFuture() {
+SemiFuture<T> Promise<T>::getSemiFuture() {
   throwIfRetrieved();
   retrieved_ = true;
-  return Future<T>(core_);
+  return SemiFuture<T>(core_);
+}
+
+template <class T>
+Future<T> Promise<T>::getFuture() {
+  // An InlineExecutor approximates the old behaviour of continuations
+  // running inine on setting the value of the promise.
+  return getSemiFuture().via(&InlineExecutor::instance());
 }
 
 template <class T>

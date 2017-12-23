@@ -20,9 +20,9 @@
 #include <memory>
 
 using namespace folly;
-using std::unique_ptr;
 using std::string;
 
+using std::unique_ptr;
 typedef FutureException eggs_t;
 static eggs_t eggs("eggs");
 
@@ -38,6 +38,12 @@ TEST(Promise, special) {
   EXPECT_TRUE(std::is_move_assignable<Promise<int>>::value);
 }
 
+TEST(Promise, getSemiFuture) {
+  Promise<int> p;
+  SemiFuture<int> f = p.getSemiFuture();
+  EXPECT_FALSE(f.isReady());
+}
+
 TEST(Promise, getFuture) {
   Promise<int> p;
   Future<int> f = p.getFuture();
@@ -47,6 +53,44 @@ TEST(Promise, getFuture) {
 TEST(Promise, setValueUnit) {
   Promise<Unit> p;
   p.setValue();
+}
+
+TEST(Promise, setValueSemiFuture) {
+  Promise<int> fund;
+  auto ffund = fund.getSemiFuture();
+  fund.setValue(42);
+  EXPECT_EQ(42, ffund.value());
+
+  struct Foo {
+    string name;
+    int value;
+  };
+
+  Promise<Foo> pod;
+  auto fpod = pod.getSemiFuture();
+  Foo f = {"the answer", 42};
+  pod.setValue(f);
+  Foo f2 = fpod.value();
+  EXPECT_EQ(f.name, f2.name);
+  EXPECT_EQ(f.value, f2.value);
+
+  pod = Promise<Foo>();
+  fpod = pod.getSemiFuture();
+  pod.setValue(std::move(f2));
+  Foo f3 = fpod.value();
+  EXPECT_EQ(f.name, f3.name);
+  EXPECT_EQ(f.value, f3.value);
+
+  Promise<unique_ptr<int>> mov;
+  auto fmov = mov.getSemiFuture();
+  mov.setValue(std::make_unique<int>(42));
+  unique_ptr<int> ptr = std::move(fmov.value());
+  EXPECT_EQ(42, *ptr);
+
+  Promise<Unit> v;
+  auto fv = v.getSemiFuture();
+  v.setValue();
+  EXPECT_TRUE(fv.isReady());
 }
 
 TEST(Promise, setValue) {
