@@ -16,38 +16,53 @@
 
 #pragma once
 
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <type_traits>
+
+#include <folly/ConstexprMath.h>
 #include <folly/Traits.h>
 #include <folly/synchronization/detail/AtomicUtils.h>
-#include <stdint.h>
-#include <string.h>
-#include <atomic>
-#include <type_traits>
 
 namespace folly {
 
 namespace detail {
-template <int N> struct AtomicStructIntPick {};
+template <size_t>
+struct AtomicStructRaw;
+template <>
+struct AtomicStructRaw<0> {
+  using type = uint8_t;
+};
+template <>
+struct AtomicStructRaw<1> {
+  using type = uint16_t;
+};
+template <>
+struct AtomicStructRaw<2> {
+  using type = uint32_t;
+};
+template <>
+struct AtomicStructRaw<3> {
+  using type = uint64_t;
+};
 } // namespace detail
 
 /// AtomicStruct<T> work like C++ atomics, but can be used on any POD
 /// type <= 8 bytes.
-template <
-    typename T,
-    template <typename> class Atom = std::atomic,
-    typename Raw = typename detail::AtomicStructIntPick<sizeof(T)>::type>
+template <typename T, template <typename> class Atom = std::atomic>
 class AtomicStruct {
-  static_assert(alignof(T) <= alignof(Raw),
-      "target type can't have stricter alignment than matching int");
-  static_assert(sizeof(T) <= sizeof(Raw),
-      "underlying type isn't big enough");
-  static_assert(std::is_trivial<T>::value ||
-                folly::IsTriviallyCopyable<T>::value,
+ private:
+  using Raw = _t<detail::AtomicStructRaw<constexpr_log2_ceil(sizeof(T))>>;
+
+  static_assert(alignof(T) <= alignof(Raw), "underlying type is under-aligned");
+  static_assert(sizeof(T) <= sizeof(Raw), "underlying type is under-sized");
+  static_assert(
+      std::is_trivial<T>::value || folly::IsTriviallyCopyable<T>::value,
       "target type must be trivially copyable");
 
-  union {
-    Atom<Raw> data;
-    T typedData;
-  };
+  Atom<Raw> data;
 
   static Raw encode(T v) noexcept {
     // we expect the compiler to optimize away the memcpy, but without
@@ -69,7 +84,7 @@ class AtomicStruct {
   AtomicStruct(AtomicStruct<T> const &) = delete;
   AtomicStruct<T>& operator= (AtomicStruct<T> const &) = delete;
 
-  constexpr /* implicit */ AtomicStruct(T v) noexcept : typedData(v) {}
+  constexpr /* implicit */ AtomicStruct(T v) noexcept : data(encode(v)) {}
 
   bool is_lock_free() const noexcept {
     return data.is_lock_free();
@@ -141,18 +156,5 @@ class AtomicStruct {
   // counterpart.  If someone wants them here they can easily be added
   // by duplicating the above code and the corresponding unit tests.
 };
-
-namespace detail {
-
-template <> struct AtomicStructIntPick<1> { typedef uint8_t type; };
-template <> struct AtomicStructIntPick<2> { typedef uint16_t type; };
-template <> struct AtomicStructIntPick<3> { typedef uint32_t type; };
-template <> struct AtomicStructIntPick<4> { typedef uint32_t type; };
-template <> struct AtomicStructIntPick<5> { typedef uint64_t type; };
-template <> struct AtomicStructIntPick<6> { typedef uint64_t type; };
-template <> struct AtomicStructIntPick<7> { typedef uint64_t type; };
-template <> struct AtomicStructIntPick<8> { typedef uint64_t type; };
-
-} // namespace detail
 
 } // namespace folly
