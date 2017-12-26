@@ -45,8 +45,8 @@
 #include <type_traits>
 
 #include <folly/Portability.h>
-#include <folly/detail/Sleeper.h>
 #include <folly/lang/Align.h>
+#include <folly/synchronization/detail/Sleeper.h>
 
 namespace folly {
 

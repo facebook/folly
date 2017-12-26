@@ -48,7 +48,7 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
-#include <folly/detail/Sleeper.h>
+#include <folly/synchronization/detail/Sleeper.h>
 
 #if !FOLLY_X64 && !FOLLY_AARCH64 && !FOLLY_PPC64
 #error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."

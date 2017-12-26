@@ -80,7 +80,6 @@ nobase_follyinclude_HEADERS = \
 	detail/PolyDetail.h \
 	detail/RangeCommon.h \
 	detail/RangeSse42.h \
-	detail/Sleeper.h \
 	detail/SlowFingerprint.h \
 	detail/SocketFastOpen.h \
 	detail/StaticSingletonManager.h \
@@ -440,6 +439,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/CallOnce.h \
 	synchronization/LifoSem.h \
 	synchronization/detail/AtomicUtils.h \
+	synchronization/detail/Sleeper.h \
 	system/MemoryMapping.h \
 	system/Shell.h \
 	system/ThreadId.h \
