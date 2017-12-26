@@ -123,6 +123,41 @@ TEST_F(ConstexprMathTest, constexpr_log2_64) {
   EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
 }
 
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_1) {
+  constexpr auto v = 1ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(0ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_2) {
+  constexpr auto v = 2ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(1ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_3) {
+  constexpr auto v = 3ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(2ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_63) {
+  constexpr auto v = 63ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(6ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_64) {
+  constexpr auto v = 64ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(6ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
 TEST_F(ConstexprMathTest, constexpr_ceil) {
   {
     constexpr auto roundable = 20ull;
