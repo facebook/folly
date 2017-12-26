@@ -202,6 +202,44 @@ TEST(SemiFuture, MakeFutureFromSemiFuture) {
   ASSERT_EQ(result, 42);
 }
 
+TEST(SemiFuture, MakeFutureFromSemiFutureReturnFuture) {
+  folly::EventBase e;
+  Promise<int> p;
+  int result{0};
+  auto f = p.getSemiFuture();
+  auto future = std::move(f).via(&e).then([&](int value) {
+    result = value;
+    return folly::makeFuture(std::move(value));
+  });
+  e.loop();
+  EXPECT_EQ(result, 0);
+  EXPECT_FALSE(future.isReady());
+  p.setValue(42);
+  e.loop();
+  EXPECT_TRUE(future.isReady());
+  ASSERT_EQ(future.value(), 42);
+  ASSERT_EQ(result, 42);
+}
+
+TEST(SemiFuture, MakeFutureFromSemiFutureReturnSemiFuture) {
+  folly::EventBase e;
+  Promise<int> p;
+  int result{0};
+  auto f = p.getSemiFuture();
+  auto future = std::move(f).via(&e).then([&](int value) {
+    result = value;
+    return folly::makeSemiFuture(std::move(value));
+  });
+  e.loop();
+  EXPECT_EQ(result, 0);
+  EXPECT_FALSE(future.isReady());
+  p.setValue(42);
+  e.loop();
+  EXPECT_TRUE(future.isReady());
+  ASSERT_EQ(future.value(), 42);
+  ASSERT_EQ(result, 42);
+}
+
 TEST(SemiFuture, MakeFutureFromSemiFutureLValue) {
   folly::EventBase e;
   Promise<int> p;
