@@ -326,7 +326,7 @@ inline uint32_t digits10(uint64_t v) {
   };
 
   // "count leading zeroes" operation not valid; for 0; special case this.
-  if UNLIKELY (! v) {
+  if (UNLIKELY(!v)) {
     return 1;
   }
 
@@ -341,16 +341,24 @@ inline uint32_t digits10(uint64_t v) {
 
   // return that log_10 lower bound, plus adjust if input >= 10^(that bound)
   // in case there's a small error and we misjudged length.
-  return minLength + (uint32_t) (UNLIKELY (v >= powersOf10[minLength]));
+  return minLength + uint32_t(v >= powersOf10[minLength]);
 
 #else
 
   uint32_t result = 1;
-  for (;;) {
-    if (LIKELY(v < 10)) return result;
-    if (LIKELY(v < 100)) return result + 1;
-    if (LIKELY(v < 1000)) return result + 2;
-    if (LIKELY(v < 10000)) return result + 3;
+  while (true) {
+    if (LIKELY(v < 10)) {
+      return result;
+    }
+    if (LIKELY(v < 100)) {
+      return result + 1;
+    }
+    if (LIKELY(v < 1000)) {
+      return result + 2;
+    }
+    if (LIKELY(v < 10000)) {
+      return result + 3;
+    }
     // Skip ahead by 4 orders of magnitude
     v /= 10000U;
     result += 4;
