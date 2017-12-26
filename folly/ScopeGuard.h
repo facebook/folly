@@ -24,7 +24,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
-#include <folly/detail/UncaughtExceptionCounter.h>
+#include <folly/UncaughtExceptions.h>
 
 namespace folly {
 
@@ -204,25 +204,19 @@ namespace detail {
  *
  * Used to implement SCOPE_FAIL and SCOPE_SUCCESS below.
  */
-template <typename FunctionType, bool executeOnException>
+template <typename FunctionType, bool ExecuteOnException>
 class ScopeGuardForNewException {
  public:
-  explicit ScopeGuardForNewException(const FunctionType& fn)
-      : function_(fn) {
-  }
+  explicit ScopeGuardForNewException(const FunctionType& fn) : function_(fn) {}
 
   explicit ScopeGuardForNewException(FunctionType&& fn)
-      : function_(std::move(fn)) {
-  }
+      : function_(std::move(fn)) {}
 
-  ScopeGuardForNewException(ScopeGuardForNewException&& other)
-      : function_(std::move(other.function_))
-      , exceptionCounter_(std::move(other.exceptionCounter_)) {
-  }
+  ScopeGuardForNewException(ScopeGuardForNewException&& other) = default;
 
-  ~ScopeGuardForNewException() noexcept(executeOnException) {
-    if (executeOnException == exceptionCounter_.isNewUncaughtException()) {
-      if (executeOnException) {
+  ~ScopeGuardForNewException() noexcept(ExecuteOnException) {
+    if (ExecuteOnException == (exceptionCounter_ < uncaught_exceptions())) {
+      if (ExecuteOnException) {
         ScopeGuardImplBase::runAndWarnAboutToCrashOnException(function_);
       } else {
         function_();
@@ -236,7 +230,7 @@ class ScopeGuardForNewException {
   void* operator new(std::size_t) = delete;
 
   FunctionType function_;
-  UncaughtExceptionCounter exceptionCounter_;
+  int exceptionCounter_{uncaught_exceptions()};
 };
 
 /**

@@ -86,7 +86,6 @@ nobase_follyinclude_HEADERS = \
 	detail/ThreadLocalDetail.h \
 	detail/TypeList.h \
 	detail/TurnSequencer.h \
-	detail/UncaughtExceptionCounter.h \
 	executors/Async.h \
 	executors/CPUThreadPoolExecutor.h \
 	executors/Codel.h \
