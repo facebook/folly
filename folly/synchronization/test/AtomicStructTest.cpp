@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/AtomicStruct.h>
+#include <folly/synchronization/AtomicStruct.h>
 
 #include <folly/portability/GTest.h>
 

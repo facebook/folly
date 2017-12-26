@@ -23,10 +23,10 @@
 #include <memory>
 #include <system_error>
 
-#include <folly/AtomicStruct.h>
 #include <folly/CachelinePadded.h>
 #include <folly/IndexedMemPool.h>
 #include <folly/Likely.h>
+#include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/Baton.h>
 
 namespace folly {

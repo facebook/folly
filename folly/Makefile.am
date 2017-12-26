@@ -34,7 +34,6 @@ nobase_follyinclude_HEADERS = \
 	AtomicHashMap-inl.h \
 	AtomicIntrusiveLinkedList.h \
 	AtomicLinkedList.h \
-	AtomicStruct.h \
 	AtomicUnorderedMap.h \
 	Benchmark.h \
 	Bits.h \
@@ -436,6 +435,7 @@ nobase_follyinclude_HEADERS = \
 	stats/TimeseriesHistogram-defs.h \
 	stats/TimeseriesHistogram.h \
 	synchronization/AsymmetricMemoryBarrier.h \
+	synchronization/AtomicStruct.h \
 	synchronization/Baton.h \
 	synchronization/CallOnce.h \
 	synchronization/LifoSem.h \
