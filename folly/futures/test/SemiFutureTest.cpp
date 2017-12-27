@@ -226,10 +226,15 @@ TEST(SemiFuture, MakeFutureFromSemiFutureReturnSemiFuture) {
   Promise<int> p;
   int result{0};
   auto f = p.getSemiFuture();
-  auto future = std::move(f).via(&e).then([&](int value) {
-    result = value;
-    return folly::makeSemiFuture(std::move(value));
-  });
+  auto future = std::move(f)
+                    .via(&e)
+                    .then([&](int value) {
+                      result = value;
+                      return folly::makeSemiFuture(std::move(value));
+                    })
+                    .then([&](int value) {
+                      return folly::makeSemiFuture(std::move(value));
+                    });
   e.loop();
   EXPECT_EQ(result, 0);
   EXPECT_FALSE(future.isReady());
