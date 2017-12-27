@@ -106,9 +106,6 @@ class FutureBase {
   /// sugar for getTry().hasException()
   bool hasException();
 
-  /** A reference to the Try of the value */
-  Try<T>& getTry();
-
   /// If the promise has been fulfilled, return an Optional with the Try<T>.
   /// Otherwise return an empty Optional.
   /// Note that this moves the Try<T> out.
@@ -233,7 +230,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /* implicit */ SemiFuture(Future<T>&&) noexcept;
 
   using Base::cancel;
-  using Base::getTry;
   using Base::hasException;
   using Base::hasValue;
   using Base::isActive;
@@ -255,6 +251,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// value (moved out), or throws the exception (which might be a TimedOut
   /// exception).
   T get(Duration dur) &&;
+
+  /// Block until the future is fulfilled, or until timed out. Returns the
+  /// Try of the value (moved out).
+  Try<T> getTry() &&;
 
   /// Block until this Future is complete. Returns a reference to this Future.
   SemiFuture<T>& wait() &;
@@ -392,7 +392,6 @@ class Future : private futures::detail::FutureBase<T> {
   Future& operator=(Future<T2>&&);
 
   using Base::cancel;
-  using Base::getTry;
   using Base::hasException;
   using Base::hasValue;
   using Base::isActive;
@@ -645,6 +644,9 @@ class Future : private futures::detail::FutureBase<T> {
   /// value (moved out), or throws the exception (which might be a TimedOut
   /// exception).
   T get(Duration dur);
+
+  /** A reference to the Try of the value */
+  Try<T>& getTry();
 
   /// Block until this Future is complete. Returns a reference to this Future.
   Future<T>& wait() &;

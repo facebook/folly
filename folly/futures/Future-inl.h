@@ -208,12 +208,12 @@ bool FutureBase<T>::isReady() const {
 
 template <class T>
 bool FutureBase<T>::hasValue() {
-  return getTry().hasValue();
+  return core_->getTry().hasValue();
 }
 
 template <class T>
 bool FutureBase<T>::hasException() {
-  return getTry().hasException();
+  return core_->getTry().hasException();
 }
 
 template <class T>
@@ -222,13 +222,6 @@ void FutureBase<T>::detach() {
     core_->detachFuture();
     core_ = nullptr;
   }
-}
-
-template <class T>
-Try<T>& FutureBase<T>::getTry() {
-  throwIfInvalid();
-
-  return core_->getTry();
 }
 
 template <class T>
@@ -1442,6 +1435,12 @@ T SemiFuture<T>::get(Duration dur) && {
 }
 
 template <class T>
+Try<T> SemiFuture<T>::getTry() && {
+  wait();
+  return std::move(this->core_->getTry());
+}
+
+template <class T>
 Future<T>& Future<T>::wait() & {
   futures::detail::waitImpl(*this);
   return *this;
@@ -1490,6 +1489,13 @@ T Future<T>::get(Duration dur) {
   } else {
     throwTimedOut();
   }
+}
+
+template <class T>
+Try<T>& Future<T>::getTry() {
+  throwIfInvalid();
+
+  return this->core_->getTry();
 }
 
 template <class T>
