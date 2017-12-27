@@ -19,6 +19,24 @@
 
 using namespace folly;
 
+TEST(SharedPromise, setGetSemiFuture) {
+  SharedPromise<int> p;
+  p.setValue(1);
+  auto f1 = p.getSemiFuture();
+  auto f2 = p.getSemiFuture();
+  EXPECT_EQ(1, f1.value());
+  EXPECT_EQ(1, f2.value());
+}
+
+TEST(SharedPromise, setGetMixed) {
+  SharedPromise<int> p;
+  p.setValue(1);
+  auto f1 = p.getSemiFuture();
+  auto f2 = p.getFuture();
+  EXPECT_EQ(1, f1.value());
+  EXPECT_EQ(1, f2.value());
+}
+
 TEST(SharedPromise, setGet) {
   SharedPromise<int> p;
   p.setValue(1);
