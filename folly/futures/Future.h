@@ -256,6 +256,16 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Try of the value (moved out).
   Try<T> getTry() &&;
 
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
+  /// value (moved out), or throws the exception.
+  T getVia(DrivableExecutor* e) &&;
+
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
+  /// Try of the value (moved out).
+  Try<T> getTryVia(DrivableExecutor* e) &&;
+
   /// Block until this Future is complete. Returns a reference to this Future.
   SemiFuture<T>& wait() &;
 
@@ -268,6 +278,15 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   /// Overload of wait(Duration) for rvalue Futures
   SemiFuture<T>&& wait(Duration) &&;
+
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
+  /// reference to this SemiFuture so that you can chain calls if desired.
+  /// value (moved out), or throws the exception.
+  SemiFuture<T>& waitVia(DrivableExecutor* e) &;
+
+  /// Overload of waitVia() for rvalue Futures
+  SemiFuture<T>&& waitVia(DrivableExecutor* e) &&;
 
   /// Returns an inactive Future which will call back on the other side of
   /// executor (when it is activated).
@@ -410,14 +429,14 @@ class Future : private futures::detail::FutureBase<T> {
   Future& operator=(Future&&) noexcept;
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
-  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
-  /// reference to the Try of the value.
-  Try<T>& getTryVia(DrivableExecutor* e);
-
-  /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
   /// value (moved out), or throws the exception.
   T getVia(DrivableExecutor* e);
+
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
+  /// reference to the Try of the value.
+  Try<T>& getTryVia(DrivableExecutor* e);
 
   /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
   /// Future<T> instance.

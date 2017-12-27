@@ -275,6 +275,17 @@ TEST(SemiFuture, SimpleDefer) {
   ASSERT_EQ(innerResult, 17);
 }
 
+TEST(SemiFuture, DeferWithGetVia) {
+  std::atomic<int> innerResult{0};
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { innerResult = 17; });
+  p.setValue();
+  std::move(sf).getVia(&e2);
+  ASSERT_EQ(innerResult, 17);
+}
+
 TEST(SemiFuture, DeferWithVia) {
   std::atomic<int> innerResult{0};
   EventBase e2;

@@ -788,11 +788,6 @@ Future<T>::onError(F&& func) {
   return f;
 }
 
-template <class T>
-Try<T>& Future<T>::getTryVia(DrivableExecutor* e) {
-  return waitVia(e).getTry();
-}
-
 template <class Func>
 auto via(Executor* x, Func&& func)
     -> Future<typename isFuture<decltype(std::declval<Func>()())>::Inner> {
@@ -1392,6 +1387,21 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
   assert(f.isReady());
 }
 
+template <class T>
+void waitViaImpl(SemiFuture<T>& f, DrivableExecutor* e) {
+  // Set callback so to ensure that the via executor has something on it
+  // so that once the preceding future triggers this callback, drive will
+  // always have a callback to satisfy it
+  if (f.isReady()) {
+    return;
+  }
+  f = std::move(f).via(e).then([](T&& t) { return std::move(t); });
+  while (!f.isReady()) {
+    e->drive();
+  }
+  assert(f.isReady());
+}
+
 } // namespace detail
 } // namespace futures
 
@@ -1420,6 +1430,18 @@ SemiFuture<T>&& SemiFuture<T>::wait(Duration dur) && {
 }
 
 template <class T>
+SemiFuture<T>& SemiFuture<T>::waitVia(DrivableExecutor* e) & {
+  futures::detail::waitViaImpl(*this, e);
+  return *this;
+}
+
+template <class T>
+SemiFuture<T>&& SemiFuture<T>::waitVia(DrivableExecutor* e) && {
+  futures::detail::waitViaImpl(*this, e);
+  return std::move(*this);
+}
+
+template <class T>
 T SemiFuture<T>::get() && {
   return std::move(wait().value());
 }
@@ -1437,6 +1459,17 @@ T SemiFuture<T>::get(Duration dur) && {
 template <class T>
 Try<T> SemiFuture<T>::getTry() && {
   wait();
+  return std::move(this->core_->getTry());
+}
+
+template <class T>
+T SemiFuture<T>::getVia(DrivableExecutor* e) && {
+  return std::move(waitVia(e).value());
+}
+
+template <class T>
+Try<T> SemiFuture<T>::getTryVia(DrivableExecutor* e) && {
+  waitVia(e);
   return std::move(this->core_->getTry());
 }
 
@@ -1501,6 +1534,11 @@ Try<T>& Future<T>::getTry() {
 template <class T>
 T Future<T>::getVia(DrivableExecutor* e) {
   return std::move(waitVia(e).value());
+}
+
+template <class T>
+Try<T>& Future<T>::getTryVia(DrivableExecutor* e) {
+  return waitVia(e).getTry();
 }
 
 namespace futures {
