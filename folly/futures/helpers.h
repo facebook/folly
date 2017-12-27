@@ -186,11 +186,21 @@ SemiFuture<T> makeSemiFuture(Try<T>&& t);
   or
 
     auto f = makeFuture<string>("foo");
+
+  NOTE: This function is deprecated. Please use makeSemiFuture and pass the
+       appropriate executor to .via on the returned SemiFuture to get a
+       valid Future where necessary.
 */
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t);
 
-/** Make a completed void Future. */
+/**
+  Make a completed void Future.
+
+  NOTE: This function is deprecated. Please use makeSemiFuture and pass the
+       appropriate executor to .via on the returned SemiFuture to get a
+       valid Future where necessary.
+ */
 Future<Unit> makeFuture();
 
 /**
@@ -208,6 +218,10 @@ Future<Unit> makeFuture();
 
   Calling makeFutureWith(func) is equivalent to calling
   makeFuture().then(func).
+
+  NOTE: This function is deprecated. Please use makeSemiFutureWith and pass the
+       appropriate executor to .via on the returned SemiFuture to get a
+       valid Future where necessary.
 */
 
 // makeFutureWith(Future<T>()) -> Future<T>
@@ -229,21 +243,35 @@ makeFutureWith(F&& func);
 ///
 ///   auto f = makeFuture<string>(std::current_exception());
 template <class T>
-FOLLY_DEPRECATED("use makeFuture(exception_wrapper)")
+FOLLY_DEPRECATED("use makeSemiFuture(exception_wrapper)")
 Future<T> makeFuture(std::exception_ptr const& e);
 
 /// Make a failed Future from an exception_wrapper.
+/// NOTE: This function is deprecated. Please use makeSemiFuture and pass the
+///     appropriate executor to .via on the returned SemiFuture to get a
+///     valid Future where necessary.
 template <class T>
 Future<T> makeFuture(exception_wrapper ew);
 
 /** Make a Future from an exception type E that can be passed to
-  std::make_exception_ptr(). */
+  std::make_exception_ptr().
+
+  NOTE: This function is deprecated. Please use makeSemiFuture and pass the
+       appropriate executor to .via on the returned SemiFuture to get a
+       valid Future where necessary.
+ */
 template <class T, class E>
 typename std::enable_if<std::is_base_of<std::exception, E>::value,
                         Future<T>>::type
 makeFuture(E const& e);
 
-/** Make a Future out of a Try */
+/**
+  Make a Future out of a Try
+
+  NOTE: This function is deprecated. Please use makeSemiFuture and pass the
+       appropriate executor to .via on the returned SemiFuture to get a
+       valid Future where necessary.
+ */
 template <class T>
 Future<T> makeFuture(Try<T>&& t);
 
