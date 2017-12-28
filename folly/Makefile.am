@@ -437,6 +437,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/Baton.h \
 	synchronization/CallOnce.h \
 	synchronization/LifoSem.h \
+	synchronization/ParkingLot.h \
 	synchronization/detail/AtomicUtils.h \
 	synchronization/detail/Sleeper.h \
 	system/MemoryMapping.h \
@@ -625,6 +626,7 @@ libfolly_la_SOURCES = \
 	stats/TimeseriesHistogram.cpp \
 	synchronization/AsymmetricMemoryBarrier.cpp \
 	synchronization/LifoSem.cpp \
+	synchronization/ParkingLot.cpp \
 	system/MemoryMapping.cpp \
 	system/Shell.cpp \
 	system/ThreadName.cpp \
