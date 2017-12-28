@@ -156,6 +156,18 @@ template <typename T>
 using _t = typename T::type;
 
 /**
+ * A type trait to remove all const volatile and reference qualifiers on a
+ * type T
+ */
+template <typename T>
+struct remove_cvref {
+  using type =
+      typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+};
+template <typename T>
+using remove_cvref_t = typename remove_cvref<T>::type;
+
+/**
  *  type_t
  *
  *  A type alias for the first template type argument. `type_t` is useful for
