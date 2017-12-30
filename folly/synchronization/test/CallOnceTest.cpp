@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,20 +18,17 @@
 #include <mutex>
 #include <thread>
 
-#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/CallOnce.h>
 
-#include <glog/logging.h>
-
-DEFINE_int32(threads, 16, "benchmark concurrency");
+static size_t const kNumThreads = 16;
 
 template <typename CallOnceFunc>
-void bm_impl(CallOnceFunc&& fn, int64_t iters) {
+void bm_impl(CallOnceFunc&& fn, size_t iters) {
   std::deque<std::thread> threads;
-  for (int i = 0; i < FLAGS_threads; ++i) {
+  for (size_t i = 0u; i < kNumThreads; ++i) {
     threads.emplace_back([&fn, iters] {
-      for (int64_t j = 0; j < iters; ++j) {
+      for (size_t j = 0u; j < iters; ++j) {
         fn();
       }
     });

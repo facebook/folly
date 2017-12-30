@@ -20,6 +20,6 @@
 namespace folly {
 namespace fibers {
 
-using once_flag = ::folly::detail::once_flag<folly::fibers::TimedMutex>;
+using once_flag = basic_once_flag<TimedMutex>;
 }
 } // namespace folly
