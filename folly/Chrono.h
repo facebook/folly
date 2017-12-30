@@ -17,7 +17,11 @@
 #pragma once
 
 #include <chrono>
+#include <stdexcept>
 #include <type_traits>
+
+#include <folly/Portability.h>
+#include <folly/portability/Time.h>
 
 /***
  *  include or backport:
@@ -41,6 +45,35 @@ namespace chrono {
 
 namespace folly {
 namespace chrono {
+namespace detail {
+[[noreturn]] FOLLY_NOINLINE inline void throw_coarse_steady_clock_now_exn() {
+  throw std::runtime_error("Error using CLOCK_MONOTONIC_COARSE.");
+}
+} // namespace detail
+
+struct coarse_steady_clock {
+  using rep = std::chrono::milliseconds::rep;
+  using period = std::chrono::milliseconds::period;
+  using duration = std::chrono::duration<rep, period>;
+  using time_point = std::chrono::time_point<coarse_steady_clock, duration>;
+  constexpr static bool is_steady = true;
+
+  static time_point now() {
+#ifndef CLOCK_MONOTONIC_COARSE
+    return time_point(std::chrono::duration_cast<duration>(
+        std::chrono::steady_clock::now().time_since_epoch()));
+#else
+    timespec ts;
+    auto ret = clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
+    if (ret != 0) {
+      detail::throw_coarse_steady_clock_now_exn();
+    }
+    return time_point(std::chrono::duration_cast<duration>(
+        std::chrono::seconds(ts.tv_sec) +
+        std::chrono::nanoseconds(ts.tv_nsec)));
+#endif
+  }
+};
 
 namespace detail {
 

@@ -33,7 +33,7 @@
 using namespace folly;
 using namespace folly::test;
 using namespace std;
-using namespace chrono;
+using namespace std::chrono;
 
 typedef DeterministicSchedule DSched;
 typedef SharedMutexImpl<true, void, DeterministicAtomic, true>
