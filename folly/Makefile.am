@@ -438,6 +438,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/CallOnce.h \
 	synchronization/LifoSem.h \
 	synchronization/ParkingLot.h \
+	synchronization/SaturatingSemaphore.h \
 	synchronization/detail/AtomicUtils.h \
 	synchronization/detail/Sleeper.h \
 	system/MemoryMapping.h \
