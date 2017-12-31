@@ -113,6 +113,11 @@ template <typename T>
 constexpr T constexpr_log2_ceil_(T l2, T t) {
   return l2 + T(T(1) << l2 < t ? 1 : 0);
 }
+
+template <typename T>
+constexpr T constexpr_square_(T t) {
+  return t * t;
+}
 } // namespace detail
 
 template <typename T>
@@ -130,6 +135,15 @@ constexpr T constexpr_ceil(T t, T round) {
   return round == T(0)
       ? t
       : ((t + (t < T(0) ? T(0) : round - T(1))) / round) * round;
+}
+
+template <typename T>
+constexpr T constexpr_pow(T base, std::size_t exp) {
+  return exp == 0
+      ? T(1)
+      : exp == 1 ? base
+                 : detail::constexpr_square_(constexpr_pow(base, exp / 2)) *
+              (exp % 2 ? base : T(1));
 }
 
 } // namespace folly

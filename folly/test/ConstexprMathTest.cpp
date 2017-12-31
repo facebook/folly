@@ -178,3 +178,18 @@ TEST_F(ConstexprMathTest, constexpr_ceil) {
     EXPECT_EQ(-20ll, rounded);
   }
 }
+
+TEST_F(ConstexprMathTest, constexpr_pow) {
+  {
+    constexpr auto a = folly::constexpr_pow(uint64_t(0), 15);
+    EXPECT_EQ(0, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(uint64_t(15), 0);
+    EXPECT_EQ(1, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(uint64_t(2), 6);
+    EXPECT_EQ(64, a);
+  }
+}
