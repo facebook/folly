@@ -105,24 +105,24 @@ constexpr auto constexpr_abs(T t)
 
 namespace detail {
 template <typename T>
-constexpr T constexpr_log2(T a, T e) {
-  return e == T(1) ? a : constexpr_log2(a + T(1), e / T(2));
+constexpr T constexpr_log2_(T a, T e) {
+  return e == T(1) ? a : constexpr_log2_(a + T(1), e / T(2));
 }
 
 template <typename T>
-constexpr T constexpr_log2_ceil(T l2, T t) {
+constexpr T constexpr_log2_ceil_(T l2, T t) {
   return l2 + T(T(1) << l2 < t ? 1 : 0);
 }
 } // namespace detail
 
 template <typename T>
 constexpr T constexpr_log2(T t) {
-  return detail::constexpr_log2(T(0), t);
+  return detail::constexpr_log2_(T(0), t);
 }
 
 template <typename T>
 constexpr T constexpr_log2_ceil(T t) {
-  return detail::constexpr_log2_ceil(constexpr_log2(t), t);
+  return detail::constexpr_log2_ceil_(constexpr_log2(t), t);
 }
 
 template <typename T>
