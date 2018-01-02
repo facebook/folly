@@ -162,7 +162,7 @@ math_test_SOURCES = MathTest.cpp
 math_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += math_test
 
-bits_test_SOURCES = BitsTest.cpp
+bits_test_SOURCES = ../lang/test/BitsTest.cpp
 bits_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += bits_test
 
