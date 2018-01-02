@@ -146,6 +146,10 @@ timeout_queue_test_SOURCES = TimeoutQueueTest.cpp
 timeout_queue_test_LDADD = libfollytestmain.la
 TESTS += timeout_queue_test
 
+cold_class_test_SOURCES = ../lang/test/ColdClassTest.cpp
+cold_class_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+TESTS += cold_class_test
+
 conv_test_SOURCES = ConvTest.cpp
 conv_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += conv_test

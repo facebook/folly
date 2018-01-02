@@ -519,6 +519,7 @@ if (BUILD_TESTS)
 
     DIRECTORY lang/test/
       TEST bits_test SOURCES BitsTest.cpp
+      TEST cold_class_test SOURCES ColdClassTest.cpp
 
     DIRECTORY memory/test/
       TEST arena_test SOURCES ArenaTest.cpp
