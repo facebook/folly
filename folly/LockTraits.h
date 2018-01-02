@@ -27,6 +27,8 @@
 #include <chrono>
 #include <type_traits>
 
+#include <folly/functional/Invoke.h>
+
 // Android, OSX, and Cygwin don't have timed mutexes
 #if defined(ANDROID) || defined(__ANDROID__) || defined(__APPLE__) || \
     defined(__CYGWIN__)
@@ -37,6 +39,13 @@
 
 namespace folly {
 namespace detail {
+
+namespace member {
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(lock, lock);
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(try_lock_for, try_lock_for);
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(lock_shared, lock_shared);
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(lock_upgrade, lock_upgrade);
+} // namespace member
 
 /**
  * An enum to describe the "level" of a mutex.  The supported levels are
@@ -71,46 +80,25 @@ struct MutexLevelValueImpl<true, true, true> {
  * mutex.  This is used in conjunction with the above MutexLevel
  * specializations and the LockTraitsImpl to determine what functions are
  * supported by objects of type Mutex
- *
- * The implementation uses SINAE in the return value with trailing return
- * types to figure out what level a mutex is
  */
 template <class Mutex>
 class LockInterfaceDispatcher {
  private:
   // assert that the mutex type has basic lock and unlock functions
   static_assert(
-      std::is_same<decltype(std::declval<Mutex>().lock()), void>::value,
+      member::lock::is_invocable<Mutex>::value,
       "The mutex type must support lock and unlock functions");
 
-  // Helper functions for implementing the traits using SFINAE
-  template <class T>
-  static auto timed_lock_test(T*) -> typename std::is_same<
-      decltype(std::declval<T>().try_lock_for(std::chrono::milliseconds(0))),
-      bool>::type;
-  template <class T>
-  static std::false_type timed_lock_test(...);
-
-  template <class T>
-  static auto lock_shared_test(T*) -> typename std::
-      is_same<decltype(std::declval<T>().lock_shared()), void>::type;
-  template <class T>
-  static std::false_type lock_shared_test(...);
-
-  template <class T>
-  static auto lock_upgrade_test(T*) -> typename std::
-      is_same<decltype(std::declval<T>().lock_upgrade()), void>::type;
-  template <class T>
-  static std::false_type lock_upgrade_test(...);
+  using duration = std::chrono::milliseconds;
 
  public:
   static constexpr bool has_lock_unique = true;
   static constexpr bool has_lock_timed =
-      decltype(timed_lock_test<Mutex>(nullptr))::value;
+      member::try_lock_for::is_invocable<Mutex, duration>::value;
   static constexpr bool has_lock_shared =
-      decltype(lock_shared_test<Mutex>(nullptr))::value;
+      member::lock_shared::is_invocable<Mutex>::value;
   static constexpr bool has_lock_upgrade =
-      decltype(lock_upgrade_test<Mutex>(nullptr))::value;
+      member::lock_upgrade::is_invocable<Mutex>::value;
 };
 
 /**
