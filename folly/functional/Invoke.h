@@ -47,14 +47,14 @@ namespace folly {
 //  mimic: std::invoke, C++17
 template <typename F, typename... Args>
 constexpr auto invoke(F&& f, Args&&... args) noexcept(
-    noexcept(std::forward<F>(f)(std::forward<Args>(args)...)))
-    -> decltype(std::forward<F>(f)(std::forward<Args>(args)...)) {
-  return std::forward<F>(f)(std::forward<Args>(args)...);
+    noexcept(static_cast<F&&>(f)(static_cast<Args&&>(args)...)))
+    -> decltype(static_cast<F&&>(f)(static_cast<Args&&>(args)...)) {
+  return static_cast<F&&>(f)(static_cast<Args&&>(args)...);
 }
 template <typename M, typename C, typename... Args>
 constexpr auto invoke(M(C::*d), Args&&... args)
-    -> decltype(std::mem_fn(d)(std::forward<Args>(args)...)) {
-  return std::mem_fn(d)(std::forward<Args>(args)...);
+    -> decltype(std::mem_fn(d)(static_cast<Args&&>(args)...)) {
+  return std::mem_fn(d)(static_cast<Args&&>(args)...);
 }
 
 } // namespace folly
@@ -162,6 +162,45 @@ struct is_nothrow_invocable_r
 
 #endif
 
+namespace folly {
+namespace detail {
+
+template <typename Invoke>
+struct member_invoke_proxy {
+ public:
+  template <typename O, typename... Args>
+  struct invoke_result : folly::invoke_result<Invoke, O, Args...> {};
+  template <typename O, typename... Args>
+  using invoke_result_t = folly::invoke_result_t<Invoke, O, Args...>;
+  template <typename O, typename... Args>
+  struct is_invocable : folly::is_invocable<Invoke, O, Args...> {};
+  template <typename R, typename O, typename... Args>
+  struct is_invocable_r : folly::is_invocable_r<R, Invoke, O, Args...> {};
+  template <typename O, typename... Args>
+  struct is_nothrow_invocable
+      : folly::is_nothrow_invocable<Invoke, O, Args...> {};
+  template <typename R, typename O, typename... Args>
+  struct is_nothrow_invocable_r
+      : folly::is_nothrow_invocable_r<R, Invoke, O, Args...> {};
+
+  template <typename O, typename... Args>
+  static constexpr auto invoke(O&& o, Args&&... args) noexcept(
+      noexcept(folly::invoke(
+          Invoke{},
+          static_cast<O&&>(o),
+          static_cast<Args&&>(args)...)))
+      -> decltype(folly::invoke(
+          Invoke{},
+          static_cast<O&&>(o),
+          static_cast<Args&&>(args)...)) {
+    return folly::invoke(
+        Invoke{}, static_cast<O&&>(o), static_cast<Args&&>(args)...);
+  }
+};
+
+} // namespace detail
+} // namespace folly
+
 /***
  *  FOLLY_CREATE_MEMBER_INVOKE_TRAITS
  *
@@ -219,72 +258,15 @@ struct is_nothrow_invocable_r
  *    traits::is_nothrow_invocable<int, CanFoo, Car&&>::value // true
  *    traits::is_nothrow_invocable<char*, CanFoo, Car&&>::value // false
  */
-#define FOLLY_CREATE_MEMBER_INVOKE_TRAITS(classname, membername)              \
-  struct classname {                                                          \
-   private:                                                                   \
-    template <typename T>                                                     \
-    using v_ = ::folly::void_t<T>;                                            \
-    template <typename F, typename... Args>                                   \
-    using result_ =                                                           \
-        decltype(::std::declval<F>().membername(::std::declval<Args>()...));  \
-    template <typename F, typename... Args>                                   \
-    struct nothrow_ : std::integral_constant<                                 \
-                          bool,                                               \
-                          noexcept(::std::declval<F>().membername(            \
-                              ::std::declval<Args>()...))> {};                \
-                                                                              \
-    template <typename, typename F, typename... Args>                         \
-    struct invoke_result_ {};                                                 \
-    template <typename F, typename... Args>                                   \
-    struct invoke_result_<v_<result_<F, Args...>>, F, Args...> {              \
-      using type = result_<F, Args...>;                                       \
-    };                                                                        \
-                                                                              \
-    template <typename, typename F, typename... Args>                         \
-    struct is_invocable_ : ::std::false_type {};                              \
-    template <typename F, typename... Args>                                   \
-    struct is_invocable_<v_<result_<F, Args...>>, F, Args...>                 \
-        : ::std::true_type {};                                                \
-                                                                              \
-    template <typename, typename R, typename F, typename... Args>             \
-    struct is_invocable_r_ : ::std::false_type {};                            \
-    template <typename R, typename F, typename... Args>                       \
-    struct is_invocable_r_<v_<result_<F, Args...>>, R, F, Args...>            \
-        : ::std::is_convertible<result_<F, Args...>, R> {};                   \
-                                                                              \
-    template <typename, typename F, typename... Args>                         \
-    struct is_nothrow_invocable_ : ::std::false_type {};                      \
-    template <typename F, typename... Args>                                   \
-    struct is_nothrow_invocable_<v_<result_<F, Args...>>, F, Args...>         \
-        : nothrow_<F, Args...> {};                                            \
-                                                                              \
-    template <typename, typename R, typename F, typename... Args>             \
-    struct is_nothrow_invocable_r_ : ::std::false_type {};                    \
-    template <typename R, typename F, typename... Args>                       \
-    struct is_nothrow_invocable_r_<v_<result_<F, Args...>>, R, F, Args...>    \
-        : ::folly::StrictConjunction<                                         \
-              ::std::is_convertible<result_<F, Args...>, R>,                  \
-              nothrow_<F, Args...>> {};                                       \
-                                                                              \
-   public:                                                                    \
-    template <typename F, typename... Args>                                   \
-    struct invoke_result : invoke_result_<void, F, Args...> {};               \
-    template <typename F, typename... Args>                                   \
-    using invoke_result_t = typename invoke_result<F, Args...>::type;         \
-    template <typename F, typename... Args>                                   \
-    struct is_invocable : is_invocable_<void, F, Args...> {};                 \
-    template <typename R, typename F, typename... Args>                       \
-    struct is_invocable_r : is_invocable_r_<void, R, F, Args...> {};          \
-    template <typename F, typename... Args>                                   \
-    struct is_nothrow_invocable : is_nothrow_invocable_<void, F, Args...> {}; \
-    template <typename R, typename F, typename... Args>                       \
-    struct is_nothrow_invocable_r                                             \
-        : is_nothrow_invocable_r_<void, R, F, Args...> {};                    \
-                                                                              \
-    template <typename F, typename... Args>                                   \
-    static constexpr result_<F, Args...> invoke(                              \
-        F&& f,                                                                \
-        Args&&... args) noexcept(nothrow_<F, Args...>::value) {               \
-      return std::forward<F>(f).membername(std::forward<Args>(args)...);      \
-    }                                                                         \
-  }
+#define FOLLY_CREATE_MEMBER_INVOKE_TRAITS(classname, membername)            \
+  struct classname##__folly_detail_member_invoke {                          \
+    template <typename O, typename... Args>                                 \
+    constexpr auto operator()(O&& o, Args&&... args) noexcept(noexcept(     \
+        static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)))      \
+        -> decltype(                                                        \
+            static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)) { \
+      return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...);  \
+    }                                                                       \
+  };                                                                        \
+  struct classname : ::folly::detail::member_invoke_proxy<                  \
+                         classname##__folly_detail_member_invoke> {}
