@@ -953,12 +953,12 @@ struct CollectContext {
     Nothing,
     std::vector<Optional<T>>>::type;
 
-  explicit CollectContext(size_t n) : result(n) {}
+  explicit CollectContext(size_t n) : result(n) {
+    finalResult.reserve(n);
+  }
   ~CollectContext() {
     if (!threw.exchange(true)) {
       // map Optional<T> -> T
-      std::vector<T> finalResult;
-      finalResult.reserve(result.size());
       std::transform(result.begin(), result.end(),
                      std::back_inserter(finalResult),
                      [](Optional<T>& o) { return std::move(o.value()); });
@@ -970,6 +970,7 @@ struct CollectContext {
   }
   Promise<Result> p;
   InternalResult result;
+  Result finalResult;
   std::atomic<bool> threw {false};
 };
 
