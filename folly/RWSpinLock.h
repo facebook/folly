@@ -143,6 +143,8 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #include <x86intrin.h>
 #elif defined(_MSC_VER) && defined(FOLLY_X64)
 #define RW_SPINLOCK_USE_X86_INTRINSIC_
+#elif FOLLY_AARCH64
+#define RW_SPINLOCK_USE_X86_INTRINSIC_
 #else
 #undef RW_SPINLOCK_USE_X86_INTRINSIC_
 #endif
@@ -690,9 +692,9 @@ class RWTicketSpinLockT {
   void unlock() {
     RWTicket t;
     t.whole = load_acquire(&ticket.whole);
-    FullInt old = t.whole;
 
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
+    FullInt old = t.whole;
     // SSE2 can reduce the lock and unlock overhead by 10%
     static const QuarterInt kDeltaBuf[4] = { 1, 1, 0, 0 };   // write/read/user
     static const __m128i kDelta = IntTraitType::make128(kDeltaBuf);
