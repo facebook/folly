@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Unit.h>
@@ -262,6 +261,70 @@ TEST(SemiFuture, MakeFutureFromSemiFutureLValue) {
   EXPECT_TRUE(future.isReady());
   ASSERT_EQ(future.value(), 42);
   ASSERT_EQ(result, 42);
+}
+
+TEST(SemiFuture, SimpleGet) {
+  EventBase e2;
+  Promise<int> p;
+  auto sf = p.getSemiFuture();
+  p.setValue(3);
+  auto v = std::move(sf).get();
+  ASSERT_EQ(v, 3);
+}
+
+TEST(SemiFuture, SimpleGetTry) {
+  EventBase e2;
+  Promise<int> p;
+  auto sf = p.getSemiFuture();
+  p.setValue(3);
+  auto v = std::move(sf).getTry();
+  ASSERT_EQ(v.value(), 3);
+}
+
+TEST(SemiFuture, SimpleTimedGet) {
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  EXPECT_THROW(std::move(sf).get(std::chrono::seconds(1)), TimedOut);
+}
+
+TEST(SemiFuture, SimpleTimedGetTry) {
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  EXPECT_THROW(std::move(sf).getTry(std::chrono::seconds(1)), TimedOut);
+}
+
+TEST(SemiFuture, SimpleValue) {
+  EventBase e2;
+  Promise<int> p;
+  auto sf = p.getSemiFuture();
+  p.setValue(3);
+  auto v = std::move(sf).value();
+  ASSERT_EQ(v, 3);
+}
+
+TEST(SemiFuture, SimpleValueThrow) {
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  EXPECT_THROW(std::move(sf).value(), FutureNotReady);
+}
+
+TEST(SemiFuture, SimpleResult) {
+  EventBase e2;
+  Promise<int> p;
+  auto sf = p.getSemiFuture();
+  p.setValue(3);
+  auto v = std::move(sf).result();
+  ASSERT_EQ(v.value(), 3);
+}
+
+TEST(SemiFuture, SimpleResultThrow) {
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  EXPECT_THROW(std::move(sf).result(), FutureNotReady);
 }
 
 TEST(SemiFuture, SimpleDefer) {

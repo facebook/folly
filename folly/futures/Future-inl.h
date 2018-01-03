@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <algorithm>
@@ -174,30 +173,50 @@ FutureBase<T>::~FutureBase() {
 
 template <class T>
 T& FutureBase<T>::value() & {
-  throwIfInvalid();
-
-  return core_->getTry().value();
+  return result().value();
 }
 
 template <class T>
 T const& FutureBase<T>::value() const& {
-  throwIfInvalid();
-
-  return core_->getTry().value();
+  return result().value();
 }
 
 template <class T>
 T&& FutureBase<T>::value() && {
-  throwIfInvalid();
-
-  return std::move(core_->getTry().value());
+  return std::move(result().value());
 }
 
 template <class T>
 T const&& FutureBase<T>::value() const&& {
+  return std::move(result().value());
+}
+
+template <class T>
+Try<T>& FutureBase<T>::result() & {
   throwIfInvalid();
 
-  return std::move(core_->getTry().value());
+  return core_->getTry();
+}
+
+template <class T>
+Try<T> const& FutureBase<T>::result() const& {
+  throwIfInvalid();
+
+  return core_->getTry();
+}
+
+template <class T>
+Try<T>&& FutureBase<T>::result() && {
+  throwIfInvalid();
+
+  return std::move(core_->getTry());
+}
+
+template <class T>
+Try<T> const&& FutureBase<T>::result() const&& {
+  throwIfInvalid();
+
+  return std::move(core_->getTry());
 }
 
 template <class T>
@@ -1443,7 +1462,7 @@ SemiFuture<T>&& SemiFuture<T>::waitVia(DrivableExecutor* e) && {
 
 template <class T>
 T SemiFuture<T>::get() && {
-  return std::move(wait().value());
+  return std::move(wait()).value();
 }
 
 template <class T>
@@ -1458,19 +1477,27 @@ T SemiFuture<T>::get(Duration dur) && {
 
 template <class T>
 Try<T> SemiFuture<T>::getTry() && {
-  wait();
-  return std::move(this->core_->getTry());
+  return std::move(wait()).result();
+}
+
+template <class T>
+Try<T> SemiFuture<T>::getTry(Duration dur) && {
+  wait(dur);
+  if (this->isReady()) {
+    return std::move(this->result());
+  } else {
+    throwTimedOut();
+  }
 }
 
 template <class T>
 T SemiFuture<T>::getVia(DrivableExecutor* e) && {
-  return std::move(waitVia(e).value());
+  return std::move(waitVia(e)).value();
 }
 
 template <class T>
 Try<T> SemiFuture<T>::getTryVia(DrivableExecutor* e) && {
-  waitVia(e);
-  return std::move(this->core_->getTry());
+  return std::move(waitVia(e)).result();
 }
 
 template <class T>
@@ -1526,9 +1553,7 @@ T Future<T>::get(Duration dur) {
 
 template <class T>
 Try<T>& Future<T>::getTry() {
-  throwIfInvalid();
-
-  return this->core_->getTry();
+  return result();
 }
 
 template <class T>

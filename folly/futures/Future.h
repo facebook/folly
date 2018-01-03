@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <algorithm>
@@ -96,6 +95,13 @@ class FutureBase {
   T const& value() const&;
   T&& value() &&;
   T const&& value() const&&;
+
+  /// Returns a reference to the try of the result. Throws as for value if
+  /// future is not valid.
+  Try<T>& result() &;
+  Try<T> const& result() const&;
+  Try<T>&& result() &&;
+  Try<T> const&& result() const&&;
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
@@ -238,6 +244,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::setCallback_;
   using Base::value;
+  using Base::result;
 
   SemiFuture& operator=(SemiFuture const&) = delete;
   SemiFuture& operator=(SemiFuture&&) noexcept;
@@ -255,6 +262,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Block until the future is fulfilled, or until timed out. Returns the
   /// Try of the value (moved out).
   Try<T> getTry() &&;
+
+  /// Block until the future is fulfilled, or until timed out. Returns the
+  /// Try of the value (moved out) or may throw a TimedOut exception.
+  Try<T> getTry(Duration dur) &&;
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
@@ -419,6 +430,7 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::setCallback_;
   using Base::value;
+  using Base::result;
 
   static Future<T> makeEmpty(); // equivalent to moved-from
 
