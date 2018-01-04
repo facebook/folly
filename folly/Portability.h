@@ -366,7 +366,9 @@ constexpr auto kMscVer = 0;
 #define FOLLY_CPP14_CONSTEXPR inline
 #endif
 
-#if __cpp_coroutines >= 201703L || (_MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED)
+#if __cpp_coroutines >= 201703L && FOLLY_HAS_INCLUDE(<experimental/coroutine>)
+#define FOLLY_HAS_COROUTINES 1
+#elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
 #define FOLLY_HAS_COROUTINES 1
 #endif
 

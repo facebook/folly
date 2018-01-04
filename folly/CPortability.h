@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,12 @@
 #define FOLLY_HAS_FEATURE(...) __has_feature(__VA_ARGS__)
 #else
 #define FOLLY_HAS_FEATURE(...) 0
+#endif
+
+#if defined(__has_include)
+#define FOLLY_HAS_INCLUDE(...) __has_include(__VA_ARGS__)
+#else
+#define FOLLY_HAS_INCLUDE(...) 0
 #endif
 
 /* Define a convenience macro to test when address sanitizer is being used
