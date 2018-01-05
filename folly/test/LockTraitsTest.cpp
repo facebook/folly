@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@
 
 #include <mutex>
 
-#include <folly/RWSpinLock.h>
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/RWSpinLock.h>
 
 using namespace folly;
 

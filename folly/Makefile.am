@@ -403,7 +403,6 @@ nobase_follyinclude_HEADERS = \
 	Random-inl.h \
 	Range.h \
 	Replaceable.h \
-	RWSpinLock.h \
 	ScopeGuard.h \
 	SharedMutex.h \
 	Singleton.h \
@@ -438,6 +437,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/CallOnce.h \
 	synchronization/LifoSem.h \
 	synchronization/ParkingLot.h \
+	synchronization/RWSpinLock.h \
 	synchronization/SaturatingSemaphore.h \
 	synchronization/detail/AtomicUtils.h \
 	synchronization/detail/Sleeper.h \

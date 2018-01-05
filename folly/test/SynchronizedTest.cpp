@@ -13,18 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // @author: Andrei Alexandrescu (aalexandre)
 
 // Test bed for folly/Synchronized.h
 
+#include <folly/Synchronized.h>
 #include <folly/LockTraitsBoost.h>
 #include <folly/Portability.h>
-#include <folly/RWSpinLock.h>
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
-#include <folly/Synchronized.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/RWSpinLock.h>
 #include <folly/test/SynchronizedTestLib.h>
 
 using namespace folly::sync_tests;

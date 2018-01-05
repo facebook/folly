@@ -178,7 +178,7 @@ endian_test_SOURCES = EndianTest.cpp
 endian_test_LDADD = libfollytestmain.la
 TESTS += endian_test
 
-rw_spinlock_test_SOURCES = RWSpinLockTest.cpp
+rw_spinlock_test_SOURCES = ../synchronization/test/RWSpinLockTest.cpp
 rw_spinlock_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += rw_spinlock_test
 

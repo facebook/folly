@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // SingletonVault - a library to manage the creation and destruction
 // of interdependent singletons.
 //
@@ -125,12 +124,12 @@
 #include <folly/Exception.h>
 #include <folly/Executor.h>
 #include <folly/Memory.h>
-#include <folly/RWSpinLock.h>
 #include <folly/Synchronized.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/hash/Hash.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/RWSpinLock.h>
 
 #include <algorithm>
 #include <atomic>

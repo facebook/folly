@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 #include <folly/Executor.h>
 #include <folly/Memory.h>
-#include <folly/RWSpinLock.h>
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
 #include <folly/io/async/Request.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/RWSpinLock.h>
 
 #include <algorithm>
 #include <mutex>

@@ -545,6 +545,7 @@ if (BUILD_TESTS)
       TEST baton_test SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
       TEST lifo_sem_test SOURCES LifoSemTests.cpp
+      TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
 
     DIRECTORY system/test/
       TEST memory_mapping_test SOURCES MemoryMappingTest.cpp
@@ -631,7 +632,6 @@ if (BUILD_TESTS)
       TEST portability_test SOURCES PortabilityTest.cpp
       TEST producer_consumer_queue_test SLOW
         SOURCES ProducerConsumerQueueTest.cpp
-      TEST r_w_spin_lock_test SOURCES RWSpinLockTest.cpp
       TEST random_test SOURCES RandomTest.cpp
       TEST range_test SOURCES RangeTest.cpp
       TEST safe_assert_test SOURCES SafeAssertTest.cpp

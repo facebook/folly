@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // @author: Xin Liu <xliux@fb.com>
 
 #include <map>
@@ -24,9 +23,9 @@
 
 #include <folly/Benchmark.h>
 #include <folly/ConcurrentSkipList.h>
-#include <folly/RWSpinLock.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
+#include <folly/synchronization/RWSpinLock.h>
 #include <glog/logging.h>
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");
