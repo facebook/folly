@@ -98,6 +98,10 @@ TYPED_TEST(SynchronizedTest, InPlaceConstruction) {
   testInPlaceConstruction<TypeParam>();
 }
 
+TYPED_TEST(SynchronizedTest, Exchange) {
+  testExchange<TypeParam>();
+}
+
 template <class Mutex>
 class SynchronizedTimedTest : public testing::Test {};
 

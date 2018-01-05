@@ -692,6 +692,15 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
+   * Assign another datum and return the original value. Recommended
+   * because it keeps the mutex held only briefly.
+   */
+  T exchange(T&& rhs) {
+    swap(rhs);
+    return std::move(rhs);
+  }
+
+  /**
    * Copies datum to a given target.
    */
   void copy(T* target) const {

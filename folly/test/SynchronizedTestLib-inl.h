@@ -877,5 +877,15 @@ template <class Mutex> void testInPlaceConstruction() {
   // This won't compile without in_place
   folly::Synchronized<NotCopiableNotMovable> a(folly::in_place, 5, "a");
 }
+
+template <class Mutex>
+void testExchange() {
+  std::vector<int> input = {1, 2, 3};
+  folly::Synchronized<std::vector<int>, Mutex> v(input);
+  std::vector<int> next = {4, 5, 6};
+  auto prev = v.exchange(std::move(next));
+  EXPECT_EQ((std::vector<int>{1, 2, 3}), prev);
+  EXPECT_EQ((std::vector<int>{4, 5, 6}), v.copy());
+}
 } // namespace sync_tests
 } // namespace folly
