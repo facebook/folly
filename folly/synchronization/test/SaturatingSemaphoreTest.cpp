@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +32,11 @@ void run_basic_test() {
       std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
   ASSERT_FALSE(f.try_wait_until(
       std::chrono::steady_clock::now() + std::chrono::microseconds(1),
-      f.wait_options().pre_block(std::chrono::microseconds(1))));
+      f.wait_options().spin_max(std::chrono::microseconds(1))));
   f.post();
   f.post();
   f.wait();
-  f.wait(f.wait_options().pre_block(std::chrono::nanoseconds(100)));
+  f.wait(f.wait_options().spin_max(std::chrono::nanoseconds(100)));
   ASSERT_TRUE(f.ready());
   ASSERT_TRUE(f.try_wait());
   ASSERT_TRUE(f.try_wait_until(
@@ -98,7 +98,7 @@ void run_multi_poster_multi_waiter_test(int np, int nw) {
           std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
       ASSERT_FALSE(f.try_wait_until(
           std::chrono::steady_clock::now() + std::chrono::microseconds(1),
-          f.wait_options().pre_block(std::chrono::microseconds(0))));
+          f.wait_options().spin_max(std::chrono::microseconds(0))));
       waited.fetch_add(1);
       while (!go_wait.load()) {
         /* spin */;
@@ -110,7 +110,7 @@ void run_multi_poster_multi_waiter_test(int np, int nw) {
           std::chrono::steady_clock::now() + std::chrono::microseconds(1)));
       ASSERT_TRUE(f.try_wait_until(
           std::chrono::steady_clock::now() + std::chrono::microseconds(1),
-          f.wait_options().pre_block(std::chrono::microseconds(0))));
+          f.wait_options().spin_max(std::chrono::microseconds(0))));
       f.wait();
     });
   }
