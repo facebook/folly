@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/ssl/OpenSSLCertUtils.h>
 
 #include <folly/Format.h>
@@ -29,6 +28,7 @@ using namespace testing;
 using namespace folly;
 
 const char* kTestCertWithoutSan = "folly/io/async/test/certs/tests-cert.pem";
+const char* kTestCa = "folly/io/async/test/certs/ca-cert.pem";
 
 // Test key
 // -----BEGIN EC PRIVATE KEY-----
@@ -272,4 +272,16 @@ TEST_F(OpenSSLCertUtilsTest, TestX509Digest) {
   EXPECT_EQ(
       folly::hexlify(folly::range(sha2Digest)),
       "364d3a6a0b10d0635ce59b40c0b7f505ab2cd9fd0a06661cdc61d9cb8c9c9821");
+}
+
+TEST_F(OpenSSLCertUtilsTest, TestX509Store) {
+  auto store = folly::ssl::OpenSSLCertUtils::readStoreFromFile(kTestCa);
+  EXPECT_NE(store, nullptr);
+
+  auto x509 = readCertFromFile(kTestCertWithoutSan);
+  folly::ssl::X509StoreCtxUniquePtr ctx(X509_STORE_CTX_new());
+  auto rc = X509_STORE_CTX_init(ctx.get(), store.get(), x509.get(), nullptr);
+  EXPECT_EQ(rc, 1);
+  rc = X509_verify_cert(ctx.get());
+  EXPECT_EQ(rc, 1);
 }

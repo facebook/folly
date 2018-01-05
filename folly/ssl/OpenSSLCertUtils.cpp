@@ -15,6 +15,7 @@
  */
 #include <folly/ssl/OpenSSLCertUtils.h>
 
+#include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
@@ -240,6 +241,32 @@ std::array<uint8_t, SHA256_DIGEST_LENGTH> OpenSSLCertUtils::getDigestSha256(
   return md;
 }
 
+X509StoreUniquePtr OpenSSLCertUtils::readStoreFromFile(std::string caFile) {
+  std::string certData;
+  if (!folly::readFile(caFile.c_str(), certData)) {
+    throw std::runtime_error(
+        folly::to<std::string>("Could not read store file: ", caFile));
+  }
+  auto certRange = folly::ByteRange(folly::StringPiece(certData));
+  return readStoreFromBuffer(std::move(certRange));
+}
 
+X509StoreUniquePtr OpenSSLCertUtils::readStoreFromBuffer(ByteRange certRange) {
+  auto certs = readCertsFromBuffer(certRange);
+  ERR_clear_error();
+  folly::ssl::X509StoreUniquePtr store(X509_STORE_new());
+  for (auto& caCert : certs) {
+    if (X509_STORE_add_cert(store.get(), caCert.get()) != 1) {
+      auto err = ERR_get_error();
+      if (ERR_GET_LIB(err) != ERR_LIB_X509 ||
+          ERR_GET_REASON(err) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
+        throw std::runtime_error(folly::to<std::string>(
+            "Could not insert CA certificate into store: ",
+            std::string(ERR_error_string(err, nullptr))));
+      }
+    }
+  }
+  return store;
+}
 } // namespace ssl
 } // namespace folly
