@@ -95,6 +95,10 @@ TYPED_TEST(SynchronizedTest, ConstCopy) {
   testConstCopy<TypeParam>();
 }
 
+TYPED_TEST(SynchronizedTest, InPlaceConstruction) {
+  testInPlaceConstruction<TypeParam>();
+}
+
 template <class Mutex>
 class SynchronizedTimedTest : public testing::Test {};
 
@@ -144,10 +148,6 @@ TYPED_TEST(SynchronizedTimedWithConstTest, TimedShared) {
 
 TYPED_TEST(SynchronizedTimedWithConstTest, TimedSynchronizeWithConst) {
   testTimedSynchronizedWithConst<TypeParam>();
-}
-
-TYPED_TEST(SynchronizedTest, InPlaceConstruction) {
-  testInPlaceConstruction<TypeParam>();
 }
 
 using CountPair = std::pair<int, int>;
