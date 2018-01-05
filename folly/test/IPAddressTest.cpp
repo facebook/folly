@@ -18,11 +18,11 @@
 
 #include <string>
 
-#include <folly/BitIterator.h>
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/MacAddress.h>
 #include <folly/String.h>
+#include <folly/container/BitIterator.h>
 #include <folly/detail/IPAddressSource.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/GMock.h>

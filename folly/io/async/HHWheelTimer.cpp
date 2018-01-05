@@ -17,10 +17,10 @@
 #include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
 
-#include <folly/BitIterator.h>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
+#include <folly/container/BitIterator.h>
 
 #include <folly/lang/Bits.h>
 

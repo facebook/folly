@@ -170,7 +170,7 @@ bits_test_SOURCES = ../lang/test/BitsTest.cpp
 bits_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += bits_test
 
-bit_iterator_test_SOURCES = BitIteratorTest.cpp
+bit_iterator_test_SOURCES = ../container/test/BitIteratorTest.cpp
 bit_iterator_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += bit_iterator_test
 

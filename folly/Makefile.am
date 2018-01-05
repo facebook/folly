@@ -57,6 +57,7 @@ nobase_follyinclude_HEADERS = \
 	concurrency/UnboundedQueue.h \
 	container/Access.h \
 	container/Array.h \
+	container/detail/BitIteratorDetail.h \
 	container/Iterator.h \
 	container/Enumerate.h \
 	container/EvictingCacheMap.h \
@@ -67,7 +68,6 @@ nobase_follyinclude_HEADERS = \
 	detail/AtFork.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
-	detail/BitIteratorDetail.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \

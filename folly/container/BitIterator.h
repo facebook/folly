@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 
 #include <folly/Portability.h>
-#include <folly/detail/BitIteratorDetail.h>
+#include <folly/container/detail/BitIteratorDetail.h>
 #include <folly/lang/Bits.h>
 
 namespace folly {

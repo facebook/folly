@@ -337,6 +337,7 @@ if (BUILD_TESTS)
     DIRECTORY container/test/
       TEST access_test SOURCES AccessTest.cpp
       TEST array_test SOURCES ArrayTest.cpp
+      TEST bit_iterator_test SOURCES BitIteratorTest.cpp
       TEST enumerate_test SOURCES EnumerateTest.cpp
       TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
       TEST foreach_test SOURCES ForeachTest.cpp
@@ -563,7 +564,6 @@ if (BUILD_TESTS)
       TEST atomic_linked_list_test SOURCES AtomicLinkedListTest.cpp
       TEST atomic_struct_test SOURCES AtomicStructTest.cpp
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
-      TEST bit_iterator_test SOURCES BitIteratorTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
