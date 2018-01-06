@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /* override-include-guard */
 #ifndef HAZPTR_H
 #error "This should only be included by hazptr.h"
@@ -39,6 +38,10 @@
 
 #ifndef HAZPTR_PRIV
 #define HAZPTR_PRIV true
+#endif
+
+#ifndef HAZPTR_PRIV_THRESHOLD
+#define HAZPTR_PRIV_THRESHOLD 20
 #endif
 
 #ifndef HAZPTR_ONE_DOMAIN
@@ -994,8 +997,7 @@ inline void hazptr_priv::push(hazptr_obj* obj) {
     head_ = obj;
   }
   tail_ = obj;
-  ++rcount_;
-  if (domain.reachedThreshold(rcount_)) {
+  if (++rcount_ >= HAZPTR_PRIV_THRESHOLD) {
     pushAllToDomain();
   }
 }
