@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <atomic>
@@ -202,13 +201,20 @@ class EventBase : private boost::noncopyable,
   /**
    * Create a new EventBase object.
    *
+   * Same as EventBase(true), which constructs an EventBase that measures time.
+   */
+  EventBase() : EventBase(true) {}
+
+  /**
+   * Create a new EventBase object.
+   *
    * @param enableTimeMeasurement Informs whether this event base should measure
    *                              time. Disabling it would likely improve
    *                              performance, but will disable some features
    *                              that relies on time-measurement, including:
    *                              observer, max latency and avg loop time.
    */
-  explicit EventBase(bool enableTimeMeasurement = true);
+  explicit EventBase(bool enableTimeMeasurement);
 
   /**
    * Create a new EventBase object that will use the specified libevent
