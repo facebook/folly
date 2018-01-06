@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GFlags.h>
 
-using folly::ScopeGuard;
 using folly::makeGuard;
 
 // Declare the bm_max_iters flag from folly/Benchmark.cpp
@@ -158,7 +157,7 @@ BENCHMARK(std_bind_direct_invoke, iters) {
 BENCHMARK(scope_guard_std_function, iters) {
   std::function<void()> fn(doNothing);
   for (size_t n = 0; n < iters; ++n) {
-    ScopeGuard g = makeGuard(fn);
+    auto g = makeGuard(fn);
     (void)g;
   }
 }
@@ -167,7 +166,7 @@ BENCHMARK(scope_guard_std_function, iters) {
 // but create the ScopeGuard with an rvalue to a std::function
 BENCHMARK(scope_guard_std_function_rvalue, iters) {
   for (size_t n = 0; n < iters; ++n) {
-    ScopeGuard g = makeGuard(std::function<void()>(doNothing));
+    auto g = makeGuard(std::function<void()>(doNothing));
     (void)g;
   }
 }
@@ -176,7 +175,7 @@ BENCHMARK(scope_guard_std_function_rvalue, iters) {
 // but create the ScopeGuard with an rvalue to a folly::Function
 BENCHMARK(scope_guard_Function_rvalue, iters) {
   for (size_t n = 0; n < iters; ++n) {
-    ScopeGuard g = makeGuard(folly::Function<void()>(doNothing));
+    auto g = makeGuard(folly::Function<void()>(doNothing));
     (void)g;
   }
 }
@@ -184,7 +183,7 @@ BENCHMARK(scope_guard_Function_rvalue, iters) {
 // Using ScopeGuard to invoke a function pointer
 BENCHMARK(scope_guard_fn_ptr, iters) {
   for (size_t n = 0; n < iters; ++n) {
-    ScopeGuard g = makeGuard(doNothing);
+    auto g = makeGuard(doNothing);
     (void)g;
   }
 }
@@ -192,7 +191,7 @@ BENCHMARK(scope_guard_fn_ptr, iters) {
 // Using ScopeGuard to invoke a lambda that does nothing
 BENCHMARK(scope_guard_lambda_noop, iters) {
   for (size_t n = 0; n < iters; ++n) {
-    ScopeGuard g = makeGuard([] {});
+    auto g = makeGuard([] {});
     (void)g;
   }
 }
@@ -200,7 +199,7 @@ BENCHMARK(scope_guard_lambda_noop, iters) {
 // Using ScopeGuard to invoke a lambda that invokes a function
 BENCHMARK(scope_guard_lambda_function, iters) {
   for (size_t n = 0; n < iters; ++n) {
-    ScopeGuard g = makeGuard([] { doNothing(); });
+    auto g = makeGuard([] { doNothing(); });
     (void)g;
   }
 }
@@ -209,7 +208,7 @@ BENCHMARK(scope_guard_lambda_function, iters) {
 BENCHMARK(scope_guard_lambda_local_var, iters) {
   uint32_t count = 0;
   for (size_t n = 0; n < iters; ++n) {
-    ScopeGuard g = makeGuard([&] {
+    auto g = makeGuard([&] {
       // Increment count if n is odd.  Without this conditional check
       // (i.e., if we just increment count each time through the loop),
       // gcc is smart enough to optimize the entire loop away, and just set

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,8 +47,7 @@ namespace folly {
  *
  *   // If the db insertion that follows fails, we should
  *   // remove it from memory.
- *   // (You could also declare this as "auto guard = makeGuard(...)")
- *   ScopeGuard guard = makeGuard([&] { friends_.pop_back(); });
+ *   auto guard = makeGuard([&] { friends_.pop_back(); });
  *
  *   // this will throw an exception upon error, which
  *   // makes the ScopeGuard execute UserCont::pop_back()

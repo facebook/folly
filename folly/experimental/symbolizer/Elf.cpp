@@ -76,7 +76,7 @@ int ElfFile::openNoThrow(
   // Always close fd and unmap in case of failure along the way to avoid
   // check failure above if we leave fd != -1 and the object is recycled
   // like it is inside SignalSafeElfCache
-  ScopeGuard guard = makeGuard([&] { reset(); });
+  auto guard = makeGuard([&] { reset(); });
   struct stat st;
   int r = fstat(fd_, &st);
   if (r == -1) {
