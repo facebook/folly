@@ -31,7 +31,7 @@ enum class FutexResult {
   VALUE_CHANGED, /* Futex value didn't match expected */
   AWOKEN,        /* futex wait matched with a futex wake */
   INTERRUPTED,   /* Spurious wake-up or signal caused futex wait failure */
-  TIMEDOUT
+  TIMEDOUT,
 };
 
 /**
