@@ -19,21 +19,10 @@
 #include <atomic>
 #include <chrono>
 
-#include <folly/Traits.h>
 #include <folly/detail/Futex.h>
 #include <folly/hash/Hash.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/system/ThreadId.h>
-
-namespace folly {
-
-// gcc 4.7 doesn't do std::is_trivial correctly, override so we can use
-// AtomicStruct<duration>
-template <>
-struct IsTriviallyCopyable<std::chrono::steady_clock::duration>
-  : std::true_type {};
-
-} // namespace folly
 
 namespace folly { namespace detail {
 
