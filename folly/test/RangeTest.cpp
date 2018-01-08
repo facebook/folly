@@ -1428,3 +1428,8 @@ TEST(Range, LiteralSuffix) {
   constexpr Range<wchar_t const*> pieceW{L"hello", 5};
   EXPECT_EQ(literalPieceW, pieceW);
 }
+
+TEST(Range, LiteralSuffixContainsNulBytes) {
+  constexpr auto literalPiece = "\0foo\0"_sp;
+  EXPECT_EQ(5u, literalPiece.size());
+}
