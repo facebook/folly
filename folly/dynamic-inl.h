@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <functional>
@@ -21,6 +20,7 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 
+#include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Likely.h>
@@ -76,7 +76,7 @@ struct hash<::folly::dynamic> {
 
 namespace folly {
 
-struct TypeError : std::runtime_error {
+struct FOLLY_EXPORT TypeError : std::runtime_error {
   explicit TypeError(const std::string& expected, dynamic::Type actual);
   explicit TypeError(
       const std::string& expected,

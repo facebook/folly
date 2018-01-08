@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <algorithm>
@@ -23,6 +22,7 @@
 #include <memory>
 #include <system_error>
 
+#include <folly/CPortability.h>
 #include <folly/CachelinePadded.h>
 #include <folly/IndexedMemPool.h>
 #include <folly/Likely.h>
@@ -90,7 +90,7 @@ typedef LifoSemImpl<> LifoSem;
 
 
 /// The exception thrown when wait()ing on an isShutdown() LifoSem
-struct ShutdownSemError : public std::runtime_error {
+struct FOLLY_EXPORT ShutdownSemError : public std::runtime_error {
   explicit ShutdownSemError(const std::string& msg);
   ~ShutdownSemError() noexcept override;
 };

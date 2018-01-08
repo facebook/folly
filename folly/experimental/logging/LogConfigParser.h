@@ -17,6 +17,7 @@
 
 #include <stdexcept>
 
+#include <folly/CPortability.h>
 #include <folly/Range.h>
 #include <folly/experimental/logging/LogConfig.h>
 
@@ -34,7 +35,7 @@ namespace folly {
 
 struct dynamic;
 
-class LogConfigParseError : public std::invalid_argument {
+class FOLLY_EXPORT LogConfigParseError : public std::invalid_argument {
  public:
   using std::invalid_argument::invalid_argument;
 };

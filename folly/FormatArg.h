@@ -18,6 +18,7 @@
 
 #include <stdexcept>
 
+#include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
@@ -25,7 +26,7 @@
 
 namespace folly {
 
-class BadFormatArg : public std::invalid_argument {
+class FOLLY_EXPORT BadFormatArg : public std::invalid_argument {
   using invalid_argument::invalid_argument;
 };
 

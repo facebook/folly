@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/json.h>
 
 #include <algorithm>
@@ -22,13 +21,13 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/next_prior.hpp>
-#include <folly/Portability.h>
-#include <folly/lang/Bits.h>
 
 #include <folly/Conv.h>
+#include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/Unicode.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/Constexpr.h>
 
 namespace folly {
@@ -187,7 +186,7 @@ struct Printer {
 
 //////////////////////////////////////////////////////////////////////
 
-struct ParseError : std::runtime_error {
+struct FOLLY_EXPORT ParseError : std::runtime_error {
   explicit ParseError(
       unsigned int line,
       std::string const& context,

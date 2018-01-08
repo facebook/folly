@@ -35,6 +35,7 @@
 #include <typeinfo>
 #include <utility>
 
+#include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Traits.h>
 #include <folly/detail/TypeList.h>
@@ -175,7 +176,7 @@ struct PolyMembers {};
 /**
  * Exception type that is thrown on invalid access of an empty `Poly` object.
  */
-struct BadPolyAccess : std::exception {
+struct FOLLY_EXPORT BadPolyAccess : std::exception {
   BadPolyAccess() = default;
   char const* what() const noexcept override {
     return "BadPolyAccess";
@@ -186,7 +187,7 @@ struct BadPolyAccess : std::exception {
  * Exception type that is thrown when attempting to extract from a `Poly` a
  * value of the wrong type.
  */
-struct BadPolyCast : std::bad_cast {
+struct FOLLY_EXPORT BadPolyCast : std::bad_cast {
   BadPolyCast() = default;
   char const* what() const noexcept override {
     return "BadPolyCast";

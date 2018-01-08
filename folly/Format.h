@@ -22,6 +22,7 @@
 #include <tuple>
 #include <type_traits>
 
+#include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/FormatArg.h>
 #include <folly/Range.h>
@@ -318,7 +319,7 @@ inline std::string svformat(StringPiece fmt, Container&& container) {
  * makes the exception type small and noexcept-copyable like std::out_of_range,
  * and therefore able to fit in-situ in exception_wrapper.
  */
-class FormatKeyNotFoundException : public std::out_of_range {
+class FOLLY_EXPORT FormatKeyNotFoundException : public std::out_of_range {
  public:
   explicit FormatKeyNotFoundException(StringPiece key);
 

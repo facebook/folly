@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /**
  * Like folly::Optional, but can store a value *or* an error.
  *
@@ -31,6 +30,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Likely.h>
 #include <folly/Optional.h>
@@ -660,7 +660,7 @@ inline expected_detail::UnexpectedTag unexpected(
 /**
  * An exception type thrown by Expected on catastrophic logic errors.
  */
-class BadExpectedAccess : public std::logic_error {
+class FOLLY_EXPORT BadExpectedAccess : public std::logic_error {
  public:
   BadExpectedAccess() : std::logic_error("bad Expected access") {}
 };
@@ -689,7 +689,7 @@ class Unexpected final : ColdClass {
    * when the user tries to access the nested value but the Expected object is
    * actually storing an error code.
    */
-  class BadExpectedAccess : public folly::BadExpectedAccess {
+  class FOLLY_EXPORT BadExpectedAccess : public folly::BadExpectedAccess {
    public:
     explicit BadExpectedAccess(Error err)
         : folly::BadExpectedAccess{}, error_(std::move(err)) {}

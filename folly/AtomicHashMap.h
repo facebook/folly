@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /*
  * AtomicHashMap --
  *
@@ -91,6 +90,7 @@
 #include <stdexcept>
 
 #include <folly/AtomicHashArray.h>
+#include <folly/CPortability.h>
 #include <folly/Likely.h>
 #include <folly/ThreadCachedInt.h>
 #include <folly/container/Foreach.h>
@@ -149,7 +149,7 @@ namespace folly {
 
 // Thrown when insertion fails due to running out of space for
 // submaps.
-struct AtomicHashMapFullError : std::runtime_error {
+struct FOLLY_EXPORT AtomicHashMapFullError : std::runtime_error {
   explicit AtomicHashMapFullError()
     : std::runtime_error("AtomicHashMap is full")
   {}

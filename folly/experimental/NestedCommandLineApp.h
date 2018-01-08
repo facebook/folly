@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <functional>
 #include <stdexcept>
 
+#include <folly/CPortability.h>
 #include <folly/experimental/ProgramOptions.h>
 
 namespace folly {
@@ -30,7 +30,7 @@ namespace folly {
  * empty; the message is only allowed when exiting with a non-zero status), and
  * return the exit code. (Other exceptions will propagate out of run())
  */
-class ProgramExit : public std::runtime_error {
+class FOLLY_EXPORT ProgramExit : public std::runtime_error {
  public:
   explicit ProgramExit(int status, const std::string& msg = std::string());
   int status() const { return status_; }

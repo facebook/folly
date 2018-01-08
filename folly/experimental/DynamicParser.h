@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
  */
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/dynamic.h>
 
@@ -194,7 +195,7 @@ std::string toPseudoJson(const folly::dynamic& d);
  * With DynamicParser::OnError::THROW, reports the first error.
  * It is forbidden to call releaseErrors() if you catch this.
  */
-struct DynamicParserParseError : public std::runtime_error {
+struct FOLLY_EXPORT DynamicParserParseError : public std::runtime_error {
   explicit DynamicParserParseError(folly::dynamic error)
     : std::runtime_error(folly::to<std::string>(
         "DynamicParserParseError: ", detail::toPseudoJson(error)
@@ -217,7 +218,7 @@ struct DynamicParserParseError : public std::runtime_error {
  * instead of reporting an error via releaseErrors().  It is unsafe to call
  * any parser methods after catching a LogicError.
  */
-struct DynamicParserLogicError : public std::logic_error {
+struct FOLLY_EXPORT DynamicParserLogicError : public std::logic_error {
   template <typename... Args>
   explicit DynamicParserLogicError(Args&&... args)
     : std::logic_error(folly::to<std::string>(std::forward<Args>(args)...)) {}

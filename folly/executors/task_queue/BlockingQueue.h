@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <exception>
 #include <stdexcept>
 
 #include <glog/logging.h>
+
+#include <folly/CPortability.h>
 
 namespace folly {
 
@@ -28,7 +29,7 @@ namespace folly {
 // non-blocking (THROW) behaviors.
 enum class QueueBehaviorIfFull { THROW, BLOCK };
 
-class QueueFullException : public std::runtime_error {
+class FOLLY_EXPORT QueueFullException : public std::runtime_error {
   using std::runtime_error::runtime_error; // Inherit constructors.
 };
 

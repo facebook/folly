@@ -162,7 +162,7 @@ auto fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
 //! \endcode
 class exception_wrapper final {
  private:
-  struct AnyException : std::exception {
+  struct FOLLY_EXPORT AnyException : std::exception {
     std::type_info const* typeinfo_;
     template <class T>
     /* implicit */ AnyException(T&& t) noexcept : typeinfo_(&typeid(t)) {}

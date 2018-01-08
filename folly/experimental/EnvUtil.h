@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
-#include <folly/Memory.h>
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <folly/CPortability.h>
+#include <folly/Memory.h>
 
 namespace folly {
 namespace experimental {
@@ -87,7 +88,7 @@ struct EnvironmentState {
   EnvType env_;
 };
 
-struct MalformedEnvironment : std::runtime_error {
+struct FOLLY_EXPORT MalformedEnvironment : std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 } // namespace experimental
