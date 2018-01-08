@@ -260,9 +260,11 @@ X509StoreUniquePtr OpenSSLCertUtils::readStoreFromBuffer(ByteRange certRange) {
       auto err = ERR_get_error();
       if (ERR_GET_LIB(err) != ERR_LIB_X509 ||
           ERR_GET_REASON(err) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
+        std::array<char, 256> errBuff;
+        ERR_error_string_n(err, errBuff.data(), errBuff.size());
         throw std::runtime_error(folly::to<std::string>(
             "Could not insert CA certificate into store: ",
-            std::string(ERR_error_string(err, nullptr))));
+            std::string(errBuff.data())));
       }
     }
   }
