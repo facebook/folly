@@ -46,7 +46,7 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
 
  private:
   LifoSem sem_;
-  UMPMCQueue<T, false> queue_;
+  UMPMCQueue<T, false, 6> queue_;
 };
 
 } // namespace folly
