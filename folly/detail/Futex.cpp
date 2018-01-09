@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/detail/Futex.h>
-#include <boost/intrusive/list.hpp>
-#include <folly/Indestructible.h>
 #include <folly/ScopeGuard.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/SysSyscall.h>
@@ -24,8 +21,8 @@
 #include <string.h>
 #include <array>
 #include <cerrno>
-#include <condition_variable>
-#include <mutex>
+
+#include <folly/synchronization/ParkingLot.h>
 
 #ifdef __linux__
 #include <linux/futex.h>
@@ -161,68 +158,22 @@ FutexResult nativeFutexWaitImpl(void* addr,
 ///////////////////////////////////////////////////////
 // compatibility implementation using standard C++ API
 
-// Our emulated futex uses 4096 lists of wait nodes.  There are two levels
-// of locking: a per-list mutex that controls access to the list and a
-// per-node mutex, condvar, and bool that are used for the actual wakeups.
-// The per-node mutex allows us to do precise wakeups without thundering
-// herds.
-
-struct EmulatedFutexWaitNode : public boost::intrusive::list_base_hook<> {
-  void* const addr_;
-  const uint32_t waitMask_;
-
-  // tricky: hold both bucket and node mutex to write, either to read
-  bool signaled_;
-  std::mutex mutex_;
-  std::condition_variable cond_;
-
-  EmulatedFutexWaitNode(void* addr, uint32_t waitMask)
-    : addr_(addr)
-    , waitMask_(waitMask)
-    , signaled_(false)
-  {
-  }
-};
-
-struct EmulatedFutexBucket {
-  std::mutex mutex_;
-  boost::intrusive::list<EmulatedFutexWaitNode> waiters_;
-
-  static constexpr size_t const kNumBuckets = kIsMobile ? 256 : 4096;
-
-  static EmulatedFutexBucket& bucketFor(void* addr) {
-    // Statically allocating this lets us use this in allocation-sensitive
-    // contexts. This relies on the assumption that std::mutex won't dynamically
-    // allocate memory, which we assume to be the case on Linux and iOS.
-    static Indestructible<std::array<EmulatedFutexBucket, kNumBuckets>>
-        gBuckets;
-    uint64_t mixedBits =
-        folly::hash::twang_mix64(reinterpret_cast<uintptr_t>(addr));
-    return (*gBuckets)[mixedBits % kNumBuckets];
-  }
-};
+using Lot = ParkingLot<uint32_t>;
+Lot parkingLot;
 
 int emulatedFutexWake(void* addr, int count, uint32_t waitMask) {
-  auto& bucket = EmulatedFutexBucket::bucketFor(addr);
-  std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
-
-  int numAwoken = 0;
-  for (auto iter = bucket.waiters_.begin();
-       numAwoken < count && iter != bucket.waiters_.end(); ) {
-    auto current = iter;
-    auto& node = *iter++;
-    if (node.addr_ == addr && (node.waitMask_ & waitMask) != 0) {
-      ++numAwoken;
-
-      // we unlink, but waiter destroys the node
-      bucket.waiters_.erase(current);
-
-      std::unique_lock<std::mutex> nodeLock(node.mutex_);
-      node.signaled_ = true;
-      node.cond_.notify_one();
+  int woken = 0;
+  parkingLot.unpark(addr, [&](const uint32_t& mask) {
+    if ((mask & waitMask) == 0) {
+      return UnparkControl::RetainContinue;
     }
-  }
-  return numAwoken;
+    assert(count > 0);
+    count--;
+    woken++;
+    return count > 0 ? UnparkControl::RemoveContinue
+                     : UnparkControl::RemoveBreak;
+  });
+  return woken;
 }
 
 template <typename F>
@@ -236,43 +187,35 @@ FutexResult emulatedFutexWaitImpl(
       std::is_same<F, Futex<std::atomic>>::value ||
           std::is_same<F, Futex<EmulatedFutexAtomic>>::value,
       "Type F must be either Futex<std::atomic> or Futex<EmulatedFutexAtomic>");
-  void* addr = static_cast<void*>(futex);
-  auto& bucket = EmulatedFutexBucket::bucketFor(addr);
-  EmulatedFutexWaitNode node(addr, waitMask);
-
-  {
-    std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
-
-    if (futex->load(std::memory_order_relaxed) != expected) {
-      return FutexResult::VALUE_CHANGED;
-    }
-
-    bucket.waiters_.push_back(node);
-  } // bucketLock scope
-
-  std::cv_status status = std::cv_status::no_timeout;
-  {
-    std::unique_lock<std::mutex> nodeLock(node.mutex_);
-    while (!node.signaled_ && status != std::cv_status::timeout) {
-      if (absSystemTime != nullptr) {
-        status = node.cond_.wait_until(nodeLock, *absSystemTime);
-      } else if (absSteadyTime != nullptr) {
-        status = node.cond_.wait_until(nodeLock, *absSteadyTime);
-      } else {
-        node.cond_.wait(nodeLock);
-      }
-    }
-  } // nodeLock scope
-
-  if (status == std::cv_status::timeout) {
-    // it's not really a timeout until we unlink the unsignaled node
-    std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
-    if (!node.signaled_) {
-      bucket.waiters_.erase(bucket.waiters_.iterator_to(node));
-      return FutexResult::TIMEDOUT;
-    }
+  ParkResult res;
+  if (absSystemTime) {
+    res = parkingLot.park_until(
+        futex,
+        waitMask,
+        [&] { return *futex == expected; },
+        [] {},
+        *absSystemTime);
+  } else if (absSteadyTime) {
+    res = parkingLot.park_until(
+        futex,
+        waitMask,
+        [&] { return *futex == expected; },
+        [] {},
+        *absSteadyTime);
+  } else {
+    res = parkingLot.park(
+        futex, waitMask, [&] { return *futex == expected; }, [] {});
   }
-  return FutexResult::AWOKEN;
+  switch (res) {
+    case ParkResult::Skip:
+      return FutexResult::VALUE_CHANGED;
+    case ParkResult::Unpark:
+      return FutexResult::AWOKEN;
+    case ParkResult::Timeout:
+      return FutexResult::TIMEDOUT;
+  }
+
+  return FutexResult::INTERRUPTED;
 }
 
 } // namespace

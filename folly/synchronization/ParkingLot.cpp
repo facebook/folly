@@ -15,6 +15,8 @@
  */
 #include <folly/synchronization/ParkingLot.h>
 
+#include <array>
+
 namespace folly {
 namespace parking_lot_detail {
 
