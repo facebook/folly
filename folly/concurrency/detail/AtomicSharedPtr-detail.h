@@ -17,8 +17,18 @@
 #include <atomic>
 #include <memory>
 
+#include <folly/lang/SafeAssert.h>
+
 namespace folly {
 namespace detail {
+
+// This implementation is specific to libstdc++, now accepting
+// diffs for other libraries.
+
+// Specifically, this adds support for two things:
+// 1) incrementing/decrementing the shared count by more than 1 at a time
+// 2) Getting the thing the shared_ptr points to, which may be different from
+//    the aliased pointer.
 
 class shared_ptr_internals {
  public:
@@ -42,6 +52,11 @@ class shared_ptr_internals {
   }
 
   static void inc_shared_count(counted_base* base, long count) {
+    // Check that we don't exceed the maximum number of atomic_shared_ptrs.
+    // Consider setting EXTERNAL_COUNT lower if this CHECK is hit.
+    FOLLY_SAFE_CHECK(
+        base->_M_get_use_count() + count < INT_MAX,
+        "atomic_shared_ptr overflow");
     __gnu_cxx::__atomic_add_dispatch(
         &(base->*fieldPtr(access_use_count{})), count);
   }
