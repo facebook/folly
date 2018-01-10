@@ -25,6 +25,8 @@
 using namespace folly;
 using namespace folly::test;
 using folly::detail::EmulatedFutexAtomic;
+using std::chrono::steady_clock;
+using std::chrono::system_clock;
 
 /// Basic test
 
@@ -54,54 +56,88 @@ TEST(Baton, pingpong_nonblocking) {
   run_pingpong_test<false, DeterministicAtomic>(1000);
 }
 
-/// Timed wait tests - Nonblocking Baton does not support try_wait_until()
-
 // Timed wait basic system clock tests
 
-TEST(Baton, timed_wait_basic_system_clock) {
-  run_basic_timed_wait_tests<std::atomic, std::chrono::system_clock>();
-  run_basic_timed_wait_tests<EmulatedFutexAtomic, std::chrono::system_clock>();
-  run_basic_timed_wait_tests<DeterministicAtomic, std::chrono::system_clock>();
+TEST(Baton, timed_wait_basic_system_clock_blocking) {
+  run_basic_timed_wait_tests<true, std::atomic, system_clock>();
+  run_basic_timed_wait_tests<true, EmulatedFutexAtomic, system_clock>();
+  run_basic_timed_wait_tests<true, DeterministicAtomic, system_clock>();
+}
+
+TEST(Baton, timed_wait_basic_system_clock_nonblocking) {
+  run_basic_timed_wait_tests<false, std::atomic, system_clock>();
+  run_basic_timed_wait_tests<false, EmulatedFutexAtomic, system_clock>();
+  run_basic_timed_wait_tests<false, DeterministicAtomic, system_clock>();
 }
 
 // Timed wait timeout system clock tests
 
-TEST(Baton, timed_wait_timeout_system_clock) {
-  run_timed_wait_tmo_tests<std::atomic, std::chrono::system_clock>();
-  run_timed_wait_tmo_tests<EmulatedFutexAtomic, std::chrono::system_clock>();
-  run_timed_wait_tmo_tests<DeterministicAtomic, std::chrono::system_clock>();
+TEST(Baton, timed_wait_timeout_system_clock_blocking) {
+  run_timed_wait_tmo_tests<true, std::atomic, system_clock>();
+  run_timed_wait_tmo_tests<true, EmulatedFutexAtomic, system_clock>();
+  run_timed_wait_tmo_tests<true, DeterministicAtomic, system_clock>();
+}
+
+TEST(Baton, timed_wait_timeout_system_clock_nonblocking) {
+  run_timed_wait_tmo_tests<false, std::atomic, system_clock>();
+  run_timed_wait_tmo_tests<false, EmulatedFutexAtomic, system_clock>();
+  run_timed_wait_tmo_tests<false, DeterministicAtomic, system_clock>();
 }
 
 // Timed wait regular system clock tests
 
-TEST(Baton, timed_wait_system_clock) {
-  run_timed_wait_regular_test<std::atomic, std::chrono::system_clock>();
-  run_timed_wait_regular_test<EmulatedFutexAtomic, std::chrono::system_clock>();
-  run_timed_wait_regular_test<DeterministicAtomic, std::chrono::system_clock>();
+TEST(Baton, timed_wait_system_clock_blocking) {
+  run_timed_wait_regular_test<true, std::atomic, system_clock>();
+  run_timed_wait_regular_test<true, EmulatedFutexAtomic, system_clock>();
+  run_timed_wait_regular_test<true, DeterministicAtomic, system_clock>();
+}
+
+TEST(Baton, timed_wait_system_clock_nonblocking) {
+  run_timed_wait_regular_test<false, std::atomic, system_clock>();
+  run_timed_wait_regular_test<false, EmulatedFutexAtomic, system_clock>();
+  run_timed_wait_regular_test<false, DeterministicAtomic, system_clock>();
 }
 
 // Timed wait basic steady clock tests
 
-TEST(Baton, timed_wait_basic_steady_clock) {
-  run_basic_timed_wait_tests<std::atomic, std::chrono::steady_clock>();
-  run_basic_timed_wait_tests<EmulatedFutexAtomic, std::chrono::steady_clock>();
-  run_basic_timed_wait_tests<DeterministicAtomic, std::chrono::steady_clock>();
+TEST(Baton, timed_wait_basic_steady_clock_blocking) {
+  run_basic_timed_wait_tests<true, std::atomic, steady_clock>();
+  run_basic_timed_wait_tests<true, EmulatedFutexAtomic, steady_clock>();
+  run_basic_timed_wait_tests<true, DeterministicAtomic, steady_clock>();
+}
+
+TEST(Baton, timed_wait_basic_steady_clock_nonblocking) {
+  run_basic_timed_wait_tests<false, std::atomic, steady_clock>();
+  run_basic_timed_wait_tests<false, EmulatedFutexAtomic, steady_clock>();
+  run_basic_timed_wait_tests<false, DeterministicAtomic, steady_clock>();
 }
 
 // Timed wait timeout steady clock tests
 
-TEST(Baton, timed_wait_timeout_steady_clock) {
-  run_timed_wait_tmo_tests<std::atomic, std::chrono::steady_clock>();
-  run_timed_wait_tmo_tests<EmulatedFutexAtomic, std::chrono::steady_clock>();
-  run_timed_wait_tmo_tests<DeterministicAtomic, std::chrono::steady_clock>();
+TEST(Baton, timed_wait_timeout_steady_clock_blocking) {
+  run_timed_wait_tmo_tests<true, std::atomic, steady_clock>();
+  run_timed_wait_tmo_tests<true, EmulatedFutexAtomic, steady_clock>();
+  run_timed_wait_tmo_tests<true, DeterministicAtomic, steady_clock>();
+}
+
+TEST(Baton, timed_wait_timeout_steady_clock_nonblocking) {
+  run_timed_wait_tmo_tests<false, std::atomic, steady_clock>();
+  run_timed_wait_tmo_tests<false, EmulatedFutexAtomic, steady_clock>();
+  run_timed_wait_tmo_tests<false, DeterministicAtomic, steady_clock>();
 }
 
 // Timed wait regular steady clock tests
 
-TEST(Baton, timed_wait_steady_clock) {
-  run_timed_wait_regular_test<std::atomic, std::chrono::steady_clock>();
-  run_timed_wait_regular_test<EmulatedFutexAtomic, std::chrono::steady_clock>();
-  run_timed_wait_regular_test<DeterministicAtomic, std::chrono::steady_clock>();
+TEST(Baton, timed_wait_steady_clock_blocking) {
+  run_timed_wait_regular_test<true, std::atomic, steady_clock>();
+  run_timed_wait_regular_test<true, EmulatedFutexAtomic, steady_clock>();
+  run_timed_wait_regular_test<true, DeterministicAtomic, steady_clock>();
+}
+
+TEST(Baton, timed_wait_steady_clock_nonblocking) {
+  run_timed_wait_regular_test<false, std::atomic, steady_clock>();
+  run_timed_wait_regular_test<false, EmulatedFutexAtomic, steady_clock>();
+  run_timed_wait_regular_test<false, DeterministicAtomic, steady_clock>();
 }
 
 /// Try wait tests

@@ -53,17 +53,17 @@ void run_pingpong_test(int numRounds) {
   DSched::join(thr);
 }
 
-template <template <typename> class Atom, typename Clock>
+template <bool MayBlock, template <typename> class Atom, typename Clock>
 void run_basic_timed_wait_tests() {
-  Baton<true, Atom> b;
+  Baton<MayBlock, Atom> b;
   b.post();
   // tests if early delivery works fine
   EXPECT_TRUE(b.try_wait_until(Clock::now()));
 }
 
-template <template <typename> class Atom, typename Clock>
+template <bool MayBlock, template <typename> class Atom, typename Clock>
 void run_timed_wait_tmo_tests() {
-  Baton<true, Atom> b;
+  Baton<MayBlock, Atom> b;
 
   auto thr = DSched::thread([&] {
     bool rv = b.try_wait_until(Clock::now() + std::chrono::milliseconds(1));
@@ -73,9 +73,9 @@ void run_timed_wait_tmo_tests() {
   DSched::join(thr);
 }
 
-template <template <typename> class Atom, typename Clock>
+template <bool MayBlock, template <typename> class Atom, typename Clock>
 void run_timed_wait_regular_test() {
-  Baton<true, Atom> b;
+  Baton<MayBlock, Atom> b;
 
   auto thr = DSched::thread([&] {
     // To wait forever we'd like to use time_point<Clock>::max, but

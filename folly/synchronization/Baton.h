@@ -42,7 +42,7 @@ namespace folly {
 ///
 /// The non-blocking version (MayBlock == false) provides more speed
 /// by using only load acquire and store release operations in the
-/// critical path, at the cost of disallowing blocking and timing out.
+/// critical path, at the cost of disallowing blocking.
 ///
 /// The current posix semaphore sem_t isn't too bad, but this provides
 /// more a bit more speed, inlining, smaller size, a guarantee that
@@ -197,9 +197,6 @@ struct Baton {
   template <typename Rep, typename Period>
   FOLLY_ALWAYS_INLINE bool try_wait_for(
       const std::chrono::duration<Rep, Period>& timeout) noexcept {
-    static_assert(
-        MayBlock, "Non-blocking Baton does not support try_wait_for.");
-
     if (try_wait()) {
       return true;
     }
@@ -222,9 +219,6 @@ struct Baton {
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool try_wait_until(
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
-    static_assert(
-        MayBlock, "Non-blocking Baton does not support try_wait_until.");
-
     if (try_wait()) {
       return true;
     }
@@ -278,15 +272,16 @@ struct Baton {
   // @return       true if we received an early delivery during the wait,
   //               false otherwise. If the function returns true then
   //               state_ is guaranteed to be EARLY_DELIVERY
-  bool spinWaitForEarlyDelivery() noexcept {
-    static_assert(
-        PreBlockAttempts > 0,
-        "isn't this assert clearer than an uninitialized variable warning?");
+  template <typename Clock, typename Duration>
+  bool spinWaitForEarlyDelivery(
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     for (int i = 0; i < PreBlockAttempts; ++i) {
       if (try_wait()) {
         return true;
       }
-
+      if (Clock::now() >= deadline) {
+        return false;
+      }
       // The pause instruction is the polite way to spin, but it doesn't
       // actually affect correctness to omit it if we don't have it.
       // Pausing donates the full capabilities of the current core to
@@ -298,7 +293,8 @@ struct Baton {
   }
 
   FOLLY_NOINLINE void waitSlow() noexcept {
-    if (spinWaitForEarlyDelivery()) {
+    auto const deadline = std::chrono::steady_clock::time_point::max();
+    if (spinWaitForEarlyDelivery(deadline)) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return;
     }
@@ -351,9 +347,21 @@ struct Baton {
   template <typename Clock, typename Duration>
   FOLLY_NOINLINE bool tryWaitUntilSlow(
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
-    if (spinWaitForEarlyDelivery()) {
+    if (spinWaitForEarlyDelivery(deadline)) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return true;
+    }
+
+    if (!MayBlock) {
+      while (true) {
+        if (try_wait()) {
+          return true;
+        }
+        if (Clock::now() >= deadline) {
+          return false;
+        }
+        std::this_thread::yield();
+      }
     }
 
     // guess we have to block :(
