@@ -69,20 +69,12 @@ std::string getXlogCategoryNameForFile(StringPiece filename) {
 
   // Translate slashes to dots, to turn the directory layout into
   // a category hierarchy.
-  size_t lastDot = std::string::npos;
   for (size_t n = 0; n < categoryName.size(); ++n) {
     if (categoryName[n] == '/') {
       categoryName[n] = '.';
-      lastDot = std::string::npos;
-    } else if (categoryName[n] == '.') {
-      lastDot = n;
     }
   }
 
-  // Strip off the filename extension, if one was present.
-  if (lastDot != std::string::npos) {
-    categoryName.resize(lastDot);
-  }
   return categoryName;
 }
 

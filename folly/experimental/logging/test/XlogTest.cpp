@@ -110,7 +110,7 @@ TEST(Xlog, perFileCategoryHandling) {
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::DBG3, messages[0].first.getLevel());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogHeader2",
+      "folly.experimental.logging.test.XlogHeader2.h",
       messages[0].first.getCategory()->getName());
   EXPECT_EQ("folly.experimental.logging.test", messages[0].second->getName());
   messages.clear();
@@ -123,7 +123,7 @@ TEST(Xlog, perFileCategoryHandling) {
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::DBG1, messages[0].first.getLevel());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogHeader1",
+      "folly.experimental.logging.test.XlogHeader1.h",
       messages[0].first.getCategory()->getName());
   EXPECT_EQ("folly.experimental.logging.test", messages[0].second->getName());
 
@@ -152,7 +152,7 @@ TEST(Xlog, perFileCategoryHandling) {
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("file1: foobar 1234", messages[0].first.getMessage());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogFile1",
+      "folly.experimental.logging.test.XlogFile1.cpp",
       messages[0].first.getCategory()->getName());
   messages.clear();
 
@@ -160,7 +160,7 @@ TEST(Xlog, perFileCategoryHandling) {
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("file2: hello world", messages[0].first.getMessage());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogFile2",
+      "folly.experimental.logging.test.XlogFile2.cpp",
       messages[0].first.getCategory()->getName());
   messages.clear();
 
@@ -180,7 +180,27 @@ TEST(Xlog, perFileCategoryHandling) {
   EXPECT_EQ(
       "file1: this log check should pass now", messages[0].first.getMessage());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogFile1",
+      "folly.experimental.logging.test.XlogFile1.cpp",
       messages[0].first.getCategory()->getName());
   messages.clear();
+}
+
+TEST(Xlog, getXlogCategoryName) {
+  EXPECT_EQ("foo.cpp", getXlogCategoryNameForFile("foo.cpp"));
+  EXPECT_EQ("foo.h", getXlogCategoryNameForFile("foo.h"));
+
+  // Directory separators should be translated to "."
+  EXPECT_EQ("src.test.foo.cpp", getXlogCategoryNameForFile("src/test/foo.cpp"));
+  EXPECT_EQ("src.test.foo.h", getXlogCategoryNameForFile("src/test/foo.h"));
+
+  // Buck's directory prefixes for generated source files
+  // should be stripped out
+  EXPECT_EQ(
+      "myproject.generated_header.h",
+      getXlogCategoryNameForFile(
+          "buck-out/gen/myproject#headers/myproject/generated_header.h"));
+  EXPECT_EQ(
+      "foo.bar.test.h",
+      getXlogCategoryNameForFile(
+          "buck-out/gen/foo/bar#header-map,headers/foo/bar/test.h"));
 }
