@@ -199,7 +199,7 @@ void bulk_insert(
 
 /**
  * A sorted_vector_set is a container similar to std::set<>, but
- * implemented as as a sorted array with std::vector<>.
+ * implemented as a sorted array with std::vector<>.
  *
  * @param class T               Data type to store
  * @param class Compare         Comparison function that imposes a
