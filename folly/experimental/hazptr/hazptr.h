@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ class hazptr_domain {
   void retire(T* obj, D reclaim = {});
 
  private:
+  friend class hazptr_obj_batch;
   friend class hazptr_holder;
   template <typename, typename>
   friend class hazptr_obj_base;
@@ -100,6 +101,7 @@ void hazptr_retire(T* obj, D reclaim = {});
 
 /** Definition of hazptr_obj */
 class hazptr_obj {
+  friend class hazptr_obj_batch;
   friend class hazptr_domain;
   template <typename, typename>
   friend class hazptr_obj_base;
@@ -108,7 +110,7 @@ class hazptr_obj {
   friend struct hazptr_priv;
 
   void (*reclaim_)(hazptr_obj*);
-  hazptr_obj* next_;
+  hazptr_obj* next_{nullptr}; // nullptr for debugging
 
   const void* getObjPtr() const;
 };
@@ -128,6 +130,8 @@ class hazptr_obj_base : public hazptr_obj {
 /** Definition of hazptr_recounted_obj_base */
 template <typename T, typename D = std::default_delete<T>>
 class hazptr_obj_base_refcounted : public hazptr_obj {
+  friend class hazptr_obj_batch;
+
  public:
   /* Retire a removed object and pass the responsibility for
    * reclaiming it to the hazptr library */
@@ -148,6 +152,8 @@ class hazptr_obj_base_refcounted : public hazptr_obj {
   bool release_ref();
 
  private:
+  void preRetire(D deleter);
+
   std::atomic<uint32_t> refcount_{0};
   D deleter_;
 };

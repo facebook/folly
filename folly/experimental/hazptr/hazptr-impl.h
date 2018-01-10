@@ -216,14 +216,7 @@ inline void hazptr_obj_base_refcounted<T, D>::retire(
     hazptr_domain& domain,
     D deleter) {
   DEBUG_PRINT(this << " " << &domain);
-  deleter_ = std::move(deleter);
-  reclaim_ = [](hazptr_obj* p) {
-    auto hrobp = static_cast<hazptr_obj_base_refcounted*>(p);
-    if (hrobp->release_ref()) {
-      auto obj = static_cast<T*>(hrobp);
-      hrobp->deleter_(obj);
-    }
-  };
+  preRetire(deleter);
   if (HAZPTR_PRIV &&
       (HAZPTR_ONE_DOMAIN || (&domain == &default_hazptr_domain()))) {
     if (hazptr_priv_try_retire(this)) {
@@ -262,6 +255,19 @@ inline bool hazptr_obj_base_refcounted<T, D>::release_ref() {
   DEBUG_PRINT(this << " " << oldval);
   DCHECK(oldval >= 0);
   return oldval == 0;
+}
+
+template <typename T, typename D>
+inline void hazptr_obj_base_refcounted<T, D>::preRetire(D deleter) {
+  DCHECK(next_ == nullptr);
+  deleter_ = std::move(deleter);
+  reclaim_ = [](hazptr_obj* p) {
+    auto hrobp = static_cast<hazptr_obj_base_refcounted*>(p);
+    if (hrobp->release_ref()) {
+      auto obj = static_cast<T*>(hrobp);
+      hrobp->deleter_(obj);
+    }
+  };
 }
 
 /**
@@ -680,6 +686,7 @@ inline hazptr_domain::~hazptr_domain() {
     while (retired) {
       for (auto p = retired; p; p = next) {
         next = p->next_;
+        DCHECK(p != next);
         DEBUG_PRINT(this << " " << p << " " << p->reclaim_);
         (*(p->reclaim_))(p);
       }
@@ -787,6 +794,7 @@ inline void hazptr_domain::bulkReclaim() {
   hazptr_obj* next;
   for (; p; p = next) {
     next = p->next_;
+    DCHECK(p != next);
     if (hs.count(p->getObjPtr()) == 0) {
       DEBUG_PRINT(this << " " << p << " " << p->reclaim_);
       (*(p->reclaim_))(p);
@@ -1070,6 +1078,74 @@ inline hazptr_tls_life::~hazptr_tls_life() {
   hazptr_priv_shutdown();
   tls_state_ = TLS_DESTROYED;
 }
+
+/** hazptr_obj_batch */
+/*  Only for default domain. Supports only hazptr_obj_base_refcounted
+ *  and a thread-safe access only, for now. */
+
+class hazptr_obj_batch {
+  static constexpr size_t DefaultThreshold = 20;
+  hazptr_obj* head_{nullptr};
+  hazptr_obj* tail_{nullptr};
+  size_t rcount_{0};
+  size_t threshold_{DefaultThreshold};
+
+ public:
+  hazptr_obj_batch() {}
+  hazptr_obj_batch(hazptr_obj* head, hazptr_obj* tail, size_t rcount)
+      : head_(head), tail_(tail), rcount_(rcount) {}
+
+  ~hazptr_obj_batch() {
+    retire_all();
+  }
+
+  /* Prepare a hazptr_obj_base_refcounted for retirement but don't
+       push it the domain yet. Return true if the batch is ready. */
+  template <typename T, typename D = std::default_delete<T>>
+  hazptr_obj_batch prep_retire_refcounted(
+      hazptr_obj_base_refcounted<T, D>* obj,
+      D deleter = {}) {
+    obj->preRetire(deleter);
+    obj->next_ = head_;
+    head_ = obj;
+    if (tail_ == nullptr) {
+      tail_ = obj;
+    }
+    if (++rcount_ < threshold_) {
+      return hazptr_obj_batch();
+    } else {
+      auto head = head_;
+      auto tail = tail_;
+      auto rcount = rcount_;
+      clear();
+      return hazptr_obj_batch(head, tail, rcount);
+    }
+  }
+
+  bool empty() {
+    return rcount_ == 0;
+  }
+
+  void retire_all() {
+    if (!empty()) {
+      auto& domain = default_hazptr_domain();
+      domain.pushRetired(head_, tail_, rcount_);
+      domain.tryBulkReclaim();
+      clear();
+    }
+  }
+
+  void set_threshold(size_t thresh) {
+    threshold_ = thresh;
+  }
+
+ private:
+  void clear() {
+    head_ = nullptr;
+    tail_ = nullptr;
+    rcount_ = 0;
+  }
+};
 
 } // namespace hazptr
 } // namespace folly
