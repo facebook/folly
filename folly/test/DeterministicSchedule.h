@@ -496,8 +496,8 @@ int Futex<test::DeterministicAtomic>::futexWake(int count, uint32_t wakeMask);
 template <>
 FutexResult Futex<test::DeterministicAtomic>::futexWaitImpl(
     uint32_t expected,
-    std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-    std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask);
 } // namespace detail
 

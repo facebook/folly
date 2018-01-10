@@ -289,8 +289,8 @@ using namespace std::chrono;
 template <>
 FutexResult Futex<DeterministicAtomic>::futexWaitImpl(
     uint32_t expected,
-    time_point<system_clock>* absSystemTimeout,
-    time_point<steady_clock>* absSteadyTimeout,
+    system_clock::time_point const* absSystemTimeout,
+    steady_clock::time_point const* absSteadyTimeout,
     uint32_t waitMask) {
   bool hasTimeout = absSystemTimeout != nullptr || absSteadyTimeout != nullptr;
   bool awoken = false;

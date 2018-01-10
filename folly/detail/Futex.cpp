@@ -97,11 +97,12 @@ timeSpecFromTimePoint(time_point<Clock> absTime)
   return result;
 }
 
-FutexResult nativeFutexWaitImpl(void* addr,
-                                uint32_t expected,
-                                time_point<system_clock>* absSystemTime,
-                                time_point<steady_clock>* absSteadyTime,
-                                uint32_t waitMask) {
+FutexResult nativeFutexWaitImpl(
+    void* addr,
+    uint32_t expected,
+    system_clock::time_point const* absSystemTime,
+    steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask) {
   assert(absSystemTime == nullptr || absSteadyTime == nullptr);
 
   int op = FUTEX_WAIT_BITSET | FUTEX_PRIVATE_FLAG;
@@ -180,8 +181,8 @@ template <typename F>
 FutexResult emulatedFutexWaitImpl(
     F* futex,
     uint32_t expected,
-    time_point<system_clock>* absSystemTime,
-    time_point<steady_clock>* absSteadyTime,
+    system_clock::time_point const* absSystemTime,
+    steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask) {
   static_assert(
       std::is_same<F, Futex<std::atomic>>::value ||
@@ -240,11 +241,11 @@ Futex<EmulatedFutexAtomic>::futexWake(int count, uint32_t wakeMask) {
 }
 
 template <>
-FutexResult
-Futex<std::atomic>::futexWaitImpl(uint32_t expected,
-                                  time_point<system_clock>* absSystemTime,
-                                  time_point<steady_clock>* absSteadyTime,
-                                  uint32_t waitMask) {
+FutexResult Futex<std::atomic>::futexWaitImpl(
+    uint32_t expected,
+    system_clock::time_point const* absSystemTime,
+    steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask) {
 #ifdef __linux__
   return nativeFutexWaitImpl(
       this, expected, absSystemTime, absSteadyTime, waitMask);
@@ -255,12 +256,11 @@ Futex<std::atomic>::futexWaitImpl(uint32_t expected,
 }
 
 template <>
-FutexResult
-Futex<EmulatedFutexAtomic>::futexWaitImpl(
-        uint32_t expected,
-        time_point<system_clock>* absSystemTime,
-        time_point<steady_clock>* absSteadyTime,
-        uint32_t waitMask) {
+FutexResult Futex<EmulatedFutexAtomic>::futexWaitImpl(
+    uint32_t expected,
+    system_clock::time_point const* absSystemTime,
+    steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask) {
   return emulatedFutexWaitImpl(
       this, expected, absSystemTime, absSteadyTime, waitMask);
 }

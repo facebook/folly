@@ -125,8 +125,8 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
    *  is the same as system_clock on some platforms. */
   FutexResult futexWaitImpl(
       uint32_t expected,
-      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+      std::chrono::system_clock::time_point const* absSystemTime,
+      std::chrono::steady_clock::time_point const* absSteadyTime,
       uint32_t waitMask);
 };
 
@@ -149,20 +149,20 @@ int Futex<std::atomic>::futexWake(int count, uint32_t wakeMask);
 
 template <>
 FutexResult Futex<std::atomic>::futexWaitImpl(
-      uint32_t expected,
-      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
-      uint32_t waitMask);
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask);
 
 template <>
 int Futex<EmulatedFutexAtomic>::futexWake(int count, uint32_t wakeMask);
 
 template <>
 FutexResult Futex<EmulatedFutexAtomic>::futexWaitImpl(
-      uint32_t expected,
-      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
-      uint32_t waitMask);
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask);
 
 } // namespace detail
 } // namespace folly
