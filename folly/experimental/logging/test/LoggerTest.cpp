@@ -31,7 +31,7 @@ class LoggerTest : public ::testing::Test {
 
     handler_ = make_shared<TestLogHandler>();
     category->addHandler(handler_);
-    category->setLevel(LogLevel::DEBUG, true);
+    category->setLevel(LogLevel::DBG, true);
   }
 
   static StringPiece pathBasename(StringPiece path) {

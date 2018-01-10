@@ -34,7 +34,7 @@ LogLevel stringToLogLevel(StringPiece name) {
 
   // If the string is of the form "LogLevel::foo" or "LogLevel(foo)"
   // strip it down just to "foo".  This makes sure we can process both
-  // the "LogLevel::DEBUG" and "LogLevel(1234)" formats produced by
+  // the "LogLevel::WARN" and "LogLevel(1234)" formats produced by
   // logLevelToString().
   constexpr StringPiece lowercasePrefix{"loglevel::"};
   constexpr StringPiece wrapperPrefix{"loglevel("};
@@ -49,8 +49,8 @@ LogLevel stringToLogLevel(StringPiece name) {
     return LogLevel::UNINITIALIZED;
   } else if (lowerName == "none") {
     return LogLevel::NONE;
-  } else if (lowerName == "debug") {
-    return LogLevel::DEBUG;
+  } else if (lowerName == "debug" || lowerName == "dbg") {
+    return LogLevel::DBG;
   } else if (lowerName == "info") {
     return LogLevel::INFO;
   } else if (lowerName == "warn" || lowerName == "warning") {
@@ -90,7 +90,7 @@ string logLevelToString(LogLevel level) {
     return "UNINITIALIZED";
   } else if (level == LogLevel::NONE) {
     return "NONE";
-  } else if (level == LogLevel::DEBUG) {
+  } else if (level == LogLevel::DBG) {
     return "DEBUG";
   } else if (level == LogLevel::INFO) {
     return "INFO";
@@ -107,7 +107,7 @@ string logLevelToString(LogLevel level) {
   }
 
   if (static_cast<uint32_t>(level) <= static_cast<uint32_t>(LogLevel::DBG0) &&
-      static_cast<uint32_t>(level) > static_cast<uint32_t>(LogLevel::DEBUG)) {
+      static_cast<uint32_t>(level) > static_cast<uint32_t>(LogLevel::DBG)) {
     auto num =
         static_cast<uint32_t>(LogLevel::DBG0) - static_cast<uint32_t>(level);
     return folly::to<string>("DBG", num);

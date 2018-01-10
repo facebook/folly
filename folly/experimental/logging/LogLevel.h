@@ -40,7 +40,17 @@ enum class LogLevel : uint32_t {
   NONE = 1,
   MIN_LEVEL = 1,
 
-  DEBUG = 900,
+  // "DBG" is the lowest (aka most verbose) debug log level.
+  // This level is intended to be primarily used in log category settings.
+  // In your code it is usually better to use one of the finer-grained DBGn
+  // levels.  In your log category settings you can then set the log category
+  // level to a specific DBGn level, or to to main DBG level to enable all DBGn
+  // messages.
+  //
+  // This is named "DBG" rather than "DEBUG" since some open source projects
+  // define "DEBUG" as a preprocessor macro.
+  DBG = 900,
+
   DBG0 = 1000,
   DBG1 = 999,
   DBG2 = 998,

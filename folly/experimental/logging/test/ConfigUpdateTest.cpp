@@ -101,11 +101,11 @@ TEST(ConfigUpdate, updateLogLevels) {
       parseLogConfig("sys=warn,foo.test=debug,foo.test.stuff=warn"));
   EXPECT_EQ(LogLevel::WARN, db.getCategory("sys")->getLevel());
   EXPECT_EQ(LogLevel::WARN, db.getCategory("sys")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::DEBUG, db.getCategory("foo.test")->getLevel());
-  EXPECT_EQ(LogLevel::DEBUG, db.getCategory("foo.test")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::DBG, db.getCategory("foo.test")->getLevel());
+  EXPECT_EQ(LogLevel::DBG, db.getCategory("foo.test")->getEffectiveLevel());
   EXPECT_EQ(LogLevel::WARN, db.getCategory("foo.test.stuff")->getLevel());
   EXPECT_EQ(
-      LogLevel::DEBUG, db.getCategory("foo.test.stuff")->getEffectiveLevel());
+      LogLevel::DBG, db.getCategory("foo.test.stuff")->getEffectiveLevel());
   EXPECT_EQ(LogLevel::DBG5, db.getCategory("foo.bar")->getEffectiveLevel());
 }
 

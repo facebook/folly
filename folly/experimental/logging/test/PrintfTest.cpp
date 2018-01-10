@@ -27,7 +27,7 @@ TEST(PrintfTest, printfStyleMacros) {
 
   auto handler = make_shared<TestLogHandler>();
   category->addHandler(handler);
-  category->setLevel(LogLevel::DEBUG, true);
+  category->setLevel(LogLevel::DBG, true);
 
   Logger foo{&db, "test.foo.bar"};
   Logger foobar{&db, "test.foo.bar"};

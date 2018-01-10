@@ -31,9 +31,11 @@ TEST(LogLevel, fromString) {
   EXPECT_EQ(LogLevel::NONE, stringToLogLevel("NoNe"));
   EXPECT_EQ(LogLevel::NONE, stringToLogLevel("LogLevel::none"));
 
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("debug"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("dEBug"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("loglevel::dEBug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("debug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("dEBug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("Dbg"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("loglevel::dEBug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("loglevel::DBG"));
 
   EXPECT_EQ(LogLevel::INFO, stringToLogLevel("info"));
   EXPECT_EQ(LogLevel::INFO, stringToLogLevel("INFO"));
@@ -69,12 +71,12 @@ TEST(LogLevel, fromString) {
   EXPECT_EQ(LogLevel::DBG5, stringToLogLevel("dbg5"));
   EXPECT_EQ(LogLevel::DBG5, stringToLogLevel("DBG5"));
   EXPECT_EQ(LogLevel::DBG9, stringToLogLevel("DBG9"));
-  EXPECT_EQ(LogLevel::DEBUG + 1, stringToLogLevel("DBG99"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("900"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("LogLevel(900)"));
+  EXPECT_EQ(LogLevel::DBG + 1, stringToLogLevel("DBG99"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("900"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("LogLevel(900)"));
 
   EXPECT_THROW(stringToLogLevel("foobar"), std::range_error);
-  EXPECT_THROW(stringToLogLevel("dbg"), std::range_error);
+  EXPECT_THROW(stringToLogLevel("dbgx"), std::range_error);
   EXPECT_THROW(stringToLogLevel("dbgxyz"), std::range_error);
   EXPECT_THROW(stringToLogLevel("dbg-1"), std::range_error);
   EXPECT_THROW(stringToLogLevel("dbg12345"), std::range_error);
@@ -87,7 +89,7 @@ TEST(LogLevel, toString) {
   EXPECT_EQ("INFO", logLevelToString(LogLevel::INFO));
   EXPECT_EQ("WARN", logLevelToString(LogLevel::WARN));
   EXPECT_EQ("WARN", logLevelToString(LogLevel::WARNING));
-  EXPECT_EQ("DEBUG", logLevelToString(LogLevel::DEBUG));
+  EXPECT_EQ("DEBUG", logLevelToString(LogLevel::DBG));
   EXPECT_EQ("ERR", logLevelToString(LogLevel::ERR));
   EXPECT_EQ("CRITICAL", logLevelToString(LogLevel::CRITICAL));
   EXPECT_EQ("DFATAL", logLevelToString(LogLevel::DFATAL));
@@ -117,7 +119,7 @@ TEST(LogLevel, toStringAndBack) {
   // Check all of the named levels
   checkLevel(LogLevel::UNINITIALIZED);
   checkLevel(LogLevel::NONE);
-  checkLevel(LogLevel::DEBUG);
+  checkLevel(LogLevel::DBG);
   checkLevel(LogLevel::DBG0);
   checkLevel(LogLevel::DBG1);
   checkLevel(LogLevel::DBG2);
