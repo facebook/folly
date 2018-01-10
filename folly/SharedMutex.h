@@ -243,7 +243,7 @@ template <
     bool BlockImmediately = false>
 class SharedMutexImpl {
  public:
-  static constexpr bool kReaderPriority = ReaderPriority;
+  static const bool kReaderPriority = ReaderPriority;
   typedef Tag_ Tag;
 
   typedef SharedMutexToken Token;
@@ -573,32 +573,32 @@ class SharedMutexImpl {
   // the first unlock_shared() is scanning.  The former case is cleaned
   // up before we finish applying the locks.  The latter case can persist
   // until destruction, when it is cleaned up.
-  static constexpr uint32_t kIncrHasS = 1 << 10;
-  static constexpr uint32_t kHasS = ~(kIncrHasS - 1);
+  static const uint32_t kIncrHasS = 1 << 10;
+  static const uint32_t kHasS = ~(kIncrHasS - 1);
 
   // If false, then there are definitely no deferred read locks for this
   // instance.  Cleared after initialization and when exclusively locked.
-  static constexpr uint32_t kMayDefer = 1 << 9;
+  static const uint32_t kMayDefer = 1 << 9;
 
   // lock() cleared kMayDefer as soon as it starts draining readers (so
   // that it doesn't have to do a second CAS once drain completes), but
   // unlock_shared() still needs to know whether to scan deferredReaders[]
   // or not.  We copy kMayDefer to kPrevDefer when setting kHasE or
   // kBegunE, and clear it when clearing those bits.
-  static constexpr uint32_t kPrevDefer = 1 << 8;
+  static const uint32_t kPrevDefer = 1 << 8;
 
   // Exclusive-locked blocks all read locks and write locks.  This bit
   // may be set before all readers have finished, but in that case the
   // thread that sets it won't return to the caller until all read locks
   // have been released.
-  static constexpr uint32_t kHasE = 1 << 7;
+  static const uint32_t kHasE = 1 << 7;
 
   // Exclusive-draining means that lock() is waiting for existing readers
   // to leave, but that new readers may still acquire shared access.
   // This is only used in reader priority mode.  New readers during
   // drain must be inline.  The difference between this and kHasU is that
   // kBegunE prevents kMayDefer from being set.
-  static constexpr uint32_t kBegunE = 1 << 6;
+  static const uint32_t kBegunE = 1 << 6;
 
   // At most one thread may have either exclusive or upgrade lock
   // ownership.  Unlike exclusive mode, ownership of the lock in upgrade
@@ -608,7 +608,7 @@ class SharedMutexImpl {
   // list that as disallowed.  RWSpinLock disallows new read locks after
   // lock_upgrade has been acquired, but the boost implementation doesn't.
   // We choose the latter.
-  static constexpr uint32_t kHasU = 1 << 5;
+  static const uint32_t kHasU = 1 << 5;
 
   // There are three states that we consider to be "solo", in that they
   // cannot coexist with other solo states.  These are kHasE, kBegunE,
@@ -616,13 +616,13 @@ class SharedMutexImpl {
   // setting the kHasE is only one of the two steps needed to actually
   // acquire the lock in exclusive mode (the other is draining the existing
   // S holders).
-  static constexpr uint32_t kHasSolo = kHasE | kBegunE | kHasU;
+  static const uint32_t kHasSolo = kHasE | kBegunE | kHasU;
 
   // Once a thread sets kHasE it needs to wait for the current readers
   // to exit the lock.  We give this a separate wait identity from the
   // waiting to set kHasE so that we can perform partial wakeups (wake
   // one instead of wake all).
-  static constexpr uint32_t kWaitingNotS = 1 << 4;
+  static const uint32_t kWaitingNotS = 1 << 4;
 
   // When waking writers we can either wake them all, in which case we
   // can clear kWaitingE, or we can call futexWake(1).  futexWake tells
@@ -633,22 +633,22 @@ class SharedMutexImpl {
   // waiter, kWaitingE actually encodes if we have observed multiple
   // concurrent waiters.  Tricky: ABA issues on futexWait mean that when
   // we see kWaitingESingle we can't assume that there is only one.
-  static constexpr uint32_t kWaitingESingle = 1 << 2;
-  static constexpr uint32_t kWaitingEMultiple = 1 << 3;
-  static constexpr uint32_t kWaitingE = kWaitingESingle | kWaitingEMultiple;
+  static const uint32_t kWaitingESingle = 1 << 2;
+  static const uint32_t kWaitingEMultiple = 1 << 3;
+  static const uint32_t kWaitingE = kWaitingESingle | kWaitingEMultiple;
 
   // kWaitingU is essentially a 1 bit saturating counter.  It always
   // requires a wakeAll.
-  static constexpr uint32_t kWaitingU = 1 << 1;
+  static const uint32_t kWaitingU = 1 << 1;
 
   // All blocked lock_shared() should be awoken, so it is correct (not
   // suboptimal) to wakeAll if there are any shared readers.
-  static constexpr uint32_t kWaitingS = 1 << 0;
+  static const uint32_t kWaitingS = 1 << 0;
 
   // kWaitingAny is a mask of all of the bits that record the state of
   // threads, rather than the state of the lock.  It is convenient to be
   // able to mask them off during asserts.
-  static constexpr uint32_t kWaitingAny =
+  static const uint32_t kWaitingAny =
       kWaitingNotS | kWaitingE | kWaitingU | kWaitingS;
 
   // The reader count at which a reader will attempt to use the lock
@@ -656,14 +656,14 @@ class SharedMutexImpl {
   // reader will set kMayDefer and use deferredReaders[].  kMayDefer is
   // cleared during exclusive access, so this threshold must be reached
   // each time a lock is held in exclusive mode.
-  static constexpr uint32_t kNumSharedToStartDeferring = 2;
+  static const uint32_t kNumSharedToStartDeferring = 2;
 
   // The typical number of spins that a thread will wait for a state
   // transition.  There is no bound on the number of threads that can wait
   // for a writer, so we are pretty conservative here to limit the chance
   // that we are starving the writer of CPU.  Each spin is 6 or 7 nanos,
   // almost all of which is in the pause instruction.
-  static constexpr uint32_t kMaxSpinCount = !BlockImmediately ? 1000 : 2;
+  static const uint32_t kMaxSpinCount = !BlockImmediately ? 1000 : 2;
 
   // The maximum number of soft yields before falling back to futex.
   // If the preemption heuristic is activated we will fall back before
@@ -671,7 +671,7 @@ class SharedMutexImpl {
   // to getrusage, with checks of the goal at each step).  Soft yields
   // aren't compatible with deterministic execution under test (unlike
   // futexWaitUntil, which has a capricious but deterministic back end).
-  static constexpr uint32_t kMaxSoftYieldCount = !BlockImmediately ? 1000 : 0;
+  static const uint32_t kMaxSoftYieldCount = !BlockImmediately ? 1000 : 0;
 
   // If AccessSpreader assigns indexes from 0..k*n-1 on a system where some
   // level of the memory hierarchy is symmetrically divided into k pieces
@@ -694,9 +694,9 @@ class SharedMutexImpl {
   // a factor of 2 on the core count, which should hold us for a couple
   // processor generations.  deferredReaders[] is 2048 bytes currently.
  public:
-  static constexpr uint32_t kMaxDeferredReaders = 64;
-  static constexpr uint32_t kDeferredSearchDistance = 2;
-  static constexpr uint32_t kDeferredSeparationFactor = 4;
+  static const uint32_t kMaxDeferredReaders = 64;
+  static const uint32_t kDeferredSearchDistance = 2;
+  static const uint32_t kDeferredSeparationFactor = 4;
 
  private:
 
@@ -710,7 +710,7 @@ class SharedMutexImpl {
   // allocations.  Each of these costs 3 pointers (24 bytes, probably)
   // per thread.  There's not much point in making this larger than
   // kDeferredSearchDistance.
-  static constexpr uint32_t kTokenStackTLSCapacity = 2;
+  static const uint32_t kTokenStackTLSCapacity = 2;
 
   // We need to make sure that if there is a lock_shared()
   // and lock_shared(token) followed by unlock_shared() and
@@ -721,7 +721,7 @@ class SharedMutexImpl {
   // deferredReaders[token.slot_] no longer points to this.  We accomplish
   // this by stealing bit 0 from the pointer to record that the slot's
   // element has no token, hence our use of uintptr_t in deferredReaders[].
-  static constexpr uintptr_t kTokenless = 0x1;
+  static const uintptr_t kTokenless = 0x1;
 
   // This is the starting location for Token-less unlock_shared().
   static FOLLY_SHAREDMUTEX_TLS uint32_t tls_lastTokenlessSlot;
