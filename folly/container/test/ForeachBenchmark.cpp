@@ -389,7 +389,7 @@ BENCHMARK(CharVecForRangeEnumerate, iters) {
     setupCharVecBenchmark(iters);
   }
   size_t sum = 0;
-  for (auto it : enumerate(vec_char)) {
+  for (auto&& it : enumerate(vec_char)) {
     sum += *it * it.index;
   }
   doNotOptimizeAway(sum);

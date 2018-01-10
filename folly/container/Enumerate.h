@@ -29,7 +29,7 @@
  *
  * For example:
  *
- * for (auto it : folly::enumerate(vec)) {
+ * for (auto&& it : folly::enumerate(vec)) {
  *   // *it is a reference to the current element. Const if vec is const.
  *   // it->member can be used as well.
  *   // it.index contains the iteration count.
@@ -37,7 +37,7 @@
  *
  * If the iteration variable is const, the reference is too.
  *
- * for (const auto it : folly::enumerate(vec)) {
+ * for (const auto&& it : folly::enumerate(vec)) {
  *   // *it is always a const reference.
  * }
  *
@@ -125,12 +125,14 @@ class Enumerator {
   }
 
   template <typename OtherIterator>
-  FOLLY_ALWAYS_INLINE bool operator==(const Enumerator<OtherIterator>& rhs) {
+  FOLLY_ALWAYS_INLINE bool operator==(
+      const Enumerator<OtherIterator>& rhs) const {
     return it_ == rhs.it_;
   }
 
   template <typename OtherIterator>
-  FOLLY_ALWAYS_INLINE bool operator!=(const Enumerator<OtherIterator>& rhs) {
+  FOLLY_ALWAYS_INLINE bool operator!=(
+      const Enumerator<OtherIterator>& rhs) const {
     return !(it_ == rhs.it_);
   }
 
