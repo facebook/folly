@@ -330,7 +330,8 @@ class DynamicBoundedQueue {
         capacity_(capacity + threshold(capacity)), // capacity slack
         credit_(0),
         threshold_(threshold(capacity)),
-        transfer_(0) {}
+        transfer_(0),
+        waiting_(0) {}
 
   /** destructor */
   ~DynamicBoundedQueue() {}

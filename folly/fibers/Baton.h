@@ -258,7 +258,7 @@ class Baton {
   union {
     std::atomic<intptr_t> waitingFiber_;
     struct {
-      folly::detail::Futex<> futex;
+      folly::detail::Futex<> futex{};
       int32_t _unused_packing;
     } futex_;
   };

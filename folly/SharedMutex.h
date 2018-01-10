@@ -563,7 +563,7 @@ class SharedMutexImpl {
   };
 
   // 32 bits of state
-  Futex state_;
+  Futex state_{};
 
   // S count needs to be on the end, because we explicitly allow it to
   // underflow.  This can occur while we are in the middle of applying

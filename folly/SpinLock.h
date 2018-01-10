@@ -34,6 +34,8 @@
 
 #include <type_traits>
 
+#include <boost/noncopyable.hpp>
+
 #include <folly/Portability.h>
 #include <folly/SmallLocks.h>
 

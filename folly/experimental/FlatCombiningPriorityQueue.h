@@ -171,8 +171,8 @@ class FlatCombiningPriorityQueue
  private:
   size_t maxSize_;
   PriorityQueue pq_;
-  detail::Futex<Atom> empty_;
-  detail::Futex<Atom> full_;
+  detail::Futex<Atom> empty_{};
+  detail::Futex<Atom> full_{};
 
   bool isTrue(detail::Futex<Atom>& futex) {
     return futex.load(std::memory_order_relaxed) != 0;

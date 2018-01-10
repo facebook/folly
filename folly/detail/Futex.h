@@ -22,8 +22,6 @@
 #include <limits>
 #include <type_traits>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/portability/Unistd.h>
 
 namespace folly { namespace detail {
@@ -45,9 +43,8 @@ enum class FutexResult {
  * (and benchmarks to back you up).
  */
 template <template <typename> class Atom = std::atomic>
-struct Futex : Atom<uint32_t>, boost::noncopyable {
-
-  explicit constexpr Futex(uint32_t init = 0) : Atom<uint32_t>(init) {}
+struct Futex : Atom<uint32_t> {
+  using Atom<uint32_t>::Atom;
 
   /** Puts the thread to sleep if this->load() == expected.  Returns true when
    *  it is returning because it has consumed a wake() event, false for any
