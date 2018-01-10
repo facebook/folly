@@ -95,7 +95,7 @@ namespace folly { namespace detail {
 /// used type
 template <>
 struct Futex<MockAtom> {
-  MOCK_METHOD2(futexWait, bool(uint32_t, uint32_t));
+  MOCK_METHOD2(futexWait, FutexResult(uint32_t, uint32_t));
   MOCK_METHOD3(futexWaitUntil,
                FutexResult(uint32_t, const MockClock::time_point&, uint32_t));
 };
@@ -114,7 +114,9 @@ TEST(MemoryIdler, futexWaitValueChangedEarly) {
   EXPECT_CALL(fut, futexWaitUntil(1, AllOf(Ge(begin + idleTimeout),
                                            Lt(begin + 2 * idleTimeout)), -1))
       .WillOnce(Return(FutexResult::VALUE_CHANGED));
-  EXPECT_FALSE((MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
+  EXPECT_EQ(
+      FutexResult::VALUE_CHANGED,
+      (MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
 }
 
 TEST(MemoryIdler, futexWaitValueChangedLate) {
@@ -129,8 +131,10 @@ TEST(MemoryIdler, futexWaitValueChangedLate) {
                                            Lt(begin + 2 * idleTimeout)), -1))
       .WillOnce(Return(FutexResult::TIMEDOUT));
   EXPECT_CALL(fut, futexWait(1, -1))
-      .WillOnce(Return(false));
-  EXPECT_FALSE((MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
+      .WillOnce(Return(FutexResult::VALUE_CHANGED));
+  EXPECT_EQ(
+      FutexResult::VALUE_CHANGED,
+      (MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
 }
 
 TEST(MemoryIdler, futexWaitAwokenEarly) {
@@ -143,7 +147,9 @@ TEST(MemoryIdler, futexWaitAwokenEarly) {
       .WillOnce(Return(begin));
   EXPECT_CALL(fut, futexWaitUntil(1, Ge(begin + idleTimeout), -1))
       .WillOnce(Return(FutexResult::AWOKEN));
-  EXPECT_TRUE((MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
+  EXPECT_EQ(
+      FutexResult::AWOKEN,
+      (MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
 }
 
 TEST(MemoryIdler, futexWaitAwokenLate) {
@@ -156,28 +162,31 @@ TEST(MemoryIdler, futexWaitAwokenLate) {
       .WillOnce(Return(begin));
   EXPECT_CALL(fut, futexWaitUntil(1, begin + idleTimeout, -1))
       .WillOnce(Return(FutexResult::TIMEDOUT));
-  EXPECT_CALL(fut, futexWait(1, -1))
-      .WillOnce(Return(true));
-  EXPECT_TRUE((MemoryIdler::futexWait<MockAtom, MockClock>(
-      fut, 1, -1, idleTimeout, 100, 0.0f)));
+  EXPECT_CALL(fut, futexWait(1, -1)).WillOnce(Return(FutexResult::AWOKEN));
+  EXPECT_EQ(
+      FutexResult::AWOKEN,
+      (MemoryIdler::futexWait<MockAtom, MockClock>(
+          fut, 1, -1, idleTimeout, 100, 0.0f)));
 }
 
 TEST(MemoryIdler, futexWaitImmediateFlush) {
   StrictMock<Futex<MockAtom>> fut;
   auto clock = MockClock::setup();
 
-  EXPECT_CALL(fut, futexWait(2, 0xff))
-      .WillOnce(Return(true));
-  EXPECT_TRUE((MemoryIdler::futexWait<MockAtom, MockClock>(
-      fut, 2, 0xff, std::chrono::seconds(0))));
+  EXPECT_CALL(fut, futexWait(2, 0xff)).WillOnce(Return(FutexResult::AWOKEN));
+  EXPECT_EQ(
+      FutexResult::AWOKEN,
+      (MemoryIdler::futexWait<MockAtom, MockClock>(
+          fut, 2, 0xff, std::chrono::seconds(0))));
 }
 
 TEST(MemoryIdler, futexWaitNeverFlush) {
   StrictMock<Futex<MockAtom>> fut;
   auto clock = MockClock::setup();
 
-  EXPECT_CALL(fut, futexWait(1, -1))
-      .WillOnce(Return(true));
-  EXPECT_TRUE((MemoryIdler::futexWait<MockAtom, MockClock>(
-      fut, 1, -1, MockClock::duration::max())));
+  EXPECT_CALL(fut, futexWait(1, -1)).WillOnce(Return(FutexResult::AWOKEN));
+  EXPECT_EQ(
+      FutexResult::AWOKEN,
+      (MemoryIdler::futexWait<MockAtom, MockClock>(
+          fut, 1, -1, MockClock::duration::max())));
 }

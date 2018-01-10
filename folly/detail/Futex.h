@@ -52,10 +52,10 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
   /** Puts the thread to sleep if this->load() == expected.  Returns true when
    *  it is returning because it has consumed a wake() event, false for any
    *  other return (signal, this->load() != expected, or spurious wakeup). */
-  bool futexWait(uint32_t expected, uint32_t waitMask = -1) {
+  FutexResult futexWait(uint32_t expected, uint32_t waitMask = -1) {
     auto rv = futexWaitImpl(expected, nullptr, nullptr, waitMask);
     assert(rv != FutexResult::TIMEDOUT);
-    return rv == FutexResult::AWOKEN;
+    return rv;
   }
 
   /** Similar to futexWait but also accepts a deadline until when the wait call

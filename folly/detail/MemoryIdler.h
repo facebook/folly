@@ -102,7 +102,7 @@ struct MemoryIdler {
   template <
       template <typename> class Atom,
       typename Clock = std::chrono::steady_clock>
-  static bool futexWait(
+  static FutexResult futexWait(
       Futex<Atom>& fut,
       uint32_t expected,
       uint32_t waitMask = -1,
@@ -110,7 +110,6 @@ struct MemoryIdler {
           defaultIdleTimeout.load(std::memory_order_acquire),
       size_t stackToRetain = kDefaultStackToRetain,
       float timeoutVariationFrac = 0.5) {
-
     if (idleTimeout == Clock::duration::max()) {
       // no need to use futexWaitUntil if no timeout is possible
       return fut.futexWait(expected, waitMask);
@@ -128,7 +127,7 @@ struct MemoryIdler {
         // finished before timeout hit, no flush
         assert(rv == FutexResult::VALUE_CHANGED || rv == FutexResult::AWOKEN ||
                rv == FutexResult::INTERRUPTED);
-        return rv == FutexResult::AWOKEN;
+        return rv;
       }
     }
 

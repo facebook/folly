@@ -39,14 +39,14 @@ typedef DeterministicSchedule DSched;
 template <template <typename> class Atom>
 void run_basic_thread(
     Futex<Atom>& f) {
-  EXPECT_TRUE(f.futexWait(0));
+  EXPECT_EQ(FutexResult::AWOKEN, f.futexWait(0));
 }
 
 template <template <typename> class Atom>
 void run_basic_tests() {
   Futex<Atom> f(0);
 
-  EXPECT_FALSE(f.futexWait(1));
+  EXPECT_EQ(FutexResult::VALUE_CHANGED, f.futexWait(1));
   EXPECT_EQ(f.futexWake(), 0);
 
   auto thr = DSched::thread(std::bind(run_basic_thread<Atom>, std::ref(f)));
@@ -191,7 +191,8 @@ void run_wake_blocked_test() {
   for (auto delay = std::chrono::milliseconds(1);; delay *= 2) {
     bool success = false;
     Futex<Atom> f(0);
-    auto thr = DSched::thread([&] { success = f.futexWait(0); });
+    auto thr = DSched::thread(
+        [&] { success = FutexResult::AWOKEN == f.futexWait(0); });
     /* sleep override */ std::this_thread::sleep_for(delay);
     f.store(1);
     f.futexWake(1);
