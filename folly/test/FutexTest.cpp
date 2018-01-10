@@ -24,6 +24,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Chrono.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Time.h>
 
@@ -31,6 +32,7 @@ using namespace folly::detail;
 using namespace folly::test;
 using namespace std;
 using namespace std::chrono;
+using folly::chrono::coarse_steady_clock;
 
 typedef DeterministicSchedule DSched;
 
@@ -117,6 +119,7 @@ template <template <typename> class Atom>
 void run_wait_until_tests() {
   liveClockWaitUntilTests<Atom, system_clock, system_clock::duration>();
   liveClockWaitUntilTests<Atom, steady_clock, steady_clock::duration>();
+  liveClockWaitUntilTests<Atom, steady_clock, coarse_steady_clock::duration>();
 
   typedef duration<int64_t, std::ratio<1, 10000000>> decimicroseconds;
   liveClockWaitUntilTests<Atom, system_clock, decimicroseconds>();
@@ -126,6 +129,7 @@ template <>
 void run_wait_until_tests<DeterministicAtomic>() {
   deterministicAtomicWaitUntilTests<system_clock>();
   deterministicAtomicWaitUntilTests<steady_clock>();
+  deterministicAtomicWaitUntilTests<coarse_steady_clock>();
 }
 
 uint64_t diff(uint64_t a, uint64_t b) {
