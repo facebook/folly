@@ -71,9 +71,19 @@ TEST(LogLevel, fromString) {
   EXPECT_EQ(LogLevel::DBG5, stringToLogLevel("dbg5"));
   EXPECT_EQ(LogLevel::DBG5, stringToLogLevel("DBG5"));
   EXPECT_EQ(LogLevel::DBG9, stringToLogLevel("DBG9"));
-  EXPECT_EQ(LogLevel::DBG + 1, stringToLogLevel("DBG99"));
-  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("900"));
-  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("LogLevel(900)"));
+  EXPECT_EQ(LogLevel::DBG + 1, stringToLogLevel("DBG998"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("DBG999"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("1000"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("LogLevel(1000)"));
+
+  EXPECT_EQ(LogLevel::INFO0, stringToLogLevel("info0"));
+  EXPECT_EQ(LogLevel::INFO5, stringToLogLevel("INFO5"));
+  EXPECT_EQ(LogLevel::INFO5, stringToLogLevel("INFO5"));
+  EXPECT_EQ(LogLevel::INFO9, stringToLogLevel("info9"));
+  EXPECT_EQ(LogLevel::INFO + 1, stringToLogLevel("Info998"));
+  EXPECT_EQ(LogLevel::INFO, stringToLogLevel("INFO999"));
+  EXPECT_EQ(LogLevel::INFO, stringToLogLevel("2000"));
+  EXPECT_EQ(LogLevel::INFO6, stringToLogLevel("LogLevel(2993)"));
 
   EXPECT_THROW(stringToLogLevel("foobar"), std::range_error);
   EXPECT_THROW(stringToLogLevel("dbgx"), std::range_error);
@@ -100,10 +110,17 @@ TEST(LogLevel, toString) {
   EXPECT_EQ("DBG2", logLevelToString(LogLevel::DBG2));
   EXPECT_EQ("DBG5", logLevelToString(LogLevel::DBG5));
   EXPECT_EQ("DBG9", logLevelToString(LogLevel::DBG9));
-  EXPECT_EQ("DBG97", logLevelToString(static_cast<LogLevel>(903)));
+  EXPECT_EQ("DBG96", logLevelToString(static_cast<LogLevel>(1903)));
   EXPECT_EQ("DBG64", logLevelToString(LogLevel::DBG4 - 60));
 
-  EXPECT_EQ("LogLevel(1234)", logLevelToString(static_cast<LogLevel>(1234)));
+  EXPECT_EQ("INFO0", logLevelToString(LogLevel::INFO0));
+  EXPECT_EQ("INFO2", logLevelToString(LogLevel::INFO2));
+  EXPECT_EQ("INFO5", logLevelToString(LogLevel::INFO5));
+  EXPECT_EQ("INFO9", logLevelToString(LogLevel::INFO9));
+  EXPECT_EQ("INFO86", logLevelToString(static_cast<LogLevel>(2913)));
+  EXPECT_EQ("INFO57", logLevelToString(LogLevel::INFO7 - 50));
+
+  EXPECT_EQ("LogLevel(123)", logLevelToString(static_cast<LogLevel>(123)));
 }
 
 TEST(LogLevel, toStringAndBack) {

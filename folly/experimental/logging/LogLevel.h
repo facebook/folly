@@ -30,10 +30,10 @@ namespace folly {
  *
  * Higher levels are more important than lower ones.
  *
- * However, the numbers in the DBG* level names are reversed, and can be
- * thought of as debug verbosity levels.  Increasing DBG* numbers mean
- * increasing level of verbosity.  DBG0 is the least verbose debug level,
- * DBG1 is one level higher of verbosity, etc.
+ * However, the numbers in the DBG* and INFO* level names are reversed, and can
+ * be thought of as debug verbosity levels.  Increasing DBG* numbers mean
+ * increasing level of verbosity.  DBG0 is the least verbose debug level, DBG1
+ * is one level higher of verbosity, etc.
  */
 enum class LogLevel : uint32_t {
   UNINITIALIZED = 0,
@@ -49,20 +49,33 @@ enum class LogLevel : uint32_t {
   //
   // This is named "DBG" rather than "DEBUG" since some open source projects
   // define "DEBUG" as a preprocessor macro.
-  DBG = 900,
+  DBG = 1000,
 
-  DBG0 = 1000,
-  DBG1 = 999,
-  DBG2 = 998,
-  DBG3 = 997,
-  DBG4 = 996,
-  DBG5 = 995,
-  DBG6 = 994,
-  DBG7 = 993,
-  DBG8 = 992,
-  DBG9 = 991,
+  // Fine-grained debug log levels.
+  DBG0 = 1999,
+  DBG1 = 1998,
+  DBG2 = 1997,
+  DBG3 = 1996,
+  DBG4 = 1995,
+  DBG5 = 1994,
+  DBG6 = 1993,
+  DBG7 = 1992,
+  DBG8 = 1991,
+  DBG9 = 1990,
 
   INFO = 2000,
+  // Fine-grained info log levels.
+  INFO0 = 2999,
+  INFO1 = 2998,
+  INFO2 = 2997,
+  INFO3 = 2996,
+  INFO4 = 2995,
+  INFO5 = 2994,
+  INFO6 = 2993,
+  INFO7 = 2992,
+  INFO8 = 2991,
+  INFO9 = 2990,
+
   WARN = 3000,
   WARNING = 3000,
 
