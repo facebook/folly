@@ -44,7 +44,7 @@ class WaitOptions {
     /// against the extra cpu utilization, latency reduction, power consumption,
     /// and priority inversion effect if we end up blocking anyway.
     ///
-    /// We use a default maximum of 10 usec of spinning. As partial consolation,
+    /// We use a default maximum of 2 usec of spinning. As partial consolation,
     /// since spinning as implemented in folly uses the pause instruction where
     /// available, we give a small speed boost to the colocated hyperthread.
     ///
@@ -52,7 +52,7 @@ class WaitOptions {
     /// then be awoken. Spins on this hw take about 7 nsec, where all but 0.5
     /// nsec is the pause instruction.
     static constexpr std::chrono::nanoseconds spin_max =
-        std::chrono::microseconds(10);
+        std::chrono::microseconds(2);
   };
 
   std::chrono::nanoseconds spin_max() const {

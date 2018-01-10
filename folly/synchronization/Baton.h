@@ -26,6 +26,7 @@
 #include <folly/detail/Futex.h>
 #include <folly/detail/MemoryIdler.h>
 #include <folly/portability/Asm.h>
+#include <folly/synchronization/WaitOptions.h>
 
 namespace folly {
 
@@ -51,7 +52,12 @@ namespace folly {
 /// lifecycle we can also add a bunch of assertions that can help to
 /// catch race conditions ahead of time.
 template <bool MayBlock = true, template <typename> class Atom = std::atomic>
-struct Baton {
+class Baton {
+ public:
+  FOLLY_ALWAYS_INLINE static WaitOptions wait_options() {
+    return {};
+  }
+
   constexpr Baton() noexcept : state_(INIT) {}
 
   Baton(Baton const&) = delete;
@@ -160,12 +166,13 @@ struct Baton {
   /// could be relaxed somewhat without any perf or size regressions,
   /// but by making this condition very restrictive we can provide better
   /// checking in debug builds.
-  FOLLY_ALWAYS_INLINE void wait() noexcept {
+  FOLLY_ALWAYS_INLINE
+  void wait(const WaitOptions& opt = wait_options()) noexcept {
     if (try_wait()) {
       return;
     }
 
-    waitSlow();
+    waitSlow(opt);
   }
 
   /// Similar to wait, but doesn't block the thread if it hasn't been posted.
@@ -196,13 +203,14 @@ struct Baton {
   ///                       false otherwise
   template <typename Rep, typename Period>
   FOLLY_ALWAYS_INLINE bool try_wait_for(
-      const std::chrono::duration<Rep, Period>& timeout) noexcept {
+      const std::chrono::duration<Rep, Period>& timeout,
+      const WaitOptions& opt = wait_options()) noexcept {
     if (try_wait()) {
       return true;
     }
 
     auto deadline = std::chrono::steady_clock::now() + timeout;
-    return tryWaitUntilSlow(deadline);
+    return tryWaitUntilSlow(deadline, opt);
   }
 
   /// Similar to wait, but with a deadline. The thread is unblocked if the
@@ -218,12 +226,13 @@ struct Baton {
   ///                       false otherwise
   template <typename Clock, typename Duration>
   FOLLY_ALWAYS_INLINE bool try_wait_until(
-      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      const WaitOptions& opt = wait_options()) noexcept {
     if (try_wait()) {
       return true;
     }
 
-    return tryWaitUntilSlow(deadline);
+    return tryWaitUntilSlow(deadline, opt);
   }
 
   /// Alias to try_wait_for. Deprecated.
@@ -249,52 +258,44 @@ struct Baton {
     TIMED_OUT = 4,
   };
 
-  enum {
-    // Must be positive.  If multiple threads are actively using a
-    // higher-level data structure that uses batons internally, it is
-    // likely that the post() and wait() calls happen almost at the same
-    // time.  In this state, we lose big 50% of the time if the wait goes
-    // to sleep immediately.  On circa-2013 devbox hardware it costs about
-    // 7 usec to FUTEX_WAIT and then be awoken (half the t/iter as the
-    // posix_sem_pingpong test in BatonTests).  We can improve our chances
-    // of EARLY_DELIVERY by spinning for a bit, although we have to balance
-    // this against the loss if we end up sleeping any way.  Spins on this
-    // hw take about 7 nanos (all but 0.5 nanos is the pause instruction).
-    // We give ourself 300 spins, which is about 2 usec of waiting.  As a
-    // partial consolation, since we are using the pause instruction we
-    // are giving a speed boost to the colocated hyperthread.
-    PreBlockAttempts = 300,
-  };
-
-  // Spin for "some time" (see discussion on PreBlockAttempts) waiting
-  // for a post.
+  // Spin for "some time"
   //
   // @return       true if we received an early delivery during the wait,
   //               false otherwise. If the function returns true then
   //               state_ is guaranteed to be EARLY_DELIVERY
   template <typename Clock, typename Duration>
   bool spinWaitForEarlyDelivery(
-      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
-    for (int i = 0; i < PreBlockAttempts; ++i) {
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      const WaitOptions& opt) noexcept {
+    auto tbegin = Clock::now();
+    while (true) {
       if (try_wait()) {
         return true;
       }
-      if (Clock::now() >= deadline) {
+
+      auto const tnow = Clock::now();
+      if (tnow >= deadline) {
         return false;
       }
+
+      // Backward time discontinuity in Clock? revise pre_block starting point
+      tbegin = std::min(tbegin, tnow);
+      auto const dur = std::chrono::duration_cast<Duration>(tnow - tbegin);
+      if (dur >= opt.spin_max()) {
+        return false;
+      }
+
       // The pause instruction is the polite way to spin, but it doesn't
       // actually affect correctness to omit it if we don't have it.
       // Pausing donates the full capabilities of the current core to
       // its other hyperthreads for a dozen cycles or so
       asm_volatile_pause();
     }
-
-    return false;
   }
 
-  FOLLY_NOINLINE void waitSlow() noexcept {
+  FOLLY_NOINLINE void waitSlow(const WaitOptions& opt) noexcept {
     auto const deadline = std::chrono::steady_clock::time_point::max();
-    if (spinWaitForEarlyDelivery(deadline)) {
+    if (spinWaitForEarlyDelivery(deadline, opt)) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return;
     }
@@ -346,8 +347,9 @@ struct Baton {
 
   template <typename Clock, typename Duration>
   FOLLY_NOINLINE bool tryWaitUntilSlow(
-      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
-    if (spinWaitForEarlyDelivery(deadline)) {
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      const WaitOptions& opt) noexcept {
+    if (spinWaitForEarlyDelivery(deadline, opt)) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return true;
     }

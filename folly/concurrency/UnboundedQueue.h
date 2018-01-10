@@ -623,7 +623,10 @@ class UnboundedQueue {
     template <typename Clock, typename Duration>
     FOLLY_ALWAYS_INLINE bool tryWaitUntil(
         const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
-      return flag_.try_wait_until(deadline);
+      // wait-options from benchmarks on contended queues:
+      auto const opt =
+          flag_.wait_options().spin_max(std::chrono::microseconds(10));
+      return flag_.try_wait_until(deadline, opt);
     }
 
    private:
