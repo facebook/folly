@@ -54,4 +54,12 @@ void init(int* argc, char*** argv, bool removeFlags) {
   folly::symbolizer::installFatalSignalCallbacks();
 #endif
 }
+
+Init::Init(int* argc, char*** argv, bool removeFlags) {
+  init(argc, argv, removeFlags);
+}
+
+Init::~Init() {
+  SingletonVault::singleton()->destroyInstances();
+}
 } // namespace folly
