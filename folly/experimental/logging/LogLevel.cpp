@@ -33,10 +33,10 @@ struct NumberedLevelInfo {
   StringPiece upperPrefix;
 };
 
-constexpr std::array<NumberedLevelInfo, 2> numberedLogLevels = {
+constexpr std::array<NumberedLevelInfo, 2> numberedLogLevels = {{
     NumberedLevelInfo{LogLevel::DBG, LogLevel::DBG0, "dbg", "DBG"},
     NumberedLevelInfo{LogLevel::INFO, LogLevel::INFO0, "info", "INFO"},
-};
+}};
 } // namespace
 
 LogLevel stringToLogLevel(StringPiece name) {
