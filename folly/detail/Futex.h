@@ -29,10 +29,10 @@
 namespace folly { namespace detail {
 
 enum class FutexResult {
-  VALUE_CHANGED, /* Futex value didn't match expected */
-  AWOKEN,        /* futex wait matched with a futex wake */
-  INTERRUPTED,   /* Spurious wake-up or signal caused futex wait failure */
-  TIMEDOUT,
+  VALUE_CHANGED, /* futex value didn't match expected */
+  AWOKEN,        /* wakeup by matching futex wake, or spurious wakeup */
+  INTERRUPTED,   /* wakeup by interrupting signal */
+  TIMEDOUT,      /* wakeup by expiring deadline */
 };
 
 /**
