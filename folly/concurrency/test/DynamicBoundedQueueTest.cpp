@@ -100,7 +100,7 @@ TEST(DynamicBoundedQueue, size) {
   }
   {
     folly::DynamicBoundedQueue<uint64_t, false, false, false, 7, 4> q(10);
-    ASSERT_EQ(sizeof(q), 80);
+    ASSERT_EQ(sizeof(q), 80 + sizeof(folly::hazptr::hazptr_obj_batch));
   }
 }
 
