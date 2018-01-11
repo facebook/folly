@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-present Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -328,6 +328,15 @@ class DynamicParser {
       const folly::dynamic* value_;
       ParserStack* stackPtr_;
     };
+    struct PopGuard {
+      explicit PopGuard(ParserStack* sp) : pop_(in_place, sp) {}
+      ~PopGuard() {
+        pop_ && ((*pop_)(), true);
+      }
+
+     private:
+      Optional<Pop> pop_;
+    };
 
     explicit ParserStack(const folly::dynamic* input)
       : value_(input),
@@ -343,9 +352,7 @@ class DynamicParser {
     // Lets user code nest parser calls by recording current key+value and
     // returning an RAII guard to restore the old one.  `noexcept` since it
     // is used unwrapped.
-    folly::ScopeGuardImpl<Pop> push(
-      const folly::dynamic& k, const folly::dynamic& v
-    ) noexcept;
+    PopGuard push(const folly::dynamic& k, const folly::dynamic& v) noexcept;
 
     // Throws DynamicParserLogicError if used outside of a parsing function.
     inline const folly::dynamic& key() const;
