@@ -64,10 +64,10 @@ struct MockAtom : public std::atomic<T> {
 /// extending its scope beyond that of the test.  I generally avoid
 /// shared_ptr, but a weak_ptr is just the ticket here
 struct MockClock {
-  typedef std::chrono::steady_clock::duration duration;
-  typedef std::chrono::steady_clock::time_point time_point;
+  using duration = std::chrono::steady_clock::duration;
+  using time_point = std::chrono::time_point<MockClock, duration>;
 
-  MOCK_METHOD0(nowImpl, time_point(void));
+  MOCK_METHOD0(nowImpl, time_point());
 
   /// Hold on to the returned shared_ptr until the end of the test
   static std::shared_ptr<StrictMock<MockClock>> setup() {
@@ -103,6 +103,8 @@ struct Futex<MockAtom> {
 } // namespace detail
 } // namespace folly
 
+static auto const forever = MockClock::time_point::max();
+
 TEST(MemoryIdler, futexWaitValueChangedEarly) {
   StrictMock<Futex<MockAtom>> fut;
   auto clock = MockClock::setup();
@@ -115,8 +117,7 @@ TEST(MemoryIdler, futexWaitValueChangedEarly) {
                                            Lt(begin + 2 * idleTimeout)), -1))
       .WillOnce(Return(FutexResult::VALUE_CHANGED));
   EXPECT_EQ(
-      FutexResult::VALUE_CHANGED,
-      (MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
+      FutexResult::VALUE_CHANGED, MemoryIdler::futexWaitUntil(fut, 1, forever));
 }
 
 TEST(MemoryIdler, futexWaitValueChangedLate) {
@@ -130,11 +131,10 @@ TEST(MemoryIdler, futexWaitValueChangedLate) {
   EXPECT_CALL(fut, futexWaitUntil(1, AllOf(Ge(begin + idleTimeout),
                                            Lt(begin + 2 * idleTimeout)), -1))
       .WillOnce(Return(FutexResult::TIMEDOUT));
-  EXPECT_CALL(fut, futexWait(1, -1))
+  EXPECT_CALL(fut, futexWaitUntil(1, forever, -1))
       .WillOnce(Return(FutexResult::VALUE_CHANGED));
   EXPECT_EQ(
-      FutexResult::VALUE_CHANGED,
-      (MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
+      FutexResult::VALUE_CHANGED, MemoryIdler::futexWaitUntil(fut, 1, forever));
 }
 
 TEST(MemoryIdler, futexWaitAwokenEarly) {
@@ -147,9 +147,7 @@ TEST(MemoryIdler, futexWaitAwokenEarly) {
       .WillOnce(Return(begin));
   EXPECT_CALL(fut, futexWaitUntil(1, Ge(begin + idleTimeout), -1))
       .WillOnce(Return(FutexResult::AWOKEN));
-  EXPECT_EQ(
-      FutexResult::AWOKEN,
-      (MemoryIdler::futexWait<MockAtom, MockClock>(fut, 1)));
+  EXPECT_EQ(FutexResult::AWOKEN, MemoryIdler::futexWaitUntil(fut, 1, forever));
 }
 
 TEST(MemoryIdler, futexWaitAwokenLate) {
@@ -162,31 +160,33 @@ TEST(MemoryIdler, futexWaitAwokenLate) {
       .WillOnce(Return(begin));
   EXPECT_CALL(fut, futexWaitUntil(1, begin + idleTimeout, -1))
       .WillOnce(Return(FutexResult::TIMEDOUT));
-  EXPECT_CALL(fut, futexWait(1, -1)).WillOnce(Return(FutexResult::AWOKEN));
+  EXPECT_CALL(fut, futexWaitUntil(1, forever, -1))
+      .WillOnce(Return(FutexResult::AWOKEN));
   EXPECT_EQ(
       FutexResult::AWOKEN,
-      (MemoryIdler::futexWait<MockAtom, MockClock>(
-          fut, 1, -1, idleTimeout, 100, 0.0f)));
+      MemoryIdler::futexWaitUntil(fut, 1, forever, -1, idleTimeout, 100, 0.0f));
 }
 
 TEST(MemoryIdler, futexWaitImmediateFlush) {
   StrictMock<Futex<MockAtom>> fut;
   auto clock = MockClock::setup();
 
-  EXPECT_CALL(fut, futexWait(2, 0xff)).WillOnce(Return(FutexResult::AWOKEN));
+  EXPECT_CALL(fut, futexWaitUntil(2, forever, 0xff))
+      .WillOnce(Return(FutexResult::AWOKEN));
   EXPECT_EQ(
       FutexResult::AWOKEN,
-      (MemoryIdler::futexWait<MockAtom, MockClock>(
-          fut, 2, 0xff, std::chrono::seconds(0))));
+      MemoryIdler::futexWaitUntil(
+          fut, 2, forever, 0xff, std::chrono::seconds(0)));
 }
 
 TEST(MemoryIdler, futexWaitNeverFlush) {
   StrictMock<Futex<MockAtom>> fut;
   auto clock = MockClock::setup();
 
-  EXPECT_CALL(fut, futexWait(1, -1)).WillOnce(Return(FutexResult::AWOKEN));
+  EXPECT_CALL(fut, futexWaitUntil(1, forever, -1))
+      .WillOnce(Return(FutexResult::AWOKEN));
   EXPECT_EQ(
       FutexResult::AWOKEN,
-      (MemoryIdler::futexWait<MockAtom, MockClock>(
-          fut, 1, -1, MockClock::duration::max())));
+      MemoryIdler::futexWaitUntil(
+          fut, 1, forever, -1, std::chrono::seconds(-7)));
 }
