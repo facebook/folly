@@ -185,11 +185,6 @@ detail::ScopeGuardImplDecay<F> makeGuard(F&& f) noexcept(
   return detail::ScopeGuardImplDecay<F>(static_cast<F&&>(f));
 }
 
-/**
- * This is largely unneeded if you just use auto for your guards.
- */
-typedef detail::ScopeGuardImplBase&& ScopeGuard;
-
 namespace detail {
 
 #if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
