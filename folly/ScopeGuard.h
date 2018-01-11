@@ -28,47 +28,8 @@
 
 namespace folly {
 
-/**
- * ScopeGuard is a general implementation of the "Initialization is
- * Resource Acquisition" idiom.  Basically, it guarantees that a function
- * is executed upon leaving the currrent scope unless otherwise told.
- *
- * The makeGuard() function is used to create a new ScopeGuard object.
- * It can be instantiated with a lambda function, a std::function<void()>,
- * a functor, or a void(*)() function pointer.
- *
- *
- * Usage example: Add a friend to memory if and only if it is also added
- * to the db.
- *
- * void User::addFriend(User& newFriend) {
- *   // add the friend to memory
- *   friends_.push_back(&newFriend);
- *
- *   // If the db insertion that follows fails, we should
- *   // remove it from memory.
- *   auto guard = makeGuard([&] { friends_.pop_back(); });
- *
- *   // this will throw an exception upon error, which
- *   // makes the ScopeGuard execute UserCont::pop_back()
- *   // once the Guard's destructor is called.
- *   db_->addFriend(GetName(), newFriend.GetName());
- *
- *   // an exception was not thrown, so don't execute
- *   // the Guard.
- *   guard.dismiss();
- * }
- *
- * Examine ScopeGuardTest.cpp for some more sample usage.
- *
- * Stolen from:
- *   Andrei's and Petru Marginean's CUJ article:
- *     http://drdobbs.com/184403758
- *   and the loki library:
- *     http://loki-lib.sourceforge.net/index.php?n=Idioms.ScopeGuardPointer
- *   and triendl.kj article:
- *     http://www.codeproject.com/KB/cpp/scope_guard.aspx
- */
+namespace detail {
+
 class ScopeGuardImplBase {
  public:
   void dismiss() noexcept {
@@ -172,19 +133,62 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   FunctionType function_;
 };
 
-template <typename FunctionType>
-ScopeGuardImpl<typename std::decay<FunctionType>::type>
-makeGuard(FunctionType&& fn) noexcept(
-    std::is_nothrow_constructible<typename std::decay<FunctionType>::type,
-                                  FunctionType>::value) {
-  return ScopeGuardImpl<typename std::decay<FunctionType>::type>(
-      std::forward<FunctionType>(fn));
+template <typename F>
+using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type>;
+
+} // namespace detail
+
+/**
+ * ScopeGuard is a general implementation of the "Initialization is
+ * Resource Acquisition" idiom.  Basically, it guarantees that a function
+ * is executed upon leaving the currrent scope unless otherwise told.
+ *
+ * The makeGuard() function is used to create a new ScopeGuard object.
+ * It can be instantiated with a lambda function, a std::function<void()>,
+ * a functor, or a void(*)() function pointer.
+ *
+ *
+ * Usage example: Add a friend to memory if and only if it is also added
+ * to the db.
+ *
+ * void User::addFriend(User& newFriend) {
+ *   // add the friend to memory
+ *   friends_.push_back(&newFriend);
+ *
+ *   // If the db insertion that follows fails, we should
+ *   // remove it from memory.
+ *   auto guard = makeGuard([&] { friends_.pop_back(); });
+ *
+ *   // this will throw an exception upon error, which
+ *   // makes the ScopeGuard execute UserCont::pop_back()
+ *   // once the Guard's destructor is called.
+ *   db_->addFriend(GetName(), newFriend.GetName());
+ *
+ *   // an exception was not thrown, so don't execute
+ *   // the Guard.
+ *   guard.dismiss();
+ * }
+ *
+ * Examine ScopeGuardTest.cpp for some more sample usage.
+ *
+ * Stolen from:
+ *   Andrei's and Petru Marginean's CUJ article:
+ *     http://drdobbs.com/184403758
+ *   and the loki library:
+ *     http://loki-lib.sourceforge.net/index.php?n=Idioms.ScopeGuardPointer
+ *   and triendl.kj article:
+ *     http://www.codeproject.com/KB/cpp/scope_guard.aspx
+ */
+template <typename F>
+detail::ScopeGuardImplDecay<F> makeGuard(F&& f) noexcept(
+    noexcept(detail::ScopeGuardImplDecay<F>(static_cast<F&&>(f)))) {
+  return detail::ScopeGuardImplDecay<F>(static_cast<F&&>(f));
 }
 
 /**
  * This is largely unneeded if you just use auto for your guards.
  */
-typedef ScopeGuardImplBase&& ScopeGuard;
+typedef detail::ScopeGuardImplBase&& ScopeGuard;
 
 namespace detail {
 
