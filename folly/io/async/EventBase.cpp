@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
@@ -294,7 +293,7 @@ bool EventBase::loopBody(int flags) {
     idleStart = std::chrono::steady_clock::now();
   }
 
-  while (!stop_.load(std::memory_order_acquire)) {
+  while (!stop_.load(std::memory_order_relaxed)) {
     applyLoopKeepAlive();
     ++nextLoopCnt_;
 
@@ -385,7 +384,7 @@ bool EventBase::loopBody(int flags) {
     }
   }
   // Reset stop_ so loop() can be called again
-  stop_ = false;
+  stop_.store(false, std::memory_order_relaxed);
 
   if (res < 0) {
     LOG(ERROR) << "EventBase: -- error in event loop, res = " << res;
@@ -477,9 +476,7 @@ void EventBase::terminateLoopSoon() {
   VLOG(5) << "EventBase(): Received terminateLoopSoon() command.";
 
   // Set stop to true, so the event loop will know to exit.
-  // TODO: We should really use an atomic operation here with a release
-  // barrier.
-  stop_ = true;
+  stop_.store(true, std::memory_order_relaxed);
 
   // Call event_base_loopbreak() so that libevent will exit the next time
   // around the loop.
