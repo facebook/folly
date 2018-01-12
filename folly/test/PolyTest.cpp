@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
 #pragma message "Folly.Poly requires gcc-5 or greater"
 #else
@@ -562,5 +561,34 @@ TEST(Poly, Addable) {
   EXPECT_EQ(5, poly_cast<int>(cc));
   cc = aref + bref;
   EXPECT_EQ(6, poly_cast<int>(cc));
+}
+
+namespace {
+struct IFrobnicator {
+  template <class Base>
+  struct Interface : Base {
+    void frobnicate(folly::Poly<folly::poly::IRegular&> x) {
+      folly::poly_call<0>(*this, x);
+    }
+  };
+  template <class T>
+  using Members = FOLLY_POLY_MEMBERS(&T::frobnicate);
+};
+using Frobnicator = folly::Poly<IFrobnicator>;
+
+struct my_frobnicator {
+  void frobnicate(folly::Poly<folly::poly::IRegular&>) {
+    // no-op
+  }
+};
+} // namespace
+
+TEST(Poly, PolyRefAsArg) {
+  folly::Poly<folly::poly::IRegular> x = 42;
+  Frobnicator frob = my_frobnicator{};
+  // should not throw:
+  frob.frobnicate(x);
+  // should not throw:
+  frob.frobnicate(folly::Poly<folly::poly::IRegular&>(x));
 }
 #endif

@@ -197,13 +197,23 @@ struct StaticConst {
 template <class T>
 constexpr T StaticConst<T>::value;
 
-template <class Fun>
-void if_constexpr(std::true_type, Fun fun) {
-  fun(Identity{});
+template <class Then>
+decltype(auto) if_constexpr(std::true_type, Then then) {
+  return then(Identity{});
 }
 
-template <class Fun>
-void if_constexpr(std::false_type, Fun) {}
+template <class Then>
+void if_constexpr(std::false_type, Then) {}
+
+template <class Then, class Else>
+decltype(auto) if_constexpr(std::true_type, Then then, Else) {
+  return then(Identity{});
+}
+
+template <class Then, class Else>
+decltype(auto) if_constexpr(std::false_type, Then, Else else_) {
+  return else_(Identity{});
+}
 
 enum class Op : short { eNuke, eMove, eCopy, eType, eAddr, eRefr };
 
@@ -468,14 +478,22 @@ T const& get(Data const& d) noexcept {
 
 enum class State : short { eEmpty, eInSitu, eOnHeap };
 
-template <class, class U>
-U&& convert(U&& u) noexcept {
-  return static_cast<U&&>(u);
-}
+template <class T>
+struct IsPolyRef : std::false_type {};
 
-template <class Arg, class I>
-decltype(auto) convert(Poly<I&> u) {
-  return poly_cast<Uncvref<Arg>>(u.get());
+template <class T>
+struct IsPolyRef<Poly<T&>> : std::true_type {};
+
+template <class Arg, class U>
+decltype(auto) convert(U&& u) {
+  return detail::if_constexpr(
+      StrictConjunction<
+          IsPolyRef<Uncvref<U>>,
+          Negation<std::is_convertible<U, Arg>>>(),
+      [&](auto id) -> decltype(auto) {
+        return poly_cast<Uncvref<Arg>>(id(u).get());
+      },
+      [&](auto id) -> U&& { return static_cast<U&&>(id(u)); });
 }
 
 template <class Fun>
