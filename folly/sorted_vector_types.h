@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <stdexcept>
@@ -70,6 +71,7 @@
 #include <boost/operators.hpp>
 
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 namespace folly {
@@ -193,6 +195,13 @@ void bulk_insert(
         cont.end());
   }
 }
+
+template <typename Container, typename Compare>
+Container&& as_sorted(Container&& container, Compare const& comp) {
+  using namespace std;
+  std::sort(begin(container), end(container), comp);
+  return static_cast<Container&&>(container);
+}
 } // namespace detail
 
 //////////////////////////////////////////////////////////////////////
@@ -287,8 +296,26 @@ class sorted_vector_set
   explicit sorted_vector_set(
       Container&& container,
       const Compare& comp = Compare())
+      : sorted_vector_set(
+            unsafe,
+            detail::as_sorted(std::move(container), comp),
+            comp) {}
+
+  // Construct a sorted_vector_set by stealing the storage of a prefilled
+  // container. The container must be sorted, as unsafe_t hints. This supports
+  // bulk construction of sorted_vector_set with zero allocations, not counting
+  // those performed by the caller. (The iterator range constructor performs at
+  // least one allocation).
+  //
+  // Note that `sorted_vector_set(unsafe_t, const Container& container)` is not
+  // provided, since the purpose of this constructor is to avoid an unnecessary
+  // copy.
+  sorted_vector_set(
+      unsafe_t,
+      Container&& container,
+      const Compare& comp = Compare())
       : m_(comp, container.get_allocator()) {
-    std::sort(container.begin(), container.end(), value_comp());
+    assert(std::is_sorted(container.begin(), container.end(), value_comp()));
     m_.cont_.swap(container);
   }
 
@@ -598,8 +625,26 @@ class sorted_vector_map
   explicit sorted_vector_map(
       Container&& container,
       const Compare& comp = Compare())
+      : sorted_vector_map(
+            unsafe,
+            detail::as_sorted(std::move(container), value_compare(comp)),
+            comp) {}
+
+  // Construct a sorted_vector_map by stealing the storage of a prefilled
+  // container. The container must be sorted, as unsafe_t hints. This supports
+  // bulk construction of sorted_vector_map with zero allocations, not counting
+  // those performed by the caller. (The iterator range constructor performs at
+  // least one allocation).
+  //
+  // Note that `sorted_vector_map(unsafe_t, const Container& container)` is not
+  // provided, since the purpose of this constructor is to avoid an unnecessary
+  // copy.
+  sorted_vector_map(
+      unsafe_t,
+      Container&& container,
+      const Compare& comp = Compare())
       : m_(value_compare(comp), container.get_allocator()) {
-    std::sort(container.begin(), container.end(), value_comp());
+    assert(std::is_sorted(container.begin(), container.end(), value_comp()));
     m_.cont_.swap(container);
   }
 
