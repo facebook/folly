@@ -374,19 +374,7 @@ void SingletonVault::scheduleDestroyInstances() {
   // Add a dependency on folly::ThreadLocal to make sure all its static
   // singletons are initalized first.
   threadlocal_detail::StaticMeta<void, void>::instance();
-
-  class SingletonVaultDestructor {
-   public:
-    ~SingletonVaultDestructor() {
-      SingletonVault::singleton()->destroyInstances();
-    }
-  };
-
-  // Here we intialize a singleton, which calls destroyInstances in its
-  // destructor. Because of singleton destruction order - it will be destroyed
-  // before all the singletons, which were initialized before it and after all
-  // the singletons initialized after it.
-  static SingletonVaultDestructor singletonVaultDestructor;
+  std::atexit([] { SingletonVault::singleton()->destroyInstances(); });
 }
 
 } // namespace folly
