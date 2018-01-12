@@ -16,20 +16,30 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(${PACKAGE_NAME} CXX)
 
-if (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS 1920)
-  set(MSVC_IS_2017 ON)
-elseif (MSVC_VERSION EQUAL 1900)
-  set(MSVC_IS_2017 OFF)
-else()
-  message(FATAL_ERROR "This build script only supports building Folly on 64-bit Windows with Visual Studio 2015 or Visual Studio 2017. MSVC version '${MSVC_VERSION}' is not supported.")
-endif()
-
 # Check target architecture
 if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
   message(FATAL_ERROR "Folly requires a 64bit target architecture.")
 endif()
-if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
-  message(FATAL_ERROR "The CMake build should only be used on Windows. For every other platform, use the makefile.")
+
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+  if (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS 1920)
+    set(MSVC_IS_2017 ON)
+  elseif (MSVC_VERSION EQUAL 1900)
+    set(MSVC_IS_2017 OFF)
+  else()
+    message(
+      FATAL_ERROR
+      "This build script only supports building Folly on 64-bit Windows with "
+      "Visual Studio 2015 or Visual Studio 2017. "
+      "MSVC version '${MSVC_VERSION}' is not supported."
+    )
+  endif()
+else()
+  message(
+    FATAL_ERROR
+    "The CMake build should only be used on Windows. "
+    "For every other platform, use autoconf."
+  )
 endif()
 
 set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
