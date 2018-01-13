@@ -86,7 +86,11 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
 )
 
-include(FollyCompiler)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+  include(FollyCompilerMSVC)
+else()
+  include(FollyCompilerUnix)
+endif()
 include(FollyFunctions)
 
 # Main folly library files
@@ -196,11 +200,21 @@ else()
 endif()
 
 
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+  set(FOLLY_LINK_LIBRARIES
+    ${FOLLY_LINK_LIBRARIES}
+    Iphlpapi.lib
+    Ws2_32.lib
+  )
+else()
+  set(FOLLY_LINK_LIBRARIES
+    ${FOLLY_LINK_LIBRARIES}
+    dl
+  )
+endif()
+
 set(FOLLY_LINK_LIBRARIES
   ${FOLLY_LINK_LIBRARIES}
-  Iphlpapi.lib
-  Ws2_32.lib
-
   ${FOLLY_SHINY_DEPENDENCIES}
 )
 
