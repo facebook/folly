@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,21 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
+
+TEST(aligned_malloc, examples) {
+  auto trial = [](size_t align) {
+    auto const ptr = aligned_malloc(1, align);
+    return (aligned_free(ptr), uintptr_t(ptr));
+  };
+
+  if (!kIsSanitize) { // asan allocator raises SIGABRT instead
+    EXPECT_EQ(EINVAL, (trial(2), errno)) << "too small";
+    EXPECT_EQ(EINVAL, (trial(513), errno)) << "not power of two";
+  }
+
+  EXPECT_EQ(0, trial(512) % 512);
+  EXPECT_EQ(0, trial(8192) % 8192);
+}
 
 TEST(make_unique, compatible_with_std_make_unique) {
   //  HACK: To enforce that `folly::` is imported here.

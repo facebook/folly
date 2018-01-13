@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@
 #include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/BitsFunctexcept.h>
-#include <folly/portability/Memory.h>
 #include <folly/system/ThreadId.h>
 
 namespace folly {
@@ -435,8 +434,8 @@ class CoreAllocator {
         // Align to a cacheline
         size = size + (hardware_destructive_interference_size - 1);
         size &= ~size_t(hardware_destructive_interference_size - 1);
-        void* mem = detail::aligned_malloc(
-            size, hardware_destructive_interference_size);
+        void* mem =
+            aligned_malloc(size, hardware_destructive_interference_size);
         if (!mem) {
           std::__throw_bad_alloc();
         }
@@ -456,7 +455,7 @@ class CoreAllocator {
         auto allocator = *static_cast<SimpleAllocator**>(addr);
         allocator->deallocate(mem);
       } else {
-        detail::aligned_free(mem);
+        aligned_free(mem);
       }
     }
   };

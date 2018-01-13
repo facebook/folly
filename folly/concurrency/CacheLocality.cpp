@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -241,13 +241,13 @@ SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
 SimpleAllocator::~SimpleAllocator() {
   std::lock_guard<std::mutex> g(m_);
   for (auto& block : blocks_) {
-    detail::aligned_free(block);
+    folly::aligned_free(block);
   }
 }
 
 void* SimpleAllocator::allocateHard() {
   // Allocate a new slab.
-  mem_ = static_cast<uint8_t*>(detail::aligned_malloc(allocSize_, allocSize_));
+  mem_ = static_cast<uint8_t*>(folly::aligned_malloc(allocSize_, allocSize_));
   if (!mem_) {
     std::__throw_bad_alloc();
   }

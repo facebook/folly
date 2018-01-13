@@ -594,7 +594,6 @@ libfolly_la_SOURCES = \
 	portability/Fcntl.cpp \
 	portability/Libgen.cpp \
 	portability/Malloc.cpp \
-	portability/Memory.cpp \
 	portability/OpenSSL.cpp \
 	portability/PThread.cpp \
 	portability/Sockets.cpp \
