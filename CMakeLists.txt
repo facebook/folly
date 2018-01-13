@@ -16,12 +16,12 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(${PACKAGE_NAME} CXX)
 
-# Check target architecture
-if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-  message(FATAL_ERROR "Folly requires a 64bit target architecture.")
-endif()
-
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+  # Check target architecture
+  if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "Folly requires a 64bit target architecture.")
+  endif()
+
   if (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS 1920)
     set(MSVC_IS_2017 ON)
   elseif (MSVC_VERSION EQUAL 1900)
@@ -81,10 +81,6 @@ include(folly-deps) # Find the required packages
 if (LIBPTHREAD_FOUND)
   set(FOLLY_HAVE_PTHREAD ON)
 endif()
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-)
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
   include(FollyCompilerMSVC)
@@ -92,6 +88,12 @@ else()
   include(FollyCompilerUnix)
 endif()
 include(FollyFunctions)
+
+include(FollyConfigChecks)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
+)
 
 # Main folly library files
 auto_sources(files "*.cpp" "RECURSE" "${FOLLY_DIR}")
