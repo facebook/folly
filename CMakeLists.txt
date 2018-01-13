@@ -48,23 +48,32 @@ set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
 find_package(PythonInterp REQUIRED)
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly/build/EscapeTables.cpp
-  COMMAND ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_escape_tables.py"
+  COMMAND
+    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
+  COMMAND
+    ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_escape_tables.py"
+    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
   DEPENDS ${FOLLY_DIR}/build/generate_escape_tables.py
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/folly/build/
   COMMENT "Generating the escape tables..." VERBATIM
 )
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FormatTables.cpp
-  COMMAND ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_format_tables.py"
+  COMMAND
+    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
+  COMMAND
+    ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_format_tables.py"
+    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
   DEPENDS ${FOLLY_DIR}/build/generate_format_tables.py
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/folly/build/
   COMMENT "Generating the format tables..." VERBATIM
 )
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp"
-  COMMAND ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_varint_tables.py"
+  COMMAND
+    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
+  COMMAND
+    ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_varint_tables.py"
+    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
   DEPENDS ${FOLLY_DIR}/build/generate_varint_tables.py
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/folly/build/
   COMMENT "Generating the group varint tables..." VERBATIM
 )
 
@@ -226,9 +235,12 @@ source_group("" FILES ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp)
 # Compile the fingerprint tables.
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
-  COMMAND GenerateFingerprintTables
+  COMMAND
+    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
+  COMMAND
+    GenerateFingerprintTables
+    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
   DEPENDS GenerateFingerprintTables
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/folly/build/
   COMMENT "Generating the fingerprint tables..."
 )
 add_library(folly_fingerprint STATIC
