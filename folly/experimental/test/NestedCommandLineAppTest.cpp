@@ -75,6 +75,7 @@ TEST(ProgramOptionsTest, Help) {
   callHelper({"--help"});
   callHelper({"--help", "foo"});
   callHelper({"--help", "bar"});
+  callHelper({"--help", "--", "bar"});
   callHelper({"help"});
   callHelper({"help", "foo"});
   callHelper({"help", "bar"});
@@ -82,11 +83,28 @@ TEST(ProgramOptionsTest, Help) {
   // wrong command name
   callHelper({"--help", "qux"}, 1);
   callHelper({"help", "qux"}, 1);
+
+  // anything after -- is parsed as arguments
+  callHelper({"--", "help", "bar"}, 1);
 }
 
 TEST(ProgramOptionsTest, DevFull) {
   folly::File full("/dev/full", O_RDWR);
   callHelper({"--help"}, 1, full.fd());
+}
+
+TEST(ProgramOptionsTest, CutArguments) {
+  // anything after -- is parsed as arguments
+  EXPECT_EQ(
+      "running foo\n"
+      "foo global-foo 43\n"
+      "foo local-foo 42\n"
+      "foo arg b\n"
+      "foo arg --local-foo\n"
+      "foo arg 44\n"
+      "foo arg a\n",
+      callHelper(
+          {"foo", "--global-foo", "43", "--", "b", "--local-foo", "44", "a"}));
 }
 
 TEST(ProgramOptionsTest, Success) {

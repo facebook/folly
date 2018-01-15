@@ -228,7 +228,22 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   if (programName_.empty()) {
     programName_ = guessProgramName();
   }
-  auto parsed = parseNestedCommandLine(args, globalOptions_);
+
+  bool not_clean = false;
+  std::vector<std::string> cleanArgs;
+  std::vector<std::string> endArgs;
+
+  for (auto& na : args) {
+    if (na == "--") {
+      not_clean = true;
+    } else if (not_clean) {
+      endArgs.push_back(na);
+    } else {
+      cleanArgs.push_back(na);
+    }
+  }
+
+  auto parsed = parseNestedCommandLine(cleanArgs, globalOptions_);
   po::variables_map vm;
   po::store(parsed.options, vm);
   if (vm.count("help")) {
@@ -258,11 +273,14 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
 
   auto cmdOptions =
     po::command_line_parser(parsed.rest).options(info.options).run();
+
   po::store(cmdOptions, vm);
   po::notify(vm);
 
   auto cmdArgs = po::collect_unrecognized(cmdOptions.options,
                                           po::include_positional);
+
+  cmdArgs.insert(cmdArgs.end(), endArgs.begin(), endArgs.end());
 
   if (initFunction_) {
     initFunction_(cmd, vm, cmdArgs);
