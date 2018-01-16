@@ -19,7 +19,7 @@
 /*
  * This file contains additional gtest-style check macros to use in unit tests.
  *
- * - SKIP()
+ * - SKIP(), SKIP_IF(EXPR)
  * - EXPECT_THROW_RE(), ASSERT_THROW_RE()
  * - EXPECT_THROW_ERRNO(), ASSERT_THROW_ERRNO()
  * - AreWithinSecs()
@@ -45,6 +45,13 @@
 // a normal test failure; there is only an effect if the test framework
 // interprets the message.
 #define SKIP() GTEST_FATAL_FAILURE_("Test skipped by client")
+
+// Encapsulate conditional-skip, since it's nontrivial to get right.
+#define SKIP_IF(expr)           \
+  GTEST_AMBIGUOUS_ELSE_BLOCKER_ \
+  if (!(expr)) {                \
+  } else                        \
+    SKIP()
 
 #define TEST_THROW_ERRNO_(statement, errnoValue, fail)       \
   GTEST_AMBIGUOUS_ELSE_BLOCKER_                              \
