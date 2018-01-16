@@ -141,10 +141,16 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
 }
 
 std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
-  using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;
-  static SingletonT singleton;
-
+  using T = std::shared_ptr<RequestContext>;
+#ifdef FOLLY_TLS
+  alignas(alignof(T)) static FOLLY_TLS unsigned char storage[sizeof(T)];
+  static FOLLY_TLS T* singleton;
+  return singleton ? *singleton : *(singleton = new (storage) T());
+#else
+  struct PrivateTag {};
+  static SingletonThreadLocal<T, PrivateTag> singleton;
   return singleton.get();
+#endif
 }
 
 RequestContext* RequestContext::get() {
