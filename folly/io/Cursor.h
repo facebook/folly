@@ -73,10 +73,11 @@ class CursorBase {
   template <class OtherDerived, class OtherBuf>
   explicit CursorBase(const CursorBase<OtherDerived, OtherBuf>& cursor)
       : crtBuf_(cursor.crtBuf_),
+        buffer_(cursor.buffer_),
         crtBegin_(cursor.crtBegin_),
         crtEnd_(cursor.crtEnd_),
         crtPos_(cursor.crtPos_),
-        buffer_(cursor.buffer_) {}
+        absolutePos_(cursor.absolutePos_) {}
 
   /**
    * Reset cursor to point to a new buffer.
@@ -84,10 +85,18 @@ class CursorBase {
   void reset(BufType* buf) {
     crtBuf_ = buf;
     buffer_ = buf;
+    absolutePos_ = 0;
     if (crtBuf_) {
       crtPos_ = crtBegin_ = crtBuf_->data();
       crtEnd_ = crtBuf_->tail();
     }
+  }
+
+  /**
+   * Get the current Cursor position relative to the head of IOBuf chain.
+   */
+  size_t getCurrentPosition() const {
+    return (crtPos_ - crtBegin_) + absolutePos_;
   }
 
   const uint8_t* data() const {
@@ -167,10 +176,21 @@ class CursorBase {
    * Advances the cursor to the end of the entire IOBuf chain.
    */
   void advanceToEnd() {
-    crtBegin_ = buffer_->prev()->data();
-    crtPos_ = crtEnd_ = buffer_->prev()->tail();
-    if (crtBuf_ != buffer_->prev()) {
-      crtBuf_ = buffer_->prev();
+    // Simple case, we're already in the last IOBuf.
+    if (crtBuf_ == buffer_->prev()) {
+      crtPos_ = crtEnd_;
+      return;
+    }
+
+    auto* nextBuf = crtBuf_->next();
+    while (nextBuf != buffer_) {
+      absolutePos_ += crtEnd_ - crtBegin_;
+
+      crtBuf_ = nextBuf;
+      nextBuf = crtBuf_->next();
+      crtBegin_ = crtBuf_->data();
+      crtPos_ = crtEnd_ = crtBuf_->tail();
+
       static_cast<Derived*>(this)->advanceDone();
     }
   }
@@ -544,6 +564,7 @@ class CursorBase {
       return false;
     }
 
+    absolutePos_ += crtEnd_ - crtBegin_;
     crtBuf_ = nextBuf;
     crtPos_ = crtBegin_ = crtBuf_->data();
     crtEnd_ = crtBuf_->tail();
@@ -559,6 +580,7 @@ class CursorBase {
     crtBuf_ = crtBuf_->prev();
     crtBegin_ = crtBuf_->data();
     crtPos_ = crtEnd_ = crtBuf_->tail();
+    absolutePos_ -= crtEnd_ - crtBegin_;
     static_cast<Derived*>(this)->advanceDone();
     return true;
   }
@@ -570,9 +592,11 @@ class CursorBase {
   }
 
   BufType* crtBuf_;
+  BufType* buffer_;
   const uint8_t* crtBegin_{nullptr};
   const uint8_t* crtEnd_{nullptr};
   const uint8_t* crtPos_{nullptr};
+  size_t absolutePos_{0};
 
  private:
   template <class T>
@@ -660,8 +684,6 @@ class CursorBase {
 
   void advanceDone() {
   }
-
-  BufType* buffer_;
 };
 
 } // namespace detail
@@ -845,12 +867,12 @@ class RWCursor
   }
 
   void insert(std::unique_ptr<folly::IOBuf> buf) {
-    folly::IOBuf* nextBuf;
-    if (this->crtPos_ == this->crtBegin_) {
+    this->absolutePos_ += buf->computeChainDataLength();
+    if (this->crtPos_ == this->crtBegin_ && this->crtBuf_ != this->buffer_) {
       // Can just prepend
-      nextBuf = this->crtBuf_;
       this->crtBuf_->prependChain(std::move(buf));
     } else {
+      IOBuf* nextBuf;
       std::unique_ptr<folly::IOBuf> remaining;
       if (this->crtPos_ != this->crtEnd_) {
         // Need to split current IOBuf in two.
@@ -863,6 +885,7 @@ class RWCursor
         nextBuf = this->crtBuf_->next();
       }
       this->crtBuf_->trimEnd(this->length());
+      this->absolutePos_ += this->crtPos_ - this->crtBegin_;
       this->crtBuf_->appendChain(std::move(buf));
 
       // Jump past the new links
