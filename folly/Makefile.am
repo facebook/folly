@@ -629,6 +629,7 @@ libfolly_la_SOURCES = \
 	synchronization/AsymmetricMemoryBarrier.cpp \
 	synchronization/LifoSem.cpp \
 	synchronization/ParkingLot.cpp \
+	synchronization/WaitOptions.cpp \
 	system/MemoryMapping.cpp \
 	system/Shell.cpp \
 	system/ThreadName.cpp \
