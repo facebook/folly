@@ -426,6 +426,22 @@ TEST(IOBuf, cloneAndInsert) {
     // Check that nextBuf got set correctly
     cursor.read<uint8_t>();
   }
+  {
+    // Check that inserting at the end of the buffer keeps it at the end.
+    RWPrivateCursor cursor(iobuf1.get());
+    Cursor(iobuf1.get()).clone(cloned, 1);
+    EXPECT_EQ(1, cloned->countChainElements());
+    EXPECT_EQ(1, cloned->computeChainDataLength());
+
+    cursor.advanceToEnd();
+    EXPECT_EQ(17, cursor.getCurrentPosition());
+    cursor.insert(std::move(cloned));
+    EXPECT_EQ(18, cursor.getCurrentPosition());
+    EXPECT_EQ(0, cursor.totalLength());
+    EXPECT_EQ(12, iobuf1->countChainElements());
+    EXPECT_EQ(18, iobuf1->computeChainDataLength());
+    EXPECT_TRUE(cursor.isAtEnd());
+  }
 }
 
 TEST(IOBuf, cloneWithEmptyBufAtStart) {

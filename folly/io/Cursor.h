@@ -888,10 +888,19 @@ class RWCursor
       this->absolutePos_ += this->crtPos_ - this->crtBegin_;
       this->crtBuf_->appendChain(std::move(buf));
 
-      // Jump past the new links
-      this->crtBuf_ = nextBuf;
-      this->crtPos_ = this->crtBegin_ = this->crtBuf_->data();
-      this->crtEnd_ = this->crtBuf_->tail();
+      if (nextBuf == this->buffer_) {
+        // We've just appended to the end of the buffer, so advance to the end.
+        this->crtBuf_ = this->buffer_->prev();
+        this->crtBegin_ = this->crtBuf_->data();
+        this->crtPos_ = this->crtEnd_ = this->crtBuf_->tail();
+        // This has already been accounted for, so remove it.
+        this->absolutePos_ -= this->crtEnd_ - this->crtBegin_;
+      } else {
+        // Jump past the new links
+        this->crtBuf_ = nextBuf;
+        this->crtPos_ = this->crtBegin_ = this->crtBuf_->data();
+        this->crtEnd_ = this->crtBuf_->tail();
+      }
     }
   }
 
