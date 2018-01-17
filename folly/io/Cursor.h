@@ -96,10 +96,12 @@ class CursorBase {
    * Get the current Cursor position relative to the head of IOBuf chain.
    */
   size_t getCurrentPosition() const {
+    dcheckIntegrity();
     return (crtPos_ - crtBegin_) + absolutePos_;
   }
 
   const uint8_t* data() const {
+    dcheckIntegrity();
     return crtPos_;
   }
 
@@ -112,6 +114,7 @@ class CursorBase {
    * pointing at the end of a buffer.
    */
   size_t length() const {
+    dcheckIntegrity();
     return crtEnd_ - crtPos_;
   }
 
@@ -152,6 +155,7 @@ class CursorBase {
    * Return true if the cursor is at the end of the entire IOBuf chain.
    */
   bool isAtEnd() const {
+    dcheckIntegrity();
     // Check for the simple cases first.
     if (crtPos_ != crtEnd_) {
       return false;
@@ -353,6 +357,7 @@ class CursorBase {
   void skipWhile(const Predicate& predicate);
 
   size_t skipAtMost(size_t len) {
+    dcheckIntegrity();
     if (LIKELY(crtPos_ + len < crtEnd_)) {
       crtPos_ += len;
       return len;
@@ -361,6 +366,7 @@ class CursorBase {
   }
 
   void skip(size_t len) {
+    dcheckIntegrity();
     if (LIKELY(crtPos_ + len < crtEnd_)) {
       crtPos_ += len;
     } else {
@@ -378,6 +384,7 @@ class CursorBase {
   }
 
   size_t retreatAtMost(size_t len) {
+    dcheckIntegrity();
     if (len <= static_cast<size_t>(crtPos_ - crtBegin_)) {
       crtPos_ -= len;
       return len;
@@ -386,6 +393,7 @@ class CursorBase {
   }
 
   void retreat(size_t len) {
+    dcheckIntegrity();
     if (len <= static_cast<size_t>(crtPos_ - crtBegin_)) {
       crtPos_ -= len;
     } else {
@@ -394,6 +402,7 @@ class CursorBase {
   }
 
   size_t pullAtMost(void* buf, size_t len) {
+    dcheckIntegrity();
     // Fast path: it all fits in one buffer.
     if (LIKELY(crtPos_ + len <= crtEnd_)) {
       memcpy(buf, data(), len);
@@ -404,6 +413,7 @@ class CursorBase {
   }
 
   void pull(void* buf, size_t len) {
+    dcheckIntegrity();
     if (LIKELY(crtPos_ + len <= crtEnd_)) {
       memcpy(buf, data(), len);
       crtPos_ += len;
@@ -551,6 +561,14 @@ class CursorBase {
   }
 
  protected:
+  void dcheckIntegrity() const {
+    DCHECK(crtBegin_ <= crtPos_ && crtPos_ <= crtEnd_);
+    DCHECK(crtBuf_ == nullptr || crtBegin_ == crtBuf_->data());
+    DCHECK(
+        crtBuf_ == nullptr ||
+        (uint64_t)(crtEnd_ - crtBegin_) == crtBuf_->length());
+  }
+
   ~CursorBase() { }
 
   BufType* head() {
@@ -586,6 +604,7 @@ class CursorBase {
   }
 
   void advanceBufferIfEmpty() {
+    dcheckIntegrity();
     if (crtPos_ == crtEnd_) {
       tryAdvanceBuffer();
     }
@@ -822,6 +841,7 @@ class RWCursor
     this->crtPos_ = this->crtBegin_ + offset;
   }
   void gatherAtMost(size_t n) {
+    this->dcheckIntegrity();
     size_t size = std::min(n, this->totalLength());
     size_t offset = this->crtPos_ - this->crtBegin_;
     this->crtBuf_->gather(offset + size);
@@ -867,6 +887,7 @@ class RWCursor
   }
 
   void insert(std::unique_ptr<folly::IOBuf> buf) {
+    this->dcheckIntegrity();
     this->absolutePos_ += buf->computeChainDataLength();
     if (this->crtPos_ == this->crtBegin_ && this->crtBuf_ != this->buffer_) {
       // Can just prepend
@@ -905,6 +926,7 @@ class RWCursor
   }
 
   uint8_t* writableData() {
+    this->dcheckIntegrity();
     return this->crtBuf_->writableData() + (this->crtPos_ - this->crtBegin_);
   }
 
