@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/Benchmark.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GFlags.h>
@@ -64,8 +63,8 @@ BENCHMARK_RELATIVE(timeMeasurementsOff, n) {
  * ============================================================================
  * folly/io/async/test/EventBaseBenchmark.cpp      relative  time/iter  iters/s
  * ============================================================================
- * timeMeasurementsOn                                           2.02us  494.57K
- * timeMeasurementsOff                              231.19%   874.58ns    1.14M
+ * timeMeasurementsOn                                           1.25us  798.33K
+ * timeMeasurementsOff                              214.47%   584.04ns    1.71M
  * ============================================================================
  */
 

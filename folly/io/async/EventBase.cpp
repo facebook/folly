@@ -290,7 +290,7 @@ bool EventBase::loopBody(int flags) {
 
   if (enableTimeMeasurement_) {
     prev = std::chrono::steady_clock::now();
-    idleStart = std::chrono::steady_clock::now();
+    idleStart = prev;
   }
 
   while (!stop_.load(std::memory_order_relaxed)) {
@@ -318,15 +318,15 @@ bool EventBase::loopBody(int flags) {
     ranLoopCallbacks = runLoopCallbacks();
 
     if (enableTimeMeasurement_) {
+      auto now = std::chrono::steady_clock::now();
       busy = std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::steady_clock::now() - startWork_);
+          now - startWork_);
       idle = std::chrono::duration_cast<std::chrono::microseconds>(
           startWork_ - idleStart);
+      auto loop_time = busy + idle;
 
-      avgLoopTime_.addSample(std::chrono::microseconds(idle),
-        std::chrono::microseconds(busy));
-      maxLatencyLoopTime_.addSample(std::chrono::microseconds(idle),
-        std::chrono::microseconds(busy));
+      avgLoopTime_.addSample(loop_time, busy);
+      maxLatencyLoopTime_.addSample(loop_time, busy);
 
       if (observer_) {
         if (observerSampleCount_++ == observer_->getSampleRate()) {
@@ -335,15 +335,15 @@ bool EventBase::loopBody(int flags) {
         }
       }
 
-      VLOG(11) << "EventBase "  << this         << " did not timeout " <<
-        " loop time guess: "    << (busy + idle).count()  <<
-        " idle time: "          << idle.count()         <<
-        " busy time: "          << busy.count()         <<
-        " avgLoopTime: "        << avgLoopTime_.get() <<
-        " maxLatencyLoopTime: " << maxLatencyLoopTime_.get() <<
-        " maxLatency_: "        << maxLatency_.count() << "us" <<
-        " notificationQueueSize: " << getNotificationQueueSize() <<
-        " nothingHandledYet(): " << nothingHandledYet();
+      VLOG(11) << "EventBase " << this << " did not timeout "
+               << " loop time guess: " << loop_time.count()
+               << " idle time: " << idle.count()
+               << " busy time: " << busy.count()
+               << " avgLoopTime: " << avgLoopTime_.get()
+               << " maxLatencyLoopTime: " << maxLatencyLoopTime_.get()
+               << " maxLatency_: " << maxLatency_.count() << "us"
+               << " notificationQueueSize: " << getNotificationQueueSize()
+               << " nothingHandledYet(): " << nothingHandledYet();
 
       // see if our average loop time has exceeded our limit
       if ((maxLatency_ > std::chrono::microseconds::zero()) &&
@@ -355,7 +355,7 @@ bool EventBase::loopBody(int flags) {
       }
 
       // Our loop run did real work; reset the idle timer
-      idleStart = std::chrono::steady_clock::now();
+      idleStart = now;
     } else {
       VLOG(11) << "EventBase " << this << " did not timeout";
     }
@@ -651,31 +651,21 @@ void EventBase::SmoothLoopTime::reset(double value) {
 }
 
 void EventBase::SmoothLoopTime::addSample(
-    std::chrono::microseconds idle,
+    std::chrono::microseconds total,
     std::chrono::microseconds busy) {
-  /*
-   * Position at which the busy sample is considered to be taken.
-   * (Allows to quickly skew our average without editing much code)
-   */
-  enum BusySamplePosition {
-    RIGHT = 0, // busy sample placed at the end of the iteration
-    CENTER = 1, // busy sample placed at the middle point of the iteration
-    LEFT = 2, // busy sample placed at the beginning of the iteration
-  };
-
-  // See http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
-  // and D676020 for more info on this calculation.
-  VLOG(11) << "idle " << idle.count() << " oldBusyLeftover_ "
-           << oldBusyLeftover_.count() << " idle + oldBusyLeftover_ "
-           << (idle + oldBusyLeftover_).count() << " busy " << busy.count()
-           << " " << __PRETTY_FUNCTION__;
-  idle += oldBusyLeftover_ + busy;
-  oldBusyLeftover_ = (busy * BusySamplePosition::CENTER) / 2;
-  idle -= oldBusyLeftover_;
-
-  double coeff = exp(idle.count() * expCoeff_);
-  value_ *= coeff;
-  value_ += (1.0 - coeff) * busy.count();
+  if ((buffer_time_ + total) > buffer_interval_ && buffer_cnt_ > 0) {
+    // See https://en.wikipedia.org/wiki/Exponential_smoothing for
+    // more info on this calculation.
+    double coeff = exp(buffer_time_.count() * expCoeff_);
+    value_ =
+        value_ * coeff + (1.0 - coeff) * (busy_buffer_.count() / buffer_cnt_);
+    buffer_time_ = std::chrono::microseconds{0};
+    busy_buffer_ = std::chrono::microseconds{0};
+    buffer_cnt_ = 0;
+  }
+  buffer_time_ += total;
+  busy_buffer_ += busy;
+  buffer_cnt_++;
 }
 
 bool EventBase::nothingHandledYet() const noexcept {
@@ -753,4 +743,5 @@ VirtualEventBase& EventBase::getVirtualEventBase() {
   return *virtualEventBase_;
 }
 
+constexpr std::chrono::milliseconds EventBase::SmoothLoopTime::buffer_interval_;
 } // namespace folly
