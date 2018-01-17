@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <sys/types.h>
 
 #include <string>
@@ -281,10 +280,10 @@ TEST(IPAddress, InvalidAddressFamilyExceptions) {
   }
 }
 
-TEST(IPAddress, CreateNetwork) {
+TEST(IPAddress, TryCreateNetwork) {
   // test valid IPv4 network
   {
-    auto net = IPAddress::createNetwork("192.168.0.1/24");
+    auto net = IPAddress::tryCreateNetwork("192.168.0.1/24").value();
     ASSERT_TRUE(net.first.isV4());
     EXPECT_EQ("192.168.0.0", net.first.str());
     EXPECT_EQ(24, net.second);
@@ -292,7 +291,7 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test valid IPv4 network without applying mask
   {
-    auto net = IPAddress::createNetwork("192.168.0.1/24", -1, false);
+    auto net = IPAddress::tryCreateNetwork("192.168.0.1/24", -1, false).value();
     ASSERT_TRUE(net.first.isV4());
     EXPECT_EQ("192.168.0.1", net.first.str());
     EXPECT_EQ(24, net.second);
@@ -300,7 +299,7 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test valid IPv6 network
   {
-    auto net = IPAddress::createNetwork("1999::1/24");
+    auto net = IPAddress::tryCreateNetwork("1999::1/24").value();
     ASSERT_TRUE(net.first.isV6());
     EXPECT_EQ("1999::", net.first.str());
     EXPECT_EQ(24, net.second);
@@ -308,20 +307,30 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test valid IPv6 network without applying mask
   {
-    auto net = IPAddress::createNetwork("1999::1/24", -1, false);
+    auto net = IPAddress::tryCreateNetwork("1999::1/24", -1, false).value();
     ASSERT_TRUE(net.first.isV6());
     EXPECT_EQ("1999::1", net.first.str());
     EXPECT_EQ(24, net.second);
     EXPECT_EQ("1999::1/24", IPAddress::networkToString(net));
   }
+
+  // test invalid default CIDR
+  EXPECT_EQ(
+      CIDRNetworkError::INVALID_DEFAULT_CIDR,
+      IPAddress::tryCreateNetwork("192.168.1.1", 300).error());
+
   // test empty string
-  EXPECT_THROW(IPAddress::createNetwork(""), IPAddressFormatException);
+  EXPECT_EQ(
+      CIDRNetworkError::INVALID_IP, IPAddress::tryCreateNetwork("").error());
+
   // test multi slash string
-  EXPECT_THROW(
-      IPAddress::createNetwork("192.168.0.1/24/36"), IPAddressFormatException);
+  EXPECT_EQ(
+      CIDRNetworkError::INVALID_IP_SLASH_CIDR,
+      IPAddress::tryCreateNetwork("192.168.0.1/24/36").error());
+
   // test no slash string with default IPv4
   {
-    auto net = IPAddress::createNetwork("192.168.0.1");
+    auto net = IPAddress::tryCreateNetwork("192.168.0.1").value();
     ASSERT_TRUE(net.first.isV4());
     EXPECT_EQ("192.168.0.1", net.first.str());
     EXPECT_EQ(32, net.second); // auto-detected
@@ -332,11 +341,26 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test no slash string with default IPv6
   {
-    auto net = IPAddress::createNetwork("1999::1");
+    auto net = IPAddress::tryCreateNetwork("1999::1").value();
     ASSERT_TRUE(net.first.isV6());
     EXPECT_EQ("1999::1", net.first.str());
     EXPECT_EQ(128, net.second);
   }
+  // test no slash string with invalid default
+  EXPECT_EQ(
+      CIDRNetworkError::CIDR_MISMATCH,
+      IPAddress::tryCreateNetwork("192.168.0.1", 33).error());
+}
+
+// test that throwing version actually throws
+TEST(IPAddress, CreateNetworkExceptions) {
+  // test invalid default CIDR
+  EXPECT_THROW(IPAddress::createNetwork("192.168.0.1", 300), std::range_error);
+  // test empty string
+  EXPECT_THROW(IPAddress::createNetwork(""), IPAddressFormatException);
+  // test multi slash string
+  EXPECT_THROW(
+      IPAddress::createNetwork("192.168.0.1/24/36"), IPAddressFormatException);
   // test no slash string with invalid default
   EXPECT_THROW(
       IPAddress::createNetwork("192.168.0.1", 33), IPAddressFormatException);

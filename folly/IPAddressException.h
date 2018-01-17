@@ -30,6 +30,17 @@ namespace folly {
 enum class IPAddressFormatError { INVALID_IP, UNSUPPORTED_ADDR_FAMILY };
 
 /**
+ * Wraps error from parsing IP/MASK string
+ */
+enum class CIDRNetworkError {
+  INVALID_DEFAULT_CIDR,
+  INVALID_IP_SLASH_CIDR,
+  INVALID_IP,
+  INVALID_CIDR,
+  CIDR_MISMATCH,
+};
+
+/**
  * Exception for invalid IP addresses.
  */
 class FOLLY_EXPORT IPAddressFormatException : public std::exception {

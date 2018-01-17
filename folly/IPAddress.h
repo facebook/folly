@@ -91,6 +91,19 @@ class IPAddress {
    *             is -1, will use /32 for IPv4 and /128 for IPv6)
    * @param [in] mask apply mask on the address or not,
    *             e.g. 192.168.13.46/24 => 192.168.13.0/24
+   * @return either pair with IPAddress network and uint8_t mask or
+   *         CIDRNetworkError
+   */
+  static Expected<CIDRNetwork, CIDRNetworkError> tryCreateNetwork(
+      StringPiece ipSlashCidr,
+      int defaultCidr = -1,
+      bool mask = true);
+
+  /**
+   * Create a network and mask from a CIDR formatted address string.
+   * Same as tryCreateNetwork() but throws IPAddressFormatException on error.
+   * The implementation calls tryCreateNetwork(...) underneath
+   *
    * @throws IPAddressFormatException if invalid address
    * @return pair with IPAddress network and uint8_t mask
    */
