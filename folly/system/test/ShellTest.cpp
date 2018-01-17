@@ -43,6 +43,10 @@ TEST(Shell, Shellify) {
   EXPECT_EQ(command[2], "ls 'blah'\\''; rm -rf /'");
 }
 
+// Tests for the deprecated shellify() function.
+// Don't warn about using this deprecated function in the test for it.
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING("-Wdeprecated-declarations")
 TEST(Shell, Shellify_deprecated) {
   auto command = shellify("rm -rf /");
   EXPECT_EQ(command[0], "/bin/sh");
@@ -58,3 +62,4 @@ TEST(Shell, Shellify_deprecated) {
   command = shellify("ls {}", "blah'; rm -rf /");
   EXPECT_EQ(command[2], "ls 'blah'\\''; rm -rf /'");
 }
+FOLLY_POP_WARNING

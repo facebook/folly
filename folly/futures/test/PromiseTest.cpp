@@ -141,7 +141,12 @@ TEST(Promise, setException) {
   {
     Promise<Unit> p;
     auto f = p.getFuture();
+    // Calling setException() with an exception_ptr is deprecated,
+    // but don't complain about this in the test for this function.
+    FOLLY_PUSH_WARNING
+    FOLLY_GCC_DISABLE_WARNING("-Wdeprecated-declarations")
     p.setException(std::make_exception_ptr(eggs));
+    FOLLY_POP_WARNING
     EXPECT_THROW(f.value(), eggs_t);
   }
   {
