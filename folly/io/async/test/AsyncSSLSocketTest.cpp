@@ -2082,8 +2082,7 @@ TEST(AsyncSSLSocketTest, HandshakeTFORefused) {
 }
 
 TEST(AsyncSSLSocketTest, TestPreReceivedData) {
-  EventBase clientEventBase;
-  EventBase serverEventBase;
+  EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
   std::array<int, 2> fds;
@@ -2091,23 +2090,23 @@ TEST(AsyncSSLSocketTest, TestPreReceivedData) {
   getctx(clientCtx, dfServerCtx);
 
   AsyncSSLSocket::UniquePtr clientSockPtr(
-      new AsyncSSLSocket(clientCtx, &clientEventBase, fds[0], false));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSockPtr(
-      new AsyncSSLSocket(dfServerCtx, &serverEventBase, fds[1], true));
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
   auto clientSock = clientSockPtr.get();
   auto serverSock = serverSockPtr.get();
   SSLHandshakeClient client(std::move(clientSockPtr), true, true);
 
   // Steal some data from the server.
-  clientEventBase.loopOnce();
   std::array<uint8_t, 10> buf;
-  recv(fds[1], buf.data(), buf.size(), 0);
+  auto bytesReceived = recv(fds[1], buf.data(), buf.size(), 0);
+  checkUnixError(bytesReceived, "recv failed");
 
-  serverSock->setPreReceivedData(IOBuf::wrapBuffer(range(buf)));
+  serverSock->setPreReceivedData(
+      IOBuf::wrapBuffer(ByteRange(buf.data(), bytesReceived)));
   SSLHandshakeServer server(std::move(serverSockPtr), true, true);
   while (!client.handshakeSuccess_ && !client.handshakeError_) {
-    serverEventBase.loopOnce();
-    clientEventBase.loopOnce();
+    eventBase.loopOnce();
   }
 
   EXPECT_TRUE(client.handshakeSuccess_);
@@ -2117,8 +2116,7 @@ TEST(AsyncSSLSocketTest, TestPreReceivedData) {
 }
 
 TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
-  EventBase clientEventBase;
-  EventBase serverEventBase;
+  EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
   std::array<int, 2> fds;
@@ -2126,25 +2124,25 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
   getctx(clientCtx, dfServerCtx);
 
   AsyncSSLSocket::UniquePtr clientSockPtr(
-      new AsyncSSLSocket(clientCtx, &clientEventBase, fds[0], false));
-  AsyncSocket::UniquePtr serverSockPtr(
-      new AsyncSocket(&serverEventBase, fds[1]));
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSocket::UniquePtr serverSockPtr(new AsyncSocket(&eventBase, fds[1]));
   auto clientSock = clientSockPtr.get();
   auto serverSock = serverSockPtr.get();
   SSLHandshakeClient client(std::move(clientSockPtr), true, true);
 
   // Steal some data from the server.
-  clientEventBase.loopOnce();
   std::array<uint8_t, 10> buf;
-  recv(fds[1], buf.data(), buf.size(), 0);
-  serverSock->setPreReceivedData(IOBuf::wrapBuffer(range(buf)));
+  auto bytesReceived = recv(fds[1], buf.data(), buf.size(), 0);
+  checkUnixError(bytesReceived, "recv failed");
+
+  serverSock->setPreReceivedData(
+      IOBuf::wrapBuffer(ByteRange(buf.data(), bytesReceived)));
   AsyncSSLSocket::UniquePtr serverSSLSockPtr(
       new AsyncSSLSocket(dfServerCtx, std::move(serverSockPtr), true));
   auto serverSSLSock = serverSSLSockPtr.get();
   SSLHandshakeServer server(std::move(serverSSLSockPtr), true, true);
   while (!client.handshakeSuccess_ && !client.handshakeError_) {
-    serverEventBase.loopOnce();
-    clientEventBase.loopOnce();
+    eventBase.loopOnce();
   }
 
   EXPECT_TRUE(client.handshakeSuccess_);
