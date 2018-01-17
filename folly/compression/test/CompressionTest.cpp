@@ -40,9 +40,9 @@
 
 #if FOLLY_HAVE_LIBZ
 #include <folly/compression/Zlib.h>
-#endif
 
 namespace zlib = folly::io::zlib;
+#endif
 
 namespace folly {
 namespace io {

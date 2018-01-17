@@ -559,6 +559,7 @@ if (BUILD_TESTS)
     DIRECTORY lang/test/
       TEST bits_test SOURCES BitsTest.cpp
       TEST cold_class_test SOURCES ColdClassTest.cpp
+      TEST safe_assert_test SOURCES SafeAssertTest.cpp
 
     DIRECTORY memory/test/
       TEST arena_test SOURCES ArenaTest.cpp
@@ -577,7 +578,7 @@ if (BUILD_TESTS)
     DIRECTORY stats/test/
       TEST histogram_test SOURCES HistogramTest.cpp
       TEST timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
-      TEST timeseries_test SOURCES TimeseriesTest.cpp
+      TEST timeseries_test SOURCES TimeSeriesTest.cpp
 
     DIRECTORY synchronization/test/
       TEST baton_test SOURCES BatonTest.cpp
@@ -592,6 +593,9 @@ if (BUILD_TESTS)
       TEST thread_id_test SOURCES ThreadIdTest.cpp
       TEST thread_name_test SOURCES ThreadNameTest.cpp
 
+    DIRECTORY synchronization/test/
+      TEST atomic_struct_test SOURCES AtomicStructTest.cpp
+
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
       TEST arena_smartptr_test SOURCES ArenaSmartPtrTest.cpp
@@ -601,12 +605,10 @@ if (BUILD_TESTS)
       TEST atomic_hash_map_test HANGING
         SOURCES AtomicHashMapTest.cpp
       TEST atomic_linked_list_test SOURCES AtomicLinkedListTest.cpp
-      TEST atomic_struct_test SOURCES AtomicStructTest.cpp
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
-      TEST container_traits_test SOURCES ContainerTraitsTest.cpp
       TEST conv_test SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
@@ -624,7 +626,7 @@ if (BUILD_TESTS)
       #TEST file_lock_test SOURCES FileLockTest.cpp
       TEST file_util_test HANGING
         SOURCES FileUtilTest.cpp
-      TEST fingerprint_test SOURCES FingerprintTest.cpp
+      # TEST fingerprint_test SOURCES FingerprintTest.cpp
       TEST format_other_test SOURCES FormatOtherTest.cpp
       TEST format_test SOURCES FormatTest.cpp
       TEST function_scheduler_test SOURCES FunctionSchedulerTest.cpp
@@ -672,14 +674,13 @@ if (BUILD_TESTS)
         SOURCES ProducerConsumerQueueTest.cpp
       TEST random_test SOURCES RandomTest.cpp
       TEST range_test SOURCES RangeTest.cpp
-      TEST safe_assert_test SOURCES SafeAssertTest.cpp
       TEST scope_guard_test SOURCES ScopeGuardTest.cpp
       # Heavily dependent on drand and srand48
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
-      TEST singleton_test SOURCES SingletonTest.cpp
+      # SingletonTest requires Subprocess
+      #TEST singleton_test SOURCES SingletonTest.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
       TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp
-      TEST singletonvault_c_test SOURCES SingletonVaultCTest.cpp
       TEST small_vector_test SOURCES small_vector_test.cpp
       TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
       TEST string_test SOURCES StringTest.cpp
