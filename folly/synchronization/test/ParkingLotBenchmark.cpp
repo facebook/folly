@@ -61,7 +61,7 @@ BENCHMARK(FutexNoWaitersWake, iters) {
   for (auto& t : threads) {
     t = std::thread([&]() {
       b.wait();
-      for (int i = 0; i < iters; i++) {
+      for (auto i = 0u; i < iters; i++) {
         fu.futexWake(1);
       }
     });
@@ -76,14 +76,13 @@ BENCHMARK(FutexNoWaitersWake, iters) {
 
 BENCHMARK_RELATIVE(ParkingLotNoWaitersWake, iters) {
   BenchmarkSuspender susp;
-  folly::detail::Futex<> fu;
   SimpleBarrier b(FLAGS_threads + 1);
 
   std::vector<std::thread> threads{FLAGS_threads};
   for (auto& t : threads) {
     t = std::thread([&]() {
       b.wait();
-      for (int i = 0; i < iters; i++) {
+      for (auto i = 0u; i < iters; i++) {
         lot.unpark(&lot, [](Unit) { return UnparkControl::RetainContinue; });
       }
     });
@@ -115,7 +114,7 @@ BENCHMARK(FutexWakeOne, iters) {
   }
   susp.dismiss();
   b.wait();
-  for (int i = 0; i < iters; i++) {
+  for (auto i = 0u; i < iters; i++) {
     fu.futexWake(1);
   }
   fu.store(1);
@@ -150,7 +149,7 @@ BENCHMARK_RELATIVE(ParkingLotWakeOne, iters) {
   }
   susp.dismiss();
   b.wait();
-  for (int i = 0; i < iters; i++) {
+  for (auto i = 0u; i < iters; i++) {
     lot.unpark(&done, [](Unit) { return UnparkControl::RemoveBreak; });
   }
   done = true;
@@ -181,7 +180,7 @@ BENCHMARK(FutexWakeAll, iters) {
   }
   susp.dismiss();
   b.wait();
-  for (int i = 0; i < iters; i++) {
+  for (auto i = 0u; i < iters; i++) {
     fu.futexWake(threads.size());
   }
   fu.store(1);
@@ -217,7 +216,7 @@ BENCHMARK_RELATIVE(ParkingLotWakeAll, iters) {
   }
   susp.dismiss();
   b.wait();
-  for (int i = 0; i < iters; i++) {
+  for (auto i = 0u; i < iters; i++) {
     lot.unpark(&done, [](Unit) { return UnparkControl::RemoveContinue; });
   }
   done = true;
