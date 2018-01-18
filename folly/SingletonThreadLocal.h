@@ -43,29 +43,29 @@ class SingletonThreadLocal {
 
   SingletonThreadLocal() : SingletonThreadLocal([]() { return new T(); }) {}
 
-  explicit SingletonThreadLocal(CreateFunc createFunc)
-      : singleton_([createFunc = std::move(createFunc)]() mutable {
-          return new ThreadLocalT([createFunc =
-                                       std::move(createFunc)]() mutable {
-            return new Wrapper(std::unique_ptr<T>(createFunc()));
+  template <typename Create>
+  FOLLY_NOINLINE explicit SingletonThreadLocal(Create create)
+      : singleton_([create = std::move(create)]() mutable {
+          return new ThreadLocalT([create = std::move(create)]() mutable {
+            return new Wrapper(std::unique_ptr<T>(create()));
           });
         }) {}
 
-  static T& get() {
+  FOLLY_ALWAYS_INLINE static T& get() {
 #ifdef FOLLY_TLS
-    if (UNLIKELY(*localPtr() == nullptr)) {
-      *localPtr() = &(**SingletonT::get());
-    }
-
-    return **localPtr();
+    return *localPtr() ? **localPtr() : *(*localPtr() = &getSlow());
 #else
     return **SingletonT::get();
 #endif
   }
 
  private:
+  FOLLY_NOINLINE static T& getSlow() {
+    return **SingletonT::get();
+  }
+
 #ifdef FOLLY_TLS
-  static T** localPtr() {
+  FOLLY_ALWAYS_INLINE static T** localPtr() {
     static FOLLY_TLS T* localPtr = nullptr;
     return &localPtr;
   }
