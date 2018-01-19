@@ -258,6 +258,12 @@ function(folly_define_tests)
         ${test_${cur_test}_headers}
         ${test_${cur_test}_sources}
       )
+      if (HAVE_CMAKE_GTEST)
+        gtest_add_tests(TARGET ${cur_test_name}
+                        TEST_PREFIX "${cur_test_name}."
+                        TEST_LIST test_cases)
+        set_tests_properties(${test_cases} PROPERTIES TIMEOUT 120)
+      endif()
       if (NOT "x${test_${cur_test}_content_dir}" STREQUAL "x")
         # Copy the content directory to the output directory tree so that
         # tests can be run easily from Visual Studio without having to change
