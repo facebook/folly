@@ -96,11 +96,11 @@ configure_file(
 auto_sources(files "*.cpp" "RECURSE" "${FOLLY_DIR}")
 auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
 
-# No need for tests or benchmarks, and we can't build most experimental stuff.
+# Exclude tests, benchmarks, and other standalone utility executables from the
+# library sources.  Test sources are listed separately below.
 REMOVE_MATCHES_FROM_LISTS(files hfiles
   MATCHES
     "/build/"
-    "/experimental/exception_tracer/"
     "/experimental/hazptr/bench/"
     "/experimental/hazptr/example/"
     "/experimental/logging/example/"
@@ -113,39 +113,58 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "/Benchmark.cpp$"
 )
 list(REMOVE_ITEM files
-  ${FOLLY_DIR}/Poly.cpp
-  ${FOLLY_DIR}/SingletonStackTrace.cpp
   ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
-  ${FOLLY_DIR}/experimental/RCUUtils.cpp
-  ${FOLLY_DIR}/experimental/io/AsyncIO.cpp
   ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
   ${FOLLY_DIR}/experimental/symbolizer/ElfUtil.cpp
   ${FOLLY_DIR}/futures/test/Benchmark.cpp
 )
 list(REMOVE_ITEM hfiles
-  ${FOLLY_DIR}/Fingerprint.h
-  ${FOLLY_DIR}/Poly.h
-  ${FOLLY_DIR}/Poly-inl.h
-  ${FOLLY_DIR}/detail/PolyDetail.h
-  ${FOLLY_DIR}/detail/TypeList.h
   ${FOLLY_DIR}/detail/SlowFingerprint.h
   ${FOLLY_DIR}/detail/FingerprintPolynomial.h
-  ${FOLLY_DIR}/experimental/RCURefCount.h
-  ${FOLLY_DIR}/experimental/RCUUtils.h
-  ${FOLLY_DIR}/experimental/io/AsyncIO.h
-  ${FOLLY_DIR}/poly/Nullable.h
-  ${FOLLY_DIR}/poly/Regular.h
 )
+
+# Exclude specific sources if we do not have third-party libraries
+# required to build them.
 if (NOT FOLLY_USE_SYMBOLIZER)
   REMOVE_MATCHES_FROM_LISTS(files hfiles
     MATCHES
+      "/experimental/exception_tracer/"
       "/experimental/symbolizer/"
+  )
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/SingletonStackTrace.cpp
+  )
+endif()
+if (NOT ${LIBURCU_FOUND})
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/experimental/RCUUtils.cpp
+  )
+  list(REMOVE_ITEM hfiles
+    ${FOLLY_DIR}/experimental/RCURefCount.h
+    ${FOLLY_DIR}/experimental/RCUUtils.h
+  )
+endif()
+if (NOT ${LIBAIO_FOUND})
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/experimental/io/AsyncIO.cpp
+  )
+  list(REMOVE_ITEM hfiles
+    ${FOLLY_DIR}/experimental/io/AsyncIO.h
   )
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-list(REMOVE_ITEM files
-  ${FOLLY_DIR}/Subprocess.cpp
-)
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/Poly.cpp
+    ${FOLLY_DIR}/Subprocess.cpp
+  )
+  list(REMOVE_ITEM hfiles
+    ${FOLLY_DIR}/Poly.h
+    ${FOLLY_DIR}/Poly-inl.h
+    ${FOLLY_DIR}/detail/PolyDetail.h
+    ${FOLLY_DIR}/detail/TypeList.h
+    ${FOLLY_DIR}/poly/Nullable.h
+    ${FOLLY_DIR}/poly/Regular.h
+  )
 endif()
 
 add_library(folly_base OBJECT
