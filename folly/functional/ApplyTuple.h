@@ -28,6 +28,7 @@
 #pragma once
 
 #include <functional>
+#include <initializer_list>
 #include <tuple>
 #include <utility>
 
@@ -45,7 +46,7 @@ inline constexpr std::size_t sum() {
 }
 template <typename... Args>
 inline constexpr std::size_t sum(std::size_t v1, Args... vs) {
-  return v1 + sum(vs...);
+  return ((void)std::initializer_list<std::size_t>{ (v1 += vs)... }, v1);
 }
 
 template <typename... Tuples>
