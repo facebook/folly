@@ -371,6 +371,7 @@ if (BUILD_TESTS)
       TEST serial_executor_test SOURCES SerialExecutorTest.cpp
       TEST thread_pool_executor_test SOURCES ThreadPoolExecutorTest.cpp
       TEST threaded_executor_test SOURCES ThreadedExecutorTest.cpp
+      TEST timed_drivable_executor_test SOURCES TimedDrivableExecutorTest.cpp
 
     DIRECTORY executors/task_queue/test/
       TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp

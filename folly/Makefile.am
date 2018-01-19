@@ -103,6 +103,7 @@ nobase_follyinclude_HEADERS = \
 	executors/SerialExecutor.h \
 	executors/ThreadPoolExecutor.h \
 	executors/ThreadedExecutor.h \
+	executors/TimedDrivableExecutor.h \
 	executors/task_queue/BlockingQueue.h \
 	executors/task_queue/LifoSemMPMCQueue.h \
 	executors/task_queue/PriorityLifoSemMPMCQueue.h \
@@ -541,6 +542,7 @@ libfolly_la_SOURCES = \
 	executors/SerialExecutor.cpp \
 	executors/ThreadPoolExecutor.cpp \
 	executors/ThreadedExecutor.cpp \
+	executors/TimedDrivableExecutor.cpp \
 	executors/QueuedImmediateExecutor.cpp \
 	experimental/hazptr/hazptr.cpp \
 	experimental/hazptr/memory_resource.cpp \
