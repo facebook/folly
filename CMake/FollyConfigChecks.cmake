@@ -3,16 +3,35 @@ include(CheckCXXSourceRuns)
 include(CheckFunctionExists)
 include(CheckIncludeFile)
 include(CheckSymbolExists)
+include(CheckTypeSize)
+include(CheckCXXCompilerFlag)
 
 CHECK_INCLUDE_FILE_CXX(malloc.h FOLLY_HAVE_MALLOC_H)
 CHECK_INCLUDE_FILE_CXX(bits/functexcept.h FOLLY_HAVE_BITS_FUNCTEXCEPT_H)
+CHECK_INCLUDE_FILE_CXX(bits/c++config.h FOLLY_HAVE_BITS_CXXCONFIG_H)
+CHECK_INCLUDE_FILE_CXX(features.h FOLLY_HAVE_FEATURES_H)
+CHECK_INCLUDE_FILE_CXX(linux/membarrier.h FOLLY_HAVE_LINUX_MEMBARRIER_H)
+CHECK_INCLUDE_FILE_CXX(jemalloc/jemalloc.h FOLLY_USE_JEMALLOC)
 
-if (FOLLY_HAVE_PTHREAD)
-  set(CMAKE_REQUIRED_LIBRARIES
-      "${CMAKE_REQUIRED_LIBRARIES} ${LIBPTHREAD_LIBRARIES}")
-  set(CMAKE_REQUIRED_INCLUDES
-      "${CMAKE_REQUIRED_INCLUDES} ${LIBPTHREAD_INCLUDE_DIRS}")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  # clang only rejects unknown warning flags if -Werror=unknown-warning-option
+  # is also specified.
+  CHECK_CXX_COMPILER_FLAG(
+    -Werror=unknown-warning-option
+    COMPILER_HAS_UNKNOWN_WARNING_OPTION)
+  if (COMPILER_HAS_UNKNOWN_WARNING_OPTION)
+    list(APPEND CMAKE_REQUIRED_FLAGS -Werror=unknown-warning-option)
+  endif()
+
+  CHECK_CXX_COMPILER_FLAG(-Wshadow-local COMPILER_HAS_W_SHADOW_LOCAL)
+  CHECK_CXX_COMPILER_FLAG(
+    -Wshadow-compatible-local
+    COMPILER_HAS_W_SHADOW_COMPATIBLE_LOCAL)
+  if (COMPILER_HAS_W_SHADOW_LOCAL AND COMPILER_HAS_W_SHADOW_COMPATIBLE_LOCAL)
+    set(FOLLY_HAVE_SHADOW_LOCAL_WARNINGS ON)
+  endif()
 endif()
+
 check_symbol_exists(pthread_atfork pthread.h FOLLY_HAVE_PTHREAD_ATFORK)
 
 # Unfortunately check_symbol_exists() does not work for memrchr():
@@ -21,6 +40,12 @@ check_function_exists(memrchr FOLLY_HAVE_MEMRCHR)
 check_symbol_exists(preadv sys/uio.h FOLLY_HAVE_PREADV)
 check_symbol_exists(pwritev sys/uio.h FOLLY_HAVE_PWRITEV)
 check_symbol_exists(clock_gettime time.h FOLLY_HAVE_CLOCK_GETTIME)
+
+check_function_exists(
+  cplus_demangle_v3_callback
+  FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
+)
+check_function_exists(malloc_usable_size FOLLY_HAVE_MALLOC_USABLE_SIZE)
 
 check_cxx_source_compiles("
   #pragma GCC diagnostic error \"-Wattributes\"
@@ -59,3 +84,128 @@ check_cxx_source_compiles("
   }"
   FOLLY_HAVE_WEAK_SYMBOLS
 )
+check_cxx_source_runs("
+  #include <dlfcn.h>
+  int main() {
+    void *h = dlopen(\"linux-vdso.so.1\", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
+    if (h == nullptr) {
+      return -1;
+    }
+    dlclose(h);
+    return 0;
+  }"
+  FOLLY_HAVE_LINUX_VDSO
+)
+
+check_type_size(__int128 INT128_SIZE LANGUAGE CXX)
+if (NOT INT128_SIZE STREQUAL "")
+  set(FOLLY_HAVE_INT128_T ON)
+  check_cxx_source_compiles("
+    #include <type_traits>
+    static_assert(
+      ::std::is_same<::std::make_signed<unsigned __int128>::type,
+                     __int128>::value,
+      \"signed form of \`unsigned __uint128\` must be \`__int128\`.\");
+    int main() { return 0; }"
+    HAVE_INT128_TRAITS
+  )
+  if (HAVE_INT128_TRAITS)
+    set(FOLLY_SUPPLY_MISSING_INT128_TRAITS OFF)
+  else()
+    set(FOLLY_SUPPLY_MISSING_INT128_TRAITS ON)
+  endif()
+endif()
+
+check_cxx_source_runs("
+  #include <cstddef>
+  #include <cwchar>
+  int main(int argc, char** argv) {
+    return wcstol(L\"01\", nullptr, 10) == 1 ? 0 : 1;
+  }"
+  FOLLY_HAVE_WCHAR_SUPPORT
+)
+
+check_cxx_source_compiles("
+  #include <ext/random>
+  int main(int argc, char** argv) {
+    __gnu_cxx::sfmt19937 rng;
+    return 0;
+  }"
+  FOLLY_HAVE_EXTRANDOM_SFMT19937
+)
+
+check_cxx_source_compiles("
+  #include <type_traits>
+  #if !_LIBCPP_VERSION
+  #error No libc++
+  #endif
+  void func() {}"
+  FOLLY_USE_LIBCPP
+)
+
+check_cxx_source_runs("
+  #include <string.h>
+  #include <errno.h>
+  int main(int argc, char** argv) {
+    char buf[1024];
+    buf[0] = 0;
+    int ret = strerror_r(ENOMEM, buf, sizeof(buf));
+    return ret;
+  }"
+  FOLLY_HAVE_XSI_STRERROR_R
+)
+
+check_cxx_source_runs("
+  #include <stdarg.h>
+  #include <stdio.h>
+
+  int call_vsnprintf(const char* fmt, ...) {
+    char buf[256];
+    va_list ap;
+    va_start(ap, fmt);
+    int result = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    return result;
+  }
+
+  int main(int argc, char** argv) {
+    return call_vsnprintf(\"%\", 1) < 0 ? 0 : 1;
+  }"
+  HAVE_VSNPRINTF_ERRORS
+)
+
+if (FOLLY_HAVE_LIBGFLAGS)
+  # Older releases of gflags used the namespace "gflags"; newer releases
+  # use "google" but also make symbols available in the deprecated "gflags"
+  # namespace too.  The folly code internally uses "gflags" unless we tell it
+  # otherwise.
+  check_cxx_source_compiles("
+    #include <gflags/gflags.h>
+    int main() {
+      gflags::GetArgv();
+      return 0;
+    }
+    "
+    GFLAGS_NAMESPACE_IS_GFLAGS
+  )
+  if (GFLAGS_NAMESPACE_IS_GFLAGS)
+    set(FOLLY_UNUSUAL_GFLAGS_NAMESPACE OFF)
+    set(FOLLY_GFLAGS_NAMESPACE gflags)
+  else()
+    set(FOLLY_UNUSUAL_GFLAGS_NAMESPACE ON)
+    set(FOLLY_GFLAGS_NAMESPACE google)
+  endif()
+endif()
+
+set(FOLLY_USE_SYMBOLIZER OFF)
+CHECK_INCLUDE_FILE_CXX(elf.h FOLLY_HAVE_ELF_H)
+find_library(UNWIND_LIBRARIES NAMES unwind)
+if (UNWIND_LIBRARIES)
+  list(APPEND FOLLY_LINK_LIBRARIES ${UNWIND_LIBRARIES})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${UNWIND_LIBRARIES})
+endif()
+check_function_exists(backtrace FOLLY_HAVE_BACKTRACE)
+if (FOLLY_HAVE_ELF_H AND FOLLY_HAVE_BACKTRACE AND LIBDWARF_FOUND)
+  set(FOLLY_USE_SYMBOLIZER ON)
+endif()
+message(STATUS "Setting FOLLY_USE_SYMBOLIZER: ${FOLLY_USE_SYMBOLIZER}")

@@ -16,7 +16,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(${PACKAGE_NAME} CXX)
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Check target architecture
   if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "Folly requires a 64bit target architecture.")
@@ -78,11 +78,8 @@ add_custom_command(
 )
 
 include(folly-deps) # Find the required packages
-if (LIBPTHREAD_FOUND)
-  set(FOLLY_HAVE_PTHREAD ON)
-endif()
 
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include(FollyCompilerMSVC)
 else()
   include(FollyCompilerUnix)
@@ -107,7 +104,6 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "/experimental/hazptr/bench/"
     "/experimental/hazptr/example/"
     "/experimental/logging/example/"
-    "/experimental/symbolizer/"
     "/futures/exercises/"
     "/test/"
     "/tools/"
@@ -118,12 +114,12 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
 )
 list(REMOVE_ITEM files
   ${FOLLY_DIR}/Poly.cpp
-  ${FOLLY_DIR}/Subprocess.cpp
   ${FOLLY_DIR}/SingletonStackTrace.cpp
   ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
   ${FOLLY_DIR}/experimental/RCUUtils.cpp
   ${FOLLY_DIR}/experimental/io/AsyncIO.cpp
   ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
+  ${FOLLY_DIR}/experimental/symbolizer/ElfUtil.cpp
   ${FOLLY_DIR}/futures/test/Benchmark.cpp
 )
 list(REMOVE_ITEM hfiles
@@ -140,6 +136,17 @@ list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/poly/Nullable.h
   ${FOLLY_DIR}/poly/Regular.h
 )
+if (NOT FOLLY_USE_SYMBOLIZER)
+  REMOVE_MATCHES_FROM_LISTS(files hfiles
+    MATCHES
+      "/experimental/symbolizer/"
+  )
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+list(REMOVE_ITEM files
+  ${FOLLY_DIR}/Subprocess.cpp
+)
+endif()
 
 add_library(folly_base OBJECT
   ${files} ${hfiles}
@@ -160,58 +167,11 @@ source_group("folly\\build" FILES
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 
-set(FOLLY_SHINY_DEPENDENCIES
-  Boost::chrono
-  Boost::context
-  Boost::date_time
-  Boost::filesystem
-  Boost::program_options
-  Boost::regex
-  Boost::system
-  OpenSSL::SSL
-  OpenSSL::Crypto
-)
-
-set(FOLLY_LINK_LIBRARIES
-  ${DOUBLE_CONVERSION_LIBRARY}
-)
-
-set(FOLLY_INCLUDE_DIRECTORIES
-  ${DOUBLE_CONVERSION_INCLUDE_DIR}
-)
-
-if(TARGET gflags)
-  set(FOLLY_SHINY_DEPENDENCIES ${FOLLY_SHINY_DEPENDENCIES} gflags)
-else()
-  set(FOLLY_LINK_LIBRARIES ${FOLLY_LINK_LIBRARIES} ${LIBGFLAGS_LIBRARY})
-  set(FOLLY_INCLUDE_DIRECTORIES ${FOLLY_INCLUDE_DIRECTORIES} ${LIBGFLAGS_INCLUDE_DIR})
-endif()
-
-if(TARGET glog::glog)
-  set(FOLLY_SHINY_DEPENDENCIES ${FOLLY_SHINY_DEPENDENCIES} glog::glog)
-else()
-  set(FOLLY_LINK_LIBRARIES ${FOLLY_LINK_LIBRARIES} ${LIBGLOG_LIBRARY})
-  set(FOLLY_INCLUDE_DIRECTORIES ${FOLLY_INCLUDE_DIRECTORIES} ${LIBGLOG_INCLUDE_DIR})
-endif()
-
-if(TARGET event)
-  set(FOLLY_SHINY_DEPENDENCIES ${FOLLY_SHINY_DEPENDENCIES} event)
-else()
-  set(FOLLY_LINK_LIBRARIES ${FOLLY_LINK_LIBRARIES} ${LIBEVENT_LIB})
-  set(FOLLY_INCLUDE_DIRECTORIES ${FOLLY_INCLUDE_DIRECTORIES} ${LIBEVENT_INCLUDE_DIR})
-endif()
-
-
-if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(FOLLY_LINK_LIBRARIES
     ${FOLLY_LINK_LIBRARIES}
     Iphlpapi.lib
     Ws2_32.lib
-  )
-else()
-  set(FOLLY_LINK_LIBRARIES
-    ${FOLLY_LINK_LIBRARIES}
-    dl
   )
 endif()
 
@@ -233,7 +193,6 @@ endforeach()
 
 if (FOLLY_HAVE_PTHREAD)
   target_include_directories(folly_base PUBLIC ${LIBPTHREAD_INCLUDE_DIRS})
-  list(APPEND FOLLY_LINK_LIBRARIES ${LIBPTHREAD_LIBRARIES})
 endif()
 
 # Now to generate the fingerprint tables
