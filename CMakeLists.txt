@@ -34,12 +34,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       "MSVC version '${MSVC_VERSION}' is not supported."
     )
   endif()
-else()
-  message(
-    FATAL_ERROR
-    "The CMake build should only be used on Windows. "
-    "For every other platform, use autoconf."
-  )
 endif()
 
 set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
