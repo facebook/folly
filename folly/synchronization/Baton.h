@@ -123,10 +123,9 @@ class Baton {
     if (!MayBlock) {
       /// Spin-only version
       ///
-      assert([&] {
-        auto state = state_.load(std::memory_order_relaxed);
-        return (state == INIT || state == EARLY_DELIVERY);
-      }());
+      assert(
+          ((1 << state_.load(std::memory_order_relaxed)) &
+           ((1 << INIT) | (1 << EARLY_DELIVERY))) != 0);
       state_.store(EARLY_DELIVERY, std::memory_order_release);
       return;
     }
