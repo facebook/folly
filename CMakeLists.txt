@@ -351,7 +351,7 @@ if (BUILD_TESTS)
       TEST chrono_conv_test SOURCES ConvTest.cpp
 
     DIRECTORY compression/test/
-      TEST compression_test SOURCES CompressionTest.cpp
+      TEST compression_test SLOW SOURCES CompressionTest.cpp
 
     DIRECTORY container/test/
       TEST access_test SOURCES AccessTest.cpp
