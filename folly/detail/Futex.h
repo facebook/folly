@@ -73,7 +73,9 @@ struct Futex : Atom<uint32_t> {
         std::chrono::steady_clock,
         std::chrono::system_clock>::type;
     auto const converted = time_point_conv<Target>(deadline);
-    return futexWaitImpl(expected, converted, waitMask);
+    return converted == Target::time_point::max()
+        ? futexWaitImpl(expected, nullptr, nullptr, waitMask)
+        : futexWaitImpl(expected, converted, waitMask);
   }
 
   /** Wakens up to count waiters where (waitMask & wakeMask) !=
@@ -95,9 +97,12 @@ struct Futex : Atom<uint32_t> {
   static typename TargetClock::time_point time_point_conv(
       std::chrono::time_point<Clock, Duration> const& time) {
     using std::chrono::duration_cast;
+    using TimePoint = std::chrono::time_point<Clock, Duration>;
     using TargetDuration = typename TargetClock::duration;
     using TargetTimePoint = typename TargetClock::time_point;
-    if (std::is_same<Clock, TargetClock>::value) {
+    if (time == TimePoint::max()) {
+      return TargetTimePoint::max();
+    } else if (std::is_same<Clock, TargetClock>::value) {
       // in place of time_point_cast, which cannot compile without if-constexpr
       auto const delta = time.time_since_epoch();
       return TargetTimePoint(duration_cast<TargetDuration>(delta));
