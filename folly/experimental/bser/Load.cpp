@@ -61,7 +61,10 @@ static std::string decodeString(Cursor& curs) {
   }
   str.reserve(size_t(len));
 
-  size_t available = curs.length();
+  // peekBytes will advance over any "empty" IOBuf elements until
+  // it reaches the next one with data, so do that to obtain the
+  // true remaining length.
+  size_t available = curs.peekBytes().size();
   while (available < (size_t)len) {
     if (available == 0) {
       // Saw this case when we decodeHeader was returning the incorrect length
@@ -74,7 +77,7 @@ static std::string decodeString(Cursor& curs) {
     str.append(reinterpret_cast<const char*>(curs.data()), available);
     curs.skipAtMost(available);
     len -= available;
-    available = curs.length();
+    available = curs.peekBytes().size();
   }
 
   str.append(reinterpret_cast<const char*>(curs.data()), size_t(len));
