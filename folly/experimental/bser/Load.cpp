@@ -59,29 +59,24 @@ static std::string decodeString(Cursor& curs) {
   if (len < 0) {
     throw std::range_error("string length must not be negative");
   }
-  str.reserve(size_t(len));
 
-  // peekBytes will advance over any "empty" IOBuf elements until
-  // it reaches the next one with data, so do that to obtain the
-  // true remaining length.
-  size_t available = curs.peekBytes().size();
-  while (available < (size_t)len) {
-    if (available == 0) {
-      // Saw this case when we decodeHeader was returning the incorrect length
-      // and we were splitting off too few bytes from the IOBufQueue
-      throwDecodeError(
-          curs,
-          "no data available while decoding a string, header was "
-          "not decoded properly");
-    }
-    str.append(reinterpret_cast<const char*>(curs.data()), available);
-    curs.skipAtMost(available);
-    len -= available;
-    available = curs.peekBytes().size();
+  // We could use Cursor::readFixedString() here, but we'd like
+  // to throw our own exception with some increased diagnostics.
+  str.resize(len);
+
+  // The start of the string data, mutable.
+  auto* dest = &str[0];
+
+  auto pulled = curs.pullAtMost(dest, len);
+  if (pulled != size_t(len)) {
+    // Saw this case when decodeHeader was returning the incorrect length
+    // and we were splitting off too few bytes from the IOBufQueue
+    throwDecodeError(
+        curs,
+        "no data available while decoding a string, header was "
+        "not decoded properly");
   }
 
-  str.append(reinterpret_cast<const char*>(curs.data()), size_t(len));
-  curs.skipAtMost(size_t(len));
   return str;
 }
 
