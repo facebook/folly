@@ -297,21 +297,21 @@ class sorted_vector_set
       Container&& container,
       const Compare& comp = Compare())
       : sorted_vector_set(
-            unsafe,
+            presorted,
             detail::as_sorted(std::move(container), comp),
             comp) {}
 
   // Construct a sorted_vector_set by stealing the storage of a prefilled
-  // container. The container must be sorted, as unsafe_t hints. This supports
+  // container. The container must be sorted, as presorted_t hints. Supports
   // bulk construction of sorted_vector_set with zero allocations, not counting
   // those performed by the caller. (The iterator range constructor performs at
   // least one allocation).
   //
-  // Note that `sorted_vector_set(unsafe_t, const Container& container)` is not
-  // provided, since the purpose of this constructor is to avoid an unnecessary
+  // Note that `sorted_vector_set(presorted_t, const Container& container)` is
+  // not provided, since the purpose of this constructor is to avoid an extra
   // copy.
   sorted_vector_set(
-      unsafe_t,
+      presorted_t,
       Container&& container,
       const Compare& comp = Compare())
       : m_(comp, container.get_allocator()) {
@@ -626,21 +626,21 @@ class sorted_vector_map
       Container&& container,
       const Compare& comp = Compare())
       : sorted_vector_map(
-            unsafe,
+            presorted,
             detail::as_sorted(std::move(container), value_compare(comp)),
             comp) {}
 
   // Construct a sorted_vector_map by stealing the storage of a prefilled
-  // container. The container must be sorted, as unsafe_t hints. This supports
+  // container. The container must be sorted, as presorted_t hints. S supports
   // bulk construction of sorted_vector_map with zero allocations, not counting
   // those performed by the caller. (The iterator range constructor performs at
   // least one allocation).
   //
-  // Note that `sorted_vector_map(unsafe_t, const Container& container)` is not
-  // provided, since the purpose of this constructor is to avoid an unnecessary
+  // Note that `sorted_vector_map(presorted_t, const Container& container)` is
+  // not provided, since the purpose of this constructor is to avoid an extra
   // copy.
   sorted_vector_map(
-      unsafe_t,
+      presorted_t,
       Container&& container,
       const Compare& comp = Compare())
       : m_(value_compare(comp), container.get_allocator()) {

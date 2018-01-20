@@ -263,26 +263,25 @@ struct initlist_construct_t {};
 constexpr initlist_construct_t initlist_construct{};
 
 /**
- * A generic tag type to indicate that some constructor or method is in some way
- * unsafe and should be used only with extreme care and with full test coverage,
- * if ever.
+ * A generic tag type to indicate that some constructor or method accepts a
+ * presorted container.
  *
  * Example:
  *
  *  void takes_numbers(std::vector<int> alist) {
  *    std::sort(alist.begin(), alist.end());
- *    takes_numbers_assume_sorted(folly::unsafe, alist);
+ *    takes_numbers_assume_sorted(folly::presorted, alist);
  *  }
  *
- *  void takes_numbers_assume_sorted(folly::unsafe_t, std::vector<int> alist) {
+ *  void takes_numbers(folly::presorted_t, std::vector<int> alist) {
  *    assert(std::is_sorted(alist.begin(), alist.end())); // debug mode only
  *    for (i : alist) {
  *      // some behavior which is defined and safe only when alist is sorted ...
  *    }
  *  }
  */
-struct unsafe_t {};
-constexpr unsafe_t unsafe{};
+struct presorted_t {};
+constexpr presorted_t presorted{};
 
 /**
  * A simple function object that passes its argument through unchanged.
