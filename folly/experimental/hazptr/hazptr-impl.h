@@ -1084,15 +1084,15 @@ inline hazptr_tls_life::~hazptr_tls_life() {
  *  and a thread-safe access only, for now. */
 
 class hazptr_obj_batch {
-  static constexpr size_t DefaultThreshold = 20;
+  static constexpr int DefaultThreshold = 20;
   hazptr_obj* head_{nullptr};
   hazptr_obj* tail_{nullptr};
-  size_t rcount_{0};
-  size_t threshold_{DefaultThreshold};
+  int rcount_{0};
+  int threshold_{DefaultThreshold};
 
  public:
   hazptr_obj_batch() {}
-  hazptr_obj_batch(hazptr_obj* head, hazptr_obj* tail, size_t rcount)
+  hazptr_obj_batch(hazptr_obj* head, hazptr_obj* tail, int rcount)
       : head_(head), tail_(tail), rcount_(rcount) {}
 
   ~hazptr_obj_batch() {
@@ -1135,7 +1135,7 @@ class hazptr_obj_batch {
     }
   }
 
-  void set_threshold(size_t thresh) {
+  void set_threshold(int thresh) {
     threshold_ = thresh;
   }
 

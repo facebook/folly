@@ -80,6 +80,9 @@ class hazptr_domain {
   std::atomic<hazptr_obj*> retired_ = {nullptr};
   std::atomic<int> hcount_ = {0};
   std::atomic<int> rcount_ = {0};
+  /* Using signed int for rcount_ because it may transiently be
+   * negative.  Using signed int for all integer variables that may be
+   * involved in calculations related to the value of rcount_. */
 
   void objRetire(hazptr_obj*);
   hazptr_rec* hazptrAcquire();
