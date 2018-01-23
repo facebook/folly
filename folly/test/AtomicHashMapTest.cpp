@@ -772,10 +772,10 @@ TEST(Ahm, erase_after_insert_race) {
 
 // Repro for a bug when iterator didn't skip empty submaps.
 TEST(Ahm, iterator_skips_empty_submaps) {
-  AtomicHashMap<uint64_t, uint64_t>::Config config;
-  config.growthFactor = 1;
+  AtomicHashMap<uint64_t, uint64_t>::Config conf;
+  conf.growthFactor = 1;
 
-  AtomicHashMap<uint64_t, uint64_t> map(1, config);
+  AtomicHashMap<uint64_t, uint64_t> map(1, conf);
 
   map.insert(1, 1);
   map.insert(2, 2);

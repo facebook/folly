@@ -496,12 +496,12 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
 }
 
 TEST(BucketedTimeSeries, forEachBucket) {
-  typedef BucketedTimeSeries<int64_t>::Bucket Bucket;
+  typedef BucketedTimeSeries<int64_t>::Bucket BucketSeries;
   struct BucketInfo {
-    BucketInfo(const Bucket* b, TimePoint s, TimePoint ns)
+    BucketInfo(const BucketSeries* b, TimePoint s, TimePoint ns)
         : bucket(b), start(s), nextStart(ns) {}
 
-    const Bucket* bucket;
+    const BucketSeries* bucket;
     TimePoint start;
     TimePoint nextStart;
   };
@@ -510,7 +510,7 @@ TEST(BucketedTimeSeries, forEachBucket) {
     BucketedTimeSeries<int64_t> ts(data.numBuckets, seconds(data.duration));
 
     vector<BucketInfo> info;
-    auto fn = [&](const Bucket& bucket,
+    auto fn = [&](const BucketSeries& bucket,
                   TimePoint bucketStart,
                   TimePoint bucketEnd) -> bool {
       info.emplace_back(&bucket, bucketStart, bucketEnd);

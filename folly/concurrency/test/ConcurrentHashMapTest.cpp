@@ -379,12 +379,12 @@ TEST(ConcurrentHashMap, EraseStressTest) {
             exit(0);
           }
           EXPECT_TRUE(res);
-          auto res = m.find(k);
-          if (res == m.cend()) {
+          auto result = m.find(k);
+          if (result == m.cend()) {
             printf("Thread %i lookup fail %li\n", t, k);
             exit(0);
           }
-          EXPECT_EQ(k, res->second);
+          EXPECT_EQ(k, result->second);
         }
       }
     }));

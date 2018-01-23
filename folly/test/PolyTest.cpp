@@ -338,7 +338,7 @@ TEST(Poly, NullablePointer) {
   Poly<INullablePointer> r = 42;
   Poly<INullablePointer&> s = r;
   static_assert(!poly_empty(s), "");
-  EXPECT_THROW(Poly<INullablePointer&> r(q), BadPolyAccess);
+  EXPECT_THROW(Poly<INullablePointer&> r_(q), BadPolyAccess);
 }
 
 namespace {

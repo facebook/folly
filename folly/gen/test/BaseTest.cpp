@@ -1078,8 +1078,8 @@ TEST(Gen, Cycle) {
               s | cycle | take(4) | as<vector>());
   }
   {
-    int count = 3;
-    int* pcount = &count;
+    int c = 3;
+    int* pcount = &c;
     auto countdown = GENERATOR(int) {
       ASSERT_GE(*pcount, 0)
         << "Cycle should have stopped when it didnt' get values!";

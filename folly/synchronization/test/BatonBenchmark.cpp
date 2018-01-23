@@ -27,8 +27,6 @@ using namespace folly;
 using namespace folly::test;
 using folly::detail::EmulatedFutexAtomic;
 
-typedef DeterministicSchedule DSched;
-
 BENCHMARK(baton_pingpong_blocking, iters) {
   run_pingpong_test<true, std::atomic>(iters);
 }

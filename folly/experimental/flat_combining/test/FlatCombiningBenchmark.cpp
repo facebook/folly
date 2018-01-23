@@ -366,10 +366,10 @@ TEST(FlatCombining, folly_benchmark) {
 
 static uint64_t test(
     std::string name,
-    bool fc,
-    bool dedicated,
-    bool tc,
-    bool syncops,
+    bool fc_,
+    bool dedicated_,
+    bool tc_,
+    bool syncops_,
     uint64_t base) {
   uint64_t min = UINTMAX_MAX;
   uint64_t max = 0;
@@ -382,11 +382,11 @@ static uint64_t test(
         FLAGS_numRecs,
         FLAGS_work,
         FLAGS_ops,
-        fc,
+        fc_,
         simple,
-        dedicated,
-        tc,
-        syncops);
+        dedicated_,
+        tc_,
+        syncops_);
     sum += dur;
     min = std::min(min, dur);
     max = std::max(max, dur);
