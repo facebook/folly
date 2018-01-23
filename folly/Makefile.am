@@ -48,6 +48,7 @@ nobase_follyinclude_HEADERS = \
 	CpuId.h \
 	CPortability.h \
 	compression/Compression.h \
+	compression/Counters.h \
 	compression/Utils.h \
 	compression/Zlib.h \
 	concurrency/CacheLocality.h \
@@ -513,6 +514,7 @@ libfollybase_la_SOURCES = \
 libfolly_la_SOURCES = \
 	ClockGettimeWrappers.cpp \
 	compression/Compression.cpp \
+	compression/Counters.cpp \
 	compression/Zlib.cpp \
 	concurrency/CacheLocality.cpp \
 	detail/AtFork.cpp \
