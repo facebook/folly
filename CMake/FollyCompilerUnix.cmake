@@ -10,7 +10,6 @@ function(apply_folly_compile_options_to_target THETARGET)
       -fopenmp
       -finput-charset=UTF-8
       -fsigned-char
-      -faligned-new
       -Werror
       -Wall
       -Wno-deprecated
@@ -21,7 +20,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       -Wunused-label
       -Wunused-result
       -Wnon-virtual-dtor
-      -Wno-noexcept-type
+      ${FOLLY_CXX_FLAGS}
     PRIVATE
       -D_REENTRANT
       -D_GNU_SOURCE
