@@ -88,7 +88,7 @@ Optional<std::string> getThreadName(std::thread::id id) {
   if (pthread_getname_np(stdTidToPthreadId(id), buf.data(), buf.size()) != 0) {
     return Optional<std::string>();
   }
-  return make_optional(std::string(buf.data()));
+  return folly::make_optional(std::string(buf.data()));
 #else
   return Optional<std::string>();
 #endif
