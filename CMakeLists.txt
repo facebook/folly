@@ -329,6 +329,7 @@ if (BUILD_TESTS)
       ${LIBGMOCK_DEFINES}
   )
   target_include_directories(folly_test_support
+    SYSTEM
     PUBLIC
       ${LIBGMOCK_INCLUDE_DIR}
   )
