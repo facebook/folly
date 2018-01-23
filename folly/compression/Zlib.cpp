@@ -194,32 +194,28 @@ std::unique_ptr<StreamCodec> ZlibStreamCodec::createStream(
   return std::make_unique<ZlibStreamCodec>(options, level);
 }
 
-static bool inBounds(int value, int low, int high) {
-  return (value >= low) && (value <= high);
-}
-
-static int zlibConvertLevel(int level) {
+ZlibStreamCodec::ZlibStreamCodec(Options options, int level)
+    : StreamCodec(getCodecType(options)) {
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
-      return 1;
+      level = 1;
+      break;
     case COMPRESSION_LEVEL_DEFAULT:
-      return 6;
+      level = Z_DEFAULT_COMPRESSION;
+      break;
     case COMPRESSION_LEVEL_BEST:
-      return 9;
+      level = 9;
+      break;
   }
-  if (!inBounds(level, 0, 9)) {
+  auto inBounds = [](int value, int low, int high) {
+    return (value >= low) && (value <= high);
+  };
+
+  if (level != Z_DEFAULT_COMPRESSION && !inBounds(level, 0, 9)) {
     throw std::invalid_argument(
         to<std::string>("ZlibStreamCodec: invalid level: ", level));
   }
-  return level;
-}
-
-ZlibStreamCodec::ZlibStreamCodec(Options options, int level)
-    : StreamCodec(
-          getCodecType(options),
-          zlibConvertLevel(level),
-          getCodecType(options) == CodecType::GZIP ? "gzip" : "zlib"),
-      level_(zlibConvertLevel(level)) {
+  level_ = level;
   options_ = options;
 
   // Although zlib allows a windowSize of 8..15, a value of 8 is not

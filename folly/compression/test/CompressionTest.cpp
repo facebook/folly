@@ -26,6 +26,7 @@
 #include <boost/noncopyable.hpp>
 #include <glog/logging.h>
 
+#include <folly/Benchmark.h>
 #include <folly/Memory.h>
 #include <folly/Random.h>
 #include <folly/Varint.h>
@@ -1488,3 +1489,14 @@ INSTANTIATE_TEST_CASE_P(
 } // namespace test
 } // namespace io
 } // namespace folly
+
+int main(int argc, char *argv[]) {
+  testing::InitGoogleTest(&argc, argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  auto ret = RUN_ALL_TESTS();
+  if (!ret) {
+    folly::runBenchmarksOnFlag();
+  }
+  return ret;
+}

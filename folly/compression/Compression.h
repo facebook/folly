@@ -24,7 +24,6 @@
 
 #include <folly/Optional.h>
 #include <folly/Range.h>
-#include <folly/compression/Counters.h>
 #include <folly/io/IOBuf.h>
 
 /**
@@ -186,11 +185,7 @@ class Codec {
       folly::Optional<uint64_t> uncompressedLength = folly::none) const;
 
  protected:
-  Codec(
-      CodecType type,
-      folly::Optional<int> level = folly::none,
-      folly::StringPiece name = {},
-      bool counters = true);
+  explicit Codec(CodecType type);
 
  public:
   /**
@@ -236,14 +231,6 @@ class Codec {
       folly::Optional<uint64_t> uncompressedLength) const;
 
   CodecType type_;
-  folly::detail::CompressionCounter bytesBeforeCompression_;
-  folly::detail::CompressionCounter bytesAfterCompression_;
-  folly::detail::CompressionCounter bytesBeforeDecompression_;
-  folly::detail::CompressionCounter bytesAfterDecompression_;
-  folly::detail::CompressionCounter compressions_;
-  folly::detail::CompressionCounter decompressions_;
-  folly::detail::CompressionCounter compressionMilliseconds_;
-  folly::detail::CompressionCounter decompressionMilliseconds_;
 };
 
 class StreamCodec : public Codec {
@@ -364,12 +351,7 @@ class StreamCodec : public Codec {
       FlushOp flushOp = StreamCodec::FlushOp::NONE);
 
  protected:
-  StreamCodec(
-      CodecType type,
-      folly::Optional<int> level = folly::none,
-      folly::StringPiece name = {},
-      bool counters = true)
-      : Codec(type, std::move(level), name, counters) {}
+  explicit StreamCodec(CodecType type) : Codec(type) {}
 
   // Returns the uncompressed length last passed to resetStream() or none if it
   // hasn't been called yet.
