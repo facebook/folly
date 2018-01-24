@@ -19,12 +19,14 @@
 namespace folly {
 namespace hazptr {
 
+namespace {
 memory_resource** default_mr_ptr() {
   /* library-local */ static memory_resource* default_mr =
       new_delete_resource();
   DEBUG_PRINT(&default_mr << " " << default_mr);
   return &default_mr;
 }
+} // namespace
 
 memory_resource* get_default_resource() {
   DEBUG_PRINT("");
