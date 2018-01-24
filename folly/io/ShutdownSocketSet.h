@@ -39,10 +39,6 @@ class ShutdownSocketSet : private boost::noncopyable {
    */
   explicit ShutdownSocketSet(int maxFd = 1 << 18);
 
-  // Singleton instance used by all thrift servers.
-  // May return nullptr on startup/shutdown.
-  static std::shared_ptr<ShutdownSocketSet> getInstance();
-
   /**
    * Add an already open socket to the list of sockets managed by
    * ShutdownSocketSet. You MUST close the socket by calling
