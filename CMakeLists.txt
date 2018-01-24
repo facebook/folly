@@ -86,7 +86,12 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
 )
 
-# Main folly library files
+# We currently build the main libfolly library by finding all sources
+# and header files.  We then exclude specific files below.
+#
+# In the future it would perhaps be nicer to explicitly list the files we want
+# to include, and to move the source lists in to separate per-subdirectory
+# CMakeLists.txt files.
 auto_sources(files "*.cpp" "RECURSE" "${FOLLY_DIR}")
 auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
 
@@ -103,14 +108,11 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "/tools/"
     "Benchmark.cpp$"
     "Test.cpp$"
-  IGNORE_MATCHES
-    "/Benchmark.cpp$"
 )
 list(REMOVE_ITEM files
   ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
   ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
   ${FOLLY_DIR}/experimental/symbolizer/ElfUtil.cpp
-  ${FOLLY_DIR}/futures/test/Benchmark.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/detail/SlowFingerprint.h
@@ -336,6 +338,7 @@ if (BUILD_TESTS)
   target_link_libraries(folly_test_support
     PUBLIC
       Boost::thread
+      follybenchmark
       folly
       ${LIBGMOCK_LIBRARY}
   )
@@ -675,3 +678,5 @@ if (BUILD_TESTS)
       TEST varint_test SOURCES VarintTest.cpp
   )
 endif()
+
+add_subdirectory(folly)
