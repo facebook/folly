@@ -100,6 +100,7 @@ auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
 REMOVE_MATCHES_FROM_LISTS(files hfiles
   MATCHES
     "/build/"
+    "/experimental/exception_tracer/"
     "/experimental/hazptr/bench/"
     "/experimental/hazptr/example/"
     "/experimental/logging/example/"
@@ -124,7 +125,6 @@ list(REMOVE_ITEM hfiles
 if (NOT FOLLY_USE_SYMBOLIZER)
   REMOVE_MATCHES_FROM_LISTS(files hfiles
     MATCHES
-      "/experimental/exception_tracer/"
       "/experimental/symbolizer/"
   )
   list(REMOVE_ITEM files

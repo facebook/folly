@@ -9,3 +9,5 @@ install(TARGETS follybenchmark
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib)
+
+add_subdirectory(experimental/exception_tracer)
