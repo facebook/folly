@@ -641,6 +641,29 @@ inline void dynamic::update_missing(const dynamic& mergeObj1) {
   }
 }
 
+inline void dynamic::merge_patch(const dynamic& patch) {
+  auto& self = *this;
+  if (!patch.isObject()) {
+    self = patch;
+    return;
+  }
+  // if we are not an object, erase all contents, reset to object
+  if (!isObject()) {
+    self = object;
+  }
+  for (const auto& pair : patch.items()) {
+    if (pair.second.isNull()) {
+      // if name could be found in current object, remove it
+      auto it = self.find(pair.first);
+      if (it != self.items().end()) {
+        self.erase(it);
+      }
+    } else {
+      self[pair.first].merge_patch(pair.second);
+    }
+  }
+}
+
 inline dynamic dynamic::merge(
     const dynamic& mergeObj1,
     const dynamic& mergeObj2) {

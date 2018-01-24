@@ -623,3 +623,98 @@ TEST(Dynamic, ObjectIteratorInterop) {
   decltype(cit) cit2 = it2;
   EXPECT_EQ(cit, cit2);
 }
+
+TEST(Dynamic, MergePatchWithNonObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+
+  dynamic patch = dynamic::array(1, 2, 3);
+  target.merge_patch(patch);
+
+  EXPECT_TRUE(target.isArray());
+}
+
+TEST(Dynamic, MergePatchReplaceInFlatObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("a", "z");
+
+  target.merge_patch(patch);
+
+  EXPECT_EQ("z", target["a"].getString());
+  EXPECT_EQ("d", target["c"].getString());
+}
+
+TEST(Dynamic, MergePatchAddInFlatObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("e", "f");
+  target.merge_patch(patch);
+
+  EXPECT_EQ("b", target["a"].getString());
+  EXPECT_EQ("d", target["c"].getString());
+  EXPECT_EQ("f", target["e"].getString());
+}
+
+TEST(Dynamic, MergePatchReplaceInNestedObject) {
+  dynamic target = dynamic::object("a", dynamic::object("d", 10))("b", "c");
+  dynamic patch = dynamic::object("a", dynamic::object("d", 100));
+  target.merge_patch(patch);
+
+  EXPECT_EQ(100, target["a"]["d"].getInt());
+  EXPECT_EQ("c", target["b"].getString());
+}
+
+TEST(Dynamic, MergePatchAddInNestedObject) {
+  dynamic target = dynamic::object("a", dynamic::object("d", 10))("b", "c");
+  dynamic patch = dynamic::object("a", dynamic::object("e", "f"));
+
+  target.merge_patch(patch);
+
+  EXPECT_EQ(10, target["a"]["d"].getInt());
+  EXPECT_EQ("f", target["a"]["e"].getString());
+  EXPECT_EQ("c", target["b"].getString());
+}
+
+TEST(Dynamic, MergeNestePatch) {
+  dynamic target = dynamic::object("a", dynamic::object("d", 10))("b", "c");
+  dynamic patch = dynamic::object(
+      "a", dynamic::object("d", dynamic::array(1, 2, 3)))("b", 100);
+  target.merge_patch(patch);
+
+  EXPECT_EQ(100, target["b"].getInt());
+  {
+    auto ary = patch["a"]["d"];
+    ASSERT_TRUE(ary.isArray());
+    EXPECT_EQ(1, ary[0].getInt());
+    EXPECT_EQ(2, ary[1].getInt());
+    EXPECT_EQ(3, ary[2].getInt());
+  }
+}
+
+TEST(Dynamic, MergePatchRemoveInFlatObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("c", nullptr);
+  target.merge_patch(patch);
+
+  EXPECT_EQ("b", target["a"].getString());
+  EXPECT_EQ(0, target.count("c"));
+}
+
+TEST(Dynamic, MergePatchRemoveInNestedObject) {
+  dynamic target =
+      dynamic::object("a", dynamic::object("d", 10)("e", "f"))("b", "c");
+  dynamic patch = dynamic::object("a", dynamic::object("e", nullptr));
+  target.merge_patch(patch);
+
+  EXPECT_EQ(10, target["a"]["d"].getInt());
+  EXPECT_EQ(0, target["a"].count("e"));
+  EXPECT_EQ("c", target["b"].getString());
+}
+
+TEST(Dynamic, MergePatchRemoveNonExistent) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("e", nullptr);
+  target.merge_patch(patch);
+
+  EXPECT_EQ("b", target["a"].getString());
+  EXPECT_EQ("d", target["c"].getString());
+  EXPECT_EQ(2, target.size());
+}

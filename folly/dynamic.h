@@ -466,6 +466,12 @@ struct dynamic : private boost::operators<dynamic> {
   static dynamic merge(const dynamic& mergeObj1, const dynamic& mergeObj2);
 
   /*
+   * Implement recursive version of RFC7386: JSON merge patch. This modifies
+   * the current object.
+   */
+  void merge_patch(const dynamic& patch);
+
+  /*
    * Erase an element from a dynamic object, by key.
    *
    * Invalidates iterators to the element being erased.
