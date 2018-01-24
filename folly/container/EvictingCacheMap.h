@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <algorithm>
@@ -132,6 +131,11 @@ class EvictingCacheMap {
   typedef iterator_base<
     const TPair,
     typename NodeList::const_reverse_iterator> const_reverse_iterator;
+
+  // the default map typedefs
+  using key_type = TKey;
+  using mapped_type = TValue;
+  using hasher = THash;
 
   /**
    * Construct a EvictingCacheMap
