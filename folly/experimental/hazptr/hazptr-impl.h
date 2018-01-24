@@ -668,7 +668,8 @@ void hazptr_domain::retire(T* obj, D reclaim) {
   struct hazptr_retire_node : hazptr_obj {
     std::unique_ptr<T, D> obj_;
 
-    hazptr_retire_node(T* obj, D reclaim) : obj_{obj, std::move(reclaim)} {}
+    hazptr_retire_node(T* retireObj, D toReclaim)
+        : obj_{retireObj, std::move(toReclaim)} {}
   };
 
   auto node = new hazptr_retire_node(obj, std::move(reclaim));
