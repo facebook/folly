@@ -266,6 +266,7 @@ nobase_follyinclude_HEADERS = \
 	IntrusiveList.h \
 	io/Cursor.h \
 	io/Cursor-inl.h \
+	io/GlobalShutdownSocketSet.h \
 	io/IOBuf.h \
 	io/IOBufQueue.h \
 	io/RecordIO.h \
@@ -558,6 +559,7 @@ libfolly_la_SOURCES = \
 	IPAddressV6.cpp \
 	init/Init.cpp \
 	io/Cursor.cpp \
+	io/GlobalShutdownSocketSet.cpp \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \
