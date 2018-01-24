@@ -120,6 +120,32 @@ list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/detail/FingerprintPolynomial.h
 )
 
+# Explicitly include utility library code from inside
+# folly/test and folly/io/async/test/
+list(APPEND files
+  ${FOLLY_DIR}/io/async/test/ScopedBoundPort.cpp
+  ${FOLLY_DIR}/io/async/test/SocketPair.cpp
+  ${FOLLY_DIR}/io/async/test/TimeUtil.cpp
+)
+list(APPEND hfiles
+  ${FOLLY_DIR}/io/async/test/AsyncSSLSocketTest.h
+  ${FOLLY_DIR}/io/async/test/AsyncSocketTest2.h
+  ${FOLLY_DIR}/io/async/test/BlockingSocket.h
+  ${FOLLY_DIR}/io/async/test/MockAsyncSocket.h
+  ${FOLLY_DIR}/io/async/test/MockAsyncServerSocket.h
+  ${FOLLY_DIR}/io/async/test/MockAsyncSSLSocket.h
+  ${FOLLY_DIR}/io/async/test/MockAsyncTransport.h
+  ${FOLLY_DIR}/io/async/test/MockAsyncUDPSocket.h
+  ${FOLLY_DIR}/io/async/test/MockTimeoutManager.h
+  ${FOLLY_DIR}/io/async/test/ScopedBoundPort.h
+  ${FOLLY_DIR}/io/async/test/SocketPair.h
+  ${FOLLY_DIR}/io/async/test/TestSSLServer.h
+  ${FOLLY_DIR}/io/async/test/TimeUtil.h
+  ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
+  ${FOLLY_DIR}/io/async/test/Util.h
+  ${FOLLY_DIR}/test/TestUtils.h
+)
+
 # Exclude specific sources if we do not have third-party libraries
 # required to build them.
 if (NOT FOLLY_USE_SYMBOLIZER)
