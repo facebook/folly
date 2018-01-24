@@ -340,7 +340,7 @@ if (BUILD_TESTS)
       Boost::thread
       follybenchmark
       folly
-      ${LIBGMOCK_LIBRARY}
+      ${LIBGMOCK_LIBRARIES}
   )
   apply_folly_compile_options_to_target(folly_test_support)
 
