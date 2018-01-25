@@ -472,6 +472,11 @@ struct dynamic : private boost::operators<dynamic> {
   void merge_patch(const dynamic& patch);
 
   /*
+   * Computes JSON merge patch (RFC7386) needed to mutate from source to target
+   */
+  static dynamic merge_diff(const dynamic& source, const dynamic& target);
+
+  /*
    * Erase an element from a dynamic object, by key.
    *
    * Invalidates iterators to the element being erased.

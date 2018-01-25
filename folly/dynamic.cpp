@@ -321,6 +321,34 @@ void dynamic::destroy() noexcept {
   u_.nul = nullptr;
 }
 
+dynamic dynamic::merge_diff(const dynamic& source, const dynamic& target) {
+  if (!source.isObject() || source.type() != target.type()) {
+    return target;
+  }
+
+  dynamic diff = object;
+
+  // added/modified keys
+  for (const auto& pair : target.items()) {
+    auto it = source.find(pair.first);
+    if (it == source.items().end()) {
+      diff[pair.first] = pair.second;
+    } else {
+      diff[pair.first] = merge_diff(source[pair.first], target[pair.first]);
+    }
+  }
+
+  // removed keys
+  for (const auto& pair : source.items()) {
+    auto it = target.find(pair.first);
+    if (it == target.items().end()) {
+      diff[pair.first] = nullptr;
+    }
+  }
+
+  return diff;
+}
+
 //////////////////////////////////////////////////////////////////////
 
 } // namespace folly
