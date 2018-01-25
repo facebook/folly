@@ -171,7 +171,8 @@ class Baton {
       return;
     }
 
-    waitSlow(opt);
+    auto const deadline = std::chrono::steady_clock::time_point::max();
+    tryWaitSlow(deadline, opt);
   }
 
   /// Similar to wait, but doesn't block the thread if it hasn't been posted.
@@ -208,8 +209,8 @@ class Baton {
       return true;
     }
 
-    auto deadline = std::chrono::steady_clock::now() + timeout;
-    return tryWaitUntilSlow(deadline, opt);
+    auto const deadline = std::chrono::steady_clock::now() + timeout;
+    return tryWaitSlow(deadline, opt);
   }
 
   /// Similar to wait, but with a deadline. The thread is unblocked if the
@@ -231,7 +232,7 @@ class Baton {
       return true;
     }
 
-    return tryWaitUntilSlow(deadline, opt);
+    return tryWaitSlow(deadline, opt);
   }
 
   /// Alias to try_wait_for. Deprecated.
@@ -292,18 +293,27 @@ class Baton {
     }
   }
 
-  FOLLY_NOINLINE void waitSlow(const WaitOptions& opt) noexcept {
-    auto const deadline = std::chrono::steady_clock::time_point::max();
+  template <typename Clock, typename Duration>
+  FOLLY_NOINLINE bool tryWaitSlow(
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      const WaitOptions& opt) noexcept {
+    auto const forever = std::chrono::time_point<Clock, Duration>::max();
+
     if (spinWaitForEarlyDelivery(deadline, opt)) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
-      return;
+      return true;
     }
 
     if (!MayBlock) {
-      while (!try_wait()) {
+      while (true) {
+        if (try_wait()) {
+          return true;
+        }
+        if (deadline != forever && Clock::now() >= deadline) {
+          return false;
+        }
         std::this_thread::yield();
       }
-      return;
     }
 
     // guess we have to block :(
@@ -311,12 +321,22 @@ class Baton {
     if (!state_.compare_exchange_strong(expected, WAITING)) {
       // CAS failed, last minute reprieve
       assert(expected == EARLY_DELIVERY);
-      return;
+      return true;
     }
 
     while (true) {
-      detail::MemoryIdler::futexWait(state_, WAITING);
+      auto rv = detail::MemoryIdler::futexWaitUntil(state_, WAITING, deadline);
 
+      // Awoken by the deadline passing.
+      if (rv == detail::FutexResult::TIMEDOUT) {
+        assert(deadline != forever);
+        state_.store(TIMED_OUT, std::memory_order_release);
+        return false;
+      }
+
+      // Probably awoken by a matching wake event, but could also by awoken
+      // by an asynchronous signal or by a spurious wakeup.
+      //
       // state_ is the truth even if FUTEX_WAIT reported a matching
       // FUTEX_WAKE, since we aren't using type-stable storage and we
       // don't guarantee reuse.  The scenario goes like this: thread
@@ -334,52 +354,6 @@ class Baton {
       // It would be possible to add an extra state_ dance to communicate
       // that the futexWake has been sent so that we can be sure to consume
       // it before returning, but that would be a perf and complexity hit.
-      uint32_t s = state_.load(std::memory_order_acquire);
-      assert(s == WAITING || s == LATE_DELIVERY);
-
-      if (s == LATE_DELIVERY) {
-        return;
-      }
-      // retry
-    }
-  }
-
-  template <typename Clock, typename Duration>
-  FOLLY_NOINLINE bool tryWaitUntilSlow(
-      const std::chrono::time_point<Clock, Duration>& deadline,
-      const WaitOptions& opt) noexcept {
-    if (spinWaitForEarlyDelivery(deadline, opt)) {
-      assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
-      return true;
-    }
-
-    if (!MayBlock) {
-      while (true) {
-        if (try_wait()) {
-          return true;
-        }
-        if (Clock::now() >= deadline) {
-          return false;
-        }
-        std::this_thread::yield();
-      }
-    }
-
-    // guess we have to block :(
-    uint32_t expected = INIT;
-    if (!state_.compare_exchange_strong(expected, WAITING)) {
-      // CAS failed, last minute reprieve
-      assert(expected == EARLY_DELIVERY);
-      return true;
-    }
-
-    while (true) {
-      auto rv = state_.futexWaitUntil(WAITING, deadline);
-      if (rv == folly::detail::FutexResult::TIMEDOUT) {
-        state_.store(TIMED_OUT, std::memory_order_release);
-        return false;
-      }
-
       uint32_t s = state_.load(std::memory_order_acquire);
       assert(s == WAITING || s == LATE_DELIVERY);
       if (s == LATE_DELIVERY) {
