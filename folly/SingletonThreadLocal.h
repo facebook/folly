@@ -18,78 +18,111 @@
 
 #include <folly/Singleton.h>
 #include <folly/ThreadLocal.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 
-// SingletonThreadLocal
-//
-// This class can help you implement a per-thread leaky-singleton model within
-// your application. Please read the usage block at the top of Singleton.h as
-// the recommendations there are also generally applicable to this class.
-//
-// When we say this is "leaky" we mean that the T instances held by a
-// SingletonThreadLocal<T> will survive until their owning thread exits,
-// regardless of the lifetime of the singleton object holding them.  That
-// means that they can be safely used during process shutdown, and
-// that they can also be safely used in an application that spawns many
-// temporary threads throughout its life.
-//
-// Keywords to help people find this class in search:
-// Thread Local Singleton ThreadLocalSingleton
-template <typename T, typename Tag = detail::DefaultTag>
+/// SingletonThreadLocal
+///
+/// Useful for a per-thread leaky-singleton model in libraries and applications.
+///
+/// By "leaky" it is meant that the T instances held by the instantiation
+/// SingletonThreadLocal<T> will survive until their owning thread exits.
+/// Therefore, they can safely be used before main() begins and after main()
+/// ends, and they can also safely be used in an application that spawns many
+/// temporary threads throughout its life.
+///
+/// Example:
+///
+///   struct UsefulButHasExpensiveCtor {
+///     UsefulButHasExpensiveCtor(); // this is expensive
+///     Result operator()(Arg arg);
+///   };
+///
+///   Result useful(Arg arg) {
+///     using Useful = UsefulButHasExpensiveCtor;
+///     auto& useful = folly::SingletonThreadLocal<Useful>::get();
+///     return useful(arg);
+///   }
+///
+/// As an example use-case, the random generators in <random> are expensive to
+/// construct. And their constructors are deterministic, but many cases require
+/// that they be randomly seeded. So folly::Random makes good canonical uses of
+/// folly::SingletonThreadLocal so that a seed is computed from the secure
+/// random device once per thread, and the random generator is constructed with
+/// the seed once per thread.
+///
+/// Keywords to help people find this class in search:
+/// Thread Local Singleton ThreadLocalSingleton
+template <
+    typename T,
+    typename Tag = detail::DefaultTag,
+    typename Make = detail::DefaultMake<T>>
 class SingletonThreadLocal {
- public:
-  using CreateFunc = std::function<T*(void)>;
-
-  SingletonThreadLocal() : SingletonThreadLocal([]() { return new T(); }) {}
-
-  template <typename Create>
-  FOLLY_NOINLINE explicit SingletonThreadLocal(Create create)
-      : singleton_([create = std::move(create)]() mutable {
-          return new ThreadLocalT([create = std::move(create)]() mutable {
-            return new Wrapper(std::unique_ptr<T>(create()));
-          });
-        }) {}
-
-  FOLLY_ALWAYS_INLINE static T& get() {
-#ifdef FOLLY_TLS
-    return *localPtr() ? **localPtr() : *(*localPtr() = &getSlow());
-#else
-    return **SingletonT::get();
-#endif
-  }
-
  private:
-  FOLLY_NOINLINE static T& getSlow() {
-    return **SingletonT::get();
-  }
+  SingletonThreadLocal() = delete;
 
-#ifdef FOLLY_TLS
-  FOLLY_ALWAYS_INLINE static T** localPtr() {
-    static FOLLY_TLS T* localPtr = nullptr;
-    return &localPtr;
-  }
-#endif
+  struct Wrapper {
+    // keep as first field, to save 1 instr in the fast path
+    union {
+      alignas(alignof(T)) unsigned char storage[sizeof(T)];
+      T object;
+    };
+    Wrapper** cache{};
 
-  class Wrapper {
-   public:
-    explicit Wrapper(std::unique_ptr<T> t) : t_(std::move(t)) {}
-
-    ~Wrapper() {
-#ifdef FOLLY_TLS
-      *localPtr() = nullptr;
-#endif
+    /* implicit */ operator T&() {
+      return object;
     }
 
-    T& operator*() { return *t_; }
-
-   private:
-    std::unique_ptr<T> t_;
+    // normal make types
+    template <
+        typename S = T,
+        _t<std::enable_if<is_invocable_r<S, Make>::value, int>> = 0>
+    Wrapper() {
+      (void)new (storage) S(Make{}());
+    }
+    // default and special make types for non-move-constructible T, until C++17
+    template <
+        typename S = T,
+        _t<std::enable_if<!is_invocable_r<S, Make>::value, int>> = 0>
+    Wrapper() {
+      (void)Make{}(storage);
+    }
+    ~Wrapper() {
+      if (cache) {
+        *cache = nullptr;
+      }
+      object.~T();
+    }
   };
 
-  using ThreadLocalT = ThreadLocal<Wrapper>;
-  using SingletonT = LeakySingleton<ThreadLocalT, Tag>;
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static Wrapper& getWrapperInline() {
+    static LeakySingleton<ThreadLocal<Wrapper>, Tag> singleton;
+    return *singleton.get();
+  }
 
-  SingletonT singleton_;
+  FOLLY_NOINLINE static Wrapper& getWrapperOutline() {
+    return getWrapperInline();
+  }
+
+  /// Benchmarks indicate that getSlow being inline but containing a call to
+  /// getWrapperOutline is faster than getSlow being outline but containing
+  /// a call to getWrapperInline, which would otherwise produce smaller code.
+  FOLLY_ALWAYS_INLINE static Wrapper& getSlow(Wrapper*& cache) {
+    cache = &getWrapperOutline();
+    cache->cache = &cache;
+    return *cache;
+  }
+
+ public:
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& get() {
+    // the absolute minimal conditional-compilation
+#ifdef FOLLY_TLS
+    static FOLLY_TLS Wrapper* cache;
+    return FOLLY_LIKELY(!!cache) ? *cache : getSlow(cache);
+#else
+    return getWrapperInline();
+#endif
+  }
 };
 } // namespace folly

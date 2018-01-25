@@ -142,9 +142,7 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
 
 std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
   using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;
-  static SingletonT singleton;
-
-  return singleton.get();
+  return SingletonT::get();
 }
 
 RequestContext* RequestContext::get() {

@@ -344,6 +344,9 @@ class ScopedAlternateSignalStack {
     setAlternateStack(stack_->data(), stack_->size());
   }
 
+  ScopedAlternateSignalStack(ScopedAlternateSignalStack&&) = default;
+  ScopedAlternateSignalStack& operator=(ScopedAlternateSignalStack&&) = default;
+
   ~ScopedAlternateSignalStack() {
     if (stack_) {
       unsetAlternateStack();
@@ -357,8 +360,7 @@ class ScopedAlternateSignalStack {
 } // namespace
 
 void FiberManager::registerAlternateSignalStack() {
-  static folly::SingletonThreadLocal<ScopedAlternateSignalStack> singleton;
-  singleton.get();
+  SingletonThreadLocal<ScopedAlternateSignalStack>::get();
 
   alternateSignalStackRegistered_ = true;
 }

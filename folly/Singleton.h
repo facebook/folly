@@ -182,6 +182,15 @@ namespace detail {
 
 struct DefaultTag {};
 
+template <typename T>
+struct DefaultMake {
+  // Required form until C++17, which permits returning objects of types which
+  // are neither copy-constructible nor move-constructible.
+  T* operator()(unsigned char (&buf)[sizeof(T)]) const {
+    return new (buf) T();
+  }
+};
+
 // A TypeDescriptor is the unique handle for a given singleton.  It is
 // a combinaiton of the type and of the optional name, and is used as
 // a key in unordered_maps.

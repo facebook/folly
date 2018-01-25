@@ -129,25 +129,15 @@ struct RandomTag {};
 } // namespace
 
 void Random::secureRandom(void* data, size_t size) {
-  static SingletonThreadLocal<BufferedRandomDevice, RandomTag>
-      bufferedRandomDevice;
-  bufferedRandomDevice.get().get(data, size);
+  using Single = SingletonThreadLocal<BufferedRandomDevice, RandomTag>;
+  Single::get().get(data, size);
 }
 
-class ThreadLocalPRNG::LocalInstancePRNG {
- public:
-  LocalInstancePRNG() : rng(Random::create()) {}
-
-  Random::DefaultGenerator rng;
-};
-
-ThreadLocalPRNG::ThreadLocalPRNG() {
-  static SingletonThreadLocal<ThreadLocalPRNG::LocalInstancePRNG, RandomTag>
-      localInstancePRNG;
-  local_ = &localInstancePRNG.get();
-}
-
-uint32_t ThreadLocalPRNG::getImpl(LocalInstancePRNG* local) {
-  return local->rng();
+ThreadLocalPRNG::result_type ThreadLocalPRNG::operator()() {
+  struct Wrapper {
+    Random::DefaultGenerator object{Random::create()};
+  };
+  using Single = SingletonThreadLocal<Wrapper, RandomTag>;
+  return Single::get().object();
 }
 } // namespace folly

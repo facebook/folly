@@ -36,7 +36,6 @@ struct Foo {
   }
 };
 using FooSingletonTL = SingletonThreadLocal<Foo>;
-FooSingletonTL theFooSingleton;
 } // namespace
 
 TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
@@ -63,4 +62,38 @@ TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   EXPECT_EQ(threads.size(), fooAddresses.rlock()->size());
   EXPECT_EQ(threads.size(), fooCreatedCount);
   EXPECT_EQ(threads.size(), fooDeletedCount);
+}
+
+TEST(SingletonThreadLocalTest, MoveConstructibleMake) {
+  struct Foo {
+    int a, b;
+    Foo(int a_, int b_) : a(a_), b(b_) {}
+    Foo(Foo&&) = default;
+    Foo& operator=(Foo&&) = default;
+  };
+  struct Tag {};
+  struct Make {
+    Foo operator()() const {
+      return Foo(3, 4);
+    }
+  };
+  auto& single = SingletonThreadLocal<Foo, Tag, Make>::get();
+  EXPECT_EQ(4, single.b);
+}
+
+TEST(SingletonThreadLocalTest, NotMoveConstructibleMake) {
+  struct Foo {
+    int a, b;
+    Foo(int a_, int b_) : a(a_), b(b_) {}
+    Foo(Foo&&) = delete;
+    Foo& operator=(Foo&&) = delete;
+  };
+  struct Tag {};
+  struct Make {
+    Foo* operator()(unsigned char (&buf)[sizeof(Foo)]) const {
+      return new (buf) Foo(3, 4);
+    }
+  };
+  auto& single = SingletonThreadLocal<Foo, Tag, Make>::get();
+  EXPECT_EQ(4, single.b);
 }
