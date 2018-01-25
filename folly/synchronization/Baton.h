@@ -318,7 +318,11 @@ class Baton {
 
     // guess we have to block :(
     uint32_t expected = INIT;
-    if (!state_.compare_exchange_strong(expected, WAITING)) {
+    if (!state_.compare_exchange_strong(
+            expected,
+            WAITING,
+            std::memory_order_relaxed,
+            std::memory_order_relaxed)) {
       // CAS failed, last minute reprieve
       assert(expected == EARLY_DELIVERY);
       return true;
