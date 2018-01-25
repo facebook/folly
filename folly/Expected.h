@@ -28,8 +28,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <glog/logging.h>
-
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Likely.h>
