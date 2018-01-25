@@ -160,5 +160,32 @@ auto uncurry(F&& f)
       std::forward<F>(f));
 }
 
+#if __cpp_lib_make_from_tuple || _MSC_VER
+
+/* using override */ using std::make_from_tuple;
+
+#else
+
+namespace detail {
+namespace apply_tuple {
+template <class T>
+struct Construct {
+  template <class... Args>
+  constexpr T operator()(Args&&... args) {
+    return T(std::forward<Args>(args)...);
+  }
+};
+} // namespace apply_tuple
+} // namespace detail
+
+//  mimic: std::make_from_tuple, C++17
+template <class T, class Tuple>
+constexpr T make_from_tuple(Tuple&& t) {
+  return applyTuple(
+      detail::apply_tuple::Construct<T>(), std::forward<Tuple>(t));
+}
+
+#endif
+
 //////////////////////////////////////////////////////////////////////
 } // namespace folly
