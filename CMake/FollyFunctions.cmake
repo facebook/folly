@@ -259,10 +259,19 @@ function(folly_define_tests)
         ${test_${cur_test}_sources}
       )
       if (HAVE_CMAKE_GTEST)
+        # If we have CMake's built-in gtest support use it to add each test
+        # function as a separate test.
         gtest_add_tests(TARGET ${cur_test_name}
                         TEST_PREFIX "${cur_test_name}."
                         TEST_LIST test_cases)
         set_tests_properties(${test_cases} PROPERTIES TIMEOUT 120)
+      else()
+        # Otherwise add each test executable as a single test.
+        add_test(
+          NAME ${cur_test_name}
+          COMMAND ${cur_test_name}
+        )
+        set_tests_properties(${cur_test_name} PROPERTIES TIMEOUT 120)
       endif()
       if (NOT "x${test_${cur_test}_content_dir}" STREQUAL "x")
         # Copy the content directory to the output directory tree so that
