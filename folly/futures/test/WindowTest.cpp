@@ -84,6 +84,34 @@ TEST(Window, basic) {
   }
 }
 
+TEST(Window, exception) {
+  std::vector<int> ints = {1, 2, 3, 4};
+  std::vector<Promise<int>> ps(4);
+
+  auto res = reduce(
+      window(
+          ints,
+          [&ps](int i) {
+            if (i > 2) {
+              throw std::runtime_error("exception should not kill process");
+            }
+            return ps[i].getFuture();
+          },
+          2),
+      0,
+      [](int sum, const Try<int>& b) {
+        sum += b.hasException<std::exception>() ? 1 : 0;
+        return sum;
+      });
+
+  for (auto& p : ps) {
+    p.setValue(0);
+  }
+
+  // Should have received 2 exceptions.
+  EXPECT_EQ(2, res.get());
+}
+
 TEST(Window, parallel) {
   std::vector<int> input;
   std::vector<Promise<int>> ps(10);
