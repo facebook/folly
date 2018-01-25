@@ -27,6 +27,7 @@
 #include <folly/detail/MemoryIdler.h>
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/WaitOptions.h>
+#include <folly/synchronization/detail/Spin.h>
 
 namespace folly {
 
@@ -258,62 +259,17 @@ class Baton {
     TIMED_OUT = 4,
   };
 
-  // Spin for "some time"
-  //
-  // @return       true if we received an early delivery during the wait,
-  //               false otherwise. If the function returns true then
-  //               state_ is guaranteed to be EARLY_DELIVERY
-  template <typename Clock, typename Duration>
-  bool spinWaitForEarlyDelivery(
-      const std::chrono::time_point<Clock, Duration>& deadline,
-      const WaitOptions& opt) noexcept {
-    auto tbegin = Clock::now();
-    while (true) {
-      if (try_wait()) {
-        return true;
-      }
-
-      auto const tnow = Clock::now();
-      if (tnow >= deadline) {
-        return false;
-      }
-
-      // Backward time discontinuity in Clock? revise pre_block starting point
-      tbegin = std::min(tbegin, tnow);
-      auto const dur = std::chrono::duration_cast<Duration>(tnow - tbegin);
-      if (dur >= opt.spin_max()) {
-        return false;
-      }
-
-      // The pause instruction is the polite way to spin, but it doesn't
-      // actually affect correctness to omit it if we don't have it.
-      // Pausing donates the full capabilities of the current core to
-      // its other hyperthreads for a dozen cycles or so
-      asm_volatile_pause();
-    }
-  }
-
   template <typename Clock, typename Duration>
   FOLLY_NOINLINE bool tryWaitSlow(
       const std::chrono::time_point<Clock, Duration>& deadline,
       const WaitOptions& opt) noexcept {
-    auto const forever = std::chrono::time_point<Clock, Duration>::max();
-
-    if (spinWaitForEarlyDelivery(deadline, opt)) {
-      assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
+    if (detail::spin_pause_until(deadline, opt, [=] { return ready(); })) {
+      assert(ready());
       return true;
     }
 
     if (!MayBlock) {
-      while (true) {
-        if (try_wait()) {
-          return true;
-        }
-        if (deadline != forever && Clock::now() >= deadline) {
-          return false;
-        }
-        std::this_thread::yield();
-      }
+      return detail::spin_yield_until(deadline, [=] { return ready(); });
     }
 
     // guess we have to block :(
@@ -333,7 +289,7 @@ class Baton {
 
       // Awoken by the deadline passing.
       if (rv == detail::FutexResult::TIMEDOUT) {
-        assert(deadline != forever);
+        assert(deadline != (std::chrono::time_point<Clock, Duration>::max()));
         state_.store(TIMED_OUT, std::memory_order_release);
         return false;
       }

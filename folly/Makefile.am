@@ -446,6 +446,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/WaitOptions.h \
 	synchronization/detail/AtomicUtils.h \
 	synchronization/detail/Sleeper.h \
+	synchronization/detail/Spin.h \
 	system/MemoryMapping.h \
 	system/Shell.h \
 	system/ThreadId.h \

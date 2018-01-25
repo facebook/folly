@@ -21,6 +21,7 @@
 #include <folly/detail/MemoryIdler.h>
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/WaitOptions.h>
+#include <folly/synchronization/detail/Spin.h>
 
 #include <glog/logging.h>
 
@@ -279,36 +280,36 @@ template <typename Clock, typename Duration>
 FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
     const std::chrono::time_point<Clock, Duration>& deadline,
     const WaitOptions& opt) noexcept {
-  auto tbegin = Clock::now();
-  while (true) {
-    auto before = state_.load(std::memory_order_acquire);
+  if (detail::spin_pause_until(deadline, opt, [=] { return ready(); })) {
+    return true;
+  }
+
+  if (!MayBlock) {
+    return detail::spin_yield_until(deadline, [=] { return ready(); });
+  }
+
+  auto before = state_.load(std::memory_order_relaxed);
+  while (before == NOTREADY &&
+         !state_.compare_exchange_strong(
+             before,
+             BLOCKED,
+             std::memory_order_relaxed,
+             std::memory_order_relaxed)) {
     if (before == READY) {
       return true;
     }
-    if (Clock::now() >= deadline) {
+  }
+
+  while (true) {
+    auto rv = detail::MemoryIdler::futexWaitUntil(state_, BLOCKED, deadline);
+    if (rv == detail::FutexResult::TIMEDOUT) {
+      assert(deadline != (std::chrono::time_point<Clock, Duration>::max()));
       return false;
     }
-    if (MayBlock) {
-      auto tnow = Clock::now();
-      if (tnow < tbegin) {
-        // backward time discontinuity in Clock, revise spin_max starting point
-        tbegin = tnow;
-      }
-      auto dur = std::chrono::duration_cast<Duration>(tnow - tbegin);
-      if (dur >= opt.spin_max()) {
-        if (before == NOTREADY) {
-          if (!state_.compare_exchange_strong(
-                  before,
-                  BLOCKED,
-                  std::memory_order_relaxed,
-                  std::memory_order_relaxed)) {
-            continue;
-          }
-        }
-        detail::MemoryIdler::futexWaitUntil(state_, BLOCKED, deadline);
-      }
+
+    if (ready()) {
+      return true;
     }
-    asm_volatile_pause();
   }
 }
 
