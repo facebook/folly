@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
 
 # includes
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
@@ -14,7 +14,7 @@ set(PACKAGE_BUGREPORT "https://github.com/facebook/folly/issues")
 # 150+ tests in the root folder anyone? No? I didn't think so.
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-project(${PACKAGE_NAME} CXX)
+project(${PACKAGE_NAME} CXX C)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Check target architecture
@@ -363,7 +363,7 @@ if (BUILD_TESTS)
   )
   target_link_libraries(folly_test_support
     PUBLIC
-      Boost::thread
+      ${BOOST_LIBRARIES}
       follybenchmark
       folly
       ${LIBGMOCK_LIBRARIES}

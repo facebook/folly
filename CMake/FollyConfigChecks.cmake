@@ -1,7 +1,7 @@
 include(CheckCXXSourceCompiles)
 include(CheckCXXSourceRuns)
 include(CheckFunctionExists)
-include(CheckIncludeFile)
+include(CheckIncludeFileCXX)
 include(CheckSymbolExists)
 include(CheckTypeSize)
 include(CheckCXXCompilerFlag)

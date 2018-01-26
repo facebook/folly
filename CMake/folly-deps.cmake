@@ -1,6 +1,7 @@
 include(CheckCXXSourceCompiles)
+include(CheckIncludeFileCXX)
 
-find_package(Boost 1.55.0 MODULE
+find_package(Boost 1.51.0 MODULE
   COMPONENTS
     context
     chrono
@@ -12,17 +13,8 @@ find_package(Boost 1.55.0 MODULE
     thread
   REQUIRED
 )
-set(FOLLY_SHINY_DEPENDENCIES
-  Boost::chrono
-  Boost::context
-  Boost::date_time
-  Boost::filesystem
-  Boost::program_options
-  Boost::regex
-  Boost::system
-  OpenSSL::SSL
-  OpenSSL::Crypto
-)
+list(APPEND FOLLY_LINK_LIBRARIES ${Boost_LIBRARIES})
+list(APPEND FOLLY_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIRS})
 
 find_package(DoubleConversion MODULE REQUIRED)
 list(APPEND FOLLY_LINK_LIBRARIES ${DOUBLE_CONVERSION_LIBRARY})
@@ -69,6 +61,8 @@ else()
 endif()
 
 find_package(OpenSSL MODULE REQUIRED)
+list(APPEND FOLLY_LINK_LIBRARIES ${OPENSSL_LIBRARIES})
+list(APPEND FOLLY_INCLUDE_DIRECTORIES ${OPENSSL_INCLUDE_DIR})
 
 find_package(PThread MODULE)
 set(FOLLY_HAVE_PTHREAD ${LIBPTHREAD_FOUND})
