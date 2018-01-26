@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/SmallLocks.h>
+#include <folly/synchronization/SmallLocks.h>
 
 #include <cassert>
 #include <condition_variable>

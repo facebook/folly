@@ -37,7 +37,7 @@
 #include <boost/noncopyable.hpp>
 
 #include <folly/Portability.h>
-#include <folly/SmallLocks.h>
+#include <folly/synchronization/SmallLocks.h>
 
 namespace folly {
 

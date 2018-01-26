@@ -48,13 +48,13 @@
 #include <folly/ConstexprMath.h>
 #include <folly/FormatTraits.h>
 #include <folly/Portability.h>
-#include <folly/SmallLocks.h>
 #include <folly/Traits.h>
 #include <folly/lang/Assume.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Malloc.h>
 #include <folly/portability/TypeTraits.h>
+#include <folly/synchronization/SmallLocks.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING

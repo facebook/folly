@@ -54,7 +54,7 @@ constexpr_math_test_LDADD = libfollytestmain.la
 TESTS += constexpr_math_test
 
 if RUN_ARCH_SPECIFIC_TESTS
-small_locks_test_SOURCES = SmallLocksTest.cpp
+small_locks_test_SOURCES = ../synchronization/test/SmallLocksTest.cpp
 small_locks_test_LDADD = libfollytestmain.la
 TESTS += small_locks_test
 

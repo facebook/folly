@@ -636,6 +636,7 @@ if (BUILD_TESTS)
 
     DIRECTORY synchronization/test/
       TEST atomic_struct_test SOURCES AtomicStructTest.cpp
+      TEST small_locks_test SOURCES SmallLocksTest.cpp
 
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
@@ -689,7 +690,7 @@ if (BUILD_TESTS)
           JsonOtherTest.cpp
       TEST lazy_test SOURCES LazyTest.cpp
       TEST lock_traits_test SOURCES LockTraitsTest.cpp
-      TEST locks_test SOURCES SmallLocksTest.cpp SpinLockTest.cpp
+      TEST locks_test SOURCES SpinLockTest.cpp
       TEST logging_test SOURCES LoggingTest.cpp
       TEST math_test SOURCES MathTest.cpp
       TEST map_util_test SOURCES MapUtilTest.cpp

@@ -411,7 +411,6 @@ nobase_follyinclude_HEADERS = \
 	Singleton.h \
 	Singleton-inl.h \
 	SingletonThreadLocal.h \
-	SmallLocks.h \
 	small_vector.h \
 	SocketAddress.h \
 	sorted_vector_types.h \
@@ -442,6 +441,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/ParkingLot.h \
 	synchronization/RWSpinLock.h \
 	synchronization/SaturatingSemaphore.h \
+	synchronization/SmallLocks.h \
 	synchronization/Tearable.h \
 	synchronization/WaitOptions.h \
 	synchronization/detail/AtomicUtils.h \
