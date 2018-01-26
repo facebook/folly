@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
+# We use the GoogleTest module if it is available (only in CMake 3.9+)
+# It requires CMP0057 to be enabled.
+if (POLICY CMP0057)
+  cmake_policy(SET CMP0057 NEW)
+endif()
 
 # includes
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
