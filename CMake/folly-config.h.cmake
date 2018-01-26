@@ -81,3 +81,5 @@
 #cmakedefine FOLLY_HAVE_LIBZ 1
 #cmakedefine FOLLY_HAVE_LIBZSTD 1
 #cmakedefine FOLLY_HAVE_LIBBZ2 1
+
+#cmakedefine FOLLY_SUPPORT_SHARED_LIBRARY 1

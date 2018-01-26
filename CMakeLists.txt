@@ -16,6 +16,17 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(${PACKAGE_NAME} CXX C)
 
+option(BUILD_SHARED_LIBS
+  "If enabled, build folly as a shared library.  \
+  This is generally discouraged, since folly does not commit to having \
+  a stable ABI."
+  OFF
+)
+# Mark BUILD_SHARED_LIBS as an "advanced" option, since enabling it
+# is generally discouraged.
+mark_as_advanced(BUILD_SHARED_LIBS)
+set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Check target architecture
   if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -196,6 +207,9 @@ add_library(folly_base OBJECT
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FormatTables.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
+if (BUILD_SHARED_LIBS)
+  set_property(TARGET folly_base PROPERTY POSITION_INDEPENDENT_CODE ON)
+endif()
 auto_source_group(folly ${FOLLY_DIR} ${files} ${hfiles})
 apply_folly_compile_options_to_target(folly_base)
 target_include_directories(folly_base PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
