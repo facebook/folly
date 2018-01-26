@@ -337,6 +337,20 @@ if (BUILD_TESTS)
   include(GoogleTest OPTIONAL RESULT_VARIABLE HAVE_CMAKE_GTEST)
   enable_testing()
 
+  # The ThreadLocalTest code uses a helper shared library for one of its tests.
+  # This can only be built if folly itself was built as a shared library.
+  if (BUILD_SHARED_LIBS)
+    add_library(thread_local_test_lib MODULE
+      ${FOLLY_DIR}/test/ThreadLocalTestLib.cpp
+    )
+    set_target_properties(thread_local_test_lib PROPERTIES PREFIX "")
+    apply_folly_compile_options_to_target(thread_local_test_lib)
+    target_link_libraries(thread_local_test_lib PUBLIC folly)
+    target_include_directories(
+      thread_local_test_lib
+      PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
+
   add_library(folly_test_support
     ${FOLLY_DIR}/test/common/TestMain.cpp
     ${FOLLY_DIR}/test/DeterministicSchedule.cpp

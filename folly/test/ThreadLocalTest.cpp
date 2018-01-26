@@ -578,17 +578,25 @@ TEST(ThreadLocal, Fork2) {
   }
 }
 
-// Elide this test when using any sanitizer. Otherwise, the dlopen'ed code
-// would end up running without e.g., ASAN-initialized data structures and
-// failing right away.
-#if !defined FOLLY_SANITIZE_ADDRESS && !defined UNDEFINED_SANITIZER && \
-    !defined FOLLY_SANITIZE_THREAD
+// Disable the SharedLibrary test when using any sanitizer. Otherwise, the
+// dlopen'ed code would end up running without e.g., ASAN-initialized data
+// structures and failing right away.
+//
+// We also cannot run this test unless folly was compiled with PIC support,
+// since we cannot build thread_local_test_lib.so without PIC.
+#if defined FOLLY_SANITIZE_ADDRESS || defined UNDEFINED_SANITIZER || \
+    defined FOLLY_SANITIZE_THREAD || !defined FOLLY_SUPPORT_SHARED_LIBRARY
+#define SHARED_LIBRARY_TEST_NAME DISABLED_SharedLibrary
+#else
+#define SHARED_LIBRARY_TEST_NAME SharedLibrary
+#endif
 
-TEST(ThreadLocal, SharedLibrary) {
+TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
   auto exe = fs::executable_path();
   auto lib = exe.parent_path() / "thread_local_test_lib.so";
   auto handle = dlopen(lib.string().c_str(), RTLD_LAZY);
-  EXPECT_NE(nullptr, handle);
+  ASSERT_NE(nullptr, handle)
+      << "unable to load " << lib.string() << ": " << dlerror();
 
   typedef void (*useA_t)();
   dlerror();
@@ -596,6 +604,7 @@ TEST(ThreadLocal, SharedLibrary) {
 
   const char *dlsym_error = dlerror();
   EXPECT_EQ(nullptr, dlsym_error);
+  ASSERT_NE(nullptr, useA);
 
   useA();
 
@@ -625,7 +634,6 @@ TEST(ThreadLocal, SharedLibrary) {
   t2.join();
 }
 
-#endif
 #endif
 
 namespace folly { namespace threadlocal_detail {
