@@ -79,8 +79,15 @@ void SymbolizedFrame::set(
   Dwarf(file.get()).findAddress(address, location, mode);
 }
 
-Symbolizer::Symbolizer(ElfCacheBase* cache, Dwarf::LocationInfoMode mode)
-    : cache_(cache ? cache : defaultElfCache()), mode_(mode) {}
+Symbolizer::Symbolizer(
+    ElfCacheBase* cache,
+    Dwarf::LocationInfoMode mode,
+    size_t symbolCacheSize)
+    : cache_(cache ? cache : defaultElfCache()), mode_(mode) {
+  if (symbolCacheSize > 0) {
+    symbolCache_.emplace(folly::in_place, symbolCacheSize);
+  }
+}
 
 void Symbolizer::symbolize(
     const uintptr_t* addresses,
@@ -139,12 +146,29 @@ void Symbolizer::symbolize(
       }
 
       auto const addr = addresses[i];
+      if (symbolCache_) {
+        // Need a write lock, because EvictingCacheMap brings found item to
+        // front of eviction list.
+        auto lockedSymbolCache = symbolCache_->wlock();
+
+        auto const iter = lockedSymbolCache->find(addr);
+        if (iter != lockedSymbolCache->end()) {
+          frame = iter->second;
+          continue;
+        }
+      }
+
       // Get the unrelocated, ELF-relative address.
       auto const adjusted = addr - base;
 
       if (elfFile->getSectionContainingAddress(adjusted)) {
         frame.set(elfFile, adjusted, mode_);
         --remaining;
+        if (symbolCache_) {
+          // frame may already have been set here.  That's ok, we'll just
+          // overwrite, which doesn't cause a correctness problem.
+          symbolCache_->wlock()->set(addr, frame);
+        }
       }
     }
   }
@@ -378,7 +402,9 @@ void StringSymbolizePrinter::doPrint(StringPiece sp) {
   buf_.append(sp.data(), sp.size());
 }
 
-StackTracePrinter::StackTracePrinter(size_t minSignalSafeElfCacheSize, int fd)
+SafeStackTracePrinter::SafeStackTracePrinter(
+    size_t minSignalSafeElfCacheSize,
+    int fd)
     : fd_(fd),
       elfCache_(std::max(countLoadedElfFiles(), minSignalSafeElfCacheSize)),
       printer_(
@@ -387,12 +413,12 @@ StackTracePrinter::StackTracePrinter(size_t minSignalSafeElfCacheSize, int fd)
           size_t(64) << 10), // 64KiB
       addresses_(std::make_unique<FrameArray<kMaxStackTraceDepth>>()) {}
 
-void StackTracePrinter::flush() {
+void SafeStackTracePrinter::flush() {
   printer_.flush();
   fsyncNoInt(fd_);
 }
 
-void StackTracePrinter::printStackTrace(bool symbolize) {
+void SafeStackTracePrinter::printStackTrace(bool symbolize) {
   SCOPE_EXIT {
     flush();
   };
@@ -408,7 +434,7 @@ void StackTracePrinter::printStackTrace(bool symbolize) {
 
     // Skip the top 2 frames:
     // getStackTraceSafe
-    // StackTracePrinter::printStackTrace (here)
+    // SafeStackTracePrinter::printStackTrace (here)
     //
     // Leaving signalHandler on the stack for clarity, I think.
     printer_.println(*addresses_, 2);
@@ -420,6 +446,52 @@ void StackTracePrinter::printStackTrace(bool symbolize) {
       print("\n");
     }
   }
+}
+
+FastStackTracePrinter::FastStackTracePrinter(
+    std::unique_ptr<SymbolizePrinter> printer,
+    size_t elfCacheSize,
+    size_t symbolCacheSize)
+    : elfCache_(
+          elfCacheSize == 0
+              ? nullptr
+              : new ElfCache{std::max(countLoadedElfFiles(), elfCacheSize)}),
+      printer_(std::move(printer)),
+      symbolizer_(
+          elfCache_ ? elfCache_.get() : defaultElfCache(),
+          Dwarf::LocationInfoMode::FULL,
+          symbolCacheSize) {}
+
+FastStackTracePrinter::~FastStackTracePrinter() {}
+
+void FastStackTracePrinter::printStackTrace(bool symbolize) {
+  SCOPE_EXIT {
+    printer_->flush();
+  };
+
+  FrameArray<kMaxStackTraceDepth> addresses;
+
+  if (!getStackTraceSafe(addresses)) {
+    printer_->print("(error retrieving stack trace)\n");
+  } else if (symbolize) {
+    symbolizer_.symbolize(addresses);
+
+    // Skip the top 2 frames:
+    // getStackTraceSafe
+    // FastStackTracePrinter::printStackTrace (here)
+    printer_->println(addresses, 2);
+  } else {
+    printer_->print("(safe mode, symbolizer not available)\n");
+    AddressFormatter formatter;
+    for (size_t i = 0; i < addresses.frameCount; ++i) {
+      printer_->print(formatter.format(addresses.addresses[i]));
+      printer_->print("\n");
+    }
+  }
+}
+
+void FastStackTracePrinter::flush() {
+  printer_->flush();
 }
 
 } // namespace symbolizer
