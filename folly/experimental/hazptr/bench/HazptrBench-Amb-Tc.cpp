@@ -17,6 +17,7 @@
 #define HAZPTR_AMB true
 #define HAZPTR_TC true
 #define HAZPTR_PRIV true
+#define HAZPTR_ENABLE_TLS true
 
 #include <folly/experimental/hazptr/bench/HazptrBench.h>
 #include <folly/portability/GFlags.h>

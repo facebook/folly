@@ -29,7 +29,17 @@
 #endif
 
 #ifndef HAZPTR_TC
+#if !defined(__has_feature)
+#define __has_feature(A) 1
+#endif
+
+// If we are on an IOS device or simulator and don't have thread_local support
+// then do not use thread caching
+#if FOLLY_MOBILE && defined(__APPLE__) && !__has_feature(cxx_thread_local)
+#define HAZPTR_TC false
+#else
 #define HAZPTR_TC true
+#endif
 #endif
 
 #ifndef HAZPTR_TC_SIZE
@@ -37,7 +47,21 @@
 #endif
 
 #ifndef HAZPTR_PRIV
+// If we are on an IOS device or simulator and don't have thread_local support
+// then do not use private
+#if FOLLY_MOBILE && defined(__APPLE__) && !__has_feature(cxx_thread_local)
+#define HAZPTR_PRIV false
+#else
 #define HAZPTR_PRIV true
+#endif
+#endif
+
+#ifndef HAZPTR_ENABLE_TLS
+#if HAZPTR_TC || HAZPTR_PRIV
+#define HAZPTR_ENABLE_TLS true
+#else
+#define HAZPTR_ENABLE_TLS false
+#endif
 #endif
 
 #ifndef HAZPTR_PRIV_THRESHOLD
@@ -134,6 +158,9 @@ static_assert(
     std::is_trivial<hazptr_tc>::value,
     "hazptr_tc must be trivial to avoid a branch to check initialization");
 
+bool hazptr_tc_enabled();
+bool hazptr_priv_enabled();
+
 hazptr_tc* hazptr_tc_tls();
 void hazptr_tc_init();
 void hazptr_tc_shutdown();
@@ -172,12 +199,17 @@ struct hazptr_tls_life {
 void tls_life_odr_use();
 
 /** tls globals */
-
+#if HAZPTR_ENABLE_TLS
 extern thread_local hazptr_tls_state tls_state_;
 extern thread_local hazptr_tc tls_tc_data_;
 extern thread_local hazptr_priv tls_priv_data_;
 extern thread_local hazptr_tls_life tls_life_; // last
-
+#else
+extern hazptr_tls_state tls_state_;
+extern hazptr_tc tls_tc_data_;
+extern hazptr_priv tls_priv_data_;
+extern hazptr_tls_life tls_life_; // last
+#endif
 /**
  *  hazptr_domain
  */
@@ -936,8 +968,8 @@ FOLLY_ALWAYS_INLINE size_t hazptr_tc::count() {
 }
 
 /** hazptr_tc free functions */
-
 FOLLY_ALWAYS_INLINE hazptr_tc* hazptr_tc_tls() {
+  assert(hazptr_tc_enabled());
   DEBUG_PRINT(tls_state_);
   if (LIKELY(tls_state_ == TLS_ALIVE)) {
     DEBUG_PRINT(tls_state_);
@@ -950,6 +982,7 @@ FOLLY_ALWAYS_INLINE hazptr_tc* hazptr_tc_tls() {
 }
 
 inline void hazptr_tc_init() {
+  assert(hazptr_tc_enabled());
   DEBUG_PRINT("");
   auto& tc = tls_tc_data_;
   DEBUG_PRINT(&tc);
@@ -1021,6 +1054,7 @@ inline void hazptr_priv::pushAllToDomain() {
 }
 
 inline void hazptr_priv_init() {
+  assert(hazptr_priv_enabled());
   auto& priv = tls_priv_data_;
   DEBUG_PRINT(&priv);
   priv.head_ = nullptr;
