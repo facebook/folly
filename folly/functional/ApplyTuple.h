@@ -171,7 +171,7 @@ namespace apply_tuple {
 template <class T>
 struct Construct {
   template <class... Args>
-  constexpr T operator()(Args&&... args) {
+  constexpr T operator()(Args&&... args) const {
     return T(std::forward<Args>(args)...);
   }
 };
