@@ -31,6 +31,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/tracing/StaticTracepoint.h>
+#include <folly/tracing/test/StaticTracepointTestModule.h>
 
 static const std::string kUSDTSubsectionName = FOLLY_SDT_NOTE_NAME;
 static const int kUSDTNoteType = FOLLY_SDT_NOTE_TYPE;
@@ -169,6 +170,7 @@ static void checkTracepointArguments(
 static bool getTracepointArguments(
     const std::string& expectedProvider,
     const std::string& expectedProbe,
+    const uintptr_t expectedSemaphore,
     std::string& arguments) {
   // Read the note and check if it's non-empty.
   std::string exe = getExe();
@@ -203,12 +205,11 @@ static bool getTracepointArguments(
     CHECK_GT(probeAddr, 0);
     remaining -= kAddrWidth;
 
-    intptr_t semaphoreAddr = getAddr(note, pos);
-    CHECK_EQ(0, semaphoreAddr);
+    intptr_t baseAddr = getAddr(note, pos);
+    CHECK_EQ(0, baseAddr);
     remaining -= kAddrWidth;
 
-    intptr_t semaphoreBase = getAddr(note, pos);
-    CHECK_EQ(0, semaphoreBase);
+    intptr_t semaphoreAddr = getAddr(note, pos);
     remaining -= kAddrWidth;
 
     // Read tracepoint provider, probe and argument layout description.
@@ -228,6 +229,7 @@ static bool getTracepointArguments(
     align4Bytes(pos);
 
     if (provider == expectedProvider && probe == expectedProbe) {
+      CHECK_EQ(expectedSemaphore, semaphoreAddr);
       return true;
     }
   }
@@ -248,7 +250,7 @@ TEST(StaticTracepoint, TestArray) {
 
   std::string arguments;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_array", arguments));
+      "folly", "test_static_tracepoint_array", 0, arguments));
   std::array<int, 3> expected{{sizeof(void*), sizeof(int), sizeof(int64_t)}};
   checkTracepointArguments(arguments, expected);
 }
@@ -267,7 +269,7 @@ TEST(StaticTracepoint, TestPointer) {
 
   std::string arguments;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_array", arguments));
+      "folly", "test_static_tracepoint_array", 0, arguments));
   std::array<int, 3> expected{{sizeof(void*), sizeof(int), sizeof(void*)}};
   checkTracepointArguments(arguments, expected);
 }
@@ -281,9 +283,11 @@ TEST(StaticTracepoint, TestEmpty) {
 
   std::string arguments;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_empty", arguments));
+      "folly", "test_static_tracepoint_empty", 0, arguments));
   EXPECT_TRUE(arguments.empty());
 }
+
+FOLLY_SDT_DEFINE_SEMAPHORE(folly, test_semaphore_local);
 
 static uint32_t manyArgTypesTestFunc() {
   uint32_t a = folly::Random::rand32();
@@ -305,6 +309,7 @@ static uint32_t manyArgTypesTestFunc() {
       long_,
       float_,
       double_);
+  FOLLY_SDT_WITH_SEMAPHORE(folly, test_semaphore_local, long_, short_);
   return a + b;
 }
 
@@ -313,7 +318,7 @@ TEST(StaticTracepoint, TestManyArgTypes) {
 
   std::string arguments;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_many_arg_types", arguments));
+      "folly", "test_static_tracepoint_many_arg_types", 0, arguments));
   std::array<int, 8> expected{{
       sizeof(uint32_t),
       sizeof(uint32_t),
@@ -339,7 +344,7 @@ TEST(StaticTracepoint, TestAlwaysInline) {
 
   std::string arguments;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_always_inline", arguments));
+      "folly", "test_static_tracepoint_always_inline", 0, arguments));
   std::array<int, 2> expected{{sizeof(uint32_t), sizeof(uint32_t)}};
   checkTracepointArguments(arguments, expected);
 }
@@ -359,13 +364,13 @@ TEST(StaticTracepoint, TestBranch) {
 
   std::string arguments1;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_branch_1", arguments1));
+      "folly", "test_static_tracepoint_branch_1", 0, arguments1));
   std::array<int, 1> expected1{{sizeof(uint32_t)}};
   checkTracepointArguments(arguments1, expected1);
 
   std::string arguments2;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_branch_2", arguments2));
+      "folly", "test_static_tracepoint_branch_2", 0, arguments2));
   std::array<int, 1> expected2{{sizeof(double)}};
   checkTracepointArguments(arguments2, expected2);
 }
@@ -390,7 +395,29 @@ TEST(StaticTracepoint, TestStruct) {
 
   std::string arguments;
   ASSERT_TRUE(getTracepointArguments(
-      "folly", "test_static_tracepoint_struct", arguments));
+      "folly", "test_static_tracepoint_struct", 0, arguments));
   std::array<int, 2> expected{{sizeof(testStruct), sizeof(testStruct)}};
   checkTracepointArguments(arguments, expected);
+}
+
+TEST(StaticTracepoint, TestSemaphoreLocal) {
+  manyArgTypesTestFunc();
+
+  std::string arguments;
+  ASSERT_TRUE(getTracepointArguments(
+      "folly",
+      "test_semaphore_local",
+      (uintptr_t)((void*)&FOLLY_SDT_SEMAPHORE(folly, test_semaphore_local)),
+      arguments));
+  std::array<int, 2> expected{{sizeof(long), sizeof(short)}};
+  checkTracepointArguments(arguments, expected);
+  EXPECT_FALSE(FOLLY_SDT_IS_ENABLED(folly, test_semaphore_local));
+}
+
+FOLLY_SDT_DECLARE_SEMAPHORE(folly, test_semaphore_extern);
+
+TEST(StaticTracepoint, TestSemaphoreExtern) {
+  int v = folly::Random::rand32();
+  CHECK_EQ(v * v, folly::test::staticTracepointTestFunc(v));
+  EXPECT_FALSE(FOLLY_SDT_IS_ENABLED(folly, test_semaphore_extern));
 }
