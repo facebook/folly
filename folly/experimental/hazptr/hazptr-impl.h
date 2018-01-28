@@ -29,13 +29,10 @@
 #endif
 
 #ifndef HAZPTR_TC
-#if !defined(__has_feature)
-#define __has_feature(A) 1
-#endif
 
 // If we are on an IOS device or simulator and don't have thread_local support
 // then do not use thread caching
-#if FOLLY_MOBILE && defined(__APPLE__) && !__has_feature(cxx_thread_local)
+#if FOLLY_MOBILE && defined(__APPLE__) && !FOLLY_HAS_FEATURE(cxx_thread_local)
 #define HAZPTR_TC false
 #else
 #define HAZPTR_TC true
@@ -49,7 +46,7 @@
 #ifndef HAZPTR_PRIV
 // If we are on an IOS device or simulator and don't have thread_local support
 // then do not use private
-#if FOLLY_MOBILE && defined(__APPLE__) && !__has_feature(cxx_thread_local)
+#if FOLLY_MOBILE && defined(__APPLE__) && !FOLLY_HAS_FEATURE(cxx_thread_local)
 #define HAZPTR_PRIV false
 #else
 #define HAZPTR_PRIV true
