@@ -39,7 +39,7 @@ Singleton<GlobalWatchdog> global_watchdog;
 // be used).
 TEST(Singleton, BasicGlobalUsage) {
   EXPECT_EQ(Watchdog::creation_order().size(), 0);
-  EXPECT_EQ(SingletonVault::singleton()->registeredSingletonCount(), 1);
+  EXPECT_GE(SingletonVault::singleton()->registeredSingletonCount(), 1);
   EXPECT_EQ(SingletonVault::singleton()->livingSingletonCount(), 0);
 
   {
