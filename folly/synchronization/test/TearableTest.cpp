@@ -26,6 +26,8 @@ using namespace folly;
 namespace {
 
 struct Data {
+  using IsTriviallyCopyable = std::true_type;
+
   Data(unsigned char value) {
     setValue(value);
   }
