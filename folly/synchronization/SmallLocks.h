@@ -38,5 +38,5 @@
 
 #include <folly/Portability.h>
 #if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_PPC64
-#include <folly/PicoSpinLock.h>
+#include <folly/synchronization/PicoSpinLock.h>
 #endif

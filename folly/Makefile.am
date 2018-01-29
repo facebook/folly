@@ -355,7 +355,6 @@ nobase_follyinclude_HEADERS = \
 	Overload.h \
 	PackedSyncPtr.h \
 	Padded.h \
-	PicoSpinLock.h \
 	Poly.h \
 	Poly-inl.h \
 	poly/Nullable.h \
@@ -439,6 +438,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/CallOnce.h \
 	synchronization/LifoSem.h \
 	synchronization/ParkingLot.h \
+	synchronization/PicoSpinLock.h \
 	synchronization/RWSpinLock.h \
 	synchronization/SaturatingSemaphore.h \
 	synchronization/SmallLocks.h \
