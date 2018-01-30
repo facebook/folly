@@ -1540,11 +1540,11 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
     timeouts_(0),
     timeout_(timeout) {
       scheduleTimeout(1);
-    }
+  }
 
-    ~IdleTimeTimeoutSeries() override {}
+  ~IdleTimeTimeoutSeries() override {}
 
-    void timeoutExpired() noexcept override {
+  void timeoutExpired() noexcept override {
     ++timeouts_;
 
     if(timeout_.empty()){
@@ -1579,17 +1579,22 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
  */
 TEST(EventBaseTest, IdleTime) {
   EventBase eventBase;
-  eventBase.setLoadAvgMsec(1000ms);
-  eventBase.resetLoadAvg(5900.0);
   std::deque<uint64_t> timeouts0(4, 8080);
   timeouts0.push_front(8000);
   timeouts0.push_back(14000);
   IdleTimeTimeoutSeries tos0(&eventBase, timeouts0);
   std::deque<uint64_t> timeouts(20, 20);
   std::unique_ptr<IdleTimeTimeoutSeries> tos;
-  int64_t testStart = duration_cast<microseconds>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
   bool hostOverloaded = false;
+
+  // Loop once before starting the main test.  This will run NotificationQueue
+  // callbacks that get automatically installed when the EventBase is first
+  // created.  We want to make sure they don't interfere with the timing
+  // operations below.
+  eventBase.loopOnce(EVLOOP_NONBLOCK);
+  eventBase.setLoadAvgMsec(1000ms);
+  eventBase.resetLoadAvg(5900.0);
+  auto testStart = std::chrono::steady_clock::now();
 
   int latencyCallbacks = 0;
   eventBase.setMaxLatency(6000us, [&]() {
@@ -1601,25 +1606,26 @@ TEST(EventBaseTest, IdleTime) {
     if (tos0.getTimeouts() < 6) {
       // This could only happen if the host this test is running
       // on is heavily loaded.
-      int64_t maxLatencyReached = duration_cast<microseconds>(
-          std::chrono::steady_clock::now().time_since_epoch()).count();
-      ASSERT_LE(43800, maxLatencyReached - testStart);
+      int64_t usElapsed = duration_cast<microseconds>(
+                              std::chrono::steady_clock::now() - testStart)
+                              .count();
+      EXPECT_LE(43800, usElapsed);
       hostOverloaded = true;
       return;
     }
-    ASSERT_EQ(6, tos0.getTimeouts());
-    ASSERT_GE(6100, eventBase.getAvgLoopTime() - 1200);
-    ASSERT_LE(6100, eventBase.getAvgLoopTime() + 1200);
+    EXPECT_EQ(6, tos0.getTimeouts());
+    EXPECT_GE(6100, eventBase.getAvgLoopTime() - 1200);
+    EXPECT_LE(6100, eventBase.getAvgLoopTime() + 1200);
     tos = std::make_unique<IdleTimeTimeoutSeries>(&eventBase, timeouts);
   });
 
-  // Kick things off with an "immedite" timeout
+  // Kick things off with an "immediate" timeout
   tos0.scheduleTimeout(1);
 
   eventBase.loop();
 
   if (hostOverloaded) {
-    return;
+    SKIP() << "host too heavily loaded to execute test";
   }
 
   ASSERT_EQ(1, latencyCallbacks);
