@@ -41,6 +41,11 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   if (COMPILER_HAS_F_ALIGNED_NEW)
     list(APPEND FOLLY_CXX_FLAGS -faligned-new)
   endif()
+
+  CHECK_CXX_COMPILER_FLAG(-fopenmp COMPILER_HAS_F_OPENMP)
+  if (COMPILER_HAS_F_OPENMP)
+      list(APPEND FOLLY_CXX_FLAGS -fopenmp)
+  endif()
 endif()
 
 check_symbol_exists(pthread_atfork pthread.h FOLLY_HAVE_PTHREAD_ATFORK)
