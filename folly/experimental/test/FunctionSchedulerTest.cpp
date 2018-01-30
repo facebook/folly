@@ -252,6 +252,23 @@ TEST(FunctionScheduler, ResetFunc) {
   EXPECT_EQ(12, total);
 }
 
+TEST(FunctionScheduler, ResetFunc2) {
+  int total = 0;
+  FunctionScheduler fs;
+  fs.addFunctionOnce([&] { total += 2; }, "add2", testInterval(1));
+  fs.addFunctionOnce([&] { total += 3; }, "add3", testInterval(1));
+  fs.start();
+  delay(2);
+  fs.addFunctionOnce([&] { total += 3; }, "add4", testInterval(2));
+  EXPECT_TRUE(fs.resetFunctionTimer("add4"));
+  fs.addFunctionOnce([&] { total += 3; }, "add6", testInterval(2));
+  delay(1);
+  EXPECT_TRUE(fs.resetFunctionTimer("add4"));
+  delay(2);
+  EXPECT_FALSE(fs.resetFunctionTimer("add3"));
+  fs.addFunctionOnce([&] { total += 3; }, "add4", testInterval(1));
+}
+
 TEST(FunctionScheduler, ResetFuncWhileRunning) {
   struct State {
     boost::barrier barrier_a{2};

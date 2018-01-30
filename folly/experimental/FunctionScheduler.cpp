@@ -303,13 +303,12 @@ bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
   // fix the heap ordering if we adjust the key (nextRunTime) for the existing
   // RepeatFunc. Instead, we just cancel it and add an identical object.
   auto it = functionsMap_.find(nameID);
-
   if (it != functionsMap_.end() && it->second->isValid()) {
-    auto funcCopy = std::make_unique<RepeatFunc>(std::move(*(it->second)));
-    it->second->cancel();
-    // This will take care of making sure that functionsMap_[it->first] =
-    // funcCopy.
-    addFunctionToHeap(l, std::move(funcCopy));
+    if (running_) {
+      it->second->resetNextRunTime(steady_clock::now());
+      std::make_heap(functions_.begin(), functions_.end(), fnCmp_);
+      runningCondvar_.notify_one();
+    }
     return true;
   }
   return false;
