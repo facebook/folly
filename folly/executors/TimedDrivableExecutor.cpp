@@ -27,12 +27,12 @@ void TimedDrivableExecutor::add(Func callback) {
   queue_.enqueue(std::move(callback));
 }
 
-void TimedDrivableExecutor::drive() {
+void TimedDrivableExecutor::drive() noexcept {
   wait();
   run();
 }
 
-size_t TimedDrivableExecutor::run() {
+size_t TimedDrivableExecutor::run() noexcept {
   size_t count = 0;
   size_t n = queue_.size();
 
@@ -52,7 +52,7 @@ size_t TimedDrivableExecutor::run() {
   return count;
 }
 
-size_t TimedDrivableExecutor::drain() {
+size_t TimedDrivableExecutor::drain() noexcept {
   size_t tasksRun = 0;
   size_t tasksForSingleRun = 0;
   while ((tasksForSingleRun = run()) != 0) {
@@ -61,7 +61,7 @@ size_t TimedDrivableExecutor::drain() {
   return tasksRun;
 }
 
-void TimedDrivableExecutor::wait() {
+void TimedDrivableExecutor::wait() noexcept {
   if (!func_) {
     queue_.dequeue(func_);
   }

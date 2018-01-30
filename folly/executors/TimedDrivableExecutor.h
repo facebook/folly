@@ -30,11 +30,11 @@ namespace folly {
 class TimedDrivableExecutor : public DrivableExecutor {
  public:
   /// Implements DrivableExecutor
-  void drive() override;
+  void drive() noexcept override;
 
   // Make progress if there is work to do and return true. Otherwise return
   // false.
-  bool try_drive() {
+  bool try_drive() noexcept {
     return try_wait() && run() > 0;
   }
 
@@ -42,7 +42,8 @@ class TimedDrivableExecutor : public DrivableExecutor {
   // wait for a period of timeout for work to be enqueued. If no work is
   // enqueued by that point, it will return.
   template <typename Rep, typename Period>
-  bool try_drive_for(const std::chrono::duration<Rep, Period>& timeout) {
+  bool try_drive_for(
+      const std::chrono::duration<Rep, Period>& timeout) noexcept {
     return try_wait_for(timeout) && run() > 0;
   }
 
@@ -51,7 +52,7 @@ class TimedDrivableExecutor : public DrivableExecutor {
   // that point, it will return.
   template <typename Clock, typename Duration>
   bool try_drive_until(
-      const std::chrono::time_point<Clock, Duration>& deadline) {
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     return try_wait_until(deadline) && run() > 0;
   }
 
@@ -63,7 +64,7 @@ class TimedDrivableExecutor : public DrivableExecutor {
   /// This is stable, it will not chase an ever-increasing tail of work.
   /// This also means, there may be more work available to perform at the
   /// moment that this returns.
-  size_t run();
+  size_t run() noexcept;
 
   // Do work until there is no more work to do.
   // Returns the number of functions that were executed (maybe 0).
@@ -71,26 +72,27 @@ class TimedDrivableExecutor : public DrivableExecutor {
   // work so should be used with care.
   // There will be no work available to perform at the moment that this
   // returns.
-  size_t drain();
+  size_t drain() noexcept;
 
   /// Wait for work to do.
-  void wait();
+  void wait() noexcept;
 
   // Return true if there is work to do, false otherwise
-  bool try_wait() {
+  bool try_wait() noexcept {
     return func_ || queue_.try_dequeue(func_);
   }
 
   /// Wait for work to do or for a period of timeout, whichever is sooner.
   template <typename Rep, typename Period>
-  bool try_wait_for(const std::chrono::duration<Rep, Period>& timeout) {
+  bool try_wait_for(
+      const std::chrono::duration<Rep, Period>& timeout) noexcept {
     return func_ || queue_.try_dequeue_for(func_, timeout);
   }
 
   /// Wait for work to do or until deadline passes, whichever is sooner.
   template <typename Clock, typename Duration>
   bool try_wait_until(
-      const std::chrono::time_point<Clock, Duration>& deadline) {
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     return func_ || queue_.try_dequeue_until(func_, deadline);
   }
 
