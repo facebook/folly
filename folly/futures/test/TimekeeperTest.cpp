@@ -195,6 +195,21 @@ TEST(Timekeeper, chainedInterruptTest) {
   EXPECT_FALSE(test);
 }
 
+TEST(Timekeeper, withinChainedInterruptTest) {
+  bool test = false;
+  Promise<Unit> p;
+  p.setInterruptHandler([&test, &p](const exception_wrapper& ex) {
+    ex.handle(
+        [&test](const FutureCancellation& /* cancellation */) { test = true; });
+    p.setException(ex);
+  });
+  auto f = p.getFuture().within(milliseconds(100));
+  EXPECT_FALSE(test) << "Sanity check";
+  f.cancel();
+  f.wait();
+  EXPECT_TRUE(test);
+}
+
 TEST(Timekeeper, executor) {
   class ExecutorTester : public Executor {
    public:

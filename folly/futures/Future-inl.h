@@ -1314,6 +1314,14 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
     }
   });
 
+  // Properly propagate interrupt values through futures chained after within()
+  ctx->promise.setInterruptHandler(
+      [weakCtx = to_weak_ptr(ctx)](const exception_wrapper& ex) {
+        if (auto lockedCtx = weakCtx.lock()) {
+          lockedCtx->thisFuture.raise(ex);
+        }
+      });
+
   // Have time keeper use a weak ptr to hold ctx,
   // so that ctx can be deallocated as soon as the future job finished.
   tk->after(dur).then([weakCtx = to_weak_ptr(ctx)](Try<Unit> const& t) mutable {
