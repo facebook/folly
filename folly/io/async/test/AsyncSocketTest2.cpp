@@ -16,7 +16,6 @@
 
 #include <folly/io/async/test/AsyncSocketTest2.h>
 
-#include <folly/ConstexprMath.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/SocketAddress.h>
@@ -1140,7 +1139,10 @@ TEST(AsyncSocketTest, WriteAfterReadEOF) {
  */
 TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   // Send and receive buffer sizes for the sockets.
+  // Note that Linux will double this value to allow space for bookkeeping
+  // overhead.
   constexpr size_t kSockBufSize = 8 * 1024;
+  constexpr size_t kEffectiveSockBufSize = 2 * kSockBufSize;
 
   TestServer server(false, kSockBufSize);
 
@@ -1166,14 +1168,8 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   // accept the socket on the server side
   std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
 
-  // Send a big (45KB) write so that it is partially written. The first write
-  // is 16KB (8KB on both sides) and subsequent writes are 8KB each. Reading
-  // just under 24KB would cause 3-4 writes for the total of 32-40KB in the
-  // following sequence: 16KB + 8KB + 8KB (+ 8KB). This ensures that not all
-  // bytes are written when the socket is reset. Having at least 3 writes
-  // ensures that the total size (45KB) would be exceeed in case of overcounting
-  // based on the initial write size of 16KB.
-  constexpr size_t kSendSize = 45 * 1024;
+  // Send a big (100KB) write so that it is partially written.
+  constexpr size_t kSendSize = 100 * 1024;
   auto const sendBuf = std::vector<char>(kSendSize, 'a');
 
   WriteCallback wcb;
@@ -1181,22 +1177,25 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   senderEvb.runInEventBaseThreadAndWait(
       [&]() { socket->write(&wcb, sendBuf.data(), kSendSize); });
 
-  // Reading 20KB would cause three additional writes of 8KB, but less
-  // than 45KB total, so the socket is reset before all bytes are written.
+  // Read 20KB of data from the socket to allow the sender to send a bit more
+  // data after it initially blocks.
   constexpr size_t kRecvSize = 20 * 1024;
   uint8_t recvBuf[kRecvSize];
-  int bytesRead = acceptedSocket->readAll(recvBuf, sizeof(recvBuf));
+  auto bytesRead = acceptedSocket->readAll(recvBuf, sizeof(recvBuf));
   ASSERT_EQ(kRecvSize, bytesRead);
+  EXPECT_EQ(0, memcmp(recvBuf, sendBuf.data(), bytesRead));
 
-  constexpr size_t kMinExpectedBytesWritten = // 20 ACK + 8 send buf
-      kRecvSize + kSockBufSize;
-  static_assert(kMinExpectedBytesWritten == 28 * 1024, "bad math");
-  static_assert(kMinExpectedBytesWritten > kRecvSize, "bad math");
+  // We should be able to send at least the amount of data received plus the
+  // send buffer size.  In practice we should probably be able to send
+  constexpr size_t kMinExpectedBytesWritten = kRecvSize + kSockBufSize;
 
-  constexpr size_t kMaxExpectedBytesWritten = // 24 ACK + 8 sent + 8 send buf
-      constexpr_ceil(kRecvSize, kSockBufSize) + 2 * kSockBufSize;
-  static_assert(kMaxExpectedBytesWritten == 40 * 1024, "bad math");
-  static_assert(kMaxExpectedBytesWritten < kSendSize, "bad math");
+  // We shouldn't be able to send more than the amount of data received plus
+  // the send buffer size of the sending socket (kEffectiveSockBufSize) plus
+  // the receive buffer size on the receiving socket (kEffectiveSockBufSize)
+  constexpr size_t kMaxExpectedBytesWritten =
+      kRecvSize + kEffectiveSockBufSize + kEffectiveSockBufSize;
+  static_assert(
+      kMaxExpectedBytesWritten < kSendSize, "kSendSize set too small");
 
   // Need to delay after receiving 20KB and before closing the receive side so
   // that the send side has a chance to fill the send buffer past.
