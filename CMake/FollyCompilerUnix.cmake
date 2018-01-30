@@ -8,7 +8,6 @@ function(apply_folly_compile_options_to_target THETARGET)
     PUBLIC
       -g
       -std=gnu++14
-      -fopenmp
       -finput-charset=UTF-8
       -fsigned-char
       -Werror
