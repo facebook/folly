@@ -544,8 +544,6 @@ TEST_P(NextProtocolMismatchTest, NpnAlpnTestNoOverlap) {
       {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
 }
 
-// Note: the behavior changed in the ANY/ANY case in OpenSSL 1.0.2h, this test
-// will fail on 1.0.2 before that.
 TEST_P(NextProtocolTest, NpnTestNoOverlap) {
   clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
   serverCtx->setAdvertisedNextProtocols(
@@ -559,22 +557,27 @@ TEST_P(NextProtocolTest, NpnTestNoOverlap) {
     // on all OpenSSL versions/variants, and we want to know if it changes.
     expectNoProtocol();
   }
-#if FOLLY_OPENSSL_IS_110 || defined(OPENSSL_IS_BORINGSSL)
   else if (
       GetParam().first == SSLContext::NextProtocolType::ANY &&
       GetParam().second == SSLContext::NextProtocolType::ANY) {
 #if FOLLY_OPENSSL_IS_110
-    // OpenSSL 1.1.0 sends a fatal alert on mismatch, which is probavbly the
+    // OpenSSL 1.1.0 sends a fatal alert on mismatch, which is probably the
     // correct behavior per RFC7301
     expectHandshakeError();
 #else
-    // BoringSSL also doesn't fatal on mismatch but behaves slightly differently
-    // from OpenSSL 1.0.2h+ - it doesn't select a protocol if both ends support
-    // NPN *and* ALPN
-    expectNoProtocol();
+    // Behavior varies for other OpenSSL versions.
+    expectHandshakeSuccess();
+    if (client->nextProtoLength == 0) {
+      // BoringSSL and OpenSSL 1.0.2 before 1.0.2h
+      expectNoProtocol();
+    } else {
+      // OpenSSL 1.0.2h+
+      expectProtocol("blub");
+      expectProtocolType({SSLContext::NextProtocolType::NPN,
+                          SSLContext::NextProtocolType::NPN});
+    }
 #endif
   }
-#endif
   else {
     expectProtocol("blub");
     expectProtocolType(
