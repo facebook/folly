@@ -1,6 +1,9 @@
-cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 # We use the GoogleTest module if it is available (only in CMake 3.9+)
-# It requires CMP0057 to be enabled.
+# It requires CMP0054 and CMP0057 to be enabled.
+if (POLICY CMP0054)
+  cmake_policy(SET CMP0054 NEW)
+endif()
 if (POLICY CMP0057)
   cmake_policy(SET CMP0057 NEW)
 endif()

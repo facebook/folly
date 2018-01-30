@@ -116,7 +116,7 @@ if (NOT INT128_SIZE STREQUAL "")
     static_assert(
       ::std::is_same<::std::make_signed<unsigned __int128>::type,
                      __int128>::value,
-      \"signed form of \`unsigned __uint128\` must be \`__int128\`.\");
+      \"signed form of 'unsigned __uint128' must be '__int128'.\");
     int main() { return 0; }"
     HAVE_INT128_TRAITS
   )
