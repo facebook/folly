@@ -32,7 +32,7 @@ namespace detail {
 // ('\n' = 10 maps to 'n'), 'O' if the character should be printed as
 // an octal escape sequence, or 'P' if the character is printable and
 // should be printed as is.
-extern const char cEscapeTable[];
+extern const std::array<char, 256> cEscapeTable;
 } // namespace detail
 
 template <class String>
@@ -76,10 +76,10 @@ namespace detail {
 // ('n' maps to 10 = '\n'), 'O' if this is the first character of an
 // octal escape sequence, 'X' if this is the first character of a
 // hexadecimal escape sequence, or 'I' if this escape sequence is invalid.
-extern const char cUnescapeTable[];
+extern const std::array<char, 256> cUnescapeTable;
 
 // Map from the character code to the hex value, or 16 if invalid hex char.
-extern const unsigned char hexTable[];
+extern const std::array<unsigned char, 256> hexTable;
 } // namespace detail
 
 template <class String>
@@ -157,7 +157,7 @@ namespace detail {
 // 2 = pass through in PATH mode
 // 3 = space, replace with '+' in QUERY mode
 // 4 = percent-encode
-extern const unsigned char uriEscapeTable[];
+extern const std::array<unsigned char, 256> uriEscapeTable;
 } // namespace detail
 
 template <class String>

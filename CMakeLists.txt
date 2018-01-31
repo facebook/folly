@@ -57,18 +57,6 @@ endif()
 
 set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
 
-# Generate a few tables and create the main config file.
-find_package(PythonInterp REQUIRED)
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly/build/EscapeTables.cpp
-  COMMAND
-    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  COMMAND
-    ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_escape_tables.py"
-    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  DEPENDS ${FOLLY_DIR}/build/generate_escape_tables.py
-  COMMENT "Generating the escape tables..." VERBATIM
-)
 add_custom_command(
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp"
   COMMAND
@@ -201,7 +189,6 @@ endif()
 add_library(folly_base OBJECT
   ${files} ${hfiles}
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/EscapeTables.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 if (BUILD_SHARED_LIBS)
@@ -213,7 +200,6 @@ target_include_directories(folly_base PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 # Add the generated files to the correct source group.
 source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
 source_group("folly\\build" FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/EscapeTables.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )

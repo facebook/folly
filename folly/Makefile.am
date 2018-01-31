@@ -483,10 +483,6 @@ nobase_follyinclude_HEADERS = \
 	Utility.h \
 	Varint.h
 
-EscapeTables.cpp: build/generate_escape_tables.py
-	$(PYTHON) build/generate_escape_tables.py
-CLEANFILES += EscapeTables.cpp
-
 GroupVarintTables.cpp: build/generate_varint_tables.py
 	$(PYTHON) build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
@@ -500,7 +496,6 @@ libfollybase_la_SOURCES = \
 	Conv.cpp \
 	Demangle.cpp \
 	detail/RangeCommon.cpp \
-	EscapeTables.cpp \
 	Format.cpp \
 	FormatArg.cpp \
 	memory/MallctlHelper.cpp \

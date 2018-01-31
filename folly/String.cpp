@@ -26,6 +26,7 @@
 #include <glog/logging.h>
 
 #include <folly/ScopeGuard.h>
+#include <folly/container/Array.h>
 
 namespace folly {
 
@@ -34,6 +35,92 @@ static_assert(IsConvertible<int>::value, "");
 static_assert(IsConvertible<bool>::value, "");
 static_assert(IsConvertible<int>::value, "");
 static_assert(!IsConvertible<std::vector<int>>::value, "");
+
+namespace detail {
+
+struct string_table_c_escape_make_item {
+  constexpr char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index == '"' ? '"' :
+        index == '\\' ? '\\' :
+        index == '?' ? '?' :
+        index == '\n' ? 'n' :
+        index == '\r' ? 'r' :
+        index == '\t' ? 't' :
+        index < 32 || index > 126 ? 'O' : // octal
+        'P'; // printable
+    // clang-format on
+  }
+};
+
+struct string_table_c_unescape_make_item {
+  constexpr char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index == '\'' ? '\'' :
+        index == '?' ? '?' :
+        index == '\\' ? '\\' :
+        index == '"' ? '"' :
+        index == 'a' ? '\a' :
+        index == 'b' ? '\b' :
+        index == 'f' ? '\f' :
+        index == 'n' ? '\n' :
+        index == 'r' ? '\r' :
+        index == 't' ? '\t' :
+        index == 'v' ? '\v' :
+        index >= '0' && index <= '7' ? 'O' : // octal
+        index == 'x' ? 'X' : // hex
+        'I'; // invalid
+    // clang-format on
+  }
+};
+
+struct string_table_hex_make_item {
+  constexpr unsigned char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index >= '0' && index <= '9' ? index - '0' :
+        index >= 'a' && index <= 'f' ? index - 'a' + 10 :
+        index >= 'A' && index <= 'F' ? index - 'A' + 10 :
+        16;
+    // clang-format on
+  }
+};
+
+struct string_table_uri_escape_make_item {
+  //  0 = passthrough
+  //  1 = unused
+  //  2 = safe in path (/)
+  //  3 = space (replace with '+' in query)
+  //  4 = always percent-encode
+  constexpr unsigned char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index >= '0' && index <= '9' ? 0 :
+        index >= 'A' && index <= 'Z' ? 0 :
+        index >= 'a' && index <= 'z' ? 0 :
+        index == '-' ? 0 :
+        index == '_' ? 0 :
+        index == '.' ? 0 :
+        index == '~' ? 0 :
+        index == '/' ? 2 :
+        index == ' ' ? 3 :
+        4;
+    // clang-format on
+  }
+};
+
+constexpr decltype(cEscapeTable) cEscapeTable =
+    make_array_with<256>(string_table_c_escape_make_item{});
+constexpr decltype(cUnescapeTable) cUnescapeTable =
+    make_array_with<256>(string_table_c_unescape_make_item{});
+constexpr decltype(hexTable) hexTable =
+    make_array_with<256>(string_table_hex_make_item{});
+constexpr decltype(uriEscapeTable) uriEscapeTable =
+    make_array_with<256>(string_table_uri_escape_make_item{});
+
+} // namespace detail
 
 static inline bool is_oddspace(char c) {
   return c == '\n' || c == '\t' || c == '\r';
