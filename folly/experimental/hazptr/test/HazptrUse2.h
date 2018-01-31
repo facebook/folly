@@ -25,12 +25,12 @@ class MineMemoryResource : public memory_resource {
  public:
   void* allocate(const size_t sz, const size_t /* align */) override {
     void* p = malloc(sz);
-    DEBUG_PRINT(p << " " << sz);
+    HAZPTR_DEBUG_PRINT(p << " " << sz);
     return p;
   }
 
   void deallocate(void* p, const size_t sz, const size_t /* align */) override {
-    DEBUG_PRINT(p << " " << sz);
+    HAZPTR_DEBUG_PRINT(p << " " << sz);
     free(p);
   }
 };
@@ -40,12 +40,12 @@ class Node2 : public hazptr_obj_base<Node2, void (*)(Node2*)> {
 };
 
 inline void mineReclaimFnFree(Node2* p) {
-  DEBUG_PRINT(p << " " << sizeof(Node2));
+  HAZPTR_DEBUG_PRINT(p << " " << sizeof(Node2));
   free(p);
 }
 
 inline void mineReclaimFnDelete(Node2* p) {
-  DEBUG_PRINT(p << " " << sizeof(Node2));
+  HAZPTR_DEBUG_PRINT(p << " " << sizeof(Node2));
   delete p;
 }
 

@@ -65,11 +65,11 @@ class MWMRListSet {
 
    public:
     explicit Node(T e) : elem_(e) {
-      DEBUG_PRINT(this << " " << e);
+      HAZPTR_DEBUG_PRINT(this << " " << e);
     }
 
     ~Node() {
-      DEBUG_PRINT(this);
+      HAZPTR_DEBUG_PRINT(this);
       auto next = getPtr(next_.load(std::memory_order_relaxed));
       if (next) {
         next->release();

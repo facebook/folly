@@ -21,7 +21,7 @@
 #define HAZPTR_DEBUG false
 #endif
 
-#define DEBUG_PRINT(...)                             \
+#define HAZPTR_DEBUG_PRINT(...)                      \
   do {                                               \
     if (HAZPTR_DEBUG) {                              \
       VLOG(2) << __func__ << " --- " << __VA_ARGS__; \

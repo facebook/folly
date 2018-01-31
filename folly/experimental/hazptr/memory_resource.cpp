@@ -23,18 +23,18 @@ namespace {
 memory_resource** default_mr_ptr() {
   /* library-local */ static memory_resource* default_mr =
       new_delete_resource();
-  DEBUG_PRINT(&default_mr << " " << default_mr);
+  HAZPTR_DEBUG_PRINT(&default_mr << " " << default_mr);
   return &default_mr;
 }
 } // namespace
 
 memory_resource* get_default_resource() {
-  DEBUG_PRINT("");
+  HAZPTR_DEBUG_PRINT("");
   return *default_mr_ptr();
 }
 
 void set_default_resource(memory_resource* mr) {
-  DEBUG_PRINT("");
+  HAZPTR_DEBUG_PRINT("");
   *default_mr_ptr() = mr;
 }
 
@@ -45,7 +45,7 @@ memory_resource* new_delete_resource() {
         override {
       (void)alignment;
       void* p = static_cast<void*>(new char[bytes]);
-      DEBUG_PRINT(this << " " << p << " " << bytes);
+      HAZPTR_DEBUG_PRINT(this << " " << p << " " << bytes);
       return p;
     }
     void deallocate(
@@ -54,7 +54,7 @@ memory_resource* new_delete_resource() {
         const size_t alignment = max_align_v) override {
       (void)alignment;
       (void)bytes;
-      DEBUG_PRINT(p << " " << bytes);
+      HAZPTR_DEBUG_PRINT(p << " " << bytes);
       delete[] static_cast<char*>(p);
     }
   };
