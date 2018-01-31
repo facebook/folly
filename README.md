@@ -96,13 +96,7 @@ export LIBRARY_PATH=$BOOST_ROOT/lib:$LIBRARY_PATH
 ./configure --with-boost=$BOOST_ROOT/lib
 ```
 
-#### Ubuntu 12.04
-
-This release is old, requiring many upgrades. However, since Travis CI runs
-on 12.04, `folly/build/deps_ubuntu_12.04.sh` is provided, and upgrades all
-the required packages.
-
-#### Ubuntu 13.10
+#### Ubuntu 16.04 LTS
 
 The following packages are required (feel free to cut and paste the apt-get
 command below):
@@ -119,6 +113,7 @@ sudo apt-get install \
     libdouble-conversion-dev \
     libgoogle-glog-dev \
     libgflags-dev \
+    libiberty-dev \
     liblz4-dev \
     liblzma-dev \
     libsnappy-dev \
@@ -139,17 +134,6 @@ sudo apt-get install \
     libdwarf-dev
 ```
 
-#### Ubuntu 14.04 LTS
-
-The packages listed above for Ubuntu 13.10 are required, as well as:
-
-```
-sudo apt-get install \
-    libiberty-dev
-```
-
-The above packages are sufficient for Ubuntu 13.10 and Ubuntu 14.04.
-
 In the folly directory, run:
 ```
   autoreconf -ivf
@@ -158,10 +142,6 @@ In the folly directory, run:
   make check
   sudo make install
 ```
-
-#### Ubuntu 16.04 LTS
-The packages listed above for 13.10 and 14.04 are sufficient for installation,
-and the build commands remain the same.
 
 #### OS X (Homebrew)
 
