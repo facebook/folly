@@ -32,6 +32,7 @@
 #include <utility>
 
 #include <folly/Utility.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 
@@ -57,22 +58,13 @@ template <typename... Tuples>
 using MakeIndexSequenceFromTuple = folly::make_index_sequence<
     TupleSizeSum<typename std::decay<Tuples>::type...>::value>;
 
-// This is to allow using this with pointers to member functions,
-// where the first argument in the tuple will be the this pointer.
-template <class F>
-inline constexpr F&& makeCallable(F&& f) {
-  return std::forward<F>(f);
-}
-template <class M, class C>
-inline constexpr auto makeCallable(M(C::*d)) -> decltype(std::mem_fn(d)) {
-  return std::mem_fn(d);
-}
-
 template <class F, class Tuple, std::size_t... Indexes>
 inline constexpr auto call(F&& f, Tuple&& t, folly::index_sequence<Indexes...>)
-    -> decltype(
-        std::forward<F>(f)(std::get<Indexes>(std::forward<Tuple>(t))...)) {
-  return std::forward<F>(f)(std::get<Indexes>(std::forward<Tuple>(t))...);
+    -> decltype(invoke(
+        std::forward<F>(f),
+        std::get<Indexes>(std::forward<Tuple>(t))...)) {
+  return invoke(
+      std::forward<F>(f), std::get<Indexes>(std::forward<Tuple>(t))...);
 }
 
 template <class Tuple, std::size_t... Indexes>
@@ -100,13 +92,13 @@ inline constexpr auto forwardTuple(Tuple&& t, folly::index_sequence<Indexes...>)
 template <class F, class... Tuples>
 inline constexpr auto applyTuple(F&& f, Tuples&&... t)
     -> decltype(detail::apply_tuple::call(
-        detail::apply_tuple::makeCallable(std::forward<F>(f)),
+        std::forward<F>(f),
         std::tuple_cat(detail::apply_tuple::forwardTuple(
             std::forward<Tuples>(t),
             detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples>{})...),
         detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples...>{})) {
   return detail::apply_tuple::call(
-      detail::apply_tuple::makeCallable(std::forward<F>(f)),
+      std::forward<F>(f),
       std::tuple_cat(detail::apply_tuple::forwardTuple(
           std::forward<Tuples>(t),
           detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples>{})...),
