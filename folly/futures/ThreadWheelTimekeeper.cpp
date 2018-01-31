@@ -48,11 +48,11 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     return promise_.getFuture();
   }
 
-  void releasePromise() {
+  Promise<Unit> stealPromise() {
     // Don't need promise anymore. Break the circular reference as promise_
     // is holding a ref count to us via Core. Core won't go away until both
     // Promise and Future go away.
-    promise_ = Promise<Unit>::makeEmpty();
+    return std::move(promise_);
   }
 
  protected:
@@ -60,9 +60,8 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
   Promise<Unit> promise_;
 
   void timeoutExpired() noexcept override {
-    promise_.setValue();
     // Don't need Promise anymore, break the circular reference
-    releasePromise();
+    stealPromise().setValue();
   }
 
   void interruptHandler() {
@@ -74,7 +73,7 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     base_->runInEventBaseThread([me = shared_from_this()] {
       me->cancelTimeout();
       // Don't need Promise anymore, break the circular reference
-      me->releasePromise();
+      (void)me->stealPromise();
     });
   }
 };
@@ -127,7 +126,7 @@ Future<Unit> ThreadWheelTimekeeper::after(Duration dur) {
     // This is either called from EventBase thread, or here.
     // They are somewhat racy but given the rare chance this could fail,
     // I don't see it is introducing any problem yet.
-    cob->releasePromise();
+    (void)cob->stealPromise();
   }
   return f;
 }
