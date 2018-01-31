@@ -67,6 +67,14 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     }
   }
 
+  void callbackCanceled() noexcept override {
+    // Don't need Promise anymore, break the circular reference
+    auto promise = stealPromise();
+    if (!promise.isFulfilled()) {
+      promise.setException(NoTimekeeper{});
+    }
+  }
+
   void interruptHandler(exception_wrapper ew) {
     // Capture shared_ptr of self in lambda, if we don't do this, object
     // may go away before the lambda is executed from event base thread.
