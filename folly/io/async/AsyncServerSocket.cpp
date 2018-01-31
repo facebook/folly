@@ -736,11 +736,7 @@ int AsyncServerSocket::createSocket(int family) {
   return fd;
 }
 
-#ifndef TCP_NOPUSH
 void AsyncServerSocket::setupSocket(int fd, int family) {
-#else
-void AsyncServerSocket::setupSocket(int fd, int) {
-#endif
   // Put the socket in non-blocking mode
   if (fcntl(fd, F_SETFL, O_NONBLOCK) != 0) {
     folly::throwSystemError(errno,
@@ -795,6 +791,8 @@ void AsyncServerSocket::setupSocket(int fd, int) {
               strerror(errno);
     }
   }
+#else
+  (void) family; // to avoid unused parameter warning
 #endif
 
 #if FOLLY_ALLOW_TFO
