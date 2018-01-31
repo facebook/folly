@@ -282,21 +282,34 @@ TEST(SemiFuture, SimpleGetTry) {
 }
 
 TEST(SemiFuture, SimpleTimedGet) {
-  EventBase e2;
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
   EXPECT_THROW(std::move(sf).get(std::chrono::seconds(1)), TimedOut);
 }
 
+TEST(SemiFuture, SimpleTimedGetViaFromSemiFuture) {
+  TimedDrivableExecutor e2;
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  EXPECT_THROW(
+      std::move(sf).via(&e2).getVia(&e2, std::chrono::seconds(1)), TimedOut);
+}
+
 TEST(SemiFuture, SimpleTimedGetTry) {
-  EventBase e2;
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
   EXPECT_THROW(std::move(sf).getTry(std::chrono::seconds(1)), TimedOut);
 }
 
+TEST(SemiFuture, SimpleTimedGetTryViaFromSemiFuture) {
+  TimedDrivableExecutor e2;
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  EXPECT_THROW(
+      std::move(sf).via(&e2).getTryVia(&e2, std::chrono::seconds(1)), TimedOut);
+}
+
 TEST(SemiFuture, SimpleValue) {
-  EventBase e2;
   Promise<int> p;
   auto sf = p.getSemiFuture();
   p.setValue(3);
@@ -305,7 +318,6 @@ TEST(SemiFuture, SimpleValue) {
 }
 
 TEST(SemiFuture, SimpleValueThrow) {
-  EventBase e2;
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
   EXPECT_THROW(std::move(sf).value(), FutureNotReady);
@@ -335,17 +347,6 @@ TEST(SemiFuture, SimpleDefer) {
   p.setValue();
   // Run "F" here inline in the calling thread
   std::move(sf).get();
-  ASSERT_EQ(innerResult, 17);
-}
-
-TEST(SemiFuture, DeferWithGetVia) {
-  std::atomic<int> innerResult{0};
-  EventBase e2;
-  Promise<folly::Unit> p;
-  auto f = p.getFuture();
-  auto sf = std::move(f).semi().defer([&]() { innerResult = 17; });
-  p.setValue();
-  std::move(sf).getVia(&e2);
   ASSERT_EQ(innerResult, 17);
 }
 

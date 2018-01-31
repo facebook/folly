@@ -1409,15 +1409,18 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
   if (f.isReady()) {
     return;
   }
-  f = f.via(e).then([](T&& t) { return std::move(t); });
+  f = std::move(f).via(e).then([](T&& t) { return std::move(t); });
   while (!f.isReady()) {
     e->drive();
   }
   assert(f.isReady());
 }
 
-template <class T>
-void waitViaImpl(SemiFuture<T>& f, DrivableExecutor* e) {
+template <class T, typename Rep, typename Period>
+void waitViaImpl(
+    Future<T>& f,
+    TimedDrivableExecutor* e,
+    const std::chrono::duration<Rep, Period>& timeout) {
   // Set callback so to ensure that the via executor has something on it
   // so that once the preceding future triggers this callback, drive will
   // always have a callback to satisfy it
@@ -1425,10 +1428,13 @@ void waitViaImpl(SemiFuture<T>& f, DrivableExecutor* e) {
     return;
   }
   f = std::move(f).via(e).then([](T&& t) { return std::move(t); });
-  while (!f.isReady()) {
-    e->drive();
+  auto now = std::chrono::steady_clock::now();
+  auto deadline = now + timeout;
+  while (!f.isReady() && (now < deadline)) {
+    e->try_drive_until(deadline);
+    now = std::chrono::steady_clock::now();
   }
-  assert(f.isReady());
+  assert(f.isReady() || (now >= deadline));
 }
 
 } // namespace detail
@@ -1455,18 +1461,6 @@ SemiFuture<T>& SemiFuture<T>::wait(Duration dur) & {
 template <class T>
 SemiFuture<T>&& SemiFuture<T>::wait(Duration dur) && {
   futures::detail::waitImpl(*this, dur);
-  return std::move(*this);
-}
-
-template <class T>
-SemiFuture<T>& SemiFuture<T>::waitVia(DrivableExecutor* e) & {
-  futures::detail::waitViaImpl(*this, e);
-  return *this;
-}
-
-template <class T>
-SemiFuture<T>&& SemiFuture<T>::waitVia(DrivableExecutor* e) && {
-  futures::detail::waitViaImpl(*this, e);
   return std::move(*this);
 }
 
@@ -1498,16 +1492,6 @@ Try<T> SemiFuture<T>::getTry(Duration dur) && {
   } else {
     throwTimedOut();
   }
-}
-
-template <class T>
-T SemiFuture<T>::getVia(DrivableExecutor* e) && {
-  return std::move(waitVia(e)).value();
-}
-
-template <class T>
-Try<T> SemiFuture<T>::getTryVia(DrivableExecutor* e) && {
-  return std::move(waitVia(e)).result();
 }
 
 template <class T>
@@ -1547,6 +1531,18 @@ Future<T>&& Future<T>::waitVia(DrivableExecutor* e) && {
 }
 
 template <class T>
+Future<T>& Future<T>::waitVia(TimedDrivableExecutor* e, Duration dur) & {
+  futures::detail::waitViaImpl(*this, e, dur);
+  return *this;
+}
+
+template <class T>
+Future<T>&& Future<T>::waitVia(TimedDrivableExecutor* e, Duration dur) && {
+  futures::detail::waitViaImpl(*this, e, dur);
+  return std::move(*this);
+}
+
+template <class T>
 T Future<T>::get() {
   return std::move(wait().value());
 }
@@ -1554,11 +1550,10 @@ T Future<T>::get() {
 template <class T>
 T Future<T>::get(Duration dur) {
   wait(dur);
-  if (this->isReady()) {
-    return std::move(this->value());
-  } else {
+  if (!this->isReady()) {
     throwTimedOut();
   }
+  return std::move(this->value());
 }
 
 template <class T>
@@ -1572,8 +1567,26 @@ T Future<T>::getVia(DrivableExecutor* e) {
 }
 
 template <class T>
+T Future<T>::getVia(TimedDrivableExecutor* e, Duration dur) {
+  waitVia(e, dur);
+  if (!this->isReady()) {
+    throwTimedOut();
+  }
+  return std::move(value());
+}
+
+template <class T>
 Try<T>& Future<T>::getTryVia(DrivableExecutor* e) {
   return waitVia(e).getTry();
+}
+
+template <class T>
+Try<T>& Future<T>::getTryVia(TimedDrivableExecutor* e, Duration dur) {
+  waitVia(e, dur);
+  if (!this->isReady()) {
+    throwTimedOut();
+  }
+  return result();
 }
 
 namespace futures {
@@ -1595,7 +1608,7 @@ Future<bool> Future<T>::willEqual(Future<T>& f) {
           std::get<0>(t), std::get<1>(t));
     } else {
       return false;
-      }
+    }
   });
 }
 

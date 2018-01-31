@@ -400,6 +400,13 @@ TEST(Via, getVia) {
   }
 }
 
+TEST(Via, SimpleTimedGetVia) {
+  TimedDrivableExecutor e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  EXPECT_THROW(f.getVia(&e2, std::chrono::seconds(1)), TimedOut);
+}
+
 TEST(Via, getTryVia) {
   {
     // non-void
@@ -424,6 +431,13 @@ TEST(Via, getTryVia) {
     EXPECT_EQ(23, f.getTryVia(&x).value());
     EXPECT_FALSE(x.ran);
   }
+}
+
+TEST(Via, SimpleTimedGetTryVia) {
+  TimedDrivableExecutor e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  EXPECT_THROW(f.getTryVia(&e2, std::chrono::seconds(1)), TimedOut);
 }
 
 TEST(Via, waitVia) {

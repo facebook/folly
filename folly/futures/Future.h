@@ -28,6 +28,7 @@
 #include <folly/Try.h>
 #include <folly/Utility.h>
 #include <folly/executors/DrivableExecutor.h>
+#include <folly/executors/TimedDrivableExecutor.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
@@ -200,6 +201,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
  private:
   using Base = futures::detail::FutureBase<T>;
   using DeferredExecutor = futures::detail::DeferredExecutor;
+  using TimePoint = std::chrono::system_clock::time_point;
 
  public:
   static SemiFuture<T> makeEmpty(); // equivalent to moved-from
@@ -242,9 +244,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::isReady;
   using Base::poll;
   using Base::raise;
+  using Base::result;
   using Base::setCallback_;
   using Base::value;
-  using Base::result;
 
   SemiFuture& operator=(SemiFuture const&) = delete;
   SemiFuture& operator=(SemiFuture&&) noexcept;
@@ -267,16 +269,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Try of the value (moved out) or may throw a TimedOut exception.
   Try<T> getTry(Duration dur) &&;
 
-  /// Call e->drive() repeatedly until the future is fulfilled. Examples
-  /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
-  /// value (moved out), or throws the exception.
-  T getVia(DrivableExecutor* e) &&;
-
-  /// Call e->drive() repeatedly until the future is fulfilled. Examples
-  /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
-  /// Try of the value (moved out).
-  Try<T> getTryVia(DrivableExecutor* e) &&;
-
   /// Block until this Future is complete. Returns a reference to this Future.
   SemiFuture<T>& wait() &;
 
@@ -289,15 +281,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   /// Overload of wait(Duration) for rvalue Futures
   SemiFuture<T>&& wait(Duration) &&;
-
-  /// Call e->drive() repeatedly until the future is fulfilled. Examples
-  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
-  /// reference to this SemiFuture so that you can chain calls if desired.
-  /// value (moved out), or throws the exception.
-  SemiFuture<T>& waitVia(DrivableExecutor* e) &;
-
-  /// Overload of waitVia() for rvalue Futures
-  SemiFuture<T>&& waitVia(DrivableExecutor* e) &&;
 
   /// Returns an inactive Future which will call back on the other side of
   /// executor (when it is activated).
@@ -445,10 +428,18 @@ class Future : private futures::detail::FutureBase<T> {
   /// value (moved out), or throws the exception.
   T getVia(DrivableExecutor* e);
 
+  /// getVia but will wait only until timed out. Returns the
+  /// Try of the value (moved out) or may throw a TimedOut exception.
+  T getVia(TimedDrivableExecutor* e, Duration dur);
+
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
   /// reference to the Try of the value.
   Try<T>& getTryVia(DrivableExecutor* e);
+
+  /// getTryVia but will wait only until timed out. Returns the
+  /// Try of the value (moved out) or may throw a TimedOut exception.
+  Try<T>& getTryVia(TimedDrivableExecutor* e, Duration dur);
 
   /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
   /// Future<T> instance.
@@ -700,6 +691,13 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// Overload of waitVia() for rvalue Futures
   Future<T>&& waitVia(DrivableExecutor* e) &&;
+
+  /// As waitVia but may return early after dur passes.
+  Future<T>& waitVia(TimedDrivableExecutor* e, Duration dur) &;
+
+  /// Overload of waitVia() for rvalue Futures
+  /// As waitVia but may return early after dur passes.
+  Future<T>&& waitVia(TimedDrivableExecutor* e, Duration dur) &&;
 
   /// If the value in this Future is equal to the given Future, when they have
   /// both completed, the value of the resulting Future<bool> will be true. It
