@@ -39,14 +39,14 @@
 #include <nmmintrin.h>
 namespace folly {
 namespace detail {
-alignas(16) extern const uint64_t groupVarintSSEMasks[];
+extern const std::array<std::array<std::uint32_t, 4>, 256> groupVarintSSEMasks;
 } // namespace detail
 } // namespace folly
 #endif
 
 namespace folly {
 namespace detail {
-extern const uint8_t groupVarintLengths[];
+extern const std::array<std::uint8_t, 256> groupVarintLengths;
 } // namespace detail
 } // namespace folly
 
@@ -208,7 +208,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     uint8_t key = uint8_t(p[0]);
     __m128i val = _mm_loadu_si128((const __m128i*)(p+1));
     __m128i mask =
-        _mm_load_si128((const __m128i*)&detail::groupVarintSSEMasks[key * 2]);
+        _mm_load_si128((const __m128i*)detail::groupVarintSSEMasks[key].data());
     __m128i r = _mm_shuffle_epi8(val, mask);
     _mm_storeu_si128((__m128i*)dest, r);
     return p + detail::groupVarintLengths[key];
@@ -223,7 +223,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     uint8_t key = uint8_t(p[0]);
     __m128i val = _mm_loadu_si128((const __m128i*)(p+1));
     __m128i mask =
-        _mm_load_si128((const __m128i*)&detail::groupVarintSSEMasks[key * 2]);
+        _mm_load_si128((const __m128i*)detail::groupVarintSSEMasks[key].data());
     __m128i r = _mm_shuffle_epi8(val, mask);
 
     // Extracting 32 bits at a time out of an XMM register is a SSE4 feature

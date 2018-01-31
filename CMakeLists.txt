@@ -57,17 +57,6 @@ endif()
 
 set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
 
-add_custom_command(
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp"
-  COMMAND
-    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  COMMAND
-    ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_varint_tables.py"
-    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  DEPENDS ${FOLLY_DIR}/build/generate_varint_tables.py
-  COMMENT "Generating the group varint tables..." VERBATIM
-)
-
 include(folly-deps) # Find the required packages
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -189,7 +178,6 @@ endif()
 add_library(folly_base OBJECT
   ${files} ${hfiles}
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 if (BUILD_SHARED_LIBS)
   set_property(TARGET folly_base PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -201,7 +189,6 @@ target_include_directories(folly_base PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
 source_group("folly\\build" FILES
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

@@ -483,10 +483,6 @@ nobase_follyinclude_HEADERS = \
 	Utility.h \
 	Varint.h
 
-GroupVarintTables.cpp: build/generate_varint_tables.py
-	$(PYTHON) build/generate_varint_tables.py
-CLEANFILES += GroupVarintTables.cpp
-
 libfollybasesse42_la_SOURCES = \
 	detail/RangeSse42.cpp \
 	hash/detail/ChecksumDetail.cpp \
@@ -541,7 +537,6 @@ libfolly_la_SOURCES = \
 	experimental/hazptr/hazptr.cpp \
 	experimental/hazptr/memory_resource.cpp \
 	GroupVarint.cpp \
-	GroupVarintTables.cpp \
 	hash/Checksum.cpp \
 	hash/SpookyHashV1.cpp \
 	hash/SpookyHashV2.cpp \
