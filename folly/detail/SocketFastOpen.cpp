@@ -97,7 +97,7 @@ int tfo_enable(int sockfd, size_t max_queue_size) {
       sizeof(max_queue_size));
 }
 
-bool tfo_succeeded(int sockfd) {
+bool tfo_succeeded(int /* sockfd */) {
   errno = EOPNOTSUPP;
   return false;
 }

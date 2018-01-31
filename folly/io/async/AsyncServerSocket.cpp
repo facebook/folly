@@ -791,6 +791,8 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
               strerror(errno);
     }
   }
+#else
+  (void) family; // to avoid unused parameter warning
 #endif
 
 #if FOLLY_ALLOW_TFO
