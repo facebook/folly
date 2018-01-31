@@ -39,12 +39,21 @@
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
-// We use this to indicate that tests have failed because of timing
-// or dependencies that may be flakey. Internally this is used by
-// our test runner to retry the test. To gtest this will look like
-// a normal test failure; there is only an effect if the test framework
-// interprets the message.
+// SKIP() is used to mark a test skipped if we could not successfully execute
+// the test due to runtime issues or behavior that do not necessarily indicate
+// a problem with the code.
+//
+// googletest does not have a built-in mechanism to report tests as skipped a
+// run time.  We either report the test as successful or failure based on the
+// FOLLY_SKIP_AS_FAILURE configuration setting.  The default is to report the
+// test as successful.  Enabling FOLLY_SKIP_AS_FAILURE can be useful with a
+// test harness that can identify the "Test skipped by client" in the failure
+// message and convert this into a skipped test result.
+#if FOLLY_SKIP_AS_FAILURE
 #define SKIP() GTEST_FATAL_FAILURE_("Test skipped by client")
+#else
+#define SKIP() return GTEST_SUCCESS_("Test skipped by client")
+#endif
 
 // Encapsulate conditional-skip, since it's nontrivial to get right.
 #define SKIP_IF(expr)           \
