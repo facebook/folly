@@ -922,7 +922,11 @@ bool AsyncSocket::containsZeroCopyBuf(folly::IOBuf* ptr) {
   return (idZeroCopyBufInfoMap_.find(ptr) != idZeroCopyBufInfoMap_.end());
 }
 
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
 bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
+#else
+bool AsyncSocket::isZeroCopyMsg(const cmsghdr&) const {
+#endif
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if (zeroCopyEnabled_ &&
       ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
@@ -936,7 +940,11 @@ bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
   return false;
 }
 
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
 void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
+#else
+void AsyncSocket::processZeroCopyMsg(const cmsghdr&) {
+#endif
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   const struct sock_extended_err* serr =
       reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
