@@ -9,8 +9,8 @@ that many cells of sizeof(T)), and it provides just a few simple
 operations:
 
  * `read`: Attempt to read the value at the front to the queue into a variable,
-           returns `false` iff queue was empty.
- * `write`: Emplace a value at the end of the queue, returns `false` iff the
+           returns `false` if the queue was empty.
+ * `write`: Emplace a value at the end of the queue, returns `false` if the
             queue was full.
  * `frontPtr`: Retrieve a pointer to the item at the front of the queue, or
                `nullptr` if it is empty.
