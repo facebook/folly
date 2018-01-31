@@ -15,10 +15,13 @@
  */
 #pragma once
 
-#include <folly/Traits.h>
 #include <array>
 #include <type_traits>
 #include <utility>
+
+#include <folly/CPortability.h>
+#include <folly/Traits.h>
+#include <folly/Utility.h>
 
 namespace folly {
 
@@ -55,5 +58,22 @@ constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
       typename array_detail::return_type_helper<D, TList...>::type;
   return {{static_cast<value_type>(std::forward<TList>(t))...}};
 }
+
+namespace array_detail {
+template <typename MakeItem, std::size_t... Index>
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN constexpr auto make_array_with(
+    MakeItem const& make,
+    index_sequence<Index...>) {
+  return std::array<decltype(make(0)), sizeof...(Index)>{{make(Index)...}};
+}
+} // namespace array_detail
+
+//  make_array_with
+//
+//  Constructs a std::array<..., Size> with elements m(i) for i in [0, Size).
+template <std::size_t Size, typename MakeItem>
+constexpr auto make_array_with(MakeItem const& make) {
+  return array_detail::make_array_with(make, make_index_sequence<Size>{});
+};
 
 } // namespace folly
