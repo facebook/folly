@@ -178,6 +178,12 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   evb.loop();
 
   ASSERT_EQ(cb.state, STATE_FAILED);
+  if (cb.exception.getType() == AsyncSocketException::NOT_OPEN) {
+    // This can happen if we could not route to the IP address picked above.
+    // In this case the connect will fail immediately rather than timing out.
+    // Just skip the test in this case.
+    SKIP() << "do not have a routable but unreachable IP address";
+  }
   ASSERT_EQ(cb.exception.getType(), AsyncSocketException::TIMED_OUT);
 
   // Verify that we can still get the peer address after a timeout.
