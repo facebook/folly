@@ -484,7 +484,11 @@ if (BUILD_TESTS)
       TEST printf_test SOURCES PrintfTest.cpp
       TEST rate_limiter_test SOURCES RateLimiterTest.cpp
       TEST standard_log_handler_test SOURCES StandardLogHandlerTest.cpp
-      TEST xlog_test
+      # This test is currently broken in CMake-based builds given
+      # that CMake passes absolute source paths to the compiler;
+      # the xlog code probably should be updated to support stripping off
+      # project directory prefixes.
+      TEST xlog_test BROKEN
         HEADERS
           XlogHeader1.h
           XlogHeader2.h
