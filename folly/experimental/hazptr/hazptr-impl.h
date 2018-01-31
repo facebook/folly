@@ -221,6 +221,7 @@ inline constexpr hazptr_domain::hazptr_domain(memory_resource* mr) noexcept
 template <typename T, typename D>
 inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
   DEBUG_PRINT(this << " " << &domain);
+  retireCheck();
   deleter_ = std::move(deleter);
   reclaim_ = [](hazptr_obj* p) {
     auto hobp = static_cast<hazptr_obj_base*>(p);
@@ -288,8 +289,8 @@ inline bool hazptr_obj_base_refcounted<T, D>::release_ref() {
 
 template <typename T, typename D>
 inline void hazptr_obj_base_refcounted<T, D>::preRetire(D deleter) {
-  DCHECK(next_ == nullptr);
   deleter_ = std::move(deleter);
+  retireCheck();
   reclaim_ = [](hazptr_obj* p) {
     auto hrobp = static_cast<hazptr_obj_base_refcounted*>(p);
     if (hrobp->release_ref()) {

@@ -113,7 +113,25 @@ class hazptr_obj {
   friend struct hazptr_priv;
 
   void (*reclaim_)(hazptr_obj*);
-  hazptr_obj* next_{nullptr}; // nullptr for debugging
+  hazptr_obj* next_;
+
+ public:
+  hazptr_obj() {
+    // Only for catching misuse bugs like double retire
+    next_ = this;
+  }
+
+ private:
+  void retireCheck() {
+    // Only for catching misuse bugs like double retire
+    if (next_ != this) {
+      retireCheckFail();
+    }
+  }
+
+  FOLLY_NOINLINE void retireCheckFail() {
+    CHECK_EQ(next_, this);
+  }
 
   const void* getObjPtr() const;
 };
