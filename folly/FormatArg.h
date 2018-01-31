@@ -62,7 +62,7 @@ struct FormatArg {
   enum class Type {
     INTEGER,
     FLOAT,
-    OTHER
+    OTHER,
   };
   /**
    * Validate the argument for the given type; throws on error.
@@ -106,7 +106,7 @@ struct FormatArg {
     RIGHT,
     PAD_AFTER_SIGN,
     CENTER,
-    INVALID
+    INVALID,
   };
   Align align;
 
@@ -118,7 +118,7 @@ struct FormatArg {
     PLUS_OR_MINUS,
     MINUS,
     SPACE_OR_MINUS,
-    INVALID
+    INVALID,
   };
   Sign sign;
 

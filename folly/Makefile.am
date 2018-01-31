@@ -483,10 +483,6 @@ nobase_follyinclude_HEADERS = \
 	Utility.h \
 	Varint.h
 
-FormatTables.cpp: build/generate_format_tables.py
-	$(PYTHON) build/generate_format_tables.py
-CLEANFILES += FormatTables.cpp
-
 EscapeTables.cpp: build/generate_escape_tables.py
 	$(PYTHON) build/generate_escape_tables.py
 CLEANFILES += EscapeTables.cpp
@@ -507,7 +503,6 @@ libfollybase_la_SOURCES = \
 	EscapeTables.cpp \
 	Format.cpp \
 	FormatArg.cpp \
-	FormatTables.cpp \
 	memory/MallctlHelper.cpp \
 	portability/BitsFunctexcept.cpp \
 	String.cpp \

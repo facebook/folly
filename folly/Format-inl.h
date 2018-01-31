@@ -42,10 +42,10 @@ namespace detail {
 // Updates the end of the buffer after the comma separators have been added.
 void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer);
 
-extern const char formatHexUpper[256][2];
-extern const char formatHexLower[256][2];
-extern const char formatOctal[512][3];
-extern const char formatBinary[256][8];
+extern const std::array<std::array<char, 2>, 256> formatHexUpper;
+extern const std::array<std::array<char, 2>, 256> formatHexLower;
+extern const std::array<std::array<char, 3>, 512> formatOctal;
+extern const std::array<std::array<char, 8>, 256> formatBinary;
 
 const size_t kMaxHexLength = 2 * sizeof(uintmax_t);
 const size_t kMaxOctalLength = 3 * sizeof(uintmax_t);
@@ -61,8 +61,11 @@ const size_t kMaxBinaryLength = 8 * sizeof(uintmax_t);
  * [buf+begin, buf+bufLen).
  */
 template <class Uint>
-size_t
-uintToHex(char* buffer, size_t bufLen, Uint v, const char (&repr)[256][2]) {
+size_t uintToHex(
+    char* buffer,
+    size_t bufLen,
+    Uint v,
+    std::array<std::array<char, 2>, 256> const& repr) {
   // 'v >>= 7, v >>= 1' is no more than a work around to get rid of shift size
   // warning when Uint = uint8_t (it's false as v >= 256 implies sizeof(v) > 1).
   for (; !less_than<unsigned, 256>(v); v >>= 7, v >>= 1) {

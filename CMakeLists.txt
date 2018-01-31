@@ -70,16 +70,6 @@ add_custom_command(
   COMMENT "Generating the escape tables..." VERBATIM
 )
 add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FormatTables.cpp
-  COMMAND
-    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  COMMAND
-    ${PYTHON_EXECUTABLE} "${FOLLY_DIR}/build/generate_format_tables.py"
-    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  DEPENDS ${FOLLY_DIR}/build/generate_format_tables.py
-  COMMENT "Generating the format tables..." VERBATIM
-)
-add_custom_command(
   OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp"
   COMMAND
     ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
@@ -212,7 +202,6 @@ add_library(folly_base OBJECT
   ${files} ${hfiles}
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/EscapeTables.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FormatTables.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 if (BUILD_SHARED_LIBS)
@@ -226,7 +215,6 @@ source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
 source_group("folly\\build" FILES
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/EscapeTables.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FormatTables.cpp
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 
