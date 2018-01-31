@@ -281,6 +281,8 @@ class Baton {
             std::memory_order_relaxed)) {
       // CAS failed, last minute reprieve
       assert(expected == EARLY_DELIVERY);
+      // TODO: move the acquire to the compare_exchange failure load after C++17
+      std::atomic_thread_fence(std::memory_order_acquire);
       return true;
     }
 

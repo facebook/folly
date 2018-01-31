@@ -296,6 +296,8 @@ FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
              std::memory_order_relaxed,
              std::memory_order_relaxed)) {
     if (before == READY) {
+      // TODO: move the acquire to the compare_exchange failure load after C++17
+      std::atomic_thread_fence(std::memory_order_acquire);
       return true;
     }
   }
