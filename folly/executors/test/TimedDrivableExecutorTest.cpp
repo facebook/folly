@@ -23,8 +23,8 @@
 using namespace folly;
 
 TEST(TimedDrivableExecutor, runIsStable) {
-  TimedDrivableExecutor x;
   size_t count = 0;
+  TimedDrivableExecutor x;
   auto f1 = [&]() { count++; };
   auto f2 = [&]() {
     x.add(f1);
@@ -36,8 +36,8 @@ TEST(TimedDrivableExecutor, runIsStable) {
 }
 
 TEST(TimedDrivableExecutor, drainIsNotStable) {
-  TimedDrivableExecutor x;
   size_t count = 0;
+  TimedDrivableExecutor x;
   auto f1 = [&]() { count++; };
   auto f2 = [&]() {
     x.add(f1);
@@ -49,8 +49,8 @@ TEST(TimedDrivableExecutor, drainIsNotStable) {
 }
 
 TEST(TimedDrivableExecutor, try_drive) {
-  TimedDrivableExecutor x;
   size_t count = 0;
+  TimedDrivableExecutor x;
   auto f1 = [&]() { count++; };
   x.try_drive();
   EXPECT_EQ(count, 0);
@@ -60,8 +60,8 @@ TEST(TimedDrivableExecutor, try_drive) {
 }
 
 TEST(TimedDrivableExecutor, try_drive_for) {
-  TimedDrivableExecutor x;
   size_t count = 0;
+  TimedDrivableExecutor x;
   auto f1 = [&]() { count++; };
   x.try_drive_for(std::chrono::milliseconds(100));
   EXPECT_EQ(count, 0);
@@ -71,8 +71,8 @@ TEST(TimedDrivableExecutor, try_drive_for) {
 }
 
 TEST(TimedDrivableExecutor, try_drive_until) {
-  TimedDrivableExecutor x;
   size_t count = 0;
+  TimedDrivableExecutor x;
   auto f1 = [&]() { count++; };
   x.try_drive_until(
       std::chrono::system_clock::now() + std::chrono::milliseconds(100));
