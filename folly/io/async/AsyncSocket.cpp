@@ -933,6 +933,7 @@ bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
         (serr->ee_errno == 0) && (serr->ee_origin == SO_EE_ORIGIN_ZEROCOPY));
   }
 #endif
+  (void)cmsg;
   return false;
 }
 
@@ -953,6 +954,8 @@ void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
   for (uint32_t i = lo; i <= hi; i++) {
     releaseZeroCopyBuf(i);
   }
+#else
+  (void)cmsg;
 #endif
 }
 
