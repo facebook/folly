@@ -264,7 +264,7 @@ TEST(FunctionScheduler, ResetFunc2) {
   fs.addFunctionOnce([&] { total += 3; }, "add6", testInterval(2));
   delay(1);
   EXPECT_TRUE(fs.resetFunctionTimer("add4"));
-  delay(2);
+  delay(3);
   EXPECT_FALSE(fs.resetFunctionTimer("add3"));
   fs.addFunctionOnce([&] { total += 3; }, "add4", testInterval(1));
 }
