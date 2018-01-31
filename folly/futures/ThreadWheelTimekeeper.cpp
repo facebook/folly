@@ -40,7 +40,7 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     // hold a ref count to it. The ref count will be released when Core goes
     // away which happens when both Promise and Future go away
     cob->promise_.setInterruptHandler(
-        [cob](const folly::exception_wrapper&) { cob->interruptHandler(); });
+        [cob](exception_wrapper ew) { cob->interruptHandler(std::move(ew)); });
     return cob;
   }
 
@@ -67,17 +67,19 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     }
   }
 
-  void interruptHandler() {
+  void interruptHandler(exception_wrapper ew) {
     // Capture shared_ptr of self in lambda, if we don't do this, object
     // may go away before the lambda is executed from event base thread.
     // This is not racing with timeoutExpired anymore because this is called
     // through Future, which means Core is still alive and keeping a ref count
     // on us, so what timeouExpired is doing won't make the object go away
-    base_->runInEventBaseThread([me = shared_from_this()] {
+    base_->runInEventBaseThread([me = shared_from_this(), ew = std::move(ew)] {
       me->cancelTimeout();
       // Don't need Promise anymore, break the circular reference
       auto promise = me->stealPromise();
-      (void)promise;
+      if (!promise.isFulfilled()) {
+        promise.setException(std::move(ew));
+      }
     });
   }
 };
@@ -131,7 +133,9 @@ Future<Unit> ThreadWheelTimekeeper::after(Duration dur) {
     // They are somewhat racy but given the rare chance this could fail,
     // I don't see it is introducing any problem yet.
     auto promise = cob->stealPromise();
-    (void)promise;
+    if (!promise.isFulfilled()) {
+      promise.setException(NoTimekeeper{});
+    }
   }
   return f;
 }
