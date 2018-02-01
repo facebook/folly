@@ -718,7 +718,7 @@ inline hazptr_domain::~hazptr_domain() {
       for (auto p = retired; p; p = next) {
         next = p->next_;
         DCHECK(p != next);
-        HAZPTR_DEBUG_PRINT(this << " " << p << " " << p->reclaim_);
+        HAZPTR_DEBUG_PRINT(this << " " << p);
         (*(p->reclaim_))(p);
       }
       retired = retired_.exchange(nullptr);
@@ -828,7 +828,7 @@ inline void hazptr_domain::bulkReclaim() {
     next = p->next_;
     DCHECK(p != next);
     if (hs.count(p->getObjPtr()) == 0) {
-      HAZPTR_DEBUG_PRINT(this << " " << p << " " << p->reclaim_);
+      HAZPTR_DEBUG_PRINT(this << " " << p);
       (*(p->reclaim_))(p);
     } else {
       p->next_ = retired;
