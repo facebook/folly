@@ -30,9 +30,12 @@ TEST_F(ConstexprTest, constexpr_strlen_cstr) {
   EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
 }
 
+// gcc-4.9 cannot compile the following constexpr code correctly
+#if !(defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5)
 TEST_F(ConstexprTest, constexpr_strlen_ints) {
   constexpr int v[] = {5, 3, 4, 0, 7};
   constexpr auto a = folly::constexpr_strlen(v);
   EXPECT_EQ(3, a);
   EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
 }
+#endif

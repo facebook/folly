@@ -84,7 +84,7 @@ TEST(Try, MoveConstRvalue) {
   // and you want to fetch the value from the Try and move it into a member
   {
     const Try<MutableContainer> t{in_place};
-    auto val = MoveConstructOnly{std::move(t).value().val};
+    auto val = MoveConstructOnly(std::move(t).value().val);
     static_cast<void>(val);
   }
   {

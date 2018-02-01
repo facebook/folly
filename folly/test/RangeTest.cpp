@@ -1208,9 +1208,6 @@ TEST(CRangeFunc, Collection) {
   class IntCollection {
    public:
     constexpr IntCollection(int* d, size_t s) : data_(d), size_(s) {}
-    constexpr int* data() {
-      return data_;
-    }
     constexpr int const* data() const {
       return data_;
     }

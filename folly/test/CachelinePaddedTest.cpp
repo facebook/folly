@@ -127,7 +127,7 @@ TEST(CachelinePadded, PtrOperator) {
   CachelinePadded<int> padded;
   EXPECT_TRUE(padded.get() == padded.operator->());
   EXPECT_TRUE(&*padded == padded.get());
-  const CachelinePadded<int> constPadded;
+  const auto constPadded = CachelinePadded<int>{};
   EXPECT_TRUE(constPadded.get() == constPadded.operator->());
   EXPECT_TRUE(constPadded.get() == &*constPadded.get());
 }
@@ -148,7 +148,7 @@ TEST(CachelinePadded, PropagatesConstness) {
   padded->assign(&i);
   EXPECT_EQ(31415, i);
 
-  const CachelinePadded<OverloadedOnConst> constPadded;
+  const auto constPadded = CachelinePadded<OverloadedOnConst>{};
   constPadded->assign(&i);
   EXPECT_EQ(271828, i);
 }
