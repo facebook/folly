@@ -138,10 +138,10 @@ TEST(ConfigUpdate, updateConfig) {
   // Update the log level for category "foo"
   // This should not affect the existing settings for the root category
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo")->getLevel());
-  EXPECT_EQ(true, db.getCategory("foo")->getLevelInfo().second);
+  EXPECT_TRUE(db.getCategory("foo")->getLevelInfo().second);
   db.updateConfig(parseLogConfig("foo:=DBG2"));
   EXPECT_EQ(LogLevel::DBG2, db.getCategory("foo")->getLevel());
-  EXPECT_EQ(false, db.getCategory("foo")->getLevelInfo().second);
+  EXPECT_FALSE(db.getCategory("foo")->getLevelInfo().second);
   EXPECT_EQ(LogLevel::INFO, db.getCategory("")->getLevel());
   EXPECT_EQ(1, db.getCategory("")->getHandlers().size());
   EXPECT_EQ(
