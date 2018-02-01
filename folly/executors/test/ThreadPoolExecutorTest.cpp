@@ -17,6 +17,7 @@
 #include <memory>
 #include <thread>
 
+#include <folly/Exception.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
@@ -427,12 +428,23 @@ TEST(ThreadPoolExecutorTest, BlockingQueue) {
 }
 
 TEST(PriorityThreadFactoryTest, ThreadPriority) {
+  errno = 0;
+  auto currentPriority = getpriority(PRIO_PROCESS, 0);
+  if (errno != 0) {
+    throwSystemError("failed to get current priority");
+  }
+
+  // Non-root users can only increase the priority value.  Make sure we are
+  // trying to go to a higher priority than we are currently running as, up to
+  // the maximum allowed of 20.
+  int desiredPriority = std::min(20, currentPriority + 1);
+
   PriorityThreadFactory factory(
-      std::make_shared<NamedThreadFactory>("stuff"), 1);
+      std::make_shared<NamedThreadFactory>("stuff"), desiredPriority);
   int actualPriority = -21;
   factory.newThread([&]() { actualPriority = getpriority(PRIO_PROCESS, 0); })
       .join();
-  EXPECT_EQ(1, actualPriority);
+  EXPECT_EQ(desiredPriority, actualPriority);
 }
 
 class TestData : public folly::RequestData {
