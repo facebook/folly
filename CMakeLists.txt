@@ -527,7 +527,11 @@ if (BUILD_TESTS)
         SOURCES ShutdownSocketSetTest.cpp
 
     DIRECTORY io/async/test/
-      TEST async_test
+      # A number of tests in the async_test binary are unfortunately flaky.
+      # When run under Travis CI a number of the tests also hang (it looks
+      # like they do not get expected socket accept events, causing them
+      # to never break out of their event loops).
+      TEST async_test BROKEN
         CONTENT_DIR certs/
         HEADERS
           AsyncSocketTest.h
