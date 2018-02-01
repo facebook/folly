@@ -324,8 +324,8 @@ TEST(ExceptionWrapper, with_exception_ptr_any_test) {
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ("int", ew.class_name());
-  EXPECT_EQ("int", ew.what());
+  EXPECT_EQ(demangle(typeid(int)), ew.class_name());
+  EXPECT_EQ(demangle(typeid(int)), ew.what());
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
@@ -353,12 +353,12 @@ TEST(ExceptionWrapper, with_non_std_exception_test) {
   EXPECT_NE(nullptr, ew.get_exception<int>());
   EXPECT_EQ(42, *ew.get_exception<int>());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ("int", ew.class_name());
-  EXPECT_EQ("int", ew.what());
+  EXPECT_EQ(demangle(typeid(int)), ew.class_name());
+  EXPECT_EQ(demangle(typeid(int)), ew.what());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ("int", ew.class_name());
-  EXPECT_EQ("int", ew.what());
+  EXPECT_EQ(demangle(typeid(int)), ew.class_name());
+  EXPECT_EQ(demangle(typeid(int)), ew.what());
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
