@@ -39,6 +39,7 @@ void testVarint(uint64_t val, std::initializer_list<uint8_t> bytes) {
     uint8_t buf[kMaxVarintLength64];
     EXPECT_EQ(expected.size(), encodeVarint(val, buf));
     EXPECT_TRUE(ByteRange(buf, expected.size()) == expected);
+    EXPECT_EQ(expected.size(), encodeVarintSize(val));
   }
 
   {
