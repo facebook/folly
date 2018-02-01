@@ -79,7 +79,7 @@ namespace folly {
 
 namespace folly {
 
-namespace detail {
+namespace invoke_detail {
 
 template <typename F, typename... Args>
 using invoke_result_ =
@@ -135,7 +135,7 @@ struct is_nothrow_invocable_r<void_t<invoke_result_<F, Args...>>, R, F, Args...>
 
 //  mimic: std::invoke_result, C++17
 template <typename F, typename... Args>
-struct invoke_result : detail::invoke_result<void, F, Args...> {};
+struct invoke_result : invoke_detail::invoke_result<void, F, Args...> {};
 
 //  mimic: std::invoke_result_t, C++17
 template <typename F, typename... Args>
@@ -143,20 +143,21 @@ using invoke_result_t = typename invoke_result<F, Args...>::type;
 
 //  mimic: std::is_invocable, C++17
 template <typename F, typename... Args>
-struct is_invocable : detail::is_invocable<void, F, Args...> {};
+struct is_invocable : invoke_detail::is_invocable<void, F, Args...> {};
 
 //  mimic: std::is_invocable_r, C++17
 template <typename R, typename F, typename... Args>
-struct is_invocable_r : detail::is_invocable_r<void, R, F, Args...> {};
+struct is_invocable_r : invoke_detail::is_invocable_r<void, R, F, Args...> {};
 
 //  mimic: std::is_nothrow_invocable, C++17
 template <typename F, typename... Args>
-struct is_nothrow_invocable : detail::is_nothrow_invocable<void, F, Args...> {};
+struct is_nothrow_invocable
+    : invoke_detail::is_nothrow_invocable<void, F, Args...> {};
 
 //  mimic: std::is_nothrow_invocable_r, C++17
 template <typename R, typename F, typename... Args>
 struct is_nothrow_invocable_r
-    : detail::is_nothrow_invocable_r<void, R, F, Args...> {};
+    : invoke_detail::is_nothrow_invocable_r<void, R, F, Args...> {};
 
 } // namespace folly
 
