@@ -23,11 +23,14 @@ def fbcode_builder_spec(builder):
         'depends_on': [gmock],
         'steps': [
             builder.fb_github_cmake_install('folly/_build'),
-            builder.step('Run folly tests', [
-                builder.run(ShellQuoted('ctest -j {n}').format(
-                    n=builder.option('make_parallelism'),
-                ))
-            ]),
+            builder.step(
+                'Run folly tests', [
+                    builder.run(
+                        ShellQuoted('ctest --output-on-failure -j {n}')
+                        .format(n=builder.option('make_parallelism'), )
+                    )
+                ]
+            ),
         ]
     }
 
