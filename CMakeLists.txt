@@ -564,7 +564,10 @@ if (BUILD_TESTS)
       TEST NotificationQueueTest SOURCES NotificationQueueTest.cpp
       TEST RequestContextTest SOURCES RequestContextTest.cpp
       TEST ScopedEventBaseThreadTest SOURCES ScopedEventBaseThreadTest.cpp
-      TEST ssl_session_test SOURCES SSLSessionTest.cpp
+      TEST ssl_session_test
+        CONTENT_DIR certs/
+        SOURCES
+          SSLSessionTest.cpp
       TEST writechain_test SOURCES WriteChainAsyncTransportWrapperTest.cpp
 
     DIRECTORY io/async/ssl/test/
