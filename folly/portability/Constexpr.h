@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
+
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
@@ -40,12 +42,14 @@ constexpr size_t constexpr_strlen(const Char* s) {
 
 template <>
 constexpr size_t constexpr_strlen(const char* s) {
-#if defined(__clang__)
+#if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins)
+  // clang provides a constexpr builtin
   return __builtin_strlen(s);
-#elif defined(_MSC_VER) || defined(__CUDACC__)
-  return detail::constexpr_strlen_internal(s, 0);
-#else
+#elif defined(__GNUC__) && !defined(__clang__)
+  // strlen() happens to already be constexpr under gcc
   return std::strlen(s);
+#else
+  return detail::constexpr_strlen_internal(s, 0);
 #endif
 }
 } // namespace folly
