@@ -165,9 +165,19 @@ class FiberManager : public ::folly::Executor {
   void loopUntilNoReadyImpl();
 
   /**
+   * This should only be called by a LoopController.
+   */
+  bool shouldRunLoopRemote();
+
+  /**
    * @return true if there are outstanding tasks.
    */
   bool hasTasks() const;
+
+  /**
+   * @return true if there are tasks ready to run.
+   */
+  bool hasReadyTasks() const;
 
   /**
    * Sets exception callback which will be called if any of the tasks throws an
@@ -441,6 +451,8 @@ class FiberManager : public ::folly::Executor {
 
   folly::AtomicIntrusiveLinkedList<RemoteTask, &RemoteTask::nextRemoteTask>
       remoteTaskQueue_;
+
+  ssize_t remoteCount_{0};
 
   std::shared_ptr<TimeoutController> timeoutManager_;
 

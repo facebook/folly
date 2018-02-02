@@ -79,9 +79,7 @@ FiberManager::FiberManager(
           std::move(options)) {}
 
 FiberManager::~FiberManager() {
-  if (isLoopScheduled_) {
-    loopController_->cancel();
-  }
+  loopController_.reset();
 
   while (!fibersPool_.empty()) {
     fibersPool_.pop_front_and_dispose([](Fiber* fiber) { delete fiber; });
@@ -100,7 +98,7 @@ const LoopController& FiberManager::loopController() const {
 
 bool FiberManager::hasTasks() const {
   return fibersActive_ > 0 || !remoteReadyQueue_.empty() ||
-      !remoteTaskQueue_.empty();
+      !remoteTaskQueue_.empty() || remoteCount_ > 0;
 }
 
 Fiber* FiberManager::getFiber() {

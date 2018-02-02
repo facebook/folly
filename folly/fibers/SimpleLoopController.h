@@ -28,6 +28,10 @@ class SimpleLoopController : public LoopController {
  public:
   SimpleLoopController() : fm_(nullptr), stopRequested_(false) {}
 
+  ~SimpleLoopController() {
+    scheduled_ = false;
+  }
+
   /**
    * Run FiberManager loop; if no ready task are present,
    * run provided function. Stops after both stop() has been called
@@ -72,7 +76,17 @@ class SimpleLoopController : public LoopController {
   }
 
   void runLoop() override {
-    fm_->loopUntilNoReadyImpl();
+    do {
+      if (remoteLoopRun_ < remoteScheduleCalled_) {
+        for (; remoteLoopRun_ < remoteScheduleCalled_; ++remoteLoopRun_) {
+          if (fm_->shouldRunLoopRemote()) {
+            fm_->loopUntilNoReadyImpl();
+          }
+        }
+      } else {
+        fm_->loopUntilNoReadyImpl();
+      }
+    } while (remoteLoopRun_ < remoteScheduleCalled_);
   }
 
   void schedule() override {
@@ -88,16 +102,13 @@ class SimpleLoopController : public LoopController {
   std::atomic<bool> scheduled_{false};
   bool stopRequested_;
   std::atomic<int> remoteScheduleCalled_{0};
+  int remoteLoopRun_{0};
   std::vector<std::pair<TimePoint, std::function<void()>>> scheduledFuncs_;
 
   /* LoopController interface */
 
   void setFiberManager(FiberManager* fm) override {
     fm_ = fm;
-  }
-
-  void cancel() override {
-    scheduled_ = false;
   }
 
   void scheduleThreadSafe(std::function<bool()> func) override {

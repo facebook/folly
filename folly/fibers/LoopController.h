@@ -37,7 +37,7 @@ class LoopController {
 
   /**
    * Called by FiberManager to schedule the loop function run
-   * at some point in the future.
+   * at some point in the futufre.
    */
   virtual void schedule() = 0;
 
@@ -52,12 +52,6 @@ class LoopController {
    * Runs func and only schedules if func returned true.
    */
   virtual void scheduleThreadSafe(std::function<bool()> func) = 0;
-
-  /**
-   * Called by FiberManager to cancel a previously scheduled
-   * loop function run.
-   */
-  virtual void cancel() = 0;
 
   /**
    * Called by FiberManager to schedule some function to be run at some time.

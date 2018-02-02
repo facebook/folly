@@ -19,8 +19,7 @@
 namespace folly {
 namespace fibers {
 
-inline EventBaseLoopController::EventBaseLoopController()
-    : callback_(*this), aliveWeak_(destructionCallback_.getWeak()) {}
+inline EventBaseLoopController::EventBaseLoopController() : callback_(*this) {}
 
 inline EventBaseLoopController::~EventBaseLoopController() {
   callback_.cancelLoopCallback();
@@ -38,8 +37,6 @@ inline void EventBaseLoopController::attachEventBase(
   }
 
   eventBase_ = &eventBase;
-  eventBase_->runOnDestruction(&destructionCallback_);
-
   eventBaseAttached_ = true;
 
   if (awaitingScheduling_) {
@@ -66,10 +63,6 @@ inline void EventBaseLoopController::schedule() {
   }
 }
 
-inline void EventBaseLoopController::cancel() {
-  callback_.cancelLoopCallback();
-}
-
 inline void EventBaseLoopController::runLoop() {
   if (!eventBaseKeepAlive_) {
     // runLoop can be called twice if both schedule() and scheduleThreadSafe()
@@ -80,7 +73,9 @@ inline void EventBaseLoopController::runLoop() {
     eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
   }
   if (loopRunner_) {
-    loopRunner_->run([&] { fm_->loopUntilNoReadyImpl(); });
+    if (fm_->hasReadyTasks()) {
+      loopRunner_->run([&] { fm_->loopUntilNoReadyImpl(); });
+    }
   } else {
     fm_->loopUntilNoReadyImpl();
   }
@@ -98,13 +93,14 @@ inline void EventBaseLoopController::scheduleThreadSafe(
      3) We fulfill the promise from the other thread. */
   assert(eventBaseAttached_);
 
-  auto alive = aliveWeak_.lock();
+  if (func()) {
+    eventBase_->runInEventBaseThread([this]() {
+      if (fm_->shouldRunLoopRemote()) {
+        return runLoop();
+      }
 
-  if (func() && alive) {
-    auto aliveWeak = aliveWeak_;
-    eventBase_->runInEventBaseThread([this, aliveWeak]() {
-      if (!aliveWeak.expired()) {
-        runLoop();
+      if (!fm_->hasTasks()) {
+        eventBaseKeepAlive_.reset();
       }
     });
   }
