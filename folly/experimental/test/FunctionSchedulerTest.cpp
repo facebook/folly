@@ -45,7 +45,7 @@ namespace {
  * heavily loaded systems.  However, this will also make the tests take longer
  * to run.
  */
-static const auto timeFactor = std::chrono::milliseconds(100);
+static const auto timeFactor = std::chrono::milliseconds(400);
 std::chrono::milliseconds testInterval(int n) { return n * timeFactor; }
 int getTicksWithinRange(int n, int min, int max) {
   assert(min <= max);
