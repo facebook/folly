@@ -42,7 +42,7 @@ class LoggerDB {
   /**
    * Get the main LoggerDB singleton.
    */
-  static LoggerDB* get();
+  static LoggerDB* FOLLY_NONNULL get();
 
   ~LoggerDB();
 
@@ -52,7 +52,7 @@ class LoggerDB {
    * This creates the LogCategory for the specified name if it does not exist
    * already.
    */
-  LogCategory* getCategory(folly::StringPiece name);
+  LogCategory* FOLLY_NONNULL getCategory(folly::StringPiece name);
 
   /**
    * Get the LogCategory for the specified name, if it already exists.
@@ -75,7 +75,7 @@ class LoggerDB {
    * use a less verbose level than its parent categories.)
    */
   void setLevel(folly::StringPiece name, LogLevel level, bool inherit = true);
-  void setLevel(LogCategory* category, LogLevel level, bool inherit = true);
+  void setLevel(LogCategory* FOLLY_NONNULL category, LogLevel level, bool inherit = true);
 
   /**
    * Get a LogConfig object describing the current state of the LoggerDB.
@@ -163,12 +163,12 @@ class LoggerDB {
    */
   LogLevel xlogInit(
       folly::StringPiece categoryName,
-      std::atomic<LogLevel>* xlogCategoryLevel,
-      LogCategory** xlogCategory);
-  LogCategory* xlogInitCategory(
+      std::atomic<LogLevel>* FOLLY_NONNULL xlogCategoryLevel,
+      LogCategory * FOLLY_NULLABLE * FOLLY_NULLABLE xlogCategory);
+  LogCategory* FOLLY_NONNULL xlogInitCategory(
       folly::StringPiece categoryName,
-      LogCategory** xlogCategory,
-      std::atomic<bool>* isInitialized);
+      LogCategory* FOLLY_NONNULL * FOLLY_NONNULL xlogCategory,
+      std::atomic<bool>* FOLLY_NONNULL isInitialized);
 
   enum TestConstructorArg { TESTING };
 
@@ -230,7 +230,7 @@ FOLLY_POP_WARNING
    * Windows, and prints the message to stderr on other platforms.  It also
    * rate limits messages if they are arriving too quickly.
    */
-  static void setInternalWarningHandler(InternalWarningHandler handler);
+  static void setInternalWarningHandler(InternalWarningHandler FOLLY_NULLABLE handler);
 
  private:
   using LoggerNameMap = std::unordered_map<
@@ -252,13 +252,13 @@ FOLLY_POP_WARNING
   LoggerDB& operator=(LoggerDB const&) = delete;
 
   LoggerDB();
-  LogCategory* getOrCreateCategoryLocked(
+  LogCategory* FOLLY_NONNULL getOrCreateCategoryLocked(
       LoggerNameMap& loggersByName,
       folly::StringPiece name);
-  LogCategory* createCategoryLocked(
+  LogCategory* FOLLY_NONNULL createCategoryLocked(
       LoggerNameMap& loggersByName,
       folly::StringPiece name,
-      LogCategory* parent);
+      LogCategory* FOLLY_NONNULL parent);
 
   using NewHandlerMap =
       std::unordered_map<std::string, std::shared_ptr<LogHandler>>;
@@ -267,12 +267,12 @@ FOLLY_POP_WARNING
   void startConfigUpdate(
       const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
       const LogConfig& config,
-      NewHandlerMap* handlers,
-      OldToNewHandlerMap* oldToNewHandlerMap);
+      NewHandlerMap* FOLLY_NONNULL handlers,
+      OldToNewHandlerMap* FOLLY_NONNULL oldToNewHandlerMap);
   void finishConfigUpdate(
       const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
-      NewHandlerMap* handlers,
-      OldToNewHandlerMap* oldToNewHandlerMap);
+      NewHandlerMap* FOLLY_NONNULL handlers,
+      OldToNewHandlerMap* FOLLY_NONNULL oldToNewHandlerMap);
   std::vector<std::shared_ptr<LogHandler>> buildCategoryHandlerList(
       const NewHandlerMap& handlerMap,
       StringPiece categoryName,
