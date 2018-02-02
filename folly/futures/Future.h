@@ -319,11 +319,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::callableResult<T, F>::Return::value_type>
   defer(F&& func) &&;
 
-  // Public as for setCallback_
-  // Ensure that a boostable executor performs work to chain deferred work
-  // cleanly
-  void boost_();
-
  private:
   friend class Promise<T>;
   template <class>

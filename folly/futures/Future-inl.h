@@ -378,6 +378,28 @@ FutureBase<T>::thenImplementation(
 
   return f;
 }
+
+struct TimedDrivableExecutorWrapperMaker;
+class TimedDrivableExecutorWrapper : public TimedDrivableExecutor {
+ public:
+  ~TimedDrivableExecutorWrapper() = default;
+
+  // Returns a KeepAlive that owns the executor and a pointer to the object
+  // cast to TimedDrivableExecutor that can be passed into operations
+  static std::pair<KeepAlive, TimedDrivableExecutor*> get();
+
+ protected:
+  TimedDrivableExecutorWrapper() = default;
+
+  void keepAliveAcquire() override;
+
+  void keepAliveRelease() override;
+
+  KeepAlive getKeepAliveToken() override;
+
+  std::atomic<ssize_t> keepAliveCount_{0};
+  friend struct TimedDrivableExecutorWrapperMaker;
+};
 } // namespace detail
 } // namespace futures
 
@@ -480,36 +502,21 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-void SemiFuture<T>::boost_() {
-  // If a SemiFuture has an executor it should be deferred, so boost it
-  if (auto e = this->getExecutor()) {
-    // We know in a SemiFuture that if we have an executor it should be
-    // DeferredExecutor. Verify this in debug mode.
-    DCHECK(nullptr != dynamic_cast<DeferredExecutor*>(e));
-
-    auto ka = static_cast<DeferredExecutor*>(e)->getKeepAliveToken();
-    static_cast<DeferredExecutor*>(e)->boost();
-  }
-}
-
-template <class T>
 inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
   throwIfInvalid();
   if (!executor) {
     throwNoExecutor();
   }
 
-  // If current executor is deferred, boost block to ensure that work
-  // progresses and is run on the new executor.
+  // If current executor is deferred, try to set the new executor on it to
+  // ensure boost blocking happens correctly
   auto oldExecutor = this->getExecutor();
   if (oldExecutor && executor && (executor != oldExecutor)) {
     // We know in a SemiFuture that if we have an executor it should be
     // DeferredExecutor. Verify this in debug mode.
     DCHECK(nullptr != dynamic_cast<DeferredExecutor*>(this->getExecutor()));
-    if (static_cast<DeferredExecutor*>(oldExecutor)) {
-      executor->add([oldExecutorKA = oldExecutor->getKeepAliveToken()]() {
-        static_cast<DeferredExecutor*>(oldExecutorKA.get())->boost();
-      });
+    if (auto defExecutor = static_cast<DeferredExecutor*>(oldExecutor)) {
+      defExecutor->setExecutor(executor);
     }
   }
 
@@ -1358,14 +1365,6 @@ Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
 namespace futures {
 namespace detail {
 
-template <class T>
-void doBoost(folly::Future<T>& /* usused */) {}
-
-template <class T>
-void doBoost(folly::SemiFuture<T>& f) {
-  f.boost_();
-}
-
 template <class FutureType, typename T = typename FutureType::value_type>
 void waitImpl(FutureType& f) {
   // short-circuit if there's nothing to do
@@ -1375,7 +1374,6 @@ void waitImpl(FutureType& f) {
 
   FutureBatonType baton;
   f.setCallback_([&](const Try<T>& /* t */) { baton.post(); });
-  doBoost(f);
   baton.wait();
   assert(f.isReady());
 }
@@ -1394,7 +1392,6 @@ void waitImpl(FutureType& f, Duration dur) {
     promise.setTry(std::move(t));
     baton->post();
   });
-  doBoost(f);
   f = std::move(ret);
   if (baton->try_wait_for(dur)) {
     assert(f.isReady());
@@ -1427,7 +1424,9 @@ void waitViaImpl(
   if (f.isReady()) {
     return;
   }
-  f = std::move(f).via(e).then([](T&& t) { return std::move(t); });
+  // Chain operations, ensuring that the executor is kept alive for the duration
+  f = std::move(f).via(e).then(
+      [keepAlive = e->getKeepAliveToken()](T&& t) { return std::move(t); });
   auto now = std::chrono::steady_clock::now();
   auto deadline = now + timeout;
   while (!f.isReady() && (now < deadline)) {
@@ -1454,44 +1453,40 @@ SemiFuture<T>&& SemiFuture<T>::wait() && {
 
 template <class T>
 SemiFuture<T>& SemiFuture<T>::wait(Duration dur) & {
-  futures::detail::waitImpl(*this, dur);
+  auto tde = futures::detail::TimedDrivableExecutorWrapper::get();
+  *this = std::move(*this).via(tde.second).waitVia(tde.second, dur).semi();
   return *this;
 }
 
 template <class T>
 SemiFuture<T>&& SemiFuture<T>::wait(Duration dur) && {
-  futures::detail::waitImpl(*this, dur);
+  auto tde = futures::detail::TimedDrivableExecutorWrapper::get();
+  *this = std::move(*this).via(tde.second).waitVia(tde.second, dur).semi();
   return std::move(*this);
 }
 
 template <class T>
 T SemiFuture<T>::get() && {
-  return std::move(wait()).value();
+  auto tde = futures::detail::TimedDrivableExecutorWrapper::get();
+  return std::move(*this).via(tde.second).getVia(tde.second);
 }
 
 template <class T>
 T SemiFuture<T>::get(Duration dur) && {
-  wait(dur);
-  if (this->isReady()) {
-    return std::move(this->value());
-  } else {
-    throwTimedOut();
-  }
+  auto tde = futures::detail::TimedDrivableExecutorWrapper::get();
+  return std::move(*this).via(tde.second).getVia(tde.second, dur);
 }
 
 template <class T>
 Try<T> SemiFuture<T>::getTry() && {
-  return std::move(wait()).result();
+  auto tde = futures::detail::TimedDrivableExecutorWrapper::get();
+  return std::move(*this).via(tde.second).getTryVia(tde.second);
 }
 
 template <class T>
 Try<T> SemiFuture<T>::getTry(Duration dur) && {
-  wait(dur);
-  if (this->isReady()) {
-    return std::move(this->result());
-  } else {
-    throwTimedOut();
-  }
+  auto tde = futures::detail::TimedDrivableExecutorWrapper::get();
+  return std::move(*this).via(tde.second).getTryVia(tde.second, dur);
 }
 
 template <class T>

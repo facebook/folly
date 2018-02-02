@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 // included by Future.h, do not include directly.
@@ -167,7 +166,7 @@ struct Extract<R (&)(Args...)> {
 };
 
 /**
- * Defer work until executor is actively boosted.
+ * Defer work until executor is chained.
  *
  * NOTE: that this executor is a private implementation detail belonging to the
  * Folly Futures library and not intended to be used elsewhere. It is designed
@@ -207,31 +206,46 @@ class DeferredExecutor final : public Executor {
 
   /// Enqueue a function to executed by this executor. This is not thread-safe.
   void add(Func func) override {
-    // If we already have a function, wrap and chain. Otherwise assign.
-    if (func_) {
-      func_ = [oldFunc = std::move(func_), func = std::move(func)]() mutable {
-        oldFunc();
-        func();
-      };
-    } else {
-      func_ = std::move(func);
+    // We should never have a function here already. Either we are RUNNING,
+    // in which case we are on one and it should have been removed from the
+    // executor, or we are not in which case it should be the first.
+    assert(!func_);
+
+    // If we are already running, must be reentrant. Just call func.
+    if (state_.load() == State::RUNNING) {
+      func();
+      return;
     }
+
+    // If we already have a function, wrap and chain. Otherwise assign.
+    func_ = std::move(func);
+
+    State expected = State::NEW;
+    // If the state is new, then attempt to change it to HAS_CALLBACK, set the
+    // executor and return.
+    if (state_.load() == expected) {
+      if (state_.compare_exchange_strong(expected, State::HAS_CALLBACK)) {
+        return;
+      }
+    }
+    // If we have the executor set, we now have the callback too.
+    // Enqueue the callback on the executor and change to the RUNNING state.
+    enqueueWork();
   }
 
-  // Boost is like drive for certain types of deferred work
-  // Unlike drive it is safe to run on another executor because it
-  // will only be implemented on deferred-safe executors
-  void boost() {
-    // Ensure that the DeferredExecutor outlives its run operation
-    ++keepAliveCount_;
-    SCOPE_EXIT {
-      releaseAndTryFree();
-    };
-
-    // Drain the executor
-    while (auto func = std::move(func_)) {
-      func();
+  void setExecutor(Executor* exec) {
+    executorKeepAlive_ = exec->getKeepAliveToken();
+    State expected = State::NEW;
+    // If the state is new, then attempt to change it to HAS_EXECUTOR, set the
+    // executor and return.
+    if (state_.load() == expected) {
+      if (state_.compare_exchange_strong(expected, State::HAS_EXECUTOR)) {
+        return;
+      }
     }
+    // If we have the callback set, we now have the executor too.
+    // Enqueue the callback on the executor and change to the RUNNING state.
+    enqueueWork();
   }
 
   KeepAlive getKeepAliveToken() override {
@@ -265,10 +279,26 @@ class DeferredExecutor final : public Executor {
   }
 
  private:
+  enum class State {
+    NEW,
+    HAS_EXECUTOR,
+    HAS_CALLBACK,
+    RUNNING,
+  };
+
   Func func_;
   ssize_t keepAliveCount_{0};
+  std::atomic<State> state_{State::NEW};
+  KeepAlive executorKeepAlive_;
 
   DeferredExecutor() = default;
+
+  void enqueueWork() {
+    DCHECK(func_);
+    state_.store(State::RUNNING);
+    executorKeepAlive_.get()->add(std::move(func_));
+    return;
+  }
 };
 
 } // namespace detail

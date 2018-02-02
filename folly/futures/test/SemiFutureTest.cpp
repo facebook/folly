@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <future>
 #include <memory>
 #include <numeric>
 #include <string>
@@ -284,7 +285,31 @@ TEST(SemiFuture, SimpleGetTry) {
 TEST(SemiFuture, SimpleTimedGet) {
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
-  EXPECT_THROW(std::move(sf).get(std::chrono::seconds(1)), TimedOut);
+  EXPECT_THROW(std::move(sf).get(std::chrono::milliseconds(100)), TimedOut);
+}
+
+TEST(SemiFuture, SimpleTimedWait) {
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  sf.wait(std::chrono::milliseconds(100));
+  EXPECT_FALSE(sf.isReady());
+  p.setValue();
+  EXPECT_FALSE(sf.isReady());
+  // The internals of wait mean that there is an executor in the way. We
+  // cannot expect that the promise immediately statisfies the future.
+  sf.wait(std::chrono::milliseconds(100));
+  EXPECT_TRUE(sf.isReady());
+}
+
+TEST(SemiFuture, SimpleTimedMultipleWait) {
+  Promise<folly::Unit> p;
+  auto sf = p.getSemiFuture();
+  sf.wait(std::chrono::milliseconds(100));
+  sf.wait(std::chrono::milliseconds(100));
+  EXPECT_FALSE(sf.isReady());
+  p.setValue();
+  sf.wait(std::chrono::milliseconds(100));
+  EXPECT_TRUE(sf.isReady());
 }
 
 TEST(SemiFuture, SimpleTimedGetViaFromSemiFuture) {
@@ -292,13 +317,14 @@ TEST(SemiFuture, SimpleTimedGetViaFromSemiFuture) {
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
   EXPECT_THROW(
-      std::move(sf).via(&e2).getVia(&e2, std::chrono::seconds(1)), TimedOut);
+      std::move(sf).via(&e2).getVia(&e2, std::chrono::milliseconds(100)),
+      TimedOut);
 }
 
 TEST(SemiFuture, SimpleTimedGetTry) {
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
-  EXPECT_THROW(std::move(sf).getTry(std::chrono::seconds(1)), TimedOut);
+  EXPECT_THROW(std::move(sf).getTry(std::chrono::milliseconds(100)), TimedOut);
 }
 
 TEST(SemiFuture, SimpleTimedGetTryViaFromSemiFuture) {
@@ -306,7 +332,8 @@ TEST(SemiFuture, SimpleTimedGetTryViaFromSemiFuture) {
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
   EXPECT_THROW(
-      std::move(sf).via(&e2).getTryVia(&e2, std::chrono::seconds(1)), TimedOut);
+      std::move(sf).via(&e2).getTryVia(&e2, std::chrono::milliseconds(100)),
+      TimedOut);
 }
 
 TEST(SemiFuture, SimpleValue) {
@@ -348,6 +375,79 @@ TEST(SemiFuture, SimpleDefer) {
   // Run "F" here inline in the calling thread
   std::move(sf).get();
   ASSERT_EQ(innerResult, 17);
+}
+
+TEST(SemiFuture, DeferWithDelayedSetValue) {
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { return 17; });
+
+  // Start thread and have it blocking in the semifuture before we satisfy the
+  // promise
+  auto resultF =
+      std::async(std::launch::async, [&]() { return std::move(sf).get(); });
+
+  // Check that future is not already satisfied before setting the promise
+  // Async task should be blocked on sf.
+  ASSERT_EQ(
+      resultF.wait_for(std::chrono::milliseconds(100)),
+      std::future_status::timeout);
+  p.setValue();
+  ASSERT_EQ(resultF.get(), 17);
+}
+
+TEST(SemiFuture, DeferWithViaAndDelayedSetValue) {
+  EventBase e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { return 17; }).via(&e2);
+  // Start thread and have it blocking in the semifuture before we satisfy the
+  // promise.
+  auto resultF =
+      std::async(std::launch::async, [&]() { return std::move(sf).get(); });
+  std::thread t([&]() { e2.loopForever(); });
+  // Check that future is not already satisfied before setting the promise
+  // Async task should be blocked on sf.
+  ASSERT_EQ(
+      resultF.wait_for(std::chrono::milliseconds(100)),
+      std::future_status::timeout);
+  p.setValue();
+  e2.terminateLoopSoon();
+  t.join();
+  ASSERT_EQ(resultF.get(), 17);
+}
+
+TEST(SemiFuture, DeferWithGetTimedGet) {
+  std::atomic<int> innerResult{0};
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { innerResult = 17; });
+  EXPECT_THROW(std::move(sf).get(std::chrono::milliseconds(100)), TimedOut);
+  ASSERT_EQ(innerResult, 0);
+}
+
+TEST(SemiFuture, DeferWithGetTimedWait) {
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { return 17; });
+  ASSERT_FALSE(sf.isReady());
+  sf.wait(std::chrono::milliseconds(100));
+  ASSERT_FALSE(sf.isReady());
+  p.setValue();
+  ASSERT_EQ(std::move(sf).get(), 17);
+}
+
+TEST(SemiFuture, DeferWithGetMultipleTimedWait) {
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  auto sf = std::move(f).semi().defer([&]() { return 17; });
+  sf.wait(std::chrono::milliseconds(100));
+  sf.wait(std::chrono::milliseconds(100));
+  ASSERT_FALSE(sf.isReady());
+  p.setValue();
+  sf.wait(std::chrono::milliseconds(100));
+  ASSERT_EQ(std::move(sf).get(), 17);
 }
 
 TEST(SemiFuture, DeferWithVia) {
