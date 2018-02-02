@@ -30,9 +30,10 @@
 
 #ifndef HAZPTR_TC
 
-// If we are on an IOS device or simulator then do not use thread caching
-// Performance is potentially suboptimal without thread local support
-#if FOLLY_MOBILE && defined(__APPLE__)
+// If we are targeting a mobile device, do not use thread caching as a
+// precaution. Performance is potentially suboptimal without thread
+// local support
+#if FOLLY_MOBILE
 #define HAZPTR_TC false
 #else
 #define HAZPTR_TC true
@@ -44,9 +45,10 @@
 #endif
 
 #ifndef HAZPTR_PRIV
-// If we are on an IOS device or simulator then do not use thread caching
-// Performance is potentially suboptimal without thread local support
-#if FOLLY_MOBILE && defined(__APPLE__)
+// If we are targeting a mobile device, do not use thread caching as a
+// precaution. Performance is potentially suboptimal without thread
+// local support
+#if FOLLY_MOBILE
 #define HAZPTR_PRIV false
 #else
 #define HAZPTR_PRIV true
