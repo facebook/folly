@@ -410,7 +410,7 @@ if (BUILD_TESTS)
       TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
       TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
       TEST event_count_test SOURCES EventCountTest.cpp
-      TEST function_scheduler_test_2 SOURCES FunctionSchedulerTest.cpp
+      TEST function_scheduler_test SOURCES FunctionSchedulerTest.cpp
       TEST future_dag_test SOURCES FutureDAGTest.cpp
       TEST json_schema_test SOURCES JSONSchemaTest.cpp
       TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
@@ -643,7 +643,6 @@ if (BUILD_TESTS)
       # TEST fingerprint_test SOURCES FingerprintTest.cpp
       TEST format_other_test SOURCES FormatOtherTest.cpp
       TEST format_test SOURCES FormatTest.cpp
-      TEST function_scheduler_test SOURCES FunctionSchedulerTest.cpp
       TEST function_test BROKEN
         SOURCES FunctionTest.cpp
       TEST function_ref_test SOURCES FunctionRefTest.cpp
