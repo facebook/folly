@@ -31,6 +31,7 @@
 #endif
 
 using namespace folly;
+using std::atomic;
 using std::chrono::milliseconds;
 
 namespace {
@@ -71,7 +72,7 @@ TEST(FunctionScheduler, StartAndShutdown) {
 }
 
 TEST(FunctionScheduler, SimpleAdd) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2");
   fs.start();
@@ -83,7 +84,7 @@ TEST(FunctionScheduler, SimpleAdd) {
 }
 
 TEST(FunctionScheduler, AddCancel) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2");
   fs.start();
@@ -104,7 +105,7 @@ TEST(FunctionScheduler, AddCancel) {
 }
 
 TEST(FunctionScheduler, AddCancel2) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
 
   // Test adds and cancels while the scheduler is stopped
@@ -130,7 +131,7 @@ TEST(FunctionScheduler, AddCancel2) {
   EXPECT_TRUE(fs.cancelFunction("add3"));
 
   // Test a function that cancels itself
-  int selfCancelCount = 0;
+  atomic<int> selfCancelCount{0};
   fs.addFunction(
       [&] {
         ++selfCancelCount;
@@ -144,7 +145,7 @@ TEST(FunctionScheduler, AddCancel2) {
   EXPECT_FALSE(fs.cancelFunction("selfCancel"));
 
   // Test a function that schedules another function
-  int adderCount = 0;
+  atomic<int> adderCount{0};
   int fn2Count = 0;
   auto fn2 = [&] { ++fn2Count; };
   auto fnAdder = [&] {
@@ -182,7 +183,7 @@ TEST(FunctionScheduler, AddCancel2) {
 }
 
 TEST(FunctionScheduler, AddMultiple) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2");
   fs.addFunction([&] { total += 3; }, testInterval(3), "add3");
@@ -204,7 +205,7 @@ TEST(FunctionScheduler, AddMultiple) {
 }
 
 TEST(FunctionScheduler, AddAfterStart) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2");
   fs.addFunction([&] { total += 3; }, testInterval(2), "add3");
@@ -217,7 +218,7 @@ TEST(FunctionScheduler, AddAfterStart) {
 }
 
 TEST(FunctionScheduler, ShutdownStart) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2");
   fs.start();
@@ -232,7 +233,7 @@ TEST(FunctionScheduler, ShutdownStart) {
 }
 
 TEST(FunctionScheduler, ResetFunc) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(3), "add2");
   fs.addFunction([&] { total += 3; }, testInterval(3), "add3");
@@ -253,7 +254,7 @@ TEST(FunctionScheduler, ResetFunc) {
 }
 
 TEST(FunctionScheduler, ResetFunc2) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunctionOnce([&] { total += 2; }, "add2", testInterval(1));
   fs.addFunctionOnce([&] { total += 3; }, "add3", testInterval(1));
@@ -316,7 +317,7 @@ TEST(FunctionScheduler, ResetFuncWhileRunning) {
 }
 
 TEST(FunctionScheduler, AddInvalid) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   // interval may not be negative
   EXPECT_THROW(fs.addFunction([&] { total += 2; }, testInterval(-1), "add2"),
@@ -334,7 +335,7 @@ TEST(FunctionScheduler, NoFunctions) {
 }
 
 TEST(FunctionScheduler, AddWhileRunning) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.start();
   delay(1);
@@ -348,7 +349,7 @@ TEST(FunctionScheduler, AddWhileRunning) {
 }
 
 TEST(FunctionScheduler, NoShutdown) {
-  int total = 0;
+  atomic<int> total{0};
   {
     FunctionScheduler fs;
     fs.addFunction([&] { total += 2; }, testInterval(1), "add2");
@@ -364,7 +365,7 @@ TEST(FunctionScheduler, NoShutdown) {
 }
 
 TEST(FunctionScheduler, StartDelay) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2",
                  testInterval(2));
@@ -435,7 +436,7 @@ TEST(FunctionScheduler, SteadyCatchup) {
 }
 
 TEST(FunctionScheduler, UniformDistribution) {
-  int total = 0;
+  atomic<int> total{0};
   const int kTicks = 2;
   std::chrono::milliseconds minInterval =
       testInterval(kTicks) - (timeFactor / 5);
@@ -460,16 +461,17 @@ TEST(FunctionScheduler, UniformDistribution) {
 }
 
 TEST(FunctionScheduler, ExponentialBackoff) {
-  int total = 0;
-  int expectedInterval = 0;
-  int nextInterval = 2;
+  atomic<int> total{0};
+  atomic<int> expectedInterval{0};
+  atomic<int> nextInterval{2};
   FunctionScheduler fs;
   fs.addFunctionGenericDistribution(
       [&] { total += 2; },
-      [&expectedInterval, nextInterval]() mutable {
-        expectedInterval = nextInterval;
-        nextInterval *= nextInterval;
-        return testInterval(expectedInterval);
+      [&expectedInterval, &nextInterval]() mutable {
+        auto interval = nextInterval.load();
+        expectedInterval = interval;
+        nextInterval = interval * interval;
+        return testInterval(interval);
       },
       "ExponentialBackoff",
       "2^n * 100ms",
@@ -487,8 +489,8 @@ TEST(FunctionScheduler, ExponentialBackoff) {
 }
 
 TEST(FunctionScheduler, GammaIntervalDistribution) {
-  int total = 0;
-  int expectedInterval = 0;
+  atomic<int> total{0};
+  atomic<int> expectedInterval{0};
   FunctionScheduler fs;
   std::default_random_engine generator(folly::Random::rand32());
   // The alpha and beta arguments are selected, somewhat randomly, to be 2.0.
@@ -518,7 +520,7 @@ TEST(FunctionScheduler, GammaIntervalDistribution) {
 }
 
 TEST(FunctionScheduler, AddWithRunOnce) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunctionOnce([&] { total += 2; }, "add2");
   fs.start();
@@ -537,7 +539,7 @@ TEST(FunctionScheduler, AddWithRunOnce) {
 }
 
 TEST(FunctionScheduler, cancelFunctionAndWait) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
   fs.addFunction(
       [&] {
@@ -613,7 +615,7 @@ TEST(FunctionScheduler, StartThrows) {
 #endif
 
 TEST(FunctionScheduler, cancelAllFunctionsAndWait) {
-  int total = 0;
+  atomic<int> total{0};
   FunctionScheduler fs;
 
   fs.addFunction(
