@@ -32,6 +32,8 @@
 
 using namespace folly;
 using std::atomic;
+using std::chrono::duration_cast;
+using std::chrono::microseconds;
 using std::chrono::milliseconds;
 
 namespace {
@@ -51,8 +53,9 @@ int getTicksWithinRange(int n, int min, int max) {
   n = std::min(max, n);
   return n;
 }
-void delay(int n) {
-  std::chrono::microseconds usec(n * timeFactor);
+void delay(float n) {
+  microseconds usec(static_cast<microseconds::rep>(
+      duration_cast<microseconds>(timeFactor).count() * n));
   usleep(usec.count());
 }
 
@@ -245,7 +248,7 @@ TEST(FunctionScheduler, ResetFunc) {
   delay(1);
   // t2: after the reset, add2 should have been invoked immediately
   EXPECT_EQ(7, total);
-  usleep(150000);
+  delay(1.5);
   // t3.5: add3 should have been invoked. add2 should not
   EXPECT_EQ(10, total);
   delay(1);
@@ -342,10 +345,12 @@ TEST(FunctionScheduler, AddWhileRunning) {
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2");
   // The function should be invoked nearly immediately when we add it
   // and the FunctionScheduler is already running
-  usleep(50000);
-  EXPECT_EQ(2, total);
+  delay(0.5);
+  auto t = total.load();
+  EXPECT_EQ(2, t);
   delay(2);
-  EXPECT_EQ(4, total);
+  t = total.load();
+  EXPECT_EQ(4, t);
 }
 
 TEST(FunctionScheduler, NoShutdown) {
@@ -354,7 +359,7 @@ TEST(FunctionScheduler, NoShutdown) {
     FunctionScheduler fs;
     fs.addFunction([&] { total += 2; }, testInterval(1), "add2");
     fs.start();
-    usleep(50000);
+    delay(0.5);
     EXPECT_EQ(2, total);
   }
   // Destroyed the FunctionScheduler without calling shutdown.
