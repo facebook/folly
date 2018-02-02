@@ -193,7 +193,18 @@ class LoggerDB {
    * Example scenarios where this is used:
    * - We fail to write to a log file (for instance, when the disk is full)
    * - A LogHandler throws an unexpected exception
+   *
    */
+
+FOLLY_PUSH_WARNING
+#if FOLLY_HAS_EXTENSION(nullability)
+// We can only annotate nullability specifiers on pointer types.
+// Sometimes we forward C-style arrays which are not pointer types
+// and cannot be annotated with nullability specifiers. Instead of
+// using SFINAE on the parameter pack and checking if the predicate
+// std::is_pointer<Arg> is true for any arg, we just ignore the warning
+FOLLY_GCC_DISABLE_WARNING("-Wnullability-completeness")
+#endif
   template <typename... Args>
   static void internalWarning(
       folly::StringPiece file,
@@ -202,6 +213,7 @@ class LoggerDB {
     internalWarningImpl(
         file, lineNumber, folly::to<std::string>(std::forward<Args>(args)...));
   }
+FOLLY_POP_WARNING
 
   using InternalWarningHandler =
       void (*)(folly::StringPiece file, int lineNumber, std::string&&);
