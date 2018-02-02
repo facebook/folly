@@ -262,6 +262,7 @@ function(folly_define_tests)
         # If we have CMake's built-in gtest support use it to add each test
         # function as a separate test.
         gtest_add_tests(TARGET ${cur_test_name}
+                        WORKING_DIRECTORY "${TOP_DIR}"
                         TEST_PREFIX "${cur_test_name}."
                         TEST_LIST test_cases)
         set_tests_properties(${test_cases} PROPERTIES TIMEOUT 120)
@@ -270,6 +271,7 @@ function(folly_define_tests)
         add_test(
           NAME ${cur_test_name}
           COMMAND ${cur_test_name}
+          WORKING_DIRECTORY "${TOP_DIR}"
         )
         set_tests_properties(${cur_test_name} PROPERTIES TIMEOUT 120)
       endif()

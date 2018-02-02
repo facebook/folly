@@ -56,6 +56,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif()
 
 set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
+set(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 include(folly-deps) # Find the required packages
 
