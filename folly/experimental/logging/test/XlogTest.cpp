@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/experimental/logging/xlog.h>
+
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogHandler.h>
 #include <folly/experimental/logging/LogMessage.h>
@@ -20,7 +22,7 @@
 #include <folly/experimental/logging/test/TestLogHandler.h>
 #include <folly/experimental/logging/test/XlogHeader1.h>
 #include <folly/experimental/logging/test/XlogHeader2.h>
-#include <folly/experimental/logging/xlog.h>
+#include <folly/portability/Constexpr.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
@@ -203,4 +205,49 @@ TEST(Xlog, getXlogCategoryName) {
       "foo.bar.test.h",
       getXlogCategoryNameForFile(
           "buck-out/gen/foo/bar#header-map,headers/foo/bar/test.h"));
+}
+
+TEST(Xlog, xlogStripFilename) {
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b"));
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b/"));
+  EXPECT_STREQ(
+      "ships/cruiser.cpp",
+      xlogStripFilename(
+          "/home/johndoe/src/spacesim/ships/cruiser.cpp",
+          "/home/johndoe/src/spacesim"));
+  EXPECT_STREQ(
+      "ships/cruiser.cpp",
+      xlogStripFilename("src/spacesim/ships/cruiser.cpp", "src/spacesim"));
+
+  // Test with multiple prefixes
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/x/y:1/2:/a/b"));
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/x/y:/a/b:/1/2"));
+
+  EXPECT_STREQ(
+      "/foobar/src/test.cpp", xlogStripFilename("/foobar/src/test.cpp", "/foo"))
+      << "should only strip full directory name matches";
+  EXPECT_STREQ(
+      "src/test.cpp",
+      xlogStripFilename("/foobar/src/test.cpp", "/foo:/foobar"));
+
+  EXPECT_STREQ(
+      "/a/b/c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b/c/d.txt"))
+      << "should not strip if the result will be empty";
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", ":/x/y::/a/b:"))
+      << "empty prefixes in the prefix list should be ignored";
+
+  EXPECT_STREQ("d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b/c:/a"))
+      << "only the first prefix match should be honored";
+  EXPECT_STREQ("b/c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a:/a/b/c"))
+      << "only the first prefix match should be honored";
+
+  // xlogStripFilename() should ideally be a purely compile-time evaluation.
+  // Use a static_assert() to ensure that it can be evaluated at compile time.
+  // We use EXPECT_STREQ() checks above for most of the testing since it
+  // produces nicer messages on failure.
+  static_assert(
+      constexpr_strcmp(
+          xlogStripFilename("/my/project/src/test.cpp", "/my/project"),
+          "src/test.cpp") == 0,
+      "incorrect xlogStripFilename() behavior");
 }

@@ -55,8 +55,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   endif()
 endif()
 
-set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
 set(TOP_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(FOLLY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/folly")
+set(
+  FOLLY_DIR_PREFIXES
+  "${CMAKE_CURRENT_SOURCE_DIR}:${CMAKE_CURRENT_BINARY_DIR}"
+)
 
 include(folly-deps) # Find the required packages
 
@@ -446,11 +450,7 @@ if (BUILD_TESTS)
       TEST printf_test SOURCES PrintfTest.cpp
       TEST rate_limiter_test SOURCES RateLimiterTest.cpp
       TEST standard_log_handler_test SOURCES StandardLogHandlerTest.cpp
-      # This test is currently broken in CMake-based builds given
-      # that CMake passes absolute source paths to the compiler;
-      # the xlog code probably should be updated to support stripping off
-      # project directory prefixes.
-      TEST xlog_test BROKEN
+      TEST xlog_test
         HEADERS
           XlogHeader1.h
           XlogHeader2.h

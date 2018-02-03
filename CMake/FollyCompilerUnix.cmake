@@ -4,6 +4,12 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_COMMON} -O3")
 
 list(APPEND CMAKE_REQUIRED_FLAGS -std=gnu++14)
 function(apply_folly_compile_options_to_target THETARGET)
+  target_compile_definitions(${THETARGET}
+    PRIVATE
+      _REENTRANT
+      _GNU_SOURCE
+      "FOLLY_XLOG_STRIP_PREFIXES=\"${FOLLY_DIR_PREFIXES}\""
+  )
   target_compile_options(${THETARGET}
     PUBLIC
       -g
@@ -21,8 +27,5 @@ function(apply_folly_compile_options_to_target THETARGET)
       -Wunused-result
       -Wnon-virtual-dtor
       ${FOLLY_CXX_FLAGS}
-    PRIVATE
-      -D_REENTRANT
-      -D_GNU_SOURCE
   )
 endfunction()
