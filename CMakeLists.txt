@@ -415,7 +415,9 @@ if (BUILD_TESTS)
       TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
       TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
       TEST event_count_test SOURCES EventCountTest.cpp
-      TEST function_scheduler_test SOURCES FunctionSchedulerTest.cpp
+      # FunctionSchedulerTest has a lot of timing-dependent checks,
+      # and tends to fail on heavily loaded systems.
+      TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
       TEST future_dag_test SOURCES FutureDAGTest.cpp
       TEST json_schema_test SOURCES JSONSchemaTest.cpp
       TEST lock_free_ring_buffer_test SOURCES LockFreeRingBufferTest.cpp
