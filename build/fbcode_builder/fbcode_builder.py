@@ -246,6 +246,15 @@ class FBCodeBuilder(object):
                 'apt-get upgrade -yq cmake'
             )))
 
+        # Debian 8.6 comes with a CMake version that is too old for folly.
+        if self.option('os_image') == 'debian:8.6':
+            actions.append(self.run(ShellQuoted(
+                'echo deb http://ftp.debian.org/debian jessie-backports main '
+                '>> /etc/apt/sources.list.d/jessie-backports.list && '
+                'apt-get update && '
+                'apt-get -yq -t jessie-backports install cmake'
+            )))
+
         actions.extend(self.debian_ccache_setup_steps())
 
         return self.step('Install packages for Debian-based OS', actions)
