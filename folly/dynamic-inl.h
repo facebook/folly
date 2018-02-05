@@ -586,6 +586,11 @@ inline dynamic* dynamic::get_ptr(dynamic const& idx) & {
   return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
 }
 
+inline dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) & {
+  return const_cast<dynamic*>(
+      const_cast<dynamic const*>(this)->get_ptr(jsonPtr));
+}
+
 inline dynamic& dynamic::at(dynamic const& idx) & {
   return const_cast<dynamic&>(const_cast<dynamic const*>(this)->at(idx));
 }

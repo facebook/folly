@@ -756,3 +756,68 @@ TEST(Dynamic, MergeDiffNestedObjects) {
   source.merge_patch(patch);
   EXPECT_EQ(source, target);
 }
+
+using folly::json_pointer;
+
+TEST(Dynamic, JSONPointer) {
+  dynamic target = dynamic::object;
+  dynamic ary = dynamic::array("bar", "baz", dynamic::array("bletch", "xyzzy"));
+  target["foo"] = ary;
+  target[""] = 0;
+  target["a/b"] = 1;
+  target["c%d"] = 2;
+  target["e^f"] = 3;
+  target["g|h"] = 4;
+  target["i\\j"] = 5;
+  target["k\"l"] = 6;
+  target[" "] = 7;
+  target["m~n"] = 8;
+  target["xyz"] = dynamic::object;
+  target["xyz"][""] = dynamic::object("nested", "abc");
+  target["xyz"]["def"] = dynamic::array(1, 2, 3);
+  target["long_array"] = dynamic::array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+  target["-"] = dynamic::object("x", "y");
+
+  EXPECT_EQ(target, *target.get_ptr(json_pointer::parse("")));
+  EXPECT_EQ(ary, *(target.get_ptr(json_pointer::parse("/foo"))));
+  EXPECT_EQ("bar", target.get_ptr(json_pointer::parse("/foo/0"))->getString());
+  EXPECT_EQ(0, target.get_ptr(json_pointer::parse("/"))->getInt());
+  EXPECT_EQ(1, target.get_ptr(json_pointer::parse("/a~1b"))->getInt());
+  EXPECT_EQ(2, target.get_ptr(json_pointer::parse("/c%d"))->getInt());
+  EXPECT_EQ(3, target.get_ptr(json_pointer::parse("/e^f"))->getInt());
+  EXPECT_EQ(4, target.get_ptr(json_pointer::parse("/g|h"))->getInt());
+  EXPECT_EQ(5, target.get_ptr(json_pointer::parse("/i\\j"))->getInt());
+  EXPECT_EQ(6, target.get_ptr(json_pointer::parse("/k\"l"))->getInt());
+  EXPECT_EQ(7, target.get_ptr(json_pointer::parse("/ "))->getInt());
+  EXPECT_EQ(8, target.get_ptr(json_pointer::parse("/m~0n"))->getInt());
+  // empty key in path
+  EXPECT_EQ(
+      "abc", target.get_ptr(json_pointer::parse("/xyz//nested"))->getString());
+  EXPECT_EQ(3, target.get_ptr(json_pointer::parse("/xyz/def/2"))->getInt());
+  EXPECT_EQ("baz", ary.get_ptr(json_pointer::parse("/1"))->getString());
+  EXPECT_EQ("bletch", ary.get_ptr(json_pointer::parse("/2/0"))->getString());
+  // double-digit index
+  EXPECT_EQ(
+      12, target.get_ptr(json_pointer::parse("/long_array/11"))->getInt());
+  // allow '-' to index in objects
+  EXPECT_EQ("y", target.get_ptr(json_pointer::parse("/-/x"))->getString());
+
+  // invalid JSON pointers formatting when accessing array
+  EXPECT_THROW(
+      target.get_ptr(json_pointer::parse("/foo/01")), std::invalid_argument);
+
+  // non-existent keys/indexes
+  EXPECT_EQ(nullptr, ary.get_ptr(json_pointer::parse("/3")));
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/unknown_key")));
+  // intermediate key not found
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foox/test")));
+  // Intermediate key is '-'
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-/key")));
+
+  // invalid path in object (key in array)
+  EXPECT_THROW(
+      target.get_ptr(json_pointer::parse("/foo/1/bar")), folly::TypeError);
+
+  // Allow "-" index in the array
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-")));
+}

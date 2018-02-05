@@ -65,6 +65,7 @@
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
+#include <folly/json_pointer.h>
 
 namespace folly {
 
@@ -373,6 +374,16 @@ struct dynamic : private boost::operators<dynamic> {
   dynamic const& at(dynamic const&) const&;
   dynamic&       at(dynamic const&) &;
   dynamic&&      at(dynamic const&) &&;
+
+  /*
+   * Locate element using JSON pointer, per RFC 6901. Returns nullptr if
+   * element could not be located. Throws if pointer does not match the
+   * shape of the document, e.g. uses string to index in array.
+   */
+  const dynamic* get_ptr(json_pointer const&) const&;
+  dynamic* get_ptr(json_pointer const&) &;
+  const dynamic* get_ptr(json_pointer const&) const&& = delete;
+  dynamic* get_ptr(json_pointer const&) && = delete;
 
   /*
    * Like 'at', above, except it returns either a pointer to the contained

@@ -323,6 +323,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
 	json.h \
+	json_pointer.h \
 	lang/Align.h \
 	lang/Assume.h \
 	lang/Bits.h \
@@ -576,6 +577,7 @@ libfolly_la_SOURCES = \
 	io/async/ssl/OpenSSLUtils.cpp \
 	io/async/ssl/SSLErrors.cpp \
 	json.cpp \
+	json_pointer.cpp \
 	lang/Assume.cpp \
 	lang/ColdClass.cpp \
 	lang/SafeAssert.cpp \

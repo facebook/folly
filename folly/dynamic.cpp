@@ -349,6 +349,48 @@ dynamic dynamic::merge_diff(const dynamic& source, const dynamic& target) {
   return diff;
 }
 
+const dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) const& {
+  auto const& tokens = jsonPtr.tokens();
+  if (tokens.empty()) {
+    return this;
+  }
+  dynamic const* dyn = this;
+  for (auto const& token : tokens) {
+    if (!dyn) {
+      return nullptr;
+    }
+    // special case of parsing "/": lookup key with empty name
+    if (token.empty()) {
+      if (dyn->isObject()) {
+        dyn = dyn->get_ptr("");
+        continue;
+      }
+      throwTypeError_("object", dyn->type());
+    }
+    if (auto* parray = dyn->get_nothrow<dynamic::Array>()) {
+      if (token.size() > 1 && token.at(0) == '0') {
+        throw std::invalid_argument(
+            "Leading zero not allowed when indexing arrays");
+      }
+      // special case, always return non-existent
+      if (token.size() == 1 && token.at(0) == '-') {
+        dyn = nullptr;
+        continue;
+      }
+      auto const idx = folly::to<size_t>(token);
+      dyn = idx < parray->size() ? &(*parray)[idx] : nullptr;
+      continue;
+    }
+    if (auto* pobject = dyn->get_nothrow<dynamic::ObjectImpl>()) {
+      auto const it = pobject->find(token);
+      dyn = it != pobject->end() ? &it->second : nullptr;
+      continue;
+    }
+    throwTypeError_("object/array", dyn->type());
+  }
+  return dyn;
+}
+
 //////////////////////////////////////////////////////////////////////
 
 } // namespace folly

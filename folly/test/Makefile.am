@@ -133,6 +133,10 @@ json_test_SOURCES = JsonTest.cpp
 json_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += json_test
 
+json_pointer_test_SOURCES = json_pointer_test.cpp
+json_pointer_test_LDADD = libfollytestmain.la
+TESTS += json_pointer_test
+
 benchmark_test_SOURCES = BenchmarkTest.cpp
 benchmark_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 check_PROGRAMS += benchmark_test

@@ -661,6 +661,7 @@ if (BUILD_TESTS)
         SOURCES IndexedMemPoolTest.cpp
       # MSVC Preprocessor stringizing raw string literals bug
       #TEST json_test SOURCES JsonTest.cpp
+      TEST json_pointer_test SOURCES json_pointer_test.cpp
       TEST json_other_test
         CONTENT_DIR json_test_data/
         SOURCES
