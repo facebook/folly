@@ -547,3 +547,25 @@ TEST(ConcurrentHashMap, assignStressTest) {
     join;
   }
 }
+
+TEST(ConcurrentHashMap, RefcountTest) {
+  struct badhash {
+    size_t operator()(uint64_t) const {
+      return 0;
+    }
+  };
+  ConcurrentHashMap<
+      uint64_t,
+      uint64_t,
+      badhash,
+      std::equal_to<uint64_t>,
+      std::allocator<uint8_t>,
+      0>
+      foomap(3);
+  foomap.insert(0, 0);
+  foomap.insert(1, 1);
+  foomap.insert(2, 2);
+  for (int32_t i = 0; i < 300; ++i) {
+    foomap.insert_or_assign(1, i);
+  }
+}

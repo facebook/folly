@@ -156,7 +156,7 @@ class NodeT : public folly::hazptr::hazptr_obj_base<
 
  private:
   ValueHolder<KeyType, ValueType, Allocator> item_;
-  Atom<uint8_t> refcount_{1};
+  Atom<uint16_t> refcount_{1};
 };
 
 } // namespace concurrenthashmap
