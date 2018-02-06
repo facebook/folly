@@ -3,6 +3,20 @@
 
 sudo: required
 
+# Docker disables IPv6 in containers by default. Enable it for unit tests that need [::1].
+before_script:
+  # `daemon.json` is normally missing, but let's log it in case that changes.
+  - sudo touch /etc/docker/daemon.json
+  - sudo cat /etc/docker/daemon.json
+  - sudo service docker stop
+  # This needs YAML quoting because of the curly braces.
+  - 'echo ''{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64"}'' | sudo tee /etc/docker/daemon.json'
+  - sudo service docker start
+  # Fail early if docker failed on start -- add `- sudo dockerd` to debug.
+  - sudo docker info
+  # Paranoia log: what if our config got overwritten?
+  - sudo cat /etc/docker/daemon.json
+
 env:
   global:
     - travis_cache_dir=$HOME/travis_ccache
