@@ -25,6 +25,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/container/Array.h>
 
@@ -111,13 +112,13 @@ struct string_table_uri_escape_make_item {
   }
 };
 
-constexpr decltype(cEscapeTable) cEscapeTable =
+FOLLY_STORAGE_CONSTEXPR decltype(cEscapeTable) cEscapeTable =
     make_array_with<256>(string_table_c_escape_make_item{});
-constexpr decltype(cUnescapeTable) cUnescapeTable =
+FOLLY_STORAGE_CONSTEXPR decltype(cUnescapeTable) cUnescapeTable =
     make_array_with<256>(string_table_c_unescape_make_item{});
-constexpr decltype(hexTable) hexTable =
+FOLLY_STORAGE_CONSTEXPR decltype(hexTable) hexTable =
     make_array_with<256>(string_table_hex_make_item{});
-constexpr decltype(uriEscapeTable) uriEscapeTable =
+FOLLY_STORAGE_CONSTEXPR decltype(uriEscapeTable) uriEscapeTable =
     make_array_with<256>(string_table_uri_escape_make_item{});
 
 } // namespace detail

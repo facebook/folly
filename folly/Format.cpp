@@ -75,17 +75,17 @@ struct format_table_sign_make_item {
 };
 
 //  the tables
-constexpr auto formatAlignTable =
+FOLLY_STORAGE_CONSTEXPR auto formatAlignTable =
     make_array_with<256>(format_table_align_make_item{});
-constexpr auto formatSignTable =
+FOLLY_STORAGE_CONSTEXPR auto formatSignTable =
     make_array_with<256>(format_table_sign_make_item{});
-constexpr decltype(formatHexLower) formatHexLower =
+FOLLY_STORAGE_CONSTEXPR decltype(formatHexLower) formatHexLower =
     make_array_with<256>(format_table_conv_make_item<16, 2, false>{});
-constexpr decltype(formatHexUpper) formatHexUpper =
+FOLLY_STORAGE_CONSTEXPR decltype(formatHexUpper) formatHexUpper =
     make_array_with<256>(format_table_conv_make_item<16, 2, true>{});
-constexpr decltype(formatOctal) formatOctal =
+FOLLY_STORAGE_CONSTEXPR decltype(formatOctal) formatOctal =
     make_array_with<512>(format_table_conv_make_item<8, 3>{});
-constexpr decltype(formatBinary) formatBinary =
+FOLLY_STORAGE_CONSTEXPR decltype(formatBinary) formatBinary =
     make_array_with<256>(format_table_conv_make_item<2, 8>{});
 
 } // namespace detail

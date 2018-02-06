@@ -131,11 +131,12 @@ struct group_varint_table_sse_mask_make_item
 };
 
 #if FOLLY_SSE >= 3
-alignas(16) constexpr decltype(groupVarintSSEMasks) groupVarintSSEMasks =
-    make_array_with<256>(group_varint_table_sse_mask_make_item{});
+alignas(16) FOLLY_STORAGE_CONSTEXPR
+    decltype(groupVarintSSEMasks) groupVarintSSEMasks =
+        make_array_with<256>(group_varint_table_sse_mask_make_item{});
 #endif
 
-constexpr decltype(groupVarintLengths) groupVarintLengths =
+FOLLY_STORAGE_CONSTEXPR decltype(groupVarintLengths) groupVarintLengths =
     make_array_with<256>(group_varint_table_length_make_item{});
 
 } // namespace detail

@@ -366,6 +366,29 @@ constexpr auto kMscVer = 0;
 #define FOLLY_CPP14_CONSTEXPR inline
 #endif
 
+//  MSVC does not permit:
+//
+//    extern int const num;
+//    constexpr int const num = 3;
+//
+//  Instead:
+//
+//    extern int const num;
+//    FOLLY_STORAGE_CONSTEXPR int const num = 3;
+//
+//  True for MSVC 2015 and MSVC 2017.
+#if _MSC_VER
+#define FOLLY_STORAGE_CONSTEXPR
+#define FOLLY_STORAGE_CPP14_CONSTEXPR
+#else
+#define FOLLY_STORAGE_CONSTEXPR constexpr
+#if FOLLY_USE_CPP14_CONSTEXPR
+#define FOLLY_STORAGE_CPP14_CONSTEXPR constexpr
+#else
+#define FOLLY_STORAGE_CPP14_CONSTEXPR
+#endif
+#endif
+
 #if __cpp_coroutines >= 201703L && FOLLY_HAS_INCLUDE(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
 #elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
