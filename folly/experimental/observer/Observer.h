@@ -91,6 +91,10 @@ class Snapshot {
     return data_.get();
   }
 
+  std::shared_ptr<const T> getShared() const {
+    return data_;
+  }
+
   /**
    * Return the version of the observed object.
    */
