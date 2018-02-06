@@ -95,8 +95,7 @@ class FatalTests(unittest.TestCase):
 
     def test_static_init(self):
         err = self.run_helper(env={'CRASH_DURING_INIT': '1'})
-        regex = self.get_crash_regex(br'crashing during static initialization',
-                                     glog=False)
+        regex = self.get_crash_regex(br'crashing during static initialization')
         self.assertRegex(err, regex)
 
     def test_static_destruction(self):

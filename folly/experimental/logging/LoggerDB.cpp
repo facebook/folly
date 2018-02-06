@@ -27,17 +27,60 @@
 #include <folly/experimental/logging/LogLevel.h>
 #include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/RateLimiter.h>
+#include <folly/experimental/logging/StreamHandlerFactory.h>
+#include <folly/portability/Config.h>
 
 using std::string;
 
 namespace folly {
 
+/*
+ * The default implementation of initializeLoggerDB().
+ *
+ * This is defined as a weak symbol to allow programs to provide their own
+ * alternative definition if desired.
+ */
+#if FOLLY_HAVE_WEAK_SYMBOLS
+void initializeLoggerDB(LoggerDB& db) __attribute__((weak));
+#endif
+void initializeLoggerDB(LoggerDB& db) {
+  // Register the StreamHandlerFactory
+  //
+  // This is the only LogHandlerFactory that we register by default.  We
+  // intentionally do not register FileHandlerFactory, since this allows
+  // LoggerDB::updateConfig() to open and write to arbitrary files.  This is
+  // potentially a security concern if programs accept user-customizable log
+  // configuration settings from untrusted sources.
+  //
+  // Users can always register additional LogHandlerFactory objects on their
+  // own inside their main() function.
+  db.registerHandlerFactory(std::make_unique<StreamHandlerFactory>());
+
+  // Build a default LogConfig object.
+  // This writes messages to stderr synchronously (immediately, in the thread
+  // that generated the message), using the default GLOG-style formatter.
+  auto defaultHandlerConfig =
+      LogHandlerConfig("stream", {{"stream", "stderr"}, {"async", "false"}});
+  auto rootCategoryConfig =
+      LogCategoryConfig(LogLevel::WARNING, false, {"default"});
+  LogConfig config(
+      /* handlerConfigs */ {{"default", defaultHandlerConfig}},
+      /* categoryConfig */ {{"", rootCategoryConfig}});
+
+  // Update the configuration
+  db.updateConfig(config);
+}
+
 namespace {
 class LoggerDBSingleton {
  public:
-  explicit LoggerDBSingleton(LoggerDB* db) : db_{db} {}
+  explicit LoggerDBSingleton(LoggerDB* FOLLY_NONNULL db) : db_{db} {
+    // Call initializeLoggerDB() to apply some basic initial configuration.
+    initializeLoggerDB(*db_);
+  }
+
   ~LoggerDBSingleton() {
-    // We intentionally leak the LoggerDB object on destruction.
+    // We intentionally leak the LoggerDB object on normal destruction.
     // We want Logger objects to remain valid for the entire lifetime of the
     // program, without having to worry about destruction ordering issues, or
     // making the Logger perform reference counting on the LoggerDB.
@@ -50,6 +93,7 @@ class LoggerDBSingleton {
     // hold resources that should be cleaned up.  This also ensures that the
     // LogHandlers flush all outstanding messages before we exit.
     db_->cleanupHandlers();
+    db_.release();
   }
 
   LoggerDB& getDB() const {
@@ -57,7 +101,10 @@ class LoggerDBSingleton {
   }
 
  private:
-  LoggerDB* db_;
+  // Store LoggerDB as a unique_ptr so it will be automatically destroyed if
+  // initializeLoggerDB() throws in the constructor.  We will explicitly
+  // release this during the normal destructor.
+  std::unique_ptr<LoggerDB> db_;
 };
 } // namespace
 

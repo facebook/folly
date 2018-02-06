@@ -30,15 +30,12 @@ namespace folly {
  * The input string will be parsed with parseLogConfig() and then applied to
  * the main LoggerDB singleton.
  *
- * Before it is applied, the input configuration settings are first combined
- * with some basic defaults on the root log category.  The defaults set the
- * root log level to WARN, and attach a log handler named "default" that writes
- * messages to stderr.  However, these base settings can be overridden if the
- * input string specifies alternate settings for the root log category.
+ * This will apply the configuration using LoggerDB::updateConfig(), so the new
+ * configuration will be merged into the existing initial configuration defined
+ * by initializeLoggerDB().
  *
- * Note that it is safe for code to use logging functions before calling
- * initLogging().  However, messages logged before initLogging() is called will
- * be ignored since no log handler objects have been defined.
+ * Callers that do want to completely replace the settings can call
+ * LoggerDB::resetConfig() instead of using initLogging().
  */
 void initLogging(folly::StringPiece configString = "");
 

@@ -293,4 +293,29 @@ class LoggerDB {
 
   static std::atomic<InternalWarningHandler> warningHandler_;
 };
+
+/**
+ * initializeLoggerDB() will be called to configure the main LoggerDB singleton
+ * the first time that LoggerDB::get() is called.
+ *
+ * This function can be used apply basic default settings to the LoggerDB,
+ * including default log level and log handler settings.
+ *
+ * A default implementation is provided as a weak symbol, so it can be
+ * overridden on a per-program basis if you want to customize the initial
+ * LoggerDB settings for your program.
+ *
+ * However, note that this function may be invoked before main() starts (if
+ * other code that runs before main uses the logging library).  Therefore you
+ * should be careful about what code runs here.  For instance, you probably
+ * should not create LogHandler objects that spawn new threads.  It is
+ * generally a good idea to defer more complicated setup until after main()
+ * starts.
+ *
+ * The default implementation configures the root log category to write all
+ * warning and higher-level log messages to stderr, using a format similar to
+ * that used by GLOG.
+ */
+void initializeLoggerDB(LoggerDB& db);
+
 } // namespace folly
