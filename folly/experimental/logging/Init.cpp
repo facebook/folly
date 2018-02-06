@@ -48,7 +48,7 @@ constexpr StringPiece kDefaultLoggingConfig =
 
 void initLogging(StringPiece configString) {
   // Register the StreamHandlerFactory
-  LoggerDB::get()->registerHandlerFactory(
+  LoggerDB::get().registerHandlerFactory(
       std::make_unique<StreamHandlerFactory>());
 
   // TODO: In the future it would be nice to build a better mechanism so that
@@ -74,7 +74,7 @@ void initLogging(StringPiece configString) {
   }
 
   // Now apply the configuration to the LoggerDB
-  LoggerDB::get()->updateConfig(config);
+  LoggerDB::get().updateConfig(config);
 }
 
 } // namespace folly

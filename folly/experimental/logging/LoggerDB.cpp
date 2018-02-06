@@ -52,8 +52,8 @@ class LoggerDBSingleton {
     db_->cleanupHandlers();
   }
 
-  LoggerDB* getDB() const {
-    return db_;
+  LoggerDB& getDB() const {
+    return *db_;
   }
 
  private:
@@ -61,7 +61,7 @@ class LoggerDBSingleton {
 };
 } // namespace
 
-LoggerDB* LoggerDB::get() {
+LoggerDB& LoggerDB::get() {
   // Intentionally leaky singleton
   static LoggerDBSingleton singleton{new LoggerDB()};
   return singleton.getDB();

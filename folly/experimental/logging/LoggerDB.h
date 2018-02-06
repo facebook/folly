@@ -42,7 +42,7 @@ class LoggerDB {
   /**
    * Get the main LoggerDB singleton.
    */
-  static LoggerDB* get();
+  static LoggerDB& get();
 
   ~LoggerDB();
 

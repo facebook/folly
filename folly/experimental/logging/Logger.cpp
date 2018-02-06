@@ -25,7 +25,7 @@ using std::string;
 
 namespace folly {
 
-Logger::Logger(StringPiece name) : Logger{LoggerDB::get()->getCategory(name)} {}
+Logger::Logger(StringPiece name) : Logger{LoggerDB::get().getCategory(name)} {}
 
 Logger::Logger(LogCategory* cat) : category_(cat) {}
 

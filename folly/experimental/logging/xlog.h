@@ -204,7 +204,7 @@
  * expand to the correct filename based on where the macro is used.
  */
 #define XLOG_GET_CATEGORY() \
-  folly::LoggerDB::get()->getCategory(XLOG_GET_CATEGORY_NAME())
+  folly::LoggerDB::get().getCategory(XLOG_GET_CATEGORY_NAME())
 
 /**
  * XLOG_SET_CATEGORY_NAME() can be used to explicitly define the log category

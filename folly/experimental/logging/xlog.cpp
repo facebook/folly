@@ -84,7 +84,7 @@ LogLevel XlogLevelInfo<IsInHeaderFile>::loadLevelFull(
     bool isOverridden) {
   auto currentLevel = level_.load(std::memory_order_acquire);
   if (UNLIKELY(currentLevel == ::folly::LogLevel::UNINITIALIZED)) {
-    return LoggerDB::get()->xlogInit(
+    return LoggerDB::get().xlogInit(
         isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
         &level_,
         nullptr);
@@ -96,7 +96,7 @@ template <bool IsInHeaderFile>
 LogCategory* XlogCategoryInfo<IsInHeaderFile>::init(
     folly::StringPiece categoryName,
     bool isOverridden) {
-  return LoggerDB::get()->xlogInitCategory(
+  return LoggerDB::get().xlogInitCategory(
       isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
       &category_,
       &isInitialized_);
@@ -109,7 +109,7 @@ LogLevel XlogLevelInfo<false>::loadLevelFull(
     XlogFileScopeInfo* fileScopeInfo) {
   auto currentLevel = fileScopeInfo->level.load(std::memory_order_acquire);
   if (UNLIKELY(currentLevel == ::folly::LogLevel::UNINITIALIZED)) {
-    return LoggerDB::get()->xlogInit(
+    return LoggerDB::get().xlogInit(
         isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
         &fileScopeInfo->level,
         &fileScopeInfo->category);

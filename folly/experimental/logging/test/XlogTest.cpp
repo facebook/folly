@@ -45,7 +45,7 @@ TEST(Xlog, xlogName) {
 
 TEST(Xlog, xlog) {
   auto handler = make_shared<TestLogHandler>();
-  LoggerDB::get()->getCategory("xlog_test")->addHandler(handler);
+  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
   auto& messages = handler->getMessages();
 
   // info messages are not enabled initially.
@@ -56,7 +56,7 @@ TEST(Xlog, xlog) {
   messages.clear();
 
   // Increase the log level, then log a message.
-  LoggerDB::get()->setLevel("xlog_test.main_file", LogLevel::DBG1);
+  LoggerDB::get().setLevel("xlog_test.main_file", LogLevel::DBG1);
 
   XLOG(DBG1, "testing: ", 1, 2, 3);
   ASSERT_EQ(1, messages.size());
@@ -99,9 +99,9 @@ TEST(Xlog, perFileCategoryHandling) {
 
   auto handler = make_shared<TestLogHandler>();
   LoggerDB::get()
-      ->getCategory("folly.experimental.logging.test")
+      .getCategory("folly.experimental.logging.test")
       ->addHandler(handler);
-  LoggerDB::get()->setLevel("folly.experimental.logging.test", LogLevel::DBG9);
+  LoggerDB::get().setLevel("folly.experimental.logging.test", LogLevel::DBG9);
   auto& messages = handler->getMessages();
 
   // Use the simple helper function in XlogHeader2
@@ -141,7 +141,7 @@ TEST(Xlog, perFileCategoryHandling) {
 
   // Reduce the log level so that the messages inside the loop
   // should not be logged.
-  LoggerDB::get()->setLevel("folly.experimental.logging.test", LogLevel::DBG2);
+  LoggerDB::get().setLevel("folly.experimental.logging.test", LogLevel::DBG2);
   testXlogHdrLoop(300, "hello world");
   ASSERT_EQ(2, messages.size());
   EXPECT_EQ("starting: hello world", messages[0].first.getMessage());
@@ -168,13 +168,13 @@ TEST(Xlog, perFileCategoryHandling) {
 
   // Adjust the log level and make sure the changes take effect for the .cpp
   // file categories
-  LoggerDB::get()->setLevel("folly.experimental.logging.test", LogLevel::INFO);
+  LoggerDB::get().setLevel("folly.experimental.logging.test", LogLevel::INFO);
   testXlogFile1Dbg1("log check should fail now");
   testXlogFile2Dbg1("this should fail too");
   EXPECT_EQ(0, messages.size());
   messages.clear();
 
-  LoggerDB::get()->setLevel(
+  LoggerDB::get().setLevel(
       "folly.experimental.logging.test.XlogFile1", LogLevel::DBG1);
   testXlogFile1Dbg1("this log check should pass now");
   testXlogFile2Dbg1("but this one should still fail");
