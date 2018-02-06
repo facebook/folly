@@ -970,7 +970,6 @@ FOLLY_ALWAYS_INLINE size_t hazptr_tc::count() {
 
 /** hazptr_tc free functions */
 FOLLY_ALWAYS_INLINE hazptr_tc* hazptr_tc_tls() {
-  assert(hazptr_tc_enabled());
   HAZPTR_DEBUG_PRINT(tls_state_);
   if (LIKELY(tls_state_ == TLS_ALIVE)) {
     HAZPTR_DEBUG_PRINT(tls_state_);
@@ -983,7 +982,6 @@ FOLLY_ALWAYS_INLINE hazptr_tc* hazptr_tc_tls() {
 }
 
 inline void hazptr_tc_init() {
-  assert(hazptr_tc_enabled());
   HAZPTR_DEBUG_PRINT("");
   auto& tc = tls_tc_data_;
   HAZPTR_DEBUG_PRINT(&tc);
@@ -1055,7 +1053,6 @@ inline void hazptr_priv::pushAllToDomain() {
 }
 
 inline void hazptr_priv_init() {
-  assert(hazptr_priv_enabled());
   auto& priv = tls_priv_data_;
   HAZPTR_DEBUG_PRINT(&priv);
   priv.head_ = nullptr;
