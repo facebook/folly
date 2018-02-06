@@ -230,6 +230,11 @@ class LogCategory {
   // Forbidden copy constructor and assignment operator
   LogCategory(LogCategory const&) = delete;
   LogCategory& operator=(LogCategory const&) = delete;
+  // Disallow moving LogCategory objects as well.
+  // LogCategory objects store pointers to their parent and siblings,
+  // so we cannot allow moving categories to other locations.
+  LogCategory(LogCategory&&) = delete;
+  LogCategory& operator=(LogCategory&&) = delete;
 
   void processMessage(const LogMessage& message) const;
   void updateEffectiveLevel(LogLevel newEffectiveLevel);
