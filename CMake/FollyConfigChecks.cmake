@@ -37,6 +37,13 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND FOLLY_CXX_FLAGS -Wno-noexcept-type)
   endif()
 
+  CHECK_CXX_COMPILER_FLAG(
+      -Wno-nullability-completeness
+      COMPILER_HAS_W_NULLABILITY_COMPLETENESS)
+  if (COMPILER_HAS_W_NULLABILITY_COMPLETENESS)
+    list(APPEND FOLLY_CXX_FLAGS -Wno-nullability-completeness)
+  endif()
+
   CHECK_CXX_COMPILER_FLAG(-faligned-new COMPILER_HAS_F_ALIGNED_NEW)
   if (COMPILER_HAS_F_ALIGNED_NEW)
     list(APPEND FOLLY_CXX_FLAGS -faligned-new)
