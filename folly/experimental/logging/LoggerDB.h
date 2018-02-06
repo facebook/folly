@@ -42,7 +42,7 @@ class LoggerDB {
   /**
    * Get the main LoggerDB singleton.
    */
-  static LoggerDB* get();
+  static LoggerDB* FOLLY_NONNULL get();
 
   ~LoggerDB();
 
@@ -52,7 +52,7 @@ class LoggerDB {
    * This creates the LogCategory for the specified name if it does not exist
    * already.
    */
-  LogCategory* getCategory(folly::StringPiece name);
+  LogCategory* FOLLY_NONNULL getCategory(folly::StringPiece name);
 
   /**
    * Get the LogCategory for the specified name, if it already exists.
@@ -75,7 +75,7 @@ class LoggerDB {
    * use a less verbose level than its parent categories.)
    */
   void setLevel(folly::StringPiece name, LogLevel level, bool inherit = true);
-  void setLevel(LogCategory* category, LogLevel level, bool inherit = true);
+  void setLevel(LogCategory* FOLLY_NONNULL category, LogLevel level, bool inherit = true);
 
   /**
    * Get a LogConfig object describing the current state of the LoggerDB.
@@ -163,12 +163,12 @@ class LoggerDB {
    */
   LogLevel xlogInit(
       folly::StringPiece categoryName,
-      std::atomic<LogLevel>* xlogCategoryLevel,
-      LogCategory** xlogCategory);
-  LogCategory* xlogInitCategory(
+      std::atomic<LogLevel>* FOLLY_NONNULL xlogCategoryLevel,
+      LogCategory * FOLLY_NULLABLE * FOLLY_NULLABLE xlogCategory);
+  LogCategory* FOLLY_NONNULL xlogInitCategory(
       folly::StringPiece categoryName,
-      LogCategory** xlogCategory,
-      std::atomic<bool>* isInitialized);
+      LogCategory* FOLLY_NONNULL * FOLLY_NONNULL xlogCategory,
+      std::atomic<bool>* FOLLY_NONNULL isInitialized);
 
   enum TestConstructorArg { TESTING };
 
@@ -193,7 +193,18 @@ class LoggerDB {
    * Example scenarios where this is used:
    * - We fail to write to a log file (for instance, when the disk is full)
    * - A LogHandler throws an unexpected exception
+   *
    */
+
+FOLLY_PUSH_WARNING
+#if FOLLY_HAS_EXTENSION(nullability)
+// We can only annotate nullability specifiers on pointer types.
+// Sometimes we forward C-style arrays which are not pointer types
+// and cannot be annotated with nullability specifiers. Instead of
+// using SFINAE on the parameter pack and checking if the predicate
+// std::is_pointer<Arg> is true for any arg, we just ignore the warning
+FOLLY_GCC_DISABLE_WARNING("-Wnullability-completeness")
+#endif
   template <typename... Args>
   static void internalWarning(
       folly::StringPiece file,
@@ -202,6 +213,7 @@ class LoggerDB {
     internalWarningImpl(
         file, lineNumber, folly::to<std::string>(std::forward<Args>(args)...));
   }
+FOLLY_POP_WARNING
 
   using InternalWarningHandler =
       void (*)(folly::StringPiece file, int lineNumber, std::string&&);
@@ -218,7 +230,7 @@ class LoggerDB {
    * Windows, and prints the message to stderr on other platforms.  It also
    * rate limits messages if they are arriving too quickly.
    */
-  static void setInternalWarningHandler(InternalWarningHandler handler);
+  static void setInternalWarningHandler(InternalWarningHandler FOLLY_NULLABLE handler);
 
  private:
   using LoggerNameMap = std::unordered_map<
@@ -240,13 +252,13 @@ class LoggerDB {
   LoggerDB& operator=(LoggerDB const&) = delete;
 
   LoggerDB();
-  LogCategory* getOrCreateCategoryLocked(
+  LogCategory* FOLLY_NONNULL getOrCreateCategoryLocked(
       LoggerNameMap& loggersByName,
       folly::StringPiece name);
-  LogCategory* createCategoryLocked(
+  LogCategory* FOLLY_NONNULL createCategoryLocked(
       LoggerNameMap& loggersByName,
       folly::StringPiece name,
-      LogCategory* parent);
+      LogCategory* FOLLY_NONNULL parent);
 
   using NewHandlerMap =
       std::unordered_map<std::string, std::shared_ptr<LogHandler>>;
@@ -255,12 +267,12 @@ class LoggerDB {
   void startConfigUpdate(
       const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
       const LogConfig& config,
-      NewHandlerMap* handlers,
-      OldToNewHandlerMap* oldToNewHandlerMap);
+      NewHandlerMap* FOLLY_NONNULL handlers,
+      OldToNewHandlerMap* FOLLY_NONNULL oldToNewHandlerMap);
   void finishConfigUpdate(
       const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
-      NewHandlerMap* handlers,
-      OldToNewHandlerMap* oldToNewHandlerMap);
+      NewHandlerMap* FOLLY_NONNULL handlers,
+      OldToNewHandlerMap* FOLLY_NONNULL oldToNewHandlerMap);
   std::vector<std::shared_ptr<LogHandler>> buildCategoryHandlerList(
       const NewHandlerMap& handlerMap,
       StringPiece categoryName,
