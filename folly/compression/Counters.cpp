@@ -15,7 +15,7 @@
  */
 
 #include <folly/compression/Counters.h>
-#include <folly/folly-config.h>
+#include <folly/portability/Config.h>
 
 namespace folly {
 #if FOLLY_HAVE_WEAK_SYMBOLS
