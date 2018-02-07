@@ -3,9 +3,10 @@ from folly cimport cFollyExecutor
 from folly.executor cimport cNotificationQueueExecutor
 from libcpp.memory cimport make_unique, unique_ptr
 from cython.operator cimport dereference as deref
+from weakref import WeakKeyDictionary
 
 #asynico Loops to NotificationQueueExecutor
-loop_to_q = {}
+loop_to_q = WeakKeyDictionary()
 
 
 cdef class NotificationQueueExecutor:
