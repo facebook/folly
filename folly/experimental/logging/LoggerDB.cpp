@@ -93,7 +93,11 @@ class LoggerDBSingleton {
     // hold resources that should be cleaned up.  This also ensures that the
     // LogHandlers flush all outstanding messages before we exit.
     db_->cleanupHandlers();
-    db_.release();
+
+    // Store the released pointer in a static variable just to prevent ASAN
+    // from complaining that we are leaking data.
+    static LoggerDB* db = db_.release();
+    (void)db;
   }
 
   LoggerDB& getDB() const {
