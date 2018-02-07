@@ -31,6 +31,10 @@ bool spin_pause_until(
     std::chrono::time_point<Clock, Duration> const& deadline,
     WaitOptions const& opt,
     F f) {
+  if (opt.spin_max() <= opt.spin_max().zero()) {
+    return false;
+  }
+
   auto tbegin = Clock::now();
   while (true) {
     if (f()) {
