@@ -17,6 +17,7 @@
 #define HAZPTR_H
 
 #include <atomic>
+#include <mutex>
 
 /* Stand-in for C++17 std::pmr::memory_resource */
 #include <folly/experimental/hazptr/memory_resource.h>
@@ -49,9 +50,32 @@ class hazptr_array;
 template <size_t M>
 class hazptr_local;
 
+/** hazptr_priv: Per-thread list of retired objects pushed in bulk to domain */
+class hazptr_priv;
+
+class hazptr_priv_list {
+  std::mutex m_;
+  hazptr_priv* head_{nullptr};
+
+ public:
+  void insert(hazptr_priv* rec);
+  void remove(hazptr_priv* rec);
+  void collect(hazptr_obj*& head, hazptr_obj*& tail);
+};
+
 /** hazptr_domain: Class of hazard pointer domains. Each domain manages a set
  *  of hazard pointers and a set of retired objects. */
 class hazptr_domain {
+  memory_resource* mr_;
+  std::atomic<hazptr_rec*> hazptrs_ = {nullptr};
+  std::atomic<hazptr_obj*> retired_ = {nullptr};
+  /* Using signed int for rcount_ because it may transiently be
+   * negative.  Using signed int for all integer variables that may be
+   * involved in calculations related to the value of rcount_. */
+  std::atomic<int> hcount_ = {0};
+  std::atomic<int> rcount_ = {0};
+  hazptr_priv_list priv_;
+
  public:
   constexpr explicit hazptr_domain(
       memory_resource* = get_default_resource()) noexcept;
@@ -65,6 +89,7 @@ class hazptr_domain {
   /** Free-function retire.  May allocate memory */
   template <typename T, typename D = std::default_delete<T>>
   void retire(T* obj, D reclaim = {});
+  void cleanup();
 
  private:
   friend class hazptr_obj_batch;
@@ -73,16 +98,7 @@ class hazptr_domain {
   friend class hazptr_obj_base;
   template <typename, typename>
   friend class hazptr_obj_base_refcounted;
-  friend struct hazptr_priv;
-
-  memory_resource* mr_;
-  std::atomic<hazptr_rec*> hazptrs_ = {nullptr};
-  std::atomic<hazptr_obj*> retired_ = {nullptr};
-  std::atomic<int> hcount_ = {0};
-  std::atomic<int> rcount_ = {0};
-  /* Using signed int for rcount_ because it may transiently be
-   * negative.  Using signed int for all integer variables that may be
-   * involved in calculations related to the value of rcount_. */
+  friend class hazptr_priv;
 
   void objRetire(hazptr_obj*);
   hazptr_rec* hazptrAcquire();
@@ -102,6 +118,11 @@ extern hazptr_domain default_domain_;
 template <typename T, typename D = std::default_delete<T>>
 void hazptr_retire(T* obj, D reclaim = {});
 
+/** hazptr_cleanup
+ *  Reclaims all reclaimable objects retired to the domain before this call.
+ */
+void hazptr_cleanup(hazptr_domain& domain = default_hazptr_domain());
+
 /** Definition of hazptr_obj */
 class hazptr_obj {
   friend class hazptr_obj_batch;
@@ -110,7 +131,7 @@ class hazptr_obj {
   friend class hazptr_obj_base;
   template <typename, typename>
   friend class hazptr_obj_base_refcounted;
-  friend struct hazptr_priv;
+  friend class hazptr_priv;
 
   void (*reclaim_)(hazptr_obj*);
   hazptr_obj* next_;
@@ -122,6 +143,10 @@ class hazptr_obj {
   }
 
  private:
+  void set_next(hazptr_obj* obj) {
+    next_ = obj;
+  }
+
   void retireCheck() {
     // Only for catching misuse bugs like double retire
     if (next_ != this) {

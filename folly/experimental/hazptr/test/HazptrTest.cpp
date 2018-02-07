@@ -575,3 +575,24 @@ TEST_F(HazptrTest, FreeFunctionRetire) {
   }
   EXPECT_TRUE(retired);
 }
+
+TEST_F(HazptrTest, FreeFunctionCleanup) {
+  CHECK_GT(FLAGS_num_threads, 0);
+  constructed.store(0);
+  destroyed.store(0);
+  std::vector<std::thread> threads(FLAGS_num_threads);
+  for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
+    threads[tid] = std::thread([&, tid]() {
+      for (int j = tid; j < FLAGS_num_ops; j += FLAGS_num_threads) {
+        auto p = new Foo(j, nullptr);
+        p->retire();
+      }
+    });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+  CHECK_EQ(constructed.load(), FLAGS_num_ops);
+  hazptr_cleanup();
+  CHECK_EQ(destroyed.load(), FLAGS_num_ops);
+}

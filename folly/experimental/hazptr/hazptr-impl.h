@@ -169,15 +169,147 @@ bool hazptr_tc_try_put(hazptr_rec* hprec);
 /** hazptr_priv structures
  *  Thread private lists of retired objects that belong to the default domain.
  */
-
-struct hazptr_priv {
-  hazptr_obj* head_;
-  hazptr_obj* tail_;
+class hazptr_priv {
+  std::atomic<hazptr_obj*> head_;
+  std::atomic<hazptr_obj*> tail_;
   int rcount_;
   bool active_;
+  hazptr_priv* prev_;
+  hazptr_priv* next_;
 
-  void push(hazptr_obj* obj);
-  void pushAllToDomain();
+ public:
+  void init() {
+    head_ = nullptr;
+    tail_ = nullptr;
+    rcount_ = 0;
+    active_ = true;
+  }
+
+  bool active() {
+    return active_;
+  }
+
+  hazptr_priv* prev() {
+    return prev_;
+  }
+
+  hazptr_priv* next() {
+    return next_;
+  }
+
+  bool empty() {
+    return head() == nullptr;
+  }
+
+  void set_prev(hazptr_priv* rec) {
+    prev_ = rec;
+  }
+
+  void set_next(hazptr_priv* rec) {
+    next_ = rec;
+  }
+
+  void clear_active() {
+    active_ = false;
+  }
+
+  void push(hazptr_obj* obj) {
+    while (true) {
+      if (tail()) {
+        if (pushInNonEmptyList(obj)) {
+          break;
+        }
+      } else {
+        if (pushInEmptyList(obj)) {
+          break;
+        }
+      }
+    }
+    if (++rcount_ >= HAZPTR_PRIV_THRESHOLD) {
+      push_all_to_domain();
+    }
+  }
+
+  void push_all_to_domain() {
+    auto& domain = default_hazptr_domain();
+    hazptr_obj* h = nullptr;
+    hazptr_obj* t = nullptr;
+    collect(h, t);
+    if (h) {
+      DCHECK(t);
+      domain.pushRetired(h, t, rcount_);
+    }
+    rcount_ = 0;
+    domain.tryBulkReclaim();
+  }
+
+  void collect(hazptr_obj*& colHead, hazptr_obj*& colTail) {
+    // This function doesn't change rcount_.
+    // The value rcount_ is accurate excluding the effects of collect().
+    auto h = exchangeHead();
+    if (h) {
+      auto t = exchangeTail();
+      DCHECK(t);
+      if (colTail) {
+        colTail->set_next(h);
+      } else {
+        colHead = h;
+      }
+      colTail = t;
+    }
+  }
+
+ private:
+  hazptr_obj* head() {
+    return head_.load(std::memory_order_acquire);
+  }
+
+  hazptr_obj* tail() {
+    return tail_.load(std::memory_order_acquire);
+  }
+
+  void setHead(hazptr_obj* obj) {
+    head_.store(obj, std::memory_order_release);
+  }
+
+  bool casHead(hazptr_obj* expected, hazptr_obj* obj) {
+    return head_.compare_exchange_weak(
+        expected, obj, std::memory_order_acq_rel, std::memory_order_relaxed);
+  }
+
+  bool casTail(hazptr_obj* expected, hazptr_obj* obj) {
+    return tail_.compare_exchange_weak(
+        expected, obj, std::memory_order_acq_rel, std::memory_order_relaxed);
+  }
+
+  hazptr_obj* exchangeHead() {
+    return head_.exchange(nullptr, std::memory_order_acq_rel);
+  }
+
+  hazptr_obj* exchangeTail() {
+    return tail_.exchange(nullptr, std::memory_order_acq_rel);
+  }
+
+  bool pushInNonEmptyList(hazptr_obj* obj) {
+    auto h = head();
+    if (h) {
+      obj->set_next(h);
+      if (casHead(h, obj)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool pushInEmptyList(hazptr_obj* obj) {
+    hazptr_obj* t = nullptr;
+    obj->set_next(nullptr);
+    if (casTail(t, obj)) {
+      setHead(obj);
+      return true;
+    }
+    return false;
+  }
 };
 
 static_assert(
@@ -187,6 +319,49 @@ static_assert(
 void hazptr_priv_init();
 void hazptr_priv_shutdown();
 bool hazptr_priv_try_retire(hazptr_obj* obj);
+
+inline void hazptr_priv_list::insert(hazptr_priv* rec) {
+  std::lock_guard<std::mutex> g(m_);
+  auto prev = head_ == nullptr ? rec : head_->prev();
+  auto next = head_ == nullptr ? rec : head_;
+  rec->set_next(next);
+  rec->set_prev(prev);
+  if (head_) {
+    prev->set_next(rec);
+    next->set_prev(rec);
+  } else {
+    head_ = rec;
+  }
+}
+
+inline void hazptr_priv_list::remove(hazptr_priv* rec) {
+  std::lock_guard<std::mutex> g(m_);
+  auto prev = rec->prev();
+  auto next = rec->next();
+  if (next == rec) {
+    DCHECK(prev == rec);
+    DCHECK(head_ == rec);
+    head_ = nullptr;
+  } else {
+    prev->set_next(next);
+    next->set_prev(prev);
+    if (head_ == rec) {
+      head_ = next;
+    }
+  }
+}
+
+inline void hazptr_priv_list::collect(hazptr_obj*& head, hazptr_obj*& tail) {
+  std::lock_guard<std::mutex> g(m_);
+  auto rec = head_;
+  while (rec) {
+    rec->collect(head, tail);
+    rec = rec->next();
+    if (rec == head_) {
+      break;
+    }
+  }
+}
 
 /** hazptr_tls_life */
 
@@ -648,6 +823,10 @@ FOLLY_ALWAYS_INLINE void hazptr_retire(T* obj, D reclaim) {
   default_hazptr_domain().retire(obj, std::move(reclaim));
 }
 
+inline void hazptr_cleanup(hazptr_domain& domain) {
+  domain.cleanup();
+}
+
 /** hazptr_rec */
 
 FOLLY_ALWAYS_INLINE void hazptr_rec::set(const void* p) noexcept {
@@ -738,6 +917,17 @@ inline hazptr_domain::~hazptr_domain() {
       mr_->deallocate(static_cast<void*>(p), sizeof(hazptr_rec));
     }
   }
+}
+
+inline void hazptr_domain::cleanup() {
+  hazptr_obj* h = nullptr;
+  hazptr_obj* t = nullptr;
+  priv_.collect(h, t);
+  if (h) {
+    DCHECK(t);
+    pushRetired(h, t, 0);
+  }
+  bulkReclaim();
 }
 
 inline hazptr_rec* hazptr_domain::hazptrAcquire() {
@@ -1025,49 +1215,19 @@ FOLLY_ALWAYS_INLINE bool hazptr_tc_try_put(hazptr_rec* hprec) {
  *  hazptr_priv
  */
 
-inline void hazptr_priv::push(hazptr_obj* obj) {
-  auto& domain = default_hazptr_domain();
-  obj->next_ = nullptr;
-  if (tail_) {
-    tail_->next_ = obj;
-  } else {
-    if (!active_) {
-      domain.objRetire(obj);
-      return;
-    }
-    head_ = obj;
-  }
-  tail_ = obj;
-  if (++rcount_ >= HAZPTR_PRIV_THRESHOLD) {
-    pushAllToDomain();
-  }
-}
-
-inline void hazptr_priv::pushAllToDomain() {
-  auto& domain = default_hazptr_domain();
-  domain.pushRetired(head_, tail_, rcount_);
-  head_ = nullptr;
-  tail_ = nullptr;
-  rcount_ = 0;
-  domain.tryBulkReclaim();
-}
-
 inline void hazptr_priv_init() {
   auto& priv = tls_priv_data_;
   HAZPTR_DEBUG_PRINT(&priv);
-  priv.head_ = nullptr;
-  priv.tail_ = nullptr;
-  priv.rcount_ = 0;
-  priv.active_ = true;
+  priv.init();
 }
 
 inline void hazptr_priv_shutdown() {
   auto& priv = tls_priv_data_;
   HAZPTR_DEBUG_PRINT(&priv);
-  DCHECK(priv.active_);
-  priv.active_ = false;
-  if (priv.tail_) {
-    priv.pushAllToDomain();
+  DCHECK(priv.active());
+  priv.clear_active();
+  if (!priv.empty()) {
+    priv.push_all_to_domain();
   }
 }
 
