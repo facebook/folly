@@ -19,6 +19,6 @@
 namespace folly {
 namespace test {
 
-int staticTracepointTestFunc(int v);
+unsigned staticTracepointTestFunc(unsigned v);
 }
 } // namespace folly

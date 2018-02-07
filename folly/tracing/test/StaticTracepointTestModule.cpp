@@ -21,8 +21,8 @@ namespace test {
 
 FOLLY_SDT_DEFINE_SEMAPHORE(folly, test_semaphore_extern);
 
-int staticTracepointTestFunc(int v) {
-  int res = v * v;
+unsigned staticTracepointTestFunc(unsigned v) {
+  unsigned res = v * v;
   FOLLY_SDT_WITH_SEMAPHORE(folly, test_semaphore_extern, v, res);
   return res;
 }

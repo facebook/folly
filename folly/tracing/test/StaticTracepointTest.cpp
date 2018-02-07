@@ -417,7 +417,7 @@ TEST(StaticTracepoint, TestSemaphoreLocal) {
 FOLLY_SDT_DECLARE_SEMAPHORE(folly, test_semaphore_extern);
 
 TEST(StaticTracepoint, TestSemaphoreExtern) {
-  int v = folly::Random::rand32();
+  unsigned v = folly::Random::rand32();
   CHECK_EQ(v * v, folly::test::staticTracepointTestFunc(v));
   EXPECT_FALSE(FOLLY_SDT_IS_ENABLED(folly, test_semaphore_extern));
 }
