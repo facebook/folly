@@ -114,6 +114,17 @@ EC_KEY* EVP_PKEY_get0_EC_KEY(EVP_PKEY* pkey) {
 #endif
 
 #if !FOLLY_OPENSSL_IS_110
+BIO_METHOD* BIO_meth_new(int type, const char* name) {
+  BIO_METHOD* method = (BIO_METHOD*)OPENSSL_malloc(sizeof(BIO_METHOD));
+  if (method == nullptr) {
+    return nullptr;
+  }
+  memset(method, 0, sizeof(BIO_METHOD));
+  method->type = type;
+  method->name = name;
+  return method;
+}
+
 void BIO_meth_free(BIO_METHOD* biom) {
   OPENSSL_free((void*)biom);
 }
@@ -126,6 +137,55 @@ int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int)) {
 int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int)) {
   biom->bwrite = write;
   return 1;
+}
+
+int BIO_meth_set_puts(BIO_METHOD* biom, int (*bputs)(BIO*, const char*)) {
+  biom->bputs = bputs;
+  return 1;
+}
+
+int BIO_meth_set_gets(BIO_METHOD* biom, int (*bgets)(BIO*, char*, int)) {
+  biom->bgets = bgets;
+  return 1;
+}
+
+int BIO_meth_set_ctrl(BIO_METHOD* biom, long (*ctrl)(BIO*, int, long, void*)) {
+  biom->ctrl = ctrl;
+  return 1;
+}
+
+int BIO_meth_set_create(BIO_METHOD* biom, int (*create)(BIO*)) {
+  biom->create = create;
+  return 1;
+}
+
+int BIO_meth_set_destroy(BIO_METHOD* biom, int (*destroy)(BIO*)) {
+  biom->destroy = destroy;
+  return 1;
+}
+
+void BIO_set_data(BIO* bio, void* ptr) {
+  bio->ptr = ptr;
+}
+
+void* BIO_get_data(BIO* bio) {
+  return bio->ptr;
+}
+
+void BIO_set_init(BIO* bio, int init) {
+  bio->init = init;
+}
+
+void BIO_set_shutdown(BIO* bio, int shutdown) {
+  bio->shutdown = shutdown;
+}
+
+const SSL_METHOD* TLS_server_method(void) {
+  return TLSv1_2_server_method();
+}
+
+const SSL_METHOD* TLS_client_method(void) {
+  return TLSv1_2_client_method();
 }
 
 const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s) {
