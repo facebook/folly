@@ -385,6 +385,32 @@ TEST_F(HazptrTest, Array) {
   }
 }
 
+TEST_F(HazptrTest, ArrayDtorWithoutSpaceInTCache) {
+  struct Foo : hazptr_obj_base<Foo> {
+    int a;
+  };
+  {
+    // Fill the thread cache
+    hazptr_array<HAZPTR_TC_SIZE> w;
+  }
+  {
+    // Emty array x
+    hazptr_array<HAZPTR_TC_SIZE> x(nullptr);
+    {
+      // y ctor gets elements from the thread cache filled by w dtor.
+      hazptr_array<HAZPTR_TC_SIZE> y;
+      // z ctor gets elements from the default domain.
+      hazptr_array<HAZPTR_TC_SIZE> z;
+      // Elements of y are moved to x.
+      x = std::move(y);
+      // z dtor fills the thread cache.
+    }
+    // x dtor finds the thread cache full. It has to call
+    // ~hazptr_holder() for each of its elements, which were
+    // previously taken from the thread cache by y ctor.
+  }
+}
+
 TEST_F(HazptrTest, Local) {
   struct Foo : hazptr_obj_base<Foo> {
     int a;

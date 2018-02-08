@@ -528,6 +528,7 @@ FOLLY_ALWAYS_INLINE hazptr_holder::hazptr_holder(std::nullptr_t) noexcept {
 FOLLY_ALWAYS_INLINE hazptr_holder::~hazptr_holder() {
   HAZPTR_DEBUG_PRINT(this);
   if (LIKELY(hazptr_ != nullptr)) {
+    DCHECK(domain_ != nullptr);
     hazptr_->clear();
     if (LIKELY(
             HAZPTR_TC &&
@@ -713,6 +714,7 @@ FOLLY_ALWAYS_INLINE hazptr_array<M>::~hazptr_array() {
   }
   // slow path
   for (size_t i = 0; i < M; ++i) {
+    h[i].domain_ = &default_hazptr_domain();
     h[i].~hazptr_holder();
   }
 }
