@@ -304,6 +304,12 @@ constexpr presorted_t presorted{};
 struct unsorted_t {};
 constexpr unsorted_t unsorted{};
 
+template <typename T>
+struct transparent : T {
+  using is_transparent = void;
+  using T::T;
+};
+
 /**
  * A simple function object that passes its argument through unchanged.
  *
@@ -324,7 +330,6 @@ constexpr unsorted_t unsorted{};
  *                // is no longer valid
  */
 struct Identity {
-  using is_transparent = void;
   template <class T>
   constexpr T&& operator()(T&& x) const noexcept {
     return static_cast<T&&>(x);
