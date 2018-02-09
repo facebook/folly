@@ -53,52 +53,5 @@ Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   return tk->after(dur);
 }
 
-namespace detail {
-
-struct TimedDrivableExecutorWrapperTag {};
-struct TimedDrivableExecutorWrapperMaker {
-  std::pair<folly::Executor::KeepAlive, TimedDrivableExecutor*> operator()() {
-    std::unique_ptr<futures::detail::TimedDrivableExecutorWrapper> devb{
-        new futures::detail::TimedDrivableExecutorWrapper{}};
-    std::pair<folly::Executor::KeepAlive, TimedDrivableExecutor*> ret{
-        devb->getKeepAliveToken(),
-        static_cast<TimedDrivableExecutor*>(devb.get())};
-    devb.release();
-    return ret;
-  }
-};
-
-std::pair<folly::Executor::KeepAlive, TimedDrivableExecutor*>
-TimedDrivableExecutorWrapper::get() {
-  // Thread-local is a pair of a KeepAlive that owns the executor safely
-  // relative to later created keepalives, and a pre-cast pointer to avoid
-  // recasting later (which would have to be dynamic from Executor*).
-  auto& p = folly::SingletonThreadLocal<
-      std::pair<folly::Executor::KeepAlive, TimedDrivableExecutor*>,
-      TimedDrivableExecutorWrapperTag,
-      TimedDrivableExecutorWrapperMaker>::get();
-  // Reconstruct pair from a new keepalive token and the pointer because
-  // the keepalive is not copyable
-  return {p.second->getKeepAliveToken(), p.second};
-}
-
-void TimedDrivableExecutorWrapper::keepAliveAcquire() {
-  keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
-}
-
-void TimedDrivableExecutorWrapper::keepAliveRelease() {
-  if (keepAliveCount_.fetch_sub(1, std::memory_order_release) == 1) {
-    std::atomic_thread_fence(std::memory_order_acquire);
-    delete this;
-  }
-}
-
-folly::Executor::KeepAlive TimedDrivableExecutorWrapper::getKeepAliveToken() {
-  keepAliveAcquire();
-  return makeKeepAlive();
-}
-
-} // namespace detail
-
 } // namespace futures
 } // namespace folly

@@ -204,6 +204,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using TimePoint = std::chrono::system_clock::time_point;
 
  public:
+  ~SemiFuture();
+
   static SemiFuture<T> makeEmpty(); // equivalent to moved-from
 
   // Export public interface of FutureBase
@@ -337,6 +339,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   explicit SemiFuture(futures::detail::EmptyConstruct) noexcept
       : Base(futures::detail::EmptyConstruct{}) {}
+
+  DeferredExecutor* getDeferredExecutor() const;
+
+  static void releaseDeferredExecutor(corePtr core);
 };
 
 template <class T>

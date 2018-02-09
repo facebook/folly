@@ -294,10 +294,6 @@ TEST(SemiFuture, SimpleTimedWait) {
   sf.wait(std::chrono::milliseconds(100));
   EXPECT_FALSE(sf.isReady());
   p.setValue();
-  EXPECT_FALSE(sf.isReady());
-  // The internals of wait mean that there is an executor in the way. We
-  // cannot expect that the promise immediately statisfies the future.
-  sf.wait(std::chrono::milliseconds(100));
   EXPECT_TRUE(sf.isReady());
 }
 
