@@ -174,6 +174,17 @@ TEST(RcuTest, NewDomainTest) {
   synchronize_rcu();
 }
 
+TEST(RcuTest, NewDomainGuardTest) {
+  struct UniqueTag;
+  rcu_domain<UniqueTag> newdomain(nullptr);
+  bool del = false;
+  auto foo = new des(&del);
+  { rcu_reader_domain<UniqueTag> g(&newdomain); }
+  rcu_retire(foo, {}, &newdomain);
+  synchronize_rcu(&newdomain);
+  EXPECT_TRUE(del);
+}
+
 TEST(RcuTest, MovableReader) {
   {
     rcu_reader g;
