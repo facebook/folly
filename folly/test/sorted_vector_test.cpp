@@ -714,3 +714,12 @@ TEST(SortedVectorTypes, TestMapCreationFromVector) {
   });
   EXPECT_EQ(contents, expected_contents);
 }
+
+TEST(SortedVectorTypes, TestBulkInsertionWithDuplicatesIntoEmptySet) {
+  sorted_vector_set<int> set;
+  {
+    std::vector<int> const vec = {0, 1, 0, 1};
+    set.insert(vec.begin(), vec.end());
+  }
+  EXPECT_THAT(set, testing::ElementsAreArray({0, 1}));
+}

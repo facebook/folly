@@ -184,16 +184,16 @@ void bulk_insert(
   }
   if (middle != cont.begin() && !cmp(*(middle - 1), *middle)) {
     std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
-    cont.erase(
-        std::unique(
-            cont.begin(),
-            cont.end(),
-            [&](typename OurContainer::value_type const& a,
-                typename OurContainer::value_type const& b) {
-              return !cmp(a, b) && !cmp(b, a);
-            }),
-        cont.end());
   }
+  cont.erase(
+      std::unique(
+          cont.begin(),
+          cont.end(),
+          [&](typename OurContainer::value_type const& a,
+              typename OurContainer::value_type const& b) {
+            return !cmp(a, b) && !cmp(b, a);
+          }),
+      cont.end());
 }
 
 template <typename Container, typename Compare>
