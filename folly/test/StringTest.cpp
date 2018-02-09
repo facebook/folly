@@ -48,8 +48,12 @@ TEST(StringPrintf, NumericFormats) {
   EXPECT_EQ("5000000000", stringPrintf("%lld", 5000000000LL));
   EXPECT_EQ("-5000000000", stringPrintf("%lld", -5000000000LL));
   EXPECT_EQ("-1", stringPrintf("%d", 0xffffffff));
-  EXPECT_EQ("-1", stringPrintf("%" PRId64, 0xffffffffffffffff));
-  EXPECT_EQ("-1", stringPrintf("%" PRId64, 0xffffffffffffffffUL));
+  EXPECT_EQ(
+      "-1",
+      stringPrintf("%" PRId64, static_cast<int64_t>(0xffffffffffffffffLL)));
+  EXPECT_EQ(
+      "-1",
+      stringPrintf("%" PRId64, static_cast<uint64_t>(0xffffffffffffffffULL)));
 
   EXPECT_EQ("7.7", stringPrintf("%1.1f", 7.7));
   EXPECT_EQ("7.7", stringPrintf("%1.1lf", 7.7));
