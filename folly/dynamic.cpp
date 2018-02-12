@@ -60,6 +60,14 @@ TypeError::TypeError(
           dynamic::typeName(actual1),
           dynamic::typeName(actual2))) {}
 
+TypeError::TypeError(const TypeError&) noexcept(
+    std::is_nothrow_copy_constructible<std::runtime_error>::value) = default;
+TypeError& TypeError::operator=(const TypeError&) noexcept(
+    std::is_nothrow_copy_assignable<std::runtime_error>::value) = default;
+TypeError::TypeError(TypeError&&) noexcept(
+    std::is_nothrow_move_constructible<std::runtime_error>::value) = default;
+TypeError& TypeError::operator=(TypeError&&) noexcept(
+    std::is_nothrow_move_assignable<std::runtime_error>::value) = default;
 TypeError::~TypeError() = default;
 
 [[noreturn]] void throwTypeError_(

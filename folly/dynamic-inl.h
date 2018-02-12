@@ -82,6 +82,16 @@ struct FOLLY_EXPORT TypeError : std::runtime_error {
       const std::string& expected,
       dynamic::Type actual1,
       dynamic::Type actual2);
+  // TODO: noexcept calculation required through gcc-v4.9; remove once upgrading
+  // to gcc-v5.
+  TypeError(const TypeError&) noexcept(
+      std::is_nothrow_copy_constructible<std::runtime_error>::value);
+  TypeError& operator=(const TypeError&) noexcept(
+      std::is_nothrow_copy_assignable<std::runtime_error>::value);
+  TypeError(TypeError&&) noexcept(
+      std::is_nothrow_move_constructible<std::runtime_error>::value);
+  TypeError& operator=(TypeError&&) noexcept(
+      std::is_nothrow_move_assignable<std::runtime_error>::value);
   ~TypeError() override;
 };
 
