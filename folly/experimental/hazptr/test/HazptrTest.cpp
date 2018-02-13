@@ -33,7 +33,7 @@
 
 DEFINE_int32(num_threads, 5, "Number of threads");
 DEFINE_int64(num_reps, 1, "Number of test reps");
-DEFINE_int64(num_ops, 10, "Number of ops or pairs of ops per rep");
+DEFINE_int64(num_ops, 1007, "Number of ops or pairs of ops per rep");
 
 using namespace folly::hazptr;
 
@@ -443,11 +443,11 @@ struct Foo : hazptr_obj_base_refcounted<Foo> {
   Foo* next_;
   Foo(int v, Foo* n) : val_(v), marked_(false), next_(n) {
     HAZPTR_DEBUG_PRINT("");
-    ++constructed;
+    constructed.fetch_add(1);
   }
   ~Foo() {
     HAZPTR_DEBUG_PRINT("");
-    ++destroyed;
+    destroyed.fetch_add(1);
     if (marked_) {
       return;
     }
@@ -604,21 +604,39 @@ TEST_F(HazptrTest, FreeFunctionRetire) {
 
 TEST_F(HazptrTest, FreeFunctionCleanup) {
   CHECK_GT(FLAGS_num_threads, 0);
+  int threadOps = 1007;
+  int mainOps = 19;
   constructed.store(0);
   destroyed.store(0);
+  std::atomic<int> threadsDone{0};
+  std::atomic<bool> mainDone{false};
   std::vector<std::thread> threads(FLAGS_num_threads);
   for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
     threads[tid] = std::thread([&, tid]() {
-      for (int j = tid; j < FLAGS_num_ops; j += FLAGS_num_threads) {
+      for (int j = tid; j < threadOps; j += FLAGS_num_threads) {
         auto p = new Foo(j, nullptr);
         p->retire();
       }
+      threadsDone.fetch_add(1);
+      while (!mainDone.load()) {
+        /* spin */;
+      }
     });
   }
+  { // include the main thread in the test
+    for (int i = 0; i < mainOps; ++i) {
+      auto p = new Foo(0, nullptr);
+      p->retire();
+    }
+  }
+  while (threadsDone.load() < FLAGS_num_threads) {
+    /* spin */;
+  }
+  CHECK_EQ(constructed.load(), threadOps + mainOps);
+  hazptr_cleanup();
+  CHECK_EQ(destroyed.load(), threadOps + mainOps);
+  mainDone.store(true);
   for (auto& t : threads) {
     t.join();
   }
-  CHECK_EQ(constructed.load(), FLAGS_num_ops);
-  hazptr_cleanup();
-  CHECK_EQ(destroyed.load(), FLAGS_num_ops);
 }

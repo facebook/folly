@@ -183,6 +183,7 @@ class hazptr_priv {
     tail_ = nullptr;
     rcount_ = 0;
     active_ = true;
+    default_hazptr_domain().priv_add(this);
   }
 
   bool active() {
@@ -932,6 +933,14 @@ inline void hazptr_domain::cleanup() {
   bulkReclaim();
 }
 
+inline void hazptr_domain::priv_add(hazptr_priv* rec) {
+  priv_.insert(rec);
+}
+
+inline void hazptr_domain::priv_remove(hazptr_priv* rec) {
+  priv_.remove(rec);
+}
+
 inline hazptr_rec* hazptr_domain::hazptrAcquire() {
   hazptr_rec* p;
   hazptr_rec* next;
@@ -1174,7 +1183,6 @@ FOLLY_ALWAYS_INLINE hazptr_tc* hazptr_tc_tls() {
 }
 
 inline void hazptr_tc_init() {
-  HAZPTR_DEBUG_PRINT("");
   auto& tc = tls_tc_data_;
   HAZPTR_DEBUG_PRINT(&tc);
   tc.count_ = 0;
@@ -1231,6 +1239,7 @@ inline void hazptr_priv_shutdown() {
   if (!priv.empty()) {
     priv.push_all_to_domain();
   }
+  default_hazptr_domain().priv_remove(&priv);
 }
 
 inline bool hazptr_priv_try_retire(hazptr_obj* obj) {
