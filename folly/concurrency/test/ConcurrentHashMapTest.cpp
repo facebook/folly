@@ -569,3 +569,27 @@ TEST(ConcurrentHashMap, RefcountTest) {
     foomap.insert_or_assign(1, i);
   }
 }
+
+struct Wrapper {
+  Wrapper() = default;
+  ~Wrapper() {
+    del = true;
+  }
+
+  static bool del;
+};
+
+bool Wrapper::del = false;
+
+TEST(ConcurrentHashMap, Deletion) {
+  EXPECT_FALSE(Wrapper::del);
+
+  {
+    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map;
+
+    map.insert(0, std::make_shared<Wrapper>());
+    map.erase(0);
+  }
+
+  EXPECT_TRUE(Wrapper::del);
+}

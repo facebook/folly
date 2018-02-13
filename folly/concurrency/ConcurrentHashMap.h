@@ -158,6 +158,7 @@ class ConcurrentHashMap {
         Allocator().deallocate((uint8_t*)seg, sizeof(SegmentT));
       }
     }
+    folly::hazptr::hazptr_cleanup(folly::hazptr::default_hazptr_domain());
   }
 
   bool empty() const noexcept {
