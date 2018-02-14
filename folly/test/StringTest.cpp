@@ -21,6 +21,7 @@
 #include <folly/String.h>
 
 #include <cinttypes>
+#include <set>
 
 #include <boost/regex.hpp>
 
@@ -993,6 +994,12 @@ TEST(String, join) {
 
   output = join("", input3.begin(), input3.end());
   EXPECT_EQ(output, "facebook");
+
+  std::multiset<char> input4(input3);
+  output = join("", input4);
+  EXPECT_EQ("abcefkoo", output);
+  output = join("", input4.begin(), input4.end());
+  EXPECT_EQ("abcefkoo", output);
 }
 
 TEST(String, hexlify) {

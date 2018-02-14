@@ -534,9 +534,10 @@ std::string join(const Delim& delimiter,
 template <
     class Delim,
     class Iterator,
-    typename std::enable_if<std::is_same<
-        typename std::iterator_traits<Iterator>::iterator_category,
-        std::random_access_iterator_tag>::value>::type* = nullptr>
+    typename std::enable_if<std::is_base_of<
+        std::forward_iterator_tag,
+        typename std::iterator_traits<Iterator>::iterator_category>::value>::
+        type* = nullptr>
 std::string join(const Delim& delimiter, Iterator begin, Iterator end) {
   std::string output;
   join(delimiter, begin, end, output);
