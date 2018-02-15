@@ -72,5 +72,48 @@ const Snapshot<T>& TLObserver<T>::getSnapshotRef() const {
 
   return snapshot;
 }
+
+struct CallbackHandle::Context {
+  Optional<Observer<folly::Unit>> observer;
+  Synchronized<bool> canceled{false};
+};
+
+inline CallbackHandle::CallbackHandle() {}
+
+template <typename T>
+CallbackHandle::CallbackHandle(
+    Observer<T> observer,
+    folly::Function<void(Snapshot<T>)> callback) {
+  context_ = std::make_shared<Context>();
+  context_->observer = makeObserver([observer = std::move(observer),
+                                     callback = std::move(callback),
+                                     context = context_]() mutable {
+    auto rCanceled = context->canceled.rlock();
+    if (*rCanceled) {
+      return folly::unit;
+    }
+    callback(*observer);
+    return folly::unit;
+  });
+}
+
+inline CallbackHandle::~CallbackHandle() {
+  cancel();
+}
+
+inline void CallbackHandle::cancel() {
+  if (!context_) {
+    return;
+  }
+  context_->observer.reset();
+  context_->canceled = true;
+  context_.reset();
+}
+
+template <typename T>
+CallbackHandle Observer<T>::addCallback(
+    folly::Function<void(Snapshot<T>)> callback) const {
+  return CallbackHandle(*this, std::move(callback));
+}
 } // namespace observer
 } // namespace folly

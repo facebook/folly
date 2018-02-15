@@ -321,3 +321,35 @@ TEST(Observer, SubscribeCallback) {
   EXPECT_EQ(4, getCallsFinish);
   cobThread.join();
 }
+
+TEST(Observer, SetCallback) {
+  folly::observer::SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+  folly::Baton<> baton;
+  int callbackValue = 0;
+  size_t callbackCallsCount = 0;
+
+  auto callbackHandle =
+      observer.addCallback([&](folly::observer::Snapshot<int> snapshot) {
+        ++callbackCallsCount;
+        callbackValue = *snapshot;
+        baton.post();
+      });
+  baton.wait();
+  baton.reset();
+  EXPECT_EQ(42, callbackValue);
+  EXPECT_EQ(1, callbackCallsCount);
+
+  observable.setValue(43);
+  baton.wait();
+  baton.reset();
+  EXPECT_EQ(43, callbackValue);
+  EXPECT_EQ(2, callbackCallsCount);
+
+  callbackHandle.cancel();
+
+  observable.setValue(44);
+  EXPECT_FALSE(baton.timed_wait(std::chrono::milliseconds{100}));
+  EXPECT_EQ(43, callbackValue);
+  EXPECT_EQ(2, callbackCallsCount);
+}
