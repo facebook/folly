@@ -48,6 +48,9 @@ TEST(FiberManager, batonTimedWaitTimeout) {
   auto& loopController =
       dynamic_cast<SimpleLoopController&>(manager.loopController());
 
+  auto now = SimpleLoopController::Clock::now();
+  loopController.setTimeFunc([&] { return now; });
+
   auto loopFunc = [&]() {
     if (!taskAdded) {
       manager.addTask([&]() {
@@ -72,7 +75,7 @@ TEST(FiberManager, batonTimedWaitTimeout) {
       });
       taskAdded = true;
     } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      now += std::chrono::milliseconds(50);
       iterations++;
     }
   };

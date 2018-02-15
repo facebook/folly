@@ -32,6 +32,10 @@ class SimpleLoopController : public LoopController {
     scheduled_ = false;
   }
 
+  void setTimeFunc(Function<TimePoint()> timeFunc) {
+    timeFunc_ = std::move(timeFunc);
+  }
+
   /**
    * Run FiberManager loop; if no ready task are present,
    * run provided function. Stops after both stop() has been called
@@ -45,7 +49,7 @@ class SimpleLoopController : public LoopController {
     while (LIKELY(waiting || !stopRequested_)) {
       func();
 
-      auto time = Clock::now();
+      auto time = timeFunc_();
 
       for (size_t i = 0; i < scheduledFuncs_.size(); ++i) {
         if (scheduledFuncs_[i].first <= time) {
@@ -104,6 +108,7 @@ class SimpleLoopController : public LoopController {
   std::atomic<int> remoteScheduleCalled_{0};
   int remoteLoopRun_{0};
   std::vector<std::pair<TimePoint, std::function<void()>>> scheduledFuncs_;
+  Function<TimePoint()> timeFunc_{[] { return Clock::now(); }};
 
   /* LoopController interface */
 
