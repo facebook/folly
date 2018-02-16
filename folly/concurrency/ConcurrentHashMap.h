@@ -410,12 +410,14 @@ class ConcurrentHashMap {
     }
 
     ConstIterator& operator=(const ConstIterator& o) {
+      parent_ = o.parent_;
       it_ = o.it_;
       segment_ = o.segment_;
       return *this;
     }
 
     ConstIterator(const ConstIterator& o) {
+      parent_ = o.parent_;
       it_ = o.it_;
       segment_ = o.segment_;
     }

@@ -257,6 +257,16 @@ TEST(ConcurrentHashMap, EraseTest) {
   foomap.erase(f1);
 }
 
+TEST(ConcurrentHashMap, CopyIterator) {
+  ConcurrentHashMap<int, int> map;
+  map.insert(0, 0);
+  auto const cbegin = map.cbegin();
+  for (auto cit = cbegin; cit != map.cend(); ++cit) {
+    std::pair<int const, int> const ckv{0, 0};
+    EXPECT_EQ(*cit, ckv);
+  }
+}
+
 TEST(ConcurrentHashMap, EraseInIterateTest) {
   ConcurrentHashMap<uint64_t, uint64_t> foomap(3);
   for (uint64_t k = 0; k < 10; ++k) {
