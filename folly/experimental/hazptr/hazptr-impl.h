@@ -314,7 +314,7 @@ class hazptr_priv {
 };
 
 static_assert(
-    std::is_trivial<hazptr_priv>::value,
+    folly::kIsWindows || std::is_trivial<hazptr_priv>::value,
     "hazptr_priv must be trivial to avoid a branch to check initialization");
 
 void hazptr_priv_init();
