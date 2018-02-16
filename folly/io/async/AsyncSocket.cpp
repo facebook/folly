@@ -57,8 +57,7 @@ const AsyncSocketException socketShutdownForWritesEx(
 
 // TODO: It might help performance to provide a version of BytesWriteRequest that
 // users could derive from, so we can avoid the extra allocation for each call
-// to write()/writev().  We could templatize TFramedAsyncChannel just like the
-// protocols are currently templatized for transports.
+// to write()/writev().
 //
 // We would need the version for external users where they provide the iovec
 // storage space, and only our internal version would allocate it at the end of
