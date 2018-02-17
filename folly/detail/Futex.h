@@ -44,7 +44,9 @@ enum class FutexResult {
  */
 template <template <typename> class Atom = std::atomic>
 struct Futex : Atom<uint32_t> {
-  using Atom<uint32_t>::Atom;
+  Futex() : Atom<uint32_t>() {}
+
+  explicit constexpr Futex(uint32_t init) : Atom<uint32_t>(init) {}
 
   /** Puts the thread to sleep if this->load() == expected.  Returns true when
    *  it is returning because it has consumed a wake() event, false for any
