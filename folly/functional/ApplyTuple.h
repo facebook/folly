@@ -152,7 +152,7 @@ auto uncurry(F&& f)
       std::forward<F>(f));
 }
 
-#if __cpp_lib_make_from_tuple || _MSC_VER
+#if __cpp_lib_make_from_tuple || _MSC_VER >= 1910
 
 /* using override */ using std::make_from_tuple;
 
