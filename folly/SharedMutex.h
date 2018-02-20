@@ -178,9 +178,9 @@
 // SharedMutex, and don't start using the deferred mode unless we actually
 // observe concurrency.  See kNumSharedToStartDeferring.
 //
-// It is explicitly allowed to call lock_unshared() from a different
+// It is explicitly allowed to call unlock_shared() from a different
 // thread than lock_shared(), so long as they are properly paired.
-// lock_unshared() needs to find the location at which lock_shared()
+// unlock_shared() needs to find the location at which lock_shared()
 // recorded the lock, which might be in the lock itself or in any of
 // the shared slots.  If you can conveniently pass state from lock
 // acquisition to release then the fastest mechanism is to std::move
@@ -212,7 +212,7 @@
 // that the increased icache and dcache footprint of the tagged result is
 // worth it.
 
-// SharedMutex's use of thread local storage is as an optimization, so
+// SharedMutex's use of thread local storage is an optimization, so
 // for the case where thread local storage is not supported, define it
 // away.
 #ifndef FOLLY_SHAREDMUTEX_TLS
