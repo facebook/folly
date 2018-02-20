@@ -126,7 +126,8 @@ class ConcurrentHashMap {
     }
   }
 
-  ConcurrentHashMap(ConcurrentHashMap&& o) noexcept {
+  ConcurrentHashMap(ConcurrentHashMap&& o) noexcept
+      : size_(o.size_), max_size_(o.max_size_) {
     for (uint64_t i = 0; i < NumShards; i++) {
       segments_[i].store(
           o.segments_[i].load(std::memory_order_relaxed),
@@ -147,6 +148,8 @@ class ConcurrentHashMap {
           std::memory_order_relaxed);
       o.segments_[i].store(nullptr, std::memory_order_relaxed);
     }
+    size_ = o.size_;
+    max_size_ = o.max_size_;
     return *this;
   }
 

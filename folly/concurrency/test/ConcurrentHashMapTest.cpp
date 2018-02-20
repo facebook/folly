@@ -249,6 +249,19 @@ TEST(ConcurrentHashMap, MapIterateTest) {
   EXPECT_EQ(count, 2);
 }
 
+TEST(ConcurrentHashMap, MoveIterateAssignIterate) {
+  using Map = ConcurrentHashMap<int, int>;
+  Map tmp;
+  Map map{std::move(tmp)};
+
+  map.insert(0, 0);
+  ++map.cbegin();
+  ConcurrentHashMap<int, int> other;
+  other.insert(0, 0);
+  map = std::move(other);
+  ++map.cbegin();
+}
+
 TEST(ConcurrentHashMap, EraseTest) {
   ConcurrentHashMap<uint64_t, uint64_t> foomap(3);
   foomap.insert(1, 0);
