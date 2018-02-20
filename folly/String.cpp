@@ -132,15 +132,17 @@ StringPiece ltrimWhitespace(StringPiece sp) {
   // checked.  This configuration where we loop on the ' '
   // separately from oddspaces was empirically fastest.
 
-loop:
-  for (; !sp.empty() && sp.front() == ' '; sp.pop_front()) {
-  }
-  if (!sp.empty() && is_oddspace(sp.front())) {
-    sp.pop_front();
-    goto loop;
-  }
+  while (true) {
+    while (!sp.empty() && sp.front() == ' ') {
+      sp.pop_front();
+    }
+    if (!sp.empty() && is_oddspace(sp.front())) {
+      sp.pop_front();
+      continue;
+    }
 
-  return sp;
+    return sp;
+  }
 }
 
 StringPiece rtrimWhitespace(StringPiece sp) {
@@ -148,15 +150,17 @@ StringPiece rtrimWhitespace(StringPiece sp) {
   // checked.  This configuration where we loop on the ' '
   // separately from oddspaces was empirically fastest.
 
-loop:
-  for (; !sp.empty() && sp.back() == ' '; sp.pop_back()) {
-  }
-  if (!sp.empty() && is_oddspace(sp.back())) {
-    sp.pop_back();
-    goto loop;
-  }
+  while (true) {
+    while (!sp.empty() && sp.back() == ' ') {
+      sp.pop_back();
+    }
+    if (!sp.empty() && is_oddspace(sp.back())) {
+      sp.pop_back();
+      continue;
+    }
 
-  return sp;
+    return sp;
+  }
 }
 
 namespace {
