@@ -32,6 +32,10 @@ enum class CompressionCounterKey {
   BYTES_AFTER_COMPRESSION = 1,
   BYTES_BEFORE_DECOMPRESSION = 2,
   BYTES_AFTER_DECOMPRESSION = 3,
+  COMPRESSIONS = 4,
+  DECOMPRESSIONS = 5,
+  COMPRESSION_MILLISECONDS = 6,
+  DECOMPRESSION_MILLISECONDS = 7,
 };
 
 enum class CompressionCounterType {
@@ -72,11 +76,15 @@ class CompressionCounter {
       folly::Optional<int> level,
       CompressionCounterKey key,
       CompressionCounterType counterType) {
-    increment_ = makeCompressionCounterHandler(
-        codecType, codecName, std::move(level), key, counterType);
+    initialize_ = [=]() {
+      return makeCompressionCounterHandler(
+          codecType, codecName, level, key, counterType);
+    };
+    DCHECK(!initialize_.hasAllocatedMemory());
   }
 
   void operator+=(double sum) {
+    performLazyInit();
     if (increment_) {
       increment_(sum);
     }
@@ -90,11 +98,22 @@ class CompressionCounter {
     *this += 1.0;
   }
 
-  bool hasImplementation() const {
+  bool hasImplementation() {
+    performLazyInit();
     return static_cast<bool>(increment_);
   }
 
  private:
+  void performLazyInit() {
+    if (!initialized_) {
+      initialized_ = true;
+      increment_ = initialize_();
+      initialize_ = {};
+    }
+  }
+
+  bool initialized_{false};
+  folly::Function<folly::Function<void(double)>()> initialize_;
   folly::Function<void(double)> increment_;
 };
 
