@@ -1,0 +1,19 @@
+# CMake configuration file for folly
+# It defines the following variables
+#  FOLLY_INCLUDE_DIRS
+#  FOLLY_LIBRARIES
+ 
+# Compute paths
+get_filename_component(FOLLY_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(
+  FOLLY_INCLUDE_DIRS
+  "${FOLLY_CMAKE_DIR}/../../include"
+  ABSOLUTE)
+
+# Include the folly-targets.cmake file, which is generated from our CMake rules
+if(NOT TARGET Folly::folly)
+  include("${FOLLY_CMAKE_DIR}/folly-targets.cmake")
+endif()
+ 
+# Set FOLLY_LIBRARIES from our Folly::folly target
+set(FOLLY_LIBRARIES Folly::folly)

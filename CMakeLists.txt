@@ -285,22 +285,32 @@ auto_install_files(folly ${FOLLY_DIR}
   ${FOLLY_DIR}/detail/SlowFingerprint.h
   ${FOLLY_DIR}/detail/FingerprintPolynomial.h
 )
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h DESTINATION include/folly)
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
+  DESTINATION include/folly
+  COMPONENT dev
+)
+
+# Generate the folly-config.cmake file for installation so that
+# downstream projects that use on folly can easily depend on it in their CMake
+# files using "find_package(folly CONFIG)"
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/folly-config.cmake
+  @ONLY
+)
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/folly-config.cmake
+  DESTINATION share/folly
+  COMPONENT dev
+)
 install(
   EXPORT folly
   DESTINATION share/folly
   NAMESPACE Folly::
   FILE folly-targets.cmake
+  COMPONENT dev
 )
-
-# We need a wrapper config file to do the find_package calls to ensure
-# that all our dependencies are available to link against.
-file(
-  COPY ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-deps.cmake
-  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/
-)
-file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/folly-deps.cmake "\ninclude(folly-targets.cmake)\n")
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/folly-deps.cmake DESTINATION share/folly RENAME folly-config.cmake)
 
 option(BUILD_TESTS "If enabled, compile the tests." OFF)
 option(BUILD_BROKEN_TESTS "If enabled, compile tests that are known to be broken." OFF)
