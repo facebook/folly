@@ -32,13 +32,13 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND FOLLY_CXX_FLAGS -Wshadow-compatible-local)
   endif()
 
-  CHECK_CXX_COMPILER_FLAG(-Wno-noexcept-type COMPILER_HAS_W_NOEXCEPT_TYPE)
+  CHECK_CXX_COMPILER_FLAG(-Wnoexcept-type COMPILER_HAS_W_NOEXCEPT_TYPE)
   if (COMPILER_HAS_W_NOEXCEPT_TYPE)
     list(APPEND FOLLY_CXX_FLAGS -Wno-noexcept-type)
   endif()
 
   CHECK_CXX_COMPILER_FLAG(
-      -Wno-nullability-completeness
+      -Wnullability-completeness
       COMPILER_HAS_W_NULLABILITY_COMPLETENESS)
   if (COMPILER_HAS_W_NULLABILITY_COMPLETENESS)
     list(APPEND FOLLY_CXX_FLAGS -Wno-nullability-completeness)
