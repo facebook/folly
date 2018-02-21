@@ -11,7 +11,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       "FOLLY_XLOG_STRIP_PREFIXES=\"${FOLLY_DIR_PREFIXES}\""
   )
   target_compile_options(${THETARGET}
-    PUBLIC
+    PRIVATE
       -g
       -std=gnu++14
       -finput-charset=UTF-8
@@ -23,6 +23,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       -Wno-error=deprecated-declarations
       -Wno-sign-compare
       -Wno-unused
+      -Wno-inconsistent-missing-override
       -Wunused-label
       -Wunused-result
       -Wnon-virtual-dtor
