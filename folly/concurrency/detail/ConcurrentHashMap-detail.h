@@ -589,6 +589,8 @@ class alignas(64) ConcurrentHashMapSegment {
   // throw if hash or key_eq functions throw.
   void erase(Iterator& res, Iterator& pos) {
     erase_internal(pos->first, &res);
+    // Invalidate the iterator.
+    pos = cend();
   }
 
   void clear() {
