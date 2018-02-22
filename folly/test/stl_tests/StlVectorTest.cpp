@@ -2010,11 +2010,8 @@ STL_TEST("23.2.1 Table 99.5", copyWithAllocator, is_copy_constructible, a, m) {
   ) << "only a shallow copy was made";
 }
 
-STL_TEST(
-    "23.2.1 Table 99.6",
-    moveConstructionWithAllocator,
-    is_destructible,
-    /*a*/) {
+STL_TEST("23.2.1 Table 99.6", moveConstructionWithAllocator,
+         is_destructible, a) {
   // there is nothing new to test here
 }
 
