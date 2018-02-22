@@ -702,7 +702,6 @@ FOLLY_ALWAYS_INLINE hazptr_array<M>::~hazptr_array() {
       auto count = tc.count();
       if ((M <= HAZPTR_TC_SIZE) && (count + M <= HAZPTR_TC_SIZE)) {
         for (size_t i = 0; i < M; ++i) {
-          h[i].reset();
           tc[count + i].hprec_ = h[i].hazptr_;
           HAZPTR_DEBUG_PRINT(i << " " << &h[i]);
           new (&h[i]) hazptr_holder(nullptr);

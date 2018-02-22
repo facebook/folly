@@ -594,107 +594,25 @@ TEST(ConcurrentHashMap, RefcountTest) {
 }
 
 struct Wrapper {
-  explicit Wrapper(bool& del_) : del(del_) {}
+  Wrapper() = default;
   ~Wrapper() {
     del = true;
   }
 
-  bool& del;
+  static bool del;
 };
 
+bool Wrapper::del = false;
+
 TEST(ConcurrentHashMap, Deletion) {
-  bool del{false};
+  EXPECT_FALSE(Wrapper::del);
 
   {
     ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map;
 
-    map.insert(0, std::make_shared<Wrapper>(del));
-  }
-
-  EXPECT_TRUE(del);
-}
-
-TEST(ConcurrentHashMap, DeletionWithErase) {
-  bool del{false};
-
-  {
-    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map;
-
-    map.insert(0, std::make_shared<Wrapper>(del));
+    map.insert(0, std::make_shared<Wrapper>());
     map.erase(0);
   }
 
-  EXPECT_TRUE(del);
-}
-
-TEST(ConcurrentHashMap, DeletionWithIterator) {
-  bool del{false};
-
-  {
-    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map;
-
-    map.insert(0, std::make_shared<Wrapper>(del));
-    auto it = map.find(0);
-    map.erase(it);
-  }
-
-  EXPECT_TRUE(del);
-}
-
-TEST(ConcurrentHashMap, DeletionWithForLoop) {
-  bool del{false};
-
-  {
-    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map;
-
-    map.insert(0, std::make_shared<Wrapper>(del));
-    for (auto it = map.cbegin(); it != map.cend(); ++it) {
-      EXPECT_EQ(it->first, 0);
-    }
-  }
-
-  EXPECT_TRUE(del);
-}
-
-TEST(ConcurrentHashMap, DeletionMultiple) {
-  bool del1{false}, del2{false};
-
-  {
-    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map;
-
-    map.insert(0, std::make_shared<Wrapper>(del1));
-    map.insert(1, std::make_shared<Wrapper>(del2));
-  }
-
-  EXPECT_TRUE(del1);
-  EXPECT_TRUE(del2);
-}
-
-TEST(ConcurrentHashMap, DeletionAssigned) {
-  bool del1{false}, del2{false};
-
-  {
-    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map;
-
-    map.insert(0, std::make_shared<Wrapper>(del1));
-    map.insert_or_assign(0, std::make_shared<Wrapper>(del2));
-  }
-
-  EXPECT_TRUE(del1);
-  EXPECT_TRUE(del2);
-}
-
-TEST(ConcurrentHashMap, DeletionMultipleMaps) {
-  bool del1{false}, del2{false};
-
-  {
-    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map1;
-    ConcurrentHashMap<int, std::shared_ptr<Wrapper>> map2;
-
-    map1.insert(0, std::make_shared<Wrapper>(del1));
-    map2.insert(0, std::make_shared<Wrapper>(del2));
-  }
-
-  EXPECT_TRUE(del1);
-  EXPECT_TRUE(del2);
+  EXPECT_TRUE(Wrapper::del);
 }
