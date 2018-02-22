@@ -374,17 +374,36 @@ struct hazptr_tls_life {
 void tls_life_odr_use();
 
 /** tls globals */
+
 #if HAZPTR_ENABLE_TLS
-extern thread_local hazptr_tls_state tls_state_;
-extern thread_local hazptr_tc tls_tc_data_;
-extern thread_local hazptr_priv tls_priv_data_;
-extern thread_local hazptr_tls_life tls_life_; // last
+#define HAZPTR_TLS_EXPANSION thread_local
 #else
-extern hazptr_tls_state tls_state_;
-extern hazptr_tc tls_tc_data_;
-extern hazptr_priv tls_priv_data_;
-extern hazptr_tls_life tls_life_; // last
+#define HAZPTR_TLS_EXPANSION
 #endif
+FOLLY_PUSH_WARNING
+#if __clang__
+FOLLY_GCC_DISABLE_WARNING("-Wglobal-constructors")
+#endif
+template <typename>
+struct hazptr_tls_globals_ {
+  static HAZPTR_TLS_EXPANSION hazptr_tls_state tls_state;
+  static HAZPTR_TLS_EXPANSION hazptr_tc tc;
+  static HAZPTR_TLS_EXPANSION hazptr_priv priv;
+  static HAZPTR_TLS_EXPANSION hazptr_tls_life tls_life; // last
+};
+template <typename T>
+HAZPTR_TLS_EXPANSION hazptr_tls_state hazptr_tls_globals_<T>::tls_state =
+    TLS_UNINITIALIZED;
+template <typename T>
+HAZPTR_TLS_EXPANSION hazptr_tc hazptr_tls_globals_<T>::tc;
+template <typename T>
+HAZPTR_TLS_EXPANSION hazptr_priv hazptr_tls_globals_<T>::priv;
+template <typename T>
+HAZPTR_TLS_EXPANSION hazptr_tls_life hazptr_tls_globals_<T>::tls_life; // last
+FOLLY_POP_WARNING
+#undef HAZPTR_TLS_EXPANSION
+using hazptr_tls_globals = hazptr_tls_globals_<void>;
+
 /**
  *  hazptr_domain
  */
@@ -1171,19 +1190,19 @@ FOLLY_ALWAYS_INLINE size_t hazptr_tc::count() {
 
 /** hazptr_tc free functions */
 FOLLY_ALWAYS_INLINE hazptr_tc* hazptr_tc_tls() {
-  HAZPTR_DEBUG_PRINT(tls_state_);
-  if (LIKELY(tls_state_ == TLS_ALIVE)) {
-    HAZPTR_DEBUG_PRINT(tls_state_);
-    return &tls_tc_data_;
-  } else if (tls_state_ == TLS_UNINITIALIZED) {
+  HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+  if (LIKELY(hazptr_tls_globals::tls_state == TLS_ALIVE)) {
+    HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+    return &hazptr_tls_globals::tc;
+  } else if (hazptr_tls_globals::tls_state == TLS_UNINITIALIZED) {
     tls_life_odr_use();
-    return &tls_tc_data_;
+    return &hazptr_tls_globals::tc;
   }
   return nullptr;
 }
 
 inline void hazptr_tc_init() {
-  auto& tc = tls_tc_data_;
+  auto& tc = hazptr_tls_globals::tc;
   HAZPTR_DEBUG_PRINT(&tc);
   tc.count_ = 0;
   if (kIsDebug) {
@@ -1192,7 +1211,7 @@ inline void hazptr_tc_init() {
 }
 
 inline void hazptr_tc_shutdown() {
-  auto& tc = tls_tc_data_;
+  auto& tc = hazptr_tls_globals::tc;
   HAZPTR_DEBUG_PRINT(&tc);
   for (size_t i = 0; i < tc.count_; ++i) {
     tc.entry_[i].evict();
@@ -1201,22 +1220,22 @@ inline void hazptr_tc_shutdown() {
 
 FOLLY_ALWAYS_INLINE hazptr_rec* hazptr_tc_try_get() {
   HAZPTR_DEBUG_PRINT(TLS_UNINITIALIZED << TLS_ALIVE << TLS_DESTROYED);
-  HAZPTR_DEBUG_PRINT(tls_state_);
-  if (LIKELY(tls_state_ == TLS_ALIVE)) {
-    HAZPTR_DEBUG_PRINT(tls_state_);
-    return tls_tc_data_.get();
-  } else if (tls_state_ == TLS_UNINITIALIZED) {
+  HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+  if (LIKELY(hazptr_tls_globals::tls_state == TLS_ALIVE)) {
+    HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+    return hazptr_tls_globals::tc.get();
+  } else if (hazptr_tls_globals::tls_state == TLS_UNINITIALIZED) {
     tls_life_odr_use();
-    return tls_tc_data_.get();
+    return hazptr_tls_globals::tc.get();
   }
   return nullptr;
 }
 
 FOLLY_ALWAYS_INLINE bool hazptr_tc_try_put(hazptr_rec* hprec) {
-  HAZPTR_DEBUG_PRINT(tls_state_);
-  if (LIKELY(tls_state_ == TLS_ALIVE)) {
-    HAZPTR_DEBUG_PRINT(tls_state_);
-    return tls_tc_data_.put(hprec);
+  HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+  if (LIKELY(hazptr_tls_globals::tls_state == TLS_ALIVE)) {
+    HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+    return hazptr_tls_globals::tc.put(hprec);
   }
   return false;
 }
@@ -1226,13 +1245,13 @@ FOLLY_ALWAYS_INLINE bool hazptr_tc_try_put(hazptr_rec* hprec) {
  */
 
 inline void hazptr_priv_init() {
-  auto& priv = tls_priv_data_;
+  auto& priv = hazptr_tls_globals::priv;
   HAZPTR_DEBUG_PRINT(&priv);
   priv.init();
 }
 
 inline void hazptr_priv_shutdown() {
-  auto& priv = tls_priv_data_;
+  auto& priv = hazptr_tls_globals::priv;
   HAZPTR_DEBUG_PRINT(&priv);
   DCHECK(priv.active());
   priv.clear_active();
@@ -1243,15 +1262,15 @@ inline void hazptr_priv_shutdown() {
 }
 
 inline bool hazptr_priv_try_retire(hazptr_obj* obj) {
-  HAZPTR_DEBUG_PRINT(tls_state_);
-  if (tls_state_ == TLS_ALIVE) {
-    HAZPTR_DEBUG_PRINT(tls_state_);
-    tls_priv_data_.push(obj);
+  HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+  if (hazptr_tls_globals::tls_state == TLS_ALIVE) {
+    HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+    hazptr_tls_globals::priv.push(obj);
     return true;
-  } else if (tls_state_ == TLS_UNINITIALIZED) {
-    HAZPTR_DEBUG_PRINT(tls_state_);
+  } else if (hazptr_tls_globals::tls_state == TLS_UNINITIALIZED) {
+    HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
     tls_life_odr_use();
-    tls_priv_data_.push(obj);
+    hazptr_tls_globals::priv.push(obj);
     return true;
   }
   return false;
@@ -1260,27 +1279,27 @@ inline bool hazptr_priv_try_retire(hazptr_obj* obj) {
 /** hazptr_tls_life */
 
 inline void tls_life_odr_use() {
-  HAZPTR_DEBUG_PRINT(tls_state_);
-  CHECK(tls_state_ == TLS_UNINITIALIZED);
-  auto volatile tlsOdrUse = &tls_life_;
+  HAZPTR_DEBUG_PRINT(hazptr_tls_globals::tls_state);
+  CHECK(hazptr_tls_globals::tls_state == TLS_UNINITIALIZED);
+  auto volatile tlsOdrUse = &hazptr_tls_globals::tls_life;
   CHECK(tlsOdrUse != nullptr);
   HAZPTR_DEBUG_PRINT(tlsOdrUse);
 }
 
 inline hazptr_tls_life::hazptr_tls_life() {
   HAZPTR_DEBUG_PRINT(this);
-  CHECK(tls_state_ == TLS_UNINITIALIZED);
+  CHECK(hazptr_tls_globals::tls_state == TLS_UNINITIALIZED);
   hazptr_tc_init();
   hazptr_priv_init();
-  tls_state_ = TLS_ALIVE;
+  hazptr_tls_globals::tls_state = TLS_ALIVE;
 }
 
 inline hazptr_tls_life::~hazptr_tls_life() {
   HAZPTR_DEBUG_PRINT(this);
-  CHECK(tls_state_ == TLS_ALIVE);
+  CHECK(hazptr_tls_globals::tls_state == TLS_ALIVE);
   hazptr_tc_shutdown();
   hazptr_priv_shutdown();
-  tls_state_ = TLS_DESTROYED;
+  hazptr_tls_globals::tls_state = TLS_DESTROYED;
 }
 
 /** hazptr_obj_batch */

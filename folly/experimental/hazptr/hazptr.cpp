@@ -22,17 +22,6 @@ namespace hazptr {
 FOLLY_STATIC_CTOR_PRIORITY_MAX hazptr_domain default_domain_;
 
 hazptr_stats hazptr_stats_;
-#if HAZPTR_ENABLE_TLS
-thread_local hazptr_tls_state tls_state_ = TLS_UNINITIALIZED;
-thread_local hazptr_tc tls_tc_data_;
-thread_local hazptr_priv tls_priv_data_;
-thread_local hazptr_tls_life tls_life_; // last
-#else
-hazptr_tls_state tls_state_ = TLS_UNINITIALIZED;
-hazptr_tc tls_tc_data_;
-hazptr_priv tls_priv_data_;
-hazptr_tls_life tls_life_; // last
-#endif
 
 bool hazptr_tc_enabled() {
   return HAZPTR_TC;
