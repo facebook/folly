@@ -48,8 +48,8 @@ template <class String>
 void randomString(String* toFill, unsigned int maxSize = 1000) {
   assert(toFill);
   toFill->resize(random(0, maxSize));
-  FOR_EACH (i, *toFill) {
-    *i = random('a', 'z');
+  for (auto& c : *toFill) {
+    c = random('a', 'z');
   }
 }
 
@@ -69,13 +69,16 @@ std::list<char> RandomList(unsigned int maxSize) {
   return lst;
 }
 
-template <class T> T randomObject();
+template <class T>
+T randomObject();
 
-template <> int randomObject<int>() {
+template <>
+int randomObject<int>() {
   return random(0, 1024);
 }
 
-template <> folly::fbstring randomObject<folly::fbstring>() {
+template <>
+folly::fbstring randomObject<folly::fbstring>() {
   folly::fbstring result;
   randomString(&result);
   return result;
