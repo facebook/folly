@@ -639,4 +639,38 @@ TEST_F(HazptrTest, FreeFunctionCleanup) {
   for (auto& t : threads) {
     t.join();
   }
+  { // Cleanup after using array
+    constructed.store(0);
+    destroyed.store(0);
+    { hazptr_array<2> h; }
+    {
+      hazptr_array<2> h;
+      auto p0 = new Foo(0, nullptr);
+      auto p1 = new Foo(0, nullptr);
+      h[0].reset(p0);
+      h[1].reset(p1);
+      p0->retire();
+      p1->retire();
+    }
+    CHECK_EQ(constructed.load(), 2);
+    hazptr_cleanup();
+    CHECK_EQ(destroyed.load(), 2);
+  }
+  { // Cleanup after using local
+    constructed.store(0);
+    destroyed.store(0);
+    { hazptr_local<2> h; }
+    {
+      hazptr_local<2> h;
+      auto p0 = new Foo(0, nullptr);
+      auto p1 = new Foo(0, nullptr);
+      h[0].reset(p0);
+      h[1].reset(p1);
+      p0->retire();
+      p1->retire();
+    }
+    CHECK_EQ(constructed.load(), 2);
+    hazptr_cleanup();
+    CHECK_EQ(destroyed.load(), 2);
+  }
 }

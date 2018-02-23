@@ -328,7 +328,7 @@ class hazptr_local {
 
  private:
   aligned_hazptr_holder raw_[M];
-  bool need_destruct_{false};
+  bool slow_path_{false};
 };
 
 } // namespace hazptr

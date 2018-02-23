@@ -721,6 +721,7 @@ FOLLY_ALWAYS_INLINE hazptr_array<M>::~hazptr_array() {
       auto count = tc.count();
       if ((M <= HAZPTR_TC_SIZE) && (count + M <= HAZPTR_TC_SIZE)) {
         for (size_t i = 0; i < M; ++i) {
+          h[i].reset();
           tc[count + i].hprec_ = h[i].hazptr_;
           HAZPTR_DEBUG_PRINT(i << " " << &h[i]);
           new (&h[i]) hazptr_holder(nullptr);
@@ -793,7 +794,7 @@ FOLLY_ALWAYS_INLINE hazptr_local<M>::hazptr_local() {
     }
   }
   // Slow path
-  need_destruct_ = true;
+  slow_path_ = true;
   for (size_t i = 0; i < M; ++i) {
     new (&h[i]) hazptr_holder;
     HAZPTR_DEBUG_PRINT(
@@ -803,13 +804,17 @@ FOLLY_ALWAYS_INLINE hazptr_local<M>::hazptr_local() {
 
 template <size_t M>
 FOLLY_ALWAYS_INLINE hazptr_local<M>::~hazptr_local() {
-  if (LIKELY(!need_destruct_)) {
+  if (LIKELY(!slow_path_)) {
     if (kIsDebug) {
       auto ptc = hazptr_tc_tls();
       DCHECK(ptc != nullptr);
       auto& tc = *ptc;
       DCHECK(tc.local_);
       tc.local_ = false;
+    }
+    auto h = reinterpret_cast<hazptr_holder*>(&raw_);
+    for (size_t i = 0; i < M; ++i) {
+      h[i].reset();
     }
     return;
   }
