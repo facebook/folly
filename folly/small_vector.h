@@ -54,7 +54,6 @@
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Malloc.h>
 #include <folly/portability/TypeTraits.h>
-#include <folly/synchronization/SmallLocks.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING
