@@ -98,6 +98,13 @@ if (LIBLZMA_FOUND)
   list(APPEND FOLLY_LINK_LIBRARIES ${LIBLZMA_LIBRARIES})
 endif()
 
+find_package(lz4 MODULE)
+set(FOLLY_HAVE_LZ4 ${LZ4_FOUND})
+if (LZ4_FOUND)
+  list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LZ4_INCLUDE_DIR})
+  list(APPEND FOLLY_LINK_LIBRARIES ${LZ4_LIBRARY})
+endif()
+
 # TODO: We should ideally build FindXXX modules for the following libraries,
 # rather than the simple checks we currently have here.
 CHECK_INCLUDE_FILE_CXX(zstd.h FOLLY_HAVE_LIBZSTD)
@@ -107,10 +114,6 @@ endif()
 CHECK_INCLUDE_FILE_CXX(snappy.h FOLLY_HAVE_LIBSNAPPY)
 if (FOLLY_HAVE_LIBSNAPPY)
   list(APPEND FOLLY_LINK_LIBRARIES snappy)
-endif()
-CHECK_INCLUDE_FILE_CXX(lz4.h FOLLY_HAVE_LIBLZ4)
-if (FOLLY_HAVE_LIBLZ4)
-  list(APPEND FOLLY_LINK_LIBRARIES lz4)
 endif()
 
 find_package(LibDwarf)
