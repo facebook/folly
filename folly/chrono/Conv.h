@@ -283,8 +283,7 @@ struct CheckOverflowToDuration {
       constexpr auto maxCount = std::numeric_limits<typename Tgt::rep>::max();
       constexpr auto maxSeconds = maxCount / Tgt::period::den;
 
-      auto unsignedSeconds =
-          static_cast<typename std::make_unsigned<Seconds>::type>(seconds);
+      auto unsignedSeconds = to_unsigned(seconds);
       if (LIKELY(unsignedSeconds < maxSeconds)) {
         return ConversionCode::SUCCESS;
       }
@@ -297,8 +296,7 @@ struct CheckOverflowToDuration {
         if (subseconds <= 0) {
           return ConversionCode::SUCCESS;
         }
-        if (static_cast<typename std::make_unsigned<Subseconds>::type>(
-                subseconds) <= maxSubseconds) {
+        if (to_unsigned(subseconds) <= maxSubseconds) {
           return ConversionCode::SUCCESS;
         }
       }
@@ -307,8 +305,7 @@ struct CheckOverflowToDuration {
       return ConversionCode::NEGATIVE_OVERFLOW;
     } else {
       constexpr auto minCount =
-          static_cast<typename std::make_signed<typename Tgt::rep>::type>(
-              std::numeric_limits<typename Tgt::rep>::lowest());
+          to_signed(std::numeric_limits<typename Tgt::rep>::lowest());
       constexpr auto minSeconds = (minCount / Tgt::period::den);
       if (LIKELY(seconds >= minSeconds)) {
         return ConversionCode::SUCCESS;

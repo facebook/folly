@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -363,5 +364,21 @@ using MoveOnly = moveonly_::MoveOnly;
  */
 template <bool B>
 using Bool = std::integral_constant<bool, B>;
+
+template <typename T>
+constexpr auto to_signed(T const& t) -> typename std::make_signed<T>::type {
+  using S = typename std::make_signed<T>::type;
+  // note: static_cast<S>(t) would be more straightforward, but it would also be
+  // implementation-defined behavior and that is typically to be avoided; the
+  // following code optimized into the same thing, though
+  constexpr auto const s = std::numeric_limits<S>::max();
+  return s < t ? -static_cast<S>(~t) + S{-1} : static_cast<S>(t);
+}
+
+template <typename T>
+constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
+  using U = typename std::make_unsigned<T>::type;
+  return static_cast<U>(t);
+}
 
 } // namespace folly

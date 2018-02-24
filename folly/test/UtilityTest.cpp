@@ -119,3 +119,29 @@ TEST_F(UtilityTest, MoveOnly) {
       std::is_nothrow_move_constructible<FooBar>::value,
       "Should have noexcept move constructor");
 }
+
+TEST_F(UtilityTest, to_signed) {
+  {
+    constexpr auto actual = folly::to_signed(int32_t(-12));
+    EXPECT_TRUE(std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
+  {
+    constexpr auto actual = folly::to_signed(uint32_t(-12));
+    EXPECT_TRUE(std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
+}
+
+TEST_F(UtilityTest, to_unsigned) {
+  {
+    constexpr auto actual = folly::to_unsigned(int32_t(-12));
+    EXPECT_TRUE(!std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
+  {
+    constexpr auto actual = folly::to_unsigned(uint32_t(-12));
+    EXPECT_TRUE(!std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
+}
