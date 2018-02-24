@@ -31,7 +31,7 @@
 #include <folly/Utility.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/detail/FSM.h>
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/lang/Exception.h>
 
 #include <folly/io/async/Request.h>
 
@@ -161,7 +161,7 @@ class Core final {
       case State::OnlyCallback:
       case State::Armed:
       case State::Done:
-        std::__throw_logic_error("setCallback called twice");
+        throw_exception<std::logic_error>("setCallback called twice");
     FSM_END
 
     // we could always call this, it is an optimization to only call it when
@@ -188,7 +188,7 @@ class Core final {
       case State::OnlyResult:
       case State::Armed:
       case State::Done:
-        std::__throw_logic_error("setResult called twice");
+      throw_exception<std::logic_error>("setResult called twice");
     FSM_END
 
     if (transitionToArmed) {

@@ -38,8 +38,8 @@
 #include <folly/FormatTraits.h>
 #include <folly/Likely.h>
 #include <folly/Traits.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
-#include <folly/portability/BitsFunctexcept.h>
 
 //=============================================================================
 // forward declaration
@@ -1073,7 +1073,8 @@ class fbvector {
   }
   const_reference at(size_type n) const {
     if (UNLIKELY(n >= size())) {
-      std::__throw_out_of_range("fbvector: index is greater than size.");
+      throw_exception<std::out_of_range>(
+          "fbvector: index is greater than size.");
     }
     return (*this)[n];
   }

@@ -21,7 +21,7 @@
 
 #include <folly/Portability.h>
 #include <folly/hash/SpookyHashV2.h>
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/String.h>
 
@@ -224,7 +224,7 @@ class Range : private boost::totally_ordered<Range<Iter>> {
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const std::string& str, std::string::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     b_ = str.data() + startFrom;
     e_ = str.data() + str.size();
@@ -236,7 +236,7 @@ class Range : private boost::totally_ordered<Range<Iter>> {
       std::string::size_type startFrom,
       std::string::size_type size) {
     if (UNLIKELY(startFrom > str.size())) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     b_ = str.data() + startFrom;
     if (str.size() - startFrom < size) {
@@ -274,7 +274,7 @@ class Range : private boost::totally_ordered<Range<Iter>> {
     auto const cdata = container.data();
     auto const csize = container.size();
     if (UNLIKELY(startFrom > csize)) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     b_ = cdata + startFrom;
     e_ = cdata + csize;
@@ -296,7 +296,7 @@ class Range : private boost::totally_ordered<Range<Iter>> {
     auto const cdata = container.data();
     auto const csize = container.size();
     if (UNLIKELY(startFrom > csize)) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     b_ = cdata + startFrom;
     if (csize - startFrom < size) {
@@ -521,14 +521,14 @@ class Range : private boost::totally_ordered<Range<Iter>> {
 
   value_type& at(size_t i) {
     if (i >= size()) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     return b_[i];
   }
 
   const value_type& at(size_t i) const {
     if (i >= size()) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     return b_[i];
   }
@@ -564,21 +564,21 @@ class Range : private boost::totally_ordered<Range<Iter>> {
 
   void advance(size_type n) {
     if (UNLIKELY(n > size())) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     b_ += n;
   }
 
   void subtract(size_type n) {
     if (UNLIKELY(n > size())) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     e_ -= n;
   }
 
   Range subpiece(size_type first, size_type length = npos) const {
     if (UNLIKELY(first > size())) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
 
     return Range(b_ + first, std::min(length, size() - first));
@@ -775,7 +775,7 @@ class Range : private boost::totally_ordered<Range<Iter>> {
     } else if (e == e_) {
       e_ = b;
     } else {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
   }
 
@@ -841,7 +841,7 @@ class Range : private boost::totally_ordered<Range<Iter>> {
    */
   size_t replaceAll(const_range_type source, const_range_type dest) {
     if (source.size() != dest.size()) {
-      throw std::invalid_argument(
+      throw_exception<std::invalid_argument>(
           "replacement must have the same size as source");
     }
 

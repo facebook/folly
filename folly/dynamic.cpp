@@ -19,7 +19,7 @@
 #include <folly/Format.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Assume.h>
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -246,7 +246,7 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
 
 [[noreturn]] static void throwOutOfRangeAtMissingKey(dynamic const& idx) {
   auto msg = sformat("couldn't find key {} in dynamic object", idx.asString());
-  std::__throw_out_of_range(msg.c_str());
+  throw_exception<std::out_of_range>(msg);
 }
 
 dynamic const& dynamic::at(dynamic const& idx) const& {
@@ -255,7 +255,7 @@ dynamic const& dynamic::at(dynamic const& idx) const& {
       throwTypeError_("int64", idx.type());
     }
     if (idx < 0 || idx >= parray->size()) {
-      std::__throw_out_of_range("out of range in dynamic array");
+      throw_exception<std::out_of_range>("out of range in dynamic array");
     }
     return (*parray)[size_t(idx.asInt())];
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {

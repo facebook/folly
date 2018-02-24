@@ -24,7 +24,7 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/utility.hpp>
 
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -214,7 +214,7 @@ class EvictingCacheMap {
   TValue& get(const TKey& key) {
     auto it = find(key);
     if (it == end()) {
-      std::__throw_out_of_range("Key does not exist");
+      throw_exception<std::out_of_range>("Key does not exist");
     }
     return it->second;
   }
@@ -246,7 +246,7 @@ class EvictingCacheMap {
   const TValue& getWithoutPromotion(const TKey& key) const {
     auto it = findWithoutPromotion(key);
     if (it == end()) {
-      std::__throw_out_of_range("Key does not exist");
+      throw_exception<std::out_of_range>("Key does not exist");
     }
     return it->second;
   }

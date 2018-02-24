@@ -34,7 +34,7 @@
 #include <folly/Portability.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/lang/Exception.h>
 #include <folly/system/ThreadId.h>
 
 namespace folly {
@@ -437,7 +437,7 @@ class CoreAllocator {
         void* mem =
             aligned_malloc(size, hardware_destructive_interference_size);
         if (!mem) {
-          std::__throw_bad_alloc();
+          throw_exception<std::bad_alloc>();
         }
         return mem;
       }

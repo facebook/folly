@@ -56,8 +56,8 @@
 
 #include <folly/Traits.h>
 #include <folly/hash/Hash.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
-#include <folly/portability/BitsFunctexcept.h>
 
 // When used in folly, assertions are not disabled.
 #define FBSTRING_ASSERT(expr) assert(expr)
@@ -83,7 +83,7 @@ FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 FOLLY_GCC_DISABLE_WARNING("-Warray-bounds")
 
 // FBString cannot use throw when replacing std::string, though it may still
-// use std::__throw_*
+// use folly::throw_exception
 // nolint
 #define throw FOLLY_FBSTRING_MAY_NOT_USE_THROW
 
@@ -1052,12 +1052,10 @@ template <
     class Storage = fbstring_core<E>>
 #endif
 class basic_fbstring {
-  static void enforce(
-      bool condition,
-      void (*throw_exc)(const char*),
-      const char* msg) {
+  template <typename Ex, typename... Args>
+  FOLLY_ALWAYS_INLINE static void enforce(bool condition, Args&&... args) {
     if (!condition) {
-      throw_exc(msg);
+      throw_exception<Ex>(static_cast<Args&&>(args)...);
     }
   }
 
@@ -1338,7 +1336,7 @@ class basic_fbstring {
   size_type capacity() const { return store_.capacity(); }
 
   void reserve(size_type res_arg = 0) {
-    enforce(res_arg <= max_size(), std::__throw_length_error, "");
+    enforce<std::length_error>(res_arg <= max_size(), "");
     store_.reserve(res_arg);
   }
 
@@ -1364,12 +1362,12 @@ class basic_fbstring {
   }
 
   const_reference at(size_type n) const {
-    enforce(n <= size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(n <= size(), "");
     return (*this)[n];
   }
 
   reference at(size_type n) {
-    enforce(n < size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(n < size(), "");
     return (*this)[n];
   }
 
@@ -1454,13 +1452,13 @@ class basic_fbstring {
 
   basic_fbstring& insert(size_type pos1, const basic_fbstring& str,
                          size_type pos2, size_type n) {
-    enforce(pos2 <= str.length(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos2 <= str.length(), "");
     procrustes(n, str.length() - pos2);
     return insert(pos1, str.data() + pos2, n);
   }
 
   basic_fbstring& insert(size_type pos, const value_type* s, size_type n) {
-    enforce(pos <= length(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= length(), "");
     insert(begin() + pos, s, s + n);
     return *this;
   }
@@ -1470,7 +1468,7 @@ class basic_fbstring {
   }
 
   basic_fbstring& insert(size_type pos, size_type n, value_type c) {
-    enforce(pos <= length(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= length(), "");
     insert(begin() + pos, n, c);
     return *this;
   }
@@ -1536,7 +1534,7 @@ class basic_fbstring {
   basic_fbstring& erase(size_type pos = 0, size_type n = npos) {
     Invariant checker(*this);
 
-    enforce(pos <= length(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= length(), "");
     procrustes(n, length() - pos);
     std::copy(begin() + pos + n, end(), begin() + pos);
     resize(length() - n);
@@ -1545,7 +1543,7 @@ class basic_fbstring {
 
   iterator erase(iterator position) {
     const size_type pos(position - begin());
-    enforce(pos <= size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= size(), "");
     erase(pos, 1);
     return begin() + pos;
   }
@@ -1568,7 +1566,7 @@ class basic_fbstring {
   basic_fbstring& replace(size_type pos1, size_type n1,
                           const basic_fbstring& str,
                           size_type pos2, size_type n2) {
-    enforce(pos2 <= str.length(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos2 <= str.length(), "");
     return replace(pos1, n1, str.data() + pos2,
                    std::min(n2, str.size() - pos2));
   }
@@ -1590,7 +1588,7 @@ class basic_fbstring {
                           StrOrLength s_or_n2, NumOrChar n_or_c) {
     Invariant checker(*this);
 
-    enforce(pos <= size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= size(), "");
     procrustes(n1, length() - pos);
     const iterator b = begin() + pos;
     return replace(b, b + n1, s_or_n2, n_or_c);
@@ -1674,7 +1672,7 @@ class basic_fbstring {
   }
 
   size_type copy(value_type* s, size_type n, size_type pos = 0) const {
-    enforce(pos <= size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= size(), "");
     procrustes(n, size() - pos);
 
     if (n != 0) {
@@ -1792,12 +1790,12 @@ class basic_fbstring {
   }
 
   basic_fbstring substr(size_type pos = 0, size_type n = npos) const& {
-    enforce(pos <= size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= size(), "");
     return basic_fbstring(data() + pos, std::min(n, size() - pos));
   }
 
   basic_fbstring substr(size_type pos = 0, size_type n = npos) && {
-    enforce(pos <= size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos <= size(), "");
     erase(0, pos);
     if (n < size()) {
       resize(n);
@@ -1822,7 +1820,7 @@ class basic_fbstring {
 
   int compare(size_type pos1, size_type n1,
               const value_type* s, size_type n2) const {
-    enforce(pos1 <= size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos1 <= size(), "");
     procrustes(n1, size() - pos1);
     // The line below fixed by Jean-Francois Bastien, 04-23-2007. Thanks!
     const int r = traits_type::compare(pos1 + data(), s, std::min(n1, n2));
@@ -1832,7 +1830,7 @@ class basic_fbstring {
   int compare(size_type pos1, size_type n1,
               const basic_fbstring& str,
               size_type pos2, size_type n2) const {
-    enforce(pos2 <= str.size(), std::__throw_out_of_range, "");
+    enforce<std::out_of_range>(pos2 <= str.size(), "");
     return compare(pos1, n1, str.data() + pos2,
                    std::min(n2, str.size() - pos2));
   }
@@ -1855,7 +1853,7 @@ template <typename E, class T, class A, class S>
 FOLLY_MALLOC_NOINLINE inline typename basic_fbstring<E, T, A, S>::size_type
 basic_fbstring<E, T, A, S>::traitsLength(const value_type* s) {
   return s ? traits_type::length(s)
-           : (std::__throw_logic_error(
+           : (throw_exception<std::logic_error>(
                   "basic_fbstring: null pointer initializer not valid"),
               0);
 }
@@ -1941,7 +1939,7 @@ template <typename E, class T, class A, class S>
 inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::append(
     const basic_fbstring& str, const size_type pos, size_type n) {
   const size_type sz = str.size();
-  enforce(pos <= sz, std::__throw_out_of_range, "");
+  enforce<std::out_of_range>(pos <= sz, "");
   procrustes(n, sz - pos);
   return append(str.data() + pos, n);
 }
@@ -1992,7 +1990,7 @@ template <typename E, class T, class A, class S>
 inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::assign(
     const basic_fbstring& str, const size_type pos, size_type n) {
   const size_type sz = str.size();
-  enforce(pos <= sz, std::__throw_out_of_range, "");
+  enforce<std::out_of_range>(pos <= sz, "");
   procrustes(n, sz - pos);
   return assign(str.data() + pos, n);
 }

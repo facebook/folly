@@ -46,8 +46,8 @@
 // includes and uses fbstring.
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
 
+#include <folly/lang/Exception.h>
 #include <folly/memory/detail/MallocImpl.h>
-#include <folly/portability/BitsFunctexcept.h>
 
 #include <string>
 
@@ -93,14 +93,12 @@ extern "C" int mallctlbymib(const size_t*, size_t, void*, size_t*, void*,
                             size_t)
 __attribute__((__weak__));
 
-#include <bits/functexcept.h>
-
 #define FOLLY_HAVE_MALLOC_H 1
 
 #else // !defined(_LIBSTDCXX_FBSTRING)
 
+#include <folly/lang/Exception.h> /* nolint */
 #include <folly/memory/detail/MallocImpl.h> /* nolint */
-#include <folly/portability/BitsFunctexcept.h> /* nolint */
 
 #endif
 
@@ -229,7 +227,7 @@ static const size_t jemallocMinInPlaceExpandable = 4096;
 inline void* checkedMalloc(size_t size) {
   void* p = malloc(size);
   if (!p) {
-    std::__throw_bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   return p;
 }
@@ -237,7 +235,7 @@ inline void* checkedMalloc(size_t size) {
 inline void* checkedCalloc(size_t n, size_t size) {
   void* p = calloc(n, size);
   if (!p) {
-    std::__throw_bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   return p;
 }
@@ -245,7 +243,7 @@ inline void* checkedCalloc(size_t n, size_t size) {
 inline void* checkedRealloc(void* ptr, size_t size) {
   void* p = realloc(ptr, size);
   if (!p) {
-    std::__throw_bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   return p;
 }

@@ -32,7 +32,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/Utility.h>
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Constexpr.h>
 
 namespace folly {
@@ -63,8 +63,9 @@ using FixedStringBase = FixedStringBase_<>;
 // it's testing for fails. In this way, precondition violations are reported
 // at compile-time instead of at runtime.
 [[noreturn]] inline void assertOutOfBounds() {
-  assert(false && "Array index out of bounds in BasicFixedString");
-  std::__throw_out_of_range("Array index out of bounds in BasicFixedString");
+  assert(!"Array index out of bounds in BasicFixedString");
+  throw_exception<std::out_of_range>(
+      "Array index out of bounds in BasicFixedString");
 }
 
 constexpr std::size_t checkOverflow(std::size_t i, std::size_t max) {
@@ -79,9 +80,7 @@ constexpr std::size_t checkOverflowOrNpos(std::size_t i, std::size_t max) {
 
 // Intentionally NOT constexpr. See note above for assertOutOfBounds
 [[noreturn]] inline void assertNotNullTerminated() noexcept {
-  assert(
-      false &&
-      "Non-null terminated string used to initialize a BasicFixedString");
+  assert(!"Non-null terminated string used to initialize a BasicFixedString");
   std::terminate(); // Fail hard, fail fast.
 }
 
@@ -1104,20 +1103,20 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \throw std::out_of_range when i > size()
    */
   FOLLY_CPP14_CONSTEXPR Char& at(std::size_t i) noexcept(false) {
-    return i <= size_
-        ? data_[i]
-        : (std::__throw_out_of_range("Out of range in BasicFixedString::at"),
-           data_[size_]);
+    return i <= size_ ? data_[i]
+                      : (throw_exception<std::out_of_range>(
+                             "Out of range in BasicFixedString::at"),
+                         data_[size_]);
   }
 
   /**
    * \overload
    */
   constexpr const Char& at(std::size_t i) const noexcept(false) {
-    return i <= size_
-        ? data_[i]
-        : (std::__throw_out_of_range("Out of range in BasicFixedString::at"),
-           data_[size_]);
+    return i <= size_ ? data_[i]
+                      : (throw_exception<std::out_of_range>(
+                             "Out of range in BasicFixedString::at"),
+                         data_[size_]);
   }
 
   /**

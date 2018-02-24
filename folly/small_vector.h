@@ -50,8 +50,8 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/lang/Assume.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
-#include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Malloc.h>
 #include <folly/portability/TypeTraits.h>
 
@@ -881,14 +881,14 @@ class small_vector : public detail::small_vector_base<
 
   reference at(size_type i) {
     if (i >= size()) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     return (*this)[i];
   }
 
   const_reference at(size_type i) const {
     if (i >= size()) {
-      std::__throw_out_of_range("index out of range");
+      throw_exception<std::out_of_range>("index out of range");
     }
     return (*this)[i];
   }

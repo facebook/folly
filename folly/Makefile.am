@@ -328,6 +328,7 @@ nobase_follyinclude_HEADERS = \
 	lang/Assume.h \
 	lang/Bits.h \
 	lang/ColdClass.h \
+	lang/Exception.h \
 	lang/Launder.h \
 	lang/RValueReferenceWrapper.h \
 	lang/SafeAssert.h \
