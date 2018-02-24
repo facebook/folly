@@ -2012,6 +2012,7 @@ STL_TEST("23.2.1 Table 99.5", copyWithAllocator, is_copy_constructible, a, m) {
 
 STL_TEST("23.2.1 Table 99.6", moveConstructionWithAllocator,
          is_destructible, a) {
+  (void)a;
   // there is nothing new to test here
 }
 
