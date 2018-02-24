@@ -45,8 +45,8 @@ void getfds(int fds[2]) {
 }
 
 void getctx(
-    std::shared_ptr<folly::SSLContext> clientCtx,
-    std::shared_ptr<folly::SSLContext> serverCtx) {
+    const std::shared_ptr<folly::SSLContext>& clientCtx,
+    const std::shared_ptr<folly::SSLContext>& serverCtx) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");

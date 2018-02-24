@@ -431,7 +431,8 @@ TEST(CoreAllocator, Basic) {
   a->deallocate(res);
 
   std::vector<void*> mems;
-  for (int i = 0; i < 10000; i++) {
+  mems.reserve(10000);
+for (int i = 0; i < 10000; i++) {
     mems.push_back(a->allocate(1));
   }
   for (auto& mem : mems) {

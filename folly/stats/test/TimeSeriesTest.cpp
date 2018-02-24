@@ -813,7 +813,7 @@ TEST(BucketedTimeSeries, reConstructEmptyTimeSeries) {
   auto firstTime = ts.firstTime();
   auto latestTime = ts.latestTime();
   auto duration = ts.duration();
-  auto buckets = ts.buckets();
+  const auto& buckets = ts.buckets();
 
   // Reconstruct the timeseries
   BucketedTimeSeries<int64_t> newTs(firstTime, latestTime, duration, buckets);

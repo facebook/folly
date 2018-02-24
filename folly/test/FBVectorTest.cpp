@@ -277,7 +277,7 @@ TEST(FBVector, zero_len) {
   fbvector<int> fb3(std::move(fb1));
   fbvector<int> fb4;
   fb4 = std::move(fb2);
-  fbvector<int> fb5 = fb3;
+  const fbvector<int>& fb5 = fb3;
   fbvector<int> fb6;
   fb6 = fb4;
   std::initializer_list<int> il = {};

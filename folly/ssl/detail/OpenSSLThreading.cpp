@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <mutex>
+#include <utility>
 
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
@@ -58,7 +59,7 @@ void setLockTypes(std::map<int, LockType> inLockTypes) {
             << "OpenSSL now uses platform native mutexes";
 #endif
 
-  lockTypes() = inLockTypes;
+  lockTypes() = std::move(inLockTypes);
 }
 
 bool isSSLLockDisabled(int lockId) {

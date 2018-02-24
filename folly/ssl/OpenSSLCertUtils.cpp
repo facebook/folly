@@ -241,7 +241,7 @@ std::array<uint8_t, SHA256_DIGEST_LENGTH> OpenSSLCertUtils::getDigestSha256(
   return md;
 }
 
-X509StoreUniquePtr OpenSSLCertUtils::readStoreFromFile(std::string caFile) {
+X509StoreUniquePtr OpenSSLCertUtils::readStoreFromFile(const std::string& caFile) {
   std::string certData;
   if (!folly::readFile(caFile.c_str(), certData)) {
     throw std::runtime_error(

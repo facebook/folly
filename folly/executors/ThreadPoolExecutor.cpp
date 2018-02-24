@@ -178,7 +178,7 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
   RWSpinLock::ReadHolder r{&threadListLock_};
   ThreadPoolExecutor::PoolStats stats;
   stats.threadCount = threadList_.get().size();
-  for (auto thread : threadList_.get()) {
+  for (const auto& thread : threadList_.get()) {
     if (thread->idle) {
       stats.idleThreadCount++;
       const std::chrono::nanoseconds idleTime = now - thread->lastActiveTime;
@@ -232,7 +232,7 @@ size_t ThreadPoolExecutor::StoppedThreadQueue::size() {
   return queue_.size();
 }
 
-void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
+void ThreadPoolExecutor::addObserver(const std::shared_ptr<Observer>& o) {
   RWSpinLock::ReadHolder r{&threadListLock_};
   observers_.push_back(o);
   for (auto& thread : threadList_.get()) {
@@ -240,7 +240,7 @@ void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
   }
 }
 
-void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
+void ThreadPoolExecutor::removeObserver(const std::shared_ptr<Observer>& o) {
   RWSpinLock::ReadHolder r{&threadListLock_};
   for (auto& thread : threadList_.get()) {
     o->threadNotYetStopped(thread.get());

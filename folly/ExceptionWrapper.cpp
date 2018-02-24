@@ -49,7 +49,7 @@ exception_wrapper::VTable const exception_wrapper::SharedPtr::ops_{
     get_exception_ptr_};
 
 namespace {
-std::exception const* get_std_exception_(std::exception_ptr eptr) noexcept {
+std::exception const* get_std_exception_(const std::exception_ptr& eptr) noexcept {
   try {
     std::rethrow_exception(eptr);
   } catch (const std::exception& ex) {

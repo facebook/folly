@@ -111,7 +111,7 @@ static void sumAllValues(SkipListAccessor skipList, int64_t *sum) {
 }
 
 static void concurrentSkip(const vector<ValueType> *values,
-    SkipListAccessor skipList) {
+    const SkipListAccessor& skipList) {
   int64_t sum = 0;
   SkipListAccessor::Skipper skipper(skipList);
   FOR_EACH(it, *values) {

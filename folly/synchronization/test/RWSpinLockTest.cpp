@@ -152,7 +152,8 @@ TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
   srand(time(nullptr));
 
   std::vector<std::thread> threads;
-  for (int i = 0; i < FLAGS_num_threads; ++i) {
+  threads.reserve(FLAGS_num_threads);
+for (int i = 0; i < FLAGS_num_threads; ++i) {
     threads.push_back(std::thread(&run<RWSpinLockType>, &l));
   }
 
@@ -220,7 +221,8 @@ TEST(RWSpinLock, concurrent_holder_test) {
   };
 
   std::vector<std::thread> threads;
-  for (int i = 0; i < FLAGS_num_threads; ++i) {
+  threads.reserve(FLAGS_num_threads);
+for (int i = 0; i < FLAGS_num_threads; ++i) {
     threads.push_back(std::thread(go));
   }
 

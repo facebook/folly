@@ -132,7 +132,7 @@ TEST(Try, ValueOverloads) {
 // Make sure we can copy Trys for copyable types
 TEST(Try, copy) {
   Try<int> t;
-  auto t2 = t;
+  const auto& t2 = t;
 }
 
 // But don't choke on move-only types
@@ -243,7 +243,7 @@ TEST(Try, exception) {
 }
 
 template <typename E>
-static E* get_exception(std::exception_ptr eptr) {
+static E* get_exception(const std::exception_ptr& eptr) {
   try {
     std::rethrow_exception(eptr);
   } catch (E& e) {

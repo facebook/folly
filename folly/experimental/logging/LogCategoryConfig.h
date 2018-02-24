@@ -34,7 +34,7 @@ class LogCategoryConfig {
   LogCategoryConfig(
       LogLevel level,
       bool inheritParentLevel,
-      std::vector<std::string> handlers);
+      const std::vector<std::string>& handlers);
 
   bool operator==(const LogCategoryConfig& other) const;
   bool operator!=(const LogCategoryConfig& other) const;

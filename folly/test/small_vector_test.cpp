@@ -290,7 +290,8 @@ TEST(small_vector, BasicGuarantee) {
     6,
     [&] (folly::small_vector<Thrower,3>& v) {
       std::vector<Thrower> b;
-      for (int i = 0; i < 6; ++i) {
+      b.reserve(6);
+for (int i = 0; i < 6; ++i) {
         b.emplace_back();
       }
 

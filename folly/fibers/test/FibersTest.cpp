@@ -295,7 +295,8 @@ TEST(FiberManager, addTasksNoncopyable) {
     if (!taskAdded) {
       manager.addTask([&]() {
         std::vector<std::function<std::unique_ptr<int>()>> funcs;
-        for (int i = 0; i < 3; ++i) {
+        funcs.reserve(3);
+for (int i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
@@ -1612,7 +1613,8 @@ void singleBatchDispatch(ExecutorT& executor, int batchSize, int index) {
       executor, [=](std::vector<int>&& batch) {
         EXPECT_EQ(batchSize, batch.size());
         std::vector<std::string> results;
-        for (auto& it : batch) {
+        results.reserve(batch.size());
+for (auto& it : batch) {
           results.push_back(folly::to<std::string>(it));
         }
         return results;
@@ -1663,7 +1665,8 @@ folly::Future<std::vector<std::string>> doubleBatchInnerDispatch(
         for (auto& unit : batch) {
           numberOfElements += unit.size();
           std::vector<std::string> result;
-          for (auto& element : unit) {
+          result.reserve(unit.size());
+for (auto& element : unit) {
             result.push_back(folly::to<std::string>(element));
           }
           results.push_back(std::move(result));

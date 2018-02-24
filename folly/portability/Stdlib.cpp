@@ -161,7 +161,7 @@ extern "C" int clearenv() {
     }
   }
 
-  for (auto s : data) {
+  for (const auto& s : data) {
     if (unsetenv(s.c_str()) != 0)
       return -1;
   }

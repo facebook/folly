@@ -117,8 +117,8 @@ class ThreadPoolExecutor : public virtual folly::Executor {
     virtual ~Observer() = default;
   };
 
-  void addObserver(std::shared_ptr<Observer>);
-  void removeObserver(std::shared_ptr<Observer>);
+  void addObserver(const std::shared_ptr<Observer>&);
+  void removeObserver(const std::shared_ptr<Observer>&);
 
  protected:
   // Prerequisite: threadListLock_ writelocked

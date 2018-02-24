@@ -27,7 +27,7 @@ namespace folly {
 folly::Function<void(double)> FOLLY_WEAK_SYMBOL makeCompressionCounterHandler(
     folly::io::CodecType,
     folly::StringPiece,
-    folly::Optional<int>,
+    const folly::Optional<int>&,
     CompressionCounterKey,
     CompressionCounterType) {
   return {};

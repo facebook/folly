@@ -60,7 +60,7 @@ enum class CompressionCounterType {
 folly::Function<void(double)> makeCompressionCounterHandler(
     folly::io::CodecType codecType,
     folly::StringPiece codecName,
-    folly::Optional<int> level,
+    const folly::Optional<int>& level,
     CompressionCounterKey key,
     CompressionCounterType counterType);
 

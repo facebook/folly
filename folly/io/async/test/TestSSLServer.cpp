@@ -15,6 +15,8 @@
  */
 #include <folly/io/async/test/TestSSLServer.h>
 
+#include <utility>
+
 namespace folly {
 
 const char* kTestCert = "folly/io/async/test/certs/tests-cert.pem";
@@ -53,7 +55,7 @@ TestSSLServer::TestSSLServer(
     SSLServerAcceptCallbackBase* acb,
     std::shared_ptr<SSLContext> ctx,
     bool enableTFO)
-    : ctx_(ctx), acb_(acb) {
+    : ctx_(std::move(ctx)), acb_(acb) {
   init(enableTFO);
 }
 

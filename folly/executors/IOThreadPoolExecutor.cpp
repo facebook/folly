@@ -196,7 +196,7 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
       ioThread->eventBase->terminateLoopSoon();
     }
   }
-  for (auto thread : stoppedThreads) {
+  for (const auto& thread : stoppedThreads) {
     stoppedThreads_.add(thread);
     threadList_.remove(thread);
   }

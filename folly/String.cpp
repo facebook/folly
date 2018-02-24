@@ -692,7 +692,7 @@ size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
 
 } // namespace detail
 
-std::string stripLeftMargin(std::string s) {
+std::string stripLeftMargin(const std::string& s) {
   std::vector<StringPiece> pieces;
   split("\n", s, pieces);
   auto piecer = range(pieces);
