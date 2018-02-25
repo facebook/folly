@@ -60,6 +60,7 @@
 #include <folly/stop_watch.h>
 #include <algorithm>
 #include <unordered_set>
+#include <utility>
 
 using folly::io::compression::detail::dataStartsWithLE;
 using folly::io::compression::detail::prefixToStringLE;
@@ -69,7 +70,7 @@ namespace io {
 
 Codec::Codec(
     CodecType type,
-    Optional<int> level,
+    const Optional<int>& level,
     StringPiece name,
     bool counters)
     : type_(type) {
@@ -278,7 +279,7 @@ std::string Codec::doUncompressString(
     const StringPiece data,
     Optional<uint64_t> uncompressedLength) {
   const IOBuf inputBuffer{IOBuf::WRAP_BUFFER, data};
-  auto outputBuffer = doUncompress(&inputBuffer, uncompressedLength);
+  auto outputBuffer = doUncompress(&inputBuffer, std::move(uncompressedLength));
   std::string output;
   output.reserve(outputBuffer->computeChainDataLength());
   for (auto range : *outputBuffer) {
@@ -293,7 +294,7 @@ uint64_t Codec::maxCompressedLength(uint64_t uncompressedLength) const {
 
 Optional<uint64_t> Codec::getUncompressedLength(
     const folly::IOBuf* data,
-    Optional<uint64_t> uncompressedLength) const {
+    const Optional<uint64_t>& uncompressedLength) const {
   auto const compressedLength = data->computeChainDataLength();
   if (compressedLength == 0) {
     if (uncompressedLength.value_or(0) != 0) {

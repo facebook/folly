@@ -183,12 +183,12 @@ class Codec {
    */
   folly::Optional<uint64_t> getUncompressedLength(
       const folly::IOBuf* data,
-      folly::Optional<uint64_t> uncompressedLength = folly::none) const;
+      const folly::Optional<uint64_t>& uncompressedLength = folly::none) const;
 
  protected:
   Codec(
       CodecType type,
-      folly::Optional<int> level = folly::none,
+      const folly::Optional<int>& level = folly::none,
       folly::StringPiece name = {},
       bool counters = true);
 

@@ -224,7 +224,7 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
  * - success: true + amountSucceeded == bufSize (op success on whole buffer)
  * - failure: false + amountSucceeded == nr bytes on which op succeeded.
  */
-bool memOpInChunks(std::function<int(void*, size_t)> op,
+bool memOpInChunks(const std::function<int(void*, size_t)>& op,
                    void* mem, size_t bufSize, off_t pageSize,
                    size_t& amountSucceeded) {
   // Linux' unmap/mlock/munlock take a kernel semaphore and block other threads

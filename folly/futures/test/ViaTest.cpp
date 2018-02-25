@@ -15,6 +15,7 @@
  */
 
 #include <thread>
+#include <utility>
 
 #include <folly/MPMCQueue.h>
 #include <folly/executors/DrivableExecutor.h>
@@ -27,7 +28,7 @@
 using namespace folly;
 
 struct ManualWaiter : public DrivableExecutor {
-  explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}
+  explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(std::move(ex)) {}
 
   void add(Func f) override {
     ex->add(std::move(f));
@@ -285,7 +286,7 @@ TEST(Via, then2) {
 }
 
 TEST(Via, then2Variadic) {
-  struct Foo { bool a = false; void foo(Try<Unit>) { a = true; } };
+  struct Foo { bool a = false; void foo(const Try<Unit>&) { a = true; } };
   Foo f;
   ManualExecutor x;
   makeFuture().then(&x, &Foo::foo, &f);

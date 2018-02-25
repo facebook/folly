@@ -313,7 +313,8 @@ TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
   std::atomic<bool> run(true);
   std::atomic<int> totalAtomic(0);
   std::vector<std::thread> threads;
-  for (int i = 0; i < kNumThreads; ++i) {
+  threads.reserve(kNumThreads);
+for (int i = 0; i < kNumThreads; ++i) {
     threads.push_back(std::thread([&]() {
       stci.add(1);
       totalAtomic.fetch_add(1);

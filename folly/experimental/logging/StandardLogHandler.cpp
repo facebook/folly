@@ -19,6 +19,8 @@
 #include <folly/experimental/logging/LogMessage.h>
 #include <folly/experimental/logging/LogWriter.h>
 
+#include <utility>
+
 namespace folly {
 
 StandardLogHandler::StandardLogHandler(
@@ -27,7 +29,7 @@ StandardLogHandler::StandardLogHandler(
     std::shared_ptr<LogWriter> writer)
     : formatter_{std::move(formatter)},
       writer_{std::move(writer)},
-      config_{config} {}
+      config_{std::move(config)} {}
 
 StandardLogHandler::~StandardLogHandler() {}
 

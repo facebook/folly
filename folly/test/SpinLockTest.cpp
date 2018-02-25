@@ -106,7 +106,8 @@ void correctnessTest() {
   int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
   std::vector<std::thread> threads;
   LockedVal<LOCK> v;
-  for (int i = 0; i < nthrs; ++i) {
+  threads.reserve(nthrs);
+for (int i = 0; i < nthrs; ++i) {
     threads.push_back(std::thread(spinlockTestThread<LOCK>, &v));
   }
   for (auto& t : threads) {
@@ -120,7 +121,8 @@ void trylockTest() {
   std::vector<std::thread> threads;
   TryLockState<LOCK> state;
   size_t count = 100;
-  for (int i = 0; i < nthrs; ++i) {
+  threads.reserve(nthrs);
+for (int i = 0; i < nthrs; ++i) {
     threads.push_back(std::thread(trylockTestThread<LOCK>, &state, count));
   }
   for (auto& t : threads) {

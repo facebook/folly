@@ -15,6 +15,7 @@
  */
 
 #include <thread>
+#include <utility>
 
 #include <folly/Conv.h>
 #include <folly/SocketAddress.h>
@@ -81,7 +82,7 @@ class UDPAcceptor
 class UDPServer {
  public:
   UDPServer(EventBase* evb, folly::SocketAddress addr, int n)
-      : evb_(evb), addr_(addr), evbs_(n) {
+      : evb_(evb), addr_(std::move(addr)), evbs_(n) {
   }
 
   void start() {

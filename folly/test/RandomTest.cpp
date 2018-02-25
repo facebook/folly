@@ -82,7 +82,8 @@ TEST(Random, MultiThreaded) {
   const int n = 100;
   std::vector<uint32_t> seeds(n);
   std::vector<std::thread> threads;
-  for (int i = 0; i < n; ++i) {
+  threads.reserve(n);
+for (int i = 0; i < n; ++i) {
     threads.push_back(std::thread([i, &seeds] {
       seeds[i] = randomNumberSeed();
     }));
@@ -109,7 +110,8 @@ TEST(Random, sanity) {
     std::vector<uint32_t> vals;
     folly::Random::DefaultGenerator rng;
     rng.seed(0xdeadbeef);
-    for (int i = 0; i < kTestSize; ++i) {
+    vals.reserve(kTestSize);
+for (int i = 0; i < kTestSize; ++i) {
       vals.push_back(folly::Random::rand32(rng));
     }
     rng.seed(0xdeadbeef);
@@ -126,7 +128,8 @@ TEST(Random, sanity) {
     std::vector<uint64_t> vals;
     folly::Random::DefaultGenerator rng;
     rng.seed(0xdeadbeef);
-    for (int i = 0; i < kTestSize; ++i) {
+    vals.reserve(kTestSize);
+for (int i = 0; i < kTestSize; ++i) {
       vals.push_back(folly::Random::rand64(rng));
     }
     rng.seed(0xdeadbeef);

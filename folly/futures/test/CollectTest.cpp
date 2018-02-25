@@ -36,7 +36,8 @@ TEST(Collect, collectAll) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -60,7 +61,8 @@ TEST(Collect, collectAll) {
     std::vector<Promise<int>> promises(4);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -93,7 +95,8 @@ TEST(Collect, collectAll) {
     std::vector<Promise<Unit>> promises(10);
     std::vector<Future<Unit>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -117,7 +120,8 @@ TEST(Collect, collect) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -140,7 +144,8 @@ TEST(Collect, collect) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -176,7 +181,8 @@ TEST(Collect, collect) {
     std::vector<Promise<Unit>> promises(10);
     std::vector<Future<Unit>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -196,7 +202,8 @@ TEST(Collect, collect) {
     std::vector<Promise<Unit>> promises(10);
     std::vector<Future<Unit>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -232,7 +239,8 @@ TEST(Collect, collect) {
     std::vector<Promise<std::unique_ptr<int>>> promises(10);
     std::vector<Future<std::unique_ptr<int>>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -256,7 +264,8 @@ TEST(Collect, collectNotDefaultConstructible) {
   std::iota(indices.begin(), indices.end(), 0);
   std::shuffle(indices.begin(), indices.end(), rng);
 
-  for (auto& p : promises) {
+  futures.reserve(promises.size());
+for (auto& p : promises) {
     futures.push_back(p.getFuture());
   }
 
@@ -280,7 +289,8 @@ TEST(Collect, collectAny) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -309,7 +319,8 @@ TEST(Collect, collectAny) {
     std::vector<Promise<Unit>> promises(10);
     std::vector<Future<Unit>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -331,7 +342,8 @@ TEST(Collect, collectAny) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -350,7 +362,8 @@ TEST(Collect, collectAnyWithoutException) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -371,7 +384,8 @@ TEST(Collect, collectAnyWithoutException) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -395,7 +409,8 @@ TEST(Collect, collectAnyWithoutException) {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
 
-    for (auto& p : promises) {
+    futures.reserve(promises.size());
+for (auto& p : promises) {
       futures.push_back(p.getFuture());
     }
 
@@ -416,7 +431,8 @@ TEST(Collect, collectAnyWithoutException) {
 TEST(Collect, alreadyCompleted) {
   {
     std::vector<Future<Unit>> fs;
-    for (int i = 0; i < 10; i++) {
+    fs.reserve(10);
+for (int i = 0; i < 10; i++) {
       fs.push_back(makeFuture());
     }
 
@@ -427,7 +443,8 @@ TEST(Collect, alreadyCompleted) {
   }
   {
     std::vector<Future<int>> fs;
-    for (int i = 0; i < 10; i++) {
+    fs.reserve(10);
+for (int i = 0; i < 10; i++) {
       fs.push_back(makeFuture(i));
     }
 
@@ -570,7 +587,8 @@ TEST(Collect, collectN) {
   std::vector<Promise<Unit>> promises(10);
   std::vector<Future<Unit>> futures;
 
-  for (auto& p : promises) {
+  futures.reserve(promises.size());
+for (auto& p : promises) {
     futures.push_back(p.getFuture());
   }
 

@@ -35,7 +35,7 @@ using namespace folly;
 
 // See setAllowNonStringKeyErrors() -- most of the tests below presume that
 // all keys in releaseErrors() are coerced to string.
-void checkMaybeCoercedKeys(bool coerce, dynamic good_k, dynamic missing_k) {
+void checkMaybeCoercedKeys(bool coerce, const dynamic& good_k, const dynamic& missing_k) {
   dynamic d = dynamic::object(good_k, 7);
   DynamicParser p(DynamicParser::OnError::RECORD, &d);
   p.setAllowNonStringKeyErrors(!coerce);
@@ -62,7 +62,7 @@ void checkMaybeCoercedKeys(bool coerce, dynamic good_k, dynamic missing_k) {
   ), errors);
 }
 
-void checkCoercedAndUncoercedKeys(dynamic good_k, dynamic missing_k) {
+void checkCoercedAndUncoercedKeys(const dynamic& good_k, const dynamic& missing_k) {
   checkMaybeCoercedKeys(true, good_k, missing_k);
   checkMaybeCoercedKeys(false, good_k, missing_k);
 }
@@ -222,8 +222,8 @@ template <typename Fn>
 void checkXYKeyErrorsAndParseError(
     const dynamic& d,
     Fn fn,
-    std::string key_re,
-    std::string parse_re) {
+    const std::string& key_re,
+    const std::string& parse_re) {
   DynamicParser p(DynamicParser::OnError::RECORD, &d);
   fn(p);
   auto errors = p.releaseErrors();
@@ -288,7 +288,7 @@ TEST(TestDynamicParser, TestRequiredOptionalParseErrors) {
 template <typename Fn>
 void checkItemParseError(
     // real_k can differ from err_k, which is typically coerced to string
-    dynamic d, Fn fn, dynamic real_k, dynamic err_k, std::string re) {
+    dynamic d, Fn fn, const dynamic& real_k, const dynamic& err_k, const std::string& re) {
   DynamicParser p(DynamicParser::OnError::RECORD, &d);
   fn(p);
   auto errors = p.releaseErrors();

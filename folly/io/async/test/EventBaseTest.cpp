@@ -30,6 +30,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
+#include <utility>
 
 using std::atomic;
 using std::deque;
@@ -1268,7 +1269,7 @@ class CountedLoopCallback : public EventBase::LoopCallback {
                         std::function<void()>())
     : eventBase_(eventBase)
     , count_(count)
-    , action_(action) {}
+    , action_(std::move(action)) {}
 
   void runLoopCallback() noexcept override {
     --count_;

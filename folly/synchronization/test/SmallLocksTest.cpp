@@ -110,7 +110,8 @@ void doPslTest() {
 
   const int nthrs = 17;
   std::vector<std::thread> threads;
-  for (int i = 0; i < nthrs; ++i) {
+  threads.reserve(nthrs);
+for (int i = 0; i < nthrs; ++i) {
     threads.push_back(std::thread(&PslTest<T>::doTest, &testObj));
   }
   for (auto& t : threads) {
@@ -142,7 +143,8 @@ TEST(SmallLocks, SpinLockCorrectness) {
 
   int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
   std::vector<std::thread> threads;
-  for (int i = 0; i < nthrs; ++i) {
+  threads.reserve(nthrs);
+for (int i = 0; i < nthrs; ++i) {
     threads.push_back(std::thread(splock_test));
   }
   for (auto& t : threads) {

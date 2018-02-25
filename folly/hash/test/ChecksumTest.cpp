@@ -70,7 +70,7 @@ ExpectedResult expectedResults[] = {
 };
 
 void testCRC32C(
-    std::function<uint32_t(const uint8_t*, size_t, uint32_t)> impl) {
+    const std::function<uint32_t(const uint8_t*, size_t, uint32_t)>& impl) {
   for (auto expected : expectedResults) {
     uint32_t result = impl(buffer + expected.offset, expected.length, ~0U);
     EXPECT_EQ(expected.crc32c, result);
@@ -78,7 +78,7 @@ void testCRC32C(
 }
 
 void testCRC32CContinuation(
-    std::function<uint32_t(const uint8_t*, size_t, uint32_t)> impl) {
+    const std::function<uint32_t(const uint8_t*, size_t, uint32_t)>& impl) {
   for (auto expected : expectedResults) {
     size_t partialLength = expected.length / 2;
     uint32_t partialChecksum = impl(

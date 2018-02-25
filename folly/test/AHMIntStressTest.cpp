@@ -107,7 +107,8 @@ TEST(AHMIntStressTest, Test) {
   SCOPE_EXIT { delete objs; };
 
   std::vector<std::thread> threads;
-  for (int threadId = 0; threadId < 64; ++threadId) {
+  threads.reserve(64);
+for (int threadId = 0; threadId < 64; ++threadId) {
     threads.emplace_back([objs] {
       for (int recycles = 0; recycles < 500; ++recycles) {
         for (int i = 0; i < 10; i++) {

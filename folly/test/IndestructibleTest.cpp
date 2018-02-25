@@ -33,7 +33,7 @@ namespace {
 struct Magic {
   function<void()> dtor_;
   function<void()> move_;
-  Magic(function<void()> ctor, function<void()> dtor, function<void()> move)
+  Magic(const function<void()>& ctor, function<void()> dtor, function<void()> move)
       : dtor_(std::move(dtor)), move_(std::move(move)) {
     ctor();
   }

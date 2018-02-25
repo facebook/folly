@@ -807,8 +807,8 @@ class TestSSLAsyncCacheServer : public TestSSLServer {
 void getfds(int fds[2]);
 
 void getctx(
-  std::shared_ptr<folly::SSLContext> clientCtx,
-  std::shared_ptr<folly::SSLContext> serverCtx);
+  const std::shared_ptr<folly::SSLContext>& clientCtx,
+  const std::shared_ptr<folly::SSLContext>& serverCtx);
 
 void sslsocketpair(
   EventBase* eventBase,

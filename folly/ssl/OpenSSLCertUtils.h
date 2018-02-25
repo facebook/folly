@@ -93,7 +93,7 @@ class OpenSSLCertUtils {
   /**
    * Reads a store from a file (or buffer).  Throws on error.
    */
-  static X509StoreUniquePtr readStoreFromFile(std::string caFile);
+  static X509StoreUniquePtr readStoreFromFile(const std::string& caFile);
   static X509StoreUniquePtr readStoreFromBuffer(ByteRange);
 
  private:
