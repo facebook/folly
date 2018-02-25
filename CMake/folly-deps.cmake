@@ -105,12 +105,13 @@ if (LZ4_FOUND)
   list(APPEND FOLLY_LINK_LIBRARIES ${LZ4_LIBRARY})
 endif()
 
-# TODO: We should ideally build FindXXX modules for the following libraries,
-# rather than the simple checks we currently have here.
-CHECK_INCLUDE_FILE_CXX(zstd.h FOLLY_HAVE_LIBZSTD)
-if (FOLLY_HAVE_LIBZSTD)
-  list(APPEND FOLLY_LINK_LIBRARIES zstd)
+find_package(Zstd MODULE)
+set(FOLLY_HAVE_LIBZSTD ${ZSTD_FOUND})
+if(ZSTD_FOUND)
+  list(APPEND FOLLY_INCLUDE_DIRECTORIES ${ZSTD_INCLUDE_DIR})
+  list(APPEND FOLLY_LINK_LIBRARIES ${ZSTD_LIBRARY})
 endif()
+
 CHECK_INCLUDE_FILE_CXX(snappy.h FOLLY_HAVE_LIBSNAPPY)
 if (FOLLY_HAVE_LIBSNAPPY)
   list(APPEND FOLLY_LINK_LIBRARIES snappy)
