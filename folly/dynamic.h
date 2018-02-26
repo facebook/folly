@@ -403,14 +403,16 @@ struct dynamic : private boost::operators<dynamic> {
   /*
    * This works for access to both objects and arrays.
    *
-   * In the case of an array, the index must be an integer, and this will throw
-   * std::out_of_range if it is less than zero or greater than size().
+   * In the case of an array, the index must be an integer, and this
+   * will throw std::out_of_range if it is less than zero or greater
+   * than size().
    *
    * In the case of an object, the non-const overload inserts a null
    * value if the key isn't present.  The const overload will throw
    * std::out_of_range if the key is not present.
    *
-   * These functions do not invalidate iterators.
+   * These functions do not invalidate iterators except when a null value
+   * is inserted into an object as described above.
    */
   dynamic&       operator[](dynamic const&) &;
   dynamic const& operator[](dynamic const&) const&;
