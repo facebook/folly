@@ -364,7 +364,6 @@ nobase_follyinclude_HEADERS = \
 	Portability.h \
 	portability/Asm.h \
 	portability/Atomic.h \
-	portability/BitsFunctexcept.h \
 	portability/Builtins.h \
 	portability/Config.h \
 	portability/Constexpr.h \
@@ -497,7 +496,6 @@ libfollybase_la_SOURCES = \
 	Format.cpp \
 	FormatArg.cpp \
 	memory/MallctlHelper.cpp \
-	portability/BitsFunctexcept.cpp \
 	String.cpp \
 	Unicode.cpp
 
