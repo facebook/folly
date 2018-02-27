@@ -444,13 +444,17 @@ class ConcurrentHashMap {
     void next() {
       while (it_ == parent_->ensureSegment(segment_)->cend() &&
              segment_ < parent_->NumShards) {
-        segment_++;
-        auto seg = parent_->segments_[segment_].load(std::memory_order_acquire);
-        if (segment_ < parent_->NumShards) {
-          if (!seg) {
-            continue;
+        SegmentT* seg{nullptr};
+        while (!seg) {
+          segment_++;
+          seg = parent_->segments_[segment_].load(std::memory_order_acquire);
+          if (segment_ < parent_->NumShards) {
+            if (!seg) {
+              continue;
+            }
+            it_ = seg->cbegin();
           }
-          it_ = seg->cbegin();
+          break;
         }
       }
     }
