@@ -383,11 +383,14 @@ TEST(DynamicConverter, construct) {
     EXPECT_EQ(d, toDynamic(c));
   }
 
+// See https://github.com/facebook/folly/issues/752
+#if !defined(__clang__)
   {
     vector<bool> vb{true, false};
     dynamic d = dynamic::array(true, false);
     EXPECT_EQ(d, toDynamic(vb));
   }
+#endif
 }
 
 TEST(DynamicConverter, errors) {
