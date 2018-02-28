@@ -463,3 +463,10 @@ TEST(DynamicConverter, double_destroy) {
   EXPECT_THROW(convertTo<std::vector<B>>(d), B::BException);
   EXPECT_EQ(constructB, destroyB);
 }
+
+TEST(DynamicConverter, simple_vector_bool) {
+  std::vector<bool> bools{true, false};
+  auto d = toDynamic(bools);
+  auto actual = convertTo<decltype(bools)>(d);
+  EXPECT_EQ(bools, actual);
+}

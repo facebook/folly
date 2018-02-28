@@ -368,6 +368,24 @@ struct DynamicConstructor<std::pair<A, B>, void> {
   }
 };
 
+// vector<bool>
+template<>
+struct DynamicConstructor<std::vector<bool>, void>
+{
+    static dynamic construct(const std::vector<bool>& x)
+    {
+        dynamic d = dynamic::array;
+        // Intentionally specifying the type as bool here.
+        // std::vector<bool>'s iterators return a proxy which is a prvalue
+        // and hence cannot bind to an lvalue reference such as auto&
+        for(bool item : x)
+        {
+            d.push_back(toDynamic(item));
+        }
+        return d;
+    }
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // implementation
 
