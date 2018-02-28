@@ -171,7 +171,7 @@ class NodeT : public folly::hazptr::hazptr_obj_base<
  * * insert / erase could be lock / wait free.  Would need to be
  *   careful that assign and rehash don't conflict (possibly with
  *   reader/writer lock, or microlock per node or per bucket, etc).
- *   Java 8 goes halfway, and and does lock per bucket, except for the
+ *   Java 8 goes halfway, and does lock per bucket, except for the
  *   first item, that is inserted with a CAS (which is somewhat
  *   specific to java having a lock per object)
  *
