@@ -39,6 +39,7 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_CONST_METHOD0(getFD, int());
   MOCK_METHOD1(setReusePort, void(bool));
   MOCK_METHOD1(setReuseAddr, void(bool));
+  MOCK_METHOD1(dontFragment, void(bool));
 };
 
 }}

@@ -162,6 +162,18 @@ class AsyncUDPSocket : public EventHandler {
     return eventBase_;
   }
 
+  /**
+   * Enable or disable fragmentation on the socket.
+   *
+   * On Linux, this sets IP(V6)_MTU_DISCOVER to IP(V6)_PMTUDISC_DO when enabled,
+   * and to IP(V6)_PMTUDISC_WANT when disabled. IP(V6)_PMTUDISC_WANT will use
+   * per-route setting to set DF bit. It may be more desirable to use
+   * IP(V6)_PMTUDISC_PROBE as opposed to IP(V6)_PMTUDISC_DO for apps that has
+   * its own PMTU Discovery mechanism.
+   * Note this doesn't work on Apple.
+   */
+  virtual void dontFragment(bool df);
+
  protected:
   virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
     return ::sendmsg(socket, message, flags);
