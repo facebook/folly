@@ -39,7 +39,8 @@ thread_local_test_lib_la_LDFLAGS = -module -rpath /force_shared
 thread_local_test_lib_la_LIBADD = $(top_builddir)/libfolly.la
 
 noinst_HEADERS = FBStringTestBenchmarks.cpp.h \
-	FBVectorTestBenchmarks.cpp.h
+	FBVectorBenchmarks.cpp.h \
+	FBVectorTests.cpp.h
 
 spin_lock_test_SOURCES = SpinLockTest.cpp
 spin_lock_test_LDADD = libfollytestmain.la

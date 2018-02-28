@@ -30,48 +30,21 @@
 #include <folly/Traits.h>
 #include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/FBVectorTestUtil.h>
 
 using namespace std;
 using namespace folly;
+using namespace folly::test::detail;
 
-namespace {
+using IntFBVector = fbvector<int>;
+using FBStringFBVector = fbvector<fbstring>;
 
-auto static const seed = randomNumberSeed();
-typedef boost::mt19937 RandomT;
-static RandomT rng(seed);
-
-template <class Integral1, class Integral2>
-Integral2 random(Integral1 low, Integral2 up) {
-  boost::uniform_int<> range(low, up);
-  return range(rng);
-}
-
-template <class String>
-void randomString(String* toFill, unsigned int maxSize = 1000) {
-  assert(toFill);
-  toFill->resize(random(0, maxSize));
-  FOR_EACH (i, *toFill) {
-    *i = random('a', 'z');
-  }
-}
-
-template <class String, class Integral>
-void Num2String(String& str, Integral /* n */) {
-  str.resize(10, '\0');
-  sprintf(&str[0], "%ul", 10);
-  str.resize(strlen(str.c_str()));
-}
-
-template <class T> T randomObject();
-
-template <> int randomObject<int>() {
-  return random(0, 1024);
-}
-} // namespace
-
-////////////////////////////////////////////////////////////////////////////////
-// Tests begin here
-////////////////////////////////////////////////////////////////////////////////
+#define VECTOR IntFBVector
+#include <folly/test/FBVectorTests.cpp.h> // nolint
+#undef VECTOR
+#define VECTOR FBStringFBVector
+#include <folly/test/FBVectorTests.cpp.h> // nolint
+#undef VECTOR
 
 TEST(fbvector, clause_23_3_6_1_3_ambiguity) {
   fbvector<int> v(10, 20);
