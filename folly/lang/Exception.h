@@ -29,10 +29,10 @@ namespace folly {
 /// -fno-exceptions.
 template <typename Ex>
 [[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception(Ex&& ex) {
-#if !__GNUC || __EXCEPTIONS
-  throw static_cast<Ex&&>(ex);
-#else
+#if (__GNUC__ && !__EXCEPTIONS)
   std::terminate();
+#else
+  throw static_cast<Ex&&>(ex);
 #endif
 }
 
