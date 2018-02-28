@@ -21,22 +21,24 @@
 // This is used to find the OpenSSL version at runtime. Just returning
 // OPENSSL_VERSION_NUMBER is insufficient as runtime version may be different
 // from the compile-time version
-struct OpenSSLVersionFinder {
-  static std::string getOpenSSLLongVersion() {
+namespace folly {
+namespace ssl {
+inline std::string getOpenSSLLongVersion() {
 #ifdef OPENSSL_VERSION_TEXT
-    return SSLeay_version(SSLEAY_VERSION);
+  return SSLeay_version(SSLEAY_VERSION);
 #elif defined(OPENSSL_VERSION_NUMBER)
-    return folly::format("0x{:x}", OPENSSL_VERSION_NUMBER).str();
+  return folly::format("0x{:x}", OPENSSL_VERSION_NUMBER).str();
 #else
-    return "";
+  return "";
 #endif
-  }
+}
 
-  uint64_t getOpenSSLNumericVersion() {
+inline uint64_t getOpenSSLNumericVersion() {
 #ifdef OPENSSL_VERSION_NUMBER
-    return SSLeay();
+  return SSLeay();
 #else
-    return 0;
+  return 0;
 #endif
-  }
-};
+}
+} // namespace ssl
+} // namespace folly
