@@ -1,4 +1,4 @@
-find_path(LIBDWARF_INCLUDE_DIR NAMES libdwarf/dwarf.h)
+find_path(LIBDWARF_INCLUDE_DIR NAMES dwarf.h)
 mark_as_advanced(LIBDWARF_INCLUDE_DIR)
 
 find_library(LIBDWARF_LIBRARY NAMES dwarf)
