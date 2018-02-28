@@ -413,6 +413,9 @@ class CursorBase {
   }
 
   void pull(void* buf, size_t len) {
+    if (UNLIKELY(len == 0)) {
+      return;
+    }
     dcheckIntegrity();
     if (LIKELY(crtPos_ + len <= crtEnd_)) {
       memcpy(buf, data(), len);
@@ -639,6 +642,12 @@ class CursorBase {
   }
 
   size_t pullAtMostSlow(void* buf, size_t len) {
+    // If the length of this buffer is 0 try advancing it.
+    // Otherwise on the first iteration of the following loop memcpy is called
+    // with a null source pointer.
+    if (UNLIKELY(length() == 0 && !tryAdvanceBuffer())) {
+      return 0;
+    }
     uint8_t* p = reinterpret_cast<uint8_t*>(buf);
     size_t copied = 0;
     for (size_t available; (available = length()) < len; ) {
@@ -1011,6 +1020,13 @@ class Appender : public detail::Writable<Appender> {
     // memcpy() with a null source pointer, since that is undefined behavior
     // even if the length is 0.
     if (len == 0) {
+      return 0;
+    }
+
+    // If the length of this buffer is 0 try growing it.
+    // Otherwise on the first iteration of the following loop memcpy is called
+    // with a null source pointer.
+    if (UNLIKELY(length() == 0 && !tryGrowChain())) {
       return 0;
     }
 
