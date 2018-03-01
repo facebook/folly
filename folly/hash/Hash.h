@@ -375,14 +375,19 @@ namespace detail {
 struct integral_hasher {
   template <typename I>
   size_t operator()(I const& i) const {
-    static_assert(sizeof(I) <= 8, "Input type is too wide");
+    static_assert(sizeof(I) <= 16, "Input type is too wide");
     /* constexpr */ if (sizeof(I) <= 4) {
       auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
       auto const u32 = static_cast<uint32_t>(i32);
       return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
-    } else {
+    } else if (sizeof(I) <= 8) {
       auto const u64 = static_cast<uint64_t>(i);
       return static_cast<size_t>(hash::twang_mix64(u64));
+    } else {
+      auto const u = to_unsigned(i);
+      auto const hi = static_cast<uint64_t>(u >> sizeof(I) * 4);
+      auto const lo = static_cast<uint64_t>(u);
+      return hash::hash_128_to_64(hi, lo);
     }
   }
 };
@@ -466,6 +471,14 @@ struct hasher<signed char> : detail::integral_hasher {};
 template <> // char is a different type from both signed char and unsigned char
 struct hasher<char> : detail::integral_hasher {};
 
+#if FOLLY_HAVE_INT128_T
+template <>
+struct hasher<signed __int128> : detail::integral_hasher {};
+
+template <>
+struct hasher<unsigned __int128> : detail::integral_hasher {};
+#endif
+
 template <>
 struct hasher<float> : detail::float_hasher {};
 
@@ -524,25 +537,33 @@ struct TupleHasher<0, Ts...> {
 
 // Custom hash functions.
 namespace std {
-  // Hash function for pairs. Requires default hash functions for both
-  // items in the pair.
-  template <typename T1, typename T2>
-  struct hash<std::pair<T1, T2> > {
-   public:
-    size_t operator()(const std::pair<T1, T2>& x) const {
-      return folly::hash::hash_combine(x.first, x.second);
-    }
-  };
+#if FOLLY_SUPPLY_MISSING_INT128_TRAITS
+template <>
+struct hash<__int128> : folly::detail::integral_hasher {};
 
-  // Hash function for tuples. Requires default hash functions for all types.
-  template <typename... Ts>
-  struct hash<std::tuple<Ts...>> {
-    size_t operator()(std::tuple<Ts...> const& key) const {
-      folly::TupleHasher<
-        std::tuple_size<std::tuple<Ts...>>::value - 1, // start index
-        Ts...> hasher;
+template <>
+struct hash<unsigned __int128> : folly::detail::integral_hasher {};
+#endif
 
-      return hasher(key);
-    }
-  };
+// Hash function for pairs. Requires default hash functions for both
+// items in the pair.
+template <typename T1, typename T2>
+struct hash<std::pair<T1, T2> > {
+ public:
+  size_t operator()(const std::pair<T1, T2>& x) const {
+    return folly::hash::hash_combine(x.first, x.second);
+  }
+};
+
+// Hash function for tuples. Requires default hash functions for all types.
+template <typename... Ts>
+struct hash<std::tuple<Ts...>> {
+  size_t operator()(std::tuple<Ts...> const& key) const {
+    folly::TupleHasher<
+      std::tuple_size<std::tuple<Ts...>>::value - 1, // start index
+      Ts...> hasher;
+
+    return hasher(key);
+  }
+};
 } // namespace std

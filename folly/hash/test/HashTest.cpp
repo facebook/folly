@@ -214,8 +214,29 @@ TEST(Hash, integral_types) {
   hashes.insert(hasher((int64_t)22));
   hashes.insert(hasher((uint64_t)23));
   hashes.insert(hasher((size_t)24));
-  EXPECT_EQ(24, hashes.size());
+
+  size_t setSize = 24;
+#if FOLLY_HAVE_INT128_T
+  hashes.insert(hasher((__int128_t)25));
+  hashes.insert(hasher((__uint128_t)26));
+  setSize += 2;
+#endif
+  EXPECT_EQ(setSize, hashes.size());
 }
+
+#if FOLLY_HAVE_INT128_T
+TEST(Hash, int128_std_hash) {
+  std::unordered_set<__int128> hs;
+  hs.insert(__int128_t{1});
+  hs.insert(__int128_t{2});
+  EXPECT_EQ(2, hs.size());
+
+  std::set<unsigned __int128> s;
+  s.insert(static_cast<unsigned __int128>(1));
+  s.insert(static_cast<unsigned __int128>(2));
+  EXPECT_EQ(2, s.size());
+}
+#endif
 
 TEST(Hash, float_types) {
   folly::Hash hasher;
