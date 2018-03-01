@@ -294,8 +294,10 @@ FutureBase<T>::thenImplementation(
   p.core_->setInterruptHandlerNoLock(this->core_->getInterruptHandler());
 
   // grab the Future now before we lose our handle on the Promise
-  auto f = p.getFuture();
-  f.core_->setExecutorNoLock(this->getExecutor());
+  auto sf = p.getSemiFuture();
+  sf.core_->setExecutorNoLock(this->getExecutor());
+  auto f = Future<B>(sf.core_);
+  sf.core_ = nullptr;
 
   /* This is a bit tricky.
 
@@ -356,8 +358,10 @@ FutureBase<T>::thenImplementation(
   p.core_->setInterruptHandlerNoLock(this->core_->getInterruptHandler());
 
   // grab the Future now before we lose our handle on the Promise
-  auto f = p.getFuture();
-  f.core_->setExecutorNoLock(this->getExecutor());
+  auto sf = p.getSemiFuture();
+  sf.core_->setExecutorNoLock(this->getExecutor());
+  auto f = Future<B>(sf.core_);
+  sf.core_ = nullptr;
 
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
@@ -780,13 +784,18 @@ template <class T>
 inline Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
   this->throwIfInvalid();
   Promise<T> p;
-  auto f = p.getFuture();
+  auto sf = p.getSemiFuture();
   auto func = [p = std::move(p)](Try<T>&& t) mutable {
     p.setTry(std::move(t));
   };
   using R = futures::detail::callableResult<T, decltype(func)>;
   this->template thenImplementation<decltype(func), R>(
       std::move(func), typename R::Arg());
+  // Construct future from semifuture manually because this may not have
+  // an executor set due to legacy code. This means we can bypass the executor
+  // check in SemiFuture::via
+  auto f = Future<T>(sf.core_);
+  sf.core_ = nullptr;
   return std::move(f).via(executor, priority);
 }
 
@@ -1047,6 +1056,7 @@ void mapSetCallback(InputIterator first, InputIterator last, F func) {
 
 // collectAll (variadic)
 
+// TODO(T26439406): Make return SemiFuture
 template <typename... Fs>
 typename futures::detail::CollectAllVariadicContext<
     typename std::decay<Fs>::type::value_type...>::type
@@ -1055,11 +1065,12 @@ collectAll(Fs&&... fs) {
       typename std::decay<Fs>::type::value_type...>>();
   futures::detail::collectVariadicHelper<
       futures::detail::CollectAllVariadicContext>(ctx, std::forward<Fs>(fs)...);
-  return ctx->p.getFuture();
+  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // collectAll (iterator)
 
+// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
 Future<
   std::vector<
@@ -1082,7 +1093,7 @@ collectAll(InputIterator first, InputIterator last) {
   mapSetCallback<T>(first, last, [ctx](size_t i, Try<T>&& t) {
     ctx->results[i] = std::move(t);
   });
-  return ctx->p.getFuture();
+  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // collect (iterator)
@@ -1130,6 +1141,7 @@ struct CollectContext {
 } // namespace detail
 } // namespace futures
 
+// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
 Future<typename futures::detail::CollectContext<typename std::iterator_traits<
     InputIterator>::value_type::value_type>::Result>
@@ -1148,11 +1160,12 @@ collect(InputIterator first, InputIterator last) {
        ctx->setPartialResult(i, t);
      }
   });
-  return ctx->p.getFuture();
+  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // collect (variadic)
 
+// TODO(T26439406): Make return SemiFuture
 template <typename... Fs>
 typename futures::detail::CollectVariadicContext<
     typename std::decay<Fs>::type::value_type...>::type
@@ -1161,11 +1174,12 @@ collect(Fs&&... fs) {
       typename std::decay<Fs>::type::value_type...>>();
   futures::detail::collectVariadicHelper<
       futures::detail::CollectVariadicContext>(ctx, std::forward<Fs>(fs)...);
-  return ctx->p.getFuture();
+  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // collectAny (iterator)
 
+// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
 Future<
   std::pair<size_t,
@@ -1188,11 +1202,12 @@ collectAny(InputIterator first, InputIterator last) {
       ctx->p.setValue(std::make_pair(i, std::move(t)));
     }
   });
-  return ctx->p.getFuture();
+  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // collectAnyWithoutException (iterator)
 
+// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
 Future<std::pair<
     size_t,
@@ -1219,11 +1234,12 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
       ctx->p.setException(t.exception());
     }
   });
-  return ctx->p.getFuture();
+  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // collectN (iterator)
 
+// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
 Future<std::vector<std::pair<size_t, Try<typename
   std::iterator_traits<InputIterator>::value_type::value_type>>>>
@@ -1257,7 +1273,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
     });
   }
 
-  return ctx->p.getFuture();
+  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // reduce (iterator)
@@ -1375,6 +1391,7 @@ Future<I> Future<T>::reduce(I&& initial, F&& func) {
 
 // unorderedReduce (iterator)
 
+// TODO(T26439406): Make return SemiFuture
 template <class It, class T, class F, class ItT, class Arg>
 Future<T> unorderedReduce(It first, It last, T initial, F func) {
   if (first == last) {
@@ -1423,7 +1440,7 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
         }
       });
 
-  return ctx->promise_.getFuture();
+  return ctx->promise_.getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 // within
@@ -1494,7 +1511,9 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
     }
   });
 
-  return ctx->promise.getFuture().via(this->getExecutor());
+  auto* currentExecutor = this->getExecutor();
+  return ctx->promise.getSemiFuture().via(
+      currentExecutor ? currentExecutor : &folly::InlineExecutor::instance());
 }
 
 // delayed

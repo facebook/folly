@@ -327,6 +327,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   friend class futures::detail::FutureBase;
   template <class>
   friend class SemiFuture;
+  template <class>
+  friend class Future;
 
   using typename Base::corePtr;
   using Base::setExecutor;
