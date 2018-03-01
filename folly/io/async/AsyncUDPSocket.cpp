@@ -133,6 +133,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
 }
 
 void AsyncUDPSocket::dontFragment(bool df) {
+  (void)df; // to avoid potential unused variable warning
 #ifdef IP_MTU_DISCOVER
   if (address().getFamily() == AF_INET) {
     int v4 = df ? IP_PMTUDISC_DO : IP_PMTUDISC_WANT;
