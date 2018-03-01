@@ -110,6 +110,7 @@ int X509_get_signature_nid(X509* cert);
 int SSL_CTX_up_ref(SSL_CTX* session);
 int SSL_SESSION_up_ref(SSL_SESSION* session);
 int X509_up_ref(X509* x);
+int X509_STORE_up_ref(X509_STORE* v);
 int EVP_PKEY_up_ref(EVP_PKEY* evp);
 void RSA_get0_key(
     const RSA* r,

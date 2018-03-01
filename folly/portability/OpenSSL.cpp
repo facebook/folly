@@ -64,6 +64,10 @@ int X509_up_ref(X509* x) {
   return CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509);
 }
 
+int X509_STORE_up_ref(X509_STORE* v) {
+  return CRYPTO_add(&v->references, 1, CRYPTO_LOCK_X509_STORE);
+}
+
 int EVP_PKEY_up_ref(EVP_PKEY* evp) {
   return CRYPTO_add(&evp->references, 1, CRYPTO_LOCK_EVP_PKEY);
 }
