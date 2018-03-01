@@ -47,18 +47,15 @@ template <typename Function>
 class CallbackHolder {
  public:
   void registerCallback(Function f) {
-    SYNCHRONIZED(callbacks_) {
-      callbacks_.push_back(std::move(f));
-    }
+    callbacks_.wlock()->push_back(std::move(f));
   }
 
   // always inline to enforce kInternalFramesNumber
   template <typename... Args>
   FOLLY_ALWAYS_INLINE void invoke(Args... args) {
-    SYNCHRONIZED_CONST(callbacks_) {
-      for (auto& cb : callbacks_) {
-        cb(args...);
-      }
+    auto callbacksLock = callbacks_.rlock();
+    for (auto& cb : *callbacksLock) {
+      cb(args...);
     }
   }
 

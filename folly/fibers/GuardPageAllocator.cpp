@@ -90,9 +90,7 @@ class StackCache {
     auto p = freeList_.back().first;
     if (!freeList_.back().second) {
       PCHECK(0 == ::mprotect(p, pagesize(), PROT_NONE));
-      SYNCHRONIZED(pages, protectedPages()) {
-        pages.insert(reinterpret_cast<intptr_t>(p));
-      }
+      protectedPages().wlock()->insert(reinterpret_cast<intptr_t>(p));
     }
     freeList_.pop_back();
 
@@ -132,25 +130,25 @@ class StackCache {
 
   ~StackCache() {
     assert(storage_);
-    SYNCHRONIZED(pages, protectedPages()) {
+    protectedPages().withWLock([&](auto& pages) {
       for (const auto& item : freeList_) {
         pages.erase(reinterpret_cast<intptr_t>(item.first));
       }
-    }
+    });
     PCHECK(0 == ::munmap(storage_, allocSize_ * kNumGuarded));
   }
 
   static bool isProtected(intptr_t addr) {
     // Use a read lock for reading.
-    SYNCHRONIZED_CONST(pages, protectedPages()) {
+    return protectedPages().withRLock([&](auto const& pages) {
       for (const auto& page : pages) {
         intptr_t pageEnd = intptr_t(page + pagesize());
         if (page <= addr && addr < pageEnd) {
           return true;
         }
       }
-    }
-    return false;
+      return false;
+    });
   }
 
  private:

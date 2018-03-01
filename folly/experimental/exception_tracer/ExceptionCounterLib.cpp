@@ -119,7 +119,7 @@ void throwHandler(void*, std::type_info* exType, void (*)(void*)) noexcept {
   auto exceptionId =
       folly::hash::SpookyHashV2::Hash64(frames, (n + 1) * sizeof(frames[0]), 0);
 
-  SYNCHRONIZED(holder, gExceptionStats->statsHolder) {
+  gExceptionStats->statsHolder.withWLock([&](auto& holder) {
     auto it = holder.find(exceptionId);
     if (it != holder.end()) {
       ++it->second.count;
@@ -129,7 +129,7 @@ void throwHandler(void*, std::type_info* exType, void (*)(void*)) noexcept {
       info.frames.assign(frames + 1, frames + 1 + n);
       holder.emplace(exceptionId, ExceptionStats{1, std::move(info)});
     }
-  }
+  });
 }
 
 struct Initializer {

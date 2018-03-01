@@ -43,17 +43,13 @@ void EventBaseLocalBase::erase(EventBase& evb) {
   evb.localStorage_.erase(key_);
   evb.localStorageToDtor_.erase(this);
 
-  SYNCHRONIZED(eventBases_) {
-    eventBases_.erase(&evb);
-  }
+  eventBases_.wlock()->erase(&evb);
 }
 
 void EventBaseLocalBase::onEventBaseDestruction(EventBase& evb) {
   evb.dcheckIsInEventBaseThread();
 
-  SYNCHRONIZED(eventBases_) {
-    eventBases_.erase(&evb);
-  }
+  eventBases_.wlock()->erase(&evb);
 }
 
 void EventBaseLocalBase::setVoid(EventBase& evb, std::shared_ptr<void>&& ptr) {

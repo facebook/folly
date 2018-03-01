@@ -99,14 +99,14 @@ class ThreadLocalCache {
 
   static void erase(EventBaseT& evb) {
     for (auto& localInstance : instance().accessAllThreads()) {
-      SYNCHRONIZED(info, localInstance.eraseInfo_) {
+      localInstance.eraseInfo_.withWLock([&](auto& info) {
         if (info.eraseList.size() >= kEraseListMaxSize) {
           info.eraseAll = true;
         } else {
           info.eraseList.push_back(&evb);
         }
         localInstance.eraseRequested_ = true;
-      }
+      });
     }
   }
 
@@ -143,7 +143,7 @@ class ThreadLocalCache {
       return;
     }
 
-    SYNCHRONIZED(info, eraseInfo_) {
+    eraseInfo_.withWLock([&](auto& info) {
       if (info.eraseAll) {
         map_.clear();
       } else {
@@ -155,7 +155,7 @@ class ThreadLocalCache {
       info.eraseList.clear();
       info.eraseAll = false;
       eraseRequested_ = false;
-    }
+    });
   }
 
   std::unordered_map<EventBaseT*, FiberManager*> map_;
