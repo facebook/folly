@@ -90,8 +90,15 @@ template <class Func>
 struct Lazy {
   typedef typename std::result_of<Func()>::type result_type;
 
+  static_assert(
+      !std::is_const<Func>::value,
+      "Func should not be a const-qualified type");
+  static_assert(
+      !std::is_reference<Func>::value,
+      "Func should not be a reference type");
+
   explicit Lazy(Func&& f) : func_(std::move(f)) {}
-  explicit Lazy(Func& f)  : func_(f) {}
+  explicit Lazy(const Func& f) : func_(f) {}
 
   Lazy(Lazy&& o)
     : value_(std::move(o.value_))
@@ -103,19 +110,26 @@ struct Lazy {
   Lazy& operator=(Lazy&&) = delete;
 
   const result_type& operator()() const {
-    return const_cast<Lazy&>(*this)();
+    ensure_initialized();
+
+    return *value_;
   }
 
   result_type& operator()() {
-    if (!value_) {
-      value_ = func_();
-    }
+    ensure_initialized();
+
     return *value_;
   }
 
  private:
-  Optional<result_type> value_;
-  Func func_;
+  void ensure_initialized() const {
+    if (!value_) {
+      value_ = func_();
+    }
+  }
+
+  mutable Optional<result_type> value_;
+  mutable Func func_;
 };
 
 } // namespace detail
@@ -123,11 +137,8 @@ struct Lazy {
 //////////////////////////////////////////////////////////////////////
 
 template <class Func>
-detail::Lazy<typename std::remove_reference<Func>::type>
-lazy(Func&& fun) {
-  return detail::Lazy<typename std::remove_reference<Func>::type>(
-    std::forward<Func>(fun)
-  );
+auto lazy(Func&& fun) {
+  return detail::Lazy<remove_cvref_t<Func>>(std::forward<Func>(fun));
 }
 
 //////////////////////////////////////////////////////////////////////
