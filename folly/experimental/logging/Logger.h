@@ -23,24 +23,6 @@
 #include <folly/experimental/logging/LogStreamProcessor.h>
 
 /**
- * Helper macro for implementing FB_LOG() and FB_LOGF().
- *
- * This macro generally should not be used directly by end users.
- */
-#define FB_LOG_IMPL(logger, level, type, ...)                                \
-  (!(logger).getCategory()->logCheck(level))                                 \
-      ? ::folly::logDisabledHelper(                                          \
-            std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
-      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &       \
-          ::folly::LogStreamProcessor{(logger).getCategory(),                \
-                                      (level),                               \
-                                      __FILE__,                              \
-                                      __LINE__,                              \
-                                      (type),                                \
-                                      ##__VA_ARGS__}                         \
-              .stream()
-
-/**
  * Log a message to the specified logger.
  *
  * This macro avoids evaluating the log arguments unless the log level check
@@ -76,6 +58,82 @@
       fmt,                                     \
       arg1,                                    \
       ##__VA_ARGS__)
+
+/**
+ * FB_LOG_RAW() can be used by callers that want to pass in the log level as a
+ * variable, and/or who want to explicitly specify the filename and line
+ * number.
+ *
+ * This is useful for callers implementing their own log wrapper functions
+ * that want to pass in their caller's filename and line number rather than
+ * their own.
+ *
+ * The log level parameter must be an explicitly qualified LogLevel value, or a
+ * LogLevel variable.  (This differs from FB_LOG() and FB_LOGF() which accept
+ * an unqualified LogLevel name.)
+ */
+#define FB_LOG_RAW(logger, level, filename, linenumber, ...) \
+  FB_LOG_RAW_IMPL(                                           \
+      logger,                                                \
+      level,                                                 \
+      filename,                                              \
+      linenumber,                                            \
+      ::folly::LogStreamProcessor::APPEND,                   \
+      ##__VA_ARGS__)
+
+/**
+ * FB_LOGF_RAW() is similar to FB_LOG_RAW(), but formats the log arguments
+ * using folly::format().
+ */
+#define FB_LOGF_RAW(logger, level, filename, linenumber, fmt, arg1, ...) \
+  FB_LOG_RAW_IMPL(                                                       \
+      logger,                                                            \
+      level,                                                             \
+      filename,                                                          \
+      linenumber,                                                        \
+      ::folly::LogStreamProcessor::FORMAT,                               \
+      fmt,                                                               \
+      arg1,                                                              \
+      ##__VA_ARGS__)
+
+/**
+ * Helper macro for implementing FB_LOG() and FB_LOGF().
+ *
+ * This macro generally should not be used directly by end users.
+ */
+#define FB_LOG_IMPL(logger, level, type, ...)                                \
+  (!(logger).getCategory()->logCheck(level))                                 \
+      ? ::folly::logDisabledHelper(                                          \
+            std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &       \
+          ::folly::LogStreamProcessor{(logger).getCategory(),                \
+                                      (level),                               \
+                                      __FILE__,                              \
+                                      __LINE__,                              \
+                                      (type),                                \
+                                      ##__VA_ARGS__}                         \
+              .stream()
+
+/**
+ * Helper macro for implementing FB_LOG_RAW() and FB_LOGF_RAW().
+ *
+ * This macro generally should not be used directly by end users.
+ *
+ * This is very similar to FB_LOG_IMPL(), but since the level may be a variable
+ * instead of a compile-time constant, we cannot detect at compile time if this
+ * is a fatal log message or not.
+ */
+#define FB_LOG_RAW_IMPL(logger, level, filename, line, type, ...) \
+  (!(logger).getCategory()->logCheck(level))                      \
+      ? static_cast<void>(0)                                      \
+      : ::folly::LogStreamVoidify<false>{} &                      \
+          ::folly::LogStreamProcessor{(logger).getCategory(),     \
+                                      (level),                    \
+                                      (filename),                 \
+                                      (line),                     \
+                                      (type),                     \
+                                      ##__VA_ARGS__}              \
+              .stream()
 
 namespace folly {
 

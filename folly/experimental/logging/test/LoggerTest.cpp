@@ -21,6 +21,7 @@
 #include <folly/experimental/logging/test/TestLogHandler.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 using namespace folly;
 using std::make_shared;
@@ -347,5 +348,31 @@ TEST_F(LoggerTest, logMacros) {
           R"(error formatting log message: invalid format argument \{\}: )"
           R"(argument index out of range, max=1; )"
           R"(format string: "whoops: \{\}, \{\}", arguments: \((.*: )?5\))"));
+  messages.clear();
+}
+
+TEST_F(LoggerTest, logRawMacros) {
+  Logger foobar{&db_, "test.foo.bar"};
+  db_.setLevel("test.foo", LogLevel::DBG2);
+
+  auto& messages = handler_->getMessages();
+
+  FB_LOG_RAW(foobar, LogLevel::DBG1, "src/some/file.c", 1234, "hello", ' ', 1)
+      << " world";
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("hello 1 world", messages[0].first.getMessage());
+  EXPECT_EQ("src/some/file.c", messages[0].first.getFileName());
+  EXPECT_EQ("file.c", messages[0].first.getFileBaseName());
+  EXPECT_EQ(1234, messages[0].first.getLineNumber());
+  messages.clear();
+
+  auto level = LogLevel::DBG1;
+  FB_LOGF_RAW(foobar, level, "test/mytest.c", 99, "{}: num={}", "test", 42)
+      << " plus extra stuff";
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("test: num=42 plus extra stuff", messages[0].first.getMessage());
+  EXPECT_EQ("test/mytest.c", messages[0].first.getFileName());
+  EXPECT_EQ("mytest.c", messages[0].first.getFileBaseName());
+  EXPECT_EQ(99, messages[0].first.getLineNumber());
   messages.clear();
 }
