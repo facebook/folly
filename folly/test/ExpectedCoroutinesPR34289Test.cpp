@@ -67,68 +67,27 @@ Expected<double, Err> f2(int x) {
   return 2.0 * x;
 }
 
-// error result
-Expected<int, Err> f4(int, double, Err err) {
-  return makeUnexpected(err);
-}
-
-// exception
-Expected<int, Err> throws() {
-  throw Exn{};
+// move-only type
+Expected<std::unique_ptr<int>, Err> f3(int x, double y) {
+  return std::make_unique<int>(int(x + y));
 }
 
 } // namespace
 
 #if FOLLY_HAS_COROUTINES
 
-TEST(Expected, CoroutineFailure) {
-  auto r1 = []() -> Expected<int, Err> {
+TEST(Expected, CoroutineSuccess) {
+  auto r0 = []() -> Expected<int, Err> {
     auto x = co_await f1();
+    EXPECT_EQ(7, x);
     auto y = co_await f2(x);
-    auto z = co_await f4(x, y, Err::badder());
-    ADD_FAILURE();
-    co_return z;
+    EXPECT_EQ(2.0 * 7, y);
+    auto z = co_await f3(x, y);
+    EXPECT_EQ(int(2.0 * 7 + 7), *z);
+    co_return* z;
   }();
-  EXPECT_TRUE(r1.hasError());
-  EXPECT_EQ(Err::badder(), r1.error());
-}
-
-TEST(Expected, CoroutineException) {
-  EXPECT_THROW(
-      ([]() -> Expected<int, Err> {
-        auto x = co_await throws();
-        ADD_FAILURE();
-        co_return x;
-      }()),
-      Exn);
-}
-
-// this test makes sure that the coroutine is destroyed properly
-TEST(Expected, CoroutineCleanedUp) {
-  int count_dest = 0;
-  auto r = [&]() -> Expected<int, Err> {
-    SCOPE_EXIT {
-      ++count_dest;
-    };
-    auto x = co_await Expected<int, Err>(makeUnexpected(Err::badder()));
-    ADD_FAILURE() << "Should not be resuming";
-    co_return x;
-  }();
-  EXPECT_FALSE(r.hasValue());
-  EXPECT_EQ(1, count_dest);
-}
-
-Expected<int, Err> f5(int x) {
-  return makeExpected<Err>(x * 3);
-}
-
-Expected<int, Err> f6(int n) {
-  auto x = co_await f5(n);
-  co_return x + 9;
-}
-
-TEST(Optional, CoroutineDanglingReference) {
-  EXPECT_EQ(*f6(1), 12);
+  EXPECT_TRUE(r0.hasValue());
+  EXPECT_EQ(21, *r0);
 }
 
 #endif

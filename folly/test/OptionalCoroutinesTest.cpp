@@ -34,20 +34,6 @@ Optional<std::unique_ptr<int>> f3(int x, double y) {
   return std::make_unique<int>((int)(x + y));
 }
 
-TEST(Optional, CoroutineSuccess) {
-  auto r0 = []() -> Optional<int> {
-    auto x = co_await f1();
-    EXPECT_EQ(7, x);
-    auto y = co_await f2(x);
-    EXPECT_EQ(2.0 * 7, y);
-    auto z = co_await f3(x, y);
-    EXPECT_EQ((int)(2.0 * 7 + 7), *z);
-    co_return* z;
-  }();
-  EXPECT_TRUE(r0.hasValue());
-  EXPECT_EQ(21, *r0);
-}
-
 Optional<int> f4(int, double) {
   return folly::none;
 }
@@ -96,6 +82,19 @@ TEST(Optional, CoroutineCleanedUp) {
   }();
   EXPECT_FALSE(r.hasValue());
   EXPECT_EQ(1, count_dest);
+}
+
+folly::Optional<int> f5(int x) {
+  return folly::make_optional(x * 3);
+}
+
+folly::Optional<int> f6(int n) {
+  auto x = co_await f5(n);
+  co_return x + 9;
+}
+
+TEST(Optional, CoroutineDanglingReference) {
+  EXPECT_EQ(*f6(1), 12);
 }
 
 #endif
