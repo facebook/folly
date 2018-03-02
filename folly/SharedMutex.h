@@ -274,6 +274,10 @@ class SharedMutexImpl {
     }
 
 #ifndef NDEBUG
+    // These asserts check that everybody has released the lock before it
+    // is destroyed.  If you arrive here while debugging that is likely
+    // the problem.  (You could also have general heap corruption.)
+
     // if a futexWait fails to go to sleep because the value has been
     // changed, we don't necessarily clean up the wait bits, so it is
     // possible they will be set here in a correct system
