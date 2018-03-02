@@ -1543,6 +1543,19 @@ void waitImpl(FutureType& f) {
   assert(f.isReady());
 }
 
+template <class T>
+void convertFuture(SemiFuture<T>&& sf, Future<T>& f) {
+  // Carry executor from f, inserting an inline executor if it did not have one
+  auto* currentExecutor = f.getExecutor();
+  f = std::move(sf).via(
+      currentExecutor ? currentExecutor : &folly::InlineExecutor::instance());
+}
+
+template <class T>
+void convertFuture(SemiFuture<T>&& sf, SemiFuture<T>& f) {
+  f = std::move(sf);
+}
+
 template <class FutureType, typename T = typename FutureType::value_type>
 void waitImpl(FutureType& f, Duration dur) {
   // short-circuit if there's nothing to do
@@ -1551,13 +1564,13 @@ void waitImpl(FutureType& f, Duration dur) {
   }
 
   Promise<T> promise;
-  auto ret = promise.getFuture();
+  auto ret = promise.getSemiFuture();
   auto baton = std::make_shared<FutureBatonType>();
   f.setCallback_([baton, promise = std::move(promise)](Try<T>&& t) mutable {
     promise.setTry(std::move(t));
     baton->post();
   });
-  f = std::move(ret);
+  convertFuture(std::move(ret), f);
   if (baton->try_wait_for(dur)) {
     assert(f.isReady());
   }

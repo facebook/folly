@@ -193,6 +193,8 @@ class FutureBase {
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
 };
+template <class T>
+void convertFuture(SemiFuture<T>&& sf, Future<T>& f);
 } // namespace detail
 } // namespace futures
 
@@ -814,6 +816,11 @@ class Future : private futures::detail::FutureBase<T> {
   /// predicate behaves like std::function<bool(void)>
   template <class P, class F>
   friend Future<Unit> whileDo(P&& predicate, F&& thunk);
+
+  template <class FT>
+  friend void futures::detail::convertFuture(
+      SemiFuture<FT>&& sf,
+      Future<FT>& f);
 };
 
 } // namespace folly
