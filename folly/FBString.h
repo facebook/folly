@@ -1362,7 +1362,7 @@ class basic_fbstring {
   }
 
   const_reference at(size_type n) const {
-    enforce<std::out_of_range>(n <= size(), "");
+    enforce<std::out_of_range>(n < size(), "");
     return (*this)[n];
   }
 
