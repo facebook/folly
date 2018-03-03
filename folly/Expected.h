@@ -1473,7 +1473,7 @@ struct Promise {
   std::experimental::suspend_never initial_suspend() const noexcept {
     return {};
   }
-  std::experimental::suspend_always final_suspend() const {
+  std::experimental::suspend_never final_suspend() const {
     return {};
   }
   template <typename U>
