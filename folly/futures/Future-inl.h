@@ -295,7 +295,7 @@ FutureBase<T>::thenImplementation(
 
   // grab the Future now before we lose our handle on the Promise
   auto sf = p.getSemiFuture();
-  sf.core_->setExecutorNoLock(this->getExecutor());
+  sf.core_->setExecutor(this->getExecutor());
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
@@ -359,7 +359,7 @@ FutureBase<T>::thenImplementation(
 
   // grab the Future now before we lose our handle on the Promise
   auto sf = p.getSemiFuture();
-  sf.core_->setExecutorNoLock(this->getExecutor());
+  sf.core_->setExecutor(this->getExecutor());
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
