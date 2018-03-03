@@ -131,8 +131,8 @@ if (NOT INT128_SIZE STREQUAL "")
                      __int128>::value,
       \"signed form of 'unsigned __uint128' must be '__int128'.\");
     static_assert(
-        sizeof(::std::hash<__int128>{}(0)) > 0, \"std::hash<__int128> is
-        disabled.\");
+        sizeof(::std::hash<__int128>{}(0)) > 0, \
+        \"std::hash<__int128> is disabled.\");
     int main() { return 0; }"
     HAVE_INT128_TRAITS
   )
