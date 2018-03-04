@@ -70,6 +70,13 @@ int randomObject<int>() {
 }
 
 template <>
+std::string randomObject<std::string>() {
+  std::string result;
+  randomString(&result);
+  return result;
+}
+
+template <>
 folly::fbstring randomObject<folly::fbstring>() {
   folly::fbstring result;
   randomString(&result);
