@@ -444,15 +444,10 @@ class UnboundedQueue {
       Entry& e,
       Ticket t,
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
-    while (true) {
-      if (LIKELY(e.tryWaitUntil(deadline))) {
-        return true;
-      }
-      if (t >= producerTicket()) {
-        return false;
-      }
-      asm_volatile_pause();
+    if (LIKELY(e.tryWaitUntil(deadline))) {
+      return true;
     }
+    return t < producerTicket();
   }
 
   /** findSegment */
