@@ -825,4 +825,61 @@ class Future : private futures::detail::FutureBase<T> {
 
 } // namespace folly
 
+#if FOLLY_HAS_COROUTINES
+#include <experimental/coroutine>
+
+namespace folly {
+namespace detail {
+template <typename T>
+class FutureAwaitable {
+ public:
+  explicit FutureAwaitable(folly::Future<T>&& future)
+      : future_(std::move(future)) {}
+
+  bool await_ready() const {
+    return future_.isReady();
+  }
+
+  T await_resume() {
+    return std::move(future_.value());
+  }
+
+  void await_suspend(std::experimental::coroutine_handle<> h) {
+    future_.setCallback_([h](Try<T>&&) mutable { h(); });
+  }
+
+ private:
+  folly::Future<T> future_;
+};
+
+template <typename T>
+class FutureRefAwaitable {
+ public:
+  explicit FutureRefAwaitable(folly::Future<T>& future) : future_(future) {}
+
+  bool await_ready() const {
+    return future_.isReady();
+  }
+
+  T await_resume() {
+    return std::move(future_.value());
+  }
+
+  void await_suspend(std::experimental::coroutine_handle<> h) {
+    future_.setCallback_([h](Try<T>&&) mutable { h(); });
+  }
+
+ private:
+  folly::Future<T>& future_;
+};
+} // namespace detail
+} // namespace folly
+
+template <typename T>
+folly::detail::FutureAwaitable<T>
+/* implicit */ operator co_await(folly::Future<T>& future) {
+  return folly::detail::FutureRefAwaitable<T>(future);
+}
+#endif
+
 #include <folly/futures/Future-inl.h>
