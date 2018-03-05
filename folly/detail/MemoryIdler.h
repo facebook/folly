@@ -188,11 +188,8 @@ struct MemoryIdler {
     if (idleTimeout > IdleTime::zero()) {
       auto idleDeadline = Deadline::clock::now() + idleTimeout;
       if (idleDeadline < deadline) {
-        while (true) {
-          auto rv = fut.futexWaitUntil(expected, idleDeadline, waitMask);
-          if (rv == FutexResult::TIMEDOUT) {
-            break;
-          }
+        auto rv = fut.futexWaitUntil(expected, idleDeadline, waitMask);
+        if (rv != FutexResult::TIMEDOUT) {
           // finished before timeout hit, no flush
           _ret = rv;
           return true;
