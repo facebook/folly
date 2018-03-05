@@ -24,7 +24,6 @@
 
 #include <folly/Executor.h>
 #include <folly/Function.h>
-#include <folly/MicroSpinLock.h>
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
@@ -32,6 +31,7 @@
 #include <folly/futures/FutureException.h>
 #include <folly/futures/detail/FSM.h>
 #include <folly/lang/Exception.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 #include <folly/io/async/Request.h>
 

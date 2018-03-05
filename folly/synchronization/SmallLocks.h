@@ -34,7 +34,7 @@
  */
 
 #include <folly/MicroLock.h>
-#include <folly/MicroSpinLock.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 #include <folly/Portability.h>
 #if FOLLY_X64 || FOLLY_AARCH64 || FOLLY_PPC64

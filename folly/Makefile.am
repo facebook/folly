@@ -438,6 +438,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/Baton.h \
 	synchronization/CallOnce.h \
 	synchronization/LifoSem.h \
+	synchronization/MicroSpinLock.h \
 	synchronization/ParkingLot.h \
 	synchronization/PicoSpinLock.h \
 	synchronization/RWSpinLock.h \

@@ -33,8 +33,8 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
-#include <folly/MicroSpinLock.h>
 #include <folly/ThreadLocal.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 namespace folly { namespace detail {
 

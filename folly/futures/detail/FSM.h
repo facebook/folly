@@ -19,7 +19,7 @@
 #include <atomic>
 #include <mutex>
 
-#include <folly/MicroSpinLock.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 namespace folly {
 namespace futures {
