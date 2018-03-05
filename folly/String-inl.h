@@ -96,6 +96,7 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       continue;
     }
     out.append(&*last, p - last);
+    ++p;
     if (p == str.end()) {  // backslash at end of string
       if (strict) {
         throw std::invalid_argument("incomplete escape sequence");
@@ -104,7 +105,6 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       last = p;
       continue;
     }
-    ++p;
     char e = detail::cUnescapeTable[static_cast<unsigned char>(*p)];
     if (e == 'O') {  // octal
       unsigned char val = 0;

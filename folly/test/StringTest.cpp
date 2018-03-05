@@ -27,6 +27,7 @@
 
 #include <folly/container/Array.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 using namespace folly;
 using namespace std;
@@ -184,13 +185,20 @@ TEST(Escape, cUnescape) {
   EXPECT_EQ("hello\nworld", cUnescape<std::string>("hello\\x0aworld"));
   EXPECT_EQ("hello\xff\xfe", cUnescape<std::string>("hello\\377\\376"));
   EXPECT_EQ("hello\xff\xfe", cUnescape<std::string>("hello\\xff\\xfe"));
+  EXPECT_EQ("hello\\", cUnescape<std::string>("hello\\", false));
 
-  EXPECT_THROW({cUnescape<std::string>("hello\\");},
-               std::invalid_argument);
-  EXPECT_THROW({cUnescape<std::string>("hello\\x");},
-               std::invalid_argument);
-  EXPECT_THROW({cUnescape<std::string>("hello\\q");},
-               std::invalid_argument);
+  EXPECT_THROW_RE(
+      cUnescape<std::string>("hello\\"),
+      std::invalid_argument,
+      "incomplete escape sequence");
+  EXPECT_THROW_RE(
+      cUnescape<std::string>("hello\\x"),
+      std::invalid_argument,
+      "incomplete hex escape sequence");
+  EXPECT_THROW_RE(
+      cUnescape<std::string>("hello\\q"),
+      std::invalid_argument,
+      "invalid escape sequence");
 }
 
 TEST(Escape, uriEscape) {
