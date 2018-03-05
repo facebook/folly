@@ -596,7 +596,7 @@ class DynamicBoundedQueue {
       if ((debit + weight <= capacity) && tryAddDebit(weight)) {
         return true;
       }
-      if (Clock::now() >= deadline) {
+      if (deadline < Clock::time_point::max() && Clock::now() >= deadline) {
         return false;
       }
       if (MayBlock) {
