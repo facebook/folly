@@ -712,6 +712,11 @@ inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
 }
 
 template <class T>
+inline Future<T> SemiFuture<T>::toUnsafeFuture() && {
+  return std::move(*this).via(&folly::InlineExecutor::instance());
+}
+
+template <class T>
 template <typename F>
 SemiFuture<typename futures::detail::callableResult<T, F>::Return::value_type>
 SemiFuture<T>::defer(F&& func) && {

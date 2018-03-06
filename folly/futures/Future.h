@@ -326,6 +326,15 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::callableResult<T, F>::Return::value_type>
   defer(F&& func) &&;
 
+  /// Return a future that completes inline, as if the future had no executor.
+  /// Intended for porting legacy code without behavioural change, and for rare
+  /// cases where this is really the intended behaviour.
+  /// Future is unsafe in the sense that the executor it completes on is
+  /// non-deterministic in the standard case.
+  /// For new code, or to update code that temporarily uses this, please
+  /// use via and pass a meaningful executor.
+  inline Future<T> toUnsafeFuture() &&;
+
  private:
   friend class Promise<T>;
   template <class>
