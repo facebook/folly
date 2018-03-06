@@ -48,6 +48,9 @@ class Future;
 template <class T>
 class SemiFuture;
 
+template <class T>
+class FutureSplitter;
+
 namespace futures {
 namespace detail {
 template <class T>
@@ -781,6 +784,8 @@ class Future : private futures::detail::FutureBase<T> {
   friend class Future;
   template <class>
   friend class SemiFuture;
+  template <class>
+  friend class FutureSplitter;
 
   using Base::setExecutor;
   using Base::throwIfInvalid;

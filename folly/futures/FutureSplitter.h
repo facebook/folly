@@ -45,8 +45,9 @@ class FutureSplitter {
    * Provide a way to split a Future<T>.
    */
   explicit FutureSplitter(Future<T>&& future)
-      : promise_(std::make_shared<SharedPromise<T>>()) {
-    future.then([promise = promise_](Try<T> && theTry) {
+      : promise_(std::make_shared<SharedPromise<T>>()),
+        e_(getExecutorFrom(future)) {
+    future.then([promise = promise_](Try<T>&& theTry) {
       promise->setTry(std::move(theTry));
     });
   }
@@ -58,11 +59,29 @@ class FutureSplitter {
     if (promise_ == nullptr) {
       throwNoFutureInSplitter();
     }
-    return promise_->getFuture();
+    return promise_->getSemiFuture().via(e_);
+  }
+
+  /**
+   * This can be called an unlimited number of times per FutureSplitter.
+   */
+  SemiFuture<T> getSemiFuture() {
+    if (promise_ == nullptr) {
+      throwNoFutureInSplitter();
+    }
+    return promise_->getSemiFuture();
   }
 
  private:
   std::shared_ptr<SharedPromise<T>> promise_;
+  Executor* e_ = nullptr;
+
+  static Executor* getExecutorFrom(Future<T>& f) {
+    // If the passed future had a null executor, use an inline executor
+    // to ensure that .via is safe
+    auto* e = f.getExecutor();
+    return e ? e : &folly::InlineExecutor::instance();
+  }
 };
 
 /**
