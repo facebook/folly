@@ -280,12 +280,24 @@ template <typename Clock, typename Duration>
 FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
     const std::chrono::time_point<Clock, Duration>& deadline,
     const WaitOptions& opt) noexcept {
-  if (detail::spin_pause_until(deadline, opt, [=] { return ready(); })) {
-    return true;
+  switch (detail::spin_pause_until(deadline, opt, [=] { return ready(); })) {
+    case detail::spin_result::success:
+      return true;
+    case detail::spin_result::timeout:
+      return false;
+    case detail::spin_result::advance:
+      break;
   }
 
   if (!MayBlock) {
-    return detail::spin_yield_until(deadline, [=] { return ready(); });
+    switch (detail::spin_yield_until(deadline, [=] { return ready(); })) {
+      case detail::spin_result::success:
+        return true;
+      case detail::spin_result::timeout:
+        return false;
+      case detail::spin_result::advance:
+        break;
+    }
   }
 
   auto before = state_.load(std::memory_order_relaxed);

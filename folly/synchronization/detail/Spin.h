@@ -26,30 +26,36 @@
 namespace folly {
 namespace detail {
 
+enum class spin_result {
+  success, // condition passed
+  timeout, // exceeded deadline
+  advance, // exceeded current wait-options component timeout
+};
+
 template <typename Clock, typename Duration, typename F>
-bool spin_pause_until(
+spin_result spin_pause_until(
     std::chrono::time_point<Clock, Duration> const& deadline,
     WaitOptions const& opt,
     F f) {
   if (opt.spin_max() <= opt.spin_max().zero()) {
-    return false;
+    return spin_result::advance;
   }
 
   auto tbegin = Clock::now();
   while (true) {
     if (f()) {
-      return true;
+      return spin_result::success;
     }
 
     auto const tnow = Clock::now();
     if (tnow >= deadline) {
-      return false;
+      return spin_result::timeout;
     }
 
     //  Backward time discontinuity in Clock? revise pre_block starting point
     tbegin = std::min(tbegin, tnow);
     if (tnow >= tbegin + opt.spin_max()) {
-      return false;
+      return spin_result::advance;
     }
 
     //  The pause instruction is the polite way to spin, but it doesn't
@@ -61,17 +67,17 @@ bool spin_pause_until(
 }
 
 template <typename Clock, typename Duration, typename F>
-bool spin_yield_until(
+spin_result spin_yield_until(
     std::chrono::time_point<Clock, Duration> const& deadline,
     F f) {
   while (true) {
     if (f()) {
-      return true;
+      return spin_result::success;
     }
 
     auto const max = std::chrono::time_point<Clock, Duration>::max();
     if (deadline != max && Clock::now() >= deadline) {
-      return false;
+      return spin_result::timeout;
     }
 
     std::this_thread::yield();
