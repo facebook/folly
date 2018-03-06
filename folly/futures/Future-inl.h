@@ -1399,7 +1399,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
   std::vector<Future<Result>> futures;
   futures.reserve(ctx->promises.size());
   for (auto& promise : ctx->promises) {
-    futures.emplace_back(promise.getFuture());
+    futures.emplace_back(promise.getSemiFuture().via(executor));
   }
 
   return futures;
