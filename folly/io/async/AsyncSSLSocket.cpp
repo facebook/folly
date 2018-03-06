@@ -824,6 +824,9 @@ const SSL* AsyncSSLSocket::getSSL() const {
 }
 
 void AsyncSSLSocket::setSSLSession(SSL_SESSION *session, bool takeOwnership) {
+  if (sslSession_) {
+    SSL_SESSION_free(sslSession_);
+  }
   sslSession_ = session;
   if (!takeOwnership && session != nullptr) {
     // Increment the reference count
