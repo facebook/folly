@@ -835,7 +835,7 @@ Future<T>::onError(F&& func) {
 
   Promise<T> p;
   p.core_->setInterruptHandlerNoLock(this->core_->getInterruptHandler());
-  auto f = p.getFuture();
+  auto sf = p.getSemiFuture();
 
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
@@ -847,7 +847,10 @@ Future<T>::onError(F&& func) {
         }
       });
 
-  return f;
+  // Allow for applying to future with null executor while this is still
+  // possible.
+  auto* e = this->getExecutor();
+  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
 }
 
 // onError where the callback returns Future<T>
@@ -868,7 +871,7 @@ Future<T>::onError(F&& func) {
       Exn;
 
   Promise<T> p;
-  auto f = p.getFuture();
+  auto sf = p.getSemiFuture();
 
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
@@ -887,7 +890,10 @@ Future<T>::onError(F&& func) {
         }
       });
 
-  return f;
+  // Allow for applying to future with null executor while this is still
+  // possible.
+  auto* e = this->getExecutor();
+  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
 }
 
 template <class T>
@@ -919,7 +925,7 @@ Future<T>::onError(F&& func) {
       "Return type of onError callback must be T or Future<T>");
 
   Promise<T> p;
-  auto f = p.getFuture();
+  auto sf = p.getSemiFuture();
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
            std::move(p), std::forward<F>(func))](Try<T> t) mutable {
@@ -937,7 +943,10 @@ Future<T>::onError(F&& func) {
         }
       });
 
-  return f;
+  // Allow for applying to future with null executor while this is still
+  // possible.
+  auto* e = this->getExecutor();
+  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
 }
 
 // onError(exception_wrapper) that returns T
@@ -954,7 +963,7 @@ Future<T>::onError(F&& func) {
       "Return type of onError callback must be T or Future<T>");
 
   Promise<T> p;
-  auto f = p.getFuture();
+  auto sf = p.getSemiFuture();
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
            std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
@@ -966,7 +975,10 @@ Future<T>::onError(F&& func) {
         }
       });
 
-  return f;
+  // Allow for applying to future with null executor while this is still
+  // possible.
+  auto* e = this->getExecutor();
+  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
 }
 
 template <class Func>
