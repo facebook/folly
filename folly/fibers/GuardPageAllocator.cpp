@@ -116,12 +116,13 @@ class StackCache {
     assert(storage_);
 
     auto as = allocSize(size);
-    auto p = limit + size - as;
-    if (p < storage_ || p >= storage_ + allocSize_ * kNumGuarded) {
+    if (std::less_equal<void*>{}(limit, storage_) ||
+        std::less_equal<void*>{}(storage_ + allocSize_ * kNumGuarded, limit)) {
       /* not mine */
       return false;
     }
 
+    auto p = limit + size - as;
     assert(as == allocSize_);
     assert((p - storage_) % allocSize_ == 0);
     freeList_.emplace_back(p, /* protected= */ true);
