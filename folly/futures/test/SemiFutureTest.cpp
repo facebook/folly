@@ -517,3 +517,26 @@ TEST(SemiFuture, MakeSemiFutureFromFutureWithTry) {
   auto tryResult = std::move(sf).get();
   ASSERT_EQ(tryResult.value(), "Try");
 }
+
+TEST(SemiFuture, DeferWithinContinuation) {
+  std::atomic<int> innerResult{0};
+  std::atomic<int> result{0};
+  EventBase e2;
+  Promise<int> p;
+  Promise<int> p2;
+  auto f = p.getSemiFuture().via(&e2);
+  auto resultF = std::move(f).then([&, p3 = std::move(p2)](int outer) mutable {
+    result = outer;
+    return makeSemiFuture<int>(std::move(outer))
+        .defer([&, p4 = std::move(p3)](int inner) mutable {
+          innerResult = inner;
+          p4.setValue(inner);
+          return inner;
+        });
+  });
+  p.setValue(7);
+  auto r = resultF.getVia(&e2);
+  ASSERT_EQ(r, 7);
+  ASSERT_EQ(innerResult, 7);
+  ASSERT_EQ(result, 7);
+}

@@ -342,6 +342,21 @@ FutureBase<T>::thenImplementation(
   return f;
 }
 
+// Pass through a simple future as it needs no deferral adaptation
+template <class T>
+Future<T> chainExecutor(Executor*, Future<T>&& f) {
+  return std::move(f);
+}
+
+// Correctly chain a SemiFuture for deferral
+template <class T>
+Future<T> chainExecutor(Executor* e, SemiFuture<T>&& f) {
+  if (!e) {
+    e = &folly::InlineExecutor::instance();
+  }
+  return std::move(f).via(e);
+}
+
 // Variant: returns a Future
 // e.g. f.then([](T&& t){ return makeFuture<T>(t); });
 template <class T>
@@ -359,26 +374,32 @@ FutureBase<T>::thenImplementation(
 
   // grab the Future now before we lose our handle on the Promise
   auto sf = p.getSemiFuture();
-  sf.core_->setExecutor(this->getExecutor());
+  auto* e = this->getExecutor();
+  sf.core_->setExecutor(e);
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
-  this->setCallback_(
-      [state = futures::detail::makeCoreCallbackState(
-           std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
-        if (!isTry && t.hasException()) {
-          state.setException(std::move(t.exception()));
-        } else {
-          auto tf2 = state.tryInvoke(t.template get<isTry, Args>()...);
-          if (tf2.hasException()) {
-            state.setException(std::move(tf2.exception()));
-          } else {
-            tf2->setCallback_([p = state.stealPromise()](Try<B> && b) mutable {
-              p.setTry(std::move(b));
-            });
-          }
-        }
-      });
+  this->setCallback_([state = futures::detail::makeCoreCallbackState(
+                          std::move(p), std::forward<F>(func))](
+                         Try<T>&& t) mutable {
+    if (!isTry && t.hasException()) {
+      state.setException(std::move(t.exception()));
+    } else {
+      // Ensure that if function returned a SemiFuture we correctly chain
+      // potential deferral.
+      auto tf2 = state.tryInvoke(t.template get<isTry, Args>()...);
+      if (tf2.hasException()) {
+        state.setException(std::move(tf2.exception()));
+      } else {
+        auto statePromise = state.stealPromise();
+        auto tf3 =
+            chainExecutor(statePromise.core_->getExecutor(), *std::move(tf2));
+        tf3.setCallback_([p2 = std::move(statePromise)](Try<B>&& b) mutable {
+          p2.setTry(std::move(b));
+        });
+      }
+    }
+  });
 
   return f;
 }
