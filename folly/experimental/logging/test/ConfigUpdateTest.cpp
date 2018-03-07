@@ -19,6 +19,7 @@
 #include <folly/experimental/logging/LogConfigParser.h>
 #include <folly/experimental/logging/LogHandlerFactory.h>
 #include <folly/experimental/logging/LoggerDB.h>
+#include <folly/experimental/logging/test/ConfigHelpers.h>
 #include <folly/experimental/logging/test/TestLogHandler.h>
 #include <folly/json.h>
 #include <folly/portability/GMock.h>
@@ -49,39 +50,6 @@ auto MatchLogHandler(const LogHandlerConfig& config) {
 }
 
 } // namespace
-
-namespace folly {
-/**
- * Print TestLogHandler objects nicely in test failure messages
- */
-std::ostream& operator<<(
-    std::ostream& os,
-    const std::shared_ptr<LogHandler>& handler) {
-  auto configHandler = std::dynamic_pointer_cast<TestLogHandler>(handler);
-  if (!configHandler) {
-    os << "unknown handler type";
-    return os;
-  }
-
-  auto config = configHandler->getConfig();
-  os << "ConfigHandler(" << (config.type ? config.type.value() : "[no type]");
-  for (const auto& entry : config.options) {
-    os << ", " << entry.first << "=" << entry.second;
-  }
-  os << ")";
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const LogConfig& config) {
-  os << toPrettyJson(logConfigToDynamic(config));
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const LogHandlerConfig& config) {
-  os << toPrettyJson(logConfigToDynamic(config));
-  return os;
-}
-} // namespace folly
 
 TEST(ConfigUpdate, updateLogLevels) {
   LoggerDB db{LoggerDB::TESTING};

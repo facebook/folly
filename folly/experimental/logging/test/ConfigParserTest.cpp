@@ -18,6 +18,7 @@
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogConfig.h>
 #include <folly/experimental/logging/LogConfigParser.h>
+#include <folly/experimental/logging/test/ConfigHelpers.h>
 #include <folly/json.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -27,34 +28,6 @@ using namespace folly;
 
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
-
-namespace folly {
-std::ostream& operator<<(std::ostream& os, const LogCategoryConfig& config) {
-  os << logLevelToString(config.level);
-  if (!config.inheritParentLevel) {
-    os << "!";
-  }
-  if (config.handlers.hasValue()) {
-    os << ":" << join(",", config.handlers.value());
-  }
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const LogHandlerConfig& config) {
-  os << (config.type ? config.type.value() : "[no type]");
-  bool first = true;
-  for (const auto& opt : config.options) {
-    if (!first) {
-      os << ",";
-    } else {
-      os << ":";
-      first = false;
-    }
-    os << opt.first << "=" << opt.second;
-  }
-  return os;
-}
-} // namespace folly
 
 TEST(LogConfig, parseBasic) {
   auto config = parseLogConfig("");
