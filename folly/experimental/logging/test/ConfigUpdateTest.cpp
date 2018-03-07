@@ -345,3 +345,44 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
                      "anonymousHandler2=foo: abc=xyz"),
       db.getConfig());
 }
+
+TEST(ConfigUpdate, getFullConfig) {
+  LoggerDB db{LoggerDB::TESTING};
+  db.registerHandlerFactory(
+      std::make_unique<TestLogHandlerFactory>("handlerA"));
+  db.registerHandlerFactory(
+      std::make_unique<TestLogHandlerFactory>("handlerB"));
+  EXPECT_EQ(parseLogConfig(".:=ERROR:"), db.getConfig());
+
+  db.getCategory("src.libfoo.foo.c");
+  db.getCategory("src.libfoo.foo.h");
+  db.getCategory("src.libfoo.bar.h");
+  db.getCategory("src.libfoo.bar.c");
+  db.getCategory("test.foo.test.c");
+
+  db.updateConfig(
+      parseLogConfig(".=ERR:stdout,"
+                     "src.libfoo=dbg5; "
+                     "stdout=handlerA:stream=stdout"));
+  EXPECT_EQ(
+      parseLogConfig(".:=ERR:stdout,"
+                     "src.libfoo=dbg5:; "
+                     "stdout=handlerA:stream=stdout"),
+      db.getConfig());
+  EXPECT_EQ(
+      parseLogConfig(".:=ERR:stdout,"
+                     "src=FATAL:, "
+                     "src.libfoo=dbg5:, "
+                     "src.libfoo.foo=FATAL:, "
+                     "src.libfoo.foo.c=FATAL:, "
+                     "src.libfoo.foo.h=FATAL:, "
+                     "src.libfoo.bar=FATAL:, "
+                     "src.libfoo.bar.c=FATAL:, "
+                     "src.libfoo.bar.h=FATAL:, "
+                     "test=FATAL:, "
+                     "test.foo=FATAL:, "
+                     "test.foo.test=FATAL:, "
+                     "test.foo.test.c=FATAL:; "
+                     "stdout=handlerA:stream=stdout"),
+      db.getFullConfig());
+}

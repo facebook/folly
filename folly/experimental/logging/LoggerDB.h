@@ -79,14 +79,17 @@ class LoggerDB {
 
   /**
    * Get a LogConfig object describing the current state of the LoggerDB.
-   *
-   * Note that this may not 100% accurately describe the current configuration
-   * if callers have manually added LogHandlers to some categories without
-   * using the updateConfig() or resetConfig() functions.  In this case
-   * getConfig() will simply report these handlers as "unknown_handler" when
-   * returning handler names for the categories in question.
    */
   LogConfig getConfig() const;
+
+  /**
+   * Get a LogConfig object fully describing the state of the LoggerDB.
+   *
+   * This is similar to getConfig(), but it returns LogCategoryConfig objects
+   * for all defined log categories, including ones that are using the default
+   * configuration settings.
+   */
+  LogConfig getFullConfig() const;
 
   /**
    * Update the current LoggerDB state with the specified LogConfig settings.
@@ -252,6 +255,7 @@ class LoggerDB {
       std::unordered_map<std::string, std::shared_ptr<LogHandler>>;
   using OldToNewHandlerMap = std::
       unordered_map<std::shared_ptr<LogHandler>, std::shared_ptr<LogHandler>>;
+  LogConfig getConfigImpl(bool includeAllCategories) const;
   void startConfigUpdate(
       const Synchronized<HandlerInfo>::LockedPtr& handlerInfo,
       const LogConfig& config,
