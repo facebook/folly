@@ -36,6 +36,22 @@ TEST(Coro, Basic) {
   EXPECT_EQ(42, future.get());
 }
 
+coro::Task<void> taskVoid() {
+  co_await task42();
+  co_return;
+}
+
+TEST(Coro, Basic2) {
+  ManualExecutor executor;
+  auto future = taskVoid().via(&executor);
+
+  EXPECT_FALSE(future.await_ready());
+
+  executor.drive();
+
+  EXPECT_TRUE(future.await_ready());
+}
+
 coro::Task<void> taskSleep() {
   co_await futures::sleep(std::chrono::seconds{1});
   co_return;

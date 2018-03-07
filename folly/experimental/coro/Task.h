@@ -53,7 +53,8 @@ class Task {
   }
 
  private:
-  friend promise_type;
+  template <typename U>
+  friend class Promise;
 
   Future<T> viaInline(folly::Executor* executor) && {
     promise_->executor_ = executor;
