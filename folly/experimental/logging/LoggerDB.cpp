@@ -17,6 +17,7 @@
 
 #include <set>
 
+#include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
 #include <folly/String.h>
@@ -28,7 +29,6 @@
 #include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/RateLimiter.h>
 #include <folly/experimental/logging/StreamHandlerFactory.h>
-#include <folly/portability/Config.h>
 
 using std::string;
 
@@ -40,10 +40,7 @@ namespace folly {
  * This is defined as a weak symbol to allow programs to provide their own
  * alternative definition if desired.
  */
-#if FOLLY_HAVE_WEAK_SYMBOLS
-void initializeLoggerDB(LoggerDB& db) __attribute__((weak));
-#endif
-void initializeLoggerDB(LoggerDB& db) {
+FOLLY_ATTR_WEAK void initializeLoggerDB(LoggerDB& db) {
   // Register the StreamHandlerFactory
   //
   // This is the only LogHandlerFactory that we register by default.  We

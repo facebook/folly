@@ -25,7 +25,7 @@
  * The Makefile links it into all of the test programs so that tests do not need
  * to - and indeed should typically not - define their own main() functions
  */
-int main(int argc, char** argv) __attribute__((__weak__));
+FOLLY_ATTR_WEAK int main(int argc, char** argv);
 
 int main(int argc, char** argv) {
 #if FOLLY_HAVE_LIBGFLAGS

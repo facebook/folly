@@ -15,16 +15,10 @@
  */
 
 #include <folly/compression/Counters.h>
-#include <folly/portability/Config.h>
+#include <folly/Portability.h>
 
 namespace folly {
-#if FOLLY_HAVE_WEAK_SYMBOLS
-#define FOLLY_WEAK_SYMBOL __attribute__((__weak__))
-#else
-#define FOLLY_WEAK_SYMBOL
-#endif
-
-folly::Function<void(double)> FOLLY_WEAK_SYMBOL makeCompressionCounterHandler(
+FOLLY_ATTR_WEAK folly::Function<void(double)> makeCompressionCounterHandler(
     folly::io::CodecType,
     folly::StringPiece,
     folly::Optional<int>,

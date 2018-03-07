@@ -19,6 +19,8 @@
 /* These definitions are in a separate file so that they
  * may be included from C- as well as C++-based projects. */
 
+#include <folly/portability/Config.h>
+
 /**
  * Portable version check.
  */
@@ -153,4 +155,11 @@
 #define FOLLY_ATTR_VISIBILITY_HIDDEN __attribute__((__visibility__("hidden")))
 #else
 #define FOLLY_ATTR_VISIBILITY_HIDDEN
+#endif
+
+// An attribute for marking symbols as weak, if supported
+#if FOLLY_HAVE_WEAK_SYMBOLS
+#define FOLLY_ATTR_WEAK __attribute__((__weak__))
+#else
+#define FOLLY_ATTR_WEAK
 #endif
