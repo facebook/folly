@@ -350,6 +350,8 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
+    ${FOLLY_DIR}/experimental/logging/test/ConfigHelpers.cpp
+    ${FOLLY_DIR}/experimental/logging/test/ConfigHelpers.h
     ${FOLLY_DIR}/experimental/logging/test/TestLogHandler.cpp
     ${FOLLY_DIR}/experimental/logging/test/TestLogHandler.h
     ${FOLLY_DIR}/futures/test/TestExecutor.cpp
