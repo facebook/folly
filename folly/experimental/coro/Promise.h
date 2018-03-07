@@ -17,6 +17,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/ExceptionWrapper.h>
 #include <folly/Try.h>
 #include <folly/experimental/coro/AwaitWrapper.h>
 #include <folly/experimental/coro/Task.h>
@@ -140,7 +141,8 @@ class Promise : public PromiseBase<T> {
   }
 
   void unhandled_exception() {
-    this->result_ = Try<T>(std::current_exception());
+    this->result_ =
+        Try<T>(exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
   void start() {
