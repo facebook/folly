@@ -90,13 +90,23 @@ namespace folly {
  * unless evictions of LRU items are triggered by calling prune() by clients
  * (using their own eviction criteria).
  */
-template <class TKey, class TValue, class THash = std::hash<TKey>>
+template <
+    class TKey,
+    class TValue,
+    class THash = std::hash<TKey>,
+    class TKeyEqual = std::equal_to<TKey>>
 class EvictingCacheMap {
  private:
   // typedefs for brevity
   struct Node;
+  struct KeyHasher;
+  struct KeyValueEqual;
   typedef boost::intrusive::link_mode<boost::intrusive::safe_link> link_mode;
-  typedef boost::intrusive::unordered_set<Node> NodeMap;
+  typedef boost::intrusive::unordered_set<
+      Node,
+      boost::intrusive::hash<KeyHasher>,
+      boost::intrusive::equal<KeyValueEqual>>
+      NodeMap;
   typedef boost::intrusive::list<Node> NodeList;
   typedef std::pair<const TKey, TValue> TPair;
 
@@ -144,13 +154,19 @@ class EvictingCacheMap {
    * @param clearSize the number of elements to clear at a time when the
    *     eviction size is reached.
    */
-  explicit EvictingCacheMap(std::size_t maxSize, std::size_t clearSize = 1)
+  explicit EvictingCacheMap(
+      std::size_t maxSize,
+      std::size_t clearSize = 1,
+      const THash& keyHash = THash(),
+      const TKeyEqual& keyEqual = TKeyEqual())
       : nIndexBuckets_(std::max(maxSize / 2, std::size_t(kMinNumIndexBuckets))),
         indexBuckets_(new typename NodeMap::bucket_type[nIndexBuckets_]),
         indexTraits_(indexBuckets_.get(), nIndexBuckets_),
-        index_(indexTraits_),
+        keyHash_(keyHash),
+        keyEqual_(keyEqual),
+        index_(indexTraits_, keyHash_, keyEqual_),
         maxSize_(maxSize),
-        clearSize_(clearSize) { }
+        clearSize_(clearSize) {}
 
   EvictingCacheMap(const EvictingCacheMap&) = delete;
   EvictingCacheMap& operator=(const EvictingCacheMap&) = delete;
@@ -412,37 +428,36 @@ class EvictingCacheMap {
   }
 
  private:
-  struct Node
-    : public boost::intrusive::unordered_set_base_hook<link_mode>,
-      public boost::intrusive::list_base_hook<link_mode> {
+  struct Node : public boost::intrusive::unordered_set_base_hook<link_mode>,
+                public boost::intrusive::list_base_hook<link_mode> {
     Node(const TKey& key, TValue&& value)
-        : pr(std::make_pair(key, std::move(value))) {
-    }
+        : pr(std::make_pair(key, std::move(value))) {}
     TPair pr;
-    friend bool operator==(const Node& lhs, const Node& rhs) {
-      return lhs.pr.first == rhs.pr.first;
-    }
-    friend std::size_t hash_value(const Node& node) {
-      return THash()(node.pr.first);
-    }
   };
 
   struct KeyHasher {
-    std::size_t operator()(const Node& node) {
-      return THash()(node.pr.first);
+    KeyHasher(const THash& keyHash) : hash(keyHash) {}
+    std::size_t operator()(const Node& node) const {
+      return hash(node.pr.first);
     }
-    std::size_t operator()(const TKey& key) {
-      return THash()(key);
+    std::size_t operator()(const TKey& key) const {
+      return hash(key);
     }
+    THash hash;
   };
 
   struct KeyValueEqual {
-    bool operator()(const TKey& lhs, const Node& rhs) {
-      return lhs == rhs.pr.first;
+    KeyValueEqual(const TKeyEqual& keyEqual) : equal(keyEqual) {}
+    bool operator()(const TKey& lhs, const Node& rhs) const {
+      return equal(lhs, rhs.pr.first);
     }
-    bool operator()(const Node& lhs, const TKey& rhs) {
-      return lhs.pr.first == rhs;
+    bool operator()(const Node& lhs, const TKey& rhs) const {
+      return equal(lhs.pr.first, rhs);
     }
+    bool operator()(const Node& lhs, const Node& rhs) const {
+      return equal(lhs.pr.first, rhs.pr.first);
+    }
+    TKeyEqual equal;
   };
 
   /**
@@ -453,11 +468,11 @@ class EvictingCacheMap {
    *    (a std::pair of const TKey, TValue) or index_.end() if it does not exist
    */
   typename NodeMap::iterator findInIndex(const TKey& key) {
-    return index_.find(key, KeyHasher(), KeyValueEqual());
+    return index_.find(key, KeyHasher(keyHash_), KeyValueEqual(keyEqual_));
   }
 
   typename NodeMap::const_iterator findInIndex(const TKey& key) const {
-    return index_.find(key, KeyHasher(), KeyValueEqual());
+    return index_.find(key, KeyHasher(keyHash_), KeyValueEqual(keyEqual_));
   }
 
   /**
@@ -493,6 +508,8 @@ class EvictingCacheMap {
   std::size_t nIndexBuckets_;
   std::unique_ptr<typename NodeMap::bucket_type[]> indexBuckets_;
   typename NodeMap::bucket_traits indexTraits_;
+  THash keyHash_;
+  TKeyEqual keyEqual_;
   NodeMap index_;
   NodeList lru_;
   std::size_t maxSize_;

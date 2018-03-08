@@ -633,3 +633,28 @@ TEST(EvictingCacheMap, MoveTest) {
     EXPECT_EQ(i, map2.get(i));
   }
 }
+
+TEST(EvictingCacheMap, CustomKeyEqual) {
+  const int nItems = 100;
+  struct Eq {
+    bool operator()(const int& a, const int& b) const {
+      return (a % mod) == (b % mod);
+    }
+    int mod;
+  };
+  struct Hash {
+    size_t operator()(const int& a) const {
+      return std::hash<int>()(a % mod);
+    }
+    int mod;
+  };
+  EvictingCacheMap<int, int, Hash, Eq> map(
+      nItems, 1 /* clearSize */, Hash{nItems}, Eq{nItems});
+  for (int i = 0; i < nItems; i++) {
+    map.set(i, i);
+    EXPECT_TRUE(map.exists(i));
+    EXPECT_EQ(i, map.get(i));
+    EXPECT_TRUE(map.exists(i + nItems));
+    EXPECT_EQ(i, map.get(i + nItems));
+  }
+}
