@@ -224,6 +224,12 @@ TEST(Hash, integral_types) {
   EXPECT_EQ(setSize, hashes.size());
 }
 
+TEST(Hash, integer_conversion) {
+  folly::hasher<uint64_t> h;
+  uint64_t k = 10;
+  EXPECT_EQ(h(k), h(10));
+}
+
 #if FOLLY_HAVE_INT128_T
 TEST(Hash, int128_std_hash) {
   std::unordered_set<__int128> hs;

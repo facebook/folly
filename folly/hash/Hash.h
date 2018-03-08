@@ -372,8 +372,8 @@ inline uint32_t hsieh_hash32_str(const std::string& str) {
 
 namespace detail {
 
+template <typename I>
 struct integral_hasher {
-  template <typename I>
   size_t operator()(I const& i) const {
     static_assert(sizeof(I) <= 16, "Input type is too wide");
     /* constexpr */ if (sizeof(I) <= 4) {
@@ -392,8 +392,8 @@ struct integral_hasher {
   }
 };
 
+template <typename F>
 struct float_hasher {
-  template <typename F>
   size_t operator()(F const& f) const {
     static_assert(sizeof(F) <= 8, "Input type is too wide");
 
@@ -439,51 +439,53 @@ struct hasher<bool> {
 };
 
 template <>
-struct hasher<unsigned long long> : detail::integral_hasher {};
+struct hasher<unsigned long long>
+    : detail::integral_hasher<unsigned long long> {};
 
 template <>
-struct hasher<signed long long> : detail::integral_hasher {};
+struct hasher<signed long long> : detail::integral_hasher<signed long long> {};
 
 template <>
-struct hasher<unsigned long> : detail::integral_hasher {};
+struct hasher<unsigned long> : detail::integral_hasher<unsigned long> {};
 
 template <>
-struct hasher<signed long> : detail::integral_hasher {};
+struct hasher<signed long> : detail::integral_hasher<signed long> {};
 
 template <>
-struct hasher<unsigned int> : detail::integral_hasher {};
+struct hasher<unsigned int> : detail::integral_hasher<unsigned int> {};
 
 template <>
-struct hasher<signed int> : detail::integral_hasher {};
+struct hasher<signed int> : detail::integral_hasher<signed int> {};
 
 template <>
-struct hasher<unsigned short> : detail::integral_hasher {};
+struct hasher<unsigned short> : detail::integral_hasher<unsigned short> {};
 
 template <>
-struct hasher<signed short> : detail::integral_hasher {};
+struct hasher<signed short> : detail::integral_hasher<signed short> {};
 
 template <>
-struct hasher<unsigned char> : detail::integral_hasher {};
+struct hasher<unsigned char> : detail::integral_hasher<unsigned char> {};
 
 template <>
-struct hasher<signed char> : detail::integral_hasher {};
+struct hasher<signed char> : detail::integral_hasher<signed char> {};
 
 template <> // char is a different type from both signed char and unsigned char
-struct hasher<char> : detail::integral_hasher {};
+struct hasher<char> : detail::integral_hasher<char> {};
 
 #if FOLLY_HAVE_INT128_T
 template <>
-struct hasher<signed __int128> : detail::integral_hasher {};
+struct hasher<signed __int128> : detail::integral_hasher<signed __int128> {};
 
 template <>
-struct hasher<unsigned __int128> : detail::integral_hasher {};
+struct hasher<unsigned __int128> : detail::integral_hasher<unsigned __int128> {
+};
 #endif
 
 template <>
-struct hasher<float> : detail::float_hasher {};
+struct hasher<float> : detail::float_hasher<float> {};
 
 template <>
-struct hasher<double> : detail::float_hasher {};
+struct hasher<double> : detail::float_hasher<double> {};
 
 template <> struct hasher<std::string> {
   size_t operator()(const std::string& key) const {
@@ -539,10 +541,11 @@ struct TupleHasher<0, Ts...> {
 namespace std {
 #if FOLLY_SUPPLY_MISSING_INT128_TRAITS
 template <>
-struct hash<__int128> : folly::detail::integral_hasher {};
+struct hash<__int128> : folly::detail::integral_hasher<__int128> {};
 
 template <>
-struct hash<unsigned __int128> : folly::detail::integral_hasher {};
+struct hash<unsigned __int128>
+    : folly::detail::integral_hasher<unsigned __int128> {};
 #endif
 
 // Hash function for pairs. Requires default hash functions for both
