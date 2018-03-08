@@ -1891,7 +1891,7 @@ template <typename TP>
 inline typename std::enable_if<
     std::is_same<
         typename std::decay<TP>::type,
-        typename basic_fbstring<E, T, A, S>::value_type>::value,
+        typename folly::basic_fbstring<E, T, A, S>::value_type>::value,
     basic_fbstring<E, T, A, S>&>::type
 basic_fbstring<E, T, A, S>::operator=(TP c) {
   Invariant checker(*this);
