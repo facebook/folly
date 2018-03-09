@@ -23,12 +23,24 @@
 namespace folly {
 
 void initLogging(StringPiece configString) {
-  if (configString.empty()) {
+  auto* const baseConfigStr = getBaseLoggingConfig();
+  // Return early if we have nothing to do
+  if (!baseConfigStr && configString.empty()) {
     return;
   }
 
-  // Parse and apply the config string
-  auto config = parseLogConfig(configString);
+  // Parse the configuration string(s)
+  LogConfig config;
+  if (baseConfigStr) {
+    config = parseLogConfig(baseConfigStr);
+    if (!configString.empty()) {
+      config.update(parseLogConfig(configString));
+    }
+  } else {
+    config = parseLogConfig(configString);
+  }
+
+  // Apply the config settings
   LoggerDB::get().updateConfig(config);
 }
 

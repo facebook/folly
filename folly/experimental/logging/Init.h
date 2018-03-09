@@ -39,4 +39,26 @@ namespace folly {
  */
 void initLogging(folly::StringPiece configString = "");
 
+/**
+ * folly::getBaseLoggingConfig() allows individual executables to easily
+ * customize their default logging configuration.
+ *
+ * You can define this function in your executable and folly::initLogging()
+ * will call it to get the base logging configuration.  The settings returned
+ * by getBaseLoggingConfig() will then be modified by updating them with the
+ * configuration string parameter passed to initLogging().
+ *
+ * This allows the user-specified configuration passed to initLogging() to
+ * update the base configuration.  The user-specified configuration can apply
+ * additional settings, and it may also override settings for categories and
+ * handlers defined in the base configuration.
+ *
+ * See folly/experimental/logging/example/main.cpp for an example that defines
+ * getBaseLoggingConfig().
+ *
+ * If this function returns a non-null pointer, it should point to a
+ * null-terminated string with static storage duration.
+ */
+const char* getBaseLoggingConfig();
+
 } // namespace folly

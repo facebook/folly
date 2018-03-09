@@ -316,6 +316,11 @@ class LoggerDB {
  * generally a good idea to defer more complicated setup until after main()
  * starts.
  *
+ * In most situations it is normally better to override getBaseLoggingConfig()
+ * from logging/Init.h rather than overriding initializeLoggerDB().  You only
+ * need to override initializeLoggerDB() if you want to change the settings
+ * that are used for messages that get logged before initLogging() is called.
+ *
  * The default implementation configures the root log category to write all
  * warning and higher-level log messages to stderr, using a format similar to
  * that used by GLOG.
