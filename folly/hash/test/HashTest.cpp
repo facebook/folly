@@ -597,7 +597,7 @@ static_assert(
     folly::IsAvalanchingHasher<folly::hasher<int64_t>, int64_t>::value,
     "");
 static_assert(
-    !folly::IsAvalanchingHasher<folly::hasher<float>, float>::value,
+    folly::IsAvalanchingHasher<folly::hasher<float>, float>::value,
     "");
 static_assert(
     folly::IsAvalanchingHasher<folly::hasher<double>, double>::value,
@@ -734,6 +734,10 @@ TEST(Traits, follyHashUint64Avalances) {
 TEST(Traits, follyHasherInt64Avalances) {
   verifyAvalanching<folly::hasher<int64_t>>(
       int64_t{0}, [](int64_t& v) { v++; });
+}
+
+TEST(Traits, follyHasherFloatAvalanches) {
+  verifyAvalanching<folly::hasher<float>>(0.0f, [](float& v) { v += 1; });
 }
 
 TEST(Traits, follyHasherDoubleAvalanches) {

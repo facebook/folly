@@ -401,21 +401,11 @@ struct float_hasher {
       return 0;
     }
 
-    /* constexpr */ if (sizeof(F) <= 4) {
-      uint32_t u32 = 0;
-      memcpy(&u32, &f, sizeof(F));
-      return static_cast<size_t>(hash::jenkins_rev_mix32(u32));
-    } else {
-      uint64_t u64 = 0;
-      memcpy(&u64, &f, sizeof(F));
-      return static_cast<size_t>(hash::twang_mix64(u64));
-    }
+    uint64_t u64 = 0;
+    memcpy(&u64, &f, sizeof(F));
+    return static_cast<size_t>(hash::twang_mix64(u64));
   }
 };
-
-template <typename F>
-using float_hasher_avalanches =
-    std::integral_constant<bool, sizeof(F) == 8 || sizeof(size_t) == 4>;
 
 } // namespace detail
 
@@ -467,10 +457,7 @@ struct IsAvalanchingHasher<hasher<T, E>, K>
     : std::conditional<
           std::is_enum<T>::value || std::is_integral<T>::value,
           detail::integral_hasher_avalanches<T>,
-          typename std::conditional<
-              std::is_floating_point<T>::value,
-              detail::float_hasher_avalanches<T>,
-              std::false_type>::type>::type {};
+          std::is_floating_point<T>>::type {};
 
 template <typename K>
 struct IsAvalanchingHasher<Hash, K> : IsAvalanchingHasher<hasher<K>, K> {};
