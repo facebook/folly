@@ -46,7 +46,7 @@ class Task {
     DCHECK(!promise_);
   }
 
-  Future<T> via(folly::Executor* executor) && {
+  Future<T> scheduleVia(folly::Executor* executor) && {
     promise_->executor_ = executor;
     promise_->executor_->add([promise = promise_] { promise->start(); });
     return {*std::exchange(promise_, nullptr)};
@@ -66,5 +66,12 @@ class Task {
 
   Promise<T>* promise_;
 };
+
 } // namespace coro
+
+template <typename T>
+coro::Future<T> via(folly::Executor* executor, coro::Task<T>&& task) {
+  return std::move(task).scheduleVia(executor);
+}
+
 } // namespace folly

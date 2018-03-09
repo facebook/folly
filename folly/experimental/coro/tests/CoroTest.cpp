@@ -26,7 +26,7 @@ coro::Task<int> task42() {
 
 TEST(Coro, Basic) {
   ManualExecutor executor;
-  auto future = task42().via(&executor);
+  auto future = via(&executor, task42());
 
   EXPECT_FALSE(future.await_ready());
 
@@ -61,7 +61,7 @@ TEST(Coro, Sleep) {
   ScopedEventBaseThread evbThread;
 
   auto startTime = std::chrono::steady_clock::now();
-  auto future = taskSleep().via(evbThread.getEventBase());
+  auto future = via(evbThread.getEventBase(), taskSleep());
 
   EXPECT_FALSE(future.await_ready());
 
@@ -79,7 +79,7 @@ coro::Task<void> taskException() {
 
 TEST(Coro, Throw) {
   ManualExecutor executor;
-  auto future = taskException().via(&executor);
+  auto future = via(&executor, taskException());
 
   EXPECT_FALSE(future.await_ready());
 
@@ -101,7 +101,7 @@ coro::Task<int> taskRecursion(int depth) {
 
 TEST(Coro, LargeStack) {
   ScopedEventBaseThread evbThread;
-  auto future = taskRecursion(10000).via(evbThread.getEventBase());
+  auto future = via(evbThread.getEventBase(), taskRecursion(10000));
 
   future.wait();
   EXPECT_EQ(10000, future.get());
@@ -118,8 +118,8 @@ coro::Task<int> taskThread() {
   auto threadId = std::this_thread::get_id();
 
   folly::ScopedEventBaseThread evbThread;
-  co_await taskThreadNested(evbThread.getThreadId())
-      .via(evbThread.getEventBase());
+  co_await via(
+      evbThread.getEventBase(), taskThreadNested(evbThread.getThreadId()));
 
   EXPECT_EQ(threadId, std::this_thread::get_id());
 
@@ -128,7 +128,7 @@ coro::Task<int> taskThread() {
 
 TEST(Coro, NestedThreads) {
   ScopedEventBaseThread evbThread;
-  auto future = taskThread().via(evbThread.getEventBase());
+  auto future = via(evbThread.getEventBase(), taskThread());
 
   future.wait();
   EXPECT_EQ(42, future.get());
@@ -138,7 +138,7 @@ coro::Task<int> taskYield(Executor* executor) {
   auto currentExecutor = co_await coro::getCurrentExecutor();
   EXPECT_EQ(executor, currentExecutor);
 
-  auto future = task42().via(currentExecutor);
+  auto future = via(currentExecutor, task42());
   EXPECT_FALSE(future.await_ready());
 
   co_await coro::yield();
@@ -150,7 +150,7 @@ coro::Task<int> taskYield(Executor* executor) {
 TEST(Coro, CurrentExecutor) {
   ScopedEventBaseThread evbThread;
   auto future =
-      taskYield(evbThread.getEventBase()).via(evbThread.getEventBase());
+      via(evbThread.getEventBase(), taskYield(evbThread.getEventBase()));
 
   future.wait();
   EXPECT_EQ(42, future.get());
