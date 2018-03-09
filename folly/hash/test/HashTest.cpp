@@ -15,12 +15,15 @@
  */
 
 #include <folly/hash/Hash.h>
-#include <folly/MapUtil.h>
-#include <folly/portability/GTest.h>
+
 #include <stdint.h>
+
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+
+#include <folly/MapUtil.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::hash;
 
@@ -76,17 +79,12 @@ TEST(Hash, Fnv64) {
   int32_t t4_c = 0xAB12CD34;
   const char* t4_d = "Unum";
   uint64_t t4_res = 15571330457339273965ULL;
-  uint64_t t4_hash1 = fnv64_buf(t4_a,
-                                strlen(t4_a));
-  uint64_t t4_hash2 = fnv64_buf(reinterpret_cast<void*>(&t4_b),
-                                sizeof(int64_t),
-                                t4_hash1);
-  uint64_t t4_hash3 = fnv64_buf(reinterpret_cast<void*>(&t4_c),
-                                sizeof(int32_t),
-                                t4_hash2);
-  uint64_t t4_hash4 = fnv64_buf(t4_d,
-                                strlen(t4_d),
-                                t4_hash3);
+  uint64_t t4_hash1 = fnv64_buf(t4_a, strlen(t4_a));
+  uint64_t t4_hash2 =
+      fnv64_buf(reinterpret_cast<void*>(&t4_b), sizeof(int64_t), t4_hash1);
+  uint64_t t4_hash3 =
+      fnv64_buf(reinterpret_cast<void*>(&t4_c), sizeof(int32_t), t4_hash2);
+  uint64_t t4_hash4 = fnv64_buf(t4_d, strlen(t4_d), t4_hash3);
   EXPECT_EQ(t4_hash4, t4_res);
   // note: These are probabalistic, not determinate, but c'mon.
   // These hash values should be different, or something's not
@@ -181,7 +179,7 @@ TEST(Hash, Jenkins_Rev_Unmix32) {
 
 TEST(Hash, hasher) {
   // Basically just confirms that things compile ok.
-  std::unordered_map<int32_t,int32_t,folly::hasher<int32_t>> m;
+  std::unordered_map<int32_t, int32_t, folly::hasher<int32_t>> m;
   m.insert(std::make_pair(4, 5));
   EXPECT_EQ(get_default(m, 4), 5);
 }
@@ -280,38 +278,27 @@ TEST(Hash, pair) {
   auto b = std::make_pair(3, 4);
   auto c = std::make_pair(1, 2);
   auto d = std::make_pair(2, 1);
-  EXPECT_EQ(hash_combine(a),
-            hash_combine(c));
-  EXPECT_NE(hash_combine(b),
-            hash_combine(c));
-  EXPECT_NE(hash_combine(d),
-            hash_combine(c));
+  EXPECT_EQ(hash_combine(a), hash_combine(c));
+  EXPECT_NE(hash_combine(b), hash_combine(c));
+  EXPECT_NE(hash_combine(d), hash_combine(c));
 
   // With composition
-  EXPECT_EQ(hash_combine(a, b),
-            hash_combine(c, b));
+  EXPECT_EQ(hash_combine(a, b), hash_combine(c, b));
   // Test order dependence
-  EXPECT_NE(hash_combine(a, b),
-            hash_combine(b, a));
+  EXPECT_NE(hash_combine(a, b), hash_combine(b, a));
 
   // Test with custom hasher
-  EXPECT_EQ(hash_combine_test(a),
-            hash_combine_test(c));
+  EXPECT_EQ(hash_combine_test(a), hash_combine_test(c));
   // 3 + 4 != 1 + 2
-  EXPECT_NE(hash_combine_test(b),
-            hash_combine_test(c));
+  EXPECT_NE(hash_combine_test(b), hash_combine_test(c));
   // This time, thanks to a terrible hash function, these are equal
-  EXPECT_EQ(hash_combine_test(d),
-            hash_combine_test(c));
+  EXPECT_EQ(hash_combine_test(d), hash_combine_test(c));
   // With composition
-  EXPECT_EQ(hash_combine_test(a, b),
-            hash_combine_test(c, b));
+  EXPECT_EQ(hash_combine_test(a, b), hash_combine_test(c, b));
   // Test order dependence
-  EXPECT_NE(hash_combine_test(a, b),
-            hash_combine_test(b, a));
+  EXPECT_NE(hash_combine_test(a, b), hash_combine_test(b, a));
   // Again, 1 + 2 == 2 + 1
-  EXPECT_EQ(hash_combine_test(a, b),
-            hash_combine_test(d, b));
+  EXPECT_EQ(hash_combine_test(a, b), hash_combine_test(d, b));
 }
 
 TEST(Hash, hash_combine) {
@@ -419,18 +406,15 @@ TEST(Hash, std_tuple_different_hash) {
   tuple3 t2(9, "bar", 3);
   tuple3 t3(42, "foo", 3);
 
-  EXPECT_NE(std::hash<tuple3>()(t1),
-            std::hash<tuple3>()(t2));
-  EXPECT_NE(std::hash<tuple3>()(t1),
-            std::hash<tuple3>()(t3));
+  EXPECT_NE(std::hash<tuple3>()(t1), std::hash<tuple3>()(t2));
+  EXPECT_NE(std::hash<tuple3>()(t1), std::hash<tuple3>()(t3));
 }
 
 TEST(Hash, Strings) {
   using namespace folly;
 
-  StringPiece a1 = "10050517", b1 = "51107032",
-              a2 = "10050518", b2 = "51107033",
-              a3 = "10050519", b3 = "51107034",
+  StringPiece a1 = "10050517", b1 = "51107032", a2 = "10050518",
+              b2 = "51107033", a3 = "10050519", b3 = "51107034",
               a4 = "10050525", b4 = "51107040";
   Range<const wchar_t*> w1 = range(L"10050517"), w2 = range(L"51107032"),
                         w3 = range(L"10050518"), w4 = range(L"51107033");
@@ -462,8 +446,8 @@ struct FNVTestParam {
 class FNVTest : public ::testing::TestWithParam<FNVTestParam> {};
 
 TEST_P(FNVTest, Fnva64Buf) {
-  EXPECT_EQ(GetParam().out,
-            fnva64_buf(GetParam().in.data(), GetParam().in.size()));
+  EXPECT_EQ(
+      GetParam().out, fnva64_buf(GetParam().in.data(), GetParam().in.size()));
 }
 
 TEST_P(FNVTest, Fnva64) {
@@ -474,9 +458,10 @@ TEST_P(FNVTest, Fnva64Partial) {
   size_t partialLen = GetParam().in.size() / 2;
   auto data = GetParam().in.data();
   auto partial = fnva64_buf(data, partialLen);
-  EXPECT_EQ(GetParam().out,
-            fnva64_buf(
-                data + partialLen, GetParam().in.size() - partialLen, partial));
+  EXPECT_EQ(
+      GetParam().out,
+      fnva64_buf(
+          data + partialLen, GetParam().in.size() - partialLen, partial));
 }
 
 // Taken from http://www.isthe.com/chongo/src/fnv/test_fnv.c
