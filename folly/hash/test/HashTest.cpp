@@ -23,6 +23,7 @@
 #include <utility>
 
 #include <folly/MapUtil.h>
+#include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::hash;
@@ -480,3 +481,261 @@ INSTANTIATE_TEST_CASE_P(
             0xd9b957fb7fe794c5},
         (FNVTestParam){"http://norvig.com/21-days.html", // 136
                        0x07aaa640476e0b9a}));
+
+namespace {
+enum class TestEnum {
+  MIN = 0,
+  ITEM = 1,
+  MAX = 2,
+};
+
+enum class TestBigEnum : uint64_t {
+  ITEM = 1,
+};
+
+struct TestStruct {};
+} // namespace
+
+namespace std {
+template <>
+struct hash<TestEnum> : hash<int> {};
+
+template <>
+struct hash<TestStruct> {
+  std::size_t operator()(TestStruct const&) const {
+    return 0;
+  }
+};
+} // namespace std
+
+//////// static checks
+
+static_assert(!folly::IsAvalanchingHasher<std::hash<int>, int>::value, "");
+static_assert(
+    !folly::IsAvalanchingHasher<std::hash<char const*>, char const*>::value,
+    "");
+static_assert(!folly::IsAvalanchingHasher<std::hash<float>, float>::value, "");
+static_assert(
+    !folly::IsAvalanchingHasher<std::hash<double>, double>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<std::hash<long double>, long double>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<std::hash<std::string>, std::string>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<std::hash<TestEnum>, TestEnum>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<std::hash<TestStruct>, TestStruct>::value,
+    "");
+
+// these come from folly/hash/Hash.h
+static_assert(
+    folly::IsAvalanchingHasher<
+        std::hash<std::pair<int, int>>,
+        std::pair<int, int>>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<std::hash<std::tuple<int>>, std::tuple<int>>::
+        value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        std::hash<std::tuple<std::string>>,
+        std::tuple<std::string>>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        std::hash<std::tuple<int, int>>,
+        std::tuple<int, int>>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        std::hash<std::tuple<int, int, int>>,
+        std::tuple<int, int, int>>::value,
+    "");
+
+static_assert(!folly::IsAvalanchingHasher<folly::Hash, uint8_t>::value, "");
+static_assert(!folly::IsAvalanchingHasher<folly::Hash, char>::value, "");
+static_assert(!folly::IsAvalanchingHasher<folly::Hash, uint16_t>::value, "");
+static_assert(!folly::IsAvalanchingHasher<folly::Hash, int16_t>::value, "");
+static_assert(!folly::IsAvalanchingHasher<folly::Hash, uint32_t>::value, "");
+static_assert(!folly::IsAvalanchingHasher<folly::Hash, int32_t>::value, "");
+static_assert(folly::IsAvalanchingHasher<folly::Hash, uint64_t>::value, "");
+static_assert(folly::IsAvalanchingHasher<folly::Hash, int64_t>::value, "");
+static_assert(
+    folly::IsAvalanchingHasher<folly::Hash, folly::StringPiece>::value,
+    "");
+static_assert(folly::IsAvalanchingHasher<folly::Hash, std::string>::value, "");
+static_assert(!folly::IsAvalanchingHasher<folly::Hash, TestEnum>::value, "");
+static_assert(folly::IsAvalanchingHasher<folly::Hash, TestBigEnum>::value, "");
+
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<uint8_t>, uint8_t>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<char>, char>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<uint16_t>, uint16_t>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<int16_t>, int16_t>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<uint32_t>, uint32_t>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<int32_t>, int32_t>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<folly::hasher<uint64_t>, uint64_t>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<folly::hasher<int64_t>, int64_t>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<float>, float>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<folly::hasher<double>, double>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<folly::hasher<std::string>, std::string>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<folly::hasher<folly::StringPiece>, std::string>::
+        value,
+    "");
+
+static_assert(
+    folly::IsAvalanchingHasher<folly::hasher<std::string>, std::string>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        folly::hasher<std::pair<int, int>>,
+        std::pair<int, int>>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<
+        folly::hasher<std::tuple<int>>,
+        std::tuple<int>>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        folly::hasher<std::tuple<std::string>>,
+        std::tuple<std::string>>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        folly::hasher<std::tuple<int, int>>,
+        std::tuple<int, int>>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        folly::hasher<std::tuple<int, int, int>>,
+        std::tuple<int, int, int>>::value,
+    "");
+static_assert(
+    !folly::IsAvalanchingHasher<folly::hasher<TestEnum>, TestEnum>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<folly::hasher<TestBigEnum>, TestBigEnum>::value,
+    "");
+
+//////// dynamic checks
+
+namespace {
+template <typename H, typename T, typename F>
+void verifyAvalanching(T initialValue, F const& advance) {
+  // This doesn't check probabilities, but does verify that every bit
+  // changed independently of every other bit, in both directions, when
+  // traversing a sequence of dependent changes.  Note that it is NOT
+  // sufficient to just use a random sequence here, because even the
+  // identity function will pass.  As constructed this will require
+  // 2^63 steps to complete for an identity hash, because none of the
+  // transitions with on == 63 will occur until then.
+  H const hasher;
+  constexpr std::size_t N = sizeof(decltype(hasher(initialValue))) * 8;
+
+  // seen[i][j] if we have seen i flip on at the same time as j went off
+  bool seen[N][N] = {};
+  std::size_t unseenCount = N * (N - 1);
+  auto v = initialValue;
+  auto h = hasher(v);
+  std::size_t steps = 0;
+  // wait for 95% coverage
+  while (unseenCount > (N * (N - 1)) / 95) {
+    ++steps;
+    auto hPrev = h;
+    advance(v);
+    h = hasher(v);
+
+    uint64_t delta = hPrev ^ h;
+    for (std::size_t i = 0; i < N - 1; ++i) {
+      if (((delta >> i) & 1) == 0) {
+        continue;
+      }
+      // we know i flipped
+      for (std::size_t j = i + 1; j < N; ++j) {
+        if (((delta >> j) & 1) == 0) {
+          continue;
+        }
+        // we know j flipped
+        bool iOn = ((hPrev >> i) & 1) == 0;
+        bool jOn = ((hPrev >> j) & 1) == 0;
+        if (iOn != jOn) {
+          auto on = iOn ? i : j;
+          auto off = iOn ? j : i;
+          if (!seen[on][off]) {
+            seen[on][off] = true;
+            --unseenCount;
+          }
+        }
+      }
+    }
+
+    // we should actually only need a couple hundred
+    ASSERT_LT(steps, 1000) << unseenCount << " of " << (N * (N - 1))
+                           << " pair transitions unseen";
+  }
+}
+} // namespace
+
+TEST(Traits, stdHashPairAvalances) {
+  verifyAvalanching<std::hash<std::pair<int, int>>>(
+      std::make_pair(0, 0), [](std::pair<int, int>& v) { v.first++; });
+}
+
+TEST(Traits, stdHashTuple2Avalances) {
+  verifyAvalanching<std::hash<std::tuple<int, int>>>(
+      std::make_tuple(0, 0),
+      [](std::tuple<int, int>& v) { std::get<0>(v) += 1; });
+}
+
+TEST(Traits, stdHashStringAvalances) {
+  verifyAvalanching<std::hash<std::string>, std::string>(
+      "00000000000000000000000000000", [](std::string& str) {
+        std::size_t i = 0;
+        while (str[i] == '1') {
+          str[i] = '0';
+          ++i;
+        }
+        str[i] = '1';
+      });
+}
+
+TEST(Traits, follyHashUint64Avalances) {
+  verifyAvalanching<folly::Hash>(uint64_t{0}, [](uint64_t& v) { v++; });
+}
+
+TEST(Traits, follyHasherInt64Avalances) {
+  verifyAvalanching<folly::hasher<int64_t>>(
+      int64_t{0}, [](int64_t& v) { v++; });
+}
+
+TEST(Traits, follyHasherDoubleAvalanches) {
+  verifyAvalanching<folly::hasher<double>>(0.0, [](double& v) { v += 1; });
+}

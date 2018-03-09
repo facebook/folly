@@ -388,6 +388,10 @@ struct integral_hasher {
   }
 };
 
+template <typename I>
+using integral_hasher_avalanches =
+    std::integral_constant<bool, sizeof(I) >= 8 || sizeof(size_t) == 4>;
+
 template <typename F>
 struct float_hasher {
   size_t operator()(F const& f) const {
@@ -409,6 +413,10 @@ struct float_hasher {
   }
 };
 
+template <typename F>
+using float_hasher_avalanches =
+    std::integral_constant<bool, sizeof(F) == 8 || sizeof(size_t) == 4>;
+
 } // namespace detail
 
 template <class Key, class Enable = void>
@@ -426,6 +434,47 @@ struct Hash {
   }
 };
 
+// IsAvalanchingHasher<H, K> extends std::integral_constant<bool, V>.
+// V will be true if it is known that when a hasher of type H computes
+// the hash of a key of type K, any subset of B bits from the resulting
+// hash value is usable in a context that can tolerate a collision rate
+// of about 1/2^B.  (Input bits lost implicitly converting between K and
+// the argument of H::operator() are not considered here; K is separate
+// to handle the case of generic hashers like folly::Hash).
+//
+// The standard's definition of hash quality is based on the chance hash
+// collisions using the entire hash value.  No requirement is made that
+// this property holds for subsets of the bits.  In addition, hashed keys
+// in real-world workloads are not chosen uniformly from the entire domain
+// of keys, which can further increase the collision rate for a subset
+// of bits.  For example, std::hash<uint64_t> in libstdc++-v3 and libc++
+// is the identity function.  This hash function has no collisions when
+// considering hash values in their entirety, but for real-world workloads
+// the high bits are likely to always be zero.
+//
+// Some hash functions provide a stronger guarantee -- the standard's
+// collision property is also preserved for subsets of the output bits and
+// for sub-domains of keys.  Another way to say this is that each bit of
+// the hash value contains entropy from the entire input, changes to the
+// input avalanche across all of the bits of the output.  The distinction
+// is useful when mapping the hash value onto a smaller space efficiently
+// (such as when implementing a hash table).
+template <typename Hasher, typename Key>
+struct IsAvalanchingHasher : std::false_type {};
+
+template <typename T, typename E, typename K>
+struct IsAvalanchingHasher<hasher<T, E>, K>
+    : std::conditional<
+          std::is_enum<T>::value || std::is_integral<T>::value,
+          detail::integral_hasher_avalanches<T>,
+          typename std::conditional<
+              std::is_floating_point<T>::value,
+              detail::float_hasher_avalanches<T>,
+              std::false_type>::type>::type {};
+
+template <typename K>
+struct IsAvalanchingHasher<Hash, K> : IsAvalanchingHasher<hasher<K>, K> {};
+
 template <>
 struct hasher<bool> {
   size_t operator()(bool key) const {
@@ -433,6 +482,8 @@ struct hasher<bool> {
     return key ? std::numeric_limits<size_t>::max() : 0;
   }
 };
+template <typename K>
+struct IsAvalanchingHasher<hasher<bool>, K> : std::true_type {};
 
 template <>
 struct hasher<unsigned long long>
@@ -490,20 +541,24 @@ struct hasher<std::string> {
         hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
   }
 };
+template <typename K>
+struct IsAvalanchingHasher<hasher<std::string>, K> : std::true_type {};
 
-template <class T>
+template <typename T>
 struct hasher<T, typename std::enable_if<std::is_enum<T>::value, void>::type> {
   size_t operator()(T key) const {
     return Hash()(static_cast<typename std::underlying_type<T>::type>(key));
   }
 };
 
-template <class T1, class T2>
+template <typename T1, typename T2>
 struct hasher<std::pair<T1, T2>> {
   size_t operator()(const std::pair<T1, T2>& key) const {
     return Hash()(key.first, key.second);
   }
 };
+template <typename T1, typename T2, typename K>
+struct IsAvalanchingHasher<hasher<std::pair<T1, T2>>, K> : std::true_type {};
 
 template <typename... Ts>
 struct hasher<std::tuple<Ts...>> {
@@ -511,6 +566,14 @@ struct hasher<std::tuple<Ts...>> {
     return applyTuple(Hash(), key);
   }
 };
+
+// combiner for multi-arg tuple also mixes bits
+template <typename T, typename K>
+struct IsAvalanchingHasher<hasher<std::tuple<T>>, K>
+    : IsAvalanchingHasher<hasher<T>, K> {};
+template <typename T1, typename T2, typename... Ts, typename K>
+struct IsAvalanchingHasher<hasher<std::tuple<T1, T2, Ts...>>, K>
+    : std::true_type {};
 
 // recursion
 template <size_t index, typename... Ts>
@@ -566,4 +629,34 @@ struct hash<std::tuple<Ts...>> {
     return hasher(key);
   }
 };
+
 } // namespace std
+
+namespace folly {
+
+// These IsAvalanchingHasher<std::hash<T>> specializations refer to the
+// std::hash specializations defined in this file
+
+template <typename U1, typename U2, typename K>
+struct IsAvalanchingHasher<std::hash<std::pair<U1, U2>>, K> : std::true_type {};
+
+template <typename U, typename K>
+struct IsAvalanchingHasher<std::hash<std::tuple<U>>, K>
+    : IsAvalanchingHasher<std::hash<U>, U> {};
+
+template <typename U1, typename U2, typename... Us, typename K>
+struct IsAvalanchingHasher<std::hash<std::tuple<U1, U2, Us...>>, K>
+    : std::true_type {};
+
+// std::hash<std::string> is avalanching on libstdc++-v3 (code checked),
+// libc++ (code checked), and MSVC (based on online information).
+// std::hash for float and double on libstdc++-v3 are avalanching,
+// but they are not on libc++.  std::hash for integral types is not
+// avalanching for libstdc++-v3 or libc++.  We're conservative here and
+// just mark std::string as avalanching.  std::string_view will also be
+// so, once it exists.
+template <typename... Args, typename K>
+struct IsAvalanchingHasher<std::hash<std::basic_string<Args...>>, K>
+    : std::true_type {};
+
+} // namespace folly

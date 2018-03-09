@@ -1360,6 +1360,12 @@ struct hasher<
   }
 };
 
+template <typename H, typename K>
+struct IsAvalanchingHasher;
+
+template <typename T, typename E, typename K>
+struct IsAvalanchingHasher<hasher<folly::Range<T*>, E>, K> : std::true_type {};
+
 /**
  * _sp is a user-defined literal suffix to make an appropriate Range
  * specialization from a literal string.
