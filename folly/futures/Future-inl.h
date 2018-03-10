@@ -875,8 +875,8 @@ Future<T>::onError(F&& func) {
 
   // Allow for applying to future with null executor while this is still
   // possible.
-  auto* e = this->getExecutor();
-  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
+  // TODO(T26801487): Should have an executor
+  return std::move(sf).via(&folly::InlineExecutor::instance());
 }
 
 // onError where the callback returns Future<T>
@@ -918,8 +918,8 @@ Future<T>::onError(F&& func) {
 
   // Allow for applying to future with null executor while this is still
   // possible.
-  auto* e = this->getExecutor();
-  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
+  // TODO(T26801487): Should have an executor
+  return std::move(sf).via(&folly::InlineExecutor::instance());
 }
 
 template <class T>
@@ -971,8 +971,8 @@ Future<T>::onError(F&& func) {
 
   // Allow for applying to future with null executor while this is still
   // possible.
-  auto* e = this->getExecutor();
-  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
+  // TODO(T26801487): Should have an executor
+  return std::move(sf).via(&folly::InlineExecutor::instance());
 }
 
 // onError(exception_wrapper) that returns T
@@ -1003,8 +1003,8 @@ Future<T>::onError(F&& func) {
 
   // Allow for applying to future with null executor while this is still
   // possible.
-  auto* e = this->getExecutor();
-  return std::move(sf).via(e ? e : &folly::InlineExecutor::instance());
+  // TODO(T26801487): Should have an executor
+  return std::move(sf).via(&folly::InlineExecutor::instance());
 }
 
 template <class Func>
