@@ -1098,16 +1098,8 @@ class basic_fbstring {
 
   typedef E* iterator;
   typedef const E* const_iterator;
-  typedef std::reverse_iterator<iterator
-#ifdef NO_ITERATOR_TRAITS
-                                , value_type
-#endif
-                                > reverse_iterator;
-  typedef std::reverse_iterator<const_iterator
-#ifdef NO_ITERATOR_TRAITS
-                                , const value_type
-#endif
-                                > const_reverse_iterator;
+  typedef std::reverse_iterator<iterator> reverse_iterator;
+  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   static constexpr size_type npos = size_type(-1);
   typedef std::true_type IsRelocatable;
