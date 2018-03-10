@@ -23,6 +23,7 @@
 
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/ScheduledExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/synchronization/LifoSem.h>
 
 namespace folly {
@@ -35,7 +36,8 @@ namespace folly {
   /// NB No attempt has been made to make anything other than add and schedule
   /// threadsafe.
   class ManualExecutor : public DrivableExecutor,
-                         public ScheduledExecutor {
+                         public ScheduledExecutor,
+                         public SequencedExecutor {
    public:
     void add(Func) override;
 

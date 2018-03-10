@@ -18,11 +18,13 @@
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
 #include <folly/executors/DrivableExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
 
 namespace folly {
 
-class NotificationQueueExecutor : public folly::DrivableExecutor {
+class NotificationQueueExecutor : public DrivableExecutor,
+                                  public SequencedExecutor {
  public:
   using Func = folly::Func;
 

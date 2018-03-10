@@ -39,6 +39,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/executors/DrivableExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/HHWheelTimer.h>
@@ -126,7 +127,8 @@ class VirtualEventBase;
  */
 class EventBase : private boost::noncopyable,
                   public TimeoutManager,
-                  public DrivableExecutor {
+                  public DrivableExecutor,
+                  public SequencedExecutor {
  public:
   using Func = folly::Function<void()>;
 
