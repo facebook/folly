@@ -23,6 +23,7 @@
 #include <glog/logging.h>
 
 #include <folly/ConstexprMath.h>
+#include <folly/Optional.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/experimental/hazptr/hazptr.h>
 #include <folly/lang/Align.h>
@@ -266,7 +267,16 @@ class UnboundedQueue {
 
   /** try_dequeue */
   FOLLY_ALWAYS_INLINE bool try_dequeue(T& item) noexcept {
-    return tryDequeueUntil(item, std::chrono::steady_clock::time_point::min());
+    auto o = try_dequeue();
+    if (LIKELY(o.has_value())) {
+      item = std::move(*o);
+      return true;
+    }
+    return false;
+  }
+
+  FOLLY_ALWAYS_INLINE folly::Optional<T> try_dequeue() noexcept {
+    return tryDequeueUntil(std::chrono::steady_clock::time_point::min());
   }
 
   /** try_dequeue_until */
@@ -274,7 +284,20 @@ class UnboundedQueue {
   FOLLY_ALWAYS_INLINE bool try_dequeue_until(
       T& item,
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
-    return tryDequeueUntil(item, deadline);
+    folly::Optional<T> o = try_dequeue_until(deadline);
+
+    if (LIKELY(o.has_value())) {
+      item = std::move(*o);
+      return true;
+    }
+
+    return false;
+  }
+
+  template <typename Clock, typename Duration>
+  FOLLY_ALWAYS_INLINE folly::Optional<T> try_dequeue_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
+    return tryDequeueUntil(deadline);
   }
 
   /** try_dequeue_for */
@@ -282,10 +305,24 @@ class UnboundedQueue {
   FOLLY_ALWAYS_INLINE bool try_dequeue_for(
       T& item,
       const std::chrono::duration<Rep, Period>& duration) noexcept {
-    if (LIKELY(try_dequeue(item))) {
+    folly::Optional<T> o = try_dequeue_for(duration);
+
+    if (LIKELY(o.has_value())) {
+      item = std::move(*o);
       return true;
     }
-    return tryDequeueUntil(item, std::chrono::steady_clock::now() + duration);
+
+    return false;
+  }
+
+  template <typename Rep, typename Period>
+  FOLLY_ALWAYS_INLINE folly::Optional<T> try_dequeue_for(
+      const std::chrono::duration<Rep, Period>& duration) noexcept {
+    folly::Optional<T> o = try_dequeue();
+    if (LIKELY(o.has_value())) {
+      return o;
+    }
+    return tryDequeueUntil(std::chrono::steady_clock::now() + duration);
   }
 
   /** size */
@@ -369,26 +406,24 @@ class UnboundedQueue {
 
   /** tryDequeueUntil */
   template <typename Clock, typename Duration>
-  FOLLY_ALWAYS_INLINE bool tryDequeueUntil(
-      T& item,
+  FOLLY_ALWAYS_INLINE folly::Optional<T> tryDequeueUntil(
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     if (SingleConsumer) {
       Segment* s = head();
-      return tryDequeueUntilSC(s, item, deadline);
+      return tryDequeueUntilSC(s, deadline);
     } else {
       // Using hazptr_holder instead of hazptr_local because it is
-      // possible to call ~T() and it may happen to use hazard pointers.
+      //  possible to call ~T() and it may happen to use hazard pointers.
       folly::hazptr::hazptr_holder hptr;
       Segment* s = hptr.get_protected(c_.head);
-      return tryDequeueUntilMC(s, item, deadline);
+      return tryDequeueUntilMC(s, deadline);
     }
   }
 
   /** tryDequeueUntilSC */
   template <typename Clock, typename Duration>
-  FOLLY_ALWAYS_INLINE bool tryDequeueUntilSC(
+  FOLLY_ALWAYS_INLINE folly::Optional<T> tryDequeueUntilSC(
       Segment* s,
-      T& item,
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     Ticket t = consumerTicket();
     DCHECK_GE(t, s->minTicket());
@@ -396,45 +431,44 @@ class UnboundedQueue {
     size_t idx = index(t);
     Entry& e = s->entry(idx);
     if (UNLIKELY(!tryDequeueWaitElem(e, t, deadline))) {
-      return false;
+      return folly::Optional<T>();
     }
     setConsumerTicket(t + 1);
-    e.takeItem(item);
+    auto ret = e.takeItem();
     if (responsibleForAdvance(t)) {
       advanceHead(s);
     }
-    return true;
+    return ret;
   }
 
   /** tryDequeueUntilMC */
   template <typename Clock, typename Duration>
-  FOLLY_ALWAYS_INLINE bool tryDequeueUntilMC(
+  FOLLY_ALWAYS_INLINE folly::Optional<T> tryDequeueUntilMC(
       Segment* s,
-      T& item,
       const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
     while (true) {
       Ticket t = consumerTicket();
       if (UNLIKELY(t >= (s->minTicket() + SegmentSize))) {
         s = tryGetNextSegmentUntil(s, deadline);
         if (s == nullptr) {
-          return false; // timed out
+          return folly::Optional<T>(); // timed out
         }
         continue;
       }
       size_t idx = index(t);
       Entry& e = s->entry(idx);
       if (UNLIKELY(!tryDequeueWaitElem(e, t, deadline))) {
-        return false;
+        return folly::Optional<T>();
       }
       if (!c_.ticket.compare_exchange_weak(
               t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
         continue;
       }
-      e.takeItem(item);
+      auto ret = e.takeItem();
       if (responsibleForAdvance(t)) {
         advanceHead(s);
       }
-      return true;
+      return ret;
     }
   }
 
@@ -643,6 +677,11 @@ class UnboundedQueue {
       getItem(item);
     }
 
+    FOLLY_ALWAYS_INLINE folly::Optional<T> takeItem() noexcept {
+      flag_.wait();
+      return getItem();
+    }
+
     template <typename Clock, typename Duration>
     FOLLY_ALWAYS_INLINE bool tryWaitUntil(
         const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
@@ -656,6 +695,13 @@ class UnboundedQueue {
     FOLLY_ALWAYS_INLINE void getItem(T& item) noexcept {
       item = std::move(*(itemPtr()));
       destroyItem();
+    }
+
+    FOLLY_ALWAYS_INLINE folly::Optional<T> getItem() noexcept {
+      folly::Optional<T> ret = std::move(*(itemPtr()));
+      destroyItem();
+
+      return ret;
     }
 
     FOLLY_ALWAYS_INLINE T* itemPtr() noexcept {
