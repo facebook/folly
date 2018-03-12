@@ -64,8 +64,8 @@ class propagate_const {
       _t<std::remove_reference<decltype(*std::declval<Pointer&>())>>;
 
   constexpr propagate_const() = default;
-  constexpr propagate_const(propagate_const&&) = default;
-  constexpr propagate_const(propagate_const const&) = delete;
+  FOLLY_CPP14_CONSTEXPR propagate_const(propagate_const&&) = default;
+  propagate_const(propagate_const const&) = delete;
 
   template <
       typename OtherPointer,
@@ -105,8 +105,8 @@ class propagate_const {
   constexpr propagate_const(OtherPointer&& other)
       : pointer_(static_cast<OtherPointer&&>(other)) {}
 
-  constexpr propagate_const& operator=(propagate_const&&) = default;
-  constexpr propagate_const& operator=(propagate_const const&) = delete;
+  FOLLY_CPP14_CONSTEXPR propagate_const& operator=(propagate_const&&) = default;
+  propagate_const& operator=(propagate_const const&) = delete;
 
   template <
       typename OtherPointer,
@@ -134,7 +134,7 @@ class propagate_const {
     detail::propagate_const_adl::adl_swap(pointer_, other.pointer_);
   }
 
-  constexpr element_type* get() {
+  FOLLY_CPP14_CONSTEXPR element_type* get() {
     return get_(pointer_);
   }
 
@@ -146,7 +146,7 @@ class propagate_const {
     return static_cast<bool>(pointer_);
   }
 
-  constexpr element_type& operator*() {
+  FOLLY_CPP14_CONSTEXPR element_type& operator*() {
     return *get();
   }
 
@@ -154,7 +154,7 @@ class propagate_const {
     return *get();
   }
 
-  constexpr element_type* operator->() {
+  FOLLY_CPP14_CONSTEXPR element_type* operator->() {
     return get();
   }
 
@@ -167,7 +167,7 @@ class propagate_const {
       typename = _t<std::enable_if<
           std::is_pointer<OtherPointer>::value ||
           std::is_convertible<OtherPointer, element_type*>::value>>>
-  constexpr operator element_type*() {
+  FOLLY_CPP14_CONSTEXPR operator element_type*() {
     return get();
   }
 
@@ -183,13 +183,15 @@ class propagate_const {
  private:
   friend Pointer& get_underlying<>(propagate_const&);
   friend Pointer const& get_underlying<>(propagate_const const&);
+  template <typename OtherPointer>
+  friend class propagate_const;
 
   template <typename T>
-  static T* get_(T* t) {
+  constexpr static T* get_(T* t) {
     return t;
   }
   template <typename T>
-  static auto get_(T& t) -> decltype(t.get()) {
+  constexpr static auto get_(T& t) -> decltype(t.get()) {
     return t.get();
   }
 
