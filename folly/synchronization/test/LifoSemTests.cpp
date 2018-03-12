@@ -286,6 +286,52 @@ TEST(LifoSem, multi_try_wait) {
   ASSERT_EQ(NPOSTS, consumed);
 }
 
+TEST(LifoSem, timeout) {
+  long seed = folly::randomNumberSeed() % 10000;
+  LOG(INFO) << "seed=" << seed;
+  DSched sched(DSched::uniform(seed));
+  DeterministicAtomic<uint32_t> handoffs{0};
+
+  for (int pass = 0; pass < 10; ++pass) {
+    DLifoSem a;
+    std::vector<std::thread> threads;
+    while (threads.size() < 20) {
+      threads.push_back(DSched::thread([&] {
+        for (int i = 0; i < 10; i++) {
+          try {
+            if (a.try_wait_for(std::chrono::milliseconds(1))) {
+              handoffs--;
+            }
+          } catch (ShutdownSemError&) {
+            // expected
+            EXPECT_TRUE(a.isShutdown());
+          }
+        }
+      }));
+    }
+    std::vector<std::thread> threads2;
+    while (threads2.size() < 20) {
+      threads2.push_back(DSched::thread([&] {
+        for (int i = 0; i < 10; i++) {
+          a.post();
+          handoffs++;
+        }
+      }));
+    }
+    if (pass > 5) {
+      a.shutdown();
+    }
+    for (auto& thr : threads) {
+      DSched::join(thr);
+    }
+    for (auto& thr : threads2) {
+      DSched::join(thr);
+    }
+    // At least one timeout must occur.
+    EXPECT_GT(handoffs.load(), 0);
+  }
+}
+
 BENCHMARK(lifo_sem_pingpong, iters) {
   LifoSem a;
   LifoSem b;
