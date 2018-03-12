@@ -23,6 +23,7 @@
 
 #include <folly/String.h>
 #include <folly/memory/Arena.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -57,70 +58,39 @@ TEST(to_weak_ptr, example) {
   EXPECT_EQ(3, (to_weak_ptr(decltype(s)(s)).lock(), s.use_count())) << "rvalue";
 }
 
+TEST(SysAllocator, allocate_unique) {
+  SysAllocator<float> alloc;
+  auto ptr = allocate_unique<float>(alloc, 3.);
+  EXPECT_EQ(3., *ptr);
+}
+
+TEST(SysAllocator, example_vector) {
+  SysAllocator<float> alloc;
+  std::vector<float, SysAllocator<float>> nums(alloc);
+  nums.push_back(3.);
+  nums.push_back(5.);
+  EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
+}
+
+TEST(AlignedSysAllocator, allocate_unique) {
+  AlignedSysAllocator<float> alloc(1024);
+  auto ptr = allocate_unique<float>(alloc, 3.);
+  EXPECT_EQ(3., *ptr);
+  EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
+}
+
+TEST(AlignedSysAllocator, example_vector) {
+  AlignedSysAllocator<float> alloc(1024);
+  std::vector<float, AlignedSysAllocator<float>> nums(alloc);
+  nums.push_back(3.);
+  nums.push_back(5.);
+  EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
+  EXPECT_EQ(0, std::uintptr_t(nums.data()) % 1024);
+}
+
 TEST(allocate_sys_buffer, compiles) {
   auto buf = allocate_sys_buffer(256);
   //  Freed at the end of the scope.
-}
-
-template <std::size_t> struct T {};
-template <std::size_t> struct S {};
-template <std::size_t> struct P {};
-
-TEST(as_stl_allocator, sanity_check) {
-  typedef StlAllocator<SysArena, int> stl_arena_alloc;
-
-  EXPECT_TRUE((std::is_same<
-    as_stl_allocator<int, SysArena>::type,
-    stl_arena_alloc
-  >::value));
-
-  EXPECT_TRUE((std::is_same<
-    as_stl_allocator<int, stl_arena_alloc>::type,
-    stl_arena_alloc
-  >::value));
-}
-
-TEST(StlAllocator, void_allocator) {
-  typedef StlAllocator<SysArena, void> void_allocator;
-  SysArena arena;
-  void_allocator valloc(&arena);
-
-  typedef void_allocator::rebind<int>::other int_allocator;
-  int_allocator ialloc(valloc);
-
-  auto i = std::allocate_shared<int>(ialloc, 10);
-  ASSERT_NE(nullptr, i.get());
-  EXPECT_EQ(10, *i);
-  i.reset();
-  ASSERT_EQ(nullptr, i.get());
-}
-
-TEST(rebind_allocator, sanity_check) {
-  std::allocator<long> alloc;
-
-  auto i = std::allocate_shared<int>(
-    rebind_allocator<int, decltype(alloc)>(alloc), 10
-  );
-  ASSERT_NE(nullptr, i.get());
-  EXPECT_EQ(10, *i);
-  i.reset();
-  ASSERT_EQ(nullptr, i.get());
-
-  auto d = std::allocate_shared<double>(
-    rebind_allocator<double>(alloc), 5.6
-  );
-  ASSERT_NE(nullptr, d.get());
-  EXPECT_EQ(5.6, *d);
-  d.reset();
-  ASSERT_EQ(nullptr, d.get());
-
-  auto s = std::allocate_shared<std::string>(
-    rebind_allocator<std::string>(alloc), "HELLO, WORLD"
-  );
-  ASSERT_NE(nullptr, s.get());
-  EXPECT_EQ("HELLO, WORLD", *s);
-  s.reset();
-  ASSERT_EQ(nullptr, s.get());
 }
 
 template <typename C>

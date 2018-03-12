@@ -151,7 +151,7 @@ void* JemallocNodumpAllocator::alloc(
 
 #endif // FOLLY_JEMALLOC_NODUMP_ALLOCATOR_SUPPORTED
 
-void JemallocNodumpAllocator::deallocate(void* p) {
+void JemallocNodumpAllocator::deallocate(void* p, size_t) {
   dallocx != nullptr ? dallocx(p, flags_) : free(p);
 }
 

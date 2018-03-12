@@ -36,16 +36,10 @@ namespace folly {
  * Simple arena: allocate memory which gets freed when the arena gets
  * destroyed.
  *
- * The arena itself allocates memory using a custom allocator which provides
- * the following interface (same as required by StlAllocator in StlAllocator.h)
+ * The arena itself allocates memory using a custom allocator which conforms
+ * to the C++ concept Allocator.
  *
- *   void* allocate(size_t size);
- *      Allocate a block of size bytes, properly aligned to the maximum
- *      alignment required on your system; throw std::bad_alloc if the
- *      allocation can't be satisfied.
- *
- *   void deallocate(void* ptr);
- *      Deallocate a previously allocated block.
+ *   http://en.cppreference.com/w/cpp/concept/Allocator
  *
  * You may also specialize ArenaAllocatorTraits for your allocator type to
  * provide:
@@ -101,7 +95,7 @@ class Arena {
     return r;
   }
 
-  void deallocate(void* /* p */) {
+  void deallocate(void* /* p */, size_t = 0) {
     // Deallocate? Never!
   }
 
@@ -121,13 +115,11 @@ class Arena {
     return bytesUsed_;
   }
 
-  // not copyable
+  // not copyable or movable
   Arena(const Arena&) = delete;
   Arena& operator=(const Arena&) = delete;
-
-  // movable
-  Arena(Arena&&) = default;
-  Arena& operator=(Arena&&) = default;
+  Arena(Arena&&) = delete;
+  Arena& operator=(Arena&&) = delete;
 
  private:
   struct Block;
@@ -184,7 +176,7 @@ class Arena {
   void* allocateSlow(size_t size);
 
   // Empty member optimization: package Alloc with a non-empty member
-  // in case Alloc is empty (as it is in the case of SysAlloc).
+  // in case Alloc is empty (as it is in the case of SysAllocator).
   struct AllocAndSize : public Alloc {
     explicit AllocAndSize(const Alloc& a, size_t s)
       : Alloc(a), minBlockSize(s) {
@@ -210,7 +202,7 @@ class Arena {
 };
 
 template <class Alloc>
-struct IsArenaAllocator<Arena<Alloc>> : std::true_type { };
+struct AllocatorHasTrivialDeallocate<Arena<Alloc>> : std::true_type {};
 
 /**
  * By default, don't pad the given size.
@@ -221,8 +213,8 @@ struct ArenaAllocatorTraits {
 };
 
 template <>
-struct ArenaAllocatorTraits<SysAlloc> {
-  static size_t goodSize(const SysAlloc& /* alloc */, size_t size) {
+struct ArenaAllocatorTraits<SysAllocator<void>> {
+  static size_t goodSize(const SysAllocator<void>& /* alloc */, size_t size) {
     return goodMallocSize(size);
   }
 };
@@ -230,17 +222,23 @@ struct ArenaAllocatorTraits<SysAlloc> {
 /**
  * Arena that uses the system allocator (malloc / free)
  */
-class SysArena : public Arena<SysAlloc> {
+class SysArena : public Arena<SysAllocator<void>> {
  public:
-  explicit SysArena(size_t minBlockSize = kDefaultMinBlockSize,
-                    size_t sizeLimit = kNoSizeLimit,
-                    size_t maxAlign = kDefaultMaxAlign)
-    : Arena<SysAlloc>(SysAlloc(), minBlockSize, sizeLimit, maxAlign) {
-  }
+  explicit SysArena(
+      size_t minBlockSize = kDefaultMinBlockSize,
+      size_t sizeLimit = kNoSizeLimit,
+      size_t maxAlign = kDefaultMaxAlign)
+      : Arena<SysAllocator<void>>({}, minBlockSize, sizeLimit, maxAlign) {}
 };
 
 template <>
-struct IsArenaAllocator<SysArena> : std::true_type { };
+struct AllocatorHasTrivialDeallocate<SysArena> : std::true_type {};
+
+template <typename T, typename Alloc>
+using ArenaAllocator = CxxAllocatorAdaptor<T, Arena<Alloc>>;
+
+template <typename T>
+using SysArenaAllocator = ArenaAllocator<T, SysAllocator<void>>;
 
 } // namespace folly
 

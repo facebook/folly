@@ -21,7 +21,6 @@
 #include <glog/logging.h>
 #include <memory>
 #include <thread>
-#include <type_traits>
 #include <unordered_map>
 
 using namespace folly;
@@ -412,8 +411,8 @@ TEST(AccessSpreader, Wrapping) {
   }
 }
 
-TEST(CoreAllocator, Basic) {
-  CoreAllocator<32> alloc;
+TEST(CoreRawAllocator, Basic) {
+  CoreRawAllocator<32> alloc;
   auto a = alloc.get(0);
   auto res = a->allocate(8);
   memset(res, 0, 8);

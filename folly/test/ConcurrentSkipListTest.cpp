@@ -40,29 +40,34 @@ namespace {
 
 template <typename ParentAlloc>
 struct ParanoidArenaAlloc {
-  explicit ParanoidArenaAlloc(ParentAlloc* arena) : arena_(arena) {}
+  explicit ParanoidArenaAlloc(ParentAlloc& arena) : arena_(arena) {}
+  ParanoidArenaAlloc(ParanoidArenaAlloc const&) = delete;
+  ParanoidArenaAlloc(ParanoidArenaAlloc&&) = delete;
+  ParanoidArenaAlloc& operator=(ParanoidArenaAlloc const&) = delete;
+  ParanoidArenaAlloc& operator=(ParanoidArenaAlloc&&) = delete;
 
   void* allocate(size_t size) {
-    void* result = arena_->allocate(size);
+    void* result = arena_.get().allocate(size);
     allocated_.insert(result);
     return result;
   }
 
-  void deallocate(void* ptr) {
+  void deallocate(void* ptr, size_t n) {
     EXPECT_EQ(1, allocated_.erase(ptr));
-    arena_->deallocate(ptr);
+    arena_.get().deallocate(ptr, n);
   }
 
   bool isEmpty() const { return allocated_.empty(); }
 
-  ParentAlloc* arena_;
+  std::reference_wrapper<ParentAlloc> arena_;
   std::set<void*> allocated_;
 };
 } // namespace
 
 namespace folly {
-template <>
-struct IsArenaAllocator<ParanoidArenaAlloc<SysArena>> : std::true_type {};
+template <typename ParentAlloc>
+struct AllocatorHasTrivialDeallocate<ParanoidArenaAlloc<ParentAlloc>>
+    : AllocatorHasTrivialDeallocate<ParentAlloc> {};
 } // namespace folly
 
 namespace {
@@ -472,29 +477,37 @@ void TestNonTrivialDeallocation(SkipListPtrType& list) {
 }
 
 template <typename ParentAlloc>
-void NonTrivialDeallocationWithParanoid() {
-  using Alloc = ParanoidArenaAlloc<ParentAlloc>;
+void NonTrivialDeallocationWithParanoid(ParentAlloc& parentAlloc) {
+  using ParanoidAlloc = ParanoidArenaAlloc<ParentAlloc>;
+  using Alloc = CxxAllocatorAdaptor<void, ParanoidAlloc>;
   using ParanoidSkipListType =
       ConcurrentSkipList<NonTrivialValue, std::less<NonTrivialValue>, Alloc>;
-  ParentAlloc parentAlloc;
-  Alloc paranoidAlloc(&parentAlloc);
-  auto list = ParanoidSkipListType::createInstance(10, paranoidAlloc);
+  ParanoidAlloc paranoidAlloc(parentAlloc);
+  Alloc alloc(paranoidAlloc);
+  auto list = ParanoidSkipListType::createInstance(10, alloc);
   TestNonTrivialDeallocation(list);
   EXPECT_TRUE(paranoidAlloc.isEmpty());
 }
 
 TEST(ConcurrentSkipList, NonTrivialDeallocationWithParanoidSysAlloc) {
-  NonTrivialDeallocationWithParanoid<SysAlloc>();
+  SysAllocator<void> alloc;
+  NonTrivialDeallocationWithParanoid(alloc);
 }
 
 TEST(ConcurrentSkipList, NonTrivialDeallocationWithParanoidSysArena) {
-  NonTrivialDeallocationWithParanoid<SysArena>();
+  SysArena arena;
+  SysArenaAllocator<void> alloc(arena);
+  NonTrivialDeallocationWithParanoid(alloc);
 }
 
 TEST(ConcurrentSkipList, NonTrivialDeallocationWithSysArena) {
-  using SysArenaSkipListType =
-      ConcurrentSkipList<NonTrivialValue, std::less<NonTrivialValue>, SysArena>;
-  auto list = SysArenaSkipListType::createInstance(10);
+  using SysArenaSkipListType = ConcurrentSkipList<
+      NonTrivialValue,
+      std::less<NonTrivialValue>,
+      SysArenaAllocator<void>>;
+  SysArena arena;
+  SysArenaAllocator<void> alloc(arena);
+  auto list = SysArenaSkipListType::createInstance(10, alloc);
   TestNonTrivialDeallocation(list);
 }
 

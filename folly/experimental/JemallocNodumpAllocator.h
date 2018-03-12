@@ -80,7 +80,7 @@ class JemallocNodumpAllocator {
 
   void* allocate(size_t size);
   void* reallocate(void* p, size_t size);
-  void deallocate(void* p);
+  void deallocate(void* p, size_t = 0);
 
   unsigned getArenaIndex() const { return arena_index_; }
   int getFlags() const { return flags_; }

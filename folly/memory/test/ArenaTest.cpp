@@ -25,7 +25,7 @@
 
 using namespace folly;
 
-static_assert(IsArenaAllocator<SysArena>::value, "");
+static_assert(AllocatorHasTrivialDeallocate<SysArena>::value, "");
 
 TEST(Arena, SizeSanity) {
   std::set<size_t*> allocatedItems;
@@ -79,7 +79,7 @@ TEST(Arena, SizeSanity) {
 
   // Nuke 'em all
   for (const auto& item : allocatedItems) {
-    arena.deallocate(item);
+    arena.deallocate(item, 0 /* unused */);
   }
   //The total size should be the same
   EXPECT_TRUE(arena.totalSize() >= minimum_size);
@@ -134,8 +134,8 @@ TEST(Arena, Vector) {
 
   EXPECT_EQ(arena.totalSize(), sizeof(SysArena));
 
-  std::vector<size_t, StlAllocator<SysArena, size_t>>
-    vec { {}, StlAllocator<SysArena, size_t>(&arena) };
+  std::vector<size_t, SysArenaAllocator<size_t>> vec{
+      {}, SysArenaAllocator<size_t>(arena)};
 
   for (size_t i = 0; i < 1000; i++) {
     vec.push_back(i);
@@ -155,17 +155,6 @@ TEST(Arena, SizeLimit) {
   void* a = arena.allocate(sizeof(size_t));
   EXPECT_TRUE(a != nullptr);
   EXPECT_THROW(arena.allocate(maxSize + 1), std::bad_alloc);
-}
-
-TEST(Arena, MoveArena) {
-  SysArena arena(sizeof(size_t) * 2);
-  arena.allocate(sizeof(size_t));
-  auto totalSize = arena.totalSize();
-  auto bytesUsed = arena.bytesUsed();
-
-  SysArena moved(std::move(arena));
-  EXPECT_EQ(totalSize, moved.totalSize());
-  EXPECT_EQ(bytesUsed, moved.bytesUsed());
 }
 
 int main(int argc, char *argv[]) {

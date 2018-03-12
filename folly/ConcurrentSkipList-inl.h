@@ -62,22 +62,24 @@ class SkipListNode : private boost::noncopyable {
 
     size_t size = sizeof(SkipListNode) +
       height * sizeof(std::atomic<SkipListNode*>);
-    auto* node = static_cast<SkipListNode*>(alloc.allocate(size));
+    auto storage = std::allocator_traits<NodeAlloc>::allocate(alloc, size);
     // do placement new
-    new (node) SkipListNode(uint8_t(height), std::forward<U>(data), isHead);
-    return node;
+    return new (storage)
+        SkipListNode(uint8_t(height), std::forward<U>(data), isHead);
   }
 
   template <typename NodeAlloc>
   static void destroy(NodeAlloc& alloc, SkipListNode* node) {
+    size_t size = sizeof(SkipListNode) +
+        node->height_ * sizeof(std::atomic<SkipListNode*>);
     node->~SkipListNode();
-    alloc.deallocate(node);
+    std::allocator_traits<NodeAlloc>::deallocate(alloc, node, size);
   }
 
   template <typename NodeAlloc>
-  struct DestroyIsNoOp : std::integral_constant<bool,
-    IsArenaAllocator<NodeAlloc>::value &&
-    boost::has_trivial_destructor<SkipListNode>::value> { };
+  struct DestroyIsNoOp : StrictConjunction<
+                             AllocatorHasTrivialDeallocate<NodeAlloc>,
+                             boost::has_trivial_destructor<SkipListNode>> {};
 
   // copy the head node to a new head node assuming lock acquired
   SkipListNode* copyHead(SkipListNode* node) {

@@ -51,7 +51,7 @@ class ThreadCachedArena {
     return arena->allocate(size);
   }
 
-  void deallocate(void* /* p */) {
+  void deallocate(void* /* p */, size_t = 0) {
     // Deallocate? Never!
   }
 
@@ -82,6 +82,9 @@ class ThreadCachedArena {
 };
 
 template <>
-struct IsArenaAllocator<ThreadCachedArena> : std::true_type { };
+struct AllocatorHasTrivialDeallocate<ThreadCachedArena> : std::true_type {};
+
+template <typename T>
+using ThreadCachedArenaAllocator = CxxAllocatorAdaptor<T, ThreadCachedArena>;
 
 } // namespace folly

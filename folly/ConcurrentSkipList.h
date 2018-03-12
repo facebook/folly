@@ -138,9 +138,9 @@ namespace folly {
 template <
     typename T,
     typename Comp = std::less<T>,
-    // All nodes are allocated using provided SimpleAllocator,
+    // All nodes are allocated using provided SysAllocator,
     // it should be thread-safe.
-    typename NodeAlloc = SysAlloc,
+    typename NodeAlloc = SysAllocator<void>,
     int MAX_HEIGHT = 24>
 class ConcurrentSkipList {
   // MAX_HEIGHT needs to be at least 2 to suppress compiler
