@@ -1917,6 +1917,13 @@ TEST(EventBaseTest, DrivableExecutorTest) {
   t.join();
 }
 
+TEST(EventBaseTest, IOExecutorTest) {
+  EventBase base;
+
+  // Ensure EventBase manages itself as an IOExecutor.
+  EXPECT_EQ(base.getEventBase(), &base);
+}
+
 TEST(EventBaseTest, RequestContextTest) {
   EventBase evb;
   auto defaultCtx = RequestContext::get();

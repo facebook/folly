@@ -39,6 +39,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/executors/DrivableExecutor.h>
+#include <folly/executors/IOExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -128,6 +129,7 @@ class VirtualEventBase;
 class EventBase : private boost::noncopyable,
                   public TimeoutManager,
                   public DrivableExecutor,
+                  public IOExecutor,
                   public SequencedExecutor {
  public:
   using Func = folly::Function<void()>;
@@ -658,6 +660,9 @@ class EventBase : private boost::noncopyable,
   // which are backed by this EventBase. This method should be only used if you
   // don't need to manage the life time of the VirtualEventBase used.
   folly::VirtualEventBase& getVirtualEventBase();
+
+  /// Implements the IOExecutor interface
+  EventBase* getEventBase() override;
 
  protected:
   void keepAliveAcquire() override {

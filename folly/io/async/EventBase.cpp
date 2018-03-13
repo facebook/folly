@@ -746,5 +746,9 @@ VirtualEventBase& EventBase::getVirtualEventBase() {
   return *virtualEventBase_;
 }
 
+EventBase* EventBase::getEventBase() {
+  return this;
+}
+
 constexpr std::chrono::milliseconds EventBase::SmoothLoopTime::buffer_interval_;
 } // namespace folly
