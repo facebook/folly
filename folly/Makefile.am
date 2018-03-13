@@ -59,9 +59,14 @@ nobase_follyinclude_HEADERS = \
 	container/Access.h \
 	container/Array.h \
 	container/detail/BitIteratorDetail.h \
+	container/detail/F14Memory.h \
+	container/detail/F14Policy.h \
+	container/detail/F14Table.h \
 	container/Iterator.h \
 	container/Enumerate.h \
 	container/EvictingCacheMap.h \
+	container/F14Map.h \
+	container/F14Set.h \
 	container/Foreach.h \
 	container/Foreach-inl.h \
 	container/SparseByteSet.h \
@@ -508,6 +513,7 @@ libfolly_la_SOURCES = \
 	compression/Counters.cpp \
 	compression/Zlib.cpp \
 	concurrency/CacheLocality.cpp \
+	container/detail/F14Table.cpp \
 	detail/AtFork.cpp \
 	detail/Futex.cpp \
 	detail/IPAddress.cpp \

@@ -407,6 +407,8 @@ if (BUILD_TESTS)
       # EnumerateTest.cpp since it uses macros to define tests.
       #TEST enumerate_test SOURCES EnumerateTest.cpp
       TEST evicting_cache_map_test SOURCES EvictingCacheMapTest.cpp
+      TEST f14_map_test SOURCES F14MapTest.cpp
+      TEST f14_set_test SOURCES F14SetTest.cpp
       TEST foreach_test SOURCES ForeachTest.cpp
       TEST merge_test SOURCES MergeTest.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
