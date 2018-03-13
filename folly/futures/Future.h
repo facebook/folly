@@ -336,7 +336,52 @@ class SemiFuture : private futures::detail::FutureBase<T> {
                  value_type>
   deferValue(F&& func) &&;
 
-  // TODO: OnError
+  /// Set an error callback for this SemiFuture. The callback should take a
+  /// single argument of the type that you want to catch, and should return a
+  /// value of the same type as this SemiFuture, or a SemiFuture of that type
+  /// (see overload below). For instance,
+  ///
+  /// makeSemiFuture()
+  ///   .defer([] {
+  ///     throw std::runtime_error("oh no!");
+  ///     return 42;
+  ///   })
+  ///   .deferError([] (std::runtime_error& e) {
+  ///     LOG(INFO) << "std::runtime_error: " << e.what();
+  ///     return -1; // or makeSemiFuture<int>(-1)
+  ///   });
+  template <class F>
+  typename std::enable_if<
+      !futures::detail::callableWith<F, exception_wrapper>::value &&
+          !futures::detail::callableWith<F, exception_wrapper&>::value &&
+          !futures::detail::Extract<F>::ReturnsFuture::value,
+      SemiFuture<T>>::type
+  deferError(F&& func);
+
+  /// Overload of deferError where the error callback returns a Future<T>
+  template <class F>
+  typename std::enable_if<
+      !futures::detail::callableWith<F, exception_wrapper>::value &&
+          !futures::detail::callableWith<F, exception_wrapper&>::value &&
+          futures::detail::Extract<F>::ReturnsFuture::value,
+      SemiFuture<T>>::type
+  deferError(F&& func);
+
+  /// Overload of deferError that takes exception_wrapper and returns T
+  template <class F>
+  typename std::enable_if<
+      futures::detail::callableWith<F, exception_wrapper>::value &&
+          !futures::detail::Extract<F>::ReturnsFuture::value,
+      SemiFuture<T>>::type
+  deferError(F&& func);
+
+  /// Overload of deferError that takes exception_wrapper and returns Future<T>
+  template <class F>
+  typename std::enable_if<
+      futures::detail::callableWith<F, exception_wrapper>::value &&
+          futures::detail::Extract<F>::ReturnsFuture::value,
+      SemiFuture<T>>::type
+  deferError(F&& func);
 
   /// Return a future that completes inline, as if the future had no executor.
   /// Intended for porting legacy code without behavioural change, and for rare
