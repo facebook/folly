@@ -680,7 +680,7 @@ std::string SSLContext::getErrors(int errnoCopy) {
     }
     const char* reason = ERR_reason_error_string(errorCode);
     if (reason == nullptr) {
-      snprintf(message, sizeof(message) - 1, "SSL error # %lu", errorCode);
+      snprintf(message, sizeof(message) - 1, "SSL error # %08lX", errorCode);
       reason = message;
     }
     errors += reason;
