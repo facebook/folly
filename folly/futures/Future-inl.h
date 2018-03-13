@@ -718,7 +718,8 @@ inline Future<T> SemiFuture<T>::toUnsafeFuture() && {
 
 template <class T>
 template <typename F>
-SemiFuture<typename futures::detail::callableResult<T, F>::Return::value_type>
+SemiFuture<
+    typename futures::detail::deferCallableResult<T, F>::Return::value_type>
 SemiFuture<T>::defer(F&& func) && {
   DeferredExecutor* deferredExecutor = getDeferredExecutor();
   if (!deferredExecutor) {
@@ -732,6 +733,19 @@ SemiFuture<T>::defer(F&& func) && {
   // nullify it
   sf.setExecutor(deferredExecutor);
   return sf;
+}
+
+template <class T>
+template <typename F>
+SemiFuture<typename futures::detail::deferValueCallableResult<T, F>::Return::
+               value_type>
+SemiFuture<T>::deferValue(F&& func) && {
+  return std::move(*this).defer(
+      [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
+        return f(t.template get<
+                 false,
+                 typename futures::detail::Extract<F>::FirstArg>());
+      });
 }
 
 template <class T>

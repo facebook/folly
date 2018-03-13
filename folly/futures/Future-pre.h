@@ -130,6 +130,32 @@ struct callableResult {
   typedef Future<typename ReturnsFuture::Inner> Return;
 };
 
+template <typename T, typename F>
+struct deferCallableResult {
+  typedef typename std::conditional<
+      callableWith<F>::value,
+      detail::argResult<false, F>,
+      typename std::conditional<
+          callableWith<F, Try<T>&&>::value,
+          detail::argResult<true, F, Try<T>&&>,
+          detail::argResult<true, F, Try<T>&>>::type>::type Arg;
+  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+};
+
+template <typename T, typename F>
+struct deferValueCallableResult {
+  typedef typename std::conditional<
+      callableWith<F>::value,
+      detail::argResult<false, F>,
+      typename std::conditional<
+          callableWith<F, T&&>::value,
+          detail::argResult<false, F, T&&>,
+          detail::argResult<false, F, T&>>::type>::type Arg;
+  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+};
+
 template <typename L>
 struct Extract : Extract<decltype(&L::operator())> { };
 

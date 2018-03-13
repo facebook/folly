@@ -478,7 +478,7 @@ TEST(SemiFuture, SimpleDeferWithValue) {
   std::atomic<int> innerResult{0};
   Promise<int> p;
   auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](int a) { innerResult = a; });
+  auto sf = std::move(f).semi().deferValue([&](int a) { innerResult = a; });
   p.setValue(7);
   // Run "F" here inline in the calling thread
   std::move(sf).get();
@@ -491,7 +491,7 @@ TEST(SemiFuture, ChainingDefertoThenWithValue) {
   EventBase e2;
   Promise<int> p;
   auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](int a) {
+  auto sf = std::move(f).semi().deferValue([&](int a) {
     innerResult = a;
     return a;
   });
@@ -528,7 +528,7 @@ TEST(SemiFuture, DeferWithinContinuation) {
   auto resultF = std::move(f).then([&, p3 = std::move(p2)](int outer) mutable {
     result = outer;
     return makeSemiFuture<int>(std::move(outer))
-        .defer([&, p4 = std::move(p3)](int inner) mutable {
+        .deferValue([&, p4 = std::move(p3)](int inner) mutable {
           innerResult = inner;
           p4.setValue(inner);
           return inner;

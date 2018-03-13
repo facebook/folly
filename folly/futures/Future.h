@@ -315,6 +315,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   /**
    * Defer work to run on the consumer of the future.
+   * Function must take a Try as a parameter.
    * This work will be run eithe ron an executor that the caller sets on the
    * SemiFuture, or inline with the call to .get().
    * NB: This is a custom method because boost-blocking executors is a
@@ -323,8 +324,19 @@ class SemiFuture : private futures::detail::FutureBase<T> {
    * of driveable executor here.
    */
   template <typename F>
-  SemiFuture<typename futures::detail::callableResult<T, F>::Return::value_type>
+  SemiFuture<
+      typename futures::detail::deferCallableResult<T, F>::Return::value_type>
   defer(F&& func) &&;
+
+  /**
+   * Defer for functions taking a T rather than a Try<T>.
+   */
+  template <typename F>
+  SemiFuture<typename futures::detail::deferValueCallableResult<T, F>::Return::
+                 value_type>
+  deferValue(F&& func) &&;
+
+  // TODO: OnError
 
   /// Return a future that completes inline, as if the future had no executor.
   /// Intended for porting legacy code without behavioural change, and for rare
