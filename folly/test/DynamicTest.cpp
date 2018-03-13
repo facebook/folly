@@ -101,8 +101,19 @@ TEST(Dynamic, ObjectBasics) {
 
   EXPECT_EQ(objInsert.find("1")->second.size(), 1);
 
-  // We don't allow objects as keys in objects.
-  EXPECT_ANY_THROW(newObject[d3] = 12);
+  // Looking up objects as keys
+  dynamic objDefinedInOneOrder = folly::dynamic::object
+    ("bar", "987")
+    ("baz", folly::dynamic::array(1, 2, 3))
+    ("foo2", folly::dynamic::object("1", "2"));
+  dynamic sameObjInDifferentOrder = folly::dynamic::object
+    ("bar", "987")
+    ("foo2", folly::dynamic::object("1", "2"))
+    ("baz", folly::dynamic::array(1, 2, 3));
+
+  newObject[objDefinedInOneOrder] = 12;
+  EXPECT_EQ(newObject.at(objDefinedInOneOrder).getInt(), 12);
+  EXPECT_EQ(newObject.at(sameObjInDifferentOrder).getInt(), 12);
 
   // Merge two objects
   dynamic origMergeObj1 = folly::dynamic::object();

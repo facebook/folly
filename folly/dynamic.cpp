@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <numeric>
+
 #include <folly/dynamic.h>
 
 #include <folly/Format.h>
@@ -291,10 +293,22 @@ dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
 
 std::size_t dynamic::hash() const {
   switch (type()) {
-  case OBJECT:
-  case ARRAY:
   case NULLT:
-    throwTypeError_("not null/object/array", type());
+    return 0xBAAAAAAD;
+  case OBJECT:
+  {
+    // Accumulate using addition instead of using hash_range (as in the ARRAY
+    // case), as we need a commutative hash operation since unordered_map's
+    // iteration order is unspecified.
+    auto h = std::hash<std::pair<dynamic, dynamic>>{};
+    return std::accumulate(
+        items().begin(),
+        items().end(),
+        size_t{0x0B1EC7},
+        [&](auto acc, auto item) { return acc + h(item); });
+    }
+  case ARRAY:
+    return folly::hash::hash_range(begin(), end());
   case INT64:
     return std::hash<int64_t>()(getInt());
   case DOUBLE:
