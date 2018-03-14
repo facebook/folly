@@ -1225,6 +1225,21 @@ TEST(Gen, Guard) {
                runtime_error);
 }
 
+TEST(Gen, eachTryTo) {
+  using std::runtime_error;
+  EXPECT_EQ(4,
+            from({"1", "a", "3"})
+            | eachTryTo<int>()
+            | dereference
+            | sum);
+  EXPECT_EQ(1,
+            from({"1", "a", "3"})
+            | eachTryTo<int>()
+            | takeWhile()
+            | dereference
+            | sum);
+}
+
 TEST(Gen, Batch) {
   EXPECT_EQ((vector<vector<int>> { {1} }),
             seq(1, 1) | batch(5) | as<vector>());
