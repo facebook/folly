@@ -42,7 +42,8 @@ struct alignas(alignment) SizedData {
   void doModifications() {
     size_t i = 0;
     for (auto& datum : data) {
-      EXPECT_EQ(static_cast<unsigned char>(i++), datum);
+      EXPECT_EQ(static_cast<unsigned char>(i), datum);
+      ++i;
       ++datum;
     }
   }
@@ -50,7 +51,8 @@ struct alignas(alignment) SizedData {
   ~SizedData() {
     size_t i = 1;
     for (auto& datum : data) {
-      EXPECT_EQ(static_cast<unsigned char>(i++), datum);
+      EXPECT_EQ(static_cast<unsigned char>(i), datum);
+      ++i;
     }
   }
 

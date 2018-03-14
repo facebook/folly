@@ -48,8 +48,8 @@ bool OpenSSLUtils::getTLSMasterKey(
     return true;
   }
 #else
-  (SSL_SESSION*)session;
-  (MutableByteRange) keyOut;
+  (void)session;
+  (void)keyOut;
 #endif
   return false;
 }
@@ -65,8 +65,8 @@ bool OpenSSLUtils::getTLSClientRandom(
     return true;
   }
 #else
-  (SSL*)ssl;
-  (MutableByteRange) randomOut;
+  (void)ssl;
+  (void)randomOut;
 #endif
   return false;
 }

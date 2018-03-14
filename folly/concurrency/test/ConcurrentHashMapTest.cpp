@@ -89,22 +89,18 @@ TEST(ConcurrentHashMap, MoveTest) {
 struct foo {
   static int moved;
   static int copied;
-  foo(foo&& o) noexcept {
-    (void*)&o;
+  foo(foo&&) noexcept {
     moved++;
   }
-  foo& operator=(foo&& o) {
-    (void*)&o;
+  foo& operator=(foo&&) {
     moved++;
     return *this;
   }
-  foo& operator=(const foo& o) {
-    (void*)&o;
+  foo& operator=(const foo&) {
     copied++;
     return *this;
   }
-  foo(const foo& o) {
-    (void*)&o;
+  foo(const foo&) {
     copied++;
   }
   foo() {}

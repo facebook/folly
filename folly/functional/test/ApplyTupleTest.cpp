@@ -272,10 +272,10 @@ TEST(ApplyTuple, MemberFunctionWithUniquePtr) {
   MemberFunc mf;
   mf.x = 234;
 
-  EXPECT_EQ(folly::applyTuple(&MemberFunc::getX,
-                              std::make_tuple(std::unique_ptr<MemberFunc>(
-                                  new MemberFunc(mf)))),
-            234);
+  EXPECT_EQ(
+      folly::applyTuple(&MemberFunc::getX,
+                        std::make_tuple(std::make_unique<MemberFunc>(mf))),
+      234);
 }
 
 TEST(ApplyTuple, Array) {
