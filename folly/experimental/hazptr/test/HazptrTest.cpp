@@ -29,6 +29,8 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
+#include <condition_variable>
+
 #include <thread>
 
 DEFINE_int32(num_threads, 5, "Number of threads");
@@ -672,5 +674,62 @@ TEST_F(HazptrTest, FreeFunctionCleanup) {
     CHECK_EQ(constructed.load(), 2);
     hazptr_cleanup();
     CHECK_EQ(destroyed.load(), 2);
+  }
+}
+
+TEST_F(HazptrTest, ForkTest) {
+  struct Foo : hazptr_obj_base<Foo> {
+    int a;
+  };
+  std::mutex m;
+  std::condition_variable cv;
+  std::condition_variable cv2;
+  bool ready = false;
+  bool ready2 = false;
+  auto mkthread = [&]() {
+    hazptr_holder h;
+    auto p = new Foo;
+    std::atomic<Foo*> ap{p};
+    h.get_protected<Foo>(p);
+    p->retire();
+    {
+      std::unique_lock<std::mutex> lk(m);
+      ready = true;
+      cv.notify_one();
+      cv2.wait(lk, [&] { return ready2; });
+    }
+  };
+  std::thread t(mkthread);
+  hazptr_holder h;
+  auto p = new Foo;
+  std::atomic<Foo*> ap{p};
+  h.get_protected<Foo>(p);
+  p->retire();
+  {
+    std::unique_lock<std::mutex> lk(m);
+    cv.wait(lk, [&] { return ready; });
+  }
+  auto pid = fork();
+  CHECK_GE(pid, 0);
+  if (pid) {
+    {
+      std::lock_guard<std::mutex> g(m);
+      ready2 = true;
+      cv2.notify_one();
+    }
+    t.join();
+    int status;
+    wait(&status);
+    CHECK_EQ(status, 0);
+  } else {
+    // child
+    std::thread tchild(mkthread);
+    {
+      std::lock_guard<std::mutex> g(m);
+      ready2 = true;
+      cv2.notify_one();
+    }
+    tchild.join();
+    _exit(0); // Do not print gtest results
   }
 }
