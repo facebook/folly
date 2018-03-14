@@ -723,9 +723,9 @@ bool mapsEqual(M const& lhs, M const& rhs) {
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 class F14ValueMap
     : public f14::detail::F14BasicMap<f14::detail::MapPolicyWithDefaults<
           f14::detail::ValueContainerPolicy,
@@ -780,9 +780,9 @@ bool operator!=(
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 class F14NodeMap
     : public f14::detail::F14BasicMap<f14::detail::MapPolicyWithDefaults<
           f14::detail::NodeContainerPolicy,
@@ -839,9 +839,9 @@ bool operator!=(
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 class F14VectorMap
     : public f14::detail::F14BasicMap<f14::detail::MapPolicyWithDefaults<
           f14::detail::VectorContainerPolicy,
@@ -976,9 +976,9 @@ bool operator!=(
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 using F14FastMap = std::conditional_t<
     sizeof(std::pair<Key const, Mapped>) < 24,
     F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,

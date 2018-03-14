@@ -125,7 +125,27 @@ class F14HashToken final {
 };
 
 namespace f14 {
+
+template <typename T>
+using DefaultHasher = std::hash<T>;
+
+template <typename T>
+using DefaultKeyEqual = std::equal_to<T>;
+
+template <typename T>
+using DefaultAlloc = std::allocator<T>;
+
 namespace detail {
+
+//// Defaults should be selected using void
+
+template <typename Arg, typename Default>
+using VoidDefault =
+    std::conditional_t<std::is_same<Arg, Default>::value, void, Arg>;
+
+template <typename Arg, typename Default>
+using Defaulted =
+    typename std::conditional_t<std::is_same<Arg, void>::value, Default, Arg>;
 
 template <
     typename Void,
@@ -146,25 +166,6 @@ struct EnableIfIsTransparent<
     T> {
   using type = T;
 };
-
-//// Defaults should be selected using void
-
-template <typename Arg, typename Default>
-using VoidDefault =
-    std::conditional_t<std::is_same<Arg, Default>::value, void, Arg>;
-
-template <typename Arg, typename Default>
-using Defaulted =
-    typename std::conditional_t<std::is_same<Arg, void>::value, Default, Arg>;
-
-template <typename T>
-using DefaultHasher = std::hash<T>;
-
-template <typename T>
-using DefaultKeyEqual = std::equal_to<T>;
-
-template <typename T>
-using DefaultAlloc = std::allocator<T>;
 
 ////////////////
 

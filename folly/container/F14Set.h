@@ -506,9 +506,9 @@ bool setsEqual(S const& lhs, S const& rhs) {
 
 template <
     typename Key,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<Key>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 class F14ValueSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
           f14::detail::ValueContainerPolicy,
@@ -559,9 +559,9 @@ bool operator!=(
 
 template <
     typename Key,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<Key>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 class F14NodeSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
           f14::detail::NodeContainerPolicy,
@@ -612,9 +612,9 @@ bool operator!=(
 
 template <
     typename Key,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<Key>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 class F14VectorSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
           f14::detail::VectorContainerPolicy,
@@ -741,9 +741,9 @@ bool operator!=(
 
 template <
     typename Key,
-    typename Hasher = f14::detail::DefaultHasher<Key>,
-    typename KeyEqual = f14::detail::DefaultKeyEqual<Key>,
-    typename Alloc = f14::detail::DefaultAlloc<Key>>
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 using F14FastSet = std::conditional_t<
     sizeof(Key) < 24,
     F14ValueSet<Key, Hasher, KeyEqual, Alloc>,
