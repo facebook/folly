@@ -140,6 +140,9 @@ class CallbackHandle {
   std::shared_ptr<Context> context_;
 };
 
+template <typename Observable, typename Traits>
+class ObserverCreator;
+
 template <typename T>
 class Observer {
  public:
