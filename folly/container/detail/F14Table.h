@@ -40,6 +40,7 @@
 #include <folly/lang/Exception.h>
 #include <folly/lang/Launder.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/portability/Builtins.h>
 #include <folly/portability/TypeTraits.h>
 
 #include <folly/container/detail/F14Memory.h>
@@ -61,6 +62,10 @@
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 #include <immintrin.h> // __m128i intrinsics
 #include <xmmintrin.h> // _mm_prefetch
+#endif
+
+#ifdef _WIN32
+#include <intrin.h> // for _mul128
 #endif
 
 namespace folly {
@@ -778,11 +783,20 @@ class F14Table : public Policy {
   static HashPair splitHash(std::size_t hash) {
     uint8_t tag;
     if (!Policy::isAvalanchingHasher()) {
+      auto const kMul = 0xc4ceb9fe1a85ec53ULL;
+#ifdef _WIN32
+      __int64 signedHi;
+      __int64 signedLo = _mul128(
+          static_cast<__int64>(hash), static_cast<__int64>(kMul), &signedHi);
+      auto hi = static_cast<uint64_t>(signedHi);
+      auto lo = static_cast<uint64_t>(signedLo);
+#else
       auto hi = static_cast<uint64_t>(
-          (static_cast<unsigned __int128>(hash) * 0xc4ceb9fe1a85ec53ULL) >> 64);
-      auto lo = hash * 0xc4ceb9fe1a85ec53ULL;
+          (static_cast<unsigned __int128>(hash) * kMul) >> 64);
+      auto lo = hash * kMul;
+#endif
       hash = hi ^ lo;
-      hash *= 0xc4ceb9fe1a85ec53ULL;
+      hash *= kMul;
       tag = static_cast<uint8_t>(hash >> 15);
       hash >>= 22;
     } else {
