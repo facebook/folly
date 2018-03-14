@@ -205,6 +205,9 @@ struct lift_void_to_char<void> {
  */
 template <typename T>
 class SysAllocator {
+ private:
+  using Self = SysAllocator<T>;
+
  public:
   using value_type = T;
 
@@ -220,10 +223,52 @@ class SysAllocator {
     std::free(p);
   }
 
-  bool operator==(SysAllocator<T> const&) {
+  friend bool operator==(Self const&, Self const&) noexcept {
     return true;
   }
-  bool operator!=(SysAllocator<T> const&) {
+  friend bool operator!=(Self const&, Self const&) noexcept {
+    return false;
+  }
+};
+
+class DefaultAlign {
+ private:
+  using Self = DefaultAlign;
+  std::size_t align_;
+
+ public:
+  explicit DefaultAlign(std::size_t align) noexcept : align_(align) {
+    assert(!(align_ < sizeof(void*)) && bool("bad align: too small"));
+    assert(!(align_ & (align_ - 1)) && bool("bad align: not power-of-two"));
+  }
+  std::size_t operator()() const noexcept {
+    return align_;
+  }
+
+  friend bool operator==(Self const& a, Self const& b) noexcept {
+    return a.align_ == b.align_;
+  }
+  friend bool operator!=(Self const& a, Self const& b) noexcept {
+    return a.align_ != b.align_;
+  }
+};
+
+template <std::size_t Align>
+class FixedAlign {
+ private:
+  static_assert(!(Align < sizeof(void*)), "bad align: too small");
+  static_assert(!(Align & (Align - 1)), "bad align: not power-of-two");
+  using Self = FixedAlign<Align>;
+
+ public:
+  constexpr std::size_t operator()() const noexcept {
+    return Align;
+  }
+
+  friend bool operator==(Self const&, Self const&) noexcept {
+    return true;
+  }
+  friend bool operator!=(Self const&, Self const&) noexcept {
     return false;
   }
 };
@@ -233,29 +278,51 @@ class SysAllocator {
  *
  * Resembles std::allocator, the default Allocator, but wraps aligned_malloc and
  * aligned_free.
+ *
+ * Accepts a policy parameter for providing the alignment, which must:
+ *   * be invocable as std::size_t() noexcept, returning the alignment
+ *   * be noexcept-copy-constructible
+ *   * have noexcept operator==
+ *   * have noexcept operator!=
+ *   * not be final
+ *
+ * DefaultAlign and FixedAlign<std::size_t>, provided above, are valid policies.
  */
-template <typename T>
-class AlignedSysAllocator {
+template <typename T, typename Align = DefaultAlign>
+class AlignedSysAllocator : private Align {
+ private:
+  using Self = AlignedSysAllocator<T, Align>;
+
+  constexpr Align const& align() const {
+    return *this;
+  }
+
  public:
+  static_assert(std::is_nothrow_copy_constructible<Align>::value, "");
+  static_assert(is_nothrow_invocable_r<std::size_t, Align>::value, "");
+
   using value_type = T;
 
   using propagate_on_container_copy_assignment = std::true_type;
   using propagate_on_container_move_assignment = std::true_type;
   using propagate_on_container_swap = std::true_type;
 
-  explicit AlignedSysAllocator(std::size_t align) : align_(align) {
-    // terminate early before the first allocate
-    assert(!(align_ < sizeof(void*)) || !"bad align");
-    assert(!(align_ & (align_ - 1)) || !"bad align");
-  }
+  using Align::Align;
+
+  // TODO: remove this ctor, which is required only by gcc49
+  template <
+      typename S = Align,
+      _t<std::enable_if<std::is_default_constructible<S>::value, int>> = 0>
+  constexpr AlignedSysAllocator() noexcept(noexcept(Align())) : Align() {}
 
   template <typename U>
-  explicit AlignedSysAllocator(AlignedSysAllocator<U> const& other)
-      : align_(other.align) {}
+  constexpr explicit AlignedSysAllocator(
+      AlignedSysAllocator<U, Align> const& other) noexcept
+      : Align(other.align()) {}
 
   T* allocate(size_t count) {
     using lifted = typename detail::lift_void_to_char<T>::type;
-    auto const p = aligned_malloc(sizeof(lifted) * count, align_);
+    auto const p = aligned_malloc(sizeof(lifted) * count, align()());
     if (!p) {
       if (FOLLY_UNLIKELY(errno != ENOMEM)) {
         std::terminate();
@@ -268,15 +335,12 @@ class AlignedSysAllocator {
     aligned_free(p);
   }
 
-  bool operator==(SysAllocator<T> const& other) {
-    return align_ == other.align_;
+  friend bool operator==(Self const& a, Self const& b) noexcept {
+    return a.align() == b.align();
   }
-  bool operator!=(SysAllocator<T> const& other) {
-    return align_ != other.align_;
+  friend bool operator!=(Self const& a, Self const& b) noexcept {
+    return a.align() != b.align();
   }
-
- private:
-  std::size_t align_;
 };
 
 /**
@@ -292,6 +356,14 @@ class AlignedSysAllocator {
  */
 template <typename T, class Inner>
 class CxxAllocatorAdaptor {
+ private:
+  using Self = CxxAllocatorAdaptor<T, Inner>;
+
+  template <typename U, typename UAlloc>
+  friend class CxxAllocatorAdaptor;
+
+  std::reference_wrapper<Inner> ref_;
+
  public:
   using value_type = T;
 
@@ -314,18 +386,12 @@ class CxxAllocatorAdaptor {
     ref_.get().deallocate(p, sizeof(lifted) * n);
   }
 
-  bool operator==(CxxAllocatorAdaptor<T, Inner> const& other) const {
-    return std::addressof(ref_.get()) == std::addressof(other.ref_.get());
+  friend bool operator==(Self const& a, Self const& b) noexcept {
+    return std::addressof(a.ref_.get()) == std::addressof(b.ref_.get());
   }
-  bool operator!=(CxxAllocatorAdaptor<T, Inner> const& other) const {
-    return std::addressof(ref_.get()) != std::addressof(other.ref_.get());
+  friend bool operator!=(Self const& a, Self const& b) noexcept {
+    return std::addressof(a.ref_.get()) != std::addressof(b.ref_.get());
   }
-
- private:
-  template <typename U, typename UAlloc>
-  friend class CxxAllocatorAdaptor;
-
-  std::reference_wrapper<Inner> ref_;
 };
 
 /*

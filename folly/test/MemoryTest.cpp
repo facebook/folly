@@ -58,34 +58,106 @@ TEST(to_weak_ptr, example) {
   EXPECT_EQ(3, (to_weak_ptr(decltype(s)(s)).lock(), s.use_count())) << "rvalue";
 }
 
+TEST(SysAllocator, equality) {
+  using Alloc = SysAllocator<float>;
+  Alloc const a, b;
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a != b);
+}
+
 TEST(SysAllocator, allocate_unique) {
-  SysAllocator<float> alloc;
+  using Alloc = SysAllocator<float>;
+  Alloc const alloc;
   auto ptr = allocate_unique<float>(alloc, 3.);
   EXPECT_EQ(3., *ptr);
 }
 
-TEST(SysAllocator, example_vector) {
-  SysAllocator<float> alloc;
-  std::vector<float, SysAllocator<float>> nums(alloc);
+TEST(SysAllocator, vector) {
+  using Alloc = SysAllocator<float>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
   nums.push_back(3.);
   nums.push_back(5.);
   EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
 }
 
-TEST(AlignedSysAllocator, allocate_unique) {
-  AlignedSysAllocator<float> alloc(1024);
+TEST(SysAllocator, bad_alloc) {
+  using Alloc = SysAllocator<float>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
+  if (!kIsSanitize) {
+    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+  }
+}
+
+TEST(AlignedSysAllocator, equality_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const a, b;
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a != b);
+}
+
+TEST(AlignedSysAllocator, allocate_unique_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const alloc;
   auto ptr = allocate_unique<float>(alloc, 3.);
   EXPECT_EQ(3., *ptr);
   EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
 }
 
-TEST(AlignedSysAllocator, example_vector) {
-  AlignedSysAllocator<float> alloc(1024);
-  std::vector<float, AlignedSysAllocator<float>> nums(alloc);
+TEST(AlignedSysAllocator, vector_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
   nums.push_back(3.);
   nums.push_back(5.);
   EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
   EXPECT_EQ(0, std::uintptr_t(nums.data()) % 1024);
+}
+
+TEST(AlignedSysAllocator, bad_alloc_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
+  if (!kIsSanitize) {
+    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+  }
+}
+
+TEST(AlignedSysAllocator, equality_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const a(1024), b(1024), c(512);
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a != b);
+  EXPECT_FALSE(a == c);
+  EXPECT_TRUE(a != c);
+}
+
+TEST(AlignedSysAllocator, allocate_unique_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const alloc(1024);
+  auto ptr = allocate_unique<float>(alloc, 3.);
+  EXPECT_EQ(3., *ptr);
+  EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
+}
+
+TEST(AlignedSysAllocator, vector_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const alloc(1024);
+  std::vector<float, Alloc> nums(alloc);
+  nums.push_back(3.);
+  nums.push_back(5.);
+  EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
+  EXPECT_EQ(0, std::uintptr_t(nums.data()) % 1024);
+}
+
+TEST(AlignedSysAllocator, bad_alloc_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const alloc(1024);
+  std::vector<float, Alloc> nums(alloc);
+  if (!kIsSanitize) {
+    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+  }
 }
 
 TEST(allocate_sys_buffer, compiles) {
