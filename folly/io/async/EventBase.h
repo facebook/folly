@@ -40,6 +40,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/IOExecutor.h>
+#include <folly/executors/ScheduledExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -130,7 +131,8 @@ class EventBase : private boost::noncopyable,
                   public TimeoutManager,
                   public DrivableExecutor,
                   public IOExecutor,
-                  public SequencedExecutor {
+                  public SequencedExecutor,
+                  public ScheduledExecutor {
  public:
   using Func = folly::Function<void()>;
 
@@ -627,6 +629,9 @@ class EventBase : private boost::noncopyable,
     };
     loopOnce();
   }
+
+  // Implements the ScheduledExecutor interface
+  void scheduleAt(Func&& fn, TimePoint const& timeout) override;
 
   /// Returns you a handle which make loop() behave like loopForever() until
   /// destroyed. loop() will return to its original behavior only when all

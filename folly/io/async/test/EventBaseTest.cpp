@@ -1073,6 +1073,55 @@ TEST(EventBaseTest, DestroyTimeout) {
   T_CHECK_TIMEOUT(start, end, milliseconds(10));
 }
 
+/**
+ * Test the scheduled executor impl
+ */
+TEST(EventBaseTest, ScheduledFn) {
+  EventBase eb;
+
+  TimePoint timestamp1(false);
+  TimePoint timestamp2(false);
+  TimePoint timestamp3(false);
+  eb.schedule(std::bind(&TimePoint::reset, &timestamp1), milliseconds(9));
+  eb.schedule(std::bind(&TimePoint::reset, &timestamp2), milliseconds(19));
+  eb.schedule(std::bind(&TimePoint::reset, &timestamp3), milliseconds(39));
+
+  TimePoint start;
+  eb.loop();
+  TimePoint end;
+
+  T_CHECK_TIMEOUT(start, timestamp1, milliseconds(9));
+  T_CHECK_TIMEOUT(start, timestamp2, milliseconds(19));
+  T_CHECK_TIMEOUT(start, timestamp3, milliseconds(39));
+  T_CHECK_TIMEOUT(start, end, milliseconds(39));
+}
+
+TEST(EventBaseTest, ScheduledFnAt) {
+  EventBase eb;
+
+  TimePoint timestamp0(false);
+  TimePoint timestamp1(false);
+  TimePoint timestamp2(false);
+  TimePoint timestamp3(false);
+  eb.scheduleAt(
+      std::bind(&TimePoint::reset, &timestamp1), eb.now() - milliseconds(5));
+  eb.scheduleAt(
+      std::bind(&TimePoint::reset, &timestamp1), eb.now() + milliseconds(9));
+  eb.scheduleAt(
+      std::bind(&TimePoint::reset, &timestamp2), eb.now() + milliseconds(19));
+  eb.scheduleAt(
+      std::bind(&TimePoint::reset, &timestamp3), eb.now() + milliseconds(39));
+
+  TimePoint start;
+  eb.loop();
+  TimePoint end;
+
+  T_CHECK_TIME_LT(start, timestamp0, milliseconds(0));
+  T_CHECK_TIMEOUT(start, timestamp1, milliseconds(9));
+  T_CHECK_TIMEOUT(start, timestamp2, milliseconds(19));
+  T_CHECK_TIMEOUT(start, timestamp3, milliseconds(39));
+  T_CHECK_TIMEOUT(start, end, milliseconds(39));
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // Test for runInThreadTestFunc()

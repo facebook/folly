@@ -735,6 +735,13 @@ const std::string& EventBase::getName() {
   return name_;
 }
 
+void EventBase::scheduleAt(Func&& fn, TimePoint const& timeout) {
+  auto duration = timeout - now();
+  timer().scheduleTimeoutFn(
+      std::move(fn),
+      std::chrono::duration_cast<std::chrono::milliseconds>(duration));
+}
+
 const char* EventBase::getLibeventVersion() { return event_get_version(); }
 const char* EventBase::getLibeventMethod() { return event_get_method(); }
 
