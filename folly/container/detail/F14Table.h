@@ -101,6 +101,17 @@ struct F14TableStats {
   }
 };
 
+namespace f14 {
+template <typename T>
+using DefaultHasher = std::hash<T>;
+
+template <typename T>
+using DefaultKeyEqual = std::equal_to<T>;
+
+template <typename T>
+using DefaultAlloc = std::allocator<T>;
+} // namespace f14
+
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {
 namespace detail {
@@ -125,18 +136,7 @@ class F14HashToken final {
 };
 
 namespace f14 {
-
-template <typename T>
-using DefaultHasher = std::hash<T>;
-
-template <typename T>
-using DefaultKeyEqual = std::equal_to<T>;
-
-template <typename T>
-using DefaultAlloc = std::allocator<T>;
-
 namespace detail {
-
 //// Defaults should be selected using void
 
 template <typename Arg, typename Default>
