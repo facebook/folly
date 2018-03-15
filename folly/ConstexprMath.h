@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <type_traits>
 
 namespace folly {
@@ -144,6 +146,57 @@ constexpr T constexpr_pow(T base, std::size_t exp) {
       : exp == 1 ? base
                  : detail::constexpr_square_(constexpr_pow(base, exp / 2)) *
               (exp % 2 ? base : T(1));
+}
+
+template <typename T>
+constexpr T constexpr_add_overflow_clamped(T a, T b) {
+  using L = std::numeric_limits<T>;
+  using M = std::intmax_t;
+  static_assert(
+      !std::is_integral<T>::value || sizeof(T) <= sizeof(M),
+      "Integral type too large!");
+  // clang-format off
+  return
+    // don't do anything special for non-integral types.
+    !std::is_integral<T>::value ? a + b :
+    // for narrow integral types, just convert to intmax_t.
+    sizeof(T) < sizeof(M)
+      ? T(constexpr_clamp(M(a) + M(b), M(L::min()), M(L::max()))) :
+    // when a >= 0, cannot add more than `MAX - a` onto a.
+    !(a < 0) ? a + constexpr_min(b, T(L::max() - a)) :
+    // a < 0 && b >= 0, `a + b` will always be in valid range of type T.
+    !(b < 0) ? a + b :
+    // a < 0 && b < 0, keep the result >= MIN.
+               a + constexpr_max(b, T(L::min() - a));
+  // clang-format on
+}
+
+template <typename T>
+constexpr T constexpr_sub_overflow_clamped(T a, T b) {
+  using L = std::numeric_limits<T>;
+  using M = std::intmax_t;
+  static_assert(
+      !std::is_integral<T>::value || sizeof(T) <= sizeof(M),
+      "Integral type too large!");
+  // clang-format off
+  return
+    // don't do anything special for non-integral types.
+    !std::is_integral<T>::value ? a - b :
+    // for unsigned type, keep result >= 0.
+    std::is_unsigned<T>::value ? (a < b ? 0 : a - b) :
+    // for narrow signed integral types, just convert to intmax_t.
+    sizeof(T) < sizeof(M)
+      ? T(constexpr_clamp(M(a) - M(b), M(L::min()), M(L::max()))) :
+    // (a >= 0 && b >= 0) || (a < 0 && b < 0), `a - b` will always be valid.
+    (a < 0) == (b < 0) ? a - b :
+    // MIN < b, so `-b` should be in valid range (-MAX <= -b <= MAX),
+    // convert subtraction to addition.
+    L::min() < b ? constexpr_add_overflow_clamped(a, T(-b)) :
+    // -b = -MIN = (MAX + 1) and a <= -1, result is in valid range.
+    a < 0 ? a - b :
+    // -b = -MIN = (MAX + 1) and a >= 0, result > MAX.
+            L::max();
+  // clang-format on
 }
 
 } // namespace folly
