@@ -97,8 +97,9 @@ class SingletonThreadLocal {
   };
 
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static Wrapper& getWrapperInline() {
-    static LeakySingleton<ThreadLocal<Wrapper>, Tag> singleton;
-    return *singleton.get();
+    /* library-local */ static auto entry =
+        detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
+    return **entry;
   }
 
   FOLLY_NOINLINE static Wrapper& getWrapperOutline() {
