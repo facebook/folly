@@ -31,7 +31,6 @@
 #include <utility>
 
 #include <boost/intrusive/list.hpp>
-#include <boost/utility.hpp>
 #include <glog/logging.h>
 
 #include <folly/Executor.h>
