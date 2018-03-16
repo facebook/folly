@@ -104,6 +104,8 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       std::chrono::milliseconds expiration,
       Func expireCallback = nullptr);
 
+  size_t getTaskQueueSize() const;
+
   uint8_t getNumPriorities() const override;
 
   struct CPUTask : public ThreadPoolExecutor::Task {

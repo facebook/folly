@@ -104,6 +104,10 @@ uint8_t CPUThreadPoolExecutor::getNumPriorities() const {
   return taskQueue_->getNumPriorities();
 }
 
+size_t CPUThreadPoolExecutor::getTaskQueueSize() const {
+  return taskQueue_->size();
+}
+
 BlockingQueue<CPUThreadPoolExecutor::CPUTask>*
 CPUThreadPoolExecutor::getTaskQueue() {
   return taskQueue_.get();
