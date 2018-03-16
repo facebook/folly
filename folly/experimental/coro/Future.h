@@ -37,7 +37,7 @@ class Future {
   }
 
   Wait wait() {
-    co_await *this;
+    (void)co_await *this;
     co_return;
   }
 

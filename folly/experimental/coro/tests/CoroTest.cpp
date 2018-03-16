@@ -37,13 +37,13 @@ TEST(Coro, Basic) {
 }
 
 coro::Task<void> taskVoid() {
-  co_await task42();
+  (void)co_await task42();
   co_return;
 }
 
 TEST(Coro, Basic2) {
   ManualExecutor executor;
-  auto future = taskVoid().via(&executor);
+  auto future = via(&executor, taskVoid());
 
   EXPECT_FALSE(future.await_ready());
 
@@ -53,7 +53,7 @@ TEST(Coro, Basic2) {
 }
 
 coro::Task<void> taskSleep() {
-  co_await futures::sleep(std::chrono::seconds{1});
+  (void)co_await futures::sleep(std::chrono::seconds{1});
   co_return;
 }
 
@@ -93,7 +93,7 @@ coro::Task<int> taskRecursion(int depth) {
   if (depth > 0) {
     EXPECT_EQ(depth - 1, co_await taskRecursion(depth - 1));
   } else {
-    co_await futures::sleep(std::chrono::seconds{1});
+    (void)co_await futures::sleep(std::chrono::seconds{1});
   }
 
   co_return depth;
@@ -109,7 +109,7 @@ TEST(Coro, LargeStack) {
 
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
   EXPECT_EQ(threadId, std::this_thread::get_id());
-  co_await futures::sleep(std::chrono::seconds{1});
+  (void)co_await futures::sleep(std::chrono::seconds{1});
   EXPECT_EQ(threadId, std::this_thread::get_id());
   co_return;
 }
