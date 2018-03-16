@@ -134,7 +134,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
 
 void AsyncUDPSocket::dontFragment(bool df) {
   (void)df; // to avoid potential unused variable warning
-#ifdef IP_MTU_DISCOVER
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO) && \
+    defined(IP_PMTUDISC_WANT)
   if (address().getFamily() == AF_INET) {
     int v4 = df ? IP_PMTUDISC_DO : IP_PMTUDISC_WANT;
     if (fsp::setsockopt(fd_, IPPROTO_IP, IP_MTU_DISCOVER, &v4, sizeof(v4))) {
@@ -145,7 +146,8 @@ void AsyncUDPSocket::dontFragment(bool df) {
     }
   }
 #endif
-#ifdef IPV6_MTU_DISCOVER
+#if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DO) && \
+    defined(IPV6_PMTUDISC_WANT)
   if (address().getFamily() == AF_INET6) {
     int v6 = df ? IPV6_PMTUDISC_DO : IPV6_PMTUDISC_WANT;
     if (fsp::setsockopt(
