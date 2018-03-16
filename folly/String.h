@@ -25,7 +25,6 @@
 #include <vector>
 
 #include <boost/regex/pending/unicode_iterator.hpp>
-#include <boost/type_traits.hpp>
 
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>
