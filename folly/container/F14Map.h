@@ -32,6 +32,7 @@
 #include <folly/Traits.h>
 #include <folly/functional/ApplyTuple.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/SafeAssert.h>
 
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
@@ -294,7 +295,7 @@ class F14BasicMap {
 
   template <class InputIt>
   void initialInsert(InputIt first, InputIt last, std::size_t initialCapacity) {
-    assert(empty() && bucket_count() >= initialCapacity);
+    FOLLY_SAFE_DCHECK(empty() && bucket_count() >= initialCapacity, "");
 
     // It's possible that there are a lot of duplicates in first..last and
     // so we will oversize ourself.  The common case, however, is that

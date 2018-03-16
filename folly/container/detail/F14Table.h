@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -223,9 +222,10 @@ struct alignas(std::max_align_t) SSE2Chunk {
 
   static SSE2Chunk* emptyInstance() {
     auto rv = static_cast<SSE2Chunk*>(static_cast<void*>(&kEmptyTagVector));
-    assert(
+    FOLLY_SAFE_DCHECK(
         rv->occupiedMask() == 0 && rv->chunk0Capacity() == 0 &&
-        rv->outboundOverflowCount() == 0);
+            rv->outboundOverflowCount() == 0,
+        "");
     return rv;
   }
 
@@ -238,7 +238,7 @@ struct alignas(std::max_align_t) SSE2Chunk {
   }
 
   void copyOverflowInfoFrom(SSE2Chunk const& rhs) {
-    assert(hostedOverflowCount() == 0);
+    FOLLY_SAFE_DCHECK(hostedOverflowCount() == 0, "");
     control_ += rhs.control_ & 0xf0;
     outboundOverflowCount_ = rhs.outboundOverflowCount_;
   }
@@ -264,9 +264,10 @@ struct alignas(std::max_align_t) SSE2Chunk {
   }
 
   void markEof(std::size_t c0c) {
-    assert(this != emptyInstance());
-    assert(control_ == 0);
-    assert(c0c > 0 && c0c <= 0xf && c0c <= kCapacity);
+    FOLLY_SAFE_DCHECK(
+        this != emptyInstance() && control_ == 0 && c0c > 0 && c0c <= 0xf &&
+            c0c <= kCapacity,
+        "");
     control_ = static_cast<uint8_t>(c0c);
   }
 
@@ -291,8 +292,7 @@ struct alignas(std::max_align_t) SSE2Chunk {
   }
 
   void setTag(std::size_t index, uint8_t tag) {
-    assert(this != emptyInstance());
-    assert((tag & 0x80) != 0);
+    FOLLY_SAFE_DCHECK(this != emptyInstance() && (tag & 0x80) != 0, "");
     tags_[index] = tag;
   }
 
@@ -305,7 +305,7 @@ struct alignas(std::max_align_t) SSE2Chunk {
   }
 
   unsigned tagMatchMask(uint8_t needle) const {
-    assert((needle & 0x80) != 0);
+    FOLLY_SAFE_DCHECK((needle & 0x80) != 0, "");
     auto tagV = _mm_load_si128(tagVector());
     auto needleV = _mm_set1_epi8(needle);
     auto eqV = _mm_cmpeq_epi8(tagV, needleV);
@@ -318,7 +318,7 @@ struct alignas(std::max_align_t) SSE2Chunk {
   }
 
   bool occupied(std::size_t index) const {
-    assert(tags_[index] == 0 || (tags_[index] & 0x80) != 0);
+    FOLLY_SAFE_DCHECK(tags_[index] == 0 || (tags_[index] & 0x80) != 0, "");
     return tags_[index] != 0;
   }
 
@@ -331,7 +331,7 @@ struct alignas(std::max_align_t) SSE2Chunk {
     // assume + findLastSet results in optimal __builtin_clz on gcc
     folly::assume(m != 0);
     unsigned i = folly::findLastSet(m) - 1;
-    assert(occupied(i));
+    FOLLY_SAFE_DCHECK(occupied(i), "");
     return i;
   }
 
@@ -341,12 +341,12 @@ struct alignas(std::max_align_t) SSE2Chunk {
   }
 
   Item& item(std::size_t i) {
-    assert(this->occupied(i));
+    FOLLY_SAFE_DCHECK(this->occupied(i), "");
     return *folly::launder(itemAddr(i));
   }
 
   Item const& citem(std::size_t i) const {
-    assert(this->occupied(i));
+    FOLLY_SAFE_DCHECK(this->occupied(i), "");
     return *folly::launder(itemAddr(i));
   }
 
@@ -355,7 +355,7 @@ struct alignas(std::max_align_t) SSE2Chunk {
         static_cast<uint8_t*>(static_cast<void*>(std::addressof(item))) -
         offsetof(SSE2Chunk, rawItems_) - index * sizeof(Item);
     auto chunkAddr = static_cast<SSE2Chunk*>(static_cast<void*>(rawAddr));
-    assert(std::addressof(item) == chunkAddr->itemAddr(index));
+    FOLLY_SAFE_DCHECK(std::addressof(item) == chunkAddr->itemAddr(index), "");
     return *chunkAddr;
   }
 };
@@ -371,7 +371,7 @@ class SparseMaskIter {
   }
 
   unsigned next() {
-    assert(hasNext());
+    FOLLY_SAFE_DCHECK(hasNext(), "");
     unsigned i = __builtin_ctz(mask_);
     mask_ &= (mask_ - 1);
     return i;
@@ -390,7 +390,7 @@ class DenseMaskIter {
   }
 
   unsigned next() {
-    assert(hasNext());
+    FOLLY_SAFE_DCHECK(hasNext(), "");
     if (LIKELY((mask_ & 1) != 0)) {
       mask_ >>= 1;
       return index_++;
@@ -431,7 +431,7 @@ class F14ItemIter {
   F14ItemIter(ChunkPtr chunk, std::size_t index)
       : itemPtr_{std::pointer_traits<ItemPtr>::pointer_to(chunk->item(index))},
         index_{index} {
-    assert(index < Chunk::kCapacity);
+    FOLLY_SAFE_DCHECK(index < Chunk::kCapacity, "");
     folly::assume(
         std::pointer_traits<ItemPtr>::pointer_to(chunk->item(index)) !=
         nullptr);
@@ -474,7 +474,7 @@ class F14ItemIter {
     for (std::size_t i = 1; i != 0; ++i) {
       // exhausted the current chunk
       if (UNLIKELY(c->eof())) {
-        assert(index_ == 0);
+        FOLLY_SAFE_DCHECK(index_ == 0, "");
         itemPtr_ = nullptr;
         return;
       }
@@ -504,7 +504,7 @@ class F14ItemIter {
 
     while (true) {
       // exhausted the current chunk
-      assert(!c->eof());
+      FOLLY_SAFE_DCHECK(!c->eof(), "");
       --c;
       auto m = c->occupiedMask();
       if (LIKELY(m != 0)) {
@@ -814,11 +814,11 @@ class F14Table : public Policy {
       std::size_t maxSizeWithoutRehash) {
     if (chunkCount == 1) {
       auto n = offsetof(Chunk, rawItems_) + maxSizeWithoutRehash * sizeof(Item);
-      assert((maxSizeWithoutRehash % 2) == 0);
+      FOLLY_SAFE_DCHECK((maxSizeWithoutRehash % 2) == 0, "");
       if ((sizeof(Item) % 8) != 0) {
         n = ((n - 1) | 15) + 1;
       }
-      assert((n % 16) == 0);
+      FOLLY_SAFE_DCHECK((n % 16) == 0, "");
       return n;
     } else {
       return sizeof(Chunk) * chunkCount;
@@ -994,7 +994,7 @@ class F14Table : public Policy {
   // and the two-arg find(F14HashToken,K) performs the rest of the search.
   template <typename K>
   F14HashToken prehash(K const& key) const {
-    assert(chunks_ != nullptr);
+    FOLLY_SAFE_DCHECK(chunks_ != nullptr, "");
     auto hp = splitHash(this->computeKeyHash(key));
     ChunkPtr firstChunk = chunks_ + (hp.first & chunkMask_);
     prefetchAddr(firstChunk);
@@ -1010,8 +1010,9 @@ class F14Table : public Policy {
   template <typename K>
   FOLLY_ALWAYS_INLINE ItemIter
   find(F14HashToken const& token, K const& key) const {
-    assert(
-        splitHash(this->computeKeyHash(key)) == static_cast<HashPair>(token));
+    FOLLY_SAFE_DCHECK(
+        splitHash(this->computeKeyHash(key)) == static_cast<HashPair>(token),
+        "");
     return findImpl(static_cast<HashPair>(token), key);
   }
 
@@ -1089,14 +1090,14 @@ class F14Table : public Policy {
       index += delta;
     }
     unsigned itemIndex = fullness[index]++;
-    assert(!chunk->occupied(itemIndex));
+    FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
     chunk->setTag(itemIndex, hp.second);
     chunk->adjustHostedOverflowCount(hostedOp);
     return ItemIter{chunk, itemIndex};
   }
 
   void directCopyFrom(F14Table const& src) {
-    assert(src.size() > 0 && chunkMask_ == src.chunkMask_);
+    FOLLY_SAFE_DCHECK(src.size() > 0 && chunkMask_ == src.chunkMask_, "");
 
     Policy const& srcPolicy = src;
     auto undoState = this->beforeCopy(src.size(), bucket_count(), srcPolicy);
@@ -1168,7 +1169,7 @@ class F14Table : public Policy {
   }
 
   void rehashCopyFrom(F14Table const& src) {
-    assert(src.chunkMask_ > chunkMask_);
+    FOLLY_SAFE_DCHECK(src.chunkMask_ > chunkMask_, "");
 
     // 1 byte per chunk means < 1 bit per value temporary overhead
     std::array<uint8_t, 256> stackBuf;
@@ -1239,7 +1240,7 @@ class F14Table : public Policy {
           auto&& srcValue = src.valueAtItemForCopy(srcItem);
           auto const& srcKey = src.keyForValue(srcValue);
           auto hp = splitHash(this->computeKeyHash(srcKey));
-          assert(hp.second == srcChunk->tag(i));
+          FOLLY_SAFE_DCHECK(hp.second == srcChunk->tag(i), "");
           insertAtBlank(
               allocateTag(fullness, hp),
               hp,
@@ -1256,7 +1257,7 @@ class F14Table : public Policy {
   }
 
   FOLLY_NOINLINE void copyFromF14Table(F14Table const& src) {
-    assert(size() == 0);
+    FOLLY_SAFE_DCHECK(size() == 0, "");
     if (src.size() == 0) {
       return;
     }
@@ -1277,7 +1278,7 @@ class F14Table : public Policy {
   FOLLY_NOINLINE void rehashImpl(
       std::size_t newChunkCount,
       std::size_t newMaxSizeWithoutRehash) {
-    assert(newMaxSizeWithoutRehash > 0);
+    FOLLY_SAFE_DCHECK(newMaxSizeWithoutRehash > 0, "");
 
     auto origChunks = chunks_;
     const auto origChunkCount = chunkMask_ + 1;
@@ -1361,7 +1362,7 @@ class F14Table : public Policy {
           Item& srcItem = srcChunk->item(srcI);
           auto hp = splitHash(
               this->computeItemHash(const_cast<Item const&>(srcItem)));
-          assert(hp.second == srcChunk->tag(srcI));
+          FOLLY_SAFE_DCHECK(hp.second == srcChunk->tag(srcI), "");
 
           auto dstIter = allocateTag(fullness, hp);
           this->moveItemDuringRehash(dstIter.itemAddr(), srcItem);
@@ -1480,8 +1481,7 @@ class F14Table : public Policy {
   template <bool Reset>
   void clearImpl() noexcept {
     if (chunks_ == Chunk::emptyInstance()) {
-      assert(empty());
-      assert(bucket_count() == 0);
+      FOLLY_SAFE_DCHECK(empty() && bucket_count() == 0, "");
       return;
     }
 
@@ -1607,21 +1607,22 @@ class F14Table : public Policy {
       std::size_t n = 0;
       ItemIter prev;
       for (auto iter = begin(); iter != end(); iter.advance()) {
-        assert(n == 0 || iter.pack() < prev.pack());
+        FOLLY_SAFE_DCHECK(n == 0 || iter.pack() < prev.pack(), "");
         ++n;
         prev = iter;
       }
-      assert(n == size());
+      FOLLY_SAFE_DCHECK(n == size(), "");
     }
 
-    assert((chunks_ == Chunk::emptyInstance()) == (bucket_count() == 0));
+    FOLLY_SAFE_DCHECK(
+        (chunks_ == Chunk::emptyInstance()) == (bucket_count() == 0), "");
 
     std::size_t n1 = 0;
     std::size_t n2 = 0;
     auto cc = bucket_count() == 0 ? 0 : chunkMask_ + 1;
     for (std::size_t ci = 0; ci < cc; ++ci) {
       ChunkPtr chunk = chunks_ + ci;
-      assert(chunk->eof() == (ci == 0));
+      FOLLY_SAFE_DCHECK(chunk->eof() == (ci == 0), "");
 
       auto mask = chunk->occupiedMask();
       n1 += folly::popcount(mask);
@@ -1638,7 +1639,7 @@ class F14Table : public Policy {
         {
           auto& item = chunk->citem(ii);
           auto hp = splitHash(this->computeItemHash(item));
-          assert(chunk->tag(ii) == hp.second);
+          FOLLY_SAFE_DCHECK(chunk->tag(ii) == hp.second, "");
 
           std::size_t dist = 1;
           std::size_t index = hp.first;
@@ -1672,8 +1673,8 @@ class F14Table : public Policy {
       }
     }
 
-    assert(n1 == size());
-    assert(n2 == size());
+    FOLLY_SAFE_DCHECK(n1 == size(), "");
+    FOLLY_SAFE_DCHECK(n2 == size(), "");
 
     stats.policy = typeid(Policy).name();
     stats.size = size();

@@ -18,6 +18,7 @@
 
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
+#include <folly/lang/SafeAssert.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
@@ -222,7 +223,7 @@ struct BasePolicy
     // prefetchBeforeCopy(), and prefetchBeforeDestroy().  if they don't
     // override this method, because neither gcc nor clang can figure
     // out that DenseMaskIter with an empty body can be elided.
-    assert(false);
+    FOLLY_SAFE_DCHECK(false, "should be disabled");
   }
 };
 
@@ -858,7 +859,7 @@ class VectorContainerPolicy : public BasePolicy<
 
   VectorContainerPolicy& operator=(VectorContainerPolicy const& rhs) {
     if (this != &rhs) {
-      assert(values_ == nullptr);
+      FOLLY_SAFE_DCHECK(values_ == nullptr, "");
       Super::operator=(rhs);
     }
     return *this;
@@ -1006,7 +1007,7 @@ class VectorContainerPolicy : public BasePolicy<
       VectorContainerPolicy const& rhs) {
     Alloc& a = this->alloc();
 
-    assert(values_ != nullptr);
+    FOLLY_SAFE_DCHECK(values_ != nullptr, "");
 
     Value const* src = std::addressof(rhs.values_[0]);
     Value* dst = std::addressof(values_[0]);
@@ -1038,16 +1039,18 @@ class VectorContainerPolicy : public BasePolicy<
       std::size_t /*capacity*/,
       VectorContainerPolicy const& /*rhs*/) {
     // valueAtItemForCopy can be copied trivially, no failure should occur
-    assert(success);
+    FOLLY_SAFE_DCHECK(success, "");
   }
 
   ValuePtr beforeRehash(
       std::size_t size,
       std::size_t oldCapacity,
       std::size_t newCapacity) {
-    assert(
+    FOLLY_SAFE_DCHECK(
         size <= oldCapacity && ((values_ == nullptr) == (oldCapacity == 0)) &&
-        newCapacity > 0 && newCapacity <= (std::numeric_limits<Item>::max)());
+            newCapacity > 0 &&
+            newCapacity <= (std::numeric_limits<Item>::max)(),
+        "");
 
     Alloc& a = this->alloc();
     ValuePtr before = values_;
@@ -1087,7 +1090,8 @@ class VectorContainerPolicy : public BasePolicy<
   }
 
   void beforeClear(std::size_t size, std::size_t capacity) {
-    assert(size <= capacity && ((values_ == nullptr) == (capacity == 0)));
+    FOLLY_SAFE_DCHECK(
+        size <= capacity && ((values_ == nullptr) == (capacity == 0)), "");
     Alloc& a = this->alloc();
     for (std::size_t i = 0; i < size; ++i) {
       AllocTraits::destroy(a, std::addressof(values_[i]));
@@ -1095,7 +1099,8 @@ class VectorContainerPolicy : public BasePolicy<
   }
 
   void beforeReset(std::size_t size, std::size_t capacity) {
-    assert(size <= capacity && ((values_ == nullptr) == (capacity == 0)));
+    FOLLY_SAFE_DCHECK(
+        size <= capacity && ((values_ == nullptr) == (capacity == 0)), "");
     if (capacity > 0) {
       beforeClear(size, capacity);
       Alloc& a = this->alloc();

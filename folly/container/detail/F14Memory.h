@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <type_traits>
 
 #include <folly/Portability.h>
+#include <folly/lang/SafeAssert.h>
 
 namespace folly {
 namespace f14 {
@@ -113,7 +113,7 @@ class TaggedPtr<T*> {
 
   TaggedPtr(T* p, uint8_t e) noexcept
       : raw_{(reinterpret_cast<uintptr_t>(p) << 8) | e} {
-    assert(ptr() == p);
+    FOLLY_SAFE_DCHECK(ptr() == p, "");
   }
 
   /* implicit */ TaggedPtr(std::nullptr_t) noexcept : raw_{0} {}
@@ -137,7 +137,7 @@ class TaggedPtr<T*> {
 
   void setPtr(T* p) {
     *this = TaggedPtr{p, extra()};
-    assert(ptr() == p);
+    FOLLY_SAFE_DCHECK(ptr() == p, "");
   }
 
   uint8_t extra() const {

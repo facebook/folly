@@ -27,6 +27,8 @@
  * @author Xiao Shi       <xshi@fb.com>
  */
 
+#include <folly/lang/SafeAssert.h>
+
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 
@@ -269,7 +271,7 @@ class F14BasicSet {
 
   template <class InputIt>
   void initialInsert(InputIt first, InputIt last, std::size_t initialCapacity) {
-    assert(empty() && bucket_count() >= initialCapacity);
+    FOLLY_SAFE_DCHECK(empty() && bucket_count() >= initialCapacity, "");
 
     // It's possible that there are a lot of duplicates in first..last and
     // so we will oversize ourself.  The common case, however, is that
