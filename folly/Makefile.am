@@ -283,6 +283,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/AsyncPipe.h \
 	io/async/AsyncTimeout.h \
 	io/async/AsyncTransport.h \
+	io/async/AsyncTransportCertificate.h \
 	io/async/AsyncUDPServerSocket.h \
 	io/async/AsyncUDPSocket.h \
 	io/async/AsyncServerSocket.h \

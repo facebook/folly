@@ -814,6 +814,23 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   bool processZeroCopyWriteInProgress() noexcept;
 
+  void setPeerCertificate(
+      std::unique_ptr<const AsyncTransportCertificate> cert) {
+    peerCertData_ = std::move(cert);
+  }
+  const AsyncTransportCertificate* getPeerCertificate() const override {
+    return peerCertData_.get();
+  }
+
+  void setSelfCertificate(
+      std::unique_ptr<const AsyncTransportCertificate> cert) {
+    selfCertData_ = std::move(cert);
+  }
+
+  const AsyncTransportCertificate* getSelfCertificate() const override {
+    return selfCertData_.get();
+  }
+
   /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
    * If no data has been written, 0 is returned.
@@ -1234,6 +1251,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool trackEor_{false};
   bool zeroCopyEnabled_{false};
   bool zeroCopyVal_{false};
+
+  std::unique_ptr<const AsyncTransportCertificate> peerCertData_{nullptr};
+  std::unique_ptr<const AsyncTransportCertificate> selfCertData_{nullptr};
 };
 #ifdef _MSC_VER
 #pragma vtordisp(pop)

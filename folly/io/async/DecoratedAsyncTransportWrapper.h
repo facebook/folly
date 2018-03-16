@@ -189,6 +189,14 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
     transport_->setReplaySafetyCallback(callback);
   }
 
+  const AsyncTransportCertificate* getPeerCertificate() const override {
+    return transport_->getPeerCertificate();
+  }
+
+  const AsyncTransportCertificate* getSelfCertificate() const override {
+    return transport_->getSelfCertificate();
+  }
+
  protected:
   ~DecoratedAsyncTransportWrapper() override {}
 
