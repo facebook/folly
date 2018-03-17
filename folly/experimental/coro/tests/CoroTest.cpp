@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#if FOLLY_HAS_COROUTINES
+
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
@@ -155,3 +158,5 @@ TEST(Coro, CurrentExecutor) {
   future.wait();
   EXPECT_EQ(42, future.get());
 }
+
+#endif
