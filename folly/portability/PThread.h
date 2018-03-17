@@ -30,7 +30,9 @@
 namespace folly {
 namespace portability {
 namespace pthread {
-using pthread_key_t = DWORD;
+// In reality, this is boost::thread_specific_ptr*, but we're attempting
+// to avoid introducing boost into a portability header.
+using pthread_key_t = void*;
 
 int pthread_key_create(pthread_key_t* key, void (*destructor)(void*));
 int pthread_key_delete(pthread_key_t key);

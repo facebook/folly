@@ -17,71 +17,52 @@
 #include <folly/portability/PThread.h>
 
 #if !FOLLY_HAVE_PTHREAD && _WIN32
-#include <unordered_map>
-#include <utility>
+#include <boost/thread/tss.hpp> // @manual
 
 namespace folly {
 namespace portability {
 namespace pthread {
-static thread_local struct PThreadLocalMap {
-  PThreadLocalMap() = default;
-  ~PThreadLocalMap() {
-    for (auto kv : keyMap) {
-      // Call destruction callbacks if they exist.
-      if (kv.second.second != nullptr) {
-        kv.second.second(kv.second.first);
-      }
-    }
-  }
-
-  int createKey(pthread_key_t* key, void (*destructor)(void*)) {
-    auto ret = TlsAlloc();
-    if (ret == TLS_OUT_OF_INDEXES) {
-      return -1;
-    }
-    *key = ret;
-    keyMap.emplace(*key, std::make_pair(nullptr, destructor));
-    return 0;
-  }
-
-  int deleteKey(pthread_key_t key) {
-    if (!TlsFree(key)) {
-      return -1;
-    }
-    keyMap.erase(key);
-    return 0;
-  }
-
-  void* getKey(pthread_key_t key) {
-    return TlsGetValue(key);
-  }
-
-  int setKey(pthread_key_t key, void* value) {
-    if (!TlsSetValue(key, value)) {
-      return -1;
-    }
-    keyMap[key].first = value;
-    return 0;
-  }
-
-  std::unordered_map<pthread_key_t, std::pair<void*, void (*)(void*)>> keyMap{};
-} s_tls_key_map;
 
 int pthread_key_create(pthread_key_t* key, void (*destructor)(void*)) {
-  return s_tls_key_map.createKey(key, destructor);
+  try {
+    auto newKey = new boost::thread_specific_ptr<void>(destructor);
+    *key = newKey;
+    return 0;
+  } catch (boost::thread_resource_error) {
+    return -1;
+  }
 }
 
 int pthread_key_delete(pthread_key_t key) {
-  return s_tls_key_map.deleteKey(key);
+  try {
+    auto realKey = reinterpret_cast<boost::thread_specific_ptr<void>*>(key);
+    delete realKey;
+    return 0;
+  } catch (boost::thread_resource_error) {
+    return -1;
+  }
 }
 
 void* pthread_getspecific(pthread_key_t key) {
-  return s_tls_key_map.getKey(key);
+  auto realKey = reinterpret_cast<boost::thread_specific_ptr<void>*>(key);
+  // This can't throw as-per the documentation.
+  return realKey->get();
 }
 
 int pthread_setspecific(pthread_key_t key, const void* value) {
-  // Yes, the PThread API really is this bad -_-...
-  return s_tls_key_map.setKey(key, const_cast<void*>(value));
+  try {
+    auto realKey = reinterpret_cast<boost::thread_specific_ptr<void>*>(key);
+    // We can't just call reset here because that would invoke the cleanup
+    // function, which we don't want to do.
+    boost::detail::set_tss_data(
+        realKey,
+        boost::shared_ptr<boost::detail::tss_cleanup_function>(),
+        const_cast<void*>(value),
+        false);
+    return 0;
+  } catch (boost::thread_resource_error) {
+    return -1;
+  }
 }
 }
 }
