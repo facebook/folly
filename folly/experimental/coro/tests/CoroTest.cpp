@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/Portability.h>
+
 #if FOLLY_HAS_COROUTINES
 
 #include <folly/executors/ManualExecutor.h>
