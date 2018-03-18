@@ -125,6 +125,7 @@
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Synchronized.h>
+#include <folly/detail/Singleton.h>
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/hash/Hash.h>
@@ -179,17 +180,6 @@ namespace folly {
 class SingletonVault;
 
 namespace detail {
-
-struct DefaultTag {};
-
-template <typename T>
-struct DefaultMake {
-  // Required form until C++17, which permits returning objects of types which
-  // are neither copy-constructible nor move-constructible.
-  T* operator()(unsigned char (&buf)[sizeof(T)]) const {
-    return new (buf) T();
-  }
-};
 
 // A TypeDescriptor is the unique handle for a given singleton.  It is
 // a combinaiton of the type and of the optional name, and is used as

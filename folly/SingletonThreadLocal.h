@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <folly/Singleton.h>
 #include <folly/ThreadLocal.h>
+#include <folly/detail/Singleton.h>
 #include <folly/functional/Invoke.h>
 
 namespace folly {
