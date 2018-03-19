@@ -341,6 +341,7 @@ nobase_follyinclude_HEADERS = \
 	lang/Launder.h \
 	lang/RValueReferenceWrapper.h \
 	lang/SafeAssert.h \
+	lang/UncaughtExceptions.h \
 	Lazy.h \
 	Likely.h \
 	LockTraits.h \
@@ -488,7 +489,6 @@ nobase_follyinclude_HEADERS = \
 	Try.h \
 	Unicode.h \
 	Function.h \
-	UncaughtExceptions.h \
 	Unit.h \
 	Uri.h \
 	Uri-inl.h \

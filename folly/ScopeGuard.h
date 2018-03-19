@@ -24,7 +24,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
-#include <folly/UncaughtExceptions.h>
+#include <folly/lang/UncaughtExceptions.h>
 
 namespace folly {
 

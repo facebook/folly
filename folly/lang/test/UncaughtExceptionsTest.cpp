@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/lang/UncaughtExceptions.h>
 #include <folly/Conv.h>
-#include <folly/UncaughtExceptions.h>
 #include <folly/portability/GTest.h>
 #include <glog/logging.h>
 
