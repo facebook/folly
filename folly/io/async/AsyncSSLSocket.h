@@ -739,10 +739,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   void forceCacheAddrOnFailure(bool force) { cacheAddrOnFailure_ = force; }
 
-  const std::string& getServiceIdentity() const { return serviceIdentity_; }
+  const std::string& getSessionKey() const {
+    return sessionKey_;
+  }
 
-  void setServiceIdentity(std::string serviceIdentity) {
-    serviceIdentity_ = std::move(serviceIdentity);
+  void setSessionKey(std::string sessionKey) {
+    sessionKey_ = std::move(sessionKey);
   }
 
   void setCertCacheHit(bool hit) {
@@ -894,8 +896,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::string tlsextHostname_;
 #endif
 
-  // a service identity that this socket/connection is associated with
-  std::string serviceIdentity_;
+  // a key that can be used for caching the established session
+  std::string sessionKey_;
 
   folly::SSLContext::SSLVerifyPeerEnum
     verifyPeer_{folly::SSLContext::SSLVerifyPeerEnum::USE_CTX};
