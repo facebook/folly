@@ -82,6 +82,9 @@ struct BasePolicy
 
   using Super = std::tuple<Hasher, KeyEqual, Alloc>;
 
+  // if false, F14Table will be smaller but F14Table::begin() won't work
+  static constexpr bool kEnableItemIteration = true;
+
   static constexpr bool isAvalanchingHasher() {
     return IsAvalanchingHasher<Hasher, Key>::value;
   }
@@ -469,10 +472,8 @@ class ValueContainerPolicy : public BasePolicy<
     AllocTraits::destroy(a, std::addressof(item));
   }
 
-  std::size_t indirectBytesUsed(
-      std::size_t /*size*/,
-      std::size_t /*capacity*/,
-      ItemIter /*underlying*/) const {
+  std::size_t indirectBytesUsed(std::size_t /*size*/, std::size_t /*capacity*/)
+      const {
     return 0;
   }
 
@@ -681,10 +682,8 @@ class NodeContainerPolicy
     item.~Item();
   }
 
-  std::size_t indirectBytesUsed(
-      std::size_t size,
-      std::size_t /*capacity*/,
-      ItemIter /*underlying*/) const {
+  std::size_t indirectBytesUsed(std::size_t size, std::size_t /*capacity*/)
+      const {
     return size * sizeof(Value);
   }
 
@@ -817,6 +816,8 @@ class VectorContainerPolicy : public BasePolicy<
   using typename Super::AllocTraits;
 
  public:
+  static constexpr bool kEnableItemIteration = false;
+
   using InternalSizeType = Item;
 
   using ConstIter =
@@ -1109,10 +1110,8 @@ class VectorContainerPolicy : public BasePolicy<
     }
   }
 
-  std::size_t indirectBytesUsed(
-      std::size_t /*size*/,
-      std::size_t capacity,
-      ItemIter /*underlying*/) const {
+  std::size_t indirectBytesUsed(std::size_t /*size*/, std::size_t capacity)
+      const {
     return sizeof(Value) * capacity;
   }
 

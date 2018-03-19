@@ -636,8 +636,11 @@ class F14Table : public Policy {
 
   ChunkPtr chunks_{Chunk::emptyInstance()};
   typename Policy::InternalSizeType chunkMask_{0};
-  typename Policy::InternalSizeType size_{0};
-  typename ItemIter::Packed packedBegin_{ItemIter{}.pack()};
+  SizeAndPackedBegin<
+      typename Policy::InternalSizeType,
+      ItemIter,
+      Policy::kEnableItemIteration>
+      sizeAndPackedBegin_;
 
   //////// end fields
 
@@ -645,8 +648,12 @@ class F14Table : public Policy {
     using std::swap;
     swap(chunks_, rhs.chunks_);
     swap(chunkMask_, rhs.chunkMask_);
-    swap(size_, rhs.size_);
-    swap(packedBegin_, rhs.packedBegin_);
+    swap(sizeAndPackedBegin_.size_, rhs.sizeAndPackedBegin_.size_);
+    if (Policy::kEnableItemIteration) {
+      swap(
+          sizeAndPackedBegin_.packedBegin(),
+          rhs.sizeAndPackedBegin_.packedBegin());
+    }
   }
 
  public:
@@ -838,7 +845,8 @@ class F14Table : public Policy {
 
  public:
   ItemIter begin() const noexcept {
-    return ItemIter{packedBegin_};
+    FOLLY_SAFE_DCHECK(Policy::kEnableItemIteration, "");
+    return ItemIter{sizeAndPackedBegin_.packedBegin()};
   }
 
   ItemIter end() const noexcept {
@@ -850,7 +858,7 @@ class F14Table : public Policy {
   }
 
   std::size_t size() const noexcept {
-    return size_;
+    return sizeAndPackedBegin_.size_;
   }
 
   std::size_t max_size() const noexcept {
@@ -1005,13 +1013,15 @@ class F14Table : public Policy {
 
  private:
   void adjustSizeAndBeginAfterInsert(ItemIter iter) {
-    // packedBegin_ is the max of all valid ItemIter::pack()
-    auto packed = iter.pack();
-    if (packedBegin_ < packed) {
-      packedBegin_ = packed;
+    if (Policy::kEnableItemIteration) {
+      // packedBegin is the max of all valid ItemIter::pack()
+      auto packed = iter.pack();
+      if (sizeAndPackedBegin_.packedBegin() < packed) {
+        sizeAndPackedBegin_.packedBegin() = packed;
+      }
     }
 
-    ++size_;
+    ++sizeAndPackedBegin_.size_;
   }
 
   // Ignores hp if pos.chunk()->hostedOverflowCount() == 0
@@ -1037,14 +1047,16 @@ class F14Table : public Policy {
   }
 
   void adjustSizeAndBeginBeforeErase(ItemIter iter) {
-    --size_;
-    if (iter.pack() == packedBegin_) {
-      if (size_ == 0) {
-        iter = ItemIter{};
-      } else {
-        iter.precheckedAdvance();
+    --sizeAndPackedBegin_.size_;
+    if (Policy::kEnableItemIteration) {
+      if (iter.pack() == sizeAndPackedBegin_.packedBegin()) {
+        if (size() == 0) {
+          iter = ItemIter{};
+        } else {
+          iter.precheckedAdvance();
+        }
+        sizeAndPackedBegin_.packedBegin() = iter.pack();
       }
-      packedBegin_ = iter.pack();
     }
   }
 
@@ -1053,7 +1065,7 @@ class F14Table : public Policy {
     try {
       auto dst = pos.itemAddr();
       folly::assume(dst != nullptr);
-      this->constructValueAtItem(size_, dst, std::forward<Args>(args)...);
+      this->constructValueAtItem(size(), dst, std::forward<Args>(args)...);
     } catch (...) {
       eraseBlank(pos, hp);
       throw;
@@ -1083,6 +1095,14 @@ class F14Table : public Policy {
     return ItemIter{chunk, itemIndex};
   }
 
+  ChunkPtr lastOccupiedChunk() const {
+    if (Policy::kEnableItemIteration) {
+      return begin().chunk();
+    } else {
+      return chunks_ + chunkMask_;
+    }
+  }
+
   void directCopyFrom(F14Table const& src) {
     FOLLY_SAFE_DCHECK(src.size() > 0 && chunkMask_ == src.chunkMask_, "");
 
@@ -1104,17 +1124,22 @@ class F14Table : public Policy {
     // partial failure should not occur.  Sorry for the subtle invariants
     // in the Policy API.
 
-    auto srcBegin = src.begin();
-    std::size_t maxChunkIndex = srcBegin.chunk() - src.chunks_;
-
     if (FOLLY_IS_TRIVIALLY_COPYABLE(Item) && !this->destroyItemOnClear() &&
         bucket_count() == src.bucket_count()) {
       // most happy path
       auto n = allocSize(chunkMask_ + 1, bucket_count());
       std::memcpy(&chunks_[0], &src.chunks_[0], n);
-      size_ = src.size_;
-      packedBegin_ = ItemIter{chunks_ + maxChunkIndex, srcBegin.index()}.pack();
+      sizeAndPackedBegin_.size_ = src.size();
+      if (Policy::kEnableItemIteration) {
+        auto srcBegin = src.begin();
+        sizeAndPackedBegin_.packedBegin() =
+            ItemIter{chunks_ + (srcBegin.chunk() - src.chunks_),
+                     srcBegin.index()}
+                .pack();
+      }
     } else {
+      std::size_t maxChunkIndex = src.lastOccupiedChunk() - src.chunks_;
+
       // happy path, no rehash but pack items toward bottom of chunk and
       // use copy constructor
       Chunk const* srcChunk = &src.chunks_[maxChunkIndex];
@@ -1138,18 +1163,20 @@ class F14Table : public Policy {
           this->constructValueAtItem(
               0, dst, std::forward<decltype(srcValue)>(srcValue));
           dstChunk->setTag(dstI, srcChunk->tag(srcI));
-          ++size_;
+          ++sizeAndPackedBegin_.size_;
         }
 
         --srcChunk;
         --dstChunk;
-      } while (size_ != src.size_);
+      } while (size() != src.size());
 
       // reset doesn't care about packedBegin, so we don't fix it until the end
-      packedBegin_ =
-          ItemIter{chunks_ + maxChunkIndex,
-                   folly::popcount(chunks_[maxChunkIndex].occupiedMask()) - 1}
-              .pack();
+      if (Policy::kEnableItemIteration) {
+        sizeAndPackedBegin_.packedBegin() =
+            ItemIter{chunks_ + maxChunkIndex,
+                     folly::popcount(chunks_[maxChunkIndex].occupiedMask()) - 1}
+                .pack();
+      }
     }
 
     success = true;
@@ -1197,7 +1224,7 @@ class F14Table : public Policy {
     // lifecycle (F14Vector) then nothing after beforeCopy can throw and
     // we don't have to worry about partial failure.
 
-    std::size_t srcChunkIndex = src.begin().chunk() - src.chunks_;
+    std::size_t srcChunkIndex = src.lastOccupiedChunk() - src.chunks_;
     while (true) {
       Chunk const* srcChunk = &src.chunks_[srcChunkIndex];
       auto mask = srcChunk->occupiedMask();
@@ -1272,13 +1299,13 @@ class F14Table : public Policy {
     const auto origMaxSizeWithoutRehash = bucket_count();
 
     auto undoState = this->beforeRehash(
-        size_, origMaxSizeWithoutRehash, newMaxSizeWithoutRehash);
+        size(), origMaxSizeWithoutRehash, newMaxSizeWithoutRehash);
     bool success = false;
     SCOPE_EXIT {
       this->afterRehash(
           std::move(undoState),
           success,
-          size_,
+          size(),
           origMaxSizeWithoutRehash,
           newMaxSizeWithoutRehash);
     };
@@ -1286,7 +1313,7 @@ class F14Table : public Policy {
     chunks_ = newChunks(newChunkCount, newMaxSizeWithoutRehash);
     chunkMask_ = newChunkCount - 1;
 
-    if (size_ == 0) {
+    if (size() == 0) {
       // nothing to do
     } else if (origChunkCount == 1 && newChunkCount == 1) {
       // no mask, no chunk scan, no hash computation, no probing
@@ -1294,7 +1321,7 @@ class F14Table : public Policy {
       auto dstChunk = chunks_;
       std::size_t srcI = 0;
       std::size_t dstI = 0;
-      while (dstI < size_) {
+      while (dstI < size()) {
         if (LIKELY(srcChunk->occupied(srcI))) {
           dstChunk->setTag(dstI, srcChunk->tag(srcI));
           this->moveItemDuringRehash(
@@ -1303,7 +1330,9 @@ class F14Table : public Policy {
         }
         ++srcI;
       }
-      packedBegin_ = ItemIter{dstChunk, dstI - 1}.pack();
+      if (Policy::kEnableItemIteration) {
+        sizeAndPackedBegin_.packedBegin() = ItemIter{dstChunk, dstI - 1}.pack();
+      }
     } else {
       // 1 byte per chunk means < 1 bit per value temporary overhead
       std::array<uint8_t, 256> stackBuf;
@@ -1335,7 +1364,7 @@ class F14Table : public Policy {
       };
 
       auto srcChunk = origChunks + origChunkCount - 1;
-      std::size_t remaining = size_;
+      std::size_t remaining = size();
       while (remaining > 0) {
         auto mask = srcChunk->occupiedMask();
         if (Policy::prefetchBeforeRehash()) {
@@ -1357,12 +1386,15 @@ class F14Table : public Policy {
         --srcChunk;
       }
 
-      // this code replaces size_ invocations of adjustSizeAndBeginAfterInsert
-      std::size_t i = chunkMask_;
-      while (fullness[i] == 0) {
-        --i;
+      if (Policy::kEnableItemIteration) {
+        // this code replaces size invocations of adjustSizeAndBeginAfterInsert
+        std::size_t i = chunkMask_;
+        while (fullness[i] == 0) {
+          --i;
+        }
+        sizeAndPackedBegin_.packedBegin() =
+            ItemIter{chunks_ + i, std::size_t{fullness[i]} - 1}.pack();
       }
-      packedBegin_ = ItemIter{chunks_ + i, std::size_t{fullness[i]} - 1}.pack();
     }
 
     if (origMaxSizeWithoutRehash != 0) {
@@ -1507,8 +1539,10 @@ class F14Table : public Policy {
         }
         chunks_[0].markEof(c0c);
       }
-      packedBegin_ = ItemIter{}.pack();
-      size_ = 0;
+      if (Policy::kEnableItemIteration) {
+        sizeAndPackedBegin_.packedBegin() = ItemIter{}.pack();
+      }
+      sizeAndPackedBegin_.size_ = 0;
     }
 
     if (willReset) {
@@ -1551,7 +1585,7 @@ class F14Table : public Policy {
 
   template <typename K>
   std::size_t erase(K const& key) {
-    if (UNLIKELY(size_ == 0)) {
+    if (UNLIKELY(size() == 0)) {
       return 0;
     }
     auto hp = splitHash(this->computeKeyHash(key));
@@ -1589,7 +1623,7 @@ class F14Table : public Policy {
   F14TableStats computeStats() const {
     F14TableStats stats;
 
-    if (folly::kIsDebug) {
+    if (folly::kIsDebug && Policy::kEnableItemIteration) {
       // validate iteration
       std::size_t n = 0;
       ItemIter prev;
@@ -1671,7 +1705,7 @@ class F14Table : public Policy {
 
     stats.totalBytes = sizeof(*this) +
         (cc == 0 ? 0 : allocSize(cc, bucket_count())) +
-        this->indirectBytesUsed(size(), bucket_count(), begin());
+        this->indirectBytesUsed(size(), bucket_count());
     stats.overheadBytes = stats.totalBytes - size() * sizeof(value_type);
 
     return stats;
