@@ -87,6 +87,7 @@ nobase_follyinclude_HEADERS = \
 	detail/PolyDetail.h \
 	detail/RangeCommon.h \
 	detail/RangeSse42.h \
+	detail/Singleton.h \
 	detail/SlowFingerprint.h \
 	detail/SocketFastOpen.h \
 	detail/StaticSingletonManager.h \
