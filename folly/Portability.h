@@ -350,6 +350,13 @@ constexpr auto kMscVer = _MSC_VER;
 #else
 constexpr auto kMscVer = 0;
 #endif
+
+// TODO: Remove when removing support for gcc4.9
+#if __GLIBCXX__ && __GLIBCXX__ == 20150123
+constexpr auto kIsGlib49 = true;
+#else
+constexpr auto kIsGlib49 = false;
+#endif
 } // namespace folly
 
 // Define FOLLY_USE_CPP14_CONSTEXPR to be true if the compiler's C++14
