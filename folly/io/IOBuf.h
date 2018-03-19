@@ -22,11 +22,10 @@
 #include <cinttypes>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <type_traits>
-
-#include <boost/iterator/iterator_facade.hpp>
 
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
@@ -1479,13 +1478,14 @@ inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(const std::string& buf,
   return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
 }
 
-class IOBuf::Iterator : public boost::iterator_facade<
-    IOBuf::Iterator,  // Derived
-    const ByteRange,  // Value
-    boost::forward_traversal_tag  // Category or traversal
-  > {
-  friend class boost::iterator_core_access;
+class IOBuf::Iterator {
  public:
+  using difference_type = ssize_t;
+  using value_type = ByteRange;
+  using reference = ByteRange const&;
+  using pointer = ByteRange const*;
+  using iterator_category = std::forward_iterator_tag;
+
   // Note that IOBufs are stored as a circular list without a guard node,
   // so pos == end is ambiguous (it may mean "begin" or "end").  To solve
   // the ambiguity (at the cost of one extra comparison in the "increment"
@@ -1501,6 +1501,44 @@ class IOBuf::Iterator : public boost::iterator_facade<
   }
 
   Iterator() {}
+
+  Iterator(Iterator const& rhs) : Iterator(rhs.pos_, rhs.end_) {}
+
+  Iterator& operator=(Iterator const& rhs) {
+    pos_ = rhs.pos_;
+    end_ = rhs.end_;
+    if (pos_) {
+      setVal();
+    }
+    return *this;
+  }
+
+  Iterator& operator++() {
+    increment();
+    return *this;
+  }
+
+  Iterator operator++(int) {
+    Iterator ret(*this);
+    ++*this;
+    return ret;
+  }
+
+  ByteRange const& operator*() const {
+    return dereference();
+  }
+
+  ByteRange const* operator->() const {
+    return &dereference();
+  }
+
+  bool operator==(Iterator const& rhs) const {
+    return equal(rhs);
+  }
+
+  bool operator!=(Iterator const& rhs) const {
+    return !equal(rhs);
+  }
 
  private:
   void setVal() {
