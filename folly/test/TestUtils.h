@@ -182,10 +182,13 @@ CheckResult checkThrowErrno(Fn&& fn, int errnoValue, const char* statementStr) {
   try {
     fn();
   } catch (const std::system_error& ex) {
-    // TODO: POSIX errno values should really use std::generic_category(),
-    // but folly/Exception.h throws them with std::system_category() at the
-    // moment.
-    if (ex.code().category() != std::system_category()) {
+    // TODO: POSIX errno values should use std::generic_category(), but
+    // folly/Exception.h incorrectly throws them using std::system_category()
+    // at the moment.
+    // For now we also accept std::system_category so that we will also handle
+    // exceptions from folly/Exception.h correctly.
+    if (ex.code().category() != std::generic_category() &&
+        ex.code().category() != std::system_category()) {
       return CheckResult(false)
           << "Expected: " << statementStr << " throws an exception with errno "
           << errnoValue << " (" << std::generic_category().message(errnoValue)
