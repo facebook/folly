@@ -60,8 +60,6 @@ template <
     typename Make = detail::DefaultMake<T>>
 class SingletonThreadLocal {
  private:
-  SingletonThreadLocal() = delete;
-
   struct Wrapper {
     // keep as first field, to save 1 instr in the fast path
     union {
@@ -95,6 +93,8 @@ class SingletonThreadLocal {
       object.~T();
     }
   };
+
+  SingletonThreadLocal() = delete;
 
   FOLLY_EXPORT FOLLY_NOINLINE static ThreadLocal<Wrapper>& getWrapperTL() {
     static auto& entry = *detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
