@@ -96,9 +96,13 @@ class SingletonThreadLocal {
     }
   };
 
+  FOLLY_EXPORT FOLLY_NOINLINE static ThreadLocal<Wrapper>& getWrapperTL() {
+    static auto& entry = *detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
+    return entry;
+  }
+
   FOLLY_EXPORT FOLLY_NOINLINE static Wrapper& getWrapper() {
-    static auto entry = detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
-    return **entry;
+    return *getWrapperTL();
   }
 
   FOLLY_ALWAYS_INLINE static Wrapper& getSlow(Wrapper*& cache) {
