@@ -97,8 +97,7 @@ class SingletonThreadLocal {
   };
 
   FOLLY_EXPORT FOLLY_NOINLINE static Wrapper& getWrapper() {
-    /* library-local */ static auto entry =
-        detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
+    static auto entry = detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
     return **entry;
   }
 
