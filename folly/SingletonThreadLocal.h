@@ -96,21 +96,14 @@ class SingletonThreadLocal {
     }
   };
 
-  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static Wrapper& getWrapperInline() {
+  FOLLY_EXPORT FOLLY_NOINLINE static Wrapper& getWrapper() {
     /* library-local */ static auto entry =
         detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
     return **entry;
   }
 
-  FOLLY_NOINLINE static Wrapper& getWrapperOutline() {
-    return getWrapperInline();
-  }
-
-  /// Benchmarks indicate that getSlow being inline but containing a call to
-  /// getWrapperOutline is faster than getSlow being outline but containing
-  /// a call to getWrapperInline, which would otherwise produce smaller code.
   FOLLY_ALWAYS_INLINE static Wrapper& getSlow(Wrapper*& cache) {
-    cache = &getWrapperOutline();
+    cache = &getWrapper();
     cache->cache = &cache;
     return *cache;
   }
@@ -122,7 +115,7 @@ class SingletonThreadLocal {
     static FOLLY_TLS Wrapper* cache;
     return FOLLY_LIKELY(!!cache) ? *cache : getSlow(cache);
 #else
-    return getWrapperInline();
+    return getWrapper();
 #endif
   }
 };
