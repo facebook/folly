@@ -61,6 +61,9 @@ template <
 class SingletonThreadLocal {
  private:
   struct Wrapper {
+    template <typename S>
+    using MakeRet = is_invocable_r<S, Make>;
+
     // keep as first field, to save 1 instr in the fast path
     union {
       alignas(alignof(T)) unsigned char storage[sizeof(T)];
@@ -73,16 +76,12 @@ class SingletonThreadLocal {
     }
 
     // normal make types
-    template <
-        typename S = T,
-        _t<std::enable_if<is_invocable_r<S, Make>::value, int>> = 0>
+    template <typename S = T, _t<std::enable_if<MakeRet<S>::value, int>> = 0>
     Wrapper() {
       (void)new (storage) S(Make{}());
     }
     // default and special make types for non-move-constructible T, until C++17
-    template <
-        typename S = T,
-        _t<std::enable_if<!is_invocable_r<S, Make>::value, int>> = 0>
+    template <typename S = T, _t<std::enable_if<!MakeRet<S>::value, int>> = 0>
     Wrapper() {
       (void)Make{}(storage);
     }
