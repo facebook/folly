@@ -31,6 +31,7 @@
 #include <folly/container/test/F14TestUtil.h>
 
 using namespace folly;
+using namespace folly::f14;
 using namespace folly::string_piece_literals;
 
 namespace {
