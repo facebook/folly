@@ -34,6 +34,7 @@
 #include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
 
+#include <folly/container/F14Map-pre.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 
@@ -43,12 +44,7 @@
 
 namespace folly {
 
-template <
-    typename K,
-    typename M,
-    typename H = std::hash<K>,
-    typename E = std::equal_to<K>,
-    typename A = std::allocator<std::pair<K const, M>>>
+template <typename K, typename M, typename H, typename E, typename A>
 class F14ValueMap : public std::unordered_map<K, M, H, E, A> {
   using Super = std::unordered_map<K, M, H, E, A>;
 
@@ -57,12 +53,7 @@ class F14ValueMap : public std::unordered_map<K, M, H, E, A> {
   F14ValueMap() : Super() {}
 };
 
-template <
-    typename K,
-    typename M,
-    typename H = std::hash<K>,
-    typename E = std::equal_to<K>,
-    typename A = std::allocator<std::pair<K const, M>>>
+template <typename K, typename M, typename H, typename E, typename A>
 class F14NodeMap : public std::unordered_map<K, M, H, E, A> {
   using Super = std::unordered_map<K, M, H, E, A>;
 
@@ -71,12 +62,7 @@ class F14NodeMap : public std::unordered_map<K, M, H, E, A> {
   F14NodeMap() : Super() {}
 };
 
-template <
-    typename K,
-    typename M,
-    typename H = std::hash<K>,
-    typename E = std::equal_to<K>,
-    typename A = std::allocator<std::pair<K const, M>>>
+template <typename K, typename M, typename H, typename E, typename A>
 class F14VectorMap : public std::unordered_map<K, M, H, E, A> {
   using Super = std::unordered_map<K, M, H, E, A>;
 
@@ -757,9 +743,9 @@ bool mapsEqual(M const& lhs, M const& rhs) {
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc>
 class F14ValueMap
     : public f14::detail::F14BasicMap<f14::detail::MapPolicyWithDefaults<
           f14::detail::ValueContainerPolicy,
@@ -807,9 +793,9 @@ bool operator!=(
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc>
 class F14NodeMap
     : public f14::detail::F14BasicMap<f14::detail::MapPolicyWithDefaults<
           f14::detail::NodeContainerPolicy,
@@ -859,9 +845,9 @@ bool operator!=(
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc>
 class F14VectorMap
     : public f14::detail::F14BasicMap<f14::detail::MapPolicyWithDefaults<
           f14::detail::VectorContainerPolicy,
@@ -995,9 +981,9 @@ namespace folly {
 template <
     typename Key,
     typename Mapped,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc>
 class F14FastMap : public std::conditional_t<
                        sizeof(std::pair<Key const, Mapped>) < 24,
                        F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,

@@ -29,6 +29,7 @@
 
 #include <folly/lang/SafeAssert.h>
 
+#include <folly/container/F14Set-pre.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 
@@ -38,11 +39,7 @@
 
 namespace folly {
 
-template <
-    typename K,
-    typename H = std::hash<K>,
-    typename E = std::equal_to<K>,
-    typename A = std::allocator<K>>
+template <typename K, typename H, typename E, typename A>
 class F14NodeSet : public std::unordered_set<K, H, E, A> {
   using Super = std::unordered_set<K, H, E, A>;
 
@@ -51,11 +48,7 @@ class F14NodeSet : public std::unordered_set<K, H, E, A> {
   F14NodeSet() : Super() {}
 };
 
-template <
-    typename K,
-    typename H = std::hash<K>,
-    typename E = std::equal_to<K>,
-    typename A = std::allocator<K>>
+template <typename K, typename H, typename E, typename A>
 class F14ValueSet : public std::unordered_set<K, H, E, A> {
   using Super = std::unordered_set<K, H, E, A>;
 
@@ -64,11 +57,7 @@ class F14ValueSet : public std::unordered_set<K, H, E, A> {
   F14ValueSet() : Super() {}
 };
 
-template <
-    typename K,
-    typename H = std::hash<K>,
-    typename E = std::equal_to<K>,
-    typename A = std::allocator<K>>
+template <typename K, typename H, typename E, typename A>
 class F14VectorSet : public std::unordered_set<K, H, E, A> {
   using Super = std::unordered_set<K, H, E, A>;
 
@@ -536,11 +525,7 @@ bool setsEqual(S const& lhs, S const& rhs) {
 } // namespace detail
 } // namespace f14
 
-template <
-    typename Key,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<Key>>
+template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14ValueSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
           f14::detail::ValueContainerPolicy,
@@ -583,11 +568,7 @@ bool operator!=(
   return !(lhs == rhs);
 }
 
-template <
-    typename Key,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<Key>>
+template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14NodeSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
           f14::detail::NodeContainerPolicy,
@@ -630,11 +611,7 @@ bool operator!=(
   return !(lhs == rhs);
 }
 
-template <
-    typename Key,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<Key>>
+template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14VectorSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
           f14::detail::VectorContainerPolicy,
@@ -756,11 +733,7 @@ bool operator!=(
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace folly {
-template <
-    typename Key,
-    typename Hasher = f14::DefaultHasher<Key>,
-    typename KeyEqual = f14::DefaultKeyEqual<Key>,
-    typename Alloc = f14::DefaultAlloc<Key>>
+template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14FastSet : public std::conditional_t<
                        sizeof(Key) < 24,
                        F14ValueSet<Key, Hasher, KeyEqual, Alloc>,

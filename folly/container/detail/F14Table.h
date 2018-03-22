@@ -42,6 +42,7 @@
 #include <folly/portability/Builtins.h>
 #include <folly/portability/TypeTraits.h>
 
+#include <folly/container/detail/F14Defaults.h>
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 #include <folly/container/detail/F14Memory.h>
 
@@ -86,17 +87,6 @@ struct F14TableStats {
     return computeHelper(&m);
   }
 };
-
-namespace f14 {
-template <typename T>
-using DefaultHasher = std::hash<T>;
-
-template <typename T>
-using DefaultKeyEqual = std::equal_to<T>;
-
-template <typename T>
-using DefaultAlloc = std::allocator<T>;
-} // namespace f14
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {
