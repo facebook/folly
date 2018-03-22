@@ -853,7 +853,7 @@ TEST(Future, RequestContext) {
   };
 
   struct MyRequestData : RequestData {
-    MyRequestData(bool value = false) : value(value) {}
+    MyRequestData(bool value_ = false) : value(value_) {}
 
     bool hasCallback() override {
       return false;

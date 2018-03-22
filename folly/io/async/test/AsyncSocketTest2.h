@@ -143,8 +143,8 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
  public:
   enum EventType { TYPE_START, TYPE_ACCEPT, TYPE_ERROR, TYPE_STOP };
   struct EventInfo {
-    EventInfo(int fd, const folly::SocketAddress& addr)
-        : type(TYPE_ACCEPT), fd(fd), address(addr), errorMsg() {}
+    EventInfo(int fd_, const folly::SocketAddress& addr)
+        : type(TYPE_ACCEPT), fd(fd_), address(addr), errorMsg() {}
     explicit EventInfo(const std::string& msg)
         : type(TYPE_ERROR), fd(-1), address(), errorMsg(msg) {}
     explicit EventInfo(EventType et)

@@ -45,8 +45,8 @@ struct TestObject {
   int value;
   std::atomic<int>& counter;
 
-  TestObject(int value, std::atomic<int>& counter)
-      : value(value), counter(counter) {
+  TestObject(int value_, std::atomic<int>& counter_)
+      : value(value_), counter(counter_) {
     ++counter;
   }
 

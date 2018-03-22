@@ -1258,8 +1258,8 @@ TEST(IOBuf, ExternallyShared) {
 
   {
     auto freeFn = [](void* /* unused */, void* userData) {
-      auto it = static_cast<struct Item*>(userData);
-      it->refcount--;
+      auto it2 = static_cast<struct Item*>(userData);
+      it2->refcount--;
     };
     it.refcount++;
     auto buf1 = IOBuf::takeOwnership(it.buffer, it.size, freeFn, &it);

@@ -90,13 +90,13 @@ class fbvector {
 
     // constructors
     Impl() : Allocator(), b_(nullptr), e_(nullptr), z_(nullptr) {}
-    /* implicit */ Impl(const Allocator& a)
-      : Allocator(a), b_(nullptr), e_(nullptr), z_(nullptr) {}
-    /* implicit */ Impl(Allocator&& a)
-      : Allocator(std::move(a)), b_(nullptr), e_(nullptr), z_(nullptr) {}
+    /* implicit */ Impl(const Allocator& alloc)
+      : Allocator(alloc), b_(nullptr), e_(nullptr), z_(nullptr) {}
+    /* implicit */ Impl(Allocator&& alloc)
+      : Allocator(std::move(alloc)), b_(nullptr), e_(nullptr), z_(nullptr) {}
 
-    /* implicit */ Impl(size_type n, const Allocator& a = Allocator())
-      : Allocator(a)
+    /* implicit */ Impl(size_type n, const Allocator& alloc = Allocator())
+      : Allocator(alloc)
       { init(n); }
 
     Impl(Impl&& other) noexcept

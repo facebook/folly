@@ -136,7 +136,7 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       return *this;
     }
 
-    explicit Entry(InputT&& input) : input(std::move(input)) {}
+    explicit Entry(InputT&& input_) : input(std::move(input_)) {}
   };
 
   size_t expectedCount_;

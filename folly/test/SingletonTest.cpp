@@ -635,7 +635,7 @@ TEST(Singleton, DoubleRegistrationLogging) {
 // Singleton using a non default constructor test/example:
 struct X {
   X() : X(-1, "unset") {}
-  X(int a1, std::string a2) : a1(a1), a2(a2) {
+  X(int a1_, std::string a2_) : a1(a1_), a2(a2_) {
     LOG(INFO) << "X(" << a1 << "," << a2 << ")";
   }
   const int a1;

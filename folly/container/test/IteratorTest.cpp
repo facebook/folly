@@ -254,7 +254,7 @@ TEST(EmplaceIterator, HintEmplacerTest) {
   }
   {
     struct O {
-      explicit O(int i) : i(i) {}
+      explicit O(int i_) : i(i_) {}
       bool operator<(const O& other) const {
         return i < other.i;
       }

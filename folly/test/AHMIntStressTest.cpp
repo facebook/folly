@@ -26,7 +26,7 @@
 namespace {
 
 struct MyObject {
-  explicit MyObject(int i) : i(i) {}
+  explicit MyObject(int i_) : i(i_) {}
   int i;
 };
 

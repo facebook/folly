@@ -678,7 +678,7 @@ TEST_F(HazptrTest, FreeFunctionCleanup) {
 }
 
 TEST_F(HazptrTest, ForkTest) {
-  struct Foo : hazptr_obj_base<Foo> {
+  struct Obj : hazptr_obj_base<Obj> {
     int a;
   };
   std::mutex m;
@@ -688,9 +688,9 @@ TEST_F(HazptrTest, ForkTest) {
   bool ready2 = false;
   auto mkthread = [&]() {
     hazptr_holder h;
-    auto p = new Foo;
-    std::atomic<Foo*> ap{p};
-    h.get_protected<Foo>(p);
+    auto p = new Obj;
+    std::atomic<Obj*> ap{p};
+    h.get_protected<Obj>(p);
     p->retire();
     {
       std::unique_lock<std::mutex> lk(m);
@@ -701,9 +701,9 @@ TEST_F(HazptrTest, ForkTest) {
   };
   std::thread t(mkthread);
   hazptr_holder h;
-  auto p = new Foo;
-  std::atomic<Foo*> ap{p};
-  h.get_protected<Foo>(p);
+  auto p = new Obj;
+  std::atomic<Obj*> ap{p};
+  h.get_protected<Obj>(p);
   p->retire();
   {
     std::unique_lock<std::mutex> lk(m);

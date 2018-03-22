@@ -56,7 +56,7 @@ TEST(Wait, wait) {
   std::atomic<int> result{1};
   std::atomic<std::thread::id> id;
 
-  std::thread t([&](Future<int>&& tf){
+  std::thread th([&](Future<int>&& tf){
       auto n = tf.then([&](Try<int> && t) {
           id = std::this_thread::get_id();
           return t.value();
@@ -69,7 +69,7 @@ TEST(Wait, wait) {
   while(!flag){}
   EXPECT_EQ(result.load(), 1);
   p.setValue(42);
-  t.join();
+  th.join();
   // validate that the callback ended up executing in this thread, which
   // is more to ensure that this test actually tests what it should
   EXPECT_EQ(id, std::this_thread::get_id());

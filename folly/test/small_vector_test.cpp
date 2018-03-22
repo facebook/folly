@@ -106,7 +106,7 @@ struct NontrivialType {
   static int ctored;
   explicit NontrivialType() : a(0) {}
 
-  /* implicit */ NontrivialType(int a) : a(a) {
+  /* implicit */ NontrivialType(int a_) : a(a_) {
     ++ctored;
   }
 
@@ -194,8 +194,8 @@ struct TestBasicGuarantee {
   folly::small_vector<Thrower,3> vec;
   int const prepopulate;
 
-  explicit TestBasicGuarantee(int prepopulate)
-    : prepopulate(prepopulate)
+  explicit TestBasicGuarantee(int prepopulate_)
+    : prepopulate(prepopulate_)
   {
     throwCounter = 1000;
     for (int i = 0; i < prepopulate; ++i) {
@@ -610,7 +610,7 @@ TEST(small_vector, AllHeap) {
   // Use something bigger than the pointer so it can't get inlined.
   struct SomeObj {
     double a, b, c, d, e; int val;
-    SomeObj(int val) : val(val) {}
+    SomeObj(int val_) : val(val_) {}
     bool operator==(SomeObj const& o) const {
       return o.val == val;
     }
@@ -776,7 +776,7 @@ TEST(small_vector, SelfInsert) {
 struct CheckedInt {
   static const int DEFAULT_VALUE = (int)0xdeadbeef;
   CheckedInt(): value(DEFAULT_VALUE) {}
-  explicit CheckedInt(int value): value(value) {}
+  explicit CheckedInt(int value_): value(value_) {}
   CheckedInt(const CheckedInt& rhs, int) : value(rhs.value) {}
   CheckedInt(const CheckedInt& rhs): value(rhs.value) {}
   CheckedInt(CheckedInt&& rhs) noexcept: value(rhs.value) {
@@ -962,7 +962,7 @@ class Counter {
   Counts* counts;
 
  public:
-  explicit Counter(Counts& counts) : counts(&counts) {}
+  explicit Counter(Counts& counts_) : counts(&counts_) {}
   Counter(Counter const& other) noexcept : counts(other.counts) {
     ++counts->copyCount;
   }

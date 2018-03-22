@@ -151,7 +151,7 @@ class CStringRange {
  public:
   struct Sentinel {};
 
-  explicit CStringRange(const char* cstr) : cstr(cstr) {}
+  explicit CStringRange(const char* cstr_) : cstr(cstr_) {}
 
   const char* begin() const {
     return cstr;

@@ -799,8 +799,8 @@ TEST(StringPiece, split_step_with_process_char_delimiter_additional_args) {
   EXPECT_EQ(e, p.end());
   EXPECT_EQ(s, p);
 
-  auto const functor = [](folly::StringPiece s, folly::StringPiece expected) {
-    EXPECT_EQ(expected, s);
+  auto const functor = [](folly::StringPiece s_, folly::StringPiece expected) {
+    EXPECT_EQ(expected, s_);
     return expected;
   };
 
@@ -834,8 +834,8 @@ TEST(StringPiece, split_step_with_process_range_delimiter_additional_args) {
   EXPECT_EQ(e, p.end());
   EXPECT_EQ(s, p);
 
-  auto const functor = [](folly::StringPiece s, folly::StringPiece expected) {
-    EXPECT_EQ(expected, s);
+  auto const functor = [](folly::StringPiece s_, folly::StringPiece expected) {
+    EXPECT_EQ(expected, s_);
     return expected;
   };
 

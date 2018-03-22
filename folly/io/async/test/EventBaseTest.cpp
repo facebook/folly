@@ -163,11 +163,11 @@ class TestHandler : public EventHandler {
   }
 
   struct EventRecord {
-    EventRecord(uint16_t events, size_t bytesRead, size_t bytesWritten)
-      : events(events)
+    EventRecord(uint16_t events_, size_t bytesRead_, size_t bytesWritten_)
+      : events(events_)
       , timestamp()
-      , bytesRead(bytesRead)
-      , bytesWritten(bytesWritten) {}
+      , bytesRead(bytesRead_)
+      , bytesWritten(bytesWritten_) {}
 
     uint16_t events;
     TimePoint timestamp;
@@ -1128,8 +1128,8 @@ TEST(EventBaseTest, ScheduledFnAt) {
 ///////////////////////////////////////////////////////////////////////////
 
 struct RunInThreadData {
-  RunInThreadData(int numThreads, int opsPerThread)
-    : opsPerThread(opsPerThread)
+  RunInThreadData(int numThreads, int opsPerThread_)
+    : opsPerThread(opsPerThread_)
     , opsToGo(numThreads*opsPerThread) {}
 
   EventBase evb;
@@ -1140,12 +1140,12 @@ struct RunInThreadData {
 };
 
 struct RunInThreadArg {
-  RunInThreadArg(RunInThreadData* data,
+  RunInThreadArg(RunInThreadData* data_,
                  int threadId,
-                 int value)
-    : data(data)
+                 int value_)
+    : data(data_)
     , thread(threadId)
-    , value(value) {}
+    , value(value_) {}
 
   RunInThreadData* data;
   int thread;

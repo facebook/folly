@@ -347,12 +347,12 @@ void SingletonVault::destroyInstances() {
     }
 
     for (auto& singleton_type : *creationOrder) {
-      auto singleton = singletons->at(singleton_type);
-      if (!singleton->hasLiveInstance()) {
+      auto instance = singletons->at(singleton_type);
+      if (!instance->hasLiveInstance()) {
         continue;
       }
 
-      fatalHelper.leakedSingletons_.push_back(singleton->type());
+      fatalHelper.leakedSingletons_.push_back(instance->type());
     }
   }
 

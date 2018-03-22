@@ -469,14 +469,14 @@ TEST(ThreadPoolExecutorTest, RequestContext) {
   EXPECT_EQ(42, dynamic_cast<TestData*>(data)->data_);
 
   executor.add([] {
-    auto data = RequestContext::get()->getContextData("test");
-    ASSERT_TRUE(data != nullptr);
-    EXPECT_EQ(42, dynamic_cast<TestData*>(data)->data_);
+    auto data2 = RequestContext::get()->getContextData("test");
+    ASSERT_TRUE(data2 != nullptr);
+    EXPECT_EQ(42, dynamic_cast<TestData*>(data2)->data_);
   });
 }
 
 struct SlowMover {
-  explicit SlowMover(bool slow = false) : slow(slow) {}
+  explicit SlowMover(bool slow_ = false) : slow(slow_) {}
   SlowMover(SlowMover&& other) noexcept {
     *this = std::move(other);
   }

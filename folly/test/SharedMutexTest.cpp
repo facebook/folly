@@ -391,67 +391,67 @@ struct TokenLocker {
   SharedMutexToken token;
 
   template <typename T>
-  void lock(T* lock) {
-    lock->lock();
+  void lock(T* lockable) {
+    lockable->lock();
   }
 
   template <typename T>
-  void unlock(T* lock) {
-    lock->unlock();
+  void unlock(T* lockable) {
+    lockable->unlock();
   }
 
   template <typename T>
-  void lock_shared(T* lock) {
-    lock->lock_shared(token);
+  void lock_shared(T* lockable) {
+    lockable->lock_shared(token);
   }
 
   template <typename T>
-  void unlock_shared(T* lock) {
-    lock->unlock_shared(token);
+  void unlock_shared(T* lockable) {
+    lockable->unlock_shared(token);
   }
 };
 
 struct Locker {
   template <typename T>
-  void lock(T* lock) {
-    lock->lock();
+  void lock(T* lockable) {
+    lockable->lock();
   }
 
   template <typename T>
-  void unlock(T* lock) {
-    lock->unlock();
+  void unlock(T* lockable) {
+    lockable->unlock();
   }
 
   template <typename T>
-  void lock_shared(T* lock) {
-    lock->lock_shared();
+  void lock_shared(T* lockable) {
+    lockable->lock_shared();
   }
 
   template <typename T>
-  void unlock_shared(T* lock) {
-    lock->unlock_shared();
+  void unlock_shared(T* lockable) {
+    lockable->unlock_shared();
   }
 };
 
 struct EnterLocker {
   template <typename T>
-  void lock(T* lock) {
-    lock->lock(0);
+  void lock(T* lockable) {
+    lockable->lock(0);
   }
 
   template <typename T>
-  void unlock(T* lock) {
-    lock->unlock();
+  void unlock(T* lockable) {
+    lockable->unlock();
   }
 
   template <typename T>
-  void lock_shared(T* lock) {
-    lock->enter(0);
+  void lock_shared(T* lockable) {
+    lockable->enter(0);
   }
 
   template <typename T>
-  void unlock_shared(T* lock) {
-    lock->leave();
+  void unlock_shared(T* lockable) {
+    lockable->leave();
   }
 };
 

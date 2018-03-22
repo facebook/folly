@@ -174,11 +174,17 @@ constexpr bool kIsSanitize = false;
 #endif
 
 #ifdef FOLLY_HAVE_SHADOW_LOCAL_WARNINGS
-#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS        \
+#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS            \
   FOLLY_GCC_DISABLE_WARNING("-Wshadow-compatible-local") \
-  FOLLY_GCC_DISABLE_WARNING("-Wshadow-local")
+  FOLLY_GCC_DISABLE_WARNING("-Wshadow-local")            \
+  FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 #else
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
+#endif
+
+// Globally disable -Wshadow for gcc < 5.
+#if __GNUC__ == 4 && !__clang__
+FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 #endif
 
 /* Platform specific TLS support

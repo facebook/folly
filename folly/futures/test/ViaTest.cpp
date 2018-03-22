@@ -27,7 +27,7 @@
 using namespace folly;
 
 struct ManualWaiter : public DrivableExecutor {
-  explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}
+  explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex_) : ex(ex_) {}
 
   void add(Func f) override {
     ex->add(std::move(f));
@@ -48,7 +48,7 @@ struct ViaFixture : public testing::Test {
     waiter(new ManualWaiter(westExecutor)),
     done(false)
   {
-    t = std::thread([=] {
+    th = std::thread([=] {
         ManualWaiter eastWaiter(eastExecutor);
         while (!done) {
           eastWaiter.drive();
@@ -59,7 +59,7 @@ struct ViaFixture : public testing::Test {
   ~ViaFixture() override {
     done = true;
     eastExecutor->add([=]() { });
-    t.join();
+    th.join();
   }
 
   void addAsync(int a, int b, std::function<void(int&&)>&& cob) {
@@ -73,7 +73,7 @@ struct ViaFixture : public testing::Test {
   std::shared_ptr<ManualWaiter> waiter;
   InlineExecutor inlineExecutor;
   std::atomic<bool> done;
-  std::thread t;
+  std::thread th;
 };
 
 TEST(Via, exceptionOnLaunch) {

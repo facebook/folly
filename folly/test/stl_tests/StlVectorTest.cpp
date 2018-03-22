@@ -196,7 +196,7 @@ FOLLY_PUSH_WARNING
 FOLLY_GCC_DISABLE_WARNING("-Wunused-parameter")
 FOLLY_GCC_DISABLE_WARNING("-Wunused-variable")
 // Using SCOPED_TRACE repeatedly from within a macro violates -Wshadow
-FOLLY_GCC_DISABLE_WARNING("-Wshadow-compatible-local")
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 
 using namespace std;
 using namespace folly;

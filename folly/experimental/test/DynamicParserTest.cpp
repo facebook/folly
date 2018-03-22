@@ -137,10 +137,10 @@ TEST(TestDynamicParser, AllParserFeaturesSuccess) {
   p.required(0, [&](const dynamic& v) {
     EXPECT_EQ(0, p.key().getInt());
     EXPECT_EQ(v, p.value());
-    p.objectItems([&](const std::string& k, double v) {
+    p.objectItems([&](const std::string& k, double v2) {
       EXPECT_EQ(k, p.key().getString());
-      EXPECT_EQ(v, p.value().asDouble());
-      doubles.emplace(k, v);
+      EXPECT_EQ(v2, p.value().asDouble());
+      doubles.emplace(k, v2);
     });
   });
   p.required(1, [&](int64_t k, int64_t v) {
@@ -152,39 +152,39 @@ TEST(TestDynamicParser, AllParserFeaturesSuccess) {
   p.optional(2, [&](const dynamic& v) {
     EXPECT_EQ(2, p.key().getInt());
     EXPECT_EQ(v, p.value());
-    p.arrayItems([&](int64_t k, const std::string& v) {
+    p.arrayItems([&](int64_t k, const std::string& v2) {
       EXPECT_EQ(strings.size(), k);
       EXPECT_EQ(k, p.key().getInt());
-      EXPECT_EQ(v, p.value().asString());
-      strings.emplace_back(v);
+      EXPECT_EQ(v2, p.value().asString());
+      strings.emplace_back(v2);
     });
   });
   p.required(3, [&](const dynamic& v) {
     EXPECT_EQ(3, p.key().getInt());
     EXPECT_EQ(v, p.value());
-    p.optional("int", [&](const std::string& k, int64_t v) {
+    p.optional("int", [&](const std::string& k, int64_t v2) {
       EXPECT_EQ("int", p.key().getString());
       EXPECT_EQ(k, p.key().getString());
-      EXPECT_EQ(v, p.value().getInt());
-      inner_int = v;
+      EXPECT_EQ(v2, p.value().getInt());
+      inner_int = v2;
     });
-    p.required("false", [&](const std::string& k, bool v) {
+    p.required("false", [&](const std::string& k, bool v2) {
       EXPECT_EQ("false", p.key().getString());
       EXPECT_EQ(k, p.key().getString());
-      EXPECT_EQ(v, p.value().asBool());
-      inner_false = v;
+      EXPECT_EQ(v2, p.value().asBool());
+      inner_false = v2;
     });
-    p.required("true", [&](const std::string& k, bool v) {
+    p.required("true", [&](const std::string& k, bool v2) {
       EXPECT_EQ("true", p.key().getString());
       EXPECT_EQ(k, p.key().getString());
-      EXPECT_EQ(v, p.value().getBool());
-      inner_true = v;
+      EXPECT_EQ(v2, p.value().getBool());
+      inner_true = v2;
     });
-    p.required("str", [&](const std::string& k, const std::string& v) {
+    p.required("str", [&](const std::string& k, const std::string& v2) {
       EXPECT_EQ("str", p.key().getString());
       EXPECT_EQ(k, p.key().getString());
-      EXPECT_EQ(v, p.value().getString());
-      inner_str = v;
+      EXPECT_EQ(v2, p.value().getString());
+      inner_str = v2;
     });
     p.optional("not set", [&](bool) { FAIL() << "No key 'not set'"; });
   });
@@ -195,9 +195,9 @@ TEST(TestDynamicParser, AllParserFeaturesSuccess) {
       EXPECT_EQ(std::string("bools"), k);
       EXPECT_EQ(k, p.key().getString());
       EXPECT_EQ(v2, p.value());
-      p.arrayItems([&](int64_t k, bool v3) {
-        EXPECT_EQ(bools.size(), k);
-        EXPECT_EQ(k, p.key().getInt());
+      p.arrayItems([&](int64_t k2, bool v3) {
+        EXPECT_EQ(bools.size(), k2);
+        EXPECT_EQ(k2, p.key().getInt());
         EXPECT_EQ(v3, p.value().asBool());
         bools.push_back(v3);
       });

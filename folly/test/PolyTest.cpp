@@ -299,9 +299,9 @@ struct Property {
       FOLLY_POLY_MEMBER(void(int), &T::prop));
 };
 
-struct property {
-  property() = default;
-  explicit property(int i) : j(i) {}
+struct has_property {
+  has_property() = default;
+  explicit has_property(int i) : j(i) {}
   int prop() const {
     return j;
   }
@@ -315,8 +315,8 @@ struct property {
 } // namespace
 
 TEST(Poly, OverloadedMembers) {
-  Poly<Property> p = property{42};
-  EXPECT_EQ(typeid(property), poly_type(p));
+  Poly<Property> p = has_property{42};
+  EXPECT_EQ(typeid(has_property), poly_type(p));
   EXPECT_EQ(42, p.prop());
   p.prop(68);
   EXPECT_EQ(68, p.prop());

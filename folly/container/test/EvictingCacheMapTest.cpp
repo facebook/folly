@@ -309,7 +309,7 @@ TEST(EvictingCacheMap, SetClearSize) {
 
 TEST(EvictingCacheMap, DestructorInvocationTest) {
   struct SumInt {
-    SumInt(int val, int* ref) : val(val), ref(ref) { }
+    SumInt(int val_, int* ref_) : val(val_), ref(ref_) { }
     ~SumInt() {
       *ref += val;
     }

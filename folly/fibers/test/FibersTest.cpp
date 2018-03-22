@@ -1569,7 +1569,7 @@ TEST(FiberManager, semaphore) {
 
     {
       std::shared_ptr<folly::EventBase> completionCounter(
-          &evb, [](folly::EventBase* evb) { evb->terminateLoopSoon(); });
+          &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
 
       for (size_t i = 0; i < kTasks; ++i) {
         manager.addTask([&, completionCounter]() {

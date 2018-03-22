@@ -18,8 +18,8 @@
 #include <folly/portability/GTest.h>
 
 struct Foo {
-  Foo(int n, std::function<void()> dtorFn):
-    n(n), dtorFn(std::move(dtorFn)) {}
+  Foo(int n_, std::function<void()> dtorFn_):
+    n(n_), dtorFn(std::move(dtorFn_)) {}
   ~Foo() { dtorFn(); }
 
   int n;
