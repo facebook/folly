@@ -21,17 +21,29 @@ using namespace folly;
 TEST(LogName, canonicalize) {
   EXPECT_EQ("", LogName::canonicalize("."));
   EXPECT_EQ("", LogName::canonicalize("..."));
+  EXPECT_EQ("", LogName::canonicalize("/"));
+  EXPECT_EQ("", LogName::canonicalize("\\"));
+  EXPECT_EQ("", LogName::canonicalize(".//..\\\\./"));
   EXPECT_EQ("foo.bar", LogName::canonicalize(".foo..bar."));
   EXPECT_EQ("a.b.c", LogName::canonicalize("a.b.c"));
+  EXPECT_EQ("a.b.c", LogName::canonicalize("a/b/c"));
+  EXPECT_EQ("a.b.c", LogName::canonicalize("a/b/c/"));
   EXPECT_EQ("a.b.c", LogName::canonicalize("a..b.c..."));
   EXPECT_EQ("a.b.c", LogName::canonicalize("....a.b.c"));
   EXPECT_EQ("a.b.c", LogName::canonicalize("a.b.c...."));
+  EXPECT_EQ("a.b.c", LogName::canonicalize("////a.b.c"));
+  EXPECT_EQ("a.b.c", LogName::canonicalize("a.b.c////"));
+  EXPECT_EQ("a.b.c", LogName::canonicalize("/a.b.//.c/"));
 }
 
 TEST(LogName, getParent) {
   EXPECT_EQ("", LogName::getParent("foo"));
   EXPECT_EQ("", LogName::getParent(".foo"));
   EXPECT_EQ("foo", LogName::getParent("foo.bar"));
+  EXPECT_EQ("foo", LogName::getParent("foo/bar"));
+  EXPECT_EQ("foo", LogName::getParent("foo\\bar"));
+  EXPECT_EQ("foo", LogName::getParent("foo\\bar/"));
+  EXPECT_EQ("foo", LogName::getParent("foo\\bar\\"));
   EXPECT_EQ("foo..bar", LogName::getParent("foo..bar..test"));
   EXPECT_EQ("..foo..bar", LogName::getParent("..foo..bar..test.."));
 }
@@ -40,7 +52,11 @@ TEST(LogName, hash) {
   EXPECT_EQ(LogName::hash("foo"), LogName::hash("foo."));
   EXPECT_EQ(LogName::hash(".foo..bar"), LogName::hash("foo.bar..."));
   EXPECT_EQ(LogName::hash("a.b.c..d."), LogName::hash("..a.b.c.d."));
+  EXPECT_EQ(LogName::hash("a.b.c.d"), LogName::hash("/a/b/c/d/"));
+  EXPECT_EQ(LogName::hash("a.b.c.d"), LogName::hash("a\\b\\c/d/"));
   EXPECT_EQ(LogName::hash(""), LogName::hash("."));
+  EXPECT_EQ(LogName::hash(""), LogName::hash("//"));
+  EXPECT_EQ(LogName::hash(""), LogName::hash("\\"));
   EXPECT_EQ(LogName::hash(""), LogName::hash("...."));
 
   // Hashes for different category names should generally be different.
@@ -52,9 +68,11 @@ TEST(LogName, hash) {
 
 TEST(LogName, cmp) {
   EXPECT_EQ(0, LogName::cmp("foo", "foo."));
+  EXPECT_EQ(0, LogName::cmp("foo", "foo/"));
   EXPECT_EQ(0, LogName::cmp(".foo..bar", "foo.bar..."));
   EXPECT_EQ(0, LogName::cmp(".foo.bar", "foo...bar..."));
   EXPECT_EQ(0, LogName::cmp("a.b.c..d.", "..a.b.c.d."));
+  EXPECT_EQ(0, LogName::cmp("a.b.c..d.", "\\/a.b/c/d."));
   EXPECT_EQ(0, LogName::cmp("", "."));
   EXPECT_EQ(0, LogName::cmp("", "...."));
 

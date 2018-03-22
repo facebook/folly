@@ -191,20 +191,27 @@ TEST(Xlog, getXlogCategoryName) {
   EXPECT_EQ("foo.cpp", getXlogCategoryNameForFile("foo.cpp"));
   EXPECT_EQ("foo.h", getXlogCategoryNameForFile("foo.h"));
 
-  // Directory separators should be translated to "."
-  EXPECT_EQ("src.test.foo.cpp", getXlogCategoryNameForFile("src/test/foo.cpp"));
-  EXPECT_EQ("src.test.foo.h", getXlogCategoryNameForFile("src/test/foo.h"));
+  // Directory separators should be translated to "." during LogName
+  // canonicalization
+  EXPECT_EQ("src/test/foo.cpp", getXlogCategoryNameForFile("src/test/foo.cpp"));
+  EXPECT_EQ(
+      "src.test.foo.cpp",
+      LogName::canonicalize(getXlogCategoryNameForFile("src/test/foo.cpp")));
+  EXPECT_EQ("src/test/foo.h", getXlogCategoryNameForFile("src/test/foo.h"));
+  EXPECT_EQ(
+      "src.test.foo.h",
+      LogName::canonicalize(getXlogCategoryNameForFile("src/test/foo.h")));
 
   // Buck's directory prefixes for generated source files
   // should be stripped out
   EXPECT_EQ(
       "myproject.generated_header.h",
-      getXlogCategoryNameForFile(
-          "buck-out/gen/myproject#headers/myproject/generated_header.h"));
+      LogName::canonicalize(getXlogCategoryNameForFile(
+          "buck-out/gen/myproject#headers/myproject/generated_header.h")));
   EXPECT_EQ(
       "foo.bar.test.h",
-      getXlogCategoryNameForFile(
-          "buck-out/gen/foo/bar#header-map,headers/foo/bar/test.h"));
+      LogName::canonicalize(getXlogCategoryNameForFile(
+          "buck-out/gen/foo/bar#header-map,headers/foo/bar/test.h")));
 }
 
 TEST(Xlog, xlogStripFilename) {

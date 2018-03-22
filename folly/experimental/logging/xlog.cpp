@@ -54,7 +54,7 @@ StringPiece stripBuckOutPrefix(StringPiece filename) {
 }
 } // namespace
 
-std::string getXlogCategoryNameForFile(StringPiece filename) {
+StringPiece getXlogCategoryNameForFile(StringPiece filename) {
   // Buck mangles the directory layout for header files.  Rather than including
   // them from their original location, it moves them into deep directories
   // inside buck-out, and includes them from there.
@@ -65,17 +65,7 @@ std::string getXlogCategoryNameForFile(StringPiece filename) {
     filename = stripBuckOutPrefix(filename);
   }
 
-  std::string categoryName = filename.str();
-
-  // Translate slashes to dots, to turn the directory layout into
-  // a category hierarchy.
-  for (size_t n = 0; n < categoryName.size(); ++n) {
-    if (xlogIsDirSeparator(categoryName[n])) {
-      categoryName[n] = '.';
-    }
-  }
-
-  return categoryName;
+  return filename;
 }
 
 template <bool IsInHeaderFile>

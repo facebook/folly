@@ -399,7 +399,7 @@ class XlogCategoryInfo<false> {
  * This function returns the category name that will be used by XLOG() if
  * XLOG_SET_CATEGORY_NAME() has not been used.
  */
-std::string getXlogCategoryNameForFile(folly::StringPiece filename);
+folly::StringPiece getXlogCategoryNameForFile(folly::StringPiece filename);
 
 constexpr bool xlogIsDirSeparator(char c) {
   return c == '/' || (kIsWindows && c == '\\');
