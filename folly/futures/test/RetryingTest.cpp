@@ -143,6 +143,27 @@ TEST(RetryingTest, policy_capped_jittered_exponential_backoff) {
   });
 }
 
+TEST(RetryingTest, policy_capped_jittered_exponential_backoff_many_retries) {
+  using namespace futures::detail;
+  mt19937_64 rng(0);
+  Duration min_backoff(1);
+
+  Duration max_backoff(10000000);
+  Duration backoff = retryingJitteredExponentialBackoffDur(
+      80, min_backoff, max_backoff, 0, rng);
+  EXPECT_EQ(backoff, max_backoff);
+
+  max_backoff = Duration(std::numeric_limits<int64_t>::max());
+  backoff = retryingJitteredExponentialBackoffDur(
+      63, min_backoff, max_backoff, 0, rng);
+  EXPECT_LT(backoff, max_backoff);
+
+  max_backoff = Duration(std::numeric_limits<int64_t>::max());
+  backoff = retryingJitteredExponentialBackoffDur(
+      64, min_backoff, max_backoff, 0, rng);
+  EXPECT_EQ(backoff, max_backoff);
+}
+
 TEST(RetryingTest, policy_sleep_defaults) {
   multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), []{
     //  To ensure that this compiles with default params.
