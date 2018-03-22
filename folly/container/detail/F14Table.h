@@ -862,7 +862,7 @@ class F14Table : public Policy {
   }
 
   std::size_t max_size() const noexcept {
-    allocator_type a = this->alloc();
+    auto& a = this->alloc();
     return std::min<std::size_t>(
         (std::numeric_limits<typename Policy::InternalSizeType>::max)(),
         std::allocator_traits<allocator_type>::max_size(a));

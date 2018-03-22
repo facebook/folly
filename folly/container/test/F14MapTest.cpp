@@ -15,6 +15,34 @@
  */
 
 #include <folly/container/F14Map.h>
+#include <folly/container/test/F14TestUtil.h>
+#include <folly/portability/GTest.h>
+
+template <template <typename, typename, typename, typename, typename>
+          class TMap>
+void testCustomSwap() {
+  using std::swap;
+
+  TMap<
+      int,
+      int,
+      folly::f14::DefaultHasher<int>,
+      folly::f14::DefaultKeyEqual<int>,
+      folly::f14::SwapTrackingAlloc<std::pair<int const, int>>>
+      m0, m1;
+  folly::f14::resetTracking();
+  swap(m0, m1);
+
+  EXPECT_EQ(
+      0, folly::f14::Tracked<0>::counts.dist(folly::f14::Counts{0, 0, 0, 0}));
+}
+
+TEST(F14Map, customSwap) {
+  testCustomSwap<folly::F14ValueMap>();
+  testCustomSwap<folly::F14NodeMap>();
+  testCustomSwap<folly::F14VectorMap>();
+  testCustomSwap<folly::F14FastMap>();
+}
 
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
@@ -28,9 +56,6 @@
 
 #include <folly/Range.h>
 #include <folly/hash/Hash.h>
-#include <folly/portability/GTest.h>
-
-#include <folly/container/test/F14TestUtil.h>
 
 using namespace folly;
 using namespace folly::f14;
@@ -141,8 +166,6 @@ void runSimple() {
   F14TableStats::compute(h7);
   F14TableStats::compute(h8);
   F14TableStats::compute(h9);
-
-  LOG(INFO) << "sizeof(" << typeid(T).name() << ") = " << sizeof(T);
 }
 
 template <typename T>
@@ -360,7 +383,7 @@ TEST(F14VectorMap, simple) {
 }
 
 TEST(F14FastMap, simple) {
-  // F14FastMap is just a conditional typedef. Verify it compiles.
+  // F14FastMap inherits from a conditional typedef. Verify it compiles.
   runRandom<F14FastMap<uint64_t, uint64_t>>();
   runSimple<F14FastMap<std::string, std::string>>();
 }
@@ -402,10 +425,11 @@ TEST(F14ValueMap, grow_stats) {
   for (unsigned i = 1; i <= 3072; ++i) {
     h[i]++;
   }
-  LOG(INFO) << "F14ValueMap just before rehash -> "
-            << F14TableStats::compute(h);
+  // F14ValueMap just before rehash
+  F14TableStats::compute(h);
   h[0]++;
-  LOG(INFO) << "F14ValueMap just after rehash -> " << F14TableStats::compute(h);
+  // F14ValueMap just after rehash
+  F14TableStats::compute(h);
 }
 
 TEST(F14ValueMap, steady_state_stats) {
@@ -430,7 +454,8 @@ TEST(F14ValueMap, steady_state_stats) {
       EXPECT_LT(f14::expectedProbe(stats.missProbeLengthHisto), 10.0);
     }
   }
-  LOG(INFO) << "F14ValueMap at steady state -> " << F14TableStats::compute(h);
+  // F14ValueMap at steady state
+  F14TableStats::compute(h);
 }
 
 TEST(Tracked, baseline) {
@@ -502,7 +527,7 @@ TEST(Tracked, baseline) {
 // and a pair const& or pair&& and cause it to be inserted
 template <typename M, typename F>
 void runInsertCases(
-    std::string const& name,
+    std::string const& /* name */,
     F const& insertFunc,
     uint64_t expectedDist = 0) {
   static_assert(std::is_same<typename M::key_type, Tracked<0>>::value, "");
@@ -512,9 +537,7 @@ void runInsertCases(
     M m;
     resetTracking();
     insertFunc(m, p);
-    LOG(INFO) << name << ", fresh key, value_type const& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
+    // fresh key, value_type const& ->
     // copy is expected
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{1, 0, 0, 0}) +
@@ -526,9 +549,7 @@ void runInsertCases(
     M m;
     resetTracking();
     insertFunc(m, std::move(p));
-    LOG(INFO) << name << ", fresh key, value_type&& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
+    // fresh key, value_type&& ->
     // key copy is unfortunate but required
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{1, 0, 0, 0}) +
@@ -540,9 +561,7 @@ void runInsertCases(
     M m;
     resetTracking();
     insertFunc(m, p);
-    LOG(INFO) << name << ", fresh key, pair<key_type,mapped_type> const& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
+    // fresh key, pair<key_type,mapped_type> const& ->
     // 1 copy is required
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{1, 0, 0, 0}) +
@@ -554,9 +573,7 @@ void runInsertCases(
     M m;
     resetTracking();
     insertFunc(m, std::move(p));
-    LOG(INFO) << name << ", fresh key, pair<key_type,mapped_type>&& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
+    // fresh key, pair<key_type,mapped_type>&& ->
     // this is the happy path for insert(make_pair(.., ..))
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 1, 0, 0}) +
@@ -568,11 +585,11 @@ void runInsertCases(
     M m;
     resetTracking();
     insertFunc(m, p);
-    LOG(INFO) << name << ", fresh key, convertible const& -> "
-              << "key_type ops " << Tracked<0>::counts << ", key_src ops "
-              << Tracked<2>::counts << ", mapped_type ops "
-              << Tracked<1>::counts << ", mapped_src ops "
-              << Tracked<3>::counts;
+    // fresh key, convertible const& ->
+    //   key_type ops: Tracked<0>::counts
+    //   mapped_type ops: Tracked<1>::counts
+    //   key_src ops: Tracked<2>::counts
+    //   mapped_src ops: Tracked<3>::counts;
 
     // There are three strategies that could be optimal for particular
     // ratios of cost:
@@ -603,12 +620,11 @@ void runInsertCases(
     M m;
     resetTracking();
     insertFunc(m, std::move(p));
-    LOG(INFO) << name << ", fresh key, convertible&& -> "
-              << "key_type ops " << Tracked<0>::counts << ", key_src ops "
-              << Tracked<2>::counts << ", mapped_type ops "
-              << Tracked<1>::counts << ", mapped_src ops "
-              << Tracked<3>::counts;
-
+    // fresh key, convertible&& ->
+    //   key_type ops: Tracked<0>::counts
+    //   mapped_type ops: Tracked<1>::counts
+    //   key_src ops: Tracked<2>::counts
+    //   mapped_src ops: Tracked<3>::counts;
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 1, 0, 1}) +
             Tracked<1>::counts.dist(Counts{0, 0, 0, 1}) +
@@ -622,10 +638,7 @@ void runInsertCases(
     m[0] = 0;
     resetTracking();
     insertFunc(m, p);
-    LOG(INFO) << name << ", duplicate key, value_type const& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
-
+    // duplicate key, value_type const&
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 0, 0, 0}) +
             Tracked<1>::counts.dist(Counts{0, 0, 0, 0}),
@@ -637,10 +650,7 @@ void runInsertCases(
     m[0] = 0;
     resetTracking();
     insertFunc(m, std::move(p));
-    LOG(INFO) << name << ", duplicate key, value_type&& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
-
+    // duplicate key, value_type&&
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 0, 0, 0}) +
             Tracked<1>::counts.dist(Counts{0, 0, 0, 0}),
@@ -652,11 +662,7 @@ void runInsertCases(
     m[0] = 0;
     resetTracking();
     insertFunc(m, p);
-    LOG(INFO) << name
-              << ", duplicate key, pair<key_type,mapped_type> const& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
-
+    // duplicate key, pair<key_type,mapped_type> const&
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 0, 0, 0}) +
             Tracked<1>::counts.dist(Counts{0, 0, 0, 0}),
@@ -668,10 +674,7 @@ void runInsertCases(
     m[0] = 0;
     resetTracking();
     insertFunc(m, std::move(p));
-    LOG(INFO) << name << ", duplicate key, pair<key_type,mapped_type>&& -> "
-              << "key_type ops " << Tracked<0>::counts << ", mapped_type ops "
-              << Tracked<1>::counts;
-
+    // duplicate key, pair<key_type,mapped_type>&&
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 0, 0, 0}) +
             Tracked<1>::counts.dist(Counts{0, 0, 0, 0}),
@@ -683,12 +686,11 @@ void runInsertCases(
     m[0] = 0;
     resetTracking();
     insertFunc(m, p);
-    LOG(INFO) << name << ", duplicate key, convertible const& -> "
-              << "key_type ops " << Tracked<0>::counts << ", key_src ops "
-              << Tracked<2>::counts << ", mapped_type ops "
-              << Tracked<1>::counts << ", mapped_src ops "
-              << Tracked<3>::counts;
-
+    // duplicate key, convertible const& ->
+    //   key_type ops: Tracked<0>::counts
+    //   mapped_type ops: Tracked<1>::counts
+    //   key_src ops: Tracked<2>::counts
+    //   mapped_src ops: Tracked<3>::counts;
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 0, 1, 0}) +
             Tracked<1>::counts.dist(Counts{0, 0, 0, 0}) +
@@ -702,12 +704,11 @@ void runInsertCases(
     m[0] = 0;
     resetTracking();
     insertFunc(m, std::move(p));
-    LOG(INFO) << name << ", duplicate key, convertible&& -> "
-              << "key_type ops " << Tracked<0>::counts << ", key_src ops "
-              << Tracked<2>::counts << ", mapped_type ops "
-              << Tracked<1>::counts << ", mapped_src ops "
-              << Tracked<3>::counts;
-
+    // duplicate key, convertible&& ->
+    //   key_type ops: Tracked<0>::counts
+    //   mapped_type ops: Tracked<1>::counts
+    //   key_src ops: Tracked<2>::counts
+    //   mapped_src ops: Tracked<3>::counts;
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 0, 0, 1}) +
             Tracked<1>::counts.dist(Counts{0, 0, 0, 0}) +

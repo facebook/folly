@@ -19,7 +19,7 @@
 /**
  * F14NodeMap, F14ValueMap, and F14VectorMap
  *
- * F14FastMap is a conditional typedef to F14ValueMap or F14VectorMap
+ * F14FastMap conditionally inherits from F14ValueMap or F14VectorMap
  *
  * See F14.md
  *
@@ -43,14 +43,47 @@
 
 namespace folly {
 
-template <typename... Args>
-using F14NodeMap = std::unordered_map<Args...>;
-template <typename... Args>
-using F14ValueMap = std::unordered_map<Args...>;
-template <typename... Args>
-using F14VectorMap = std::unordered_map<Args...>;
-template <typename... Args>
-using F14FastMap = std::unordered_map<Args...>;
+template <
+    typename K,
+    typename M,
+    typename H = std::hash<K>,
+    typename E = std::equal_to<K>,
+    typename A = std::allocator<std::pair<K const, M>>>
+class F14ValueMap : public std::unordered_map<K, M, H, E, A> {
+  using Super = std::unordered_map<K, M, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14ValueMap() : Super() {}
+};
+
+template <
+    typename K,
+    typename M,
+    typename H = std::hash<K>,
+    typename E = std::equal_to<K>,
+    typename A = std::allocator<std::pair<K const, M>>>
+class F14NodeMap : public std::unordered_map<K, M, H, E, A> {
+  using Super = std::unordered_map<K, M, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14NodeMap() : Super() {}
+};
+
+template <
+    typename K,
+    typename M,
+    typename H = std::hash<K>,
+    typename E = std::equal_to<K>,
+    typename A = std::allocator<std::pair<K const, M>>>
+class F14VectorMap : public std::unordered_map<K, M, H, E, A> {
+  using Super = std::unordered_map<K, M, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14VectorMap() : Super() {}
+};
 
 } // namespace folly
 
@@ -758,13 +791,6 @@ class F14ValueMap
 };
 
 template <typename K, typename M, typename H, typename E, typename A>
-void swap(
-    F14ValueMap<K, M, H, E, A>& lhs,
-    F14ValueMap<K, M, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
-  lhs.swap(rhs);
-}
-
-template <typename K, typename M, typename H, typename E, typename A>
 bool operator==(
     F14ValueMap<K, M, H, E, A> const& lhs,
     F14ValueMap<K, M, H, E, A> const& rhs) {
@@ -815,13 +841,6 @@ class F14NodeMap
 
   // TODO extract and node_handle insert
 };
-
-template <typename K, typename M, typename H, typename E, typename A>
-void swap(
-    F14NodeMap<K, M, H, E, A>& lhs,
-    F14NodeMap<K, M, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
-  lhs.swap(rhs);
-}
 
 template <typename K, typename M, typename H, typename E, typename A>
 bool operator==(
@@ -954,13 +973,6 @@ class F14VectorMap
 };
 
 template <typename K, typename M, typename H, typename E, typename A>
-void swap(
-    F14VectorMap<K, M, H, E, A>& lhs,
-    F14VectorMap<K, M, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
-  lhs.swap(rhs);
-}
-
-template <typename K, typename M, typename H, typename E, typename A>
 bool operator==(
     F14VectorMap<K, M, H, E, A> const& lhs,
     F14VectorMap<K, M, H, E, A> const& rhs) {
@@ -974,17 +986,58 @@ bool operator!=(
   return !(lhs == rhs);
 }
 
+} // namespace folly
+
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
+namespace folly {
+
 template <
     typename Key,
     typename Mapped,
     typename Hasher = f14::DefaultHasher<Key>,
     typename KeyEqual = f14::DefaultKeyEqual<Key>,
     typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
-using F14FastMap = std::conditional_t<
-    sizeof(std::pair<Key const, Mapped>) < 24,
-    F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
-    F14VectorMap<Key, Mapped, Hasher, KeyEqual, Alloc>>;
+class F14FastMap : public std::conditional_t<
+                       sizeof(std::pair<Key const, Mapped>) < 24,
+                       F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
+                       F14VectorMap<Key, Mapped, Hasher, KeyEqual, Alloc>> {
+  using Super = std::conditional_t<
+      sizeof(std::pair<Key const, Mapped>) < 24,
+      F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
+      F14VectorMap<Key, Mapped, Hasher, KeyEqual, Alloc>>;
+
+ public:
+  using Super::Super;
+  F14FastMap() : Super() {}
+};
+
+template <typename K, typename M, typename H, typename E, typename A>
+void swap(
+    F14ValueMap<K, M, H, E, A>& lhs,
+    F14ValueMap<K, M, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+void swap(
+    F14NodeMap<K, M, H, E, A>& lhs,
+    F14NodeMap<K, M, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+void swap(
+    F14VectorMap<K, M, H, E, A>& lhs,
+    F14VectorMap<K, M, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+void swap(
+    F14FastMap<K, M, H, E, A>& lhs,
+    F14FastMap<K, M, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
 
 } // namespace folly
-
-#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE

@@ -194,6 +194,8 @@ thread_local Counts sumCounts{};
 
 template <int Tag>
 struct Tracked {
+  static_assert(Tag <= 5, "Need to extend Tracked<Tag> in F14TestUtil.h");
+
   static thread_local Counts counts;
 
   uint64_t val_;
@@ -300,6 +302,79 @@ std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
   return xo;
 }
 
+template <class T>
+class SwapTrackingAlloc {
+ public:
+  using Alloc = std::allocator<T>;
+  using value_type = typename Alloc::value_type;
+
+  using pointer = typename Alloc::pointer;
+  using const_pointer = typename Alloc::const_pointer;
+  using reference = typename Alloc::reference;
+  using const_reference = typename Alloc::const_reference;
+  using size_type = typename Alloc::size_type;
+
+  using propagate_on_container_swap = std::true_type;
+  using propagate_on_container_copy_assignment = std::true_type;
+  using propagate_on_container_move_assignment = std::true_type;
+
+  SwapTrackingAlloc() {}
+
+  template <class U>
+  SwapTrackingAlloc(SwapTrackingAlloc<U> const& other) noexcept
+      : a_(other.a_), t_(other.t_) {}
+
+  template <class U>
+  SwapTrackingAlloc& operator=(SwapTrackingAlloc<U> const& other) noexcept {
+    a_ = other.a_;
+    t_ = other.t_;
+    return *this;
+  }
+
+  template <class U>
+  SwapTrackingAlloc(SwapTrackingAlloc<U>&& other) noexcept
+      : a_(std::move(other.a_)), t_(std::move(other.t_)) {}
+
+  template <class U>
+  SwapTrackingAlloc& operator=(SwapTrackingAlloc<U>&& other) noexcept {
+    a_ = std::move(other.a_);
+    t_ = std::move(other.t_);
+    return *this;
+  }
+
+  T* allocate(size_t n) {
+    return a_.allocate(n);
+  }
+  void deallocate(T* p, size_t n) {
+    a_.deallocate(p, n);
+  }
+
+ private:
+  std::allocator<T> a_;
+  folly::f14::Tracked<0> t_;
+
+  template <class U>
+  friend class SwapTrackingAlloc;
+};
+
+template <class T>
+void swap(SwapTrackingAlloc<T>&, SwapTrackingAlloc<T>&) {
+  // For argument dependent lookup:
+  // This function will be called if the custom swap functions of F14 containers
+  // are used. Otherwise, std::swap() will do 1 move construct and 2 move
+  // assigns which will get tracked by t_.
+}
+
+template <class T1, class T2>
+bool operator==(SwapTrackingAlloc<T1> const&, SwapTrackingAlloc<T2> const&) {
+  return true;
+}
+
+template <class T1, class T2>
+bool operator!=(SwapTrackingAlloc<T1> const&, SwapTrackingAlloc<T2> const&) {
+  return false;
+}
+
 } // namespace f14
 } // namespace folly
 
@@ -317,4 +392,5 @@ struct hash<folly::f14::Tracked<Tag>> {
     return tracked.val_ ^ Tag;
   }
 };
+
 } // namespace std

@@ -15,6 +15,32 @@
  */
 
 #include <folly/container/F14Set.h>
+#include <folly/container/test/F14TestUtil.h>
+#include <folly/portability/GTest.h>
+
+template <template <typename, typename, typename, typename> class TSet>
+void testCustomSwap() {
+  using std::swap;
+
+  TSet<
+      int,
+      folly::f14::DefaultHasher<int>,
+      folly::f14::DefaultKeyEqual<int>,
+      folly::f14::SwapTrackingAlloc<int>>
+      m0, m1;
+  folly::f14::resetTracking();
+  swap(m0, m1);
+
+  EXPECT_EQ(
+      0, folly::f14::Tracked<0>::counts.dist(folly::f14::Counts{0, 0, 0, 0}));
+}
+
+TEST(F14Set, customSwap) {
+  testCustomSwap<folly::F14ValueSet>();
+  testCustomSwap<folly::F14NodeSet>();
+  testCustomSwap<folly::F14VectorSet>();
+  testCustomSwap<folly::F14FastSet>();
+}
 
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
@@ -26,9 +52,6 @@
 #include <unordered_set>
 
 #include <folly/Range.h>
-#include <folly/portability/GTest.h>
-
-#include <folly/container/test/F14TestUtil.h>
 
 using namespace folly;
 using namespace folly::f14;
@@ -324,7 +347,7 @@ TEST(F14VectorSet, simple) {
 }
 
 TEST(F14FastSet, simple) {
-  // F14FastSet is just a conditional typedef. Verify it compiles.
+  // F14FastSet inherits from a conditional typedef. Verify it compiles.
   runRandom<F14FastSet<uint64_t>>();
   runSimple<F14FastSet<std::string>>();
 }
@@ -358,10 +381,11 @@ TEST(F14ValueSet, grow_stats) {
   for (unsigned i = 1; i <= 3072; ++i) {
     h.insert(i);
   }
-  LOG(INFO) << "F14ValueSet just before rehash -> "
-            << F14TableStats::compute(h);
+  // F14ValueSet just before rehash
+  F14TableStats::compute(h);
   h.insert(0);
-  LOG(INFO) << "F14ValueSet just after rehash -> " << F14TableStats::compute(h);
+  // F14ValueSet just after rehash
+  F14TableStats::compute(h);
 }
 
 TEST(F14ValueSet, steady_state_stats) {
@@ -386,7 +410,8 @@ TEST(F14ValueSet, steady_state_stats) {
       EXPECT_LT(f14::expectedProbe(stats.missProbeLengthHisto), 10.0);
     }
   }
-  LOG(INFO) << "F14ValueSet at steady state -> " << F14TableStats::compute(h);
+  // F14ValueSet at steady state
+  F14TableStats::compute(h);
 }
 
 TEST(F14ValueSet, vectorMaxSize) {

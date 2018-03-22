@@ -19,7 +19,7 @@
 /**
  * F14NodeSet, F14ValueSet, and F14VectorSet
  *
- * F14FastSet is a conditional typedef to F14ValueSet or F14VectorSet
+ * F14FastSet conditionally inherits from F14ValueSet or F14VectorSet
  *
  * See F14.md
  *
@@ -38,14 +38,44 @@
 
 namespace folly {
 
-template <typename... Args>
-using F14NodeSet = std::unordered_set<Args...>;
-template <typename... Args>
-using F14ValueSet = std::unordered_set<Args...>;
-template <typename... Args>
-using F14VectorSet = std::unordered_set<Args...>;
-template <typename... Args>
-using F14FastSet = std::unordered_set<Args...>;
+template <
+    typename K,
+    typename H = std::hash<K>,
+    typename E = std::equal_to<K>,
+    typename A = std::allocator<K>>
+class F14NodeSet : public std::unordered_set<K, H, E, A> {
+  using Super = std::unordered_set<K, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14NodeSet() : Super() {}
+};
+
+template <
+    typename K,
+    typename H = std::hash<K>,
+    typename E = std::equal_to<K>,
+    typename A = std::allocator<K>>
+class F14ValueSet : public std::unordered_set<K, H, E, A> {
+  using Super = std::unordered_set<K, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14ValueSet() : Super() {}
+};
+
+template <
+    typename K,
+    typename H = std::hash<K>,
+    typename E = std::equal_to<K>,
+    typename A = std::allocator<K>>
+class F14VectorSet : public std::unordered_set<K, H, E, A> {
+  using Super = std::unordered_set<K, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14VectorSet() : Super() {}
+};
 
 } // namespace folly
 
@@ -540,12 +570,6 @@ class F14ValueSet
 };
 
 template <typename K, typename H, typename E, typename A>
-void swap(F14ValueSet<K, H, E, A>& lhs, F14ValueSet<K, H, E, A>& rhs) noexcept(
-    noexcept(lhs.swap(rhs))) {
-  lhs.swap(rhs);
-}
-
-template <typename K, typename H, typename E, typename A>
 bool operator==(
     F14ValueSet<K, H, E, A> const& lhs,
     F14ValueSet<K, H, E, A> const& rhs) {
@@ -591,12 +615,6 @@ class F14NodeSet
     this->table_.swap(rhs.table_);
   }
 };
-
-template <typename K, typename H, typename E, typename A>
-void swap(F14NodeSet<K, H, E, A>& lhs, F14NodeSet<K, H, E, A>& rhs) noexcept(
-    noexcept(lhs.swap(rhs))) {
-  lhs.swap(rhs);
-}
 
 template <typename K, typename H, typename E, typename A>
 bool operator==(
@@ -721,13 +739,6 @@ class F14VectorSet
 };
 
 template <typename K, typename H, typename E, typename A>
-void swap(
-    F14VectorSet<K, H, E, A>& lhs,
-    F14VectorSet<K, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
-  lhs.swap(rhs);
-}
-
-template <typename K, typename H, typename E, typename A>
 bool operator==(
     F14VectorSet<K, H, E, A> const& lhs,
     F14VectorSet<K, H, E, A> const& rhs) {
@@ -740,17 +751,53 @@ bool operator!=(
     F14VectorSet<K, H, E, A> const& rhs) {
   return !(lhs == rhs);
 }
+} // namespace folly
 
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
+namespace folly {
 template <
     typename Key,
     typename Hasher = f14::DefaultHasher<Key>,
     typename KeyEqual = f14::DefaultKeyEqual<Key>,
     typename Alloc = f14::DefaultAlloc<Key>>
-using F14FastSet = std::conditional_t<
-    sizeof(Key) < 24,
-    F14ValueSet<Key, Hasher, KeyEqual, Alloc>,
-    F14VectorSet<Key, Hasher, KeyEqual, Alloc>>;
+class F14FastSet : public std::conditional_t<
+                       sizeof(Key) < 24,
+                       F14ValueSet<Key, Hasher, KeyEqual, Alloc>,
+                       F14VectorSet<Key, Hasher, KeyEqual, Alloc>> {
+  using Super = std::conditional_t<
+      sizeof(Key) < 24,
+      F14ValueSet<Key, Hasher, KeyEqual, Alloc>,
+      F14VectorSet<Key, Hasher, KeyEqual, Alloc>>;
+
+ public:
+  using Super::Super;
+  F14FastSet() : Super() {}
+};
+
+template <typename K, typename H, typename E, typename A>
+void swap(F14ValueSet<K, H, E, A>& lhs, F14ValueSet<K, H, E, A>& rhs) noexcept(
+    noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+void swap(F14NodeSet<K, H, E, A>& lhs, F14NodeSet<K, H, E, A>& rhs) noexcept(
+    noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+void swap(
+    F14VectorSet<K, H, E, A>& lhs,
+    F14VectorSet<K, H, E, A>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+void swap(F14FastSet<K, H, E, A>& lhs, F14FastSet<K, H, E, A>& rhs) noexcept(
+    noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
 
 } // namespace folly
-
-#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
