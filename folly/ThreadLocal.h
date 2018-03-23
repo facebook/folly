@@ -61,9 +61,11 @@ class ThreadLocal {
       return new T();
     }) {}
 
-  explicit ThreadLocal(std::function<T*()> constructor) :
-      constructor_(constructor) {
-  }
+  template <
+      typename F,
+      _t<std::enable_if<is_invocable_r<T*, F>::value, int>> = 0>
+  explicit ThreadLocal(F&& constructor)
+      : constructor_(std::forward<F>(constructor)) {}
 
   T* get() const {
     T* ptr = tlp_.get();
