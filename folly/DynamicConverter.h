@@ -56,10 +56,10 @@ namespace folly {
 
 namespace dynamicconverter_detail {
 
-BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type);
+BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type)
+BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
+BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
+BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type)
 
 template <typename T> struct iterator_class_is_container {
   typedef std::reverse_iterator<typename T::iterator> some_iterator;
