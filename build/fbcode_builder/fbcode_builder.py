@@ -138,6 +138,9 @@ class FBCodeBuilder(object):
         return res
 
     def build(self, steps):
+        if not steps:
+            raise RuntimeError('Please ensure that the config you are passing '
+                               'contains steps')
         return [self.setup(), self.diagnostics()] + steps
 
     def setup(self):
