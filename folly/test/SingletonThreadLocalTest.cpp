@@ -97,3 +97,21 @@ TEST(SingletonThreadLocalTest, NotMoveConstructibleMake) {
   auto& single = SingletonThreadLocal<Foo, Tag, Make>::get();
   EXPECT_EQ(4, single.b);
 }
+
+TEST(SingletonThreadLocalTest, AccessAfterFastPathDestruction) {
+  static std::atomic<int> counter{};
+  struct Foo {
+    int i = 3;
+  };
+  struct Bar {
+    ~Bar() {
+      counter += SingletonThreadLocal<Foo>::get().i;
+    }
+  };
+  auto th = std::thread([] {
+    SingletonThreadLocal<Bar>::get();
+    counter += SingletonThreadLocal<Foo>::get().i;
+  });
+  th.join();
+  EXPECT_EQ(6, counter);
+}

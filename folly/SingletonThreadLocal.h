@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <boost/intrusive/list.hpp>
+
 #include <folly/ThreadLocal.h>
 #include <folly/detail/Singleton.h>
 #include <folly/functional/Invoke.h>
@@ -60,6 +62,33 @@ template <
     typename Make = detail::DefaultMake<T>>
 class SingletonThreadLocal {
  private:
+  struct Wrapper;
+
+  using NodeBase = boost::intrusive::list_base_hook<
+      boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
+
+  struct Node : NodeBase {
+    Wrapper*& cache;
+    bool& stale;
+
+    Node(Wrapper*& cache_, bool& stale_) : cache(cache_), stale(stale_) {
+      auto& wrapper = getWrapper();
+      wrapper.caches.push_front(*this);
+      cache = &wrapper;
+    }
+    ~Node() {
+      clear();
+    }
+
+    void clear() {
+      cache = nullptr;
+      stale = true;
+    }
+  };
+
+  using List =
+      boost::intrusive::list<Node, boost::intrusive::constant_time_size<false>>;
+
   struct Wrapper {
     template <typename S>
     using MakeRet = is_invocable_r<S, Make>;
@@ -69,7 +98,7 @@ class SingletonThreadLocal {
       alignas(alignof(T)) unsigned char storage[sizeof(T)];
       T object;
     };
-    Wrapper** cache{};
+    List caches;
 
     /* implicit */ operator T&() {
       return object;
@@ -86,9 +115,10 @@ class SingletonThreadLocal {
       (void)Make{}(storage);
     }
     ~Wrapper() {
-      if (cache) {
-        *cache = nullptr;
+      for (auto& node : caches) {
+        node.clear();
       }
+      caches.clear();
       object.~T();
     }
   };
@@ -100,21 +130,24 @@ class SingletonThreadLocal {
     return entry;
   }
 
-  FOLLY_EXPORT FOLLY_NOINLINE static Wrapper& getWrapper() {
+  FOLLY_NOINLINE static Wrapper& getWrapper() {
     return *getWrapperTL();
   }
 
-  FOLLY_ALWAYS_INLINE static Wrapper& getSlow(Wrapper*& cache) {
-    cache = &getWrapper();
-    cache->cache = &cache;
-    return *cache;
+#ifdef FOLLY_TLS
+  FOLLY_NOINLINE static T& getSlow(Wrapper*& cache) {
+    static thread_local Wrapper** check = &cache;
+    CHECK_EQ(check, &cache) << "inline function static thread_local merging";
+    static thread_local bool stale;
+    static thread_local Node node(cache, stale);
+    return !stale && node.cache ? *node.cache : getWrapper();
   }
+#endif
 
  public:
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& get() {
-    // the absolute minimal conditional-compilation
 #ifdef FOLLY_TLS
-    static FOLLY_TLS Wrapper* cache;
+    static thread_local Wrapper* cache;
     return FOLLY_LIKELY(!!cache) ? *cache : getSlow(cache);
 #else
     return getWrapper();
