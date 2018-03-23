@@ -315,7 +315,7 @@ class hazptr_priv {
 };
 
 static_assert(
-    folly::kMscVer || std::is_trivial<hazptr_priv>::value,
+    folly::kCpplibVer || std::is_trivial<hazptr_priv>::value,
     "hazptr_priv must be trivial to avoid a branch to check initialization");
 
 void hazptr_priv_init(hazptr_priv& priv);

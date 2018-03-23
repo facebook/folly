@@ -363,6 +363,14 @@ constexpr auto kIsGlib49 = true;
 #else
 constexpr auto kIsGlib49 = false;
 #endif
+
+// cpplib is an implementation of the standard library, and is the one typically
+// used with the msvc compiler
+#if _CPPLIB_VER
+constexpr auto kCpplibVer = _CPPLIB_VER;
+#else
+constexpr auto kCpplibVer = 0;
+#endif
 } // namespace folly
 
 // Define FOLLY_USE_CPP14_CONSTEXPR to be true if the compiler's C++14
