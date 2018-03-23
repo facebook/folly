@@ -173,16 +173,16 @@ struct ProducerConsumerQueue {
   }
 
  private:
+  using AtomicIndex = std::atomic<unsigned int>;
+
   char pad0_[hardware_destructive_interference_size];
   const uint32_t size_;
   T* const records_;
 
-  alignas(hardware_destructive_interference_size)
-      std::atomic<unsigned int> readIndex_;
-  alignas(hardware_destructive_interference_size)
-      std::atomic<unsigned int> writeIndex_;
+  alignas(hardware_destructive_interference_size) AtomicIndex readIndex_;
+  alignas(hardware_destructive_interference_size) AtomicIndex writeIndex_;
 
-  char pad1_[hardware_destructive_interference_size - sizeof(writeIndex_)];
+  char pad1_[hardware_destructive_interference_size - sizeof(AtomicIndex)];
 };
 
 } // namespace folly
