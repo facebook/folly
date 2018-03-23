@@ -182,7 +182,7 @@ struct ProducerConsumerQueue {
   alignas(hardware_destructive_interference_size)
       std::atomic<unsigned int> writeIndex_;
 
-  char pad1_[hardware_destructive_interference_size - sizeof(writeIndex_)];
+  char pad1_[hardware_destructive_interference_size - sizeof(decltype(writeIndex_))];
 };
 
 } // namespace folly
