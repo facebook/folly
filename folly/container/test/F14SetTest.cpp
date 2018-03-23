@@ -208,7 +208,7 @@ void runRandom() {
       auto t = t0.erase(k);
       auto r = r0.erase(k);
       EXPECT_EQ(t, r);
-    } else if (pct < 50) {
+    } else if (pct < 47) {
       // erase by iterator
       if (t0.size() > 0) {
         auto r = r0.find(k);
@@ -222,6 +222,28 @@ void runRandom() {
           EXPECT_NE(*t, k);
         }
         r = r0.erase(r);
+        if (r != r0.end()) {
+          EXPECT_NE(*r, k);
+        }
+      }
+    } else if (pct < 50) {
+      // bulk erase
+      if (t0.size() > 0) {
+        auto r = r0.find(k);
+        if (r == r0.end()) {
+          r = r0.begin();
+        }
+        k = *r;
+        auto t = t0.find(k);
+        auto firstt = t;
+        auto lastt = ++t;
+        t = t0.erase(firstt, lastt);
+        if (t != t0.end()) {
+          EXPECT_NE(*t, k);
+        }
+        auto firstr = r;
+        auto lastr = ++r;
+        r = r0.erase(firstr, lastr);
         if (r != r0.end()) {
           EXPECT_NE(*r, k);
         }

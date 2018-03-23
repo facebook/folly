@@ -944,7 +944,8 @@ class F14VectorMap
     while (first != last) {
       first = erase(first);
     }
-    return first;
+    auto index = this->table_.iterToIndex(first);
+    return index == 0 ? end() : this->table_.indexToIter(index - 1);
   }
 
   std::size_t erase(key_type const& key) {
