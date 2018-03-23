@@ -216,7 +216,7 @@ BENCHMARK(bmUMArena, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(bmMStandard, iters) {
   using Map = std::map<int, int>;
@@ -229,7 +229,7 @@ BENCHMARK(bmMStandard, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(bmMArena, iters) {
   using Map = std::map<
@@ -250,7 +250,7 @@ BENCHMARK(bmMArena, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 } // namespace
 

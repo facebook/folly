@@ -446,7 +446,7 @@ static void contendedUse(uint32_t n, int posters, int waiters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCHMARK_NAMED_PARAM(contendedUse, 1_to_1, 1, 1)
 BENCHMARK_NAMED_PARAM(contendedUse, 1_to_4, 1, 4)
 BENCHMARK_NAMED_PARAM(contendedUse, 1_to_32, 1, 32)

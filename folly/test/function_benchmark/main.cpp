@@ -226,7 +226,7 @@ BENCHMARK(scope_guard_lambda_local_var, iters) {
   CHECK_EQ(iters / 2, count);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(throw_exception, iters) {
   for (size_t n = 0; n < iters; ++n) {
@@ -289,7 +289,7 @@ BENCHMARK(return_code_noexcept, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(std_function_create_move_invoke, iters) {
   LargeClass a;

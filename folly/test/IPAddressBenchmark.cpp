@@ -45,7 +45,7 @@ BENCHMARK_RELATIVE(ipv4_to_fully_qualified, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(ipv4_to_fully_qualified_port, iters) {
   IPAddressV4 ip("255.255.255.255");
@@ -69,7 +69,7 @@ BENCHMARK_RELATIVE(ipv4_append_to_fully_qualified_port, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(ipv6_to_string_inet_ntop, iters) {
   IPAddressV6 ipv6Addr("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
@@ -92,7 +92,7 @@ BENCHMARK_RELATIVE(ipv6_to_fully_qualified, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(ipv6_to_fully_qualified_port, iters) {
   IPAddressV6 ip("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
@@ -116,7 +116,7 @@ BENCHMARK_RELATIVE(ipv6_append_to_fully_qualified_port, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(ipv6_ctor_valid, iters) {
   while (iters--) {
@@ -140,7 +140,7 @@ BENCHMARK_RELATIVE(ipv6_ctor_invalid, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(ipv6_try_from_string_valid, iters) {
   while (iters--) {

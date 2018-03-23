@@ -56,7 +56,7 @@ BENCHMARK_RELATIVE(octal_uintToOctal, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(hex_snprintf, iters) {
   while (iters--) {
@@ -72,7 +72,7 @@ BENCHMARK_RELATIVE(hex_uintToHex, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(intAppend_snprintf) {
   fbstring out;
@@ -96,7 +96,7 @@ BENCHMARK_RELATIVE(intAppend_format) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 template <size_t... Indexes>
 int snprintf20Numbers(int i, std::index_sequence<Indexes...>) {
@@ -148,7 +148,7 @@ BENCHMARK_RELATIVE(bigFormat_format, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(format_nested_strings, iters) {
   BenchmarkSuspender suspender;
@@ -198,7 +198,7 @@ BENCHMARK_RELATIVE(format_nested_direct, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(copy_short_string, iters) {
   BenchmarkSuspender suspender;
@@ -245,7 +245,7 @@ BENCHMARK_RELATIVE(sformat_short_string_safe, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(copy_long_string, iters) {
   BenchmarkSuspender suspender;

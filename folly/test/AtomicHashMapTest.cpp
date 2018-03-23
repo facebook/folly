@@ -868,7 +868,7 @@ BENCHMARK(st_qpahm_find, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(mt_ahm_miss, iters) {
   CHECK_LE(iters, FLAGS_numBMElements);

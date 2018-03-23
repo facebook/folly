@@ -291,7 +291,7 @@ BENCHMARK(VirtualFunctionCall, iters) {
 }
 #endif
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 #define BENCH_BASE(...) FB_VA_GLUE(BENCHMARK_NAMED_PARAM, (__VA_ARGS__))
 #define BENCH_REL(...) FB_VA_GLUE(BENCHMARK_RELATIVE_NAMED_PARAM, (__VA_ARGS__))
@@ -309,37 +309,37 @@ static void folly_microlock(size_t numOps, size_t numThreads) {
   runContended<folly::MicroLock>(numOps, numThreads);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 1thread, 1)
 BENCH_REL(folly_microspin, 1thread, 1)
 BENCH_REL(folly_picospin, 1thread, 1)
 BENCH_REL(folly_microlock, 1thread, 1)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 2thread, 2)
 BENCH_REL(folly_microspin, 2thread, 2)
 BENCH_REL(folly_picospin, 2thread, 2)
 BENCH_REL(folly_microlock, 2thread, 2)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 4thread, 4)
 BENCH_REL(folly_microspin, 4thread, 4)
 BENCH_REL(folly_picospin, 4thread, 4)
 BENCH_REL(folly_microlock, 4thread, 4)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 8thread, 8)
 BENCH_REL(folly_microspin, 8thread, 8)
 BENCH_REL(folly_picospin, 8thread, 8)
 BENCH_REL(folly_microlock, 8thread, 8)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 16thread, 16)
 BENCH_REL(folly_microspin, 16thread, 16)
 BENCH_REL(folly_picospin, 16thread, 16)
 BENCH_REL(folly_microlock, 16thread, 16)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 32thread, 32)
 BENCH_REL(folly_microspin, 32thread, 32)
 BENCH_REL(folly_picospin, 32thread, 32)
 BENCH_REL(folly_microlock, 32thread, 32)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 64thread, 64)
 BENCH_REL(folly_microspin, 64thread, 64)
 BENCH_REL(folly_picospin, 64thread, 64)

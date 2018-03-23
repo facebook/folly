@@ -67,7 +67,7 @@ BENCHMARK_RELATIVE(Sum_Basic_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Sum_Vector_NoGen, iters) {
   int s = 0;
@@ -87,7 +87,7 @@ BENCHMARK_RELATIVE(Sum_Vector_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Member, iters) {
   int s = 0;
@@ -109,7 +109,7 @@ BENCHMARK_RELATIVE(MapMember, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Count_Vector_NoGen, iters) {
   int s = 0;
@@ -135,7 +135,7 @@ BENCHMARK_RELATIVE(Count_Vector_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Fib_Sum_NoGen, iters) {
   int s = 0;
@@ -213,7 +213,7 @@ BENCHMARK_RELATIVE(Fib_Sum_Gen_Static, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(VirtualGen_0Virtual, iters) {
   int s = 0;
@@ -259,7 +259,7 @@ BENCHMARK_RELATIVE(VirtualGen_3Virtual, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Concat_NoGen, iters) {
   int s = 0;
@@ -281,7 +281,7 @@ BENCHMARK_RELATIVE(Concat_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Composed_NoGen, iters) {
   int s = 0;
@@ -310,7 +310,7 @@ BENCHMARK_RELATIVE(Composed_GenRegular, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Sample, iters) {
   size_t s = 0;

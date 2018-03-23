@@ -61,7 +61,7 @@ BENCHMARK_RELATIVE(withThen) {
 }
 
 // thens
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(oneThen) {
   someThens(1);
@@ -85,7 +85,7 @@ BENCHMARK_RELATIVE(hundredThens) {
 // Lock contention. Although in practice fulfills tend to be temporally
 // separate from then()s, still sometimes they will be concurrent. So the
 // higher this number is, the better.
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(no_contention) {
   std::vector<Promise<int>> promises(10000);

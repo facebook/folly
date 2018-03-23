@@ -547,10 +547,10 @@ void printResultComparison(
 /**
  * Draws a line of dashes.
  */
-#define BENCHMARK_DRAW_LINE()                                             \
-  static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) = (             \
-    ::folly::addBenchmark(__FILE__, "-", []() -> unsigned { return 0; }), \
-    true);
+#define BENCHMARK_DRAW_LINE()                                                \
+  static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) =                  \
+      (::folly::addBenchmark(__FILE__, "-", []() -> unsigned { return 0; }), \
+       true)
 
 /**
  * Allows execution of code that doesn't count torward the benchmark's

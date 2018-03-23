@@ -71,11 +71,11 @@ BENCHMARK_RELATIVE(no_combining_dup, iters) {
       tc,
       syncops);
 }
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 // dedicated combiner
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_notc_sync, iters) {
   fc = true;
@@ -109,7 +109,7 @@ BENCHMARK_RELATIVE(combining_dedicated_notc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_notc_async, iters) {
   syncops = false;
@@ -140,7 +140,7 @@ BENCHMARK_RELATIVE(combining_dedicated_notc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_tc_sync, iters) {
   tc = true;
@@ -172,7 +172,7 @@ BENCHMARK_RELATIVE(combining_dedicated_tc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_tc_async, iters) {
   tc = true;
@@ -204,11 +204,11 @@ BENCHMARK_RELATIVE(combining_dedicated_tc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 // no dedicated combiner
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_notc_sync, iters) {
   dedicated = false;
@@ -241,7 +241,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_notc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_notc_async, iters) {
   syncops = false;
@@ -272,7 +272,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_notc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_tc_sync, iters) {
   tc = true;
@@ -304,7 +304,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_tc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_tc_async, iters) {
   tc = true;
@@ -336,7 +336,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_tc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 void benchmarkSetup() {
   int numCores = std::thread::hardware_concurrency();

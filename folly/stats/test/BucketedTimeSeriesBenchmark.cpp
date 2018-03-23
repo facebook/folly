@@ -53,7 +53,7 @@ BENCHMARK_NAMED_PARAM(addValue, 100x10_1perSec, seconds(100), 10, 1);
 BENCHMARK_NAMED_PARAM(addValue, 71x5_1perSec, seconds(71), 5, 1);
 BENCHMARK_NAMED_PARAM(addValue, 1x1_1perSec, seconds(1), 1, 1);
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_NAMED_PARAM(addValue, AllTime_10perSec, seconds(0), 60, 10);
 BENCHMARK_NAMED_PARAM(addValue, 3600x60_10perSec, seconds(3600), 60, 10);
@@ -63,7 +63,7 @@ BENCHMARK_NAMED_PARAM(addValue, 100x10_10perSec, seconds(100), 10, 10);
 BENCHMARK_NAMED_PARAM(addValue, 71x5_10perSec, seconds(71), 5, 10);
 BENCHMARK_NAMED_PARAM(addValue, 1x1_10perSec, seconds(1), 1, 10);
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_NAMED_PARAM(addValue, AllTime_100perSec, seconds(0), 60, 100);
 BENCHMARK_NAMED_PARAM(addValue, 3600x60_100perSec, seconds(3600), 60, 100);

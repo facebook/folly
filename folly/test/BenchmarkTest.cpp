@@ -36,7 +36,7 @@ BENCHMARK(bmRepeatedFun, n) {
     fun();
   }
 }
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(gun) {
   static double x = 1;
@@ -44,7 +44,7 @@ BENCHMARK(gun) {
   doNotOptimizeAway(x);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(optimizerCanDiscardTrivial, n) {
   long x = 0;
@@ -240,7 +240,7 @@ BENCHMARK(optimizerDisabled1NonTrivialPtr, n) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(baselinevector) {
   vector<int> v;
@@ -261,13 +261,13 @@ BENCHMARK_RELATIVE(bmVector) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(superslow) {
   sleep(1);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(noMulti) {
   fun();

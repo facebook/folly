@@ -35,7 +35,7 @@ BENCHMARK(baton_pingpong_nonblocking, iters) {
   run_pingpong_test<false, std::atomic>(iters);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(baton_pingpong_emulated_futex_blocking, iters) {
   run_pingpong_test<true, EmulatedFutexAtomic>(iters);
@@ -45,7 +45,7 @@ BENCHMARK(baton_pingpong_emulated_futex_nonblocking, iters) {
   run_pingpong_test<false, EmulatedFutexAtomic>(iters);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(posix_sem_pingpong, iters) {
   sem_t sems[3];

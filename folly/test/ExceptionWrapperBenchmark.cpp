@@ -50,7 +50,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_test, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(exception_ptr_create_and_test_concurrent, iters) {
   std::atomic<bool> go(false);
@@ -96,7 +96,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_test_concurrent, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 /*
  * Use case 2: Library wraps errors in either exception_wrapper or
@@ -134,8 +134,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_cast, iters) {
   }
 }
 
-
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(exception_ptr_create_and_throw_concurrent, iters) {
   std::atomic<bool> go(false);
