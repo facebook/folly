@@ -30,9 +30,11 @@
 #include <folly/Preprocessor.h>
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <glog/logging.h>
 #include <mutex>
 #include <type_traits>
+#include <utility>
 
 namespace folly {
 
@@ -498,6 +500,21 @@ struct Synchronized : public SynchronizedBase<
       : datum_(std::forward<Args>(args)...) {}
 
   /**
+   * Lets you construct the synchronized object and also pass construction
+   * parameters to the underlying mutex if desired
+   */
+  template <typename... DatumArgs, typename... MutexArgs>
+  Synchronized(
+      std::piecewise_construct_t,
+      std::tuple<DatumArgs...> datumArgs,
+      std::tuple<MutexArgs...> mutexArgs)
+      : Synchronized{std::piecewise_construct,
+                     std::move(datumArgs),
+                     std::move(mutexArgs),
+                     make_index_sequence<sizeof...(DatumArgs)>{},
+                     make_index_sequence<sizeof...(MutexArgs)>{}} {}
+
+  /**
    * The canonical assignment operator only assigns the data, NOT the
    * mutex. It locks the two objects in ascending order of their
    * addresses.
@@ -738,6 +755,20 @@ struct Synchronized : public SynchronizedBase<
   Synchronized(Synchronized&& rhs, const LockedPtr& /*guard*/) noexcept(
       nxMoveCtor)
       : datum_(std::move(rhs.datum_)) {}
+
+  template <
+      typename... DatumArgs,
+      typename... MutexArgs,
+      std::size_t... IndicesOne,
+      std::size_t... IndicesTwo>
+  Synchronized(
+      std::piecewise_construct_t,
+      std::tuple<DatumArgs...> datumArgs,
+      std::tuple<MutexArgs...> mutexArgs,
+      std::index_sequence<IndicesOne...>,
+      std::index_sequence<IndicesTwo...>)
+      : datum_{std::get<IndicesOne>(std::move(datumArgs))...},
+        mutex_{std::get<IndicesTwo>(std::move(mutexArgs))...} {}
 
   // Synchronized data members
   T datum_;

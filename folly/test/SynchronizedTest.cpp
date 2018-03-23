@@ -333,6 +333,26 @@ class FakeAllPowerfulAssertingMutex {
   }
 };
 
+class NonDefaultConstructibleMutex {
+ public:
+  explicit NonDefaultConstructibleMutex(int valueIn) {
+    value = valueIn;
+  }
+  NonDefaultConstructibleMutex() = delete;
+  NonDefaultConstructibleMutex(const NonDefaultConstructibleMutex&) = delete;
+  NonDefaultConstructibleMutex(NonDefaultConstructibleMutex&&) = delete;
+  NonDefaultConstructibleMutex& operator=(const NonDefaultConstructibleMutex&) =
+      delete;
+  NonDefaultConstructibleMutex& operator=(NonDefaultConstructibleMutex&&) =
+      delete;
+
+  static int value;
+
+  void lock() {}
+  void unlock() {}
+};
+int NonDefaultConstructibleMutex::value{0};
+
 TEST_F(SynchronizedLockTest, TestCopyConstructibleValues) {
   struct NonCopyConstructible {
     NonCopyConstructible(const NonCopyConstructible&) = delete;
@@ -513,4 +533,14 @@ TEST_F(SynchronizedLockTest, UpgradableLockingWithULock) {
   EXPECT_EQ(
       globalAllPowerfulAssertingMutex.lock_state,
       FakeAllPowerfulAssertingMutexInternal::CurrentLockState::UNLOCKED);
+}
+
+TEST_F(SynchronizedLockTest, TestPieceWiseConstruct) {
+  auto&& synchronized = folly::Synchronized<int, NonDefaultConstructibleMutex>{
+      std::piecewise_construct,
+      std::forward_as_tuple(3),
+      std::forward_as_tuple(1)};
+
+  EXPECT_EQ(*synchronized.lock(), 3);
+  EXPECT_EQ(NonDefaultConstructibleMutex::value, 1);
 }
