@@ -93,9 +93,6 @@ inline std::exception const* exception_wrapper::as_exception_or_null_(
 }
 
 static_assert(
-    !kIsWindows || sizeof(void*) == 8,
-    "exception_wrapper is untested on 32 bit Windows.");
-static_assert(
     !kIsWindows || (kMscVer >= 1900 && kMscVer <= 2000),
     "exception_wrapper is untested and possibly broken on your version of "
     "MSVC");
@@ -120,7 +117,7 @@ inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
     // We derive the offset to pExceptionObject via manual means.
     FOLLY_PACK_PUSH
     struct Win32ExceptionPtr {
-      char offset[40];
+      char offset[8 + 4 * sizeof(void*)];
       void* exceptionObject;
     } FOLLY_PACK_ATTR;
     FOLLY_PACK_POP
