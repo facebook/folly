@@ -848,13 +848,13 @@ enum BufType {
 
 // chain element size, number of elements in chain, shared
 class MoveToFbStringTest
-  : public ::testing::TestWithParam<std::tr1::tuple<int, int, bool, BufType>> {
+    : public ::testing::TestWithParam<std::tuple<int, int, bool, BufType>> {
  protected:
   void SetUp() override {
-    elementSize_ = std::tr1::get<0>(GetParam());
-    elementCount_ = std::tr1::get<1>(GetParam());
-    shared_ = std::tr1::get<2>(GetParam());
-    type_ = std::tr1::get<3>(GetParam());
+    elementSize_ = std::get<0>(GetParam());
+    elementCount_ = std::get<1>(GetParam());
+    shared_ = std::get<2>(GetParam());
+    type_ = std::get<3>(GetParam());
 
     buf_ = makeBuf();
     for (int i = 0; i < elementCount_ - 1; ++i) {

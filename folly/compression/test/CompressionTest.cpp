@@ -199,16 +199,15 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
 }
 
 class CompressionTest
-    : public testing::TestWithParam<std::tr1::tuple<int, int, CodecType>> {
+    : public testing::TestWithParam<std::tuple<int, int, CodecType>> {
  protected:
   void SetUp() override {
     auto tup = GetParam();
-    int lengthLog = std::tr1::get<0>(tup);
+    int lengthLog = std::get<0>(tup);
     // Small hack to test empty data
-    uncompressedLength_ =
-        (lengthLog < 0) ? 0 : uint64_t(1) << std::tr1::get<0>(tup);
-    chunks_ = std::tr1::get<1>(tup);
-    codec_ = getCodec(std::tr1::get<2>(tup));
+    uncompressedLength_ = (lengthLog < 0) ? 0 : uint64_t(1) << std::get<0>(tup);
+    chunks_ = std::get<1>(tup);
+    codec_ = getCodec(std::get<2>(tup));
   }
 
   void runSimpleIOBufTest(const DataHolder& dh);
@@ -313,12 +312,12 @@ INSTANTIATE_TEST_CASE_P(
         testing::ValuesIn(availableCodecs())));
 
 class CompressionVarintTest
-    : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
+    : public testing::TestWithParam<std::tuple<int, CodecType>> {
  protected:
   void SetUp() override {
     auto tup = GetParam();
-    uncompressedLength_ = uint64_t(1) << std::tr1::get<0>(tup);
-    codec_ = getCodec(std::tr1::get<1>(tup));
+    uncompressedLength_ = uint64_t(1) << std::get<0>(tup);
+    codec_ = getCodec(std::get<1>(tup));
   }
 
   void runSimpleTest(const DataHolder& dh);
@@ -1429,15 +1428,15 @@ TEST(ZlibTest, DefaultOptions) {
   }
 }
 
-class ZlibOptionsTest : public testing::TestWithParam<
-                            std::tr1::tuple<ZlibFormat, int, int, int>> {
+class ZlibOptionsTest
+    : public testing::TestWithParam<std::tuple<ZlibFormat, int, int, int>> {
  protected:
   void SetUp() override {
     auto tup = GetParam();
-    options_.format = std::tr1::get<0>(tup);
-    options_.windowSize = std::tr1::get<1>(tup);
-    options_.memLevel = std::tr1::get<2>(tup);
-    options_.strategy = std::tr1::get<3>(tup);
+    options_.format = std::get<0>(tup);
+    options_.windowSize = std::get<1>(tup);
+    options_.memLevel = std::get<2>(tup);
+    options_.strategy = std::get<3>(tup);
     codec_ = zlib::getStreamCodec(options_);
   }
 
