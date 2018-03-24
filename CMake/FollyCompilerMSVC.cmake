@@ -8,6 +8,7 @@ option(MSVC_ENABLE_LTCG "If enabled, use Link Time Code Generation for Release b
 option(MSVC_ENABLE_PARALLEL_BUILD "If enabled, build multiple source files in parallel." ON)
 option(MSVC_ENABLE_STATIC_ANALYSIS "If enabled, do more complex static analysis and generate warnings appropriately." OFF)
 option(MSVC_USE_STATIC_RUNTIME "If enabled, build against the static, rather than the dynamic, runtime." OFF)
+option(MSVC_SUPPRESS_BOOST_CONFIG_OUTDATED "If enabled, suppress Boost's warnings about the config being out of date." ON)
 
 # Alas, option() doesn't support string values.
 set(MSVC_FAVORED_ARCHITECTURE "blend" CACHE STRING "One of 'blend', 'AMD64', 'INTEL64', or 'ATOM'. This tells the compiler to generate code optimized to run best on the specified architecture.")
@@ -257,6 +258,7 @@ function(apply_folly_compile_options_to_target THETARGET)
 
       $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:_HAS_AUTO_PTR_ETC=1> # We're building in C++ 17 or greater mode, but certain dependencies (Boost) still have dependencies on unary_function and binary_function, so we have to make sure not to remove them.
       $<$<BOOL:${MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS}>:WIN32_LEAN_AND_MEAN> # Don't include most of Windows.h
+      $<$<BOOL:${MSVC_SUPPRESS_BOOST_CONFIG_OUTDATED}>:BOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE> # MSVC moves faster than boost, so add a quick way to disable the messages.
   )
 
   # Ignore a warning about an object file not defining any symbols,
