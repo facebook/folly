@@ -412,7 +412,6 @@ TEST(F14FastMap, simple) {
 
 TEST(F14VectorMap, reverse_iterator) {
   using TMap = F14VectorMap<uint64_t, uint64_t>;
-  TMap h;
   auto populate = [](TMap& h, uint64_t lo, uint64_t hi) {
     for (auto i = lo; i < hi; ++i) {
       h.emplace(i, i);
@@ -432,7 +431,7 @@ TEST(F14VectorMap, reverse_iterator) {
     }
     EXPECT_EQ(hi, val);
   };
-
+  TMap h;
   size_t prevSize = 0;
   size_t newSize = 1;
   // verify iteration order across rehashes, copies, and moves

@@ -376,7 +376,6 @@ TEST(F14FastSet, simple) {
 
 TEST(F14VectorMap, reverse_iterator) {
   using TSet = F14VectorSet<uint64_t>;
-  TSet h;
   auto populate = [](TSet& h, uint64_t lo, uint64_t hi) {
     for (auto i = lo; i < hi; ++i) {
       h.insert(i);
@@ -395,6 +394,7 @@ TEST(F14VectorMap, reverse_iterator) {
     EXPECT_EQ(hi, val);
   };
 
+  TSet h;
   size_t prevSize = 0;
   size_t newSize = 1;
   // verify iteration order across rehashes, copies, and moves
