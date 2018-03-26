@@ -22,35 +22,35 @@
 
 namespace folly {
 template <
-    typename K,
-    typename M,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<std::pair<K const, M>>>
+    typename Key,
+    typename Mapped,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 class F14NodeMap;
 
 template <
-    typename K,
-    typename M,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<std::pair<K const, M>>>
+    typename Key,
+    typename Mapped,
+    typename Hasher = std::hash<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 class F14ValueMap;
 
 template <
-    typename K,
-    typename M,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<std::pair<K const, M>>>
+    typename Key,
+    typename Mapped,
+    typename Hasher = std::hash<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 class F14VectorMap;
 
 template <
-    typename K,
-    typename M,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<std::pair<K const, M>>>
+    typename Key,
+    typename Mapped,
+    typename Hasher = std::hash<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<std::pair<Key const, Mapped>>>
 class F14FastMap;
 
 } // namespace folly

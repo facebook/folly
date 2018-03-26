@@ -20,31 +20,31 @@
 
 namespace folly {
 template <
-    typename K,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<K>>
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 class F14NodeSet;
 
 template <
-    typename K,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<K>>
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 class F14ValueSet;
 
 template <
-    typename K,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<K>>
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 class F14VectorSet;
 
 template <
-    typename K,
-    typename H = f14::DefaultHasher<K>,
-    typename E = f14::DefaultKeyEqual<K>,
-    typename A = f14::DefaultAlloc<K>>
+    typename Key,
+    typename Hasher = f14::DefaultHasher<Key>,
+    typename KeyEqual = f14::DefaultKeyEqual<Key>,
+    typename Alloc = f14::DefaultAlloc<Key>>
 class F14FastSet;
 
 } // namespace folly
