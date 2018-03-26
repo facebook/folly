@@ -93,14 +93,14 @@ inline std::exception const* exception_wrapper::as_exception_or_null_(
 }
 
 static_assert(
-    !kIsWindows || (kMscVer >= 1900 && kMscVer <= 2000),
+    !kMicrosoftAbiVer || (kMicrosoftAbiVer >= 1900 && kMicrosoftAbiVer <= 2000),
     "exception_wrapper is untested and possibly broken on your version of "
     "MSVC");
 
 inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
     std::exception_ptr const& ptr,
     std::exception const& e) {
-  if (!kIsWindows) {
+  if (!kMicrosoftAbiVer) {
     return reinterpret_cast<std::uintptr_t>(&e);
   } else {
     // On Windows, as of MSVC2017, all thrown exceptions are copied to the stack

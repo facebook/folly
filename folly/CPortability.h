@@ -163,3 +163,10 @@
 #else
 #define FOLLY_ATTR_WEAK
 #endif
+
+// Microsoft ABI version (can be overridden manually if necessary)
+#ifndef FOLLY_MICROSOFT_ABI_VER
+#ifdef _MSC_VER
+#define FOLLY_MICROSOFT_ABI_VER _MSC_VER
+#endif
+#endif

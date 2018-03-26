@@ -357,6 +357,12 @@ constexpr auto kMscVer = _MSC_VER;
 constexpr auto kMscVer = 0;
 #endif
 
+#if FOLLY_MICROSOFT_ABI_VER
+constexpr auto kMicrosoftAbiVer = FOLLY_MICROSOFT_ABI_VER;
+#else
+constexpr auto kMicrosoftAbiVer = 0;
+#endif
+
 // TODO: Remove when removing support for gcc4.9
 #if __GLIBCXX__ && __GLIBCXX__ == 20150123
 constexpr auto kIsGlib49 = true;
