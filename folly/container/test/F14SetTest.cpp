@@ -374,6 +374,45 @@ TEST(F14FastSet, simple) {
   runSimple<F14FastSet<std::string>>();
 }
 
+TEST(F14VectorMap, reverse_iterator) {
+  using TSet = F14VectorSet<uint64_t>;
+  TSet h;
+  auto populate = [](TSet& h, uint64_t lo, uint64_t hi) {
+    for (auto i = lo; i < hi; ++i) {
+      h.insert(i);
+    }
+  };
+  auto verify = [](TSet const& h, uint64_t lo, uint64_t hi) {
+    auto loIt = h.find(lo);
+    EXPECT_NE(h.end(), loIt);
+    uint64_t val = lo;
+    for (auto rit = h.riter(loIt); rit != h.rend(); ++rit) {
+      EXPECT_EQ(val, *rit);
+      TSet::const_iterator it = h.iter(rit);
+      EXPECT_EQ(val, *it);
+      val++;
+    }
+    EXPECT_EQ(hi, val);
+  };
+
+  size_t prevSize = 0;
+  size_t newSize = 1;
+  // verify iteration order across rehashes, copies, and moves
+  while (newSize < 10'000) {
+    populate(h, prevSize, newSize);
+    verify(h, 0, newSize);
+    verify(h, newSize / 2, newSize);
+
+    TSet h2{h};
+    verify(h2, 0, newSize);
+
+    h = std::move(h2);
+    verify(h, 0, newSize);
+    prevSize = newSize;
+    newSize *= 10;
+  }
+}
+
 TEST(F14ValueSet, rehash) {
   runRehash<F14ValueSet<std::string>>();
 }

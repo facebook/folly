@@ -728,8 +728,6 @@ class VectorContainerIterator : public BaseIter<ValuePtr, uint32_t> {
   ~VectorContainerIterator() = default;
 
   /*implicit*/ operator VectorContainerIterator<ValueConstPtr>() const {
-    // can we trust that fancy pointers are implicitly convertible to
-    // fancy const pointers?
     return VectorContainerIterator<ValueConstPtr>{current_, lowest_};
   }
 
@@ -826,6 +824,9 @@ class VectorContainerPolicy : public BasePolicy<
       kIsMap,
       VectorContainerIterator<typename AllocTraits::pointer>,
       ConstIter>;
+  using ConstReverseIter = typename AllocTraits::const_pointer;
+  using ReverseIter = std::
+      conditional_t<kIsMap, typename AllocTraits::pointer, ConstReverseIter>;
 
   using ValuePtr = typename AllocTraits::pointer;
 
@@ -1149,6 +1150,22 @@ class VectorContainerPolicy : public BasePolicy<
 
   Iter indexToIter(Item index) const {
     return Iter{values_ + index, values_};
+  }
+
+  Iter iter(ReverseIter it) {
+    return Iter{it, values_};
+  }
+
+  ConstIter iter(ConstReverseIter it) const {
+    return ConstIter{it, values_};
+  }
+
+  ReverseIter riter(Iter it) {
+    return it.current_;
+  }
+
+  ConstReverseIter riter(ConstIter it) const {
+    return it.current_;
   }
 
   ValuePtr values_{nullptr};

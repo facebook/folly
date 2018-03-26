@@ -410,6 +410,47 @@ TEST(F14FastMap, simple) {
   runSimple<F14FastMap<std::string, std::string>>();
 }
 
+TEST(F14VectorMap, reverse_iterator) {
+  using TMap = F14VectorMap<uint64_t, uint64_t>;
+  TMap h;
+  auto populate = [](TMap& h, uint64_t lo, uint64_t hi) {
+    for (auto i = lo; i < hi; ++i) {
+      h.emplace(i, i);
+    }
+  };
+  auto verify = [](TMap const& h, uint64_t lo, uint64_t hi) {
+    auto loIt = h.find(lo);
+    EXPECT_NE(h.end(), loIt);
+    uint64_t val = lo;
+    for (auto rit = h.riter(loIt); rit != h.rend(); ++rit) {
+      EXPECT_EQ(val, rit->first);
+      EXPECT_EQ(val, rit->second);
+      TMap::const_iterator it = h.iter(rit);
+      EXPECT_EQ(val, it->first);
+      EXPECT_EQ(val, it->second);
+      val++;
+    }
+    EXPECT_EQ(hi, val);
+  };
+
+  size_t prevSize = 0;
+  size_t newSize = 1;
+  // verify iteration order across rehashes, copies, and moves
+  while (newSize < 10'000) {
+    populate(h, prevSize, newSize);
+    verify(h, 0, newSize);
+    verify(h, newSize / 2, newSize);
+
+    TMap h2{h};
+    verify(h2, 0, newSize);
+
+    h = std::move(h2);
+    verify(h, 0, newSize);
+    prevSize = newSize;
+    newSize *= 10;
+  }
+}
+
 TEST(F14ValueMap, rehash) {
   runRehash<F14ValueMap<std::string, std::string>>();
 }

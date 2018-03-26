@@ -869,6 +869,8 @@ class F14VectorMap
   using typename Super::const_iterator;
   using typename Super::iterator;
   using typename Super::key_type;
+  using reverse_iterator = typename Policy::ReverseIter;
+  using const_reverse_iterator = typename Policy::ConstReverseIter;
 
   F14VectorMap() noexcept(
       f14::detail::F14Table<Policy>::kDefaultConstructIsNoexcept)
@@ -881,6 +883,27 @@ class F14VectorMap
       f14::detail::F14Table<Policy>::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
   }
+
+  // ITERATION ORDER
+  //
+  // Deterministic iteration order for insert-only workloads is part of
+  // F14VectorMap's supported API: iterator is LIFO and reverse_iterator
+  // is FIFO.
+  //
+  // If there have been no calls to erase() then iterator and
+  // const_iterator enumerate entries in the opposite of insertion order.
+  // begin()->first is the key most recently inserted.  reverse_iterator
+  // and reverse_const_iterator, therefore, enumerate in LIFO (insertion)
+  // order for insert-only workloads.  Deterministic iteration order is
+  // only guaranteed if no keys were removed since the last time the
+  // map was empty.  Iteration order is preserved across rehashes and
+  // F14VectorMap copies and moves.
+  //
+  // iterator uses LIFO order so that erasing while iterating with begin()
+  // and end() is safe using the erase(it++) idiom, which is supported
+  // by std::map and std::unordered_map.  erase(iter) invalidates iter
+  // and all iterators before iter in the non-reverse iteration order.
+  // Every successful erase invalidates all reverse iterators.
 
   iterator begin() {
     return this->table_.linearBegin(this->size());
@@ -900,6 +923,41 @@ class F14VectorMap
   }
   const_iterator cend() const {
     return this->table_.linearEnd();
+  }
+
+  reverse_iterator rbegin() {
+    return this->table_.values_;
+  }
+  const_reverse_iterator rbegin() const {
+    return crbegin();
+  }
+  const_reverse_iterator crbegin() const {
+    return this->table_.values_;
+  }
+
+  reverse_iterator rend() {
+    return this->table_.values_ + this->table_.size();
+  }
+  const_reverse_iterator rend() const {
+    return crend();
+  }
+  const_reverse_iterator crend() const {
+    return this->table_.values_ + this->table_.size();
+  }
+
+  // explicit conversions between iterator and reverse_iterator
+  iterator iter(reverse_iterator riter) {
+    return this->table_.iter(riter);
+  }
+  const_iterator iter(const_reverse_iterator riter) const {
+    return this->table_.iter(riter);
+  }
+
+  reverse_iterator riter(iterator it) {
+    return this->table_.riter(it);
+  }
+  const_reverse_iterator riter(const_iterator it) const {
+    return this->table_.riter(it);
   }
 
  private:
