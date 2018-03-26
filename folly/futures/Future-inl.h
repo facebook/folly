@@ -1367,21 +1367,46 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
 
 // TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
-Future<std::vector<std::pair<size_t, Try<typename
-  std::iterator_traits<InputIterator>::value_type::value_type>>>>
+Future<std::vector<std::pair<
+    size_t,
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
 collectN(InputIterator first, InputIterator last, size_t n) {
-  typedef typename
-    std::iterator_traits<InputIterator>::value_type::value_type T;
-  typedef std::vector<std::pair<size_t, Try<T>>> V;
+  using T =
+      typename std::iterator_traits<InputIterator>::value_type::value_type;
+  using V = std::vector<Optional<Try<T>>>;
+  using Result = std::vector<std::pair<size_t, Try<T>>>;
+
+  assert(n > 0);
+  assert(std::distance(first, last) >= 0);
 
   struct CollectNContext {
+    explicit CollectNContext(size_t numFutures) : v(numFutures) {}
+
     V v;
     std::atomic<size_t> completed = {0};
-    Promise<V> p;
-  };
-  auto ctx = std::make_shared<CollectNContext>();
+    Promise<Result> p;
 
-  if (size_t(std::distance(first, last)) < n) {
+    inline void setPartialResult(size_t index, Try<T>&& t) {
+      v[index] = std::move(t);
+    }
+
+    inline void complete() {
+      Result result;
+      result.reserve(completed.load());
+      for (size_t i = 0; i < v.size(); ++i) {
+        auto& entry = v[i];
+        if (entry.hasValue()) {
+          result.emplace_back(i, std::move(entry).value());
+        }
+      }
+      p.setTry(Try<Result>(std::move(result)));
+    }
+  };
+
+  auto numFutures = static_cast<size_t>(std::distance(first, last));
+  auto ctx = std::make_shared<CollectNContext>(numFutures);
+
+  if (numFutures < n) {
     ctx->p.setException(std::runtime_error("Not enough futures"));
   } else {
     // for each completed Future, increase count and add to vector, until we
@@ -1390,10 +1415,9 @@ collectN(InputIterator first, InputIterator last, size_t n) {
     mapSetCallback<T>(first, last, [ctx, n](size_t i, Try<T>&& t) {
       auto c = ++ctx->completed;
       if (c <= n) {
-        assert(ctx->v.size() < n);
-        ctx->v.emplace_back(i, std::move(t));
+        ctx->setPartialResult(i, std::move(t));
         if (c == n) {
-          ctx->p.setTry(Try<V>(std::move(ctx->v)));
+          ctx->complete();
         }
       }
     });

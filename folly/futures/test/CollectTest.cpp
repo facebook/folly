@@ -593,6 +593,42 @@ TEST(Collect, collectN) {
   EXPECT_TRUE(flag);
 }
 
+TEST(Collect, collectNParallel) {
+  std::vector<Promise<Unit>> ps(100);
+  std::vector<Future<Unit>> futures;
+
+  for (auto& p : ps) {
+    futures.push_back(p.getFuture());
+  }
+
+  bool flag = false;
+  size_t n = 90;
+  collectN(futures, n).then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
+    flag = true;
+    EXPECT_EQ(n, v.size());
+    for (auto& tt : v) {
+      EXPECT_TRUE(tt.second.hasValue());
+    }
+  });
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      ps[i].setValue();
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(flag);
+}
+
 /// Ensure that we can compile collectAll/Any with folly::small_vector
 TEST(Collect, smallVector) {
   static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(Future<Unit>),
