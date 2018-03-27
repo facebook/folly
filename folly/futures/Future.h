@@ -21,6 +21,9 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+#if FOLLY_HAS_COROUTINES
+#include <experimental/coroutine>
+#endif
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
@@ -391,6 +394,41 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// For new code, or to update code that temporarily uses this, please
   /// use via and pass a meaningful executor.
   inline Future<T> toUnsafeFuture() &&;
+
+#if FOLLY_HAS_COROUTINES
+  class promise_type {
+   public:
+    SemiFuture get_return_object() {
+      return promise_.getSemiFuture();
+    }
+
+    std::experimental::suspend_never initial_suspend() {
+      return {};
+    }
+
+    std::experimental::suspend_never final_suspend() {
+      return {};
+    }
+
+    void return_value(T& value) {
+      promise_.setValue(std::move(value));
+    }
+
+    void unhandled_exception() {
+      promise_.setException(exception_wrapper(std::current_exception()));
+    }
+
+   private:
+    folly::Promise<T> promise_;
+  };
+
+  template <typename Awaitable>
+  static SemiFuture fromAwaitable(Awaitable&& awaitable) {
+    return [](Awaitable awaitable) -> SemiFuture {
+      co_return co_await awaitable;
+    }(std::forward<Awaitable>(awaitable));
+  }
+#endif
 
  private:
   friend class Promise<T>;
@@ -897,7 +935,6 @@ class Future : private futures::detail::FutureBase<T> {
 } // namespace folly
 
 #if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
 
 namespace folly {
 namespace detail {

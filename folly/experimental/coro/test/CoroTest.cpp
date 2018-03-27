@@ -41,6 +41,16 @@ TEST(Coro, Basic) {
   EXPECT_EQ(42, future.get());
 }
 
+TEST(Coro, BasicFuture) {
+  ManualExecutor executor;
+
+  auto future = via(&executor, task42()).toFuture();
+
+  EXPECT_FALSE(future.isReady());
+
+  EXPECT_EQ(42, future.getVia(&executor));
+}
+
 coro::Task<void> taskVoid() {
   (void)co_await task42();
   co_return;

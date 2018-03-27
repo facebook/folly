@@ -21,6 +21,7 @@
 #include <folly/experimental/coro/Promise.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Wait.h>
+#include <folly/futures/Future.h>
 
 namespace folly {
 namespace coro {
@@ -75,6 +76,11 @@ class Future {
 
   typename std::add_lvalue_reference<T>::type await_resume() {
     return get();
+  }
+
+  folly::Future<T> toFuture() && {
+    auto executor = promise_->executor_;
+    return SemiFuture<T>::fromAwaitable(std::move(*this)).via(executor);
   }
 
   ~Future() {
