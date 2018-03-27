@@ -523,7 +523,7 @@ class SSLContext {
    */
   static bool matchName(const char* host, const char* pattern, int size);
 
-  FOLLY_DEPRECATED("Use folly::ssl::init")
+  [[deprecated("Use folly::ssl::init")]]
   static void initializeOpenSSL();
 
  protected:

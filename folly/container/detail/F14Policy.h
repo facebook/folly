@@ -419,8 +419,8 @@ class ValueContainerPolicy : public BasePolicy<
   complainUnlessNothrowMove() {}
 
   template <typename T>
-  FOLLY_DEPRECATED(
-      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")
+  [[deprecated(
+      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]]
   std::enable_if_t<!std::is_nothrow_move_constructible<
       T>::value> complainUnlessNothrowMove() {}
 
@@ -949,8 +949,8 @@ class VectorContainerPolicy : public BasePolicy<
   complainUnlessNothrowMove() {}
 
   template <typename T>
-  FOLLY_DEPRECATED(
-      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")
+  [[deprecated(
+      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]]
   std::enable_if_t<!std::is_nothrow_move_constructible<
       T>::value> complainUnlessNothrowMove() {}
 

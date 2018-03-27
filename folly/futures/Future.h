@@ -739,19 +739,19 @@ class Future : private futures::detail::FutureBase<T> {
   /// by then), and it is active (active by default).
   ///
   /// Inactive Futures will activate upon destruction.
-  FOLLY_DEPRECATED("do not use") Future<T>& activate() & {
+  [[deprecated("do not use")]] Future<T>& activate() & {
     this->core_->activate();
     return *this;
   }
-  FOLLY_DEPRECATED("do not use") Future<T>& deactivate() & {
+  [[deprecated("do not use")]] Future<T>& deactivate() & {
     this->core_->deactivate();
     return *this;
   }
-  FOLLY_DEPRECATED("do not use") Future<T> activate() && {
+  [[deprecated("do not use")]] Future<T> activate() && {
     this->core_->activate();
     return std::move(*this);
   }
-  FOLLY_DEPRECATED("do not use") Future<T> deactivate() && {
+  [[deprecated("do not use")]] Future<T> deactivate() && {
     this->core_->deactivate();
     return std::move(*this);
   }

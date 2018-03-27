@@ -159,7 +159,7 @@ makeSemiFutureWith(F&& func);
 ///
 ///   auto f = makeSemiFuture<string>(std::current_exception());
 template <class T>
-FOLLY_DEPRECATED("use makeSemiFuture(exception_wrapper)")
+[[deprecated("use makeSemiFuture(exception_wrapper)")]]
 SemiFuture<T> makeSemiFuture(std::exception_ptr const& e);
 
 /// Make a failed SemiFuture from an exception_wrapper.
@@ -243,7 +243,7 @@ makeFutureWith(F&& func);
 ///
 ///   auto f = makeFuture<string>(std::current_exception());
 template <class T>
-FOLLY_DEPRECATED("use makeSemiFuture(exception_wrapper)")
+[[deprecated("use makeSemiFuture(exception_wrapper)")]]
 Future<T> makeFuture(std::exception_ptr const& e);
 
 /// Make a failed Future from an exception_wrapper.

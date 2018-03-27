@@ -551,7 +551,7 @@ class Range : private boost::totally_ordered<Range<Iter>> {
   // B) If you have to use this exact function then make your own hasher
   //    object and copy the body over (see thrift example: D3972362).
   //    https://github.com/facebook/fbthrift/commit/f8ed502e24ab4a32a9d5f266580
-  FOLLY_DEPRECATED("Replace with folly::Hash if the hash is not serialized")
+  [[deprecated("Replace with folly::Hash if the hash is not serialized")]]
   uint32_t hash() const {
     // Taken from fbi/nstring.h:
     //    Quick and dirty bernstein hash...fine for short ascii strings

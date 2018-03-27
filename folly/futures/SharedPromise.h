@@ -75,7 +75,7 @@ class SharedPromise {
       p.setException(std::current_exception());
     }
     */
-  FOLLY_DEPRECATED("use setException(exception_wrapper)")
+  [[deprecated("use setException(exception_wrapper)")]]
   void setException(std::exception_ptr const&);
 
   /** Fulfill the SharedPromise with an exception type E, which can be passed to
