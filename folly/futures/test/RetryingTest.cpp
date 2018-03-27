@@ -96,6 +96,14 @@ TEST(RetryingTest, future_factory_throws) {
   EXPECT_THROW(result.throwIfFailed(), ThrownException);
 }
 
+TEST(RetryingTest, policy_throws) {
+  struct eggs : exception {};
+  auto r = futures::retrying(
+      [](size_t, exception_wrapper) -> bool { throw eggs(); },
+      [](size_t) -> Future<size_t> { throw std::runtime_error("ha"); });
+  EXPECT_THROW(r.get(), eggs);
+}
+
 TEST(RetryingTest, policy_future) {
   atomic<size_t> sleeps {0};
   auto r = futures::retrying(

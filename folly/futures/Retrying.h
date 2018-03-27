@@ -92,17 +92,19 @@ void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
       return;
     }
     auto& x = t.exception();
-    auto q = pm(k, x);
+    auto q = makeFutureWith([&] { return pm(k, x); });
     q.then([k,
             prom = std::move(prom),
             xm = std::move(x),
             pm = std::move(pm),
-            ffm = std::move(ffm)](bool shouldRetry) mutable {
-      if (shouldRetry) {
+            ffm = std::move(ffm)](Try<bool> shouldRetry) mutable {
+      if (shouldRetry.hasValue() && shouldRetry.value()) {
         retryingImpl(k, std::move(pm), std::move(ffm), std::move(prom));
-      } else {
+      } else if (shouldRetry.hasValue()) {
         prom.setException(std::move(xm));
-      };
+      } else {
+        prom.setException(std::move(shouldRetry.exception()));
+      }
     });
   });
 }
