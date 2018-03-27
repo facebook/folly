@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstddef>
+#include <ostream>
 #include <vector>
 
 #include <folly/Demangle.h>
