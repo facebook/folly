@@ -20,12 +20,10 @@
 
 namespace folly {
 
-// An SequencedExecutor is an executor that provides the following guarantee:
-// if add(A) and add(B) were sequenced then execution of A and B will be
-// sequenced too.
-class SequencedExecutor : public virtual Executor {
- public:
-  ~SequencedExecutor() override = default;
-};
+// SequencedExecutor is an executor that provides the following guarantee:
+// if add(A) and add(B) were sequenced (i.e. add(B) was called after add(A) call
+// had returned to the caller) then execution of A and B will be sequenced
+// (i.e. B() can be called only after A() returns) too.
+class SequencedExecutor : public virtual Executor {};
 
 } // namespace folly
