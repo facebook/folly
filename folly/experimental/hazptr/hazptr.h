@@ -17,7 +17,6 @@
 #define HAZPTR_H
 
 #include <atomic>
-#include <mutex>
 
 /* Stand-in for C++17 std::pmr::memory_resource */
 #include <folly/experimental/hazptr/memory_resource.h>
@@ -53,16 +52,6 @@ class hazptr_local;
 /** hazptr_priv: Per-thread list of retired objects pushed in bulk to domain */
 class hazptr_priv;
 
-class hazptr_priv_list {
-  std::mutex m_;
-  hazptr_priv* head_{nullptr};
-
- public:
-  void insert(hazptr_priv* rec);
-  void remove(hazptr_priv* rec);
-  void collect(hazptr_obj*& head, hazptr_obj*& tail);
-};
-
 /** hazptr_domain: Class of hazard pointer domains. Each domain manages a set
  *  of hazard pointers and a set of retired objects. */
 class hazptr_domain {
@@ -74,7 +63,6 @@ class hazptr_domain {
    * involved in calculations related to the value of rcount_. */
   std::atomic<int> hcount_ = {0};
   std::atomic<int> rcount_ = {0};
-  hazptr_priv_list priv_;
 
  public:
   constexpr explicit hazptr_domain(
@@ -90,8 +78,6 @@ class hazptr_domain {
   template <typename T, typename D = std::default_delete<T>>
   void retire(T* obj, D reclaim = {});
   void cleanup();
-  void priv_add(hazptr_priv* rec);
-  void priv_remove(hazptr_priv* rec);
 
  private:
   friend class hazptr_obj_batch;

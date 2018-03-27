@@ -184,7 +184,6 @@ class hazptr_priv {
     tail_ = nullptr;
     rcount_ = 0;
     active_ = true;
-    default_hazptr_domain().priv_add(this);
   }
 
   bool active() {
@@ -322,49 +321,6 @@ void hazptr_priv_init(hazptr_priv& priv);
 void hazptr_priv_shutdown(hazptr_priv& priv);
 bool hazptr_priv_try_retire(hazptr_obj* obj);
 
-inline void hazptr_priv_list::insert(hazptr_priv* rec) {
-  std::lock_guard<std::mutex> g(m_);
-  auto prev = head_ == nullptr ? rec : head_->prev();
-  auto next = head_ == nullptr ? rec : head_;
-  rec->set_next(next);
-  rec->set_prev(prev);
-  if (head_) {
-    prev->set_next(rec);
-    next->set_prev(rec);
-  } else {
-    head_ = rec;
-  }
-}
-
-inline void hazptr_priv_list::remove(hazptr_priv* rec) {
-  std::lock_guard<std::mutex> g(m_);
-  auto prev = rec->prev();
-  auto next = rec->next();
-  if (next == rec) {
-    DCHECK(prev == rec);
-    DCHECK(head_ == rec);
-    head_ = nullptr;
-  } else {
-    prev->set_next(next);
-    next->set_prev(prev);
-    if (head_ == rec) {
-      head_ = next;
-    }
-  }
-}
-
-inline void hazptr_priv_list::collect(hazptr_obj*& head, hazptr_obj*& tail) {
-  std::lock_guard<std::mutex> g(m_);
-  auto rec = head_;
-  while (rec) {
-    rec->collect(head, tail);
-    rec = rec->next();
-    if (rec == head_) {
-      break;
-    }
-  }
-}
-
 /** tls globals */
 
 struct hazptr_tls_globals_ {
@@ -386,8 +342,11 @@ struct hazptr_tls_globals_ {
     tls_state = TLS_DESTROYED;
   }
 };
+
+struct HazptrTag {};
+typedef folly::SingletonThreadLocal<hazptr_tls_globals_, HazptrTag> PrivList;
 FOLLY_ALWAYS_INLINE hazptr_tls_globals_& hazptr_tls_globals() {
-  return folly::SingletonThreadLocal<hazptr_tls_globals_, void>::get();
+  return PrivList::get();
 }
 
 /**
@@ -935,20 +894,14 @@ inline hazptr_domain::~hazptr_domain() {
 inline void hazptr_domain::cleanup() {
   hazptr_obj* h = nullptr;
   hazptr_obj* t = nullptr;
-  priv_.collect(h, t);
+  for (hazptr_tls_globals_& tls : PrivList::accessAllThreads()) {
+    tls.priv.collect(h, t);
+  }
   if (h) {
     DCHECK(t);
     pushRetired(h, t, 0);
   }
   bulkReclaim();
-}
-
-inline void hazptr_domain::priv_add(hazptr_priv* rec) {
-  priv_.insert(rec);
-}
-
-inline void hazptr_domain::priv_remove(hazptr_priv* rec) {
-  priv_.remove(rec);
 }
 
 inline hazptr_rec* hazptr_domain::hazptrAcquire() {
@@ -1243,7 +1196,6 @@ inline void hazptr_priv_shutdown(hazptr_priv& priv) {
   if (!priv.empty()) {
     priv.push_all_to_domain();
   }
-  default_hazptr_domain().priv_remove(&priv);
 }
 
 inline bool hazptr_priv_try_retire(hazptr_obj* obj) {

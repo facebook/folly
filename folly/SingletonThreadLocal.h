@@ -59,7 +59,11 @@ namespace folly {
 template <
     typename T,
     typename Tag = detail::DefaultTag,
-    typename Make = detail::DefaultMake<T>>
+    typename Make = detail::DefaultMake<T>,
+    typename TLTag = _t<std::conditional<
+        std::is_same<Tag, detail::DefaultTag>::value,
+        void,
+        Tag>>>
 class SingletonThreadLocal {
  private:
   struct Wrapper;
@@ -123,10 +127,12 @@ class SingletonThreadLocal {
     }
   };
 
+  using WrapperTL = ThreadLocal<Wrapper, TLTag>;
+
   SingletonThreadLocal() = delete;
 
-  FOLLY_EXPORT FOLLY_NOINLINE static ThreadLocal<Wrapper>& getWrapperTL() {
-    static auto& entry = *detail::createGlobal<ThreadLocal<Wrapper>, Tag>();
+  FOLLY_EXPORT FOLLY_NOINLINE static WrapperTL& getWrapperTL() {
+    static auto& entry = *detail::createGlobal<WrapperTL, Tag>();
     return entry;
   }
 
@@ -152,6 +158,11 @@ class SingletonThreadLocal {
 #else
     return getWrapper();
 #endif
+  }
+
+  // Must use a unique Tag, takes a lock that is one per Tag
+  static typename WrapperTL::Accessor accessAllThreads() {
+    return getWrapperTL().accessAllThreads();
   }
 };
 } // namespace folly
