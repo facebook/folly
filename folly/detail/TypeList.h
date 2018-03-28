@@ -496,7 +496,7 @@ struct AsTypeList_<T<Ts...>> {
   using type = TypeList<Ts...>;
 };
 template <class T, T... Is>
-struct AsTypeList_<folly::integer_sequence<T, Is...>> {
+struct AsTypeList_<std::integer_sequence<T, Is...>> {
   using type = TypeList<std::integral_constant<T, Is>...>;
 };
 } // namespace impl

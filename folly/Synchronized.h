@@ -511,8 +511,8 @@ struct Synchronized : public SynchronizedBase<
       : Synchronized{std::piecewise_construct,
                      std::move(datumArgs),
                      std::move(mutexArgs),
-                     make_index_sequence<sizeof...(DatumArgs)>{},
-                     make_index_sequence<sizeof...(MutexArgs)>{}} {}
+                     std::make_index_sequence<sizeof...(DatumArgs)>{},
+                     std::make_index_sequence<sizeof...(MutexArgs)>{}} {}
 
   /**
    * The canonical assignment operator only assigns the data, NOT the

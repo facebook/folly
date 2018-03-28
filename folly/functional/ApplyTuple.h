@@ -55,11 +55,11 @@ struct TupleSizeSum {
 };
 
 template <typename... Tuples>
-using MakeIndexSequenceFromTuple = folly::make_index_sequence<
+using MakeIndexSequenceFromTuple = std::make_index_sequence<
     TupleSizeSum<typename std::decay<Tuples>::type...>::value>;
 
 template <class F, class Tuple, std::size_t... Indexes>
-inline constexpr auto call(F&& f, Tuple&& t, folly::index_sequence<Indexes...>)
+inline constexpr auto call(F&& f, Tuple&& t, std::index_sequence<Indexes...>)
     -> decltype(invoke(
         std::forward<F>(f),
         std::get<Indexes>(std::forward<Tuple>(t))...)) {
@@ -68,7 +68,7 @@ inline constexpr auto call(F&& f, Tuple&& t, folly::index_sequence<Indexes...>)
 }
 
 template <class Tuple, std::size_t... Indexes>
-inline constexpr auto forwardTuple(Tuple&& t, folly::index_sequence<Indexes...>)
+inline constexpr auto forwardTuple(Tuple&& t, std::index_sequence<Indexes...>)
     -> decltype(
         std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...)) {
   return std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...);
