@@ -50,15 +50,6 @@ constexpr bool kHasUnalignedAccess = false;
   __attribute__((__format__(__printf__, format_param, dots_param)))
 #endif
 
-// deprecated
-#if defined(__clang__) || defined(__GNUC__)
-# define FOLLY_DEPRECATED(msg) __attribute__((__deprecated__(msg)))
-#elif defined(_MSC_VER)
-# define FOLLY_DEPRECATED(msg) __declspec(deprecated(msg))
-#else
-# define FOLLY_DEPRECATED(msg)
-#endif
-
 // warn unused result
 #if defined(__has_cpp_attribute)
 #if __has_cpp_attribute(nodiscard)
