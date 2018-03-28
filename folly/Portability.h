@@ -354,13 +354,6 @@ constexpr auto kMicrosoftAbiVer = FOLLY_MICROSOFT_ABI_VER;
 constexpr auto kMicrosoftAbiVer = 0;
 #endif
 
-// TODO: Remove when removing support for gcc4.9
-#if __GLIBCXX__ && __GLIBCXX__ == 20150123
-constexpr auto kIsGlib49 = true;
-#else
-constexpr auto kIsGlib49 = false;
-#endif
-
 // cpplib is an implementation of the standard library, and is the one typically
 // used with the msvc compiler
 #if _CPPLIB_VER

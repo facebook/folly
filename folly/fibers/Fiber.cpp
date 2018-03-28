@@ -171,8 +171,6 @@ void Fiber::preempt(State state) {
     DCHECK_EQ(state_, RUNNING);
     DCHECK_NE(state, RUNNING);
     DCHECK(!std::current_exception());
-    // std::uncaught_exception is broken in libstdc++ v4.9
-    DCHECK(kIsGlib49 || !std::uncaught_exception());
 
     state_ = state;
 
