@@ -36,9 +36,9 @@ void BENCHFUN(sizeCtor)(int iters, int size) {
     doNotOptimizeAway(&v);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(sizeCtor), 16);
-BENCHMARK_PARAM(BENCHFUN(sizeCtor), 128);
-BENCHMARK_PARAM(BENCHFUN(sizeCtor), 1024);
+BENCHMARK_PARAM(BENCHFUN(sizeCtor), 16)
+BENCHMARK_PARAM(BENCHFUN(sizeCtor), 128)
+BENCHMARK_PARAM(BENCHFUN(sizeCtor), 1024)
 
 void BENCHFUN(fillCtor)(int iters, int size) {
   FOR_EACH_RANGE (i, 0, iters) {
@@ -46,9 +46,9 @@ void BENCHFUN(fillCtor)(int iters, int size) {
     doNotOptimizeAway(&v);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(fillCtor), 16);
-BENCHMARK_PARAM(BENCHFUN(fillCtor), 128);
-BENCHMARK_PARAM(BENCHFUN(fillCtor), 1024);
+BENCHMARK_PARAM(BENCHFUN(fillCtor), 16)
+BENCHMARK_PARAM(BENCHFUN(fillCtor), 128)
+BENCHMARK_PARAM(BENCHFUN(fillCtor), 1024)
 
 #ifndef SKIP_RESERVE
 void BENCHFUN(reserve)(int iters, int size) {
@@ -58,9 +58,9 @@ void BENCHFUN(reserve)(int iters, int size) {
     v.reserve(size);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(reserve), 16);
-BENCHMARK_PARAM(BENCHFUN(reserve), 128);
-BENCHMARK_PARAM(BENCHFUN(reserve), 1024);
+BENCHMARK_PARAM(BENCHFUN(reserve), 16)
+BENCHMARK_PARAM(BENCHFUN(reserve), 128)
+BENCHMARK_PARAM(BENCHFUN(reserve), 1024)
 #endif
 
 void BENCHFUN(insertFront)(int iters, int initialSize) {
@@ -72,12 +72,12 @@ void BENCHFUN(insertFront)(int iters, int initialSize) {
   });
 }
 
-BENCHMARK_PARAM(BENCHFUN(insertFront), 16);
-BENCHMARK_PARAM(BENCHFUN(insertFront), 128);
-BENCHMARK_PARAM(BENCHFUN(insertFront), 1024);
-BENCHMARK_PARAM(BENCHFUN(insertFront), 10240);
-BENCHMARK_PARAM(BENCHFUN(insertFront), 102400);
-BENCHMARK_PARAM(BENCHFUN(insertFront), 1024000);
+BENCHMARK_PARAM(BENCHFUN(insertFront), 16)
+BENCHMARK_PARAM(BENCHFUN(insertFront), 128)
+BENCHMARK_PARAM(BENCHFUN(insertFront), 1024)
+BENCHMARK_PARAM(BENCHFUN(insertFront), 10240)
+BENCHMARK_PARAM(BENCHFUN(insertFront), 102400)
+BENCHMARK_PARAM(BENCHFUN(insertFront), 1024000)
 
 void BENCHFUN(pushBack)(int iters, int initialSize) {
   BenchmarkSuspender braces;
@@ -88,9 +88,9 @@ void BENCHFUN(pushBack)(int iters, int initialSize) {
   });
 }
 
-BENCHMARK_PARAM(BENCHFUN(pushBack), 16);
-BENCHMARK_PARAM(BENCHFUN(pushBack), 128);
-BENCHMARK_PARAM(BENCHFUN(pushBack), 1024);
-BENCHMARK_PARAM(BENCHFUN(pushBack), 10240);
-BENCHMARK_PARAM(BENCHFUN(pushBack), 102400);
-BENCHMARK_PARAM(BENCHFUN(pushBack), 1024000);
+BENCHMARK_PARAM(BENCHFUN(pushBack), 16)
+BENCHMARK_PARAM(BENCHFUN(pushBack), 128)
+BENCHMARK_PARAM(BENCHFUN(pushBack), 1024)
+BENCHMARK_PARAM(BENCHFUN(pushBack), 10240)
+BENCHMARK_PARAM(BENCHFUN(pushBack), 102400)
+BENCHMARK_PARAM(BENCHFUN(pushBack), 1024000)

@@ -236,9 +236,9 @@ void BM_ProducerConsumerLatency(int /* iters */, int size) {
 
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_ProducerConsumer, 1048574);
-BENCHMARK_PARAM(BM_ProducerConsumerAffinity, 1048574);
-BENCHMARK_PARAM(BM_ProducerConsumerLatency, 1048574);
+BENCHMARK_PARAM(BM_ProducerConsumer, 1048574)
+BENCHMARK_PARAM(BM_ProducerConsumerAffinity, 1048574)
+BENCHMARK_PARAM(BM_ProducerConsumerLatency, 1048574)
 
 } // namespace
 

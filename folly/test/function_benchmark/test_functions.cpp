@@ -77,8 +77,7 @@ void TestClass::doNothing() {
 VirtualClass::~VirtualClass() {
 }
 
-void VirtualClass::doNothing() {
-};
+void VirtualClass::doNothing() {}
 
 LargeClass::LargeClass() {
   // Suppress unused field warning

@@ -73,11 +73,11 @@ DEFINE_int32(numThreads, 8, "Number simultaneous threads for benchmarks.");
   }
 
 ThreadLocalPtr<int> tlp;
-REG(tlp);
+REG(tlp)
 PThreadGetSpecific<int> pthread_get_specific;
-REG(pthread_get_specific);
+REG(pthread_get_specific)
 boost::thread_specific_ptr<int> boost_tsp;
-REG(boost_tsp);
+REG(boost_tsp)
 BENCHMARK_DRAW_LINE();
 
 struct foo {

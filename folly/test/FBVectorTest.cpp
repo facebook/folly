@@ -98,7 +98,7 @@ namespace {
 class UserDefinedType { int whatevs_; };
 } // namespace
 
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE(UserDefinedType);
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE(UserDefinedType)
 
 TEST(fbvector, works_with_user_defined_type) {
   fbvector<UserDefinedType> v(10);

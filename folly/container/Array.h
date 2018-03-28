@@ -74,6 +74,6 @@ FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN constexpr auto make_array_with(
 template <std::size_t Size, typename MakeItem>
 constexpr auto make_array_with(MakeItem const& make) {
   return array_detail::make_array_with(make, make_index_sequence<Size>{});
-};
+}
 
 } // namespace folly

@@ -350,7 +350,7 @@ inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) {
   hash += hash >> 6;
 
   return hash;
-};
+}
 
 #undef get16bits
 

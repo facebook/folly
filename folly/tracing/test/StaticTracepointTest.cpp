@@ -287,7 +287,7 @@ TEST(StaticTracepoint, TestEmpty) {
   EXPECT_TRUE(arguments.empty());
 }
 
-FOLLY_SDT_DEFINE_SEMAPHORE(folly, test_semaphore_local);
+FOLLY_SDT_DEFINE_SEMAPHORE(folly, test_semaphore_local)
 
 static uint32_t manyArgTypesTestFunc() {
   uint32_t a = folly::Random::rand32();

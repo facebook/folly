@@ -77,11 +77,11 @@ namespace exception_tracer {
     get##NAME##Callbacks().registerCallback(callback);           \
   }
 
-DECLARE_CALLBACK(CxaThrow);
-DECLARE_CALLBACK(CxaBeginCatch);
-DECLARE_CALLBACK(CxaRethrow);
-DECLARE_CALLBACK(CxaEndCatch);
-DECLARE_CALLBACK(RethrowException);
+DECLARE_CALLBACK(CxaThrow)
+DECLARE_CALLBACK(CxaBeginCatch)
+DECLARE_CALLBACK(CxaRethrow)
+DECLARE_CALLBACK(CxaEndCatch)
+DECLARE_CALLBACK(RethrowException)
 
 } // namespace exception_tracer
 } // namespace folly

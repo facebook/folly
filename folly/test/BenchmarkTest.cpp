@@ -322,11 +322,11 @@ unsigned paramMultiRel(unsigned iter, unsigned num) {
   return num * iter;
 }
 
-BENCHMARK_PARAM_MULTI(paramMulti, 1);
-BENCHMARK_RELATIVE_PARAM_MULTI(paramMultiRel, 1);
+BENCHMARK_PARAM_MULTI(paramMulti, 1)
+BENCHMARK_RELATIVE_PARAM_MULTI(paramMultiRel, 1)
 
-BENCHMARK_PARAM_MULTI(paramMulti, 5);
-BENCHMARK_RELATIVE_PARAM_MULTI(paramMultiRel, 5);
+BENCHMARK_PARAM_MULTI(paramMulti, 5)
+BENCHMARK_RELATIVE_PARAM_MULTI(paramMultiRel, 5)
 
 BENCHMARK_DRAW_LINE();
 

@@ -1404,4 +1404,4 @@ constexpr Range<wchar_t const*> operator"" _sp(
 
 FOLLY_POP_WARNING
 
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range);
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range)

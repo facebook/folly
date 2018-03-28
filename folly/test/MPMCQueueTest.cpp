@@ -31,7 +31,7 @@
 #include <thread>
 #include <utility>
 
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::intrusive_ptr);
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::intrusive_ptr)
 
 using namespace folly;
 using namespace detail;

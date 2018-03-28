@@ -75,12 +75,12 @@ void runTest(int iters, int numThreads) {
   }
 }
 
-BENCHMARK_PARAM(runTest, 1);
-BENCHMARK_PARAM(runTest, 2);
-BENCHMARK_PARAM(runTest, 4);
-BENCHMARK_PARAM(runTest, 8);
-BENCHMARK_PARAM(runTest, 16);
-BENCHMARK_PARAM(runTest, 32);
+BENCHMARK_PARAM(runTest, 1)
+BENCHMARK_PARAM(runTest, 2)
+BENCHMARK_PARAM(runTest, 4)
+BENCHMARK_PARAM(runTest, 8)
+BENCHMARK_PARAM(runTest, 16)
+BENCHMARK_PARAM(runTest, 32)
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

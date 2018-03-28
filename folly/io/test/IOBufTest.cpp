@@ -598,7 +598,7 @@ void testFreeFn(void* buffer, void* ptr) {
   if (freeCount) {
     ++(*freeCount);
   }
-};
+}
 
 TEST(IOBuf, Reserve) {
   uint32_t fillSeed = 0x23456789;

@@ -19,7 +19,7 @@
 namespace folly {
 namespace test {
 
-FOLLY_SDT_DEFINE_SEMAPHORE(folly, test_semaphore_extern);
+FOLLY_SDT_DEFINE_SEMAPHORE(folly, test_semaphore_extern)
 
 unsigned staticTracepointTestFunc(unsigned v) {
   unsigned res = v * v;

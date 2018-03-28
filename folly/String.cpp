@@ -263,7 +263,7 @@ void stringPrintf(std::string* output, const char* format, ...) {
 void stringVPrintf(std::string* output, const char* format, va_list ap) {
   output->clear();
   stringAppendfImpl(*output, format, ap);
-};
+}
 
 namespace {
 

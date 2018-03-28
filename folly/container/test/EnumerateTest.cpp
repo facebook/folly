@@ -93,7 +93,7 @@ TEST(Enumerate, Temporary) {
   }
 
   EXPECT_EQ(i, v.size());
-};
+}
 
 TEST(Enumerate, BasicConstArg) {
   const std::vector<std::string> v = {"abc", "a", "ab"};
