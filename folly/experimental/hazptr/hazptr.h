@@ -84,7 +84,6 @@ class hazptr_domain {
   void tryTimedCleanup();
 
  private:
-  friend class hazptr_obj_batch;
   friend class hazptr_holder;
   template <typename, typename>
   friend class hazptr_obj_base;
@@ -117,7 +116,6 @@ void hazptr_cleanup(hazptr_domain& domain = default_hazptr_domain());
 
 /** Definition of hazptr_obj */
 class hazptr_obj {
-  friend class hazptr_obj_batch;
   friend class hazptr_domain;
   template <typename, typename>
   friend class hazptr_obj_base;
@@ -168,8 +166,6 @@ class hazptr_obj_base : public hazptr_obj {
 /** Definition of hazptr_recounted_obj_base */
 template <typename T, typename D = std::default_delete<T>>
 class hazptr_obj_base_refcounted : public hazptr_obj {
-  friend class hazptr_obj_batch;
-
  public:
   /* Retire a removed object and pass the responsibility for
    * reclaiming it to the hazptr library */

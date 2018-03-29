@@ -222,7 +222,6 @@ class UnboundedQueue {
   struct Consumer {
     Atom<Segment*> head;
     Atom<Ticket> ticket;
-    folly::hazptr::hazptr_obj_batch batch;
   };
   struct Producer {
     Atom<Segment*> tail;
@@ -556,22 +555,8 @@ class UnboundedQueue {
       // segment may incorrectly set head back.
       asm_volatile_pause();
     }
-    /* ***IMPORTANT*** prepReclaimSegment() must be called after
-     * confirming that head() is up-to-date and before calling
-     * setHead() to be thread-safe. */
-    /* ***IMPORTANT*** Segment s cannot be retired before the call to
-     * setHead(s). This is why prep_retire_refcounted(), which is
-     * called by prepReclaimSegment() does not retire objects, it
-     * merely adds the object to the batch and returns a private batch
-     * structure of a list of objects that can be retired later, if
-     * there are enough objects for amortizing the cost of updating
-     * the domain structure. */
-    auto res = prepReclaimSegment(s);
     setHead(next);
-    /* Now it is safe to retire s. */
-    /* ***IMPORTANT*** The destructor of res automatically calls
-     * retire_all(), which retires to the domain any objects moved to
-     * res from batch in the call to prepReclaimSegment(). */
+    reclaimSegment(s);
   }
 
   /** reclaimSegment */
@@ -580,17 +565,6 @@ class UnboundedQueue {
       delete s;
     } else {
       s->retire(); // hazptr
-    }
-  }
-
-  /** prepReclaimSegment */
-  folly::hazptr::hazptr_obj_batch prepReclaimSegment(Segment* s) noexcept {
-    if (SPSC) {
-      delete s;
-      /*Return an empty result; nothing more to do for this segment */
-      return folly::hazptr::hazptr_obj_batch();
-    } else {
-      return c_.batch.prep_retire_refcounted(s);
     }
   }
 
