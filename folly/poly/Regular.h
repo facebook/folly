@@ -33,6 +33,21 @@ struct IEqualityComparable : PolyExtends<> {
   template <class T>
   using Members = FOLLY_POLY_MEMBERS(&isEqual_<T>);
 };
+
+/**
+ * A `Poly` interface for types that are strictly orderable.
+ */
+struct IStrictlyOrderable : PolyExtends<> {
+  template <class T>
+  static auto isLess_(T const& _this, T const& that)
+      -> decltype(std::declval<bool (&)(bool)>()(_this < that)) {
+    return _this < that;
+  }
+
+  template <class T>
+  using Members = FOLLY_POLY_MEMBERS(&isLess_<T>);
+};
+
 } // namespace poly
 
 /// \cond
@@ -41,6 +56,11 @@ template <class I1, class I2>
 using Comparable = Conjunction<
     std::is_same<std::decay_t<I1>, std::decay_t<I2>>,
     std::is_base_of<poly::IEqualityComparable, std::decay_t<I1>>>;
+
+template <class I1, class I2>
+using Orderable = Conjunction<
+    std::is_same<std::decay_t<I1>, std::decay_t<I2>>,
+    std::is_base_of<poly::IStrictlyOrderable, std::decay_t<I1>>>;
 } // namespace detail
 /// \endcond
 
@@ -49,9 +69,14 @@ template <
     class I2,
     std::enable_if_t<detail::Comparable<I1, I2>::value, int> = 0>
 bool operator==(Poly<I1> const& _this, Poly<I2> const& that) {
-  return (poly_empty(_this) && poly_empty(that)) ||
-      (poly_type(_this) == poly_type(that) &&
-       ::folly::poly_call<0, poly::IEqualityComparable>(_this, that));
+  if (poly_empty(_this) != poly_empty(that)) {
+    return false;
+  } else if (poly_empty(_this)) {
+    return true;
+  } else if (poly_type(_this) != poly_type(that)) {
+    throw BadPolyCast();
+  }
+  return ::folly::poly_call<0, poly::IEqualityComparable>(_this, that);
 }
 
 template <
@@ -60,6 +85,45 @@ template <
     std::enable_if_t<detail::Comparable<I1, I2>::value, int> = 0>
 bool operator!=(Poly<I1> const& _this, Poly<I2> const& that) {
   return !(_this == that);
+}
+
+template <
+    class I1,
+    class I2,
+    std::enable_if_t<detail::Orderable<I1, I2>::value, int> = 0>
+bool operator<(Poly<I1> const& _this, Poly<I2> const& that) {
+  if (poly_empty(that)) {
+    return false;
+  } else if (poly_empty(_this)) {
+    return true;
+  } else if (poly_type(_this) != poly_type(that)) {
+    throw BadPolyCast{};
+  }
+  return ::folly::poly_call<0, poly::IStrictlyOrderable>(_this, that);
+}
+
+template <
+    class I1,
+    class I2,
+    std::enable_if_t<detail::Orderable<I1, I2>::value, int> = 0>
+bool operator>(Poly<I1> const& _this, Poly<I2> const& that) {
+  return that < _this;
+}
+
+template <
+    class I1,
+    class I2,
+    std::enable_if_t<detail::Orderable<I1, I2>::value, int> = 0>
+bool operator<=(Poly<I1> const& _this, Poly<I2> const& that) {
+  return !(that < _this);
+}
+
+template <
+    class I1,
+    class I2,
+    std::enable_if_t<detail::Orderable<I1, I2>::value, int> = 0>
+bool operator>=(Poly<I1> const& _this, Poly<I2> const& that) {
+  return !(_this < that);
 }
 
 namespace poly {
