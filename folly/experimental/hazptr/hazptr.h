@@ -64,6 +64,9 @@ class hazptr_domain {
   std::atomic<int> hcount_ = {0};
   std::atomic<int> rcount_ = {0};
 
+  static constexpr uint64_t syncTimePeriod_{2000000000}; // in ns
+  std::atomic<uint64_t> syncTime_{0};
+
  public:
   constexpr explicit hazptr_domain(
       memory_resource* = get_default_resource()) noexcept;
@@ -78,6 +81,7 @@ class hazptr_domain {
   template <typename T, typename D = std::default_delete<T>>
   void retire(T* obj, D reclaim = {});
   void cleanup();
+  void tryTimedCleanup();
 
  private:
   friend class hazptr_obj_batch;

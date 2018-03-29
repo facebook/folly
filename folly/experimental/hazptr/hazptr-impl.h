@@ -242,6 +242,7 @@ class hazptr_priv {
     }
     rcount_ = 0;
     domain.tryBulkReclaim();
+    domain.tryTimedCleanup();
   }
 
   void collect(hazptr_obj*& colHead, hazptr_obj*& colTail) {
@@ -889,6 +890,19 @@ inline hazptr_domain::~hazptr_domain() {
       mr_->deallocate(static_cast<void*>(p), sizeof(hazptr_rec));
     }
   }
+}
+
+inline void hazptr_domain::tryTimedCleanup() {
+  uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                      std::chrono::steady_clock::now().time_since_epoch())
+                      .count();
+  auto prevtime = syncTime_.load(std::memory_order_relaxed);
+  if (time < prevtime ||
+      !syncTime_.compare_exchange_strong(
+          prevtime, time + syncTimePeriod_, std::memory_order_relaxed)) {
+    return;
+  }
+  cleanup();
 }
 
 inline void hazptr_domain::cleanup() {
