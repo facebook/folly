@@ -140,8 +140,8 @@ namespace replaceable_detail {
  */
 template <
     class T,
-    bool /* true iff destructible */,
-    bool /* true iff trivially destructible */>
+    bool = std::is_destructible<T>::value,
+    bool = std::is_trivially_destructible<T>::value>
 struct dtor_mixin;
 
 /* Destructible and trivially destructible */
@@ -176,8 +176,8 @@ struct dtor_mixin<T, false, A> {
 
 template <
     class T,
-    bool /* true iff default constructible */,
-    bool /* true iff move constructible */>
+    bool = std::is_default_constructible<T>::value,
+    bool = std::is_move_constructible<T>::value>
 struct default_and_move_ctor_mixin;
 
 /* Not default-constructible and not move-constructible */
@@ -256,7 +256,10 @@ struct default_and_move_ctor_mixin<T, false, true> {
   inline explicit default_and_move_ctor_mixin(int) {}
 };
 
-template <class T, bool /* true iff destructible and move constructible */>
+template <
+    class T,
+    bool = (std::is_destructible<T>::value) &&
+        (std::is_move_constructible<T>::value)>
 struct move_assignment_mixin;
 
 /* Not (destructible and move-constructible) */
@@ -289,7 +292,7 @@ struct move_assignment_mixin<T, true> {
   move_assignment_mixin& operator=(move_assignment_mixin const&) = default;
 };
 
-template <class T, bool /* true iff copy constructible */>
+template <class T, bool = std::is_copy_constructible<T>::value>
 struct copy_ctor_mixin;
 
 /* Not copy-constructible */
@@ -316,7 +319,10 @@ struct copy_ctor_mixin<T, true> {
   copy_ctor_mixin& operator=(copy_ctor_mixin const&) = default;
 };
 
-template <class T, bool /* true iff destructible and copy constructible */>
+template <
+    class T,
+    bool = (std::is_destructible<T>::value) &&
+        (std::is_copy_constructible<T>::value)>
 struct copy_assignment_mixin;
 
 /* Not (destructible and copy-constructible) */
@@ -396,28 +402,12 @@ constexpr Replaceable<T> make_replaceable(
 
 template <class T>
 class alignas(T) Replaceable
-    : public replaceable_detail::dtor_mixin<
-          T,
-          std::is_destructible<T>::value,
-          std::is_trivially_destructible<T>::value>,
-      public replaceable_detail::default_and_move_ctor_mixin<
-          T,
-          std::is_default_constructible<T>::value,
-          std::is_move_constructible<T>::value>,
-      public replaceable_detail::
-          copy_ctor_mixin<T, std::is_copy_constructible<T>::value>,
-      public replaceable_detail::move_assignment_mixin<
-          T,
-          std::is_destructible<T>::value &&
-              std::is_move_constructible<T>::value>,
-      public replaceable_detail::copy_assignment_mixin<
-          T,
-          std::is_destructible<T>::value &&
-              std::is_copy_constructible<T>::value> {
-  using ctor_base = replaceable_detail::default_and_move_ctor_mixin<
-      T,
-      std::is_constructible<T>::value,
-      std::is_move_constructible<T>::value>;
+    : public replaceable_detail::dtor_mixin<T>,
+      public replaceable_detail::default_and_move_ctor_mixin<T>,
+      public replaceable_detail::copy_ctor_mixin<T>,
+      public replaceable_detail::move_assignment_mixin<T>,
+      public replaceable_detail::copy_assignment_mixin<T> {
+  using ctor_base = replaceable_detail::default_and_move_ctor_mixin<T>;
 
  public:
   using value_type = T;
@@ -644,22 +634,11 @@ class alignas(T) Replaceable
   }
 
  private:
-  friend struct replaceable_detail::dtor_mixin<
-      T,
-      std::is_destructible<T>::value,
-      std::is_trivially_destructible<T>::value>;
-  friend struct replaceable_detail::default_and_move_ctor_mixin<
-      T,
-      std::is_default_constructible<T>::value,
-      std::is_move_constructible<T>::value>;
-  friend struct replaceable_detail::
-      copy_ctor_mixin<T, std::is_constructible<T, T const&>::value>;
-  friend struct replaceable_detail::move_assignment_mixin<
-      T,
-      std::is_destructible<T>::value && std::is_move_constructible<T>::value>;
-  friend struct replaceable_detail::copy_assignment_mixin<
-      T,
-      std::is_destructible<T>::value && std::is_copy_constructible<T>::value>;
+  friend struct replaceable_detail::dtor_mixin<T>;
+  friend struct replaceable_detail::default_and_move_ctor_mixin<T>;
+  friend struct replaceable_detail::copy_ctor_mixin<T>;
+  friend struct replaceable_detail::move_assignment_mixin<T>;
+  friend struct replaceable_detail::copy_assignment_mixin<T>;
   std::aligned_storage_t<sizeof(T), alignof(T)> storage_[1];
 };
 
