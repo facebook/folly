@@ -470,17 +470,16 @@ INSTANTIATE_TEST_CASE_P(
     FNVTesting,
     FNVTest,
     ::testing::Values(
-        (FNVTestParam){"foobar", // 11
-                       0x85944171f73967e8},
-        (FNVTestParam){"chongo was here!\n", // 39
-                       0x46810940eff5f915},
-        (FNVTestParam){"127.0.0.3", // 106,
-                       0xaabafc7104d91158},
-        (FNVTestParam){
-            "http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash", // 126
-            0xd9b957fb7fe794c5},
-        (FNVTestParam){"http://norvig.com/21-days.html", // 136
-                       0x07aaa640476e0b9a}));
+        FNVTestParam{"foobar", // 11
+                     0x85944171f73967e8},
+        FNVTestParam{"chongo was here!\n", // 39
+                     0x46810940eff5f915},
+        FNVTestParam{"127.0.0.3", // 106,
+                     0xaabafc7104d91158},
+        FNVTestParam{"http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash", // 126
+                     0xd9b957fb7fe794c5},
+        FNVTestParam{"http://norvig.com/21-days.html", // 136
+                     0x07aaa640476e0b9a}));
 
 namespace {
 enum class TestEnum {
