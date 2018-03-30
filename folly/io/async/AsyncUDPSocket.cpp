@@ -95,6 +95,58 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
     }
   }
 
+  if (busyPollUs_ > 0) {
+#ifdef SO_BUSY_POLL
+    // Set busy_poll time in microseconds on the socket.
+    // It sets how long socket will be in busy_poll mode when no event occurs.
+    int value = busyPollUs_;
+    if (setsockopt(socket,
+                   SOL_SOCKET,
+                   SO_BUSY_POLL,
+                   &value,
+                   sizeof(value)) != 0) {
+      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
+                                "failed to set SO_BUSY_POLL on the socket",
+                                errno);
+
+    }
+#else /* SO_BUSY_POLL is not supported*/
+    throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
+                              "SO_BUSY_POLL is not supported",
+                              errno);
+#endif
+  }
+
+  if (rcvBuf_ > 0) {
+    // Set the size of the buffer for the received messages in rx_queues.
+    int value = rcvBuf_;
+    if (setsockopt(socket,
+                   SOL_SOCKET,
+                   SO_RCVBUF,
+                   &value,
+                   sizeof(value)) != 0) {
+      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
+                                "failed to set SO_RCVBUF on the socket",
+                                errno);
+
+    }
+  }
+
+  if (sndBuf_ > 0) {
+    // Set the size of the buffer for the sent messages in tx_queues.
+    int value = rcvBuf_;
+    if (setsockopt(socket,
+                   SOL_SOCKET,
+                   SO_SNDBUF,
+                   &value,
+                   sizeof(value)) != 0) {
+      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
+                                "failed to set SO_SNDBUF on the socket",
+                                errno);
+
+    }
+  }
+
   // If we're using IPv6, make sure we don't accept V4-mapped connections
   if (address.getFamily() == AF_INET6) {
     int flag = 1;

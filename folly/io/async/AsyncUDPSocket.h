@@ -158,6 +158,28 @@ class AsyncUDPSocket : public EventHandler {
     reuseAddr_ = reuseAddr;
   }
 
+  /**
+   * Set SO_RCVBUF option on the socket, if not zero. Default is zero.
+   */
+  virtual void setRcvBuf(int rcvBuf) {
+    rcvBuf_ = rcvBuf;
+  }
+
+  /**
+   * Set SO_SNDBUG option on the socket, if not zero. Default is zero.
+   */
+  virtual void setSndBuf(int sndBuf) {
+    sndBuf_ = sndBuf;
+  }
+
+  /**
+   * Set SO_BUSY_POLL option on the socket, if not zero. Default is zero.
+   * Caution! The feature is not available on Apple's systems.
+   */
+  virtual void setBusyPoll(int busyPollUs) {
+    busyPollUs_ = busyPollUs;
+  }
+
   EventBase* getEventBase() const {
     return eventBase_;
   }
@@ -203,6 +225,9 @@ class AsyncUDPSocket : public EventHandler {
 
   bool reuseAddr_{true};
   bool reusePort_{false};
+  int rcvBuf_{0};
+  int sndBuf_{0};
+  int busyPollUs_{0};
 };
 
 } // namespace folly
