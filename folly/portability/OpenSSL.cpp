@@ -464,6 +464,18 @@ const ASN1_TIME* X509_REVOKED_get0_revocationDate(const X509_REVOKED* r) {
   return r->revocationDate;
 }
 
+uint32_t X509_get_extension_flags(X509* x) {
+  return x->ex_flags;
+}
+
+uint32_t X509_get_key_usage(X509* x) {
+  return x->ex_kusage;
+}
+
+uint32_t X509_get_extended_key_usage(X509* x) {
+  return x->ex_xkusage;
+}
+
 #endif // !FOLLY_OPENSSL_IS_110
 } // namespace ssl
 } // namespace portability
