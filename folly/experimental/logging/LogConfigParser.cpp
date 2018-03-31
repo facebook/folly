@@ -72,7 +72,7 @@ bool parseJsonLevel(
     try {
       result = stringToLogLevel(levelString);
       return true;
-    } catch (const std::exception& ex) {
+    } catch (const std::exception&) {
       throw LogConfigParseError{to<string>(
           "invalid log level \"",
           levelString,
