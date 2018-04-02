@@ -21,7 +21,7 @@
 #include <folly/Singleton.h>
 #include <folly/portability/Config.h>
 
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
 #include <folly/experimental/symbolizer/SignalHandler.h> // @manual
 #endif
 #include <folly/portability/GFlags.h>
@@ -29,7 +29,7 @@
 namespace folly {
 
 void init(int* argc, char*** argv, bool removeFlags) {
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
   // Install the handler now, to trap errors received during startup.
   // The callbacks, if any, can be installed later
   folly::symbolizer::installFatalSignalHandler();
@@ -46,7 +46,7 @@ void init(int* argc, char*** argv, bool removeFlags) {
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
   google::InitGoogleLogging(programName);
 
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
   // Don't use glog's DumpStackTraceAndExit; rely on our signal handler.
   google::InstallFailureFunction(abort);
 

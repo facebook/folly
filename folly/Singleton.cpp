@@ -31,7 +31,7 @@
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
 #include <folly/experimental/symbolizer/Symbolizer.h> // @manual
 #endif
 
@@ -386,7 +386,7 @@ void SingletonVault::scheduleDestroyInstances() {
 // Singltone's to use it to print stack traces. It's important that we keep
 // this in the same compilation unit as the `SingletonVault` so that it's
 // setup/used iff singleton's are used.
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
 namespace {
 
 std::string stackTraceGetter() {
