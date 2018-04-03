@@ -1377,34 +1377,3 @@ TEST(String, stripLeftMargin_no_post_whitespace) {
   auto expected = "hi there bob!\n  \nso long!  ";
   EXPECT_EQ(expected, stripLeftMargin(input));
 }
-
-const folly::StringPiece kTestUTF8 = u8"This is \U0001F602 stuff!";
-
-TEST(UTF8StringPiece, valid_utf8) {
-  folly::StringPiece sp = kTestUTF8;
-  UTF8StringPiece utf8 = sp;
-  // utf8.size() not available since it's not a random-access range
-  EXPECT_EQ(16, utf8.walk_size());
-}
-
-TEST(UTF8StringPiece, valid_suffix) {
-  UTF8StringPiece utf8 = kTestUTF8.subpiece(8);
-  EXPECT_EQ(8, utf8.walk_size());
-}
-
-TEST(UTF8StringPiece, empty_mid_codepoint) {
-  UTF8StringPiece utf8 = kTestUTF8.subpiece(9, 0); // okay since it's empty
-  EXPECT_EQ(0, utf8.walk_size());
-}
-
-TEST(UTF8StringPiece, invalid_mid_codepoint) {
-  EXPECT_THROW(UTF8StringPiece(kTestUTF8.subpiece(9, 1)), std::out_of_range);
-}
-
-TEST(UTF8StringPiece, valid_implicit_conversion) {
-  std::string input = u8"\U0001F602\U0001F602\U0001F602";
-  auto checkImplicitCtor = [](UTF8StringPiece implicitCtor) {
-    return implicitCtor.walk_size();
-  };
-  EXPECT_EQ(3, checkImplicitCtor(input));
-}

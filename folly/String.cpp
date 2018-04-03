@@ -21,6 +21,7 @@
 #include <cstdarg>
 #include <cstring>
 #include <iterator>
+#include <sstream>
 #include <stdexcept>
 
 #include <glog/logging.h>

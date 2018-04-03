@@ -290,7 +290,7 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
     }
     return;
   }
-  if (boost::is_same<DelimT,StringPiece>::value && dSize == 1) {
+  if (std::is_same<DelimT, StringPiece>::value && dSize == 1) {
     // Call the char version because it is significantly faster.
     return internalSplit<OutStringT>(delimFront(delim), sp, out,
       ignoreEmpty);

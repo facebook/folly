@@ -24,6 +24,8 @@
  */
 #include <folly/experimental/DynamicParser.h>
 
+#include <sstream>
+
 #include <folly/Optional.h>
 
 namespace folly {
