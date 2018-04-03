@@ -520,6 +520,32 @@ TEST(F14ValueMap, steady_state_stats) {
   F14TableStats::compute(h);
 }
 
+TEST(F14VectorMap, steady_state_stats) {
+  // 10k keys, 14% probability of insert, 90% chance of erase, so the
+  // table should converge to 1400 size without triggering the rehash
+  // that would occur at 1536.
+  F14VectorMap<std::string, uint64_t> h;
+  std::mt19937_64 gen(0);
+  std::uniform_int_distribution<> dist(0, 10000);
+  for (std::size_t i = 0; i < 100000; ++i) {
+    auto key = "0123456789ABCDEFGHIJKLMNOPQ" + std::to_string(dist(gen));
+    if (dist(gen) < 1400) {
+      h.insert_or_assign(key, i);
+    } else {
+      h.erase(key);
+    }
+    if (((i + 1) % 10000) == 0) {
+      auto stats = F14TableStats::compute(h);
+      // Verify that average miss probe length is bounded despite continued
+      // erase + reuse.  p99 of the average across 10M random steps is 4.69,
+      // average is 2.96.
+      EXPECT_LT(f14::expectedProbe(stats.missProbeLengthHisto), 10.0);
+    }
+  }
+  // F14ValueMap at steady state
+  F14TableStats::compute(h);
+}
+
 TEST(Tracked, baseline) {
   Tracked<0> a0;
 

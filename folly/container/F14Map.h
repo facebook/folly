@@ -965,10 +965,12 @@ class F14VectorMap
     Alloc& a = this->table_.alloc();
     auto values = this->table_.values_;
 
-    // destroy the value and remove the ptr from the base table
+    // Remove the ptr from the base table and destroy the value.
     auto index = underlying.item();
-    std::allocator_traits<Alloc>::destroy(a, std::addressof(values[index]));
+    // The item still needs to be hashable during this call, so we must destroy
+    // the value _afterwards_.
     this->table_.erase(underlying);
+    std::allocator_traits<Alloc>::destroy(a, std::addressof(values[index]));
 
     // move the last element in values_ down and fix up the inbound index
     auto tailIndex = this->size();
