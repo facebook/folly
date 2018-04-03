@@ -183,6 +183,8 @@ using make_integer_sequence = typename utility_detail::make_seq<
 
 template <std::size_t Size>
 using make_index_sequence = make_integer_sequence<std::size_t, Size>;
+template <class... T>
+using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
 /**
  *  Backports from C++17 of:

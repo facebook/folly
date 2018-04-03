@@ -24,6 +24,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 
 namespace folly {
 
@@ -256,8 +257,7 @@ void for_each_range_impl(Sequence&& range, Func& func) {
 template <typename Seq, typename F, typename = void>
 struct ForEachTupleImpl {
   template <typename Sequence, typename Func, std::size_t... Indices>
-  static void
-  impl(Sequence&& seq, Func& func, std::index_sequence<Indices...>) {
+  static void impl(Sequence&& seq, Func& func, index_sequence<Indices...>) {
     // unroll the loop in an initializer list construction parameter expansion
     // pack
     static_cast<void>(std::initializer_list<int>{
@@ -270,8 +270,7 @@ struct ForEachTupleImpl {
 template <typename Seq, typename F>
 struct ForEachTupleImpl<Seq, F, EnableIfBreaksTuple<Seq, F>> {
   template <typename Sequence, typename Func, std::size_t... Indices>
-  static void
-  impl(Sequence&& seq, Func& func, std::index_sequence<Indices...>) {
+  static void impl(Sequence&& seq, Func& func, index_sequence<Indices...>) {
     // unroll the loop in an initializer list construction parameter expansion
     // pack
     LoopControl break_or_not = LoopControl::CONTINUE;
@@ -307,7 +306,7 @@ void for_each_tuple_impl(Sequence&& seq, Func& func) {
   constexpr auto length =
       std::tuple_size<typename std::decay<Sequence>::type>::value;
   ForEachTupleImpl<Sequence, Func>::impl(
-      std::forward<Sequence>(seq), func, std::make_index_sequence<length>{});
+      std::forward<Sequence>(seq), func, make_index_sequence<length>{});
 }
 template <
     typename Sequence,
