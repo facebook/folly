@@ -566,7 +566,7 @@ class sorted_vector_map
  public:
   typedef Key                                       key_type;
   typedef Value                                     mapped_type;
-  typedef std::pair<key_type,mapped_type>           value_type;
+  typedef typename Container::value_type            value_type;
   typedef Compare                                   key_compare;
 
   struct value_compare : private Compare {
