@@ -36,7 +36,7 @@ typedef Range<const char*> StringPiece;
  * When the ScopedEventBaseThread object is destroyed, the thread will be
  * stopped.
  */
-class ScopedEventBaseThread {
+class ScopedEventBaseThread : public IOExecutor {
  public:
   ScopedEventBaseThread();
   explicit ScopedEventBaseThread(const StringPiece& name);
@@ -50,8 +50,16 @@ class ScopedEventBaseThread {
     return &eb_;
   }
 
+  EventBase* getEventBase() override {
+    return &eb_;
+  }
+
   std::thread::id getThreadId() const {
     return th_.get_id();
+  }
+
+  void add(Func func) override {
+    getEventBase()->add(std::move(func));
   }
 
  private:
