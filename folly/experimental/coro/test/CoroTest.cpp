@@ -116,10 +116,10 @@ coro::Task<int> taskRecursion(int depth) {
 
 TEST(Coro, LargeStack) {
   ScopedEventBaseThread evbThread;
-  auto future = via(evbThread.getEventBase(), taskRecursion(10000));
+  auto future = via(evbThread.getEventBase(), taskRecursion(5000));
 
   future.wait();
-  EXPECT_EQ(10000, future.get());
+  EXPECT_EQ(5000, future.get());
 }
 
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
