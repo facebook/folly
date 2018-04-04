@@ -284,6 +284,8 @@ const PrettySuffix kPrettyTimeSuffixes[] = {
 };
 
 const PrettySuffix kPrettyBytesMetricSuffixes[] = {
+  { "EB", 1e18L },
+  { "PB", 1e15L },
   { "TB", 1e12L },
   { "GB", 1e9L },
   { "MB", 1e6L },
@@ -293,6 +295,8 @@ const PrettySuffix kPrettyBytesMetricSuffixes[] = {
 };
 
 const PrettySuffix kPrettyBytesBinarySuffixes[] = {
+  { "EB", int64_t(1) << 60 },
+  { "PB", int64_t(1) << 50 },
   { "TB", int64_t(1) << 40 },
   { "GB", int64_t(1) << 30 },
   { "MB", int64_t(1) << 20 },
@@ -302,6 +306,8 @@ const PrettySuffix kPrettyBytesBinarySuffixes[] = {
 };
 
 const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
+  { "EiB", int64_t(1) << 60 },
+  { "PiB", int64_t(1) << 50 },
   { "TiB", int64_t(1) << 40 },
   { "GiB", int64_t(1) << 30 },
   { "MiB", int64_t(1) << 20 },
@@ -311,6 +317,8 @@ const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
 };
 
 const PrettySuffix kPrettyUnitsMetricSuffixes[] = {
+  { "qntl", 1e18L },
+  { "qdrl", 1e15L },
   { "tril", 1e12L },
   { "bil",  1e9L },
   { "M",    1e6L },
@@ -320,6 +328,8 @@ const PrettySuffix kPrettyUnitsMetricSuffixes[] = {
 };
 
 const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
+  { "E", int64_t(1) << 60 },
+  { "P", int64_t(1) << 50 },
   { "T", int64_t(1) << 40 },
   { "G", int64_t(1) << 30 },
   { "M", int64_t(1) << 20 },
@@ -329,6 +339,8 @@ const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
 };
 
 const PrettySuffix kPrettyUnitsBinaryIECSuffixes[] = {
+  { "Ei", int64_t(1) << 60 },
+  { "Pi", int64_t(1) << 50 },
   { "Ti", int64_t(1) << 40 },
   { "Gi", int64_t(1) << 30 },
   { "Mi", int64_t(1) << 20 },
@@ -430,8 +442,7 @@ double prettyToDouble(folly::StringPiece *const prettyString,
   }
   if (bestPrefixId == -1) { //No valid suffix rule found
     throw std::invalid_argument(folly::to<std::string>(
-            "Unable to parse suffix \"",
-            prettyString->toString(), "\""));
+        "Unable to parse suffix \"", *prettyString, "\""));
   }
   prettyString->advance(size_t(longestPrefixLen));
   return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val :

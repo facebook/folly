@@ -334,6 +334,8 @@ PrettyTestCase prettyTestCases[] =
   {string("1 MB"), pow2(20),  PRETTY_BYTES},
   {string("1 GB"), pow2(30),  PRETTY_BYTES},
   {string("1 TB"), pow2(40),  PRETTY_BYTES},
+  {string("1 PB"), pow2(50),  PRETTY_BYTES},
+  {string("1 EB"), pow2(60),  PRETTY_BYTES},
 
   {string("853 B  "), 853.,  PRETTY_BYTES_IEC},
   {string("833 KiB"), 853.e3,  PRETTY_BYTES_IEC},
@@ -341,6 +343,8 @@ PrettyTestCase prettyTestCases[] =
   {string("7.944 GiB"), 8.53e9,  PRETTY_BYTES_IEC},
   {string("794.4 GiB"), 853.e9,  PRETTY_BYTES_IEC},
   {string("775.8 TiB"), 853.e12,  PRETTY_BYTES_IEC},
+  {string("1.776 PiB"), 2e15,  PRETTY_BYTES_IEC},
+  {string("1.735 EiB"), 2e18,  PRETTY_BYTES_IEC},
 
   {string("0 B  "), 0,  PRETTY_BYTES_IEC},
   {string("1 B  "), pow2(0),  PRETTY_BYTES_IEC},
@@ -348,6 +352,8 @@ PrettyTestCase prettyTestCases[] =
   {string("1 MiB"), pow2(20),  PRETTY_BYTES_IEC},
   {string("1 GiB"), pow2(30),  PRETTY_BYTES_IEC},
   {string("1 TiB"), pow2(40),  PRETTY_BYTES_IEC},
+  {string("1 PiB"), pow2(50),  PRETTY_BYTES_IEC},
+  {string("1 EiB"), pow2(60),  PRETTY_BYTES_IEC},
 
   // check bytes metric printing
   {string("853 B "), 853.,  PRETTY_BYTES_METRIC},
@@ -361,9 +367,10 @@ PrettyTestCase prettyTestCases[] =
   {string("1 B "), 1.0,  PRETTY_BYTES_METRIC},
   {string("1 kB"), 1.0e+3,  PRETTY_BYTES_METRIC},
   {string("1 MB"), 1.0e+6,  PRETTY_BYTES_METRIC},
-
   {string("1 GB"), 1.0e+9,  PRETTY_BYTES_METRIC},
   {string("1 TB"), 1.0e+12,  PRETTY_BYTES_METRIC},
+  {string("1 PB"), 1.0e+15,  PRETTY_BYTES_METRIC},
+  {string("1 EB"), 1.0e+18,  PRETTY_BYTES_METRIC},
 
   // check metric-units (powers of 1000) printing
   {string("853  "), 853.,  PRETTY_UNITS_METRIC},
@@ -432,7 +439,7 @@ TEST(PrettyToDouble, Basic) {
     double recoveredX = 0;
     try{
       recoveredX = prettyToDouble(testString, formatType);
-    } catch (const std::range_error& ex) {
+    } catch (const std::exception& ex) {
       ADD_FAILURE() << testCase.prettyString << " -> " << ex.what();
     }
     double relativeError = fabs(x) < 1e-5 ? (x-recoveredX) :
@@ -450,8 +457,8 @@ TEST(PrettyToDouble, Basic) {
         try{
           recoveredX = prettyToDouble(prettyPrint(x, formatType, addSpace),
                                              formatType);
-        } catch (std::range_error&) {
-          ADD_FAILURE();
+        } catch (const std::exception& ex) {
+          ADD_FAILURE() << folly::exceptionStr(ex);
         }
         double relativeError = (x - recoveredX) / x;
         EXPECT_NEAR(0, relativeError, 1e-3);
