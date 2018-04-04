@@ -97,6 +97,9 @@ class F14Table;
 } // namespace f14
 
 class F14HashToken final {
+ public:
+  F14HashToken() = default;
+
  private:
   using HashPair = std::pair<std::size_t, uint8_t>;
 

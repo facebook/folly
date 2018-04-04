@@ -387,7 +387,8 @@ void runPrehash() {
   EXPECT_FALSE(h.find(s("abc")) == h.end());
 
   auto t1 = h.prehash(s("def"));
-  auto t2 = h.prehash(s("abc"));
+  F14HashToken t2;
+  t2 = h.prehash(s("abc"));
   EXPECT_TRUE(h.find(t1, s("def")) == h.end());
   EXPECT_FALSE(h.find(t2, s("abc")) == h.end());
 }
