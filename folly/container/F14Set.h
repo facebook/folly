@@ -369,6 +369,20 @@ class F14BasicSet {
     return table_.find(key).atEnd() ? 0 : 1;
   }
 
+  /// prehash(key) does the work of evaluating hash_function()(key)
+  /// (including additional bit-mixing for non-avalanching hash functions),
+  /// wraps the result of that work in a token for later reuse, and
+  /// begins prefetching of the first steps of looking for key into the
+  /// local CPU cache.
+  ///
+  /// The returned token may be used at any time, may be used more than
+  /// once, and may be used in other F14 sets and maps.  Tokens are
+  /// transferrable between any F14 containers (maps and sets) with the
+  /// same key_type and equal hash_function()s.
+  ///
+  /// Hash tokens are not hints -- it is a bug to call any method on this
+  /// class with a token t and key k where t isn't the result of a call
+  /// to prehash(k2) with k2 == k.
   F14HashToken prehash(key_type const& key) const {
     return table_.prehash(key);
   }
