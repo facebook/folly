@@ -2473,6 +2473,11 @@ void AsyncSocket::startFail() {
   // so all future attempts to read or write will be rejected
   shutdownFlags_ |= (SHUT_READ | SHUT_WRITE);
 
+  // Cancel any scheduled immediate read.
+  if (immediateReadHandler_.isLoopCallbackScheduled()) {
+    immediateReadHandler_.cancelLoopCallback();
+  }
+
   if (eventFlags_ != EventHandler::NONE) {
     eventFlags_ = EventHandler::NONE;
     ioHandler_.unregisterHandler();
