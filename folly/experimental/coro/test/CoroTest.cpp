@@ -18,6 +18,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
+#include <folly/Chrono.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
@@ -82,8 +83,13 @@ TEST(Coro, Sleep) {
 
   future.wait();
 
+  // The total time should be roughly 1 second. Some builds, especially
+  // optimized ones, may result in slightly less than 1 second, so we perform
+  // rounding here.
+  auto totalTime = std::chrono::steady_clock::now() - startTime;
   EXPECT_GE(
-      std::chrono::steady_clock::now() - startTime, std::chrono::seconds{1});
+      chrono::round<std::chrono::seconds>(totalTime), std::chrono::seconds{1});
+
   EXPECT_TRUE(future.await_ready());
 }
 
