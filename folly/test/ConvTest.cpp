@@ -589,6 +589,16 @@ TEST(Conv, StringPieceToDouble) {
       make_tuple(" 0.0  zorro", "  zorro", 0.0),
       make_tuple(" 0.0  zorro ", "  zorro ", 0.0),
       make_tuple("0.0zorro", "zorro", 0.0),
+      make_tuple("0.0eb", "eb", 0.0),
+      make_tuple("0.0EB", "EB", 0.0),
+      make_tuple("0eb", "eb", 0.0),
+      make_tuple("0EB", "EB", 0.0),
+      make_tuple("12e", "e", 12.0),
+      make_tuple("12e-", "e-", 12.0),
+      make_tuple("12e+", "e+", 12.0),
+      make_tuple("12e-f-g", "e-f-g", 12.0),
+      make_tuple("12e+f+g", "e+f+g", 12.0),
+      make_tuple("12euro", "euro", 12.0),
   };
   for (const auto& s : strs) {
     StringPiece pc(get<0>(s));

@@ -365,6 +365,22 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
         (result == 0.0 && std::isspace((*src)[size_t(length) - 1]))) {
       return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
+    if (length >= 2) {
+      const char* suffix = src->data() + length - 1;
+      // double_conversion doesn't update length correctly when there is an
+      // incomplete exponent specifier. Converting "12e-f-g" shouldn't consume
+      // any more than "12", but it will consume "12e-".
+
+      // "123-" should only parse "123"
+      if (*suffix == '-' || *suffix == '+') {
+        --suffix;
+        --length;
+      }
+      // "12e-f-g" or "12euro" should only parse "12"
+      if (*suffix == 'e' || *suffix == 'E') {
+        --length;
+      }
+    }
     src->advance(size_t(length));
     return Tgt(result);
   }
