@@ -171,7 +171,7 @@ class ThreadCachedInts {
 
 template <typename Tag>
 thread_local typename detail::ThreadCachedInts<Tag>::Integer*
-    detail::ThreadCachedInts<Tag>::int_cache_{nullptr};
+    detail::ThreadCachedInts<Tag>::int_cache_ = nullptr;
 
 } // namespace detail
 } // namespace folly

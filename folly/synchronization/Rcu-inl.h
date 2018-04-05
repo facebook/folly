@@ -21,7 +21,7 @@
 namespace folly {
 
 template <typename Tag>
-bool rcu_domain<Tag>::singleton_{false};
+bool rcu_domain<Tag>::singleton_ = false;
 
 template <typename Tag>
 rcu_domain<Tag>::rcu_domain(Executor* executor) noexcept
