@@ -33,11 +33,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 
-// Temporary compatilibility shim; UTF8StringPiece is no longer provided by
-// this file, but we'll allow includes of this file to continue to "provide"
-// its definition during a brief period while include-sites are updated.
-#include <folly/UTF8String.h>
-
 // Compatibility function, to make sure toStdString(s) can be called
 // to convert a std::string or fbstring variable s into type std::string
 // with very little overhead if s was already std::string
