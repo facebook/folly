@@ -127,8 +127,7 @@ TEST(Poly, EqualityComparable) {
     // mismatched types throws
     Poly<IEqualityComparable> p = 4.2;
     Poly<IEqualityComparable> q = 42;
-    bool b;
-    EXPECT_THROW(b = (q == p), BadPolyCast);
+    EXPECT_THROW((void)(q == p), BadPolyCast);
   }
 }
 
@@ -176,9 +175,8 @@ TEST(Poly, StrictlyOrderable) {
     // mismatched types throws
     Poly<IStrictlyOrderable> p = 4.2;
     Poly<IStrictlyOrderable> q = 42;
-    bool b;
-    EXPECT_THROW(b = (p < q), BadPolyCast);
-    EXPECT_THROW(b = (q < p), BadPolyCast);
+    EXPECT_THROW((void)(p < q), BadPolyCast);
+    EXPECT_THROW((void)(q < p), BadPolyCast);
   }
 }
 
