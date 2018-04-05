@@ -491,6 +491,7 @@ nobase_follyinclude_HEADERS = \
 	Try-inl.h \
 	Try.h \
 	Unicode.h \
+	UTF8String.h \
 	Function.h \
 	Unit.h \
 	Uri.h \
