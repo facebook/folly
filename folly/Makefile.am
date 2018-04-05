@@ -466,7 +466,6 @@ nobase_follyinclude_HEADERS = \
 	system/Shell.h \
 	system/ThreadId.h \
 	system/ThreadName.h \
-	system/VersionCheck.h \
 	stop_watch.h \
 	String.h \
 	String-inl.h \
@@ -642,7 +641,6 @@ libfolly_la_SOURCES = \
 	system/MemoryMapping.cpp \
 	system/Shell.cpp \
 	system/ThreadName.cpp \
-	system/VersionCheck.cpp \
 	Subprocess.cpp \
 	TimeoutQueue.cpp \
 	Try.cpp \
