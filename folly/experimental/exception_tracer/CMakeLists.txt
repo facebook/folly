@@ -13,13 +13,6 @@ if (FOLLY_USE_SYMBOLIZER)
     folly_exception_tracer_base
     PUBLIC folly ${FOLLY_LINK_LIBRARIES}
   )
-  install(
-    TARGETS folly_exception_tracer_base
-    EXPORT folly_exception_tracer
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-  )
 
   add_library(
     folly_exception_tracer
@@ -35,13 +28,6 @@ if (FOLLY_USE_SYMBOLIZER)
     folly_exception_tracer
     PUBLIC folly_exception_tracer_base
   )
-  install(
-    TARGETS folly_exception_tracer
-    EXPORT folly_exception_tracer
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-  )
 
   add_library(
     folly_exception_counter
@@ -56,13 +42,6 @@ if (FOLLY_USE_SYMBOLIZER)
     folly_exception_counter
     PUBLIC folly_exception_tracer
   )
-  install(
-    TARGETS folly_exception_counter
-    EXPORT folly_exception_tracer
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-  )
 
   install(
     FILES
@@ -72,11 +51,21 @@ if (FOLLY_USE_SYMBOLIZER)
       ExceptionTracerLib.h
       StackTrace.h
     DESTINATION
-      include/folly/experimental/exception_tracer
+      ${INCLUDE_INSTALL_DIR}/folly/experimental/exception_tracer
+  )
+  install(
+    TARGETS
+      folly_exception_tracer_base
+      folly_exception_tracer
+      folly_exception_counter
+    EXPORT folly
+    RUNTIME DESTINATION ${BIN_INSTALL_DIR}
+    LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+    ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
   )
   install(
     EXPORT folly_exception_tracer
-    DESTINATION share/folly
+    DESTINATION ${CMAKE_INSTALL_DIR}
     NAMESPACE Folly::
     FILE folly-exception-tracer-targets.cmake
   )
