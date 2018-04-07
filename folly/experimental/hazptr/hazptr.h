@@ -127,9 +127,20 @@ class hazptr_obj {
   hazptr_obj* next_;
 
  public:
-  hazptr_obj() {
-    // Only for catching misuse bugs like double retire
-    next_ = this;
+  // All constructors set next_ to this in order to catch misuse bugs like
+  // double retire.
+  hazptr_obj() noexcept : next_(this) {}
+
+  hazptr_obj(const hazptr_obj&) noexcept : next_(this) {}
+
+  hazptr_obj(hazptr_obj&&) noexcept : next_(this) {}
+
+  hazptr_obj& operator=(const hazptr_obj&) {
+    return *this;
+  }
+
+  hazptr_obj& operator=(hazptr_obj&&) {
+    return *this;
   }
 
  private:

@@ -733,3 +733,31 @@ TEST_F(HazptrTest, ForkTest) {
     _exit(0); // Do not print gtest results
   }
 }
+
+TEST_F(HazptrTest, CopyAndMoveTest) {
+  struct Obj : hazptr_obj_base<Obj> {
+    int a;
+  };
+
+  auto p1 = new Obj();
+  auto p2 = new Obj(*p1);
+  p1->retire();
+  p2->retire();
+
+  p1 = new Obj();
+  p2 = new Obj(std::move(*p1));
+  p1->retire();
+  p2->retire();
+
+  p1 = new Obj();
+  p2 = new Obj();
+  *p2 = *p1;
+  p1->retire();
+  p2->retire();
+
+  p1 = new Obj();
+  p2 = new Obj();
+  *p2 = std::move(*p1);
+  p1->retire();
+  p2->retire();
+}
