@@ -171,6 +171,8 @@ void DSA_get0_key(
     const BIGNUM** pub_key,
     const BIGNUM** priv_key);
 
+STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store);
+
 X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_chain(X509_STORE_CTX* ctx);
 STACK_OF(X509) * X509_STORE_CTX_get0_untrusted(X509_STORE_CTX* ctx);
@@ -195,6 +197,8 @@ uint32_t X509_get_extension_flags(X509* x);
 uint32_t X509_get_key_usage(X509* x);
 uint32_t X509_get_extended_key_usage(X509* x);
 
+int X509_OBJECT_get_type(const X509_OBJECT* obj);
+X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj);
 #endif
 
 #if FOLLY_OPENSSL_IS_110

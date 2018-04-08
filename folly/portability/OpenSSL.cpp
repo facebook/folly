@@ -302,6 +302,10 @@ void DSA_get0_key(
   }
 }
 
+STACK_OF(X509_OBJECT) * X509_STORE_get0_objects(X509_STORE* store) {
+  return store->objs;
+}
+
 X509* X509_STORE_CTX_get0_cert(X509_STORE_CTX* ctx) {
   return ctx->cert;
 }
@@ -476,6 +480,16 @@ uint32_t X509_get_extended_key_usage(X509* x) {
   return x->ex_xkusage;
 }
 
+int X509_OBJECT_get_type(const X509_OBJECT* obj) {
+  return obj->type;
+}
+
+X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj) {
+  if (obj == nullptr || obj->type != X509_LU_X509) {
+    return nullptr;
+  }
+  return obj->data.x509;
+}
 #endif // !FOLLY_OPENSSL_IS_110
 } // namespace ssl
 } // namespace portability
