@@ -42,8 +42,8 @@ class SettingHandle {
   const Type& operator*() const {
     return core().get();
   }
-  const Type& operator->() const {
-    return core().get();
+  const Type* operator->() const {
+    return &core().get();
   }
 
   /**

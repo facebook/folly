@@ -63,6 +63,8 @@ TEST(Settings, basic) {
   EXPECT_EQ(a_ns::a_func(), 1245);
   EXPECT_EQ(b_ns::b_func(), "testbasdf");
   EXPECT_EQ(*some_ns::SETTING_follytest_some_flag, "default");
+  EXPECT_EQ(
+      std::string(some_ns::SETTING_follytest_some_flag->c_str()), "default");
   a_ns::SETTING_follytest_public_flag_to_a.set(100);
   EXPECT_EQ(*a_ns::SETTING_follytest_public_flag_to_a, 100);
   EXPECT_EQ(a_ns::getRemote(), 100);
