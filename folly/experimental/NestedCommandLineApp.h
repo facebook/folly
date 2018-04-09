@@ -16,9 +16,11 @@
 #pragma once
 
 #include <functional>
+#include <set>
 #include <stdexcept>
 
 #include <folly/CPortability.h>
+#include <folly/String.h>
 #include <folly/experimental/ProgramOptions.h>
 
 namespace folly {
@@ -54,6 +56,8 @@ class NestedCommandLineApp {
       const boost::program_options::variables_map& options,
       const std::vector<std::string>&)> Command;
 
+  static constexpr StringPiece const kHelpCommand = "help";
+  static constexpr StringPiece const kVersionCommand = "version";
   /**
    * Initialize the app.
    *
@@ -124,6 +128,11 @@ class NestedCommandLineApp {
   int run(int argc, const char* const argv[]);
   int run(const std::vector<std::string>& args);
 
+  /**
+   * Return true if name represent known built-in command (help, version)
+   */
+  bool isBuiltinCommand(const std::string& name) const;
+
  private:
   void doRun(const std::vector<std::string>& args);
   const std::string& resolveAlias(const std::string& name) const;
@@ -141,7 +150,9 @@ class NestedCommandLineApp {
 
   void displayHelp(
       const boost::program_options::variables_map& options,
-      const std::vector<std::string>& args);
+      const std::vector<std::string>& args) const;
+
+  void displayVersion() const;
 
   std::string programName_;
   std::string programHeading_;
@@ -151,6 +162,7 @@ class NestedCommandLineApp {
   boost::program_options::options_description globalOptions_;
   std::map<std::string, CommandInfo> commands_;
   std::map<std::string, std::string> aliases_;
+  std::set<folly::StringPiece> builtinCommands_;
 };
 
 } // namespace folly

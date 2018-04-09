@@ -145,5 +145,14 @@ TEST(ProgramOptionsTest, Aliases) {
                   "a", "b"}));
 }
 
+TEST(ProgramOptionsTest, BuiltinCommand) {
+  NestedCommandLineApp app;
+  ASSERT_TRUE(app.isBuiltinCommand(NestedCommandLineApp::kHelpCommand.str()));
+  ASSERT_TRUE(
+      app.isBuiltinCommand(NestedCommandLineApp::kVersionCommand.str()));
+  ASSERT_FALSE(app.isBuiltinCommand(
+      NestedCommandLineApp::kHelpCommand.str() + "nonsense"));
+}
+
 } // namespace test
 } // namespace folly
