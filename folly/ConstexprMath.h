@@ -52,14 +52,20 @@ constexpr_clamp(T const& v, T const& lo, T const& hi, Less less) {
   return less(v, lo) ? lo : less(hi, v) ? hi : v;
 }
 
+namespace detail {
+// This can be replaced with std::less once everything we care about
+// supports it.
+template <typename T>
+struct Less {
+  constexpr bool operator()(T const& a, T const& b) const {
+    return a < b;
+  }
+};
+} // namespace detail
+
 template <typename T>
 constexpr T const& constexpr_clamp(T const& v, T const& lo, T const& hi) {
-  struct Less {
-    constexpr bool operator()(T const& a, T const& b) const {
-      return a < b;
-    }
-  };
-  return constexpr_clamp(v, lo, hi, Less{});
+  return constexpr_clamp(v, lo, hi, detail::Less<T>{});
 }
 
 namespace detail {
