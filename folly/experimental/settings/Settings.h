@@ -122,7 +122,7 @@ class Setting {
  */
 #define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _desc)         \
   /* Meyers singleton to avoid SIOF */                                    \
-  inline folly::settings::detail::Setting<_Type>&                         \
+  folly::settings::detail::Setting<_Type>&                                \
       FOLLY_SETTINGS_FUNC__##_project##_##_name() {                       \
     static folly::Indestructible<folly::settings::detail::Setting<_Type>> \
         setting(                                                          \
