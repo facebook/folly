@@ -77,3 +77,21 @@ void initLoggingOrDie(folly::StringPiece configString = "");
 const char* getBaseLoggingConfig();
 
 } // namespace folly
+
+/**
+ * A helper macro to set the default logging configuration in a program.
+ *
+ * This defines the folly::getBaseLoggingConfig() function, and makes it return
+ * the specified string.
+ *
+ * This macro should be used at the top-level namespace in a .cpp file in your
+ * program.
+ */
+#define FOLLY_INIT_LOGGING_CONFIG(config)            \
+  namespace folly {                                  \
+  const char* getBaseLoggingConfig() {               \
+    static constexpr StringPiece configSP((config)); \
+    return configSP.data();                          \
+  }                                                  \
+  }                                                  \
+  static_assert(true, "require a semicolon after FOLLY_INIT_LOGGING_CONFIG()")

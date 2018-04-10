@@ -29,15 +29,11 @@ using folly::LogLevel;
 // This will use default log settings defined by folly::initializeLoggerDB().
 static ExampleObject staticInitialized("static");
 
-namespace folly {
-const char* getBaseLoggingConfig() {
-  // Configure folly to enable INFO+ messages, and everything else to
-  // enable WARNING+.
-  //
-  // Set the default log handler to log asynchronously by default.
-  return ".=WARNING,folly=INFO; default:async=true";
-}
-} // namespace folly
+// Configure folly to enable INFO+ messages, and everything else to
+// enable WARNING+.
+//
+// Set the default log handler to log asynchronously by default.
+FOLLY_INIT_LOGGING_CONFIG(".=WARNING,folly=INFO; default:async=true");
 
 int main(int argc, char* argv[]) {
   // Using log macros before calling folly::initLogging() will use the default
