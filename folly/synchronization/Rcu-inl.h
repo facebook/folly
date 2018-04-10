@@ -85,11 +85,13 @@ void rcu_domain<Tag>::retire(list_node* node) noexcept {
   uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(
                       std::chrono::steady_clock::now().time_since_epoch())
                       .count();
-  if (time > syncTime_.load(std::memory_order_relaxed) + syncTimePeriod_) {
+  auto syncTime = syncTime_.load(std::memory_order_relaxed);
+  if (time > syncTime + syncTimePeriod_ &&
+      syncTime_.compare_exchange_strong(
+          syncTime, time, std::memory_order_relaxed)) {
     list_head finished;
     {
       std::lock_guard<std::mutex> g(syncMutex_);
-      syncTime_.store(time, std::memory_order_relaxed);
       half_sync(false, finished);
     }
     // callbacks are called outside of syncMutex_
