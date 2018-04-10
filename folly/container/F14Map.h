@@ -249,6 +249,11 @@ class F14BasicMap {
     return table_.max_size();
   }
 
+  // Accounts for allocated memory only, does not include sizeof(*this).
+  std::size_t getAllocatedMemorySize() const {
+    return table_.getAllocatedMemorySize();
+  }
+
   F14TableStats computeStats() const noexcept {
     return table_.computeStats();
   }

@@ -1601,6 +1601,13 @@ class F14Table : public Policy {
     clearImpl<true>();
   }
 
+  // Get memory footprint, not including sizeof(*this).
+  std::size_t getAllocatedMemorySize() const {
+    auto bc = bucket_count();
+    return (bc == 0 ? 0 : allocSize(chunkMask_ + 1, bc)) +
+        this->indirectBytesUsed(size(), bc);
+  }
+
  private:
   static std::size_t& histoAt(
       std::vector<std::size_t>& histo,
@@ -1696,9 +1703,7 @@ class F14Table : public Policy {
     stats.bucketCount = bucket_count();
     stats.chunkCount = cc;
 
-    stats.totalBytes = sizeof(*this) +
-        (cc == 0 ? 0 : allocSize(cc, bucket_count())) +
-        this->indirectBytesUsed(size(), bucket_count());
+    stats.totalBytes = sizeof(*this) + getAllocatedMemorySize();
     stats.overheadBytes = stats.totalBytes - size() * sizeof(value_type);
 
     return stats;
