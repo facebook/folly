@@ -615,7 +615,7 @@ TEST(AsyncFileWriter, discard) {
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   folly::init(&argc, &argv);
-  folly::initLogging(FLAGS_logging);
+  folly::initLoggingOrDie(FLAGS_logging);
 
   return RUN_ALL_TESTS();
 }

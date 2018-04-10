@@ -20,7 +20,9 @@
 #include <folly/experimental/logging/test/ConfigHelpers.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
+using folly::initLogging;
 using folly::LoggerDB;
 using folly::parseLogConfig;
 
@@ -52,12 +54,28 @@ TEST(Init, checkConfig) {
   // Call initLogging()
   // Make sure it merges the supplied config argument with our custom
   // base configuration.
-  folly::initLogging(".=ERROR,folly.logging=DBG7");
+  initLogging(".=ERROR,folly.logging=DBG7");
   EXPECT_EQ(1, getBaseLoggingConfigCalled);
   EXPECT_EQ(
       parseLogConfig(".:=ERROR:default,folly=INFO:,folly.logging=DBG7:; "
                      "default=stream:stream=stdout,async=false"),
       LoggerDB::get().getConfig());
+
+  // Test calling initLogging() with bad configuration strings, and
+  // configured such that it should throw an exception on error rather than
+  // exiting.
+  //
+  // Note that it is okay to call initLogging() multiple times (we already
+  // called it successfully once above), but this isn't really something to
+  // expect most callers to want to do.
+  EXPECT_THROW_RE(
+      initLogging(".=BOGUSLEVEL"),
+      folly::LogConfigParseError,
+      R"(invalid log level "BOGUSLEVEL")");
+  EXPECT_THROW_RE(
+      initLogging(".=ERR:undefined_handler"),
+      std::invalid_argument,
+      R"(unknown log handler "undefined_handler")");
 }
 
 // We use our custom main() to ensure that folly::initLogging() has

@@ -23,6 +23,7 @@
 namespace folly {
 
 void initLogging(StringPiece configString) {
+  // Get the base logging configuration
   auto* const baseConfigStr = getBaseLoggingConfig();
   // Return early if we have nothing to do
   if (!baseConfigStr && configString.empty()) {
@@ -42,6 +43,25 @@ void initLogging(StringPiece configString) {
 
   // Apply the config settings
   LoggerDB::get().updateConfig(config);
+}
+
+void initLoggingOrDie(StringPiece configString) {
+  try {
+    initLogging(configString);
+  } catch (const std::exception& ex) {
+    // Print the error message.  We intentionally use ex.what() here instead
+    // of folly::exceptionStr() to avoid including the exception type name in
+    // the output.  The exceptions thrown by the logging library on error
+    // should have enough information to diagnose what is wrong with the
+    // input config string.
+    //
+    // We want the output here to be user-friendly since this will be shown
+    // to any user invoking a program with an error in the logging
+    // configuration string.  This output is intended for end users rather
+    // than developers.
+    fprintf(stderr, "error parsing logging configuration: %s\n", ex.what());
+    exit(1);
+  }
 }
 
 } // namespace folly

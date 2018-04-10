@@ -27,17 +27,32 @@ namespace folly {
 /**
  * Initialize the logging library.
  *
- * The input string will be parsed with parseLogConfig() and then applied to
- * the main LoggerDB singleton.
+ * This function performs the following steps:
+ * - Call folly::getBaseLoggingConfig() to get the base logging configuration
+ *   for your program.
+ * - Parse the input configString parameter with parseLogConfig(), and update
+ *   the base configuration with the settings from this argument.
+ * - Apply these combined settings to the main LoggerDB singleton using
+ *   LoggerDB::updateConfig()
  *
- * This will apply the configuration using LoggerDB::updateConfig(), so the new
- * configuration will be merged into the existing initial configuration defined
- * by initializeLoggerDB().
+ * This function will throw an exception on error.  Most errors are normally
+ * due to invalid logging configuration strings: e.g., invalid log level names
+ * or referencing undefined log handlers.
  *
- * Callers that do want to completely replace the settings can call
- * LoggerDB::resetConfig() instead of using initLogging().
+ * If you are invoking this from your program's main() function it is often
+ * more convenient to use initLoggingOrDie() to terminate your program
+ * gracefully on error rather than having to handle exceptions yourself.
  */
 void initLogging(folly::StringPiece configString = "");
+
+/**
+ * Initialize the logging library, and exit the program on error.
+ *
+ * This function behaves like initLogging(), but if an error occurs processing
+ * the logging configuration it will print an error message to stderr and then
+ * call exit(1) to terminate the program.
+ */
+void initLoggingOrDie(folly::StringPiece configString = "");
 
 /**
  * folly::getBaseLoggingConfig() allows individual executables to easily

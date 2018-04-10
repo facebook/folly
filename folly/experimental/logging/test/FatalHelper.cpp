@@ -86,7 +86,7 @@ std::string fbLogFatalCheck() {
 int main(int argc, char* argv[]) {
   // Call folly::init() and then initialize log levels and handlers
   folly::init(&argc, &argv);
-  folly::initLogging(FLAGS_logging);
+  folly::initLoggingOrDie(FLAGS_logging);
 
   // Do most of the work in a separate helper function.
   //
