@@ -26,11 +26,11 @@ settings_get_bench                                           1.73ns  577.36M
 ============================================================================
 */
 
-FOLLY_SETTING(follytest, int, benchmarked, 100, "desc");
+FOLLY_SETTING_DEFINE(follytest, benchmarked, int, 100, "desc");
 
 BENCHMARK(settings_get_bench, iters) {
   for (unsigned int i = 0; i < iters; ++i) {
-    auto value = *SETTING_follytest_benchmarked;
+    auto value = *FOLLY_SETTING(follytest, benchmarked);
     folly::doNotOptimizeAway(value);
   }
 }

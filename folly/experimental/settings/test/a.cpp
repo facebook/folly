@@ -18,21 +18,22 @@
 #include <folly/experimental/settings/Settings.h>
 
 namespace a_ns {
+FOLLY_SETTING_DEFINE(follytest, public_flag_to_a, int, 456, "Public flag to a");
 namespace {
-FOLLY_SETTING(follytest, int, internal_flag_to_a, 789, "Desc of int");
+FOLLY_SETTING_DEFINE(follytest, internal_flag_to_a, int, 789, "Desc of int");
 }
 
 int a_func() {
-  return *SETTING_follytest_public_flag_to_a +
-      *SETTING_follytest_internal_flag_to_a;
+  return *FOLLY_SETTING(follytest, public_flag_to_a) +
+      *FOLLY_SETTING(follytest, internal_flag_to_a);
 }
 
 void setRemote(int value) {
-  SETTING_follytest_public_flag_to_a.set(value, "remote_set");
+  FOLLY_SETTING(follytest, public_flag_to_a).set(value, "remote_set");
 }
 
 int getRemote() {
-  return *SETTING_follytest_public_flag_to_a;
+  return *FOLLY_SETTING(follytest, public_flag_to_a);
 }
 
 } // namespace a_ns

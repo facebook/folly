@@ -18,18 +18,26 @@
 #include <folly/experimental/settings/Settings.h>
 
 namespace b_ns {
-namespace {
-FOLLY_SETTING(
+
+FOLLY_SETTING_DEFINE(
     follytest,
+    public_flag_to_b,
     std::string,
+    "basdf",
+    "Public flag to b");
+
+namespace {
+FOLLY_SETTING_DEFINE(
+    follytest,
     internal_flag_to_b,
+    std::string,
     "test",
     "Desc of str");
 }
 
 std::string b_func() {
-  return *SETTING_follytest_internal_flag_to_b +
-      *SETTING_follytest_public_flag_to_b;
+  return *FOLLY_SETTING(follytest, internal_flag_to_b) +
+      *FOLLY_SETTING(follytest, public_flag_to_b);
 }
 
 } // namespace b_ns

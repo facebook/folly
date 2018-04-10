@@ -19,7 +19,7 @@
 
 namespace a_ns {
 
-FOLLY_SETTING_SHARED(follytest, int, public_flag_to_a, 456, "Public flag to a");
+FOLLY_SETTING_DECLARE(follytest, public_flag_to_a, int);
 
 int a_func();
 void setRemote(int value);

@@ -21,55 +21,37 @@
 #include "b.h"
 
 namespace some_ns {
-FOLLY_SETTING(follytest, std::string, some_flag, "default", "Description");
-FOLLY_SETTING(
+FOLLY_SETTING_DEFINE(
     follytest,
+    some_flag,
     std::string,
+    "default",
+    "Description");
+FOLLY_SETTING_DEFINE(
+    follytest,
     unused,
+    std::string,
     "unused_default",
     "Not used, but should still be in the list");
 // Enable to test runtime collision checking logic
 #if 0
-FOLLY_SETTING(follytest, std::string, internal_flag_to_a, "collision_with_a",
-              "Collision_with_a");
+FOLLY_SETTING_DEFINE(follytest, internal_flag_to_a, std::string,
+                     "collision_with_a",
+                     "Collision_with_a");
 #endif
 } // namespace some_ns
 
 TEST(Settings, basic) {
-  std::string allFlags;
-  folly::settings::forEachSetting([&allFlags](
-                                      folly::StringPiece name,
-                                      folly::StringPiece value,
-                                      folly::StringPiece reason,
-                                      const std::type_info& type) {
-    std::string typeName;
-    if (type == typeid(int)) {
-      typeName = "int";
-    } else if (type == typeid(std::string)) {
-      typeName = "std::string";
-    } else {
-      ASSERT_FALSE(true);
-    }
-    allFlags += folly::sformat("{} {} {} {}\n", name, value, reason, typeName);
-  });
-  EXPECT_EQ(
-      allFlags,
-      "follytest_internal_flag_to_a 789 default int\n"
-      "follytest_internal_flag_to_b test default std::string\n"
-      "follytest_public_flag_to_a 456 default int\n"
-      "follytest_public_flag_to_b basdf default std::string\n"
-      "follytest_some_flag default default std::string\n"
-      "follytest_unused unused_default default std::string\n");
   EXPECT_EQ(a_ns::a_func(), 1245);
   EXPECT_EQ(b_ns::b_func(), "testbasdf");
-  EXPECT_EQ(*some_ns::SETTING_follytest_some_flag, "default");
-  EXPECT_EQ(
-      std::string(some_ns::SETTING_follytest_some_flag->c_str()), "default");
-  a_ns::SETTING_follytest_public_flag_to_a.set(100);
-  EXPECT_EQ(*a_ns::SETTING_follytest_public_flag_to_a, 100);
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "default");
+  // Test -> API
+  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, some_flag)->size(), 7);
+  a_ns::FOLLY_SETTING(follytest, public_flag_to_a).set(100);
+  EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 100);
   EXPECT_EQ(a_ns::getRemote(), 100);
   a_ns::setRemote(200);
-  EXPECT_EQ(*a_ns::SETTING_follytest_public_flag_to_a, 200);
+  EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 200);
   EXPECT_EQ(a_ns::getRemote(), 200);
 
   auto res = folly::settings::getAsString("follytest_public_flag_to_a");
@@ -82,7 +64,7 @@ TEST(Settings, basic) {
 
   EXPECT_TRUE(folly::settings::setFromString(
       "follytest_public_flag_to_a", "300", "from_string"));
-  EXPECT_EQ(*a_ns::SETTING_follytest_public_flag_to_a, 300);
+  EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 300);
   EXPECT_EQ(a_ns::getRemote(), 300);
   res = folly::settings::getAsString("follytest_public_flag_to_a");
   EXPECT_TRUE(res.hasValue());
@@ -92,8 +74,40 @@ TEST(Settings, basic) {
   EXPECT_FALSE(folly::settings::setFromString(
       "follytest_nonexisting", "300", "from_string"));
 
+  std::string allFlags;
+  folly::settings::forEachSetting(
+      [&allFlags](
+          const folly::settings::SettingMetadata& meta,
+          folly::StringPiece value,
+          folly::StringPiece reason) {
+        if (meta.typeId == typeid(int)) {
+          EXPECT_EQ(meta.typeStr, "int");
+        } else if (meta.typeId == typeid(std::string)) {
+          EXPECT_EQ(meta.typeStr, "std::string");
+        } else {
+          ASSERT_FALSE(true);
+        }
+        allFlags += folly::sformat(
+            "{}/{}/{}/{}/{}/{}/{}\n",
+            meta.project,
+            meta.name,
+            meta.typeStr,
+            meta.defaultStr,
+            meta.description,
+            value,
+            reason);
+      });
+  EXPECT_EQ(
+      allFlags,
+      "follytest/internal_flag_to_a/int/789/Desc of int/789/default\n"
+      "follytest/internal_flag_to_b/std::string/\"test\"/Desc of str/test/default\n"
+      "follytest/public_flag_to_a/int/456/Public flag to a/300/from_string\n"
+      "follytest/public_flag_to_b/std::string/\"basdf\"/Public flag to b/basdf/default\n"
+      "follytest/some_flag/std::string/\"default\"/Description/default/default\n"
+      "follytest/unused/std::string/\"unused_default\"/Not used, but should still be in the list/unused_default/default\n");
+
   EXPECT_TRUE(folly::settings::resetToDefault("follytest_public_flag_to_a"));
-  EXPECT_EQ(*a_ns::SETTING_follytest_public_flag_to_a, 456);
+  EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 456);
   EXPECT_EQ(a_ns::getRemote(), 456);
 
   EXPECT_FALSE(folly::settings::resetToDefault("follytest_nonexisting"));

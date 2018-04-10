@@ -24,9 +24,13 @@
 #include <folly/Conv.h>
 #include <folly/Range.h>
 #include <folly/SharedMutex.h>
+#include <folly/ThreadLocal.h>
 
 namespace folly {
 namespace settings {
+
+struct SettingMetadata;
+
 namespace detail {
 
 template <class Type>
@@ -44,23 +48,15 @@ class SettingCoreBase {
   virtual void setFromString(StringPiece newValue, StringPiece reason) = 0;
   virtual std::pair<std::string, std::string> getAsString() const = 0;
   virtual void resetToDefault() = 0;
-  virtual const std::type_info& typeId() const = 0;
+  virtual const SettingMetadata& meta() const = 0;
   virtual ~SettingCoreBase() {}
 };
 
-std::shared_ptr<SettingCoreBase> registerImpl(
-    StringPiece project,
-    StringPiece name,
-    const std::type_info& type,
-    StringPiece defaultString,
-    StringPiece desc,
-    bool unique,
-    std::shared_ptr<SettingCoreBase> base);
+void registerSetting(SettingCoreBase& core);
 
-template <class SettingMeta>
+template <class Type>
 class SettingCore : public SettingCoreBase {
  public:
-  using Type = typename SettingMeta::Type;
   using Contents = SettingContents<Type>;
 
   void setFromString(StringPiece newValue, StringPiece reason) override {
@@ -72,10 +68,10 @@ class SettingCore : public SettingCoreBase {
         to<std::string>(contents.value), contents.updateReason);
   }
   void resetToDefault() override {
-    set(SettingMeta::def(), "default");
+    set(defaultValue_, "default");
   }
-  const std::type_info& typeId() const override {
-    return typeid(Type);
+  const SettingMetadata& meta() const override {
+    return meta_;
   }
 
   const Type& get() const {
@@ -87,24 +83,34 @@ class SettingCore : public SettingCoreBase {
     ++(*globalVersion_);
   }
 
-  SettingCore()
-      : globalValue_(
-            std::make_shared<Contents>("default", SettingMeta::def())) {}
-
-  ~SettingCore() {}
+  SettingCore(const SettingMetadata& meta, Type defaultValue)
+      : meta_(meta),
+        defaultValue_(std::move(defaultValue)),
+        globalValue_(std::make_shared<Contents>("default", defaultValue_)),
+        localValue_([]() {
+          return new CachelinePadded<
+              Indestructible<std::pair<size_t, std::shared_ptr<Contents>>>>(
+              0, nullptr);
+        }) {
+    registerSetting(*this);
+  }
 
  private:
+  const SettingMetadata& meta_;
+  const Type defaultValue_;
+
   SharedMutex globalLock_;
   std::shared_ptr<Contents> globalValue_;
 
   /* Local versions start at 0, this will force a read on first local access. */
   CachelinePadded<std::atomic<size_t>> globalVersion_{1};
 
+  ThreadLocal<CachelinePadded<
+      Indestructible<std::pair<size_t, std::shared_ptr<Contents>>>>>
+      localValue_;
+
   std::shared_ptr<Contents>& tlValue() {
-    thread_local CachelinePadded<
-        Indestructible<std::pair<size_t, std::shared_ptr<Contents>>>>
-        localValue;
-    auto& value = **localValue;
+    auto& value = ***localValue_;
     while (value.first < *globalVersion_) {
       /* If this destroys the old value, do it without holding the lock */
       value.second.reset();

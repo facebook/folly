@@ -19,12 +19,7 @@
 
 namespace b_ns {
 
-FOLLY_SETTING_SHARED(
-    follytest,
-    std::string,
-    public_flag_to_b,
-    "basdf",
-    "Public flag to b");
+FOLLY_SETTING_DECLARE(follytest, public_flag_to_b, std::string);
 
 std::string b_func();
 
