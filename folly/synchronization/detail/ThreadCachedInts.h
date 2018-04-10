@@ -36,8 +36,8 @@ namespace detail {
 
 template <typename Tag>
 class ThreadCachedInts {
-  std::atomic<int64_t> orphan_inc_[2];
-  std::atomic<int64_t> orphan_dec_[2];
+  std::atomic<int64_t> orphan_inc_[2] = {};
+  std::atomic<int64_t> orphan_dec_[2] = {};
   folly::detail::Futex<> waiting_{0};
 
   class Integer {

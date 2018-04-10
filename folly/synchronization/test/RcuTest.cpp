@@ -171,7 +171,7 @@ TEST(RcuTest, Synchronize) {
 TEST(RcuTest, NewDomainTest) {
   struct UniqueTag;
   rcu_domain<UniqueTag> newdomain(nullptr);
-  synchronize_rcu();
+  synchronize_rcu(&newdomain);
 }
 
 TEST(RcuTest, NewDomainGuardTest) {
