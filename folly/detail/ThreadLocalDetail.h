@@ -141,6 +141,7 @@ struct ElementWrapper {
 };
 
 struct StaticMetaBase;
+struct ThreadEntryList;
 
 /**
  * Per-thread entry.  Each thread using a StaticMeta object has one.
@@ -153,7 +154,14 @@ struct ThreadEntry {
   size_t elementsCapacity{0};
   ThreadEntry* next{nullptr};
   ThreadEntry* prev{nullptr};
+  ThreadEntryList* list{nullptr};
+  ThreadEntry* listNext{nullptr};
   StaticMetaBase* meta{nullptr};
+};
+
+struct ThreadEntryList {
+  ThreadEntry* head{nullptr};
+  size_t count{0};
 };
 
 constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
@@ -279,6 +287,8 @@ struct StaticMetaBase {
     t->next = t->prev = t;
   }
 
+  static ThreadEntryList* getThreadEntryList();
+
   static void onThreadExit(void* ptr);
 
   uint32_t allocate(EntryID* ent);
@@ -370,12 +380,18 @@ struct StaticMeta : StaticMetaBase {
     ThreadEntry* threadEntry =
       static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
+      ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
       static FOLLY_TLS ThreadEntry threadEntrySingleton;
       threadEntry = &threadEntrySingleton;
 #else
       threadEntry = new ThreadEntry();
 #endif
+      threadEntry->list = threadEntryList;
+      threadEntry->listNext = threadEntryList->head;
+      threadEntryList->head = threadEntry;
+      threadEntryList->count++;
+
       threadEntry->meta = &meta;
       int ret = pthread_setspecific(key, threadEntry);
       checkPosixError(ret, "pthread_setspecific failed");

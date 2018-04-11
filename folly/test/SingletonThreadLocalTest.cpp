@@ -115,3 +115,21 @@ TEST(SingletonThreadLocalTest, AccessAfterFastPathDestruction) {
   th.join();
   EXPECT_EQ(6, counter);
 }
+
+TEST(ThreadLocal, TagDependencyTest) {
+  struct mytag {};
+
+  typedef SingletonThreadLocal<int> SingletonInt;
+  struct barstruct {
+    ~barstruct() {
+      SingletonInt::get()++;
+    }
+  };
+  typedef SingletonThreadLocal<barstruct, mytag> BarSingleton;
+
+  std::thread([&]() {
+    SingletonInt::get();
+    BarSingleton::get();
+  })
+      .join();
+}
