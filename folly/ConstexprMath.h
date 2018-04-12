@@ -22,6 +22,44 @@
 
 namespace folly {
 
+// TODO: Replace with std::equal_to, etc., after upgrading to C++14.
+template <typename T>
+struct constexpr_equal_to {
+  constexpr bool operator()(T const& a, T const& b) const {
+    return a == b;
+  }
+};
+template <typename T>
+struct constexpr_not_equal_to {
+  constexpr bool operator()(T const& a, T const& b) const {
+    return a != b;
+  }
+};
+template <typename T>
+struct constexpr_less {
+  constexpr bool operator()(T const& a, T const& b) const {
+    return a < b;
+  }
+};
+template <typename T>
+struct constexpr_less_qual {
+  constexpr bool operator()(T const& a, T const& b) const {
+    return a <= b;
+  }
+};
+template <typename T>
+struct constexpr_greater {
+  constexpr bool operator()(T const& a, T const& b) const {
+    return a > b;
+  }
+};
+template <typename T>
+struct constexpr_reater_equal {
+  constexpr bool operator()(T const& a, T const& b) const {
+    return a >= b;
+  }
+};
+
 // TLDR: Prefer using operator< for ordering. And when
 // a and b are equivalent objects, we return b to make
 // sorting stable.
@@ -51,21 +89,9 @@ constexpr T const&
 constexpr_clamp(T const& v, T const& lo, T const& hi, Less less) {
   return less(v, lo) ? lo : less(hi, v) ? hi : v;
 }
-
-namespace detail {
-// This can be replaced with std::less once everything we care about
-// supports it.
-template <typename T>
-struct Less {
-  constexpr bool operator()(T const& a, T const& b) const {
-    return a < b;
-  }
-};
-} // namespace detail
-
 template <typename T>
 constexpr T const& constexpr_clamp(T const& v, T const& lo, T const& hi) {
-  return constexpr_clamp(v, lo, hi, detail::Less<T>{});
+  return constexpr_clamp(v, lo, hi, constexpr_less<T>{});
 }
 
 namespace detail {
