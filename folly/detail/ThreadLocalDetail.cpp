@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <folly/detail/ThreadLocalDetail.h>
+#include <folly/synchronization/CallOnce.h>
 
 #include <list>
 #include <mutex>
@@ -33,18 +34,13 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
   static FOLLY_TLS ThreadEntryList threadEntryListSingleton;
   return &threadEntryListSingleton;
 #else
-  static bool init = false;
-  static std::mutex lock;
   static pthread_key_t pthreadKey;
-
-  {
-    std::lock_guard<std::mutex> guard(lock);
-    if (!init) {
-      int ret = pthread_key_create(&pthreadKey, nullptr);
-      checkPosixError(ret, "pthread_key_create failed");
-      PthreadKeyUnregister::registerKey(pthreadKey);
-    }
-  }
+  static folly::once_flag onceFlag;
+  folly::call_once(onceFlag, [&]() {
+    int ret = pthread_key_create(&pthreadKey, nullptr);
+    checkPosixError(ret, "pthread_key_create failed");
+    PthreadKeyUnregister::registerKey(pthreadKey);
+  });
 
   ThreadEntryList* threadEntryList =
       static_cast<ThreadEntryList*>(pthread_getspecific(pthreadKey));
