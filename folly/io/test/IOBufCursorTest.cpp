@@ -445,7 +445,7 @@ TEST(IOBuf, cloneAndInsert) {
 }
 
 TEST(IOBuf, cloneWithEmptyBufAtStart) {
-  folly::IOBufEqual eq;
+  folly::IOBufEqualTo eq;
   auto empty = IOBuf::create(0);
   auto hel = IOBuf::create(3);
   append(hel, "hel");

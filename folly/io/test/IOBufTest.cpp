@@ -1044,7 +1044,7 @@ std::unique_ptr<IOBuf> fromStr(StringPiece sp) {
 } // namespace
 
 TEST(IOBuf, HashAndEqual) {
-  folly::IOBufEqual eq;
+  folly::IOBufEqualTo eq;
   folly::IOBufHash hash;
 
   EXPECT_TRUE(eq(nullptr, nullptr));

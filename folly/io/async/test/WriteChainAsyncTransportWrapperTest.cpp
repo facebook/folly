@@ -48,7 +48,7 @@ class TestWriteChainAsyncTransportWrapper :
 };
 
 MATCHER_P(BufMatches, expected, "") {
-  folly::IOBufEqual eq;
+  folly::IOBufEqualTo eq;
   return eq(*arg, *expected);
 }
 

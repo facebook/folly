@@ -1028,7 +1028,7 @@ size_t IOBufHash::operator()(const IOBuf& buf) const {
   return h1;
 }
 
-bool IOBufEqual::operator()(const IOBuf& a, const IOBuf& b) const {
+bool IOBufEqualTo::operator()(const IOBuf& a, const IOBuf& b) const {
   io::Cursor ca(&a);
   io::Cursor cb(&b);
   for (;;) {

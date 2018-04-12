@@ -1424,7 +1424,7 @@ struct IOBufHash {
 /**
  * Equality predicate for IOBuf objects. Compares data in the entire chain.
  */
-struct IOBufEqual {
+struct IOBufEqualTo {
   bool operator()(const IOBuf& a, const IOBuf& b) const;
   bool operator()(const std::unique_ptr<IOBuf>& a,
                   const std::unique_ptr<IOBuf>& b) const {
