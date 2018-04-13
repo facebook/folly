@@ -42,7 +42,7 @@ struct constexpr_less {
   }
 };
 template <typename T>
-struct constexpr_less_qual {
+struct constexpr_less_equal {
   constexpr bool operator()(T const& a, T const& b) const {
     return a <= b;
   }
@@ -54,7 +54,7 @@ struct constexpr_greater {
   }
 };
 template <typename T>
-struct constexpr_reater_equal {
+struct constexpr_greater_equal {
   constexpr bool operator()(T const& a, T const& b) const {
     return a >= b;
   }
