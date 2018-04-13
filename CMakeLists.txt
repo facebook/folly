@@ -632,6 +632,7 @@ if (BUILD_TESTS)
 
     DIRECTORY stats/test/
       TEST histogram_test SOURCES HistogramTest.cpp
+      TEST tdigest_test SOURCES TDigestTest.cpp
       TEST timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
       TEST timeseries_test SOURCES TimeSeriesTest.cpp
 

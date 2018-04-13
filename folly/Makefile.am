@@ -444,6 +444,7 @@ nobase_follyinclude_HEADERS = \
 	stats/Histogram.h \
 	stats/MultiLevelTimeSeries-defs.h \
 	stats/MultiLevelTimeSeries.h \
+	stats/TDigest.h \
 	stats/TimeseriesHistogram-defs.h \
 	stats/TimeseriesHistogram.h \
 	synchronization/AsymmetricMemoryBarrier.h \
@@ -633,6 +634,7 @@ libfolly_la_SOURCES = \
 	stats/BucketedTimeSeries.cpp \
 	stats/Histogram.cpp \
 	stats/MultiLevelTimeSeries.cpp \
+	stats/TDigest.cpp \
 	stats/TimeseriesHistogram.cpp \
 	synchronization/AsymmetricMemoryBarrier.cpp \
 	synchronization/LifoSem.cpp \
