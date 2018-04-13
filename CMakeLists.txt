@@ -99,14 +99,14 @@ auto_sources(hfiles "*.h" "RECURSE" "${FOLLY_DIR}")
 # library sources.  Test sources are listed separately below.
 REMOVE_MATCHES_FROM_LISTS(files hfiles
   MATCHES
-    "/build/"
-    "/experimental/exception_tracer/"
-    "/experimental/hazptr/bench/"
-    "/experimental/hazptr/example/"
-    "/experimental/logging/example/"
-    "/futures/exercises/"
-    "/test/"
-    "/tools/"
+    "^${FOLLY_DIR}/build/"
+    "^${FOLLY_DIR}/experimental/exception_tracer/"
+    "^${FOLLY_DIR}/experimental/hazptr/bench/"
+    "^${FOLLY_DIR}/experimental/hazptr/example/"
+    "^${FOLLY_DIR}/experimental/logging/example/"
+    "^${FOLLY_DIR}/futures/exercises/"
+    "^${FOLLY_DIR}/(.*/)?test/"
+    "^${FOLLY_DIR}/tools/"
     "Benchmark.cpp$"
     "Test.cpp$"
 )
@@ -151,7 +151,7 @@ list(APPEND hfiles
 if (NOT FOLLY_USE_SYMBOLIZER)
   REMOVE_MATCHES_FROM_LISTS(files hfiles
     MATCHES
-      "/experimental/symbolizer/"
+      "^${FOLLY_DIR}/experimental/symbolizer/"
   )
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/SingletonStackTrace.cpp
