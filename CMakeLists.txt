@@ -96,7 +96,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR}/experimental/hazptr/example/"
     "^${FOLLY_DIR}/experimental/logging/example/"
     "^${FOLLY_DIR}/futures/exercises/"
-    "^${FOLLY_DIR}.*/test/"
+    "^${FOLLY_DIR}/(.*/)?test/"
     "^${FOLLY_DIR}/tools/"
     "Benchmark.cpp$"
     "Test.cpp$"
