@@ -25,4 +25,48 @@ constexpr ordering to_ordering(T c) {
   return c < T(0) ? ordering::lt : c > T(0) ? ordering::gt : ordering::eq;
 }
 
+namespace detail {
+
+template <typename C, ordering o, bool ne>
+struct cmp_pred : private C {
+  using C::C;
+
+  template <typename A, typename B>
+  constexpr bool operator()(A&& a, B&& b) const {
+    return ne ^ (C::operator()(static_cast<A&&>(a), static_cast<B&&>(b)) == o);
+  }
+};
+
+} // namespace detail
+
+template <typename C>
+struct compare_equal_to : detail::cmp_pred<C, ordering::eq, 0> {
+  using detail::cmp_pred<C, ordering::eq, 0>::cmp_pred;
+};
+
+template <typename C>
+struct compare_not_equal_to : detail::cmp_pred<C, ordering::eq, 1> {
+  using detail::cmp_pred<C, ordering::eq, 1>::cmp_pred;
+};
+
+template <typename C>
+struct compare_less : detail::cmp_pred<C, ordering::lt, 0> {
+  using detail::cmp_pred<C, ordering::lt, 0>::cmp_pred;
+};
+
+template <typename C>
+struct compare_less_equal : detail::cmp_pred<C, ordering::gt, 1> {
+  using detail::cmp_pred<C, ordering::gt, 1>::cmp_pred;
+};
+
+template <typename C>
+struct compare_greater : detail::cmp_pred<C, ordering::gt, 0> {
+  using detail::cmp_pred<C, ordering::gt, 0>::cmp_pred;
+};
+
+template <typename C>
+struct compare_greater_equal : detail::cmp_pred<C, ordering::lt, 1> {
+  using detail::cmp_pred<C, ordering::lt, 1>::cmp_pred;
+};
+
 } // namespace folly
