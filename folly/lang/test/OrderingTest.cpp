@@ -27,3 +27,13 @@ TEST_F(OrderingTest, ordering) {
   EXPECT_EQ(0, int(ordering::eq));
   EXPECT_EQ(+1, int(ordering::gt));
 }
+
+TEST_F(OrderingTest, to_ordering) {
+  EXPECT_EQ(ordering::lt, to_ordering(int(ordering::lt)));
+  EXPECT_EQ(ordering::eq, to_ordering(int(ordering::eq)));
+  EXPECT_EQ(ordering::gt, to_ordering(int(ordering::gt)));
+
+  EXPECT_EQ(ordering::lt, to_ordering(-22));
+  EXPECT_EQ(ordering::eq, to_ordering(0));
+  EXPECT_EQ(ordering::gt, to_ordering(+44));
+}
