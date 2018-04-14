@@ -63,10 +63,4 @@ if (FOLLY_USE_SYMBOLIZER)
     LIBRARY DESTINATION ${LIB_INSTALL_DIR}
     ARCHIVE DESTINATION ${LIB_INSTALL_DIR}
   )
-  install(
-    EXPORT folly_exception_tracer
-    DESTINATION ${CMAKE_INSTALL_DIR}
-    NAMESPACE Folly::
-    FILE folly-exception-tracer-targets.cmake
-  )
 endif()
