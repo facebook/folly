@@ -1028,21 +1028,24 @@ size_t IOBufHash::operator()(const IOBuf& buf) const {
   return h1;
 }
 
-bool IOBufEqualTo::operator()(const IOBuf& a, const IOBuf& b) const {
+ordering IOBufCompare::operator()(const IOBuf& a, const IOBuf& b) const {
   io::Cursor ca(&a);
   io::Cursor cb(&b);
   for (;;) {
     auto ba = ca.peekBytes();
     auto bb = cb.peekBytes();
     if (ba.empty() && bb.empty()) {
-      return true;
-    } else if (ba.empty() || bb.empty()) {
-      return false;
+      return ordering::eq;
+    } else if (ba.empty()) {
+      return ordering::lt;
+    } else if (bb.empty()) {
+      return ordering::gt;
     }
-    size_t n = std::min(ba.size(), bb.size());
+    const size_t n = std::min(ba.size(), bb.size());
     DCHECK_GT(n, 0u);
-    if (memcmp(ba.data(), bb.data(), n)) {
-      return false;
+    const ordering r = to_ordering(std::memcmp(ba.data(), bb.data(), n));
+    if (r != ordering::eq) {
+      return r;
     }
     ca.skip(n);
     cb.skip(n);

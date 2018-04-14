@@ -31,6 +31,7 @@
 #include <folly/FBVector.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/lang/Ordering.h>
 #include <folly/portability/SysUio.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
@@ -1422,21 +1423,52 @@ struct IOBufHash {
 };
 
 /**
- * Equality predicate for IOBuf objects. Compares data in the entire chain.
+ * Ordering for IOBuf objects. Compares data in the entire chain.
  */
-struct IOBufEqualTo {
-  bool operator()(const IOBuf& a, const IOBuf& b) const;
-  bool operator()(const std::unique_ptr<IOBuf>& a,
-                  const std::unique_ptr<IOBuf>& b) const {
-    if (!a && !b) {
-      return true;
-    } else if (!a || !b) {
-      return false;
-    } else {
-      return (*this)(*a, *b);
-    }
+struct IOBufCompare {
+  ordering operator()(const IOBuf& a, const IOBuf& b) const;
+  ordering operator()(
+      const std::unique_ptr<IOBuf>& a,
+      const std::unique_ptr<IOBuf>& b) const {
+    // clang-format off
+    return
+        !a && !b ? ordering::eq :
+        !a && b ? ordering::lt :
+        a && !b ? ordering::gt :
+        operator()(*a, *b);
+    // clang-format on
   }
 };
+
+/**
+ * Equality predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufEqualTo : compare_equal_to<IOBufCompare> {};
+
+/**
+ * Inequality predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufNotEqualTo : compare_not_equal_to<IOBufCompare> {};
+
+/**
+ * Less predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufLess : compare_less<IOBufCompare> {};
+
+/**
+ * At-most predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufLessEqual : compare_less_equal<IOBufCompare> {};
+
+/**
+ * Greater predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufGreater : compare_greater<IOBufCompare> {};
+
+/**
+ * At-least predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufGreaterEqual : compare_greater_equal<IOBufCompare> {};
 
 template <class UniquePtr>
 typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,

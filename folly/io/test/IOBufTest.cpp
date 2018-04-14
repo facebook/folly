@@ -25,12 +25,13 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
+using folly::ByteRange;
 using folly::fbstring;
 using folly::fbvector;
 using folly::IOBuf;
-using folly::TypedIOBuf;
+using folly::ordering;
 using folly::StringPiece;
-using folly::ByteRange;
+using folly::TypedIOBuf;
 using std::unique_ptr;
 
 void append(std::unique_ptr<IOBuf>& buf, StringPiece str) {
@@ -1041,6 +1042,14 @@ namespace {
 std::unique_ptr<IOBuf> fromStr(StringPiece sp) {
   return IOBuf::copyBuffer(ByteRange(sp));
 }
+
+std::unique_ptr<IOBuf> seq(std::initializer_list<StringPiece> sps) {
+  auto ret = IOBuf::create(0);
+  for (auto sp : sps) {
+    ret->prependChain(IOBuf::copyBuffer(ByteRange(sp)));
+  }
+  return ret;
+}
 } // namespace
 
 TEST(IOBuf, HashAndEqual) {
@@ -1096,6 +1105,30 @@ TEST(IOBuf, HashAndEqual) {
 
   EXPECT_TRUE(eq(e, f));
   EXPECT_EQ(hash(e), hash(f));
+}
+
+TEST(IOBuf, IOBufCompare) {
+  folly::IOBufCompare op;
+  auto n = std::unique_ptr<IOBuf>{};
+  auto e = IOBuf::create(0);
+  auto hello1 = seq({"hello"});
+  auto hello2 = seq({"hel", "lo"});
+  auto hello3 = seq({"he", "ll", "o"});
+  auto hellow = seq({"hellow"});
+  auto hellox = seq({"hellox"});
+
+  EXPECT_EQ(ordering::eq, op(n, n));
+  EXPECT_EQ(ordering::lt, op(n, e));
+  EXPECT_EQ(ordering::gt, op(e, n));
+  EXPECT_EQ(ordering::lt, op(e, hello1));
+  EXPECT_EQ(ordering::gt, op(hello1, e));
+  EXPECT_EQ(ordering::eq, op(hello1, hello1));
+  EXPECT_EQ(ordering::eq, op(hello1, hello2));
+  EXPECT_EQ(ordering::eq, op(hello1, hello3));
+  EXPECT_EQ(ordering::lt, op(hello1, hellow));
+  EXPECT_EQ(ordering::gt, op(hellow, hello1));
+  EXPECT_EQ(ordering::lt, op(hellow, hellox));
+  EXPECT_EQ(ordering::gt, op(hellox, hellow));
 }
 
 // reserveSlow() had a bug when reallocating the buffer in place. It would
