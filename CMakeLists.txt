@@ -225,7 +225,7 @@ target_include_directories(folly_base
 )
 
 foreach (LIB ${FOLLY_SHINY_DEPENDENCIES})
-  target_include_directories(folly_base PUBLIC $<TARGET_PROPERTY:${LIB},INCLUDE_DIRECTORIES>)
+  target_include_directories(folly_base PUBLIC $<TARGET_PROPERTY:${LIB},INTERFACE_INCLUDE_DIRECTORIES>)
   target_compile_definitions(folly_base PUBLIC $<TARGET_PROPERTY:${LIB},INTERFACE_COMPILE_DEFINITIONS>)
 endforeach()
 
@@ -239,8 +239,10 @@ add_executable(GenerateFingerprintTables
   $<TARGET_OBJECTS:folly_base>
 )
 target_link_libraries(GenerateFingerprintTables PRIVATE ${FOLLY_LINK_LIBRARIES})
-target_include_directories(GenerateFingerprintTables PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
-add_dependencies(GenerateFingerprintTables folly_base)
+target_include_directories(GenerateFingerprintTables
+  PRIVATE
+    $<TARGET_PROPERTY:folly_base,INTERFACE_INCLUDE_DIRECTORIES>
+)
 apply_folly_compile_options_to_target(GenerateFingerprintTables)
 set_property(TARGET GenerateFingerprintTables PROPERTY FOLDER "Build")
 source_group("" FILES ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp)
@@ -264,8 +266,10 @@ add_library(folly_fingerprint STATIC
   $<TARGET_OBJECTS:folly_base>
 )
 target_link_libraries(folly_fingerprint PRIVATE ${FOLLY_LINK_LIBRARIES})
-target_include_directories(folly_fingerprint PRIVATE $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
-add_dependencies(folly_fingerprint folly_base)
+target_include_directories(folly_fingerprint
+  PRIVATE
+    $<TARGET_PROPERTY:folly_base,INTERFACE_INCLUDE_DIRECTORIES>
+)
 apply_folly_compile_options_to_target(folly_fingerprint)
 
 # We want to generate a single library and target for folly, but we needed a
