@@ -10,7 +10,6 @@ endif()
 
 # includes
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # package information
 set(PACKAGE_NAME      "folly")
@@ -198,51 +197,35 @@ if (BUILD_SHARED_LIBS)
 endif()
 auto_source_group(folly ${FOLLY_DIR} ${files} ${hfiles})
 apply_folly_compile_options_to_target(folly_base)
-target_include_directories(folly_base PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 # Add the generated files to the correct source group.
 source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
 source_group("folly\\build" FILES
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
 )
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(FOLLY_LINK_LIBRARIES
-    ${FOLLY_LINK_LIBRARIES}
-    Iphlpapi.lib
-    Ws2_32.lib
-  )
-endif()
-
-set(FOLLY_LINK_LIBRARIES
-  ${FOLLY_LINK_LIBRARIES}
-  ${FOLLY_SHINY_DEPENDENCIES}
+target_include_directories(folly_deps
+  INTERFACE
+    $<BUILD_INTERFACE:
+      ${CMAKE_CURRENT_SOURCE_DIR}
+      ${CMAKE_CURRENT_BINARY_DIR}>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_include_directories(folly_base
   PUBLIC
-    ${FOLLY_INCLUDE_DIRECTORIES}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
 )
-
-foreach (LIB ${FOLLY_SHINY_DEPENDENCIES})
-  target_include_directories(folly_base PUBLIC $<TARGET_PROPERTY:${LIB},INTERFACE_INCLUDE_DIRECTORIES>)
-  target_compile_definitions(folly_base PUBLIC $<TARGET_PROPERTY:${LIB},INTERFACE_COMPILE_DEFINITIONS>)
-endforeach()
-
-if (FOLLY_HAVE_PTHREAD)
-  target_include_directories(folly_base PUBLIC ${LIBPTHREAD_INCLUDE_DIRS})
-endif()
+target_compile_definitions(folly_base
+  PUBLIC
+    $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
+)
 
 # Now to generate the fingerprint tables
 add_executable(GenerateFingerprintTables
   ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp
   $<TARGET_OBJECTS:folly_base>
 )
-target_link_libraries(GenerateFingerprintTables PRIVATE ${FOLLY_LINK_LIBRARIES})
-target_include_directories(GenerateFingerprintTables
-  PRIVATE
-    $<TARGET_PROPERTY:folly_base,INTERFACE_INCLUDE_DIRECTORIES>
-)
+target_link_libraries(GenerateFingerprintTables PRIVATE folly_deps)
 apply_folly_compile_options_to_target(GenerateFingerprintTables)
 set_property(TARGET GenerateFingerprintTables PROPERTY FOLDER "Build")
 source_group("" FILES ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp)
@@ -265,11 +248,7 @@ add_library(folly_fingerprint STATIC
   ${FOLLY_DIR}/detail/FingerprintPolynomial.h
   $<TARGET_OBJECTS:folly_base>
 )
-target_link_libraries(folly_fingerprint PRIVATE ${FOLLY_LINK_LIBRARIES})
-target_include_directories(folly_fingerprint
-  PRIVATE
-    $<TARGET_PROPERTY:folly_base,INTERFACE_INCLUDE_DIRECTORIES>
-)
+target_link_libraries(folly_fingerprint PRIVATE folly_deps)
 apply_folly_compile_options_to_target(folly_fingerprint)
 
 # We want to generate a single library and target for folly, but we needed a
@@ -287,15 +266,9 @@ add_library(folly
 apply_folly_compile_options_to_target(folly)
 source_group("" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp)
 
-target_link_libraries(folly PUBLIC ${FOLLY_LINK_LIBRARIES})
-target_include_directories(folly
-  INTERFACE
-    ${FOLLY_INCLUDE_DIRECTORIES}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
+target_link_libraries(folly PUBLIC folly_deps)
 
-install(TARGETS folly
+install(TARGETS folly folly_deps
   EXPORT folly
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION ${LIB_INSTALL_DIR}
