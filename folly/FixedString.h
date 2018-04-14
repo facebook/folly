@@ -33,6 +33,7 @@
 #include <folly/Range.h>
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/Ordering.h>
 #include <folly/portability/Constexpr.h>
 
 namespace folly {
@@ -99,8 +100,6 @@ constexpr const Char (&checkNullTerminated(const Char (&a)[N]) noexcept)[N] {
       : (assertNotNullTerminated(), decltype(a)(a));
 }
 
-enum class Cmp : int { LT = -1, EQ = 0, GT = 1 };
-
 // Rather annoyingly, GCC's -Warray-bounds warning issues false positives for
 // this code. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61971
 #if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 5
@@ -109,7 +108,7 @@ enum class Cmp : int { LT = -1, EQ = 0, GT = 1 };
 #endif
 
 template <class Left, class Right>
-constexpr Cmp compare_(
+constexpr ordering compare_(
     const Left& left,
     std::size_t left_pos,
     std::size_t left_size,
@@ -117,12 +116,12 @@ constexpr Cmp compare_(
     std::size_t right_pos,
     std::size_t right_size) noexcept {
   return left_pos == left_size
-      ? (right_pos == right_size ? Cmp::EQ : Cmp::LT)
-      : (right_pos == right_size ? Cmp::GT
+      ? (right_pos == right_size ? ordering::eq : ordering::lt)
+      : (right_pos == right_size ? ordering::gt
                                  : (left[left_pos] < right[right_pos]
-                                        ? Cmp::LT
+                                        ? ordering::lt
                                         : (left[left_pos] > right[right_pos]
-                                               ? Cmp::GT
+                                               ? ordering::gt
                                                : fixedstring::compare_(
                                                      left,
                                                      left_pos + 1u,
@@ -139,7 +138,7 @@ constexpr bool equal_(
     const Right& right,
     std::size_t right_size) noexcept {
   return left_size == right_size &&
-      Cmp::EQ == compare_(left, 0u, left_size, right, 0u, right_size);
+      ordering::eq == compare_(left, 0u, left_size, right, 0u, right_size);
 }
 
 template <class Char, class Left, class Right>
@@ -2701,7 +2700,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend constexpr bool operator<(
       const Char* a,
       const BasicFixedString& b) noexcept {
-    return detail::fixedstring::Cmp::LT ==
+    return ordering::lt ==
         detail::fixedstring::compare_(
                a, 0u, folly::constexpr_strlen(a), b.data_, 0u, b.size_);
   }
@@ -2712,7 +2711,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend constexpr bool operator<(
       const BasicFixedString& a,
       const Char* b) noexcept {
-    return detail::fixedstring::Cmp::LT ==
+    return ordering::lt ==
         detail::fixedstring::compare_(
                a.data_, 0u, a.size_, b, 0u, folly::constexpr_strlen(b));
   }
@@ -2723,7 +2722,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend constexpr bool operator<(
       Range<const Char*> a,
       const BasicFixedString& b) noexcept {
-    return detail::fixedstring::Cmp::LT ==
+    return ordering::lt ==
         detail::fixedstring::compare_(
                a.begin(), 0u, a.size(), b.data_, 0u, b.size_);
   }
@@ -2734,7 +2733,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   friend constexpr bool operator<(
       const BasicFixedString& a,
       Range<const Char*> b) noexcept {
-    return detail::fixedstring::Cmp::LT ==
+    return ordering::lt ==
         detail::fixedstring::compare_(
                a.data_, 0u, a.size_, b.begin(), 0u, b.size());
   }
@@ -2933,7 +2932,7 @@ template <class Char, std::size_t A, std::size_t B>
 constexpr bool operator<(
     const BasicFixedString<Char, A>& a,
     const BasicFixedString<Char, B>& b) noexcept {
-  return detail::fixedstring::Cmp::LT ==
+  return ordering::lt ==
       detail::fixedstring::compare_(
              detail::fixedstring::Helper::data_(a),
              0u,
