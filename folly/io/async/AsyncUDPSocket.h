@@ -33,10 +33,7 @@ namespace folly {
  */
 class AsyncUDPSocket : public EventHandler {
  public:
-  enum class FDOwnership {
-    OWNS,
-    SHARED
-  };
+  enum class FDOwnership { OWNS, SHARED };
 
   class ReadCallback {
    public:
@@ -48,16 +45,17 @@ class AsyncUDPSocket : public EventHandler {
      *       and if there were more bytes in datagram, we will end up
      *       dropping them.
      */
-     virtual void getReadBuffer(void** buf, size_t* len) noexcept = 0;
+    virtual void getReadBuffer(void** buf, size_t* len) noexcept = 0;
 
     /**
      * Invoked when a new datagraom is available on the socket. `len`
      * is the number of bytes read and `truncated` is true if we had
      * to drop few bytes because of running out of buffer space.
      */
-    virtual void onDataAvailable(const folly::SocketAddress& client,
-                                 size_t len,
-                                 bool truncated) noexcept = 0;
+    virtual void onDataAvailable(
+        const folly::SocketAddress& client,
+        size_t len,
+        bool truncated) noexcept = 0;
 
     /**
      * Invoked when there is an error reading from the socket.
@@ -66,8 +64,7 @@ class AsyncUDPSocket : public EventHandler {
      *       But you have to re-register readCallback yourself after
      *       onReadError.
      */
-    virtual void onReadError(const AsyncSocketException& ex)
-        noexcept = 0;
+    virtual void onReadError(const AsyncSocketException& ex) noexcept = 0;
 
     /**
      * Invoked when socket is closed and a read callback is registered.
@@ -112,14 +109,17 @@ class AsyncUDPSocket : public EventHandler {
    * Send the data in buffer to destination. Returns the return code from
    * ::sendmsg.
    */
-  virtual ssize_t write(const folly::SocketAddress& address,
-                        const std::unique_ptr<folly::IOBuf>& buf);
+  virtual ssize_t write(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>& buf);
 
   /**
    * Send data in iovec to destination. Returns the return code from sendmsg.
    */
-  virtual ssize_t writev(const folly::SocketAddress& address,
-                         const struct iovec* vec, size_t veclen);
+  virtual ssize_t writev(
+      const folly::SocketAddress& address,
+      const struct iovec* vec,
+      size_t veclen);
 
   /**
    * Start reading datagrams

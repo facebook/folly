@@ -51,9 +51,10 @@ AsyncUDPSocket::~AsyncUDPSocket() {
 void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   int socket = fsp::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
   if (socket == -1) {
-    throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                              "error creating async udp socket",
-                              errno);
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN,
+        "error creating async udp socket",
+        errno);
   }
 
   auto g = folly::makeGuard([&] { ::close(socket); });
@@ -61,37 +62,33 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   // put the socket in non-blocking mode
   int ret = fcntl(socket, F_SETFL, O_NONBLOCK);
   if (ret != 0) {
-    throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                              "failed to put socket in non-blocking mode",
-                              errno);
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN,
+        "failed to put socket in non-blocking mode",
+        errno);
   }
 
   if (reuseAddr_) {
     // put the socket in reuse mode
     int value = 1;
-    if (setsockopt(socket,
-                  SOL_SOCKET,
-                  SO_REUSEADDR,
-                  &value,
-                  sizeof(value)) != 0) {
-      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                                "failed to put socket in reuse mode",
-                                errno);
+    if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) !=
+        0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to put socket in reuse mode",
+          errno);
     }
   }
 
   if (reusePort_) {
     // put the socket in port reuse mode
     int value = 1;
-    if (setsockopt(socket,
-                   SOL_SOCKET,
-                   SO_REUSEPORT,
-                   &value,
-                   sizeof(value)) != 0) {
-      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                                "failed to put socket in reuse_port mode",
-                                errno);
-
+    if (setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &value, sizeof(value)) !=
+        0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to put socket in reuse_port mode",
+          errno);
     }
   }
 
@@ -100,50 +97,38 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
     // Set busy_poll time in microseconds on the socket.
     // It sets how long socket will be in busy_poll mode when no event occurs.
     int value = busyPollUs_;
-    if (setsockopt(socket,
-                   SOL_SOCKET,
-                   SO_BUSY_POLL,
-                   &value,
-                   sizeof(value)) != 0) {
-      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                                "failed to set SO_BUSY_POLL on the socket",
-                                errno);
-
+    if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL, &value, sizeof(value)) !=
+        0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to set SO_BUSY_POLL on the socket",
+          errno);
     }
 #else /* SO_BUSY_POLL is not supported*/
-    throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                              "SO_BUSY_POLL is not supported",
-                              errno);
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN, "SO_BUSY_POLL is not supported", errno);
 #endif
   }
 
   if (rcvBuf_ > 0) {
     // Set the size of the buffer for the received messages in rx_queues.
     int value = rcvBuf_;
-    if (setsockopt(socket,
-                   SOL_SOCKET,
-                   SO_RCVBUF,
-                   &value,
-                   sizeof(value)) != 0) {
-      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                                "failed to set SO_RCVBUF on the socket",
-                                errno);
-
+    if (setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &value, sizeof(value)) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to set SO_RCVBUF on the socket",
+          errno);
     }
   }
 
   if (sndBuf_ > 0) {
     // Set the size of the buffer for the sent messages in tx_queues.
     int value = rcvBuf_;
-    if (setsockopt(socket,
-                   SOL_SOCKET,
-                   SO_SNDBUF,
-                   &value,
-                   sizeof(value)) != 0) {
-      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                                "failed to set SO_SNDBUF on the socket",
-                                errno);
-
+    if (setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value)) != 0) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "failed to set SO_SNDBUF on the socket",
+          errno);
     }
   }
 
@@ -152,9 +137,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
     int flag = 1;
     if (setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag))) {
       throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN,
-        "Failed to set IPV6_V6ONLY",
-        errno);
+          AsyncSocketException::NOT_OPEN, "Failed to set IPV6_V6ONLY", errno);
     }
   }
 
@@ -223,14 +206,15 @@ void AsyncUDPSocket::setFD(int fd, FDOwnership ownership) {
   localAddress_.setFromLocalAddress(fd_);
 }
 
-ssize_t AsyncUDPSocket::write(const folly::SocketAddress& address,
-                               const std::unique_ptr<folly::IOBuf>& buf) {
+ssize_t AsyncUDPSocket::write(
+    const folly::SocketAddress& address,
+    const std::unique_ptr<folly::IOBuf>& buf) {
   // UDP's typical MTU size is 1500, so high number of buffers
   //   really do not make sense. Optimze for buffer chains with
   //   buffers less than 16, which is the highest I can think of
   //   for a real use case.
   iovec vec[16];
-  size_t iovec_len = buf->fillIov(vec, sizeof(vec)/sizeof(vec[0]));
+  size_t iovec_len = buf->fillIov(vec, sizeof(vec) / sizeof(vec[0]));
   if (UNLIKELY(iovec_len == 0)) {
     buf->coalesce();
     vec[0].iov_base = const_cast<uint8_t*>(buf->data());
@@ -241,8 +225,10 @@ ssize_t AsyncUDPSocket::write(const folly::SocketAddress& address,
   return writev(address, vec, iovec_len);
 }
 
-ssize_t AsyncUDPSocket::writev(const folly::SocketAddress& address,
-                               const struct iovec* vec, size_t iovec_len) {
+ssize_t AsyncUDPSocket::writev(
+    const folly::SocketAddress& address,
+    const struct iovec* vec,
+    size_t iovec_len) {
   CHECK_NE(-1, fd_) << "Socket not yet bound";
 
   sockaddr_storage addrStorage;
@@ -266,8 +252,8 @@ void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
 
   readCallback_ = CHECK_NOTNULL(cob);
   if (!updateRegistration()) {
-    AsyncSocketException ex(AsyncSocketException::NOT_OPEN,
-                           "failed to register for accept events");
+    AsyncSocketException ex(
+        AsyncSocketException::NOT_OPEN, "failed to register for accept events");
 
     readCallback_ = nullptr;
     cob->onReadError(ex);
@@ -318,7 +304,6 @@ void AsyncUDPSocket::handleRead() noexcept {
         AsyncSocketException::BAD_ARGS,
         "AsyncUDPSocket::getReadBuffer() returned empty buffer");
 
-
     auto cob = readCallback_;
     readCallback_ = nullptr;
 
@@ -353,9 +338,8 @@ void AsyncUDPSocket::handleRead() noexcept {
       return;
     }
 
-    AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
-                           "::recvfrom() failed",
-                           errno);
+    AsyncSocketException ex(
+        AsyncSocketException::INTERNAL_ERROR, "::recvfrom() failed", errno);
 
     // In case of UDP we can continue reading from the socket
     // even if the current request fails. We notify the user

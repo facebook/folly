@@ -26,36 +26,34 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-using folly::AsyncUDPSocket;
-using folly::AsyncUDPServerSocket;
 using folly::AsyncTimeout;
+using folly::AsyncUDPServerSocket;
+using folly::AsyncUDPSocket;
 using folly::EventBase;
-using folly::SocketAddress;
 using folly::IOBuf;
+using folly::SocketAddress;
 using namespace testing;
 
-class UDPAcceptor
-    : public AsyncUDPServerSocket::Callback {
+class UDPAcceptor : public AsyncUDPServerSocket::Callback {
  public:
-  UDPAcceptor(EventBase* evb, int n): evb_(evb), n_(n) {
-  }
+  UDPAcceptor(EventBase* evb, int n) : evb_(evb), n_(n) {}
 
   void onListenStarted() noexcept override {}
 
   void onListenStopped() noexcept override {}
 
-  void onDataAvailable(std::shared_ptr<folly::AsyncUDPSocket> /* socket */,
-                       const folly::SocketAddress& client,
-                       std::unique_ptr<folly::IOBuf> data,
-                       bool truncated) noexcept override {
-
+  void onDataAvailable(
+      std::shared_ptr<folly::AsyncUDPSocket> /* socket */,
+      const folly::SocketAddress& client,
+      std::unique_ptr<folly::IOBuf> data,
+      bool truncated) noexcept override {
     lastClient_ = client;
     lastMsg_ = data->moveToFbString().toStdString();
 
     auto len = data->computeChainDataLength();
     VLOG(4) << "Worker " << n_ << " read " << len << " bytes "
-            << "(trun:" << truncated << ") from " << client.describe()
-            << " - " << lastMsg_;
+            << "(trun:" << truncated << ") from " << client.describe() << " - "
+            << lastMsg_;
 
     sendPong();
   }
@@ -81,8 +79,7 @@ class UDPAcceptor
 class UDPServer {
  public:
   UDPServer(EventBase* evb, folly::SocketAddress addr, int n)
-      : evb_(evb), addr_(addr), evbs_(n) {
-  }
+      : evb_(evb), addr_(addr), evbs_(n) {}
 
   void start() {
     CHECK(evb_->isInEventBaseThread());
@@ -101,12 +98,10 @@ class UDPServer {
 
     // Add numWorkers thread
     int i = 0;
-    for (auto& evb: evbs_) {
+    for (auto& evb : evbs_) {
       acceptors_.emplace_back(&evb, i);
 
-      std::thread t([&] () {
-        evb.loopForever();
-      });
+      std::thread t([&]() { evb.loopForever(); });
 
       evb.waitUntilRunning();
 
@@ -127,11 +122,11 @@ class UDPServer {
     socket_->close();
     socket_.reset();
 
-    for (auto& evb: evbs_) {
+    for (auto& evb : evbs_) {
       evb.terminateLoopSoon();
     }
 
-    for (auto& t: threads_) {
+    for (auto& t : threads_) {
       t.join();
     }
   }
@@ -146,14 +141,9 @@ class UDPServer {
   std::vector<UDPAcceptor> acceptors_;
 };
 
-class UDPClient
-    : private AsyncUDPSocket::ReadCallback,
-      private AsyncTimeout {
+class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
  public:
-  explicit UDPClient(EventBase* evb)
-      : AsyncTimeout(evb),
-        evb_(evb) {
-  }
+  explicit UDPClient(EventBase* evb) : AsyncTimeout(evb), evb_(evb) {}
 
   void start(const folly::SocketAddress& server, int n) {
     CHECK(evb_->isInEventBaseThread());
@@ -193,8 +183,7 @@ class UDPClient
     --n_;
     scheduleTimeout(5);
     socket_->write(
-        server_,
-        folly::IOBuf::copyBuffer(folly::to<std::string>("PING ", n_)));
+        server_, folly::IOBuf::copyBuffer(folly::to<std::string>("PING ", n_)));
   }
 
   void getReadBuffer(void** buf, size_t* len) noexcept override {
@@ -202,11 +191,12 @@ class UDPClient
     *len = 1024;
   }
 
-  void onDataAvailable(const folly::SocketAddress& client,
-                       size_t len,
-                       bool truncated) noexcept override {
+  void onDataAvailable(
+      const folly::SocketAddress& client,
+      size_t len,
+      bool truncated) noexcept override {
     VLOG(4) << "Read " << len << " bytes (trun:" << truncated << ") from "
-              << client.describe() << " - " << std::string(buf_, len);
+            << client.describe() << " - " << std::string(buf_, len);
     VLOG(4) << n_ << " left";
 
     ++pongRecvd_;
@@ -251,9 +241,7 @@ TEST(AsyncSocketTest, PingPong) {
   UDPServer server(&sevb, folly::SocketAddress("127.0.0.1", 0), 4);
 
   // Start event loop in a separate thread
-  auto serverThread = std::thread([&sevb] () {
-    sevb.loopForever();
-  });
+  auto serverThread = std::thread([&sevb]() { sevb.loopForever(); });
 
   // Wait for event loop to start
   sevb.waitUntilRunning();
@@ -265,15 +253,13 @@ TEST(AsyncSocketTest, PingPong) {
   UDPClient client(&cevb);
 
   // Start event loop in a separate thread
-  auto clientThread = std::thread([&cevb] () {
-    cevb.loopForever();
-  });
+  auto clientThread = std::thread([&cevb]() { cevb.loopForever(); });
 
   // Wait for event loop to start
   cevb.waitUntilRunning();
 
   // Send ping
-  cevb.runInEventBaseThread([&] () { client.start(server.address(), 1000); });
+  cevb.runInEventBaseThread([&]() { client.start(server.address(), 1000); });
 
   // Wait for client to finish
   clientThread.join();
@@ -283,7 +269,7 @@ TEST(AsyncSocketTest, PingPong) {
   CHECK_GT(client.pongRecvd(), 0);
 
   // Shutdown server
-  sevb.runInEventBaseThread([&] () {
+  sevb.runInEventBaseThread([&]() {
     server.shutdown();
     sevb.terminateLoopSoon();
   });
