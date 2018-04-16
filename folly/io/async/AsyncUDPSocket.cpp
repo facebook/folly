@@ -196,6 +196,27 @@ void AsyncUDPSocket::dontFragment(bool df) {
 #endif
 }
 
+void AsyncUDPSocket::setErrMessageCallback(
+    ErrMessageCallback* errMessageCallback) {
+  errMessageCallback_ = errMessageCallback;
+  int err = 1;
+#if defined(IP_RECVERR)
+  if (address().getFamily() == AF_INET &&
+      fsp::setsockopt(fd_, IPPROTO_IP, IP_RECVERR, &err, sizeof(err))) {
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN, "Failed to set IP_RECVERR", errno);
+  }
+#endif
+#if defined(IPV6_RECVERR)
+  if (address().getFamily() == AF_INET6 &&
+      fsp::setsockopt(fd_, IPPROTO_IPV6, IPV6_RECVERR, &err, sizeof(err))) {
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN, "Failed to set IPV6_RECVERR", errno);
+  }
+#endif
+  (void)err;
+}
+
 void AsyncUDPSocket::setFD(int fd, FDOwnership ownership) {
   CHECK_EQ(-1, fd_) << "Already bound to another FD";
 
@@ -294,9 +315,83 @@ void AsyncUDPSocket::handlerReady(uint16_t events) noexcept {
   }
 }
 
+size_t AsyncUDPSocket::handleErrMessages() noexcept {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  if (errMessageCallback_ == nullptr) {
+    return 0;
+  }
+  uint8_t ctrl[1024];
+  unsigned char data;
+  struct msghdr msg;
+  iovec entry;
+
+  entry.iov_base = &data;
+  entry.iov_len = sizeof(data);
+  msg.msg_iov = &entry;
+  msg.msg_iovlen = 1;
+  msg.msg_name = nullptr;
+  msg.msg_namelen = 0;
+  msg.msg_control = ctrl;
+  msg.msg_controllen = sizeof(ctrl);
+  msg.msg_flags = 0;
+
+  int ret;
+  size_t num = 0;
+  while (fd_ != -1) {
+    ret = recvmsg(fd_, &msg, MSG_ERRQUEUE);
+    VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
+
+    if (ret < 0) {
+      if (errno != EAGAIN) {
+        auto errnoCopy = errno;
+        LOG(ERROR) << "::recvmsg exited with code " << ret
+                   << ", errno: " << errnoCopy;
+        AsyncSocketException ex(
+            AsyncSocketException::INTERNAL_ERROR,
+            "recvmsg() failed",
+            errnoCopy);
+        failErrMessageRead(ex);
+      }
+      return num;
+    }
+
+    for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+         cmsg != nullptr && cmsg->cmsg_len != 0;
+         cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+      ++num;
+      errMessageCallback_->errMessage(*cmsg);
+      if (fd_ == -1) {
+        // once the socket is closed there is no use for more read errors.
+        return num;
+      }
+    }
+  }
+  return num;
+#else
+  return 0;
+#endif
+}
+
+void AsyncUDPSocket::failErrMessageRead(const AsyncSocketException& ex) {
+  if (errMessageCallback_ != nullptr) {
+    ErrMessageCallback* callback = errMessageCallback_;
+    errMessageCallback_ = nullptr;
+    callback->errMessageError(ex);
+  }
+}
+
 void AsyncUDPSocket::handleRead() noexcept {
   void* buf{nullptr};
   size_t len{0};
+
+  if (handleErrMessages()) {
+    return;
+  }
+
+  if (fd_ == -1) {
+    // The socket may have been closed by the error callbacks.
+    return;
+  }
 
   readCallback_->getReadBuffer(&buf, &len);
   if (buf == nullptr || len == 0) {

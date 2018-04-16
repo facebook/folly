@@ -74,6 +74,29 @@ class AsyncUDPSocket : public EventHandler {
     virtual ~ReadCallback() = default;
   };
 
+  class ErrMessageCallback {
+   public:
+    virtual ~ErrMessageCallback() = default;
+
+    /**
+     * errMessage() will be invoked when kernel puts a message to
+     * the error queue associated with the socket.
+     *
+     * @param cmsg      Reference to cmsghdr structure describing
+     *                  a message read from error queue associated
+     *                  with the socket.
+     */
+    virtual void errMessage(const cmsghdr& cmsg) noexcept = 0;
+
+    /**
+     * errMessageError() will be invoked if an error occurs reading a message
+     * from the socket error stream.
+     *
+     * @param ex        An exception describing the error that occurred.
+     */
+    virtual void errMessageError(const AsyncSocketException& ex) noexcept = 0;
+  };
+
   /**
    * Create a new UDP socket that will run in the
    * given eventbase
@@ -196,10 +219,19 @@ class AsyncUDPSocket : public EventHandler {
    */
   virtual void dontFragment(bool df);
 
+  /**
+   * Callback for receiving errors on the UDP sockets
+   */
+  void setErrMessageCallback(ErrMessageCallback* errMessageCallback);
+
  protected:
   virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
     return ::sendmsg(socket, message, flags);
   }
+
+  size_t handleErrMessages() noexcept;
+
+  void failErrMessageRead(const AsyncSocketException& ex);
 
   // Non-null only when we are reading
   ReadCallback* readCallback_;
@@ -228,6 +260,8 @@ class AsyncUDPSocket : public EventHandler {
   int rcvBuf_{0};
   int sndBuf_{0};
   int busyPollUs_{0};
+
+  ErrMessageCallback* errMessageCallback_{nullptr};
 };
 
 } // namespace folly

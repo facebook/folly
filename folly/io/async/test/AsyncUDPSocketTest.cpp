@@ -284,3 +284,115 @@ class TestAsyncUDPSocket : public AsyncUDPSocket {
 
   MOCK_METHOD3(sendmsg, ssize_t(int, const struct msghdr*, int));
 };
+
+class MockErrMessageCallback : public AsyncUDPSocket::ErrMessageCallback {
+ public:
+  ~MockErrMessageCallback() override = default;
+
+  GMOCK_METHOD1_(, noexcept, , errMessage, void(const cmsghdr& cmsg));
+  GMOCK_METHOD1_(
+      ,
+      noexcept,
+      ,
+      errMessageError,
+      void(const folly::AsyncSocketException& ex));
+};
+
+class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
+ public:
+  ~MockUDPReadCallback() override = default;
+
+  GMOCK_METHOD2_(, noexcept, , getReadBuffer, void(void** buf, size_t* len));
+
+  GMOCK_METHOD3_(
+      ,
+      noexcept,
+      ,
+      onDataAvailable,
+      void(const folly::SocketAddress& client, size_t len, bool truncated));
+
+  GMOCK_METHOD1_(
+      ,
+      noexcept,
+      ,
+      onReadError,
+      void(const folly::AsyncSocketException& ex));
+
+  GMOCK_METHOD0_(, noexcept, , onReadClosed, void());
+};
+
+class AsyncUDPSocketTest : public Test {
+ public:
+  void SetUp() override {
+    socket_ = std::make_shared<AsyncUDPSocket>(&evb_);
+    addr_ = folly::SocketAddress("127.0.0.1", 0);
+    socket_->bind(addr_);
+  }
+
+  EventBase evb_;
+  MockErrMessageCallback err;
+  MockUDPReadCallback readCb;
+  std::shared_ptr<AsyncUDPSocket> socket_;
+  folly::SocketAddress addr_;
+};
+
+TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
+  socket_->resumeRead(&readCb);
+  socket_->setErrMessageCallback(&err);
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  bool errRecvd = false;
+  EXPECT_CALL(err, errMessage(_))
+      .WillOnce(Invoke([this, &errRecvd](auto& cmsg) {
+        if ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
+            (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
+          const struct sock_extended_err* serr =
+              reinterpret_cast<const struct sock_extended_err*>(
+                  CMSG_DATA(&cmsg));
+          errRecvd =
+              (serr->ee_origin == SO_EE_ORIGIN_ICMP || SO_EE_ORIGIN_ICMP6);
+          LOG(ERROR) << "errno " << strerror(serr->ee_errno);
+        }
+        evb_.terminateLoopSoon();
+      }));
+  socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  evb_.loopForever();
+  EXPECT_TRUE(errRecvd);
+}
+
+TEST_F(AsyncUDPSocketTest, CloseInErrorCallback) {
+  socket_->resumeRead(&readCb);
+  socket_->setErrMessageCallback(&err);
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  bool errRecvd = false;
+  EXPECT_CALL(err, errMessage(_)).WillOnce(Invoke([this, &errRecvd](auto&) {
+    errRecvd = true;
+    socket_->close();
+    evb_.terminateLoopSoon();
+  }));
+  socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  evb_.loopForever();
+  EXPECT_TRUE(errRecvd);
+}
+
+TEST_F(AsyncUDPSocketTest, TestNonExistentServerNoErrCb) {
+  socket_->resumeRead(&readCb);
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  bool errRecvd = false;
+  folly::IOBufQueue readBuf;
+  EXPECT_CALL(readCb, getReadBuffer(_, _))
+      .WillRepeatedly(Invoke([&readBuf](void** buf, size_t* len) {
+        auto readSpace = readBuf.preallocate(2000, 10000);
+        *buf = readSpace.first;
+        *len = readSpace.second;
+      }));
+  ON_CALL(readCb, onReadError(_)).WillByDefault(Invoke([&errRecvd](auto& ex) {
+    LOG(ERROR) << ex.what();
+    errRecvd = true;
+  }));
+  socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  evb_.timer().scheduleTimeoutFn(
+      [&] { evb_.terminateLoopSoon(); }, std::chrono::milliseconds(30));
+  evb_.loopForever();
+  EXPECT_FALSE(errRecvd);
+}
