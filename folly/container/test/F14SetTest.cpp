@@ -519,6 +519,62 @@ TEST(F14FastSet, moveOnly) {
   runMoveOnlyTest<F14FastSet<f14::MoveOnlyTestInt>>();
 }
 
+template <typename S>
+void runEraseIntoTest() {
+  S t0;
+  S t1;
+
+  auto insertIntoT0 = [&t0](auto& value) {
+    EXPECT_FALSE(value.destroyed);
+    t0.emplace(std::move(value));
+  };
+
+  t0.insert(10);
+  t1.insert(20);
+  t1.eraseInto(t1.begin(), insertIntoT0);
+  EXPECT_TRUE(t1.empty());
+  EXPECT_EQ(t0.size(), 2);
+  EXPECT_TRUE(t0.find(10) != t0.end());
+  EXPECT_TRUE(t0.find(20) != t0.end());
+
+  t1.insert(20);
+  t1.insert(30);
+  t1.insert(40);
+  t1.eraseInto(t1.begin(), t1.end(), insertIntoT0);
+  EXPECT_TRUE(t1.empty());
+  EXPECT_EQ(t0.size(), 4);
+  EXPECT_TRUE(t0.find(30) != t0.end());
+  EXPECT_TRUE(t0.find(40) != t0.end());
+
+  t1.insert(50);
+  size_t erased = t1.eraseInto(*t1.find(50), insertIntoT0);
+  EXPECT_EQ(erased, 1);
+  EXPECT_TRUE(t1.empty());
+  EXPECT_EQ(t0.size(), 5);
+  EXPECT_TRUE(t0.find(50) != t0.end());
+
+  typename S::value_type key{60};
+  erased = t1.eraseInto(key, insertIntoT0);
+  EXPECT_EQ(erased, 0);
+  EXPECT_EQ(t0.size(), 5);
+}
+
+TEST(F14ValueSet, eraseInto) {
+  runEraseIntoTest<F14ValueSet<f14::MoveOnlyTestInt>>();
+}
+
+TEST(F14NodeSet, eraseInto) {
+  runEraseIntoTest<F14NodeSet<f14::MoveOnlyTestInt>>();
+}
+
+TEST(F14VectorSet, eraseInto) {
+  runEraseIntoTest<F14VectorSet<f14::MoveOnlyTestInt>>();
+}
+
+TEST(F14FastSet, eraseInto) {
+  runEraseIntoTest<F14FastSet<f14::MoveOnlyTestInt>>();
+}
+
 TEST(F14ValueSet, heterogeneous) {
   // note: std::string is implicitly convertible to but not from StringPiece
   using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;

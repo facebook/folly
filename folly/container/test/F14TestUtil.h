@@ -90,6 +90,7 @@ std::size_t p99Probe(std::vector<std::size_t> const& probeLengths) {
 
 struct MoveOnlyTestInt {
   int x;
+  bool destroyed{false};
 
   MoveOnlyTestInt() noexcept : x(0) {}
   /* implicit */ MoveOnlyTestInt(int x0) : x(x0) {}
@@ -97,12 +98,17 @@ struct MoveOnlyTestInt {
   MoveOnlyTestInt(MoveOnlyTestInt const&) = delete;
   MoveOnlyTestInt& operator=(MoveOnlyTestInt&& rhs) noexcept {
     x = rhs.x;
+    destroyed = rhs.destroyed;
     return *this;
   }
   MoveOnlyTestInt& operator=(MoveOnlyTestInt const&) = delete;
 
+  ~MoveOnlyTestInt() {
+    destroyed = true;
+  }
+
   bool operator==(MoveOnlyTestInt const& rhs) const {
-    return x == rhs.x;
+    return x == rhs.x && destroyed == rhs.destroyed;
   }
   bool operator!=(MoveOnlyTestInt const& rhs) const {
     return !(*this == rhs);

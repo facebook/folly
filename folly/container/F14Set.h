@@ -340,22 +340,44 @@ class F14BasicSet {
   }
 
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    // If we are inlined then gcc and clang can optimize away all of the
-    // work of ++pos if the caller discards it.
-    table_.erase(table_.unwrapIter(pos));
-    return ++pos;
+    return eraseInto(pos, [](value_type&) {});
   }
 
   iterator erase(const_iterator first, const_iterator last) {
+    return eraseInto(first, last, [](value_type&) {});
+  }
+
+  size_type erase(key_type const& key) {
+    return eraseInto(key, [](value_type&) {});
+  }
+
+  // eraseInto contains the same overloads as erase but provides
+  // an additional callback argument which is called with a non-const lvalue
+  // reference to the item directly before it is destroyed. This can be
+  // used to extract an item out of a F14Set while avoiding a copy.
+  template <typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE iterator
+  eraseInto(const_iterator pos, BeforeDestroy const& beforeDestroy) {
+    // If we are inlined then gcc and clang can optimize away all of the
+    // work of ++pos if the caller discards it.
+    table_.eraseInto(table_.unwrapIter(pos), beforeDestroy);
+    return ++pos;
+  }
+
+  template <typename BeforeDestroy>
+  iterator eraseInto(
+      const_iterator first,
+      const_iterator last,
+      BeforeDestroy const& beforeDestroy) {
     while (first != last) {
-      table_.erase(table_.unwrapIter(first));
-      ++first;
+      first = eraseInto(first, beforeDestroy);
     }
     return first;
   }
 
-  size_type erase(key_type const& key) {
-    return table_.erase(key);
+  template <typename BeforeDestroy>
+  size_type eraseInto(key_type const& key, BeforeDestroy const& beforeDestroy) {
+    return table_.eraseInto(key, beforeDestroy);
   }
 
   //// PUBLIC - Lookup
@@ -369,20 +391,20 @@ class F14BasicSet {
     return table_.find(key).atEnd() ? 0 : 1;
   }
 
-  /// prehash(key) does the work of evaluating hash_function()(key)
-  /// (including additional bit-mixing for non-avalanching hash functions),
-  /// wraps the result of that work in a token for later reuse, and
-  /// begins prefetching of the first steps of looking for key into the
-  /// local CPU cache.
-  ///
-  /// The returned token may be used at any time, may be used more than
-  /// once, and may be used in other F14 sets and maps.  Tokens are
-  /// transferrable between any F14 containers (maps and sets) with the
-  /// same key_type and equal hash_function()s.
-  ///
-  /// Hash tokens are not hints -- it is a bug to call any method on this
-  /// class with a token t and key k where t isn't the result of a call
-  /// to prehash(k2) with k2 == k.
+  // prehash(key) does the work of evaluating hash_function()(key)
+  // (including additional bit-mixing for non-avalanching hash functions),
+  // wraps the result of that work in a token for later reuse, and
+  // begins prefetching of the first steps of looking for key into the
+  // local CPU cache.
+  //
+  // The returned token may be used at any time, may be used more than
+  // once, and may be used in other F14 sets and maps.  Tokens are
+  // transferrable between any F14 containers (maps and sets) with the
+  // same key_type and equal hash_function()s.
+  //
+  // Hash tokens are not hints -- it is a bug to call any method on this
+  // class with a token t and key k where t isn't the result of a call
+  // to prehash(k2) with k2 == k.
   F14HashToken prehash(key_type const& key) const {
     return table_.prehash(key);
   }
@@ -645,6 +667,7 @@ class F14VectorSet
   using typename Super::const_iterator;
   using typename Super::iterator;
   using typename Super::key_type;
+  using typename Super::value_type;
   using reverse_iterator = typename Policy::ReverseIter;
   using const_reverse_iterator = typename Policy::ConstReverseIter;
 
@@ -737,14 +760,17 @@ class F14VectorSet
   }
 
  private:
-  void eraseUnderlying(typename Policy::ItemIter underlying) {
+  template <typename BeforeDestroy>
+  void eraseUnderlying(
+      typename Policy::ItemIter underlying,
+      BeforeDestroy const& beforeDestroy) {
     Alloc& a = this->table_.alloc();
     auto values = this->table_.values_;
 
     // destroy the value and remove the ptr from the base table
     auto index = underlying.item();
+    this->table_.eraseInto(underlying, beforeDestroy);
     std::allocator_traits<Alloc>::destroy(a, std::addressof(values[index]));
-    this->table_.erase(underlying);
 
     // move the last element in values_ down and fix up the inbound index
     auto tailIndex = this->size();
@@ -760,25 +786,46 @@ class F14VectorSet
 
  public:
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    auto underlying = this->table_.find(
-        f14::detail::VectorContainerIndexSearch{this->table_.iterToIndex(pos)});
-    eraseUnderlying(underlying);
-    return ++pos;
+    return eraseInto(pos, [](value_type&) {});
   }
 
   iterator erase(const_iterator first, const_iterator last) {
+    return eraseInto(first, last, [](value_type&) {});
+  }
+
+  std::size_t erase(key_type const& key) {
+    return eraseInto(key, [](value_type&) {});
+  }
+
+  template <typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE iterator
+  eraseInto(const_iterator pos, BeforeDestroy const& beforeDestroy) {
+    auto underlying = this->table_.find(
+        f14::detail::VectorContainerIndexSearch{this->table_.iterToIndex(pos)});
+    eraseUnderlying(underlying, beforeDestroy);
+    return ++pos;
+  }
+
+  template <typename BeforeDestroy>
+  iterator eraseInto(
+      const_iterator first,
+      const_iterator last,
+      BeforeDestroy const& beforeDestroy) {
     while (first != last) {
-      first = erase(first);
+      first = eraseInto(first, beforeDestroy);
     }
     return first;
   }
 
-  std::size_t erase(key_type const& key) {
+  template <typename BeforeDestroy>
+  std::size_t eraseInto(
+      key_type const& key,
+      BeforeDestroy const& beforeDestroy) {
     auto underlying = this->table_.find(key);
     if (underlying.atEnd()) {
       return 0;
     } else {
-      eraseUnderlying(underlying);
+      eraseUnderlying(underlying, beforeDestroy);
       return 1;
     }
   }

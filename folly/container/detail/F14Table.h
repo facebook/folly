@@ -1557,33 +1557,39 @@ class F14Table : public Policy {
 
  public:
   // The item needs to still be hashable during this call.  If you want
-  // to intercept the item before it is destroyed (to extract it, for
-  // example), use erase(pos, beforeDestroy).
+  // to intercept the value before it is destroyed (to extract it, for
+  // example), use eraseInto(pos, beforeDestroy).
+  void erase(ItemIter pos) {
+    eraseInto(pos, [](value_type&) {});
+  }
+
+  // The item needs to still be hashable during this call.  If you want
+  // to intercept the value before it is destroyed (to extract it, for
+  // example), do so in the beforeDestroy callback.
   template <typename BeforeDestroy>
-  void erase(ItemIter pos, BeforeDestroy const& beforeDestroy) {
+  void eraseInto(ItemIter pos, BeforeDestroy const& beforeDestroy) {
     HashPair hp{};
     if (pos.chunk()->hostedOverflowCount() != 0) {
       hp = splitHash(this->computeItemHash(pos.citem()));
     }
-    beforeDestroy(pos.item());
+    beforeDestroy(this->valueAtItemForExtract(pos.item()));
     eraseImpl(pos, hp);
-  }
-
-  // The item needs to still be hashable during this call.  If you want
-  // to intercept the item before it is destroyed (to extract it, for
-  // example), use erase(pos, beforeDestroy).
-  void erase(ItemIter pos) {
-    return erase(pos, [](Item const&) {});
   }
 
   template <typename K>
   std::size_t erase(K const& key) {
+    return eraseInto(key, [](value_type&) {});
+  }
+
+  template <typename K, typename BeforeDestroy>
+  std::size_t eraseInto(K const& key, BeforeDestroy const& beforeDestroy) {
     if (UNLIKELY(size() == 0)) {
       return 0;
     }
     auto hp = splitHash(this->computeKeyHash(key));
     auto iter = findImpl(hp, key);
     if (!iter.atEnd()) {
+      beforeDestroy(this->valueAtItemForExtract(iter.item()));
       eraseImpl(iter, hp);
       return 1;
     } else {

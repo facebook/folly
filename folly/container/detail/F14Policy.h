@@ -406,6 +406,10 @@ class ValueContainerPolicy : public BasePolicy<
     return item;
   }
 
+  Value& valueAtItemForExtract(Item& item) {
+    return item;
+  }
+
   template <typename... Args>
   void
   constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
@@ -646,6 +650,10 @@ class NodeContainerPolicy
   }
 
   Value const& valueAtItemForCopy(Item const& item) const {
+    return *item;
+  }
+
+  Value& valueAtItemForExtract(Item& item) {
     return *item;
   }
 
@@ -917,6 +925,10 @@ class VectorContainerPolicy : public BasePolicy<
 
   VectorContainerIndexSearch valueAtItemForCopy(Item const& item) const {
     return {item};
+  }
+
+  Value& valueAtItemForExtract(Item& item) {
+    return values_[item];
   }
 
   void constructValueAtItem(
