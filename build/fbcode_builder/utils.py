@@ -8,6 +8,7 @@ from __future__ import unicode_literals
 import itertools
 import logging
 import os
+import shutil
 import subprocess
 import sys
 
@@ -34,8 +35,7 @@ def make_temp_dir(d):
     try:
         yield d
     finally:
-        if os.path.exists(d):
-            os.rmdir(d)
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @contextmanager
@@ -50,9 +50,19 @@ def push_dir(d):
 
 def read_fbcode_builder_config(filename):
     # Allow one spec to read another
-    scope = {'read_fbcode_builder_config': read_fbcode_builder_config}
+    # When doing so, treat paths as relative to the config's project directory.
+    project_dir = os.path.dirname(filename)
+
+    def inner_read_config(path):
+        full_path = os.path.join(project_dir, path)
+        return read_fbcode_builder_config(full_path)
+
+    scope = {'read_fbcode_builder_config': inner_read_config}
     with open(filename) as config_file:
-        exec(config_file.read(), scope)
+        # Note that this will need to be changed to an exec() function call for
+        # python 3 compatibility.  Unfortunately python 2.7 does not seem to
+        # treat the scope correctly when using exec() function syntax here.
+        exec config_file.read() in scope
     return scope['config']
 
 
