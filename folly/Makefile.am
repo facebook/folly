@@ -439,6 +439,8 @@ nobase_follyinclude_HEADERS = \
 	ssl/detail/OpenSSLThreading.h \
 	ssl/detail/SSLSessionImpl.h \
 	stats/detail/Bucket.h \
+	stats/detail/SlidingWindow-defs.h \
+	stats/detail/SlidingWindow.h \
 	stats/BucketedTimeSeries-defs.h \
 	stats/BucketedTimeSeries.h \
 	stats/Histogram-defs.h \
