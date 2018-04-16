@@ -387,9 +387,19 @@ struct StaticMeta : StaticMetaBase {
 #else
       threadEntry = new ThreadEntry();
 #endif
-      threadEntry->list = threadEntryList;
-      threadEntry->listNext = threadEntryList->head;
-      threadEntryList->head = threadEntry;
+      // if the ThreadEntry already exists
+      // but pthread_getspecific returns NULL
+      // do not add the same entry twice to the list
+      // since this would create a loop in the list
+      if (!threadEntry->list) {
+        threadEntry->list = threadEntryList;
+        threadEntry->listNext = threadEntryList->head;
+        threadEntryList->head = threadEntry;
+      }
+
+      // if we're adding a thread entry
+      // we need to increment the list count
+      // even if the entry is reused
       threadEntryList->count++;
 
       threadEntry->meta = &meta;
