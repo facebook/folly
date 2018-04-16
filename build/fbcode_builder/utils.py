@@ -38,16 +38,6 @@ def make_temp_dir(d):
         shutil.rmtree(d, ignore_errors=True)
 
 
-@contextmanager
-def push_dir(d):
-    old_dir = os.getcwd()
-    os.chdir(d)
-    try:
-        yield d
-    finally:
-        os.chdir(old_dir)
-
-
 def read_fbcode_builder_config(filename):
     # Allow one spec to read another
     # When doing so, treat paths as relative to the config's project directory.
