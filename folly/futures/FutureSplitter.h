@@ -23,13 +23,10 @@ namespace folly {
 
 /*
  * FutureSplitter provides a `getFuture()' method which can be called multiple
- * times, returning a new Future each time. These futures are called-back when
- * the original Future passed to the FutureSplitter constructor completes. Calls
- * to `getFuture()' after that time return a completed Future.
- *
- * Note that while the Futures from `getFuture()' depend on the completion of
- * the original Future they do not inherit any other properties such as
- * Executors passed to `via' etc.
+ * times, returning a new Future each time. These futures are completed when the
+ * original Future passed to the FutureSplitter constructor is completed, and
+ * are completed on the same executor (if any) as the original Future. Calls to
+ * `getFuture()' after that time return a completed Future.
  */
 template <class T>
 class FutureSplitter {
