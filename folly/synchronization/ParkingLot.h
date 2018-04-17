@@ -19,21 +19,22 @@
 #include <condition_variable>
 #include <mutex>
 
-#include <boost/intrusive/list.hpp>
-
 #include <folly/Hash.h>
 #include <folly/Indestructible.h>
 #include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/Unit.h>
+#include <folly/lang/SafeAssert.h>
 
 namespace folly {
 
 namespace parking_lot_detail {
 
-struct WaitNodeBase : public boost::intrusive::list_base_hook<> {
+struct WaitNodeBase {
   const uint64_t key_;
   const uint64_t lotid_;
+  WaitNodeBase* next_{nullptr};
+  WaitNodeBase* prev_{nullptr};
 
   // tricky: hold both bucket and node mutex to write, either to read
   bool signaled_;
@@ -77,9 +78,49 @@ extern std::atomic<uint64_t> idallocator;
 // herds.
 struct Bucket {
   std::mutex mutex_;
-  boost::intrusive::list<WaitNodeBase> waiters_;
+  WaitNodeBase* head_;
+  WaitNodeBase* tail_;
+  std::atomic<uint64_t> count_;
 
   static Bucket& bucketFor(uint64_t key);
+
+  void push_back(WaitNodeBase* node) {
+    if (tail_) {
+      FOLLY_SAFE_DCHECK(head_, "");
+      node->prev_ = tail_;
+      tail_->next_ = node;
+      tail_ = node;
+    } else {
+      tail_ = node;
+      head_ = node;
+    }
+  }
+
+  void erase(WaitNodeBase* node) {
+    FOLLY_SAFE_DCHECK(count_.load(std::memory_order_relaxed) >= 1, "");
+    if (head_ == node && tail_ == node) {
+      FOLLY_SAFE_DCHECK(node->prev_ == nullptr, "");
+      FOLLY_SAFE_DCHECK(node->next_ == nullptr, "");
+      head_ = nullptr;
+      tail_ = nullptr;
+    } else if (head_ == node) {
+      FOLLY_SAFE_DCHECK(node->prev_ == nullptr, "");
+      FOLLY_SAFE_DCHECK(node->next_, "");
+      head_ = node->next_;
+      head_->prev_ = nullptr;
+    } else if (tail_ == node) {
+      FOLLY_SAFE_DCHECK(node->next_ == nullptr, "");
+      FOLLY_SAFE_DCHECK(node->prev_, "");
+      tail_ = node->prev_;
+      tail_->next_ = nullptr;
+    } else {
+      FOLLY_SAFE_DCHECK(node->next_, "");
+      FOLLY_SAFE_DCHECK(node->prev_, "");
+      node->next_->prev_ = node->prev_;
+      node->prev_->next_ = node->next_;
+    }
+    count_.fetch_sub(1, std::memory_order_relaxed);
+  }
 };
 
 } // namespace parking_lot_detail
@@ -223,13 +264,18 @@ ParkResult ParkingLot<Data>::park_until(
   WaitNode node(key, lotid_, std::forward<D>(data));
 
   {
+    // A: Must be seq_cst.  Matches B.
+    bucket.count_.fetch_add(1, std::memory_order_seq_cst);
+
     std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
 
     if (!std::forward<ToPark>(toPark)()) {
+      bucketLock.unlock();
+      bucket.count_.fetch_sub(1, std::memory_order_relaxed);
       return ParkResult::Skip;
     }
 
-    bucket.waiters_.push_back(node);
+    bucket.push_back(&node);
   } // bucketLock scope
 
   std::forward<PreWait>(preWait)();
@@ -238,9 +284,9 @@ ParkResult ParkingLot<Data>::park_until(
 
   if (status == std::cv_status::timeout) {
     // it's not really a timeout until we unlink the unsignaled node
-    std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
+    std::lock_guard<std::mutex> bucketLock(bucket.mutex_);
     if (!node.signaled()) {
-      bucket.waiters_.erase(bucket.waiters_.iterator_to(node));
+      bucket.erase(&node);
       return ParkResult::Timeout;
     }
   }
@@ -253,19 +299,26 @@ template <typename Key, typename Func>
 void ParkingLot<Data>::unpark(const Key bits, Func&& func) {
   auto key = hash::twang_mix64(uint64_t(bits));
   auto& bucket = parking_lot_detail::Bucket::bucketFor(key);
-  std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
+  // B: Must be seq_cst.  Matches A.  If true, A *must* see in seq_cst
+  // order any atomic updates in toPark() (and matching updates that
+  // happen before unpark is called)
+  if (bucket.count_.load(std::memory_order_seq_cst) == 0) {
+    return;
+  }
 
-  for (auto iter = bucket.waiters_.begin(); iter != bucket.waiters_.end();) {
-    auto current = iter;
-    auto& node = *static_cast<WaitNode*>(&*iter++);
-    if (node.key_ == key && node.lotid_ == lotid_) {
-      auto result = std::forward<Func>(func)(node.data_);
+  std::lock_guard<std::mutex> bucketLock(bucket.mutex_);
+
+  for (auto iter = bucket.head_; iter != nullptr;) {
+    auto node = static_cast<WaitNode*>(iter);
+    iter = iter->next_;
+    if (node->key_ == key && node->lotid_ == lotid_) {
+      auto result = std::forward<Func>(func)(node->data_);
       if (result == UnparkControl::RemoveBreak ||
           result == UnparkControl::RemoveContinue) {
         // we unlink, but waiter destroys the node
-        bucket.waiters_.erase(current);
+        bucket.erase(node);
 
-        node.wake();
+        node->wake();
       }
       if (result == UnparkControl::RemoveBreak ||
           result == UnparkControl::RetainBreak) {
