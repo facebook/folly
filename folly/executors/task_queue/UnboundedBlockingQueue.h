@@ -47,7 +47,7 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
         return folly::none;
       }
     }
-    return item;
+    return std::move(item);
   }
 
   size_t size() override {
