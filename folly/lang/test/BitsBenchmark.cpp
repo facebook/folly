@@ -16,6 +16,12 @@
 
 // @author Tudor Bosman (tudorb@fb.com)
 
+#include <algorithm>
+#include <vector>
+
+#include <folly/CppAttributes.h>
+#include <folly/Random.h>
+#include <folly/lang/Assume.h>
 #include <folly/lang/Bits.h>
 
 #include <folly/Benchmark.h>
@@ -24,7 +30,7 @@ using namespace folly;
 
 BENCHMARK(nextPowTwoClz, iters) {
   for (unsigned long i = 0; i < iters; ++i) {
-    auto x = folly::nextPowTwo(iters);
+    auto x = folly::nextPowTwo(i);
     folly::doNotOptimizeAway(x);
   }
 }
@@ -47,6 +53,96 @@ BENCHMARK(reverse, iters) {
   }
 }
 
+namespace {
+
+template <class F>
+void testPartialLoadUnaligned(F f, size_t iters) {
+  constexpr size_t kBufSize = 32;
+
+  std::vector<char> buf;
+  BENCHMARK_SUSPEND {
+    buf.resize(kBufSize + 7); // Allow unguarded tail reads.
+    std::generate(
+        buf.begin(), buf.end(), [] { return folly::Random::rand32(255); });
+  }
+
+  uint64_t ret = 0;
+  for (size_t i = 0; i < iters; ++i) {
+    // Make the position depend on the previous result to break loop pipelining.
+    auto pos = ret % kBufSize;
+    ret = f(buf.data() + pos, i % 8);
+    folly::doNotOptimizeAway(ret);
+  }
+}
+
+/**
+ * An alternative implementation of partialLoadUnaligned that has
+ * comparable performance. Not worth the extra complexity and code
+ * size, leaving it here for future consideration in case the relative
+ * performance changes.
+ */
+uint64_t partialLoadUnalignedSwitch(const char* p, size_t l) {
+  folly::assume(l < 8);
+
+  uint64_t r = 0;
+  switch (l) {
+    case 7:
+      r = static_cast<uint64_t>(folly::loadUnaligned<uint32_t>(p + 3)) << 24;
+      FOLLY_FALLTHROUGH;
+    case 3:
+      r |= static_cast<uint64_t>(folly::loadUnaligned<uint16_t>(p + 1)) << 8;
+      FOLLY_FALLTHROUGH;
+    case 1:
+      r |= *p;
+      break;
+
+    case 6:
+      r = static_cast<uint64_t>(folly::loadUnaligned<uint16_t>(p + 4)) << 32;
+      FOLLY_FALLTHROUGH;
+    case 4:
+      r |= folly::loadUnaligned<uint32_t>(p);
+      break;
+
+    case 5:
+      r = static_cast<uint64_t>(folly::loadUnaligned<uint32_t>(p + 4)) << 32;
+      r |= *p;
+      break;
+
+    case 2:
+      r = folly::loadUnaligned<uint16_t>(p);
+      break;
+
+    case 0:
+      break;
+  }
+
+  return r;
+}
+
+} // namespace
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(PartialLoadUnaligned, iters) {
+  testPartialLoadUnaligned(folly::partialLoadUnaligned<uint64_t>, iters);
+}
+
+BENCHMARK(PartialLoadUnalignedMemcpy, iters) {
+  testPartialLoadUnaligned(
+      [](const char* p, size_t l) {
+        folly::assume(l < 8);
+
+        uint64_t ret;
+        memcpy(&ret, p, l);
+        return ret;
+      },
+      iters);
+}
+
+BENCHMARK(PartialLoadUnalignedSwitch, iters) {
+  testPartialLoadUnaligned(partialLoadUnalignedSwitch, iters);
+}
+
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
@@ -54,16 +150,19 @@ int main(int argc, char** argv) {
 }
 
 /*
-Benchmarks run on dual Xeon X5650's @ 2.67GHz w/hyperthreading enabled
-  (12 physical cores, 12 MB cache, 72 GB RAM)
+Benchmarks run on Intel Xeon CPU E5-2678 v3 @ 2.50GHz with --bm_min_usec=500000
 
 ============================================================================
-folly/test/BitsBenchmark.cpp                    relative  time/iter  iters/s
+folly/lang/test/BitsBenchmark.cpp               relative  time/iter  iters/s
 ============================================================================
 nextPowTwoClz                                                0.00fs  Infinity
 ----------------------------------------------------------------------------
-isPowTwo                                                   731.61ps    1.37G
+isPowTwo                                                     0.00fs  Infinity
 ----------------------------------------------------------------------------
-reverse                                                      4.84ns  206.58M
+reverse                                                      4.18ns  239.14M
+----------------------------------------------------------------------------
+PartialLoadUnaligned                                         2.22ns  449.80M
+PartialLoadUnalignedMemcpy                                   7.53ns  132.78M
+PartialLoadUnalignedSwitch                                   2.04ns  491.30M
 ============================================================================
 */

@@ -353,6 +353,44 @@ inline T loadUnaligned(const void* p) {
 }
 
 /**
+ * Read l bytes into the low bits of a value of an unsigned integral
+ * type T, where l < sizeof(T).
+ *
+ * This is intended as a complement to loadUnaligned to read the tail
+ * of a buffer when it is processed one word at a time.
+ */
+template <class T>
+inline T partialLoadUnaligned(const void* p, size_t l) {
+  static_assert(
+      std::is_integral<T>::value && std::is_unsigned<T>::value &&
+          sizeof(T) <= 8,
+      "Invalid type");
+  assume(l < sizeof(T));
+
+  auto cp = static_cast<const char*>(p);
+  T value = 0;
+  if (!kHasUnalignedAccess || !kIsLittleEndian) {
+    // Unsupported, use memcpy.
+    memcpy(&value, cp, l);
+    return value;
+  }
+
+  auto avail = l;
+  if (l & 4) {
+    avail -= 4;
+    value = static_cast<T>(loadUnaligned<uint32_t>(cp + avail)) << (avail * 8);
+  }
+  if (l & 2) {
+    avail -= 2;
+    value |= static_cast<T>(loadUnaligned<uint16_t>(cp + avail)) << (avail * 8);
+  }
+  if (l & 1) {
+    value |= loadUnaligned<uint8_t>(cp);
+  }
+  return value;
+}
+
+/**
  * Write an unaligned value of type T.
  */
 template <class T>
@@ -365,7 +403,7 @@ inline void storeUnaligned(void* p, T value) {
     // if p is a nullptr. By assuming it's not a nullptr, we get a
     // nice loud segfault in optimized builds if p is nullptr, rather
     // than just silently doing nothing.
-    folly::assume(p != nullptr);
+    assume(p != nullptr);
     new (p) Unaligned<T>(value);
   } else {
     memcpy(p, &value, sizeof(T));

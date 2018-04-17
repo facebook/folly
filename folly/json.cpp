@@ -671,7 +671,7 @@ void escapeString(
       if (avail >= 8) {
         word = folly::loadUnaligned<uint64_t>(firstEsc);
       } else {
-        memcpy(static_cast<void*>(&word), firstEsc, avail);
+        word = folly::partialLoadUnaligned<uint64_t>(firstEsc, avail);
       }
       auto prefix = firstEscapableInWord(word);
       DCHECK_LE(prefix, avail);

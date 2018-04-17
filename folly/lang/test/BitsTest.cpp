@@ -16,10 +16,12 @@
 
 // @author Tudor Bosman (tudorb@fb.com)
 
-#include <folly/lang/Bits.h>
+#include <algorithm>
+#include <random>
+#include <vector>
 
 #include <folly/Random.h>
-#include <random>
+#include <folly/lang/Bits.h>
 
 #include <folly/portability/GTest.h>
 
@@ -206,5 +208,27 @@ TEST(Bits, BitReverse) {
     EXPECT_EQ(folly::bitReverse(v), reverse_simple(v));
     uint32_t b = folly::Random::rand32();
     EXPECT_EQ(folly::bitReverse(b), reverse_simple(b) >> 32);
+  }
+}
+
+TEST(Bits, PartialLoadUnaligned) {
+  std::vector<char> buf(128);
+  std::generate(
+      buf.begin(), buf.end(), [] { return folly::Random::rand32(255); });
+  for (size_t l = 0; l < 8; ++l) {
+    for (size_t pos = 0; pos <= buf.size() - l; ++pos) {
+      auto p = buf.data() + pos;
+      auto x = folly::partialLoadUnaligned<uint64_t>(p, l);
+
+      uint64_t expected = 0;
+      memcpy(&expected, p, l);
+
+      EXPECT_EQ(x, expected);
+
+      if (l < 4) {
+        auto x32 = folly::partialLoadUnaligned<uint32_t>(p, l);
+        EXPECT_EQ(x32, static_cast<uint32_t>(expected));
+      }
+    }
   }
 }
