@@ -34,12 +34,17 @@ namespace folly {
 #endif
 #endif
 
-#if defined(__APPLE__) && defined(__MAC_OS_X_VERSION_MIN_REQUIRED)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
-// has pthread_setname_np(const char*) (1 param)
+#if defined(__APPLE__)
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && \
+    __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+// macOS 10.6+ has pthread_setname_np(const char*) (1 param)
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 1
+#elif defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && \
+    __IPHONE_OS_VERSION_MIN_REQUIRED >= 30200
+// iOS 3.2+ has pthread_setname_np(const char*) (1 param)
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 1
 #endif
-#endif
+#endif // defined(__APPLE__)
 
 namespace {
 
@@ -151,8 +156,8 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
   return 0 == pthread_setname_np(id, buf);
 #elif FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
-  // Since OS X 10.6 it is possible for a thread to set its own name,
-  // but not that of some other thread.
+  // Since macOS 10.6 and iOS 3.2 it is possible for a thread to set its own
+  // name, but not that of some other thread.
   if (pthread_equal(pthread_self(), id)) {
     return 0 == pthread_setname_np(buf);
   }
