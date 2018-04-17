@@ -199,7 +199,7 @@ void AsyncUDPSocket::dontFragment(bool df) {
 void AsyncUDPSocket::setErrMessageCallback(
     ErrMessageCallback* errMessageCallback) {
   errMessageCallback_ = errMessageCallback;
-  int err = 1;
+  int err = (errMessageCallback_ != nullptr);
 #if defined(IP_RECVERR)
   if (address().getFamily() == AF_INET &&
       fsp::setsockopt(fd_, IPPROTO_IP, IP_RECVERR, &err, sizeof(err))) {

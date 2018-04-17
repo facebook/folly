@@ -359,6 +359,18 @@ TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
   EXPECT_TRUE(errRecvd);
 }
 
+TEST_F(AsyncUDPSocketTest, TestUnsetErrCallback) {
+  socket_->resumeRead(&readCb);
+  socket_->setErrMessageCallback(&err);
+  socket_->setErrMessageCallback(nullptr);
+  folly::SocketAddress addr("127.0.0.1", 10000);
+  EXPECT_CALL(err, errMessage(_)).Times(0);
+  socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  evb_.timer().scheduleTimeoutFn(
+      [&] { evb_.terminateLoopSoon(); }, std::chrono::milliseconds(30));
+  evb_.loopForever();
+}
+
 TEST_F(AsyncUDPSocketTest, CloseInErrorCallback) {
   socket_->resumeRead(&readCb);
   socket_->setErrMessageCallback(&err);
