@@ -116,18 +116,24 @@ TEST(SingletonThreadLocalTest, AccessAfterFastPathDestruction) {
   EXPECT_EQ(6, counter);
 }
 
-TEST(ThreadLocal, TagDependencyTest) {
+TEST(ThreadLocal, DependencyTest) {
+  typedef folly::ThreadLocalPtr<int> Data;
+
   struct mytag {};
 
   typedef SingletonThreadLocal<int> SingletonInt;
   struct barstruct {
     ~barstruct() {
       SingletonInt::get()++;
+      Data data;
+      data.reset(new int(0));
     }
   };
   typedef SingletonThreadLocal<barstruct, mytag> BarSingleton;
 
   std::thread([&]() {
+    Data data;
+    data.reset(new int(0));
     SingletonInt::get();
     BarSingleton::get();
   })
