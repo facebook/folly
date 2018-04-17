@@ -112,6 +112,40 @@ TEST(Window, exception) {
   EXPECT_EQ(2, res.get());
 }
 
+TEST(Window, stackOverflow) {
+  // Number of futures to spawn.
+  constexpr size_t m = 1000;
+  // Size of each block of input and output.
+  constexpr size_t n = 1000;
+
+  std::vector<std::array<int, n>> ints;
+  int64_t expectedSum = 0;
+  for (size_t i = 0; i < m; i++) {
+    std::array<int, n> next{};
+    next[i % n] = i;
+    ints.emplace_back(next);
+    expectedSum += i;
+  }
+
+  // Try to overflow window's executor.
+  auto res = reduce(
+      window(
+          ints,
+          [](std::array<int, n> i) {
+            return folly::Future<std::array<int, n>>(i);
+          },
+          1),
+      static_cast<int64_t>(0),
+      [](int64_t sum, const Try<std::array<int, n>>& b) {
+        for (int a : b.value()) {
+          sum += a;
+        }
+        return sum;
+      });
+
+  EXPECT_EQ(res.get(), expectedSum);
+}
+
 TEST(Window, parallel) {
   std::vector<int> input;
   std::vector<Promise<int>> ps(10);

@@ -22,6 +22,7 @@
 
 #include <folly/Optional.h>
 #include <folly/executors/InlineExecutor.h>
+#include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/Timekeeper.h>
 #include <folly/futures/detail/Core.h>
 #include <folly/synchronization/Baton.h>
@@ -1466,8 +1467,8 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
 template <class Collection, class F, class ItT, class Result>
 std::vector<Future<Result>>
 window(Collection input, F func, size_t n) {
-  // Use global inline executor singleton
-  auto executor = &InlineExecutor::instance();
+  // Use global QueuedImmediateExecutor singleton to avoid stack overflow.
+  auto executor = &QueuedImmediateExecutor::instance();
   return window(executor, std::move(input), std::move(func), n);
 }
 
