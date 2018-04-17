@@ -50,6 +50,16 @@ class LifoSemMPMCQueue : public BlockingQueue<T> {
     return item;
   }
 
+  folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
+    T item;
+    while (!queue_.readIfNotEmpty(item)) {
+      if (!sem_.try_wait_for(time)) {
+        return folly::none;
+      }
+    }
+    return std::move(item);
+  }
+
   size_t capacity() {
     return queue_.capacity();
   }

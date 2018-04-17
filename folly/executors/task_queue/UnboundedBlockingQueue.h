@@ -40,6 +40,16 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
     return item;
   }
 
+  folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
+    T item;
+    while (!queue_.try_dequeue(item)) {
+      if (!sem_.try_wait_for(time)) {
+        return folly::none;
+      }
+    }
+    return item;
+  }
+
   size_t size() override {
     return queue_.size();
   }

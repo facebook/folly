@@ -85,6 +85,18 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
     }
   }
 
+  folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
+    T item;
+    while (true) {
+      if (nonBlockingTake(item)) {
+        return std::move(item);
+      }
+      if (!sem_.try_wait_for(time)) {
+        return folly::none;
+      }
+    }
+  }
+
   bool nonBlockingTake(T& item) {
     for (auto it = queues_.rbegin(); it != queues_.rend(); it++) {
       if (it->readIfNotEmpty(item)) {

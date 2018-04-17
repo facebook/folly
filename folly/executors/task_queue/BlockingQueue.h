@@ -21,6 +21,7 @@
 #include <glog/logging.h>
 
 #include <folly/CPortability.h>
+#include <folly/Optional.h>
 
 namespace folly {
 
@@ -45,6 +46,7 @@ class BlockingQueue {
     return 1;
   }
   virtual T take() = 0;
+  virtual folly::Optional<T> try_take_for(std::chrono::milliseconds time) = 0;
   virtual size_t size() = 0;
 };
 

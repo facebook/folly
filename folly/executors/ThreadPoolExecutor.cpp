@@ -227,6 +227,24 @@ ThreadPoolExecutor::ThreadPtr ThreadPoolExecutor::StoppedThreadQueue::take() {
   }
 }
 
+folly::Optional<ThreadPoolExecutor::ThreadPtr>
+ThreadPoolExecutor::StoppedThreadQueue::try_take_for(
+    std::chrono::milliseconds time) {
+  while (true) {
+    {
+      std::lock_guard<std::mutex> guard(mutex_);
+      if (queue_.size() > 0) {
+        auto item = std::move(queue_.front());
+        queue_.pop();
+        return item;
+      }
+    }
+    if (!sem_.try_wait_for(time)) {
+      return folly::none;
+    }
+  }
+}
+
 size_t ThreadPoolExecutor::StoppedThreadQueue::size() {
   std::lock_guard<std::mutex> guard(mutex_);
   return queue_.size();

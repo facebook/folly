@@ -237,6 +237,8 @@ class ThreadPoolExecutor : public virtual folly::Executor {
     void add(ThreadPtr item) override;
     ThreadPtr take() override;
     size_t size() override;
+    folly::Optional<ThreadPtr> try_take_for(
+        std::chrono::milliseconds /*timeout */) override;
 
    private:
     folly::LifoSem sem_;
