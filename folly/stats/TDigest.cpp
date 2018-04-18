@@ -73,13 +73,13 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
 
   TDigest result(maxSize_);
 
-  result.total_ = total_ + sortedValues.size();
+  result.count_ = count_ + sortedValues.size();
 
   std::vector<Centroid> compressed;
   compressed.reserve(2 * maxSize_);
 
-  double q_0_times_total = 0.0;
-  double q_limit_times_total = detail::k_to_q(1, maxSize_) * result.total_;
+  double q_0_times_count = 0.0;
+  double q_limit_times_count = detail::k_to_q(1, maxSize_) * result.count_;
 
   auto it_centroids = centroids_.begin();
   auto it_sortedValues = sortedValues.begin();
@@ -91,6 +91,8 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
   } else {
     cur = Centroid(*it_sortedValues++, 1.0);
   }
+
+  result.sum_ += cur.mean() * cur.weight();
 
   while (it_centroids != centroids_.end() ||
          it_sortedValues != sortedValues.end()) {
@@ -104,17 +106,19 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
       next = Centroid(*it_sortedValues++, 1.0);
     }
 
-    double q_times_total = q_0_times_total + cur.weight() + next.weight();
+    result.sum_ += next.mean() * next.weight();
 
-    if (q_times_total <= q_limit_times_total) {
+    double q_times_count = q_0_times_count + cur.weight() + next.weight();
+
+    if (q_times_count <= q_limit_times_count) {
       cur.add(next);
     } else {
       compressed.push_back(cur);
-      q_0_times_total += cur.weight();
+      q_0_times_count += cur.weight();
       double q_to_k_res =
-          detail::q_to_k(q_0_times_total / result.total_, maxSize_);
-      q_limit_times_total =
-          detail::k_to_q(q_to_k_res + 1, maxSize_) * result.total_;
+          detail::q_to_k(q_0_times_count / result.count_, maxSize_);
+      q_limit_times_count =
+          detail::k_to_q(q_to_k_res + 1, maxSize_) * result.count_;
       cur = next;
     }
   }
@@ -136,12 +140,14 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   std::vector<Centroid> centroids;
   centroids.reserve(nCentroids);
 
-  double total = 0;
+  double count = 0;
+  double sum = 0;
 
   for (auto it = digests.begin(); it != digests.end(); it++) {
     for (const auto& centroid : it->centroids_) {
       centroids.push_back(centroid);
-      total += centroid.weight();
+      count += centroid.weight();
+      sum += centroid.mean() * centroid.weight();
     }
   }
   std::sort(centroids.begin(), centroids.end());
@@ -150,28 +156,29 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   std::vector<Centroid> compressed;
   compressed.reserve(2 * maxSize);
 
-  double q_0_times_total = 0.0;
+  double q_0_times_count = 0.0;
 
-  double q_limit_times_total = detail::k_to_q(1, maxSize) * total;
+  double q_limit_times_count = detail::k_to_q(1, maxSize) * count;
 
   Centroid cur = centroids.front();
   for (auto it = centroids.begin() + 1; it != centroids.end(); ++it) {
-    double q_times_total = q_0_times_total + cur.weight() + it->weight();
+    double q_times_count = q_0_times_count + cur.weight() + it->weight();
 
-    if (q_times_total <= q_limit_times_total) {
+    if (q_times_count <= q_limit_times_count) {
       cur.add(*it);
     } else {
       compressed.push_back(cur);
-      q_0_times_total += cur.weight();
-      double q_to_k_res = detail::q_to_k(q_0_times_total / total, maxSize);
-      q_limit_times_total = detail::k_to_q(q_to_k_res + 1, maxSize) * total;
+      q_0_times_count += cur.weight();
+      double q_to_k_res = detail::q_to_k(q_0_times_count / count, maxSize);
+      q_limit_times_count = detail::k_to_q(q_to_k_res + 1, maxSize) * count;
       cur = *it;
     }
   }
   compressed.push_back(cur);
 
   TDigest result(maxSize);
-  result.total_ = total;
+  result.count_ = count;
+  result.sum_ = sum;
   result.centroids_ = std::move(compressed);
   return result;
 }
@@ -180,7 +187,7 @@ double TDigest::estimateQuantile(double q) const {
   if (centroids_.empty()) {
     return 0.0;
   }
-  double rank = q * total_;
+  double rank = q * count_;
 
   size_t pos;
   double t;
@@ -189,7 +196,7 @@ double TDigest::estimateQuantile(double q) const {
       return centroids_.back().mean();
     }
     pos = 0;
-    t = total_;
+    t = count_;
     for (auto rit = centroids_.rbegin(); rit != centroids_.rend(); ++rit) {
       t -= rit->weight();
       if (rank >= t) {

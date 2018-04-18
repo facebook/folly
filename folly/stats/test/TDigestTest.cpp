@@ -41,6 +41,10 @@ TEST(TDigest, Basic) {
 
   digest = digest.merge(values);
 
+  EXPECT_EQ(100, digest.count());
+  EXPECT_EQ(5050, digest.sum());
+  EXPECT_EQ(50.5, digest.mean());
+
   EXPECT_EQ(0.6, digest.estimateQuantile(0.001));
   EXPECT_EQ(2.0 - 0.5, digest.estimateQuantile(0.01));
   EXPECT_EQ(51.0 - 0.5, digest.estimateQuantile(0.5));
@@ -65,6 +69,10 @@ TEST(TDigest, Merge) {
 
   digest = digest.merge(values);
 
+  EXPECT_EQ(200, digest.count());
+  EXPECT_EQ(20100, digest.sum());
+  EXPECT_EQ(100.5, digest.mean());
+
   EXPECT_EQ(0.7, digest.estimateQuantile(0.001));
   EXPECT_EQ(4.0 - 1.5, digest.estimateQuantile(0.01));
   EXPECT_EQ(102.0 - 1.5, digest.estimateQuantile(0.5));
@@ -79,6 +87,10 @@ TEST(TDigest, MergeSmall) {
   values.push_back(1);
 
   digest = digest.merge(values);
+
+  EXPECT_EQ(1, digest.count());
+  EXPECT_EQ(1, digest.sum());
+  EXPECT_EQ(1, digest.mean());
 
   EXPECT_EQ(1.0, digest.estimateQuantile(0.001));
   EXPECT_EQ(1.0, digest.estimateQuantile(0.01));
@@ -96,6 +108,10 @@ TEST(TDigest, MergeLarge) {
   }
 
   digest = digest.merge(values);
+
+  EXPECT_EQ(1000, digest.count());
+  EXPECT_EQ(500500, digest.sum());
+  EXPECT_EQ(500.5, digest.mean());
 
   EXPECT_EQ(1.5, digest.estimateQuantile(0.001));
   EXPECT_EQ(10.5, digest.estimateQuantile(0.01));
@@ -117,6 +133,10 @@ TEST(TDigest, MergeLargeAsDigests) {
   }
 
   digest = TDigest::merge(digests);
+
+  EXPECT_EQ(1000, digest.count());
+  EXPECT_EQ(500500, digest.sum());
+  EXPECT_EQ(500.5, digest.mean());
 
   EXPECT_EQ(1.5, digest.estimateQuantile(0.001));
   EXPECT_EQ(10.5, digest.estimateQuantile(0.01));

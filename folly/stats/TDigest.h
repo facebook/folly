@@ -47,7 +47,8 @@ namespace folly {
  */
 class TDigest {
  public:
-  explicit TDigest(size_t maxSize = 100) : maxSize_(maxSize), total_(0.0) {
+  explicit TDigest(size_t maxSize = 100)
+      : maxSize_(maxSize), sum_(0.0), count_(0.0) {
     centroids_.reserve(maxSize);
   }
 
@@ -67,6 +68,18 @@ class TDigest {
    * Estimates the value of the given quantile.
    */
   double estimateQuantile(double q) const;
+
+  double mean() const {
+    return count_ ? sum_ / count_ : 0;
+  }
+
+  double sum() const {
+    return sum_;
+  }
+
+  double count() const {
+    return count_;
+  }
 
  private:
   struct Centroid {
@@ -95,7 +108,8 @@ class TDigest {
 
   std::vector<Centroid> centroids_;
   size_t maxSize_;
-  double total_;
+  double sum_;
+  double count_;
 };
 
 } // namespace folly
