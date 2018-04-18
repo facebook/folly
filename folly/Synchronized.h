@@ -31,6 +31,9 @@
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/container/Foreach.h>
+#include <folly/functional/Invoke.h>
+#include <folly/portability/GTest.h>
 #include <glog/logging.h>
 #include <mutex>
 #include <type_traits>
@@ -85,6 +88,11 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
       ::folly::LockedPtr<const Subclass, LockPolicyExclusive>;
   using ConstLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyShared>;
 
+  using TryWLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyTryExclusive>;
+  using ConstTryWLockedPtr =
+      ::folly::LockedPtr<const Subclass, LockPolicyTryExclusive>;
+  using TryRLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyTryShared>;
+
   /**
    * Acquire an exclusive lock, and return a LockedPtr that can be used to
    * safely access the datum.
@@ -100,6 +108,20 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   }
 
   /**
+   * Attempts to acquire the lock in exclusive mode.  If acquisition is
+   * unsuccessful, the returned LockedPtr will be null.
+   *
+   * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
+   * validity.)
+   */
+  TryWLockedPtr tryWLock() {
+    return TryWLockedPtr{static_cast<Subclass*>(this)};
+  }
+  ConstTryWLockedPtr tryWLock() const {
+    return ConstTryWLockedPtr{static_cast<const Subclass*>(this)};
+  }
+
+  /**
    * Acquire a read lock, and return a ConstLockedPtr that can be used to
    * safely access the datum.
    */
@@ -108,10 +130,22 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   }
 
   /**
+   * Attempts to acquire the lock in shared mode.  If acquisition is
+   * unsuccessful, the returned LockedPtr will be null.
+   *
+   * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
+   * validity.)
+   */
+  TryRLockedPtr tryRLock() const {
+    return TryRLockedPtr{static_cast<const Subclass*>(this)};
+  }
+
+  /**
    * Attempts to acquire the lock, or fails if the timeout elapses first.
    * If acquisition is unsuccessful, the returned LockedPtr will be null.
    *
-   * (Use LockedPtr::isNull() to check for validity.)
+   * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
+   * validity.)
    */
   template <class Rep, class Period>
   LockedPtr wlock(const std::chrono::duration<Rep, Period>& timeout) {
@@ -127,7 +161,8 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    * Attempts to acquire the lock, or fails if the timeout elapses first.
    * If acquisition is unsuccessful, the returned LockedPtr will be null.
    *
-   * (Use LockedPtr::isNull() to check for validity.)
+   * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
+   * validity.)
    */
   template <class Rep, class Period>
   ConstLockedPtr rlock(
@@ -224,6 +259,11 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
   using ConstUpgradeLockedGuardPtr =
       ::folly::LockedGuardPtr<const Subclass, LockPolicyUpgrade>;
 
+  using TryUpgradeLockedPtr =
+      ::folly::LockedPtr<Subclass, LockPolicyTryUpgrade>;
+  using ConstTryUpgradeLockedPtr =
+      ::folly::LockedPtr<const Subclass, LockPolicyTryUpgrade>;
+
   /**
    * Acquire an upgrade lock and return a LockedPtr that can be used to safely
    * access the datum
@@ -235,6 +275,20 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
   }
   ConstUpgradeLockedPtr ulock() const {
     return ConstUpgradeLockedPtr(static_cast<const Subclass*>(this));
+  }
+
+  /**
+   * Attempts to acquire the lock in upgrade mode.  If acquisition is
+   * unsuccessful, the returned LockedPtr will be null.
+   *
+   * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
+   * validity.)
+   */
+  TryUpgradeLockedPtr tryULock() {
+    return TryUpgradeLockedPtr{static_cast<Subclass*>(this)};
+  }
+  ConstTryUpgradeLockedPtr tryULock() const {
+    return ConstTryUpgradeLockedPtr{static_cast<const Subclass*>(this)};
   }
 
   /**
@@ -314,6 +368,10 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
   using ConstLockedPtr =
       ::folly::LockedPtr<const Subclass, LockPolicyExclusive>;
 
+  using TryLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyTryExclusive>;
+  using ConstTryLockedPtr =
+      ::folly::LockedPtr<const Subclass, LockPolicyTryExclusive>;
+
   /**
    * Acquire a lock, and return a LockedPtr that can be used to safely access
    * the datum.
@@ -328,6 +386,20 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
    */
   ConstLockedPtr lock() const {
     return ConstLockedPtr(static_cast<const Subclass*>(this));
+  }
+
+  /**
+   * Attempts to acquire the lock in exclusive mode.  If acquisition is
+   * unsuccessful, the returned LockedPtr will be null.
+   *
+   * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
+   * validity.)
+   */
+  TryLockedPtr tryLock() {
+    return TryLockedPtr{static_cast<Subclass*>(this)};
+  }
+  ConstTryLockedPtr tryLock() const {
+    return ConstTryLockedPtr{static_cast<const Subclass*>(this)};
   }
 
   /**
@@ -849,7 +921,10 @@ class LockedPtrBase {
  protected:
   LockedPtrBase() {}
   explicit LockedPtrBase(SynchronizedType* parent) : parent_(parent) {
-    LockPolicy::lock(parent_->mutex_);
+    DCHECK(parent);
+    if (!LockPolicy::lock(parent_->mutex_)) {
+      parent_ = nullptr;
+    }
   }
   template <class Rep, class Period>
   LockedPtrBase(
@@ -964,7 +1039,13 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
  protected:
   LockedPtrBase() {}
   explicit LockedPtrBase(SynchronizedType* parent)
-      : lock_(parent->mutex_), parent_(parent) {}
+      : lock_{parent->mutex_, std::adopt_lock}, parent_{parent} {
+    DCHECK(parent);
+    if (!LockPolicy::lock(parent_->mutex_)) {
+      parent_ = nullptr;
+      lock_.release();
+    }
+  }
 
   using UnlockerData =
       std::pair<std::unique_lock<std::mutex>, SynchronizedType*>;

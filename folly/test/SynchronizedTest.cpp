@@ -18,6 +18,7 @@
 // Test bed for folly/Synchronized.h
 
 #include <folly/Synchronized.h>
+#include <folly/Function.h>
 #include <folly/LockTraitsBoost.h>
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
@@ -27,6 +28,8 @@
 #include <folly/test/SynchronizedTestLib.h>
 
 using namespace folly::sync_tests;
+
+namespace folly {
 
 template <class Mutex>
 class SynchronizedTest : public testing::Test {};
@@ -544,3 +547,145 @@ TEST_F(SynchronizedLockTest, TestPieceWiseConstruct) {
   EXPECT_EQ(*synchronized.lock(), 3);
   EXPECT_EQ(NonDefaultConstructibleMutex::value, 1);
 }
+
+namespace {
+constexpr auto kLockable = 1;
+constexpr auto kWLockable = 2;
+constexpr auto kRLockable = 4;
+constexpr auto kULockable = 8;
+
+template <int kLockableType>
+class TryLockable {
+ public:
+  explicit TryLockable(
+      bool shouldSucceed,
+      folly::Function<void()> onLockIn,
+      folly::Function<void()> onUnlockIn)
+      : kShouldSucceed{shouldSucceed},
+        onLock{std::move(onLockIn)},
+        onUnlock{std::move(onUnlockIn)} {}
+
+  void lock() {
+    EXPECT_TRUE(false);
+  }
+  template <
+      int LockableType = kLockableType,
+      std::enable_if_t<LockableType != kLockable>* = nullptr>
+  void lock_shared() {
+    EXPECT_TRUE(false);
+  }
+  template <
+      int LockableType = kLockableType,
+      std::enable_if_t<LockableType == kULockable>* = nullptr>
+  void lock_upgrade() {
+    EXPECT_TRUE(false);
+  }
+
+  bool tryLockImpl(int lockableMask) {
+    // if the lockable type of this instance is one of the possible options as
+    // expressed in the mask go through the usual test code
+    if (kLockableType | lockableMask) {
+      if (kShouldSucceed) {
+        onLock();
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    // else fail the test
+    EXPECT_TRUE(false);
+    return false;
+  }
+  void unlockImpl(int lockableMask) {
+    if (kLockableType | lockableMask) {
+      onUnlock();
+      return;
+    }
+
+    EXPECT_TRUE(false);
+  }
+
+  bool try_lock() {
+    return tryLockImpl(kLockable | kWLockable);
+  }
+  bool try_lock_shared() {
+    return tryLockImpl(kRLockable);
+  }
+  bool try_lock_upgrade() {
+    return tryLockImpl(kULockable);
+  }
+
+  void unlock() {
+    unlockImpl(kLockable | kWLockable);
+  }
+  void unlock_shared() {
+    unlockImpl(kLockable | kRLockable);
+  }
+  void unlock_upgrade() {
+    unlockImpl(kLockable | kULockable);
+  }
+
+  const bool kShouldSucceed;
+  folly::Function<void()> onLock;
+  folly::Function<void()> onUnlock;
+};
+
+template <int kLockable, typename Func>
+void testTryLock(Func func) {
+  {
+    auto locked = 0;
+    auto unlocked = 0;
+    folly::Synchronized<int, TryLockable<kLockable>> synchronized{
+        std::piecewise_construct,
+        std::make_tuple(),
+        std::make_tuple(true, [&] { ++locked; }, [&] { ++unlocked; })};
+
+    {
+      auto lock = func(synchronized);
+      EXPECT_TRUE(lock);
+      EXPECT_EQ(locked, 1);
+    }
+    EXPECT_EQ(locked, 1);
+    EXPECT_EQ(unlocked, 1);
+  }
+  {
+    auto locked = 0;
+    auto unlocked = 0;
+    folly::Synchronized<int, TryLockable<kLockable>> synchronized{
+        std::piecewise_construct,
+        std::make_tuple(),
+        std::make_tuple(false, [&] { ++locked; }, [&] { ++unlocked; })};
+
+    {
+      auto lock = func(synchronized);
+      EXPECT_FALSE(lock);
+      EXPECT_EQ(locked, 0);
+    }
+    EXPECT_EQ(locked, 0);
+    EXPECT_EQ(unlocked, 0);
+  }
+}
+} // namespace
+
+TEST_F(SynchronizedLockTest, TestTryLock) {
+  testTryLock<kLockable>(
+      [](auto& synchronized) { return synchronized.tryLock(); });
+}
+
+TEST_F(SynchronizedLockTest, TestTryWLock) {
+  testTryLock<kWLockable>(
+      [](auto& synchronized) { return synchronized.tryWLock(); });
+}
+
+TEST_F(SynchronizedLockTest, TestTryRLock) {
+  testTryLock<kRLockable>(
+      [](auto& synchronized) { return synchronized.tryRLock(); });
+}
+
+TEST_F(SynchronizedLockTest, TestTryULock) {
+  testTryLock<kULockable>(
+      [](auto& synchronized) { return synchronized.tryULock(); });
+}
+
+} // namespace folly
