@@ -123,7 +123,7 @@ template <
     typename ValueType,
     typename Allocator,
     template <typename> class Atom = std::atomic>
-class NodeT : public folly::hazptr::hazptr_obj_base<
+class NodeT : public folly::hazptr::hazptr_obj_base_refcounted<
                   NodeT<KeyType, ValueType, Allocator, Atom>,
                   concurrenthashmap::HazptrDeleter<Allocator>> {
  public:
@@ -138,27 +138,17 @@ class NodeT : public folly::hazptr::hazptr_obj_base<
             std::forward<Arg>(k),
             std::forward<Args>(args)...) {}
 
-  /* Nodes are refcounted: If a node is retired() while a writer is
-     traversing the chain, the rest of the chain must remain valid
-     until all readers are finished.  This includes the shared tail
-     portion of the chain, as well as both old/new hash buckets that
-     may point to the same portion, and erased nodes may increase the
-     refcount */
-  void acquire() {
-    DCHECK(refcount_.load() != 0);
-    refcount_.fetch_add(1);
-  }
   void release() {
-    if (refcount_.fetch_sub(1) == 1 /* was previously 1 */) {
-      this->retire(
-          folly::hazptr::default_hazptr_domain(),
-          concurrenthashmap::HazptrDeleter<Allocator>());
-    }
+    this->retire(
+        folly::hazptr::default_hazptr_domain(),
+        concurrenthashmap::HazptrDeleter<Allocator>());
   }
   ~NodeT() {
     auto next = next_.load(std::memory_order_acquire);
     if (next) {
-      next->release();
+      if (next->release_ref()) {
+        delete next;
+      }
     }
   }
 
@@ -169,7 +159,6 @@ class NodeT : public folly::hazptr::hazptr_obj_base<
 
  private:
   ValueHolder<KeyType, ValueType, Allocator> item_;
-  Atom<uint16_t> refcount_{1};
 };
 
 } // namespace concurrenthashmap
@@ -417,7 +406,7 @@ class alignas(64) ConcurrentHashMapSegment {
           auto next = node->next_.load(std::memory_order_relaxed);
           cur->next_.store(next, std::memory_order_relaxed);
           if (next) {
-            next->acquire();
+            next->acquire_ref();
           }
           prev->store(cur, std::memory_order_release);
           g.unlock();
@@ -502,7 +491,7 @@ class alignas(64) ConcurrentHashMapSegment {
         count++;
       }
       // Set longest last run in new bucket, incrementing the refcount.
-      lastrun->acquire();
+      lastrun->acquire_ref();
       newbuckets->buckets_[lastidx].store(lastrun, std::memory_order_relaxed);
       // Clone remaining nodes
       for (; node != lastrun;
@@ -572,7 +561,7 @@ class alignas(64) ConcurrentHashMapSegment {
         if (KeyEqual()(key, node->getItem().first)) {
           auto next = node->next_.load(std::memory_order_relaxed);
           if (next) {
-            next->acquire();
+            next->acquire_ref();
           }
           if (prev) {
             prev->next_.store(next, std::memory_order_release);
@@ -678,7 +667,12 @@ class alignas(64) ConcurrentHashMapSegment {
       for (size_t i = 0; i < count; i++) {
         auto elem = buckets_[i].load(std::memory_order_relaxed);
         if (elem) {
-          elem->release();
+          // Buckets may not own the chain: this could be a Buckets
+          // struct freed after resize, and we only have a refcount
+          // on the chain.
+          if (elem->release_ref()) {
+            concurrenthashmap::HazptrDeleter<Allocator>()(elem);
+          }
         }
         typedef Atom<Node*> Element;
         buckets_[i].~Element();
