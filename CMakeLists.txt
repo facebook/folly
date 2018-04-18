@@ -631,6 +631,7 @@ if (BUILD_TESTS)
       TEST openssl_hash_test SOURCES OpenSSLHashTest.cpp
 
     DIRECTORY stats/test/
+      TEST digest_builder_test SOURCES DigestBuilderTest.cpp
       TEST histogram_test SOURCES HistogramTest.cpp
       TEST sliding_window_test SOURCES SlidingWindowTest.cpp
       TEST tdigest_test SOURCES TDigestTest.cpp
