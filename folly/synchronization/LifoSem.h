@@ -356,11 +356,13 @@ struct LifoSemBase {
   LifoSemBase& operator=(LifoSemBase const&) = delete;
 
   /// Silently saturates if value is already 2^32-1
-  void post() {
+  bool post() {
     auto idx = incrOrPop(1);
     if (idx != 0) {
       idxToNode(idx).handoff().post();
+      return true;
     }
+    return false;
   }
 
   /// Equivalent to n calls to post(), except may be much more efficient.

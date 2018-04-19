@@ -27,9 +27,9 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
  public:
   virtual ~UnboundedBlockingQueue() {}
 
-  void add(T item) override {
+  bool add(T item) override {
     queue_.enqueue(std::move(item));
-    sem_.post();
+    return sem_.post();
   }
 
   T take() override {

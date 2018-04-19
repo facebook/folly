@@ -38,9 +38,14 @@ template <class T>
 class BlockingQueue {
  public:
   virtual ~BlockingQueue() = default;
-  virtual void add(T item) = 0;
-  virtual void addWithPriority(T item, int8_t /* priority */) {
-    add(std::move(item));
+  // Adds item to the queue (with priority).
+  //
+  // Returns true if an existing thread was able to work on it (used
+  // for dynamically sizing thread pools), false otherwise.  Return false
+  // if this feature is not supported.
+  virtual bool add(T item) = 0;
+  virtual bool addWithPriority(T item, int8_t /* priority */) {
+    return add(std::move(item));
   }
   virtual uint8_t getNumPriorities() {
     return 1;
