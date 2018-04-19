@@ -18,11 +18,21 @@
 #include <folly/portability/GTest.h>
 #include <glog/logging.h>
 
+#include <atomic>
+#include <mutex>
+#include <thread>
+
 TEST(ThreadLocal, AtFork) {
   int foo;
   bool forked = false;
   folly::detail::AtFork::registerHandler(
-      &foo, [&] { forked = true; }, [] {}, [] {});
+      &foo,
+      [&] {
+        forked = true;
+        return true;
+      },
+      [] {},
+      [] {});
   auto pid = fork();
   if (pid) {
     int status;
@@ -45,4 +55,43 @@ TEST(ThreadLocal, AtFork) {
     exit(0);
   }
   EXPECT_FALSE(forked);
+}
+
+TEST(ThreadLocal, AtForkOrdering) {
+  std::atomic<bool> done{false};
+  std::atomic<bool> started{false};
+  std::mutex a;
+  std::mutex b;
+  int foo;
+  int foo2;
+  folly::detail::AtFork::registerHandler(
+      &foo,
+      [&] { return a.try_lock(); },
+      [&] { a.unlock(); },
+      [&] { a.unlock(); });
+  folly::detail::AtFork::registerHandler(
+      &foo2,
+      [&] { return b.try_lock(); },
+      [&] { b.unlock(); },
+      [&] { b.unlock(); });
+
+  auto thr = std::thread([&]() {
+    std::lock_guard<std::mutex> g(a);
+    started = true;
+    usleep(100);
+    std::lock_guard<std::mutex> g2(b);
+  });
+  while (!started) {
+  }
+  auto pid = fork();
+  if (pid) {
+    int status;
+    auto pid2 = wait(&status);
+    EXPECT_EQ(status, 0);
+    EXPECT_EQ(pid, pid2);
+  } else {
+    exit(0);
+  }
+  done = true;
+  thr.join();
 }

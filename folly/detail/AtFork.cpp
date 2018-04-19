@@ -28,7 +28,7 @@ namespace {
 
 struct AtForkTask {
   void* object;
-  folly::Function<void()> prepare;
+  folly::Function<bool()> prepare;
   folly::Function<void()> parent;
   folly::Function<void()> child;
 };
@@ -42,9 +42,20 @@ class AtForkList {
 
   static void prepare() noexcept {
     instance().tasksLock.lock();
-    auto& tasks = instance().tasks;
-    for (auto task = tasks.rbegin(); task != tasks.rend(); ++task) {
-      task->prepare();
+    while (true) {
+      auto& tasks = instance().tasks;
+      auto task = tasks.rbegin();
+      for (; task != tasks.rend(); ++task) {
+        if (!task->prepare()) {
+          break;
+        }
+      }
+      if (task == tasks.rend()) {
+        return;
+      }
+      for (auto untask = tasks.rbegin(); untask != task; ++untask) {
+        untask->parent();
+      }
     }
   }
 
@@ -91,7 +102,7 @@ void AtFork::init() {
 
 void AtFork::registerHandler(
     void* object,
-    folly::Function<void()> prepare,
+    folly::Function<bool()> prepare,
     folly::Function<void()> parent,
     folly::Function<void()> child) {
   std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);

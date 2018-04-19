@@ -409,8 +409,8 @@ struct StaticMeta : StaticMetaBase {
     return threadEntry;
   }
 
-  static void preFork() {
-    instance().lock_.lock();  // Make sure it's created
+  static bool preFork() {
+    return instance().lock_.try_lock(); // Make sure it's created
   }
 
   static void onForkParent() {

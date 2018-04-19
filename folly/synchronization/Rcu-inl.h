@@ -36,7 +36,7 @@ rcu_domain<Tag>::rcu_domain(Executor* executor) noexcept
   // that use read locks *is* supported.
   detail::AtFork::registerHandler(
       this,
-      [this]() { syncMutex_.lock(); },
+      [this]() { return syncMutex_.try_lock(); },
       [this]() { syncMutex_.unlock(); },
       [this]() {
         counters_.resetAfterFork();
