@@ -31,9 +31,6 @@
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
-#include <folly/container/Foreach.h>
-#include <folly/functional/Invoke.h>
-#include <folly/portability/GTest.h>
 #include <glog/logging.h>
 #include <mutex>
 #include <type_traits>
