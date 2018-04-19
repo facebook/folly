@@ -835,7 +835,7 @@ TEST(IPAddress, getIPv6For6To4) {
     auto ipv6 = ipv4.getIPv6For6To4();
     EXPECT_EQ(ipv6.type(), IPAddressV6::Type::T6TO4);
     auto ipv4New = ipv6.getIPv4For6To4();
-    EXPECT_TRUE(ipv4Str.compare(ipv4New.str()) == 0);
+    EXPECT_EQ(ipv4Str, ipv4New.str());
   }
 }
 
@@ -908,13 +908,13 @@ TEST(IPAddress, ToLong) {
 
     auto ip2 = IPAddress::fromLongHBO(tc.second);
     EXPECT_TRUE(ip2.isV4());
-    EXPECT_TRUE(tc.first.compare(ip2.str()) == 0);
+    EXPECT_EQ(tc.first, ip2.str());
     EXPECT_EQ(tc.second, ip2.asV4().toLongHBO());
 
     auto nla = htonl(tc.second);
     auto ip3 = IPAddress::fromLong(nla);
     EXPECT_TRUE(ip3.isV4());
-    EXPECT_TRUE(tc.first.compare(ip3.str()) == 0);
+    EXPECT_EQ(tc.first, ip3.str());
     EXPECT_EQ(nla, ip3.asV4().toLong());
   }
 }
