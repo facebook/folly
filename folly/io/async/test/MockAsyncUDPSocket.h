@@ -18,7 +18,8 @@
 #include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/portability/GMock.h>
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
 struct MockAsyncUDPSocket : public AsyncUDPSocket {
   explicit MockAsyncUDPSocket(EventBase* evb) : AsyncUDPSocket(evb) {}
@@ -28,11 +29,11 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD1(bind, void(const SocketAddress&));
   MOCK_METHOD2(setFD, void(int, AsyncUDPSocket::FDOwnership));
   MOCK_METHOD2(
-   write,
-   ssize_t(const SocketAddress&, const std::unique_ptr<IOBuf>&));
+      write,
+      ssize_t(const SocketAddress&, const std::unique_ptr<IOBuf>&));
   MOCK_METHOD3(
-   writev,
-   ssize_t(const SocketAddress&, const struct iovec*, size_t));
+      writev,
+      ssize_t(const SocketAddress&, const struct iovec*, size_t));
   MOCK_METHOD1(resumeRead, void(ReadCallback*));
   MOCK_METHOD0(pauseRead, void());
   MOCK_METHOD0(close, void());
@@ -40,6 +41,8 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD1(setReusePort, void(bool));
   MOCK_METHOD1(setReuseAddr, void(bool));
   MOCK_METHOD1(dontFragment, void(bool));
+  MOCK_METHOD1(setErrMessageCallback, void(ErrMessageCallback*));
 };
 
-}}
+} // namespace test
+} // namespace folly

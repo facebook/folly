@@ -222,7 +222,7 @@ class AsyncUDPSocket : public EventHandler {
   /**
    * Callback for receiving errors on the UDP sockets
    */
-  void setErrMessageCallback(ErrMessageCallback* errMessageCallback);
+  virtual void setErrMessageCallback(ErrMessageCallback* errMessageCallback);
 
  protected:
   virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
