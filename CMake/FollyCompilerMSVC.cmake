@@ -285,3 +285,9 @@ function(apply_folly_compile_options_to_target THETARGET)
     set_property(TARGET ${THETARGET} APPEND_STRING PROPERTY LINK_FLAGS_RELEASE " /LTCG")
   endif()
 endfunction()
+
+target_link_libraries(folly_deps
+  INTERFACE
+    Iphlpapi.lib
+    Ws2_32.lib
+)
