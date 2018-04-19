@@ -32,10 +32,11 @@
 #include <string.h>
 #include <utility>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 AtomicStruct<std::chrono::steady_clock::duration>
-MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
+    MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
 
 void MemoryIdler::flushLocalMallocCaches() {
   if (!usingJEMalloc()) {
@@ -77,7 +78,6 @@ void MemoryIdler::flushLocalMallocCaches() {
   }
 }
 
-
 // Stack madvise isn't Linux or glibc specific, but the system calls
 // and arithmetic (and bug compatibility) are not portable.  The set of
 // platforms could be increased if it was useful.
@@ -105,13 +105,27 @@ static void fetchStackLimits() {
     tls_stackSize = 1;
     return;
   }
-  SCOPE_EXIT { pthread_attr_destroy(&attr); };
+  SCOPE_EXIT {
+    pthread_attr_destroy(&attr);
+  };
 
   void* addr;
   size_t rawSize;
   if ((err = pthread_attr_getstack(&attr, &addr, &rawSize))) {
     // unexpected, but it is better to continue in prod than do nothing
     FB_LOG_EVERY_MS(ERROR, 10000) << "pthread_attr_getstack error " << err;
+    assert(false);
+    tls_stackSize = 1;
+    return;
+  }
+  if (rawSize >= 4UL * 1024 * 1024 * 1024) {
+    // Avoid unmapping huge swaths of memory if there is an insane stack
+    // size.  If we went into /proc to find the actual contiguous mapped
+    // pages before unmapping we wouldn't care about the size at all, but
+    // our current strategy is to unmap even pages that are not mapped.
+    // We will warn (because it is a bug) but better not to crash.
+    FB_LOG_EVERY_MS(ERROR, 10000)
+        << "pthread_attr_getstack returned insane stack size " << rawSize;
     assert(false);
     tls_stackSize = 1;
     return;
