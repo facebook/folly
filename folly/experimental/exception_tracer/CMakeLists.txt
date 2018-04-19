@@ -5,13 +5,9 @@ if (FOLLY_USE_SYMBOLIZER)
     StackTrace.cpp
   )
   apply_folly_compile_options_to_target(folly_exception_tracer_base)
-  target_include_directories(folly_exception_tracer_base
-    PUBLIC
-      ${FOLLY_INCLUDE_DIRECTORIES}
-  )
   target_link_libraries(
     folly_exception_tracer_base
-    PUBLIC folly ${FOLLY_LINK_LIBRARIES}
+    PUBLIC folly
   )
 
   add_library(
@@ -20,10 +16,6 @@ if (FOLLY_USE_SYMBOLIZER)
     ExceptionTracerLib.cpp
   )
   apply_folly_compile_options_to_target(folly_exception_tracer)
-  target_include_directories(folly_exception_tracer
-    PUBLIC
-      ${FOLLY_INCLUDE_DIRECTORIES}
-  )
   target_link_libraries(
     folly_exception_tracer
     PUBLIC folly_exception_tracer_base
@@ -34,10 +26,6 @@ if (FOLLY_USE_SYMBOLIZER)
     ExceptionCounterLib.cpp
   )
   apply_folly_compile_options_to_target(folly_exception_counter)
-  target_include_directories(folly_exception_counter
-    PUBLIC
-      ${FOLLY_INCLUDE_DIRECTORIES}
-  )
   target_link_libraries(
     folly_exception_counter
     PUBLIC folly_exception_tracer
