@@ -118,12 +118,17 @@ static void fetchStackLimits() {
     tls_stackSize = 1;
     return;
   }
-  if (rawSize >= 4UL * 1024 * 1024 * 1024) {
-    // Avoid unmapping huge swaths of memory if there is an insane stack
-    // size.  If we went into /proc to find the actual contiguous mapped
-    // pages before unmapping we wouldn't care about the size at all, but
-    // our current strategy is to unmap even pages that are not mapped.
-    // We will warn (because it is a bug) but better not to crash.
+  if (rawSize >= (1ULL << 32)) {
+    // Avoid unmapping huge swaths of memory if there is an insane
+    // stack size.  The boundary of sanity is somewhat arbitrary: 4GB.
+    //
+    // If we went into /proc to find the actual contiguous mapped pages
+    // before unmapping we wouldn't care about the stack size at all,
+    // but our current strategy is to unmap the entire range that might
+    // be used for the stack even if it hasn't been fully faulted-in.
+    //
+    // Very large stack size is a bug (hence the assert), but we can
+    // carry on if we are in prod.
     FB_LOG_EVERY_MS(ERROR, 10000)
         << "pthread_attr_getstack returned insane stack size " << rawSize;
     assert(false);
