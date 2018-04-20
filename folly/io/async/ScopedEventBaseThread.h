@@ -36,7 +36,7 @@ typedef Range<const char*> StringPiece;
  * When the ScopedEventBaseThread object is destroyed, the thread will be
  * stopped.
  */
-class ScopedEventBaseThread : public IOExecutor {
+class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
  public:
   ScopedEventBaseThread();
   explicit ScopedEventBaseThread(const StringPiece& name);
