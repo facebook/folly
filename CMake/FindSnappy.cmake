@@ -6,7 +6,12 @@
 # SNAPPY_LIBRARY
 
 find_path(SNAPPY_INCLUDE_DIR NAMES snappy.h)
-find_library(SNAPPY_LIBRARY NAMES snappy)
+
+find_library(SNAPPY_LIBRARY_DEBUG NAMES snappyd)
+find_library(SNAPPY_LIBRARY_RELEASE NAMES snappy)
+
+include(SelectLibraryConfigurations)
+SELECT_LIBRARY_CONFIGURATIONS(SNAPPY)
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(

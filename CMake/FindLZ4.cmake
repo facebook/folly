@@ -7,7 +7,12 @@
 #
 
 find_path(LZ4_INCLUDE_DIR NAMES lz4.h)
-find_library(LZ4_LIBRARY NAMES lz4)
+
+find_library(LZ4_LIBRARY_DEBUG NAMES lz4d)
+find_library(LZ4_LIBRARY_RELEASE NAMES lz4)
+
+include(SelectLibraryConfigurations)
+SELECT_LIBRARY_CONFIGURATIONS(LZ4)
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(

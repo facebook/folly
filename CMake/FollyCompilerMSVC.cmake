@@ -180,6 +180,13 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd4701 # Potentially uninitialized local variable used.
       /wd4702 # Unreachable code.
 
+      # MSVC 2015 only:
+      $<$<BOOL:${MSVC_IS_2015}>:
+        /wd4268 # Static/global data initialized with compiler generated default constructor fills the object with zeros.
+        /wd4510 # Default constructor was implicitly defined as deleted.
+        /wd4814 # In C++14 'constexpr' will not imply 'const'.
+      >
+      
       # These warnings are disabled because we've
       # enabled all warnings. If all warnings are
       # not enabled, we still need to disable them

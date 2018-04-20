@@ -50,8 +50,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   endif()
 
   if (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS 1920)
+    set(MSVC_IS_2015 OFF)
     set(MSVC_IS_2017 ON)
   elseif (MSVC_VERSION EQUAL 1900)
+    set(MSVC_IS_2015 ON)
     set(MSVC_IS_2017 OFF)
   else()
     message(
