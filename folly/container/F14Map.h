@@ -40,13 +40,44 @@
 
 #if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+#include <string>
 #include <unordered_map>
 
 namespace folly {
 
+namespace f14 {
+namespace detail {
+template <typename K>
+struct CachedHashOverhead : std::integral_constant<std::size_t, 0> {};
+
+template <typename... Args>
+struct CachedHashOverhead<std::basic_string<Args...>>
+    : std::integral_constant<std::size_t, sizeof(std::size_t)> {};
+
 template <typename K, typename M, typename H, typename E, typename A>
-class F14ValueMap : public std::unordered_map<K, M, H, E, A> {
+class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   using Super = std::unordered_map<K, M, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14BasicMap() : Super() {}
+
+  // Accounts for allocated memory only, does not include sizeof(*this).
+  typename Super::size_type getAllocatedMemorySize() const {
+    auto nodeSize = sizeof(typename Super::pointer) +
+        CachedHashOverhead<typename Super::key_type>::value +
+        sizeof(typename Super::value_type);
+    auto bc = this->bucket_count();
+    return (bc == 1 ? 0 : bc) * sizeof(typename Super::pointer) +
+        this->size() * nodeSize;
+  }
+};
+} // namespace detail
+} // namespace f14
+
+template <typename K, typename M, typename H, typename E, typename A>
+class F14ValueMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
+  using Super = f14::detail::F14BasicMap<K, M, H, E, A>;
 
  public:
   using Super::Super;
@@ -54,8 +85,8 @@ class F14ValueMap : public std::unordered_map<K, M, H, E, A> {
 };
 
 template <typename K, typename M, typename H, typename E, typename A>
-class F14NodeMap : public std::unordered_map<K, M, H, E, A> {
-  using Super = std::unordered_map<K, M, H, E, A>;
+class F14NodeMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
+  using Super = f14::detail::F14BasicMap<K, M, H, E, A>;
 
  public:
   using Super::Super;
@@ -63,8 +94,8 @@ class F14NodeMap : public std::unordered_map<K, M, H, E, A> {
 };
 
 template <typename K, typename M, typename H, typename E, typename A>
-class F14VectorMap : public std::unordered_map<K, M, H, E, A> {
-  using Super = std::unordered_map<K, M, H, E, A>;
+class F14VectorMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
+  using Super = f14::detail::F14BasicMap<K, M, H, E, A>;
 
  public:
   using Super::Super;

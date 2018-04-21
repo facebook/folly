@@ -15,6 +15,8 @@
  */
 
 #include <folly/container/F14Map.h>
+
+#include <folly/Conv.h>
 #include <folly/container/test/F14TestUtil.h>
 #include <folly/portability/GTest.h>
 
@@ -42,6 +44,40 @@ TEST(F14Map, customSwap) {
   testCustomSwap<folly::F14NodeMap>();
   testCustomSwap<folly::F14VectorMap>();
   testCustomSwap<folly::F14FastMap>();
+}
+
+namespace {
+template <
+    template <typename, typename, typename, typename, typename> class TMap,
+    typename K,
+    typename V>
+void testAllocatedMemorySize() {
+  using namespace folly::f14;
+  using A = SwapTrackingAlloc<std::pair<const K, V>>;
+
+  A::resetTracking();
+  TMap<K, V, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
+  EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
+
+  for (size_t i = 0; i < 1; ++i) {
+    m.insert(std::make_pair(folly::to<K>(i), V{}));
+    EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
+  }
+}
+
+template <typename K, typename V>
+void runAllocatedMemorySizeTest() {
+  testAllocatedMemorySize<folly::F14ValueMap, K, V>();
+  testAllocatedMemorySize<folly::F14NodeMap, K, V>();
+  testAllocatedMemorySize<folly::F14VectorMap, K, V>();
+  testAllocatedMemorySize<folly::F14FastMap, K, V>();
+}
+} // namespace
+
+TEST(F14Map, getAllocatedMemorySize) {
+  runAllocatedMemorySizeTest<int, int>();
+  runAllocatedMemorySizeTest<std::string, int>();
+  runAllocatedMemorySizeTest<std::string, std::string>();
 }
 
 ///////////////////////////////////
