@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "AsymmetricMemoryBarrier.h"
+#include <folly/synchronization/AsymmetricMemoryBarrier.h>
 
 #include <folly/Exception.h>
 #include <folly/Indestructible.h>

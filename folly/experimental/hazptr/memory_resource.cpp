@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "memory_resource.h"
+#include <folly/experimental/hazptr/memory_resource.h>
 
 namespace folly {
 namespace hazptr {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "SerialExecutor.h"
+#include <folly/executors/SerialExecutor.h>
 
 #include <mutex>
 #include <queue>

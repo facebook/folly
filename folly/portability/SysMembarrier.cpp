@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "SysMembarrier.h"
+#include <folly/portability/SysMembarrier.h>
 
 #include <mutex>
 

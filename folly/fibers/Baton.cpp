@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "Baton.h"
+#include <folly/fibers/Baton.h>
 
 #include <chrono>
 

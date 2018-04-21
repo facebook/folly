@@ -331,4 +331,4 @@ class hazptr_local {
 } // namespace hazptr
 } // namespace folly
 
-#include "hazptr-impl.h"
+#include <folly/experimental/hazptr/hazptr-impl.h>

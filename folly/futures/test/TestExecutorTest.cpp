@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/futures/test/TestExecutor.h>
 #include <folly/portability/GTest.h>
-#include "TestExecutor.h"
 
 using namespace std;
 using namespace std::chrono;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "Koan.h"
+#include <folly/futures/exercises/Koan.h>
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "folly/experimental/ThreadedRepeatingFunctionRunner.h"
+#include <folly/experimental/ThreadedRepeatingFunctionRunner.h>
 
 #include <folly/portability/GTest.h>
 #include <atomic>

@@ -16,7 +16,7 @@
 
 #include <folly/futures/Future.h>
 
-#include "Koan.h"
+#include <folly/futures/exercises/Koan.h>
 
 using folly::Future;
 using folly::makeFuture;

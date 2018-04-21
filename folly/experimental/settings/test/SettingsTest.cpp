@@ -17,8 +17,8 @@
 #include <folly/Format.h>
 #include <folly/portability/GTest.h>
 
-#include "a.h"
-#include "b.h"
+#include <folly/experimental/settings/test/a.h>
+#include <folly/experimental/settings/test/b.h>
 
 namespace some_ns {
 FOLLY_SETTING_DEFINE(

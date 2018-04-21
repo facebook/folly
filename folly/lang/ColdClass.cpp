@@ -13,6 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ColdClass.h"
+#include <folly/lang/ColdClass.h>
 
 folly::cold_detail::ColdClass::ColdClass() noexcept {}

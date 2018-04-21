@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/memory/UninitializedMemoryHacks.h"
+#include <folly/memory/UninitializedMemoryHacks.h>
 
 // Verify that this is okay to put in multiple translation units
 FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(int)

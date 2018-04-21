@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "hazptr.h"
+#include <folly/experimental/hazptr/hazptr.h>
 
 namespace folly {
 namespace hazptr {

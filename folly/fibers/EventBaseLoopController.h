@@ -78,4 +78,4 @@ class EventBaseLoopController : public LoopController {
 } // namespace fibers
 } // namespace folly
 
-#include "EventBaseLoopController-inl.h"
+#include <folly/fibers/EventBaseLoopController-inl.h>

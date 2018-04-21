@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "GuardPageAllocator.h"
+#include <folly/fibers/GuardPageAllocator.h>
 
 #ifndef _WIN32
 #include <dlfcn.h>

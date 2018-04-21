@@ -19,9 +19,9 @@
 #include <vector>
 
 #include <folly/futures/Retrying.h>
+#include <folly/futures/test/TestExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
-#include "TestExecutor.h"
 
 using namespace std;
 using namespace std::chrono;

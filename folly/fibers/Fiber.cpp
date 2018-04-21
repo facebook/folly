@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "Fiber.h"
+#include <folly/fibers/Fiber.h>
 
 #include <glog/logging.h>
 #include <algorithm>

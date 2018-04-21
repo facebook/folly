@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "a.h"
+#include <folly/experimental/settings/test/a.h>
 
 #include <folly/experimental/settings/Settings.h>
 

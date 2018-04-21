@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "FiberManagerMap.h"
+#include <folly/fibers/FiberManagerMap.h>
 
 #include <memory>
 #include <unordered_map>
