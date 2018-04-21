@@ -113,9 +113,6 @@ TEST(LockTraits, std_mutex) {
   std::mutex mutex;
   traits::lock(mutex);
   traits::unlock(mutex);
-
-  lock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 }
 
 TEST(LockTraits, SharedMutex) {
@@ -132,11 +129,6 @@ TEST(LockTraits, SharedMutex) {
   traits::lock_shared(mutex);
   traits::unlock_shared(mutex);
   traits::unlock_shared(mutex);
-
-  lock_shared_or_unique(mutex);
-  lock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 
   traits::lock_upgrade(mutex);
   traits::unlock_upgrade(mutex);
@@ -197,9 +189,6 @@ TEST(LockTraits, SpinLock) {
   SpinLock mutex;
   traits::lock(mutex);
   traits::unlock(mutex);
-
-  lock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 }
 
 TEST(LockTraits, RWSpinLock) {
@@ -216,11 +205,6 @@ TEST(LockTraits, RWSpinLock) {
   traits::lock_shared(mutex);
   traits::unlock_shared(mutex);
   traits::unlock_shared(mutex);
-
-  lock_shared_or_unique(mutex);
-  lock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 }
 
 TEST(LockTraits, boost_mutex) {
@@ -232,9 +216,6 @@ TEST(LockTraits, boost_mutex) {
   boost::mutex mutex;
   traits::lock(mutex);
   traits::unlock(mutex);
-
-  lock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 }
 
 TEST(LockTraits, boost_recursive_mutex) {
@@ -251,11 +232,6 @@ TEST(LockTraits, boost_recursive_mutex) {
   traits::lock(mutex);
   traits::unlock(mutex);
   traits::unlock(mutex);
-
-  lock_shared_or_unique(mutex);
-  lock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 }
 
 #if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
@@ -272,12 +248,6 @@ TEST(LockTraits, timed_mutex) {
   EXPECT_FALSE(gotLock) << "should not have been able to acquire the "
                         << "timed_mutex a second time";
   traits::unlock(mutex);
-
-  lock_shared_or_unique(mutex);
-  gotLock = try_lock_shared_or_unique_for(mutex, std::chrono::milliseconds(1));
-  EXPECT_FALSE(gotLock) << "should not have been able to acquire the "
-                        << "timed_mutex a second time";
-  unlock_shared_or_unique(mutex);
 }
 
 TEST(LockTraits, recursive_timed_mutex) {
@@ -296,13 +266,6 @@ TEST(LockTraits, recursive_timed_mutex) {
                        << "recursive_timed_mutex a second time";
   traits::unlock(mutex);
   traits::unlock(mutex);
-
-  lock_shared_or_unique(mutex);
-  gotLock = try_lock_shared_or_unique_for(mutex, std::chrono::milliseconds(10));
-  EXPECT_TRUE(gotLock) << "should have been able to acquire the "
-                       << "recursive_timed_mutex a second time";
-  unlock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 }
 
 TEST(LockTraits, boost_shared_mutex) {
@@ -331,16 +294,6 @@ TEST(LockTraits, boost_shared_mutex) {
                        << "shared_mutex a second time in shared mode";
   traits::unlock_shared(mutex);
   traits::unlock_shared(mutex);
-
-  lock_shared_or_unique(mutex);
-  gotLock = traits::try_lock_for(mutex, std::chrono::milliseconds(1));
-  EXPECT_FALSE(gotLock) << "should not have been able to acquire the "
-                        << "shared_mutex a second time";
-  gotLock = try_lock_shared_or_unique_for(mutex, std::chrono::milliseconds(10));
-  EXPECT_TRUE(gotLock) << "should have been able to acquire the "
-                       << "shared_mutex a second time in shared mode";
-  unlock_shared_or_unique(mutex);
-  unlock_shared_or_unique(mutex);
 }
 #endif // FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 

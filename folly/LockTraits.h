@@ -414,57 +414,6 @@ struct LockTraitsBase
 template <class Mutex>
 struct LockTraits : public LockTraitsBase<Mutex> {};
 
-/**
- * If the lock is a shared lock, acquire it in shared mode.
- * Otherwise, for plain (exclusive-only) locks, perform a normal acquire.
- */
-template <class Mutex>
-typename std::enable_if<LockTraits<Mutex>::is_shared>::type
-lock_shared_or_unique(Mutex& mutex) {
-  LockTraits<Mutex>::lock_shared(mutex);
-}
-template <class Mutex>
-typename std::enable_if<!LockTraits<Mutex>::is_shared>::type
-lock_shared_or_unique(Mutex& mutex) {
-  LockTraits<Mutex>::lock(mutex);
-}
-
-/**
- * If the lock is a shared lock, try to acquire it in shared mode, for up to
- * the given timeout.  Otherwise, for plain (exclusive-only) locks, try to
- * perform a normal acquire.
- *
- * Returns true if the lock was acquired, or false on time out.
- */
-template <class Mutex, class Rep, class Period>
-typename std::enable_if<LockTraits<Mutex>::is_shared, bool>::type
-try_lock_shared_or_unique_for(
-    Mutex& mutex,
-    const std::chrono::duration<Rep, Period>& timeout) {
-  return LockTraits<Mutex>::try_lock_shared_for(mutex, timeout);
-}
-template <class Mutex, class Rep, class Period>
-typename std::enable_if<!LockTraits<Mutex>::is_shared, bool>::type
-try_lock_shared_or_unique_for(
-    Mutex& mutex,
-    const std::chrono::duration<Rep, Period>& timeout) {
-  return LockTraits<Mutex>::try_lock_for(mutex, timeout);
-}
-
-/**
- * Release a lock acquired with lock_shared_or_unique()
- */
-template <class Mutex>
-typename std::enable_if<LockTraits<Mutex>::is_shared>::type
-unlock_shared_or_unique(Mutex& mutex) {
-  LockTraits<Mutex>::unlock_shared(mutex);
-}
-template <class Mutex>
-typename std::enable_if<!LockTraits<Mutex>::is_shared>::type
-unlock_shared_or_unique(Mutex& mutex) {
-  LockTraits<Mutex>::unlock(mutex);
-}
-
 /*
  * Lock policy classes.
  *
@@ -512,28 +461,6 @@ struct LockPolicyShared {
   template <class Mutex>
   static void unlock(Mutex& mutex) {
     LockTraits<Mutex>::unlock_shared(mutex);
-  }
-};
-
-/**
- * A lock policy that performs a shared lock operation if a shared mutex type
- * is given, or a normal exclusive lock operation on non-shared mutex types.
- */
-struct LockPolicyShareable {
-  template <class Mutex>
-  static std::true_type lock(Mutex& mutex) {
-    lock_shared_or_unique(mutex);
-    return std::true_type{};
-  }
-  template <class Mutex, class Rep, class Period>
-  static bool try_lock_for(
-      Mutex& mutex,
-      const std::chrono::duration<Rep, Period>& timeout) {
-    return try_lock_shared_or_unique_for(mutex, timeout);
-  }
-  template <class Mutex>
-  static void unlock(Mutex& mutex) {
-    unlock_shared_or_unique(mutex);
   }
 };
 
