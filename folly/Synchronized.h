@@ -995,9 +995,7 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
   }
 
   LockedPtrBase(LockedPtrBase&& rhs) noexcept
-      : lock_(std::move(rhs.lock_)), parent_(rhs.parent_) {
-    rhs.parent_ = nullptr;
-  }
+      : lock_(std::move(rhs.lock_)), parent_(exchange(rhs.parent_, nullptr)) {}
   LockedPtrBase& operator=(LockedPtrBase&& rhs) noexcept {
     lock_ = std::move(rhs.lock_);
     parent_ = rhs.parent_;
@@ -1081,9 +1079,7 @@ class ScopedUnlocker {
   ScopedUnlocker(const ScopedUnlocker&) = delete;
   ScopedUnlocker& operator=(const ScopedUnlocker&) = delete;
   ScopedUnlocker(ScopedUnlocker&& other) noexcept
-      : ptr_(other.ptr_), data_(std::move(other.data_)) {
-    other.ptr_ = nullptr;
-  }
+      : ptr_(exchange(other.ptr_, nullptr)), data_(std::move(other.data_)) {}
   ScopedUnlocker& operator=(ScopedUnlocker&& other) = delete;
 
   ~ScopedUnlocker() {
@@ -1248,10 +1244,8 @@ class LockedPtr : public LockedPtrBase<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
   LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>
   moveFromUpgradeToWrite() {
-    auto* parent_to_pass_on = this->parent_;
-    this->parent_ = nullptr;
     return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>(
-        parent_to_pass_on);
+        exchange(this->parent_, nullptr));
   }
 
   /**
@@ -1264,10 +1258,8 @@ class LockedPtr : public LockedPtrBase<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
   LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>
   moveFromWriteToUpgrade() {
-    auto* parent_to_pass_on = this->parent_;
-    this->parent_ = nullptr;
     return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>(
-        parent_to_pass_on);
+        exchange(this->parent_, nullptr));
   }
 
   /**
@@ -1280,10 +1272,8 @@ class LockedPtr : public LockedPtrBase<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
   LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>
   moveFromUpgradeToRead() {
-    auto* parent_to_pass_on = this->parent_;
-    this->parent_ = nullptr;
     return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>(
-        parent_to_pass_on);
+        exchange(this->parent_, nullptr));
   }
 
   /**
@@ -1296,10 +1286,8 @@ class LockedPtr : public LockedPtrBase<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
   LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>
   moveFromWriteToRead() {
-    auto* parent_to_pass_on = this->parent_;
-    this->parent_ = nullptr;
     return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>(
-        parent_to_pass_on);
+        exchange(this->parent_, nullptr));
   }
 };
 
