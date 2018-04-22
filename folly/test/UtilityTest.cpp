@@ -77,6 +77,13 @@ TEST_F(UtilityTest, as_const) {
   EXPECT_TRUE(noexcept(folly::as_const(s)));
 }
 
+TEST_F(UtilityTest, exchange) {
+  auto obj = std::map<std::string, int>{{"hello", 3}};
+  auto old = exchange(obj, {{"world", 4}});
+  EXPECT_EQ((std::map<std::string, int>{{"world", 4}}), obj);
+  EXPECT_EQ((std::map<std::string, int>{{"hello", 3}}), old);
+}
+
 TEST(FollyIntegerSequence, core) {
   constexpr auto seq = folly::integer_sequence<int, 0, 3, 2>();
   static_assert(seq.size() == 3, "");
