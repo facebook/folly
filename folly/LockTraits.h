@@ -348,6 +348,48 @@ struct LockTraitsImpl<Mutex, MutexLevel::UPGRADE, true>
   }
 };
 
+/**
+ * Unlock helpers
+ *
+ * These help in determining whether it is safe for Synchronized::LockedPtr
+ * instances to be move assigned from one another.  It is safe if they both
+ * have the same unlock policy, and it is not if they don't have the same
+ * unlock policy.  For example
+ *
+ *    auto wlock = synchronized.wlock();
+ *    wlock.unlock();
+ *
+ *    wlock = synchronized.rlock();
+ *
+ * This code would try to release the shared lock with a call to unlock(),
+ * resulting in possibly undefined behavior.  By allowing the LockPolicy
+ * classes (defined below) to know what their unlocking behavior is, we can
+ * prevent against this by disabling unsafe conversions to and from
+ * incompatible LockedPtr types (they are incompatible if the underlying
+ * LockPolicy has different unlock policies.
+ */
+template <template <typename...> class LockTraits>
+struct UnlockPolicyExclusive {
+  template <typename Mutex>
+  static void unlock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock(mutex);
+  }
+};
+template <template <typename...> class LockTraits>
+struct UnlockPolicyShared {
+  template <typename Mutex>
+  static void unlock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_shared(mutex);
+  }
+};
+template <template <typename...> class LockTraits>
+struct UnlockPolicyUpgrade {
+  template <typename Mutex>
+  static void unlock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_upgrade(mutex);
+  }
+};
+
 } // namespace detail
 
 /**
@@ -420,11 +462,12 @@ struct LockTraits : public LockTraitsBase<Mutex> {};
  * These can be used as template parameters to provide compile-time
  * selection over the type of lock operation to perform.
  */
-
 /**
  * A lock policy that performs exclusive lock operations.
  */
-struct LockPolicyExclusive {
+struct LockPolicyExclusive : detail::UnlockPolicyExclusive<LockTraits> {
+  using UnlockPolicy = detail::UnlockPolicyExclusive<LockTraits>;
+
   template <class Mutex>
   static std::true_type lock(Mutex& mutex) {
     LockTraits<Mutex>::lock(mutex);
@@ -436,17 +479,15 @@ struct LockPolicyExclusive {
       const std::chrono::duration<Rep, Period>& timeout) {
     return LockTraits<Mutex>::try_lock_for(mutex, timeout);
   }
-  template <class Mutex>
-  static void unlock(Mutex& mutex) {
-    LockTraits<Mutex>::unlock(mutex);
-  }
 };
 
 /**
  * A lock policy that performs shared lock operations.
  * This policy only works with shared mutex types.
  */
-struct LockPolicyShared {
+struct LockPolicyShared : detail::UnlockPolicyShared<LockTraits> {
+  using UnlockPolicy = detail::UnlockPolicyShared<LockTraits>;
+
   template <class Mutex>
   static std::true_type lock(Mutex& mutex) {
     LockTraits<Mutex>::lock_shared(mutex);
@@ -458,10 +499,6 @@ struct LockPolicyShared {
       const std::chrono::duration<Rep, Period>& timeout) {
     return LockTraits<Mutex>::try_lock_shared_for(mutex, timeout);
   }
-  template <class Mutex>
-  static void unlock(Mutex& mutex) {
-    LockTraits<Mutex>::unlock_shared(mutex);
-  }
 };
 
 /**
@@ -471,7 +508,9 @@ struct LockPolicyShared {
  *  unlock() -> unlock_upgrade()
  *  try_lock_for -> try_lock_upgrade_for()
  */
-struct LockPolicyUpgrade {
+struct LockPolicyUpgrade : detail::UnlockPolicyUpgrade<LockTraits> {
+  using UnlockPolicy = detail::UnlockPolicyUpgrade<LockTraits>;
+
   template <class Mutex>
   static std::true_type lock(Mutex& mutex) {
     LockTraits<Mutex>::lock_upgrade(mutex);
@@ -483,10 +522,6 @@ struct LockPolicyUpgrade {
       const std::chrono::duration<Rep, Period>& timeout) {
     return LockTraits<Mutex>::try_lock_upgrade_for(mutex, timeout);
   }
-  template <class Mutex>
-  static void unlock(Mutex& mutex) {
-    LockTraits<Mutex>::unlock_upgrade(mutex);
-  }
 };
 
 /*****************************************************************************
@@ -496,14 +531,12 @@ struct LockPolicyUpgrade {
  * A lock policy that tries to acquire write locks and returns true or false
  * based on whether the lock operation succeeds
  */
-struct LockPolicyTryExclusive {
+struct LockPolicyTryExclusive : detail::UnlockPolicyExclusive<LockTraits> {
+  using UnlockPolicy = detail::UnlockPolicyExclusive<LockTraits>;
+
   template <class Mutex>
   static bool lock(Mutex& mutex) {
     return LockTraits<Mutex>::try_lock(mutex);
-  }
-  template <class Mutex>
-  static void unlock(Mutex& mutex) {
-    LockTraits<Mutex>::unlock(mutex);
   }
 };
 
@@ -511,14 +544,12 @@ struct LockPolicyTryExclusive {
  * A lock policy that tries to acquire a read lock and returns true or false
  * based on whether the lock operation succeeds
  */
-struct LockPolicyTryShared {
+struct LockPolicyTryShared : detail::UnlockPolicyShared<LockTraits> {
+  using UnlockPolicy = detail::UnlockPolicyShared<LockTraits>;
+
   template <class Mutex>
   static bool lock(Mutex& mutex) {
     return LockTraits<Mutex>::try_lock_shared(mutex);
-  }
-  template <class Mutex>
-  static void unlock(Mutex& mutex) {
-    LockTraits<Mutex>::unlock_shared(mutex);
   }
 };
 
@@ -526,14 +557,12 @@ struct LockPolicyTryShared {
  * A lock policy that tries to acquire an upgrade lock and returns true or
  * false based on whether the lock operation succeeds
  */
-struct LockPolicyTryUpgrade {
+struct LockPolicyTryUpgrade : detail::UnlockPolicyUpgrade<LockTraits> {
+  using UnlockPolicy = detail::UnlockPolicyUpgrade<LockTraits>;
+
   template <class Mutex>
   static bool lock(Mutex& mutex) {
     return LockTraits<Mutex>::try_lock_upgrade(mutex);
-  }
-  template <class Mutex>
-  static void unlock(Mutex& mutex) {
-    LockTraits<Mutex>::unlock_upgrade(mutex);
   }
 };
 
@@ -547,7 +576,7 @@ struct LockPolicyTryUpgrade {
  *  unlock() -> unlock()
  *  try_lock_for -> try_unlock_upgrade_and_lock_for()
  */
-struct LockPolicyFromUpgradeToExclusive : public LockPolicyExclusive {
+struct LockPolicyFromUpgradeToExclusive : LockPolicyExclusive {
   template <class Mutex>
   static std::true_type lock(Mutex& mutex) {
     LockTraits<Mutex>::unlock_upgrade_and_lock(mutex);
@@ -568,7 +597,7 @@ struct LockPolicyFromUpgradeToExclusive : public LockPolicyExclusive {
  *  unlock() -> unlock_upgrade()
  *  try_lock_for -> unlock_and_lock_upgrade()
  */
-struct LockPolicyFromExclusiveToUpgrade : public LockPolicyUpgrade {
+struct LockPolicyFromExclusiveToUpgrade : LockPolicyUpgrade {
   template <class Mutex>
   static std::true_type lock(Mutex& mutex) {
     LockTraits<Mutex>::unlock_and_lock_upgrade(mutex);
@@ -592,7 +621,7 @@ struct LockPolicyFromExclusiveToUpgrade : public LockPolicyUpgrade {
  *  unlock() -> unlock_shared()
  *  try_lock_for -> unlock_upgrade_and_lock_shared()
  */
-struct LockPolicyFromUpgradeToShared : public LockPolicyShared {
+struct LockPolicyFromUpgradeToShared : LockPolicyShared {
   template <class Mutex>
   static std::true_type lock(Mutex& mutex) {
     LockTraits<Mutex>::unlock_upgrade_and_lock_shared(mutex);
@@ -616,7 +645,7 @@ struct LockPolicyFromUpgradeToShared : public LockPolicyShared {
  *  unlock() -> unlock_shared()
  *  try_lock_for() -> unlock_and_lock_shared()
  */
-struct LockPolicyFromExclusiveToShared : public LockPolicyShared {
+struct LockPolicyFromExclusiveToShared : LockPolicyShared {
   template <class Mutex>
   static std::true_type lock(Mutex& mutex) {
     LockTraits<Mutex>::unlock_and_lock_shared(mutex);

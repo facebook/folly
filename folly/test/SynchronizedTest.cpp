@@ -688,4 +688,113 @@ TEST_F(SynchronizedLockTest, TestTryULock) {
       [](auto& synchronized) { return synchronized.tryULock(); });
 }
 
+template <typename LockPolicy>
+using LPtr = LockedPtr<Synchronized<int>, LockPolicy>;
+
+TEST_F(SynchronizedLockTest, TestLockedPtrCompatibilityExclusive) {
+  EXPECT_TRUE((std::is_assignable<
+               LPtr<LockPolicyExclusive>&,
+               LPtr<LockPolicyTryExclusive>&&>::value));
+  EXPECT_TRUE((std::is_assignable<
+               LPtr<LockPolicyExclusive>&,
+               LPtr<LockPolicyFromUpgradeToExclusive>&&>::value));
+
+  EXPECT_FALSE((
+      std::is_assignable<LPtr<LockPolicyExclusive>&, LPtr<LockPolicyShared>&&>::
+          value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyExclusive>&,
+                LPtr<LockPolicyTryShared>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyExclusive>&,
+                LPtr<LockPolicyUpgrade>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyExclusive>&,
+                LPtr<LockPolicyTryUpgrade>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyExclusive>&,
+                LPtr<LockPolicyFromExclusiveToUpgrade>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyExclusive>&,
+                LPtr<LockPolicyFromExclusiveToShared>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyExclusive>&,
+                LPtr<LockPolicyFromUpgradeToShared>&&>::value));
+}
+
+TEST_F(SynchronizedLockTest, TestLockedPtrCompatibilityShared) {
+  EXPECT_TRUE((
+      std::is_assignable<LPtr<LockPolicyShared>&, LPtr<LockPolicyTryShared>&&>::
+          value));
+  EXPECT_TRUE((std::is_assignable<
+               LPtr<LockPolicyShared>&,
+               LPtr<LockPolicyFromUpgradeToShared>&&>::value));
+  EXPECT_TRUE((std::is_assignable<
+               LPtr<LockPolicyShared>&,
+               LPtr<LockPolicyFromExclusiveToShared>&&>::value));
+
+  EXPECT_FALSE((
+      std::is_assignable<LPtr<LockPolicyShared>&, LPtr<LockPolicyExclusive>&&>::
+          value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyShared>&,
+                LPtr<LockPolicyTryExclusive>&&>::value));
+  EXPECT_FALSE(
+      (std::is_assignable<LPtr<LockPolicyShared>&, LPtr<LockPolicyUpgrade>&&>::
+           value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyShared>&,
+                LPtr<LockPolicyTryUpgrade>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyShared>&,
+                LPtr<LockPolicyFromExclusiveToUpgrade>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyShared>&,
+                LPtr<LockPolicyFromUpgradeToExclusive>&&>::value));
+}
+
+TEST_F(SynchronizedLockTest, TestLockedPtrCompatibilityUpgrade) {
+  EXPECT_TRUE((std::is_assignable<
+               LPtr<LockPolicyUpgrade>&,
+               LPtr<LockPolicyTryUpgrade>&&>::value));
+  EXPECT_TRUE((std::is_assignable<
+               LPtr<LockPolicyUpgrade>&,
+               LPtr<LockPolicyFromExclusiveToUpgrade>&&>::value));
+
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyUpgrade>&,
+                LPtr<LockPolicyExclusive>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyUpgrade>&,
+                LPtr<LockPolicyTryExclusive>&&>::value));
+  EXPECT_FALSE(
+      (std::is_assignable<LPtr<LockPolicyUpgrade>&, LPtr<LockPolicyShared>&&>::
+           value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyUpgrade>&,
+                LPtr<LockPolicyTryShared>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyUpgrade>&,
+                LPtr<LockPolicyFromExclusiveToShared>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyUpgrade>&,
+                LPtr<LockPolicyFromUpgradeToShared>&&>::value));
+  EXPECT_FALSE((std::is_assignable<
+                LPtr<LockPolicyUpgrade>&,
+                LPtr<LockPolicyFromUpgradeToExclusive>&&>::value));
+}
+
+TEST_F(SynchronizedLockTest, TestConvertTryLockToLock) {
+  auto synchronized = folly::Synchronized<int>{0};
+  auto wlock = synchronized.wlock();
+  wlock.unlock();
+
+  auto ulock = synchronized.ulock();
+  wlock = ulock.moveFromUpgradeToWrite();
+  wlock.unlock();
+
+  auto value = synchronized.withWLock([](auto& integer) { return integer; });
+  EXPECT_EQ(value, 0);
+}
+
 } // namespace folly

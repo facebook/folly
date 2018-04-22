@@ -893,6 +893,14 @@ class LockedPtrBase {
   friend class folly::ScopedUnlocker<SynchronizedType, LockPolicy>;
 
   /**
+   * Friend all instantiations of LockedPtr and LockedPtrBase
+   */
+  template <typename S, typename L>
+  friend class folly::LockedPtr;
+  template <typename S, typename M, typename L>
+  friend class LockedPtrBase;
+
+  /**
    * Destructor releases.
    */
   ~LockedPtrBase() {
@@ -931,17 +939,48 @@ class LockedPtrBase {
       this->parent_ = parent;
     }
   }
-  LockedPtrBase(LockedPtrBase&& rhs) noexcept : parent_(rhs.parent_) {
-    rhs.parent_ = nullptr;
-  }
+  LockedPtrBase(LockedPtrBase&& rhs) noexcept
+      : parent_{exchange(rhs.parent_, nullptr)} {}
   LockedPtrBase& operator=(LockedPtrBase&& rhs) noexcept {
-    if (parent_) {
-      LockPolicy::unlock(parent_->mutex_);
+    assignImpl(*this, rhs);
+    return *this;
+  }
+
+  /**
+   * Templated move construct and assignment operators
+   *
+   * These allow converting LockedPtr types that have the same unlocking
+   * policy to each other.  This allows us to write code like
+   *
+   *  auto wlock = sync.wlock();
+   *  wlock.unlock();
+   *
+   *  auto ulock = sync.ulock();
+   *  wlock = ulock.moveFromUpgradeToWrite();
+   */
+  template <typename LockPolicyType>
+  LockedPtrBase(
+      LockedPtrBase<SynchronizedType, Mutex, LockPolicyType>&& rhs) noexcept
+      : parent_{exchange(rhs.parent_, nullptr)} {}
+  template <typename LockPolicyType>
+  LockedPtrBase& operator=(
+      LockedPtrBase<SynchronizedType, Mutex, LockPolicyType>&& rhs) noexcept {
+    assignImpl(*this, rhs);
+    return *this;
+  }
+
+  /**
+   * Implementation for the assignment operator
+   */
+  template <typename LockPolicyLhs, typename LockPolicyRhs>
+  void assignImpl(
+      LockedPtrBase<SynchronizedType, Mutex, LockPolicyLhs>& lhs,
+      LockedPtrBase<SynchronizedType, Mutex, LockPolicyRhs>& rhs) noexcept {
+    if (lhs.parent_) {
+      LockPolicy::unlock(lhs.parent_->mutex_);
     }
 
-    parent_ = rhs.parent_;
-    rhs.parent_ = nullptr;
-    return *this;
+    lhs.parent_ = exchange(rhs.parent_, nullptr);
   }
 
   using UnlockerData = SynchronizedType*;
@@ -987,6 +1026,14 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
   friend class folly::ScopedUnlocker<SynchronizedType, LockPolicy>;
 
   /**
+   * Friend all instantiations of LockedPtr and LockedPtrBase
+   */
+  template <typename S, typename L>
+  friend class folly::LockedPtr;
+  template <typename S, typename M, typename L>
+  friend class LockedPtrBase;
+
+  /**
    * Destructor releases.
    */
   ~LockedPtrBase() {
@@ -995,12 +1042,41 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
   }
 
   LockedPtrBase(LockedPtrBase&& rhs) noexcept
-      : lock_(std::move(rhs.lock_)), parent_(exchange(rhs.parent_, nullptr)) {}
+      : lock_{std::move(rhs.lock_)}, parent_{exchange(rhs.parent_, nullptr)} {}
   LockedPtrBase& operator=(LockedPtrBase&& rhs) noexcept {
-    lock_ = std::move(rhs.lock_);
-    parent_ = rhs.parent_;
-    rhs.parent_ = nullptr;
+    assignImpl(*this, rhs);
     return *this;
+  }
+
+  /**
+   * Templated move construct and assignment operators
+   *
+   * These allow converting LockedPtr types that have the same unlocking
+   * policy to each other.
+   */
+  template <typename LockPolicyType>
+  LockedPtrBase(LockedPtrBase<SynchronizedType, std::mutex, LockPolicyType>&&
+                    other) noexcept
+      : lock_{std::move(other.lock_)},
+        parent_{exchange(other.parent_, nullptr)} {}
+  template <typename LockPolicyType>
+  LockedPtrBase& operator=(
+      LockedPtrBase<SynchronizedType, std::mutex, LockPolicyType>&&
+          rhs) noexcept {
+    assignImpl(*this, rhs);
+    return *this;
+  }
+
+  /**
+   * Implementation for the assignment operator
+   */
+  template <typename LockPolicyLhs, typename LockPolicyRhs>
+  void assignImpl(
+      LockedPtrBase<SynchronizedType, std::mutex, LockPolicyLhs>& lhs,
+      LockedPtrBase<SynchronizedType, std::mutex, LockPolicyRhs>&
+          rhs) noexcept {
+    lhs.lock_ = std::move(rhs.lock_);
+    lhs.parent_ = exchange(rhs.parent_, nullptr);
   }
 
   /**
@@ -1125,6 +1201,10 @@ class LockedPtr : public LockedPtrBase<
   // CDataType is the DataType with the appropriate const-qualification
   using CDataType = detail::SynchronizedDataType<SynchronizedType>;
 
+  // friend other LockedPtr types
+  template <typename SynchronizedTypeOther, typename LockPolicyOther>
+  friend class LockedPtr;
+
  public:
   using DataType = typename SynchronizedType::DataType;
   using MutexType = typename SynchronizedType::MutexType;
@@ -1166,6 +1246,19 @@ class LockedPtr : public LockedPtrBase<
    * Move assignment operator.
    */
   LockedPtr& operator=(LockedPtr&& rhs) noexcept = default;
+
+  template <
+      typename LockPolicyType,
+      typename std::enable_if<
+          std::is_same<
+              typename LockPolicy::UnlockPolicy,
+              typename LockPolicyType::UnlockPolicy>::value,
+          int>::type = 0>
+  LockedPtr& operator=(
+      LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept {
+    Base::operator=(std::move(other));
+    return *this;
+  }
 
   /*
    * Copy constructor and assignment operator are deleted.

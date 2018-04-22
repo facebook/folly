@@ -373,3 +373,36 @@ TEST(LockTraits, LockPolicyTimed) {
                           "to shared";
   mutex.unlock_shared();
 }
+
+/**
+ * Test compatibility of the different lock policies
+ *
+ * This should be correct because the compatibilities here are used to
+ * determine whether or not the different LockedPtr instances can be moved
+ * from each other
+ */
+TEST(LockTraits, LockPolicyCompatibilities) {
+  EXPECT_TRUE((std::is_same<
+               LockPolicyExclusive::UnlockPolicy,
+               LockPolicyTryExclusive::UnlockPolicy>::value));
+  EXPECT_TRUE((std::is_same<
+               LockPolicyExclusive::UnlockPolicy,
+               LockPolicyFromUpgradeToExclusive::UnlockPolicy>::value));
+
+  EXPECT_TRUE((std::is_same<
+               LockPolicyShared::UnlockPolicy,
+               LockPolicyTryShared::UnlockPolicy>::value));
+  EXPECT_TRUE((std::is_same<
+               LockPolicyShared::UnlockPolicy,
+               LockPolicyFromUpgradeToShared::UnlockPolicy>::value));
+  EXPECT_TRUE((std::is_same<
+               LockPolicyShared::UnlockPolicy,
+               LockPolicyFromExclusiveToShared::UnlockPolicy>::value));
+
+  EXPECT_TRUE((std::is_same<
+               LockPolicyUpgrade::UnlockPolicy,
+               LockPolicyTryUpgrade::UnlockPolicy>::value));
+  EXPECT_TRUE((std::is_same<
+               LockPolicyUpgrade::UnlockPolicy,
+               LockPolicyFromExclusiveToUpgrade::UnlockPolicy>::value));
+}
