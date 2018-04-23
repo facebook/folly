@@ -18,6 +18,7 @@
 
 #include <emmintrin.h>
 
+#include <algorithm>
 #include <cmath>
 
 namespace folly {
@@ -149,15 +150,43 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   std::vector<Centroid> centroids;
   centroids.reserve(nCentroids);
 
+  std::vector<std::vector<Centroid>::iterator> starts;
+  starts.reserve(digests.size());
+
   double count = 0;
 
   for (auto it = digests.begin(); it != digests.end(); it++) {
+    starts.push_back(centroids.end());
     count += it->count();
     for (const auto& centroid : it->centroids_) {
       centroids.push_back(centroid);
     }
   }
-  std::sort(centroids.begin(), centroids.end());
+
+  for (size_t digestsPerBlock = 1; digestsPerBlock < starts.size();
+       digestsPerBlock *= 2) {
+    // Each sorted block is digestPerBlock digests big. For each step, try to
+    // merge two blocks together.
+    for (size_t i = 0; i < starts.size(); i += (digestsPerBlock * 2)) {
+      // It is possible that this block is incomplete (less than digestsPerBlock
+      // big). In that case, the rest of the block is sorted and leave it alone
+      if (i + digestsPerBlock < starts.size()) {
+        auto first = starts[i];
+        auto middle = starts[i + digestsPerBlock];
+
+        // It is possible that the next block is incomplete (less than
+        // digestsPerBlock big). In that case, merge to end. Otherwise, merge to
+        // the end of that block.
+        std::vector<Centroid>::iterator last =
+            (i + (digestsPerBlock * 2) < starts.size())
+            ? *(starts.begin() + i + 2 * digestsPerBlock)
+            : centroids.end();
+        std::inplace_merge(first, middle, last);
+      }
+    }
+  }
+
+  DCHECK(std::is_sorted(centroids.begin(), centroids.end()));
 
   size_t maxSize = digests.begin()->maxSize_;
   TDigest result(maxSize);

@@ -59,14 +59,12 @@ TEST(TDigest, Merge) {
   for (int i = 1; i <= 100; ++i) {
     values.push_back(i);
   }
-
   digest = digest.merge(values);
 
   values.clear();
   for (int i = 101; i <= 200; ++i) {
     values.push_back(i);
   }
-
   digest = digest.merge(values);
 
   EXPECT_EQ(200, digest.count());
@@ -106,7 +104,6 @@ TEST(TDigest, MergeLarge) {
   for (int i = 1; i <= 1000; ++i) {
     values.push_back(i);
   }
-
   digest = digest.merge(values);
 
   EXPECT_EQ(1000, digest.count());
@@ -124,12 +121,17 @@ TEST(TDigest, MergeLargeAsDigests) {
   std::vector<TDigest> digests;
   TDigest digest(100);
 
+  std::vector<double> values;
+  for (int i = 1; i <= 1000; ++i) {
+    values.push_back(i);
+  }
+  // Ensure that the values do not monotonically increase across digests.
+  std::random_shuffle(values.begin(), values.end());
   for (int i = 0; i < 10; ++i) {
-    std::vector<double> values;
-    for (int j = 1; j <= 100; ++j) {
-      values.push_back(100 * i + j);
-    }
-    digests.push_back(digest.merge(values));
+    std::vector<double> sorted(
+        values.begin() + (i * 100), values.begin() + (i + 1) * 100);
+    std::sort(sorted.begin(), sorted.end());
+    digests.push_back(digest.merge(sorted));
   }
 
   digest = TDigest::merge(digests);
@@ -140,21 +142,32 @@ TEST(TDigest, MergeLargeAsDigests) {
 
   EXPECT_EQ(1.5, digest.estimateQuantile(0.001));
   EXPECT_EQ(10.5, digest.estimateQuantile(0.01));
-  EXPECT_EQ(500.25, digest.estimateQuantile(0.5));
   EXPECT_EQ(990.25, digest.estimateQuantile(0.99));
   EXPECT_EQ(999.5, digest.estimateQuantile(0.999));
 }
 
-class DistributionTest : public ::testing::TestWithParam<
-                             std::tuple<bool, size_t, double, double>> {};
+class DistributionTest
+    : public ::testing::TestWithParam<
+          std::tuple<std::pair<bool, size_t>, double, bool>> {};
 
 TEST_P(DistributionTest, ReasonableError) {
+  std::pair<bool, size_t> underlyingDistribution;
   bool logarithmic;
   size_t modes;
   double quantile;
-  double reasonableError;
+  double reasonableError = 0;
+  bool digestMerge;
 
-  std::tie(logarithmic, modes, quantile, reasonableError) = GetParam();
+  std::tie(underlyingDistribution, quantile, digestMerge) = GetParam();
+
+  std::tie(logarithmic, modes) = underlyingDistribution;
+  if (quantile == 0.001 || quantile == 0.999) {
+    reasonableError = 0.0005;
+  } else if (quantile == 0.01 || quantile == 0.99) {
+    reasonableError = 0.005;
+  } else if (quantile == 0.25 || quantile == 0.5 || quantile == 0.75) {
+    reasonableError = 0.02;
+  }
 
   std::vector<double> errors;
 
@@ -186,15 +199,24 @@ TEST_P(DistributionTest, ReasonableError) {
       }
     }
 
+    std::vector<TDigest> digests;
     for (size_t i = 0; i < kNumSamples / 1000; ++i) {
       auto it_l = values.begin() + (i * 1000);
       auto it_r = it_l + 1000;
       std::sort(it_l, it_r);
       folly::Range<const double*> r(values, i * 1000, 1000);
-      digest = digest.merge(r);
+      if (digestMerge) {
+        digests.push_back(digest.merge(r));
+      } else {
+        digest = digest.merge(r);
+      }
     }
 
     std::sort(values.begin(), values.end());
+
+    if (digestMerge) {
+      digest = TDigest::merge(digests);
+    }
 
     double est = digest.estimateQuantile(quantile);
     auto it = std::lower_bound(values.begin(), values.end(), est);
@@ -224,32 +246,11 @@ TEST_P(DistributionTest, ReasonableError) {
 INSTANTIATE_TEST_CASE_P(
     ReasonableErrors,
     DistributionTest,
-    ::testing::Values(
-        std::make_tuple(true, 1, 0.001, 0.0005),
-        std::make_tuple(true, 1, 0.01, 0.005),
-        std::make_tuple(true, 1, 0.25, 0.02),
-        std::make_tuple(true, 1, 0.50, 0.02),
-        std::make_tuple(true, 1, 0.75, 0.02),
-        std::make_tuple(true, 1, 0.99, 0.005),
-        std::make_tuple(true, 1, 0.999, 0.0005),
-        std::make_tuple(true, 3, 0.001, 0.0005),
-        std::make_tuple(true, 3, 0.01, 0.005),
-        std::make_tuple(true, 3, 0.25, 0.02),
-        std::make_tuple(true, 3, 0.50, 0.02),
-        std::make_tuple(true, 3, 0.75, 0.02),
-        std::make_tuple(true, 3, 0.99, 0.005),
-        std::make_tuple(true, 3, 0.999, 0.0005),
-        std::make_tuple(false, 1, 0.001, 0.0005),
-        std::make_tuple(false, 1, 0.01, 0.005),
-        std::make_tuple(false, 1, 0.25, 0.02),
-        std::make_tuple(false, 1, 0.50, 0.02),
-        std::make_tuple(false, 1, 0.75, 0.02),
-        std::make_tuple(false, 1, 0.99, 0.005),
-        std::make_tuple(false, 1, 0.999, 0.0005),
-        std::make_tuple(false, 10, 0.001, 0.0005),
-        std::make_tuple(false, 10, 0.01, 0.005),
-        std::make_tuple(false, 10, 0.25, 0.02),
-        std::make_tuple(false, 10, 0.50, 0.02),
-        std::make_tuple(false, 10, 0.75, 0.02),
-        std::make_tuple(false, 10, 0.99, 0.005),
-        std::make_tuple(false, 10, 0.999, 0.0005)));
+    ::testing::Combine(
+        ::testing::Values(
+            std::make_pair(true, 1),
+            std::make_pair(true, 3),
+            std::make_pair(false, 1),
+            std::make_pair(false, 10)),
+        ::testing::Values(0.001, 0.01, 0.25, 0.50, 0.75, 0.99, 0.999),
+        ::testing::Bool()));
