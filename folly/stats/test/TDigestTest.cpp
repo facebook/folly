@@ -47,7 +47,7 @@ TEST(TDigest, Basic) {
 
   EXPECT_EQ(0.6, digest.estimateQuantile(0.001));
   EXPECT_EQ(2.0 - 0.5, digest.estimateQuantile(0.01));
-  EXPECT_EQ(51.0 - 0.5, digest.estimateQuantile(0.5));
+  EXPECT_EQ(50.375, digest.estimateQuantile(0.5));
   EXPECT_EQ(100.0 - 0.5, digest.estimateQuantile(0.99));
   EXPECT_EQ(100.4, digest.estimateQuantile(0.999));
 }
@@ -75,7 +75,7 @@ TEST(TDigest, Merge) {
 
   EXPECT_EQ(0.7, digest.estimateQuantile(0.001));
   EXPECT_EQ(4.0 - 1.5, digest.estimateQuantile(0.01));
-  EXPECT_EQ(102.0 - 1.5, digest.estimateQuantile(0.5));
+  EXPECT_EQ(100.25, digest.estimateQuantile(0.5));
   EXPECT_EQ(200.0 - 1.5, digest.estimateQuantile(0.99));
   EXPECT_EQ(200.3, digest.estimateQuantile(0.999));
 }
@@ -115,8 +115,8 @@ TEST(TDigest, MergeLarge) {
 
   EXPECT_EQ(1.5, digest.estimateQuantile(0.001));
   EXPECT_EQ(10.5, digest.estimateQuantile(0.01));
-  EXPECT_EQ(500.5, digest.estimateQuantile(0.5));
-  EXPECT_EQ(990.5, digest.estimateQuantile(0.99));
+  EXPECT_EQ(500.25, digest.estimateQuantile(0.5));
+  EXPECT_EQ(990.25, digest.estimateQuantile(0.99));
   EXPECT_EQ(999.5, digest.estimateQuantile(0.999));
 }
 
@@ -140,8 +140,8 @@ TEST(TDigest, MergeLargeAsDigests) {
 
   EXPECT_EQ(1.5, digest.estimateQuantile(0.001));
   EXPECT_EQ(10.5, digest.estimateQuantile(0.01));
-  EXPECT_EQ(500.5, digest.estimateQuantile(0.5));
-  EXPECT_EQ(990.5, digest.estimateQuantile(0.99));
+  EXPECT_EQ(500.25, digest.estimateQuantile(0.5));
+  EXPECT_EQ(990.25, digest.estimateQuantile(0.99));
   EXPECT_EQ(999.5, digest.estimateQuantile(0.999));
 }
 

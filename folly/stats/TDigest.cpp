@@ -47,12 +47,16 @@ namespace detail {
  * Note that FMA has been tested here, but benchmarks have not shown it to be a
  * performance improvement.
  */
-double q_to_k(double q, double d) {
-  if (q >= 0.5) {
-    return d - d * std::sqrt(0.5 - 0.5 * q);
-  }
-  return d * std::sqrt(0.5 * q);
-}
+
+/*
+ * q_to_k is unused but left here as a comment for completeness.
+ * double q_to_k(double q, double d) {
+ *   if (q >= 0.5) {
+ *     return d - d * std::sqrt(0.5 - 0.5 * q);
+ *   }
+ *   return d * std::sqrt(0.5 * q);
+ * }
+ */
 
 double k_to_q(double k, double d) {
   double k_div_d = k / d;
@@ -76,10 +80,12 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
   result.count_ = count_ + sortedValues.size();
 
   std::vector<Centroid> compressed;
-  compressed.reserve(2 * maxSize_);
+  compressed.reserve(maxSize_);
 
   double q_0_times_count = 0.0;
-  double q_limit_times_count = detail::k_to_q(1, maxSize_) * result.count_;
+  double k_limit = 1;
+  double q_limit_times_count =
+      detail::k_to_q(k_limit++, maxSize_) * result.count_;
 
   auto it_centroids = centroids_.begin();
   auto it_sortedValues = sortedValues.begin();
@@ -115,10 +121,7 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
     } else {
       compressed.push_back(cur);
       q_0_times_count += cur.weight();
-      double q_to_k_res =
-          detail::q_to_k(q_0_times_count / result.count_, maxSize_);
-      q_limit_times_count =
-          detail::k_to_q(q_to_k_res + 1, maxSize_) * result.count_;
+      q_limit_times_count = detail::k_to_q(k_limit++, maxSize_) * result.count_;
       cur = next;
     }
   }
@@ -154,11 +157,12 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
 
   size_t maxSize = digests.begin()->maxSize_;
   std::vector<Centroid> compressed;
-  compressed.reserve(2 * maxSize);
+  compressed.reserve(maxSize);
 
   double q_0_times_count = 0.0;
 
-  double q_limit_times_count = detail::k_to_q(1, maxSize) * count;
+  double k_limit = 1;
+  double q_limit_times_count = detail::k_to_q(k_limit, maxSize) * count;
 
   Centroid cur = centroids.front();
   for (auto it = centroids.begin() + 1; it != centroids.end(); ++it) {
@@ -169,8 +173,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
     } else {
       compressed.push_back(cur);
       q_0_times_count += cur.weight();
-      double q_to_k_res = detail::q_to_k(q_0_times_count / count, maxSize);
-      q_limit_times_count = detail::k_to_q(q_to_k_res + 1, maxSize) * count;
+      q_limit_times_count = detail::k_to_q(k_limit++, maxSize) * count;
       cur = *it;
     }
   }
