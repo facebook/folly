@@ -289,36 +289,46 @@ class MockErrMessageCallback : public AsyncUDPSocket::ErrMessageCallback {
  public:
   ~MockErrMessageCallback() override = default;
 
-  GMOCK_METHOD1_(, noexcept, , errMessage, void(const cmsghdr& cmsg));
-  GMOCK_METHOD1_(
-      ,
-      noexcept,
-      ,
-      errMessageError,
-      void(const folly::AsyncSocketException& ex));
+  MOCK_METHOD1(errMessage_, void(const cmsghdr&));
+  void errMessage(const cmsghdr& cmsg) noexcept override {
+    errMessage_(cmsg);
+  }
+
+  MOCK_METHOD1(errMessageError_, void(const folly::AsyncSocketException&));
+  void errMessageError(
+      const folly::AsyncSocketException& ex) noexcept override {
+    errMessageError_(ex);
+  }
 };
 
 class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
  public:
   ~MockUDPReadCallback() override = default;
 
-  GMOCK_METHOD2_(, noexcept, , getReadBuffer, void(void** buf, size_t* len));
+  MOCK_METHOD2(getReadBuffer_, void(void**, size_t*));
+  void getReadBuffer(void** buf, size_t* len) noexcept override {
+    getReadBuffer_(buf, len);
+  }
 
-  GMOCK_METHOD3_(
-      ,
-      noexcept,
-      ,
-      onDataAvailable,
-      void(const folly::SocketAddress& client, size_t len, bool truncated));
+  MOCK_METHOD3(
+      onDataAvailable_,
+      void(const folly::SocketAddress&, size_t, bool));
+  void onDataAvailable(
+      const folly::SocketAddress& client,
+      size_t len,
+      bool truncated) noexcept override {
+    onDataAvailable_(client, len, truncated);
+  }
 
-  GMOCK_METHOD1_(
-      ,
-      noexcept,
-      ,
-      onReadError,
-      void(const folly::AsyncSocketException& ex));
+  MOCK_METHOD1(onReadError_, void(const folly::AsyncSocketException&));
+  void onReadError(const folly::AsyncSocketException& ex) noexcept override {
+    onReadError_(ex);
+  }
 
-  GMOCK_METHOD0_(, noexcept, , onReadClosed, void());
+  MOCK_METHOD0(onReadClosed_, void());
+  void onReadClosed() noexcept override {
+    onReadClosed_();
+  }
 };
 
 class AsyncUDPSocketTest : public Test {
@@ -341,7 +351,7 @@ TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
   socket_->setErrMessageCallback(&err);
   folly::SocketAddress addr("127.0.0.1", 10000);
   bool errRecvd = false;
-  EXPECT_CALL(err, errMessage(_))
+  EXPECT_CALL(err, errMessage_(_))
       .WillOnce(Invoke([this, &errRecvd](auto& cmsg) {
         if ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
             (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
@@ -364,7 +374,7 @@ TEST_F(AsyncUDPSocketTest, TestUnsetErrCallback) {
   socket_->setErrMessageCallback(&err);
   socket_->setErrMessageCallback(nullptr);
   folly::SocketAddress addr("127.0.0.1", 10000);
-  EXPECT_CALL(err, errMessage(_)).Times(0);
+  EXPECT_CALL(err, errMessage_(_)).Times(0);
   socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
   evb_.timer().scheduleTimeoutFn(
       [&] { evb_.terminateLoopSoon(); }, std::chrono::milliseconds(30));
@@ -376,7 +386,7 @@ TEST_F(AsyncUDPSocketTest, CloseInErrorCallback) {
   socket_->setErrMessageCallback(&err);
   folly::SocketAddress addr("127.0.0.1", 10000);
   bool errRecvd = false;
-  EXPECT_CALL(err, errMessage(_)).WillOnce(Invoke([this, &errRecvd](auto&) {
+  EXPECT_CALL(err, errMessage_(_)).WillOnce(Invoke([this, &errRecvd](auto&) {
     errRecvd = true;
     socket_->close();
     evb_.terminateLoopSoon();
@@ -392,13 +402,13 @@ TEST_F(AsyncUDPSocketTest, TestNonExistentServerNoErrCb) {
   folly::SocketAddress addr("127.0.0.1", 10000);
   bool errRecvd = false;
   folly::IOBufQueue readBuf;
-  EXPECT_CALL(readCb, getReadBuffer(_, _))
+  EXPECT_CALL(readCb, getReadBuffer_(_, _))
       .WillRepeatedly(Invoke([&readBuf](void** buf, size_t* len) {
         auto readSpace = readBuf.preallocate(2000, 10000);
         *buf = readSpace.first;
         *len = readSpace.second;
       }));
-  ON_CALL(readCb, onReadError(_)).WillByDefault(Invoke([&errRecvd](auto& ex) {
+  ON_CALL(readCb, onReadError_(_)).WillByDefault(Invoke([&errRecvd](auto& ex) {
     LOG(ERROR) << ex.what();
     errRecvd = true;
   }));
