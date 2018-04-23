@@ -63,6 +63,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -71,11 +72,6 @@ class Optional;
 
 namespace detail {
 struct NoneHelper {};
-
-// Allow each translation unit to control its own -fexceptions setting.
-// If exceptions are disabled, std::terminate() will be called instead of
-// throwing OptionalEmptyException when the condition fails.
-[[noreturn]] void throw_optional_empty_exception();
 
 template <class Value>
 struct OptionalPromiseReturn;
@@ -321,7 +317,7 @@ class Optional {
  private:
   void require_value() const {
     if (!storage_.hasValue) {
-      detail::throw_optional_empty_exception();
+      throw_exception<OptionalEmptyException>();
     }
   }
 
