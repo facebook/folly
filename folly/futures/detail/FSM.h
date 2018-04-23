@@ -50,7 +50,7 @@ class FSM {
   /// The action will see the old state.
   /// @returns true on success, false and action unexecuted otherwise
   template <class F>
-  bool updateState(Enum A, Enum B, F const& action) {
+  bool tryUpdateState(Enum A, Enum B, F const& action) {
     std::lock_guard<Mutex> lock(mutex_);
     if (state_.load(std::memory_order_acquire) != A) {
       return false;
@@ -69,7 +69,7 @@ class FSM {
   ///   while (!done) {
   ///     switch (getState()) {
   ///     case State::Foo:
-  ///       done = updateState(State::Foo, State::Bar,
+  ///       done = tryUpdateState(State::Foo, State::Bar,
   ///           [&]{ /* do protected stuff */ },
   ///           [&]{ /* do unprotected stuff */});
   ///       break;
@@ -78,7 +78,7 @@ class FSM {
   ///   while (true) {
   ///     switch (getState()) {
   ///     case State::Foo:
-  ///       if (!updateState(State::Foo, State::Bar,
+  ///       if (!tryUpdateState(State::Foo, State::Bar,
   ///           [&]{ /* do protected stuff */ })) {
   ///         continue;
   ///       }
@@ -88,9 +88,12 @@ class FSM {
   /// The protected action will see the old state, and the unprotected action
   /// will see the new state.
   template <class F1, class F2>
-  bool updateState(Enum A, Enum B,
-                   F1 const& protectedAction, F2 const& unprotectedAction) {
-    bool result = updateState(A, B, protectedAction);
+  bool tryUpdateState(
+      Enum A,
+      Enum B,
+      F1 const& protectedAction,
+      F2 const& unprotectedAction) {
+    bool result = tryUpdateState(A, B, protectedAction);
     if (result) {
       unprotectedAction();
     }
@@ -101,9 +104,8 @@ class FSM {
 #define FSM_START(fsm) {\
     bool done = false; \
     while (!done) { auto state = fsm.getState(); switch (state) {
-
 #define FSM_UPDATE2(fsm, b, protectedAction, unprotectedAction) \
-    done = fsm.updateState(state, (b), (protectedAction), (unprotectedAction));
+  done = fsm.tryUpdateState(state, (b), (protectedAction), (unprotectedAction));
 
 #define FSM_UPDATE(fsm, b, action) FSM_UPDATE2(fsm, (b), (action), []{})
 

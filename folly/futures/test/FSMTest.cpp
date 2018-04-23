@@ -30,10 +30,10 @@ TEST(FSM, example) {
   auto tryTransition = [&]{
     switch (fsm.getState()) {
     case State::A:
-      return fsm.updateState(State::A, State::B, [&]{ count++; });
+      return fsm.tryUpdateState(State::A, State::B, [&] { count++; });
     case State::B:
-      return fsm.updateState(State::B, State::A,
-                             [&]{ count--; }, [&]{ unprotectedCount--; });
+      return fsm.tryUpdateState(
+          State::B, State::A, [&] { count--; }, [&] { unprotectedCount--; });
     }
     return false; // unreachable
   };
@@ -90,31 +90,31 @@ TEST(FSM, ctor) {
 
 TEST(FSM, update) {
   FSM<State, std::mutex> fsm(State::A);
-  EXPECT_TRUE(fsm.updateState(State::A, State::B, []{}));
+  EXPECT_TRUE(fsm.tryUpdateState(State::A, State::B, [] {}));
   EXPECT_EQ(State::B, fsm.getState());
 }
 
 TEST(FSM, badUpdate) {
   FSM<State, std::mutex> fsm(State::A);
-  EXPECT_FALSE(fsm.updateState(State::B, State::A, []{}));
+  EXPECT_FALSE(fsm.tryUpdateState(State::B, State::A, [] {}));
 }
 
 TEST(FSM, actionOnUpdate) {
   FSM<State, std::mutex> fsm(State::A);
   int count = 0;
-  fsm.updateState(State::A, State::B, [&]{ count++; });
+  fsm.tryUpdateState(State::A, State::B, [&] { count++; });
   EXPECT_EQ(1, count);
 }
 
 TEST(FSM, noActionOnBadUpdate) {
   FSM<State, std::mutex> fsm(State::A);
   int count = 0;
-  fsm.updateState(State::B, State::A, [&]{ count++; });
+  fsm.tryUpdateState(State::B, State::A, [&] { count++; });
   EXPECT_EQ(0, count);
 }
 
 TEST(FSM, stateTransitionAfterAction) {
   FSM<State, std::mutex> fsm(State::A);
-  fsm.updateState(State::A, State::B,
-                  [&]{ EXPECT_EQ(State::A, fsm.getState()); });
+  fsm.tryUpdateState(
+      State::A, State::B, [&] { EXPECT_EQ(State::A, fsm.getState()); });
 }
