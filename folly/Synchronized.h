@@ -982,7 +982,7 @@ auto /* std::tuple<LockedPtr...> */ lock(SynchronizedLocker... lockersIn) {
   while (true) {
     auto couldLockAll = true;
 
-    folly::for_each(lockers, [&](auto& locker, auto index) {
+    for_each(lockers, [&](auto& locker, auto index) {
       // if we should try_lock on the current locker then do so
       if (index != indexLocked) {
         auto lockedPtr = locker.tryLock();
@@ -1000,18 +1000,18 @@ auto /* std::tuple<LockedPtr...> */ lock(SynchronizedLocker... lockersIn) {
           lockedPtrs = std::tuple<typename SynchronizedLocker::LockedPtr...>{};
 
           std::this_thread::yield();
-          folly::fetch(lockedPtrs, index) = locker.lock();
+          fetch(lockedPtrs, index) = locker.lock();
           indexLocked = index;
           couldLockAll = false;
 
-          return folly::loop_break;
+          return loop_break;
         }
 
         // else store the locked mutex in the list we return
-        folly::fetch(lockedPtrs, index) = std::move(lockedPtr);
+        fetch(lockedPtrs, index) = std::move(lockedPtr);
       }
 
-      return folly::loop_continue;
+      return loop_continue;
     });
 
     if (couldLockAll) {
@@ -1635,7 +1635,7 @@ void lock(LockableOne& one, LockableTwo& two, Lockables&... lockables) {
 
   // release ownership of the locks from the RAII lock wrapper returned by the
   // function above
-  folly::for_each(locks, [&](auto& lock) { lock.release(); });
+  for_each(locks, [&](auto& lock) { lock.release(); });
 }
 
 /**
