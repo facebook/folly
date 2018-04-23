@@ -30,6 +30,7 @@
 #include <folly/Utility.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/detail/FSM.h>
+#include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/MicroSpinLock.h>
 
@@ -161,21 +162,23 @@ class Core final {
       callback_ = std::forward<F>(func);
     };
 
-    FSM_START(fsm_)
-      case State::Start:
-        FSM_UPDATE(fsm_, State::OnlyCallback, setCallback_);
-        break;
+    fsm_.transition([&](State state) {
+      switch (state) {
+        case State::Start:
+          return fsm_.tryUpdateState(state, State::OnlyCallback, setCallback_);
 
-      case State::OnlyResult:
-        FSM_UPDATE(fsm_, State::Armed, setCallback_);
-        transitionToArmed = true;
-        break;
+        case State::OnlyResult:
+          return fsm_.tryUpdateState(state, State::Armed, setCallback_, [&] {
+            transitionToArmed = true;
+          });
 
-      case State::OnlyCallback:
-      case State::Armed:
-      case State::Done:
-        throw_exception<std::logic_error>("setCallback called twice");
-    FSM_END
+        case State::OnlyCallback:
+        case State::Armed:
+        case State::Done:
+          throw_exception<std::logic_error>("setCallback called twice");
+      }
+      assume_unreachable();
+    });
 
     // we could always call this, it is an optimization to only call it when
     // it might be needed.
@@ -188,21 +191,23 @@ class Core final {
   void setResult(Try<T>&& t) {
     bool transitionToArmed = false;
     auto setResult_ = [&]{ result_ = std::move(t); };
-    FSM_START(fsm_)
-      case State::Start:
-        FSM_UPDATE(fsm_, State::OnlyResult, setResult_);
-        break;
+    fsm_.transition([&](State state) {
+      switch (state) {
+        case State::Start:
+          return fsm_.tryUpdateState(state, State::OnlyResult, setResult_);
 
-      case State::OnlyCallback:
-        FSM_UPDATE(fsm_, State::Armed, setResult_);
-        transitionToArmed = true;
-        break;
+        case State::OnlyCallback:
+          return fsm_.tryUpdateState(state, State::Armed, setResult_, [&] {
+            transitionToArmed = true;
+          });
 
-      case State::OnlyResult:
-      case State::Armed:
-      case State::Done:
-      throw_exception<std::logic_error>("setResult called twice");
-    FSM_END
+        case State::OnlyResult:
+        case State::Armed:
+        case State::Done:
+          throw_exception<std::logic_error>("setResult called twice");
+      }
+      assume_unreachable();
+    });
 
     if (transitionToArmed) {
       maybeCallback();
@@ -321,16 +326,19 @@ class Core final {
   };
 
   void maybeCallback() {
-    FSM_START(fsm_)
-      case State::Armed:
-        if (active_.load(std::memory_order_acquire)) {
-          FSM_UPDATE2(fsm_, State::Done, []{}, [this]{ this->doCallback(); });
-        }
-        FSM_BREAK
+    fsm_.transition([&](State state) {
+      switch (state) {
+        case State::Armed:
+          if (active_.load(std::memory_order_acquire)) {
+            return fsm_.tryUpdateState(
+                state, State::Done, [] {}, [&] { doCallback(); });
+          }
+          return true;
 
-      default:
-        FSM_BREAK
-    FSM_END
+        default:
+          return true;
+      }
+    });
   }
 
   void doCallback() {

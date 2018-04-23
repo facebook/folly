@@ -15,6 +15,8 @@
  */
 
 #include <folly/futures/detail/FSM.h>
+
+#include <folly/lang/Assume.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::futures::detail;
@@ -29,13 +31,13 @@ TEST(FSM, example) {
   // somebody set up us the switch
   auto tryTransition = [&]{
     switch (fsm.getState()) {
-    case State::A:
-      return fsm.tryUpdateState(State::A, State::B, [&] { count++; });
-    case State::B:
-      return fsm.tryUpdateState(
-          State::B, State::A, [&] { count--; }, [&] { unprotectedCount--; });
+      case State::A:
+        return fsm.tryUpdateState(State::A, State::B, [&] { count++; });
+      case State::B:
+        return fsm.tryUpdateState(
+            State::B, State::A, [&] { count--; }, [&] { unprotectedCount--; });
     }
-    return false; // unreachable
+    folly::assume_unreachable();
   };
 
   // keep retrying until success (like a cas)
@@ -54,18 +56,23 @@ TEST(FSM, example) {
   EXPECT_EQ(-1, unprotectedCount);
 }
 
-TEST(FSM, magicMacrosExample) {
+TEST(FSM, transition) {
   struct MyFSM {
     FSM<State, std::mutex> fsm_;
     int count = 0;
     int unprotectedCount = 0;
     MyFSM() : fsm_(State::A) {}
     void twiddle() {
-      FSM_START(fsm_)
-        FSM_CASE(fsm_, State::A, State::B, [&]{ count++; });
-        FSM_CASE2(fsm_, State::B, State::A,
-                  [&]{ count--; }, [&]{ unprotectedCount--; });
-      FSM_END
+      fsm_.transition([&](State state) {
+        switch (state) {
+          case State::A:
+            return fsm_.tryUpdateState(state, State::B, [&] { count++; });
+          case State::B:
+            return fsm_.tryUpdateState(
+                state, State::A, [&] { count--; }, [&] { unprotectedCount--; });
+        }
+        folly::assume_unreachable();
+      });
     }
   };
 

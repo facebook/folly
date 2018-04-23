@@ -99,28 +99,13 @@ class FSM {
     }
     return result;
   }
+
+  template <class F>
+  void transition(F f) {
+    while (!f(getState())) {
+    }
+  }
 };
-
-#define FSM_START(fsm) {\
-    bool done = false; \
-    while (!done) { auto state = fsm.getState(); switch (state) {
-#define FSM_UPDATE2(fsm, b, protectedAction, unprotectedAction) \
-  done = fsm.tryUpdateState(state, (b), (protectedAction), (unprotectedAction));
-
-#define FSM_UPDATE(fsm, b, action) FSM_UPDATE2(fsm, (b), (action), []{})
-
-#define FSM_CASE(fsm, a, b, action) \
-  case (a): \
-    FSM_UPDATE(fsm, (b), (action)); \
-    break;
-
-#define FSM_CASE2(fsm, a, b, protectedAction, unprotectedAction) \
-  case (a): \
-    FSM_UPDATE2(fsm, (b), (protectedAction), (unprotectedAction)); \
-    break;
-
-#define FSM_BREAK done = true; break;
-#define FSM_END }}}
 
 } // namespace detail
 } // namespace futures
