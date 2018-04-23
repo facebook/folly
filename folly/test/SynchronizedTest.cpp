@@ -21,6 +21,7 @@
 #include <folly/Function.h>
 #include <folly/LockTraitsBoost.h>
 #include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 #include <folly/portability/GTest.h>
@@ -666,6 +667,27 @@ void testTryLock(Func func) {
     EXPECT_EQ(unlocked, 0);
   }
 }
+
+class MutexTrack {
+ public:
+  static int gId;
+  static int gOrder;
+
+  void lock_shared() {}
+  void unlock_shared() {}
+  void lock() {
+    order = MutexTrack::gOrder++;
+  }
+  void unlock() {
+    order = -1;
+    --gOrder;
+  }
+
+  int current{gId++};
+  int order{-1};
+};
+int MutexTrack::gId{0};
+int MutexTrack::gOrder{0};
 } // namespace
 
 TEST_F(SynchronizedLockTest, TestTryLock) {
@@ -795,6 +817,132 @@ TEST_F(SynchronizedLockTest, TestConvertTryLockToLock) {
 
   auto value = synchronized.withWLock([](auto& integer) { return integer; });
   EXPECT_EQ(value, 0);
+}
+
+TEST(FollyLockTest, TestVariadicLockWithSynchronized) {
+  {
+    auto syncs = std::array<folly::Synchronized<int>, 3>{};
+    auto& one = syncs[0];
+    auto& two = syncs[1];
+    auto& three = syncs[2];
+    auto locks =
+        lock(folly::wlock(one), folly::rlock(two), folly::wlock(three));
+    EXPECT_TRUE(std::get<0>(locks));
+    EXPECT_TRUE(std::get<1>(locks));
+    EXPECT_TRUE(std::get<2>(locks));
+  }
+  {
+    auto syncs = std::array<folly::Synchronized<int, std::mutex>, 2>{};
+    auto locks = lock(folly::lock(syncs[0]), folly::lock(syncs[1]));
+    EXPECT_TRUE(std::get<0>(locks));
+    EXPECT_TRUE(std::get<1>(locks));
+  }
+}
+
+TEST(FollyLockTest, TestVariadicLockWithArbitraryLockables) {
+  auto&& one = std::mutex{};
+  auto&& two = std::mutex{};
+
+  auto lckOne = std::unique_lock<std::mutex>{one, std::defer_lock};
+  auto lckTwo = std::unique_lock<std::mutex>{two, std::defer_lock};
+  folly::lock(lckOne, lckTwo);
+  EXPECT_TRUE(lckOne);
+  EXPECT_TRUE(lckTwo);
+}
+
+namespace {
+struct TestLock {
+ public:
+  void lock() {
+    onLock();
+    ++numTimesLocked;
+  }
+  bool try_lock() {
+    if (shouldTryLockSucceed) {
+      lock();
+      return true;
+    }
+    return false;
+  }
+  void unlock() {
+    onUnlock();
+    ++numTimesUnlocked;
+  }
+
+  int numTimesLocked{0};
+  int numTimesUnlocked{0};
+  bool shouldTryLockSucceed{true};
+  std::function<void()> onLock{[] {}};
+  std::function<void()> onUnlock{[] {}};
+};
+} // namespace
+
+TEST(FollyLockTest, TestVariadicLockSmartAndPoliteAlgorithm) {
+  auto one = TestLock{};
+  auto two = TestLock{};
+  auto three = TestLock{};
+  auto makeReset = [&] {
+    return folly::makeGuard([&] {
+      one = TestLock{};
+      two = TestLock{};
+      three = TestLock{};
+    });
+  };
+
+  {
+    auto reset = makeReset();
+    folly::lock(one, two, three);
+    EXPECT_EQ(one.numTimesLocked, 1);
+    EXPECT_EQ(one.numTimesUnlocked, 0);
+    EXPECT_EQ(two.numTimesLocked, 1);
+    EXPECT_EQ(two.numTimesUnlocked, 0);
+    EXPECT_EQ(three.numTimesLocked, 1);
+    EXPECT_EQ(three.numTimesUnlocked, 0);
+  }
+
+  {
+    auto reset = makeReset();
+    two.shouldTryLockSucceed = false;
+    folly::lock(one, two, three);
+    EXPECT_EQ(one.numTimesLocked, 2);
+    EXPECT_EQ(one.numTimesUnlocked, 1);
+    EXPECT_EQ(two.numTimesLocked, 1);
+    EXPECT_EQ(two.numTimesUnlocked, 0);
+    EXPECT_EQ(three.numTimesLocked, 1);
+    EXPECT_EQ(three.numTimesUnlocked, 0);
+  }
+
+  {
+    auto reset = makeReset();
+    three.shouldTryLockSucceed = false;
+    folly::lock(one, two, three);
+    EXPECT_EQ(one.numTimesLocked, 2);
+    EXPECT_EQ(one.numTimesUnlocked, 1);
+    EXPECT_EQ(two.numTimesLocked, 2);
+    EXPECT_EQ(two.numTimesUnlocked, 1);
+    EXPECT_EQ(three.numTimesLocked, 1);
+    EXPECT_EQ(three.numTimesUnlocked, 0);
+  }
+
+  {
+    auto reset = makeReset();
+    three.shouldTryLockSucceed = false;
+
+    three.onLock = [&] {
+      // when three gets locked make one fail
+      one.shouldTryLockSucceed = false;
+      // then when one gets locked make three succeed to finish the test
+      one.onLock = [&] { three.shouldTryLockSucceed = true; };
+    };
+
+    folly::lock(one, two, three);
+    EXPECT_EQ(one.numTimesLocked, 2);
+    EXPECT_EQ(one.numTimesUnlocked, 1);
+    EXPECT_EQ(two.numTimesLocked, 2);
+    EXPECT_EQ(two.numTimesUnlocked, 1);
+    EXPECT_EQ(three.numTimesLocked, 2);
+    EXPECT_EQ(three.numTimesUnlocked, 1);
+  }
 }
 
 } // namespace folly

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /**
  * This module implements a Synchronized abstraction useful in
  * mutex-based concurrency.
@@ -25,14 +24,19 @@
 
 #pragma once
 
+#include <folly/Function.h>
 #include <folly/Likely.h>
 #include <folly/LockTraits.h>
 #include <folly/Preprocessor.h>
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/container/Foreach.h>
 #include <glog/logging.h>
+
+#include <array>
 #include <mutex>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -866,6 +870,156 @@ using LockedPtrType = typename std::conditional<
     std::is_const<SynchronizedType>::value,
     typename SynchronizedType::ConstLockedPtr,
     typename SynchronizedType::LockedPtr>::type;
+
+template <typename Synchronized>
+class SynchronizedLockerBase {
+ public:
+  explicit SynchronizedLockerBase(Synchronized& sync) : synchronized{sync} {}
+
+ protected:
+  Synchronized& synchronized;
+};
+
+template <typename Synchronized>
+class SynchronizedWLocker : public SynchronizedLockerBase<Synchronized> {
+ public:
+  using SynchronizedLockerBase<Synchronized>::SynchronizedLockerBase;
+  using LockedPtr = typename Synchronized::LockedPtr;
+
+  auto lock() {
+    return this->synchronized.wlock();
+  }
+  auto tryLock() {
+    return this->synchronized.tryWLock();
+  }
+};
+template <typename Synchronized>
+class SynchronizedRLocker : public SynchronizedLockerBase<Synchronized> {
+ public:
+  using SynchronizedLockerBase<Synchronized>::SynchronizedLockerBase;
+  using LockedPtr = typename Synchronized::ConstLockedPtr;
+
+  auto lock() {
+    return this->synchronized.rlock();
+  }
+  auto tryLock() {
+    return this->synchronized.tryRLock();
+  }
+};
+template <typename Synchronized>
+class SynchronizedULocker : public SynchronizedLockerBase<Synchronized> {
+ public:
+  using SynchronizedLockerBase<Synchronized>::SynchronizedLockerBase;
+  using LockedPtr = typename Synchronized::UpgradeLockedPtr;
+
+  auto lock() {
+    return this->synchronized.ulock();
+  }
+  auto tryLock() {
+    return this->synchronized.tryULock();
+  }
+};
+template <typename Synchronized>
+class SynchronizedLocker : public SynchronizedLockerBase<Synchronized> {
+ public:
+  using SynchronizedLockerBase<Synchronized>::SynchronizedLockerBase;
+  using LockedPtr = typename Synchronized::LockedPtr;
+
+  auto lock() {
+    return this->synchronized.lock();
+  }
+  auto tryLock() {
+    return this->synchronized.tryLock();
+  }
+};
+template <typename Lockable>
+class LockableLocker {
+ public:
+  explicit LockableLocker(Lockable& lockableIn) : lockable{lockableIn} {}
+  using LockedPtr = std::unique_lock<Lockable>;
+
+  auto lock() {
+    return std::unique_lock<Lockable>{lockable};
+  }
+  auto tryLock() {
+    auto lock = std::unique_lock<Lockable>{lockable, std::defer_lock};
+    lock.try_lock();
+    return lock;
+  }
+
+ private:
+  Lockable& lockable;
+};
+
+/**
+ * Acquire locks for multiple Synchronized<T> objects, in a deadlock-safe
+ * manner.
+ *
+ * The function uses the "smart and polite" algorithm from this link
+ * http://howardhinnant.github.io/dining_philosophers.html#Polite
+ *
+ * The gist of the algorithm is that it locks a mutex, then tries to lock the
+ * other mutexes in a non-blocking manner.  If all the locks succeed, we are
+ * done, if not, we release the locks we have held, yield to allow other
+ * threads to continue and then block on the mutex that we failed to acquire.
+ *
+ * This allows dynamically yielding ownership of all the mutexes but one, so
+ * that other threads can continue doing work and locking the other mutexes.
+ * See the benchmarks in folly/test/SynchronizedBenchmark.cpp for more.
+ */
+template <typename... SynchronizedLocker>
+auto /* std::tuple<LockedPtr...> */ lock(SynchronizedLocker... lockersIn) {
+  // capture the list of lockers as a tuple
+  auto lockers = std::forward_as_tuple(lockersIn...);
+
+  // make a list of null LockedPtr instances that we will return to the caller
+  auto lockedPtrs = std::tuple<typename SynchronizedLocker::LockedPtr...>{};
+
+  // start by locking the first thing in the list
+  std::get<0>(lockedPtrs) = std::get<0>(lockers).lock();
+  auto indexLocked = 0;
+
+  while (true) {
+    auto couldLockAll = true;
+
+    folly::for_each(lockers, [&](auto& locker, auto index) {
+      // if we should try_lock on the current locker then do so
+      if (index != indexLocked) {
+        auto lockedPtr = locker.tryLock();
+
+        // if we were unable to lock this mutex,
+        //
+        // 1. release all the locks,
+        // 2. yield control to another thread to be nice
+        // 3. block on the mutex we failed to lock, acquire the lock
+        // 4. break out and set the index of the current mutex to indicate
+        //    which mutex we have locked
+        if (!lockedPtr) {
+          // writing lockedPtrs = decltype(lockedPtrs){} does not compile on
+          // gcc, I believe this is a bug D7676798
+          lockedPtrs = std::tuple<typename SynchronizedLocker::LockedPtr...>{};
+
+          std::this_thread::yield();
+          folly::fetch(lockedPtrs, index) = locker.lock();
+          indexLocked = index;
+          couldLockAll = false;
+
+          return folly::loop_break;
+        }
+
+        // else store the locked mutex in the list we return
+        folly::fetch(lockedPtrs, index) = std::move(lockedPtr);
+      }
+
+      return folly::loop_continue;
+    });
+
+    if (couldLockAll) {
+      return lockedPtrs;
+    }
+  }
+}
+
 } // namespace detail
 
 /**
@@ -1441,19 +1595,88 @@ class LockedGuardPtr {
 };
 
 /**
+ * Acquire locks on many lockables or synchronized instances in such a way
+ * that the sequence of calls within the function does not cause deadlocks.
+ *
+ * This can often result in a performance boost as compared to simply
+ * acquiring your locks in an ordered manner.  Even for very simple cases.
+ * The algorithm tried to adjust to contention by blocking on the mutex it
+ * thinks is the best fit, leaving all other mutexes open to be locked by
+ * other threads.  See the benchmarks in folly/test/SynchronizedBenchmark.cpp
+ * for more
+ *
+ * This works differently as compared to the locking algorithm in libstdc++
+ * and is the recommended way to acquire mutexes in a generic order safe
+ * manner.  Performance benchmarks show that this does better than the one in
+ * libstdc++ even for the simple cases
+ *
+ * Usage is the same as std::lock() for arbitrary lockables
+ *
+ *    folly::lock(one, two, three);
+ *
+ * To make it work with folly::Synchronized you have to specify how you want
+ * the locks to be acquired, use the folly::wlock(), folly::rlock(),
+ * folly::ulock() and folly::lock() helpers defined below
+ *
+ *    auto [one, two] = lock(folly::wlock(a), folly::rlock(b));
+ *
+ * Note that you can/must avoid the folly:: namespace prefix on the lock()
+ * function if you use the helpers, ADL lookup is done to find the lock function
+ *
+ * This will execute the deadlock avoidance algorithm and acquire a write lock
+ * for a and a read lock for b
+ */
+template <typename LockableOne, typename LockableTwo, typename... Lockables>
+void lock(LockableOne& one, LockableTwo& two, Lockables&... lockables) {
+  auto locks = lock(
+      detail::LockableLocker<LockableOne>{one},
+      detail::LockableLocker<LockableTwo>{two},
+      detail::LockableLocker<Lockables>{lockables}...);
+
+  // release ownership of the locks from the RAII lock wrapper returned by the
+  // function above
+  folly::for_each(locks, [&](auto& lock) { lock.release(); });
+}
+
+/**
+ * Helper functions that should be passed to a lock() invocation, these return
+ * implementation defined structs that lock() will use to lock the
+ * synchronized instance appropriately.
+ *
+ *    lock(folly::wlock(one), folly::rlock(two), folly::wlock(three));
+ *
+ * For example in the above rlock() produces an implementation defined read
+ * locking helper instance and wlock() a write locking helper
+ */
+template <typename Data, typename Mutex>
+auto wlock(Synchronized<Data, Mutex>& synchronized) {
+  return detail::SynchronizedWLocker<Synchronized<Data, Mutex>>{synchronized};
+}
+template <typename Data, typename Mutex>
+auto rlock(Synchronized<Data, Mutex>& synchronized) {
+  return detail::SynchronizedRLocker<Synchronized<Data, Mutex>>{synchronized};
+}
+template <typename Data, typename Mutex>
+auto ulock(Synchronized<Data, Mutex>& synchronized) {
+  return detail::SynchronizedULocker<Synchronized<Data, Mutex>>{synchronized};
+}
+template <typename Data, typename Mutex>
+auto lock(Synchronized<Data, Mutex>& synchronized) {
+  return detail::SynchronizedLocker<Synchronized<Data, Mutex>>{synchronized};
+}
+
+/**
  * Acquire locks for multiple Synchronized<T> objects, in a deadlock-safe
  * manner.
  *
  * The locks are acquired in order from lowest address to highest address.
  * (Note that this is not necessarily the same algorithm used by std::lock().)
- *
  * For parameters that are const and support shared locks, a read lock is
  * acquired.  Otherwise an exclusive lock is acquired.
  *
- * TODO: Extend acquireLocked() with variadic template versions that
- * allow for more than 2 Synchronized arguments.  (I haven't given too much
- * thought about how to implement this.  It seems like it would be rather
- * complicated, but I think it should be possible.)
+ * use lock() with folly::wlock(), folly::rlock() and folly::ulock() for
+ * arbitrary locking without causing a deadlock (as much as possible), with the
+ * same effects as std::lock()
  */
 template <class Sync1, class Sync2>
 std::tuple<detail::LockedPtrType<Sync1>, detail::LockedPtrType<Sync2>>
