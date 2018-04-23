@@ -1014,8 +1014,8 @@ Future<T>::onError(F&& func) {
 template <class T>
 template <class F>
 Future<T> Future<T>::ensure(F&& func) {
-  return this->then([funcw = std::forward<F>(func)](Try<T> && t) mutable {
-    std::move(funcw)();
+  return this->then([funcw = std::forward<F>(func)](Try<T>&& t) mutable {
+    std::forward<F>(funcw)();
     return makeFuture(std::move(t));
   });
 }
@@ -1023,8 +1023,10 @@ Future<T> Future<T>::ensure(F&& func) {
 template <class T>
 template <class F>
 Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
-  return within(dur, tk).onError([funcw = std::forward<F>(func)](
-      TimedOut const&) { return std::move(funcw)(); });
+  return within(dur, tk).onError(
+      [funcw = std::forward<F>(func)](TimedOut const&) mutable {
+        return std::forward<F>(funcw)();
+      });
 }
 
 template <class T>
