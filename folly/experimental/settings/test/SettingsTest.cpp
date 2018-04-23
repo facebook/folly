@@ -59,6 +59,26 @@ TEST(Settings, basic) {
   EXPECT_EQ(res->first, "200");
   EXPECT_EQ(res->second, "remote_set");
 
+  {
+    auto meta = folly::settings::getSettingsMeta("follytest_public_flag_to_a");
+    EXPECT_TRUE(meta.hasValue());
+    const auto& md = meta.value();
+    EXPECT_EQ(md.project, "follytest");
+    EXPECT_EQ(md.name, "public_flag_to_a");
+    EXPECT_EQ(md.typeStr, "int");
+    EXPECT_EQ(md.typeId, typeid(int));
+  }
+
+  {
+    auto meta = folly::settings::getSettingsMeta("follytest_some_flag");
+    EXPECT_TRUE(meta.hasValue());
+    const auto& md = meta.value();
+    EXPECT_EQ(md.project, "follytest");
+    EXPECT_EQ(md.name, "some_flag");
+    EXPECT_EQ(md.typeStr, "std::string");
+    EXPECT_EQ(md.typeId, typeid(std::string));
+  }
+
   res = folly::settings::getAsString("follytest_nonexisting");
   EXPECT_FALSE(res.hasValue());
 

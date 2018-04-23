@@ -167,10 +167,20 @@ bool setFromString(
     folly::StringPiece reason);
 
 /**
- * @return If the setting exists, the current (to<string>(value),
- *   reason) pair.  Empty Optional otherwise.
+ * Type that encapsulates the current pair of (to<string>(value), reason)
  */
-folly::Optional<std::pair<std::string, std::string>> getAsString(
+using SettingsInfo = std::pair<std::string, std::string>;
+/**
+ * @return If the setting exists, the current setting information.
+ *         Empty Optional otherwise.
+ */
+folly::Optional<SettingsInfo> getAsString(folly::StringPiece settingName);
+
+/**
+ * @return If the setting exists, returns the current settings metadata.
+ *         Empty Optional otherwise.
+ */
+folly::Optional<SettingMetadata> getSettingsMeta(
     folly::StringPiece settingName);
 
 /**

@@ -63,14 +63,22 @@ bool setFromString(
   return true;
 }
 
-Optional<std::pair<std::string, std::string>> getAsString(
-    StringPiece settingName) {
+Optional<SettingsInfo> getAsString(StringPiece settingName) {
   auto mapPtr = detail::settingsMap().rlock();
   auto it = mapPtr->find(settingName.str());
   if (it == mapPtr->end()) {
     return folly::none;
   }
   return it->second->getAsString();
+}
+
+Optional<SettingMetadata> getSettingsMeta(StringPiece settingName) {
+  auto mapPtr = detail::settingsMap().rlock();
+  auto it = mapPtr->find(settingName.str());
+  if (it == mapPtr->end()) {
+    return folly::none;
+  }
+  return it->second->meta();
 }
 
 bool resetToDefault(StringPiece settingName) {
