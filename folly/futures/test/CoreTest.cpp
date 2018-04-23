@@ -32,7 +32,6 @@ TEST(Core, size) {
     std::atomic<bool> active_;
     std::atomic<bool> interruptHandlerSet_;
     folly::MicroSpinLock interruptLock_;
-    folly::MicroSpinLock executorLock_;
     int8_t priority_;
     Executor* executor_;
     std::shared_ptr<RequestContext> context_;
