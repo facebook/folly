@@ -99,12 +99,14 @@ inline void PolyVal<I>::swap(Poly<I>& that) noexcept {
       break;
     case State::eOnHeap:
       if (State::eOnHeap == that.vptr_->state_) {
-        std::swap(_data_()->pobj_, _data_()->pobj_);
+        std::swap(_data_()->pobj_, that._data_()->pobj_);
         std::swap(vptr_, that.vptr_);
+        return;
       }
       FOLLY_FALLTHROUGH;
     case State::eInSitu:
-      std::swap(*this, that); // NOTE: qualified, not ADL
+      std::swap(
+          *this, static_cast<PolyVal<I>&>(that)); // NOTE: qualified, not ADL
   }
 }
 

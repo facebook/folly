@@ -29,40 +29,45 @@ using namespace folly;
 using namespace folly::poly;
 
 namespace {
-struct Big {
+template <class T>
+struct Big_t {
  private:
   std::array<char, sizeof(Poly<ISemiRegular>) + 1> data_;
-  int i_;
+  T t_;
 
  public:
-  Big() : data_{}, i_(0) {
+  Big_t() : data_{}, t_() {
     ++s_count;
   }
-  explicit Big(int i) : data_{}, i_(i) {
+  explicit Big_t(T t) : data_{}, t_(t) {
     ++s_count;
   }
-  Big(Big const& that) : data_(that.data_), i_(that.i_) {
+  Big_t(Big_t const& that) : data_(that.data_), t_(that.t_) {
     ++s_count;
   }
-  ~Big() {
+  ~Big_t() {
     --s_count;
   }
-  Big& operator=(Big const&) = default;
-  int value() const {
-    return i_;
+  Big_t& operator=(Big_t const&) = default;
+  T value() const {
+    return t_;
   }
-  friend bool operator==(Big const& a, Big const& b) {
+  friend bool operator==(Big_t const& a, Big_t const& b) {
     return a.value() == b.value();
   }
-  friend bool operator!=(Big const& a, Big const& b) {
+  friend bool operator!=(Big_t const& a, Big_t const& b) {
     return !(a == b);
   }
-  friend bool operator<(Big const& a, Big const& b) {
+  friend bool operator<(Big_t const& a, Big_t const& b) {
     return a.value() < b.value();
   }
   static std::ptrdiff_t s_count;
 };
-std::ptrdiff_t Big::s_count = 0;
+template <class T>
+std::ptrdiff_t Big_t<T>::s_count = 0;
+
+using Big = Big_t<int>;
+using BigDouble = Big_t<double>;
 } // namespace
 
 TEST(Poly, SemiRegular) {
@@ -93,6 +98,141 @@ TEST(Poly, SemiRegular) {
     EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
   }
   EXPECT_EQ(0, Big::s_count);
+
+  // four swap cases
+  //
+
+  {
+    // A small object, storable in-situ:
+    Poly<ISemiRegular> p = 42;
+    EXPECT_EQ(typeid(int), poly_type(p));
+    EXPECT_EQ(42, poly_cast<int>(p));
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    // A small object, storable in-situ:
+    Poly<ISemiRegular> p2 = 4.2;
+    EXPECT_EQ(typeid(double), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<double>(p2));
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    std::swap(p, p2);
+    EXPECT_EQ(typeid(double), poly_type(p));
+    EXPECT_EQ(4.2, poly_cast<double>(p));
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(int), poly_type(p2));
+    EXPECT_EQ(42, poly_cast<int>(p2));
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    using std::swap;
+    swap(p, p2);
+    EXPECT_EQ(typeid(int), poly_type(p));
+    EXPECT_EQ(42, poly_cast<int>(p));
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(double), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<double>(p2));
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+  }
+
+  EXPECT_EQ(0, Big::s_count);
+  EXPECT_EQ(0, BigDouble::s_count);
+  {
+    // A big object, stored on the heap:
+    Poly<ISemiRegular> p = Big(42);
+    EXPECT_EQ(1, Big::s_count);
+    EXPECT_EQ(typeid(Big), poly_type(p));
+    EXPECT_EQ(42, poly_cast<Big>(p).value());
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    // A big object, stored on the heap:
+    Poly<ISemiRegular> p2 = BigDouble(4.2);
+    EXPECT_EQ(1, BigDouble::s_count);
+    EXPECT_EQ(typeid(BigDouble), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<BigDouble>(p2).value());
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    std::swap(p, p2);
+    EXPECT_EQ(1, Big::s_count);
+    EXPECT_EQ(1, BigDouble::s_count);
+    EXPECT_EQ(typeid(BigDouble), poly_type(p));
+    EXPECT_EQ(4.2, poly_cast<BigDouble>(p).value());
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(Big), poly_type(p2));
+    EXPECT_EQ(42, poly_cast<Big>(p2).value());
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    using std::swap;
+    swap(p, p2);
+    EXPECT_EQ(1, Big::s_count);
+    EXPECT_EQ(1, BigDouble::s_count);
+    EXPECT_EQ(typeid(Big), poly_type(p));
+    EXPECT_EQ(42, poly_cast<Big>(p).value());
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(BigDouble), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<BigDouble>(p2).value());
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+  }
+  EXPECT_EQ(0, BigDouble::s_count);
+  EXPECT_EQ(0, Big::s_count);
+
+  EXPECT_EQ(0, Big::s_count);
+  {
+    // A big object, stored on the heap:
+    Poly<ISemiRegular> p = Big(42);
+    EXPECT_EQ(1, Big::s_count);
+    EXPECT_EQ(typeid(Big), poly_type(p));
+    EXPECT_EQ(42, poly_cast<Big>(p).value());
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    // A small object, storable in-situ:
+    Poly<ISemiRegular> p2 = 4.2;
+    EXPECT_EQ(typeid(double), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<double>(p2));
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    std::swap(p, p2);
+    EXPECT_EQ(1, Big::s_count);
+    EXPECT_EQ(typeid(double), poly_type(p));
+    EXPECT_EQ(4.2, poly_cast<double>(p));
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(Big), poly_type(p2));
+    EXPECT_EQ(42, poly_cast<Big>(p2).value());
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    using std::swap;
+    swap(p, p2);
+    EXPECT_EQ(1, Big::s_count);
+    EXPECT_EQ(typeid(Big), poly_type(p));
+    EXPECT_EQ(42, poly_cast<Big>(p).value());
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(double), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<double>(p2));
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+  }
+  EXPECT_EQ(0, Big::s_count);
+
+  EXPECT_EQ(0, BigDouble::s_count);
+  {
+    // A small object, storable in-situ:
+    Poly<ISemiRegular> p = 42;
+    EXPECT_EQ(typeid(int), poly_type(p));
+    EXPECT_EQ(42, poly_cast<int>(p));
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    // A big object, stored on the heap:
+    Poly<ISemiRegular> p2 = BigDouble(4.2);
+    EXPECT_EQ(1, BigDouble::s_count);
+    EXPECT_EQ(typeid(BigDouble), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<BigDouble>(p2).value());
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    std::swap(p, p2);
+    EXPECT_EQ(1, BigDouble::s_count);
+    EXPECT_EQ(typeid(BigDouble), poly_type(p));
+    EXPECT_EQ(4.2, poly_cast<BigDouble>(p).value());
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(int), poly_type(p2));
+    EXPECT_EQ(42, poly_cast<int>(p2));
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+    using std::swap;
+    swap(p, p2);
+    EXPECT_EQ(1, BigDouble::s_count);
+    EXPECT_EQ(typeid(int), poly_type(p));
+    EXPECT_EQ(42, poly_cast<int>(p));
+    EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+    EXPECT_EQ(typeid(BigDouble), poly_type(p2));
+    EXPECT_EQ(4.2, poly_cast<BigDouble>(p2).value());
+    EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+  }
+  EXPECT_EQ(0, BigDouble::s_count);
 }
 
 TEST(Poly, EqualityComparable) {
@@ -188,6 +328,22 @@ TEST(Poly, SemiRegularReference) {
   EXPECT_EQ(42, poly_cast<int>(p));
   EXPECT_EQ(&i, &poly_cast<int>(p));
   EXPECT_THROW(poly_cast<short>(p), BadPolyCast);
+  Poly<ISemiRegular&> p2 = p;
+  EXPECT_EQ(typeid(int), poly_type(p2));
+  EXPECT_EQ(42, poly_cast<int>(p2));
+  EXPECT_EQ(&i, &poly_cast<int>(p2));
+  EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+  std::swap(p, p2);
+  EXPECT_EQ(typeid(int), poly_type(p2));
+  EXPECT_EQ(42, poly_cast<int>(p2));
+  EXPECT_EQ(&i, &poly_cast<int>(p2));
+  EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
+  using std::swap;
+  swap(p, p2);
+  EXPECT_EQ(typeid(int), poly_type(p2));
+  EXPECT_EQ(42, poly_cast<int>(p2));
+  EXPECT_EQ(&i, &poly_cast<int>(p2));
+  EXPECT_THROW(poly_cast<short>(p2), BadPolyCast);
   // Can't default-initialize reference-like Poly's:
   static_assert(!std::is_default_constructible<Poly<ISemiRegular&>>::value, "");
 }
