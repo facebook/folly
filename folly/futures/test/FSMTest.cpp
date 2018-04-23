@@ -22,7 +22,7 @@ using namespace folly::futures::detail;
 enum class State { A, B };
 
 TEST(FSM, example) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   int count = 0;
   int unprotectedCount = 0;
 
@@ -56,7 +56,7 @@ TEST(FSM, example) {
 
 TEST(FSM, magicMacrosExample) {
   struct MyFSM {
-    FSM<State> fsm_;
+    FSM<State, std::mutex> fsm_;
     int count = 0;
     int unprotectedCount = 0;
     MyFSM() : fsm_(State::A) {}
@@ -84,37 +84,37 @@ TEST(FSM, magicMacrosExample) {
 
 
 TEST(FSM, ctor) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   EXPECT_EQ(State::A, fsm.getState());
 }
 
 TEST(FSM, update) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   EXPECT_TRUE(fsm.updateState(State::A, State::B, []{}));
   EXPECT_EQ(State::B, fsm.getState());
 }
 
 TEST(FSM, badUpdate) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   EXPECT_FALSE(fsm.updateState(State::B, State::A, []{}));
 }
 
 TEST(FSM, actionOnUpdate) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   int count = 0;
   fsm.updateState(State::A, State::B, [&]{ count++; });
   EXPECT_EQ(1, count);
 }
 
 TEST(FSM, noActionOnBadUpdate) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   int count = 0;
   fsm.updateState(State::B, State::A, [&]{ count++; });
   EXPECT_EQ(0, count);
 }
 
 TEST(FSM, stateTransitionAfterAction) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   fsm.updateState(State::A, State::B,
                   [&]{ EXPECT_EQ(State::A, fsm.getState()); });
 }

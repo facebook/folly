@@ -28,14 +28,10 @@ namespace detail {
 /// Finite State Machine helper base class.
 /// Inherit from this.
 /// For best results, use an "enum class" for Enum.
-template <class Enum>
+template <class Enum, class Mutex>
 class FSM {
  private:
-  // I am not templatizing this because folly::MicroSpinLock needs to be
-  // zero-initialized (or call init) which isn't generic enough for something
-  // that behaves like std::mutex. :(
-  using Mutex = folly::MicroSpinLock;
-  Mutex mutex_ {0};
+  Mutex mutex_;
 
   // This might not be necessary for all Enum types, e.g. anything
   // that is atomically updated in practice on this CPU and there's no risk
@@ -55,16 +51,12 @@ class FSM {
   /// @returns true on success, false and action unexecuted otherwise
   template <class F>
   bool updateState(Enum A, Enum B, F const& action) {
-    if (!mutex_.try_lock()) {
-      mutex_.lock();
-    }
+    std::lock_guard<Mutex> lock(mutex_);
     if (state_.load(std::memory_order_acquire) != A) {
-      mutex_.unlock();
       return false;
     }
     action();
     state_.store(B, std::memory_order_release);
-    mutex_.unlock();
     return true;
   }
 

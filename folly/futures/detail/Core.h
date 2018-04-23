@@ -59,6 +59,19 @@ enum class State : uint8_t {
   Done,
 };
 
+/// SpinLock is and must stay a 1-byte object because of how Core is laid out.
+struct SpinLock : private MicroSpinLock {
+  SpinLock() : MicroSpinLock{0} {}
+
+  void lock() {
+    if (!MicroSpinLock::try_lock()) {
+      MicroSpinLock::lock();
+    }
+  }
+  using MicroSpinLock::unlock;
+};
+static_assert(sizeof(SpinLock) == 1, "missized");
+
 /// The shared state object for Future and Promise.
 /// Some methods must only be called by either the Future thread or the
 /// Promise thread. The Future thread is the thread that currently "owns" the
@@ -242,35 +255,26 @@ class Core final {
 
   /// Call only from Future thread
   void raise(exception_wrapper e) {
-    if (!interruptLock_.try_lock()) {
-      interruptLock_.lock();
-    }
+    std::lock_guard<SpinLock> lock(interruptLock_);
     if (!interrupt_ && !hasResult()) {
       interrupt_ = std::make_unique<exception_wrapper>(std::move(e));
       if (interruptHandler_) {
         interruptHandler_(*interrupt_);
       }
     }
-    interruptLock_.unlock();
   }
 
   std::function<void(exception_wrapper const&)> getInterruptHandler() {
     if (!interruptHandlerSet_.load(std::memory_order_acquire)) {
       return nullptr;
     }
-    if (!interruptLock_.try_lock()) {
-      interruptLock_.lock();
-    }
-    auto handler = interruptHandler_;
-    interruptLock_.unlock();
-    return handler;
+    std::lock_guard<SpinLock> lock(interruptLock_);
+    return interruptHandler_;
   }
 
   /// Call only from Promise thread
   void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
-    if (!interruptLock_.try_lock()) {
-      interruptLock_.lock();
-    }
+    std::lock_guard<SpinLock> lock(interruptLock_);
     if (!hasResult()) {
       if (interrupt_) {
         fn(*interrupt_);
@@ -278,7 +282,6 @@ class Core final {
         setInterruptHandlerNoLock(std::move(fn));
       }
     }
-    interruptLock_.unlock();
   }
 
   void setInterruptHandlerNoLock(
@@ -406,12 +409,12 @@ class Core final {
   // place result_ next to increase the likelihood that the value will be
   // contained entirely in one cache line
   folly::Optional<Try<T>> result_;
-  FSM<State> fsm_;
+  FSM<State, SpinLock> fsm_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
   std::atomic<bool> active_ {true};
   std::atomic<bool> interruptHandlerSet_ {false};
-  folly::MicroSpinLock interruptLock_ {0};
+  SpinLock interruptLock_;
   int8_t priority_ {-1};
   Executor* executor_ {nullptr};
   std::shared_ptr<RequestContext> context_ {nullptr};
