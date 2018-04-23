@@ -95,7 +95,10 @@ class TDigest {
       return weight_;
     }
 
-    inline void add(const Centroid& other);
+    /*
+     * Adds the sum/weight to this centroid, and returns the new sum.
+     */
+    inline double add(double sum, double weight);
 
     inline bool operator<(const Centroid& other) const {
       return mean() < other.mean();

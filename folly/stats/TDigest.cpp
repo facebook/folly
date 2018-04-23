@@ -82,7 +82,6 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
   std::vector<Centroid> compressed;
   compressed.reserve(maxSize_);
 
-  double q_0_times_count = 0.0;
   double k_limit = 1;
   double q_limit_times_count =
       detail::k_to_q(k_limit++, maxSize_) * result.count_;
@@ -98,7 +97,11 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
     cur = Centroid(*it_sortedValues++, 1.0);
   }
 
-  result.sum_ += cur.mean() * cur.weight();
+  double weightSoFar = cur.weight();
+
+  // Keep track of sums along the way to reduce expensive floating points
+  double sumsToMerge = 0;
+  double weightsToMerge = 0;
 
   while (it_centroids != centroids_.end() ||
          it_sortedValues != sortedValues.end()) {
@@ -112,19 +115,22 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
       next = Centroid(*it_sortedValues++, 1.0);
     }
 
-    result.sum_ += next.mean() * next.weight();
+    double nextSum = next.mean() * next.weight();
+    weightSoFar += next.weight();
 
-    double q_times_count = q_0_times_count + cur.weight() + next.weight();
-
-    if (q_times_count <= q_limit_times_count) {
-      cur.add(next);
+    if (weightSoFar <= q_limit_times_count) {
+      sumsToMerge += nextSum;
+      weightsToMerge += next.weight();
     } else {
+      result.sum_ += cur.add(sumsToMerge, weightsToMerge);
+      sumsToMerge = 0;
+      weightsToMerge = 0;
       compressed.push_back(cur);
-      q_0_times_count += cur.weight();
       q_limit_times_count = detail::k_to_q(k_limit++, maxSize_) * result.count_;
       cur = next;
     }
   }
+  result.sum_ += cur.add(sumsToMerge, weightsToMerge);
   compressed.push_back(cur);
   result.centroids_ = std::move(compressed);
   return result;
@@ -144,44 +150,46 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   centroids.reserve(nCentroids);
 
   double count = 0;
-  double sum = 0;
 
   for (auto it = digests.begin(); it != digests.end(); it++) {
+    count += it->count();
     for (const auto& centroid : it->centroids_) {
       centroids.push_back(centroid);
-      count += centroid.weight();
-      sum += centroid.mean() * centroid.weight();
     }
   }
   std::sort(centroids.begin(), centroids.end());
 
   size_t maxSize = digests.begin()->maxSize_;
+  TDigest result(maxSize);
+
   std::vector<Centroid> compressed;
   compressed.reserve(maxSize);
-
-  double q_0_times_count = 0.0;
 
   double k_limit = 1;
   double q_limit_times_count = detail::k_to_q(k_limit, maxSize) * count;
 
   Centroid cur = centroids.front();
+  double weightSoFar = cur.weight();
+  double sumsToMerge = 0;
+  double weightsToMerge = 0;
   for (auto it = centroids.begin() + 1; it != centroids.end(); ++it) {
-    double q_times_count = q_0_times_count + cur.weight() + it->weight();
-
-    if (q_times_count <= q_limit_times_count) {
-      cur.add(*it);
+    weightSoFar += it->weight();
+    if (weightSoFar <= q_limit_times_count) {
+      sumsToMerge += it->mean() * it->weight();
+      weightsToMerge += it->weight();
     } else {
+      result.sum_ += cur.add(sumsToMerge, weightsToMerge);
+      sumsToMerge = 0;
+      weightsToMerge = 0;
       compressed.push_back(cur);
-      q_0_times_count += cur.weight();
       q_limit_times_count = detail::k_to_q(k_limit++, maxSize) * count;
       cur = *it;
     }
   }
+  result.sum_ += cur.add(sumsToMerge, weightsToMerge);
   compressed.push_back(cur);
 
-  TDigest result(maxSize);
   result.count_ = count;
-  result.sum_ = sum;
   result.centroids_ = std::move(compressed);
   return result;
 }
@@ -236,16 +244,11 @@ double TDigest::estimateQuantile(double q) const {
       ((rank - t) / centroids_[pos].weight() - 0.5) * delta;
 }
 
-void TDigest::Centroid::add(const TDigest::Centroid& other) {
-  auto means = _mm_set_pd(mean(), other.mean());
-  auto weights = _mm_set_pd(weight(), other.weight());
-  auto sums128 = _mm_mul_pd(means, weights);
-
-  double* sums = reinterpret_cast<double*>(&sums128);
-
-  double sum = sums[0] + sums[1];
-  weight_ += other.weight();
+double TDigest::Centroid::add(double sum, double weight) {
+  sum += (mean_ * weight_);
+  weight_ += weight;
   mean_ = sum / weight_;
+  return sum;
 }
 
 } // namespace folly

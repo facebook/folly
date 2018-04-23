@@ -24,7 +24,7 @@
 #include <folly/Range.h>
 #include <folly/portability/GFlags.h>
 
-DEFINE_int32(digest_merge_time_ns, 13000, "Time to merge into the digest");
+DEFINE_int32(digest_merge_time_ns, 5500, "Time to merge into the digest");
 
 using namespace folly;
 using namespace folly::detail;
@@ -110,19 +110,19 @@ BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(append, 10000x32, 10000, 32)
  * ============================================================================
  * folly/stats/test/DigestBuilderBenchmark.cpp     relative  time/iter  iters/s
  * ============================================================================
- * append(1000x1)                                              51.79ns   19.31M
- * append(1000x2)                                    97.04%    53.37ns   18.74M
- * append(1000x4)                                    95.68%    54.12ns   18.48M
- * append(1000x8)                                    91.95%    56.32ns   17.76M
- * append(1000x16)                                   62.12%    83.36ns   12.00M
- * append(1000x32)                                   38.12%   135.85ns    7.36M
+ * append(1000x1)                                              45.44ns   22.01M
+ * append(1000x2)                                    99.84%    45.52ns   21.97M
+ * append(1000x4)                                    96.65%    47.02ns   21.27M
+ * append(1000x8)                                    93.49%    48.61ns   20.57M
+ * append(1000x16)                                   46.88%    96.93ns   10.32M
+ * append(1000x32)                                   33.59%   135.30ns    7.39M
  * ----------------------------------------------------------------------------
- * append(10000x1)                                             46.34ns   21.58M
- * append(10000x2)                                   97.91%    47.33ns   21.13M
- * append(10000x4)                                   95.27%    48.64ns   20.56M
- * append(10000x8)                                   91.39%    50.70ns   19.72M
- * append(10000x16)                                  55.26%    83.85ns   11.93M
- * append(10000x32)                                  35.57%   130.25ns    7.68M
+ * append(10000x1)                                             46.12ns   21.68M
+ * append(10000x2)                                   96.02%    48.03ns   20.82M
+ * append(10000x4)                                   95.39%    48.35ns   20.68M
+ * append(10000x8)                                   90.52%    50.95ns   19.63M
+ * append(10000x16)                                  43.39%   106.28ns    9.41M
+ * append(10000x32)                                  34.83%   132.41ns    7.55M
  * ============================================================================
  */
 
