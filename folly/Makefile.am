@@ -629,7 +629,6 @@ libfolly_la_SOURCES = \
 	ScopeGuard.cpp \
 	SharedMutex.cpp \
 	MicroLock.cpp \
-	Optional.cpp \
 	Singleton.cpp \
 	SocketAddress.cpp \
 	ssl/Init.cpp \
