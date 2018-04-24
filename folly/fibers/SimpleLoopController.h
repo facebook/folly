@@ -116,11 +116,9 @@ class SimpleLoopController : public LoopController {
     fm_ = fm;
   }
 
-  void scheduleThreadSafe(std::function<bool()> func) override {
-    if (func()) {
-      ++remoteScheduleCalled_;
-      scheduled_ = true;
-    }
+  void scheduleThreadSafe() override {
+    ++remoteScheduleCalled_;
+    scheduled_ = true;
   }
 
   friend class FiberManager;

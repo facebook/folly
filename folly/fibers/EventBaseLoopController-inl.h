@@ -84,8 +84,7 @@ inline void EventBaseLoopController::runLoop() {
   }
 }
 
-inline void EventBaseLoopController::scheduleThreadSafe(
-    std::function<bool()> func) {
+inline void EventBaseLoopController::scheduleThreadSafe() {
   /* The only way we could end up here is if
      1) Fiber thread creates a fiber that awaits (which means we must
         have already attached, fiber thread wouldn't be running).
@@ -93,17 +92,15 @@ inline void EventBaseLoopController::scheduleThreadSafe(
      3) We fulfill the promise from the other thread. */
   assert(eventBaseAttached_);
 
-  if (func()) {
-    eventBase_->runInEventBaseThread([this]() {
-      if (fm_->shouldRunLoopRemote()) {
-        return runLoop();
-      }
+  eventBase_->runInEventBaseThread([this]() {
+    if (fm_->shouldRunLoopRemote()) {
+      return runLoop();
+    }
 
-      if (!fm_->hasTasks()) {
-        eventBaseKeepAlive_.reset();
-      }
-    });
-  }
+    if (!fm_->hasTasks()) {
+      eventBaseKeepAlive_.reset();
+    }
+  });
 }
 
 inline void EventBaseLoopController::timedSchedule(

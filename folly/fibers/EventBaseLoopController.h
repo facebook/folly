@@ -70,7 +70,7 @@ class EventBaseLoopController : public LoopController {
   void setFiberManager(FiberManager* fm) override;
   void schedule() override;
   void runLoop() override;
-  void scheduleThreadSafe(std::function<bool()> func) override;
+  void scheduleThreadSafe() override;
   void timedSchedule(std::function<void()> func, TimePoint time) override;
 
   friend class FiberManager;

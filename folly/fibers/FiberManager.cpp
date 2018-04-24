@@ -60,8 +60,8 @@ namespace fibers {
 static AsanStartSwitchStackFuncPtr getStartSwitchStackFunc();
 static AsanFinishSwitchStackFuncPtr getFinishSwitchStackFunc();
 static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc();
-}
-}
+} // namespace fibers
+} // namespace folly
 
 #endif
 
@@ -150,8 +150,9 @@ void FiberManager::remoteReadyInsert(Fiber* fiber) {
   if (observer_) {
     observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
   }
-  auto insertHead = [&]() { return remoteReadyQueue_.insertHead(fiber); };
-  loopController_->scheduleThreadSafe(std::ref(insertHead));
+  if (remoteReadyQueue_.insertHead(fiber)) {
+    loopController_->scheduleThreadSafe();
+  }
 }
 
 void FiberManager::setObserver(ExecutionObserver* observer) {
