@@ -271,8 +271,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// exception).
   T get(Duration dur) &&;
 
-  /// Block until the future is fulfilled, or until timed out. Returns the
-  /// Try of the value (moved out).
+  /// Block until the future is fulfilled. Returns the Try of the value (moved
+  /// out).
   Try<T> getTry() &&;
 
   /// Block until the future is fulfilled, or until timed out. Returns the
