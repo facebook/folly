@@ -407,7 +407,12 @@ if (BUILD_TESTS)
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
 
     DIRECTORY concurrency/test/
+      TEST atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
+      TEST core_cached_shared_ptr_test SOURCES CoreCachedSharedPtrTest.cpp
+      TEST concurrent_hash_map_test SOURCES ConcurrentHashMapTest.cpp
+      TEST dynamic_bounded_queue_test SOURCES DynamicBoundedQueueTest.cpp
+      TEST unbounded_queue_test SOURCES UnboundedQueueTest.cpp
 
     DIRECTORY executors/test/
       TEST async_helpers_test SOURCES AsyncTest.cpp
