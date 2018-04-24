@@ -976,6 +976,9 @@ bool AsyncSSLSocket::willBlock(int ret,
 #ifdef SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
               || error == SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
 #endif
+#ifdef SSL_ERROR_WANT_ASYNC // OpenSSL 1.1.0 Async API
+              || error == SSL_ERROR_WANT_ASYNC
+#endif
               )) {
     // Our custom openssl function has kicked off an async request to do
     // rsa/ecdsa private key operation.  When that call returns, a callback will
@@ -987,6 +990,35 @@ bool AsyncSSLSocket::willBlock(int ret,
       EventHandler::NONE,
       EventHandler::READ | EventHandler::WRITE
     );
+
+#ifdef SSL_ERROR_WANT_ASYNC
+    if (error == SSL_ERROR_WANT_ASYNC) {
+      size_t numfds;
+      if (SSL_get_all_async_fds(ssl_, NULL, &numfds) <= 0) {
+        VLOG(4) << "SSL_ERROR_WANT_ASYNC but no async FDs set!";
+        return false;
+      }
+      if (numfds != 1) {
+        VLOG(4) << "SSL_ERROR_WANT_ASYNC expected exactly 1 async fd, got "
+                << numfds;
+        return false;
+      }
+      OSSL_ASYNC_FD ofd; // This should just be an int in POSIX
+      if (SSL_get_all_async_fds(ssl_, &ofd, &numfds) <= 0) {
+        VLOG(4) << "SSL_ERROR_WANT_ASYNC cant get async fd";
+        return false;
+      }
+
+      auto asyncPipeReader = AsyncPipeReader::newReader(eventBase_, ofd);
+      auto asyncPipeReaderPtr = asyncPipeReader.get();
+      if (!asyncOperationFinishCallback_) {
+        asyncOperationFinishCallback_.reset(
+            new DefaultOpenSSLAsyncFinishCallback(
+                std::move(asyncPipeReader), this));
+      }
+      asyncPipeReaderPtr->setReadCB(asyncOperationFinishCallback_.get());
+    }
+#endif
 
     // The timeout (if set) keeps running here
     return true;
@@ -1086,6 +1118,7 @@ AsyncSSLSocket::handleAccept() noexcept {
 
   int ret = SSL_accept(ssl_);
   if (ret <= 0) {
+    VLOG(3) << "SSL_accept returned: " << ret;
     int sslError;
     unsigned long errError;
     int errnoCopy = errno;

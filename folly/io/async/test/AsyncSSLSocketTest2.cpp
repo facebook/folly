@@ -23,6 +23,7 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
+#include <folly/ssl/Init.h>
 
 using std::string;
 using std::vector;
@@ -280,10 +281,12 @@ TEST(AsyncSSLSocketTest2, TestTLS12BadClient) {
 } // namespace folly
 
 int main(int argc, char *argv[]) {
+  folly::ssl::init();
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
 #endif
   testing::InitGoogleTest(&argc, argv);
   folly::init(&argc, &argv);
   return RUN_ALL_TESTS();
+  OPENSSL_cleanup();
 }
