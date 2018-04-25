@@ -632,14 +632,6 @@ class EventBase : private boost::noncopyable,
   // Implements the ScheduledExecutor interface
   void scheduleAt(Func&& fn, TimePoint const& timeout) override;
 
-  /// Returns you a handle which make loop() behave like loopForever() until
-  /// destroyed. loop() will return to its original behavior only when all
-  /// loop keep-alives are released.
-  KeepAlive getKeepAliveToken() override {
-    keepAliveAcquire();
-    return makeKeepAlive();
-  }
-
   // TimeoutManager
   void attachTimeoutManager(
       AsyncTimeout* obj,
@@ -669,12 +661,13 @@ class EventBase : private boost::noncopyable,
   EventBase* getEventBase() override;
 
  protected:
-  void keepAliveAcquire() override {
+  bool keepAliveAcquire() override {
     if (inRunningEventBaseThread()) {
       loopKeepAliveCount_++;
     } else {
       loopKeepAliveCountAtomic_.fetch_add(1, std::memory_order_relaxed);
     }
+    return true;
   }
 
   void keepAliveRelease() override {

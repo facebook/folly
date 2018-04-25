@@ -116,20 +116,12 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
     runInEventBaseThread(std::move(f));
   }
 
-  /**
-   * Returns you a handle which prevents VirtualEventBase from being destroyed.
-   */
-  KeepAlive getKeepAliveToken() override {
-    keepAliveAcquire();
-    return makeKeepAlive();
-  }
-
   bool inRunningEventBaseThread() const {
     return evb_.inRunningEventBaseThread();
   }
 
  protected:
-  void keepAliveAcquire() override {
+  bool keepAliveAcquire() override {
     DCHECK(loopKeepAliveCount_ + loopKeepAliveCountAtomic_.load() > 0);
 
     if (evb_.inRunningEventBaseThread()) {
@@ -137,6 +129,7 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
     } else {
       ++loopKeepAliveCountAtomic_;
     }
+    return true;
   }
 
   void keepAliveRelease() override {

@@ -27,13 +27,12 @@ void Executor::addWithPriority(Func, int8_t /* priority */) {
       "addWithPriority() is not implemented for this Executor");
 }
 
-void Executor::keepAliveAcquire() {
-  LOG(FATAL) << __func__ << "() should not be called for folly::Executor types "
-             << "which do not override getKeepAliveToken()";
+bool Executor::keepAliveAcquire() {
+  return false;
 }
 
 void Executor::keepAliveRelease() {
   LOG(FATAL) << __func__ << "() should not be called for folly::Executor types "
-             << "which do not override getKeepAliveToken()";
+             << "which do not override keepAliveAcquire()";
 }
 } // namespace folly
