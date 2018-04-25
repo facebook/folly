@@ -676,6 +676,7 @@ if (BUILD_TESTS)
         SOURCES FunctionTest.cpp
       TEST function_ref_test SOURCES FunctionRefTest.cpp
       TEST futex_test SOURCES FutexTest.cpp
+      TEST glog_test SOURCES GLogTest.cpp
       TEST group_varint_test SOURCES GroupVarintTest.cpp
       TEST group_varint_test_ssse3 SOURCES GroupVarintTest.cpp
       TEST has_member_fn_traits_test SOURCES HasMemberFnTraitsTest.cpp
@@ -692,7 +693,6 @@ if (BUILD_TESTS)
       TEST lazy_test SOURCES LazyTest.cpp
       TEST lock_traits_test SOURCES LockTraitsTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
-      TEST logging_test SOURCES LoggingTest.cpp
       TEST math_test SOURCES MathTest.cpp
       TEST map_util_test SOURCES MapUtilTest.cpp
       TEST memcpy_test SOURCES MemcpyTest.cpp

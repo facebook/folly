@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Logging.h>
+#include <folly/GLog.h>
 
 #include <folly/Benchmark.h>
 
@@ -41,7 +41,7 @@ BENCHMARK(dev_null_log_overhead, iter) {
 }
 
 // ============================================================================
-// folly/test/LoggingTest.cpp                      relative  time/iter  iters/s
+// folly/test/GLogBenchmark.cpp                    relative  time/iter  iters/s
 // ============================================================================
 // skip_overhead                                               36.37ns   27.49M
 // dev_null_log_overhead                                        2.61us  382.57K

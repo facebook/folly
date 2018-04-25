@@ -266,6 +266,7 @@ nobase_follyinclude_HEADERS = \
 	gen/ParallelMap-inl.h \
 	gen/String.h \
 	gen/String-inl.h \
+	GLog.h \
 	GroupVarint.h \
 	Hash.h \
 	IPAddress.h \

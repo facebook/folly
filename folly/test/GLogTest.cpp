@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/Logging.h>
+#include <folly/GLog.h>
 
 #include <folly/portability/GTest.h>
 

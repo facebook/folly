@@ -17,7 +17,7 @@
 
 #include <iostream>
 
-#include <folly/Logging.h>
+#include <folly/GLog.h>
 
 namespace folly {
 

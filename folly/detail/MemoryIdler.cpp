@@ -16,7 +16,7 @@
 
 #include <folly/detail/MemoryIdler.h>
 
-#include <folly/Logging.h>
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>
