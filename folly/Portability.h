@@ -410,7 +410,8 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_HAS_COROUTINES 1
 #endif
 
-// MSVC 2017.5
-#if __cpp_noexcept_function_type >= 201510 || _MSC_FULL_VER >= 191225816
+// MSVC 2017.5 && C++17
+#if __cpp_noexcept_function_type >= 201510 || \
+    (_MSC_FULL_VER >= 191225816 && _MSVC_LANG > 201402)
 #define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
 #endif
