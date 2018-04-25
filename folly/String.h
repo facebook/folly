@@ -287,7 +287,7 @@ OutputString unhexlify(StringPiece input) {
   return output;
 }
 
-/*
+/**
  * A pretty-printer for numbers that appends suffixes of units of the
  * given type.  It prints 4 sig-figs of value with the most
  * appropriate unit.
@@ -297,6 +297,7 @@ OutputString unhexlify(StringPiece input) {
  *
  * Current types are:
  *   PRETTY_TIME         - s, ms, us, ns, etc.
+ *   PRETTY_TIME_HMS     - h, m, s, ms, us, ns, etc.
  *   PRETTY_BYTES_METRIC - kB, MB, GB, etc (goes up by 10^3 = 1000 each time)
  *   PRETTY_BYTES        - kB, MB, GB, etc (goes up by 2^10 = 1024 each time)
  *   PRETTY_BYTES_IEC    - KiB, MiB, GiB, etc
@@ -305,10 +306,12 @@ OutputString unhexlify(StringPiece input) {
  *   PRETTY_UNITS_BINARY_IEC - Ki, Mi, Gi, etc
  *   PRETTY_SI           - full SI metric prefixes from yocto to Yotta
  *                         http://en.wikipedia.org/wiki/Metric_prefix
+ *
  * @author Mark Rabkin <mrabkin@fb.com>
  */
 enum PrettyType {
   PRETTY_TIME,
+  PRETTY_TIME_HMS,
 
   PRETTY_BYTES_METRIC,
   PRETTY_BYTES_BINARY,
@@ -345,7 +348,7 @@ std::string prettyPrint(double val, PrettyType, bool addSpace = true);
 double prettyToDouble(folly::StringPiece *const prettyString,
                       const PrettyType type);
 
-/*
+/**
  * Same as prettyToDouble(folly::StringPiece*, PrettyType), but
  * expects whole string to be correctly parseable. Throws std::range_error
  * otherwise

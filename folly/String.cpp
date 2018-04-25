@@ -283,6 +283,18 @@ const PrettySuffix kPrettyTimeSuffixes[] = {
   { nullptr, 0 },
 };
 
+const PrettySuffix kPrettyTimeHmsSuffixes[] = {
+  { "h ", 60L * 60L },
+  { "m ", 60L },
+  { "s ", 1e0L },
+  { "ms", 1e-3L },
+  { "us", 1e-6L },
+  { "ns", 1e-9L },
+  { "ps", 1e-12L },
+  { "s ", 0 },
+  { nullptr, 0 },
+};
+
 const PrettySuffix kPrettyBytesMetricSuffixes[] = {
   { "EB", 1e18L },
   { "PB", 1e15L },
@@ -376,6 +388,7 @@ const PrettySuffix kPrettySISuffixes[] = {
 
 const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
   kPrettyTimeSuffixes,
+  kPrettyTimeHmsSuffixes,
   kPrettyBytesMetricSuffixes,
   kPrettyBytesBinarySuffixes,
   kPrettyBytesBinaryIECSuffixes,

@@ -297,6 +297,7 @@ double pow2(int exponent) {
 }
 
 } // namespace
+
 struct PrettyTestCase{
   std::string prettyString;
   double realValue;
@@ -305,6 +306,13 @@ struct PrettyTestCase{
 
 PrettyTestCase prettyTestCases[] =
 {
+  {string("853 ms"), 85.3e-2,  PRETTY_TIME_HMS},
+  {string("8.53 s "), 85.3e-1,  PRETTY_TIME_HMS},
+  {string("1.422 m "), 85.3,  PRETTY_TIME_HMS},
+  {string("14.22 m "), 85.3e1,  PRETTY_TIME_HMS},
+  {string("2.369 h "), 85.3e2,  PRETTY_TIME_HMS},
+  {string("2.369e+04 h "), 85.3e6,  PRETTY_TIME_HMS},
+
   {string("8.53e+07 s "), 85.3e6,  PRETTY_TIME},
   {string("8.53e+07 s "), 85.3e6,  PRETTY_TIME},
   {string("85.3 ms"), 85.3e-3,  PRETTY_TIME},
@@ -417,6 +425,7 @@ PrettyTestCase prettyTestCases[] =
   {string("-85.3 ms"), -85.3e-3,  PRETTY_TIME},
   {string("-85.3 us"), -85.3e-6,  PRETTY_TIME},
   {string("-85.3 ns"), -85.3e-9,  PRETTY_TIME},
+
   // end of test
   {string("endoftest"), 0, PRETTY_NUM_TYPES}
 };
