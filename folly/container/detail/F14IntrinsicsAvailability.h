@@ -26,7 +26,7 @@
 # else
 #  define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
 #  pragma message                                       \
-    "Vector intrinsics unavailable on this platform, " \
+    "Vector intrinsics unavailable on this platform, "  \
     "falling back to std::unordered_map / set"
 # endif
 #endif

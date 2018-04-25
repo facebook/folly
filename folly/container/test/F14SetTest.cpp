@@ -15,6 +15,9 @@
  */
 
 #include <folly/container/F14Set.h>
+
+#include <folly/Conv.h>
+#include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>
 #include <folly/portability/GTest.h>
 
@@ -40,6 +43,42 @@ TEST(F14Set, customSwap) {
   testCustomSwap<folly::F14NodeSet>();
   testCustomSwap<folly::F14VectorSet>();
   testCustomSwap<folly::F14FastSet>();
+}
+
+namespace {
+template <
+    template <typename, typename, typename, typename> class TSet,
+    typename K>
+void testAllocatedMemorySize() {
+  using namespace folly::f14;
+  using A = SwapTrackingAlloc<K>;
+
+  A::resetTracking();
+  TSet<K, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
+  EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
+
+  for (size_t i = 0; i < 1000; ++i) {
+    m.insert(folly::to<K>(i));
+    EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
+  }
+}
+
+template <typename K>
+void runAllocatedMemorySizeTest() {
+  testAllocatedMemorySize<folly::F14ValueSet, K>();
+  testAllocatedMemorySize<folly::F14NodeSet, K>();
+  testAllocatedMemorySize<folly::F14VectorSet, K>();
+  testAllocatedMemorySize<folly::F14FastSet, K>();
+}
+} // namespace
+
+TEST(F14Set, getAllocatedMemorySize) {
+  runAllocatedMemorySizeTest<bool>();
+  runAllocatedMemorySizeTest<int>();
+  runAllocatedMemorySizeTest<long>();
+  runAllocatedMemorySizeTest<long double>();
+  runAllocatedMemorySizeTest<std::string>();
+  runAllocatedMemorySizeTest<folly::fbstring>();
 }
 
 ///////////////////////////////////

@@ -47,13 +47,6 @@ namespace folly {
 
 namespace f14 {
 namespace detail {
-template <typename K>
-struct CachedHashOverhead : std::integral_constant<std::size_t, 0> {};
-
-template <typename... Args>
-struct CachedHashOverhead<std::basic_string<Args...>>
-    : std::integral_constant<std::size_t, sizeof(std::size_t)> {};
-
 template <typename K, typename M, typename H, typename E, typename A>
 class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   using Super = std::unordered_map<K, M, H, E, A>;
@@ -62,14 +55,12 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   using Super::Super;
   F14BasicMap() : Super() {}
 
-  // Accounts for allocated memory only, does not include sizeof(*this).
+  // Approximates allocated memory, does not include sizeof(*this), also does
+  // not account for memory allocator fragmentation
   typename Super::size_type getAllocatedMemorySize() const {
-    auto nodeSize = sizeof(typename Super::pointer) +
-        CachedHashOverhead<typename Super::key_type>::value +
-        sizeof(typename Super::value_type);
     auto bc = this->bucket_count();
     return (bc == 1 ? 0 : bc) * sizeof(typename Super::pointer) +
-        this->size() * nodeSize;
+        this->size() * sizeof(StdNodeReplica<K, typename Super::value_type, H>);
   }
 };
 } // namespace detail

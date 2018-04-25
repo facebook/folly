@@ -39,9 +39,30 @@
 
 namespace folly {
 
+namespace f14 {
+namespace detail {
 template <typename K, typename H, typename E, typename A>
-class F14NodeSet : public std::unordered_set<K, H, E, A> {
+class F14BasicSet : public std::unordered_set<K, H, E, A> {
   using Super = std::unordered_set<K, H, E, A>;
+
+ public:
+  using Super::Super;
+  F14BasicSet() : Super() {}
+
+  // Approximates allocated memory, does not include sizeof(*this), also does
+  // not account for memory allocator fragmentation
+  typename Super::size_type getAllocatedMemorySize() const {
+    auto bc = this->bucket_count();
+    return (bc == 1 ? 0 : bc) * sizeof(typename Super::pointer) +
+        this->size() * sizeof(StdNodeReplica<K, typename Super::value_type, H>);
+  }
+};
+} // namespace detail
+} // namespace f14
+
+template <typename K, typename H, typename E, typename A>
+class F14NodeSet : public f14::detail::F14BasicSet<K, H, E, A> {
+  using Super = f14::detail::F14BasicSet<K, H, E, A>;
 
  public:
   using Super::Super;
@@ -49,8 +70,8 @@ class F14NodeSet : public std::unordered_set<K, H, E, A> {
 };
 
 template <typename K, typename H, typename E, typename A>
-class F14ValueSet : public std::unordered_set<K, H, E, A> {
-  using Super = std::unordered_set<K, H, E, A>;
+class F14ValueSet : public f14::detail::F14BasicSet<K, H, E, A> {
+  using Super = f14::detail::F14BasicSet<K, H, E, A>;
 
  public:
   using Super::Super;
@@ -58,8 +79,8 @@ class F14ValueSet : public std::unordered_set<K, H, E, A> {
 };
 
 template <typename K, typename H, typename E, typename A>
-class F14VectorSet : public std::unordered_set<K, H, E, A> {
-  using Super = std::unordered_set<K, H, E, A>;
+class F14VectorSet : public f14::detail::F14BasicSet<K, H, E, A> {
+  using Super = f14::detail::F14BasicSet<K, H, E, A>;
 
  public:
   using Super::Super;
@@ -237,6 +258,11 @@ class F14BasicSet {
 
   std::size_t max_size() const noexcept {
     return table_.max_size();
+  }
+
+  // Accounts for allocated memory only, does not include sizeof(*this).
+  std::size_t getAllocatedMemorySize() const {
+    return table_.getAllocatedMemorySize();
   }
 
   F14TableStats computeStats() const {

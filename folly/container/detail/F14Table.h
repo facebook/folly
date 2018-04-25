@@ -35,6 +35,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/Launder.h>
@@ -56,7 +57,6 @@
 #endif
 
 namespace folly {
-
 struct F14TableStats {
   char const* policy;
   std::size_t size{0};
@@ -87,6 +87,54 @@ struct F14TableStats {
     return computeHelper(&m);
   }
 };
+
+namespace f14 {
+namespace detail {
+
+#if defined(_LIBCPP_VERSION)
+
+template <typename K, typename V, typename H>
+struct StdNodeReplica {
+  void* next;
+  std::size_t hash;
+  V value;
+};
+
+#else
+
+template <typename H>
+struct StdIsFastHash : std::true_type {};
+template <>
+struct StdIsFastHash<std::hash<long double>> : std::false_type {};
+template <typename... Args>
+struct StdIsFastHash<std::hash<std::basic_string<Args...>>> : std::false_type {
+};
+
+// TODO: add specialization for std::basic_string_view
+
+// mimic internal node of unordered containers in STL to estimate the size
+template <typename K, typename V, typename H, typename Enable = void>
+struct StdNodeReplica {
+  void* next;
+  V value;
+};
+template <typename K, typename V, typename H>
+struct StdNodeReplica<
+    K,
+    V,
+    H,
+    std::enable_if_t<
+        !StdIsFastHash<H>::value ||
+        !folly::is_nothrow_invocable<H, K>::value>> {
+  void* next;
+  V value;
+  std::size_t hash;
+};
+
+#endif
+
+} // namespace detail
+} // namespace f14
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 namespace f14 {

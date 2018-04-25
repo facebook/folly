@@ -17,6 +17,7 @@
 #include <folly/container/F14Map.h>
 
 #include <folly/Conv.h>
+#include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>
 #include <folly/portability/GTest.h>
 
@@ -59,7 +60,7 @@ void testAllocatedMemorySize() {
   TMap<K, V, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
   EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
 
-  for (size_t i = 0; i < 1; ++i) {
+  for (size_t i = 0; i < 1000; ++i) {
     m.insert(std::make_pair(folly::to<K>(i), V{}));
     EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
   }
@@ -75,9 +76,13 @@ void runAllocatedMemorySizeTest() {
 } // namespace
 
 TEST(F14Map, getAllocatedMemorySize) {
+  runAllocatedMemorySizeTest<bool, bool>();
   runAllocatedMemorySizeTest<int, int>();
+  runAllocatedMemorySizeTest<bool, std::string>();
+  runAllocatedMemorySizeTest<long double, std::string>();
   runAllocatedMemorySizeTest<std::string, int>();
   runAllocatedMemorySizeTest<std::string, std::string>();
+  runAllocatedMemorySizeTest<folly::fbstring, long>();
 }
 
 ///////////////////////////////////
