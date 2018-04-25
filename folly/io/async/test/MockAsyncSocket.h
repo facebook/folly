@@ -30,12 +30,22 @@ class MockAsyncSocket : public AsyncSocket {
   explicit MockAsyncSocket(EventBase* base) : AsyncSocket(base) {
   }
 
-  GMOCK_METHOD5_(, noexcept, , connect,
-      void(AsyncSocket::ConnectCallback*,
-           const folly::SocketAddress&,
-           int,
-           const OptionMap&,
-           const folly::SocketAddress&));
+  MOCK_METHOD5(
+      connect_,
+      void(
+          AsyncSocket::ConnectCallback*,
+          const folly::SocketAddress&,
+          int,
+          const OptionMap&,
+          const folly::SocketAddress&));
+  void connect(
+      AsyncSocket::ConnectCallback* callback,
+      const folly::SocketAddress& address,
+      int timeout,
+      const OptionMap& options,
+      const folly::SocketAddress& bindAddr) noexcept override {
+    connect_(callback, address, timeout, options, bindAddr);
+  }
 
   MOCK_CONST_METHOD1(getPeerAddress,
                      void(folly::SocketAddress*));
