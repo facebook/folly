@@ -801,7 +801,7 @@ void testStr2Bool() {
   EXPECT_FALSE(to<bool>(Src("no")));
   EXPECT_FALSE(to<bool>(Src("false")));
   EXPECT_FALSE(to<bool>(Src("False")));
-  EXPECT_FALSE(to<bool>(Src("  fAlSe"  )));
+  EXPECT_FALSE(to<bool>(Src("  fAlSe  ")));
   EXPECT_FALSE(to<bool>(Src("F")));
   EXPECT_FALSE(to<bool>(Src("off")));
 
