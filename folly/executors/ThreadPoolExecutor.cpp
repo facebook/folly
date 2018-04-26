@@ -187,14 +187,14 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
       stats.activeThreadCount++;
     }
   }
-  stats.pendingTaskCount = getPendingTaskCountImpl(r);
+  stats.pendingTaskCount = getPendingTaskCountImpl();
   stats.totalTaskCount = stats.pendingTaskCount + stats.activeThreadCount;
   return stats;
 }
 
 uint64_t ThreadPoolExecutor::getPendingTaskCount() {
   RWSpinLock::ReadHolder r{&threadListLock_};
-  return getPendingTaskCountImpl(r);
+  return getPendingTaskCountImpl();
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);

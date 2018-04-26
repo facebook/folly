@@ -131,7 +131,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  private:
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
-  uint64_t getPendingTaskCountImpl(const RWSpinLock::ReadHolder&) override;
+  uint64_t getPendingTaskCountImpl() override;
 
   std::unique_ptr<BlockingQueue<CPUTask>> taskQueue_;
   std::atomic<ssize_t> threadsToStop_{0};

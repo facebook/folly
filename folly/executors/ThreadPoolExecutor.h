@@ -185,8 +185,8 @@ class ThreadPoolExecutor : public virtual folly::Executor {
     return std::make_shared<Thread>(this);
   }
 
-  // Prerequisite: threadListLock_ readlocked
-  virtual uint64_t getPendingTaskCountImpl(const RWSpinLock::ReadHolder&) = 0;
+  // Prerequisite: threadListLock_ readlocked or writelocked
+  virtual uint64_t getPendingTaskCountImpl() = 0;
 
   class ThreadList {
    public:
