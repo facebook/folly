@@ -199,6 +199,10 @@ uint32_t X509_get_extended_key_usage(X509* x);
 
 int X509_OBJECT_get_type(const X509_OBJECT* obj);
 X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj);
+
+const ASN1_TIME* X509_CRL_get0_lastUpdate(const X509_CRL* crl);
+const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl);
+
 #endif
 
 #if FOLLY_OPENSSL_IS_110
