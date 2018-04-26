@@ -2451,7 +2451,7 @@ basic_fbstring<E, T, A, S> operator+(
   if (rhs.capacity() >= len + rhs.size()) {
     // Good, at least we don't need to reallocate
     rhs.insert(rhs.begin(), lhs, lhs + len);
-    return rhs;
+    return std::move(rhs);
   }
   // Meh, no go. Do it by hand since we have len already.
   basic_fbstring<E, T, A, S> result;
@@ -2484,7 +2484,7 @@ basic_fbstring<E, T, A, S> operator+(
   if (rhs.capacity() > rhs.size()) {
     // Good, at least we don't need to reallocate
     rhs.insert(rhs.begin(), lhs);
-    return rhs;
+    return std::move(rhs);
   }
   // Meh, no go. Forward to operator+(E, const&).
   auto const& rhsC = rhs;
