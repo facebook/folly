@@ -628,3 +628,26 @@ TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestIO) {
 TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestCPU) {
   resizeThreadWhileExecutingTest<CPUThreadPoolExecutor>();
 }
+
+template <typename TPE>
+void keepAliveTest() {
+  auto executor = std::make_unique<TPE>(4);
+
+  auto f =
+      futures::sleep(std::chrono::milliseconds{100})
+          .via(executor.get())
+          .then([keepAlive = executor->getKeepAliveToken()] { return 42; });
+
+  executor.reset();
+
+  EXPECT_TRUE(f.isReady());
+  EXPECT_EQ(42, f.get());
+}
+
+TEST(ThreadPoolExecutorTest, KeepAliveTestIO) {
+  keepAliveTest<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, KeepAliveTestCPU) {
+  keepAliveTest<CPUThreadPoolExecutor>();
+}

@@ -73,6 +73,7 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
 }
 
 IOThreadPoolExecutor::~IOThreadPoolExecutor() {
+  joinKeepAlive();
   stop();
 }
 

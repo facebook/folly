@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
 namespace folly {
@@ -60,7 +61,8 @@ namespace folly {
  * priority tasks could still hog all the threads. (at last check pthreads
  * thread priorities didn't work very well).
  */
-class CPUThreadPoolExecutor : public ThreadPoolExecutor {
+class CPUThreadPoolExecutor : public ThreadPoolExecutor,
+                              public DefaultKeepAliveExecutor {
  public:
   struct CPUTask;
 
