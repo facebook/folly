@@ -166,7 +166,7 @@ check_cxx_source_compiles("
   #if !_LIBCPP_VERSION
   #error No libc++
   #endif
-  void func() {}"
+  int main() { return 0; }"
   FOLLY_USE_LIBCPP
 )
 
