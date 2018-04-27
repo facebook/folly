@@ -438,9 +438,6 @@ using MaybeTryArg = typename std::conditional<
     Try<ItT>,
     ItT>::type;
 
-template <typename F, typename T, typename Arg>
-using isFutureResult = isFuture<typename std::result_of<F(T&&, Arg&&)>::type>;
-
 /** repeatedly calls func on every result, e.g.
     reduce(reduce(reduce(T initial, result of first), result of second), ...)
 
