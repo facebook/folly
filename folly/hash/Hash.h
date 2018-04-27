@@ -45,7 +45,9 @@ namespace hash {
 // This is the Hash128to64 function from Google's cityhash (available
 // under the MIT License).  We use it to reduce multiple 64 bit hashes
 // into a single hash.
-inline uint64_t hash_128_to_64(const uint64_t upper, const uint64_t lower) {
+inline uint64_t hash_128_to_64(
+    const uint64_t upper,
+    const uint64_t lower) noexcept {
   // Murmur-inspired hashing.
   const uint64_t kMul = 0x9ddfea08eb382d69ULL;
   uint64_t a = (lower ^ upper) * kMul;
@@ -112,7 +114,7 @@ size_t hash_combine(const T& t, const Ts&... ts) {
  * Thomas Wang 64 bit mix hash function
  */
 
-inline uint64_t twang_mix64(uint64_t key) {
+inline uint64_t twang_mix64(uint64_t key) noexcept {
   key = (~key) + (key << 21); // key *= (1 << 21) - 1; key -= 1;
   key = key ^ (key >> 24);
   key = key + (key << 3) + (key << 8); // key *= 1 + (1 << 3) + (1 << 8)
@@ -129,7 +131,7 @@ inline uint64_t twang_mix64(uint64_t key) {
  * Note that twang_unmix64 is significantly slower than twang_mix64.
  */
 
-inline uint64_t twang_unmix64(uint64_t key) {
+inline uint64_t twang_unmix64(uint64_t key) noexcept {
   // See the comments in jenkins_rev_unmix32 for an explanation as to how this
   // was generated
   key *= 4611686016279904257U;
@@ -160,7 +162,7 @@ inline uint32_t twang_32from64(uint64_t key) {
  * Robert Jenkins' reversible 32 bit mix hash function
  */
 
-inline uint32_t jenkins_rev_mix32(uint32_t key) {
+inline uint32_t jenkins_rev_mix32(uint32_t key) noexcept {
   key += (key << 12); // key *= (1 + (1 << 12))
   key ^= (key >> 22);
   key += (key << 4); // key *= (1 + (1 << 4))
@@ -370,7 +372,7 @@ namespace detail {
 
 template <typename I>
 struct integral_hasher {
-  size_t operator()(I const& i) const {
+  size_t operator()(I const& i) const noexcept {
     static_assert(sizeof(I) <= 16, "Input type is too wide");
     /* constexpr */ if (sizeof(I) <= 4) {
       auto const i32 = static_cast<int32_t>(i); // impl accident: sign-extends
@@ -394,7 +396,7 @@ using integral_hasher_avalanches =
 
 template <typename F>
 struct float_hasher {
-  size_t operator()(F const& f) const {
+  size_t operator()(F const& f) const noexcept {
     static_assert(sizeof(F) <= 8, "Input type is too wide");
 
     if (f == F{}) { // Ensure 0 and -0 get the same hash.
@@ -414,7 +416,7 @@ struct hasher;
 
 struct Hash {
   template <class T>
-  size_t operator()(const T& v) const {
+  size_t operator()(const T& v) const noexcept(noexcept(hasher<T>()(v))) {
     return hasher<T>()(v);
   }
 
@@ -464,7 +466,7 @@ struct IsAvalanchingHasher<Hash, K> : IsAvalanchingHasher<hasher<K>, K> {};
 
 template <>
 struct hasher<bool> {
-  size_t operator()(bool key) const {
+  size_t operator()(bool key) const noexcept {
     // Make sure that all the output bits depend on the input.
     return key ? std::numeric_limits<size_t>::max() : 0;
   }
@@ -533,7 +535,8 @@ struct IsAvalanchingHasher<hasher<std::string>, K> : std::true_type {};
 
 template <typename T>
 struct hasher<T, typename std::enable_if<std::is_enum<T>::value, void>::type> {
-  size_t operator()(T key) const {
+  // Hash for the underlying_type (integral types) are marked noexcept above.
+  size_t operator()(T key) const noexcept {
     return Hash()(static_cast<typename std::underlying_type<T>::type>(key));
   }
 };

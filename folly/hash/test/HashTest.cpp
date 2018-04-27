@@ -223,6 +223,151 @@ TEST(Hash, integral_types) {
   EXPECT_EQ(setSize, hashes.size());
 }
 
+namespace {
+enum class TestEnum {
+  MIN = 0,
+  ITEM = 1,
+  MAX = 2,
+};
+
+enum class TestBigEnum : uint64_t {
+  ITEM = 1,
+};
+
+struct TestStruct {};
+} // namespace
+
+namespace std {
+template <>
+struct hash<TestEnum> {
+  std::size_t operator()(TestEnum const& e) const noexcept {
+    return hash<int>()(static_cast<int>(e));
+  }
+};
+
+template <>
+struct hash<TestStruct> {
+  std::size_t operator()(TestStruct const&) const noexcept {
+    return 0;
+  }
+};
+} // namespace std
+
+namespace {
+thread_local size_t allocatedMemorySize{0};
+
+template <class T>
+class TestAlloc {
+ public:
+  using Alloc = std::allocator<T>;
+  using value_type = typename Alloc::value_type;
+
+  using pointer = typename Alloc::pointer;
+  using const_pointer = typename Alloc::const_pointer;
+  using reference = typename Alloc::reference;
+  using const_reference = typename Alloc::const_reference;
+  using size_type = typename Alloc::size_type;
+
+  using propagate_on_container_swap = std::true_type;
+  using propagate_on_container_copy_assignment = std::true_type;
+  using propagate_on_container_move_assignment = std::true_type;
+
+  TestAlloc() {}
+
+  template <class T2>
+  TestAlloc(TestAlloc<T2> const& other) noexcept : a_(other.a_) {}
+
+  template <class T2>
+  TestAlloc& operator=(TestAlloc<T2> const& other) noexcept {
+    a_ = other.a_;
+    return *this;
+  }
+
+  template <class T2>
+  TestAlloc(TestAlloc<T2>&& other) noexcept : a_(std::move(other.a_)) {}
+
+  template <class T2>
+  TestAlloc& operator=(TestAlloc<T2>&& other) noexcept {
+    a_ = std::move(other.a_);
+    return *this;
+  }
+
+  static size_t getAllocatedMemorySize() {
+    return allocatedMemorySize;
+  }
+
+  static void resetTracking() {
+    allocatedMemorySize = 0;
+  }
+
+  T* allocate(size_t n) {
+    allocatedMemorySize += n * sizeof(T);
+    return a_.allocate(n);
+  }
+  void deallocate(T* p, size_t n) {
+    allocatedMemorySize -= n * sizeof(T);
+    a_.deallocate(p, n);
+  }
+
+ private:
+  std::allocator<T> a_;
+
+  template <class U>
+  friend class TestAlloc;
+};
+
+template <class T1, class T2>
+bool operator==(TestAlloc<T1> const&, TestAlloc<T2> const&) {
+  return true;
+}
+
+template <class T1, class T2>
+bool operator!=(TestAlloc<T1> const&, TestAlloc<T2> const&) {
+  return false;
+}
+
+template <class M, class A>
+std::vector<size_t> getStats(size_t iter) {
+  std::vector<size_t> ret;
+  ret.reserve(iter);
+  A::resetTracking();
+  M m;
+  ret.push_back(A::getAllocatedMemorySize());
+  for (size_t i = 1; i < iter; ++i) {
+    m.insert(std::make_pair(
+        folly::to<typename M::key_type>(i), typename M::mapped_type{}));
+    ret.push_back(A::getAllocatedMemorySize());
+  }
+  return ret;
+}
+
+template <typename K, typename V, typename H>
+void testNoCachedHashCode() {
+  using A = TestAlloc<std::pair<const K, V>>;
+  using M = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, A>;
+  using MActual = std::unordered_map<K, V, H, std::equal_to<K>, A>;
+  constexpr int kIter = 10;
+  auto expected = getStats<M, A>(kIter);
+  auto actual = getStats<MActual, A>(kIter);
+  ASSERT_EQ(expected.size(), actual.size());
+  for (size_t i = 0; i < expected.size(); ++i) {
+    ASSERT_EQ(expected[i], actual[i]);
+  }
+}
+} // namespace
+
+TEST(Hash, noCachedHashCode) {
+  testNoCachedHashCode<bool, char, folly::hasher<bool>>();
+  testNoCachedHashCode<int, char, folly::hasher<int>>();
+  testNoCachedHashCode<double, char, folly::hasher<double>>();
+  testNoCachedHashCode<TestEnum, char, folly::hasher<TestEnum>>();
+
+  testNoCachedHashCode<bool, std::string, folly::Hash>();
+  testNoCachedHashCode<int, std::string, folly::Hash>();
+  testNoCachedHashCode<double, std::string, folly::Hash>();
+  testNoCachedHashCode<TestEnum, std::string, folly::Hash>();
+}
+
 TEST(Hash, integer_conversion) {
   folly::hasher<uint64_t> h;
   uint64_t k = 10;
@@ -480,32 +625,6 @@ INSTANTIATE_TEST_CASE_P(
                      0xd9b957fb7fe794c5},
         FNVTestParam{"http://norvig.com/21-days.html", // 136
                      0x07aaa640476e0b9a}));
-
-namespace {
-enum class TestEnum {
-  MIN = 0,
-  ITEM = 1,
-  MAX = 2,
-};
-
-enum class TestBigEnum : uint64_t {
-  ITEM = 1,
-};
-
-struct TestStruct {};
-} // namespace
-
-namespace std {
-template <>
-struct hash<TestEnum> : hash<int> {};
-
-template <>
-struct hash<TestStruct> {
-  std::size_t operator()(TestStruct const&) const {
-    return 0;
-  }
-};
-} // namespace std
 
 //////// static checks
 
