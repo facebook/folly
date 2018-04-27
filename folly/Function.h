@@ -870,25 +870,6 @@ Function<ReturnType(Args...) const noexcept> constCastFunction(
 }
 #endif
 
-namespace detail {
-namespace function {
-template <typename Fun, typename FunctionType, typename = void>
-struct IsCallableAsImpl : std::false_type {};
-
-template <typename Fun, typename ReturnType, typename... Args>
-struct IsCallableAsImpl<
-    Fun,
-    ReturnType(Args...),
-    void_t<typename std::result_of<Fun && (Args && ...)>::type>>
-    : std::is_convertible<
-          typename std::result_of<Fun && (Args && ...)>::type,
-          ReturnType> {};
-
-template <typename Fun, typename FunctionType>
-struct IsCallableAs : IsCallableAsImpl<Fun, FunctionType> {};
-} // namespace function
-} // namespace detail
-
 /**
  * @class FunctionRef
  *
@@ -947,7 +928,7 @@ class FunctionRef<ReturnType(Args...)> final {
       typename std::enable_if<
           Conjunction<
               Negation<std::is_same<FunctionRef, _t<std::decay<Fun>>>>,
-              detail::function::IsCallableAs<Fun, ReturnType(Args...)>>::value,
+              is_invocable_r<ReturnType, Fun&&, Args&&...>>::value,
           int>::type = 0>
   constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept
       // `Fun` may be a const type, in which case we have to do a const_cast
