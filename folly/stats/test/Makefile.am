@@ -7,6 +7,7 @@ TESTS = \
 				buffered_stat_test \
 				digest_builder_test \
 				histogram_test \
+				quantile_estimator_test \
 				sliding_window_test \
 				tdigest_test
 
@@ -20,6 +21,9 @@ digest_builder_test_LDADD = $(ldadd)
 
 histogram_test_SOURCES = HistogramTest.cpp
 histogram_test_LDADD = $(ldadd)
+
+quantile_estimator_test_SOURCES = QuantileEstimatorTest.cpp
+quantile_estimator_test_LDADD = $(ldadd)
 
 sliding_window_test_SOURCES = SlidingWindowTest.cpp
 sliding_window_test_LDADD = $(ldadd)

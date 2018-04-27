@@ -618,6 +618,7 @@ if (BUILD_TESTS)
       TEST buffered_stat_test SOURCES BufferedStatTest.cpp
       TEST digest_builder_test SOURCES DigestBuilderTest.cpp
       TEST histogram_test SOURCES HistogramTest.cpp
+      TEST quantile_estimator_test SOURCES QuantileEstimatorTest.cpp
       TEST sliding_window_test SOURCES SlidingWindowTest.cpp
       TEST tdigest_test SOURCES TDigestTest.cpp
       TEST timeseries_histogram_test SOURCES TimeseriesHistogramTest.cpp
