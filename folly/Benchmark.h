@@ -20,6 +20,7 @@
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 #include <folly/portability/GFlags.h>
 
 #include <cassert>
@@ -125,7 +126,7 @@ struct BenchmarkSuspender {
   }
 
   template <class F>
-  auto dismissing(F f) -> typename std::result_of<F()>::type {
+  auto dismissing(F f) -> invoke_result_t<F> {
     SCOPE_EXIT { rehire(); };
     dismiss();
     return f();

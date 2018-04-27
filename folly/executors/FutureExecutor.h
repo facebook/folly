@@ -15,6 +15,8 @@
  */
 
 #pragma once
+
+#include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
 
 namespace folly {
@@ -37,10 +39,10 @@ class FutureExecutor : public ExecutorImpl {
    */
   template <typename F>
   typename std::enable_if<
-      folly::isFuture<typename std::result_of<F()>::type>::value,
-      typename std::result_of<F()>::type>::type
+      folly::isFuture<invoke_result_t<F>>::value,
+      invoke_result_t<F>>::type
   addFuture(F func) {
-    typedef typename std::result_of<F()>::type::value_type T;
+    using T = typename invoke_result_t<F>::value_type;
     folly::Promise<T> promise;
     auto future = promise.getFuture();
     ExecutorImpl::add(
@@ -61,12 +63,10 @@ class FutureExecutor : public ExecutorImpl {
    */
   template <typename F>
   typename std::enable_if<
-      !folly::isFuture<typename std::result_of<F()>::type>::value,
-      folly::Future<typename folly::Unit::Lift<
-          typename std::result_of<F()>::type>::type>>::type
+      !folly::isFuture<invoke_result_t<F>>::value,
+      folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type>>::type
   addFuture(F func) {
-    using T =
-        typename folly::Unit::Lift<typename std::result_of<F()>::type>::type;
+    using T = typename folly::Unit::Lift<invoke_result_t<F>>::type;
     folly::Promise<T> promise;
     auto future = promise.getFuture();
     ExecutorImpl::add(

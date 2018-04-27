@@ -21,6 +21,7 @@
 #include <folly/Portability.h>
 #include <folly/Unit.h>
 #include <folly/Utility.h>
+#include <folly/functional/Invoke.h>
 #include <exception>
 #include <stdexcept>
 #include <type_traits>
@@ -527,8 +528,8 @@ class Try<void> {
  */
 template <typename F>
 typename std::enable_if<
-  !std::is_same<typename std::result_of<F()>::type, void>::value,
-  Try<typename std::result_of<F()>::type>>::type
+    !std::is_same<invoke_result_t<F>, void>::value,
+    Try<invoke_result_t<F>>>::type
 makeTryWith(F&& f);
 
 /*
@@ -539,10 +540,9 @@ makeTryWith(F&& f);
  * @returns Try<void> holding the result of f
  */
 template <typename F>
-typename std::enable_if<
-  std::is_same<typename std::result_of<F()>::type, void>::value,
-  Try<void>>::type
-makeTryWith(F&& f);
+typename std::
+    enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
+    makeTryWith(F&& f);
 
 /**
  * Tuple<Try<Type>...> -> std::tuple<Type...>

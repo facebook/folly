@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <folly/functional/Invoke.h>
+
 namespace folly {
 namespace observer_detail {
 
@@ -35,11 +37,10 @@ struct UnwrapSharedPtr<std::shared_ptr<T>> {
 };
 
 template <typename F>
-using ResultOf =
-    typename NonSharedPtr<typename std::result_of<F()>::type>::type;
+using ResultOf = typename NonSharedPtr<invoke_result_t<F>>::type;
 
 template <typename F>
 using ResultOfUnwrapSharedPtr =
-    typename UnwrapSharedPtr<typename std::result_of<F()>::type>::type;
+    typename UnwrapSharedPtr<invoke_result_t<F>>::type;
 } // namespace observer_detail
 } // namespace folly

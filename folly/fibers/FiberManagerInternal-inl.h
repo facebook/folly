@@ -355,7 +355,7 @@ template <typename F, typename G>
 struct FiberManager::AddTaskFinallyHelper {
   class Func;
 
-  typedef typename std::result_of<F()>::type Result;
+  typedef invoke_result_t<F> Result;
 
   class Finally {
    public:
@@ -411,7 +411,7 @@ struct FiberManager::AddTaskFinallyHelper {
 
 template <typename F, typename G>
 void FiberManager::addTaskFinally(F&& func, G&& finally) {
-  typedef typename std::result_of<F()>::type Result;
+  typedef invoke_result_t<F> Result;
 
   static_assert(
       IsRvalueRefTry<typename FirstArgOf<G>::type>::value,
@@ -458,12 +458,12 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
 }
 
 template <typename F>
-typename std::result_of<F()>::type FiberManager::runInMainContext(F&& func) {
+invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
   if (UNLIKELY(activeFiber_ == nullptr)) {
     return func();
   }
 
-  typedef typename std::result_of<F()>::type Result;
+  typedef invoke_result_t<F> Result;
 
   folly::Try<Result> result;
   auto f = [&func, &result]() mutable {

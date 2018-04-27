@@ -19,6 +19,7 @@
 #endif
 
 #include <folly/Portability.h>
+#include <folly/functional/Invoke.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING
@@ -484,8 +485,8 @@ class Map : public Operator<Map<Predicate>> {
   template <
       class Value,
       class Source,
-      class Result = typename ArgumentReference<
-          typename std::result_of<Predicate(Value)>::type>::type>
+      class Result =
+          typename ArgumentReference<invoke_result_t<Predicate, Value>>::type>
   class Generator : public GenImpl<Result, Generator<Value, Source, Result>> {
     Source source_;
     Predicate pred_;
@@ -1017,10 +1018,10 @@ class Order : public Operator<Order<Selector, Comparer>> {
       class Value,
       class Source,
       class StorageType = typename std::decay<Value>::type,
-      class Result = typename std::result_of<Selector(Value)>::type>
-  class Generator
-      : public GenImpl<StorageType&&,
-                       Generator<Value, Source, StorageType, Result>> {
+      class Result = invoke_result_t<Selector, Value>>
+  class Generator : public GenImpl<
+                        StorageType&&,
+                        Generator<Value, Source, StorageType, Result>> {
     static_assert(!Source::infinite, "Cannot sort infinite source!");
     Source source_;
     Selector selector_;
@@ -1119,7 +1120,7 @@ class GroupBy : public Operator<GroupBy<Selector>> {
       class Value,
       class Source,
       class ValueDecayed = typename std::decay<Value>::type,
-      class Key = typename std::result_of<Selector(Value)>::type,
+      class Key = invoke_result_t<Selector, Value>,
       class KeyDecayed = typename std::decay<Key>::type>
   class Generator
       : public GenImpl<
@@ -1227,7 +1228,7 @@ class Distinct : public Operator<Distinct<Selector>> {
     // of a value to the downstream operators.
     typedef const StorageType& ParamType;
 
-    typedef typename std::result_of<Selector(ParamType)>::type KeyType;
+    typedef invoke_result_t<Selector, ParamType> KeyType;
     typedef typename std::decay<KeyType>::type KeyStorageType;
 
    public:
@@ -2091,8 +2092,7 @@ class Min : public Operator<Min<Selector, Comparer>> {
       class Value,
       class Source,
       class StorageType = typename std::decay<Value>::type,
-      class Key = typename std::decay<
-          typename std::result_of<Selector(Value)>::type>::type>
+      class Key = typename std::decay<invoke_result_t<Selector, Value>>::type>
   Optional<StorageType> compose(const GenImpl<Value, Source>& source) const {
     static_assert(!Source::infinite,
                   "Calling min or max on an infinite source will cause "

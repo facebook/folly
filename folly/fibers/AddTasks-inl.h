@@ -88,7 +88,7 @@ template <typename T>
 template <typename F>
 void TaskIterator<T>::addTask(F&& func) {
   static_assert(
-      std::is_convertible<typename std::result_of<F()>::type, T>::value,
+      std::is_convertible<invoke_result_t<F>, T>::value,
       "TaskIterator<T>: T must be convertible from func()'s return type");
 
   auto taskId = context_->totalTasks++;
@@ -109,11 +109,11 @@ void TaskIterator<T>::addTask(F&& func) {
 }
 
 template <class InputIterator>
-TaskIterator<typename std::result_of<
-    typename std::iterator_traits<InputIterator>::value_type()>::type>
+TaskIterator<
+    invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>>
 addTasks(InputIterator first, InputIterator last) {
-  typedef typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type
+  typedef invoke_result_t<
+      typename std::iterator_traits<InputIterator>::value_type>
       ResultType;
   typedef TaskIterator<ResultType> IteratorType;
 

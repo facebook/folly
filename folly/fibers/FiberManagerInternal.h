@@ -30,6 +30,7 @@
 #include <folly/IntrusiveList.h>
 #include <folly/Likely.h>
 #include <folly/Try.h>
+#include <folly/functional/Invoke.h>
 #include <folly/io/async/Request.h>
 
 #include <folly/experimental/ExecutionObserver.h>
@@ -204,8 +205,8 @@ class FiberManager : public ::folly::Executor {
    *             The object will be destroyed once task execution is complete.
    */
   template <typename F>
-  auto addTaskFuture(F&& func) -> folly::Future<
-      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type>;
+  auto addTaskFuture(F&& func)
+      -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type>;
   /**
    * Add a new task to be executed. Safe to call from other threads.
    *
@@ -223,8 +224,8 @@ class FiberManager : public ::folly::Executor {
    *             The object will be destroyed once task execution is complete.
    */
   template <typename F>
-  auto addTaskRemoteFuture(F&& func) -> folly::Future<
-      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type>;
+  auto addTaskRemoteFuture(F&& func)
+      -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type>;
 
   // Executor interface calls addTaskRemote
   void add(folly::Func f) override {
@@ -251,7 +252,7 @@ class FiberManager : public ::folly::Executor {
    * @return value returned by func().
    */
   template <typename F>
-  typename std::result_of<F()>::type runInMainContext(F&& func);
+  invoke_result_t<F> runInMainContext(F&& func);
 
   /**
    * Returns a refference to a fiber-local context for given Fiber. Should be
@@ -556,7 +557,7 @@ typename FirstArgOf<F>::type::value_type inline await(F&& func);
  * @return value returned by func().
  */
 template <typename F>
-typename std::result_of<F()>::type inline runInMainContext(F&& func) {
+invoke_result_t<F> inline runInMainContext(F&& func) {
   auto fm = FiberManager::getFiberManagerUnsafe();
   if (UNLIKELY(fm == nullptr)) {
     return func();

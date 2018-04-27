@@ -41,9 +41,9 @@ class TaskIterator;
  * @return movable, non-copyable iterator
  */
 template <class InputIterator>
-TaskIterator<typename std::result_of<
-    typename std::iterator_traits<InputIterator>::value_type()>::
-                 type> inline addTasks(InputIterator first, InputIterator last);
+TaskIterator<invoke_result_t<
+    typename std::iterator_traits<InputIterator>::
+        value_type>> inline addTasks(InputIterator first, InputIterator last);
 
 template <typename T>
 class TaskIterator {
@@ -110,8 +110,8 @@ class TaskIterator {
 
  private:
   template <class InputIterator>
-  friend TaskIterator<typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type>
+  friend TaskIterator<
+      invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>>
   addTasks(InputIterator first, InputIterator last);
 
   struct Context {

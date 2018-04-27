@@ -24,6 +24,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
@@ -65,9 +66,8 @@ class ThreadLocalPRNG {
 class Random {
  private:
   template <class RNG>
-  using ValidRNG = typename std::enable_if<
-      std::is_unsigned<typename std::result_of<RNG&()>::type>::value,
-      RNG>::type;
+  using ValidRNG = typename std::
+      enable_if<std::is_unsigned<invoke_result_t<RNG&>>::value, RNG>::type;
 
   template <class T>
   class SecureRNG {

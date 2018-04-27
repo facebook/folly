@@ -574,12 +574,10 @@ SemiFuture<typename std::decay<T>::type> makeSemiFuture(T&& t) {
 
 // makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
 template <class F>
-typename std::enable_if<
-    isSemiFuture<typename std::result_of<F()>::type>::value,
-    typename std::result_of<F()>::type>::type
-makeSemiFutureWith(F&& func) {
-  using InnerType =
-      typename isSemiFuture<typename std::result_of<F()>::type>::Inner;
+typename std::
+    enable_if<isSemiFuture<invoke_result_t<F>>::value, invoke_result_t<F>>::type
+    makeSemiFutureWith(F&& func) {
+  using InnerType = typename isSemiFuture<invoke_result_t<F>>::Inner;
   try {
     return std::forward<F>(func)();
   } catch (std::exception& e) {
@@ -595,10 +593,10 @@ makeSemiFutureWith(F&& func) {
 // makeSemiFutureWith(void()) -> SemiFuture<Unit>
 template <class F>
 typename std::enable_if<
-    !(isSemiFuture<typename std::result_of<F()>::type>::value),
-    SemiFuture<Unit::LiftT<typename std::result_of<F()>::type>>>::type
+    !(isSemiFuture<invoke_result_t<F>>::value),
+    SemiFuture<Unit::LiftT<invoke_result_t<F>>>>::type
 makeSemiFutureWith(F&& func) {
-  using LiftedResult = Unit::LiftT<typename std::result_of<F()>::type>;
+  using LiftedResult = Unit::LiftT<invoke_result_t<F>>;
   return makeSemiFuture<LiftedResult>(
       makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
 }
@@ -1118,11 +1116,10 @@ inline Future<Unit> makeFuture() {
 
 // makeFutureWith(Future<T>()) -> Future<T>
 template <class F>
-typename std::enable_if<isFuture<typename std::result_of<F()>::type>::value,
-                        typename std::result_of<F()>::type>::type
-makeFutureWith(F&& func) {
-  using InnerType =
-      typename isFuture<typename std::result_of<F()>::type>::Inner;
+typename std::
+    enable_if<isFuture<invoke_result_t<F>>::value, invoke_result_t<F>>::type
+    makeFutureWith(F&& func) {
+  using InnerType = typename isFuture<invoke_result_t<F>>::Inner;
   try {
     return std::forward<F>(func)();
   } catch (std::exception& e) {
@@ -1137,10 +1134,10 @@ makeFutureWith(F&& func) {
 // makeFutureWith(void()) -> Future<Unit>
 template <class F>
 typename std::enable_if<
-    !(isFuture<typename std::result_of<F()>::type>::value),
-    Future<Unit::LiftT<typename std::result_of<F()>::type>>>::type
+    !(isFuture<invoke_result_t<F>>::value),
+    Future<Unit::LiftT<invoke_result_t<F>>>>::type
 makeFutureWith(F&& func) {
-  using LiftedResult = Unit::LiftT<typename std::result_of<F()>::type>;
+  using LiftedResult = Unit::LiftT<invoke_result_t<F>>;
   return makeFuture<LiftedResult>(
       makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
 }

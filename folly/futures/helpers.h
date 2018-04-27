@@ -21,6 +21,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Try.h>
+#include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 
@@ -142,16 +143,16 @@ SemiFuture<Unit> makeSemiFuture();
 
 // makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
 template <class F>
-typename std::enable_if<isSemiFuture<typename std::result_of<F()>::type>::value,
-                        typename std::result_of<F()>::type>::type
-makeSemiFutureWith(F&& func);
+typename std::
+    enable_if<isSemiFuture<invoke_result_t<F>>::value, invoke_result_t<F>>::type
+    makeSemiFutureWith(F&& func);
 
 // makeSemiFutureWith(T()) -> SemiFuture<T>
 // makeSemiFutureWith(void()) -> SemiFuture<Unit>
 template <class F>
 typename std::enable_if<
-    !(isSemiFuture<typename std::result_of<F()>::type>::value),
-    SemiFuture<typename Unit::Lift<typename std::result_of<F()>::type>::type>>::type
+    !(isSemiFuture<invoke_result_t<F>>::value),
+    SemiFuture<typename Unit::Lift<invoke_result_t<F>>::type>>::type
 makeSemiFutureWith(F&& func);
 
 /// Make a failed Future from an exception_ptr.
@@ -226,16 +227,16 @@ Future<Unit> makeFuture();
 
 // makeFutureWith(Future<T>()) -> Future<T>
 template <class F>
-typename std::enable_if<isFuture<typename std::result_of<F()>::type>::value,
-                        typename std::result_of<F()>::type>::type
-makeFutureWith(F&& func);
+typename std::
+    enable_if<isFuture<invoke_result_t<F>>::value, invoke_result_t<F>>::type
+    makeFutureWith(F&& func);
 
 // makeFutureWith(T()) -> Future<T>
 // makeFutureWith(void()) -> Future<Unit>
 template <class F>
 typename std::enable_if<
-    !(isFuture<typename std::result_of<F()>::type>::value),
-    Future<typename Unit::Lift<typename std::result_of<F()>::type>::type>>::type
+    !(isFuture<invoke_result_t<F>>::value),
+    Future<typename Unit::Lift<invoke_result_t<F>>::type>>::type
 makeFutureWith(F&& func);
 
 /// Make a failed Future from an exception_ptr.
