@@ -52,9 +52,8 @@ template <
     class Map,
     typename Key = typename Map::key_type,
     typename Func,
-    typename = typename std::enable_if<std::is_convertible<
-        typename std::result_of<Func()>::type,
-        typename Map::mapped_type>::value>::type>
+    typename = typename std::enable_if<
+        is_invocable_r<typename Map::mapped_type, Func>::value>::type>
 typename Map::mapped_type
 get_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
@@ -152,11 +151,10 @@ template <
     class Map,
     typename Key = typename Map::key_type,
     typename Func,
-    typename = typename std::enable_if<std::is_convertible<
-        typename std::result_of<Func()>::type,
-        const typename Map::mapped_type&>::value>::type,
     typename = typename std::enable_if<
-        std::is_reference<typename std::result_of<Func()>::type>::value>::type>
+        is_invocable_r<const typename Map::mapped_type&, Func>::value>::type,
+    typename = typename std::enable_if<
+        std::is_reference<invoke_result_t<Func>>::value>::type>
 const typename Map::mapped_type&
 get_ref_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
