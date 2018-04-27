@@ -26,14 +26,15 @@
 using namespace folly;
 using namespace folly::detail;
 
+template <size_t MergeSize>
 class SimpleDigest {
  public:
   explicit SimpleDigest(size_t sz) : sz_(sz) {}
 
   SimpleDigest merge(Range<const double*> r) const {
-    EXPECT_EQ(1000, r.size());
-    for (size_t i = 0; i < 1000; ++i) {
-      EXPECT_GE(1000, r[i]);
+    EXPECT_EQ(MergeSize, r.size());
+    for (size_t i = 0; i < MergeSize; ++i) {
+      EXPECT_GE(MergeSize, r[i]);
     }
     return *this;
   }
@@ -51,8 +52,24 @@ class SimpleDigest {
   int64_t sz_;
 };
 
-TEST(DigestBuilder, Basic) {
-  DigestBuilder<SimpleDigest> builder(1000, 100);
+TEST(DigestBuilder, SingleThreadUnfilledBuffer) {
+  DigestBuilder<SimpleDigest<999>> builder(1000, 100);
+  for (int i = 0; i < 999; ++i) {
+    builder.append(i);
+  }
+  EXPECT_EQ(100, builder.build().getSize());
+}
+
+TEST(DigestBuilder, SingleThreadFilledBuffer) {
+  DigestBuilder<SimpleDigest<1000>> builder(1000, 100);
+  for (int i = 0; i < 1000; ++i) {
+    builder.append(i);
+  }
+  EXPECT_EQ(100, builder.build().getSize());
+}
+
+TEST(DigestBuilder, MultipleThreads) {
+  DigestBuilder<SimpleDigest<1000>> builder(1000, 100);
   std::vector<std::thread> threads;
   for (int i = 0; i < 10; ++i) {
     threads.push_back(std::thread([i, &builder]() {
@@ -65,5 +82,5 @@ TEST(DigestBuilder, Basic) {
     thread.join();
   }
 
-  EXPECT_EQ(100, builder.buildSyncFree().getSize());
+  EXPECT_EQ(100, builder.build().getSize());
 }

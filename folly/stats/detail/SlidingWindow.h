@@ -38,11 +38,13 @@ class SlidingWindow {
 
   std::vector<BucketT> get() const;
 
+  void set(size_t idx, BucketT bucket);
+
   /*
    * Slides the SlidingWindow by nBuckets, inserting new buckets using the
-   * Function given during construction. Returns the new first bucket.
+   * Function given during construction.
    */
-  BucketT slide(size_t nBuckets);
+  void slide(size_t nBuckets);
 
  private:
   Function<BucketT(void)> fn_;

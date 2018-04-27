@@ -51,7 +51,15 @@ std::vector<BucketT> SlidingWindow<BucketT>::get() const {
 }
 
 template <typename BucketT>
-BucketT SlidingWindow<BucketT>::slide(size_t nBuckets) {
+void SlidingWindow<BucketT>::set(size_t idx, BucketT bucket) {
+  if (idx < buckets_.size()) {
+    idx = (curHead_ + idx) % buckets_.size();
+    buckets_[idx] = std::move(bucket);
+  }
+}
+
+template <typename BucketT>
+void SlidingWindow<BucketT>::slide(size_t nBuckets) {
   nBuckets = std::min(nBuckets, buckets_.size());
   for (size_t i = 0; i < nBuckets; ++i) {
     if (curHead_ == 0) {
@@ -61,7 +69,6 @@ BucketT SlidingWindow<BucketT>::slide(size_t nBuckets) {
     }
     buckets_[curHead_] = fn_();
   }
-  return buckets_[curHead_];
 }
 
 } // namespace detail

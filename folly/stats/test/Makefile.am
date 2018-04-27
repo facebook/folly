@@ -4,12 +4,16 @@ CPPFLAGS = -I$(top_srcdir)/test/gtest/googletest/include
 ldadd = $(top_builddir)/test/libfollytestmain.la
 
 TESTS = \
+				buffered_stat_test \
 				digest_builder_test \
 				histogram_test \
 				sliding_window_test \
 				tdigest_test
 
 check_PROGRAMS = $(TESTS)
+
+buffered_stat_test_SOURCES = BufferedStatTest.cpp
+buffered_stat_test_LDADD = $(ldadd)
 
 digest_builder_test_SOURCES = DigestBuilderTest.cpp
 digest_builder_test_LDADD = $(ldadd)

@@ -28,10 +28,13 @@ namespace detail {
  * buffer writes and merge them in larger chunks. DigestBuilder buffers writes
  * to improve performance.
  *
- * The first bufferSize values are stored in a shared buffer. For cold stats,
- * this shared buffer minimizes memory usage at reasonable cpu cost. Warm stats
- * will fill the shared buffer, and begin to spill to cpu local buffers. Hot
- * stats will merge the cpu local buffers into cpu-local digests.
+ * Values are stored in a cpu local buffer. Hot stats will merge the cpu local
+ * buffer into a cpu-local digest when the buffer size is reached.
+ *
+ * All methods in this class are thread safe, but it probably doesn't make sense
+ * for multiple threads to call build simultaneously. A typical usage is to
+ * buffer writes for a period of time, and then have one thread call build to
+ * merge the buffer into some other DigestT instance.
  */
 template <typename DigestT>
 class DigestBuilder {
@@ -39,10 +42,10 @@ class DigestBuilder {
   explicit DigestBuilder(size_t bufferSize, size_t digestSize);
 
   /*
-   * Builds a DigestT from the buffer in a sync free manner. It is the
-   * responsibility of the caller to synchronize with all appenders.
+   * Builds a DigestT from the buffer. All values used to build the DigestT are
+   * removed from the buffer.
    */
-  DigestT buildSyncFree() const;
+  DigestT build();
 
   /*
    * Adds a value to the buffer.
@@ -57,11 +60,9 @@ class DigestBuilder {
     std::unique_ptr<DigestT> digest;
   };
 
-  std::atomic<size_t> nextPos_;
   std::vector<CpuLocalBuffer> cpuLocalBuffers_;
+  size_t bufferSize_;
   size_t digestSize_;
-  std::atomic<bool> cpuLocalBuffersReady_;
-  std::vector<double> buffer_;
 };
 
 } // namespace detail

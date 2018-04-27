@@ -81,6 +81,10 @@ class TDigest {
     return count_;
   }
 
+  bool empty() const {
+    return centroids_.empty();
+  }
+
  private:
   struct Centroid {
    public:
