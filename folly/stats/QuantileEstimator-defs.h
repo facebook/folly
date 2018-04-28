@@ -25,19 +25,10 @@ namespace detail {
 
 QuantileEstimates estimatesFromDigest(
     const TDigest& digest,
-    Range<const double*> quantiles) {
-  QuantileEstimates result;
-  result.quantiles.reserve(quantiles.size());
-  result.sum = digest.sum();
-  result.count = digest.count();
-  for (auto it = quantiles.begin(); it != quantiles.end(); ++it) {
-    result.quantiles.push_back(
-        std::make_pair(*it, digest.estimateQuantile(*it)));
-  }
-  return result;
-}
+    Range<const double*> quantiles);
 
 } // namespace detail
+
 template <typename ClockT>
 SimpleQuantileEstimator<ClockT>::SimpleQuantileEstimator()
     : bufferedDigest_(std::chrono::seconds{1}, 1000, 100) {}

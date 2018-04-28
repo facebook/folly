@@ -17,6 +17,23 @@
 #include <folly/stats/QuantileEstimator-defs.h>
 
 namespace folly {
+namespace detail {
+
+QuantileEstimates estimatesFromDigest(
+    const TDigest& digest,
+    Range<const double*> quantiles) {
+  QuantileEstimates result;
+  result.quantiles.reserve(quantiles.size());
+  result.sum = digest.sum();
+  result.count = digest.count();
+  for (auto it = quantiles.begin(); it != quantiles.end(); ++it) {
+    result.quantiles.push_back(
+        std::make_pair(*it, digest.estimateQuantile(*it)));
+  }
+  return result;
+}
+
+} // namespace detail
 
 template class SimpleQuantileEstimator<std::chrono::steady_clock>;
 template class SlidingWindowQuantileEstimator<std::chrono::steady_clock>;
