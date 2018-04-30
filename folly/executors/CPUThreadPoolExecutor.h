@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
 namespace folly {
@@ -28,6 +29,14 @@ namespace folly {
  * since all the worker threads and all the producer threads hit
  * the same queue. MPMC queue excels in this situation but dictates a max queue
  * size.
+ *
+ * @note The default queue throws when full (folly::QueueBehaviorIfFull::THROW),
+ * so add() can fail. Furthermore, join() can also fail if the queue is full,
+ * because it enqueues numThreads poison tasks to stop the threads. If join() is
+ * needed to be guaranteed to succeed PriorityLifoSemMPMCQueue can be used
+ * instead, initializing the lowest priority's (LO_PRI) capacity to at least
+ * numThreads. Poisons use LO_PRI so if that priority is not used for any user
+ * task join() is guaranteed not to encounter a full queue.
  *
  * @note If a blocking queue (folly::QueueBehaviorIfFull::BLOCK) is used, and
  * tasks executing on a given thread pool schedule more tasks, deadlock is
@@ -52,7 +61,8 @@ namespace folly {
  * priority tasks could still hog all the threads. (at last check pthreads
  * thread priorities didn't work very well).
  */
-class CPUThreadPoolExecutor : public ThreadPoolExecutor {
+class CPUThreadPoolExecutor : public ThreadPoolExecutor,
+                              public DefaultKeepAliveExecutor {
  public:
   struct CPUTask;
 
@@ -96,6 +106,8 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       std::chrono::milliseconds expiration,
       Func expireCallback = nullptr);
 
+  size_t getTaskQueueSize() const;
+
   uint8_t getNumPriorities() const override;
 
   struct CPUTask : public ThreadPoolExecutor::Task {
@@ -121,7 +133,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  private:
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
-  uint64_t getPendingTaskCountImpl(const RWSpinLock::ReadHolder&) override;
+  uint64_t getPendingTaskCountImpl() override;
 
   std::unique_ptr<BlockingQueue<CPUTask>> taskQueue_;
   std::atomic<ssize_t> threadsToStop_{0};

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
  */
 
 #include <folly/memory/MallctlHelper.h>
+#include <folly/CPortability.h>
 #include <folly/init/Init.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
-#ifdef FOLLY_HAVE_LIBJEMALLOC
+#if defined(FOLLY_HAVE_LIBJEMALLOC) && !FOLLY_SANITIZE
 #include <jemalloc/jemalloc.h>
 #endif
 

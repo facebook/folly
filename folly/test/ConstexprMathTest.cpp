@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,18 @@ TEST_F(ConstexprMathTest, constexpr_max) {
   constexpr auto a = folly::constexpr_max(x, y, z);
   EXPECT_EQ(7, a);
   EXPECT_TRUE((std::is_same<const uint16_t, decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_clamp) {
+  constexpr auto lo = uint16_t(3);
+  constexpr auto hi = uint16_t(7);
+  constexpr auto x = folly::constexpr_clamp(uint16_t(2), lo, hi);
+  constexpr auto y = folly::constexpr_clamp(uint16_t(5), lo, hi);
+  constexpr auto z = folly::constexpr_clamp(uint16_t(8), lo, hi);
+  EXPECT_EQ(3, x);
+  EXPECT_EQ(5, y);
+  EXPECT_EQ(7, z);
+  EXPECT_TRUE((std::is_same<const uint16_t, decltype(y)>::value));
 }
 
 TEST_F(ConstexprMathTest, constexpr_abs_unsigned) {
@@ -109,4 +121,182 @@ TEST_F(ConstexprMathTest, constexpr_log2_64) {
   constexpr auto a = folly::constexpr_log2(v);
   EXPECT_EQ(6ull, a);
   EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_1) {
+  constexpr auto v = 1ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(0ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_2) {
+  constexpr auto v = 2ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(1ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_3) {
+  constexpr auto v = 3ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(2ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_63) {
+  constexpr auto v = 63ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(6ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_log2_ceil_64) {
+  constexpr auto v = 64ull;
+  constexpr auto a = folly::constexpr_log2_ceil(v);
+  EXPECT_EQ(6ull, a);
+  EXPECT_TRUE((std::is_same<decltype(v), decltype(a)>::value));
+}
+
+TEST_F(ConstexprMathTest, constexpr_ceil) {
+  {
+    constexpr auto roundable = 20ull;
+    constexpr auto round = 6ull;
+    constexpr auto rounded = folly::constexpr_ceil(roundable, round);
+    EXPECT_EQ(24ull, rounded);
+  }
+  {
+    constexpr auto roundable = -20ll;
+    constexpr auto round = 6ll;
+    constexpr auto rounded = folly::constexpr_ceil(roundable, round);
+    EXPECT_EQ(-18ll, rounded);
+  }
+  {
+    constexpr auto roundable = -20ll;
+    constexpr auto round = 0ll;
+    constexpr auto rounded = folly::constexpr_ceil(roundable, round);
+    EXPECT_EQ(-20ll, rounded);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_pow) {
+  {
+    constexpr auto a = folly::constexpr_pow(uint64_t(0), 15);
+    EXPECT_EQ(0, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(uint64_t(15), 0);
+    EXPECT_EQ(1, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_pow(uint64_t(2), 6);
+    EXPECT_EQ(64, a);
+  }
+}
+
+constexpr auto kInt64Max = std::numeric_limits<int64_t>::max();
+constexpr auto kInt64Min = std::numeric_limits<int64_t>::min();
+constexpr auto kUInt64Max = std::numeric_limits<uint64_t>::max();
+constexpr auto kInt8Max = std::numeric_limits<int8_t>::max();
+constexpr auto kInt8Min = std::numeric_limits<int8_t>::min();
+constexpr auto kUInt8Max = std::numeric_limits<uint8_t>::max();
+
+TEST_F(ConstexprMathTest, constexpr_add_overflow_clamped) {
+  for (int a = kInt8Min; a <= kInt8Max; a++) {
+    for (int b = kInt8Min; b <= kInt8Max; b++) {
+      int c = folly::constexpr_clamp(a + b, int(kInt8Min), int(kInt8Max));
+      int8_t a1 = a;
+      int8_t b1 = b;
+      int8_t c1 = folly::constexpr_add_overflow_clamped(a1, b1);
+      ASSERT_LE(c1, kInt8Max);
+      ASSERT_GE(c1, kInt8Min);
+      ASSERT_EQ(c1, c);
+    }
+  }
+
+  for (int a = 0; a <= kUInt8Max; a++) {
+    for (int b = 0; b <= kUInt8Max; b++) {
+      int c = folly::constexpr_clamp(a + b, 0, int(kUInt8Max));
+      uint8_t a1 = a;
+      uint8_t b1 = b;
+      uint8_t c1 = folly::constexpr_add_overflow_clamped(a1, b1);
+      ASSERT_LE(c1, kUInt8Max);
+      ASSERT_GE(c1, 0);
+      ASSERT_EQ(c1, c);
+    }
+  }
+
+  constexpr auto v1 =
+      folly::constexpr_add_overflow_clamped(int64_t(23), kInt64Max - 12);
+  EXPECT_EQ(kInt64Max, v1);
+
+  constexpr auto v2 =
+      folly::constexpr_add_overflow_clamped(int64_t(23), int64_t(12));
+  EXPECT_EQ(int64_t(35), v2);
+
+  constexpr auto v3 =
+      folly::constexpr_add_overflow_clamped(int64_t(-23), int64_t(12));
+  EXPECT_EQ(int64_t(-11), v3);
+
+  constexpr auto v4 =
+      folly::constexpr_add_overflow_clamped(int64_t(-23), int64_t(-12));
+  EXPECT_EQ(int64_t(-35), v4);
+
+  constexpr auto v5 =
+      folly::constexpr_add_overflow_clamped(uint64_t(23), kUInt64Max - 12);
+  EXPECT_EQ(kUInt64Max, v5);
+}
+
+TEST_F(ConstexprMathTest, constexpr_sub_overflow_clamped) {
+  for (int a = kInt8Min; a <= kInt8Max; a++) {
+    for (int b = kInt8Min; b <= kInt8Max; b++) {
+      int c = folly::constexpr_clamp(a - b, int(kInt8Min), int(kInt8Max));
+      int8_t a1 = a;
+      int8_t b1 = b;
+      int8_t c1 = folly::constexpr_sub_overflow_clamped(a1, b1);
+      ASSERT_LE(c1, kInt8Max);
+      ASSERT_GE(c1, kInt8Min);
+      ASSERT_EQ(c1, c);
+    }
+  }
+
+  for (int a = 0; a <= kUInt8Max; a++) {
+    for (int b = 0; b <= kUInt8Max; b++) {
+      int c = folly::constexpr_clamp(a - b, 0, int(kUInt8Max));
+      uint8_t a1 = a;
+      uint8_t b1 = b;
+      uint8_t c1 = folly::constexpr_sub_overflow_clamped(a1, b1);
+      ASSERT_LE(c1, kUInt8Max);
+      ASSERT_GE(c1, 0);
+      ASSERT_EQ(c1, c);
+    }
+  }
+
+  constexpr auto v1 =
+      folly::constexpr_sub_overflow_clamped(int64_t(23), int64_t(12));
+  EXPECT_EQ(int64_t(11), v1);
+
+  constexpr auto v2 =
+      folly::constexpr_sub_overflow_clamped(int64_t(-23), int64_t(-12));
+  EXPECT_EQ(int64_t(-11), v2);
+
+  constexpr auto v3 =
+      folly::constexpr_sub_overflow_clamped(int64_t(23), int64_t(-12));
+  EXPECT_EQ(int64_t(35), v3);
+
+  constexpr auto v4 =
+      folly::constexpr_sub_overflow_clamped(int64_t(23), kInt64Min);
+  EXPECT_EQ(kInt64Max, v4);
+
+  constexpr auto v5 =
+      folly::constexpr_sub_overflow_clamped(int64_t(-23), kInt64Min);
+  EXPECT_EQ(kInt64Max - 22, v5);
+
+  constexpr auto v6 =
+      folly::constexpr_sub_overflow_clamped(uint64_t(23), uint64_t(12));
+  EXPECT_EQ(uint64_t(11), v6);
+
+  constexpr auto v7 =
+      folly::constexpr_sub_overflow_clamped(uint64_t(12), uint64_t(23));
+  EXPECT_EQ(uint64_t(0), v7);
 }

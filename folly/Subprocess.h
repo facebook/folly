@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 /**
  * Subprocess library, modeled after Python's subprocess module
  * (http://docs.python.org/2/library/subprocess.html)
@@ -219,7 +218,7 @@ class ProcessReturnCode {
 /**
  * Base exception thrown by the Subprocess methods.
  */
-class SubprocessError : public std::runtime_error {
+class FOLLY_EXPORT SubprocessError : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
 };
@@ -227,7 +226,7 @@ class SubprocessError : public std::runtime_error {
 /**
  * Exception thrown by *Checked methods of Subprocess.
  */
-class CalledProcessError : public SubprocessError {
+class FOLLY_EXPORT CalledProcessError : public SubprocessError {
  public:
   explicit CalledProcessError(ProcessReturnCode rc);
   ~CalledProcessError() throw() override = default;
@@ -239,7 +238,7 @@ class CalledProcessError : public SubprocessError {
 /**
  * Exception thrown if the subprocess cannot be started.
  */
-class SubprocessSpawnError : public SubprocessError {
+class FOLLY_EXPORT SubprocessSpawnError : public SubprocessError {
  public:
   SubprocessSpawnError(const char* executable, int errCode, int errnoValue);
   ~SubprocessSpawnError() throw() override = default;
@@ -362,7 +361,7 @@ class Subprocess {
 
     /**
      * Child will be made a process group leader when it starts. Upside: one
-     * can reliably all its kill non-daemonizing descendants.  Downside: the
+     * can reliably kill all its non-daemonizing descendants.  Downside: the
      * child will not receive Ctrl-C etc during interactive use.
      */
     Options& processGroupLeader() {
@@ -485,7 +484,7 @@ class Subprocess {
    * The shell to use is taken from the environment variable $SHELL,
    * or /bin/sh if $SHELL is unset.
    */
-  FOLLY_DEPRECATED("Prefer not running in a shell or use `shellify`.")
+  [[deprecated("Prefer not running in a shell or use `shellify`.")]]
   explicit Subprocess(
       const std::string& cmd,
       const Options& options = Options(),

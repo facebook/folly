@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+#include <numeric>
+
 #include <folly/dynamic.h>
 
-#include <folly/Assume.h>
 #include <folly/Format.h>
-#include <folly/Hash.h>
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/hash/Hash.h>
+#include <folly/lang/Assume.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -60,6 +62,14 @@ TypeError::TypeError(
           dynamic::typeName(actual1),
           dynamic::typeName(actual2))) {}
 
+TypeError::TypeError(const TypeError&) noexcept(
+    std::is_nothrow_copy_constructible<std::runtime_error>::value) = default;
+TypeError& TypeError::operator=(const TypeError&) noexcept(
+    std::is_nothrow_copy_assignable<std::runtime_error>::value) = default;
+TypeError::TypeError(TypeError&&) noexcept(
+    std::is_nothrow_move_constructible<std::runtime_error>::value) = default;
+TypeError& TypeError::operator=(TypeError&&) noexcept(
+    std::is_nothrow_move_assignable<std::runtime_error>::value) = default;
 TypeError::~TypeError() = default;
 
 [[noreturn]] void throwTypeError_(
@@ -238,7 +248,7 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
 
 [[noreturn]] static void throwOutOfRangeAtMissingKey(dynamic const& idx) {
   auto msg = sformat("couldn't find key {} in dynamic object", idx.asString());
-  std::__throw_out_of_range(msg.c_str());
+  throw_exception<std::out_of_range>(msg);
 }
 
 dynamic const& dynamic::at(dynamic const& idx) const& {
@@ -247,7 +257,7 @@ dynamic const& dynamic::at(dynamic const& idx) const& {
       throwTypeError_("int64", idx.type());
     }
     if (idx < 0 || idx >= parray->size()) {
-      std::__throw_out_of_range("out of range in dynamic array");
+      throw_exception<std::out_of_range>("out of range in dynamic array");
     }
     return (*parray)[size_t(idx.asInt())];
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
@@ -283,10 +293,22 @@ dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
 
 std::size_t dynamic::hash() const {
   switch (type()) {
-  case OBJECT:
-  case ARRAY:
   case NULLT:
-    throwTypeError_("not null/object/array", type());
+    return 0xBAAAAAAD;
+  case OBJECT:
+  {
+    // Accumulate using addition instead of using hash_range (as in the ARRAY
+    // case), as we need a commutative hash operation since unordered_map's
+    // iteration order is unspecified.
+    auto h = std::hash<std::pair<dynamic, dynamic>>{};
+    return std::accumulate(
+        items().begin(),
+        items().end(),
+        size_t{0x0B1EC7},
+        [&](auto acc, auto item) { return acc + h(item); });
+    }
+  case ARRAY:
+    return folly::hash::hash_range(begin(), end());
   case INT64:
     return std::hash<int64_t>()(getInt());
   case DOUBLE:
@@ -319,6 +341,76 @@ void dynamic::destroy() noexcept {
 #undef FB_X
   type_ = NULLT;
   u_.nul = nullptr;
+}
+
+dynamic dynamic::merge_diff(const dynamic& source, const dynamic& target) {
+  if (!source.isObject() || source.type() != target.type()) {
+    return target;
+  }
+
+  dynamic diff = object;
+
+  // added/modified keys
+  for (const auto& pair : target.items()) {
+    auto it = source.find(pair.first);
+    if (it == source.items().end()) {
+      diff[pair.first] = pair.second;
+    } else {
+      diff[pair.first] = merge_diff(source[pair.first], target[pair.first]);
+    }
+  }
+
+  // removed keys
+  for (const auto& pair : source.items()) {
+    auto it = target.find(pair.first);
+    if (it == target.items().end()) {
+      diff[pair.first] = nullptr;
+    }
+  }
+
+  return diff;
+}
+
+const dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) const& {
+  auto const& tokens = jsonPtr.tokens();
+  if (tokens.empty()) {
+    return this;
+  }
+  dynamic const* dyn = this;
+  for (auto const& token : tokens) {
+    if (!dyn) {
+      return nullptr;
+    }
+    // special case of parsing "/": lookup key with empty name
+    if (token.empty()) {
+      if (dyn->isObject()) {
+        dyn = dyn->get_ptr("");
+        continue;
+      }
+      throwTypeError_("object", dyn->type());
+    }
+    if (auto* parray = dyn->get_nothrow<dynamic::Array>()) {
+      if (token.size() > 1 && token.at(0) == '0') {
+        throw std::invalid_argument(
+            "Leading zero not allowed when indexing arrays");
+      }
+      // special case, always return non-existent
+      if (token.size() == 1 && token.at(0) == '-') {
+        dyn = nullptr;
+        continue;
+      }
+      auto const idx = folly::to<size_t>(token);
+      dyn = idx < parray->size() ? &(*parray)[idx] : nullptr;
+      continue;
+    }
+    if (auto* pobject = dyn->get_nothrow<dynamic::ObjectImpl>()) {
+      auto const it = pobject->find(token);
+      dyn = it != pobject->end() ? &it->second : nullptr;
+      continue;
+    }
+    throwTypeError_("object/array", dyn->type());
+  }
+  return dyn;
 }
 
 //////////////////////////////////////////////////////////////////////

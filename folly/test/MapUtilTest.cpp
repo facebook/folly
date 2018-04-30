@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 #include <folly/MapUtil.h>
 
+#include <cstddef>
 #include <map>
 #include <unordered_map>
 
@@ -245,4 +246,53 @@ TEST(MapUtil, get_ref_default_path_temporary) {
   EXPECT_TRUE(GetRefDefaultPathCompiles<int&>::value);
   EXPECT_FALSE(GetRefDefaultPathCompiles<const int&&>::value);
   EXPECT_FALSE(GetRefDefaultPathCompiles<int&&>::value);
+}
+
+namespace {
+
+class TestConstruction {
+ public:
+  TestConstruction() {
+    EXPECT_TRUE(false);
+  }
+  TestConstruction(TestConstruction&&) {
+    EXPECT_TRUE(false);
+  }
+  TestConstruction(const TestConstruction&) {
+    EXPECT_TRUE(false);
+  }
+
+  explicit TestConstruction(std::string&& string)
+      : string_{std::move(string)} {}
+  explicit TestConstruction(int&& integer) : integer_{integer} {}
+
+  TestConstruction& operator=(const TestConstruction&) = delete;
+  TestConstruction& operator=(TestConstruction&&) = delete;
+
+  int integer_{};
+  std::string string_{};
+};
+
+} // namespace
+
+TEST(MapUtil, test_get_default_deferred_construction) {
+  auto map = std::unordered_map<int, TestConstruction>{};
+  map.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(1),
+      std::forward_as_tuple(1));
+
+  EXPECT_EQ(map.at(1).integer_, 1);
+
+  {
+    auto val = get_default(map, 0, 1);
+    EXPECT_EQ(val.integer_, 1);
+    EXPECT_EQ(val.string_, "");
+  }
+
+  {
+    auto val = get_default(map, 0, "something");
+    EXPECT_EQ(val.integer_, 0);
+    EXPECT_EQ(val.string_, "something");
+  }
 }

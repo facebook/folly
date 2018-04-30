@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
-#include <folly/SmallLocks.h>
+#include <folly/synchronization/SmallLocks.h>
 
 #if !FOLLY_X64 && !FOLLY_PPC64 && !FOLLY_AARCH64
 #error "PackedSyncPtr is x64, ppc64 or aarch64 specific code."

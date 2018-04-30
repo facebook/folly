@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
-#include <folly/portability/PThread.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 
@@ -128,7 +127,7 @@ void callPreviousSignalHandler(int signum) {
 // in our signal handler at a time.
 //
 // Leak it so we don't have to worry about destruction order
-StackTracePrinter* gStackTracePrinter = new StackTracePrinter();
+SafeStackTracePrinter* gStackTracePrinter = new SafeStackTracePrinter();
 
 void printDec(uint64_t val) {
   char buf[20];

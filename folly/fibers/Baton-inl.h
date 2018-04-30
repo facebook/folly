@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,9 +66,9 @@ void Baton::waitFiber(FiberManager& fm, F&& mainContextFunc) {
   fm.activeFiber_->preempt(Fiber::AWAITING);
 }
 
-template <typename F>
-bool Baton::timed_wait(
-    TimeoutController::Duration timeout,
+template <typename Rep, typename Period, typename F>
+bool Baton::try_wait_for(
+    const std::chrono::duration<Rep, Period>& timeout,
     F&& mainContextFunc) {
   auto fm = FiberManager::getFiberManagerUnsafe();
 
@@ -87,7 +87,7 @@ bool Baton::timed_wait(
   auto id =
       fm->timeoutManager_->registerTimeout(std::ref(timeoutFunc), timeout);
 
-  waitFiber(*fm, std::move(mainContextFunc));
+  waitFiber(*fm, static_cast<F&&>(mainContextFunc));
 
   auto posted = waitingFiber_ == POSTED;
 
@@ -98,15 +98,16 @@ bool Baton::timed_wait(
   return posted;
 }
 
-template <typename C, typename D>
-bool Baton::timed_wait(const std::chrono::time_point<C, D>& timeout) {
-  auto now = C::now();
+template <typename Clock, typename Duration, typename F>
+bool Baton::try_wait_until(
+    const std::chrono::time_point<Clock, Duration>& deadline,
+    F&& mainContextFunc) {
+  auto now = Clock::now();
 
-  if (LIKELY(now <= timeout)) {
-    return timed_wait(
-        std::chrono::duration_cast<std::chrono::milliseconds>(timeout - now));
+  if (LIKELY(now <= deadline)) {
+    return try_wait_for(deadline - now, static_cast<F&&>(mainContextFunc));
   } else {
-    return timed_wait(TimeoutController::Duration(0));
+    return try_wait_for(Duration{}, static_cast<F&&>(mainContextFunc));
   }
 }
 } // namespace fibers

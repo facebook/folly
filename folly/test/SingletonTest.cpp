@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -262,8 +262,9 @@ TEST(Singleton, SharedPtrUsage) {
     auto start_time = std::chrono::steady_clock::now();
     vault.destroyInstances();
     auto duration = std::chrono::steady_clock::now() - start_time;
-    EXPECT_TRUE(duration > std::chrono::seconds{4} &&
-                duration < std::chrono::seconds{6});
+    EXPECT_TRUE(
+        duration > std::chrono::seconds{4} &&
+        duration < std::chrono::seconds{folly::kIsSanitizeAddress ? 30 : 6});
   }
   EXPECT_EQ(vault.registeredSingletonCount(), 4);
   EXPECT_EQ(vault.livingSingletonCount(), 0);
@@ -634,7 +635,7 @@ TEST(Singleton, DoubleRegistrationLogging) {
 // Singleton using a non default constructor test/example:
 struct X {
   X() : X(-1, "unset") {}
-  X(int a1, std::string a2) : a1(a1), a2(a2) {
+  X(int a1_, std::string a2_) : a1(a1_), a2(a2_) {
     LOG(INFO) << "X(" << a1 << "," << a2 << ")";
   }
   const int a1;

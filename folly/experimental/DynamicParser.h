@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@
  */
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/dynamic.h>
 
@@ -194,7 +195,7 @@ std::string toPseudoJson(const folly::dynamic& d);
  * With DynamicParser::OnError::THROW, reports the first error.
  * It is forbidden to call releaseErrors() if you catch this.
  */
-struct DynamicParserParseError : public std::runtime_error {
+struct FOLLY_EXPORT DynamicParserParseError : public std::runtime_error {
   explicit DynamicParserParseError(folly::dynamic error)
     : std::runtime_error(folly::to<std::string>(
         "DynamicParserParseError: ", detail::toPseudoJson(error)
@@ -217,7 +218,7 @@ struct DynamicParserParseError : public std::runtime_error {
  * instead of reporting an error via releaseErrors().  It is unsafe to call
  * any parser methods after catching a LogicError.
  */
-struct DynamicParserLogicError : public std::logic_error {
+struct FOLLY_EXPORT DynamicParserLogicError : public std::logic_error {
   template <typename... Args>
   explicit DynamicParserLogicError(Args&&... args)
     : std::logic_error(folly::to<std::string>(std::forward<Args>(args)...)) {}
@@ -327,6 +328,15 @@ class DynamicParser {
       const folly::dynamic* value_;
       ParserStack* stackPtr_;
     };
+    struct PopGuard {
+      explicit PopGuard(ParserStack* sp) : pop_(in_place, sp) {}
+      ~PopGuard() {
+        pop_ && ((*pop_)(), true);
+      }
+
+     private:
+      Optional<Pop> pop_;
+    };
 
     explicit ParserStack(const folly::dynamic* input)
       : value_(input),
@@ -342,9 +352,7 @@ class DynamicParser {
     // Lets user code nest parser calls by recording current key+value and
     // returning an RAII guard to restore the old one.  `noexcept` since it
     // is used unwrapped.
-    folly::ScopeGuardImpl<Pop> push(
-      const folly::dynamic& k, const folly::dynamic& v
-    ) noexcept;
+    PopGuard push(const folly::dynamic& k, const folly::dynamic& v) noexcept;
 
     // Throws DynamicParserLogicError if used outside of a parsing function.
     inline const folly::dynamic& key() const;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,60 +106,62 @@ TEST(DeterministicSchedule, buggyAdd) {
   } // for bug
 }
 
-/// Test DSched support for auxiliary data and global invariants
-///
-/// How to use DSched support for auxiliary data and global invariants
-/// (Let Foo<T, Atom> be the template to be tested):
-///   1. Add friend AnnotatedFoo<T> to Foo<T,Atom> (Typically, in Foo.h).
-///   2. Define a class AuxData for whatever auxiliary data is needed
-///      to maintain global knowledge of shared and private state.
-///   3. Define:
-///        static AuxData* aux_;
-///        static FOLLY_TLS uint32_t tid_;
-///   4. (Optional) Define gflags for command line options. E.g.:
-///        DEFINE_int64(seed, 0, "Seed for random number generators");
-///   5. (Optionl) Define macros for mangement of auxiliary data. E.g.,
-///        #define AUX_THR(x)    (aux_->t_[tid_]->x)
-///   6. (Optional) Define macro for creating auxiliary actions. E.g.,
-///        #define AUX_ACT(act)                                       \
-///          {                                                        \
-///            AUX_THR(func_) = __func__;                             \
-///            AUX_THR(line_) = __LINE__;                             \
-///            AuxAct auxact([&](bool success) { if (success); act}); \
-///            DeterministicSchedule::setAuxAct(auxact);              \
-///          }
-///      [Note: Auxiliary actions must not contain any standard shared
-///      accesses, or else deadlock will occur. Use the load_direct()
-///      member function of DeterministicAtomic instead.]
-///   7. Define AnnotatedFoo<T> derived from Foo<T,DeterministicAtomic>.
-///   8. Define member functions in AnnotatedFoo to manage DSched::auxChk.
-///   9. Define member functions for logging and checkig global invariants.
-///  10. Define member functions for direct access to data members of Foo.
-///  11. (Optional) Add a member function dummyStep() to update
-///      auxiliary data race-free when the next step is unknoown or
-///      not conveniently accessible (e.g., in a different
-///      library). The functions adds a dummy shared step to force
-///      DSched to invoke the auxiliary action at a known point.This
-///      is needed for now because DSched allows threads to run in
-///      parallel between shared accesses. Hence, concurrent updates
-///      of shared auxiliary data can be racy if executed outside
-///      auxiliary actions. This may be obviated in the future if
-///      DSched supports fully seriallized execution.
-///        void dummyStep() {
-///          DeterministicSchedule::beforeSharedAccess();
-///          DeterministicSchedule::afterSharedAccess(true);
-///        }
-///  12. Override member functions of Foo as needed in order to
-///      annotate the code with auxiliary actions. [Note: There may be
-///      a lot of duplication of Foo's code. Alternatively, Foo can be
-///      annotated directly.]
-///  13. Define TEST using instances of AuxData and AnnotatedFoo.
-///  14. For debugging, iteratively add (as needed) auxiliary data,
-///      global invariants, logging details, command line flags as
-///      needed and selectively generate relevant logs to detect the
-///      race condition shortly after it occurs.
-///
-/// In the following example Foo = AtomicCounter
+/*
+ * Test DSched support for auxiliary data and global invariants
+ *
+ * How to use DSched support for auxiliary data and global invariants
+ * (Let Foo<T, Atom> be the template to be tested):
+ *   1. Add friend AnnotatedFoo<T> to Foo<T,Atom> (Typically, in Foo.h).
+ *   2. Define a class AuxData for whatever auxiliary data is needed
+ *      to maintain global knowledge of shared and private state.
+ *   3. Define:
+ *        static AuxData* aux_;
+ *        static FOLLY_TLS uint32_t tid_;
+ *   4. (Optional) Define gflags for command line options. E.g.:
+ *        DEFINE_int64(seed, 0, "Seed for random number generators");
+ *   5. (Optionl) Define macros for mangement of auxiliary data. E.g.,
+ *        #define AUX_THR(x)    (aux_->t_[tid_]->x)
+ *   6. (Optional) Define macro for creating auxiliary actions. E.g.,
+ *        #define AUX_ACT(act)                                       \
+ *          {                                                        \
+ *            AUX_THR(func_) = __func__;                             \
+ *            AUX_THR(line_) = __LINE__;                             \
+ *            AuxAct auxact([&](bool success) { if (success); act}); \
+ *            DeterministicSchedule::setAuxAct(auxact);              \
+ *          }
+ *      [Note: Auxiliary actions must not contain any standard shared
+ *      accesses, or else deadlock will occur. Use the load_direct()
+ *      member function of DeterministicAtomic instead.]
+ *   7. Define AnnotatedFoo<T> derived from Foo<T,DeterministicAtomic>.
+ *   8. Define member functions in AnnotatedFoo to manage DSched::auxChk.
+ *   9. Define member functions for logging and checkig global invariants.
+ *  10. Define member functions for direct access to data members of Foo.
+ *  11. (Optional) Add a member function dummyStep() to update
+ *      auxiliary data race-free when the next step is unknoown or
+ *      not conveniently accessible (e.g., in a different
+ *      library). The functions adds a dummy shared step to force
+ *      DSched to invoke the auxiliary action at a known point.This
+ *      is needed for now because DSched allows threads to run in
+ *      parallel between shared accesses. Hence, concurrent updates
+ *      of shared auxiliary data can be racy if executed outside
+ *      auxiliary actions. This may be obviated in the future if
+ *      DSched supports fully seriallized execution.
+ *        void dummyStep() {
+ *          DeterministicSchedule::beforeSharedAccess();
+ *          DeterministicSchedule::afterSharedAccess(true);
+ *        }
+ *  12. Override member functions of Foo as needed in order to
+ *      annotate the code with auxiliary actions. [Note: There may be
+ *      a lot of duplication of Foo's code. Alternatively, Foo can be
+ *      annotated directly.]
+ *  13. Define TEST using instances of AuxData and AnnotatedFoo.
+ *  14. For debugging, iteratively add (as needed) auxiliary data,
+ *      global invariants, logging details, command line flags as
+ *      needed and selectively generate relevant logs to detect the
+ *      race condition shortly after it occurs.
+ *
+ * In the following example Foo = AtomicCounter
+ */
 
 using DSched = DeterministicSchedule;
 

@@ -69,17 +69,19 @@ class FatalTests(unittest.TestCase):
         subprocess.check_output([self.helper, '--crash=no'])
 
     def test_async(self):
-        err = self.run_helper('--handler_style=async')
+        handler_setings = 'default=stream:stream=stderr,async=true'
+        err = self.run_helper('--logging=;' + handler_setings)
         self.assertRegex(err, self.get_crash_regex())
 
     def test_immediate(self):
-        err = self.run_helper('--handler_style=immediate')
+        handler_setings = 'default=stream:stream=stderr,async=false'
+        err = self.run_helper('--logging=;' + handler_setings)
         self.assertRegex(err, self.get_crash_regex())
 
     def test_none(self):
         # The fatal message should be printed directly to stderr when there
         # are no logging handlers configured.
-        err = self.run_helper('--handler_style=none')
+        err = self.run_helper('--logging=ERR:')
         self.assertRegex(err, self.get_crash_regex(glog=False))
 
     def test_other_category(self):
@@ -93,8 +95,7 @@ class FatalTests(unittest.TestCase):
 
     def test_static_init(self):
         err = self.run_helper(env={'CRASH_DURING_INIT': '1'})
-        regex = self.get_crash_regex(br'crashing during static initialization',
-                                     glog=False)
+        regex = self.get_crash_regex(br'crashing during static initialization')
         self.assertRegex(err, regex)
 
     def test_static_destruction(self):

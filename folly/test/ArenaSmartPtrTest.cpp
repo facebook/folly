@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,11 +23,6 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
-
-static_assert(
-  is_simple_allocator<int,SysArena>::value,
-  "SysArena should be a simple allocator"
-);
 
 struct global_counter {
   global_counter(): count_(0) {}
@@ -61,7 +56,7 @@ struct Foo {
 
 template <typename Allocator>
 void unique_ptr_test(Allocator& allocator) {
-  typedef typename AllocatorUniquePtr<Foo, Allocator>::type ptr_type;
+  using ptr_type = std::unique_ptr<Foo, allocator_delete<Allocator>>;
 
   global_counter counter;
   EXPECT_EQ(counter.count(), 0);
@@ -95,18 +90,13 @@ void unique_ptr_test(Allocator& allocator) {
   }
   EXPECT_EQ(counter.count(), 1);
 
-  StlAllocator<Allocator, Foo>().destroy(foo);
+  std::allocator_traits<Allocator>::destroy(allocator, foo);
   EXPECT_EQ(counter.count(), 0);
 }
 
 TEST(ArenaSmartPtr, unique_ptr_SysArena) {
   SysArena arena;
-  unique_ptr_test(arena);
-}
-
-TEST(ArenaSmartPtr, unique_ptr_StlAlloc_SysArena) {
-  SysArena arena;
-  StlAllocator<SysArena, Foo> alloc(&arena);
+  SysArenaAllocator<Foo> alloc(arena);
   unique_ptr_test(alloc);
 }
 
@@ -122,7 +112,7 @@ void shared_ptr_test(Allocator& allocator) {
   EXPECT_EQ(foo.use_count(), 0);
 
   {
-    auto p = folly::allocate_shared<Foo>(allocator, counter);
+    auto p = std::allocate_shared<Foo>(allocator, counter);
     EXPECT_EQ(counter.count(), 1);
     EXPECT_EQ(p.use_count(), 1);
 
@@ -130,7 +120,7 @@ void shared_ptr_test(Allocator& allocator) {
     EXPECT_EQ(counter.count(), 0);
     EXPECT_EQ(p.use_count(), 0);
 
-    p = folly::allocate_shared<Foo>(allocator, counter);
+    p = std::allocate_shared<Foo>(allocator, counter);
     EXPECT_EQ(counter.count(), 1);
     EXPECT_EQ(p.use_count(), 1);
 
@@ -167,12 +157,7 @@ void shared_ptr_test(Allocator& allocator) {
 
 TEST(ArenaSmartPtr, shared_ptr_SysArena) {
   SysArena arena;
-  shared_ptr_test(arena);
-}
-
-TEST(ArenaSmartPtr, shared_ptr_StlAlloc_SysArena) {
-  SysArena arena;
-  StlAllocator<SysArena, Foo> alloc(&arena);
+  SysArenaAllocator<Foo> alloc(arena);
   shared_ptr_test(alloc);
 }
 

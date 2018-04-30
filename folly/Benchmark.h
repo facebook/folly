@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 #include <folly/portability/GFlags.h>
 
 #include <cassert>
@@ -125,7 +126,7 @@ struct BenchmarkSuspender {
   }
 
   template <class F>
-  auto dismissing(F f) -> typename std::result_of<F()>::type {
+  auto dismissing(F f) -> invoke_result_t<F> {
     SCOPE_EXIT { rehire(); };
     dismiss();
     return f();
@@ -547,10 +548,10 @@ void printResultComparison(
 /**
  * Draws a line of dashes.
  */
-#define BENCHMARK_DRAW_LINE()                                             \
-  static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) = (             \
-    ::folly::addBenchmark(__FILE__, "-", []() -> unsigned { return 0; }), \
-    true);
+#define BENCHMARK_DRAW_LINE()                                                \
+  static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) =                  \
+      (::folly::addBenchmark(__FILE__, "-", []() -> unsigned { return 0; }), \
+       true)
 
 /**
  * Allows execution of code that doesn't count torward the benchmark's

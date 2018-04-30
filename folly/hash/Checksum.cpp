@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,8 +72,10 @@ bool crc32_hw_supported() {
 
 #else
 
-uint32_t crc32_hw(const uint8_t *data, size_t nbytes,
-    uint32_t startingChecksum) {
+uint32_t crc32_hw(
+    const uint8_t* /* data */,
+    size_t /* nbytes */,
+    uint32_t /* startingChecksum */) {
   throw std::runtime_error("crc32_hw is not implemented on this platform");
 }
 

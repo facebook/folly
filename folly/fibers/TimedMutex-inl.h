@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,7 +95,7 @@ template <typename Rep, typename Period>
 bool TimedMutex::timed_lock(
     const std::chrono::duration<Rep, Period>& duration) {
   auto result = lockHelper([&](MutexWaiter& waiter) {
-    if (!waiter.baton.timed_wait(duration)) {
+    if (!waiter.baton.try_wait_for(duration)) {
       // We timed out. Two cases:
       // 1. We're still in the waiter list and we truly timed out
       // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -182,7 +182,7 @@ bool TimedRWMutex<BatonType>::timed_read_lock(
     read_waiters_.push_back(waiter);
     ulock.unlock();
 
-    if (!waiter.baton.timed_wait(duration)) {
+    if (!waiter.baton.try_wait_for(duration)) {
       // We timed out. Two cases:
       // 1. We're still in the waiter list and we truly timed out
       // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -248,7 +248,7 @@ bool TimedRWMutex<BatonType>::timed_write_lock(
   write_waiters_.push_back(waiter);
   ulock.unlock();
 
-  if (!waiter.baton.timed_wait(duration)) {
+  if (!waiter.baton.try_wait_for(duration)) {
     // We timed out. Two cases:
     // 1. We're still in the waiter list and we truly timed out
     // 2. We're not in the waiter list anymore. This could happen if the baton

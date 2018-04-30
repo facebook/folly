@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // @author: Xin Liu <xliux@fb.com>
 
 #include <map>
@@ -24,9 +23,9 @@
 
 #include <folly/Benchmark.h>
 #include <folly/ConcurrentSkipList.h>
-#include <folly/RWSpinLock.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
+#include <folly/synchronization/RWSpinLock.h>
 #include <glog/logging.h>
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");
@@ -529,80 +528,79 @@ void BM_ContentionStdSet(int iters, int size) {
 
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_IterateOverSet,  1000);
-BENCHMARK_PARAM(BM_IterateSkipList, 1000);
+BENCHMARK_PARAM(BM_IterateOverSet, 1000)
+BENCHMARK_PARAM(BM_IterateSkipList, 1000)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_PARAM(BM_IterateOverSet,  1000000);
-BENCHMARK_PARAM(BM_IterateSkipList, 1000000);
+BENCHMARK_PARAM(BM_IterateOverSet, 1000000)
+BENCHMARK_PARAM(BM_IterateSkipList, 1000000)
 BENCHMARK_DRAW_LINE();
 
 // find with keys in the set
-BENCHMARK_PARAM(BM_SetContainsFound, 1000);
-BENCHMARK_PARAM(BM_CSLContainsFound, 1000);
+BENCHMARK_PARAM(BM_SetContainsFound, 1000)
+BENCHMARK_PARAM(BM_CSLContainsFound, 1000)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_PARAM(BM_SetContainsFound, 100000);
-BENCHMARK_PARAM(BM_CSLContainsFound, 100000);
+BENCHMARK_PARAM(BM_SetContainsFound, 100000)
+BENCHMARK_PARAM(BM_CSLContainsFound, 100000)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_PARAM(BM_SetContainsFound, 1000000);
-BENCHMARK_PARAM(BM_CSLContainsFound, 1000000);
+BENCHMARK_PARAM(BM_SetContainsFound, 1000000)
+BENCHMARK_PARAM(BM_CSLContainsFound, 1000000)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_PARAM(BM_SetContainsFound, 10000000);
-BENCHMARK_PARAM(BM_CSLContainsFound, 10000000);
+BENCHMARK_PARAM(BM_SetContainsFound, 10000000)
+BENCHMARK_PARAM(BM_CSLContainsFound, 10000000)
 BENCHMARK_DRAW_LINE();
 
 
 // find with keys not in the set
-BENCHMARK_PARAM(BM_SetContainsNotFound, 1000);
-BENCHMARK_PARAM(BM_CSLContainsNotFound, 1000);
+BENCHMARK_PARAM(BM_SetContainsNotFound, 1000)
+BENCHMARK_PARAM(BM_CSLContainsNotFound, 1000)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_PARAM(BM_SetContainsNotFound, 100000);
-BENCHMARK_PARAM(BM_CSLContainsNotFound, 100000);
+BENCHMARK_PARAM(BM_SetContainsNotFound, 100000)
+BENCHMARK_PARAM(BM_CSLContainsNotFound, 100000)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_PARAM(BM_SetContainsNotFound, 1000000);
-BENCHMARK_PARAM(BM_CSLContainsNotFound, 1000000);
-BENCHMARK_DRAW_LINE();
-
-
-BENCHMARK_PARAM(BM_AddSet,      1000);
-BENCHMARK_PARAM(BM_AddSkipList, 1000);
+BENCHMARK_PARAM(BM_SetContainsNotFound, 1000000)
+BENCHMARK_PARAM(BM_CSLContainsNotFound, 1000000)
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_AddSet,      65536);
-BENCHMARK_PARAM(BM_AddSkipList, 65536);
+BENCHMARK_PARAM(BM_AddSet, 1000)
+BENCHMARK_PARAM(BM_AddSkipList, 1000)
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_AddSet,      1000000);
-BENCHMARK_PARAM(BM_AddSkipList, 1000000);
+BENCHMARK_PARAM(BM_AddSet, 65536)
+BENCHMARK_PARAM(BM_AddSkipList, 65536)
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_SetMerge,             1000);
-BENCHMARK_PARAM(BM_CSLMergeIntersection, 1000);
-BENCHMARK_PARAM(BM_CSLMergeLookup,       1000);
+BENCHMARK_PARAM(BM_AddSet, 1000000)
+BENCHMARK_PARAM(BM_AddSkipList, 1000000)
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_SetMerge,             65536);
-BENCHMARK_PARAM(BM_CSLMergeIntersection, 65536);
-BENCHMARK_PARAM(BM_CSLMergeLookup,       65536);
+BENCHMARK_PARAM(BM_SetMerge, 1000)
+BENCHMARK_PARAM(BM_CSLMergeIntersection, 1000)
+BENCHMARK_PARAM(BM_CSLMergeLookup, 1000)
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_SetMerge,             1000000);
-BENCHMARK_PARAM(BM_CSLMergeIntersection, 1000000);
-BENCHMARK_PARAM(BM_CSLMergeLookup,       1000000);
+BENCHMARK_PARAM(BM_SetMerge, 65536)
+BENCHMARK_PARAM(BM_CSLMergeIntersection, 65536)
+BENCHMARK_PARAM(BM_CSLMergeLookup, 65536)
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK_PARAM(BM_SetMerge, 1000000)
+BENCHMARK_PARAM(BM_CSLMergeIntersection, 1000000)
+BENCHMARK_PARAM(BM_CSLMergeLookup, 1000000)
 BENCHMARK_DRAW_LINE();
 
 
 // multithreaded benchmarking
 
-BENCHMARK_PARAM(BM_ContentionStdSet, 1024);
-BENCHMARK_PARAM(BM_ContentionCSL,    1024);
+BENCHMARK_PARAM(BM_ContentionStdSet, 1024)
+BENCHMARK_PARAM(BM_ContentionCSL, 1024)
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_ContentionStdSet, 65536);
-BENCHMARK_PARAM(BM_ContentionCSL,    65536);
+BENCHMARK_PARAM(BM_ContentionStdSet, 65536)
+BENCHMARK_PARAM(BM_ContentionCSL, 65536)
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_ContentionStdSet, 1048576);
-BENCHMARK_PARAM(BM_ContentionCSL,    1048576);
+BENCHMARK_PARAM(BM_ContentionStdSet, 1048576)
+BENCHMARK_PARAM(BM_ContentionCSL, 1048576)
 BENCHMARK_DRAW_LINE();
 
 } // namespace

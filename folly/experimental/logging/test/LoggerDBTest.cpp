@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,28 +72,4 @@ TEST(LoggerDB, flushAllHandlers) {
   EXPECT_EQ(2, h1->getFlushCount());
   EXPECT_EQ(2, h2->getFlushCount());
   EXPECT_EQ(2, h3->getFlushCount());
-}
-
-TEST(LoggerDB, processConfigString) {
-  LoggerDB db{LoggerDB::TESTING};
-  db.processConfigString("foo.bar=dbg5");
-  EXPECT_EQ(LogLevel::DBG5, db.getCategory("foo.bar")->getLevel());
-  EXPECT_EQ(LogLevel::DBG5, db.getCategory("foo.bar")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo")->getLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("foo")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getEffectiveLevel());
-
-  EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar.test")->getLevel());
-  EXPECT_EQ(
-      LogLevel::DBG5, db.getCategory("foo.bar.test")->getEffectiveLevel());
-
-  db.processConfigString("sys=warn,foo.test=debug,foo.test.stuff=warn");
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("sys")->getLevel());
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("sys")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::DEBUG, db.getCategory("foo.test")->getLevel());
-  EXPECT_EQ(LogLevel::DEBUG, db.getCategory("foo.test")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("foo.test.stuff")->getLevel());
-  EXPECT_EQ(
-      LogLevel::DEBUG, db.getCategory("foo.test.stuff")->getEffectiveLevel());
 }

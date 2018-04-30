@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 // included by Future.h, do not include directly.
@@ -36,11 +35,6 @@ struct isSemiFuture<SemiFuture<T>> : std::true_type {
 };
 
 template <typename T>
-struct isSemiFuture<Future<T>> : std::true_type {
-  typedef T Inner;
-};
-
-template <typename T>
 struct isFuture : std::false_type {
   using Inner = typename Unit::Lift<T>::type;
 };
@@ -48,6 +42,24 @@ struct isFuture : std::false_type {
 template <typename T>
 struct isFuture<Future<T>> : std::true_type {
   typedef T Inner;
+};
+
+template <typename T>
+struct isFutureOrSemiFuture : std::false_type {
+  using Inner = typename Unit::Lift<T>::type;
+  using Return = Inner;
+};
+
+template <typename T>
+struct isFutureOrSemiFuture<Future<T>> : std::true_type {
+  typedef T Inner;
+  using Return = Future<Inner>;
+};
+
+template <typename T>
+struct isFutureOrSemiFuture<SemiFuture<T>> : std::true_type {
+  typedef T Inner;
+  using Return = SemiFuture<Inner>;
 };
 
 template <typename T>
@@ -114,7 +126,33 @@ struct callableResult {
           callableWith<F, Try<T>&&>::value,
           detail::argResult<true, F, Try<T>&&>,
           detail::argResult<true, F, Try<T>&>>::type>::type>::type>::type Arg;
-  typedef isFuture<typename Arg::Result> ReturnsFuture;
+  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+};
+
+template <typename T, typename F>
+struct deferCallableResult {
+  typedef typename std::conditional<
+      callableWith<F>::value,
+      detail::argResult<false, F>,
+      typename std::conditional<
+          callableWith<F, Try<T>&&>::value,
+          detail::argResult<true, F, Try<T>&&>,
+          detail::argResult<true, F, Try<T>&>>::type>::type Arg;
+  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+};
+
+template <typename T, typename F>
+struct deferValueCallableResult {
+  typedef typename std::conditional<
+      callableWith<F>::value,
+      detail::argResult<false, F>,
+      typename std::conditional<
+          callableWith<F, T&&>::value,
+          detail::argResult<false, F, T&&>,
+          detail::argResult<false, F, T&>>::type>::type Arg;
+  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
 };
 
@@ -123,7 +161,7 @@ struct Extract : Extract<decltype(&L::operator())> { };
 
 template <typename Class, typename R, typename... Args>
 struct Extract<R(Class::*)(Args...) const> {
-  typedef isFuture<R> ReturnsFuture;
+  typedef isFutureOrSemiFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
   typedef typename ArgType<Args...>::FirstArg FirstArg;
@@ -131,7 +169,7 @@ struct Extract<R(Class::*)(Args...) const> {
 
 template <typename Class, typename R, typename... Args>
 struct Extract<R(Class::*)(Args...)> {
-  typedef isFuture<R> ReturnsFuture;
+  typedef isFutureOrSemiFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
   typedef typename ArgType<Args...>::FirstArg FirstArg;
@@ -139,7 +177,7 @@ struct Extract<R(Class::*)(Args...)> {
 
 template <typename R, typename... Args>
 struct Extract<R (*)(Args...)> {
-  typedef isFuture<R> ReturnsFuture;
+  typedef isFutureOrSemiFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
   typedef typename ArgType<Args...>::FirstArg FirstArg;
@@ -147,11 +185,13 @@ struct Extract<R (*)(Args...)> {
 
 template <typename R, typename... Args>
 struct Extract<R (&)(Args...)> {
-  typedef isFuture<R> ReturnsFuture;
+  typedef isFutureOrSemiFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
   typedef typename ArgType<Args...>::FirstArg FirstArg;
 };
+
+class DeferredExecutor;
 
 } // namespace detail
 } // namespace futures

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/Baton.h>
+#include <folly/futures/Future.h>
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Unit.h>
 #include <folly/dynamic.h>
-#include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 #include <algorithm>
 #include <atomic>
@@ -853,7 +853,12 @@ TEST(Future, RequestContext) {
   };
 
   struct MyRequestData : RequestData {
-    MyRequestData(bool value = false) : value(value) {}
+    MyRequestData(bool value_ = false) : value(value_) {}
+
+    bool hasCallback() override {
+      return false;
+    }
+
     bool value;
   };
 

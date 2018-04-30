@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,8 @@ using std::shared_ptr;
 
 namespace folly {
 
+namespace {
+
 template <class V>
 std::ostream& operator<<(std::ostream& os, const Optional<V>& v) {
   if (v) {
@@ -48,6 +50,8 @@ struct NoDefault {
   NoDefault(int, int) {}
   char a, b, c;
 };
+
+} // namespace
 
 static_assert(sizeof(Optional<char>) == 2, "");
 static_assert(sizeof(Optional<int>) == 8, "");
@@ -133,6 +137,8 @@ TEST(Optional, Simple) {
   EXPECT_FALSE(bool(opt));
 }
 
+namespace {
+
 class MoveTester {
  public:
   /* implicit */ MoveTester(const char* s) : s_(s) {}
@@ -156,6 +162,8 @@ class MoveTester {
 bool operator==(const MoveTester& o1, const MoveTester& o2) {
   return o1.s_ == o2.s_;
 }
+
+} // namespace
 
 TEST(Optional, value_or_rvalue_arg) {
   Optional<MoveTester> opt;
@@ -190,7 +198,7 @@ TEST(Optional, value_or_noncopyable) {
 }
 
 struct ExpectingDeleter {
-  explicit ExpectingDeleter(int expected) : expected(expected) { }
+  explicit ExpectingDeleter(int expected_) : expected(expected_) { }
   int expected;
   void operator()(const int* ptr) {
     EXPECT_EQ(*ptr, expected);
@@ -616,6 +624,8 @@ TEST(Optional, SelfAssignment) {
 # pragma clang diagnostic pop
 #endif
 
+namespace {
+
 class ContainsOptional {
  public:
   ContainsOptional() { }
@@ -631,6 +641,8 @@ class ContainsOptional {
  private:
   Optional<int> opt_;
 };
+
+} // namespace
 
 /**
  * Test that a class containing an Optional can be copy and move assigned.
@@ -669,11 +681,15 @@ TEST(Optional, NoThrowDefaultConstructible) {
   EXPECT_TRUE(std::is_nothrow_default_constructible<Optional<bool>>::value);
 }
 
+namespace {
+
 struct NoDestructor {};
 
 struct WithDestructor {
   ~WithDestructor();
 };
+
+} // namespace
 
 TEST(Optional, TriviallyDestructible) {
   // These could all be static_asserts but EXPECT_* give much nicer output on
@@ -690,4 +706,40 @@ TEST(Optional, Hash) {
   std::hash<Optional<int>>()(none);
   std::hash<Optional<int>>()(3);
 }
+
+namespace {
+
+struct WithConstMember {
+  /* implicit */ WithConstMember(int val) : x(val) {}
+  const int x;
+};
+
+// Make this opaque to the optimizer by preventing inlining.
+FOLLY_NOINLINE void replaceWith2(Optional<WithConstMember>& o) {
+  o.emplace(2);
+}
+
+} // namespace
+
+TEST(Optional, ConstMember) {
+  // Verify that the compiler doesn't optimize out the second load of
+  // o->x based on the assumption that the field is const.
+  //
+  // Current Optional implementation doesn't defend against that
+  // assumption, thus replacing an optional where the object has const
+  // members is technically UB and would require wrapping each access
+  // to the storage with std::launder, but this prevents useful
+  // optimizations.
+  //
+  // Implementations of std::optional in both libstdc++ and libc++ are
+  // subject to the same UB. It is then reasonable to believe that
+  // major compilers don't rely on the constness assumption.
+  Optional<WithConstMember> o(1);
+  int sum = 0;
+  sum += o->x;
+  replaceWith2(o);
+  sum += o->x;
+  EXPECT_EQ(sum, 3);
+}
+
 } // namespace folly

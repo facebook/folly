@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -309,7 +309,7 @@ TEST(EvictingCacheMap, SetClearSize) {
 
 TEST(EvictingCacheMap, DestructorInvocationTest) {
   struct SumInt {
-    SumInt(int val, int* ref) : val(val), ref(ref) { }
+    SumInt(int val_, int* ref_) : val(val_), ref(ref_) { }
     ~SumInt() {
       *ref += val;
     }
@@ -631,5 +631,30 @@ TEST(EvictingCacheMap, MoveTest) {
   for (int i = 0; i < nItems; i++) {
     EXPECT_TRUE(map2.exists(i));
     EXPECT_EQ(i, map2.get(i));
+  }
+}
+
+TEST(EvictingCacheMap, CustomKeyEqual) {
+  const int nItems = 100;
+  struct Eq {
+    bool operator()(const int& a, const int& b) const {
+      return (a % mod) == (b % mod);
+    }
+    int mod;
+  };
+  struct Hash {
+    size_t operator()(const int& a) const {
+      return std::hash<int>()(a % mod);
+    }
+    int mod;
+  };
+  EvictingCacheMap<int, int, Hash, Eq> map(
+      nItems, 1 /* clearSize */, Hash{nItems}, Eq{nItems});
+  for (int i = 0; i < nItems; i++) {
+    map.set(i, i);
+    EXPECT_TRUE(map.exists(i));
+    EXPECT_EQ(i, map.get(i));
+    EXPECT_TRUE(map.exists(i + nItems));
+    EXPECT_EQ(i, map.get(i + nItems));
   }
 }

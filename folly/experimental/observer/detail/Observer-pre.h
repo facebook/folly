@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #pragma once
+
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 namespace observer_detail {
@@ -35,11 +37,10 @@ struct UnwrapSharedPtr<std::shared_ptr<T>> {
 };
 
 template <typename F>
-using ResultOf =
-    typename NonSharedPtr<typename std::result_of<F()>::type>::type;
+using ResultOf = typename NonSharedPtr<invoke_result_t<F>>::type;
 
 template <typename F>
 using ResultOfUnwrapSharedPtr =
-    typename UnwrapSharedPtr<typename std::result_of<F()>::type>::type;
+    typename UnwrapSharedPtr<invoke_result_t<F>>::type;
 } // namespace observer_detail
 } // namespace folly

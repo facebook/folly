@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,12 +27,17 @@
 #include <sys/un.h>
 
 #ifdef MSG_ERRQUEUE
+#define FOLLY_HAVE_MSG_ERRQUEUE 1
 /* for struct sock_extended_err*/
 #include <linux/errqueue.h>
 #endif
 
 #ifndef SO_EE_ORIGIN_ZEROCOPY
 #define SO_EE_ORIGIN_ZEROCOPY 5
+#endif
+
+#ifndef SO_EE_CODE_ZEROCOPY_COPIED
+#define SO_EE_CODE_ZEROCOPY_COPIED 1
 #endif
 
 #ifndef SO_ZEROCOPY

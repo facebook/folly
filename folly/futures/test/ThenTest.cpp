@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,40 @@ struct Widget {
     throw std::logic_error("unexpected move assignment");
   }
 };
+
+struct CountedWidget : Widget {
+  static std::vector<Widget*> instances_;
+  bool alive = true;
+  /* implicit */ CountedWidget(int v) : Widget(v) {
+    instances_.push_back(this);
+  }
+  CountedWidget(const CountedWidget& other) : Widget(other) {
+    instances_.push_back(this);
+  }
+  CountedWidget(CountedWidget&& other) noexcept(false)
+      : Widget(std::move(other)) {
+    other.alive = false;
+    other.remove();
+    instances_.push_back(this);
+  }
+  ~CountedWidget() {
+    if (alive) {
+      remove();
+    }
+  }
+
+ private:
+  CountedWidget& operator=(const CountedWidget&) = delete;
+  CountedWidget& operator=(CountedWidget&&) = delete;
+
+  void remove() {
+    auto iter = std::find(instances_.begin(), instances_.end(), this);
+    EXPECT_TRUE(iter != instances_.end());
+    instances_.erase(iter);
+  }
+};
+
+std::vector<Widget*> CountedWidget::instances_;
 } // namespace
 
 TEST(Then, tryConstructor) {
@@ -170,6 +204,29 @@ TEST(Then, constValue) {
       return w.v_;
     });
   EXPECT_EQ(future.value(), 23);
+}
+
+TEST(Then, objectAliveDuringImmediateNoParamContinuation) {
+  auto f = makeFuture<CountedWidget>(23);
+  auto called = false;
+  f.then([&] {
+    EXPECT_EQ(CountedWidget::instances_.size(), 1u);
+    EXPECT_EQ(CountedWidget::instances_[0]->v_, 23);
+    called = true;
+  });
+  EXPECT_EQ(true, called);
+}
+
+TEST(Then, objectAliveDuringDeferredNoParamContinuation) {
+  auto p = Promise<CountedWidget>{};
+  bool called = false;
+  p.getFuture().then([&] {
+    EXPECT_EQ(CountedWidget::instances_.size(), 1u);
+    EXPECT_EQ(CountedWidget::instances_[0]->v_, 23);
+    called = true;
+  });
+  p.setValue(CountedWidget{23});
+  EXPECT_EQ(true, called);
 }
 
 TEST(Then, voidThenShouldPropagateExceptions) {

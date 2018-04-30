@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,9 @@
 #include <iterator>
 #include <list>
 #include <memory>
+#include <string>
 
+#include <folly/Range.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -74,6 +76,27 @@ struct CountCopyCtor {
 
   int val_;
   int count_;
+};
+
+struct Opaque {
+  int value;
+  friend bool operator==(Opaque a, Opaque b) {
+    return a.value == b.value;
+  }
+  friend bool operator<(Opaque a, Opaque b) {
+    return a.value < b.value;
+  }
+  struct Compare : std::less<int>, std::less<Opaque> {
+    using is_transparent = void;
+    using std::less<int>::operator();
+    using std::less<Opaque>::operator();
+    bool operator()(int a, Opaque b) const {
+      return std::less<int>::operator()(a, b.value);
+    }
+    bool operator()(Opaque a, int b) const {
+      return std::less<int>::operator()(a.value, b);
+    }
+  };
 };
 
 } // namespace
@@ -143,6 +166,55 @@ TEST(SortedVectorTypes, SimpleSetTest) {
   EXPECT_TRUE(s != cpy);
   EXPECT_TRUE(s != cpy2);
   EXPECT_TRUE(cpy2 == cpy);
+}
+
+TEST(SortedVectorTypes, TransparentSetTest) {
+  using namespace folly::string_piece_literals;
+  using Compare = folly::transparent<std::less<folly::StringPiece>>;
+
+  constexpr auto buddy = "buddy"_sp;
+  constexpr auto hello = "hello"_sp;
+  constexpr auto stake = "stake"_sp;
+  constexpr auto world = "world"_sp;
+  constexpr auto zebra = "zebra"_sp;
+
+  sorted_vector_set<std::string, Compare> const s({hello.str(), world.str()});
+
+  // find
+  EXPECT_TRUE(s.end() == s.find(buddy));
+  EXPECT_EQ(hello, *s.find(hello));
+  EXPECT_TRUE(s.end() == s.find(stake));
+  EXPECT_EQ(world, *s.find(world));
+  EXPECT_TRUE(s.end() == s.find(zebra));
+
+  // count
+  EXPECT_EQ(0, s.count(buddy));
+  EXPECT_EQ(1, s.count(hello));
+  EXPECT_EQ(0, s.count(stake));
+  EXPECT_EQ(1, s.count(world));
+  EXPECT_EQ(0, s.count(zebra));
+
+  // lower_bound
+  EXPECT_TRUE(s.find(hello) == s.lower_bound(buddy));
+  EXPECT_TRUE(s.find(hello) == s.lower_bound(hello));
+  EXPECT_TRUE(s.find(world) == s.lower_bound(stake));
+  EXPECT_TRUE(s.find(world) == s.lower_bound(world));
+  EXPECT_TRUE(s.end() == s.lower_bound(zebra));
+
+  // upper_bound
+  EXPECT_TRUE(s.find(hello) == s.upper_bound(buddy));
+  EXPECT_TRUE(s.find(world) == s.upper_bound(hello));
+  EXPECT_TRUE(s.find(world) == s.upper_bound(stake));
+  EXPECT_TRUE(s.end() == s.upper_bound(world));
+  EXPECT_TRUE(s.end() == s.upper_bound(zebra));
+
+  // equal_range
+  for (auto value : {buddy, hello, stake, world, zebra}) {
+    EXPECT_TRUE(
+        std::make_pair(s.lower_bound(value), s.upper_bound(value)) ==
+        s.equal_range(value))
+        << value;
+  }
 }
 
 TEST(SortedVectorTypes, BadHints) {
@@ -219,6 +291,56 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   // Bad insert hint.
   m.insert(m.begin() + 3, std::make_pair(1 << 15, 1.0f));
   check_invariant(m);
+}
+
+TEST(SortedVectorTypes, TransparentMapTest) {
+  using namespace folly::string_piece_literals;
+  using Compare = folly::transparent<std::less<folly::StringPiece>>;
+
+  constexpr auto buddy = "buddy"_sp;
+  constexpr auto hello = "hello"_sp;
+  constexpr auto stake = "stake"_sp;
+  constexpr auto world = "world"_sp;
+  constexpr auto zebra = "zebra"_sp;
+
+  sorted_vector_map<std::string, float, Compare> const m(
+      {{hello.str(), -1.}, {world.str(), +1.}});
+
+  // find
+  EXPECT_TRUE(m.end() == m.find(buddy));
+  EXPECT_EQ(hello, m.find(hello)->first);
+  EXPECT_TRUE(m.end() == m.find(stake));
+  EXPECT_EQ(world, m.find(world)->first);
+  EXPECT_TRUE(m.end() == m.find(zebra));
+
+  // count
+  EXPECT_EQ(0, m.count(buddy));
+  EXPECT_EQ(1, m.count(hello));
+  EXPECT_EQ(0, m.count(stake));
+  EXPECT_EQ(1, m.count(world));
+  EXPECT_EQ(0, m.count(zebra));
+
+  // lower_bound
+  EXPECT_TRUE(m.find(hello) == m.lower_bound(buddy));
+  EXPECT_TRUE(m.find(hello) == m.lower_bound(hello));
+  EXPECT_TRUE(m.find(world) == m.lower_bound(stake));
+  EXPECT_TRUE(m.find(world) == m.lower_bound(world));
+  EXPECT_TRUE(m.end() == m.lower_bound(zebra));
+
+  // upper_bound
+  EXPECT_TRUE(m.find(hello) == m.upper_bound(buddy));
+  EXPECT_TRUE(m.find(world) == m.upper_bound(hello));
+  EXPECT_TRUE(m.find(world) == m.upper_bound(stake));
+  EXPECT_TRUE(m.end() == m.upper_bound(world));
+  EXPECT_TRUE(m.end() == m.upper_bound(zebra));
+
+  // equal_range
+  for (auto value : {buddy, hello, stake, world, zebra}) {
+    EXPECT_TRUE(
+        std::make_pair(m.lower_bound(value), m.upper_bound(value)) ==
+        m.equal_range(value))
+        << value;
+  }
 }
 
 TEST(SortedVectorTypes, Sizes) {
@@ -591,4 +713,13 @@ TEST(SortedVectorTypes, TestMapCreationFromVector) {
       {-1, 2}, {0, 3}, {1, 5}, {3, 1}, {5, 3},
   });
   EXPECT_EQ(contents, expected_contents);
+}
+
+TEST(SortedVectorTypes, TestBulkInsertionWithDuplicatesIntoEmptySet) {
+  sorted_vector_set<int> set;
+  {
+    std::vector<int> const vec = {0, 1, 0, 1};
+    set.insert(vec.begin(), vec.end());
+  }
+  EXPECT_THAT(set, testing::ElementsAreArray({0, 1}));
 }

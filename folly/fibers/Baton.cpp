@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "Baton.h"
+#include <folly/fibers/Baton.h>
 
 #include <chrono>
 
@@ -39,10 +39,6 @@ void Baton::wait(TimeoutHandler& timeoutHandler) {
   timeoutHandler.fiberManager_ = FiberManager::getFiberManagerUnsafe();
   wait();
   timeoutHandler.cancelTimeout();
-}
-
-bool Baton::timed_wait(TimeoutController::Duration timeout) {
-  return timed_wait(timeout, []() {});
 }
 
 void Baton::waitThread() {
@@ -157,8 +153,7 @@ void Baton::postHelper(intptr_t new_value) {
 }
 
 bool Baton::try_wait() {
-  auto state = waitingFiber_.load();
-  return state == POSTED;
+  return ready();
 }
 
 void Baton::postThread() {

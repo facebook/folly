@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -254,6 +254,7 @@ TEST(ExceptionWrapper, with_shared_ptr_test) {
   EXPECT_EQ(typeid(std::runtime_error), ew.type());
   EXPECT_NE(nullptr, ew.get_exception());
   EXPECT_NE(nullptr, ew.get_exception<std::exception>());
+  EXPECT_STREQ("foo", ew.get_exception<std::exception>()->what());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_FALSE(ew.has_exception_ptr());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
@@ -286,6 +287,7 @@ TEST(ExceptionWrapper, with_exception_ptr_exn_test) {
   EXPECT_EQ(typeid(std::runtime_error), ew.type());
   EXPECT_NE(nullptr, ew.get_exception());
   EXPECT_NE(nullptr, ew.get_exception<std::exception>());
+  EXPECT_STREQ("foo", ew.get_exception<std::exception>()->what());
   EXPECT_EQ(nullptr, ew.get_exception<int>());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
@@ -318,11 +320,12 @@ TEST(ExceptionWrapper, with_exception_ptr_any_test) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_NE(nullptr, ew.get_exception<int>());
+  EXPECT_EQ(12, *ew.get_exception<int>());
   EXPECT_TRUE(ew.has_exception_ptr());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ("int", ew.class_name());
-  EXPECT_EQ("int", ew.what());
+  EXPECT_EQ(demangle(typeid(int)), ew.class_name());
+  EXPECT_EQ(demangle(typeid(int)), ew.what());
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
@@ -348,13 +351,14 @@ TEST(ExceptionWrapper, with_non_std_exception_test) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_NE(nullptr, ew.get_exception<int>());
-  EXPECT_FALSE(ew.has_exception_ptr());
-  EXPECT_EQ("int", ew.class_name());
-  EXPECT_EQ("int", ew.what());
+  EXPECT_EQ(42, *ew.get_exception<int>());
+  EXPECT_TRUE(ew.has_exception_ptr());
+  EXPECT_EQ(demangle(typeid(int)), ew.class_name());
+  EXPECT_EQ(demangle(typeid(int)), ew.what());
   EXPECT_NE(nullptr, ew.to_exception_ptr());
   EXPECT_TRUE(ew.has_exception_ptr());
-  EXPECT_EQ("int", ew.class_name());
-  EXPECT_EQ("int", ew.what());
+  EXPECT_EQ(demangle(typeid(int)), ew.class_name());
+  EXPECT_EQ(demangle(typeid(int)), ew.what());
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_FALSE(ew.is_compatible_with<std::runtime_error>());
   EXPECT_TRUE(ew.is_compatible_with<int>());
@@ -381,6 +385,7 @@ TEST(ExceptionWrapper, with_exception_ptr_any_nil_test) {
   EXPECT_EQ(nullptr, ew.get_exception());
   EXPECT_EQ(nullptr, ew.get_exception<std::exception>());
   EXPECT_NE(nullptr, ew.get_exception<int>());
+  EXPECT_EQ(12, *ew.get_exception<int>());
   EXPECT_EQ(ep, ew.to_exception_ptr());
   EXPECT_EQ("<unknown exception>", ew.class_name()); // because concrete type is
   // erased

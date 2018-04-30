@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@
 
 #include <boost/iterator/iterator_adaptor.hpp>
 
-#include <folly/ContainerTraits.h>
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 
 /**
  * Code that aids in storing data aligned on block (possibly cache-line)
@@ -144,6 +144,33 @@ Node<T, NS, typename detail::NodeValid<T,NS>::type>::kPaddingBytes;
 template <class Iter> class Iterator;
 
 namespace detail {
+
+template <typename Void, typename Container, typename... Args>
+struct padded_emplace_back_or_push_back_ {
+  static decltype(auto) go(Container& container, Args&&... args) {
+    using Value = typename Container::value_type;
+    return container.push_back(Value(std::forward<Args>(args)...));
+  }
+};
+
+template <typename Container, typename... Args>
+struct padded_emplace_back_or_push_back_<
+    void_t<decltype(
+        std::declval<Container&>().emplace_back(std::declval<Args>()...))>,
+    Container,
+    Args...> {
+  static decltype(auto) go(Container& container, Args&&... args) {
+    return container.emplace_back(std::forward<Args>(args)...);
+  }
+};
+
+template <typename Container, typename... Args>
+decltype(auto) padded_emplace_back_or_push_back(
+    Container& container,
+    Args&&... args) {
+  using impl = padded_emplace_back_or_push_back_<void, Container, Args...>;
+  return impl::go(container, std::forward<Args>(args)...);
+}
 
 // Helper class to transfer the constness from From (a lvalue reference)
 // and create a lvalue reference to To.
@@ -495,7 +522,7 @@ class Adaptor {
  private:
   value_type* allocate_back() {
     if (lastCount_ == Node::kElementCount) {
-      container_emplace_back_or_push_back(c_);
+      detail::padded_emplace_back_or_push_back(c_);
       lastCount_ = 0;
     }
     return &c_.back().data()[lastCount_++];

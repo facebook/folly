@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +19,12 @@
 #include <algorithm>
 #include <cstring>
 
-#include <folly/memory/Malloc.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
 #include <cxxabi.h>
 
 // From libiberty
-//
-// TODO(tudorb): Detect this with autoconf for the open-source version.
 //
 // __attribute__((__weak__)) doesn't work, because cplus_demangle_v3_callback
 // is exported by an object file in libiberty.a, and the ELF spec says

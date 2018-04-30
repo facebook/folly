@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,7 +86,7 @@ template <> const char *const MaxString<__uint128_t>::value =
 // still not overflow uint16_t.
 constexpr int32_t OOR = 10000;
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift1[] = {
+alignas(16) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -115,7 +115,7 @@ FOLLY_ALIGNED(16) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift10[] = {
+alignas(16) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -144,7 +144,7 @@ FOLLY_ALIGNED(16) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift100[] = {
+alignas(16) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -173,7 +173,7 @@ FOLLY_ALIGNED(16) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-FOLLY_ALIGNED(16) constexpr uint16_t shift1000[] = {
+alignas(16) constexpr uint16_t shift1000[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -364,6 +364,22 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
     if (length == 0 ||
         (result == 0.0 && std::isspace((*src)[size_t(length) - 1]))) {
       return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
+    }
+    if (length >= 2) {
+      const char* suffix = src->data() + length - 1;
+      // double_conversion doesn't update length correctly when there is an
+      // incomplete exponent specifier. Converting "12e-f-g" shouldn't consume
+      // any more than "12", but it will consume "12e-".
+
+      // "123-" should only parse "123"
+      if (*suffix == '-' || *suffix == '+') {
+        --suffix;
+        --length;
+      }
+      // "12e-f-g" or "12euro" should only parse "12"
+      if (*suffix == 'e' || *suffix == 'E') {
+        --length;
+      }
     }
     src->advance(size_t(length));
     return Tgt(result);

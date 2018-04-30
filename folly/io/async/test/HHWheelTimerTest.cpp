@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -428,5 +428,29 @@ TEST_F(HHWheelTimerTest, IntrusivePtr) {
   T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(5));
   T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
   T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(10));
+  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+}
+
+TEST_F(HHWheelTimerTest, GetTimeRemaining) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+  TestTimeout t1;
+
+  // Not scheduled yet, time remaining should be zero
+  ASSERT_EQ(t1.getTimeRemaining(), milliseconds(0));
+  ASSERT_EQ(t.count(), 0);
+
+  // Scheduled, time remaining should be less than or equal to the scheduled
+  // timeout
+  t.scheduleTimeout(&t1, milliseconds(10));
+  ASSERT_LE(t1.getTimeRemaining(), milliseconds(10));
+
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+
+  // Expired and time remaining should be zero
+  ASSERT_EQ(t1.getTimeRemaining(), milliseconds(0));
+
+  ASSERT_EQ(t.count(), 0);
   T_CHECK_TIMEOUT(start, end, milliseconds(10));
 }

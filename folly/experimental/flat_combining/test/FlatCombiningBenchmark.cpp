@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,11 +71,11 @@ BENCHMARK_RELATIVE(no_combining_dup, iters) {
       tc,
       syncops);
 }
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 // dedicated combiner
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_notc_sync, iters) {
   fc = true;
@@ -109,7 +109,7 @@ BENCHMARK_RELATIVE(combining_dedicated_notc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_notc_async, iters) {
   syncops = false;
@@ -140,7 +140,7 @@ BENCHMARK_RELATIVE(combining_dedicated_notc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_tc_sync, iters) {
   tc = true;
@@ -172,7 +172,7 @@ BENCHMARK_RELATIVE(combining_dedicated_tc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_dedicated_tc_async, iters) {
   tc = true;
@@ -204,11 +204,11 @@ BENCHMARK_RELATIVE(combining_dedicated_tc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 // no dedicated combiner
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_notc_sync, iters) {
   dedicated = false;
@@ -241,7 +241,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_notc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_notc_async, iters) {
   syncops = false;
@@ -272,7 +272,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_notc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_tc_sync, iters) {
   tc = true;
@@ -304,7 +304,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_tc_sync_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK_RELATIVE(combining_no_dedicated_tc_async, iters) {
   tc = true;
@@ -336,7 +336,7 @@ BENCHMARK_RELATIVE(combining_no_dedicated_tc_async_dup, iters) {
       syncops);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 void benchmarkSetup() {
   int numCores = std::thread::hardware_concurrency();
@@ -366,10 +366,10 @@ TEST(FlatCombining, folly_benchmark) {
 
 static uint64_t test(
     std::string name,
-    bool fc,
-    bool dedicated,
-    bool tc,
-    bool syncops,
+    bool fc_,
+    bool dedicated_,
+    bool tc_,
+    bool syncops_,
     uint64_t base) {
   uint64_t min = UINTMAX_MAX;
   uint64_t max = 0;
@@ -382,11 +382,11 @@ static uint64_t test(
         FLAGS_numRecs,
         FLAGS_work,
         FLAGS_ops,
-        fc,
+        fc_,
         simple,
-        dedicated,
-        tc,
-        syncops);
+        dedicated_,
+        tc_,
+        syncops_);
     sum += dur;
     min = std::min(min, dur);
     max = std::max(max, dur);

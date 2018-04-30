@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,17 @@ namespace folly {
  * The LogName class contains utility functions for processing log category
  * names.  It primarily handles canonicalization of names.
  *
- * For instance, "foo.bar", "foo..bar", and ".foo.bar..." all refer to the same
- * log category.
+ * For instance, "foo.bar", "foo/bar", "foo..bar", and ".foo.bar..." all refer
+ * to the same log category.
  */
 class LogName {
  public:
   /**
    * Return a canonicalized version of the log name.
    *
-   * Leading and trailing '.' characters are removed, and all sequences of
-   * consecutive '.' characters are replaced with a single '.'
+   * '/' and '\\' characters are converted to '.', then leading and trailing
+   * '.' characters are removed, and all sequences of consecutive '.'
+   * characters are replaced with a single '.'
    */
   static std::string canonicalize(folly::StringPiece name);
 

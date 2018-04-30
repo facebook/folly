@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@
 
 #include <future>
 
-#include <folly/Baton.h>
 #include <folly/Executor.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 
@@ -116,20 +116,12 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
     runInEventBaseThread(std::move(f));
   }
 
-  /**
-   * Returns you a handle which prevents VirtualEventBase from being destroyed.
-   */
-  KeepAlive getKeepAliveToken() override {
-    keepAliveAcquire();
-    return makeKeepAlive();
-  }
-
   bool inRunningEventBaseThread() const {
     return evb_.inRunningEventBaseThread();
   }
 
  protected:
-  void keepAliveAcquire() override {
+  bool keepAliveAcquire() override {
     DCHECK(loopKeepAliveCount_ + loopKeepAliveCountAtomic_.load() > 0);
 
     if (evb_.inRunningEventBaseThread()) {
@@ -137,6 +129,7 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
     } else {
       ++loopKeepAliveCountAtomic_;
     }
+    return true;
   }
 
   void keepAliveRelease() override {

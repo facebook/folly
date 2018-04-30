@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 
 using folly::dynamic;
 
-#ifndef FOLLY_SANITIZE_ADDRESS
 // This test runs without any external dependencies, including json.
 // This means that if there's a test failure, there's no way to print
 // a useful runtime representation of the folly::dynamic.  We will
@@ -31,7 +30,6 @@ using folly::dynamic;
 void dynamic::print_as_pseudo_json(std::ostream& out) const {
   out << "<folly::dynamic object of type " << type_ << ">";
 }
-#endif
 
 TEST(Dynamic, Default) {
   dynamic obj;
@@ -103,8 +101,19 @@ TEST(Dynamic, ObjectBasics) {
 
   EXPECT_EQ(objInsert.find("1")->second.size(), 1);
 
-  // We don't allow objects as keys in objects.
-  EXPECT_ANY_THROW(newObject[d3] = 12);
+  // Looking up objects as keys
+  dynamic objDefinedInOneOrder = folly::dynamic::object
+    ("bar", "987")
+    ("baz", folly::dynamic::array(1, 2, 3))
+    ("foo2", folly::dynamic::object("1", "2"));
+  dynamic sameObjInDifferentOrder = folly::dynamic::object
+    ("bar", "987")
+    ("foo2", folly::dynamic::object("1", "2"))
+    ("baz", folly::dynamic::array(1, 2, 3));
+
+  newObject[objDefinedInOneOrder] = 12;
+  EXPECT_EQ(newObject.at(objDefinedInOneOrder).getInt(), 12);
+  EXPECT_EQ(newObject.at(sameObjInDifferentOrder).getInt(), 12);
 
   // Merge two objects
   dynamic origMergeObj1 = folly::dynamic::object();
@@ -624,4 +633,202 @@ TEST(Dynamic, ObjectIteratorInterop) {
   // Assign from non-const to const, preserve equality
   decltype(cit) cit2 = it2;
   EXPECT_EQ(cit, cit2);
+}
+
+TEST(Dynamic, MergePatchWithNonObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+
+  dynamic patch = dynamic::array(1, 2, 3);
+  target.merge_patch(patch);
+
+  EXPECT_TRUE(target.isArray());
+}
+
+TEST(Dynamic, MergePatchReplaceInFlatObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("a", "z");
+
+  target.merge_patch(patch);
+
+  EXPECT_EQ("z", target["a"].getString());
+  EXPECT_EQ("d", target["c"].getString());
+}
+
+TEST(Dynamic, MergePatchAddInFlatObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("e", "f");
+  target.merge_patch(patch);
+
+  EXPECT_EQ("b", target["a"].getString());
+  EXPECT_EQ("d", target["c"].getString());
+  EXPECT_EQ("f", target["e"].getString());
+}
+
+TEST(Dynamic, MergePatchReplaceInNestedObject) {
+  dynamic target = dynamic::object("a", dynamic::object("d", 10))("b", "c");
+  dynamic patch = dynamic::object("a", dynamic::object("d", 100));
+  target.merge_patch(patch);
+
+  EXPECT_EQ(100, target["a"]["d"].getInt());
+  EXPECT_EQ("c", target["b"].getString());
+}
+
+TEST(Dynamic, MergePatchAddInNestedObject) {
+  dynamic target = dynamic::object("a", dynamic::object("d", 10))("b", "c");
+  dynamic patch = dynamic::object("a", dynamic::object("e", "f"));
+
+  target.merge_patch(patch);
+
+  EXPECT_EQ(10, target["a"]["d"].getInt());
+  EXPECT_EQ("f", target["a"]["e"].getString());
+  EXPECT_EQ("c", target["b"].getString());
+}
+
+TEST(Dynamic, MergeNestePatch) {
+  dynamic target = dynamic::object("a", dynamic::object("d", 10))("b", "c");
+  dynamic patch = dynamic::object(
+      "a", dynamic::object("d", dynamic::array(1, 2, 3)))("b", 100);
+  target.merge_patch(patch);
+
+  EXPECT_EQ(100, target["b"].getInt());
+  {
+    auto ary = patch["a"]["d"];
+    ASSERT_TRUE(ary.isArray());
+    EXPECT_EQ(1, ary[0].getInt());
+    EXPECT_EQ(2, ary[1].getInt());
+    EXPECT_EQ(3, ary[2].getInt());
+  }
+}
+
+TEST(Dynamic, MergePatchRemoveInFlatObject) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("c", nullptr);
+  target.merge_patch(patch);
+
+  EXPECT_EQ("b", target["a"].getString());
+  EXPECT_EQ(0, target.count("c"));
+}
+
+TEST(Dynamic, MergePatchRemoveInNestedObject) {
+  dynamic target =
+      dynamic::object("a", dynamic::object("d", 10)("e", "f"))("b", "c");
+  dynamic patch = dynamic::object("a", dynamic::object("e", nullptr));
+  target.merge_patch(patch);
+
+  EXPECT_EQ(10, target["a"]["d"].getInt());
+  EXPECT_EQ(0, target["a"].count("e"));
+  EXPECT_EQ("c", target["b"].getString());
+}
+
+TEST(Dynamic, MergePatchRemoveNonExistent) {
+  dynamic target = dynamic::object("a", "b")("c", "d");
+  dynamic patch = dynamic::object("e", nullptr);
+  target.merge_patch(patch);
+
+  EXPECT_EQ("b", target["a"].getString());
+  EXPECT_EQ("d", target["c"].getString());
+  EXPECT_EQ(2, target.size());
+}
+
+TEST(Dynamic, MergeDiffFlatObjects) {
+  dynamic source = dynamic::object("a", 0)("b", 1)("c", 2);
+  dynamic target = dynamic::object("a", 1)("b", 2);
+  auto patch = dynamic::merge_diff(source, target);
+
+  EXPECT_EQ(3, patch.size());
+  EXPECT_EQ(1, patch["a"].getInt());
+  EXPECT_EQ(2, patch["b"].getInt());
+  EXPECT_TRUE(patch["c"].isNull());
+
+  source.merge_patch(patch);
+  EXPECT_EQ(source, target);
+}
+
+TEST(Dynamic, MergeDiffNestedObjects) {
+  dynamic source = dynamic::object("a", dynamic::object("b", 1)("c", 2))(
+      "d", dynamic::array(1, 2, 3));
+  dynamic target = dynamic::object("a", dynamic::object("b", 2))(
+      "d", dynamic::array(2, 3, 4));
+
+  auto patch = dynamic::merge_diff(source, target);
+
+  EXPECT_EQ(2, patch.size());
+  EXPECT_EQ(2, patch["a"].size());
+
+  EXPECT_EQ(2, patch["a"]["b"].getInt());
+  EXPECT_TRUE(patch["a"]["c"].isNull());
+
+  EXPECT_TRUE(patch["d"].isArray());
+  EXPECT_EQ(3, patch["d"].size());
+  EXPECT_EQ(2, patch["d"][0].getInt());
+  EXPECT_EQ(3, patch["d"][1].getInt());
+  EXPECT_EQ(4, patch["d"][2].getInt());
+
+  source.merge_patch(patch);
+  EXPECT_EQ(source, target);
+}
+
+using folly::json_pointer;
+
+TEST(Dynamic, JSONPointer) {
+  dynamic target = dynamic::object;
+  dynamic ary = dynamic::array("bar", "baz", dynamic::array("bletch", "xyzzy"));
+  target["foo"] = ary;
+  target[""] = 0;
+  target["a/b"] = 1;
+  target["c%d"] = 2;
+  target["e^f"] = 3;
+  target["g|h"] = 4;
+  target["i\\j"] = 5;
+  target["k\"l"] = 6;
+  target[" "] = 7;
+  target["m~n"] = 8;
+  target["xyz"] = dynamic::object;
+  target["xyz"][""] = dynamic::object("nested", "abc");
+  target["xyz"]["def"] = dynamic::array(1, 2, 3);
+  target["long_array"] = dynamic::array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+  target["-"] = dynamic::object("x", "y");
+
+  EXPECT_EQ(target, *target.get_ptr(json_pointer::parse("")));
+  EXPECT_EQ(ary, *(target.get_ptr(json_pointer::parse("/foo"))));
+  EXPECT_EQ("bar", target.get_ptr(json_pointer::parse("/foo/0"))->getString());
+  EXPECT_EQ(0, target.get_ptr(json_pointer::parse("/"))->getInt());
+  EXPECT_EQ(1, target.get_ptr(json_pointer::parse("/a~1b"))->getInt());
+  EXPECT_EQ(2, target.get_ptr(json_pointer::parse("/c%d"))->getInt());
+  EXPECT_EQ(3, target.get_ptr(json_pointer::parse("/e^f"))->getInt());
+  EXPECT_EQ(4, target.get_ptr(json_pointer::parse("/g|h"))->getInt());
+  EXPECT_EQ(5, target.get_ptr(json_pointer::parse("/i\\j"))->getInt());
+  EXPECT_EQ(6, target.get_ptr(json_pointer::parse("/k\"l"))->getInt());
+  EXPECT_EQ(7, target.get_ptr(json_pointer::parse("/ "))->getInt());
+  EXPECT_EQ(8, target.get_ptr(json_pointer::parse("/m~0n"))->getInt());
+  // empty key in path
+  EXPECT_EQ(
+      "abc", target.get_ptr(json_pointer::parse("/xyz//nested"))->getString());
+  EXPECT_EQ(3, target.get_ptr(json_pointer::parse("/xyz/def/2"))->getInt());
+  EXPECT_EQ("baz", ary.get_ptr(json_pointer::parse("/1"))->getString());
+  EXPECT_EQ("bletch", ary.get_ptr(json_pointer::parse("/2/0"))->getString());
+  // double-digit index
+  EXPECT_EQ(
+      12, target.get_ptr(json_pointer::parse("/long_array/11"))->getInt());
+  // allow '-' to index in objects
+  EXPECT_EQ("y", target.get_ptr(json_pointer::parse("/-/x"))->getString());
+
+  // invalid JSON pointers formatting when accessing array
+  EXPECT_THROW(
+      target.get_ptr(json_pointer::parse("/foo/01")), std::invalid_argument);
+
+  // non-existent keys/indexes
+  EXPECT_EQ(nullptr, ary.get_ptr(json_pointer::parse("/3")));
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/unknown_key")));
+  // intermediate key not found
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foox/test")));
+  // Intermediate key is '-'
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-/key")));
+
+  // invalid path in object (key in array)
+  EXPECT_THROW(
+      target.get_ptr(json_pointer::parse("/foo/1/bar")), folly::TypeError);
+
+  // Allow "-" index in the array
+  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-")));
 }

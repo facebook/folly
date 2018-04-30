@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,8 @@ using Func = Function<void()>;
 /// threadsafe.
 class Executor {
  public:
-  virtual ~Executor() = default;
+  // Workaround for a linkage problem with explicitly defaulted dtor t22914621
+  virtual ~Executor() {}
 
   /// Enqueue a function to executed by this executor. This and all
   /// variants must be threadsafe.
@@ -48,7 +49,7 @@ class Executor {
 
   class KeepAlive {
    public:
-    KeepAlive() {}
+    KeepAlive() : executor_(nullptr, Deleter(true)) {}
 
     void reset() {
       executor_.reset();
@@ -58,33 +59,50 @@ class Executor {
       return executor_ != nullptr;
     }
 
+    Executor* get() const {
+      return executor_.get();
+    }
+
    private:
     friend class Executor;
-    explicit KeepAlive(folly::Executor* executor) : executor_(executor) {}
+    KeepAlive(folly::Executor* executor, bool dummy)
+        : executor_(executor, Deleter(dummy)) {}
 
     struct Deleter {
+      explicit Deleter(bool dummy) : dummy_(dummy) {}
       void operator()(folly::Executor* executor) {
+        if (dummy_) {
+          return;
+        }
         executor->keepAliveRelease();
       }
+
+     private:
+      bool dummy_;
     };
     std::unique_ptr<folly::Executor, Deleter> executor_;
   };
 
   /// Returns a keep-alive token which guarantees that Executor will keep
-  /// processing tasks until the token is released.
-  ///
-  /// If executor does not support keep-alive functionality - dummy token will
-  /// be returned.
-  virtual KeepAlive getKeepAliveToken() {
-    return {};
+  /// processing tasks until the token is released (if supported by Executor).
+  /// KeepAlive always contains a valid pointer to an Executor.
+  KeepAlive getKeepAliveToken() {
+    if (keepAliveAcquire()) {
+      return makeKeepAlive();
+    }
+    return KeepAlive{this, true};
   }
 
  protected:
-  virtual void keepAliveAcquire();
+  // Acquire a keep alive token. Should return false if keep-alive mechanism
+  // is not supported.
+  virtual bool keepAliveAcquire();
+  // Release a keep alive token previously acquired by keepAliveAcquire().
+  // Will never be called if keepAliveAcquire() returns false.
   virtual void keepAliveRelease();
 
   KeepAlive makeKeepAlive() {
-    return KeepAlive{this};
+    return KeepAlive{this, false};
   }
 };
 

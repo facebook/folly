@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,9 +29,9 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>
-#include <folly/detail/AtomicUtils.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Semaphore.h>
+#include <folly/synchronization/detail/AtomicUtils.h>
 
 namespace folly {
 namespace test {
@@ -230,7 +230,7 @@ struct DeterministicAtomic {
       T v1,
       std::memory_order mo = std::memory_order_seq_cst) noexcept {
     return compare_exchange_strong(
-        v0, v1, mo, detail::default_failure_memory_order(mo));
+        v0, v1, mo, ::folly::detail::default_failure_memory_order(mo));
   }
   bool compare_exchange_strong(
       T& v0,
@@ -252,7 +252,7 @@ struct DeterministicAtomic {
       T v1,
       std::memory_order mo = std::memory_order_seq_cst) noexcept {
     return compare_exchange_weak(
-        v0, v1, mo, detail::default_failure_memory_order(mo));
+        v0, v1, mo, ::folly::detail::default_failure_memory_order(mo));
   }
   bool compare_exchange_weak(
       T& v0,
@@ -496,8 +496,8 @@ int Futex<test::DeterministicAtomic>::futexWake(int count, uint32_t wakeMask);
 template <>
 FutexResult Futex<test::DeterministicAtomic>::futexWaitImpl(
     uint32_t expected,
-    std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-    std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask);
 } // namespace detail
 

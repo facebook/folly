@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,7 @@
 
 #pragma once
 
-#include <string.h>
-
 #include <cstddef>
-#include <type_traits>
 
 #include <folly/portability/Config.h>
 
@@ -32,86 +29,10 @@ constexpr bool kHasUnalignedAccess = true;
 #else
 constexpr bool kHasUnalignedAccess = false;
 #endif
-
-namespace portability_detail {
-
-template <typename I, I A, I B>
-using integral_max = std::integral_constant<I, (A < B) ? B : A>;
-
-template <typename I, I A, I... Bs>
-struct integral_sequence_max
-    : integral_max<I, A, integral_sequence_max<I, Bs...>::value> {};
-
-template <typename I, I A>
-struct integral_sequence_max<I, A> : std::integral_constant<I, A> {};
-
-template <typename... Ts>
-using max_alignment = integral_sequence_max<size_t, alignof(Ts)...>;
-
-using max_basic_alignment = max_alignment<
-    std::max_align_t,
-    long double,
-    double,
-    float,
-    long long int,
-    long int,
-    int,
-    short int,
-    bool,
-    char,
-    char16_t,
-    char32_t,
-    wchar_t,
-    std::nullptr_t>;
-} // namespace portability_detail
-
-constexpr size_t max_align_v = portability_detail::max_basic_alignment::value;
-
-// max_align_t is a type which is aligned at least as strictly as the
-// most-aligned basic type (see the specification of std::max_align_t). This
-// implementation exists because 32-bit iOS platforms have a broken
-// std::max_align_t (see below).
-//
-// You should refer to this as `::folly::max_align_t` in portable code, even if
-// you have `using namespace folly;` because C11 defines a global namespace
-// `max_align_t` type.
-//
-// To be certain, we consider every non-void fundamental type specified by the
-// standard. On most platforms `long double` would be enough, but iOS 32-bit
-// has an 8-byte aligned `double` and `long long int` and a 4-byte aligned
-// `long double`.
-//
-// So far we've covered locals and other non-allocated storage, but we also need
-// confidence that allocated storage from `malloc`, `new`, etc will also be
-// suitable for objects with this alignment reuirement.
-//
-// Apple document that their implementation of malloc will issue 16-byte
-// granularity chunks for small allocations (large allocations are page-size
-// granularity and page-aligned). We think that allocated storage will be
-// suitable for these objects based on the following assumptions:
-//
-// 1. 16-byte granularity also means 16-byte aligned.
-// 2. `new` and other allocators follow the `malloc` rules.
-//
-// We also have some anecdotal evidence: we don't see lots of misaligned-storage
-// crashes on 32-bit iOS apps that use `double`.
-//
-// Apple's allocation reference: http://bit.ly/malloc-small
-struct alignas(max_align_v) max_align_t {};
-
 } // namespace folly
 
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
-
-#if defined(__clang__) || defined(__GNUC__)
-# define FOLLY_ALIGNED(size) __attribute__((__aligned__(size)))
-#elif defined(_MSC_VER)
-# define FOLLY_ALIGNED(size) __declspec(align(size))
-#else
-# error Cannot define FOLLY_ALIGNED on this platform
-#endif
-#define FOLLY_ALIGNED_MAX FOLLY_ALIGNED(::folly::max_align_v)
 
 // NOTE: this will only do checking in msvc with versions that support /analyze
 #if _MSC_VER
@@ -127,15 +48,6 @@ struct alignas(max_align_v) max_align_t {};
 # define FOLLY_PRINTF_FORMAT /**/
 # define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) \
   __attribute__((__format__(__printf__, format_param, dots_param)))
-#endif
-
-// deprecated
-#if defined(__clang__) || defined(__GNUC__)
-# define FOLLY_DEPRECATED(msg) __attribute__((__deprecated__(msg)))
-#elif defined(_MSC_VER)
-# define FOLLY_DEPRECATED(msg) __declspec(deprecated(msg))
-#else
-# define FOLLY_DEPRECATED(msg)
 #endif
 
 // warn unused result
@@ -168,6 +80,12 @@ struct alignas(max_align_v) max_align_t {};
 # define FOLLY_X64 0
 #endif
 
+#if defined(__arm__)
+#define FOLLY_ARM 1
+#else
+#define FOLLY_ARM 0
+#endif
+
 #if defined(__aarch64__)
 # define FOLLY_AARCH64 1
 #else
@@ -181,6 +99,7 @@ struct alignas(max_align_v) max_align_t {};
 #endif
 
 namespace folly {
+constexpr bool kIsArchArm = FOLLY_ARM == 1;
 constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
 constexpr bool kIsArchAArch64 = FOLLY_AARCH64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
@@ -198,6 +117,12 @@ constexpr bool kIsSanitizeAddress = false;
 constexpr bool kIsSanitizeThread = true;
 #else
 constexpr bool kIsSanitizeThread = false;
+#endif
+
+#if FOLLY_SANITIZE
+constexpr bool kIsSanitize = true;
+#else
+constexpr bool kIsSanitize = false;
 #endif
 } // namespace folly
 
@@ -240,11 +165,17 @@ constexpr bool kIsSanitizeThread = false;
 #endif
 
 #ifdef FOLLY_HAVE_SHADOW_LOCAL_WARNINGS
-#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS        \
+#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS            \
   FOLLY_GCC_DISABLE_WARNING("-Wshadow-compatible-local") \
-  FOLLY_GCC_DISABLE_WARNING("-Wshadow-local")
+  FOLLY_GCC_DISABLE_WARNING("-Wshadow-local")            \
+  FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 #else
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
+#endif
+
+// Globally disable -Wshadow for gcc < 5.
+#if __GNUC__ == 4 && !__clang__
+FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 #endif
 
 /* Platform specific TLS support
@@ -393,6 +324,12 @@ constexpr auto kIsObjC = true;
 constexpr auto kIsObjC = false;
 #endif
 
+#if FOLLY_MOBILE
+constexpr auto kIsMobile = true;
+#else
+constexpr auto kIsMobile = false;
+#endif
+
 #if defined(__linux__) && !FOLLY_MOBILE
 constexpr auto kIsLinux = true;
 #else
@@ -401,10 +338,28 @@ constexpr auto kIsLinux = false;
 
 #if defined(_WIN32)
 constexpr auto kIsWindows = true;
-constexpr auto kMscVer = _MSC_VER;
 #else
 constexpr auto kIsWindows = false;
+#endif
+
+#if _MSC_VER
+constexpr auto kMscVer = _MSC_VER;
+#else
 constexpr auto kMscVer = 0;
+#endif
+
+#if FOLLY_MICROSOFT_ABI_VER
+constexpr auto kMicrosoftAbiVer = FOLLY_MICROSOFT_ABI_VER;
+#else
+constexpr auto kMicrosoftAbiVer = 0;
+#endif
+
+// cpplib is an implementation of the standard library, and is the one typically
+// used with the msvc compiler
+#if _CPPLIB_VER
+constexpr auto kCpplibVer = _CPPLIB_VER;
+#else
+constexpr auto kCpplibVer = 0;
 #endif
 } // namespace folly
 
@@ -426,6 +381,37 @@ constexpr auto kMscVer = 0;
 #define FOLLY_CPP14_CONSTEXPR inline
 #endif
 
-#if __cpp_coroutines >= 201703L || (_MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED)
+//  MSVC does not permit:
+//
+//    extern int const num;
+//    constexpr int const num = 3;
+//
+//  Instead:
+//
+//    extern int const num;
+//    FOLLY_STORAGE_CONSTEXPR int const num = 3;
+//
+//  True for MSVC 2015 and MSVC 2017.
+#if _MSC_VER
+#define FOLLY_STORAGE_CONSTEXPR
+#define FOLLY_STORAGE_CPP14_CONSTEXPR
+#else
+#define FOLLY_STORAGE_CONSTEXPR constexpr
+#if FOLLY_USE_CPP14_CONSTEXPR
+#define FOLLY_STORAGE_CPP14_CONSTEXPR constexpr
+#else
+#define FOLLY_STORAGE_CPP14_CONSTEXPR
+#endif
+#endif
+
+#if __cpp_coroutines >= 201703L && FOLLY_HAS_INCLUDE(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
+#elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
+#define FOLLY_HAS_COROUTINES 1
+#endif
+
+// MSVC 2017.5 && C++17
+#if __cpp_noexcept_function_type >= 201510 || \
+    (_MSC_FULL_VER >= 191225816 && _MSVC_LANG > 201402)
+#define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
 #endif

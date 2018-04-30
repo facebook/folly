@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,12 @@
 #include <memory>
 #include <mutex>
 
-#include <folly/Baton.h>
 #include <folly/experimental/flat_combining/FlatCombining.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 
-struct Line {
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
+struct alignas(hardware_destructive_interference_size) Line {
   uint64_t val_;
 };
 

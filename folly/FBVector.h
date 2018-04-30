@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,8 +38,8 @@
 #include <folly/FormatTraits.h>
 #include <folly/Likely.h>
 #include <folly/Traits.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
-#include <folly/portability/BitsFunctexcept.h>
 
 //=============================================================================
 // forward declaration
@@ -90,13 +90,13 @@ class fbvector {
 
     // constructors
     Impl() : Allocator(), b_(nullptr), e_(nullptr), z_(nullptr) {}
-    /* implicit */ Impl(const Allocator& a)
-      : Allocator(a), b_(nullptr), e_(nullptr), z_(nullptr) {}
-    /* implicit */ Impl(Allocator&& a)
-      : Allocator(std::move(a)), b_(nullptr), e_(nullptr), z_(nullptr) {}
+    /* implicit */ Impl(const Allocator& alloc)
+      : Allocator(alloc), b_(nullptr), e_(nullptr), z_(nullptr) {}
+    /* implicit */ Impl(Allocator&& alloc)
+      : Allocator(std::move(alloc)), b_(nullptr), e_(nullptr), z_(nullptr) {}
 
-    /* implicit */ Impl(size_type n, const Allocator& a = Allocator())
-      : Allocator(a)
+    /* implicit */ Impl(size_type n, const Allocator& alloc = Allocator())
+      : Allocator(alloc)
       { init(n); }
 
     Impl(Impl&& other) noexcept
@@ -1073,7 +1073,8 @@ class fbvector {
   }
   const_reference at(size_type n) const {
     if (UNLIKELY(n >= size())) {
-      std::__throw_out_of_range("fbvector: index is greater than size.");
+      throw_exception<std::out_of_range>(
+          "fbvector: index is greater than size.");
     }
     return (*this)[n];
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,10 +53,10 @@ TEST(Symbolizer, Single) {
   }
 }
 
-FrameArray<100> goldenFrames;
+FrameArray<100>* framesToFill{nullptr};
 
 int comparator(const void* ap, const void* bp) {
-  getStackTrace(goldenFrames);
+  getStackTrace(*framesToFill);
 
   int a = *static_cast<const int*>(ap);
   int b = *static_cast<const int*>(bp);
@@ -66,10 +66,12 @@ int comparator(const void* ap, const void* bp) {
 // Test stack frames...
 FOLLY_NOINLINE void bar();
 
-void bar() {
+void bar(FrameArray<100>& frames) {
+  framesToFill = &frames;
   int a[2] = {1, 2};
   // Use qsort, which is in a different library
   qsort(a, 2, sizeof(int), comparator);
+  framesToFill = nullptr;
 }
 
 class ElfCacheTest : public testing::Test {
@@ -78,8 +80,10 @@ class ElfCacheTest : public testing::Test {
 };
 
 // Capture "golden" stack trace with default-configured Symbolizer
+FrameArray<100> goldenFrames;
+
 void ElfCacheTest::SetUp() {
-  bar();
+  bar(goldenFrames);
   Symbolizer symbolizer;
   symbolizer.symbolize(goldenFrames);
   // At least 3 stack frames from us + getStackTrace()
@@ -114,6 +118,22 @@ TEST_F(ElfCacheTest, SignalSafeElfCache) {
     runElfCacheTest(symbolizer);
   }
 }
+
+TEST(SymbolizerTest, SymbolCache) {
+  Symbolizer symbolizer(nullptr, Dwarf::LocationInfoMode::FULL, 100);
+
+  FrameArray<100> frames;
+  bar(frames);
+  symbolizer.symbolize(frames);
+
+  FrameArray<100> frames2;
+  bar(frames2);
+  symbolizer.symbolize(frames2);
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
+  }
+}
+
 } // namespace test
 } // namespace symbolizer
 } // namespace folly

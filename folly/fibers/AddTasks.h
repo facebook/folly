@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,9 +41,9 @@ class TaskIterator;
  * @return movable, non-copyable iterator
  */
 template <class InputIterator>
-TaskIterator<typename std::result_of<
-    typename std::iterator_traits<InputIterator>::value_type()>::
-                 type> inline addTasks(InputIterator first, InputIterator last);
+TaskIterator<invoke_result_t<
+    typename std::iterator_traits<InputIterator>::
+        value_type>> inline addTasks(InputIterator first, InputIterator last);
 
 template <typename T>
 class TaskIterator {
@@ -110,8 +110,8 @@ class TaskIterator {
 
  private:
   template <class InputIterator>
-  friend TaskIterator<typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type>
+  friend TaskIterator<
+      invoke_result_t<typename std::iterator_traits<InputIterator>::value_type>>
   addTasks(InputIterator first, InputIterator last);
 
   struct Context {

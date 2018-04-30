@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,49 +16,47 @@
 
 #pragma once
 
-#include <folly/LifoSem.h>
-#include <folly/Synchronized.h>
+#include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/task_queue/BlockingQueue.h>
-#include <queue>
+#include <folly/synchronization/LifoSem.h>
 
 namespace folly {
 
-// Warning: this is effectively just a std::deque wrapped in a single mutex
-// We are aiming to add a more performant concurrent unbounded queue in the
-// future, but this class is available if you must have an unbounded queue
-// and can tolerate any contention.
 template <class T>
 class UnboundedBlockingQueue : public BlockingQueue<T> {
  public:
   virtual ~UnboundedBlockingQueue() {}
 
-  void add(T item) override {
-    queue_.wlock()->push(std::move(item));
-    sem_.post();
+  bool add(T item) override {
+    queue_.enqueue(std::move(item));
+    return sem_.post();
   }
 
   T take() override {
-    while (true) {
-      {
-        auto ulockedQueue = queue_.ulock();
-        if (!ulockedQueue->empty()) {
-          auto wlockedQueue = ulockedQueue.moveFromUpgradeToWrite();
-          T item = std::move(wlockedQueue->front());
-          wlockedQueue->pop();
-          return item;
-        }
-      }
+    T item;
+    while (!queue_.try_dequeue(item)) {
       sem_.wait();
     }
+    return item;
+  }
+
+  folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
+    T item;
+    while (!queue_.try_dequeue(item)) {
+      if (!sem_.try_wait_for(time)) {
+        return folly::none;
+      }
+    }
+    return std::move(item);
   }
 
   size_t size() override {
-    return queue_.rlock()->size();
+    return queue_.size();
   }
 
  private:
   LifoSem sem_;
-  Synchronized<std::queue<T>> queue_;
+  UMPMCQueue<T, false, 6> queue_;
 };
 
 } // namespace folly

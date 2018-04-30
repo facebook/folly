@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 
 #include <memory>
 
-#include <folly/Executor.h>
 #include <folly/executors/GlobalExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
 
 namespace folly {
 
@@ -46,7 +46,7 @@ namespace folly {
  * parent executor is executing tasks.
  */
 
-class SerialExecutor : public folly::Executor {
+class SerialExecutor : public SequencedExecutor {
  public:
   ~SerialExecutor() override = default;
   SerialExecutor(SerialExecutor const&) = delete;

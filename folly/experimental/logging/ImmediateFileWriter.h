@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,13 @@ class ImmediateFileWriter : public LogWriter {
   using LogWriter::writeMessage;
   void writeMessage(folly::StringPiece buffer, uint32_t flags = 0) override;
   void flush() override;
+
+  /**
+   * Get the output file.
+   */
+  const folly::File& getFile() const {
+    return file_;
+  }
 
  private:
   ImmediateFileWriter(ImmediateFileWriter const&) = delete;

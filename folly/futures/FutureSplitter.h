@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,10 @@ namespace folly {
 
 /*
  * FutureSplitter provides a `getFuture()' method which can be called multiple
- * times, returning a new Future each time. These futures are called-back when
- * the original Future passed to the FutureSplitter constructor completes. Calls
- * to `getFuture()' after that time return a completed Future.
- *
- * Note that while the Futures from `getFuture()' depend on the completion of
- * the original Future they do not inherit any other properties such as
- * Executors passed to `via' etc.
+ * times, returning a new Future each time. These futures are completed when the
+ * original Future passed to the FutureSplitter constructor is completed, and
+ * are completed on the same executor (if any) as the original Future. Calls to
+ * `getFuture()' after that time return a completed Future.
  */
 template <class T>
 class FutureSplitter {
@@ -45,8 +42,9 @@ class FutureSplitter {
    * Provide a way to split a Future<T>.
    */
   explicit FutureSplitter(Future<T>&& future)
-      : promise_(std::make_shared<SharedPromise<T>>()) {
-    future.then([promise = promise_](Try<T> && theTry) {
+      : promise_(std::make_shared<SharedPromise<T>>()),
+        e_(getExecutorFrom(future)) {
+    future.then([promise = promise_](Try<T>&& theTry) {
       promise->setTry(std::move(theTry));
     });
   }
@@ -58,11 +56,29 @@ class FutureSplitter {
     if (promise_ == nullptr) {
       throwNoFutureInSplitter();
     }
-    return promise_->getFuture();
+    return promise_->getSemiFuture().via(e_);
+  }
+
+  /**
+   * This can be called an unlimited number of times per FutureSplitter.
+   */
+  SemiFuture<T> getSemiFuture() {
+    if (promise_ == nullptr) {
+      throwNoFutureInSplitter();
+    }
+    return promise_->getSemiFuture();
   }
 
  private:
   std::shared_ptr<SharedPromise<T>> promise_;
+  Executor* e_ = nullptr;
+
+  static Executor* getExecutorFrom(Future<T>& f) {
+    // If the passed future had a null executor, use an inline executor
+    // to ensure that .via is safe
+    auto* e = f.getExecutor();
+    return e ? e : &folly::InlineExecutor::instance();
+  }
 };
 
 /**

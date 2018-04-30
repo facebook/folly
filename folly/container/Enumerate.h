@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include <iterator>
 #include <memory>
 
+#include <folly/CPortability.h>
 #include <folly/portability/SysTypes.h>
 
 /**
@@ -28,7 +29,7 @@
  *
  * For example:
  *
- * for (auto it : folly::enumerate(vec)) {
+ * for (auto&& it : folly::enumerate(vec)) {
  *   // *it is a reference to the current element. Const if vec is const.
  *   // it->member can be used as well.
  *   // it.index contains the iteration count.
@@ -36,7 +37,7 @@
  *
  * If the iteration variable is const, the reference is too.
  *
- * for (const auto it : folly::enumerate(vec)) {
+ * for (const auto&& it : folly::enumerate(vec)) {
  *   // *it is always a const reference.
  * }
  *
@@ -64,11 +65,13 @@ struct MakeConst<T*> {
 // second overload will be SFINAEd out in that case. Otherwise, the
 // second is preferred in the partial order for getPointer(_, 0).
 template <class Iterator>
-auto getPointer(const Iterator& it, long) -> decltype(std::addressof(*it)) {
+FOLLY_ALWAYS_INLINE auto getPointer(const Iterator& it, long)
+    -> decltype(std::addressof(*it)) {
   return std::addressof(*it);
 }
 template <class Iterator>
-auto getPointer(const Iterator& it, int) -> decltype(it.operator->()) {
+FOLLY_ALWAYS_INLINE auto getPointer(const Iterator& it, int)
+    -> decltype(it.operator->()) {
   return it.operator->();
 }
 
@@ -85,21 +88,22 @@ class Enumerator {
     using pointer = typename std::iterator_traits<Iterator>::pointer;
     using iterator_category = std::input_iterator_tag;
 
-    explicit Proxy(const Enumerator* e) : it_(e->it_), index(e->idx_) {}
+    FOLLY_ALWAYS_INLINE explicit Proxy(const Enumerator& e)
+        : it_(e.it_), index(e.idx_) {}
 
     // Non-const Proxy: Forward constness from Iterator.
-    reference operator*() {
+    FOLLY_ALWAYS_INLINE reference operator*() {
       return *it_;
     }
-    pointer operator->() {
+    FOLLY_ALWAYS_INLINE pointer operator->() {
       return getPointer(it_, 0);
     }
 
     // Const Proxy: Force const references.
-    typename MakeConst<reference>::type operator*() const {
+    FOLLY_ALWAYS_INLINE typename MakeConst<reference>::type operator*() const {
       return *it_;
     }
-    typename MakeConst<pointer>::type operator->() const {
+    FOLLY_ALWAYS_INLINE typename MakeConst<pointer>::type operator->() const {
       return getPointer(it_, 0);
     }
 
@@ -110,24 +114,26 @@ class Enumerator {
     const size_t index;
   };
 
-  Proxy operator*() const {
-    return Proxy(this);
+  FOLLY_ALWAYS_INLINE Proxy operator*() const {
+    return Proxy(*this);
   }
 
-  Enumerator& operator++() {
+  FOLLY_ALWAYS_INLINE Enumerator& operator++() {
     ++it_;
     ++idx_;
     return *this;
   }
 
   template <typename OtherIterator>
-  bool operator==(const Enumerator<OtherIterator>& rhs) {
+  FOLLY_ALWAYS_INLINE bool operator==(
+      const Enumerator<OtherIterator>& rhs) const {
     return it_ == rhs.it_;
   }
 
   template <typename OtherIterator>
-  bool operator!=(const Enumerator<OtherIterator>& rhs) {
-    return !(*this == rhs);
+  FOLLY_ALWAYS_INLINE bool operator!=(
+      const Enumerator<OtherIterator>& rhs) const {
+    return !(it_ == rhs.it_);
   }
 
  private:

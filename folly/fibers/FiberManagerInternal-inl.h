@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -209,36 +209,42 @@ inline void FiberManager::loopUntilNoReadyImpl() {
     CHECK_EQ(this, originalFiberManager);
   };
 
-  bool hadRemoteFiber = true;
-  while (hadRemoteFiber) {
-    hadRemoteFiber = false;
-
+  bool hadRemote = true;
+  while (hadRemote) {
     while (!readyFibers_.empty()) {
       auto& fiber = readyFibers_.front();
       readyFibers_.pop_front();
       runReadyFiber(&fiber);
     }
 
-    remoteReadyQueue_.sweep([this, &hadRemoteFiber](Fiber* fiber) {
-      runReadyFiber(fiber);
-      hadRemoteFiber = true;
-    });
+    auto hadRemoteFiber = remoteReadyQueue_.sweepOnce(
+        [this](Fiber* fiber) { runReadyFiber(fiber); });
 
-    remoteTaskQueue_.sweep([this, &hadRemoteFiber](RemoteTask* taskPtr) {
-      std::unique_ptr<RemoteTask> task(taskPtr);
-      auto fiber = getFiber();
-      if (task->localData) {
-        fiber->localData_ = *task->localData;
-      }
-      fiber->rcontext_ = std::move(task->rcontext);
+    if (hadRemoteFiber) {
+      ++remoteCount_;
+    }
 
-      fiber->setFunction(std::move(task->func));
-      if (observer_) {
-        observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
-      }
-      runReadyFiber(fiber);
-      hadRemoteFiber = true;
-    });
+    auto hadRemoteTask =
+        remoteTaskQueue_.sweepOnce([this](RemoteTask* taskPtr) {
+          std::unique_ptr<RemoteTask> task(taskPtr);
+          auto fiber = getFiber();
+          if (task->localData) {
+            fiber->localData_ = *task->localData;
+          }
+          fiber->rcontext_ = std::move(task->rcontext);
+
+          fiber->setFunction(std::move(task->func));
+          if (observer_) {
+            observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
+          }
+          runReadyFiber(fiber);
+        });
+
+    if (hadRemoteTask) {
+      ++remoteCount_;
+    }
+
+    hadRemote = hadRemoteTask || hadRemoteFiber;
   }
 
   if (observer_) {
@@ -247,6 +253,16 @@ inline void FiberManager::loopUntilNoReadyImpl() {
     }
   }
   readyFibers_.splice(readyFibers_.end(), yieldedFibers_);
+}
+
+inline bool FiberManager::shouldRunLoopRemote() {
+  --remoteCount_;
+  return !remoteReadyQueue_.empty() || !remoteTaskQueue_.empty();
+}
+
+inline bool FiberManager::hasReadyTasks() const {
+  return !readyFibers_.empty() || !remoteReadyQueue_.empty() ||
+      !remoteTaskQueue_.empty();
 }
 
 // We need this to be in a struct, not inlined in addTask, because clang crashes
@@ -319,10 +335,9 @@ void FiberManager::addTaskRemote(F&& func) {
     }
     return std::make_unique<RemoteTask>(std::forward<F>(func));
   }();
-  auto insertHead = [&]() {
-    return remoteTaskQueue_.insertHead(task.release());
-  };
-  loopController_->scheduleThreadSafe(std::ref(insertHead));
+  if (remoteTaskQueue_.insertHead(task.release())) {
+    loopController_->scheduleThreadSafe();
+  }
 }
 
 template <typename X>
@@ -340,7 +355,7 @@ template <typename F, typename G>
 struct FiberManager::AddTaskFinallyHelper {
   class Func;
 
-  typedef typename std::result_of<F()>::type Result;
+  typedef invoke_result_t<F> Result;
 
   class Finally {
    public:
@@ -396,7 +411,7 @@ struct FiberManager::AddTaskFinallyHelper {
 
 template <typename F, typename G>
 void FiberManager::addTaskFinally(F&& func, G&& finally) {
-  typedef typename std::result_of<F()>::type Result;
+  typedef invoke_result_t<F> Result;
 
   static_assert(
       IsRvalueRefTry<typename FirstArgOf<G>::type>::value,
@@ -443,12 +458,12 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
 }
 
 template <typename F>
-typename std::result_of<F()>::type FiberManager::runInMainContext(F&& func) {
+invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
   if (UNLIKELY(activeFiber_ == nullptr)) {
     return func();
   }
 
-  typedef typename std::result_of<F()>::type Result;
+  typedef invoke_result_t<F> Result;
 
   folly::Try<Result> result;
   auto f = [&func, &result]() mutable {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@
 #include <vector>
 
 #include <folly/futures/Retrying.h>
+#include <folly/futures/test/TestExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
-#include "TestExecutor.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -96,6 +96,14 @@ TEST(RetryingTest, future_factory_throws) {
   EXPECT_THROW(result.throwIfFailed(), ThrownException);
 }
 
+TEST(RetryingTest, policy_throws) {
+  struct eggs : exception {};
+  auto r = futures::retrying(
+      [](size_t, exception_wrapper) -> bool { throw eggs(); },
+      [](size_t) -> Future<size_t> { throw std::runtime_error("ha"); });
+  EXPECT_THROW(r.get(), eggs);
+}
+
 TEST(RetryingTest, policy_future) {
   atomic<size_t> sleeps {0};
   auto r = futures::retrying(
@@ -141,6 +149,27 @@ TEST(RetryingTest, policy_capped_jittered_exponential_backoff) {
     ).wait();
     EXPECT_EQ(2, r.value());
   });
+}
+
+TEST(RetryingTest, policy_capped_jittered_exponential_backoff_many_retries) {
+  using namespace futures::detail;
+  mt19937_64 rng(0);
+  Duration min_backoff(1);
+
+  Duration max_backoff(10000000);
+  Duration backoff = retryingJitteredExponentialBackoffDur(
+      80, min_backoff, max_backoff, 0, rng);
+  EXPECT_EQ(backoff, max_backoff);
+
+  max_backoff = Duration(std::numeric_limits<int64_t>::max());
+  backoff = retryingJitteredExponentialBackoffDur(
+      63, min_backoff, max_backoff, 0, rng);
+  EXPECT_LT(backoff, max_backoff);
+
+  max_backoff = Duration(std::numeric_limits<int64_t>::max());
+  backoff = retryingJitteredExponentialBackoffDur(
+      64, min_backoff, max_backoff, 0, rng);
+  EXPECT_EQ(backoff, max_backoff);
 }
 
 TEST(RetryingTest, policy_sleep_defaults) {

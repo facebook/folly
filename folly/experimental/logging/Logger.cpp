@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ using std::string;
 
 namespace folly {
 
-Logger::Logger(StringPiece name) : Logger{LoggerDB::get()->getCategory(name)} {}
+Logger::Logger(StringPiece name) : Logger{LoggerDB::get().getCategory(name)} {}
 
 Logger::Logger(LogCategory* cat) : category_(cat) {}
 

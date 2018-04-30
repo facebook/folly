@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,13 +48,6 @@ TEST(SignalHandler, Simple) {
   installFatalSignalHandler();
   installFatalSignalCallbacks();
 
-#ifdef FOLLY_SANITIZE_ADDRESS
-  EXPECT_DEATH(
-      failHard(),
-      // Testing an ASAN-enabled binary evokes a different diagnostic.
-      // Use a regexp that requires only the first line of that output:
-      "^ASAN:SIGSEGV\n.*");
-#else
   EXPECT_DEATH(
       failHard(),
       "^\\*\\*\\* Aborted at [0-9]+ \\(Unix time, try 'date -d @[0-9]+'\\) "
@@ -71,8 +64,8 @@ TEST(SignalHandler, Simple) {
       ".*    @ [0-9a-f]+.* main.*\n"
       ".*\n"
       "Callback1\n"
-      "Callback2\n");
-#endif
+      "Callback2\n"
+      ".*");
 }
 } // namespace test
 } // namespace symbolizer

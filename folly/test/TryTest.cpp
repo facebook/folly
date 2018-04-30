@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ TEST(Try, MoveConstRvalue) {
   // and you want to fetch the value from the Try and move it into a member
   {
     const Try<MutableContainer> t{in_place};
-    auto val = MoveConstructOnly{std::move(t).value().val};
+    auto val = MoveConstructOnly(std::move(t).value().val);
     static_cast<void>(val);
   }
   {

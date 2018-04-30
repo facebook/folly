@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,16 @@
  */
 #pragma once
 
+#include <folly/functional/Invoke.h>
 #include <folly/futures/Promise.h>
 
 namespace folly {
 namespace fibers {
 
 template <typename F>
-auto FiberManager::addTaskFuture(F&& func) -> folly::Future<
-    typename folly::Unit::Lift<typename std::result_of<F()>::type>::type> {
-  using T = typename std::result_of<F()>::type;
+auto FiberManager::addTaskFuture(F&& func)
+    -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type> {
+  using T = invoke_result_t<F>;
   using FutureT = typename folly::Unit::Lift<T>::type;
 
   folly::Promise<FutureT> p;
@@ -37,11 +38,9 @@ auto FiberManager::addTaskFuture(F&& func) -> folly::Future<
 }
 
 template <typename F>
-auto FiberManager::addTaskRemoteFuture(F&& func) -> folly::Future<
-    typename folly::Unit::Lift<typename std::result_of<F()>::type>::type> {
-  folly::Promise<
-      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type>
-      p;
+auto FiberManager::addTaskRemoteFuture(F&& func)
+    -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type> {
+  folly::Promise<typename folly::Unit::Lift<invoke_result_t<F>>::type> p;
   auto f = p.getFuture();
   addTaskRemote(
       [ p = std::move(p), func = std::forward<F>(func), this ]() mutable {

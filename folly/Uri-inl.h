@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #include <tuple>
 
 #include <folly/Conv.h>
-#include <folly/Hash.h>
+#include <folly/hash/Hash.h>
 
 namespace folly {
 

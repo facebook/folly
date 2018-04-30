@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,6 +68,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
+  joinKeepAlive();
   stop();
   CHECK(threadsToStop_ == 0);
 }
@@ -102,6 +103,10 @@ void CPUThreadPoolExecutor::add(
 
 uint8_t CPUThreadPoolExecutor::getNumPriorities() const {
   return taskQueue_->getNumPriorities();
+}
+
+size_t CPUThreadPoolExecutor::getTaskQueueSize() const {
+  return taskQueue_->size();
 }
 
 BlockingQueue<CPUThreadPoolExecutor::CPUTask>*
@@ -149,8 +154,7 @@ void CPUThreadPoolExecutor::stopThreads(size_t n) {
 }
 
 // threadListLock_ is readlocked
-uint64_t CPUThreadPoolExecutor::getPendingTaskCountImpl(
-    const folly::RWSpinLock::ReadHolder&) {
+uint64_t CPUThreadPoolExecutor::getPendingTaskCountImpl() {
   return taskQueue_->size();
 }
 

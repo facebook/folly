@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,14 @@
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/experimental/logging/LoggerDB.h>
+#include <folly/system/ThreadName.h>
 
 using folly::File;
 using folly::StringPiece;
 
 namespace folly {
+
+constexpr size_t AsyncFileWriter::kDefaultMaxBufferSize;
 
 AsyncFileWriter::AsyncFileWriter(StringPiece path)
     : AsyncFileWriter{File{path.str(), O_WRONLY | O_APPEND | O_CREAT}} {}
@@ -79,7 +82,19 @@ void AsyncFileWriter::flush() {
   }
 }
 
+void AsyncFileWriter::setMaxBufferSize(size_t size) {
+  auto data = data_.lock();
+  data->maxBufferBytes = size;
+}
+
+size_t AsyncFileWriter::getMaxBufferSize() const {
+  auto data = data_.lock();
+  return data->maxBufferBytes;
+}
+
 void AsyncFileWriter::ioThread() {
+  folly::setThreadName("log_writer");
+
   while (true) {
     // With the lock held, grab a pointer to the current queue, then increment
     // the ioThreadCounter index so that other threads will write into the

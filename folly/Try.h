@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #include <folly/ExceptionWrapper.h>
@@ -22,6 +21,7 @@
 #include <folly/Portability.h>
 #include <folly/Unit.h>
 #include <folly/Utility.h>
+#include <folly/functional/Invoke.h>
 #include <exception>
 #include <stdexcept>
 #include <type_traits>
@@ -29,12 +29,12 @@
 
 namespace folly {
 
-class TryException : public std::logic_error {
+class FOLLY_EXPORT TryException : public std::logic_error {
  public:
   using std::logic_error::logic_error;
 };
 
-class UsingUninitializedTry : public TryException {
+class FOLLY_EXPORT UsingUninitializedTry : public TryException {
  public:
   UsingUninitializedTry() : TryException("Using uninitialized try") {}
 };
@@ -112,7 +112,7 @@ class Try {
    *
    * @param ep The exception_pointer. Will be rethrown.
    */
-  FOLLY_DEPRECATED("use Try(exception_wrapper)")
+  [[deprecated("use Try(exception_wrapper)")]]
   explicit Try(std::exception_ptr ep)
       : contains_(Contains::EXCEPTION),
         e_(exception_wrapper::from_exception_ptr(ep)) {}
@@ -374,7 +374,7 @@ class Try<void> {
    *
    * @param ep The exception_pointer. Will be rethrown.
    */
-  FOLLY_DEPRECATED("use Try(exception_wrapper)")
+  [[deprecated("use Try(exception_wrapper)")]]
   explicit Try(std::exception_ptr ep)
       : hasValue_(false), e_(exception_wrapper::from_exception_ptr(ep)) {}
 
@@ -528,8 +528,8 @@ class Try<void> {
  */
 template <typename F>
 typename std::enable_if<
-  !std::is_same<typename std::result_of<F()>::type, void>::value,
-  Try<typename std::result_of<F()>::type>>::type
+    !std::is_same<invoke_result_t<F>, void>::value,
+    Try<invoke_result_t<F>>>::type
 makeTryWith(F&& f);
 
 /*
@@ -540,10 +540,9 @@ makeTryWith(F&& f);
  * @returns Try<void> holding the result of f
  */
 template <typename F>
-typename std::enable_if<
-  std::is_same<typename std::result_of<F()>::type, void>::value,
-  Try<void>>::type
-makeTryWith(F&& f);
+typename std::
+    enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
+    makeTryWith(F&& f);
 
 /**
  * Tuple<Try<Type>...> -> std::tuple<Type...>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@
 #include <sys/types.h>
 
 #include <algorithm>
-#include <deque>
 #include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <utility>
 
+#include <boost/intrusive/slist.hpp>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/Likely.h>
@@ -67,6 +67,15 @@ namespace folly {
  */
 template <typename MessageT>
 class NotificationQueue {
+  struct Node : public boost::intrusive::slist_base_hook<
+                    boost::intrusive::cache_last<true>> {
+    template <typename MessageTT>
+    Node(MessageTT&& msg, std::shared_ptr<RequestContext> ctx)
+        : msg_(std::forward<MessageTT>(msg)), ctx_(std::move(ctx)) {}
+    MessageT msg_;
+    std::shared_ptr<RequestContext> ctx_;
+  };
+
  public:
   /**
    * A callback interface for consuming messages from the queue as they arrive.
@@ -76,9 +85,9 @@ class NotificationQueue {
     enum : uint16_t { kDefaultMaxReadAtOnce = 10 };
 
     Consumer()
-      : queue_(nullptr),
-        destroyedFlagPtr_(nullptr),
-        maxReadAtOnce_(kDefaultMaxReadAtOnce) {}
+        : queue_(nullptr),
+          destroyedFlagPtr_(nullptr),
+          maxReadAtOnce_(kDefaultMaxReadAtOnce) {}
 
     // create a consumer in-place, without the need to build new class
     template <typename TCallback>
@@ -254,19 +263,17 @@ class NotificationQueue {
    * In this case the code will fall back to using a pipe, the parameter is
    * mostly for testing purposes.
    */
-  explicit NotificationQueue(uint32_t maxSize = 0,
+  explicit NotificationQueue(
+      uint32_t maxSize = 0,
 #ifdef FOLLY_HAVE_EVENTFD
-                             FdType fdType = FdType::EVENTFD)
+      FdType fdType = FdType::EVENTFD)
 #else
-                             FdType fdType = FdType::PIPE)
+      FdType fdType = FdType::PIPE)
 #endif
       : eventfd_(-1),
         pipeFds_{-1, -1},
         advisoryMaxQueueSize_(maxSize),
-        pid_(pid_t(getpid())),
-        queue_() {
-
-    RequestContext::saveContext();
+        pid_(pid_t(getpid())) {
 
 #ifdef FOLLY_HAVE_EVENTFD
     if (fdType == FdType::EVENTFD) {
@@ -310,6 +317,11 @@ class NotificationQueue {
   }
 
   ~NotificationQueue() {
+    std::unique_ptr<Node> data;
+    while (!queue_.empty()) {
+      data.reset(&queue_.front());
+      queue_.pop_front();
+    }
     if (eventfd_ >= 0) {
       ::close(eventfd_);
       eventfd_ = -1;
@@ -411,18 +423,21 @@ class NotificationQueue {
     SCOPE_EXIT { syncSignalAndQueue(); };
 
     checkPid();
+    std::unique_ptr<Node> data;
 
-    folly::SpinLockGuard g(spinlock_);
+    {
+      folly::SpinLockGuard g(spinlock_);
 
-    if (UNLIKELY(queue_.empty())) {
-      return false;
+      if (UNLIKELY(queue_.empty())) {
+        return false;
+      }
+
+      data.reset(&queue_.front());
+      queue_.pop_front();
     }
 
-    auto& data = queue_.front();
-    result = std::move(data.first);
-    RequestContext::setContext(std::move(data.second));
-
-    queue_.pop_front();
+    result = std::move(data->msg_);
+    RequestContext::setContext(std::move(data->ctx_));
 
     return true;
   }
@@ -570,6 +585,8 @@ class NotificationQueue {
     checkPid();
     bool signal = false;
     {
+      auto data = std::make_unique<Node>(
+          std::forward<MessageTT>(message), RequestContext::saveContext());
       folly::SpinLockGuard g(spinlock_);
       if (checkDraining(throws) || !checkQueueSize(maxSize, throws)) {
         return false;
@@ -579,8 +596,7 @@ class NotificationQueue {
       if (numActiveConsumers_ < numConsumers_) {
         signal = true;
       }
-      queue_.emplace_back(
-          std::forward<MessageTT>(message), RequestContext::saveContext());
+      queue_.push_back(*data.release());
       if (signal) {
         ensureSignalLocked();
       }
@@ -593,21 +609,30 @@ class NotificationQueue {
                        std::input_iterator_tag) {
     checkPid();
     bool signal = false;
-    size_t numAdded = 0;
-    {
+    boost::intrusive::slist<Node, boost::intrusive::cache_last<true>> q;
+    try {
+      while (first != last) {
+        auto data = std::make_unique<Node>(
+            std::move(*first), RequestContext::saveContext());
+        q.push_back(*data.release());
+        ++first;
+      }
       folly::SpinLockGuard g(spinlock_);
       checkDraining();
-      while (first != last) {
-        queue_.emplace_back(*first, RequestContext::saveContext());
-        ++first;
-        ++numAdded;
-      }
+      queue_.splice(queue_.end(), q);
       if (numActiveConsumers_ < numConsumers_) {
         signal = true;
       }
       if (signal) {
         ensureSignalLocked();
       }
+    } catch (...) {
+      std::unique_ptr<Node> data;
+      while (!q.empty()) {
+        data.reset(&q.front());
+        q.pop_front();
+      }
+      throw;
     }
   }
 
@@ -617,7 +642,7 @@ class NotificationQueue {
   int pipeFds_[2]; // to fallback to on older/non-linux systems
   uint32_t advisoryMaxQueueSize_;
   pid_t pid_;
-  std::deque<std::pair<MessageT, std::shared_ptr<RequestContext>>> queue_;
+  boost::intrusive::slist<Node, boost::intrusive::cache_last<true>> queue_;
   int numConsumers_{0};
   std::atomic<int> numActiveConsumers_{0};
   bool draining_{false};
@@ -653,7 +678,9 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       queue_->syncSignalAndQueue();
     }
   };
-  SCOPE_EXIT { setActive(false, /* shouldLock = */ true); };
+  SCOPE_EXIT {
+    setActive(false, /* shouldLock = */ true);
+  };
   SCOPE_EXIT {
     if (numConsumed != nullptr) {
       *numConsumed = numProcessed;
@@ -680,10 +707,8 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       }
 
       // Pull a message off the queue.
-      auto& data = queue_->queue_.front();
-
-      MessageT msg(std::move(data.first));
-      RequestContextScopeGuard rctx(std::move(data.second));
+      std::unique_ptr<Node> data;
+      data.reset(&queue_->queue_.front());
       queue_->queue_.pop_front();
 
       // Check to see if the queue is empty now.
@@ -696,13 +721,15 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
 
       // Now unlock the spinlock before we invoke the callback.
       queue_->spinlock_.unlock();
+      RequestContextScopeGuard rctx(std::move(data->ctx_));
+
       locked = false;
 
       // Call the callback
       bool callbackDestroyed = false;
       CHECK(destroyedFlagPtr_ == nullptr);
       destroyedFlagPtr_ = &callbackDestroyed;
-      messageAvailable(std::move(msg));
+      messageAvailable(std::move(data->msg_));
       destroyedFlagPtr_ = nullptr;
 
       // If the callback was destroyed before it returned, we are done

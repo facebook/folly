@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,16 +66,20 @@ void moveTopException(StackTraceStack& from, StackTraceStack& to) {
 
 struct Initializer {
   Initializer() {
-    registerCxaThrowCallback(
-        [](void*, std::type_info*, void (*)(void*)) { addActiveException(); });
+    registerCxaThrowCallback([](
+        void*, std::type_info*, void (*)(void*)) noexcept {
+      addActiveException();
+    });
 
-    registerCxaBeginCatchCallback(
-        [](void*) { moveTopException(activeExceptions, caughtExceptions); });
+    registerCxaBeginCatchCallback([](void*) noexcept {
+      moveTopException(activeExceptions, caughtExceptions);
+    });
 
-    registerCxaRethrowCallback(
-        []() { moveTopException(caughtExceptions, activeExceptions); });
+    registerCxaRethrowCallback([]() noexcept {
+      moveTopException(caughtExceptions, activeExceptions);
+    });
 
-    registerCxaEndCatchCallback([]() {
+    registerCxaEndCatchCallback([]() noexcept {
       if (invalid) {
         return;
       }
@@ -97,8 +101,9 @@ struct Initializer {
       }
     });
 
-    registerRethrowExceptionCallback(
-        [](std::exception_ptr) { addActiveException(); });
+    registerRethrowExceptionCallback([](std::exception_ptr) noexcept {
+      addActiveException();
+    });
 
     try {
       ::folly::exception_tracer::installHandlers();

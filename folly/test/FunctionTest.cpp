@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -174,6 +174,25 @@ static_assert(
         Function<int(short)>,
         Function<short(int) const>>::value,
     "");
+
+static_assert(
+    !std::is_constructible<Function<int const&()>, int (*)()>::value,
+    "");
+
+static_assert(
+    !std::is_constructible<Function<int const&() const>, int (*)()>::value,
+    "");
+
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+static_assert(
+    !std::is_constructible<Function<int const&() noexcept>, int (*)()>::value,
+    "");
+
+static_assert(
+    !std::is_constructible<Function<int const&() const noexcept>, int (*)()>::
+        value,
+    "");
+#endif
 
 // TEST =====================================================================
 // InvokeFunctor & InvokeReference
@@ -1094,4 +1113,8 @@ TEST(Function, CtorWithCopy) {
   auto ly = [y = Y()]{};
   EXPECT_TRUE(noexcept(Function<void()>(lx)));
   EXPECT_FALSE(noexcept(Function<void()>(ly)));
+}
+
+TEST(Function, Bug_T23346238) {
+  const Function<void()> nullfun;
 }

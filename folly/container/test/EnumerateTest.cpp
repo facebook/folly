@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,38 +22,6 @@
 #include <folly/container/Enumerate.h>
 #include <folly/portability/GTest.h>
 
-TEST(Enumerate, Basic) {
-  std::vector<std::string> v = {"abc", "a", "ab"};
-  size_t i = 0;
-  for (auto it : folly::enumerate(v)) {
-    EXPECT_EQ(it.index, i);
-    EXPECT_EQ(*it, v[i]);
-    EXPECT_EQ(it->size(), v[i].size());
-
-    // Test mutability.
-    std::string newValue = "x";
-    *it = newValue;
-    EXPECT_EQ(newValue, v[i]);
-
-    ++i;
-  }
-
-  EXPECT_EQ(i, v.size());
-}
-
-TEST(Enumerate, Temporary) {
-  std::vector<std::string> v = {"abc", "a", "ab"};
-  size_t i = 0;
-  for (auto it : folly::enumerate(decltype(v)(v))) { // Copy v.
-    EXPECT_EQ(it.index, i);
-    EXPECT_EQ(*it, v[i]);
-    EXPECT_EQ(it->size(), v[i].size());
-    ++i;
-  }
-
-  EXPECT_EQ(i, v.size());
-};
-
 namespace {
 
 template <class T>
@@ -67,12 +35,57 @@ struct IsConstReference<const T&> {
 
 } // namespace
 
-TEST(Enumerate, BasicConstArg) {
-  const std::vector<std::string> v = {"abc", "a", "ab"};
+#define ENUMERATE_TEST_BASIC(DECL, NAME)             \
+  TEST(Enumerate, NAME) {                            \
+    std::vector<std::string> v = {"abc", "a", "ab"}; \
+    size_t i = 0;                                    \
+    for (DECL it : folly::enumerate(v)) {            \
+      EXPECT_EQ(it.index, i);                        \
+      EXPECT_EQ(*it, v[i]);                          \
+      EXPECT_EQ(it->size(), v[i].size());            \
+                                                     \
+      /* Test mutability. */                         \
+      std::string newValue = "x";                    \
+      *it = newValue;                                \
+      EXPECT_EQ(newValue, v[i]);                     \
+                                                     \
+      ++i;                                           \
+    }                                                \
+                                                     \
+    EXPECT_EQ(i, v.size());                          \
+  }
+
+ENUMERATE_TEST_BASIC(auto, Basic)
+ENUMERATE_TEST_BASIC(auto&&, BasicRRef)
+
+#undef ENUMERATE_TEST_BASIC
+
+#define ENUMERATE_TEST_BASIC_CONST(DECL, NAME)                          \
+  TEST(Enumerate, NAME) {                                               \
+    std::vector<std::string> v = {"abc", "a", "ab"};                    \
+    size_t i = 0;                                                       \
+    for (DECL it : folly::enumerate(v)) {                               \
+      static_assert(                                                    \
+          IsConstReference<decltype(*it)>::value, "Const enumeration"); \
+      EXPECT_EQ(it.index, i);                                           \
+      EXPECT_EQ(*it, v[i]);                                             \
+      EXPECT_EQ(it->size(), v[i].size());                               \
+      ++i;                                                              \
+    }                                                                   \
+                                                                        \
+    EXPECT_EQ(i, v.size());                                             \
+  }
+
+ENUMERATE_TEST_BASIC_CONST(const auto, BasicConst)
+ENUMERATE_TEST_BASIC_CONST(const auto&, BasicConstRef)
+ENUMERATE_TEST_BASIC_CONST(const auto&&, BasicConstRRef)
+
+#undef ENUMERATE_TEST_BASIC_CONST
+
+TEST(Enumerate, Temporary) {
+  std::vector<std::string> v = {"abc", "a", "ab"};
   size_t i = 0;
-  for (auto it : folly::enumerate(v)) {
-    static_assert(
-        IsConstReference<decltype(*it)>::value, "Enumerating a const vector");
+  for (auto&& it : folly::enumerate(decltype(v)(v))) { // Copy v.
     EXPECT_EQ(it.index, i);
     EXPECT_EQ(*it, v[i]);
     EXPECT_EQ(it->size(), v[i].size());
@@ -82,11 +95,12 @@ TEST(Enumerate, BasicConstArg) {
   EXPECT_EQ(i, v.size());
 }
 
-TEST(Enumerate, BasicConstEnumerate) {
-  std::vector<std::string> v = {"abc", "a", "ab"};
+TEST(Enumerate, BasicConstArg) {
+  const std::vector<std::string> v = {"abc", "a", "ab"};
   size_t i = 0;
-  for (const auto it : folly::enumerate(v)) {
-    static_assert(IsConstReference<decltype(*it)>::value, "Const enumeration");
+  for (auto&& it : folly::enumerate(v)) {
+    static_assert(
+        IsConstReference<decltype(*it)>::value, "Enumerating a const vector");
     EXPECT_EQ(it.index, i);
     EXPECT_EQ(*it, v[i]);
     EXPECT_EQ(it->size(), v[i].size());
@@ -99,7 +113,7 @@ TEST(Enumerate, BasicConstEnumerate) {
 TEST(Enumerate, TemporaryConstEnumerate) {
   std::vector<std::string> v = {"abc", "a", "ab"};
   size_t i = 0;
-  for (const auto it : folly::enumerate(decltype(v)(v))) { // Copy v.
+  for (const auto&& it : folly::enumerate(decltype(v)(v))) { // Copy v.
     static_assert(IsConstReference<decltype(*it)>::value, "Const enumeration");
     EXPECT_EQ(it.index, i);
     EXPECT_EQ(*it, v[i]);
@@ -113,7 +127,7 @@ TEST(Enumerate, TemporaryConstEnumerate) {
 TEST(Enumerate, RangeSupport) {
   std::vector<std::string> v = {"abc", "a", "ab"};
   size_t i = 0;
-  for (const auto it : folly::enumerate(folly::range(v))) {
+  for (const auto&& it : folly::enumerate(folly::range(v))) {
     EXPECT_EQ(it.index, i);
     EXPECT_EQ(*it, v[i]);
     EXPECT_EQ(it->size(), v[i].size());
@@ -125,7 +139,7 @@ TEST(Enumerate, RangeSupport) {
 
 TEST(Enumerate, EmptyRange) {
   std::vector<std::string> v;
-  for (auto it : folly::enumerate(v)) {
+  for (auto&& it : folly::enumerate(v)) {
     (void)it; // Silence warnings.
     ADD_FAILURE();
   }
@@ -137,7 +151,7 @@ class CStringRange {
  public:
   struct Sentinel {};
 
-  explicit CStringRange(const char* cstr) : cstr(cstr) {}
+  explicit CStringRange(const char* cstr_) : cstr(cstr_) {}
 
   const char* begin() const {
     return cstr;
@@ -155,13 +169,13 @@ TEST(Enumerate, Cpp17Support) {
   std::array<char, 5> test = {"test"};
   // Can't use range based for loop until C++17, so test manually
   // Equivalent to:
-  // for (const auto it : folly::enumerate(CStringRange{test.data()})) { ... }
+  // for (const auto&& it : folly::enumerate(CStringRange{test.data()})) { ... }
   {
     auto&& enumerate = folly::enumerate(CStringRange{test.data()});
     auto begin = enumerate.begin();
     auto end = enumerate.end();
     for (; begin != end; ++begin) {
-      const auto it = *begin;
+      const auto&& it = *begin;
 
       ASSERT_LT(it.index, test.size());
       EXPECT_EQ(*it, test[it.index]);

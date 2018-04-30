@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,16 +22,16 @@
 #include <cinttypes>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <type_traits>
-
-#include <boost/iterator/iterator_facade.hpp>
 
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/lang/Ordering.h>
 #include <folly/portability/SysUio.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
@@ -1423,21 +1423,52 @@ struct IOBufHash {
 };
 
 /**
- * Equality predicate for IOBuf objects. Compares data in the entire chain.
+ * Ordering for IOBuf objects. Compares data in the entire chain.
  */
-struct IOBufEqual {
-  bool operator()(const IOBuf& a, const IOBuf& b) const;
-  bool operator()(const std::unique_ptr<IOBuf>& a,
-                  const std::unique_ptr<IOBuf>& b) const {
-    if (!a && !b) {
-      return true;
-    } else if (!a || !b) {
-      return false;
-    } else {
-      return (*this)(*a, *b);
-    }
+struct IOBufCompare {
+  ordering operator()(const IOBuf& a, const IOBuf& b) const;
+  ordering operator()(
+      const std::unique_ptr<IOBuf>& a,
+      const std::unique_ptr<IOBuf>& b) const {
+    // clang-format off
+    return
+        !a && !b ? ordering::eq :
+        !a && b ? ordering::lt :
+        a && !b ? ordering::gt :
+        operator()(*a, *b);
+    // clang-format on
   }
 };
+
+/**
+ * Equality predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufEqualTo : compare_equal_to<IOBufCompare> {};
+
+/**
+ * Inequality predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufNotEqualTo : compare_not_equal_to<IOBufCompare> {};
+
+/**
+ * Less predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufLess : compare_less<IOBufCompare> {};
+
+/**
+ * At-most predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufLessEqual : compare_less_equal<IOBufCompare> {};
+
+/**
+ * Greater predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufGreater : compare_greater<IOBufCompare> {};
+
+/**
+ * At-least predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufGreaterEqual : compare_greater_equal<IOBufCompare> {};
 
 template <class UniquePtr>
 typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
@@ -1479,13 +1510,14 @@ inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(const std::string& buf,
   return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
 }
 
-class IOBuf::Iterator : public boost::iterator_facade<
-    IOBuf::Iterator,  // Derived
-    const ByteRange,  // Value
-    boost::forward_traversal_tag  // Category or traversal
-  > {
-  friend class boost::iterator_core_access;
+class IOBuf::Iterator {
  public:
+  using difference_type = ssize_t;
+  using value_type = ByteRange;
+  using reference = ByteRange const&;
+  using pointer = ByteRange const*;
+  using iterator_category = std::forward_iterator_tag;
+
   // Note that IOBufs are stored as a circular list without a guard node,
   // so pos == end is ambiguous (it may mean "begin" or "end").  To solve
   // the ambiguity (at the cost of one extra comparison in the "increment"
@@ -1501,6 +1533,44 @@ class IOBuf::Iterator : public boost::iterator_facade<
   }
 
   Iterator() {}
+
+  Iterator(Iterator const& rhs) : Iterator(rhs.pos_, rhs.end_) {}
+
+  Iterator& operator=(Iterator const& rhs) {
+    pos_ = rhs.pos_;
+    end_ = rhs.end_;
+    if (pos_) {
+      setVal();
+    }
+    return *this;
+  }
+
+  Iterator& operator++() {
+    increment();
+    return *this;
+  }
+
+  Iterator operator++(int) {
+    Iterator ret(*this);
+    ++*this;
+    return ret;
+  }
+
+  ByteRange const& operator*() const {
+    return dereference();
+  }
+
+  ByteRange const* operator->() const {
+    return &dereference();
+  }
+
+  bool operator==(Iterator const& rhs) const {
+    return equal(rhs);
+  }
+
+  bool operator!=(Iterator const& rhs) const {
+    return !equal(rhs);
+  }
 
  private:
   void setVal() {

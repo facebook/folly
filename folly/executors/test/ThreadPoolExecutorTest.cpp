@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,13 @@
 #include <memory>
 #include <thread>
 
+#include <folly/Exception.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
+#include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
 
@@ -426,18 +428,34 @@ TEST(ThreadPoolExecutorTest, BlockingQueue) {
 }
 
 TEST(PriorityThreadFactoryTest, ThreadPriority) {
+  errno = 0;
+  auto currentPriority = getpriority(PRIO_PROCESS, 0);
+  if (errno != 0) {
+    throwSystemError("failed to get current priority");
+  }
+
+  // Non-root users can only increase the priority value.  Make sure we are
+  // trying to go to a higher priority than we are currently running as, up to
+  // the maximum allowed of 20.
+  int desiredPriority = std::min(20, currentPriority + 1);
+
   PriorityThreadFactory factory(
-      std::make_shared<NamedThreadFactory>("stuff"), 1);
+      std::make_shared<NamedThreadFactory>("stuff"), desiredPriority);
   int actualPriority = -21;
   factory.newThread([&]() { actualPriority = getpriority(PRIO_PROCESS, 0); })
       .join();
-  EXPECT_EQ(1, actualPriority);
+  EXPECT_EQ(desiredPriority, actualPriority);
 }
 
 class TestData : public folly::RequestData {
  public:
   explicit TestData(int data) : data_(data) {}
   ~TestData() override {}
+
+  bool hasCallback() override {
+    return false;
+  }
+
   int data_;
 };
 
@@ -451,14 +469,14 @@ TEST(ThreadPoolExecutorTest, RequestContext) {
   EXPECT_EQ(42, dynamic_cast<TestData*>(data)->data_);
 
   executor.add([] {
-    auto data = RequestContext::get()->getContextData("test");
-    ASSERT_TRUE(data != nullptr);
-    EXPECT_EQ(42, dynamic_cast<TestData*>(data)->data_);
+    auto data2 = RequestContext::get()->getContextData("test");
+    ASSERT_TRUE(data2 != nullptr);
+    EXPECT_EQ(42, dynamic_cast<TestData*>(data2)->data_);
   });
 }
 
 struct SlowMover {
-  explicit SlowMover(bool slow = false) : slow(slow) {}
+  explicit SlowMover(bool slow_ = false) : slow(slow_) {}
   SlowMover(SlowMover&& other) noexcept {
     *this = std::move(other);
   }
@@ -473,10 +491,11 @@ struct SlowMover {
   bool slow;
 };
 
-TEST(ThreadPoolExecutorTest, BugD3527722) {
+template <typename Q>
+void bugD3527722_test() {
   // Test that the queue does not get stuck if writes are completed in
   // order opposite to how they are initiated.
-  LifoSemMPMCQueue<SlowMover> q(1024);
+  Q q(1024);
   std::atomic<int> turn{};
 
   std::thread consumer1([&] {
@@ -508,6 +527,19 @@ TEST(ThreadPoolExecutorTest, BugD3527722) {
   producer2.join();
   consumer1.join();
   consumer2.join();
+}
+
+TEST(ThreadPoolExecutorTest, LifoSemMPMCQueueBugD3527722) {
+  bugD3527722_test<LifoSemMPMCQueue<SlowMover>>();
+}
+
+template <typename T>
+struct UBQ : public UnboundedBlockingQueue<T> {
+  explicit UBQ(int) {}
+};
+
+TEST(ThreadPoolExecutorTest, UnboundedBlockingQueueBugD3527722) {
+  bugD3527722_test<UBQ<SlowMover>>();
 }
 
 template <typename TPE, typename ERR_T>
@@ -595,4 +627,27 @@ TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestIO) {
 
 TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestCPU) {
   resizeThreadWhileExecutingTest<CPUThreadPoolExecutor>();
+}
+
+template <typename TPE>
+void keepAliveTest() {
+  auto executor = std::make_unique<TPE>(4);
+
+  auto f =
+      futures::sleep(std::chrono::milliseconds{100})
+          .via(executor.get())
+          .then([keepAlive = executor->getKeepAliveToken()] { return 42; });
+
+  executor.reset();
+
+  EXPECT_TRUE(f.isReady());
+  EXPECT_EQ(42, f.get());
+}
+
+TEST(ThreadPoolExecutorTest, KeepAliveTestIO) {
+  keepAliveTest<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, KeepAliveTestCPU) {
+  keepAliveTest<CPUThreadPoolExecutor>();
 }

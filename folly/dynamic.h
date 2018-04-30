@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +65,7 @@
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
+#include <folly/json_pointer.h>
 
 namespace folly {
 
@@ -375,6 +376,16 @@ struct dynamic : private boost::operators<dynamic> {
   dynamic&&      at(dynamic const&) &&;
 
   /*
+   * Locate element using JSON pointer, per RFC 6901. Returns nullptr if
+   * element could not be located. Throws if pointer does not match the
+   * shape of the document, e.g. uses string to index in array.
+   */
+  const dynamic* get_ptr(json_pointer const&) const&;
+  dynamic* get_ptr(json_pointer const&) &;
+  const dynamic* get_ptr(json_pointer const&) const&& = delete;
+  dynamic* get_ptr(json_pointer const&) && = delete;
+
+  /*
    * Like 'at', above, except it returns either a pointer to the contained
    * object or nullptr if it wasn't found. This allows a key to be tested for
    * containment and retrieved in one operation. Example:
@@ -392,14 +403,16 @@ struct dynamic : private boost::operators<dynamic> {
   /*
    * This works for access to both objects and arrays.
    *
-   * In the case of an array, the index must be an integer, and this will throw
-   * std::out_of_range if it is less than zero or greater than size().
+   * In the case of an array, the index must be an integer, and this
+   * will throw std::out_of_range if it is less than zero or greater
+   * than size().
    *
    * In the case of an object, the non-const overload inserts a null
    * value if the key isn't present.  The const overload will throw
    * std::out_of_range if the key is not present.
    *
-   * These functions do not invalidate iterators.
+   * These functions do not invalidate iterators except when a null value
+   * is inserted into an object as described above.
    */
   dynamic&       operator[](dynamic const&) &;
   dynamic const& operator[](dynamic const&) const&;
@@ -464,6 +477,17 @@ struct dynamic : private boost::operators<dynamic> {
   void update(const dynamic& mergeObj);
   void update_missing(const dynamic& other);
   static dynamic merge(const dynamic& mergeObj1, const dynamic& mergeObj2);
+
+  /*
+   * Implement recursive version of RFC7386: JSON merge patch. This modifies
+   * the current object.
+   */
+  void merge_patch(const dynamic& patch);
+
+  /*
+   * Computes JSON merge patch (RFC7386) needed to mutate from source to target
+   */
+  static dynamic merge_diff(const dynamic& source, const dynamic& target);
 
   /*
    * Erase an element from a dynamic object, by key.

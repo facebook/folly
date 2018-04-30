@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,8 @@
 namespace folly { namespace detail {
 
 EventBaseLocalBase::~EventBaseLocalBase() {
-  for (auto* evb : *eventBases_.rlock()) {
+  auto locked = eventBases_.rlock();
+  for (auto* evb : *locked) {
     evb->runInEventBaseThread([ this, evb, key = key_ ] {
       evb->localStorage_.erase(key);
       evb->localStorageToDtor_.erase(this);
@@ -42,17 +43,13 @@ void EventBaseLocalBase::erase(EventBase& evb) {
   evb.localStorage_.erase(key_);
   evb.localStorageToDtor_.erase(this);
 
-  SYNCHRONIZED(eventBases_) {
-    eventBases_.erase(&evb);
-  }
+  eventBases_.wlock()->erase(&evb);
 }
 
 void EventBaseLocalBase::onEventBaseDestruction(EventBase& evb) {
   evb.dcheckIsInEventBaseThread();
 
-  SYNCHRONIZED(eventBases_) {
-    eventBases_.erase(&evb);
-  }
+  eventBases_.wlock()->erase(&evb);
 }
 
 void EventBaseLocalBase::setVoid(EventBase& evb, std::shared_ptr<void>&& ptr) {

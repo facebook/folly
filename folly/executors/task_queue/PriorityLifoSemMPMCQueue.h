@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
 #pragma once
 
 #include <folly/Executor.h>
-#include <folly/LifoSem.h>
 #include <folly/MPMCQueue.h>
+#include <folly/Range.h>
 #include <folly/executors/task_queue/BlockingQueue.h>
+#include <folly/synchronization/LifoSem.h>
+#include <glog/logging.h>
 
 namespace folly {
 
@@ -36,16 +38,25 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
     }
   }
 
+  PriorityLifoSemMPMCQueue(folly::Range<const size_t*> capacities) {
+    CHECK_LT(capacities.size(), 256) << "At most 255 priorities supported";
+
+    queues_.reserve(capacities.size());
+    for (auto capacity : capacities) {
+      queues_.emplace_back(capacity);
+    }
+  }
+
   uint8_t getNumPriorities() override {
     return queues_.size();
   }
 
   // Add at medium priority by default
-  void add(T item) override {
-    addWithPriority(std::move(item), folly::Executor::MID_PRI);
+  bool add(T item) override {
+    return addWithPriority(std::move(item), folly::Executor::MID_PRI);
   }
 
-  void addWithPriority(T item, int8_t priority) override {
+  bool addWithPriority(T item, int8_t priority) override {
     int mid = getNumPriorities() / 2;
     size_t queue = priority < 0
         ? std::max(0, mid + priority)
@@ -61,7 +72,7 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
         queues_[queue].blockingWrite(std::move(item));
         break;
     }
-    sem_.post();
+    return sem_.post();
   }
 
   T take() override {
@@ -71,6 +82,18 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
         return item;
       }
       sem_.wait();
+    }
+  }
+
+  folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
+    T item;
+    while (true) {
+      if (nonBlockingTake(item)) {
+        return std::move(item);
+      }
+      if (!sem_.try_wait_for(time)) {
+        return folly::none;
+      }
     }
   }
 

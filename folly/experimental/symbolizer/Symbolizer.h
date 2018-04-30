@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,11 @@
 #include <string>
 
 #include <folly/FBString.h>
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/String.h>
+#include <folly/Synchronized.h>
+#include <folly/container/EvictingCacheMap.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
@@ -122,8 +125,8 @@ class Symbolizer {
 
   explicit Symbolizer(
       ElfCacheBase* cache,
-      Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode);
-
+      Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode,
+      size_t symbolCacheSize = 0);
   /**
    * Symbolize given addresses.
    */
@@ -148,6 +151,9 @@ class Symbolizer {
  private:
   ElfCacheBase* const cache_;
   const Dwarf::LocationInfoMode mode_;
+
+  using SymbolCache = EvictingCacheMap<uintptr_t, SymbolizedFrame>;
+  folly::Optional<Synchronized<SymbolCache>> symbolCache_;
 };
 
 /**
@@ -208,6 +214,12 @@ class SymbolizePrinter {
       println(fa.addresses + skip, fa.frames + skip, fa.frameCount - skip);
     }
   }
+
+  /**
+   * If output buffered inside this class, send it to the output stream, so that
+   * any output done in other ways appears after this.
+   */
+  virtual void flush() {}
 
   virtual ~SymbolizePrinter() {}
 
@@ -276,7 +288,7 @@ class FDSymbolizePrinter : public SymbolizePrinter {
  public:
   explicit FDSymbolizePrinter(int fd, int options = 0, size_t bufferSize = 0);
   ~FDSymbolizePrinter() override;
-  void flush();
+  virtual void flush() override;
 
  private:
   void doPrint(StringPiece sp) override;
@@ -328,7 +340,7 @@ class StringSymbolizePrinter : public SymbolizePrinter {
  * descriptor is more important than performance.
  *
  * Make sure to create one of these on startup, not in the signal handler, as
- * the constructo allocates on the heap, whereas the other methods don't.  Best
+ * the constructor allocates on the heap, whereas the other methods don't.  Best
  * practice is to just leak this object, rather than worry about destruction
  * order.
  *
@@ -336,11 +348,11 @@ class StringSymbolizePrinter : public SymbolizePrinter {
  * threads at the same time, you need to do your own locking to ensure you don't
  * call these methods from multiple threads.  They are signal safe, however.
  */
-class StackTracePrinter {
+class SafeStackTracePrinter {
  public:
   static constexpr size_t kDefaultMinSignalSafeElfCacheSize = 500;
 
-  explicit StackTracePrinter(
+  explicit SafeStackTracePrinter(
       size_t minSignalSafeElfCacheSize = kDefaultMinSignalSafeElfCacheSize,
       int fd = STDERR_FILENO);
 
@@ -348,6 +360,9 @@ class StackTracePrinter {
    * Only allocates on the stack and is signal-safe but not thread-safe.  Don't
    * call printStackTrace() on the same StackTracePrinter object from multiple
    * threads at the same time.
+   *
+   * This is NOINLINE to make sure it shows up in the stack we grab, which makes
+   * it easy to skip printing it.
    */
   FOLLY_NOINLINE void printStackTrace(bool symbolize);
 
@@ -367,5 +382,38 @@ class StackTracePrinter {
   std::unique_ptr<FrameArray<kMaxStackTraceDepth>> addresses_;
 };
 
+/**
+ * Use this class to print a stack trace from normal code.  It will malloc and
+ * won't flush or sync.
+ *
+ * These methods are thread safe, through locking.  However, they are not signal
+ * safe.
+ */
+class FastStackTracePrinter {
+ public:
+  static constexpr size_t kDefaultSymbolCacheSize = 10000;
+
+  explicit FastStackTracePrinter(
+      std::unique_ptr<SymbolizePrinter> printer,
+      size_t elfCacheSize = 0, // 0 means "use the default elf cache instance."
+      size_t symbolCacheSize = kDefaultSymbolCacheSize);
+
+  ~FastStackTracePrinter();
+
+  /**
+   * This is NOINLINE to make sure it shows up in the stack we grab, which makes
+   * it easy to skip printing it.
+   */
+  FOLLY_NOINLINE void printStackTrace(bool symbolize);
+
+  void flush();
+
+ private:
+  static constexpr size_t kMaxStackTraceDepth = 100;
+
+  const std::unique_ptr<ElfCache> elfCache_;
+  const std::unique_ptr<SymbolizePrinter> printer_;
+  Symbolizer symbolizer_;
+};
 } // namespace symbolizer
 } // namespace folly

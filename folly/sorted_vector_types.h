@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <iterator>
 #include <stdexcept>
@@ -68,13 +69,28 @@
 #include <vector>
 
 #include <boost/operators.hpp>
-#include <folly/portability/BitsFunctexcept.h>
+
+#include <folly/Traits.h>
+#include <folly/Utility.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
+
+template <typename, typename Compare, typename Key, typename T>
+struct sorted_vector_enable_if_is_transparent {};
+
+template <typename Compare, typename Key, typename T>
+struct sorted_vector_enable_if_is_transparent<
+    void_t<typename Compare::is_transparent>,
+    Compare,
+    Key,
+    T> {
+  using type = T;
+};
 
 // This wrapper goes around a GrowthPolicy and provides iterator
 // preservation semantics, but only if the growth policy is not the
@@ -168,16 +184,23 @@ void bulk_insert(
   }
   if (middle != cont.begin() && !cmp(*(middle - 1), *middle)) {
     std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
-    cont.erase(
-        std::unique(
-            cont.begin(),
-            cont.end(),
-            [&](typename OurContainer::value_type const& a,
-                typename OurContainer::value_type const& b) {
-              return !cmp(a, b) && !cmp(b, a);
-            }),
-        cont.end());
   }
+  cont.erase(
+      std::unique(
+          cont.begin(),
+          cont.end(),
+          [&](typename OurContainer::value_type const& a,
+              typename OurContainer::value_type const& b) {
+            return !cmp(a, b) && !cmp(b, a);
+          }),
+      cont.end());
+}
+
+template <typename Container, typename Compare>
+Container&& as_sorted(Container&& container, Compare const& comp) {
+  using namespace std;
+  std::sort(begin(container), end(container), comp);
+  return static_cast<Container&&>(container);
 }
 } // namespace detail
 
@@ -185,7 +208,7 @@ void bulk_insert(
 
 /**
  * A sorted_vector_set is a container similar to std::set<>, but
- * implemented as as a sorted array with std::vector<>.
+ * implemented as a sorted array with std::vector<>.
  *
  * @param class T               Data type to store
  * @param class Compare         Comparison function that imposes a
@@ -201,16 +224,18 @@ template <
     class T,
     class Compare = std::less<T>,
     class Allocator = std::allocator<T>,
-    class GrowthPolicy = void>
+    class GrowthPolicy = void,
+    class Container = std::vector<T, Allocator>>
 class sorted_vector_set
-  : boost::totally_ordered1<
-      sorted_vector_set<T,Compare,Allocator,GrowthPolicy>
-    , detail::growth_policy_wrapper<GrowthPolicy> >
-{
-  typedef std::vector<T,Allocator> ContainerT;
-
+    : boost::totally_ordered1<
+          sorted_vector_set<T, Compare, Allocator, GrowthPolicy>,
+          detail::growth_policy_wrapper<GrowthPolicy>> {
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
+
+  template <typename K, typename V, typename C = Compare>
+  using if_is_transparent =
+      _t<detail::sorted_vector_enable_if_is_transparent<void, C, K, V>>;
 
  public:
   typedef T       value_type;
@@ -218,20 +243,20 @@ class sorted_vector_set
   typedef Compare key_compare;
   typedef Compare value_compare;
 
-  typedef typename ContainerT::pointer                pointer;
-  typedef typename ContainerT::reference              reference;
-  typedef typename ContainerT::const_reference        const_reference;
+  typedef typename Container::pointer pointer;
+  typedef typename Container::reference reference;
+  typedef typename Container::const_reference const_reference;
   /*
    * XXX: Our normal iterator ought to also be a constant iterator
    * (cf. Defect Report 103 for std::set), but this is a bit more of a
    * pain.
    */
-  typedef typename ContainerT::iterator               iterator;
-  typedef typename ContainerT::const_iterator         const_iterator;
-  typedef typename ContainerT::difference_type        difference_type;
-  typedef typename ContainerT::size_type              size_type;
-  typedef typename ContainerT::reverse_iterator       reverse_iterator;
-  typedef typename ContainerT::const_reverse_iterator const_reverse_iterator;
+  typedef typename Container::iterator iterator;
+  typedef typename Container::const_iterator const_iterator;
+  typedef typename Container::difference_type difference_type;
+  typedef typename Container::size_type size_type;
+  typedef typename Container::reverse_iterator reverse_iterator;
+  typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
   explicit sorted_vector_set(const Compare& comp = Compare(),
                              const Allocator& alloc = Allocator())
@@ -266,13 +291,31 @@ class sorted_vector_set
   // those performed by the caller. (The iterator range constructor performs at
   // least one allocation).
   //
-  // Note that `sorted_vector_set(const ContainerT& container)` is not provided,
+  // Note that `sorted_vector_set(const Container& container)` is not provided,
   // since the purpose of this constructor is to avoid an unnecessary copy.
   explicit sorted_vector_set(
-      ContainerT&& container,
+      Container&& container,
+      const Compare& comp = Compare())
+      : sorted_vector_set(
+            presorted,
+            detail::as_sorted(std::move(container), comp),
+            comp) {}
+
+  // Construct a sorted_vector_set by stealing the storage of a prefilled
+  // container. The container must be sorted, as presorted_t hints. Supports
+  // bulk construction of sorted_vector_set with zero allocations, not counting
+  // those performed by the caller. (The iterator range constructor performs at
+  // least one allocation).
+  //
+  // Note that `sorted_vector_set(presorted_t, const Container& container)` is
+  // not provided, since the purpose of this constructor is to avoid an extra
+  // copy.
+  sorted_vector_set(
+      presorted_t,
+      Container&& container,
       const Compare& comp = Compare())
       : m_(comp, container.get_allocator()) {
-    std::sort(container.begin(), container.end(), value_comp());
+    assert(std::is_sorted(container.begin(), container.end(), value_comp()));
     m_.cont_.swap(container);
   }
 
@@ -343,22 +386,29 @@ class sorted_vector_set
   }
 
   iterator find(const key_type& key) {
-    iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, *it)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
   }
 
   const_iterator find(const key_type& key) const {
-    const_iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, *it)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, iterator> find(const K& key) {
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> find(const K& key) const {
+    return find(*this, key);
   }
 
   size_type count(const key_type& key) const {
+    return find(key) == end() ? 0 : 1;
+  }
+
+  template <typename K>
+  if_is_transparent<K, size_type> count(const K& key) const {
     return find(key) == end() ? 0 : 1;
   }
 
@@ -370,6 +420,16 @@ class sorted_vector_set
     return std::lower_bound(begin(), end(), key, key_comp());
   }
 
+  template <typename K>
+  if_is_transparent<K, iterator> lower_bound(const K& key) {
+    return std::lower_bound(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> lower_bound(const K& key) const {
+    return std::lower_bound(begin(), end(), key, key_comp());
+  }
+
   iterator upper_bound(const key_type& key) {
     return std::upper_bound(begin(), end(), key, key_comp());
   }
@@ -378,12 +438,34 @@ class sorted_vector_set
     return std::upper_bound(begin(), end(), key, key_comp());
   }
 
-  std::pair<iterator,iterator> equal_range(const key_type& key) {
+  template <typename K>
+  if_is_transparent<K, iterator> upper_bound(const K& key) {
+    return std::upper_bound(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> upper_bound(const K& key) const {
+    return std::upper_bound(begin(), end(), key, key_comp());
+  }
+
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
     return std::equal_range(begin(), end(), key, key_comp());
   }
 
-  std::pair<const_iterator,const_iterator>
-  equal_range(const key_type& key) const {
+  std::pair<const_iterator, const_iterator> equal_range(
+      const key_type& key) const {
+    return std::equal_range(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<iterator, iterator>> equal_range(
+      const K& key) {
+    return std::equal_range(begin(), end(), key, key_comp());
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<const_iterator, const_iterator>> equal_range(
+      const K& key) const {
     return std::equal_range(begin(), end(), key, key_comp());
   }
 
@@ -421,8 +503,22 @@ class sorted_vector_set
       : Compare(c)
       , cont_(alloc)
     {}
-    ContainerT cont_;
+    Container cont_;
   } m_;
+
+  template <typename Self>
+  using self_iterator_t = _t<
+      std::conditional<std::is_const<Self>::value, const_iterator, iterator>>;
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> find(Self& self, K const& key) {
+    auto end = self.end();
+    auto it = self.lower_bound(key);
+    if (it == end || !self.key_comp()(key, *it)) {
+      return it;
+    }
+    return end;
+  }
 };
 
 // Swap function that can be found using ADL.
@@ -454,21 +550,23 @@ template <
     class Value,
     class Compare = std::less<Key>,
     class Allocator = std::allocator<std::pair<Key, Value>>,
-    class GrowthPolicy = void>
+    class GrowthPolicy = void,
+    class Container = std::vector<std::pair<Key, Value>, Allocator>>
 class sorted_vector_map
-  : boost::totally_ordered1<
-      sorted_vector_map<Key,Value,Compare,Allocator,GrowthPolicy>
-    , detail::growth_policy_wrapper<GrowthPolicy> >
-{
-  typedef std::vector<std::pair<Key,Value>,Allocator> ContainerT;
-
+    : boost::totally_ordered1<
+          sorted_vector_map<Key, Value, Compare, Allocator, GrowthPolicy>,
+          detail::growth_policy_wrapper<GrowthPolicy>> {
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
+
+  template <typename K, typename V, typename C = Compare>
+  using if_is_transparent =
+      _t<detail::sorted_vector_enable_if_is_transparent<void, C, K, V>>;
 
  public:
   typedef Key                                       key_type;
   typedef Value                                     mapped_type;
-  typedef std::pair<key_type,mapped_type>           value_type;
+  typedef typename Container::value_type            value_type;
   typedef Compare                                   key_compare;
 
   struct value_compare : private Compare {
@@ -481,15 +579,15 @@ class sorted_vector_map
     explicit value_compare(const Compare& c) : Compare(c) {}
   };
 
-  typedef typename ContainerT::pointer                pointer;
-  typedef typename ContainerT::reference              reference;
-  typedef typename ContainerT::const_reference        const_reference;
-  typedef typename ContainerT::iterator               iterator;
-  typedef typename ContainerT::const_iterator         const_iterator;
-  typedef typename ContainerT::difference_type        difference_type;
-  typedef typename ContainerT::size_type              size_type;
-  typedef typename ContainerT::reverse_iterator       reverse_iterator;
-  typedef typename ContainerT::const_reverse_iterator const_reverse_iterator;
+  typedef typename Container::pointer pointer;
+  typedef typename Container::reference reference;
+  typedef typename Container::const_reference const_reference;
+  typedef typename Container::iterator iterator;
+  typedef typename Container::const_iterator const_iterator;
+  typedef typename Container::difference_type difference_type;
+  typedef typename Container::size_type size_type;
+  typedef typename Container::reverse_iterator reverse_iterator;
+  typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
   explicit sorted_vector_map(const Compare& comp = Compare(),
                              const Allocator& alloc = Allocator())
@@ -522,13 +620,31 @@ class sorted_vector_map
   // those performed by the caller. (The iterator range constructor performs at
   // least one allocation).
   //
-  // Note that `sorted_vector_map(const ContainerT& container)` is not provided,
+  // Note that `sorted_vector_map(const Container& container)` is not provided,
   // since the purpose of this constructor is to avoid an unnecessary copy.
   explicit sorted_vector_map(
-      ContainerT&& container,
+      Container&& container,
+      const Compare& comp = Compare())
+      : sorted_vector_map(
+            presorted,
+            detail::as_sorted(std::move(container), value_compare(comp)),
+            comp) {}
+
+  // Construct a sorted_vector_map by stealing the storage of a prefilled
+  // container. The container must be sorted, as presorted_t hints. S supports
+  // bulk construction of sorted_vector_map with zero allocations, not counting
+  // those performed by the caller. (The iterator range constructor performs at
+  // least one allocation).
+  //
+  // Note that `sorted_vector_map(presorted_t, const Container& container)` is
+  // not provided, since the purpose of this constructor is to avoid an extra
+  // copy.
+  sorted_vector_map(
+      presorted_t,
+      Container&& container,
       const Compare& comp = Compare())
       : m_(value_compare(comp), container.get_allocator()) {
-    std::sort(container.begin(), container.end(), value_comp());
+    assert(std::is_sorted(container.begin(), container.end(), value_comp()));
     m_.cont_.swap(container);
   }
 
@@ -599,19 +715,21 @@ class sorted_vector_map
   }
 
   iterator find(const key_type& key) {
-    iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, it->first)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
   }
 
   const_iterator find(const key_type& key) const {
-    const_iterator it = lower_bound(key);
-    if (it == end() || !key_comp()(key, it->first)) {
-      return it;
-    }
-    return end();
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, iterator> find(const K& key) {
+    return find(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> find(const K& key) const {
+    return find(*this, key);
   }
 
   mapped_type& at(const key_type& key) {
@@ -619,7 +737,7 @@ class sorted_vector_map
     if (it != end()) {
       return it->second;
     }
-    std::__throw_out_of_range("sorted_vector_map::at");
+    throw_exception<std::out_of_range>("sorted_vector_map::at");
   }
 
   const mapped_type& at(const key_type& key) const {
@@ -627,61 +745,73 @@ class sorted_vector_map
     if (it != end()) {
       return it->second;
     }
-    std::__throw_out_of_range("sorted_vector_map::at");
+    throw_exception<std::out_of_range>("sorted_vector_map::at");
   }
 
   size_type count(const key_type& key) const {
     return find(key) == end() ? 0 : 1;
   }
 
+  template <typename K>
+  if_is_transparent<K, size_type> count(const K& key) const {
+    return find(key) == end() ? 0 : 1;
+  }
+
   iterator lower_bound(const key_type& key) {
-    auto c = key_comp();
-    auto f = [&](const value_type& a, const key_type& b) {
-      return c(a.first, b);
-    };
-    return std::lower_bound(begin(), end(), key, f);
+    return lower_bound(*this, key);
   }
 
   const_iterator lower_bound(const key_type& key) const {
-    auto c = key_comp();
-    auto f = [&](const value_type& a, const key_type& b) {
-      return c(a.first, b);
-    };
-    return std::lower_bound(begin(), end(), key, f);
+    return lower_bound(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, iterator> lower_bound(const K& key) {
+    return lower_bound(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, const_iterator> lower_bound(const K& key) const {
+    return lower_bound(*this, key);
   }
 
   iterator upper_bound(const key_type& key) {
-    auto c = key_comp();
-    auto f = [&](const key_type& a, const value_type& b) {
-      return c(a, b.first);
-    };
-    return std::upper_bound(begin(), end(), key, f);
+    return upper_bound(*this, key);
   }
 
   const_iterator upper_bound(const key_type& key) const {
-    auto c = key_comp();
-    auto f = [&](const key_type& a, const value_type& b) {
-      return c(a, b.first);
-    };
-    return std::upper_bound(begin(), end(), key, f);
+    return upper_bound(*this, key);
   }
 
-  std::pair<iterator,iterator> equal_range(const key_type& key) {
-    // Note: std::equal_range can't be passed a functor that takes
-    // argument types different from the iterator value_type, so we
-    // have to do this.
-    iterator low = lower_bound(key);
-    auto c = key_comp();
-    auto f = [&](const key_type& a, const value_type& b) {
-      return c(a, b.first);
-    };
-    iterator high = std::upper_bound(low, end(), key, f);
-    return std::make_pair(low, high);
+  template <typename K>
+  if_is_transparent<K, iterator> upper_bound(const K& key) {
+    return upper_bound(*this, key);
   }
 
-  std::pair<const_iterator,const_iterator>
-  equal_range(const key_type& key) const {
-    return const_cast<sorted_vector_map*>(this)->equal_range(key);
+  template <typename K>
+  if_is_transparent<K, const_iterator> upper_bound(const K& key) const {
+    return upper_bound(*this, key);
+  }
+
+  std::pair<iterator, iterator> equal_range(const key_type& key) {
+    return equal_range(*this, key);
+  }
+
+  std::pair<const_iterator, const_iterator> equal_range(
+      const key_type& key) const {
+    return equal_range(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<iterator, iterator>> equal_range(
+      const K& key) {
+    return equal_range(*this, key);
+  }
+
+  template <typename K>
+  if_is_transparent<K, std::pair<const_iterator, const_iterator>> equal_range(
+      const K& key) const {
+    return equal_range(*this, key);
   }
 
   // Nothrow as long as swap() on the Compare type is nothrow.
@@ -717,8 +847,48 @@ class sorted_vector_map
       : value_compare(c)
       , cont_(alloc)
     {}
-    ContainerT cont_;
+    Container cont_;
   } m_;
+
+  template <typename Self>
+  using self_iterator_t = _t<
+      std::conditional<std::is_const<Self>::value, const_iterator, iterator>>;
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> find(Self& self, K const& key) {
+    auto end = self.end();
+    auto it = self.lower_bound(key);
+    if (it == end || !self.key_comp()(key, it->first)) {
+      return it;
+    }
+    return end;
+  }
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> lower_bound(Self& self, K const& key) {
+    auto f = [c = self.key_comp()](value_type const& a, K const& b) {
+      return c(a.first, b);
+    };
+    return std::lower_bound(self.begin(), self.end(), key, f);
+  }
+
+  template <typename Self, typename K>
+  static self_iterator_t<Self> upper_bound(Self& self, K const& key) {
+    auto f = [c = self.key_comp()](K const& a, value_type const& b) {
+      return c(a, b.first);
+    };
+    return std::upper_bound(self.begin(), self.end(), key, f);
+  }
+
+  template <typename Self, typename K>
+  static std::pair<self_iterator_t<Self>, self_iterator_t<Self>> equal_range(
+      Self& self,
+      K const& key) {
+    // Note: std::equal_range can't be passed a functor that takes
+    // argument types different from the iterator value_type, so we
+    // have to do this.
+    return {lower_bound(self, key), upper_bound(self, key)};
+  }
 };
 
 // Swap function that can be found using ADL.

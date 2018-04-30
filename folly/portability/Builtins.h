@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,15 @@ FOLLY_ALWAYS_INLINE int __builtin_clzl(unsigned long x) {
 FOLLY_ALWAYS_INLINE int __builtin_clzll(unsigned long long x) {
   unsigned long index;
   return int(_BitScanReverse64(&index, x) ? 63 - index : 64);
+}
+
+FOLLY_ALWAYS_INLINE int __builtin_ctz(unsigned int x) {
+  unsigned long index;
+  return int(_BitScanForward(&index, (unsigned long)x) ? index : 32);
+}
+
+FOLLY_ALWAYS_INLINE int __builtin_ctzl(unsigned long x) {
+  return __builtin_ctz((unsigned int)x);
 }
 
 FOLLY_ALWAYS_INLINE int __builtin_ctzll(unsigned long long x) {

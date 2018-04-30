@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,18 @@
 
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/MPMCQueue.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace folly;
 
 struct ManualWaiter : public DrivableExecutor {
-  explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}
+  explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex_) : ex(ex_) {}
 
   void add(Func f) override {
     ex->add(std::move(f));
@@ -48,7 +48,7 @@ struct ViaFixture : public testing::Test {
     waiter(new ManualWaiter(westExecutor)),
     done(false)
   {
-    t = std::thread([=] {
+    th = std::thread([=] {
         ManualWaiter eastWaiter(eastExecutor);
         while (!done) {
           eastWaiter.drive();
@@ -59,7 +59,7 @@ struct ViaFixture : public testing::Test {
   ~ViaFixture() override {
     done = true;
     eastExecutor->add([=]() { });
-    t.join();
+    th.join();
   }
 
   void addAsync(int a, int b, std::function<void(int&&)>&& cob) {
@@ -73,7 +73,7 @@ struct ViaFixture : public testing::Test {
   std::shared_ptr<ManualWaiter> waiter;
   InlineExecutor inlineExecutor;
   std::atomic<bool> done;
-  std::thread t;
+  std::thread th;
 };
 
 TEST(Via, exceptionOnLaunch) {
@@ -400,6 +400,13 @@ TEST(Via, getVia) {
   }
 }
 
+TEST(Via, SimpleTimedGetVia) {
+  TimedDrivableExecutor e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  EXPECT_THROW(f.getVia(&e2, std::chrono::seconds(1)), TimedOut);
+}
+
 TEST(Via, getTryVia) {
   {
     // non-void
@@ -424,6 +431,13 @@ TEST(Via, getTryVia) {
     EXPECT_EQ(23, f.getTryVia(&x).value());
     EXPECT_FALSE(x.ran);
   }
+}
+
+TEST(Via, SimpleTimedGetTryVia) {
+  TimedDrivableExecutor e2;
+  Promise<folly::Unit> p;
+  auto f = p.getFuture();
+  EXPECT_THROW(f.getTryVia(&e2, std::chrono::seconds(1)), TimedOut);
 }
 
 TEST(Via, waitVia) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/experimental/JSONSchema.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/regex.hpp>
+
+#include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
@@ -33,8 +34,7 @@ namespace {
 /**
  * We throw this exception when schema validation fails.
  */
-struct SchemaError : std::runtime_error {
-
+struct FOLLY_EXPORT SchemaError : std::runtime_error {
   SchemaError(SchemaError&&) = default;
   SchemaError(const SchemaError&) = default;
 

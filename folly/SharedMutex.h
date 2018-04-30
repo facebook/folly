@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -178,9 +178,9 @@
 // SharedMutex, and don't start using the deferred mode unless we actually
 // observe concurrency.  See kNumSharedToStartDeferring.
 //
-// It is explicitly allowed to call lock_unshared() from a different
+// It is explicitly allowed to call unlock_shared() from a different
 // thread than lock_shared(), so long as they are properly paired.
-// lock_unshared() needs to find the location at which lock_shared()
+// unlock_shared() needs to find the location at which lock_shared()
 // recorded the lock, which might be in the lock itself or in any of
 // the shared slots.  If you can conveniently pass state from lock
 // acquisition to release then the fastest mechanism is to std::move
@@ -212,7 +212,7 @@
 // that the increased icache and dcache footprint of the tagged result is
 // worth it.
 
-// SharedMutex's use of thread local storage is as an optimization, so
+// SharedMutex's use of thread local storage is an optimization, so
 // for the case where thread local storage is not supported, define it
 // away.
 #ifndef FOLLY_SHAREDMUTEX_TLS
@@ -274,6 +274,10 @@ class SharedMutexImpl {
     }
 
 #ifndef NDEBUG
+    // These asserts check that everybody has released the lock before it
+    // is destroyed.  If you arrive here while debugging that is likely
+    // the problem.  (You could also have general heap corruption.)
+
     // if a futexWait fails to go to sleep because the value has been
     // changed, we don't necessarily clean up the wait bits, so it is
     // possible they will be set here in a correct system
@@ -563,7 +567,7 @@ class SharedMutexImpl {
   };
 
   // 32 bits of state
-  Futex state_;
+  Futex state_{};
 
   // S count needs to be on the end, because we explicitly allow it to
   // underflow.  This can occur while we are in the middle of applying
@@ -738,9 +742,8 @@ class SharedMutexImpl {
   typedef Atom<uintptr_t> DeferredReaderSlot;
 
  private:
-  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING static DeferredReaderSlot deferredReaders
-      [kMaxDeferredReaders *
-       kDeferredSeparationFactor];
+  alignas(hardware_destructive_interference_size) static DeferredReaderSlot
+      deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor];
 
   // Performs an exclusive lock, waiting for state_ & waitMask to be
   // zero first
@@ -1350,11 +1353,11 @@ template <
     typename Tag_,
     template <typename> class Atom,
     bool BlockImmediately>
-typename SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-    DeferredReaderSlot
-        SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-            deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor] =
-                {};
+alignas(hardware_destructive_interference_size)
+    typename SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+        DeferredReaderSlot
+    SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+        deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor] = {};
 
 template <
     bool ReaderPriority,

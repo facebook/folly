@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,12 +48,15 @@ TEST(FiberManager, batonTimedWaitTimeout) {
   auto& loopController =
       dynamic_cast<SimpleLoopController&>(manager.loopController());
 
+  auto now = SimpleLoopController::Clock::now();
+  loopController.setTimeFunc([&] { return now; });
+
   auto loopFunc = [&]() {
     if (!taskAdded) {
       manager.addTask([&]() {
         Baton baton;
 
-        auto res = baton.timed_wait(std::chrono::milliseconds(230));
+        auto res = baton.try_wait_for(std::chrono::milliseconds(230));
 
         EXPECT_FALSE(res);
         EXPECT_EQ(5, iterations);
@@ -63,7 +66,7 @@ TEST(FiberManager, batonTimedWaitTimeout) {
       manager.addTask([&]() {
         Baton baton;
 
-        auto res = baton.timed_wait(std::chrono::milliseconds(130));
+        auto res = baton.try_wait_for(std::chrono::milliseconds(130));
 
         EXPECT_FALSE(res);
         EXPECT_EQ(3, iterations);
@@ -72,7 +75,7 @@ TEST(FiberManager, batonTimedWaitTimeout) {
       });
       taskAdded = true;
     } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      now += std::chrono::milliseconds(50);
       iterations++;
     }
   };
@@ -95,7 +98,7 @@ TEST(FiberManager, batonTimedWaitPost) {
         Baton baton;
         baton_ptr = &baton;
 
-        auto res = baton.timed_wait(std::chrono::milliseconds(130));
+        auto res = baton.try_wait_for(std::chrono::milliseconds(130));
 
         EXPECT_TRUE(res);
         EXPECT_EQ(2, iterations);
@@ -128,7 +131,7 @@ TEST(FiberManager, batonTimedWaitTimeoutEvb) {
     Baton baton;
 
     auto start = EventBaseLoopController::Clock::now();
-    auto res = baton.timed_wait(std::chrono::milliseconds(timeout_ms));
+    auto res = baton.try_wait_for(std::chrono::milliseconds(timeout_ms));
     auto finish = EventBaseLoopController::Clock::now();
 
     EXPECT_FALSE(res);
@@ -170,7 +173,7 @@ TEST(FiberManager, batonTimedWaitPostEvb) {
       evb.tryRunAfterDelay([&]() { baton.post(); }, 100);
 
       auto start = EventBaseLoopController::Clock::now();
-      auto res = baton.timed_wait(std::chrono::milliseconds(130));
+      auto res = baton.try_wait_for(std::chrono::milliseconds(130));
       auto finish = EventBaseLoopController::Clock::now();
 
       EXPECT_TRUE(res);
@@ -903,12 +906,18 @@ namespace {
 void expectMainContext(bool& ran, int* mainLocation, int* fiberLocation) {
   int here;
   /* 2 pages is a good guess */
-  constexpr ssize_t DISTANCE = 0x2000 / sizeof(int);
+  constexpr auto const kHereToFiberMaxDist = 0x2000 / sizeof(int);
+
+  // With ASAN's detect_stack_use_after_return=1, this must be much larger
+  // I measured 410028 on x86_64, so allow for quadruple that, just in case.
+  constexpr auto const kHereToMainMaxDist =
+      folly::kIsSanitizeAddress ? 4 * 410028 : kHereToFiberMaxDist;
+
   if (fiberLocation) {
-    EXPECT_TRUE(std::abs(&here - fiberLocation) > DISTANCE);
+    EXPECT_GT(std::abs(&here - fiberLocation), kHereToFiberMaxDist);
   }
   if (mainLocation) {
-    EXPECT_TRUE(std::abs(&here - mainLocation) < DISTANCE);
+    EXPECT_LT(std::abs(&here - mainLocation), kHereToMainMaxDist);
   }
 
   EXPECT_FALSE(ran);
@@ -1560,7 +1569,7 @@ TEST(FiberManager, semaphore) {
 
     {
       std::shared_ptr<folly::EventBase> completionCounter(
-          &evb, [](folly::EventBase* evb) { evb->terminateLoopSoon(); });
+          &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
 
       for (size_t i = 0; i < kTasks; ++i) {
         manager.addTask([&, completionCounter]() {
@@ -2051,14 +2060,14 @@ TEST(FiberManager, VirtualEventBase) {
 
     getFiberManager(*evb1).addTaskRemote([&] {
       Baton baton;
-      baton.timed_wait(std::chrono::milliseconds{100});
+      baton.try_wait_for(std::chrono::milliseconds{100});
 
       done1 = true;
     });
 
     getFiberManager(evb2).addTaskRemote([&] {
       Baton baton;
-      baton.timed_wait(std::chrono::milliseconds{200});
+      baton.try_wait_for(std::chrono::milliseconds{200});
 
       done2 = true;
     });
@@ -2083,7 +2092,7 @@ TEST(TimedMutex, ThreadsAndFibersDontDeadlock) {
       mutex.unlock();
       {
         Baton b;
-        b.timed_wait(std::chrono::milliseconds(1));
+        b.try_wait_for(std::chrono::milliseconds(1));
       }
     }
   });
@@ -2094,12 +2103,12 @@ TEST(TimedMutex, ThreadsAndFibersDontDeadlock) {
         mutex.lock();
         {
           Baton b;
-          b.timed_wait(std::chrono::milliseconds(1));
+          b.try_wait_for(std::chrono::milliseconds(1));
         }
         mutex.unlock();
         {
           Baton b;
-          b.timed_wait(std::chrono::milliseconds(1));
+          b.try_wait_for(std::chrono::milliseconds(1));
         }
       }
     });

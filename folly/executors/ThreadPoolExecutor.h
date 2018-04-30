@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
-#include <folly/Baton.h>
 #include <folly/Executor.h>
 #include <folly/Memory.h>
-#include <folly/RWSpinLock.h>
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
 #include <folly/io/async/Request.h>
+#include <folly/synchronization/Baton.h>
+#include <folly/synchronization/RWSpinLock.h>
 
 #include <algorithm>
 #include <mutex>
@@ -129,7 +128,8 @@ class ThreadPoolExecutor : public virtual folly::Executor {
 
   struct TaskStatsCallbackRegistry;
 
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Thread : public ThreadHandle {
+  struct alignas(hardware_destructive_interference_size) Thread
+      : public ThreadHandle {
     explicit Thread(ThreadPoolExecutor* pool)
         : id(nextId++),
           handle(),
@@ -185,8 +185,8 @@ class ThreadPoolExecutor : public virtual folly::Executor {
     return std::make_shared<Thread>(this);
   }
 
-  // Prerequisite: threadListLock_ readlocked
-  virtual uint64_t getPendingTaskCountImpl(const RWSpinLock::ReadHolder&) = 0;
+  // Prerequisite: threadListLock_ readlocked or writelocked
+  virtual uint64_t getPendingTaskCountImpl() = 0;
 
   class ThreadList {
    public:
@@ -234,9 +234,11 @@ class ThreadPoolExecutor : public virtual folly::Executor {
 
   class StoppedThreadQueue : public BlockingQueue<ThreadPtr> {
    public:
-    void add(ThreadPtr item) override;
+    bool add(ThreadPtr item) override;
     ThreadPtr take() override;
     size_t size() override;
+    folly::Optional<ThreadPtr> try_take_for(
+        std::chrono::milliseconds /*timeout */) override;
 
    private:
     folly::LifoSem sem_;

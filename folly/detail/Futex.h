@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,17 @@
 #include <cassert>
 #include <chrono>
 #include <limits>
-
-#include <boost/noncopyable.hpp>
+#include <type_traits>
 
 #include <folly/portability/Unistd.h>
 
 namespace folly { namespace detail {
 
 enum class FutexResult {
-  VALUE_CHANGED, /* Futex value didn't match expected */
-  AWOKEN,        /* futex wait matched with a futex wake */
-  INTERRUPTED,   /* Spurious wake-up or signal caused futex wait failure */
-  TIMEDOUT
+  VALUE_CHANGED, /* futex value didn't match expected */
+  AWOKEN,        /* wakeup by matching futex wake, or spurious wakeup */
+  INTERRUPTED,   /* wakeup by interrupting signal */
+  TIMEDOUT,      /* wakeup by expiring deadline */
 };
 
 /**
@@ -44,64 +43,41 @@ enum class FutexResult {
  * (and benchmarks to back you up).
  */
 template <template <typename> class Atom = std::atomic>
-struct Futex : Atom<uint32_t>, boost::noncopyable {
+struct Futex : Atom<uint32_t> {
+  Futex() : Atom<uint32_t>() {}
 
-  explicit constexpr Futex(uint32_t init = 0) : Atom<uint32_t>(init) {}
+  explicit constexpr Futex(uint32_t init) : Atom<uint32_t>(init) {}
 
   /** Puts the thread to sleep if this->load() == expected.  Returns true when
    *  it is returning because it has consumed a wake() event, false for any
    *  other return (signal, this->load() != expected, or spurious wakeup). */
-  bool futexWait(uint32_t expected, uint32_t waitMask = -1) {
+  FutexResult futexWait(uint32_t expected, uint32_t waitMask = -1) {
     auto rv = futexWaitImpl(expected, nullptr, nullptr, waitMask);
     assert(rv != FutexResult::TIMEDOUT);
-    return rv == FutexResult::AWOKEN;
+    return rv;
   }
 
-  /** Similar to futexWait but also accepts a timeout that gives the time until
-   *  when the call can block (time is the absolute time i.e time since epoch).
-   *  Allowed clock types: std::chrono::system_clock, std::chrono::steady_clock.
-   *  Returns one of FutexResult values.
+  /** Similar to futexWait but also accepts a deadline until when the wait call
+   *  may block.
    *
+   *  Optimal clock types: std::chrono::system_clock, std::chrono::steady_clock.
    *  NOTE: On some systems steady_clock is just an alias for system_clock,
-   *  and is not actually steady.*/
+   *  and is not actually steady.
+   *
+   *  For any other clock type, now() will be invoked twice. */
   template <class Clock, class Duration = typename Clock::duration>
   FutexResult futexWaitUntil(
-          uint32_t expected,
-          const std::chrono::time_point<Clock, Duration>& absTime,
-          uint32_t waitMask = -1) {
-    using std::chrono::duration_cast;
-    using std::chrono::nanoseconds;
-    using std::chrono::seconds;
-    using std::chrono::steady_clock;
-    using std::chrono::system_clock;
-    using std::chrono::time_point;
-
-    static_assert(
-        (std::is_same<Clock, system_clock>::value ||
-         std::is_same<Clock, steady_clock>::value),
-        "futexWaitUntil only knows std::chrono::{system_clock,steady_clock}");
-    assert((std::is_same<Clock, system_clock>::value) || Clock::is_steady);
-
-    // We launder the clock type via a std::chrono::duration so that we
-    // can compile both the true and false branch.  Tricky case is when
-    // steady_clock has a higher precision than system_clock (Xcode 6,
-    // for example), for which time_point<system_clock> construction
-    // refuses to do an implicit duration conversion.  (duration is
-    // happy to implicitly convert its denominator causing overflow, but
-    // refuses conversion that might cause truncation.)  We use explicit
-    // duration_cast to work around this.  Truncation does not actually
-    // occur (unless Duration != Clock::duration) because the missing
-    // implicit conversion is in the untaken branch.
-    Duration absTimeDuration = absTime.time_since_epoch();
-    if (std::is_same<Clock, system_clock>::value) {
-      time_point<system_clock> absSystemTime(
-          duration_cast<system_clock::duration>(absTimeDuration));
-      return futexWaitImpl(expected, &absSystemTime, nullptr, waitMask);
-    } else {
-      time_point<steady_clock> absSteadyTime(
-          duration_cast<steady_clock::duration>(absTimeDuration));
-      return futexWaitImpl(expected, nullptr, &absSteadyTime, waitMask);
-    }
+      uint32_t expected,
+      std::chrono::time_point<Clock, Duration> const& deadline,
+      uint32_t waitMask = -1) {
+    using Target = typename std::conditional<
+        Clock::is_steady,
+        std::chrono::steady_clock,
+        std::chrono::system_clock>::type;
+    auto const converted = time_point_conv<Target>(deadline);
+    return converted == Target::time_point::max()
+        ? futexWaitImpl(expected, nullptr, nullptr, waitMask)
+        : futexWaitImpl(expected, converted, waitMask);
   }
 
   /** Wakens up to count waiters where (waitMask & wakeMask) !=
@@ -116,6 +92,46 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
                 uint32_t wakeMask = -1);
 
  private:
+  /** Optimal when TargetClock is the same type as Clock.
+   *
+   *  Otherwise, both Clock::now() and TargetClock::now() must be invoked. */
+  template <typename TargetClock, typename Clock, typename Duration>
+  static typename TargetClock::time_point time_point_conv(
+      std::chrono::time_point<Clock, Duration> const& time) {
+    using std::chrono::duration_cast;
+    using TimePoint = std::chrono::time_point<Clock, Duration>;
+    using TargetDuration = typename TargetClock::duration;
+    using TargetTimePoint = typename TargetClock::time_point;
+    if (time == TimePoint::max()) {
+      return TargetTimePoint::max();
+    } else if (std::is_same<Clock, TargetClock>::value) {
+      // in place of time_point_cast, which cannot compile without if-constexpr
+      auto const delta = time.time_since_epoch();
+      return TargetTimePoint(duration_cast<TargetDuration>(delta));
+    } else {
+      // different clocks with different epochs, so non-optimal case
+      auto const delta = time - Clock::now();
+      return TargetClock::now() + duration_cast<TargetDuration>(delta);
+    }
+  }
+
+  template <typename Deadline>
+  typename std::enable_if<Deadline::clock::is_steady, FutexResult>::type
+  futexWaitImpl(
+      uint32_t expected,
+      Deadline const& deadline,
+      uint32_t waitMask) {
+    return futexWaitImpl(expected, nullptr, &deadline, waitMask);
+  }
+
+  template <typename Deadline>
+  typename std::enable_if<!Deadline::clock::is_steady, FutexResult>::type
+  futexWaitImpl(
+      uint32_t expected,
+      Deadline const& deadline,
+      uint32_t waitMask) {
+    return futexWaitImpl(expected, &deadline, nullptr, waitMask);
+  }
 
   /** Underlying implementation of futexWait and futexWaitUntil.
    *  At most one of absSystemTime and absSteadyTime should be non-null.
@@ -125,8 +141,8 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
    *  is the same as system_clock on some platforms. */
   FutexResult futexWaitImpl(
       uint32_t expected,
-      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+      std::chrono::system_clock::time_point const* absSystemTime,
+      std::chrono::steady_clock::time_point const* absSteadyTime,
       uint32_t waitMask);
 };
 
@@ -149,20 +165,20 @@ int Futex<std::atomic>::futexWake(int count, uint32_t wakeMask);
 
 template <>
 FutexResult Futex<std::atomic>::futexWaitImpl(
-      uint32_t expected,
-      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
-      uint32_t waitMask);
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask);
 
 template <>
 int Futex<EmulatedFutexAtomic>::futexWake(int count, uint32_t wakeMask);
 
 template <>
 FutexResult Futex<EmulatedFutexAtomic>::futexWaitImpl(
-      uint32_t expected,
-      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
-      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
-      uint32_t waitMask);
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask);
 
 } // namespace detail
 } // namespace folly

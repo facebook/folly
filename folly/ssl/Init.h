@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,10 @@ namespace folly {
 namespace ssl {
 /**
  * Initializes openssl. This should be invoked once, during the start of an
- * application. For OpenSSL < 1.1.0, any lock types should be set with
- * setLockTypes prior to the call to folly::ssl::init()
+ * application. Subsequent calls to this function are no-ops.
+ *
+ * For OpenSSL < 1.1.0, any lock types should be set with setLockTypes prior to
+ * the call to folly::ssl::init()
  */
 void init();
 

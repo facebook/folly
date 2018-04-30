@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,8 +33,8 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
-#include <folly/MicroSpinLock.h>
 #include <folly/ThreadLocal.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 namespace folly { namespace detail {
 
@@ -62,22 +62,24 @@ class SkipListNode : private boost::noncopyable {
 
     size_t size = sizeof(SkipListNode) +
       height * sizeof(std::atomic<SkipListNode*>);
-    auto* node = static_cast<SkipListNode*>(alloc.allocate(size));
+    auto storage = std::allocator_traits<NodeAlloc>::allocate(alloc, size);
     // do placement new
-    new (node) SkipListNode(uint8_t(height), std::forward<U>(data), isHead);
-    return node;
+    return new (storage)
+        SkipListNode(uint8_t(height), std::forward<U>(data), isHead);
   }
 
   template <typename NodeAlloc>
   static void destroy(NodeAlloc& alloc, SkipListNode* node) {
+    size_t size = sizeof(SkipListNode) +
+        node->height_ * sizeof(std::atomic<SkipListNode*>);
     node->~SkipListNode();
-    alloc.deallocate(node);
+    std::allocator_traits<NodeAlloc>::deallocate(alloc, node, size);
   }
 
   template <typename NodeAlloc>
-  struct DestroyIsNoOp : std::integral_constant<bool,
-    IsArenaAllocator<NodeAlloc>::value &&
-    boost::has_trivial_destructor<SkipListNode>::value> { };
+  struct DestroyIsNoOp : StrictConjunction<
+                             AllocatorHasTrivialDeallocate<NodeAlloc>,
+                             boost::has_trivial_destructor<SkipListNode>> {};
 
   // copy the head node to a new head node assuming lock acquired
   SkipListNode* copyHead(SkipListNode* node) {

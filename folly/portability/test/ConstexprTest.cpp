@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,21 +18,37 @@
 
 #include <folly/portability/GTest.h>
 
-namespace {
+using folly::constexpr_strcmp;
 
-class ConstexprTest : public testing::Test {};
-} // namespace
-
-TEST_F(ConstexprTest, constexpr_strlen_cstr) {
+TEST(ConstexprTest, constexpr_strlen_cstr) {
   constexpr auto v = "hello";
   constexpr auto a = folly::constexpr_strlen(v);
   EXPECT_EQ(5, a);
   EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
 }
 
-TEST_F(ConstexprTest, constexpr_strlen_ints) {
+// gcc-4.9 cannot compile the following constexpr code correctly
+#if !(defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5)
+TEST(ConstexprTest, constexpr_strlen_ints) {
   constexpr int v[] = {5, 3, 4, 0, 7};
   constexpr auto a = folly::constexpr_strlen(v);
   EXPECT_EQ(3, a);
   EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
 }
+
+TEST(ConstexprTest, constexpr_strcmp_ints) {
+  constexpr int v[] = {5, 3, 4, 0, 7};
+  constexpr int v1[] = {6, 4};
+  static_assert(constexpr_strcmp(v1, v) > 0, "constexpr_strcmp is broken");
+  static_assert(constexpr_strcmp(v, v) == 0, "constexpr_strcmp is broken");
+}
+#endif
+
+static_assert(
+    constexpr_strcmp("abc", "abc") == 0,
+    "constexpr_strcmp is broken");
+static_assert(constexpr_strcmp("", "") == 0, "constexpr_strcmp is broken");
+static_assert(constexpr_strcmp("abc", "def") < 0, "constexpr_strcmp is broken");
+static_assert(constexpr_strcmp("xyz", "abc") > 0, "constexpr_strcmp is broken");
+static_assert(constexpr_strcmp("a", "abc") < 0, "constexpr_strcmp is broken");
+static_assert(constexpr_strcmp("abc", "a") > 0, "constexpr_strcmp is broken");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/GTest.h>
 
+using folly::ByteRange;
 using folly::fbstring;
 using folly::fbvector;
 using folly::IOBuf;
-using folly::TypedIOBuf;
+using folly::ordering;
 using folly::StringPiece;
-using folly::ByteRange;
+using folly::TypedIOBuf;
 using std::unique_ptr;
 
 void append(std::unique_ptr<IOBuf>& buf, StringPiece str) {
@@ -598,7 +599,7 @@ void testFreeFn(void* buffer, void* ptr) {
   if (freeCount) {
     ++(*freeCount);
   }
-};
+}
 
 TEST(IOBuf, Reserve) {
   uint32_t fillSeed = 0x23456789;
@@ -848,13 +849,13 @@ enum BufType {
 
 // chain element size, number of elements in chain, shared
 class MoveToFbStringTest
-  : public ::testing::TestWithParam<std::tr1::tuple<int, int, bool, BufType>> {
+    : public ::testing::TestWithParam<std::tuple<int, int, bool, BufType>> {
  protected:
   void SetUp() override {
-    elementSize_ = std::tr1::get<0>(GetParam());
-    elementCount_ = std::tr1::get<1>(GetParam());
-    shared_ = std::tr1::get<2>(GetParam());
-    type_ = std::tr1::get<3>(GetParam());
+    elementSize_ = std::get<0>(GetParam());
+    elementCount_ = std::get<1>(GetParam());
+    shared_ = std::get<2>(GetParam());
+    type_ = std::get<3>(GetParam());
 
     buf_ = makeBuf();
     for (int i = 0; i < elementCount_ - 1; ++i) {
@@ -1041,10 +1042,18 @@ namespace {
 std::unique_ptr<IOBuf> fromStr(StringPiece sp) {
   return IOBuf::copyBuffer(ByteRange(sp));
 }
+
+std::unique_ptr<IOBuf> seq(std::initializer_list<StringPiece> sps) {
+  auto ret = IOBuf::create(0);
+  for (auto sp : sps) {
+    ret->prependChain(IOBuf::copyBuffer(ByteRange(sp)));
+  }
+  return ret;
+}
 } // namespace
 
 TEST(IOBuf, HashAndEqual) {
-  folly::IOBufEqual eq;
+  folly::IOBufEqualTo eq;
   folly::IOBufHash hash;
 
   EXPECT_TRUE(eq(nullptr, nullptr));
@@ -1096,6 +1105,30 @@ TEST(IOBuf, HashAndEqual) {
 
   EXPECT_TRUE(eq(e, f));
   EXPECT_EQ(hash(e), hash(f));
+}
+
+TEST(IOBuf, IOBufCompare) {
+  folly::IOBufCompare op;
+  auto n = std::unique_ptr<IOBuf>{};
+  auto e = IOBuf::create(0);
+  auto hello1 = seq({"hello"});
+  auto hello2 = seq({"hel", "lo"});
+  auto hello3 = seq({"he", "ll", "o"});
+  auto hellow = seq({"hellow"});
+  auto hellox = seq({"hellox"});
+
+  EXPECT_EQ(ordering::eq, op(n, n));
+  EXPECT_EQ(ordering::lt, op(n, e));
+  EXPECT_EQ(ordering::gt, op(e, n));
+  EXPECT_EQ(ordering::lt, op(e, hello1));
+  EXPECT_EQ(ordering::gt, op(hello1, e));
+  EXPECT_EQ(ordering::eq, op(hello1, hello1));
+  EXPECT_EQ(ordering::eq, op(hello1, hello2));
+  EXPECT_EQ(ordering::eq, op(hello1, hello3));
+  EXPECT_EQ(ordering::lt, op(hello1, hellow));
+  EXPECT_EQ(ordering::gt, op(hellow, hello1));
+  EXPECT_EQ(ordering::lt, op(hellow, hellox));
+  EXPECT_EQ(ordering::gt, op(hellox, hellow));
 }
 
 // reserveSlow() had a bug when reallocating the buffer in place. It would
@@ -1258,8 +1291,8 @@ TEST(IOBuf, ExternallyShared) {
 
   {
     auto freeFn = [](void* /* unused */, void* userData) {
-      auto it = static_cast<struct Item*>(userData);
-      it->refcount--;
+      auto it2 = static_cast<struct Item*>(userData);
+      it2->refcount--;
     };
     it.refcount++;
     auto buf1 = IOBuf::takeOwnership(it.buffer, it.size, freeFn, &it);

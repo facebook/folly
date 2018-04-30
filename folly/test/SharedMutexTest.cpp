@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/SharedMutex.h>
 
 #include <stdlib.h>
@@ -25,15 +24,15 @@
 
 #include <folly/Benchmark.h>
 #include <folly/MPMCQueue.h>
-#include <folly/RWSpinLock.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/RWSpinLock.h>
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
 using namespace folly::test;
 using namespace std;
-using namespace chrono;
+using namespace std::chrono;
 
 typedef DeterministicSchedule DSched;
 typedef SharedMutexImpl<true, void, DeterministicAtomic, true>
@@ -392,67 +391,67 @@ struct TokenLocker {
   SharedMutexToken token;
 
   template <typename T>
-  void lock(T* lock) {
-    lock->lock();
+  void lock(T* lockable) {
+    lockable->lock();
   }
 
   template <typename T>
-  void unlock(T* lock) {
-    lock->unlock();
+  void unlock(T* lockable) {
+    lockable->unlock();
   }
 
   template <typename T>
-  void lock_shared(T* lock) {
-    lock->lock_shared(token);
+  void lock_shared(T* lockable) {
+    lockable->lock_shared(token);
   }
 
   template <typename T>
-  void unlock_shared(T* lock) {
-    lock->unlock_shared(token);
+  void unlock_shared(T* lockable) {
+    lockable->unlock_shared(token);
   }
 };
 
 struct Locker {
   template <typename T>
-  void lock(T* lock) {
-    lock->lock();
+  void lock(T* lockable) {
+    lockable->lock();
   }
 
   template <typename T>
-  void unlock(T* lock) {
-    lock->unlock();
+  void unlock(T* lockable) {
+    lockable->unlock();
   }
 
   template <typename T>
-  void lock_shared(T* lock) {
-    lock->lock_shared();
+  void lock_shared(T* lockable) {
+    lockable->lock_shared();
   }
 
   template <typename T>
-  void unlock_shared(T* lock) {
-    lock->unlock_shared();
+  void unlock_shared(T* lockable) {
+    lockable->unlock_shared();
   }
 };
 
 struct EnterLocker {
   template <typename T>
-  void lock(T* lock) {
-    lock->lock(0);
+  void lock(T* lockable) {
+    lockable->lock(0);
   }
 
   template <typename T>
-  void unlock(T* lock) {
-    lock->unlock();
+  void unlock(T* lockable) {
+    lockable->unlock();
   }
 
   template <typename T>
-  void lock_shared(T* lock) {
-    lock->enter(0);
+  void lock_shared(T* lockable) {
+    lockable->enter(0);
   }
 
   template <typename T>
-  void unlock_shared(T* lock) {
-    lock->leave();
+  void unlock_shared(T* lockable) {
+    lockable->leave();
   }
 };
 
@@ -1052,14 +1051,14 @@ TEST(SharedMutex, deterministic_lost_wakeup_write_prio) {
 }
 
 TEST(SharedMutex, mixed_mostly_write_read_prio) {
-  for (int pass = 0; pass < 5; ++pass) {
+  for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 5); ++pass) {
     runMixed<atomic, SharedMutexReadPriority, TokenLocker>(
         50000, 300, 0.9, false);
   }
 }
 
 TEST(SharedMutex, mixed_mostly_write_write_prio) {
-  for (int pass = 0; pass < 5; ++pass) {
+  for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 5); ++pass) {
     runMixed<atomic, SharedMutexWritePriority, TokenLocker>(
         50000, 300, 0.9, false);
   }
@@ -1229,7 +1228,7 @@ TEST(SharedMutex, remote_write_prio) {
 }
 
 TEST(SharedMutex, remote_read_prio) {
-  for (int pass = 0; pass < 100; ++pass) {
+  for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 100); ++pass) {
     runRemoteUnlock<SharedMutexReadPriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
@@ -1376,8 +1375,8 @@ BENCHMARK(single_thread_lock_unlock, iters) {
 // 100% reads.  Best-case scenario for deferred locks.  Lock is colocated
 // with read data, so inline lock takes cache miss every time but deferred
 // lock has only cache hits and local access.
-BENCHMARK_DRAW_LINE()
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_reads, 1thread, 1, false)
 BENCH_REL (shmtx_wr_pri_reads, 1thread, 1, false)
 BENCH_REL (shmtx_w_bare_reads, 1thread, 1, false)
@@ -1386,7 +1385,7 @@ BENCH_REL (shmtx_r_bare_reads, 1thread, 1, false)
 BENCH_REL (folly_ticket_reads, 1thread, 1, false)
 BENCH_REL (boost_shared_reads, 1thread, 1, false)
 BENCH_REL (pthrd_rwlock_reads, 1thread, 1, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_reads, 2thread, 2, false)
 BENCH_REL (shmtx_wr_pri_reads, 2thread, 2, false)
 BENCH_REL (shmtx_w_bare_reads, 2thread, 2, false)
@@ -1395,7 +1394,7 @@ BENCH_REL (shmtx_r_bare_reads, 2thread, 2, false)
 BENCH_REL (folly_ticket_reads, 2thread, 2, false)
 BENCH_REL (boost_shared_reads, 2thread, 2, false)
 BENCH_REL (pthrd_rwlock_reads, 2thread, 2, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_reads, 4thread, 4, false)
 BENCH_REL (shmtx_wr_pri_reads, 4thread, 4, false)
 BENCH_REL (shmtx_w_bare_reads, 4thread, 4, false)
@@ -1404,7 +1403,7 @@ BENCH_REL (shmtx_r_bare_reads, 4thread, 4, false)
 BENCH_REL (folly_ticket_reads, 4thread, 4, false)
 BENCH_REL (boost_shared_reads, 4thread, 4, false)
 BENCH_REL (pthrd_rwlock_reads, 4thread, 4, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_reads, 8thread, 8, false)
 BENCH_REL (shmtx_wr_pri_reads, 8thread, 8, false)
 BENCH_REL (shmtx_w_bare_reads, 8thread, 8, false)
@@ -1413,7 +1412,7 @@ BENCH_REL (shmtx_r_bare_reads, 8thread, 8, false)
 BENCH_REL (folly_ticket_reads, 8thread, 8, false)
 BENCH_REL (boost_shared_reads, 8thread, 8, false)
 BENCH_REL (pthrd_rwlock_reads, 8thread, 8, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_reads, 16thread, 16, false)
 BENCH_REL (shmtx_wr_pri_reads, 16thread, 16, false)
 BENCH_REL (shmtx_w_bare_reads, 16thread, 16, false)
@@ -1422,7 +1421,7 @@ BENCH_REL (shmtx_r_bare_reads, 16thread, 16, false)
 BENCH_REL (folly_ticket_reads, 16thread, 16, false)
 BENCH_REL (boost_shared_reads, 16thread, 16, false)
 BENCH_REL (pthrd_rwlock_reads, 16thread, 16, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_reads, 32thread, 32, false)
 BENCH_REL (shmtx_wr_pri_reads, 32thread, 32, false)
 BENCH_REL (shmtx_w_bare_reads, 32thread, 32, false)
@@ -1431,7 +1430,7 @@ BENCH_REL (shmtx_r_bare_reads, 32thread, 32, false)
 BENCH_REL (folly_ticket_reads, 32thread, 32, false)
 BENCH_REL (boost_shared_reads, 32thread, 32, false)
 BENCH_REL (pthrd_rwlock_reads, 32thread, 32, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_reads, 64thread, 64, false)
 BENCH_REL (shmtx_wr_pri_reads, 64thread, 64, false)
 BENCH_REL (shmtx_w_bare_reads, 64thread, 64, false)
@@ -1446,8 +1445,8 @@ BENCH_REL (pthrd_rwlock_reads, 64thread, 64, false)
 // to see the overhead of the generic driver (and its pseudo-random number
 // generator).  pthrd_mutex_ is a pthread_mutex_t (default, not adaptive),
 // which is better than any of the reader-writer locks for this scenario.
-BENCHMARK_DRAW_LINE()
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 1thread_all_write, 1, 1.0, false)
 BENCH_REL (shmtx_wr_pri, 1thread_all_write, 1, 1.0, false)
 BENCH_REL (shmtx_rd_pri, 1thread_all_write, 1, 1.0, false)
@@ -1455,7 +1454,7 @@ BENCH_REL (folly_ticket, 1thread_all_write, 1, 1.0, false)
 BENCH_REL (boost_shared, 1thread_all_write, 1, 1.0, false)
 BENCH_REL (pthrd_rwlock, 1thread_all_write, 1, 1.0, false)
 BENCH_REL (pthrd_mutex_, 1thread_all_write, 1, 1.0, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 2thread_all_write, 2, 1.0, false)
 BENCH_REL (shmtx_wr_pri, 2thread_all_write, 2, 1.0, false)
 BENCH_REL (shmtx_rd_pri, 2thread_all_write, 2, 1.0, false)
@@ -1463,7 +1462,7 @@ BENCH_REL (folly_ticket, 2thread_all_write, 2, 1.0, false)
 BENCH_REL (boost_shared, 2thread_all_write, 2, 1.0, false)
 BENCH_REL (pthrd_rwlock, 2thread_all_write, 2, 1.0, false)
 BENCH_REL (pthrd_mutex_, 2thread_all_write, 2, 1.0, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 4thread_all_write, 4, 1.0, false)
 BENCH_REL (shmtx_wr_pri, 4thread_all_write, 4, 1.0, false)
 BENCH_REL (shmtx_rd_pri, 4thread_all_write, 4, 1.0, false)
@@ -1471,7 +1470,7 @@ BENCH_REL (folly_ticket, 4thread_all_write, 4, 1.0, false)
 BENCH_REL (boost_shared, 4thread_all_write, 4, 1.0, false)
 BENCH_REL (pthrd_rwlock, 4thread_all_write, 4, 1.0, false)
 BENCH_REL (pthrd_mutex_, 4thread_all_write, 4, 1.0, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 8thread_all_write, 8, 1.0, false)
 BENCH_REL (shmtx_wr_pri, 8thread_all_write, 8, 1.0, false)
 BENCH_REL (shmtx_rd_pri, 8thread_all_write, 8, 1.0, false)
@@ -1479,7 +1478,7 @@ BENCH_REL (folly_ticket, 8thread_all_write, 8, 1.0, false)
 BENCH_REL (boost_shared, 8thread_all_write, 8, 1.0, false)
 BENCH_REL (pthrd_rwlock, 8thread_all_write, 8, 1.0, false)
 BENCH_REL (pthrd_mutex_, 8thread_all_write, 8, 1.0, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 16thread_all_write, 16, 1.0, false)
 BENCH_REL (shmtx_wr_pri, 16thread_all_write, 16, 1.0, false)
 BENCH_REL (shmtx_rd_pri, 16thread_all_write, 16, 1.0, false)
@@ -1487,7 +1486,7 @@ BENCH_REL (folly_ticket, 16thread_all_write, 16, 1.0, false)
 BENCH_REL (boost_shared, 16thread_all_write, 16, 1.0, false)
 BENCH_REL (pthrd_rwlock, 16thread_all_write, 16, 1.0, false)
 BENCH_REL (pthrd_mutex_, 16thread_all_write, 16, 1.0, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 32thread_all_write, 32, 1.0, false)
 BENCH_REL (shmtx_wr_pri, 32thread_all_write, 32, 1.0, false)
 BENCH_REL (shmtx_rd_pri, 32thread_all_write, 32, 1.0, false)
@@ -1495,7 +1494,7 @@ BENCH_REL (folly_ticket, 32thread_all_write, 32, 1.0, false)
 BENCH_REL (boost_shared, 32thread_all_write, 32, 1.0, false)
 BENCH_REL (pthrd_rwlock, 32thread_all_write, 32, 1.0, false)
 BENCH_REL (pthrd_mutex_, 32thread_all_write, 32, 1.0, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 64thread_all_write, 64, 1.0, false)
 BENCH_REL (shmtx_wr_pri, 64thread_all_write, 64, 1.0, false)
 BENCH_REL (shmtx_rd_pri, 64thread_all_write, 64, 1.0, false)
@@ -1506,50 +1505,50 @@ BENCH_REL (pthrd_mutex_, 64thread_all_write, 64, 1.0, false)
 
 // 1 lock used by everybody, 10% writes.  Not much scaling to be had.  Perf
 // is best at 1 thread, once you've got multiple threads > 8 threads hurts.
-BENCHMARK_DRAW_LINE()
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 1thread_10pct_write, 1, 0.10, false)
 BENCH_REL (shmtx_wr_pri, 1thread_10pct_write, 1, 0.10, false)
 BENCH_REL (shmtx_rd_pri, 1thread_10pct_write, 1, 0.10, false)
 BENCH_REL (folly_ticket, 1thread_10pct_write, 1, 0.10, false)
 BENCH_REL (boost_shared, 1thread_10pct_write, 1, 0.10, false)
 BENCH_REL (pthrd_rwlock, 1thread_10pct_write, 1, 0.10, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 2thread_10pct_write, 2, 0.10, false)
 BENCH_REL (shmtx_wr_pri, 2thread_10pct_write, 2, 0.10, false)
 BENCH_REL (shmtx_rd_pri, 2thread_10pct_write, 2, 0.10, false)
 BENCH_REL (folly_ticket, 2thread_10pct_write, 2, 0.10, false)
 BENCH_REL (boost_shared, 2thread_10pct_write, 2, 0.10, false)
 BENCH_REL (pthrd_rwlock, 2thread_10pct_write, 2, 0.10, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 4thread_10pct_write, 4, 0.10, false)
 BENCH_REL (shmtx_wr_pri, 4thread_10pct_write, 4, 0.10, false)
 BENCH_REL (shmtx_rd_pri, 4thread_10pct_write, 4, 0.10, false)
 BENCH_REL (folly_ticket, 4thread_10pct_write, 4, 0.10, false)
 BENCH_REL (boost_shared, 4thread_10pct_write, 4, 0.10, false)
 BENCH_REL (pthrd_rwlock, 4thread_10pct_write, 4, 0.10, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 8thread_10pct_write, 8, 0.10, false)
 BENCH_REL (shmtx_wr_pri, 8thread_10pct_write, 8, 0.10, false)
 BENCH_REL (shmtx_rd_pri, 8thread_10pct_write, 8, 0.10, false)
 BENCH_REL (folly_ticket, 8thread_10pct_write, 8, 0.10, false)
 BENCH_REL (boost_shared, 8thread_10pct_write, 8, 0.10, false)
 BENCH_REL (pthrd_rwlock, 8thread_10pct_write, 8, 0.10, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 16thread_10pct_write, 16, 0.10, false)
 BENCH_REL (shmtx_wr_pri, 16thread_10pct_write, 16, 0.10, false)
 BENCH_REL (shmtx_rd_pri, 16thread_10pct_write, 16, 0.10, false)
 BENCH_REL (folly_ticket, 16thread_10pct_write, 16, 0.10, false)
 BENCH_REL (boost_shared, 16thread_10pct_write, 16, 0.10, false)
 BENCH_REL (pthrd_rwlock, 16thread_10pct_write, 16, 0.10, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 32thread_10pct_write, 32, 0.10, false)
 BENCH_REL (shmtx_wr_pri, 32thread_10pct_write, 32, 0.10, false)
 BENCH_REL (shmtx_rd_pri, 32thread_10pct_write, 32, 0.10, false)
 BENCH_REL (folly_ticket, 32thread_10pct_write, 32, 0.10, false)
 BENCH_REL (boost_shared, 32thread_10pct_write, 32, 0.10, false)
 BENCH_REL (pthrd_rwlock, 32thread_10pct_write, 32, 0.10, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 64thread_10pct_write, 64, 0.10, false)
 BENCH_REL (shmtx_wr_pri, 64thread_10pct_write, 64, 0.10, false)
 BENCH_REL (shmtx_rd_pri, 64thread_10pct_write, 64, 0.10, false)
@@ -1560,8 +1559,8 @@ BENCH_REL (pthrd_rwlock, 64thread_10pct_write, 64, 0.10, false)
 // 1 lock used by everybody, 1% writes.  This is a more realistic example
 // than the concurrent_*_reads benchmark, but still shows SharedMutex locks
 // winning over all of the others
-BENCHMARK_DRAW_LINE()
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 1thread_1pct_write, 1, 0.01, false)
 BENCH_REL (shmtx_wr_pri, 1thread_1pct_write, 1, 0.01, false)
 BENCH_REL (shmtx_w_bare, 1thread_1pct_write, 1, 0.01, false)
@@ -1570,7 +1569,7 @@ BENCH_REL (shmtx_r_bare, 1thread_1pct_write, 1, 0.01, false)
 BENCH_REL (folly_ticket, 1thread_1pct_write, 1, 0.01, false)
 BENCH_REL (boost_shared, 1thread_1pct_write, 1, 0.01, false)
 BENCH_REL (pthrd_rwlock, 1thread_1pct_write, 1, 0.01, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 2thread_1pct_write, 2, 0.01, false)
 BENCH_REL (shmtx_wr_pri, 2thread_1pct_write, 2, 0.01, false)
 BENCH_REL (shmtx_w_bare, 2thread_1pct_write, 2, 0.01, false)
@@ -1579,7 +1578,7 @@ BENCH_REL (shmtx_r_bare, 2thread_1pct_write, 2, 0.01, false)
 BENCH_REL (folly_ticket, 2thread_1pct_write, 2, 0.01, false)
 BENCH_REL (boost_shared, 2thread_1pct_write, 2, 0.01, false)
 BENCH_REL (pthrd_rwlock, 2thread_1pct_write, 2, 0.01, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 4thread_1pct_write, 4, 0.01, false)
 BENCH_REL (shmtx_wr_pri, 4thread_1pct_write, 4, 0.01, false)
 BENCH_REL (shmtx_w_bare, 4thread_1pct_write, 4, 0.01, false)
@@ -1588,7 +1587,7 @@ BENCH_REL (shmtx_r_bare, 4thread_1pct_write, 4, 0.01, false)
 BENCH_REL (folly_ticket, 4thread_1pct_write, 4, 0.01, false)
 BENCH_REL (boost_shared, 4thread_1pct_write, 4, 0.01, false)
 BENCH_REL (pthrd_rwlock, 4thread_1pct_write, 4, 0.01, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 8thread_1pct_write, 8, 0.01, false)
 BENCH_REL (shmtx_wr_pri, 8thread_1pct_write, 8, 0.01, false)
 BENCH_REL (shmtx_w_bare, 8thread_1pct_write, 8, 0.01, false)
@@ -1597,7 +1596,7 @@ BENCH_REL (shmtx_r_bare, 8thread_1pct_write, 8, 0.01, false)
 BENCH_REL (folly_ticket, 8thread_1pct_write, 8, 0.01, false)
 BENCH_REL (boost_shared, 8thread_1pct_write, 8, 0.01, false)
 BENCH_REL (pthrd_rwlock, 8thread_1pct_write, 8, 0.01, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 16thread_1pct_write, 16, 0.01, false)
 BENCH_REL (shmtx_wr_pri, 16thread_1pct_write, 16, 0.01, false)
 BENCH_REL (shmtx_w_bare, 16thread_1pct_write, 16, 0.01, false)
@@ -1606,7 +1605,7 @@ BENCH_REL (shmtx_r_bare, 16thread_1pct_write, 16, 0.01, false)
 BENCH_REL (folly_ticket, 16thread_1pct_write, 16, 0.01, false)
 BENCH_REL (boost_shared, 16thread_1pct_write, 16, 0.01, false)
 BENCH_REL (pthrd_rwlock, 16thread_1pct_write, 16, 0.01, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 32thread_1pct_write, 32, 0.01, false)
 BENCH_REL (shmtx_wr_pri, 32thread_1pct_write, 32, 0.01, false)
 BENCH_REL (shmtx_w_bare, 32thread_1pct_write, 32, 0.01, false)
@@ -1615,7 +1614,7 @@ BENCH_REL (shmtx_r_bare, 32thread_1pct_write, 32, 0.01, false)
 BENCH_REL (folly_ticket, 32thread_1pct_write, 32, 0.01, false)
 BENCH_REL (boost_shared, 32thread_1pct_write, 32, 0.01, false)
 BENCH_REL (pthrd_rwlock, 32thread_1pct_write, 32, 0.01, false)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 64thread_1pct_write, 64, 0.01, false)
 BENCH_REL (shmtx_wr_pri, 64thread_1pct_write, 64, 0.01, false)
 BENCH_REL (shmtx_w_bare, 64thread_1pct_write, 64, 0.01, false)
@@ -1628,7 +1627,7 @@ BENCH_REL (pthrd_rwlock, 64thread_1pct_write, 64, 0.01, false)
 // Worst case scenario for deferred locks. No actual sharing, likely that
 // read operations will have to first set the kDeferredReadersPossibleBit,
 // and likely that writers will have to scan deferredReaders[].
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 2thr_2lock_50pct_write, 2, 0.50, true)
 BENCH_REL (shmtx_wr_pri, 2thr_2lock_50pct_write, 2, 0.50, true)
 BENCH_REL (shmtx_rd_pri, 2thr_2lock_50pct_write, 2, 0.50, true)
@@ -1647,7 +1646,7 @@ BENCH_REL (shmtx_rd_pri, 32thr_32lock_50pct_write, 32, 0.50, true)
 BENCH_BASE(folly_rwspin, 64thr_64lock_50pct_write, 64, 0.50, true)
 BENCH_REL (shmtx_wr_pri, 64thr_64lock_50pct_write, 64, 0.50, true)
 BENCH_REL (shmtx_rd_pri, 64thr_64lock_50pct_write, 64, 0.50, true)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 2thr_2lock_10pct_write, 2, 0.10, true)
 BENCH_REL (shmtx_wr_pri, 2thr_2lock_10pct_write, 2, 0.10, true)
 BENCH_REL (shmtx_rd_pri, 2thr_2lock_10pct_write, 2, 0.10, true)
@@ -1666,7 +1665,7 @@ BENCH_REL (shmtx_rd_pri, 32thr_32lock_10pct_write, 32, 0.10, true)
 BENCH_BASE(folly_rwspin, 64thr_64lock_10pct_write, 64, 0.10, true)
 BENCH_REL (shmtx_wr_pri, 64thr_64lock_10pct_write, 64, 0.10, true)
 BENCH_REL (shmtx_rd_pri, 64thr_64lock_10pct_write, 64, 0.10, true)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin, 2thr_2lock_1pct_write, 2, 0.01, true)
 BENCH_REL (shmtx_wr_pri, 2thr_2lock_1pct_write, 2, 0.01, true)
 BENCH_REL (shmtx_rd_pri, 2thr_2lock_1pct_write, 2, 0.01, true)
@@ -1692,29 +1691,29 @@ BENCH_REL (shmtx_rd_pri, 64thr_64lock_1pct_write, 64, 0.01, true)
 // each wakeup by about 20 usec.  (Take benchmark reported difference,
 // ~400 nanos, multiply by the scale of 100, then divide by 2 because
 // each round has two wakeups.)
-BENCHMARK_DRAW_LINE()
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_ping_pong, burn0, 1, 0)
 BENCH_REL (shmtx_w_bare_ping_pong, burn0, 1, 0)
 BENCH_REL (shmtx_r_bare_ping_pong, burn0, 1, 0)
 BENCH_REL (folly_ticket_ping_pong, burn0, 1, 0)
 BENCH_REL (boost_shared_ping_pong, burn0, 1, 0)
 BENCH_REL (pthrd_rwlock_ping_pong, burn0, 1, 0)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_ping_pong, burn100k, 100, 100000)
 BENCH_REL (shmtx_w_bare_ping_pong, burn100k, 100, 100000)
 BENCH_REL (shmtx_r_bare_ping_pong, burn100k, 100, 100000)
 BENCH_REL (folly_ticket_ping_pong, burn100k, 100, 100000)
 BENCH_REL (boost_shared_ping_pong, burn100k, 100, 100000)
 BENCH_REL (pthrd_rwlock_ping_pong, burn100k, 100, 100000)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_ping_pong, burn300k, 100, 300000)
 BENCH_REL (shmtx_w_bare_ping_pong, burn300k, 100, 300000)
 BENCH_REL (shmtx_r_bare_ping_pong, burn300k, 100, 300000)
 BENCH_REL (folly_ticket_ping_pong, burn300k, 100, 300000)
 BENCH_REL (boost_shared_ping_pong, burn300k, 100, 300000)
 BENCH_REL (pthrd_rwlock_ping_pong, burn300k, 100, 300000)
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 BENCH_BASE(folly_rwspin_ping_pong, burn1M, 1000, 1000000)
 BENCH_REL (shmtx_w_bare_ping_pong, burn1M, 1000, 1000000)
 BENCH_REL (shmtx_r_bare_ping_pong, burn1M, 1000, 1000000)

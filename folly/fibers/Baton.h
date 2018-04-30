@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,11 @@ class Baton {
 
   ~Baton() {}
 
+  bool ready() const {
+    auto state = waitingFiber_.load();
+    return state == POSTED;
+  }
+
   /**
    * Puts active fiber to sleep. Returns when post is called.
    */
@@ -64,38 +69,111 @@ class Baton {
   void wait(F&& mainContextFunc);
 
   /**
-   * This is here only not break tao/locks. Please don't use it, because it is
-   * inefficient when used on Fibers.
+   * Checks if the baton has been posted without blocking.
+   *
+   * @return    true iff the baton has been posted.
    */
-  template <typename C, typename D = typename C::duration>
-  bool timed_wait(const std::chrono::time_point<C, D>& timeout);
+  bool try_wait();
 
   /**
-   * Puts active fiber to sleep. Returns when post is called.
+   * Puts active fiber to sleep. Returns when post is called or the timeout
+   * expires.
    *
-   * @param timeout Baton will be automatically awaken if timeout is hit
+   * @param timeout Baton will be automatically awaken if timeout expires
    *
    * @return true if was posted, false if timeout expired
    */
-  bool timed_wait(TimeoutController::Duration timeout);
+  template <typename Rep, typename Period>
+  bool try_wait_for(const std::chrono::duration<Rep, Period>& timeout) {
+    return try_wait_for(timeout, [] {});
+  }
 
   /**
-   * Puts active fiber to sleep. Returns when post is called.
+   * Puts active fiber to sleep. Returns when post is called or the timeout
+   * expires.
    *
-   * @param timeout Baton will be automatically awaken if timeout is hit
+   * @param timeout Baton will be automatically awaken if timeout expires
    * @param mainContextFunc this function is immediately executed on the main
    *        context.
    *
    * @return true if was posted, false if timeout expired
    */
-  template <typename F>
-  bool timed_wait(TimeoutController::Duration timeout, F&& mainContextFunc);
+  template <typename Rep, typename Period, typename F>
+  bool try_wait_for(
+      const std::chrono::duration<Rep, Period>& timeout,
+      F&& mainContextFunc);
 
   /**
-   * Checks if the baton has been posted without blocking.
-   * @return    true iff the baton has been posted.
+   * Puts active fiber to sleep. Returns when post is called or the deadline
+   * expires.
+   *
+   * @param timeout Baton will be automatically awaken if deadline expires
+   *
+   * @return true if was posted, false if timeout expired
    */
-  bool try_wait();
+  template <typename Clock, typename Duration>
+  bool try_wait_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    return try_wait_until(deadline, [] {});
+  }
+
+  /**
+   * Puts active fiber to sleep. Returns when post is called or the deadline
+   * expires.
+   *
+   * @param timeout Baton will be automatically awaken if deadline expires
+   * @param mainContextFunc this function is immediately executed on the main
+   *        context.
+   *
+   * @return true if was posted, false if timeout expired
+   */
+  template <typename Clock, typename Duration, typename F>
+  bool try_wait_until(
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      F&& mainContextFunc);
+
+  /**
+   * Puts active fiber to sleep. Returns when post is called or the deadline
+   * expires.
+   *
+   * @param timeout Baton will be automatically awaken if deadline expires
+   * @param mainContextFunc this function is immediately executed on the main
+   *        context.
+   *
+   * @return true if was posted, false if timeout expired
+   */
+  template <typename Clock, typename Duration, typename F>
+  bool try_wait_for(
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      F&& mainContextFunc);
+
+  /// Alias to try_wait_for. Deprecated.
+  template <typename Rep, typename Period>
+  bool timed_wait(const std::chrono::duration<Rep, Period>& timeout) {
+    return try_wait_for(timeout);
+  }
+
+  /// Alias to try_wait_for. Deprecated.
+  template <typename Rep, typename Period, typename F>
+  bool timed_wait(
+      const std::chrono::duration<Rep, Period>& timeout,
+      F&& mainContextFunc) {
+    return try_wait_for(timeout, static_cast<F&&>(mainContextFunc));
+  }
+
+  /// Alias to try_wait_until. Deprecated.
+  template <typename Clock, typename Duration>
+  bool timed_wait(const std::chrono::time_point<Clock, Duration>& deadline) {
+    return try_wait_until(deadline);
+  }
+
+  /// Alias to try_wait_until. Deprecated.
+  template <typename Clock, typename Duration, typename F>
+  bool timed_wait(
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      F&& mainContextFunc) {
+    return try_wait_until(deadline, static_cast<F&&>(mainContextFunc));
+  }
 
   /**
    * Wakes up Fiber which was waiting on this Baton (or if no Fiber is waiting,
@@ -180,7 +258,7 @@ class Baton {
   union {
     std::atomic<intptr_t> waitingFiber_;
     struct {
-      folly::detail::Futex<> futex;
+      folly::detail::Futex<> futex{};
       int32_t _unused_packing;
     } futex_;
   };

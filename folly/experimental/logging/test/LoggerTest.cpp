@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogHandler.h>
 #include <folly/experimental/logging/LogMessage.h>
-#include <folly/experimental/logging/Logger.h>
 #include <folly/experimental/logging/LoggerDB.h>
 #include <folly/experimental/logging/test/TestLogHandler.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 using namespace folly;
 using std::make_shared;
+using testing::MatchesRegex;
 
 class LoggerTest : public ::testing::Test {
  protected:
@@ -31,7 +34,7 @@ class LoggerTest : public ::testing::Test {
 
     handler_ = make_shared<TestLogHandler>();
     category->addHandler(handler_);
-    category->setLevel(LogLevel::DEBUG, true);
+    category->setLevel(LogLevel::DBG, true);
   }
 
   static StringPiece pathBasename(StringPiece path) {
@@ -104,12 +107,15 @@ TEST_F(LoggerTest, follyFormatError) {
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
-  EXPECT_EQ(
-      "error formatting log message: "
-      "invalid format argument {:6.3f}: invalid specifier 'f'; "
-      "format string: \"param1: {:06d}, param2: {:6.3f}\", "
-      "arguments: (int: 1234), (char [13]: hello world!)",
-      messages[0].first.getMessage());
+  // Use a regex match here, since the type IDs are reported slightly
+  // differently on different platforms.
+  EXPECT_THAT(
+      messages[0].first.getMessage(),
+      MatchesRegex(
+          R"(error formatting log message: )"
+          R"(invalid format argument \{:6.3f\}: invalid specifier 'f'; )"
+          R"(format string: "param1: \{:06d\}, param2: \{:6.3f\}", )"
+          R"(arguments: \((.*: )?1234\), \((.*: )?hello world\!\))"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -198,12 +204,14 @@ TEST_F(LoggerTest, formatFallbackError) {
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
-  EXPECT_EQ(
-      "error formatting log message: "
-      "invalid format argument {}: argument index out of range, max=2; "
-      "format string: \"param1: {}, param2: {}, {}\", "
-      "arguments: (int: 1234), (ToStringFailure: <error_converting_to_string>)",
-      messages[0].first.getMessage());
+  EXPECT_THAT(
+      messages[0].first.getMessage(),
+      MatchesRegex(
+          R"(error formatting log message: invalid format argument \{\}: )"
+          R"(argument index out of range, max=2; )"
+          R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
+          R"(arguments: \((.*: )?1234\), )"
+          R"(\((.*ToStringFailure.*: )?<error_converting_to_string>\))"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -218,13 +226,13 @@ TEST_F(LoggerTest, formatFallbackUnsupported) {
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
-  EXPECT_EQ(
-      "error formatting log message: "
-      "test; "
-      "format string: \"param1: {}, param2: {}\", "
-      "arguments: (int: 1234), "
-      "(FormattableButNoToString: <no_string_conversion>)",
-      messages[0].first.getMessage());
+  EXPECT_THAT(
+      messages[0].first.getMessage(),
+      MatchesRegex(
+          R"(error formatting log message: test; )"
+          R"(format string: "param1: \{\}, param2: \{\}", )"
+          R"(arguments: \((.*: )?1234\), )"
+          R"(\((.*FormattableButNoToString.*: )?<no_string_conversion>\))"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -334,11 +342,37 @@ TEST_F(LoggerTest, logMacros) {
   // Bad format arguments should not throw
   FB_LOGF(footest1234, ERR, "whoops: {}, {}", getValue());
   ASSERT_EQ(1, messages.size());
-  EXPECT_EQ(
-      "error formatting log message: "
-      "invalid format argument {}: argument index out of range, max=1; "
-      "format string: \"whoops: {}, {}\", "
-      "arguments: (int: 5)",
-      messages[0].first.getMessage());
+  EXPECT_THAT(
+      messages[0].first.getMessage(),
+      MatchesRegex(
+          R"(error formatting log message: invalid format argument \{\}: )"
+          R"(argument index out of range, max=1; )"
+          R"(format string: "whoops: \{\}, \{\}", arguments: \((.*: )?5\))"));
+  messages.clear();
+}
+
+TEST_F(LoggerTest, logRawMacros) {
+  Logger foobar{&db_, "test.foo.bar"};
+  db_.setLevel("test.foo", LogLevel::DBG2);
+
+  auto& messages = handler_->getMessages();
+
+  FB_LOG_RAW(foobar, LogLevel::DBG1, "src/some/file.c", 1234, "hello", ' ', 1)
+      << " world";
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("hello 1 world", messages[0].first.getMessage());
+  EXPECT_EQ("src/some/file.c", messages[0].first.getFileName());
+  EXPECT_EQ("file.c", messages[0].first.getFileBaseName());
+  EXPECT_EQ(1234, messages[0].first.getLineNumber());
+  messages.clear();
+
+  auto level = LogLevel::DBG1;
+  FB_LOGF_RAW(foobar, level, "test/mytest.c", 99, "{}: num={}", "test", 42)
+      << " plus extra stuff";
+  ASSERT_EQ(1, messages.size());
+  EXPECT_EQ("test: num=42 plus extra stuff", messages[0].first.getMessage());
+  EXPECT_EQ("test/mytest.c", messages[0].first.getFileName());
+  EXPECT_EQ("mytest.c", messages[0].first.getFileBaseName());
+  EXPECT_EQ(99, messages[0].first.getLineNumber());
   messages.clear();
 }

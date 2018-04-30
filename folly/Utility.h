@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -97,6 +98,23 @@ constexpr T const& as_const(T& t) noexcept {
 
 template <class T>
 void as_const(T const&&) = delete;
+
+#endif
+
+#if __cpp_lib_exchange_function || _LIBCPP_STD_VER > 11 || _MSC_VER
+
+/* using override */ using std::exchange;
+
+#else
+
+//  mimic: std::exchange, C++14
+//  from: http://en.cppreference.com/w/cpp/utility/exchange, CC-BY-SA
+template <class T, class U = T>
+T exchange(T& obj, U&& new_value) {
+  T old_value = std::move(obj);
+  obj = std::forward<U>(new_value);
+  return old_value;
+}
 
 #endif
 
@@ -182,6 +200,8 @@ using make_integer_sequence = typename utility_detail::make_seq<
 
 template <std::size_t Size>
 using make_index_sequence = make_integer_sequence<std::size_t, Size>;
+template <class... T>
+using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
 /**
  *  Backports from C++17 of:
@@ -263,6 +283,54 @@ struct initlist_construct_t {};
 constexpr initlist_construct_t initlist_construct{};
 
 /**
+ * A generic tag type to indicate that some constructor or method accepts a
+ * presorted container.
+ *
+ * Example:
+ *
+ *  void takes_numbers(std::vector<int> alist) {
+ *    std::sort(alist.begin(), alist.end());
+ *    takes_numbers(folly::presorted, alist);
+ *  }
+ *
+ *  void takes_numbers(folly::presorted_t, std::vector<int> alist) {
+ *    assert(std::is_sorted(alist.begin(), alist.end())); // debug mode only
+ *    for (i : alist) {
+ *      // some behavior which is defined and safe only when alist is sorted ...
+ *    }
+ *  }
+ */
+struct presorted_t {};
+constexpr presorted_t presorted{};
+
+/**
+ * A generic tag type to indicate that some constructor or method accepts an
+ * unsorted container. Useful in contexts which might have some reason to assume
+ * a container to be sorted.
+ *
+ * Example:
+ *
+ *  void takes_numbers(std::vector<int> alist) {
+ *    takes_numbers(folly::unsorted, alist);
+ *  }
+ *
+ *  void takes_numbers(folly::unsorted_t, std::vector<int> alist) {
+ *    std::sort(alist.begin(), alist.end());
+ *    for (i : alist) {
+ *      // some behavior which is defined and safe only when alist is sorted ...
+ *    }
+ *  }
+ */
+struct unsorted_t {};
+constexpr unsorted_t unsorted{};
+
+template <typename T>
+struct transparent : T {
+  using is_transparent = void;
+  using T::T;
+};
+
+/**
  * A simple function object that passes its argument through unchanged.
  *
  * Example:
@@ -282,7 +350,6 @@ constexpr initlist_construct_t initlist_construct{};
  *                // is no longer valid
  */
 struct Identity {
-  using is_transparent = void;
   template <class T>
   constexpr T&& operator()(T&& x) const noexcept {
     return static_cast<T&&>(x);
@@ -310,4 +377,27 @@ class MoveOnly {
 } // namespace moveonly_
 
 using MoveOnly = moveonly_::MoveOnly;
+
+/**
+ * A pithy alias for std::integral_constant<bool, B>.
+ */
+template <bool B>
+using Bool = std::integral_constant<bool, B>;
+
+template <typename T>
+constexpr auto to_signed(T const& t) -> typename std::make_signed<T>::type {
+  using S = typename std::make_signed<T>::type;
+  // note: static_cast<S>(t) would be more straightforward, but it would also be
+  // implementation-defined behavior and that is typically to be avoided; the
+  // following code optimized into the same thing, though
+  return std::numeric_limits<S>::max() < t ? -static_cast<S>(~t) + S{-1}
+                                           : static_cast<S>(t);
+}
+
+template <typename T>
+constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
+  using U = typename std::make_unsigned<T>::type;
+  return static_cast<U>(t);
+}
+
 } // namespace folly

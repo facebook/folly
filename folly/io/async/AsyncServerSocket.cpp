@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,11 +40,11 @@ namespace fsp = folly::portability::sockets;
 namespace folly {
 
 static constexpr bool msgErrQueueSupported =
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
     true;
 #else
     false;
-#endif // MSG_ERRQUEUE
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
 
 const uint32_t AsyncServerSocket::kDefaultMaxAcceptAtOnce;
 const uint32_t AsyncServerSocket::kDefaultCallbackAcceptAtOnce;
@@ -791,6 +791,8 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
               strerror(errno);
     }
   }
+#else
+  (void)family; // to avoid unused parameter warning
 #endif
 
 #if FOLLY_ALLOW_TFO
@@ -962,8 +964,8 @@ void AsyncServerSocket::dispatchSocket(int socket,
       // should use pauseAccepting() to temporarily back off accepting new
       // connections, before they reach the point where their threads can't
       // even accept new messages.
-      LOG(ERROR) << "failed to dispatch newly accepted socket:"
-                 << " all accept callback queues are full";
+      LOG_EVERY_N(ERROR, 100) << "failed to dispatch newly accepted socket:"
+                              << " all accept callback queues are full";
       closeNoInt(socket);
       if (connectionEventCallback_) {
         connectionEventCallback_->onConnectionDropped(socket, addr);
@@ -1002,9 +1004,10 @@ void AsyncServerSocket::dispatchError(const char *msgstr, int errnoValue) {
     if (callbackIndex_ == startingIndex) {
       // The notification queues for all of the callbacks were full.
       // We can't really do anything at this point.
-      LOG(ERROR) << "failed to dispatch accept error: all accept callback "
-        "queues are full: error msg:  " <<
-        msg.msg.c_str() << errnoValue;
+      LOG_EVERY_N(ERROR, 100)
+          << "failed to dispatch accept error: all accept"
+          << " callback queues are full: error msg:  " << msg.msg << ": "
+          << errnoValue;
       return;
     }
     info = nextCallback();

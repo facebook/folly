@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/Likely.h>
+#include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/experimental/logging/LogStream.h>
 #include <folly/experimental/logging/Logger.h>
@@ -68,6 +69,24 @@
       fmt,                                 \
       arg1,                                \
       ##__VA_ARGS__)
+
+/**
+ * FOLLY_XLOG_STRIP_PREFIXES can be defined to a string containing a
+ * colon-separated list of directory prefixes to strip off from the filename
+ * before using it to compute the log category name.
+ *
+ * If this is defined, use xlogStripFilename() to strip off directory prefixes;
+ * otherwise just use __FILE__ literally.  xlogStripFilename() is a constexpr
+ * expression so that this stripping can be performed fully at compile time.
+ * (There is no guarantee that the compiler will evaluate it at compile time,
+ * though.)
+ */
+#ifdef FOLLY_XLOG_STRIP_PREFIXES
+#define XLOG_FILENAME \
+  folly::xlogStripFilename(__FILE__, FOLLY_XLOG_STRIP_PREFIXES)
+#else
+#define XLOG_FILENAME __FILE__
+#endif
 
 /**
  * Helper macro used to implement XLOG() and XLOGF()
@@ -126,9 +145,9 @@
                     &xlog_detail::xlogFileScopeInfo);                        \
               }(),                                                           \
               (level),                                                       \
-              xlog_detail::getXlogCategoryName(__FILE__, 0),                 \
+              xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0),            \
               xlog_detail::isXlogCategoryOverridden(0),                      \
-              __FILE__,                                                      \
+              XLOG_FILENAME,                                                 \
               __LINE__,                                                      \
               (type),                                                        \
               ##__VA_ARGS__)                                                 \
@@ -162,7 +181,7 @@
     static ::folly::XlogLevelInfo<XLOG_IS_IN_HEADER_FILE> _xlogLevel_; \
     return _xlogLevel_.check(                                          \
         (level),                                                       \
-        xlog_detail::getXlogCategoryName(__FILE__, 0),                 \
+        xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0),            \
         xlog_detail::isXlogCategoryOverridden(0),                      \
         &xlog_detail::xlogFileScopeInfo);                              \
   }())
@@ -171,10 +190,10 @@
  * Get the name of the log category that will be used by XLOG() statements
  * in this file.
  */
-#define XLOG_GET_CATEGORY_NAME()                       \
-  (xlog_detail::isXlogCategoryOverridden(0)            \
-       ? xlog_detail::getXlogCategoryName(__FILE__, 0) \
-       : ::folly::getXlogCategoryNameForFile(__FILE__))
+#define XLOG_GET_CATEGORY_NAME()                            \
+  (xlog_detail::isXlogCategoryOverridden(0)                 \
+       ? xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0) \
+       : ::folly::getXlogCategoryNameForFile(XLOG_FILENAME))
 
 /**
  * Get a pointer to the LogCategory that will be used by XLOG() statements in
@@ -185,7 +204,7 @@
  * expand to the correct filename based on where the macro is used.
  */
 #define XLOG_GET_CATEGORY() \
-  folly::LoggerDB::get()->getCategory(XLOG_GET_CATEGORY_NAME())
+  folly::LoggerDB::get().getCategory(XLOG_GET_CATEGORY_NAME())
 
 /**
  * XLOG_SET_CATEGORY_NAME() can be used to explicitly define the log category
@@ -380,7 +399,80 @@ class XlogCategoryInfo<false> {
  * This function returns the category name that will be used by XLOG() if
  * XLOG_SET_CATEGORY_NAME() has not been used.
  */
-std::string getXlogCategoryNameForFile(folly::StringPiece filename);
+folly::StringPiece getXlogCategoryNameForFile(folly::StringPiece filename);
+
+constexpr bool xlogIsDirSeparator(char c) {
+  return c == '/' || (kIsWindows && c == '\\');
+}
+
+namespace detail {
+constexpr const char* xlogStripFilenameRecursive(
+    const char* filename,
+    const char* prefixes,
+    size_t prefixIdx,
+    size_t filenameIdx,
+    bool match);
+constexpr const char* xlogStripFilenameMatchFound(
+    const char* filename,
+    const char* prefixes,
+    size_t prefixIdx,
+    size_t filenameIdx) {
+  return (filename[filenameIdx] == '\0')
+      ? xlogStripFilenameRecursive(filename, prefixes, prefixIdx + 1, 0, true)
+      : (xlogIsDirSeparator(filename[filenameIdx])
+             ? xlogStripFilenameMatchFound(
+                   filename, prefixes, prefixIdx, filenameIdx + 1)
+             : (filename + filenameIdx));
+}
+constexpr const char* xlogStripFilenameRecursive(
+    const char* filename,
+    const char* prefixes,
+    size_t prefixIdx,
+    size_t filenameIdx,
+    bool match) {
+  // This would be much easier to understand if written as a while loop.
+  // However, in order to maintain compatibility with pre-C++14 compilers we
+  // have implemented it recursively to adhere to C++11 restrictions for
+  // constexpr functions.
+  return (prefixes[prefixIdx] == ':' || prefixes[prefixIdx] == '\0')
+      ? ((match && filenameIdx > 0 &&
+          (xlogIsDirSeparator(prefixes[filenameIdx - 1]) ||
+           xlogIsDirSeparator(filename[filenameIdx])))
+             ? (xlogStripFilenameMatchFound(
+                   filename, prefixes, prefixIdx, filenameIdx))
+             : ((prefixes[prefixIdx] == '\0')
+                    ? filename
+                    : xlogStripFilenameRecursive(
+                          filename, prefixes, prefixIdx + 1, 0, true)))
+      : ((match && (prefixes[prefixIdx] == filename[filenameIdx]))
+             ? xlogStripFilenameRecursive(
+                   filename, prefixes, prefixIdx + 1, filenameIdx + 1, true)
+             : xlogStripFilenameRecursive(
+                   filename, prefixes, prefixIdx + 1, 0, false));
+}
+} // namespace detail
+
+/**
+ * Strip directory prefixes from a filename before using it in XLOG macros.
+ *
+ * This is primarily used to strip off the initial project directory path for
+ * projects that invoke the compiler with absolute path names.
+ *
+ * The filename argument is the filename to process.  This is normally the
+ * contents of the __FILE__ macro from the invoking file.
+ *
+ * prefixes is a colon-separated list of directory prefixes to strip off if
+ * present at the beginning of the filename.  The prefix list is searched in
+ * order, and only the first match found will be stripped.
+ *
+ * e.g., xlogStripFilename("/my/project/src/foo.cpp", "/tmp:/my/project")
+ * would return "src/foo.cpp"
+ */
+constexpr const char* xlogStripFilename(
+    const char* filename,
+    const char* prefixes) {
+  return detail::xlogStripFilenameRecursive(filename, prefixes, 0, 0, true);
+}
 } // namespace folly
 
 /*

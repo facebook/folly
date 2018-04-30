@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-#include <folly/container/Foreach.h>
+#include <algorithm>
+#include <map>
 
 #include <folly/Benchmark.h>
-#include <folly/portability/GTest.h>
-
-#include <map>
+#include <folly/Random.h>
+#include <folly/container/Enumerate.h>
+#include <folly/container/Foreach.h>
+#include <folly/init/Init.h>
 
 using namespace folly;
 using namespace folly::detail;
@@ -31,9 +33,13 @@ using namespace folly::detail;
 //    iter->second as is, without assigning to local variables.
 // 3. Use FOR_EACH_KV loop to iterate through the map.
 
-std::map<int, std::string> bmMap; // For use in benchmarks below.
+// For use in benchmarks below.
+std::map<int, std::string> bmMap;
 std::vector<int> vec_one;
 std::vector<int> vec_two;
+
+// Smallest type to isolate iteration overhead.
+std::vector<char> vec_char;
 
 void setupBenchmark(size_t iters) {
   bmMap.clear();
@@ -45,6 +51,12 @@ void setupBenchmark(size_t iters) {
   vec_two.clear();
   vec_one.resize(iters);
   vec_two.resize(iters);
+}
+
+void setupCharVecBenchmark(size_t iters) {
+  vec_char.resize(iters);
+  std::generate(
+      vec_char.begin(), vec_char.end(), [] { return Random::rand32(128); });
 }
 
 BENCHMARK(ForEachFunctionNoAssign, iters) {
@@ -330,13 +342,61 @@ BENCHMARK(ForEachRangeR, iters) {
   doNotOptimizeAway(sum);
 }
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  auto r = RUN_ALL_TESTS();
-  if (r) {
-    return r;
+BENCHMARK(CharVecForRange, iters) {
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
   }
+  size_t sum = 0;
+  for (auto& c : vec_char) {
+    sum += c;
+  }
+  doNotOptimizeAway(sum);
+}
+
+BENCHMARK(CharVecForRangeExplicitIndex, iters) {
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
+  size_t sum = 0;
+  size_t index = 0;
+  for (auto& c : vec_char) {
+    sum += c * index;
+    ++index;
+  }
+  doNotOptimizeAway(sum);
+}
+
+BENCHMARK(CharVecForEach, iters) {
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
+  size_t sum = 0;
+  folly::for_each(vec_char, [&](auto& c) { sum += c; });
+  doNotOptimizeAway(sum);
+}
+
+BENCHMARK(CharVecForEachIndex, iters) {
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
+  size_t sum = 0;
+  folly::for_each(vec_char, [&](auto& c, auto index) { sum += c * index; });
+  doNotOptimizeAway(sum);
+}
+
+BENCHMARK(CharVecForRangeEnumerate, iters) {
+  BENCHMARK_SUSPEND {
+    setupCharVecBenchmark(iters);
+  }
+  size_t sum = 0;
+  for (auto&& it : enumerate(vec_char)) {
+    sum += *it * it.index;
+  }
+  doNotOptimizeAway(sum);
+}
+
+int main(int argc, char** argv) {
+  folly::init(&argc, &argv);
   runBenchmarks();
   return 0;
 }

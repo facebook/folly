@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,13 @@ TEST_F(UtilityTest, as_const) {
   EXPECT_TRUE(noexcept(folly::as_const(s)));
 }
 
+TEST_F(UtilityTest, exchange) {
+  auto obj = std::map<std::string, int>{{"hello", 3}};
+  auto old = exchange(obj, {{"world", 4}});
+  EXPECT_EQ((std::map<std::string, int>{{"world", 4}}), obj);
+  EXPECT_EQ((std::map<std::string, int>{{"hello", 3}}), old);
+}
+
 TEST(FollyIntegerSequence, core) {
   constexpr auto seq = folly::integer_sequence<int, 0, 3, 2>();
   static_assert(seq.size() == 3, "");
@@ -118,4 +125,30 @@ TEST_F(UtilityTest, MoveOnly) {
   static_assert(
       std::is_nothrow_move_constructible<FooBar>::value,
       "Should have noexcept move constructor");
+}
+
+TEST_F(UtilityTest, to_signed) {
+  {
+    constexpr auto actual = folly::to_signed(int32_t(-12));
+    EXPECT_TRUE(std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
+  {
+    constexpr auto actual = folly::to_signed(uint32_t(-12));
+    EXPECT_TRUE(std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
+}
+
+TEST_F(UtilityTest, to_unsigned) {
+  {
+    constexpr auto actual = folly::to_unsigned(int32_t(-12));
+    EXPECT_TRUE(!std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
+  {
+    constexpr auto actual = folly::to_unsigned(uint32_t(-12));
+    EXPECT_TRUE(!std::is_signed<decltype(actual)>::value);
+    EXPECT_EQ(-12, actual);
+  }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,6 @@
 #include <folly/portability/Stdlib.h>
 
 DEFINE_string(logging, "", "Logging category configuration string");
-DEFINE_string(
-    handler_style,
-    "async",
-    "Log handler style: async, immediate, or none");
 
 DEFINE_string(
     category,
@@ -61,14 +57,6 @@ static InitChecker initChecker;
 
 namespace {
 int runHelper() {
-  if (FLAGS_handler_style == "async") {
-    initLoggingGlogStyle(FLAGS_logging, LogLevel::INFO, true);
-  } else if (FLAGS_handler_style == "immediate") {
-    initLoggingGlogStyle(FLAGS_logging, LogLevel::INFO, false);
-  } else if (FLAGS_handler_style != "none") {
-    XLOGF(FATAL, "unknown log handler style \"{}\"", FLAGS_handler_style);
-  }
-
   if (!FLAGS_category.empty()) {
     folly::Logger logger{FLAGS_category};
     FB_LOG(logger, FATAL, "crashing to category ", FLAGS_category);
@@ -98,6 +86,7 @@ std::string fbLogFatalCheck() {
 int main(int argc, char* argv[]) {
   // Call folly::init() and then initialize log levels and handlers
   folly::init(&argc, &argv);
+  folly::initLoggingOrDie(FLAGS_logging);
 
   // Do most of the work in a separate helper function.
   //

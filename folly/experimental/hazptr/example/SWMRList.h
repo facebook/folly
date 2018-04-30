@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ class SWMRListSet {
   template <typename Node>
   struct Reclaimer {
     void operator()(Node* p) {
-      DEBUG_PRINT(p << " " << sizeof(Node));
+      HAZPTR_DEBUG_PRINT(p << " " << sizeof(Node));
       delete p;
     }
   };
@@ -43,12 +43,12 @@ class SWMRListSet {
     std::atomic<Node*> next_;
 
     Node(T e, Node* n) : elem_(e), next_(n) {
-      DEBUG_PRINT(this << " " << e << " " << n);
+      HAZPTR_DEBUG_PRINT(this << " " << e << " " << n);
     }
 
    public:
     ~Node() {
-      DEBUG_PRINT(this);
+      HAZPTR_DEBUG_PRINT(this);
     }
   };
 

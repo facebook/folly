@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #define HAZPTR_TC true
 #define HAZPTR_PRIV true
 #define HAZPTR_ONE_DOMAIN true
+#define HAZPTR_ENABLE_TLS true
 
 #include <folly/experimental/hazptr/bench/HazptrBench.h>
 #include <folly/portability/GFlags.h>

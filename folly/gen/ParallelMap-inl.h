@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 
 #include <folly/MPMCPipeline.h>
 #include <folly/experimental/EventCount.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 namespace gen {
@@ -57,10 +58,10 @@ class PMap : public Operator<PMap<Predicate>> {
       class Value,
       class Source,
       class Input = typename std::decay<Value>::type,
-      class Output = typename std::decay<
-          typename std::result_of<Predicate(Value)>::type>::type>
-  class Generator :
-    public GenImpl<Output, Generator<Value, Source, Input, Output>> {
+      class Output =
+          typename std::decay<invoke_result_t<Predicate, Value>>::type>
+  class Generator
+      : public GenImpl<Output, Generator<Value, Source, Input, Output>> {
     Source source_;
     Predicate pred_;
     const size_t nThreads_;

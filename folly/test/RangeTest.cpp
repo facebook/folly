@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,8 +30,9 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/range/concepts.hpp>
 
+#include <folly/Memory.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/Memory.h>
 #include <folly/portability/SysMman.h>
 
 using namespace folly;
@@ -798,8 +799,8 @@ TEST(StringPiece, split_step_with_process_char_delimiter_additional_args) {
   EXPECT_EQ(e, p.end());
   EXPECT_EQ(s, p);
 
-  auto const functor = [](folly::StringPiece s, folly::StringPiece expected) {
-    EXPECT_EQ(expected, s);
+  auto const functor = [](folly::StringPiece s_, folly::StringPiece expected) {
+    EXPECT_EQ(expected, s_);
     return expected;
   };
 
@@ -833,8 +834,8 @@ TEST(StringPiece, split_step_with_process_range_delimiter_additional_args) {
   EXPECT_EQ(e, p.end());
   EXPECT_EQ(s, p);
 
-  auto const functor = [](folly::StringPiece s, folly::StringPiece expected) {
-    EXPECT_EQ(expected, s);
+  auto const functor = [](folly::StringPiece s_, folly::StringPiece expected) {
+    EXPECT_EQ(expected, s_);
     return expected;
   };
 
@@ -1091,7 +1092,9 @@ template <class C>
 void testRangeFunc(C&& x, size_t n) {
   const auto& cx = x;
   // type, conversion checks
-  Range<int*> r1 = range(std::forward<C>(x));
+  using R1Iter =
+      _t<std::conditional<_t<std::is_reference<C>>::value, int*, int const*>>;
+  Range<R1Iter> r1 = range(std::forward<C>(x));
   Range<const int*> r2 = range(std::forward<C>(x));
   Range<const int*> r3 = range(cx);
   Range<const int*> r5 = range(std::move(cx));
@@ -1175,6 +1178,54 @@ TEST(RangeFunc, ConstexprCollection) {
   EXPECT_EQ(1, numCollRange[1]);
   constexpr const auto numCollRangeSize = numCollRange.size();
   EXPECT_EQ(2, numCollRangeSize);
+}
+
+TEST(CRangeFunc, CArray) {
+  int numArray[4] = {3, 17, 1, 9};
+  auto const numArrayRange = crange(numArray);
+  EXPECT_TRUE(
+      (std::is_same<int const*, decltype(numArrayRange)::iterator>::value));
+  EXPECT_THAT(numArrayRange, testing::ElementsAreArray(numArray));
+}
+
+TEST(CRangeFunc, StdArray) {
+  std::array<int, 4> numArray = {{3, 17, 1, 9}};
+  auto const numArrayRange = crange(numArray);
+  EXPECT_TRUE(
+      (std::is_same<int const*, decltype(numArrayRange)::iterator>::value));
+  EXPECT_THAT(numArrayRange, testing::ElementsAreArray(numArray));
+}
+
+TEST(CRangeFunc, StdArrayZero) {
+  std::array<int, 0> numArray = {};
+  auto const numArrayRange = crange(numArray);
+  EXPECT_TRUE(
+      (std::is_same<int const*, decltype(numArrayRange)::iterator>::value));
+  EXPECT_THAT(numArrayRange, testing::IsEmpty());
+}
+
+TEST(CRangeFunc, Collection) {
+  class IntCollection {
+   public:
+    constexpr IntCollection(int* d, size_t s) : data_(d), size_(s) {}
+    constexpr int const* data() const {
+      return data_;
+    }
+    constexpr size_t size() const {
+      return size_;
+    }
+
+   private:
+    int* data_;
+    size_t size_;
+  };
+  int numArray[4] = {3, 17, 1, 9};
+  auto numPtr = static_cast<int*>(numArray);
+  auto numColl = IntCollection(numPtr + 1, 2);
+  auto const numCollRange = crange(numColl);
+  EXPECT_TRUE(
+      (std::is_same<int const*, decltype(numCollRange)::iterator>::value));
+  EXPECT_THAT(numCollRange, testing::ElementsAreArray({17, 1}));
 }
 
 std::string get_rand_str(
@@ -1373,4 +1424,9 @@ TEST(Range, LiteralSuffix) {
   constexpr auto literalPieceW = L"hello"_sp;
   constexpr Range<wchar_t const*> pieceW{L"hello", 5};
   EXPECT_EQ(literalPieceW, pieceW);
+}
+
+TEST(Range, LiteralSuffixContainsNulBytes) {
+  constexpr auto literalPiece = "\0foo\0"_sp;
+  EXPECT_EQ(5u, literalPiece.size());
 }

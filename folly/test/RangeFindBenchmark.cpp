@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,12 +103,12 @@ void initDelims(int len) {
     if (n == 8) {
       n = 32;
     }
-    auto s = generateString(n);
+    auto s_ = generateString(n);
     if (rnd() % 2) {
       // ~half of tests will find a hit
-      s[rnd() % s.size()] = 'a'; // yes, this could mean 'a' is a duplicate
+      s_[rnd() % s_.size()] = 'a'; // yes, this could mean 'a' is a duplicate
     }
-    ffoDelim.push_back(s);
+    ffoDelim.push_back(s_);
   }
 }
 

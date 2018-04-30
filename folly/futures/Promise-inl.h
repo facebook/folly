@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 #include <atomic>
 #include <thread>
 
+#include <folly/executors/InlineExecutor.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/detail/Core.h>
 
@@ -85,10 +86,17 @@ void Promise<T>::detach() {
 }
 
 template <class T>
-Future<T> Promise<T>::getFuture() {
+SemiFuture<T> Promise<T>::getSemiFuture() {
   throwIfRetrieved();
   retrieved_ = true;
-  return Future<T>(core_);
+  return SemiFuture<T>(core_);
+}
+
+template <class T>
+Future<T> Promise<T>::getFuture() {
+  // An InlineExecutor approximates the old behaviour of continuations
+  // running inine on setting the value of the promise.
+  return getSemiFuture().via(&InlineExecutor::instance());
 }
 
 template <class T>

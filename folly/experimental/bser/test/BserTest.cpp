@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,6 +116,33 @@ TEST(Bser, PduLength) {
   auto buf = folly::IOBuf::wrapBuffer(template_blob, sizeof(template_blob));
   auto len = folly::bser::decodePduLength(&*buf);
   EXPECT_EQ(len, 44) << "PduLength should be 44, got " << len;
+}
+
+TEST(Bser, CursorLength) {
+  folly::bser::serialization_opts opts;
+  std::string inputStr("hello there please break");
+
+  // This test is exercising the decode logic for pathological
+  // fragmentation cases.  We try a few permutations with the
+  // BSER header being fragmented to tickle boundary conditions
+
+  auto longSerialized = folly::bser::toBser(inputStr, opts);
+  for (uint32_t i = 1; i < longSerialized.size(); ++i) {
+    folly::IOBufQueue q;
+
+    q.append(folly::IOBuf::wrapBuffer(longSerialized.data(), i));
+    uint32_t j = i;
+    while (j < longSerialized.size()) {
+      q.append(folly::IOBuf::wrapBuffer(&longSerialized[j], 1));
+      ++j;
+    }
+
+    auto pdu_len = folly::bser::decodePduLength(q.front());
+    auto buf = q.split(pdu_len);
+
+    auto hello = folly::bser::parseBser(buf.get());
+    EXPECT_EQ(inputStr, hello.asString());
+  }
 }
 
 /* vim:ts=2:sw=2:et:

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include <functional>
 #include <string>
 
-#include <folly/RWSpinLock.h>
+#include <folly/synchronization/RWSpinLock.h>
 
 #include <folly/io/async/AsyncServerSocket.h>
 
@@ -143,8 +143,8 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
  public:
   enum EventType { TYPE_START, TYPE_ACCEPT, TYPE_ERROR, TYPE_STOP };
   struct EventInfo {
-    EventInfo(int fd, const folly::SocketAddress& addr)
-        : type(TYPE_ACCEPT), fd(fd), address(addr), errorMsg() {}
+    EventInfo(int fd_, const folly::SocketAddress& addr)
+        : type(TYPE_ACCEPT), fd(fd_), address(addr), errorMsg() {}
     explicit EventInfo(const std::string& msg)
         : type(TYPE_ERROR), fd(-1), address(), errorMsg(msg) {}
     explicit EventInfo(EventType et)

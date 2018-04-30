@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
  */
 
 void BENCHFUN(initRNG)(size_t /* iters */, size_t) { srand(seed); }
-BENCHMARK_PARAM(BENCHFUN(initRNG), 0);
+BENCHMARK_PARAM(BENCHFUN(initRNG), 0)
 
 void BENCHFUN(defaultCtor)(size_t iters, size_t) {
   FOR_EACH_RANGE (i, 0, iters) {
@@ -30,7 +30,7 @@ void BENCHFUN(defaultCtor)(size_t iters, size_t) {
     doNotOptimizeAway(&s);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(defaultCtor), 0);
+BENCHMARK_PARAM(BENCHFUN(defaultCtor), 0)
 
 void BENCHFUN(copyCtor)(size_t iters, size_t arg) {
   STRING s;
@@ -42,7 +42,7 @@ void BENCHFUN(copyCtor)(size_t iters, size_t arg) {
     doNotOptimizeAway(&s1);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(copyCtor), 32768);
+BENCHMARK_PARAM(BENCHFUN(copyCtor), 32768)
 
 void BENCHFUN(ctorFromArray)(size_t iters, size_t arg) {
   STRING s;
@@ -57,7 +57,7 @@ void BENCHFUN(ctorFromArray)(size_t iters, size_t arg) {
     doNotOptimizeAway(&s1);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(ctorFromArray), 32768);
+BENCHMARK_PARAM(BENCHFUN(ctorFromArray), 32768)
 
 void BENCHFUN(ctorFromTwoPointers)(size_t iters, size_t arg) {
   /* library-local */ static STRING s;
@@ -71,11 +71,11 @@ void BENCHFUN(ctorFromTwoPointers)(size_t iters, size_t arg) {
     doNotOptimizeAway(&s1);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 0);
-BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 7);
-BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 15);
-BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 23);
-BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 24);
+BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 0)
+BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 7)
+BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 15)
+BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 23)
+BENCHMARK_PARAM(BENCHFUN(ctorFromTwoPointers), 24)
 
 void BENCHFUN(ctorFromChar)(size_t iters, size_t arg) {
   FOR_EACH_RANGE (i, 0, iters) {
@@ -83,7 +83,7 @@ void BENCHFUN(ctorFromChar)(size_t iters, size_t arg) {
     doNotOptimizeAway(&s1);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(ctorFromChar), 1048576);
+BENCHMARK_PARAM(BENCHFUN(ctorFromChar), 1048576)
 
 void BENCHFUN(assignmentOp)(size_t iters, size_t arg) {
   STRING s;
@@ -99,7 +99,7 @@ void BENCHFUN(assignmentOp)(size_t iters, size_t arg) {
     s1 = s;
   }
 }
-BENCHMARK_PARAM(BENCHFUN(assignmentOp), 256);
+BENCHMARK_PARAM(BENCHFUN(assignmentOp), 256)
 
 void BENCHFUN(assignmentFill)(size_t iters, size_t) {
   STRING s;
@@ -108,7 +108,7 @@ void BENCHFUN(assignmentFill)(size_t iters, size_t) {
     doNotOptimizeAway(&s);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(assignmentFill), 0);
+BENCHMARK_PARAM(BENCHFUN(assignmentFill), 0)
 
 void BENCHFUN(resize)(size_t iters, size_t arg) {
   STRING s;
@@ -117,7 +117,7 @@ void BENCHFUN(resize)(size_t iters, size_t arg) {
     doNotOptimizeAway(&s);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(resize), 524288);
+BENCHMARK_PARAM(BENCHFUN(resize), 524288)
 
 void BENCHFUN(findSuccessful)(size_t iters, size_t /* arg */) {
   size_t pos, len;
@@ -156,7 +156,7 @@ expect to get a call for an interview.";
     doNotOptimizeAway(s.find(s.data(), pos, len));
   }
 }
-BENCHMARK_PARAM(BENCHFUN(findSuccessful), 524288);
+BENCHMARK_PARAM(BENCHFUN(findSuccessful), 524288)
 
 void BENCHFUN(findUnsuccessful)(size_t iters, size_t /* arg */) {
   STRING s, s1;
@@ -190,7 +190,7 @@ expect to get a call for an interview.";
     doNotOptimizeAway(s.find(s1));
   }
 }
-BENCHMARK_PARAM(BENCHFUN(findUnsuccessful), 524288);
+BENCHMARK_PARAM(BENCHFUN(findUnsuccessful), 524288)
 
 void BENCHFUN(equality)(size_t iters, size_t arg) {
   std::vector<STRING> haystack(arg);
@@ -207,7 +207,7 @@ void BENCHFUN(equality)(size_t iters, size_t arg) {
     doNotOptimizeAway(std::find(haystack.begin(), haystack.end(), needle));
   }
 }
-BENCHMARK_PARAM(BENCHFUN(equality), 65536);
+BENCHMARK_PARAM(BENCHFUN(equality), 65536)
 
 void BENCHFUN(replace)(size_t iters, size_t arg) {
   STRING s;
@@ -227,7 +227,7 @@ void BENCHFUN(replace)(size_t iters, size_t arg) {
    s.replace(pos, toRemove, s1);
   }
 }
-BENCHMARK_PARAM(BENCHFUN(replace), 256);
+BENCHMARK_PARAM(BENCHFUN(replace), 256)
 
 void BENCHFUN(push_back)(size_t iters, size_t arg) {
   FOR_EACH_RANGE (i, 0, iters) {
@@ -237,10 +237,10 @@ void BENCHFUN(push_back)(size_t iters, size_t arg) {
     }
   }
 }
-BENCHMARK_PARAM(BENCHFUN(push_back), 1);
-BENCHMARK_PARAM(BENCHFUN(push_back), 23);
-BENCHMARK_PARAM(BENCHFUN(push_back), 127);
-BENCHMARK_PARAM(BENCHFUN(push_back), 1024);
+BENCHMARK_PARAM(BENCHFUN(push_back), 1)
+BENCHMARK_PARAM(BENCHFUN(push_back), 23)
+BENCHMARK_PARAM(BENCHFUN(push_back), 127)
+BENCHMARK_PARAM(BENCHFUN(push_back), 1024)
 
 void BENCHFUN(short_append)(size_t iters, size_t arg) {
   FOR_EACH_RANGE (i, 0, iters) {
@@ -250,8 +250,8 @@ void BENCHFUN(short_append)(size_t iters, size_t arg) {
     }
   }
 }
-BENCHMARK_PARAM(BENCHFUN(short_append), 23);
-BENCHMARK_PARAM(BENCHFUN(short_append), 1024);
+BENCHMARK_PARAM(BENCHFUN(short_append), 23)
+BENCHMARK_PARAM(BENCHFUN(short_append), 1024)
 
 void BENCHFUN(getline)(size_t iters, size_t arg) {
   string lines;
@@ -274,5 +274,5 @@ void BENCHFUN(getline)(size_t iters, size_t arg) {
     }
   }
 }
-BENCHMARK_PARAM(BENCHFUN(getline), 23);
-BENCHMARK_PARAM(BENCHFUN(getline), 1000);
+BENCHMARK_PARAM(BENCHFUN(getline), 23)
+BENCHMARK_PARAM(BENCHFUN(getline), 1000)

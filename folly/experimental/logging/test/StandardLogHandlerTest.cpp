@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/experimental/logging/StandardLogHandler.h>
+
 #include <folly/Conv.h>
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogFormatter.h>
+#include <folly/experimental/logging/LogHandlerConfig.h>
 #include <folly/experimental/logging/LogLevel.h>
 #include <folly/experimental/logging/LogMessage.h>
 #include <folly/experimental/logging/LogWriter.h>
 #include <folly/experimental/logging/LoggerDB.h>
-#include <folly/experimental/logging/StandardLogHandler.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -69,7 +71,8 @@ class TestLogWriter : public LogWriter {
 
 TEST(StandardLogHandler, simple) {
   auto writer = make_shared<TestLogWriter>();
-  StandardLogHandler handler(make_shared<TestLogFormatter>(), writer);
+  LogHandlerConfig config{"std_test"};
+  StandardLogHandler handler(config, make_shared<TestLogFormatter>(), writer);
 
   LoggerDB db{LoggerDB::TESTING};
   auto logCategory = db.getCategory("log_cat");
@@ -89,7 +92,8 @@ TEST(StandardLogHandler, simple) {
 
 TEST(StandardLogHandler, levelCheck) {
   auto writer = make_shared<TestLogWriter>();
-  StandardLogHandler handler(make_shared<TestLogFormatter>(), writer);
+  LogHandlerConfig config{"std_test"};
+  StandardLogHandler handler(config, make_shared<TestLogFormatter>(), writer);
 
   LoggerDB db{LoggerDB::TESTING};
   auto logCategory = db.getCategory("log_cat");

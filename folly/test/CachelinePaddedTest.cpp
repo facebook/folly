@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 #include <type_traits>
 
+#include <folly/lang/Align.h>
 #include <folly/portability/GTest.h>
 
 using folly::CachelinePadded;
@@ -26,7 +27,8 @@ static_assert(
     std::is_standard_layout<CachelinePadded<int>>::value,
     "CachelinePadded<T> must be standard-layout if T is.");
 
-static constexpr int kCachelineSize = folly::CacheLocality::kFalseSharingRange;
+static constexpr int kCachelineSize =
+    folly::hardware_destructive_interference_size;
 
 template <size_t dataSize, size_t alignment = alignof(void*)>
 struct alignas(alignment) SizedData {
@@ -40,7 +42,8 @@ struct alignas(alignment) SizedData {
   void doModifications() {
     size_t i = 0;
     for (auto& datum : data) {
-      EXPECT_EQ(static_cast<unsigned char>(i++), datum);
+      EXPECT_EQ(static_cast<unsigned char>(i), datum);
+      ++i;
       ++datum;
     }
   }
@@ -48,7 +51,8 @@ struct alignas(alignment) SizedData {
   ~SizedData() {
     size_t i = 1;
     for (auto& datum : data) {
-      EXPECT_EQ(static_cast<unsigned char>(i++), datum);
+      EXPECT_EQ(static_cast<unsigned char>(i), datum);
+      ++i;
     }
   }
 
@@ -125,7 +129,7 @@ TEST(CachelinePadded, PtrOperator) {
   CachelinePadded<int> padded;
   EXPECT_TRUE(padded.get() == padded.operator->());
   EXPECT_TRUE(&*padded == padded.get());
-  const CachelinePadded<int> constPadded;
+  const auto constPadded = CachelinePadded<int>{};
   EXPECT_TRUE(constPadded.get() == constPadded.operator->());
   EXPECT_TRUE(constPadded.get() == &*constPadded.get());
 }
@@ -146,7 +150,7 @@ TEST(CachelinePadded, PropagatesConstness) {
   padded->assign(&i);
   EXPECT_EQ(31415, i);
 
-  const CachelinePadded<OverloadedOnConst> constPadded;
+  const auto constPadded = CachelinePadded<OverloadedOnConst>{};
   constPadded->assign(&i);
   EXPECT_EQ(271828, i);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <sys/types.h>
 
 #include <string>
 
-#include <folly/Bits.h>
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/MacAddress.h>
 #include <folly/String.h>
+#include <folly/container/BitIterator.h>
 #include <folly/detail/IPAddressSource.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -39,14 +39,14 @@ struct AddressData {
   uint8_t version;
 
   AddressData(
-      const std::string& address,
-      const ByteVector& bytes,
-      uint8_t version)
-      : address(address), bytes(bytes), version(version) {}
-  AddressData(const std::string& address, uint8_t version)
-      : address(address), bytes(), version(version) {}
-  explicit AddressData(const std::string& address)
-      : address(address), bytes(), version(0) {}
+      const std::string& address_,
+      const ByteVector& bytes_,
+      uint8_t version_)
+      : address(address_), bytes(bytes_), version(version_) {}
+  AddressData(const std::string& address_, uint8_t version_)
+      : address(address_), bytes(), version(version_) {}
+  explicit AddressData(const std::string& address_)
+      : address(address_), bytes(), version(0) {}
   AddressData() : address(""), bytes(), version(0) {}
 
   static in_addr parseAddress4(const std::string& src) {
@@ -75,8 +75,8 @@ struct AddressFlags {
   static const uint8_t IS_MULTICAST = 1 << 5;
   static const uint8_t IS_LINK_LOCAL_BROADCAST = 1 << 6;
 
-  AddressFlags(const std::string& addr, uint8_t version, uint8_t flags)
-      : address(addr), flags(flags), version(version) {}
+  AddressFlags(const std::string& addr, uint8_t version_, uint8_t flags_)
+      : address(addr), flags(flags_), version(version_) {}
 
   bool isLoopback() const {
     return (flags & IS_LOCAL);
@@ -102,26 +102,26 @@ struct MaskData {
   std::string address;
   uint8_t mask;
   std::string subnet;
-  MaskData(const std::string& addr, uint8_t mask, const std::string& subnet)
-      : address(addr), mask(mask), subnet(subnet) {}
+  MaskData(const std::string& addr, uint8_t mask_, const std::string& subnet_)
+      : address(addr), mask(mask_), subnet(subnet_) {}
 };
 
 struct MaskBoundaryData : MaskData {
   bool inSubnet;
   MaskBoundaryData(
       const std::string& addr,
-      uint8_t mask,
-      const std::string& subnet,
-      bool inSubnet)
-      : MaskData(addr, mask, subnet), inSubnet(inSubnet) {}
+      uint8_t mask_,
+      const std::string& subnet_,
+      bool inSubnet_)
+      : MaskData(addr, mask_, subnet_), inSubnet(inSubnet_) {}
 };
 
 struct SerializeData {
   std::string address;
   ByteVector bytes;
 
-  SerializeData(const std::string& addr, const ByteVector& bytes)
-      : address(addr), bytes(bytes) {}
+  SerializeData(const std::string& addr, const ByteVector& bytes_)
+      : address(addr), bytes(bytes_) {}
 };
 
 struct IPAddressTest : TestWithParam<AddressData> {
@@ -152,6 +152,38 @@ struct IPAddressMaskBoundaryTest : TestWithParam<MaskBoundaryData> {};
 struct IPAddressSerializeTest : TestWithParam<SerializeData> {};
 struct IPAddressByteAccessorTest : TestWithParam<AddressData> {};
 struct IPAddressBitAccessorTest : TestWithParam<AddressData> {};
+
+struct StringTestParam {
+  std::string in;
+  folly::Optional<std::string> out;
+  folly::Optional<std::string> out4;
+  folly::Optional<std::string> out6;
+};
+
+struct TryFromStringTest : TestWithParam<StringTestParam> {
+  static std::vector<StringTestParam> ipInOutProvider() {
+    const std::string lo6{"::1"};
+    const std::string lo6brackets{"[::1]"};
+    const std::string ip6{"1234::abcd"};
+    const std::string invalid6{"[::aaaR]"};
+
+    const std::string lo4{"127.0.0.1"};
+    const std::string ip4{"192.168.0.1"};
+    const std::string invalid4{"127.0.0.256"};
+
+    const static std::vector<StringTestParam> ret = {
+        {lo6, lo6, none, lo6},
+        {lo6brackets, lo6, none, lo6},
+        {ip6, ip6, none, ip6},
+        {invalid6, none, none, none},
+        {lo4, lo4, lo4, none},
+        {ip4, ip4, ip4, none},
+        {invalid4, none, none, none},
+    };
+
+    return ret;
+  }
+};
 
 // tests code example
 TEST(IPAddress, CodeExample) {
@@ -248,10 +280,10 @@ TEST(IPAddress, InvalidAddressFamilyExceptions) {
   }
 }
 
-TEST(IPAddress, CreateNetwork) {
+TEST(IPAddress, TryCreateNetwork) {
   // test valid IPv4 network
   {
-    auto net = IPAddress::createNetwork("192.168.0.1/24");
+    auto net = IPAddress::tryCreateNetwork("192.168.0.1/24").value();
     ASSERT_TRUE(net.first.isV4());
     EXPECT_EQ("192.168.0.0", net.first.str());
     EXPECT_EQ(24, net.second);
@@ -259,7 +291,7 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test valid IPv4 network without applying mask
   {
-    auto net = IPAddress::createNetwork("192.168.0.1/24", -1, false);
+    auto net = IPAddress::tryCreateNetwork("192.168.0.1/24", -1, false).value();
     ASSERT_TRUE(net.first.isV4());
     EXPECT_EQ("192.168.0.1", net.first.str());
     EXPECT_EQ(24, net.second);
@@ -267,7 +299,7 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test valid IPv6 network
   {
-    auto net = IPAddress::createNetwork("1999::1/24");
+    auto net = IPAddress::tryCreateNetwork("1999::1/24").value();
     ASSERT_TRUE(net.first.isV6());
     EXPECT_EQ("1999::", net.first.str());
     EXPECT_EQ(24, net.second);
@@ -275,20 +307,30 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test valid IPv6 network without applying mask
   {
-    auto net = IPAddress::createNetwork("1999::1/24", -1, false);
+    auto net = IPAddress::tryCreateNetwork("1999::1/24", -1, false).value();
     ASSERT_TRUE(net.first.isV6());
     EXPECT_EQ("1999::1", net.first.str());
     EXPECT_EQ(24, net.second);
     EXPECT_EQ("1999::1/24", IPAddress::networkToString(net));
   }
+
+  // test invalid default CIDR
+  EXPECT_EQ(
+      CIDRNetworkError::INVALID_DEFAULT_CIDR,
+      IPAddress::tryCreateNetwork("192.168.1.1", 300).error());
+
   // test empty string
-  EXPECT_THROW(IPAddress::createNetwork(""), IPAddressFormatException);
+  EXPECT_EQ(
+      CIDRNetworkError::INVALID_IP, IPAddress::tryCreateNetwork("").error());
+
   // test multi slash string
-  EXPECT_THROW(
-      IPAddress::createNetwork("192.168.0.1/24/36"), IPAddressFormatException);
+  EXPECT_EQ(
+      CIDRNetworkError::INVALID_IP_SLASH_CIDR,
+      IPAddress::tryCreateNetwork("192.168.0.1/24/36").error());
+
   // test no slash string with default IPv4
   {
-    auto net = IPAddress::createNetwork("192.168.0.1");
+    auto net = IPAddress::tryCreateNetwork("192.168.0.1").value();
     ASSERT_TRUE(net.first.isV4());
     EXPECT_EQ("192.168.0.1", net.first.str());
     EXPECT_EQ(32, net.second); // auto-detected
@@ -299,11 +341,26 @@ TEST(IPAddress, CreateNetwork) {
   }
   // test no slash string with default IPv6
   {
-    auto net = IPAddress::createNetwork("1999::1");
+    auto net = IPAddress::tryCreateNetwork("1999::1").value();
     ASSERT_TRUE(net.first.isV6());
     EXPECT_EQ("1999::1", net.first.str());
     EXPECT_EQ(128, net.second);
   }
+  // test no slash string with invalid default
+  EXPECT_EQ(
+      CIDRNetworkError::CIDR_MISMATCH,
+      IPAddress::tryCreateNetwork("192.168.0.1", 33).error());
+}
+
+// test that throwing version actually throws
+TEST(IPAddress, CreateNetworkExceptions) {
+  // test invalid default CIDR
+  EXPECT_THROW(IPAddress::createNetwork("192.168.0.1", 300), std::range_error);
+  // test empty string
+  EXPECT_THROW(IPAddress::createNetwork(""), IPAddressFormatException);
+  // test multi slash string
+  EXPECT_THROW(
+      IPAddress::createNetwork("192.168.0.1/24/36"), IPAddressFormatException);
   // test no slash string with invalid default
   EXPECT_THROW(
       IPAddress::createNetwork("192.168.0.1", 33), IPAddressFormatException);
@@ -530,6 +587,44 @@ TEST(IPAddress, ToSockaddrStorage) {
   }
 }
 
+TEST_P(TryFromStringTest, IPAddress) {
+  auto param = GetParam();
+  auto maybeIp = IPAddress::tryFromString(param.in);
+  if (param.out) {
+    EXPECT_TRUE(maybeIp.hasValue());
+    EXPECT_EQ(param.out, maybeIp.value().str());
+  } else {
+    EXPECT_TRUE(maybeIp.hasError());
+    EXPECT_TRUE(
+        IPAddressFormatError::INVALID_IP == maybeIp.error() ||
+        IPAddressFormatError::UNSUPPORTED_ADDR_FAMILY == maybeIp.error());
+  }
+}
+
+TEST_P(TryFromStringTest, IPAddressV4) {
+  auto param = GetParam();
+  auto maybeIp = IPAddressV4::tryFromString(param.in);
+  if (param.out4) {
+    EXPECT_TRUE(maybeIp.hasValue());
+    EXPECT_EQ(param.out4, maybeIp.value().str());
+  } else {
+    EXPECT_TRUE(maybeIp.hasError());
+    EXPECT_EQ(IPAddressFormatError::INVALID_IP, maybeIp.error());
+  }
+}
+
+TEST_P(TryFromStringTest, IPAddressV6) {
+  auto param = GetParam();
+  auto maybeIp = IPAddressV6::tryFromString(param.in);
+  if (param.out6) {
+    EXPECT_TRUE(maybeIp.hasValue());
+    EXPECT_EQ(param.out6, maybeIp.value().str());
+  } else {
+    EXPECT_TRUE(maybeIp.hasError());
+    EXPECT_EQ(IPAddressFormatError::INVALID_IP, maybeIp.error());
+  }
+}
+
 TEST(IPAddress, ToString) {
   // Test with IPAddressV4
   IPAddressV4 addr_10_0_0_1("10.0.0.1");
@@ -586,12 +681,18 @@ TEST_P(IPAddressCtorTest, InvalidCreation) {
       << "should have thrown an IPAddressFormatException";
 }
 
-// Test that invalid binary values throw an exception
+// Test that invalid binary values throw or return an exception
 TEST_P(IPAddressCtorBinaryTest, InvalidBinary) {
   auto bin = GetParam();
-  EXPECT_THROW(
-      IPAddress::fromBinary(ByteRange(&bin[0], bin.size())),
-      IPAddressFormatException);
+  auto byteRange = ByteRange(&bin[0], bin.size());
+  // Throwing versions.
+  EXPECT_THROW(IPAddress::fromBinary(byteRange), IPAddressFormatException);
+  EXPECT_THROW(IPAddressV4::fromBinary(byteRange), IPAddressFormatException);
+  EXPECT_THROW(IPAddressV6::fromBinary(byteRange), IPAddressFormatException);
+  // Non-throwing versions.
+  EXPECT_TRUE(IPAddress::tryFromBinary(byteRange).hasError());
+  EXPECT_TRUE(IPAddressV4::tryFromBinary(byteRange).hasError());
+  EXPECT_TRUE(IPAddressV6::tryFromBinary(byteRange).hasError());
 }
 
 TEST(IPAddressSource, ToHex) {
@@ -734,7 +835,7 @@ TEST(IPAddress, getIPv6For6To4) {
     auto ipv6 = ipv4.getIPv6For6To4();
     EXPECT_EQ(ipv6.type(), IPAddressV6::Type::T6TO4);
     auto ipv4New = ipv6.getIPv4For6To4();
-    EXPECT_TRUE(ipv4Str.compare(ipv4New.str()) == 0);
+    EXPECT_EQ(ipv4Str, ipv4New.str());
   }
 }
 
@@ -807,13 +908,13 @@ TEST(IPAddress, ToLong) {
 
     auto ip2 = IPAddress::fromLongHBO(tc.second);
     EXPECT_TRUE(ip2.isV4());
-    EXPECT_TRUE(tc.first.compare(ip2.str()) == 0);
+    EXPECT_EQ(tc.first, ip2.str());
     EXPECT_EQ(tc.second, ip2.asV4().toLongHBO());
 
     auto nla = htonl(tc.second);
     auto ip3 = IPAddress::fromLong(nla);
     EXPECT_TRUE(ip3.isV4());
-    EXPECT_TRUE(tc.first.compare(ip3.str()) == 0);
+    EXPECT_EQ(tc.first, ip3.str());
     EXPECT_EQ(nla, ip3.asV4().toLong());
   }
 }
@@ -835,6 +936,10 @@ TEST(IPAddress, fromBinaryV4) {
     IPAddressV4 addr2("0.0.0.0");
     addr2 = IPAddressV4::fromBinary(bytes);
     EXPECT_EQ(fromStr, addr2);
+
+    auto maybeAddr3 = IPAddressV4::tryFromBinary(bytes);
+    EXPECT_TRUE(maybeAddr3.hasValue());
+    EXPECT_EQ(fromStr, maybeAddr3.value());
 
     IPAddress genericAddr = IPAddress::fromBinary(bytes);
     ASSERT_TRUE(genericAddr.isV4());
@@ -919,6 +1024,10 @@ TEST(IPAddress, fromBinaryV6) {
     IPAddressV6 addr2("::0");
     addr2 = IPAddressV6::fromBinary(bytes);
     EXPECT_EQ(fromStr, addr2);
+
+    auto maybeAddr3 = IPAddressV6::tryFromBinary(bytes);
+    EXPECT_TRUE(maybeAddr3.hasValue());
+    EXPECT_EQ(fromStr, maybeAddr3.value());
 
     IPAddress genericAddr = IPAddress::fromBinary(bytes);
     ASSERT_TRUE(genericAddr.isV6());
@@ -1457,6 +1566,10 @@ INSTANTIATE_TEST_CASE_P(
     IPAddress,
     IPAddressBitAccessorTest,
     ::testing::ValuesIn(validAddressProvider));
+INSTANTIATE_TEST_CASE_P(
+    IPAddress,
+    TryFromStringTest,
+    ::testing::ValuesIn(TryFromStringTest::ipInOutProvider()));
 
 TEST(IPAddressV4, fetchMask) {
   struct X : private IPAddressV4 {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 
 /* These definitions are in a separate file so that they
  * may be included from C- as well as C++-based projects. */
+
+#include <folly/portability/Config.h>
 
 /**
  * Portable version check.
@@ -57,6 +59,12 @@
 #define FOLLY_HAS_FEATURE(...) 0
 #endif
 
+#if defined(__has_include)
+#define FOLLY_HAS_INCLUDE(...) __has_include(__VA_ARGS__)
+#else
+#define FOLLY_HAS_INCLUDE(...) 0
+#endif
+
 /* Define a convenience macro to test when address sanitizer is being used
  * across the different compilers (e.g. clang, gcc) */
 #if FOLLY_HAS_FEATURE(address_sanitizer) || __SANITIZE_ADDRESS__
@@ -94,21 +102,20 @@
 #endif
 
 /**
- * ASAN/MSAN/TSAN define pre-processor symbols:
- * ADDRESS_SANITIZER/MEMORY_SANITIZER/THREAD_SANITIZER.
- *
- * UBSAN doesn't define anything and makes it hard to
- * conditionally compile.
- *
- * The build system should define UNDEFINED_SANITIZER=1 when UBSAN is
- * used as folly whitelists some functions.
+ * Define a convenience macro to test when ASAN, UBSAN or TSAN sanitizer are
+ * being used
  */
-#if UNDEFINED_SANITIZER
+#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) || \
+    defined(UNDEFINED_SANITIZER)
+#define FOLLY_SANITIZE 1
+#endif
+
+#if FOLLY_SANITIZE
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
   __attribute__((no_sanitize(__VA_ARGS__)))
 #else
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
-#endif // UNDEFINED_SANITIZER
+#endif // FOLLY_SANITIZE
 
 /**
  * Macro for marking functions as having public visibility.
@@ -148,4 +155,18 @@
 #define FOLLY_ATTR_VISIBILITY_HIDDEN __attribute__((__visibility__("hidden")))
 #else
 #define FOLLY_ATTR_VISIBILITY_HIDDEN
+#endif
+
+// An attribute for marking symbols as weak, if supported
+#if FOLLY_HAVE_WEAK_SYMBOLS
+#define FOLLY_ATTR_WEAK __attribute__((__weak__))
+#else
+#define FOLLY_ATTR_WEAK
+#endif
+
+// Microsoft ABI version (can be overridden manually if necessary)
+#ifndef FOLLY_MICROSOFT_ABI_VER
+#ifdef _MSC_VER
+#define FOLLY_MICROSOFT_ABI_VER _MSC_VER
+#endif
 #endif

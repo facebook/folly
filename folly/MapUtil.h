@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Optional.h>
+#include <folly/functional/Invoke.h>
 #include <tuple>
 
 namespace folly {
@@ -26,13 +27,21 @@ namespace folly {
  * Given a map and a key, return the value corresponding to the key in the map,
  * or a given default value if the key doesn't exist in the map.
  */
-template <class Map, typename Key = typename Map::key_type>
-typename Map::mapped_type get_default(
-    const Map& map,
-    const Key& key,
-    const typename Map::mapped_type& dflt = typename Map::mapped_type()) {
+template <typename Map, typename Key>
+typename Map::mapped_type get_default(const Map& map, const Key& key) {
   auto pos = map.find(key);
-  return (pos != map.end() ? pos->second : dflt);
+  return (pos != map.end()) ? (pos->second) : (typename Map::mapped_type{});
+}
+template <
+    class Map,
+    typename Key = typename Map::key_type,
+    typename Value = typename Map::mapped_type,
+    typename std::enable_if<!is_invocable<Value>::value>::type* = nullptr>
+typename Map::mapped_type
+get_default(const Map& map, const Key& key, Value&& dflt) {
+  using M = typename Map::mapped_type;
+  auto pos = map.find(key);
+  return (pos != map.end()) ? (pos->second) : M(std::forward<Value>(dflt));
 }
 
 /**
@@ -43,9 +52,8 @@ template <
     class Map,
     typename Key = typename Map::key_type,
     typename Func,
-    typename = typename std::enable_if<std::is_convertible<
-        typename std::result_of<Func()>::type,
-        typename Map::mapped_type>::value>::type>
+    typename = typename std::enable_if<
+        is_invocable_r<typename Map::mapped_type, Func>::value>::type>
 typename Map::mapped_type
 get_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
@@ -143,11 +151,10 @@ template <
     class Map,
     typename Key = typename Map::key_type,
     typename Func,
-    typename = typename std::enable_if<std::is_convertible<
-        typename std::result_of<Func()>::type,
-        const typename Map::mapped_type&>::value>::type,
     typename = typename std::enable_if<
-        std::is_reference<typename std::result_of<Func()>::type>::value>::type>
+        is_invocable_r<const typename Map::mapped_type&, Func>::value>::type,
+    typename = typename std::enable_if<
+        std::is_reference<invoke_result_t<Func>>::value>::type>
 const typename Map::mapped_type&
 get_ref_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);

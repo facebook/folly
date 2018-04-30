@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -772,10 +772,10 @@ TEST(Ahm, erase_after_insert_race) {
 
 // Repro for a bug when iterator didn't skip empty submaps.
 TEST(Ahm, iterator_skips_empty_submaps) {
-  AtomicHashMap<uint64_t, uint64_t>::Config config;
-  config.growthFactor = 1;
+  AtomicHashMap<uint64_t, uint64_t>::Config conf;
+  conf.growthFactor = 1;
 
-  AtomicHashMap<uint64_t, uint64_t> map(1, config);
+  AtomicHashMap<uint64_t, uint64_t> map(1, conf);
 
   map.insert(1, 1);
   map.insert(2, 2);
@@ -868,7 +868,7 @@ BENCHMARK(st_qpahm_find, iters) {
   }
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(mt_ahm_miss, iters) {
   CHECK_LE(iters, FLAGS_numBMElements);

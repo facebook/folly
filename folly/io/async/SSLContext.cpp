@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "SSLContext.h"
+#include <folly/io/async/SSLContext.h>
 
 #include <folly/Format.h>
 #include <folly/Memory.h>
@@ -206,7 +206,7 @@ void SSLContext::loadCertificate(const char* path, const char* format) {
          "loadCertificateChain: either <path> or <format> is nullptr");
   }
   if (strcmp(format, "PEM") == 0) {
-    if (SSL_CTX_use_certificate_chain_file(ctx_, path) == 0) {
+    if (SSL_CTX_use_certificate_chain_file(ctx_, path) != 1) {
       int errnoCopy = errno;
       std::string reason("SSL_CTX_use_certificate_chain_file: ");
       reason.append(path);
@@ -285,6 +285,32 @@ void SSLContext::loadPrivateKeyFromBufferPEM(folly::StringPiece pkey) {
   if (SSL_CTX_use_PrivateKey(ctx_, key.get()) == 0) {
     throw std::runtime_error("SSL_CTX_use_PrivateKey: " + getErrors());
   }
+}
+
+void SSLContext::loadCertKeyPairFromBufferPEM(
+    folly::StringPiece cert,
+    folly::StringPiece pkey) {
+  loadCertificateFromBufferPEM(cert);
+  loadPrivateKeyFromBufferPEM(pkey);
+  if (!isCertKeyPairValid()) {
+    throw std::runtime_error("SSL certificate and private key do not match");
+  }
+}
+
+void SSLContext::loadCertKeyPairFromFiles(
+    const char* certPath,
+    const char* keyPath,
+    const char* certFormat,
+    const char* keyFormat) {
+  loadCertificate(certPath, certFormat);
+  loadPrivateKey(keyPath, keyFormat);
+  if (!isCertKeyPairValid()) {
+    throw std::runtime_error("SSL certificate and private key do not match");
+  }
+}
+
+bool SSLContext::isCertKeyPairValid() const {
+  return SSL_CTX_check_private_key(ctx_) == 1;
 }
 
 void SSLContext::loadTrustedCertificates(const char* path) {
@@ -654,7 +680,7 @@ std::string SSLContext::getErrors(int errnoCopy) {
     }
     const char* reason = ERR_reason_error_string(errorCode);
     if (reason == nullptr) {
-      snprintf(message, sizeof(message) - 1, "SSL error # %lu", errorCode);
+      snprintf(message, sizeof(message) - 1, "SSL error # %08lX", errorCode);
       reason = message;
     }
     errors += reason;

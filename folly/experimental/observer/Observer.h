@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,6 +91,10 @@ class Snapshot {
     return data_.get();
   }
 
+  std::shared_ptr<const T> getShared() const {
+    return data_;
+  }
+
   /**
    * Return the version of the observed object.
    */
@@ -114,6 +118,31 @@ class Snapshot {
   const observer_detail::Core* core_;
 };
 
+class CallbackHandle {
+ public:
+  CallbackHandle();
+  template <typename T>
+  CallbackHandle(
+      Observer<T> observer,
+      folly::Function<void(Snapshot<T>)> callback);
+  CallbackHandle(const CallbackHandle&) = delete;
+  CallbackHandle(CallbackHandle&&) = default;
+  CallbackHandle& operator=(const CallbackHandle&) = delete;
+  CallbackHandle& operator=(CallbackHandle&&) = default;
+  ~CallbackHandle();
+
+  // If callback is currently running, waits until it completes.
+  // Callback will never be called after cancel() returns.
+  void cancel();
+
+ private:
+  struct Context;
+  std::shared_ptr<Context> context_;
+};
+
+template <typename Observable, typename Traits>
+class ObserverCreator;
+
 template <typename T>
 class Observer {
  public:
@@ -132,6 +161,8 @@ class Observer {
     DCHECK_EQ(core_.get(), snapshot.core_);
     return snapshot.getVersion() < core_->getVersionLastChange();
   }
+
+  CallbackHandle addCallback(folly::Function<void(Snapshot<T>)> callback) const;
 
  private:
   template <typename Observable, typename Traits>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,13 @@
 #include <folly/String.h>
 
 #include <cinttypes>
+#include <set>
 
 #include <boost/regex.hpp>
 
-#include <folly/Array.h>
+#include <folly/container/Array.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 using namespace folly;
 using namespace std;
@@ -48,8 +50,12 @@ TEST(StringPrintf, NumericFormats) {
   EXPECT_EQ("5000000000", stringPrintf("%lld", 5000000000LL));
   EXPECT_EQ("-5000000000", stringPrintf("%lld", -5000000000LL));
   EXPECT_EQ("-1", stringPrintf("%d", 0xffffffff));
-  EXPECT_EQ("-1", stringPrintf("%" PRId64, 0xffffffffffffffff));
-  EXPECT_EQ("-1", stringPrintf("%" PRId64, 0xffffffffffffffffUL));
+  EXPECT_EQ(
+      "-1",
+      stringPrintf("%" PRId64, static_cast<int64_t>(0xffffffffffffffffLL)));
+  EXPECT_EQ(
+      "-1",
+      stringPrintf("%" PRId64, static_cast<uint64_t>(0xffffffffffffffffULL)));
 
   EXPECT_EQ("7.7", stringPrintf("%1.1f", 7.7));
   EXPECT_EQ("7.7", stringPrintf("%1.1lf", 7.7));
@@ -179,13 +185,20 @@ TEST(Escape, cUnescape) {
   EXPECT_EQ("hello\nworld", cUnescape<std::string>("hello\\x0aworld"));
   EXPECT_EQ("hello\xff\xfe", cUnescape<std::string>("hello\\377\\376"));
   EXPECT_EQ("hello\xff\xfe", cUnescape<std::string>("hello\\xff\\xfe"));
+  EXPECT_EQ("hello\\", cUnescape<std::string>("hello\\", false));
 
-  EXPECT_THROW({cUnescape<std::string>("hello\\");},
-               std::invalid_argument);
-  EXPECT_THROW({cUnescape<std::string>("hello\\x");},
-               std::invalid_argument);
-  EXPECT_THROW({cUnescape<std::string>("hello\\q");},
-               std::invalid_argument);
+  EXPECT_THROW_RE(
+      cUnescape<std::string>("hello\\"),
+      std::invalid_argument,
+      "incomplete escape sequence");
+  EXPECT_THROW_RE(
+      cUnescape<std::string>("hello\\x"),
+      std::invalid_argument,
+      "incomplete hex escape sequence");
+  EXPECT_THROW_RE(
+      cUnescape<std::string>("hello\\q"),
+      std::invalid_argument,
+      "invalid escape sequence");
 }
 
 TEST(Escape, uriEscape) {
@@ -284,6 +297,7 @@ double pow2(int exponent) {
 }
 
 } // namespace
+
 struct PrettyTestCase{
   std::string prettyString;
   double realValue;
@@ -292,6 +306,13 @@ struct PrettyTestCase{
 
 PrettyTestCase prettyTestCases[] =
 {
+  {string("853 ms"), 85.3e-2,  PRETTY_TIME_HMS},
+  {string("8.53 s "), 85.3e-1,  PRETTY_TIME_HMS},
+  {string("1.422 m "), 85.3,  PRETTY_TIME_HMS},
+  {string("14.22 m "), 85.3e1,  PRETTY_TIME_HMS},
+  {string("2.369 h "), 85.3e2,  PRETTY_TIME_HMS},
+  {string("2.369e+04 h "), 85.3e6,  PRETTY_TIME_HMS},
+
   {string("8.53e+07 s "), 85.3e6,  PRETTY_TIME},
   {string("8.53e+07 s "), 85.3e6,  PRETTY_TIME},
   {string("85.3 ms"), 85.3e-3,  PRETTY_TIME},
@@ -321,6 +342,8 @@ PrettyTestCase prettyTestCases[] =
   {string("1 MB"), pow2(20),  PRETTY_BYTES},
   {string("1 GB"), pow2(30),  PRETTY_BYTES},
   {string("1 TB"), pow2(40),  PRETTY_BYTES},
+  {string("1 PB"), pow2(50),  PRETTY_BYTES},
+  {string("1 EB"), pow2(60),  PRETTY_BYTES},
 
   {string("853 B  "), 853.,  PRETTY_BYTES_IEC},
   {string("833 KiB"), 853.e3,  PRETTY_BYTES_IEC},
@@ -328,6 +351,8 @@ PrettyTestCase prettyTestCases[] =
   {string("7.944 GiB"), 8.53e9,  PRETTY_BYTES_IEC},
   {string("794.4 GiB"), 853.e9,  PRETTY_BYTES_IEC},
   {string("775.8 TiB"), 853.e12,  PRETTY_BYTES_IEC},
+  {string("1.776 PiB"), 2e15,  PRETTY_BYTES_IEC},
+  {string("1.735 EiB"), 2e18,  PRETTY_BYTES_IEC},
 
   {string("0 B  "), 0,  PRETTY_BYTES_IEC},
   {string("1 B  "), pow2(0),  PRETTY_BYTES_IEC},
@@ -335,6 +360,8 @@ PrettyTestCase prettyTestCases[] =
   {string("1 MiB"), pow2(20),  PRETTY_BYTES_IEC},
   {string("1 GiB"), pow2(30),  PRETTY_BYTES_IEC},
   {string("1 TiB"), pow2(40),  PRETTY_BYTES_IEC},
+  {string("1 PiB"), pow2(50),  PRETTY_BYTES_IEC},
+  {string("1 EiB"), pow2(60),  PRETTY_BYTES_IEC},
 
   // check bytes metric printing
   {string("853 B "), 853.,  PRETTY_BYTES_METRIC},
@@ -348,9 +375,10 @@ PrettyTestCase prettyTestCases[] =
   {string("1 B "), 1.0,  PRETTY_BYTES_METRIC},
   {string("1 kB"), 1.0e+3,  PRETTY_BYTES_METRIC},
   {string("1 MB"), 1.0e+6,  PRETTY_BYTES_METRIC},
-
   {string("1 GB"), 1.0e+9,  PRETTY_BYTES_METRIC},
   {string("1 TB"), 1.0e+12,  PRETTY_BYTES_METRIC},
+  {string("1 PB"), 1.0e+15,  PRETTY_BYTES_METRIC},
+  {string("1 EB"), 1.0e+18,  PRETTY_BYTES_METRIC},
 
   // check metric-units (powers of 1000) printing
   {string("853  "), 853.,  PRETTY_UNITS_METRIC},
@@ -397,6 +425,7 @@ PrettyTestCase prettyTestCases[] =
   {string("-85.3 ms"), -85.3e-3,  PRETTY_TIME},
   {string("-85.3 us"), -85.3e-6,  PRETTY_TIME},
   {string("-85.3 ns"), -85.3e-9,  PRETTY_TIME},
+
   // end of test
   {string("endoftest"), 0, PRETTY_NUM_TYPES}
 };
@@ -419,7 +448,7 @@ TEST(PrettyToDouble, Basic) {
     double recoveredX = 0;
     try{
       recoveredX = prettyToDouble(testString, formatType);
-    } catch (const std::range_error& ex) {
+    } catch (const std::exception& ex) {
       ADD_FAILURE() << testCase.prettyString << " -> " << ex.what();
     }
     double relativeError = fabs(x) < 1e-5 ? (x-recoveredX) :
@@ -437,8 +466,8 @@ TEST(PrettyToDouble, Basic) {
         try{
           recoveredX = prettyToDouble(prettyPrint(x, formatType, addSpace),
                                              formatType);
-        } catch (std::range_error&) {
-          ADD_FAILURE();
+        } catch (const std::exception& ex) {
+          ADD_FAILURE() << folly::exceptionStr(ex);
         }
         double relativeError = (x - recoveredX) / x;
         EXPECT_NEAR(0, relativeError, 1e-3);
@@ -989,6 +1018,12 @@ TEST(String, join) {
 
   output = join("", input3.begin(), input3.end());
   EXPECT_EQ(output, "facebook");
+
+  std::multiset<char> input4(input3);
+  output = join("", input4);
+  EXPECT_EQ("abcefkoo", output);
+  output = join("", input4.begin(), input4.end());
+  EXPECT_EQ("abcefkoo", output);
 }
 
 TEST(String, hexlify) {
@@ -1357,35 +1392,4 @@ TEST(String, stripLeftMargin_no_post_whitespace) {
   EXPECT_EQ("\n      hi there bob!\n        \n      so long!  ", input);
   auto expected = "hi there bob!\n  \nso long!  ";
   EXPECT_EQ(expected, stripLeftMargin(input));
-}
-
-const folly::StringPiece kTestUTF8 = u8"This is \U0001F602 stuff!";
-
-TEST(UTF8StringPiece, valid_utf8) {
-  folly::StringPiece sp = kTestUTF8;
-  UTF8StringPiece utf8 = sp;
-  // utf8.size() not available since it's not a random-access range
-  EXPECT_EQ(16, utf8.walk_size());
-}
-
-TEST(UTF8StringPiece, valid_suffix) {
-  UTF8StringPiece utf8 = kTestUTF8.subpiece(8);
-  EXPECT_EQ(8, utf8.walk_size());
-}
-
-TEST(UTF8StringPiece, empty_mid_codepoint) {
-  UTF8StringPiece utf8 = kTestUTF8.subpiece(9, 0); // okay since it's empty
-  EXPECT_EQ(0, utf8.walk_size());
-}
-
-TEST(UTF8StringPiece, invalid_mid_codepoint) {
-  EXPECT_THROW(UTF8StringPiece(kTestUTF8.subpiece(9, 1)), std::out_of_range);
-}
-
-TEST(UTF8StringPiece, valid_implicit_conversion) {
-  std::string input = u8"\U0001F602\U0001F602\U0001F602";
-  auto checkImplicitCtor = [](UTF8StringPiece implicitCtor) {
-    return implicitCtor.walk_size();
-  };
-  EXPECT_EQ(3, checkImplicitCtor(input));
 }

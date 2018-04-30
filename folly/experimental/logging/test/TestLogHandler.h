@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +15,14 @@
  */
 #pragma once
 
+#include <map>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <folly/experimental/logging/LogHandler.h>
+#include <folly/experimental/logging/LogHandlerConfig.h>
+#include <folly/experimental/logging/LogHandlerFactory.h>
 #include <folly/experimental/logging/LogMessage.h>
 
 namespace folly {
@@ -31,6 +35,12 @@ namespace folly {
  */
 class TestLogHandler : public LogHandler {
  public:
+  using Options = LogHandlerConfig::Options;
+
+  TestLogHandler() : config_{"test"} {}
+  explicit TestLogHandler(LogHandlerConfig config)
+      : config_{std::move(config)} {}
+
   std::vector<std::pair<LogMessage, const LogCategory*>>& getMessages() {
     return messages_;
   }
@@ -49,8 +59,40 @@ class TestLogHandler : public LogHandler {
     return flushCount_;
   }
 
- private:
+  LogHandlerConfig getConfig() const override {
+    return config_;
+  }
+
+  void setOptions(const Options& options) {
+    config_.options = options;
+  }
+
+ protected:
   std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
   uint64_t flushCount_{0};
+  std::map<std::string, std::string> options_;
+  LogHandlerConfig config_;
 };
+
+/**
+ * A LogHandlerFactory to create TestLogHandler objects.
+ */
+class TestLogHandlerFactory : public LogHandlerFactory {
+ public:
+  explicit TestLogHandlerFactory(StringPiece type) : type_{type.str()} {}
+
+  StringPiece getType() const override {
+    return type_;
+  }
+
+  std::shared_ptr<LogHandler> createHandler(const Options& options) override;
+
+  std::shared_ptr<LogHandler> updateHandler(
+      const std::shared_ptr<LogHandler>& existingHandler,
+      const Options& options) override;
+
+ private:
+  std::string type_;
+};
+
 } // namespace folly

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ class FOLLY_EXPORT PredicateDoesNotObtain : public FutureException {
 
 [[noreturn]] void throwPredicateDoesNotObtain();
 
-class FOLLY_EXPORT NoFutureInSplitter : FutureException {
+class FOLLY_EXPORT NoFutureInSplitter : public FutureException {
  public:
   NoFutureInSplitter() : FutureException("No Future in this FutureSplitter") {}
 };
@@ -93,5 +93,12 @@ class FOLLY_EXPORT NoFutureInSplitter : FutureException {
 class FOLLY_EXPORT NoTimekeeper : public FutureException {
  public:
   NoTimekeeper() : FutureException("No timekeeper available") {}
+};
+
+[[noreturn]] void throwNoExecutor();
+
+class FOLLY_EXPORT NoExecutor : public FutureException {
+ public:
+  NoExecutor() : FutureException("No executor provided to via") {}
 };
 } // namespace folly

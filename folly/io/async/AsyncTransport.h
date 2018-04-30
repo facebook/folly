@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncSocketBase.h>
+#include <folly/io/async/AsyncTransportCertificate.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/OpenSSL.h>
@@ -391,6 +392,36 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   }
 
   /**
+   * Get the peer certificate information if any
+   */
+  virtual const AsyncTransportCertificate* getPeerCertificate() const {
+    return nullptr;
+  }
+
+  /**
+   * Get the certificate information of this transport, if any
+   */
+  virtual const AsyncTransportCertificate* getSelfCertificate() const {
+    return nullptr;
+  }
+
+  /**
+   * Return the application protocol being used by the underlying transport
+   * protocol. This is useful for transports which are used to tunnel other
+   * protocols.
+   */
+  virtual std::string getApplicationProtocol() noexcept {
+    return "";
+  }
+
+  /**
+   * Returns the name of the security protocol being used.
+   */
+  virtual std::string getSecurityProtocol() const {
+    return "";
+  }
+
+  /**
    * @return True iff end of record tracking is enabled
    */
   virtual bool isEorTrackingEnabled() const = 0;
@@ -682,20 +713,6 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
     return const_cast<T*>(static_cast<const AsyncTransportWrapper*>(this)
         ->getUnderlyingTransport<T>());
   }
-
-  /**
-   * Return the application protocol being used by the underlying transport
-   * protocol. This is useful for transports which are used to tunnel other
-   * protocols.
-   */
-  virtual std::string getApplicationProtocol() noexcept {
-    return "";
-  }
-
-  /**
-   * Returns the name of the security protocol being used.
-   */
-  virtual std::string getSecurityProtocol() const { return ""; }
 };
 
 } // namespace folly

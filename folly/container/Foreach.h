@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -121,9 +121,9 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
 } // namespace folly
 
 /**
- * Everything below this is deprecated.  Use the folly::for_each algorithm above
- * instead
+ * Everything below is deprecated.
  */
+
 /*
  * Form a local variable name from "FOR_EACH_" x __LINE__, so that
  * FOR_EACH can be nested without creating shadowed declarations.
@@ -159,9 +159,9 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
            i != _FE_ANON(s2_).rend(); ++i)
 
 /*
- * If you just want the element values, please use this (ranges-v3) construct:
+ * If you just want the element values, please use this construct:
  *
- *    for (auto&& element : collection | view::zip(view::ints))
+ *    for (auto&& element : folly::enumerate(collection))
  *
  * If you need access to the iterators please write an explicit iterator loop
  * and use a counter variable

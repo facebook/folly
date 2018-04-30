@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -143,10 +143,10 @@ void Try<void>::throwIfFailed() const {
 
 template <typename F>
 typename std::enable_if<
-  !std::is_same<typename std::result_of<F()>::type, void>::value,
-  Try<typename std::result_of<F()>::type>>::type
+    !std::is_same<invoke_result_t<F>, void>::value,
+    Try<invoke_result_t<F>>>::type
 makeTryWith(F&& f) {
-  typedef typename std::result_of<F()>::type ResultType;
+  using ResultType = invoke_result_t<F>;
   try {
     return Try<ResultType>(f());
   } catch (std::exception& e) {
@@ -157,10 +157,9 @@ makeTryWith(F&& f) {
 }
 
 template <typename F>
-typename std::enable_if<
-  std::is_same<typename std::result_of<F()>::type, void>::value,
-  Try<void>>::type
-makeTryWith(F&& f) {
+typename std::
+    enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
+    makeTryWith(F&& f) {
   try {
     f();
     return Try<void>();

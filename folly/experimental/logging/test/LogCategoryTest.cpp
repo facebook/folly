@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ TEST(LogCategory, effectiveLevel) {
 void testNumHandlers(size_t numHandlers) {
   SCOPED_TRACE(folly::to<string>("num_handlers= ", numHandlers));
   LoggerDB db{LoggerDB::TESTING};
-  db.setLevel("", LogLevel::DEBUG);
+  db.setLevel("", LogLevel::DBG);
 
   // Create the requested number of handlers for the foo.bar category
   Logger foobar{&db, "foo.bar"};

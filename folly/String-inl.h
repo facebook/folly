@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ namespace detail {
 // ('\n' = 10 maps to 'n'), 'O' if the character should be printed as
 // an octal escape sequence, or 'P' if the character is printable and
 // should be printed as is.
-extern const char cEscapeTable[];
+extern const std::array<char, 256> cEscapeTable;
 } // namespace detail
 
 template <class String>
@@ -76,10 +76,10 @@ namespace detail {
 // ('n' maps to 10 = '\n'), 'O' if this is the first character of an
 // octal escape sequence, 'X' if this is the first character of a
 // hexadecimal escape sequence, or 'I' if this escape sequence is invalid.
-extern const char cUnescapeTable[];
+extern const std::array<char, 256> cUnescapeTable;
 
 // Map from the character code to the hex value, or 16 if invalid hex char.
-extern const unsigned char hexTable[];
+extern const std::array<unsigned char, 256> hexTable;
 } // namespace detail
 
 template <class String>
@@ -96,6 +96,7 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       continue;
     }
     out.append(&*last, p - last);
+    ++p;
     if (p == str.end()) {  // backslash at end of string
       if (strict) {
         throw std::invalid_argument("incomplete escape sequence");
@@ -104,7 +105,6 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       last = p;
       continue;
     }
-    ++p;
     char e = detail::cUnescapeTable[static_cast<unsigned char>(*p)];
     if (e == 'O') {  // octal
       unsigned char val = 0;
@@ -157,7 +157,7 @@ namespace detail {
 // 2 = pass through in PATH mode
 // 3 = space, replace with '+' in QUERY mode
 // 4 = percent-encode
-extern const unsigned char uriEscapeTable[];
+extern const std::array<unsigned char, 256> uriEscapeTable;
 } // namespace detail
 
 template <class String>
@@ -290,7 +290,7 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
     }
     return;
   }
-  if (boost::is_same<DelimT,StringPiece>::value && dSize == 1) {
+  if (std::is_same<DelimT, StringPiece>::value && dSize == 1) {
     // Call the char version because it is significantly faster.
     return internalSplit<OutStringT>(delimFront(delim), sp, out,
       ignoreEmpty);
@@ -401,7 +401,8 @@ void splitTo(const Delim& delimiter,
 
 template <bool exact, class Delim, class... OutputTypes>
 typename std::enable_if<
-    AllConvertible<OutputTypes...>::value && sizeof...(OutputTypes) >= 1,
+    StrictConjunction<IsConvertible<OutputTypes>...>::value &&
+        sizeof...(OutputTypes) >= 1,
     bool>::type
 split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs) {
   return detail::splitFixed<exact>(

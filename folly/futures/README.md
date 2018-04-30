@@ -668,7 +668,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <p>It ensures that at any given time, no more than <tt>n</tt> Futures are being processed.</p>
 
-<p>Combine with <tt>collectAll</tt>, <tt>reduce</tt> or <tt>unorderedReduce</tt>. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp#L693" target="_blank">tests</a> for examples.</p>
+<p>Combine with <tt>collectAll</tt>, <tt>reduce</tt> or <tt>unorderedReduce</tt>. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/WindowTest.cpp" target="_blank">tests</a> for examples.</p>
 
 <h2 id="other-possibilities">Other Possibilities <a href="#other-possibilities" class="headerLink">#</a></h2>
 

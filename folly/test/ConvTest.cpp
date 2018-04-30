@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -589,6 +589,16 @@ TEST(Conv, StringPieceToDouble) {
       make_tuple(" 0.0  zorro", "  zorro", 0.0),
       make_tuple(" 0.0  zorro ", "  zorro ", 0.0),
       make_tuple("0.0zorro", "zorro", 0.0),
+      make_tuple("0.0eb", "eb", 0.0),
+      make_tuple("0.0EB", "EB", 0.0),
+      make_tuple("0eb", "eb", 0.0),
+      make_tuple("0EB", "EB", 0.0),
+      make_tuple("12e", "e", 12.0),
+      make_tuple("12e-", "e-", 12.0),
+      make_tuple("12e+", "e+", 12.0),
+      make_tuple("12e-f-g", "e-f-g", 12.0),
+      make_tuple("12e+f+g", "e+f+g", 12.0),
+      make_tuple("12euro", "euro", 12.0),
   };
   for (const auto& s : strs) {
     StringPiece pc(get<0>(s));
@@ -791,7 +801,7 @@ void testStr2Bool() {
   EXPECT_FALSE(to<bool>(Src("no")));
   EXPECT_FALSE(to<bool>(Src("false")));
   EXPECT_FALSE(to<bool>(Src("False")));
-  EXPECT_FALSE(to<bool>(Src("  fAlSe"  )));
+  EXPECT_FALSE(to<bool>(Src("  fAlSe  ")));
   EXPECT_FALSE(to<bool>(Src("F")));
   EXPECT_FALSE(to<bool>(Src("off")));
 
@@ -1239,6 +1249,22 @@ size_t estimateSpaceNeeded(const Dimensions&in) {
   return 2000 + folly::estimateSpaceNeeded(in.w) +
       folly::estimateSpaceNeeded(in.h);
 }
+
+enum class SmallEnum {};
+
+Expected<StringPiece, ConversionCode> parseTo(StringPiece in, SmallEnum& out) {
+  out = {};
+  if (in == "SmallEnum") {
+    return in.removePrefix(in), in;
+  } else {
+    return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+  }
+}
+
+template <class String>
+void toAppend(SmallEnum, String* result) {
+  folly::toAppend("SmallEnum", result);
+}
 } // namespace my
 
 TEST(Conv, custom_kkproviders) {
@@ -1249,6 +1275,17 @@ TEST(Conv, custom_kkproviders) {
   // make sure above implementation of estimateSpaceNeeded() is used.
   EXPECT_GT(str.capacity(), 2000);
   EXPECT_LT(str.capacity(), 2500);
+  // toAppend with other arguments
+  toAppend("|", expected, &str);
+  EXPECT_EQ("7x8|7x8", str);
+}
+
+TEST(conv, custom_enumclass) {
+  EXPECT_EQ(my::SmallEnum{}, folly::to<my::SmallEnum>("SmallEnum"));
+  EXPECT_EQ(my::SmallEnum{}, folly::tryTo<my::SmallEnum>("SmallEnum").value());
+  auto str = to<string>(my::SmallEnum{});
+  toAppend("|", my::SmallEnum{}, &str);
+  EXPECT_EQ("SmallEnum|SmallEnum", str);
 }
 
 TEST(Conv, TryToThenWithVoid) {

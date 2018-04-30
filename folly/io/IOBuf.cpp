@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/io/Cursor.h>
+#include <folly/lang/Align.h>
 #include <folly/memory/Malloc.h>
 
 using std::unique_ptr;
@@ -1027,21 +1028,24 @@ size_t IOBufHash::operator()(const IOBuf& buf) const {
   return h1;
 }
 
-bool IOBufEqual::operator()(const IOBuf& a, const IOBuf& b) const {
+ordering IOBufCompare::operator()(const IOBuf& a, const IOBuf& b) const {
   io::Cursor ca(&a);
   io::Cursor cb(&b);
   for (;;) {
     auto ba = ca.peekBytes();
     auto bb = cb.peekBytes();
     if (ba.empty() && bb.empty()) {
-      return true;
-    } else if (ba.empty() || bb.empty()) {
-      return false;
+      return ordering::eq;
+    } else if (ba.empty()) {
+      return ordering::lt;
+    } else if (bb.empty()) {
+      return ordering::gt;
     }
-    size_t n = std::min(ba.size(), bb.size());
+    const size_t n = std::min(ba.size(), bb.size());
     DCHECK_GT(n, 0u);
-    if (memcmp(ba.data(), bb.data(), n)) {
-      return false;
+    const ordering r = to_ordering(std::memcmp(ba.data(), bb.data(), n));
+    if (r != ordering::eq) {
+      return r;
     }
     ca.skip(n);
     cb.skip(n);

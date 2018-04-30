@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 #pragma once
 
 #include <cstddef>
+#include <utility>
 
-#include <folly/Portability.h>
-#include <folly/concurrency/CacheLocality.h>
+#include <folly/lang/Align.h>
 
 namespace folly {
 
@@ -33,7 +33,7 @@ namespace folly {
 template <typename T>
 class CachelinePadded {
   static_assert(
-      alignof(T) <= folly::max_align_v,
+      alignof(T) <= max_align_v,
       "CachelinePadded does not support over-aligned types.");
 
  public:
@@ -67,8 +67,8 @@ class CachelinePadded {
 
  private:
   static constexpr size_t paddingSize() noexcept {
-    return CacheLocality::kFalseSharingRange -
-        (alignof(T) % CacheLocality::kFalseSharingRange);
+    return hardware_destructive_interference_size -
+        (alignof(T) % hardware_destructive_interference_size);
   }
   char paddingPre_[paddingSize()];
   T inner_;

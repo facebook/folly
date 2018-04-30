@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-present Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <cstring>
 #include <string>
 
 #include <glog/logging.h>
@@ -27,6 +28,10 @@
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
+
+#ifndef STT_GNU_IFUNC
+#define STT_GNU_IFUNC 10
+#endif
 
 namespace folly {
 namespace symbolizer {
@@ -60,6 +65,7 @@ int ElfFile::openNoThrow(
     bool readOnly,
     const char** msg) noexcept {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
+  strncat(filepath_, name, kFilepathMaxLen - 1);
   fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
   if (fd_ == -1) {
     if (msg) {
@@ -70,7 +76,7 @@ int ElfFile::openNoThrow(
   // Always close fd and unmap in case of failure along the way to avoid
   // check failure above if we leave fd != -1 and the object is recycled
   // like it is inside SignalSafeElfCache
-  ScopeGuard guard = makeGuard([&] { reset(); });
+  auto guard = makeGuard([&] { reset(); });
   struct stat st;
   int r = fstat(fd_, &st);
   if (r == -1) {
@@ -153,6 +159,9 @@ ElfFile::ElfFile(ElfFile&& other) noexcept
       file_(other.file_),
       length_(other.length_),
       baseAddress_(other.baseAddress_) {
+  // copy other.filepath_, leaving filepath_ zero-terminated, always.
+  strncat(filepath_, other.filepath_, kFilepathMaxLen - 1);
+  other.filepath_[0] = 0;
   other.fd_ = -1;
   other.file_ = static_cast<char*>(MAP_FAILED);
   other.length_ = 0;
@@ -163,11 +172,14 @@ ElfFile& ElfFile::operator=(ElfFile&& other) {
   assert(this != &other);
   reset();
 
+  // copy other.filepath_, leaving filepath_ zero-terminated, always.
+  strncat(filepath_, other.filepath_, kFilepathMaxLen - 1);
   fd_ = other.fd_;
   file_ = other.file_;
   length_ = other.length_;
   baseAddress_ = other.baseAddress_;
 
+  other.filepath_[0] = 0;
   other.fd_ = -1;
   other.file_ = static_cast<char*>(MAP_FAILED);
   other.length_ = 0;
@@ -177,6 +189,8 @@ ElfFile& ElfFile::operator=(ElfFile&& other) {
 }
 
 void ElfFile::reset() {
+  filepath_[0] = 0;
+
   if (file_ != MAP_FAILED) {
     munmap(file_, length_);
     file_ = static_cast<char*>(MAP_FAILED);
@@ -189,18 +203,23 @@ void ElfFile::reset() {
 }
 
 bool ElfFile::init(const char** msg) {
-  auto& elfHeader = this->elfHeader();
+  if (length_ < 4) {
+    if (msg) {
+      *msg = "not an ELF file (too short)";
+    }
+    return false;
+  }
 
   // Validate ELF magic numbers
-  if (!(elfHeader.e_ident[EI_MAG0] == ELFMAG0 &&
-        elfHeader.e_ident[EI_MAG1] == ELFMAG1 &&
-        elfHeader.e_ident[EI_MAG2] == ELFMAG2 &&
-        elfHeader.e_ident[EI_MAG3] == ELFMAG3)) {
+  if (file_[EI_MAG0] != ELFMAG0 || file_[EI_MAG1] != ELFMAG1 ||
+      file_[EI_MAG2] != ELFMAG2 || file_[EI_MAG3] != ELFMAG3) {
     if (msg) {
       *msg = "invalid ELF magic";
     }
     return false;
   }
+
+  auto& elfHeader = this->elfHeader();
 
 #define EXPECTED_CLASS P1(ELFCLASS, __ELF_NATIVE_CLASS)
 #define P1(a, b) P2(a, b)
@@ -360,8 +379,8 @@ ElfFile::Symbol ElfFile::getDefinitionByAddress(uintptr_t address) const {
       return false;
     };
 
-    return iterateSymbolsWithType(section, STT_OBJECT, findSymbols) ||
-        iterateSymbolsWithType(section, STT_FUNC, findSymbols);
+    return iterateSymbolsWithTypes(
+        section, {STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.
@@ -399,8 +418,8 @@ ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const {
       return false;
     };
 
-    return iterateSymbolsWithType(section, STT_OBJECT, findSymbols) ||
-        iterateSymbolsWithType(section, STT_FUNC, findSymbols);
+    return iterateSymbolsWithTypes(
+        section, {STT_OBJECT, STT_FUNC, STT_GNU_IFUNC}, findSymbols);
   };
 
   // Try the .dynsym section first if it exists, it's smaller.

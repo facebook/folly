@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 #include <folly/futures/Future.h>
 #include <folly/Likely.h>
+#include <folly/SingletonThreadLocal.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
 
 namespace folly {
@@ -35,7 +36,8 @@ template class Future<std::string>;
 template class Future<double>;
 } // namespace folly
 
-namespace folly { namespace futures {
+namespace folly {
+namespace futures {
 
 Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;

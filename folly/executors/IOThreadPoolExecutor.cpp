@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,6 +73,7 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
 }
 
 IOThreadPoolExecutor::~IOThreadPoolExecutor() {
+  joinKeepAlive();
   stop();
 }
 
@@ -119,11 +120,12 @@ IOThreadPoolExecutor::pickThread() {
   if (n == 0) {
     return me;
   }
-  auto thread = ths[nextThread_++ % n];
+  auto thread = ths[nextThread_.fetch_add(1, std::memory_order_relaxed) % n];
   return std::static_pointer_cast<IOThread>(thread);
 }
 
 EventBase* IOThreadPoolExecutor::getEventBase() {
+  RWSpinLock::ReadHolder r{&threadListLock_};
   return pickThread()->eventBase;
 }
 
@@ -202,8 +204,7 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
 }
 
 // threadListLock_ is readlocked
-uint64_t IOThreadPoolExecutor::getPendingTaskCountImpl(
-    const folly::RWSpinLock::ReadHolder&) {
+uint64_t IOThreadPoolExecutor::getPendingTaskCountImpl() {
   uint64_t count = 0;
   for (const auto& thread : threadList_.get()) {
     auto ioThread = std::static_pointer_cast<IOThread>(thread);

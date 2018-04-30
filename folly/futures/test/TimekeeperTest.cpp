@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -195,6 +195,21 @@ TEST(Timekeeper, chainedInterruptTest) {
   EXPECT_FALSE(test);
 }
 
+TEST(Timekeeper, withinChainedInterruptTest) {
+  bool test = false;
+  Promise<Unit> p;
+  p.setInterruptHandler([&test, &p](const exception_wrapper& ex) {
+    ex.handle(
+        [&test](const FutureCancellation& /* cancellation */) { test = true; });
+    p.setException(ex);
+  });
+  auto f = p.getFuture().within(milliseconds(100));
+  EXPECT_FALSE(test) << "Sanity check";
+  f.cancel();
+  f.wait();
+  EXPECT_TRUE(test);
+}
+
 TEST(Timekeeper, executor) {
   class ExecutorTester : public Executor {
    public:
@@ -237,4 +252,14 @@ TEST_F(TimekeeperFixture, howToCastDuration) {
   // purpose of this example.
   auto f = timeLord_->after(std::chrono::duration_cast<Duration>(
       std::chrono::nanoseconds(1)));
+}
+
+TEST_F(TimekeeperFixture, destruction) {
+  folly::Optional<ThreadWheelTimekeeper> tk;
+  tk.emplace();
+  auto f = tk->after(std::chrono::seconds(10));
+  EXPECT_FALSE(f.isReady());
+  tk.clear();
+  EXPECT_TRUE(f.isReady());
+  EXPECT_TRUE(f.hasException());
 }

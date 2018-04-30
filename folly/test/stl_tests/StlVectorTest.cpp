@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -195,6 +195,8 @@ THOUGHTS:
 FOLLY_PUSH_WARNING
 FOLLY_GCC_DISABLE_WARNING("-Wunused-parameter")
 FOLLY_GCC_DISABLE_WARNING("-Wunused-variable")
+// Using SCOPED_TRACE repeatedly from within a macro violates -Wshadow
+FOLLY_GCC_DISABLE_WARNING("-Wshadow")
 
 using namespace std;
 using namespace folly;
@@ -2012,6 +2014,7 @@ STL_TEST("23.2.1 Table 99.5", copyWithAllocator, is_copy_constructible, a, m) {
 
 STL_TEST("23.2.1 Table 99.6", moveConstructionWithAllocator,
          is_destructible, a) {
+  (void)a;
   // there is nothing new to test here
 }
 

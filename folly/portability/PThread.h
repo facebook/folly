@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,9 @@
 namespace folly {
 namespace portability {
 namespace pthread {
-using pthread_key_t = DWORD;
+// In reality, this is boost::thread_specific_ptr*, but we're attempting
+// to avoid introducing boost into a portability header.
+using pthread_key_t = void*;
 
 int pthread_key_create(pthread_key_t* key, void (*destructor)(void*));
 int pthread_key_delete(pthread_key_t key);
@@ -94,9 +96,11 @@ int pthread_setspecific(pthread_key_t key, const void* value);
 
 // Because we defined `INCLUDE_NP` above, the non-portable APIs don't actually
 // get declared. We still need them, so declare them ourselves instead.
+extern "C" {
 PTW32_DLLPORT HANDLE PTW32_CDECL
 pthread_getw32threadhandle_np(pthread_t thread);
 PTW32_DLLPORT DWORD PTW32_CDECL pthread_getw32threadid_np(pthread_t thread);
+}
 
 // And now everything else that isn't just here for `pid_t`.
 

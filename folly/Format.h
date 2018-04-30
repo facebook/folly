@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@
 #define FOLLY_FORMAT_H_
 
 #include <cstdio>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 
+#include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/FormatArg.h>
 #include <folly/Range.h>
@@ -305,6 +307,33 @@ template <class Container>
 inline std::string svformat(StringPiece fmt, Container&& container) {
   return vformat(fmt, std::forward<Container>(container)).str();
 }
+
+/**
+ * Exception class thrown when a format key is not found in the given
+ * associative container keyed by strings. We inherit std::out_of_range for
+ * compatibility with callers that expect exception to be thrown directly
+ * by std::map or std::unordered_map.
+ *
+ * Having the key be at the end of the message string, we can access it by
+ * simply adding its offset to what(). Not storing separate std::string key
+ * makes the exception type small and noexcept-copyable like std::out_of_range,
+ * and therefore able to fit in-situ in exception_wrapper.
+ */
+class FOLLY_EXPORT FormatKeyNotFoundException : public std::out_of_range {
+ public:
+  explicit FormatKeyNotFoundException(StringPiece key);
+
+  char const* key() const noexcept {
+    return what() + kMessagePrefix.size();
+  }
+
+ private:
+  static constexpr StringPiece const kMessagePrefix = "format key not found: ";
+};
+
+namespace detail {
+[[noreturn]] void throwFormatKeyNotFoundException(StringPiece key);
+} // namespace detail
 
 /**
  * Wrap a sequence or associative container so that out-of-range lookups

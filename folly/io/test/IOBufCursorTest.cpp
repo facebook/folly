@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/io/IOBuf.h>
 
 #include <folly/Format.h>
@@ -369,6 +368,7 @@ TEST(IOBuf, cloneAndInsert) {
 
     cursor.insert(std::move(cloned));
     cursor.insert(folly::IOBuf::create(0));
+    EXPECT_EQ(4, cursor.getCurrentPosition());
     EXPECT_EQ(7, iobuf1->countChainElements());
     EXPECT_EQ(14, iobuf1->computeChainDataLength());
     // Check that nextBuf got set correctly to the buffer with 1 byte left
@@ -386,28 +386,66 @@ TEST(IOBuf, cloneAndInsert) {
     cursor.skip(1);
 
     cursor.insert(std::move(cloned));
+    EXPECT_EQ(2, cursor.getCurrentPosition());
     EXPECT_EQ(8, iobuf1->countChainElements());
     EXPECT_EQ(15, iobuf1->computeChainDataLength());
     // Check that nextBuf got set correctly
     cursor.read<uint8_t>();
   }
   {
-    // Check that inserting at the beginning doesn't create empty buf
+    // Check that inserting at the beginning of a chunk (except first one)
+    // doesn't create empty buf
+    RWPrivateCursor cursor(iobuf1.get());
+    Cursor(iobuf1.get()).clone(cloned, 1);
+    EXPECT_EQ(1, cloned->countChainElements());
+    EXPECT_EQ(1, cloned->computeChainDataLength());
+
+    cursor.skip(1);
+
+    cursor.insert(std::move(cloned));
+    EXPECT_EQ(2, cursor.getCurrentPosition());
+    EXPECT_EQ(14, cursor.totalLength());
+    EXPECT_EQ(9, iobuf1->countChainElements());
+    EXPECT_EQ(16, iobuf1->computeChainDataLength());
+    // Check that nextBuf got set correctly
+    cursor.read<uint8_t>();
+  }
+  {
+    // Check that inserting at the beginning of a chain DOES keep an empty
+    // buffer.
     RWPrivateCursor cursor(iobuf1.get());
     Cursor(iobuf1.get()).clone(cloned, 1);
     EXPECT_EQ(1, cloned->countChainElements());
     EXPECT_EQ(1, cloned->computeChainDataLength());
 
     cursor.insert(std::move(cloned));
-    EXPECT_EQ(9, iobuf1->countChainElements());
-    EXPECT_EQ(16, iobuf1->computeChainDataLength());
+    EXPECT_EQ(1, cursor.getCurrentPosition());
+    EXPECT_EQ(16, cursor.totalLength());
+    EXPECT_EQ(11, iobuf1->countChainElements());
+    EXPECT_EQ(17, iobuf1->computeChainDataLength());
     // Check that nextBuf got set correctly
     cursor.read<uint8_t>();
+  }
+  {
+    // Check that inserting at the end of the buffer keeps it at the end.
+    RWPrivateCursor cursor(iobuf1.get());
+    Cursor(iobuf1.get()).clone(cloned, 1);
+    EXPECT_EQ(1, cloned->countChainElements());
+    EXPECT_EQ(1, cloned->computeChainDataLength());
+
+    cursor.advanceToEnd();
+    EXPECT_EQ(17, cursor.getCurrentPosition());
+    cursor.insert(std::move(cloned));
+    EXPECT_EQ(18, cursor.getCurrentPosition());
+    EXPECT_EQ(0, cursor.totalLength());
+    EXPECT_EQ(12, iobuf1->countChainElements());
+    EXPECT_EQ(18, iobuf1->computeChainDataLength());
+    EXPECT_TRUE(cursor.isAtEnd());
   }
 }
 
 TEST(IOBuf, cloneWithEmptyBufAtStart) {
-  folly::IOBufEqual eq;
+  folly::IOBufEqualTo eq;
   auto empty = IOBuf::create(0);
   auto hel = IOBuf::create(3);
   append(hel, "hel");
@@ -1131,4 +1169,41 @@ TEST(IOBuf, pushEmptyByteRange) {
   Appender app(&buf, 16);
   app.push(emptyBytes);
   EXPECT_EQ(0, buf.computeChainDataLength());
+}
+
+TEST(IOBuf, positionTracking) {
+  unique_ptr<IOBuf> iobuf1(IOBuf::create(6));
+  iobuf1->append(6);
+  unique_ptr<IOBuf> iobuf2(IOBuf::create(24));
+  iobuf2->append(24);
+  iobuf1->prependChain(std::move(iobuf2));
+
+  Cursor cursor(iobuf1.get());
+
+  EXPECT_EQ(0, cursor.getCurrentPosition());
+  EXPECT_EQ(6, cursor.length());
+
+  cursor.skip(3);
+  EXPECT_EQ(3, cursor.getCurrentPosition());
+  EXPECT_EQ(3, cursor.length());
+
+  // Test that we properly handle advancing to the next chunk.
+  cursor.skip(4);
+  EXPECT_EQ(7, cursor.getCurrentPosition());
+  EXPECT_EQ(23, cursor.length());
+
+  // Test that we properly handle doing to the previous chunk.
+  cursor.retreat(2);
+  EXPECT_EQ(5, cursor.getCurrentPosition());
+  EXPECT_EQ(1, cursor.length());
+
+  // Test that we properly handle advanceToEnd
+  cursor.advanceToEnd();
+  EXPECT_EQ(30, cursor.getCurrentPosition());
+  EXPECT_EQ(0, cursor.totalLength());
+
+  // Reset to 0.
+  cursor.reset(iobuf1.get());
+  EXPECT_EQ(0, cursor.getCurrentPosition());
+  EXPECT_EQ(30, cursor.totalLength());
 }

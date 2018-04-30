@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,62 +15,53 @@
  */
 #include <folly/experimental/logging/Init.h>
 
-#include <folly/experimental/logging/AsyncFileWriter.h>
-#include <folly/experimental/logging/GlogStyleFormatter.h>
-#include <folly/experimental/logging/ImmediateFileWriter.h>
-#include <folly/experimental/logging/LogCategory.h>
+#include <folly/experimental/logging/LogConfig.h>
+#include <folly/experimental/logging/LogConfigParser.h>
 #include <folly/experimental/logging/LoggerDB.h>
-#include <folly/experimental/logging/StandardLogHandler.h>
-
-using std::shared_ptr;
-using std::string;
-using std::vector;
+#include <folly/experimental/logging/StreamHandlerFactory.h>
 
 namespace folly {
 
-void initLogLevels(StringPiece configString, LogLevel defaultRootLevel) {
-  // Set the default root category log level first
-  LoggerDB::get()->getCategory(".")->setLevel(defaultRootLevel);
+void initLogging(StringPiece configString) {
+  // Get the base logging configuration
+  auto* const baseConfigStr = getBaseLoggingConfig();
+  // Return early if we have nothing to do
+  if (!baseConfigStr && configString.empty()) {
+    return;
+  }
 
-  // Then apply the configuration string
-  if (!configString.empty()) {
-    auto ret = LoggerDB::get()->processConfigString(configString);
-    if (!ret.empty()) {
-      throw LoggingConfigError(ret);
+  // Parse the configuration string(s)
+  LogConfig config;
+  if (baseConfigStr) {
+    config = parseLogConfig(baseConfigStr);
+    if (!configString.empty()) {
+      config.update(parseLogConfig(configString));
     }
-  }
-}
-
-void initLoggingGlogStyle(
-    StringPiece configString,
-    LogLevel defaultRootLevel,
-    bool asyncWrites) {
-  // Configure log levels
-  initLogLevels(configString, defaultRootLevel);
-
-  // Create the LogHandler
-  std::shared_ptr<LogWriter> writer;
-  folly::File file{STDERR_FILENO, false};
-  if (asyncWrites) {
-    writer = std::make_shared<AsyncFileWriter>(std::move(file));
   } else {
-    writer = std::make_shared<ImmediateFileWriter>(std::move(file));
+    config = parseLogConfig(configString);
   }
-  auto handler = std::make_shared<StandardLogHandler>(
-      std::make_shared<GlogStyleFormatter>(), std::move(writer));
 
-  // Add the handler to the root category.
-  LoggerDB::get()->getCategory(".")->addHandler(std::move(handler));
+  // Apply the config settings
+  LoggerDB::get().updateConfig(config);
 }
 
-LoggingConfigError::LoggingConfigError(const vector<string>& errors)
-    : invalid_argument{computeMessage(errors)} {}
-
-std::string LoggingConfigError::computeMessage(const vector<string>& errors) {
-  string msg = "error parsing logging configuration:";
-  for (const auto& error : errors) {
-    msg += "\n" + error;
+void initLoggingOrDie(StringPiece configString) {
+  try {
+    initLogging(configString);
+  } catch (const std::exception& ex) {
+    // Print the error message.  We intentionally use ex.what() here instead
+    // of folly::exceptionStr() to avoid including the exception type name in
+    // the output.  The exceptions thrown by the logging library on error
+    // should have enough information to diagnose what is wrong with the
+    // input config string.
+    //
+    // We want the output here to be user-friendly since this will be shown
+    // to any user invoking a program with an error in the logging
+    // configuration string.  This output is intended for end users rather
+    // than developers.
+    fprintf(stderr, "error parsing logging configuration: %s\n", ex.what());
+    exit(1);
   }
-  return msg;
 }
+
 } // namespace folly

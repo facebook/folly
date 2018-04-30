@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,12 +25,12 @@ class MyMemoryResource : public memory_resource {
  public:
   void* allocate(const size_t sz, const size_t /* align */) override {
     void* p = malloc(sz);
-    DEBUG_PRINT(p << " " << sz);
+    HAZPTR_DEBUG_PRINT(p << " " << sz);
     return p;
   }
 
   void deallocate(void* p, const size_t sz, const size_t /* align */) override {
-    DEBUG_PRINT(p << " " << sz);
+    HAZPTR_DEBUG_PRINT(p << " " << sz);
     free(p);
   }
 };
@@ -38,7 +38,7 @@ class MyMemoryResource : public memory_resource {
 template <typename Node1>
 struct MyReclaimerFree {
   inline void operator()(Node1* p) {
-    DEBUG_PRINT(p << " " << sizeof(Node1));
+    HAZPTR_DEBUG_PRINT(p << " " << sizeof(Node1));
     free(p);
   }
 };

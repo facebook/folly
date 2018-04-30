@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <atomic>
+
+#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/io/async/EventBaseManager.h>
@@ -47,7 +50,9 @@ namespace folly {
  * outstanding tasks belong to the event base and will be executed upon its
  * destruction.
  */
-class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
+class IOThreadPoolExecutor : public ThreadPoolExecutor,
+                             public IOExecutor,
+                             public DefaultKeepAliveExecutor {
  public:
   explicit IOThreadPoolExecutor(
       size_t numThreads,
@@ -71,7 +76,8 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   folly::EventBaseManager* getEventBaseManager();
 
  private:
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING IOThread : public Thread {
+  struct alignas(hardware_destructive_interference_size) IOThread
+      : public Thread {
     IOThread(IOThreadPoolExecutor* pool)
         : Thread(pool), shouldRun(true), pendingTasks(0) {}
     std::atomic<bool> shouldRun;
@@ -84,9 +90,9 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   std::shared_ptr<IOThread> pickThread();
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
-  uint64_t getPendingTaskCountImpl(const RWSpinLock::ReadHolder&) override;
+  uint64_t getPendingTaskCountImpl() override;
 
-  size_t nextThread_;
+  std::atomic<size_t> nextThread_;
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   folly::EventBaseManager* eventBaseManager_;
 };

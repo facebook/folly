@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,14 @@
 #include <link.h> // For ElfW()
 
 #include <cstdio>
+#include <initializer_list>
 #include <stdexcept>
 #include <system_error>
 
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
-#include <folly/SafeAssert.h>
+#include <folly/lang/SafeAssert.h>
 
 namespace folly {
 namespace symbolizer {
@@ -139,11 +140,20 @@ class ElfFile {
   const ElfShdr* iterateSections(Fn fn) const;
 
   /**
-   * Iterate over all sections with a given type.  Similar to
+   * Iterate over all sections with a given type. Similar to
    * iterateSections(), but filtered only for sections with the given type.
    */
   template <class Fn>
   const ElfShdr* iterateSectionsWithType(uint32_t type, Fn fn) const;
+
+  /**
+   * Iterate over all sections with a given types. Similar to
+   * iterateSectionWithTypes(), but filtered on multiple types.
+   */
+  template <class Fn>
+  const ElfShdr* iterateSectionsWithTypes(
+      std::initializer_list<uint32_t> types,
+      Fn fn) const;
 
   /**
    * Iterate over all symbols witin a given section.
@@ -156,6 +166,11 @@ class ElfFile {
   template <class Fn>
   const ElfSym*
   iterateSymbolsWithType(const ElfShdr& section, uint32_t type, Fn fn) const;
+  template <class Fn>
+  const ElfSym* iterateSymbolsWithTypes(
+      const ElfShdr& section,
+      std::initializer_list<uint32_t> types,
+      Fn fn) const;
 
   /**
    * Find symbol definition by address.
@@ -226,9 +241,19 @@ class ElfFile {
   template <class T>
   const typename std::enable_if<std::is_pod<T>::value, T>::type& at(
       ElfOff offset) const {
-    FOLLY_SAFE_CHECK(
-        offset + sizeof(T) <= length_,
-        "Offset is not contained within our mmapped file");
+    if (offset + sizeof(T) > length_) {
+      char msg[kFilepathMaxLen + 128];
+      snprintf(
+          msg,
+          sizeof(msg),
+          "Offset (%lu + %lu) is not contained within our mmapped"
+          " file (%s) of length %zu",
+          offset,
+          sizeof(T),
+          filepath_,
+          length_);
+      FOLLY_SAFE_CHECK(offset + sizeof(T) <= length_, msg);
+    }
 
     return *reinterpret_cast<T*>(file_ + offset);
   }
@@ -255,6 +280,8 @@ class ElfFile {
     return at<T>(section.sh_offset + (addr - section.sh_addr));
   }
 
+  static constexpr size_t kFilepathMaxLen = 512;
+  char filepath_[kFilepathMaxLen] = {};
   int fd_;
   char* file_; // mmap() location
   size_t length_; // mmap() length

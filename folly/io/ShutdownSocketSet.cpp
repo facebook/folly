@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,25 +22,15 @@
 #include <glog/logging.h>
 
 #include <folly/FileUtil.h>
-#include <folly/Singleton.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {
-
-namespace {
-struct PrivateTag {};
-folly::Singleton<folly::ShutdownSocketSet, PrivateTag> singleton;
-} // namespace
 
 ShutdownSocketSet::ShutdownSocketSet(int maxFd)
     : maxFd_(maxFd),
       data_(static_cast<std::atomic<uint8_t>*>(
           folly::checkedCalloc(size_t(maxFd), sizeof(std::atomic<uint8_t>)))),
       nullFile_("/dev/null", O_RDWR) {}
-
-std::shared_ptr<ShutdownSocketSet> ShutdownSocketSet::getInstance() {
-  return singleton.try_get();
-}
 
 void ShutdownSocketSet::add(int fd) {
   // Silently ignore any fds >= maxFd_, very unlikely

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -651,11 +651,12 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     }
 
     // ideally this would be a static assert, but g++ doesn't allow it
-    assert(alignof(MPMCQueue<T, Atom>) >= CacheLocality::kFalseSharingRange);
+    assert(
+        alignof(MPMCQueue<T, Atom>) >= hardware_destructive_interference_size);
     assert(
         static_cast<uint8_t*>(static_cast<void*>(&popTicket_)) -
             static_cast<uint8_t*>(static_cast<void*>(&pushTicket_)) >=
-        CacheLocality::kFalseSharingRange);
+        static_cast<ptrdiff_t>(hardware_destructive_interference_size));
   }
 
   /// A default-constructed queue is useful because a usable (non-zero
@@ -975,11 +976,12 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     /// To avoid false sharing in slots_ with neighboring memory
     /// allocations, we pad it with this many SingleElementQueue-s at
     /// each end
-    kSlotPadding = (CacheLocality::kFalseSharingRange - 1) / sizeof(Slot) + 1
+    kSlotPadding =
+        (hardware_destructive_interference_size - 1) / sizeof(Slot) + 1
   };
 
   /// The maximum number of items in the queue at once
-  size_t FOLLY_ALIGN_TO_AVOID_FALSE_SHARING capacity_;
+  alignas(hardware_destructive_interference_size) size_t capacity_;
 
   /// Anonymous union for use when Dynamic = false and true, respectively
   union {
@@ -1012,22 +1014,23 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
   Atom<size_t> dcapacity_;
 
   /// Enqueuers get tickets from here
-  Atom<uint64_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING pushTicket_;
+  alignas(hardware_destructive_interference_size) Atom<uint64_t> pushTicket_;
 
   /// Dequeuers get tickets from here
-  Atom<uint64_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING popTicket_;
+  alignas(hardware_destructive_interference_size) Atom<uint64_t> popTicket_;
 
   /// This is how many times we will spin before using FUTEX_WAIT when
   /// the queue is full on enqueue, adaptively computed by occasionally
   /// spinning for longer and smoothing with an exponential moving average
-  Atom<uint32_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING pushSpinCutoff_;
+  alignas(
+      hardware_destructive_interference_size) Atom<uint32_t> pushSpinCutoff_;
 
   /// The adaptive spin cutoff when the queue is empty on dequeue
-  Atom<uint32_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING popSpinCutoff_;
+  alignas(hardware_destructive_interference_size) Atom<uint32_t> popSpinCutoff_;
 
   /// Alignment doesn't prevent false sharing at the end of the struct,
   /// so fill out the last cache line
-  char padding_[CacheLocality::kFalseSharingRange - sizeof(Atom<uint32_t>)];
+  char pad_[hardware_destructive_interference_size - sizeof(Atom<uint32_t>)];
 
   /// We assign tickets in increasing order, but we don't want to
   /// access neighboring elements of slots_ because that will lead to

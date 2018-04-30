@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ StringPiece stripBuckOutPrefix(StringPiece filename) {
 }
 } // namespace
 
-std::string getXlogCategoryNameForFile(StringPiece filename) {
+StringPiece getXlogCategoryNameForFile(StringPiece filename) {
   // Buck mangles the directory layout for header files.  Rather than including
   // them from their original location, it moves them into deep directories
   // inside buck-out, and includes them from there.
@@ -65,25 +65,7 @@ std::string getXlogCategoryNameForFile(StringPiece filename) {
     filename = stripBuckOutPrefix(filename);
   }
 
-  std::string categoryName = filename.str();
-
-  // Translate slashes to dots, to turn the directory layout into
-  // a category hierarchy.
-  size_t lastDot = std::string::npos;
-  for (size_t n = 0; n < categoryName.size(); ++n) {
-    if (categoryName[n] == '/') {
-      categoryName[n] = '.';
-      lastDot = std::string::npos;
-    } else if (categoryName[n] == '.') {
-      lastDot = n;
-    }
-  }
-
-  // Strip off the filename extension, if one was present.
-  if (lastDot != std::string::npos) {
-    categoryName.resize(lastDot);
-  }
-  return categoryName;
+  return filename;
 }
 
 template <bool IsInHeaderFile>
@@ -92,7 +74,7 @@ LogLevel XlogLevelInfo<IsInHeaderFile>::loadLevelFull(
     bool isOverridden) {
   auto currentLevel = level_.load(std::memory_order_acquire);
   if (UNLIKELY(currentLevel == ::folly::LogLevel::UNINITIALIZED)) {
-    return LoggerDB::get()->xlogInit(
+    return LoggerDB::get().xlogInit(
         isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
         &level_,
         nullptr);
@@ -104,7 +86,7 @@ template <bool IsInHeaderFile>
 LogCategory* XlogCategoryInfo<IsInHeaderFile>::init(
     folly::StringPiece categoryName,
     bool isOverridden) {
-  return LoggerDB::get()->xlogInitCategory(
+  return LoggerDB::get().xlogInitCategory(
       isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
       &category_,
       &isInitialized_);
@@ -117,7 +99,7 @@ LogLevel XlogLevelInfo<false>::loadLevelFull(
     XlogFileScopeInfo* fileScopeInfo) {
   auto currentLevel = fileScopeInfo->level.load(std::memory_order_acquire);
   if (UNLIKELY(currentLevel == ::folly::LogLevel::UNINITIALIZED)) {
-    return LoggerDB::get()->xlogInit(
+    return LoggerDB::get().xlogInit(
         isOverridden ? categoryName : getXlogCategoryNameForFile(categoryName),
         &fileScopeInfo->level,
         &fileScopeInfo->category);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -272,10 +272,10 @@ TEST(ApplyTuple, MemberFunctionWithUniquePtr) {
   MemberFunc mf;
   mf.x = 234;
 
-  EXPECT_EQ(folly::applyTuple(&MemberFunc::getX,
-                              std::make_tuple(std::unique_ptr<MemberFunc>(
-                                  new MemberFunc(mf)))),
-            234);
+  EXPECT_EQ(
+      folly::applyTuple(&MemberFunc::getX,
+                        std::make_tuple(std::make_unique<MemberFunc>(mf))),
+      234);
 }
 
 TEST(ApplyTuple, Array) {
@@ -370,4 +370,34 @@ TEST(ApplyTuple, UncurryStdFind) {
       3, std::count_if(v.begin(), v.end(), folly::uncurry([](int a, int b) {
                          return b % a == 0;
                        })));
+}
+
+namespace {
+struct S {
+  template <typename... Args>
+  explicit S(Args&&... args) : tuple_(std::forward<Args>(args)...) {}
+
+  std::tuple<int, double, std::string> tuple_;
+};
+} // namespace
+
+TEST(MakeFromTupleTest, make_from_tuple) {
+  S expected{42, 1.0, "foobar"};
+
+  // const lvalue ref
+  auto s1 = folly::make_from_tuple<S>(expected.tuple_);
+  EXPECT_EQ(expected.tuple_, s1.tuple_);
+
+  // rvalue ref
+  S sCopy{expected.tuple_};
+  auto s2 = folly::make_from_tuple<S>(std::move(sCopy.tuple_));
+  EXPECT_EQ(expected.tuple_, s2.tuple_);
+  EXPECT_TRUE(std::get<2>(sCopy.tuple_).empty());
+
+  // forward
+  std::string str{"foobar"};
+  auto s3 =
+      folly::make_from_tuple<S>(std::forward_as_tuple(42, 1.0, std::move(str)));
+  EXPECT_EQ(expected.tuple_, s3.tuple_);
+  EXPECT_TRUE(str.empty());
 }

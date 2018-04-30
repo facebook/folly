@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -590,6 +590,42 @@ TEST(Collect, collectN) {
   promises[1].setValue();
   EXPECT_FALSE(flag);
   promises[2].setValue();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Collect, collectNParallel) {
+  std::vector<Promise<Unit>> ps(100);
+  std::vector<Future<Unit>> futures;
+
+  for (auto& p : ps) {
+    futures.push_back(p.getFuture());
+  }
+
+  bool flag = false;
+  size_t n = 90;
+  collectN(futures, n).then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
+    flag = true;
+    EXPECT_EQ(n, v.size());
+    for (auto& tt : v) {
+      EXPECT_TRUE(tt.second.hasValue());
+    }
+  });
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      ps[i].setValue();
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
   EXPECT_TRUE(flag);
 }
 

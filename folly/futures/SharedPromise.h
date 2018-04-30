@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Portability.h>
+#include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Promise.h>
 
 namespace folly {
@@ -24,13 +25,16 @@ namespace folly {
 /*
  * SharedPromise provides the same interface as Promise, but you can extract
  * multiple Futures from it, i.e. you can call getFuture() as many times as
- * you'd like. When the SharedPromise is fulfilled, all of the Futures will be
- * called back. Calls to getFuture() after the SharedPromise is fulfilled return
+ * you'd like. When the SharedPromise is fulfilled, all of the Futures are
+ * completed. Calls to getFuture() after the SharedPromise is fulfilled return
  * a completed Future. If you find yourself constructing collections of Promises
  * and fulfilling them simultaneously with the same value, consider this
  * utility instead. Likewise, if you find yourself in need of setting multiple
  * callbacks on the same Future (which is indefinitely unsupported), consider
  * refactoring to use SharedPromise to "split" the Future.
+ *
+ * The ShardPromise must be kept alive manually. Consider FutureSplitter for
+ * automatic lifetime management.
  */
 template <class T>
 class SharedPromise {
@@ -50,6 +54,15 @@ class SharedPromise {
    * Return a Future tied to the shared core state. Unlike Promise::getFuture,
    * this can be called an unlimited number of times per SharedPromise.
    */
+  SemiFuture<T> getSemiFuture();
+
+  /**
+   * Return a Future tied to the shared core state. Unlike Promise::getFuture,
+   * this can be called an unlimited number of times per SharedPromise.
+   * NOTE: This function is deprecated. Please use getSemiFuture and pass the
+   *       appropriate executor to .via on the returned SemiFuture to get a
+   *       valid Future where necessary.
+   */
   Future<T> getFuture();
 
   /** Return the number of Futures associated with this SharedPromise */
@@ -65,7 +78,7 @@ class SharedPromise {
       p.setException(std::current_exception());
     }
     */
-  FOLLY_DEPRECATED("use setException(exception_wrapper)")
+  [[deprecated("use setException(exception_wrapper)")]]
   void setException(std::exception_ptr const&);
 
   /** Fulfill the SharedPromise with an exception type E, which can be passed to

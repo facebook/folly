@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,9 @@ namespace folly {
   throw PredicateDoesNotObtain();
 }
 
-[[noreturn]] void throwNoFutureInSplitter() {
-  throw NoFutureInSplitter();
+[[noreturn]] void throwNoFutureInSplitter() { throw NoFutureInSplitter(); }
+
+    [[noreturn]] void throwNoExecutor() {
+  throw NoExecutor();
 }
 } // namespace folly

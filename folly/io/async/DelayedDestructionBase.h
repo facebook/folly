@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -247,25 +247,25 @@ inline bool operator !=(
     const DelayedDestructionBase::DestructorGuard& right) {
   return left.get() != right.get();
 }
-inline bool operator ==(
+inline bool operator==(
     const DelayedDestructionBase::DestructorGuard& left,
-    std::nullptr_t right) {
-  return left.get() == right;
+    std::nullptr_t) {
+  return left.get() == nullptr;
 }
-inline bool operator ==(
-    std::nullptr_t left,
+inline bool operator==(
+    std::nullptr_t,
     const DelayedDestructionBase::DestructorGuard& right) {
-  return left == right.get();
+  return nullptr == right.get();
 }
-inline bool operator !=(
+inline bool operator!=(
     const DelayedDestructionBase::DestructorGuard& left,
-    std::nullptr_t right) {
-  return left.get() != right;
+    std::nullptr_t) {
+  return left.get() != nullptr;
 }
-inline bool operator !=(
-    std::nullptr_t left,
+inline bool operator!=(
+    std::nullptr_t,
     const DelayedDestructionBase::DestructorGuard& right) {
-  return left != right.get();
+  return nullptr != right.get();
 }
 
 template <typename LeftAliasType, typename RightAliasType>
@@ -281,27 +281,27 @@ inline bool operator !=(
   return left.get() != right.get();
 }
 template <typename LeftAliasType>
-inline bool operator ==(
+inline bool operator==(
     const DelayedDestructionBase::IntrusivePtr<LeftAliasType>& left,
-    std::nullptr_t right) {
-  return left.get() == right;
+    std::nullptr_t) {
+  return left.get() == nullptr;
 }
 template <typename RightAliasType>
-inline bool operator ==(
-    std::nullptr_t left,
+inline bool operator==(
+    std::nullptr_t,
     const DelayedDestructionBase::IntrusivePtr<RightAliasType>& right) {
-  return left == right.get();
+  return nullptr == right.get();
 }
 template <typename LeftAliasType>
-inline bool operator !=(
+inline bool operator!=(
     const DelayedDestructionBase::IntrusivePtr<LeftAliasType>& left,
-    std::nullptr_t right) {
-  return left.get() != right;
+    std::nullptr_t) {
+  return left.get() != nullptr;
 }
 template <typename RightAliasType>
-inline bool operator !=(
-    std::nullptr_t left,
+inline bool operator!=(
+    std::nullptr_t,
     const DelayedDestructionBase::IntrusivePtr<RightAliasType>& right) {
-  return left != right.get();
+  return nullptr != right.get();
 }
 } // namespace folly

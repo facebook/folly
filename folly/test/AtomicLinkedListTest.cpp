@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,8 +51,10 @@ TEST(AtomicIntrusiveLinkedList, Basic) {
     EXPECT_FALSE(list.empty());
 
     size_t id = 0;
-    list.sweep(
-        [&](TestIntrusiveObject* obj) mutable { EXPECT_EQ(++id, obj->id()); });
+    list.sweep([&](TestIntrusiveObject* obj) mutable {
+      ++id;
+      EXPECT_EQ(id, obj->id());
+    });
 
     EXPECT_TRUE(list.empty());
   }
@@ -65,8 +67,10 @@ TEST(AtomicIntrusiveLinkedList, Basic) {
     EXPECT_FALSE(list.empty());
 
     size_t id = 1;
-    list.sweep(
-        [&](TestIntrusiveObject* obj) mutable { EXPECT_EQ(++id, obj->id()); });
+    list.sweep([&](TestIntrusiveObject* obj) mutable {
+      ++id;
+      EXPECT_EQ(id, obj->id());
+    });
 
     EXPECT_TRUE(list.empty());
   }
@@ -82,7 +86,8 @@ TEST(AtomicIntrusiveLinkedList, ReverseSweep) {
   list.insertHead(&c);
   size_t next_expected_id = 3;
   list.reverseSweep([&](TestIntrusiveObject* obj) {
-    EXPECT_EQ(next_expected_id--, obj->id());
+    auto const expected = next_expected_id--;
+    EXPECT_EQ(expected, obj->id());
   });
   EXPECT_TRUE(list.empty());
   // Test that we can still insert
@@ -116,8 +121,10 @@ TEST(AtomicIntrusiveLinkedList, Move) {
   EXPECT_FALSE(list3.empty());
 
   size_t id = 0;
-  list3.sweep(
-      [&](TestIntrusiveObject* obj) mutable { EXPECT_EQ(++id, obj->id()); });
+  list3.sweep([&](TestIntrusiveObject* obj) mutable {
+    ++id;
+    EXPECT_EQ(id, obj->id());
+  });
 }
 
 TEST(AtomicIntrusiveLinkedList, Stress) {

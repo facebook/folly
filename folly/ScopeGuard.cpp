@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "ScopeGuard.h"
+#include <folly/ScopeGuard.h>
 
 #include <iostream>
 
-/*static*/ void folly::ScopeGuardImplBase::warnAboutToCrash() noexcept {
+/*static*/ void folly::detail::ScopeGuardImplBase::warnAboutToCrash() noexcept {
   // Ensure the availability of std::cerr
   std::ios_base::Init ioInit;
   std::cerr

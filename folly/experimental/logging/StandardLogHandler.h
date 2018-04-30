@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <folly/experimental/logging/LogHandler.h>
+#include <folly/experimental/logging/LogHandlerConfig.h>
 
 namespace folly {
 
@@ -40,9 +41,24 @@ class LogWriter;
 class StandardLogHandler : public LogHandler {
  public:
   StandardLogHandler(
+      LogHandlerConfig config,
       std::shared_ptr<LogFormatter> formatter,
       std::shared_ptr<LogWriter> writer);
   ~StandardLogHandler();
+
+  /**
+   * Get the LogFormatter used by this handler.
+   */
+  const std::shared_ptr<LogFormatter>& getFormatter() const {
+    return formatter_;
+  }
+
+  /**
+   * Get the LogWriter used by this handler.
+   */
+  const std::shared_ptr<LogWriter>& getWriter() const {
+    return writer_;
+  }
 
   /**
    * Get the handler's current LogLevel.
@@ -69,9 +85,19 @@ class StandardLogHandler : public LogHandler {
 
   void flush() override;
 
+  LogHandlerConfig getConfig() const override;
+
  private:
   std::atomic<LogLevel> level_{LogLevel::NONE};
-  std::shared_ptr<LogFormatter> formatter_;
-  std::shared_ptr<LogWriter> writer_;
+
+  // The following variables are const, and cannot be modified after the
+  // log handler is constructed.  This allows us to access them without
+  // locking when handling a message.  To change these values, create a new
+  // StandardLogHandler object and replace the old handler with the new one in
+  // the LoggerDB.
+
+  const std::shared_ptr<LogFormatter> formatter_;
+  const std::shared_ptr<LogWriter> writer_;
+  const LogHandlerConfig config_;
 };
 } // namespace folly

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,10 @@
 /// hazptr prototype.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <folly/Portability.h>
 #include <memory>
+
+#include <folly/Portability.h>
+#include <folly/lang/Align.h>
 
 namespace folly {
 namespace hazptr {
@@ -34,11 +36,11 @@ class memory_resource {
   virtual ~memory_resource() = default;
   virtual void* allocate(
       const size_t bytes,
-      const size_t alignment = folly::max_align_v) = 0;
+      const size_t alignment = max_align_v) = 0;
   virtual void deallocate(
       void* p,
       const size_t bytes,
-      const size_t alignment = folly::max_align_v) = 0;
+      const size_t alignment = max_align_v) = 0;
 };
 
 memory_resource* get_default_resource();

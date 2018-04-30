@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,13 +29,23 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
       : AsyncSocket(base),
         AsyncSSLSocket(ctx, base, deferSecurityNegotiation) {}
 
-  GMOCK_METHOD5_(, noexcept, ,
-   connect,
-   void(AsyncSocket::ConnectCallback*,
-    const folly::SocketAddress&,
-    int,
-    const OptionMap&,
-    const folly::SocketAddress&));
+  MOCK_METHOD5(
+      connect_,
+      void(
+          AsyncSocket::ConnectCallback*,
+          const folly::SocketAddress&,
+          int,
+          const OptionMap&,
+          const folly::SocketAddress&));
+  void connect(
+      AsyncSocket::ConnectCallback* callback,
+      const folly::SocketAddress& address,
+      int timeout,
+      const OptionMap& options,
+      const folly::SocketAddress& bindAddr) noexcept override {
+    connect_(callback, address, timeout, options, bindAddr);
+  }
+
   MOCK_CONST_METHOD1(getLocalAddress, void(folly::SocketAddress*));
   MOCK_CONST_METHOD1(getPeerAddress, void(folly::SocketAddress*));
   MOCK_METHOD0(closeNow, void());

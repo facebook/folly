@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -187,14 +187,14 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
       stats.activeThreadCount++;
     }
   }
-  stats.pendingTaskCount = getPendingTaskCountImpl(r);
+  stats.pendingTaskCount = getPendingTaskCountImpl();
   stats.totalTaskCount = stats.pendingTaskCount + stats.activeThreadCount;
   return stats;
 }
 
 uint64_t ThreadPoolExecutor::getPendingTaskCount() {
   RWSpinLock::ReadHolder r{&threadListLock_};
-  return getPendingTaskCountImpl(r);
+  return getPendingTaskCountImpl();
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);
@@ -206,11 +206,11 @@ void ThreadPoolExecutor::subscribeToTaskStats(TaskStatsCallback cb) {
   taskStatsCallbacks_->callbackList.wlock()->push_back(std::move(cb));
 }
 
-void ThreadPoolExecutor::StoppedThreadQueue::add(
+bool ThreadPoolExecutor::StoppedThreadQueue::add(
     ThreadPoolExecutor::ThreadPtr item) {
   std::lock_guard<std::mutex> guard(mutex_);
   queue_.push(std::move(item));
-  sem_.post();
+  return sem_.post();
 }
 
 ThreadPoolExecutor::ThreadPtr ThreadPoolExecutor::StoppedThreadQueue::take() {
@@ -224,6 +224,24 @@ ThreadPoolExecutor::ThreadPtr ThreadPoolExecutor::StoppedThreadQueue::take() {
       }
     }
     sem_.wait();
+  }
+}
+
+folly::Optional<ThreadPoolExecutor::ThreadPtr>
+ThreadPoolExecutor::StoppedThreadQueue::try_take_for(
+    std::chrono::milliseconds time) {
+  while (true) {
+    {
+      std::lock_guard<std::mutex> guard(mutex_);
+      if (queue_.size() > 0) {
+        auto item = std::move(queue_.front());
+        queue_.pop();
+        return item;
+      }
+    }
+    if (!sem_.try_wait_for(time)) {
+      return folly::none;
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -187,7 +187,7 @@ TEST(Expected, value_or_noncopyable) {
 }
 
 struct ExpectingDeleter {
-  explicit ExpectingDeleter(int expected) : expected(expected) {}
+  explicit ExpectingDeleter(int expected_) : expected(expected_) {}
   int expected;
   void operator()(const int* ptr) {
     EXPECT_EQ(*ptr, expected);

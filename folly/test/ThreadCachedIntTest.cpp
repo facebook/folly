@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -208,8 +208,8 @@ DEFINE_int32(numThreads, 8, "Number simultaneous threads for benchmarks.");
       ++globalInt ## size ;                                         \
     }                                                               \
   }
-CREATE_INC_FUNC(64);
-CREATE_INC_FUNC(32);
+CREATE_INC_FUNC(64)
+CREATE_INC_FUNC(32)
 
 // Confirms counts are accurate with competing threads
 TEST(ThreadCachedInt, MultiThreadedCached) {
@@ -269,8 +269,8 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
       t.join();                                                 \
     }                                                           \
   }
-MAKE_MT_CACHE_SIZE_BM(64);
-MAKE_MT_CACHE_SIZE_BM(32);
+MAKE_MT_CACHE_SIZE_BM(64)
+MAKE_MT_CACHE_SIZE_BM(32)
 
 #define REG_BASELINE(name, inc_stmt)                            \
   BENCHMARK(FB_CONCATENATE(BM_mt_baseline_, name), iters) {     \
@@ -329,24 +329,26 @@ struct ShardedAtomicInt {
 };
 ShardedAtomicInt shd_int64;
 
-REG_BASELINE(_thread64, global__thread64 += 1);
-REG_BASELINE(_thread32, global__thread32 += 1);
-REG_BASELINE(ThreadLocal64, *globalTL64Baseline += 1);
-REG_BASELINE(ThreadLocal32, *globalTL32Baseline += 1);
-REG_BASELINE(atomic_inc64,
-             std::atomic_fetch_add(&globalInt64Baseline, int64_t(1)));
-REG_BASELINE(atomic_inc32,
-             std::atomic_fetch_add(&globalInt32Baseline, int32_t(1)));
-REG_BASELINE(ShardedAtm64, shd_int64.inc());
+REG_BASELINE(_thread64, global__thread64 += 1)
+REG_BASELINE(_thread32, global__thread32 += 1)
+REG_BASELINE(ThreadLocal64, *globalTL64Baseline += 1)
+REG_BASELINE(ThreadLocal32, *globalTL32Baseline += 1)
+REG_BASELINE(
+    atomic_inc64,
+    std::atomic_fetch_add(&globalInt64Baseline, int64_t(1)))
+REG_BASELINE(
+    atomic_inc32,
+    std::atomic_fetch_add(&globalInt32Baseline, int32_t(1)))
+REG_BASELINE(ShardedAtm64, shd_int64.inc())
 
-BENCHMARK_PARAM(BM_mt_cache_size64, 0);
-BENCHMARK_PARAM(BM_mt_cache_size64, 10);
-BENCHMARK_PARAM(BM_mt_cache_size64, 100);
-BENCHMARK_PARAM(BM_mt_cache_size64, 1000);
-BENCHMARK_PARAM(BM_mt_cache_size32, 0);
-BENCHMARK_PARAM(BM_mt_cache_size32, 10);
-BENCHMARK_PARAM(BM_mt_cache_size32, 100);
-BENCHMARK_PARAM(BM_mt_cache_size32, 1000);
+BENCHMARK_PARAM(BM_mt_cache_size64, 0)
+BENCHMARK_PARAM(BM_mt_cache_size64, 10)
+BENCHMARK_PARAM(BM_mt_cache_size64, 100)
+BENCHMARK_PARAM(BM_mt_cache_size64, 1000)
+BENCHMARK_PARAM(BM_mt_cache_size32, 0)
+BENCHMARK_PARAM(BM_mt_cache_size32, 10)
+BENCHMARK_PARAM(BM_mt_cache_size32, 100)
+BENCHMARK_PARAM(BM_mt_cache_size32, 1000)
 BENCHMARK_DRAW_LINE();
 
 // single threaded
@@ -368,12 +370,13 @@ BENCHMARK(Sharded_readFast) {
 BENCHMARK_DRAW_LINE();
 
 // multi threaded
-REG_BASELINE(Atomic_readFull,
-      doNotOptimizeAway(globalInt64Baseline.load(std::memory_order_relaxed)));
-REG_BASELINE(ThrCache_readFull, doNotOptimizeAway(globalInt64.readFull()));
-REG_BASELINE(Sharded_readFull, doNotOptimizeAway(shd_int64.readFull()));
-REG_BASELINE(ThrCache_readFast, doNotOptimizeAway(globalInt64.readFast()));
-REG_BASELINE(Sharded_readFast, doNotOptimizeAway(shd_int64.readFast()));
+REG_BASELINE(
+    Atomic_readFull,
+    doNotOptimizeAway(globalInt64Baseline.load(std::memory_order_relaxed)))
+REG_BASELINE(ThrCache_readFull, doNotOptimizeAway(globalInt64.readFull()))
+REG_BASELINE(Sharded_readFull, doNotOptimizeAway(shd_int64.readFull()))
+REG_BASELINE(ThrCache_readFast, doNotOptimizeAway(globalInt64.readFast()))
+REG_BASELINE(Sharded_readFast, doNotOptimizeAway(shd_int64.readFast()))
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {

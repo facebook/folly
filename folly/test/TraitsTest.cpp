@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -229,6 +229,16 @@ struct has_value_type : std::false_type {};
 template <class T>
 struct has_value_type<T, folly::void_t<typename T::value_type>>
     : std::true_type {};
+
+struct some_tag {};
+
+template <typename T>
+struct container {
+  template <class... Args>
+  container(
+      folly::type_t<some_tag, decltype(T(std::declval<Args>()...))>,
+      Args&&...) {}
+};
 } // namespace
 
 TEST(Traits, void_t) {
@@ -239,4 +249,65 @@ TEST(Traits, void_t) {
       (::std::is_same<folly::void_t<int, short, std::string>, void>::value));
   EXPECT_TRUE((::has_value_type<std::string>::value));
   EXPECT_FALSE((::has_value_type<int>::value));
+}
+
+TEST(Traits, type_t) {
+  EXPECT_TRUE((::std::is_same<folly::type_t<float>, float>::value));
+  EXPECT_TRUE((::std::is_same<folly::type_t<float, int>, float>::value));
+  EXPECT_TRUE((::std::is_same<folly::type_t<float, int, short>, float>::value));
+  EXPECT_TRUE(
+      (::std::is_same<folly::type_t<float, int, short, std::string>, float>::
+           value));
+  EXPECT_TRUE((
+      ::std::is_constructible<::container<std::string>, some_tag, std::string>::
+          value));
+  EXPECT_FALSE(
+      (::std::is_constructible<::container<std::string>, some_tag, float>::
+           value));
+}
+
+TEST(Traits, remove_cvref) {
+  using folly::remove_cvref;
+  using folly::remove_cvref_t;
+
+  // test all possible c-ref qualifiers without volatile
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int&&>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int&&>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int&>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int&>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int const>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int const>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int const&>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int const&>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int const&&>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int const&&>::type, int>::value));
+
+  // test all possible c-ref qualifiers with volatile
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int volatile>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int volatile>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int volatile&&>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int volatile&&>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int volatile&>, int>::value));
+  EXPECT_TRUE((std::is_same<remove_cvref<int volatile&>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int volatile const>, int>::value));
+  EXPECT_TRUE(
+      (std::is_same<remove_cvref<int volatile const>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int volatile const&>, int>::value));
+  EXPECT_TRUE(
+      (std::is_same<remove_cvref<int volatile const&>::type, int>::value));
+
+  EXPECT_TRUE((std::is_same<remove_cvref_t<int volatile const&&>, int>::value));
+  EXPECT_TRUE(
+      (std::is_same<remove_cvref<int volatile const&&>::type, int>::value));
 }

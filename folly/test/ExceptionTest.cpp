@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,6 +88,35 @@ TEST(ExceptionTest, Simple) {
   EXPECT_SYSTEM_ERROR({checkFopenErrorExplicit(nullptr, EIO,
                                                "hello", " world");},
                       EIO, "hello world");
+}
+
+TEST(ExceptionTest, makeSystemError) {
+  errno = ENOENT;
+  auto ex = makeSystemErrorExplicit(EDEADLK, "stuck");
+  EXPECT_EQ(EDEADLK, ex.code().value());
+  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("stuck"))
+      << "what() string missing input message: " << ex.what();
+
+  ex = makeSystemErrorExplicit(EDOM, 300, " is bigger than max=", 255);
+  EXPECT_EQ(EDOM, ex.code().value());
+  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("300 is bigger than max=255"))
+      << "what() string missing input message: " << ex.what();
+
+  errno = EINVAL;
+  ex = makeSystemError("bad argument ", 1234, ": bogus");
+  EXPECT_EQ(EINVAL, ex.code().value());
+  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("bad argument 1234: bogus"))
+      << "what() string missing input message: " << ex.what();
+
+  errno = 0;
+  ex = makeSystemError("unexpected success");
+  EXPECT_EQ(0, ex.code().value());
+  EXPECT_EQ(std::system_category(), ex.code().category());
+  EXPECT_TRUE(StringPiece{ex.what()}.contains("unexpected success"))
+      << "what() string missing input message: " << ex.what();
 }
 
 } // namespace test

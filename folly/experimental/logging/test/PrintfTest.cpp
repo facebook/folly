@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ TEST(PrintfTest, printfStyleMacros) {
 
   auto handler = make_shared<TestLogHandler>();
   category->addHandler(handler);
-  category->setLevel(LogLevel::DEBUG, true);
+  category->setLevel(LogLevel::DBG, true);
 
   Logger foo{&db, "test.foo.bar"};
   Logger foobar{&db, "test.foo.bar"};

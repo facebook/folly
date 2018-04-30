@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 #include <folly/detail/MemoryIdler.h>
 
-#include <folly/Logging.h>
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>
@@ -25,16 +25,18 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
+#include <folly/synchronization/CallOnce.h>
 
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <utility>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 AtomicStruct<std::chrono::steady_clock::duration>
-MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
+    MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
 
 void MemoryIdler::flushLocalMallocCaches() {
   if (!usingJEMalloc()) {
@@ -76,7 +78,6 @@ void MemoryIdler::flushLocalMallocCaches() {
   }
 }
 
-
 // Stack madvise isn't Linux or glibc specific, but the system calls
 // and arithmetic (and bug compatibility) are not portable.  The set of
 // platforms could be increased if it was useful.
@@ -92,16 +93,44 @@ static size_t pageSize() {
 }
 
 static void fetchStackLimits() {
+  int err;
   pthread_attr_t attr;
-  pthread_getattr_np(pthread_self(), &attr);
-  SCOPE_EXIT { pthread_attr_destroy(&attr); };
+  if ((err = pthread_getattr_np(pthread_self(), &attr))) {
+    // some restricted environments can't access /proc
+    static folly::once_flag flag;
+    folly::call_once(flag, [err]() {
+      LOG(WARNING) << "pthread_getaddr_np failed errno=" << err;
+    });
+
+    tls_stackSize = 1;
+    return;
+  }
+  SCOPE_EXIT {
+    pthread_attr_destroy(&attr);
+  };
 
   void* addr;
   size_t rawSize;
-  int err;
   if ((err = pthread_attr_getstack(&attr, &addr, &rawSize))) {
     // unexpected, but it is better to continue in prod than do nothing
     FB_LOG_EVERY_MS(ERROR, 10000) << "pthread_attr_getstack error " << err;
+    assert(false);
+    tls_stackSize = 1;
+    return;
+  }
+  if (rawSize >= (1ULL << 32)) {
+    // Avoid unmapping huge swaths of memory if there is an insane
+    // stack size.  The boundary of sanity is somewhat arbitrary: 4GB.
+    //
+    // If we went into /proc to find the actual contiguous mapped pages
+    // before unmapping we wouldn't care about the stack size at all,
+    // but our current strategy is to unmap the entire range that might
+    // be used for the stack even if it hasn't been fully faulted-in.
+    //
+    // Very large stack size is a bug (hence the assert), but we can
+    // carry on if we are in prod.
+    FB_LOG_EVERY_MS(ERROR, 10000)
+        << "pthread_attr_getstack returned insane stack size " << rawSize;
     assert(false);
     tls_stackSize = 1;
     return;

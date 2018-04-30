@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@
 
 #include <folly/portability/GTest.h>
 
-using folly::ScopeGuard;
 using folly::makeGuard;
 using std::vector;
 
@@ -47,7 +46,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   {
     // There is implicit conversion from func pointer
     // double (*)() to function<void()>.
-    ScopeGuard g = makeGuard(returnsDouble);
+    auto g = makeGuard(returnsDouble);
     (void)g;
   }
 
@@ -57,42 +56,42 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   v.push_back(1);
   {
     // binding to member function.
-    ScopeGuard g = makeGuard(std::bind(&vector<int>::pop_back, &v));
+    auto g = makeGuard(std::bind(&vector<int>::pop_back, &v));
     (void)g;
   }
   EXPECT_EQ(0, v.size());
 
   {
     // bind member function with args. v is passed-by-value!
-    ScopeGuard g = makeGuard(std::bind(push_back, v, 2));
+    auto g = makeGuard(std::bind(push_back, v, 2));
     (void)g;
   }
   EXPECT_EQ(0, v.size()); // push_back happened on a copy of v... fail!
 
   // pass in an argument by pointer so to avoid copy.
   {
-    ScopeGuard g = makeGuard(std::bind(push_back, &v, 4));
+    auto g = makeGuard(std::bind(push_back, &v, 4));
     (void)g;
   }
   EXPECT_EQ(1, v.size());
 
   {
     // pass in an argument by reference so to avoid copy.
-    ScopeGuard g = makeGuard(std::bind(push_back, std::ref(v), 4));
+    auto g = makeGuard(std::bind(push_back, std::ref(v), 4));
     (void)g;
   }
   EXPECT_EQ(2, v.size());
 
   // lambda with a reference to v
   {
-    ScopeGuard g = makeGuard([&] { v.push_back(5); });
+    auto g = makeGuard([&] { v.push_back(5); });
     (void)g;
   }
   EXPECT_EQ(3, v.size());
 
   // lambda with a copy of v
   {
-    ScopeGuard g = makeGuard([v] () mutable { v.push_back(6); });
+    auto g = makeGuard([v]() mutable { v.push_back(6); });
     (void)g;
   }
   EXPECT_EQ(3, v.size());
@@ -101,7 +100,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   int n = 0;
   {
     MyFunctor f(&n);
-    ScopeGuard g = makeGuard(f);
+    auto g = makeGuard(f);
     (void)g;
   }
   EXPECT_EQ(1, n);
@@ -109,7 +108,7 @@ TEST(ScopeGuard, DifferentWaysToBind) {
   // temporary functor object
   n = 0;
   {
-    ScopeGuard g = makeGuard(MyFunctor(&n));
+    auto g = makeGuard(MyFunctor(&n));
     (void)g;
   }
   EXPECT_EQ(1, n);
@@ -132,14 +131,9 @@ TEST(ScopeGuard, DifferentWaysToBind) {
 }
 
 TEST(ScopeGuard, GuardException) {
-  EXPECT_DEATH({
-    ScopeGuard g = makeGuard([&] {
-      throw std::runtime_error("destructors should never throw!");
-    });
-    (void)g;
-  },
-  "destructors should never throw!"
-  );
+  EXPECT_DEATH(
+      makeGuard([] { throw std::runtime_error("dtors should never throw!"); }),
+      "dtors should never throw!");
 }
 
 /**
@@ -155,7 +149,7 @@ void testUndoAction(bool failure) {
     v.push_back(1);
 
     // The guard is triggered to undo the insertion unless dismiss() is called.
-    ScopeGuard guard = makeGuard([&] { v.pop_back(); });
+    auto guard = makeGuard([&] { v.pop_back(); });
 
     // Do some action; Use the failure argument to pretend
     // if it failed or succeeded.
@@ -207,7 +201,7 @@ void testFinally(ErrorBehavior error) {
   bool cleanupOccurred = false;
 
   try {
-    ScopeGuard guard = makeGuard([&] { cleanupOccurred = true; });
+    auto guard = makeGuard([&] { cleanupOccurred = true; });
     (void)guard;
 
     try {

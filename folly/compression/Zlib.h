@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,14 +46,14 @@ struct Options {
   enum class Format { ZLIB, GZIP, RAW, AUTO };
 
   explicit Options(
-      Format format = Format::ZLIB,
-      int windowSize = 15,
-      int memLevel = 8,
-      int strategy = Z_DEFAULT_STRATEGY)
-      : format(format),
-        windowSize(windowSize),
-        memLevel(memLevel),
-        strategy(strategy) {}
+      Format format_ = Format::ZLIB,
+      int windowSize_ = 15,
+      int memLevel_ = 8,
+      int strategy_ = Z_DEFAULT_STRATEGY)
+      : format(format_),
+        windowSize(windowSize_),
+        memLevel(memLevel_),
+        strategy(strategy_) {}
 
   Format format;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ size_t SharedPromise<T>::size() {
 }
 
 template <class T>
-Future<T> SharedPromise<T>::getFuture() {
+SemiFuture<T> SharedPromise<T>::getSemiFuture() {
   std::lock_guard<std::mutex> g(mutex_);
   size_++;
   if (hasValue_) {
@@ -64,8 +64,13 @@ Future<T> SharedPromise<T>::getFuture() {
     if (interruptHandler_) {
       promises_.back().setInterruptHandler(interruptHandler_);
     }
-    return promises_.back().getFuture();
+    return promises_.back().getSemiFuture();
   }
+}
+
+template <class T>
+Future<T> SharedPromise<T>::getFuture() {
+  return getSemiFuture().via(&folly::InlineExecutor::instance());
 }
 
 template <class T>

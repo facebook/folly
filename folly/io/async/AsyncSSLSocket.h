@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 
 #include <iomanip>
 
-#include <folly/Bits.h>
 #include <folly/Optional.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/SSLContext.h>
@@ -30,6 +30,7 @@
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/async/ssl/TLSDefinitions.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
@@ -150,10 +151,51 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   };
 
   /**
+   * A class to wait for asynchronous operations with OpenSSL 1.1.0
+   */
+  class DefaultOpenSSLAsyncFinishCallback : public ReadCallback {
+   public:
+    DefaultOpenSSLAsyncFinishCallback(
+        AsyncPipeReader::UniquePtr reader,
+        AsyncSSLSocket* sslSocket)
+        : pipeReader_(std::move(reader)),
+          sslSocket_(sslSocket) {}
+
+    void readDataAvailable(size_t len) noexcept override {
+      CHECK_EQ(len, 1);
+      if (byte_ > 0) {
+        sslSocket_->restartSSLAccept();
+      } else {
+        AsyncSocketException ex(
+            AsyncSocketException::INTERNAL_ERROR,
+            "Error with asynchronous crypto operation");
+        sslSocket_->failHandshake(__func__, ex);
+      }
+      pipeReader_->setReadCB(nullptr);
+    }
+
+    void getReadBuffer(void** bufReturn, size_t* lenReturn) noexcept override {
+      *bufReturn = &byte_;
+      *lenReturn = 1;
+    }
+
+    void readEOF() noexcept override {}
+
+    void readErr(const folly::AsyncSocketException&) noexcept override {}
+
+   private:
+    uint8_t byte_{0};
+    AsyncPipeReader::UniquePtr pipeReader_;
+    AsyncSSLSocket* sslSocket_{nullptr};
+  };
+
+  /**
    * Create a client AsyncSSLSocket
    */
-  AsyncSSLSocket(const std::shared_ptr<folly::SSLContext> &ctx,
-                 EventBase* evb, bool deferSecurityNegotiation = false);
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      bool deferSecurityNegotiation = false);
 
   /**
    * Create a server/client AsyncSSLSocket from an already connected
@@ -739,10 +781,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   void forceCacheAddrOnFailure(bool force) { cacheAddrOnFailure_ = force; }
 
-  const std::string& getServiceIdentity() const { return serviceIdentity_; }
+  const std::string& getSessionKey() const {
+    return sessionKey_;
+  }
 
-  void setServiceIdentity(std::string serviceIdentity) {
-    serviceIdentity_ = std::move(serviceIdentity);
+  void setSessionKey(std::string sessionKey) {
+    sessionKey_ = std::move(sessionKey);
   }
 
   void setCertCacheHit(bool hit) {
@@ -765,6 +809,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   std::chrono::milliseconds getTotalConnectTimeout() const {
     return totalConnectTimeout_;
+  }
+
+  // This can be called for OpenSSL 1.1.0 async operation finishes
+  void setAsyncOperationFinishCallback(std::unique_ptr<ReadCallback> cb) {
+    asyncOperationFinishCallback_ = std::move(cb);
   }
 
  private:
@@ -894,8 +943,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::string tlsextHostname_;
 #endif
 
-  // a service identity that this socket/connection is associated with
-  std::string serviceIdentity_;
+  // a key that can be used for caching the established session
+  std::string sessionKey_;
 
   folly::SSLContext::SSLVerifyPeerEnum
     verifyPeer_{folly::SSLContext::SSLVerifyPeerEnum::USE_CTX};
@@ -923,6 +972,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool sessionResumptionAttempted_{false};
   // whether the SSL session was resumed using session ID or not
   bool sessionIDResumed_{false};
+  // This can be called for OpenSSL 1.1.0 async operation finishes
+  std::unique_ptr<ReadCallback> asyncOperationFinishCallback_;
 };
 
 } // namespace folly

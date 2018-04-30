@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,10 +56,10 @@ namespace folly {
 
 namespace dynamicconverter_detail {
 
-BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type);
+BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type)
+BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
+BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
+BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type)
 
 template <typename T> struct iterator_class_is_container {
   typedef std::reverse_iterator<typename T::iterator> some_iterator;
@@ -364,6 +364,21 @@ struct DynamicConstructor<std::pair<A, B>, void> {
     dynamic d = dynamic::array;
     d.push_back(toDynamic(x.first));
     d.push_back(toDynamic(x.second));
+    return d;
+  }
+};
+
+// vector<bool>
+template <>
+struct DynamicConstructor<std::vector<bool>, void> {
+  static dynamic construct(const std::vector<bool>& x) {
+    dynamic d = dynamic::array;
+    // Intentionally specifying the type as bool here.
+    // std::vector<bool>'s iterators return a proxy which is a prvalue
+    // and hence cannot bind to an lvalue reference such as auto&
+    for (bool item : x) {
+      d.push_back(toDynamic(item));
+    }
     return d;
   }
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,11 @@
 DEFINE_int32(threads, 16, "benchmark concurrency");
 
 template <typename CallOnceFunc>
-void bm_impl(CallOnceFunc&& fn, int64_t iters) {
+void bm_impl(CallOnceFunc&& fn, size_t iters) {
   std::deque<std::thread> threads;
-  for (int i = 0; i < FLAGS_threads; ++i) {
+  for (size_t i = 0u; i < size_t(FLAGS_threads); ++i) {
     threads.emplace_back([&fn, iters] {
-      for (int64_t j = 0; j < iters; ++j) {
+      for (size_t j = 0u; j < iters; ++j) {
         fn();
       }
     });
@@ -54,6 +54,16 @@ BENCHMARK(FollyCallOnceBench, iters) {
   bm_impl([&] { folly::call_once(flag, [&] { ++out; }); }, iters);
   CHECK_EQ(1, out);
 }
+
+/*
+$ call_once_benchmark --bm_min_iters=100000000 --threads=16
+============================================================================
+folly/synchronization/test/CallOnceBenchmark.cpprelative  time/iter  iters/s
+============================================================================
+StdCallOnceBench                                             2.40ns  416.78M
+FollyCallOnceBench                                         651.94ps    1.53G
+============================================================================
+*/
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

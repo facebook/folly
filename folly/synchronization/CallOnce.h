@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Drop-in replacement for std::call_once() with a fast path, which the GCC
- * implementation lacks.  The tradeoff is a slightly larger `once_flag' struct
- * (8 bytes vs 4 bytes with GCC on Linux/x64).
- *
- * $ call_once_test --benchmark --bm_min_iters=100000000 --threads=16
- * ============================================================================
- * folly/test/CallOnceTest.cpp                     relative  time/iter  iters/s
- * ============================================================================
- * StdCallOnceBench                                             3.54ns  282.82M
- * FollyCallOnceBench                                         698.48ps    1.43G
- * ============================================================================
- */
-
 #pragma once
 
 #include <atomic>
@@ -37,48 +23,89 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 
-class once_flag {
- public:
-  constexpr once_flag() noexcept = default;
-  once_flag(const once_flag&) = delete;
-  once_flag& operator=(const once_flag&) = delete;
+template <typename Mutex, template <typename> class Atom = std::atomic>
+class basic_once_flag;
 
-  template <typename Callable, class... Args>
-  friend void call_once(once_flag& flag, Callable&& f, Args&&... args);
-  template <typename Callable, class... Args>
-  friend void call_once_impl_no_inline(once_flag& flag,
-                                       Callable&& f,
-                                       Args&&... args);
+//  call_once
+//
+//  Drop-in replacement for std::call_once.
+//
+//  The libstdc++ implementation has two flaws:
+//  * it lacks a fast path, and
+//  * it deadlocks (in explicit violation of the standard) when invoked twice
+//    with a given flag, and the callable passed to the first invocation throws.
+//
+//  This implementation corrects both flaws.
+//
+//  The tradeoff is a slightly larger once_flag struct at 8 bytes, vs 4 bytes
+//  with libstdc++ on Linux/x64.
+//
+//  Does not work with std::once_flag.
+//
+//  mimic: std::call_once
+template <
+    typename Mutex,
+    template <typename> class Atom,
+    typename F,
+    typename... Args>
+FOLLY_ALWAYS_INLINE void
+call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
+  flag.call_once(std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+//  basic_once_flag
+//
+//  The flag template to be used with call_once. Parameterizable by the mutex
+//  type and atomic template. The mutex type is required to mimic std::mutex and
+//  the atomic type is required to mimic std::atomic.
+template <typename Mutex, template <typename> class Atom>
+class basic_once_flag {
+ public:
+  constexpr basic_once_flag() noexcept = default;
+  basic_once_flag(const basic_once_flag&) = delete;
+  basic_once_flag& operator=(const basic_once_flag&) = delete;
 
  private:
-  std::atomic<bool> called_{false};
-  folly::SharedMutex mutex_;
+  template <
+      typename Mutex_,
+      template <typename> class Atom_,
+      typename F,
+      typename... Args>
+  friend void call_once(basic_once_flag<Mutex_, Atom_>&, F&&, Args&&...);
+
+  template <typename F, typename... Args>
+  FOLLY_ALWAYS_INLINE void call_once(F&& f, Args&&... args) {
+    if (LIKELY(called_.load(std::memory_order_acquire))) {
+      return;
+    }
+    call_once_slow(std::forward<F>(f), std::forward<Args>(args)...);
+  }
+
+  template <typename F, typename... Args>
+  FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
+    std::lock_guard<Mutex> lock(mutex_);
+    if (called_.load(std::memory_order_relaxed)) {
+      return;
+    }
+    invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    called_.store(true, std::memory_order_release);
+  }
+
+  Atom<bool> called_{false};
+  Mutex mutex_;
 };
 
-template <class Callable, class... Args>
-void FOLLY_ALWAYS_INLINE
-call_once(once_flag& flag, Callable&& f, Args&&... args) {
-  if (LIKELY(flag.called_.load(std::memory_order_acquire))) {
-    return;
-  }
-  call_once_impl_no_inline(
-      flag, std::forward<Callable>(f), std::forward<Args>(args)...);
-}
+//  once_flag
+//
+//  The flag type to be used with call_once. An instance of basic_once_flag.
+//
+//  Does not work with sd::call_once.
+//
+//  mimic: std::once_flag
+using once_flag = basic_once_flag<SharedMutex>;
 
-// Implementation detail: out-of-line slow path
-template <class Callable, class... Args>
-void FOLLY_NOINLINE
-call_once_impl_no_inline(once_flag& flag, Callable&& f, Args&&... args) {
-  std::lock_guard<folly::SharedMutex> lg(flag.mutex_);
-  if (flag.called_) {
-    return;
-  }
-
-  std::forward<Callable>(f)(std::forward<Args>(args)...);
-
-  flag.called_.store(true, std::memory_order_release);
-}
 } // namespace folly

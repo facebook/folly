@@ -163,6 +163,11 @@ chain several queues together with processing steps in between.
 A highly specialized data structure consisting of a pointer, a 1-bit
 spin lock, and a 15-bit integral, all inside one 64-bit word.
 
+#### [`Poly.h`](Poly.md)
+
+A class template that makes it relatively easy to define a type-erasing
+polymorphic object wrapper.
+
 #### `Preprocessor.h`
 
 Necessarily evil stuff.

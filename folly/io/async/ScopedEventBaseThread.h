@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 #include <memory>
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 
@@ -36,7 +36,7 @@ typedef Range<const char*> StringPiece;
  * When the ScopedEventBaseThread object is destroyed, the thread will be
  * stopped.
  */
-class ScopedEventBaseThread {
+class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
  public:
   ScopedEventBaseThread();
   explicit ScopedEventBaseThread(const StringPiece& name);
@@ -50,8 +50,16 @@ class ScopedEventBaseThread {
     return &eb_;
   }
 
+  EventBase* getEventBase() override {
+    return &eb_;
+  }
+
   std::thread::id getThreadId() const {
     return th_.get_id();
+  }
+
+  void add(Func func) override {
+    getEventBase()->add(std::move(func));
   }
 
  private:

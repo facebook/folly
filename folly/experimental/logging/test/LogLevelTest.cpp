@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,11 @@ TEST(LogLevel, fromString) {
   EXPECT_EQ(LogLevel::NONE, stringToLogLevel("NoNe"));
   EXPECT_EQ(LogLevel::NONE, stringToLogLevel("LogLevel::none"));
 
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("debug"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("dEBug"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("loglevel::dEBug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("debug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("dEBug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("Dbg"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("loglevel::dEBug"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("loglevel::DBG"));
 
   EXPECT_EQ(LogLevel::INFO, stringToLogLevel("info"));
   EXPECT_EQ(LogLevel::INFO, stringToLogLevel("INFO"));
@@ -69,12 +71,22 @@ TEST(LogLevel, fromString) {
   EXPECT_EQ(LogLevel::DBG5, stringToLogLevel("dbg5"));
   EXPECT_EQ(LogLevel::DBG5, stringToLogLevel("DBG5"));
   EXPECT_EQ(LogLevel::DBG9, stringToLogLevel("DBG9"));
-  EXPECT_EQ(LogLevel::DEBUG + 1, stringToLogLevel("DBG99"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("900"));
-  EXPECT_EQ(LogLevel::DEBUG, stringToLogLevel("LogLevel(900)"));
+  EXPECT_EQ(LogLevel::DBG + 1, stringToLogLevel("DBG998"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("DBG999"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("1000"));
+  EXPECT_EQ(LogLevel::DBG, stringToLogLevel("LogLevel(1000)"));
+
+  EXPECT_EQ(LogLevel::INFO0, stringToLogLevel("info0"));
+  EXPECT_EQ(LogLevel::INFO5, stringToLogLevel("INFO5"));
+  EXPECT_EQ(LogLevel::INFO5, stringToLogLevel("INFO5"));
+  EXPECT_EQ(LogLevel::INFO9, stringToLogLevel("info9"));
+  EXPECT_EQ(LogLevel::INFO + 1, stringToLogLevel("Info998"));
+  EXPECT_EQ(LogLevel::INFO, stringToLogLevel("INFO999"));
+  EXPECT_EQ(LogLevel::INFO, stringToLogLevel("2000"));
+  EXPECT_EQ(LogLevel::INFO6, stringToLogLevel("LogLevel(2993)"));
 
   EXPECT_THROW(stringToLogLevel("foobar"), std::range_error);
-  EXPECT_THROW(stringToLogLevel("dbg"), std::range_error);
+  EXPECT_THROW(stringToLogLevel("dbgx"), std::range_error);
   EXPECT_THROW(stringToLogLevel("dbgxyz"), std::range_error);
   EXPECT_THROW(stringToLogLevel("dbg-1"), std::range_error);
   EXPECT_THROW(stringToLogLevel("dbg12345"), std::range_error);
@@ -87,7 +99,7 @@ TEST(LogLevel, toString) {
   EXPECT_EQ("INFO", logLevelToString(LogLevel::INFO));
   EXPECT_EQ("WARN", logLevelToString(LogLevel::WARN));
   EXPECT_EQ("WARN", logLevelToString(LogLevel::WARNING));
-  EXPECT_EQ("DEBUG", logLevelToString(LogLevel::DEBUG));
+  EXPECT_EQ("DEBUG", logLevelToString(LogLevel::DBG));
   EXPECT_EQ("ERR", logLevelToString(LogLevel::ERR));
   EXPECT_EQ("CRITICAL", logLevelToString(LogLevel::CRITICAL));
   EXPECT_EQ("DFATAL", logLevelToString(LogLevel::DFATAL));
@@ -98,10 +110,17 @@ TEST(LogLevel, toString) {
   EXPECT_EQ("DBG2", logLevelToString(LogLevel::DBG2));
   EXPECT_EQ("DBG5", logLevelToString(LogLevel::DBG5));
   EXPECT_EQ("DBG9", logLevelToString(LogLevel::DBG9));
-  EXPECT_EQ("DBG97", logLevelToString(static_cast<LogLevel>(903)));
+  EXPECT_EQ("DBG96", logLevelToString(static_cast<LogLevel>(1903)));
   EXPECT_EQ("DBG64", logLevelToString(LogLevel::DBG4 - 60));
 
-  EXPECT_EQ("LogLevel(1234)", logLevelToString(static_cast<LogLevel>(1234)));
+  EXPECT_EQ("INFO0", logLevelToString(LogLevel::INFO0));
+  EXPECT_EQ("INFO2", logLevelToString(LogLevel::INFO2));
+  EXPECT_EQ("INFO5", logLevelToString(LogLevel::INFO5));
+  EXPECT_EQ("INFO9", logLevelToString(LogLevel::INFO9));
+  EXPECT_EQ("INFO86", logLevelToString(static_cast<LogLevel>(2913)));
+  EXPECT_EQ("INFO57", logLevelToString(LogLevel::INFO7 - 50));
+
+  EXPECT_EQ("LogLevel(123)", logLevelToString(static_cast<LogLevel>(123)));
 }
 
 TEST(LogLevel, toStringAndBack) {
@@ -117,7 +136,7 @@ TEST(LogLevel, toStringAndBack) {
   // Check all of the named levels
   checkLevel(LogLevel::UNINITIALIZED);
   checkLevel(LogLevel::NONE);
-  checkLevel(LogLevel::DEBUG);
+  checkLevel(LogLevel::DBG);
   checkLevel(LogLevel::DBG0);
   checkLevel(LogLevel::DBG1);
   checkLevel(LogLevel::DBG2);

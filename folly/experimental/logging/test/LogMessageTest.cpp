@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ using namespace folly;
     LogMessage checkMsg{                                                      \
         category, LogLevel::ERR, __FILE__, __LINE__, std::string{value}};     \
     EXPECT_EQ(expected, checkMsg.getMessage());                               \
-    EXPECT_EQ(hasNewlines, checkMsg.containsNewlines());                      \
+    EXPECT_EQ(static_cast<int>(hasNewlines), checkMsg.containsNewlines());    \
     EXPECT_EQ(__FILE__, checkMsg.getFileName());                              \
     EXPECT_EQ(__LINE__, checkMsg.getLineNumber());                            \
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/init/Init.h>
+#include <folly/lang/SafeAssert.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -294,7 +295,9 @@ class ReadStats {
   }
   void writerFinished(size_t threadID, size_t messagesWritten, uint32_t flags) {
     auto map = perThreadWriteData_.wlock();
-    assert(map->find(threadID) == map->end());
+    FOLLY_SAFE_CHECK(
+        map->find(threadID) == map->end(),
+        "multiple writer threads with same ID");
     auto& data = (*map)[threadID];
     data.numMessagesWritten = messagesWritten;
     data.flags = flags;
@@ -612,8 +615,7 @@ TEST(AsyncFileWriter, discard) {
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   folly::init(&argc, &argv);
-  // Don't use async logging in the async logging tests :-)
-  folly::initLoggingGlogStyle(FLAGS_logging, LogLevel::INFO, /* async */ false);
+  folly::initLoggingOrDie(FLAGS_logging);
 
   return RUN_ALL_TESTS();
 }

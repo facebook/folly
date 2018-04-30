@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,108 @@
 #include <cstdarg>
 #include <cstring>
 #include <iterator>
+#include <sstream>
 #include <stdexcept>
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/container/Array.h>
 
 namespace folly {
+
+static_assert(IsConvertible<float>::value, "");
+static_assert(IsConvertible<int>::value, "");
+static_assert(IsConvertible<bool>::value, "");
+static_assert(IsConvertible<int>::value, "");
+static_assert(!IsConvertible<std::vector<int>>::value, "");
+
+namespace detail {
+
+struct string_table_c_escape_make_item {
+  constexpr char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index == '"' ? '"' :
+        index == '\\' ? '\\' :
+        index == '?' ? '?' :
+        index == '\n' ? 'n' :
+        index == '\r' ? 'r' :
+        index == '\t' ? 't' :
+        index < 32 || index > 126 ? 'O' : // octal
+        'P'; // printable
+    // clang-format on
+  }
+};
+
+struct string_table_c_unescape_make_item {
+  constexpr char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index == '\'' ? '\'' :
+        index == '?' ? '?' :
+        index == '\\' ? '\\' :
+        index == '"' ? '"' :
+        index == 'a' ? '\a' :
+        index == 'b' ? '\b' :
+        index == 'f' ? '\f' :
+        index == 'n' ? '\n' :
+        index == 'r' ? '\r' :
+        index == 't' ? '\t' :
+        index == 'v' ? '\v' :
+        index >= '0' && index <= '7' ? 'O' : // octal
+        index == 'x' ? 'X' : // hex
+        'I'; // invalid
+    // clang-format on
+  }
+};
+
+struct string_table_hex_make_item {
+  constexpr unsigned char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index >= '0' && index <= '9' ? index - '0' :
+        index >= 'a' && index <= 'f' ? index - 'a' + 10 :
+        index >= 'A' && index <= 'F' ? index - 'A' + 10 :
+        16;
+    // clang-format on
+  }
+};
+
+struct string_table_uri_escape_make_item {
+  //  0 = passthrough
+  //  1 = unused
+  //  2 = safe in path (/)
+  //  3 = space (replace with '+' in query)
+  //  4 = always percent-encode
+  constexpr unsigned char operator()(std::size_t index) const {
+    // clang-format off
+    return
+        index >= '0' && index <= '9' ? 0 :
+        index >= 'A' && index <= 'Z' ? 0 :
+        index >= 'a' && index <= 'z' ? 0 :
+        index == '-' ? 0 :
+        index == '_' ? 0 :
+        index == '.' ? 0 :
+        index == '~' ? 0 :
+        index == '/' ? 2 :
+        index == ' ' ? 3 :
+        4;
+    // clang-format on
+  }
+};
+
+FOLLY_STORAGE_CONSTEXPR decltype(cEscapeTable) cEscapeTable =
+    make_array_with<256>(string_table_c_escape_make_item{});
+FOLLY_STORAGE_CONSTEXPR decltype(cUnescapeTable) cUnescapeTable =
+    make_array_with<256>(string_table_c_unescape_make_item{});
+FOLLY_STORAGE_CONSTEXPR decltype(hexTable) hexTable =
+    make_array_with<256>(string_table_hex_make_item{});
+FOLLY_STORAGE_CONSTEXPR decltype(uriEscapeTable) uriEscapeTable =
+    make_array_with<256>(string_table_uri_escape_make_item{});
+
+} // namespace detail
 
 static inline bool is_oddspace(char c) {
   return c == '\n' || c == '\t' || c == '\r';
@@ -38,15 +133,17 @@ StringPiece ltrimWhitespace(StringPiece sp) {
   // checked.  This configuration where we loop on the ' '
   // separately from oddspaces was empirically fastest.
 
-loop:
-  for (; !sp.empty() && sp.front() == ' '; sp.pop_front()) {
-  }
-  if (!sp.empty() && is_oddspace(sp.front())) {
-    sp.pop_front();
-    goto loop;
-  }
+  while (true) {
+    while (!sp.empty() && sp.front() == ' ') {
+      sp.pop_front();
+    }
+    if (!sp.empty() && is_oddspace(sp.front())) {
+      sp.pop_front();
+      continue;
+    }
 
-  return sp;
+    return sp;
+  }
 }
 
 StringPiece rtrimWhitespace(StringPiece sp) {
@@ -54,15 +151,17 @@ StringPiece rtrimWhitespace(StringPiece sp) {
   // checked.  This configuration where we loop on the ' '
   // separately from oddspaces was empirically fastest.
 
-loop:
-  for (; !sp.empty() && sp.back() == ' '; sp.pop_back()) {
-  }
-  if (!sp.empty() && is_oddspace(sp.back())) {
-    sp.pop_back();
-    goto loop;
-  }
+  while (true) {
+    while (!sp.empty() && sp.back() == ' ') {
+      sp.pop_back();
+    }
+    if (!sp.empty() && is_oddspace(sp.back())) {
+      sp.pop_back();
+      continue;
+    }
 
-  return sp;
+    return sp;
+  }
 }
 
 namespace {
@@ -165,7 +264,7 @@ void stringPrintf(std::string* output, const char* format, ...) {
 void stringVPrintf(std::string* output, const char* format, va_list ap) {
   output->clear();
   stringAppendfImpl(*output, format, ap);
-};
+}
 
 namespace {
 
@@ -184,7 +283,21 @@ const PrettySuffix kPrettyTimeSuffixes[] = {
   { nullptr, 0 },
 };
 
+const PrettySuffix kPrettyTimeHmsSuffixes[] = {
+  { "h ", 60L * 60L },
+  { "m ", 60L },
+  { "s ", 1e0L },
+  { "ms", 1e-3L },
+  { "us", 1e-6L },
+  { "ns", 1e-9L },
+  { "ps", 1e-12L },
+  { "s ", 0 },
+  { nullptr, 0 },
+};
+
 const PrettySuffix kPrettyBytesMetricSuffixes[] = {
+  { "EB", 1e18L },
+  { "PB", 1e15L },
   { "TB", 1e12L },
   { "GB", 1e9L },
   { "MB", 1e6L },
@@ -194,6 +307,8 @@ const PrettySuffix kPrettyBytesMetricSuffixes[] = {
 };
 
 const PrettySuffix kPrettyBytesBinarySuffixes[] = {
+  { "EB", int64_t(1) << 60 },
+  { "PB", int64_t(1) << 50 },
   { "TB", int64_t(1) << 40 },
   { "GB", int64_t(1) << 30 },
   { "MB", int64_t(1) << 20 },
@@ -203,6 +318,8 @@ const PrettySuffix kPrettyBytesBinarySuffixes[] = {
 };
 
 const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
+  { "EiB", int64_t(1) << 60 },
+  { "PiB", int64_t(1) << 50 },
   { "TiB", int64_t(1) << 40 },
   { "GiB", int64_t(1) << 30 },
   { "MiB", int64_t(1) << 20 },
@@ -212,6 +329,8 @@ const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
 };
 
 const PrettySuffix kPrettyUnitsMetricSuffixes[] = {
+  { "qntl", 1e18L },
+  { "qdrl", 1e15L },
   { "tril", 1e12L },
   { "bil",  1e9L },
   { "M",    1e6L },
@@ -221,6 +340,8 @@ const PrettySuffix kPrettyUnitsMetricSuffixes[] = {
 };
 
 const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
+  { "E", int64_t(1) << 60 },
+  { "P", int64_t(1) << 50 },
   { "T", int64_t(1) << 40 },
   { "G", int64_t(1) << 30 },
   { "M", int64_t(1) << 20 },
@@ -230,6 +351,8 @@ const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
 };
 
 const PrettySuffix kPrettyUnitsBinaryIECSuffixes[] = {
+  { "Ei", int64_t(1) << 60 },
+  { "Pi", int64_t(1) << 50 },
   { "Ti", int64_t(1) << 40 },
   { "Gi", int64_t(1) << 30 },
   { "Mi", int64_t(1) << 20 },
@@ -265,6 +388,7 @@ const PrettySuffix kPrettySISuffixes[] = {
 
 const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
   kPrettyTimeSuffixes,
+  kPrettyTimeHmsSuffixes,
   kPrettyBytesMetricSuffixes,
   kPrettyBytesBinarySuffixes,
   kPrettyBytesBinaryIECSuffixes,
@@ -331,8 +455,7 @@ double prettyToDouble(folly::StringPiece *const prettyString,
   }
   if (bestPrefixId == -1) { //No valid suffix rule found
     throw std::invalid_argument(folly::to<std::string>(
-            "Unable to parse suffix \"",
-            prettyString->toString(), "\""));
+        "Unable to parse suffix \"", *prettyString, "\""));
   }
   prettyString->advance(size_t(longestPrefixLen));
   return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val :

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -292,14 +292,10 @@ void FunctionScheduler::cancelAllFunctionsAndWait() {
 bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
   std::unique_lock<std::mutex> l(mutex_);
   if (currentFunction_ && currentFunction_->name == nameID) {
-    // TODO: This moves out of RepeatFunc object while folly:Function can
-    // potentially be executed. This might be unsafe.
-    auto funcPtrCopy = std::make_unique<RepeatFunc>(std::move(*currentFunction_));
-    // This function is currently being run. Clear currentFunction_
-    // to avoid rescheduling it, and add the function again to honor the
-    // startDelay.
-    currentFunction_ = nullptr;
-    addFunctionToHeap(l, std::move(funcPtrCopy));
+    if (cancellingCurrentFunction_ || currentFunction_->runOnce) {
+      return false;
+    }
+    currentFunction_->resetNextRunTime(steady_clock::now());
     return true;
   }
 
@@ -307,13 +303,12 @@ bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
   // fix the heap ordering if we adjust the key (nextRunTime) for the existing
   // RepeatFunc. Instead, we just cancel it and add an identical object.
   auto it = functionsMap_.find(nameID);
-
   if (it != functionsMap_.end() && it->second->isValid()) {
-    auto funcCopy = std::make_unique<RepeatFunc>(std::move(*(it->second)));
-    it->second->cancel();
-    // This will take care of making sure that functionsMap_[it->first] =
-    // funcCopy.
-    addFunctionToHeap(l, std::move(funcCopy));
+    if (running_) {
+      it->second->resetNextRunTime(steady_clock::now());
+      std::make_heap(functions_.begin(), functions_.end(), fnCmp_);
+      runningCondvar_.notify_one();
+    }
     return true;
   }
   return false;

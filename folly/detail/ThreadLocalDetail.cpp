@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <folly/detail/ThreadLocalDetail.h>
+#include <folly/synchronization/CallOnce.h>
 
 #include <list>
 #include <mutex>
@@ -28,23 +29,41 @@ StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
   PthreadKeyUnregister::registerKey(pthreadKey_);
 }
 
-void StaticMetaBase::onThreadExit(void* ptr) {
+ThreadEntryList* StaticMetaBase::getThreadEntryList() {
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
-  auto threadEntry = static_cast<ThreadEntry*>(ptr);
+  static FOLLY_TLS ThreadEntryList threadEntryListSingleton;
+  return &threadEntryListSingleton;
 #else
-  std::unique_ptr<ThreadEntry> threadEntry(static_cast<ThreadEntry*>(ptr));
-#endif
-  DCHECK_GT(threadEntry->elementsCapacity, 0u);
-  auto& meta = *threadEntry->meta;
+  static pthread_key_t pthreadKey;
+  static folly::once_flag onceFlag;
+  folly::call_once(onceFlag, [&]() {
+    int ret = pthread_key_create(&pthreadKey, nullptr);
+    checkPosixError(ret, "pthread_key_create failed");
+    PthreadKeyUnregister::registerKey(pthreadKey);
+  });
 
-  // Make sure this ThreadEntry is available if ThreadLocal A is accessed in
-  // ThreadLocal B destructor.
-  pthread_setspecific(meta.pthreadKey_, &(*threadEntry));
-  SCOPE_EXIT {
-    pthread_setspecific(meta.pthreadKey_, nullptr);
-  };
+  ThreadEntryList* threadEntryList =
+      static_cast<ThreadEntryList*>(pthread_getspecific(pthreadKey));
+
+  if (UNLIKELY(!threadEntryList)) {
+    threadEntryList = new ThreadEntryList();
+    int ret = pthread_setspecific(pthreadKey, threadEntryList);
+    checkPosixError(ret, "pthread_setspecific failed");
+  }
+
+  return threadEntryList;
+#endif
+}
+
+void StaticMetaBase::onThreadExit(void* ptr) {
+  auto threadEntry = static_cast<ThreadEntry*>(ptr);
 
   {
+    auto& meta = *threadEntry->meta;
+
+    // Make sure this ThreadEntry is available if ThreadLocal A is accessed in
+    // ThreadLocal B destructor.
+    pthread_setspecific(meta.pthreadKey_, threadEntry);
     SharedMutex::ReadHolder rlock(nullptr);
     if (meta.strict_) {
       rlock = SharedMutex::ReadHolder(meta.accessAllThreadsLock_);
@@ -67,10 +86,63 @@ void StaticMetaBase::onThreadExit(void* ptr) {
         }
       }
     }
+    pthread_setspecific(meta.pthreadKey_, nullptr);
   }
-  free(threadEntry->elements);
-  threadEntry->elements = nullptr;
-  threadEntry->meta = nullptr;
+
+  auto threadEntryList = threadEntry->list;
+  DCHECK_GT(threadEntryList->count, 0u);
+
+  --threadEntryList->count;
+
+  if (threadEntryList->count) {
+    return;
+  }
+
+  // dispose all the elements
+  for (bool shouldRunOuter = true; shouldRunOuter;) {
+    shouldRunOuter = false;
+    auto tmp = threadEntryList->head;
+    while (tmp) {
+      auto& meta = *tmp->meta;
+      pthread_setspecific(meta.pthreadKey_, tmp);
+      SharedMutex::ReadHolder rlock(nullptr);
+      if (meta.strict_) {
+        rlock = SharedMutex::ReadHolder(meta.accessAllThreadsLock_);
+      }
+      for (bool shouldRunInner = true; shouldRunInner;) {
+        shouldRunInner = false;
+        FOR_EACH_RANGE (i, 0, tmp->elementsCapacity) {
+          if (tmp->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
+            shouldRunInner = true;
+            shouldRunOuter = true;
+          }
+        }
+      }
+      pthread_setspecific(meta.pthreadKey_, nullptr);
+      tmp = tmp->listNext;
+    }
+  }
+
+  // free the entry list
+  auto head = threadEntryList->head;
+  threadEntryList->head = nullptr;
+  while (head) {
+    auto tmp = head;
+    head = head->listNext;
+    if (tmp->elements) {
+      free(tmp->elements);
+      tmp->elements = nullptr;
+      tmp->elementsCapacity = 0;
+    }
+
+#ifndef FOLLY_TLD_USE_FOLLY_TLS
+    delete tmp;
+#endif
+  }
+
+#ifndef FOLLY_TLD_USE_FOLLY_TLS
+  delete threadEntryList;
+#endif
 }
 
 uint32_t StaticMetaBase::allocate(EntryID* ent) {
@@ -247,78 +319,6 @@ void StaticMetaBase::reserve(EntryID* id) {
   free(reallocated);
 }
 
-namespace {
-
-struct AtForkTask {
-  folly::Function<void()> prepare;
-  folly::Function<void()> parent;
-  folly::Function<void()> child;
-};
-
-class AtForkList {
- public:
-  static AtForkList& instance() {
-    static auto instance = new AtForkList();
-    return *instance;
-  }
-
-  static void prepare() noexcept {
-    instance().tasksLock.lock();
-    auto& tasks = instance().tasks;
-    for (auto task = tasks.rbegin(); task != tasks.rend(); ++task) {
-      task->prepare();
-    }
-  }
-
-  static void parent() noexcept {
-    auto& tasks = instance().tasks;
-    for (auto& task : tasks) {
-      task.parent();
-    }
-    instance().tasksLock.unlock();
-  }
-
-  static void child() noexcept {
-    auto& tasks = instance().tasks;
-    for (auto& task : tasks) {
-      task.child();
-    }
-    instance().tasksLock.unlock();
-  }
-
-  std::mutex tasksLock;
-  std::list<AtForkTask> tasks;
-
- private:
-  AtForkList() {
-#if FOLLY_HAVE_PTHREAD_ATFORK
-    int ret = pthread_atfork(
-        &AtForkList::prepare, &AtForkList::parent, &AtForkList::child);
-    checkPosixError(ret, "pthread_atfork failed");
-#elif !__ANDROID__ && !defined(_MSC_VER)
-// pthread_atfork is not part of the Android NDK at least as of n9d. If
-// something is trying to call native fork() directly at all with Android's
-// process management model, this is probably the least of the problems.
-//
-// But otherwise, this is a problem.
-#warning pthread_atfork unavailable
-#endif
-  }
-};
-} // namespace
-
-void StaticMetaBase::initAtFork() {
-  AtForkList::instance();
-}
-
-void StaticMetaBase::registerAtFork(
-    folly::Function<void()> prepare,
-    folly::Function<void()> parent,
-    folly::Function<void()> child) {
-  std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);
-  AtForkList::instance().tasks.push_back(
-      {std::move(prepare), std::move(parent), std::move(child)});
-}
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;

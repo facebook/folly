@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -236,9 +236,9 @@ void BM_ProducerConsumerLatency(int /* iters */, int size) {
 
 BENCHMARK_DRAW_LINE();
 
-BENCHMARK_PARAM(BM_ProducerConsumer, 1048574);
-BENCHMARK_PARAM(BM_ProducerConsumerAffinity, 1048574);
-BENCHMARK_PARAM(BM_ProducerConsumerLatency, 1048574);
+BENCHMARK_PARAM(BM_ProducerConsumer, 1048574)
+BENCHMARK_PARAM(BM_ProducerConsumerAffinity, 1048574)
+BENCHMARK_PARAM(BM_ProducerConsumerLatency, 1048574)
 
 } // namespace
 

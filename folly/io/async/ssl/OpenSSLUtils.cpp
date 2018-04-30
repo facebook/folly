@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,8 +48,8 @@ bool OpenSSLUtils::getTLSMasterKey(
     return true;
   }
 #else
-  (SSL_SESSION*)session;
-  (MutableByteRange) keyOut;
+  (void)session;
+  (void)keyOut;
 #endif
   return false;
 }
@@ -65,8 +65,8 @@ bool OpenSSLUtils::getTLSClientRandom(
     return true;
   }
 #else
-  (SSL*)ssl;
-  (MutableByteRange) randomOut;
+  (void)ssl;
+  (void)randomOut;
 #endif
   return false;
 }

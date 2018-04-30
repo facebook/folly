@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@
 #include <thread>
 #include <utility>
 
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::intrusive_ptr);
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::intrusive_ptr)
 
 using namespace folly;
 using namespace detail;

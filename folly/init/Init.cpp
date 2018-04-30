@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #include <folly/Singleton.h>
 #include <folly/portability/Config.h>
 
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
 #include <folly/experimental/symbolizer/SignalHandler.h> // @manual
 #endif
 #include <folly/portability/GFlags.h>
@@ -29,7 +29,7 @@
 namespace folly {
 
 void init(int* argc, char*** argv, bool removeFlags) {
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
   // Install the handler now, to trap errors received during startup.
   // The callbacks, if any, can be installed later
   folly::symbolizer::installFatalSignalHandler();
@@ -46,12 +46,20 @@ void init(int* argc, char*** argv, bool removeFlags) {
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
   google::InitGoogleLogging(programName);
 
-#ifdef FOLLY_USE_SYMBOLIZER
+#if FOLLY_USE_SYMBOLIZER
   // Don't use glog's DumpStackTraceAndExit; rely on our signal handler.
   google::InstallFailureFunction(abort);
 
   // Actually install the callbacks into the handler.
   folly::symbolizer::installFatalSignalCallbacks();
 #endif
+}
+
+Init::Init(int* argc, char*** argv, bool removeFlags) {
+  init(argc, argv, removeFlags);
+}
+
+Init::~Init() {
+  SingletonVault::singleton()->destroyInstances();
 }
 } // namespace folly

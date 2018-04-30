@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
 #endif
@@ -26,11 +25,11 @@
 #include <mutex>
 #include <thread>
 
-#include <folly/Baton.h>
 #include <folly/Memory.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
+#include <folly/synchronization/Baton.h>
 #include <folly/system/ThreadName.h>
 
 namespace folly {
@@ -114,7 +113,6 @@ EventBase::EventBase(bool enableTimeMeasurement)
   }
   VLOG(5) << "EventBase(): Created.";
   initNotificationQueue();
-  RequestContext::saveContext();
 }
 
 // takes ownership of the event_base
@@ -140,7 +138,6 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
   }
   initNotificationQueue();
-  RequestContext::saveContext();
 }
 
 EventBase::~EventBase() {
@@ -293,10 +290,10 @@ bool EventBase::loopBody(int flags) {
 
   if (enableTimeMeasurement_) {
     prev = std::chrono::steady_clock::now();
-    idleStart = std::chrono::steady_clock::now();
+    idleStart = prev;
   }
 
-  while (!stop_.load(std::memory_order_acquire)) {
+  while (!stop_.load(std::memory_order_relaxed)) {
     applyLoopKeepAlive();
     ++nextLoopCnt_;
 
@@ -321,15 +318,15 @@ bool EventBase::loopBody(int flags) {
     ranLoopCallbacks = runLoopCallbacks();
 
     if (enableTimeMeasurement_) {
+      auto now = std::chrono::steady_clock::now();
       busy = std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::steady_clock::now() - startWork_);
+          now - startWork_);
       idle = std::chrono::duration_cast<std::chrono::microseconds>(
           startWork_ - idleStart);
+      auto loop_time = busy + idle;
 
-      avgLoopTime_.addSample(std::chrono::microseconds(idle),
-        std::chrono::microseconds(busy));
-      maxLatencyLoopTime_.addSample(std::chrono::microseconds(idle),
-        std::chrono::microseconds(busy));
+      avgLoopTime_.addSample(loop_time, busy);
+      maxLatencyLoopTime_.addSample(loop_time, busy);
 
       if (observer_) {
         if (observerSampleCount_++ == observer_->getSampleRate()) {
@@ -338,15 +335,15 @@ bool EventBase::loopBody(int flags) {
         }
       }
 
-      VLOG(11) << "EventBase "  << this         << " did not timeout " <<
-        " loop time guess: "    << (busy + idle).count()  <<
-        " idle time: "          << idle.count()         <<
-        " busy time: "          << busy.count()         <<
-        " avgLoopTime: "        << avgLoopTime_.get() <<
-        " maxLatencyLoopTime: " << maxLatencyLoopTime_.get() <<
-        " maxLatency_: "        << maxLatency_.count() << "us" <<
-        " notificationQueueSize: " << getNotificationQueueSize() <<
-        " nothingHandledYet(): " << nothingHandledYet();
+      VLOG(11) << "EventBase " << this << " did not timeout "
+               << " loop time guess: " << loop_time.count()
+               << " idle time: " << idle.count()
+               << " busy time: " << busy.count()
+               << " avgLoopTime: " << avgLoopTime_.get()
+               << " maxLatencyLoopTime: " << maxLatencyLoopTime_.get()
+               << " maxLatency_: " << maxLatency_.count() << "us"
+               << " notificationQueueSize: " << getNotificationQueueSize()
+               << " nothingHandledYet(): " << nothingHandledYet();
 
       // see if our average loop time has exceeded our limit
       if ((maxLatency_ > std::chrono::microseconds::zero()) &&
@@ -358,7 +355,7 @@ bool EventBase::loopBody(int flags) {
       }
 
       // Our loop run did real work; reset the idle timer
-      idleStart = std::chrono::steady_clock::now();
+      idleStart = now;
     } else {
       VLOG(11) << "EventBase " << this << " did not timeout";
     }
@@ -387,7 +384,7 @@ bool EventBase::loopBody(int flags) {
     }
   }
   // Reset stop_ so loop() can be called again
-  stop_ = false;
+  stop_.store(false, std::memory_order_relaxed);
 
   if (res < 0) {
     LOG(ERROR) << "EventBase: -- error in event loop, res = " << res;
@@ -479,9 +476,7 @@ void EventBase::terminateLoopSoon() {
   VLOG(5) << "EventBase(): Received terminateLoopSoon() command.";
 
   // Set stop to true, so the event loop will know to exit.
-  // TODO: We should really use an atomic operation here with a release
-  // barrier.
-  stop_ = true;
+  stop_.store(true, std::memory_order_relaxed);
 
   // Call event_base_loopbreak() so that libevent will exit the next time
   // around the loop.
@@ -553,7 +548,6 @@ bool EventBase::runInEventBaseThread(Func fn) {
   if (inRunningEventBaseThread()) {
     runInLoop(std::move(fn));
     return true;
-
   }
 
   try {
@@ -615,7 +609,7 @@ bool EventBase::runLoopCallbacks() {
     while (!currentCallbacks.empty()) {
       LoopCallback* callback = &currentCallbacks.front();
       currentCallbacks.pop_front();
-      folly::RequestContextScopeGuard rctx(callback->context_);
+      folly::RequestContextScopeGuard rctx(std::move(callback->context_));
       callback->runLoopCallback();
     }
 
@@ -657,31 +651,21 @@ void EventBase::SmoothLoopTime::reset(double value) {
 }
 
 void EventBase::SmoothLoopTime::addSample(
-    std::chrono::microseconds idle,
+    std::chrono::microseconds total,
     std::chrono::microseconds busy) {
-  /*
-   * Position at which the busy sample is considered to be taken.
-   * (Allows to quickly skew our average without editing much code)
-   */
-  enum BusySamplePosition {
-    RIGHT = 0, // busy sample placed at the end of the iteration
-    CENTER = 1, // busy sample placed at the middle point of the iteration
-    LEFT = 2, // busy sample placed at the beginning of the iteration
-  };
-
-  // See http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
-  // and D676020 for more info on this calculation.
-  VLOG(11) << "idle " << idle.count() << " oldBusyLeftover_ "
-           << oldBusyLeftover_.count() << " idle + oldBusyLeftover_ "
-           << (idle + oldBusyLeftover_).count() << " busy " << busy.count()
-           << " " << __PRETTY_FUNCTION__;
-  idle += oldBusyLeftover_ + busy;
-  oldBusyLeftover_ = (busy * BusySamplePosition::CENTER) / 2;
-  idle -= oldBusyLeftover_;
-
-  double coeff = exp(idle.count() * expCoeff_);
-  value_ *= coeff;
-  value_ += (1.0 - coeff) * busy.count();
+  if ((buffer_time_ + total) > buffer_interval_ && buffer_cnt_ > 0) {
+    // See https://en.wikipedia.org/wiki/Exponential_smoothing for
+    // more info on this calculation.
+    double coeff = exp(buffer_time_.count() * expCoeff_);
+    value_ =
+        value_ * coeff + (1.0 - coeff) * (busy_buffer_.count() / buffer_cnt_);
+    buffer_time_ = std::chrono::microseconds{0};
+    busy_buffer_ = std::chrono::microseconds{0};
+    buffer_cnt_ = 0;
+  }
+  buffer_time_ += total;
+  busy_buffer_ += busy;
+  buffer_cnt_++;
 }
 
 bool EventBase::nothingHandledYet() const noexcept {
@@ -717,6 +701,9 @@ bool EventBase::scheduleTimeout(AsyncTimeout* obj,
   tv.tv_usec = long((timeout.count() % 1000LL) * 1000LL);
 
   struct event* ev = obj->getEvent();
+
+  DCHECK(ev->ev_base);
+
   if (event_add(ev, &tv) < 0) {
     LOG(ERROR) << "EventBase: failed to schedule timeout: " << strerror(errno);
     return false;
@@ -748,6 +735,13 @@ const std::string& EventBase::getName() {
   return name_;
 }
 
+void EventBase::scheduleAt(Func&& fn, TimePoint const& timeout) {
+  auto duration = timeout - now();
+  timer().scheduleTimeoutFn(
+      std::move(fn),
+      std::chrono::duration_cast<std::chrono::milliseconds>(duration));
+}
+
 const char* EventBase::getLibeventVersion() { return event_get_version(); }
 const char* EventBase::getLibeventMethod() { return event_get_method(); }
 
@@ -759,4 +753,9 @@ VirtualEventBase& EventBase::getVirtualEventBase() {
   return *virtualEventBase_;
 }
 
+EventBase* EventBase::getEventBase() {
+  return this;
+}
+
+constexpr std::chrono::milliseconds EventBase::SmoothLoopTime::buffer_interval_;
 } // namespace folly

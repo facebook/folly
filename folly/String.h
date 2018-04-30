@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include <boost/regex/pending/unicode_iterator.hpp>
-#include <boost/type_traits.hpp>
-
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>
 #include <folly/FBString.h>
@@ -34,6 +31,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Traits.h>
 
 // Compatibility function, to make sure toStdString(s) can be called
 // to convert a std::string or fbstring variable s into type std::string
@@ -289,7 +287,7 @@ OutputString unhexlify(StringPiece input) {
   return output;
 }
 
-/*
+/**
  * A pretty-printer for numbers that appends suffixes of units of the
  * given type.  It prints 4 sig-figs of value with the most
  * appropriate unit.
@@ -299,6 +297,7 @@ OutputString unhexlify(StringPiece input) {
  *
  * Current types are:
  *   PRETTY_TIME         - s, ms, us, ns, etc.
+ *   PRETTY_TIME_HMS     - h, m, s, ms, us, ns, etc.
  *   PRETTY_BYTES_METRIC - kB, MB, GB, etc (goes up by 10^3 = 1000 each time)
  *   PRETTY_BYTES        - kB, MB, GB, etc (goes up by 2^10 = 1024 each time)
  *   PRETTY_BYTES_IEC    - KiB, MiB, GiB, etc
@@ -307,10 +306,12 @@ OutputString unhexlify(StringPiece input) {
  *   PRETTY_UNITS_BINARY_IEC - Ki, Mi, Gi, etc
  *   PRETTY_SI           - full SI metric prefixes from yocto to Yotta
  *                         http://en.wikipedia.org/wiki/Metric_prefix
+ *
  * @author Mark Rabkin <mrabkin@fb.com>
  */
 enum PrettyType {
   PRETTY_TIME,
+  PRETTY_TIME_HMS,
 
   PRETTY_BYTES_METRIC,
   PRETTY_BYTES_BINARY,
@@ -347,7 +348,7 @@ std::string prettyPrint(double val, PrettyType, bool addSpace = true);
 double prettyToDouble(folly::StringPiece *const prettyString,
                       const PrettyType type);
 
-/*
+/**
  * Same as prettyToDouble(folly::StringPiece*, PrettyType), but
  * expects whole string to be correctly parseable. Throws std::range_error
  * otherwise
@@ -468,56 +469,22 @@ void splitTo(const Delim& delimiter,
  * Note that this will likely not work if the last field's target is of numeric
  * type, in which case folly::to<> will throw an exception.
  */
-template <class T, class Enable = void>
-struct IsSomeVector {
-  enum { value = false };
-};
+namespace detail {
+template <typename Void, typename OutputType>
+struct IsConvertible : std::false_type {};
 
-template <class T>
-struct IsSomeVector<std::vector<T>, void> {
-  enum { value = true };
-};
-
-template <class T>
-struct IsSomeVector<fbvector<T>, void> {
-  enum { value = true };
-};
-
-template <class T, class Enable = void>
-struct IsConvertible {
-  enum { value = false };
-};
-
-template <class T>
+template <typename OutputType>
 struct IsConvertible<
-    T,
-    decltype(static_cast<void>(
-        parseTo(std::declval<folly::StringPiece>(), std::declval<T&>())))> {
-  enum { value = true };
-};
-
-template <class... Types>
-struct AllConvertible;
-
-template <class Head, class... Tail>
-struct AllConvertible<Head, Tail...> {
-  enum { value = IsConvertible<Head>::value && AllConvertible<Tail...>::value };
-};
-
-template <>
-struct AllConvertible<> {
-  enum { value = true };
-};
-
-static_assert(AllConvertible<float>::value, "");
-static_assert(AllConvertible<int>::value, "");
-static_assert(AllConvertible<bool>::value, "");
-static_assert(AllConvertible<int>::value, "");
-static_assert(!AllConvertible<std::vector<int>>::value, "");
+    void_t<decltype(parseTo(StringPiece{}, std::declval<OutputType&>()))>,
+    OutputType> : std::true_type {};
+} // namespace detail
+template <typename OutputType>
+struct IsConvertible : detail::IsConvertible<void, OutputType> {};
 
 template <bool exact = true, class Delim, class... OutputTypes>
 typename std::enable_if<
-    AllConvertible<OutputTypes...>::value && sizeof...(OutputTypes) >= 1,
+    StrictConjunction<IsConvertible<OutputTypes>...>::value &&
+        sizeof...(OutputTypes) >= 1,
     bool>::type
 split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 
@@ -567,9 +534,10 @@ std::string join(const Delim& delimiter,
 template <
     class Delim,
     class Iterator,
-    typename std::enable_if<std::is_same<
-        typename std::iterator_traits<Iterator>::iterator_category,
-        std::random_access_iterator_tag>::value>::type* = nullptr>
+    typename std::enable_if<std::is_base_of<
+        std::forward_iterator_tag,
+        typename std::iterator_traits<Iterator>::iterator_category>::value>::
+        type* = nullptr>
 std::string join(const Delim& delimiter, Iterator begin, Iterator end) {
   std::string output;
   join(delimiter, begin, end, output);
@@ -633,22 +601,6 @@ inline void toLowerAscii(std::string& str) {
   // str[0] is legal also if the string is empty.
   toLowerAscii(&str[0], str.size());
 }
-
-template <
-    class Iterator = const char*,
-    class Base = folly::Range<boost::u8_to_u32_iterator<Iterator>>>
-class UTF8Range : public Base {
- public:
-  /* implicit */ UTF8Range(const folly::Range<Iterator> baseRange)
-      : Base(boost::u8_to_u32_iterator<Iterator>(
-                 baseRange.begin(), baseRange.begin(), baseRange.end()),
-             boost::u8_to_u32_iterator<Iterator>(
-                 baseRange.end(), baseRange.begin(), baseRange.end())) {}
-  /* implicit */ UTF8Range(const std::string& baseString)
-      : Base(folly::Range<Iterator>(baseString)) {}
-};
-
-using UTF8StringPiece = UTF8Range<const char*>;
 
 } // namespace folly
 

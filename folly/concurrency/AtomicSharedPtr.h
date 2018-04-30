@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <folly/AtomicStruct.h>
 #include <folly/PackedSyncPtr.h>
 #include <folly/concurrency/detail/AtomicSharedPtr-detail.h>
-#include <folly/detail/AtomicUtils.h>
+#include <folly/synchronization/AtomicStruct.h>
+#include <folly/synchronization/detail/AtomicUtils.h>
 #include <atomic>
 #include <thread>
 

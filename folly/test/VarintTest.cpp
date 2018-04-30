@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ void testVarint(uint64_t val, std::initializer_list<uint8_t> bytes) {
     uint8_t buf[kMaxVarintLength64];
     EXPECT_EQ(expected.size(), encodeVarint(val, buf));
     EXPECT_TRUE(ByteRange(buf, expected.size()) == expected);
+    EXPECT_EQ(expected.size(), encodeVarintSize(val));
   }
 
   {

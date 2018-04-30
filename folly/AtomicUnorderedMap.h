@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@
 
 #include <boost/type_traits/has_trivial_destructor.hpp>
 
-#include <folly/Bits.h>
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Random.h>
 #include <folly/detail/AtomicUnorderedMapUtils.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,46 +20,78 @@
  * during program start-up.
  */
 
-#include <stdexcept>
-#include <string>
-#include <vector>
-
 #include <folly/Range.h>
-#include <folly/experimental/logging/LogLevel.h>
 
 namespace folly {
 
 /**
- * Configure log category levels based on a configuration string.
+ * Initialize the logging library.
  *
- * This can be used to process a logging configuration string (such as received
- * via a command line flag) during program start-up.
+ * This function performs the following steps:
+ * - Call folly::getBaseLoggingConfig() to get the base logging configuration
+ *   for your program.
+ * - Parse the input configString parameter with parseLogConfig(), and update
+ *   the base configuration with the settings from this argument.
+ * - Apply these combined settings to the main LoggerDB singleton using
+ *   LoggerDB::updateConfig()
+ *
+ * This function will throw an exception on error.  Most errors are normally
+ * due to invalid logging configuration strings: e.g., invalid log level names
+ * or referencing undefined log handlers.
+ *
+ * If you are invoking this from your program's main() function it is often
+ * more convenient to use initLoggingOrDie() to terminate your program
+ * gracefully on error rather than having to handle exceptions yourself.
  */
-void initLogLevels(
-    folly::StringPiece configString = "",
-    LogLevel defaultRootLevel = LogLevel::WARNING);
+void initLogging(folly::StringPiece configString = "");
 
 /**
- * Initialize the logging library to write glog-style messages to stderr.
+ * Initialize the logging library, and exit the program on error.
  *
- * This initializes the log category levels as specified (using
- * initLogLevels()), and adds a log handler that prints messages in glog-style
- * format to stderr.
+ * This function behaves like initLogging(), but if an error occurs processing
+ * the logging configuration it will print an error message to stderr and then
+ * call exit(1) to terminate the program.
  */
-void initLoggingGlogStyle(
-    folly::StringPiece configString = "",
-    LogLevel defaultRootLevel = LogLevel::WARNING,
-    bool asyncWrites = true);
+void initLoggingOrDie(folly::StringPiece configString = "");
 
 /**
- * LoggingConfigError may be thrown by initLogLevels() if an error occurs
- * parsing the configuration string.
+ * folly::getBaseLoggingConfig() allows individual executables to easily
+ * customize their default logging configuration.
+ *
+ * You can define this function in your executable and folly::initLogging()
+ * will call it to get the base logging configuration.  The settings returned
+ * by getBaseLoggingConfig() will then be modified by updating them with the
+ * configuration string parameter passed to initLogging().
+ *
+ * This allows the user-specified configuration passed to initLogging() to
+ * update the base configuration.  The user-specified configuration can apply
+ * additional settings, and it may also override settings for categories and
+ * handlers defined in the base configuration.
+ *
+ * See folly/experimental/logging/example/main.cpp for an example that defines
+ * getBaseLoggingConfig().
+ *
+ * If this function returns a non-null pointer, it should point to a
+ * null-terminated string with static storage duration.
  */
-class LoggingConfigError : public std::invalid_argument {
- public:
-  explicit LoggingConfigError(const std::vector<std::string>& errors);
+const char* getBaseLoggingConfig();
 
- private:
-  std::string computeMessage(const std::vector<std::string>& errors);
-};
 } // namespace folly
+
+/**
+ * A helper macro to set the default logging configuration in a program.
+ *
+ * This defines the folly::getBaseLoggingConfig() function, and makes it return
+ * the specified string.
+ *
+ * This macro should be used at the top-level namespace in a .cpp file in your
+ * program.
+ */
+#define FOLLY_INIT_LOGGING_CONFIG(config)            \
+  namespace folly {                                  \
+  const char* getBaseLoggingConfig() {               \
+    static constexpr StringPiece configSP((config)); \
+    return configSP.data();                          \
+  }                                                  \
+  }                                                  \
+  static_assert(true, "require a semicolon after FOLLY_INIT_LOGGING_CONFIG()")

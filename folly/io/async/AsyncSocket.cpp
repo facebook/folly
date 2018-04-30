@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/io/async/AsyncSocket.h>
 
 #include <folly/ExceptionWrapper.h>
@@ -34,6 +33,12 @@
 #include <sys/types.h>
 #include <thread>
 
+#if FOLLY_HAVE_VLA
+#define FOLLY_HAVE_VLA_01 1
+#else
+#define FOLLY_HAVE_VLA_01 0
+#endif
+
 using std::string;
 using std::unique_ptr;
 
@@ -42,11 +47,11 @@ namespace fsp = folly::portability::sockets;
 namespace folly {
 
 static constexpr bool msgErrQueueSupported =
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
     true;
 #else
     false;
-#endif // MSG_ERRQUEUE
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
 
 // static members initializers
 const AsyncSocket::OptionMap AsyncSocket::emptyOptionMap;
@@ -58,8 +63,7 @@ const AsyncSocketException socketShutdownForWritesEx(
 
 // TODO: It might help performance to provide a version of BytesWriteRequest that
 // users could derive from, so we can avoid the extra allocation for each call
-// to write()/writev().  We could templatize TFramedAsyncChannel just like the
-// protocols are currently templatized for transports.
+// to write()/writev().
 //
 // We would need the version for external users where they provide the iovec
 // storage space, and only our internal version would allocate it at the end of
@@ -106,7 +110,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
       writeFlags |= WriteFlags::CORK;
     }
 
-    socket_->adjustZeroCopyFlags(getOps(), getOpCount(), writeFlags);
+    socket_->adjustZeroCopyFlags(writeFlags);
 
     auto writeResult = socket_->performWrite(
         getOps(), getOpCount(), writeFlags, &opsWritten_, &partialBytes_);
@@ -114,16 +118,16 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     if (bytesWritten_) {
       if (socket_->isZeroCopyRequest(writeFlags)) {
         if (isComplete()) {
-          socket_->addZeroCopyBuff(std::move(ioBuf_));
+          socket_->addZeroCopyBuf(std::move(ioBuf_));
         } else {
-          socket_->addZeroCopyBuff(ioBuf_.get());
+          socket_->addZeroCopyBuf(ioBuf_.get());
         }
       } else {
         // this happens if at least one of the prev requests were sent
         // with zero copy but not the last one
         if (isComplete() && socket_->getZeroCopy() &&
-            socket_->containsZeroCopyBuff(ioBuf_.get())) {
-          socket_->setZeroCopyBuff(std::move(ioBuf_));
+            socket_->containsZeroCopyBuf(ioBuf_.get())) {
+          socket_->setZeroCopyBuf(std::move(ioBuf_));
         }
       }
     }
@@ -272,13 +276,14 @@ AsyncSocket::AsyncSocket(EventBase* evb,
   connect(nullptr, ip, port, connectTimeout);
 }
 
-AsyncSocket::AsyncSocket(EventBase* evb, int fd)
-    : eventBase_(evb),
+AsyncSocket::AsyncSocket(EventBase* evb, int fd, uint32_t zeroCopyBufId)
+    : zeroCopyBufId_(zeroCopyBufId),
+      eventBase_(evb),
       writeTimeout_(this, evb),
       ioHandler_(this, evb, fd),
       immediateReadHandler_(this) {
-  VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd="
-          << fd << ")";
+  VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd=" << fd
+          << ", zeroCopyBufId=" << zeroCopyBufId << ")";
   init();
   fd_ = fd;
   setCloseOnExec();
@@ -286,7 +291,10 @@ AsyncSocket::AsyncSocket(EventBase* evb, int fd)
 }
 
 AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
-    : AsyncSocket(oldAsyncSocket->getEventBase(), oldAsyncSocket->detachFd()) {
+    : AsyncSocket(
+          oldAsyncSocket->getEventBase(),
+          oldAsyncSocket->detachFd(),
+          oldAsyncSocket->getZeroCopyBufId()) {
   preReceivedData_ = std::move(oldAsyncSocket->preReceivedData_);
 }
 
@@ -658,6 +666,22 @@ void AsyncSocket::setErrMessageCB(ErrMessageCallback* callback) {
           << ", fd=" << fd_ << ", callback=" << callback
           << ", state=" << state_;
 
+  // In the latest stable kernel 4.14.3 as of 2017-12-04, unix domain
+  // socket does not support MSG_ERRQUEUE. So recvmsg(MSG_ERRQUEUE)
+  // will read application data from unix doamin socket as error
+  // message, which breaks the message flow in application.  Feel free
+  // to remove the next code block if MSG_ERRQUEUE is added for unix
+  // domain socket in the future.
+  if (callback != nullptr) {
+    cacheLocalAddress();
+    if (localAddr_.getFamily() == AF_UNIX) {
+      LOG(ERROR) << "Failed to set ErrMessageCallback=" << callback
+                 << " for Unix Doamin Socket where MSG_ERRQUEUE is unsupported,"
+                 << " fd=" << fd_;
+      return;
+    }
+  }
+
   // Short circuit if callback is the same as the existing errMessageCallback_.
   if (callback == errMessageCallback_) {
     return;
@@ -850,91 +874,61 @@ bool AsyncSocket::setZeroCopy(bool enable) {
   return false;
 }
 
-void AsyncSocket::setZeroCopyWriteChainThreshold(size_t threshold) {
-  zeroCopyWriteChainThreshold_ = threshold;
-}
-
 bool AsyncSocket::isZeroCopyRequest(WriteFlags flags) {
   return (zeroCopyEnabled_ && isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY));
 }
 
-void AsyncSocket::adjustZeroCopyFlags(
-    folly::IOBuf* buf,
-    folly::WriteFlags& flags) {
-  if (zeroCopyEnabled_ && zeroCopyWriteChainThreshold_ && buf &&
-      buf->isManaged()) {
-    if (buf->computeChainDataLength() >= zeroCopyWriteChainThreshold_) {
-      flags |= folly::WriteFlags::WRITE_MSG_ZEROCOPY;
-    } else {
-      flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
-    }
+void AsyncSocket::adjustZeroCopyFlags(folly::WriteFlags& flags) {
+  if (!zeroCopyEnabled_) {
+    flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
   }
 }
 
-void AsyncSocket::adjustZeroCopyFlags(
-    const iovec* vec,
-    uint32_t count,
-    folly::WriteFlags& flags) {
-  if (zeroCopyEnabled_ && zeroCopyWriteChainThreshold_) {
-    count = std::min<uint32_t>(count, kIovMax);
-    size_t sum = 0;
-    for (uint32_t i = 0; i < count; ++i) {
-      const iovec* v = vec + i;
-      sum += v->iov_len;
-    }
-
-    if (sum >= zeroCopyWriteChainThreshold_) {
-      flags |= folly::WriteFlags::WRITE_MSG_ZEROCOPY;
-    } else {
-      flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
-    }
-  }
-}
-
-void AsyncSocket::addZeroCopyBuff(std::unique_ptr<folly::IOBuf>&& buf) {
-  uint32_t id = getNextZeroCopyBuffId();
+void AsyncSocket::addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
+  uint32_t id = getNextZeroCopyBufId();
   folly::IOBuf* ptr = buf.get();
 
   idZeroCopyBufPtrMap_[id] = ptr;
-  auto& p = idZeroCopyBufPtrToBufMap_[ptr];
-  p.first++;
-  CHECK(p.second.get() == nullptr);
-  p.second = std::move(buf);
+  auto& p = idZeroCopyBufInfoMap_[ptr];
+  p.count_++;
+  CHECK(p.buf_.get() == nullptr);
+  p.buf_ = std::move(buf);
 }
 
-void AsyncSocket::addZeroCopyBuff(folly::IOBuf* ptr) {
-  uint32_t id = getNextZeroCopyBuffId();
+void AsyncSocket::addZeroCopyBuf(folly::IOBuf* ptr) {
+  uint32_t id = getNextZeroCopyBufId();
   idZeroCopyBufPtrMap_[id] = ptr;
 
-  idZeroCopyBufPtrToBufMap_[ptr].first++;
+  idZeroCopyBufInfoMap_[ptr].count_++;
 }
 
-void AsyncSocket::releaseZeroCopyBuff(uint32_t id) {
+void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
   auto iter = idZeroCopyBufPtrMap_.find(id);
   CHECK(iter != idZeroCopyBufPtrMap_.end());
   auto ptr = iter->second;
-  auto iter1 = idZeroCopyBufPtrToBufMap_.find(ptr);
-  CHECK(iter1 != idZeroCopyBufPtrToBufMap_.end());
-  if (0 == --iter1->second.first) {
-    idZeroCopyBufPtrToBufMap_.erase(iter1);
+  auto iter1 = idZeroCopyBufInfoMap_.find(ptr);
+  CHECK(iter1 != idZeroCopyBufInfoMap_.end());
+  if (0 == --iter1->second.count_) {
+    idZeroCopyBufInfoMap_.erase(iter1);
   }
+
+  idZeroCopyBufPtrMap_.erase(iter);
 }
 
-void AsyncSocket::setZeroCopyBuff(std::unique_ptr<folly::IOBuf>&& buf) {
+void AsyncSocket::setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
   folly::IOBuf* ptr = buf.get();
-  auto& p = idZeroCopyBufPtrToBufMap_[ptr];
-  CHECK(p.second.get() == nullptr);
+  auto& p = idZeroCopyBufInfoMap_[ptr];
+  CHECK(p.buf_.get() == nullptr);
 
-  p.second = std::move(buf);
+  p.buf_ = std::move(buf);
 }
 
-bool AsyncSocket::containsZeroCopyBuff(folly::IOBuf* ptr) {
-  return (
-      idZeroCopyBufPtrToBufMap_.find(ptr) != idZeroCopyBufPtrToBufMap_.end());
+bool AsyncSocket::containsZeroCopyBuf(folly::IOBuf* ptr) {
+  return (idZeroCopyBufInfoMap_.find(ptr) != idZeroCopyBufInfoMap_.end());
 }
 
 bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if (zeroCopyEnabled_ &&
       ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
        (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR))) {
@@ -944,19 +938,29 @@ bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
         (serr->ee_errno == 0) && (serr->ee_origin == SO_EE_ORIGIN_ZEROCOPY));
   }
 #endif
+  (void)cmsg;
   return false;
 }
 
 void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   const struct sock_extended_err* serr =
       reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
   uint32_t hi = serr->ee_data;
   uint32_t lo = serr->ee_info;
+  // disable zero copy if the buffer was actually copied
+  if ((serr->ee_code & SO_EE_CODE_ZEROCOPY_COPIED) && zeroCopyEnabled_) {
+    VLOG(2) << "AsyncSocket::processZeroCopyMsg(): setting "
+            << "zeroCopyEnabled_ = false due to SO_EE_CODE_ZEROCOPY_COPIED "
+            << "on " << fd_;
+    zeroCopyEnabled_ = false;
+  }
 
   for (uint32_t i = lo; i <= hi; i++) {
-    releaseZeroCopyBuff(i);
+    releaseZeroCopyBuf(i);
   }
+#else
+  (void)cmsg;
 #endif
 }
 
@@ -977,7 +981,7 @@ void AsyncSocket::writev(WriteCallback* callback,
 
 void AsyncSocket::writeChain(WriteCallback* callback, unique_ptr<IOBuf>&& buf,
                               WriteFlags flags) {
-  adjustZeroCopyFlags(buf.get(), flags);
+  adjustZeroCopyFlags(flags);
 
   constexpr size_t kSmallSizeMax = 64;
   size_t count = buf->countChainElements();
@@ -985,7 +989,7 @@ void AsyncSocket::writeChain(WriteCallback* callback, unique_ptr<IOBuf>&& buf,
     // suppress "warning: variable length array 'vec' is used [-Wvla]"
     FOLLY_PUSH_WARNING
     FOLLY_GCC_DISABLE_WARNING("-Wvla")
-    iovec vec[BOOST_PP_IF(FOLLY_HAVE_VLA, count, kSmallSizeMax)];
+    iovec vec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallSizeMax)];
     FOLLY_POP_WARNING
 
     writeChainImpl(callback, vec, count, std::move(buf), flags);
@@ -1051,8 +1055,8 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
         return failWrite(__func__, callback, 0, ex);
       } else if (countWritten == count) {
         // done, add the whole buffer
-        if (isZeroCopyRequest(flags)) {
-          addZeroCopyBuff(std::move(ioBuf));
+        if (countWritten && isZeroCopyRequest(flags)) {
+          addZeroCopyBuf(std::move(ioBuf));
         }
         // We successfully wrote everything.
         // Invoke the callback and return.
@@ -1062,8 +1066,8 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
         return;
       } else { // continue writing the next writeReq
         // add just the ptr
-        if (isZeroCopyRequest(flags)) {
-          addZeroCopyBuff(ioBuf.get());
+        if (bytesWritten && isZeroCopyRequest(flags)) {
+          addZeroCopyBuf(ioBuf.get());
         }
         if (bufferCallback_) {
           bufferCallback_->onEgressBuffered();
@@ -1455,6 +1459,9 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
 
   eventBase_ = eventBase;
   ioHandler_.attachEventBase(eventBase);
+
+  updateEventRegistration();
+
   writeTimeout_.attachEventBase(eventBase);
   if (evbChangeCb_) {
     evbChangeCb_->evbAttached(this);
@@ -1469,6 +1476,9 @@ void AsyncSocket::detachEventBase() {
   eventBase_->dcheckIsInEventBaseThread();
 
   eventBase_ = nullptr;
+
+  ioHandler_.unregisterHandler();
+
   ioHandler_.detachEventBase();
   writeTimeout_.detachEventBase();
   if (evbChangeCb_) {
@@ -1480,7 +1490,7 @@ bool AsyncSocket::isDetachable() const {
   DCHECK(eventBase_ != nullptr);
   eventBase_->dcheckIsInEventBaseThread();
 
-  return !ioHandler_.isHandlerRegistered() && !writeTimeout_.isScheduled();
+  return !writeTimeout_.isScheduled();
 }
 
 void AsyncSocket::cacheAddresses() {
@@ -1507,6 +1517,11 @@ void AsyncSocket::cachePeerAddress() const {
   if (!addr_.isInitialized()) {
     addr_.setFromPeerAddress(fd_);
   }
+}
+
+bool AsyncSocket::isZeroCopyWriteInProgress() const noexcept {
+  eventBase_->dcheckIsInEventBaseThread();
+  return (!idZeroCopyBufPtrMap_.empty());
 }
 
 void AsyncSocket::getLocalAddress(folly::SocketAddress* address) const {
@@ -1664,7 +1679,11 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   // EventHandler::WRITE is set. Any of these flags can
   // indicate that there are messages available in the socket
   // error message queue.
-  handleErrMessages();
+  // Return if we handle any error messages - this is to avoid
+  // unnecessary read/write calls
+  if (handleErrMessages()) {
+    return;
+  }
 
   // Return now if handleErrMessages() detached us from our EventBase
   if (eventBase_ != originalEventBase) {
@@ -1738,19 +1757,18 @@ void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) {
   readCallback_->getReadBuffer(buf, buflen);
 }
 
-void AsyncSocket::handleErrMessages() noexcept {
+size_t AsyncSocket::handleErrMessages() noexcept {
   // This method has non-empty implementation only for platforms
   // supporting per-socket error queues.
   VLOG(5) << "AsyncSocket::handleErrMessages() this=" << this << ", fd=" << fd_
           << ", state=" << state_;
-  if (errMessageCallback_ == nullptr &&
-      (!zeroCopyEnabled_ || idZeroCopyBufPtrMap_.empty())) {
+  if (errMessageCallback_ == nullptr && idZeroCopyBufPtrMap_.empty()) {
     VLOG(7) << "AsyncSocket::handleErrMessages(): "
             << "no callback installed - exiting.";
-    return;
+    return 0;
   }
 
-#ifdef MSG_ERRQUEUE
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   uint8_t ctrl[1024];
   unsigned char data;
   struct msghdr msg;
@@ -1767,6 +1785,7 @@ void AsyncSocket::handleErrMessages() noexcept {
   msg.msg_flags = 0;
 
   int ret;
+  size_t num = 0;
   while (true) {
     ret = recvmsg(fd_, &msg, MSG_ERRQUEUE);
     VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
@@ -1782,12 +1801,14 @@ void AsyncSocket::handleErrMessages() noexcept {
           errnoCopy);
         failErrMessageRead(__func__, ex);
       }
-      return;
+
+      return num;
     }
 
     for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
          cmsg != nullptr && cmsg->cmsg_len != 0;
          cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+      ++num;
       if (isZeroCopyMsg(*cmsg)) {
         processZeroCopyMsg(*cmsg);
       } else {
@@ -1797,7 +1818,20 @@ void AsyncSocket::handleErrMessages() noexcept {
       }
     }
   }
-#endif //MSG_ERRQUEUE
+#else
+  return 0;
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
+}
+
+bool AsyncSocket::processZeroCopyWriteInProgress() noexcept {
+  eventBase_->dcheckIsInEventBaseThread();
+  if (idZeroCopyBufPtrMap_.empty()) {
+    return true;
+  }
+
+  handleErrMessages();
+
+  return idZeroCopyBufPtrMap_.empty();
 }
 
 void AsyncSocket::handleRead() noexcept {
@@ -2343,6 +2377,14 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     // this bug is fixed.
     tryAgain |= (errno == ENOTCONN);
 #endif
+
+    // workaround for running with zerocopy enabled but without a proper
+    // memlock value - see ulimit -l
+    if (zeroCopyEnabled_ && (errno == ENOBUFS)) {
+      tryAgain = true;
+      zeroCopyEnabled_ = false;
+    }
+
     if (!writeResult.exception && tryAgain) {
       // TCP buffer is full; we can't write any more data right now.
       *countWritten = 0;
@@ -2430,6 +2472,11 @@ void AsyncSocket::startFail() {
   // Ensure that SHUT_READ and SHUT_WRITE are set,
   // so all future attempts to read or write will be rejected
   shutdownFlags_ |= (SHUT_READ | SHUT_WRITE);
+
+  // Cancel any scheduled immediate read.
+  if (immediateReadHandler_.isLoopCallbackScheduled()) {
+    immediateReadHandler_.cancelLoopCallback();
+  }
 
   if (eventFlags_ != EventHandler::NONE) {
     eventFlags_ = EventHandler::NONE;

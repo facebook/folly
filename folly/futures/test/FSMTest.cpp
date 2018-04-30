@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 
 #include <folly/futures/detail/FSM.h>
+
+#include <folly/lang/Assume.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::futures::detail;
@@ -22,20 +24,20 @@ using namespace folly::futures::detail;
 enum class State { A, B };
 
 TEST(FSM, example) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   int count = 0;
   int unprotectedCount = 0;
 
   // somebody set up us the switch
   auto tryTransition = [&]{
     switch (fsm.getState()) {
-    case State::A:
-      return fsm.updateState(State::A, State::B, [&]{ count++; });
-    case State::B:
-      return fsm.updateState(State::B, State::A,
-                             [&]{ count--; }, [&]{ unprotectedCount--; });
+      case State::A:
+        return fsm.tryUpdateState(State::A, State::B, [&] { count++; });
+      case State::B:
+        return fsm.tryUpdateState(
+            State::B, State::A, [&] { count--; }, [&] { unprotectedCount--; });
     }
-    return false; // unreachable
+    folly::assume_unreachable();
   };
 
   // keep retrying until success (like a cas)
@@ -54,18 +56,23 @@ TEST(FSM, example) {
   EXPECT_EQ(-1, unprotectedCount);
 }
 
-TEST(FSM, magicMacrosExample) {
+TEST(FSM, transition) {
   struct MyFSM {
-    FSM<State> fsm_;
+    FSM<State, std::mutex> fsm_;
     int count = 0;
     int unprotectedCount = 0;
     MyFSM() : fsm_(State::A) {}
     void twiddle() {
-      FSM_START(fsm_)
-        FSM_CASE(fsm_, State::A, State::B, [&]{ count++; });
-        FSM_CASE2(fsm_, State::B, State::A,
-                  [&]{ count--; }, [&]{ unprotectedCount--; });
-      FSM_END
+      fsm_.transition([&](State state) {
+        switch (state) {
+          case State::A:
+            return fsm_.tryUpdateState(state, State::B, [&] { count++; });
+          case State::B:
+            return fsm_.tryUpdateState(
+                state, State::A, [&] { count--; }, [&] { unprotectedCount--; });
+        }
+        folly::assume_unreachable();
+      });
     }
   };
 
@@ -84,37 +91,37 @@ TEST(FSM, magicMacrosExample) {
 
 
 TEST(FSM, ctor) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   EXPECT_EQ(State::A, fsm.getState());
 }
 
 TEST(FSM, update) {
-  FSM<State> fsm(State::A);
-  EXPECT_TRUE(fsm.updateState(State::A, State::B, []{}));
+  FSM<State, std::mutex> fsm(State::A);
+  EXPECT_TRUE(fsm.tryUpdateState(State::A, State::B, [] {}));
   EXPECT_EQ(State::B, fsm.getState());
 }
 
 TEST(FSM, badUpdate) {
-  FSM<State> fsm(State::A);
-  EXPECT_FALSE(fsm.updateState(State::B, State::A, []{}));
+  FSM<State, std::mutex> fsm(State::A);
+  EXPECT_FALSE(fsm.tryUpdateState(State::B, State::A, [] {}));
 }
 
 TEST(FSM, actionOnUpdate) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   int count = 0;
-  fsm.updateState(State::A, State::B, [&]{ count++; });
+  fsm.tryUpdateState(State::A, State::B, [&] { count++; });
   EXPECT_EQ(1, count);
 }
 
 TEST(FSM, noActionOnBadUpdate) {
-  FSM<State> fsm(State::A);
+  FSM<State, std::mutex> fsm(State::A);
   int count = 0;
-  fsm.updateState(State::B, State::A, [&]{ count++; });
+  fsm.tryUpdateState(State::B, State::A, [&] { count++; });
   EXPECT_EQ(0, count);
 }
 
 TEST(FSM, stateTransitionAfterAction) {
-  FSM<State> fsm(State::A);
-  fsm.updateState(State::A, State::B,
-                  [&]{ EXPECT_EQ(State::A, fsm.getState()); });
+  FSM<State, std::mutex> fsm(State::A);
+  fsm.tryUpdateState(
+      State::A, State::B, [&] { EXPECT_EQ(State::A, fsm.getState()); });
 }

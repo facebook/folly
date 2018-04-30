@@ -56,12 +56,35 @@ CXXFLAGS="$STD $CXXFLAGS"
 # expose required -std option via pkg-config
 PKG_CXXFLAGS=$STD
 
+# See if -Wunknown-warning-option is supported
+AC_MSG_CHECKING(
+  [whether -Wunknown-warning-option is supported])
+AC_CACHE_VAL([folly_cv_cxx_unknown_warning_option_support], [
+  folly_save_CXXFLAGS="$CXXFLAGS"
+  CXXFLAGS="$CXXFLAGS -Werror=unknown-warning-option"
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[]], [[]])],
+    [
+      # The compiler didn't completely error out on -Werror=unknown-warning-option
+      CXXFLAGS="$CXXFLAGS -Werror=unknown-warning-option -Wthis-is-an-unknown-option-that-should-error"
+      AC_COMPILE_IFELSE(
+        [AC_LANG_PROGRAM([[]], [[]])],
+        [folly_cv_cxx_unknown_warning_option_support=no],
+        [folly_cv_cxx_unknown_warning_option_support=yes])
+    ],
+    [folly_cv_cxx_unknown_warning_option_support=no])
+  CXXFLAGS="$folly_save_CXXFLAGS"])
+AC_MSG_RESULT([$folly_cv_cxx_unknown_warning_option_support])
+
 # See if -Wshadow-local and -Wshadow-compatible-local are supported
 AC_MSG_CHECKING(
   [whether -Wshadow-local and -Wshadow-compatible-local are supported])
 AC_CACHE_VAL([folly_cv_cxx_shadow_local_support], [
   folly_save_CXXFLAGS="$CXXFLAGS"
   CXXFLAGS="$CXXFLAGS -Wshadow-local -Wshadow-compatible-local"
+  if test "$folly_cv_cxx_unknown_warning_option_support" = yes; then
+    CXXFLAGS="$CXXFLAGS -Werror=unknown-warning-option"
+  fi
   AC_COMPILE_IFELSE(
     [AC_LANG_PROGRAM([[]], [[]])],
     [folly_cv_cxx_shadow_local_support=yes],
@@ -525,6 +548,22 @@ AC_DEFINE_UNQUOTED(
   [Define to 1 if the compiler has VLA (variable-length array) support,
    otherwise define to 0])
 
+AC_CACHE_CHECK(
+  [for variable template support],
+  [folly_cv_prog_cc_have_variable_templates],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      template <class> constexpr bool g = true;
+      int main() {}
+    ]],
+    [folly_cv_prog_cc_have_variable_templates=yes],
+    [folly_cv_prog_cc_have_variable_templates=no])])
+
+AM_CONDITIONAL(
+  [HAVE_VARIABLE_TEMPLATES],
+  [test "x${folly_cv_prog_cc_have_variable_templates}" = "xyes"],
+  [Define to 1 if the compiler supports variable templates])
+
 # Checks for library functions.
 AC_CHECK_FUNCS([malloc_size \
                 malloc_usable_size \
@@ -616,6 +655,7 @@ FB_FILTER_PKG_LIBS([$AM_LDFLAGS $LIBS])
 
 # Output
 AC_CONFIG_FILES([Makefile
+                 chrono/test/Makefile
                  io/test/Makefile
                  libfolly.pc
                  test/Makefile

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 #include <folly/experimental/logging/LogLevel.h>
 
+#include <array>
 #include <cctype>
 #include <ostream>
 
@@ -23,6 +24,20 @@
 using std::string;
 
 namespace folly {
+
+namespace {
+struct NumberedLevelInfo {
+  LogLevel min;
+  LogLevel max;
+  StringPiece lowerPrefix;
+  StringPiece upperPrefix;
+};
+
+constexpr std::array<NumberedLevelInfo, 2> numberedLogLevels = {{
+    NumberedLevelInfo{LogLevel::DBG, LogLevel::DBG0, "dbg", "DBG"},
+    NumberedLevelInfo{LogLevel::INFO, LogLevel::INFO0, "info", "INFO"},
+}};
+} // namespace
 
 LogLevel stringToLogLevel(StringPiece name) {
   string lowerNameStr;
@@ -34,7 +49,7 @@ LogLevel stringToLogLevel(StringPiece name) {
 
   // If the string is of the form "LogLevel::foo" or "LogLevel(foo)"
   // strip it down just to "foo".  This makes sure we can process both
-  // the "LogLevel::DEBUG" and "LogLevel(1234)" formats produced by
+  // the "LogLevel::WARN" and "LogLevel(1234)" formats produced by
   // logLevelToString().
   constexpr StringPiece lowercasePrefix{"loglevel::"};
   constexpr StringPiece wrapperPrefix{"loglevel("};
@@ -49,8 +64,8 @@ LogLevel stringToLogLevel(StringPiece name) {
     return LogLevel::UNINITIALIZED;
   } else if (lowerName == "none") {
     return LogLevel::NONE;
-  } else if (lowerName == "debug") {
-    return LogLevel::DEBUG;
+  } else if (lowerName == "debug" || lowerName == "dbg") {
+    return LogLevel::DBG;
   } else if (lowerName == "info") {
     return LogLevel::INFO;
   } else if (lowerName == "warn" || lowerName == "warning") {
@@ -67,13 +82,19 @@ LogLevel stringToLogLevel(StringPiece name) {
     return LogLevel::MAX_LEVEL;
   }
 
-  if (lowerName.startsWith("dbg")) {
-    auto remainder = lowerName.subpiece(3);
-    auto level = folly::tryTo<int>(remainder).value_or(-1);
-    if (level < 0 || level > 100) {
-      throw std::range_error("invalid dbg logger level: " + name.str());
+  for (const auto& info : numberedLogLevels) {
+    if (!lowerName.startsWith(info.lowerPrefix)) {
+      continue;
     }
-    return LogLevel::DBG0 - level;
+    auto remainder = lowerName.subpiece(info.lowerPrefix.size());
+    auto level = folly::tryTo<int>(remainder).value_or(-1);
+    if (level < 0 ||
+        static_cast<unsigned int>(level) > (static_cast<uint32_t>(info.max) -
+                                            static_cast<uint32_t>(info.min))) {
+      throw std::range_error(to<string>(
+          "invalid ", info.lowerPrefix, " logger level: ", name.str()));
+    }
+    return info.max - level;
   }
 
   // Try as an plain integer if all else fails
@@ -90,7 +111,7 @@ string logLevelToString(LogLevel level) {
     return "UNINITIALIZED";
   } else if (level == LogLevel::NONE) {
     return "NONE";
-  } else if (level == LogLevel::DEBUG) {
+  } else if (level == LogLevel::DBG) {
     return "DEBUG";
   } else if (level == LogLevel::INFO) {
     return "INFO";
@@ -106,12 +127,14 @@ string logLevelToString(LogLevel level) {
     return "FATAL";
   }
 
-  if (static_cast<uint32_t>(level) <= static_cast<uint32_t>(LogLevel::DBG0) &&
-      static_cast<uint32_t>(level) > static_cast<uint32_t>(LogLevel::DEBUG)) {
-    auto num =
-        static_cast<uint32_t>(LogLevel::DBG0) - static_cast<uint32_t>(level);
-    return folly::to<string>("DBG", num);
+  for (const auto& info : numberedLogLevels) {
+    if (static_cast<uint32_t>(level) <= static_cast<uint32_t>(info.max) &&
+        static_cast<uint32_t>(level) > static_cast<uint32_t>(info.min)) {
+      auto num = static_cast<uint32_t>(info.max) - static_cast<uint32_t>(level);
+      return folly::to<string>(info.upperPrefix, num);
+    }
   }
+
   return folly::to<string>("LogLevel(", static_cast<uint32_t>(level), ")");
 }
 

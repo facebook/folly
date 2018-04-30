@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,9 @@ void addValue(unsigned int n, int64_t bucketSize, int64_t min, int64_t max) {
   }
 }
 
-BENCHMARK_NAMED_PARAM(addValue, 0_to_100, 1, 0, 100);
-BENCHMARK_NAMED_PARAM(addValue, 0_to_1000, 10, 0, 1000);
-BENCHMARK_NAMED_PARAM(addValue, 5k_to_20k, 250, 5000, 20000);
+BENCHMARK_NAMED_PARAM(addValue, 0_to_100, 1, 0, 100)
+BENCHMARK_NAMED_PARAM(addValue, 0_to_1000, 10, 0, 1000)
+BENCHMARK_NAMED_PARAM(addValue, 5k_to_20k, 250, 5000, 20000)
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

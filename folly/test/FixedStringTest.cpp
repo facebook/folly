@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ TEST(FixedStringCtorTest, Default) {
 
 TEST(FixedStringCtorTest, FromLiterals) {
   constexpr folly::FixedString<42> s{"hello world"};
+  static_assert(s[0] == 'h', "");
   constexpr folly::FixedString<11> s2{"hello world"};
   static_assert(s2[0] == 'h', "");
   static_assert(s2[10] == 'd', "");

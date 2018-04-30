@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,52 +57,20 @@ class EventBaseLoopController : public LoopController {
     EventBaseLoopController& controller_;
   };
 
-  class DestructionCallback : public folly::EventBase::LoopCallback {
-   public:
-    DestructionCallback() : alive_(new int(42)) {}
-    ~DestructionCallback() override {
-      reset();
-    }
-
-    void runLoopCallback() noexcept override {
-      reset();
-    }
-
-    std::weak_ptr<void> getWeak() {
-      return {alive_};
-    }
-
-   private:
-    void reset() {
-      std::weak_ptr<void> aliveWeak(alive_);
-      alive_.reset();
-
-      while (!aliveWeak.expired()) {
-        // Spin until all operations requiring EventBaseLoopController to be
-        // alive are complete.
-      }
-    }
-
-    std::shared_ptr<void> alive_;
-  };
-
   bool awaitingScheduling_{false};
   VirtualEventBase* eventBase_{nullptr};
   Executor::KeepAlive eventBaseKeepAlive_;
   ControllerCallback callback_;
-  DestructionCallback destructionCallback_;
   FiberManager* fm_{nullptr};
   std::atomic<bool> eventBaseAttached_{false};
-  std::weak_ptr<void> aliveWeak_;
   InlineFunctionRunner* loopRunner_{nullptr};
 
   /* LoopController interface */
 
   void setFiberManager(FiberManager* fm) override;
   void schedule() override;
-  void cancel() override;
   void runLoop() override;
-  void scheduleThreadSafe(std::function<bool()> func) override;
+  void scheduleThreadSafe() override;
   void timedSchedule(std::function<void()> func, TimePoint time) override;
 
   friend class FiberManager;
@@ -110,4 +78,4 @@ class EventBaseLoopController : public LoopController {
 } // namespace fibers
 } // namespace folly
 
-#include "EventBaseLoopController-inl.h"
+#include <folly/fibers/EventBaseLoopController-inl.h>

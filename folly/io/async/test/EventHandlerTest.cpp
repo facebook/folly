@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -128,7 +128,8 @@ TEST_F(EventHandlerTest, many_concurrent_producers) {
         runInThreadsAndWait(nproducers,
                             [&](size_t /* k */) {
                               for (size_t i = 0; i < writes / nproducers; ++i) {
-                                this_thread::sleep_for(chrono::milliseconds(1));
+                                this_thread::sleep_for(
+                                    std::chrono::milliseconds(1));
                                 efd_write(1);
                               }
                             });
@@ -175,7 +176,8 @@ TEST_F(EventHandlerTest, many_concurrent_consumers) {
         runInThreadsAndWait(nproducers,
                             [&](size_t /* k */) {
                               for (size_t i = 0; i < writes / nproducers; ++i) {
-                                this_thread::sleep_for(chrono::milliseconds(1));
+                                this_thread::sleep_for(
+                                    std::chrono::milliseconds(1));
                                 queue.blockingWrite(nullptr);
                                 efd_write(1);
                                 --writesRemaining;

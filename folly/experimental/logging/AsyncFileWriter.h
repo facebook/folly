@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,13 @@ namespace folly {
 class AsyncFileWriter : public LogWriter {
  public:
   /**
+   * The default maximum buffer size.
+   *
+   * The comments for setMaxBufferSize() explain how this parameter is used.
+   */
+  static constexpr size_t kDefaultMaxBufferSize = 1024 * 1024;
+
+  /**
    * Construct an AsyncFileWriter that appends to the file at the specified
    * path.
    */
@@ -65,6 +72,28 @@ class AsyncFileWriter : public LogWriter {
    */
   void flush() override;
 
+  /**
+   * Set the maximum buffer size for this AsyncFileWriter, in bytes.
+   *
+   * This controls the upper bound on how much unwritten data will be buffered
+   * in memory.  If messages are being logged faster than they can be written
+   * to output file, new messages will be discarded if they would cause the
+   * amount of buffered data to exceed this limit.
+   */
+  void setMaxBufferSize(size_t size);
+
+  /**
+   * Get the maximum buffer size for this AsyncFileWriter, in bytes.
+   */
+  size_t getMaxBufferSize() const;
+
+  /**
+   * Get the output file.
+   */
+  const folly::File& getFile() const {
+    return file_;
+  }
+
  private:
   /*
    * A simple implementation using two queues.
@@ -79,7 +108,7 @@ class AsyncFileWriter : public LogWriter {
     bool stop{false};
     bool ioThreadDone{false};
     uint64_t ioThreadCounter{0};
-    size_t maxBufferBytes{1024 * 1024};
+    size_t maxBufferBytes{kDefaultMaxBufferSize};
     size_t currentBufferSize{0};
     size_t numDiscarded{0};
 

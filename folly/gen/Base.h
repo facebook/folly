@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -235,6 +235,15 @@ class To {
   template <class Value>
   Dest operator()(Value&& value) const {
     return ::folly::to<Dest>(std::forward<Value>(value));
+  }
+};
+
+template <class Dest>
+class TryTo {
+ public:
+  template <class Value>
+  Expected<Dest, ConversionCode> operator()(Value&& value) const {
+    return ::folly::tryTo<Dest>(std::forward<Value>(value));
   }
 };
 
@@ -503,9 +512,8 @@ Yield generator(Source&& source) {
  *
  *  auto gen = GENERATOR(int) { yield(1); yield(2); };
  */
-#define GENERATOR(TYPE)                            \
-  ::folly::gen::detail::GeneratorBuilder<TYPE>() + \
-   [=](const std::function<void(TYPE)>& yield)
+#define GENERATOR(TYPE) \
+  ::folly::gen::detail::GeneratorBuilder<TYPE>() + [=](auto&& yield)
 
 /*
  * empty() - for producing empty sequences.
@@ -644,9 +652,16 @@ Visit visit(Visitor visitor = Visitor()) {
   return Visit(std::move(visitor));
 }
 
-template <class Predicate, class Until = detail::Until<Predicate>>
+template <class Predicate = Identity, class Until = detail::Until<Predicate>>
 Until until(Predicate pred = Predicate()) {
   return Until(std::move(pred));
+}
+
+template <
+    class Predicate = Identity,
+    class TakeWhile = detail::Until<Negate<Predicate>>>
+TakeWhile takeWhile(Predicate pred = Predicate()) {
+  return TakeWhile(Negate<Predicate>(std::move(pred)));
 }
 
 template <
@@ -690,9 +705,15 @@ Cast eachAs() {
 }
 
 // call folly::to on each value
-template <class Dest, class To = detail::Map<To<Dest>>>
-To eachTo() {
-  return To();
+template <class Dest, class EachTo = detail::Map<To<Dest>>>
+EachTo eachTo() {
+  return EachTo();
+}
+
+// call folly::tryTo on each value
+template <class Dest, class EachTryTo = detail::Map<TryTo<Dest>>>
+EachTryTo eachTryTo() {
+  return EachTryTo();
 }
 
 template <class Value>

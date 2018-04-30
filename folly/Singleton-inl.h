@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,8 +66,7 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
 template <typename T>
 void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
   if (state_ == SingletonHolderState::NotRegistered) {
-    LOG(FATAL) << "Registering mock before singleton was registered: "
-               << type().name();
+    detail::singletonWarnRegisterMockEarlyAndAbort(type());
   }
   if (state_ == SingletonHolderState::Living) {
     destroyInstance();
@@ -97,10 +96,7 @@ T* SingletonHolder<T>::get() {
   createInstance();
 
   if (instance_weak_.expired()) {
-    throw std::runtime_error(
-        "Raw pointer to a singleton requested after its destruction."
-        " Singleton type is: " +
-        type().name());
+    detail::singletonThrowGetInvokedAfterDestruction(type());
   }
 
   return instance_ptr_;
@@ -155,20 +151,13 @@ void SingletonHolder<T>::destroyInstance() {
   instance_copy_.reset();
   if (destroy_baton_) {
     constexpr std::chrono::seconds kDestroyWaitTime{5};
-    auto last_reference_released = destroy_baton_->timed_wait(
-        std::chrono::steady_clock::now() + kDestroyWaitTime);
+    auto last_reference_released =
+        destroy_baton_->try_wait_for(kDestroyWaitTime);
     if (last_reference_released) {
       teardown_(instance_ptr_);
     } else {
       print_destructor_stack_trace_->store(true);
-      LOG(ERROR) << "Singleton of type " << type().name() << " has a "
-                 << "living reference at destroyInstances time; beware! Raw "
-                 << "pointer is " << instance_ptr_ << ". It is very likely "
-                 << "that some other singleton is holding a shared_ptr to it. "
-                 << "This singleton will be leaked (even if a shared_ptr to it "
-                 << "is eventually released)."
-                 << "Make sure dependencies between these singletons are "
-                 << "properly defined.";
+      detail::singletonWarnDestroyInstanceLeak(type(), instance_ptr_);
     }
   }
 }
@@ -199,7 +188,7 @@ template <typename T>
 void SingletonHolder<T>::createInstance() {
   if (creating_thread_.load(std::memory_order_acquire) ==
         std::this_thread::get_id()) {
-    LOG(FATAL) << "circular singleton dependency: " << type().name();
+    detail::singletonWarnCreateCircularDependencyAndAbort(type());
   }
 
   std::lock_guard<std::mutex> entry_lock(mutex_);
@@ -208,12 +197,7 @@ void SingletonHolder<T>::createInstance() {
   }
   if (state_.load(std::memory_order_acquire) ==
         SingletonHolderState::NotRegistered) {
-    auto ptr = SingletonVault::stackTraceGetter().load();
-    LOG(FATAL) << "Creating instance for unregistered singleton: "
-               << type().name() << "\n"
-               << "Stacktrace:"
-               << "\n"
-               << (ptr ? (*ptr)() : "(not available)");
+    detail::singletonWarnCreateUnregisteredAndAbort(type());
   }
 
   if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
@@ -232,20 +216,9 @@ void SingletonHolder<T>::createInstance() {
   auto state = vault_.state_.rlock();
   if (vault_.type_ != SingletonVault::Type::Relaxed &&
       !state->registrationComplete) {
-    auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
-    auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
-    if (!stack_trace.empty()) {
-      stack_trace = "Stack trace:\n" + stack_trace;
-    }
-
-    LOG(FATAL) << "Singleton " << type().name() << " requested before "
-               << "registrationComplete() call.\n"
-               << "This usually means that either main() never called "
-               << "folly::init, or singleton was requested before main() "
-               << "(which is not allowed).\n"
-               << stack_trace;
+    detail::singletonWarnCreateBeforeRegistrationCompleteAndAbort(type());
   }
-  if (state->state == SingletonVault::SingletonVaultState::Quiescing) {
+  if (state->state == detail::SingletonVaultState::Type::Quiescing) {
     return;
   }
 
@@ -260,18 +233,7 @@ void SingletonHolder<T>::createInstance() {
           T*) mutable {
         destroy_baton->post();
         if (print_destructor_stack_trace->load()) {
-          std::string output = "Singleton " + type.name() + " was released.\n";
-
-          auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
-          auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
-          if (stack_trace.empty()) {
-            output += "Failed to get release stack trace.";
-          } else {
-            output += "Release stack trace:\n";
-            output += stack_trace;
-          }
-
-          LOG(ERROR) << output;
+          detail::singletonPrintDestructionStackTrace(type);
         }
       });
 

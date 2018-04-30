@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,15 @@
 
 #include <folly/Executor.h>
 #include <folly/Function.h>
-#include <folly/MicroSpinLock.h>
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
 #include <folly/Utility.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/detail/FSM.h>
-#include <folly/portability/BitsFunctexcept.h>
+#include <folly/lang/Assume.h>
+#include <folly/lang/Exception.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 #include <folly/io/async/Request.h>
 
@@ -58,6 +59,19 @@ enum class State : uint8_t {
   Armed,
   Done,
 };
+
+/// SpinLock is and must stay a 1-byte object because of how Core is laid out.
+struct SpinLock : private MicroSpinLock {
+  SpinLock() : MicroSpinLock{0} {}
+
+  void lock() {
+    if (!MicroSpinLock::try_lock()) {
+      MicroSpinLock::lock();
+    }
+  }
+  using MicroSpinLock::unlock;
+};
+static_assert(sizeof(SpinLock) == 1, "missized");
 
 /// The shared state object for Future and Promise.
 /// Some methods must only be called by either the Future thread or the
@@ -148,21 +162,23 @@ class Core final {
       callback_ = std::forward<F>(func);
     };
 
-    FSM_START(fsm_)
-      case State::Start:
-        FSM_UPDATE(fsm_, State::OnlyCallback, setCallback_);
-        break;
+    fsm_.transition([&](State state) {
+      switch (state) {
+        case State::Start:
+          return fsm_.tryUpdateState(state, State::OnlyCallback, setCallback_);
 
-      case State::OnlyResult:
-        FSM_UPDATE(fsm_, State::Armed, setCallback_);
-        transitionToArmed = true;
-        break;
+        case State::OnlyResult:
+          return fsm_.tryUpdateState(state, State::Armed, setCallback_, [&] {
+            transitionToArmed = true;
+          });
 
-      case State::OnlyCallback:
-      case State::Armed:
-      case State::Done:
-        std::__throw_logic_error("setCallback called twice");
-    FSM_END
+        case State::OnlyCallback:
+        case State::Armed:
+        case State::Done:
+          throw_exception<std::logic_error>("setCallback called twice");
+      }
+      assume_unreachable();
+    });
 
     // we could always call this, it is an optimization to only call it when
     // it might be needed.
@@ -175,21 +191,23 @@ class Core final {
   void setResult(Try<T>&& t) {
     bool transitionToArmed = false;
     auto setResult_ = [&]{ result_ = std::move(t); };
-    FSM_START(fsm_)
-      case State::Start:
-        FSM_UPDATE(fsm_, State::OnlyResult, setResult_);
-        break;
+    fsm_.transition([&](State state) {
+      switch (state) {
+        case State::Start:
+          return fsm_.tryUpdateState(state, State::OnlyResult, setResult_);
 
-      case State::OnlyCallback:
-        FSM_UPDATE(fsm_, State::Armed, setResult_);
-        transitionToArmed = true;
-        break;
+        case State::OnlyCallback:
+          return fsm_.tryUpdateState(state, State::Armed, setResult_, [&] {
+            transitionToArmed = true;
+          });
 
-      case State::OnlyResult:
-      case State::Armed:
-      case State::Done:
-        std::__throw_logic_error("setResult called twice");
-    FSM_END
+        case State::OnlyResult:
+        case State::Armed:
+        case State::Done:
+          throw_exception<std::logic_error>("setResult called twice");
+      }
+      assume_unreachable();
+    });
 
     if (transitionToArmed) {
       maybeCallback();
@@ -226,17 +244,12 @@ class Core final {
   /// May call from any thread
   bool isActive() { return active_.load(std::memory_order_acquire); }
 
-  /// Call only from Future thread
+  /// Call only from Future thread, either before attaching a callback or after
+  /// the callback has already been invoked, but not concurrently with anything
+  /// which might trigger invocation of the callback
   void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
-    if (!executorLock_.try_lock()) {
-      executorLock_.lock();
-    }
-    executor_ = x;
-    priority_ = priority;
-    executorLock_.unlock();
-  }
-
-  void setExecutorNoLock(Executor* x, int8_t priority = Executor::MID_PRI) {
+    auto s = fsm_.getState();
+    DCHECK(s == State::Start || s == State::OnlyResult || s == State::Done);
     executor_ = x;
     priority_ = priority;
   }
@@ -247,35 +260,26 @@ class Core final {
 
   /// Call only from Future thread
   void raise(exception_wrapper e) {
-    if (!interruptLock_.try_lock()) {
-      interruptLock_.lock();
-    }
+    std::lock_guard<SpinLock> lock(interruptLock_);
     if (!interrupt_ && !hasResult()) {
       interrupt_ = std::make_unique<exception_wrapper>(std::move(e));
       if (interruptHandler_) {
         interruptHandler_(*interrupt_);
       }
     }
-    interruptLock_.unlock();
   }
 
   std::function<void(exception_wrapper const&)> getInterruptHandler() {
     if (!interruptHandlerSet_.load(std::memory_order_acquire)) {
       return nullptr;
     }
-    if (!interruptLock_.try_lock()) {
-      interruptLock_.lock();
-    }
-    auto handler = interruptHandler_;
-    interruptLock_.unlock();
-    return handler;
+    std::lock_guard<SpinLock> lock(interruptLock_);
+    return interruptHandler_;
   }
 
   /// Call only from Promise thread
   void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
-    if (!interruptLock_.try_lock()) {
-      interruptLock_.lock();
-    }
+    std::lock_guard<SpinLock> lock(interruptLock_);
     if (!hasResult()) {
       if (interrupt_) {
         fn(*interrupt_);
@@ -283,7 +287,6 @@ class Core final {
         setInterruptHandlerNoLock(std::move(fn));
       }
     }
-    interruptLock_.unlock();
   }
 
   void setInterruptHandlerNoLock(
@@ -323,30 +326,24 @@ class Core final {
   };
 
   void maybeCallback() {
-    FSM_START(fsm_)
-      case State::Armed:
-        if (active_.load(std::memory_order_acquire)) {
-          FSM_UPDATE2(fsm_, State::Done, []{}, [this]{ this->doCallback(); });
-        }
-        FSM_BREAK
+    fsm_.transition([&](State state) {
+      switch (state) {
+        case State::Armed:
+          if (active_.load(std::memory_order_acquire)) {
+            return fsm_.tryUpdateState(
+                state, State::Done, [] {}, [&] { doCallback(); });
+          }
+          return true;
 
-      default:
-        FSM_BREAK
-    FSM_END
+        default:
+          return true;
+      }
+    });
   }
 
   void doCallback() {
     Executor* x = executor_;
-    // initialize, solely to appease clang's -Wconditional-uninitialized
-    int8_t priority = 0;
-    if (x) {
-      if (!executorLock_.try_lock()) {
-        executorLock_.lock();
-      }
-      x = executor_;
-      priority = priority_;
-      executorLock_.unlock();
-    }
+    int8_t priority = priority_;
 
     if (x) {
       exception_wrapper ew;
@@ -420,13 +417,12 @@ class Core final {
   // place result_ next to increase the likelihood that the value will be
   // contained entirely in one cache line
   folly::Optional<Try<T>> result_;
-  FSM<State> fsm_;
+  FSM<State, SpinLock> fsm_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
   std::atomic<bool> active_ {true};
   std::atomic<bool> interruptHandlerSet_ {false};
-  folly::MicroSpinLock interruptLock_ {0};
-  folly::MicroSpinLock executorLock_ {0};
+  SpinLock interruptLock_;
   int8_t priority_ {-1};
   Executor* executor_ {nullptr};
   std::shared_ptr<RequestContext> context_ {nullptr};

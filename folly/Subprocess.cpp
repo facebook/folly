@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,12 +34,12 @@
 
 #include <glog/logging.h>
 
-#include <folly/Assume.h>
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
+#include <folly/lang/Assume.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/SysSyscall.h>
@@ -310,6 +310,14 @@ void Subprocess::spawn(
   pipesGuard.dismiss();
 }
 
+// With -Wclobbered, gcc complains about vfork potentially cloberring the
+// childDir variable, even though we only use it on the child side of the
+// vfork.
+
+FOLLY_PUSH_WARNING
+#if !defined(__clang__)
+FOLLY_GCC_DISABLE_WARNING("-Wclobbered")
+#endif
 void Subprocess::spawnInternal(
     std::unique_ptr<const char*[]> argv,
     const char* executable,
@@ -446,6 +454,7 @@ void Subprocess::spawnInternal(
   pid_ = pid;
   returnCode_ = ProcessReturnCode::makeRunning();
 }
+FOLLY_POP_WARNING
 
 int Subprocess::prepareChild(const Options& options,
                              const sigset_t* sigmask,

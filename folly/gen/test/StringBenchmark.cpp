@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ BENCHMARK_RELATIVE(StringResplitter_Small, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(StringSplit_Old, iters) {
   size_t s = 0;
@@ -104,7 +104,7 @@ BENCHMARK_RELATIVE(StringSplit_Gen_Vector, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(StringSplit_Old_ReuseVector, iters) {
   size_t s = 0;
@@ -148,7 +148,7 @@ BENCHMARK_RELATIVE(StringSplit_Gen_Take, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(StringUnsplit_Old, iters) {
   size_t s = 0;
@@ -173,7 +173,6 @@ BENCHMARK_RELATIVE(StringUnsplit_Old_ReusedBuffer, iters) {
 
 BENCHMARK_RELATIVE(StringUnsplit_Gen, iters) {
   size_t s = 0;
-  StringPiece line(kLine);
   while (iters--) {
     fbstring joined = from(testStrVector) | unsplit(',');
     s += joined.size();
@@ -192,7 +191,7 @@ BENCHMARK_RELATIVE(StringUnsplit_Gen_ReusedBuffer, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 void StringUnsplit_Gen(size_t iters, size_t joinSize) {
   std::vector<fbstring> v;
@@ -216,7 +215,7 @@ BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 2000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 4000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 8000)
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 void Lines_Gen(size_t iters, int joinSize) {
   size_t s = 0;
   StringPiece content = testFileContent;
@@ -230,7 +229,7 @@ BENCHMARK_PARAM(Lines_Gen, 1e3)
 BENCHMARK_RELATIVE_PARAM(Lines_Gen, 2e3)
 BENCHMARK_RELATIVE_PARAM(Lines_Gen, 3e3)
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 fbstring records
 = seq<size_t>(1, 1000)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,25 @@
 
 #include <folly/String.h>
 #include <folly/memory/Arena.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
+
+TEST(aligned_malloc, examples) {
+  auto trial = [](size_t align) {
+    auto const ptr = aligned_malloc(1, align);
+    return (aligned_free(ptr), uintptr_t(ptr));
+  };
+
+  if (!kIsSanitize) { // asan allocator raises SIGABRT instead
+    EXPECT_EQ(EINVAL, (trial(2), errno)) << "too small";
+    EXPECT_EQ(EINVAL, (trial(513), errno)) << "not power of two";
+  }
+
+  EXPECT_EQ(0, trial(512) % 512);
+  EXPECT_EQ(0, trial(8192) % 8192);
+}
 
 TEST(make_unique, compatible_with_std_make_unique) {
   //  HACK: To enforce that `folly::` is imported here.
@@ -42,70 +58,111 @@ TEST(to_weak_ptr, example) {
   EXPECT_EQ(3, (to_weak_ptr(decltype(s)(s)).lock(), s.use_count())) << "rvalue";
 }
 
+TEST(SysAllocator, equality) {
+  using Alloc = SysAllocator<float>;
+  Alloc const a, b;
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a != b);
+}
+
+TEST(SysAllocator, allocate_unique) {
+  using Alloc = SysAllocator<float>;
+  Alloc const alloc;
+  auto ptr = allocate_unique<float>(alloc, 3.);
+  EXPECT_EQ(3., *ptr);
+}
+
+TEST(SysAllocator, vector) {
+  using Alloc = SysAllocator<float>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
+  nums.push_back(3.);
+  nums.push_back(5.);
+  EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
+}
+
+TEST(SysAllocator, bad_alloc) {
+  using Alloc = SysAllocator<float>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
+  if (!kIsSanitize) {
+    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+  }
+}
+
+TEST(AlignedSysAllocator, equality_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const a, b;
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a != b);
+}
+
+TEST(AlignedSysAllocator, allocate_unique_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const alloc;
+  auto ptr = allocate_unique<float>(alloc, 3.);
+  EXPECT_EQ(3., *ptr);
+  EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
+}
+
+TEST(AlignedSysAllocator, vector_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
+  nums.push_back(3.);
+  nums.push_back(5.);
+  EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
+  EXPECT_EQ(0, std::uintptr_t(nums.data()) % 1024);
+}
+
+TEST(AlignedSysAllocator, bad_alloc_fixed) {
+  using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
+  Alloc const alloc;
+  std::vector<float, Alloc> nums(alloc);
+  if (!kIsSanitize) {
+    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+  }
+}
+
+TEST(AlignedSysAllocator, equality_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const a(1024), b(1024), c(512);
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a != b);
+  EXPECT_FALSE(a == c);
+  EXPECT_TRUE(a != c);
+}
+
+TEST(AlignedSysAllocator, allocate_unique_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const alloc(1024);
+  auto ptr = allocate_unique<float>(alloc, 3.);
+  EXPECT_EQ(3., *ptr);
+  EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
+}
+
+TEST(AlignedSysAllocator, vector_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const alloc(1024);
+  std::vector<float, Alloc> nums(alloc);
+  nums.push_back(3.);
+  nums.push_back(5.);
+  EXPECT_THAT(nums, testing::ElementsAreArray({3., 5.}));
+  EXPECT_EQ(0, std::uintptr_t(nums.data()) % 1024);
+}
+
+TEST(AlignedSysAllocator, bad_alloc_default) {
+  using Alloc = AlignedSysAllocator<float>;
+  Alloc const alloc(1024);
+  std::vector<float, Alloc> nums(alloc);
+  if (!kIsSanitize) {
+    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+  }
+}
+
 TEST(allocate_sys_buffer, compiles) {
   auto buf = allocate_sys_buffer(256);
   //  Freed at the end of the scope.
-}
-
-template <std::size_t> struct T {};
-template <std::size_t> struct S {};
-template <std::size_t> struct P {};
-
-TEST(as_stl_allocator, sanity_check) {
-  typedef StlAllocator<SysArena, int> stl_arena_alloc;
-
-  EXPECT_TRUE((std::is_same<
-    as_stl_allocator<int, SysArena>::type,
-    stl_arena_alloc
-  >::value));
-
-  EXPECT_TRUE((std::is_same<
-    as_stl_allocator<int, stl_arena_alloc>::type,
-    stl_arena_alloc
-  >::value));
-}
-
-TEST(StlAllocator, void_allocator) {
-  typedef StlAllocator<SysArena, void> void_allocator;
-  SysArena arena;
-  void_allocator valloc(&arena);
-
-  typedef void_allocator::rebind<int>::other int_allocator;
-  int_allocator ialloc(valloc);
-
-  auto i = std::allocate_shared<int>(ialloc, 10);
-  ASSERT_NE(nullptr, i.get());
-  EXPECT_EQ(10, *i);
-  i.reset();
-  ASSERT_EQ(nullptr, i.get());
-}
-
-TEST(rebind_allocator, sanity_check) {
-  std::allocator<long> alloc;
-
-  auto i = std::allocate_shared<int>(
-    rebind_allocator<int, decltype(alloc)>(alloc), 10
-  );
-  ASSERT_NE(nullptr, i.get());
-  EXPECT_EQ(10, *i);
-  i.reset();
-  ASSERT_EQ(nullptr, i.get());
-
-  auto d = std::allocate_shared<double>(
-    rebind_allocator<double>(alloc), 5.6
-  );
-  ASSERT_NE(nullptr, d.get());
-  EXPECT_EQ(5.6, *d);
-  d.reset();
-  ASSERT_EQ(nullptr, d.get());
-
-  auto s = std::allocate_shared<std::string>(
-    rebind_allocator<std::string>(alloc), "HELLO, WORLD"
-  );
-  ASSERT_NE(nullptr, s.get());
-  EXPECT_EQ("HELLO, WORLD", *s);
-  s.reset();
-  ASSERT_EQ(nullptr, s.get());
 }
 
 template <typename C>

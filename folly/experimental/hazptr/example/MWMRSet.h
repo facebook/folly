@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,11 +65,11 @@ class MWMRListSet {
 
    public:
     explicit Node(T e) : elem_(e) {
-      DEBUG_PRINT(this << " " << e);
+      HAZPTR_DEBUG_PRINT(this << " " << e);
     }
 
     ~Node() {
-      DEBUG_PRINT(this);
+      HAZPTR_DEBUG_PRINT(this);
       auto next = getPtr(next_.load(std::memory_order_relaxed));
       if (next) {
         next->release();

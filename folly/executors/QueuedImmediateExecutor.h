@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,10 @@
 
 #pragma once
 
+#include <queue>
+
 #include <folly/Executor.h>
+#include <folly/ThreadLocal.h>
 
 namespace folly {
 
@@ -27,13 +30,12 @@ namespace folly {
  */
 class QueuedImmediateExecutor : public Executor {
  public:
-  /// There's really only one queue per thread, no matter how many
-  /// QueuedImmediateExecutor objects you may have.
-  static void addStatic(Func);
+  static QueuedImmediateExecutor& instance();
 
-  void add(Func func) override {
-    addStatic(std::move(func));
-  }
+  void add(Func func) override;
+
+ private:
+  folly::ThreadLocal<std::queue<Func>> q_;
 };
 
 } // namespace folly

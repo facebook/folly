@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,9 +61,11 @@ class ThreadLocal {
       return new T();
     }) {}
 
-  explicit ThreadLocal(std::function<T*()> constructor) :
-      constructor_(constructor) {
-  }
+  template <
+      typename F,
+      _t<std::enable_if<is_invocable_r<T*, F>::value, int>> = 0>
+  explicit ThreadLocal(F&& constructor)
+      : constructor_(std::forward<F>(constructor)) {}
 
   T* get() const {
     T* ptr = tlp_.get();
@@ -161,7 +163,7 @@ class ThreadLocalPtr {
   }
 
   T* get() const {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
     return static_cast<T*>(w.ptr);
   }
 
@@ -174,14 +176,14 @@ class ThreadLocalPtr {
   }
 
   T* release() {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
 
     return static_cast<T*>(w.release());
   }
 
   void reset(T* newPtr = nullptr) {
     auto guard = makeGuard([&] { delete newPtr; });
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
 
     w.dispose(TLPDestructionMode::THIS_THREAD);
     guard.dismiss();
@@ -235,7 +237,7 @@ class ThreadLocalPtr {
         deleter(newPtr, TLPDestructionMode::THIS_THREAD);
       }
     });
-    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
     w.dispose(TLPDestructionMode::THIS_THREAD);
     guard.dismiss();
     w.set(newPtr, deleter);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 
 #include <type_traits>
 #include <utility>
+
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 namespace dptr_detail {
@@ -82,14 +84,14 @@ struct SameType<T, Types...> {
 // to type T.
 template <typename V, typename T>
 struct VisitorResult1 {
-  typedef typename std::result_of<V (T*)>::type type;
+  typedef invoke_result_t<V, T*> type;
 };
 
 // Determine the result type of applying a visitor of type V on a const pointer
 // to type T.
 template <typename V, typename T>
 struct ConstVisitorResult1 {
-  typedef typename std::result_of<V (const T*)>::type type;
+  typedef invoke_result_t<V, const T*> type;
 };
 
 // Determine the result type of applying a visitor of type V on pointers of

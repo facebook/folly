@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 /*
@@ -61,10 +60,10 @@
 #include <type_traits>
 #include <utility>
 
-#include <folly/Launder.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -74,11 +73,6 @@ class Optional;
 namespace detail {
 struct NoneHelper {};
 
-// Allow each translation unit to control its own -fexceptions setting.
-// If exceptions are disabled, std::terminate() will be called instead of
-// throwing OptionalEmptyException when the condition fails.
-[[noreturn]] void throw_optional_empty_exception();
-
 template <class Value>
 struct OptionalPromiseReturn;
 } // namespace detail
@@ -87,7 +81,7 @@ typedef int detail::NoneHelper::*None;
 
 const None none = nullptr;
 
-class OptionalEmptyException : public std::runtime_error {
+class FOLLY_EXPORT OptionalEmptyException : public std::runtime_error {
  public:
   OptionalEmptyException()
       : std::runtime_error("Empty Optional cannot be unwrapped") {}
@@ -110,14 +104,14 @@ class Optional {
   Optional(const Optional& src) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
     if (src.hasValue()) {
-      storage_.construct(src.value());
+      construct(src.value());
     }
   }
 
   Optional(Optional&& src) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
     if (src.hasValue()) {
-      storage_.construct(std::move(src.value()));
+      construct(std::move(src.value()));
       src.clear();
     }
   }
@@ -126,18 +120,18 @@ class Optional {
 
   FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(Value&& newValue) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
-    storage_.construct(std::move(newValue));
+    construct(std::move(newValue));
   }
 
   FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(const Value& newValue) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
-    storage_.construct(newValue);
+    construct(newValue);
   }
 
   template <typename... Args>
   FOLLY_CPP14_CONSTEXPR explicit Optional(in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<Value, Args...>::value) {
-    storage_.construct(std::forward<Args>(args)...);
+    construct(std::forward<Args>(args)...);
   }
 
   // Used only when an Optional is used with coroutines on MSVC
@@ -171,17 +165,17 @@ class Optional {
 
   void assign(Value&& newValue) {
     if (hasValue()) {
-      *storage_.value_pointer() = std::move(newValue);
+      storage_.value = std::move(newValue);
     } else {
-      storage_.construct(std::move(newValue));
+      construct(std::move(newValue));
     }
   }
 
   void assign(const Value& newValue) {
     if (hasValue()) {
-      *storage_.value_pointer() = newValue;
+      storage_.value = newValue;
     } else {
-      storage_.construct(newValue);
+      construct(newValue);
     }
   }
 
@@ -206,7 +200,8 @@ class Optional {
   template <class... Args>
   Value& emplace(Args&&... args) {
     clear();
-    return storage_.construct(std::forward<Args>(args)...);
+    construct(std::forward<Args>(args)...);
+    return value();
   }
 
   template <class U, class... Args>
@@ -215,7 +210,8 @@ class Optional {
       Value&>::type
   emplace(std::initializer_list<U> ilist, Args&&... args) {
     clear();
-    return storage_.construct(ilist, std::forward<Args>(args)...);
+    construct(ilist, std::forward<Args>(args)...);
+    return value();
   }
 
   void reset() noexcept {
@@ -241,34 +237,34 @@ class Optional {
 
   FOLLY_CPP14_CONSTEXPR const Value& value() const & {
     require_value();
-    return *storage_.value_pointer();
+    return storage_.value;
   }
 
   FOLLY_CPP14_CONSTEXPR Value& value() & {
     require_value();
-    return *storage_.value_pointer();
+    return storage_.value;
   }
 
   FOLLY_CPP14_CONSTEXPR Value&& value() && {
     require_value();
-    return std::move(*storage_.value_pointer());
+    return std::move(storage_.value);
   }
 
   FOLLY_CPP14_CONSTEXPR const Value&& value() const && {
     require_value();
-    return std::move(*storage_.value_pointer());
+    return std::move(storage_.value);
   }
 
   const Value* get_pointer() const & {
-    return storage_.value_pointer();
+    return storage_.hasValue ? &storage_.value : nullptr;
   }
   Value* get_pointer() & {
-    return storage_.value_pointer();
+    return storage_.hasValue ? &storage_.value : nullptr;
   }
   Value* get_pointer() && = delete;
 
   FOLLY_CPP14_CONSTEXPR bool has_value() const noexcept {
-    return storage_.hasValue();
+    return storage_.hasValue;
   }
 
   FOLLY_CPP14_CONSTEXPR bool hasValue() const noexcept {
@@ -302,8 +298,8 @@ class Optional {
   // Return a copy of the value if set, or a given default if not.
   template <class U>
   FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) const & {
-    if (storage_.hasValue()) {
-      return *storage_.value_pointer();
+    if (storage_.hasValue) {
+      return storage_.value;
     }
 
     return std::forward<U>(dflt);
@@ -311,8 +307,8 @@ class Optional {
 
   template <class U>
   FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) && {
-    if (storage_.hasValue()) {
-      return std::move(*storage_.value_pointer());
+    if (storage_.hasValue) {
+      return std::move(storage_.value);
     }
 
     return std::forward<U>(dflt);
@@ -320,78 +316,63 @@ class Optional {
 
  private:
   void require_value() const {
-    if (!storage_.hasValue()) {
-      detail::throw_optional_empty_exception();
+    if (!storage_.hasValue) {
+      throw_exception<OptionalEmptyException>();
     }
   }
 
-  struct StorageTriviallyDestructible {
-   protected:
-    bool hasValue_;
-    typename std::aligned_storage<sizeof(Value), alignof(Value)>::type
-        value_[1];
+  template <class... Args>
+  void construct(Args&&... args) {
+    const void* ptr = &storage_.value;
+    // For supporting const types.
+    new (const_cast<void*>(ptr)) Value(std::forward<Args>(args)...);
+    storage_.hasValue = true;
+  }
 
-   public:
-    StorageTriviallyDestructible() : hasValue_{false} {}
+  struct StorageTriviallyDestructible {
+    union {
+      char emptyState;
+      Value value;
+    };
+    bool hasValue;
+
+    StorageTriviallyDestructible() : hasValue{false} {}
     void clear() {
-      hasValue_ = false;
+      hasValue = false;
     }
   };
 
   struct StorageNonTriviallyDestructible {
-   protected:
-    bool hasValue_;
-    typename std::aligned_storage<sizeof(Value), alignof(Value)>::type
-        value_[1];
+    union {
+      char emptyState;
+      Value value;
+    };
+    bool hasValue;
 
-   public:
-    StorageNonTriviallyDestructible() : hasValue_{false} {}
+    FOLLY_PUSH_WARNING
+    // These are both informational warnings, but they trigger rare
+    // enough that we've left them enabled. Needed as long as MSVC
+    // 2015 is supported.
+    FOLLY_MSVC_DISABLE_WARNING(4587) // constructor of .value is not called
+    FOLLY_MSVC_DISABLE_WARNING(4588) // destructor of .value is not called
+    StorageNonTriviallyDestructible() : hasValue{false} {}
     ~StorageNonTriviallyDestructible() {
       clear();
     }
+    FOLLY_POP_WARNING
 
     void clear() {
-      if (hasValue_) {
-        hasValue_ = false;
-        launder(reinterpret_cast<Value*>(value_))->~Value();
+      if (hasValue) {
+        hasValue = false;
+        value.~Value();
       }
     }
   };
 
-  struct Storage : std::conditional<
-                       std::is_trivially_destructible<Value>::value,
-                       StorageTriviallyDestructible,
-                       StorageNonTriviallyDestructible>::type {
-    bool hasValue() const noexcept {
-      return this->hasValue_;
-    }
-
-    Value* value_pointer() {
-      if (this->hasValue_) {
-        return launder(reinterpret_cast<Value*>(this->value_));
-      }
-      return nullptr;
-    }
-
-    Value const* value_pointer() const {
-      if (this->hasValue_) {
-        return launder(reinterpret_cast<Value const*>(this->value_));
-      }
-      return nullptr;
-    }
-
-    template <class... Args>
-    Value& construct(Args&&... args) {
-      new (raw_pointer()) Value(std::forward<Args>(args)...);
-      this->hasValue_ = true;
-      return *launder(reinterpret_cast<Value*>(this->value_));
-    }
-
-   private:
-    void* raw_pointer() {
-      return static_cast<void*>(this->value_);
-    }
-  };
+  using Storage = typename std::conditional<
+      std::is_trivially_destructible<Value>::value,
+      StorageTriviallyDestructible,
+      StorageNonTriviallyDestructible>::type;
 
   Storage storage_;
 };
@@ -645,12 +626,12 @@ detail::OptionalAwaitable<Value>
 } // namespace folly
 
 // This makes folly::Optional<Value> useable as a coroutine return type..
-FOLLY_NAMESPACE_STD_BEGIN
+namespace std {
 namespace experimental {
 template <typename Value, typename... Args>
 struct coroutine_traits<folly::Optional<Value>, Args...> {
   using promise_type = folly::detail::OptionalPromise<Value>;
 };
 } // namespace experimental
-FOLLY_NAMESPACE_STD_END
+} // namespace std
 #endif // FOLLY_HAS_COROUTINES

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,8 +53,12 @@
  *     FOLLY_FALLTHROUGH; // no warning: annotated fall-through
  * }
  */
-#if FOLLY_HAS_CPP_ATTRIBUTE(clang::fallthrough)
+#if FOLLY_HAS_CPP_ATTRIBUTE(fallthrough)
+#define FOLLY_FALLTHROUGH [[fallthrough]]
+#elif FOLLY_HAS_CPP_ATTRIBUTE(clang::fallthrough)
 #define FOLLY_FALLTHROUGH [[clang::fallthrough]]
+#elif FOLLY_HAS_CPP_ATTRIBUTE(gnu::fallthrough)
+#define FOLLY_FALLTHROUGH [[gnu::fallthrough]]
 #else
 #define FOLLY_FALLTHROUGH
 #endif
@@ -102,4 +106,16 @@
 #else
 #define FOLLY_NULLABLE
 #define FOLLY_NONNULL
+#endif
+
+/**
+ * "Cold" indicates to the compiler that a function is only expected to be
+ * called from unlikely code paths. It can affect decisions made by the
+ * optimizer both when processing the function body and when analyzing
+ * call-sites.
+ */
+#if __GNUC__
+#define FOLLY_COLD __attribute__((__cold__))
+#else
+#define FOLLY_COLD
 #endif

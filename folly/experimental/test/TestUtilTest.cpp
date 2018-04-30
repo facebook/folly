@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,6 +83,35 @@ TEST(TemporaryFile, PathPrefix) {
 TEST(TemporaryFile, NoSuchPath) {
   EXPECT_THROW({TemporaryFile f("", "/no/such/path");},
                std::system_error);
+}
+
+TEST(TemporaryFile, moveAssignment) {
+  TemporaryFile f;
+  int fd;
+
+  EXPECT_TRUE(f.path().is_absolute());
+  {
+    TemporaryFile g("Foo", ".");
+    EXPECT_NE(g.fd(), -1);
+    fd = g.fd();
+    f = std::move(g);
+  }
+  EXPECT_EQ(fs::path("."), f.path().parent_path());
+  EXPECT_EQ(f.fd(), fd);
+
+  TemporaryFile h = TemporaryFile("FooBar", ".");
+  EXPECT_NE(h.fd(), -1);
+}
+
+TEST(TemporaryFile, moveCtor) {
+  struct FooBar {
+    TemporaryFile f_;
+    explicit FooBar(TemporaryFile&& f) : f_(std::move(f)) {}
+  };
+  TemporaryFile g("Foo");
+  FooBar fb(std::move(g));
+  EXPECT_EQ(g.fd(), -1);
+  EXPECT_NE(fb.f_.fd(), -1);
 }
 
 void testTemporaryDirectory(TemporaryDirectory::Scope scope) {

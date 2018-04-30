@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 #include <folly/Random.h>
+#include <folly/Utility.h>
 #include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 
@@ -269,6 +270,9 @@ template <class String> void clause11_21_4_5(String & test) {
     EXPECT_EQ(test[i], test.at(i));
     test = test[i];
   }
+
+  EXPECT_THROW(test.at(test.size()), std::out_of_range);
+  EXPECT_THROW(as_const(test).at(test.size()), std::out_of_range);
 }
 
 template <class String> void clause11_21_4_6_1(String & test) {

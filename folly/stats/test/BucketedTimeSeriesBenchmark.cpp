@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,33 +45,33 @@ void addValue(
   }
 }
 
-BENCHMARK_NAMED_PARAM(addValue, AllTime_1perSec, seconds(0), 60, 1);
-BENCHMARK_NAMED_PARAM(addValue, 3600x60_1perSec, seconds(3600), 60, 1);
-BENCHMARK_NAMED_PARAM(addValue, 600x60_1perSec, seconds(600), 60, 1);
-BENCHMARK_NAMED_PARAM(addValue, 60x60_1perSec, seconds(60), 60, 1);
-BENCHMARK_NAMED_PARAM(addValue, 100x10_1perSec, seconds(100), 10, 1);
-BENCHMARK_NAMED_PARAM(addValue, 71x5_1perSec, seconds(71), 5, 1);
-BENCHMARK_NAMED_PARAM(addValue, 1x1_1perSec, seconds(1), 1, 1);
+BENCHMARK_NAMED_PARAM(addValue, AllTime_1perSec, seconds(0), 60, 1)
+BENCHMARK_NAMED_PARAM(addValue, 3600x60_1perSec, seconds(3600), 60, 1)
+BENCHMARK_NAMED_PARAM(addValue, 600x60_1perSec, seconds(600), 60, 1)
+BENCHMARK_NAMED_PARAM(addValue, 60x60_1perSec, seconds(60), 60, 1)
+BENCHMARK_NAMED_PARAM(addValue, 100x10_1perSec, seconds(100), 10, 1)
+BENCHMARK_NAMED_PARAM(addValue, 71x5_1perSec, seconds(71), 5, 1)
+BENCHMARK_NAMED_PARAM(addValue, 1x1_1perSec, seconds(1), 1, 1)
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
-BENCHMARK_NAMED_PARAM(addValue, AllTime_10perSec, seconds(0), 60, 10);
-BENCHMARK_NAMED_PARAM(addValue, 3600x60_10perSec, seconds(3600), 60, 10);
-BENCHMARK_NAMED_PARAM(addValue, 600x60_10perSec, seconds(600), 60, 10);
-BENCHMARK_NAMED_PARAM(addValue, 60x60_10perSec, seconds(60), 60, 10);
-BENCHMARK_NAMED_PARAM(addValue, 100x10_10perSec, seconds(100), 10, 10);
-BENCHMARK_NAMED_PARAM(addValue, 71x5_10perSec, seconds(71), 5, 10);
-BENCHMARK_NAMED_PARAM(addValue, 1x1_10perSec, seconds(1), 1, 10);
+BENCHMARK_NAMED_PARAM(addValue, AllTime_10perSec, seconds(0), 60, 10)
+BENCHMARK_NAMED_PARAM(addValue, 3600x60_10perSec, seconds(3600), 60, 10)
+BENCHMARK_NAMED_PARAM(addValue, 600x60_10perSec, seconds(600), 60, 10)
+BENCHMARK_NAMED_PARAM(addValue, 60x60_10perSec, seconds(60), 60, 10)
+BENCHMARK_NAMED_PARAM(addValue, 100x10_10perSec, seconds(100), 10, 10)
+BENCHMARK_NAMED_PARAM(addValue, 71x5_10perSec, seconds(71), 5, 10)
+BENCHMARK_NAMED_PARAM(addValue, 1x1_10perSec, seconds(1), 1, 10)
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
-BENCHMARK_NAMED_PARAM(addValue, AllTime_100perSec, seconds(0), 60, 100);
-BENCHMARK_NAMED_PARAM(addValue, 3600x60_100perSec, seconds(3600), 60, 100);
-BENCHMARK_NAMED_PARAM(addValue, 600x60_100perSec, seconds(600), 60, 100);
-BENCHMARK_NAMED_PARAM(addValue, 60x60_100perSec, seconds(60), 60, 100);
-BENCHMARK_NAMED_PARAM(addValue, 100x10_100perSec, seconds(100), 10, 100);
-BENCHMARK_NAMED_PARAM(addValue, 71x5_100perSec, seconds(71), 5, 100);
-BENCHMARK_NAMED_PARAM(addValue, 1x1_100perSec, seconds(1), 1, 100);
+BENCHMARK_NAMED_PARAM(addValue, AllTime_100perSec, seconds(0), 60, 100)
+BENCHMARK_NAMED_PARAM(addValue, 3600x60_100perSec, seconds(3600), 60, 100)
+BENCHMARK_NAMED_PARAM(addValue, 600x60_100perSec, seconds(600), 60, 100)
+BENCHMARK_NAMED_PARAM(addValue, 60x60_100perSec, seconds(60), 60, 100)
+BENCHMARK_NAMED_PARAM(addValue, 100x10_100perSec, seconds(100), 10, 100)
+BENCHMARK_NAMED_PARAM(addValue, 71x5_100perSec, seconds(71), 5, 100)
+BENCHMARK_NAMED_PARAM(addValue, 1x1_100perSec, seconds(1), 1, 100)
 
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);

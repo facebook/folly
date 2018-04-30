@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,13 +28,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include <folly/Hash.h>
 #include <folly/Indestructible.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
-#include <folly/portability/BitsFunctexcept.h>
-#include <folly/portability/Memory.h>
+#include <folly/hash/Hash.h>
+#include <folly/lang/Align.h>
+#include <folly/lang/Exception.h>
 #include <folly/system/ThreadId.h>
 
 namespace folly {
@@ -115,26 +115,7 @@ struct CacheLocality {
   /// CacheLocality structure with the specified number of cpus and a
   /// single cache level that associates one cpu per cache.
   static CacheLocality uniform(size_t numCpus);
-
-  enum {
-    /// Memory locations on the same cache line are subject to false
-    /// sharing, which is very bad for performance.  Microbenchmarks
-    /// indicate that pairs of cache lines also see interference under
-    /// heavy use of atomic operations (observed for atomic increment on
-    /// Sandy Bridge).  See FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
-    kFalseSharingRange = 128
-  };
-
-  static_assert(
-      kFalseSharingRange == 128,
-      "FOLLY_ALIGN_TO_AVOID_FALSE_SHARING should track kFalseSharingRange");
 };
-
-// TODO replace __attribute__ with alignas and 128 with kFalseSharingRange
-
-/// An attribute that will cause a variable or field to be aligned so that
-/// it doesn't have false sharing with anything at a smaller memory address.
-#define FOLLY_ALIGN_TO_AVOID_FALSE_SHARING FOLLY_ALIGNED(128)
 
 /// Knows how to derive a function pointer to the VDSO implementation of
 /// getcpu(2), if available
@@ -390,7 +371,7 @@ class SimpleAllocator {
     if (intptr_t(mem_) % 128 == 0) {
       // Avoid allocating pointers that may look like malloc
       // pointers.
-      mem_ += std::min(sz_, folly::max_align_v);
+      mem_ += std::min(sz_, max_align_v);
     }
     if (mem_ && (mem_ + sz_ <= end_)) {
       auto mem = mem_;
@@ -424,7 +405,7 @@ class SimpleAllocator {
  * Note that allocation and deallocation takes a per-sizeclass lock.
  */
 template <size_t Stripes>
-class CoreAllocator {
+class CoreRawAllocator {
  public:
   class Allocator {
     static constexpr size_t AllocSize{4096};
@@ -450,22 +431,19 @@ class CoreAllocator {
     void* allocate(size_t size) {
       auto cl = sizeClass(size);
       if (cl == 4) {
-        static_assert(
-            CacheLocality::kFalseSharingRange == 128,
-            "kFalseSharingRange changed");
         // Align to a cacheline
-        size = size + (CacheLocality::kFalseSharingRange - 1);
-        size &= ~size_t(CacheLocality::kFalseSharingRange - 1);
+        size = size + (hardware_destructive_interference_size - 1);
+        size &= ~size_t(hardware_destructive_interference_size - 1);
         void* mem =
-            detail::aligned_malloc(size, CacheLocality::kFalseSharingRange);
+            aligned_malloc(size, hardware_destructive_interference_size);
         if (!mem) {
-          std::__throw_bad_alloc();
+          throw_exception<std::bad_alloc>();
         }
         return mem;
       }
       return allocators_[cl].allocate();
     }
-    void deallocate(void* mem) {
+    void deallocate(void* mem, size_t = 0) {
       if (!mem) {
         return;
       }
@@ -477,7 +455,7 @@ class CoreAllocator {
         auto allocator = *static_cast<SimpleAllocator**>(addr);
         allocator->deallocate(mem);
       } else {
-        detail::aligned_free(mem);
+        aligned_free(mem);
       }
     }
   };
@@ -491,19 +469,14 @@ class CoreAllocator {
   Allocator allocators_[Stripes];
 };
 
-template <size_t Stripes>
-typename CoreAllocator<Stripes>::Allocator* getCoreAllocator(size_t stripe) {
+template <typename T, size_t Stripes>
+CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>
+getCoreAllocator(size_t stripe) {
   // We cannot make sure that the allocator will be destroyed after
   // all the objects allocated with it, so we leak it.
-  static Indestructible<CoreAllocator<Stripes>> allocator;
-  return allocator->get(stripe);
-}
-
-template <typename T, size_t Stripes>
-StlAllocator<typename CoreAllocator<Stripes>::Allocator, T> getCoreAllocatorStl(
-    size_t stripe) {
-  auto alloc = getCoreAllocator<Stripes>(stripe);
-  return StlAllocator<typename CoreAllocator<Stripes>::Allocator, T>(alloc);
+  static Indestructible<CoreRawAllocator<Stripes>> allocator;
+  return CxxAllocatorAdaptor<T, typename CoreRawAllocator<Stripes>::Allocator>(
+      *allocator->get(stripe));
 }
 
 } // namespace folly

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/Baton.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Semaphore.h>
+#include <folly/synchronization/Baton.h>
 
 #include <vector>
 
@@ -61,7 +61,7 @@ BENCHMARK_RELATIVE(withThen) {
 }
 
 // thens
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(oneThen) {
   someThens(1);
@@ -85,7 +85,7 @@ BENCHMARK_RELATIVE(hundredThens) {
 // Lock contention. Although in practice fulfills tend to be temporally
 // separate from then()s, still sometimes they will be concurrent. So the
 // higher this number is, the better.
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(no_contention) {
   std::vector<Promise<int>> promises(10000);

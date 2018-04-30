@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@
       classname##__folly_traits_impl__<TTheClass_>::template test<TTheClass_>( \
           nullptr),                                                            \
       std::true_type,                                                          \
-      std::false_type>::type;
+      std::false_type>::type
 
 #define FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, cv_qual) \
   template <typename TTheClass_, typename RTheReturn_, typename... TTheArgs_> \
@@ -156,10 +156,38 @@ template <typename T>
 using _t = typename T::type;
 
 /**
+ * A type trait to remove all const volatile and reference qualifiers on a
+ * type T
+ */
+template <typename T>
+struct remove_cvref {
+  using type =
+      typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+};
+template <typename T>
+using remove_cvref_t = typename remove_cvref<T>::type;
+
+/**
+ *  type_t
+ *
+ *  A type alias for the first template type argument. `type_t` is useful for
+ *  controlling class-template and function-template partial specialization.
+ *
+ *  Example:
+ *
+ *    template <typename Value>
+ *    class Container {
+ *     public:
+ *      template <typename... Args>
+ *      Container(
+ *          type_t<in_place_t, decltype(Value(std::declval<Args>()...))>,
+ *          Args&&...);
+ *    };
+ *
  *  void_t
  *
  *  A type alias for `void`. `void_t` is useful for controling class-template
- *  partial specialization.
+ *  and function-template partial specialization.
  *
  *  Example:
  *
@@ -204,14 +232,16 @@ using _t = typename T::type;
  */
 
 namespace traits_detail {
-template <class...>
-struct void_t_ {
-  using type = void;
+template <class T, class...>
+struct type_t_ {
+  using type = T;
 };
 } // namespace traits_detail
 
+template <class T, class... Ts>
+using type_t = typename traits_detail::type_t_<T, Ts...>::type;
 template <class... Ts>
-using void_t = _t<traits_detail::void_t_<Ts...>>;
+using void_t = type_t<void, Ts...>;
 
 /**
  * IsRelocatable<T>::value describes the ability of moving around
@@ -270,11 +300,11 @@ namespace traits_detail {
   struct has_true_##name : std::conditional<                                 \
                                has_##name<T>::value,                         \
                                name##_is_true<T>,                            \
-                               std::false_type>::type {};
+                               std::false_type>::type {}
 
-FOLLY_HAS_TRUE_XXX(IsRelocatable)
-FOLLY_HAS_TRUE_XXX(IsZeroInitializable)
-FOLLY_HAS_TRUE_XXX(IsTriviallyCopyable)
+FOLLY_HAS_TRUE_XXX(IsRelocatable);
+FOLLY_HAS_TRUE_XXX(IsZeroInitializable);
+FOLLY_HAS_TRUE_XXX(IsTriviallyCopyable);
 
 #undef FOLLY_HAS_TRUE_XXX
 
@@ -293,8 +323,9 @@ using is_trivially_copyable = std::is_trivially_copyable<T>;
 } // namespace traits_detail
 
 struct Ignore {
+  Ignore() = default;
   template <class T>
-  /* implicit */ Ignore(const T&) {}
+  constexpr /* implicit */ Ignore(const T&) {}
   template <class T>
   const Ignore& operator=(T const&) const { return *this; }
 };
@@ -434,7 +465,7 @@ struct StrictDisjunction
  * FOLLY_ASSUME_RELOCATABLE(MyType<T1, T2>)
  */
 #define FOLLY_ASSUME_RELOCATABLE(...) \
-  struct IsRelocatable<  __VA_ARGS__ > : std::true_type {};
+  struct IsRelocatable<__VA_ARGS__> : std::true_type {}
 
 /**
  * The FOLLY_ASSUME_FBVECTOR_COMPATIBLE* macros below encode the
@@ -464,31 +495,31 @@ struct StrictDisjunction
 #define FOLLY_ASSUME_FBVECTOR_COMPATIBLE(...) \
   namespace folly {                           \
   template <>                                 \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__)       \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__);      \
   }
 // Use this macro ONLY at global level (no namespace)
 #define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(...) \
   namespace folly {                             \
   template <class T1>                           \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1>)     \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1>);    \
   }
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(...) \
-  namespace folly {                             \
-  template <class T1, class T2>                 \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2>) \
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(...)  \
+  namespace folly {                              \
+  template <class T1, class T2>                  \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2>); \
   }
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(...)     \
-  namespace folly {                                 \
-  template <class T1, class T2, class T3>           \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3>) \
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(...)      \
+  namespace folly {                                  \
+  template <class T1, class T2, class T3>            \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3>); \
   }
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_4(...)         \
-  namespace folly {                                     \
-  template <class T1, class T2, class T3, class T4>     \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3, T4>) \
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_4(...)          \
+  namespace folly {                                      \
+  template <class T1, class T2, class T3, class T4>      \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3, T4>); \
   }
 
 /**

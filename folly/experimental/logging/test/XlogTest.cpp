@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/experimental/logging/xlog.h>
+
 #include <folly/experimental/logging/LogCategory.h>
 #include <folly/experimental/logging/LogHandler.h>
 #include <folly/experimental/logging/LogMessage.h>
@@ -20,14 +22,14 @@
 #include <folly/experimental/logging/test/TestLogHandler.h>
 #include <folly/experimental/logging/test/XlogHeader1.h>
 #include <folly/experimental/logging/test/XlogHeader2.h>
-#include <folly/experimental/logging/xlog.h>
+#include <folly/portability/Constexpr.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 
 using namespace folly;
 using std::make_shared;
 
-XLOG_SET_CATEGORY_NAME("xlog_test.main_file");
+XLOG_SET_CATEGORY_NAME("xlog_test.main_file")
 
 // Note that the XLOG* macros always use the main LoggerDB singleton.
 // There is no way to get them to use a test LoggerDB during unit tests.
@@ -43,7 +45,7 @@ TEST(Xlog, xlogName) {
 
 TEST(Xlog, xlog) {
   auto handler = make_shared<TestLogHandler>();
-  LoggerDB::get()->getCategory("xlog_test")->addHandler(handler);
+  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
   auto& messages = handler->getMessages();
 
   // info messages are not enabled initially.
@@ -54,7 +56,7 @@ TEST(Xlog, xlog) {
   messages.clear();
 
   // Increase the log level, then log a message.
-  LoggerDB::get()->setLevel("xlog_test.main_file", LogLevel::DBG1);
+  LoggerDB::get().setLevel("xlog_test.main_file", LogLevel::DBG1);
 
   XLOG(DBG1, "testing: ", 1, 2, 3);
   ASSERT_EQ(1, messages.size());
@@ -97,9 +99,9 @@ TEST(Xlog, perFileCategoryHandling) {
 
   auto handler = make_shared<TestLogHandler>();
   LoggerDB::get()
-      ->getCategory("folly.experimental.logging.test")
+      .getCategory("folly.experimental.logging.test")
       ->addHandler(handler);
-  LoggerDB::get()->setLevel("folly.experimental.logging.test", LogLevel::DBG9);
+  LoggerDB::get().setLevel("folly.experimental.logging.test", LogLevel::DBG9);
   auto& messages = handler->getMessages();
 
   // Use the simple helper function in XlogHeader2
@@ -110,7 +112,7 @@ TEST(Xlog, perFileCategoryHandling) {
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::DBG3, messages[0].first.getLevel());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogHeader2",
+      "folly.experimental.logging.test.XlogHeader2.h",
       messages[0].first.getCategory()->getName());
   EXPECT_EQ("folly.experimental.logging.test", messages[0].second->getName());
   messages.clear();
@@ -123,7 +125,7 @@ TEST(Xlog, perFileCategoryHandling) {
       << "unexpected file name: " << messages[0].first.getFileName();
   EXPECT_EQ(LogLevel::DBG1, messages[0].first.getLevel());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogHeader1",
+      "folly.experimental.logging.test.XlogHeader1.h",
       messages[0].first.getCategory()->getName());
   EXPECT_EQ("folly.experimental.logging.test", messages[0].second->getName());
 
@@ -139,7 +141,7 @@ TEST(Xlog, perFileCategoryHandling) {
 
   // Reduce the log level so that the messages inside the loop
   // should not be logged.
-  LoggerDB::get()->setLevel("folly.experimental.logging.test", LogLevel::DBG2);
+  LoggerDB::get().setLevel("folly.experimental.logging.test", LogLevel::DBG2);
   testXlogHdrLoop(300, "hello world");
   ASSERT_EQ(2, messages.size());
   EXPECT_EQ("starting: hello world", messages[0].first.getMessage());
@@ -152,7 +154,7 @@ TEST(Xlog, perFileCategoryHandling) {
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("file1: foobar 1234", messages[0].first.getMessage());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogFile1",
+      "folly.experimental.logging.test.XlogFile1.cpp",
       messages[0].first.getCategory()->getName());
   messages.clear();
 
@@ -160,19 +162,19 @@ TEST(Xlog, perFileCategoryHandling) {
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("file2: hello world", messages[0].first.getMessage());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogFile2",
+      "folly.experimental.logging.test.XlogFile2.cpp",
       messages[0].first.getCategory()->getName());
   messages.clear();
 
   // Adjust the log level and make sure the changes take effect for the .cpp
   // file categories
-  LoggerDB::get()->setLevel("folly.experimental.logging.test", LogLevel::INFO);
+  LoggerDB::get().setLevel("folly.experimental.logging.test", LogLevel::INFO);
   testXlogFile1Dbg1("log check should fail now");
   testXlogFile2Dbg1("this should fail too");
   EXPECT_EQ(0, messages.size());
   messages.clear();
 
-  LoggerDB::get()->setLevel(
+  LoggerDB::get().setLevel(
       "folly.experimental.logging.test.XlogFile1", LogLevel::DBG1);
   testXlogFile1Dbg1("this log check should pass now");
   testXlogFile2Dbg1("but this one should still fail");
@@ -180,7 +182,79 @@ TEST(Xlog, perFileCategoryHandling) {
   EXPECT_EQ(
       "file1: this log check should pass now", messages[0].first.getMessage());
   EXPECT_EQ(
-      "folly.experimental.logging.test.XlogFile1",
+      "folly.experimental.logging.test.XlogFile1.cpp",
       messages[0].first.getCategory()->getName());
   messages.clear();
+}
+
+TEST(Xlog, getXlogCategoryName) {
+  EXPECT_EQ("foo.cpp", getXlogCategoryNameForFile("foo.cpp"));
+  EXPECT_EQ("foo.h", getXlogCategoryNameForFile("foo.h"));
+
+  // Directory separators should be translated to "." during LogName
+  // canonicalization
+  EXPECT_EQ("src/test/foo.cpp", getXlogCategoryNameForFile("src/test/foo.cpp"));
+  EXPECT_EQ(
+      "src.test.foo.cpp",
+      LogName::canonicalize(getXlogCategoryNameForFile("src/test/foo.cpp")));
+  EXPECT_EQ("src/test/foo.h", getXlogCategoryNameForFile("src/test/foo.h"));
+  EXPECT_EQ(
+      "src.test.foo.h",
+      LogName::canonicalize(getXlogCategoryNameForFile("src/test/foo.h")));
+
+  // Buck's directory prefixes for generated source files
+  // should be stripped out
+  EXPECT_EQ(
+      "myproject.generated_header.h",
+      LogName::canonicalize(getXlogCategoryNameForFile(
+          "buck-out/gen/myproject#headers/myproject/generated_header.h")));
+  EXPECT_EQ(
+      "foo.bar.test.h",
+      LogName::canonicalize(getXlogCategoryNameForFile(
+          "buck-out/gen/foo/bar#header-map,headers/foo/bar/test.h")));
+}
+
+TEST(Xlog, xlogStripFilename) {
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b"));
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b/"));
+  EXPECT_STREQ(
+      "ships/cruiser.cpp",
+      xlogStripFilename(
+          "/home/johndoe/src/spacesim/ships/cruiser.cpp",
+          "/home/johndoe/src/spacesim"));
+  EXPECT_STREQ(
+      "ships/cruiser.cpp",
+      xlogStripFilename("src/spacesim/ships/cruiser.cpp", "src/spacesim"));
+
+  // Test with multiple prefixes
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/x/y:1/2:/a/b"));
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/x/y:/a/b:/1/2"));
+
+  EXPECT_STREQ(
+      "/foobar/src/test.cpp", xlogStripFilename("/foobar/src/test.cpp", "/foo"))
+      << "should only strip full directory name matches";
+  EXPECT_STREQ(
+      "src/test.cpp",
+      xlogStripFilename("/foobar/src/test.cpp", "/foo:/foobar"));
+
+  EXPECT_STREQ(
+      "/a/b/c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b/c/d.txt"))
+      << "should not strip if the result will be empty";
+  EXPECT_STREQ("c/d.txt", xlogStripFilename("/a/b/c/d.txt", ":/x/y::/a/b:"))
+      << "empty prefixes in the prefix list should be ignored";
+
+  EXPECT_STREQ("d.txt", xlogStripFilename("/a/b/c/d.txt", "/a/b/c:/a"))
+      << "only the first prefix match should be honored";
+  EXPECT_STREQ("b/c/d.txt", xlogStripFilename("/a/b/c/d.txt", "/a:/a/b/c"))
+      << "only the first prefix match should be honored";
+
+  // xlogStripFilename() should ideally be a purely compile-time evaluation.
+  // Use a static_assert() to ensure that it can be evaluated at compile time.
+  // We use EXPECT_STREQ() checks above for most of the testing since it
+  // produces nicer messages on failure.
+  static_assert(
+      constexpr_strcmp(
+          xlogStripFilename("/my/project/src/test.cpp", "/my/project"),
+          "src/test.cpp") == 0,
+      "incorrect xlogStripFilename() behavior");
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,12 +40,8 @@ std::string loggingFormatPrintf(
 /**
  * Log a message to the specified logger using a printf-style format string.
  */
-#define FB_LOGC(logger, level, fmt, ...)   \
-  FB_LOG_IMPL(                             \
-      logger,                              \
-      ::folly::LogLevel::level,            \
-      ::folly::LogStreamProcessor::APPEND, \
-      ::folly::loggingFormatPrintf(fmt, ##__VA_ARGS__))
+#define FB_LOGC(logger, level, fmt, ...) \
+  FB_LOG(logger, level, ::folly::loggingFormatPrintf(fmt, ##__VA_ARGS__))
 
 /**
  * Log a message to the file's default log category using a printf-style format

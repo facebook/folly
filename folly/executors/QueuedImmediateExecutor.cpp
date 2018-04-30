@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,22 +15,24 @@
  */
 
 #include <folly/executors/QueuedImmediateExecutor.h>
-#include <folly/ThreadLocal.h>
-#include <queue>
+
+#include <folly/Indestructible.h>
 
 namespace folly {
 
-void QueuedImmediateExecutor::addStatic(Func callback) {
-  static folly::ThreadLocal<std::queue<Func>> q_;
+QueuedImmediateExecutor& QueuedImmediateExecutor::instance() {
+  static auto instance = Indestructible<QueuedImmediateExecutor>{};
+  return *instance;
+}
 
-  if (q_->empty()) {
-    q_->push(std::move(callback));
-    while (!q_->empty()) {
-      q_->front()();
-      q_->pop();
+void QueuedImmediateExecutor::add(Func callback) {
+  auto& q = *q_;
+  q.push(std::move(callback));
+  if (q.size() == 1) {
+    while (!q.empty()) {
+      q.front()();
+      q.pop();
     }
-  } else {
-    q_->push(std::move(callback));
   }
 }
 

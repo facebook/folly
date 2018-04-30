@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ class WriteCallback : public folly::AsyncTransportWrapper::WriteCallback {
   }
 
   StateEnum state;
-  size_t bytesWritten;
+  std::atomic<size_t> bytesWritten;
   folly::AsyncSocketException exception;
   VoidCallback successCallback;
   VoidCallback errorCallback;

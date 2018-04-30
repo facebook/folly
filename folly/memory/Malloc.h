@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
 #include <folly/portability/Config.h>
 
 /**
@@ -26,7 +27,7 @@
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
  */
-#if defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)
+#if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 // We have JEMalloc, so use it.
 # include <jemalloc/jemalloc.h>
 #else
@@ -45,8 +46,8 @@
 // includes and uses fbstring.
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
 
+#include <folly/lang/Exception.h>
 #include <folly/memory/detail/MallocImpl.h>
-#include <folly/portability/BitsFunctexcept.h>
 
 #include <string>
 
@@ -92,14 +93,12 @@ extern "C" int mallctlbymib(const size_t*, size_t, void*, size_t*, void*,
                             size_t)
 __attribute__((__weak__));
 
-#include <bits/functexcept.h>
-
 #define FOLLY_HAVE_MALLOC_H 1
 
 #else // !defined(_LIBSTDCXX_FBSTRING)
 
+#include <folly/lang/Exception.h> /* nolint */
 #include <folly/memory/detail/MallocImpl.h> /* nolint */
-#include <folly/portability/BitsFunctexcept.h> /* nolint */
 
 #endif
 
@@ -144,9 +143,15 @@ namespace folly {
 #define FOLLY_MALLOC_CHECKED_MALLOC
 #endif
 
+#include <folly/CPortability.h>
 /**
  * Determine if we are using jemalloc or not.
  */
+#if defined(USE_JEMALLOC) && !FOLLY_SANITIZE
+  inline bool usingJEMalloc() noexcept {
+    return true;
+  }
+#else
 FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
   // Checking for rallocx != nullptr is not sufficient; we may be in a
   // dlopen()ed module that depends on libjemalloc, so rallocx is resolved, but
@@ -183,20 +188,18 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
 
     uint64_t origAllocated = *counter;
 
-    const void* ptr = malloc(1);
+    static const void* volatile ptr = malloc(1);
     if (!ptr) {
       // wtf, failing to allocate 1 byte
       return false;
     }
-
-    /* Avoid optimizing away the malloc.  */
-    asm volatile("" ::"m"(ptr) : "memory");
 
     return (origAllocated != *counter);
   }();
 
   return result;
 }
+#endif
 
 inline size_t goodMallocSize(size_t minSize) noexcept {
   if (minSize == 0) {
@@ -224,7 +227,7 @@ static const size_t jemallocMinInPlaceExpandable = 4096;
 inline void* checkedMalloc(size_t size) {
   void* p = malloc(size);
   if (!p) {
-    std::__throw_bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   return p;
 }
@@ -232,7 +235,7 @@ inline void* checkedMalloc(size_t size) {
 inline void* checkedCalloc(size_t n, size_t size) {
   void* p = calloc(n, size);
   if (!p) {
-    std::__throw_bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   return p;
 }
@@ -240,7 +243,7 @@ inline void* checkedCalloc(size_t n, size_t size) {
 inline void* checkedRealloc(void* ptr, size_t size) {
   void* p = realloc(ptr, size);
   if (!p) {
-    std::__throw_bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   return p;
 }

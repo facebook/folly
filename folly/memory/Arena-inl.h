@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,14 +30,14 @@ Arena<Alloc>::Block::allocate(Alloc& alloc, size_t size, bool allowSlack) {
     allocSize = ArenaAllocatorTraits<Alloc>::goodSize(alloc, allocSize);
   }
 
-  void* mem = alloc.allocate(allocSize);
+  void* mem = std::allocator_traits<Alloc>::allocate(alloc, allocSize);
   return std::make_pair(new (mem) Block(), allocSize - sizeof(Block));
 }
 
 template <class Alloc>
 void Arena<Alloc>::Block::deallocate(Alloc& alloc) {
   this->~Block();
-  alloc.deallocate(this);
+  std::allocator_traits<Alloc>::deallocate(alloc, this, 1);
 }
 
 template <class Alloc>

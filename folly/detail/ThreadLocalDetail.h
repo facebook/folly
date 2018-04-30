@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2011-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,13 +28,14 @@
 
 #include <folly/Exception.h>
 #include <folly/Function.h>
-#include <folly/MicroSpinLock.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
 #include <folly/container/Foreach.h>
+#include <folly/detail/AtFork.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 #include <folly/detail/StaticSingletonManager.h>
 
@@ -140,6 +141,7 @@ struct ElementWrapper {
 };
 
 struct StaticMetaBase;
+struct ThreadEntryList;
 
 /**
  * Per-thread entry.  Each thread using a StaticMeta object has one.
@@ -152,7 +154,14 @@ struct ThreadEntry {
   size_t elementsCapacity{0};
   ThreadEntry* next{nullptr};
   ThreadEntry* prev{nullptr};
+  ThreadEntryList* list{nullptr};
+  ThreadEntry* listNext{nullptr};
   StaticMetaBase* meta{nullptr};
+};
+
+struct ThreadEntryList {
+  ThreadEntry* head{nullptr};
+  size_t count{0};
 };
 
 constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
@@ -278,6 +287,8 @@ struct StaticMetaBase {
     t->next = t->prev = t;
   }
 
+  static ThreadEntryList* getThreadEntryList();
+
   static void onThreadExit(void* ptr);
 
   uint32_t allocate(EntryID* ent);
@@ -290,13 +301,7 @@ struct StaticMetaBase {
    */
   void reserve(EntryID* id);
 
-  ElementWrapper& get(EntryID* ent);
-
-  static void initAtFork();
-  static void registerAtFork(
-      folly::Function<void()> prepare,
-      folly::Function<void()> parent,
-      folly::Function<void()> child);
+  ElementWrapper& getElement(EntryID* ent);
 
   uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
@@ -321,7 +326,8 @@ struct StaticMeta : StaticMetaBase {
       : StaticMetaBase(
             &StaticMeta::getThreadEntrySlow,
             std::is_same<AccessMode, AccessModeStrict>::value) {
-    registerAtFork(
+    detail::AtFork::registerHandler(
+        this,
         /*prepare*/ &StaticMeta::preFork,
         /*parent*/ &StaticMeta::onForkParent,
         /*child*/ &StaticMeta::onForkChild);
@@ -335,17 +341,37 @@ struct StaticMeta : StaticMetaBase {
     return *instance;
   }
 
-  ElementWrapper& get(EntryID* ent) {
-    ThreadEntry* threadEntry = getThreadEntry();
+  FOLLY_ALWAYS_INLINE static ElementWrapper& get(EntryID* ent) {
     uint32_t id = ent->getOrInvalid();
-    // if id is invalid, it is equal to uint32_t's max value.
-    // x <= max value is always true
-    if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
-      reserve(ent);
-      id = ent->getOrInvalid();
-      assert(threadEntry->elementsCapacity > id);
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
+    static FOLLY_TLS ThreadEntry* threadEntry{};
+    static FOLLY_TLS size_t capacity{};
+    // Eliminate as many branches and as much extra code as possible in the
+    // cached fast path, leaving only one branch here and one indirection below.
+    if (UNLIKELY(capacity <= id)) {
+      getSlowReserveAndCache(ent, id, threadEntry, capacity);
     }
+#else
+    ThreadEntry* threadEntry{};
+    size_t capacity{};
+    getSlowReserveAndCache(ent, id, threadEntry, capacity);
+#endif
     return threadEntry->elements[id];
+  }
+
+  static void getSlowReserveAndCache(
+      EntryID* ent,
+      uint32_t& id,
+      ThreadEntry*& threadEntry,
+      size_t& capacity) {
+    auto& inst = instance();
+    threadEntry = inst.threadEntry_();
+    if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
+      inst.reserve(ent);
+      id = ent->getOrInvalid();
+    }
+    capacity = threadEntry->elementsCapacity;
+    assert(capacity > id);
   }
 
   static ThreadEntry* getThreadEntrySlow() {
@@ -354,12 +380,28 @@ struct StaticMeta : StaticMetaBase {
     ThreadEntry* threadEntry =
       static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
+      ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
       static FOLLY_TLS ThreadEntry threadEntrySingleton;
       threadEntry = &threadEntrySingleton;
 #else
       threadEntry = new ThreadEntry();
 #endif
+      // if the ThreadEntry already exists
+      // but pthread_getspecific returns NULL
+      // do not add the same entry twice to the list
+      // since this would create a loop in the list
+      if (!threadEntry->list) {
+        threadEntry->list = threadEntryList;
+        threadEntry->listNext = threadEntryList->head;
+        threadEntryList->head = threadEntry;
+      }
+
+      // if we're adding a thread entry
+      // we need to increment the list count
+      // even if the entry is reused
+      threadEntryList->count++;
+
       threadEntry->meta = &meta;
       int ret = pthread_setspecific(key, threadEntry);
       checkPosixError(ret, "pthread_setspecific failed");
@@ -367,20 +409,8 @@ struct StaticMeta : StaticMetaBase {
     return threadEntry;
   }
 
-  inline static ThreadEntry* getThreadEntry() {
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-    static FOLLY_TLS ThreadEntry* threadEntryCache{nullptr};
-    if (UNLIKELY(threadEntryCache == nullptr)) {
-      threadEntryCache = instance().threadEntry_();
-    }
-    return threadEntryCache;
-#else
-    return instance().threadEntry_();
-#endif
-  }
-
-  static void preFork() {
-    instance().lock_.lock();  // Make sure it's created
+  static bool preFork() {
+    return instance().lock_.try_lock(); // Make sure it's created
   }
 
   static void onForkParent() {
@@ -390,7 +420,7 @@ struct StaticMeta : StaticMetaBase {
   static void onForkChild() {
     // only the current thread survives
     instance().head_.next = instance().head_.prev = &instance().head_;
-    ThreadEntry* threadEntry = getThreadEntry();
+    ThreadEntry* threadEntry = instance().threadEntry_();
     // If this thread was in the list before the fork, add it back.
     if (threadEntry->elementsCapacity != 0) {
       instance().push_back(threadEntry);
@@ -398,6 +428,5 @@ struct StaticMeta : StaticMetaBase {
     instance().lock_.unlock();
   }
 };
-
 } // namespace threadlocal_detail
 } // namespace folly

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,15 +97,28 @@ class AtomicIntrusiveLinkedList {
   }
 
   /**
+   * Replaces the head with nullptr,
+   * and calls func() on the removed elements in the order from tail to head.
+   * Returns false if the list was empty.
+   */
+  template <typename F>
+  bool sweepOnce(F&& func) {
+    if (auto head = head_.exchange(nullptr)) {
+      auto rhead = reverse(head);
+      unlinkAll(rhead, std::forward<F>(func));
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Repeatedly replaces the head with nullptr,
    * and calls func() on the removed elements in the order from tail to head.
    * Stops when the list is empty.
    */
   template <typename F>
   void sweep(F&& func) {
-    while (auto head = head_.exchange(nullptr)) {
-      auto rhead = reverse(head);
-      unlinkAll(rhead, std::forward<F>(func));
+    while (sweepOnce(func)) {
     }
   }
 

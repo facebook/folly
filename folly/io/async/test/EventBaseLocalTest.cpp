@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 #include <folly/portability/GTest.h>
 
 struct Foo {
-  Foo(int n, std::function<void()> dtorFn):
-    n(n), dtorFn(std::move(dtorFn)) {}
+  Foo(int n_, std::function<void()> dtorFn_):
+    n(n_), dtorFn(std::move(dtorFn_)) {}
   ~Foo() { dtorFn(); }
 
   int n;

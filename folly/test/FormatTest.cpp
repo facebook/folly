@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -162,6 +162,12 @@ TEST(Format, Simple) {
   EXPECT_EQ("worldXX", svformat("{hello:X<7}", defaulted(m2, "meow")));
   EXPECT_EQ("meowXXX", sformat("{[none]:X<7}", defaulted(m2, "meow")));
   EXPECT_EQ("meowXXX", svformat("{none:X<7}", defaulted(m2, "meow")));
+  try {
+    svformat("{none:X<7}", m2);
+    EXPECT_FALSE(true) << "svformat should throw on missing key";
+  } catch (const FormatKeyNotFoundException& e) {
+    EXPECT_STREQ("none", e.key());
+  }
 
   // Test indexing in strings
   EXPECT_EQ("61 62", sformat("{0[0]:x} {0[1]:x}", "abcde"));

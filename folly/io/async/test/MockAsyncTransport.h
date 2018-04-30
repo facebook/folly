@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2015-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,32 +68,54 @@ class MockAsyncTransport: public AsyncTransportWrapper {
 
 class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
  public:
-  GMOCK_METHOD0_(, noexcept, , onReplaySafe, void());
+  MOCK_METHOD0(onReplaySafe_, void());
+  void onReplaySafe() noexcept override {
+    onReplaySafe_();
+  }
 };
 
 class MockReadCallback: public AsyncTransportWrapper::ReadCallback {
  public:
   MOCK_METHOD2(getReadBuffer, void(void**, size_t*));
-  GMOCK_METHOD1_(, noexcept, , readDataAvailable, void(size_t));
-  GMOCK_METHOD0_(, noexcept, , isBufferMovable, bool());
-  GMOCK_METHOD1_(, noexcept, ,
-      readBufferAvailableInternal,
-      void(std::unique_ptr<folly::IOBuf>&));
-  GMOCK_METHOD0_(, noexcept, , readEOF, void());
-  GMOCK_METHOD1_(, noexcept, , readErr,
-                 void(const AsyncSocketException&));
 
+  MOCK_METHOD1(readDataAvailable_, void(size_t));
+  void readDataAvailable(size_t size) noexcept override {
+    readDataAvailable_(size);
+  }
+
+  MOCK_METHOD0(isBufferMovable_, bool());
+  bool isBufferMovable() noexcept override {
+    return isBufferMovable_();
+  }
+
+  MOCK_METHOD1(readBufferAvailable_, void(std::unique_ptr<folly::IOBuf>&));
   void readBufferAvailable(std::unique_ptr<folly::IOBuf> readBuf)
     noexcept override {
-    readBufferAvailableInternal(readBuf);
+    readBufferAvailable_(readBuf);
+  }
+
+  MOCK_METHOD0(readEOF_, void());
+  void readEOF() noexcept override {
+    readEOF_();
+  }
+
+  MOCK_METHOD1(readErr_, void(const AsyncSocketException&));
+  void readErr(const AsyncSocketException& ex) noexcept override {
+    readErr_(ex);
   }
 };
 
 class MockWriteCallback: public AsyncTransportWrapper::WriteCallback {
  public:
-  GMOCK_METHOD0_(, noexcept, , writeSuccess, void());
-  GMOCK_METHOD2_(, noexcept, , writeErr,
-                 void(size_t, const AsyncSocketException&));
+  MOCK_METHOD0(writeSuccess_, void());
+  void writeSuccess() noexcept override {
+    writeSuccess_();
+  }
+
+  MOCK_METHOD2(writeErr_, void(size_t, const AsyncSocketException&));
+  void writeErr(size_t size, const AsyncSocketException& ex) noexcept override {
+    writeErr_(size, ex);
+  }
 };
 
 } // namespace test

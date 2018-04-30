@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2016-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,9 +81,9 @@ constexpr detail::ShellCmdFormat operator"" _shellify(
   * string is a compile-time constant which can be inspected during code reviews
   */
 template <typename... Arguments>
-FOLLY_DEPRECATED(
+[[deprecated(
     "Use `\"command {} {} ...\"_shellify(argument1, argument2 ...)` from "
-    "namespace `folly::literals::shell_literals`")
+    "namespace `folly::literals::shell_literals`")]]
 std::vector<std::string> shellify(
     StringPiece format,
     Arguments&&... arguments) {

@@ -93,17 +93,14 @@ inline std::exception const* exception_wrapper::as_exception_or_null_(
 }
 
 static_assert(
-    !kIsWindows || sizeof(void*) == 8,
-    "exception_wrapper is untested on 32 bit Windows.");
-static_assert(
-    !kIsWindows || (kMscVer >= 1900 && kMscVer <= 2000),
+    !kMicrosoftAbiVer || (kMicrosoftAbiVer >= 1900 && kMicrosoftAbiVer <= 2000),
     "exception_wrapper is untested and possibly broken on your version of "
     "MSVC");
 
 inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
     std::exception_ptr const& ptr,
     std::exception const& e) {
-  if (!kIsWindows) {
+  if (!kMicrosoftAbiVer) {
     return reinterpret_cast<std::uintptr_t>(&e);
   } else {
     // On Windows, as of MSVC2017, all thrown exceptions are copied to the stack
@@ -120,7 +117,7 @@ inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
     // We derive the offset to pExceptionObject via manual means.
     FOLLY_PACK_PUSH
     struct Win32ExceptionPtr {
-      char offset[40];
+      char offset[8 + 4 * sizeof(void*)];
       void* exceptionObject;
     } FOLLY_PACK_ATTR;
     FOLLY_PACK_POP
@@ -281,12 +278,27 @@ inline exception_wrapper exception_wrapper::SharedPtr::get_exception_ptr_(
 }
 
 template <class Ex, typename... As>
-inline exception_wrapper::exception_wrapper(OnHeapTag, in_place_type_t<Ex>, As&&... as)
+inline exception_wrapper::exception_wrapper(
+    ThrownTag,
+    in_place_type_t<Ex>,
+    As&&... as)
+    : eptr_{std::make_exception_ptr(Ex(std::forward<As>(as)...)),
+            reinterpret_cast<std::uintptr_t>(std::addressof(typeid(Ex))) + 1u},
+      vptr_(&ExceptionPtr::ops_) {}
+
+template <class Ex, typename... As>
+inline exception_wrapper::exception_wrapper(
+    OnHeapTag,
+    in_place_type_t<Ex>,
+    As&&... as)
     : sptr_{std::make_shared<SharedPtr::Impl<Ex>>(std::forward<As>(as)...)},
       vptr_(&SharedPtr::ops_) {}
 
 template <class Ex, typename... As>
-inline exception_wrapper::exception_wrapper(InSituTag, in_place_type_t<Ex>, As&&... as)
+inline exception_wrapper::exception_wrapper(
+    InSituTag,
+    in_place_type_t<Ex>,
+    As&&... as)
     : buff_{in_place_type<Ex>, std::forward<As>(as)...},
       vptr_(&InPlace<Ex>::ops_) {}
 

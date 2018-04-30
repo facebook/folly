@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,10 @@
 #include <mutex>
 #include <queue>
 
-#include <folly/LifoSem.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/ScheduledExecutor.h>
+#include <folly/executors/SequencedExecutor.h>
+#include <folly/synchronization/LifoSem.h>
 
 namespace folly {
   /// A ManualExecutor only does work when you turn the crank, by calling
@@ -35,7 +36,8 @@ namespace folly {
   /// NB No attempt has been made to make anything other than add and schedule
   /// threadsafe.
   class ManualExecutor : public DrivableExecutor,
-                         public ScheduledExecutor {
+                         public ScheduledExecutor,
+                         public SequencedExecutor {
    public:
     void add(Func) override;
 

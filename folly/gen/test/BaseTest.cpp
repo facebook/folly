@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1078,8 +1078,8 @@ TEST(Gen, Cycle) {
               s | cycle | take(4) | as<vector>());
   }
   {
-    int count = 3;
-    int* pcount = &count;
+    int c = 3;
+    int* pcount = &c;
     auto countdown = GENERATOR(int) {
       ASSERT_GE(*pcount, 0)
         << "Cycle should have stopped when it didnt' get values!";
@@ -1223,6 +1223,21 @@ TEST(Gen, Guard) {
                | eachTo<int>()
                | sum,
                runtime_error);
+}
+
+TEST(Gen, eachTryTo) {
+  using std::runtime_error;
+  EXPECT_EQ(4,
+            from({"1", "a", "3"})
+            | eachTryTo<int>()
+            | dereference
+            | sum);
+  EXPECT_EQ(1,
+            from({"1", "a", "3"})
+            | eachTryTo<int>()
+            | takeWhile()
+            | dereference
+            | sum);
 }
 
 TEST(Gen, Batch) {

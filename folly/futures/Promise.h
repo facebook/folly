@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,8 @@ template <class T> class Future;
 
 namespace futures {
 namespace detail {
+template <class T>
+class FutureBase;
 struct EmptyConstruct {};
 template <typename T, typename F>
 class CoreCallbackState;
@@ -51,8 +53,15 @@ class Promise {
   Promise(Promise<T>&&) noexcept;
   Promise& operator=(Promise<T>&&) noexcept;
 
+  /** Return a SemiFuture tied to the shared core state. This can be called only
+    once, thereafter FutureAlreadyRetrieved exception will be raised. */
+  SemiFuture<T> getSemiFuture();
+
   /** Return a Future tied to the shared core state. This can be called only
-    once, thereafter Future already retrieved exception will be raised. */
+    once, thereafter FutureAlreadyRetrieved exception will be raised.
+    NOTE: This function is deprecated. Please use getSemiFuture and pass the
+          appropriate executor to .via on the returned SemiFuture to get a
+          valid Future where necessary. */
   Future<T> getFuture();
 
   /** Fulfill the Promise with an exception_wrapper */
@@ -65,7 +74,7 @@ class Promise {
       p.setException(std::current_exception());
     }
     */
-  FOLLY_DEPRECATED("use setException(exception_wrapper)")
+  [[deprecated("use setException(exception_wrapper)")]]
   void setException(std::exception_ptr const&);
 
   /** Fulfill the Promise with an exception type E, which can be passed to
@@ -110,8 +119,11 @@ class Promise {
  private:
   typedef typename Future<T>::corePtr corePtr;
   template <class>
+  friend class futures::detail::FutureBase;
+  template <class>
   friend class SemiFuture;
-  template <class> friend class Future;
+  template <class>
+  friend class Future;
   template <class, class>
   friend class futures::detail::CoreCallbackState;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2014-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ BENCHMARK_RELATIVE(Sum_Basic_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Sum_Vector_NoGen, iters) {
   int s = 0;
@@ -87,7 +87,7 @@ BENCHMARK_RELATIVE(Sum_Vector_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Member, iters) {
   int s = 0;
@@ -109,7 +109,7 @@ BENCHMARK_RELATIVE(MapMember, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Count_Vector_NoGen, iters) {
   int s = 0;
@@ -135,16 +135,16 @@ BENCHMARK_RELATIVE(Count_Vector_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Fib_Sum_NoGen, iters) {
   int s = 0;
   while (iters--) {
-    auto fib = [](int limit) -> vector<int> {
+    auto fib = [](size_t limit) -> vector<int> {
       vector<int> ret;
       int a = 0;
       int b = 1;
-      for (int i = 0; i * 2 < limit; ++i) {
+      for (size_t i = 0; i < limit; i += 2) {
         ret.push_back(a += b);
         ret.push_back(b += a);
       }
@@ -168,7 +168,26 @@ BENCHMARK_RELATIVE(Fib_Sum_Gen, iters) {
         yield(b += a);
       }
     };
+    // Early stopping implemented with exceptions.
     s += fib | take(testSize.load()) | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(Fib_Sum_Gen_Limit, iters) {
+  int s = 0;
+  while (iters--) {
+    size_t limit = testSize.load();
+    auto fib = GENERATOR(int) {
+      int a = 0;
+      int b = 1;
+      for (size_t i = 0; i < limit; i += 2) {
+        yield(a += b);
+        yield(b += a);
+      }
+    };
+    // No early stopping.
+    s += fib | sum;
   }
   folly::doNotOptimizeAway(s);
 }
@@ -194,7 +213,7 @@ BENCHMARK_RELATIVE(Fib_Sum_Gen_Static, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(VirtualGen_0Virtual, iters) {
   int s = 0;
@@ -240,7 +259,7 @@ BENCHMARK_RELATIVE(VirtualGen_3Virtual, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Concat_NoGen, iters) {
   int s = 0;
@@ -262,7 +281,7 @@ BENCHMARK_RELATIVE(Concat_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Composed_NoGen, iters) {
   int s = 0;
@@ -291,7 +310,7 @@ BENCHMARK_RELATIVE(Composed_GenRegular, iters) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Sample, iters) {
   size_t s = 0;

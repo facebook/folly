@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,19 +50,36 @@ class TemporaryFile {
                          bool closeOnDestruction = true);
   ~TemporaryFile();
 
-  // Movable, but not copiable
-  TemporaryFile(TemporaryFile&&) = default;
-  TemporaryFile& operator=(TemporaryFile&&) = default;
+  // Movable, but not copyable
+  TemporaryFile(TemporaryFile&& other) noexcept {
+    assign(other);
+  }
+
+  TemporaryFile& operator=(TemporaryFile&& other) {
+    if (this != &other) {
+      reset();
+      assign(other);
+    }
+    return *this;
+  }
 
   void close();
   int fd() const { return fd_; }
   const fs::path& path() const;
+  void reset();
 
  private:
   Scope scope_;
   bool closeOnDestruction_;
   int fd_;
   fs::path path_;
+
+  void assign(TemporaryFile& other) {
+    scope_ = other.scope_;
+    closeOnDestruction_ = other.closeOnDestruction_;
+    fd_ = std::exchange(other.fd_, -1);
+    path_ = other.path_;
+  }
 };
 
 /**
@@ -117,8 +134,8 @@ class ChangeToTempDir {
   const fs::path& path() const { return dir_.path(); }
 
  private:
-  fs::path initialPath_;
   TemporaryDirectory dir_;
+  fs::path orig_;
 };
 
 namespace detail {

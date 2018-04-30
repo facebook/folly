@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2013-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,13 +34,13 @@ namespace folly {
 
 /// Returns the best real CacheLocality information available
 static CacheLocality getSystemLocalityInfo() {
-#ifdef __linux__
-  try {
-    return CacheLocality::readFromSysfs();
-  } catch (...) {
-    // keep trying
+  if (kIsLinux) {
+    try {
+      return CacheLocality::readFromSysfs();
+    } catch (...) {
+      // keep trying
+    }
   }
-#endif
 
   long numCpus = sysconf(_SC_NPROCESSORS_CONF);
   if (numCpus <= 0) {
@@ -241,24 +241,23 @@ SimpleAllocator::SimpleAllocator(size_t allocSize, size_t sz)
 SimpleAllocator::~SimpleAllocator() {
   std::lock_guard<std::mutex> g(m_);
   for (auto& block : blocks_) {
-    detail::aligned_free(block);
+    folly::aligned_free(block);
   }
 }
 
 void* SimpleAllocator::allocateHard() {
   // Allocate a new slab.
-  mem_ = static_cast<uint8_t*>(detail::aligned_malloc(allocSize_, allocSize_));
+  mem_ = static_cast<uint8_t*>(folly::aligned_malloc(allocSize_, allocSize_));
   if (!mem_) {
-    std::__throw_bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   end_ = mem_ + allocSize_;
   blocks_.push_back(mem_);
 
   // Install a pointer to ourselves as the allocator.
   *reinterpret_cast<SimpleAllocator**>(mem_) = this;
-  static_assert(
-      folly::max_align_v >= sizeof(SimpleAllocator*), "alignment too small");
-  mem_ += std::min(sz_, folly::max_align_v);
+  static_assert(max_align_v >= sizeof(SimpleAllocator*), "alignment too small");
+  mem_ += std::min(sz_, max_align_v);
 
   // New allocation.
   auto mem = mem_;

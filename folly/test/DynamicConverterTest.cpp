@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2012-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -462,4 +462,11 @@ TEST(DynamicConverter, double_destroy) {
 
   EXPECT_THROW(convertTo<std::vector<B>>(d), B::BException);
   EXPECT_EQ(constructB, destroyB);
+}
+
+TEST(DynamicConverter, simple_vector_bool) {
+  std::vector<bool> bools{true, false};
+  auto d = toDynamic(bools);
+  auto actual = convertTo<decltype(bools)>(d);
+  EXPECT_EQ(bools, actual);
 }
