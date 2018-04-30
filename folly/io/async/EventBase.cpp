@@ -592,8 +592,8 @@ bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) {
 }
 
 bool EventBase::runLoopCallbacks() {
+  bumpHandlingTime();
   if (!loopCallbacks_.empty()) {
-    bumpHandlingTime();
     // Swap the loopCallbacks_ list with a temporary list on our stack.
     // This way we will only run callbacks scheduled at the time
     // runLoopCallbacks() was invoked.
