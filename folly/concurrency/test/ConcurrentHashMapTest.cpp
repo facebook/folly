@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <folly/concurrency/ConcurrentHashMap.h>
+
 #include <atomic>
 #include <memory>
 #include <thread>
 
-#include <folly/concurrency/ConcurrentHashMap.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
@@ -323,15 +325,15 @@ TEST(ConcurrentHashMap, UpdateStressTest) {
       Mutex>
       m(2);
 
-  for (uint i = 0; i < size; i++) {
+  for (uint32_t i = 0; i < size; i++) {
     m.insert(i, i);
   }
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
-  for (uint t = 0; t < num_threads; t++) {
+  for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&, t]() {
       int offset = (iters * t / num_threads);
-      for (uint i = 0; i < iters / num_threads; i++) {
+      for (uint32_t i = 0; i < iters / num_threads; i++) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
         k = k % (iters / num_threads) + offset;
         unsigned long val = 3;
@@ -370,16 +372,16 @@ TEST(ConcurrentHashMap, EraseStressTest) {
       Mutex>
       m(2);
 
-  for (uint i = 0; i < size; i++) {
+  for (uint32_t i = 0; i < size; i++) {
     unsigned long k = folly::hash::jenkins_rev_mix32(i);
     m.insert(k, k);
   }
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
-  for (uint t = 0; t < num_threads; t++) {
+  for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&, t]() {
       int offset = (iters * t / num_threads);
-      for (uint i = 0; i < iters / num_threads; i++) {
+      for (uint32_t i = 0; i < iters / num_threads; i++) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
         auto res = m.insert(k, k).second;
         if (res) {
@@ -429,19 +431,19 @@ TEST(ConcurrentHashMap, IterateStressTest) {
       Mutex>
       m(2);
 
-  for (uint i = 0; i < size; i++) {
+  for (uint32_t i = 0; i < size; i++) {
     unsigned long k = folly::hash::jenkins_rev_mix32(i);
     m.insert(k, k);
   }
-  for (uint i = 0; i < 10; i++) {
+  for (uint32_t i = 0; i < 10; i++) {
     m.insert(i, i);
   }
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
-  for (uint t = 0; t < num_threads; t++) {
+  for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&, t]() {
       int offset = (iters * t / num_threads);
-      for (uint i = 0; i < iters / num_threads; i++) {
+      for (uint32_t i = 0; i < iters / num_threads; i++) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
         auto res = m.insert(k, k).second;
         if (res) {
@@ -488,10 +490,10 @@ TEST(ConcurrentHashMap, insertStressTest) {
   EXPECT_FALSE(m.insert(0, 0).second);
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
-  for (uint t = 0; t < num_threads; t++) {
+  for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&, t]() {
       int offset = (iters * t / num_threads);
-      for (uint i = 0; i < iters / num_threads; i++) {
+      for (uint32_t i = 0; i < iters / num_threads; i++) {
         auto var = offset + i + 1;
         EXPECT_TRUE(m.insert(var, var).second);
         EXPECT_FALSE(m.insert(0, 0).second);
@@ -542,7 +544,7 @@ TEST(ConcurrentHashMap, assignStressTest) {
       Mutex>
       m(2);
 
-  for (uint i = 0; i < iters; i++) {
+  for (uint32_t i = 0; i < iters; i++) {
     big_value a;
     a.set(i);
     m.insert(i, a);
@@ -550,9 +552,9 @@ TEST(ConcurrentHashMap, assignStressTest) {
 
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
-  for (uint t = 0; t < num_threads; t++) {
+  for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&]() {
-      for (uint i = 0; i < iters; i++) {
+      for (uint32_t i = 0; i < iters; i++) {
         auto res = m.find(i);
         EXPECT_NE(res, m.cend());
         res->second.check();
