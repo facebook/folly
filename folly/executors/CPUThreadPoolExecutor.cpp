@@ -114,7 +114,7 @@ CPUThreadPoolExecutor::getTaskQueue() {
   return taskQueue_.get();
 }
 
-void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
+void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
 
   thread->startupBaton.post();
