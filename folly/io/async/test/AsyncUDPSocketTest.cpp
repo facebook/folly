@@ -382,25 +382,25 @@ std::unique_ptr<UDPClient> AsyncSocketIntegrationTest::performPingPongTest(
 
 TEST_F(AsyncSocketIntegrationTest, PingPong) {
   startServer();
-  auto client = performPingPongTest(folly::none, false);
+  auto pingClient = performPingPongTest(folly::none, false);
   // This should succeed.
-  ASSERT_GT(client->pongRecvd(), 0);
+  ASSERT_GT(pingClient->pongRecvd(), 0);
 }
 
 TEST_F(AsyncSocketIntegrationTest, ConnectedPingPong) {
   server->setChangePortForWrites(false);
   startServer();
-  auto client = performPingPongTest(server->address(), false);
+  auto pingClient = performPingPongTest(server->address(), false);
   // This should succeed
-  ASSERT_GT(client->pongRecvd(), 0);
+  ASSERT_GT(pingClient->pongRecvd(), 0);
 }
 
 TEST_F(AsyncSocketIntegrationTest, ConnectedPingPongServerWrongAddress) {
   server->setChangePortForWrites(true);
   startServer();
-  auto client = performPingPongTest(server->address(), false);
+  auto pingClient = performPingPongTest(server->address(), false);
   // This should fail.
-  ASSERT_EQ(client->pongRecvd(), 0);
+  ASSERT_EQ(pingClient->pongRecvd(), 0);
 }
 
 TEST_F(AsyncSocketIntegrationTest, ConnectedPingPongClientWrongAddress) {
@@ -408,25 +408,25 @@ TEST_F(AsyncSocketIntegrationTest, ConnectedPingPongClientWrongAddress) {
   startServer();
   folly::SocketAddress connectAddr(
       server->address().getIPAddress(), server->address().getPort() + 1);
-  auto client = performPingPongTest(connectAddr, false);
+  auto pingClient = performPingPongTest(connectAddr, false);
   // This should fail.
-  ASSERT_EQ(client->pongRecvd(), 0);
+  ASSERT_EQ(pingClient->pongRecvd(), 0);
 }
 
 TEST_F(AsyncSocketIntegrationTest, PingPongUseConnectedSendMsg) {
   server->setChangePortForWrites(false);
   startServer();
-  auto client = performPingPongTest(server->address(), true);
+  auto pingClient = performPingPongTest(server->address(), true);
   // This should succeed.
-  ASSERT_GT(client->pongRecvd(), 0);
+  ASSERT_GT(pingClient->pongRecvd(), 0);
 }
 
 TEST_F(AsyncSocketIntegrationTest, PingPongUseConnectedSendMsgServerWrongAddr) {
   server->setChangePortForWrites(true);
   startServer();
-  auto client = performPingPongTest(server->address(), true);
+  auto pingClient = performPingPongTest(server->address(), true);
   // This should fail.
-  ASSERT_EQ(client->pongRecvd(), 0);
+  ASSERT_EQ(pingClient->pongRecvd(), 0);
 }
 
 class TestAsyncUDPSocket : public AsyncUDPSocket {
