@@ -109,7 +109,6 @@ nobase_follyinclude_HEADERS = \
 	executors/IOExecutor.h \
 	executors/IOObjectCache.h \
 	executors/IOThreadPoolExecutor.h \
-	executors/NotificationQueueExecutor.h \
 	executors/QueuedImmediateExecutor.h \
 	executors/ScheduledExecutor.h \
 	executors/SequencedExecutor.h \

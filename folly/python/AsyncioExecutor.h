@@ -22,9 +22,9 @@
 #include <folly/io/async/NotificationQueue.h>
 
 namespace folly {
+namespace python {
 
-class NotificationQueueExecutor : public DrivableExecutor,
-                                  public SequencedExecutor {
+class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
  public:
   using Func = folly::Func;
 
@@ -42,11 +42,11 @@ class NotificationQueueExecutor : public DrivableExecutor,
       try {
         func();
       } catch (const std::exception& ex) {
-        LOG(ERROR) << "Exception thrown by NotificationQueueExecutor task."
+        LOG(ERROR) << "Exception thrown by AsyncioExecutor task."
                    << "Exception message: " << folly::exceptionStr(ex);
       } catch (...) {
         LOG(ERROR) << "Unknown Exception thrown "
-                   << "by NotificationQueueExecutor task.";
+                   << "by AsyncioExecutor task.";
       }
     }
   }
@@ -54,6 +54,7 @@ class NotificationQueueExecutor : public DrivableExecutor,
  private:
   folly::NotificationQueue<Func> queue_;
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
-}; // NotificationQueueExecutor
+}; // AsyncioExecutor
 
+} // namespace python
 } // namespace folly
