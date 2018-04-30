@@ -75,7 +75,7 @@ hash_range(Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
   return hash;
 }
 
-inline uint32_t twang_32from64(uint64_t key);
+inline uint32_t twang_32from64(uint64_t key) noexcept;
 
 template <class Hasher, typename T, typename... Ts>
 size_t hash_combine_generic(const T& t, const Ts&... ts) {
@@ -97,8 +97,11 @@ size_t hash_combine_generic(const T& t, const Ts&... ts) {
 // strings or pairs
 class StdHasher {
  public:
+  // The standard requires all explicit and partial specializations of std::hash
+  // supplied by either the standard library or by users to be default
+  // constructible.
   template <typename T>
-  static size_t hash(const T& t) {
+  static size_t hash(const T& t) noexcept(noexcept(std::hash<T>()(t))) {
     return std::hash<T>()(t);
   }
 };
@@ -148,7 +151,7 @@ inline uint64_t twang_unmix64(uint64_t key) noexcept {
  * Thomas Wang downscaling hash function
  */
 
-inline uint32_t twang_32from64(uint64_t key) {
+inline uint32_t twang_32from64(uint64_t key) noexcept {
   key = (~key) + (key << 18);
   key = key ^ (key >> 31);
   key = key * 21;
@@ -182,7 +185,7 @@ inline uint32_t jenkins_rev_mix32(uint32_t key) noexcept {
  * jenkins_rev_mix32.
  */
 
-inline uint32_t jenkins_rev_unmix32(uint32_t key) {
+inline uint32_t jenkins_rev_unmix32(uint32_t key) noexcept {
   // These are the modular multiplicative inverses (in Z_2^32) of the
   // multiplication factors in jenkins_rev_mix32, in reverse order.  They were
   // computed using the Extended Euclidean algorithm, see
@@ -214,7 +217,9 @@ const uint32_t FNV_32_HASH_START = 2166136261UL;
 const uint64_t FNV_64_HASH_START = 14695981039346656037ULL;
 const uint64_t FNVA_64_HASH_START = 14695981039346656037ULL;
 
-inline uint32_t fnv32(const char* buf, uint32_t hash = FNV_32_HASH_START) {
+inline uint32_t fnv32(
+    const char* buf,
+    uint32_t hash = FNV_32_HASH_START) noexcept {
   // forcing signed char, since other platforms can use unsigned
   const signed char* s = reinterpret_cast<const signed char*>(buf);
 
@@ -226,8 +231,10 @@ inline uint32_t fnv32(const char* buf, uint32_t hash = FNV_32_HASH_START) {
   return hash;
 }
 
-inline uint32_t
-fnv32_buf(const void* buf, size_t n, uint32_t hash = FNV_32_HASH_START) {
+inline uint32_t fnv32_buf(
+    const void* buf,
+    size_t n,
+    uint32_t hash = FNV_32_HASH_START) noexcept {
   // forcing signed char, since other platforms can use unsigned
   const signed char* char_buf = reinterpret_cast<const signed char*>(buf);
 
@@ -242,11 +249,13 @@ fnv32_buf(const void* buf, size_t n, uint32_t hash = FNV_32_HASH_START) {
 
 inline uint32_t fnv32(
     const std::string& str,
-    uint32_t hash = FNV_32_HASH_START) {
+    uint32_t hash = FNV_32_HASH_START) noexcept {
   return fnv32_buf(str.data(), str.size(), hash);
 }
 
-inline uint64_t fnv64(const char* buf, uint64_t hash = FNV_64_HASH_START) {
+inline uint64_t fnv64(
+    const char* buf,
+    uint64_t hash = FNV_64_HASH_START) noexcept {
   // forcing signed char, since other platforms can use unsigned
   const signed char* s = reinterpret_cast<const signed char*>(buf);
 
@@ -258,8 +267,10 @@ inline uint64_t fnv64(const char* buf, uint64_t hash = FNV_64_HASH_START) {
   return hash;
 }
 
-inline uint64_t
-fnv64_buf(const void* buf, size_t n, uint64_t hash = FNV_64_HASH_START) {
+inline uint64_t fnv64_buf(
+    const void* buf,
+    size_t n,
+    uint64_t hash = FNV_64_HASH_START) noexcept {
   // forcing signed char, since other platforms can use unsigned
   const signed char* char_buf = reinterpret_cast<const signed char*>(buf);
 
@@ -273,12 +284,14 @@ fnv64_buf(const void* buf, size_t n, uint64_t hash = FNV_64_HASH_START) {
 
 inline uint64_t fnv64(
     const std::string& str,
-    uint64_t hash = FNV_64_HASH_START) {
+    uint64_t hash = FNV_64_HASH_START) noexcept {
   return fnv64_buf(str.data(), str.size(), hash);
 }
 
-inline uint64_t
-fnva64_buf(const void* buf, size_t n, uint64_t hash = FNVA_64_HASH_START) {
+inline uint64_t fnva64_buf(
+    const void* buf,
+    size_t n,
+    uint64_t hash = FNVA_64_HASH_START) noexcept {
   const uint8_t* char_buf = reinterpret_cast<const uint8_t*>(buf);
 
   for (size_t i = 0; i < n; ++i) {
@@ -291,7 +304,7 @@ fnva64_buf(const void* buf, size_t n, uint64_t hash = FNVA_64_HASH_START) {
 
 inline uint64_t fnva64(
     const std::string& str,
-    uint64_t hash = FNVA_64_HASH_START) {
+    uint64_t hash = FNVA_64_HASH_START) noexcept {
   return fnva64_buf(str.data(), str.size(), hash);
 }
 
@@ -301,7 +314,7 @@ inline uint64_t fnva64(
 
 #define get16bits(d) folly::loadUnaligned<uint16_t>(d)
 
-inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) {
+inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) noexcept {
   // forcing signed char, since other platforms can use unsigned
   const unsigned char* s = reinterpret_cast<const unsigned char*>(buf);
   uint32_t hash = static_cast<uint32_t>(len);
@@ -356,11 +369,11 @@ inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) {
 
 #undef get16bits
 
-inline uint32_t hsieh_hash32(const char* s) {
+inline uint32_t hsieh_hash32(const char* s) noexcept {
   return hsieh_hash32_buf(s, std::strlen(s));
 }
 
-inline uint32_t hsieh_hash32_str(const std::string& str) {
+inline uint32_t hsieh_hash32_str(const std::string& str) noexcept {
   return hsieh_hash32_buf(str.data(), str.size());
 }
 
