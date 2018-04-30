@@ -42,6 +42,7 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD1(setReuseAddr, void(bool));
   MOCK_METHOD1(dontFragment, void(bool));
   MOCK_METHOD1(setErrMessageCallback, void(ErrMessageCallback*));
+  MOCK_METHOD1(connect, int(const SocketAddress&));
 };
 
 } // namespace test

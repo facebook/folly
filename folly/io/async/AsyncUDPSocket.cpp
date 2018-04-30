@@ -380,6 +380,14 @@ void AsyncUDPSocket::failErrMessageRead(const AsyncSocketException& ex) {
   }
 }
 
+int AsyncUDPSocket::connect(const folly::SocketAddress& address) {
+  CHECK_NE(-1, fd_) << "Socket not yet bound";
+  sockaddr_storage addrStorage;
+  address.getAddress(&addrStorage);
+  return fsp::connect(
+      fd_, reinterpret_cast<sockaddr*>(&addrStorage), address.getActualSize());
+}
+
 void AsyncUDPSocket::handleRead() noexcept {
   void* buf{nullptr};
   size_t len{0};
