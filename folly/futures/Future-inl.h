@@ -1413,7 +1413,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
 template <class It, class T, class F>
 Future<T> reduce(It first, It last, T&& initial, F&& func) {
   if (first == last) {
-    return makeFuture(std::move(initial));
+    return makeFuture(std::forward<T>(initial));
   }
 
   typedef typename std::iterator_traits<It>::value_type::value_type ItT;
@@ -1425,11 +1425,11 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
 
   auto sfunc = std::make_shared<F>(std::move(func));
 
-  auto f = first->then(
-      [ minitial = std::move(initial), sfunc ](Try<ItT> & head) mutable {
-        return (*sfunc)(
-            std::move(minitial), head.template get<IsTry::value, Arg&&>());
-      });
+  auto f = first->then([minitial = std::forward<T>(initial),
+                        sfunc](Try<ItT>& head) mutable {
+    return (*sfunc)(
+        std::forward<T>(minitial), head.template get<IsTry::value, Arg&&>());
+  });
 
   for (++first; first != last; ++first) {
     f = collectAll(f, *first).then([sfunc](std::tuple<Try<T>, Try<ItT>>& t) {
