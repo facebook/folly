@@ -330,7 +330,6 @@ nobase_follyinclude_HEADERS = \
 	Likely.h \
 	LockTraits.h \
 	LockTraitsBoost.h \
-	Logging.h \
 	logging/AsyncFileWriter.h \
 	logging/FileHandlerFactory.h \
 	logging/FileWriterFactory.h \
