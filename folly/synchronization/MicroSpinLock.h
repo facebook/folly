@@ -79,11 +79,11 @@ struct MicroSpinLock {
 
   void lock() {
     detail::Sleeper sleeper;
-    do {
-      while (payload()->load() != FREE) {
+    while (!try_lock()) {
+      do {
         sleeper.wait();
-      }
-    } while (!try_lock());
+      } while (payload()->load(std::memory_order_relaxed) == LOCKED);
+    }
     assert(payload()->load() == LOCKED);
   }
 
