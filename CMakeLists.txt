@@ -104,8 +104,8 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR}/experimental/exception_tracer/"
     "^${FOLLY_DIR}/experimental/hazptr/bench/"
     "^${FOLLY_DIR}/experimental/hazptr/example/"
-    "^${FOLLY_DIR}/experimental/logging/example/"
     "^${FOLLY_DIR}/futures/exercises/"
+    "^${FOLLY_DIR}/logging/example/"
     "^${FOLLY_DIR}/(.*/)?test/"
     "^${FOLLY_DIR}/tools/"
     "Benchmark.cpp$"
@@ -342,10 +342,10 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
-    ${FOLLY_DIR}/experimental/logging/test/ConfigHelpers.cpp
-    ${FOLLY_DIR}/experimental/logging/test/ConfigHelpers.h
-    ${FOLLY_DIR}/experimental/logging/test/TestLogHandler.cpp
-    ${FOLLY_DIR}/experimental/logging/test/TestLogHandler.h
+    ${FOLLY_DIR}/logging/test/ConfigHelpers.cpp
+    ${FOLLY_DIR}/logging/test/ConfigHelpers.h
+    ${FOLLY_DIR}/logging/test/TestLogHandler.cpp
+    ${FOLLY_DIR}/logging/test/TestLogHandler.h
     ${FOLLY_DIR}/futures/test/TestExecutor.cpp
     ${FOLLY_DIR}/futures/test/TestExecutor.h
     ${FOLLY_DIR}/io/async/test/BlockingSocket.h
@@ -455,7 +455,7 @@ if (BUILD_TESTS)
       #TEST async_io_test SOURCES AsyncIOTest.cpp
       TEST fs_util_test SOURCES FsUtilTest.cpp
 
-    DIRECTORY experimental/logging/test/
+    DIRECTORY logging/test/
       TEST async_file_writer_test SOURCES AsyncFileWriterTest.cpp
       TEST config_parser_test SOURCES ConfigParserTest.cpp
       TEST config_update_test SOURCES ConfigUpdateTest.cpp

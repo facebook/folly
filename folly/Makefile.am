@@ -5,7 +5,14 @@ endif
 # Note that the order of SUBDIRS matters.
 # Many subdirectories depend on libfollytest from the test directory,
 # so it must appear before other directories
-SUBDIRS = . test experimental $(MAYBE_INIT) chrono/test io/test stats/test
+SUBDIRS = . \
+	  test \
+	  experimental \
+	  $(MAYBE_INIT) \
+	  chrono/test \
+	  io/test \
+	  logging \
+	  stats/test
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -165,34 +172,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/JemallocNodumpAllocator.h \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
-	experimental/logging/AsyncFileWriter.h \
-	experimental/logging/FileHandlerFactory.h \
-	experimental/logging/FileWriterFactory.h \
-	experimental/logging/GlogStyleFormatter.h \
-	experimental/logging/ImmediateFileWriter.h \
-	experimental/logging/Init.h \
-	experimental/logging/LogCategory.h \
-	experimental/logging/LogCategoryConfig.h \
-	experimental/logging/LogConfig.h \
-	experimental/logging/LogConfigParser.h \
-	experimental/logging/LogFormatter.h \
-	experimental/logging/Logger.h \
-	experimental/logging/LoggerDB.h \
-	experimental/logging/LogHandler.h \
-	experimental/logging/LogHandlerFactory.h \
-	experimental/logging/LogHandlerConfig.h \
-	experimental/logging/LogLevel.h \
-	experimental/logging/LogMessage.h \
-	experimental/logging/LogName.h \
-	experimental/logging/LogStream.h \
-	experimental/logging/LogStreamProcessor.h \
-	experimental/logging/LogWriter.h \
-	experimental/logging/printf.h \
-	experimental/logging/RateLimiter.h \
-	experimental/logging/StandardLogHandler.h \
-	experimental/logging/StandardLogHandlerFactory.h \
-	experimental/logging/StreamHandlerFactory.h \
-	experimental/logging/xlog.h \
 	experimental/NestedCommandLineApp.h \
 	experimental/observer/detail/Core.h \
 	experimental/observer/detail/GraphCycleDetector.h \
@@ -352,6 +331,34 @@ nobase_follyinclude_HEADERS = \
 	LockTraits.h \
 	LockTraitsBoost.h \
 	Logging.h \
+	logging/AsyncFileWriter.h \
+	logging/FileHandlerFactory.h \
+	logging/FileWriterFactory.h \
+	logging/GlogStyleFormatter.h \
+	logging/ImmediateFileWriter.h \
+	logging/Init.h \
+	logging/LogCategory.h \
+	logging/LogCategoryConfig.h \
+	logging/LogConfig.h \
+	logging/LogConfigParser.h \
+	logging/LogFormatter.h \
+	logging/Logger.h \
+	logging/LoggerDB.h \
+	logging/LogHandler.h \
+	logging/LogHandlerFactory.h \
+	logging/LogHandlerConfig.h \
+	logging/LogLevel.h \
+	logging/LogMessage.h \
+	logging/LogName.h \
+	logging/LogStream.h \
+	logging/LogStreamProcessor.h \
+	logging/LogWriter.h \
+	logging/printf.h \
+	logging/RateLimiter.h \
+	logging/StandardLogHandler.h \
+	logging/StandardLogHandlerFactory.h \
+	logging/StreamHandlerFactory.h \
+	logging/xlog.h \
 	MacAddress.h \
 	MapUtil.h \
 	Math.h \

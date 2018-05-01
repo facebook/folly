@@ -662,10 +662,10 @@ AC_CONFIG_FILES([Makefile
                  test/function_benchmark/Makefile
                  experimental/Makefile
                  experimental/io/test/Makefile
-                 experimental/logging/Makefile
-                 experimental/logging/example/Makefile
                  experimental/symbolizer/Makefile
                  init/Makefile
+                 logging/Makefile
+                 logging/example/Makefile
                  stats/test/Makefile])
 
 AM_COND_IF([EXCEPTION_TRACER],
