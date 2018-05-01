@@ -364,6 +364,16 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     return value_;
   }
 
+  ValueType previous() {
+    size_t inner;
+    block_t block;
+    getPreviousInfo(block, inner, outer_);
+    block_ = folly::loadUnaligned<block_t>(start_ + outer_);
+    block_ ^= block;
+    --position_;
+    return setValue(inner);
+  }
+
   ValueType next() {
     // Skip to the first non-zero block.
     while (block_ == 0) {
@@ -504,21 +514,10 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   }
 
   ValueType previousValue() const {
-    DCHECK_NE(position(), std::numeric_limits<SizeType>::max());
-    DCHECK_GT(position(), 0);
-
-    auto outer = outer_;
-    auto inner = size_t(value_) - 8 * outer_ + position_;
-    block_t block = folly::loadUnaligned<block_t>(start_ + outer);
-    block &= (block_t(1) << inner) - 1;
-
-    while (UNLIKELY(block == 0)) {
-      DCHECK_GT(outer, 0);
-      outer -= std::min<OuterType>(sizeof(block_t), outer);
-      block = folly::loadUnaligned<block_t>(start_ + outer);
-    }
-
-    inner = 8 * sizeof(block_t) - 1 - Instructions::clz(block);
+    block_t block;
+    size_t inner;
+    OuterType outer;
+    getPreviousInfo(block, inner, outer);
     return static_cast<ValueType>(8 * outer + inner - (position_ - 1));
   }
 
@@ -542,6 +541,22 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   // The size in bytes of the upper bits is limited by n + universe / 8,
   // so a type that can hold either sizes or values is sufficient.
   using OuterType = typename std::common_type<ValueType, SizeType>::type;
+
+  void getPreviousInfo(block_t& block, size_t& inner, OuterType& outer) const {
+    DCHECK_NE(position(), std::numeric_limits<SizeType>::max());
+    DCHECK_GT(position(), 0);
+
+    outer = outer_;
+    block = folly::loadUnaligned<block_t>(start_ + outer);
+    inner = size_t(value_) - 8 * outer_ + position_;
+    block &= (block_t(1) << inner) - 1;
+    while (UNLIKELY(block == 0)) {
+      DCHECK_GT(outer, 0);
+      outer -= std::min<OuterType>(sizeof(block_t), outer);
+      block = folly::loadUnaligned<block_t>(start_ + outer);
+    }
+    inner = 8 * sizeof(block_t) - 1 - Instructions::clz(block);
+  }
 
   const unsigned char* const start_;
   block_t block_;
@@ -589,6 +604,17 @@ class EliasFanoReader {
   void reset() {
     upper_.reset();
     value_ = kInvalidValue;
+  }
+
+  bool previous() {
+    if (!kUnchecked && UNLIKELY(position() == 0)) {
+      reset();
+      return false;
+    }
+    upper_.previous();
+    value_ =
+        readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
+    return true;
   }
 
   bool next() {
@@ -685,6 +711,11 @@ class EliasFanoReader {
     upper_.jumpToNext(value >> numLowerBits_);
     iterateTo(value);
     return true;
+  }
+
+  ValueType lastValue() const {
+    CHECK(!kUnchecked);
+    return lastValue_;
   }
 
   ValueType previousValue() const {

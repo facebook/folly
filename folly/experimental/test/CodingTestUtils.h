@@ -89,6 +89,27 @@ auto maybeTestPreviousValue(const Vector& data, Reader& reader, Index i)
   }
 }
 
+// Test previous only if Reader has it.
+template <class... Args>
+void maybeTestPrevious(Args&&...) {}
+
+// Make all the arguments template because if the types are not exact,
+// the above overload will be picked (for example i could be size_t or
+// ssize_t).
+template <class Vector, class Reader, class Index>
+auto maybeTestPrevious(const Vector& data, Reader& reader, Index i)
+    -> decltype(reader.previous(), void()) {
+  auto r = reader.previous();
+  if (i != 0) {
+    EXPECT_TRUE(r);
+    EXPECT_EQ(reader.value(), data[i - 1]);
+  } else {
+    EXPECT_FALSE(r);
+  }
+  reader.next();
+  EXPECT_EQ(reader.value(), data[i]);
+}
+
 template <class Reader, class List>
 void testNext(const std::vector<uint32_t>& data, const List& list) {
   Reader reader(list);
@@ -100,6 +121,7 @@ void testNext(const std::vector<uint32_t>& data, const List& list) {
     EXPECT_EQ(reader.value(), data[i]);
     EXPECT_EQ(reader.position(), i);
     maybeTestPreviousValue(data, reader, i);
+    maybeTestPrevious(data, reader, i);
   }
   EXPECT_FALSE(reader.next());
   EXPECT_FALSE(reader.valid());
@@ -118,6 +140,7 @@ void testSkip(const std::vector<uint32_t>& data, const List& list,
     EXPECT_EQ(reader.value(), data[i]);
     EXPECT_EQ(reader.position(), i);
     maybeTestPreviousValue(data, reader, i);
+    maybeTestPrevious(data, reader, i);
   }
   EXPECT_FALSE(reader.skip(skipStep));
   EXPECT_FALSE(reader.valid());
@@ -156,6 +179,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list,
     EXPECT_EQ(reader.position(), std::distance(data.begin(), it));
     value = reader.value() + delta;
     maybeTestPreviousValue(data, reader, std::distance(data.begin(), it));
+    maybeTestPrevious(data, reader, std::distance(data.begin(), it));
   }
   EXPECT_FALSE(reader.valid());
   EXPECT_EQ(reader.position(), reader.size());
@@ -215,6 +239,7 @@ void testJump(const std::vector<uint32_t>& data, const List& list) {
     EXPECT_EQ(reader.value(), data[i]);
     EXPECT_EQ(reader.position(), i);
     maybeTestPreviousValue(data, reader, i);
+    maybeTestPrevious(data, reader, i);
   }
   EXPECT_FALSE(reader.jump(data.size()));
   EXPECT_FALSE(reader.valid());
