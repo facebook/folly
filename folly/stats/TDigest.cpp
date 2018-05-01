@@ -17,11 +17,10 @@
 #include <folly/stats/TDigest.h>
 
 #include <algorithm>
-#include <cmath>
+#include <limits>
 
 namespace folly {
 
-namespace detail {
 /*
  * A good biased scaling function has the following properties:
  *   - The value of the function k(0, delta) = 0, and k(1, delta) = delta.
@@ -57,7 +56,7 @@ namespace detail {
  * }
  */
 
-double k_to_q(double k, double d) {
+static double k_to_q(double k, double d) {
   double k_div_d = k / d;
   if (k_div_d >= 0.5) {
     double base = 1 - k_div_d;
@@ -67,7 +66,14 @@ double k_to_q(double k, double d) {
   }
 }
 
-} // namespace detail
+static double clamp(double v, double lo, double hi) {
+  if (v > hi) {
+    return hi;
+  } else if (v < lo) {
+    return lo;
+  }
+  return v;
+}
 
 TDigest TDigest::merge(Range<const double*> sortedValues) const {
   if (sortedValues.empty()) {
@@ -78,12 +84,23 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
 
   result.count_ = count_ + sortedValues.size();
 
+  double maybeMin = *sortedValues.begin();
+  double maybeMax = *(sortedValues.end() - 1);
+  if (count_ > 0) {
+    // We know that min_ and max_ are numbers
+    result.min_ = std::min(min_, maybeMin);
+    result.max_ = std::max(max_, maybeMax);
+  } else {
+    // We know that min_ and max_ are NaN.
+    result.min_ = maybeMin;
+    result.max_ = maybeMax;
+  }
+
   std::vector<Centroid> compressed;
   compressed.reserve(maxSize_);
 
   double k_limit = 1;
-  double q_limit_times_count =
-      detail::k_to_q(k_limit++, maxSize_) * result.count_;
+  double q_limit_times_count = k_to_q(k_limit++, maxSize_) * result.count_;
 
   auto it_centroids = centroids_.begin();
   auto it_sortedValues = sortedValues.begin();
@@ -125,7 +142,7 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
       sumsToMerge = 0;
       weightsToMerge = 0;
       compressed.push_back(cur);
-      q_limit_times_count = detail::k_to_q(k_limit++, maxSize_) * result.count_;
+      q_limit_times_count = k_to_q(k_limit++, maxSize_) * result.count_;
       cur = next;
     }
   }
@@ -153,11 +170,23 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
 
   double count = 0;
 
+  // We can safely use these limits to avoid isnan checks below because we know
+  // nCentroids > 0, so at least one TDigest has a min and max.
+  double min = std::numeric_limits<double>::infinity();
+  double max = -std::numeric_limits<double>::infinity();
+
   for (auto it = digests.begin(); it != digests.end(); it++) {
     starts.push_back(centroids.end());
-    count += it->count();
-    for (const auto& centroid : it->centroids_) {
-      centroids.push_back(centroid);
+    double curCount = it->count();
+    if (curCount > 0) {
+      DCHECK(!std::isnan(it->min_));
+      DCHECK(!std::isnan(it->max_));
+      min = std::min(min, it->min_);
+      max = std::max(max, it->max_);
+      count += curCount;
+      for (const auto& centroid : it->centroids_) {
+        centroids.push_back(centroid);
+      }
     }
   }
 
@@ -193,7 +222,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   compressed.reserve(maxSize);
 
   double k_limit = 1;
-  double q_limit_times_count = detail::k_to_q(k_limit, maxSize) * count;
+  double q_limit_times_count = k_to_q(k_limit, maxSize) * count;
 
   Centroid cur = centroids.front();
   double weightSoFar = cur.weight();
@@ -209,7 +238,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
       sumsToMerge = 0;
       weightsToMerge = 0;
       compressed.push_back(cur);
-      q_limit_times_count = detail::k_to_q(k_limit++, maxSize) * count;
+      q_limit_times_count = k_to_q(k_limit++, maxSize) * count;
       cur = *it;
     }
   }
@@ -217,6 +246,8 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   compressed.push_back(cur);
 
   result.count_ = count;
+  result.min_ = min;
+  result.max_ = max;
   result.centroids_ = std::move(compressed);
   return result;
 }
@@ -231,7 +262,7 @@ double TDigest::estimateQuantile(double q) const {
   double t;
   if (q > 0.5) {
     if (q >= 1.0) {
-      return centroids_.back().mean();
+      return max_;
     }
     pos = 0;
     t = count_;
@@ -244,7 +275,7 @@ double TDigest::estimateQuantile(double q) const {
     }
   } else {
     if (q <= 0.0) {
-      return centroids_.front().mean();
+      return min_;
     }
     pos = centroids_.size() - 1;
     t = 0;
@@ -267,8 +298,9 @@ double TDigest::estimateQuantile(double q) const {
       delta = (centroids_[pos + 1].mean() - centroids_[pos - 1].mean()) / 2;
     }
   }
-  return centroids_[pos].mean() +
+  auto value = centroids_[pos].mean() +
       ((rank - t) / centroids_[pos].weight() - 0.5) * delta;
+  return clamp(value, min_, max_);
 }
 
 double TDigest::Centroid::add(double sum, double weight) {

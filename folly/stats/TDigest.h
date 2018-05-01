@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <vector>
 
 #include <folly/Range.h>
@@ -48,7 +49,7 @@ namespace folly {
 class TDigest {
  public:
   explicit TDigest(size_t maxSize = 100)
-      : maxSize_(maxSize), sum_(0.0), count_(0.0) {
+      : maxSize_(maxSize), sum_(0.0), count_(0.0), max_(NAN), min_(NAN) {
     centroids_.reserve(maxSize);
   }
 
@@ -79,6 +80,14 @@ class TDigest {
 
   double count() const {
     return count_;
+  }
+
+  double min() const {
+    return min_;
+  }
+
+  double max() const {
+    return max_;
   }
 
   bool empty() const {
@@ -117,6 +126,8 @@ class TDigest {
   size_t maxSize_;
   double sum_;
   double count_;
+  double max_;
+  double min_;
 };
 
 } // namespace folly
