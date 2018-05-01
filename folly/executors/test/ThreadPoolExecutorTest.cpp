@@ -651,3 +651,47 @@ TEST(ThreadPoolExecutorTest, KeepAliveTestIO) {
 TEST(ThreadPoolExecutorTest, KeepAliveTestCPU) {
   keepAliveTest<CPUThreadPoolExecutor>();
 }
+
+int getNumThreadPoolExecutors() {
+  int count = 0;
+  ThreadPoolExecutor::withAll([&count](ThreadPoolExecutor&) { count++; });
+  return count;
+}
+
+template <typename TPE>
+static void registersToExecutorListTest() {
+  EXPECT_EQ(0, getNumThreadPoolExecutors());
+  {
+    TPE tpe(10);
+    EXPECT_EQ(1, getNumThreadPoolExecutors());
+    {
+      TPE tpe2(5);
+      EXPECT_EQ(2, getNumThreadPoolExecutors());
+    }
+    EXPECT_EQ(1, getNumThreadPoolExecutors());
+  }
+  EXPECT_EQ(0, getNumThreadPoolExecutors());
+}
+
+TEST(ThreadPoolExecutorTest, registersToExecutorListTestIO) {
+  registersToExecutorListTest<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, registersToExecutorListTestCPU) {
+  registersToExecutorListTest<CPUThreadPoolExecutor>();
+}
+
+template <typename TPE>
+static void testUsesNameFromNamedThreadFactory() {
+  auto ntf = std::make_shared<NamedThreadFactory>("my_executor");
+  TPE tpe(10, ntf);
+  EXPECT_EQ("my_executor", tpe.getName());
+}
+
+TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryIO) {
+  testUsesNameFromNamedThreadFactory<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryCPU) {
+  testUsesNameFromNamedThreadFactory<CPUThreadPoolExecutor>();
+}

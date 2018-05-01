@@ -20,6 +20,14 @@
 
 namespace folly {
 
+using SyncVecThreadPoolExecutors =
+    folly::Synchronized<std::vector<ThreadPoolExecutor*>>;
+
+SyncVecThreadPoolExecutors& getSyncVecThreadPoolExecutors() {
+  static Indestructible<SyncVecThreadPoolExecutors> storage;
+  return *storage;
+}
+
 ThreadPoolExecutor::ThreadPoolExecutor(
     size_t /* numThreads */,
     std::shared_ptr<ThreadFactory> threadFactory,
@@ -27,10 +35,15 @@ ThreadPoolExecutor::ThreadPoolExecutor(
     : threadFactory_(std::move(threadFactory)),
       isWaitForAll_(isWaitForAll),
       taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
-      threadPoolHook_("Wangle::ThreadPoolExecutor") {}
+      threadPoolHook_("folly::ThreadPoolExecutor") {
+  getSyncVecThreadPoolExecutors()->push_back(this);
+}
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
   CHECK_EQ(0, threadList_.get().size());
+  getSyncVecThreadPoolExecutors().withWLock([this](auto& tpe) {
+    tpe.erase(std::remove(tpe.begin(), tpe.end(), this), tpe.end());
+  });
 }
 
 ThreadPoolExecutor::Task::Task(
@@ -173,6 +186,14 @@ void ThreadPoolExecutor::join() {
   CHECK_EQ(0, stoppedThreads_.size());
 }
 
+void ThreadPoolExecutor::withAll(FunctionRef<void(ThreadPoolExecutor&)> f) {
+  getSyncVecThreadPoolExecutors().withRLock([f](auto& tpes) {
+    for (auto tpe : tpes) {
+      f(*tpe);
+    }
+  });
+}
+
 ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
   const auto now = std::chrono::steady_clock::now();
   RWSpinLock::ReadHolder r{&threadListLock_};
@@ -195,6 +216,15 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
 uint64_t ThreadPoolExecutor::getPendingTaskCount() {
   RWSpinLock::ReadHolder r{&threadListLock_};
   return getPendingTaskCountImpl();
+}
+
+std::string ThreadPoolExecutor::getName() {
+  auto ntf = dynamic_cast<NamedThreadFactory*>(threadFactory_.get());
+  if (ntf == nullptr) {
+    return folly::demangle(typeid(*this).name()).toStdString();
+  }
+
+  return ntf->getNamePrefix();
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);

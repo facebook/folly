@@ -63,6 +63,12 @@ class ThreadPoolExecutor : public virtual folly::Executor {
   void stop();
   void join();
 
+  /**
+   * Execute f against all ThreadPoolExecutors, primarily for retrieving and
+   * exporting stats.
+   */
+  static void withAll(FunctionRef<void(ThreadPoolExecutor&)> f);
+
   struct PoolStats {
     PoolStats()
         : threadCount(0),
@@ -78,6 +84,7 @@ class ThreadPoolExecutor : public virtual folly::Executor {
 
   PoolStats getPoolStats();
   uint64_t getPendingTaskCount();
+  std::string getName();
 
   struct TaskStats {
     TaskStats() : expired(false), waitTime(0), runTime(0) {}
