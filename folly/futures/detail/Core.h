@@ -301,11 +301,8 @@ class Core final {
    public:
     explicit CoreAndCallbackReference(Core* core) noexcept : core_(core) {}
 
-    ~CoreAndCallbackReference() {
-      if (core_) {
-        core_->derefCallback();
-        core_->detachOne();
-      }
+    ~CoreAndCallbackReference() noexcept {
+      detach();
     }
 
     CoreAndCallbackReference(CoreAndCallbackReference const& o) = delete;
@@ -313,7 +310,8 @@ class Core final {
         delete;
 
     CoreAndCallbackReference(CoreAndCallbackReference&& o) noexcept {
-      std::swap(core_, o.core_);
+      detach();
+      core_ = exchange(o.core_, nullptr);
     }
 
     Core* getCore() const noexcept {
@@ -321,6 +319,13 @@ class Core final {
     }
 
    private:
+    void detach() noexcept {
+      if (core_) {
+        core_->derefCallback();
+        core_->detachOne();
+      }
+    }
+
     Core* core_{nullptr};
   };
 
@@ -398,7 +403,7 @@ class Core final {
     }
   }
 
-  void detachOne() {
+  void detachOne() noexcept {
     auto a = attached_--;
     assert(a >= 1);
     if (a == 1) {
@@ -406,7 +411,7 @@ class Core final {
     }
   }
 
-  void derefCallback() {
+  void derefCallback() noexcept {
     if (--callbackReferences_ == 0) {
       callback_ = {};
     }
