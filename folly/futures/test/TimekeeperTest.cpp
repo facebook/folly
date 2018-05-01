@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/futures/Timekeeper.h>
 #include <folly/Singleton.h>
+#include <folly/futures/Future.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
 #include <folly/portability/GTest.h>
 

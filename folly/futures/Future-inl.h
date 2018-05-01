@@ -23,7 +23,6 @@
 #include <folly/Optional.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
-#include <folly/futures/Timekeeper.h>
 #include <folly/futures/detail/Core.h>
 #include <folly/synchronization/Baton.h>
 
@@ -1987,6 +1986,17 @@ std::vector<Future<Result>> map(It first, It last, F func) {
   return results;
 }
 } // namespace futures
+
+template <class Clock>
+Future<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
+  auto now = Clock::now();
+
+  if (when <= now) {
+    return makeFuture();
+  }
+
+  return after(std::chrono::duration_cast<Duration>(when - now));
+}
 
 // Instantiate the most common Future types to save compile time
 extern template class Future<Unit>;
