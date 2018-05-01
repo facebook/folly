@@ -217,12 +217,12 @@ bool FutureBase<T>::isReady() const {
 }
 
 template <class T>
-bool FutureBase<T>::hasValue() {
+bool FutureBase<T>::hasValue() const {
   return result().hasValue();
 }
 
 template <class T>
-bool FutureBase<T>::hasException() {
+bool FutureBase<T>::hasException() const {
   return result().hasException();
 }
 

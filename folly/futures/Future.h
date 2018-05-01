@@ -114,10 +114,10 @@ class FutureBase {
   bool isReady() const;
 
   /// sugar for getTry().hasValue()
-  bool hasValue();
+  bool hasValue() const;
 
   /// sugar for getTry().hasException()
-  bool hasException();
+  bool hasException() const;
 
   /// If the promise has been fulfilled, return an Optional with the Try<T>.
   /// Otherwise return an empty Optional.
@@ -132,7 +132,7 @@ class FutureBase {
   template <class F>
   void setCallback_(F&& func);
 
-  bool isActive() {
+  bool isActive() const {
     return getCore().isActive();
   }
 

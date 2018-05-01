@@ -158,7 +158,7 @@ class Promise {
 
   explicit Promise(futures::detail::EmptyConstruct) noexcept;
 
-  void throwIfFulfilled();
+  void throwIfFulfilled() const;
   void detach();
 };
 

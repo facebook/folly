@@ -49,7 +49,7 @@ Promise<T>& Promise<T>::operator=(Promise<T>&& other) noexcept {
 }
 
 template <class T>
-void Promise<T>::throwIfFulfilled() {
+void Promise<T>::throwIfFulfilled() const {
   if (getCore().hasResult()) {
     throwPromiseAlreadySatisfied();
   }
