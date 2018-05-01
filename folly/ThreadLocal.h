@@ -40,14 +40,15 @@
 
 #pragma once
 
-#include <boost/iterator/iterator_facade.hpp>
+#include <iterator>
+#include <type_traits>
+#include <utility>
+
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SharedMutex.h>
 #include <folly/detail/ThreadLocalDetail.h>
-#include <type_traits>
-#include <utility>
 
 namespace folly {
 
@@ -259,12 +260,8 @@ class ThreadLocalPtr {
     friend class Iterator;
 
     // The iterators obtained from Accessor are bidirectional iterators.
-    class Iterator : public boost::iterator_facade<
-          Iterator,                               // Derived
-          T,                                      // value_type
-          boost::bidirectional_traversal_tag> {   // traversal
+    class Iterator {
       friend class Accessor;
-      friend class boost::iterator_core_access;
       const Accessor* accessor_;
       threadlocal_detail::ThreadEntry* e_;
 
@@ -277,8 +274,12 @@ class ThreadLocalPtr {
         e_ = e_->prev;
         decrementToValid();
       }
+  
+      const T& dereference() const {
+        return *static_cast<T*>(e_->elements[accessor_->id_].ptr);
+      }
 
-      T& dereference() const {
+      T& dereference() {
         return *static_cast<T*>(e_->elements[accessor_->id_].ptr);
       }
 
@@ -304,6 +305,59 @@ class ThreadLocalPtr {
 
       void decrementToValid() {
         for (; e_ != &accessor_->meta_.head_ && !valid(); e_ = e_->prev) { }
+      }
+
+     public:
+      using difference_type = ssize_t;
+      using value_type = T;
+      using reference = T const&;
+      using pointer = T const*;
+      using iterator_category = std::bidirectional_iterator_tag;
+
+      Iterator& operator++() {
+        increment();
+        return *this;
+      }
+
+      Iterator& operator++(int) {
+        Iterator copy(*this);
+        increment();
+        return copy;
+      }
+
+      Iterator& operator--() {
+        decrement();
+        return *this;
+      }
+
+      Iterator& operator--(int) {
+        Iterator copy(*this);
+        decrement();
+        return copy;
+      }
+
+      T& operator*() {
+        return dereference();
+      }
+
+      T const& operator*() const {
+        return dereference();
+      }
+
+      T* operator->() {
+        return &dereference();
+      }
+
+      T const* operator->() const {
+        return &dereference();
+      }
+
+      bool operator==(Iterator const& rhs) const {
+        return equal(rhs);
+      }
+
+      bool operator!=(Iterator const& rhs) const {
+        return !equal(rhs);
       }
     };
 
