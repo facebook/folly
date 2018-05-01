@@ -161,9 +161,9 @@ FutureBase<T>::FutureBase(in_place_t, Args&&... args)
 }
 
 template <class T>
-template <class FutureType>
-void FutureBase<T>::assign(FutureType& other) noexcept {
-  std::swap(core_, other.core_);
+void FutureBase<T>::assign(FutureBase<T>&& other) noexcept {
+  detach();
+  core_ = exchange(other.core_, nullptr);
 }
 
 template <class T>
@@ -662,14 +662,14 @@ SemiFuture<T>::SemiFuture(Future<T>&& other) noexcept
 template <class T>
 SemiFuture<T>& SemiFuture<T>::operator=(SemiFuture<T>&& other) noexcept {
   releaseDeferredExecutor(this->core_);
-  this->assign(other);
+  this->assign(std::move(other));
   return *this;
 }
 
 template <class T>
 SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
   releaseDeferredExecutor(this->core_);
-  this->assign(other);
+  this->assign(std::move(other));
   // SemiFuture should not have an executor on construction
   if (this->core_) {
     this->setExecutor(nullptr);
@@ -816,7 +816,7 @@ Future<T>::Future(Future<T>&& other) noexcept
 
 template <class T>
 Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
-  this->assign(other);
+  this->assign(std::move(other));
   return *this;
 }
 

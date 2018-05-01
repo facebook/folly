@@ -197,8 +197,7 @@ class FutureBase {
 
   void throwIfInvalid() const;
 
-  template <class FutureType>
-  void assign(FutureType&) noexcept;
+  void assign(FutureBase<T>&& other) noexcept;
 
   Executor* getExecutor() const {
     return getCore().getExecutor();
