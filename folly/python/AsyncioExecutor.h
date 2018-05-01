@@ -37,18 +37,15 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
   }
 
   void drive() noexcept override {
-    Func func;
-    while (queue_.tryConsume(func)) {
+    consumer_.consumeUntilDrained([](Func&& func) {
       try {
         func();
-      } catch (const std::exception& ex) {
-        LOG(ERROR) << "Exception thrown by AsyncioExecutor task."
-                   << "Exception message: " << folly::exceptionStr(ex);
       } catch (...) {
-        LOG(ERROR) << "Unknown Exception thrown "
-                   << "by AsyncioExecutor task.";
+        LOG(ERROR) << "Exception thrown by NotificationQueueExecutor task."
+                   << "Exception message: "
+                   << folly::exceptionStr(std::current_exception());
       }
-    }
+    });
   }
 
  private:
