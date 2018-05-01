@@ -146,11 +146,10 @@ class Core final {
 
   /// May call from any thread
   Try<T>& getTry() {
-    if (ready()) {
-      return *result_;
-    } else {
-      throwFutureNotReady();
-    }
+    return getTryImpl(*this);
+  }
+  Try<T> const& getTry() const {
+    return getTryImpl(*this);
   }
 
   /// Call only from Future thread.
@@ -242,7 +241,7 @@ class Core final {
   }
 
   /// May call from any thread
-  bool isActive() { return active_.load(std::memory_order_acquire); }
+  bool isActive() const { return active_.load(std::memory_order_acquire); }
 
   /// Call only from Future thread, either before attaching a callback or after
   /// the callback has already been invoked, but not concurrently with anything
@@ -254,7 +253,7 @@ class Core final {
     priority_ = priority;
   }
 
-  Executor* getExecutor() {
+  Executor* getExecutor() const {
     return executor_;
   }
 
@@ -410,6 +409,15 @@ class Core final {
   void derefCallback() {
     if (--callbackReferences_ == 0) {
       callback_ = {};
+    }
+  }
+
+  template <typename Self>
+  static decltype(auto) getTryImpl(Self& self) {
+    if (self.ready()) {
+      return *self.result_;
+    } else {
+      throwFutureNotReady();
     }
   }
 

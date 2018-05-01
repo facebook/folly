@@ -32,7 +32,6 @@
 #include <folly/Utility.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
-#include <folly/futures/FutureException.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 
@@ -133,7 +132,7 @@ class FutureBase {
   void setCallback_(F&& func);
 
   bool isActive() {
-    return core_->isActive();
+    return getCore().isActive();
   }
 
   template <class E>
@@ -163,9 +162,30 @@ class FutureBase {
   template <class>
   friend class Future;
 
-  using corePtr = futures::detail::Core<T>*;
+  using CoreType = futures::detail::Core<T>;
+  using corePtr = CoreType*;
+
+  // Throws NoState if there is no shared state object; else returns it by ref.
+  //
+  // Implementation methods should usually use this instead of `this->core_`.
+  // The latter should be used only when you need the possibly-null pointer.
+  CoreType& getCore() {
+    return getCoreImpl(*this);
+  }
+  CoreType const& getCore() const {
+    return getCoreImpl(*this);
+  }
+
+  template <typename Self>
+  static decltype(auto) getCoreImpl(Self& self) {
+    if (!self.core_) {
+      throwNoState();
+    }
+    return *self.core_;
+  }
 
   // shared core state object
+  // usually you should use `getCore()` instead of directly accessing `core_`.
   corePtr core_;
 
   explicit FutureBase(corePtr obj) : core_(obj) {}
@@ -179,12 +199,12 @@ class FutureBase {
   template <class FutureType>
   void assign(FutureType&) noexcept;
 
-  Executor* getExecutor() {
-    return core_->getExecutor();
+  Executor* getExecutor() const {
+    return getCore().getExecutor();
   }
 
   void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
-    core_->setExecutor(x, priority);
+    getCore().setExecutor(x, priority);
   }
 
   // Variant: returns a value
@@ -740,19 +760,19 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// Inactive Futures will activate upon destruction.
   [[deprecated("do not use")]] Future<T>& activate() & {
-    this->core_->activate();
+    this->getCore().activate();
     return *this;
   }
   [[deprecated("do not use")]] Future<T>& deactivate() & {
-    this->core_->deactivate();
+    this->getCore().deactivate();
     return *this;
   }
   [[deprecated("do not use")]] Future<T> activate() && {
-    this->core_->activate();
+    this->getCore().activate();
     return std::move(*this);
   }
   [[deprecated("do not use")]] Future<T> deactivate() && {
-    this->core_->deactivate();
+    this->getCore().deactivate();
     return std::move(*this);
   }
 

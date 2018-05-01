@@ -194,46 +194,37 @@ T const&& FutureBase<T>::value() const&& {
 
 template <class T>
 Try<T>& FutureBase<T>::result() & {
-  throwIfInvalid();
-
-  return core_->getTry();
+  return getCore().getTry();
 }
 
 template <class T>
 Try<T> const& FutureBase<T>::result() const& {
-  throwIfInvalid();
-
-  return core_->getTry();
+  return getCore().getTry();
 }
 
 template <class T>
 Try<T>&& FutureBase<T>::result() && {
-  throwIfInvalid();
-
-  return std::move(core_->getTry());
+  return std::move(getCore().getTry());
 }
 
 template <class T>
 Try<T> const&& FutureBase<T>::result() const&& {
-  throwIfInvalid();
-
-  return std::move(core_->getTry());
+  return std::move(getCore().getTry());
 }
 
 template <class T>
 bool FutureBase<T>::isReady() const {
-  throwIfInvalid();
-  return core_->ready();
+  return getCore().hasResult();
 }
 
 template <class T>
 bool FutureBase<T>::hasValue() {
-  return core_->getTry().hasValue();
+  return result().hasValue();
 }
 
 template <class T>
 bool FutureBase<T>::hasException() {
-  return core_->getTry().hasException();
+  return result().hasException();
 }
 
 template <class T>
@@ -262,14 +253,13 @@ Optional<Try<T>> FutureBase<T>::poll() {
 
 template <class T>
 void FutureBase<T>::raise(exception_wrapper exception) {
-  core_->raise(std::move(exception));
+  getCore().raise(std::move(exception));
 }
 
 template <class T>
 template <class F>
 void FutureBase<T>::setCallback_(F&& func) {
-  throwIfInvalid();
-  core_->setCallback(std::forward<F>(func));
+  getCore().setCallback(std::forward<F>(func));
 }
 
 template <class T>
@@ -289,14 +279,12 @@ FutureBase<T>::thenImplementation(
   static_assert(sizeof...(Args) <= 1, "Then must take zero/one argument");
   typedef typename R::ReturnsFuture::Inner B;
 
-  this->throwIfInvalid();
-
   Promise<B> p;
-  p.core_->setInterruptHandlerNoLock(this->core_->getInterruptHandler());
+  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
 
   // grab the Future now before we lose our handle on the Promise
   auto sf = p.getSemiFuture();
-  sf.core_->setExecutor(this->getExecutor());
+  sf.setExecutor(this->getExecutor());
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
@@ -332,7 +320,6 @@ FutureBase<T>::thenImplementation(
   this->setCallback_(
       [state = futures::detail::makeCoreCallbackState(
            std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
-
         if (!isTry && t.hasException()) {
           state.setException(std::move(t.exception()));
         } else {
@@ -368,15 +355,14 @@ FutureBase<T>::thenImplementation(
     futures::detail::argResult<isTry, F, Args...>) {
   static_assert(sizeof...(Args) <= 1, "Then must take zero/one argument");
   typedef typename R::ReturnsFuture::Inner B;
-  this->throwIfInvalid();
 
   Promise<B> p;
-  p.core_->setInterruptHandlerNoLock(this->core_->getInterruptHandler());
+  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
 
   // grab the Future now before we lose our handle on the Promise
   auto sf = p.getSemiFuture();
   auto* e = this->getExecutor();
-  sf.core_->setExecutor(e);
+  sf.setExecutor(e);
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
@@ -637,7 +623,7 @@ SemiFuture<T> SemiFuture<T>::makeEmpty() {
 template <class T>
 typename SemiFuture<T>::DeferredExecutor* SemiFuture<T>::getDeferredExecutor()
     const {
-  if (auto executor = this->core_->getExecutor()) {
+  if (auto executor = this->getExecutor()) {
     assert(dynamic_cast<DeferredExecutor*>(executor) != nullptr);
     return static_cast<DeferredExecutor*>(executor);
   }
@@ -694,7 +680,6 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 
 template <class T>
 inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
-  throwIfInvalid();
   if (!executor) {
     throwNoExecutor();
   }
@@ -884,8 +869,6 @@ typename std::
 
 template <class T>
 inline Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
-  this->throwIfInvalid();
-
   this->setExecutor(executor, priority);
 
   auto newFuture = Future<T>(this->core_);
@@ -947,7 +930,7 @@ Future<T>::onError(F&& func) {
       "Return type of onError callback must be T or Future<T>");
 
   Promise<T> p;
-  p.core_->setInterruptHandlerNoLock(this->core_->getInterruptHandler());
+  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
   auto sf = p.getSemiFuture();
 
   this->setCallback_(
