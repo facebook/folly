@@ -19,9 +19,9 @@
 #include <folly/Portability.h>
 
 // clang-format off
-// F14 is only available on x86 with SSE2 intrinsics (so far)
+// F14 has been implemented for SSE2 and AARCH64 NEON (so far)
 #ifndef FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-# if FOLLY_SSE >= 2
+# if FOLLY_SSE >= 2 || FOLLY_AARCH64
 #  define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
 # else
 #  define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
