@@ -33,7 +33,7 @@
 
 // Ignore -Wformat-nonliteral warnings within this file
 FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING("-Wformat-nonliteral")
+FOLLY_GNU_DISABLE_WARNING("-Wformat-nonliteral")
 
 namespace folly {
 

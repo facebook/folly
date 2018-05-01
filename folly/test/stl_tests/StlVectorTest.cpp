@@ -193,10 +193,10 @@ THOUGHTS:
 // We use some pre-processor magic to auto-generate setup and destruct code,
 // but it also means we have some parameters that may not be used.
 FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING("-Wunused-parameter")
-FOLLY_GCC_DISABLE_WARNING("-Wunused-variable")
+FOLLY_GNU_DISABLE_WARNING("-Wunused-parameter")
+FOLLY_GNU_DISABLE_WARNING("-Wunused-variable")
 // Using SCOPED_TRACE repeatedly from within a macro violates -Wshadow
-FOLLY_GCC_DISABLE_WARNING("-Wshadow")
+FOLLY_GNU_DISABLE_WARNING("-Wshadow")
 
 using namespace std;
 using namespace folly;

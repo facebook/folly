@@ -219,8 +219,6 @@ const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl);
 } // namespace folly
 
 FOLLY_PUSH_WARNING
-#if __CLANG_PREREQ(3, 0)
-FOLLY_GCC_DISABLE_WARNING("-Wheader-hygiene")
-#endif
+FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */ using namespace folly::portability::ssl;
 FOLLY_POP_WARNING
