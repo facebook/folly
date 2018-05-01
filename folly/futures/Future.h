@@ -333,9 +333,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   // The ref-qualifier allows for `this` to be moved out so we
   // don't get access-after-free situations in chaining.
   // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &&;
+  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
 
   /**
    * Defer work to run on the consumer of the future.
@@ -414,7 +412,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// non-deterministic in the standard case.
   /// For new code, or to update code that temporarily uses this, please
   /// use via and pass a meaningful executor.
-  inline Future<T> toUnsafeFuture() &&;
+  Future<T> toUnsafeFuture() &&;
 
 #if FOLLY_HAS_COROUTINES
   class promise_type {
@@ -601,16 +599,12 @@ class Future : private futures::detail::FutureBase<T> {
   // The ref-qualifier allows for `this` to be moved out so we
   // don't get access-after-free situations in chaining.
   // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &&;
+  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
 
   /// This variant creates a new future, where the ref-qualifier && version
   /// moves `this` out. This one is less efficient but avoids confusing users
   /// when "return f.via(x);" fails.
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &;
+  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &;
 
   /** When this Future has completed, execute func which is a function that
     takes one of:

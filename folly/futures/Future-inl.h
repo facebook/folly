@@ -121,7 +121,7 @@ class CoreCallbackState {
 };
 
 template <typename T, typename F>
-inline auto makeCoreCallbackState(Promise<T>&& p, F&& f) noexcept(
+auto makeCoreCallbackState(Promise<T>&& p, F&& f) noexcept(
     noexcept(CoreCallbackState<T, _t<std::decay<F>>>(
         std::declval<Promise<T>&&>(),
         std::declval<F&&>()))) {
@@ -678,7 +678,7 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
+Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
   if (!executor) {
     throwNoExecutor();
   }
@@ -695,7 +695,7 @@ inline Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
 }
 
 template <class T>
-inline Future<T> SemiFuture<T>::toUnsafeFuture() && {
+Future<T> SemiFuture<T>::toUnsafeFuture() && {
   return std::move(*this).via(&folly::InlineExecutor::instance());
 }
 
@@ -867,7 +867,7 @@ typename std::
 }
 
 template <class T>
-inline Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
+Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
   this->setExecutor(executor, priority);
 
   auto newFuture = Future<T>(this->core_);
@@ -876,7 +876,7 @@ inline Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
 }
 
 template <class T>
-inline Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
+Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
   this->throwIfInvalid();
   Promise<T> p;
   auto sf = p.getSemiFuture();
@@ -1237,7 +1237,7 @@ struct CollectContext {
       p.setValue(std::move(finalResult));
     }
   }
-  inline void setPartialResult(size_t i, Try<T>& t) {
+  void setPartialResult(size_t i, Try<T>& t) {
     result[i] = std::move(t.value());
   }
   Promise<Result> p;
@@ -1368,11 +1368,11 @@ collectN(InputIterator first, InputIterator last, size_t n) {
     std::atomic<size_t> completed = {0};
     Promise<Result> p;
 
-    inline void setPartialResult(size_t index, Try<T>&& t) {
+    void setPartialResult(size_t index, Try<T>&& t) {
       v[index] = std::move(t);
     }
 
-    inline void complete() {
+    void complete() {
       Result result;
       result.reserve(completed.load());
       for (size_t i = 0; i < v.size(); ++i) {
@@ -1468,7 +1468,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
     std::vector<Promise<Result>> promises;
     F func;
 
-    static inline void spawn(std::shared_ptr<WindowContext> ctx) {
+    static void spawn(std::shared_ptr<WindowContext> ctx) {
       size_t i = ctx->i++;
       if (i < ctx->input.size()) {
         auto fut =
@@ -1949,7 +1949,7 @@ Future<T> Future<T>::filter(F&& predicate) {
 }
 
 template <class F>
-inline Future<Unit> when(bool p, F&& thunk) {
+Future<Unit> when(bool p, F&& thunk) {
   return p ? std::forward<F>(thunk)().unit() : makeFuture();
 }
 
