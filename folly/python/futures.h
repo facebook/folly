@@ -29,18 +29,7 @@
 namespace folly {
 namespace python {
 
-class PyGILStateGuard {
- public:
-  ~PyGILStateGuard() {
-    PyGILState_Release(gstate);
-  }
-
- private:
-  PyGILState_STATE gstate{PyGILState_Ensure()};
-};
-
 inline folly::Executor* getExecutor() {
-  PyGILStateGuard gstate;
   import_folly__executor();
   return get_executor();
 }
