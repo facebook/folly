@@ -49,8 +49,8 @@ namespace detail {
 
 This state machine is fairly self-explanatory. The most important bit is
 that the callback is only executed on the transition from Armed to Done,
-and that transition can happen immediately after transitioning from Only*
-to Armed, if it is active (the usual case).
+and that transition happens immediately after transitioning from Only*
+to Armed.
 */
 enum class State : uint8_t {
   Start,
@@ -215,7 +215,6 @@ class Core final {
 
   /// Called by a destructing Future (in the Future thread, by definition)
   void detachFuture() {
-    activate();
     detachOne();
   }
 
@@ -228,20 +227,6 @@ class Core final {
     }
     detachOne();
   }
-
-  /// May call from any thread
-  void deactivate() {
-    active_.store(false, std::memory_order_release);
-  }
-
-  /// May call from any thread
-  void activate() {
-    active_.store(true, std::memory_order_release);
-    maybeCallback();
-  }
-
-  /// May call from any thread
-  bool isActive() const { return active_.load(std::memory_order_acquire); }
 
   /// Call only from Future thread, either before attaching a callback or after
   /// the callback has already been invoked, but not concurrently with anything
@@ -333,11 +318,8 @@ class Core final {
     fsm_.transition([&](State state) {
       switch (state) {
         case State::Armed:
-          if (active_.load(std::memory_order_acquire)) {
-            return fsm_.tryUpdateState(
-                state, State::Done, [] {}, [&] { doCallback(); });
-          }
-          return true;
+          return fsm_.tryUpdateState(
+              state, State::Done, [] {}, [&] { doCallback(); });
 
         default:
           return true;
@@ -433,7 +415,6 @@ class Core final {
   FSM<State, SpinLock> fsm_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
-  std::atomic<bool> active_ {true};
   std::atomic<bool> interruptHandlerSet_ {false};
   SpinLock interruptLock_;
   int8_t priority_ {-1};

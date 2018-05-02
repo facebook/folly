@@ -132,10 +132,6 @@ class FutureBase {
   template <class F>
   void setCallback_(F&& func);
 
-  bool isActive() const {
-    return getCore().isActive();
-  }
-
   template <class E>
   void raise(E&& exception) {
     raise(make_exception_wrapper<typename std::remove_reference<E>::type>(
@@ -270,7 +266,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::cancel;
   using Base::hasException;
   using Base::hasValue;
-  using Base::isActive;
   using Base::isReady;
   using Base::poll;
   using Base::raise;
@@ -312,26 +307,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Overload of wait(Duration) for rvalue Futures
   SemiFuture<T>&& wait(Duration) &&;
 
-  /// Returns an inactive Future which will call back on the other side of
-  /// executor (when it is activated).
+  /// Returns a Future which will call back on the other side of executor.
   ///
-  /// NB remember that Futures activate when they destruct. This is good,
-  /// it means that this will work:
-  ///
-  ///   f.via(e).then(a).then(b);
-  ///
-  /// a and b will execute in the same context (the far side of e), because
-  /// the Future (temporary variable) created by via(e) does not call back
-  /// until it destructs, which is after then(a) and then(b) have been wired
-  /// up.
-  ///
-  /// But this is still racy:
-  ///
-  ///   f = f.via(e).then(a);
-  ///   f.then(b);
-  // The ref-qualifier allows for `this` to be moved out so we
-  // don't get access-after-free situations in chaining.
-  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
+  /// The ref-qualifier allows for `this` to be moved out so we
+  /// don't get access-after-free situations in chaining.
+  /// https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
   Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
 
   /**
@@ -537,7 +517,6 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::cancel;
   using Base::hasException;
   using Base::hasValue;
-  using Base::isActive;
   using Base::isReady;
   using Base::poll;
   using Base::raise;
@@ -578,26 +557,11 @@ class Future : private futures::detail::FutureBase<T> {
       enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
       unwrap();
 
-  /// Returns an inactive Future which will call back on the other side of
-  /// executor (when it is activated).
+  /// Returns a Future which will call back on the other side of executor.
   ///
-  /// NB remember that Futures activate when they destruct. This is good,
-  /// it means that this will work:
-  ///
-  ///   f.via(e).then(a).then(b);
-  ///
-  /// a and b will execute in the same context (the far side of e), because
-  /// the Future (temporary variable) created by via(e) does not call back
-  /// until it destructs, which is after then(a) and then(b) have been wired
-  /// up.
-  ///
-  /// But this is still racy:
-  ///
-  ///   f = f.via(e).then(a);
-  ///   f.then(b);
-  // The ref-qualifier allows for `this` to be moved out so we
-  // don't get access-after-free situations in chaining.
-  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
+  /// The ref-qualifier allows for `this` to be moved out so we
+  /// don't get access-after-free situations in chaining.
+  /// https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
   Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
 
   /// This variant creates a new future, where the ref-qualifier && version
@@ -747,28 +711,6 @@ class Future : private futures::detail::FutureBase<T> {
   ///       []() { return makeFuture<int>(some_exception); });
   template <class F>
   Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr);
-
-  /// A Future's callback is executed when all three of these conditions have
-  /// become true: it has a value (set by the Promise), it has a callback (set
-  /// by then), and it is active (active by default).
-  ///
-  /// Inactive Futures will activate upon destruction.
-  [[deprecated("do not use")]] Future<T>& activate() & {
-    this->getCore().activate();
-    return *this;
-  }
-  [[deprecated("do not use")]] Future<T>& deactivate() & {
-    this->getCore().deactivate();
-    return *this;
-  }
-  [[deprecated("do not use")]] Future<T> activate() && {
-    this->getCore().activate();
-    return std::move(*this);
-  }
-  [[deprecated("do not use")]] Future<T> deactivate() && {
-    this->getCore().deactivate();
-    return std::move(*this);
-  }
 
   /// Throw TimedOut if this Future does not complete within the given
   /// duration from now. The optional Timeekeeper is as with futures::sleep().
