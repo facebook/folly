@@ -64,11 +64,7 @@ enum class State : uint8_t {
 struct SpinLock : private MicroSpinLock {
   SpinLock() : MicroSpinLock{0} {}
 
-  void lock() {
-    if (!MicroSpinLock::try_lock()) {
-      MicroSpinLock::lock();
-    }
-  }
+  using MicroSpinLock::lock;
   using MicroSpinLock::unlock;
 };
 static_assert(sizeof(SpinLock) == 1, "missized");
