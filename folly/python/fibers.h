@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Facebook, Inc.
+ * Copyright 2018-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,47 +21,42 @@
 #pragma once
 
 #include <Python.h>
-#include <folly/Executor.h>
-#include <folly/futures/Future.h>
-#include <folly/python/AsyncioExecutor.h>
-#include <folly/python/executor_api.h>
+#include <folly/Function.h>
+#include <folly/fibers/FiberManagerInternal.h>
+#include <folly/python/fiber_manager_api.h>
 
 namespace folly {
 namespace python {
 
-inline folly::Executor* getExecutor() {
-  import_folly__executor();
-  return get_executor();
+inline folly::fibers::FiberManager* getFiberManager() {
+  import_folly__fiber_manager();
+  return get_fiber_manager();
 }
 
+/**
+ * Helper function with similar callback/userData parameters as bridgeFuture.
+ * This can be convenient in code that calls both (notably our tests),
+ * but most callsites should directly use getFiberManager().
+ */
 template <typename T>
-void bridgeFuture(
-    folly::Executor* executor,
-    folly::Future<T>&& futureFrom,
+void bridgeFibers(
+    folly::Function<T()>&& function,
     folly::Function<void(folly::Try<T>&&, PyObject*)> callback,
     PyObject* userData) {
+  auto* fiberManager = getFiberManager();
   // We are handing over a pointer to a python object to c++ and need
   // to make sure it isn't removed by python in that time.
   Py_INCREF(userData);
   auto guard = folly::makeGuard([=] { Py_DECREF(userData); });
-  // Handle the lambdas for cython
-  // run callback from our Q
-  futureFrom.via(executor).then(
-      [callback = std::move(callback), userData, guard = std::move(guard)](
-          folly::Try<T>&& res) mutable {
-        // This will run from inside the gil, called by the asyncio add_reader
-        callback(std::move(res), userData);
-        // guard goes out of scope here, and its stored function is called
-      });
-}
-
-template <typename T>
-void bridgeFuture(
-    folly::Future<T>&& futureFrom,
-    folly::Function<void(folly::Try<T>&&, PyObject*)> callback,
-    PyObject* userData) {
-  bridgeFuture(
-      getExecutor(), std::move(futureFrom), std::move(callback), userData);
+  fiberManager->addTask([function = std::move(function),
+                         callback = std::move(callback),
+                         userData,
+                         guard = std::move(guard)]() mutable {
+    // This will run from inside the gil, called by the asyncio add_reader
+    auto res = folly::makeTryWith([&] { return function(); });
+    callback(std::move(res), userData);
+    // guard goes out of scope here, and its stored function is called
+  });
 }
 
 } // namespace python

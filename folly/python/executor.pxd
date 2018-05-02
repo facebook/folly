@@ -9,4 +9,4 @@ cdef extern from "folly/python/AsyncioExecutor.h" namespace "folly::python":
 cdef class AsyncioExecutor:
     cdef unique_ptr[cAsyncioExecutor] cQ
 
-cdef api cFollyExecutor* get_executor()
+cdef api cAsyncioExecutor* get_executor()
