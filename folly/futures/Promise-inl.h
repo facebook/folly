@@ -36,15 +36,14 @@ Promise<T>::Promise()
 
 template <class T>
 Promise<T>::Promise(Promise<T>&& other) noexcept
-    : retrieved_(other.retrieved_), core_(other.core_) {
-  other.core_ = nullptr;
-  other.retrieved_ = false;
-}
+    : retrieved_(exchange(other.retrieved_, false)),
+      core_(exchange(other.core_, nullptr)) {}
 
 template <class T>
 Promise<T>& Promise<T>::operator=(Promise<T>&& other) noexcept {
-  std::swap(core_, other.core_);
-  std::swap(retrieved_, other.retrieved_);
+  detach();
+  retrieved_ = exchange(other.retrieved_, false);
+  core_ = exchange(other.core_, nullptr);
   return *this;
 }
 
