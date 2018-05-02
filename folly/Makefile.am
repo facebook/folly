@@ -82,6 +82,7 @@ nobase_follyinclude_HEADERS = \
 	container/Foreach-inl.h \
 	container/SparseByteSet.h \
 	ConstexprMath.h \
+	DefaultKeepAliveExecutor.h \
 	detail/AtFork.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
