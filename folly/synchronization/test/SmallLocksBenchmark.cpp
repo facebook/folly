@@ -369,60 +369,60 @@ locks_benchmark --bm_min_iters=100000
 56-core Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz
 
 std::mutex:
-Sum: 3674921 Mean: 65623 stddev: 543
-Lock time stats in us: mean 15 stddev 1169 max 10375
+Sum: 3768590 Mean: 67296 stddev: 1318
+Lock time stats in us: mean 15 stddev 1140 max 8002
 InitLock<folly::MicroSpinLock>:
-Sum: 3493610 Mean: 62385 stddev: 21015
-Lock time stats in us: mean 31 stddev 1229 max 208816
+Sum: 3548900 Mean: 63373 stddev: 31657
+Lock time stats in us: mean 30 stddev 1210 max 287010
 InitLock<folly::PicoSpinLock<uint16_t>>:
-Sum: 2135792 Mean: 38139 stddev: 43269
-Lock time stats in us: mean 50 stddev 2010 max 357286
+Sum: 1051996 Mean: 18785 stddev: 3026
+Lock time stats in us: mean 104 stddev 4082 max 376820
 folly::MicroLock:
-Sum: 1823152 Mean: 32556 stddev: 10299
-Lock time stats in us: mean 49 stddev 2355 max 36064
+Sum: 1871779 Mean: 33424 stddev: 10311
+Lock time stats in us: mean 47 stddev 2294 max 20486
 ============================================================================
 folly/synchronization/test/SmallLocksBenchmark.cpprelative  time/iter  iters/s
 ============================================================================
-StdMutexUncontendedBenchmark                                16.72ns   59.79M
-MicroSpinLockUncontendedBenchmark                           10.04ns   99.65M
+StdMutexUncontendedBenchmark                                16.73ns   59.78M
+MicroSpinLockUncontendedBenchmark                           10.03ns   99.67M
 PicoSpinLockUncontendedBenchmark                            11.25ns   88.90M
-MicroLockUncontendedBenchmark                               21.59ns   46.31M
+MicroLockUncontendedBenchmark                               21.59ns   46.32M
 VirtualFunctionCall                                         76.02ps   13.15G
 ----------------------------------------------------------------------------
 ----------------------------------------------------------------------------
-std_mutex(1thread)                                         717.69ns    1.39M
-folly_microspin(1thread)                         117.51%   610.77ns    1.64M
-folly_picospin(1thread)                          116.31%   617.07ns    1.62M
-folly_microlock(1thread)                         116.12%   618.07ns    1.62M
+std_mutex(1thread)                                         655.60ns    1.53M
+folly_microspin(1thread)                          96.79%   677.31ns    1.48M
+folly_picospin(1thread)                          118.13%   554.96ns    1.80M
+folly_microlock(1thread)                         100.04%   655.31ns    1.53M
 ----------------------------------------------------------------------------
-std_mutex(2thread)                                           1.23us  813.13K
-folly_microspin(2thread)                         165.99%   740.92ns    1.35M
-folly_picospin(2thread)                          143.34%   857.99ns    1.17M
-folly_microlock(2thread)                         133.62%   920.40ns    1.09M
+std_mutex(2thread)                                           1.22us  816.56K
+folly_microspin(2thread)                         146.21%   837.59ns    1.19M
+folly_picospin(2thread)                          168.33%   727.51ns    1.37M
+folly_microlock(2thread)                         136.43%   897.65ns    1.11M
 ----------------------------------------------------------------------------
-std_mutex(4thread)                                           2.58us  387.69K
-folly_microspin(4thread)                         121.91%     2.12us  472.62K
-folly_picospin(4thread)                          132.37%     1.95us  513.19K
-folly_microlock(4thread)                         104.59%     2.47us  405.49K
+std_mutex(4thread)                                           2.56us  390.99K
+folly_microspin(4thread)                         128.05%     2.00us  500.67K
+folly_picospin(4thread)                          117.95%     2.17us  461.18K
+folly_microlock(4thread)                         101.01%     2.53us  394.94K
 ----------------------------------------------------------------------------
-std_mutex(8thread)                                           5.92us  169.00K
-folly_microspin(8thread)                         141.90%     4.17us  239.81K
-folly_picospin(8thread)                           89.49%     6.61us  151.24K
-folly_microlock(8thread)                          84.45%     7.01us  142.71K
+std_mutex(8thread)                                           5.59us  179.01K
+folly_microspin(8thread)                         119.13%     4.69us  213.26K
+folly_picospin(8thread)                           82.00%     6.81us  146.79K
+folly_microlock(8thread)                          84.50%     6.61us  151.26K
 ----------------------------------------------------------------------------
-std_mutex(16thread)                                         11.60us   86.20K
-folly_microspin(16thread)                         99.89%    11.61us   86.10K
-folly_picospin(16thread)                          62.22%    18.64us   53.63K
-folly_microlock(16thread)                         63.53%    18.26us   54.76K
+std_mutex(16thread)                                         11.52us   86.80K
+folly_microspin(16thread)                         98.18%    11.73us   85.22K
+folly_picospin(16thread)                          61.18%    18.83us   53.10K
+folly_microlock(16thread)                         51.93%    22.19us   45.07K
 ----------------------------------------------------------------------------
-std_mutex(32thread)                                         33.43us   29.91K
-folly_microspin(32thread)                        108.98%    30.67us   32.60K
-folly_picospin(32thread)                          33.06%   101.11us    9.89K
-folly_microlock(32thread)                         55.95%    59.75us   16.74K
+std_mutex(32thread)                                         31.91us   31.34K
+folly_microspin(32thread)                        101.74%    31.37us   31.88K
+folly_picospin(32thread)                          32.43%    98.39us   10.16K
+folly_microlock(32thread)                         56.35%    56.63us   17.66K
 ----------------------------------------------------------------------------
-std_mutex(64thread)                                         36.79us   27.18K
-folly_microspin(64thread)                        106.69%    34.48us   29.00K
-folly_picospin(64thread)                          35.82%   102.72us    9.74K
-folly_microlock(64thread)                         57.42%    64.08us   15.61K
+std_mutex(64thread)                                         36.77us   27.20K
+folly_microspin(64thread)                        102.25%    35.96us   27.81K
+folly_picospin(64thread)                          32.30%   113.83us    8.78K
+folly_microlock(64thread)                         55.54%    66.21us   15.10K
 ============================================================================
 */
