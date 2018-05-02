@@ -289,11 +289,10 @@ class Core final {
     CoreAndCallbackReference(CoreAndCallbackReference const& o) = delete;
     CoreAndCallbackReference& operator=(CoreAndCallbackReference const& o) =
         delete;
+    CoreAndCallbackReference& operator=(CoreAndCallbackReference&&) = delete;
 
-    CoreAndCallbackReference(CoreAndCallbackReference&& o) noexcept {
-      detach();
-      core_ = exchange(o.core_, nullptr);
-    }
+    CoreAndCallbackReference(CoreAndCallbackReference&& o) noexcept
+        : core_(exchange(o.core_, nullptr)) {}
 
     Core* getCore() const noexcept {
       return core_;
