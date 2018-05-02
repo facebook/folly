@@ -77,42 +77,42 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
  private:
   AsyncSSLSocket *sslSocket_;
   AsyncSSLSocket::ConnectCallback *callback_;
-  int timeout_;
-  int64_t startTime_;
+  std::chrono::milliseconds timeout_;
+  std::chrono::steady_clock::time_point startTime_;
 
  protected:
   ~AsyncSSLSocketConnector() override {}
 
  public:
-  AsyncSSLSocketConnector(AsyncSSLSocket *sslSocket,
-                           AsyncSocket::ConnectCallback *callback,
-                           int timeout) :
-      sslSocket_(sslSocket),
-      callback_(callback),
-      timeout_(timeout),
-      startTime_(std::chrono::duration_cast<std::chrono::milliseconds>(
-                   std::chrono::steady_clock::now().time_since_epoch()).count()) {
-  }
+  AsyncSSLSocketConnector(
+      AsyncSSLSocket* sslSocket,
+      AsyncSocket::ConnectCallback* callback,
+      std::chrono::milliseconds timeout)
+      : sslSocket_(sslSocket),
+        callback_(callback),
+        timeout_(timeout),
+        startTime_(std::chrono::steady_clock::now()) {}
 
   void connectSuccess() noexcept override {
     VLOG(7) << "client socket connected";
 
-    int64_t timeoutLeft = 0;
-    if (timeout_ > 0) {
-      auto curTime = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
+    std::chrono::milliseconds timeoutLeft{0};
+    if (timeout_ > std::chrono::milliseconds::zero()) {
+      auto curTime = std::chrono::steady_clock::now();
 
-      timeoutLeft = timeout_ - (curTime - startTime_);
-      if (timeoutLeft <= 0) {
+      timeoutLeft = std::chrono::duration_cast<std::chrono::milliseconds>(
+          timeout_ - (curTime - startTime_));
+      if (timeoutLeft <= std::chrono::milliseconds::zero()) {
         AsyncSocketException ex(
             AsyncSocketException::TIMED_OUT,
-            folly::sformat("SSL connect timed out after {}ms", timeout_));
+            folly::sformat(
+                "SSL connect timed out after {}ms", timeout_.count()));
         fail(ex);
         delete this;
         return;
       }
     }
-    sslSocket_->sslConn(this, std::chrono::milliseconds(timeoutLeft));
+    sslSocket_->sslConn(this, timeoutLeft);
   }
 
   void connectErr(const AsyncSocketException& ex) noexcept override {
@@ -691,8 +691,7 @@ void AsyncSSLSocket::connect(
   noTransparentTls_ = true;
   totalConnectTimeout_ = totalConnectTimeout;
   if (sslState_ != STATE_UNENCRYPTED) {
-    callback = new AsyncSSLSocketConnector(
-        this, callback, int(totalConnectTimeout.count()));
+    callback = new AsyncSSLSocketConnector(this, callback, totalConnectTimeout);
   }
   AsyncSocket::connect(
       callback, address, int(connectTimeout.count()), options, bindAddr);
