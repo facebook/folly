@@ -449,7 +449,7 @@ class F14BasicMap {
     return emplaceItem(std::move(p.first), std::move(p.second));
   }
 
-  template <typename U1, class... Args2>
+  template <typename U1, typename... Args2>
   std::enable_if_t<
       std::is_same<folly::remove_cvref_t<U1>, key_type>::value,
       std::pair<ItemIter, bool>>
@@ -467,9 +467,9 @@ class F14BasicMap {
             std::move(second_args)});
   }
 
-  template <class... Args1, class... Args2>
+  template <typename... Args1, typename... Args2>
   std::enable_if_t<
-      std::tuple_size<std::tuple<Args1...>>::value != 1 ||
+      sizeof...(Args1) != 1 ||
           !std::is_same<
               folly::remove_cvref_t<
                   std::tuple_element_t<0, std::tuple<Args1..., value_type>>>,

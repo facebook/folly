@@ -929,6 +929,8 @@ void runInsertAndEmplace(std::string const& name) {
   EXPECT_EQ(m.count(k), 0);
   m.emplace();
   EXPECT_EQ(m.count(k), 1);
+  m.emplace();
+  EXPECT_EQ(m.count(k), 1);
 }
 
 TEST(F14ValueMap, destructuring) {

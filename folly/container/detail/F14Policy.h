@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <tuple>
+
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/SafeAssert.h>
