@@ -25,9 +25,9 @@ using namespace folly;
 
 /*
  * Tests run at a reasonable speed with these settings, but it is good to
- * occasionally test with kNumRandomRuns = 3000.
+ * occasionally test with kNumRandomRuns = 3000 and kNumSamples = 50000
  */
-const int32_t kNumSamples = 50000;
+const int32_t kNumSamples = 10000;
 const int32_t kNumRandomRuns = 30;
 const int32_t kSeed = 0;
 
