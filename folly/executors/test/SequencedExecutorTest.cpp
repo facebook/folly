@@ -26,7 +26,9 @@ namespace folly {
 
 bool isSequencedExecutor(folly::Executor& executor) {
   // Add can be called from different threads, but it should be sequenced.
-  SerialExecutor producer(std::make_shared<CPUThreadPoolExecutor>(4));
+  auto cpuExecutor = std::make_shared<CPUThreadPoolExecutor>(4);
+  auto producer =
+      SerialExecutor::create(Executor::getKeepAliveToken(cpuExecutor.get()));
 
   std::atomic<size_t> nextCallIndex{0};
   std::atomic<bool> result{true};
@@ -36,7 +38,7 @@ bool isSequencedExecutor(folly::Executor& executor) {
 
   constexpr size_t kNumCalls = 10000;
   for (size_t callIndex = 0; callIndex < kNumCalls; ++callIndex) {
-    producer.add([&result, &executor, &nextCallIndex, callIndex, joinPromise] {
+    producer->add([&result, &executor, &nextCallIndex, callIndex, joinPromise] {
       executor.add([&result, &nextCallIndex, callIndex, joinPromise] {
         if (nextCallIndex != callIndex) {
           result = false;
@@ -69,8 +71,10 @@ TEST(SequencedExecutor, CPUThreadPoolExecutor) {
 }
 
 TEST(SequencedExecutor, SerialCPUThreadPoolExecutor) {
-  SerialExecutor executor(std::make_shared<CPUThreadPoolExecutor>(4));
-  testExecutor(executor);
+  auto cpuExecutor = std::make_shared<CPUThreadPoolExecutor>(4);
+  auto executor =
+      SerialExecutor::create(Executor::getKeepAliveToken(cpuExecutor.get()));
+  testExecutor(*executor);
 }
 
 TEST(SequencedExecutor, EventBase) {
