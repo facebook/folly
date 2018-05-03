@@ -36,13 +36,35 @@ template <typename Ex>
 #endif
 }
 
+// clang-format off
+namespace detail {
+template <typename T>
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T&& to_exception_arg_(T&& t) {
+  return static_cast<T&&>(t);
+}
+template <std::size_t N>
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN char const* to_exception_arg_(
+    char const (&array)[N]) {
+  return static_cast<char const*>(array);
+}
+template <typename Ex, typename... Args>
+[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception_(Args&&... args) {
+  throw_exception(Ex(static_cast<Args&&>(args)...));
+}
+} // namespace detail
+// clang-format on
+
 /// throw_exception
 ///
 /// Construct and throw an exception if exceptions are enabled, or terminate if
 /// compiled with -fno-exceptions.
+///
+/// Converts any arguments of type `char const[N]` to `char const*`.
 template <typename Ex, typename... Args>
-[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception(Args&&... args) {
-  throw_exception(Ex(static_cast<Args&&>(args)...));
+[[noreturn]] FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void
+throw_exception(Args&&... args) {
+  detail::throw_exception_<Ex>(
+      detail::to_exception_arg_(static_cast<Args&&>(args))...);
 }
 
 } // namespace folly
