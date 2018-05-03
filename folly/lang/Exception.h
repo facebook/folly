@@ -32,7 +32,7 @@ template <typename Ex>
 #if (__GNUC__ && !__EXCEPTIONS)
   std::terminate();
 #else
-  throw static_cast<Ex&&>(ex);
+  throw ex;
 #endif
 }
 
@@ -42,7 +42,7 @@ template <typename Ex>
 /// compiled with -fno-exceptions.
 template <typename Ex, typename... Args>
 [[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception(Args&&... args) {
-  throw_exception(Ex(static_cast<Args&&>(args)...));
+  throw_exception(Ex(args...));
 }
 
 } // namespace folly
