@@ -138,33 +138,33 @@ BENCHMARK_RELATIVE_NAMED_PARAM(estimateQuantile, 1000_p999, 1000, 0.999)
  * ============================================================================
  * folly/stats/test/TDigestBenchmark.cpp           relative  time/iter  iters/s
  * ============================================================================
- * merge(100x1)                                                 2.22us  451.08K
- * merge(100x5)                                      59.59%     3.72us  268.81K
- * merge(100x10)                                     43.70%     5.07us  197.14K
- * merge(1000x1)                                     10.63%    20.86us   47.93K
- * merge(1000x5)                                      6.60%    33.60us   29.76K
- * merge(1000x10)                                     4.52%    49.10us   20.37K
+ * merge(100x1)                                                 2.23us  449.36K
+ * merge(100x5)                                      59.15%     3.76us  265.78K
+ * merge(100x10)                                     41.72%     5.33us  187.46K
+ * merge(1000x1)                                     10.18%    21.86us   45.75K
+ * merge(1000x5)                                      6.34%    35.11us   28.48K
+ * merge(1000x10)                                     4.45%    50.01us   19.99K
  * ----------------------------------------------------------------------------
- * mergeDigests(100x10)                                        25.30us   39.53K
- * mergeDigests(100x30)                              21.70%   116.58us    8.58K
- * mergeDigests(100x60)                               9.22%   274.53us    3.64K
- * mergeDigests(1000x60)                              0.90%     2.81ms   356.13
+ * mergeDigests(100x10)                                        24.65us   40.57K
+ * mergeDigests(100x30)                              21.03%   117.21us    8.53K
+ * mergeDigests(100x60)                               8.92%   276.47us    3.62K
+ * mergeDigests(1000x60)                              0.88%     2.80ms   357.15
  * ----------------------------------------------------------------------------
- * estimateQuantile(100x1_p001)                                 9.50ns  105.28M
- * estimateQuantile(100_p01)                         63.49%    14.96ns   66.85M
- * estimateQuantile(100_p25)                         14.89%    63.81ns   15.67M
- * estimateQuantile(100_p50)                         11.56%    82.15ns   12.17M
- * estimateQuantile(100_p75)                         15.44%    61.53ns   16.25M
- * estimateQuantile(100_p99)                         74.77%    12.70ns   78.72M
- * estimateQuantile(100_p999)                       117.16%     8.11ns  123.34M
+ * estimateQuantile(100x1_p001)                                 9.40ns  106.40M
+ * estimateQuantile(100_p01)                         63.42%    14.82ns   67.49M
+ * estimateQuantile(100_p25)                         14.81%    63.47ns   15.75M
+ * estimateQuantile(100_p50)                         11.26%    83.47ns   11.98M
+ * estimateQuantile(100_p75)                         15.22%    61.76ns   16.19M
+ * estimateQuantile(100_p99)                         76.04%    12.36ns   80.91M
+ * estimateQuantile(100_p999)                       115.85%     8.11ns  123.27M
  * ----------------------------------------------------------------------------
- * estimateQuantile(1000_p001)                       27.10%    35.05ns   28.53M
- * estimateQuantile(1000_p01)                         8.58%   110.64ns    9.04M
- * estimateQuantile(1000_p25)                         1.94%   488.67ns    2.05M
- * estimateQuantile(1000_p50)                         1.39%   684.81ns    1.46M
- * estimateQuantile(1000_p75)                         1.96%   483.88ns    2.07M
- * estimateQuantile(1000_p99)                         8.99%   105.70ns    9.46M
- * estimateQuantile(1000_p999)                       36.87%    25.76ns   38.82M
+ * estimateQuantile(1000_p001)                       27.57%    34.08ns   29.34M
+ * estimateQuantile(1000_p01)                         8.53%   110.24ns    9.07M
+ * estimateQuantile(1000_p25)                         1.92%   488.24ns    2.05M
+ * estimateQuantile(1000_p50)                         1.37%   684.40ns    1.46M
+ * estimateQuantile(1000_p75)                         1.94%   485.23ns    2.06M
+ * estimateQuantile(1000_p99)                         8.87%   105.90ns    9.44M
+ * estimateQuantile(1000_p999)                       36.64%    25.65ns   38.99M
  * ============================================================================
  */
 

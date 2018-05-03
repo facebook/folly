@@ -49,9 +49,7 @@ namespace folly {
 class TDigest {
  public:
   explicit TDigest(size_t maxSize = 100)
-      : maxSize_(maxSize), sum_(0.0), count_(0.0), max_(NAN), min_(NAN) {
-    centroids_.reserve(maxSize);
-  }
+      : maxSize_(maxSize), sum_(0.0), count_(0.0), max_(NAN), min_(NAN) {}
 
   /*
    * Returns a new TDigest constructed with values merged from the current
