@@ -59,7 +59,7 @@ class EventBaseLoopController : public LoopController {
 
   bool awaitingScheduling_{false};
   VirtualEventBase* eventBase_{nullptr};
-  Executor::KeepAlive eventBaseKeepAlive_;
+  Executor::KeepAlive<VirtualEventBase> eventBaseKeepAlive_;
   ControllerCallback callback_;
   FiberManager* fm_{nullptr};
   std::atomic<bool> eventBaseAttached_{false};

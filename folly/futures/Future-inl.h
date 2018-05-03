@@ -1736,7 +1736,7 @@ void waitViaImpl(
   }
   // Chain operations, ensuring that the executor is kept alive for the duration
   f = std::move(f).via(e).then(
-      [keepAlive = e->getKeepAliveToken()](T&& t) { return std::move(t); });
+      [keepAlive = getKeepAliveToken(e)](T&& t) { return std::move(t); });
   auto now = std::chrono::steady_clock::now();
   auto deadline = now + timeout;
   while (!f.isReady() && (now < deadline)) {

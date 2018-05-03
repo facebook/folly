@@ -636,7 +636,7 @@ void keepAliveTest() {
   auto f =
       futures::sleep(std::chrono::milliseconds{100})
           .via(executor.get())
-          .then([keepAlive = executor->getKeepAliveToken()] { return 42; });
+          .then([keepAlive = getKeepAliveToken(executor.get())] { return 42; });
 
   executor.reset();
 

@@ -17,29 +17,34 @@
 
 namespace folly {
 
-VirtualEventBase::VirtualEventBase(EventBase& evb) : evb_(evb) {
-  evbLoopKeepAlive_ = evb_.getKeepAliveToken();
-}
+VirtualEventBase::VirtualEventBase(EventBase& evb)
+    : evb_(getKeepAliveToken(evb)) {}
 
 std::future<void> VirtualEventBase::destroy() {
-  CHECK(evb_.runInEventBaseThread([this] { loopKeepAlive_.reset(); }));
+  CHECK(evb_->runInEventBaseThread([this] { loopKeepAlive_.reset(); }));
 
   return std::move(destroyFuture_);
 }
 
 void VirtualEventBase::destroyImpl() {
-  // Make sure we release EventBase KeepAlive token even if exception occurs
-  auto evbLoopKeepAlive = std::move(evbLoopKeepAlive_);
   try {
-    clearCobTimeouts();
+    {
+      // After destroyPromise_ is posted this object may be destroyed, so make
+      // sure we release EventBase's keep-alive token before that.
+      SCOPE_EXIT {
+        evb_.reset();
+      };
 
-    onDestructionCallbacks_.withWLock([&](LoopCallbackList& callbacks) {
-      while (!callbacks.empty()) {
-        auto& callback = callbacks.front();
-        callbacks.pop_front();
-        callback.runLoopCallback();
-      }
-    });
+      clearCobTimeouts();
+
+      onDestructionCallbacks_.withWLock([&](LoopCallbackList& callbacks) {
+        while (!callbacks.empty()) {
+          auto& callback = callbacks.front();
+          callbacks.pop_front();
+          callback.runLoopCallback();
+        }
+      });
+    }
 
     destroyPromise_.set_value();
   } catch (...) {
@@ -51,7 +56,7 @@ VirtualEventBase::~VirtualEventBase() {
   if (!destroyFuture_.valid()) {
     return;
   }
-  CHECK(!evb_.inRunningEventBaseThread());
+  CHECK(!evb_->inRunningEventBaseThread());
   destroy().get();
 }
 

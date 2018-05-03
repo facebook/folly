@@ -56,7 +56,7 @@ inline void EventBaseLoopController::schedule() {
     // Schedule it to run in current iteration.
 
     if (!eventBaseKeepAlive_) {
-      eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
+      eventBaseKeepAlive_ = getKeepAliveToken(eventBase_);
     }
     eventBase_->getEventBase().runInLoop(&callback_, true);
     awaitingScheduling_ = false;
@@ -70,7 +70,7 @@ inline void EventBaseLoopController::runLoop() {
     if (!fm_->hasTasks()) {
       return;
     }
-    eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
+    eventBaseKeepAlive_ = getKeepAliveToken(eventBase_);
   }
   if (loopRunner_) {
     if (fm_->hasReadyTasks()) {
