@@ -160,8 +160,8 @@ static void poolStats() {
   folly::Baton<> startBaton, endBaton;
   TPE tpe(1);
   auto stats = tpe.getPoolStats();
-  EXPECT_EQ(1, stats.threadCount);
-  EXPECT_EQ(1, stats.idleThreadCount);
+  EXPECT_GE(1, stats.threadCount);
+  EXPECT_GE(1, stats.idleThreadCount);
   EXPECT_EQ(0, stats.activeThreadCount);
   EXPECT_EQ(0, stats.pendingTaskCount);
   EXPECT_EQ(0, tpe.getPendingTaskCount());
@@ -617,7 +617,7 @@ static void resizeThreadWhileExecutingTest() {
   EXPECT_EQ(5, tpe.numThreads());
   tpe.setNumThreads(15);
   EXPECT_EQ(15, tpe.numThreads());
-  tpe.stop();
+  tpe.join();
   EXPECT_EQ(1000, completed);
 }
 
@@ -694,4 +694,17 @@ TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryIO) {
 
 TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryCPU) {
   testUsesNameFromNamedThreadFactory<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, DynamicThreadsTest) {
+  CPUThreadPoolExecutor e(2);
+  e.setThreadDeathTimeout(std::chrono::milliseconds(100));
+  e.add([] { /* sleep override */ usleep(1000); });
+  e.add([] { /* sleep override */ usleep(1000); });
+  auto stats = e.getPoolStats();
+  EXPECT_GE(2, stats.activeThreadCount);
+  /* sleep override */ sleep(1);
+  e.add([] {});
+  stats = e.getPoolStats();
+  EXPECT_LE(stats.activeThreadCount, 0);
 }

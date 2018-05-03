@@ -28,14 +28,22 @@ SyncVecThreadPoolExecutors& getSyncVecThreadPoolExecutors() {
   return *storage;
 }
 
+DEFINE_int64(
+    threadtimeout_ms,
+    60000,
+    "Idle time before ThreadPoolExecutor threads are joined");
+
 ThreadPoolExecutor::ThreadPoolExecutor(
-    size_t /* numThreads */,
+    size_t /* maxThreads */,
+    size_t minThreads,
     std::shared_ptr<ThreadFactory> threadFactory,
     bool isWaitForAll)
     : threadFactory_(std::move(threadFactory)),
       isWaitForAll_(isWaitForAll),
       taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
-      threadPoolHook_("folly::ThreadPoolExecutor") {
+      threadPoolHook_("folly::ThreadPoolExecutor"),
+      minThreads_(minThreads),
+      threadTimeout_(FLAGS_threadtimeout_ms) {
   getSyncVecThreadPoolExecutors()->push_back(this);
 }
 
@@ -104,25 +112,62 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
 }
 
 size_t ThreadPoolExecutor::numThreads() {
-  RWSpinLock::ReadHolder r{&threadListLock_};
-  return threadList_.get().size();
+  return maxThreads_.load(std::memory_order_relaxed);
 }
 
-void ThreadPoolExecutor::setNumThreads(size_t n) {
+// Set the maximum number of running threads.
+void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
+  /* Since ThreadPoolExecutor may be dynamically adjusting the number of
+     threads, we adjust the relevant variables instead of changing
+     the number of threads directly.  Roughly:
+
+     If numThreads < minthreads reset minThreads to numThreads.
+
+     If numThreads < active threads, reduce number of running threads.
+
+     If the number of pending tasks is > 0, then increase the currently
+     active number of threads such that we can run all the tasks, or reach
+     numThreads.
+
+     Note that if there are observers, we actually have to create all
+     the threads, because some observer implementations need to 'observe'
+     all thread creation (see tests for an example of this)
+  */
+
   size_t numThreadsToJoin = 0;
   {
     RWSpinLock::WriteHolder w{&threadListLock_};
-    const auto current = threadList_.get().size();
-    if (n > current) {
-      addThreads(n - current);
-    } else if (n < current) {
-      numThreadsToJoin = current - n;
-      removeThreads(numThreadsToJoin, true);
+    auto pending = getPendingTaskCountImpl();
+    maxThreads_.store(numThreads, std::memory_order_relaxed);
+    auto active = activeThreads_.load(std::memory_order_relaxed);
+    auto minthreads = minThreads_.load(std::memory_order_relaxed);
+    if (numThreads < minthreads) {
+      minthreads = numThreads;
+      minThreads_.store(numThreads, std::memory_order_relaxed);
+    }
+    if (active > numThreads) {
+      numThreadsToJoin = active - numThreads;
+      if (numThreadsToJoin > active - minthreads) {
+        numThreadsToJoin = active - minthreads;
+      }
+      ThreadPoolExecutor::removeThreads(numThreadsToJoin, false);
+      activeThreads_.store(
+          active - numThreadsToJoin, std::memory_order_relaxed);
+    } else if (pending > 0 || observers_.size() > 0 || active < minthreads) {
+      size_t numToAdd = std::min(pending, numThreads - active);
+      if (observers_.size() > 0) {
+        numToAdd = numThreads - active;
+      }
+      if (active + numToAdd < minthreads) {
+        numToAdd = minthreads - active;
+      }
+      ThreadPoolExecutor::addThreads(numToAdd);
+      activeThreads_.store(active + numToAdd, std::memory_order_relaxed);
     }
   }
+
+  /* We may have removed some threads, attempt to join them */
   joinStoppedThreads(numThreadsToJoin);
-  CHECK_EQ(n, threadList_.get().size());
-  CHECK_EQ(0, stoppedThreads_.size());
 }
 
 // threadListLock_ is writelocked
@@ -150,7 +195,6 @@ void ThreadPoolExecutor::addThreads(size_t n) {
 
 // threadListLock_ is writelocked
 void ThreadPoolExecutor::removeThreads(size_t n, bool isJoin) {
-  CHECK_LE(n, threadList_.get().size());
   isJoin_ = isJoin;
   stopThreads(n);
 }
@@ -163,6 +207,13 @@ void ThreadPoolExecutor::joinStoppedThreads(size_t n) {
 }
 
 void ThreadPoolExecutor::stop() {
+  {
+    folly::RWSpinLock::WriteHolder w{&threadListLock_};
+    maxThreads_.store(0, std::memory_order_release);
+    activeThreads_.store(0, std::memory_order_release);
+  }
+  ensureJoined();
+
   size_t n = 0;
   {
     RWSpinLock::WriteHolder w{&threadListLock_};
@@ -175,6 +226,13 @@ void ThreadPoolExecutor::stop() {
 }
 
 void ThreadPoolExecutor::join() {
+  {
+    folly::RWSpinLock::WriteHolder w{&threadListLock_};
+    maxThreads_.store(0, std::memory_order_release);
+    activeThreads_.store(0, std::memory_order_release);
+  }
+  ensureJoined();
+
   size_t n = 0;
   {
     RWSpinLock::WriteHolder w{&threadListLock_};
@@ -198,18 +256,24 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
   const auto now = std::chrono::steady_clock::now();
   RWSpinLock::ReadHolder r{&threadListLock_};
   ThreadPoolExecutor::PoolStats stats;
-  stats.threadCount = threadList_.get().size();
+  size_t activeTasks = 0;
+  size_t idleAlive = 0;
   for (auto thread : threadList_.get()) {
     if (thread->idle) {
-      stats.idleThreadCount++;
       const std::chrono::nanoseconds idleTime = now - thread->lastActiveTime;
       stats.maxIdleTime = std::max(stats.maxIdleTime, idleTime);
+      idleAlive++;
     } else {
-      stats.activeThreadCount++;
+      activeTasks++;
     }
   }
   stats.pendingTaskCount = getPendingTaskCountImpl();
-  stats.totalTaskCount = stats.pendingTaskCount + stats.activeThreadCount;
+  stats.totalTaskCount = stats.pendingTaskCount + activeTasks;
+
+  stats.threadCount = maxThreads_.load(std::memory_order_relaxed);
+  stats.activeThreadCount =
+      activeThreads_.load(std::memory_order_relaxed) - idleAlive;
+  stats.idleThreadCount = stats.threadCount - stats.activeThreadCount;
   return stats;
 }
 
@@ -281,10 +345,16 @@ size_t ThreadPoolExecutor::StoppedThreadQueue::size() {
 }
 
 void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
-  RWSpinLock::ReadHolder r{&threadListLock_};
-  observers_.push_back(o);
-  for (auto& thread : threadList_.get()) {
-    o->threadPreviouslyStarted(thread.get());
+  {
+    RWSpinLock::ReadHolder r{&threadListLock_};
+    observers_.push_back(o);
+    for (auto& thread : threadList_.get()) {
+      o->threadPreviouslyStarted(thread.get());
+    }
+  }
+  while (activeThreads_.load(std::memory_order_relaxed) <
+         maxThreads_.load(std::memory_order_relaxed)) {
+    ensureActiveThreads();
   }
 }
 
@@ -301,6 +371,48 @@ void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
     }
   }
   DCHECK(false);
+}
+
+// Idle threads may have destroyed themselves, attempt to join
+// them here
+void ThreadPoolExecutor::ensureJoined() {
+  auto tojoin = threadsToJoin_.load(std::memory_order_relaxed);
+  if (tojoin) {
+    tojoin = threadsToJoin_.exchange(0, std::memory_order_relaxed);
+    joinStoppedThreads(tojoin);
+  }
+}
+
+// If we can't ensure that we were able to hand off a task to a thread,
+// attempt to start a thread that handled the task, if we aren't already
+// running the maximum number of threads.
+void ThreadPoolExecutor::ensureActiveThreads() {
+  ensureJoined();
+
+  // Fast path assuming we are already at max threads.
+  auto active = activeThreads_.load(std::memory_order_relaxed);
+  auto total = maxThreads_.load(std::memory_order_relaxed);
+
+  if (active >= total) {
+    return;
+  }
+
+  RWSpinLock::WriteHolder w{&threadListLock_};
+  // Double check behind lock.
+  active = activeThreads_.load(std::memory_order_relaxed);
+  total = maxThreads_.load(std::memory_order_relaxed);
+  if (active >= total) {
+    return;
+  }
+  ThreadPoolExecutor::addThreads(1);
+  activeThreads_.store(active + 1, std::memory_order_relaxed);
+}
+
+// If an idle thread times out, only join it if there are at least
+// minThreads threads.
+bool ThreadPoolExecutor::minActive() {
+  return activeThreads_.load(std::memory_order_relaxed) >
+      minThreads_.load(std::memory_order_relaxed);
 }
 
 } // namespace folly

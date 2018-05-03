@@ -72,6 +72,12 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("CPUThreadPool"));
 
+  CPUThreadPoolExecutor(
+      std::pair<size_t, size_t> numThreads,
+      std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
+      std::shared_ptr<ThreadFactory> threadFactory =
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
+
   explicit CPUThreadPoolExecutor(size_t numThreads);
 
   CPUThreadPoolExecutor(
@@ -134,6 +140,9 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor,
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
   uint64_t getPendingTaskCountImpl() override;
+
+  bool tryDecrToStop();
+  bool taskShouldStop(folly::Optional<CPUTask>&);
 
   std::unique_ptr<BlockingQueue<CPUTask>> taskQueue_;
   std::atomic<ssize_t> threadsToStop_{0};
