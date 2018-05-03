@@ -243,11 +243,9 @@ void FutureBase<T>::throwIfInvalid() const {
 
 template <class T>
 Optional<Try<T>> FutureBase<T>::poll() {
-  Optional<Try<T>> o;
-  if (core_->ready()) {
-    o = std::move(core_->getTry());
-  }
-  return o;
+  auto& core = getCore();
+  return core.hasResult() ? Optional<Try<T>>(std::move(core.getTry()))
+                          : Optional<Try<T>>();
 }
 
 template <class T>
