@@ -58,21 +58,30 @@ class Executor {
       reset();
     }
 
-    template <
-        typename OtherExecutor,
-        typename = typename std::enable_if<
-            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
-    /* implicit */ KeepAlive(KeepAlive<OtherExecutor>&& other) noexcept
+    KeepAlive(KeepAlive&& other) noexcept
         : executorAndDummyFlag_(exchange(other.executorAndDummyFlag_, 0)) {}
 
     template <
         typename OtherExecutor,
         typename = typename std::enable_if<
             std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
-    KeepAlive& operator=(KeepAlive<OtherExecutor>&& other) {
+    /* implicit */ KeepAlive(KeepAlive<OtherExecutor>&& other) noexcept
+        : KeepAlive(other.get(), other.executorAndDummyFlag_ & kDummyFlag) {
+      other.executorAndDummyFlag_ = 0;
+    }
+
+    KeepAlive& operator=(KeepAlive&& other) {
       reset();
       executorAndDummyFlag_ = exchange(other.executorAndDummyFlag_, 0);
       return *this;
+    }
+
+    template <
+        typename OtherExecutor,
+        typename = typename std::enable_if<
+            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+    KeepAlive& operator=(KeepAlive<OtherExecutor>&& other) {
+      return *this = KeepAlive(std::move(other));
     }
 
     void reset() {

@@ -1935,6 +1935,11 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
   }
 }
 
+TEST(EventBaseTest, LoopKeepAliveCast) {
+  EventBase evb;
+  Executor::KeepAlive<> keepAlive = getKeepAliveToken(evb);
+}
+
 TEST(EventBaseTest, DrivableExecutorTest) {
   folly::Promise<bool> p;
   auto f = p.getFuture();
