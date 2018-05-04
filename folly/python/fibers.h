@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /*
- *  This file serves as a helper for bridging folly::future and python
+ *  This file serves as a helper for bridging folly fibers and python
  *  asyncio.future.
  */
 
@@ -28,9 +28,10 @@
 namespace folly {
 namespace python {
 
-inline folly::fibers::FiberManager* getFiberManager() {
+inline folly::fibers::FiberManager* getFiberManager(
+    const folly::fibers::FiberManager::Options& opts = {}) {
   import_folly__fiber_manager();
-  return get_fiber_manager();
+  return get_fiber_manager(opts);
 }
 
 /**
