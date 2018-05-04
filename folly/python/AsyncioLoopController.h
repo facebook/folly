@@ -31,8 +31,8 @@ class AsyncioLoopController : public fibers::LoopController {
   ~AsyncioLoopController() override;
 
  private:
-  // TODO: KeepAlive token to guarantee lifetime
   AsyncioExecutor* executor_;
+  Executor::KeepAlive<AsyncioExecutor> executorKeepAlive_;
   fibers::FiberManager* fm_{nullptr};
 
   void setFiberManager(fibers::FiberManager* fm) override;

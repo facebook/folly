@@ -30,21 +30,32 @@ inline void AsyncioLoopController::setFiberManager(fibers::FiberManager* fm) {
 
 inline void AsyncioLoopController::schedule() {
   // add() is thread-safe, so this isn't properly optimized for addTask()
+  if (!executorKeepAlive_) {
+    executorKeepAlive_ = getKeepAliveToken(executor_);
+  }
   executor_->add([this]() { return runLoop(); });
 }
 
 inline void AsyncioLoopController::runLoop() {
-  if (fm_->hasTasks()) {
-    fm_->loopUntilNoReadyImpl();
+  if (!executorKeepAlive_) {
+    if (!fm_->hasTasks()) {
+      return;
+    }
+    executorKeepAlive_ = getKeepAliveToken(executor_);
+  }
+  fm_->loopUntilNoReadyImpl();
+  if (!fm_->hasTasks()) {
+    executorKeepAlive_.reset();
   }
 }
 
 inline void AsyncioLoopController::scheduleThreadSafe() {
-  executor_->add([this]() {
-    if (fm_->shouldRunLoopRemote()) {
-      return runLoop();
-    }
-  });
+  executor_->add(
+      [this, executorKeepAlive = getKeepAliveToken(executor_)]() mutable {
+        if (fm_->shouldRunLoopRemote()) {
+          return runLoop();
+        }
+      });
 }
 
 inline void AsyncioLoopController::timedSchedule(

@@ -28,6 +28,13 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
  public:
   using Func = folly::Func;
 
+  ~AsyncioExecutor() override {
+    keepAliveRelease();
+    while (keepAliveCounter_ > 0) {
+      drive();
+    }
+  }
+
   void add(Func func) override {
     queue_.putMessage(std::move(func));
   }
@@ -48,9 +55,24 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
     });
   }
 
+ protected:
+  bool keepAliveAcquire() override {
+    auto keepAliveCounter =
+        keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
+    // We should never increment from 0
+    DCHECK(keepAliveCounter > 0);
+    return true;
+  }
+
+  void keepAliveRelease() override {
+    auto keepAliveCounter = --keepAliveCounter_;
+    DCHECK(keepAliveCounter >= 0);
+  }
+
  private:
   folly::NotificationQueue<Func> queue_;
   folly::NotificationQueue<Func>::SimpleConsumer consumer_{queue_};
+  std::atomic<size_t> keepAliveCounter_{1};
 }; // AsyncioExecutor
 
 } // namespace python
