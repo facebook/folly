@@ -20,6 +20,7 @@
 #include <climits>
 
 #include <folly/Function.h>
+#include <folly/Utility.h>
 
 namespace folly {
 
@@ -48,46 +49,48 @@ class Executor {
   static const int8_t MID_PRI = 0;
   static const int8_t HI_PRI = SCHAR_MAX;
 
-  class KeepAliveDeleter {
-   public:
-    explicit KeepAliveDeleter(bool dummy) : dummy_(dummy) {}
-    void operator()(folly::Executor* executor) {
-      if (dummy_) {
-        return;
-      }
-      executor->keepAliveRelease();
-    }
-
-   private:
-    bool dummy_;
-  };
-
   template <typename ExecutorT = Executor>
   class KeepAlive {
    public:
-    KeepAlive() : executor_(nullptr, KeepAliveDeleter(true)) {}
+    KeepAlive() = default;
 
-    template <typename OtherExecutor>
-    /* implicit */ KeepAlive(KeepAlive<OtherExecutor>&& other) : KeepAlive() {
-      *this = std::move(other);
+    ~KeepAlive() {
+      reset();
     }
 
-    template <typename OtherExecutor>
+    template <
+        typename OtherExecutor,
+        typename = typename std::enable_if<
+            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+    /* implicit */ KeepAlive(KeepAlive<OtherExecutor>&& other) noexcept
+        : executorAndDummyFlag_(exchange(other.executorAndDummyFlag_, 0)) {}
+
+    template <
+        typename OtherExecutor,
+        typename = typename std::enable_if<
+            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
     KeepAlive& operator=(KeepAlive<OtherExecutor>&& other) {
-      executor_ = std::move(other.executor_);
+      reset();
+      executorAndDummyFlag_ = exchange(other.executorAndDummyFlag_, 0);
       return *this;
     }
 
     void reset() {
-      executor_.reset();
+      if (Executor* executor = get()) {
+        if (exchange(executorAndDummyFlag_, 0) & kDummyFlag) {
+          return;
+        }
+        executor->keepAliveRelease();
+      }
     }
 
     explicit operator bool() const {
-      return executor_ != nullptr;
+      return executorAndDummyFlag_;
     }
 
     ExecutorT* get() const {
-      return executor_.get();
+      return reinterpret_cast<ExecutorT*>(
+          executorAndDummyFlag_ & kExecutorMask);
     }
 
     ExecutorT& operator*() const {
@@ -99,14 +102,23 @@ class Executor {
     }
 
    private:
+    static constexpr intptr_t kDummyFlag = 1;
+    static constexpr intptr_t kExecutorMask = ~kDummyFlag;
+
     friend class Executor;
     template <typename OtherExecutor>
     friend class KeepAlive;
 
     KeepAlive(ExecutorT* executor, bool dummy)
-        : executor_(executor, KeepAliveDeleter(dummy)) {}
+        : executorAndDummyFlag_(
+              reinterpret_cast<intptr_t>(executor) | (dummy ? kDummyFlag : 0)) {
+      assert(executor);
+      assert(
+          (reinterpret_cast<intptr_t>(executor) & kExecutorMask) ==
+          reinterpret_cast<intptr_t>(executor));
+    }
 
-    std::unique_ptr<ExecutorT, KeepAliveDeleter> executor_;
+    intptr_t executorAndDummyFlag_{reinterpret_cast<intptr_t>(nullptr)};
   };
 
   template <typename ExecutorT>
