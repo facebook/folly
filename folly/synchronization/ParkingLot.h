@@ -59,7 +59,7 @@ struct WaitNodeBase {
   }
 
   void wake() {
-    std::unique_lock<std::mutex> nodeLock(mutex_);
+    std::lock_guard<std::mutex> nodeLock(mutex_);
     signaled_ = true;
     cond_.notify_one();
   }
@@ -80,7 +80,7 @@ struct Bucket {
   std::mutex mutex_;
   WaitNodeBase* head_;
   WaitNodeBase* tail_;
-  std::atomic<uint64_t> count_;
+  std::atomic<uint64_t> count_{0};
 
   static Bucket& bucketFor(uint64_t key);
 
@@ -91,9 +91,9 @@ struct Bucket {
       tail_->next_ = node;
       tail_ = node;
     } else {
-      tail_ = node;
-      head_ = node;
+      tail_ = head_ = node;
     }
+    count_.fetch_add(1, std::memory_order_relaxed);
   }
 
   void erase(WaitNodeBase* node) {
@@ -101,8 +101,7 @@ struct Bucket {
     if (head_ == node && tail_ == node) {
       FOLLY_SAFE_DCHECK(node->prev_ == nullptr, "");
       FOLLY_SAFE_DCHECK(node->next_ == nullptr, "");
-      head_ = nullptr;
-      tail_ = nullptr;
+      head_ = tail_ = nullptr;
     } else if (head_ == node) {
       FOLLY_SAFE_DCHECK(node->prev_ == nullptr, "");
       FOLLY_SAFE_DCHECK(node->next_, "");
