@@ -547,6 +547,25 @@ class DeferredExecutor final : public Executor {
   Executor* executor_;
   folly::Synchronized<std::shared_ptr<FutureBatonType>> baton_;
 };
+
+// Vector-like structure to play with window,
+// which otherwise expects a vector of size `times`,
+// which would be expensive with large `times` sizes.
+struct WindowFakeVector {
+  using iterator = std::vector<size_t>::iterator;
+
+  WindowFakeVector(int size) : size_(size) {}
+
+  size_t operator[](const size_t index) const {
+    return index;
+  }
+  size_t size() const {
+    return size_;
+  }
+
+ private:
+  size_t size_;
+};
 } // namespace detail
 } // namespace futures
 
@@ -1449,6 +1468,12 @@ window(Collection input, F func, size_t n) {
   // Use global QueuedImmediateExecutor singleton to avoid stack overflow.
   auto executor = &QueuedImmediateExecutor::instance();
   return window(executor, std::move(input), std::move(func), n);
+}
+
+template <class F>
+auto window(size_t times, F func, size_t n)
+    -> std::vector<invoke_result_t<F, size_t>> {
+  return window(futures::detail::WindowFakeVector(times), std::move(func), n);
 }
 
 template <class Collection, class F, class ItT, class Result>
