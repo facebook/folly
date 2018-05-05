@@ -599,9 +599,9 @@ struct is_negative_impl<T, false> {
 // types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
 // in order to not prevent all calling code from using it.
 FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING("-Wsign-compare")
+FOLLY_GNU_DISABLE_WARNING("-Wsign-compare")
 #if __GNUC_PREREQ(5, 0)
-FOLLY_GCC_DISABLE_WARNING("-Wbool-compare")
+FOLLY_GNU_DISABLE_WARNING("-Wbool-compare")
 #endif
 FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
 FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare

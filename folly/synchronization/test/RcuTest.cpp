@@ -112,7 +112,7 @@ TEST(RcuTest, Stress) {
   std::vector<std::thread> threads;
   constexpr uint32_t sz = 1000;
   std::atomic<int*> ints[sz];
-  for (uint i = 0; i < sz; i++) {
+  for (uint32_t i = 0; i < sz; i++) {
     ints[i].store(new int(0));
   }
   for (unsigned th = 0; th < FLAGS_threads; th++) {
@@ -121,10 +121,10 @@ TEST(RcuTest, Stress) {
         rcu_reader g;
         int sum = 0;
         int* ptrs[sz];
-        for (uint j = 0; j < sz; j++) {
+        for (uint32_t j = 0; j < sz; j++) {
           ptrs[j] = ints[j].load(std::memory_order_acquire);
         }
-        for (uint j = 0; j < sz; j++) {
+        for (uint32_t j = 0; j < sz; j++) {
           sum += *ptrs[j];
         }
         EXPECT_EQ(sum, 0);
@@ -149,7 +149,7 @@ TEST(RcuTest, Stress) {
   updater.join();
   // Cleanup for asan
   synchronize_rcu();
-  for (uint i = 0; i < sz; i++) {
+  for (uint32_t i = 0; i < sz; i++) {
     delete ints[i].exchange(nullptr);
   }
 }

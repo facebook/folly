@@ -36,32 +36,21 @@ Promise<T>::Promise()
 
 template <class T>
 Promise<T>::Promise(Promise<T>&& other) noexcept
-    : retrieved_(other.retrieved_), core_(other.core_) {
-  other.core_ = nullptr;
-  other.retrieved_ = false;
-}
+    : retrieved_(exchange(other.retrieved_, false)),
+      core_(exchange(other.core_, nullptr)) {}
 
 template <class T>
 Promise<T>& Promise<T>::operator=(Promise<T>&& other) noexcept {
-  std::swap(core_, other.core_);
-  std::swap(retrieved_, other.retrieved_);
+  detach();
+  retrieved_ = exchange(other.retrieved_, false);
+  core_ = exchange(other.core_, nullptr);
   return *this;
 }
 
 template <class T>
-void Promise<T>::throwIfFulfilled() {
-  if (!core_) {
-    throwNoState();
-  }
-  if (core_->ready()) {
+void Promise<T>::throwIfFulfilled() const {
+  if (getCore().hasResult()) {
     throwPromiseAlreadySatisfied();
-  }
-}
-
-template <class T>
-void Promise<T>::throwIfRetrieved() {
-  if (retrieved_) {
-    throwFutureAlreadyRetrieved();
   }
 }
 
@@ -87,9 +76,11 @@ void Promise<T>::detach() {
 
 template <class T>
 SemiFuture<T> Promise<T>::getSemiFuture() {
-  throwIfRetrieved();
+  if (retrieved_) {
+    throwFutureAlreadyRetrieved();
+  }
   retrieved_ = true;
-  return SemiFuture<T>(core_);
+  return SemiFuture<T>(&getCore());
 }
 
 template <class T>
@@ -119,8 +110,8 @@ void Promise<T>::setException(exception_wrapper ew) {
 
 template <class T>
 void Promise<T>::setInterruptHandler(
-  std::function<void(exception_wrapper const&)> fn) {
-  core_->setInterruptHandler(std::move(fn));
+    std::function<void(exception_wrapper const&)> fn) {
+  getCore().setInterruptHandler(std::move(fn));
 }
 
 template <class T>

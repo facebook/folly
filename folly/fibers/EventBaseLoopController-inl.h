@@ -56,7 +56,7 @@ inline void EventBaseLoopController::schedule() {
     // Schedule it to run in current iteration.
 
     if (!eventBaseKeepAlive_) {
-      eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
+      eventBaseKeepAlive_ = getKeepAliveToken(eventBase_);
     }
     eventBase_->getEventBase().runInLoop(&callback_, true);
     awaitingScheduling_ = false;
@@ -70,7 +70,7 @@ inline void EventBaseLoopController::runLoop() {
     if (!fm_->hasTasks()) {
       return;
     }
-    eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
+    eventBaseKeepAlive_ = getKeepAliveToken(eventBase_);
   }
   if (loopRunner_) {
     if (fm_->hasReadyTasks()) {
@@ -92,15 +92,16 @@ inline void EventBaseLoopController::scheduleThreadSafe() {
      3) We fulfill the promise from the other thread. */
   assert(eventBaseAttached_);
 
-  eventBase_->runInEventBaseThread([this]() {
-    if (fm_->shouldRunLoopRemote()) {
-      return runLoop();
-    }
+  eventBase_->runInEventBaseThread(
+      [this, eventBaseKeepAlive = getKeepAliveToken(eventBase_)]() {
+        if (fm_->shouldRunLoopRemote()) {
+          return runLoop();
+        }
 
-    if (!fm_->hasTasks()) {
-      eventBaseKeepAlive_.reset();
-    }
-  });
+        if (!fm_->hasTasks()) {
+          eventBaseKeepAlive_.reset();
+        }
+      });
 }
 
 inline void EventBaseLoopController::timedSchedule(

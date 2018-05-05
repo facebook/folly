@@ -211,9 +211,13 @@ struct Tracked {
     sumCounts.defaultConstruct++;
     counts.defaultConstruct++;
   }
-  /* implicit */ Tracked(uint64_t val) : val_{val} {
+  /* implicit */ Tracked(uint64_t const& val) : val_{val} {
     sumCounts.copyConvert++;
     counts.copyConvert++;
+  }
+  /* implicit */ Tracked(uint64_t&& val) : val_{val} {
+    sumCounts.moveConvert++;
+    counts.moveConvert++;
   }
   Tracked(Tracked const& rhs) : val_{rhs.val_} {
     sumCounts.copyConstruct++;

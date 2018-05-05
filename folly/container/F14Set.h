@@ -27,6 +27,8 @@
  * @author Xiao Shi       <xshi@fb.com>
  */
 
+#include <tuple>
+
 #include <folly/lang/SafeAssert.h>
 
 #include <folly/container/F14Set-pre.h>
@@ -122,6 +124,10 @@ class F14BasicSet {
   using iterator = typename Policy::Iter;
   using const_iterator = iterator;
 
+ private:
+  using ItemIter = typename Policy::ItemIter;
+
+ public:
   //// PUBLIC - Member functions
 
   F14BasicSet() noexcept(F14Table<Policy>::kDefaultConstructIsNoexcept)
@@ -276,16 +282,11 @@ class F14BasicSet {
   }
 
   std::pair<iterator, bool> insert(value_type const& value) {
-    auto rv = table_.tryEmplaceValue(value, value);
-    return std::make_pair(table_.makeIter(rv.first), rv.second);
+    return emplace(value);
   }
 
   std::pair<iterator, bool> insert(value_type&& value) {
-    // tryEmplaceValue guarantees not to touch the first arg after touching
-    // any others, so although this looks fishy it is okay
-    value_type const& searchKey = value;
-    auto rv = table_.tryEmplaceValue(searchKey, std::move(value));
-    return std::make_pair(table_.makeIter(rv.first), rv.second);
+    return emplace(std::move(value));
   }
 
   // std::unordered_set's hinted insertion API is misleading.  No
@@ -349,15 +350,40 @@ class F14BasicSet {
     insert(ilist.begin(), ilist.end());
   }
 
-  // node API doesn't make sense for value set, which stores values inline
+ private:
+  std::pair<ItemIter, bool> emplaceItem() {
+    // rare but valid
+    return table_.tryEmplaceValue(key_type{});
+  }
 
-  // emplace won't actually be more efficient than insert until we
-  // add heterogeneous lookup, but it is still useful now from a code
-  // compactness standpoint.
+  std::pair<ItemIter, bool> emplaceItem(key_type&& key) {
+    // best case
+    return table_.tryEmplaceValue(key, std::move(key));
+  }
+
+  std::pair<ItemIter, bool> emplaceItem(key_type const& key) {
+    // okay case, no construction unless we will actually insert
+    return table_.tryEmplaceValue(key, key);
+  }
+
+  template <typename... Args>
+  std::enable_if_t<
+      sizeof...(Args) != 1 ||
+          !std::is_same<
+              folly::remove_cvref_t<
+                  std::tuple_element_t<0, std::tuple<Args...>>>,
+              key_type>::value,
+      std::pair<ItemIter, bool>>
+  emplaceItem(Args&&... args) {
+    key_type key(std::forward<Args>(args)...);
+    return table_.tryEmplaceValue(key, std::move(key));
+  }
+
+ public:
   template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    key_type key(std::forward<Args>(args)...);
-    return insert(std::move(key));
+    auto rv = emplaceItem(std::forward<Args>(args)...);
+    return std::make_pair(table_.makeIter(rv.first), rv.second);
   }
 
   template <class... Args>

@@ -29,10 +29,10 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
+#include <folly/Unit.h>
 #include <folly/Utility.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
-#include <folly/futures/FutureException.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 
@@ -114,10 +114,10 @@ class FutureBase {
   bool isReady() const;
 
   /// sugar for getTry().hasValue()
-  bool hasValue();
+  bool hasValue() const;
 
   /// sugar for getTry().hasException()
-  bool hasException();
+  bool hasException() const;
 
   /// If the promise has been fulfilled, return an Optional with the Try<T>.
   /// Otherwise return an empty Optional.
@@ -131,10 +131,6 @@ class FutureBase {
   /// friends. But it's not for public consumption.
   template <class F>
   void setCallback_(F&& func);
-
-  bool isActive() {
-    return core_->isActive();
-  }
 
   template <class E>
   void raise(E&& exception) {
@@ -163,9 +159,30 @@ class FutureBase {
   template <class>
   friend class Future;
 
-  using corePtr = futures::detail::Core<T>*;
+  using CoreType = futures::detail::Core<T>;
+  using corePtr = CoreType*;
+
+  // Throws NoState if there is no shared state object; else returns it by ref.
+  //
+  // Implementation methods should usually use this instead of `this->core_`.
+  // The latter should be used only when you need the possibly-null pointer.
+  CoreType& getCore() {
+    return getCoreImpl(*this);
+  }
+  CoreType const& getCore() const {
+    return getCoreImpl(*this);
+  }
+
+  template <typename Self>
+  static decltype(auto) getCoreImpl(Self& self) {
+    if (!self.core_) {
+      throwNoState();
+    }
+    return *self.core_;
+  }
 
   // shared core state object
+  // usually you should use `getCore()` instead of directly accessing `core_`.
   corePtr core_;
 
   explicit FutureBase(corePtr obj) : core_(obj) {}
@@ -176,15 +193,14 @@ class FutureBase {
 
   void throwIfInvalid() const;
 
-  template <class FutureType>
-  void assign(FutureType&) noexcept;
+  void assign(FutureBase<T>&& other) noexcept;
 
-  Executor* getExecutor() {
-    return core_->getExecutor();
+  Executor* getExecutor() const {
+    return getCore().getExecutor();
   }
 
   void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
-    core_->setExecutor(x, priority);
+    getCore().setExecutor(x, priority);
   }
 
   // Variant: returns a value
@@ -250,7 +266,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::cancel;
   using Base::hasException;
   using Base::hasValue;
-  using Base::isActive;
   using Base::isReady;
   using Base::poll;
   using Base::raise;
@@ -292,29 +307,12 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Overload of wait(Duration) for rvalue Futures
   SemiFuture<T>&& wait(Duration) &&;
 
-  /// Returns an inactive Future which will call back on the other side of
-  /// executor (when it is activated).
+  /// Returns a Future which will call back on the other side of executor.
   ///
-  /// NB remember that Futures activate when they destruct. This is good,
-  /// it means that this will work:
-  ///
-  ///   f.via(e).then(a).then(b);
-  ///
-  /// a and b will execute in the same context (the far side of e), because
-  /// the Future (temporary variable) created by via(e) does not call back
-  /// until it destructs, which is after then(a) and then(b) have been wired
-  /// up.
-  ///
-  /// But this is still racy:
-  ///
-  ///   f = f.via(e).then(a);
-  ///   f.then(b);
-  // The ref-qualifier allows for `this` to be moved out so we
-  // don't get access-after-free situations in chaining.
-  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &&;
+  /// The ref-qualifier allows for `this` to be moved out so we
+  /// don't get access-after-free situations in chaining.
+  /// https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
+  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
 
   /**
    * Defer work to run on the consumer of the future.
@@ -393,7 +391,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// non-deterministic in the standard case.
   /// For new code, or to update code that temporarily uses this, please
   /// use via and pass a meaningful executor.
-  inline Future<T> toUnsafeFuture() &&;
+  Future<T> toUnsafeFuture() &&;
 
 #if FOLLY_HAS_COROUTINES
   class promise_type {
@@ -519,7 +517,6 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::cancel;
   using Base::hasException;
   using Base::hasValue;
-  using Base::isActive;
   using Base::isReady;
   using Base::poll;
   using Base::raise;
@@ -560,36 +557,17 @@ class Future : private futures::detail::FutureBase<T> {
       enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
       unwrap();
 
-  /// Returns an inactive Future which will call back on the other side of
-  /// executor (when it is activated).
+  /// Returns a Future which will call back on the other side of executor.
   ///
-  /// NB remember that Futures activate when they destruct. This is good,
-  /// it means that this will work:
-  ///
-  ///   f.via(e).then(a).then(b);
-  ///
-  /// a and b will execute in the same context (the far side of e), because
-  /// the Future (temporary variable) created by via(e) does not call back
-  /// until it destructs, which is after then(a) and then(b) have been wired
-  /// up.
-  ///
-  /// But this is still racy:
-  ///
-  ///   f = f.via(e).then(a);
-  ///   f.then(b);
-  // The ref-qualifier allows for `this` to be moved out so we
-  // don't get access-after-free situations in chaining.
-  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &&;
+  /// The ref-qualifier allows for `this` to be moved out so we
+  /// don't get access-after-free situations in chaining.
+  /// https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
+  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
 
   /// This variant creates a new future, where the ref-qualifier && version
   /// moves `this` out. This one is less efficient but avoids confusing users
   /// when "return f.via(x);" fails.
-  inline Future<T> via(
-      Executor* executor,
-      int8_t priority = Executor::MID_PRI) &;
+  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &;
 
   /** When this Future has completed, execute func which is a function that
     takes one of:
@@ -733,28 +711,6 @@ class Future : private futures::detail::FutureBase<T> {
   ///       []() { return makeFuture<int>(some_exception); });
   template <class F>
   Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr);
-
-  /// A Future's callback is executed when all three of these conditions have
-  /// become true: it has a value (set by the Promise), it has a callback (set
-  /// by then), and it is active (active by default).
-  ///
-  /// Inactive Futures will activate upon destruction.
-  [[deprecated("do not use")]] Future<T>& activate() & {
-    this->core_->activate();
-    return *this;
-  }
-  [[deprecated("do not use")]] Future<T>& deactivate() & {
-    this->core_->deactivate();
-    return *this;
-  }
-  [[deprecated("do not use")]] Future<T> activate() && {
-    this->core_->activate();
-    return std::move(*this);
-  }
-  [[deprecated("do not use")]] Future<T> deactivate() && {
-    this->core_->deactivate();
-    return std::move(*this);
-  }
 
   /// Throw TimedOut if this Future does not complete within the given
   /// duration from now. The optional Timeekeeper is as with futures::sleep().
@@ -930,6 +886,59 @@ class Future : private futures::detail::FutureBase<T> {
   friend void futures::detail::convertFuture(
       SemiFuture<FT>&& sf,
       Future<FT>& f);
+};
+
+/// A Timekeeper handles the details of keeping time and fulfilling delay
+/// promises. The returned Future<Unit> will either complete after the
+/// elapsed time, or in the event of some kind of exceptional error may hold
+/// an exception. These Futures respond to cancellation. If you use a lot of
+/// Delays and many of them ultimately are unneeded (as would be the case for
+/// Delays that are used to trigger timeouts of async operations), then you
+/// can and should cancel them to reclaim resources.
+///
+/// Users will typically get one of these via Future::sleep(Duration) or
+/// use them implicitly behind the scenes by passing a timeout to some Future
+/// operation.
+///
+/// Although we don't formally alias Delay = Future<Unit>,
+/// that's an appropriate term for it. People will probably also call these
+/// Timeouts, and that's ok I guess, but that term is so overloaded I thought
+/// it made sense to introduce a cleaner term.
+///
+/// Remember that Duration is a std::chrono duration (millisecond resolution
+/// at the time of writing). When writing code that uses specific durations,
+/// prefer using the explicit std::chrono type, e.g. std::chrono::milliseconds
+/// over Duration. This makes the code more legible and means you won't be
+/// unpleasantly surprised if we redefine Duration to microseconds, or
+/// something.
+///
+///    timekeeper.after(std::chrono::duration_cast<Duration>(
+///      someNanoseconds))
+class Timekeeper {
+ public:
+  virtual ~Timekeeper() = default;
+
+  /// Returns a future that will complete after the given duration with the
+  /// elapsed time. Exceptional errors can happen but they must be
+  /// exceptional. Use the steady (monotonic) clock.
+  ///
+  /// You may cancel this Future to reclaim resources.
+  ///
+  /// This future probably completes on the timer thread. You should almost
+  /// certainly follow it with a via() call or the accuracy of other timers
+  /// will suffer.
+  virtual Future<Unit> after(Duration) = 0;
+
+  /// Returns a future that will complete at the requested time.
+  ///
+  /// You may cancel this Future to reclaim resources.
+  ///
+  /// NB This is sugar for `after(when - now)`, so while you are welcome to
+  /// use a std::chrono::system_clock::time_point it will not track changes to
+  /// the system clock but rather execute that many milliseconds in the future
+  /// according to the steady clock.
+  template <class Clock>
+  Future<Unit> at(std::chrono::time_point<Clock> when);
 };
 
 } // namespace folly

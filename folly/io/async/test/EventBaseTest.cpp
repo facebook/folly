@@ -1805,11 +1805,11 @@ TEST(EventBaseTest, LoopKeepAlive) {
   EventBase evb;
 
   bool done = false;
-  std::thread t([&, loopKeepAlive = evb.getKeepAliveToken() ]() mutable {
+  std::thread t([&, loopKeepAlive = getKeepAliveToken(evb)]() mutable {
     /* sleep override */ std::this_thread::sleep_for(
         std::chrono::milliseconds(100));
     evb.runInEventBaseThread(
-        [&done, loopKeepAlive = std::move(loopKeepAlive) ] { done = true; });
+        [&done, loopKeepAlive = std::move(loopKeepAlive)] { done = true; });
   });
 
   evb.loop();
@@ -1826,11 +1826,11 @@ TEST(EventBaseTest, LoopKeepAliveInLoop) {
   std::thread t;
 
   evb.runInEventBaseThread([&] {
-    t = std::thread([&, loopKeepAlive = evb.getKeepAliveToken() ]() mutable {
+    t = std::thread([&, loopKeepAlive = getKeepAliveToken(evb)]() mutable {
       /* sleep override */ std::this_thread::sleep_for(
           std::chrono::milliseconds(100));
       evb.runInEventBaseThread(
-          [&done, loopKeepAlive = std::move(loopKeepAlive) ] { done = true; });
+          [&done, loopKeepAlive = std::move(loopKeepAlive)] { done = true; });
     });
   });
 
@@ -1854,9 +1854,9 @@ TEST(EventBaseTest, LoopKeepAliveWithLoopForever) {
 
   {
     auto* ev = evb.get();
-    Executor::KeepAlive keepAlive;
+    Executor::KeepAlive<EventBase> keepAlive;
     ev->runInEventBaseThreadAndWait(
-        [&ev, &keepAlive] { keepAlive = ev->getKeepAliveToken(); });
+        [&ev, &keepAlive] { keepAlive = getKeepAliveToken(ev); });
     ASSERT_FALSE(done) << "Loop finished before we asked it to";
     ev->terminateLoopSoon();
     /* sleep override */
@@ -1874,11 +1874,9 @@ TEST(EventBaseTest, LoopKeepAliveShutdown) {
 
   bool done = false;
 
-  std::thread t([
-    &done,
-    loopKeepAlive = evb->getKeepAliveToken(),
-    evbPtr = evb.get()
-  ]() mutable {
+  std::thread t([&done,
+                 loopKeepAlive = getKeepAliveToken(evb.get()),
+                 evbPtr = evb.get()]() mutable {
     /* sleep override */ std::this_thread::sleep_for(
         std::chrono::milliseconds(100));
     evbPtr->runInEventBaseThread(
@@ -1907,10 +1905,10 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
   }
 
   for (size_t i = 0; i < kNumThreads; ++i) {
-    ts.emplace_back([ evbPtr = evb.get(), batonPtr = batons[i].get(), &done ] {
-      std::vector<Executor::KeepAlive> keepAlives;
+    ts.emplace_back([evbPtr = evb.get(), batonPtr = batons[i].get(), &done] {
+      std::vector<Executor::KeepAlive<EventBase>> keepAlives;
       for (size_t j = 0; j < kNumTasks; ++j) {
-        keepAlives.emplace_back(evbPtr->getKeepAliveToken());
+        keepAlives.emplace_back(getKeepAliveToken(evbPtr));
       }
 
       batonPtr->post();
@@ -1935,6 +1933,11 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
   for (auto& t : ts) {
     t.join();
   }
+}
+
+TEST(EventBaseTest, LoopKeepAliveCast) {
+  EventBase evb;
+  Executor::KeepAlive<> keepAlive = getKeepAliveToken(evb);
 }
 
 TEST(EventBaseTest, DrivableExecutorTest) {

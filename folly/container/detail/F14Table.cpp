@@ -24,7 +24,7 @@ namespace folly {
 namespace f14 {
 namespace detail {
 
-__m128i kEmptyTagVector = {};
+TagVector kEmptyTagVector = {};
 
 } // namespace detail
 } // namespace f14

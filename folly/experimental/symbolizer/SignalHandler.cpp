@@ -100,6 +100,7 @@ struct {
     {SIGABRT, "SIGABRT", {}},
     {SIGBUS, "SIGBUS", {}},
     {SIGTERM, "SIGTERM", {}},
+    {SIGQUIT, "SIGQUIT", {}},
     {0, nullptr, {}},
 };
 
@@ -241,7 +242,7 @@ const char* sigbus_reason(int si_code) {
     case BUS_OBJERR:
       return "object-specific hardware error";
 
-    // MCEERR_AR and MCEERR_AO: in sigaction(2) but not in headers.
+      // MCEERR_AR and MCEERR_AO: in sigaction(2) but not in headers.
 
     default:
       return nullptr;
@@ -255,7 +256,7 @@ const char* sigtrap_reason(int si_code) {
     case TRAP_TRACE:
       return "process trace trap";
 
-    // TRAP_BRANCH and TRAP_HWBKPT: in sigaction(2) but not in headers.
+      // TRAP_BRANCH and TRAP_HWBKPT: in sigaction(2) but not in headers.
 
     default:
       return nullptr;

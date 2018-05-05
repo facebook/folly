@@ -17,6 +17,11 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 
+DEFINE_bool(
+    dynamic_cputhreadpoolexecutor,
+    true,
+    "CPUThreadPoolExecutor will dynamically create and destroy threads");
+
 namespace folly {
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
@@ -25,9 +30,24 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
     std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
     std::shared_ptr<ThreadFactory> threadFactory)
-    : ThreadPoolExecutor(numThreads, std::move(threadFactory)),
+    : ThreadPoolExecutor(
+          numThreads,
+          FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads,
+          std::move(threadFactory)),
       taskQueue_(std::move(taskQueue)) {
   setNumThreads(numThreads);
+}
+
+CPUThreadPoolExecutor::CPUThreadPoolExecutor(
+    std::pair<size_t, size_t> numThreads,
+    std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
+    std::shared_ptr<ThreadFactory> threadFactory)
+    : ThreadPoolExecutor(
+          numThreads.first,
+          numThreads.second,
+          std::move(threadFactory)),
+      taskQueue_(std::move(taskQueue)) {
+  setNumThreads(numThreads.first);
 }
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
@@ -81,9 +101,10 @@ void CPUThreadPoolExecutor::add(
     Func func,
     std::chrono::milliseconds expiration,
     Func expireCallback) {
-  // TODO handle enqueue failure, here and in other add() callsites
-  taskQueue_->add(
-      CPUTask(std::move(func), expiration, std::move(expireCallback)));
+  if (!taskQueue_->add(
+          CPUTask(std::move(func), expiration, std::move(expireCallback)))) {
+    ensureActiveThreads();
+  }
 }
 
 void CPUThreadPoolExecutor::addWithPriority(Func func, int8_t priority) {
@@ -96,9 +117,11 @@ void CPUThreadPoolExecutor::add(
     std::chrono::milliseconds expiration,
     Func expireCallback) {
   CHECK(getNumPriorities() > 0);
-  taskQueue_->addWithPriority(
-      CPUTask(std::move(func), expiration, std::move(expireCallback)),
-      priority);
+  if (!taskQueue_->addWithPriority(
+          CPUTask(std::move(func), expiration, std::move(expireCallback)),
+          priority)) {
+    ensureActiveThreads();
+  }
 }
 
 uint8_t CPUThreadPoolExecutor::getNumPriorities() const {
@@ -114,33 +137,71 @@ CPUThreadPoolExecutor::getTaskQueue() {
   return taskQueue_.get();
 }
 
-void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
+bool CPUThreadPoolExecutor::tryDecrToStop() {
+  while (true) {
+    auto toStop = threadsToStop_.load(std::memory_order_relaxed);
+    if (toStop <= 0) {
+      return false;
+    }
+    if (threadsToStop_.compare_exchange_strong(
+            toStop, toStop - 1, std::memory_order_relaxed)) {
+      return true;
+    }
+  }
+}
+
+bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
+  if (task) {
+    if (!tryDecrToStop()) {
+      // Some other thread beat us to it.
+      return false;
+    }
+  } else {
+    // Try to stop based on idle thread timeout (try_take_for),
+    // if there are at least minThreads running.
+    if (!minActive()) {
+      return false;
+    }
+    // If this is based on idle thread timeout, then
+    // adjust vars appropriately (otherwise stop() or join()
+    // does this).
+    activeThreads_.fetch_sub(1, std::memory_order_relaxed);
+    threadsToJoin_.fetch_add(1, std::memory_order_relaxed);
+  }
+  return true;
+}
+
+void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
 
   thread->startupBaton.post();
   while (true) {
-    auto task = taskQueue_->take();
-    if (UNLIKELY(task.poison)) {
-      CHECK(threadsToStop_-- > 0);
-      for (auto& o : observers_) {
-        o->threadStopped(thread.get());
-      }
-      folly::RWSpinLock::WriteHolder w{&threadListLock_};
-      threadList_.remove(thread);
-      stoppedThreads_.add(thread);
-      return;
-    } else {
-      runTask(thread, std::move(task));
-    }
-
-    if (UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
-      if (--threadsToStop_ >= 0) {
+    auto task = taskQueue_->try_take_for(threadTimeout_);
+    // Handle thread stopping, either by task timeout, or
+    // by 'poison' task added in join() or stop().
+    if (UNLIKELY(!task || task.value().poison)) {
+      if (taskShouldStop(task)) {
+        for (auto& o : observers_) {
+          o->threadStopped(thread.get());
+        }
+        // Actually remove the thread from the list.
         folly::RWSpinLock::WriteHolder w{&threadListLock_};
         threadList_.remove(thread);
         stoppedThreads_.add(thread);
         return;
       } else {
-        threadsToStop_++;
+        continue;
+      }
+    }
+
+    runTask(thread, std::move(task.value()));
+
+    if (UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
+      if (tryDecrToStop()) {
+        folly::RWSpinLock::WriteHolder w{&threadListLock_};
+        threadList_.remove(thread);
+        stoppedThreads_.add(thread);
+        return;
       }
     }
   }
@@ -153,7 +214,7 @@ void CPUThreadPoolExecutor::stopThreads(size_t n) {
   }
 }
 
-// threadListLock_ is readlocked
+// threadListLock_ is read (or write) locked.
 uint64_t CPUThreadPoolExecutor::getPendingTaskCountImpl() {
   return taskQueue_->size();
 }

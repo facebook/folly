@@ -43,7 +43,6 @@
 #include <boost/mpl/size.hpp>
 #include <boost/mpl/vector.hpp>
 #include <boost/operators.hpp>
-#include <boost/type_traits.hpp>
 
 #include <folly/ConstexprMath.h>
 #include <folly/FormatTraits.h>
@@ -67,7 +66,7 @@
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING
-FOLLY_GCC_DISABLE_WARNING("-Wshadow")
+FOLLY_GNU_DISABLE_WARNING("-Wshadow")
 
 namespace folly {
 
@@ -332,7 +331,7 @@ struct small_vector_base {
    */
   typedef typename mpl::filter_view<
       PolicyList,
-      boost::is_integral<mpl::placeholders::_1>>::type Integrals;
+      std::is_integral<mpl::placeholders::_1>>::type Integrals;
   typedef typename mpl::eval_if<
       mpl::empty<Integrals>,
       mpl::identity<std::size_t>,

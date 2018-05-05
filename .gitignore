@@ -22,7 +22,7 @@ folly/**/test/*_test_using_jemalloc
 folly/**/test/*.trs
 folly/config.*
 folly/configure
-folly/experimental/logging/example/logging_example
+folly/logging/example/logging_example
 folly/libfolly.pc
 folly/m4/libtool.m4
 folly/m4/ltoptions.m4

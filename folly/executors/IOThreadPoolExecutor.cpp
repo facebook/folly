@@ -66,7 +66,7 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
     bool waitForAll)
-    : ThreadPoolExecutor(numThreads, std::move(threadFactory), waitForAll),
+    : ThreadPoolExecutor(numThreads, 0, std::move(threadFactory), waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(numThreads);
@@ -85,6 +85,7 @@ void IOThreadPoolExecutor::add(
     Func func,
     std::chrono::milliseconds expiration,
     Func expireCallback) {
+  ensureActiveThreads();
   RWSpinLock::ReadHolder r{&threadListLock_};
   if (threadList_.get().empty()) {
     throw std::runtime_error("No threads available");
@@ -125,6 +126,7 @@ IOThreadPoolExecutor::pickThread() {
 }
 
 EventBase* IOThreadPoolExecutor::getEventBase() {
+  ensureActiveThreads();
   RWSpinLock::ReadHolder r{&threadListLock_};
   return pickThread()->eventBase;
 }

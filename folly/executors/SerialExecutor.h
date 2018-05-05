@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 
 #include <folly/executors/GlobalExecutor.h>
@@ -48,14 +49,35 @@ namespace folly {
 
 class SerialExecutor : public SequencedExecutor {
  public:
-  ~SerialExecutor() override = default;
+  ~SerialExecutor() override;
   SerialExecutor(SerialExecutor const&) = delete;
   SerialExecutor& operator=(SerialExecutor const&) = delete;
   SerialExecutor(SerialExecutor&&) = default;
   SerialExecutor& operator=(SerialExecutor&&) = default;
 
-  explicit SerialExecutor(
-      std::shared_ptr<folly::Executor> parent = folly::getCPUExecutor());
+  static KeepAlive<SerialExecutor> create(
+      KeepAlive<Executor> parent = getKeepAliveToken(getCPUExecutor().get()));
+
+  class Deleter {
+   public:
+    Deleter() {}
+
+    void operator()(SerialExecutor* executor) {
+      executor->keepAliveRelease();
+    }
+
+   private:
+    friend class SerialExecutor;
+    explicit Deleter(std::shared_ptr<Executor> parent)
+        : parent_(std::move(parent)) {}
+
+    std::shared_ptr<Executor> parent_;
+  };
+
+  using UniquePtr = std::unique_ptr<SerialExecutor, Deleter>;
+  [[deprecated("Replaced by create")]]
+  static UniquePtr createUnique(
+      std::shared_ptr<Executor> parent = getCPUExecutor());
 
   /**
    * Add one task for execution in the parent executor
@@ -77,11 +99,20 @@ class SerialExecutor : public SequencedExecutor {
     return parent_->getNumPriorities();
   }
 
+ protected:
+  bool keepAliveAcquire() override;
+
+  void keepAliveRelease() override;
+
  private:
+  explicit SerialExecutor(KeepAlive<Executor> parent);
+
   class TaskQueueImpl;
 
-  std::shared_ptr<folly::Executor> parent_;
+  KeepAlive<Executor> parent_;
   std::shared_ptr<TaskQueueImpl> taskQueueImpl_;
+
+  std::atomic<ssize_t> keepAliveCounter_{1};
 };
 
 } // namespace folly

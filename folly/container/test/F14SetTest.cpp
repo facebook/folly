@@ -514,6 +514,151 @@ TEST(F14ValueSet, steady_state_stats) {
   F14TableStats::compute(h);
 }
 
+// S should be a set of Tracked<0>.  F should take a set
+// and a key_type const& or key_type&& and cause it to be inserted
+template <typename S, typename F>
+void runInsertCases(std::string const& /* name */, F const& insertFunc) {
+  static_assert(std::is_same<typename S::value_type, Tracked<0>>::value, "");
+  {
+    typename S::value_type k{0};
+    S s;
+    resetTracking();
+    insertFunc(s, k);
+    // fresh key, value_type const& ->
+    // copy is expected
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{1, 0, 0, 0}), 0);
+  }
+  {
+    typename S::value_type k{0};
+    S s;
+    resetTracking();
+    insertFunc(s, std::move(k));
+    // fresh key, value_type&& ->
+    // move is expected
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 1, 0, 0}), 0);
+  }
+}
+
+struct DoInsert {
+  template <typename M, typename P>
+  void operator()(M& m, P&& p) const {
+    m.insert(std::forward<P>(p));
+  }
+};
+
+struct DoEmplace1 {
+  template <typename M, typename P>
+  void operator()(M& m, P&& p) const {
+    m.emplace(std::forward<P>(p));
+  }
+};
+
+template <typename S>
+void runInsertAndEmplace() {
+  {
+    typename S::value_type k1{0};
+    typename S::value_type k2{0};
+    S s;
+    resetTracking();
+    EXPECT_TRUE(s.insert(k1).second);
+    // copy is expected on successful insert
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{1, 0, 0, 0}), 0);
+
+    resetTracking();
+    EXPECT_FALSE(s.insert(k2).second);
+    // no copies or moves on failing insert
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 0, 0}), 0);
+  }
+  {
+    typename S::value_type k1{0};
+    typename S::value_type k2{0};
+    S s;
+    resetTracking();
+    EXPECT_TRUE(s.insert(std::move(k1)).second);
+    // move is expected on successful insert
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 1, 0, 0}), 0);
+
+    resetTracking();
+    EXPECT_FALSE(s.insert(std::move(k2)).second);
+    // no copies or moves on failing insert
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 0, 0}), 0);
+  }
+  {
+    typename S::value_type k1{0};
+    typename S::value_type k2{0};
+    uint64_t k3 = 0;
+    uint64_t k4 = 10;
+    S s;
+    resetTracking();
+    EXPECT_TRUE(s.emplace(k1).second);
+    // copy is expected on successful emplace
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{1, 0, 0, 0}), 0);
+
+    resetTracking();
+    EXPECT_FALSE(s.emplace(k2).second);
+    // no copies or moves on failing emplace with value_type
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 0, 0}), 0);
+
+    resetTracking();
+    EXPECT_FALSE(s.emplace(k3).second);
+    // copy convert expected for failing emplace with wrong type
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 1, 0}), 0);
+
+    resetTracking();
+    EXPECT_TRUE(s.emplace(k4).second);
+    // copy convert + move expected for successful emplace with wrong type
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 1, 1, 0}), 0);
+  }
+  {
+    typename S::value_type k1{0};
+    typename S::value_type k2{0};
+    uint64_t k3 = 0;
+    uint64_t k4 = 10;
+    S s;
+    resetTracking();
+    EXPECT_TRUE(s.emplace(std::move(k1)).second);
+    // move is expected on successful emplace
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 1, 0, 0}), 0);
+
+    resetTracking();
+    EXPECT_FALSE(s.emplace(std::move(k2)).second);
+    // no copies or moves on failing emplace with value_type
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 0, 0}), 0);
+
+    resetTracking();
+    EXPECT_FALSE(s.emplace(std::move(k3)).second);
+    // move convert expected for failing emplace with wrong type
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 0, 1}), 0);
+
+    resetTracking();
+    EXPECT_TRUE(s.emplace(std::move(k4)).second);
+    // move convert + move expected for successful emplace with wrong type
+    EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 1, 0, 1}), 0);
+  }
+
+  // Calling the default pair constructor via emplace is valid, but not
+  // very useful in real life.  Verify that it works.
+  S s;
+  typename S::value_type k;
+  EXPECT_EQ(s.count(k), 0);
+  s.emplace();
+  EXPECT_EQ(s.count(k), 1);
+  s.emplace();
+  EXPECT_EQ(s.count(k), 1);
+}
+
+TEST(F14ValueSet, destructuring) {
+  runInsertAndEmplace<F14ValueSet<Tracked<0>>>();
+}
+
+TEST(F14NodeSet, destructuring) {
+  runInsertAndEmplace<F14NodeSet<Tracked<0>>>();
+}
+
+TEST(F14VectorSet, destructuring) {
+  runInsertAndEmplace<F14VectorSet<Tracked<0>>>();
+}
+
 TEST(F14ValueSet, vectorMaxSize) {
   F14ValueSet<int> s;
   EXPECT_EQ(s.max_size(), std::numeric_limits<uint64_t>::max() / sizeof(int));

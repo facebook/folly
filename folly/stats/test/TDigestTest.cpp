@@ -25,9 +25,9 @@ using namespace folly;
 
 /*
  * Tests run at a reasonable speed with these settings, but it is good to
- * occasionally test with kNumRandomRuns = 3000.
+ * occasionally test with kNumRandomRuns = 3000 and kNumSamples = 50000
  */
-const int32_t kNumSamples = 50000;
+const int32_t kNumSamples = 10000;
 const int32_t kNumRandomRuns = 30;
 const int32_t kSeed = 0;
 
@@ -44,12 +44,14 @@ TEST(TDigest, Basic) {
   EXPECT_EQ(100, digest.count());
   EXPECT_EQ(5050, digest.sum());
   EXPECT_EQ(50.5, digest.mean());
+  EXPECT_EQ(1, digest.min());
+  EXPECT_EQ(100, digest.max());
 
-  EXPECT_EQ(0.6, digest.estimateQuantile(0.001));
+  EXPECT_EQ(1, digest.estimateQuantile(0.001));
   EXPECT_EQ(2.0 - 0.5, digest.estimateQuantile(0.01));
   EXPECT_EQ(50.375, digest.estimateQuantile(0.5));
   EXPECT_EQ(100.0 - 0.5, digest.estimateQuantile(0.99));
-  EXPECT_EQ(100.4, digest.estimateQuantile(0.999));
+  EXPECT_EQ(100, digest.estimateQuantile(0.999));
 }
 
 TEST(TDigest, Merge) {
@@ -70,12 +72,14 @@ TEST(TDigest, Merge) {
   EXPECT_EQ(200, digest.count());
   EXPECT_EQ(20100, digest.sum());
   EXPECT_EQ(100.5, digest.mean());
+  EXPECT_EQ(1, digest.min());
+  EXPECT_EQ(200, digest.max());
 
-  EXPECT_EQ(0.7, digest.estimateQuantile(0.001));
+  EXPECT_EQ(1, digest.estimateQuantile(0.001));
   EXPECT_EQ(4.0 - 1.5, digest.estimateQuantile(0.01));
   EXPECT_EQ(100.25, digest.estimateQuantile(0.5));
   EXPECT_EQ(200.0 - 1.5, digest.estimateQuantile(0.99));
-  EXPECT_EQ(200.3, digest.estimateQuantile(0.999));
+  EXPECT_EQ(200, digest.estimateQuantile(0.999));
 }
 
 TEST(TDigest, MergeSmall) {
@@ -89,6 +93,8 @@ TEST(TDigest, MergeSmall) {
   EXPECT_EQ(1, digest.count());
   EXPECT_EQ(1, digest.sum());
   EXPECT_EQ(1, digest.mean());
+  EXPECT_EQ(1, digest.min());
+  EXPECT_EQ(1, digest.max());
 
   EXPECT_EQ(1.0, digest.estimateQuantile(0.001));
   EXPECT_EQ(1.0, digest.estimateQuantile(0.01));
@@ -109,6 +115,8 @@ TEST(TDigest, MergeLarge) {
   EXPECT_EQ(1000, digest.count());
   EXPECT_EQ(500500, digest.sum());
   EXPECT_EQ(500.5, digest.mean());
+  EXPECT_EQ(1, digest.min());
+  EXPECT_EQ(1000, digest.max());
 
   EXPECT_EQ(1.5, digest.estimateQuantile(0.001));
   EXPECT_EQ(10.5, digest.estimateQuantile(0.01));
@@ -139,11 +147,76 @@ TEST(TDigest, MergeLargeAsDigests) {
   EXPECT_EQ(1000, digest.count());
   EXPECT_EQ(500500, digest.sum());
   EXPECT_EQ(500.5, digest.mean());
+  EXPECT_EQ(1, digest.min());
+  EXPECT_EQ(1000, digest.max());
 
   EXPECT_EQ(1.5, digest.estimateQuantile(0.001));
   EXPECT_EQ(10.5, digest.estimateQuantile(0.01));
   EXPECT_EQ(990.25, digest.estimateQuantile(0.99));
   EXPECT_EQ(999.5, digest.estimateQuantile(0.999));
+}
+
+TEST(TDigest, NegativeValues) {
+  std::vector<TDigest> digests;
+  TDigest digest(100);
+
+  std::vector<double> values;
+  for (int i = 1; i <= 100; ++i) {
+    values.push_back(i);
+    values.push_back(-i);
+  }
+
+  std::sort(values.begin(), values.end());
+
+  digest = digest.merge(values);
+
+  EXPECT_EQ(200, digest.count());
+  EXPECT_EQ(0, digest.sum());
+  EXPECT_EQ(0, digest.mean());
+  EXPECT_EQ(-100, digest.min());
+  EXPECT_EQ(100, digest.max());
+
+  EXPECT_EQ(-100, digest.estimateQuantile(0.0));
+  EXPECT_EQ(-100, digest.estimateQuantile(0.001));
+  EXPECT_EQ(-98.5, digest.estimateQuantile(0.01));
+  EXPECT_EQ(98.5, digest.estimateQuantile(0.99));
+  EXPECT_EQ(100, digest.estimateQuantile(0.999));
+  EXPECT_EQ(100, digest.estimateQuantile(1.0));
+}
+
+TEST(TDigest, NegativeValuesMergeDigests) {
+  std::vector<TDigest> digests;
+  TDigest digest(100);
+
+  std::vector<double> values;
+  std::vector<double> negativeValues;
+  for (int i = 1; i <= 100; ++i) {
+    values.push_back(i);
+    negativeValues.push_back(-i);
+  }
+
+  std::sort(values.begin(), values.end());
+  std::sort(negativeValues.begin(), negativeValues.end());
+
+  auto digest1 = digest.merge(values);
+  auto digest2 = digest.merge(negativeValues);
+
+  std::array<TDigest, 2> a{{digest1, digest2}};
+
+  digest = TDigest::merge(a);
+
+  EXPECT_EQ(200, digest.count());
+  EXPECT_EQ(0, digest.sum());
+  EXPECT_EQ(0, digest.mean());
+  EXPECT_EQ(-100, digest.min());
+  EXPECT_EQ(100, digest.max());
+
+  EXPECT_EQ(-100, digest.estimateQuantile(0.0));
+  EXPECT_EQ(-100, digest.estimateQuantile(0.001));
+  EXPECT_EQ(-98.5, digest.estimateQuantile(0.01));
+  EXPECT_EQ(98.5, digest.estimateQuantile(0.99));
+  EXPECT_EQ(100, digest.estimateQuantile(0.999));
+  EXPECT_EQ(100, digest.estimateQuantile(1.0));
 }
 
 class DistributionTest

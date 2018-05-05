@@ -22,25 +22,14 @@
 
 #include <Python.h>
 #include <folly/Executor.h>
-#include <folly/ScopeGuard.h>
 #include <folly/futures/Future.h>
+#include <folly/python/AsyncioExecutor.h>
 #include <folly/python/executor_api.h>
 
 namespace folly {
 namespace python {
 
-class PyGILStateGuard {
- public:
-  ~PyGILStateGuard() {
-    PyGILState_Release(gstate);
-  }
-
- private:
-  PyGILState_STATE gstate{PyGILState_Ensure()};
-};
-
 inline folly::Executor* getExecutor() {
-  PyGILStateGuard gstate;
   import_folly__executor();
   return get_executor();
 }
@@ -58,8 +47,8 @@ void bridgeFuture(
   // Handle the lambdas for cython
   // run callback from our Q
   futureFrom.via(executor).then(
-      [ callback = std::move(callback), userData, guard = std::move(guard) ](
-          folly::Try<T> && res) mutable {
+      [callback = std::move(callback), userData, guard = std::move(guard)](
+          folly::Try<T>&& res) mutable {
         // This will run from inside the gil, called by the asyncio add_reader
         callback(std::move(res), userData);
         // guard goes out of scope here, and its stored function is called

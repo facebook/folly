@@ -49,8 +49,8 @@ namespace detail {
 
 This state machine is fairly self-explanatory. The most important bit is
 that the callback is only executed on the transition from Armed to Done,
-and that transition can happen immediately after transitioning from Only*
-to Armed, if it is active (the usual case).
+and that transition happens immediately after transitioning from Only*
+to Armed.
 */
 enum class State : uint8_t {
   Start,
@@ -64,11 +64,7 @@ enum class State : uint8_t {
 struct SpinLock : private MicroSpinLock {
   SpinLock() : MicroSpinLock{0} {}
 
-  void lock() {
-    if (!MicroSpinLock::try_lock()) {
-      MicroSpinLock::lock();
-    }
-  }
+  using MicroSpinLock::lock;
   using MicroSpinLock::unlock;
 };
 static_assert(sizeof(SpinLock) == 1, "missized");
@@ -146,11 +142,10 @@ class Core final {
 
   /// May call from any thread
   Try<T>& getTry() {
-    if (ready()) {
-      return *result_;
-    } else {
-      throwFutureNotReady();
-    }
+    return getTryImpl(*this);
+  }
+  Try<T> const& getTry() const {
+    return getTryImpl(*this);
   }
 
   /// Call only from Future thread.
@@ -216,7 +211,6 @@ class Core final {
 
   /// Called by a destructing Future (in the Future thread, by definition)
   void detachFuture() {
-    activate();
     detachOne();
   }
 
@@ -230,20 +224,6 @@ class Core final {
     detachOne();
   }
 
-  /// May call from any thread
-  void deactivate() {
-    active_.store(false, std::memory_order_release);
-  }
-
-  /// May call from any thread
-  void activate() {
-    active_.store(true, std::memory_order_release);
-    maybeCallback();
-  }
-
-  /// May call from any thread
-  bool isActive() { return active_.load(std::memory_order_acquire); }
-
   /// Call only from Future thread, either before attaching a callback or after
   /// the callback has already been invoked, but not concurrently with anything
   /// which might trigger invocation of the callback
@@ -254,7 +234,7 @@ class Core final {
     priority_ = priority;
   }
 
-  Executor* getExecutor() {
+  Executor* getExecutor() const {
     return executor_;
   }
 
@@ -302,26 +282,30 @@ class Core final {
    public:
     explicit CoreAndCallbackReference(Core* core) noexcept : core_(core) {}
 
-    ~CoreAndCallbackReference() {
-      if (core_) {
-        core_->derefCallback();
-        core_->detachOne();
-      }
+    ~CoreAndCallbackReference() noexcept {
+      detach();
     }
 
     CoreAndCallbackReference(CoreAndCallbackReference const& o) = delete;
     CoreAndCallbackReference& operator=(CoreAndCallbackReference const& o) =
         delete;
+    CoreAndCallbackReference& operator=(CoreAndCallbackReference&&) = delete;
 
-    CoreAndCallbackReference(CoreAndCallbackReference&& o) noexcept {
-      std::swap(core_, o.core_);
-    }
+    CoreAndCallbackReference(CoreAndCallbackReference&& o) noexcept
+        : core_(exchange(o.core_, nullptr)) {}
 
     Core* getCore() const noexcept {
       return core_;
     }
 
    private:
+    void detach() noexcept {
+      if (core_) {
+        core_->derefCallback();
+        core_->detachOne();
+      }
+    }
+
     Core* core_{nullptr};
   };
 
@@ -329,11 +313,8 @@ class Core final {
     fsm_.transition([&](State state) {
       switch (state) {
         case State::Armed:
-          if (active_.load(std::memory_order_acquire)) {
-            return fsm_.tryUpdateState(
-                state, State::Done, [] {}, [&] { doCallback(); });
-          }
-          return true;
+          return fsm_.tryUpdateState(
+              state, State::Done, [] {}, [&] { doCallback(); });
 
         default:
           return true;
@@ -399,7 +380,7 @@ class Core final {
     }
   }
 
-  void detachOne() {
+  void detachOne() noexcept {
     auto a = attached_--;
     assert(a >= 1);
     if (a == 1) {
@@ -407,9 +388,18 @@ class Core final {
     }
   }
 
-  void derefCallback() {
+  void derefCallback() noexcept {
     if (--callbackReferences_ == 0) {
       callback_ = {};
+    }
+  }
+
+  template <typename Self>
+  static decltype(auto) getTryImpl(Self& self) {
+    if (self.ready()) {
+      return *self.result_;
+    } else {
+      throwFutureNotReady();
     }
   }
 
@@ -420,7 +410,6 @@ class Core final {
   FSM<State, SpinLock> fsm_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
-  std::atomic<bool> active_ {true};
   std::atomic<bool> interruptHandlerSet_ {false};
   SpinLock interruptLock_;
   int8_t priority_ {-1};

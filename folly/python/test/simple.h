@@ -33,6 +33,16 @@ folly::Future<uint64_t> future_getValueX5(uint64_t val) {
   });
   return f;
 }
+
+folly::Function<uint64_t()> getValueX5Fibers(uint64_t val) {
+  return [val]() {
+    if (val == 0) {
+      throw std::invalid_argument("0 is not allowed");
+    }
+    return val * 5;
+  };
 }
-}
-}
+
+} // namespace test
+} // namespace python
+} // namespace folly

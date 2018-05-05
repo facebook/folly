@@ -29,7 +29,6 @@ TEST(Core, size) {
     futures::detail::FSM<futures::detail::State, futures::detail::SpinLock>
         fsm_;
     std::atomic<unsigned char> attached_;
-    std::atomic<bool> active_;
     std::atomic<bool> interruptHandlerSet_;
     folly::MicroSpinLock interruptLock_;
     int8_t priority_;

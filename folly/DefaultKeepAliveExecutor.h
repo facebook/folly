@@ -62,7 +62,8 @@ class DefaultKeepAliveExecutor : public virtual Executor {
 
   std::atomic<ssize_t> keepAliveCounter_{1};
   Baton<> keepAliveReleaseBaton_;
-  KeepAlive keepAlive_{makeKeepAlive()};
+  KeepAlive<DefaultKeepAliveExecutor> keepAlive_{
+      makeKeepAlive<DefaultKeepAliveExecutor>(this)};
 };
 
 } // namespace folly

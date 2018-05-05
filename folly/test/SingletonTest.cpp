@@ -30,7 +30,7 @@
 #include <folly/Subprocess.h>
 #endif
 
-FOLLY_GCC_DISABLE_WARNING("-Wdeprecated-declarations")
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
 

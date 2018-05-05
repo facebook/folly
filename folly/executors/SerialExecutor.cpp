@@ -72,18 +72,54 @@ class SerialExecutor::TaskQueueImpl {
   std::queue<Func> queue_;
 };
 
-SerialExecutor::SerialExecutor(std::shared_ptr<folly::Executor> parent)
+SerialExecutor::SerialExecutor(KeepAlive<Executor> parent)
     : parent_(std::move(parent)),
       taskQueueImpl_(std::make_shared<TaskQueueImpl>()) {}
 
+SerialExecutor::~SerialExecutor() {
+  DCHECK(!keepAliveCounter_);
+}
+
+Executor::KeepAlive<SerialExecutor> SerialExecutor::create(
+    KeepAlive<Executor> parent) {
+  return makeKeepAlive<SerialExecutor>(new SerialExecutor(std::move(parent)));
+}
+
+SerialExecutor::UniquePtr SerialExecutor::createUnique(
+    std::shared_ptr<Executor> parent) {
+  auto executor = new SerialExecutor(getKeepAliveToken(parent.get()));
+  return {executor, Deleter{std::move(parent)}};
+}
+
+bool SerialExecutor::keepAliveAcquire() {
+  auto keepAliveCounter =
+      keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
+  DCHECK(keepAliveCounter > 0);
+  return true;
+}
+
+void SerialExecutor::keepAliveRelease() {
+  auto keepAliveCounter = --keepAliveCounter_;
+  DCHECK(keepAliveCounter >= 0);
+  if (!keepAliveCounter) {
+    delete this;
+  }
+}
+
 void SerialExecutor::add(Func func) {
   taskQueueImpl_->add(std::move(func));
-  parent_->add([impl = taskQueueImpl_] { impl->run(); });
+  parent_->add([impl = taskQueueImpl_, keepAlive = getKeepAliveToken(this)] {
+    impl->run();
+  });
 }
 
 void SerialExecutor::addWithPriority(Func func, int8_t priority) {
   taskQueueImpl_->add(std::move(func));
-  parent_->addWithPriority([impl = taskQueueImpl_] { impl->run(); }, priority);
+  parent_->addWithPriority(
+      [impl = taskQueueImpl_, keepAlive = getKeepAliveToken(this)] {
+        impl->run();
+      },
+      priority);
 }
 
 } // namespace folly

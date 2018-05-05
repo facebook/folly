@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/futures/Future.h>
-#include <folly/futures/Timekeeper.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/HHWheelTimer.h>
 #include <thread>

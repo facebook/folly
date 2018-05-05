@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <tuple>
+
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/SafeAssert.h>
@@ -89,7 +91,7 @@ struct BasePolicy
     return IsAvalanchingHasher<Hasher, Key>::value;
   }
 
-  using Chunk = SSE2Chunk<Item>;
+  using Chunk = F14Chunk<Item>;
   using ChunkPtr = typename std::pointer_traits<
       typename AllocTraits::pointer>::template rebind<Chunk>;
   using ItemIter = F14ItemIter<ChunkPtr>;
@@ -240,7 +242,7 @@ class BaseIter : public std::iterator<
                      ValuePtr,
                      decltype(*std::declval<ValuePtr>())> {
  protected:
-  using Chunk = SSE2Chunk<Item>;
+  using Chunk = F14Chunk<Item>;
   using ChunkPtr =
       typename std::pointer_traits<ValuePtr>::template rebind<Chunk>;
   using ItemIter = F14ItemIter<ChunkPtr>;

@@ -390,7 +390,7 @@ void printResultComparison(
  * common for benchmarks that need a "problem size" in addition to
  * "number of iterations". Consider:
  *
- * void pushBack(uint n, size_t initialSize) {
+ * void pushBack(uint32_t n, size_t initialSize) {
  *   vector<int> v;
  *   BENCHMARK_SUSPEND {
  *     v.resize(initialSize);
@@ -426,7 +426,7 @@ void printResultComparison(
  *
  * For example:
  *
- * void addValue(uint n, int64_t bucketSize, int64_t min, int64_t max) {
+ * void addValue(uint32_t n, int64_t bucketSize, int64_t min, int64_t max) {
  *   Histogram<int64_t> hist(bucketSize, min, max);
  *   int64_t num = min;
  *   FOR_EACH_RANGE (i, 0, n) {

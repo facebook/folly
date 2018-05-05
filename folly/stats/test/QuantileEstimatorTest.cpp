@@ -58,11 +58,11 @@ TEST_P(QuantileEstimatorTest, EstimateQuantiles) {
   EXPECT_EQ(0.99, estimates.quantiles[3].first);
   EXPECT_EQ(0.999, estimates.quantiles[4].first);
 
-  EXPECT_EQ(0.6, estimates.quantiles[0].second);
+  EXPECT_EQ(1, estimates.quantiles[0].second);
   EXPECT_EQ(2.0 - 0.5, estimates.quantiles[1].second);
   EXPECT_EQ(50.375, estimates.quantiles[2].second);
   EXPECT_EQ(100.0 - 0.5, estimates.quantiles[3].second);
-  EXPECT_EQ(100.4, estimates.quantiles[4].second);
+  EXPECT_EQ(100, estimates.quantiles[4].second);
 }
 
 INSTANTIATE_TEST_CASE_P(

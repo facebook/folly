@@ -29,6 +29,7 @@ void MicroLockCore::lockSlowPath(uint32_t oldWord,
   uint32_t newWord;
   unsigned spins = 0;
   uint32_t slotWaitBit = slotHeldBit << 1;
+  uint32_t needWaitBit = 0;
 
 retry:
   if ((oldWord & slotHeldBit) != 0) {
@@ -47,6 +48,7 @@ retry:
         }
       }
       (void)wordPtr->futexWait(newWord, slotHeldBit);
+      needWaitBit = slotWaitBit;
     } else if (spins > maxSpins) {
       // sched_yield(), but more portable
       std::this_thread::yield();
@@ -57,7 +59,7 @@ retry:
     goto retry;
   }
 
-  newWord = oldWord | slotHeldBit;
+  newWord = oldWord | slotHeldBit | needWaitBit;
   if (!wordPtr->compare_exchange_weak(oldWord,
                                       newWord,
                                       std::memory_order_acquire,
