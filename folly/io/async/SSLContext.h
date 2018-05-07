@@ -51,7 +51,7 @@ class PasswordCollector {
    *
    * By default, OpenSSL prints a prompt on screen and request for password
    * while loading private key. To implement a custom password collector,
-   * implement this interface and register it with TSSLSocketFactory.
+   * implement this interface and register it with SSLContext.
    *
    * @param password Pass collected password back to OpenSSL
    * @param size     Maximum length of password including nullptr character
