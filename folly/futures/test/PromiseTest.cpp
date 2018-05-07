@@ -55,6 +55,181 @@ TEST(Promise, setValueUnit) {
   p.setValue();
 }
 
+namespace {
+auto makeValid() {
+  auto valid = Promise<int>();
+  EXPECT_TRUE(valid.valid());
+  return valid;
+}
+auto makeInvalid() {
+  auto invalid = Promise<int>::makeEmpty();
+  EXPECT_FALSE(invalid.valid());
+  return invalid;
+}
+} // namespace
+
+TEST(Promise, ctorPostconditionValid) {
+  // Ctors/factories that promise valid -- postcondition: valid()
+
+#define DOIT(CREATION_EXPR)    \
+  do {                         \
+    auto p1 = (CREATION_EXPR); \
+    EXPECT_TRUE(p1.valid());   \
+    auto p2 = std::move(p1);   \
+    EXPECT_FALSE(p1.valid());  \
+    EXPECT_TRUE(p2.valid());   \
+  } while (false)
+
+  DOIT(makeValid());
+  DOIT(Promise<int>());
+  DOIT(Promise<int>{});
+  DOIT(Promise<Unit>());
+  DOIT(Promise<Unit>{});
+
+#undef DOIT
+}
+
+TEST(Promise, ctorPostconditionInvalid) {
+  // Ctors/factories that promise invalid -- postcondition: !valid()
+
+#define DOIT(CREATION_EXPR)    \
+  do {                         \
+    auto p1 = (CREATION_EXPR); \
+    EXPECT_FALSE(p1.valid());  \
+    auto p2 = std::move(p1);   \
+    EXPECT_FALSE(p1.valid());  \
+    EXPECT_FALSE(p2.valid());  \
+  } while (false)
+
+  DOIT(makeInvalid());
+  DOIT(Promise<int>::makeEmpty());
+
+#undef DOIT
+}
+
+TEST(Promise, lacksPreconditionValid) {
+  // Ops that don't throw NoState if !valid() -- without precondition: valid()
+
+#define DOIT(STMT)         \
+  do {                     \
+    auto p = makeValid();  \
+    { STMT; }              \
+    copy(std::move(p));    \
+    EXPECT_NO_THROW(STMT); \
+  } while (false)
+
+  // misc methods that don't require isValid()
+  DOIT(p.valid());
+  DOIT(p.isFulfilled());
+
+  // move-ctor - move-copy to local, copy(), pass-by-move-value
+  DOIT(auto other = std::move(p));
+  DOIT(copy(std::move(p)));
+  DOIT(([](auto) {})(std::move(p)));
+
+  // move-assignment into either {valid | invalid}
+  DOIT({
+    auto other = makeValid();
+    other = std::move(p);
+  });
+  DOIT({
+    auto other = makeInvalid();
+    other = std::move(p);
+  });
+
+#undef DOIT
+}
+
+TEST(Promise, hasPreconditionValid) {
+  // Ops that require validity; precondition: valid(); throw NoState if !valid()
+
+#define DOIT(STMT)               \
+  do {                           \
+    auto p = makeValid();        \
+    EXPECT_NO_THROW(STMT);       \
+    copy(std::move(p));          \
+    EXPECT_THROW(STMT, NoState); \
+  } while (false)
+
+  auto const except = std::logic_error("foo");
+  auto const ewrap = folly::exception_wrapper(except);
+
+  DOIT(p.getSemiFuture());
+  DOIT(p.getFuture());
+  DOIT(p.setException(except));
+  DOIT(p.setException(ewrap));
+  DOIT(p.setInterruptHandler([](auto&) {}));
+  DOIT(p.setValue(42));
+  DOIT(p.setTry(Try<int>(42)));
+  DOIT(p.setTry(Try<int>(ewrap)));
+  DOIT(p.setWith([] { return 42; }));
+
+#undef DOIT
+}
+
+TEST(Promise, hasPostconditionValid) {
+  // Ops that preserve validity -- postcondition: valid()
+
+#define DOIT(STMT)          \
+  do {                      \
+    auto p = makeValid();   \
+    EXPECT_NO_THROW(STMT);  \
+    EXPECT_TRUE(p.valid()); \
+  } while (false)
+
+  auto const swallow = [](auto) {};
+
+  DOIT(swallow(p.valid())); // p.valid() itself preserves validity
+  DOIT(swallow(p.isFulfilled()));
+
+#undef DOIT
+}
+
+TEST(Promise, hasPostconditionInvalid) {
+  // Ops that consume *this -- postcondition: !valid()
+
+#define DOIT(CTOR, STMT)     \
+  do {                       \
+    auto p = (CTOR);         \
+    EXPECT_NO_THROW(STMT);   \
+    EXPECT_FALSE(p.valid()); \
+  } while (false)
+
+  // move-ctor of {valid|invalid}
+  DOIT(makeValid(), { auto other{std::move(p)}; });
+  DOIT(makeInvalid(), { auto other{std::move(p)}; });
+
+  // move-assignment of {valid|invalid} into {valid|invalid}
+  DOIT(makeValid(), {
+    auto other = makeValid();
+    other = std::move(p);
+  });
+  DOIT(makeValid(), {
+    auto other = makeInvalid();
+    other = std::move(p);
+  });
+  DOIT(makeInvalid(), {
+    auto other = makeValid();
+    other = std::move(p);
+  });
+  DOIT(makeInvalid(), {
+    auto other = makeInvalid();
+    other = std::move(p);
+  });
+
+  // pass-by-value of {valid|invalid}
+  DOIT(makeValid(), {
+    auto const byval = [](auto) {};
+    byval(std::move(p));
+  });
+  DOIT(makeInvalid(), {
+    auto const byval = [](auto) {};
+    byval(std::move(p));
+  });
+
+#undef DOIT
+}
+
 TEST(Promise, setValueSemiFuture) {
   Promise<int> fund;
   auto ffund = fund.getSemiFuture();

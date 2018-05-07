@@ -56,6 +56,202 @@ TEST(SemiFuture, makeSemiFutureWithUnit) {
 }
 
 namespace {
+auto makeValid() {
+  auto valid = makeSemiFuture<int>(42);
+  EXPECT_TRUE(valid.valid());
+  return valid;
+}
+auto makeInvalid() {
+  auto invalid = SemiFuture<int>::makeEmpty();
+  EXPECT_FALSE(invalid.valid());
+  return invalid;
+}
+} // namespace
+
+TEST(SemiFuture, ctorPostconditionValid) {
+  // Ctors/factories that promise valid -- postcondition: valid()
+
+#define DOIT(CREATION_EXPR)    \
+  do {                         \
+    auto f1 = (CREATION_EXPR); \
+    EXPECT_TRUE(f1.valid());   \
+    auto f2 = std::move(f1);   \
+    EXPECT_FALSE(f1.valid());  \
+    EXPECT_TRUE(f2.valid());   \
+  } while (false)
+
+  auto const except = std::logic_error("foo");
+  auto const ewrap = folly::exception_wrapper(except);
+
+  DOIT(makeValid());
+  DOIT(SemiFuture<int>(42));
+  DOIT(SemiFuture<int>{42});
+  DOIT(SemiFuture<Unit>());
+  DOIT(SemiFuture<Unit>{});
+  DOIT(makeSemiFuture());
+  DOIT(makeSemiFuture(Unit{}));
+  DOIT(makeSemiFuture<Unit>(Unit{}));
+  DOIT(makeSemiFuture(42));
+  DOIT(makeSemiFuture<int>(42));
+  DOIT(makeSemiFuture<int>(except));
+  DOIT(makeSemiFuture<int>(ewrap));
+  DOIT(makeSemiFuture(Try<int>(42)));
+  DOIT(makeSemiFuture<int>(Try<int>(42)));
+  DOIT(makeSemiFuture<int>(Try<int>(ewrap)));
+
+#undef DOIT
+}
+
+TEST(SemiFuture, ctorPostconditionInvalid) {
+  // Ctors/factories that promise invalid -- postcondition: !valid()
+
+#define DOIT(CREATION_EXPR)    \
+  do {                         \
+    auto f1 = (CREATION_EXPR); \
+    EXPECT_FALSE(f1.valid());  \
+    auto f2 = std::move(f1);   \
+    EXPECT_FALSE(f1.valid());  \
+    EXPECT_FALSE(f2.valid());  \
+  } while (false)
+
+  DOIT(makeInvalid());
+  DOIT(SemiFuture<int>::makeEmpty());
+
+#undef DOIT
+}
+
+TEST(SemiFuture, lacksPreconditionValid) {
+  // Ops that don't throw NoState if !valid() -- without precondition: valid()
+
+#define DOIT(STMT)         \
+  do {                     \
+    auto f = makeValid();  \
+    { STMT; }              \
+    copy(std::move(f));    \
+    EXPECT_NO_THROW(STMT); \
+  } while (false)
+
+  // .valid() itself
+  DOIT(f.valid());
+
+  // move-ctor - move-copy to local, copy(), pass-by-move-value
+  DOIT(auto other = std::move(f));
+  DOIT(copy(std::move(f)));
+  DOIT(([](auto) {})(std::move(f)));
+
+  // move-assignment into either {valid | invalid}
+  DOIT({
+    auto other = makeValid();
+    other = std::move(f);
+  });
+  DOIT({
+    auto other = makeInvalid();
+    other = std::move(f);
+  });
+
+#undef DOIT
+}
+
+TEST(SemiFuture, hasPreconditionValid) {
+  // Ops that require validity; precondition: valid(); throw NoState if !valid()
+
+#define DOIT(STMT)               \
+  do {                           \
+    auto f = makeValid();        \
+    EXPECT_NO_THROW(STMT);       \
+    copy(std::move(f));          \
+    EXPECT_THROW(STMT, NoState); \
+  } while (false)
+
+  DOIT(f.isReady());
+  DOIT(f.result());
+  DOIT(std::move(f).getTry());
+  DOIT(f.hasValue());
+  DOIT(f.hasException());
+  DOIT(f.value());
+
+#undef DOIT
+}
+
+TEST(SemiFuture, hasPostconditionValid) {
+  // Ops that preserve validity -- postcondition: valid()
+
+#define DOIT(STMT)          \
+  do {                      \
+    auto f = makeValid();   \
+    EXPECT_NO_THROW(STMT);  \
+    EXPECT_TRUE(f.valid()); \
+  } while (false)
+
+  auto const swallow = [](auto) {};
+
+  DOIT(swallow(f.valid())); // f.valid() itself preserves validity
+  DOIT(swallow(f.isReady()));
+  DOIT(swallow(f.hasValue()));
+  DOIT(swallow(f.hasException()));
+  DOIT(swallow(f.value()));
+  DOIT(swallow(f.poll()));
+  DOIT(f.raise(std::logic_error("foo")));
+  DOIT(f.cancel());
+  DOIT(f.wait());
+  DOIT(std::move(f.wait()));
+
+#undef DOIT
+}
+
+TEST(SemiFuture, hasPostconditionInvalid) {
+  // Ops that consume *this -- postcondition: !valid()
+
+#define DOIT(CTOR, STMT)     \
+  do {                       \
+    auto f = (CTOR);         \
+    EXPECT_NO_THROW(STMT);   \
+    EXPECT_FALSE(f.valid()); \
+  } while (false)
+
+  // move-ctor of {valid|invalid}
+  DOIT(makeValid(), { auto other{std::move(f)}; });
+  DOIT(makeInvalid(), { auto other{std::move(f)}; });
+
+  // move-assignment of {valid|invalid} into {valid|invalid}
+  DOIT(makeValid(), {
+    auto other = makeValid();
+    other = std::move(f);
+  });
+  DOIT(makeValid(), {
+    auto other = makeInvalid();
+    other = std::move(f);
+  });
+  DOIT(makeInvalid(), {
+    auto other = makeValid();
+    other = std::move(f);
+  });
+  DOIT(makeInvalid(), {
+    auto other = makeInvalid();
+    other = std::move(f);
+  });
+
+  // pass-by-value of {valid|invalid}
+  DOIT(makeValid(), {
+    auto const byval = [](auto) {};
+    byval(std::move(f));
+  });
+  DOIT(makeInvalid(), {
+    auto const byval = [](auto) {};
+    byval(std::move(f));
+  });
+
+  // other consuming ops
+  auto const swallow = [](auto) {};
+  DOIT(makeValid(), swallow(std::move(f).get()));
+  DOIT(makeValid(), swallow(std::move(f).getTry()));
+  DOIT(makeValid(), swallow(std::move(f).wait()));
+  DOIT(makeValid(), swallow(std::move(f.wait())));
+
+#undef DOIT
+}
+
+namespace {
 SemiFuture<int> onErrorHelperEggs(const eggs_t&) {
   return makeSemiFuture(10);
 }

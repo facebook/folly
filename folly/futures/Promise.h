@@ -115,6 +115,12 @@ class Promise {
   template <class F>
   void setWith(F&& func);
 
+  /// true if this has a shared state;
+  /// false if this has been consumed/moved-out.
+  bool valid() const noexcept {
+    return core_ != nullptr;
+  }
+
   bool isFulfilled() const noexcept;
 
  private:

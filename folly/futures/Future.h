@@ -89,6 +89,12 @@ class FutureBase {
 
   ~FutureBase();
 
+  /// true if this has a shared state;
+  /// false if this has been consumed/moved-out.
+  bool valid() const noexcept {
+    return core_ != nullptr;
+  }
+
   /// Returns a reference to the result, with a reference category and const-
   /// qualification equivalent to the reference category and const-qualification
   /// of the receiver.
@@ -271,6 +277,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::result;
   using Base::setCallback_;
+  using Base::valid;
   using Base::value;
 
   SemiFuture& operator=(SemiFuture const&) = delete;
@@ -521,6 +528,7 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::poll;
   using Base::raise;
   using Base::setCallback_;
+  using Base::valid;
   using Base::value;
   using Base::result;
 
