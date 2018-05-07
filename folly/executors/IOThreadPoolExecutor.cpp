@@ -206,8 +206,8 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
 }
 
 // threadListLock_ is readlocked
-uint64_t IOThreadPoolExecutor::getPendingTaskCountImpl() {
-  uint64_t count = 0;
+size_t IOThreadPoolExecutor::getPendingTaskCountImpl() {
+  size_t count = 0;
   for (const auto& thread : threadList_.get()) {
     auto ioThread = std::static_pointer_cast<IOThread>(thread);
     size_t pendingTasks = ioThread->pendingTasks;

@@ -277,7 +277,7 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
   return stats;
 }
 
-uint64_t ThreadPoolExecutor::getPendingTaskCount() {
+size_t ThreadPoolExecutor::getPendingTaskCount() {
   RWSpinLock::ReadHolder r{&threadListLock_};
   return getPendingTaskCountImpl();
 }

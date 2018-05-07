@@ -218,7 +218,7 @@ class ThreadPoolExecutor : public virtual folly::Executor {
   }
 
   // Prerequisite: threadListLock_ readlocked or writelocked
-  virtual uint64_t getPendingTaskCountImpl() = 0;
+  virtual size_t getPendingTaskCountImpl() = 0;
 
   class ThreadList {
    public:

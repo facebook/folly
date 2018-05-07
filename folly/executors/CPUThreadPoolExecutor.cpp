@@ -215,7 +215,7 @@ void CPUThreadPoolExecutor::stopThreads(size_t n) {
 }
 
 // threadListLock_ is read (or write) locked.
-uint64_t CPUThreadPoolExecutor::getPendingTaskCountImpl() {
+size_t CPUThreadPoolExecutor::getPendingTaskCountImpl() {
   return taskQueue_->size();
 }
 

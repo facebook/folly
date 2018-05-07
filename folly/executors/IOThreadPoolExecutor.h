@@ -90,7 +90,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor,
   std::shared_ptr<IOThread> pickThread();
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
-  uint64_t getPendingTaskCountImpl() override;
+  size_t getPendingTaskCountImpl() override;
 
   std::atomic<size_t> nextThread_;
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
