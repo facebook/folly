@@ -1891,8 +1891,7 @@ Future<T>&& Future<T>::waitVia(TimedDrivableExecutor* e, Duration dur) && {
 
 template <class T>
 T Future<T>::get() {
-  wait();
-  return copy(std::move(*this)).value();
+  return std::move(wait().value());
 }
 
 template <class T>
@@ -1901,7 +1900,7 @@ T Future<T>::get(Duration dur) {
   if (!this->isReady()) {
     throwTimedOut();
   }
-  return copy(std::move(*this)).value();
+  return std::move(this->value());
 }
 
 template <class T>

@@ -223,6 +223,7 @@ TEST(Future, hasPostconditionValid) {
   DOIT(swallow(f.poll()));
   DOIT(f.raise(std::logic_error("foo")));
   DOIT(f.cancel());
+  DOIT(swallow(f.get()));
   DOIT(swallow(f.getTry()));
   DOIT(f.wait());
   DOIT(std::move(f.wait()));
@@ -277,8 +278,6 @@ TEST(Future, hasPostconditionInvalid) {
   DOIT(makeValid(), swallow(std::move(f).wait()));
   DOIT(makeValid(), swallow(std::move(f.wait())));
   DOIT(makeValid(), swallow(f.semi()));
-  DOIT(makeValid(), swallow(f.get()));
-  DOIT(makeValid(), std::move(f).get());
 
 #undef DOIT
 }
