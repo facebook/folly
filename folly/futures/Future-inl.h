@@ -1382,7 +1382,8 @@ collectN(InputIterator first, InputIterator last, size_t n) {
     explicit CollectNContext(size_t numFutures) : v(numFutures) {}
 
     V v;
-    std::atomic<size_t> completed = {0};
+    std::atomic<size_t> completed = {0}; // # input futures completed
+    std::atomic<size_t> stored = {0}; // # output values stored
     Promise<Result> p;
 
     void setPartialResult(size_t index, Try<T>&& t) {
@@ -1412,13 +1413,19 @@ collectN(InputIterator first, InputIterator last, size_t n) {
     // have n completed futures at which point we fulfil our Promise with the
     // vector
     mapSetCallback<T>(first, last, [ctx, n](size_t i, Try<T>&& t) {
-      auto c = ++ctx->completed;
-      if (c <= n) {
-        ctx->setPartialResult(i, std::move(t));
-        if (c == n) {
-          ctx->complete();
-        }
+      // relaxed because this guards control but does not guard data
+      auto const c = 1 + ctx->completed.fetch_add(1, std::memory_order_relaxed);
+      if (c > n) {
+        return;
       }
+      ctx->setPartialResult(i, std::move(t));
+      // release because the stored values in all threads must be visible below
+      // acquire because no stored value is permitted to be fetched early
+      auto const s = 1 + ctx->stored.fetch_add(1, std::memory_order_acq_rel);
+      if (s < n) {
+        return;
+      }
+      ctx->complete();
     });
   }
 
