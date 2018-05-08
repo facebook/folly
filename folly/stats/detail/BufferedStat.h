@@ -31,6 +31,8 @@ namespace detail {
 template <typename DigestT, typename ClockT>
 class BufferedStat {
  public:
+  using TimePoint = typename ClockT::time_point;
+
   BufferedStat() = delete;
 
   BufferedStat(
@@ -40,7 +42,7 @@ class BufferedStat {
 
   virtual ~BufferedStat() {}
 
-  void append(double value);
+  void append(double value, TimePoint now = ClockT::now());
 
  protected:
   // https://www.mail-archive.com/llvm-bugs@lists.llvm.org/msg18280.html
@@ -49,9 +51,9 @@ class BufferedStat {
    public:
     TimePointHolder() noexcept {}
 
-    TimePointHolder(typename ClockT::time_point t) : tp(t) {}
+    TimePointHolder(TimePoint t) : tp(t) {}
 
-    typename ClockT::time_point tp;
+    TimePoint tp;
   };
 
   const typename ClockT::duration bufferDuration_;
@@ -60,20 +62,18 @@ class BufferedStat {
 
   virtual void onNewDigest(
       DigestT digest,
-      typename ClockT::time_point newExpiry,
-      typename ClockT::time_point oldExpiry,
+      TimePoint newExpiry,
+      TimePoint oldExpiry,
       const std::unique_lock<SharedMutex>& g) = 0;
 
-  std::unique_lock<SharedMutex> updateIfExpired();
+  std::unique_lock<SharedMutex> updateIfExpired(TimePoint now);
 
  private:
   DigestBuilder<DigestT> digestBuilder_;
 
-  void doUpdate(
-      typename ClockT::time_point now,
-      const std::unique_lock<SharedMutex>& g);
+  void doUpdate(TimePoint now, const std::unique_lock<SharedMutex>& g);
 
-  typename ClockT::time_point roundUp(typename ClockT::time_point t);
+  TimePoint roundUp(TimePoint t);
 };
 
 /*
@@ -82,17 +82,19 @@ class BufferedStat {
 template <typename DigestT, typename ClockT>
 class BufferedDigest : public BufferedStat<DigestT, ClockT> {
  public:
+  using TimePoint = typename ClockT::time_point;
+
   BufferedDigest(
       typename ClockT::duration bufferDuration,
       size_t bufferSize,
       size_t digestSize);
 
-  DigestT get();
+  DigestT get(TimePoint now = ClockT::now());
 
   void onNewDigest(
       DigestT digest,
-      typename ClockT::time_point newExpiry,
-      typename ClockT::time_point oldExpiry,
+      TimePoint newExpiry,
+      TimePoint oldExpiry,
       const std::unique_lock<SharedMutex>& g) final;
 
  private:
@@ -106,18 +108,20 @@ class BufferedDigest : public BufferedStat<DigestT, ClockT> {
 template <typename DigestT, typename ClockT>
 class BufferedSlidingWindow : public BufferedStat<DigestT, ClockT> {
  public:
+  using TimePoint = typename ClockT::time_point;
+
   BufferedSlidingWindow(
       size_t nBuckets,
       typename ClockT::duration bufferDuration,
       size_t bufferSize,
       size_t digestSize);
 
-  std::vector<DigestT> get();
+  std::vector<DigestT> get(TimePoint now = ClockT::now());
 
   void onNewDigest(
       DigestT digest,
-      typename ClockT::time_point newExpiry,
-      typename ClockT::time_point oldExpiry,
+      TimePoint newExpiry,
+      TimePoint oldExpiry,
       const std::unique_lock<SharedMutex>& g) final;
 
  private:

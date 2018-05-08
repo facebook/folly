@@ -35,8 +35,7 @@ BufferedStat<DigestT, ClockT>::BufferedStat(
 }
 
 template <typename DigestT, typename ClockT>
-void BufferedStat<DigestT, ClockT>::append(double value) {
-  auto now = ClockT::now();
+void BufferedStat<DigestT, ClockT>::append(double value, TimePoint now) {
   if (UNLIKELY(now > expiry_.load(std::memory_order_acquire).tp)) {
     std::unique_lock<SharedMutex> g(mutex_, std::try_to_lock_t());
     if (g.owns_lock()) {
@@ -47,8 +46,8 @@ void BufferedStat<DigestT, ClockT>::append(double value) {
 }
 
 template <typename DigestT, typename ClockT>
-typename ClockT::time_point BufferedStat<DigestT, ClockT>::roundUp(
-    typename ClockT::time_point t) {
+typename BufferedStat<DigestT, ClockT>::TimePoint
+BufferedStat<DigestT, ClockT>::roundUp(TimePoint t) {
   auto remainder = t.time_since_epoch() % bufferDuration_;
   if (remainder.count() != 0) {
     return t + bufferDuration_ - remainder;
@@ -57,8 +56,8 @@ typename ClockT::time_point BufferedStat<DigestT, ClockT>::roundUp(
 }
 
 template <typename DigestT, typename ClockT>
-std::unique_lock<SharedMutex> BufferedStat<DigestT, ClockT>::updateIfExpired() {
-  auto now = ClockT::now();
+std::unique_lock<SharedMutex> BufferedStat<DigestT, ClockT>::updateIfExpired(
+    TimePoint now) {
   std::unique_lock<SharedMutex> g(mutex_);
   doUpdate(now, g);
   return g;
@@ -66,7 +65,7 @@ std::unique_lock<SharedMutex> BufferedStat<DigestT, ClockT>::updateIfExpired() {
 
 template <typename DigestT, typename ClockT>
 void BufferedStat<DigestT, ClockT>::doUpdate(
-    typename ClockT::time_point now,
+    TimePoint now,
     const std::unique_lock<SharedMutex>& g) {
   DCHECK(g.owns_lock());
   // Check that no other thread has performed the slide after the check
@@ -87,16 +86,16 @@ BufferedDigest<DigestT, ClockT>::BufferedDigest(
       digest_(digestSize) {}
 
 template <typename DigestT, typename ClockT>
-DigestT BufferedDigest<DigestT, ClockT>::get() {
-  auto g = this->updateIfExpired();
+DigestT BufferedDigest<DigestT, ClockT>::get(TimePoint now) {
+  auto g = this->updateIfExpired(now);
   return digest_;
 }
 
 template <typename DigestT, typename ClockT>
 void BufferedDigest<DigestT, ClockT>::onNewDigest(
     DigestT digest,
-    typename ClockT::time_point /*newExpiry*/,
-    typename ClockT::time_point /*oldExpiry*/,
+    TimePoint /*newExpiry*/,
+    TimePoint /*oldExpiry*/,
     const std::unique_lock<SharedMutex>& /*g*/) {
   std::array<DigestT, 2> a{{digest_, std::move(digest)}};
   digest_ = DigestT::merge(a);
@@ -112,10 +111,11 @@ BufferedSlidingWindow<DigestT, ClockT>::BufferedSlidingWindow(
       slidingWindow_([=]() { return DigestT(digestSize); }, nBuckets) {}
 
 template <typename DigestT, typename ClockT>
-std::vector<DigestT> BufferedSlidingWindow<DigestT, ClockT>::get() {
+std::vector<DigestT> BufferedSlidingWindow<DigestT, ClockT>::get(
+    TimePoint now) {
   std::vector<DigestT> digests;
   {
-    auto g = this->updateIfExpired();
+    auto g = this->updateIfExpired(now);
     digests = slidingWindow_.get();
   }
   digests.erase(
@@ -130,8 +130,8 @@ std::vector<DigestT> BufferedSlidingWindow<DigestT, ClockT>::get() {
 template <typename DigestT, typename ClockT>
 void BufferedSlidingWindow<DigestT, ClockT>::onNewDigest(
     DigestT digest,
-    typename ClockT::time_point newExpiry,
-    typename ClockT::time_point oldExpiry,
+    TimePoint newExpiry,
+    TimePoint oldExpiry,
     const std::unique_lock<SharedMutex>& /*g*/) {
   auto diff = newExpiry - oldExpiry;
   slidingWindow_.slide(diff / this->bufferDuration_);

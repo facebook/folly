@@ -30,25 +30,42 @@ struct QuantileEstimates {
   std::vector<std::pair<double, double>> quantiles;
 };
 
+template <typename ClockT>
 class QuantileEstimator {
  public:
+  using TimePoint = typename ClockT::time_point;
+
   virtual ~QuantileEstimator() {}
 
+  QuantileEstimates estimateQuantiles(Range<const double*> quantiles) {
+    return estimateQuantiles(quantiles, ClockT::now());
+  }
+
   virtual QuantileEstimates estimateQuantiles(
-      Range<const double*> quantiles) = 0;
-  virtual void addValue(double value) = 0;
+      Range<const double*> quantiles,
+      TimePoint now) = 0;
+
+  void addValue(double value) {
+    addValue(value, ClockT::now());
+  }
+
+  virtual void addValue(double value, TimePoint now) = 0;
 };
 
 /*
  * A QuantileEstimator that buffers writes for 1 second.
  */
 template <typename ClockT = std::chrono::steady_clock>
-class SimpleQuantileEstimator : public QuantileEstimator {
+class SimpleQuantileEstimator : public QuantileEstimator<ClockT> {
  public:
+  using TimePoint = typename ClockT::time_point;
+
   SimpleQuantileEstimator();
 
-  QuantileEstimates estimateQuantiles(Range<const double*> quantiles) override;
-  void addValue(double value) override;
+  QuantileEstimates estimateQuantiles(
+      Range<const double*> quantiles,
+      TimePoint now) override;
+  void addValue(double value, TimePoint now) override;
 
  private:
   detail::BufferedDigest<TDigest, ClockT> bufferedDigest_;
@@ -59,14 +76,18 @@ class SimpleQuantileEstimator : public QuantileEstimator {
  * constructor). Values are buffered for windowDuration.
  */
 template <typename ClockT = std::chrono::steady_clock>
-class SlidingWindowQuantileEstimator : public QuantileEstimator {
+class SlidingWindowQuantileEstimator : public QuantileEstimator<ClockT> {
  public:
+  using TimePoint = typename ClockT::time_point;
+
   SlidingWindowQuantileEstimator(
       std::chrono::seconds windowDuration,
       size_t nWindows = 60);
 
-  QuantileEstimates estimateQuantiles(Range<const double*> quantiles) override;
-  void addValue(double value) override;
+  QuantileEstimates estimateQuantiles(
+      Range<const double*> quantiles,
+      TimePoint now) override;
+  void addValue(double value, TimePoint now) override;
 
  private:
   detail::BufferedSlidingWindow<TDigest, ClockT> bufferedSlidingWindow_;

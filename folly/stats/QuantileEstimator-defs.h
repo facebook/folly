@@ -35,14 +35,15 @@ SimpleQuantileEstimator<ClockT>::SimpleQuantileEstimator()
 
 template <typename ClockT>
 QuantileEstimates SimpleQuantileEstimator<ClockT>::estimateQuantiles(
-    Range<const double*> quantiles) {
-  auto digest = bufferedDigest_.get();
+    Range<const double*> quantiles,
+    TimePoint now) {
+  auto digest = bufferedDigest_.get(now);
   return detail::estimatesFromDigest(digest, quantiles);
 }
 
 template <typename ClockT>
-void SimpleQuantileEstimator<ClockT>::addValue(double value) {
-  bufferedDigest_.append(value);
+void SimpleQuantileEstimator<ClockT>::addValue(double value, TimePoint now) {
+  bufferedDigest_.append(value, now);
 }
 
 template <typename ClockT>
@@ -53,15 +54,18 @@ SlidingWindowQuantileEstimator<ClockT>::SlidingWindowQuantileEstimator(
 
 template <typename ClockT>
 QuantileEstimates SlidingWindowQuantileEstimator<ClockT>::estimateQuantiles(
-    Range<const double*> quantiles) {
-  auto digests = bufferedSlidingWindow_.get();
+    Range<const double*> quantiles,
+    TimePoint now) {
+  auto digests = bufferedSlidingWindow_.get(now);
   auto digest = TDigest::merge(digests);
   return detail::estimatesFromDigest(digest, quantiles);
 }
 
 template <typename ClockT>
-void SlidingWindowQuantileEstimator<ClockT>::addValue(double value) {
-  bufferedSlidingWindow_.append(value);
+void SlidingWindowQuantileEstimator<ClockT>::addValue(
+    double value,
+    TimePoint now) {
+  bufferedSlidingWindow_.append(value, now);
 }
 
 } // namespace folly

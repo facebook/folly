@@ -35,7 +35,8 @@ struct MockClock {
 MockClock::time_point MockClock::Now = MockClock::time_point{};
 
 class QuantileEstimatorTest
-    : public ::testing::TestWithParam<std::shared_ptr<QuantileEstimator>> {};
+    : public ::testing::TestWithParam<
+          std::shared_ptr<QuantileEstimator<MockClock>>> {};
 
 TEST_P(QuantileEstimatorTest, EstimateQuantiles) {
   auto estimator = GetParam();
