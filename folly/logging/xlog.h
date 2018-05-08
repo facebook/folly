@@ -53,21 +53,37 @@
  * best if you always invoke the compiler from the root directory of your
  * project repository.
  */
-#define XLOG(level, ...)                   \
+#define XLOG(level, ...) XLOG_IF(level, true, ##__VA_ARGS__)
+
+/**
+ * Log a message if and only if the specified condition predicate evaluates
+ * to true. Note that the condition is *only* evaluated if the log-level check
+ * passes.
+ */
+#define XLOG_IF(level, cond, ...)          \
   XLOG_IMPL(                               \
       ::folly::LogLevel::level,            \
+      cond,                                \
       ::folly::LogStreamProcessor::APPEND, \
       ##__VA_ARGS__)
-
 /**
  * Log a message to this file's default log category, using a format string.
  */
-#define XLOGF(level, fmt, arg1, ...)       \
-  XLOG_IMPL(                               \
-      ::folly::LogLevel::level,            \
-      ::folly::LogStreamProcessor::FORMAT, \
-      fmt,                                 \
-      arg1,                                \
+#define XLOGF(level, fmt, arg1, ...) \
+  XLOGF_IF(level, true, fmt, arg1, ##__VA_ARGS__)
+
+/**
+ * Log a message using a format string if and only if the specified condition
+ * predicate evaluates to true. Note that the condition is *only* evaluated
+ * if the log-level check passes.
+ */
+#define XLOGF_IF(level, cond, fmt, arg1, ...) \
+  XLOG_IMPL(                                  \
+      ::folly::LogLevel::level,               \
+      cond,                                   \
+      ::folly::LogStreamProcessor::FORMAT,    \
+      fmt,                                    \
+      arg1,                                   \
       ##__VA_ARGS__)
 
 /**
@@ -132,8 +148,8 @@
  *   skipped with just a single check of the LogLevel.
  */
 /* clang-format off */
-#define XLOG_IMPL(level, type, ...)                                          \
-  (!XLOG_IS_ON_IMPL(level))                                                  \
+#define XLOG_IMPL(level, cond, type, ...)                                    \
+  (!XLOG_IS_ON_IMPL(level) || !(cond))                                       \
       ? ::folly::logDisabledHelper(                                          \
             std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
       : ::folly::LogStreamVoidify< ::folly::isLogLevelFatal(level)>{} &      \

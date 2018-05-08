@@ -43,6 +43,78 @@ TEST(Xlog, xlogName) {
   EXPECT_EQ("xlog_test.main_file", XLOG_GET_CATEGORY()->getName());
 }
 
+TEST(Xlog, xlogIf) {
+  auto handler = make_shared<TestLogHandler>();
+  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
+  auto& messages = handler->getMessages();
+
+  // info messages are not enabled initially.
+  EXPECT_FALSE(XLOG_IS_ON(INFO));
+  EXPECT_TRUE(XLOG_IS_ON(ERR));
+  XLOG_IF(INFO, false, "testing 1");
+  EXPECT_EQ(0, messages.size());
+  messages.clear();
+
+  XLOG_IF(INFO, true, "testing 1");
+  EXPECT_EQ(0, messages.size());
+  messages.clear();
+
+  // Increase the log level, then log a message.
+  LoggerDB::get().setLevel("xlog_test.main_file", LogLevel::DBG1);
+  XLOG_IF(DBG1, false, "testing: ", 1, 2, 3);
+  ASSERT_EQ(0, messages.size());
+  messages.clear();
+
+  XLOG_IF(DBG1, true, "testing: ", 1, 2, 3);
+  ASSERT_EQ(1, messages.size());
+  messages.clear();
+
+  // more complex conditional expressions
+  std::array<bool, 2> conds = {false, true};
+  for (unsigned i = 0; i < conds.size(); i++) {
+    for (unsigned j = 0; j < conds.size(); j++) {
+      XLOG_IF(DBG1, conds[i] && conds[j], "testing conditional");
+      EXPECT_EQ((conds[i] && conds[j]) ? 1 : 0, messages.size());
+      messages.clear();
+
+      XLOG_IF(DBG1, conds[i] || conds[j], "testing conditional");
+      EXPECT_EQ((conds[i] || conds[j]) ? 1 : 0, messages.size());
+      messages.clear();
+    }
+  }
+
+  XLOG_IF(DBG1, 0x6 & 0x2, "More conditional 1");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOG_IF(DBG1, 0x6 | 0x2, "More conditional 2");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOG_IF(DBG1, 0x6 | 0x2 ? true : false, "More conditional 3");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOG_IF(DBG1, 0x6 | 0x2 ? true : false, "More conditional 3");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOG_IF(DBG1, 0x3 & 0x4 ? true : false, "More conditional 4");
+  EXPECT_EQ(0, messages.size());
+  messages.clear();
+
+  XLOG_IF(DBG1, false ? true : false, "More conditional 5");
+  EXPECT_EQ(0, messages.size());
+  messages.clear();
+
+  XLOGF_IF(DBG1, false, "number: {:>3d}; string: {}", 12, "foo");
+  ASSERT_EQ(0, messages.size());
+  messages.clear();
+  XLOGF_IF(DBG1, true, "number: {:>3d}; string: {}", 12, "foo");
+  ASSERT_EQ(1, messages.size());
+  messages.clear();
+}
+
 TEST(Xlog, xlog) {
   auto handler = make_shared<TestLogHandler>();
   LoggerDB::get().getCategory("xlog_test")->addHandler(handler);

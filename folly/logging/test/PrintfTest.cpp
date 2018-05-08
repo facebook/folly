@@ -90,6 +90,76 @@ TEST(PrintfTest, printfStyleMacros) {
   EXPECT_EQ("no xlog format arguments", messages[0].first.getMessage());
   messages.clear();
 
+  XLOGC_IF(DBG1, false, "no xlog format arguments");
+  ASSERT_EQ(0, messages.size());
+  XLOGC_IF(DBG1, true, "xlog format arguments");
+  ASSERT_EQ(1, messages.size());
+  messages.clear();
+
+  argumentEvaluated = false;
+  XLOGC_IF(DBG1, true, "xlog format string %d", getValue());
+  ASSERT_EQ(1, messages.size());
+  EXPECT_TRUE(argumentEvaluated);
+  messages.clear();
+
+  argumentEvaluated = false;
+  XLOGC_IF(DBG1, false, "xlog format string %d", getValue());
+  ASSERT_EQ(0, messages.size());
+  EXPECT_FALSE(argumentEvaluated);
+  messages.clear();
+
+  // more complex conditional expressions
+  std::array<bool, 2> conds = {false, true};
+  for (unsigned i = 0; i < conds.size(); i++) {
+    for (unsigned j = 0; j < conds.size(); j++) {
+      argumentEvaluated = false;
+      XLOGC_IF(
+          DBG1, conds[i] && conds[j], "testing conditional %d", getValue());
+      EXPECT_EQ((conds[i] && conds[j]) ? 1 : 0, messages.size());
+      messages.clear();
+      if (conds[i] && conds[j]) {
+        EXPECT_TRUE(argumentEvaluated);
+      } else {
+        EXPECT_FALSE(argumentEvaluated);
+      }
+
+      argumentEvaluated = false;
+      XLOGC_IF(
+          DBG1, conds[i] || conds[j], "testing conditional %d", getValue());
+      EXPECT_EQ((conds[i] || conds[j]) ? 1 : 0, messages.size());
+      messages.clear();
+      if (conds[i] || conds[j]) {
+        EXPECT_TRUE(argumentEvaluated);
+      } else {
+        EXPECT_FALSE(argumentEvaluated);
+      }
+    }
+  }
+
+  XLOGC_IF(DBG1, 0x6 & 0x2, "More conditional 1");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOGC_IF(DBG1, 0x6 | 0x2, "More conditional 2");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOGC_IF(DBG1, 0x6 | 0x2 ? true : false, "More conditional 3");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOGC_IF(DBG1, 0x6 | 0x2 ? true : false, "More conditional 3");
+  EXPECT_EQ(1, messages.size());
+  messages.clear();
+
+  XLOGC_IF(DBG1, 0x3 & 0x4 ? true : false, "More conditional 4");
+  EXPECT_EQ(0, messages.size());
+  messages.clear();
+
+  XLOGC_IF(DBG1, false ? true : false, "More conditional 5");
+  EXPECT_EQ(0, messages.size());
+  messages.clear();
+
   // Errors attempting to format the message should not throw
   FB_LOGC(footest1234, ERR, "width overflow: %999999999999999999999d", 5);
   ASSERT_EQ(1, messages.size());
