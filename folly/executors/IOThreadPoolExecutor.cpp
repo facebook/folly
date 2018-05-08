@@ -86,7 +86,7 @@ void IOThreadPoolExecutor::add(
     std::chrono::milliseconds expiration,
     Func expireCallback) {
   ensureActiveThreads();
-  RWSpinLock::ReadHolder r{&threadListLock_};
+  SharedMutex::ReadHolder r{&threadListLock_};
   if (threadList_.get().empty()) {
     throw std::runtime_error("No threads available");
   }
@@ -127,7 +127,7 @@ IOThreadPoolExecutor::pickThread() {
 
 EventBase* IOThreadPoolExecutor::getEventBase() {
   ensureActiveThreads();
-  RWSpinLock::ReadHolder r{&threadListLock_};
+  SharedMutex::ReadHolder r{&threadListLock_};
   return pickThread()->eventBase;
 }
 

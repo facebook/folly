@@ -136,7 +136,7 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
 
   size_t numThreadsToJoin = 0;
   {
-    RWSpinLock::WriteHolder w{&threadListLock_};
+    SharedMutex::WriteHolder w{&threadListLock_};
     auto pending = getPendingTaskCountImpl();
     maxThreads_.store(numThreads, std::memory_order_relaxed);
     auto active = activeThreads_.load(std::memory_order_relaxed);
@@ -208,7 +208,7 @@ void ThreadPoolExecutor::joinStoppedThreads(size_t n) {
 
 void ThreadPoolExecutor::stop() {
   {
-    folly::RWSpinLock::WriteHolder w{&threadListLock_};
+    folly::SharedMutex::WriteHolder w{&threadListLock_};
     maxThreads_.store(0, std::memory_order_release);
     activeThreads_.store(0, std::memory_order_release);
   }
@@ -216,7 +216,7 @@ void ThreadPoolExecutor::stop() {
 
   size_t n = 0;
   {
-    RWSpinLock::WriteHolder w{&threadListLock_};
+    SharedMutex::WriteHolder w{&threadListLock_};
     n = threadList_.get().size();
     removeThreads(n, false);
   }
@@ -227,7 +227,7 @@ void ThreadPoolExecutor::stop() {
 
 void ThreadPoolExecutor::join() {
   {
-    folly::RWSpinLock::WriteHolder w{&threadListLock_};
+    folly::SharedMutex::WriteHolder w{&threadListLock_};
     maxThreads_.store(0, std::memory_order_release);
     activeThreads_.store(0, std::memory_order_release);
   }
@@ -235,7 +235,7 @@ void ThreadPoolExecutor::join() {
 
   size_t n = 0;
   {
-    RWSpinLock::WriteHolder w{&threadListLock_};
+    SharedMutex::WriteHolder w{&threadListLock_};
     n = threadList_.get().size();
     removeThreads(n, true);
   }
@@ -254,7 +254,7 @@ void ThreadPoolExecutor::withAll(FunctionRef<void(ThreadPoolExecutor&)> f) {
 
 ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
   const auto now = std::chrono::steady_clock::now();
-  RWSpinLock::ReadHolder r{&threadListLock_};
+  SharedMutex::ReadHolder r{&threadListLock_};
   ThreadPoolExecutor::PoolStats stats;
   size_t activeTasks = 0;
   size_t idleAlive = 0;
@@ -278,7 +278,7 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
 }
 
 size_t ThreadPoolExecutor::getPendingTaskCount() {
-  RWSpinLock::ReadHolder r{&threadListLock_};
+  SharedMutex::ReadHolder r{&threadListLock_};
   return getPendingTaskCountImpl();
 }
 
@@ -346,7 +346,7 @@ size_t ThreadPoolExecutor::StoppedThreadQueue::size() {
 
 void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
   {
-    RWSpinLock::ReadHolder r{&threadListLock_};
+    SharedMutex::ReadHolder r{&threadListLock_};
     observers_.push_back(o);
     for (auto& thread : threadList_.get()) {
       o->threadPreviouslyStarted(thread.get());
@@ -359,7 +359,7 @@ void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
 }
 
 void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
-  RWSpinLock::ReadHolder r{&threadListLock_};
+  SharedMutex::ReadHolder r{&threadListLock_};
   for (auto& thread : threadList_.get()) {
     o->threadNotYetStopped(thread.get());
   }
@@ -397,7 +397,7 @@ void ThreadPoolExecutor::ensureActiveThreads() {
     return;
   }
 
-  RWSpinLock::WriteHolder w{&threadListLock_};
+  SharedMutex::WriteHolder w{&threadListLock_};
   // Double check behind lock.
   active = activeThreads_.load(std::memory_order_relaxed);
   total = maxThreads_.load(std::memory_order_relaxed);

@@ -185,7 +185,7 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
           o->threadStopped(thread.get());
         }
         // Actually remove the thread from the list.
-        folly::RWSpinLock::WriteHolder w{&threadListLock_};
+        SharedMutex::WriteHolder w{&threadListLock_};
         threadList_.remove(thread);
         stoppedThreads_.add(thread);
         return;
@@ -198,7 +198,7 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
 
     if (UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
       if (tryDecrToStop()) {
-        folly::RWSpinLock::WriteHolder w{&threadListLock_};
+        SharedMutex::WriteHolder w{&threadListLock_};
         threadList_.remove(thread);
         stoppedThreads_.add(thread);
         return;

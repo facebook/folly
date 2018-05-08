@@ -16,12 +16,12 @@
 #pragma once
 #include <folly/Executor.h>
 #include <folly/Memory.h>
+#include <folly/SharedMutex.h>
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
 #include <folly/io/async/Request.h>
 #include <folly/synchronization/Baton.h>
-#include <folly/synchronization/RWSpinLock.h>
 
 #include <algorithm>
 #include <mutex>
@@ -282,7 +282,7 @@ class ThreadPoolExecutor : public virtual folly::Executor {
   const bool isWaitForAll_; // whether to wait till event base loop exits
 
   ThreadList threadList_;
-  folly::RWSpinLock threadListLock_;
+  SharedMutex threadListLock_;
   StoppedThreadQueue stoppedThreads_;
   std::atomic<bool> isJoin_{false}; // whether the current downsizing is a join
 
