@@ -109,7 +109,7 @@ TEST(PrintfTest, printfStyleMacros) {
   messages.clear();
 
   // more complex conditional expressions
-  std::array<bool, 2> conds = {false, true};
+  std::array<bool, 2> conds = {{false, true}};
   for (unsigned i = 0; i < conds.size(); i++) {
     for (unsigned j = 0; j < conds.size(); j++) {
       argumentEvaluated = false;
