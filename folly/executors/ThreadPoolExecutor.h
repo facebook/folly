@@ -104,7 +104,7 @@ class ThreadPoolExecutor : public virtual folly::Executor {
   };
 
   PoolStats getPoolStats();
-  uint64_t getPendingTaskCount();
+  size_t getPendingTaskCount();
   std::string getName();
 
   struct TaskStats {
