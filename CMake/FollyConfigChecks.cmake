@@ -43,6 +43,13 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND FOLLY_CXX_FLAGS -Wno-nullability-completeness)
   endif()
 
+  CHECK_CXX_COMPILER_FLAG(
+      -Winconsistent-missing-override
+      COMPILER_HAS_W_INCONSISTENT_MISSING_OVERRIDE)
+  if (COMPILER_HAS_W_INCONSISTENT_MISSING_OVERRIDE)
+    list(APPEND FOLLY_CXX_FLAGS -Wno-inconsistent-missing-override)
+  endif()
+
   CHECK_CXX_COMPILER_FLAG(-faligned-new COMPILER_HAS_F_ALIGNED_NEW)
   if (COMPILER_HAS_F_ALIGNED_NEW)
     list(APPEND FOLLY_CXX_FLAGS -faligned-new)
