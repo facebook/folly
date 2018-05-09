@@ -15,7 +15,7 @@
  */
 #include <folly/logging/xlog.h>
 
-#include <folly/logging/LogCategory.h>
+#include <folly/logging/LogConfigParser.h>
 #include <folly/logging/LogHandler.h>
 #include <folly/logging/LogMessage.h>
 #include <folly/logging/LoggerDB.h>
@@ -31,19 +31,29 @@ using std::make_shared;
 
 XLOG_SET_CATEGORY_NAME("xlog_test.main_file")
 
-// Note that the XLOG* macros always use the main LoggerDB singleton.
-// There is no way to get them to use a test LoggerDB during unit tests.
-//
-// Therefore any configuration we do here affects the main log category
-// settings for the entire program.  Fortunately all of the other unit tests do
-// use testing LoggerDB objects.
+namespace {
+class XlogTest : public testing::Test {
+ public:
+  XlogTest() {
+    // Note that the XLOG* macros always use the main LoggerDB singleton.
+    // There is no way to get them to use a test LoggerDB during unit tests.
+    //
+    // In order to ensure that changes to the LoggerDB singleton do not persist
+    // across test functions we reset the configuration to a fixed state before
+    // each test starts.
+    auto config =
+        parseLogConfig(".=WARN:default; default=stream:stream=stderr");
+    LoggerDB::get().resetConfig(config);
+  }
+};
+} // namespace
 
-TEST(Xlog, xlogName) {
+TEST_F(XlogTest, xlogName) {
   EXPECT_EQ("xlog_test.main_file", XLOG_GET_CATEGORY_NAME());
   EXPECT_EQ("xlog_test.main_file", XLOG_GET_CATEGORY()->getName());
 }
 
-TEST(Xlog, xlogIf) {
+TEST_F(XlogTest, xlogIf) {
   auto handler = make_shared<TestLogHandler>();
   LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
   auto& messages = handler->getMessages();
@@ -115,7 +125,7 @@ TEST(Xlog, xlogIf) {
   messages.clear();
 }
 
-TEST(Xlog, xlog) {
+TEST_F(XlogTest, xlog) {
   auto handler = make_shared<TestLogHandler>();
   LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
   auto& messages = handler->getMessages();
@@ -166,7 +176,7 @@ TEST(Xlog, xlog) {
   messages.clear();
 }
 
-TEST(Xlog, perFileCategoryHandling) {
+TEST_F(XlogTest, perFileCategoryHandling) {
   using namespace logging_test;
 
   auto handler = make_shared<TestLogHandler>();
@@ -256,7 +266,7 @@ TEST(Xlog, perFileCategoryHandling) {
   messages.clear();
 }
 
-TEST(Xlog, getXlogCategoryName) {
+TEST_F(XlogTest, getXlogCategoryName) {
   EXPECT_EQ("foo.cpp", getXlogCategoryNameForFile("foo.cpp"));
   EXPECT_EQ("foo.h", getXlogCategoryNameForFile("foo.h"));
 
