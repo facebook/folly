@@ -366,16 +366,13 @@ class F14BasicSet {
     return table_.tryEmplaceValue(key, key);
   }
 
-  template <typename... Args>
+  template <typename Arg0, typename... Args>
   std::enable_if_t<
-      sizeof...(Args) != 1 ||
-          !std::is_same<
-              folly::remove_cvref_t<
-                  std::tuple_element_t<0, std::tuple<Args...>>>,
-              key_type>::value,
+      sizeof...(Args) != 0 ||
+          !std::is_same<folly::remove_cvref_t<Arg0>, key_type>::value,
       std::pair<ItemIter, bool>>
-  emplaceItem(Args&&... args) {
-    key_type key(std::forward<Args>(args)...);
+  emplaceItem(Arg0&& arg0, Args&&... args) {
+    key_type key(std::forward<Arg0>(arg0), std::forward<Args>(args)...);
     return table_.tryEmplaceValue(key, std::move(key));
   }
 
