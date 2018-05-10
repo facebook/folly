@@ -16,7 +16,7 @@
 
 #pragma once
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__clang__)
 #include <assert.h>
 #include <folly/Portability.h>
 #include <intrin.h>

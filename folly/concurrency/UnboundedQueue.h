@@ -724,7 +724,7 @@ class UnboundedQueue {
     }
 
     FOLLY_ALWAYS_INLINE Ticket minTicket() const noexcept {
-      DCHECK_EQ((min_ & (SegmentSize - 1)), 0);
+      DCHECK_EQ((min_ & (SegmentSize - 1)), Ticket(0));
       return min_;
     }
 
