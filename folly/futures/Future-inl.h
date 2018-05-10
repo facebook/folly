@@ -755,7 +755,7 @@ typename std::enable_if<
         !futures::detail::callableWith<F, exception_wrapper&>::value &&
         !futures::detail::Extract<F>::ReturnsFuture::value,
     SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) {
+SemiFuture<T>::deferError(F&& func) && {
   using Exn =
       std::remove_reference_t<typename futures::detail::Extract<F>::FirstArg>;
   return std::move(*this).defer(
@@ -775,7 +775,7 @@ typename std::enable_if<
         !futures::detail::callableWith<F, exception_wrapper&>::value &&
         futures::detail::Extract<F>::ReturnsFuture::value,
     SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) {
+SemiFuture<T>::deferError(F&& func) && {
   using Exn =
       std::remove_reference_t<typename futures::detail::Extract<F>::FirstArg>;
   return std::move(*this).defer(
@@ -794,7 +794,7 @@ typename std::enable_if<
     futures::detail::callableWith<F, exception_wrapper>::value &&
         !futures::detail::Extract<F>::ReturnsFuture::value,
     SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) {
+SemiFuture<T>::deferError(F&& func) && {
   return std::move(*this).defer(
       [func = std::forward<F>(func)](Try<T> t) mutable {
         if (t.hasException()) {
@@ -811,7 +811,7 @@ typename std::enable_if<
     futures::detail::callableWith<F, exception_wrapper>::value &&
         futures::detail::Extract<F>::ReturnsFuture::value,
     SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) {
+SemiFuture<T>::deferError(F&& func) && {
   return std::move(*this).defer(
       [func = std::forward<F>(func)](Try<T> t) mutable {
         if (t.hasException()) {

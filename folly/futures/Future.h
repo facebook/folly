@@ -364,7 +364,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
           !futures::detail::callableWith<F, exception_wrapper&>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       SemiFuture<T>>::type
-  deferError(F&& func);
+  deferError(F&& func) &&;
 
   /// Overload of deferError where the error callback returns a Future<T>
   template <class F>
@@ -373,7 +373,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
           !futures::detail::callableWith<F, exception_wrapper&>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       SemiFuture<T>>::type
-  deferError(F&& func);
+  deferError(F&& func) &&;
 
   /// Overload of deferError that takes exception_wrapper and returns T
   template <class F>
@@ -381,7 +381,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       futures::detail::callableWith<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       SemiFuture<T>>::type
-  deferError(F&& func);
+  deferError(F&& func) &&;
 
   /// Overload of deferError that takes exception_wrapper and returns Future<T>
   template <class F>
@@ -389,7 +389,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       futures::detail::callableWith<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       SemiFuture<T>>::type
-  deferError(F&& func);
+  deferError(F&& func) &&;
 
   /// Return a future that completes inline, as if the future had no executor.
   /// Intended for porting legacy code without behavioural change, and for rare
