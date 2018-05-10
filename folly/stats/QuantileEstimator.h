@@ -30,33 +30,11 @@ struct QuantileEstimates {
   std::vector<std::pair<double, double>> quantiles;
 };
 
-template <typename ClockT>
-class QuantileEstimator {
- public:
-  using TimePoint = typename ClockT::time_point;
-
-  virtual ~QuantileEstimator() {}
-
-  QuantileEstimates estimateQuantiles(Range<const double*> quantiles) {
-    return estimateQuantiles(quantiles, ClockT::now());
-  }
-
-  virtual QuantileEstimates estimateQuantiles(
-      Range<const double*> quantiles,
-      TimePoint now) = 0;
-
-  void addValue(double value) {
-    addValue(value, ClockT::now());
-  }
-
-  virtual void addValue(double value, TimePoint now) = 0;
-};
-
 /*
  * A QuantileEstimator that buffers writes for 1 second.
  */
 template <typename ClockT = std::chrono::steady_clock>
-class SimpleQuantileEstimator : public QuantileEstimator<ClockT> {
+class SimpleQuantileEstimator {
  public:
   using TimePoint = typename ClockT::time_point;
 
@@ -64,8 +42,8 @@ class SimpleQuantileEstimator : public QuantileEstimator<ClockT> {
 
   QuantileEstimates estimateQuantiles(
       Range<const double*> quantiles,
-      TimePoint now) override;
-  void addValue(double value, TimePoint now) override;
+      TimePoint now = ClockT::now());
+  void addValue(double value, TimePoint now = ClockT::now());
 
  private:
   detail::BufferedDigest<TDigest, ClockT> bufferedDigest_;
@@ -76,7 +54,7 @@ class SimpleQuantileEstimator : public QuantileEstimator<ClockT> {
  * constructor). Values are buffered for windowDuration.
  */
 template <typename ClockT = std::chrono::steady_clock>
-class SlidingWindowQuantileEstimator : public QuantileEstimator<ClockT> {
+class SlidingWindowQuantileEstimator {
  public:
   using TimePoint = typename ClockT::time_point;
 
@@ -86,8 +64,8 @@ class SlidingWindowQuantileEstimator : public QuantileEstimator<ClockT> {
 
   QuantileEstimates estimateQuantiles(
       Range<const double*> quantiles,
-      TimePoint now) override;
-  void addValue(double value, TimePoint now) override;
+      TimePoint now = ClockT::now());
+  void addValue(double value, TimePoint now = ClockT::now());
 
  private:
   detail::BufferedSlidingWindow<TDigest, ClockT> bufferedSlidingWindow_;

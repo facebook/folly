@@ -34,21 +34,16 @@ struct MockClock {
 
 MockClock::time_point MockClock::Now = MockClock::time_point{};
 
-class QuantileEstimatorTest
-    : public ::testing::TestWithParam<
-          std::shared_ptr<QuantileEstimator<MockClock>>> {};
-
-TEST_P(QuantileEstimatorTest, EstimateQuantiles) {
-  auto estimator = GetParam();
+TEST(SimpleQuantileEstimatorTest, EstimateQuantiles) {
+  SimpleQuantileEstimator<MockClock> estimator;
   for (size_t i = 1; i <= 100; ++i) {
-    estimator->addValue(i);
+    estimator.addValue(i);
   }
 
   MockClock::Now += std::chrono::seconds{1};
 
-  std::vector<double> quantiles = {0.001, 0.01, 0.5, 0.99, 0.999};
-
-  auto estimates = estimator->estimateQuantiles(quantiles);
+  auto estimates = estimator.estimateQuantiles(
+      std::array<double, 5>{{.001, .01, .5, .99, .999}});
 
   EXPECT_EQ(5050, estimates.sum);
   EXPECT_EQ(100, estimates.count);
@@ -66,13 +61,29 @@ TEST_P(QuantileEstimatorTest, EstimateQuantiles) {
   EXPECT_EQ(100, estimates.quantiles[4].second);
 }
 
-INSTANTIATE_TEST_CASE_P(
-    SimpleQuantileEstimator,
-    QuantileEstimatorTest,
-    ::testing::Values(new SimpleQuantileEstimator<MockClock>()));
+TEST(SlidingWindowQuantileEstimatorTest, EstimateQuantiles) {
+  SlidingWindowQuantileEstimator<MockClock> estimator(std::chrono::seconds{1});
+  for (size_t i = 1; i <= 100; ++i) {
+    estimator.addValue(i);
+  }
 
-INSTANTIATE_TEST_CASE_P(
-    SlidingWindowQuantileEstimator,
-    QuantileEstimatorTest,
-    ::testing::Values(new SlidingWindowQuantileEstimator<MockClock>(
-        std::chrono::seconds{1})));
+  MockClock::Now += std::chrono::seconds{1};
+
+  auto estimates = estimator.estimateQuantiles(
+      std::array<double, 5>{{.001, .01, .5, .99, .999}});
+
+  EXPECT_EQ(5050, estimates.sum);
+  EXPECT_EQ(100, estimates.count);
+
+  EXPECT_EQ(0.001, estimates.quantiles[0].first);
+  EXPECT_EQ(0.01, estimates.quantiles[1].first);
+  EXPECT_EQ(0.5, estimates.quantiles[2].first);
+  EXPECT_EQ(0.99, estimates.quantiles[3].first);
+  EXPECT_EQ(0.999, estimates.quantiles[4].first);
+
+  EXPECT_EQ(1, estimates.quantiles[0].second);
+  EXPECT_EQ(2.0 - 0.5, estimates.quantiles[1].second);
+  EXPECT_EQ(50.375, estimates.quantiles[2].second);
+  EXPECT_EQ(100.0 - 0.5, estimates.quantiles[3].second);
+  EXPECT_EQ(100, estimates.quantiles[4].second);
+}
