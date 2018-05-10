@@ -18,6 +18,8 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
+#include <queue>
 
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
@@ -49,11 +51,10 @@ namespace folly {
 
 class SerialExecutor : public SequencedExecutor {
  public:
-  ~SerialExecutor() override;
   SerialExecutor(SerialExecutor const&) = delete;
   SerialExecutor& operator=(SerialExecutor const&) = delete;
-  SerialExecutor(SerialExecutor&&) = default;
-  SerialExecutor& operator=(SerialExecutor&&) = default;
+  SerialExecutor(SerialExecutor&&) = delete;
+  SerialExecutor& operator=(SerialExecutor&&) = delete;
 
   static KeepAlive<SerialExecutor> create(
       KeepAlive<Executor> parent = getKeepAliveToken(getCPUExecutor().get()));
@@ -106,11 +107,14 @@ class SerialExecutor : public SequencedExecutor {
 
  private:
   explicit SerialExecutor(KeepAlive<Executor> parent);
+  ~SerialExecutor() override;
 
-  class TaskQueueImpl;
+  void run();
 
   KeepAlive<Executor> parent_;
-  std::shared_ptr<TaskQueueImpl> taskQueueImpl_;
+  std::mutex mutex_;
+  std::size_t scheduled_{0};
+  std::queue<Func> queue_;
 
   std::atomic<ssize_t> keepAliveCounter_{1};
 };

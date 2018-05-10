@@ -16,8 +16,6 @@
 
 #include <folly/executors/SerialExecutor.h>
 
-#include <mutex>
-#include <queue>
 
 #include <glog/logging.h>
 
@@ -25,56 +23,8 @@
 
 namespace folly {
 
-class SerialExecutor::TaskQueueImpl {
- public:
-  void add(Func&& func) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    queue_.push(std::move(func));
-  }
-
-  void run() {
-    std::unique_lock<std::mutex> lock(mutex_);
-
-    ++scheduled_;
-
-    if (scheduled_ > 1) {
-      return;
-    }
-
-    do {
-      DCHECK(!queue_.empty());
-      Func func = std::move(queue_.front());
-      queue_.pop();
-      lock.unlock();
-
-      try {
-        func();
-      } catch (std::exception const& ex) {
-        LOG(ERROR) << "SerialExecutor: func threw unhandled exception "
-                   << folly::exceptionStr(ex);
-      } catch (...) {
-        LOG(ERROR) << "SerialExecutor: func threw unhandled non-exception "
-                      "object";
-      }
-
-      // Destroy the function (and the data it captures) before we acquire the
-      // lock again.
-      func = {};
-
-      lock.lock();
-      --scheduled_;
-    } while (scheduled_);
-  }
-
- private:
-  std::mutex mutex_;
-  std::size_t scheduled_{0};
-  std::queue<Func> queue_;
-};
-
 SerialExecutor::SerialExecutor(KeepAlive<Executor> parent)
-    : parent_(std::move(parent)),
-      taskQueueImpl_(std::make_shared<TaskQueueImpl>()) {}
+    : parent_(std::move(parent)) {}
 
 SerialExecutor::~SerialExecutor() {
   DCHECK(!keepAliveCounter_);
@@ -107,19 +57,54 @@ void SerialExecutor::keepAliveRelease() {
 }
 
 void SerialExecutor::add(Func func) {
-  taskQueueImpl_->add(std::move(func));
-  parent_->add([impl = taskQueueImpl_, keepAlive = getKeepAliveToken(this)] {
-    impl->run();
-  });
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    queue_.push(std::move(func));
+  }
+  parent_->add([keepAlive = getKeepAliveToken(this)] { keepAlive->run(); });
 }
 
 void SerialExecutor::addWithPriority(Func func, int8_t priority) {
-  taskQueueImpl_->add(std::move(func));
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    queue_.push(std::move(func));
+  }
   parent_->addWithPriority(
-      [impl = taskQueueImpl_, keepAlive = getKeepAliveToken(this)] {
-        impl->run();
-      },
-      priority);
+      [keepAlive = getKeepAliveToken(this)] { keepAlive->run(); }, priority);
+}
+
+void SerialExecutor::run() {
+  std::unique_lock<std::mutex> lock(mutex_);
+
+  ++scheduled_;
+
+  if (scheduled_ > 1) {
+    return;
+  }
+
+  do {
+    DCHECK(!queue_.empty());
+    Func func = std::move(queue_.front());
+    queue_.pop();
+    lock.unlock();
+
+    try {
+      func();
+    } catch (std::exception const& ex) {
+      LOG(ERROR) << "SerialExecutor: func threw unhandled exception "
+                 << folly::exceptionStr(ex);
+    } catch (...) {
+      LOG(ERROR) << "SerialExecutor: func threw unhandled non-exception "
+                    "object";
+    }
+
+    // Destroy the function (and the data it captures) before we acquire the
+    // lock again.
+    func = {};
+
+    lock.lock();
+    --scheduled_;
+  } while (scheduled_);
 }
 
 } // namespace folly
