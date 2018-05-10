@@ -708,3 +708,19 @@ TEST(ThreadPoolExecutorTest, DynamicThreadsTest) {
   stats = e.getPoolStats();
   EXPECT_LE(stats.activeThreadCount, 0);
 }
+
+TEST(ThreadPoolExecutorTest, DynamicThreadAddRemoveRace) {
+  CPUThreadPoolExecutor e(1);
+  e.setThreadDeathTimeout(std::chrono::milliseconds(0));
+  std::atomic<uint64_t> count{0};
+  for (int i = 0; i < 10000; i++) {
+    Baton<> b;
+    e.add([&]() {
+      count.fetch_add(1, std::memory_order_relaxed);
+      b.post();
+    });
+    b.wait();
+  }
+  e.join();
+  EXPECT_EQ(count, 10000);
+}

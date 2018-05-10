@@ -157,16 +157,26 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
       return false;
     }
   } else {
-    // Try to stop based on idle thread timeout (try_take_for),
-    // if there are at least minThreads running.
-    if (!minActive()) {
-      return false;
+    {
+      SharedMutex::WriteHolder w{&threadListLock_};
+      // Try to stop based on idle thread timeout (try_take_for),
+      // if there are at least minThreads running.
+      if (!minActive()) {
+        return false;
+      }
+      // If this is based on idle thread timeout, then
+      // adjust vars appropriately (otherwise stop() or join()
+      // does this).
+      if (getPendingTaskCountImpl() > 0) {
+        return false;
+      }
+      activeThreads_.store(
+          activeThreads_.load(std::memory_order_relaxed) - 1,
+          std::memory_order_relaxed);
+      threadsToJoin_.store(
+          threadsToJoin_.load(std::memory_order_relaxed) + 1,
+          std::memory_order_relaxed);
     }
-    // If this is based on idle thread timeout, then
-    // adjust vars appropriately (otherwise stop() or join()
-    // does this).
-    activeThreads_.fetch_sub(1, std::memory_order_relaxed);
-    threadsToJoin_.fetch_add(1, std::memory_order_relaxed);
   }
   return true;
 }
