@@ -422,7 +422,7 @@ inline bool hazptr_obj_base_refcounted<T, D>::release_ref() {
     oldval = refcount_.fetch_sub(1);
   } else {
     if (kIsDebug) {
-      refcount_.store(-1);
+      refcount_.store(static_cast<decltype(refcount_)>(-1));
     }
   }
   HAZPTR_DEBUG_PRINT(this << " " << oldval);
