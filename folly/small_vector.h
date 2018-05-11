@@ -1118,13 +1118,9 @@ class small_vector : public detail::small_vector_base<
     }
   } FOLLY_SV_PACK_ATTR;
 
-#if (FOLLY_X64 || FOLLY_PPC64)
-  typedef unsigned char InlineStorageDataType[sizeof(value_type) * MaxInline];
-#else
   typedef typename std::aligned_storage<
       sizeof(value_type) * MaxInline,
       alignof(value_type)>::type InlineStorageDataType;
-#endif
 
   typedef typename std::conditional<
       sizeof(value_type) * MaxInline != 0,
@@ -1188,8 +1184,8 @@ class small_vector : public detail::small_vector_base<
       auto vp = detail::pointerFlagClear(pdata_.heap_);
       free(vp);
     }
-  } FOLLY_SV_PACK_ATTR u;
-} FOLLY_SV_PACK_ATTR;
+  } u;
+};
 FOLLY_SV_PACK_POP
 
 //////////////////////////////////////////////////////////////////////

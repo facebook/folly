@@ -48,12 +48,22 @@ static_assert(sizeof(small_vector<int,10>) ==
 static_assert(sizeof(small_vector<int32_t,1,uint32_t>) ==
                 8 + 4,
               "small_vector<int32_t,1,uint32_t> is wrong size");
-static_assert(sizeof(small_vector<int32_t,1,uint16_t>) ==
-                8 + 2,
-              "small_vector<int32_t,1,uint32_t> is wrong size");
-static_assert(sizeof(small_vector<int32_t,1,uint8_t>) ==
-                8 + 1,
-              "small_vector<int32_t,1,uint32_t> is wrong size");
+
+// Extra 2 bytes needed for alignment.
+static_assert(
+    sizeof(small_vector<int32_t, 1, uint16_t>) == 8 + 2 + 2,
+    "small_vector<int32_t,1,uint32_t> is wrong size");
+static_assert(
+    alignof(small_vector<int32_t, 1, uint16_t>) >= 4,
+    "small_vector not aligned correctly");
+
+// Extra 3 bytes needed for alignment.
+static_assert(
+    sizeof(small_vector<int32_t, 1, uint8_t>) == 8 + 1 + 3,
+    "small_vector<int32_t,1,uint32_t> is wrong size");
+static_assert(
+    alignof(small_vector<int32_t, 1, uint8_t>) >= 4,
+    "small_vector not aligned correctly");
 
 static_assert(sizeof(small_vector<int16_t,4,uint16_t>) == 10,
               "Sizeof unexpectedly large");
@@ -62,6 +72,10 @@ static_assert(sizeof(small_vector<int16_t,4,uint16_t>) == 10,
 
 static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(std::unique_ptr<int>),
               "std::unique_ptr<> is trivially copyable");
+
+static_assert(
+    alignof(small_vector<std::aligned_storage<32, 32>::type, 4>) == 32,
+    "small_vector not aligned correctly");
 
 namespace {
 
