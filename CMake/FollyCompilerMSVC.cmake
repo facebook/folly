@@ -1,6 +1,5 @@
 # Some additional configuration options.
 option(MSVC_ENABLE_ALL_WARNINGS "If enabled, pass /Wall to the compiler." ON)
-option(MSVC_ENABLE_CPP_LATEST "If enabled, pass /std:c++latest to the compiler" ON)
 option(MSVC_ENABLE_DEBUG_INLINING "If enabled, enable inlining in the debug configuration. This allows /Zc:inline to be far more effective." OFF)
 option(MSVC_ENABLE_FAST_LINK "If enabled, pass /DEBUG:FASTLINK to the linker. This makes linking faster, but the gtest integration for Visual Studio can't currently handle the .pdbs generated." OFF)
 option(MSVC_ENABLE_LEAN_AND_MEAN_WINDOWS "If enabled, define WIN32_LEAN_AND_MEAN to include a smaller subset of Windows.h" ON)
@@ -25,6 +24,15 @@ set_property(
 if (NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "blend" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "AMD64" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "INTEL64" AND NOT MSVC_FAVORED_ARCHITECTURE STREQUAL "ATOM")
   message(FATAL_ERROR "MSVC_FAVORED_ARCHITECTURE must be set to one of exactly, 'blend', 'AMD64', 'INTEL64', or 'ATOM'! Got '${MSVC_FAVORED_ARCHITECTURE}' instead!")
 endif()
+
+set(MSVC_LANGUAGE_VERSION "c++latest" CACHE STRING "One of 'c++14', 'c++17', or 'c++latest'. This determines which version of C++ to compile as.")
+set_property(
+  CACHE MSVC_LANGUAGE_VERSION
+  PROPERTY STRINGS
+    "c++14"
+    "c++17"
+    "c++latest"
+)
 
 ############################################################
 # We need to adjust a couple of the default option sets.
@@ -81,7 +89,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       /Zc:threadSafeInit # Enable thread-safe function-local statics initialization.
       /Zc:throwingNew # Assume operator new throws on failure.
 
-      $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:/std:c++latest> # Build in C++ Latest mode if requested.
+      /std:${MSVC_LANGUAGE_VERSION} # Build in the requested version of C++
 
       # This is only supported by MSVC 2017
       $<$<BOOL:${MSVC_IS_2017}>:/permissive-> # Be mean, don't allow bad non-standard stuff (C++/CLI, __declspec, etc. are all left intact).

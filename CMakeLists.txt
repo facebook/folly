@@ -314,9 +314,14 @@ option(BUILD_BROKEN_TESTS "If enabled, compile tests that are known to be broken
 option(BUILD_HANGING_TESTS "If enabled, compile tests that are known to hang." OFF)
 option(BUILD_SLOW_TESTS "If enabled, compile tests that take a while to run in debug mode." OFF)
 if (BUILD_TESTS)
+  option(USE_CMAKE_GOOGLE_TEST_INTEGRATION "If enabled, use the google test integration included in CMake." ON)
   find_package(GMock MODULE REQUIRED)
-  include(GoogleTest OPTIONAL RESULT_VARIABLE HAVE_CMAKE_GTEST)
-  enable_testing()
+  if (USE_CMAKE_GOOGLE_TEST_INTEGRATION)
+    include(GoogleTest OPTIONAL RESULT_VARIABLE HAVE_CMAKE_GTEST)
+    enable_testing()
+  else()
+    set(HAVE_CMAKE_GTEST OFF)
+  endif()
 
   # The ThreadLocalTest code uses a helper shared library for one of its tests.
   # This can only be built if folly itself was built as a shared library.
