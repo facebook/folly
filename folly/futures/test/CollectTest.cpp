@@ -577,13 +577,14 @@ TEST(Collect, collectN) {
   bool flag = false;
   size_t n = 3;
   collectN(futures, n)
-    .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
-      flag = true;
-      EXPECT_EQ(n, v.size());
-      for (auto& tt : v) {
-        EXPECT_TRUE(tt.second.hasValue());
-      }
-    });
+      .via(&folly::InlineExecutor::instance())
+      .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
+        flag = true;
+        EXPECT_EQ(n, v.size());
+        for (auto& tt : v) {
+          EXPECT_TRUE(tt.second.hasValue());
+        }
+      });
 
   promises[0].setValue();
   EXPECT_FALSE(flag);
@@ -603,13 +604,15 @@ TEST(Collect, collectNParallel) {
 
   bool flag = false;
   size_t n = 90;
-  collectN(futures, n).then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
-    flag = true;
-    EXPECT_EQ(n, v.size());
-    for (auto& tt : v) {
-      EXPECT_TRUE(tt.second.hasValue());
-    }
-  });
+  collectN(futures, n)
+      .via(&folly::InlineExecutor::instance())
+      .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
+        flag = true;
+        EXPECT_EQ(n, v.size());
+        for (auto& tt : v) {
+          EXPECT_TRUE(tt.second.hasValue());
+        }
+      });
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);

@@ -1362,9 +1362,8 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
 
 // collectN (iterator)
 
-// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
-Future<std::vector<std::pair<
+SemiFuture<std::vector<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
 collectN(InputIterator first, InputIterator last, size_t n) {
@@ -1427,7 +1426,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
     });
   }
 
-  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->p.getSemiFuture();
 }
 
 // reduce (iterator)

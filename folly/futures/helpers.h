@@ -396,9 +396,9 @@ auto collectAnyWithoutException(Collection&& c)
   Not thread safe.
   */
 template <class InputIterator>
-Future<std::vector<std::pair<
-  size_t,
-  Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
+SemiFuture<std::vector<std::pair<
+    size_t,
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
 collectN(InputIterator first, InputIterator last, size_t n);
 
 /// Sugar for the most common case
