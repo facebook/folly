@@ -30,6 +30,7 @@
 
 #include <folly/io/async/test/BlockingSocket.h>
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -56,6 +57,47 @@ using std::endl;
 using std::list;
 
 using namespace testing;
+
+#if defined __linux__
+namespace {
+
+// to store libc's original setsockopt()
+typedef int (*setsockopt_ptr)(int, int, int, const void*, socklen_t);
+setsockopt_ptr real_setsockopt_ = nullptr;
+
+// global struct to initialize before main runs. we can init within a test,
+// or in main, but this method seems to be least intrsive and universal
+struct GlobalStatic {
+  GlobalStatic() {
+    real_setsockopt_ = (setsockopt_ptr)dlsym(RTLD_NEXT, "setsockopt");
+  }
+  void reset() noexcept {
+    ttlsDisabledSet.clear();
+  }
+  // for each fd, tracks whether TTLS is disabled or not
+  std::set<int /* fd */> ttlsDisabledSet;
+};
+
+// the constructor will be called before main() which is all we care about
+GlobalStatic globalStatic;
+
+} // namespace
+
+// we intercept setsoctopt to test setting NO_TRANSPARENT_TLS opt
+// this name has to be global
+int setsockopt(
+    int sockfd,
+    int level,
+    int optname,
+    const void* optval,
+    socklen_t optlen) {
+  if (optname == SO_NO_TRANSPARENT_TLS) {
+    globalStatic.ttlsDisabledSet.insert(sockfd);
+    return 0;
+  }
+  return real_setsockopt_(sockfd, level, optname, optval, optlen);
+}
+#endif
 
 namespace folly {
 uint32_t TestSSLAsyncCacheServer::asyncCallbacks_ = 0;
@@ -2111,6 +2153,41 @@ TEST(AsyncSSLSocketTest, TestSSLCipherCodeToNameMap) {
   EXPECT_EQ(OpenSSLUtils::getCipherName(0x00ff), "");
 }
 
+#if defined __linux__
+/**
+ * Ensure TransparentTLS flag is disabled with AsyncSSLSocket
+ */
+TEST(AsyncSSLSocketTest, TTLSDisabled) {
+  // clear all setsockopt tracking history
+  globalStatic.reset();
+
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, false);
+
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+
+  // connect
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->open();
+
+  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getSocketFD()));
+
+  // write()
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  socket->write(buf.data(), buf.size());
+
+  // close()
+  socket->close();
+}
+#endif
+
 #if FOLLY_ALLOW_TFO
 
 class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
@@ -2124,6 +2201,42 @@ class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
 
   MOCK_METHOD3(tfoSendMsg, ssize_t(int fd, struct msghdr* msg, int msg_flags));
 };
+
+#if defined __linux__
+/**
+ * Ensure TransparentTLS flag is disabled with AsyncSSLSocket + TFO
+ */
+TEST(AsyncSSLSocketTest, TTLSDisabledWithTFO) {
+  // clear all setsockopt tracking history
+  globalStatic.reset();
+
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, true);
+
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+
+  // connect
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->enableTFO();
+  socket->open();
+
+  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getSocketFD()));
+
+  // write()
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  socket->write(buf.data(), buf.size());
+
+  // close()
+  socket->close();
+}
+#endif
 
 /**
  * Test connecting to, writing to, reading from, and closing the
