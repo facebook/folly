@@ -92,25 +92,17 @@ class Core final {
   static_assert(!std::is_void<T>::value,
                 "void futures are not supported. Use Unit instead.");
  public:
-  /// This must be heap-constructed. There's probably a way to enforce that in
-  /// code but since this is just internal detail code and I don't know how
-  /// off-hand, I'm punting.
-  Core() : result_(), fsm_(State::Start), attached_(2) {}
+  static Core* make() {
+    return new Core();
+  }
 
-  explicit Core(Try<T>&& t)
-    : result_(std::move(t)),
-      fsm_(State::OnlyResult),
-      attached_(1) {}
+  static Core* make(Try<T>&& t) {
+    return new Core(std::move(t));
+  }
 
   template <typename... Args>
-  explicit Core(in_place_t, Args&&... args) noexcept(
-      std::is_nothrow_constructible<T, Args&&...>::value)
-      : result_(in_place, in_place, std::forward<Args>(args)...),
-        fsm_(State::OnlyResult),
-        attached_(1) {}
-
-  ~Core() {
-    DCHECK(attached_ == 0);
+  static Core<T>* make(in_place_t, Args&&... args) {
+    return new Core<T>(in_place, std::forward<Args>(args)...);
   }
 
   // not copyable
@@ -276,6 +268,22 @@ class Core final {
   }
 
  private:
+  Core() : result_(), fsm_(State::Start), attached_(2) {}
+
+  explicit Core(Try<T>&& t)
+      : result_(std::move(t)), fsm_(State::OnlyResult), attached_(1) {}
+
+  template <typename... Args>
+  explicit Core(in_place_t, Args&&... args) noexcept(
+      std::is_nothrow_constructible<T, Args&&...>::value)
+      : result_(in_place, in_place, std::forward<Args>(args)...),
+        fsm_(State::OnlyResult),
+        attached_(1) {}
+
+  ~Core() {
+    DCHECK(attached_ == 0);
+  }
+
   // Helper class that stores a pointer to the `Core` object and calls
   // `derefCallback` and `detachOne` in the destructor.
   class CoreAndCallbackReference {
