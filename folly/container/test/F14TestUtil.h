@@ -314,6 +314,7 @@ std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
 }
 
 thread_local size_t allocatedMemorySize{0};
+thread_local size_t allocatedBlockCount{0};
 
 template <class T>
 class SwapTrackingAlloc {
@@ -359,16 +360,23 @@ class SwapTrackingAlloc {
     return allocatedMemorySize;
   }
 
+  static size_t getAllocatedBlockCount() {
+    return allocatedBlockCount;
+  }
+
   static void resetTracking() {
     allocatedMemorySize = 0;
+    allocatedBlockCount = 0;
   }
 
   T* allocate(size_t n) {
     allocatedMemorySize += n * sizeof(T);
+    ++allocatedBlockCount;
     return a_.allocate(n);
   }
   void deallocate(T* p, size_t n) {
     allocatedMemorySize -= n * sizeof(T);
+    --allocatedBlockCount;
     a_.deallocate(p, n);
   }
 

@@ -40,6 +40,8 @@
 
 #if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+//////// Compatibility for unsupported platforms (not x86_64 and not aarch64)
+
 #include <string>
 #include <unordered_map>
 
@@ -55,12 +57,21 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   using Super::Super;
   F14BasicMap() : Super() {}
 
-  // Approximates allocated memory, does not include sizeof(*this), also does
-  // not account for memory allocator fragmentation
+  //// PUBLIC - F14 Extensions
+
   typename Super::size_type getAllocatedMemorySize() const {
     auto bc = this->bucket_count();
     return (bc == 1 ? 0 : bc) * sizeof(typename Super::pointer) +
         this->size() * sizeof(StdNodeReplica<K, typename Super::value_type, H>);
+  }
+
+  template <typename V>
+  void visitAllocationClasses(V&& visitor) const {
+    auto bc = this->bucket_count();
+    if (bc > 1) {
+      visitor(bc * sizeof(typename Super::pointer), 1);
+    }
+    visitor(size(), sizeof(StdNodeReplica<K, typename Super::value_type, H>));
   }
 };
 } // namespace detail
@@ -96,6 +107,8 @@ class F14VectorMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
 } // namespace folly
 
 #else // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
+//////// Common case for supported platforms
 
 namespace folly {
 namespace f14 {
@@ -269,15 +282,6 @@ class F14BasicMap {
 
   std::size_t max_size() const noexcept {
     return table_.max_size();
-  }
-
-  // Accounts for allocated memory only, does not include sizeof(*this).
-  std::size_t getAllocatedMemorySize() const {
-    return table_.getAllocatedMemorySize();
-  }
-
-  F14TableStats computeStats() const noexcept {
-    return table_.computeStats();
   }
 
   //// PUBLIC - Modifiers
@@ -726,6 +730,31 @@ class F14BasicMap {
 
   key_equal key_eq() const {
     return table_.keyEqual();
+  }
+
+  //// PUBLIC - F14 Extensions
+
+  // Get memory footprint, not including sizeof(*this).
+  std::size_t getAllocatedMemorySize() const {
+    return table_.getAllocatedMemorySize();
+  }
+
+  // Enumerates classes of allocated memory blocks currently owned
+  // by this table, calling visitor(allocationSize, allocationCount).
+  // This can be used to get a more accurate indication of memory footprint
+  // than getAllocatedMemorySize() if you have some way of computing the
+  // internal fragmentation of the allocator, such as JEMalloc's nallocx.
+  // The visitor might be called twice with the same allocationSize. The
+  // visitor's computation should produce the same result for visitor(8,
+  // 2) as for two calls to visitor(8, 1), for example.  The visitor may
+  // be called with a zero allocationCount.
+  template <typename V>
+  void visitAllocationClasses(V&& visitor) const {
+    return table_.visitAllocationClasses(visitor);
+  }
+
+  F14TableStats computeStats() const noexcept {
+    return table_.computeStats();
   }
 
  private:

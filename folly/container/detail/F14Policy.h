@@ -426,9 +426,9 @@ class ValueContainerPolicy : public BasePolicy<
 
   template <typename T>
   [[deprecated(
-      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]]
-  std::enable_if_t<!std::is_nothrow_move_constructible<
-      T>::value> complainUnlessNothrowMove() {}
+      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]] std::
+      enable_if_t<!std::is_nothrow_move_constructible<T>::value>
+      complainUnlessNothrowMove() {}
 
   template <typename Dummy = int>
   void moveItemDuringRehash(
@@ -478,10 +478,11 @@ class ValueContainerPolicy : public BasePolicy<
     AllocTraits::destroy(a, std::addressof(item));
   }
 
-  std::size_t indirectBytesUsed(std::size_t /*size*/, std::size_t /*capacity*/)
-      const {
-    return 0;
-  }
+  template <typename V>
+  void visitPolicyAllocationClasses(
+      std::size_t /*size*/,
+      std::size_t /*capacity*/,
+      V&& /*visitor*/) const {}
 
   //////// F14BasicMap/Set policy
 
@@ -692,9 +693,12 @@ class NodeContainerPolicy
     item.~Item();
   }
 
-  std::size_t indirectBytesUsed(std::size_t size, std::size_t /*capacity*/)
-      const {
-    return size * sizeof(Value);
+  template <typename V>
+  void visitPolicyAllocationClasses(
+      std::size_t size,
+      std::size_t /*capacity*/,
+      V&& visitor) const {
+    visitor(sizeof(Value), size);
   }
 
   //////// F14BasicMap/Set policy
@@ -964,9 +968,9 @@ class VectorContainerPolicy : public BasePolicy<
 
   template <typename T>
   [[deprecated(
-      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]]
-  std::enable_if_t<!std::is_nothrow_move_constructible<
-      T>::value> complainUnlessNothrowMove() {}
+      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]] std::
+      enable_if_t<!std::is_nothrow_move_constructible<T>::value>
+      complainUnlessNothrowMove() {}
 
   template <typename Dummy = int>
   void transfer(
@@ -1125,9 +1129,14 @@ class VectorContainerPolicy : public BasePolicy<
     }
   }
 
-  std::size_t indirectBytesUsed(std::size_t /*size*/, std::size_t capacity)
-      const {
-    return sizeof(Value) * capacity;
+  template <typename V>
+  void visitPolicyAllocationClasses(
+      std::size_t /*size*/,
+      std::size_t capacity,
+      V&& visitor) const {
+    if (capacity > 0) {
+      visitor(sizeof(Value) * capacity, 1);
+    }
   }
 
   // Iterator stuff

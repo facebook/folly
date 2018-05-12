@@ -1821,7 +1821,7 @@ class F14Table : public Policy {
   // to intercept the value before it is destroyed (to extract it, for
   // example), do so in the beforeDestroy callback.
   template <typename BeforeDestroy>
-  void eraseInto(ItemIter pos, BeforeDestroy const& beforeDestroy) {
+  void eraseInto(ItemIter pos, BeforeDestroy&& beforeDestroy) {
     HashPair hp{};
     if (pos.chunk()->hostedOverflowCount() != 0) {
       hp = splitHash(this->computeItemHash(pos.citem()));
@@ -1836,7 +1836,7 @@ class F14Table : public Policy {
   }
 
   template <typename K, typename BeforeDestroy>
-  std::size_t eraseInto(K const& key, BeforeDestroy const& beforeDestroy) {
+  std::size_t eraseInto(K const& key, BeforeDestroy&& beforeDestroy) {
     if (UNLIKELY(size() == 0)) {
       return 0;
     }
@@ -1863,9 +1863,28 @@ class F14Table : public Policy {
 
   // Get memory footprint, not including sizeof(*this).
   std::size_t getAllocatedMemorySize() const {
+    std::size_t sum = 0;
+    visitAllocationClasses(
+        [&sum](std::size_t bytes, std::size_t n) { sum += bytes * n; });
+    return sum;
+  }
+
+  // Enumerates classes of allocated memory blocks currently owned
+  // by this table, calling visitor(allocationSize, allocationCount).
+  // This can be used to get a more accurate indication of memory footprint
+  // than getAllocatedMemorySize() if you have some way of computing the
+  // internal fragmentation of the allocator, such as JEMalloc's nallocx.
+  // The visitor might be called twice with the same allocationSize. The
+  // visitor's computation should produce the same result for visitor(8,
+  // 2) as for two calls to visitor(8, 1), for example.  The visitor may
+  // be called with a zero allocationCount.
+  template <typename V>
+  void visitAllocationClasses(V&& visitor) const {
     auto bc = bucket_count();
-    return (bc == 0 ? 0 : allocSize(chunkMask_ + 1, bc)) +
-        this->indirectBytesUsed(size(), bc);
+    if (bc != 0) {
+      visitor(allocSize(chunkMask_ + 1, bc), 1);
+    }
+    this->visitPolicyAllocationClasses(size(), bc, visitor);
   }
 
  private:

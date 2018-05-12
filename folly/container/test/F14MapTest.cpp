@@ -62,8 +62,23 @@ void testAllocatedMemorySize() {
 
   for (size_t i = 0; i < 1000; ++i) {
     m.insert(std::make_pair(folly::to<K>(i), V{}));
+    m.erase(folly::to<K>(i / 10 + 2));
     EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
+    std::size_t size = 0;
+    std::size_t count = 0;
+    m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
+    m.visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
+      size += bytes * n;
+      count += n;
+    });
+    EXPECT_EQ(A::getAllocatedMemorySize(), size);
+    EXPECT_EQ(A::getAllocatedBlockCount(), count);
   }
+
+  m = decltype(m){};
+  EXPECT_EQ(A::getAllocatedMemorySize(), 0);
+  EXPECT_EQ(A::getAllocatedBlockCount(), 0);
+  m.visitAllocationClasses([](std::size_t, std::size_t n) { EXPECT_EQ(n, 0); });
 }
 
 template <typename K, typename V>

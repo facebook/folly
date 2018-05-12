@@ -37,6 +37,8 @@
 
 #if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+//////// Compatibility for unsupported platforms (not x86_64 and not aarch64)
+
 #include <unordered_set>
 
 namespace folly {
@@ -51,12 +53,21 @@ class F14BasicSet : public std::unordered_set<K, H, E, A> {
   using Super::Super;
   F14BasicSet() : Super() {}
 
-  // Approximates allocated memory, does not include sizeof(*this), also does
-  // not account for memory allocator fragmentation
+  //// PUBLIC - F14 Extensions
+
   typename Super::size_type getAllocatedMemorySize() const {
     auto bc = this->bucket_count();
     return (bc == 1 ? 0 : bc) * sizeof(typename Super::pointer) +
         this->size() * sizeof(StdNodeReplica<K, typename Super::value_type, H>);
+  }
+
+  template <typename V>
+  void visitAllocationClasses(V&& visitor) const {
+    auto bc = this->bucket_count();
+    if (bc > 1) {
+      visitor(bc * sizeof(typename Super::pointer), 1);
+    }
+    visitor(size(), sizeof(StdNodeReplica<K, typename Super::value_type, H>));
   }
 };
 } // namespace detail
@@ -92,6 +103,8 @@ class F14VectorSet : public f14::detail::F14BasicSet<K, H, E, A> {
 } // namespace folly
 
 #else // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
+//////// Common case for supported platforms
 
 namespace folly {
 namespace f14 {
@@ -266,15 +279,6 @@ class F14BasicSet {
     return table_.max_size();
   }
 
-  // Accounts for allocated memory only, does not include sizeof(*this).
-  std::size_t getAllocatedMemorySize() const {
-    return table_.getAllocatedMemorySize();
-  }
-
-  F14TableStats computeStats() const {
-    return table_.computeStats();
-  }
-
   //// PUBLIC - Modifiers
 
   void clear() noexcept {
@@ -406,10 +410,11 @@ class F14BasicSet {
   // used to extract an item out of a F14Set while avoiding a copy.
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE iterator
-  eraseInto(const_iterator pos, BeforeDestroy const& beforeDestroy) {
+  eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
+    table_.eraseInto(table_.unwrapIter(pos), beforeDestroy);
+
     // If we are inlined then gcc and clang can optimize away all of the
     // work of ++pos if the caller discards it.
-    table_.eraseInto(table_.unwrapIter(pos), beforeDestroy);
     return ++pos;
   }
 
@@ -417,7 +422,7 @@ class F14BasicSet {
   iterator eraseInto(
       const_iterator first,
       const_iterator last,
-      BeforeDestroy const& beforeDestroy) {
+      BeforeDestroy&& beforeDestroy) {
     while (first != last) {
       first = eraseInto(first, beforeDestroy);
     }
@@ -425,7 +430,7 @@ class F14BasicSet {
   }
 
   template <typename BeforeDestroy>
-  size_type eraseInto(key_type const& key, BeforeDestroy const& beforeDestroy) {
+  size_type eraseInto(key_type const& key, BeforeDestroy&& beforeDestroy) {
     return table_.eraseInto(key, beforeDestroy);
   }
 
@@ -569,6 +574,31 @@ class F14BasicSet {
 
   key_equal key_eq() const {
     return table_.keyEqual();
+  }
+
+  //// PUBLIC - F14 Extensions
+
+  // Get memory footprint, not including sizeof(*this).
+  std::size_t getAllocatedMemorySize() const {
+    return table_.getAllocatedMemorySize();
+  }
+
+  // Enumerates classes of allocated memory blocks currently owned
+  // by this table, calling visitor(allocationSize, allocationCount).
+  // This can be used to get a more accurate indication of memory footprint
+  // than getAllocatedMemorySize() if you have some way of computing the
+  // internal fragmentation of the allocator, such as JEMalloc's nallocx.
+  // The visitor might be called twice with the same allocationSize. The
+  // visitor's computation should produce the same result for visitor(8,
+  // 2) as for two calls to visitor(8, 1), for example.  The visitor may
+  // be called with a zero allocationCount.
+  template <typename V>
+  void visitAllocationClasses(V&& visitor) const {
+    return table_.visitAllocationClasses(visitor);
+  }
+
+  F14TableStats computeStats() const noexcept {
+    return table_.computeStats();
   }
 
  private:
@@ -812,7 +842,7 @@ class F14VectorSet
   template <typename BeforeDestroy>
   void eraseUnderlying(
       typename Policy::ItemIter underlying,
-      BeforeDestroy const& beforeDestroy) {
+      BeforeDestroy&& beforeDestroy) {
     Alloc& a = this->table_.alloc();
     auto values = this->table_.values_;
 
@@ -848,7 +878,7 @@ class F14VectorSet
 
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE iterator
-  eraseInto(const_iterator pos, BeforeDestroy const& beforeDestroy) {
+  eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
     auto underlying = this->table_.find(
         f14::detail::VectorContainerIndexSearch{this->table_.iterToIndex(pos)});
     eraseUnderlying(underlying, beforeDestroy);
@@ -859,7 +889,7 @@ class F14VectorSet
   iterator eraseInto(
       const_iterator first,
       const_iterator last,
-      BeforeDestroy const& beforeDestroy) {
+      BeforeDestroy&& beforeDestroy) {
     while (first != last) {
       first = eraseInto(first, beforeDestroy);
     }
@@ -867,9 +897,7 @@ class F14VectorSet
   }
 
   template <typename BeforeDestroy>
-  std::size_t eraseInto(
-      key_type const& key,
-      BeforeDestroy const& beforeDestroy) {
+  std::size_t eraseInto(key_type const& key, BeforeDestroy&& beforeDestroy) {
     auto underlying = this->table_.find(key);
     if (underlying.atEnd()) {
       return 0;
