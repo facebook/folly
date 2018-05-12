@@ -24,6 +24,7 @@
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
+#include <folly/executors/thread_factory/InitThreadFactory.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
 
@@ -445,6 +446,18 @@ TEST(PriorityThreadFactoryTest, ThreadPriority) {
   factory.newThread([&]() { actualPriority = getpriority(PRIO_PROCESS, 0); })
       .join();
   EXPECT_EQ(desiredPriority, actualPriority);
+}
+
+TEST(InitThreadFactoryTest, InitializerCalled) {
+  int initializerCalledCount = 0;
+  InitThreadFactory factory(
+      std::make_shared<NamedThreadFactory>("test"),
+      [&initializerCalledCount] { initializerCalledCount++; });
+  factory
+      .newThread(
+          [&initializerCalledCount]() { EXPECT_EQ(initializerCalledCount, 1); })
+      .join();
+  EXPECT_EQ(initializerCalledCount, 1);
 }
 
 class TestData : public folly::RequestData {
