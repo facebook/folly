@@ -819,8 +819,10 @@ class VectorContainerPolicy : public BasePolicy<
       AllocOrVoid,
       uint32_t>;
   using typename Super::Alloc;
+  using typename Super::Hasher;
   using typename Super::Item;
   using typename Super::ItemIter;
+  using typename Super::KeyEqual;
   using typename Super::Value;
 
  private:
@@ -862,14 +864,30 @@ class VectorContainerPolicy : public BasePolicy<
     return false;
   }
 
-  // inherit constructors
-  using Super::Super;
+  VectorContainerPolicy(
+      Hasher const& hasher,
+      KeyEqual const& keyEqual,
+      Alloc const& alloc)
+      : Super{hasher, keyEqual, alloc} {}
 
-  VectorContainerPolicy(VectorContainerPolicy const& rhs)
-      : Super{rhs}, values_{nullptr} {}
+  VectorContainerPolicy(VectorContainerPolicy const& rhs) : Super{rhs} {
+    // values_ will get allocated later to do the copy
+  }
+
+  VectorContainerPolicy(VectorContainerPolicy const& rhs, Alloc const& alloc)
+      : Super{rhs, alloc} {
+    // values_ will get allocated later to do the copy
+  }
 
   VectorContainerPolicy(VectorContainerPolicy&& rhs) noexcept
       : Super{std::move(rhs)}, values_{rhs.values_} {
+    rhs.values_ = nullptr;
+  }
+
+  VectorContainerPolicy(
+      VectorContainerPolicy&& rhs,
+      Alloc const& alloc) noexcept
+      : Super{std::move(rhs), alloc}, values_{rhs.values_} {
     rhs.values_ = nullptr;
   }
 

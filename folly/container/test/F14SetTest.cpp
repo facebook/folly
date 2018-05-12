@@ -49,18 +49,18 @@ namespace {
 template <
     template <typename, typename, typename, typename> class TSet,
     typename K>
-void testAllocatedMemorySize() {
+void runAllocatedMemorySizeTest() {
   using namespace folly::f14;
   using A = SwapTrackingAlloc<K>;
 
-  A::resetTracking();
+  resetTracking();
   TSet<K, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
-  EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
+  EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
 
   for (size_t i = 0; i < 1000; ++i) {
     m.insert(folly::to<K>(i));
     m.erase(folly::to<K>(i / 10 + 2));
-    EXPECT_EQ(A::getAllocatedMemorySize(), m.getAllocatedMemorySize());
+    EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
     std::size_t size = 0;
     std::size_t count = 0;
     m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
@@ -68,32 +68,32 @@ void testAllocatedMemorySize() {
       size += bytes * n;
       count += n;
     });
-    EXPECT_EQ(A::getAllocatedMemorySize(), size);
-    EXPECT_EQ(A::getAllocatedBlockCount(), count);
+    EXPECT_EQ(testAllocatedMemorySize, size);
+    EXPECT_EQ(testAllocatedBlockCount, count);
   }
 
   m = decltype(m){};
-  EXPECT_EQ(A::getAllocatedMemorySize(), 0);
-  EXPECT_EQ(A::getAllocatedBlockCount(), 0);
+  EXPECT_EQ(testAllocatedMemorySize, 0);
+  EXPECT_EQ(testAllocatedBlockCount, 0);
   m.visitAllocationClasses([](std::size_t, std::size_t n) { EXPECT_EQ(n, 0); });
 }
 
 template <typename K>
-void runAllocatedMemorySizeTest() {
-  testAllocatedMemorySize<folly::F14ValueSet, K>();
-  testAllocatedMemorySize<folly::F14NodeSet, K>();
-  testAllocatedMemorySize<folly::F14VectorSet, K>();
-  testAllocatedMemorySize<folly::F14FastSet, K>();
+void runAllocatedMemorySizeTests() {
+  runAllocatedMemorySizeTest<folly::F14ValueSet, K>();
+  runAllocatedMemorySizeTest<folly::F14NodeSet, K>();
+  runAllocatedMemorySizeTest<folly::F14VectorSet, K>();
+  runAllocatedMemorySizeTest<folly::F14FastSet, K>();
 }
 } // namespace
 
 TEST(F14Set, getAllocatedMemorySize) {
-  runAllocatedMemorySizeTest<bool>();
-  runAllocatedMemorySizeTest<int>();
-  runAllocatedMemorySizeTest<long>();
-  runAllocatedMemorySizeTest<long double>();
-  runAllocatedMemorySizeTest<std::string>();
-  runAllocatedMemorySizeTest<folly::fbstring>();
+  runAllocatedMemorySizeTests<bool>();
+  runAllocatedMemorySizeTests<int>();
+  runAllocatedMemorySizeTests<long>();
+  runAllocatedMemorySizeTests<long double>();
+  runAllocatedMemorySizeTests<std::string>();
+  runAllocatedMemorySizeTests<folly::fbstring>();
 }
 
 ///////////////////////////////////

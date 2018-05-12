@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
 #include <ostream>
 #include <vector>
 
@@ -124,6 +125,7 @@ struct Counts {
   uint64_t copyAssign{0};
   uint64_t moveAssign{0};
   uint64_t defaultConstruct{0};
+  uint64_t destroyed{0};
 
   explicit Counts(
       uint64_t copConstr = 0,
@@ -132,15 +134,23 @@ struct Counts {
       uint64_t movConv = 0,
       uint64_t copAssign = 0,
       uint64_t movAssign = 0,
-      uint64_t def = 0)
+      uint64_t def = 0,
+      uint64_t destr = 0)
       : copyConstruct{copConstr},
         moveConstruct{movConstr},
         copyConvert{copConv},
         moveConvert{movConv},
         copyAssign{copAssign},
         moveAssign{movAssign},
-        defaultConstruct{def} {}
+        defaultConstruct{def},
+        destroyed{destr} {}
 
+  int64_t liveCount() const {
+    return copyConstruct + moveConstruct + copyConvert + moveConvert +
+        defaultConstruct - destroyed;
+  }
+
+  // dist ignores destroyed count
   uint64_t dist(Counts const& rhs) const {
     auto d = [](uint64_t x, uint64_t y) { return (x - y) * (x - y); };
     return d(copyConstruct, rhs.copyConstruct) +
@@ -151,11 +161,7 @@ struct Counts {
   }
 
   bool operator==(Counts const& rhs) const {
-    return copyConstruct == rhs.copyConstruct &&
-        moveConstruct == rhs.moveConstruct && copyConvert == rhs.copyConvert &&
-        moveConvert == rhs.moveConvert && copyAssign == rhs.copyAssign &&
-        moveAssign == rhs.moveAssign &&
-        defaultConstruct == rhs.defaultConstruct;
+    return dist(rhs) == 0 && destroyed == rhs.destroyed;
   }
   bool operator!=(Counts const& rhs) const {
     return !(*this == rhs);
@@ -191,6 +197,10 @@ std::ostream& operator<<(std::ostream& xo, Counts const& counts) {
   }
   if (counts.defaultConstruct > 0) {
     xo << glue << counts.defaultConstruct << " default construct";
+    glue = ", ";
+  }
+  if (counts.destroyed > 0) {
+    xo << glue << counts.destroyed << " destroyed";
     glue = ", ";
   }
   xo << "]";
@@ -252,6 +262,11 @@ struct Tracked {
     counts.moveConvert++;
   }
 
+  ~Tracked() {
+    sumCounts.destroyed++;
+    counts.destroyed++;
+  }
+
   bool operator==(Tracked const& rhs) const {
     return val_ == rhs.val_;
   }
@@ -273,7 +288,21 @@ thread_local Counts Tracked<4>::counts{};
 template <>
 thread_local Counts Tracked<5>::counts{};
 
-void resetTracking() {
+thread_local size_t testAllocatedMemorySize{0};
+thread_local size_t testAllocatedBlockCount{0};
+thread_local size_t testAllocationCount{0};
+thread_local size_t testAllocationMaxCount{
+    std::numeric_limits<std::size_t>::max()};
+
+inline void limitTestAllocations(std::size_t allocationsBeforeException = 0) {
+  testAllocationMaxCount = testAllocationCount + allocationsBeforeException;
+}
+
+inline void unlimitTestAllocations() {
+  testAllocationMaxCount = std::numeric_limits<std::size_t>::max();
+}
+
+inline void resetTracking() {
   sumCounts = Counts{};
   Tracked<0>::counts = Counts{};
   Tracked<1>::counts = Counts{};
@@ -281,40 +310,11 @@ void resetTracking() {
   Tracked<3>::counts = Counts{};
   Tracked<4>::counts = Counts{};
   Tracked<5>::counts = Counts{};
+  testAllocatedMemorySize = 0;
+  testAllocatedBlockCount = 0;
+  testAllocationCount = 0;
+  testAllocationMaxCount = std::numeric_limits<std::size_t>::max();
 }
-
-std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
-  using f14::Histo;
-
-  xo << "{ " << std::endl;
-  xo << "  policy: " << folly::demangle(stats.policy) << std::endl;
-  xo << "  size: " << stats.size << std::endl;
-  xo << "  valueSize: " << stats.valueSize << std::endl;
-  xo << "  bucketCount: " << stats.bucketCount << std::endl;
-  xo << "  chunkCount: " << stats.chunkCount << std::endl;
-  xo << "  chunkOccupancyHisto" << Histo{stats.chunkOccupancyHisto}
-     << std::endl;
-  xo << "  chunkOutboundOverflowHisto"
-     << Histo{stats.chunkOutboundOverflowHisto} << std::endl;
-  xo << "  chunkHostedOverflowHisto" << Histo{stats.chunkHostedOverflowHisto}
-     << std::endl;
-  xo << "  keyProbeLengthHisto" << Histo{stats.keyProbeLengthHisto}
-     << std::endl;
-  xo << "  missProbeLengthHisto" << Histo{stats.missProbeLengthHisto}
-     << std::endl;
-  xo << "  totalBytes: " << stats.totalBytes << std::endl;
-  xo << "  valueBytes: " << (stats.size * stats.valueSize) << std::endl;
-  xo << "  overheadBytes: " << stats.overheadBytes << std::endl;
-  if (stats.size > 0) {
-    xo << "  overheadBytesPerKey: " << (stats.overheadBytes * 1.0 / stats.size)
-       << std::endl;
-  }
-  xo << "}";
-  return xo;
-}
-
-thread_local size_t allocatedMemorySize{0};
-thread_local size_t allocatedBlockCount{0};
 
 template <class T>
 class SwapTrackingAlloc {
@@ -356,27 +356,18 @@ class SwapTrackingAlloc {
     return *this;
   }
 
-  static size_t getAllocatedMemorySize() {
-    return allocatedMemorySize;
-  }
-
-  static size_t getAllocatedBlockCount() {
-    return allocatedBlockCount;
-  }
-
-  static void resetTracking() {
-    allocatedMemorySize = 0;
-    allocatedBlockCount = 0;
-  }
-
   T* allocate(size_t n) {
-    allocatedMemorySize += n * sizeof(T);
-    ++allocatedBlockCount;
+    if (testAllocationCount >= testAllocationMaxCount) {
+      throw std::bad_alloc();
+    }
+    ++testAllocationCount;
+    testAllocatedMemorySize += n * sizeof(T);
+    ++testAllocatedBlockCount;
     return a_.allocate(n);
   }
   void deallocate(T* p, size_t n) {
-    allocatedMemorySize -= n * sizeof(T);
-    --allocatedBlockCount;
+    testAllocatedMemorySize -= n * sizeof(T);
+    --testAllocatedBlockCount;
     a_.deallocate(p, n);
   }
 
@@ -404,6 +395,36 @@ bool operator==(SwapTrackingAlloc<T1> const&, SwapTrackingAlloc<T2> const&) {
 template <class T1, class T2>
 bool operator!=(SwapTrackingAlloc<T1> const&, SwapTrackingAlloc<T2> const&) {
   return false;
+}
+
+std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
+  using f14::Histo;
+
+  xo << "{ " << std::endl;
+  xo << "  policy: " << folly::demangle(stats.policy) << std::endl;
+  xo << "  size: " << stats.size << std::endl;
+  xo << "  valueSize: " << stats.valueSize << std::endl;
+  xo << "  bucketCount: " << stats.bucketCount << std::endl;
+  xo << "  chunkCount: " << stats.chunkCount << std::endl;
+  xo << "  chunkOccupancyHisto" << Histo{stats.chunkOccupancyHisto}
+     << std::endl;
+  xo << "  chunkOutboundOverflowHisto"
+     << Histo{stats.chunkOutboundOverflowHisto} << std::endl;
+  xo << "  chunkHostedOverflowHisto" << Histo{stats.chunkHostedOverflowHisto}
+     << std::endl;
+  xo << "  keyProbeLengthHisto" << Histo{stats.keyProbeLengthHisto}
+     << std::endl;
+  xo << "  missProbeLengthHisto" << Histo{stats.missProbeLengthHisto}
+     << std::endl;
+  xo << "  totalBytes: " << stats.totalBytes << std::endl;
+  xo << "  valueBytes: " << (stats.size * stats.valueSize) << std::endl;
+  xo << "  overheadBytes: " << stats.overheadBytes << std::endl;
+  if (stats.size > 0) {
+    xo << "  overheadBytesPerKey: " << (stats.overheadBytes * 1.0 / stats.size)
+       << std::endl;
+  }
+  xo << "}";
+  return xo;
 }
 
 } // namespace f14
