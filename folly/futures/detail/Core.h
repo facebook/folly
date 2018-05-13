@@ -208,11 +208,7 @@ class Core final {
 
   /// Called by a destructing Promise (in the Promise thread, by definition)
   void detachPromise() {
-    // detachPromise() and setResult() should never be called in parallel
-    // so we don't need to protect this.
-    if (UNLIKELY(!result_)) {
-      setResult(Try<T>(exception_wrapper(BrokenPromise(typeid(T).name()))));
-    }
+    DCHECK(result_);
     detachOne();
   }
 
@@ -282,6 +278,7 @@ class Core final {
 
   ~Core() {
     DCHECK(attached_ == 0);
+    DCHECK(result_);
   }
 
   // Helper class that stores a pointer to the `Core` object and calls

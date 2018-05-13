@@ -25,6 +25,18 @@
 
 namespace folly {
 
+namespace futures {
+namespace detail {
+template <typename T>
+void coreDetachPromiseMaybeWithResult(Core<T>& core) {
+  if (!core.hasResult()) {
+    core.setResult(Try<T>(exception_wrapper(BrokenPromise(typeid(T).name()))));
+  }
+  core.detachPromise();
+}
+} // namespace detail
+} // namespace futures
+
 template <class T>
 Promise<T> Promise<T>::makeEmpty() noexcept {
   return Promise<T>(futures::detail::EmptyConstruct{});
@@ -68,7 +80,7 @@ void Promise<T>::detach() {
     if (!retrieved_) {
       core_->detachFuture();
     }
-    core_->detachPromise();
+    futures::detail::coreDetachPromiseMaybeWithResult(*core_);
     core_ = nullptr;
   }
 }
