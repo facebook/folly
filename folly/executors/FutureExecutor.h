@@ -54,6 +54,35 @@ class FutureExecutor : public ExecutorImpl {
   }
 
   /*
+   * Given a function func that returns a Future<T>, adds that function to the
+   * contained Executor and returns a Future<T> which will be fulfilled with
+   * func's result once it has been executed.
+   *
+   * For example: auto f = futureExecutor.addFuture([](){
+   *                return doAsyncWorkAndReturnAFuture();
+   *              }, expiration, callBack);
+   */
+  template <typename F>
+  typename std::enable_if<
+      folly::isFuture<typename std::result_of<F()>::type>::value,
+      typename std::result_of<F()>::type>::type
+  addFuture( F func, 
+            std::chrono::milliseconds expiration,
+            Func expireCallback = nullptr) {
+    typedef typename std::result_of<F()>::type::value_type T;
+    folly::Promise<T> promise;
+    auto future = promise.getFuture();
+    ExecutorImpl::add(
+        [ promise = std::move(promise), func = std::move(func)]() mutable {
+          func().then([promise = std::move(promise)](
+              folly::Try<T> && t) mutable { promise.setTry(std::move(t)); });
+        }
+        , expiration, std::move(expireCallback) );
+    return future;
+  }
+
+
+  /*
    * Similar to addFuture above, but takes a func that returns some non-Future
    * type T.
    *
@@ -73,6 +102,35 @@ class FutureExecutor : public ExecutorImpl {
         [ promise = std::move(promise), func = std::move(func) ]() mutable {
           promise.setWith(std::move(func));
         });
+    return future;
+  }
+
+
+  /*
+   * Similar to addFuture above, but takes a func that returns some non-Future
+   * type T.
+   *
+   * For example: auto f = futureExecutor.addFuture([]() {
+   *                return 42;
+   *              }, expiration, callBack);
+   */
+  template <typename F>
+  typename std::enable_if<
+      !folly::isFuture<typename std::result_of<F()>::type>::value,
+      folly::Future<typename folly::Unit::Lift<
+          typename std::result_of<F()>::type>::type>>::type
+  addFuture( F func, 
+            std::chrono::milliseconds expiration,
+            Func expireCallback = nullptr) {
+    using T =
+        typename folly::Unit::Lift<typename std::result_of<F()>::type>::type;
+    folly::Promise<T> promise;
+    auto future = promise.getFuture();
+    ExecutorImpl::add(
+        [ promise = std::move(promise), func = std::move(func) ]() mutable {
+          promise.setWith(std::move(func));
+        }
+        , expiration, std::move(expireCallback) );
     return future;
   }
 };
