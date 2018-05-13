@@ -261,6 +261,29 @@ template <class T>
 FutureBase<T>::FutureBase(futures::detail::EmptyConstruct) noexcept
     : core_(nullptr) {}
 
+// MSVC 2017 Update 7 released with a bug that causes issues expanding to an
+// empty parameter pack when invoking a templated member function. It should
+// be fixed for MSVC 2017 Update 8.
+// TODO: Remove.
+namespace detail_msvc_15_7_workaround {
+template <bool isTry, typename State, typename T>
+decltype(auto) invoke(State& state, Try<T>& /* t */) {
+  return state.invoke();
+}
+template <bool isTry, typename State, typename T, typename Arg>
+decltype(auto) invoke(State& state, Try<T>& t) {
+  return state.invoke(t.template get<isTry, Arg>());
+}
+template <bool isTry, typename State, typename T>
+decltype(auto) tryInvoke(State& state, Try<T>& /* t */) {
+  return state.tryInvoke();
+}
+template <bool isTry, typename State, typename T, typename Arg>
+decltype(auto) tryInvoke(State& state, Try<T>& t) {
+  return state.tryInvoke(t.template get<isTry, Arg>());
+}
+} // namespace detail_msvc_15_7_workaround
+
 // then
 
 // Variant: returns a value
@@ -318,8 +341,10 @@ FutureBase<T>::thenImplementation(
         if (!isTry && t.hasException()) {
           state.setException(std::move(t.exception()));
         } else {
-          state.setTry(makeTryWith(
-              [&] { return state.invoke(t.template get<isTry, Args>()...); }));
+          state.setTry(makeTryWith([&] {
+            return detail_msvc_15_7_workaround::
+                invoke<isTry, decltype(state), T, Args...>(state, t);
+          }));
         }
       });
   return f;
@@ -369,7 +394,8 @@ FutureBase<T>::thenImplementation(
     } else {
       // Ensure that if function returned a SemiFuture we correctly chain
       // potential deferral.
-      auto tf2 = state.tryInvoke(t.template get<isTry, Args>()...);
+      auto tf2 = detail_msvc_15_7_workaround::
+          tryInvoke<isTry, decltype(state), T, Args...>(state, t);
       if (tf2.hasException()) {
         state.setException(std::move(tf2.exception()));
       } else {
