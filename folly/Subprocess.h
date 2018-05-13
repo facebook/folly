@@ -106,6 +106,7 @@
 #include <vector>
 
 #include <boost/container/flat_map.hpp>
+#include <boost/operators.hpp>
 
 #include <folly/Exception.h>
 #include <folly/File.h>

@@ -25,7 +25,6 @@
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/String.h>
 
-#include <boost/operators.hpp>
 #include <glog/logging.h>
 #include <algorithm>
 #include <array>
@@ -166,7 +165,7 @@ struct IsCharPointer<const char*> {
  * wouldn't.)
  */
 template <class Iter>
-class Range : private boost::totally_ordered<Range<Iter>> {
+class Range {
  public:
   typedef std::size_t size_type;
   typedef Iter iterator;
@@ -1082,8 +1081,28 @@ inline bool operator==(const Range<Iter>& lhs, const Range<Iter>& rhs) {
 }
 
 template <class Iter>
+inline bool operator!=(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return !(operator==(lhs, rhs));
+}
+
+template <class Iter>
 inline bool operator<(const Range<Iter>& lhs, const Range<Iter>& rhs) {
   return lhs.compare(rhs) < 0;
+}
+
+template <class Iter>
+inline bool operator<=(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.compare(rhs) <= 0;
+}
+
+template <class Iter>
+inline bool operator>(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.compare(rhs) > 0;
+}
+
+template <class Iter>
+inline bool operator>=(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.compare(rhs) >= 0;
 }
 
 /**
@@ -1111,6 +1130,15 @@ template <class T, class U>
 _t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
 operator==(const T& lhs, const U& rhs) {
   return StringPiece(lhs) == StringPiece(rhs);
+}
+
+/**
+ * operator!= through conversion for Range<const char*>
+ */
+template <class T, class U>
+_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
+operator!=(const T& lhs, const U& rhs) {
+  return StringPiece(lhs) != StringPiece(rhs);
 }
 
 /**
