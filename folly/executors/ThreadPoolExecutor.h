@@ -21,6 +21,7 @@
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
 #include <folly/io/async/Request.h>
+#include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
 
 #include <algorithm>
