@@ -661,7 +661,6 @@ libfolly_la_SOURCES = \
 	system/ThreadName.cpp \
 	Subprocess.cpp \
 	TimeoutQueue.cpp \
-	Try.cpp \
 	Uri.cpp \
 	experimental/ThreadedRepeatingFunctionRunner.cpp \
 	experimental/bser/Dump.cpp \

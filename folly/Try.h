@@ -22,6 +22,7 @@
 #include <folly/Unit.h>
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/Exception.h>
 #include <exception>
 #include <stdexcept>
 #include <type_traits>
@@ -38,11 +39,6 @@ class FOLLY_EXPORT UsingUninitializedTry : public TryException {
  public:
   UsingUninitializedTry() : TryException("Using uninitialized try") {}
 };
-
-namespace try_detail {
-[[noreturn]] void throwTryDoesNotContainException();
-[[noreturn]] void throwUsingUninitializedTry();
-} // namespace try_detail
 
 /*
  * Try<T> is a wrapper that contains either an instance of T, an exception, or
@@ -232,28 +228,28 @@ class Try {
 
   exception_wrapper& exception() & {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return e_;
   }
 
   exception_wrapper&& exception() && {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return std::move(e_);
   }
 
   const exception_wrapper& exception() const & {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return e_;
   }
 
   const exception_wrapper&& exception() const && {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return std::move(e_);
   }
@@ -415,28 +411,28 @@ class Try<void> {
    */
   exception_wrapper& exception() & {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return e_;
   }
 
   exception_wrapper&& exception() && {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return std::move(e_);
   }
 
   const exception_wrapper& exception() const & {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return e_;
   }
 
   const exception_wrapper&& exception() const && {
     if (!hasException()) {
-      try_detail::throwTryDoesNotContainException();
+      throw_exception<TryException>("Try does not contain an exception");
     }
     return std::move(e_);
   }
