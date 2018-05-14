@@ -38,6 +38,7 @@
 #include <folly/Unit.h>
 #include <folly/Utility.h>
 #include <folly/lang/ColdClass.h>
+#include <folly/lang/Exception.h>
 
 #define FOLLY_EXPECTED_ID(X) FB_CONCATENATE(FB_CONCATENATE(Folly, X), __LINE__)
 
@@ -620,7 +621,7 @@ struct ExpectedHelper {
     if (LIKELY(ex.which_ == expected_detail::Which::eValue)) {
       return Ret(static_cast<Yes&&>(yes)(static_cast<This&&>(ex).value()));
     }
-    throw static_cast<No&&>(no)(static_cast<This&&>(ex).error());
+    throw_exception(static_cast<No&&>(no)(static_cast<This&&>(ex).error()));
   }
 
   template <
@@ -635,8 +636,8 @@ struct ExpectedHelper {
       return Ret(static_cast<Yes&&>(yes)(static_cast<This&&>(ex).value()));
     }
     static_cast<No&&>(no)(ex.error());
-    throw typename Unexpected<ExpectedErrorType<This>>::MakeBadExpectedAccess()(
-        static_cast<This&&>(ex).error());
+    typename Unexpected<ExpectedErrorType<This>>::MakeBadExpectedAccess bad;
+    throw_exception(bad(static_cast<This&&>(ex).error()));
   }
   FOLLY_POP_WARNING
 };
@@ -664,8 +665,6 @@ class FOLLY_EXPORT BadExpectedAccess : public std::logic_error {
 };
 
 namespace expected_detail {
-
-[[noreturn]] void throwBadExpectedAccess();
 
 } // namespace expected_detail
 
@@ -1065,7 +1064,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   void swap(Expected& that) noexcept(
       expected_detail::StrictAllOf<IsNothrowSwappable, Value, Error>::value) {
     if (this->uninitializedByException() || that.uninitializedByException()) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
     using std::swap;
     if (*this) {
@@ -1205,7 +1204,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
           std::declval<const Base&>(),
           std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
     return expected_detail::ExpectedHelper::then_(
         base(), static_cast<Fns&&>(fns)...);
@@ -1216,7 +1215,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
       std::declval<Base&>(),
       std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
     return expected_detail::ExpectedHelper::then_(
         base(), static_cast<Fns&&>(fns)...);
@@ -1227,7 +1226,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
       std::declval<Base&&>(),
       std::declval<Fns>()...)) {
     if (this->uninitializedByException()) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
     return expected_detail::ExpectedHelper::then_(
         std::move(base()), static_cast<Fns&&>(fns)...);
@@ -1241,7 +1240,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
       std::declval<Yes>()(std::declval<const Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<const Value&>()));
     if (this->uninitializedByException()) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
     return Ret(expected_detail::ExpectedHelper::thenOrThrow_(
         base(), static_cast<Yes&&>(yes), static_cast<No&&>(no)));
@@ -1252,7 +1251,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
       std::declval<Yes>()(std::declval<Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&>()));
     if (this->uninitializedByException()) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
     return Ret(expected_detail::ExpectedHelper::thenOrThrow_(
         base(), static_cast<Yes&&>(yes), static_cast<No&&>(no)));
@@ -1263,7 +1262,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
       std::declval<Yes>()(std::declval<Value&&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&&>()));
     if (this->uninitializedByException()) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
     return Ret(expected_detail::ExpectedHelper::thenOrThrow_(
         std::move(base()), static_cast<Yes&&>(yes), static_cast<No&&>(no)));
@@ -1273,15 +1272,16 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   void requireValue() const {
     if (UNLIKELY(!hasValue())) {
       if (LIKELY(hasError())) {
-        throw typename Unexpected<Error>::BadExpectedAccess(this->error_);
+        using Err = typename Unexpected<Error>::BadExpectedAccess;
+        throw_exception<Err>(this->error_);
       }
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
   }
 
   void requireError() const {
     if (UNLIKELY(!hasError())) {
-      expected_detail::throwBadExpectedAccess();
+      throw_exception<BadExpectedAccess>();
     }
   }
 
@@ -1296,7 +1296,7 @@ operator==(
     const Expected<Value, Error>& lhs,
     const Expected<Value, Error>& rhs) {
   if (UNLIKELY(lhs.uninitializedByException())) {
-    expected_detail::throwBadExpectedAccess();
+    throw_exception<BadExpectedAccess>();
   }
   if (UNLIKELY(lhs.which_ != rhs.which_)) {
     return false;
@@ -1323,7 +1323,7 @@ operator<(
     const Expected<Value, Error>& rhs) {
   if (UNLIKELY(
           lhs.uninitializedByException() || rhs.uninitializedByException())) {
-    expected_detail::throwBadExpectedAccess();
+    throw_exception<BadExpectedAccess>();
   }
   if (UNLIKELY(lhs.hasError())) {
     return !rhs.hasError();
