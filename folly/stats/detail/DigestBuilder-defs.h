@@ -25,6 +25,8 @@
 namespace folly {
 namespace detail {
 
+static FOLLY_TLS uint32_t tls_lastCpuBufferSlot = 0;
+
 template <typename DigestT>
 DigestBuilder<DigestT>::DigestBuilder(size_t bufferSize, size_t digestSize)
     : bufferSize_(bufferSize), digestSize_(digestSize) {
@@ -71,17 +73,22 @@ DigestT DigestBuilder<DigestT>::build() {
 
 template <typename DigestT>
 void DigestBuilder<DigestT>::append(double value) {
-  auto which = AccessSpreader<>::current(cpuLocalBuffers_.size());
-  auto& cpuLocalBuf = cpuLocalBuffers_[which];
-  SpinLockGuard g(cpuLocalBuf.mutex);
-  cpuLocalBuf.buffer.push_back(value);
-  if (cpuLocalBuf.buffer.size() == bufferSize_) {
-    std::sort(cpuLocalBuf.buffer.begin(), cpuLocalBuf.buffer.end());
-    if (!cpuLocalBuf.digest) {
-      cpuLocalBuf.digest = std::make_unique<DigestT>(digestSize_);
+  auto& which = tls_lastCpuBufferSlot;
+  auto cpuLocalBuf = &cpuLocalBuffers_[which];
+  std::unique_lock<SpinLock> g(cpuLocalBuf->mutex, std::try_to_lock_t());
+  if (!g.owns_lock()) {
+    which = AccessSpreader<>::current(cpuLocalBuffers_.size());
+    cpuLocalBuf = &cpuLocalBuffers_[which];
+    g = std::unique_lock<SpinLock>(cpuLocalBuf->mutex);
+  }
+  cpuLocalBuf->buffer.push_back(value);
+  if (cpuLocalBuf->buffer.size() == bufferSize_) {
+    std::sort(cpuLocalBuf->buffer.begin(), cpuLocalBuf->buffer.end());
+    if (!cpuLocalBuf->digest) {
+      cpuLocalBuf->digest = std::make_unique<DigestT>(digestSize_);
     }
-    *cpuLocalBuf.digest = cpuLocalBuf.digest->merge(cpuLocalBuf.buffer);
-    cpuLocalBuf.buffer.clear();
+    *cpuLocalBuf->digest = cpuLocalBuf->digest->merge(cpuLocalBuf->buffer);
+    cpuLocalBuf->buffer.clear();
   }
 }
 

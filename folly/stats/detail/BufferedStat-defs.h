@@ -36,7 +36,7 @@ BufferedStat<DigestT, ClockT>::BufferedStat(
 
 template <typename DigestT, typename ClockT>
 void BufferedStat<DigestT, ClockT>::append(double value, TimePoint now) {
-  if (UNLIKELY(now > expiry_.load(std::memory_order_acquire).tp)) {
+  if (UNLIKELY(now > expiry_.load(std::memory_order_relaxed).tp)) {
     std::unique_lock<SharedMutex> g(mutex_, std::try_to_lock_t());
     if (g.owns_lock()) {
       doUpdate(now, g);
@@ -69,10 +69,10 @@ void BufferedStat<DigestT, ClockT>::doUpdate(
     const std::unique_lock<SharedMutex>& g) {
   DCHECK(g.owns_lock());
   // Check that no other thread has performed the slide after the check
-  auto oldExpiry = expiry_.load(std::memory_order_acquire).tp;
+  auto oldExpiry = expiry_.load(std::memory_order_relaxed).tp;
   if (now > oldExpiry) {
     now = roundUp(now);
-    expiry_.store(TimePointHolder(now), std::memory_order_release);
+    expiry_.store(TimePointHolder(now), std::memory_order_relaxed);
     onNewDigest(digestBuilder_.build(), now, oldExpiry, g);
   }
 }
