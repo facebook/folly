@@ -30,10 +30,14 @@
 #include <folly/logging/Init.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/logging/xlog.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/ThreadId.h>
+#include <folly/system/ThreadName.h>
+#include <folly/test/TestUtils.h>
 
 DEFINE_string(logging, "", "folly::logging configuration");
 DEFINE_int64(
@@ -65,8 +69,9 @@ DEFINE_int64(
 using namespace folly;
 using namespace std::literals::chrono_literals;
 using folly::test::TemporaryFile;
-using std::chrono::steady_clock;
 using std::chrono::milliseconds;
+using std::chrono::steady_clock;
+using testing::ContainsRegex;
 
 TEST(AsyncFileWriter, noMessages) {
   TemporaryFile tmpFile{"logging_test"};
@@ -162,7 +167,7 @@ TEST(AsyncFileWriter, ioError) {
   for (const auto& msg : logErrors) {
     EXPECT_THAT(
         msg,
-        testing::ContainsRegex(
+        ContainsRegex(
             "error writing to log file .* in AsyncFileWriter.*: " +
             kExpectedErrorMessage));
   }
@@ -610,6 +615,192 @@ TEST(AsyncFileWriter, discard) {
   readStats.clearSleepDuration();
   reader.join();
   readStats.check();
+}
+
+/**
+ * Test that AsyncFileWriter operates correctly after a fork() in both the
+ * parent and child processes.
+ */
+TEST(AsyncFileWriter, fork) {
+#if FOLLY_HAVE_PTHREAD_ATFORK
+  TemporaryFile tmpFile{"logging_test"};
+
+  // The number of messages to send before the fork and from each process
+  constexpr size_t numMessages = 10;
+  constexpr size_t numBgThreads = 2;
+
+  // This can be increased to add some delay in the parent and child messages
+  // so that they are likely to be interleaved in the log rather than grouped
+  // together.  This doesn't really affect the test behavior or correctness
+  // otherwise, though.
+  constexpr milliseconds sleepDuration(0);
+
+  {
+    AsyncFileWriter writer{folly::File{tmpFile.fd(), false}};
+    writer.writeMessage(folly::to<std::string>("parent pid=", getpid(), "\n"));
+
+    // Start some background threads just to exercise the behavior
+    // when other threads are also logging to the writer when the fork occurs
+    std::vector<std::thread> bgThreads;
+    std::atomic<bool> stop{false};
+    for (size_t n = 0; n < numBgThreads; ++n) {
+      bgThreads.emplace_back([&] {
+        size_t iter = 0;
+        while (!stop) {
+          writer.writeMessage(
+              folly::to<std::string>("bgthread_", getpid(), "_", iter, "\n"));
+          ++iter;
+        }
+      });
+    }
+
+    for (size_t n = 0; n < numMessages; ++n) {
+      writer.writeMessage(folly::to<std::string>("prefork", n, "\n"));
+    }
+
+    auto pid = fork();
+    folly::checkUnixError(pid, "failed to fork");
+    if (pid == 0) {
+      writer.writeMessage(folly::to<std::string>("child pid=", getpid(), "\n"));
+      for (size_t n = 0; n < numMessages; ++n) {
+        writer.writeMessage(folly::to<std::string>("child", n, "\n"));
+        std::this_thread::sleep_for(sleepDuration);
+      }
+
+      // Use _exit() rather than exit() in the child, purely to prevent
+      // ASAN from complaining that we leak memory for the background threads.
+      // (These threads don't actually exist in the child, so it is difficult
+      // to clean up their allocated state entirely.)
+      //
+      // Explicitly flush the writer since exiting with _exit() won't do this
+      // automatically.
+      writer.flush();
+      _exit(0);
+    }
+
+    for (size_t n = 0; n < numMessages; ++n) {
+      writer.writeMessage(folly::to<std::string>("parent", n, "\n"));
+      std::this_thread::sleep_for(sleepDuration);
+    }
+
+    // Stop the background threads.
+    stop = true;
+    for (auto& t : bgThreads) {
+      t.join();
+    }
+
+    int status;
+    auto waited = waitpid(pid, &status, 0);
+    folly::checkUnixError(waited, "failed to wait on child");
+    ASSERT_EQ(waited, pid);
+  }
+
+  // Read back the logged messages
+  tmpFile.close();
+  std::string data;
+  auto ret = folly::readFile(tmpFile.path().string().c_str(), data);
+  ASSERT_TRUE(ret) << "failed to read log file";
+
+  XLOG(DBG1) << "log contents:\n" << data;
+
+  // The log file should contain all of the messages we wrote, from both the
+  // parent and child processes.
+  for (size_t n = 0; n < numMessages; ++n) {
+    EXPECT_THAT(
+        data, ContainsRegex(folly::to<std::string>("prefork", n, "\n")));
+    EXPECT_THAT(data, ContainsRegex(folly::to<std::string>("parent", n, "\n")));
+    EXPECT_THAT(data, ContainsRegex(folly::to<std::string>("child", n, "\n")));
+  }
+#else
+  SKIP() << "pthread_atfork() is not supported on this platform";
+#endif // FOLLY_HAVE_PTHREAD_ATFORK
+}
+
+/**
+ * Have several threads concurrently performing fork() calls while several
+ * other threads continuously create and destroy AsyncFileWriter objects.
+ *
+ * This exercises the synchronization around registration of the AtFork
+ * handlers and the creation/destruction of the AsyncFileWriter I/O thread.
+ */
+TEST(AsyncFileWriter, crazyForks) {
+#if FOLLY_HAVE_PTHREAD_ATFORK
+  constexpr size_t numAsyncWriterThreads = 10;
+  constexpr size_t numForkThreads = 5;
+  constexpr size_t numForkIterations = 20;
+  std::atomic<bool> stop{false};
+
+  // Spawn several threads that continuously create and destroy
+  // AsyncFileWriter objects.
+  std::vector<std::thread> asyncWriterThreads;
+  for (size_t n = 0; n < numAsyncWriterThreads; ++n) {
+    asyncWriterThreads.emplace_back([n, &stop] {
+      folly::setThreadName(folly::to<std::string>("async_", n));
+
+      TemporaryFile tmpFile{"logging_test"};
+      while (!stop) {
+        // Create an AsyncFileWriter, write a message to it, then destroy it.
+        AsyncFileWriter writer{folly::File{tmpFile.fd(), false}};
+        writer.writeMessage(folly::to<std::string>(
+            "async thread ", folly::getOSThreadID(), "\n"));
+      }
+    });
+  }
+
+  // Spawn several threads that repeatedly fork.
+  std::vector<std::thread> forkThreads;
+  std::mutex forkStartMutex;
+  std::condition_variable forkStartCV;
+  bool forkStart = false;
+  for (size_t n = 0; n < numForkThreads; ++n) {
+    forkThreads.emplace_back([n, &forkStartMutex, &forkStartCV, &forkStart] {
+      folly::setThreadName(folly::to<std::string>("fork_", n));
+
+      // Wait until forkStart is set just to have a better chance of all the
+      // fork threads running simultaneously.
+      {
+        std::unique_lock<std::mutex> l(forkStartMutex);
+        forkStartCV.wait(l, [&forkStart] { return forkStart; });
+      }
+
+      for (size_t i = 0; i < numForkIterations; ++i) {
+        XLOG(DBG3) << "fork " << n << ":" << i;
+        auto pid = fork();
+        folly::checkUnixError(pid, "forkFailed");
+        if (pid == 0) {
+          XLOG(DBG3) << "child " << getpid();
+          _exit(0);
+        }
+
+        // parent
+        int status;
+        auto waited = waitpid(pid, &status, 0);
+        folly::checkUnixError(waited, "failed to wait on child");
+        EXPECT_EQ(waited, pid);
+      }
+    });
+  }
+
+  // Kick off the fork threads
+  {
+    std::unique_lock<std::mutex> l(forkStartMutex);
+    forkStart = true;
+  }
+  forkStartCV.notify_all();
+
+  // Wait for the fork threads to finish
+  for (auto& t : forkThreads) {
+    t.join();
+  }
+
+  // Stop and wait for the AsyncFileWriter threads
+  stop = true;
+  for (auto& t : asyncWriterThreads) {
+    t.join();
+  }
+#else
+  SKIP() << "pthread_atfork() is not supported on this platform";
+#endif // FOLLY_HAVE_PTHREAD_ATFORK
 }
 
 int main(int argc, char* argv[]) {

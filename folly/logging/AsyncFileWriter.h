@@ -95,6 +95,23 @@ class AsyncFileWriter : public LogWriter {
   }
 
  private:
+  enum Flags : uint32_t {
+    // FLAG_IO_THREAD_STARTED indicates that the constructor has started the
+    // I/O thread.
+    FLAG_IO_THREAD_STARTED = 0x01,
+    // FLAG_DESTROYING indicates that the destructor is running and destroying
+    // the I/O thread.
+    FLAG_DESTROYING = 0x02,
+    // FLAG_STOP indicates that the I/O thread has been asked to stop.
+    // This is set either by the destructor or by preFork()
+    FLAG_STOP = 0x04,
+    // FLAG_IO_THREAD_STOPPED indicates that the I/O thread is about to return
+    // and can now be joined.  ioCV_ will be signalled when this flag is set.
+    FLAG_IO_THREAD_STOPPED = 0x08,
+    // FLAG_IO_THREAD_JOINED indicates that the I/O thread has been joined.
+    FLAG_IO_THREAD_JOINED = 0x10,
+  };
+
   /*
    * A simple implementation using two queues.
    * All writer threads enqueue into one queue while the I/O thread is
@@ -105,12 +122,12 @@ class AsyncFileWriter : public LogWriter {
    */
   struct Data {
     std::array<std::vector<std::string>, 2> queues;
-    bool stop{false};
-    bool ioThreadDone{false};
+    uint32_t flags{0};
     uint64_t ioThreadCounter{0};
     size_t maxBufferBytes{kDefaultMaxBufferSize};
     size_t currentBufferSize{0};
     size_t numDiscarded{0};
+    std::thread ioThread;
 
     std::vector<std::string>* getCurrentQueue() {
       return &queues[ioThreadCounter & 0x1];
@@ -118,10 +135,18 @@ class AsyncFileWriter : public LogWriter {
   };
 
   void ioThread();
-  void performIO(std::vector<std::string>* ioQueue);
+  void performIO(std::vector<std::string>* ioQueue, size_t numDiscarded);
 
   void onIoError(const std::exception& ex);
   std::string getNumDiscardedMsg(size_t numDiscarded);
+
+  bool preFork();
+  void postForkParent();
+  void postForkChild();
+  void stopIoThread(
+      folly::Synchronized<Data, std::mutex>::LockedPtr& data,
+      uint32_t extraFlags);
+  void restartThread();
 
   folly::File file_;
   folly::Synchronized<Data, std::mutex> data_;
@@ -137,11 +162,11 @@ class AsyncFileWriter : public LogWriter {
   std::condition_variable ioCV_;
 
   /**
-   * The I/O thread.
-   *
-   * This should come last, since all other member variables need to be
-   * constructed before the I/O thread starts.
+   * lockedData_ exists only to help pass the lock between preFork() and
+   * postForkParent()/postForkChild().  We potentially could add some new
+   * low-level methods to Synchronized to allow manually locking and unlocking
+   * to avoid having to store this object as a member variable.
    */
-  std::thread ioThread_;
+  folly::Synchronized<Data, std::mutex>::LockedPtr lockedData_;
 };
 } // namespace folly
