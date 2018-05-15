@@ -191,22 +191,22 @@ T const&& FutureBase<T>::value() const&& {
 
 template <class T>
 Try<T>& FutureBase<T>::result() & {
-  return getCore().getTry();
+  return getCoreTryChecked();
 }
 
 template <class T>
 Try<T> const& FutureBase<T>::result() const& {
-  return getCore().getTry();
+  return getCoreTryChecked();
 }
 
 template <class T>
 Try<T>&& FutureBase<T>::result() && {
-  return std::move(getCore().getTry());
+  return std::move(getCoreTryChecked());
 }
 
 template <class T>
 Try<T> const&& FutureBase<T>::result() const&& {
-  return std::move(getCore().getTry());
+  return std::move(getCoreTryChecked());
 }
 
 template <class T>

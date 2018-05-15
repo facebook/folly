@@ -28,7 +28,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
 #include <folly/Utility.h>
-#include <folly/futures/FutureException.h>
 #include <folly/futures/detail/FSM.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
@@ -401,11 +400,8 @@ class Core final {
 
   template <typename Self>
   static decltype(auto) getTryImpl(Self& self) {
-    if (self.ready()) {
-      return *self.result_;
-    } else {
-      throwFutureNotReady();
-    }
+    assume(self.result_.has_value());
+    return self.result_.value();
   }
 
   folly::Function<void(Try<T>&&)> callback_;

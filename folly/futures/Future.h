@@ -188,6 +188,22 @@ class FutureBase {
     return *self.core_;
   }
 
+  Try<T>& getCoreTryChecked() {
+    return getCoreTryChecked(*this);
+  }
+  Try<T> const& getCoreTryChecked() const {
+    return getCoreTryChecked(*this);
+  }
+
+  template <typename Self>
+  static decltype(auto) getCoreTryChecked(Self& self) {
+    auto& core = self.getCore();
+    if (!core.hasResult()) {
+      throwFutureNotReady();
+    }
+    return core.getTry();
+  }
+
   // shared core state object
   // usually you should use `getCore()` instead of directly accessing `core_`.
   corePtr core_;
