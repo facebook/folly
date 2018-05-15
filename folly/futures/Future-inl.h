@@ -235,7 +235,7 @@ void FutureBase<T>::detach() {
 template <class T>
 void FutureBase<T>::throwIfInvalid() const {
   if (!core_) {
-    throwNoState();
+    throw_exception<NoState>();
   }
 }
 
@@ -721,7 +721,7 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 template <class T>
 Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
   if (!executor) {
-    throwNoExecutor();
+    throw_exception<NoExecutor>();
   }
 
   if (auto deferredExecutor = getDeferredExecutor()) {
@@ -1865,7 +1865,7 @@ Try<T> SemiFuture<T>::getTry(Duration dur) && {
   this->core_ = nullptr;
 
   if (!future.isReady()) {
-    throwTimedOut();
+    throw_exception<TimedOut>();
   }
   return std::move(std::move(future).getTry());
 }
@@ -1927,7 +1927,7 @@ template <class T>
 T Future<T>::get(Duration dur) {
   wait(dur);
   if (!this->isReady()) {
-    throwTimedOut();
+    throw_exception<TimedOut>();
   }
   return std::move(this->value());
 }
@@ -1946,7 +1946,7 @@ template <class T>
 T Future<T>::getVia(TimedDrivableExecutor* e, Duration dur) {
   waitVia(e, dur);
   if (!this->isReady()) {
-    throwTimedOut();
+    throw_exception<TimedOut>();
   }
   return std::move(value());
 }
@@ -1960,7 +1960,7 @@ template <class T>
 Try<T>& Future<T>::getTryVia(TimedDrivableExecutor* e, Duration dur) {
   waitVia(e, dur);
   if (!this->isReady()) {
-    throwTimedOut();
+    throw_exception<TimedOut>();
   }
   return result();
 }
@@ -1994,7 +1994,7 @@ Future<T> Future<T>::filter(F&& predicate) {
   return this->then([p = std::forward<F>(predicate)](T val) {
     T const& valConstRef = val;
     if (!p(valConstRef)) {
-      throwPredicateDoesNotObtain();
+      throw_exception<PredicateDoesNotObtain>();
     }
     return val;
   });

@@ -19,6 +19,7 @@
 #include <folly/Portability.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Promise.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 

@@ -550,7 +550,6 @@ libfolly_la_SOURCES = \
 	FingerprintTables.cpp \
 	futures/Barrier.cpp \
 	futures/Future.cpp \
-	futures/FutureException.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
 	futures/test/TestExecutor.cpp \
 	executors/CPUThreadPoolExecutor.cpp \

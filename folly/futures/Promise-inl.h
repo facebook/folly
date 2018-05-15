@@ -61,7 +61,7 @@ Promise<T>& Promise<T>::operator=(Promise<T>&& other) noexcept {
 template <class T>
 void Promise<T>::throwIfFulfilled() const {
   if (getCore().hasResult()) {
-    throwPromiseAlreadySatisfied();
+    throw_exception<PromiseAlreadySatisfied>();
   }
 }
 
@@ -88,7 +88,7 @@ void Promise<T>::detach() {
 template <class T>
 SemiFuture<T> Promise<T>::getSemiFuture() {
   if (retrieved_) {
-    throwFutureAlreadyRetrieved();
+    throw_exception<FutureAlreadyRetrieved>();
   }
   retrieved_ = true;
   return SemiFuture<T>(&getCore());

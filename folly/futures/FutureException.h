@@ -41,28 +41,20 @@ class FOLLY_EXPORT NoState : public FutureException {
   NoState() : FutureException("No state") {}
 };
 
-[[noreturn]] void throwNoState();
-
 class FOLLY_EXPORT PromiseAlreadySatisfied : public FutureException {
  public:
   PromiseAlreadySatisfied() : FutureException("Promise already satisfied") {}
 };
-
-[[noreturn]] void throwPromiseAlreadySatisfied();
 
 class FOLLY_EXPORT FutureNotReady : public FutureException {
  public:
   FutureNotReady() : FutureException("Future not ready") {}
 };
 
-[[noreturn]] void throwFutureNotReady();
-
 class FOLLY_EXPORT FutureAlreadyRetrieved : public FutureException {
  public:
   FutureAlreadyRetrieved() : FutureException("Future already retrieved") {}
 };
-
-[[noreturn]] void throwFutureAlreadyRetrieved();
 
 class FOLLY_EXPORT FutureCancellation : public FutureException {
  public:
@@ -74,31 +66,24 @@ class FOLLY_EXPORT TimedOut : public FutureException {
   TimedOut() : FutureException("Timed out") {}
 };
 
-[[noreturn]] void throwTimedOut();
-
 class FOLLY_EXPORT PredicateDoesNotObtain : public FutureException {
  public:
   PredicateDoesNotObtain() : FutureException("Predicate does not obtain") {}
 };
-
-[[noreturn]] void throwPredicateDoesNotObtain();
 
 class FOLLY_EXPORT NoFutureInSplitter : public FutureException {
  public:
   NoFutureInSplitter() : FutureException("No Future in this FutureSplitter") {}
 };
 
-[[noreturn]] void throwNoFutureInSplitter();
-
 class FOLLY_EXPORT NoTimekeeper : public FutureException {
  public:
   NoTimekeeper() : FutureException("No timekeeper available") {}
 };
 
-[[noreturn]] void throwNoExecutor();
-
 class FOLLY_EXPORT NoExecutor : public FutureException {
  public:
   NoExecutor() : FutureException("No executor provided to via") {}
 };
+
 } // namespace folly

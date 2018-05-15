@@ -18,6 +18,7 @@
 
 #include <folly/futures/Future.h>
 #include <folly/futures/SharedPromise.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -54,7 +55,7 @@ class FutureSplitter {
    */
   Future<T> getFuture() {
     if (promise_ == nullptr) {
-      throwNoFutureInSplitter();
+      throw_exception<NoFutureInSplitter>();
     }
     return promise_->getSemiFuture().via(e_);
   }
@@ -64,7 +65,7 @@ class FutureSplitter {
    */
   SemiFuture<T> getSemiFuture() {
     if (promise_ == nullptr) {
-      throwNoFutureInSplitter();
+      throw_exception<NoFutureInSplitter>();
     }
     return promise_->getSemiFuture();
   }

@@ -35,6 +35,7 @@
 #include <folly/executors/TimedDrivableExecutor.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
+#include <folly/lang/Exception.h>
 
 // boring predeclarations and details
 #include <folly/futures/Future-pre.h>
@@ -183,7 +184,7 @@ class FutureBase {
   template <typename Self>
   static decltype(auto) getCoreImpl(Self& self) {
     if (!self.core_) {
-      throwNoState();
+      throw_exception<NoState>();
     }
     return *self.core_;
   }
@@ -199,7 +200,7 @@ class FutureBase {
   static decltype(auto) getCoreTryChecked(Self& self) {
     auto& core = self.getCore();
     if (!core.hasResult()) {
-      throwFutureNotReady();
+      throw_exception<FutureNotReady>();
     }
     return core.getTry();
   }

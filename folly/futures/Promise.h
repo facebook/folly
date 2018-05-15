@@ -16,10 +16,12 @@
 
 #pragma once
 
+#include <functional>
+
 #include <folly/Portability.h>
 #include <folly/Try.h>
-#include <functional>
 #include <folly/futures/FutureException.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -153,7 +155,7 @@ class Promise {
   template <typename CoreT>
   static CoreT& getCoreImpl(CoreT* core) {
     if (!core) {
-      throwNoState();
+      throw_exception<NoState>();
     }
     return *core;
   }

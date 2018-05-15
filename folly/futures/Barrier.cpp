@@ -15,6 +15,7 @@
  */
 
 #include <folly/futures/Barrier.h>
+#include <folly/lang/Exception.h>
 
 namespace folly { namespace futures {
 
@@ -40,7 +41,7 @@ Barrier::~Barrier() {
 auto Barrier::allocateControlBlock() -> ControlBlock* {
   auto block = static_cast<ControlBlock*>(malloc(controlBlockSize(size_)));
   if (!block) {
-    throw std::bad_alloc();
+    throw_exception<std::bad_alloc>();
   }
   block->valueAndReaderCount = 0;
 
