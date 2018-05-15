@@ -109,26 +109,30 @@ TEST(RequestContext, testSetUnset) {
   ctx1->setContextData("test", std::make_unique<TestData>(10));
   auto testData1 = dynamic_cast<TestData*>(ctx1->getContextData("test"));
 
+  // onSet called in setContextData
+  EXPECT_EQ(1, testData1->set_);
+
   // Override RequestContext
   RequestContext::create();
   auto ctx2 = RequestContext::saveContext();
   ctx2->setContextData("test", std::make_unique<TestData>(20));
   auto testData2 = dynamic_cast<TestData*>(ctx2->getContextData("test"));
 
+  // onSet called in setContextData
+  EXPECT_EQ(1, testData2->set_);
+
   // Check ctx1->onUnset was called
-  EXPECT_EQ(0, testData1->set_);
   EXPECT_EQ(1, testData1->unset_);
 
   RequestContext::setContext(ctx1);
-  EXPECT_EQ(1, testData1->set_);
+  EXPECT_EQ(2, testData1->set_);
   EXPECT_EQ(1, testData1->unset_);
-  EXPECT_EQ(0, testData2->set_);
   EXPECT_EQ(1, testData2->unset_);
 
   RequestContext::setContext(ctx2);
-  EXPECT_EQ(1, testData1->set_);
+  EXPECT_EQ(2, testData1->set_);
   EXPECT_EQ(2, testData1->unset_);
-  EXPECT_EQ(1, testData2->set_);
+  EXPECT_EQ(2, testData2->set_);
   EXPECT_EQ(1, testData2->unset_);
 }
 

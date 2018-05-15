@@ -46,6 +46,7 @@ bool RequestContext::doSetContextData(
   if (conflict) {
     if (it->second) {
       if (it->second->hasCallback()) {
+        it->second->onUnset();
         wlock->callbackData_.erase(it->second.get());
       }
       it->second.reset(nullptr);
@@ -55,6 +56,7 @@ bool RequestContext::doSetContextData(
 
   if (data && data->hasCallback()) {
     wlock->callbackData_.insert(data.get());
+    data->onSet();
   }
   wlock->requestData_[val] = std::move(data);
 
@@ -128,6 +130,7 @@ void RequestContext::clearContextData(const std::string& val) {
 
     auto wlock = ulock.moveFromUpgradeToWrite();
     if (it->second && it->second->hasCallback()) {
+      it->second->onUnset();
       wlock->callbackData_.erase(it->second.get());
     }
 
