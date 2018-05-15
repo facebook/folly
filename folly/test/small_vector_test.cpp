@@ -52,7 +52,7 @@ static_assert(sizeof(small_vector<int32_t,1,uint32_t>) ==
 // Extra 2 bytes needed for alignment.
 static_assert(
     sizeof(small_vector<int32_t, 1, uint16_t>) == 8 + 2 + 2,
-    "small_vector<int32_t,1,uint32_t> is wrong size");
+    "small_vector<int32_t,1,uint16_t> is wrong size");
 static_assert(
     alignof(small_vector<int32_t, 1, uint16_t>) >= 4,
     "small_vector not aligned correctly");
@@ -60,7 +60,7 @@ static_assert(
 // Extra 3 bytes needed for alignment.
 static_assert(
     sizeof(small_vector<int32_t, 1, uint8_t>) == 8 + 1 + 3,
-    "small_vector<int32_t,1,uint32_t> is wrong size");
+    "small_vector<int32_t,1,uint8_t> is wrong size");
 static_assert(
     alignof(small_vector<int32_t, 1, uint8_t>) >= 4,
     "small_vector not aligned correctly");
