@@ -39,7 +39,6 @@
 #include <folly/system/ThreadName.h>
 #include <folly/test/TestUtils.h>
 
-DEFINE_string(logging, "", "folly::logging configuration");
 DEFINE_int64(
     async_discard_num_normal_writers,
     30,
@@ -801,12 +800,4 @@ TEST(AsyncFileWriter, crazyForks) {
 #else
   SKIP() << "pthread_atfork() is not supported on this platform";
 #endif // FOLLY_HAVE_PTHREAD_ATFORK
-}
-
-int main(int argc, char* argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
-  folly::initLoggingOrDie(FLAGS_logging);
-
-  return RUN_ALL_TESTS();
 }

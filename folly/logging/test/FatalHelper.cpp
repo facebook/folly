@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 #include <folly/init/Init.h>
-#include <folly/logging/Init.h>
 #include <folly/logging/xlog.h>
 #include <folly/portability/Stdlib.h>
-
-DEFINE_string(logging, "", "Logging category configuration string");
 
 DEFINE_string(
     category,
@@ -84,9 +81,7 @@ std::string fbLogFatalCheck() {
  * This is a simple helper program to exercise the LOG(FATAL) functionality.
  */
 int main(int argc, char* argv[]) {
-  // Call folly::init() and then initialize log levels and handlers
-  folly::init(&argc, &argv);
-  folly::initLoggingOrDie(FLAGS_logging);
+  auto init = folly::Init(&argc, &argv);
 
   // Do most of the work in a separate helper function.
   //

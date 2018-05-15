@@ -16,14 +16,10 @@
 #include <folly/init/Init.h>
 #include <folly/logging/Init.h>
 #include <folly/logging/xlog.h>
-#include <folly/portability/GFlags.h>
 
 #include <folly/logging/example/lib.h>
 
-DEFINE_string(logging, "", "Logging category configuration string");
-
 using namespace example;
-using folly::LogLevel;
 
 // Invoking code that uses XLOG() statements before main() is safe.
 // This will use default log settings defined by folly::initializeLoggerDB().
@@ -42,9 +38,10 @@ int main(int argc, char* argv[]) {
   XLOG(INFO) << "log messages less than WARNING will be ignored";
   XLOG(ERR) << "error messages before initLogging() will be logged to stderr";
 
-  // Call folly::init() and then initialize log levels and handlers
-  folly::init(&argc, &argv);
-  folly::initLoggingOrDie(FLAGS_logging);
+  // folly::Init() will automatically initialize the logging settings based on
+  // the FOLLY_INIT_LOGGING_CONFIG declaration above and the --logging command
+  // line flag.
+  auto init = folly::Init(&argc, &argv);
 
   // All XLOG() statements in this file will log to the category
   // folly.logging.example.main

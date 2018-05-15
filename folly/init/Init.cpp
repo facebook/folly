@@ -19,12 +19,15 @@
 #include <glog/logging.h>
 
 #include <folly/Singleton.h>
+#include <folly/logging/Init.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_USE_SYMBOLIZER
 #include <folly/experimental/symbolizer/SignalHandler.h> // @manual
 #endif
 #include <folly/portability/GFlags.h>
+
+DEFINE_string(logging, "", "Logging configuration");
 
 namespace folly {
 
@@ -43,6 +46,7 @@ void init(int* argc, char*** argv, bool removeFlags) {
 
   gflags::ParseCommandLineFlags(argc, argv, removeFlags);
 
+  folly::initLoggingOrDie(FLAGS_logging);
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
   google::InitGoogleLogging(programName);
 
