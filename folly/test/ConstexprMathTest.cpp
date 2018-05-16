@@ -17,9 +17,10 @@
 #include <folly/ConstexprMath.h>
 
 #include <folly/portability/GTest.h>
+#include <limits>
+#include <type_traits>
 
 namespace {
-
 class ConstexprMathTest : public testing::Test {};
 } // namespace
 
@@ -299,4 +300,109 @@ TEST_F(ConstexprMathTest, constexpr_sub_overflow_clamped) {
   constexpr auto v7 =
       folly::constexpr_sub_overflow_clamped(uint64_t(12), uint64_t(23));
   EXPECT_EQ(uint64_t(0), v7);
+}
+
+template <class F, class... Args>
+void for_each_argument(F&& f, Args&&... args) {
+  [](...) {}((f(std::forward<Args>(args)), 0)...);
+}
+
+// float -> integral clamp cast
+template <typename Src, typename Dst>
+static typename std::enable_if<std::is_floating_point<Src>::value, void>::type
+run_constexpr_clamp_cast_test(Src, Dst) {
+  constexpr auto kQuietNaN = std::numeric_limits<Src>::quiet_NaN();
+  constexpr auto kSignalingNaN = std::numeric_limits<Src>::signaling_NaN();
+  constexpr auto kPositiveInf = std::numeric_limits<Src>::infinity();
+  constexpr auto kNegativeInf = -kPositiveInf;
+
+  constexpr auto kDstMax = std::numeric_limits<Dst>::max();
+  constexpr auto kDstMin = std::numeric_limits<Dst>::min();
+
+  // Check f != f trick for identifying NaN.
+  EXPECT_TRUE(kQuietNaN != kQuietNaN);
+  EXPECT_TRUE(kSignalingNaN != kSignalingNaN);
+  EXPECT_FALSE(kPositiveInf != kPositiveInf);
+  EXPECT_FALSE(kNegativeInf != kNegativeInf);
+
+  // NaN -> 0
+  EXPECT_EQ(0, folly::constexpr_clamp_cast<Dst>(kQuietNaN));
+  EXPECT_EQ(0, folly::constexpr_clamp_cast<Dst>(kSignalingNaN));
+
+  // Inf -> Max/Min
+  EXPECT_EQ(kDstMax, folly::constexpr_clamp_cast<Dst>(kPositiveInf));
+  EXPECT_EQ(kDstMin, folly::constexpr_clamp_cast<Dst>(kNegativeInf));
+
+  // barely out of range -> Max/Min
+  EXPECT_EQ(kDstMax, folly::constexpr_clamp_cast<Dst>(Src(kDstMax) * 1.001));
+  EXPECT_EQ(kDstMin, folly::constexpr_clamp_cast<Dst>(Src(kDstMin) * 1.001));
+
+  // value in range -> same value
+  EXPECT_EQ(Dst(0), folly::constexpr_clamp_cast<Dst>(Src(0)));
+  EXPECT_EQ(Dst(123), folly::constexpr_clamp_cast<Dst>(Src(123)));
+}
+
+// integral -> integral clamp cast
+template <typename Src, typename Dst>
+static typename std::enable_if<std::is_integral<Src>::value, void>::type
+run_constexpr_clamp_cast_test(Src, Dst) {
+  constexpr auto kSrcMax = std::numeric_limits<Src>::max();
+  constexpr auto kSrcMin = std::numeric_limits<Src>::min();
+
+  constexpr auto kDstMax = std::numeric_limits<Dst>::max();
+  constexpr auto kDstMin = std::numeric_limits<Dst>::min();
+
+  // value in range -> same value
+  EXPECT_EQ(Dst(0), folly::constexpr_clamp_cast<Dst>(Src(0)));
+  EXPECT_EQ(Dst(123), folly::constexpr_clamp_cast<Dst>(Src(123)));
+
+  // int -> uint
+  if (std::is_signed<Src>::value && std::is_unsigned<Dst>::value) {
+    EXPECT_EQ(Dst(0), folly::constexpr_clamp_cast<Dst>(Src(-123)));
+  }
+
+  if (sizeof(Src) > sizeof(Dst)) {
+    // range clamping
+    EXPECT_EQ(kDstMax, folly::constexpr_clamp_cast<Dst>(kSrcMax));
+
+    // int -> int
+    if (std::is_signed<Src>::value && std::is_signed<Dst>::value) {
+      EXPECT_EQ(kDstMin, folly::constexpr_clamp_cast<Dst>(kSrcMin));
+    }
+
+  } else if (
+      std::is_unsigned<Src>::value && std::is_signed<Dst>::value &&
+      sizeof(Src) == sizeof(Dst)) {
+    // uint -> int, same size
+    EXPECT_EQ(kDstMax, folly::constexpr_clamp_cast<Dst>(kSrcMax));
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_clamp_cast) {
+  for_each_argument(
+      [](auto dst) {
+        for_each_argument(
+            [&](auto src) { run_constexpr_clamp_cast_test(src, dst); },
+            // source types
+            float(),
+            double(),
+            (long double)(0),
+            int8_t(),
+            uint8_t(),
+            int16_t(),
+            uint16_t(),
+            int32_t(),
+            uint32_t(),
+            int64_t(),
+            uint64_t());
+      },
+      // dst types
+      int8_t(),
+      uint8_t(),
+      int16_t(),
+      uint16_t(),
+      int32_t(),
+      uint32_t(),
+      int64_t(),
+      uint64_t());
 }
