@@ -201,12 +201,12 @@ class Core final {
   }
 
   /// Called by a destructing Future (in the Future thread, by definition)
-  void detachFuture() {
+  void detachFuture() noexcept {
     detachOne();
   }
 
   /// Called by a destructing Promise (in the Promise thread, by definition)
-  void detachPromise() {
+  void detachPromise() noexcept {
     DCHECK(result_);
     detachOne();
   }
