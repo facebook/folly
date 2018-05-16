@@ -137,46 +137,40 @@ CPUThreadPoolExecutor::getTaskQueue() {
   return taskQueue_.get();
 }
 
+// threadListLock_ must be writelocked.
 bool CPUThreadPoolExecutor::tryDecrToStop() {
-  while (true) {
-    auto toStop = threadsToStop_.load(std::memory_order_relaxed);
-    if (toStop <= 0) {
-      return false;
-    }
-    if (threadsToStop_.compare_exchange_strong(
-            toStop, toStop - 1, std::memory_order_relaxed)) {
-      return true;
-    }
+  auto toStop = threadsToStop_.load(std::memory_order_relaxed);
+  if (toStop <= 0) {
+    return false;
   }
+  threadsToStop_.store(toStop - 1, std::memory_order_relaxed);
+  return true;
 }
 
 bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
+  if (tryDecrToStop()) {
+    return true;
+  }
   if (task) {
-    if (!tryDecrToStop()) {
-      // Some other thread beat us to it.
+    return false;
+  } else {
+    // Try to stop based on idle thread timeout (try_take_for),
+    // if there are at least minThreads running.
+    if (!minActive()) {
       return false;
     }
-  } else {
-    {
-      SharedMutex::WriteHolder w{&threadListLock_};
-      // Try to stop based on idle thread timeout (try_take_for),
-      // if there are at least minThreads running.
-      if (!minActive()) {
-        return false;
-      }
-      // If this is based on idle thread timeout, then
-      // adjust vars appropriately (otherwise stop() or join()
-      // does this).
-      if (getPendingTaskCountImpl() > 0) {
-        return false;
-      }
-      activeThreads_.store(
-          activeThreads_.load(std::memory_order_relaxed) - 1,
-          std::memory_order_relaxed);
-      threadsToJoin_.store(
-          threadsToJoin_.load(std::memory_order_relaxed) + 1,
-          std::memory_order_relaxed);
+    // If this is based on idle thread timeout, then
+    // adjust vars appropriately (otherwise stop() or join()
+    // does this).
+    if (getPendingTaskCountImpl() > 0) {
+      return false;
     }
+    activeThreads_.store(
+        activeThreads_.load(std::memory_order_relaxed) - 1,
+        std::memory_order_relaxed);
+    threadsToJoin_.store(
+        threadsToJoin_.load(std::memory_order_relaxed) + 1,
+        std::memory_order_relaxed);
   }
   return true;
 }
@@ -190,12 +184,12 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     // Handle thread stopping, either by task timeout, or
     // by 'poison' task added in join() or stop().
     if (UNLIKELY(!task || task.value().poison)) {
+      // Actually remove the thread from the list.
+      SharedMutex::WriteHolder w{&threadListLock_};
       if (taskShouldStop(task)) {
         for (auto& o : observers_) {
           o->threadStopped(thread.get());
         }
-        // Actually remove the thread from the list.
-        SharedMutex::WriteHolder w{&threadListLock_};
         threadList_.remove(thread);
         stoppedThreads_.add(thread);
         return;
@@ -207,8 +201,8 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
     runTask(thread, std::move(task.value()));
 
     if (UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
+      SharedMutex::WriteHolder w{&threadListLock_};
       if (tryDecrToStop()) {
-        SharedMutex::WriteHolder w{&threadListLock_};
         threadList_.remove(thread);
         stoppedThreads_.add(thread);
         return;

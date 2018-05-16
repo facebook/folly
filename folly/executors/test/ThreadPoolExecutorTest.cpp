@@ -737,3 +737,15 @@ TEST(ThreadPoolExecutorTest, DynamicThreadAddRemoveRace) {
   e.join();
   EXPECT_EQ(count, 10000);
 }
+
+TEST(ThreadPoolExecutorTest, AddPerf) {
+  CPUThreadPoolExecutor e(
+      1000,
+      std::make_unique<
+          UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>>());
+  e.setThreadDeathTimeout(std::chrono::milliseconds(1));
+  for (int i = 0; i < 10000; i++) {
+    e.add([&]() { e.add([]() { /* sleep override */ usleep(1000); }); });
+  }
+  e.stop();
+}

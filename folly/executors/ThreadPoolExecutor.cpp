@@ -207,18 +207,15 @@ void ThreadPoolExecutor::joinStoppedThreads(size_t n) {
 }
 
 void ThreadPoolExecutor::stop() {
-  {
-    folly::SharedMutex::WriteHolder w{&threadListLock_};
-    maxThreads_.store(0, std::memory_order_release);
-    activeThreads_.store(0, std::memory_order_release);
-  }
-  ensureJoined();
-
   size_t n = 0;
   {
     SharedMutex::WriteHolder w{&threadListLock_};
+    maxThreads_.store(0, std::memory_order_release);
+    activeThreads_.store(0, std::memory_order_release);
     n = threadList_.get().size();
     removeThreads(n, false);
+    n += threadsToJoin_.load(std::memory_order_relaxed);
+    threadsToJoin_.store(0, std::memory_order_relaxed);
   }
   joinStoppedThreads(n);
   CHECK_EQ(0, threadList_.get().size());
@@ -226,18 +223,15 @@ void ThreadPoolExecutor::stop() {
 }
 
 void ThreadPoolExecutor::join() {
-  {
-    folly::SharedMutex::WriteHolder w{&threadListLock_};
-    maxThreads_.store(0, std::memory_order_release);
-    activeThreads_.store(0, std::memory_order_release);
-  }
-  ensureJoined();
-
   size_t n = 0;
   {
     SharedMutex::WriteHolder w{&threadListLock_};
+    maxThreads_.store(0, std::memory_order_release);
+    activeThreads_.store(0, std::memory_order_release);
     n = threadList_.get().size();
     removeThreads(n, true);
+    n += threadsToJoin_.load(std::memory_order_relaxed);
+    threadsToJoin_.store(std::memory_order_relaxed);
   }
   joinStoppedThreads(n);
   CHECK_EQ(0, threadList_.get().size());
@@ -378,7 +372,11 @@ void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
 void ThreadPoolExecutor::ensureJoined() {
   auto tojoin = threadsToJoin_.load(std::memory_order_relaxed);
   if (tojoin) {
-    tojoin = threadsToJoin_.exchange(0, std::memory_order_relaxed);
+    {
+      SharedMutex::WriteHolder w{&threadListLock_};
+      tojoin = threadsToJoin_.load(std::memory_order_relaxed);
+      threadsToJoin_.store(0, std::memory_order_relaxed);
+    }
     joinStoppedThreads(tojoin);
   }
 }
