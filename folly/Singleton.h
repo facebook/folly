@@ -314,6 +314,7 @@ struct SingletonHolder : public SingletonHolderBase {
   inline std::weak_ptr<T> get_weak();
   inline std::shared_ptr<T> try_get();
   inline folly::ReadMostlySharedPtr<T> try_get_fast();
+  inline void vivify();
 
   void registerSingleton(CreateFunc c, TeardownFunc t);
   void registerSingletonMock(CreateFunc c, TeardownFunc t);
@@ -588,6 +589,11 @@ class Singleton {
 
   static folly::ReadMostlySharedPtr<T> try_get_fast() {
     return getEntry().try_get_fast();
+  }
+
+  // Quickly ensure the instance exists.
+  static void vivify() {
+    getEntry().vivify();
   }
 
   explicit Singleton(std::nullptr_t /* _ */ = nullptr,

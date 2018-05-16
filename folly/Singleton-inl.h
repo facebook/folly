@@ -133,6 +133,15 @@ folly::ReadMostlySharedPtr<T> SingletonHolder<T>::try_get_fast() {
 }
 
 template <typename T>
+void SingletonHolder<T>::vivify() {
+  if (UNLIKELY(
+          state_.load(std::memory_order_relaxed) !=
+          SingletonHolderState::Living)) {
+    createInstance();
+  }
+}
+
+template <typename T>
 bool SingletonHolder<T>::hasLiveInstance() {
   return !instance_weak_.expired();
 }
