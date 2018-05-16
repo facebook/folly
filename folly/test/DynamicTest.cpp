@@ -16,6 +16,7 @@
 
 #include <folly/dynamic.h>
 
+#include <folly/json.h>
 #include <folly/portability/GTest.h>
 
 #include <boost/next_prior.hpp>
