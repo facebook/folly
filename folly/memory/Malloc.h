@@ -143,7 +143,6 @@ namespace folly {
 #define FOLLY_MALLOC_CHECKED_MALLOC
 #endif
 
-#include <folly/CPortability.h>
 /**
  * Determine if we are using jemalloc or not.
  */
