@@ -573,3 +573,11 @@ TEST_F(AsyncUDPSocketTest, TestNonExistentServerNoErrCb) {
   evb_.loopForever();
   EXPECT_FALSE(errRecvd);
 }
+
+TEST_F(AsyncUDPSocketTest, TestBound) {
+  AsyncUDPSocket socket(&evb_);
+  EXPECT_FALSE(socket.isBound());
+  folly::SocketAddress address("0.0.0.0", 0);
+  socket.bind(address);
+  EXPECT_TRUE(socket.isBound());
+}

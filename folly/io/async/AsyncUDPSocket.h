@@ -244,6 +244,10 @@ class AsyncUDPSocket : public EventHandler {
    */
   virtual int connect(const folly::SocketAddress& address);
 
+  virtual bool isBound() const {
+    return fd_ != -1;
+  }
+
  protected:
   virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
     return ::sendmsg(socket, message, flags);
