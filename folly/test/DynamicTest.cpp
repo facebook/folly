@@ -22,15 +22,6 @@
 
 using folly::dynamic;
 
-// This test runs without any external dependencies, including json.
-// This means that if there's a test failure, there's no way to print
-// a useful runtime representation of the folly::dynamic.  We will
-// live with this in order to test dependencies.  This method is
-// normally provided by json.cpp.
-void dynamic::print_as_pseudo_json(std::ostream& out) const {
-  out << "<folly::dynamic object of type " << type_ << ">";
-}
-
 TEST(Dynamic, Default) {
   dynamic obj;
   EXPECT_TRUE(obj.isNull());
