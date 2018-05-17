@@ -101,8 +101,9 @@ void CPUThreadPoolExecutor::add(
     Func func,
     std::chrono::milliseconds expiration,
     Func expireCallback) {
-  if (!taskQueue_->add(
-          CPUTask(std::move(func), expiration, std::move(expireCallback)))) {
+  auto result = taskQueue_->add(
+      CPUTask(std::move(func), expiration, std::move(expireCallback)));
+  if (!result.reusedThread) {
     ensureActiveThreads();
   }
 }
@@ -117,9 +118,10 @@ void CPUThreadPoolExecutor::add(
     std::chrono::milliseconds expiration,
     Func expireCallback) {
   CHECK(getNumPriorities() > 0);
-  if (!taskQueue_->addWithPriority(
-          CPUTask(std::move(func), expiration, std::move(expireCallback)),
-          priority)) {
+  auto result = taskQueue_->addWithPriority(
+      CPUTask(std::move(func), expiration, std::move(expireCallback)),
+      priority);
+  if (!result.reusedThread) {
     ensureActiveThreads();
   }
 }

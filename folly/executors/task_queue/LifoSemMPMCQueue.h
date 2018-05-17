@@ -28,7 +28,7 @@ class LifoSemMPMCQueue : public BlockingQueue<T> {
   // Note: The queue pre-allocates all memory for max_capacity
   explicit LifoSemMPMCQueue(size_t max_capacity) : queue_(max_capacity) {}
 
-  bool add(T item) override {
+  BlockingQueueAddResult add(T item) override {
     switch (kBehavior) { // static
       case QueueBehaviorIfFull::THROW:
         if (!queue_.write(std::move(item))) {

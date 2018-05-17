@@ -34,6 +34,11 @@ class FOLLY_EXPORT QueueFullException : public std::runtime_error {
   using std::runtime_error::runtime_error; // Inherit constructors.
 };
 
+struct BlockingQueueAddResult {
+  BlockingQueueAddResult(bool reused = false) : reusedThread(reused) {}
+  bool reusedThread;
+};
+
 template <class T>
 class BlockingQueue {
  public:
@@ -43,8 +48,10 @@ class BlockingQueue {
   // Returns true if an existing thread was able to work on it (used
   // for dynamically sizing thread pools), false otherwise.  Return false
   // if this feature is not supported.
-  virtual bool add(T item) = 0;
-  virtual bool addWithPriority(T item, int8_t /* priority */) {
+  virtual BlockingQueueAddResult add(T item) = 0;
+  virtual BlockingQueueAddResult addWithPriority(
+      T item,
+      int8_t /* priority */) {
     return add(std::move(item));
   }
   virtual uint8_t getNumPriorities() {

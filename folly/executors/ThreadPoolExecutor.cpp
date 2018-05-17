@@ -294,7 +294,7 @@ void ThreadPoolExecutor::subscribeToTaskStats(TaskStatsCallback cb) {
   taskStatsCallbacks_->callbackList.wlock()->push_back(std::move(cb));
 }
 
-bool ThreadPoolExecutor::StoppedThreadQueue::add(
+BlockingQueueAddResult ThreadPoolExecutor::StoppedThreadQueue::add(
     ThreadPoolExecutor::ThreadPtr item) {
   std::lock_guard<std::mutex> guard(mutex_);
   queue_.push(std::move(item));

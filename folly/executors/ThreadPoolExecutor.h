@@ -267,7 +267,7 @@ class ThreadPoolExecutor : public virtual folly::Executor {
 
   class StoppedThreadQueue : public BlockingQueue<ThreadPtr> {
    public:
-    bool add(ThreadPtr item) override;
+    BlockingQueueAddResult add(ThreadPtr item) override;
     ThreadPtr take() override;
     size_t size() override;
     folly::Optional<ThreadPtr> try_take_for(
