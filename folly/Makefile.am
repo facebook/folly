@@ -467,6 +467,13 @@ nobase_follyinclude_HEADERS = \
 	synchronization/AtomicStruct.h \
 	synchronization/Baton.h \
 	synchronization/CallOnce.h \
+	synchronization/Hazptr.h \
+	synchronization/Hazptr-fwd.h \
+	synchronization/HazptrDomain.h \
+	synchronization/HazptrHolder.h \
+	synchronization/HazptrObj.h \
+	synchronization/HazptrRec.h \
+	synchronization/HazptrThrLocal.h \
 	synchronization/LifoSem.h \
 	synchronization/MicroSpinLock.h \
 	synchronization/ParkingLot.h \
