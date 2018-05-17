@@ -120,9 +120,9 @@ void Promise<T>::setException(exception_wrapper ew) {
 }
 
 template <class T>
-void Promise<T>::setInterruptHandler(
-    std::function<void(exception_wrapper const&)> fn) {
-  getCore().setInterruptHandler(std::move(fn));
+template <typename F>
+void Promise<T>::setInterruptHandler(F&& fn) {
+  getCore().setInterruptHandler(std::forward<F>(fn));
 }
 
 template <class T>

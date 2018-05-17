@@ -93,7 +93,11 @@ class Promise {
   /// bother to set one then you probably will want to fulfill the promise with
   /// an exception (or special value) indicating how the interrupt was
   /// handled.
-  void setInterruptHandler(std::function<void(exception_wrapper const&)>);
+  ///
+  /// `fn` must be copyable and must be invocable with
+  ///   `exception_wrapper const&`
+  template <typename F>
+  void setInterruptHandler(F&& fn);
 
   /// Sugar to fulfill this Promise<Unit>
   template <class B = T>

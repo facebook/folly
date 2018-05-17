@@ -245,13 +245,14 @@ class Core final {
   }
 
   /// Call only from Promise thread
-  void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
+  template <typename F>
+  void setInterruptHandler(F&& fn) {
     std::lock_guard<SpinLock> lock(interruptLock_);
     if (!hasResult()) {
       if (interrupt_) {
-        fn(*interrupt_);
+        fn(as_const(*interrupt_));
       } else {
-        setInterruptHandlerNoLock(std::move(fn));
+        setInterruptHandlerNoLock(std::forward<F>(fn));
       }
     }
   }
