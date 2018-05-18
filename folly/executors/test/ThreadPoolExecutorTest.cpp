@@ -555,28 +555,6 @@ TEST(ThreadPoolExecutorTest, UnboundedBlockingQueueBugD3527722) {
   bugD3527722_test<UBQ<SlowMover>>();
 }
 
-template <typename TPE, typename ERR_T>
-static void ShutdownTest() {
-  // test that adding a .then() after we have
-  // started shutting down does not deadlock
-  folly::Optional<folly::Future<int>> f;
-  {
-    TPE fe(1);
-    f = folly::makeFuture().via(&fe).then([]() { burnMs(100)(); }).then([]() {
-      return 77;
-    });
-  }
-  EXPECT_THROW(f->get(), ERR_T);
-}
-
-TEST(ThreadPoolExecutorTest, ShutdownTestIO) {
-  ShutdownTest<IOThreadPoolExecutor, std::runtime_error>();
-}
-
-TEST(ThreadPoolExecutorTest, ShutdownTestCPU) {
-  ShutdownTest<CPUThreadPoolExecutor, folly::FutureException>();
-}
-
 template <typename TPE>
 static void removeThreadTest() {
   // test that adding a .then() after we have removed some threads
@@ -649,12 +627,13 @@ void keepAliveTest() {
   auto f =
       futures::sleep(std::chrono::milliseconds{100})
           .via(executor.get())
-          .then([keepAlive = getKeepAliveToken(executor.get())] { return 42; });
+          .then([keepAlive = getKeepAliveToken(executor.get())] { return 42; })
+          .semi();
 
   executor.reset();
 
   EXPECT_TRUE(f.isReady());
-  EXPECT_EQ(42, f.get());
+  EXPECT_EQ(42, std::move(f).get());
 }
 
 TEST(ThreadPoolExecutorTest, KeepAliveTestIO) {
