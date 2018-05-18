@@ -54,6 +54,7 @@ class hazptr_domain {
      calculations related to the value of rcount_. */
   Atom<int> hcount_{0};
   Atom<int> rcount_{0};
+  Atom<uint16_t> num_bulk_reclaims_{0};
 
  public:
   /** Constructor */
@@ -90,6 +91,7 @@ class hazptr_domain {
   /** cleanup */
   void cleanup() noexcept {
     relaxed_cleanup();
+    await_zero_bulk_reclaims(); // wait for concurrent bulk_reclaim-s
   }
 
  private:
@@ -200,6 +202,12 @@ class hazptr_domain {
     bulk_reclaim();
   }
 
+  void await_zero_bulk_reclaims() {
+    while (num_bulk_reclaims_.load(std::memory_order_acquire) > 0) {
+      std::this_thread::yield();
+    }
+  }
+
   void try_bulk_reclaim() {
     auto hc = hcount();
     auto rc = rcount();
@@ -216,6 +224,7 @@ class hazptr_domain {
   }
 
   void bulk_reclaim() {
+    num_bulk_reclaims_.fetch_add(1, std::memory_order_acquire);
     auto obj = retired_.exchange(nullptr, std::memory_order_acquire);
     /*** Full fence ***/ asymmetricHeavyBarrier(AMBFlags::EXPEDITED);
     auto rec = hazptrs_.load(std::memory_order_acquire);
@@ -226,6 +235,7 @@ class hazptr_domain {
     }
     /* Part 2 - for each retired object, reclaim if no match */
     bulk_lookup_and_reclaim(obj, hashset);
+    num_bulk_reclaims_.fetch_sub(1, std::memory_order_release);
   }
 
   void bulk_lookup_and_reclaim(
