@@ -342,7 +342,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /**
    * Defer work to run on the consumer of the future.
    * Function must take a Try as a parameter.
-   * This work will be run eithe ron an executor that the caller sets on the
+   * This work will be run either on an executor that the caller sets on the
    * SemiFuture, or inline with the call to .get().
    * NB: This is a custom method because boost-blocking executors is a
    * special-case for work deferral in folly. With more general boost-blocking
