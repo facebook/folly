@@ -42,20 +42,17 @@ namespace detail {
 /*
         OnlyCallback
        /            \
-  Start              Armed - Done
+  Start              Done
        \            /
          OnlyResult
 
 This state machine is fairly self-explanatory. The most important bit is
-that the callback is only executed on the transition from Armed to Done,
-and that transition happens immediately after transitioning from Only*
-to Armed.
+that the callback is only executed just after the transition from Only* to Done.
 */
 enum class State : uint8_t {
   Start,
   OnlyResult,
   OnlyCallback,
-  Armed,
   Done,
 };
 
@@ -116,7 +113,6 @@ class Core final {
   bool hasResult() const noexcept {
     switch (fsm_.getState()) {
       case State::OnlyResult:
-      case State::Armed:
       case State::Done:
         assert(!!result_);
         return true;
@@ -142,7 +138,6 @@ class Core final {
   /// Call only from Future thread.
   template <typename F>
   void setCallback(F&& func) {
-    bool transitionToArmed = false;
     auto setCallback_ = [&]{
       context_ = RequestContext::saveContext();
       callback_ = std::forward<F>(func);
@@ -154,28 +149,19 @@ class Core final {
           return fsm_.tryUpdateState(state, State::OnlyCallback, setCallback_);
 
         case State::OnlyResult:
-          return fsm_.tryUpdateState(state, State::Armed, setCallback_, [&] {
-            transitionToArmed = true;
-          });
+          return fsm_.tryUpdateState(
+              state, State::Done, setCallback_, [&] { doCallback(); });
 
         case State::OnlyCallback:
-        case State::Armed:
         case State::Done:
           throw_exception<std::logic_error>("setCallback called twice");
       }
       assume_unreachable();
     });
-
-    // we could always call this, it is an optimization to only call it when
-    // it might be needed.
-    if (transitionToArmed) {
-      maybeCallback();
-    }
   }
 
   /// Call only from Promise thread
   void setResult(Try<T>&& t) {
-    bool transitionToArmed = false;
     auto setResult_ = [&]{ result_ = std::move(t); };
     fsm_.transition([&](State state) {
       switch (state) {
@@ -183,21 +169,15 @@ class Core final {
           return fsm_.tryUpdateState(state, State::OnlyResult, setResult_);
 
         case State::OnlyCallback:
-          return fsm_.tryUpdateState(state, State::Armed, setResult_, [&] {
-            transitionToArmed = true;
-          });
+          return fsm_.tryUpdateState(
+              state, State::Done, setResult_, [&] { doCallback(); });
 
         case State::OnlyResult:
-        case State::Armed:
         case State::Done:
           throw_exception<std::logic_error>("setResult called twice");
       }
       assume_unreachable();
     });
-
-    if (transitionToArmed) {
-      maybeCallback();
-    }
   }
 
   /// Called by a destructing Future (in the Future thread, by definition)
@@ -215,8 +195,7 @@ class Core final {
   /// the callback has already been invoked, but not concurrently with anything
   /// which might trigger invocation of the callback
   void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
-    auto s = fsm_.getState();
-    DCHECK(s == State::Start || s == State::OnlyResult || s == State::Done);
+    DCHECK(fsm_.getState() != State::OnlyCallback);
     executor_ = x;
     priority_ = priority;
   }
@@ -314,20 +293,8 @@ class Core final {
     Core* core_{nullptr};
   };
 
-  void maybeCallback() {
-    fsm_.transition([&](State state) {
-      switch (state) {
-        case State::Armed:
-          return fsm_.tryUpdateState(
-              state, State::Done, [] {}, [&] { doCallback(); });
-
-        default:
-          return true;
-      }
-    });
-  }
-
   void doCallback() {
+    DCHECK(fsm_.getState() == State::Done);
     Executor* x = executor_;
     int8_t priority = priority_;
 
