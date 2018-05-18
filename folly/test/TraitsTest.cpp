@@ -311,3 +311,26 @@ TEST(Traits, remove_cvref) {
   EXPECT_TRUE(
       (std::is_same<remove_cvref<int volatile const&&>::type, int>::value));
 }
+
+TEST(Traits, like) {
+  EXPECT_TRUE((std::is_same<like_t<int, char>, char>::value));
+  EXPECT_TRUE((std::is_same<like_t<int const, char>, char const>::value));
+  EXPECT_TRUE((std::is_same<like_t<int volatile, char>, char volatile>::value));
+  EXPECT_TRUE(
+      (std::is_same<like_t<int const volatile, char>, char const volatile>::
+           value));
+  EXPECT_TRUE((std::is_same<like_t<int&, char>, char&>::value));
+  EXPECT_TRUE((std::is_same<like_t<int const&, char>, char const&>::value));
+  EXPECT_TRUE(
+      (std::is_same<like_t<int volatile&, char>, char volatile&>::value));
+  EXPECT_TRUE(
+      (std::is_same<like_t<int const volatile&, char>, char const volatile&>::
+           value));
+  EXPECT_TRUE((std::is_same<like_t<int&&, char>, char&&>::value));
+  EXPECT_TRUE((std::is_same<like_t<int const&&, char>, char const&&>::value));
+  EXPECT_TRUE(
+      (std::is_same<like_t<int volatile&&, char>, char volatile&&>::value));
+  EXPECT_TRUE(
+      (std::is_same<like_t<int const volatile&&, char>, char const volatile&&>::
+           value));
+}

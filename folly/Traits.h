@@ -167,6 +167,49 @@ struct remove_cvref {
 template <typename T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
+namespace detail {
+template <typename Src>
+struct like_ {
+  template <typename Dst>
+  using apply = Dst;
+};
+template <typename Src>
+struct like_<Src const> {
+  template <typename Dst>
+  using apply = Dst const;
+};
+template <typename Src>
+struct like_<Src volatile> {
+  template <typename Dst>
+  using apply = Dst volatile;
+};
+template <typename Src>
+struct like_<Src const volatile> {
+  template <typename Dst>
+  using apply = Dst const volatile;
+};
+template <typename Src>
+struct like_<Src&> {
+  template <typename Dst>
+  using apply = typename like_<Src>::template apply<Dst>&;
+};
+template <typename Src>
+struct like_<Src&&> {
+  template <typename Dst>
+  using apply = typename like_<Src>::template apply<Dst>&&;
+};
+} // namespace detail
+
+//  mimic: like_t, p0847r0
+template <typename Src, typename Dst>
+using like_t = typename detail::like_<Src>::template apply<remove_cvref_t<Dst>>;
+
+//  mimic: like, p0847r0
+template <typename Src, typename Dst>
+struct like {
+  using type = like_t<Src, Dst>;
+};
+
 /**
  *  type_t
  *

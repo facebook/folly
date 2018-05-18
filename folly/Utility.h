@@ -22,6 +22,7 @@
 #include <utility>
 
 #include <folly/CPortability.h>
+#include <folly/Traits.h>
 
 namespace folly {
 
@@ -100,6 +101,12 @@ template <class T>
 void as_const(T const&&) = delete;
 
 #endif
+
+//  mimic: forward_like, p0847r0
+template <typename Src, typename Dst>
+constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
+  return static_cast<like_t<Src, Dst>&&>(std::forward<Dst>(dst));
+}
 
 #if __cpp_lib_exchange_function || _LIBCPP_STD_VER > 11 || _MSC_VER
 
