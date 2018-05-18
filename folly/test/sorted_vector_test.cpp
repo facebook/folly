@@ -490,6 +490,56 @@ TEST(SortedVectorTypes, EraseTest) {
   EXPECT_EQ(s2, s1);
 }
 
+TEST(SortedVectorTypes, EraseTest2) {
+  sorted_vector_set<int> s;
+  for (int i = 0; i < 1000; ++i) {
+    s.insert(i);
+  }
+
+  auto it = s.lower_bound(32);
+  EXPECT_EQ(*it, 32);
+  it = s.erase(it);
+  EXPECT_NE(s.end(), it);
+  EXPECT_EQ(*it, 33);
+  it = s.erase(it, it + 5);
+  EXPECT_EQ(*it, 38);
+
+  it = s.begin();
+  while (it != s.end()) {
+    if (*it >= 5) {
+      it = s.erase(it);
+    } else {
+      it++;
+    }
+  }
+  EXPECT_EQ(it, s.end());
+  EXPECT_EQ(s.size(), 5);
+
+  sorted_vector_map<int, int> m;
+  for (int i = 0; i < 1000; ++i) {
+    m.insert(std::make_pair(i, i));
+  }
+
+  auto it2 = m.lower_bound(32);
+  EXPECT_EQ(it2->first, 32);
+  it2 = m.erase(it2);
+  EXPECT_NE(m.end(), it2);
+  EXPECT_EQ(it2->first, 33);
+  it2 = m.erase(it2, it2 + 5);
+  EXPECT_EQ(it2->first, 38);
+
+  it2 = m.begin();
+  while (it2 != m.end()) {
+    if (it2->first >= 5) {
+      it2 = m.erase(it2);
+    } else {
+      it2++;
+    }
+  }
+  EXPECT_EQ(it2, m.end());
+  EXPECT_EQ(m.size(), 5);
+}
+
 std::vector<int> extractValues(sorted_vector_set<CountCopyCtor> const& in) {
   std::vector<int> ret;
   std::transform(

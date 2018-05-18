@@ -49,7 +49,8 @@
  *            OneAtATimeIntSet;
  *
  * Important differences from std::set and std::map:
- *   - insert() and erase() invalidate iterators and references
+ *   - insert() and erase() invalidate iterators and references.
+       erase(iterator) returns an iterator pointing to the next valid element.
  *   - insert() and erase() are O(N)
  *   - our iterators model RandomAccessIterator
  *   - sorted_vector_map::value_type is pair<K,V>, not pair<const K,V>.
@@ -377,12 +378,12 @@ class sorted_vector_set
     return 1;
   }
 
-  void erase(iterator it) {
-    m_.cont_.erase(it);
+  iterator erase(iterator it) {
+    return m_.cont_.erase(it);
   }
 
-  void erase(iterator first, iterator last) {
-    m_.cont_.erase(first, last);
+  iterator erase(iterator first, iterator last) {
+    return m_.cont_.erase(first, last);
   }
 
   iterator find(const key_type& key) {
@@ -706,12 +707,12 @@ class sorted_vector_map
     return 1;
   }
 
-  void erase(iterator it) {
-    m_.cont_.erase(it);
+  iterator erase(iterator it) {
+    return m_.cont_.erase(it);
   }
 
-  void erase(iterator first, iterator last) {
-    m_.cont_.erase(first, last);
+  iterator erase(iterator first, iterator last) {
+    return m_.cont_.erase(first, last);
   }
 
   iterator find(const key_type& key) {
