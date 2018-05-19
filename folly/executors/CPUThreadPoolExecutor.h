@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
 DECLARE_bool(dynamic_cputhreadpoolexecutor);
@@ -63,8 +62,7 @@ namespace folly {
  * priority tasks could still hog all the threads. (at last check pthreads
  * thread priorities didn't work very well).
  */
-class CPUThreadPoolExecutor : public ThreadPoolExecutor,
-                              public DefaultKeepAliveExecutor {
+class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  public:
   struct CPUTask;
 

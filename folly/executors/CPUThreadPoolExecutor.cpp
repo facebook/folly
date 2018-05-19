@@ -88,7 +88,6 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
-  joinKeepAlive();
   stop();
   CHECK(threadsToStop_ == 0);
 }

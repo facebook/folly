@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #pragma once
-#include <folly/Executor.h>
+#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Memory.h>
 #include <folly/SharedMutex.h>
 #include <folly/executors/GlobalThreadPoolList.h>
@@ -52,7 +52,7 @@ namespace folly {
  * threads that were destroyed (which can't be joined from
  * themselves).
  */
-class ThreadPoolExecutor : public virtual folly::Executor {
+class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
  public:
   explicit ThreadPoolExecutor(
       size_t maxThreads,
@@ -308,6 +308,14 @@ class ThreadPoolExecutor : public virtual folly::Executor {
 
   std::atomic<size_t> threadsToJoin_{0};
   std::chrono::milliseconds threadTimeout_{0};
+
+  void joinKeepAliveOnce() {
+    if (!std::exchange(keepAliveJoined_, true)) {
+      joinKeepAlive();
+    }
+  }
+
+  bool keepAliveJoined_{false};
 };
 
 } // namespace folly

@@ -48,6 +48,7 @@ ThreadPoolExecutor::ThreadPoolExecutor(
 }
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
+  joinKeepAliveOnce();
   CHECK_EQ(0, threadList_.get().size());
   getSyncVecThreadPoolExecutors().withWLock([this](auto& tpe) {
     tpe.erase(std::remove(tpe.begin(), tpe.end(), this), tpe.end());
@@ -207,6 +208,7 @@ void ThreadPoolExecutor::joinStoppedThreads(size_t n) {
 }
 
 void ThreadPoolExecutor::stop() {
+  joinKeepAliveOnce();
   size_t n = 0;
   {
     SharedMutex::WriteHolder w{&threadListLock_};
@@ -223,6 +225,7 @@ void ThreadPoolExecutor::stop() {
 }
 
 void ThreadPoolExecutor::join() {
+  joinKeepAliveOnce();
   size_t n = 0;
   {
     SharedMutex::WriteHolder w{&threadListLock_};

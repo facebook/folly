@@ -18,7 +18,6 @@
 
 #include <atomic>
 
-#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/io/async/EventBaseManager.h>
@@ -50,9 +49,7 @@ namespace folly {
  * outstanding tasks belong to the event base and will be executed upon its
  * destruction.
  */
-class IOThreadPoolExecutor : public ThreadPoolExecutor,
-                             public IOExecutor,
-                             public DefaultKeepAliveExecutor {
+class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
  public:
   explicit IOThreadPoolExecutor(
       size_t numThreads,
