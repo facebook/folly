@@ -252,11 +252,22 @@ bool EventBase::loop() {
   return loopBody();
 }
 
+bool EventBase::loopIgnoreKeepAlive() {
+  if (loopKeepAliveActive_) {
+    // Make sure NotificationQueue is not counted as one of the readers
+    // (otherwise loopBody won't return until terminateLoopSoon is called).
+    fnRunner_->stopConsuming();
+    fnRunner_->startConsumingInternal(this, queue_.get());
+    loopKeepAliveActive_ = false;
+  }
+  return loopBody(0, true);
+}
+
 bool EventBase::loopOnce(int flags) {
   return loopBody(flags | EVLOOP_ONCE);
 }
 
-bool EventBase::loopBody(int flags) {
+bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   VLOG(5) << "EventBase(): Starting loop.";
 
   DCHECK(!invokingLoop_)
@@ -294,7 +305,9 @@ bool EventBase::loopBody(int flags) {
   }
 
   while (!stop_.load(std::memory_order_relaxed)) {
-    applyLoopKeepAlive();
+    if (!ignoreKeepAlive) {
+      applyLoopKeepAlive();
+    }
     ++nextLoopCnt_;
 
     // Run the before loop callbacks

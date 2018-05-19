@@ -255,6 +255,12 @@ class EventBase : private boost::noncopyable,
   bool loop();
 
   /**
+   * Same as loop(), but doesn't wait for all keep-alive tokens to be released.
+   */
+  [[deprecated("This should only be used in legacy unit tests")]]
+  bool loopIgnoreKeepAlive();
+
+  /**
    * Wait for some events to become active, run them, then return.
    *
    * When EVLOOP_NONBLOCK is set in flags, the loop won't block if there
@@ -691,7 +697,7 @@ class EventBase : private boost::noncopyable,
   typedef LoopCallback::List LoopCallbackList;
   class FunctionRunner;
 
-  bool loopBody(int flags = 0);
+  bool loopBody(int flags = 0, bool ignoreKeepAlive = false);
 
   // executes any callbacks queued by runInLoop(); returns false if none found
   bool runLoopCallbacks();
