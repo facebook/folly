@@ -19,6 +19,8 @@
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
+DECLARE_bool(dynamic_cputhreadpoolexecutor);
+
 namespace folly {
 
 /**
