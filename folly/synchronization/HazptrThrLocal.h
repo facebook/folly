@@ -207,7 +207,8 @@ class hazptr_priv {
     collect(h, t);
     if (h) {
       DCHECK(t);
-      hazptr_domain_push_retired<Atom>(h, t, rcount_);
+      hazptr_obj_list<Atom> l(h, t, rcount_);
+      hazptr_domain_push_retired<Atom>(l);
       rcount_ = 0;
     }
   }

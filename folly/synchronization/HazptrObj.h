@@ -38,7 +38,18 @@ namespace folly {
  */
 template <template <typename> class Atom>
 class hazptr_obj {
-  using ReclaimFnPtr = void (*)(hazptr_obj*);
+  using ReclaimFnPtr = void (*)(hazptr_obj<Atom>*, hazptr_obj_list<Atom>&);
+
+  template <template <typename> class>
+  friend class hazptr_domain;
+  template <typename, template <typename> class, typename>
+  friend class hazptr_obj_base;
+  template <typename, template <typename> class, typename>
+  friend class hazptr_obj_base_linked;
+  template <template <typename> class>
+  friend class hazptr_obj_list;
+  template <template <typename> class>
+  friend class hazptr_priv;
 
   ReclaimFnPtr reclaim_;
   hazptr_obj<Atom>* next_;
@@ -95,14 +106,15 @@ class hazptr_obj {
     }
   }
 
-  void do_retire(hazptr_domain<Atom>& domain) {
+  void push_to_retired(hazptr_domain<Atom>& domain) {
 #if FOLLY_HAZPTR_THR_LOCAL
     if (&domain == &default_hazptr_domain<Atom>()) {
       hazptr_priv_tls<Atom>().push(this);
       return;
     }
 #endif
-    hazptr_domain_push_retired(this, this, 1, domain);
+    hazptr_obj_list<Atom> l(this);
+    hazptr_domain_push_retired(l, domain);
   }
 
   FOLLY_NOINLINE void pre_retire_check_fail() noexcept {
@@ -111,14 +123,106 @@ class hazptr_obj {
 }; // hazptr_obj
 
 /**
+ *  hazptr_obj_list
+ *
+ *  List of hazptr_obj-s.
+ */
+template <template <typename> class Atom>
+class hazptr_obj_list {
+  hazptr_obj<Atom>* head_;
+  hazptr_obj<Atom>* tail_;
+  int count_;
+
+ public:
+  hazptr_obj_list() noexcept : head_(nullptr), tail_(nullptr), count_(0) {}
+
+  explicit hazptr_obj_list(hazptr_obj<Atom>* obj) noexcept
+      : head_(obj), tail_(obj), count_(1) {}
+
+  explicit hazptr_obj_list(
+      hazptr_obj<Atom>* head,
+      hazptr_obj<Atom>* tail,
+      int count) noexcept
+      : head_(head), tail_(tail), count_(count) {}
+
+  hazptr_obj<Atom>* head() {
+    return head_;
+  }
+
+  hazptr_obj<Atom>* tail() {
+    return tail_;
+  }
+
+  int count() {
+    return count_;
+  }
+
+  void push(hazptr_obj<Atom>* obj) {
+    obj->set_next(head_);
+    head_ = obj;
+    if (tail_ == nullptr) {
+      tail_ = obj;
+    }
+    ++count_;
+  }
+
+  void splice(hazptr_obj_list<Atom>& l) {
+    if (l.count() == 0) {
+      return;
+    }
+    if (count() == 0) {
+      head_ = l.head();
+    } else {
+      tail_->set_next(l.head());
+    }
+    tail_ = l.tail();
+    count_ += l.count();
+    l.clear();
+  }
+
+  void clear() {
+    head_ = nullptr;
+    tail_ = nullptr;
+    count_ = 0;
+  }
+}; // hazptr_obj_list
+
+/**
+ *  hazptr_deleter
+ *
+ *  For empty base optimization.
+ */
+template <typename T, typename D>
+class hazptr_deleter {
+  D deleter_;
+
+ public:
+  void set_deleter(D d = {}) {
+    deleter_ = std::move(d);
+  }
+
+  void delete_obj(T* p) {
+    deleter_(p);
+  }
+};
+
+template <typename T>
+class hazptr_deleter<T, std::default_delete<T>> {
+ public:
+  void set_deleter(std::default_delete<T> = {}) {}
+
+  void delete_obj(T* p) {
+    delete p;
+  }
+};
+
+/**
  *  hazptr_obj_base
  *
  *  Base template for objects protected by hazard pointers.
  */
 template <typename T, template <typename> class Atom, typename D>
-class hazptr_obj_base : public hazptr_obj<Atom> {
-  D deleter_; // TODO: EBO
-
+class hazptr_obj_base : public hazptr_obj<Atom>, public hazptr_deleter<T, D> {
  public:
   /* Retire a removed object and pass the responsibility for
    * reclaiming it to the hazptr library */
@@ -127,7 +231,7 @@ class hazptr_obj_base : public hazptr_obj<Atom> {
       hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
     pre_retire(std::move(deleter));
     set_reclaim();
-    this->do_retire(domain); // defined in hazptr_obj
+    this->push_to_retired(domain); // defined in hazptr_obj
   }
 
   void retire(hazptr_domain<Atom>& domain) {
@@ -137,87 +241,16 @@ class hazptr_obj_base : public hazptr_obj<Atom> {
  private:
   void pre_retire(D deleter) {
     this->pre_retire_check(); // defined in hazptr_obj
-    deleter_ = std::move(deleter);
+    this->set_deleter(std::move(deleter));
   }
 
   void set_reclaim() {
-    this->reclaim_ = [](hazptr_obj<Atom>* p) {
+    this->reclaim_ = [](hazptr_obj<Atom>* p, hazptr_obj_list<Atom>&) {
       auto hobp = static_cast<hazptr_obj_base<T, Atom, D>*>(p);
       auto obj = static_cast<T*>(hobp);
-      hobp->deleter_(obj);
+      hobp->delete_obj(obj);
     };
   }
 }; // hazptr_obj_base
-
-/**
- *  hazptr_obj_base_refcounted
- *
- *  Base template for reference counted objects protected by hazard
- *  pointers.
- */
-template <typename T, template <typename> class Atom, typename D>
-class hazptr_obj_base_refcounted : public hazptr_obj<Atom> {
-  Atom<uint32_t> refcount_{0};
-  D deleter_;
-
- public:
-  /* Retire a removed object and pass the responsibility for
-   * reclaiming it to the hazptr library */
-  void retire(
-      D deleter = {},
-      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
-    this->pre_retire(std::move(deleter)); // defined in hazptr_obj
-    set_reclaim();
-    this->do_retire(domain); // defined in hazptr_obj
-  }
-
-  void retire(hazptr_domain<Atom>& domain) {
-    retire({}, domain);
-  }
-
-  /* Increments the reference count. */
-  void acquire_ref() noexcept {
-    refcount_.fetch_add(1u, std::memory_order_acq_rel);
-  }
-
-  /* The same as acquire_ref() except that in addition the caller
-   * guarantees that the call is made in a thread-safe context, e.g.,
-   * the object is not yet shared. This is just an optimization to
-   * save an atomic read-modify-write operation. */
-  void acquire_ref_safe() noexcept {
-    auto oldval = refcount_.load(std::memory_order_acquire);
-    refcount_.store(oldval + 1u, std::memory_order_release);
-  }
-
-  /* Decrements the reference count and returns true if the object is
-   * safe to reclaim. */
-  bool release_ref() noexcept {
-    auto oldval = refcount_.load(std::memory_order_acquire);
-    if (oldval > 0u) {
-      oldval = refcount_.fetch_sub(1u, std::memory_order_acq_rel);
-    } else {
-      if (kIsDebug) {
-        refcount_.store(~0u);
-      }
-    }
-    return oldval == 0;
-  }
-
- private:
-  void pre_retire(D deleter) {
-    this->pre_retire_check(); // defined in hazptr_obj
-    deleter_ = std::move(deleter);
-  }
-
-  void set_reclaim() {
-    this->reclaim_ = [](hazptr_obj<Atom>* p) {
-      auto hrobp = static_cast<hazptr_obj_base_refcounted<T, Atom, D>*>(p);
-      if (hrobp->release_ref()) {
-        auto obj = static_cast<T*>(hrobp);
-        hrobp->deleter_(obj);
-      }
-    };
-  }
-}; // hazptr_obj_base_refcounted
 
 } // namespace folly

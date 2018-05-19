@@ -19,6 +19,7 @@
 #include <folly/synchronization/HazptrDomain.h>
 #include <folly/synchronization/HazptrHolder.h>
 #include <folly/synchronization/HazptrObj.h>
+#include <folly/synchronization/HazptrObjLinked.h>
 #include <folly/synchronization/HazptrRec.h>
 #include <folly/synchronization/HazptrThrLocal.h>
 
@@ -124,6 +125,15 @@
 ///   objects is linear in the number of hazard pointers, which
 ///   typically is linear in the number of threads using hazard
 ///   pointers.
+///
+/// Protecting Linked Structures and Automatic Retirement
+/// -----------------------------------------------------
+/// Hazard pointers provide link counting API to protect linked
+/// structures. It is capable of automatic retirement of objects even
+/// when the removal of objects is uncertain. It also supports
+/// optimizations when links are known to be immutable. All the link
+/// counting features incur no extra overhead for readers.
+/// See HazptrObjLinked.h for more details.
 ///
 /// Alternative Safe Reclamation Methods
 /// ------------------------------------

@@ -471,6 +471,7 @@ nobase_follyinclude_HEADERS = \
 	synchronization/HazptrDomain.h \
 	synchronization/HazptrHolder.h \
 	synchronization/HazptrObj.h \
+	synchronization/HazptrObjLinked.h \
 	synchronization/HazptrRec.h \
 	synchronization/HazptrThrLocal.h \
 	synchronization/LifoSem.h \

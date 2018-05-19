@@ -38,8 +38,9 @@ using folly::hazptr_domain;
 using folly::hazptr_holder;
 using folly::hazptr_local;
 using folly::hazptr_obj_base;
-using folly::hazptr_obj_base_refcounted;
+using folly::hazptr_obj_base_linked;
 using folly::hazptr_retire;
+using folly::hazptr_root;
 using folly::hazptr_tc;
 using folly::HazptrLockFreeLIFO;
 using folly::HazptrSWMRSet;
@@ -50,6 +51,7 @@ using DSched = folly::test::DeterministicSchedule;
 
 // Structures
 
+/** Count */
 class Count {
   std::atomic<int> ctors_{0};
   std::atomic<int> dtors_{0};
@@ -85,17 +87,19 @@ class Count {
   void inc_retires() noexcept {
     retires_.fetch_add(1);
   }
-};
+}; // Count
 
 static Count c_;
 
+/** Node */
 template <template <typename> class Atom = std::atomic>
 class Node : public hazptr_obj_base<Node<Atom>, Atom> {
   int val_;
   Atom<Node<Atom>*> next_;
 
  public:
-  explicit Node(int v = 0, Node* n = nullptr) noexcept : val_(v), next_(n) {
+  explicit Node(int v = 0, Node* n = nullptr, bool = false) noexcept
+      : val_(v), next_(n) {
     c_.inc_ctors();
   }
 
@@ -114,46 +118,52 @@ class Node : public hazptr_obj_base<Node<Atom>, Atom> {
   Atom<Node<Atom>*>* ptr_next() noexcept {
     return &next_;
   }
-};
+}; // Node
 
-template <template <typename> class Atom = std::atomic>
-class NodeRC : public hazptr_obj_base_refcounted<NodeRC<Atom>, Atom> {
+/** NodeRC */
+template <bool Mutable, template <typename> class Atom = std::atomic>
+class NodeRC : public hazptr_obj_base_linked<NodeRC<Mutable, Atom>, Atom> {
+  Atom<NodeRC<Mutable, Atom>*> next_;
   int val_;
-  Atom<NodeRC<Atom>*> next_;
-  bool marked_;
 
  public:
-  explicit NodeRC(int v = 0, NodeRC* n = nullptr) noexcept
-      : val_(v), next_(n), marked_(false) {
+  explicit NodeRC(int v = 0, NodeRC* n = nullptr, bool acq = false) noexcept
+      : next_(n), val_(v) {
+    this->set_deleter();
     c_.inc_ctors();
-    this->acquire_ref_safe();
+    if (acq) {
+      if (Mutable) {
+        this->acquire_link_safe();
+      } else {
+        this->acquire_ref_safe();
+      }
+    }
   }
 
   ~NodeRC() {
     c_.inc_dtors();
-    if (!marked_) {
-      auto n = next();
-      while (n) {
-        if (!n->release_ref()) {
-          return;
-        }
-        auto p = n;
-        n = p->next();
-        p->marked_ = true;
-        delete p;
-      }
-    }
   }
 
   int value() const noexcept {
     return val_;
   }
 
-  NodeRC<Atom>* next() const noexcept {
+  NodeRC<Mutable, Atom>* next() const noexcept {
     return next_.load(std::memory_order_acquire);
   }
-};
 
+  template <typename S>
+  void push_links(bool m, S& s) {
+    if (Mutable == m) {
+      auto p = next();
+      if (p) {
+        s.push(p);
+      }
+    }
+  }
+}; // NodeRC
+
+/** List */
 template <typename T, template <typename> class Atom = std::atomic>
 struct List {
   Atom<T*> head_{nullptr};
@@ -161,9 +171,10 @@ struct List {
  public:
   explicit List(int size) {
     auto p = head_.load(std::memory_order_relaxed);
-    for (int i = 0; i < size; ++i) {
-      p = new T(i + 10000, p);
+    for (int i = 0; i < size - 1; ++i) {
+      p = new T(i + 10000, p, true);
     }
+    p = new T(size + 9999, p);
     head_.store(p, std::memory_order_relaxed);
   }
 
@@ -225,7 +236,41 @@ struct List {
     hazptr_local<1, Atom> hptr;
     return protect_all(val, hptr[0]);
   }
-};
+}; // NodeRC
+
+/** NodeAuto */
+template <template <typename> class Atom = std::atomic>
+class NodeAuto : public hazptr_obj_base_linked<NodeAuto<Atom>, Atom> {
+  Atom<NodeAuto<Atom>*> link_[2];
+
+ public:
+  explicit NodeAuto(NodeAuto* l1 = nullptr, NodeAuto* l2 = nullptr) noexcept {
+    this->set_deleter();
+    link_[0].store(l1, std::memory_order_relaxed);
+    link_[1].store(l2, std::memory_order_relaxed);
+    c_.inc_ctors();
+  }
+
+  ~NodeAuto() {
+    c_.inc_dtors();
+  }
+
+  NodeAuto<Atom>* link(size_t i) {
+    return link_[i].load(std::memory_order_acquire);
+  }
+
+  template <typename S>
+  void push_links(bool m, S& s) {
+    if (m == false) { // Immutable
+      for (int i = 0; i < 2; ++i) {
+        auto p = link(i);
+        if (p) {
+          s.push(p);
+        }
+      }
+    }
+  }
+}; // NodeAuto
 
 // Test Functions
 
@@ -240,19 +285,20 @@ void basic_objects_test() {
   }
   {
     ++num;
-    auto obj = new NodeRC<Atom>;
-    obj->release_ref();
+    auto obj = new NodeRC<false, Atom>(0, nullptr);
     obj->retire();
   }
   {
     ++num;
-    auto obj = new NodeRC<Atom>;
-    obj->acquire_ref();
-    obj->acquire_ref_safe();
-    obj->release_ref();
-    obj->retire();
-    obj->release_ref();
-    obj->release_ref();
+    auto obj = new NodeRC<false, Atom>(0, nullptr);
+    obj->acquire_link_safe();
+    obj->unlink();
+  }
+  {
+    ++num;
+    auto obj = new NodeRC<false, Atom>(0, nullptr);
+    obj->acquire_link_safe();
+    hazptr_root<NodeRC<false, Atom>> root(obj);
   }
   ASSERT_EQ(c_.ctors(), num);
   hazptr_cleanup<Atom>();
@@ -442,18 +488,21 @@ void local_test() {
   hazptr_cleanup<Atom>();
 }
 
-template <template <typename> class Atom = std::atomic>
-void refcount_test() {
+template <bool Mutable, template <typename> class Atom = std::atomic>
+void linked_test() {
   c_.clear();
-  NodeRC<Atom>* p = nullptr;
+  NodeRC<Mutable, Atom>* p = nullptr;
   int num = 193;
-  for (int i = 0; i < num; ++i) {
-    p = new NodeRC<Atom>(i, p);
+  for (int i = 0; i < num - 1; ++i) {
+    p = new NodeRC<Mutable, Atom>(i, p, true);
   }
+  p = new NodeRC<Mutable, Atom>(num - 1, p, Mutable);
   hazptr_holder<Atom> hptr;
   hptr.reset(p);
-  for (auto q = p->next(); q; q = q->next()) {
-    q->retire();
+  if (!Mutable) {
+    for (auto q = p->next(); q; q = q->next()) {
+      q->retire();
+    }
   }
   int v = num;
   for (auto q = p; q; q = q->next()) {
@@ -462,12 +511,15 @@ void refcount_test() {
     ASSERT_EQ(q->value(), v);
   }
 
-  ASSERT_TRUE(!p->release_ref());
   hazptr_cleanup<Atom>();
   ASSERT_EQ(c_.ctors(), num);
   ASSERT_EQ(c_.dtors(), 0);
 
-  p->retire();
+  if (Mutable) {
+    hazptr_root<NodeRC<Mutable, Atom>, Atom> root(p);
+  } else {
+    p->retire();
+  }
   hazptr_cleanup<Atom>();
   ASSERT_EQ(c_.dtors(), 0);
 
@@ -476,16 +528,16 @@ void refcount_test() {
   ASSERT_EQ(c_.dtors(), num);
 }
 
-template <template <typename> class Atom = std::atomic>
-void mt_refcount_test() {
+template <bool Mutable, template <typename> class Atom = std::atomic>
+void mt_linked_test() {
   c_.clear();
 
   Atom<bool> ready(false);
+  Atom<bool> done(false);
   Atom<int> setHazptrs(0);
-  Atom<NodeRC<Atom>*> head;
+  hazptr_root<NodeRC<Mutable, Atom>, Atom> head;
 
   int num = FLAGS_num_ops;
-  ;
   int nthr = FLAGS_num_threads;
   ASSERT_GT(FLAGS_num_threads, 0);
   std::vector<std::thread> thr(nthr);
@@ -495,7 +547,7 @@ void mt_refcount_test() {
         /* spin */
       }
       hazptr_holder<Atom> hptr;
-      auto p = hptr.get_protected(head);
+      auto p = hptr.get_protected(head());
       ++setHazptrs;
       /* Concurrent with removal */
       int v = num;
@@ -505,30 +557,35 @@ void mt_refcount_test() {
         ASSERT_EQ(q->value(), v);
       }
       ASSERT_EQ(v, 0);
+      while (!done.load()) {
+        /* spin */
+      }
     });
   }
 
-  NodeRC<Atom>* p = nullptr;
-  for (int i = 0; i < num; ++i) {
-    p = new NodeRC<Atom>(i, p);
+  NodeRC<Mutable, Atom>* p = nullptr;
+  for (int i = 0; i < num - 1; ++i) {
+    p = new NodeRC<Mutable, Atom>(i, p, true);
   }
+  p = new NodeRC<Mutable, Atom>(num - 1, p, Mutable);
   ASSERT_EQ(c_.ctors(), num);
-  head.store(p);
+  head().store(p);
   ready.store(true);
   while (setHazptrs.load() < nthr) {
     /* spin */
   }
 
-  /* this is concurrent with traversal by reader */
-  head.store(nullptr);
-  for (auto q = p; q; q = q->next()) {
-    q->retire();
+  /* this is concurrent with traversal by readers */
+  head().store(nullptr);
+  if (Mutable) {
+    p->unlink();
+  } else {
+    for (auto q = p; q; q = q->next()) {
+      q->retire();
+    }
   }
   ASSERT_EQ(c_.dtors(), 0);
-
-  if (p->release_ref()) {
-    delete p;
-  }
+  done.store(true);
 
   for (auto& t : thr) {
     DSched::join(t);
@@ -536,6 +593,96 @@ void mt_refcount_test() {
 
   hazptr_cleanup<Atom>();
   ASSERT_EQ(c_.dtors(), num);
+}
+
+template <template <typename> class Atom = std::atomic>
+void auto_retire_test() {
+  c_.clear();
+  auto d = new NodeAuto<Atom>;
+  d->acquire_link_safe();
+  auto c = new NodeAuto<Atom>(d);
+  d->acquire_link_safe();
+  auto b = new NodeAuto<Atom>(d);
+  c->acquire_link_safe();
+  b->acquire_link_safe();
+  auto a = new NodeAuto<Atom>(b, c);
+  hazptr_holder<Atom> h;
+  {
+    hazptr_root<NodeAuto<Atom>> root;
+    a->acquire_link_safe();
+    root().store(a);
+    ASSERT_EQ(c_.ctors(), 4);
+    /* So far the links and link counts are:
+           root-->a  a-->b  a-->c  b-->d  c-->d
+           a(1,0) b(1,0) c(1,0) d(2,0)
+    */
+    h.reset(c); /* h protects c */
+    hazptr_cleanup<Atom>();
+    ASSERT_EQ(c_.dtors(), 0);
+    /* Nothing is retired or reclaimed yet */
+  }
+  /* root dtor calls a->unlink, which calls a->release_link, which
+     changes a's link counts from (1,0) to (0,0), which triggers calls
+     to c->downgrade_link, b->downgrade_link, and a->retire.
+
+     c->downgrade_link changes c's link counts from (1,0) to (0,1),
+     which triggers calls to d->downgrade_link and c->retire.
+
+     d->downgrade_link changes d's link counts from (2,0) to (1,1).
+
+     b->downgrade_link changes b's link counts from (1,0) to (0,1),
+     which triggers calls to d->downgrade_link and b->retire.
+
+     d->downgrade_link changes d's link counts from (1,1) to (0,2),
+     which triggers a call to d->retire.
+
+     So far (assuming retire-s did not trigger bulk_reclaim):
+           a-->b  a-->c  b-->d  c-->d
+           a(0,0) b(0,1) c(0,1) d(0,2)
+           Retired: a b c d
+           Protected: c
+  */
+  hazptr_cleanup<Atom>();
+  /* hazptr_cleanup calls bulk_reclaim which finds a, b, and d
+     unprotected, which triggers calls to a->release_ref,
+     b->release_ref, and d->release_ref (not necessarily in that
+     order).
+
+     a->release_ref finds a's link counts to be (0,0), which triggers
+     calls to c->release_ref, b->release_ref and delete a.
+
+     The call to c->release_ref changes its link counts from (0,1) to
+     (0,0).
+
+     The first call to b->release_ref changes b's link counts to
+     (0,0). The second call finds the link counts to be (0,0), which
+     triggers a call to d->release_ref and delete b.
+
+     The first call to d->release_ref changes its link counts to
+     (0,1), and the second call changes them to (0,0);
+
+     So far:
+           c-->d
+           a(deleted) b(deleted) c(0,0) d(0,0)
+           Retired and protected: c
+           bulk_reclamed-ed (i.e, found not protected): d
+  */
+  ASSERT_EQ(c_.dtors(), 2);
+  h.reset(); /* c is now no longer protected */
+  hazptr_cleanup<Atom>();
+  /* hazptr_cleanup calls bulk_reclaim which finds c unprotected,
+     which triggers a call to c->release_ref.
+
+     c->release_ref finds c's link counts to be (0,0), which
+     triggers calls to d->release_ref and delete c.
+
+     d->release_ref finds d's link counts to be (0,0), which triggers
+     a call to delete d.
+
+     Finally:
+           a(deleted) b(deleted) c(deleted) d(deleted)
+  */
+  ASSERT_EQ(c_.dtors(), 4);
 }
 
 template <template <typename> class Atom = std::atomic>
@@ -807,22 +954,49 @@ TEST(HazptrTest, dsched_local) {
   local_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, refcount) {
-  refcount_test();
+TEST(HazptrTest, linked_mutable) {
+  linked_test<true>();
 }
 
-TEST(HazptrTest, dsched_refcount) {
+TEST(HazptrTest, dsched_linked_mutable) {
   DSched sched(DSched::uniform(0));
-  refcount_test<DeterministicAtomic>();
+  linked_test<true, DeterministicAtomic>();
 }
 
-TEST(HazptrTest, mt_refcount) {
-  mt_refcount_test();
+TEST(HazptrTest, linked_immutable) {
+  linked_test<false>();
 }
 
-TEST(HazptrTest, dsched_mt_refcount) {
+TEST(HazptrTest, dsched_linked_immutable) {
   DSched sched(DSched::uniform(0));
-  mt_refcount_test<DeterministicAtomic>();
+  linked_test<false, DeterministicAtomic>();
+}
+
+TEST(HazptrTest, mt_linked_mutable) {
+  mt_linked_test<true>();
+}
+
+TEST(HazptrTest, dsched_mt_linked_mutable) {
+  DSched sched(DSched::uniform(0));
+  mt_linked_test<true, DeterministicAtomic>();
+}
+
+TEST(HazptrTest, mt_linked_immutable) {
+  mt_linked_test<false>();
+}
+
+TEST(HazptrTest, dsched_mt_linked_immutable) {
+  DSched sched(DSched::uniform(0));
+  mt_linked_test<false, DeterministicAtomic>();
+}
+
+TEST(HazptrTest, auto_retire) {
+  auto_retire_test();
+}
+
+TEST(HazptrTest, dsched_auto_retire) {
+  DSched sched(DSched::uniform(0));
+  auto_retire_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, free_function_retire) {
@@ -1036,7 +1210,7 @@ uint64_t list_protect_all_bench(
     int size,
     bool provided = false) {
   auto repFn = [&] {
-    List<NodeRC<>> l(size);
+    List<NodeRC<true>> l(size);
     auto init = [] {};
     auto fn = [&](int tid) {
       if (provided) {

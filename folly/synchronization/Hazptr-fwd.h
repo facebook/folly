@@ -50,19 +50,40 @@ class hazptr_rec;
 template <template <typename> class Atom = std::atomic>
 class hazptr_obj;
 
+/** hazptr_obj_list */
+template <template <typename> class Atom = std::atomic>
+class hazptr_obj_list;
+
+/** hazptr_deleter */
+template <typename T, typename D>
+class hazptr_deleter;
+
 /** hazptr_obj_base */
 template <
     typename T,
     template <typename> class Atom = std::atomic,
-    typename Deleter = std::default_delete<T>>
+    typename D = std::default_delete<T>>
 class hazptr_obj_base;
 
-/** hazptr_obj_base_refcounted */
+///
+/// Classes related to link counted objects and automatic retirement.
+/// Defined in HazptrLinked.h
+///
+
+/** hazptr_root */
+template <typename T, template <typename> class Atom = std::atomic>
+class hazptr_root;
+
+/** hazptr_obj_linked */
+template <template <typename> class Atom = std::atomic>
+class hazptr_obj_linked;
+
+/** hazptr_obj_base_linked */
 template <
     typename T,
     template <typename> class Atom = std::atomic,
     typename Deleter = std::default_delete<T>>
-class hazptr_obj_base_refcounted;
+class hazptr_obj_base_linked;
 
 ///
 /// Classes and functions related to thread local structures.
@@ -105,9 +126,7 @@ hazptr_domain<Atom>& default_hazptr_domain();
 /** hazptr_domain_push_retired */
 template <template <typename> class Atom = std::atomic>
 void hazptr_domain_push_retired(
-    hazptr_obj<Atom>* head,
-    hazptr_obj<Atom>* tail,
-    int rcount,
+    hazptr_obj_list<Atom>& l,
     hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
 
 /** hazptr_retire */
