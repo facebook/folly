@@ -46,6 +46,47 @@
 
 namespace folly {
 
+class FOLLY_EXPORT FutureException : public std::logic_error {
+ public:
+  using std::logic_error::logic_error;
+};
+
+class FOLLY_EXPORT FutureInvalid : public FutureException {
+ public:
+  FutureInvalid() : FutureException("Future invalid") {}
+};
+
+class FOLLY_EXPORT FutureNotReady : public FutureException {
+ public:
+  FutureNotReady() : FutureException("Future not ready") {}
+};
+
+class FOLLY_EXPORT FutureCancellation : public FutureException {
+ public:
+  FutureCancellation() : FutureException("Future was cancelled") {}
+};
+
+class FOLLY_EXPORT FutureTimeout : public FutureException {
+ public:
+  FutureTimeout() : FutureException("Timed out") {}
+};
+
+class FOLLY_EXPORT FuturePredicateDoesNotObtain : public FutureException {
+ public:
+  FuturePredicateDoesNotObtain()
+      : FutureException("Predicate does not obtain") {}
+};
+
+class FOLLY_EXPORT FutureNoTimekeeper : public FutureException {
+ public:
+  FutureNoTimekeeper() : FutureException("No timekeeper available") {}
+};
+
+class FOLLY_EXPORT FutureNoExecutor : public FutureException {
+ public:
+  FutureNoExecutor() : FutureException("No executor provided to via") {}
+};
+
 template <class T>
 class Future;
 
@@ -101,7 +142,7 @@ class FutureBase {
   /// qualification equivalent to the reference category and const-qualification
   /// of the receiver.
   ///
-  /// If moved-from, throws NoState.
+  /// If moved-from, throws FutureInvalid.
   ///
   /// If !isReady(), throws FutureNotReady.
   ///
@@ -170,7 +211,8 @@ class FutureBase {
   using CoreType = futures::detail::Core<T>;
   using corePtr = CoreType*;
 
-  // Throws NoState if there is no shared state object; else returns it by ref.
+  // Throws FutureInvalid if there is no shared state object; else returns it
+  // by ref.
   //
   // Implementation methods should usually use this instead of `this->core_`.
   // The latter should be used only when you need the possibly-null pointer.
@@ -184,7 +226,7 @@ class FutureBase {
   template <typename Self>
   static decltype(auto) getCoreImpl(Self& self) {
     if (!self.core_) {
-      throw_exception<NoState>();
+      throw_exception<FutureInvalid>();
     }
     return *self.core_;
   }
@@ -307,7 +349,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   T get() &&;
 
   /// Block until the future is fulfilled, or until timed out. Returns the
-  /// value (moved out), or throws the exception (which might be a TimedOut
+  /// value (moved out), or throws the exception (which might be a FutureTimeout
   /// exception).
   T get(Duration dur) &&;
 
@@ -316,7 +358,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   Try<T> getTry() &&;
 
   /// Block until the future is fulfilled, or until timed out. Returns the
-  /// Try of the value (moved out) or may throw a TimedOut exception.
+  /// Try of the value (moved out) or may throw a FutureTimeout exception.
   Try<T> getTry(Duration dur) &&;
 
   /// Block until this Future is complete. Returns a reference to this Future.
@@ -563,7 +605,7 @@ class Future : private futures::detail::FutureBase<T> {
   T getVia(DrivableExecutor* e);
 
   /// getVia but will wait only until timed out. Returns the
-  /// Try of the value (moved out) or may throw a TimedOut exception.
+  /// Try of the value (moved out) or may throw a FutureTimeout exception.
   T getVia(TimedDrivableExecutor* e, Duration dur);
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
@@ -572,7 +614,7 @@ class Future : private futures::detail::FutureBase<T> {
   Try<T>& getTryVia(DrivableExecutor* e);
 
   /// getTryVia but will wait only until timed out. Returns the
-  /// Try of the value (moved out) or may throw a TimedOut exception.
+  /// Try of the value (moved out) or may throw a FutureTimeout exception.
   Try<T>& getTryVia(TimedDrivableExecutor* e, Duration dur);
 
   /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
@@ -737,7 +779,7 @@ class Future : private futures::detail::FutureBase<T> {
   template <class F>
   Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr);
 
-  /// Throw TimedOut if this Future does not complete within the given
+  /// Throw FutureTimeout if this Future does not complete within the given
   /// duration from now. The optional Timeekeeper is as with futures::sleep().
   Future<T> within(Duration, Timekeeper* = nullptr);
 
@@ -756,7 +798,7 @@ class Future : private futures::detail::FutureBase<T> {
   T get();
 
   /// Block until the future is fulfilled, or until timed out. Returns the
-  /// value (moved out), or throws the exception (which might be a TimedOut
+  /// value (moved out), or throws the exception (which might be a FutureTimeout
   /// exception).
   T get(Duration dur);
 
@@ -800,7 +842,7 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// predicate behaves like std::function<bool(T const&)>
   /// If the predicate does not obtain with the value, the result
-  /// is a folly::PredicateDoesNotObtain exception
+  /// is a folly::FuturePredicateDoesNotObtain exception
   template <class F>
   Future<T> filter(F&& predicate);
 

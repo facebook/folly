@@ -108,7 +108,8 @@ TEST(Promise, ctorPostconditionInvalid) {
 }
 
 TEST(Promise, lacksPreconditionValid) {
-  // Ops that don't throw NoState if !valid() -- without precondition: valid()
+  // Ops that don't throw PromiseInvalid if !valid() --
+  // without precondition: valid()
 
 #define DOIT(STMT)         \
   do {                     \
@@ -141,14 +142,15 @@ TEST(Promise, lacksPreconditionValid) {
 }
 
 TEST(Promise, hasPreconditionValid) {
-  // Ops that require validity; precondition: valid(); throw NoState if !valid()
+  // Ops that require validity; precondition: valid();
+  // throw PromiseInvalid if !valid()
 
-#define DOIT(STMT)               \
-  do {                           \
-    auto p = makeValid();        \
-    EXPECT_NO_THROW(STMT);       \
-    copy(std::move(p));          \
-    EXPECT_THROW(STMT, NoState); \
+#define DOIT(STMT)                      \
+  do {                                  \
+    auto p = makeValid();               \
+    EXPECT_NO_THROW(STMT);              \
+    copy(std::move(p));                 \
+    EXPECT_THROW(STMT, PromiseInvalid); \
   } while (false)
 
   auto const except = std::logic_error("foo");

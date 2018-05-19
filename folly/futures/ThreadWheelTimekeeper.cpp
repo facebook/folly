@@ -71,7 +71,7 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     // Don't need Promise anymore, break the circular reference
     auto promise = stealPromise();
     if (!promise.isFulfilled()) {
-      promise.setException(NoTimekeeper{});
+      promise.setException(FutureNoTimekeeper{});
     }
   }
 
@@ -142,7 +142,7 @@ Future<Unit> ThreadWheelTimekeeper::after(Duration dur) {
     // I don't see it is introducing any problem yet.
     auto promise = cob->stealPromise();
     if (!promise.isFulfilled()) {
-      promise.setException(NoTimekeeper{});
+      promise.setException(FutureNoTimekeeper{});
     }
   }
   return f;

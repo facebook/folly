@@ -42,7 +42,7 @@ static eggs_t eggs("eggs");
 
 TEST(SemiFuture, makeEmpty) {
   auto f = SemiFuture<int>::makeEmpty();
-  EXPECT_THROW(f.isReady(), NoState);
+  EXPECT_THROW(f.isReady(), FutureInvalid);
 }
 
 TEST(SemiFuture, futureDefaultCtor) {
@@ -121,7 +121,8 @@ TEST(SemiFuture, ctorPostconditionInvalid) {
 }
 
 TEST(SemiFuture, lacksPreconditionValid) {
-  // Ops that don't throw NoState if !valid() -- without precondition: valid()
+  // Ops that don't throw FutureInvalid if !valid() --
+  // without precondition: valid()
 
 #define DOIT(STMT)         \
   do {                     \
@@ -153,14 +154,15 @@ TEST(SemiFuture, lacksPreconditionValid) {
 }
 
 TEST(SemiFuture, hasPreconditionValid) {
-  // Ops that require validity; precondition: valid(); throw NoState if !valid()
+  // Ops that require validity; precondition: valid();
+  // throw FutureInvalid if !valid()
 
-#define DOIT(STMT)               \
-  do {                           \
-    auto f = makeValid();        \
-    EXPECT_NO_THROW(STMT);       \
-    copy(std::move(f));          \
-    EXPECT_THROW(STMT, NoState); \
+#define DOIT(STMT)                     \
+  do {                                 \
+    auto f = makeValid();              \
+    EXPECT_NO_THROW(STMT);             \
+    copy(std::move(f));                \
+    EXPECT_THROW(STMT, FutureInvalid); \
   } while (false)
 
   DOIT(f.isReady());
@@ -340,12 +342,12 @@ TEST(SemiFuture, makeSemiFutureNoThrow) {
 }
 
 TEST(SemiFuture, ViaThrowOnNull) {
-  EXPECT_THROW(makeSemiFuture().via(nullptr), NoExecutor);
+  EXPECT_THROW(makeSemiFuture().via(nullptr), FutureNoExecutor);
 }
 
 TEST(SemiFuture, ConstructSemiFutureFromEmptyFuture) {
   auto f = SemiFuture<int>{Future<int>::makeEmpty()};
-  EXPECT_THROW(f.isReady(), NoState);
+  EXPECT_THROW(f.isReady(), FutureInvalid);
 }
 
 TEST(SemiFuture, ConstructSemiFutureFromFutureDefaultCtor) {
@@ -481,7 +483,8 @@ TEST(SemiFuture, SimpleGetTry) {
 TEST(SemiFuture, SimpleTimedGet) {
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
-  EXPECT_THROW(std::move(sf).get(std::chrono::milliseconds(100)), TimedOut);
+  EXPECT_THROW(
+      std::move(sf).get(std::chrono::milliseconds(100)), FutureTimeout);
 }
 
 TEST(SemiFuture, SimpleTimedWait) {
@@ -510,13 +513,14 @@ TEST(SemiFuture, SimpleTimedGetViaFromSemiFuture) {
   auto sf = p.getSemiFuture();
   EXPECT_THROW(
       std::move(sf).via(&e2).getVia(&e2, std::chrono::milliseconds(100)),
-      TimedOut);
+      FutureTimeout);
 }
 
 TEST(SemiFuture, SimpleTimedGetTry) {
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
-  EXPECT_THROW(std::move(sf).getTry(std::chrono::milliseconds(100)), TimedOut);
+  EXPECT_THROW(
+      std::move(sf).getTry(std::chrono::milliseconds(100)), FutureTimeout);
 }
 
 TEST(SemiFuture, SimpleTimedGetTryViaFromSemiFuture) {
@@ -525,7 +529,7 @@ TEST(SemiFuture, SimpleTimedGetTryViaFromSemiFuture) {
   auto sf = p.getSemiFuture();
   EXPECT_THROW(
       std::move(sf).via(&e2).getTryVia(&e2, std::chrono::milliseconds(100)),
-      TimedOut);
+      FutureTimeout);
 }
 
 TEST(SemiFuture, SimpleValue) {
@@ -615,7 +619,8 @@ TEST(SemiFuture, DeferWithGetTimedGet) {
   Promise<folly::Unit> p;
   auto f = p.getSemiFuture().toUnsafeFuture();
   auto sf = std::move(f).semi().defer([&]() { innerResult = 17; });
-  EXPECT_THROW(std::move(sf).get(std::chrono::milliseconds(100)), TimedOut);
+  EXPECT_THROW(
+      std::move(sf).get(std::chrono::milliseconds(100)), FutureTimeout);
   ASSERT_EQ(innerResult, 0);
 }
 

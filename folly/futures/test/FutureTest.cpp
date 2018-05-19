@@ -42,7 +42,7 @@ static eggs_t eggs("eggs");
 
 TEST(Future, makeEmpty) {
   auto f = Future<int>::makeEmpty();
-  EXPECT_THROW(f.isReady(), NoState);
+  EXPECT_THROW(f.isReady(), FutureInvalid);
 }
 
 TEST(Future, futureDefaultCtor) {
@@ -147,7 +147,8 @@ TEST(Future, ctorPostconditionInvalid) {
 }
 
 TEST(Future, lacksPreconditionValid) {
-  // Ops that don't throw NoState if !valid() -- without precondition: valid()
+  // Ops that don't throw FutureInvalid if !valid() --
+  // without precondition: valid()
 
 #define DOIT(STMT)         \
   do {                     \
@@ -179,14 +180,15 @@ TEST(Future, lacksPreconditionValid) {
 }
 
 TEST(Future, hasPreconditionValid) {
-  // Ops that require validity; precondition: valid(); throw NoState if !valid()
+  // Ops that require validity; precondition: valid();
+  // throw FutureInvalid if !valid()
 
-#define DOIT(STMT)               \
-  do {                           \
-    auto f = makeValid();        \
-    EXPECT_NO_THROW(STMT);       \
-    copy(std::move(f));          \
-    EXPECT_THROW(STMT, NoState); \
+#define DOIT(STMT)                     \
+  do {                                 \
+    auto f = makeValid();              \
+    EXPECT_NO_THROW(STMT);             \
+    copy(std::move(f));                \
+    EXPECT_THROW(STMT, FutureInvalid); \
   } while (false)
 
   DOIT(f.isReady());

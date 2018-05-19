@@ -20,10 +20,37 @@
 
 #include <folly/Portability.h>
 #include <folly/Try.h>
-#include <folly/futures/FutureException.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {
+
+class FOLLY_EXPORT PromiseException : public std::logic_error {
+ public:
+  using std::logic_error::logic_error;
+};
+
+class FOLLY_EXPORT PromiseInvalid : public PromiseException {
+ public:
+  PromiseInvalid() : PromiseException("Promise invalid") {}
+};
+
+class FOLLY_EXPORT PromiseAlreadySatisfied : public PromiseException {
+ public:
+  PromiseAlreadySatisfied() : PromiseException("Promise already satisfied") {}
+};
+
+class FOLLY_EXPORT FutureAlreadyRetrieved : public PromiseException {
+ public:
+  FutureAlreadyRetrieved() : PromiseException("Future already retrieved") {}
+};
+
+class FOLLY_EXPORT BrokenPromise : public PromiseException {
+ public:
+  explicit BrokenPromise(const std::string& type)
+      : PromiseException("Broken promise for type name `" + type + '`') {}
+
+  explicit BrokenPromise(const char* type) : BrokenPromise(std::string(type)) {}
+};
 
 // forward declaration
 template <class T>
@@ -145,7 +172,8 @@ class Promise {
   using CoreType = typename Future<T>::CoreType;
   using corePtr = typename Future<T>::corePtr;
 
-  // Throws NoState if there is no shared state object; else returns it by ref.
+  // Throws PromiseInvalid if there is no shared state object; else returns it
+  // by ref.
   //
   // Implementation methods should usually use this instead of `this->core_`.
   // The latter should be used only when you need the possibly-null pointer.
@@ -159,7 +187,7 @@ class Promise {
   template <typename CoreT>
   static CoreT& getCoreImpl(CoreT* core) {
     if (!core) {
-      throw_exception<NoState>();
+      throw_exception<PromiseInvalid>();
     }
     return *core;
   }

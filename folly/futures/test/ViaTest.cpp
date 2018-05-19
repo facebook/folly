@@ -404,7 +404,7 @@ TEST(Via, SimpleTimedGetVia) {
   TimedDrivableExecutor e2;
   Promise<folly::Unit> p;
   auto f = p.getFuture();
-  EXPECT_THROW(f.getVia(&e2, std::chrono::seconds(1)), TimedOut);
+  EXPECT_THROW(f.getVia(&e2, std::chrono::seconds(1)), FutureTimeout);
 }
 
 TEST(Via, getTryVia) {
@@ -437,7 +437,7 @@ TEST(Via, SimpleTimedGetTryVia) {
   TimedDrivableExecutor e2;
   Promise<folly::Unit> p;
   auto f = p.getFuture();
-  EXPECT_THROW(f.getTryVia(&e2, std::chrono::seconds(1)), TimedOut);
+  EXPECT_THROW(f.getTryVia(&e2, std::chrono::seconds(1)), FutureTimeout);
 }
 
 TEST(Via, waitVia) {

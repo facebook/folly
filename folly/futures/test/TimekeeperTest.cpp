@@ -71,7 +71,7 @@ TEST(Timekeeper, futureGetBeforeTimeout) {
 
 TEST(Timekeeper, futureGetTimeout) {
   Promise<int> p;
-  EXPECT_THROW(p.getFuture().get(one_ms), folly::TimedOut);
+  EXPECT_THROW(p.getFuture().get(one_ms), folly::FutureTimeout);
 }
 
 TEST(Timekeeper, futureSleep) {
@@ -85,7 +85,7 @@ TEST(Timekeeper, futureSleepHandlesNullTimekeeperSingleton) {
   SCOPE_EXIT {
     Singleton<ThreadWheelTimekeeper>::make_mock();
   };
-  EXPECT_THROW(futures::sleep(one_ms).get(), NoTimekeeper);
+  EXPECT_THROW(futures::sleep(one_ms).get(), FutureNoTimekeeper);
 }
 
 TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
@@ -95,7 +95,7 @@ TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
   };
   Promise<int> p;
   auto f = p.getFuture().within(one_ms);
-  EXPECT_THROW(f.get(), NoTimekeeper);
+  EXPECT_THROW(f.get(), FutureNoTimekeeper);
 }
 
 TEST(Timekeeper, futureDelayed) {
@@ -110,17 +110,15 @@ TEST(Timekeeper, futureDelayed) {
 
 TEST(Timekeeper, futureWithinThrows) {
   Promise<int> p;
-  auto f = p.getFuture()
-    .within(one_ms)
-    .onError([](TimedOut&) { return -1; });
+  auto f =
+      p.getFuture().within(one_ms).onError([](FutureTimeout&) { return -1; });
 
   EXPECT_EQ(-1, f.get());
 }
 
 TEST(Timekeeper, futureWithinAlreadyComplete) {
-  auto f = makeFuture(42)
-    .within(one_ms)
-    .onError([&](TimedOut&){ return -1; });
+  auto f =
+      makeFuture(42).within(one_ms).onError([&](FutureTimeout&) { return -1; });
 
   EXPECT_EQ(42, f.get());
 }
@@ -128,8 +126,8 @@ TEST(Timekeeper, futureWithinAlreadyComplete) {
 TEST(Timekeeper, futureWithinFinishesInTime) {
   Promise<int> p;
   auto f = p.getFuture()
-    .within(std::chrono::minutes(1))
-    .onError([&](TimedOut&){ return -1; });
+               .within(std::chrono::minutes(1))
+               .onError([&](FutureTimeout&) { return -1; });
   p.setValue(42);
 
   EXPECT_EQ(42, f.get());
@@ -236,7 +234,7 @@ TEST(Timekeeper, onTimeoutPropagates) {
     makeFuture(42).delayed(one_ms)
       .onTimeout(zero_ms, [&]{ flag = true; })
       .get(),
-    TimedOut);
+    FutureTimeout);
   EXPECT_TRUE(flag);
 }
 */

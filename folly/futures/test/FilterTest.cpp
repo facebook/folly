@@ -24,8 +24,9 @@ TEST(Filter, alwaysTrye) {
 }
 
 TEST(Filter, alwaysFalse) {
-  EXPECT_THROW(makeFuture(42).filter([](int){ return false; }).get(),
-               folly::PredicateDoesNotObtain);
+  EXPECT_THROW(
+      makeFuture(42).filter([](int) { return false; }).get(),
+      folly::FuturePredicateDoesNotObtain);
 }
 
 TEST(Filter, moveOnlyValue) {

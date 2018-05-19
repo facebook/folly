@@ -22,6 +22,12 @@
 
 namespace folly {
 
+class FOLLY_EXPORT FutureSplitterInvalid : public FutureException {
+ public:
+  FutureSplitterInvalid()
+      : FutureException("No Future in this FutureSplitter") {}
+};
+
 /*
  * FutureSplitter provides a `getFuture()' method which can be called multiple
  * times, returning a new Future each time. These futures are completed when the
@@ -55,7 +61,7 @@ class FutureSplitter {
    */
   Future<T> getFuture() {
     if (promise_ == nullptr) {
-      throw_exception<NoFutureInSplitter>();
+      throw_exception<FutureSplitterInvalid>();
     }
     return promise_->getSemiFuture().via(e_);
   }
@@ -65,7 +71,7 @@ class FutureSplitter {
    */
   SemiFuture<T> getSemiFuture() {
     if (promise_ == nullptr) {
-      throw_exception<NoFutureInSplitter>();
+      throw_exception<FutureSplitterInvalid>();
     }
     return promise_->getSemiFuture();
   }

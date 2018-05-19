@@ -47,7 +47,7 @@ Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   }
 
   if (UNLIKELY(!tk)) {
-    return makeFuture<Unit>(NoTimekeeper());
+    return makeFuture<Unit>(FutureNoTimekeeper());
   }
 
   return tk->after(dur);

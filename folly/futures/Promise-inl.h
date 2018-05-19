@@ -20,7 +20,6 @@
 #include <thread>
 
 #include <folly/executors/InlineExecutor.h>
-#include <folly/futures/FutureException.h>
 #include <folly/futures/detail/Core.h>
 
 namespace folly {

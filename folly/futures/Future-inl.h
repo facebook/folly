@@ -235,7 +235,7 @@ void FutureBase<T>::detach() {
 template <class T>
 void FutureBase<T>::throwIfInvalid() const {
   if (!core_) {
-    throw_exception<NoState>();
+    throw_exception<FutureInvalid>();
   }
 }
 
@@ -721,7 +721,7 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 template <class T>
 Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
   if (!executor) {
-    throw_exception<NoExecutor>();
+    throw_exception<FutureNoExecutor>();
   }
 
   if (auto deferredExecutor = getDeferredExecutor()) {
@@ -1044,7 +1044,7 @@ template <class T>
 template <class F>
 Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
   return within(dur, tk).onError(
-      [funcw = std::forward<F>(func)](TimedOut const&) mutable {
+      [funcw = std::forward<F>(func)](FutureTimeout const&) mutable {
         return std::forward<F>(funcw)();
       });
 }
@@ -1631,7 +1631,7 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
 
 template <class T>
 Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
-  return within(dur, TimedOut(), tk);
+  return within(dur, FutureTimeout(), tk);
 }
 
 template <class T>
@@ -1657,7 +1657,7 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
   }
 
   if (UNLIKELY(!tk)) {
-    return makeFuture<T>(NoTimekeeper());
+    return makeFuture<T>(FutureNoTimekeeper());
   }
 
   auto ctx = std::make_shared<Context>(std::move(e));
@@ -1685,7 +1685,7 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
       return;
     }
     // "after" completed first, cancel "this"
-    lockedCtx->thisFuture.raise(TimedOut());
+    lockedCtx->thisFuture.raise(FutureTimeout());
     if (lockedCtx->token.exchange(true) == false) {
       if (t.hasException()) {
         lockedCtx->promise.setException(std::move(t.exception()));
@@ -1865,7 +1865,7 @@ Try<T> SemiFuture<T>::getTry(Duration dur) && {
   this->core_ = nullptr;
 
   if (!future.isReady()) {
-    throw_exception<TimedOut>();
+    throw_exception<FutureTimeout>();
   }
   return std::move(std::move(future).getTry());
 }
@@ -1927,7 +1927,7 @@ template <class T>
 T Future<T>::get(Duration dur) {
   wait(dur);
   if (!this->isReady()) {
-    throw_exception<TimedOut>();
+    throw_exception<FutureTimeout>();
   }
   return std::move(this->value());
 }
@@ -1946,7 +1946,7 @@ template <class T>
 T Future<T>::getVia(TimedDrivableExecutor* e, Duration dur) {
   waitVia(e, dur);
   if (!this->isReady()) {
-    throw_exception<TimedOut>();
+    throw_exception<FutureTimeout>();
   }
   return std::move(value());
 }
@@ -1960,7 +1960,7 @@ template <class T>
 Try<T>& Future<T>::getTryVia(TimedDrivableExecutor* e, Duration dur) {
   waitVia(e, dur);
   if (!this->isReady()) {
-    throw_exception<TimedOut>();
+    throw_exception<FutureTimeout>();
   }
   return result();
 }
@@ -1994,7 +1994,7 @@ Future<T> Future<T>::filter(F&& predicate) {
   return this->then([p = std::forward<F>(predicate)](T val) {
     T const& valConstRef = val;
     if (!p(valConstRef)) {
-      throw_exception<PredicateDoesNotObtain>();
+      throw_exception<FuturePredicateDoesNotObtain>();
     }
     return val;
   });

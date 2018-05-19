@@ -747,12 +747,12 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h2 id="within">within() <a href="#within" class="headerLink">#</a></h2>
 
-<p><tt>Future&lt;T&gt;::within()</tt> returns a new Future that will complete with the provided exception (by default, a TimedOut exception) if it does not complete within the specified duration. For example:</p>
+<p><tt>Future&lt;T&gt;::within()</tt> returns a new Future that will complete with the provided exception (by default, a FutureTimeout exception) if it does not complete within the specified duration. For example:</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">using</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">chrono</span><span class="o">:</span><span class="o">:</span><span class="n">milliseconds</span><span class="p">;</span><span class="">
 </span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
-</span><span class="c1">// f will complete with a TimedOut exception if the Future returned by foo()
+</span><span class="c1">// f will complete with a FutureTimeout exception if the Future returned by foo()
 </span><span class="c1">// does not complete within 500 ms
 </span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
@@ -778,7 +778,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">)</span><span class="">
-</span><span class="">  </span><span class="p">.</span><span class="n">onError</span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="p">(</span><span class="k">const</span><span class=""> </span><span class="n">TimedOut</span><span class="o">&amp;</span><span class=""> </span><span class="n">e</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class="">
+</span><span class="">  </span><span class="p">.</span><span class="n">onError</span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="p">(</span><span class="k">const</span><span class=""> </span><span class="n">FutureTimeout</span><span class="o">&amp;</span><span class=""> </span><span class="n">e</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class="">
 </span><span class="">    </span><span class="c1">// handle timeout
 </span><span class="">    </span><span class="k">return</span><span class=""> </span><span class="o">-</span><span class="mi">1</span><span class="p">;</span><span class="">
 </span><span class="">  </span><span class="p">&#125;</span><span class="p">)</span><span class="">
@@ -790,7 +790,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <p><tt>get()</tt> and <tt>wait()</tt>, which are detailed in the <a href="#testing">Testing</a> article, optionally take timeouts:</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class="c1">// Will throw TimedOut if the Future doesn&#039;t complete within one second of
+</span><span class="c1">// Will throw FutureTimeout if the Future doesn&#039;t complete within one second of
 </span><span class="c1">// the get() call
 </span><span class="kt">int</span><span class=""> </span><span class="n">result</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
@@ -887,7 +887,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span></pre></div>
 
-<p>Keep in mind that some other thread had better complete the Future, because the thread that calls <tt>get()</tt> will block. Also, <tt>get()</tt> optionally takes a timeout after which its throws a TimedOut exception. See the <a href="#timeouts-and-related-features">Timeouts</a> article for more information.</p>
+<p>Keep in mind that some other thread had better complete the Future, because the thread that calls <tt>get()</tt> will block. Also, <tt>get()</tt> optionally takes a timeout after which its throws a FutureTimeout exception. See the <a href="#timeouts-and-related-features">Timeouts</a> article for more information.</p>
 
 <h3 id="wait">wait() <a href="#wait" class="headerLink">#</a></h3>
 
