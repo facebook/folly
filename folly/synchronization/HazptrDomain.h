@@ -307,6 +307,7 @@ class hazptr_domain {
   hazptr_rec<Atom>* acquire_new_hprec() {
     auto rec = new hazptr_rec<Atom>;
     rec->set_active();
+    rec->set_domain(this);
     while (true) {
       auto h = head();
       rec->set_next(h);

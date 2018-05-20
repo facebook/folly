@@ -31,7 +31,8 @@ namespace folly {
 template <template <typename> class Atom>
 class alignas(hardware_destructive_interference_size) hazptr_rec {
   Atom<const void*> hazptr_{nullptr}; // the hazard pointer
-  hazptr_rec* next_{nullptr};
+  hazptr_domain<Atom>* domain_;
+  hazptr_rec* next_;
   Atom<bool> active_{false};
 
   friend class hazptr_domain<Atom>;
@@ -71,6 +72,14 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
 
   void set_next(hazptr_rec<Atom>* rec) {
     next_ = rec;
+  }
+
+  FOLLY_ALWAYS_INLINE hazptr_domain<Atom>* domain() {
+    return domain_;
+  }
+
+  void set_domain(hazptr_domain<Atom>* dom) {
+    domain_ = dom;
   }
 }; // hazptr_rec
 

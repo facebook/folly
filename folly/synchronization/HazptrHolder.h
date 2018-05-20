@@ -51,13 +51,11 @@ namespace folly {
 template <template <typename> class Atom>
 class hazptr_holder {
   hazptr_rec<Atom>* hprec_;
-  hazptr_domain<Atom>* domain_;
 
  public:
   /** Constructor - automatically acquires a hazard pointer. */
   FOLLY_ALWAYS_INLINE explicit hazptr_holder(
-      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>())
-      : domain_(&domain) {
+      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
 #if FOLLY_HAZPTR_THR_LOCAL
     if (LIKELY(&domain == &default_hazptr_domain<Atom>())) {
       auto hprec = hazptr_tc_tls<Atom>().try_get();
@@ -67,18 +65,16 @@ class hazptr_holder {
       }
     }
 #endif
-    hprec_ = domain_->hprec_acquire();
+    hprec_ = domain.hprec_acquire();
   }
 
   /** Empty constructor */
   FOLLY_ALWAYS_INLINE explicit hazptr_holder(std::nullptr_t) noexcept
-      : hprec_(nullptr), domain_(nullptr) {}
+      : hprec_(nullptr) {}
 
   /** Move constructor */
   FOLLY_ALWAYS_INLINE hazptr_holder(hazptr_holder&& rhs) noexcept {
-    domain_ = rhs.domain_;
     hprec_ = rhs.hprec_;
-    rhs.domain_ = nullptr;
     rhs.hprec_ = nullptr;
   }
 
@@ -88,16 +84,16 @@ class hazptr_holder {
   /** Destructor */
   FOLLY_ALWAYS_INLINE ~hazptr_holder() {
     if (LIKELY(hprec_ != nullptr)) {
-      DCHECK(domain_ != nullptr);
       hprec_->reset_hazptr();
+      auto domain = hprec_->domain();
 #if FOLLY_HAZPTR_THR_LOCAL
-      if (LIKELY(domain_ == &default_hazptr_domain<Atom>())) {
+      if (LIKELY(domain == &default_hazptr_domain<Atom>())) {
         if (LIKELY(hazptr_tc_tls<Atom>().try_put(hprec_))) {
           return;
         }
       }
 #endif
-      domain_->hprec_release(hprec_);
+      domain->hprec_release(hprec_);
     }
   }
 
@@ -107,9 +103,7 @@ class hazptr_holder {
     if (LIKELY(this != &rhs)) {
       this->~hazptr_holder();
       new (this) hazptr_holder(nullptr);
-      domain_ = rhs.domain_;
       hprec_ = rhs.hprec_;
-      rhs.domain_ = nullptr;
       rhs.hprec_ = nullptr;
     }
     return *this;
@@ -172,7 +166,6 @@ class hazptr_holder {
    * and continue to protect the respective objects that they were
    * protecting before the swap, if any. */
   FOLLY_ALWAYS_INLINE void swap(hazptr_holder<Atom>& rhs) noexcept {
-    std::swap(this->domain_, rhs.domain_);
     std::swap(this->hprec_, rhs.hprec_);
   }
 
@@ -184,11 +177,6 @@ class hazptr_holder {
   /** Set the pointer to the owned hazptr_rec */
   FOLLY_ALWAYS_INLINE void set_hprec(hazptr_rec<Atom>* hprec) noexcept {
     hprec_ = hprec;
-  }
-
-  /** Set the pointer to the domain for the owned hazptr_rec */
-  void set_domain(hazptr_domain<Atom>* domain) noexcept {
-    domain_ = domain;
   }
 }; // hazptr_holder
 
@@ -218,6 +206,12 @@ using aligned_hazptr_holder = typename std::aligned_storage<
  *
  *  WARNING: Do not move from or to individual hazptr_holder-s.
  *  Only move the whole hazptr_array.
+ *
+ *  NOTE: It is allowed to swap an individual hazptr_holder that
+ *  belongs to hazptr_array with (a) a hazptr_holder object, or (b) a
+ *  hazptr_holder that is part of hazptr_array, under the conditions:
+ *  (i) both hazptr_holder-s are either both empty or both nonempty
+ *  and (ii) both belong to the same domain.
  */
 template <uint8_t M, template <typename> class Atom>
 class hazptr_array {
