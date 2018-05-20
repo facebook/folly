@@ -1204,26 +1204,29 @@ void mapSetCallback(InputIterator first, InputIterator last, F func) {
 
 // collectAll (variadic)
 
-// TODO(T26439406): Make return SemiFuture
 template <typename... Fs>
 typename futures::detail::CollectAllVariadicContext<
     typename std::decay<Fs>::type::value_type...>::type
-collectAll(Fs&&... fs) {
+collectAllSemiFuture(Fs&&... fs) {
   auto ctx = std::make_shared<futures::detail::CollectAllVariadicContext<
       typename std::decay<Fs>::type::value_type...>>();
   futures::detail::collectVariadicHelper<
       futures::detail::CollectAllVariadicContext>(ctx, std::forward<Fs>(fs)...);
-  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->p.getSemiFuture();
+}
+
+template <typename... Fs>
+auto collectAll(Fs&&... fs) -> Future<typename decltype(
+    collectAllSemiFuture(std::forward<Fs&&>(fs)...))::value_type> {
+  return collectAllSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
 // collectAll (iterator)
 
-// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
-Future<
-  std::vector<
-  Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAll(InputIterator first, InputIterator last) {
+SemiFuture<std::vector<
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAllSemiFuture(InputIterator first, InputIterator last) {
   typedef
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
@@ -1241,7 +1244,14 @@ collectAll(InputIterator first, InputIterator last) {
   mapSetCallback<T>(first, last, [ctx](size_t i, Try<T>&& t) {
     ctx->results[i] = std::move(t);
   });
-  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->p.getSemiFuture();
+}
+
+template <class InputIterator>
+Future<std::vector<
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAll(InputIterator first, InputIterator last) {
+  return collectAllSemiFuture(first, last).toUnsafeFuture();
 }
 
 // collect (iterator)

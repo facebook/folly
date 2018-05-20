@@ -41,7 +41,7 @@ struct CollectAllVariadicContext {
   }
   Promise<std::tuple<Try<Ts>...>> p;
   std::tuple<Try<Ts>...> results;
-  typedef Future<std::tuple<Try<Ts>...>> type;
+  typedef SemiFuture<std::tuple<Try<Ts>...>> type;
 };
 
 template <typename... Ts>
@@ -313,11 +313,22 @@ auto via(Executor*, Func&& func)
   The return type for Future<T> input is a Future<std::vector<Try<T>>>
   */
 template <class InputIterator>
+SemiFuture<std::vector<
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAllSemiFuture(InputIterator first, InputIterator last);
+
+/// Sugar for the most common case
+template <class Collection>
+auto collectAllSemiFuture(Collection&& c)
+    -> decltype(collectAllSemiFuture(c.begin(), c.end())) {
+  return collectAllSemiFuture(c.begin(), c.end());
+}
+
+template <class InputIterator>
 Future<std::vector<Try<
   typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAll(InputIterator first, InputIterator last);
 
-/// Sugar for the most common case
 template <class Collection>
 auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
   return collectAll(c.begin(), c.end());
@@ -330,7 +341,11 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
 template <typename... Fs>
 typename futures::detail::CollectAllVariadicContext<
     typename std::decay<Fs>::type::value_type...>::type
-collectAll(Fs&&... fs);
+collectAllSemiFuture(Fs&&... fs);
+
+template <typename... Fs>
+auto collectAll(Fs&&... fs) -> Future<typename decltype(
+    collectAllSemiFuture(std::forward<Fs&&>(fs)...))::value_type>;
 
 /// Like collectAll, but will short circuit on the first exception. Thus, the
 /// type of the returned Future is std::vector<T> instead of
