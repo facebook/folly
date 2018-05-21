@@ -26,6 +26,7 @@
 #include <atomic>
 #include <memory>
 #include <numeric>
+#include <queue>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -1175,4 +1176,33 @@ TEST(Future, futureWithinNoValueReferenceWhenTimeOut) {
         // Timeout is fired. Verify callbackInput is not referenced
         EXPECT_EQ(0, callbackInput.value().use_count());
       });
+}
+
+TEST(Future, makePromiseContract) {
+  class ManualExecutor : public Executor {
+   private:
+    std::queue<Func> queue_;
+
+   public:
+    void add(Func f) override {
+      queue_.push(std::move(f));
+    }
+    void drain() {
+      while (!queue_.empty()) {
+        auto f = std::move(queue_.front());
+        queue_.pop();
+        f();
+      }
+    }
+  };
+
+  ManualExecutor e;
+  auto c = makePromiseContract<int>(&e);
+  c.second = std::move(c.second).then([](int _) { return _ + 1; });
+  EXPECT_FALSE(c.second.isReady());
+  c.first.setValue(3);
+  EXPECT_FALSE(c.second.isReady());
+  e.drain();
+  ASSERT_TRUE(c.second.isReady());
+  EXPECT_EQ(4, std::move(c.second).get());
 }

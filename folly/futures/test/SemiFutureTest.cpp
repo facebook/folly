@@ -1015,3 +1015,10 @@ TEST(SemiFuture, onError) {
     EXPECT_FLAG();
   }
 }
+
+TEST(SemiFuture, makePromiseContract) {
+  auto c = makePromiseContract<int>();
+  c.first.setValue(3);
+  c.second = std::move(c.second).deferValue([](int _) { return _ + 1; });
+  EXPECT_EQ(4, std::move(c.second).get());
+}

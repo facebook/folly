@@ -522,6 +522,13 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 };
 
 template <class T>
+std::pair<Promise<T>, SemiFuture<T>> makePromiseContract() {
+  auto p = Promise<T>();
+  auto f = p.getSemiFuture();
+  return std::make_pair(std::move(p), std::move(f));
+}
+
+template <class T>
 class Future : private futures::detail::FutureBase<T> {
  private:
   using Base = futures::detail::FutureBase<T>;
@@ -1007,6 +1014,13 @@ class Timekeeper {
   template <class Clock>
   Future<Unit> at(std::chrono::time_point<Clock> when);
 };
+
+template <class T>
+std::pair<Promise<T>, Future<T>> makePromiseContract(Executor* e) {
+  auto p = Promise<T>();
+  auto f = p.getSemiFuture().via(e);
+  return std::make_pair(std::move(p), std::move(f));
+}
 
 } // namespace folly
 
