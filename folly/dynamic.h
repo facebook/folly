@@ -173,6 +173,14 @@ struct dynamic : private boost::operators<dynamic> {
   /* implicit */ dynamic(T t);
 
   /*
+   * If v is vector<bool>, v[idx] is a proxy object implicitly convertible to
+   * bool. Calling a function f(dynamic) with f(v[idx]) would require a double
+   * implicit conversion (reference -> bool -> dynamic) which is not allowed,
+   * hence we explicitly accept the reference proxy.
+   */
+  /* implicit */ dynamic(std::vector<bool>::reference val);
+
+  /*
    * Create a dynamic that is an array of the values from the supplied
    * iterator range.
    */

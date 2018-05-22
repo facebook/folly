@@ -352,6 +352,9 @@ struct dynamic::NumericTypeHelper<double> {
   using type = double;
 };
 
+inline dynamic::dynamic(std::vector<bool>::reference b)
+    : dynamic(static_cast<bool>(b)) {}
+
 template <
     class T,
     class NumericType /* = typename NumericTypeHelper<T>::type */>

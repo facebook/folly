@@ -142,6 +142,22 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(mergeObj1, combinedPreferObj1);
 }
 
+TEST(Dynamic, CastFromVectorOfBooleans) {
+  std::vector<bool> b;
+  b.push_back(true);
+  b.push_back(false);
+  dynamic obj = dynamic::object("a", b[0])("b", b[1]);
+  EXPECT_EQ(obj.at("a"), true);
+  EXPECT_EQ(obj.at("b"), false);
+}
+
+TEST(Dynamic, CastFromConstVectorOfBooleans) {
+  const std::vector<bool> b = {true, false};
+  dynamic obj = dynamic::object("a", b[0])("b", b[1]);
+  EXPECT_EQ(obj.at("a"), true);
+  EXPECT_EQ(obj.at("b"), false);
+}
+
 TEST(Dynamic, ObjectErase) {
   dynamic obj = dynamic::object("key1", "val")
                                ("key2", "val2");
