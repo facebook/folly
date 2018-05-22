@@ -59,6 +59,15 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
               CPUThreadPoolExecutor::kDefaultMaxQueueSize),
           std::move(threadFactory)) {}
 
+CPUThreadPoolExecutor::CPUThreadPoolExecutor(
+    std::pair<size_t, size_t> numThreads,
+    std::shared_ptr<ThreadFactory> threadFactory)
+    : CPUThreadPoolExecutor(
+          numThreads,
+          std::make_unique<LifoSemMPMCQueue<CPUTask>>(
+              CPUThreadPoolExecutor::kDefaultMaxQueueSize),
+          std::move(threadFactory)) {}
+
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads)
     : CPUThreadPoolExecutor(
           numThreads,

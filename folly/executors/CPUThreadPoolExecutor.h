@@ -85,6 +85,10 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       std::shared_ptr<ThreadFactory> threadFactory);
 
   CPUThreadPoolExecutor(
+      std::pair<size_t, size_t> numThreads,
+      std::shared_ptr<ThreadFactory> threadFactory);
+
+  CPUThreadPoolExecutor(
       size_t numThreads,
       int8_t numPriorities,
       std::shared_ptr<ThreadFactory> threadFactory =
