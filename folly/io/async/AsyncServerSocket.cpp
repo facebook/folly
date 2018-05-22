@@ -160,7 +160,9 @@ AsyncServerSocket::AsyncServerSocket(EventBase* eventBase)
       backoffTimeout_(nullptr),
       callbacks_(),
       keepAliveEnabled_(true),
-      closeOnExec_(true) {}
+      closeOnExec_(true) {
+  disableTransparentTls();
+}
 
 void AsyncServerSocket::setShutdownSocketSet(
     const std::weak_ptr<ShutdownSocketSet>& wNewSS) {
