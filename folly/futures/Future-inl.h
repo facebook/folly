@@ -151,11 +151,11 @@ FutureBase<T>::FutureBase(
     : core_(CoreType::make(Try<T>(T()))) {}
 
 template <class T>
-template <class... Args>
-FutureBase<T>::FutureBase(
-    typename std::
-        enable_if<std::is_constructible<T, Args&&...>::value, in_place_t>::type,
-    Args&&... args)
+template <
+    class... Args,
+    typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
+        type>
+FutureBase<T>::FutureBase(in_place_t, Args&&... args)
     : core_(CoreType::make(in_place, std::forward<Args>(args)...)) {}
 
 template <class T>
@@ -862,34 +862,35 @@ Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-template <class T2>
-Future<T>::Future(
-    Future<T2>&& other,
+template <
+    class T2,
     typename std::enable_if<
         !std::is_same<T, typename std::decay<T2>::type>::value &&
             std::is_constructible<T, T2&&>::value &&
             std::is_convertible<T2&&, T>::value,
-        int>::type)
+        int>::type>
+Future<T>::Future(Future<T2>&& other)
     : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
 
 template <class T>
-template <class T2>
-Future<T>::Future(
-    Future<T2>&& other,
+template <
+    class T2,
     typename std::enable_if<
         !std::is_same<T, typename std::decay<T2>::type>::value &&
             std::is_constructible<T, T2&&>::value &&
             !std::is_convertible<T2&&, T>::value,
-        int>::type)
+        int>::type>
+Future<T>::Future(Future<T2>&& other)
     : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
 
 template <class T>
-template <class T2>
-typename std::enable_if<
-    !std::is_same<T, typename std::decay<T2>::type>::value &&
-        std::is_constructible<T, T2&&>::value,
-    Future<T>&>::type
-Future<T>::operator=(Future<T2>&& other) {
+template <
+    class T2,
+    typename std::enable_if<
+        !std::is_same<T, typename std::decay<T2>::type>::value &&
+            std::is_constructible<T, T2&&>::value,
+        int>::type>
+Future<T>& Future<T>::operator=(Future<T2>&& other) {
   return operator=(
       std::move(other).then([](T2&& v) { return T(std::move(v)); }));
 }

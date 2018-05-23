@@ -115,12 +115,11 @@ class FutureBase {
   /* implicit */ FutureBase(
       typename std::enable_if<std::is_same<Unit, T2>::value>::type*);
 
-  template <class... Args>
-  explicit FutureBase(
-      typename std::enable_if<
-          std::is_constructible<T, Args&&...>::value,
-          in_place_t>::type,
-      Args&&... args);
+  template <
+      class... Args,
+      typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
+          type = 0>
+  explicit FutureBase(in_place_t, Args&&... args);
 
   FutureBase(FutureBase<T> const&) = delete;
   FutureBase(SemiFuture<T>&&) noexcept;
@@ -564,28 +563,29 @@ class Future : private futures::detail::FutureBase<T> {
   Future(Future<T>&&) noexcept;
 
   // converting move
-  template <class T2>
-  /* implicit */ Future(
-      Future<T2>&&,
+  template <
+      class T2,
       typename std::enable_if<
           !std::is_same<T, typename std::decay<T2>::type>::value &&
               std::is_constructible<T, T2&&>::value &&
               std::is_convertible<T2&&, T>::value,
-          int>::type = 0);
-  template <class T2>
-  explicit Future(
-      Future<T2>&&,
+          int>::type = 0>
+  /* implicit */ Future(Future<T2>&&);
+  template <
+      class T2,
       typename std::enable_if<
           !std::is_same<T, typename std::decay<T2>::type>::value &&
               std::is_constructible<T, T2&&>::value &&
               !std::is_convertible<T2&&, T>::value,
-          int>::type = 0);
-  template <class T2>
-  typename std::enable_if<
-      !std::is_same<T, typename std::decay<T2>::type>::value &&
-          std::is_constructible<T, T2&&>::value,
-      Future<T>&>::type
-  operator=(Future<T2>&&);
+          int>::type = 0>
+  explicit Future(Future<T2>&&);
+  template <
+      class T2,
+      typename std::enable_if<
+          !std::is_same<T, typename std::decay<T2>::type>::value &&
+              std::is_constructible<T, T2&&>::value,
+          int>::type = 0>
+  Future& operator=(Future<T2>&&);
 
   using Base::cancel;
   using Base::hasException;
