@@ -244,6 +244,9 @@ static AsyncSocket::SendMsgParamsCallback defaultSendMsgParamsCallback;
 
 // Based on flags, signal the transparent handler to disable certain functions
 void disableTransparentFunctions(int fd, bool noTransparentTls, bool noTSocks) {
+  (void)fd;
+  (void)noTransparentTls;
+  (void)noTSocks;
 #if __linux__
   if (noTransparentTls) {
     // Ignore return value, errors are ok
