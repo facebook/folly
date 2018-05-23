@@ -578,7 +578,7 @@ class DeferredExecutor final : public Executor {
 struct WindowFakeVector {
   using iterator = std::vector<size_t>::iterator;
 
-  WindowFakeVector(int size) : size_(size) {}
+  WindowFakeVector(size_t size) : size_(size) {}
 
   size_t operator[](const size_t index) const {
     return index;
