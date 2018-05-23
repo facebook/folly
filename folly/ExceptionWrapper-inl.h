@@ -308,8 +308,8 @@ inline exception_wrapper::exception_wrapper(exception_wrapper&& that) noexcept
 }
 
 inline exception_wrapper::exception_wrapper(
-    exception_wrapper const& that) : exception_wrapper{} {
-  that.vptr_->copy_(&that, this); // could throw
+    exception_wrapper const& that) noexcept : exception_wrapper{} {
+  that.vptr_->copy_(&that, this); // Copy into *this, won't throw
   vptr_ = that.vptr_;
 }
 
@@ -323,7 +323,7 @@ inline exception_wrapper& exception_wrapper::operator=(
 }
 
 inline exception_wrapper& exception_wrapper::operator=(
-    exception_wrapper const& that) {
+    exception_wrapper const& that) noexcept {
   exception_wrapper(that).swap(*this);
   return *this;
 }

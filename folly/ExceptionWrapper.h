@@ -246,7 +246,8 @@ class exception_wrapper final {
       _t<std::conditional<
           sizeof(T) <= sizeof(Buffer::Storage) &&
               alignof(T) <= alignof(Buffer::Storage) &&
-              noexcept(T(std::declval<T&&>())),
+              noexcept(T(std::declval<T&&>())) &&
+              noexcept(T(std::declval<T const&>())),
           InSituTag,
           OnHeapTag>>>>;
 
@@ -390,7 +391,7 @@ class exception_wrapper final {
   //! Copy-constructs an `exception_wrapper`
   //! \post `*this` contains a copy of `that`, and `that` is unmodified
   //! \post `type() == that.type()`
-  exception_wrapper(exception_wrapper const& that);
+  exception_wrapper(exception_wrapper const& that) noexcept;
 
   //! Move-assigns an `exception_wrapper`
   //! \pre `this != &that`
@@ -401,7 +402,7 @@ class exception_wrapper final {
   //! Copy-assigns an `exception_wrapper`
   //! \post `*this` contains a copy of `that`, and `that` is unmodified
   //! \post `type() == that.type()`
-  exception_wrapper& operator=(exception_wrapper const& that);
+  exception_wrapper& operator=(exception_wrapper const& that) noexcept;
 
   ~exception_wrapper();
 

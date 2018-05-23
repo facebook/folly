@@ -60,6 +60,14 @@ T& from_eptr(std::exception_ptr& eptr) {
   }
 }
 
+TEST(ExceptionWrapper, nothrow) {
+  EXPECT_TRUE(std::is_nothrow_default_constructible<exception_wrapper>::value);
+  EXPECT_TRUE(std::is_nothrow_move_constructible<exception_wrapper>::value);
+  EXPECT_TRUE(std::is_nothrow_move_assignable<exception_wrapper>::value);
+  EXPECT_TRUE(std::is_nothrow_copy_constructible<exception_wrapper>::value);
+  EXPECT_TRUE(std::is_nothrow_copy_assignable<exception_wrapper>::value);
+}
+
 // Tests that when we call throw_exception, the proper type is thrown (derived)
 TEST(ExceptionWrapper, throw_test) {
   std::runtime_error e("payload");
