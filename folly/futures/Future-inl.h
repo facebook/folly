@@ -59,18 +59,19 @@ namespace detail {
 //  may be fulfilled. Assumes the stored functor to be noexcept-destructible.
 template <typename T, typename F>
 class CoreCallbackState {
+  using DF = _t<std::decay<F>>;
+
  public:
-  template <typename FF>
-  CoreCallbackState(Promise<T>&& promise, FF&& func) noexcept(
-      noexcept(F(std::declval<FF>())))
-      : func_(std::forward<FF>(func)), promise_(std::move(promise)) {
+  CoreCallbackState(Promise<T>&& promise, F&& func) noexcept(
+      noexcept(DF(std::declval<F&&>())))
+      : func_(std::forward<F>(func)), promise_(std::move(promise)) {
     assert(before_barrier());
   }
 
   CoreCallbackState(CoreCallbackState&& that) noexcept(
-      noexcept(F(std::declval<F>()))) {
+      noexcept(DF(std::declval<F&&>()))) {
     if (that.before_barrier()) {
-      new (&func_) F(std::move(that.func_));
+      new (&func_) DF(std::forward<F>(that.func_));
       promise_ = that.stealPromise();
     }
   }
@@ -87,7 +88,7 @@ class CoreCallbackState {
   auto invoke(Args&&... args) noexcept(
       noexcept(std::declval<F&&>()(std::declval<Args&&>()...))) {
     assert(before_barrier());
-    return std::move(func_)(std::forward<Args>(args)...);
+    return std::forward<F>(func_)(std::forward<Args>(args)...);
   }
 
   template <typename... Args>
@@ -105,7 +106,7 @@ class CoreCallbackState {
 
   Promise<T> stealPromise() noexcept {
     assert(before_barrier());
-    func_.~F();
+    func_.~DF();
     return std::move(promise_);
   }
 
@@ -115,18 +116,22 @@ class CoreCallbackState {
   }
 
   union {
-    F func_;
+    DF func_;
   };
   Promise<T> promise_{Promise<T>::makeEmpty()};
 };
 
 template <typename T, typename F>
 auto makeCoreCallbackState(Promise<T>&& p, F&& f) noexcept(
-    noexcept(CoreCallbackState<T, _t<std::decay<F>>>(
+    noexcept(CoreCallbackState<T, F>(
         std::declval<Promise<T>&&>(),
         std::declval<F&&>()))) {
-  return CoreCallbackState<T, _t<std::decay<F>>>(
-      std::move(p), std::forward<F>(f));
+  return CoreCallbackState<T, F>(std::move(p), std::forward<F>(f));
+}
+
+template <typename T, typename R, typename... Args>
+auto makeCoreCallbackState(Promise<T>&& p, R (&f)(Args...)) noexcept {
+  return CoreCallbackState<T, R (*)(Args...)>(std::move(p), &f);
 }
 
 template <class T>

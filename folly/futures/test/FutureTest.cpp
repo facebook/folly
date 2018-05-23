@@ -1116,10 +1116,11 @@ TEST(Future, invokeCallbackReturningValueAsRvalue) {
   Foo foo;
   Foo const cfoo;
 
-  // The callback will be copied when given as lvalue or const ref, and moved
-  // if provided as rvalue. Either way, it should be executed as rvalue.
-  EXPECT_EQ(103, makeFuture<int>(100).then(foo).value());
-  EXPECT_EQ(203, makeFuture<int>(200).then(cfoo).value());
+  // The continuation will be forward-constructed - copied if given as & and
+  // moved if given as && - everywhere construction is required.
+  // The continuation will be invoked with the same cvref as it is passed.
+  EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
+  EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
   EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
 }
 
@@ -1139,10 +1140,11 @@ TEST(Future, invokeCallbackReturningFutureAsRvalue) {
   Foo foo;
   Foo const cfoo;
 
-  // The callback will be copied when given as lvalue or const ref, and moved
-  // if provided as rvalue. Either way, it should be executed as rvalue.
-  EXPECT_EQ(103, makeFuture<int>(100).then(foo).value());
-  EXPECT_EQ(203, makeFuture<int>(200).then(cfoo).value());
+  // The continuation will be forward-constructed - copied if given as & and
+  // moved if given as && - everywhere construction is required.
+  // The continuation will be invoked with the same cvref as it is passed.
+  EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
+  EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
   EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
 }
 
