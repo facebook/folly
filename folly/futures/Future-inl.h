@@ -1217,8 +1217,9 @@ collectAllSemiFuture(Fs&&... fs) {
 }
 
 template <typename... Fs>
-auto collectAll(Fs&&... fs) -> Future<typename decltype(
-    collectAllSemiFuture(std::forward<Fs&&>(fs)...))::value_type> {
+Future<typename futures::detail::CollectAllVariadicContext<
+    typename std::decay<Fs>::type::value_type...>::type::value_type>
+collectAll(Fs&&... fs) {
   return collectAllSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 

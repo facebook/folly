@@ -344,8 +344,9 @@ typename futures::detail::CollectAllVariadicContext<
 collectAllSemiFuture(Fs&&... fs);
 
 template <typename... Fs>
-auto collectAll(Fs&&... fs) -> Future<typename decltype(
-    collectAllSemiFuture(std::forward<Fs&&>(fs)...))::value_type>;
+Future<typename futures::detail::CollectAllVariadicContext<
+    typename std::decay<Fs>::type::value_type...>::type::value_type>
+collectAll(Fs&&... fs);
 
 /// Like collectAll, but will short circuit on the first exception. Thus, the
 /// type of the returned Future is std::vector<T> instead of
