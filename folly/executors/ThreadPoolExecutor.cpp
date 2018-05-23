@@ -234,7 +234,7 @@ void ThreadPoolExecutor::join() {
     n = threadList_.get().size();
     removeThreads(n, true);
     n += threadsToJoin_.load(std::memory_order_relaxed);
-    threadsToJoin_.store(std::memory_order_relaxed);
+    threadsToJoin_.store(0, std::memory_order_relaxed);
   }
   joinStoppedThreads(n);
   CHECK_EQ(0, threadList_.get().size());
