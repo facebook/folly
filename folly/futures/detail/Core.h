@@ -196,12 +196,12 @@ class Core final {
   /// which might trigger invocation of the callback
   void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
     DCHECK(fsm_.getState() != State::OnlyCallback);
-    executor_ = x;
+    executor_ = x ? getKeepAliveToken(x) : Executor::KeepAlive<>();
     priority_ = priority;
   }
 
   Executor* getExecutor() const {
-    return executor_;
+    return executor_.get();
   }
 
   /// Call only from Future thread
@@ -295,7 +295,7 @@ class Core final {
 
   void doCallback() {
     DCHECK(fsm_.getState() == State::Done);
-    Executor* x = executor_;
+    auto x = exchange(executor_, Executor::KeepAlive<>());
     int8_t priority = priority_;
 
     if (x) {
@@ -314,16 +314,19 @@ class Core final {
       CoreAndCallbackReference guard_local_scope(this);
       CoreAndCallbackReference guard_lambda(this);
       try {
+        auto xPtr = x.get();
         if (LIKELY(x->getNumPriorities() == 1)) {
-          x->add([core_ref = std::move(guard_lambda)]() mutable {
+          xPtr->add([core_ref = std::move(guard_lambda),
+                     keepAlive = std::move(x)]() mutable {
             auto cr = std::move(core_ref);
             Core* const core = cr.getCore();
             RequestContextScopeGuard rctx(core->context_);
             core->callback_(std::move(*core->result_));
           });
         } else {
-          x->addWithPriority(
-              [core_ref = std::move(guard_lambda)]() mutable {
+          xPtr->addWithPriority(
+              [core_ref = std::move(guard_lambda),
+               keepAlive = std::move(x)]() mutable {
                 auto cr = std::move(core_ref);
                 Core* const core = cr.getCore();
                 RequestContextScopeGuard rctx(core->context_);
@@ -382,7 +385,7 @@ class Core final {
   std::atomic<bool> interruptHandlerSet_ {false};
   SpinLock interruptLock_;
   int8_t priority_ {-1};
-  Executor* executor_ {nullptr};
+  Executor::KeepAlive<> executor_;
   std::shared_ptr<RequestContext> context_ {nullptr};
   std::unique_ptr<exception_wrapper> interrupt_ {};
   std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};

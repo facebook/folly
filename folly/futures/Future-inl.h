@@ -1733,6 +1733,9 @@ namespace detail {
 
 template <class FutureType, typename T = typename FutureType::value_type>
 void waitImpl(FutureType& f) {
+  if (std::is_base_of<Future<T>, FutureType>::value) {
+    f = std::move(f).via(nullptr);
+  }
   // short-circuit if there's nothing to do
   if (f.isReady()) {
     return;
@@ -1759,6 +1762,9 @@ void convertFuture(SemiFuture<T>&& sf, SemiFuture<T>& f) {
 
 template <class FutureType, typename T = typename FutureType::value_type>
 void waitImpl(FutureType& f, Duration dur) {
+  if (std::is_base_of<Future<T>, FutureType>::value) {
+    f = std::move(f).via(nullptr);
+  }
   // short-circuit if there's nothing to do
   if (f.isReady()) {
     return;
@@ -1779,6 +1785,7 @@ void waitImpl(FutureType& f, Duration dur) {
 
 template <class T>
 void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
+  f = std::move(f).via(nullptr);
   // Set callback so to ensure that the via executor has something on it
   // so that once the preceding future triggers this callback, drive will
   // always have a callback to satisfy it
@@ -1797,6 +1804,7 @@ void waitViaImpl(
     Future<T>& f,
     TimedDrivableExecutor* e,
     const std::chrono::duration<Rep, Period>& timeout) {
+  f = std::move(f).via(nullptr);
   // Set callback so to ensure that the via executor has something on it
   // so that once the preceding future triggers this callback, drive will
   // always have a callback to satisfy it
