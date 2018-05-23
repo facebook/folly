@@ -115,10 +115,12 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/experimental/JSONSchemaTester.cpp
   ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
   ${FOLLY_DIR}/experimental/symbolizer/ElfUtil.cpp
+  ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/detail/SlowFingerprint.h
   ${FOLLY_DIR}/detail/FingerprintPolynomial.h
+  ${FOLLY_DIR}/python/GILAwareManualExecutor.h
 )
 
 # Explicitly include utility library code from inside
