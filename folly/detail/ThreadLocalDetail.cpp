@@ -21,46 +21,6 @@
 
 namespace folly { namespace threadlocal_detail {
 
-void ThreadEntryNode::initIfZero() {
-  if (UNLIKELY(!next)) {
-    next = prev = parent;
-    parent->meta->pushBackLocked(parent, id);
-  }
-}
-
-ThreadEntryNode* ThreadEntryNode::getNext() {
-  return &next->elements[id].node;
-}
-
-void ThreadEntryNode::push_back(ThreadEntry* head) {
-  // get the head prev and next nodes
-  ThreadEntryNode* hnode = &head->elements[id].node;
-
-  // update current
-  next = head;
-  prev = hnode->prev;
-
-  // hprev
-  ThreadEntryNode* hprev = &hnode->prev->elements[id].node;
-  hprev->next = parent;
-  hnode->prev = parent;
-}
-
-void ThreadEntryNode::eraseZero() {
-  if (LIKELY(prev != nullptr)) {
-    // get the prev and next nodes
-    ThreadEntryNode* nprev = &prev->elements[id].node;
-    ThreadEntryNode* nnext = &next->elements[id].node;
-
-    // update the prev and next
-    nnext->prev = prev;
-    nprev->next = next;
-
-    // set the prev and next to nullptr
-    next = prev = nullptr;
-  }
-}
-
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
   head_.next = head_.prev = &head_;
@@ -110,12 +70,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     }
     {
       std::lock_guard<std::mutex> g(meta.lock_);
-      // mark it as removed
-      threadEntry->removed_ = true;
       meta.erase(&(*threadEntry));
-      FOR_EACH_RANGE (i, 0, threadEntry->elementsCapacity) {
-        threadEntry->elements[i].node.eraseZero();
-      }
       // No need to hold the lock any longer; the ThreadEntry is private to this
       // thread now that it's been removed from meta.
     }
@@ -160,10 +115,6 @@ void StaticMetaBase::onThreadExit(void* ptr) {
           if (tmp->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
             shouldRunInner = true;
             shouldRunOuter = true;
-
-            // now delete the entry if not zero
-            std::lock_guard<std::mutex> g(meta.lock_);
-            tmp->elements[i].node.eraseZero();
           }
         }
       }
@@ -213,9 +164,6 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
 
   uint32_t old_id = ent->value.exchange(id);
   DCHECK_EQ(old_id, kEntryIDInvalid);
-
-  reserveHeadUnlocked(id);
-
   return id;
 }
 
@@ -246,13 +194,7 @@ void StaticMetaBase::destroy(EntryID* ent) {
           return;
         }
 
-        auto& node = meta.head_.elements[id].node;
-        while (!node.empty()) {
-          auto* next = node.getNext();
-          next->eraseZero();
-
-          ThreadEntry* e = next->parent;
-
+        for (ThreadEntry* e = meta.head_.next; e != &meta.head_; e = e->next) {
           if (id < e->elementsCapacity && e->elements[id].ptr) {
             elements.push_back(e->elements[id]);
 
@@ -267,13 +209,11 @@ void StaticMetaBase::destroy(EntryID* ent) {
              * it's illegal to call get on a thread local that's
              * destructing.
              */
-
             e->elements[id].ptr = nullptr;
             e->elements[id].deleter1 = nullptr;
             e->elements[id].ownsDeleter = false;
           }
         }
-
         meta.freeIds_.push_back(id);
       }
     }
@@ -286,15 +226,22 @@ void StaticMetaBase::destroy(EntryID* ent) {
   }
 }
 
-ElementWrapper* FOLLY_NULLABLE StaticMetaBase::reallocate(
-    ThreadEntry* threadEntry,
-    uint32_t idval,
-    size_t& newCapacity) {
+/**
+ * Reserve enough space in the ThreadEntry::elements for the item
+ * @id to fit in.
+ */
+void StaticMetaBase::reserve(EntryID* id) {
+  auto& meta = *this;
+  ThreadEntry* threadEntry = (*threadEntry_)();
   size_t prevCapacity = threadEntry->elementsCapacity;
 
+  uint32_t idval = id->getOrAllocate(meta);
+  if (prevCapacity > idval) {
+    return;
+  }
   // Growth factor < 2, see folly/docs/FBVector.md; + 5 to prevent
   // very slow start.
-  newCapacity = static_cast<size_t>((idval + 5) * 1.7);
+  size_t newCapacity = static_cast<size_t>((idval + 5) * 1.7);
   assert(newCapacity > prevCapacity);
   ElementWrapper* reallocated = nullptr;
 
@@ -343,27 +290,6 @@ ElementWrapper* FOLLY_NULLABLE StaticMetaBase::reallocate(
     }
   }
 
-  return reallocated;
-}
-
-/**
- * Reserve enough space in the ThreadEntry::elements for the item
- * @id to fit in.
- */
-
-void StaticMetaBase::reserve(EntryID* id) {
-  auto& meta = *this;
-  ThreadEntry* threadEntry = (*threadEntry_)();
-  size_t prevCapacity = threadEntry->elementsCapacity;
-
-  uint32_t idval = id->getOrAllocate(meta);
-  if (prevCapacity > idval) {
-    return;
-  }
-
-  size_t newCapacity;
-  ElementWrapper* reallocated = reallocate(threadEntry, idval, newCapacity);
-
   // Success, update the entry
   {
     std::lock_guard<std::mutex> g(meta.lock_);
@@ -387,44 +313,12 @@ void StaticMetaBase::reserve(EntryID* id) {
       }
       std::swap(reallocated, threadEntry->elements);
     }
-
-    for (size_t i = prevCapacity; i < newCapacity; i++) {
-      threadEntry->elements[i].node.initZero(threadEntry, i);
-    }
-
     threadEntry->elementsCapacity = newCapacity;
   }
 
   free(reallocated);
 }
 
-void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
-  if (head_.elementsCapacity <= id) {
-    size_t prevCapacity = head_.elementsCapacity;
-    size_t newCapacity;
-    ElementWrapper* reallocated = reallocate(&head_, id, newCapacity);
-
-    if (reallocated) {
-      if (prevCapacity != 0) {
-        memcpy(
-            reallocated, head_.elements, sizeof(*reallocated) * prevCapacity);
-      }
-      std::swap(reallocated, head_.elements);
-    }
-    head_.elementsCapacity = newCapacity;
-    free(reallocated);
-  }
-
-  head_.elements[id].node.init(&head_, id);
-}
-
-void StaticMetaBase::pushBackLocked(ThreadEntry* t, uint32_t id) {
-  if (LIKELY(!t->removed_)) {
-    auto* node = &t->elements[id].node;
-    std::lock_guard<std::mutex> g(lock_);
-    node->push_back(&head_);
-  }
-}
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;

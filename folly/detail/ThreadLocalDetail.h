@@ -58,49 +58,6 @@ struct AccessModeStrict {};
 
 namespace threadlocal_detail {
 
-constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
-
-struct ThreadEntry;
-/* This represents a node in doubly linked list where all the nodes
- * are part of an ElementWrapper struct that has the same id.
- * we cannot use prev and next as ThreadEntryNode pointers since the
- * ThreadEntry::elements can be reallocated and the pointers will change
- * in this case. So we keep a pointer to the parent ThreadEntry struct
- * one for the prev and next and also the id.
- * We will traverse and update the list only when holding the
- * StaticMetaBase::lock_
- */
-struct ThreadEntryNode {
-  uint32_t id;
-  ThreadEntry* parent;
-  ThreadEntry* prev;
-  ThreadEntry* next;
-
-  void initIfZero();
-
-  void init(ThreadEntry* entry, uint32_t newId) {
-    id = newId;
-    prev = next = parent = entry;
-  }
-
-  void initZero(ThreadEntry* entry, uint32_t newId) {
-    id = newId;
-    parent = entry;
-    prev = next = nullptr;
-  }
-
-  // if the list this node is part of is empty
-  bool empty() const {
-    return (next == parent);
-  }
-
-  ThreadEntryNode* getNext();
-
-  void push_back(ThreadEntry* head);
-
-  void eraseZero();
-};
-
 /**
  * POD wrapper around an element (a void*) and an associated deleter.
  * This must be POD, as we memset() it to 0 and memcpy() it around.
@@ -136,7 +93,6 @@ struct ElementWrapper {
     DCHECK(deleter1 == nullptr);
 
     if (p) {
-      node.initIfZero();
       ptr = p;
       deleter1 = [](void* pt, TLPDestructionMode) {
         delete static_cast<Ptr>(pt);
@@ -156,7 +112,6 @@ struct ElementWrapper {
     DCHECK(ptr == nullptr);
     DCHECK(deleter2 == nullptr);
     if (p) {
-      node.initIfZero();
       ptr = p;
       auto d2 = d; // gcc-4.8 doesn't decay types correctly in lambda captures
       deleter2 = new std::function<DeleterFunType>(
@@ -183,7 +138,6 @@ struct ElementWrapper {
     std::function<DeleterFunType>* deleter2;
   };
   bool ownsDeleter;
-  ThreadEntryNode node;
 };
 
 struct StaticMetaBase;
@@ -203,13 +157,14 @@ struct ThreadEntry {
   ThreadEntryList* list{nullptr};
   ThreadEntry* listNext{nullptr};
   StaticMetaBase* meta{nullptr};
-  bool removed_{false};
 };
 
 struct ThreadEntryList {
   ThreadEntry* head{nullptr};
   size_t count{0};
 };
+
+constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
 
 struct PthreadKeyUnregisterTester;
 
@@ -347,21 +302,6 @@ struct StaticMetaBase {
   void reserve(EntryID* id);
 
   ElementWrapper& getElement(EntryID* ent);
-
-  // reserve an id in the head_ ThreadEntry->elements
-  // array if not already there
-  void reserveHeadUnlocked(uint32_t id);
-
-  // push back an entry in the doubly linked list
-  // that corresponds to idx id
-  void pushBackLocked(ThreadEntry* t, uint32_t id);
-
-  // static helper method to reallocate the ThreadEntry::elements
-  // returns != nullptr if the ThreadEntry::elements was reallocated
-  // nullptr if the ThreadEntry::elements was just extended
-  // and throws stdd:bad_alloc if memory cannot be allocated
-  static ElementWrapper*
-  reallocate(ThreadEntry* threadEntry, uint32_t idval, size_t& newCapacity);
 
   uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
