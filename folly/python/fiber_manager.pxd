@@ -11,8 +11,8 @@ cdef extern from "folly/fibers/FiberManagerInternal.h" namespace "folly::fibers"
     cdef cppclass cFiberManager "folly::fibers::FiberManager":
         cFiberManager(unique_ptr[cLoopController], const cFiberManagerOptions&)
 
-cdef extern from "folly/python/AsyncioLoopController.h" namespace "folly::python":
-    cdef cppclass cAsyncioLoopController "folly::python::AsyncioLoopController"(cLoopController):
+cdef extern from "folly/fibers/ExecutorLoopController.h" namespace "folly::fibers":
+    cdef cppclass cAsyncioLoopController "folly::fibers::ExecutorLoopController"(cLoopController):
         cAsyncioLoopController(cAsyncioExecutor*)
 
 cdef api cFiberManager* get_fiber_manager(const cFiberManagerOptions&)

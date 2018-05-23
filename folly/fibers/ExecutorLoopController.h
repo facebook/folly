@@ -18,21 +18,24 @@
 
 #include <memory>
 
+#include <folly/Executor.h>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/fibers/LoopController.h>
-#include <folly/python/AsyncioExecutor.h>
 
 namespace folly {
-namespace python {
+namespace fibers {
 
-class AsyncioLoopController : public fibers::LoopController {
+/**
+ * A fiber loop controller that works for arbitrary folly::Executor
+ */
+class ExecutorLoopController : public fibers::LoopController {
  public:
-  explicit AsyncioLoopController(AsyncioExecutor* executor);
-  ~AsyncioLoopController() override;
+  explicit ExecutorLoopController(folly::Executor* executor);
+  ~ExecutorLoopController() override;
 
  private:
-  AsyncioExecutor* executor_;
-  Executor::KeepAlive<AsyncioExecutor> executorKeepAlive_;
+  folly::Executor* executor_;
+  Executor::KeepAlive<> executorKeepAlive_;
   fibers::FiberManager* fm_{nullptr};
 
   void setFiberManager(fibers::FiberManager* fm) override;
@@ -44,7 +47,7 @@ class AsyncioLoopController : public fibers::LoopController {
   friend class fibers::FiberManager;
 };
 
-} // namespace python
+} // namespace fibers
 } // namespace folly
 
-#include <folly/python/AsyncioLoopController-inl.h>
+#include <folly/fibers/ExecutorLoopController-inl.h>

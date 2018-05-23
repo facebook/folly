@@ -17,18 +17,18 @@
 #pragma once
 
 namespace folly {
-namespace python {
+namespace fibers {
 
-inline AsyncioLoopController::AsyncioLoopController(AsyncioExecutor* executor)
+inline ExecutorLoopController::ExecutorLoopController(folly::Executor* executor)
     : executor_(executor) {}
 
-inline AsyncioLoopController::~AsyncioLoopController() {}
+inline ExecutorLoopController::~ExecutorLoopController() {}
 
-inline void AsyncioLoopController::setFiberManager(fibers::FiberManager* fm) {
+inline void ExecutorLoopController::setFiberManager(fibers::FiberManager* fm) {
   fm_ = fm;
 }
 
-inline void AsyncioLoopController::schedule() {
+inline void ExecutorLoopController::schedule() {
   // add() is thread-safe, so this isn't properly optimized for addTask()
   if (!executorKeepAlive_) {
     executorKeepAlive_ = getKeepAliveToken(executor_);
@@ -36,7 +36,7 @@ inline void AsyncioLoopController::schedule() {
   executor_->add([this]() { return runLoop(); });
 }
 
-inline void AsyncioLoopController::runLoop() {
+inline void ExecutorLoopController::runLoop() {
   if (!executorKeepAlive_) {
     if (!fm_->hasTasks()) {
       return;
@@ -49,7 +49,7 @@ inline void AsyncioLoopController::runLoop() {
   }
 }
 
-inline void AsyncioLoopController::scheduleThreadSafe() {
+inline void ExecutorLoopController::scheduleThreadSafe() {
   executor_->add(
       [this, executorKeepAlive = getKeepAliveToken(executor_)]() mutable {
         if (fm_->shouldRunLoopRemote()) {
@@ -58,11 +58,11 @@ inline void AsyncioLoopController::scheduleThreadSafe() {
       });
 }
 
-inline void AsyncioLoopController::timedSchedule(
+inline void ExecutorLoopController::timedSchedule(
     std::function<void()>,
     TimePoint) {
   throw std::logic_error("Time schedule isn't supported by asyncio executor");
 }
 
-} // namespace python
+} // namespace fibers
 } // namespace folly
