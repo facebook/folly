@@ -37,6 +37,16 @@ class A {
   int x_;
 };
 
+template <bool Nothrow>
+class HasCtors {
+ public:
+  explicit HasCtors(int) noexcept(Nothrow) {}
+  HasCtors(HasCtors&&) noexcept(Nothrow) {}
+  HasCtors& operator=(HasCtors&&) noexcept(Nothrow) {}
+  HasCtors(HasCtors const&) noexcept(Nothrow) {}
+  HasCtors& operator=(HasCtors const&) noexcept(Nothrow) {}
+};
+
 class MoveConstructOnly {
  public:
   MoveConstructOnly() = default;
@@ -69,6 +79,46 @@ TEST(Try, in_place_nested) {
   Try<Try<A>> t_t_a(in_place, in_place, 5);
 
   EXPECT_EQ(5, t_t_a.value().value().x());
+}
+
+TEST(Try, nothrow) {
+  using F = HasCtors<false>;
+  using T = HasCtors<true>;
+
+  // default ctor
+  EXPECT_TRUE(std::is_nothrow_default_constructible<Try<F>>::value);
+  EXPECT_TRUE(std::is_nothrow_default_constructible<Try<T>>::value);
+  EXPECT_TRUE(std::is_nothrow_default_constructible<Try<void>>::value);
+
+  // inner ctor - no void
+  EXPECT_FALSE((std::is_nothrow_constructible<Try<F>, F&&>::value));
+  EXPECT_TRUE((std::is_nothrow_constructible<Try<T>, T&&>::value));
+  EXPECT_FALSE((std::is_nothrow_constructible<Try<F>, F const&>::value));
+  EXPECT_TRUE((std::is_nothrow_constructible<Try<T>, T const&>::value));
+
+  // emplacing ctor - no void
+  EXPECT_FALSE((std::is_nothrow_constructible<Try<F>, in_place_t, int>::value));
+  EXPECT_TRUE((std::is_nothrow_constructible<Try<T>, in_place_t, int>::value));
+
+  // copy/move ctor/assign
+  EXPECT_TRUE(std::is_nothrow_constructible<Try<void>>::value);
+  EXPECT_FALSE(std::is_nothrow_move_constructible<Try<F>>::value);
+  EXPECT_TRUE(std::is_nothrow_move_constructible<Try<T>>::value);
+  EXPECT_TRUE(std::is_nothrow_move_constructible<Try<void>>::value);
+  EXPECT_FALSE(std::is_nothrow_move_assignable<Try<F>>::value);
+  EXPECT_TRUE(std::is_nothrow_move_assignable<Try<T>>::value);
+  EXPECT_TRUE(std::is_nothrow_move_assignable<Try<void>>::value);
+  EXPECT_FALSE(std::is_nothrow_copy_constructible<Try<F>>::value);
+  EXPECT_TRUE(std::is_nothrow_copy_constructible<Try<T>>::value);
+  EXPECT_TRUE(std::is_nothrow_copy_constructible<Try<void>>::value);
+  EXPECT_FALSE(std::is_nothrow_copy_assignable<Try<F>>::value);
+  EXPECT_TRUE(std::is_nothrow_copy_assignable<Try<T>>::value);
+  EXPECT_TRUE(std::is_nothrow_copy_assignable<Try<void>>::value);
+
+  // conversion ctor - void to unit
+  EXPECT_TRUE((std::is_nothrow_constructible<Try<Unit>, Try<void>&&>::value));
+  EXPECT_TRUE(
+      (std::is_nothrow_constructible<Try<Unit>, Try<void> const&>::value));
 }
 
 TEST(Try, MoveDereference) {

@@ -24,7 +24,8 @@
 namespace folly {
 
 template <class T>
-Try<T>::Try(Try<T>&& t) noexcept : contains_(t.contains_) {
+Try<T>::Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
+    : contains_(t.contains_) {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
@@ -34,8 +35,9 @@ Try<T>::Try(Try<T>&& t) noexcept : contains_(t.contains_) {
 
 template <class T>
 template <class T2>
-Try<T>::Try(typename std::enable_if<std::is_same<Unit, T2>::value,
-                                    Try<void> const&>::type t)
+Try<T>::Try(typename std::enable_if<
+            std::is_same<Unit, T2>::value,
+            Try<void> const&>::type t) noexcept
     : contains_(Contains::NOTHING) {
   if (t.hasValue()) {
     contains_ = Contains::VALUE;
@@ -47,7 +49,8 @@ Try<T>::Try(typename std::enable_if<std::is_same<Unit, T2>::value,
 }
 
 template <class T>
-Try<T>& Try<T>::operator=(Try<T>&& t) noexcept {
+Try<T>& Try<T>::operator=(Try<T>&& t) noexcept(
+    std::is_nothrow_move_constructible<T>::value) {
   if (this == &t) {
     return *this;
   }
@@ -63,7 +66,8 @@ Try<T>& Try<T>::operator=(Try<T>&& t) noexcept {
 }
 
 template <class T>
-Try<T>::Try(const Try<T>& t) {
+Try<T>::Try(const Try<T>& t) noexcept(
+    std::is_nothrow_copy_constructible<T>::value) {
   static_assert(
       std::is_copy_constructible<T>::value,
       "T must be copyable for Try<T> to be copyable");
@@ -76,7 +80,8 @@ Try<T>::Try(const Try<T>& t) {
 }
 
 template <class T>
-Try<T>& Try<T>::operator=(const Try<T>& t) {
+Try<T>& Try<T>::operator=(const Try<T>& t) noexcept(
+    std::is_nothrow_copy_constructible<T>::value) {
   static_assert(
       std::is_copy_constructible<T>::value,
       "T must be copyable for Try<T> to be copyable");

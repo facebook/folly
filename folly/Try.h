@@ -67,41 +67,46 @@ class Try {
   /*
    * Construct an empty Try
    */
-  Try() : contains_(Contains::NOTHING) {}
+  Try() noexcept : contains_(Contains::NOTHING) {}
 
   /*
    * Construct a Try with a value by copy
    *
    * @param v The value to copy in
    */
-  explicit Try(const T& v) : contains_(Contains::VALUE), value_(v) {}
+  explicit Try(const T& v) noexcept(
+      std::is_nothrow_copy_constructible<T>::value)
+      : contains_(Contains::VALUE), value_(v) {}
 
   /*
    * Construct a Try with a value by move
    *
    * @param v The value to move in
    */
-  explicit Try(T&& v) : contains_(Contains::VALUE), value_(std::move(v)) {}
+  explicit Try(T&& v) noexcept(std::is_nothrow_move_constructible<T>::value)
+      : contains_(Contains::VALUE), value_(std::move(v)) {}
 
   template <typename... Args>
   explicit Try(in_place_t, Args&&... args) noexcept(
-      noexcept(::new (nullptr) T(std::declval<Args&&>()...)))
-      : contains_(Contains::VALUE), value_(std::forward<Args>(args)...) {}
+      std::is_nothrow_constructible<T, Args&&...>::value)
+      : contains_(Contains::VALUE), value_(static_cast<Args&&>(args)...) {}
 
   /// Implicit conversion from Try<void> to Try<Unit>
   template <class T2 = T>
   /* implicit */
-  Try(typename std::enable_if<std::is_same<Unit, T2>::value,
-                              Try<void> const&>::type t);
+  Try(typename std::enable_if<std::is_same<Unit, T2>::value, Try<void> const&>::
+          type t) noexcept;
 
   /*
    * Construct a Try with an exception_wrapper
    *
    * @param e The exception_wrapper
    */
-  explicit Try(exception_wrapper e)
-      : contains_(Contains::EXCEPTION), e_(std::move(e)) {}
+  explicit Try(exception_wrapper e) noexcept
+      : contains_(Contains::EXCEPTION),
+        e_(std::move(e)){}
 
+  // clang-format off
   /*
    * DEPRECATED
    * Construct a Try with an exception_pointer
@@ -109,19 +114,22 @@ class Try {
    * @param ep The exception_pointer. Will be rethrown.
    */
   [[deprecated("use Try(exception_wrapper)")]]
-  explicit Try(std::exception_ptr ep)
+  explicit Try(std::exception_ptr ep) noexcept
       : contains_(Contains::EXCEPTION),
         e_(exception_wrapper::from_exception_ptr(ep)) {}
+  // clang-format on
 
   // Move constructor
-  Try(Try<T>&& t) noexcept;
+  Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value);
   // Move assigner
-  Try& operator=(Try<T>&& t) noexcept;
+  Try& operator=(Try<T>&& t) noexcept(
+      std::is_nothrow_move_constructible<T>::value);
 
   // Copy constructor
-  Try(const Try& t);
+  Try(const Try& t) noexcept(std::is_nothrow_copy_constructible<T>::value);
   // Copy assigner
-  Try& operator=(const Try& t);
+  Try& operator=(const Try& t) noexcept(
+      std::is_nothrow_copy_constructible<T>::value);
 
   ~Try();
 
@@ -355,33 +363,37 @@ class Try<void> {
   typedef void element_type;
 
   // Construct a Try holding a successful and void result
-  Try() : hasValue_(true) {}
+  Try() noexcept : hasValue_(true) {}
 
   /*
    * Construct a Try with an exception_wrapper
    *
    * @param e The exception_wrapper
    */
-  explicit Try(exception_wrapper e) : hasValue_(false), e_(std::move(e)) {}
+  explicit Try(exception_wrapper e) noexcept
+      : hasValue_(false),
+        e_(std::move(e)){}
 
+  // clang-format off
   /*
    * DEPRECATED
    * Construct a Try with an exception_pointer
    *
    * @param ep The exception_pointer. Will be rethrown.
    */
-  [[deprecated("use Try(exception_wrapper)")]]
-  explicit Try(std::exception_ptr ep)
+  [[deprecated("use Try(exception_wrapper)")]] explicit Try(
+      std::exception_ptr ep) noexcept
       : hasValue_(false), e_(exception_wrapper::from_exception_ptr(ep)) {}
+  // clang-format on
 
   // Copy assigner
-  Try& operator=(const Try<void>& t) {
+  Try& operator=(const Try<void>& t) noexcept {
     hasValue_ = t.hasValue_;
     e_ = t.e_;
     return *this;
   }
   // Copy constructor
-  Try(const Try<void>& t) {
+  Try(const Try<void>& t) noexcept {
     *this = t;
   }
 
