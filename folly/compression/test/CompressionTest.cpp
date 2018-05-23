@@ -34,6 +34,8 @@
 
 #if FOLLY_HAVE_LIBZSTD
 #include <zstd.h>
+
+#include <folly/compression/Zstd.h>
 #endif
 
 #if FOLLY_HAVE_LIBZ
@@ -1367,6 +1369,43 @@ TEST(ZstdTest, BackwardCompatible) {
     EXPECT_EQ(
         data->length(),
         ZSTD_getDecompressedSize(compressed->data(), compressed->length()));
+  }
+}
+
+TEST(ZstdTest, CustomOptions) {
+  auto test = [](const DataHolder& dh, unsigned contentSizeFlag) {
+    unsigned const wlog = 23;
+    zstd::Options options(1);
+    options.set(ZSTD_p_nbWorkers, 3);
+    options.set(ZSTD_p_contentSizeFlag, contentSizeFlag);
+    options.set(ZSTD_p_checksumFlag, 1);
+    options.set(ZSTD_p_windowLog, wlog);
+    auto codec = zstd::getCodec(std::move(options));
+    size_t const uncompressedLength = (size_t)1 << 27;
+    auto const original = std::string(
+        reinterpret_cast<const char*>(dh.data(uncompressedLength).data()),
+        uncompressedLength);
+    auto const compressed = codec->compress(original);
+    auto const uncompressed = codec->uncompress(compressed);
+    EXPECT_EQ(uncompressed, original);
+    EXPECT_EQ(
+        codec->getUncompressedLength(
+            folly::IOBuf::wrapBuffer(compressed.data(), compressed.size())
+                .get()),
+        contentSizeFlag ? uncompressedLength : Optional<uint64_t>());
+    {
+      ZSTD_frameHeader zfh;
+      ZSTD_getFrameHeader(&zfh, compressed.data(), compressed.size());
+      EXPECT_EQ(zfh.checksumFlag, 1);
+      EXPECT_EQ(zfh.windowSize, 1ULL << wlog);
+      EXPECT_EQ(
+          zfh.frameContentSize,
+          contentSizeFlag ? uncompressedLength : ZSTD_CONTENTSIZE_UNKNOWN);
+    }
+  };
+  for (unsigned contentSizeFlag = 0; contentSizeFlag <= 1; ++contentSizeFlag) {
+    test(constantDataHolder, contentSizeFlag);
+    test(randomDataHolder, contentSizeFlag);
   }
 }
 

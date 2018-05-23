@@ -40,8 +40,7 @@
 #endif
 
 #if FOLLY_HAVE_LIBZSTD
-#define ZSTD_STATIC_LINKING_ONLY
-#include <zstd.h>
+#include <folly/compression/Zstd.h>
 #endif
 
 #if FOLLY_HAVE_LIBBZ2
@@ -1420,85 +1419,6 @@ bool LZMA2StreamCodec::doUncompressStream(
 
 #ifdef FOLLY_HAVE_LIBZSTD
 
-namespace {
-void zstdFreeCStream(ZSTD_CStream* zcs) {
-  ZSTD_freeCStream(zcs);
-}
-
-void zstdFreeDStream(ZSTD_DStream* zds) {
-  ZSTD_freeDStream(zds);
-}
-} // namespace
-
-/**
- * ZSTD compression
- */
-class ZSTDStreamCodec final : public StreamCodec {
- public:
-  static std::unique_ptr<Codec> createCodec(int level, CodecType);
-  static std::unique_ptr<StreamCodec> createStream(int level, CodecType);
-  explicit ZSTDStreamCodec(int level, CodecType type);
-
-  std::vector<std::string> validPrefixes() const override;
-  bool canUncompress(const IOBuf* data, Optional<uint64_t> uncompressedLength)
-      const override;
-
- private:
-  bool doNeedsUncompressedLength() const override;
-  uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
-  Optional<uint64_t> doGetUncompressedLength(
-      IOBuf const* data,
-      Optional<uint64_t> uncompressedLength) const override;
-
-  void doResetStream() override;
-  bool doCompressStream(
-      ByteRange& input,
-      MutableByteRange& output,
-      StreamCodec::FlushOp flushOp) override;
-  bool doUncompressStream(
-      ByteRange& input,
-      MutableByteRange& output,
-      StreamCodec::FlushOp flushOp) override;
-
-  void resetCStream();
-  void resetDStream();
-
-  bool tryBlockCompress(ByteRange& input, MutableByteRange& output) const;
-  bool tryBlockUncompress(ByteRange& input, MutableByteRange& output) const;
-
-  int level_;
-  bool needReset_{true};
-  std::unique_ptr<
-      ZSTD_CStream,
-      folly::static_function_deleter<ZSTD_CStream, &zstdFreeCStream>>
-      cstream_{nullptr};
-  std::unique_ptr<
-      ZSTD_DStream,
-      folly::static_function_deleter<ZSTD_DStream, &zstdFreeDStream>>
-      dstream_{nullptr};
-};
-
-static constexpr uint32_t kZSTDMagicLE = 0xFD2FB528;
-
-std::vector<std::string> ZSTDStreamCodec::validPrefixes() const {
-  return {prefixToStringLE(kZSTDMagicLE)};
-}
-
-bool ZSTDStreamCodec::canUncompress(const IOBuf* data, Optional<uint64_t>)
-    const {
-  return dataStartsWithLE(data, kZSTDMagicLE);
-}
-
-std::unique_ptr<Codec> ZSTDStreamCodec::createCodec(int level, CodecType type) {
-  return make_unique<ZSTDStreamCodec>(level, type);
-}
-
-std::unique_ptr<StreamCodec> ZSTDStreamCodec::createStream(
-    int level,
-    CodecType type) {
-  return make_unique<ZSTDStreamCodec>(level, type);
-}
-
 static int zstdConvertLevel(int level) {
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
@@ -1515,193 +1435,14 @@ static int zstdConvertLevel(int level) {
   return level;
 }
 
-ZSTDStreamCodec::ZSTDStreamCodec(int level, CodecType type)
-    : StreamCodec(type, zstdConvertLevel(level)),
-      level_(zstdConvertLevel(level)) {
+std::unique_ptr<Codec> getZstdCodec(int level, CodecType type) {
   DCHECK(type == CodecType::ZSTD);
+  return zstd::getCodec(zstd::Options(zstdConvertLevel(level)));
 }
 
-bool ZSTDStreamCodec::doNeedsUncompressedLength() const {
-  return false;
-}
-
-uint64_t ZSTDStreamCodec::doMaxCompressedLength(
-    uint64_t uncompressedLength) const {
-  return ZSTD_compressBound(uncompressedLength);
-}
-
-void zstdThrowIfError(size_t rc) {
-  if (!ZSTD_isError(rc)) {
-    return;
-  }
-  throw std::runtime_error(
-      to<std::string>("ZSTD returned an error: ", ZSTD_getErrorName(rc)));
-}
-
-Optional<uint64_t> ZSTDStreamCodec::doGetUncompressedLength(
-    IOBuf const* data,
-    Optional<uint64_t> uncompressedLength) const {
-  // Read decompressed size from frame if available in first IOBuf.
-  auto const decompressedSize =
-      ZSTD_getDecompressedSize(data->data(), data->length());
-  if (decompressedSize != 0) {
-    if (uncompressedLength && *uncompressedLength != decompressedSize) {
-      throw std::runtime_error("ZSTD: invalid uncompressed length");
-    }
-    uncompressedLength = decompressedSize;
-  }
-  return uncompressedLength;
-}
-
-void ZSTDStreamCodec::doResetStream() {
-  needReset_ = true;
-}
-
-bool ZSTDStreamCodec::tryBlockCompress(
-    ByteRange& input,
-    MutableByteRange& output) const {
-  DCHECK(needReset_);
-  // We need to know that we have enough output space to use block compression
-  if (output.size() < ZSTD_compressBound(input.size())) {
-    return false;
-  }
-  size_t const length = ZSTD_compress(
-      output.data(), output.size(), input.data(), input.size(), level_);
-  zstdThrowIfError(length);
-  input.uncheckedAdvance(input.size());
-  output.uncheckedAdvance(length);
-  return true;
-}
-
-void ZSTDStreamCodec::resetCStream() {
-  if (!cstream_) {
-    cstream_.reset(ZSTD_createCStream());
-    if (!cstream_) {
-      throw std::bad_alloc{};
-    }
-  }
-  // As of 1.3.2 ZSTD_initCStream_advanced() interprets content size 0 as
-  // unknown if contentSizeFlag == 0, but this behavior is deprecated, and will
-  // be removed in the future. Starting with version 1.3.2 start passing the
-  // correct value, ZSTD_CONTENTSIZE_UNKNOWN.
-#if ZSTD_VERSION_NUMBER >= 10302
-  constexpr uint64_t kZstdUnknownContentSize = ZSTD_CONTENTSIZE_UNKNOWN;
-#else
-  constexpr uint64_t kZstdUnknownContentSize = 0;
-#endif
-  // Advanced API usage works for all supported versions of zstd.
-  // Required to set contentSizeFlag.
-  auto params = ZSTD_getParams(level_, uncompressedLength().value_or(0), 0);
-  params.fParams.contentSizeFlag = uncompressedLength().hasValue();
-  zstdThrowIfError(ZSTD_initCStream_advanced(
-      cstream_.get(),
-      nullptr,
-      0,
-      params,
-      uncompressedLength().value_or(kZstdUnknownContentSize)));
-}
-
-bool ZSTDStreamCodec::doCompressStream(
-    ByteRange& input,
-    MutableByteRange& output,
-    StreamCodec::FlushOp flushOp) {
-  if (needReset_) {
-    // If we are given all the input in one chunk try to use block compression
-    if (flushOp == StreamCodec::FlushOp::END &&
-        tryBlockCompress(input, output)) {
-      return true;
-    }
-    resetCStream();
-    needReset_ = false;
-  }
-  ZSTD_inBuffer in = {input.data(), input.size(), 0};
-  ZSTD_outBuffer out = {output.data(), output.size(), 0};
-  SCOPE_EXIT {
-    input.uncheckedAdvance(in.pos);
-    output.uncheckedAdvance(out.pos);
-  };
-  if (flushOp == StreamCodec::FlushOp::NONE || !input.empty()) {
-    zstdThrowIfError(ZSTD_compressStream(cstream_.get(), &out, &in));
-  }
-  if (in.pos == in.size && flushOp != StreamCodec::FlushOp::NONE) {
-    size_t rc;
-    switch (flushOp) {
-      case StreamCodec::FlushOp::FLUSH:
-        rc = ZSTD_flushStream(cstream_.get(), &out);
-        break;
-      case StreamCodec::FlushOp::END:
-        rc = ZSTD_endStream(cstream_.get(), &out);
-        break;
-      default:
-        throw std::invalid_argument("ZSTD: invalid FlushOp");
-    }
-    zstdThrowIfError(rc);
-    if (rc == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool ZSTDStreamCodec::tryBlockUncompress(
-    ByteRange& input,
-    MutableByteRange& output) const {
-  DCHECK(needReset_);
-#if ZSTD_VERSION_NUMBER < 10104
-  // We require ZSTD_findFrameCompressedSize() to perform this optimization.
-  return false;
-#else
-  // We need to know the uncompressed length and have enough output space.
-  if (!uncompressedLength() || output.size() < *uncompressedLength()) {
-    return false;
-  }
-  size_t const compressedLength =
-      ZSTD_findFrameCompressedSize(input.data(), input.size());
-  zstdThrowIfError(compressedLength);
-  size_t const length = ZSTD_decompress(
-      output.data(), *uncompressedLength(), input.data(), compressedLength);
-  zstdThrowIfError(length);
-  if (length != *uncompressedLength()) {
-    throw std::runtime_error("ZSTDStreamCodec: Incorrect uncompressed length");
-  }
-  input.uncheckedAdvance(compressedLength);
-  output.uncheckedAdvance(length);
-  return true;
-#endif
-}
-
-void ZSTDStreamCodec::resetDStream() {
-  if (!dstream_) {
-    dstream_.reset(ZSTD_createDStream());
-    if (!dstream_) {
-      throw std::bad_alloc{};
-    }
-  }
-  zstdThrowIfError(ZSTD_initDStream(dstream_.get()));
-}
-
-bool ZSTDStreamCodec::doUncompressStream(
-    ByteRange& input,
-    MutableByteRange& output,
-    StreamCodec::FlushOp flushOp) {
-  if (needReset_) {
-    // If we are given all the input in one chunk try to use block uncompression
-    if (flushOp == StreamCodec::FlushOp::END &&
-        tryBlockUncompress(input, output)) {
-      return true;
-    }
-    resetDStream();
-    needReset_ = false;
-  }
-  ZSTD_inBuffer in = {input.data(), input.size(), 0};
-  ZSTD_outBuffer out = {output.data(), output.size(), 0};
-  SCOPE_EXIT {
-    input.uncheckedAdvance(in.pos);
-    output.uncheckedAdvance(out.pos);
-  };
-  size_t const rc = ZSTD_decompressStream(dstream_.get(), &out, &in);
-  zstdThrowIfError(rc);
-  return rc == 0;
+std::unique_ptr<StreamCodec> getZstdStreamCodec(int level, CodecType type) {
+  DCHECK(type == CodecType::ZSTD);
+  return zstd::getStreamCodec(zstd::Options(zstdConvertLevel(level)));
 }
 
 #endif // FOLLY_HAVE_LIBZSTD
@@ -2192,7 +1933,7 @@ constexpr Factory
 #endif
 
 #if FOLLY_HAVE_LIBZSTD
-        {ZSTDStreamCodec::createCodec, ZSTDStreamCodec::createStream},
+        {getZstdCodec, getZstdStreamCodec},
 #else
         {},
 #endif

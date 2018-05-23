@@ -58,6 +58,7 @@ nobase_follyinclude_HEADERS = \
 	compression/Counters.h \
 	compression/Utils.h \
 	compression/Zlib.h \
+	compression/Zstd.h \
 	concurrency/CacheLocality.h \
 	concurrency/ConcurrentHashMap.h \
 	concurrency/CoreCachedSharedPtr.h \
@@ -542,6 +543,7 @@ libfolly_la_SOURCES = \
 	compression/Compression.cpp \
 	compression/Counters.cpp \
 	compression/Zlib.cpp \
+	compression/Zstd.cpp \
 	concurrency/CacheLocality.cpp \
 	container/detail/F14Table.cpp \
 	detail/AtFork.cpp \
