@@ -696,3 +696,15 @@ TEST(ConcurrentHashMap, DeletionMultipleMaps) {
   EXPECT_TRUE(del1);
   EXPECT_TRUE(del2);
 }
+
+TEST(ConcurrentHashMap, ForEachLoop) {
+  ConcurrentHashMap<int, int> map;
+  map.insert(1, 2);
+  size_t iters = 0;
+  for (const auto& kv : map) {
+    EXPECT_EQ(kv.first, 1);
+    EXPECT_EQ(kv.second, 2);
+    ++iters;
+  }
+  EXPECT_EQ(iters, 1);
+}

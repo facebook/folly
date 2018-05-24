@@ -194,6 +194,14 @@ class ConcurrentHashMap {
     return ConstIterator(this);
   }
 
+  ConstIterator end() const noexcept {
+    return cend();
+  }
+
+  ConstIterator begin() const noexcept {
+    return cbegin();
+  }
+
   std::pair<ConstIterator, bool> insert(
       std::pair<key_type, mapped_type>&& foo) {
     auto segment = pickSegment(foo.first);
