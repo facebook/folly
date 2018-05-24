@@ -92,7 +92,7 @@ class hazptr_domain {
   /** cleanup */
   void cleanup() noexcept {
     relaxed_cleanup();
-    await_zero_bulk_reclaims(); // wait for concurrent bulk_reclaim-s
+    wait_for_zero_bulk_reclaims(); // wait for concurrent bulk_reclaim-s
   }
 
  private:
@@ -215,7 +215,7 @@ class hazptr_domain {
     bulk_reclaim(true);
   }
 
-  void await_zero_bulk_reclaims() {
+  void wait_for_zero_bulk_reclaims() {
     while (num_bulk_reclaims_.load(std::memory_order_acquire) > 0) {
       std::this_thread::yield();
     }
