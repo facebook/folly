@@ -465,4 +465,19 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
   return registerHandler(uint16_t(flags | PERSIST));
 }
 
+void AsyncUDPSocket::detachEventBase() {
+  DCHECK(eventBase_ && eventBase_->isInEventBaseThread());
+  registerHandler(uint16_t(NONE));
+  eventBase_ = nullptr;
+  EventHandler::detachEventBase();
+}
+
+void AsyncUDPSocket::attachEventBase(folly::EventBase* evb) {
+  DCHECK(!eventBase_);
+  DCHECK(evb && evb->isInEventBaseThread());
+  eventBase_ = evb;
+  EventHandler::attachEventBase(evb);
+  updateRegistration();
+}
+
 } // namespace folly

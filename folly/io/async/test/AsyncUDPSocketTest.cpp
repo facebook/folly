@@ -581,3 +581,60 @@ TEST_F(AsyncUDPSocketTest, TestBound) {
   socket.bind(address);
   EXPECT_TRUE(socket.isBound());
 }
+
+TEST_F(AsyncUDPSocketTest, TestAttachAfterDetachEvbWithReadCallback) {
+  socket_->resumeRead(&readCb);
+  EXPECT_TRUE(socket_->isHandlerRegistered());
+  socket_->detachEventBase();
+  EXPECT_FALSE(socket_->isHandlerRegistered());
+  socket_->attachEventBase(&evb_);
+  EXPECT_TRUE(socket_->isHandlerRegistered());
+}
+
+TEST_F(AsyncUDPSocketTest, TestAttachAfterDetachEvbNoReadCallback) {
+  EXPECT_FALSE(socket_->isHandlerRegistered());
+  socket_->detachEventBase();
+  EXPECT_FALSE(socket_->isHandlerRegistered());
+  socket_->attachEventBase(&evb_);
+  EXPECT_FALSE(socket_->isHandlerRegistered());
+}
+
+TEST_F(AsyncUDPSocketTest, TestDetachAttach) {
+  folly::EventBase evb2;
+  auto writeSocket = std::make_shared<folly::AsyncUDPSocket>(&evb_);
+  folly::SocketAddress address("127.0.0.1", 0);
+  writeSocket->bind(address);
+  std::array<uint8_t, 1024> data;
+  std::atomic<int> packetsRecvd{0};
+  EXPECT_CALL(readCb, getReadBuffer_(_, _))
+      .WillRepeatedly(Invoke([&](void** buf, size_t* len) {
+        *buf = data.data();
+        *len = 1024;
+      }));
+  EXPECT_CALL(readCb, onDataAvailable_(_, _, _))
+      .WillRepeatedly(Invoke(
+          [&](const folly::SocketAddress&, size_t, bool) { packetsRecvd++; }));
+  socket_->resumeRead(&readCb);
+  writeSocket->write(socket_->address(), folly::IOBuf::copyBuffer("hello"));
+  while (packetsRecvd != 1) {
+    evb_.loopOnce();
+  }
+  EXPECT_EQ(packetsRecvd, 1);
+
+  socket_->detachEventBase();
+  std::thread t([&] { evb2.loopForever(); });
+  evb2.runInEventBaseThreadAndWait([&] { socket_->attachEventBase(&evb2); });
+  writeSocket->write(socket_->address(), folly::IOBuf::copyBuffer("hello"));
+  auto now = std::chrono::steady_clock::now();
+  while (packetsRecvd != 2 ||
+         std::chrono::steady_clock::now() <
+             now + std::chrono::milliseconds(10)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  evb2.runInEventBaseThread([&] {
+    socket_ = nullptr;
+    evb2.terminateLoopSoon();
+  });
+  t.join();
+  EXPECT_EQ(packetsRecvd, 2);
+}

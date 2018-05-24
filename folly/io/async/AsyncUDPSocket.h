@@ -248,6 +248,10 @@ class AsyncUDPSocket : public EventHandler {
     return fd_ != -1;
   }
 
+  virtual void detachEventBase();
+
+  virtual void attachEventBase(folly::EventBase* evb);
+
  protected:
   virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
     return ::sendmsg(socket, message, flags);
