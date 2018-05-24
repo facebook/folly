@@ -13,6 +13,7 @@ from shell_quoting import ShellQuoted
 
 def fbcode_builder_spec(builder):
     builder.add_option('jedisct1/libsodium:git_hash', 'stable')
+    builder.add_option('zeromq/libzmq:git_hash', 'v4.2.5')
     return {
         'depends_on': [folly, fbthrift, gmock],
         'steps': [
