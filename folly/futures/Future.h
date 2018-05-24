@@ -285,6 +285,34 @@ void convertFuture(SemiFuture<T>&& sf, Future<T>& f);
 } // namespace detail
 } // namespace futures
 
+/// The interface (along with SemiFuture) for the consumer-side of a
+///   producer/consumer pair.
+///
+/// Future vs. SemiFuture:
+///
+/// - The consumer-side should generally start with a SemiFuture, not a Future.
+/// - Example, when a library creates and returns a future, it should usually
+///   return a `SemiFuture`, not a Future.
+/// - Reason: so the thread policy for continuations (`.then()`, etc.) can be
+///   specified by the library's caller (using `.via()`).
+/// - A SemiFuture is converted to a Future using `.via()`.
+/// - Use `makePromiseContract()` when creating both a Promise and an associated
+///   SemiFuture/Future.
+///
+/// When practical, prefer SemiFuture/Future's nonblocking style/pattern:
+///
+/// - the nonblocking style uses continuations, e.g., `.then()`, etc.; the
+///   continuations are deferred until the result is available.
+/// - the blocking style blocks until complete, e.g., `.wait()`, `.get()`, etc.
+/// - the two styles cannot be mixed within the same future; use one or the
+///   other.
+///
+/// SemiFuture/Future also provide a back-channel so an interruption request can
+///   be sent from consumer to producer; see SemiFuture/Future's `raise()`
+///   and Promise's `setInterruptHandler()`.
+///
+/// The consumer-side SemiFuture/Future objects should generally be accessed
+///   via a single thread. That thread is referred to as the 'consumer thread.'
 template <class T>
 class SemiFuture : private futures::detail::FutureBase<T> {
  private:
@@ -527,6 +555,34 @@ std::pair<Promise<T>, SemiFuture<T>> makePromiseContract() {
   return std::make_pair(std::move(p), std::move(f));
 }
 
+/// The interface (along with SemiFuture) for the consumer-side of a
+///   producer/consumer pair.
+///
+/// Future vs. SemiFuture:
+///
+/// - The consumer-side should generally start with a SemiFuture, not a Future.
+/// - Example, when a library creates and returns a future, it should usually
+///   return a `SemiFuture`, not a Future.
+/// - Reason: so the thread policy for continuations (`.then()`, etc.) can be
+///   specified by the library's caller (using `.via()`).
+/// - A SemiFuture is converted to a Future using `.via()`.
+/// - Use `makePromiseContract()` when creating both a Promise and an associated
+///   SemiFuture/Future.
+///
+/// When practical, prefer SemiFuture/Future's nonblocking style/pattern:
+///
+/// - the nonblocking style uses continuations, e.g., `.then()`, etc.; the
+///   continuations are deferred until the result is available.
+/// - the blocking style blocks until complete, e.g., `.wait()`, `.get()`, etc.
+/// - the two styles cannot be mixed within the same future; use one or the
+///   other.
+///
+/// SemiFuture/Future also provide a back-channel so an interruption request can
+///   be sent from consumer to producer; see SemiFuture/Future's `raise()`
+///   and Promise's `setInterruptHandler()`.
+///
+/// The consumer-side SemiFuture/Future objects should generally be accessed
+///   via a single thread. That thread is referred to as the 'consumer thread.'
 template <class T>
 class Future : private futures::detail::FutureBase<T> {
  private:
