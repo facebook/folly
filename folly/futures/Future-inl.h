@@ -1785,7 +1785,6 @@ void waitImpl(FutureType& f, Duration dur) {
 
 template <class T>
 void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
-  f = std::move(f).via(nullptr);
   // Set callback so to ensure that the via executor has something on it
   // so that once the preceding future triggers this callback, drive will
   // always have a callback to satisfy it
@@ -1797,6 +1796,7 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
     e->drive();
   }
   assert(f.isReady());
+  f = std::move(f).via(nullptr);
 }
 
 template <class T, typename Rep, typename Period>
@@ -1804,7 +1804,6 @@ void waitViaImpl(
     Future<T>& f,
     TimedDrivableExecutor* e,
     const std::chrono::duration<Rep, Period>& timeout) {
-  f = std::move(f).via(nullptr);
   // Set callback so to ensure that the via executor has something on it
   // so that once the preceding future triggers this callback, drive will
   // always have a callback to satisfy it
@@ -1821,6 +1820,9 @@ void waitViaImpl(
     now = std::chrono::steady_clock::now();
   }
   assert(f.isReady() || (now >= deadline));
+  if (f.isReady()) {
+    f = std::move(f).via(nullptr);
+  }
 }
 
 } // namespace detail
