@@ -40,6 +40,9 @@ void GILAwareManualExecutor::waitBeforeDrive() {
   // Release GIL before waiting on lock
   auto* pyThreadState = PyEval_SaveThread();
   SCOPE_EXIT {
+    // Release lock before re-acquiring GIL,
+    // to avoid deadlock if another GIL-owning thread is calling add
+    lock.unlock();
     PyEval_RestoreThread(pyThreadState);
   };
   cv_.wait(lock, [&] { return !funcs_.empty(); });
