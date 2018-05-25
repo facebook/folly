@@ -35,6 +35,7 @@ using std::atomic;
 using std::chrono::duration_cast;
 using std::chrono::microseconds;
 using std::chrono::milliseconds;
+using std::chrono::steady_clock;
 
 namespace {
 
@@ -463,6 +464,41 @@ TEST(FunctionScheduler, UniformDistribution) {
   fs.shutdown();
   delay(2);
   EXPECT_EQ(6, total);
+}
+
+TEST(FunctionScheduler, ConsistentDelay) {
+  std::atomic<int> ticks(0);
+  FunctionScheduler fs;
+
+  std::atomic<long long> epoch(0);
+  epoch = duration_cast<milliseconds>(steady_clock::now().time_since_epoch())
+              .count();
+
+  // We should have runs at t = 0, 600, 800, 1200, or 4 total.
+  // If at const interval, it would be t = 0, 600, 1000, or 3 total.
+  fs.addFunctionConsistentDelay(
+      [&ticks, &epoch] {
+        auto now =
+            duration_cast<milliseconds>(steady_clock::now().time_since_epoch())
+                .count();
+        int t = ++ticks;
+        if (t != 2) {
+          // Sensitive to delays above 100ms.
+          EXPECT_NEAR((now - epoch) - (t - 1) * 400, 0, 100);
+        }
+        if (t == 1) {
+          /* sleep override */
+          std::this_thread::sleep_for(std::chrono::milliseconds(600));
+        }
+      },
+      milliseconds(400),
+      "ConsistentDelay");
+
+  fs.start();
+
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(1300));
+  EXPECT_EQ(ticks.load(), 4);
 }
 
 TEST(FunctionScheduler, ExponentialBackoff) {

@@ -30,6 +30,26 @@ namespace folly {
 
 namespace {
 
+struct ConsistentDelayFunctor {
+  const milliseconds constInterval;
+
+  explicit ConsistentDelayFunctor(milliseconds interval)
+      : constInterval(interval) {
+    if (interval < milliseconds::zero()) {
+      throw std::invalid_argument(
+          "FunctionScheduler: "
+          "time interval must be non-negative");
+    }
+  }
+
+  steady_clock::time_point operator()(
+      steady_clock::time_point curNextRunTime,
+      steady_clock::time_point curTime) const {
+    auto intervalsPassed = (curTime - curNextRunTime) / constInterval;
+    return (intervalsPassed + 1) * constInterval + curNextRunTime;
+  }
+};
+
 struct ConstIntervalFunctor {
   const milliseconds constInterval;
 
@@ -152,6 +172,20 @@ void FunctionScheduler::addFunctionUniformDistribution(
       false /*runOnce*/);
 }
 
+void FunctionScheduler::addFunctionConsistentDelay(
+    Function<void()>&& cb,
+    milliseconds interval,
+    StringPiece nameID,
+    milliseconds startDelay) {
+  addFunctionInternal(
+      std::move(cb),
+      ConsistentDelayFunctor(interval),
+      nameID.str(),
+      to<std::string>(interval.count(), "ms"),
+      startDelay,
+      false /*runOnce*/);
+}
+
 void FunctionScheduler::addFunctionGenericDistribution(
     Function<void()>&& cb,
     IntervalDistributionFunc&& intervalFunc,
@@ -167,9 +201,25 @@ void FunctionScheduler::addFunctionGenericDistribution(
       false /*runOnce*/);
 }
 
-void FunctionScheduler::addFunctionInternal(
+void FunctionScheduler::addFunctionGenericNextRunTimeFunctor(
     Function<void()>&& cb,
-    IntervalDistributionFunc&& intervalFunc,
+    NextRunTimeFunc&& fn,
+    const std::string& nameID,
+    const std::string& intervalDescr,
+    milliseconds startDelay) {
+  addFunctionInternal(
+      std::move(cb),
+      std::move(fn),
+      nameID,
+      intervalDescr,
+      startDelay,
+      false /*runOnce*/);
+}
+
+template <typename RepeatFuncNextRunTimeFunc>
+void FunctionScheduler::addFunctionToHeapChecked(
+    Function<void()>&& cb,
+    RepeatFuncNextRunTimeFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
     milliseconds startDelay,
@@ -178,9 +228,10 @@ void FunctionScheduler::addFunctionInternal(
     throw std::invalid_argument(
         "FunctionScheduler: Scheduled function must be set");
   }
-  if (!intervalFunc) {
+  if (!fn) {
     throw std::invalid_argument(
-        "FunctionScheduler: interval distribution function must be set");
+        "FunctionScheduler: "
+        "interval distribution or next run time function must be set");
   }
   if (startDelay < milliseconds::zero()) {
     throw std::invalid_argument(
@@ -204,11 +255,33 @@ void FunctionScheduler::addFunctionInternal(
       l,
       std::make_unique<RepeatFunc>(
           std::move(cb),
-          std::move(intervalFunc),
+          std::forward<RepeatFuncNextRunTimeFunc>(fn),
           nameID,
           intervalDescr,
           startDelay,
           runOnce));
+}
+
+void FunctionScheduler::addFunctionInternal(
+    Function<void()>&& cb,
+    NextRunTimeFunc&& fn,
+    const std::string& nameID,
+    const std::string& intervalDescr,
+    milliseconds startDelay,
+    bool runOnce) {
+  return addFunctionToHeapChecked(
+      std::move(cb), std::move(fn), nameID, intervalDescr, startDelay, runOnce);
+}
+
+void FunctionScheduler::addFunctionInternal(
+    Function<void()>&& cb,
+    IntervalDistributionFunc&& fn,
+    const std::string& nameID,
+    const std::string& intervalDescr,
+    milliseconds startDelay,
+    bool runOnce) {
+  return addFunctionToHeapChecked(
+      std::move(cb), std::move(fn), nameID, intervalDescr, startDelay, runOnce);
 }
 
 bool FunctionScheduler::cancelFunctionWithLock(
