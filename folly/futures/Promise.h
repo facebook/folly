@@ -254,14 +254,6 @@ class Promise {
   /// - The associated future (if any) will complete with the exception.
   void setException(exception_wrapper ew);
 
-  /// Fulfill the Promise with the exception referenced by `ep` *as if* by
-  ///   `setException(exception_wrapper::from_exception_ptr(ep))`.
-  ///
-  /// Please see `setException(exception_wrapper)` for semantics/contract.
-  /// Please also use `setException(exception_wrapper)` instead of this.
-  [[deprecated("use setException(exception_wrapper)")]]
-  void setException(std::exception_ptr const& ep);
-
   /// Fulfill the Promise with exception `e` *as if* by
   ///   `setException(make_exception_wrapper<E>(e))`.
   ///
