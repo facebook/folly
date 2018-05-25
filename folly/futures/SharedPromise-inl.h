@@ -81,11 +81,6 @@ SharedPromise<T>::setException(E const& e) {
 }
 
 template <class T>
-void SharedPromise<T>::setException(std::exception_ptr const& ep) {
-  setTry(Try<T>(ep));
-}
-
-template <class T>
 void SharedPromise<T>::setException(exception_wrapper ew) {
   setTry(Try<T>(std::move(ew)));
 }

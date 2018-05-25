@@ -72,18 +72,8 @@ class SharedPromise {
   /** Fulfill the SharedPromise with an exception_wrapper */
   void setException(exception_wrapper ew);
 
-  /** Fulfill the SharedPromise with an exception_ptr, e.g.
-    try {
-      ...
-    } catch (...) {
-      p.setException(std::current_exception());
-    }
-    */
-  [[deprecated("use setException(exception_wrapper)")]]
-  void setException(std::exception_ptr const&);
-
   /** Fulfill the SharedPromise with an exception type E, which can be passed to
-    std::make_exception_ptr(). Useful for originating exceptions. If you
+    make_exception_wrapper(). Useful for originating exceptions. If you
     caught an exception the exception_wrapper form is more appropriate.
     */
   template <class E>
