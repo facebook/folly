@@ -1814,7 +1814,7 @@ class F14Table : public Policy {
   // to intercept the value before it is destroyed (to extract it, for
   // example), use eraseInto(pos, beforeDestroy).
   void erase(ItemIter pos) {
-    eraseInto(pos, [](value_type&) {});
+    eraseInto(pos, [](value_type&&) {});
   }
 
   // The item needs to still be hashable during this call.  If you want
@@ -1826,13 +1826,13 @@ class F14Table : public Policy {
     if (pos.chunk()->hostedOverflowCount() != 0) {
       hp = splitHash(this->computeItemHash(pos.citem()));
     }
-    beforeDestroy(this->valueAtItemForExtract(pos.item()));
+    beforeDestroy(this->valueAtItemForMove(pos.item()));
     eraseImpl(pos, hp);
   }
 
   template <typename K>
   std::size_t erase(K const& key) {
-    return eraseInto(key, [](value_type&) {});
+    return eraseInto(key, [](value_type&&) {});
   }
 
   template <typename K, typename BeforeDestroy>
@@ -1843,7 +1843,7 @@ class F14Table : public Policy {
     auto hp = splitHash(this->computeKeyHash(key));
     auto iter = findImpl(hp, key);
     if (!iter.atEnd()) {
-      beforeDestroy(this->valueAtItemForExtract(iter.item()));
+      beforeDestroy(this->valueAtItemForMove(iter.item()));
       eraseImpl(iter, hp);
       return 1;
     } else {

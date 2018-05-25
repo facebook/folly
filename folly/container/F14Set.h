@@ -393,19 +393,19 @@ class F14BasicSet {
   }
 
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    return eraseInto(pos, [](value_type&) {});
+    return eraseInto(pos, [](value_type&&) {});
   }
 
   iterator erase(const_iterator first, const_iterator last) {
-    return eraseInto(first, last, [](value_type&) {});
+    return eraseInto(first, last, [](value_type&&) {});
   }
 
   size_type erase(key_type const& key) {
-    return eraseInto(key, [](value_type&) {});
+    return eraseInto(key, [](value_type&&) {});
   }
 
   // eraseInto contains the same overloads as erase but provides
-  // an additional callback argument which is called with a non-const lvalue
+  // an additional callback argument which is called with an rvalue
   // reference to the item directly before it is destroyed. This can be
   // used to extract an item out of a F14Set while avoiding a copy.
   template <typename BeforeDestroy>
@@ -865,15 +865,15 @@ class F14VectorSet
 
  public:
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    return eraseInto(pos, [](value_type&) {});
+    return eraseInto(pos, [](value_type&&) {});
   }
 
   iterator erase(const_iterator first, const_iterator last) {
-    return eraseInto(first, last, [](value_type&) {});
+    return eraseInto(first, last, [](value_type&&) {});
   }
 
   std::size_t erase(key_type const& key) {
-    return eraseInto(key, [](value_type&) {});
+    return eraseInto(key, [](value_type&&) {});
   }
 
   template <typename BeforeDestroy>

@@ -723,11 +723,13 @@ void runEraseIntoTest() {
   S t0;
   S t1;
 
-  auto insertIntoT0 = [&t0](auto& value) {
+  auto insertIntoT0 = [&t0](auto&& value) {
     EXPECT_FALSE(value.destroyed);
     t0.emplace(std::move(value));
   };
-  auto insertIntoT0Mut = [&](auto& value) mutable { insertIntoT0(value); };
+  auto insertIntoT0Mut = [&](typename S::value_type&& value) mutable {
+    insertIntoT0(std::move(value));
+  };
 
   t0.insert(10);
   t1.insert(20);

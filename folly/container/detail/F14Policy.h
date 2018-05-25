@@ -408,8 +408,8 @@ class ValueContainerPolicy : public BasePolicy<
     return item;
   }
 
-  Value& valueAtItemForExtract(Item& item) {
-    return item;
+  Value&& valueAtItemForMove(Item& item) {
+    return std::move(item);
   }
 
   template <typename... Args>
@@ -656,8 +656,8 @@ class NodeContainerPolicy
     return *item;
   }
 
-  Value& valueAtItemForExtract(Item& item) {
-    return *item;
+  Value&& valueAtItemForMove(Item& item) {
+    return std::move(*item);
   }
 
   template <typename... Args>
@@ -951,8 +951,8 @@ class VectorContainerPolicy : public BasePolicy<
     return {item};
   }
 
-  Value& valueAtItemForExtract(Item& item) {
-    return values_[item];
+  Value&& valueAtItemForMove(Item& item) {
+    return std::move(values_[item]);
   }
 
   void constructValueAtItem(
