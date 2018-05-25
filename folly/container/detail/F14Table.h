@@ -832,52 +832,23 @@ class F14Table : public Policy {
   using allocator_type = typename Policy::Alloc;
 
  private:
-  using HashPair = typename F14HashToken::HashPair;
+  using Policy::kAllocIsAlwaysEqual;
+  using Policy::kDefaultConstructIsNoexcept;
+  using Policy::kSwapIsNoexcept;
+
+  using typename Policy::AllocTraits;
+
+  using ByteAlloc = typename AllocTraits::template rebind_alloc<uint8_t>;
+  using BytePtr = typename std::allocator_traits<ByteAlloc>::pointer;
 
   using Chunk = F14Chunk<Item>;
-  using ChunkAlloc = typename std::allocator_traits<
-      allocator_type>::template rebind_alloc<Chunk>;
-  using ChunkPtr = typename std::allocator_traits<ChunkAlloc>::pointer;
+  using ChunkPtr =
+      typename std::pointer_traits<BytePtr>::template rebind<Chunk>;
 
-  static constexpr bool kChunkAllocIsDefault =
-      std::is_same<ChunkAlloc, std::allocator<Chunk>>::value;
-
-  using ByteAlloc = typename std::allocator_traits<
-      allocator_type>::template rebind_alloc<uint8_t>;
-  using BytePtr = typename std::allocator_traits<ByteAlloc>::pointer;
+  using HashPair = typename F14HashToken::HashPair;
 
  public:
   using ItemIter = F14ItemIter<ChunkPtr>;
-
- private:
-  // emulate c++17's std::allocator_traits<A>::is_always_equal
-
-  template <typename A, typename = void>
-  struct AllocIsAlwaysEqual : std::is_empty<A> {};
-
-  template <typename A>
-  struct AllocIsAlwaysEqual<A, typename A::is_always_equal>
-      : A::is_always_equal {};
-
-  // emulate c++17 has std::is_nothrow_swappable
-  template <typename T>
-  static constexpr bool isNothrowSwap() {
-    using std::swap;
-    return noexcept(swap(std::declval<T&>(), std::declval<T&>()));
-  }
-
- public:
-  static constexpr bool kAllocIsAlwaysEqual =
-      AllocIsAlwaysEqual<allocator_type>::value;
-
-  static constexpr bool kDefaultConstructIsNoexcept =
-      std::is_nothrow_default_constructible<typename Policy::Hasher>::value &&
-      std::is_nothrow_default_constructible<typename Policy::KeyEqual>::value &&
-      std::is_nothrow_default_constructible<typename Policy::Alloc>::value;
-
-  static constexpr bool kSwapIsNoexcept = kAllocIsAlwaysEqual &&
-      isNothrowSwap<typename Policy::Hasher>() &&
-      isNothrowSwap<typename Policy::KeyEqual>();
 
  private:
   //////// begin fields
@@ -917,12 +888,12 @@ class F14Table : public Policy {
   }
 
   F14Table(F14Table const& rhs) : Policy{rhs} {
-    copyFromF14Table(rhs);
+    buildFromF14Table(rhs);
   }
 
   F14Table(F14Table const& rhs, typename Policy::Alloc const& alloc)
       : Policy{rhs, alloc} {
-    copyFromF14Table(rhs);
+    buildFromF14Table(rhs);
   }
 
   F14Table(F14Table&& rhs) noexcept(
@@ -936,17 +907,20 @@ class F14Table : public Policy {
   F14Table(F14Table&& rhs, typename Policy::Alloc const& alloc) noexcept(
       kAllocIsAlwaysEqual)
       : Policy{std::move(rhs), alloc} {
-    FOLLY_SAFE_CHECK(
-        kAllocIsAlwaysEqual || this->alloc() == rhs.alloc(),
-        "F14 move with unequal allocators not yet supported");
-    swapContents(rhs);
+    if (kAllocIsAlwaysEqual || this->alloc() == rhs.alloc()) {
+      // move storage (common case)
+      swapContents(rhs);
+    } else {
+      // new storage because allocators unequal, move values (rare case)
+      buildFromF14Table(std::move(rhs));
+    }
   }
 
   F14Table& operator=(F14Table const& rhs) {
     if (this != &rhs) {
       reset();
       static_cast<Policy&>(*this) = rhs;
-      copyFromF14Table(rhs);
+      buildFromF14Table(rhs);
     }
     return *this;
   }
@@ -955,18 +929,19 @@ class F14Table : public Policy {
       std::is_nothrow_move_assignable<typename Policy::Hasher>::value&&
           std::is_nothrow_move_assignable<typename Policy::KeyEqual>::value &&
       (kAllocIsAlwaysEqual ||
-       (std::allocator_traits<typename Policy::Alloc>::
-            propagate_on_container_move_assignment::value &&
+       (AllocTraits::propagate_on_container_move_assignment::value &&
         std::is_nothrow_move_assignable<typename Policy::Alloc>::value))) {
     if (this != &rhs) {
       reset();
       static_cast<Policy&>(*this) = std::move(rhs);
-      FOLLY_SAFE_CHECK(
-          std::allocator_traits<typename Policy::Alloc>::
-                  propagate_on_container_move_assignment::value ||
-              kAllocIsAlwaysEqual || this->alloc() == rhs.alloc(),
-          "F14 move with unequal allocators not yet supported");
-      swapContents(rhs);
+      if (AllocTraits::propagate_on_container_move_assignment::value ||
+          kAllocIsAlwaysEqual || this->alloc() == rhs.alloc()) {
+        // move storage (common case)
+        swapContents(rhs);
+      } else {
+        // new storage because allocators unequal, move values (rare case)
+        buildFromF14Table(std::move(rhs));
+      }
     }
     return *this;
   }
@@ -1113,7 +1088,7 @@ class F14Table : public Policy {
     auto& a = this->alloc();
     return std::min<std::size_t>(
         (std::numeric_limits<typename Policy::InternalSizeType>::max)(),
-        std::allocator_traits<allocator_type>::max_size(a));
+        AllocTraits::max_size(a));
   }
 
   std::size_t bucket_count() const noexcept {
@@ -1350,19 +1325,25 @@ class F14Table : public Policy {
     }
   }
 
-  void directCopyFrom(F14Table const& src) {
+  template <typename T>
+  void directBuildFrom(T&& src) {
     FOLLY_SAFE_DCHECK(src.size() > 0 && chunkMask_ == src.chunkMask_, "");
 
-    Policy const& srcPolicy = src;
-    auto undoState = this->beforeCopy(src.size(), bucket_count(), srcPolicy);
+    // We use std::forward<T> to allow portions of src to be moved out by
+    // either beforeBuild or afterBuild, but we are just relying on good
+    // behavior of our Policy superclass to ensure that any particular
+    // field of this is a donor at most once.
+
+    auto undoState =
+        this->beforeBuild(src.size(), bucket_count(), std::forward<T>(src));
     bool success = false;
     SCOPE_EXIT {
-      this->afterCopy(
-          undoState, success, src.size(), bucket_count(), srcPolicy);
+      this->afterBuild(
+          undoState, success, src.size(), bucket_count(), std::forward<T>(src));
     };
 
     // Copy can fail part-way through if a Value copy constructor throws.
-    // Failing afterCopy is limited in its cleanup power in this case,
+    // Failing afterBuild is limited in its cleanup power in this case,
     // because it can't enumerate the items that were actually copied.
     // Fortunately we can divide the situation into cases where all of
     // the state is owned by the table itself (F14Node and F14Value),
@@ -1389,7 +1370,7 @@ class F14Table : public Policy {
 
       // happy path, no rehash but pack items toward bottom of chunk and
       // use copy constructor
-      Chunk const* srcChunk = &src.chunks_[maxChunkIndex];
+      auto srcChunk = &src.chunks_[maxChunkIndex];
       Chunk* dstChunk = &chunks_[maxChunkIndex];
       do {
         dstChunk->copyOverflowInfoFrom(*srcChunk);
@@ -1404,11 +1385,12 @@ class F14Table : public Policy {
         std::size_t dstI = 0;
         for (; iter.hasNext(); ++dstI) {
           auto srcI = iter.next();
-          auto&& srcValue = src.valueAtItemForCopy(srcChunk->citem(srcI));
+          auto&& srcArg =
+              std::forward<T>(src).buildArgForItem(srcChunk->item(srcI));
           auto dst = dstChunk->itemAddr(dstI);
           folly::assume(dst != nullptr);
           this->constructValueAtItem(
-              0, dst, std::forward<decltype(srcValue)>(srcValue));
+              0, dst, std::forward<decltype(srcArg)>(srcArg));
           dstChunk->setTag(dstI, srcChunk->tag(srcI));
           ++sizeAndPackedBegin_.size_;
         }
@@ -1429,7 +1411,8 @@ class F14Table : public Policy {
     success = true;
   }
 
-  void rehashCopyFrom(F14Table const& src) {
+  template <typename T>
+  void rehashBuildFrom(T&& src) {
     FOLLY_SAFE_DCHECK(src.chunkMask_ > chunkMask_, "");
 
     // 1 byte per chunk means < 1 bit per value temporary overhead
@@ -1454,30 +1437,35 @@ class F14Table : public Policy {
     };
     std::memset(fullness, '\0', cc);
 
-    // Exception safety requires beforeCopy to happen after all of the
+    // We use std::forward<T> to allow portions of src to be moved out by
+    // either beforeBuild or afterBuild, but we are just relying on good
+    // behavior of our Policy superclass to ensure that any particular
+    // field of this is a donor at most once.
+
+    // Exception safety requires beforeBuild to happen after all of the
     // allocate() calls.
-    Policy const& srcPolicy = src;
-    auto undoState = this->beforeCopy(src.size(), bucket_count(), srcPolicy);
+    auto undoState =
+        this->beforeBuild(src.size(), bucket_count(), std::forward<T>(src));
     bool success = false;
     SCOPE_EXIT {
-      this->afterCopy(
-          undoState, success, src.size(), bucket_count(), srcPolicy);
+      this->afterBuild(
+          undoState, success, src.size(), bucket_count(), std::forward<T>(src));
     };
 
     // The current table is at a valid state at all points for policies
     // in which non-trivial values are owned by the main table (F14Node
     // and F14Value), so reset() will clean things up properly if we
     // fail partway through.  For the case that the policy manages value
-    // lifecycle (F14Vector) then nothing after beforeCopy can throw and
+    // lifecycle (F14Vector) then nothing after beforeBuild can throw and
     // we don't have to worry about partial failure.
 
     std::size_t srcChunkIndex = src.lastOccupiedChunk() - src.chunks_;
     while (true) {
-      Chunk const* srcChunk = &src.chunks_[srcChunkIndex];
+      auto srcChunk = &src.chunks_[srcChunkIndex];
       auto iter = srcChunk->occupiedIter();
       if (Policy::prefetchBeforeRehash()) {
         for (auto piter = iter; piter.hasNext();) {
-          this->prefetchValue(srcChunk->citem(piter.next()));
+          this->prefetchValue(srcChunk->item(piter.next()));
         }
       }
       if (srcChunk->hostedOverflowCount() == 0) {
@@ -1485,27 +1473,27 @@ class F14Table : public Policy {
         // don't need to compute any hash values
         while (iter.hasNext()) {
           auto i = iter.next();
-          auto& srcItem = srcChunk->citem(i);
-          auto&& srcValue = src.valueAtItemForCopy(srcItem);
+          auto& srcItem = srcChunk->item(i);
+          auto&& srcArg = std::forward<T>(src).buildArgForItem(srcItem);
           HashPair hp{srcChunkIndex, srcChunk->tag(i)};
           insertAtBlank(
               allocateTag(fullness, hp),
               hp,
-              std::forward<decltype(srcValue)>(srcValue));
+              std::forward<decltype(srcArg)>(srcArg));
         }
       } else {
         // any chunk's items might be in here
         while (iter.hasNext()) {
           auto i = iter.next();
-          auto& srcItem = srcChunk->citem(i);
-          auto&& srcValue = src.valueAtItemForCopy(srcItem);
-          auto const& srcKey = src.keyForValue(srcValue);
+          auto& srcItem = srcChunk->item(i);
+          auto&& srcArg = std::forward<T>(src).buildArgForItem(srcItem);
+          auto const& srcKey = src.keyForValue(srcArg);
           auto hp = splitHash(this->computeKeyHash(srcKey));
           FOLLY_SAFE_DCHECK(hp.second == srcChunk->tag(i), "");
           insertAtBlank(
               allocateTag(fullness, hp),
               hp,
-              std::forward<decltype(srcValue)>(srcValue));
+              std::forward<decltype(srcArg)>(srcArg));
         }
       }
       if (srcChunkIndex == 0) {
@@ -1517,7 +1505,8 @@ class F14Table : public Policy {
     success = true;
   }
 
-  FOLLY_NOINLINE void copyFromF14Table(F14Table const& src) {
+  template <typename T>
+  FOLLY_NOINLINE void buildFromF14Table(T&& src) {
     FOLLY_SAFE_DCHECK(size() == 0, "");
     if (src.size() == 0) {
       return;
@@ -1526,9 +1515,9 @@ class F14Table : public Policy {
     reserveForInsert(src.size());
     try {
       if (chunkMask_ == src.chunkMask_) {
-        directCopyFrom(src);
+        directBuildFrom(std::forward<T>(src));
       } else {
-        rehashCopyFrom(src);
+        rehashBuildFrom(std::forward<T>(src));
       }
     } catch (...) {
       reset();
@@ -1826,7 +1815,7 @@ class F14Table : public Policy {
     if (pos.chunk()->hostedOverflowCount() != 0) {
       hp = splitHash(this->computeItemHash(pos.citem()));
     }
-    beforeDestroy(this->valueAtItemForMove(pos.item()));
+    beforeDestroy(this->valueAtItemForExtract(pos.item()));
     eraseImpl(pos, hp);
   }
 
@@ -1843,7 +1832,7 @@ class F14Table : public Policy {
     auto hp = splitHash(this->computeKeyHash(key));
     auto iter = findImpl(hp, key);
     if (!iter.atEnd()) {
-      beforeDestroy(this->valueAtItemForMove(iter.item()));
+      beforeDestroy(this->valueAtItemForExtract(iter.item()));
       eraseImpl(iter, hp);
       return 1;
     } else {

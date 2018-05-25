@@ -136,9 +136,8 @@ class F14BasicMap {
   using allocator_type = typename Policy::Alloc;
   using reference = value_type&;
   using const_reference = value_type const&;
-  using pointer = typename std::allocator_traits<allocator_type>::pointer;
-  using const_pointer =
-      typename std::allocator_traits<allocator_type>::const_pointer;
+  using pointer = typename Policy::AllocTraits::pointer;
+  using const_pointer = typename Policy::AllocTraits::const_pointer;
   using iterator = typename Policy::Iter;
   using const_iterator = typename Policy::ConstIter;
 
@@ -148,7 +147,7 @@ class F14BasicMap {
  public:
   //// PUBLIC - Member functions
 
-  F14BasicMap() noexcept(F14Table<Policy>::kDefaultConstructIsNoexcept)
+  F14BasicMap() noexcept(Policy::kDefaultConstructIsNoexcept)
       : F14BasicMap(0) {}
 
   explicit F14BasicMap(
@@ -210,7 +209,7 @@ class F14BasicMap {
   F14BasicMap(F14BasicMap&& rhs) = default;
 
   F14BasicMap(F14BasicMap&& rhs, allocator_type const& alloc) noexcept(
-      F14Table<Policy>::kAllocIsAlwaysEqual)
+      Policy::kAllocIsAlwaysEqual)
       : table_{std::move(rhs.table_), alloc} {}
 
   F14BasicMap(
@@ -834,14 +833,11 @@ class F14ValueMap
   using Super = f14::detail::F14BasicMap<Policy>;
 
  public:
-  F14ValueMap() noexcept(
-      f14::detail::F14Table<Policy>::kDefaultConstructIsNoexcept)
-      : Super{} {}
+  F14ValueMap() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
 
   using Super::Super;
 
-  void swap(F14ValueMap& rhs) noexcept(
-      f14::detail::F14Table<Policy>::kSwapIsNoexcept) {
+  void swap(F14ValueMap& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
   }
 };
@@ -884,14 +880,11 @@ class F14NodeMap
   using Super = f14::detail::F14BasicMap<Policy>;
 
  public:
-  F14NodeMap() noexcept(
-      f14::detail::F14Table<Policy>::kDefaultConstructIsNoexcept)
-      : Super{} {}
+  F14NodeMap() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
 
   using Super::Super;
 
-  void swap(F14NodeMap& rhs) noexcept(
-      f14::detail::F14Table<Policy>::kSwapIsNoexcept) {
+  void swap(F14NodeMap& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
   }
 
@@ -942,15 +935,12 @@ class F14VectorMap
   using reverse_iterator = typename Policy::ReverseIter;
   using const_reverse_iterator = typename Policy::ConstReverseIter;
 
-  F14VectorMap() noexcept(
-      f14::detail::F14Table<Policy>::kDefaultConstructIsNoexcept)
-      : Super{} {}
+  F14VectorMap() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
 
   // inherit constructors
   using Super::Super;
 
-  void swap(F14VectorMap& rhs) noexcept(
-      f14::detail::F14Table<Policy>::kSwapIsNoexcept) {
+  void swap(F14VectorMap& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
   }
 
@@ -1040,7 +1030,7 @@ class F14VectorMap
     // The item still needs to be hashable during this call, so we must destroy
     // the value _afterwards_.
     this->table_.erase(underlying);
-    std::allocator_traits<Alloc>::destroy(a, std::addressof(values[index]));
+    Policy::AllocTraits::destroy(a, std::addressof(values[index]));
 
     // move the last element in values_ down and fix up the inbound index
     auto tailIndex = this->size();

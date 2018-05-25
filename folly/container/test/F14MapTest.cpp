@@ -256,6 +256,8 @@ void runRandom() {
     R r0;
     R r1;
     std::size_t rollbacks = 0;
+    std::size_t resizingSmallRollbacks = 0;
+    std::size_t resizingLargeRollbacks = 0;
 
     for (std::size_t reps = 0; reps < 100000; ++reps) {
       if (pctDist(gen) < 20) {
@@ -476,6 +478,14 @@ void runRandom() {
           }
         }
 
+        if (t0.bucket_count() == t0.size() && t0.size() > 0) {
+          if (t0.size() < 10) {
+            ++resizingSmallRollbacks;
+          } else {
+            ++resizingLargeRollbacks;
+          }
+        }
+
         assert(t0.size() == r0.size());
         for (auto&& kv : r0) {
           auto t = t0.find(kv.first);
@@ -487,6 +497,8 @@ void runRandom() {
     }
 
     EXPECT_GE(rollbacks, 10);
+    EXPECT_GE(resizingSmallRollbacks, 1);
+    EXPECT_GE(resizingLargeRollbacks, 1);
   }
 
   EXPECT_EQ(testAllocatedMemorySize, 0);

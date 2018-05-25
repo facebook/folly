@@ -364,11 +364,28 @@ void runMultiScopeTest() {
   checkLocation("b1", segment1, *b1);
   EXPECT_TRUE(*a1 == *c1);
 
-  // not yet supported by F14
-  // *a1 = std::move(*e2);
-  //
-  // checkLocation("a1", segment1, *a1);
-  // checkLocation("e2", segment2, *e2);
+  *a1 = std::move(*e2);
+
+  EXPECT_TRUE(*f2 == *a1);
+
+  checkLocation("a1", segment1, *a1);
+  checkLocation("e2", segment2, *e2);
+
+  auto g2 = segment2->construct<M>(anonymous_instance)(
+      std::move(*a1), typename M::allocator_type{mgr2});
+
+  EXPECT_TRUE(*f2 == *g2);
+
+  checkLocation("f2", segment2, *f2);
+  checkLocation("g2", segment2, *g2);
+
+  segment1->destroy_ptr(a1);
+  segment1->destroy_ptr(b1);
+  segment1->destroy_ptr(c1);
+  segment2->destroy_ptr(d2);
+  segment2->destroy_ptr(e2);
+  segment2->destroy_ptr(f2);
+  segment2->destroy_ptr(g2);
 }
 
 TEST(ShmF14ValueI2VVI, multiScope) {
