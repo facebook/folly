@@ -106,19 +106,6 @@ class Try {
       : contains_(Contains::EXCEPTION),
         e_(std::move(e)){}
 
-  // clang-format off
-  /*
-   * DEPRECATED
-   * Construct a Try with an exception_pointer
-   *
-   * @param ep The exception_pointer. Will be rethrown.
-   */
-  [[deprecated("use Try(exception_wrapper)")]]
-  explicit Try(std::exception_ptr ep) noexcept
-      : contains_(Contains::EXCEPTION),
-        e_(exception_wrapper::from_exception_ptr(ep)) {}
-  // clang-format on
-
   // Move constructor
   Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value);
   // Move assigner
@@ -373,18 +360,6 @@ class Try<void> {
   explicit Try(exception_wrapper e) noexcept
       : hasValue_(false),
         e_(std::move(e)){}
-
-  // clang-format off
-  /*
-   * DEPRECATED
-   * Construct a Try with an exception_pointer
-   *
-   * @param ep The exception_pointer. Will be rethrown.
-   */
-  [[deprecated("use Try(exception_wrapper)")]] explicit Try(
-      std::exception_ptr ep) noexcept
-      : hasValue_(false), e_(exception_wrapper::from_exception_ptr(ep)) {}
-  // clang-format on
 
   // Copy assigner
   Try& operator=(const Try<void>& t) noexcept {
