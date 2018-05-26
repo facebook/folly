@@ -125,6 +125,17 @@ TEST_F(HHWheelTimerTest, TestSchedulingWithinCallback) {
 }
 
 /*
+ * Test changing default-timeout in timer.
+ */
+TEST_F(HHWheelTimerTest, TestSetDefaultTimeout) {
+  HHWheelTimer& t = eventBase.timer();
+
+  t.setDefaultTimeout(milliseconds(1000));
+  // verify: default-time has been modified
+  ASSERT_EQ(t.getDefaultTimeout(), milliseconds(1000));
+}
+
+/*
  * Test cancelling a timeout when it is scheduled to be fired right away.
  */
 
