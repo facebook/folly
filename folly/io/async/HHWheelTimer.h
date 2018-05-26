@@ -196,6 +196,13 @@ class HHWheelTimer : private folly::AsyncTimeout,
   }
 
   /**
+   * Set the default timeout interval for this HHWheelTimer.
+   */
+  void setDefaultTimeout(std::chrono::milliseconds timeout) {
+      defaultTimeout_ = timeout;
+  }
+
+  /**
    * Schedule the specified Callback to be invoked after the
    * specified timeout interval.
    *
