@@ -1168,6 +1168,84 @@ TEST(F14ValueMap, heterogeneous) {
   checks(folly::as_const(map));
 }
 
+template <typename M>
+void runStatefulFunctorTest() {
+  bool ranHasher = false;
+  bool ranEqual = false;
+  bool ranAlloc = false;
+  bool ranDealloc = false;
+
+  auto hasher = [&](int x) {
+    ranHasher = true;
+    return x;
+  };
+  auto equal = [&](int x, int y) {
+    ranEqual = true;
+    return x == y;
+  };
+  auto alloc = [&](std::size_t n) {
+    ranAlloc = true;
+    return std::malloc(n);
+  };
+  auto dealloc = [&](void* p, std::size_t) {
+    ranDealloc = true;
+    std::free(p);
+  };
+
+  {
+    M map(0, hasher, equal, {alloc, dealloc});
+    map[10]++;
+    map[10]++;
+    EXPECT_EQ(map[10], 2);
+
+    M map2(map);
+    M map3(std::move(map));
+    map = map2;
+    map2.clear();
+    map2 = std::move(map3);
+  }
+  EXPECT_TRUE(ranHasher);
+  EXPECT_TRUE(ranEqual);
+  EXPECT_TRUE(ranAlloc);
+  EXPECT_TRUE(ranDealloc);
+}
+
+TEST(F14ValueMap, statefulFunctors) {
+  runStatefulFunctorTest<F14ValueMap<
+      int,
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<std::pair<int const, int>>>>();
+}
+
+TEST(F14NodeMap, statefulFunctors) {
+  runStatefulFunctorTest<F14NodeMap<
+      int,
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<std::pair<int const, int>>>>();
+}
+
+TEST(F14VectorMap, statefulFunctors) {
+  runStatefulFunctorTest<F14VectorMap<
+      int,
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<std::pair<int const, int>>>>();
+}
+
+TEST(F14FastMap, statefulFunctors) {
+  runStatefulFunctorTest<F14FastMap<
+      int,
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<std::pair<int const, int>>>>();
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////

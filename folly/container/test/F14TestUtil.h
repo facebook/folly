@@ -18,10 +18,12 @@
 
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <ostream>
 #include <vector>
 
 #include <folly/Demangle.h>
+#include <folly/Function.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 
@@ -426,6 +428,117 @@ std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
   xo << "}";
   return xo;
 }
+
+template <class T>
+class GenericAlloc {
+ public:
+  using value_type = T;
+
+  using pointer = T*;
+  using const_pointer = T const*;
+  using reference = T&;
+  using const_reference = T const&;
+  using size_type = std::size_t;
+
+  using propagate_on_container_swap = std::true_type;
+  using propagate_on_container_copy_assignment = std::true_type;
+  using propagate_on_container_move_assignment = std::true_type;
+
+  using AllocBytesFunc = folly::Function<void*(std::size_t)>;
+  using DeallocBytesFunc = folly::Function<void(void*, std::size_t)>;
+
+  GenericAlloc() = delete;
+
+  template <typename A, typename D>
+  GenericAlloc(A&& alloc, D&& dealloc)
+      : alloc_{std::make_shared<AllocBytesFunc>(std::forward<A>(alloc))},
+        dealloc_{std::make_shared<DeallocBytesFunc>(std::forward<D>(dealloc))} {
+  }
+
+  template <class U>
+  GenericAlloc(GenericAlloc<U> const& other) noexcept
+      : alloc_{other.alloc_}, dealloc_{other.dealloc_} {}
+
+  template <class U>
+  GenericAlloc& operator=(GenericAlloc<U> const& other) noexcept {
+    alloc_ = other.alloc_;
+    dealloc_ = other.dealloc_;
+    return *this;
+  }
+
+  template <class U>
+  GenericAlloc(GenericAlloc<U>&& other) noexcept
+      : alloc_(std::move(other.alloc_)), dealloc_(std::move(other.dealloc_)) {}
+
+  template <class U>
+  GenericAlloc& operator=(GenericAlloc<U>&& other) noexcept {
+    alloc_ = std::move(other.alloc_);
+    dealloc_ = std::move(other.dealloc_);
+    return *this;
+  }
+
+  T* allocate(size_t n) {
+    return static_cast<T*>((*alloc_)(n * sizeof(T)));
+  }
+  void deallocate(T* p, size_t n) {
+    (*dealloc_)(static_cast<void*>(p), n * sizeof(T));
+  }
+
+  template <typename U>
+  bool operator==(GenericAlloc<U> const& rhs) const {
+    return alloc_ == rhs.alloc_;
+  }
+
+  template <typename U>
+  bool operator!=(GenericAlloc<U> const& rhs) const {
+    return !(*this == rhs);
+  }
+
+ private:
+  std::shared_ptr<AllocBytesFunc> alloc_;
+  std::shared_ptr<DeallocBytesFunc> dealloc_;
+
+  template <class U>
+  friend class GenericAlloc;
+};
+
+template <typename T>
+class GenericEqual {
+ public:
+  using EqualFunc = folly::Function<bool(T const&, T const&)>;
+
+  GenericEqual() = delete;
+
+  template <typename E>
+  GenericEqual(E&& equal)
+      : equal_{std::make_shared<EqualFunc>(std::forward<E>(equal))} {}
+
+  bool operator()(T const& lhs, T const& rhs) const {
+    return (*equal_)(lhs, rhs);
+  }
+
+ private:
+  std::shared_ptr<EqualFunc> equal_;
+};
+
+template <typename T>
+class GenericHasher {
+ public:
+  using HasherFunc = folly::Function<std::size_t(T const&)>;
+
+  GenericHasher() = delete;
+
+  template <typename H>
+  GenericHasher(H&& hasher)
+      : hasher_{std::make_shared<HasherFunc>(std::forward<H>(hasher))} {}
+
+  std::size_t operator()(T const& val) const {
+    return (*hasher_)(val);
+  }
+
+ private:
+  std::shared_ptr<HasherFunc> hasher_;
+};
 
 } // namespace f14
 } // namespace folly

@@ -814,6 +814,80 @@ TEST(F14ValueSet, heterogeneous) {
   checks(folly::as_const(set));
 }
 
+template <typename S>
+void runStatefulFunctorTest() {
+  bool ranHasher = false;
+  bool ranEqual = false;
+  bool ranAlloc = false;
+  bool ranDealloc = false;
+
+  auto hasher = [&](int x) {
+    ranHasher = true;
+    return x;
+  };
+  auto equal = [&](int x, int y) {
+    ranEqual = true;
+    return x == y;
+  };
+  auto alloc = [&](std::size_t n) {
+    ranAlloc = true;
+    return std::malloc(n);
+  };
+  auto dealloc = [&](void* p, std::size_t) {
+    ranDealloc = true;
+    std::free(p);
+  };
+
+  {
+    S set(0, hasher, equal, {alloc, dealloc});
+    set.insert(10);
+    set.insert(10);
+    EXPECT_EQ(set.size(), 1);
+
+    S set2(set);
+    S set3(std::move(set));
+    set = set2;
+    set2.clear();
+    set2 = std::move(set3);
+  }
+  EXPECT_TRUE(ranHasher);
+  EXPECT_TRUE(ranEqual);
+  EXPECT_TRUE(ranAlloc);
+  EXPECT_TRUE(ranDealloc);
+}
+
+TEST(F14ValueSet, statefulFunctors) {
+  runStatefulFunctorTest<F14ValueSet<
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<int>>>();
+}
+
+TEST(F14NodeSet, statefulFunctors) {
+  runStatefulFunctorTest<F14NodeSet<
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<int>>>();
+}
+
+TEST(F14VectorSet, statefulFunctors) {
+  runStatefulFunctorTest<F14VectorSet<
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<int>>>();
+}
+
+TEST(F14FastSet, statefulFunctors) {
+  runStatefulFunctorTest<F14FastSet<
+      int,
+      GenericHasher<int>,
+      GenericEqual<int>,
+      GenericAlloc<int>>>();
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
