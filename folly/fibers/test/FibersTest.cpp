@@ -1702,9 +1702,10 @@ void doubleBatchOuterDispatch(
           }
         }
 
-        folly::collectAll(
+        folly::collectAllSemiFuture(
             innerDispatchResultFutures.begin(),
             innerDispatchResultFutures.end())
+            .toUnsafeFuture()
             .then([&](std::vector<Try<std::vector<std::string>>>
                           innerDispatchResults) {
               for (auto& unit : innerDispatchResults) {

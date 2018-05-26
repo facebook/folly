@@ -97,11 +97,12 @@ TEST(Collect, collectAll) {
       futures.push_back(p.getFuture());
     }
 
-    auto allf = collectAll(futures).then([](Try<std::vector<Try<Unit>>>&& ts) {
-      for (auto& f : ts.value()) {
-        f.value();
-      }
-    });
+    auto allf = collectAllSemiFuture(futures).toUnsafeFuture().then(
+        [](Try<std::vector<Try<Unit>>>&& ts) {
+          for (auto& f : ts.value()) {
+            f.value();
+          }
+        });
 
     std::shuffle(promises.begin(), promises.end(), rng);
     for (auto& p : promises) {
@@ -420,10 +421,8 @@ TEST(Collect, alreadyCompleted) {
       fs.push_back(makeFuture());
     }
 
-    collectAll(fs)
-      .then([&](std::vector<Try<Unit>> ts) {
-        EXPECT_EQ(fs.size(), ts.size());
-      });
+    collectAllSemiFuture(fs).toUnsafeFuture().then(
+        [&](std::vector<Try<Unit>> ts) { EXPECT_EQ(fs.size(), ts.size()); });
   }
   {
     std::vector<Future<int>> fs;
@@ -665,14 +664,15 @@ TEST(Collect, collectAllVariadic) {
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  collectAll(std::move(fb), std::move(fi))
-    .then([&](std::tuple<Try<bool>, Try<int>> tup) {
-      flag = true;
-      EXPECT_TRUE(std::get<0>(tup).hasValue());
-      EXPECT_EQ(std::get<0>(tup).value(), true);
-      EXPECT_TRUE(std::get<1>(tup).hasValue());
-      EXPECT_EQ(std::get<1>(tup).value(), 42);
-    });
+  collectAllSemiFuture(std::move(fb), std::move(fi))
+      .toUnsafeFuture()
+      .then([&](std::tuple<Try<bool>, Try<int>> tup) {
+        flag = true;
+        EXPECT_TRUE(std::get<0>(tup).hasValue());
+        EXPECT_EQ(std::get<0>(tup).value(), true);
+        EXPECT_TRUE(std::get<1>(tup).hasValue());
+        EXPECT_EQ(std::get<1>(tup).value(), 42);
+      });
   pb.setValue(true);
   EXPECT_FALSE(flag);
   pi.setValue(42);
@@ -685,14 +685,14 @@ TEST(Collect, collectAllVariadicReferences) {
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  collectAll(fb, fi)
-    .then([&](std::tuple<Try<bool>, Try<int>> tup) {
-      flag = true;
-      EXPECT_TRUE(std::get<0>(tup).hasValue());
-      EXPECT_EQ(std::get<0>(tup).value(), true);
-      EXPECT_TRUE(std::get<1>(tup).hasValue());
-      EXPECT_EQ(std::get<1>(tup).value(), 42);
-    });
+  collectAllSemiFuture(fb, fi).toUnsafeFuture().then(
+      [&](std::tuple<Try<bool>, Try<int>> tup) {
+        flag = true;
+        EXPECT_TRUE(std::get<0>(tup).hasValue());
+        EXPECT_EQ(std::get<0>(tup).value(), true);
+        EXPECT_TRUE(std::get<1>(tup).hasValue());
+        EXPECT_EQ(std::get<1>(tup).value(), 42);
+      });
   pb.setValue(true);
   EXPECT_FALSE(flag);
   pi.setValue(42);
@@ -705,14 +705,15 @@ TEST(Collect, collectAllVariadicWithException) {
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  collectAll(std::move(fb), std::move(fi))
-    .then([&](std::tuple<Try<bool>, Try<int>> tup) {
-      flag = true;
-      EXPECT_TRUE(std::get<0>(tup).hasValue());
-      EXPECT_EQ(std::get<0>(tup).value(), true);
-      EXPECT_TRUE(std::get<1>(tup).hasException());
-      EXPECT_THROW(std::get<1>(tup).value(), eggs_t);
-    });
+  collectAllSemiFuture(std::move(fb), std::move(fi))
+      .toUnsafeFuture()
+      .then([&](std::tuple<Try<bool>, Try<int>> tup) {
+        flag = true;
+        EXPECT_TRUE(std::get<0>(tup).hasValue());
+        EXPECT_EQ(std::get<0>(tup).value(), true);
+        EXPECT_TRUE(std::get<1>(tup).hasException());
+        EXPECT_THROW(std::get<1>(tup).value(), eggs_t);
+      });
   pb.setValue(true);
   EXPECT_FALSE(flag);
   pi.setException(eggs);

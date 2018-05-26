@@ -1495,7 +1495,11 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
   });
 
   for (++first; first != last; ++first) {
-    f = collectAll(f, *first).then([sfunc](std::tuple<Try<T>, Try<ItT>>& t) {
+    f = collectAllSemiFuture(f, *first).toUnsafeFuture().then([sfunc](
+                                                                  std::tuple<
+                                                                      Try<T>,
+                                                                      Try<ItT>>&
+                                                                      t) {
       return (*sfunc)(std::move(std::get<0>(t).value()),
                   // Either return a ItT&& or a Try<ItT>&& depending
                   // on the type of the argument of func.
@@ -1721,7 +1725,8 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 
 template <class T>
 Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
-  return collectAll(*this, futures::sleep(dur, tk))
+  return collectAllSemiFuture(*this, futures::sleep(dur, tk))
+      .toUnsafeFuture()
       .then([](std::tuple<Try<T>, Try<Unit>> tup) {
         Try<T>& t = std::get<0>(tup);
         return makeFuture<T>(std::move(t));
@@ -2005,14 +2010,15 @@ struct TryEquals {
 
 template <class T>
 Future<bool> Future<T>::willEqual(Future<T>& f) {
-  return collectAll(*this, f).then([](const std::tuple<Try<T>, Try<T>>& t) {
-    if (std::get<0>(t).hasValue() && std::get<1>(t).hasValue()) {
-      return futures::detail::TryEquals<T>::equals(
-          std::get<0>(t), std::get<1>(t));
-    } else {
-      return false;
-    }
-  });
+  return collectAllSemiFuture(*this, f).toUnsafeFuture().then(
+      [](const std::tuple<Try<T>, Try<T>>& t) {
+        if (std::get<0>(t).hasValue() && std::get<1>(t).hasValue()) {
+          return futures::detail::TryEquals<T>::equals(
+              std::get<0>(t), std::get<1>(t));
+        } else {
+          return false;
+        }
+      });
 }
 
 template <class T>
