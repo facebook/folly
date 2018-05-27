@@ -7,7 +7,12 @@
 #
 
 find_path(ZSTD_INCLUDE_DIR NAMES zstd.h)
-find_library(ZSTD_LIBRARY NAMES zstd)
+
+find_library(ZSTD_LIBRARY_DEBUG NAMES zstdd)
+find_library(ZSTD_LIBRARY_RELEASE NAMES zstd)
+
+include(SelectLibraryConfigurations)
+SELECT_LIBRARY_CONFIGURATIONS(ZSTD)
 
 include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(
