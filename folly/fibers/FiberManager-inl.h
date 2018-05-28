@@ -23,9 +23,9 @@ namespace fibers {
 
 template <typename F>
 auto FiberManager::addTaskFuture(F&& func)
-    -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type> {
+    -> folly::Future<typename folly::lift_unit<invoke_result_t<F>>::type> {
   using T = invoke_result_t<F>;
-  using FutureT = typename folly::Unit::Lift<T>::type;
+  using FutureT = typename folly::lift_unit<T>::type;
 
   folly::Promise<FutureT> p;
   auto f = p.getFuture();
@@ -39,8 +39,8 @@ auto FiberManager::addTaskFuture(F&& func)
 
 template <typename F>
 auto FiberManager::addTaskRemoteFuture(F&& func)
-    -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type> {
-  folly::Promise<typename folly::Unit::Lift<invoke_result_t<F>>::type> p;
+    -> folly::Future<typename folly::lift_unit<invoke_result_t<F>>::type> {
+  folly::Promise<typename folly::lift_unit<invoke_result_t<F>>::type> p;
   auto f = p.getFuture();
   addTaskRemote(
       [ p = std::move(p), func = std::forward<F>(func), this ]() mutable {

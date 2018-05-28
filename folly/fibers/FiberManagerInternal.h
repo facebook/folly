@@ -206,7 +206,7 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   auto addTaskFuture(F&& func)
-      -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type>;
+      -> folly::Future<typename folly::lift_unit<invoke_result_t<F>>::type>;
   /**
    * Add a new task to be executed. Safe to call from other threads.
    *
@@ -225,7 +225,7 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   auto addTaskRemoteFuture(F&& func)
-      -> folly::Future<typename folly::Unit::Lift<invoke_result_t<F>>::type>;
+      -> folly::Future<typename folly::lift_unit<invoke_result_t<F>>::type>;
 
   // Executor interface calls addTaskRemote
   void add(folly::Func f) override {

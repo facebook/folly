@@ -29,37 +29,37 @@ TEST(Unit, operatorNe) {
 }
 
 TEST(Unit, liftInt) {
-  using lifted = Unit::Lift<int>;
-  using actual = std::is_same<int, lifted::type>;
+  using lifted = lift_unit_t<int>;
+  using actual = std::is_same<int, lifted>;
   EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, liftUnit) {
-  using lifted = Unit::Lift<Unit>;
-  using actual = std::is_same<Unit, lifted::type>;
+  using lifted = lift_unit_t<Unit>;
+  using actual = std::is_same<Unit, lifted>;
   EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, liftVoid) {
-  using lifted = Unit::Lift<void>;
-  using actual = std::is_same<Unit, lifted::type>;
+  using lifted = lift_unit_t<void>;
+  using actual = std::is_same<Unit, lifted>;
   EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, dropInt) {
-  using dropped = Unit::Drop<int>;
-  using actual = std::is_same<int, dropped::type>;
+  using dropped = drop_unit_t<int>;
+  using actual = std::is_same<int, dropped>;
   EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, dropUnit) {
-  using dropped = Unit::Drop<Unit>;
-  using actual = std::is_same<void, dropped::type>;
+  using dropped = drop_unit_t<Unit>;
+  using actual = std::is_same<void, dropped>;
   EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, dropVoid) {
-  using dropped = Unit::Drop<void>;
-  using actual = std::is_same<void, dropped::type>;
+  using dropped = drop_unit_t<void>;
+  using actual = std::is_same<void, dropped>;
   EXPECT_TRUE(actual::value);
 }

@@ -152,7 +152,7 @@ typename std::
 template <class F>
 typename std::enable_if<
     !(isSemiFuture<invoke_result_t<F>>::value),
-    SemiFuture<typename Unit::Lift<invoke_result_t<F>>::type>>::type
+    SemiFuture<typename lift_unit<invoke_result_t<F>>::type>>::type
 makeSemiFutureWith(F&& func);
 
 /// Make a failed Future from an exception_ptr.
@@ -236,7 +236,7 @@ typename std::
 template <class F>
 typename std::enable_if<
     !(isFuture<invoke_result_t<F>>::value),
-    Future<typename Unit::Lift<invoke_result_t<F>>::type>>::type
+    Future<typename lift_unit<invoke_result_t<F>>::type>>::type
 makeFutureWith(F&& func);
 
 /// Make a failed Future from an exception_ptr.

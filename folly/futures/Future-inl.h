@@ -625,9 +625,9 @@ typename std::
 template <class F>
 typename std::enable_if<
     !(isSemiFuture<invoke_result_t<F>>::value),
-    SemiFuture<Unit::LiftT<invoke_result_t<F>>>>::type
+    SemiFuture<lift_unit_t<invoke_result_t<F>>>>::type
 makeSemiFutureWith(F&& func) {
-  using LiftedResult = Unit::LiftT<invoke_result_t<F>>;
+  using LiftedResult = lift_unit_t<invoke_result_t<F>>;
   return makeSemiFuture<LiftedResult>(
       makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
 }
@@ -1209,9 +1209,9 @@ typename std::
 template <class F>
 typename std::enable_if<
     !(isFuture<invoke_result_t<F>>::value),
-    Future<Unit::LiftT<invoke_result_t<F>>>>::type
+    Future<lift_unit_t<invoke_result_t<F>>>>::type
 makeFutureWith(F&& func) {
-  using LiftedResult = Unit::LiftT<invoke_result_t<F>>;
+  using LiftedResult = lift_unit_t<invoke_result_t<F>>;
   return makeFuture<LiftedResult>(
       makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
 }
