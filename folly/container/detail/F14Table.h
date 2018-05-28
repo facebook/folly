@@ -836,7 +836,7 @@ class F14Table : public Policy {
   using Policy::kDefaultConstructIsNoexcept;
   using Policy::kSwapIsNoexcept;
 
-  using typename Policy::AllocTraits;
+  using AllocTraits = typename Policy::AllocTraits;
 
   using ByteAlloc = typename AllocTraits::template rebind_alloc<uint8_t>;
   using BytePtr = typename std::allocator_traits<ByteAlloc>::pointer;
