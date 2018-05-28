@@ -768,9 +768,33 @@ class Future : private futures::detail::FutureBase<T> {
         .via(oldX);
   }
 
-  /**
-   * Then for functions taking a T rather than a Try<T>.
-   */
+  /** When this Future has completed, execute func which is a function that
+    takes one of:
+      (const) Try<T>&&
+      (const) Try<T>&
+      (const) Try<T>
+
+    Func shall return either another Future or a value.
+
+    A Future for the return type of func is returned.
+
+    Future<string> f2 = f1.then([](Try<T>&&) { return string("foo"); });
+
+    The Future given to the functor is ready, and the functor may call
+    value(), which may rethrow if this has captured an exception. If func
+    throws, the exception will be captured in the Future that is returned.
+    */
+  template <typename F>
+  Future<typename futures::detail::tryCallableResult<T, F>::value_type> thenTry(
+      F&& func) &&;
+
+  /** When this Future has completed, execute func which is a function that
+    takes one of:
+      (const) T&&
+      (const) T&
+      (const) T
+      (void)
+    */
   template <typename F>
   Future<typename futures::detail::valueCallableResult<T, F>::value_type>
   thenValue(F&& func) &&;

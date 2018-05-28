@@ -954,6 +954,13 @@ Future<T>::then(R(Caller::*func)(Args...), Caller *instance) {
 
 template <class T>
 template <typename F>
+Future<typename futures::detail::tryCallableResult<T, F>::value_type>
+Future<T>::thenTry(F&& func) && {
+  return std::move(*this).then(std::forward<F>(func));
+}
+
+template <class T>
+template <typename F>
 Future<typename futures::detail::valueCallableResult<T, F>::value_type>
 Future<T>::thenValue(F&& func) && {
   return std::move(*this).then([f = std::forward<F>(func)](
