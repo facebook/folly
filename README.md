@@ -6,7 +6,7 @@ Folly: Facebook Open-source Library
 ### What is `folly`?
 
 Folly (acronymed loosely after Facebook Open Source Library) is a
-library of C++11 components designed with practicality and efficiency
+library of C++14 components designed with practicality and efficiency
 in mind. **Folly contains a variety of core library components used extensively
 at Facebook**. In particular, it's often a dependency of Facebook's other
 open source C++ efforts and place where those projects can share code.
