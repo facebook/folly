@@ -439,10 +439,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
     return std::move(*this).deferValue(&func);
   }
 
-  /// Set an error callback for this SemiFuture. The callback should take a
-  /// single argument of the type that you want to catch, and should return a
-  /// value of the same type as this SemiFuture, or a SemiFuture of that type
-  /// (see overload below). For instance,
+  /// Set an error continuation for this SemiFuture. The continuation should
+  /// take a single argument of the type that you want to catch, and should
+  /// return a value of the same type as this SemiFuture, or a SemiFuture of
+  /// that type (see overload below). For instance,
   ///
   /// makeSemiFuture()
   ///   .defer([] {
@@ -461,7 +461,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       SemiFuture<T>>::type
   deferError(F&& func) &&;
 
-  /// Overload of deferError where the error callback returns a Future<T>
+  /// Overload of deferError where the error continuation returns a Future<T>
   template <class F>
   typename std::enable_if<
       !futures::detail::callableWith<F, exception_wrapper>::value &&
@@ -802,6 +802,40 @@ class Future : private futures::detail::FutureBase<T> {
   template <typename R, typename... Args>
   auto thenValue(R (&func)(Args...)) && {
     return std::move(*this).thenValue(&func);
+  }
+
+  /// Set an error callback for this Future. The callback should take a
+  /// single argument of the type that you want to catch, and should return
+  /// T, SemiFuture<T> or Future<T>
+  /// (see overload below). For instance,
+  ///
+  /// makeFuture()
+  ///   .thenTry([] {
+  ///     throw std::runtime_error("oh no!");
+  ///     return 42;
+  ///   })
+  ///   .thenError<std::runtime_error>([] (auto const& e) {
+  ///     LOG(INFO) << "std::runtime_error: " << e.what();
+  ///     return -1; // or makeSemiFuture<int>(-1)
+  ///   });
+  /// Overload of thenError where continuation can be called with a known
+  /// exception type and returns T or Future<T>
+  template <class ExceptionType, class F>
+  Future<T> thenError(F&& func) &&;
+
+  template <class ExceptionType, class R, class... Args>
+  Future<T> thenError(R (&func)(Args...)) && {
+    return std::move(*this).template thenError<ExceptionType>(&func);
+  }
+
+  /// Overload of thenError where continuation can be called with
+  /// exception_wrapper&& and returns T or Future<T>
+  template <class F>
+  Future<T> thenError(F&& func) &&;
+
+  template <class R, class... Args>
+  Future<T> thenError(R (&func)(Args...)) && {
+    return std::move(*this).thenError(&func);
   }
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
