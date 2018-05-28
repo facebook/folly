@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Unit.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/SafeAssert.h>
@@ -498,7 +499,7 @@ class ValueContainerPolicy : public BasePolicy<
 
   void moveItemDuringRehash(Item* itemAddr, Item& src) {
     complainUnlessNothrowMove<Key>();
-    complainUnlessNothrowMove<MappedTypeOrVoid>();
+    complainUnlessNothrowMove<lift_unit_t<MappedTypeOrVoid>>();
 
     constructValueAtItem(0, itemAddr, Super::moveValue(src));
     if (destroyItemOnClear()) {
@@ -1055,7 +1056,7 @@ class VectorContainerPolicy : public BasePolicy<
 
   void transfer(Alloc& a, Value* src, Value* dst, std::size_t n) {
     complainUnlessNothrowMove<Key>();
-    complainUnlessNothrowMove<MappedTypeOrVoid>();
+    complainUnlessNothrowMove<lift_unit_t<MappedTypeOrVoid>>();
 
     if (std::is_same<Alloc, std::allocator<Value>>::value &&
         FOLLY_IS_TRIVIALLY_COPYABLE(Value)) {
