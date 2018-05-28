@@ -747,8 +747,7 @@ Future<T> SemiFuture<T>::toUnsafeFuture() && {
 
 template <class T>
 template <typename F>
-SemiFuture<
-    typename futures::detail::deferCallableResult<T, F>::Return::value_type>
+SemiFuture<typename futures::detail::tryCallableResult<T, F>::value_type>
 SemiFuture<T>::defer(F&& func) && {
   DeferredExecutor* deferredExecutor = getDeferredExecutor();
   if (!deferredExecutor) {
@@ -766,15 +765,14 @@ SemiFuture<T>::defer(F&& func) && {
 
 template <class T>
 template <typename F>
-SemiFuture<typename futures::detail::deferValueCallableResult<T, F>::Return::
-               value_type>
+SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
 SemiFuture<T>::deferValue(F&& func) && {
-  return std::move(*this).defer(
-      [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
-        return f(t.template get<
-                 false,
-                 typename futures::detail::Extract<F>::FirstArg>());
-      });
+  return std::move(*this).defer([f = std::forward<F>(func)](
+                                    folly::Try<T>&& t) mutable {
+    return f(t.template get<
+             false,
+             typename futures::detail::valueCallableResult<T, F>::FirstArg>());
+  });
 }
 
 template <class T>
@@ -954,8 +952,21 @@ Future<T>::then(R(Caller::*func)(Args...), Caller *instance) {
 }
 
 template <class T>
+template <typename F>
+Future<typename futures::detail::valueCallableResult<T, F>::value_type>
+Future<T>::thenValue(F&& func) && {
+  return std::move(*this).then([f = std::forward<F>(func)](
+                                   folly::Try<T>&& t) mutable {
+    return std::forward<F>(f)(
+        t.template get<
+            false,
+            typename futures::detail::valueCallableResult<T, F>::FirstArg>());
+  });
+}
+
+template <class T>
 Future<Unit> Future<T>::then() {
-  return then([] () {});
+  return then([]() {});
 }
 
 // onError where the callback returns T

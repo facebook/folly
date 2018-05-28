@@ -680,6 +680,10 @@ static std::string doWorkStatic(Try<std::string>&& t) {
   return t.value() + ";static";
 }
 
+static std::string doWorkStaticValue(std::string&& t) {
+  return t + ";value";
+}
+
 TEST(Future, thenFunction) {
   struct Worker {
     std::string doWork(Try<std::string>&& t) {
@@ -691,11 +695,13 @@ TEST(Future, thenFunction) {
   } w;
 
   auto f = makeFuture<std::string>("start")
-    .then(doWorkStatic)
-    .then(Worker::doWorkStatic)
-    .then(&Worker::doWork, &w);
+               .then(doWorkStatic)
+               .then(Worker::doWorkStatic)
+               .then(&Worker::doWork, &w)
+               .then(doWorkStaticValue)
+               .thenValue(doWorkStaticValue);
 
-  EXPECT_EQ(f.value(), "start;static;class-static;class");
+  EXPECT_EQ(f.value(), "start;static;class-static;class;value;value");
 }
 
 static Future<std::string> doWorkStaticFuture(Try<std::string>&& t) {
@@ -729,6 +735,11 @@ TEST(Future, thenStdFunction) {
   {
     std::function<int(int)> fn = [](int i){ return i + 23; };
     auto f = makeFuture(19).then(std::move(fn));
+    EXPECT_EQ(f.value(), 42);
+  }
+  {
+    std::function<int(int)> fn = [](int i) { return i + 23; };
+    auto f = makeFuture(19).thenValue(std::move(fn));
     EXPECT_EQ(f.value(), 42);
   }
   {
@@ -1146,6 +1157,10 @@ TEST(Future, invokeCallbackReturningFutureAsRvalue) {
   EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
   EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
   EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
+
+  EXPECT_EQ(101, makeFuture<int>(100).thenValue(foo).value());
+  EXPECT_EQ(202, makeFuture<int>(200).thenValue(cfoo).value());
+  EXPECT_EQ(303, makeFuture<int>(300).thenValue(Foo()).value());
 }
 
 TEST(Future, futureWithinCtxCleanedUpWhenTaskFinishedInTime) {

@@ -419,16 +419,14 @@ class SemiFuture : private futures::detail::FutureBase<T> {
    * of driveable executor here.
    */
   template <typename F>
-  SemiFuture<
-      typename futures::detail::deferCallableResult<T, F>::Return::value_type>
+  SemiFuture<typename futures::detail::tryCallableResult<T, F>::value_type>
   defer(F&& func) &&;
 
   /**
    * Defer for functions taking a T rather than a Try<T>.
    */
   template <typename F>
-  SemiFuture<typename futures::detail::deferValueCallableResult<T, F>::Return::
-                 value_type>
+  SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
   deferValue(F&& func) &&;
 
   /// Set an error callback for this SemiFuture. The callback should take a
@@ -760,6 +758,18 @@ class Future : private futures::detail::FutureBase<T> {
         .via(oldX);
   }
 
+  /**
+   * Then for functions taking a T rather than a Try<T>.
+   */
+  template <typename F>
+  Future<typename futures::detail::valueCallableResult<T, F>::value_type>
+  thenValue(F&& func) &&;
+
+  template <typename R, typename... Args>
+  auto thenValue(R (&func)(Args...)) && {
+    return std::move(*this).thenValue(&func);
+  }
+
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
   /// This function is identical to .unit().
@@ -778,7 +788,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// below). For instance,
   ///
   /// makeFuture()
-  ///   .then([] {
+  ///   .thenValue([] {
   ///     throw std::runtime_error("oh no!");
   ///     return 42;
   ///   })

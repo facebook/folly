@@ -94,6 +94,7 @@ struct ArgType<> {
 
 template <bool isTry, typename F, typename... Args>
 struct argResult {
+  using ArgList = ArgType<Args...>;
   using Result = resultOf<F, Args...>;
 };
 
@@ -131,7 +132,7 @@ struct callableResult {
 };
 
 template <typename T, typename F>
-struct deferCallableResult {
+struct tryCallableResult {
   typedef typename std::conditional<
       callableWith<F>::value,
       detail::argResult<false, F>,
@@ -140,11 +141,11 @@ struct deferCallableResult {
           detail::argResult<true, F, Try<T>&&>,
           detail::argResult<true, F, Try<T>&>>::type>::type Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
+  typedef typename ReturnsFuture::Inner value_type;
 };
 
 template <typename T, typename F>
-struct deferValueCallableResult {
+struct valueCallableResult {
   typedef typename std::conditional<
       callableWith<F>::value,
       detail::argResult<false, F>,
@@ -153,7 +154,8 @@ struct deferValueCallableResult {
           detail::argResult<false, F, T&&>,
           detail::argResult<false, F, T&>>::type>::type Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
+  typedef typename ReturnsFuture::Inner value_type;
+  typedef typename Arg::ArgList::FirstArg FirstArg;
 };
 
 template <typename L>
