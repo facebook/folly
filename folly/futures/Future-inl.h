@@ -769,9 +769,10 @@ SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
 SemiFuture<T>::deferValue(F&& func) && {
   return std::move(*this).defer([f = std::forward<F>(func)](
                                     folly::Try<T>&& t) mutable {
-    return f(t.template get<
-             false,
-             typename futures::detail::valueCallableResult<T, F>::FirstArg>());
+    return std::forward<F>(f)(
+        t.template get<
+            false,
+            typename futures::detail::valueCallableResult<T, F>::FirstArg>());
   });
 }
 

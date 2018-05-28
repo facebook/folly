@@ -422,12 +422,22 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::tryCallableResult<T, F>::value_type>
   defer(F&& func) &&;
 
+  template <typename R, typename... Args>
+  auto defer(R (&func)(Args...)) && {
+    return std::move(*this).defer(&func);
+  }
+
   /**
    * Defer for functions taking a T rather than a Try<T>.
    */
   template <typename F>
   SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
   deferValue(F&& func) &&;
+
+  template <typename R, typename... Args>
+  auto deferValue(R (&func)(Args...)) && {
+    return std::move(*this).deferValue(&func);
+  }
 
   /// Set an error callback for this SemiFuture. The callback should take a
   /// single argument of the type that you want to catch, and should return a

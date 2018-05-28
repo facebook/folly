@@ -688,6 +688,21 @@ TEST(SemiFuture, SimpleDeferWithValue) {
   ASSERT_EQ(innerResult, 7);
 }
 
+namespace {
+int deferValueHelper(int a) {
+  return a;
+}
+
+} // namespace
+TEST(SemiFuture, SimpleDeferWithValueFunctionReference) {
+  Promise<int> p;
+  auto f = p.getSemiFuture().toUnsafeFuture();
+  auto sf = std::move(f).semi().deferValue(deferValueHelper);
+  p.setValue(7);
+  // Run "F" here inline in the calling thread
+  ASSERT_EQ(std::move(sf).get(), 7);
+}
+
 TEST(SemiFuture, ChainingDefertoThenWithValue) {
   std::atomic<int> innerResult{0};
   std::atomic<int> result{0};
@@ -720,6 +735,10 @@ TEST(SemiFuture, MakeSemiFutureFromFutureWithTry) {
   auto tryResult = std::move(sf).get();
   ASSERT_EQ(tryResult.value(), "Try");
 }
+
+namespace {
+[[noreturn]] void deferHelper() { throw eggs; }
+} // namespace
 
 TEST(SemiFuture, DeferWithinContinuation) {
   std::atomic<int> innerResult{0};
@@ -764,6 +783,15 @@ TEST(SemiFuture, onError) {
     auto f = makeSemiFuture()
                  .defer([] { throw eggs; })
                  .deferError([&](eggs_t& /* e */) { flag(); });
+    EXPECT_NO_THROW(std::move(f).get());
+    EXPECT_FLAG();
+  }
+
+  {
+    auto f =
+        makeSemiFuture().defer(deferHelper).deferError([&](eggs_t& /* e */) {
+          flag();
+        });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
@@ -1023,4 +1051,28 @@ TEST(SemiFuture, makePromiseContract) {
   c.first.setValue(3);
   c.second = std::move(c.second).deferValue([](int _) { return _ + 1; });
   EXPECT_EQ(4, std::move(c.second).get());
+}
+
+TEST(SemiFuture, invokeCallbackReturningFutureWithOriginalCVRef) {
+  struct Foo {
+    Future<int> operator()(int x) & {
+      return x + 1;
+    }
+    Future<int> operator()(int x) const& {
+      return x + 2;
+    }
+    Future<int> operator()(int x) && {
+      return x + 3;
+    }
+  };
+
+  Foo foo;
+  Foo const cfoo;
+
+  // The continuation will be forward-constructed - copied if given as & and
+  // moved if given as && - everywhere construction is required.
+  // The continuation will be invoked with the same cvref as it is passed.
+  EXPECT_EQ(101, makeSemiFuture<int>(100).deferValue(foo).wait().value());
+  EXPECT_EQ(202, makeSemiFuture<int>(200).deferValue(cfoo).wait().value());
+  EXPECT_EQ(303, makeSemiFuture<int>(300).deferValue(Foo()).wait().value());
 }
