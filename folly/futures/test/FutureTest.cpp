@@ -570,7 +570,8 @@ TEST(Future, onError) {
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
-
+#undef EXPECT_FLAG
+#undef EXPECT_NO_FLAG
 }
 
 TEST(Future, special) {
