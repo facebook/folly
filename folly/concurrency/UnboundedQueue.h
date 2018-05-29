@@ -82,16 +82,21 @@ namespace folly {
 ///         Extracts an element from the front of the queue. Waits
 ///         until an element is available if needed.
 ///     bool try_dequeue(T&);
+///     folly::Optional<T> try_dequeue();
 ///         Tries to extract an element from the front of the queue
-///         if available. Returns true if successful, false otherwise.
+///         if available.
 ///     bool try_dequeue_until(T&, time_point& deadline);
+///     folly::Optional<T> try_dequeue_until(time_point& deadline);
 ///         Tries to extract an element from the front of the queue
-///         if available until the specified deadline.  Returns true
-///         if successful, false otherwise.
+///         if available until the specified deadline.
 ///     bool try_dequeue_for(T&, duration&);
+///     folly::Optional<T> try_dequeue_for(duration&);
 ///         Tries to extract an element from the front of the queue if
-///         available for until the expiration of the specified
-///         duration.  Returns true if successful, false otherwise.
+///         available until the expiration of the specified duration.
+///     const T* try_peek();
+///         Returns pointer to the element at the front of the queue
+///         if available, or nullptr if the queue is empty. Only for
+///         SPSC and MPSC.
 ///
 ///   Secondary functions:
 ///     size_t size();
@@ -324,6 +329,13 @@ class UnboundedQueue {
     return tryDequeueUntil(std::chrono::steady_clock::now() + duration);
   }
 
+  /** try_peek */
+  FOLLY_ALWAYS_INLINE const T* try_peek() noexcept {
+    /* This function is supported only for USPSC and UMPSC queues. */
+    DCHECK(SingleConsumer);
+    return tryPeekUntil(std::chrono::steady_clock::time_point::min());
+  }
+
   /** size */
   size_t size() const noexcept {
     auto p = producerTicket();
@@ -481,6 +493,22 @@ class UnboundedQueue {
       return true;
     }
     return t < producerTicket();
+  }
+
+  /** tryPeekUntil */
+  template <typename Clock, typename Duration>
+  FOLLY_ALWAYS_INLINE const T* tryPeekUntil(
+      const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
+    Segment* s = head();
+    Ticket t = consumerTicket();
+    DCHECK_GE(t, s->minTicket());
+    DCHECK_LT(t, (s->minTicket() + SegmentSize));
+    size_t idx = index(t);
+    Entry& e = s->entry(idx);
+    if (UNLIKELY(!tryDequeueWaitElem(e, t, deadline))) {
+      return nullptr;
+    }
+    return e.peekItem();
   }
 
   /** findSegment */
@@ -656,6 +684,11 @@ class UnboundedQueue {
       return getItem();
     }
 
+    FOLLY_ALWAYS_INLINE const T* peekItem() noexcept {
+      flag_.wait();
+      return itemPtr();
+    }
+
     template <typename Clock, typename Duration>
     FOLLY_ALWAYS_INLINE bool tryWaitUntil(
         const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
@@ -674,7 +707,6 @@ class UnboundedQueue {
     FOLLY_ALWAYS_INLINE folly::Optional<T> getItem() noexcept {
       folly::Optional<T> ret = std::move(*(itemPtr()));
       destroyItem();
-
       return ret;
     }
 

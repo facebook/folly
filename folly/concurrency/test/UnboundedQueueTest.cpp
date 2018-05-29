@@ -103,6 +103,30 @@ TEST(UnboundedQueue, timeout) {
   timeout_test<UMPMC, true>();
 }
 
+template <template <typename, bool> class Q, bool MayBlock>
+void peek_test() {
+  Q<int, MayBlock> q;
+  auto res = q.try_peek();
+  ASSERT_FALSE(res);
+  for (int i = 0; i < 1000; ++i) {
+    q.enqueue(i);
+  }
+  for (int i = 0; i < 700; ++i) {
+    int v;
+    q.dequeue(v);
+  }
+  res = q.try_peek();
+  ASSERT_TRUE(res);
+  ASSERT_EQ(*res, 700);
+}
+
+TEST(UnboundedQueue, peek) {
+  peek_test<USPSC, false>();
+  peek_test<UMPSC, false>();
+  peek_test<USPSC, true>();
+  peek_test<UMPSC, true>();
+}
+
 template <typename ProdFunc, typename ConsFunc, typename EndFunc>
 inline uint64_t run_once(
     int nprod,
@@ -184,7 +208,17 @@ void enq_deq_test(const int nprod, const int ncons) {
     uint64_t mysum = 0;
     for (int i = tid; i < ops; i += ncons) {
       int v = -1;
+      int vpeek = -1;
 
+      if (SingleConsumer) {
+        while (true) {
+          auto res = q.try_peek();
+          if (res) {
+            vpeek = *res;
+            break;
+          }
+        }
+      }
       if ((i % 3) == 0) {
         while (!q.try_dequeue(v)) {
           /* keep trying */;
@@ -199,6 +233,9 @@ void enq_deq_test(const int nprod, const int ncons) {
       }
       if (nprod == 1 && ncons == 1) {
         ASSERT_EQ(v, i);
+      }
+      if (SingleConsumer) {
+        ASSERT_EQ(v, vpeek);
       }
       mysum += v;
     }
