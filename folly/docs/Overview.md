@@ -1,7 +1,5 @@
 ### `folly/`
 
-For a high level overview see the [README](../../README.md)
-
 ### Components
 
 Below is a list of (some) Folly components in alphabetical order, along with
@@ -92,7 +90,7 @@ Rabin fingerprinting.
 
 A polymorphic wrapper for callables similar to `std::function` but not copyable and therefore able to wrap non-copyable callables, such as lambdas that capture move-only types like `std::unique_ptr` or `folly::Promise`.
 
-### [`futures/`](../futures/README.md)
+### [`futures/`](Futures.md)
 
 Futures is a framework for expressing asynchronous code in C++ using the Promise/Future pattern.
 
