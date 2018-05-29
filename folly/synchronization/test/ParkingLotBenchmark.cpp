@@ -20,42 +20,19 @@
 #include <folly/Benchmark.h>
 #include <folly/detail/Futex.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/synchronization/test/Barrier.h>
 
 DEFINE_uint64(threads, 32, "Number of threads for benchmark");
 
 using namespace folly;
-
-namespace {
-struct SimpleBarrier {
-  explicit SimpleBarrier(size_t count) : lock_(), cv_(), count_(count) {}
-
-  void wait() {
-    std::unique_lock<std::mutex> lockHeld(lock_);
-    auto gen = gen_;
-    if (++num_ == count_) {
-      num_ = 0;
-      gen_++;
-      cv_.notify_all();
-    } else {
-      cv_.wait(lockHeld, [&]() { return gen == gen_; });
-    }
-  }
-
- private:
-  std::mutex lock_;
-  std::condition_variable cv_;
-  size_t num_{0};
-  size_t count_;
-  size_t gen_{0};
-};
-} // namespace
+using namespace folly::test;
 
 ParkingLot<> lot;
 
 BENCHMARK(FutexNoWaitersWake, iters) {
   BenchmarkSuspender susp;
   folly::detail::Futex<> fu;
-  SimpleBarrier b(FLAGS_threads + 1);
+  Barrier b(FLAGS_threads + 1);
 
   std::vector<std::thread> threads{FLAGS_threads};
   for (auto& t : threads) {
@@ -76,7 +53,7 @@ BENCHMARK(FutexNoWaitersWake, iters) {
 
 BENCHMARK_RELATIVE(ParkingLotNoWaitersWake, iters) {
   BenchmarkSuspender susp;
-  SimpleBarrier b(FLAGS_threads + 1);
+  Barrier b(FLAGS_threads + 1);
 
   std::vector<std::thread> threads{FLAGS_threads};
   for (auto& t : threads) {
@@ -98,7 +75,7 @@ BENCHMARK_RELATIVE(ParkingLotNoWaitersWake, iters) {
 BENCHMARK(FutexWakeOne, iters) {
   BenchmarkSuspender susp;
   folly::detail::Futex<> fu;
-  SimpleBarrier b(FLAGS_threads + 1);
+  Barrier b(FLAGS_threads + 1);
 
   std::vector<std::thread> threads{FLAGS_threads};
   for (auto& t : threads) {
@@ -128,7 +105,7 @@ BENCHMARK(FutexWakeOne, iters) {
 BENCHMARK_RELATIVE(ParkingLotWakeOne, iters) {
   BenchmarkSuspender susp;
   std::atomic<bool> done{false};
-  SimpleBarrier b(FLAGS_threads + 1);
+  Barrier b(FLAGS_threads + 1);
 
   std::vector<std::thread> threads{FLAGS_threads};
   for (auto& t : threads) {
@@ -162,7 +139,7 @@ BENCHMARK_RELATIVE(ParkingLotWakeOne, iters) {
 
 BENCHMARK(FutexWakeAll, iters) {
   BenchmarkSuspender susp;
-  SimpleBarrier b(FLAGS_threads + 1);
+  Barrier b(FLAGS_threads + 1);
   folly::detail::Futex<> fu;
   std::atomic<bool> done{false};
 
@@ -194,7 +171,7 @@ BENCHMARK(FutexWakeAll, iters) {
 
 BENCHMARK_RELATIVE(ParkingLotWakeAll, iters) {
   BenchmarkSuspender susp;
-  SimpleBarrier b(FLAGS_threads + 1);
+  Barrier b(FLAGS_threads + 1);
   std::atomic<bool> done{false};
 
   std::vector<std::thread> threads{FLAGS_threads};
