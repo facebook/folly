@@ -1223,6 +1223,21 @@ uint64_t list_protect_all_bench(
   return bench(name, ops, repFn);
 }
 
+uint64_t cleanup_bench(std::string name, int nthreads) {
+  auto repFn = [&] {
+    auto init = [] {};
+    auto fn = [&](int) {
+      hazptr_holder<std::atomic> hptr;
+      for (int i = 0; i < 1000; i++) {
+        hazptr_cleanup();
+      }
+    };
+    auto endFn = [] {};
+    return run_once(nthreads, init, fn, endFn);
+  };
+  return bench(name, ops, repFn);
+}
+
 const int nthr[] = {1, 10};
 const int sizes[] = {10, 20};
 
@@ -1257,6 +1272,8 @@ void benches() {
       std::cout << j << "-item list protect all                      ";
       list_protect_all_bench("", i, j);
     }
+    std::cout << "hazptr_cleanup                                ";
+    cleanup_bench("", i);
   }
 }
 
@@ -1286,6 +1303,7 @@ allocate/retire/reclaim object                     70 ns     68 ns     67 ns
 20-item list hand-over-hand                        48 ns     43 ns     41 ns
 20-item list protect all - own hazptr              28 ns     28 ns     28 ns
 20-item list protect all                           31 ns     29 ns     29 ns
+hazptr_cleanup                                      2 ns      1 ns      1 ns
 ================================ 10 threads ================================
 10x construct/destruct hazptr_holder               11 ns      8 ns      8 ns
 10x construct/destruct hazptr_array<1>              8 ns      7 ns      7 ns
@@ -1303,5 +1321,5 @@ allocate/retire/reclaim object                     20 ns     17 ns     16 ns
 20-item list hand-over-hand                         6 ns      6 ns      6 ns
 20-item list protect all - own hazptr               4 ns      4 ns      4 ns
 20-item list protect all                            5 ns      4 ns      4 ns
-
+hazptr_cleanup                                    119 ns    113 ns     97 ns
  */
