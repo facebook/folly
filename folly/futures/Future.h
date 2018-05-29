@@ -441,50 +441,37 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   /// Set an error continuation for this SemiFuture. The continuation should
   /// take a single argument of the type that you want to catch, and should
-  /// return a value of the same type as this SemiFuture, or a SemiFuture of
-  /// that type (see overload below). For instance,
+  /// return a `T`, `Future<T>` or `SemiFuture<`T`> (see overload below).
+  /// For instance,
   ///
   /// makeSemiFuture()
   ///   .defer([] {
   ///     throw std::runtime_error("oh no!");
   ///     return 42;
   ///   })
-  ///   .deferError([] (std::runtime_error& e) {
+  ///   .deferError<std::runtime_error>([] (auto const& e) {
   ///     LOG(INFO) << "std::runtime_error: " << e.what();
   ///     return -1; // or makeSemiFuture<int>(-1)
   ///   });
-  template <class F>
-  typename std::enable_if<
-      !futures::detail::callableWith<F, exception_wrapper>::value &&
-          !futures::detail::callableWith<F, exception_wrapper&>::value &&
-          !futures::detail::Extract<F>::ReturnsFuture::value,
-      SemiFuture<T>>::type
-  deferError(F&& func) &&;
+  /// Overload of deferError where continuation can be called with a known
+  /// exception type and returns T, Future<T> or SemiFuture<T>
+  template <class ExceptionType, class F>
+  SemiFuture<T> deferError(F&& func) &&;
 
-  /// Overload of deferError where the error continuation returns a Future<T>
-  template <class F>
-  typename std::enable_if<
-      !futures::detail::callableWith<F, exception_wrapper>::value &&
-          !futures::detail::callableWith<F, exception_wrapper&>::value &&
-          futures::detail::Extract<F>::ReturnsFuture::value,
-      SemiFuture<T>>::type
-  deferError(F&& func) &&;
+  template <class ExceptionType, class R, class... Args>
+  SemiFuture<T> deferError(R (&func)(Args...)) && {
+    return std::move(*this).template deferError<ExceptionType>(&func);
+  }
 
-  /// Overload of deferError that takes exception_wrapper and returns T
+  /// Overload of deferError where continuation can be called with
+  /// exception_wrapper&& and returns T, Future<T> or SemiFuture<T>
   template <class F>
-  typename std::enable_if<
-      futures::detail::callableWith<F, exception_wrapper>::value &&
-          !futures::detail::Extract<F>::ReturnsFuture::value,
-      SemiFuture<T>>::type
-  deferError(F&& func) &&;
+  SemiFuture<T> deferError(F&& func) &&;
 
-  /// Overload of deferError that takes exception_wrapper and returns Future<T>
-  template <class F>
-  typename std::enable_if<
-      futures::detail::callableWith<F, exception_wrapper>::value &&
-          futures::detail::Extract<F>::ReturnsFuture::value,
-      SemiFuture<T>>::type
-  deferError(F&& func) &&;
+  template <class R, class... Args>
+  SemiFuture<T> deferError(R (&func)(Args...)) && {
+    return std::move(*this).deferError(&func);
+  }
 
   /// Return a future that completes inline, as if the future had no executor.
   /// Intended for porting legacy code without behavioural change, and for rare

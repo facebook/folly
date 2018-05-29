@@ -777,19 +777,13 @@ SemiFuture<T>::deferValue(F&& func) && {
 }
 
 template <class T>
-template <class F>
-typename std::enable_if<
-    !futures::detail::callableWith<F, exception_wrapper>::value &&
-        !futures::detail::callableWith<F, exception_wrapper&>::value &&
-        !futures::detail::Extract<F>::ReturnsFuture::value,
-    SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) && {
-  using Exn =
-      std::remove_reference_t<typename futures::detail::Extract<F>::FirstArg>;
+template <class ExceptionType, class F>
+SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
   return std::move(*this).defer(
       [func = std::forward<F>(func)](Try<T>&& t) mutable {
-        if (auto e = t.template tryGetExceptionObject<Exn>()) {
-          return makeSemiFuture<T>(makeTryWith([&]() { return func(*e); }));
+        if (auto e = t.template tryGetExceptionObject<ExceptionType>()) {
+          return makeSemiFutureWith(
+              [&]() mutable { return std::forward<F>(func)(*e); });
         } else {
           return makeSemiFuture<T>(std::move(t));
         }
@@ -798,52 +792,13 @@ SemiFuture<T>::deferError(F&& func) && {
 
 template <class T>
 template <class F>
-typename std::enable_if<
-    !futures::detail::callableWith<F, exception_wrapper>::value &&
-        !futures::detail::callableWith<F, exception_wrapper&>::value &&
-        futures::detail::Extract<F>::ReturnsFuture::value,
-    SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) && {
-  using Exn =
-      std::remove_reference_t<typename futures::detail::Extract<F>::FirstArg>;
-  return std::move(*this).defer(
-      [func = std::forward<F>(func)](Try<T>&& t) mutable {
-        if (auto e = t.template tryGetExceptionObject<Exn>()) {
-          return func(*e);
-        } else {
-          return makeSemiFuture<T>(std::move(t));
-        }
-      });
-}
-
-template <class T>
-template <class F>
-typename std::enable_if<
-    futures::detail::callableWith<F, exception_wrapper>::value &&
-        !futures::detail::Extract<F>::ReturnsFuture::value,
-    SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) && {
+SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
   return std::move(*this).defer(
       [func = std::forward<F>(func)](Try<T> t) mutable {
         if (t.hasException()) {
-          return makeSemiFuture<T>(func(std::move(t.exception())));
-        } else {
-          return makeSemiFuture<T>(std::move(t));
-        }
-      });
-}
-
-template <class T>
-template <class F>
-typename std::enable_if<
-    futures::detail::callableWith<F, exception_wrapper>::value &&
-        futures::detail::Extract<F>::ReturnsFuture::value,
-    SemiFuture<T>>::type
-SemiFuture<T>::deferError(F&& func) && {
-  return std::move(*this).defer(
-      [func = std::forward<F>(func)](Try<T> t) mutable {
-        if (t.hasException()) {
-          return func(std::move(t.exception()));
+          return makeSemiFutureWith([&]() mutable {
+            return std::forward<F>(func)(std::move(t.exception()));
+          });
         } else {
           return makeSemiFuture<T>(std::move(t));
         }
