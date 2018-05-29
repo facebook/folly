@@ -18,6 +18,7 @@
 #include <folly/synchronization/example/HazptrLockFreeLIFO.h>
 #include <folly/synchronization/example/HazptrSWMRSet.h>
 #include <folly/synchronization/example/HazptrWideCAS.h>
+#include <folly/synchronization/test/Barrier.h>
 
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
@@ -45,6 +46,7 @@ using folly::hazptr_tc;
 using folly::HazptrLockFreeLIFO;
 using folly::HazptrSWMRSet;
 using folly::HazptrWideCAS;
+using folly::test::Barrier;
 using folly::test::DeterministicAtomic;
 
 using DSched = folly::test::DeterministicSchedule;
@@ -1046,37 +1048,28 @@ TEST(HazptrTest, dsched_wide_cas) {
 
 // Benchmark drivers
 
-template <
-    typename InitFunc,
-    typename Func,
-    typename EndFunc,
-    template <typename> class Atom = std::atomic>
+template <typename InitFunc, typename Func, typename EndFunc>
 uint64_t run_once(
     int nthreads,
     const InitFunc& init,
     const Func& fn,
     const EndFunc& endFn) {
-  Atom<bool> start{false};
-  Atom<int> started{0};
+  std::atomic<bool> start{false};
+  Barrier b(nthreads + 1);
   init();
   std::vector<std::thread> threads(nthreads);
   for (int tid = 0; tid < nthreads; ++tid) {
-    threads[tid] = DSched::thread([&, tid] {
-      started.fetch_add(1);
-      while (!start.load()) {
-        /* spin */;
-      }
+    threads[tid] = std::thread([&, tid] {
+      b.wait();
       fn(tid);
     });
   }
-  while (started.load() < nthreads) {
-    /* spin */;
-  }
+  b.wait();
   // begin time measurement
   auto tbegin = std::chrono::steady_clock::now();
   start.store(true);
   for (auto& t : threads) {
-    DSched::join(t);
+    t.join();
   }
   hazptr_cleanup();
   // end time measurement
