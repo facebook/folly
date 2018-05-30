@@ -15,7 +15,6 @@
  */
 
 #include <folly/Singleton.h>
-#include <folly/executors/ManualExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
 #include <folly/portability/GTest.h>
@@ -107,65 +106,6 @@ TEST(Timekeeper, futureDelayed) {
     .get();
 
   EXPECT_GE(dur, one_ms);
-}
-
-TEST(Timekeeper, futureDelayedStickyExecutor) {
-  auto t1 = now();
-
-  // Check that delayed without an executor binds the inline executor.
-  {
-    class TimekeeperHelper : public ThreadWheelTimekeeper {
-     public:
-      std::thread::id get_thread_id() {
-        return thread_.get_id();
-      }
-    };
-    TimekeeperHelper tk;
-    std::thread::id timekeeper_thread_id = tk.get_thread_id();
-    std::thread::id task_thread_id{};
-    auto dur = makeFuture()
-                   .delayed(one_ms, &tk)
-                   .then([=, &task_thread_id] {
-                     task_thread_id = std::this_thread::get_id();
-                     return now() - t1;
-                   })
-                   .get();
-
-    EXPECT_GE(dur, one_ms);
-    EXPECT_EQ(timekeeper_thread_id, task_thread_id);
-  }
-
-  // Check that delayed applied to an executor returns a future that binds
-  // to the same executor as was input.
-  {
-    std::thread::id driver_thread_id{};
-    std::thread::id first_task_thread_id{};
-    std::thread::id second_task_thread_id{};
-    folly::ManualExecutor me;
-    std::atomic<bool> stop_signal{false};
-    std::thread me_driver{[&me, &driver_thread_id, &stop_signal] {
-      driver_thread_id = std::this_thread::get_id();
-      while (!stop_signal) {
-        me.run();
-      }
-    }};
-    auto dur = makeSemiFuture()
-                   .via(&me)
-                   .then([&first_task_thread_id] {
-                     first_task_thread_id = std::this_thread::get_id();
-                   })
-                   .delayed(one_ms)
-                   .then([=, &second_task_thread_id] {
-                     second_task_thread_id = std::this_thread::get_id();
-                     return now() - t1;
-                   })
-                   .get();
-    stop_signal = true;
-    me_driver.join();
-    EXPECT_GE(dur, one_ms);
-    EXPECT_EQ(driver_thread_id, first_task_thread_id);
-    EXPECT_EQ(driver_thread_id, second_task_thread_id);
-  }
 }
 
 TEST(Timekeeper, futureWithinThrows) {
