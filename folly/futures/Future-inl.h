@@ -1507,22 +1507,20 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
   auto sfunc = std::make_shared<F>(std::move(func));
 
   auto f = first->then([minitial = std::forward<T>(initial),
-                        sfunc](Try<ItT>& head) mutable {
+                        sfunc](Try<ItT>&& head) mutable {
     return (*sfunc)(
         std::forward<T>(minitial), head.template get<IsTry::value, Arg&&>());
   });
 
   for (++first; first != last; ++first) {
-    f = collectAllSemiFuture(f, *first).toUnsafeFuture().then([sfunc](
-                                                                  std::tuple<
-                                                                      Try<T>,
-                                                                      Try<ItT>>&
-                                                                      t) {
-      return (*sfunc)(std::move(std::get<0>(t).value()),
-                  // Either return a ItT&& or a Try<ItT>&& depending
-                  // on the type of the argument of func.
-                  std::get<1>(t).template get<IsTry::value, Arg&&>());
-    });
+    f = collectAllSemiFuture(f, *first).toUnsafeFuture().then(
+        [sfunc](std::tuple<Try<T>, Try<ItT>>&& t) {
+          return (*sfunc)(
+              std::move(std::get<0>(t).value()),
+              // Either return a ItT&& or a Try<ItT>&& depending
+              // on the type of the argument of func.
+              std::get<1>(t).template get<IsTry::value, Arg&&>());
+        });
   }
 
   return f;
@@ -1600,10 +1598,8 @@ window(Executor* executor, Collection input, F func, size_t n) {
 template <class T>
 template <class I, class F>
 Future<I> Future<T>::reduce(I&& initial, F&& func) {
-  return then([
-    minitial = std::forward<I>(initial),
-    mfunc = std::forward<F>(func)
-  ](T& vals) mutable {
+  return then([minitial = std::forward<I>(initial),
+               mfunc = std::forward<F>(func)](T&& vals) mutable {
     auto ret = std::move(minitial);
     for (auto& val : vals) {
       ret = mfunc(std::move(ret), std::move(val));
