@@ -25,6 +25,7 @@
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly::test;
+using namespace folly::hazptr;
 using namespace folly;
 using namespace std;
 
@@ -622,6 +623,8 @@ TEST(ConcurrentHashMap, DeletionWithErase) {
     map.erase(0);
   }
 
+  hazptr_cleanup();
+
   EXPECT_TRUE(del);
 }
 
@@ -635,6 +638,8 @@ TEST(ConcurrentHashMap, DeletionWithIterator) {
     auto it = map.find(0);
     map.erase(it);
   }
+
+  hazptr_cleanup();
 
   EXPECT_TRUE(del);
 }
@@ -678,6 +683,8 @@ TEST(ConcurrentHashMap, DeletionAssigned) {
     map.insert_or_assign(0, std::make_shared<Wrapper>(del2));
   }
 
+  hazptr_cleanup();
+
   EXPECT_TRUE(del1);
   EXPECT_TRUE(del2);
 }
@@ -692,6 +699,8 @@ TEST(ConcurrentHashMap, DeletionMultipleMaps) {
     map1.insert(0, std::make_shared<Wrapper>(del1));
     map2.insert(0, std::make_shared<Wrapper>(del2));
   }
+
+  hazptr_cleanup();
 
   EXPECT_TRUE(del1);
   EXPECT_TRUE(del2);

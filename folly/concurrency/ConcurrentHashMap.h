@@ -153,6 +153,11 @@ class ConcurrentHashMap {
     return *this;
   }
 
+  /* Note that some objects stored in ConcurrentHashMap may outlive the
+   * ConcurrentHashMap's destructor, if you need immediate cleanup, call
+   * hazptr_cleanup(), which guarantees all objects are destructed after
+   * it completes.
+   */
   ~ConcurrentHashMap() {
     for (uint64_t i = 0; i < NumShards; i++) {
       auto seg = segments_[i].load(std::memory_order_relaxed);
@@ -161,7 +166,6 @@ class ConcurrentHashMap {
         Allocator().deallocate((uint8_t*)seg, sizeof(SegmentT));
       }
     }
-    folly::hazptr::hazptr_cleanup(folly::hazptr::default_hazptr_domain());
   }
 
   bool empty() const noexcept {
