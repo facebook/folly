@@ -25,8 +25,8 @@
 #include <folly/ConstexprMath.h>
 #include <folly/Optional.h>
 #include <folly/concurrency/CacheLocality.h>
-#include <folly/experimental/hazptr/hazptr.h>
 #include <folly/lang/Align.h>
+#include <folly/synchronization/Hazptr.h>
 #include <folly/synchronization/SaturatingSemaphore.h>
 
 namespace folly {
@@ -360,7 +360,7 @@ class UnboundedQueue {
     } else {
       // Using hazptr_holder instead of hazptr_local because it is
       // possible that the T ctor happens to use hazard pointers.
-      folly::hazptr::hazptr_holder hptr;
+      hazptr_holder<Atom> hptr;
       Segment* s = hptr.get_protected(p_.tail);
       enqueueCommon(s, std::forward<Arg>(arg));
     }
@@ -395,7 +395,7 @@ class UnboundedQueue {
       // Using hazptr_holder instead of hazptr_local because it is
       // possible to call the T dtor and it may happen to use hazard
       // pointers.
-      folly::hazptr::hazptr_holder hptr;
+      hazptr_holder<Atom> hptr;
       Segment* s = hptr.get_protected(c_.head);
       dequeueCommon(s, item);
     }
@@ -425,7 +425,7 @@ class UnboundedQueue {
     } else {
       // Using hazptr_holder instead of hazptr_local because it is
       //  possible to call ~T() and it may happen to use hazard pointers.
-      folly::hazptr::hazptr_holder hptr;
+      hazptr_holder<Atom> hptr;
       Segment* s = hptr.get_protected(c_.head);
       return tryDequeueUntilMC(s, deadline);
     }
@@ -548,7 +548,7 @@ class UnboundedQueue {
   void allocNextSegment(Segment* s, const Ticket t) {
     Segment* next = new Segment(t);
     if (!SPSC) {
-      next->acquire_ref_safe(); // hazptr
+      next->acquire_ref_safe(); // defined in hazptr_obj_base_linked
     }
     DCHECK(s->nextSegment() == nullptr);
     s->setNextSegment(next);
@@ -592,7 +592,7 @@ class UnboundedQueue {
     if (SPSC) {
       delete s;
     } else {
-      s->retire(); // hazptr
+      s->retire(); // defined in hazptr_obj_base_linked
     }
   }
 
@@ -722,30 +722,13 @@ class UnboundedQueue {
   /**
    *  Segment
    */
-  class Segment : public folly::hazptr::hazptr_obj_base_refcounted<Segment> {
-    Atom<Segment*> next_;
+  class Segment : public hazptr_obj_base_linked<Segment, Atom> {
+    Atom<Segment*> next_{nullptr};
     const Ticket min_;
-    bool marked_; // used for iterative deletion
     alignas(Align) Entry b_[SegmentSize];
 
    public:
-    explicit Segment(const Ticket t)
-        : next_(nullptr), min_(t), marked_(false) {}
-
-    ~Segment() {
-      if (!SPSC && !marked_) {
-        Segment* next = nextSegment();
-        while (next) {
-          if (!next->release_ref()) { // hazptr
-            return;
-          }
-          Segment* s = next;
-          next = s->nextSegment();
-          s->marked_ = true;
-          delete s;
-        }
-      }
-    }
+    explicit Segment(const Ticket t) noexcept : min_(t) {}
 
     Segment* nextSegment() const noexcept {
       return next_.load(std::memory_order_acquire);
@@ -762,6 +745,16 @@ class UnboundedQueue {
 
     FOLLY_ALWAYS_INLINE Entry& entry(size_t index) noexcept {
       return b_[index];
+    }
+
+    template <typename S>
+    void push_links(bool m, S& s) {
+      if (m == false) { // next_ is immutable
+        auto p = nextSegment();
+        if (p) {
+          s.push(p);
+        }
+      }
     }
   }; // Segment
 
