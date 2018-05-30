@@ -1743,8 +1743,11 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 
 template <class T>
 Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
+  auto* currentExecutor = this->getExecutor();
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
-      .toUnsafeFuture()
+      .via(
+          currentExecutor ? currentExecutor
+                          : &folly::InlineExecutor::instance())
       .then([](std::tuple<Try<T>, Try<Unit>> tup) {
         Try<T>& t = std::get<0>(tup);
         return makeFuture<T>(std::move(t));
