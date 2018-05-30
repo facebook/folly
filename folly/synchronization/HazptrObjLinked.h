@@ -201,7 +201,7 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
  *  is ConcurrentHashMap is uncertain.
  *
  *  If removal is certain, user code can call retire() explicitly.
- *  Otherwise, user code should call unlink() whenever an an inbound
+ *  Otherwise, user code should call unlink() whenever an inbound
  *  link to the object is changed. Calls to unlink() automatically
  *  retire the object when the link count is decremented to 0. [Note:
  *  A ref count greater than 0 does not delay retiring an object.]
@@ -218,7 +218,7 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
  *      }
  *   }
  *
- *   T may have both, either, or none of the tow types of outbound
+ *   T may have both, either, or none of the two types of outbound
  *   links. For example, UnboundedQueue Segment has an immutable
  *   link, and ConcurrentHashMap NodeT has a mutable link.
  */
