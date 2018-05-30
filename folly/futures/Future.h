@@ -268,6 +268,12 @@ class FutureBase {
     getCore().setExecutor(x, priority);
   }
 
+  void setExecutor(
+      Executor::KeepAlive<> x,
+      int8_t priority = Executor::MID_PRI) {
+    getCore().setExecutor(std::move(x), priority);
+  }
+
   // Variant: returns a value
   // e.g. f.then([](Try<T> t){ return t.value(); });
   template <typename F, typename R, bool isTry, typename... Args>
@@ -407,6 +413,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// don't get access-after-free situations in chaining.
   /// https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
   Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
+
+  Future<T> via(
+      Executor::KeepAlive<> executor,
+      int8_t priority = Executor::MID_PRI) &&;
 
   /**
    * Defer work to run on the consumer of the future.
@@ -689,10 +699,18 @@ class Future : private futures::detail::FutureBase<T> {
   /// https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
   Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
 
+  Future<T> via(
+      Executor::KeepAlive<> executor,
+      int8_t priority = Executor::MID_PRI) &&;
+
   /// This variant creates a new future, where the ref-qualifier && version
   /// moves `this` out. This one is less efficient but avoids confusing users
   /// when "return f.via(x);" fails.
   Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &;
+
+  Future<T> via(
+      Executor::KeepAlive<> executor,
+      int8_t priority = Executor::MID_PRI) &;
 
   /** When this Future has completed, execute func which is a function that
     takes one of:

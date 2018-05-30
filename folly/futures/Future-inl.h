@@ -724,20 +724,27 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
+Future<T> SemiFuture<T>::via(
+    Executor::KeepAlive<> executor,
+    int8_t priority) && {
   if (!executor) {
     throw_exception<FutureNoExecutor>();
   }
 
   if (auto deferredExecutor = getDeferredExecutor()) {
-    deferredExecutor->setExecutor(executor);
+    deferredExecutor->setExecutor(executor.get());
   }
 
   auto newFuture = Future<T>(this->core_);
   this->core_ = nullptr;
-  newFuture.setExecutor(executor, priority);
+  newFuture.setExecutor(std::move(executor), priority);
 
   return newFuture;
+}
+
+template <class T>
+Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
+  return std::move(*this).via(getKeepAliveToken(executor), priority);
 }
 
 template <class T>
@@ -867,8 +874,8 @@ typename std::
 }
 
 template <class T>
-Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
-  this->setExecutor(executor, priority);
+Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
+  this->setExecutor(std::move(executor), priority);
 
   auto newFuture = Future<T>(this->core_);
   this->core_ = nullptr;
@@ -876,7 +883,12 @@ Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
 }
 
 template <class T>
-Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
+Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
+  return std::move(*this).via(getKeepAliveToken(executor), priority);
+}
+
+template <class T>
+Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
   this->throwIfInvalid();
   Promise<T> p;
   auto sf = p.getSemiFuture();
@@ -891,7 +903,12 @@ Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
   // check in SemiFuture::via
   auto f = Future<T>(sf.core_);
   sf.core_ = nullptr;
-  return std::move(f).via(executor, priority);
+  return std::move(f).via(std::move(executor), priority);
+}
+
+template <class T>
+Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
+  return via(getKeepAliveToken(executor), priority);
 }
 
 template <typename T>

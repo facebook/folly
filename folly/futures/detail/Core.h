@@ -194,10 +194,16 @@ class Core final {
   /// Call only from Future thread, either before attaching a callback or after
   /// the callback has already been invoked, but not concurrently with anything
   /// which might trigger invocation of the callback
-  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
+  void setExecutor(
+      Executor::KeepAlive<> x,
+      int8_t priority = Executor::MID_PRI) {
     DCHECK(fsm_.getState() != State::OnlyCallback);
-    executor_ = x ? getKeepAliveToken(x) : Executor::KeepAlive<>();
+    executor_ = std::move(x);
     priority_ = priority;
+  }
+
+  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
+    setExecutor(getKeepAliveToken(x), priority);
   }
 
   Executor* getExecutor() const {

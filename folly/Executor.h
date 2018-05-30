@@ -135,6 +135,9 @@ class Executor {
     static_assert(
         std::is_base_of<Executor, ExecutorT>::value,
         "getKeepAliveToken only works for folly::Executor implementations.");
+    if (!executor) {
+      return {};
+    }
     folly::Executor* executorPtr = executor;
     if (executorPtr->keepAliveAcquire()) {
       return makeKeepAlive<ExecutorT>(executor);
