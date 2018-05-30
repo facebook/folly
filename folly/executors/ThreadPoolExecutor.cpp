@@ -344,7 +344,7 @@ size_t ThreadPoolExecutor::StoppedThreadQueue::size() {
 
 void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
   {
-    SharedMutex::ReadHolder r{&threadListLock_};
+    SharedMutex::WriteHolder r{&threadListLock_};
     observers_.push_back(o);
     for (auto& thread : threadList_.get()) {
       o->threadPreviouslyStarted(thread.get());
@@ -357,7 +357,7 @@ void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
 }
 
 void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
-  SharedMutex::ReadHolder r{&threadListLock_};
+  SharedMutex::WriteHolder r{&threadListLock_};
   for (auto& thread : threadList_.get()) {
     o->threadNotYetStopped(thread.get());
   }
