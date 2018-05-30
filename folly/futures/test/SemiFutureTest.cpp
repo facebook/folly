@@ -946,7 +946,7 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([] { return 42; })
-                 .deferError<eggs_t>([&](eggs_t& /* e */) {
+                 .deferError<eggs_t>([&](auto& /* e */) {
                    flag();
                    return -1;
                  });

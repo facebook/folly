@@ -1067,8 +1067,8 @@ Future<T> Future<T>::ensure(F&& func) {
 template <class T>
 template <class F>
 Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
-  return within(dur, tk).onError(
-      [funcw = std::forward<F>(func)](FutureTimeout const&) mutable {
+  return within(dur, tk).template thenError<FutureTimeout>(
+      [funcw = std::forward<F>(func)](auto const&) mutable {
         return std::forward<F>(funcw)();
       });
 }
