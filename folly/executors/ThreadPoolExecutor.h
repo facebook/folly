@@ -299,6 +299,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   void ensureActiveThreads();
   void ensureJoined();
   bool minActive();
+  bool tryTimeoutThread();
 
   // These are only modified while holding threadListLock_, but
   // are read without holding the lock.

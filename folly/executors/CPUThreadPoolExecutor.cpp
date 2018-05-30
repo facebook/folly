@@ -164,23 +164,7 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
   if (task) {
     return false;
   } else {
-    // Try to stop based on idle thread timeout (try_take_for),
-    // if there are at least minThreads running.
-    if (!minActive()) {
-      return false;
-    }
-    // If this is based on idle thread timeout, then
-    // adjust vars appropriately (otherwise stop() or join()
-    // does this).
-    if (getPendingTaskCountImpl() > 0) {
-      return false;
-    }
-    activeThreads_.store(
-        activeThreads_.load(std::memory_order_relaxed) - 1,
-        std::memory_order_relaxed);
-    threadsToJoin_.store(
-        threadsToJoin_.load(std::memory_order_relaxed) + 1,
-        std::memory_order_relaxed);
+    return tryTimeoutThread();
   }
   return true;
 }

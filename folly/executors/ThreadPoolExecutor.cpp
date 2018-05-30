@@ -17,6 +17,7 @@
 #include <folly/executors/ThreadPoolExecutor.h>
 
 #include <folly/executors/GlobalThreadPoolList.h>
+#include <folly/synchronization/AsymmetricMemoryBarrier.h>
 
 namespace folly {
 
@@ -384,11 +385,54 @@ void ThreadPoolExecutor::ensureJoined() {
   }
 }
 
+// threadListLock_ must be write locked.
+bool ThreadPoolExecutor::tryTimeoutThread() {
+  // Try to stop based on idle thread timeout (try_take_for),
+  // if there are at least minThreads running.
+  if (!minActive()) {
+    return false;
+  }
+
+  // Remove thread from active count
+  activeThreads_.store(
+      activeThreads_.load(std::memory_order_relaxed) - 1,
+      std::memory_order_relaxed);
+
+  // There is a memory ordering constraint w.r.t the queue
+  // implementation's add() and getPendingTaskCountImpl() - while many
+  // queues have seq_cst ordering, some do not, so add an explicit
+  // barrier.  tryTimeoutThread is the slow path and only happens once
+  // every thread timeout; use asymmetric barrier to keep add() fast.
+  asymmetricHeavyBarrier();
+
+  // If this is based on idle thread timeout, then
+  // adjust vars appropriately (otherwise stop() or join()
+  // does this).
+  if (getPendingTaskCountImpl() > 0) {
+    // There are still pending tasks, we can't stop yet.
+    // re-up active threads and return.
+    activeThreads_.store(
+        activeThreads_.load(std::memory_order_relaxed) + 1,
+        std::memory_order_relaxed);
+    return false;
+  }
+
+  threadsToJoin_.store(
+      threadsToJoin_.load(std::memory_order_relaxed) + 1,
+      std::memory_order_relaxed);
+
+  return true;
+}
+
 // If we can't ensure that we were able to hand off a task to a thread,
 // attempt to start a thread that handled the task, if we aren't already
 // running the maximum number of threads.
 void ThreadPoolExecutor::ensureActiveThreads() {
   ensureJoined();
+
+  // Matches barrier in tryTimeoutThread().  Ensure task added
+  // is seen before loading activeThreads_ below.
+  asymmetricLightBarrier();
 
   // Fast path assuming we are already at max threads.
   auto active = activeThreads_.load(std::memory_order_relaxed);
