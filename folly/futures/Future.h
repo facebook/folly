@@ -33,6 +33,7 @@
 #include <folly/Utility.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
+#include <folly/functional/Invoke.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 #include <folly/lang/Exception.h>
@@ -871,7 +872,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///   });
   template <class F>
   typename std::enable_if<
-      !futures::detail::callableWith<F, exception_wrapper>::value &&
+      !is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func);
@@ -879,7 +880,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// Overload of onError where the error callback returns a Future<T>
   template <class F>
   typename std::enable_if<
-      !futures::detail::callableWith<F, exception_wrapper>::value &&
+      !is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func);
@@ -887,7 +888,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// Overload of onError that takes exception_wrapper and returns Future<T>
   template <class F>
   typename std::enable_if<
-      futures::detail::callableWith<F, exception_wrapper>::value &&
+      is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func);
@@ -895,7 +896,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// Overload of onError that takes exception_wrapper and returns T
   template <class F>
   typename std::enable_if<
-      futures::detail::callableWith<F, exception_wrapper>::value &&
+      is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func);

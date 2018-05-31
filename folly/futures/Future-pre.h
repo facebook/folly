@@ -76,9 +76,6 @@ template <class...> struct CollectAllVariadicContext;
 template <class...> struct CollectVariadicContext;
 template <class> struct CollectContext;
 
-template <typename F, typename... Args>
-using resultOf = decltype(std::declval<F>()(std::declval<Args>()...));
-
 template <typename...>
 struct ArgType;
 
@@ -95,30 +92,16 @@ struct ArgType<> {
 template <bool isTry, typename F, typename... Args>
 struct argResult {
   using ArgList = ArgType<Args...>;
-  using Result = resultOf<F, Args...>;
-};
-
-template <typename F, typename... Args>
-struct callableWith {
-    template <typename T, typename = detail::resultOf<T, Args...>>
-    static constexpr std::true_type
-    check(std::nullptr_t) { return std::true_type{}; }
-
-    template <typename>
-    static constexpr std::false_type
-    check(...) { return std::false_type{}; }
-
-    typedef decltype(check<F>(nullptr)) type;
-    static constexpr bool value = type::value;
+  using Result = invoke_result_t<F, Args...>;
 };
 
 template <typename T, typename F>
 struct callableResult {
   typedef typename std::conditional<
-      callableWith<F>::value,
+      is_invocable<F>::value,
       detail::argResult<false, F>,
       typename std::conditional<
-          callableWith<F, T&&>::value,
+          is_invocable<F, T&&>::value,
           detail::argResult<false, F, T&&>,
           detail::argResult<true, F, Try<T>&&>>::type>::type Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
@@ -128,7 +111,7 @@ struct callableResult {
 template <typename T, typename F>
 struct tryCallableResult {
   typedef typename std::conditional<
-      callableWith<F>::value,
+      is_invocable<F>::value,
       detail::argResult<false, F>,
       detail::argResult<true, F, Try<T>&&>>::type Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
@@ -138,7 +121,7 @@ struct tryCallableResult {
 template <typename T, typename F>
 struct valueCallableResult {
   typedef typename std::conditional<
-      callableWith<F>::value,
+      is_invocable<F>::value,
       detail::argResult<false, F>,
       detail::argResult<false, F, T&&>>::type Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;

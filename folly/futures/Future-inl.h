@@ -980,7 +980,7 @@ Future<Unit> Future<T>::then() {
 template <class T>
 template <class F>
 typename std::enable_if<
-    !futures::detail::callableWith<F, exception_wrapper>::value &&
+    !is_invocable<F, exception_wrapper>::value &&
         !futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
 Future<T>::onError(F&& func) {
@@ -1015,7 +1015,7 @@ Future<T>::onError(F&& func) {
 template <class T>
 template <class F>
 typename std::enable_if<
-    !futures::detail::callableWith<F, exception_wrapper>::value &&
+    !is_invocable<F, exception_wrapper>::value &&
         futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
 Future<T>::onError(F&& func) {
@@ -1074,7 +1074,7 @@ Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
 template <class T>
 template <class F>
 typename std::enable_if<
-    futures::detail::callableWith<F, exception_wrapper>::value &&
+    is_invocable<F, exception_wrapper>::value &&
         futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
 Future<T>::onError(F&& func) {
@@ -1112,7 +1112,7 @@ Future<T>::onError(F&& func) {
 template <class T>
 template <class F>
 typename std::enable_if<
-    futures::detail::callableWith<F, exception_wrapper>::value &&
+    is_invocable<F, exception_wrapper>::value &&
         !futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
 Future<T>::onError(F&& func) {
@@ -1496,10 +1496,9 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
   }
 
   typedef typename std::iterator_traits<It>::value_type::value_type ItT;
-  typedef typename std::conditional<
-      futures::detail::callableWith<F, T&&, Try<ItT>&&>::value,
-      Try<ItT>,
-      ItT>::type Arg;
+  typedef typename std::
+      conditional<is_invocable<F, T&&, Try<ItT>&&>::value, Try<ItT>, ItT>::type
+          Arg;
   typedef isTry<Arg> IsTry;
 
   auto sfunc = std::make_shared<F>(std::move(func));

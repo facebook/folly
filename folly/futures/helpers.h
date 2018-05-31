@@ -437,7 +437,7 @@ template <
     class F,
     class ItT = typename std::iterator_traits<
         typename Collection::iterator>::value_type,
-    class Result = typename futures::detail::resultOf<F, ItT&&>::value_type>
+    class Result = typename invoke_result_t<F, ItT&&>::value_type>
 std::vector<Future<Result>> window(Collection input, F func, size_t n);
 
 template <
@@ -445,15 +445,13 @@ template <
     class F,
     class ItT = typename std::iterator_traits<
         typename Collection::iterator>::value_type,
-    class Result = typename futures::detail::resultOf<F, ItT&&>::value_type>
+    class Result = typename invoke_result_t<F, ItT&&>::value_type>
 std::vector<Future<Result>>
 window(Executor* executor, Collection input, F func, size_t n);
 
 template <typename F, typename T, typename ItT>
-using MaybeTryArg = typename std::conditional<
-    futures::detail::callableWith<F, T&&, Try<ItT>&&>::value,
-    Try<ItT>,
-    ItT>::type;
+using MaybeTryArg = typename std::
+    conditional<is_invocable<F, T&&, Try<ItT>&&>::value, Try<ItT>, ItT>::type;
 
 /** repeatedly calls func on every result, e.g.
     reduce(reduce(reduce(T initial, result of first), result of second), ...)
