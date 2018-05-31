@@ -718,10 +718,12 @@ TEST(ThreadPoolExecutorTest, DynamicThreadAddRemoveRace) {
 }
 
 TEST(ThreadPoolExecutorTest, AddPerf) {
+  auto queue = std::make_unique<
+      UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>>();
   CPUThreadPoolExecutor e(
       1000,
-      std::make_unique<
-          UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>>());
+      std::move(queue),
+      std::make_shared<NamedThreadFactory>("CPUThreadPool"));
   e.setThreadDeathTimeout(std::chrono::milliseconds(1));
   for (int i = 0; i < 10000; i++) {
     e.add([&]() { e.add([]() { /* sleep override */ usleep(1000); }); });
