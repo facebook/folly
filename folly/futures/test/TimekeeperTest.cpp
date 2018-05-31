@@ -108,6 +108,14 @@ TEST(Timekeeper, futureDelayed) {
   EXPECT_GE(dur, one_ms);
 }
 
+TEST(Timekeeper, futureDelayedUnsafe) {
+  auto t1 = now();
+  auto dur =
+      makeFuture().delayedUnsafe(one_ms).then([=] { return now() - t1; }).get();
+
+  EXPECT_GE(dur, one_ms);
+}
+
 TEST(Timekeeper, futureWithinThrows) {
   Promise<int> p;
   auto f =
