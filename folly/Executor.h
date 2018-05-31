@@ -110,6 +110,10 @@ class Executor {
       return get();
     }
 
+    KeepAlive copy() const {
+      return getKeepAliveToken(get());
+    }
+
    private:
     static constexpr intptr_t kDummyFlag = 1;
     static constexpr intptr_t kExecutorMask = ~kDummyFlag;

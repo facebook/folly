@@ -91,4 +91,23 @@ TEST(ExecutorTest, KeepAliveConvert) {
   EXPECT_EQ(0, exec.refCount);
 }
 
+TEST(ExecutorTest, KeepAliveCopy) {
+  KeepAliveTestExecutor exec;
+
+  {
+    Executor::KeepAlive<KeepAliveTestExecutor>&& ka = getKeepAliveToken(exec);
+    EXPECT_TRUE(ka);
+    EXPECT_EQ(std::addressof(exec), ka.get());
+    EXPECT_EQ(1, exec.refCount);
+
+    Executor::KeepAlive<KeepAliveTestExecutor>&& ka2 = ka.copy();
+    EXPECT_TRUE(ka);
+    EXPECT_TRUE(ka2);
+    EXPECT_EQ(std::addressof(exec), ka2.get());
+    EXPECT_EQ(2, exec.refCount);
+  }
+
+  EXPECT_EQ(0, exec.refCount);
+}
+
 } // namespace folly
