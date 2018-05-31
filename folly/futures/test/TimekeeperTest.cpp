@@ -154,8 +154,8 @@ TEST(Timekeeper, futureWithinException) {
 TEST(Timekeeper, onTimeout) {
   bool flag = false;
   makeFuture(42).delayed(10 * one_ms)
-    .onTimeout(zero_ms, [&]{ flag = true; return -1; })
-    .get();
+      .onTimeout(zero_ms, [&]{ flag = true; return -1; })
+      .get();
   EXPECT_TRUE(flag);
 }
 
@@ -170,8 +170,8 @@ TEST(Timekeeper, onTimeoutComplete) {
 TEST(Timekeeper, onTimeoutReturnsFuture) {
   bool flag = false;
   makeFuture(42).delayed(10 * one_ms)
-    .onTimeout(zero_ms, [&]{ flag = true; return makeFuture(-1); })
-    .get();
+      .onTimeout(zero_ms, [&]{ flag = true; return makeFuture(-1); })
+      .get();
   EXPECT_TRUE(flag);
 }
 
