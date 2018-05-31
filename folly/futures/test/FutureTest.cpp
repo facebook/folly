@@ -879,39 +879,31 @@ TEST(Future, special) {
 }
 
 TEST(Future, then) {
-  auto f = makeFuture<std::string>("0")
-    .then([](){
-      return makeFuture<std::string>("1"); })
-    .then([](Try<std::string>&& t) {
-      return makeFuture(t.value() + ";2"); })
-    .then([](const Try<std::string>&& t) {
-      return makeFuture(t.value() + ";3"); })
-    .then([](Try<std::string>& t) {
-      return makeFuture(t.value() + ";4"); })
-    .then([](const Try<std::string>& t) {
-      return makeFuture(t.value() + ";5"); })
-    .then([](Try<std::string> t) {
-      return makeFuture(t.value() + ";6"); })
-    .then([](const Try<std::string> t) {
-      return makeFuture(t.value() + ";7"); })
-    .then([](std::string&& s) {
-      return makeFuture(s + ";8"); })
-    .then([](const std::string&& s) {
-      return makeFuture(s + ";9"); })
-    .then([](std::string& s) {
-      return makeFuture(s + ";10"); })
-    .then([](const std::string& s) {
-      return makeFuture(s + ";11"); })
-    .then([](std::string s) {
-      return makeFuture(s + ";12"); })
-    .then([](const std::string s) {
-      return makeFuture(s + ";13"); })
-  ;
-  EXPECT_EQ(f.value(), "1;2;3;4;5;6;7;8;9;10;11;12;13");
+  auto f =
+      makeFuture<std::string>("0")
+          .then([]() { return makeFuture<std::string>("1"); })
+          .then(
+              [](Try<std::string>&& t) { return makeFuture(t.value() + ";2"); })
+          .then([](const Try<std::string>&& t) {
+            return makeFuture(t.value() + ";3");
+          })
+          .then([](const Try<std::string>& t) {
+            return makeFuture(t.value() + ";4");
+          })
+          .then([](Try<std::string> t) { return makeFuture(t.value() + ";5"); })
+          .then([](const Try<std::string> t) {
+            return makeFuture(t.value() + ";6");
+          })
+          .then([](std::string&& s) { return makeFuture(s + ";7"); })
+          .then([](const std::string&& s) { return makeFuture(s + ";8"); })
+          .then([](const std::string& s) { return makeFuture(s + ";9"); })
+          .then([](std::string s) { return makeFuture(s + ";10"); })
+          .then([](const std::string s) { return makeFuture(s + ";11"); });
+  EXPECT_EQ(f.value(), "1;2;3;4;5;6;7;8;9;10;11");
 }
 
 static folly::Future<std::string> doWorkStaticTry(Try<std::string>&& t) {
-  return makeFuture(t.value() + ";8");
+  return makeFuture(t.value() + ";7");
 }
 
 TEST(Future, thenTrythenValue) {
@@ -923,25 +915,21 @@ TEST(Future, thenTrythenValue) {
           .thenTry([](const Try<std::string>&& t) {
             return makeFuture(t.value() + ";3");
           })
-          .thenTry(
-              [](Try<std::string>& t) { return makeFuture(t.value() + ";4"); })
           .thenTry([](const Try<std::string>& t) {
-            return makeFuture(t.value() + ";5");
+            return makeFuture(t.value() + ";4");
           })
           .thenTry(
-              [](Try<std::string> t) { return makeFuture(t.value() + ";6"); })
+              [](Try<std::string> t) { return makeFuture(t.value() + ";5"); })
           .thenTry([](const Try<std::string> t) {
-            return makeFuture(t.value() + ";7");
+            return makeFuture(t.value() + ";6");
           })
           .thenTry(doWorkStaticTry)
-          .thenValue([](std::string&& s) { return makeFuture(s + ";9"); })
-          .thenValue(
-              [](const std::string&& s) { return makeFuture(s + ";10"); })
-          .thenValue([](std::string& s) { return makeFuture(s + ";11"); })
-          .thenValue([](const std::string& s) { return makeFuture(s + ";12"); })
-          .thenValue([](std::string s) { return makeFuture(s + ";13"); })
-          .thenValue([](const std::string s) { return makeFuture(s + ";14"); });
-  EXPECT_EQ(f.value(), "1;2;3;4;5;6;7;8;9;10;11;12;13;14");
+          .thenValue([](std::string&& s) { return makeFuture(s + ";8"); })
+          .thenValue([](const std::string&& s) { return makeFuture(s + ";9"); })
+          .thenValue([](const std::string& s) { return makeFuture(s + ";10"); })
+          .thenValue([](std::string s) { return makeFuture(s + ";11"); })
+          .thenValue([](const std::string s) { return makeFuture(s + ";12"); });
+  EXPECT_EQ(f.value(), "1;2;3;4;5;6;7;8;9;10;11;12");
 }
 
 TEST(Future, thenTry) {
@@ -1075,7 +1063,7 @@ TEST(Future, thenStdFunction) {
     EXPECT_EQ(f.value(), 42);
   }
   {
-    std::function<int(Try<int>&)> fn = [](Try<int>& t){ return t.value() + 2; };
+    std::function<int(Try<int>)> fn = [](Try<int> t) { return t.value() + 2; };
     auto f = makeFuture(1).then(std::move(fn));
     EXPECT_EQ(f.value(), 3);
   }

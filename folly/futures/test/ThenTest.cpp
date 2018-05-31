@@ -106,16 +106,6 @@ TEST(Then, tryRValueReference) {
   EXPECT_EQ(future.value(), 23);
 }
 
-TEST(Then, tryLValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](Try<Widget>& t) {
-      EXPECT_EQ(t.value().copied_, 0);
-      EXPECT_EQ(t.value().moved_, 2);
-      return t.value().v_;
-    });
-  EXPECT_EQ(future.value(), 23);
-}
-
 TEST(Then, tryConstLValueReference) {
   auto future = makeFuture<Widget>(23).then(
     [](const Try<Widget>& t) {
@@ -159,16 +149,6 @@ TEST(Then, constRValueReference) {
 TEST(Then, rValueReference) {
   auto future = makeFuture<Widget>(23).then(
     [](Widget&& w) {
-      EXPECT_EQ(w.copied_, 0);
-      EXPECT_EQ(w.moved_, 2);
-      return w.v_;
-    });
-  EXPECT_EQ(future.value(), 23);
-}
-
-TEST(Then, lValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](Widget& w) {
       EXPECT_EQ(w.copied_, 0);
       EXPECT_EQ(w.moved_, 2);
       return w.v_;
