@@ -107,8 +107,7 @@ make_unique(const size_t n) {
 
 // Disallows 'make_unique<T[10]>()'. (N3690 s20.9.1.4 p5)
 template <typename T, typename... Args>
-typename std::enable_if<
-  std::extent<T>::value != 0, std::unique_ptr<T>>::type
+typename std::enable_if<std::extent<T>::value != 0, std::unique_ptr<T>>::type
 make_unique(Args&&...) = delete;
 
 #endif
@@ -133,7 +132,7 @@ make_unique(Args&&...) = delete;
  *      buf = nullptr;  // calls BIO_free(buf.get())
  */
 
-template <typename T, void(*f)(T*)>
+template <typename T, void (*f)(T*)>
 struct static_function_deleter {
   void operator()(T* t) const {
     f(t);
@@ -195,7 +194,7 @@ template <>
 struct lift_void_to_char<void> {
   using type = char;
 };
-}
+} // namespace detail
 
 /**
  * SysAllocator
@@ -494,8 +493,7 @@ struct AllocatorHasTrivialDeallocate<CxxAllocatorAdaptor<T, Alloc>>
  *
  * To be removed once C++17 becomes a minimum requirement for folly.
  */
-#if __cplusplus >= 201700L || \
-    __cpp_lib_enable_shared_from_this >= 201603L
+#if __cplusplus >= 201700L || __cpp_lib_enable_shared_from_this >= 201603L
 
 // Guaranteed to have std::enable_shared_from_this::weak_from_this(). Prefer
 // type alias over our own class.
@@ -539,14 +537,14 @@ class enable_shared_from_this : public std::enable_shared_from_this<T> {
   // std::enable_shared_from_this<T>::weak_from_this() if available. Falls
   // back to std::enable_shared_from_this<T>::shared_from_this() otherwise.
   template <typename U>
-  auto weak_from_this_(std::enable_shared_from_this<U>* base_ptr)
-  noexcept -> decltype(base_ptr->weak_from_this()) {
+  auto weak_from_this_(std::enable_shared_from_this<U>* base_ptr) noexcept
+      -> decltype(base_ptr->weak_from_this()) {
     return base_ptr->weak_from_this();
   }
 
   template <typename U>
-  auto weak_from_this_(std::enable_shared_from_this<U> const* base_ptr)
-  const noexcept -> decltype(base_ptr->weak_from_this()) {
+  auto weak_from_this_(std::enable_shared_from_this<U> const* base_ptr) const
+      noexcept -> decltype(base_ptr->weak_from_this()) {
     return base_ptr->weak_from_this();
   }
 

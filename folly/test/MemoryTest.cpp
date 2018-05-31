@@ -184,8 +184,7 @@ static void test_enable_shared_from_this(std::shared_ptr<C> sp) {
   // shared_ptr. Undefined in C++14 but well-defined in C++17. Also known to
   // work with libstdc++ >= 20150123. Feel free to add other standard library
   // versions where the behavior is known.
-#if __cplusplus >= 201700L || \
-    __GLIBCXX__ >= 20150123L
+#if __cplusplus >= 201700L || __GLIBCXX__ >= 20150123L
   C stack_resident;
   ASSERT_THROW(stack_resident.shared_from_this(), std::bad_weak_ptr);
   ASSERT_TRUE(stack_resident.weak_from_this().expired());
@@ -197,11 +196,13 @@ TEST(enable_shared_from_this, compatible_with_std_enable_shared_from_this) {
   class C_std : public std::enable_shared_from_this<C_std> {};
   class C_folly : public folly::enable_shared_from_this<C_folly> {};
   static_assert(
-    noexcept(std::declval<C_std>().shared_from_this()) ==
-    noexcept(std::declval<C_folly>().shared_from_this()), "");
+      noexcept(std::declval<C_std>().shared_from_this()) ==
+          noexcept(std::declval<C_folly>().shared_from_this()),
+      "");
   static_assert(
-    noexcept(std::declval<C_std const>().shared_from_this()) ==
-    noexcept(std::declval<C_folly const>().shared_from_this()), "");
+      noexcept(std::declval<C_std const>().shared_from_this()) ==
+          noexcept(std::declval<C_folly const>().shared_from_this()),
+      "");
   static_assert(noexcept(std::declval<C_folly>().weak_from_this()), "");
   static_assert(noexcept(std::declval<C_folly const>().weak_from_this()), "");
 
