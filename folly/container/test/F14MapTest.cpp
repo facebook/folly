@@ -259,7 +259,9 @@ void runRandom() {
     std::size_t resizingSmallRollbacks = 0;
     std::size_t resizingLargeRollbacks = 0;
 
-    for (std::size_t reps = 0; reps < 100000; ++reps) {
+    for (std::size_t reps = 0; reps < 100000 || rollbacks < 10 ||
+         resizingSmallRollbacks < 1 || resizingLargeRollbacks < 1;
+         ++reps) {
       if (pctDist(gen) < 20) {
         // 10% chance allocator will fail after 0 to 3 more allocations
         limitTestAllocations(gen() & 3);
@@ -495,10 +497,6 @@ void runRandom() {
         }
       }
     }
-
-    EXPECT_GE(rollbacks, 10);
-    EXPECT_GE(resizingSmallRollbacks, 1);
-    EXPECT_GE(resizingLargeRollbacks, 1);
   }
 
   EXPECT_EQ(testAllocatedMemorySize, 0);
