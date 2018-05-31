@@ -660,6 +660,7 @@ libfolly_la_SOURCES = \
 	stats/TDigest.cpp \
 	stats/TimeseriesHistogram.cpp \
 	synchronization/AsymmetricMemoryBarrier.cpp \
+	synchronization/Hazptr.cpp \
 	synchronization/LifoSem.cpp \
 	synchronization/ParkingLot.cpp \
 	synchronization/WaitOptions.cpp \
