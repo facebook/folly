@@ -951,6 +951,15 @@ class F14Table : public Policy {
   }
 
   void swap(F14Table& rhs) noexcept(kSwapIsNoexcept) {
+    // If propagate_on_container_swap is false and allocators are
+    // not equal, the only way to accomplish a swap would be to do
+    // dynamic allocation and then move (or swap) each contained value.
+    // AllocatorAwareContainer-s are not supposed to attempt this, but
+    // rather are supposed to have undefined behavior in that case.
+    FOLLY_SAFE_CHECK(
+        AllocTraits::propagate_on_container_swap::value ||
+            kAllocIsAlwaysEqual || this->alloc() == rhs.alloc(),
+        "swap is undefined for unequal non-propagating allocators");
     this->swapPolicy(rhs);
     swapContents(rhs);
   }
