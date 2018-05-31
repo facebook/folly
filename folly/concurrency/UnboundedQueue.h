@@ -28,6 +28,8 @@
 #include <folly/lang/Align.h>
 #include <folly/synchronization/Hazptr.h>
 #include <folly/synchronization/SaturatingSemaphore.h>
+#include <folly/synchronization/WaitOptions.h>
+#include <folly/synchronization/detail/Spin.h>
 
 namespace folly {
 
@@ -143,21 +145,28 @@ namespace folly {
 ///   corresponds to the producer ticket.
 /// - Segments are organized as a singly linked list.
 /// - The producer with the first ticket in the current producer
-///   segment is solely responsible for allocating and linking the
-///   next segment.
+///   segment has primary responsibility for allocating and linking
+///   the next segment. Other producers and connsumers may help do so
+///   when needed if that thread is delayed.
 /// - The producer with the last ticket in the current producer
-///   segment is solely responsible for advancing the tail pointer to
-///   the next segment.
+///   segment is primarily responsible for advancing the tail pointer
+///   to the next segment. Other producers and consumers may help do
+///   so when needed if that thread is delayed.
 /// - Similarly, the consumer with the last ticket in the current
-///   consumer segment is solely responsible for advancing the head
-///   pointer to the next segment. It must ensure that head never
-///   overtakes tail.
+///   consumer segment is primarily responsible for advancing the head
+///   pointer to the next segment. Other consumers may help do so when
+///   needed if that thread is delayed.
+/// - The tail pointer must not lag behind the head pointer.
+///   Otherwise, the algorithm cannot be certain about the removal of
+///   segment and would have to incur higher costs to ensure safe
+///   reclamation.  Consumers must ensure that head never overtakes
+///   tail.
 ///
 /// Memory Usage:
 /// - An empty queue contains one segment. A nonempty queue contains
 ///   one or two more segment than fits its contents.
 /// - Removed segments are not reclaimed until there are no threads,
-///   producers or consumers, have references to them or their
+///   producers or consumers, with references to them or their
 ///   predecessors. That is, a lagging thread may delay the reclamation
 ///   of a chain of removed segments.
 /// - The template parameter LgAlign can be used to reduce memory usage
@@ -189,9 +198,6 @@ namespace folly {
 /// - If the template parameter LgSegmentSize is changed, it should be
 ///   set adequately high to keep the amortized cost of allocation and
 ///   reclamation low.
-/// - Another consideration is that the queue is guaranteed to have
-///   enough space for a number of consumers equal to 2^LgSegmentSize
-///   for local blocking. Excess waiting consumers spin.
 /// - It is recommended to measure performance with different variants
 ///   when applicable, e.g., UMPMC vs UMPSC. Depending on the use
 ///   case, sometimes the variant with the higher sequential overhead
@@ -227,10 +233,12 @@ class UnboundedQueue {
   struct Consumer {
     Atom<Segment*> head;
     Atom<Ticket> ticket;
+    explicit Consumer(Segment* s) : head(s), ticket(0) {}
   };
   struct Producer {
     Atom<Segment*> tail;
     Atom<Ticket> ticket;
+    explicit Producer(Segment* s) : tail(s), ticket(0) {}
   };
 
   alignas(Align) Consumer c_;
@@ -238,13 +246,8 @@ class UnboundedQueue {
 
  public:
   /** constructor */
-  UnboundedQueue() {
-    setProducerTicket(0);
-    setConsumerTicket(0);
-    Segment* s = new Segment(0);
-    setTail(s);
-    setHead(s);
-  }
+  UnboundedQueue()
+      : c_(new Segment(0)), p_(c_.head.load(std::memory_order_relaxed)) {}
 
   /** destructor */
   ~UnboundedQueue() {
@@ -379,7 +382,7 @@ class UnboundedQueue {
     Entry& e = s->entry(idx);
     e.putItem(std::forward<Arg>(arg));
     if (responsibleForAlloc(t)) {
-      allocNextSegment(s, t + SegmentSize);
+      allocNextSegment(s);
     }
     if (responsibleForAdvance(t)) {
       advanceTail(s);
@@ -460,10 +463,8 @@ class UnboundedQueue {
     while (true) {
       Ticket t = consumerTicket();
       if (UNLIKELY(t >= (s->minTicket() + SegmentSize))) {
-        s = tryGetNextSegmentUntil(s, deadline);
-        if (s == nullptr) {
-          return folly::Optional<T>(); // timed out
-        }
+        s = getAllocNextSegment(s, t);
+        DCHECK(s);
         continue;
       }
       size_t idx = index(t);
@@ -513,78 +514,116 @@ class UnboundedQueue {
 
   /** findSegment */
   FOLLY_ALWAYS_INLINE
-  Segment* findSegment(Segment* s, const Ticket t) const noexcept {
+  Segment* findSegment(Segment* s, const Ticket t) noexcept {
     while (UNLIKELY(t >= (s->minTicket() + SegmentSize))) {
-      auto deadline = std::chrono::steady_clock::time_point::max();
-      s = tryGetNextSegmentUntil(s, deadline);
-      DCHECK(s != nullptr);
+      s = getAllocNextSegment(s, t);
+      DCHECK(s);
     }
     return s;
   }
 
-  /** tryGetNextSegmentUntil */
-  template <typename Clock, typename Duration>
-  Segment* tryGetNextSegmentUntil(
-      Segment* s,
-      const std::chrono::time_point<Clock, Duration>& deadline) const noexcept {
-    // The following loop will not spin indefinitely (as long as the
-    // number of concurrently waiting consumers does not exceeds
-    // SegmentSize and the OS scheduler does not pause ready threads
-    // indefinitely). Under such conditions, the algorithm guarantees
-    // that the producer reponsible for advancing the tail pointer to
-    // the next segment has already acquired its ticket.
-    while (tail() == s) {
-      if (deadline < Clock::time_point::max() && deadline > Clock::now()) {
-        return nullptr;
-      }
-      asm_volatile_pause();
-    }
+  /** getAllocNextSegment */
+  Segment* getAllocNextSegment(Segment* s, Ticket t) noexcept {
     Segment* next = s->nextSegment();
-    DCHECK(next != nullptr);
+    if (!next) {
+      DCHECK_GE(t, s->minTicket() + SegmentSize);
+      auto diff = t - (s->minTicket() + SegmentSize);
+      if (diff > 0) {
+        auto dur = std::chrono::microseconds(diff);
+        auto deadline = std::chrono::steady_clock::now() + dur;
+        WaitOptions opt;
+        opt.spin_max(dur);
+        detail::spin_pause_until(
+            deadline, opt, [s] { return s->nextSegment(); });
+        next = s->nextSegment();
+        if (next) {
+          return next;
+        }
+      }
+      next = allocNextSegment(s);
+    }
+    DCHECK(next);
     return next;
   }
 
   /** allocNextSegment */
-  void allocNextSegment(Segment* s, const Ticket t) {
+  Segment* allocNextSegment(Segment* s) {
+    auto t = s->minTicket() + SegmentSize;
     Segment* next = new Segment(t);
-    if (!SPSC) {
-      next->acquire_ref_safe(); // defined in hazptr_obj_base_linked
+    next->acquire_ref_safe(); // defined in hazptr_obj_base_linked
+    if (!s->casNextSegment(next)) {
+      delete next;
+      next = s->nextSegment();
     }
-    DCHECK(s->nextSegment() == nullptr);
-    s->setNextSegment(next);
+    DCHECK(next);
+    return next;
   }
 
   /** advanceTail */
   void advanceTail(Segment* s) noexcept {
-    Segment* next = s->nextSegment();
-    if (!SingleProducer) {
-      // The following loop will not spin indefinitely (as long as the
-      // OS scheduler does not pause ready threads indefinitely). The
-      // algorithm guarantees that the producer reponsible for setting
-      // the next pointer has already acquired its ticket.
-      while (next == nullptr) {
-        asm_volatile_pause();
-        next = s->nextSegment();
-      }
+    if (SPSC) {
+      Segment* next = s->nextSegment();
+      DCHECK(next);
+      setTail(next);
+    } else {
+      Ticket t = s->minTicket() + SegmentSize;
+      advanceTailToTicket(t);
     }
-    DCHECK(next != nullptr);
-    setTail(next);
+  }
+
+  /** advanceTailToTicket */
+  void advanceTailToTicket(Ticket t) noexcept {
+    Segment* s = tail();
+    while (s->minTicket() < t) {
+      Segment* next = s->nextSegment();
+      if (!next) {
+        next = allocNextSegment(s);
+      }
+      DCHECK(next);
+      casTail(s, next);
+      s = tail();
+    }
   }
 
   /** advanceHead */
   void advanceHead(Segment* s) noexcept {
-    auto deadline = std::chrono::steady_clock::time_point::max();
-    Segment* next = tryGetNextSegmentUntil(s, deadline);
-    DCHECK(next != nullptr);
-    while (head() != s) {
-      // Wait for head to advance to the current segment first before
-      // advancing head to the next segment. Otherwise, a lagging
-      // consumer responsible for advancing head from an earlier
-      // segment may incorrectly set head back.
-      asm_volatile_pause();
+    if (SPSC) {
+      while (tail() == s) {
+        /* Wait for producer to advance tail. */
+        asm_volatile_pause();
+      }
+      Segment* next = s->nextSegment();
+      DCHECK(next);
+      setHead(next);
+      reclaimSegment(s);
+    } else {
+      Ticket t = s->minTicket() + SegmentSize;
+      advanceHeadToTicket(t);
     }
-    setHead(next);
-    reclaimSegment(s);
+  }
+
+  /** advanceHeadToTicket */
+  void advanceHeadToTicket(Ticket t) noexcept {
+    /* Tail must not lag behind head. Otherwise, the algorithm cannot
+       be certain about removal of segments. */
+    advanceTailToTicket(t);
+    Segment* s = head();
+    if (SingleConsumer) {
+      DCHECK_EQ(s->minTicket() + SegmentSize, t);
+      Segment* next = s->nextSegment();
+      DCHECK(next);
+      setHead(next);
+      reclaimSegment(s);
+    } else {
+      while (s->minTicket() < t) {
+        Segment* next = s->nextSegment();
+        DCHECK(next);
+        if (casHead(s, next)) {
+          reclaimSegment(s);
+          s = next;
+        }
+      }
+    }
   }
 
   /** reclaimSegment */
@@ -625,11 +664,25 @@ class UnboundedQueue {
   }
 
   void setHead(Segment* s) noexcept {
-    c_.head.store(s, std::memory_order_release);
+    DCHECK(SingleConsumer);
+    c_.head.store(s, std::memory_order_relaxed);
   }
 
   void setTail(Segment* s) noexcept {
+    DCHECK(SPSC);
     p_.tail.store(s, std::memory_order_release);
+  }
+
+  bool casHead(Segment*& s, Segment* next) noexcept {
+    DCHECK(!SingleConsumer);
+    return c_.head.compare_exchange_strong(
+        s, next, std::memory_order_release, std::memory_order_acquire);
+  }
+
+  void casTail(Segment*& s, Segment* next) noexcept {
+    DCHECK(!SPSC);
+    p_.tail.compare_exchange_strong(
+        s, next, std::memory_order_release, std::memory_order_relaxed);
   }
 
   FOLLY_ALWAYS_INLINE void setProducerTicket(Ticket t) noexcept {
@@ -734,8 +787,10 @@ class UnboundedQueue {
       return next_.load(std::memory_order_acquire);
     }
 
-    void setNextSegment(Segment* s) noexcept {
-      next_.store(s, std::memory_order_release);
+    bool casNextSegment(Segment* next) noexcept {
+      Segment* expected = nullptr;
+      return next_.compare_exchange_strong(
+          expected, next, std::memory_order_release, std::memory_order_relaxed);
     }
 
     FOLLY_ALWAYS_INLINE Ticket minTicket() const noexcept {
