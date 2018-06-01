@@ -65,7 +65,7 @@ class ThreadCachedInt : boost::noncopyable {
   IntT readFull() const {
     // This could race with thread destruction and so the access lock should be
     // acquired before reading the current value
-    auto accessor = cache_.accessAllThreads();
+    const auto accessor = cache_.accessAllThreads();
     IntT ret = readFast();
     for (const auto& cache : accessor) {
       if (!cache.reset_.load(std::memory_order_acquire)) {

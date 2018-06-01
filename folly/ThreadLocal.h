@@ -69,7 +69,7 @@ class ThreadLocal {
       : constructor_(std::forward<F>(constructor)) {}
 
   T* get() const {
-    T* ptr = tlp_.get();
+    T* const ptr = tlp_.get();
     if (LIKELY(ptr != nullptr)) {
       return ptr;
     }
@@ -105,7 +105,7 @@ class ThreadLocal {
   ThreadLocal& operator=(const ThreadLocal&) = delete;
 
   T* makeTlp() const {
-    auto ptr = constructor_();
+    auto const ptr = constructor_();
     tlp_.reset(ptr);
     return ptr;
   }
@@ -274,7 +274,7 @@ class ThreadLocalPtr {
         e_ = e_->prev;
         decrementToValid();
       }
-  
+
       const T& dereference() const {
         return *static_cast<T*>(e_->elements[accessor_->id_].ptr);
       }

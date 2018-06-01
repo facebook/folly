@@ -126,7 +126,7 @@ class BasicDynamicTokenBucket {
     assert(rate > 0);
     assert(burstSize > 0);
 
-    return this->consumeImpl(
+    return consumeImpl(
         rate, burstSize, nowInSeconds, [toConsume](double& tokens) {
           if (tokens < toConsume) {
             return false;
@@ -160,7 +160,7 @@ class BasicDynamicTokenBucket {
     assert(burstSize > 0);
 
     double consumed;
-    this->consumeImpl(
+    consumeImpl(
         rate, burstSize, nowInSeconds, [&consumed, toConsume](double& tokens) {
           if (tokens < toConsume) {
             consumed = tokens;
@@ -281,7 +281,7 @@ class BasicTokenBucket {
       double nowInSeconds = defaultClockNow()) noexcept {
     assert(genRate > 0);
     assert(burstSize > 0);
-    double availTokens = available(nowInSeconds);
+    const double availTokens = available(nowInSeconds);
     rate_ = genRate;
     burstSize_ = burstSize;
     setCapacity(availTokens, nowInSeconds);
