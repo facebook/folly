@@ -39,16 +39,7 @@ namespace folly {
 namespace futures {
 namespace detail {
 
-/*
-        OnlyCallback
-       /            \
-  Start              Done
-       \            /
-         OnlyResult
-
-This state machine is fairly self-explanatory. The most important bit is
-that the callback is only executed just after the transition from Only* to Done.
-*/
+/// See `Core` for details
 enum class State : uint8_t {
   Start,
   OnlyResult,
@@ -66,36 +57,133 @@ struct SpinLock : private MicroSpinLock {
 static_assert(sizeof(SpinLock) == 1, "missized");
 
 /// The shared state object for Future and Promise.
-/// Some methods must only be called by either the Future thread or the
-/// Promise thread. The Future thread is the thread that currently "owns" the
-/// Future and its callback-related operations, and the Promise thread is
-/// likewise the thread that currently "owns" the Promise and its
-/// result-related operations. Also, Futures own interruption, Promises own
-/// interrupt handlers. Unfortunately, there are things that users can do to
-/// break this, and we can't detect that. However if they follow move
-/// semantics religiously wrt threading, they should be ok.
 ///
-/// It's worth pointing out that Futures and/or Promises can and usually will
-/// migrate between threads, though this usually happens within the API code.
-/// For example, an async operation will probably make a Promise, grab its
-/// Future, then move the Promise into another thread that will eventually
-/// fulfill it. With executors and via, this gets slightly more complicated at
-/// first blush, but it's the same principle. In general, as long as the user
-/// doesn't access a Future or Promise object from more than one thread at a
-/// time there won't be any problems.
+/// Nomenclature:
+///
+/// - "result": a `Try` object which, when set, contains a `T` or exception.
+/// - "move-out the result": used to mean the `Try` object and/or its contents
+///   are moved-out by a move-constructor or move-assignment. After the result
+///   is set, Core itself never modifies (including moving out) the result;
+///   however the docs refer to both since caller-code can move-out the result
+///   implicitly (see below for examples) whereas other types of modifications
+///   are more explicit in the caller code.
+/// - "callback": a function provided by the future which Core may invoke. The
+///   thread in which the callback is invoked depends on the executor; if there
+///   is no executor or an inline executor the thread-choice depends on timing.
+/// - "executor": an object which may in the future invoke a provided function
+///   (some executors may, as a matter of policy, simply destroy provided
+///   functions without executing them).
+/// - "consumer thread": the thread which currently owns the Future and which
+///   may provide the callback and/or the interrupt.
+/// - "producer thread": the thread which owns the Future and which may provide
+///   the result and which may provide the interrupt handler.
+/// - "interrupt": if provided, an object managed by (if non-empty)
+///   `exception_wrapper`.
+/// - "interrupt handler": if provided, a function-object passed to
+///   `promise.setInterruptHandler()`. Core invokes the interrupt handler with
+///   the interrupt when both are provided (and, best effort, if there is not
+///   yet any result).
+///
+/// Core holds three sets of data, each of which is concurrency-controlled:
+///
+/// - The primary producer-to-consumer info-flow: this info includes the result,
+///   callback, executor, and a priority for running the callback. Management of
+///   and concurrency control for this info is by an FSM based on `enum class
+///   State`. All state transitions are atomic; other producer-to-consumer data
+///   is sometimes modified within those transitions; see below for details.
+/// - The consumer-to-producer interrupt-request flow: this info includes an
+///   interrupt-handler and an interrupt. Concurrency of this info is controlled
+///   by a Spin Lock (`interruptLock_`).
+/// - Lifetime control info: this includes two reference counts, both which are
+///   internally synchronized (atomic).
+///
+/// The FSM to manage the primary producer-to-consumer info-flow has these
+///   allowed (atomic) transitions:
+///
+/// ```
+/// +-------------------------------------------------------------+
+/// |                    ---> OnlyResult -----                    |
+/// |                  /                       \                  |
+/// |               (setResult())             (setCallback())     |
+/// |                /                           \                |
+/// |   Start ----->                               ------> Done   |
+/// |                \                           /                |
+/// |               (setCallback())           (setResult())       |
+/// |                  \                       /                  |
+/// |                    ---> OnlyCallback ---                    |
+/// +-------------------------------------------------------------+
+/// ```
+///
+/// States and the corresponding producer-to-consumer data status & ownership:
+///
+/// - Start: has neither result nor callback. While in this state, the producer
+///   thread may set the result (`setResult()`) or the consumer thread may set
+///   the callback (`setCallback()`).
+/// - OnlyResult: producer thread has set the result and must never access it.
+///   The result is logically owned by, and possibly modified or moved-out by,
+///   the consumer thread. Callers of the future object can do arbitrary
+///   modifications, including moving-out, via continuations or via non-const
+///   and/or rvalue-qualified `future.result()`, `future.value()`, etc.
+///   Future/SemiFuture proper also move-out the result in some cases, e.g.,
+///   in `wait()`, `get()`, when passing through values or results from core to
+///   core, as `then-value` and `then-error`, etc.
+/// - OnlyCallback: consumer thread has set a callback/continuation. From this
+///   point forward only the producer thread can safely access that callback
+///   (see `setResult()` and `doCallback()` where the producer thread can both
+///   read and modify the callback).
+/// - Done: callback can be safely accessed only within `doCallback()`, which
+///   gets called on exactly one thread exactly once just after the transition
+///   to Done. The future object will have determined whether that callback
+///   has/will move-out the result, but either way the result remains logically
+///   owned exclusively by the consumer thread (the code of Future/SemiFuture,
+///   of the continuation, and/or of callers of `future.result()`, etc.).
+///
+/// Start state:
+///
+/// - Start: e.g., `Core<X>::make()`.
+/// - (See also `Core<X>::make(x)` which logically transitions Start =>
+///   OnlyResult within the underlying constructor.)
+///
+/// Terminal states:
+///
+/// - OnlyResult: a terminal state when a callback is never attached, and also
+///   sometimes when a callback is provided, e.g., sometimes when
+///   `future.wait()` and/or `future.get()` are used.
+/// - Done: a terminal state when `future.then()` is used, and sometimes also
+///   when `future.wait()` and/or `future.get()` are used.
+///
+/// Notes and caveats:
+///
+/// - Unfortunately, there are things that users can do to break concurrency and
+///   we can't detect that. However users should be ok if they follow move
+///   semantics religiously wrt threading.
+/// - Futures and/or Promises can and usually will migrate between threads,
+///   though this usually happens within the API code. For example, an async
+///   operation will probably make a promise-future pair (see overloads of
+///   `makePromiseContract()`), then move the Promise into another thread that
+///   will eventually fulfill it.
+/// - Things get slightly more complicated with executors and via, but the
+///   principle is the same.
+/// - In general, as long as the user doesn't access a future or promise object
+///   from more than one thread at a time there won't be any problems.
 template <typename T>
 class Core final {
   static_assert(!std::is_void<T>::value,
                 "void futures are not supported. Use Unit instead.");
  public:
+  /// State will be Start
   static Core* make() {
     return new Core();
   }
 
+  /// State will be OnlyResult
+  /// Result held will be move-constructed from `t`
   static Core* make(Try<T>&& t) {
     return new Core(std::move(t));
   }
 
+  /// State will be OnlyResult
+  /// Result held will be the `T` constructed from forwarded `args`
   template <typename... Args>
   static Core<T>* make(in_place_t, Args&&... args) {
     return new Core<T>(in_place, std::forward<Args>(args)...);
@@ -110,6 +198,10 @@ class Core final {
   Core& operator=(Core&&) = delete;
 
   /// May call from any thread
+  ///
+  /// True if state is OnlyResult or Done.
+  ///
+  /// Identical to `this->ready()`
   bool hasResult() const noexcept {
     switch (fsm_.getState()) {
       case State::OnlyResult:
@@ -123,11 +215,32 @@ class Core final {
   }
 
   /// May call from any thread
+  ///
+  /// True if state is OnlyResult or Done.
+  ///
+  /// Identical to `this->hasResult()`
   bool ready() const noexcept {
     return hasResult();
   }
 
-  /// May call from any thread
+  /// Call only from consumer thread (since the consumer thread can modify the
+  ///   referenced Try object; see non-const overloads of `future.result()`,
+  ///   etc., and certain Future-provided callbacks which move-out the result).
+  ///
+  /// Unconditionally returns a reference to the result.
+  ///
+  /// State dependent preconditions:
+  ///
+  /// - Start or OnlyCallback: Never safe - do not call. (Access in those states
+  ///   would be undefined behavior since the producer thread can, in those
+  ///   states, asynchronously set the referenced Try object.)
+  /// - OnlyResult: Always safe. (Though the consumer thread should not use the
+  ///   returned reference after it attaches a callback unless it knows that
+  ///   the callback does not move-out the referenced result.)
+  /// - Done: Safe but sometimes unusable. (Always returns a valid reference,
+  ///   but the referenced result may or may not have been modified, including
+  ///   possibly moved-out, depending on what the callback did; some but not
+  ///   all callbacks modify (possibly move-out) the result.)
   Try<T>& getTry() {
     return getTryImpl(*this);
   }
@@ -135,7 +248,14 @@ class Core final {
     return getTryImpl(*this);
   }
 
-  /// Call only from Future thread.
+  /// Call only from consumer thread.
+  /// Call only once - else undefined behavior.
+  ///
+  /// See FSM graph for allowed transitions.
+  ///
+  /// If it transitions to Done, synchronously initiates a call to the callback,
+  /// and might also synchronously execute that callback (e.g., if there is no
+  /// executor or if the executor is inline).
   template <typename F>
   void setCallback(F&& func) {
     auto setCallback_ = [&]{
@@ -160,7 +280,14 @@ class Core final {
     });
   }
 
-  /// Call only from Promise thread
+  /// Call only from producer thread.
+  /// Call only once - else undefined behavior.
+  ///
+  /// See FSM graph for allowed transitions.
+  ///
+  /// If it transitions to Done, synchronously initiates a call to the callback,
+  /// and might also synchronously execute that callback (e.g., if there is no
+  /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
     auto setResult_ = [&]{ result_ = std::move(t); };
     fsm_.transition([&](State state) {
@@ -180,20 +307,24 @@ class Core final {
     });
   }
 
-  /// Called by a destructing Future (in the Future thread, by definition)
+  /// Called by a destructing Future (in the consumer thread, by definition).
+  /// Calls `delete this` if there are no more references to `this`
+  /// (including if `detachPromise()` is called previously or concurrently).
   void detachFuture() noexcept {
     detachOne();
   }
 
-  /// Called by a destructing Promise (in the Promise thread, by definition)
+  /// Called by a destructing Promise (in the producer thread, by definition).
+  /// Calls `delete this` if there are no more references to `this`
+  /// (including if `detachFuture()` is called previously or concurrently).
   void detachPromise() noexcept {
     DCHECK(result_);
     detachOne();
   }
 
-  /// Call only from Future thread, either before attaching a callback or after
-  /// the callback has already been invoked, but not concurrently with anything
-  /// which might trigger invocation of the callback
+  /// Call only from consumer thread, either before attaching a callback or
+  /// after the callback has already been invoked, but not concurrently with
+  /// anything which might trigger invocation of the callback.
   void setExecutor(
       Executor::KeepAlive<> x,
       int8_t priority = Executor::MID_PRI) {
@@ -210,7 +341,15 @@ class Core final {
     return executor_.get();
   }
 
-  /// Call only from Future thread
+  /// Call only from consumer thread
+  ///
+  /// Eventual effect is to pass `e` to the Promise's interrupt handler, either
+  /// synchronously within this call or asynchronously within
+  /// `setInterruptHandler()`, depending on which happens first (a coin-toss if
+  /// the two calls are racing).
+  ///
+  /// Has no effect if it was called previously.
+  /// Has no effect if State is OnlyResult or Done.
   void raise(exception_wrapper e) {
     std::lock_guard<SpinLock> lock(interruptLock_);
     if (!interrupt_ && !hasResult()) {
@@ -229,7 +368,17 @@ class Core final {
     return interruptHandler_;
   }
 
-  /// Call only from Promise thread
+  /// Call only from producer thread
+  ///
+  /// May invoke `fn()` (passing the interrupt) synchronously within this call
+  /// (if `raise()` preceded or perhaps if `raise()` is called concurrently).
+  ///
+  /// Has no effect if State is OnlyResult or Done.
+  ///
+  /// Note: `fn()` must not touch resources that are destroyed immediately after
+  ///   `setResult()` is called. Reason: it is possible for `fn()` to get called
+  ///   asynchronously (in the consumer thread) after the producer thread calls
+  ///   `setResult()`.
   template <typename F>
   void setInterruptHandler(F&& fn) {
     std::lock_guard<SpinLock> lock(interruptLock_);
@@ -299,6 +448,7 @@ class Core final {
     Core* core_{nullptr};
   };
 
+  // May be called at most once.
   void doCallback() {
     DCHECK(fsm_.getState() == State::Done);
     auto x = exchange(executor_, Executor::KeepAlive<>());
