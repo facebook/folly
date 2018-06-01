@@ -41,11 +41,23 @@ namespace detail {
 
 /// See `Core` for details
 enum class State : uint8_t {
-  Start,
-  OnlyResult,
-  OnlyCallback,
-  Done,
+  Start = 1 << 0,
+  OnlyResult = 1 << 1,
+  OnlyCallback = 1 << 2,
+  Done = 1 << 3,
 };
+constexpr State operator&(State a, State b) {
+  return State(uint8_t(a) & uint8_t(b));
+}
+constexpr State operator|(State a, State b) {
+  return State(uint8_t(a) | uint8_t(b));
+}
+constexpr State operator^(State a, State b) {
+  return State(uint8_t(a) ^ uint8_t(b));
+}
+constexpr State operator~(State a) {
+  return State(~uint8_t(a));
+}
 
 /// SpinLock is and must stay a 1-byte object because of how Core is laid out.
 struct SpinLock : private MicroSpinLock {
@@ -203,15 +215,10 @@ class Core final {
   ///
   /// Identical to `this->ready()`
   bool hasResult() const noexcept {
-    switch (fsm_.getState()) {
-      case State::OnlyResult:
-      case State::Done:
-        assert(!!result_);
-        return true;
-
-      default:
-        return false;
-    }
+    constexpr auto allowed = State::OnlyResult | State::Done;
+    auto const ans = State() != (fsm_.getState() & allowed);
+    assert(!ans || !!result_); // result_ must exist if hasResult() is true
+    return ans;
   }
 
   /// May call from any thread
