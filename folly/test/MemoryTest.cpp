@@ -165,6 +165,106 @@ TEST(allocate_sys_buffer, compiles) {
   //  Freed at the end of the scope.
 }
 
+namespace {
+template <typename T>
+struct TestAlloc1 : SysAllocator<T> {
+  template <typename U, typename... Args>
+  void construct(U* p, Args&&... args) {
+    ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
+  }
+};
+
+template <typename T>
+struct TestAlloc2 : TestAlloc1<T> {
+  template <typename U>
+  void destroy(U* p) {
+    p->~U();
+  }
+};
+
+template <typename T>
+struct TestAlloc3 : TestAlloc2<T> {
+  using folly_has_default_object_construct = std::true_type;
+};
+
+template <typename T>
+struct TestAlloc4 : TestAlloc3<T> {
+  using folly_has_default_object_destroy = std::true_type;
+};
+
+template <typename T>
+struct TestAlloc5 : SysAllocator<T> {
+  using folly_has_default_object_construct = std::true_type;
+  using folly_has_default_object_destroy = std::false_type;
+};
+} // namespace
+
+TEST(AllocatorObjectLifecycleTraits, compiles) {
+  using A = std::allocator<int>;
+  using S = std::string;
+
+  static_assert(
+      folly::AllocatorHasDefaultObjectConstruct<A, int, int>::value, "");
+  static_assert(folly::AllocatorHasDefaultObjectConstruct<A, S, S>::value, "");
+
+  static_assert(folly::AllocatorHasDefaultObjectDestroy<A, int>::value, "");
+  static_assert(folly::AllocatorHasDefaultObjectDestroy<A, S>::value, "");
+
+  static_assert(
+      folly::AllocatorHasDefaultObjectConstruct<
+          folly::AlignedSysAllocator<int>,
+          int,
+          int>::value,
+      "");
+  static_assert(
+      folly::AllocatorHasDefaultObjectConstruct<
+          folly::AlignedSysAllocator<int>,
+          S,
+          S>::value,
+      "");
+
+  static_assert(
+      folly::AllocatorHasDefaultObjectDestroy<
+          folly::AlignedSysAllocator<int>,
+          int>::value,
+      "");
+  static_assert(
+      folly::AllocatorHasDefaultObjectDestroy<
+          folly::AlignedSysAllocator<int>,
+          S>::value,
+      "");
+
+  static_assert(
+      !folly::AllocatorHasDefaultObjectConstruct<TestAlloc1<S>, S, S>::value,
+      "");
+  static_assert(
+      folly::AllocatorHasDefaultObjectDestroy<TestAlloc1<S>, S>::value, "");
+
+  static_assert(
+      !folly::AllocatorHasDefaultObjectConstruct<TestAlloc2<S>, S, S>::value,
+      "");
+  static_assert(
+      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc2<S>, S>::value, "");
+
+  static_assert(
+      folly::AllocatorHasDefaultObjectConstruct<TestAlloc3<S>, S, S>::value,
+      "");
+  static_assert(
+      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc3<S>, S>::value, "");
+
+  static_assert(
+      folly::AllocatorHasDefaultObjectConstruct<TestAlloc4<S>, S, S>::value,
+      "");
+  static_assert(
+      folly::AllocatorHasDefaultObjectDestroy<TestAlloc4<S>, S>::value, "");
+
+  static_assert(
+      folly::AllocatorHasDefaultObjectConstruct<TestAlloc5<S>, S, S>::value,
+      "");
+  static_assert(
+      !folly::AllocatorHasDefaultObjectDestroy<TestAlloc5<S>, S>::value, "");
+}
+
 template <typename C>
 static void test_enable_shared_from_this(std::shared_ptr<C> sp) {
   ASSERT_EQ(1l, sp.use_count());

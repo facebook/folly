@@ -488,6 +488,81 @@ template <typename T, class Alloc>
 struct AllocatorHasTrivialDeallocate<CxxAllocatorAdaptor<T, Alloc>>
     : AllocatorHasTrivialDeallocate<Alloc> {};
 
+namespace detail {
+// note that construct and destroy here are methods, not short names for
+// the constructor and destructor
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(AllocatorConstruct_, construct);
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(AllocatorDestroy_, destroy);
+
+template <typename Void, typename Alloc, typename... Args>
+struct AllocatorCustomizesConstruct_
+    : AllocatorConstruct_::template is_invocable<Alloc, Args...> {};
+
+template <typename Alloc, typename... Args>
+struct AllocatorCustomizesConstruct_<
+    void_t<typename Alloc::folly_has_default_object_construct>,
+    Alloc,
+    Args...> : Negation<typename Alloc::folly_has_default_object_construct> {};
+
+template <typename Void, typename Alloc, typename... Args>
+struct AllocatorCustomizesDestroy_
+    : AllocatorDestroy_::template is_invocable<Alloc, Args...> {};
+
+template <typename Alloc, typename... Args>
+struct AllocatorCustomizesDestroy_<
+    void_t<typename Alloc::folly_has_default_object_destroy>,
+    Alloc,
+    Args...> : Negation<typename Alloc::folly_has_default_object_destroy> {};
+} // namespace detail
+
+/**
+ * AllocatorHasDefaultObjectConstruct
+ *
+ * AllocatorHasDefaultObjectConstruct<A, T, Args...> unambiguously
+ * inherits std::integral_constant<bool, V>, where V will be true iff
+ * the effect of std::allocator_traits<A>::construct(a, p, args...) is
+ * the same as new (static_cast<void*>(p)) T(args...).  If true then
+ * any optimizations applicable to object construction (relying on
+ * std::is_trivially_copyable<T>, for example) can be applied to objects
+ * in an allocator-aware container using an allocation of type A.
+ *
+ * Allocator types can override V by declaring a type alias for
+ * folly_has_default_object_construct.  It is helpful to do this if you
+ * define a custom allocator type that defines a construct method, but
+ * that method doesn't do anything except call placement new.
+ */
+template <typename Alloc, typename T, typename... Args>
+struct AllocatorHasDefaultObjectConstruct
+    : Negation<
+          detail::AllocatorCustomizesConstruct_<void, Alloc, T*, Args...>> {};
+
+template <typename Value, typename T, typename... Args>
+struct AllocatorHasDefaultObjectConstruct<std::allocator<Value>, T, Args...>
+    : std::true_type {};
+
+/**
+ * AllocatorHasDefaultObjectDestroy
+ *
+ * AllocatorHasDefaultObjectDestroy<A, T> unambiguously inherits
+ * std::integral_constant<bool, V>, where V will be true iff the effect
+ * of std::allocator_traits<A>::destroy(a, p) is the same as p->~T().
+ * If true then optimizations applicable to object destruction (relying
+ * on std::is_trivially_destructible<T>, for example) can be applied to
+ * objects in an allocator-aware container using an allocator of type A.
+ *
+ * Allocator types can override V by declaring a type alias for
+ * folly_has_default_object_destroy.  It is helpful to do this if you
+ * define a custom allocator type that defines a destroy method, but that
+ * method doesn't do anything except call the object's destructor.
+ */
+template <typename Alloc, typename T>
+struct AllocatorHasDefaultObjectDestroy
+    : Negation<detail::AllocatorCustomizesDestroy_<void, Alloc, T*>> {};
+
+template <typename Value, typename T>
+struct AllocatorHasDefaultObjectDestroy<std::allocator<Value>, T>
+    : std::true_type {};
+
 /*
  * folly::enable_shared_from_this
  *

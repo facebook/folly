@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Memory.h>
 #include <folly/Unit.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
@@ -442,7 +443,7 @@ class ValueContainerPolicy : public BasePolicy<
 
   static constexpr bool destroyItemOnClear() {
     return !std::is_trivially_destructible<Item>::value ||
-        !std::is_same<Alloc, std::allocator<Value>>::value;
+        !folly::AllocatorHasDefaultObjectDestroy<Alloc, Item>::value;
   }
 
   // inherit constructors
@@ -915,6 +916,15 @@ class VectorContainerPolicy : public BasePolicy<
     return false;
   }
 
+ private:
+  static constexpr bool valueIsTriviallyCopyable() {
+    return folly::AllocatorHasDefaultObjectConstruct<Alloc, Value, Value>::
+               value &&
+        folly::AllocatorHasDefaultObjectDestroy<Alloc, Value>::value &&
+        FOLLY_IS_TRIVIALLY_COPYABLE(Value);
+  }
+
+ public:
   VectorContainerPolicy(
       Hasher const& hasher,
       KeyEqual const& keyEqual,
@@ -1058,8 +1068,7 @@ class VectorContainerPolicy : public BasePolicy<
     complainUnlessNothrowMove<Key>();
     complainUnlessNothrowMove<lift_unit_t<MappedTypeOrVoid>>();
 
-    if (std::is_same<Alloc, std::allocator<Value>>::value &&
-        FOLLY_IS_TRIVIALLY_COPYABLE(Value)) {
+    if (valueIsTriviallyCopyable()) {
       std::memcpy(dst, src, n * sizeof(Value));
     } else {
       for (std::size_t i = 0; i < n; ++i, ++src, ++dst) {
@@ -1083,8 +1092,7 @@ class VectorContainerPolicy : public BasePolicy<
     auto src = std::addressof(rhs.values_[0]);
     Value* dst = std::addressof(values_[0]);
 
-    if (std::is_same<Alloc, std::allocator<Value>>::value &&
-        FOLLY_IS_TRIVIALLY_COPYABLE(Value)) {
+    if (valueIsTriviallyCopyable()) {
       std::memcpy(dst, src, size * sizeof(Value));
     } else {
       for (std::size_t i = 0; i < size; ++i, ++src, ++dst) {
