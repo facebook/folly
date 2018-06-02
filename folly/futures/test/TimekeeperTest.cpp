@@ -98,16 +98,6 @@ TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
   EXPECT_THROW(f.get(), FutureNoTimekeeper);
 }
 
-TEST(Timekeeper, futureDelayed) {
-  auto t1 = now();
-  auto dur = makeFuture()
-    .delayed(one_ms)
-    .then([=]{ return now() - t1; })
-    .get();
-
-  EXPECT_GE(dur, one_ms);
-}
-
 TEST(Timekeeper, futureDelayedUnsafe) {
   auto t1 = now();
   auto dur =
@@ -153,8 +143,14 @@ TEST(Timekeeper, futureWithinException) {
 
 TEST(Timekeeper, onTimeout) {
   bool flag = false;
-  makeFuture(42).delayed(10 * one_ms)
-      .onTimeout(zero_ms, [&]{ flag = true; return -1; })
+  makeFuture(42)
+      .delayedUnsafe(10 * one_ms)
+      .onTimeout(
+          zero_ms,
+          [&] {
+            flag = true;
+            return -1;
+          })
       .get();
   EXPECT_TRUE(flag);
 }
@@ -169,20 +165,23 @@ TEST(Timekeeper, onTimeoutComplete) {
 
 TEST(Timekeeper, onTimeoutReturnsFuture) {
   bool flag = false;
-  makeFuture(42).delayed(10 * one_ms)
-      .onTimeout(zero_ms, [&]{ flag = true; return makeFuture(-1); })
+  makeFuture(42)
+      .delayedUnsafe(10 * one_ms)
+      .onTimeout(
+          zero_ms,
+          [&] {
+            flag = true;
+            return makeFuture(-1);
+          })
       .get();
   EXPECT_TRUE(flag);
 }
 
 TEST(Timekeeper, onTimeoutVoid) {
-  makeFuture().delayed(one_ms)
-    .onTimeout(zero_ms, [&]{
-     });
-  makeFuture().delayed(one_ms)
-    .onTimeout(zero_ms, [&]{
-       return makeFuture<Unit>(std::runtime_error("expected"));
-     });
+  makeFuture().delayedUnsafe(one_ms).onTimeout(zero_ms, [&] {});
+  makeFuture().delayedUnsafe(one_ms).onTimeout(zero_ms, [&] {
+    return makeFuture<Unit>(std::runtime_error("expected"));
+  });
   // just testing compilation here
 }
 
@@ -239,7 +238,7 @@ TEST(Timekeeper, executor) {
 TEST(Timekeeper, onTimeoutPropagates) {
   bool flag = false;
   EXPECT_THROW(
-    makeFuture(42).delayed(one_ms)
+    makeFuture(42).delayedUnsafe(one_ms)
       .onTimeout(zero_ms, [&]{ flag = true; })
       .get(),
     FutureTimeout);

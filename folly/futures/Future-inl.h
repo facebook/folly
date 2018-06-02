@@ -1735,16 +1735,6 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 // delayed
 
 template <class T>
-Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
-  return collectAllSemiFuture(*this, futures::sleep(dur, tk))
-      .toUnsafeFuture()
-      .then([](std::tuple<Try<T>, Try<Unit>> tup) {
-        Try<T>& t = std::get<0>(tup);
-        return makeFuture<T>(std::move(t));
-      });
-}
-
-template <class T>
 Future<T> Future<T>::delayedUnsafe(Duration dur, Timekeeper* tk) {
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
       .toUnsafeFuture()

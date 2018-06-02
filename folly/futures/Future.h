@@ -936,10 +936,6 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// Delay the completion of this Future for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().
-  Future<T> delayed(Duration, Timekeeper* = nullptr);
-
-  /// Delay the completion of this Future for at least this duration from
-  /// now. The optional Timekeeper is as with futures::sleep().
   /// NOTE: Deprecated
   /// WARNING: Returned future may complete on Timekeeper thread.
   Future<T> delayedUnsafe(Duration, Timekeeper* = nullptr);
