@@ -42,7 +42,6 @@
 #include <folly/lang/Launder.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Builtins.h>
-#include <folly/portability/TypeTraits.h>
 
 #include <folly/container/detail/F14Defaults.h>
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
@@ -1379,8 +1378,8 @@ class F14Table : public Policy {
     // partial failure should not occur.  Sorry for the subtle invariants
     // in the Policy API.
 
-    if (FOLLY_IS_TRIVIALLY_COPYABLE(Item) && !this->destroyItemOnClear() &&
-        bucket_count() == src.bucket_count()) {
+    if (folly::is_trivially_copyable<Item>::value &&
+        !this->destroyItemOnClear() && bucket_count() == src.bucket_count()) {
       // most happy path
       auto n = allocSize(chunkMask_ + 1, bucket_count());
       std::memcpy(&chunks_[0], &src.chunks_[0], n);

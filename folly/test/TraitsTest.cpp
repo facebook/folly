@@ -48,7 +48,6 @@ TEST(Traits, has_member_type) {
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
 struct T3 { typedef std::true_type IsRelocatable; };
-struct T4 { typedef std::true_type IsTriviallyCopyable; };
 struct T5 : T3 {};
 
 struct F1 {};
@@ -93,14 +92,7 @@ TEST(Traits, unset) {
   EXPECT_TRUE(IsRelocatable<F4>::value);
 }
 
-TEST(Traits, bitprop) {
-  EXPECT_TRUE(IsTriviallyCopyable<T4>::value);
-  EXPECT_TRUE(IsRelocatable<T4>::value);
-}
-
 TEST(Traits, bitAndInit) {
-  EXPECT_TRUE (IsTriviallyCopyable<int>::value);
-  EXPECT_FALSE(IsTriviallyCopyable<vector<int>>::value);
   EXPECT_TRUE (IsZeroInitializable<int>::value);
   EXPECT_FALSE(IsZeroInitializable<vector<int>>::value);
 }

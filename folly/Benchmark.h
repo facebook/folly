@@ -248,7 +248,7 @@ struct DoNotOptimizeAwayNeedsIndirect {
   // First two constraints ensure it can be an "r" operand.
   // std::is_pointer check is because callers seem to expect that
   // doNotOptimizeAway(&x) is equivalent to doNotOptimizeAway(x).
-  constexpr static bool value = !folly::IsTriviallyCopyable<Decayed>::value ||
+  constexpr static bool value = !folly::is_trivially_copyable<Decayed>::value ||
       sizeof(Decayed) > sizeof(long) || std::is_pointer<Decayed>::value;
 };
 } // namespace detail

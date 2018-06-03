@@ -286,6 +286,19 @@ using type_t = typename traits_detail::type_t_<T, Ts...>::type;
 template <class... Ts>
 using void_t = type_t<void, Ts...>;
 
+// Older versions of libstdc++ do not provide std::is_trivially_copyable
+#if defined(__clang__) && !defined(_LIBCPP_VERSION)
+template <class T>
+struct is_trivially_copyable
+    : std::integral_constant<bool, __is_trivially_copyable(T)> {};
+#elif defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
+template <class T>
+struct is_trivially_copyable : std::is_trivial<T> {};
+#else
+template <class T>
+using is_trivially_copyable = std::is_trivially_copyable<T>;
+#endif
+
 /**
  * IsRelocatable<T>::value describes the ability of moving around
  * memory a value of type T by using memcpy (as opposed to the
@@ -324,11 +337,6 @@ using void_t = type_t<void, Ts...>;
  * It may be unset in a base class by overriding the typedef to false_type.
  */
 /*
- * IsTriviallyCopyable describes the value semantics property. C++11 contains
- * the type trait is_trivially_copyable; however, it is not yet implemented
- * in gcc (as of 4.7.1), and the user may wish to specify otherwise.
- */
-/*
  * IsZeroInitializable describes the property that default construction is the
  * same as memset(dst, 0, sizeof(T)).
  */
@@ -347,22 +355,9 @@ namespace traits_detail {
 
 FOLLY_HAS_TRUE_XXX(IsRelocatable);
 FOLLY_HAS_TRUE_XXX(IsZeroInitializable);
-FOLLY_HAS_TRUE_XXX(IsTriviallyCopyable);
 
 #undef FOLLY_HAS_TRUE_XXX
 
-// Older versions of libstdc++ do not provide std::is_trivially_copyable
-#if defined(__clang__) && !defined(_LIBCPP_VERSION)
-template <class T>
-struct is_trivially_copyable
-    : std::integral_constant<bool, __is_trivially_copyable(T)> {};
-#elif defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
-template <class T>
-struct is_trivially_copyable : std::is_trivial<T> {};
-#else
-template <class T>
-using is_trivially_copyable = std::is_trivially_copyable<T>;
-#endif
 } // namespace traits_detail
 
 struct Ignore {
@@ -431,21 +426,14 @@ struct IsNothrowSwappable
 
 /* using override */ using traits_detail_IsNothrowSwappable::IsNothrowSwappable;
 
-template <class T> struct IsTriviallyCopyable
-  : std::conditional<
-      traits_detail::has_IsTriviallyCopyable<T>::value,
-      traits_detail::has_true_IsTriviallyCopyable<T>,
-      traits_detail::is_trivially_copyable<T>
-    >::type {};
-
-template <class T> struct IsRelocatable
-  : std::conditional<
-      traits_detail::has_IsRelocatable<T>::value,
-      traits_detail::has_true_IsRelocatable<T>,
-      // TODO add this line (and some tests for it) when we upgrade to gcc 4.7
-      //std::is_trivially_move_constructible<T>::value ||
-      IsTriviallyCopyable<T>
-    >::type {};
+template <class T>
+struct IsRelocatable : std::conditional<
+                           traits_detail::has_IsRelocatable<T>::value,
+                           traits_detail::has_true_IsRelocatable<T>,
+                           // TODO add this line (and some tests for it) when we
+                           // upgrade to gcc 4.7
+                           // std::is_trivially_move_constructible<T>::value ||
+                           is_trivially_copyable<T>>::type {};
 
 template <class T> struct IsZeroInitializable
   : std::conditional<

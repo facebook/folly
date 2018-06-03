@@ -208,10 +208,12 @@ class fbvector {
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
  private:
-  typedef std::integral_constant<bool,
-      IsTriviallyCopyable<T>::value &&
-      sizeof(T) <= 16 // don't force large structures to be passed by value
-    > should_pass_by_value;
+  typedef std::integral_constant<
+      bool,
+      is_trivially_copyable<T>::value &&
+          sizeof(T) <= 16 // don't force large structures to be passed by value
+      >
+      should_pass_by_value;
   typedef typename std::conditional<
       should_pass_by_value::value, T, const T&>::type VT;
   typedef typename std::conditional<
@@ -485,7 +487,7 @@ class fbvector {
   template <typename It>
   void D_uninitialized_copy_a(T* dest, It first, It last) {
     if (usingStdAllocator::value) {
-      if (folly::IsTriviallyCopyable<T>::value) {
+      if (folly::is_trivially_copyable<T>::value) {
         S_uninitialized_copy_bits(dest, first, last);
       } else {
         S_uninitialized_copy(dest, first, last);
@@ -570,7 +572,7 @@ class fbvector {
   }
 
   static const T* S_copy_n(T* dest, const T* first, size_type n) {
-    if (folly::IsTriviallyCopyable<T>::value) {
+    if (is_trivially_copyable<T>::value) {
       std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return first + n;
     } else {
@@ -580,7 +582,7 @@ class fbvector {
 
   static std::move_iterator<T*>
   S_copy_n(T* dest, std::move_iterator<T*> mIt, size_type n) {
-    if (folly::IsTriviallyCopyable<T>::value) {
+    if (is_trivially_copyable<T>::value) {
       T* first = mIt.base();
       std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return std::make_move_iterator(first + n);

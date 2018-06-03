@@ -168,7 +168,7 @@ enum class StorageType { ePODStruct, ePODUnion, eUnion };
 
 template <class Value, class Error>
 constexpr StorageType getStorageType() {
-  return StrictAllOf<IsTriviallyCopyable, Value, Error>::value
+  return StrictAllOf<is_trivially_copyable, Value, Error>::value
       ? (sizeof(std::pair<Value, Error>) <= sizeof(void * [2]) &&
                  StrictAllOf<std::is_trivial, Value, Error>::value
              ? StorageType::ePODStruct
@@ -903,8 +903,6 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
  public:
   using value_type = Value;
   using error_type = Error;
-  using IsTriviallyCopyable = typename expected_detail::
-      StrictAllOf<IsTriviallyCopyable, Value, Error>::type;
 
   template <class U>
   using rebind = Expected<U, Error>;

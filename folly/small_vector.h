@@ -52,7 +52,6 @@
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/Malloc.h>
-#include <folly/portability/TypeTraits.h>
 
 #if (FOLLY_X64 || FOLLY_PPC64)
 #define FOLLY_SV_PACK_ATTR FOLLY_PACK_ATTR
@@ -102,7 +101,7 @@ namespace detail {
  * memory is initialized to type T already.
  */
 template <class T>
-typename std::enable_if<!FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
 moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
   if (lastConstructed == realLast) {
     return;
@@ -139,7 +138,7 @@ moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
 // std::move_backward here will just turn into a memmove.  (TODO:
 // change to std::is_trivially_copyable when that works.)
 template <class T>
-typename std::enable_if<FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
 moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
   std::move_backward(first, lastConstructed, realLast);
 }
@@ -222,7 +221,7 @@ struct IntegralSizePolicy<SizeType, true>
    * ranges don't overlap.
    */
   template <class T>
-  typename std::enable_if<!FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+  typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::size_t idx = 0;
     try {
@@ -244,7 +243,7 @@ struct IntegralSizePolicy<SizeType, true>
 
   // Specialization for trivially copyable types.
   template <class T>
-  typename std::enable_if<FOLLY_IS_TRIVIALLY_COPYABLE(T)>::type
+  typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::memmove(out, first, (last - first) * sizeof *first);
   }

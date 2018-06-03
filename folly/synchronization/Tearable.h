@@ -50,7 +50,7 @@ class Tearable {
   // We memcpy the object representation, and the destructor would not know how
   // to deal with an object state it doesn't understand.
   static_assert(
-      IsTriviallyCopyable<T>::value,
+      is_trivially_copyable<T>::value,
       "Tearable types must be trivially copyable.");
 
   Tearable() = default;

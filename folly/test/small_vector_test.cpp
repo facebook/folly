@@ -28,8 +28,8 @@
 #include <boost/algorithm/string.hpp>
 
 #include <folly/Conv.h>
+#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/TypeTraits.h>
 
 using folly::small_vector;
 using namespace folly::small_vector_policy;
@@ -70,8 +70,9 @@ static_assert(sizeof(small_vector<int16_t,4,uint16_t>) == 10,
 
 #endif
 
-static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(std::unique_ptr<int>),
-              "std::unique_ptr<> is trivially copyable");
+static_assert(
+    !folly::is_trivially_copyable<std::unique_ptr<int>>::value,
+    "std::unique_ptr<> is trivially copyable");
 
 static_assert(
     alignof(small_vector<std::aligned_storage<32, 32>::type, 4>) == 32,
@@ -133,8 +134,9 @@ struct NontrivialType {
 
   int32_t a;
 };
-static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(NontrivialType),
-              "NontrivialType is trivially copyable");
+static_assert(
+    !folly::is_trivially_copyable<NontrivialType>::value,
+    "NontrivialType is trivially copyable");
 
 int NontrivialType::ctored = 0;
 
@@ -197,8 +199,9 @@ struct NoncopyableCounter {
 };
 int NoncopyableCounter::alive = 0;
 
-static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(NoncopyableCounter),
-              "NoncopyableCounter is trivially copyable");
+static_assert(
+    !folly::is_trivially_copyable<NoncopyableCounter>::value,
+    "NoncopyableCounter is trivially copyable");
 
 // Check that throws don't break the basic guarantee for some cases.
 // Uses the method for testing exception safety described at

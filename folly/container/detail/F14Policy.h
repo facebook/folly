@@ -921,7 +921,7 @@ class VectorContainerPolicy : public BasePolicy<
     return folly::AllocatorHasDefaultObjectConstruct<Alloc, Value, Value>::
                value &&
         folly::AllocatorHasDefaultObjectDestroy<Alloc, Value>::value &&
-        FOLLY_IS_TRIVIALLY_COPYABLE(Value);
+        folly::is_trivially_copyable<Value>::value;
   }
 
  public:

@@ -25,8 +25,8 @@
 #include <boost/noncopyable.hpp>
 
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 #include <folly/detail/TurnSequencer.h>
-#include <folly/portability/TypeTraits.h>
 #include <folly/portability/Unistd.h>
 
 namespace folly {
@@ -62,7 +62,7 @@ class LockFreeRingBuffer: boost::noncopyable {
       "Element type must be nothrow default constructible");
 
   static_assert(
-      FOLLY_IS_TRIVIALLY_COPYABLE(T),
+      folly::is_trivially_copyable<T>::value,
       "Element type must be trivially copyable");
 
  public:

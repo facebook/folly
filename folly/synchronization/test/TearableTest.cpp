@@ -26,8 +26,6 @@ using namespace folly;
 namespace {
 
 struct Data {
-  using IsTriviallyCopyable = std::true_type;
-
   Data(unsigned char value) {
     setValue(value);
   }
@@ -54,6 +52,7 @@ struct Data {
   // sanitizers.
   unsigned char contents[99];
 };
+static_assert(is_trivially_copyable<Data>::value, "not trivially-copyable");
 
 TEST(TearableTest, BasicOperations) {
   Tearable<Data> tearable;
