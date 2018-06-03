@@ -50,9 +50,13 @@
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 #if FOLLY_AARCH64
-#include <arm_neon.h>
+#if __ARM_FEATURE_CRC32
+#include <arm_acle.h> // __crc32cd
+#endif
+#include <arm_neon.h> // uint8x16t intrinsics
 #else // SSE2
 #include <immintrin.h> // __m128i intrinsics
+#include <nmmintrin.h> // _mm_crc32_u64
 #include <xmmintrin.h> // _mm_prefetch
 #endif
 #endif
@@ -997,19 +1001,32 @@ class F14Table : public Policy {
   // example, where a and b are integer fields).
   //
   // For hash functions we don't trust to avalanche, we repair things by
-  // applying a bit mixer to the user-supplied hash.  The mixer below is
-  // not fully avalanching for all 64 bits of output, but looks quite
-  // good for bits 18..63 and puts plenty of entropy even lower when
-  // considering multiple bits together (like the tag).  Importantly,
-  // when under register pressure it uses fewer registers, instructions,
-  // and immediate constants than the alternatives, resulting in compact
-  // code that is more easily inlinable.  In one instantiation a modified
-  // Murmur mixer was 48 bytes of assembly (even after using the same
-  // multiplicand for both steps) and this one was 27 bytes, for example.
+  // applying a bit mixer to the user-supplied hash.
 
   static HashPair splitHash(std::size_t hash) {
     uint8_t tag;
     if (!Policy::isAvalanchingHasher()) {
+#if FOLLY_SSE > 4 || (FOLLY_SSE == 4 && FOLLY_SSE_MINOR >= 2)
+      // SSE4.2 CRC
+      auto c = _mm_crc32_u64(0, hash);
+      tag = static_cast<uint8_t>(~(c >> 25));
+      hash += c;
+#elif FOLLY_AARCH64 && __ARM_FEATURE_CRC32
+      // AARCH64 CRC is Optional on armv8 (-march=armv8-a+crc), standard
+      // on armv8.1
+      auto c = __crc32cd(0, hash);
+      tag = static_cast<uint8_t>(~(c >> 25));
+      hash += c;
+#else
+      // The mixer below is not fully avalanching for all 64 bits of
+      // output, but looks quite good for bits 18..63 and puts plenty
+      // of entropy even lower when considering multiple bits together
+      // (like the tag).  Importantly, when under register pressure it
+      // uses fewer registers, instructions, and immediate constants
+      // than the alternatives, resulting in compact code that is more
+      // easily inlinable.  In one instantiation a modified Murmur mixer
+      // was 48 bytes of assembly (even after using the same multiplicand
+      // for both steps) and this one was 27 bytes, for example.
       auto const kMul = 0xc4ceb9fe1a85ec53ULL;
 #ifdef _WIN32
       __int64 signedHi;
@@ -1024,12 +1041,13 @@ class F14Table : public Policy {
 #endif
       hash = hi ^ lo;
       hash *= kMul;
-      tag = static_cast<uint8_t>(hash >> 15);
+      tag = static_cast<uint8_t>(hash >> 15) | 0x80;
       hash >>= 22;
+#endif
     } else {
-      tag = hash >> 56;
+      // we don't trust the top bit
+      tag = (hash >> 56) | 0x80;
     }
-    tag |= 0x80;
     return std::make_pair(hash, tag);
   }
 
