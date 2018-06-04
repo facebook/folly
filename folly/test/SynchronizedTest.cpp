@@ -823,7 +823,7 @@ TEST(FollyLockTest, TestVariadicLockWithSynchronized) {
   {
     auto syncs = std::array<folly::Synchronized<int>, 3>{};
     auto& one = syncs[0];
-    auto& two = syncs[1];
+    auto const& two = syncs[1];
     auto& three = syncs[2];
     auto locks =
         lock(folly::wlock(one), folly::rlock(two), folly::wlock(three));

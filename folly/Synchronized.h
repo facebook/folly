@@ -894,9 +894,9 @@ class SynchronizedWLocker : public SynchronizedLockerBase<Synchronized> {
   }
 };
 template <typename Synchronized>
-class SynchronizedRLocker : public SynchronizedLockerBase<Synchronized> {
+class SynchronizedRLocker : public SynchronizedLockerBase<Synchronized const> {
  public:
-  using SynchronizedLockerBase<Synchronized>::SynchronizedLockerBase;
+  using SynchronizedLockerBase<Synchronized const>::SynchronizedLockerBase;
   using LockedPtr = typename Synchronized::ConstLockedPtr;
 
   auto lock() {
@@ -1653,7 +1653,7 @@ auto wlock(Synchronized<Data, Mutex>& synchronized) {
   return detail::SynchronizedWLocker<Synchronized<Data, Mutex>>{synchronized};
 }
 template <typename Data, typename Mutex>
-auto rlock(Synchronized<Data, Mutex>& synchronized) {
+auto rlock(Synchronized<Data, Mutex> const& synchronized) {
   return detail::SynchronizedRLocker<Synchronized<Data, Mutex>>{synchronized};
 }
 template <typename Data, typename Mutex>
