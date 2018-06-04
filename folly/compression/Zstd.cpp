@@ -232,7 +232,12 @@ Options::Options(int level) : params_(ZSTD_createCCtxParams()) {
   if (params_ == nullptr) {
     throw std::bad_alloc{};
   }
+#if ZSTD_VERSION_NUMBER >= 10304
   zstdThrowIfError(ZSTD_CCtxParams_init(params_.get(), level));
+#else
+  zstdThrowIfError(ZSTD_initCCtxParams(params_.get(), level));
+  set(ZSTD_p_contentSizeFlag, 1);
+#endif
 }
 
 void Options::set(ZSTD_cParameter param, unsigned value) {

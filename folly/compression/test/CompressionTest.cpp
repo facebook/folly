@@ -1376,7 +1376,6 @@ TEST(ZstdTest, CustomOptions) {
   auto test = [](const DataHolder& dh, unsigned contentSizeFlag) {
     unsigned const wlog = 23;
     zstd::Options options(1);
-    options.set(ZSTD_p_nbWorkers, 3);
     options.set(ZSTD_p_contentSizeFlag, contentSizeFlag);
     options.set(ZSTD_p_checksumFlag, 1);
     options.set(ZSTD_p_windowLog, wlog);
