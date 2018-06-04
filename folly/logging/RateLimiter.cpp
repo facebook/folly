@@ -19,14 +19,14 @@ namespace folly {
 namespace logging {
 IntervalRateLimiter::IntervalRateLimiter(
     uint64_t maxPerInterval,
-    std::chrono::steady_clock::duration interval)
+    clock::duration interval)
     : maxPerInterval_{maxPerInterval},
       interval_{interval},
-      timestamp_{std::chrono::steady_clock::now().time_since_epoch().count()} {}
+      timestamp_{clock::now().time_since_epoch().count()} {}
 
 bool IntervalRateLimiter::checkSlow() {
   auto ts = timestamp_.load();
-  auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+  auto now = clock::now().time_since_epoch().count();
   if (now < (ts + interval_.count())) {
     return false;
   }

@@ -15,17 +15,19 @@
  */
 #include <thread>
 
+#include <folly/Chrono.h>
 #include <folly/Conv.h>
 #include <folly/logging/RateLimiter.h>
 #include <folly/portability/GTest.h>
 
+using folly::chrono::coarse_steady_clock;
 using folly::logging::IntervalRateLimiter;
 using std::chrono::duration_cast;
 using namespace std::literals::chrono_literals;
 
 void intervalTest(
     uint64_t eventsPerInterval,
-    std::chrono::steady_clock::duration interval) {
+    coarse_steady_clock::duration interval) {
   SCOPED_TRACE(folly::to<std::string>(
       eventsPerInterval,
       " events every ",

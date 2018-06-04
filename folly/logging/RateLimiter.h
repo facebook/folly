@@ -19,6 +19,8 @@
 #include <chrono>
 #include <cstdint>
 
+#include <folly/Chrono.h>
+
 namespace folly {
 namespace logging {
 
@@ -40,9 +42,9 @@ class RateLimiter {
  */
 class IntervalRateLimiter : public RateLimiter {
  public:
-  IntervalRateLimiter(
-      uint64_t maxPerInterval,
-      std::chrono::steady_clock::duration interval);
+  using clock = chrono::coarse_steady_clock;
+
+  IntervalRateLimiter(uint64_t maxPerInterval, clock::duration interval);
 
   bool check() override final {
     auto origCount = count_.fetch_add(1, std::memory_order_acq_rel);
@@ -56,13 +58,13 @@ class IntervalRateLimiter : public RateLimiter {
   bool checkSlow();
 
   const uint64_t maxPerInterval_;
-  const std::chrono::steady_clock::time_point::duration interval_;
+  const clock::time_point::duration interval_;
 
   std::atomic<uint64_t> count_{0};
   // Ideally timestamp_ would be a
-  // std::atomic<std::chrono::steady_clock::time_point>, but this does not work
-  // since time_point's constructor is not noexcept
-  std::atomic<std::chrono::steady_clock::rep> timestamp_;
+  // std::atomic<clock::time_point>, but this does not
+  // work since time_point's constructor is not noexcept
+  std::atomic<clock::rep> timestamp_;
 };
 } // namespace logging
 } // namespace folly
