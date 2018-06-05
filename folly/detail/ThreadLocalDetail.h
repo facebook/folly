@@ -447,8 +447,8 @@ struct StaticMeta : StaticMetaBase {
     if (!threadEntry) {
       ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
-      static FOLLY_TLS ThreadEntry* one;
-      threadEntry = FOLLY_LIKELY(!!one) ? one : (one = new ThreadEntry());
+      static FOLLY_TLS ThreadEntry threadEntrySingleton;
+      threadEntry = &threadEntrySingleton;
 #else
       threadEntry = new ThreadEntry();
 #endif

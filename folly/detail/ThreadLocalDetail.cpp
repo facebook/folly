@@ -183,7 +183,9 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       tmp->elementsCapacity = 0;
     }
 
+#ifndef FOLLY_TLD_USE_FOLLY_TLS
     delete tmp;
+#endif
   }
 
 #ifndef FOLLY_TLD_USE_FOLLY_TLS
