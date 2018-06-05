@@ -628,6 +628,23 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
 
 #if FOLLY_HAVE_LIBLZ4
 
+#if LZ4_VERSION_NUMBER >= 10802 && defined(LZ4_STATIC_LINKING_ONLY) && \
+    defined(LZ4_HC_STATIC_LINKING_ONLY) && !defined(FOLLY_USE_LZ4_FAST_RESET)
+#define FOLLY_USE_LZ4_FAST_RESET
+#endif
+
+#ifdef FOLLY_USE_LZ4_FAST_RESET
+namespace {
+void lz4_stream_t_deleter(LZ4_stream_t* ctx) {
+  LZ4_freeStream(ctx);
+}
+
+void lz4_streamhc_t_deleter(LZ4_streamHC_t* ctx) {
+  LZ4_freeStreamHC(ctx);
+}
+} // namespace
+#endif
+
 /**
  * LZ4 compression
  */
@@ -647,6 +664,17 @@ class LZ4Codec final : public Codec {
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
       Optional<uint64_t> uncompressedLength) override;
+
+#ifdef FOLLY_USE_LZ4_FAST_RESET
+  std::unique_ptr<
+      LZ4_stream_t,
+      folly::static_function_deleter<LZ4_stream_t, lz4_stream_t_deleter>>
+      ctx;
+  std::unique_ptr<
+      LZ4_streamHC_t,
+      folly::static_function_deleter<LZ4_streamHC_t, lz4_streamhc_t_deleter>>
+      hcctx;
+#endif
 
   bool highCompression_;
 };
@@ -712,7 +740,23 @@ std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
   auto input = reinterpret_cast<const char*>(data->data());
   auto output = reinterpret_cast<char*>(out->writableTail());
   const auto inputLength = data->length();
-#if LZ4_VERSION_NUMBER >= 10700
+
+#ifdef FOLLY_USE_LZ4_FAST_RESET
+  if (!highCompression_ && !ctx) {
+    ctx.reset(LZ4_createStream());
+  }
+  if (highCompression_ && !hcctx) {
+    hcctx.reset(LZ4_createStreamHC());
+  }
+
+  if (highCompression_) {
+    n = LZ4_compress_HC_extStateHC_fastReset(
+        hcctx.get(), input, output, inputLength, out->tailroom(), 0);
+  } else {
+    n = LZ4_compress_fast_extState_fastReset(
+        ctx.get(), input, output, inputLength, out->tailroom(), 1);
+  }
+#elif LZ4_VERSION_NUMBER >= 10700
   if (highCompression_) {
     n = LZ4_compress_HC(input, output, inputLength, out->tailroom(), 0);
   } else {
