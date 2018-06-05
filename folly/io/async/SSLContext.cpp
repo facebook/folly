@@ -330,7 +330,7 @@ void SSLContext::loadTrustedCertificates(X509_STORE* store) {
 void SSLContext::loadClientCAList(const char* path) {
   auto clientCAs = SSL_load_client_CA_file(path);
   if (clientCAs == nullptr) {
-    LOG(ERROR) << "Unable to load ca file: " << path;
+    LOG(ERROR) << "Unable to load ca file: " << path << " " << getErrors();
     return;
   }
   SSL_CTX_set_client_CA_list(ctx_, clientCAs);

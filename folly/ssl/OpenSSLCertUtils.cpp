@@ -209,6 +209,7 @@ std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
   while (true) {
     X509UniquePtr x509(PEM_read_bio_X509(b.get(), nullptr, nullptr, nullptr));
     if (!x509) {
+      ERR_clear_error();
       break;
     }
     certs.push_back(std::move(x509));
