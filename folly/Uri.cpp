@@ -16,9 +16,9 @@
 
 #include <folly/Uri.h>
 
+#include <algorithm>
 #include <cctype>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
 
 namespace folly {
@@ -46,7 +46,7 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
   }
 
   scheme_ = submatch(match, 1);
-  boost::algorithm::to_lower(scheme_);
+  std::transform(scheme_.begin(), scheme_.end(), scheme_.begin(), ::tolower);
 
   StringPiece authorityAndPath(match[2].first, match[2].second);
   boost::cmatch authorityAndPathMatch;
