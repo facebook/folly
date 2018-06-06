@@ -11,7 +11,7 @@ def fbcode_builder_spec(builder):
     # This API should change rarely, so build the latest tag instead of master.
     builder.add_option(
         'facebook/zstd:git_hash',
-        ShellQuoted('$(git describe --abbrev=0 --tags)')
+        ShellQuoted('$(git describe --abbrev=0 --tags origin/master)')
     )
     return {
         'steps': [
