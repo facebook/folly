@@ -15,6 +15,7 @@
  */
 
 #include <folly/Singleton.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
 #include <folly/portability/GTest.h>
@@ -98,12 +99,79 @@ TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
   EXPECT_THROW(f.get(), FutureNoTimekeeper);
 }
 
+TEST(Timekeeper, futureDelayed) {
+  auto t1 = now();
+  auto dur =
+      makeFuture().delayed(one_ms).then([=] { return now() - t1; }).get();
+
+  EXPECT_GE(dur, one_ms);
+}
+
 TEST(Timekeeper, futureDelayedUnsafe) {
   auto t1 = now();
   auto dur =
       makeFuture().delayedUnsafe(one_ms).then([=] { return now() - t1; }).get();
 
   EXPECT_GE(dur, one_ms);
+}
+
+TEST(Timekeeper, futureDelayedStickyExecutor) {
+  // Check that delayed without an executor binds the inline executor.
+  {
+    auto t1 = now();
+    class TimekeeperHelper : public ThreadWheelTimekeeper {
+     public:
+      std::thread::id get_thread_id() {
+        return thread_.get_id();
+      }
+    };
+    TimekeeperHelper tk;
+    std::thread::id timekeeper_thread_id = tk.get_thread_id();
+    std::thread::id task_thread_id{};
+    auto dur = makeFuture()
+                   .delayed(one_ms, &tk)
+                   .then([=, &task_thread_id] {
+                     task_thread_id = std::this_thread::get_id();
+                     return now() - t1;
+                   })
+                   .get();
+
+    EXPECT_GE(dur, one_ms);
+    EXPECT_EQ(timekeeper_thread_id, task_thread_id);
+  }
+
+  // Check that delayed applied to an executor returns a future that binds
+  // to the same executor as was input.
+  {
+    auto t1 = now();
+    std::thread::id driver_thread_id{};
+    std::thread::id first_task_thread_id{};
+    std::thread::id second_task_thread_id{};
+    folly::ManualExecutor me;
+    std::atomic<bool> stop_signal{false};
+    std::thread me_driver{[&me, &driver_thread_id, &stop_signal] {
+      driver_thread_id = std::this_thread::get_id();
+      while (!stop_signal) {
+        me.run();
+      }
+    }};
+    auto dur = makeSemiFuture()
+                   .via(&me)
+                   .then([&first_task_thread_id] {
+                     first_task_thread_id = std::this_thread::get_id();
+                   })
+                   .delayed(one_ms)
+                   .then([=, &second_task_thread_id] {
+                     second_task_thread_id = std::this_thread::get_id();
+                     return now() - t1;
+                   })
+                   .get();
+    stop_signal = true;
+    me_driver.join();
+    EXPECT_GE(dur, one_ms);
+    EXPECT_EQ(driver_thread_id, first_task_thread_id);
+    EXPECT_EQ(driver_thread_id, second_task_thread_id);
+  }
 }
 
 TEST(Timekeeper, futureWithinThrows) {
@@ -144,7 +212,7 @@ TEST(Timekeeper, futureWithinException) {
 TEST(Timekeeper, onTimeout) {
   bool flag = false;
   makeFuture(42)
-      .delayedUnsafe(10 * one_ms)
+      .delayed(10 * one_ms)
       .onTimeout(
           zero_ms,
           [&] {
@@ -166,7 +234,7 @@ TEST(Timekeeper, onTimeoutComplete) {
 TEST(Timekeeper, onTimeoutReturnsFuture) {
   bool flag = false;
   makeFuture(42)
-      .delayedUnsafe(10 * one_ms)
+      .delayed(10 * one_ms)
       .onTimeout(
           zero_ms,
           [&] {
@@ -178,8 +246,8 @@ TEST(Timekeeper, onTimeoutReturnsFuture) {
 }
 
 TEST(Timekeeper, onTimeoutVoid) {
-  makeFuture().delayedUnsafe(one_ms).onTimeout(zero_ms, [&] {});
-  makeFuture().delayedUnsafe(one_ms).onTimeout(zero_ms, [&] {
+  makeFuture().delayed(one_ms).onTimeout(zero_ms, [&] {});
+  makeFuture().delayed(one_ms).onTimeout(zero_ms, [&] {
     return makeFuture<Unit>(std::runtime_error("expected"));
   });
   // just testing compilation here
@@ -238,7 +306,7 @@ TEST(Timekeeper, executor) {
 TEST(Timekeeper, onTimeoutPropagates) {
   bool flag = false;
   EXPECT_THROW(
-    makeFuture(42).delayedUnsafe(one_ms)
+    makeFuture(42).delayed(one_ms)
       .onTimeout(zero_ms, [&]{ flag = true; })
       .get(),
     FutureTimeout);
