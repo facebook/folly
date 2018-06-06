@@ -337,7 +337,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   // a FutureBase pointer
   using typename Base::value_type;
 
-  /// Construct a Future from a value (perfect forwarding)
+  /// Construct a SemiFuture from a value (perfect forwarding)
   template <
       class T2 = T,
       typename = typename std::enable_if<
@@ -925,11 +925,11 @@ class Future : private futures::detail::FutureBase<T> {
   Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr);
 
   /// Throw FutureTimeout if this Future does not complete within the given
-  /// duration from now. The optional Timeekeeper is as with futures::sleep().
+  /// duration from now. The optional Timekeeper is as with futures::sleep().
   Future<T> within(Duration, Timekeeper* = nullptr);
 
   /// Throw the given exception if this Future does not complete within the
-  /// given duration from now. The optional Timeekeeper is as with
+  /// given duration from now. The optional Timekeeper is as with
   /// futures::sleep().
   template <class E>
   Future<T> within(Duration, E exception, Timekeeper* = nullptr);
