@@ -523,33 +523,36 @@ struct Synchronized : public SynchronizedBase<
    */
   Synchronized() = default;
 
-  /**
-   * Copy constructor copies the data (with locking the source and
-   * all) but does NOT copy the mutex. Doing so would result in
-   * deadlocks.
-   *
-   * Note that the copy constructor may throw because it acquires a lock in
-   * the contextualRLock() method
-   */
  public:
+  /**
+   * Copy constructor; deprecated
+   *
+   * Enabled only when the data type is copy-constructible.
+   *
+   * Takes a shared-or-exclusive lock on the source mutex while performing the
+   * copy-construction of the destination data from the source data. No lock is
+   * taken on the destination mutex.
+   *
+   * May throw even when the data type is is nothrow-copy-constructible because
+   * acquiring a lock may throw.
+   */
   /* implicit */ Synchronized(typename std::conditional<
                               std::is_copy_constructible<T>::value,
                               const Synchronized&,
                               NonImplementedType>::type rhs) /* may throw */
-      : Synchronized(rhs, rhs.contextualRLock()) {}
+      : Synchronized(rhs.copy()) {}
 
   /**
-   * Move constructor moves the data (with locking the source and all)
-   * but does not move the mutex.
+   * Move constructor; deprecated
    *
-   * Note that the move constructor may throw because it acquires a lock.
-   * Since the move constructor is not declared noexcept, when objects of this
-   * class are used as elements in a vector or a similar container.  The
-   * elements might not be moved around when resizing.  They might be copied
-   * instead.  You have been warned.
+   * Move-constructs from the source data without locking either the source or
+   * the destination mutex.
+   *
+   * Semantically, assumes that the source object is a true rvalue and therefore
+   * that no synchronization is required for accessing it.
    */
-  Synchronized(Synchronized&& rhs) /* may throw */
-      : Synchronized(std::move(rhs), rhs.contextualLock()) {}
+  Synchronized(Synchronized&& rhs) noexcept(nxMoveCtor)
+      : Synchronized(std::move(rhs.datum_)) {}
 
   /**
    * Constructor taking a datum as argument copies it. There is no
@@ -588,54 +591,49 @@ struct Synchronized : public SynchronizedBase<
                      make_index_sequence<sizeof...(MutexArgs)>{}} {}
 
   /**
-   * The canonical assignment operator only assigns the data, NOT the
-   * mutex. It locks the two objects in ascending order of their
-   * addresses.
+   * Copy assignment operator; deprecated
+   *
+   * Enabled only when the data type is copy-constructible and move-assignable.
+   *
+   * Move-assigns from a copy of the source data.
+   *
+   * Takes a shared-or-exclusive lock on the source mutex while copying the
+   * source data to a temporary. Takes an exclusive lock on the destination
+   * mutex while move-assigning from the temporary.
+   *
+   * This technique consts an extra temporary but avoids the need to take locks
+   * on both mutexes together.
    */
   Synchronized& operator=(typename std::conditional<
-                          std::is_copy_assignable<T>::value,
+                          std::is_copy_constructible<T>::value &&
+                              std::is_move_assignable<T>::value,
                           const Synchronized&,
                           NonImplementedType>::type rhs) {
-    if (this == &rhs) {
-      // Self-assignment, pass.
-    } else if (this < &rhs) {
-      auto guard1 = operator->();
-      auto guard2 = rhs.operator->();
-      datum_ = rhs.datum_;
-    } else {
-      auto guard1 = rhs.operator->();
-      auto guard2 = operator->();
-      datum_ = rhs.datum_;
-    }
-    return *this;
+    return *this = rhs.copy();
   }
 
   /**
-   * Move assignment operator, only assigns the data, NOT the
-   * mutex. It locks the two objects in ascending order of their
-   * addresses.
+   * Move assignment operator; deprecated
+   *
+   * Takes an exclusive lock on the destination mutex while move-assigning the
+   * destination data from the source data. The source mutex is not locked or
+   * otherwise accessed.
+   *
+   * Semantically, assumes that the source object is a true rvalue and therefore
+   * that no synchronization is required for accessing it.
    */
   Synchronized& operator=(Synchronized&& rhs) {
-    if (this == &rhs) {
-      // Self-assignment, pass.
-    } else if (this < &rhs) {
-      auto guard1 = operator->();
-      auto guard2 = rhs.operator->();
-      datum_ = std::move(rhs.datum_);
-    } else {
-      auto guard1 = rhs.operator->();
-      auto guard2 = operator->();
-      datum_ = std::move(rhs.datum_);
-    }
-    return *this;
+    return *this = std::move(rhs.datum_);
   }
 
   /**
    * Lock object, assign datum.
    */
   Synchronized& operator=(const T& rhs) {
-    auto guard = operator->();
-    datum_ = rhs;
+    if (&datum_ != &rhs) {
+      auto guard = operator->();
+      datum_ = rhs;
+    }
     return *this;
   }
 
@@ -643,8 +641,10 @@ struct Synchronized : public SynchronizedBase<
    * Lock object, move-assign datum.
    */
   Synchronized& operator=(T&& rhs) {
-    auto guard = operator->();
-    datum_ = std::move(rhs);
+    if (&datum_ != &rhs) {
+      auto guard = operator->();
+      datum_ = std::move(rhs);
+    }
     return *this;
   }
 
