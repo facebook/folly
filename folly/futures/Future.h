@@ -286,6 +286,9 @@ class FutureBase {
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
+
+  template <typename E>
+  SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk);
 };
 template <class T>
 void convertFuture(SemiFuture<T>&& sf, Future<T>& f);
@@ -482,6 +485,16 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <class R, class... Args>
   SemiFuture<T> deferError(R (&func)(Args...)) && {
     return std::move(*this).deferError(&func);
+  }
+
+  SemiFuture<T> within(Duration dur, Timekeeper* tk = nullptr) && {
+    return std::move(*this).within(dur, FutureTimeout(), tk);
+  }
+
+  template <class E>
+  SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) && {
+    return this->isReady() ? std::move(*this)
+                           : this->withinImplementation(dur, e, tk);
   }
 
   /// Return a future that completes inline, as if the future had no executor.

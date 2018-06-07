@@ -73,11 +73,20 @@ TEST(Interrupt, secondInterruptNoop) {
   EXPECT_EQ(1, count);
 }
 
-TEST(Interrupt, withinTimedOut) {
+TEST(Interrupt, futureWithinTimedOut) {
   Promise<int> p;
   Baton<> done;
   p.setInterruptHandler([&](const exception_wrapper& /* e */) { done.post(); });
   p.getFuture().within(std::chrono::milliseconds(1));
+  // Give it 100ms to time out and call the interrupt handler
+  EXPECT_TRUE(done.try_wait_for(std::chrono::milliseconds(100)));
+}
+
+TEST(Interrupt, semiFutureWithinTimedOut) {
+  Promise<int> p;
+  Baton<> done;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { done.post(); });
+  p.getSemiFuture().within(std::chrono::milliseconds(1));
   // Give it 100ms to time out and call the interrupt handler
   EXPECT_TRUE(done.try_wait_for(std::chrono::milliseconds(100)));
 }

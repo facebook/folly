@@ -1112,3 +1112,36 @@ TEST(SemiFuture, invokeCallbackReturningFutureWithOriginalCVRef) {
   EXPECT_EQ(202, makeSemiFuture<int>(200).deferValue(cfoo).wait().value());
   EXPECT_EQ(303, makeSemiFuture<int>(300).deferValue(Foo()).wait().value());
 }
+
+TEST(SemiFuture, semiFutureWithinCtxCleanedUpWhenTaskFinishedInTime) {
+  // Used to track the use_count of callbackInput even outside of its scope
+  std::weak_ptr<int> target;
+  {
+    Promise<std::shared_ptr<int>> promise;
+    auto input = std::make_shared<int>(1);
+    auto longEnough = std::chrono::milliseconds(1000);
+
+    promise.getSemiFuture()
+        .within(longEnough)
+        .toUnsafeFuture()
+        .then([&target](
+                  folly::Try<std::shared_ptr<int>>&& callbackInput) mutable {
+          target = callbackInput.value();
+        });
+    promise.setValue(input);
+  }
+  // After promise's life cycle is finished, make sure no one is holding the
+  // input anymore, in other words, ctx should have been cleaned up.
+  EXPECT_EQ(0, target.use_count());
+}
+
+TEST(SemiFuture, semiFutureWithinNoValueReferenceWhenTimeOut) {
+  Promise<std::shared_ptr<int>> promise;
+  auto veryShort = std::chrono::milliseconds(1);
+
+  promise.getSemiFuture().within(veryShort).toUnsafeFuture().then(
+      [](folly::Try<std::shared_ptr<int>>&& callbackInput) {
+        // Timeout is fired. Verify callbackInput is not referenced
+        EXPECT_EQ(0, callbackInput.value().use_count());
+      });
+}

@@ -417,6 +417,69 @@ FutureBase<T>::thenImplementation(
   return f;
 }
 
+template <class T>
+template <typename E>
+SemiFuture<T>
+FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) {
+  struct Context {
+    explicit Context(E ex) : exception(std::move(ex)) {}
+    E exception;
+    Future<Unit> thisFuture;
+    Promise<T> promise;
+    std::atomic<bool> token{false};
+  };
+
+  std::shared_ptr<Timekeeper> tks;
+  if (LIKELY(!tk)) {
+    tks = folly::detail::getTimekeeperSingleton();
+    tk = tks.get();
+  }
+
+  if (UNLIKELY(!tk)) {
+    return makeSemiFuture<T>(FutureNoTimekeeper());
+  }
+
+  auto ctx = std::make_shared<Context>(std::move(e));
+
+  auto f = [ctx](Try<T>&& t) {
+    if (!ctx->token.exchange(true)) {
+      ctx->promise.setTry(std::move(t));
+    }
+  };
+  using R = futures::detail::callableResult<T, decltype(f)>;
+  ctx->thisFuture = this->template thenImplementation<decltype(f), R>(
+      std::move(f), typename R::Arg());
+
+  // Properly propagate interrupt values through futures chained after within()
+  ctx->promise.setInterruptHandler(
+      [weakCtx = to_weak_ptr(ctx)](const exception_wrapper& ex) {
+        if (auto lockedCtx = weakCtx.lock()) {
+          lockedCtx->thisFuture.raise(ex);
+        }
+      });
+
+  // Have time keeper use a weak ptr to hold ctx,
+  // so that ctx can be deallocated as soon as the future job finished.
+  tk->after(dur).then([weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
+    auto lockedCtx = weakCtx.lock();
+    if (!lockedCtx) {
+      // ctx already released. "this" completed first, cancel "after"
+      return;
+    }
+    // "after" completed first, cancel "this"
+    lockedCtx->thisFuture.raise(FutureTimeout());
+    if (!lockedCtx->token.exchange(true)) {
+      if (t.hasException()) {
+        lockedCtx->promise.setException(std::move(t.exception()));
+      } else {
+        lockedCtx->promise.setException(std::move(lockedCtx->exception));
+      }
+    }
+  });
+
+  return ctx->promise.getSemiFuture();
+}
+
 /**
  * Defer work until executor is actively boosted.
  *
@@ -1669,67 +1732,15 @@ Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
 template <class T>
 template <class E>
 Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
-
-  struct Context {
-    Context(E ex) : exception(std::move(ex)), promise() {}
-    E exception;
-    Future<Unit> thisFuture;
-    Promise<T> promise;
-    std::atomic<bool> token {false};
-  };
-
   if (this->isReady()) {
     return std::move(*this);
   }
 
-  std::shared_ptr<Timekeeper> tks;
-  if (LIKELY(!tk)) {
-    tks = folly::detail::getTimekeeperSingleton();
-    tk = tks.get();
-  }
-
-  if (UNLIKELY(!tk)) {
-    return makeFuture<T>(FutureNoTimekeeper());
-  }
-
-  auto ctx = std::make_shared<Context>(std::move(e));
-
-  ctx->thisFuture = this->then([ctx](Try<T>&& t) mutable {
-    if (ctx->token.exchange(true) == false) {
-      ctx->promise.setTry(std::move(t));
-    }
-  });
-
-  // Properly propagate interrupt values through futures chained after within()
-  ctx->promise.setInterruptHandler(
-      [weakCtx = to_weak_ptr(ctx)](const exception_wrapper& ex) {
-        if (auto lockedCtx = weakCtx.lock()) {
-          lockedCtx->thisFuture.raise(ex);
-        }
-      });
-
-  // Have time keeper use a weak ptr to hold ctx,
-  // so that ctx can be deallocated as soon as the future job finished.
-  tk->after(dur).then([weakCtx = to_weak_ptr(ctx)](Try<Unit> const& t) mutable {
-    auto lockedCtx = weakCtx.lock();
-    if (!lockedCtx) {
-      // ctx already released. "this" completed first, cancel "after"
-      return;
-    }
-    // "after" completed first, cancel "this"
-    lockedCtx->thisFuture.raise(FutureTimeout());
-    if (lockedCtx->token.exchange(true) == false) {
-      if (t.hasException()) {
-        lockedCtx->promise.setException(std::move(t.exception()));
-      } else {
-        lockedCtx->promise.setException(std::move(lockedCtx->exception));
-      }
-    }
-  });
-
   auto* currentExecutor = this->getExecutor();
-  return ctx->promise.getSemiFuture().via(
-      currentExecutor ? currentExecutor : &folly::InlineExecutor::instance());
+  return this->withinImplementation(dur, e, tk)
+      .via(
+          currentExecutor ? currentExecutor
+                          : &folly::InlineExecutor::instance());
 }
 
 // delayed

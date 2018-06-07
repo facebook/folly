@@ -99,6 +99,16 @@ TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
   EXPECT_THROW(f.get(), FutureNoTimekeeper);
 }
 
+TEST(Timekeeper, semiFutureWithinHandlesNullTimekeeperSingleton) {
+  Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
+  SCOPE_EXIT {
+    Singleton<ThreadWheelTimekeeper>::make_mock();
+  };
+  Promise<int> p;
+  auto f = p.getSemiFuture().within(one_ms);
+  EXPECT_THROW(std::move(f).get(), FutureNoTimekeeper);
+}
+
 TEST(Timekeeper, futureDelayed) {
   auto t1 = now();
   auto dur =
@@ -182,9 +192,24 @@ TEST(Timekeeper, futureWithinThrows) {
   EXPECT_EQ(-1, f.get());
 }
 
+TEST(Timekeeper, semiFutureWithinThrows) {
+  Promise<int> p;
+  auto f = p.getSemiFuture().within(one_ms).toUnsafeFuture().onError(
+      [](FutureTimeout&) { return -1; });
+
+  EXPECT_EQ(-1, std::move(f).get());
+}
+
 TEST(Timekeeper, futureWithinAlreadyComplete) {
   auto f =
       makeFuture(42).within(one_ms).onError([&](FutureTimeout&) { return -1; });
+
+  EXPECT_EQ(42, f.get());
+}
+
+TEST(Timekeeper, semiFutureWithinAlreadyComplete) {
+  auto f = makeSemiFuture(42).within(one_ms).toUnsafeFuture().onError(
+      [&](FutureTimeout&) { return -1; });
 
   EXPECT_EQ(42, f.get());
 }
@@ -199,14 +224,35 @@ TEST(Timekeeper, futureWithinFinishesInTime) {
   EXPECT_EQ(42, f.get());
 }
 
+TEST(Timekeeper, semiFutureWithinFinishesInTime) {
+  Promise<int> p;
+  auto f = p.getSemiFuture()
+               .within(std::chrono::minutes(1))
+               .toUnsafeFuture()
+               .onError([&](FutureTimeout&) { return -1; });
+  p.setValue(42);
+
+  EXPECT_EQ(42, f.get());
+}
+
 TEST(Timekeeper, futureWithinVoidSpecialization) {
   makeFuture().within(one_ms);
+}
+
+TEST(Timekeeper, semiFutureWithinVoidSpecialization) {
+  makeSemiFuture().within(one_ms);
 }
 
 TEST(Timekeeper, futureWithinException) {
   Promise<Unit> p;
   auto f = p.getFuture().within(awhile, std::runtime_error("expected"));
   EXPECT_THROW(f.get(), std::runtime_error);
+}
+
+TEST(Timekeeper, semiFutureWithinException) {
+  Promise<Unit> p;
+  auto f = p.getSemiFuture().within(awhile, std::runtime_error("expected"));
+  EXPECT_THROW(std::move(f).get(), std::runtime_error);
 }
 
 TEST(Timekeeper, onTimeout) {
@@ -268,7 +314,7 @@ TEST(Timekeeper, chainedInterruptTest) {
   EXPECT_FALSE(test);
 }
 
-TEST(Timekeeper, withinChainedInterruptTest) {
+TEST(Timekeeper, futureWithinChainedInterruptTest) {
   bool test = false;
   Promise<Unit> p;
   p.setInterruptHandler([&test, &p](const exception_wrapper& ex) {
@@ -277,6 +323,21 @@ TEST(Timekeeper, withinChainedInterruptTest) {
     p.setException(ex);
   });
   auto f = p.getFuture().within(milliseconds(100));
+  EXPECT_FALSE(test) << "Sanity check";
+  f.cancel();
+  f.wait();
+  EXPECT_TRUE(test);
+}
+
+TEST(Timekeeper, semiFutureWithinChainedInterruptTest) {
+  bool test = false;
+  Promise<Unit> p;
+  p.setInterruptHandler([&test, &p](const exception_wrapper& ex) {
+    ex.handle(
+        [&test](const FutureCancellation& /* cancellation */) { test = true; });
+    p.setException(ex);
+  });
+  auto f = p.getSemiFuture().within(milliseconds(100));
   EXPECT_FALSE(test) << "Sanity check";
   f.cancel();
   f.wait();
