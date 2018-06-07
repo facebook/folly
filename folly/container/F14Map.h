@@ -71,7 +71,8 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
     if (bc > 1) {
       visitor(bc * sizeof(typename Super::pointer), 1);
     }
-    visitor(size(), sizeof(StdNodeReplica<K, typename Super::value_type, H>));
+    visitor(
+        this->size(), sizeof(StdNodeReplica<K, typename Super::value_type, H>));
   }
 };
 } // namespace detail
