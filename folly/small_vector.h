@@ -46,6 +46,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/FormatTraits.h>
+#include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/lang/Assume.h>
@@ -489,18 +490,19 @@ class small_vector : public detail::small_vector_base<
   }
 
   small_vector& operator=(small_vector const& o) {
-    assign(o.begin(), o.end());
+    if (FOLLY_LIKELY(this != &o)) {
+      assign(o.begin(), o.end());
+    }
     return *this;
   }
 
   small_vector& operator=(small_vector&& o) {
     // TODO: optimization:
     // if both are internal, use move assignment where possible
-    if (this == &o) {
-      return *this;
+    if (FOLLY_LIKELY(this != &o)) {
+      clear();
+      swap(o);
     }
-    clear();
-    swap(o);
     return *this;
   }
 
