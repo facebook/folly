@@ -1511,7 +1511,7 @@ void AsyncSocket::cacheAddresses() {
       cachePeerAddress();
     } catch (const std::system_error& e) {
       if (e.code() != std::error_code(ENOTCONN, std::system_category())) {
-        VLOG(1) << "Error caching addresses: " << e.code().value() << ", "
+        VLOG(2) << "Error caching addresses: " << e.code().value() << ", "
                 << e.code().message();
       }
     }
@@ -2202,7 +2202,7 @@ void AsyncSocket::handleConnect() noexcept {
   if (error != 0) {
     AsyncSocketException ex(AsyncSocketException::NOT_OPEN,
                            "connect failed", error);
-    VLOG(1) << "AsyncSocket::handleConnect(this=" << this << ", fd="
+    VLOG(2) << "AsyncSocket::handleConnect(this=" << this << ", fd="
             << fd_ << " host=" << addr_.describe()
             << ") exception: " << ex.what();
     return failConnect(__func__, ex);
