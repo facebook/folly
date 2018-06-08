@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <chrono>
+#include <string>
 #include <thread>
 
-#include <folly/Chrono.h>
 #include <folly/Conv.h>
 #include <folly/logging/RateLimiter.h>
 #include <folly/portability/GTest.h>
 
-using folly::chrono::coarse_steady_clock;
 using folly::logging::IntervalRateLimiter;
 using std::chrono::duration_cast;
 using namespace std::literals::chrono_literals;
 
-void intervalTest(
-    uint64_t eventsPerInterval,
-    coarse_steady_clock::duration interval) {
+using irl_clock = IntervalRateLimiter::clock;
+
+void intervalTest(uint64_t eventsPerInterval, irl_clock::duration interval) {
   SCOPED_TRACE(folly::to<std::string>(
       eventsPerInterval,
       " events every ",
@@ -36,8 +37,13 @@ void intervalTest(
   IntervalRateLimiter limiter{eventsPerInterval, interval};
   for (int iter = 0; iter < 4; ++iter) {
     if (iter != 0) {
-      /* sleep override */
-      std::this_thread::sleep_for(interval);
+      auto now = irl_clock::now();
+      auto const deadline = now + interval;
+      while (now < deadline) {
+        /* sleep override */
+        std::this_thread::sleep_for(now - deadline);
+        now = irl_clock::now();
+      }
     }
     for (uint64_t n = 0; n < eventsPerInterval * 2; ++n) {
       if (n < eventsPerInterval) {
