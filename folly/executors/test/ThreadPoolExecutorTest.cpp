@@ -730,3 +730,31 @@ TEST(ThreadPoolExecutorTest, AddPerf) {
   }
   e.stop();
 }
+
+template <typename TPE>
+static void WeakRefTest() {
+  // test that adding a .then() after we have
+  // started shutting down does not deadlock
+  folly::Optional<folly::Future<folly::Unit>> f;
+  int counter{0};
+  {
+    TPE fe(1);
+    f = folly::makeFuture()
+            .via(&fe)
+            .then([]() { burnMs(100)(); })
+            .then([&] { ++counter; })
+            .via(fe.weakRef())
+            .then([]() { burnMs(100)(); })
+            .then([&] { ++counter; });
+  }
+  EXPECT_THROW(f->get(), folly::BrokenPromise);
+  EXPECT_EQ(1, counter);
+}
+
+TEST(ThreadPoolExecutorTest, WeakRefTestIO) {
+  WeakRefTest<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, WeakRefTestCPU) {
+  WeakRefTest<CPUThreadPoolExecutor>();
+}
