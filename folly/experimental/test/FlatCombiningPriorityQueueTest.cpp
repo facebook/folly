@@ -61,7 +61,7 @@ class BaselinePQ {
     return pq_.size();
   }
 
-  bool tryPush(const T& val) {
+  bool try_push(const T& val) {
     std::lock_guard<Mutex> g(m_);
     if (maxSize_ > 0 && pq_.size() == maxSize_) {
       return false;
@@ -76,7 +76,7 @@ class BaselinePQ {
     }
   }
 
-  bool tryPop(T& val) {
+  bool try_pop(T& val) {
     std::lock_guard<Mutex> g(m_);
     if (!pq_.empty()) {
       val = pq_.top();
@@ -87,7 +87,7 @@ class BaselinePQ {
     return false;
   }
 
-  bool tryPeek(T& val) {
+  bool try_peek(T& val) {
     std::lock_guard<Mutex> g(m_);
     if (!pq_.empty()) {
       val = pq_.top();
@@ -122,7 +122,7 @@ static uint64_t run_once(PriorityQueue& pq, const Func& fn) {
   std::atomic<uint32_t> started{0};
 
   for (int i = 0; i < size; ++i) {
-    CHECK(pq.tryPush(i * (ops / size)));
+    CHECK(pq.try_push(i * (ops / size)));
   }
 
   std::vector<std::thread> threads(nthreads);
@@ -161,39 +161,53 @@ TEST(FCPriQueue, basic) {
   CHECK(pq.empty());
   CHECK_EQ(pq.size(), 0);
   int v;
-  CHECK(!pq.tryPop(v));
+  CHECK(!pq.try_pop(v));
+  // try_pop() returns an Optional
+  EXPECT_FALSE(bool(pq.try_pop()));
 
-  CHECK(pq.tryPush(1));
-  CHECK(pq.tryPush(2));
+  CHECK(pq.try_push(1));
+  CHECK(pq.try_push(2));
   CHECK(!pq.empty());
   CHECK_EQ(pq.size(), 2);
 
   pq.peek(v);
   CHECK_EQ(v, 2); // higher value has higher priority
-  CHECK(pq.tryPeek(v));
+  CHECK(pq.try_peek(v));
   CHECK_EQ(v, 2);
   CHECK(!pq.empty());
   CHECK_EQ(pq.size(), 2);
 
-  CHECK(pq.tryPop(v));
+  CHECK(pq.try_pop(v));
   CHECK_EQ(v, 2);
   CHECK(!pq.empty());
   CHECK_EQ(pq.size(), 1);
 
-  CHECK(pq.tryPop(v));
+  CHECK(pq.try_pop(v));
   CHECK_EQ(v, 1);
+  CHECK(pq.empty());
+  CHECK_EQ(pq.size(), 0);
+
+  CHECK(pq.try_push(1));
+  CHECK(pq.try_push(2));
+
+  // check successful try_pop()
+  EXPECT_EQ(*pq.try_pop(), 2);
+  CHECK(!pq.empty());
+  CHECK_EQ(pq.size(), 1);
+
+  EXPECT_EQ(*pq.try_pop(), 1);
   CHECK(pq.empty());
   CHECK_EQ(pq.size(), 0);
 }
 
 TEST(FCPriQueue, bounded) {
   FCPQ pq(1);
-  CHECK(pq.tryPush(1));
-  CHECK(!pq.tryPush(1));
+  CHECK(pq.try_push(1));
+  CHECK(!pq.try_push(1));
   CHECK_EQ(pq.size(), 1);
   CHECK(!pq.empty());
   int v;
-  CHECK(pq.tryPop(v));
+  CHECK(pq.try_pop(v));
   CHECK_EQ(v, 1);
   CHECK_EQ(pq.size(), 0);
   CHECK(pq.empty());
@@ -202,16 +216,32 @@ TEST(FCPriQueue, bounded) {
 TEST(FCPriQueue, timeout) {
   FCPQ pq(1);
   int v;
-  CHECK(!pq.tryPeek(
-      v,
-      std::chrono::steady_clock::now() + std::chrono::microseconds(1000)));
-  CHECK(!pq.tryPop(
-      v,
-      std::chrono::steady_clock::now() + std::chrono::microseconds(1000)));
+  CHECK(!pq.try_peek(v));
+  CHECK(!pq.try_pop(v));
   pq.push(10);
-  CHECK(!pq.tryPush(
-      20,
-      std::chrono::steady_clock::now() + std::chrono::microseconds(1000)));
+  CHECK(!pq.try_push(20));
+
+  auto dur = std::chrono::microseconds(1000);
+  EXPECT_EQ(*pq.try_pop(), 10);
+  CHECK(pq.empty());
+  // check try_***_for
+  EXPECT_FALSE(bool(pq.try_pop_for(dur)));
+  EXPECT_FALSE(bool(pq.try_peek_for(dur)));
+  CHECK(pq.try_push_for(10, dur));
+  CHECK(!pq.try_push_for(20, dur));
+  EXPECT_EQ(*pq.try_peek_for(dur), 10);
+  EXPECT_EQ(*pq.try_pop_for(dur), 10);
+
+  CHECK(pq.empty());
+  // check try_***_until
+  EXPECT_FALSE(bool(pq.try_pop_until(std::chrono::steady_clock::now() + dur)));
+
+  EXPECT_FALSE(bool(pq.try_peek_until(std::chrono::steady_clock::now() + dur)));
+  CHECK(pq.try_push_until(10, std::chrono::steady_clock::now() + dur));
+  CHECK(!pq.try_push_until(20, std::chrono::steady_clock::now() + dur));
+  EXPECT_EQ(*pq.try_peek_until(std::chrono::steady_clock::now() + dur), 10);
+  EXPECT_EQ(*pq.try_pop_until(std::chrono::steady_clock::now() + dur), 10);
+  CHECK(pq.empty());
 }
 
 TEST(FCPriQueue, push_pop) {
@@ -224,13 +254,13 @@ TEST(FCPriQueue, push_pop) {
     FCPQ pq(10000);
     auto fn = [&](uint32_t tid) {
       for (int i = tid; i < ops; i += nthreads) {
-        CHECK(pq.tryPush(i));
-        CHECK(pq.tryPush(i, when));
+        CHECK(pq.try_push(i));
+        CHECK(pq.try_push_until(i, when));
         pq.push(i);
         doWork(work);
         int v;
-        CHECK(pq.tryPop(v));
-        CHECK(pq.tryPop(v, when));
+        CHECK(pq.try_pop(v));
+        EXPECT_NE(pq.try_pop_until(when), folly::none);
         pq.pop(v);
         doWork(work);
       }
@@ -261,10 +291,10 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
         Baseline pq;
         auto fn = [&](uint32_t tid) {
           for (int i = tid; i < ops; i += nthreads) {
-            CHECK(pq.tryPush(i));
+            CHECK(pq.try_push(i));
             doWork(work);
             int v;
-            CHECK(pq.tryPop(v));
+            CHECK(pq.try_pop(v));
             doWork(work);
           }
         };
@@ -274,10 +304,10 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
         FCPQ pq;
         auto fn = [&](uint32_t tid) {
           for (int i = tid; i < ops; i += nthreads) {
-            CHECK(pq.tryPush(i));
+            CHECK(pq.try_push(i));
             doWork(work);
             int v;
-            CHECK(pq.tryPop(v));
+            CHECK(pq.try_pop(v));
             doWork(work);
           }
         };
@@ -302,10 +332,9 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
           std::chrono::steady_clock::time_point when =
               std::chrono::steady_clock::now() + std::chrono::hours(24);
           for (int i = tid; i < ops; i += nthreads) {
-            CHECK(pq.tryPush(i, when));
+            CHECK(pq.try_push_until(i, when));
             doWork(work);
-            int v;
-            CHECK(pq.tryPop(v, when));
+            EXPECT_NE(pq.try_pop_until(when), folly::none);
             doWork(work);
           }
         };

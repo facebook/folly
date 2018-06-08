@@ -22,6 +22,7 @@
 #include <mutex>
 #include <queue>
 
+#include <folly/Optional.h>
 #include <folly/detail/Futex.h>
 #include <folly/experimental/flat_combining/FlatCombining.h>
 #include <glog/logging.h>
@@ -53,15 +54,15 @@ namespace folly {
 ///   CHECK(pq.empty());
 ///   CHECK(pq.size() == 0);
 ///   int v;
-///   CHECK(!tryPop(v));
-///   CHECK(!tryPop(v, now() + seconds(1)));
-///   CHECK(!tryPeek(v));
-///   CHECK(!tryPeek(v, now() + seconds(1)));
+///   CHECK(!try_pop(v));
+///   CHECK(!try_pop_until(v, now() + seconds(1)));
+///   CHECK(!try_peek(v));
+///   CHECK(!try_peek_until(v, now() + seconds(1)));
 ///   pq.push(10);
 ///   CHECK(!pq.empty());
 ///   CHECK(pq.size() == 1);
-///   CHECK(!pq.tryPush(20));
-///   CHECK(!pq.tryPush(20), now() + seconds(1)));
+///   CHECK(!pq.try_push(20));
+///   CHECK(!pq.try_push_until(20), now() + seconds(1)));
 ///   peek(v);
 ///   CHECK_EQ(v, 10);
 ///   CHECK(pq.size() == 1);
@@ -121,51 +122,125 @@ class FlatCombiningPriorityQueue
   /// provided or until the provided time_point is reached. If
   /// successful, inserts the provided item in the priority queue
   /// according to its priority.
-  template <class Clock = std::chrono::steady_clock>
-  bool tryPush(
-      const T& val,
-      const std::chrono::time_point<Clock>& when =
-          std::chrono::time_point<Clock>::min());
+  bool try_push(const T& val) {
+    return try_push_impl(
+        val, std::chrono::time_point<std::chrono::steady_clock>::min());
+  }
 
   /// Non-blocking pop. Succeeds if the priority queue is
   /// nonempty. Tries once if no time point is provided or until the
   /// provided time_point is reached.  If successful, copies the
   /// highest priority item and removes it from the priority queue.
-  template <class Clock = std::chrono::steady_clock>
-  bool tryPop(
-      T& val,
-      const std::chrono::time_point<Clock>& when =
-          std::chrono::time_point<Clock>::min());
+  bool try_pop(T& val) {
+    return try_pop_impl(
+        val, std::chrono::time_point<std::chrono::steady_clock>::min());
+  }
 
   /// Non-blocking peek. Succeeds if the priority queue is
   /// nonempty. Tries once if no time point is provided or until the
   /// provided time_point is reached.  If successful, copies the
   /// highest priority item without removing it.
-  template <class Clock = std::chrono::steady_clock>
-  bool tryPeek(
-      T& val,
-      const std::chrono::time_point<Clock>& when =
-          std::chrono::time_point<Clock>::min());
+  bool try_peek(T& val) {
+    return try_peek_impl(
+        val, std::chrono::time_point<std::chrono::steady_clock>::min());
+  }
 
   /// Blocking push. Inserts the provided item in the priority
   /// queue. If it is full, this function blocks until there is space
   /// for the new item.
   void push(const T& val) {
-    tryPush(val, std::chrono::time_point<std::chrono::steady_clock>::max());
+    try_push_impl(
+        val, std::chrono::time_point<std::chrono::steady_clock>::max());
   }
 
   /// Blocking pop. Copies the highest priority item and removes
   /// it. If the priority queue is empty, this function blocks until
   /// it is nonempty.
   void pop(T& val) {
-    tryPop(val, std::chrono::time_point<std::chrono::steady_clock>::max());
+    try_pop_impl(
+        val, std::chrono::time_point<std::chrono::steady_clock>::max());
   }
 
   /// Blocking peek. Copies the highest priority item without
   /// removing it. If the priority queue is empty, this function
   /// blocks until it is nonempty.
   void peek(T& val) {
-    tryPeek(val, std::chrono::time_point<std::chrono::steady_clock>::max());
+    try_peek_impl(
+        val, std::chrono::time_point<std::chrono::steady_clock>::max());
+  }
+
+  folly::Optional<T> try_pop() {
+    T val;
+    if (try_pop(val)) {
+      return std::move(val);
+    }
+    return folly::none;
+  }
+
+  folly::Optional<T> try_peek() {
+    T val;
+    if (try_peek(val)) {
+      return std::move(val);
+    }
+    return folly::none;
+  }
+
+  template <typename Rep, typename Period>
+  folly::Optional<T> try_pop_for(
+      const std::chrono::duration<Rep, Period>& timeout) {
+    T val;
+    if (try_pop(val) ||
+        try_pop_impl(val, std::chrono::steady_clock::now() + timeout)) {
+      return std::move(val);
+    }
+    return folly::none;
+  }
+
+  template <typename Rep, typename Period>
+  bool try_push_for(
+      const T& val,
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return (
+        try_push(val) ||
+        try_push_impl(val, std::chrono::steady_clock::now() + timeout));
+  }
+
+  template <typename Rep, typename Period>
+  folly::Optional<T> try_peek_for(
+      const std::chrono::duration<Rep, Period>& timeout) {
+    T val;
+    if (try_peek(val) ||
+        try_peek_impl(val, std::chrono::steady_clock::now() + timeout)) {
+      return std::move(val);
+    }
+    return folly::none;
+  }
+
+  template <typename Clock, typename Duration>
+  folly::Optional<T> try_pop_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    T val;
+    if (try_pop_impl(val, deadline)) {
+      return std::move(val);
+    }
+    return folly::none;
+  }
+
+  template <typename Clock, typename Duration>
+  bool try_push_until(
+      const T& val,
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    return try_push_impl(val, deadline);
+  }
+
+  template <typename Clock, typename Duration>
+  folly::Optional<T> try_peek_until(
+      const std::chrono::time_point<Clock, Duration>& deadline) {
+    T val;
+    if (try_peek_impl(val, deadline)) {
+      return std::move(val);
+    }
+    return folly::none;
   }
 
  private:
@@ -190,6 +265,21 @@ class FlatCombiningPriorityQueue
       return false;
     }
   }
+
+  template <typename Clock, typename Duration>
+  bool try_push_impl(
+      const T& val,
+      const std::chrono::time_point<Clock, Duration>& when);
+
+  template <typename Clock, typename Duration>
+  bool try_pop_impl(
+      T& val,
+      const std::chrono::time_point<Clock, Duration>& when);
+
+  template <typename Clock, typename Duration>
+  bool try_peek_impl(
+      T& val,
+      const std::chrono::time_point<Clock, Duration>& when);
 };
 
 /// Implementation
@@ -199,10 +289,11 @@ template <
     typename PriorityQueue,
     typename Mutex,
     template <typename> class Atom>
-template <class Clock>
-inline bool FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::tryPush(
+template <typename Clock, typename Duration>
+inline bool
+FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_push_impl(
     const T& val,
-    const std::chrono::time_point<Clock>& when) {
+    const std::chrono::time_point<Clock, Duration>& when) {
   while (true) {
     bool res;
     bool wake;
@@ -255,10 +346,11 @@ template <
     typename PriorityQueue,
     typename Mutex,
     template <typename> class Atom>
-template <class Clock>
-inline bool FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::tryPop(
+template <typename Clock, typename Duration>
+inline bool
+FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_pop_impl(
     T& val,
-    const std::chrono::time_point<Clock>& when) {
+    const std::chrono::time_point<Clock, Duration>& when) {
   while (true) {
     bool res;
     bool wake;
@@ -300,10 +392,11 @@ template <
     typename PriorityQueue,
     typename Mutex,
     template <typename> class Atom>
-template <class Clock>
-inline bool FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::tryPeek(
+template <typename Clock, typename Duration>
+inline bool
+FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_peek_impl(
     T& val,
-    const std::chrono::time_point<Clock>& when) {
+    const std::chrono::time_point<Clock, Duration>& when) {
   while (true) {
     bool res;
 
