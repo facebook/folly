@@ -20,12 +20,15 @@ def fbcode_builder_spec(builder):
     builder.add_option(
         'rsocket/rsocket-cpp/yarpl/build:cmake_defines', {'BUILD_TESTS': 'OFF'}
     )
+    builder.add_option('krb5/krb5:git_hash', 'krb5-1.16.1-final')
     return {
         'depends_on': [folly, wangle, zstd],
         'steps': [
             # This isn't a separete spec, since only fbthrift uses mstch.
             builder.github_project_workdir('no1msd/mstch', 'build'),
             builder.cmake_install('no1msd/mstch'),
+            builder.github_project_workdir('krb5/krb5', 'src'),
+            builder.autoconf_install('krb5/krb5'),
             builder.github_project_workdir(
                 'rsocket/rsocket-cpp', 'yarpl/build'
             ),
