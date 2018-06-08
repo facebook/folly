@@ -256,8 +256,8 @@ class SharedMutexImpl {
 
   SharedMutexImpl(const SharedMutexImpl&) = delete;
   SharedMutexImpl(SharedMutexImpl&&) = delete;
-  SharedMutexImpl& operator = (const SharedMutexImpl&) = delete;
-  SharedMutexImpl& operator = (SharedMutexImpl&&) = delete;
+  SharedMutexImpl& operator=(const SharedMutexImpl&) = delete;
+  SharedMutexImpl& operator=(SharedMutexImpl&&) = delete;
 
   // It is an error to destroy an SharedMutex that still has
   // any outstanding locks.  This is checked if NDEBUG isn't defined.
@@ -352,8 +352,9 @@ class SharedMutexImpl {
   }
 
   template <class Rep, class Period>
-  bool try_lock_shared_for(const std::chrono::duration<Rep, Period>& duration,
-                           Token& token) {
+  bool try_lock_shared_for(
+      const std::chrono::duration<Rep, Period>& duration,
+      Token& token) {
     WaitForDuration<Rep, Period> ctx(duration);
     return lockSharedImpl(&token, ctx);
   }
@@ -391,8 +392,9 @@ class SharedMutexImpl {
   }
 
   void unlock_shared(Token& token) {
-    assert(token.type_ == Token::Type::INLINE_SHARED ||
-           token.type_ == Token::Type::DEFERRED_SHARED);
+    assert(
+        token.type_ == Token::Type::INLINE_SHARED ||
+        token.type_ == Token::Type::DEFERRED_SHARED);
 
     if (token.type_ != Token::Type::DEFERRED_SHARED ||
         !tryUnlockSharedDeferred(token.slot_)) {
@@ -500,9 +502,15 @@ class SharedMutexImpl {
   // before the wait context is invoked.
 
   struct WaitForever {
-    bool canBlock() { return true; }
-    bool canTimeOut() { return false; }
-    bool shouldTimeOut() { return false; }
+    bool canBlock() {
+      return true;
+    }
+    bool canTimeOut() {
+      return false;
+    }
+    bool shouldTimeOut() {
+      return false;
+    }
 
     bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
       futex.futexWait(expected, waitMask);
@@ -511,13 +519,20 @@ class SharedMutexImpl {
   };
 
   struct WaitNever {
-    bool canBlock() { return false; }
-    bool canTimeOut() { return true; }
-    bool shouldTimeOut() { return true; }
+    bool canBlock() {
+      return false;
+    }
+    bool canTimeOut() {
+      return true;
+    }
+    bool shouldTimeOut() {
+      return true;
+    }
 
-    bool doWait(Futex& /* futex */,
-                uint32_t /* expected */,
-                uint32_t /* waitMask */) {
+    bool doWait(
+        Futex& /* futex */,
+        uint32_t /* expected */,
+        uint32_t /* waitMask */) {
       return false;
     }
   };
@@ -539,8 +554,12 @@ class SharedMutexImpl {
       return deadline_;
     }
 
-    bool canBlock() { return duration_.count() > 0; }
-    bool canTimeOut() { return true; }
+    bool canBlock() {
+      return duration_.count() > 0;
+    }
+    bool canTimeOut() {
+      return true;
+    }
 
     bool shouldTimeOut() {
       return std::chrono::steady_clock::now() > deadline();
@@ -556,9 +575,15 @@ class SharedMutexImpl {
   struct WaitUntilDeadline {
     std::chrono::time_point<Clock, Duration> absDeadline_;
 
-    bool canBlock() { return true; }
-    bool canTimeOut() { return true; }
-    bool shouldTimeOut() { return Clock::now() > absDeadline_; }
+    bool canBlock() {
+      return true;
+    }
+    bool canTimeOut() {
+      return true;
+    }
+    bool shouldTimeOut() {
+      return Clock::now() > absDeadline_;
+    }
 
     bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
       auto result = futex.futexWaitUntil(expected, absDeadline_, waitMask);
@@ -703,11 +728,12 @@ class SharedMutexImpl {
   static constexpr uint32_t kDeferredSeparationFactor = 4;
 
  private:
-
-  static_assert(!(kMaxDeferredReaders & (kMaxDeferredReaders - 1)),
-                "kMaxDeferredReaders must be a power of 2");
-  static_assert(!(kDeferredSearchDistance & (kDeferredSearchDistance - 1)),
-                "kDeferredSearchDistance must be a power of 2");
+  static_assert(
+      !(kMaxDeferredReaders & (kMaxDeferredReaders - 1)),
+      "kMaxDeferredReaders must be a power of 2");
+  static_assert(
+      !(kDeferredSearchDistance & (kDeferredSearchDistance - 1)),
+      "kDeferredSearchDistance must be a power of 2");
 
   // The number of deferred locks that can be simultaneously acquired
   // by a thread via the token-less methods without performing any heap
@@ -732,7 +758,6 @@ class SharedMutexImpl {
 
   // Last deferred reader slot used.
   static FOLLY_SHAREDMUTEX_TLS uint32_t tls_lastDeferredReaderSlot;
-
 
   // Only indexes divisible by kDeferredSeparationFactor are used.
   // If any of those elements points to a SharedMutexImpl, then it
@@ -760,9 +785,10 @@ class SharedMutexImpl {
   }
 
   template <class WaitContext>
-  bool lockExclusiveImpl(uint32_t& state,
-                         uint32_t preconditionGoalMask,
-                         WaitContext& ctx) {
+  bool lockExclusiveImpl(
+      uint32_t& state,
+      uint32_t preconditionGoalMask,
+      WaitContext& ctx) {
     while (true) {
       if (UNLIKELY((state & preconditionGoalMask) != 0) &&
           !waitForZeroBits(state, preconditionGoalMask, kWaitingE, ctx) &&
@@ -814,8 +840,8 @@ class SharedMutexImpl {
 
           if (kReaderPriority && (state & kHasE) == 0) {
             assert((state & kBegunE) != 0);
-            if (!state_.compare_exchange_strong(state,
-                                                (state & ~kBegunE) | kHasE)) {
+            if (!state_.compare_exchange_strong(
+                    state, (state & ~kBegunE) | kHasE)) {
               continue;
             }
           }
@@ -827,10 +853,11 @@ class SharedMutexImpl {
   }
 
   template <class WaitContext>
-  bool waitForZeroBits(uint32_t& state,
-                       uint32_t goal,
-                       uint32_t waitMask,
-                       WaitContext& ctx) {
+  bool waitForZeroBits(
+      uint32_t& state,
+      uint32_t goal,
+      uint32_t waitMask,
+      WaitContext& ctx) {
     uint32_t spinCount = 0;
     while (true) {
       state = state_.load(std::memory_order_acquire);
@@ -841,16 +868,17 @@ class SharedMutexImpl {
       ++spinCount;
       if (UNLIKELY(spinCount >= kMaxSpinCount)) {
         return ctx.canBlock() &&
-               yieldWaitForZeroBits(state, goal, waitMask, ctx);
+            yieldWaitForZeroBits(state, goal, waitMask, ctx);
       }
     }
   }
 
   template <class WaitContext>
-  bool yieldWaitForZeroBits(uint32_t& state,
-                            uint32_t goal,
-                            uint32_t waitMask,
-                            WaitContext& ctx) {
+  bool yieldWaitForZeroBits(
+      uint32_t& state,
+      uint32_t goal,
+      uint32_t waitMask,
+      WaitContext& ctx) {
 #ifdef RUSAGE_THREAD
     struct rusage usage;
     std::memset(&usage, 0, sizeof(usage));
@@ -887,12 +915,14 @@ class SharedMutexImpl {
   }
 
   template <class WaitContext>
-  bool futexWaitForZeroBits(uint32_t& state,
-                            uint32_t goal,
-                            uint32_t waitMask,
-                            WaitContext& ctx) {
-    assert(waitMask == kWaitingNotS || waitMask == kWaitingE ||
-           waitMask == kWaitingU || waitMask == kWaitingS);
+  bool futexWaitForZeroBits(
+      uint32_t& state,
+      uint32_t goal,
+      uint32_t waitMask,
+      WaitContext& ctx) {
+    assert(
+        waitMask == kWaitingNotS || waitMask == kWaitingE ||
+        waitMask == kWaitingU || waitMask == kWaitingS);
 
     while (true) {
       state = state_.load(std::memory_order_acquire);
@@ -949,8 +979,7 @@ class SharedMutexImpl {
     // wakeup, we just disable the optimization in the case that there
     // are waiting U or S that we are eligible to wake.
     if ((wakeMask & kWaitingE) == kWaitingE &&
-        (state & wakeMask) == kWaitingE &&
-        state_.futexWake(1, kWaitingE) > 0) {
+        (state & wakeMask) == kWaitingE && state_.futexWake(1, kWaitingE) > 0) {
       // somebody woke up, so leave state_ as is and clear it later
       return;
     }
@@ -972,9 +1001,13 @@ class SharedMutexImpl {
     return &deferredReaders[slot * kDeferredSeparationFactor];
   }
 
-  uintptr_t tokenfulSlotValue() { return reinterpret_cast<uintptr_t>(this); }
+  uintptr_t tokenfulSlotValue() {
+    return reinterpret_cast<uintptr_t>(this);
+  }
 
-  uintptr_t tokenlessSlotValue() { return tokenfulSlotValue() | kTokenless; }
+  uintptr_t tokenlessSlotValue() {
+    return tokenfulSlotValue() | kTokenless;
+  }
 
   bool slotValueIsThis(uintptr_t slotValue) {
     return (slotValue & ~kTokenless) == tokenfulSlotValue();
@@ -991,7 +1024,7 @@ class SharedMutexImpl {
     uint32_t spinCount = 0;
     while (true) {
       while (!slotValueIsThis(
-                 deferredReader(slot)->load(std::memory_order_acquire))) {
+          deferredReader(slot)->load(std::memory_order_acquire))) {
         if (++slot == kMaxDeferredReaders) {
           return;
         }
@@ -1006,7 +1039,6 @@ class SharedMutexImpl {
 
   template <class WaitContext>
   void applyDeferredReaders(uint32_t& state, WaitContext& ctx, uint32_t slot) {
-
 #ifdef RUSAGE_THREAD
     struct rusage usage;
     std::memset(&usage, 0, sizeof(usage));
@@ -1023,7 +1055,7 @@ class SharedMutexImpl {
 #endif
         }
         while (!slotValueIsThis(
-                   deferredReader(slot)->load(std::memory_order_acquire))) {
+            deferredReader(slot)->load(std::memory_order_acquire))) {
           if (++slot == kMaxDeferredReaders) {
             return;
           }
@@ -1118,8 +1150,9 @@ class SharedMutexImpl {
 
   uint32_t unlockSharedInline() {
     uint32_t state = (state_ -= kIncrHasS);
-    assert((state & (kHasE | kBegunE | kMayDefer)) != 0 ||
-           state < state + kIncrHasS);
+    assert(
+        (state & (kHasE | kBegunE | kMayDefer)) != 0 ||
+        state < state + kIncrHasS);
     if ((state & kHasS) == 0) {
       // Only the second half of lock() can be blocked by a non-zero
       // reader count, so that's the only thing we need to wake
@@ -1156,8 +1189,8 @@ class SharedMutexImpl {
       lock_->lock_shared(token_);
     }
 
-    ReadHolder(ReadHolder&& rhs) noexcept : lock_(rhs.lock_),
-                                            token_(rhs.token_) {
+    ReadHolder(ReadHolder&& rhs) noexcept
+        : lock_(rhs.lock_), token_(rhs.token_) {
       rhs.lock_ = nullptr;
     }
 
@@ -1327,10 +1360,18 @@ class SharedMutexImpl {
   };
 
   // Adapters for Synchronized<>
-  friend void acquireRead(SharedMutexImpl& lock) { lock.lock_shared(); }
-  friend void acquireReadWrite(SharedMutexImpl& lock) { lock.lock(); }
-  friend void releaseRead(SharedMutexImpl& lock) { lock.unlock_shared(); }
-  friend void releaseReadWrite(SharedMutexImpl& lock) { lock.unlock(); }
+  friend void acquireRead(SharedMutexImpl& lock) {
+    lock.lock_shared();
+  }
+  friend void acquireReadWrite(SharedMutexImpl& lock) {
+    lock.lock();
+  }
+  friend void releaseRead(SharedMutexImpl& lock) {
+    lock.unlock_shared();
+  }
+  friend void releaseReadWrite(SharedMutexImpl& lock) {
+    lock.unlock();
+  }
   friend bool acquireRead(SharedMutexImpl& lock, unsigned int ms) {
     return lock.try_lock_shared_for(std::chrono::milliseconds(ms));
   }
