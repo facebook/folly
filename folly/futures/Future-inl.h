@@ -1736,11 +1736,9 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
     return std::move(*this);
   }
 
-  auto* currentExecutor = this->getExecutor();
+  auto* exe = this->getExecutor();
   return this->withinImplementation(dur, e, tk)
-      .via(
-          currentExecutor ? currentExecutor
-                          : &InlineExecutor::instance());
+      .via(exe ? exe : &InlineExecutor::instance());
 }
 
 // delayed
@@ -1787,9 +1785,8 @@ void waitImpl(FutureType& f) {
 template <class T>
 void convertFuture(SemiFuture<T>&& sf, Future<T>& f) {
   // Carry executor from f, inserting an inline executor if it did not have one
-  auto* currentExecutor = f.getExecutor();
-  f = std::move(sf).via(
-      currentExecutor ? currentExecutor : &InlineExecutor::instance());
+  auto* exe = f.getExecutor();
+  f = std::move(sf).via(exe ? exe : &InlineExecutor::instance());
 }
 
 template <class T>
