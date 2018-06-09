@@ -18,6 +18,7 @@
 #include <thread>
 
 #include <folly/Exception.h>
+#include <folly/VirtualExecutor.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
@@ -313,14 +314,16 @@ TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
     completed++;
   };
   CPUThreadPoolExecutor pool(0, 2);
-  for (int i = 0; i < 50; i++) {
-    pool.addWithPriority(lopri, Executor::LO_PRI);
+  {
+    VirtualExecutor ve(pool);
+    for (int i = 0; i < 50; i++) {
+      ve.addWithPriority(lopri, Executor::LO_PRI);
+    }
+    for (int i = 0; i < 50; i++) {
+      ve.addWithPriority(hipri, Executor::HI_PRI);
+    }
+    pool.setNumThreads(1);
   }
-  for (int i = 0; i < 50; i++) {
-    pool.addWithPriority(hipri, Executor::HI_PRI);
-  }
-  pool.setNumThreads(1);
-  pool.join();
   EXPECT_EQ(100, completed);
 }
 
@@ -751,10 +754,45 @@ static void WeakRefTest() {
   EXPECT_EQ(1, counter);
 }
 
+template <typename TPE>
+static void virtualExecutorTest() {
+  using namespace std::literals;
+
+  folly::Optional<folly::SemiFuture<folly::Unit>> f;
+  int counter{0};
+  {
+    TPE fe(1);
+    {
+      VirtualExecutor ve(fe);
+      f = futures::sleep(100ms)
+              .via(&ve)
+              .then([&] {
+                ++counter;
+                return futures::sleep(100ms);
+              })
+              .via(&fe)
+              .then([&] { ++counter; })
+              .semi();
+    }
+    EXPECT_EQ(1, counter);
+  }
+  EXPECT_TRUE(f->isReady());
+  EXPECT_NO_THROW(std::move(*f).get());
+  EXPECT_EQ(2, counter);
+}
+
 TEST(ThreadPoolExecutorTest, WeakRefTestIO) {
   WeakRefTest<IOThreadPoolExecutor>();
 }
 
 TEST(ThreadPoolExecutorTest, WeakRefTestCPU) {
   WeakRefTest<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, VirtualExecutorTestIO) {
+  virtualExecutorTest<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, VirtualExecutorTestCPU) {
+  virtualExecutorTest<CPUThreadPoolExecutor>();
 }
