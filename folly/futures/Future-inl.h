@@ -1771,7 +1771,7 @@ namespace detail {
 template <class FutureType, typename T = typename FutureType::value_type>
 void waitImpl(FutureType& f) {
   if (std::is_base_of<Future<T>, FutureType>::value) {
-    f = std::move(f).via(nullptr);
+    f = std::move(f).via(&InlineExecutor::instance());
   }
   // short-circuit if there's nothing to do
   if (f.isReady()) {
@@ -1800,7 +1800,7 @@ void convertFuture(SemiFuture<T>&& sf, SemiFuture<T>& f) {
 template <class FutureType, typename T = typename FutureType::value_type>
 void waitImpl(FutureType& f, Duration dur) {
   if (std::is_base_of<Future<T>, FutureType>::value) {
-    f = std::move(f).via(nullptr);
+    f = std::move(f).via(&InlineExecutor::instance());
   }
   // short-circuit if there's nothing to do
   if (f.isReady()) {
@@ -1833,7 +1833,7 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
     e->drive();
   }
   assert(f.isReady());
-  f = std::move(f).via(nullptr);
+  f = std::move(f).via(&InlineExecutor::instance());
 }
 
 template <class T, typename Rep, typename Period>
@@ -1858,7 +1858,7 @@ void waitViaImpl(
   }
   assert(f.isReady() || (now >= deadline));
   if (f.isReady()) {
-    f = std::move(f).via(nullptr);
+    f = std::move(f).via(&InlineExecutor::instance());
   }
 }
 
