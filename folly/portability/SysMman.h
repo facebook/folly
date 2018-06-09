@@ -20,7 +20,7 @@
 
 #include <sys/mman.h>
 
-// MAP_ANONYMOUS is named MAP_ANON on OSX/BSD.
+// MAP_ANONYMOUS is named MAP_ANON on macOS/BSD.
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
 #define MAP_ANONYMOUS MAP_ANON

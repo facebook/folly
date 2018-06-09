@@ -504,7 +504,7 @@ fbstring errnoStr(int err) {
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, sizeof(buf));
 
-  // OSX/FreeBSD use EINVAL and Linux uses -1 so just check for non-zero
+  // macOS/FreeBSD use EINVAL and Linux uses -1 so just check for non-zero
   if (r != 0) {
     result = to<fbstring>(
       "Unknown error ", err,

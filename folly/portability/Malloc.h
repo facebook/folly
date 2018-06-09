@@ -31,7 +31,7 @@
 #endif
 
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
-// MacOS doesn't have malloc_usable_size()
+// macOS doesn't have malloc_usable_size()
 extern "C" size_t malloc_usable_size(void* ptr);
 #elif defined(_WIN32)
 extern "C" size_t malloc_usable_size(void* ptr);

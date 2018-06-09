@@ -12,7 +12,7 @@ get_ldflags() {
   done
 }
 
-# This is an extra linker flag that buck appends on OSX that's not valid
+# This is an extra linker flag that buck appends on macOS that's not valid
 # This probably requires a patch to buck
 LDFLAGS=$(get_ldflags "$@" | uniq | tr '\n' ' ' | perl -pe 's;-Xlinker \@executable_path\S*;;g')
 

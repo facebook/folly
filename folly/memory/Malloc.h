@@ -161,7 +161,7 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
   // feel dirty inside. Also note that this requires jemalloc to have
   // been compiled with --enable-stats.
   static const bool result = [] () noexcept {
-    // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
+    // Some platforms (*cough* macOS *cough*) require weak symbol checks to be
     // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
     // (!!). http://goo.gl/xpmctm
     if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr

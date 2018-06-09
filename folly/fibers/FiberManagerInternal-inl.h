@@ -509,7 +509,7 @@ T& FiberManager::localThread() {
 #ifndef __APPLE__
   static thread_local T t;
   return t;
-#else // osx doesn't support thread_local
+#else // macOS doesn't support thread_local
   static ThreadLocal<T> t;
   return *t;
 #endif

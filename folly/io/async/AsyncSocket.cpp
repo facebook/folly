@@ -483,7 +483,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     }
 
 #if !defined(MSG_NOSIGNAL) && defined(F_SETNOSIGPIPE)
-    // iOS and OS X don't support MSG_NOSIGNAL; set F_SETNOSIGPIPE instead
+    // iOS and macOS don't support MSG_NOSIGNAL; set F_SETNOSIGPIPE instead
     rv = fcntl(fd_, F_SETNOSIGPIPE, 1);
     if (rv == -1) {
       auto errnoCopy = errno;

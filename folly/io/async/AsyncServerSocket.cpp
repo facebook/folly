@@ -783,7 +783,7 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
             strerror(errno);
   }
 
-  // Set TCP nodelay if available, MAC OS X Hack
+  // Set TCP nodelay if available, macOS hack
   // See http://lists.danga.com/pipermail/memcached/2005-March/001240.html
 #ifndef TCP_NOPUSH
   if (family != AF_UNIX) {

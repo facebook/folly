@@ -98,7 +98,7 @@ class Random {
 #endif
 
   /**
-   * Get secure random bytes. (On Linux and OSX, this means /dev/urandom).
+   * Get secure random bytes. (On Linux and macOS, this means /dev/urandom).
    */
   static void secureRandom(void* data, size_t len);
 

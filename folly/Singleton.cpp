@@ -210,7 +210,7 @@ struct FatalHelper {
 };
 
 #if defined(__APPLE__) || defined(_MSC_VER)
-// OS X doesn't support constructor priorities.
+// macOS doesn't support constructor priorities.
 FatalHelper fatalHelper;
 #else
 FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
@@ -416,7 +416,7 @@ struct SetStackTraceGetter {
 };
 
 #ifdef __APPLE__
-// OS X doesn't support constructor priorities.
+// macOS doesn't support constructor priorities.
 SetStackTraceGetter setStackTraceGetter;
 #else
 SetStackTraceGetter __attribute__((__init_priority__(101))) setStackTraceGetter;

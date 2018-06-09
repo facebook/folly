@@ -21,7 +21,7 @@
 
 #include <folly/portability/Config.h>
 
-// OSX is a pain. The XCode 8 SDK always declares clock_gettime
+// macOS is a pain. The Xcode 8 SDK always declares clock_gettime
 // even if the target OS version doesn't support it, so you get
 // an error at runtime because it can't resolve the symbol. We
 // solve that by pretending we have it here in the header and

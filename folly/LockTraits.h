@@ -29,7 +29,7 @@
 
 #include <folly/functional/Invoke.h>
 
-// Android, OSX, and Cygwin don't have timed mutexes
+// Android, macOS, and Cygwin don't have timed mutexes
 #if defined(ANDROID) || defined(__ANDROID__) || defined(__APPLE__) || \
     defined(__CYGWIN__)
 #define FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES 0

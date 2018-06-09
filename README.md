@@ -147,7 +147,7 @@ In the folly directory, run:
   make install
 ```
 
-#### OS X (Homebrew)
+#### macOS (Homebrew)
 
 folly is available as a Formula and releases may be built via `brew install folly`.
 
@@ -158,7 +158,7 @@ You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `maste
   ./build/bootstrap-osx-homebrew.sh
 ```
 
-#### OS X (MacPorts)
+#### macOS (MacPorts)
 
 Install the required packages from MacPorts:
 

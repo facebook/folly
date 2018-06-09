@@ -391,12 +391,12 @@ int setsockopt(
     const void* optval,
     socklen_t optlen) {
   if (optname == SO_REUSEADDR) {
-    // We don't have an equivelent to the Linux & OSX meaning of this
+    // We don't have an equivalent to the Linux & macOS meaning of this
     // on Windows, so ignore it.
     return 0;
   } else if (optname == SO_REUSEPORT) {
     // Windows's SO_REUSEADDR option is closer to SO_REUSEPORT than
-    // it is to the Linux & OSX meaning of SO_REUSEADDR.
+    // it is to the Linux & macOS meaning of SO_REUSEADDR.
     return -1;
   }
   return wrapSocketFunction<int>(
