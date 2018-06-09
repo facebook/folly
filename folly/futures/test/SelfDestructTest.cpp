@@ -62,7 +62,7 @@ TEST(SelfDestruct, throwingExecutor) {
 }
 
 TEST(SelfDestruct, throwingInlineExecutor) {
-  folly::InlineExecutor executor;
+  InlineExecutor executor;
 
   auto* p = new Promise<int>();
   auto future = p->getFuture()

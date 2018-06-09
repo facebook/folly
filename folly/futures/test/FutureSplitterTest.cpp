@@ -22,7 +22,7 @@ using namespace folly;
 TEST(FutureSplitter, splitFutureSuccess) {
   Promise<int> p;
   folly::FutureSplitter<int> sp(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   auto f1 = sp.getFuture();
   EXPECT_FALSE(f1.isReady());
   p.setValue(1);
@@ -36,7 +36,7 @@ TEST(FutureSplitter, splitFutureSuccess) {
 TEST(FutureSplitter, splitFutureSuccessSemiFuture) {
   Promise<int> p;
   folly::FutureSplitter<int> sp(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   auto f1 = sp.getSemiFuture();
   EXPECT_FALSE(f1.isReady());
   p.setValue(1);
@@ -53,7 +53,7 @@ TEST(FutureSplitter, splitFutureSuccessNullExecutor) {
   // Double via because a null executor to SemiFuture.via is invalid but we
   // are testing a situation where we have a FutureSplitter from a future with
   // a null executor to account for legacy code.
-  auto f = std::move(sf).via(&folly::InlineExecutor::instance()).via(nullptr);
+  auto f = std::move(sf).via(&InlineExecutor::instance()).via(nullptr);
   folly::FutureSplitter<int> sp(std::move(f));
   auto f1 = sp.getFuture();
   EXPECT_FALSE(f1.isReady());
@@ -68,7 +68,7 @@ TEST(FutureSplitter, splitFutureSuccessNullExecutor) {
 TEST(FutureSplitter, splitFutureCopyable) {
   Promise<int> p;
   folly::FutureSplitter<int> sp1(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   folly::FutureSplitter<int> sp2(sp1);
   auto f1 = sp1.getFuture();
   EXPECT_FALSE(f1.isReady());
@@ -87,7 +87,7 @@ TEST(FutureSplitter, splitFutureCopyable) {
 TEST(FutureSplitter, splitFutureMovable) {
   Promise<int> p;
   folly::FutureSplitter<int> sp1(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   auto f1 = sp1.getFuture();
   folly::FutureSplitter<int> sp2(std::move(sp1));
   EXPECT_FALSE(f1.isReady());
@@ -106,7 +106,7 @@ TEST(FutureSplitter, splitFutureMovable) {
 TEST(FutureSplitter, splitFutureCopyAssignable) {
   Promise<int> p;
   folly::FutureSplitter<int> sp1(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   folly::FutureSplitter<int> sp2{};
   sp2 = sp1;
   auto f1 = sp1.getFuture();
@@ -126,7 +126,7 @@ TEST(FutureSplitter, splitFutureCopyAssignable) {
 TEST(FutureSplitter, splitFutureMoveAssignable) {
   Promise<int> p;
   folly::FutureSplitter<int> sp1(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   auto f1 = sp1.getFuture();
   folly::FutureSplitter<int> sp2{};
   sp2 = std::move(sp1);
@@ -146,7 +146,7 @@ TEST(FutureSplitter, splitFutureMoveAssignable) {
 TEST(FutureSplitter, splitFutureScope) {
   Promise<int> p;
   auto pSP = std::make_unique<folly::FutureSplitter<int>>(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   auto f1 = pSP->getFuture();
   EXPECT_FALSE(f1.isReady());
   pSP.reset();
@@ -160,7 +160,7 @@ TEST(FutureSplitter, splitFutureScope) {
 TEST(FutureSplitter, splitFutureFailure) {
   Promise<int> p;
   folly::FutureSplitter<int> sp(
-      p.getSemiFuture().via(&folly::InlineExecutor::instance()));
+      p.getSemiFuture().via(&InlineExecutor::instance()));
   auto f1 = sp.getFuture();
   EXPECT_FALSE(f1.isReady());
   try {

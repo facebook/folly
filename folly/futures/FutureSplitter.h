@@ -84,7 +84,7 @@ class FutureSplitter {
     // If the passed future had a null executor, use an inline executor
     // to ensure that .via is safe
     auto* e = f.getExecutor();
-    return e ? e : &folly::InlineExecutor::instance();
+    return e ? e : &InlineExecutor::instance();
   }
 };
 

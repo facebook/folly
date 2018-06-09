@@ -70,7 +70,7 @@ SemiFuture<T> SharedPromise<T>::getSemiFuture() {
 
 template <class T>
 Future<T> SharedPromise<T>::getFuture() {
-  return getSemiFuture().via(&folly::InlineExecutor::instance());
+  return getSemiFuture().via(&InlineExecutor::instance());
 }
 
 template <class T>

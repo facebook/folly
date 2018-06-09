@@ -365,7 +365,7 @@ Future<T> chainExecutor(Executor*, Future<T>&& f) {
 template <class T>
 Future<T> chainExecutor(Executor* e, SemiFuture<T>&& f) {
   if (!e) {
-    e = &folly::InlineExecutor::instance();
+    e = &InlineExecutor::instance();
   }
   return std::move(f).via(e);
 }
@@ -812,7 +812,7 @@ Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
 
 template <class T>
 Future<T> SemiFuture<T>::toUnsafeFuture() && {
-  return std::move(*this).via(&folly::InlineExecutor::instance());
+  return std::move(*this).via(&InlineExecutor::instance());
 }
 
 template <class T>
@@ -1017,7 +1017,7 @@ Future<T> Future<T>::thenError(F&& func) && {
   return onError([func = std::forward<F>(func)](ExceptionType& ex) mutable {
            return std::forward<F>(func)(ex);
          })
-      .via(e ? e : &folly::InlineExecutor::instance());
+      .via(e ? e : &InlineExecutor::instance());
 }
 
 template <class T>
@@ -1031,7 +1031,7 @@ Future<T> Future<T>::thenError(F&& func) && {
                      folly::exception_wrapper&& ex) mutable {
            return std::forward<F>(func)(std::move(ex));
          })
-      .via(e ? e : &folly::InlineExecutor::instance());
+      .via(e ? e : &InlineExecutor::instance());
 }
 
 template <class T>
@@ -1071,7 +1071,7 @@ Future<T>::onError(F&& func) {
   // Allow for applying to future with null executor while this is still
   // possible.
   // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&folly::InlineExecutor::instance());
+  return std::move(sf).via(&InlineExecutor::instance());
 }
 
 // onError where the callback returns Future<T>
@@ -1113,7 +1113,7 @@ Future<T>::onError(F&& func) {
   // Allow for applying to future with null executor while this is still
   // possible.
   // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&folly::InlineExecutor::instance());
+  return std::move(sf).via(&InlineExecutor::instance());
 }
 
 template <class T>
@@ -1168,7 +1168,7 @@ Future<T>::onError(F&& func) {
   // Allow for applying to future with null executor while this is still
   // possible.
   // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&folly::InlineExecutor::instance());
+  return std::move(sf).via(&InlineExecutor::instance());
 }
 
 // onError(exception_wrapper) that returns T
@@ -1200,7 +1200,7 @@ Future<T>::onError(F&& func) {
   // Allow for applying to future with null executor while this is still
   // possible.
   // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&folly::InlineExecutor::instance());
+  return std::move(sf).via(&InlineExecutor::instance());
 }
 
 template <class Func>
@@ -1404,7 +1404,7 @@ collect(InputIterator first, InputIterator last) {
        ctx->setPartialResult(i, t);
      }
   });
-  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
 }
 
 // collect (variadic)
@@ -1418,7 +1418,7 @@ collect(Fs&&... fs) {
       typename std::decay<Fs>::type::value_type...>>();
   futures::detail::collectVariadicHelper<
       futures::detail::CollectVariadicContext>(ctx, std::forward<Fs>(fs)...);
-  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
 }
 
 // collectAny (iterator)
@@ -1446,7 +1446,7 @@ collectAny(InputIterator first, InputIterator last) {
       ctx->p.setValue(std::make_pair(i, std::move(t)));
     }
   });
-  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
 }
 
 // collectAnyWithoutException (iterator)
@@ -1478,7 +1478,7 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
       ctx->p.setException(t.exception());
     }
   });
-  return ctx->p.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
 }
 
 // collectN (iterator)
@@ -1719,7 +1719,7 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
         }
       });
 
-  return ctx->promise_.getSemiFuture().via(&folly::InlineExecutor::instance());
+  return ctx->promise_.getSemiFuture().via(&InlineExecutor::instance());
 }
 
 // within
@@ -1740,7 +1740,7 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
   return this->withinImplementation(dur, e, tk)
       .via(
           currentExecutor ? currentExecutor
-                          : &folly::InlineExecutor::instance());
+                          : &InlineExecutor::instance());
 }
 
 // delayed
@@ -1749,7 +1749,7 @@ template <class T>
 Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) && {
   auto e = this->getExecutor();
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
-      .via(e ? e : &folly::InlineExecutor::instance())
+      .via(e ? e : &InlineExecutor::instance())
       .then([](std::tuple<Try<T>, Try<Unit>>&& tup) {
         return makeFuture<T>(std::get<0>(std::move(tup)));
       });
@@ -1789,7 +1789,7 @@ void convertFuture(SemiFuture<T>&& sf, Future<T>& f) {
   // Carry executor from f, inserting an inline executor if it did not have one
   auto* currentExecutor = f.getExecutor();
   f = std::move(sf).via(
-      currentExecutor ? currentExecutor : &folly::InlineExecutor::instance());
+      currentExecutor ? currentExecutor : &InlineExecutor::instance());
 }
 
 template <class T>

@@ -576,7 +576,7 @@ TEST(Collect, collectN) {
   bool flag = false;
   size_t n = 3;
   collectN(futures, n)
-      .via(&folly::InlineExecutor::instance())
+      .via(&InlineExecutor::instance())
       .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
         flag = true;
         EXPECT_EQ(n, v.size());
@@ -604,7 +604,7 @@ TEST(Collect, collectNParallel) {
   bool flag = false;
   size_t n = 90;
   collectN(futures, n)
-      .via(&folly::InlineExecutor::instance())
+      .via(&InlineExecutor::instance())
       .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
         flag = true;
         EXPECT_EQ(n, v.size());
