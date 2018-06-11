@@ -102,7 +102,9 @@ namespace detail {
  * memory is initialized to type T already.
  */
 template <class T>
-typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
+typename std::enable_if<
+    std::is_default_constructible<T>::value &&
+    !folly::is_trivially_copyable<T>::value>::type
 moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
   if (lastConstructed == realLast) {
     return;
@@ -139,7 +141,9 @@ moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
 // std::move_backward here will just turn into a memmove.  (TODO:
 // change to std::is_trivially_copyable when that works.)
 template <class T>
-typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
+typename std::enable_if<
+    !std::is_default_constructible<T>::value ||
+    folly::is_trivially_copyable<T>::value>::type
 moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
   std::move_backward(first, lastConstructed, realLast);
 }
