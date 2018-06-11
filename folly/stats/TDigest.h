@@ -48,43 +48,8 @@ namespace folly {
  */
 class TDigest {
  public:
-  struct Centroid {
-   public:
-    explicit Centroid(double mean = 0.0, double weight = 1.0)
-        : mean_(mean), weight_(weight) {}
-
-    inline double mean() const {
-      return mean_;
-    }
-
-    inline double weight() const {
-      return weight_;
-    }
-
-    /*
-     * Adds the sum/weight to this centroid, and returns the new sum.
-     */
-    inline double add(double sum, double weight);
-
-    inline bool operator<(const Centroid& other) const {
-      return mean() < other.mean();
-    }
-
-   private:
-    double mean_;
-    double weight_;
-  };
-
   explicit TDigest(size_t maxSize = 100)
       : maxSize_(maxSize), sum_(0.0), count_(0.0), max_(NAN), min_(NAN) {}
-
-  explicit TDigest(
-      Range<const Centroid*> centroids,
-      double sum,
-      double count,
-      double max_val,
-      double min_val,
-      size_t maxSize = 100);
 
   /*
    * Returns a new TDigest constructed with values merged from the current
@@ -127,11 +92,34 @@ class TDigest {
     return centroids_.empty();
   }
 
-  const std::vector<Centroid>& getCentroids() {
-    return centroids_;
-  }
-
  private:
+  struct Centroid {
+   public:
+    explicit Centroid(double mean = 0.0, double weight = 1.0)
+        : mean_(mean), weight_(weight) {}
+
+    inline double mean() const {
+      return mean_;
+    }
+
+    inline double weight() const {
+      return weight_;
+    }
+
+    /*
+     * Adds the sum/weight to this centroid, and returns the new sum.
+     */
+    inline double add(double sum, double weight);
+
+    inline bool operator<(const Centroid& other) const {
+      return mean() < other.mean();
+    }
+
+   private:
+    double mean_;
+    double weight_;
+  };
+
   std::vector<Centroid> centroids_;
   size_t maxSize_;
   double sum_;
