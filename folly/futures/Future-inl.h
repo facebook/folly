@@ -1684,6 +1684,16 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
         : lock_(), memo_(makeFuture<T>(std::move(memo))),
           func_(std::move(fn)), numThens_(0), numFutures_(n), promise_()
       {}
+
+    static void fulfillWithValueOrFuture(Promise<T>&& p, T&& v) {
+      p.setValue(std::move(v));
+    }
+
+    static void fulfillWithValueOrFuture(Promise<T>&& p, Future<T>&& f) {
+      f.setCallback_(
+          [p = std::move(p)](Try<T>&& t) mutable { p.setTry(std::move(t)); });
+    }
+
     folly::MicroSpinLock lock_; // protects memo_ and numThens_
     Future<T> memo_;
     F func_;
@@ -1704,19 +1714,35 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
         // the order of completion to reduce the values.
         // The spinlock just protects chaining a new Future, not actually
         // executing the reduce, which should be really fast.
-        folly::MSLGuard lock(ctx->lock_);
-        ctx->memo_ =
-            ctx->memo_.then([ ctx, mt = std::move(t) ](T && v) mutable {
-              // Either return a ItT&& or a Try<ItT>&& depending
-              // on the type of the argument of func.
-              return ctx->func_(std::move(v),
-                                mt.template get<IsTry::value, Arg&&>());
-            });
-        if (++ctx->numThens_ == ctx->numFutures_) {
-          // After reducing the value of the last Future, fulfill the Promise
-          ctx->memo_.setCallback_(
-              [ctx](Try<T>&& t2) { ctx->promise_.setValue(std::move(t2)); });
+        Promise<T> p;
+        auto f = p.getFuture();
+        {
+          folly::MSLGuard lock(ctx->lock_);
+          f = exchange(ctx->memo_, std::move(f));
+          if (++ctx->numThens_ == ctx->numFutures_) {
+            // After reducing the value of the last Future, fulfill the Promise
+            ctx->memo_.setCallback_(
+                [ctx](Try<T>&& t2) { ctx->promise_.setValue(std::move(t2)); });
+          }
         }
+        f.setCallback_([ctx, mp = std::move(p), mt = std::move(t)](
+                           Try<T>&& v) mutable {
+          if (v.hasValue()) {
+            try {
+              ctx->fulfillWithValueOrFuture(
+                  std::move(mp),
+                  ctx->func_(
+                      std::move(v.value()),
+                      mt.template get<IsTry::value, Arg&&>()));
+            } catch (std::exception& e) {
+              mp.setException(exception_wrapper(std::current_exception(), e));
+            } catch (...) {
+              mp.setException(exception_wrapper(std::current_exception()));
+            }
+          } else {
+            mp.setTry(std::move(v));
+          }
+        });
       });
 
   return ctx->promise_.getSemiFuture().via(&InlineExecutor::instance());

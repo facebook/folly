@@ -174,3 +174,30 @@ TEST(Reduce, unorderedReduceException) {
   p1.setValue(1);
   EXPECT_THROW(f.get(), std::runtime_error);
 }
+
+TEST(Reduce, unorderedReduceFuture) {
+  Promise<int> p1;
+  Promise<int> p2;
+  Promise<int> p3;
+
+  std::vector<Future<int>> fs;
+  fs.push_back(p1.getFuture());
+  fs.push_back(p2.getFuture());
+  fs.push_back(p3.getFuture());
+
+  std::vector<Promise<double>> ps(3);
+
+  Future<int> f =
+      unorderedReduce(fs.begin(), fs.end(), 0.0, [&](double /* a */, int&& b) {
+        return ps[b - 1].getFuture();
+      });
+  p3.setValue(3);
+  p2.setValue(2);
+  p1.setValue(1);
+
+  ps[0].setValue(1.0);
+  ps[1].setValue(2.0);
+  ps[2].setValue(3.0);
+
+  EXPECT_EQ(1.0, f.get());
+}
