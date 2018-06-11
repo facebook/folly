@@ -219,6 +219,46 @@ TEST(TDigest, NegativeValuesMergeDigests) {
   EXPECT_EQ(100, digest.estimateQuantile(1.0));
 }
 
+TEST(TDigest, ConstructFromCentroids) {
+  std::vector<TDigest::Centroid> centroids{};
+
+  TDigest digest(100);
+  std::vector<double> values;
+  for (int i = 1; i <= 100; ++i) {
+    values.push_back(i);
+  }
+  auto digest1 = digest.merge(values);
+
+  size_t centroid_count = digest1.getCentroids().size();
+
+  TDigest digest2(
+      digest1.getCentroids(),
+      digest1.sum(),
+      digest1.count(),
+      digest1.max(),
+      digest1.min(),
+      100);
+
+  EXPECT_EQ(digest1.sum(), digest2.sum());
+  EXPECT_EQ(digest1.count(), digest2.count());
+  EXPECT_EQ(digest1.min(), digest2.min());
+  EXPECT_EQ(digest1.max(), digest2.max());
+  EXPECT_EQ(digest1.getCentroids().size(), digest2.getCentroids().size());
+
+  TDigest digest3(
+      digest1.getCentroids(),
+      digest1.sum(),
+      digest1.count(),
+      digest1.max(),
+      digest1.min(),
+      centroid_count - 1);
+  EXPECT_EQ(digest1.sum(), digest3.sum());
+  EXPECT_EQ(digest1.count(), digest3.count());
+  EXPECT_EQ(digest1.min(), digest3.min());
+  EXPECT_EQ(digest1.max(), digest3.max());
+  EXPECT_NE(digest1.getCentroids().size(), digest3.getCentroids().size());
+}
+
 class DistributionTest
     : public ::testing::TestWithParam<
           std::tuple<std::pair<bool, size_t>, double, bool>> {};
