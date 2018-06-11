@@ -206,9 +206,8 @@ source_group("folly\\build" FILES
 
 target_include_directories(folly_deps
   INTERFACE
-    $<BUILD_INTERFACE:
-      ${CMAKE_CURRENT_SOURCE_DIR}
-      ${CMAKE_CURRENT_BINARY_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
