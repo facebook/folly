@@ -105,8 +105,7 @@
  * Define a convenience macro to test when ASAN, UBSAN or TSAN sanitizer are
  * being used
  */
-#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) || \
-    defined(UNDEFINED_SANITIZER)
+#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD)
 #define FOLLY_SANITIZE 1
 #endif
 

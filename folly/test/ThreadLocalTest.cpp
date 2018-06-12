@@ -584,8 +584,8 @@ TEST(ThreadLocal, Fork2) {
 //
 // We also cannot run this test unless folly was compiled with PIC support,
 // since we cannot build thread_local_test_lib.so without PIC.
-#if defined FOLLY_SANITIZE_ADDRESS || defined UNDEFINED_SANITIZER || \
-    defined FOLLY_SANITIZE_THREAD || !defined FOLLY_SUPPORT_SHARED_LIBRARY
+#if defined FOLLY_SANITIZE_ADDRESS || defined FOLLY_SANITIZE_THREAD || \
+    !defined FOLLY_SUPPORT_SHARED_LIBRARY
 #define SHARED_LIBRARY_TEST_NAME DISABLED_SharedLibrary
 #else
 #define SHARED_LIBRARY_TEST_NAME SharedLibrary
