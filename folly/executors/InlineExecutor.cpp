@@ -20,9 +20,12 @@
 
 namespace folly {
 
-InlineExecutor& InlineExecutor::instance() {
+InlineExecutor& InlineExecutor::instance_slow() noexcept {
   static auto instance = Indestructible<InlineExecutor>{};
+  cache.store(&*instance, std::memory_order_release);
   return *instance;
 }
+
+std::atomic<InlineExecutor*> InlineExecutor::cache;
 
 } // namespace folly
