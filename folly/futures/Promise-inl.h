@@ -109,8 +109,7 @@ Promise<T>::setException(E const& e) {
 
 template <class T>
 void Promise<T>::setException(exception_wrapper ew) {
-  throwIfFulfilled();
-  core_->setResult(Try<T>(std::move(ew)));
+  setTry(Try<T>(std::move(ew)));
 }
 
 template <class T>
