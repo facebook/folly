@@ -7,23 +7,16 @@ from __future__ import unicode_literals
 import specs.fbthrift as fbthrift
 import specs.folly as folly
 import specs.gmock as gmock
+import specs.sodium as sodium
 
 from shell_quoting import ShellQuoted
 
 
 def fbcode_builder_spec(builder):
-    builder.add_option('jedisct1/libsodium:git_hash', 'stable')
     builder.add_option('zeromq/libzmq:git_hash', 'v4.2.5')
     return {
-        'depends_on': [folly, fbthrift, gmock],
+        'depends_on': [folly, fbthrift, gmock, sodium],
         'steps': [
-            builder.github_project_workdir('jedisct1/libsodium', '.'),
-            builder.step('Build and install jedisct1/libsodium', [
-                builder.run(ShellQuoted('./autogen.sh')),
-                builder.configure(),
-                builder.make_and_install(),
-            ]),
-
             builder.github_project_workdir('zeromq/libzmq', '.'),
             builder.step('Build and install zeromq/libzmq', [
                 builder.run(ShellQuoted('./autogen.sh')),
