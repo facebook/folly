@@ -30,8 +30,8 @@ class FileHandlerFactory::WriterFactory
       return true;
     }
 
-    // TODO: In the future it would be nice to support log rotation, and
-    // add parameters to control when the log file should be rotated.
+    // TODO(T29811675): In the future it would be nice to support log rotation,
+    // and add parameters to control when the log file should be rotated.
 
     return fileWriterFactory_.processOption(name, value);
   }
