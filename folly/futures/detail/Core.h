@@ -287,11 +287,9 @@ class Core final {
           return fsm_.tryUpdateState(
               state, State::Done, setCallback_, [&] { doCallback(); });
 
-        case State::OnlyCallback:
-        case State::Done:
-          throw_exception<std::logic_error>("setCallback called twice");
+        default:
+          terminate_with<std::logic_error>("setCallback unexpected state");
       }
-      assume_unreachable();
     });
   }
 
@@ -314,11 +312,9 @@ class Core final {
           return fsm_.tryUpdateState(
               state, State::Done, setResult_, [&] { doCallback(); });
 
-        case State::OnlyResult:
-        case State::Done:
-          throw_exception<std::logic_error>("setResult called twice");
+        default:
+          terminate_with<std::logic_error>("setResult unexpected state");
       }
-      assume_unreachable();
     });
   }
 
