@@ -775,6 +775,21 @@ static void virtualExecutorTest() {
               .semi();
     }
     EXPECT_EQ(1, counter);
+
+    bool functionDestroyed{false};
+    bool functionCalled{false};
+    {
+      VirtualExecutor ve(fe);
+      auto guard = makeGuard([&functionDestroyed] {
+        std::this_thread::sleep_for(100ms);
+        functionDestroyed = true;
+      });
+      ve.add([&functionCalled, guard = std::move(guard)] {
+        functionCalled = true;
+      });
+    }
+    EXPECT_TRUE(functionCalled);
+    EXPECT_TRUE(functionDestroyed);
   }
   EXPECT_TRUE(f->isReady());
   EXPECT_NO_THROW(std::move(*f).get());

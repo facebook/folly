@@ -519,7 +519,8 @@ nobase_follyinclude_HEADERS = \
 	Uri.h \
 	Uri-inl.h \
 	Utility.h \
-	Varint.h
+	Varint.h \
+	VirtualExecutor.h
 
 libfollybasesse42_la_SOURCES = \
 	detail/RangeSse42.cpp \

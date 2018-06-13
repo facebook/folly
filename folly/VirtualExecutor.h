@@ -30,6 +30,24 @@ namespace folly {
  * backed by it are released.
  */
 class VirtualExecutor : public DefaultKeepAliveExecutor {
+  auto wrapFunc(Func f) {
+    class FuncAndKeepAlive {
+     public:
+      FuncAndKeepAlive(Func&& f, VirtualExecutor* executor)
+          : keepAlive_(getKeepAliveToken(executor)), f_(std::move(f)) {}
+
+      void operator()() {
+        f_();
+      }
+
+     private:
+      Executor::KeepAlive<VirtualExecutor> keepAlive_;
+      Func f_;
+    };
+
+    return FuncAndKeepAlive(std::move(f), this);
+  }
+
  public:
   explicit VirtualExecutor(KeepAlive<> executor)
       : executor_(std::move(executor)) {
@@ -50,16 +68,11 @@ class VirtualExecutor : public DefaultKeepAliveExecutor {
   }
 
   void add(Func f) override {
-    executor_->add([func = std::move(f),
-                    me = getKeepAliveToken(this)]() mutable { func(); });
+    executor_->add(wrapFunc(std::move(f)));
   }
 
   void addWithPriority(Func f, int8_t priority) override {
-    executor_->addWithPriority(
-        [func = std::move(f), me = getKeepAliveToken(this)]() mutable {
-          func();
-        },
-        priority);
+    executor_->addWithPriority(wrapFunc(std::move(f)), priority);
   }
 
   ~VirtualExecutor() override {
