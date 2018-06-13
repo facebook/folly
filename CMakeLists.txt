@@ -498,7 +498,6 @@ if (BUILD_TESTS)
       TEST context_test SOURCES ContextTest.cpp
       TEST core_test SOURCES CoreTest.cpp
       TEST ensure_test SOURCES EnsureTest.cpp
-      TEST fsm_test SOURCES FSMTest.cpp
       TEST filter_test SOURCES FilterTest.cpp
       TEST future_splitter_test SOURCES FutureSplitterTest.cpp
       # MSVC SFINAE bug

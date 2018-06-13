@@ -26,8 +26,7 @@ TEST(Core, size) {
     typename std::aligned_storage<lambdaBufSize>::type lambdaBuf_;
     folly::Optional<Try<Unit>> result_;
     folly::Function<void(Try<Unit>&&)> callback_;
-    futures::detail::FSM<futures::detail::State, futures::detail::SpinLock>
-        fsm_;
+    std::atomic<futures::detail::State> state_;
     std::atomic<unsigned char> attached_;
     std::atomic<bool> interruptHandlerSet_;
     futures::detail::SpinLock interruptLock_;

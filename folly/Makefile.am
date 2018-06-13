@@ -222,7 +222,6 @@ nobase_follyinclude_HEADERS = \
 	futures/SharedPromise-inl.h \
 	futures/ThreadWheelTimekeeper.h \
 	futures/detail/Core.h \
-	futures/detail/FSM.h \
 	futures/detail/Types.h \
 	futures/test/TestExecutor.h \
 	hash/Checksum.h \

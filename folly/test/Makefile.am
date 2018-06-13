@@ -317,7 +317,6 @@ futures_test_SOURCES = \
     ../futures/test/ConversionOperatorTest.cpp \
     ../futures/test/CoreTest.cpp \
     ../futures/test/EnsureTest.cpp \
-    ../futures/test/FSMTest.cpp \
     ../futures/test/FilterTest.cpp \
     ../futures/test/FutureTest.cpp \
     ../futures/test/HeaderCompileTest.cpp \

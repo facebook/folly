@@ -28,7 +28,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
 #include <folly/Utility.h>
-#include <folly/futures/detail/FSM.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/MicroSpinLock.h>
@@ -212,7 +211,8 @@ class Core final {
   /// May call from any thread
   bool hasCallback() const noexcept {
     constexpr auto allowed = State::OnlyCallback | State::Done;
-    auto const ans = State() != (fsm_.getState() & allowed);
+    auto const state = state_.load(std::memory_order_acquire);
+    auto const ans = State() != (state & allowed);
     assert(!ans || !!callback_); // callback_ must exist in this state
     return ans;
   }
@@ -224,7 +224,8 @@ class Core final {
   /// Identical to `this->ready()`
   bool hasResult() const noexcept {
     constexpr auto allowed = State::OnlyResult | State::Done;
-    auto const ans = State() != (fsm_.getState() & allowed);
+    auto const state = state_.load(std::memory_order_acquire);
+    auto const ans = State() != (state & allowed);
     assert(!ans || !!result_); // result_ must exist if hasResult() is true
     return ans;
   }
@@ -273,24 +274,32 @@ class Core final {
   /// executor or if the executor is inline).
   template <typename F>
   void setCallback(F&& func) {
-    auto setCallback_ = [&]{
-      context_ = RequestContext::saveContext();
-      callback_ = std::forward<F>(func);
-    };
+    context_ = RequestContext::saveContext();
+    callback_ = std::forward<F>(func);
 
-    fsm_.transition([&](State state) {
+    auto state = state_.load(std::memory_order_acquire);
+    while (true) {
       switch (state) {
         case State::Start:
-          return fsm_.tryUpdateState(state, State::OnlyCallback, setCallback_);
+          if (state_.compare_exchange_strong(
+                  state, State::OnlyCallback, std::memory_order_release)) {
+            return;
+          }
+          assume(state == State::OnlyResult);
+          FOLLY_FALLTHROUGH;
 
         case State::OnlyResult:
-          return fsm_.tryUpdateState(
-              state, State::Done, setCallback_, [&] { doCallback(); });
+          if (state_.compare_exchange_strong(
+                  state, State::Done, std::memory_order_release)) {
+            doCallback();
+            return;
+          }
+          FOLLY_FALLTHROUGH;
 
         default:
           terminate_with<std::logic_error>("setCallback unexpected state");
       }
-    });
+    }
   }
 
   /// Call only from producer thread.
@@ -302,20 +311,31 @@ class Core final {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
-    auto setResult_ = [&]{ result_ = std::move(t); };
-    fsm_.transition([&](State state) {
+    result_ = std::move(t);
+
+    auto state = state_.load(std::memory_order_acquire);
+    while (true) {
       switch (state) {
         case State::Start:
-          return fsm_.tryUpdateState(state, State::OnlyResult, setResult_);
+          if (state_.compare_exchange_strong(
+                  state, State::OnlyResult, std::memory_order_release)) {
+            return;
+          }
+          assume(state == State::OnlyCallback);
+          FOLLY_FALLTHROUGH;
 
         case State::OnlyCallback:
-          return fsm_.tryUpdateState(
-              state, State::Done, setResult_, [&] { doCallback(); });
+          if (state_.compare_exchange_strong(
+                  state, State::Done, std::memory_order_release)) {
+            doCallback();
+            return;
+          }
+          FOLLY_FALLTHROUGH;
 
         default:
           terminate_with<std::logic_error>("setResult unexpected state");
       }
-    });
+    }
   }
 
   /// Called by a destructing Future (in the consumer thread, by definition).
@@ -339,7 +359,7 @@ class Core final {
   void setExecutor(
       Executor::KeepAlive<> x,
       int8_t priority = Executor::MID_PRI) {
-    DCHECK(fsm_.getState() != State::OnlyCallback);
+    DCHECK(state_ != State::OnlyCallback);
     executor_ = std::move(x);
     priority_ = priority;
   }
@@ -409,16 +429,16 @@ class Core final {
   }
 
  private:
-  Core() : result_(), fsm_(State::Start), attached_(2) {}
+  Core() : result_(), state_(State::Start), attached_(2) {}
 
   explicit Core(Try<T>&& t)
-      : result_(std::move(t)), fsm_(State::OnlyResult), attached_(1) {}
+      : result_(std::move(t)), state_(State::OnlyResult), attached_(1) {}
 
   template <typename... Args>
   explicit Core(in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
       : result_(in_place, in_place, std::forward<Args>(args)...),
-        fsm_(State::OnlyResult),
+        state_(State::OnlyResult),
         attached_(1) {}
 
   ~Core() {
@@ -461,7 +481,7 @@ class Core final {
 
   // May be called at most once.
   void doCallback() {
-    DCHECK(fsm_.getState() == State::Done);
+    DCHECK(state_ == State::Done);
     auto x = exchange(executor_, Executor::KeepAlive<>());
     int8_t priority = priority_;
 
@@ -546,7 +566,7 @@ class Core final {
   // place result_ next to increase the likelihood that the value will be
   // contained entirely in one cache line
   folly::Optional<Try<T>> result_;
-  FSM<State, SpinLock> fsm_;
+  std::atomic<State> state_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
   std::atomic<bool> interruptHandlerSet_ {false};
