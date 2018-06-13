@@ -354,6 +354,18 @@ constexpr auto kIsWindows = true;
 constexpr auto kIsWindows = false;
 #endif
 
+#if __GLIBCXX__
+constexpr auto kIsGlibcxx = true;
+#else
+constexpr auto kIsGlibcxx = false;
+#endif
+
+#if _LIBCPP_VERSION
+constexpr auto kIsLibcpp = true;
+#else
+constexpr auto kIsLibcpp = false;
+#endif
+
 #if _MSC_VER
 constexpr auto kMscVer = _MSC_VER;
 #else

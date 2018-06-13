@@ -36,6 +36,14 @@ template <typename Ex>
 #endif
 }
 
+/// terminate_with
+///
+/// Terminates as if by forwarding to throw_exception but in a noexcept context.
+template <typename Ex>
+[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void terminate_with(Ex&& ex) noexcept {
+  throw_exception(static_cast<Ex&&>(ex));
+}
+
 // clang-format off
 namespace detail {
 template <typename T>
@@ -49,6 +57,11 @@ FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN char const* to_exception_arg_(
 }
 template <typename Ex, typename... Args>
 [[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception_(Args&&... args) {
+  throw_exception(Ex(static_cast<Args&&>(args)...));
+}
+template <typename Ex, typename... Args>
+[[noreturn]] FOLLY_NOINLINE FOLLY_COLD void terminate_with_(
+    Args&&... args) noexcept {
   throw_exception(Ex(static_cast<Args&&>(args)...));
 }
 } // namespace detail
@@ -66,5 +79,17 @@ throw_exception(Args&&... args) {
   detail::throw_exception_<Ex>(
       detail::to_exception_arg_(static_cast<Args&&>(args))...);
 }
+
+/// terminate_with
+///
+/// Terminates as if by forwarding to throw_exception but in a noexcept context.
+// clang-format off
+template <typename Ex, typename... Args>
+[[noreturn]] FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void
+terminate_with(Args&&... args) noexcept {
+  detail::terminate_with_<Ex>(
+      detail::to_exception_arg_(static_cast<Args&&>(args))...);
+}
+// clang-format on
 
 } // namespace folly

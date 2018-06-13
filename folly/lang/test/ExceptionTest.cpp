@@ -16,39 +16,80 @@
 
 #include <folly/lang/Exception.h>
 
+#include <algorithm>
+#include <cstring>
+#include <string>
+
+#include <folly/Portability.h>
 #include <folly/portability/GTest.h>
 
-namespace {
+template <typename Ex>
+static std::string type_pretty_name() {
+  auto const name = __PRETTY_FUNCTION__;
+  auto const size = std::strlen(name);
+  auto const eq = std::find(name, name + size, '=');
+  auto const sc = std::find(name, name + size, ';');
+  auto const br = std::find(name, name + size, ']');
+  auto const bpos = name + size - eq >= 2 ? eq + 2 : name + size;
+  auto const epos = std::min(sc, br);
+  return epos < bpos ? "" : std::string(bpos, epos - bpos);
+}
+
+template <typename Ex>
+static std::string message_for_terminate_with(std::string const& what) {
+  auto const name = type_pretty_name<Ex>();
+  auto const prefix =
+      std::string("terminate called after throwing an instance of ");
+  // clang-format off
+  return
+      folly::kIsGlibcxx ? prefix + "'" + name + "'\\s+what\\(\\):\\s+" + what :
+      folly::kIsLibcpp ? prefix + name + ": " + what :
+      "" /* empty regex matches anything */;
+  // clang-format on
+}
 
 class MyException : public std::exception {
  private:
   char const* what_;
 
  public:
-  explicit MyException(char const* what) : MyException(what, 0) {}
-  MyException(char const* what, std::size_t strip) : what_(what + strip) {}
+  explicit MyException(char const* const what) : MyException(what, 0) {}
+  MyException(char const* const what, std::size_t const strip)
+      : what_(what + strip) {}
 
   char const* what() const noexcept override {
     return what_;
   }
 };
 
-} // namespace
+class ExceptionTest : public testing::Test {};
 
-class ThrowExceptionTest : public testing::Test {};
-
-TEST_F(ThrowExceptionTest, example) {
+TEST_F(ExceptionTest, throw_exception_direct) {
   try {
-    folly::throw_exception<MyException>("hello world"); // 1-arg form
+    folly::throw_exception<MyException>("hello world");
     ADD_FAILURE();
   } catch (MyException const& ex) {
     EXPECT_STREQ("hello world", ex.what());
   }
+}
 
+TEST_F(ExceptionTest, throw_exception_variadic) {
   try {
-    folly::throw_exception<MyException>("hello world", 6); // 2-arg form
+    folly::throw_exception<MyException>("hello world", 6);
     ADD_FAILURE();
   } catch (MyException const& ex) {
     EXPECT_STREQ("world", ex.what());
   }
+}
+
+TEST_F(ExceptionTest, terminate_with_direct) {
+  EXPECT_DEATH(
+      folly::terminate_with<MyException>("hello world"),
+      message_for_terminate_with<MyException>("hello world"));
+}
+
+TEST_F(ExceptionTest, terminate_with_variadic) {
+  EXPECT_DEATH(
+      folly::terminate_with<MyException>("hello world", 6),
+      message_for_terminate_with<MyException>("world"));
 }
