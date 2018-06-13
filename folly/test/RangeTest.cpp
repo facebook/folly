@@ -1430,3 +1430,89 @@ TEST(Range, LiteralSuffixContainsNulBytes) {
   constexpr auto literalPiece = "\0foo\0"_sp;
   EXPECT_EQ(5u, literalPiece.size());
 }
+
+TEST(Range, StringPieceExplicitConversionOperator) {
+  using PieceM = StringPiece;
+  using PieceC = StringPiece const;
+
+  EXPECT_FALSE((std::is_convertible<PieceM, int>::value));
+  EXPECT_FALSE((std::is_convertible<PieceM, std::string>::value));
+  EXPECT_FALSE((std::is_convertible<PieceM, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_constructible<int, PieceM>::value));
+  EXPECT_TRUE((std::is_constructible<std::string, PieceM>::value));
+  EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceM>::value));
+
+  EXPECT_FALSE((std::is_convertible<PieceC, int>::value));
+  EXPECT_FALSE((std::is_convertible<PieceC, std::string>::value));
+  EXPECT_FALSE((std::is_convertible<PieceC, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_constructible<int, PieceC>::value));
+  EXPECT_TRUE((std::is_constructible<std::string, PieceC>::value));
+  EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceC>::value));
+
+  using testing::ElementsAreArray;
+  std::array<char, 5> array = {{'h', 'e', 'l', 'l', 'o'}};
+  PieceM piecem{array};
+  PieceC piecec{array};
+  std::allocator<char> alloc;
+
+  EXPECT_EQ("hello", std::string(piecem));
+  EXPECT_EQ("hello", std::string(piecec));
+  EXPECT_EQ("hello", std::string{piecem});
+  EXPECT_EQ("hello", std::string{piecec});
+  EXPECT_EQ("hello", piecem.to<std::string>());
+  EXPECT_EQ("hello", piecec.to<std::string>());
+  EXPECT_EQ("hello", piecem.to<std::string>(alloc));
+  EXPECT_EQ("hello", piecec.to<std::string>(alloc));
+
+  EXPECT_THAT(std::vector<char>(piecem), ElementsAreArray(array));
+  EXPECT_THAT(std::vector<char>(piecec), ElementsAreArray(array));
+  EXPECT_THAT(std::vector<char>{piecem}, ElementsAreArray(array));
+  EXPECT_THAT(std::vector<char>{piecec}, ElementsAreArray(array));
+  EXPECT_THAT(piecem.to<std::vector<char>>(), ElementsAreArray(array));
+  EXPECT_THAT(piecec.to<std::vector<char>>(), ElementsAreArray(array));
+  EXPECT_THAT(piecem.to<std::vector<char>>(alloc), ElementsAreArray(array));
+  EXPECT_THAT(piecec.to<std::vector<char>>(alloc), ElementsAreArray(array));
+}
+
+TEST(Range, MutableStringPieceExplicitConversionOperator) {
+  using PieceM = MutableStringPiece;
+  using PieceC = MutableStringPiece const;
+
+  EXPECT_FALSE((std::is_convertible<PieceM, int>::value));
+  EXPECT_FALSE((std::is_convertible<PieceM, std::string>::value));
+  EXPECT_FALSE((std::is_convertible<PieceM, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_constructible<int, PieceM>::value));
+  EXPECT_TRUE((std::is_constructible<std::string, PieceM>::value));
+  EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceM>::value));
+
+  EXPECT_FALSE((std::is_convertible<PieceC, int>::value));
+  EXPECT_FALSE((std::is_convertible<PieceC, std::string>::value));
+  EXPECT_FALSE((std::is_convertible<PieceC, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_constructible<int, PieceC>::value));
+  EXPECT_TRUE((std::is_constructible<std::string, PieceC>::value));
+  EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceC>::value));
+
+  using testing::ElementsAreArray;
+  std::array<char, 5> array = {{'h', 'e', 'l', 'l', 'o'}};
+  PieceM piecem{array};
+  PieceC piecec{array};
+  std::allocator<char> alloc;
+
+  EXPECT_EQ("hello", std::string(piecem));
+  EXPECT_EQ("hello", std::string(piecec));
+  EXPECT_EQ("hello", std::string{piecem});
+  EXPECT_EQ("hello", std::string{piecec});
+  EXPECT_EQ("hello", piecem.to<std::string>());
+  EXPECT_EQ("hello", piecec.to<std::string>());
+  EXPECT_EQ("hello", piecem.to<std::string>(alloc));
+  EXPECT_EQ("hello", piecec.to<std::string>(alloc));
+
+  EXPECT_THAT(std::vector<char>(piecem), ElementsAreArray(array));
+  EXPECT_THAT(std::vector<char>(piecec), ElementsAreArray(array));
+  EXPECT_THAT(std::vector<char>{piecem}, ElementsAreArray(array));
+  EXPECT_THAT(std::vector<char>{piecec}, ElementsAreArray(array));
+  EXPECT_THAT(piecem.to<std::vector<char>>(), ElementsAreArray(array));
+  EXPECT_THAT(piecec.to<std::vector<char>>(), ElementsAreArray(array));
+  EXPECT_THAT(piecem.to<std::vector<char>>(alloc), ElementsAreArray(array));
+  EXPECT_THAT(piecec.to<std::vector<char>>(alloc), ElementsAreArray(array));
+}

@@ -474,11 +474,48 @@ class Range {
     return detail::value_before(e_);
   }
 
-  template <typename Tgt>
-  auto to() const
-      -> decltype(Tgt(std::declval<Iter const&>(), std::declval<size_type>())) {
-    return Tgt(b_, size());
+  template <
+      typename Tgt,
+      std::enable_if_t<std::is_constructible<Tgt, Iter&, Iter&>::value, int> =
+          0>
+  FOLLY_CPP14_CONSTEXPR explicit operator Tgt() noexcept(
+      noexcept(Tgt(std::declval<Iter&>(), std::declval<Iter&>()))) {
+    return Tgt(b_, e_);
   }
+  template <
+      typename Tgt,
+      std::enable_if_t<
+          std::is_constructible<Tgt, Iter const&, Iter const&>::value,
+          int> = 0>
+  constexpr explicit operator Tgt() const noexcept(
+      noexcept(Tgt(std::declval<Iter const&>(), std::declval<Iter const&>()))) {
+    return Tgt(b_, e_);
+  }
+
+  template <typename Tgt, typename... Args>
+  FOLLY_CPP14_CONSTEXPR auto to(Args&&... args) noexcept(noexcept(
+      Tgt(std::declval<Iter&>(),
+          std::declval<Iter&>(),
+          static_cast<Args&&>(args)...)))
+      -> decltype(
+          Tgt(std::declval<Iter&>(),
+              std::declval<Iter&>(),
+              static_cast<Args&&>(args)...)) {
+    return Tgt(b_, e_, static_cast<Args&&>(args)...);
+  }
+
+  template <typename Tgt, typename... Args>
+  constexpr auto to(Args&&... args) const noexcept(noexcept(
+      Tgt(std::declval<Iter const&>(),
+          std::declval<Iter const&>(),
+          static_cast<Args&&>(args)...)))
+      -> decltype(
+          Tgt(std::declval<Iter const&>(),
+              std::declval<Iter const&>(),
+              static_cast<Args&&>(args)...)) {
+    return Tgt(b_, e_, static_cast<Args&&>(args)...);
+  }
+
   // Works only for Range<const char*> and Range<char*>
   std::string str() const {
     return to<std::string>();
