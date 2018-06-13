@@ -245,6 +245,13 @@ void FutureBase<T>::throwIfInvalid() const {
 }
 
 template <class T>
+void FutureBase<T>::throwIfContinued() const {
+  if (!core_ || core_->hasCallback()) {
+    throw_exception<FutureAlreadyContinued>();
+  }
+}
+
+template <class T>
 Optional<Try<T>> FutureBase<T>::poll() {
   auto& core = getCore();
   return core.hasResult() ? Optional<Try<T>>(std::move(core.getTry()))
@@ -259,6 +266,7 @@ void FutureBase<T>::raise(exception_wrapper exception) {
 template <class T>
 template <class F>
 void FutureBase<T>::setCallback_(F&& func) {
+  throwIfContinued();
   getCore().setCallback(std::forward<F>(func));
 }
 
@@ -1807,9 +1815,15 @@ void waitImpl(FutureType& f) {
     return;
   }
 
-  FutureBatonType baton;
-  f.setCallback_([&](const Try<T>& /* t */) { baton.post(); });
-  baton.wait();
+  Promise<T> promise;
+  auto ret = promise.getSemiFuture();
+  auto baton = std::make_shared<FutureBatonType>();
+  f.setCallback_([baton, promise = std::move(promise)](Try<T>&& t) mutable {
+    promise.setTry(std::move(t));
+    baton->post();
+  });
+  convertFuture(std::move(ret), f);
+  baton->wait();
   assert(f.isReady());
 }
 

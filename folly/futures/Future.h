@@ -57,6 +57,11 @@ class FOLLY_EXPORT FutureInvalid : public FutureException {
   FutureInvalid() : FutureException("Future invalid") {}
 };
 
+class FOLLY_EXPORT FutureAlreadyContinued : public FutureException {
+ public:
+  FutureAlreadyContinued() : FutureException("Future already continued") {}
+};
+
 class FOLLY_EXPORT FutureNotReady : public FutureException {
  public:
   FutureNotReady() : FutureException("Future not ready") {}
@@ -386,6 +391,7 @@ class FutureBase {
   void detach();
 
   void throwIfInvalid() const;
+  void throwIfContinued() const;
 
   void assign(FutureBase<T>&& other) noexcept;
 
@@ -1789,6 +1795,7 @@ class Future : private futures::detail::FutureBase<T> {
   friend class FutureSplitter;
 
   using Base::setExecutor;
+  using Base::throwIfContinued;
   using Base::throwIfInvalid;
   using typename Base::corePtr;
 

@@ -352,7 +352,10 @@ TEST(Wait, WaitPlusThen) {
 
     EXPECT_FALSE(f.isReady()); // deterministically passes in practice
     f.wait();
-    EXPECT_THROW(f.then([](auto&&) {}), std::logic_error);
+    EXPECT_TRUE(f.isReady());
+    auto continuation = 0;
+    EXPECT_NO_THROW(f.then([&](auto&& v) { continuation = v; }));
+    EXPECT_EQ(continuation, 42);
     t.join();
   }
 
@@ -436,9 +439,12 @@ TEST(Wait, WaitPlusThen) {
 
     EXPECT_FALSE(f.isReady()); // deterministically passes in practice
     f.wait();
+    EXPECT_TRUE(f.isReady());
+    auto continuation = 0;
     InlineExecutor e;
     auto f2 = std::move(f).via(&e);
-    EXPECT_THROW(f2.then([](auto&&) {}), std::logic_error);
+    EXPECT_NO_THROW(f2.then([&](auto&& v) { continuation = v; }));
+    EXPECT_EQ(continuation, 42);
     t.join();
   }
 

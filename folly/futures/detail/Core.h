@@ -210,6 +210,14 @@ class Core final {
   Core& operator=(Core&&) = delete;
 
   /// May call from any thread
+  bool hasCallback() const noexcept {
+    constexpr auto allowed = State::OnlyCallback | State::Done;
+    auto const ans = State() != (fsm_.getState() & allowed);
+    assert(!ans || !!callback_); // callback_ must exist in this state
+    return ans;
+  }
+
+  /// May call from any thread
   ///
   /// True if state is OnlyResult or Done.
   ///
