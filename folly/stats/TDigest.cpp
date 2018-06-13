@@ -75,6 +75,32 @@ static double clamp(double v, double lo, double hi) {
   return v;
 }
 
+TDigest::TDigest(
+    std::vector<Centroid> centroids,
+    double sum,
+    double count,
+    double max_val,
+    double min_val,
+    size_t maxSize)
+    : maxSize_(maxSize),
+      sum_(sum),
+      count_(count),
+      max_(max_val),
+      min_(min_val) {
+  if (centroids.size() <= maxSize_) {
+    centroids_ = std::move(centroids);
+  } else {
+    // Number of centroids is greater than maxSize, we need to compress them
+    // When merging, resulting digest takes the maxSize of the first digest
+    auto sz = centroids.size();
+    std::array<TDigest, 2> digests{{
+        TDigest(maxSize_),
+        TDigest(std::move(centroids), sum_, count_, max_, min_, sz),
+    }};
+    *this = this->merge(digests);
+  }
+}
+
 TDigest TDigest::merge(Range<const double*> sortedValues) const {
   if (sortedValues.empty()) {
     return *this;
