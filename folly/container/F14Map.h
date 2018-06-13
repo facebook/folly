@@ -117,12 +117,36 @@ namespace detail {
 
 template <typename Policy>
 class F14BasicMap {
-  template <
-      typename K,
-      typename T,
-      typename H = typename Policy::Hasher,
-      typename E = typename Policy::KeyEqual>
-  using IfIsTransparent = folly::_t<EnableIfIsTransparent<void, H, E, K, T>>;
+  template <typename K, typename T>
+  using EnableHeterogeneousFind = std::enable_if_t<
+      EligibleForHeterogeneousFind<
+          typename Policy::Key,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value,
+      T>;
+
+  template <typename K, typename T>
+  using EnableHeterogeneousInsert = std::enable_if_t<
+      EligibleForHeterogeneousInsert<
+          typename Policy::Key,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value,
+      T>;
+
+  template <typename K, typename T>
+  using EnableHeterogeneousErase = std::enable_if_t<
+      EligibleForHeterogeneousFind<
+          typename Policy::Value,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value &&
+          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::
+              value &&
+          !std::is_same<typename Policy::ConstIter, folly::remove_cvref_t<K>>::
+              value,
+      T>;
 
  public:
   //// PUBLIC - Member types
@@ -407,40 +431,29 @@ class F14BasicMap {
     return insert_or_assign(std::move(key), std::move(obj)).first;
   }
 
+  template <typename K, typename M>
+  EnableHeterogeneousInsert<K, std::pair<iterator, bool>> insert_or_assign(
+      K&& key,
+      M&& obj) {
+    auto rv = try_emplace(std::forward<K>(key), std::forward<M>(obj));
+    if (!rv.second) {
+      rv.first->second = std::forward<M>(obj);
+    }
+    return rv;
+  }
+
  private:
   std::pair<ItemIter, bool> emplaceItem() {
     // rare but valid
     return table_.tryEmplaceValue(key_type{});
   }
 
-  template <typename U2>
-  std::pair<ItemIter, bool> emplaceItem(key_type&& x, U2&& y) {
-    // best case
-    return table_.tryEmplaceValue(x, std::move(x), std::forward<U2>(y));
-  }
-
-  template <typename U2>
-  std::pair<ItemIter, bool> emplaceItem(key_type const& x, U2&& y) {
-    // okay case, no construction unless we will actually insert
-    return table_.tryEmplaceValue(x, x, std::forward<U2>(y));
-  }
-
   template <typename U1, typename U2>
-  std::enable_if_t<
-      !std::is_same<key_type, folly::remove_cvref_t<U1>>::value,
-      std::pair<ItemIter, bool>>
-  emplaceItem(U1&& x, U2&& y) {
-    static_assert(
-        !std::is_same<key_type, folly::remove_cvref_t<U1>>::value,
-        "method signature bug");
-
-    // We can either construct key_type on the stack and move it if we end
-    // up inserting, or use a policy-specific mechanism to construct the
-    // item (possibly indirect) and then destroy it if we don't end up
-    // using it.  The cost of being wrong is much higher for the latter
-    // so we choose the former (unlike std::unordered_map::emplace).
-    key_type k(std::forward<U1>(x));
-    return table_.tryEmplaceValue(k, std::move(k), std::forward<U2>(y));
+  std::pair<ItemIter, bool> emplaceItem(U1&& x, U2&& y) {
+    using K = KeyTypeForEmplace<key_type, hasher, key_equal, U1>;
+    K key(std::forward<U1>(x));
+    return table_.tryEmplaceValue(
+        key, std::forward<K>(key), std::forward<U2>(y));
   }
 
   template <typename U1, typename U2>
@@ -453,45 +466,36 @@ class F14BasicMap {
     return emplaceItem(std::move(p.first), std::move(p.second));
   }
 
-  template <typename U1, typename... Args2>
-  std::enable_if_t<
-      std::is_same<folly::remove_cvref_t<U1>, key_type>::value,
-      std::pair<ItemIter, bool>>
-  emplaceItem(
+  template <typename Arg1, typename... Args2>
+  std::pair<ItemIter, bool> emplaceItem(
       std::piecewise_construct_t,
-      std::tuple<U1>&& first_args,
+      std::tuple<Arg1>&& first_args,
       std::tuple<Args2...>&& second_args) {
-    // We take care to forward by reference even if the caller didn't
-    // use forward_as_tuple properly
+    using K = KeyTypeForEmplace<key_type, hasher, key_equal, Arg1>;
+    K key(std::get<0>(std::move(first_args)));
+
+    // Args2&&... holds only references even if the caller gave us a
+    // tuple that directly contains values.
     return table_.tryEmplaceValue(
-        std::get<0>(first_args),
+        key,
         std::piecewise_construct,
-        std::tuple<std::add_rvalue_reference_t<U1>>{std::move(first_args)},
-        std::tuple<std::add_rvalue_reference_t<Args2>...>{
-            std::move(second_args)});
+        std::forward_as_tuple(std::forward<K>(key)),
+        std::tuple<Args2&&...>(std::move(second_args)));
   }
 
   template <typename... Args1, typename... Args2>
-  std::enable_if_t<
-      sizeof...(Args1) != 1 ||
-          !std::is_same<
-              folly::remove_cvref_t<
-                  std::tuple_element_t<0, std::tuple<Args1..., value_type>>>,
-              key_type>::value,
-      std::pair<ItemIter, bool>>
+  std::enable_if_t<sizeof...(Args1) != 1, std::pair<ItemIter, bool>>
   emplaceItem(
       std::piecewise_construct_t,
       std::tuple<Args1...>&& first_args,
       std::tuple<Args2...>&& second_args) {
-    auto k = folly::make_from_tuple<key_type>(
-        std::tuple<std::add_rvalue_reference_t<Args1>...>{
-            std::move(first_args)});
+    auto key = folly::make_from_tuple<key_type>(
+        std::tuple<Args1&&...>(std::move(first_args)));
     return table_.tryEmplaceValue(
-        k,
+        key,
         std::piecewise_construct,
-        std::forward_as_tuple(std::move(k)),
-        std::tuple<std::add_rvalue_reference_t<Args2>...>{
-            std::move(second_args)});
+        std::forward_as_tuple(std::move(key)),
+        std::tuple<Args2&&...>(std::move(second_args)));
   }
 
  public:
@@ -543,11 +547,23 @@ class F14BasicMap {
     return table_.makeIter(rv.first);
   }
 
+  template <typename K, typename... Args>
+  EnableHeterogeneousInsert<K, std::pair<iterator, bool>> try_emplace(
+      K&& key,
+      Args&&... args) {
+    auto rv = table_.tryEmplaceValue(
+        key,
+        std::piecewise_construct,
+        std::forward_as_tuple(std::forward<K>(key)),
+        std::forward_as_tuple(std::forward<Args>(args)...));
+    return std::make_pair(table_.makeIter(rv.first), rv.second);
+  }
+
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
     // If we are inlined then gcc and clang can optimize away all of the
     // work of itemPos.advance() if our return value is discarded.
     auto itemPos = table_.unwrapIter(pos);
-    table_.erase(itemPos);
+    table_.eraseIter(itemPos);
     itemPos.advance();
     return table_.makeIter(itemPos);
   }
@@ -555,7 +571,7 @@ class F14BasicMap {
   // This form avoids ambiguity when key_type has a templated constructor
   // that accepts const_iterator
   iterator erase(iterator pos) {
-    table_.erase(table_.unwrapIter(pos));
+    table_.eraseIter(table_.unwrapIter(pos));
     return ++pos;
   }
 
@@ -563,14 +579,19 @@ class F14BasicMap {
     auto itemFirst = table_.unwrapIter(first);
     auto itemLast = table_.unwrapIter(last);
     while (itemFirst != itemLast) {
-      table_.erase(itemFirst);
+      table_.eraseIter(itemFirst);
       itemFirst.advance();
     }
     return table_.makeIter(itemFirst);
   }
 
   size_type erase(key_type const& key) {
-    return table_.erase(key);
+    return table_.eraseKey(key);
+  }
+
+  template <typename K>
+  EnableHeterogeneousErase<K, size_type> erase(K const& key) {
+    return table_.eraseKey(key);
   }
 
   //// PUBLIC - Lookup
@@ -583,6 +604,16 @@ class F14BasicMap {
     return at(*this, key);
   }
 
+  template <typename K>
+  EnableHeterogeneousFind<K, mapped_type&> at(K const& key) {
+    return at(*this, key);
+  }
+
+  template <typename K>
+  EnableHeterogeneousFind<K, mapped_type const&> at(K const& key) const {
+    return at(*this, key);
+  }
+
   mapped_type& operator[](key_type const& key) {
     return try_emplace(key).first->second;
   }
@@ -591,12 +622,17 @@ class F14BasicMap {
     return try_emplace(std::move(key)).first->second;
   }
 
+  template <typename K>
+  EnableHeterogeneousInsert<K, mapped_type&> operator[](K&& key) {
+    return try_emplace(std::forward<K>(key)).first->second;
+  }
+
   FOLLY_ALWAYS_INLINE std::size_t count(key_type const& key) const {
     return table_.find(key).atEnd() ? 0 : 1;
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, std::size_t> count(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, std::size_t> count(
       K const& key) const {
     return table_.find(key).atEnd() ? 0 : 1;
   }
@@ -620,7 +656,7 @@ class F14BasicMap {
   }
 
   template <typename K>
-  IfIsTransparent<K, F14HashToken> prehash(K const& key) const {
+  EnableHeterogeneousFind<K, F14HashToken> prehash(K const& key) const {
     return table_.prehash(key);
   }
 
@@ -643,25 +679,25 @@ class F14BasicMap {
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, iterator> find(K const& key) {
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(K const& key) {
     return table_.makeIter(table_.find(key));
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, const_iterator> find(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
       K const& key) const {
     return table_.makeConstIter(table_.find(key));
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, iterator> find(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(
       F14HashToken const& token,
       K const& key) {
     return table_.makeIter(table_.find(token, key));
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, const_iterator> find(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
       F14HashToken const& token,
       K const& key) const {
     return table_.makeConstIter(table_.find(token, key));
@@ -677,13 +713,14 @@ class F14BasicMap {
   }
 
   template <typename K>
-  IfIsTransparent<K, std::pair<iterator, iterator>> equal_range(K const& key) {
+  EnableHeterogeneousFind<K, std::pair<iterator, iterator>> equal_range(
+      K const& key) {
     return equal_range(*this, key);
   }
 
   template <typename K>
-  IfIsTransparent<K, std::pair<const_iterator, const_iterator>> equal_range(
-      K const& key) const {
+  EnableHeterogeneousFind<K, std::pair<const_iterator, const_iterator>>
+  equal_range(K const& key) const {
     return equal_range(*this, key);
   }
 
@@ -929,6 +966,25 @@ class F14VectorMap
       Alloc>;
   using Super = f14::detail::F14BasicMap<Policy>;
 
+  template <typename K, typename T>
+  using EnableHeterogeneousVectorErase = std::enable_if_t<
+      f14::detail::EligibleForHeterogeneousFind<
+          typename Policy::Value,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value &&
+          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::
+              value &&
+          !std::is_same<typename Policy::ConstIter, folly::remove_cvref_t<K>>::
+              value &&
+          !std::is_same<
+              typename Policy::ReverseIter,
+              folly::remove_cvref_t<K>>::value &&
+          !std::is_same<
+              typename Policy::ConstReverseIter,
+              folly::remove_cvref_t<K>>::value,
+      T>;
+
  public:
   using typename Super::const_iterator;
   using typename Super::iterator;
@@ -1030,7 +1086,7 @@ class F14VectorMap
     auto index = underlying.item();
     // The item still needs to be hashable during this call, so we must destroy
     // the value _afterwards_.
-    this->table_.erase(underlying);
+    this->table_.eraseIter(underlying);
     Policy::AllocTraits::destroy(a, std::addressof(values[index]));
 
     // move the last element in values_ down and fix up the inbound index
@@ -1042,6 +1098,17 @@ class F14VectorMap
       auto p = std::addressof(values[index]);
       folly::assume(p != nullptr);
       this->table_.transfer(a, std::addressof(values[tailIndex]), p, 1);
+    }
+  }
+
+  template <typename K>
+  std::size_t eraseUnderlyingKey(K const& key) {
+    auto underlying = this->table_.find(key);
+    if (underlying.atEnd()) {
+      return 0;
+    } else {
+      eraseUnderlying(underlying);
+      return 1;
     }
   }
 
@@ -1069,14 +1136,17 @@ class F14VectorMap
     return index == 0 ? end() : this->table_.indexToIter(index - 1);
   }
 
+  // No erase is provided for reverse_iterator or const_reverse_iterator
+  // to make it harder to shoot yourself in the foot by erasing while
+  // reverse-iterating.  You can write that as map.erase(map.iter(riter)).
+
   std::size_t erase(key_type const& key) {
-    auto underlying = this->table_.find(key);
-    if (underlying.atEnd()) {
-      return 0;
-    } else {
-      eraseUnderlying(underlying);
-      return 1;
-    }
+    return eraseUnderlyingKey(key);
+  }
+
+  template <typename K>
+  EnableHeterogeneousVectorErase<K, std::size_t> erase(K const& key) {
+    return eraseUnderlyingKey(key);
   }
 };
 

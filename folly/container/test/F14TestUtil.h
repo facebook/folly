@@ -277,6 +277,35 @@ struct Tracked {
   }
 };
 
+template <int Tag>
+struct TransparentTrackedHash {
+  using is_transparent = std::true_type;
+
+  size_t operator()(Tracked<Tag> const& tracked) const {
+    return tracked.val_ ^ Tag;
+  }
+  size_t operator()(uint64_t v) const {
+    return v ^ Tag;
+  }
+};
+
+template <int Tag>
+struct TransparentTrackedEqual {
+  using is_transparent = std::true_type;
+
+  uint64_t unwrap(Tracked<Tag> const& v) const {
+    return v.val_;
+  }
+  uint64_t unwrap(uint64_t v) const {
+    return v;
+  }
+
+  template <typename A, typename B>
+  bool operator()(A const& lhs, B const& rhs) const {
+    return unwrap(lhs) == unwrap(rhs);
+  }
+};
+
 template <>
 thread_local Counts Tracked<0>::counts{};
 template <>

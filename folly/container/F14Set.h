@@ -113,12 +113,33 @@ namespace detail {
 
 template <typename Policy>
 class F14BasicSet {
-  template <
-      typename K,
-      typename T,
-      typename H = typename Policy::Hasher,
-      typename E = typename Policy::KeyEqual>
-  using IfIsTransparent = folly::_t<EnableIfIsTransparent<void, H, E, K, T>>;
+  template <typename K, typename T>
+  using EnableHeterogeneousFind = std::enable_if_t<
+      EligibleForHeterogeneousFind<
+          typename Policy::Value,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value,
+      T>;
+
+  template <typename K, typename T>
+  using EnableHeterogeneousInsert = std::enable_if_t<
+      EligibleForHeterogeneousInsert<
+          typename Policy::Value,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value,
+      T>;
+
+  template <typename K, typename T>
+  using EnableHeterogeneousErase = std::enable_if_t<
+      EligibleForHeterogeneousFind<
+          typename Policy::Value,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value &&
+          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::value,
+      T>;
 
  public:
   //// PUBLIC - Member types
@@ -306,6 +327,11 @@ class F14BasicSet {
     return insert(std::move(value)).first;
   }
 
+  template <typename K>
+  EnableHeterogeneousInsert<K, std::pair<iterator, bool>> insert(K&& value) {
+    return emplace(std::forward<K>(value));
+  }
+
  private:
   template <class InputIt>
   FOLLY_ALWAYS_INLINE void
@@ -354,36 +380,18 @@ class F14BasicSet {
     insert(ilist.begin(), ilist.end());
   }
 
- private:
-  std::pair<ItemIter, bool> emplaceItem() {
-    // rare but valid
-    return table_.tryEmplaceValue(key_type{});
-  }
-
-  std::pair<ItemIter, bool> emplaceItem(key_type&& key) {
-    // best case
-    return table_.tryEmplaceValue(key, std::move(key));
-  }
-
-  std::pair<ItemIter, bool> emplaceItem(key_type const& key) {
-    // okay case, no construction unless we will actually insert
-    return table_.tryEmplaceValue(key, key);
-  }
-
-  template <typename Arg0, typename... Args>
-  std::enable_if_t<
-      sizeof...(Args) != 0 ||
-          !std::is_same<folly::remove_cvref_t<Arg0>, key_type>::value,
-      std::pair<ItemIter, bool>>
-  emplaceItem(Arg0&& arg0, Args&&... args) {
-    key_type key(std::forward<Arg0>(arg0), std::forward<Args>(args)...);
-    return table_.tryEmplaceValue(key, std::move(key));
-  }
-
- public:
   template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    auto rv = emplaceItem(std::forward<Args>(args)...);
+    using K = KeyTypeForEmplace<key_type, hasher, key_equal, Args...>;
+
+    // If args is a single arg that can be emplaced directly (either
+    // key_type or a heterogeneous find + conversion to key_type) key will
+    // just be a reference to that arg, otherwise this will construct an
+    // intermediate key.
+    K key(std::forward<Args>(args)...);
+
+    auto rv = table_.tryEmplaceValue(key, std::forward<K>(key));
+
     return std::make_pair(table_.makeIter(rv.first), rv.second);
   }
 
@@ -404,6 +412,11 @@ class F14BasicSet {
     return eraseInto(key, [](value_type&&) {});
   }
 
+  template <typename K>
+  EnableHeterogeneousErase<K, size_type> erase(K const& key) {
+    return eraseInto(key, [](value_type&&) {});
+  }
+
   // eraseInto contains the same overloads as erase but provides
   // an additional callback argument which is called with an rvalue
   // reference to the item directly before it is destroyed. This can be
@@ -411,7 +424,7 @@ class F14BasicSet {
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE iterator
   eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
-    table_.eraseInto(table_.unwrapIter(pos), beforeDestroy);
+    table_.eraseIterInto(table_.unwrapIter(pos), beforeDestroy);
 
     // If we are inlined then gcc and clang can optimize away all of the
     // work of ++pos if the caller discards it.
@@ -431,7 +444,14 @@ class F14BasicSet {
 
   template <typename BeforeDestroy>
   size_type eraseInto(key_type const& key, BeforeDestroy&& beforeDestroy) {
-    return table_.eraseInto(key, beforeDestroy);
+    return table_.eraseKeyInto(key, beforeDestroy);
+  }
+
+  template <typename K, typename BeforeDestroy>
+  EnableHeterogeneousErase<K, size_type> eraseInto(
+      K const& key,
+      BeforeDestroy&& beforeDestroy) {
+    return table_.eraseKeyInto(key, beforeDestroy);
   }
 
   //// PUBLIC - Lookup
@@ -441,7 +461,8 @@ class F14BasicSet {
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, size_type> count(K const& key) const {
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, size_type> count(
+      K const& key) const {
     return table_.find(key).atEnd() ? 0 : 1;
   }
 
@@ -464,7 +485,7 @@ class F14BasicSet {
   }
 
   template <typename K>
-  IfIsTransparent<K, F14HashToken> prehash(K const& key) const {
+  EnableHeterogeneousFind<K, F14HashToken> prehash(K const& key) const {
     return table_.prehash(key);
   }
 
@@ -487,25 +508,25 @@ class F14BasicSet {
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, iterator> find(K const& key) {
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(K const& key) {
     return const_cast<F14BasicSet const*>(this)->find(key);
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, const_iterator> find(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
       K const& key) const {
     return table_.makeIter(table_.find(key));
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, iterator> find(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, iterator> find(
       F14HashToken const& token,
       K const& key) {
     return const_cast<F14BasicSet const*>(this)->find(token, key);
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE IfIsTransparent<K, const_iterator> find(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, const_iterator> find(
       F14HashToken const& token,
       K const& key) const {
     return table_.makeIter(table_.find(token, key));
@@ -521,13 +542,14 @@ class F14BasicSet {
   }
 
   template <typename K>
-  IfIsTransparent<K, std::pair<iterator, iterator>> equal_range(K const& key) {
+  EnableHeterogeneousFind<K, std::pair<iterator, iterator>> equal_range(
+      K const& key) {
     return equal_range(*this, key);
   }
 
   template <typename K>
-  IfIsTransparent<K, std::pair<const_iterator, const_iterator>> equal_range(
-      K const& key) const {
+  EnableHeterogeneousFind<K, std::pair<const_iterator, const_iterator>>
+  equal_range(K const& key) const {
     return equal_range(*this, key);
   }
 
@@ -736,13 +758,27 @@ class F14VectorSet
       Alloc>;
   using Super = f14::detail::F14BasicSet<Policy>;
 
+  template <typename K, typename T>
+  using EnableHeterogeneousVectorErase = std::enable_if_t<
+      f14::detail::EligibleForHeterogeneousFind<
+          typename Policy::Value,
+          typename Policy::Hasher,
+          typename Policy::KeyEqual,
+          K>::value &&
+          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::
+              value &&
+          !std::is_same<
+              typename Policy::ReverseIter,
+              folly::remove_cvref_t<K>>::value,
+      T>;
+
  public:
   using typename Super::const_iterator;
   using typename Super::iterator;
   using typename Super::key_type;
   using typename Super::value_type;
   using reverse_iterator = typename Policy::ReverseIter;
-  using const_reverse_iterator = typename Policy::ConstReverseIter;
+  using const_reverse_iterator = reverse_iterator;
 
   F14VectorSet() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
 
@@ -839,7 +875,7 @@ class F14VectorSet
 
     // destroy the value and remove the ptr from the base table
     auto index = underlying.item();
-    this->table_.eraseInto(underlying, beforeDestroy);
+    this->table_.eraseIterInto(underlying, beforeDestroy);
     Policy::AllocTraits::destroy(a, std::addressof(values[index]));
 
     // move the last element in values_ down and fix up the inbound index
@@ -854,6 +890,17 @@ class F14VectorSet
     }
   }
 
+  template <typename K, typename BeforeDestroy>
+  std::size_t eraseUnderlyingKey(K const& key, BeforeDestroy&& beforeDestroy) {
+    auto underlying = this->table_.find(key);
+    if (underlying.atEnd()) {
+      return 0;
+    } else {
+      eraseUnderlying(underlying, beforeDestroy);
+      return 1;
+    }
+  }
+
  public:
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
     return eraseInto(pos, [](value_type&&) {});
@@ -863,7 +910,16 @@ class F14VectorSet
     return eraseInto(first, last, [](value_type&&) {});
   }
 
+  // No erase is provided for reverse_iterator (AKA const_reverse_iterator)
+  // to make it harder to shoot yourself in the foot by erasing while
+  // reverse-iterating.  You can write that as set.erase(set.iter(riter)).
+
   std::size_t erase(key_type const& key) {
+    return eraseInto(key, [](value_type&&) {});
+  }
+
+  template <typename K>
+  EnableHeterogeneousVectorErase<K, std::size_t> erase(K const& key) {
     return eraseInto(key, [](value_type&&) {});
   }
 
@@ -889,13 +945,14 @@ class F14VectorSet
 
   template <typename BeforeDestroy>
   std::size_t eraseInto(key_type const& key, BeforeDestroy&& beforeDestroy) {
-    auto underlying = this->table_.find(key);
-    if (underlying.atEnd()) {
-      return 0;
-    } else {
-      eraseUnderlying(underlying, beforeDestroy);
-      return 1;
-    }
+    return eraseUnderlyingKey(key, beforeDestroy);
+  }
+
+  template <typename K, typename BeforeDestroy>
+  EnableHeterogeneousVectorErase<K, std::size_t> eraseInto(
+      K const& key,
+      BeforeDestroy&& beforeDestroy) {
+    return eraseUnderlyingKey(key, beforeDestroy);
   }
 };
 

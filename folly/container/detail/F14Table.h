@@ -183,24 +183,64 @@ using Defaulted =
     typename std::conditional_t<std::is_same<Arg, void>::value, Default, Arg>;
 
 template <
-    typename Void,
+    typename TableKey,
     typename Hasher,
     typename KeyEqual,
-    typename Key,
-    typename T>
-struct EnableIfIsTransparent {};
+    typename ArgKey,
+    typename Void = void>
+struct EligibleForHeterogeneousFind : std::false_type {};
 
-template <typename Hasher, typename KeyEqual, typename Key, typename T>
-struct EnableIfIsTransparent<
-    folly::void_t<
-        typename Hasher::is_transparent,
-        typename KeyEqual::is_transparent>,
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename ArgKey>
+struct EligibleForHeterogeneousFind<
+    TableKey,
     Hasher,
     KeyEqual,
-    Key,
-    T> {
-  using type = T;
-};
+    ArgKey,
+    folly::void_t<
+        typename Hasher::is_transparent,
+        typename KeyEqual::is_transparent>> : std::true_type {};
+
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename ArgKey>
+using EligibleForHeterogeneousInsert = Conjunction<
+    EligibleForHeterogeneousFind<TableKey, Hasher, KeyEqual, ArgKey>,
+    std::is_constructible<TableKey, ArgKey>>;
+
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename KeyArg0OrBool,
+    typename... KeyArgs>
+using KeyTypeForEmplaceHelper = std::conditional_t<
+    sizeof...(KeyArgs) == 1 &&
+        (std::is_same<folly::remove_cvref_t<KeyArg0OrBool>, TableKey>::value ||
+         EligibleForHeterogeneousFind<
+             TableKey,
+             Hasher,
+             KeyEqual,
+             KeyArg0OrBool>::value),
+    KeyArg0OrBool&&,
+    TableKey>;
+
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename... KeyArgs>
+using KeyTypeForEmplace = KeyTypeForEmplaceHelper<
+    TableKey,
+    Hasher,
+    KeyEqual,
+    std::tuple_element_t<0, std::tuple<KeyArgs..., bool>>,
+    KeyArgs...>;
 
 ////////////////
 
@@ -1827,16 +1867,16 @@ class F14Table : public Policy {
  public:
   // The item needs to still be hashable during this call.  If you want
   // to intercept the value before it is destroyed (to extract it, for
-  // example), use eraseInto(pos, beforeDestroy).
-  void erase(ItemIter pos) {
-    eraseInto(pos, [](value_type&&) {});
+  // example), use eraseIterInto(pos, beforeDestroy).
+  void eraseIter(ItemIter pos) {
+    eraseIterInto(pos, [](value_type&&) {});
   }
 
   // The item needs to still be hashable during this call.  If you want
   // to intercept the value before it is destroyed (to extract it, for
   // example), do so in the beforeDestroy callback.
   template <typename BeforeDestroy>
-  void eraseInto(ItemIter pos, BeforeDestroy&& beforeDestroy) {
+  void eraseIterInto(ItemIter pos, BeforeDestroy&& beforeDestroy) {
     HashPair hp{};
     if (pos.chunk()->hostedOverflowCount() != 0) {
       hp = splitHash(this->computeItemHash(pos.citem()));
@@ -1846,12 +1886,12 @@ class F14Table : public Policy {
   }
 
   template <typename K>
-  std::size_t erase(K const& key) {
-    return eraseInto(key, [](value_type&&) {});
+  std::size_t eraseKey(K const& key) {
+    return eraseKeyInto(key, [](value_type&&) {});
   }
 
   template <typename K, typename BeforeDestroy>
-  std::size_t eraseInto(K const& key, BeforeDestroy&& beforeDestroy) {
+  std::size_t eraseKeyInto(K const& key, BeforeDestroy&& beforeDestroy) {
     if (UNLIKELY(size() == 0)) {
       return 0;
     }

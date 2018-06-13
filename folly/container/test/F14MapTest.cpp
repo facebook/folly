@@ -764,7 +764,7 @@ TEST(Tracked, baseline) {
 // and a pair const& or pair&& and cause it to be inserted
 template <typename M, typename F>
 void runInsertCases(
-    std::string const& /* name */,
+    std::string const& name,
     F const& insertFunc,
     uint64_t expectedDist = 0) {
   static_assert(std::is_same<typename M::key_type, Tracked<0>>::value, "");
@@ -779,7 +779,9 @@ void runInsertCases(
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts.dist(Counts{1, 0, 0, 0}),
-        expectedDist);
+        expectedDist)
+        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
+        << Tracked<1>::counts;
   }
   {
     typename M::value_type p{0, 0};
@@ -791,7 +793,9 @@ void runInsertCases(
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts.dist(Counts{0, 1, 0, 0}),
-        expectedDist);
+        expectedDist)
+        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
+        << Tracked<1>::counts;
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
@@ -803,7 +807,9 @@ void runInsertCases(
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts.dist(Counts{1, 0, 0, 0}),
-        expectedDist);
+        expectedDist)
+        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
+        << Tracked<1>::counts;
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
@@ -815,7 +821,9 @@ void runInsertCases(
     EXPECT_EQ(
         Tracked<0>::counts.dist(Counts{0, 1, 0, 0}) +
             Tracked<1>::counts.dist(Counts{0, 1, 0, 0}),
-        expectedDist);
+        expectedDist)
+        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
+        << Tracked<1>::counts;
   }
   {
     std::pair<Tracked<2>, Tracked<3>> p{0, 0};
@@ -1242,6 +1250,85 @@ TEST(F14FastMap, statefulFunctors) {
       GenericHasher<int>,
       GenericEqual<int>,
       GenericAlloc<std::pair<int const, int>>>>();
+}
+
+template <typename M>
+void runHeterogeneousInsertTest() {
+  M map;
+
+  resetTracking();
+  EXPECT_EQ(map.count(10), 0);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  map[10] = 20;
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 1}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  std::pair<int, int> p(10, 30);
+  std::vector<std::pair<int, int>> v({p});
+  map[10] = 30;
+  map.insert(std::pair<int, int>(10, 30));
+  map.insert(std::pair<int const, int>(10, 30));
+  map.insert(p);
+  map.insert(v.begin(), v.end());
+  map.insert(
+      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
+  map.insert_or_assign(10, 40);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  map.emplace(10, 30);
+  map.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(10),
+      std::forward_as_tuple(30));
+  map.emplace(p);
+  map.try_emplace(10, 30);
+  map.try_emplace(10);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  map.erase(10);
+  EXPECT_EQ(map.size(), 0);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+}
+
+TEST(F14ValueMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14ValueMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+}
+
+TEST(F14NodeMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14NodeMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+}
+
+TEST(F14VectorMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14VectorMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+}
+
+TEST(F14FastMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14FastMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
 }
 
 ///////////////////////////////////

@@ -888,6 +888,80 @@ TEST(F14FastSet, statefulFunctors) {
       GenericAlloc<int>>>();
 }
 
+template <typename S>
+void runHeterogeneousInsertTest() {
+  S set;
+
+  resetTracking();
+  EXPECT_EQ(set.count(10), 0);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  set.insert(10);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 1}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  int k = 10;
+  std::vector<int> v({10});
+  set.insert(10);
+  set.insert(k);
+  set.insert(v.begin(), v.end());
+  set.insert(
+      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
+  set.emplace(10);
+  set.emplace(k);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  set.erase(20);
+  EXPECT_EQ(set.size(), 1);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  resetTracking();
+  set.erase(10);
+  EXPECT_EQ(set.size(), 0);
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  set.insert(10);
+  resetTracking();
+  set.eraseInto(10, [](auto&&) {});
+  EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+}
+
+TEST(F14ValueSet, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14ValueSet<
+      Tracked<1>,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+}
+
+TEST(F14NodeSet, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14NodeSet<
+      Tracked<1>,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+}
+
+TEST(F14VectorSet, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14VectorSet<
+      Tracked<1>,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+}
+
+TEST(F14FastSet, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14FastSet<
+      Tracked<1>,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
