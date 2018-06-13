@@ -274,8 +274,8 @@ class Core final {
   /// executor or if the executor is inline).
   template <typename F>
   void setCallback(F&& func) {
-    context_ = RequestContext::saveContext();
     callback_ = std::forward<F>(func);
+    context_ = RequestContext::saveContext();
 
     auto state = state_.load(std::memory_order_acquire);
     while (true) {
@@ -534,6 +534,7 @@ class Core final {
     } else {
       attached_++;
       SCOPE_EXIT {
+        context_ = {};
         callback_ = {};
         detachOne();
       };
@@ -552,6 +553,7 @@ class Core final {
 
   void derefCallback() noexcept {
     if (--callbackReferences_ == 0) {
+      context_ = {};
       callback_ = {};
     }
   }
