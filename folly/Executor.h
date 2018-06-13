@@ -158,6 +158,16 @@ class Executor {
   }
 
  protected:
+  /**
+   * Returns true if the KeepAlive is constructed from an executor that does
+   * not support the keep alive ref-counting functionality
+   */
+  template <typename ExecutorT>
+  static bool isKeepAliveDummy(const KeepAlive<ExecutorT>& keepAlive) {
+    return reinterpret_cast<intptr_t>(keepAlive.executorAndDummyFlag_) &
+        KeepAlive<ExecutorT>::kDummyFlag;
+  }
+
   // Acquire a keep alive token. Should return false if keep-alive mechanism
   // is not supported.
   virtual bool keepAliveAcquire();

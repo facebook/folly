@@ -32,7 +32,9 @@ namespace folly {
 class VirtualExecutor : public DefaultKeepAliveExecutor {
  public:
   explicit VirtualExecutor(KeepAlive<> executor)
-      : executor_(std::move(executor)) {}
+      : executor_(std::move(executor)) {
+    assert(!isKeepAliveDummy(executor_));
+  }
 
   explicit VirtualExecutor(Executor* executor)
       : VirtualExecutor(getKeepAliveToken(executor)) {}
