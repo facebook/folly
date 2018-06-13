@@ -117,6 +117,17 @@ TEST(Timekeeper, futureDelayed) {
   EXPECT_GE(dur, one_ms);
 }
 
+TEST(Timekeeper, semiFutureDelayed) {
+  auto t1 = now();
+  auto dur = makeSemiFuture()
+                 .delayed(one_ms)
+                 .toUnsafeFuture()
+                 .then([=] { return now() - t1; })
+                 .get();
+
+  EXPECT_GE(dur, one_ms);
+}
+
 TEST(Timekeeper, futureDelayedUnsafe) {
   auto t1 = now();
   auto dur =

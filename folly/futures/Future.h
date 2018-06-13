@@ -781,6 +781,19 @@ class SemiFuture : private futures::detail::FutureBase<T> {
                            : this->withinImplementation(dur, e, tk);
   }
 
+  /// Delay the completion of this SemiFuture for at least this duration from
+  /// now. The optional Timekeeper is as with futures::sleep().
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - `valid() == false`
+  /// - `RESULT.valid() == true`
+  SemiFuture<T> delayed(Duration dur, Timekeeper* tk = nullptr) &&;
+
   /// Return a future that completes inline, as if the future had no executor.
   /// Intended for porting legacy code without behavioural change, and for rare
   /// cases where this is really the intended behaviour.
