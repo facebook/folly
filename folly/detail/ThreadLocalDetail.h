@@ -30,7 +30,14 @@
 #include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+
+FOLLY_PUSH_WARNING
+// GCC has a tendency to false positives in SharedMutex::ReadHolder when
+// compiling onThreadExit.
+FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
 #include <folly/SharedMutex.h>
+FOLLY_POP_WARNING
+
 #include <folly/container/Foreach.h>
 #include <folly/detail/AtFork.h>
 #include <folly/memory/Malloc.h>

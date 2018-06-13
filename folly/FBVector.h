@@ -161,11 +161,17 @@ class fbvector {
       }
     }
 
+FOLLY_PUSH_WARNING
+// GCC has a tendency to false positives for newCap in this function.
+FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
+
     void set(pointer newB, size_type newSize, size_type newCap) {
       z_ = newB + newCap;
       e_ = newB + newSize;
       b_ = newB;
     }
+
+FOLLY_POP_WARNING
 
     void reset(size_type newCap) {
       destroy();
@@ -1377,6 +1383,10 @@ class fbvector {
   //---------------------------------------------------------------------------
   // interface
 
+FOLLY_PUSH_WARNING
+// GCC has a tendency to false positives for newCap in this function.
+FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
+
   template <
       typename IsInternalFunc,
       typename InsertInternalFunc,
@@ -1453,6 +1463,8 @@ class fbvector {
       return position;
     }
   }
+
+FOLLY_POP_WARNING
 
  public:
   template <class... Args>

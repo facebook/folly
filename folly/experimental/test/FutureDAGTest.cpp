@@ -29,6 +29,10 @@ struct FutureDAGTest : public testing::Test {
     return handle;
   }
 
+FOLLY_PUSH_WARNING
+// GCC has a tendency to false positives for source_node in this function.
+FOLLY_GCC_DISABLE_WARNING("-Wmaybe-uninitialized")
+
   void reset() {
     Handle source_node;
     std::unordered_set<Handle> memo;
@@ -51,6 +55,8 @@ struct FutureDAGTest : public testing::Test {
     }
     dag->reset();
   }
+
+FOLLY_POP_WARNING
 
   void remove(Handle a) {
     for (auto& node : nodes) {
