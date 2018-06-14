@@ -212,9 +212,7 @@ class Core final {
   bool hasCallback() const noexcept {
     constexpr auto allowed = State::OnlyCallback | State::Done;
     auto const state = state_.load(std::memory_order_acquire);
-    auto const ans = State() != (state & allowed);
-    assert(!ans || !!callback_); // callback_ must exist in this state
-    return ans;
+    return State() != (state & allowed);
   }
 
   /// May call from any thread
@@ -225,9 +223,7 @@ class Core final {
   bool hasResult() const noexcept {
     constexpr auto allowed = State::OnlyResult | State::Done;
     auto const state = state_.load(std::memory_order_acquire);
-    auto const ans = State() != (state & allowed);
-    assert(!ans || !!result_); // result_ must exist if hasResult() is true
-    return ans;
+    return State() != (state & allowed);
   }
 
   /// May call from any thread
@@ -258,10 +254,12 @@ class Core final {
   ///   possibly moved-out, depending on what the callback did; some but not
   ///   all callbacks modify (possibly move-out) the result.)
   Try<T>& getTry() {
-    return getTryImpl(*this);
+    DCHECK(hasResult());
+    return result_;
   }
   Try<T> const& getTry() const {
-    return getTryImpl(*this);
+    DCHECK(hasResult());
+    return result_;
   }
 
   /// Call only from consumer thread.
@@ -274,8 +272,11 @@ class Core final {
   /// executor or if the executor is inline).
   template <typename F>
   void setCallback(F&& func) {
-    callback_ = std::forward<F>(func);
-    context_ = RequestContext::saveContext();
+    DCHECK(!hasCallback());
+
+    // construct callback_ first; if that fails, context_ will not leak
+    ::new (&callback_) Callback(std::forward<F>(func));
+    ::new (&context_) Context(RequestContext::saveContext());
 
     auto state = state_.load(std::memory_order_acquire);
     while (true) {
@@ -311,7 +312,9 @@ class Core final {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
-    result_ = std::move(t);
+    DCHECK(!hasResult());
+
+    ::new (&result_) Result(std::move(t));
 
     auto state = state_.load(std::memory_order_acquire);
     while (true) {
@@ -349,7 +352,7 @@ class Core final {
   /// Calls `delete this` if there are no more references to `this`
   /// (including if `detachFuture()` is called previously or concurrently).
   void detachPromise() noexcept {
-    DCHECK(result_);
+    DCHECK(hasResult());
     detachOne();
   }
 
@@ -429,7 +432,7 @@ class Core final {
   }
 
  private:
-  Core() : result_(), state_(State::Start), attached_(2) {}
+  Core() : state_(State::Start), attached_(2) {}
 
   explicit Core(Try<T>&& t)
       : result_(std::move(t)), state_(State::OnlyResult), attached_(1) {}
@@ -437,13 +440,14 @@ class Core final {
   template <typename... Args>
   explicit Core(in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
-      : result_(in_place, in_place, std::forward<Args>(args)...),
+      : result_(in_place, std::forward<Args>(args)...),
         state_(State::OnlyResult),
         attached_(1) {}
 
   ~Core() {
     DCHECK(attached_ == 0);
-    DCHECK(result_);
+    DCHECK(hasResult());
+    result_.~Result();
   }
 
   // Helper class that stores a pointer to the `Core` object and calls
@@ -508,7 +512,7 @@ class Core final {
             auto cr = std::move(core_ref);
             Core* const core = cr.getCore();
             RequestContextScopeGuard rctx(core->context_);
-            core->callback_(std::move(*core->result_));
+            core->callback_(std::move(core->result_));
           });
         } else {
           xPtr->addWithPriority(
@@ -517,7 +521,7 @@ class Core final {
                 auto cr = std::move(core_ref);
                 Core* const core = cr.getCore();
                 RequestContextScopeGuard rctx(core->context_);
-                core->callback_(std::move(*core->result_));
+                core->callback_(std::move(core->result_));
               },
               priority);
         }
@@ -529,17 +533,17 @@ class Core final {
       if (ew) {
         RequestContextScopeGuard rctx(context_);
         result_ = Try<T>(std::move(ew));
-        callback_(std::move(*result_));
+        callback_(std::move(result_));
       }
     } else {
       attached_++;
       SCOPE_EXIT {
-        context_ = {};
-        callback_ = {};
+        context_.~Context();
+        callback_.~Callback();
         detachOne();
       };
       RequestContextScopeGuard rctx(context_);
-      callback_(std::move(*result_));
+      callback_(std::move(result_));
     }
   }
 
@@ -553,21 +557,23 @@ class Core final {
 
   void derefCallback() noexcept {
     if (--callbackReferences_ == 0) {
-      context_ = {};
-      callback_ = {};
+      context_.~Context();
+      callback_.~Callback();
     }
   }
 
-  template <typename Self>
-  static decltype(auto) getTryImpl(Self& self) {
-    assume(self.result_.has_value());
-    return self.result_.value();
-  }
+  using Result = Try<T>;
+  using Callback = folly::Function<void(Result&&)>;
+  using Context = std::shared_ptr<RequestContext>;
 
-  folly::Function<void(Try<T>&&)> callback_;
+  union {
+    Callback callback_;
+  };
   // place result_ next to increase the likelihood that the value will be
   // contained entirely in one cache line
-  folly::Optional<Try<T>> result_;
+  union {
+    Result result_;
+  };
   std::atomic<State> state_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
@@ -575,7 +581,9 @@ class Core final {
   SpinLock interruptLock_;
   int8_t priority_ {-1};
   Executor::KeepAlive<> executor_;
-  std::shared_ptr<RequestContext> context_ {nullptr};
+  union {
+    Context context_;
+  };
   std::unique_ptr<exception_wrapper> interrupt_ {};
   std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};
 };
