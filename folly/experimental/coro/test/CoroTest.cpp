@@ -177,4 +177,26 @@ TEST(Coro, CurrentExecutor) {
   EXPECT_EQ(42, future.get());
 }
 
+coro::Task<int> taskTimedWait() {
+  auto fastFuture =
+      futures::sleep(std::chrono::milliseconds{50}).then([] { return 42; });
+  auto fastResult = co_await coro::timed_wait(
+      std::move(fastFuture), std::chrono::milliseconds{100});
+  EXPECT_TRUE(fastResult);
+  EXPECT_EQ(42, *fastResult);
+
+  auto slowFuture =
+      futures::sleep(std::chrono::milliseconds{200}).then([] { return 42; });
+  auto slowResult = co_await coro::timed_wait(
+      std::move(slowFuture), std::chrono::milliseconds{100});
+  EXPECT_FALSE(slowResult);
+
+  co_return 42;
+}
+
+TEST(Coro, TimedWait) {
+  ManualExecutor executor;
+  EXPECT_EQ(42, via(&executor, taskTimedWait()).toFuture().getVia(&executor));
+}
+
 #endif

@@ -53,6 +53,10 @@ class Wait {
 
   Wait(Wait&&) = default;
 
+  void detach() {
+    future_ = {};
+  }
+
   ~Wait() {
     if (future_.valid()) {
       future_.get();

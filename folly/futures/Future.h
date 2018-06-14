@@ -1944,13 +1944,19 @@ class FutureRefAwaitable {
   folly::Future<T>& future_;
 };
 } // namespace detail
-} // namespace folly
 
 template <typename T>
-folly::detail::FutureAwaitable<T>
-/* implicit */ operator co_await(folly::Future<T>& future) {
-  return folly::detail::FutureRefAwaitable<T>(future);
+detail::FutureRefAwaitable<T>
+/* implicit */ operator co_await(Future<T>& future) {
+  return detail::FutureRefAwaitable<T>(future);
 }
+
+template <typename T>
+detail::FutureRefAwaitable<T>
+/* implicit */ operator co_await(Future<T>&& future) {
+  return detail::FutureRefAwaitable<T>(future);
+}
+} // namespace folly
 #endif
 
 #include <folly/futures/Future-inl.h>

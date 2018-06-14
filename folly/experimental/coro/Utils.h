@@ -18,6 +18,10 @@
 #include <experimental/coroutine>
 #include <future>
 
+#include <folly/Optional.h>
+#include <folly/experimental/coro/Wait.h>
+#include <folly/futures/Future.h>
+
 namespace folly {
 namespace coro {
 
@@ -55,6 +59,83 @@ struct yield {
 
   void await_resume() {}
 };
+
+template <typename Awaitable>
+class TimedWaitAwaitable {
+ public:
+  static_assert(
+      std::is_same<Awaitable, std::decay_t<Awaitable>>::value,
+      "Awaitable should be decayed.");
+  using await_resume_return_type =
+      decltype((operator co_await(std::declval<Awaitable>())).await_resume());
+
+  TimedWaitAwaitable(Awaitable&& awaitable, std::chrono::milliseconds duration)
+      : awaitable_(std::move(awaitable)), duration_(duration) {}
+
+  bool await_ready() {
+    return false;
+  }
+
+  bool await_suspend(std::experimental::coroutine_handle<> ch) {
+    auto sharedState = std::make_shared<SharedState>(ch, storage_);
+    waitAndNotify(std::move(awaitable_), sharedState).detach();
+    futures::sleep(duration_).then(
+        [sharedState = std::move(sharedState)] { sharedState->setTimeout(); });
+    return true;
+  }
+
+  Optional<await_resume_return_type> await_resume() {
+    return std::move(storage_);
+  }
+
+ private:
+  class SharedState {
+   public:
+    SharedState(
+        std::experimental::coroutine_handle<> ch,
+        Optional<await_resume_return_type>& storage)
+        : ch_(std::move(ch)), storage_(storage) {}
+
+    void setValue(await_resume_return_type&& value) {
+      if (first_.exchange(true, std::memory_order_relaxed)) {
+        return;
+      }
+      assume(!storage_);
+      storage_ = std::move(value);
+      ch_();
+    }
+
+    void setTimeout() {
+      if (first_.exchange(true, std::memory_order_relaxed)) {
+        return;
+      }
+      ch_();
+    }
+
+   private:
+    std::atomic<bool> first_{false};
+    std::experimental::coroutine_handle<> ch_;
+    Optional<await_resume_return_type>& storage_;
+  };
+
+  static Wait waitAndNotify(
+      Awaitable awaitable,
+      std::shared_ptr<SharedState> sharedState) {
+    sharedState->setValue(co_await awaitable);
+  }
+
+  Awaitable awaitable_;
+  std::chrono::milliseconds duration_;
+  Optional<await_resume_return_type> storage_;
+};
+
+template <typename Awaitable>
+TimedWaitAwaitable<std::decay_t<Awaitable>> timed_wait(
+    Awaitable&& awaitable,
+    std::chrono::milliseconds duration) {
+  return TimedWaitAwaitable<std::decay_t<Awaitable>>(
+      std::forward<Awaitable>(awaitable), duration);
+}
 
 } // namespace coro
 } // namespace folly
