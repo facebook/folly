@@ -781,6 +781,29 @@ void cleanup_test() {
 }
 
 template <template <typename> class Atom = std::atomic>
+void priv_dtor_test() {
+  c_.clear();
+  using NodeT = NodeRC<true, Atom>;
+  auto y = new NodeT;
+  y->acquire_link_safe();
+  struct Foo : hazptr_obj_base<Foo, Atom> {
+    hazptr_root<NodeT, Atom> r_;
+  };
+  auto x = new Foo;
+  x->r_().store(y);
+  /* Thread retires x. Dtor of TLS priv list pushes x to domain, which
+     triggers bulk reclaim due to timed cleanup (when the test is run
+     by itself). Reclamation of x unlinks and retires y. y should
+     not be pushed into the thread's priv list. It should be pushed to
+     domain instead. */
+  auto thr = DSched::thread([&]() { x->retire(); });
+  DSched::join(thr);
+  ASSERT_EQ(c_.ctors(), 1);
+  hazptr_cleanup<Atom>();
+  ASSERT_EQ(c_.dtors(), 1);
+}
+
+template <template <typename> class Atom = std::atomic>
 void lifo_test() {
   for (int i = 0; i < FLAGS_num_reps; ++i) {
     Atom<int> sum{0};
@@ -1017,6 +1040,15 @@ TEST(HazptrTest, cleanup) {
 TEST(HazptrTest, dsched_cleanup) {
   DSched sched(DSched::uniform(0));
   cleanup_test<DeterministicAtomic>();
+}
+
+TEST(HazptrTest, priv_dtor) {
+  priv_dtor_test();
+}
+
+TEST(HazptrTest, dsched_priv_dtor) {
+  DSched sched(DSched::uniform(0));
+  priv_dtor_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, lifo) {

@@ -166,11 +166,13 @@ class hazptr_priv {
   Atom<hazptr_obj<Atom>*> head_;
   Atom<hazptr_obj<Atom>*> tail_;
   int rcount_;
+  bool in_dtor_;
 
  public:
-  hazptr_priv() : head_(nullptr), tail_(nullptr), rcount_(0) {}
+  hazptr_priv() : head_(nullptr), tail_(nullptr), rcount_(0), in_dtor_(false) {}
 
   ~hazptr_priv() {
+    in_dtor_ = true;
     if (!empty()) {
       push_all_to_domain();
     }
@@ -185,6 +187,15 @@ class hazptr_priv {
   }
 
   void push(hazptr_obj<Atom>* obj) {
+    if (!in_dtor_) {
+      push_in_priv_list(obj);
+    } else {
+      hazptr_obj_list<Atom> l(obj);
+      hazptr_domain_push_retired<Atom>(l);
+    }
+  }
+
+  void push_in_priv_list(hazptr_obj<Atom>* obj) {
     while (true) {
       if (tail()) {
         if (push_in_non_empty_list(obj)) {
