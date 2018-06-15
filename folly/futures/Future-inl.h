@@ -2025,12 +2025,28 @@ Future<T>&& Future<T>::waitVia(TimedDrivableExecutor* e, Duration dur) && {
 }
 
 template <class T>
-T Future<T>::get() {
+T Future<T>::get() && {
+  wait();
+  return copy(std::move(*this)).value();
+}
+
+template <class T>
+T Future<T>::get() & {
   return std::move(wait().value());
 }
 
 template <class T>
-T Future<T>::get(Duration dur) {
+T Future<T>::get(Duration dur) && {
+  wait(dur);
+  auto future = copy(std::move(*this));
+  if (!future.isReady()) {
+    throw_exception<FutureTimeout>();
+  }
+  return std::move(future).value();
+}
+
+template <class T>
+T Future<T>::get(Duration dur) & {
   wait(dur);
   if (!this->isReady()) {
     throw_exception<FutureTimeout>();

@@ -1519,7 +1519,13 @@ class Future : private futures::detail::FutureBase<T> {
   /// Postconditions:
   ///
   /// - `valid() == false`
-  T get();
+  T get() &&;
+
+  /// Blocks until the future is fulfilled. Returns the value (moved out), or
+  /// throws the exception. The future must not already have a callback.
+  ///
+  /// Deprecated in favor of `get() &&`.
+  T get() &;
 
   /// Blocks until the future is fulfilled, or until `dur` elapses. Returns the
   /// value (moved-out), or throws the exception (which might be a FutureTimeout
@@ -1532,7 +1538,14 @@ class Future : private futures::detail::FutureBase<T> {
   /// Postconditions:
   ///
   /// - `valid() == false`
-  T get(Duration dur);
+  T get(Duration dur) &&;
+
+  /// Blocks until the future is fulfilled, or until `dur` elapses. Returns the
+  /// value (moved out), or throws the exception (which might be a FutureTimeout
+  /// exception).
+  ///
+  /// Deprecated in favor of `get(Duration) &&`.
+  T get(Duration dur) &;
 
   /// A reference to the Try of the value
   ///

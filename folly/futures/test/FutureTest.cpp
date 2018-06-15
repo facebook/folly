@@ -82,6 +82,45 @@ TEST(Future, makeFutureWithUnit) {
   EXPECT_EQ(1, count);
 }
 
+TEST(Future, getRequiresOnlyMoveCtor) {
+  struct MoveCtorOnly {
+    MoveCtorOnly(const MoveCtorOnly&) = delete;
+    MoveCtorOnly(MoveCtorOnly&&) = default;
+    MoveCtorOnly(int id) : id_(id) {}
+    void operator=(MoveCtorOnly const&) = delete;
+    void operator=(MoveCtorOnly&&) = delete;
+    int id_;
+  };
+  {
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    EXPECT_TRUE(f.valid());
+    EXPECT_TRUE(f.isReady());
+    auto v = f.get();
+    EXPECT_EQ(v.id_, 42);
+  }
+  {
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    EXPECT_TRUE(f.valid());
+    EXPECT_TRUE(f.isReady());
+    auto v = std::move(f).get();
+    EXPECT_EQ(v.id_, 42);
+  }
+  {
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    EXPECT_TRUE(f.valid());
+    EXPECT_TRUE(f.isReady());
+    auto v = f.get(std::chrono::milliseconds(10));
+    EXPECT_EQ(v.id_, 42);
+  }
+  {
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    EXPECT_TRUE(f.valid());
+    EXPECT_TRUE(f.isReady());
+    auto v = std::move(f).get(std::chrono::milliseconds(10));
+    EXPECT_EQ(v.id_, 42);
+  }
+}
+
 namespace {
 auto makeValid() {
   auto valid = makeFuture<int>(42);
@@ -194,6 +233,10 @@ TEST(Future, hasPreconditionValid) {
 
   DOIT(f.isReady());
   DOIT(f.result());
+  DOIT(f.get());
+  DOIT(f.get(std::chrono::milliseconds(10)));
+  DOIT(std::move(f).get());
+  DOIT(std::move(f).get(std::chrono::milliseconds(10)));
   DOIT(f.getTry());
   DOIT(f.hasValue());
   DOIT(f.hasException());
@@ -227,6 +270,7 @@ TEST(Future, hasPostconditionValid) {
   DOIT(f.raise(std::logic_error("foo")));
   DOIT(f.cancel());
   DOIT(swallow(f.get()));
+  DOIT(swallow(f.get(std::chrono::milliseconds(10))));
   DOIT(swallow(f.getTry()));
   DOIT(f.wait());
   DOIT(std::move(f.wait()));
@@ -280,6 +324,8 @@ TEST(Future, hasPostconditionInvalid) {
   auto const swallow = [](auto) {};
   DOIT(makeValid(), swallow(std::move(f).wait()));
   DOIT(makeValid(), swallow(std::move(f.wait())));
+  DOIT(makeValid(), swallow(std::move(f).get()));
+  DOIT(makeValid(), swallow(std::move(f).get(std::chrono::milliseconds(10))));
   DOIT(makeValid(), swallow(f.semi()));
 
 #undef DOIT
