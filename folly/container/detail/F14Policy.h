@@ -286,7 +286,7 @@ struct BasePolicy
 
   void afterReset() {}
 
-  void prefetchValue(Item const&) {
+  void prefetchValue(Item const&) const {
     // Subclass should disable with prefetchBeforeRehash(),
     // prefetchBeforeCopy(), and prefetchBeforeDestroy().  if they don't
     // override this method, because neither gcc nor clang can figure
@@ -730,7 +730,7 @@ class NodeContainerPolicy
     src.~Item();
   }
 
-  void prefetchValue(Item const& item) {
+  void prefetchValue(Item const& item) const {
     prefetchAddr(std::addressof(*item));
   }
 
@@ -1048,7 +1048,7 @@ class VectorContainerPolicy : public BasePolicy<
     *itemAddr = src;
   }
 
-  void prefetchValue(Item const& item) {
+  void prefetchValue(Item const& item) const {
     prefetchAddr(std::addressof(values_[item]));
   }
 

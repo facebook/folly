@@ -70,6 +70,14 @@ class F14BasicSet : public std::unordered_set<K, H, E, A> {
     visitor(
         this->size(), sizeof(StdNodeReplica<K, typename Super::value_type, H>));
   }
+
+  template <typename V>
+  void visitContiguousRanges(V&& visitor) const {
+    for (value_type const& entry : *this) {
+      value_type const* b = std::addressof(entry);
+      visitor(b, b + 1);
+    }
+  }
 };
 } // namespace detail
 } // namespace f14
@@ -619,6 +627,13 @@ class F14BasicSet {
     return table_.visitAllocationClasses(visitor);
   }
 
+  // Calls visitor with two value_type const*, b and e, such that every
+  // entry in the table is included in exactly one of the ranges [b,e).
+  // This can be used to efficiently iterate elements in bulk when crossing
+  // an API boundary that supports contiguous blocks of items.
+  template <typename V>
+  void visitContiguousRanges(V&& visitor) const;
+
   F14TableStats computeStats() const noexcept {
     return table_.computeStats();
   }
@@ -686,6 +701,11 @@ class F14ValueSet
   void swap(F14ValueSet& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
   }
+
+  template <typename V>
+  void visitContiguousRanges(V&& visitor) const {
+    this->table_.visitContiguousItemRanges(std::forward<V>(visitor));
+  }
 };
 
 template <typename K, typename H, typename E, typename A>
@@ -719,12 +739,22 @@ class F14NodeSet
   using Super = f14::detail::F14BasicSet<Policy>;
 
  public:
+  using typename Super::value_type;
+
   F14NodeSet() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
 
   using Super::Super;
 
   void swap(F14NodeSet& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
+  }
+
+  template <typename V>
+  void visitContiguousRanges(V&& visitor) const {
+    this->table_.visitItems([&](typename Policy::Item ptr) {
+      value_type const* b = std::addressof(*ptr);
+      visitor(b, b + 1);
+    });
   }
 };
 
@@ -953,6 +983,15 @@ class F14VectorSet
       K const& key,
       BeforeDestroy&& beforeDestroy) {
     return eraseUnderlyingKey(key, beforeDestroy);
+  }
+
+  template <typename V>
+  void visitContiguousRanges(V&& visitor) const {
+    auto n = this->table_.size();
+    if (n > 0) {
+      value_type const* b = std::addressof(this->table_.values_[0]);
+      visitor(b, b + n);
+    }
   }
 };
 

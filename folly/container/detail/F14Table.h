@@ -338,6 +338,34 @@ class DenseMaskIter {
   }
 };
 
+// Iterates a mask, returning pairs of [begin,end) index covering blocks
+// of set bits
+class MaskRangeIter {
+  MaskType mask_;
+  unsigned shift_{0};
+
+ public:
+  explicit MaskRangeIter(MaskType mask) {
+    // If kMaskSpacing is > 1 then there will be empty bits even for
+    // contiguous ranges.  Fill them in.
+    mask_ = mask * ((1 << kMaskSpacing) - 1);
+  }
+
+  bool hasNext() {
+    return mask_ != 0;
+  }
+
+  std::pair<unsigned, unsigned> next() {
+    FOLLY_SAFE_DCHECK(hasNext(), "");
+    auto s = shift_;
+    unsigned b = findFirstSetNonZero(mask_);
+    unsigned e = findFirstSetNonZero(~(mask_ | (mask_ - 1)));
+    mask_ >>= e;
+    shift_ = s + e;
+    return std::make_pair((s + b) / kMaskSpacing, (s + e) / kMaskSpacing);
+  }
+};
+
 // Holds the result of an index query that has an optional result,
 // interpreting a mask of 0 to be the empty answer and the index of the
 // last set bit to be the non-empty answer
@@ -554,6 +582,10 @@ struct alignas(max_align_t) F14Chunk {
 
   DenseMaskIter occupiedIter() const {
     return DenseMaskIter{occupiedMask()};
+  }
+
+  MaskRangeIter occupiedRangeIter() const {
+    return MaskRangeIter{occupiedMask()};
   }
 
   LastOccupiedInMask lastOccupied() const {
@@ -1853,6 +1885,40 @@ class F14Table : public Policy {
       visitor(allocSize(chunkMask_ + 1, bc), 1);
     }
     this->visitPolicyAllocationClasses(size(), bc, visitor);
+  }
+
+  // visitor should take an Item const&
+  template <typename V>
+  void visitItems(V&& visitor) const {
+    std::size_t maxChunkIndex = lastOccupiedChunk() - chunks_;
+    auto chunk = &chunks_[0];
+    for (std::size_t i = 0; i < maxChunkIndex; ++i, ++chunk) {
+      auto iter = chunk->occupiedIter();
+      if (Policy::prefetchBeforeCopy()) {
+        for (auto piter = iter; piter.hasNext();) {
+          this->prefetchValue(chunk->citem(piter.next()));
+        }
+      }
+      while (iter.hasNext()) {
+        visitor(chunk->citem(iter.next()));
+      }
+    }
+  }
+
+  // visitor should take two Item const*
+  template <typename V>
+  void visitContiguousItemRanges(V&& visitor) const {
+    std::size_t maxChunkIndex = lastOccupiedChunk() - chunks_;
+    auto chunk = &chunks_[0];
+    for (std::size_t i = 0; i < maxChunkIndex; ++i, ++chunk) {
+      for (auto iter = chunk->occupiedRangeIter(); iter.hasNext();) {
+        auto be = iter.next();
+        FOLLY_SAFE_DCHECK(
+            chunk->occupied(be.first) && chunk->occupied(be.second - 1), "");
+        Item const* b = chunk->itemAddr(be.first);
+        visitor(b, b + (be.second - be.first));
+      }
+    }
   }
 
  private:
