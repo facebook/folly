@@ -256,7 +256,7 @@ TEST(AsyncFileWriter, flush) {
   readFull(readPipe.fd(), buf.data(), buf.size());
 
   // Make sure flush completes successfully now
-  future.get(10ms);
+  std::move(future).get(10ms);
 }
 
 // A large-ish message suffix, just to consume space and help fill up

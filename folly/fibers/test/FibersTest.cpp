@@ -1494,8 +1494,8 @@ TEST(FiberManager, remoteFutureTest) {
   auto f1 = fiberManager.addTaskFuture([&]() { return testValue1; });
   auto f2 = fiberManager.addTaskRemoteFuture([&]() { return testValue2; });
   loopController.loop([&]() { loopController.stop(); });
-  auto v1 = f1.get();
-  auto v2 = f2.get();
+  auto v1 = std::move(f1).get();
+  auto v2 = std::move(f2).get();
 
   EXPECT_EQ(v1, testValue1);
   EXPECT_EQ(v2, testValue2);

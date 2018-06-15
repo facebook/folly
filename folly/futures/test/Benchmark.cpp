@@ -319,7 +319,7 @@ BENCHMARK(lvalue_get) {
   Optional<Future<Bulky>> future;
   future = makeFuture(Bulky("Hello"));
   suspender.dismissing([&] {
-    std::string message = future.value().get().message();
+    std::string message = std::move(future.value()).get().message();
     doNotOptimizeAway(message);
   });
 }
