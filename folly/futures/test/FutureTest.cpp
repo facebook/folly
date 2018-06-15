@@ -84,9 +84,9 @@ TEST(Future, makeFutureWithUnit) {
 
 TEST(Future, getRequiresOnlyMoveCtor) {
   struct MoveCtorOnly {
+    explicit MoveCtorOnly(int id) : id_(id) {}
     MoveCtorOnly(const MoveCtorOnly&) = delete;
     MoveCtorOnly(MoveCtorOnly&&) = default;
-    MoveCtorOnly(int id) : id_(id) {}
     void operator=(MoveCtorOnly const&) = delete;
     void operator=(MoveCtorOnly&&) = delete;
     int id_;
