@@ -257,95 +257,47 @@ FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
 #endif
 }
 
+template <typename T>
+FOLLY_ALWAYS_INLINE static unsigned findFirstSetNonZero(T mask) {
+  folly::assume(mask != 0);
+  if (sizeof(mask) == sizeof(unsigned)) {
+    return __builtin_ctz(static_cast<unsigned>(mask));
+  } else {
+    return __builtin_ctzll(mask);
+  }
+}
+
 #if FOLLY_AARCH64
 using TagVector = uint8x16_t;
+
+using MaskType = uint64_t;
+
+constexpr unsigned kMaskSpacing = 4;
 #else
 using TagVector = __m128i;
+
+using MaskType = unsigned;
+
+constexpr unsigned kMaskSpacing = 1;
 #endif
 
 extern TagVector kEmptyTagVector;
 
-// Iterates a 64-bit mask where elements are strided by 8 and the elements
-// at indexes 8 and higher are layered back over the bottom 64-bits with
-// a 4-bit offset.
-//
-// bitIndex = ((tagIndex * 8) % 64) + (tagIndex >= 8 ? 4 : 0)
-//
-// Iteration occurs in bitIndex order, not tagIndex.  That should be fine
-// for a sparse iterator, where we expect either 0 or 1 tag.
-class Sparse8Interleaved4MaskIter {
-  uint64_t mask_;
-
- public:
-  explicit Sparse8Interleaved4MaskIter(uint64_t mask) : mask_{mask} {}
-
-  bool hasNext() {
-    return mask_ != 0;
-  }
-
-  unsigned next() {
-    FOLLY_SAFE_DCHECK(hasNext(), "");
-    unsigned mixed = __builtin_ctzll(mask_);
-    FOLLY_SAFE_DCHECK((mixed % 4) == 0, "");
-    mask_ &= (mask_ - 1);
-
-    // mixed >> 3 has the bottom 3 bits of the result (no masking needed
-    // because all of the higher bits will be empty).  mixed & 4 holds the
-    // bit that should be result & 8.  We can merge it in either before or
-    // after sliding.  Merging it before means we need to shift it left 4
-    // (so that the right shift 3 turns it into a left 1), which happens
-    // to be the same as multiplication by 17.
-    return ((mixed * 0x11) >> 3) & 0xf;
-  }
+template <unsigned BitCount>
+struct FullMask {
+  static constexpr MaskType value =
+      (FullMask<BitCount - 1>::value << kMaskSpacing) + 1;
 };
 
-// Iterates downward on occupied indexes by just checking tags[i] instead
-// of using a mask
-class TagCheckingIter {
-  uint8_t const* tags_;
-  int nextIndex_;
-
- public:
-  explicit TagCheckingIter(uint8_t const* tags, int maxIndex)
-      : tags_{tags}, nextIndex_{maxIndex} {}
-
-  bool hasNext() {
-    return nextIndex_ >= 0;
-  }
-
-  unsigned next() {
-    auto rv = static_cast<unsigned>(nextIndex_);
-    do {
-      --nextIndex_;
-    } while (nextIndex_ >= 0 && tags_[nextIndex_] == 0);
-    return rv;
-  }
-};
-
-// Holds the result of an index query that has an optional result,
-// interpreting an index of -1 to be the empty answer
-class IndexHolder {
-  int index_;
-
- public:
-  explicit IndexHolder(int index) : index_{index} {}
-
-  bool hasIndex() const {
-    return index_ >= 0;
-  }
-
-  unsigned index() const {
-    FOLLY_SAFE_DCHECK(hasIndex(), "");
-    return static_cast<unsigned>(index_);
-  }
-};
+template <>
+struct FullMask<1> : std::integral_constant<MaskType, 1> {};
 
 // Iterates a mask, optimized for the case that only a few bits are set
 class SparseMaskIter {
-  unsigned mask_;
+  MaskType mask_;
 
  public:
-  explicit SparseMaskIter(unsigned mask) : mask_{mask} {}
+  explicit SparseMaskIter(MaskType mask) : mask_{mask} {}
 
   bool hasNext() {
     return mask_ != 0;
@@ -353,19 +305,19 @@ class SparseMaskIter {
 
   unsigned next() {
     FOLLY_SAFE_DCHECK(hasNext(), "");
-    unsigned i = __builtin_ctz(mask_);
+    unsigned i = findFirstSetNonZero(mask_);
     mask_ &= (mask_ - 1);
-    return i;
+    return i / kMaskSpacing;
   }
 };
 
 // Iterates a mask, optimized for the case that most bits are set
 class DenseMaskIter {
-  unsigned mask_;
+  MaskType mask_;
   unsigned index_{0};
 
  public:
-  explicit DenseMaskIter(unsigned mask) : mask_{mask} {}
+  explicit DenseMaskIter(MaskType mask) : mask_{mask} {}
 
   bool hasNext() {
     return mask_ != 0;
@@ -374,12 +326,12 @@ class DenseMaskIter {
   unsigned next() {
     FOLLY_SAFE_DCHECK(hasNext(), "");
     if (LIKELY((mask_ & 1) != 0)) {
-      mask_ >>= 1;
+      mask_ >>= kMaskSpacing;
       return index_++;
     } else {
-      unsigned s = __builtin_ctz(mask_);
-      unsigned rv = index_ + s;
-      mask_ >>= (s + 1);
+      unsigned s = findFirstSetNonZero(mask_);
+      unsigned rv = index_ + (s / kMaskSpacing);
+      mask_ >>= (s + kMaskSpacing);
       index_ = rv + 1;
       return rv;
     }
@@ -390,10 +342,10 @@ class DenseMaskIter {
 // interpreting a mask of 0 to be the empty answer and the index of the
 // last set bit to be the non-empty answer
 class LastOccupiedInMask {
-  unsigned mask_;
+  MaskType mask_;
 
  public:
-  explicit LastOccupiedInMask(unsigned mask) : mask_{mask} {}
+  explicit LastOccupiedInMask(MaskType mask) : mask_{mask} {}
 
   bool hasIndex() const {
     return mask_ != 0;
@@ -401,7 +353,7 @@ class LastOccupiedInMask {
 
   unsigned index() const {
     folly::assume(mask_ != 0);
-    return folly::findLastSet(mask_) - 1;
+    return (folly::findLastSet(mask_) - 1) / kMaskSpacing;
   }
 };
 
@@ -409,10 +361,10 @@ class LastOccupiedInMask {
 // interpreting a mask of 0 to be the empty answer and the index of the
 // first set bit to be the non-empty answer
 class FirstEmptyInMask {
-  unsigned mask_;
+  MaskType mask_;
 
  public:
-  explicit FirstEmptyInMask(unsigned mask) : mask_{mask} {}
+  explicit FirstEmptyInMask(MaskType mask) : mask_{mask} {}
 
   bool hasIndex() const {
     return mask_ != 0;
@@ -420,7 +372,7 @@ class FirstEmptyInMask {
 
   unsigned index() const {
     FOLLY_SAFE_DCHECK(mask_ != 0, "");
-    return __builtin_ctz(mask_);
+    return findFirstSetNonZero(mask_) / kMaskSpacing;
   }
 };
 
@@ -443,8 +395,7 @@ struct alignas(max_align_t) F14Chunk {
   static constexpr unsigned kAllocatedCapacity =
       kCapacity + (sizeof(Item) == 16 ? 1 : 0);
 
-  static constexpr unsigned kFullMask =
-      static_cast<unsigned>(~(~uint64_t{0} << kCapacity));
+  static constexpr MaskType kFullMask = FullMask<kCapacity>::value;
 
   // Non-empty tags have their top bit set
   std::array<uint8_t, kCapacity> tags_;
@@ -558,64 +509,25 @@ struct alignas(max_align_t) F14Chunk {
   ////////
   // Tag filtering using AArch64 Advanced SIMD (NEON) intrinsics
 
-  Sparse8Interleaved4MaskIter tagMatchIter(uint8_t needle) const {
+  SparseMaskIter tagMatchIter(uint8_t needle) const {
     FOLLY_SAFE_DCHECK((needle & 0x80) != 0, "");
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
     auto needleV = vdupq_n_u8(needle);
     auto eqV = vceqq_u8(tagV, needleV);
-    auto bitsV = vreinterpretq_u64_u8(vshrq_n_u8(eqV, 7));
-    auto hi = vgetq_lane_u64(bitsV, 1);
-    auto lo = vgetq_lane_u64(bitsV, 0);
-    static_assert(kCapacity >= 8, "");
-    hi &= ((uint64_t{1} << (8 * (kCapacity - 8))) - 1);
-    auto mixed = (hi << 4) | lo;
-    return Sparse8Interleaved4MaskIter{mixed};
+    // get info from every byte into the bottom half of every uint16_t
+    // by shifting right 4, then round to get it into a 64-bit vector
+    uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(eqV), 4);
+    uint64_t mask = vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
+    return SparseMaskIter(mask);
   }
 
-  template <typename F, std::size_t... I>
-  static constexpr uint8x16_t fixedVectorHelper(
-      F const& func,
-      index_sequence<I...>) {
-    return uint8x16_t{func(I)...};
-  }
-
-  template <typename F>
-  static constexpr uint8x16_t fixedVector(F const& func) {
-    return fixedVectorHelper(
-        [&](std::size_t i) { return i < kCapacity ? func(i) : uint8_t{0}; },
-        make_index_sequence<16>{});
-  }
-
-  int lastOccupiedIndex() const {
+  uint64_t occupiedMask() const {
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
     // signed shift extends top bit to all bits
     auto occupiedV =
         vreinterpretq_u8_s8(vshrq_n_s8(vreinterpretq_s8_u8(tagV), 7));
-    auto indexV =
-        fixedVector([](std::size_t i) { return static_cast<uint8_t>(i + 1); });
-    auto occupiedIndexV = vandq_u8(occupiedV, indexV);
-    return vmaxvq_u8(occupiedIndexV) - 1;
-  }
-
-  TagCheckingIter occupiedIter() const {
-    return TagCheckingIter{&tags_[0], lastOccupiedIndex()};
-  }
-
-  IndexHolder lastOccupied() const {
-    return IndexHolder{lastOccupiedIndex()};
-  }
-
-  IndexHolder firstEmpty() const {
-    uint8x16_t tagV = vld1q_u8(&tags_[0]);
-    // occupied tags have sign bit set when interpreted as int8_t, so
-    // empty ones are non-negative
-    auto emptyV = vcgeq_s8(vreinterpretq_s8_u8(tagV), vdupq_n_s8(0));
-    auto indexV =
-        fixedVector([](std::size_t i) { return static_cast<uint8_t>(~i); });
-    auto emptyIndexV = vandq_u8(emptyV, indexV);
-    // none empty -> i == 0xff == int8_t{-1}
-    int8_t i = static_cast<int8_t>(~vmaxvq_u8(emptyIndexV));
-    return IndexHolder{i};
+    uint8x8_t maskV = vshrn_n_u16(vreinterpretq_u16_u8(occupiedV), 4);
+    return vget_lane_u64(vreinterpret_u64_u8(maskV), 0) & kFullMask;
   }
 #else
   ////////
@@ -638,6 +550,7 @@ struct alignas(max_align_t) F14Chunk {
     auto tagV = _mm_load_si128(tagVector());
     return _mm_movemask_epi8(tagV) & kFullMask;
   }
+#endif
 
   DenseMaskIter occupiedIter() const {
     return DenseMaskIter{occupiedMask()};
@@ -650,7 +563,6 @@ struct alignas(max_align_t) F14Chunk {
   FirstEmptyInMask firstEmpty() const {
     return FirstEmptyInMask{occupiedMask() ^ kFullMask};
   }
-#endif
 
   bool occupied(std::size_t index) const {
     FOLLY_SAFE_DCHECK(tags_[index] == 0 || (tags_[index] & 0x80) != 0, "");
@@ -1789,6 +1701,7 @@ class F14Table : public Policy {
       chunk->adjustHostedOverflowCount(Chunk::kIncrHostedOverflowCount);
     }
     std::size_t itemIndex = firstEmpty.index();
+    FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
 
     chunk->setTag(itemIndex, hp.second);
     ItemIter iter{chunk, itemIndex};
