@@ -604,10 +604,8 @@ struct Data : DataTracker<(f & IS_RELOCATABLE) != 0>,
 
 namespace folly {
 template <Flags f, size_t pad>
-struct IsRelocatable<Data<f, pad>>
-  : std::integral_constant<bool,
-      (f & IS_RELOCATABLE) != 0
-    > {};
+struct IsRelocatable<Data<f, pad>> : bool_constant<(f & IS_RELOCATABLE) != 0> {
+};
 } // namespace folly
 
 //-----------------------------------------------------------------------------
@@ -617,21 +615,17 @@ struct IsRelocatable<Data<f, pad>>
 template <typename T>
 struct isPropCopy : true_type {};
 template <Flags f, size_t pad>
-struct isPropCopy<Data<f, pad>> :
-  std::integral_constant<bool, (f & PROP_COPY) != 0> {};
+struct isPropCopy<Data<f, pad>> : bool_constant<(f & PROP_COPY) != 0> {};
 
 template <typename T>
 struct isPropMove : true_type {};
 template <Flags f, size_t pad>
-struct isPropMove<Data<f, pad>> :
-  std::integral_constant<bool, (f & PROP_MOVE) != 0> {};
+struct isPropMove<Data<f, pad>> : bool_constant<(f & PROP_MOVE) != 0> {};
 
 template <typename T>
 struct isPropSwap : true_type {};
 template <Flags f, size_t pad>
-struct isPropSwap<Data<f, pad>> :
-  std::integral_constant<bool, (f & PROP_SWAP) != 0> {};
-
+struct isPropSwap<Data<f, pad>> : bool_constant<(f & PROP_SWAP) != 0> {};
 
 struct AllocTracker {
   static int Constructed;
@@ -798,36 +792,30 @@ void isSane() {
 
 template <typename T>
 struct is_copy_constructibleAndAssignable
-  : std::integral_constant<bool,
-      std::is_copy_constructible<T>::value &&
-      std::is_copy_assignable<T>::value
-    > {};
+    : bool_constant<
+          std::is_copy_constructible<T>::value &&
+          std::is_copy_assignable<T>::value> {};
 
 template <typename T>
 struct is_move_constructibleAndAssignable
-  : std::integral_constant<bool,
-      std::is_move_constructible<T>::value &&
-      std::is_move_assignable<T>::value
-    > {};
+    : bool_constant<
+          std::is_move_constructible<T>::value &&
+          std::is_move_assignable<T>::value> {};
 
 template <class Vector>
 struct customAllocator
-  : std::integral_constant<bool,
-      !is_same<
-        typename Vector::allocator_type,
-        std::allocator<typename Vector::value_type>
-      >::value
-    > {};
+    : bool_constant<!is_same<
+          typename Vector::allocator_type,
+          std::allocator<typename Vector::value_type>>::value> {};
 
 template <typename T>
 struct special_move_assignable
   : is_move_constructibleAndAssignable<T> {};
 template <Flags f, size_t pad>
 struct special_move_assignable<Data<f, pad>>
-  : std::integral_constant<bool,
-      is_move_constructibleAndAssignable<Data<f, pad>>::value ||
-      f & PROP_MOVE
-    > {};
+    : bool_constant<
+          is_move_constructibleAndAssignable<Data<f, pad>>::value ||
+          f & PROP_MOVE> {};
 
 //=============================================================================
 //=============================================================================
@@ -919,7 +907,7 @@ uint64_t ReadTSC() {
     BOOST_PP_SEQ_FOR_EACH(GEN_CLOSER, _, BOOST_PP_SEQ_REVERSE(argseq))   \
   }                                                                      \
   template <class Vector> void test_ ## name ## 3 () {                   \
-    test_ ## name ## 2 <Vector> (std::integral_constant<bool,            \
+    test_ ## name ## 2 <Vector> (bool_constant<                          \
         restriction<typename Vector::value_type>::value &&               \
         is_copy_constructible<typename Vector::value_type>::value        \
       >());                                                              \
@@ -935,7 +923,7 @@ uint64_t ReadTSC() {
     return true;                                                         \
   }                                                                      \
   template <class Vector> bool test_I_ ## name ## 3 () {                 \
-    return test_I_ ## name ## 2 <Vector> (std::integral_constant<bool,   \
+    return test_I_ ## name ## 2 <Vector> (bool_constant<                 \
       restriction<typename Vector::value_type>::value>());               \
     return false;                                                        \
   }                                                                      \

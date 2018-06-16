@@ -385,12 +385,6 @@ class MoveOnly {
 
 using MoveOnly = moveonly_::MoveOnly;
 
-/**
- * A pithy alias for std::integral_constant<bool, B>.
- */
-template <bool B>
-using Bool = std::integral_constant<bool, B>;
-
 template <typename T>
 constexpr auto to_signed(T const& t) -> typename std::make_signed<T>::type {
   using S = typename std::make_signed<T>::type;

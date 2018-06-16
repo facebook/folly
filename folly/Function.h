@@ -255,7 +255,7 @@ union Data {
 
 template <typename Fun, typename = Fun*>
 using IsSmall = Conjunction<
-    std::integral_constant<bool, (sizeof(Fun) <= sizeof(Data::tiny))>,
+    bool_constant<(sizeof(Fun) <= sizeof(Data::tiny))>,
     std::is_nothrow_move_constructible<Fun>>;
 using SmallTag = std::true_type;
 using HeapTag = std::false_type;

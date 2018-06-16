@@ -405,7 +405,7 @@ struct integral_hasher {
 
 template <typename I>
 using integral_hasher_avalanches =
-    std::integral_constant<bool, sizeof(I) >= 8 || sizeof(size_t) == 4>;
+    bool_constant<sizeof(I) >= 8 || sizeof(size_t) == 4>;
 
 template <typename F>
 struct float_hasher {

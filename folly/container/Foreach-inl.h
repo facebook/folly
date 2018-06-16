@@ -142,11 +142,11 @@ using EnableIfAcceptsOneArgument = void_t<decltype(std::declval<Func>()(
 template <typename Sequence, typename Func>
 using EnableIfAcceptsTwoArguments = void_t<decltype(std::declval<Func>()(
     std::declval<typename DeclvalSequence<Sequence>::type>(),
-    std::integral_constant<std::size_t, 0>{}))>;
+    index_constant<0>{}))>;
 template <typename Sequence, typename Func>
 using EnableIfAcceptsThreeArguments = void_t<decltype(std::declval<Func>()(
     std::declval<typename DeclvalSequence<Sequence>::type>(),
-    std::integral_constant<std::size_t, 0>{},
+    index_constant<0>{},
     adl::adl_begin(std::declval<Sequence>())))>;
 template <typename Sequence, typename Func>
 using EnableIfBreaksRange = std::enable_if_t<std::is_same<
@@ -159,7 +159,7 @@ template <typename Sequence, typename Func>
 using EnableIfBreaksTuple = std::enable_if_t<std::is_same<
     typename std::decay<decltype(std::declval<Func>()(
         std::declval<typename DeclvalSequence<Sequence>::type>(),
-        std::integral_constant<std::size_t, 0>{}))>::type,
+        index_constant<0>{}))>::type,
     LoopControl>::value>;
 /**
  * Enables if the sequence has random access iterators
@@ -263,7 +263,7 @@ struct ForEachTupleImpl {
     static_cast<void>(std::initializer_list<int>{
         (func(
              Get<Indices, Sequence>::impl(std::forward<Sequence>(seq)),
-             std::integral_constant<std::size_t, Indices>{}),
+             index_constant<Indices>{}),
          0)...});
   }
 };
@@ -282,7 +282,7 @@ struct ForEachTupleImpl<Seq, F, EnableIfBreaksTuple<Seq, F>> {
         (((break_or_not == loop_continue)
               ? (break_or_not = func(
                      Get<Indices, Sequence>::impl(std::forward<Sequence>(seq)),
-                     std::integral_constant<std::size_t, Indices>{}))
+                     index_constant<Indices>{}))
               : (loop_continue)),
          0)...});
   }

@@ -212,7 +212,7 @@ void LogStreamVoidify<true>::operator&(std::ostream& stream) {
   abort();
 }
 
-void logDisabledHelper(std::integral_constant<bool, true>) noexcept {
+void logDisabledHelper(std::true_type) noexcept {
   // This function can only be reached if we had a disabled fatal log message.
   // This should never happen: LogCategory::setLevelLocked() does not allow
   // setting the threshold for a category lower than FATAL (in production

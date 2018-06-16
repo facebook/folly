@@ -229,8 +229,8 @@ constexpr const std::array<
     }};
 
 // Check if ASCII is really ASCII
-using IsAscii = std::
-    integral_constant<bool, 'A' == 65 && 'Z' == 90 && 'a' == 97 && 'z' == 122>;
+using IsAscii =
+    bool_constant<'A' == 65 && 'Z' == 90 && 'a' == 97 && 'z' == 122>;
 
 // The code in this file that uses tolower() really only cares about
 // 7-bit ASCII characters, so we can take a nice shortcut here.

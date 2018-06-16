@@ -151,7 +151,7 @@
 #define XLOG_IMPL(level, cond, type, ...)                                    \
   (!XLOG_IS_ON_IMPL(level) || !(cond))                                       \
       ? ::folly::logDisabledHelper(                                          \
-            std::integral_constant<bool, ::folly::isLogLevelFatal(level)>{}) \
+            ::folly::bool_constant<::folly::isLogLevelFatal(level)>{}) \
       : ::folly::LogStreamVoidify< ::folly::isLogLevelFatal(level)>{} &      \
           ::folly::LogStreamProcessor(                                       \
               [] {                                                           \

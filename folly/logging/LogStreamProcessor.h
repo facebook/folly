@@ -492,8 +492,7 @@ class LogStreamVoidify<true> {
  * out how to format it.
  */
 // clang-format off
-inline void logDisabledHelper(std::integral_constant<bool, false>) noexcept {}
-[[noreturn]] void logDisabledHelper(
-        std::integral_constant<bool, true>) noexcept;
+inline void logDisabledHelper(std::false_type) noexcept {}
+[[noreturn]] void logDisabledHelper(std::true_type) noexcept;
 // clang-format on
 } // namespace folly

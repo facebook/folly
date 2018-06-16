@@ -134,6 +134,21 @@
 
 namespace folly {
 
+#if __cpp_lib_bool_constant || _MSC_VER
+
+using std::bool_constant;
+
+#else
+
+//  mimic: std::bool_constant, C++17
+template <bool B>
+using bool_constant = std::integral_constant<bool, B>;
+
+#endif
+
+template <std::size_t I>
+using index_constant = std::integral_constant<std::size_t, I>;
+
 /***
  *  _t
  *
@@ -289,8 +304,7 @@ using void_t = type_t<void, Ts...>;
 // Older versions of libstdc++ do not provide std::is_trivially_copyable
 #if defined(__clang__) && !defined(_LIBCPP_VERSION)
 template <class T>
-struct is_trivially_copyable
-    : std::integral_constant<bool, __is_trivially_copyable(T)> {};
+struct is_trivially_copyable : bool_constant<__is_trivially_copyable(T)> {};
 #elif defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
 template <class T>
 struct is_trivially_copyable : std::is_trivial<T> {};
@@ -417,10 +431,8 @@ using IsNothrowSwappable = std::_Is_nothrow_swappable<T>;
 
 template <class T>
 struct IsNothrowSwappable
-    : std::integral_constant<bool,
-        std::is_nothrow_move_constructible<T>::value &&
-        noexcept(swap(std::declval<T&>(), std::declval<T&>()))
-      > {};
+    : bool_constant<std::is_nothrow_move_constructible<T>::value&& noexcept(
+          swap(std::declval<T&>(), std::declval<T&>()))> {};
 #endif
 } // namespace traits_detail_IsNothrowSwappable
 
@@ -435,12 +447,12 @@ struct IsRelocatable : std::conditional<
                            // std::is_trivially_move_constructible<T>::value ||
                            is_trivially_copyable<T>>::type {};
 
-template <class T> struct IsZeroInitializable
-  : std::conditional<
-      traits_detail::has_IsZeroInitializable<T>::value,
-      traits_detail::has_true_IsZeroInitializable<T>,
-      std::integral_constant<bool, !std::is_class<T>::value>
-    >::type {};
+template <class T>
+struct IsZeroInitializable
+    : std::conditional<
+          traits_detail::has_IsZeroInitializable<T>::value,
+          traits_detail::has_true_IsZeroInitializable<T>,
+          bool_constant<!std::is_class<T>::value>>::type {};
 
 template <typename...>
 struct Conjunction : std::true_type {};
@@ -459,7 +471,7 @@ struct Disjunction<T, TList...>
     : std::conditional<T::value, T, Disjunction<TList...>>::type {};
 
 template <typename T>
-struct Negation : std::integral_constant<bool, !T::value> {};
+struct Negation : bool_constant<!T::value> {};
 
 template <bool... Bs>
 struct Bools {
@@ -594,10 +606,8 @@ namespace folly {
 
 // STL commonly-used types
 template <class T, class U>
-struct IsRelocatable< std::pair<T, U> >
-    : std::integral_constant<bool,
-        IsRelocatable<T>::value &&
-        IsRelocatable<U>::value> {};
+struct IsRelocatable<std::pair<T, U>>
+    : bool_constant<IsRelocatable<T>::value && IsRelocatable<U>::value> {};
 
 // Is T one of T1, T2, ..., Tn?
 template <typename T, typename... Ts>
