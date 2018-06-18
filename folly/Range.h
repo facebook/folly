@@ -25,7 +25,6 @@
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/String.h>
 
-#include <glog/logging.h>
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -546,12 +545,12 @@ class Range {
   }
 
   value_type& operator[](size_t i) {
-    DCHECK_GT(size(), i);
+    assert(i < size());
     return b_[i];
   }
 
   const value_type& operator[](size_t i) const {
-    DCHECK_GT(size(), i);
+    assert(i < size());
     return b_[i];
   }
 
@@ -622,17 +621,17 @@ class Range {
 
   // unchecked versions
   void uncheckedAdvance(size_type n) {
-    DCHECK_LE(n, size());
+    assert(n <= size());
     b_ += n;
   }
 
   void uncheckedSubtract(size_type n) {
-    DCHECK_LE(n, size());
+    assert(n <= size());
     e_ -= n;
   }
 
   Range uncheckedSubpiece(size_type first, size_type length = npos) const {
-    DCHECK_LE(first, size());
+    assert(first <= size());
     return Range(b_ + first, std::min(length, size() - first));
   }
 
