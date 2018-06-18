@@ -846,7 +846,13 @@ class SemiFuture : private futures::detail::FutureBase<T> {
     }
 
     void unhandled_exception() {
-      promise_.setException(exception_wrapper(std::current_exception()));
+      try {
+        std::rethrow_exception(std::current_exception());
+      } catch (std::exception& e) {
+        promise_.setException(exception_wrapper(std::current_exception(), e));
+      } catch (...) {
+        promise_.setException(exception_wrapper(std::current_exception()));
+      }
     }
 
    private:

@@ -93,9 +93,9 @@ TEST(Coro, Sleep) {
   EXPECT_TRUE(future.await_ready());
 }
 
-coro::Task<void> taskException() {
+coro::Task<int> taskException() {
   throw std::runtime_error("Test exception");
-  co_return;
+  co_return 42;
 }
 
 TEST(Coro, Throw) {
@@ -107,6 +107,18 @@ TEST(Coro, Throw) {
   executor.drive();
 
   EXPECT_TRUE(future.await_ready());
+  EXPECT_THROW(future.get(), std::runtime_error);
+}
+
+TEST(Coro, FutureThrow) {
+  ManualExecutor executor;
+  auto future = via(&executor, taskException()).toFuture();
+
+  EXPECT_FALSE(future.isReady());
+
+  executor.drive();
+
+  EXPECT_TRUE(future.isReady());
   EXPECT_THROW(future.get(), std::runtime_error);
 }
 
