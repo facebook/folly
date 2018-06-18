@@ -268,7 +268,24 @@ source_group("" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp)
 
 target_link_libraries(folly PUBLIC folly_deps)
 
-install(TARGETS folly folly_deps
+auto_sources(initfiles "*.cpp" "${FOLLY_DIR}/init")
+auto_sources(inithfiles "*.h" "${FOLLY_DIR}/init")
+add_library(follyinit STATIC
+  ${initfiles} ${inithfiles}
+)
+target_link_libraries(follyinit PUBLIC folly_deps)
+apply_folly_compile_options_to_target(follyinit)
+
+auto_sources(loggingfiles "*.cpp" "${FOLLY_DIR}/logging")
+auto_sources(logginghfiles "*.h" "${FOLLY_DIR}/logging")
+add_library(follylogging STATIC
+  ${loggingfiles} ${logginghfiles}
+)
+target_link_libraries(follylogging PUBLIC folly_deps)
+apply_folly_compile_options_to_target(follylogging)
+
+
+install(TARGETS folly folly_deps follyinit follylogging
   EXPORT folly
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION ${LIB_INSTALL_DIR}
