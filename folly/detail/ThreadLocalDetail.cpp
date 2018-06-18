@@ -19,6 +19,9 @@
 #include <list>
 #include <mutex>
 
+constexpr auto kSmallGrowthFactor = 1.1;
+constexpr auto kBigGrowthFactor = 1.7;
+
 namespace folly { namespace threadlocal_detail {
 
 void ThreadEntryNode::initIfZero(bool locked) {
@@ -291,7 +294,14 @@ ElementWrapper* StaticMetaBase::reallocate(
 
   // Growth factor < 2, see folly/docs/FBVector.md; + 5 to prevent
   // very slow start.
-  newCapacity = static_cast<size_t>((idval + 5) * 1.7);
+  auto smallCapacity = static_cast<size_t>((idval + 5) * kSmallGrowthFactor);
+  auto bigCapacity = static_cast<size_t>((idval + 5) * kBigGrowthFactor);
+
+  newCapacity = (threadEntry->meta &&
+                 (bigCapacity <= threadEntry->meta->head_.elementsCapacity))
+      ? bigCapacity
+      : smallCapacity;
+
   assert(newCapacity > prevCapacity);
   ElementWrapper* reallocated = nullptr;
 
