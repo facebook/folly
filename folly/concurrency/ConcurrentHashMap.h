@@ -17,7 +17,7 @@
 
 #include <folly/Optional.h>
 #include <folly/concurrency/detail/ConcurrentHashMap-detail.h>
-#include <folly/experimental/hazptr/hazptr.h>
+#include <folly/synchronization/Hazptr.h>
 #include <atomic>
 #include <mutex>
 

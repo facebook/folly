@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <folly/experimental/hazptr/hazptr.h>
+#include <folly/synchronization/Hazptr.h>
 #include <atomic>
 #include <mutex>
 
@@ -25,7 +25,7 @@ namespace detail {
 
 namespace concurrenthashmap {
 
-// hazptr retire() that can use an allocator.
+// hazptr deleter that can use an allocator.
 template <typename Allocator>
 class HazptrDeleter {
  public:
@@ -123,38 +123,48 @@ template <
     typename ValueType,
     typename Allocator,
     template <typename> class Atom = std::atomic>
-class NodeT : public folly::hazptr::hazptr_obj_base_refcounted<
+class NodeT : public hazptr_obj_base_linked<
                   NodeT<KeyType, ValueType, Allocator, Atom>,
+                  Atom,
                   concurrenthashmap::HazptrDeleter<Allocator>> {
  public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
-  explicit NodeT(NodeT* other) : item_(other->item_) {}
+  explicit NodeT(NodeT* other) : item_(other->item_) {
+    this->set_deleter( // defined in hazptr_obj
+        concurrenthashmap::HazptrDeleter<Allocator>());
+    this->acquire_link_safe(); // defined in hazptr_obj_base_linked
+  }
 
   template <typename Arg, typename... Args>
   NodeT(Arg&& k, Args&&... args)
       : item_(
             std::piecewise_construct,
             std::forward<Arg>(k),
-            std::forward<Args>(args)...) {}
+            std::forward<Args>(args)...) {
+    this->set_deleter( // defined in hazptr_obj
+        concurrenthashmap::HazptrDeleter<Allocator>());
+    this->acquire_link_safe(); // defined in hazptr_obj_base_linked
+  }
 
   void release() {
-    this->retire(
-        folly::hazptr::default_hazptr_domain(),
-        concurrenthashmap::HazptrDeleter<Allocator>());
-  }
-  ~NodeT() {
-    auto next = next_.load(std::memory_order_acquire);
-    if (next) {
-      if (next->release_ref()) {
-        delete next;
-      }
-    }
+    this->unlink();
   }
 
   value_type& getItem() {
     return item_.getItem();
   }
+
+  template <typename S>
+  void push_links(bool m, S& s) {
+    if (m) {
+      auto p = next_.load(std::memory_order_acquire);
+      if (p) {
+        s.push(p);
+      }
+    }
+  }
+
   Atom<NodeT*> next_{nullptr};
 
  private:
@@ -185,10 +195,6 @@ class NodeT : public folly::hazptr::hazptr_obj_base_refcounted<
  *   including dummy nodes increases the memory usage by 2x, but we
  *   could split the difference and still require a lock to set bucket
  *   pointers.
- *
- * * hazptr acquire/release could be optimized more, in
- *   single-threaded case, hazptr overhead is ~30% for a hot find()
- *   loop.
  */
 template <
     typename KeyType,
@@ -379,7 +385,7 @@ class alignas(64) ConcurrentHashMapSegment {
     }
 
     auto idx = getIdx(bcount, h);
-    auto head = &buckets->buckets_[idx];
+    auto head = &buckets->buckets_[idx]();
     auto node = head->load(std::memory_order_relaxed);
     auto headnode = node;
     auto prev = head;
@@ -406,7 +412,7 @@ class alignas(64) ConcurrentHashMapSegment {
           auto next = node->next_.load(std::memory_order_relaxed);
           cur->next_.store(next, std::memory_order_relaxed);
           if (next) {
-            next->acquire_ref();
+            next->acquire_link(); // defined in hazptr_obj_base_linked
           }
           prev->store(cur, std::memory_order_release);
           g.unlock();
@@ -437,7 +443,7 @@ class alignas(64) ConcurrentHashMapSegment {
       bcount <<= 1;
       hazbuckets.reset(buckets);
       idx = getIdx(bcount, h);
-      head = &buckets->buckets_[idx];
+      head = &buckets->buckets_[idx]();
       headnode = head->load(std::memory_order_relaxed);
     }
 
@@ -465,7 +471,7 @@ class alignas(64) ConcurrentHashMapSegment {
 
     auto oldcount = bucket_count_.load(std::memory_order_relaxed);
     for (size_t i = 0; i < oldcount; i++) {
-      auto bucket = &buckets->buckets_[i];
+      auto bucket = &buckets->buckets_[i]();
       auto node = bucket->load(std::memory_order_relaxed);
       if (!node) {
         continue;
@@ -491,15 +497,15 @@ class alignas(64) ConcurrentHashMapSegment {
         count++;
       }
       // Set longest last run in new bucket, incrementing the refcount.
-      lastrun->acquire_ref();
-      newbuckets->buckets_[lastidx].store(lastrun, std::memory_order_relaxed);
+      lastrun->acquire_link(); // defined in hazptr_obj_base_linked
+      newbuckets->buckets_[lastidx]().store(lastrun, std::memory_order_relaxed);
       // Clone remaining nodes
       for (; node != lastrun;
            node = node->next_.load(std::memory_order_relaxed)) {
         auto newnode = (Node*)Allocator().allocate(sizeof(Node));
         new (newnode) Node(node);
         auto k = getIdx(bucket_count, HashFn()(node->getItem().first));
-        auto prevhead = &newbuckets->buckets_[k];
+        auto prevhead = &newbuckets->buckets_[k]();
         newnode->next_.store(prevhead->load(std::memory_order_relaxed));
         prevhead->store(newnode, std::memory_order_relaxed);
       }
@@ -511,31 +517,27 @@ class alignas(64) ConcurrentHashMapSegment {
     buckets_.store(newbuckets, std::memory_order_release);
     seqlock_.fetch_add(1, std::memory_order_release);
     oldbuckets->retire(
-        folly::hazptr::default_hazptr_domain(),
         concurrenthashmap::HazptrBucketDeleter<Allocator>(oldcount));
   }
 
   bool find(Iterator& res, const KeyType& k) {
-    auto hazcurr = &res.hazptrs_[1];
-    folly::hazptr::hazptr_local<1> hlocal;
-    auto haznext = &hlocal[0];
+    auto& hazcurr = res.hazptrs_[1];
+    auto& haznext = res.hazptrs_[2];
     auto h = HashFn()(k);
     size_t bcount;
     Buckets* buckets;
     getBucketsAndCount(bcount, buckets, res.hazptrs_[0]);
 
     auto idx = getIdx(bcount, h);
-    auto prev = &buckets->buckets_[idx];
-    auto node = hazcurr->get_protected(*prev);
+    auto prev = &buckets->buckets_[idx]();
+    auto node = hazcurr.get_protected(*prev);
     while (node) {
       if (KeyEqual()(k, node->getItem().first)) {
-        // We may be using hlocal, make sure we are using hazptrs_
-        res.hazptrs_[1].reset(node);
         res.setNode(node, buckets, bcount, idx);
         return true;
       }
-      node = haznext[0].get_protected(node->next_);
-      std::swap(hazcurr, haznext);
+      node = haznext.get_protected(node->next_);
+      hazcurr.swap(haznext);
     }
     return false;
   }
@@ -554,14 +556,14 @@ class alignas(64) ConcurrentHashMapSegment {
       size_t bcount = bucket_count_.load(std::memory_order_relaxed);
       auto buckets = buckets_.load(std::memory_order_relaxed);
       auto idx = getIdx(bcount, h);
-      auto head = &buckets->buckets_[idx];
+      auto head = &buckets->buckets_[idx]();
       node = head->load(std::memory_order_relaxed);
       Node* prev = nullptr;
       while (node) {
         if (KeyEqual()(key, node->getItem().first)) {
           auto next = node->next_.load(std::memory_order_relaxed);
           if (next) {
-            next->acquire_ref();
+            next->acquire_link(); // defined in hazptr_obj_base_linked
           }
           if (prev) {
             prev->next_.store(next, std::memory_order_release);
@@ -618,7 +620,6 @@ class alignas(64) ConcurrentHashMapSegment {
       size_ = 0;
     }
     buckets->retire(
-        folly::hazptr::default_hazptr_domain(),
         concurrenthashmap::HazptrBucketDeleter<Allocator>(bcount));
   }
 
@@ -645,44 +646,36 @@ class alignas(64) ConcurrentHashMapSegment {
 
   // Could be optimized to avoid an extra pointer dereference by
   // allocating buckets_ at the same time.
-  class Buckets : public folly::hazptr::hazptr_obj_base<
+  class Buckets : public hazptr_obj_base<
                       Buckets,
+                      Atom,
                       concurrenthashmap::HazptrBucketDeleter<Allocator>> {
+    using BucketRoot = hazptr_root<Node, Atom>;
+
     Buckets() {}
     ~Buckets() {}
 
    public:
     static Buckets* create(size_t count) {
       auto buf =
-          Allocator().allocate(sizeof(Buckets) + sizeof(Atom<Node*>) * count);
+          Allocator().allocate(sizeof(Buckets) + sizeof(BucketRoot) * count);
       auto buckets = new (buf) Buckets();
       for (size_t i = 0; i < count; i++) {
-        auto bucket = new (&buckets->buckets_[i]) Atom<Node*>();
-        bucket->store(nullptr, std::memory_order_relaxed);
+        new (&buckets->buckets_[i]) BucketRoot;
       }
       return buckets;
     }
 
     void destroy(size_t count) {
       for (size_t i = 0; i < count; i++) {
-        auto elem = buckets_[i].load(std::memory_order_relaxed);
-        if (elem) {
-          // Buckets may not own the chain: this could be a Buckets
-          // struct freed after resize, and we only have a refcount
-          // on the chain.
-          if (elem->release_ref()) {
-            concurrenthashmap::HazptrDeleter<Allocator>()(elem);
-          }
-        }
-        typedef Atom<Node*> Element;
-        buckets_[i].~Element();
+        buckets_[i].~BucketRoot();
       }
       this->~Buckets();
       Allocator().deallocate(
-          (uint8_t*)this, sizeof(Atom<Node*>) * count + sizeof(*this));
+          (uint8_t*)this, sizeof(BucketRoot) * count + sizeof(*this));
     }
 
-    Atom<Node*> buckets_[0];
+    BucketRoot buckets_[0];
   };
 
  public:
@@ -712,7 +705,8 @@ class alignas(64) ConcurrentHashMapSegment {
 
     const Iterator& operator++() {
       DCHECK(node_);
-      node_ = hazptrs_[1].get_protected(node_->next_);
+      node_ = hazptrs_[2].get_protected(node_->next_);
+      hazptrs_[1].swap(hazptrs_[2]);
       if (!node_) {
         ++idx_;
         next();
@@ -726,7 +720,7 @@ class alignas(64) ConcurrentHashMapSegment {
           break;
         }
         DCHECK(buckets_);
-        node_ = hazptrs_[1].get_protected(buckets_->buckets_[idx_]);
+        node_ = hazptrs_[1].get_protected(buckets_->buckets_[idx_]());
         if (node_) {
           break;
         }
@@ -776,7 +770,7 @@ class alignas(64) ConcurrentHashMapSegment {
     }
 
     // These are accessed directly from the functions above
-    folly::hazptr::hazptr_array<2> hazptrs_;
+    hazptr_array<3, Atom> hazptrs_;
 
    private:
     Node* node_{nullptr};
@@ -794,7 +788,7 @@ class alignas(64) ConcurrentHashMapSegment {
   void getBucketsAndCount(
       size_t& bcount,
       Buckets*& buckets,
-      folly::hazptr::hazptr_holder& hazptr) {
+      hazptr_holder<Atom>& hazptr) {
     while (true) {
       auto seqlock = seqlock_.load(std::memory_order_acquire);
       bcount = bucket_count_.load(std::memory_order_acquire);
