@@ -33,6 +33,10 @@ namespace folly {
 namespace f14 {
 namespace detail {
 
+template <typename Ptr>
+using NonConstPtr = typename std::pointer_traits<Ptr>::template rebind<
+    std::remove_const_t<typename std::pointer_traits<Ptr>::element_type>>;
+
 template <typename KeyType, typename MappedType>
 using MapValueType = std::pair<KeyType const, MappedType>;
 

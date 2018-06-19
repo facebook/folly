@@ -45,7 +45,6 @@
 
 #include <folly/container/detail/F14Defaults.h>
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
-#include <folly/container/detail/F14Memory.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 #if FOLLY_AARCH64
@@ -405,7 +404,7 @@ class FirstEmptyInMask {
 };
 
 template <typename ItemType>
-struct alignas(max_align_t) F14Chunk {
+struct alignas(16) F14Chunk {
   using Item = ItemType;
 
   // Assuming alignof(max_align_t) == 16 (and assuming alignof(Item) >=
@@ -425,8 +424,9 @@ struct alignas(max_align_t) F14Chunk {
 
   static constexpr MaskType kFullMask = FullMask<kCapacity>::value;
 
-  // Non-empty tags have their top bit set
-  std::array<uint8_t, kCapacity> tags_;
+  // Non-empty tags have their top bit set.  tags_ array might be bigger
+  // than kCapacity to keep alignment of first item.
+  std::array<uint8_t, 14> tags_;
 
   // Bits 0..3 record the actual capacity of the chunk if this is chunk
   // zero, or hold 0000 for other chunks.  Bits 4-7 are a 4-bit counter
@@ -628,6 +628,150 @@ struct alignas(max_align_t) F14Chunk {
 
 ////////////////
 
+// PackedChunkItemPtr points to an Item in an F14Chunk, allowing both the
+// Item& and its index to be recovered.  It sorts by the address of the
+// item, and it only works for items that are in a properly-aligned chunk.
+
+// generic form, not actually packed
+template <typename Ptr>
+class PackedChunkItemPtr {
+ public:
+  PackedChunkItemPtr(Ptr p, std::size_t i) noexcept
+      : ptr_{p}, index_{static_cast<unsigned>(i)} {
+    FOLLY_SAFE_DCHECK(ptr_ != nullptr || index_ == 0, "");
+  }
+
+  Ptr ptr() const {
+    return ptr_;
+  }
+
+  std::size_t index() const {
+    return index_;
+  }
+
+  bool operator<(PackedChunkItemPtr const& rhs) const {
+    FOLLY_SAFE_DCHECK(ptr_ != rhs.ptr_ || index_ == rhs.index_, "");
+    return ptr_ < rhs.ptr_;
+  }
+
+  bool operator==(PackedChunkItemPtr const& rhs) const {
+    FOLLY_SAFE_DCHECK(ptr_ != rhs.ptr_ || index_ == rhs.index_, "");
+    return ptr_ == rhs.ptr_;
+  }
+
+  bool operator!=(PackedChunkItemPtr const& rhs) const {
+    return !(*this == rhs);
+  }
+
+ private:
+  Ptr ptr_;
+  unsigned index_;
+};
+
+// Bare pointer form, packed into a uintptr_t.  Uses only bits wasted by
+// alignment, so it works on 32-bit and 64-bit platforms
+template <typename T>
+class PackedChunkItemPtr<T*> {
+  static_assert((alignof(F14Chunk<T>) % 16) == 0, "");
+
+  // Chunks are 16-byte aligned, so we can maintain a packed pointer to a
+  // chunk item by packing the 4-bit item index into the least significant
+  // bits of a pointer to the chunk itself.  This makes ItemIter::pack
+  // more expensive, however, since it has to compute the chunk address.
+  //
+  // Chunk items have varying alignment constraints, so it would seem
+  // to be that we can't do a similar trick while using only bit masking
+  // operations on the Item* itself.  It happens to be, however, that if
+  // sizeof(Item) is not a multiple of 16 then we can recover a portion
+  // of the index bits from the knowledge that the Item-s are stored in
+  // an array that is itself 16-byte aligned.
+  //
+  // If kAlignBits is the number of trailing zero bits in sizeof(Item)
+  // (up to 4), then we can borrow those bits to store kAlignBits of the
+  // index directly.  We can recover (4 - kAlignBits) bits of the index
+  // from the item pointer itself, by defining/observing that
+  //
+  // A = kAlignBits                  (A <= 4)
+  //
+  // S = (sizeof(Item) % 16) >> A    (shifted-away bits are all zero)
+  //
+  // R = (itemPtr % 16) >> A         (shifted-away bits are all zero)
+  //
+  // M = 16 >> A
+  //
+  // itemPtr % 16   = (index * sizeof(Item)) % 16
+  //
+  // (R * 2^A) % 16 = (index * (sizeof(Item) % 16)) % 16
+  //
+  // (R * 2^A) % 16 = (index * 2^A * S) % 16
+  //
+  // R % M          = (index * S) % M
+  //
+  // S is relatively prime with M, so a multiplicative inverse is easy
+  // to compute
+  //
+  // Sinv = S^(M - 1) % M
+  //
+  // (R * Sinv) % M = index % M
+  //
+  // This lets us recover the bottom bits of the index.  When sizeof(T)
+  // is 8-byte aligned kSizeInverse will always be 1.  When sizeof(T)
+  // is 4-byte aligned kSizeInverse will be either 1 or 3.
+
+  // returns pow(x, y) % m
+  static constexpr uintptr_t powerMod(uintptr_t x, uintptr_t y, uintptr_t m) {
+    return y == 0 ? 1 : (x * powerMod(x, y - 1, m)) % m;
+  }
+
+  static constexpr uintptr_t kIndexBits = 4;
+  static constexpr uintptr_t kIndexMask = (uintptr_t{1} << kIndexBits) - 1;
+
+  static constexpr uintptr_t kAlignBits = (sizeof(T) % 16) == 0
+      ? 4
+      : (sizeof(T) % 8) == 0
+          ? 3
+          : (sizeof(T) % 4) == 0 ? 2 : (sizeof(T) % 2) == 0 ? 1 : 0;
+  static constexpr uintptr_t kAlignMask = (uintptr_t{1} << kAlignBits) - 1;
+
+  static constexpr uintptr_t kModulus = uintptr_t{1}
+      << (kIndexBits - kAlignBits);
+  static constexpr uintptr_t kSizeInverse =
+      powerMod(sizeof(T) >> kAlignBits, kModulus - 1, kModulus);
+
+ public:
+  PackedChunkItemPtr(T* p, std::size_t i) noexcept {
+    uintptr_t encoded = i >> (kIndexBits - kAlignBits);
+    folly::assume((encoded & ~kAlignMask) == 0);
+    raw_ = reinterpret_cast<uintptr_t>(p) | encoded;
+    FOLLY_SAFE_DCHECK(p == ptr(), "");
+    FOLLY_SAFE_DCHECK(i == index(), "");
+  }
+
+  T* ptr() const {
+    return reinterpret_cast<T*>(raw_ & ~kAlignMask);
+  }
+
+  std::size_t index() const {
+    auto encoded = (raw_ & kAlignMask) << (kIndexBits - kAlignBits);
+    auto deduced =
+        ((raw_ >> kAlignBits) * kSizeInverse) & (kIndexMask >> kAlignBits);
+    return encoded | deduced;
+  }
+
+  bool operator<(PackedChunkItemPtr const& rhs) const {
+    return raw_ < rhs.raw_;
+  }
+  bool operator==(PackedChunkItemPtr const& rhs) const {
+    return raw_ == rhs.raw_;
+  }
+  bool operator!=(PackedChunkItemPtr const& rhs) const {
+    return !(*this == rhs);
+  }
+
+ private:
+  uintptr_t raw_;
+};
+
 template <typename ChunkPtr>
 class F14ItemIter {
  private:
@@ -639,7 +783,7 @@ class F14ItemIter {
   using ItemConstPtr =
       typename std::pointer_traits<ChunkPtr>::template rebind<Item const>;
 
-  using Packed = TaggedPtr<ItemPtr>;
+  using Packed = PackedChunkItemPtr<ItemPtr>;
 
   //// PUBLIC
 
@@ -648,7 +792,7 @@ class F14ItemIter {
   // default copy and move constructors and assignment operators are correct
 
   explicit F14ItemIter(Packed const& packed)
-      : itemPtr_{packed.ptr()}, index_{packed.extra()} {}
+      : itemPtr_{packed.ptr()}, index_{packed.index()} {}
 
   F14ItemIter(ChunkPtr chunk, std::size_t index)
       : itemPtr_{std::pointer_traits<ItemPtr>::pointer_to(chunk->item(index))},

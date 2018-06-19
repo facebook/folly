@@ -1004,6 +1004,45 @@ TEST(F14FastSet, visitContiguousRanges) {
   runVisitContiguousRangesTest<F14FastSet<int>>();
 }
 
+namespace {
+struct CharArrayHasher {
+  template <std::size_t N>
+  std::size_t operator()(std::array<char, N> const& value) const {
+    return folly::Hash{}(StringPiece{value.begin(), value.end()});
+  }
+};
+
+template <
+    template <typename, typename, typename, typename> class S,
+    std::size_t N>
+struct RunAllValueSizeTests {
+  void operator()() const {
+    using Key = std::array<char, N>;
+    static_assert(sizeof(Key) == N, "");
+    S<Key, CharArrayHasher, std::equal_to<Key>, std::allocator<Key>> set;
+
+    for (int i = 0; i < 100; ++i) {
+      Key key{static_cast<char>(i)};
+      set.insert(key);
+    }
+    while (!set.empty()) {
+      set.erase(set.begin());
+    }
+
+    RunAllValueSizeTests<S, N - 1>{}();
+  }
+};
+
+template <template <typename, typename, typename, typename> class S>
+struct RunAllValueSizeTests<S, 0> {
+  void operator()() const {}
+};
+} // namespace
+
+TEST(F14ValueSet, valueSize) {
+  RunAllValueSizeTests<F14ValueSet, 32>{}();
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
