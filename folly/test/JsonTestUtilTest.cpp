@@ -25,6 +25,7 @@ TEST(CompareJson, Simple) {
   constexpr StringPiece json1 = R"({"a": 1, "b": 2})";
   constexpr StringPiece json2 = R"({"b": 2, "a": 1})";
   EXPECT_TRUE(compareJson(json1, json2));
+  FOLLY_EXPECT_JSON_EQ(json1, json2);
 
   constexpr StringPiece json3 = R"({"b": 3, "a": 1})";
   EXPECT_FALSE(compareJson(json1, json3));
@@ -66,4 +67,7 @@ TEST(CompareJsonWithTolerance, Simple) {
 
   EXPECT_TRUE(compare(R"("hello")", R"("hello")"));
   EXPECT_FALSE(compare(R"("hello")", R"("world")"));
+
+  FOLLY_EXPECT_JSON_NEAR(
+      R"({"a": 1, "b": 2})", R"({"b": 2.01, "a": 1.05})", 0.1);
 }

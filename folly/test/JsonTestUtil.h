@@ -60,3 +60,13 @@ bool compareDynamicWithTolerance(
     double tolerance);
 
 } // namespace folly
+
+/**
+ * GTest helpers. Note that to use them you'll need to include the
+ * gtest headers yourself.
+ */
+#define FOLLY_EXPECT_JSON_EQ(json1, json2) \
+  EXPECT_PRED2(::folly::compareJson, json1, json2)
+
+#define FOLLY_EXPECT_JSON_NEAR(json1, json2, tolerance) \
+  EXPECT_PRED3(::folly::compareJsonWithTolerance, json1, json2, tolerance)
