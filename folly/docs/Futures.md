@@ -154,7 +154,7 @@ Once an executor is attached, a `Future` allows continuations to be attached and
 
 ```
 SemiFuture<GetReply> semiFut = mc.future_get("foo");
-Future<GetReply> fut2 = semiFut.via(&executor);
+Future<GetReply> fut1 = semiFut.via(&executor);
 
 Future<string> fut2 = fut1.then(
   [](GetReply reply) {
@@ -203,7 +203,7 @@ aFuture
   .via(e2).then(z);
 ```
 
-`x` will execute in the context of the executor associated with `aFuture`. `y1` and `y2` will execute in the execution context of`e1`, and `z` will execute in the  of `e2`. If after `z` you want to get back to the original context, you need to get there with a call to `via` passing the original executor. Another way to express this is using an overload of `then` that takes an Executor:
+`x` will execute in the context of the executor associated with `aFuture`. `y1` and `y2` will execute in the context of `e1`, and `z` will execute in the context of `e2`. If after `z` you want to get back to the original context, you need to get there with a call to `via` passing the original executor. Another way to express this is using an overload of `then` that takes an Executor:
 
 ```
 aFuture
