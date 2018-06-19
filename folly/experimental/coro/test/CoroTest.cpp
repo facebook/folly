@@ -197,6 +197,18 @@ coro::Task<int> taskTimedWait() {
   EXPECT_TRUE(fastResult);
   EXPECT_EQ(42, *fastResult);
 
+  struct ExpectedException : public std::runtime_error {
+    ExpectedException() : std::runtime_error("ExpectedException") {}
+  };
+
+  auto throwingFuture = futures::sleep(std::chrono::milliseconds{50}).then([] {
+    throw ExpectedException();
+  });
+  EXPECT_THROW(
+      (void)co_await coro::timed_wait(
+          std::move(throwingFuture), std::chrono::milliseconds{100}),
+      ExpectedException);
+
   auto slowFuture =
       futures::sleep(std::chrono::milliseconds{200}).then([] { return 42; });
   auto slowResult = co_await coro::timed_wait(

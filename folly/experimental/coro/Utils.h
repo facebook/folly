@@ -85,7 +85,10 @@ class TimedWaitAwaitable {
   }
 
   Optional<await_resume_return_type> await_resume() {
-    return std::move(storage_);
+    if (!storage_.hasValue() && !storage_.hasException()) {
+      return folly::none;
+    }
+    return std::move(storage_).value();
   }
 
  private:
@@ -93,15 +96,24 @@ class TimedWaitAwaitable {
    public:
     SharedState(
         std::experimental::coroutine_handle<> ch,
-        Optional<await_resume_return_type>& storage)
+        Try<await_resume_return_type>& storage)
         : ch_(std::move(ch)), storage_(storage) {}
 
     void setValue(await_resume_return_type&& value) {
       if (first_.exchange(true, std::memory_order_relaxed)) {
         return;
       }
-      assume(!storage_);
-      storage_ = std::move(value);
+      assume(!storage_.hasValue() && !storage_.hasException());
+      storage_ = Try<await_resume_return_type>(std::move(value));
+      ch_();
+    }
+
+    void setException(exception_wrapper e) {
+      if (first_.exchange(true, std::memory_order_relaxed)) {
+        return;
+      }
+      assume(!storage_.hasValue() && !storage_.hasException());
+      storage_ = Try<await_resume_return_type>(std::move(e));
       ch_();
     }
 
@@ -115,18 +127,24 @@ class TimedWaitAwaitable {
    private:
     std::atomic<bool> first_{false};
     std::experimental::coroutine_handle<> ch_;
-    Optional<await_resume_return_type>& storage_;
+    Try<await_resume_return_type>& storage_;
   };
 
   static Wait waitAndNotify(
       Awaitable awaitable,
       std::shared_ptr<SharedState> sharedState) {
-    sharedState->setValue(co_await awaitable);
+    try {
+      sharedState->setValue(co_await awaitable);
+    } catch (const std::exception& e) {
+      sharedState->setException(exception_wrapper(std::current_exception(), e));
+    } catch (...) {
+      sharedState->setException(exception_wrapper(std::current_exception()));
+    }
   }
 
   Awaitable awaitable_;
   std::chrono::milliseconds duration_;
-  Optional<await_resume_return_type> storage_;
+  Try<await_resume_return_type> storage_;
 };
 
 template <typename Awaitable>
