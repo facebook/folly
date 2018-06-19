@@ -273,7 +273,12 @@ class hazptr_domain {
       }
       obj = next;
     }
-    bool done = (children.count() == 0);
+#if FOLLY_HAZPTR_THR_LOCAL
+    if (!shutdown_) {
+      hazptr_priv_tls<Atom>().push_all_to_domain();
+    }
+#endif
+    bool done = ((children.count() == 0) && (retired() == nullptr));
     matched.splice(children);
     if (matched.count() > 0) {
       push_retired(matched, false /* don't call bulk_reclaim recursively */);
