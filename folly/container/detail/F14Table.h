@@ -1657,15 +1657,6 @@ class F14Table : public Policy {
       capacity = size();
     }
 
-    auto unroundedLimit = max_size();
-    std::size_t exactLimit = Chunk::kDesiredCapacity;
-    while (exactLimit <= unroundedLimit / 2) {
-      exactLimit *= 2;
-    }
-    if (UNLIKELY(capacity > exactLimit)) {
-      throw_exception<std::bad_alloc>();
-    }
-
     std::size_t const kInitialCapacity = 2;
     std::size_t const kHalfChunkCapacity =
         (Chunk::kDesiredCapacity / 2) & ~std::size_t{1};
@@ -1678,11 +1669,18 @@ class F14Table : public Policy {
       chunkCount = 1;
       maxSizeWithoutRehash = kHalfChunkCapacity;
     } else {
-      chunkCount = 1;
-      while (chunkCount * Chunk::kDesiredCapacity < capacity) {
-        chunkCount *= 2;
-      }
+      chunkCount = folly::nextPowTwo(
+          (capacity + Chunk::kDesiredCapacity - 1) / Chunk::kDesiredCapacity);
       maxSizeWithoutRehash = chunkCount * Chunk::kDesiredCapacity;
+
+      constexpr std::size_t kMaxChunksWithoutCapacityOverflow =
+          (std::numeric_limits<std::size_t>::max)() / Chunk::kDesiredCapacity;
+
+      if (UNLIKELY(
+              chunkCount > kMaxChunksWithoutCapacityOverflow ||
+              maxSizeWithoutRehash > max_size())) {
+        throw_exception<std::bad_alloc>();
+      }
     }
     if (bucket_count() != maxSizeWithoutRehash) {
       rehashImpl(chunkCount, maxSizeWithoutRehash);
