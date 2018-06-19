@@ -108,7 +108,7 @@ class hazptr_obj {
 
   void push_to_retired(hazptr_domain<Atom>& domain) {
 #if FOLLY_HAZPTR_THR_LOCAL
-    if (&domain == &default_hazptr_domain<Atom>()) {
+    if (&domain == &default_hazptr_domain<Atom>() && !domain.shutdown_) {
       hazptr_priv_tls<Atom>().push(this);
       return;
     }

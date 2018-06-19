@@ -55,6 +55,7 @@ class hazptr_domain {
   Atom<int> hcount_{0};
   Atom<int> rcount_{0};
   Atom<uint16_t> num_bulk_reclaims_{0};
+  bool shutdown_{false};
 
  public:
   /** Constructor */
@@ -62,6 +63,7 @@ class hazptr_domain {
 
   /** Destructor */
   ~hazptr_domain() {
+    shutdown_ = true;
     reclaim_all_objects();
     free_hazptr_recs();
   }
@@ -100,6 +102,7 @@ class hazptr_domain {
       hazptr_obj_list<Atom>&,
       hazptr_domain<Atom>&) noexcept;
   friend class hazptr_holder<Atom>;
+  friend class hazptr_obj<Atom>;
 #if FOLLY_HAZPTR_THR_LOCAL
   friend class hazptr_tc<Atom>;
 #endif
