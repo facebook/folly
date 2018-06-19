@@ -1639,8 +1639,8 @@ window(Executor* executor, Collection input, F func, size_t n) {
     static void spawn(std::shared_ptr<WindowContext> ctx) {
       size_t i = ctx->i++;
       if (i < ctx->input.size()) {
-        auto fut =
-            makeFutureWith([&] { return ctx->func(std::move(ctx->input[i])); });
+        auto fut = makeSemiFutureWith(
+            [&] { return ctx->func(std::move(ctx->input[i])); });
         fut.setCallback_([ctx = std::move(ctx), i](Try<Result>&& t) mutable {
           const auto executor_ = ctx->executor;
           executor_->add([ctx = std::move(ctx), i, t = std::move(t)]() mutable {

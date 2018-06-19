@@ -83,6 +83,20 @@ TEST(Window, basic) {
     EXPECT_EQ(6, res);
   }
   {
+    // string -> return SemiFuture<int>
+    auto res = reduce(
+                   window(
+                       std::vector<std::string>{"1", "2", "3"},
+                       [](std::string s) {
+                         return makeSemiFuture<int>(folly::to<int>(s));
+                       },
+                       2),
+                   0,
+                   [](int sum, const Try<int>& b) { return sum + *b; })
+                   .get();
+    EXPECT_EQ(6, res);
+  }
+  {
     SCOPED_TRACE("repeat same fn");
     auto res = reduce(
       window(
