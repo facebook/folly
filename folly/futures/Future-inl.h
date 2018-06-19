@@ -676,10 +676,11 @@ SemiFuture<typename std::decay<T>::type> makeSemiFuture(T&& t) {
 
 // makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
 template <class F>
-typename std::
-    enable_if<isSemiFuture<invoke_result_t<F>>::value, invoke_result_t<F>>::type
-    makeSemiFutureWith(F&& func) {
-  using InnerType = typename isSemiFuture<invoke_result_t<F>>::Inner;
+typename std::enable_if<
+    isFutureOrSemiFuture<invoke_result_t<F>>::value,
+    SemiFuture<typename invoke_result_t<F>::value_type>>::type
+makeSemiFutureWith(F&& func) {
+  using InnerType = typename isFutureOrSemiFuture<invoke_result_t<F>>::Inner;
   try {
     return std::forward<F>(func)();
   } catch (std::exception& e) {
@@ -695,7 +696,7 @@ typename std::
 // makeSemiFutureWith(void()) -> SemiFuture<Unit>
 template <class F>
 typename std::enable_if<
-    !(isSemiFuture<invoke_result_t<F>>::value),
+    !(isFutureOrSemiFuture<invoke_result_t<F>>::value),
     SemiFuture<lift_unit_t<invoke_result_t<F>>>>::type
 makeSemiFutureWith(F&& func) {
   using LiftedResult = lift_unit_t<invoke_result_t<F>>;

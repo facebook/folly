@@ -317,6 +317,10 @@ TEST(SemiFuture, makeSemiFuture) {
   EXPECT_NO_THROW(makeSemiFutureWith(failfunf));
   EXPECT_THROW(makeSemiFutureWith(failfunf).value(), eggs_t);
 
+  auto futurefun = [] { return makeFuture<int>(44); };
+  EXPECT_TYPE(makeSemiFutureWith(futurefun), SemiFuture<int>);
+  EXPECT_EQ(44, makeSemiFutureWith(futurefun).value());
+
   EXPECT_TYPE(makeSemiFuture(), SemiFuture<Unit>);
 }
 

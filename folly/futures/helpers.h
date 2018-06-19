@@ -143,15 +143,16 @@ SemiFuture<Unit> makeSemiFuture();
 
 // makeSemiFutureWith(SemiFuture<T>()) -> SemiFuture<T>
 template <class F>
-typename std::
-    enable_if<isSemiFuture<invoke_result_t<F>>::value, invoke_result_t<F>>::type
-    makeSemiFutureWith(F&& func);
+typename std::enable_if<
+    isFutureOrSemiFuture<invoke_result_t<F>>::value,
+    SemiFuture<typename invoke_result_t<F>::value_type>>::type
+makeSemiFutureWith(F&& func);
 
 // makeSemiFutureWith(T()) -> SemiFuture<T>
 // makeSemiFutureWith(void()) -> SemiFuture<Unit>
 template <class F>
 typename std::enable_if<
-    !(isSemiFuture<invoke_result_t<F>>::value),
+    !(isFutureOrSemiFuture<invoke_result_t<F>>::value),
     SemiFuture<typename lift_unit<invoke_result_t<F>>::type>>::type
 makeSemiFutureWith(F&& func);
 
