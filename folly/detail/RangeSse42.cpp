@@ -46,21 +46,6 @@ size_t qfind_first_byte_of_sse42(
 
 #include <folly/Likely.h>
 
-//  GCC 4.9 with ASAN has a problem: a function with no_sanitize_address calling
-//  a function with always_inline fails to build. The _mm_* functions are marked
-//  always_inline.
-//  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67368
-#if defined FOLLY_SANITIZE_ADDRESS && FOLLY_SANITIZE_ADDRESS == 1 && \
-    __GNUC_PREREQ(4, 9)
-#define _mm_load_si128(p) (*(p))
-#define _mm_loadu_si128(p) ((__m128i)__builtin_ia32_loaddqu((const char*)(p)))
-#ifdef _mm_cmpestri
-#undef _mm_cmpestri
-#endif
-#define _mm_cmpestri(a, b, c, d, e) \
-  __builtin_ia32_pcmpestri128((__v16qi)(a), b, (__v16qi)(c), d, e)
-#endif
-
 namespace folly {
 namespace detail {
 
@@ -83,9 +68,23 @@ static inline size_t nextAlignedIndex(const char* arr) {
       - firstPossible;
 }
 
-static size_t qfind_first_byte_of_needles16(
-    const StringPieceLite haystack,
-    const StringPieceLite needles) FOLLY_DISABLE_ADDRESS_SANITIZER;
+FOLLY_DISABLE_ADDRESS_SANITIZER static __m128i _mm_loadu_si128_noasan(
+    __m128i const* const p) {
+  return _mm_loadu_si128(p);
+}
+FOLLY_ALWAYS_INLINE static __m128i _mm_loadu_si128_unchecked(
+    __m128i const* const p) {
+  return kIsSanitizeAddress ? _mm_loadu_si128_noasan(p) : _mm_loadu_si128(p);
+}
+
+FOLLY_DISABLE_ADDRESS_SANITIZER static __m128i _mm_load_si128_noasan(
+    __m128i const* const p) {
+  return _mm_load_si128(p);
+}
+FOLLY_ALWAYS_INLINE static __m128i _mm_load_si128_unchecked(
+    __m128i const* const p) {
+  return kIsSanitizeAddress ? _mm_load_si128_noasan(p) : _mm_loadu_si128(p);
+}
 
 // helper method for case where needles.size() <= 16
 size_t qfind_first_byte_of_needles16(
@@ -103,10 +102,11 @@ size_t qfind_first_byte_of_needles16(
     return detail::qfind_first_byte_of_nosse(haystack, needles);
   }
 
-  auto arr2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(needles.data()));
+  auto arr2 = _mm_loadu_si128_unchecked(
+      reinterpret_cast<const __m128i*>(needles.data()));
   // do an unaligned load for first block of haystack
-  auto arr1 =
-      _mm_loadu_si128(reinterpret_cast<const __m128i*>(haystack.data()));
+  auto arr1 = _mm_loadu_si128_unchecked(
+      reinterpret_cast<const __m128i*>(haystack.data()));
   auto index =
       _mm_cmpestri(arr2, int(needles.size()), arr1, int(haystack.size()), 0);
   if (index < 16) {
@@ -116,8 +116,8 @@ size_t qfind_first_byte_of_needles16(
   // Now, we can do aligned loads hereafter...
   size_t i = nextAlignedIndex(haystack.data());
   for (; i < haystack.size(); i += 16) {
-    arr1 =
-        _mm_load_si128(reinterpret_cast<const __m128i*>(haystack.data() + i));
+    arr1 = _mm_load_si128_unchecked(
+        reinterpret_cast<const __m128i*>(haystack.data() + i));
     index = _mm_cmpestri(
         arr2, int(needles.size()), arr1, int(haystack.size() - i), 0);
     if (index < 16) {
@@ -126,17 +126,6 @@ size_t qfind_first_byte_of_needles16(
   }
   return std::string::npos;
 }
-
-template <bool HAYSTACK_ALIGNED>
-size_t scanHaystackBlock(
-    const StringPieceLite haystack,
-    const StringPieceLite needles,
-    uint64_t idx)
-    // Turn off ASAN because the "arr2 = ..." assignment in the loop below reads
-    // up to 15 bytes beyond end of the buffer in #needles#.  That is ok because
-    // ptr2 is always 16-byte aligned, so the read can never span a page
-    // boundary. Also, the extra data that may be read is never actually used.
-    FOLLY_DISABLE_ADDRESS_SANITIZER;
 
 // Scans a 16-byte block of haystack (starting at blockStartIdx) to find first
 // needle. If HAYSTACK_ALIGNED, then haystack must be 16byte aligned.
@@ -155,10 +144,10 @@ size_t scanHaystackBlock(
 
   __m128i arr1;
   if (HAYSTACK_ALIGNED) {
-    arr1 = _mm_load_si128(
+    arr1 = _mm_load_si128_unchecked(
         reinterpret_cast<const __m128i*>(haystack.data() + blockStartIdx));
   } else {
-    arr1 = _mm_loadu_si128(
+    arr1 = _mm_loadu_si128_unchecked(
         reinterpret_cast<const __m128i*>(haystack.data() + blockStartIdx));
   }
 
@@ -169,7 +158,8 @@ size_t scanHaystackBlock(
 
   size_t j = nextAlignedIndex(needles.data());
   for (; j < needles.size(); j += 16) {
-    arr2 = _mm_load_si128(reinterpret_cast<const __m128i*>(needles.data() + j));
+    arr2 = _mm_load_si128_unchecked(
+        reinterpret_cast<const __m128i*>(needles.data() + j));
 
     auto index = _mm_cmpestri(
         arr2,
