@@ -664,7 +664,6 @@ AC_CONFIG_FILES([Makefile
                  experimental/io/test/Makefile
                  experimental/symbolizer/Makefile
                  init/Makefile
-                 logging/Makefile
                  logging/example/Makefile
                  stats/test/Makefile])
 
