@@ -71,8 +71,10 @@ class BitReference {
 
 template <class BaseIter>
 struct BitIteratorBase {
-  static_assert(std::is_integral<typename BaseIter::value_type>::value,
-                "BitIterator may only be used with integral types");
+  static_assert(
+      std::is_integral<
+          typename std::iterator_traits<BaseIter>::value_type>::value,
+      "BitIterator may only be used with integral types");
   typedef boost::iterator_adaptor<
     BitIterator<BaseIter>,      // Derived
     BaseIter,                   // Base

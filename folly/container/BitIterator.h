@@ -171,10 +171,10 @@ BitIterator<BaseIter> findFirstSet(
     BitIterator<BaseIter> begin,
     BitIterator<BaseIter> end) {
   // shortcut to avoid ugly static_cast<>
-  static const typename BaseIter::value_type one = 1;
+  static const typename std::iterator_traits<BaseIter>::value_type one = 1;
 
   while (begin.base() != end.base()) {
-    typename BaseIter::value_type v = *begin.base();
+    typename std::iterator_traits<BaseIter>::value_type v = *begin.base();
     // mask out the bits that don't matter (< begin.bitOffset)
     v &= ~((one << begin.bitOffset()) - 1);
     size_t firstSet = findFirstSet(v);
@@ -189,7 +189,7 @@ BitIterator<BaseIter> findFirstSet(
 
   // now begin points to the same block as end
   if (end.bitOffset() != 0) { // assume end is dereferenceable
-    typename BaseIter::value_type v = *begin.base();
+    typename std::iterator_traits<BaseIter>::value_type v = *begin.base();
     // mask out the bits that don't matter (< begin.bitOffset)
     v &= ~((one << begin.bitOffset()) - 1);
     // mask out the bits that don't matter (>= end.bitOffset)

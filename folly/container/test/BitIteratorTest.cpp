@@ -16,13 +16,10 @@
 
 #include <folly/container/BitIterator.h>
 
-#include <algorithm>
 #include <limits>
 #include <type_traits>
 #include <vector>
 
-#include <folly/Benchmark.h>
-#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -86,102 +83,4 @@ TEST(BitIterator, Const) {
   auto bi(makeBitIterator(v.cbegin()));
   checkIt(0x10, bi);
   checkIt(0x42, bi);
-}
-
-namespace {
-
-template <class BaseIter>
-BitIterator<BaseIter> simpleFFS(BitIterator<BaseIter> begin,
-                                BitIterator<BaseIter> end) {
-  return std::find(begin, end, true);
-}
-
-template <class FFS>
-void runFFSTest(FFS fn) {
-  static const size_t bpb = 8 * sizeof(uint64_t);
-  std::vector<uint64_t> data;
-  for (size_t nblocks = 1; nblocks <= 3; ++nblocks) {
-    size_t nbits = nblocks * bpb;
-    data.resize(nblocks);
-    auto begin = makeBitIterator(data.cbegin());
-    auto end = makeBitIterator(data.cend());
-    EXPECT_EQ(nbits, end - begin);
-    EXPECT_FALSE(begin == end);
-
-    // Try every possible combination of first bit set (including none),
-    // start bit, end bit
-    for (size_t firstSet = 0; firstSet <= nbits; ++firstSet) {
-      data.assign(nblocks, 0);
-      if (firstSet) {
-        size_t b = firstSet - 1;
-        data[b / bpb] |= (1ULL << (b % bpb));
-      }
-      for (size_t startBit = 0; startBit <= nbits; ++startBit) {
-        for (size_t endBit = startBit; endBit <= nbits; ++endBit) {
-          auto p = begin + startBit;
-          auto q = begin + endBit;
-          p = fn(p, q);
-          if (firstSet < startBit + 1 || firstSet >= endBit + 1) {
-            EXPECT_EQ(endBit, p - begin)
-              << "  firstSet=" << firstSet << " startBit=" << startBit
-              << " endBit=" << endBit << " nblocks=" << nblocks;
-          } else {
-            EXPECT_EQ(firstSet - 1, p - begin)
-              << "  firstSet=" << firstSet << " startBit=" << startBit
-              << " endBit=" << endBit << " nblocks=" << nblocks;
-          }
-        }
-      }
-    }
-  }
-}
-
-void runSimpleFFSTest(int iters) {
-  auto fn = simpleFFS<std::vector<uint64_t>::const_iterator>;
-  while (iters--) {
-    runFFSTest(fn);
-  }
-}
-
-void runRealFFSTest(int iters) {
-  auto fn = findFirstSet<std::vector<uint64_t>::const_iterator>;
-  while (iters--) {
-    runFFSTest(fn);
-  }
-}
-
-} // namespace
-
-TEST(BitIterator, SimpleFindFirstSet) {
-  runSimpleFFSTest(1);
-}
-
-TEST(BitIterator, FindFirstSet) {
-  runRealFFSTest(1);
-}
-
-BENCHMARK(SimpleFFSTest, iters) {
-  runSimpleFFSTest(iters);
-}
-BENCHMARK(RealFFSTest, iters) {
-  runRealFFSTest(iters);
-}
-
-/* --bm_min_iters=10 --bm_max_iters=100
-
-Benchmark                               Iters   Total t    t/iter iter/sec
-------------------------------------------------------------------------------
-runSimpleFFSTest                           10   4.82 s     482 ms  2.075
-runRealFFSTest                             19  2.011 s   105.9 ms  9.447
-
-*/
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  auto ret = RUN_ALL_TESTS();
-  if (!ret && FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return ret;
 }
