@@ -1022,7 +1022,7 @@ struct RunAllValueSizeTests {
     S<Key, CharArrayHasher, std::equal_to<Key>, std::allocator<Key>> set;
 
     for (int i = 0; i < 100; ++i) {
-      Key key{static_cast<char>(i)};
+      Key key{{static_cast<char>(i)}};
       set.insert(key);
     }
     while (!set.empty()) {
