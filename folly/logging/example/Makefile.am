@@ -6,4 +6,4 @@ logging_example_LDADD = libfollylogging_example.la
 
 libfollylogging_example_la_SOURCES = lib.cpp
 libfollylogging_example_la_LIBADD = \
-	$(top_builddir)/logging/libfollylogging.la
+	$(top_builddir)/libfolly.la
