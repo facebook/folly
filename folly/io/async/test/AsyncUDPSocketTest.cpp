@@ -138,6 +138,14 @@ class UDPServer {
     }
   }
 
+  void pauseAccepting() {
+    socket_->pauseAccepting();
+  }
+
+  void resumeAccepting() {
+    socket_->resumeAccepting();
+  }
+
   // Whether writes from the UDP server should change the port for each message.
   void setChangePortForWrites(bool changePortForWrites) {
     changePortForWrites_ = changePortForWrites;
@@ -338,7 +346,7 @@ class AsyncSocketIntegrationTest : public Test {
       sevb.terminateLoopSoon();
     });
 
-    // Wait for server thread to joib
+    // Wait for server thread to join
     serverThread->join();
   }
 
@@ -427,6 +435,20 @@ TEST_F(AsyncSocketIntegrationTest, PingPongUseConnectedSendMsgServerWrongAddr) {
   auto pingClient = performPingPongTest(server->address(), true);
   // This should fail.
   ASSERT_EQ(pingClient->pongRecvd(), 0);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongPauseResumeListening) {
+  startServer();
+
+  // Exchange should not happen when paused.
+  server->pauseAccepting();
+  auto pausedClient = performPingPongTest(folly::none, false);
+  ASSERT_EQ(pausedClient->pongRecvd(), 0);
+
+  // Exchange does occur after resuming.
+  server->resumeAccepting();
+  auto pingClient = performPingPongTest(folly::none, false);
+  ASSERT_GT(pingClient->pongRecvd(), 0);
 }
 
 class TestAsyncUDPSocket : public AsyncUDPSocket {

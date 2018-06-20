@@ -52,16 +52,28 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
      */
      virtual void onListenStopped() noexcept = 0;
 
-    /**
-     * Invoked when a new packet is received
-     */
-    virtual void onDataAvailable(
-      std::shared_ptr<AsyncUDPSocket> socket,
-      const folly::SocketAddress& addr,
-      std::unique_ptr<folly::IOBuf> buf,
-      bool truncated) noexcept = 0;
+     /**
+      * Invoked when the server socket is paused. It is invoked in each
+      * acceptors/listeners event base thread.
+      */
+     virtual void onListenPaused() noexcept {}
 
-    virtual ~Callback() = default;
+     /**
+      * Invoked when the server socket is resumed. It is invoked in each
+      * acceptors/listeners event base thread.
+      */
+     virtual void onListenResumed() noexcept {}
+
+     /**
+      * Invoked when a new packet is received
+      */
+     virtual void onDataAvailable(
+         std::shared_ptr<AsyncUDPSocket> socket,
+         const folly::SocketAddress& addr,
+         std::unique_ptr<folly::IOBuf> buf,
+         bool truncated) noexcept = 0;
+
+     virtual ~Callback() = default;
   };
 
   /**
@@ -138,6 +150,32 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
 
   EventBase* getEventBase() const override {
     return evb_;
+  }
+
+  /**
+   * Pauses accepting datagrams on the underlying socket.
+   */
+  void pauseAccepting() {
+    socket_->pauseRead();
+    for (auto& listener : listeners_) {
+      auto callback = listener.second;
+
+      listener.first->runInEventBaseThread(
+          [callback]() mutable { callback->onListenPaused(); });
+    }
+  }
+
+  /**
+   * Starts accepting datagrams once again.
+   */
+  void resumeAccepting() {
+    socket_->resumeRead(this);
+    for (auto& listener : listeners_) {
+      auto callback = listener.second;
+
+      listener.first->runInEventBaseThread(
+          [callback]() mutable { callback->onListenResumed(); });
+    }
   }
 
  private:
