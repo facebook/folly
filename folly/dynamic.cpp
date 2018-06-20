@@ -315,11 +315,8 @@ std::size_t dynamic::hash() const {
     return std::hash<double>()(getDouble());
   case BOOL:
     return std::hash<bool>()(getBool());
-  case STRING: {
-    // keep it compatible with FBString
-    const auto& str = getString();
-    return ::folly::hash::fnv32_buf(str.data(), str.size());
-  }
+  case STRING:
+    return Hash()(getString());
   }
   assume_unreachable();
 }
