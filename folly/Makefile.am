@@ -69,7 +69,6 @@ nobase_follyinclude_HEADERS = \
 	container/detail/BitIteratorDetail.h \
 	container/detail/F14Defaults.h \
 	container/detail/F14IntrinsicsAvailability.h \
-	container/detail/F14Memory.h \
 	container/detail/F14Policy.h \
 	container/detail/F14Table.h \
 	container/Iterator.h \
