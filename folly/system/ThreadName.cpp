@@ -195,7 +195,7 @@ bool setThreadName(pthread_t pid, StringPiece name) {
   // std::thread::native_handle_type, which means we can do unsafe things to
   // extract it.
   std::thread::id id;
-  std::memcpy(&id, &pid, sizeof(id));
+  std::memcpy(static_cast<void*>(&id), &pid, sizeof(id));
   return setThreadName(id, name);
 #endif
 }
