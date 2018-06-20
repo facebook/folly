@@ -320,7 +320,7 @@ void SymbolizePrinter::println(
 namespace {
 
 int getFD(const std::ios& stream) {
-#ifdef __GNUC__
+#if defined(__GNUC__) && FOLLY_HAS_RTTI
   std::streambuf* buf = stream.rdbuf();
   using namespace __gnu_cxx;
 
@@ -336,6 +336,8 @@ int getFD(const std::ios& stream) {
       return sbuf->fd();
     }
   }
+#else
+  (void)stream;
 #endif // __GNUC__
   return -1;
 }

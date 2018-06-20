@@ -62,7 +62,8 @@ auto exceptionStr(const E& e) -> typename std::
 #ifdef FOLLY_HAS_RTTI
   return demangle(typeid(e));
 #else
-  return "Exception (no RTTI available)";
+  (void)e;
+  return "Exception (no RTTI available) ";
 #endif
 }
 

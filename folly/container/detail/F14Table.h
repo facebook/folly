@@ -2157,7 +2157,9 @@ class F14Table : public Policy {
     FOLLY_SAFE_DCHECK(n1 == size(), "");
     FOLLY_SAFE_DCHECK(n2 == size(), "");
 
+#if FOLLY_HAS_RTTI
     stats.policy = typeid(Policy).name();
+#endif
     stats.size = size();
     stats.valueSize = sizeof(value_type);
     stats.bucketCount = bucket_count();

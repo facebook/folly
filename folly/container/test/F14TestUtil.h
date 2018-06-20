@@ -432,7 +432,13 @@ std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
   using f14::Histo;
 
   xo << "{ " << std::endl;
-  xo << "  policy: " << folly::demangle(stats.policy) << std::endl;
+  xo << "  policy: "
+#if FOLLY_HAS_RTTI
+     << folly::demangle(stats.policy)
+#else
+     << "unknown (RTTI not availabe)"
+#endif
+     << std::endl;
   xo << "  size: " << stats.size << std::endl;
   xo << "  valueSize: " << stats.valueSize << std::endl;
   xo << "  bucketCount: " << stats.bucketCount << std::endl;
