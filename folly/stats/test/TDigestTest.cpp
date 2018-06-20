@@ -27,8 +27,8 @@ using namespace folly;
  * Tests run at a reasonable speed with these settings, but it is good to
  * occasionally test with kNumRandomRuns = 3000 and kNumSamples = 50000
  */
-const int32_t kNumSamples = 10000;
-const int32_t kNumRandomRuns = 30;
+const int32_t kNumSamples = 3000;
+const int32_t kNumRandomRuns = 10;
 const int32_t kSeed = 0;
 
 TEST(TDigest, Basic) {
@@ -275,11 +275,11 @@ TEST_P(DistributionTest, ReasonableError) {
 
   std::tie(logarithmic, modes) = underlyingDistribution;
   if (quantile == 0.001 || quantile == 0.999) {
-    reasonableError = 0.0005;
+    reasonableError = 0.001;
   } else if (quantile == 0.01 || quantile == 0.99) {
-    reasonableError = 0.005;
+    reasonableError = 0.01;
   } else if (quantile == 0.25 || quantile == 0.5 || quantile == 0.75) {
-    reasonableError = 0.02;
+    reasonableError = 0.04;
   }
 
   std::vector<double> errors;
