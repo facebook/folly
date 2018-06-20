@@ -132,6 +132,7 @@ list(APPEND files
 )
 list(APPEND hfiles
   ${FOLLY_DIR}/io/async/test/AsyncSSLSocketTest.h
+  ${FOLLY_DIR}/io/async/test/AsyncSocketTest.h
   ${FOLLY_DIR}/io/async/test/AsyncSocketTest2.h
   ${FOLLY_DIR}/io/async/test/BlockingSocket.h
   ${FOLLY_DIR}/io/async/test/MockAsyncSocket.h
