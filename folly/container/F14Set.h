@@ -68,13 +68,13 @@ class F14BasicSet : public std::unordered_set<K, H, E, A> {
       visitor(bc * sizeof(typename Super::pointer), 1);
     }
     visitor(
-        this->size(), sizeof(StdNodeReplica<K, typename Super::value_type, H>));
+        sizeof(StdNodeReplica<K, typename Super::value_type, H>), this->size());
   }
 
   template <typename V>
   void visitContiguousRanges(V&& visitor) const {
-    for (value_type const& entry : *this) {
-      value_type const* b = std::addressof(entry);
+    for (typename Super::value_type const& entry : *this) {
+      typename Super::value_type const* b = std::addressof(entry);
       visitor(b, b + 1);
     }
   }

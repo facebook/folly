@@ -106,6 +106,46 @@ TEST(F14Map, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<folly::fbstring, long>();
 }
 
+template <typename M>
+void runVisitContiguousRangesTest() {
+  M map;
+
+  for (int i = 0; i < 1000; ++i) {
+    map[i] = i;
+    map.erase(i / 2);
+  }
+
+  std::unordered_map<uintptr_t, bool> visited;
+  for (auto& entry : map) {
+    visited[reinterpret_cast<uintptr_t>(&entry)] = false;
+  }
+
+  map.visitContiguousRanges([&](auto b, auto e) {
+    for (auto i = b; i != e; ++i) {
+      auto iter = visited.find(reinterpret_cast<uintptr_t>(i));
+      ASSERT_TRUE(iter != visited.end());
+      EXPECT_FALSE(iter->second);
+      iter->second = true;
+    }
+  });
+}
+
+TEST(F14ValueMap, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14ValueMap<int, int>>();
+}
+
+TEST(F14NodeMap, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14NodeMap<int, int>>();
+}
+
+TEST(F14VectorMap, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14VectorMap<int, int>>();
+}
+
+TEST(F14FastMap, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14FastMap<int, int>>();
+}
+
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
@@ -1335,46 +1375,6 @@ TEST(F14FastMap, heterogeneousInsert) {
       int,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
-}
-
-template <typename M>
-void runVisitContiguousRangesTest() {
-  M map;
-
-  for (int i = 0; i < 1000; ++i) {
-    map[i] = i;
-    map.erase(i / 2);
-  }
-
-  std::unordered_map<uintptr_t, bool> visited;
-  for (auto& entry : map) {
-    visited[reinterpret_cast<uintptr_t>(&entry)] = false;
-  }
-
-  map.visitContiguousRanges([&](auto b, auto e) {
-    for (auto i = b; i != e; ++i) {
-      auto iter = visited.find(reinterpret_cast<uintptr_t>(i));
-      ASSERT_TRUE(iter != visited.end());
-      EXPECT_FALSE(iter->second);
-      iter->second = true;
-    }
-  });
-}
-
-TEST(F14ValueMap, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14ValueMap<int, int>>();
-}
-
-TEST(F14NodeMap, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14NodeMap<int, int>>();
-}
-
-TEST(F14VectorMap, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14VectorMap<int, int>>();
-}
-
-TEST(F14FastMap, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14FastMap<int, int>>();
 }
 
 ///////////////////////////////////

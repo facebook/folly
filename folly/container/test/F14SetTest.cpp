@@ -117,6 +117,46 @@ TEST(F14Set, getAllocatedMemorySize) {
   }
 }
 
+template <typename S>
+void runVisitContiguousRangesTest() {
+  S set;
+
+  for (int i = 0; i < 1000; ++i) {
+    set.insert(i);
+    set.erase(i / 2);
+  }
+
+  std::unordered_map<uintptr_t, bool> visited;
+  for (auto& entry : set) {
+    visited[reinterpret_cast<uintptr_t>(&entry)] = false;
+  }
+
+  set.visitContiguousRanges([&](auto b, auto e) {
+    for (auto i = b; i != e; ++i) {
+      auto iter = visited.find(reinterpret_cast<uintptr_t>(i));
+      ASSERT_TRUE(iter != visited.end());
+      EXPECT_FALSE(iter->second);
+      iter->second = true;
+    }
+  });
+}
+
+TEST(F14ValueSet, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14ValueSet<int>>();
+}
+
+TEST(F14NodeSet, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14NodeSet<int>>();
+}
+
+TEST(F14VectorSet, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14VectorSet<int>>();
+}
+
+TEST(F14FastSet, visitContiguousRanges) {
+  runVisitContiguousRangesTest<folly::F14FastSet<int>>();
+}
+
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
@@ -981,46 +1021,6 @@ TEST(F14FastSet, heterogeneousInsert) {
       Tracked<1>,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
-}
-
-template <typename S>
-void runVisitContiguousRangesTest() {
-  S set;
-
-  for (int i = 0; i < 1000; ++i) {
-    set.insert(i);
-    set.erase(i / 2);
-  }
-
-  std::unordered_map<uintptr_t, bool> visited;
-  for (auto& entry : set) {
-    visited[reinterpret_cast<uintptr_t>(&entry)] = false;
-  }
-
-  set.visitContiguousRanges([&](auto b, auto e) {
-    for (auto i = b; i != e; ++i) {
-      auto iter = visited.find(reinterpret_cast<uintptr_t>(i));
-      ASSERT_TRUE(iter != visited.end());
-      EXPECT_FALSE(iter->second);
-      iter->second = true;
-    }
-  });
-}
-
-TEST(F14ValueSet, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14ValueSet<int>>();
-}
-
-TEST(F14NodeSet, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14NodeSet<int>>();
-}
-
-TEST(F14VectorSet, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14VectorSet<int>>();
-}
-
-TEST(F14FastSet, visitContiguousRanges) {
-  runVisitContiguousRangesTest<F14FastSet<int>>();
 }
 
 namespace {
