@@ -91,6 +91,10 @@ struct BasePolicy
   using Alloc = Defaulted<AllocOrVoid, DefaultAlloc<Value>>;
   using AllocTraits = std::allocator_traits<Alloc>;
 
+  using ByteAlloc = typename AllocTraits::template rebind_alloc<uint8_t>;
+  using ByteAllocTraits = typename std::allocator_traits<ByteAlloc>;
+  using BytePtr = typename ByteAllocTraits::pointer;
+
   //////// info about user-supplied types
 
   static_assert(
@@ -268,10 +272,25 @@ struct BasePolicy
       std::size_t /*capacity*/,
       P&& /*rhs*/) {}
 
+  // Rounds chunkBytes up to the next multiple of 16 if it is possible
+  // that a sub-Chunk allocation has a size that is not a multiple of 16.
+  static std::size_t alignedChunkAllocSize(std::size_t chunkAllocSize) {
+    if ((sizeof(Item) % 8) != 0) {
+      chunkAllocSize = -(-chunkAllocSize & ~std::size_t{0xf});
+    }
+    FOLLY_SAFE_DCHECK((chunkAllocSize % 16) == 0, "");
+    return chunkAllocSize;
+  }
+
   bool beforeRehash(
       std::size_t /*size*/,
       std::size_t /*oldCapacity*/,
-      std::size_t /*newCapacity*/) {
+      std::size_t /*newCapacity*/,
+      std::size_t chunkAllocSize,
+      BytePtr& outChunkAllocation) {
+    ByteAlloc a{alloc()};
+    outChunkAllocation =
+        ByteAllocTraits::allocate(a, alignedChunkAllocSize(chunkAllocSize));
     return false;
   }
 
@@ -280,15 +299,33 @@ struct BasePolicy
       bool /*success*/,
       std::size_t /*size*/,
       std::size_t /*oldCapacity*/,
-      std::size_t /*newCapacity*/) {}
+      std::size_t /*newCapacity*/,
+      BytePtr chunkAllocation,
+      std::size_t chunkAllocSize) {
+    // on success, this will be the old allocation, on failure the new one
+    if (chunkAllocation != nullptr) {
+      ByteAlloc a{alloc()};
+      ByteAllocTraits::deallocate(
+          a, chunkAllocation, alignedChunkAllocSize(chunkAllocSize));
+    }
+  }
 
-  void beforeClear(std::size_t /*size*/, std::size_t) {}
+  void beforeClear(std::size_t /*size*/, std::size_t /*capacity*/) {}
 
-  void afterClear(std::size_t /*capacity*/) {}
+  void afterClear(std::size_t /*size*/, std::size_t /*capacity*/) {}
 
-  void beforeReset(std::size_t /*size*/, std::size_t) {}
+  void beforeReset(std::size_t /*size*/, std::size_t /*capacity*/) {}
 
-  void afterReset() {}
+  void afterReset(
+      std::size_t /*size*/,
+      std::size_t /*capacity*/,
+      BytePtr chunkAllocation,
+      std::size_t chunkAllocSize) {
+    FOLLY_SAFE_DCHECK(chunkAllocation != nullptr, "");
+    ByteAlloc a{alloc()};
+    ByteAllocTraits::deallocate(
+        a, chunkAllocation, alignedChunkAllocSize(chunkAllocSize));
+  }
 
   void prefetchValue(Item const&) const {
     // Subclass should disable with prefetchBeforeRehash(),
@@ -529,9 +566,14 @@ class ValueContainerPolicy : public BasePolicy<
 
   template <typename V>
   void visitPolicyAllocationClasses(
+      std::size_t chunkAllocSize,
       std::size_t /*size*/,
       std::size_t /*capacity*/,
-      V&& /*visitor*/) const {}
+      V&& visitor) const {
+    if (chunkAllocSize > 0) {
+      visitor(Super::alignedChunkAllocSize(chunkAllocSize), 1);
+    }
+  }
 
   //////// F14BasicMap/Set policy
 
@@ -749,10 +791,16 @@ class NodeContainerPolicy
 
   template <typename V>
   void visitPolicyAllocationClasses(
+      std::size_t chunkAllocSize,
       std::size_t size,
       std::size_t /*capacity*/,
       V&& visitor) const {
-    visitor(sizeof(Value), size);
+    if (chunkAllocSize > 0) {
+      visitor(Super::alignedChunkAllocSize(chunkAllocSize), 1);
+    }
+    if (size > 0) {
+      visitor(sizeof(Value), size);
+    }
   }
 
   //////// F14BasicMap/Set policy
@@ -874,6 +922,9 @@ class VectorContainerPolicy : public BasePolicy<
       uint32_t>;
   using typename Super::Alloc;
   using typename Super::AllocTraits;
+  using typename Super::ByteAlloc;
+  using typename Super::ByteAllocTraits;
+  using typename Super::BytePtr;
   using typename Super::Hasher;
   using typename Super::Item;
   using typename Super::ItemIter;
@@ -1142,21 +1193,61 @@ class VectorContainerPolicy : public BasePolicy<
     FOLLY_SAFE_DCHECK(success, "");
   }
 
+ private:
+  // Returns the byte offset of the first Value in a unified allocation
+  // that first holds prefixBytes of data, where prefixBytes comes from
+  // Chunk storage and hence must be at least 8-byte aligned (sub-Chunk
+  // allocations always have an even capacity and sizeof(Item) == 4).
+  static std::size_t valuesOffset(std::size_t prefixBytes) {
+    FOLLY_SAFE_DCHECK((prefixBytes % 8) == 0, "");
+    if (alignof(Value) > 8) {
+      prefixBytes = -(-prefixBytes & ~(alignof(Value) - 1));
+    }
+    FOLLY_SAFE_DCHECK((prefixBytes % alignof(Value)) == 0, "");
+    return prefixBytes;
+  }
+
+  // Returns the total number of bytes that should be allocated to store
+  // prefixBytes of Chunks and valueCapacity values.
+  static std::size_t allocSize(
+      std::size_t prefixBytes,
+      std::size_t valueCapacity) {
+    auto n = valuesOffset(prefixBytes) + sizeof(Value) * valueCapacity;
+    if (alignof(Value) <= 8) {
+      // ensure that the result is a multiple of 16 to protect against
+      // allocators that don't always align to 16
+      n = -(-n & ~std::size_t{0xf});
+    }
+    FOLLY_SAFE_DCHECK((n % 16) == 0, "");
+    return n;
+  }
+
+ public:
   ValuePtr beforeRehash(
       std::size_t size,
       std::size_t oldCapacity,
-      std::size_t newCapacity) {
+      std::size_t newCapacity,
+      std::size_t chunkAllocSize,
+      BytePtr& outChunkAllocation) {
     FOLLY_SAFE_DCHECK(
         size <= oldCapacity && ((values_ == nullptr) == (oldCapacity == 0)) &&
             newCapacity > 0 &&
             newCapacity <= (std::numeric_limits<Item>::max)(),
         "");
 
-    Alloc& a = this->alloc();
+    {
+      ByteAlloc a{this->alloc()};
+      outChunkAllocation =
+          ByteAllocTraits::allocate(a, allocSize(chunkAllocSize, newCapacity));
+    }
+
     ValuePtr before = values_;
-    ValuePtr after = AllocTraits::allocate(a, newCapacity);
+    ValuePtr after = std::pointer_traits<ValuePtr>::pointer_to(
+        *static_cast<Value*>(static_cast<void*>(
+            &*outChunkAllocation + valuesOffset(chunkAllocSize))));
 
     if (size > 0) {
+      Alloc& a{this->alloc()};
       transfer(a, std::addressof(before[0]), std::addressof(after[0]), size);
     }
 
@@ -1164,14 +1255,12 @@ class VectorContainerPolicy : public BasePolicy<
     return before;
   }
 
-  FOLLY_NOINLINE void
-  afterFailedRehash(ValuePtr state, std::size_t size, std::size_t newCapacity) {
+  FOLLY_NOINLINE void afterFailedRehash(ValuePtr state, std::size_t size) {
     // state holds the old storage
     Alloc& a = this->alloc();
     if (size > 0) {
       transfer(a, std::addressof(values_[0]), std::addressof(state[0]), size);
     }
-    AllocTraits::deallocate(a, values_, newCapacity);
     values_ = state;
   }
 
@@ -1180,12 +1269,21 @@ class VectorContainerPolicy : public BasePolicy<
       bool success,
       std::size_t size,
       std::size_t oldCapacity,
-      std::size_t newCapacity) {
+      std::size_t newCapacity,
+      BytePtr chunkAllocation,
+      std::size_t chunkAllocSize) {
     if (!success) {
-      afterFailedRehash(state, size, newCapacity);
-    } else if (state != nullptr) {
-      Alloc& a = this->alloc();
-      AllocTraits::deallocate(a, state, oldCapacity);
+      afterFailedRehash(state, size);
+    }
+
+    // on success, chunkAllocation is the old allocation, on failure it is the
+    // new one
+    if (chunkAllocation != nullptr) {
+      ByteAlloc a{this->alloc()};
+      ByteAllocTraits::deallocate(
+          a,
+          chunkAllocation,
+          allocSize(chunkAllocSize, (success ? oldCapacity : newCapacity)));
     }
   }
 
@@ -1199,23 +1297,31 @@ class VectorContainerPolicy : public BasePolicy<
   }
 
   void beforeReset(std::size_t size, std::size_t capacity) {
-    FOLLY_SAFE_DCHECK(
-        size <= capacity && ((values_ == nullptr) == (capacity == 0)), "");
-    if (capacity > 0) {
-      beforeClear(size, capacity);
-      Alloc& a = this->alloc();
-      AllocTraits::deallocate(a, values_, capacity);
+    beforeClear(size, capacity);
+  }
+
+  void afterReset(
+      std::size_t /*size*/,
+      std::size_t capacity,
+      BytePtr chunkAllocation,
+      std::size_t chunkAllocSize) {
+    if (chunkAllocation != nullptr) {
+      ByteAlloc a{this->alloc()};
+      ByteAllocTraits::deallocate(
+          a, chunkAllocation, allocSize(chunkAllocSize, capacity));
       values_ = nullptr;
     }
   }
 
   template <typename V>
   void visitPolicyAllocationClasses(
+      std::size_t chunkAllocSize,
       std::size_t /*size*/,
       std::size_t capacity,
       V&& visitor) const {
-    if (capacity > 0) {
-      visitor(sizeof(Value) * capacity, 1);
+    FOLLY_SAFE_DCHECK((chunkAllocSize == 0) == (capacity == 0), "");
+    if (chunkAllocSize > 0) {
+      visitor(allocSize(chunkAllocSize, capacity), 1);
     }
   }
 

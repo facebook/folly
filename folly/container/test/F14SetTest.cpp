@@ -96,6 +96,25 @@ TEST(F14Set, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<long double>();
   runAllocatedMemorySizeTests<std::string>();
   runAllocatedMemorySizeTests<folly::fbstring>();
+
+  {
+    folly::F14ValueSet<int> set;
+    set.insert(10);
+    EXPECT_EQ(sizeof(set), 32);
+    EXPECT_EQ(set.getAllocatedMemorySize(), 32);
+  }
+  {
+    folly::F14NodeSet<int> set;
+    set.insert(10);
+    EXPECT_EQ(sizeof(set), 32);
+    EXPECT_EQ(set.getAllocatedMemorySize(), 36);
+  }
+  {
+    folly::F14VectorSet<int> set;
+    set.insert(10);
+    EXPECT_EQ(sizeof(set), 24);
+    EXPECT_EQ(set.getAllocatedMemorySize(), 32);
+  }
 }
 
 ///////////////////////////////////

@@ -1180,44 +1180,29 @@ class F14Table : public Policy {
 
   //////// memory management helpers
 
-  static std::size_t allocSize(
+  static std::size_t chunkAllocSize(
       std::size_t chunkCount,
       std::size_t maxSizeWithoutRehash) {
     if (chunkCount == 1) {
-      auto n = offsetof(Chunk, rawItems_) + maxSizeWithoutRehash * sizeof(Item);
       FOLLY_SAFE_DCHECK((maxSizeWithoutRehash % 2) == 0, "");
-      if ((sizeof(Item) % 8) != 0) {
-        n = ((n - 1) | 15) + 1;
-      }
-      FOLLY_SAFE_DCHECK((n % 16) == 0, "");
-      return n;
+      static_assert(offsetof(Chunk, rawItems_) == 16, "");
+      return 16 + sizeof(Item) * maxSizeWithoutRehash;
     } else {
       return sizeof(Chunk) * chunkCount;
     }
   }
 
-  ChunkPtr newChunks(std::size_t chunkCount, std::size_t maxSizeWithoutRehash) {
-    ByteAlloc a{this->alloc()};
-    uint8_t* raw = &*std::allocator_traits<ByteAlloc>::allocate(
-        a, allocSize(chunkCount, maxSizeWithoutRehash));
+  ChunkPtr initializeChunks(
+      BytePtr raw,
+      std::size_t chunkCount,
+      std::size_t maxSizeWithoutRehash) {
     static_assert(std::is_trivial<Chunk>::value, "F14Chunk should be POD");
-    auto chunks = static_cast<Chunk*>(static_cast<void*>(raw));
+    auto chunks = static_cast<Chunk*>(static_cast<void*>(&*raw));
     for (std::size_t i = 0; i < chunkCount; ++i) {
       chunks[i].clear();
     }
     chunks[0].markEof(chunkCount == 1 ? maxSizeWithoutRehash : 1);
     return std::pointer_traits<ChunkPtr>::pointer_to(*chunks);
-  }
-
-  void deleteChunks(
-      ChunkPtr chunks,
-      std::size_t chunkCount,
-      std::size_t maxSizeWithoutRehash) {
-    ByteAlloc a{this->alloc()};
-    BytePtr bp = std::pointer_traits<BytePtr>::pointer_to(
-        *static_cast<uint8_t*>(static_cast<void*>(&*chunks)));
-    std::allocator_traits<ByteAlloc>::deallocate(
-        a, bp, allocSize(chunkCount, maxSizeWithoutRehash));
   }
 
  public:
@@ -1509,7 +1494,7 @@ class F14Table : public Policy {
     if (folly::is_trivially_copyable<Item>::value &&
         !this->destroyItemOnClear() && bucket_count() == src.bucket_count()) {
       // most happy path
-      auto n = allocSize(chunkMask_ + 1, bucket_count());
+      auto n = chunkAllocSize(chunkMask_ + 1, bucket_count());
       std::memcpy(&chunks_[0], &src.chunks_[0], n);
       sizeAndPackedBegin_.size_ = src.size();
       if (Policy::kEnableItemIteration) {
@@ -1688,20 +1673,46 @@ class F14Table : public Policy {
     const auto origChunkCount = chunkMask_ + 1;
     const auto origMaxSizeWithoutRehash = bucket_count();
 
+    BytePtr rawAllocation;
     auto undoState = this->beforeRehash(
-        size(), origMaxSizeWithoutRehash, newMaxSizeWithoutRehash);
+        size(),
+        origMaxSizeWithoutRehash,
+        newMaxSizeWithoutRehash,
+        chunkAllocSize(newChunkCount, newMaxSizeWithoutRehash),
+        rawAllocation);
+    chunks_ =
+        initializeChunks(rawAllocation, newChunkCount, newMaxSizeWithoutRehash);
+    chunkMask_ = newChunkCount - 1;
+
     bool success = false;
     SCOPE_EXIT {
+      // this SCOPE_EXIT reverts chunks_ and chunkMask_ if necessary
+      BytePtr finishedRawAllocation = nullptr;
+      std::size_t finishedAllocSize = 0;
+      if (LIKELY(success)) {
+        if (origMaxSizeWithoutRehash > 0) {
+          finishedRawAllocation = std::pointer_traits<BytePtr>::pointer_to(
+              *static_cast<uint8_t*>(static_cast<void*>(&*origChunks)));
+          finishedAllocSize =
+              chunkAllocSize(origChunkCount, origMaxSizeWithoutRehash);
+        }
+      } else {
+        finishedRawAllocation = rawAllocation;
+        finishedAllocSize =
+            chunkAllocSize(newChunkCount, newMaxSizeWithoutRehash);
+        chunks_ = origChunks;
+        chunkMask_ = origChunkCount - 1;
+      }
+
       this->afterRehash(
           std::move(undoState),
           success,
           size(),
           origMaxSizeWithoutRehash,
-          newMaxSizeWithoutRehash);
+          newMaxSizeWithoutRehash,
+          finishedRawAllocation,
+          finishedAllocSize);
     };
-
-    chunks_ = newChunks(newChunkCount, newMaxSizeWithoutRehash);
-    chunkMask_ = newChunkCount - 1;
 
     if (size() == 0) {
       // nothing to do
@@ -1730,16 +1741,10 @@ class F14Table : public Policy {
       if (newChunkCount <= stackBuf.size()) {
         fullness = stackBuf.data();
       } else {
-        try {
-          ByteAlloc a{this->alloc()};
-          fullness =
-              &*std::allocator_traits<ByteAlloc>::allocate(a, newChunkCount);
-        } catch (...) {
-          deleteChunks(chunks_, newChunkCount, newMaxSizeWithoutRehash);
-          chunks_ = origChunks;
-          chunkMask_ = origChunkCount - 1;
-          throw;
-        }
+        ByteAlloc a{this->alloc()};
+        // may throw
+        fullness =
+            &*std::allocator_traits<ByteAlloc>::allocate(a, newChunkCount);
       }
       std::memset(fullness, '\0', newChunkCount);
       SCOPE_EXIT {
@@ -1787,9 +1792,6 @@ class F14Table : public Policy {
       }
     }
 
-    if (origMaxSizeWithoutRehash != 0) {
-      deleteChunks(origChunks, origChunkCount, origMaxSizeWithoutRehash);
-    }
     success = true;
   }
 
@@ -1897,10 +1899,12 @@ class F14Table : public Policy {
     // we don't get too low a load factor
     bool willReset = Reset || chunkMask_ + 1 >= 16;
 
+    auto origSize = size();
+    auto origCapacity = bucket_count();
     if (willReset) {
-      this->beforeReset(size(), bucket_count());
+      this->beforeReset(origSize, origCapacity);
     } else {
-      this->beforeClear(size(), bucket_count());
+      this->beforeClear(origSize, origCapacity);
     }
 
     if (!empty()) {
@@ -1935,13 +1939,16 @@ class F14Table : public Policy {
     }
 
     if (willReset) {
-      deleteChunks(chunks_, chunkMask_ + 1, bucket_count());
+      BytePtr rawAllocation = std::pointer_traits<BytePtr>::pointer_to(
+          *static_cast<uint8_t*>(static_cast<void*>(&*chunks_)));
+      std::size_t rawSize = chunkAllocSize(chunkMask_ + 1, bucket_count());
+
       chunks_ = Chunk::emptyInstance();
       chunkMask_ = 0;
 
-      this->afterReset();
+      this->afterReset(origSize, origCapacity, rawAllocation, rawSize);
     } else {
-      this->afterClear(bucket_count());
+      this->afterClear(origSize, origCapacity);
     }
   }
 
@@ -2023,10 +2030,11 @@ class F14Table : public Policy {
   template <typename V>
   void visitAllocationClasses(V&& visitor) const {
     auto bc = bucket_count();
-    if (bc != 0) {
-      visitor(allocSize(chunkMask_ + 1, bc), 1);
-    }
-    this->visitPolicyAllocationClasses(size(), bc, visitor);
+    this->visitPolicyAllocationClasses(
+        (bc == 0 ? 0 : chunkAllocSize(chunkMask_ + 1, bc)),
+        size(),
+        bc,
+        visitor);
   }
 
   // visitor should take an Item const&
