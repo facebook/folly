@@ -16,13 +16,13 @@
 
 #include <folly/Memory.h>
 
-#include <algorithm>
 #include <limits>
 #include <type_traits>
 #include <utility>
 
 #include <glog/logging.h>
 
+#include <folly/ConstexprMath.h>
 #include <folly/String.h>
 #include <folly/memory/Arena.h>
 #include <folly/portability/GMock.h>
@@ -30,7 +30,7 @@
 
 using namespace folly;
 
-static constexpr std::size_t kTooBig = std::max(
+static constexpr std::size_t kTooBig = folly::constexpr_max(
     std::size_t{std::numeric_limits<uint32_t>::max()},
     std::size_t{1} << (8 * sizeof(std::size_t) - 14));
 
