@@ -16,9 +16,11 @@
 
 #include <folly/ConstexprMath.h>
 
-#include <folly/portability/GTest.h>
 #include <limits>
 #include <type_traits>
+
+#include <folly/lang/Bits.h>
+#include <folly/portability/GTest.h>
 
 namespace {
 class ConstexprMathTest : public testing::Test {};
@@ -192,6 +194,73 @@ TEST_F(ConstexprMathTest, constexpr_pow) {
   {
     constexpr auto a = folly::constexpr_pow(uint64_t(2), 6);
     EXPECT_EQ(64, a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_find_last_set_examples) {
+  {
+    constexpr auto a = folly::constexpr_find_last_set(int64_t(0));
+    EXPECT_EQ(0, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_find_last_set(int64_t(2));
+    EXPECT_EQ(2, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_find_last_set(int64_t(4096 + 64));
+    EXPECT_EQ(13, a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_find_last_set_all_64_adjacents) {
+  using type = uint64_t;
+  constexpr auto const bits = std::numeric_limits<type>::digits;
+  EXPECT_EQ(0, folly::constexpr_find_last_set(type(0)));
+  for (size_t i = 0; i < bits; ++i) {
+    type const v = type(1) << i;
+    EXPECT_EQ(i + 1, folly::constexpr_find_last_set(v));
+    EXPECT_EQ(i, folly::constexpr_find_last_set((v - 1)));
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_find_last_set_all_8_reference) {
+  using type = char;
+  for (size_t i = 0; i < 256u; ++i) {
+    auto const expected = folly::findLastSet(type(i));
+    EXPECT_EQ(expected, folly::constexpr_find_last_set(type(i)));
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_find_first_set_examples) {
+  {
+    constexpr auto a = folly::constexpr_find_first_set(int64_t(0));
+    EXPECT_EQ(0, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_find_first_set(int64_t(2));
+    EXPECT_EQ(2, a);
+  }
+  {
+    constexpr auto a = folly::constexpr_find_first_set(int64_t(4096 + 64));
+    EXPECT_EQ(7, a);
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_find_first_set_all_64_adjacent) {
+  using type = uint64_t;
+  constexpr auto const bits = std::numeric_limits<type>::digits;
+  EXPECT_EQ(0, folly::constexpr_find_first_set(type(0)));
+  for (size_t i = 0; i < bits; ++i) {
+    type const v = (type(1) << (bits - 1)) | (type(1) << i);
+    EXPECT_EQ(i + 1, folly::constexpr_find_first_set(v));
+  }
+}
+
+TEST_F(ConstexprMathTest, constexpr_find_first_set_all_8_reference) {
+  using type = char;
+  for (size_t i = 0; i < 256u; ++i) {
+    auto const expected = folly::findFirstSet(type(i));
+    EXPECT_EQ(expected, folly::constexpr_find_first_set(type(i)));
   }
 }
 

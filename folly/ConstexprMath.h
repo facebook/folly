@@ -180,6 +180,39 @@ constexpr T constexpr_pow(T base, std::size_t exp) {
               (exp % 2 ? base : T(1));
 }
 
+/// constexpr_find_last_set
+///
+/// Return the 1-based index of the most significant bit which is set.
+/// For x > 0, constexpr_find_last_set(x) == 1 + floor(log2(x)).
+template <typename T>
+constexpr std::size_t constexpr_find_last_set(T const t) {
+  using U = std::make_unsigned_t<T>;
+  return t == T(0) ? 0 : 1 + constexpr_log2(static_cast<U>(t));
+}
+
+namespace detail {
+template <typename U>
+constexpr std::size_t
+constexpr_find_first_set_(std::size_t s, std::size_t a, U const u) {
+  return s == 0 ? a
+                : constexpr_find_first_set_(
+                      s / 2, a + s * bool((u >> a) % (U(1) << s) == U(0)), u);
+}
+} // namespace detail
+
+/// constexpr_find_first_set
+///
+/// Return the 1-based index of the least significant bit which is set.
+/// For x > 0, the exponent in the largest power of two which does not divide x.
+template <typename T>
+constexpr std::size_t constexpr_find_first_set(T t) {
+  using U = std::make_unsigned_t<T>;
+  using size = std::integral_constant<std::size_t, sizeof(T) * 4>;
+  return t == T(0)
+      ? 0
+      : 1 + detail::constexpr_find_first_set_(size{}, 0, static_cast<U>(t));
+}
+
 template <typename T>
 constexpr T constexpr_add_overflow_clamped(T a, T b) {
   using L = std::numeric_limits<T>;

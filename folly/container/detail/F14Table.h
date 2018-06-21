@@ -30,6 +30,7 @@
 #include <vector>
 
 #include <folly/Bits.h>
+#include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
@@ -726,11 +727,10 @@ class PackedChunkItemPtr<T*> {
   static constexpr uintptr_t kIndexBits = 4;
   static constexpr uintptr_t kIndexMask = (uintptr_t{1} << kIndexBits) - 1;
 
-  static constexpr uintptr_t kAlignBits = (sizeof(T) % 16) == 0
-      ? 4
-      : (sizeof(T) % 8) == 0
-          ? 3
-          : (sizeof(T) % 4) == 0 ? 2 : (sizeof(T) % 2) == 0 ? 1 : 0;
+  static constexpr uintptr_t kAlignBits = constexpr_min(
+      uintptr_t{4},
+      constexpr_find_first_set(uintptr_t{sizeof(T)}) - 1);
+
   static constexpr uintptr_t kAlignMask = (uintptr_t{1} << kAlignBits) - 1;
 
   static constexpr uintptr_t kModulus = uintptr_t{1}
