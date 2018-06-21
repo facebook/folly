@@ -16,6 +16,8 @@
 
 #include <folly/Memory.h>
 
+#include <algorithm>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -27,6 +29,10 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
+
+static constexpr std::size_t kTooBig = std::max(
+    std::size_t{std::numeric_limits<uint32_t>::max()},
+    std::size_t{1} << (8 * sizeof(std::size_t) - 14));
 
 TEST(aligned_malloc, examples) {
   auto trial = [](size_t align) {
@@ -86,7 +92,7 @@ TEST(SysAllocator, bad_alloc) {
   Alloc const alloc;
   std::vector<float, Alloc> nums(alloc);
   if (!kIsSanitize) {
-    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+    EXPECT_THROW(nums.reserve(kTooBig), std::bad_alloc);
   }
 }
 
@@ -120,7 +126,7 @@ TEST(AlignedSysAllocator, bad_alloc_fixed) {
   Alloc const alloc;
   std::vector<float, Alloc> nums(alloc);
   if (!kIsSanitize) {
-    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+    EXPECT_THROW(nums.reserve(kTooBig), std::bad_alloc);
   }
 }
 
@@ -156,7 +162,7 @@ TEST(AlignedSysAllocator, bad_alloc_default) {
   Alloc const alloc(1024);
   std::vector<float, Alloc> nums(alloc);
   if (!kIsSanitize) {
-    EXPECT_THROW(nums.reserve(1ull << 50), std::bad_alloc);
+    EXPECT_THROW(nums.reserve(kTooBig), std::bad_alloc);
   }
 }
 
