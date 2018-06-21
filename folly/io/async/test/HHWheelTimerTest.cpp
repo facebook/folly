@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/EventBase.h>
 #include <folly/io/async/HHWheelTimer.h>
+#include <folly/io/async/EventBase.h>
 #include <folly/io/async/test/UndelayedDestruction.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
@@ -50,7 +50,6 @@ class TestTimeout : public HHWheelTimer::Callback {
   std::deque<TimePoint> canceledTimestamps;
   std::function<void()> fn;
 };
-
 
 class TestTimeoutDelayed : public TestTimeout {
  protected:
@@ -239,7 +238,8 @@ TEST_F(HHWheelTimerTest, DestroyTimeoutSet) {
     t5_1.cancelTimeout();
     t10_1.cancelTimeout();
     t10_2.cancelTimeout();
-    t.reset();};
+    t.reset();
+  };
 
   TimePoint start;
   eventBase.loop();
@@ -349,10 +349,11 @@ TEST_F(HHWheelTimerTest, DeleteWheelInTimeout) {
  */
 TEST_F(HHWheelTimerTest, DefaultTimeout) {
   milliseconds defaultTimeout(milliseconds(5));
-  StackWheelTimer t(&eventBase,
-                    milliseconds(1),
-                    AsyncTimeout::InternalEnum::NORMAL,
-                    defaultTimeout);
+  StackWheelTimer t(
+      &eventBase,
+      milliseconds(1),
+      AsyncTimeout::InternalEnum::NORMAL,
+      defaultTimeout);
 
   TestTimeout t1;
   TestTimeout t2;
@@ -382,7 +383,7 @@ TEST_F(HHWheelTimerTest, DefaultTimeout) {
 TEST_F(HHWheelTimerTest, lambda) {
   StackWheelTimer t(&eventBase, milliseconds(1));
   size_t count = 0;
-  t.scheduleTimeoutFn([&]{ count++; }, milliseconds(1));
+  t.scheduleTimeoutFn([&] { count++; }, milliseconds(1));
   eventBase.loop();
   EXPECT_EQ(1, count);
 }
@@ -391,8 +392,8 @@ TEST_F(HHWheelTimerTest, lambda) {
 // at the console to confirm logging)
 TEST_F(HHWheelTimerTest, lambdaThrows) {
   StackWheelTimer t(&eventBase, milliseconds(1));
-  t.scheduleTimeoutFn([&]{ throw std::runtime_error("expected"); },
-                      milliseconds(1));
+  t.scheduleTimeoutFn(
+      [&] { throw std::runtime_error("expected"); }, milliseconds(1));
   eventBase.loop();
 }
 

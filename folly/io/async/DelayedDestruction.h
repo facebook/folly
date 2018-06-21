@@ -96,9 +96,7 @@ class DelayedDestruction : public DelayedDestructionBase {
    */
   ~DelayedDestruction() override = default;
 
-  DelayedDestruction()
-    : destroyPending_(false) {
-  }
+  DelayedDestruction() : destroyPending_(false) {}
 
  private:
   /**

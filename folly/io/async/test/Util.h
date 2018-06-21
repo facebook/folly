@@ -35,11 +35,10 @@
  * @param expectedMS            The timeout duration, in milliseconds
  * @param tolerance             The tolerance, in milliseconds.
  */
-#define T_CHECK_TIMEOUT(start, end, expectedMS, ...)     \
-  if (!::folly::checkTimeout((start), (end),             \
-                             (expectedMS), false,        \
-                             ##__VA_ARGS__)) {           \
-    SKIP() << "T_CHECK_TIMEOUT lapsed";                  \
+#define T_CHECK_TIMEOUT(start, end, expectedMS, ...)             \
+  if (!::folly::checkTimeout(                                    \
+          (start), (end), (expectedMS), false, ##__VA_ARGS__)) { \
+    SKIP() << "T_CHECK_TIMEOUT lapsed";                          \
   }
 
 /**
@@ -48,9 +47,8 @@
  * This is similar to T_CHECK_TIMEOUT, but does not fail if the event took less
  * than the allowed time.
  */
-#define T_CHECK_TIME_LT(start, end, expectedMS, ...)     \
-  if (!::folly::checkTimeout((start), (end),             \
-                             (expectedMS), true,         \
-                             ##__VA_ARGS__)) {           \
-    SKIP() << "T_CHECK_TIMEOUT_LT lapsed";               \
+#define T_CHECK_TIME_LT(start, end, expectedMS, ...)            \
+  if (!::folly::checkTimeout(                                   \
+          (start), (end), (expectedMS), true, ##__VA_ARGS__)) { \
+    SKIP() << "T_CHECK_TIMEOUT_LT lapsed";                      \
   }

@@ -31,7 +31,7 @@
 
 #if defined(__GLIBC__) && !defined(__APPLE__)
 #if __GLIBC_PREREQ(2, 9)
-# define FOLLY_GLIBC_2_9
+#define FOLLY_GLIBC_2_9
 #endif
 #endif
 
@@ -50,28 +50,27 @@
 #ifndef __NR_eventfd2
 #if FOLLY_X64
 /* nolint */
-#define __NR_eventfd2  290
+#define __NR_eventfd2 290
 #elif defined(__i386__)
 /* nolint */
-#define __NR_eventfd2  328
+#define __NR_eventfd2 328
 #else
 #error "Can't define __NR_eventfd2 for your architecture."
 #endif
 #endif
 
-enum
-  {
-    EFD_SEMAPHORE = 1,
+enum {
+  EFD_SEMAPHORE = 1,
 #define EFD_SEMAPHORE EFD_SEMAPHORE
-    EFD_CLOEXEC = 02000000,
+  EFD_CLOEXEC = 02000000,
 #define EFD_CLOEXEC EFD_CLOEXEC
-    EFD_NONBLOCK = 04000
+  EFD_NONBLOCK = 04000
 #define EFD_NONBLOCK EFD_NONBLOCK
-  };
+};
 
 // http://www.kernel.org/doc/man-pages/online/pages/man2/eventfd.2.html
 // Use the eventfd2 system call, as in glibc 2.9+
 // (requires kernel 2.6.30+)
-#define eventfd(initval, flags) syscall(__NR_eventfd2,(initval),(flags))
+#define eventfd(initval, flags) syscall(__NR_eventfd2, (initval), (flags))
 
 #endif /* !(defined(__GLIBC__) && __GLIBC_PREREQ(2, 9)) */

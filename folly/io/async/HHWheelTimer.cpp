@@ -50,8 +50,9 @@ HHWheelTimer::Callback::~Callback() {
   }
 }
 
-void HHWheelTimer::Callback::setScheduled(HHWheelTimer* wheel,
-                                          std::chrono::milliseconds timeout) {
+void HHWheelTimer::Callback::setScheduled(
+    HHWheelTimer* wheel,
+    std::chrono::milliseconds timeout) {
   assert(wheel_ == nullptr);
   assert(expiration_ == decltype(expiration_){});
 
@@ -108,8 +109,9 @@ HHWheelTimer::~HHWheelTimer() {
   cancelAll();
 }
 
-void HHWheelTimer::scheduleTimeoutImpl(Callback* callback,
-                                       std::chrono::milliseconds timeout) {
+void HHWheelTimer::scheduleTimeoutImpl(
+    Callback* callback,
+    std::chrono::milliseconds timeout) {
   auto nextTick = calcNextTick();
   int64_t due = timeToWheelTicks(timeout) + nextTick;
   int64_t diff = due - nextTick;
@@ -140,8 +142,9 @@ void HHWheelTimer::scheduleTimeoutImpl(Callback* callback,
   list->push_back(*callback);
 }
 
-void HHWheelTimer::scheduleTimeout(Callback* callback,
-                                   std::chrono::milliseconds timeout) {
+void HHWheelTimer::scheduleTimeout(
+    Callback* callback,
+    std::chrono::milliseconds timeout) {
   // Cancel the callback if it happens to be scheduled already.
   callback->cancelTimeout();
 

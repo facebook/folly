@@ -18,7 +18,8 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/portability/GMock.h>
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
 class MockAsyncSSLSocket : public AsyncSSLSocket {
  public:
@@ -52,14 +53,12 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   MOCK_CONST_METHOD0(good, bool());
   MOCK_CONST_METHOD0(readable, bool());
   MOCK_CONST_METHOD0(hangup, bool());
-  MOCK_CONST_METHOD3(getSelectedNextProtocol,
-                     void(const unsigned char**,
-                          unsigned*,
-                          SSLContext::NextProtocolType*));
-  MOCK_CONST_METHOD3(getSelectedNextProtocolNoThrow,
-                     bool(const unsigned char**,
-                          unsigned*,
-                          SSLContext::NextProtocolType*));
+  MOCK_CONST_METHOD3(
+      getSelectedNextProtocol,
+      void(const unsigned char**, unsigned*, SSLContext::NextProtocolType*));
+  MOCK_CONST_METHOD3(
+      getSelectedNextProtocolNoThrow,
+      bool(const unsigned char**, unsigned*, SSLContext::NextProtocolType*));
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
 
   void sslConn(
@@ -107,4 +106,5 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
           const SSLContext::SSLVerifyPeerEnum&));
 };
 
-}}
+} // namespace test
+} // namespace folly

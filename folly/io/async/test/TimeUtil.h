@@ -33,8 +33,7 @@ namespace folly {
  */
 class TimePoint {
  public:
-  explicit TimePoint(bool set = true)
-    : tid_(0) {
+  explicit TimePoint(bool set = true) : tid_(0) {
     if (set) {
       reset();
     }
@@ -43,9 +42,9 @@ class TimePoint {
   void reset();
 
   bool isUnset() const {
-    return (timeStart_.time_since_epoch().count() == 0 &&
-            timeEnd_.time_since_epoch().count() == 0 &&
-            timeWaiting_.count() == 0);
+    return (
+        timeStart_.time_since_epoch().count() == 0 &&
+        timeEnd_.time_since_epoch().count() == 0 && timeWaiting_.count() == 0);
   }
 
   std::chrono::steady_clock::time_point getTime() const {

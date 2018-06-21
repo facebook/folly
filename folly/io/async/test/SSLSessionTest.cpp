@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/ssl/SSLSession.h>
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
-#include <folly/ssl/SSLSession.h>
 
 #include <memory>
 

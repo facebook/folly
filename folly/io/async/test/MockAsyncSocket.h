@@ -27,8 +27,7 @@ class MockAsyncSocket : public AsyncSocket {
  public:
   typedef std::unique_ptr<MockAsyncSocket, Destructor> UniquePtr;
 
-  explicit MockAsyncSocket(EventBase* base) : AsyncSocket(base) {
-  }
+  explicit MockAsyncSocket(EventBase* base) : AsyncSocket(base) {}
 
   MOCK_METHOD5(
       connect_,
@@ -47,8 +46,7 @@ class MockAsyncSocket : public AsyncSocket {
     connect_(callback, address, timeout, options, bindAddr);
   }
 
-  MOCK_CONST_METHOD1(getPeerAddress,
-                     void(folly::SocketAddress*));
+  MOCK_CONST_METHOD1(getPeerAddress, void(folly::SocketAddress*));
   MOCK_METHOD0(detachFd, int());
   MOCK_CONST_METHOD0(getFd, int());
   MOCK_METHOD0(closeNow, void());
@@ -67,4 +65,5 @@ class MockAsyncSocket : public AsyncSocket {
   }
 };
 
-}}
+} // namespace test
+} // namespace folly

@@ -49,12 +49,12 @@
 #include <sys/utsname.h>
 #endif
 
-using std::string;
-using std::vector;
-using std::min;
 using std::cerr;
 using std::endl;
 using std::list;
+using std::min;
+using std::string;
+using std::vector;
 
 using namespace testing;
 
@@ -508,8 +508,9 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
     if (GetParam().first == SSLContext::NextProtocolType::ANY &&
         GetParam().second == SSLContext::NextProtocolType::ANY) {
       EXPECT_EQ(client->protocolType, server->protocolType);
-    } else if (GetParam().first == SSLContext::NextProtocolType::ANY ||
-               GetParam().second == SSLContext::NextProtocolType::ANY) {
+    } else if (
+        GetParam().first == SSLContext::NextProtocolType::ANY ||
+        GetParam().second == SSLContext::NextProtocolType::ANY) {
       // Well not much we can say
     } else {
       expectProtocolType(GetParam());
@@ -605,8 +606,7 @@ TEST_P(NextProtocolTest, NpnTestNoOverlap) {
     // mismatch should result in a fatal alert, but this is the current behavior
     // on all OpenSSL versions/variants, and we want to know if it changes.
     expectNoProtocol();
-  }
-  else if (
+  } else if (
       GetParam().first == SSLContext::NextProtocolType::ANY &&
       GetParam().second == SSLContext::NextProtocolType::ANY) {
 #if FOLLY_OPENSSL_IS_110
@@ -626,8 +626,7 @@ TEST_P(NextProtocolTest, NpnTestNoOverlap) {
                           SSLContext::NextProtocolType::NPN});
     }
 #endif
-  }
-  else {
+  } else {
     expectProtocol("blub");
     expectProtocolType(
         {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});

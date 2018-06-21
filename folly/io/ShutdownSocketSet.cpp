@@ -122,9 +122,9 @@ void ShutdownSocketSet::shutdown(int fd, bool abortive) {
   }
 
   CHECK_EQ(prevState, MUST_CLOSE)
-    << "Invalid prev state for fd " << fd << ": " << int(prevState);
+      << "Invalid prev state for fd " << fd << ": " << int(prevState);
 
-  folly::closeNoInt(fd);  // ignore errors, nothing to do
+  folly::closeNoInt(fd); // ignore errors, nothing to do
 
   CHECK(
       sref.compare_exchange_strong(prevState, FREE, std::memory_order_relaxed))

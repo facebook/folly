@@ -19,21 +19,24 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/portability/GMock.h>
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
-class MockAsyncTransport: public AsyncTransportWrapper {
+class MockAsyncTransport : public AsyncTransportWrapper {
  public:
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
   MOCK_CONST_METHOD0(getReadCallback, ReadCallback*());
   MOCK_CONST_METHOD0(getReadCB, ReadCallback*());
   MOCK_METHOD4(write, void(WriteCallback*, const void*, size_t, WriteFlags));
   MOCK_METHOD4(writev, void(WriteCallback*, const iovec*, size_t, WriteFlags));
-  MOCK_METHOD3(writeChain,
-               void(WriteCallback*, std::shared_ptr<folly::IOBuf>, WriteFlags));
+  MOCK_METHOD3(
+      writeChain,
+      void(WriteCallback*, std::shared_ptr<folly::IOBuf>, WriteFlags));
 
-  void writeChain(WriteCallback* callback,
-                  std::unique_ptr<folly::IOBuf>&& iob,
-                  WriteFlags flags = WriteFlags::NONE) override {
+  void writeChain(
+      WriteCallback* callback,
+      std::unique_ptr<folly::IOBuf>&& iob,
+      WriteFlags flags = WriteFlags::NONE) override {
     writeChain(callback, std::shared_ptr<folly::IOBuf>(iob.release()), flags);
   }
 
@@ -62,8 +65,9 @@ class MockAsyncTransport: public AsyncTransportWrapper {
   MOCK_METHOD1(setEorTracking, void(bool));
   MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransportWrapper*());
   MOCK_CONST_METHOD0(isReplaySafe, bool());
-  MOCK_METHOD1(setReplaySafetyCallback,
-               void(AsyncTransport::ReplaySafetyCallback*));
+  MOCK_METHOD1(
+      setReplaySafetyCallback,
+      void(AsyncTransport::ReplaySafetyCallback*));
 };
 
 class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
@@ -74,7 +78,7 @@ class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
   }
 };
 
-class MockReadCallback: public AsyncTransportWrapper::ReadCallback {
+class MockReadCallback : public AsyncTransportWrapper::ReadCallback {
  public:
   MOCK_METHOD2(getReadBuffer, void(void**, size_t*));
 
@@ -89,8 +93,8 @@ class MockReadCallback: public AsyncTransportWrapper::ReadCallback {
   }
 
   MOCK_METHOD1(readBufferAvailable_, void(std::unique_ptr<folly::IOBuf>&));
-  void readBufferAvailable(std::unique_ptr<folly::IOBuf> readBuf)
-    noexcept override {
+  void readBufferAvailable(
+      std::unique_ptr<folly::IOBuf> readBuf) noexcept override {
     readBufferAvailable_(readBuf);
   }
 
@@ -105,7 +109,7 @@ class MockReadCallback: public AsyncTransportWrapper::ReadCallback {
   }
 };
 
-class MockWriteCallback: public AsyncTransportWrapper::WriteCallback {
+class MockWriteCallback : public AsyncTransportWrapper::WriteCallback {
  public:
   MOCK_METHOD0(writeSuccess_, void());
   void writeSuccess() noexcept override {

@@ -121,7 +121,8 @@ class NotificationQueue {
      * doesn't count towards the pending reader count for the IOLoop.
      */
     void startConsumingInternal(
-        EventBase* eventBase, NotificationQueue* queue) {
+        EventBase* eventBase,
+        NotificationQueue* queue) {
       init(eventBase, queue);
       registerInternalHandler(READ | PERSIST);
     }
@@ -178,7 +179,6 @@ class NotificationQueue {
     void handlerReady(uint16_t events) noexcept override;
 
    protected:
-
     void destroy() override;
 
     ~Consumer() override {}
@@ -290,26 +290,32 @@ class NotificationQueue {
           fdType = FdType::PIPE;
         } else {
           // some other error
-          folly::throwSystemError("Failed to create eventfd for "
-                                  "NotificationQueue", errno);
+          folly::throwSystemError(
+              "Failed to create eventfd for "
+              "NotificationQueue",
+              errno);
         }
       }
     }
 #endif
     if (fdType == FdType::PIPE) {
       if (pipe(pipeFds_)) {
-        folly::throwSystemError("Failed to create pipe for NotificationQueue",
-                                errno);
+        folly::throwSystemError(
+            "Failed to create pipe for NotificationQueue", errno);
       }
       try {
         // put both ends of the pipe into non-blocking mode
         if (fcntl(pipeFds_[0], F_SETFL, O_RDONLY | O_NONBLOCK) != 0) {
-          folly::throwSystemError("failed to put NotificationQueue pipe read "
-                                  "endpoint into non-blocking mode", errno);
+          folly::throwSystemError(
+              "failed to put NotificationQueue pipe read "
+              "endpoint into non-blocking mode",
+              errno);
         }
         if (fcntl(pipeFds_[1], F_SETFL, O_WRONLY | O_NONBLOCK) != 0) {
-          folly::throwSystemError("failed to put NotificationQueue pipe write "
-                                  "endpoint into non-blocking mode", errno);
+          folly::throwSystemError(
+              "failed to put NotificationQueue pipe write "
+              "endpoint into non-blocking mode",
+              errno);
         }
       } catch (...) {
         ::close(pipeFds_[0]);
@@ -409,7 +415,7 @@ class NotificationQueue {
   template <typename InputIteratorT>
   void putMessages(InputIteratorT first, InputIteratorT last) {
     typedef typename std::iterator_traits<InputIteratorT>::iterator_category
-      IterCategory;
+        IterCategory;
     putMessagesImpl(first, last, IterCategory());
   }
 
@@ -423,7 +429,9 @@ class NotificationQueue {
    * unmodified.
    */
   bool tryConsume(MessageT& result) {
-    SCOPE_EXIT { syncSignalAndQueue(); };
+    SCOPE_EXIT {
+      syncSignalAndQueue();
+    };
 
     checkPid();
     std::unique_ptr<Node> data;
@@ -463,26 +471,29 @@ class NotificationQueue {
    * check ensures that we catch the problem in the misbehaving child process
    * code, and crash before signalling the parent process.
    */
-  void checkPid() const { CHECK_EQ(pid_, pid_t(getpid())); }
+  void checkPid() const {
+    CHECK_EQ(pid_, pid_t(getpid()));
+  }
 
  private:
   // Forbidden copy constructor and assignment operator
-  NotificationQueue(NotificationQueue const &) = delete;
-  NotificationQueue& operator=(NotificationQueue const &) = delete;
+  NotificationQueue(NotificationQueue const&) = delete;
+  NotificationQueue& operator=(NotificationQueue const&) = delete;
 
-  inline bool checkQueueSize(size_t maxSize, bool throws=true) const {
+  inline bool checkQueueSize(size_t maxSize, bool throws = true) const {
     DCHECK(0 == spinlock_.try_lock());
     if (maxSize > 0 && queue_.size() >= maxSize) {
       if (throws) {
-        throw std::overflow_error("unable to add message to NotificationQueue: "
-                                  "queue is full");
+        throw std::overflow_error(
+            "unable to add message to NotificationQueue: "
+            "queue is full");
       }
       return false;
     }
     return true;
   }
 
-  inline bool checkDraining(bool throws=true) {
+  inline bool checkDraining(bool throws = true) {
     if (UNLIKELY(draining_ && throws)) {
       throw std::runtime_error("queue is draining, cannot add message");
     }
@@ -532,8 +543,10 @@ class NotificationQueue {
                  << " bytesInPipe=" << eventBytes_
                  << " maxInPipe=" << maxEventBytes_ << " queue=" << size();
 #endif
-      folly::throwSystemError("failed to signal NotificationQueue after "
-                              "write", errno);
+      folly::throwSystemError(
+          "failed to signal NotificationQueue after "
+          "write",
+          errno);
     }
   }
 
@@ -544,20 +557,22 @@ class NotificationQueue {
       bytes_read = readNoInt(eventfd_, &message, sizeof(message));
       CHECK(bytes_read != -1 || errno == EAGAIN);
     } else {
-      // There should only be one byte in the pipe. To avoid potential leaks we still drain.
+      // There should only be one byte in the pipe. To avoid potential leaks we
+      // still drain.
       uint8_t message[32];
       ssize_t result;
-      while ((result = readNoInt(pipeFds_[0], &message, sizeof(message))) != -1) {
+      while ((result = readNoInt(pipeFds_[0], &message, sizeof(message))) !=
+             -1) {
         bytes_read += result;
       }
       CHECK(result == -1 && errno == EAGAIN);
       LOG_IF(ERROR, bytes_read > 1)
-        << "[NotificationQueue] Unexpected state while draining pipe: bytes_read="
-        << bytes_read << " bytes, expected <= 1";
+          << "[NotificationQueue] Unexpected state while draining pipe: bytes_read="
+          << bytes_read << " bytes, expected <= 1";
     }
     LOG_IF(ERROR, (signal_ && bytes_read == 0) || (!signal_ && bytes_read > 0))
-      << "[NotificationQueue] Unexpected state while draining signals: signal_="
-      << signal_ << " bytes_read=" << bytes_read;
+        << "[NotificationQueue] Unexpected state while draining signals: signal_="
+        << signal_ << " bytes_read=" << bytes_read;
 
     signal_ = false;
 
@@ -608,8 +623,10 @@ class NotificationQueue {
   }
 
   template <typename InputIteratorT>
-  void putMessagesImpl(InputIteratorT first, InputIteratorT last,
-                       std::input_iterator_tag) {
+  void putMessagesImpl(
+      InputIteratorT first,
+      InputIteratorT last,
+      std::input_iterator_tag) {
     checkPid();
     bool signal = false;
     boost::intrusive::slist<Node, boost::intrusive::cache_last<true>> q;
@@ -665,14 +682,15 @@ void NotificationQueue<MessageT>::Consumer::destroy() {
 }
 
 template <typename MessageT>
-void NotificationQueue<MessageT>::Consumer::handlerReady(uint16_t /*events*/)
-    noexcept {
+void NotificationQueue<MessageT>::Consumer::handlerReady(
+    uint16_t /*events*/) noexcept {
   consumeMessages(false);
 }
 
 template <typename MessageT>
 void NotificationQueue<MessageT>::Consumer::consumeMessages(
-    bool isDrain, size_t* numConsumed) noexcept {
+    bool isDrain,
+    size_t* numConsumed) noexcept {
   DestructorGuard dg(this);
   uint32_t numProcessed = 0;
   setActive(true);
@@ -747,8 +765,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
 
       // If we have hit maxReadAtOnce_, we are done.
       ++numProcessed;
-      if (!isDrain && maxReadAtOnce_ > 0 &&
-          numProcessed >= maxReadAtOnce_) {
+      if (!isDrain && maxReadAtOnce_ > 0 && numProcessed >= maxReadAtOnce_) {
         return;
       }
 
@@ -887,7 +904,6 @@ namespace detail {
 template <typename MessageT, typename TCallback>
 struct notification_queue_consumer_wrapper
     : public NotificationQueue<MessageT>::Consumer {
-
   template <typename UCallback>
   explicit notification_queue_consumer_wrapper(UCallback&& callback)
       : callback_(std::forward<UCallback>(callback)) {}
@@ -895,9 +911,8 @@ struct notification_queue_consumer_wrapper
   // we are being stricter here and requiring noexcept for callback
   void messageAvailable(MessageT&& message) noexcept override {
     static_assert(
-      noexcept(std::declval<TCallback>()(std::forward<MessageT>(message))),
-      "callback must be declared noexcept, e.g.: `[]() noexcept {}`"
-    );
+        noexcept(std::declval<TCallback>()(std::forward<MessageT>(message))),
+        "callback must be declared noexcept, e.g.: `[]() noexcept {}`");
 
     callback_(std::forward<MessageT>(message));
   }
@@ -910,11 +925,13 @@ struct notification_queue_consumer_wrapper
 
 template <typename MessageT>
 template <typename TCallback>
-std::unique_ptr<typename NotificationQueue<MessageT>::Consumer,
-                DelayedDestruction::Destructor>
+std::unique_ptr<
+    typename NotificationQueue<MessageT>::Consumer,
+    DelayedDestruction::Destructor>
 NotificationQueue<MessageT>::Consumer::make(TCallback&& callback) {
-  return std::unique_ptr<NotificationQueue<MessageT>::Consumer,
-                         DelayedDestruction::Destructor>(
+  return std::unique_ptr<
+      NotificationQueue<MessageT>::Consumer,
+      DelayedDestruction::Destructor>(
       new detail::notification_queue_consumer_wrapper<
           MessageT,
           typename std::decay<TCallback>::type>(

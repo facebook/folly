@@ -73,7 +73,7 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
 template <typename T>
 class EventBaseLocal : public detail::EventBaseLocalBase {
  public:
-  EventBaseLocal(): EventBaseLocalBase() {}
+  EventBaseLocal() : EventBaseLocalBase() {}
 
   T* get(EventBase& evb) {
     return static_cast<T*>(getVoid(evb));

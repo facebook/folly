@@ -291,16 +291,15 @@ class IOBufQueue {
    * releasing the buffers), if possible.  If pack is false, we leave
    * the chain topology unchanged.
    */
-  void append(std::unique_ptr<folly::IOBuf>&& buf,
-              bool pack=false);
+  void append(std::unique_ptr<folly::IOBuf>&& buf, bool pack = false);
 
   /**
    * Add a queue to the end of this queue. The queue takes ownership of
    * all buffers from the other queue.
    */
-  void append(IOBufQueue& other, bool pack=false);
-  void append(IOBufQueue&& other, bool pack=false) {
-    append(other, pack);  // call lvalue reference overload, above
+  void append(IOBufQueue& other, bool pack = false);
+  void append(IOBufQueue&& other, bool pack = false) {
+    append(other, pack); // call lvalue reference overload, above
   }
 
   /**
@@ -329,8 +328,10 @@ class IOBufQueue {
    * Every buffer except for the last will wrap exactly blockSize bytes.
    * Importantly, this method may be used to wrap buffers larger than 4GB.
    */
-  void wrapBuffer(const void* buf, size_t len,
-                  uint64_t blockSize=(1U << 31));  // default block size: 2GB
+  void wrapBuffer(
+      const void* buf,
+      size_t len,
+      uint64_t blockSize = (1U << 31)); // default block size: 2GB
 
   /**
    * Obtain a writable block of contiguous bytes at the end of this
@@ -352,9 +353,10 @@ class IOBufQueue {
    *       callback, tell the application how much of the buffer they've
    *       filled with data.
    */
-  std::pair<void*,uint64_t> preallocate(
-    uint64_t min, uint64_t newAllocationSize,
-    uint64_t max = std::numeric_limits<uint64_t>::max()) {
+  std::pair<void*, uint64_t> preallocate(
+      uint64_t min,
+      uint64_t newAllocationSize,
+      uint64_t max = std::numeric_limits<uint64_t>::max()) {
     dcheckCacheIntegrity();
 
     if (LIKELY(writableTail() != nullptr && tailroom() >= min)) {

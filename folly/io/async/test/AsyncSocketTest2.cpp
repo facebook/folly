@@ -41,14 +41,14 @@
 
 using namespace boost;
 
-using std::string;
-using std::vector;
-using std::min;
+using boost::scoped_array;
 using std::cerr;
 using std::endl;
+using std::min;
+using std::string;
 using std::unique_ptr;
+using std::vector;
 using std::chrono::milliseconds;
-using boost::scoped_array;
 
 using namespace folly;
 using namespace folly::test;
@@ -56,17 +56,20 @@ using namespace testing;
 
 namespace fsp = folly::portability::sockets;
 
-class DelayedWrite: public AsyncTimeout {
+class DelayedWrite : public AsyncTimeout {
  public:
-  DelayedWrite(const std::shared_ptr<AsyncSocket>& socket,
-      unique_ptr<IOBuf>&& bufs, AsyncTransportWrapper::WriteCallback* wcb,
-      bool cork, bool lastWrite = false):
-    AsyncTimeout(socket->getEventBase()),
-    socket_(socket),
-    bufs_(std::move(bufs)),
-    wcb_(wcb),
-    cork_(cork),
-    lastWrite_(lastWrite) {}
+  DelayedWrite(
+      const std::shared_ptr<AsyncSocket>& socket,
+      unique_ptr<IOBuf>&& bufs,
+      AsyncTransportWrapper::WriteCallback* wcb,
+      bool cork,
+      bool lastWrite = false)
+      : AsyncTimeout(socket->getEventBase()),
+        socket_(socket),
+        bufs_(std::move(bufs)),
+        wcb_(wcb),
+        cork_(cork),
+        lastWrite_(lastWrite) {}
 
  private:
   void timeoutExpired() noexcept override {
@@ -165,12 +168,11 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   // Hopefully this IP will be routable but unresponsive.
   // (Alternatively, we could try listening on a local raw socket, but that
   // normally requires root privileges.)
-  auto host =
-      SocketAddressTestHelper::isIPv6Enabled() ?
-      SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6 :
-      SocketAddressTestHelper::isIPv4Enabled() ?
-      SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4 :
-      nullptr;
+  auto host = SocketAddressTestHelper::isIPv6Enabled()
+      ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6
+      : SocketAddressTestHelper::isIPv4Enabled()
+          ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
+          : nullptr;
   SocketAddress addr(host, 65535);
   ConnCallback cb;
   socket->connect(&cb, addr, 1); // also set a ridiculously small timeout
@@ -327,7 +329,7 @@ TEST(AsyncSocketTest, ConnectAndClose) {
   // If it did, we can't exercise the close-while-connecting code path.
   if (ccb.state == STATE_SUCCEEDED) {
     LOG(INFO) << "connect() succeeded immediately; aborting test "
-                       "of close-during-connect behavior";
+                 "of close-during-connect behavior";
     return;
   }
 
@@ -361,7 +363,7 @@ TEST(AsyncSocketTest, ConnectAndCloseNow) {
   // If it did, we can't exercise the close-while-connecting code path.
   if (ccb.state == STATE_SUCCEEDED) {
     LOG(INFO) << "connect() succeeded immediately; aborting test "
-                       "of closeNow()-during-connect behavior";
+                 "of closeNow()-during-connect behavior";
     return;
   }
 
@@ -396,7 +398,7 @@ TEST(AsyncSocketTest, ConnectWriteAndCloseNow) {
   // If it did, we can't exercise the close-while-connecting code path.
   if (ccb.state == STATE_SUCCEEDED) {
     LOG(INFO) << "connect() succeeded immediately; aborting test "
-                       "of write-during-connect behavior";
+                 "of write-during-connect behavior";
     return;
   }
 
@@ -481,7 +483,7 @@ TEST(AsyncSocketTest, ConnectReadAndClose) {
   // If it did, we can't exercise the close-while-connecting code path.
   if (ccb.state == STATE_SUCCEEDED) {
     LOG(INFO) << "connect() succeeded immediately; aborting test "
-                       "of read-during-connect behavior";
+                 "of read-during-connect behavior";
     return;
   }
 
@@ -647,8 +649,8 @@ TEST(AsyncSocketTest, ConnectWriteAndShutdownWrite) {
   ASSERT_EQ(rcb.state, STATE_SUCCEEDED);
   ASSERT_EQ(rcb.buffers.size(), 1);
   ASSERT_EQ(rcb.buffers[0].length, sizeof(acceptedWbuf));
-  ASSERT_EQ(memcmp(rcb.buffers[0].buffer,
-                           acceptedWbuf, sizeof(acceptedWbuf)), 0);
+  ASSERT_EQ(
+      memcmp(rcb.buffers[0].buffer, acceptedWbuf, sizeof(acceptedWbuf)), 0);
 
   ASSERT_FALSE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
@@ -722,8 +724,8 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
   ASSERT_EQ(rcb.state, STATE_SUCCEEDED);
   ASSERT_EQ(rcb.buffers.size(), 1);
   ASSERT_EQ(rcb.buffers[0].length, sizeof(acceptedWbuf));
-  ASSERT_EQ(memcmp(rcb.buffers[0].buffer,
-                           acceptedWbuf, sizeof(acceptedWbuf)), 0);
+  ASSERT_EQ(
+      memcmp(rcb.buffers[0].buffer, acceptedWbuf, sizeof(acceptedWbuf)), 0);
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
 
   // Check that we can read the data that was written to the socket, and that
@@ -815,8 +817,8 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWriteNow) {
   ASSERT_EQ(rcb.state, STATE_SUCCEEDED);
   ASSERT_EQ(rcb.buffers.size(), 1);
   ASSERT_EQ(rcb.buffers[0].length, sizeof(acceptedWbuf));
-  ASSERT_EQ(memcmp(rcb.buffers[0].buffer,
-                           acceptedWbuf, sizeof(acceptedWbuf)), 0);
+  ASSERT_EQ(
+      memcmp(rcb.buffers[0].buffer, acceptedWbuf, sizeof(acceptedWbuf)), 0);
 
   // Since we used shutdownWriteNow(), it should have discarded all pending
   // write data.  Verify we see an immediate EOF when reading from the accepted
@@ -862,7 +864,7 @@ void testConnectOptWrite(size_t size1, size_t size2, bool close = false) {
   // If it did, we can't exercise the optimistic write code path.
   if (ccb.state == STATE_SUCCEEDED) {
     LOG(INFO) << "connect() succeeded immediately; aborting test "
-                       "of optimistic write behavior";
+                 "of optimistic write behavior";
     return;
   }
 
@@ -894,11 +896,10 @@ void testConnectOptWrite(size_t size1, size_t size2, bool close = false) {
   // block forever.
   std::shared_ptr<AsyncSocket> acceptedSocket = server.acceptAsync(&evb);
   ReadCallback rcb;
-  rcb.dataAvailableCallback = std::bind(tmpDisableReads,
-                                        acceptedSocket.get(), &rcb);
+  rcb.dataAvailableCallback =
+      std::bind(tmpDisableReads, acceptedSocket.get(), &rcb);
   socket->getEventBase()->tryRunAfterDelay(
-      std::bind(&AsyncSocket::setReadCB, acceptedSocket.get(), &rcb),
-      10);
+      std::bind(&AsyncSocket::setReadCB, acceptedSocket.get(), &rcb), 10);
 
   // Loop.  We don't bother accepting on the server socket yet.
   // The kernel should be able to buffer the write request so it can succeed.
@@ -939,9 +940,8 @@ void testConnectOptWrite(size_t size1, size_t size2, bool close = false) {
         buf2Offset = 0;
         cmpLen = end - size1;
       }
-      ASSERT_EQ(memcmp(it->buffer + itOffset, buf2.get() + buf2Offset,
-                               cmpLen),
-                        0);
+      ASSERT_EQ(
+          memcmp(it->buffer + itOffset, buf2.get() + buf2Offset, cmpLen), 0);
     }
   }
   ASSERT_EQ(bytesRead, size1 + size2);
@@ -991,7 +991,7 @@ TEST(AsyncSocketTest, WriteNullCallback) {
   // connect()
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket =
-    AsyncSocket::newSocket(&evb, server.getAddress(), 30);
+      AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
 
   // write() with a nullptr callback
@@ -1018,7 +1018,7 @@ TEST(AsyncSocketTest, WriteTimeout) {
   // connect()
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket =
-    AsyncSocket::newSocket(&evb, server.getAddress(), 30);
+      AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
 
   // write() a large chunk of data, with no-one on the other end reading.
@@ -1074,7 +1074,7 @@ TEST(AsyncSocketTest, WritePipeError) {
   // connect()
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket =
-    AsyncSocket::newSocket(&evb, server.getAddress(), 30);
+      AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   socket->setSendTimeout(1000);
   evb.loop(); // loop until the socket is connected
 
@@ -1095,8 +1095,7 @@ TEST(AsyncSocketTest, WritePipeError) {
   // It would be nice if AsyncSocketException could convey the errno value,
   // so that we could check for EPIPE
   ASSERT_EQ(wcb.state, STATE_FAILED);
-  ASSERT_EQ(wcb.exception.getType(),
-                    AsyncSocketException::INTERNAL_ERROR);
+  ASSERT_EQ(wcb.exception.getType(), AsyncSocketException::INTERNAL_ERROR);
 
   ASSERT_FALSE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
@@ -1287,16 +1286,22 @@ TEST(AsyncSocketTest, WriteIOBuf) {
   // Make sure the reader got the right data in the right order
   ASSERT_EQ(rcb.state, STATE_SUCCEEDED);
   ASSERT_EQ(rcb.buffers.size(), 1);
-  ASSERT_EQ(rcb.buffers[0].length,
+  ASSERT_EQ(
+      rcb.buffers[0].length,
       simpleBufLength + buf1Length + buf2Length + buf3Length);
+  ASSERT_EQ(memcmp(rcb.buffers[0].buffer, simpleBuf, simpleBufLength), 0);
   ASSERT_EQ(
-      memcmp(rcb.buffers[0].buffer, simpleBuf, simpleBufLength), 0);
+      memcmp(
+          rcb.buffers[0].buffer + simpleBufLength,
+          buf1Copy->data(),
+          buf1Copy->length()),
+      0);
   ASSERT_EQ(
-      memcmp(rcb.buffers[0].buffer + simpleBufLength,
-          buf1Copy->data(), buf1Copy->length()), 0);
-  ASSERT_EQ(
-      memcmp(rcb.buffers[0].buffer + simpleBufLength + buf1Length,
-          buf2Copy->data(), buf2Copy->length()), 0);
+      memcmp(
+          rcb.buffers[0].buffer + simpleBufLength + buf1Length,
+          buf2Copy->data(),
+          buf2Copy->length()),
+      0);
 
   acceptedSocket->close();
   socket->close();
@@ -1375,15 +1380,15 @@ TEST(AsyncSocketTest, ZeroLengthWrite) {
   // connect()
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket =
-    AsyncSocket::newSocket(&evb, server.getAddress(), 30);
+      AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
 
   auto acceptedSocket = server.acceptAsync(&evb);
   ReadCallback rcb;
   acceptedSocket->setReadCB(&rcb);
 
-  size_t len1 = 1024*1024;
-  size_t len2 = 1024*1024;
+  size_t len1 = 1024 * 1024;
+  size_t len2 = 1024 * 1024;
   std::unique_ptr<char[]> buf(new char[len1 + len2]);
   memset(buf.get(), 'a', len1);
   memset(buf.get(), 'b', len2);
@@ -1416,15 +1421,15 @@ TEST(AsyncSocketTest, ZeroLengthWritev) {
   // connect()
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket =
-    AsyncSocket::newSocket(&evb, server.getAddress(), 30);
+      AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
 
   auto acceptedSocket = server.acceptAsync(&evb);
   ReadCallback rcb;
   acceptedSocket->setReadCB(&rcb);
 
-  size_t len1 = 1024*1024;
-  size_t len2 = 1024*1024;
+  size_t len1 = 1024 * 1024;
+  size_t len2 = 1024 * 1024;
   std::unique_ptr<char[]> buf(new char[len1 + len2]);
   memset(buf.get(), 'a', len1);
   memset(buf.get(), 'b', len2);
@@ -1480,7 +1485,7 @@ TEST(AsyncSocketTest, ClosePendingWritesWhileClosing) {
   // Schedule pending writes, until several write attempts have blocked
   char buf[128];
   memset(buf, 'a', sizeof(buf));
-  typedef vector< std::shared_ptr<WriteCallback> > WriteCallbackVector;
+  typedef vector<std::shared_ptr<WriteCallback>> WriteCallbackVector;
   WriteCallbackVector writeCallbacks;
 
   writeCallbacks.reserve(5);
@@ -1522,6 +1527,7 @@ class AsyncSocketImmediateRead : public folly::AsyncSocket {
  public:
   bool immediateReadCalled = false;
   explicit AsyncSocketImmediateRead(folly::EventBase* evb) : AsyncSocket(evb) {}
+
  protected:
   void checkForImmediateRead() noexcept override {
     immediateReadCalled = true;
@@ -1641,7 +1647,6 @@ TEST(AsyncSocket, ConnectReadUninstallRead) {
 // - TODO: test multiple threads sharing a AsyncSocket, and detaching from it
 //   in connectSuccess(), readDataAvailable(), writeSuccess()
 
-
 ///////////////////////////////////////////////////////////////////////////
 // AsyncServerSocket tests
 ///////////////////////////////////////////////////////////////////////////
@@ -1680,12 +1685,12 @@ TEST(AsyncSocketTest, ServerAcceptOptions) {
 
   // Verify that the server accepted a connection
   ASSERT_EQ(acceptCallback.getEvents()->size(), 3);
-  ASSERT_EQ(acceptCallback.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(acceptCallback.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(acceptCallback.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
   int fd = acceptCallback.getEvents()->at(1).fd;
 
   // The accepted connection should already be in non-blocking mode
@@ -1730,11 +1735,11 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
   // Have callback 2 remove callback 3 and callback 5 the first time it is
   // called.
   int cb2Count = 0;
-  cb1.setConnectionAcceptedFn([&](int /* fd */,
-                                  const folly::SocketAddress& /* addr */) {
-    std::shared_ptr<AsyncSocket> sock2(
-        AsyncSocket::newSocket(&eventBase, serverAddress)); // cb2: -cb3 -cb5
-  });
+  cb1.setConnectionAcceptedFn(
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        std::shared_ptr<AsyncSocket> sock2(AsyncSocket::newSocket(
+            &eventBase, serverAddress)); // cb2: -cb3 -cb5
+      });
   cb3.setConnectionAcceptedFn(
       [&](int /* fd */, const folly::SocketAddress& /* addr */) {});
   cb4.setConnectionAcceptedFn(
@@ -1746,7 +1751,6 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
       [&](int /* fd */, const folly::SocketAddress& /* addr */) {
         std::shared_ptr<AsyncSocket> sock5(
             AsyncSocket::newSocket(&eventBase, serverAddress)); // cb7: -cb7
-
       });
   cb2.setConnectionAcceptedFn(
       [&](int /* fd */, const folly::SocketAddress& /* addr */) {
@@ -1809,62 +1813,40 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
   // (We'll also need to update the termination code, since we expect cb6 to
   // get called twice to terminate the loop.)
   ASSERT_EQ(cb1.getEvents()->size(), 4);
-  ASSERT_EQ(cb1.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb1.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb1.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb1.getEvents()->at(3).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(cb1.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb1.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb1.getEvents()->at(2).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb1.getEvents()->at(3).type, TestAcceptCallback::TYPE_STOP);
 
   ASSERT_EQ(cb2.getEvents()->size(), 4);
-  ASSERT_EQ(cb2.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb2.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb2.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb2.getEvents()->at(3).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(cb2.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb2.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb2.getEvents()->at(2).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb2.getEvents()->at(3).type, TestAcceptCallback::TYPE_STOP);
 
   ASSERT_EQ(cb3.getEvents()->size(), 2);
-  ASSERT_EQ(cb3.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb3.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(cb3.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb3.getEvents()->at(1).type, TestAcceptCallback::TYPE_STOP);
 
   ASSERT_EQ(cb4.getEvents()->size(), 3);
-  ASSERT_EQ(cb4.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb4.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb4.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(cb4.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb4.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb4.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
 
   ASSERT_EQ(cb5.getEvents()->size(), 2);
-  ASSERT_EQ(cb5.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb5.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(cb5.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb5.getEvents()->at(1).type, TestAcceptCallback::TYPE_STOP);
 
   ASSERT_EQ(cb6.getEvents()->size(), 4);
-  ASSERT_EQ(cb6.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb6.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb6.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb6.getEvents()->at(3).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(cb6.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb6.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb6.getEvents()->at(2).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb6.getEvents()->at(3).type, TestAcceptCallback::TYPE_STOP);
 
   ASSERT_EQ(cb7.getEvents()->size(), 3);
-  ASSERT_EQ(cb7.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb7.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb7.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(cb7.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb7.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb7.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
 }
 
 /**
@@ -1883,7 +1865,7 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
   // Add several accept callbacks
   TestAcceptCallback cb1;
   auto thread_id = std::this_thread::get_id();
-  cb1.setAcceptStartedFn([&](){
+  cb1.setAcceptStartedFn([&]() {
     CHECK_NE(thread_id, std::this_thread::get_id());
     thread_id = std::this_thread::get_id();
   });
@@ -1892,9 +1874,8 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
         ASSERT_EQ(thread_id, std::this_thread::get_id());
         serverSocket->removeAcceptCallback(&cb1, &eventBase);
       });
-  cb1.setAcceptStoppedFn([&](){
-    ASSERT_EQ(thread_id, std::this_thread::get_id());
-  });
+  cb1.setAcceptStoppedFn(
+      [&]() { ASSERT_EQ(thread_id, std::this_thread::get_id()); });
 
   // Test having callbacks remove other callbacks before them on the list,
   serverSocket->addAcceptCallback(&cb1, &eventBase);
@@ -1905,9 +1886,7 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
       AsyncSocket::newSocket(&eventBase, serverAddress)); // cb1
 
   // Loop in another thread
-  auto other = std::thread([&](){
-    eventBase.loop();
-  });
+  auto other = std::thread([&]() { eventBase.loop(); });
   other.join();
 
   // Check to make sure that the expected callbacks were invoked.
@@ -1920,13 +1899,9 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
   // (We'll also need to update the termination code, since we expect cb6 to
   // get called twice to terminate the loop.)
   ASSERT_EQ(cb1.getEvents()->size(), 3);
-  ASSERT_EQ(cb1.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(cb1.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(cb1.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_STOP);
-
+  ASSERT_EQ(cb1.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(cb1.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(cb1.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
 }
 
 void serverSocketSanityTest(AsyncServerSocket* serverSocket) {
@@ -1955,12 +1930,12 @@ void serverSocketSanityTest(AsyncServerSocket* serverSocket) {
 
   // Verify that the server accepted a connection
   ASSERT_EQ(acceptCallback.getEvents()->size(), 3);
-  ASSERT_EQ(acceptCallback.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(acceptCallback.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(acceptCallback.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
 }
 
 /* Verify that we don't leak sockets if we are destroyed()
@@ -2044,8 +2019,8 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
     addr.sin_family = AF_INET;
     addr.sin_port = 0;
     addr.sin_addr.s_addr = INADDR_ANY;
-    ASSERT_EQ(bind(fd, reinterpret_cast<struct sockaddr*>(&addr),
-                             sizeof(addr)), 0);
+    ASSERT_EQ(
+        bind(fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)), 0);
     // Look up the address that we bound to
     folly::SocketAddress boundAddress;
     boundAddress.setFromLocalAddress(fd);
@@ -2076,8 +2051,8 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
     addr.sin_family = AF_INET;
     addr.sin_port = 0;
     addr.sin_addr.s_addr = INADDR_ANY;
-    ASSERT_EQ(bind(fd, reinterpret_cast<struct sockaddr*>(&addr),
-                             sizeof(addr)), 0);
+    ASSERT_EQ(
+        bind(fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)), 0);
     // Look up the address that we bound to
     folly::SocketAddress boundAddress;
     boundAddress.setFromLocalAddress(fd);
@@ -2132,12 +2107,12 @@ TEST(AsyncSocketTest, UnixDomainSocketTest) {
 
   // Verify that the server accepted a connection
   ASSERT_EQ(acceptCallback.getEvents()->size(), 3);
-  ASSERT_EQ(acceptCallback.getEvents()->at(0).type,
-                    TestAcceptCallback::TYPE_START);
-  ASSERT_EQ(acceptCallback.getEvents()->at(1).type,
-                    TestAcceptCallback::TYPE_ACCEPT);
-  ASSERT_EQ(acceptCallback.getEvents()->at(2).type,
-                    TestAcceptCallback::TYPE_STOP);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(0).type, TestAcceptCallback::TYPE_START);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
+  ASSERT_EQ(
+      acceptCallback.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
   int fd = acceptCallback.getEvents()->at(1).fd;
 
   // The accepted connection should already be in non-blocking mode
@@ -2211,13 +2186,11 @@ TEST(AsyncSocketTest, CallbackInPrimaryEventBase) {
     serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
   });
   bool acceptStartedFlag{false};
-  acceptCallback.setAcceptStartedFn([&acceptStartedFlag](){
-    acceptStartedFlag = true;
-  });
+  acceptCallback.setAcceptStartedFn(
+      [&acceptStartedFlag]() { acceptStartedFlag = true; });
   bool acceptStoppedFlag{false};
-  acceptCallback.setAcceptStoppedFn([&acceptStoppedFlag](){
-    acceptStoppedFlag = true;
-  });
+  acceptCallback.setAcceptStoppedFn(
+      [&acceptStoppedFlag]() { acceptStoppedFlag = true; });
   serverSocket->addAcceptCallback(&acceptCallback, nullptr);
   serverSocket->startAccepting();
 
@@ -2240,8 +2213,6 @@ TEST(AsyncSocketTest, CallbackInPrimaryEventBase) {
   ASSERT_EQ(connectionEventCallback.getBackoffEnded(), 0);
   ASSERT_EQ(connectionEventCallback.getBackoffError(), 0);
 }
-
-
 
 /**
  * Test AsyncServerSocket::getNumPendingMessagesInQueue()
@@ -2983,19 +2954,18 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
   // Set up timestamp callbacks
   TestErrMessageCallback errMsgCB;
   socket->setErrMessageCB(&errMsgCB);
-  ASSERT_EQ(socket->getErrMessageCallback(),
-            static_cast<folly::AsyncSocket::ErrMessageCallback*>(&errMsgCB));
+  ASSERT_EQ(
+      socket->getErrMessageCallback(),
+      static_cast<folly::AsyncSocket::ErrMessageCallback*>(&errMsgCB));
 
   errMsgCB.socket_ = socket.get();
   errMsgCB.resetAfter_ = 3;
 
   // Enable timestamp notifications
   ASSERT_GT(socket->getFd(), 0);
-  int flags = SOF_TIMESTAMPING_OPT_ID
-              | SOF_TIMESTAMPING_OPT_TSONLY
-              | SOF_TIMESTAMPING_SOFTWARE
-              | SOF_TIMESTAMPING_OPT_CMSG
-              | SOF_TIMESTAMPING_TX_SCHED;
+  int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
+      SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_OPT_CMSG |
+      SOF_TIMESTAMPING_TX_SCHED;
   AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
   EXPECT_EQ(tstampingOpt.apply(socket->getFd(), flags), 0);
 
@@ -3170,7 +3140,7 @@ TEST(AsyncSocket, PreReceivedDataTakeover) {
 TEST(AsyncSocketTest, SendMessageFlags) {
   TestServer server;
   TestSendMsgParamsCallback sendMsgCB(
-      MSG_DONTWAIT|MSG_NOSIGNAL|MSG_MORE, 0, nullptr);
+      MSG_DONTWAIT | MSG_NOSIGNAL | MSG_MORE, 0, nullptr);
 
   // connect()
   EventBase evb;
@@ -3232,7 +3202,9 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // "Server" socket
   int sfd = fds[1];
   ASSERT_NE(sfd, -1);
-  SCOPE_EXIT { close(sfd); };
+  SCOPE_EXIT {
+    close(sfd);
+  };
 
   // Instantiate AsyncSocket object for the connected socket
   EventBase evb;
@@ -3241,14 +3213,14 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // Open a temporary file and write a magic string to it
   // We'll transfer the file handle to test the message parameters
   // callback logic.
-  TemporaryFile file(StringPiece(),
-                     fs::path(),
-                     TemporaryFile::Scope::UNLINK_IMMEDIATELY);
+  TemporaryFile file(
+      StringPiece(), fs::path(), TemporaryFile::Scope::UNLINK_IMMEDIATELY);
   int tmpfd = file.fd();
   ASSERT_NE(tmpfd, -1) << "Failed to open a temporary file";
   std::string magicString("Magic string");
-  ASSERT_EQ(write(tmpfd, magicString.c_str(), magicString.length()),
-            magicString.length());
+  ASSERT_EQ(
+      write(tmpfd, magicString.c_str(), magicString.length()),
+      magicString.length());
 
   // Send message
   union {
@@ -3303,7 +3275,9 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   int fd = 0;
   memcpy(&fd, CMSG_DATA(&r_u.cmh), sizeof(int));
   ASSERT_NE(fd, 0);
-  SCOPE_EXIT { close(fd); };
+  SCOPE_EXIT {
+    close(fd);
+  };
 
   std::vector<uint8_t> transferredMagicString(magicString.length() + 1, 0);
 
@@ -3315,9 +3289,7 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
       magicString.length(),
       read(fd, transferredMagicString.data(), transferredMagicString.size()));
   ASSERT_TRUE(std::equal(
-      magicString.begin(),
-      magicString.end(),
-      transferredMagicString.begin()));
+      magicString.begin(), magicString.end(), transferredMagicString.begin()));
 }
 
 TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {

@@ -32,19 +32,20 @@ TEST(AsyncSocketException, SimpleTest) {
       AsyncSocketException::AsyncSocketExceptionType::NOT_OPEN,
       "test exception 1");
 
-  EXPECT_EQ(AsyncSocketException::AsyncSocketExceptionType::NOT_OPEN,
-            ex1.getType());
+  EXPECT_EQ(
+      AsyncSocketException::AsyncSocketExceptionType::NOT_OPEN, ex1.getType());
   EXPECT_EQ(0, ex1.getErrno());
-  EXPECT_EQ("AsyncSocketException: test exception 1, type = Socket not open",
-            std::string(ex1.what()));
+  EXPECT_EQ(
+      "AsyncSocketException: test exception 1, type = Socket not open",
+      std::string(ex1.what()));
 
   AsyncSocketException ex2(
       AsyncSocketException::AsyncSocketExceptionType::BAD_ARGS,
       "test exception 2",
       111 /*ECONNREFUSED*/);
 
-  EXPECT_EQ(AsyncSocketException::AsyncSocketExceptionType::BAD_ARGS,
-            ex2.getType());
+  EXPECT_EQ(
+      AsyncSocketException::AsyncSocketExceptionType::BAD_ARGS, ex2.getType());
   EXPECT_EQ(111, ex2.getErrno());
   EXPECT_EQ(
       "AsyncSocketException: test exception 2, type = Invalid arguments, "

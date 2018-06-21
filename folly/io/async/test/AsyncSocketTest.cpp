@@ -24,14 +24,13 @@ namespace folly {
 
 TEST(AsyncSocketTest, getSockOpt) {
   EventBase evb;
-  std::shared_ptr<AsyncSocket> socket =
-    AsyncSocket::newSocket(&evb, 0);
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb, 0);
 
   int val;
   socklen_t len;
 
-  int expectedRc = getsockopt(socket->getFd(), SOL_SOCKET,
-                              SO_REUSEADDR, &val, &len);
+  int expectedRc =
+      getsockopt(socket->getFd(), SOL_SOCKET, SO_REUSEADDR, &val, &len);
   int actualRc = socket->getSockOpt(SOL_SOCKET, SO_REUSEADDR, &val, &len);
 
   EXPECT_EQ(expectedRc, actualRc);
@@ -46,7 +45,7 @@ TEST(AsyncSocketTest, REUSEPORT) {
 
   try {
     serverSocket->setReusePortEnabled(true);
-  } catch(...) {
+  } catch (...) {
     LOG(INFO) << "Reuse port probably not supported";
     return;
   }
@@ -60,7 +59,6 @@ TEST(AsyncSocketTest, REUSEPORT) {
   serverSocket2->bind(port);
   serverSocket2->listen(0);
   serverSocket2->startAccepting();
-
 }
 
 TEST(AsyncSocketTest, v4v6samePort) {

@@ -105,8 +105,8 @@ class AsyncSignalHandler {
   typedef std::map<int, struct event> SignalEventMap;
 
   // Forbidden copy constructor and assignment operator
-  AsyncSignalHandler(AsyncSignalHandler const &);
-  AsyncSignalHandler& operator=(AsyncSignalHandler const &);
+  AsyncSignalHandler(AsyncSignalHandler const&);
+  AsyncSignalHandler& operator=(AsyncSignalHandler const&);
 
   static void libeventCallback(libevent_fd_t signum, short events, void* arg);
 

@@ -25,8 +25,8 @@ namespace folly {
  * Helper class that redirects write() and writev() calls to writeChain().
  */
 template <class T>
-class WriteChainAsyncTransportWrapper :
-  public DecoratedAsyncTransportWrapper<T> {
+class WriteChainAsyncTransportWrapper
+    : public DecoratedAsyncTransportWrapper<T> {
  public:
   using DecoratedAsyncTransportWrapper<T>::DecoratedAsyncTransportWrapper;
 

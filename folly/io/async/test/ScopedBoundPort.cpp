@@ -31,7 +31,7 @@ ScopedBoundPort::ScopedBoundPort(IPAddress host) {
 }
 
 ScopedBoundPort::~ScopedBoundPort() {
-  ebth_->getEventBase()->runInEventBaseThread([sock = std::move(sock_)]{});
+  ebth_->getEventBase()->runInEventBaseThread([sock = std::move(sock_)] {});
 }
 
 SocketAddress ScopedBoundPort::getAddress() const {

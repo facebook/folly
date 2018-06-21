@@ -154,7 +154,7 @@ TEST(IOBufQueue, Split) {
   queue.append(stringToIOBuf(SCL("Hello,")));
   queue.append(stringToIOBuf(SCL(" World")));
   checkConsistency(queue);
-  EXPECT_THROW({prefix = queue.split(13);}, std::underflow_error);
+  EXPECT_THROW({ prefix = queue.split(13); }, std::underflow_error);
   checkConsistency(queue);
 }
 
@@ -212,9 +212,9 @@ TEST(IOBufQueue, Wrap) {
   EXPECT_EQ((len - 1) / 6 + 1, iob->countChainElements());
   iob->unshare();
   iob->coalesce();
-  EXPECT_EQ(StringPiece(buf),
-            StringPiece(reinterpret_cast<const char*>(iob->data()),
-                        iob->length()));
+  EXPECT_EQ(
+      StringPiece(buf),
+      StringPiece(reinterpret_cast<const char*>(iob->data()), iob->length()));
 }
 
 TEST(IOBufQueue, Trim) {
@@ -417,36 +417,30 @@ TEST(IOBufQueue, Prepend) {
 
   auto out = queue.move();
   out->coalesce();
-  EXPECT_EQ("Hello World",
-            StringPiece(reinterpret_cast<const char*>(out->data()),
-                        out->length()));
+  EXPECT_EQ(
+      "Hello World",
+      StringPiece(reinterpret_cast<const char*>(out->data()), out->length()));
 }
 
 TEST(IOBufQueue, PopFirst) {
   IOBufQueue queue(IOBufQueue::cacheChainLength());
-  const char * strings[] = {
-    "Hello",
-    ",",
-    " ",
-    "",
-    "World"
-  };
+  const char* strings[] = {"Hello", ",", " ", "", "World"};
 
-  const size_t numStrings=sizeof(strings)/sizeof(*strings);
+  const size_t numStrings = sizeof(strings) / sizeof(*strings);
   size_t chainLength = 0;
-  for(size_t i = 0; i < numStrings; ++i) {
+  for (size_t i = 0; i < numStrings; ++i) {
     queue.append(stringToIOBuf(strings[i], strlen(strings[i])));
     checkConsistency(queue);
     chainLength += strlen(strings[i]);
   }
 
   unique_ptr<IOBuf> first;
-  for(size_t i = 0; i < numStrings; ++i) {
+  for (size_t i = 0; i < numStrings; ++i) {
     checkConsistency(queue);
     EXPECT_EQ(chainLength, queue.front()->computeChainDataLength());
     EXPECT_EQ(chainLength, queue.chainLength());
     first = queue.pop_front();
-    chainLength-=strlen(strings[i]);
+    chainLength -= strlen(strings[i]);
     EXPECT_EQ(strlen(strings[i]), first->computeChainDataLength());
   }
   checkConsistency(queue);

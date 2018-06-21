@@ -70,7 +70,7 @@ class ShutdownSocketSet : private boost::noncopyable {
    * read() and write() operations to the socket will fail. During normal
    * operation, just call ::shutdown() on the socket.
    */
-  void shutdown(int fd, bool abortive=false);
+  void shutdown(int fd, bool abortive = false);
 
   /**
    * Immediate shutdown of all connections. This is a hard-hitting hammer;
@@ -92,7 +92,7 @@ class ShutdownSocketSet : private boost::noncopyable {
    *
    * This is async-signal-safe and ignores errors.
    */
-  void shutdownAll(bool abortive=false);
+  void shutdownAll(bool abortive = false);
 
  private:
   void doShutdown(int fd, bool abortive);

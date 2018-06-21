@@ -35,10 +35,7 @@ class TimeoutManager {
   typedef std::chrono::milliseconds timeout_type;
   using Func = folly::Function<void()>;
 
-  enum class InternalEnum {
-    INTERNAL,
-    NORMAL
-  };
+  enum class InternalEnum { INTERNAL, NORMAL };
 
   TimeoutManager();
 
@@ -47,15 +44,15 @@ class TimeoutManager {
   /**
    * Attaches/detaches TimeoutManager to AsyncTimeout
    */
-  virtual void attachTimeoutManager(AsyncTimeout* obj,
-                                    InternalEnum internal) = 0;
+  virtual void attachTimeoutManager(
+      AsyncTimeout* obj,
+      InternalEnum internal) = 0;
   virtual void detachTimeoutManager(AsyncTimeout* obj) = 0;
 
   /**
    * Schedules AsyncTimeout to fire after `timeout` milliseconds
    */
-  virtual bool scheduleTimeout(AsyncTimeout* obj,
-                               timeout_type timeout) = 0;
+  virtual bool scheduleTimeout(AsyncTimeout* obj, timeout_type timeout) = 0;
 
   /**
    * Cancels the AsyncTimeout, if scheduled

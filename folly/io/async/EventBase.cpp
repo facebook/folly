@@ -73,21 +73,23 @@ static std::mutex libevent_mutex_;
  */
 
 EventBase::EventBase(bool enableTimeMeasurement)
-  : runOnceCallbacks_(nullptr)
-  , stop_(false)
-  , loopThread_()
-  , queue_(nullptr)
-  , fnRunner_(nullptr)
-  , maxLatency_(0)
-  , avgLoopTime_(std::chrono::seconds(2))
-  , maxLatencyLoopTime_(avgLoopTime_)
-  , enableTimeMeasurement_(enableTimeMeasurement)
-  , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
-  , latestLoopCnt_(nextLoopCnt_)
-  , startWork_()
-  , observer_(nullptr)
-  , observerSampleCount_(0)
-  , executionObserver_(nullptr) {
+    : runOnceCallbacks_(nullptr),
+      stop_(false),
+      loopThread_(),
+      queue_(nullptr),
+      fnRunner_(nullptr),
+      maxLatency_(0),
+      avgLoopTime_(std::chrono::seconds(2)),
+      maxLatencyLoopTime_(avgLoopTime_),
+      enableTimeMeasurement_(enableTimeMeasurement),
+      nextLoopCnt_(
+          uint64_t(-40)) // Early wrap-around so bugs will manifest soon
+      ,
+      latestLoopCnt_(nextLoopCnt_),
+      startWork_(),
+      observer_(nullptr),
+      observerSampleCount_(0),
+      executionObserver_(nullptr) {
   struct event ev;
   {
     std::lock_guard<std::mutex> lock(libevent_mutex_);
@@ -117,22 +119,24 @@ EventBase::EventBase(bool enableTimeMeasurement)
 
 // takes ownership of the event_base
 EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
-  : runOnceCallbacks_(nullptr)
-  , stop_(false)
-  , loopThread_()
-  , evb_(evb)
-  , queue_(nullptr)
-  , fnRunner_(nullptr)
-  , maxLatency_(0)
-  , avgLoopTime_(std::chrono::seconds(2))
-  , maxLatencyLoopTime_(avgLoopTime_)
-  , enableTimeMeasurement_(enableTimeMeasurement)
-  , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
-  , latestLoopCnt_(nextLoopCnt_)
-  , startWork_()
-  , observer_(nullptr)
-  , observerSampleCount_(0)
-  , executionObserver_(nullptr) {
+    : runOnceCallbacks_(nullptr),
+      stop_(false),
+      loopThread_(),
+      evb_(evb),
+      queue_(nullptr),
+      fnRunner_(nullptr),
+      maxLatency_(0),
+      avgLoopTime_(std::chrono::seconds(2)),
+      maxLatencyLoopTime_(avgLoopTime_),
+      enableTimeMeasurement_(enableTimeMeasurement),
+      nextLoopCnt_(
+          uint64_t(-40)) // Early wrap-around so bugs will manifest soon
+      ,
+      latestLoopCnt_(nextLoopCnt_),
+      startWork_(),
+      observer_(nullptr),
+      observerSampleCount_(0),
+      executionObserver_(nullptr) {
   if (UNLIKELY(evb_ == nullptr)) {
     LOG(ERROR) << "EventBase(): Pass nullptr as event base.";
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
@@ -233,8 +237,8 @@ void EventBase::resetLoadAvg(double value) {
   maxLatencyLoopTime_.reset(value);
 }
 
-static std::chrono::milliseconds
-getTimeDelta(std::chrono::steady_clock::time_point* prev) {
+static std::chrono::milliseconds getTimeDelta(
+    std::chrono::steady_clock::time_point* prev) {
   auto result = std::chrono::steady_clock::now() - *prev;
   *prev = std::chrono::steady_clock::now();
 
@@ -314,7 +318,7 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
     LoopCallbackList callbacks;
     callbacks.swap(runBeforeLoopCallbacks_);
 
-    while(!callbacks.empty()) {
+    while (!callbacks.empty()) {
       auto* item = &callbacks.front();
       callbacks.pop_front();
       item->runLoopCallback();
@@ -388,8 +392,8 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
     }
 
     if (enableTimeMeasurement_) {
-      VLOG(11) << "EventBase " << this << " loop time: " <<
-        getTimeDelta(&prev).count();
+      VLOG(11) << "EventBase " << this
+               << " loop time: " << getTimeDelta(&prev).count();
     }
 
     if (once) {
@@ -473,8 +477,8 @@ void EventBase::bumpHandlingTime() {
     return;
   }
 
-  VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__ <<
-    " (loop) latest " << latestLoopCnt_ << " next " << nextLoopCnt_;
+  VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
+           << " (loop) latest " << latestLoopCnt_ << " next " << nextLoopCnt_;
   if (nothingHandledYet()) {
     latestLoopCnt_ = nextLoopCnt_;
     // set the time
@@ -686,9 +690,7 @@ bool EventBase::nothingHandledYet() const noexcept {
   return (nextLoopCnt_ != latestLoopCnt_);
 }
 
-void EventBase::attachTimeoutManager(AsyncTimeout* obj,
-                                      InternalEnum internal) {
-
+void EventBase::attachTimeoutManager(AsyncTimeout* obj, InternalEnum internal) {
   struct event* ev = obj->getEvent();
   assert(ev->ev_base == nullptr);
 
@@ -705,8 +707,9 @@ void EventBase::detachTimeoutManager(AsyncTimeout* obj) {
   ev->ev_base = nullptr;
 }
 
-bool EventBase::scheduleTimeout(AsyncTimeout* obj,
-                                 TimeoutManager::timeout_type timeout) {
+bool EventBase::scheduleTimeout(
+    AsyncTimeout* obj,
+    TimeoutManager::timeout_type timeout) {
   dcheckIsInEventBaseThread();
   // Set up the timeval and add the event
   struct timeval tv;
@@ -738,8 +741,7 @@ void EventBase::setName(const std::string& name) {
   name_ = name;
 
   if (isRunning()) {
-    setThreadName(loopThread_.load(std::memory_order_relaxed),
-                  name_);
+    setThreadName(loopThread_.load(std::memory_order_relaxed), name_);
   }
 }
 
@@ -755,8 +757,12 @@ void EventBase::scheduleAt(Func&& fn, TimePoint const& timeout) {
       std::chrono::duration_cast<std::chrono::milliseconds>(duration));
 }
 
-const char* EventBase::getLibeventVersion() { return event_get_version(); }
-const char* EventBase::getLibeventMethod() { return event_get_method(); }
+const char* EventBase::getLibeventVersion() {
+  return event_get_version();
+}
+const char* EventBase::getLibeventMethod() {
+  return event_get_method();
+}
 
 VirtualEventBase& EventBase::getVirtualEventBase() {
   folly::call_once(virtualEventBaseInitFlag_, [&] {

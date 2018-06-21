@@ -73,8 +73,7 @@ class EventBaseObserver {
 
   virtual uint32_t getSampleRate() const = 0;
 
-  virtual void loopSample(
-    int64_t busyTime, int64_t idleTime) = 0;
+  virtual void loopSample(int64_t busyTime, int64_t idleTime) = 0;
 };
 
 // Helper class that sets and retrieves the EventBase associated with a given
@@ -163,9 +162,9 @@ class EventBase : private boost::noncopyable,
     }
 
    private:
-    typedef boost::intrusive::list<
-      LoopCallback,
-      boost::intrusive::constant_time_size<false> > List;
+    typedef boost::intrusive::
+        list<LoopCallback, boost::intrusive::constant_time_size<false>>
+            List;
 
     // EventBase needs access to LoopCallbackList (and therefore to hook_)
     friend class EventBase;
@@ -257,8 +256,8 @@ class EventBase : private boost::noncopyable,
   /**
    * Same as loop(), but doesn't wait for all keep-alive tokens to be released.
    */
-  [[deprecated("This should only be used in legacy unit tests")]]
-  bool loopIgnoreKeepAlive();
+  [[deprecated("This should only be used in legacy unit tests")]] bool
+  loopIgnoreKeepAlive();
 
   /**
    * Wait for some events to become active, run them, then return.
@@ -483,7 +482,7 @@ class EventBase : private boost::noncopyable,
   }
 
   /**
-    * check if the event base loop is running.
+   * check if the event base loop is running.
    */
   bool isRunning() const {
     return loopThread_.load(std::memory_order_relaxed) != std::thread::id();
@@ -535,7 +534,9 @@ class EventBase : private boost::noncopyable,
   // Avoid using these functions if possible.  These functions are not
   // guaranteed to always be present if we ever provide alternative EventBase
   // implementations that do not use libevent internally.
-  event_base* getLibeventBase() const { return evb_; }
+  event_base* getLibeventBase() const {
+    return evb_;
+  }
   static const char* getLibeventVersion();
   static const char* getLibeventMethod();
 
@@ -780,7 +781,8 @@ class EventBase : private boost::noncopyable,
 
   // see EventBaseLocal
   friend class detail::EventBaseLocalBase;
-  template <typename T> friend class EventBaseLocal;
+  template <typename T>
+  friend class EventBaseLocal;
   std::unordered_map<uint64_t, std::shared_ptr<void>> localStorage_;
   std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
 

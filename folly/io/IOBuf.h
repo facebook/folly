@@ -273,7 +273,8 @@ class IOBuf {
    * no more than maxBufCapacity to each buffer.
    */
   static std::unique_ptr<IOBuf> createChain(
-      size_t totalCapacity, uint64_t maxBufCapacity);
+      size_t totalCapacity,
+      uint64_t maxBufCapacity);
 
   /**
    * Create a new IOBuf pointing to an existing data buffer.
@@ -299,26 +300,39 @@ class IOBuf {
    * On error, std::bad_alloc will be thrown.  If freeOnError is true (the
    * default) the buffer will be freed before throwing the error.
    */
-  static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint64_t capacity,
-                                              FreeFunction freeFn = nullptr,
-                                              void* userData = nullptr,
-                                              bool freeOnError = true) {
-    return takeOwnership(buf, capacity, capacity, freeFn,
-                         userData, freeOnError);
+  static std::unique_ptr<IOBuf> takeOwnership(
+      void* buf,
+      uint64_t capacity,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true) {
+    return takeOwnership(
+        buf, capacity, capacity, freeFn, userData, freeOnError);
   }
-  IOBuf(TakeOwnershipOp op, void* buf, uint64_t capacity,
-        FreeFunction freeFn = nullptr, void* userData = nullptr,
-        bool freeOnError = true)
-    : IOBuf(op, buf, capacity, capacity, freeFn, userData, freeOnError) {}
+  IOBuf(
+      TakeOwnershipOp op,
+      void* buf,
+      uint64_t capacity,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true)
+      : IOBuf(op, buf, capacity, capacity, freeFn, userData, freeOnError) {}
 
-  static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint64_t capacity,
-                                              uint64_t length,
-                                              FreeFunction freeFn = nullptr,
-                                              void* userData = nullptr,
-                                              bool freeOnError = true);
-  IOBuf(TakeOwnershipOp, void* buf, uint64_t capacity, uint64_t length,
-        FreeFunction freeFn = nullptr, void* userData = nullptr,
-        bool freeOnError = true);
+  static std::unique_ptr<IOBuf> takeOwnership(
+      void* buf,
+      uint64_t capacity,
+      uint64_t length,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true);
+  IOBuf(
+      TakeOwnershipOp,
+      void* buf,
+      uint64_t capacity,
+      uint64_t length,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true);
 
   /**
    * Create a new IOBuf pointing to an existing data buffer made up of
@@ -342,9 +356,10 @@ class IOBuf {
    * before throwing the error.
    */
   template <class UniquePtr>
-  static typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
-                                 std::unique_ptr<IOBuf>>::type
-  takeOwnership(UniquePtr&& buf, size_t count=1);
+  static typename std::enable_if<
+      detail::IsUniquePtrToSL<UniquePtr>::value,
+      std::unique_ptr<IOBuf>>::type
+  takeOwnership(UniquePtr&& buf, size_t count = 1);
 
   /**
    * Create a new IOBuf object that points to an existing user-owned buffer.
@@ -387,18 +402,26 @@ class IOBuf {
    * user-supplied buffer, optionally allocating a given amount of
    * headroom and tailroom.
    */
-  static std::unique_ptr<IOBuf> copyBuffer(const void* buf, uint64_t size,
-                                           uint64_t headroom=0,
-                                           uint64_t minTailroom=0);
-  static std::unique_ptr<IOBuf> copyBuffer(ByteRange br,
-                                           uint64_t headroom=0,
-                                           uint64_t minTailroom=0) {
+  static std::unique_ptr<IOBuf> copyBuffer(
+      const void* buf,
+      uint64_t size,
+      uint64_t headroom = 0,
+      uint64_t minTailroom = 0);
+  static std::unique_ptr<IOBuf>
+  copyBuffer(ByteRange br, uint64_t headroom = 0, uint64_t minTailroom = 0) {
     return copyBuffer(br.data(), br.size(), headroom, minTailroom);
   }
-  IOBuf(CopyBufferOp op, const void* buf, uint64_t size,
-        uint64_t headroom=0, uint64_t minTailroom=0);
-  IOBuf(CopyBufferOp op, ByteRange br,
-        uint64_t headroom=0, uint64_t minTailroom=0);
+  IOBuf(
+      CopyBufferOp op,
+      const void* buf,
+      uint64_t size,
+      uint64_t headroom = 0,
+      uint64_t minTailroom = 0);
+  IOBuf(
+      CopyBufferOp op,
+      ByteRange br,
+      uint64_t headroom = 0,
+      uint64_t minTailroom = 0);
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
@@ -411,20 +434,25 @@ class IOBuf {
    * the first argument as a const void*, and will invoke the version of
    * copyBuffer() above, with the size argument of 3.
    */
-  static std::unique_ptr<IOBuf> copyBuffer(const std::string& buf,
-                                           uint64_t headroom=0,
-                                           uint64_t minTailroom=0);
-  IOBuf(CopyBufferOp op, const std::string& buf,
-        uint64_t headroom=0, uint64_t minTailroom=0)
-    : IOBuf(op, buf.data(), buf.size(), headroom, minTailroom) {}
+  static std::unique_ptr<IOBuf> copyBuffer(
+      const std::string& buf,
+      uint64_t headroom = 0,
+      uint64_t minTailroom = 0);
+  IOBuf(
+      CopyBufferOp op,
+      const std::string& buf,
+      uint64_t headroom = 0,
+      uint64_t minTailroom = 0)
+      : IOBuf(op, buf.data(), buf.size(), headroom, minTailroom) {}
 
   /**
    * A version of copyBuffer() that returns a null pointer if the input string
    * is empty.
    */
-  static std::unique_ptr<IOBuf> maybeCopyBuffer(const std::string& buf,
-                                                uint64_t headroom=0,
-                                                uint64_t minTailroom=0);
+  static std::unique_ptr<IOBuf> maybeCopyBuffer(
+      const std::string& buf,
+      uint64_t headroom = 0,
+      uint64_t minTailroom = 0);
 
   /**
    * Convenience function to free a chain of IOBufs held by a unique_ptr.
@@ -710,8 +738,7 @@ class IOBuf {
     }
     // If the buffer is empty but we have enough total room (head + tail),
     // move the data_ pointer around.
-    if (length() == 0 &&
-        headroom() + tailroom() >= minHeadroom + minTailroom) {
+    if (length() == 0 && headroom() + tailroom() >= minHeadroom + minTailroom) {
       data_ = writableBuffer() + minHeadroom;
       return;
     }
@@ -823,7 +850,7 @@ class IOBuf {
    * the IOBuf that formerly followed it in the chain.
    */
   std::unique_ptr<IOBuf> pop() {
-    IOBuf *next = next_;
+    IOBuf* next = next_;
     next_->prev_ = prev_;
     prev_->next_ = next_;
     prev_ = this;
@@ -1283,10 +1310,14 @@ class IOBuf {
    * IOBuf.  The IOBuf constructor does not automatically increment the
    * reference count.
    */
-  struct InternalConstructor {};  // avoid conflicts
-  IOBuf(InternalConstructor, uintptr_t flagsAndSharedInfo,
-        uint8_t* buf, uint64_t capacity,
-        uint8_t* data, uint64_t length);
+  struct InternalConstructor {}; // avoid conflicts
+  IOBuf(
+      InternalConstructor,
+      uintptr_t flagsAndSharedInfo,
+      uint8_t* buf,
+      uint64_t capacity,
+      uint8_t* data,
+      uint64_t length);
 
   void unshareOneSlow();
   void unshareChained();
@@ -1308,13 +1339,16 @@ class IOBuf {
   void freeExtBuffer();
 
   static size_t goodExtBufferSize(uint64_t minCapacity);
-  static void initExtBuffer(uint8_t* buf, size_t mallocSize,
-                            SharedInfo** infoReturn,
-                            uint64_t* capacityReturn);
-  static void allocExtBuffer(uint64_t minCapacity,
-                             uint8_t** bufReturn,
-                             SharedInfo** infoReturn,
-                             uint64_t* capacityReturn);
+  static void initExtBuffer(
+      uint8_t* buf,
+      size_t mallocSize,
+      SharedInfo** infoReturn,
+      uint64_t* capacityReturn);
+  static void allocExtBuffer(
+      uint64_t minCapacity,
+      uint8_t** bufReturn,
+      SharedInfo** infoReturn,
+      uint64_t* capacityReturn);
   static void releaseStorage(HeapStorage* storage, uint16_t freeFlags);
   static void freeInternalBuf(void* buf, void* userData);
 
@@ -1346,8 +1380,9 @@ class IOBuf {
   // Pack flags in least significant 2 bits, sharedInfo in the rest
   mutable uintptr_t flagsAndSharedInfo_{0};
 
-  static inline uintptr_t packFlagsAndSharedInfo(uintptr_t flags,
-                                                 SharedInfo* info) {
+  static inline uintptr_t packFlagsAndSharedInfo(
+      uintptr_t flags,
+      SharedInfo* info) {
     uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
     DCHECK_EQ(flags & ~kFlagMask, 0u);
     DCHECK_EQ(uinfo & kFlagMask, 0u);
@@ -1384,7 +1419,7 @@ class IOBuf {
   }
 
   struct DeleterBase {
-    virtual ~DeleterBase() { }
+    virtual ~DeleterBase() {}
     virtual void dispose(void* p) = 0;
   };
 
@@ -1393,7 +1428,7 @@ class IOBuf {
     typedef typename UniquePtr::pointer Pointer;
     typedef typename UniquePtr::deleter_type Deleter;
 
-    explicit UniquePtrDeleter(Deleter deleter) : deleter_(std::move(deleter)){ }
+    explicit UniquePtrDeleter(Deleter deleter) : deleter_(std::move(deleter)) {}
     void dispose(void* p) override {
       try {
         deleter_(static_cast<Pointer>(p));
@@ -1471,19 +1506,20 @@ struct IOBufGreater : compare_greater<IOBufCompare> {};
 struct IOBufGreaterEqual : compare_greater_equal<IOBufCompare> {};
 
 template <class UniquePtr>
-typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
-                        std::unique_ptr<IOBuf>>::type
+typename std::enable_if<
+    detail::IsUniquePtrToSL<UniquePtr>::value,
+    std::unique_ptr<IOBuf>>::type
 IOBuf::takeOwnership(UniquePtr&& buf, size_t count) {
   size_t size = count * sizeof(typename UniquePtr::element_type);
   auto deleter = new UniquePtrDeleter<UniquePtr>(buf.get_deleter());
-  return takeOwnership(buf.release(),
-                       size,
-                       &IOBuf::freeUniquePtrBuffer,
-                       deleter);
+  return takeOwnership(
+      buf.release(), size, &IOBuf::freeUniquePtrBuffer, deleter);
 }
 
 inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
-    const void* data, uint64_t size, uint64_t headroom,
+    const void* data,
+    uint64_t size,
+    uint64_t headroom,
     uint64_t minTailroom) {
   uint64_t capacity = headroom + size + minTailroom;
   std::unique_ptr<IOBuf> buf = create(capacity);
@@ -1495,15 +1531,17 @@ inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
   return buf;
 }
 
-inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(const std::string& buf,
-                                                uint64_t headroom,
-                                                uint64_t minTailroom) {
+inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
+    const std::string& buf,
+    uint64_t headroom,
+    uint64_t minTailroom) {
   return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
 }
 
-inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(const std::string& buf,
-                                                     uint64_t headroom,
-                                                     uint64_t minTailroom) {
+inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(
+    const std::string& buf,
+    uint64_t headroom,
+    uint64_t minTailroom) {
   if (buf.empty()) {
     return nullptr;
   }
@@ -1523,9 +1561,7 @@ class IOBuf::Iterator {
   // the ambiguity (at the cost of one extra comparison in the "increment"
   // code path), we define end iterators as having pos_ == end_ == nullptr
   // and we only allow forward iteration.
-  explicit Iterator(const IOBuf* pos, const IOBuf* end)
-    : pos_(pos),
-      end_(end) {
+  explicit Iterator(const IOBuf* pos, const IOBuf* end) : pos_(pos), end_(end) {
     // Sadly, we must return by const reference, not by value.
     if (pos_) {
       setVal();
@@ -1607,8 +1643,12 @@ class IOBuf::Iterator {
   ByteRange val_;
 };
 
-inline IOBuf::Iterator IOBuf::begin() const { return cbegin(); }
-inline IOBuf::Iterator IOBuf::end() const { return cend(); }
+inline IOBuf::Iterator IOBuf::begin() const {
+  return cbegin();
+}
+inline IOBuf::Iterator IOBuf::end() const {
+  return cend();
+}
 
 } // namespace folly
 

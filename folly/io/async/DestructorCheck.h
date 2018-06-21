@@ -63,8 +63,8 @@ class DestructorCheck {
   class Safety;
 
   class ForwardLink {
-   // These methods are mostly private because an outside caller could violate
-   // the integrity of the linked list.
+    // These methods are mostly private because an outside caller could violate
+    // the integrity of the linked list.
    private:
     void setAllDestroyed() {
       for (auto guard = next_; guard; guard = guard->next_) {
@@ -96,7 +96,7 @@ class DestructorCheck {
         next_->prev_ = this;
       }
       prev_->next_ = this;
-     }
+    }
 
     ~Safety() {
       if (!destroyed()) {

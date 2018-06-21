@@ -22,8 +22,7 @@ using namespace folly;
 class CountedLoopCallback : public EventBase::LoopCallback {
  public:
   CountedLoopCallback(EventBase* eventBase, unsigned int count)
-    : eventBase_(eventBase)
-    , count_(count) {}
+      : eventBase_(eventBase), count_(count) {}
 
   void runLoopCallback() noexcept override {
     --count_;

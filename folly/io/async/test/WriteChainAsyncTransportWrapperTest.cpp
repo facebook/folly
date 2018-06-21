@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/WriteChainAsyncTransportWrapper.h>
+#include <folly/io/async/AsyncTransport.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -25,21 +25,25 @@ using testing::_;
 namespace folly {
 namespace test {
 
-class TestWriteChainAsyncTransportWrapper :
-  public WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper> {
+class TestWriteChainAsyncTransportWrapper
+    : public WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper> {
  public:
-  TestWriteChainAsyncTransportWrapper() :
-    WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper>(nullptr) {}
+  TestWriteChainAsyncTransportWrapper()
+      : WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper>(nullptr) {
+  }
 
-  MOCK_METHOD3(writeChain, void(
-        folly::AsyncTransportWrapper::WriteCallback*,
-        std::shared_ptr<folly::IOBuf>,
-        folly::WriteFlags));
+  MOCK_METHOD3(
+      writeChain,
+      void(
+          folly::AsyncTransportWrapper::WriteCallback*,
+          std::shared_ptr<folly::IOBuf>,
+          folly::WriteFlags));
 
   // gmock doesn't work with the IOBuf&& so we have to wrap this.
-  void writeChain(WriteCallback* callback,
-                  std::unique_ptr<folly::IOBuf>&& iob,
-                  folly::WriteFlags flags = folly::WriteFlags::NONE) override {
+  void writeChain(
+      WriteCallback* callback,
+      std::unique_ptr<folly::IOBuf>&& iob,
+      folly::WriteFlags flags = folly::WriteFlags::NONE) override {
     writeChain(callback, std::shared_ptr<folly::IOBuf>(iob.release()), flags);
   }
 

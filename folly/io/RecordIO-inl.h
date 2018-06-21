@@ -25,16 +25,21 @@
 namespace folly {
 
 class RecordIOReader::Iterator : public boost::iterator_facade<
-    RecordIOReader::Iterator,
-    const std::pair<ByteRange, off_t>,
-    boost::forward_traversal_tag> {
+                                     RecordIOReader::Iterator,
+                                     const std::pair<ByteRange, off_t>,
+                                     boost::forward_traversal_tag> {
   friend class boost::iterator_core_access;
   friend class RecordIOReader;
+
  private:
   Iterator(ByteRange range, uint32_t fileId, off_t pos);
 
-  reference dereference() const { return recordAndPos_; }
-  bool equal(const Iterator& other) const { return range_ == other.range_; }
+  reference dereference() const {
+    return recordAndPos_;
+  }
+  bool equal(const Iterator& other) const {
+    return range_ == other.range_;
+  }
   void increment() {
     size_t skip = recordio_helpers::headerSize() + recordAndPos_.first.size();
     recordAndPos_.second += off_t(skip);
@@ -49,10 +54,18 @@ class RecordIOReader::Iterator : public boost::iterator_facade<
   std::pair<ByteRange, off_t> recordAndPos_;
 };
 
-inline auto RecordIOReader::cbegin() const -> Iterator { return seek(0); }
-inline auto RecordIOReader::begin() const -> Iterator { return cbegin(); }
-inline auto RecordIOReader::cend() const -> Iterator { return seek(off_t(-1)); }
-inline auto RecordIOReader::end() const -> Iterator { return cend(); }
+inline auto RecordIOReader::cbegin() const -> Iterator {
+  return seek(0);
+}
+inline auto RecordIOReader::begin() const -> Iterator {
+  return cbegin();
+}
+inline auto RecordIOReader::cend() const -> Iterator {
+  return seek(off_t(-1));
+}
+inline auto RecordIOReader::end() const -> Iterator {
+  return cend();
+}
 inline auto RecordIOReader::seek(off_t pos) const -> Iterator {
   return Iterator(map_.range(), fileId_, pos);
 }
@@ -69,22 +82,25 @@ struct Header {
   // occurrence must start at least 4 bytes later)
   static constexpr uint32_t kMagic = 0xeac313a1;
   uint32_t magic;
-  uint8_t  version;       // backwards incompatible version, currently 0
-  uint8_t  hashFunction;  // 0 = SpookyHashV2
-  uint16_t flags;         // reserved (must be 0)
-  uint32_t fileId;        // unique file ID
+  uint8_t version; // backwards incompatible version, currently 0
+  uint8_t hashFunction; // 0 = SpookyHashV2
+  uint16_t flags; // reserved (must be 0)
+  uint32_t fileId; // unique file ID
   uint32_t dataLength;
   uint64_t dataHash;
-  uint32_t headerHash;  // must be last
+  uint32_t headerHash; // must be last
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
 
-static_assert(offsetof(Header, headerHash) + sizeof(Header::headerHash) ==
-              sizeof(Header), "invalid header layout");
+static_assert(
+    offsetof(Header, headerHash) + sizeof(Header::headerHash) == sizeof(Header),
+    "invalid header layout");
 
 } // namespace recordio_detail
 
-constexpr size_t headerSize() { return sizeof(recordio_detail::Header); }
+constexpr size_t headerSize() {
+  return sizeof(recordio_detail::Header);
+}
 
 inline RecordInfo findRecord(ByteRange range, uint32_t fileId) {
   return findRecord(range, range, fileId);

@@ -25,12 +25,12 @@
 #include <folly/portability/PThread.h>
 #include <folly/ssl/Init.h>
 
-using std::string;
-using std::vector;
-using std::min;
 using std::cerr;
 using std::endl;
 using std::list;
+using std::min;
+using std::string;
+using std::vector;
 
 namespace folly {
 
@@ -130,8 +130,7 @@ class AttachDetachClient : public AsyncSocket::ConnectCallback,
     });
   }
 
-  void connectErr(const AsyncSocketException& ex) noexcept override
-  {
+  void connectErr(const AsyncSocketException& ex) noexcept override {
     cerr << "AttachDetachClient::connectError: " << ex.what() << endl;
     sslSocket_.reset();
   }
@@ -140,8 +139,9 @@ class AttachDetachClient : public AsyncSocket::ConnectCallback,
     cerr << "client write success" << endl;
   }
 
-  void writeErr(size_t /* bytesWritten */,
-                const AsyncSocketException& ex) noexcept override {
+  void writeErr(
+      size_t /* bytesWritten */,
+      const AsyncSocketException& ex) noexcept override {
     cerr << "client writeError: " << ex.what() << endl;
   }
 
@@ -280,7 +280,7 @@ TEST(AsyncSSLSocketTest2, TestTLS12BadClient) {
 
 } // namespace folly
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   folly::ssl::init();
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);

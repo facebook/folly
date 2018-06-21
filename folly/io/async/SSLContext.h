@@ -96,15 +96,18 @@ class SSLContext {
   };
 
   struct NextProtocolsItem {
-    NextProtocolsItem(int wt, const std::list<std::string>& ptcls):
-      weight(wt), protocols(ptcls) {}
+    NextProtocolsItem(int wt, const std::list<std::string>& ptcls)
+        : weight(wt), protocols(ptcls) {}
     int weight;
     std::list<std::string> protocols;
   };
 
   // Function that selects a client protocol given the server's list
-  using ClientProtocolFilterCallback = bool (*)(unsigned char**, unsigned int*,
-                                        const unsigned char*, unsigned int);
+  using ClientProtocolFilterCallback = bool (*)(
+      unsigned char**,
+      unsigned int*,
+      const unsigned char*,
+      unsigned int);
 
   /**
    * Convenience function to call getErrors() with the current errno value.
@@ -224,8 +227,9 @@ class SSLContext {
    *
    */
   virtual bool needsPeerVerification() {
-    return (verifyPeer_ == SSLVerifyPeerEnum::VERIFY ||
-              verifyPeer_ == SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
+    return (
+        verifyPeer_ == SSLVerifyPeerEnum::VERIFY ||
+        verifyPeer_ == SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
   }
 
   /**
@@ -260,8 +264,10 @@ class SSLContext {
    *                      name of peer matches the given string (altername
    *                      name(s) are not used in this case).
    */
-  virtual void authenticate(bool checkPeerCert, bool checkPeerName,
-                            const std::string& peerName = std::string());
+  virtual void authenticate(
+      bool checkPeerCert,
+      bool checkPeerName,
+      const std::string& peerName = std::string());
   /**
    * Load server certificate.
    *
@@ -494,7 +500,7 @@ class SSLContext {
   /**
    * Gets the underlying SSL_CTX for advanced usage
    */
-  SSL_CTX *getSSLCtx() const {
+  SSL_CTX* getSSLCtx() const {
     return ctx_;
   }
 
@@ -506,8 +512,12 @@ class SSLContext {
    */
   static std::string getErrors(int errnoCopy);
 
-  bool checkPeerName() { return checkPeerName_; }
-  std::string peerFixedName() { return peerFixedName_; }
+  bool checkPeerName() {
+    return checkPeerName_;
+  }
+  std::string peerFixedName() {
+    return peerFixedName_;
+  }
 
 #if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH)
   /**
@@ -523,8 +533,7 @@ class SSLContext {
    */
   static bool matchName(const char* host, const char* pattern, int size);
 
-  [[deprecated("Use folly::ssl::init")]]
-  static void initializeOpenSSL();
+  [[deprecated("Use folly::ssl::init")]] static void initializeOpenSSL();
 
  protected:
   SSL_CTX* ctx_;
@@ -558,19 +567,27 @@ class SSLContext {
   std::vector<int> advertisedNextProtocolWeights_;
   std::discrete_distribution<int> nextProtocolDistribution_;
 
-  static int advertisedNextProtocolCallback(SSL* ssl,
-      const unsigned char** out, unsigned int* outlen, void* data);
+  static int advertisedNextProtocolCallback(
+      SSL* ssl,
+      const unsigned char** out,
+      unsigned int* outlen,
+      void* data);
   static int selectNextProtocolCallback(
-    SSL* ssl, unsigned char **out, unsigned char *outlen,
-    const unsigned char *server, unsigned int server_len, void *args);
+      SSL* ssl,
+      unsigned char** out,
+      unsigned char* outlen,
+      const unsigned char* server,
+      unsigned int server_len,
+      void* args);
 
 #if FOLLY_OPENSSL_HAS_ALPN
-  static int alpnSelectCallback(SSL* ssl,
-                                const unsigned char** out,
-                                unsigned char* outlen,
-                                const unsigned char* in,
-                                unsigned int inlen,
-                                void* data);
+  static int alpnSelectCallback(
+      SSL* ssl,
+      const unsigned char** out,
+      unsigned char* outlen,
+      const unsigned char* in,
+      unsigned int inlen,
+      void* data);
 #endif
   size_t pickNextProtocols();
 
@@ -590,10 +607,9 @@ class SSLContext {
    * generically for performing logic after the Client Hello comes in.
    */
   static int baseServerNameOpenSSLCallback(
-    SSL* ssl,
-    int* al /* alert (return value) */,
-    void* data
-  );
+      SSL* ssl,
+      int* al /* alert (return value) */,
+      void* data);
 #endif
 
   std::string providedCiphersString_;

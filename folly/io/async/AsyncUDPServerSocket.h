@@ -35,8 +35,8 @@ namespace folly {
  *       more than 1 packet will not work because they will end up with
  *       different event base to process.
  */
-class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
-                           , public AsyncSocketBase {
+class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
+                             public AsyncSocketBase {
  public:
   class Callback {
    public:
@@ -44,36 +44,36 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
      * Invoked when we start reading data from socket. It is invoked in
      * each acceptors/listeners event base thread.
      */
-     virtual void onListenStarted() noexcept = 0;
+    virtual void onListenStarted() noexcept = 0;
 
     /**
      * Invoked when the server socket is closed. It is invoked in each
      * acceptors/listeners event base thread.
      */
-     virtual void onListenStopped() noexcept = 0;
+    virtual void onListenStopped() noexcept = 0;
 
-     /**
-      * Invoked when the server socket is paused. It is invoked in each
-      * acceptors/listeners event base thread.
-      */
-     virtual void onListenPaused() noexcept {}
+    /**
+     * Invoked when the server socket is paused. It is invoked in each
+     * acceptors/listeners event base thread.
+     */
+    virtual void onListenPaused() noexcept {}
 
-     /**
-      * Invoked when the server socket is resumed. It is invoked in each
-      * acceptors/listeners event base thread.
-      */
-     virtual void onListenResumed() noexcept {}
+    /**
+     * Invoked when the server socket is resumed. It is invoked in each
+     * acceptors/listeners event base thread.
+     */
+    virtual void onListenResumed() noexcept {}
 
-     /**
-      * Invoked when a new packet is received
-      */
-     virtual void onDataAvailable(
-         std::shared_ptr<AsyncUDPSocket> socket,
-         const folly::SocketAddress& addr,
-         std::unique_ptr<folly::IOBuf> buf,
-         bool truncated) noexcept = 0;
+    /**
+     * Invoked when a new packet is received
+     */
+    virtual void onDataAvailable(
+        std::shared_ptr<AsyncUDPSocket> socket,
+        const folly::SocketAddress& addr,
+        std::unique_ptr<folly::IOBuf> buf,
+        bool truncated) noexcept = 0;
 
-     virtual ~Callback() = default;
+    virtual ~Callback() = default;
   };
 
   /**
@@ -84,10 +84,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
    * is dropped and you get `truncated = true` in onDataAvailable callback
    */
   explicit AsyncUDPServerSocket(EventBase* evb, size_t sz = 1500)
-      : evb_(evb),
-        packetSize_(sz),
-        nextListener_(0) {
-  }
+      : evb_(evb), packetSize_(sz), nextListener_(0) {}
 
   ~AsyncUDPServerSocket() override {
     if (socket_) {
@@ -126,12 +123,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
   void listen() {
     CHECK(socket_) << "Need to bind before listening";
 
-    for (auto& listener: listeners_) {
+    for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread([callback] () mutable {
-        callback->onListenStarted();
-      });
+      listener.first->runInEventBaseThread(
+          [callback]() mutable { callback->onListenStarted(); });
     }
 
     socket_->resumeRead(this);
@@ -207,13 +203,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
 
     // Schedule it in the listener's eventbase
     // XXX: Speed this up
-    auto f = [
-      socket,
-      client,
-      callback,
-      data = std::move(data),
-      truncated
-    ]() mutable {
+    auto f = [socket,
+              client,
+              callback,
+              data = std::move(data),
+              truncated]() mutable {
       callback->onDataAvailable(socket, client, std::move(data), truncated);
     };
 
@@ -229,12 +223,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
   }
 
   void onReadClosed() noexcept override {
-    for (auto& listener: listeners_) {
+    for (auto& listener : listeners_) {
       auto callback = listener.second;
 
-      listener.first->runInEventBaseThread([callback] () mutable {
-        callback->onListenStopped();
-      });
+      listener.first->runInEventBaseThread(
+          [callback]() mutable { callback->onListenStopped(); });
     }
   }
 

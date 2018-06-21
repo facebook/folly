@@ -38,7 +38,9 @@ namespace test {
 
 namespace {
 // shortcut
-StringPiece sp(ByteRange br) { return StringPiece(br); }
+StringPiece sp(ByteRange br) {
+  return StringPiece(br);
+}
 
 template <class T>
 std::unique_ptr<IOBuf> iobufs(std::initializer_list<T> ranges) {
@@ -95,7 +97,7 @@ TEST(RecordIOTest, SmallRecords) {
   TemporaryFile file;
   {
     RecordIOWriter writer(File(file.fd()));
-    for (size_t i = 0; i < kSize; ++i) {  // record of size 0 should be ignored
+    for (size_t i = 0; i < kSize; ++i) { // record of size 0 should be ignored
       writer.write(IOBuf::wrapBuffer(tmp, i));
     }
   }
@@ -125,7 +127,7 @@ TEST(RecordIOTest, MultipleFileIds) {
     writer.write(iobufs({"goodbye"}));
   }
   {
-    RecordIOReader reader(File(file.fd()), 0);  // return all
+    RecordIOReader reader(File(file.fd()), 0); // return all
     auto it = reader.begin();
     ASSERT_FALSE(it == reader.end());
     EXPECT_EQ("hello", sp((it++)->first));
@@ -196,8 +198,7 @@ TEST(RecordIOTest, Randomized) {
   SCOPED_TRACE(to<std::string>("Random seed is ", FLAGS_random_seed));
   std::mt19937 rnd(FLAGS_random_seed);
 
-  size_t recordCount =
-    std::uniform_int_distribution<uint32_t>(30, 300)(rnd);
+  size_t recordCount = std::uniform_int_distribution<uint32_t>(30, 300)(rnd);
 
   std::uniform_int_distribution<uint32_t> recordSizeDist(1, 3 << 16);
   std::uniform_int_distribution<uint32_t> charDist(0, 255);
@@ -232,14 +233,12 @@ TEST(RecordIOTest, Randomized) {
             0, recordSize + recordio_helpers::headerSize() - 1);
         off_t corruptRel = corruptByteDist(rnd);
         VLOG(1) << "n=" << records.size() << " bpos=" << beginPos
-                << " rsize=" << record.size()
-                << " corrupt rel=" << corruptRel
+                << " rsize=" << record.size() << " corrupt rel=" << corruptRel
                 << " abs=" << beginPos + corruptRel;
         corruptPositions.push_back(beginPos + corruptRel);
       } else {
         VLOG(2) << "n=" << records.size() << " bpos=" << beginPos
-                << " rsize=" << record.size()
-                << " good";
+                << " rsize=" << record.size() << " good";
         records.emplace_back(std::move(record), beginPos);
       }
     }
@@ -266,8 +265,7 @@ TEST(RecordIOTest, Randomized) {
 } // namespace test
 } // namespace folly
 
-
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();

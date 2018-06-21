@@ -26,8 +26,7 @@ using std::string;
 namespace folly {
 
 AsyncSignalHandler::AsyncSignalHandler(EventBase* eventBase)
-  : eventBase_(eventBase) {
-}
+    : eventBase_(eventBase) {}
 
 AsyncSignalHandler::~AsyncSignalHandler() {
   // Unregister any outstanding events
@@ -52,27 +51,24 @@ void AsyncSignalHandler::detachEventBase() {
 
 void AsyncSignalHandler::registerSignalHandler(int signum) {
   pair<SignalEventMap::iterator, bool> ret =
-    signalEvents_.insert(make_pair(signum, event()));
+      signalEvents_.insert(make_pair(signum, event()));
   if (!ret.second) {
     // This signal has already been registered
-    throw std::runtime_error(folly::to<string>(
-                               "handler already registered for signal ",
-                               signum));
+    throw std::runtime_error(
+        folly::to<string>("handler already registered for signal ", signum));
   }
 
   struct event* ev = &(ret.first->second);
   try {
     signal_set(ev, signum, libeventCallback, this);
-    if (event_base_set(eventBase_->getLibeventBase(), ev) != 0 ) {
+    if (event_base_set(eventBase_->getLibeventBase(), ev) != 0) {
       throw std::runtime_error(folly::to<string>(
-                                 "error initializing event handler for signal ",
-                                 signum));
+          "error initializing event handler for signal ", signum));
     }
 
     if (event_add(ev, nullptr) != 0) {
-      throw std::runtime_error(folly::to<string>(
-                                 "error adding event handler for signal ",
-                                 signum));
+      throw std::runtime_error(
+          folly::to<string>("error adding event handler for signal ", signum));
     }
   } catch (...) {
     signalEvents_.erase(ret.first);
@@ -84,17 +80,19 @@ void AsyncSignalHandler::unregisterSignalHandler(int signum) {
   SignalEventMap::iterator it = signalEvents_.find(signum);
   if (it == signalEvents_.end()) {
     throw std::runtime_error(folly::to<string>(
-                               "unable to unregister handler for signal ",
-                               signum, ": signal not registered"));
+        "unable to unregister handler for signal ",
+        signum,
+        ": signal not registered"));
   }
 
   event_del(&it->second);
   signalEvents_.erase(it);
 }
 
-void AsyncSignalHandler::libeventCallback(libevent_fd_t signum,
-                                          short /* events */,
-                                          void* arg) {
+void AsyncSignalHandler::libeventCallback(
+    libevent_fd_t signum,
+    short /* events */,
+    void* arg) {
   AsyncSignalHandler* handler = static_cast<AsyncSignalHandler*>(arg);
   handler->signalReceived(int(signum));
 }

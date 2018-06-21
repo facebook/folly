@@ -19,12 +19,13 @@
 #include <atomic>
 #include <thread>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 EventBaseLocalBase::~EventBaseLocalBase() {
   auto locked = eventBases_.rlock();
   for (auto* evb : *locked) {
-    evb->runInEventBaseThread([ this, evb, key = key_ ] {
+    evb->runInEventBaseThread([this, evb, key = key_] {
       evb->localStorage_.erase(key);
       evb->localStorageToDtor_.erase(this);
     });
@@ -55,8 +56,7 @@ void EventBaseLocalBase::onEventBaseDestruction(EventBase& evb) {
 void EventBaseLocalBase::setVoid(EventBase& evb, std::shared_ptr<void>&& ptr) {
   evb.dcheckIsInEventBaseThread();
 
-  auto alreadyExists =
-    evb.localStorage_.find(key_) != evb.localStorage_.end();
+  auto alreadyExists = evb.localStorage_.find(key_) != evb.localStorage_.end();
 
   evb.localStorage_.emplace(key_, std::move(ptr));
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/SSLContext.h>
 #include <folly/io/async/SSLOptions.h>
+#include <folly/io/async/SSLContext.h>
 #include <folly/portability/GTest.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 

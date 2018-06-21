@@ -212,8 +212,7 @@ TEST(IOBuf, PullAndPeek) {
   EXPECT_EQ(11, Cursor(iobuf1.get()).pullAtMost(buf, 20));
   EXPECT_EQ("hello world", std::string(buf));
 
-  EXPECT_THROW({Cursor(iobuf1.get()).pull(buf, 20);},
-               std::out_of_range);
+  EXPECT_THROW({ Cursor(iobuf1.get()).pull(buf, 20); }, std::out_of_range);
 
   {
     RWPrivateCursor cursor(iobuf1.get());
@@ -252,7 +251,7 @@ TEST(IOBuf, pushCursorData) {
   iobuf1->prependChain(std::move(iobuf3));
   EXPECT_TRUE(iobuf1->isChained());
 
-  //write 20 bytes to the buffer chain
+  // write 20 bytes to the buffer chain
   RWPrivateCursor wcursor(iobuf1.get());
   EXPECT_FALSE(wcursor.isAtEnd());
   wcursor.writeBE<uint64_t>(1);
@@ -313,9 +312,10 @@ TEST(IOBuf, Gather) {
   EXPECT_EQ(8, cursor.length());
   EXPECT_EQ(8, cursor.totalLength());
   EXPECT_FALSE(cursor.isAtEnd());
-  EXPECT_EQ("lo world",
-            folly::StringPiece(reinterpret_cast<const char*>(cursor.data()),
-                               cursor.length()));
+  EXPECT_EQ(
+      "lo world",
+      folly::StringPiece(
+          reinterpret_cast<const char*>(cursor.data()), cursor.length()));
   EXPECT_EQ(2, iobuf1->countChainElements());
   EXPECT_EQ(11, iobuf1->computeChainDataLength());
 
@@ -348,14 +348,11 @@ TEST(IOBuf, cloneAndInsert) {
   EXPECT_EQ(2, cloned->countChainElements());
   EXPECT_EQ(3, cloned->computeChainDataLength());
 
-
   EXPECT_EQ(11, Cursor(iobuf1.get()).cloneAtMost(cloned, 20));
   EXPECT_EQ(3, cloned->countChainElements());
   EXPECT_EQ(11, cloned->computeChainDataLength());
 
-
-  EXPECT_THROW({Cursor(iobuf1.get()).clone(cloned, 20);},
-               std::out_of_range);
+  EXPECT_THROW({ Cursor(iobuf1.get()).clone(cloned, 20); }, std::out_of_range);
 
   {
     // Check that inserting in the middle of an iobuf splits
@@ -493,9 +490,9 @@ TEST(IOBuf, Appender) {
   auto cap = head->capacity();
   auto len1 = app.length();
   EXPECT_EQ(cap - 5, len1);
-  app.ensure(len1);  // won't grow
+  app.ensure(len1); // won't grow
   EXPECT_EQ(len1, app.length());
-  app.ensure(len1 + 1);  // will grow
+  app.ensure(len1 + 1); // will grow
   EXPECT_LE(len1 + 1, app.length());
 
   append(app, " world");
@@ -510,17 +507,22 @@ TEST(IOBuf, Printf) {
   EXPECT_EQ(head.length(), 4);
   EXPECT_EQ(0, memcmp(head.data(), "test\0", 5));
 
-  app.printf("%d%s %s%s %#x", 32, "this string is",
-             "longer than our original allocation size,",
-             "and will therefore require a new allocation", 0x12345678);
+  app.printf(
+      "%d%s %s%s %#x",
+      32,
+      "this string is",
+      "longer than our original allocation size,",
+      "and will therefore require a new allocation",
+      0x12345678);
   // The tailroom should start with a nul byte now.
   EXPECT_GE(head.prev()->tailroom(), 1u);
   EXPECT_EQ(0, *head.prev()->tail());
 
-  EXPECT_EQ("test32this string is longer than our original "
-            "allocation size,and will therefore require a "
-            "new allocation 0x12345678",
-            head.moveToFbString().toStdString());
+  EXPECT_EQ(
+      "test32this string is longer than our original "
+      "allocation size,and will therefore require a "
+      "new allocation 0x12345678",
+      head.moveToFbString().toStdString());
 }
 
 TEST(IOBuf, Format) {
@@ -531,16 +533,19 @@ TEST(IOBuf, Format) {
   EXPECT_EQ(head.length(), 4);
   EXPECT_EQ(0, memcmp(head.data(), "test", 4));
 
-  auto fmt = format("{}{} {}{} {:#x}",
-                    32, "this string is",
-                    "longer than our original allocation size,",
-                    "and will therefore require a new allocation",
-                    0x12345678);
+  auto fmt = format(
+      "{}{} {}{} {:#x}",
+      32,
+      "this string is",
+      "longer than our original allocation size,",
+      "and will therefore require a new allocation",
+      0x12345678);
   fmt(app);
-  EXPECT_EQ("test32this string is longer than our original "
-            "allocation size,and will therefore require a "
-            "new allocation 0x12345678",
-            head.moveToFbString().toStdString());
+  EXPECT_EQ(
+      "test32this string is longer than our original "
+      "allocation size,and will therefore require a "
+      "new allocation 0x12345678",
+      head.moveToFbString().toStdString());
 }
 
 TEST(IOBuf, QueueAppender) {
@@ -566,7 +571,7 @@ TEST(IOBuf, QueueAppender) {
     EXPECT_EQ(i, cursor.readBE<uint32_t>());
   }
 
-  EXPECT_THROW({cursor.readBE<uint32_t>();}, std::out_of_range);
+  EXPECT_THROW({ cursor.readBE<uint32_t>(); }, std::out_of_range);
 }
 
 TEST(IOBuf, QueueAppenderPushAtMostFillBuffer) {
@@ -793,8 +798,7 @@ TEST(IOBuf, StringOperations) {
     chain->prependChain(std::move(buf));
 
     Cursor curs(chain.get());
-    EXPECT_THROW(curs.readTerminatedString(),
-                 std::out_of_range);
+    EXPECT_THROW(curs.readTerminatedString(), std::out_of_range);
   }
 
   // Test reading a null-terminated string past the maximum length
@@ -806,8 +810,7 @@ TEST(IOBuf, StringOperations) {
     chain->prependChain(std::move(buf));
 
     Cursor curs(chain.get());
-    EXPECT_THROW(curs.readTerminatedString('\0', 3),
-                 std::length_error);
+    EXPECT_THROW(curs.readTerminatedString('\0', 3), std::length_error);
   }
 
   // Test reading a two fixed-length strings from a single buffer with an extra

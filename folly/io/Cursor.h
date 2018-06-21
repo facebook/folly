@@ -55,7 +55,9 @@ namespace detail {
 template <class Derived, class BufType>
 class CursorBase {
   // Make all the templated classes friends for copy constructor.
-  template <class D, typename B> friend class CursorBase;
+  template <class D, typename B>
+  friend class CursorBase;
+
  public:
   explicit CursorBase(BufType* buf) : crtBuf_(buf), buffer_(buf) {
     if (crtBuf_) {
@@ -166,7 +168,8 @@ class CursorBase {
     // We are at the end of a buffer, but it isn't the last buffer.
     // We might still be at the end if the remaining buffers in the chain are
     // empty.
-    const IOBuf* buf = crtBuf_->next();;
+    const IOBuf* buf = crtBuf_->next();
+    ;
     while (buf != buffer_) {
       if (buf->length() > 0) {
         return false;
@@ -516,7 +519,7 @@ class CursorBase {
    * Return the distance between two cursors.
    */
   size_t operator-(const CursorBase& other) const {
-    BufType *otherBuf = other.crtBuf_;
+    BufType* otherBuf = other.crtBuf_;
     size_t len = 0;
 
     if (otherBuf != crtBuf_) {
@@ -572,7 +575,7 @@ class CursorBase {
         (uint64_t)(crtEnd_ - crtBegin_) == crtBuf_->length());
   }
 
-  ~CursorBase() { }
+  ~CursorBase() {}
 
   BufType* head() {
     return buffer_;
@@ -629,7 +632,7 @@ class CursorBase {
   }
 
   void readFixedStringSlow(std::string* str, size_t len) {
-    for (size_t available; (available = length()) < len; ) {
+    for (size_t available; (available = length()) < len;) {
       str->append(reinterpret_cast<const char*>(data()), available);
       if (UNLIKELY(!tryAdvanceBuffer())) {
         throw_exception<std::out_of_range>("string underflow");
@@ -650,7 +653,7 @@ class CursorBase {
     }
     uint8_t* p = reinterpret_cast<uint8_t*>(buf);
     size_t copied = 0;
-    for (size_t available; (available = length()) < len; ) {
+    for (size_t available; (available = length()) < len;) {
       memcpy(p, data(), available);
       copied += available;
       if (UNLIKELY(!tryAdvanceBuffer())) {
@@ -673,7 +676,7 @@ class CursorBase {
 
   size_t skipAtMostSlow(size_t len) {
     size_t skipped = 0;
-    for (size_t available; (available = length()) < len; ) {
+    for (size_t available; (available = length()) < len;) {
       skipped += available;
       if (UNLIKELY(!tryAdvanceBuffer())) {
         return skipped;
@@ -710,8 +713,7 @@ class CursorBase {
     }
   }
 
-  void advanceDone() {
-  }
+  void advanceDone() {}
 };
 
 } // namespace detail
@@ -719,11 +721,11 @@ class CursorBase {
 class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
  public:
   explicit Cursor(const IOBuf* buf)
-    : detail::CursorBase<Cursor, const IOBuf>(buf) {}
+      : detail::CursorBase<Cursor, const IOBuf>(buf) {}
 
   template <class OtherDerived, class OtherBuf>
   explicit Cursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
-    : detail::CursorBase<Cursor, const IOBuf>(cursor) {}
+      : detail::CursorBase<Cursor, const IOBuf>(cursor) {}
 };
 
 namespace detail {
@@ -732,8 +734,7 @@ template <class Derived>
 class Writable {
  public:
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value>::type
-  write(T value) {
+  typename std::enable_if<std::is_arithmetic<T>::value>::type write(T value) {
     const uint8_t* u8 = reinterpret_cast<const uint8_t*>(&value);
     Derived* d = static_cast<Derived*>(this);
     d->push(u8, sizeof(T));
@@ -782,7 +783,7 @@ class Writable {
 
   size_t pushAtMost(Cursor cursor, size_t len) {
     size_t written = 0;
-    for(;;) {
+    for (;;) {
       auto currentBuffer = cursor.peekBytes();
       const uint8_t* crtData = currentBuffer.data();
       size_t available = currentBuffer.size();
@@ -808,25 +809,21 @@ class Writable {
 
 } // namespace detail
 
-enum class CursorAccess {
-  PRIVATE,
-  UNSHARE
-};
+enum class CursorAccess { PRIVATE, UNSHARE };
 
 template <CursorAccess access>
-class RWCursor
-  : public detail::CursorBase<RWCursor<access>, IOBuf>,
-    public detail::Writable<RWCursor<access>> {
+class RWCursor : public detail::CursorBase<RWCursor<access>, IOBuf>,
+                 public detail::Writable<RWCursor<access>> {
   friend class detail::CursorBase<RWCursor<access>, IOBuf>;
+
  public:
   explicit RWCursor(IOBuf* buf)
-    : detail::CursorBase<RWCursor<access>, IOBuf>(buf),
-      maybeShared_(true) {}
+      : detail::CursorBase<RWCursor<access>, IOBuf>(buf), maybeShared_(true) {}
 
   template <class OtherDerived, class OtherBuf>
   explicit RWCursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
-    : detail::CursorBase<RWCursor<access>, IOBuf>(cursor),
-      maybeShared_(true) {}
+      : detail::CursorBase<RWCursor<access>, IOBuf>(cursor),
+        maybeShared_(true) {}
   /**
    * Gather at least n bytes contiguously into the current buffer,
    * by coalescing subsequent buffers from the chain as necessary.
@@ -972,10 +969,7 @@ typedef RWCursor<CursorAccess::UNSHARE> RWUnshareCursor;
 class Appender : public detail::Writable<Appender> {
  public:
   Appender(IOBuf* buf, uint64_t growth)
-    : buffer_(buf),
-      crtBuf_(buf->prev()),
-      growth_(growth) {
-  }
+      : buffer_(buf), crtBuf_(buf->prev()), growth_(growth) {}
 
   uint8_t* writableData() {
     return crtBuf_->writableTail();
@@ -1074,7 +1068,7 @@ class Appender : public detail::Writable<Appender> {
    * This method may throw exceptions on error.
    */
   void printf(FOLLY_PRINTF_FORMAT const char* fmt, ...)
-    FOLLY_PRINTF_FORMAT_ATTR(2, 3);
+      FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
   void vprintf(const char* fmt, va_list ap);
 

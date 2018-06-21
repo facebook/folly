@@ -133,17 +133,16 @@ class HHWheelTimer : private folly::AsyncTimeout,
           expiration_ - now);
     }
 
-    void setScheduled(HHWheelTimer* wheel,
-                      std::chrono::milliseconds);
+    void setScheduled(HHWheelTimer* wheel, std::chrono::milliseconds);
     void cancelTimeoutImpl();
 
     HHWheelTimer* wheel_{nullptr};
     std::chrono::steady_clock::time_point expiration_{};
     int bucket_{-1};
 
-    typedef boost::intrusive::list<
-      Callback,
-      boost::intrusive::constant_time_size<false> > List;
+    typedef boost::intrusive::
+        list<Callback, boost::intrusive::constant_time_size<false>>
+            List;
 
     std::shared_ptr<RequestContext> context_;
 
@@ -209,10 +208,10 @@ class HHWheelTimer : private folly::AsyncTimeout,
    * If the callback is already scheduled, this cancels the existing timeout
    * before scheduling the new timeout.
    */
-  void scheduleTimeout(Callback* callback,
-                       std::chrono::milliseconds timeout);
-  void scheduleTimeoutImpl(Callback* callback,
-                       std::chrono::milliseconds timeout);
+  void scheduleTimeout(Callback* callback, std::chrono::milliseconds timeout);
+  void scheduleTimeoutImpl(
+      Callback* callback,
+      std::chrono::milliseconds timeout);
 
   /**
    * Schedule the specified Callback to be invoked after the
@@ -235,7 +234,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
           fn_();
         } catch (std::exception const& e) {
           LOG(ERROR) << "HHWheelTimer timeout callback threw an exception: "
-            << e.what();
+                     << e.what();
         } catch (...) {
           LOG(ERROR) << "HHWheelTimer timeout callback threw a non-exception.";
         }
@@ -273,8 +272,8 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
  private:
   // Forbidden copy constructor and assignment operator
-  HHWheelTimer(HHWheelTimer const &) = delete;
-  HHWheelTimer& operator=(HHWheelTimer const &) = delete;
+  HHWheelTimer(HHWheelTimer const&) = delete;
+  HHWheelTimer& operator=(HHWheelTimer const&) = delete;
 
   // Methods inherited from AsyncTimeout
   void timeoutExpired() noexcept override;

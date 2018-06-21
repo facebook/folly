@@ -34,19 +34,18 @@ EventBaseManager* EventBaseManager::get() {
   } else {
     return new_mgr;
   }
-
 }
 
 /*
  * EventBaseManager methods
  */
 
-void EventBaseManager::setEventBase(EventBase *eventBase,
-                                     bool takeOwnership) {
-  EventBaseInfo *info = localStore_.get();
+void EventBaseManager::setEventBase(EventBase* eventBase, bool takeOwnership) {
+  EventBaseInfo* info = localStore_.get();
   if (info != nullptr) {
-    throw std::runtime_error("EventBaseManager: cannot set a new EventBase "
-                             "for this thread when one already exists");
+    throw std::runtime_error(
+        "EventBaseManager: cannot set a new EventBase "
+        "for this thread when one already exists");
   }
 
   info = new EventBaseInfo(eventBase, takeOwnership);
@@ -55,7 +54,7 @@ void EventBaseManager::setEventBase(EventBase *eventBase,
 }
 
 void EventBaseManager::clearEventBase() {
-  EventBaseInfo *info = localStore_.get();
+  EventBaseInfo* info = localStore_.get();
   if (info != nullptr) {
     this->untrackEventBase(info->eventBase);
     this->localStore_.reset(nullptr);
@@ -63,10 +62,10 @@ void EventBaseManager::clearEventBase() {
 }
 
 // XXX should this really be "const"?
-EventBase * EventBaseManager::getEventBase() const {
+EventBase* EventBaseManager::getEventBase() const {
   // have one?
-  auto *info = localStore_.get();
-  if (! info) {
+  auto* info = localStore_.get();
+  if (!info) {
     info = new EventBaseInfo();
     localStore_.reset(info);
 
@@ -81,7 +80,7 @@ EventBase * EventBaseManager::getEventBase() const {
     // Simply removing the const causes trouble all over fbcode;
     // lots of services build a const EventBaseManager and errors
     // abound when we make this non-const.
-    (const_cast<EventBaseManager *>(this))->trackEventBase(info->eventBase);
+    (const_cast<EventBaseManager*>(this))->trackEventBase(info->eventBase);
   }
 
   return info->eventBase;

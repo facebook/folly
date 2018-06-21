@@ -20,10 +20,7 @@ namespace folly {
 
 class SocketPair {
  public:
-  enum Mode {
-    BLOCKING,
-    NONBLOCKING
-  };
+  enum Mode { BLOCKING, NONBLOCKING };
 
   explicit SocketPair(Mode mode = NONBLOCKING);
   ~SocketPair();

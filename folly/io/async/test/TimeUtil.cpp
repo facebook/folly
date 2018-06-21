@@ -107,13 +107,14 @@ static int64_t determineSchedstatUnits() {
   //
   // Look in /boot/config-<kernel_release>
   char configPath[256];
-  snprintf(configPath, sizeof(configPath), "/boot/config-%s",
-           unameInfo.release);
+  snprintf(
+      configPath, sizeof(configPath), "/boot/config-%s", unameInfo.release);
 
   FILE* f = fopen(configPath, "r");
   if (f == nullptr) {
     LOG(ERROR) << "unable to determine jiffies/second: "
-      "cannot open kernel config file %s" << configPath;
+                  "cannot open kernel config file %s"
+               << configPath;
     return -1;
   }
   SCOPE_EXIT {
@@ -139,7 +140,8 @@ static int64_t determineSchedstatUnits() {
 
   if (hz == -1) {
     LOG(ERROR) << "unable to determine jiffies/second: no CONFIG_HZ setting "
-      "found in %s" << configPath;
+                  "found in %s"
+               << configPath;
     return -1;
   }
 
@@ -169,19 +171,18 @@ static nanoseconds getSchedTimeWaiting(pid_t tid) {
   int fd = -1;
   try {
     char schedstatFile[256];
-    snprintf(schedstatFile, sizeof(schedstatFile),
-             "/proc/%d/schedstat", tid);
+    snprintf(schedstatFile, sizeof(schedstatFile), "/proc/%d/schedstat", tid);
     fd = open(schedstatFile, O_RDONLY);
     if (fd < 0) {
       throw std::runtime_error(
-        folly::to<string>("failed to open process schedstat file", errno));
+          folly::to<string>("failed to open process schedstat file", errno));
     }
 
     char buf[512];
     ssize_t bytesReadRet = read(fd, buf, sizeof(buf) - 1);
     if (bytesReadRet <= 0) {
       throw std::runtime_error(
-        folly::to<string>("failed to read process schedstat file", errno));
+          folly::to<string>("failed to read process schedstat file", errno));
     }
     size_t bytesRead = size_t(bytesReadRet);
 
@@ -194,8 +195,12 @@ static nanoseconds getSchedTimeWaiting(pid_t tid) {
     uint64_t activeJiffies = 0;
     uint64_t waitingJiffies = 0;
     uint64_t numTasks = 0;
-    int rc = sscanf(buf, "%" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
-                    &activeJiffies, &waitingJiffies, &numTasks);
+    int rc = sscanf(
+        buf,
+        "%" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+        &activeJiffies,
+        &waitingJiffies,
+        &numTasks);
     if (rc != 3) {
       throw std::runtime_error("failed to parse schedstat data");
     }

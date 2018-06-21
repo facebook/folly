@@ -62,9 +62,8 @@ class OpenSSLUtils {
    */
   // TODO(agartrell): Add support for things like common name when
   // necessary.
-  static bool validatePeerCertNames(X509* cert,
-                                    const sockaddr* addr,
-                                    socklen_t addrLen);
+  static bool
+  validatePeerCertNames(X509* cert, const sockaddr* addr, socklen_t addrLen);
 
   /**
    * Get the peer socket address from an X509_STORE_CTX*.  Unlike the
@@ -76,9 +75,10 @@ class OpenSSLUtils {
    * @param addrLen     out param for length of address
    * @return true on success, false on failure
    */
-  static bool getPeerAddressFromX509StoreCtx(X509_STORE_CTX* ctx,
-                                             sockaddr_storage* addrStorage,
-                                             socklen_t* addrLen);
+  static bool getPeerAddressFromX509StoreCtx(
+      X509_STORE_CTX* ctx,
+      sockaddr_storage* addrStorage,
+      socklen_t* addrLen);
 
   /**
    * Get a stringified cipher name (e.g., ECDHE-ECDSA-CHACHA20-POLY1305) given
@@ -105,9 +105,9 @@ class OpenSSLUtils {
   static SSL_CTX* getSSLInitialCtx(SSL* ssl);
 
   /**
-  * Wrappers for BIO operations that may be different across different
-  * versions/flavors of OpenSSL (including forks like BoringSSL)
-  */
+   * Wrappers for BIO operations that may be different across different
+   * versions/flavors of OpenSSL (including forks like BoringSSL)
+   */
   static BioMethodUniquePtr newSocketBioMethod();
   static bool setCustomBioReadMethod(
       BIO_METHOD* bioMeth,
