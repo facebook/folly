@@ -346,18 +346,17 @@ class FutureBase {
   template <class>
   friend class Future;
 
-  using CoreType = futures::detail::Core<T>;
-  using corePtr = CoreType*;
+  using Core = futures::detail::Core<T>;
 
   // Throws FutureInvalid if there is no shared state object; else returns it
   // by ref.
   //
   // Implementation methods should usually use this instead of `this->core_`.
   // The latter should be used only when you need the possibly-null pointer.
-  CoreType& getCore() {
+  Core& getCore() {
     return getCoreImpl(*this);
   }
-  CoreType const& getCore() const {
+  Core const& getCore() const {
     return getCoreImpl(*this);
   }
 
@@ -387,9 +386,9 @@ class FutureBase {
 
   // shared core state object
   // usually you should use `getCore()` instead of directly accessing `core_`.
-  corePtr core_;
+  Core* core_;
 
-  explicit FutureBase(corePtr obj) : core_(obj) {}
+  explicit FutureBase(Core* obj) : core_(obj) {}
 
   explicit FutureBase(futures::detail::EmptyConstruct) noexcept;
 
@@ -876,14 +875,14 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <class>
   friend class Future;
 
-  using typename Base::corePtr;
   using Base::setExecutor;
   using Base::throwIfInvalid;
+  using typename Base::Core;
 
   template <class T2>
   friend SemiFuture<T2> makeSemiFuture(Try<T2>&&);
 
-  explicit SemiFuture(corePtr obj) : Base(obj) {}
+  explicit SemiFuture(Core* obj) : Base(obj) {}
 
   explicit SemiFuture(futures::detail::EmptyConstruct) noexcept
       : Base(futures::detail::EmptyConstruct{}) {}
@@ -891,7 +890,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   // Throws FutureInvalid if !this->core_
   DeferredExecutor* getDeferredExecutor() const;
 
-  static void releaseDeferredExecutor(corePtr core);
+  static void releaseDeferredExecutor(Core* core);
 };
 
 template <class T>
@@ -1821,9 +1820,9 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::setExecutor;
   using Base::throwIfContinued;
   using Base::throwIfInvalid;
-  using typename Base::corePtr;
+  using typename Base::Core;
 
-  explicit Future(corePtr obj) : Base(obj) {}
+  explicit Future(Core* obj) : Base(obj) {}
 
   explicit Future(futures::detail::EmptyConstruct) noexcept
       : Base(futures::detail::EmptyConstruct{}) {}

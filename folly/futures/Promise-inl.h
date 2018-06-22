@@ -42,7 +42,7 @@ Promise<T> Promise<T>::makeEmpty() noexcept {
 }
 
 template <class T>
-Promise<T>::Promise() : retrieved_(false), core_(CoreType::make()) {}
+Promise<T>::Promise() : retrieved_(false), core_(Core::make()) {}
 
 template <class T>
 Promise<T>::Promise(Promise<T>&& other) noexcept

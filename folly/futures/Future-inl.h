@@ -147,13 +147,13 @@ FutureBase<T>::FutureBase(Future<T>&& other) noexcept : core_(other.core_) {
 template <class T>
 template <class T2, typename>
 FutureBase<T>::FutureBase(T2&& val)
-    : core_(CoreType::make(Try<T>(std::forward<T2>(val)))) {}
+    : core_(Core::make(Try<T>(std::forward<T2>(val)))) {}
 
 template <class T>
 template <typename T2>
 FutureBase<T>::FutureBase(
     typename std::enable_if<std::is_same<Unit, T2>::value>::type*)
-    : core_(CoreType::make(Try<T>(T()))) {}
+    : core_(Core::make(Try<T>(T()))) {}
 
 template <class T>
 template <
@@ -161,7 +161,7 @@ template <
     typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
         type>
 FutureBase<T>::FutureBase(in_place_t, Args&&... args)
-    : core_(CoreType::make(in_place, std::forward<Args>(args)...)) {}
+    : core_(Core::make(in_place, std::forward<Args>(args)...)) {}
 
 template <class T>
 void FutureBase<T>::assign(FutureBase<T>&& other) noexcept {
@@ -723,7 +723,7 @@ typename std::
 
 template <class T>
 SemiFuture<T> makeSemiFuture(Try<T>&& t) {
-  return SemiFuture<T>(SemiFuture<T>::CoreType::make(std::move(t)));
+  return SemiFuture<T>(SemiFuture<T>::Core::make(std::move(t)));
 }
 
 // This must be defined after the constructors to avoid a bug in MSVC
@@ -748,7 +748,7 @@ typename SemiFuture<T>::DeferredExecutor* SemiFuture<T>::getDeferredExecutor()
 }
 
 template <class T>
-void SemiFuture<T>::releaseDeferredExecutor(corePtr core) {
+void SemiFuture<T>::releaseDeferredExecutor(Core* core) {
   if (!core) {
     return;
   }
@@ -1287,7 +1287,7 @@ makeFuture(E const& e) {
 
 template <class T>
 Future<T> makeFuture(Try<T>&& t) {
-  return Future<T>(Future<T>::CoreType::make(std::move(t)));
+  return Future<T>(Future<T>::Core::make(std::move(t)));
 }
 
 // via

@@ -20,6 +20,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Try.h>
+#include <folly/futures/detail/Core.h>
 #include <folly/lang/Exception.h>
 
 namespace folly {
@@ -416,18 +417,17 @@ class Promise {
   // Whether the Future has been retrieved (a one-time operation).
   bool retrieved_;
 
-  using CoreType = typename Future<T>::CoreType;
-  using corePtr = typename Future<T>::corePtr;
+  using Core = futures::detail::Core<T>;
 
   // Throws PromiseInvalid if there is no shared state object; else returns it
   // by ref.
   //
   // Implementation methods should usually use this instead of `this->core_`.
   // The latter should be used only when you need the possibly-null pointer.
-  CoreType& getCore() {
+  Core& getCore() {
     return getCoreImpl(core_);
   }
-  CoreType const& getCore() const {
+  Core const& getCore() const {
     return getCoreImpl(core_);
   }
 
@@ -441,7 +441,7 @@ class Promise {
 
   // shared core state object
   // usually you should use `getCore()` instead of directly accessing `core_`.
-  corePtr core_;
+  Core* core_;
 
   explicit Promise(futures::detail::EmptyConstruct) noexcept;
 
