@@ -463,6 +463,42 @@ TEST(InitThreadFactoryTest, InitializerCalled) {
   EXPECT_EQ(initializerCalledCount, 1);
 }
 
+TEST(InitThreadFactoryTest, InitializerAndFinalizerCalled) {
+  bool initializerCalled = false;
+  bool taskBodyCalled = false;
+  bool finalizerCalled = false;
+
+  InitThreadFactory factory(
+      std::make_shared<NamedThreadFactory>("test"),
+      [&] {
+        // thread initializer
+        EXPECT_FALSE(initializerCalled);
+        EXPECT_FALSE(taskBodyCalled);
+        EXPECT_FALSE(finalizerCalled);
+        initializerCalled = true;
+      },
+      [&] {
+        // thread finalizer
+        EXPECT_TRUE(initializerCalled);
+        EXPECT_TRUE(taskBodyCalled);
+        EXPECT_FALSE(finalizerCalled);
+        finalizerCalled = true;
+      });
+
+  factory
+      .newThread([&]() {
+        EXPECT_TRUE(initializerCalled);
+        EXPECT_FALSE(taskBodyCalled);
+        EXPECT_FALSE(finalizerCalled);
+        taskBodyCalled = true;
+      })
+      .join();
+
+  EXPECT_TRUE(initializerCalled);
+  EXPECT_TRUE(taskBodyCalled);
+  EXPECT_TRUE(finalizerCalled);
+}
+
 class TestData : public folly::RequestData {
  public:
   explicit TestData(int data) : data_(data) {}

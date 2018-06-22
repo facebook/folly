@@ -19,6 +19,7 @@
 #include <memory>
 #include <thread>
 
+#include <folly/ScopeGuard.h>
 #include <folly/executors/thread_factory/ThreadFactory.h>
 
 namespace folly {
@@ -27,22 +28,34 @@ class InitThreadFactory : public ThreadFactory {
  public:
   explicit InitThreadFactory(
       std::shared_ptr<ThreadFactory> threadFactory,
-      Func&& threadInitializer)
+      Func&& threadInitializer,
+      Func&& threadFinializer = [] {})
       : threadFactory_(std::move(threadFactory)),
-        threadInitializer_(
-            std::make_shared<Func>(std::move(threadInitializer))) {}
+        threadInitFini_(std::make_shared<ThreadInitFini>(
+            std::move(threadInitializer),
+            std::move(threadFinializer))) {}
 
   std::thread newThread(Func&& func) override {
     return threadFactory_->newThread(
-        [func = std::move(func), initializer = threadInitializer_]() mutable {
-          (*initializer)();
+        [func = std::move(func), threadInitFini = threadInitFini_]() mutable {
+          threadInitFini->initializer();
+          SCOPE_EXIT {
+            threadInitFini->finalizer();
+          };
           func();
         });
   }
 
  private:
   std::shared_ptr<ThreadFactory> threadFactory_;
-  std::shared_ptr<Func> threadInitializer_;
+  struct ThreadInitFini {
+    ThreadInitFini(Func&& init, Func&& fini)
+        : initializer(std::move(init)), finalizer(std::move(fini)) {}
+
+    Func initializer;
+    Func finalizer;
+  };
+  std::shared_ptr<ThreadInitFini> threadInitFini_;
 };
 
 } // namespace folly
