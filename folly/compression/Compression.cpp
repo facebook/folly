@@ -1507,6 +1507,22 @@ static int zstdConvertLevel(int level) {
   return level;
 }
 
+static int zstdFastConvertLevel(int level) {
+  switch (level) {
+    case COMPRESSION_LEVEL_FASTEST:
+      return -5;
+    case COMPRESSION_LEVEL_DEFAULT:
+      return -1;
+    case COMPRESSION_LEVEL_BEST:
+      return -1;
+  }
+  if (level < 1) {
+    throw std::invalid_argument(
+        to<std::string>("ZSTD: invalid level: ", level));
+  }
+  return -level;
+}
+
 std::unique_ptr<Codec> getZstdCodec(int level, CodecType type) {
   DCHECK(type == CodecType::ZSTD);
   return zstd::getCodec(zstd::Options(zstdConvertLevel(level)));
@@ -1515,6 +1531,16 @@ std::unique_ptr<Codec> getZstdCodec(int level, CodecType type) {
 std::unique_ptr<StreamCodec> getZstdStreamCodec(int level, CodecType type) {
   DCHECK(type == CodecType::ZSTD);
   return zstd::getStreamCodec(zstd::Options(zstdConvertLevel(level)));
+}
+
+std::unique_ptr<Codec> getZstdFastCodec(int level, CodecType type) {
+  DCHECK(type == CodecType::ZSTD_FAST);
+  return zstd::getCodec(zstd::Options(zstdFastConvertLevel(level)));
+}
+
+std::unique_ptr<StreamCodec> getZstdFastStreamCodec(int level, CodecType type) {
+  DCHECK(type == CodecType::ZSTD_FAST);
+  return zstd::getStreamCodec(zstd::Options(zstdFastConvertLevel(level)));
 }
 
 #endif // FOLLY_HAVE_LIBZSTD
@@ -2024,6 +2050,12 @@ constexpr Factory
 
 #if FOLLY_HAVE_LIBBZ2
         {Bzip2Codec::create, nullptr},
+#else
+        {},
+#endif
+
+#if FOLLY_HAVE_LIBZSTD
+        {getZstdFastCodec, getZstdFastStreamCodec},
 #else
         {},
 #endif

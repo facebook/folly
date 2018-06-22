@@ -1408,6 +1408,22 @@ TEST(ZstdTest, CustomOptions) {
   }
 }
 
+TEST(ZstdTest, NegativeLevels) {
+  EXPECT_EQ(zstd::Options(1).level(), 1);
+  EXPECT_EQ(zstd::Options(-1).level(), -1);
+  auto const original = std::string(
+      reinterpret_cast<const char*>(randomDataHolder.data(16348).data()),
+      16348);
+  auto const plusCompressed =
+      zstd::getCodec(zstd::Options(1))->compress(original);
+  auto const minusCompressed =
+      zstd::getCodec(zstd::Options(-100))->compress(original);
+  EXPECT_GT(minusCompressed.size(), plusCompressed.size());
+  auto codec = getCodec(CodecType::ZSTD);
+  auto const uncompressed = codec->uncompress(minusCompressed);
+  EXPECT_EQ(original, uncompressed);
+}
+
 #endif
 
 #if FOLLY_HAVE_LIBZ

@@ -80,6 +80,8 @@ enum class CodecType {
 
   /**
    * Use ZSTD compression.
+   * Levels supported: 1 = fast, ..., 19 = best; default = 3
+   * Use ZSTD_FAST for the fastest zstd compression (negative levels).
    */
   ZSTD = 8,
 
@@ -102,7 +104,20 @@ enum class CodecType {
    */
   BZIP2 = 11,
 
-  NUM_CODEC_TYPES = 12,
+  /**
+   * Use ZSTD compression with a negative compression level (1=-1, 2=-2, ...).
+   * Higher compression levels mean faster.
+   * Level 1 is around the same speed as Snappy with better compression.
+   * Level 5 is around the same speed as LZ4 with slightly worse compression.
+   * Each level gains about 6-15% speed and loses 3-7% compression.
+   * Decompression speed improves for each level, and level 1 decompression
+   * speed is around 25% faster than ZSTD.
+   * This codec is fully compatible with ZSTD.
+   * Levels supported: 1 = best, ..., 5 = fast; default = 1
+   */
+  ZSTD_FAST = 12,
+
+  NUM_CODEC_TYPES = 13,
 };
 
 class Codec {

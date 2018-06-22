@@ -120,8 +120,15 @@ bool ZSTDStreamCodec::canUncompress(const IOBuf* data, Optional<uint64_t>)
   return dataStartsWithLE(data, kZSTDMagicLE);
 }
 
+CodecType codecType(Options const& options) {
+  int const level = options.level();
+  DCHECK_NE(level, 0);
+  return level > 0 ? CodecType::ZSTD : CodecType::ZSTD_FAST;
+}
+
 ZSTDStreamCodec::ZSTDStreamCodec(Options options)
-    : StreamCodec(CodecType::ZSTD), options_(std::move(options)) {}
+    : StreamCodec(codecType(options), options.level()),
+      options_(std::move(options)) {}
 
 bool ZSTDStreamCodec::doNeedsUncompressedLength() const {
   return false;
@@ -228,7 +235,7 @@ bool ZSTDStreamCodec::doUncompressStream(
 
 } // namespace
 
-Options::Options(int level) : params_(ZSTD_createCCtxParams()) {
+Options::Options(int level) : params_(ZSTD_createCCtxParams()), level_(level) {
   if (params_ == nullptr) {
     throw std::bad_alloc{};
   }
@@ -238,10 +245,17 @@ Options::Options(int level) : params_(ZSTD_createCCtxParams()) {
   zstdThrowIfError(ZSTD_initCCtxParams(params_.get(), level));
   set(ZSTD_p_contentSizeFlag, 1);
 #endif
+  // zstd-1.3.4 is buggy and only disables Huffman decompression for negative
+  // compression levels if this call is present. This call is begign in other
+  // versions.
+  set(ZSTD_p_compressionLevel, level);
 }
 
 void Options::set(ZSTD_cParameter param, unsigned value) {
   zstdThrowIfError(ZSTD_CCtxParam_setParameter(params_.get(), param, value));
+  if (param == ZSTD_p_compressionLevel) {
+    level_ = static_cast<int>(value);
+  }
 }
 
 /* static */ void Options::freeCCtxParams(ZSTD_CCtx_params* params) {
