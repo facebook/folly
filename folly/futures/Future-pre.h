@@ -72,7 +72,6 @@ namespace futures {
 namespace detail {
 
 template <class> class Core;
-template <class> struct CollectContext;
 
 template <typename...>
 struct ArgType;

@@ -307,8 +307,8 @@ Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>> collectAll(
 /// type of the returned Future is std::vector<T> instead of
 /// std::vector<Try<T>>
 template <class InputIterator>
-Future<typename futures::detail::CollectContext<typename std::iterator_traits<
-    InputIterator>::value_type::value_type>::result_type>
+Future<std::vector<
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
 collect(InputIterator first, InputIterator last);
 
 /// Sugar for the most common case
@@ -435,12 +435,7 @@ auto reduce(Collection&& c, T&& initial, F&& func)
 /** like reduce, but calls func on finished futures as they complete
     does NOT keep the order of the input
   */
-template <
-    class It,
-    class T,
-    class F,
-    class ItT = typename std::iterator_traits<It>::value_type::value_type,
-    class Arg = MaybeTryArg<F, T, ItT>>
+template <class It, class T, class F>
 Future<T> unorderedReduce(It first, It last, T initial, F func);
 
 /// Sugar for the most common case
