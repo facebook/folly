@@ -588,28 +588,6 @@ class Core final {
   std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};
 };
 
-template <template <typename...> class T, typename... Ts>
-void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& /* ctx */) {
-  // base case
-}
-
-template <
-    template <typename...> class T,
-    typename... Ts,
-    typename THead,
-    typename... TTail>
-void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& ctx,
-                           THead&& head, TTail&&... tail) {
-  using ValueType = typename std::decay<THead>::type::value_type;
-  std::forward<THead>(head).setCallback_([ctx](Try<ValueType>&& t) {
-    ctx->template setPartialResult<
-        ValueType,
-        sizeof...(Ts) - sizeof...(TTail)-1>(t);
-  });
-  // template tail-recursion
-  collectVariadicHelper(ctx, std::forward<TTail>(tail)...);
-}
-
 } // namespace detail
 } // namespace futures
 } // namespace folly

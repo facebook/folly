@@ -1295,8 +1295,27 @@ Future<Unit> via(Executor* executor, int8_t priority) {
   return makeFuture().via(executor, priority);
 }
 
-// mapSetCallback calls func(i, Try<T>) when every future completes
+namespace futures {
+namespace detail {
 
+template <typename V, typename... Fs, std::size_t... Is>
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void
+foreach_(index_sequence<Is...>, V&& v, Fs&&... fs) {
+  using _ = int[];
+  void(_{0, (void(v(index_constant<Is>{}, static_cast<Fs&&>(fs))), 0)...});
+}
+template <typename V, typename... Fs>
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void foreach(
+    V&& v,
+    Fs&&... fs) {
+  using _ = index_sequence_for<Fs...>;
+  foreach_(_{}, static_cast<V&&>(v), static_cast<Fs&&>(fs)...);
+}
+
+} // namespace detail
+} // namespace futures
+
+// mapSetCallback calls func(i, Try<T>) when every future completes
 template <class T, class InputIterator, class F>
 void mapSetCallback(InputIterator first, InputIterator last, F func) {
   for (size_t i = 0; first != last; ++first, ++i) {
@@ -1309,20 +1328,31 @@ void mapSetCallback(InputIterator first, InputIterator last, F func) {
 // collectAll (variadic)
 
 template <typename... Fs>
-typename futures::detail::CollectAllVariadicContext<
-    typename std::decay<Fs>::type::value_type...>::type
+SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllSemiFuture(Fs&&... fs) {
-  auto ctx = std::make_shared<futures::detail::CollectAllVariadicContext<
-      typename std::decay<Fs>::type::value_type...>>();
-  futures::detail::collectVariadicHelper<
-      futures::detail::CollectAllVariadicContext>(ctx, std::forward<Fs>(fs)...);
+  using Result = std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>;
+  struct Context {
+    ~Context() {
+      p.setValue(std::move(results));
+    }
+    Promise<Result> p;
+    Result results;
+  };
+
+  auto ctx = std::make_shared<Context>();
+  futures::detail::foreach(
+      [&](auto i, auto&& f) {
+        f.setCallback_([i, ctx](auto&& t) {
+          std::get<i.value>(ctx->results) = std::move(t);
+        });
+      },
+      static_cast<Fs&&>(fs)...);
   return ctx->p.getSemiFuture();
 }
 
 template <typename... Fs>
-Future<typename futures::detail::CollectAllVariadicContext<
-    typename std::decay<Fs>::type::value_type...>::type::value_type>
-collectAll(Fs&&... fs) {
+Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>> collectAll(
+    Fs&&... fs) {
   return collectAllSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
@@ -1430,13 +1460,34 @@ collect(InputIterator first, InputIterator last) {
 
 // TODO(T26439406): Make return SemiFuture
 template <typename... Fs>
-typename futures::detail::CollectVariadicContext<
-    typename std::decay<Fs>::type::value_type...>::type
-collect(Fs&&... fs) {
-  auto ctx = std::make_shared<futures::detail::CollectVariadicContext<
-      typename std::decay<Fs>::type::value_type...>>();
-  futures::detail::collectVariadicHelper<
-      futures::detail::CollectVariadicContext>(ctx, std::forward<Fs>(fs)...);
+Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
+    Fs&&... fs) {
+  using Result = std::tuple<typename remove_cvref_t<Fs>::value_type...>;
+  struct Context {
+    ~Context() {
+      if (!threw.exchange(true)) {
+        p.setValue(unwrapTryTuple(std::move(results)));
+      }
+    }
+    Promise<Result> p;
+    std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...> results;
+    std::atomic<bool> threw{false};
+  };
+
+  auto ctx = std::make_shared<Context>();
+  futures::detail::foreach(
+      [&](auto i, auto&& f) {
+        f.setCallback_([i, ctx](auto&& t) {
+          if (t.hasException()) {
+            if (!ctx->threw.exchange(true)) {
+              ctx->p.setException(std::move(t.exception()));
+            }
+          } else if (!ctx->threw) {
+            std::get<i.value>(ctx->results) = std::move(t);
+          }
+        });
+      },
+      static_cast<Fs&&>(fs)...);
   return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
 }
 

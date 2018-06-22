@@ -27,49 +27,6 @@
 
 namespace folly {
 
-namespace futures {
-namespace detail {
-template <typename... Ts>
-struct CollectAllVariadicContext {
-  CollectAllVariadicContext() {}
-  template <typename T, size_t I>
-  inline void setPartialResult(Try<T>& t) {
-    std::get<I>(results) = std::move(t);
-  }
-  ~CollectAllVariadicContext() {
-    p.setValue(std::move(results));
-  }
-  Promise<std::tuple<Try<Ts>...>> p;
-  std::tuple<Try<Ts>...> results;
-  typedef SemiFuture<std::tuple<Try<Ts>...>> type;
-};
-
-template <typename... Ts>
-struct CollectVariadicContext {
-  CollectVariadicContext() {}
-  template <typename T, size_t I>
-  inline void setPartialResult(Try<T>& t) {
-    if (t.hasException()) {
-      if (!threw.exchange(true)) {
-        p.setException(std::move(t.exception()));
-      }
-    } else if (!threw) {
-      std::get<I>(results) = std::move(t);
-    }
-  }
-  ~CollectVariadicContext() noexcept {
-    if (!threw.exchange(true)) {
-      p.setValue(unwrapTryTuple(std::move(results)));
-    }
-  }
-  Promise<std::tuple<Ts...>> p;
-  std::tuple<folly::Try<Ts>...> results;
-  std::atomic<bool> threw{false};
-  typedef Future<std::tuple<Ts...>> type;
-};
-} // namespace detail
-} // namespace futures
-
 /// This namespace is for utility functions that would usually be static
 /// members of Future, except they don't make sense there because they don't
 /// depend on the template type (rather, on the type of their arguments in
@@ -340,15 +297,12 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
 /// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
 /// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
-typename futures::detail::CollectAllVariadicContext<
-    typename std::decay<Fs>::type::value_type...>::type
+SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllSemiFuture(Fs&&... fs);
 
 template <typename... Fs>
-Future<typename futures::detail::CollectAllVariadicContext<
-    typename std::decay<Fs>::type::value_type...>::type::value_type>
-collectAll(Fs&&... fs);
-
+Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>> collectAll(
+    Fs&&... fs);
 /// Like collectAll, but will short circuit on the first exception. Thus, the
 /// type of the returned Future is std::vector<T> instead of
 /// std::vector<Try<T>>
@@ -367,9 +321,8 @@ auto collect(Collection&& c) -> decltype(collect(c.begin(), c.end())) {
 /// type of the returned Future is std::tuple<T1, T2, ...> instead of
 /// std::tuple<Try<T1>, Try<T2>, ...>
 template <typename... Fs>
-typename futures::detail::CollectVariadicContext<
-    typename std::decay<Fs>::type::value_type...>::type
-collect(Fs&&... fs);
+Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
+    Fs&&... fs);
 
 /** The result is a pair of the index of the first Future to complete and
   the Try. If multiple Futures complete at the same time (or are already
