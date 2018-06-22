@@ -1308,9 +1308,9 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
   sock->enableClientHelloParsing();
 
   // Test parsing with multiple small packets
-  for (uint64_t i = 0; i < buf->length(); i += 3) {
+  for (std::size_t i = 0; i < buf->length(); i += 3) {
     auto bufCopy = folly::IOBuf::copyBuffer(
-        buf->data() + i, std::min((uint64_t)3, buf->length() - i));
+        buf->data() + i, std::min((std::size_t)3, buf->length() - i));
     AsyncSSLSocket::clientHelloParsingCallback(
         0,
         0,

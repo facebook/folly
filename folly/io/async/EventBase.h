@@ -580,7 +580,7 @@ class EventBase : private boost::noncopyable,
     double value_;
     std::chrono::microseconds buffer_time_{0};
     std::chrono::microseconds busy_buffer_{0};
-    uint64_t buffer_cnt_{0};
+    std::size_t buffer_cnt_{0};
     static constexpr std::chrono::milliseconds buffer_interval_{10};
   };
 
@@ -757,8 +757,8 @@ class EventBase : private boost::noncopyable,
   const bool enableTimeMeasurement_;
 
   // Wrap-around loop counter to detect beginning of each loop
-  uint64_t nextLoopCnt_;
-  uint64_t latestLoopCnt_;
+  std::size_t nextLoopCnt_;
+  std::size_t latestLoopCnt_;
   std::chrono::steady_clock::time_point startWork_;
   // Prevent undefined behavior from invoking event_base_loop() reentrantly.
   // This is needed since many projects use libevent-1.4, which lacks commit
@@ -783,7 +783,7 @@ class EventBase : private boost::noncopyable,
   friend class detail::EventBaseLocalBase;
   template <typename T>
   friend class EventBaseLocal;
-  std::unordered_map<uint64_t, std::shared_ptr<void>> localStorage_;
+  std::unordered_map<std::size_t, std::shared_ptr<void>> localStorage_;
   std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
 
   folly::once_flag virtualEventBaseInitFlag_;

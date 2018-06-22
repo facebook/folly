@@ -113,7 +113,7 @@ uint32_t headerHash(const Header& header) {
       &header, offsetof(Header, headerHash), kHashSeed);
 }
 
-std::pair<size_t, uint64_t> dataLengthAndHash(const IOBuf* buf) {
+std::pair<size_t, std::size_t> dataLengthAndHash(const IOBuf* buf) {
   size_t len = 0;
   hash::SpookyHashV2 hasher;
   hasher.Init(kHashSeed, kHashSeed);
@@ -127,10 +127,10 @@ std::pair<size_t, uint64_t> dataLengthAndHash(const IOBuf* buf) {
   if (len + headerSize() >= std::numeric_limits<uint32_t>::max()) {
     throw std::invalid_argument("Record length must fit in 32 bits");
   }
-  return std::make_pair(len, hash1);
+  return std::make_pair(len, static_cast<std::size_t>(hash1));
 }
 
-uint64_t dataHash(ByteRange range) {
+std::size_t dataHash(ByteRange range) {
   return hash::SpookyHashV2::Hash64(range.data(), range.size(), kHashSeed);
 }
 

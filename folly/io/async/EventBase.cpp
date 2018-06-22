@@ -83,7 +83,7 @@ EventBase::EventBase(bool enableTimeMeasurement)
       maxLatencyLoopTime_(avgLoopTime_),
       enableTimeMeasurement_(enableTimeMeasurement),
       nextLoopCnt_(
-          uint64_t(-40)) // Early wrap-around so bugs will manifest soon
+          std::size_t(-40)) // Early wrap-around so bugs will manifest soon
       ,
       latestLoopCnt_(nextLoopCnt_),
       startWork_(),
@@ -130,7 +130,7 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
       maxLatencyLoopTime_(avgLoopTime_),
       enableTimeMeasurement_(enableTimeMeasurement),
       nextLoopCnt_(
-          uint64_t(-40)) // Early wrap-around so bugs will manifest soon
+          std::size_t(-40)) // Early wrap-around so bugs will manifest soon
       ,
       latestLoopCnt_(nextLoopCnt_),
       startWork_(),

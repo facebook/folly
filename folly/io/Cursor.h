@@ -572,7 +572,7 @@ class CursorBase {
     DCHECK(crtBuf_ == nullptr || crtBegin_ == crtBuf_->data());
     DCHECK(
         crtBuf_ == nullptr ||
-        (uint64_t)(crtEnd_ - crtBegin_) == crtBuf_->length());
+        (std::size_t)(crtEnd_ - crtBegin_) == crtBuf_->length());
   }
 
   ~CursorBase() {}
@@ -968,7 +968,7 @@ typedef RWCursor<CursorAccess::UNSHARE> RWUnshareCursor;
  */
 class Appender : public detail::Writable<Appender> {
  public:
-  Appender(IOBuf* buf, uint64_t growth)
+  Appender(IOBuf* buf, std::size_t growth)
       : buffer_(buf), crtBuf_(buf->prev()), growth_(growth) {}
 
   uint8_t* writableData() {
@@ -991,7 +991,7 @@ class Appender : public detail::Writable<Appender> {
    * Ensure at least n contiguous bytes available to write.
    * Postcondition: length() >= n.
    */
-  void ensure(uint64_t n) {
+  void ensure(std::size_t n) {
     if (LIKELY(length() >= n)) {
       return;
     }
@@ -1095,7 +1095,7 @@ class Appender : public detail::Writable<Appender> {
 
   IOBuf* buffer_;
   IOBuf* crtBuf_;
-  uint64_t growth_;
+  std::size_t growth_;
 };
 
 class QueueAppender : public detail::Writable<QueueAppender> {
@@ -1105,10 +1105,10 @@ class QueueAppender : public detail::Writable<QueueAppender> {
    * space in the queue, we grow no more than growth bytes at once
    * (unless you call ensure() with a bigger value yourself).
    */
-  QueueAppender(IOBufQueue* queue, uint64_t growth)
+  QueueAppender(IOBufQueue* queue, std::size_t growth)
       : queueCache_(queue), growth_(growth) {}
 
-  void reset(IOBufQueue* queue, uint64_t growth) {
+  void reset(IOBufQueue* queue, std::size_t growth) {
     queueCache_.reset(queue);
     growth_ = growth;
   }

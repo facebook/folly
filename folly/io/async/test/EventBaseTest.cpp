@@ -1567,7 +1567,7 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
  public:
   explicit IdleTimeTimeoutSeries(
       EventBase* base,
-      std::deque<std::uint64_t>& timeout)
+      std::deque<std::size_t>& timeout)
       : AsyncTimeout(base), timeouts_(0), timeout_(timeout) {
     scheduleTimeout(1);
   }
@@ -1580,7 +1580,7 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
     if (timeout_.empty()) {
       cancelTimeout();
     } else {
-      uint64_t sleepTime = timeout_.front();
+      std::size_t sleepTime = timeout_.front();
       timeout_.pop_front();
       if (sleepTime) {
         usleep(sleepTime);
@@ -1595,7 +1595,7 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
 
  private:
   int timeouts_;
-  std::deque<uint64_t>& timeout_;
+  std::deque<std::size_t>& timeout_;
 };
 
 /**
@@ -1609,11 +1609,11 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
  */
 TEST(EventBaseTest, IdleTime) {
   EventBase eventBase;
-  std::deque<uint64_t> timeouts0(4, 8080);
+  std::deque<std::size_t> timeouts0(4, 8080);
   timeouts0.push_front(8000);
   timeouts0.push_back(14000);
   IdleTimeTimeoutSeries tos0(&eventBase, timeouts0);
-  std::deque<uint64_t> timeouts(20, 20);
+  std::deque<std::size_t> timeouts(20, 20);
   std::unique_ptr<IdleTimeTimeoutSeries> tos;
   bool hostOverloaded = false;
 

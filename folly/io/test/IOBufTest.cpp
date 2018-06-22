@@ -391,7 +391,7 @@ TEST(IOBuf, Chaining) {
   EXPECT_TRUE(iob4ptr->isChained());
   EXPECT_TRUE(iob5ptr->isChained());
 
-  uint64_t fullLength =
+  std::size_t fullLength =
       (iob1->length() + iob2ptr->length() + iob3ptr->length() +
        iob4ptr->length() + iob5ptr->length());
   EXPECT_EQ(5, iob1->countChainElements());
@@ -828,16 +828,16 @@ TEST(IOBuf, Alignment) {
 
 TEST(TypedIOBuf, Simple) {
   auto buf = IOBuf::create(0);
-  TypedIOBuf<uint64_t> typed(buf.get());
-  const uint64_t n = 10000;
+  TypedIOBuf<std::size_t> typed(buf.get());
+  const std::size_t n = 10000;
   typed.reserve(0, n);
   EXPECT_LE(n, typed.capacity());
-  for (uint64_t i = 0; i < n; i++) {
+  for (std::size_t i = 0; i < n; i++) {
     *typed.writableTail() = i;
     typed.append(1);
   }
   EXPECT_EQ(n, typed.length());
-  for (uint64_t i = 0; i < n; i++) {
+  for (std::size_t i = 0; i < n; i++) {
     EXPECT_EQ(i, typed.data()[i]);
   }
 }
@@ -1397,7 +1397,7 @@ TEST(IOBuf, CloneCoalescedChain) {
   boost::mt19937 gen(fillSeed);
   {
     auto c = b.get();
-    uint64_t length = c->tailroom();
+    std::size_t length = c->tailroom();
     do {
       length = std::min(length, c->tailroom());
       c->append(length--);

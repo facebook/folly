@@ -87,7 +87,7 @@ struct Header {
   uint16_t flags; // reserved (must be 0)
   uint32_t fileId; // unique file ID
   uint32_t dataLength;
-  uint64_t dataHash;
+  std::size_t dataHash;
   uint32_t headerHash; // must be last
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP

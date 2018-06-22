@@ -108,7 +108,7 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
 
     if (bytesRead > 0) {
       if (movable) {
-        ioBuf->append(uint64_t(bytesRead));
+        ioBuf->append(std::size_t(bytesRead));
         readCallback_->readBufferAvailable(std::move(ioBuf));
       } else {
         readCallback_->readDataAvailable(size_t(bytesRead));

@@ -269,18 +269,18 @@ class IOBufQueue {
   /**
    * Return a space to prepend bytes and the amount of headroom available.
    */
-  std::pair<void*, uint64_t> headroom();
+  std::pair<void*, std::size_t> headroom();
 
   /**
    * Indicate that n bytes from the headroom have been used.
    */
-  void markPrepended(uint64_t n);
+  void markPrepended(std::size_t n);
 
   /**
    * Prepend an existing range; throws std::overflow_error if not enough
    * room.
    */
-  void prepend(const void* buf, uint64_t n);
+  void prepend(const void* buf, std::size_t n);
 
   /**
    * Add a buffer or buffer chain to the end of this queue. The
@@ -331,7 +331,7 @@ class IOBufQueue {
   void wrapBuffer(
       const void* buf,
       size_t len,
-      uint64_t blockSize = (1U << 31)); // default block size: 2GB
+      std::size_t blockSize = (1U << 31)); // default block size: 2GB
 
   /**
    * Obtain a writable block of contiguous bytes at the end of this
@@ -353,15 +353,15 @@ class IOBufQueue {
    *       callback, tell the application how much of the buffer they've
    *       filled with data.
    */
-  std::pair<void*, uint64_t> preallocate(
-      uint64_t min,
-      uint64_t newAllocationSize,
-      uint64_t max = std::numeric_limits<uint64_t>::max()) {
+  std::pair<void*, std::size_t> preallocate(
+      std::size_t min,
+      std::size_t newAllocationSize,
+      std::size_t max = std::numeric_limits<std::size_t>::max()) {
     dcheckCacheIntegrity();
 
     if (LIKELY(writableTail() != nullptr && tailroom() >= min)) {
       return std::make_pair(
-          writableTail(), std::min<uint64_t>(max, tailroom()));
+          writableTail(), std::min<std::size_t>(max, tailroom()));
     }
 
     return preallocateSlow(min, newAllocationSize, max);
@@ -377,7 +377,7 @@ class IOBufQueue {
    *       invoke any other non-const methods on this IOBufQueue between
    *       the call to preallocate and the call to postallocate().
    */
-  void postallocate(uint64_t n) {
+  void postallocate(std::size_t n) {
     dcheckCacheIntegrity();
     DCHECK_LE(
         (void*)(cachePtr_->cachedRange.first + n),
@@ -389,7 +389,7 @@ class IOBufQueue {
    * Obtain a writable block of n contiguous bytes, allocating more space
    * if necessary, and mark it as used.  The caller can fill it later.
    */
-  void* allocate(uint64_t n) {
+  void* allocate(std::size_t n) {
     void* p = preallocate(n, n).first;
     postallocate(n);
     return p;
@@ -525,7 +525,7 @@ class IOBufQueue {
   /**
    * Calls IOBuf::gather() on the head of the queue, if it exists.
    */
-  void gather(uint64_t maxLength);
+  void gather(std::size_t maxLength);
 
   /** Movable */
   IOBufQueue(IOBufQueue&&) noexcept;
@@ -644,8 +644,10 @@ class IOBufQueue {
     cachePtr_->cachedRange = std::pair<uint8_t*, uint8_t*>();
   }
 
-  std::pair<void*, uint64_t>
-  preallocateSlow(uint64_t min, uint64_t newAllocationSize, uint64_t max);
+  std::pair<void*, std::size_t> preallocateSlow(
+      std::size_t min,
+      std::size_t newAllocationSize,
+      std::size_t max);
 };
 
 } // namespace folly

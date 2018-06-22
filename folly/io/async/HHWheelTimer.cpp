@@ -89,7 +89,7 @@ HHWheelTimer::HHWheelTimer(
       count_(0),
       startTime_(getCurTime()),
       processingCallbacksGuard_(nullptr) {
-  bitmap_.resize((WHEEL_SIZE / sizeof(uint64_t)) / 8, 0);
+  bitmap_.resize((WHEEL_SIZE / sizeof(std::size_t)) / 8, 0);
 }
 
 HHWheelTimer::~HHWheelTimer() {
@@ -249,7 +249,7 @@ size_t HHWheelTimer::cancelAll() {
   size_t count = 0;
 
   if (count_ != 0) {
-    const uint64_t numElements = WHEEL_BUCKETS * WHEEL_SIZE;
+    const std::size_t numElements = WHEEL_BUCKETS * WHEEL_SIZE;
     auto maxBuckets = std::min(numElements, count_);
     auto buckets = std::make_unique<CallbackList[]>(maxBuckets);
     size_t countBuckets = 0;

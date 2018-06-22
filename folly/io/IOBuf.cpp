@@ -46,7 +46,7 @@ enum : uint16_t {
   kDataInUse = 0x02,
 };
 
-enum : uint64_t {
+enum : std::size_t {
   // When create() is called for buffers less than kDefaultCombinedBufSize,
   // we allocate a single combined memory segment for the IOBuf and the data
   // together.  See the comments for createCombined()/createSeparate() for more
@@ -190,7 +190,7 @@ void IOBuf::freeInternalBuf(void* /* buf */, void* userData) {
   releaseStorage(storage, kDataInUse);
 }
 
-IOBuf::IOBuf(CreateOp, uint64_t capacity)
+IOBuf::IOBuf(CreateOp, std::size_t capacity)
     : next_(this),
       prev_(this),
       data_(nullptr),
@@ -205,9 +205,9 @@ IOBuf::IOBuf(CreateOp, uint64_t capacity)
 IOBuf::IOBuf(
     CopyBufferOp /* op */,
     const void* buf,
-    uint64_t size,
-    uint64_t headroom,
-    uint64_t minTailroom)
+    std::size_t size,
+    std::size_t headroom,
+    std::size_t minTailroom)
     : IOBuf(CREATE, headroom + size + minTailroom) {
   advance(headroom);
   if (size > 0) {
@@ -220,11 +220,11 @@ IOBuf::IOBuf(
 IOBuf::IOBuf(
     CopyBufferOp op,
     ByteRange br,
-    uint64_t headroom,
-    uint64_t minTailroom)
+    std::size_t headroom,
+    std::size_t minTailroom)
     : IOBuf(op, br.data(), br.size(), headroom, minTailroom) {}
 
-unique_ptr<IOBuf> IOBuf::create(uint64_t capacity) {
+unique_ptr<IOBuf> IOBuf::create(std::size_t capacity) {
   // For smaller-sized buffers, allocate the IOBuf, SharedInfo, and the buffer
   // all with a single allocation.
   //
@@ -240,7 +240,7 @@ unique_ptr<IOBuf> IOBuf::create(uint64_t capacity) {
   return createSeparate(capacity);
 }
 
-unique_ptr<IOBuf> IOBuf::createCombined(uint64_t capacity) {
+unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
   // To save a memory allocation, allocate space for the IOBuf object, the
   // SharedInfo struct, and the data itself all with a single call to malloc().
   size_t requiredStorage = offsetof(HeapFullStorage, align) + capacity;
@@ -263,13 +263,13 @@ unique_ptr<IOBuf> IOBuf::createCombined(uint64_t capacity) {
   return ret;
 }
 
-unique_ptr<IOBuf> IOBuf::createSeparate(uint64_t capacity) {
+unique_ptr<IOBuf> IOBuf::createSeparate(std::size_t capacity) {
   return std::make_unique<IOBuf>(CREATE, capacity);
 }
 
 unique_ptr<IOBuf> IOBuf::createChain(
     size_t totalCapacity,
-    uint64_t maxBufCapacity) {
+    std::size_t maxBufCapacity) {
   unique_ptr<IOBuf> out =
       create(std::min(totalCapacity, size_t(maxBufCapacity)));
   size_t allocatedCapacity = out->capacity();
@@ -287,8 +287,8 @@ unique_ptr<IOBuf> IOBuf::createChain(
 IOBuf::IOBuf(
     TakeOwnershipOp,
     void* buf,
-    uint64_t capacity,
-    uint64_t length,
+    std::size_t capacity,
+    std::size_t length,
     FreeFunction freeFn,
     void* userData,
     bool freeOnError)
@@ -310,8 +310,8 @@ IOBuf::IOBuf(
 
 unique_ptr<IOBuf> IOBuf::takeOwnership(
     void* buf,
-    uint64_t capacity,
-    uint64_t length,
+    std::size_t capacity,
+    std::size_t length,
     FreeFunction freeFn,
     void* userData,
     bool freeOnError) {
@@ -333,7 +333,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
   }
 }
 
-IOBuf::IOBuf(WrapBufferOp, const void* buf, uint64_t capacity)
+IOBuf::IOBuf(WrapBufferOp, const void* buf, std::size_t capacity)
     : IOBuf(
           InternalConstructor(),
           0,
@@ -347,11 +347,11 @@ IOBuf::IOBuf(WrapBufferOp, const void* buf, uint64_t capacity)
 
 IOBuf::IOBuf(WrapBufferOp op, ByteRange br) : IOBuf(op, br.data(), br.size()) {}
 
-unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint64_t capacity) {
+unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, std::size_t capacity) {
   return std::make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
 }
 
-IOBuf IOBuf::wrapBufferAsValue(const void* buf, uint64_t capacity) {
+IOBuf IOBuf::wrapBufferAsValue(const void* buf, std::size_t capacity) {
   return IOBuf(WrapBufferOp::WRAP_BUFFER, buf, capacity);
 }
 
@@ -395,9 +395,9 @@ IOBuf::IOBuf(
     InternalConstructor,
     uintptr_t flagsAndSharedInfo,
     uint8_t* buf,
-    uint64_t capacity,
+    std::size_t capacity,
     uint8_t* data,
-    uint64_t length)
+    std::size_t length)
     : next_(this),
       prev_(this),
       data_(data),
@@ -495,8 +495,8 @@ size_t IOBuf::countChainElements() const {
   return numElements;
 }
 
-uint64_t IOBuf::computeChainDataLength() const {
-  uint64_t fullLength = length_;
+std::size_t IOBuf::computeChainDataLength() const {
+  std::size_t fullLength = length_;
   for (IOBuf* current = next_; current != this; current = current->next_) {
     fullLength += current->length_;
   }
@@ -562,10 +562,10 @@ IOBuf IOBuf::cloneCoalescedAsValue() const {
     return cloneOneAsValue();
   }
   // Coalesce into newBuf
-  const uint64_t newLength = computeChainDataLength();
-  const uint64_t newHeadroom = headroom();
-  const uint64_t newTailroom = prev()->tailroom();
-  const uint64_t newCapacity = newLength + newHeadroom + newTailroom;
+  const std::size_t newLength = computeChainDataLength();
+  const std::size_t newHeadroom = headroom();
+  const std::size_t newTailroom = prev()->tailroom();
+  const std::size_t newCapacity = newLength + newHeadroom + newTailroom;
   IOBuf newBuf{CREATE, newCapacity};
   newBuf.advance(newHeadroom);
 
@@ -591,13 +591,13 @@ void IOBuf::unshareOneSlow() {
   // Allocate a new buffer for the data
   uint8_t* buf;
   SharedInfo* sharedInfo;
-  uint64_t actualCapacity;
+  std::size_t actualCapacity;
   allocExtBuffer(capacity_, &buf, &sharedInfo, &actualCapacity);
 
   // Copy the data
   // Maintain the same amount of headroom.  Since we maintained the same
   // minimum capacity we also maintain at least the same amount of tailroom.
-  uint64_t headlen = headroom();
+  std::size_t headlen = headroom();
   if (length_ > 0) {
     assert(data_ != nullptr);
     memcpy(buf + headlen, data_, length_);
@@ -664,7 +664,7 @@ void IOBuf::coalesceSlow() {
   DCHECK(isChained());
 
   // Compute the length of the entire chain
-  uint64_t newLength = 0;
+  std::size_t newLength = 0;
   IOBuf* end = this;
   do {
     newLength += end->length_;
@@ -683,7 +683,7 @@ void IOBuf::coalesceSlow(size_t maxLength) {
   DCHECK_LT(length_, maxLength);
 
   // Compute the length of the entire chain
-  uint64_t newLength = 0;
+  std::size_t newLength = 0;
   IOBuf* end = this;
   while (true) {
     newLength += end->length_;
@@ -708,14 +708,14 @@ void IOBuf::coalesceAndReallocate(
     size_t newLength,
     IOBuf* end,
     size_t newTailroom) {
-  uint64_t newCapacity = newLength + newHeadroom + newTailroom;
+  std::size_t newCapacity = newLength + newHeadroom + newTailroom;
 
   // Allocate space for the coalesced buffer.
   // We always convert to an external buffer, even if we happened to be an
   // internal buffer before.
   uint8_t* newBuf;
   SharedInfo* newInfo;
-  uint64_t actualCapacity;
+  std::size_t actualCapacity;
   allocExtBuffer(newCapacity, &newBuf, &newInfo, &actualCapacity);
 
   // Copy the data into the new buffer
@@ -789,7 +789,7 @@ void IOBuf::decrementRefcount() {
   }
 }
 
-void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
+void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
   size_t newCapacity = (size_t)length_ + minHeadroom + minTailroom;
   DCHECK_LT(newCapacity, UINT32_MAX);
 
@@ -821,8 +821,8 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
 
   size_t newAllocatedCapacity = 0;
   uint8_t* newBuffer = nullptr;
-  uint64_t newHeadroom = 0;
-  uint64_t oldHeadroom = headroom();
+  std::size_t newHeadroom = 0;
+  std::size_t oldHeadroom = headroom();
 
   // If we have a buffer allocated with malloc and we just need more tailroom,
   // try to use realloc()/xallocx() to grow the buffer in place.
@@ -880,7 +880,7 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
     newHeadroom = minHeadroom;
   }
 
-  uint64_t cap;
+  std::size_t cap;
   initExtBuffer(newBuffer, newAllocatedCapacity, &info, &cap);
 
   if (flags() & kFlagFreeSharedInfo) {
@@ -913,10 +913,10 @@ void IOBuf::freeExtBuffer() {
 }
 
 void IOBuf::allocExtBuffer(
-    uint64_t minCapacity,
+    std::size_t minCapacity,
     uint8_t** bufReturn,
     SharedInfo** infoReturn,
-    uint64_t* capacityReturn) {
+    std::size_t* capacityReturn) {
   size_t mallocSize = goodExtBufferSize(minCapacity);
   uint8_t* buf = static_cast<uint8_t*>(malloc(mallocSize));
   if (UNLIKELY(buf == nullptr)) {
@@ -926,7 +926,7 @@ void IOBuf::allocExtBuffer(
   *bufReturn = buf;
 }
 
-size_t IOBuf::goodExtBufferSize(uint64_t minCapacity) {
+size_t IOBuf::goodExtBufferSize(std::size_t minCapacity) {
   // Determine how much space we should allocate.  We'll store the SharedInfo
   // for the external buffer just after the buffer itself.  (We store it just
   // after the buffer rather than just before so that the code can still just
@@ -946,13 +946,13 @@ void IOBuf::initExtBuffer(
     uint8_t* buf,
     size_t mallocSize,
     SharedInfo** infoReturn,
-    uint64_t* capacityReturn) {
+    std::size_t* capacityReturn) {
   // Find the SharedInfo storage at the end of the buffer
   // and construct the SharedInfo.
   uint8_t* infoStart = (buf + mallocSize) - sizeof(SharedInfo);
   SharedInfo* sharedInfo = new (infoStart) SharedInfo;
 
-  *capacityReturn = uint64_t(infoStart - buf);
+  *capacityReturn = std::size_t(infoStart - buf);
   *infoReturn = sharedInfo;
 }
 
@@ -1048,7 +1048,7 @@ size_t IOBufHash::operator()(const IOBuf& buf) const {
   uint64_t h1;
   uint64_t h2;
   hasher.Final(&h1, &h2);
-  return h1;
+  return static_cast<std::size_t>(h1);
 }
 
 ordering IOBufCompare::operator()(const IOBuf& a, const IOBuf& b) const {

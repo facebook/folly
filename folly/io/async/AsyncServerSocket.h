@@ -579,7 +579,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Get the number of connections dropped by the AsyncServerSocket
    */
-  uint64_t getNumDroppedConnections() const {
+  std::size_t getNumDroppedConnections() const {
     return numDroppedConnections_;
   }
 
@@ -863,7 +863,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   double acceptRateAdjustSpeed_; // 0 to disable auto adjust
   double acceptRate_;
   std::chrono::time_point<std::chrono::steady_clock> lastAccepTimestamp_;
-  uint64_t numDroppedConnections_;
+  std::size_t numDroppedConnections_;
   uint32_t callbackIndex_;
   BackoffTimeout* backoffTimeout_;
   std::vector<CallbackInfo> callbacks_;

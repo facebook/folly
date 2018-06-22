@@ -40,8 +40,8 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
   void* getVoid(EventBase& evb);
 
   folly::Synchronized<std::unordered_set<EventBase*>> eventBases_;
-  static std::atomic<uint64_t> keyCounter_;
-  uint64_t key_{keyCounter_++};
+  static std::atomic<std::size_t> keyCounter_;
+  std::size_t key_{keyCounter_++};
 };
 
 } // namespace detail

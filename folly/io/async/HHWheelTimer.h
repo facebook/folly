@@ -249,7 +249,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   /**
    * Return the number of currently pending timeouts
    */
-  uint64_t count() const {
+  std::size_t count() const {
     return count_;
   }
 
@@ -289,7 +289,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   typedef Callback::List CallbackList;
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
-  std::vector<uint64_t> bitmap_;
+  std::vector<std::size_t> bitmap_;
 
   int64_t timeToWheelTicks(std::chrono::milliseconds t) {
     return t.count() / interval_.count();
@@ -298,7 +298,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   bool cascadeTimers(int bucket, int tick);
   int64_t lastTick_;
   int64_t expireTick_;
-  uint64_t count_;
+  std::size_t count_;
   std::chrono::steady_clock::time_point startTime_;
 
   int64_t calcNextTick();

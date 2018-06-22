@@ -45,7 +45,7 @@ void appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
       // reduce wastage (the tail's tailroom and the head's headroom) when
       // joining two IOBufQueues together.
       size_t copyRemaining = MAX_PACK_COPY;
-      uint64_t n;
+      std::size_t n;
       while (src && (n = src->length()) < copyRemaining &&
              n < tail->tailroom() && n > 0) {
         memcpy(tail->writableTail(), src->data(), n);
@@ -108,7 +108,7 @@ IOBufQueue& IOBufQueue::operator=(IOBufQueue&& other) {
   return *this;
 }
 
-std::pair<void*, uint64_t> IOBufQueue::headroom() {
+std::pair<void*, std::size_t> IOBufQueue::headroom() {
   // Note, headroom is independent from the tail, so we don't need to flush the
   // cache.
   if (head_) {
@@ -118,7 +118,7 @@ std::pair<void*, uint64_t> IOBufQueue::headroom() {
   }
 }
 
-void IOBufQueue::markPrepended(uint64_t n) {
+void IOBufQueue::markPrepended(std::size_t n) {
   if (n == 0) {
     return;
   }
@@ -129,7 +129,7 @@ void IOBufQueue::markPrepended(uint64_t n) {
   chainLength_ += n;
 }
 
-void IOBufQueue::prepend(const void* buf, uint64_t n) {
+void IOBufQueue::prepend(const void* buf, std::size_t n) {
   // We're not touching the tail, so we don't need to flush the cache.
   auto hroom = head_->headroom();
   if (!head_ || hroom < n) {
@@ -182,7 +182,7 @@ void IOBufQueue::append(const void* buf, size_t len) {
           false);
     }
     IOBuf* last = head_->prev();
-    uint64_t copyLen = std::min(len, (size_t)last->tailroom());
+    std::size_t copyLen = std::min(len, (size_t)last->tailroom());
     memcpy(last->writableTail(), src, copyLen);
     src += copyLen;
     last->append(copyLen);
@@ -191,7 +191,10 @@ void IOBufQueue::append(const void* buf, size_t len) {
   }
 }
 
-void IOBufQueue::wrapBuffer(const void* buf, size_t len, uint64_t blockSize) {
+void IOBufQueue::wrapBuffer(
+    const void* buf,
+    size_t len,
+    std::size_t blockSize) {
   auto src = static_cast<const uint8_t*>(buf);
   while (len != 0) {
     size_t n = std::min(len, size_t(blockSize));
@@ -201,10 +204,10 @@ void IOBufQueue::wrapBuffer(const void* buf, size_t len, uint64_t blockSize) {
   }
 }
 
-pair<void*, uint64_t> IOBufQueue::preallocateSlow(
-    uint64_t min,
-    uint64_t newAllocationSize,
-    uint64_t max) {
+pair<void*, std::size_t> IOBufQueue::preallocateSlow(
+    std::size_t min,
+    std::size_t newAllocationSize,
+    std::size_t max) {
   // Avoid grabbing update guard, since we're manually setting the cache ptrs.
   flushCache();
   // Allocate a new buffer of the requested max size.
@@ -214,7 +217,7 @@ pair<void*, uint64_t> IOBufQueue::preallocateSlow(
   cachePtr_->cachedRange = std::pair<uint8_t*, uint8_t*>(
       tailStart_, tailStart_ + newBuf->tailroom());
   appendToChain(head_, std::move(newBuf), false);
-  return make_pair(writableTail(), std::min<uint64_t>(max, tailroom()));
+  return make_pair(writableTail(), std::min<std::size_t>(max, tailroom()));
 }
 
 unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
@@ -355,7 +358,7 @@ void IOBufQueue::appendToString(std::string& out) const {
   }
 }
 
-void IOBufQueue::gather(uint64_t maxLength) {
+void IOBufQueue::gather(std::size_t maxLength) {
   auto guard = updateGuard();
   if (head_ != nullptr) {
     head_->gather(maxLength);
