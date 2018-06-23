@@ -846,6 +846,7 @@ class F14ItemIter {
       }
       --c;
       auto last = c->lastOccupied();
+      prefetchAddr(&*c - 1);
       if (LIKELY(last.hasIndex())) {
         index_ = last.index();
         itemPtr_ = std::pointer_traits<ItemPtr>::pointer_to(c->item(index_));
