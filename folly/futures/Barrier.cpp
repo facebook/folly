@@ -43,7 +43,7 @@ auto Barrier::allocateControlBlock() -> ControlBlock* {
   if (!block) {
     throw_exception<std::bad_alloc>();
   }
-  block->valueAndReaderCount = 0;
+  std::atomic_init(&block->valueAndReaderCount, uint64_t(0));
 
   auto p = promises(block);
   uint32_t i = 0;

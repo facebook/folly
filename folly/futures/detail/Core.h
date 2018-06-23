@@ -500,8 +500,8 @@ class Core final {
       // exactly two `CoreAndCallbackReference` objects, which call
       // `derefCallback` and `detachOne` in their destructor. One will guard
       // this scope, the other one will guard the lambda passed to the executor.
-      attached_ += 2;
-      callbackReferences_ += 2;
+      attached_.fetch_add(2, std::memory_order_relaxed);
+      callbackReferences_.fetch_add(2, std::memory_order_relaxed);
       CoreAndCallbackReference guard_local_scope(this);
       CoreAndCallbackReference guard_lambda(this);
       try {
@@ -536,7 +536,7 @@ class Core final {
         callback_(std::move(result_));
       }
     } else {
-      attached_++;
+      attached_.fetch_add(1, std::memory_order_relaxed);
       SCOPE_EXIT {
         context_.~Context();
         callback_.~Callback();
@@ -548,7 +548,7 @@ class Core final {
   }
 
   void detachOne() noexcept {
-    auto a = attached_--;
+    auto a = attached_.fetch_sub(1, std::memory_order_acq_rel);
     assert(a >= 1);
     if (a == 1) {
       delete this;
@@ -556,7 +556,9 @@ class Core final {
   }
 
   void derefCallback() noexcept {
-    if (--callbackReferences_ == 0) {
+    auto c = callbackReferences_.fetch_sub(1, std::memory_order_acq_rel);
+    assert(c >= 1);
+    if (c == 1) {
       context_.~Context();
       callback_.~Callback();
     }
@@ -577,7 +579,7 @@ class Core final {
   std::atomic<State> state_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
-  std::atomic<bool> interruptHandlerSet_ {false};
+  std::atomic<bool> interruptHandlerSet_{false};
   SpinLock interruptLock_;
   int8_t priority_ {-1};
   Executor::KeepAlive<> executor_;
