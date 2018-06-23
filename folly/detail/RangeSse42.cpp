@@ -83,7 +83,7 @@ FOLLY_DISABLE_ADDRESS_SANITIZER static __m128i _mm_load_si128_noasan(
 }
 FOLLY_ALWAYS_INLINE static __m128i _mm_load_si128_unchecked(
     __m128i const* const p) {
-  return kIsSanitizeAddress ? _mm_load_si128_noasan(p) : _mm_loadu_si128(p);
+  return kIsSanitizeAddress ? _mm_load_si128_noasan(p) : _mm_load_si128(p);
 }
 
 // helper method for case where needles.size() <= 16
