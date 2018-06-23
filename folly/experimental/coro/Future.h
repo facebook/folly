@@ -78,10 +78,7 @@ class Future {
     return get();
   }
 
-  folly::Future<T> toFuture() && {
-    auto executor = promise_->executor_;
-    return SemiFuture<T>::fromAwaitable(std::move(*this)).via(executor);
-  }
+  auto toFuture() &&;
 
   ~Future() {
     if (!promise_) {
@@ -118,5 +115,23 @@ class Future {
 
   Promise<T>* promise_;
 };
+
+namespace detail {
+SemiFuture<Unit> toSemiFuture(Future<void> future) {
+  co_await future;
+  co_return folly::unit;
+}
+
+template <typename T>
+SemiFuture<T> toSemiFuture(Future<T> future) {
+  return SemiFuture<T>::fromAwaitable(std::move(future));
+}
+} // namespace detail
+
+template <typename T>
+auto Future<T>::toFuture() && {
+  auto executor = promise_->executor_;
+  return detail::toSemiFuture(std::move(*this)).via(executor);
+}
 } // namespace coro
 } // namespace folly
