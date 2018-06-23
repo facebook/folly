@@ -45,6 +45,7 @@ size_t qfind_first_byte_of_sse42(
 #include <smmintrin.h>
 
 #include <folly/Likely.h>
+#include <folly/detail/Sse.h>
 
 namespace folly {
 namespace detail {
@@ -66,24 +67,6 @@ static inline size_t nextAlignedIndex(const char* arr) {
   return 1 + // add 1 because the index starts at 'arr'
       ((firstPossible + 15) & ~0xF) // round up to next multiple of 16
       - firstPossible;
-}
-
-FOLLY_DISABLE_ADDRESS_SANITIZER static __m128i _mm_loadu_si128_noasan(
-    __m128i const* const p) {
-  return _mm_loadu_si128(p);
-}
-FOLLY_ALWAYS_INLINE static __m128i _mm_loadu_si128_unchecked(
-    __m128i const* const p) {
-  return kIsSanitizeAddress ? _mm_loadu_si128_noasan(p) : _mm_loadu_si128(p);
-}
-
-FOLLY_DISABLE_ADDRESS_SANITIZER static __m128i _mm_load_si128_noasan(
-    __m128i const* const p) {
-  return _mm_load_si128(p);
-}
-FOLLY_ALWAYS_INLINE static __m128i _mm_load_si128_unchecked(
-    __m128i const* const p) {
-  return kIsSanitizeAddress ? _mm_load_si128_noasan(p) : _mm_load_si128(p);
 }
 
 // helper method for case where needles.size() <= 16
