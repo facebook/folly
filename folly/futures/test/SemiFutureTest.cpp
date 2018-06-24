@@ -17,6 +17,7 @@
 #include <folly/Memory.h>
 #include <folly/Unit.h>
 #include <folly/dynamic.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
@@ -1148,4 +1149,78 @@ TEST(SemiFuture, semiFutureWithinNoValueReferenceWhenTimeOut) {
         // Timeout is fired. Verify callbackInput is not referenced
         EXPECT_EQ(0, callbackInput.value().use_count());
       });
+}
+
+TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
+  {
+    Promise<int> promise1;
+    Promise<int> promise2;
+
+    auto future = collectAllSemiFuture(
+        promise1.getSemiFuture().deferValue([](int x) { return x * 2; }),
+        promise2.getSemiFuture().deferValue([](int x) { return x * 2; }));
+
+    promise1.setValue(1);
+    promise2.setValue(2);
+
+    EXPECT_TRUE(future.wait(std::chrono::milliseconds{100}).isReady());
+
+    auto value = std::move(future).get();
+    EXPECT_EQ(2, *std::get<0>(value));
+    EXPECT_EQ(4, *std::get<1>(value));
+  }
+
+  {
+    Promise<int> promise1;
+    Promise<int> promise2;
+
+    auto future = collectAllSemiFuture(
+        promise1.getSemiFuture().deferValue([](int x) { return x * 2; }),
+        promise2.getSemiFuture().deferValue([](int x) { return x * 2; }));
+
+    promise1.setValue(1);
+    promise2.setValue(2);
+
+    ManualExecutor executor;
+
+    auto value = std::move(future).via(&executor).getVia(&executor);
+
+    EXPECT_EQ(2, *std::get<0>(value));
+    EXPECT_EQ(4, *std::get<1>(value));
+  }
+
+  {
+    Promise<int> promise1;
+    Promise<int> promise2;
+
+    std::vector<SemiFuture<int>> futures;
+    futures.push_back(
+        promise1.getSemiFuture().deferValue([](int x) { return x * 2; }));
+    futures.push_back(
+        promise2.getSemiFuture().deferValue([](int x) { return x * 2; }));
+
+    auto future = collectAllSemiFuture(futures);
+
+    promise1.setValue(1);
+    promise2.setValue(2);
+
+    EXPECT_TRUE(future.wait().isReady());
+
+    auto value = std::move(future).get();
+    EXPECT_EQ(2, *value[0]);
+    EXPECT_EQ(4, *value[1]);
+  }
+
+  {
+    bool deferredDestroyed = false;
+
+    {
+      Promise<int> promise;
+      auto guard = makeGuard([&] { deferredDestroyed = true; });
+      collectAllSemiFuture(promise.getSemiFuture().deferValue(
+          [guard = std::move(guard)](int x) { return x; }));
+    }
+
+    EXPECT_TRUE(deferredDestroyed);
+  }
 }

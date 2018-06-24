@@ -434,6 +434,14 @@ class FutureBase {
 };
 template <class T>
 void convertFuture(SemiFuture<T>&& sf, Future<T>& f);
+
+class DeferredExecutor;
+
+template <typename T>
+DeferredExecutor* getDeferredExecutor(SemiFuture<T>& future);
+
+template <typename T>
+DeferredExecutor* stealDeferredExecutor(SemiFuture<T>& future);
 } // namespace detail
 } // namespace futures
 
@@ -878,6 +886,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   friend class SemiFuture;
   template <class>
   friend class Future;
+  friend DeferredExecutor* futures::detail::stealDeferredExecutor<T>(
+      SemiFuture&);
+  friend DeferredExecutor* futures::detail::getDeferredExecutor<T>(SemiFuture&);
 
   using Base::setExecutor;
   using Base::throwIfInvalid;
@@ -893,6 +904,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   // Throws FutureInvalid if !this->core_
   DeferredExecutor* getDeferredExecutor() const;
+
+  // Throws FutureInvalid if !this->core_
+  DeferredExecutor* stealDeferredExecutor() const;
 
   static void releaseDeferredExecutor(Core* core);
 };

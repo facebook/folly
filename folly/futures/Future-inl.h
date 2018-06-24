@@ -540,6 +540,11 @@ class DeferredExecutor final : public Executor {
   }
 
   void setExecutor(folly::Executor* executor) {
+    if (nestedExecutors_) {
+      for (auto nestedExecutor : *nestedExecutors_) {
+        nestedExecutor->setExecutor(executor);
+      }
+    }
     executor_ = executor;
     auto state = state_.load(std::memory_order_acquire);
     do {
@@ -562,6 +567,11 @@ class DeferredExecutor final : public Executor {
   }
 
   void detach() {
+    if (nestedExecutors_) {
+      for (auto nestedExecutor : *nestedExecutors_) {
+        nestedExecutor->detach();
+      }
+    }
     auto state = state_.load(std::memory_order_acquire);
     do {
       if (state == State::HAS_FUNCTION) {
@@ -581,6 +591,13 @@ class DeferredExecutor final : public Executor {
   }
 
   void wait() {
+    if (nestedExecutors_) {
+      for (auto nestedExecutor : *nestedExecutors_) {
+        nestedExecutor->wait();
+        nestedExecutor->runAndDestroy();
+      }
+      return;
+    }
     auto state = state_.load(std::memory_order_acquire);
     auto baton = std::make_shared<FutureBatonType>();
     baton_ = baton;
@@ -600,7 +617,24 @@ class DeferredExecutor final : public Executor {
     assert(state_.load(std::memory_order_relaxed) == State::HAS_FUNCTION);
   }
 
+  using Clock = std::chrono::steady_clock;
+
   bool wait(Duration duration) {
+    return wait_until(Clock::now() + duration);
+  }
+
+  bool wait_until(Clock::time_point deadline) {
+    if (nestedExecutors_) {
+      for (auto nestedExecutor : *nestedExecutors_) {
+        if (!nestedExecutor->wait_until(deadline)) {
+          return false;
+        }
+      }
+      for (auto nestedExecutor : *nestedExecutors_) {
+        nestedExecutor->runAndDestroy();
+      }
+    }
+
     auto state = state_.load(std::memory_order_acquire);
     auto baton = std::make_shared<FutureBatonType>();
     baton_ = baton;
@@ -615,7 +649,7 @@ class DeferredExecutor final : public Executor {
         std::memory_order_release,
         std::memory_order_acquire));
 
-    if (baton->try_wait_for(duration)) {
+    if (baton->try_wait_until(deadline)) {
       assert(state_.load(std::memory_order_relaxed) == State::HAS_FUNCTION);
       return true;
     }
@@ -634,6 +668,12 @@ class DeferredExecutor final : public Executor {
     return false;
   }
 
+  void setNestedExecutors(std::vector<DeferredExecutor*> executors) {
+    DCHECK(!nestedExecutors_);
+    nestedExecutors_ =
+        std::make_unique<std::vector<DeferredExecutor*>>(executors);
+  }
+
  private:
   enum class State {
     EMPTY,
@@ -646,6 +686,7 @@ class DeferredExecutor final : public Executor {
   Func func_;
   Executor* executor_;
   folly::Synchronized<std::shared_ptr<FutureBatonType>> baton_;
+  std::unique_ptr<std::vector<DeferredExecutor*>> nestedExecutors_;
 };
 
 // Vector-like structure to play with window,
@@ -742,6 +783,17 @@ typename SemiFuture<T>::DeferredExecutor* SemiFuture<T>::getDeferredExecutor()
     const {
   if (auto executor = this->getExecutor()) {
     assert(dynamic_cast<DeferredExecutor*>(executor) != nullptr);
+    return static_cast<DeferredExecutor*>(executor);
+  }
+  return nullptr;
+}
+
+template <class T>
+typename SemiFuture<T>::DeferredExecutor* SemiFuture<T>::stealDeferredExecutor()
+    const {
+  if (auto executor = this->getExecutor()) {
+    assert(dynamic_cast<DeferredExecutor*>(executor) != nullptr);
+    this->core_->setExecutor(nullptr);
     return static_cast<DeferredExecutor*>(executor);
   }
   return nullptr;
@@ -1312,6 +1364,45 @@ FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void foreach(
   foreach_(_{}, static_cast<V&&>(v), static_cast<Fs&&>(fs)...);
 }
 
+template <typename T>
+DeferredExecutor* getDeferredExecutor(SemiFuture<T>& future) {
+  return future.getDeferredExecutor();
+}
+
+template <typename T>
+DeferredExecutor* stealDeferredExecutor(SemiFuture<T>& future) {
+  return future.stealDeferredExecutor();
+}
+
+template <typename T>
+DeferredExecutor* stealDeferredExecutor(Future<T>&) {
+  return nullptr;
+}
+
+template <typename... Ts>
+void stealDeferredExecutorsVariadic(
+    std::vector<DeferredExecutor*>& executors,
+    Ts&... ts) {
+  auto foreach = [&](auto& future) {
+    if (auto executor = stealDeferredExecutor(future)) {
+      executors.push_back(executor);
+    }
+    return folly::unit;
+  };
+  [](...) {}(foreach(ts)...);
+}
+
+template <class InputIterator>
+void stealDeferredExecutors(
+    std::vector<DeferredExecutor*>& executors,
+    InputIterator first,
+    InputIterator last) {
+  for (auto it = first; it != last; ++it) {
+    if (auto executor = stealDeferredExecutor(*it)) {
+      executors.push_back(executor);
+    }
+  }
+}
 } // namespace detail
 } // namespace futures
 
@@ -1329,6 +1420,9 @@ collectAllSemiFuture(Fs&&... fs) {
     Result results;
   };
 
+  std::vector<futures::detail::DeferredExecutor*> executors;
+  futures::detail::stealDeferredExecutorsVariadic(executors, fs...);
+
   auto ctx = std::make_shared<Context>();
   futures::detail::foreach(
       [&](auto i, auto&& f) {
@@ -1337,7 +1431,17 @@ collectAllSemiFuture(Fs&&... fs) {
         });
       },
       static_cast<Fs&&>(fs)...);
-  return ctx->p.getSemiFuture();
+
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    future = std::move(future).defer(
+        [](Try<typename decltype(future)::value_type>&& t) {
+          return std::move(t).value();
+        });
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 template <typename... Fs>
@@ -1364,12 +1468,26 @@ collectAllSemiFuture(InputIterator first, InputIterator last) {
     std::vector<Try<T>> results;
   };
 
+  std::vector<futures::detail::DeferredExecutor*> executors;
+  futures::detail::stealDeferredExecutors(executors, first, last);
+
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
+
   for (size_t i = 0; first != last; ++first, ++i) {
     first->setCallback_(
         [i, ctx](Try<T>&& t) { ctx->results[i] = std::move(t); });
   }
-  return ctx->p.getSemiFuture();
+
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    future = std::move(future).defer(
+        [](Try<typename decltype(future)::value_type>&& t) {
+          return std::move(t).value();
+        });
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 template <class InputIterator>
