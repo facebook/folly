@@ -70,7 +70,7 @@ class Barrier {
   struct ControlBlock {
     // Reader count in most significant 32 bits
     // Value in least significant 32 bits
-    std::atomic<uint64_t> valueAndReaderCount;
+    std::atomic<uint64_t> valueAndReaderCount{0};
   };
 
   struct ControlBlockAndPromise {

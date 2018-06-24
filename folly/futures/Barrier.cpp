@@ -39,11 +39,11 @@ Barrier::~Barrier() {
 }
 
 auto Barrier::allocateControlBlock() -> ControlBlock* {
-  auto block = static_cast<ControlBlock*>(malloc(controlBlockSize(size_)));
-  if (!block) {
+  auto storage = malloc(controlBlockSize(size_));
+  if (!storage) {
     throw_exception<std::bad_alloc>();
   }
-  std::atomic_init(&block->valueAndReaderCount, uint64_t(0));
+  auto block = ::new (storage) ControlBlock();
 
   auto p = promises(block);
   uint32_t i = 0;
