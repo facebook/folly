@@ -739,19 +739,6 @@ struct Synchronized : public SynchronizedBase<
   }
 
   /**
-   * Sometimes, although you have a mutable object, you only want to
-   * call a const method against it. The most efficient way to achieve
-   * that is by using a read lock. You get to do so by using
-   * obj.asConst()->method() instead of obj->method().
-   *
-   * NOTE: This API is planned to be deprecated in an upcoming diff.
-   * Use rlock() instead.
-   */
-  const Synchronized& asConst() const {
-    return *this;
-  }
-
-  /**
    * Swaps with another Synchronized. Protected against
    * self-swap. Only data is swapped. Locks are acquired in increasing
    * address order.
@@ -1781,7 +1768,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
 #define SYNCHRONIZED_CONST(...)            \
   SYNCHRONIZED(                            \
       FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)), \
-      (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).asConst())
+      as_const(FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))))
 
 /**
  * Similar to TIMED_SYNCHRONIZED, but only uses a read lock.
@@ -1790,7 +1777,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
   TIMED_SYNCHRONIZED(                          \
       timeout,                                 \
       FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)),     \
-      (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).asConst())
+      as_const(FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))))
 
 /**
  * Synchronizes two Synchronized objects (they may encapsulate
