@@ -308,14 +308,23 @@ class SimpleThreadCachedInt {
 };
 
 TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
-  const int kNumThreads = 10;
-  SimpleThreadCachedInt stci;
+  const int kNumThreads = 256;
+  SimpleThreadCachedInt stci[kNumThreads + 1];
   std::atomic<bool> run(true);
-  std::atomic<int> totalAtomic(0);
+  std::atomic<int> totalAtomic;
+  ;
   std::vector<std::thread> threads;
+  // thread i will increment all the thread locals
+  // in the range 0..i
   for (int i = 0; i < kNumThreads; ++i) {
-    threads.push_back(std::thread([&]() {
-      stci.add(1);
+    threads.push_back(std::thread([i, // i needs to be captured by value
+                                   &stci,
+                                   &run,
+                                   &totalAtomic]() {
+      for (int j = 0; j <= i; j++) {
+        stci[j].add(1);
+      }
+
       totalAtomic.fetch_add(1);
       while (run.load()) {
         usleep(100);
@@ -323,7 +332,9 @@ TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
     }));
   }
   while (totalAtomic.load() != kNumThreads) { usleep(100); }
-  EXPECT_EQ(kNumThreads, stci.read());
+  for (int i = 0; i <= kNumThreads; i++) {
+    EXPECT_EQ(kNumThreads - i, stci[i].read());
+  }
   run.store(false);
   for (auto& t : threads) {
     t.join();

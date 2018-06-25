@@ -34,10 +34,6 @@ void ThreadEntryNode::initIfZero(bool locked) {
   }
 }
 
-ThreadEntryNode* ThreadEntryNode::getNext() {
-  return &next->elements[id].node;
-}
-
 void ThreadEntryNode::push_back(ThreadEntry* head) {
   // get the head prev and next nodes
   ThreadEntryNode* hnode = &head->elements[id].node;

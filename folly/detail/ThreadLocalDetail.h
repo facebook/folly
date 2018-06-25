@@ -90,15 +90,21 @@ struct ThreadEntryNode {
   }
 
   // if the list this node is part of is empty
-  bool empty() const {
+  FOLLY_ALWAYS_INLINE bool empty() const {
     return (next == parent);
   }
 
-  bool zero() const {
+  FOLLY_ALWAYS_INLINE bool zero() const {
     return (!prev);
   }
 
-  ThreadEntryNode* getNext();
+  FOLLY_ALWAYS_INLINE ThreadEntry* getThreadEntry() {
+    return parent;
+  }
+
+  FOLLY_ALWAYS_INLINE ThreadEntryNode* getPrev();
+
+  FOLLY_ALWAYS_INLINE ThreadEntryNode* getNext();
 
   void push_back(ThreadEntry* head);
 
@@ -216,6 +222,14 @@ struct ThreadEntryList {
 };
 
 struct PthreadKeyUnregisterTester;
+
+FOLLY_ALWAYS_INLINE ThreadEntryNode* ThreadEntryNode::getPrev() {
+  return &prev->elements[id].node;
+}
+
+FOLLY_ALWAYS_INLINE ThreadEntryNode* ThreadEntryNode::getNext() {
+  return &next->elements[id].node;
+}
 
 /**
  * We want to disable onThreadExit call at the end of shutdown, we don't care
