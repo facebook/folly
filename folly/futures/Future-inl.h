@@ -1720,13 +1720,13 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
           Arg;
   typedef isTry<Arg> IsTry;
 
-  auto sfunc = std::make_shared<F>(std::move(func));
+  auto sfunc = std::make_shared<std::decay_t<F>>(std::forward<F>(func));
 
-  auto f = first->then([minitial = std::forward<T>(initial),
-                        sfunc](Try<ItT>&& head) mutable {
-    return (*sfunc)(
-        std::forward<T>(minitial), head.template get<IsTry::value, Arg&&>());
-  });
+  auto f = first->then(
+      [initial = std::forward<T>(initial), sfunc](Try<ItT>&& head) mutable {
+        return (*sfunc)(
+            std::move(initial), head.template get<IsTry::value, Arg&&>());
+      });
 
   for (++first; first != last; ++first) {
     f = collectAllSemiFuture(f, *first).toUnsafeFuture().then(
