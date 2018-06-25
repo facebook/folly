@@ -101,7 +101,7 @@ TEST(RetryingTest, policy_throws) {
   auto r = futures::retrying(
       [](size_t, exception_wrapper) -> bool { throw eggs(); },
       [](size_t) -> Future<size_t> { throw std::runtime_error("ha"); });
-  EXPECT_THROW(r.get(), eggs);
+  EXPECT_THROW(std::move(r).get(), eggs);
 }
 
 TEST(RetryingTest, policy_future) {

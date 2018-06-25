@@ -186,7 +186,7 @@ TEST(Via, chain3) {
       [&]{ count++; return 3.14159; },
       [&](double) { count++; return std::string("hello"); },
       [&]{ count++; return makeFuture(42); });
-  EXPECT_EQ(42, f.get());
+  EXPECT_EQ(42, std::move(f).get());
   EXPECT_EQ(3, count);
 }
 
@@ -500,9 +500,10 @@ TEST(Via, viaDummyExecutorFutureSetValueFirst) {
   auto future = makeFuture().via(&x).then(
       [c = std::move(captured_promise)] { return 42; });
 
-  EXPECT_THROW(future.get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(std::move(future).get(std::chrono::seconds(5)), BrokenPromise);
   EXPECT_THROW(
-      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+      std::move(captured_promise_future).get(std::chrono::seconds(5)),
+      BrokenPromise);
 }
 
 TEST(Via, viaDummyExecutorFutureSetCallbackFirst) {
@@ -519,9 +520,10 @@ TEST(Via, viaDummyExecutorFutureSetCallbackFirst) {
       [c = std::move(captured_promise)] { return 42; });
   trigger.setValue();
 
-  EXPECT_THROW(future.get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(std::move(future).get(std::chrono::seconds(5)), BrokenPromise);
   EXPECT_THROW(
-      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+      std::move(captured_promise_future).get(std::chrono::seconds(5)),
+      BrokenPromise);
 }
 
 TEST(Via, viaExecutorDiscardsTaskFutureSetValueFirst) {
@@ -540,9 +542,10 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetValueFirst) {
         [c = std::move(captured_promise)] { return 42; });
   }
 
-  EXPECT_THROW(future->get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(std::move(*future).get(std::chrono::seconds(5)), BrokenPromise);
   EXPECT_THROW(
-      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+      std::move(captured_promise_future).get(std::chrono::seconds(5)),
+      BrokenPromise);
 }
 
 TEST(Via, viaExecutorDiscardsTaskFutureSetCallbackFirst) {
@@ -563,9 +566,10 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetCallbackFirst) {
     trigger.setValue();
   }
 
-  EXPECT_THROW(future->get(std::chrono::seconds(5)), BrokenPromise);
+  EXPECT_THROW(std::move(*future).get(std::chrono::seconds(5)), BrokenPromise);
   EXPECT_THROW(
-      captured_promise_future.get(std::chrono::seconds(5)), BrokenPromise);
+      std::move(captured_promise_future).get(std::chrono::seconds(5)),
+      BrokenPromise);
 }
 
 TEST(ViaFunc, liftsVoid) {

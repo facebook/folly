@@ -30,7 +30,7 @@ TEST(Ensure, basic) {
     .then([](int) { throw std::runtime_error("ensure"); })
     .ensure(cob);
 
-  EXPECT_THROW(f.get(), std::runtime_error);
+  EXPECT_THROW(std::move(f).get(), std::runtime_error);
   EXPECT_EQ(2, count);
 }
 
@@ -44,5 +44,5 @@ TEST(Ensure, mutableLambda) {
     .then([]() { throw std::runtime_error("ensure"); });
 
   EXPECT_EQ(0, set->size());
-  EXPECT_THROW(f.get(), std::runtime_error);
+  EXPECT_THROW(std::move(f).get(), std::runtime_error);
 }

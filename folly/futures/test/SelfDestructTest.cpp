@@ -27,14 +27,14 @@ TEST(SelfDestruct, then) {
     return x + 1;
   });
   p->setValue(123);
-  EXPECT_EQ(124, future.get());
+  EXPECT_EQ(124, std::move(future).get());
 }
 
 TEST(SelfDestruct, ensure) {
   auto* p = new Promise<int>();
   auto future = p->getFuture().ensure([p] { delete p; });
   p->setValue(123);
-  EXPECT_EQ(123, future.get());
+  EXPECT_EQ(123, std::move(future).get());
 }
 
 class ThrowingExecutorError : public std::runtime_error {
@@ -58,7 +58,7 @@ TEST(SelfDestruct, throwingExecutor) {
         return 456;
       });
   p->setValue(123);
-  EXPECT_EQ(456, future.get());
+  EXPECT_EQ(456, std::move(future).get());
 }
 
 TEST(SelfDestruct, throwingInlineExecutor) {
@@ -73,5 +73,5 @@ TEST(SelfDestruct, throwingInlineExecutor) {
                     })
                     .onError([](ThrowingExecutorError const&) { return 456; });
   p->setValue(123);
-  EXPECT_EQ(456, future.get());
+  EXPECT_EQ(456, std::move(future).get());
 }

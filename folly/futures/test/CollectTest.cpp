@@ -751,7 +751,7 @@ TEST(Collect, collectVariadicWithException) {
   pi.setException(eggs);
   EXPECT_TRUE(f.isReady());
   EXPECT_TRUE(f.getTry().hasException());
-  EXPECT_THROW(f.get(), eggs_t);
+  EXPECT_THROW(std::move(f).get(), eggs_t);
 }
 
 TEST(Collect, collectAllNone) {

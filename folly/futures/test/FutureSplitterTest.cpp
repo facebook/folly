@@ -154,7 +154,7 @@ TEST(FutureSplitter, splitFutureScope) {
   p.setValue(1);
   EXPECT_TRUE(f1.isReady());
   EXPECT_TRUE(f1.hasValue());
-  EXPECT_EQ(1, f1.get());
+  EXPECT_EQ(1, std::move(f1).get());
 }
 
 TEST(FutureSplitter, splitFutureFailure) {

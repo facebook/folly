@@ -1407,7 +1407,7 @@ TEST(Future, thenDynamic) {
       }
   );
   p.setValue(2);
-  EXPECT_EQ(f.get(), 5);
+  EXPECT_EQ(std::move(f).get(), 5);
 }
 
 TEST(Future, RequestContext) {

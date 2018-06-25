@@ -33,7 +33,7 @@ TEST(NonCopyableLambda, basic) {
   //  });
 
   EXPECT_TRUE(future.isReady());
-  EXPECT_EQ(future.get(), 123);
+  EXPECT_EQ(std::move(future).get(), 123);
 }
 
 TEST(NonCopyableLambda, unique_ptr) {
@@ -59,7 +59,7 @@ TEST(NonCopyableLambda, unique_ptr) {
   EXPECT_FALSE(future.isReady());
   promise.setValue();
   EXPECT_TRUE(future.isReady());
-  EXPECT_EQ(*future.get(), 2);
+  EXPECT_EQ(*std::move(future).get(), 2);
 }
 
 TEST(NonCopyableLambda, Function) {
@@ -73,7 +73,7 @@ TEST(NonCopyableLambda, Function) {
   EXPECT_FALSE(future.isReady());
   promise.setValue(100);
   EXPECT_TRUE(future.isReady());
-  EXPECT_EQ(future.get(), 101);
+  EXPECT_EQ(std::move(future).get(), 101);
 }
 
 TEST(NonCopyableLambda, FunctionConst) {
@@ -87,5 +87,5 @@ TEST(NonCopyableLambda, FunctionConst) {
   EXPECT_FALSE(future.isReady());
   promise.setValue(100);
   EXPECT_TRUE(future.isReady());
-  EXPECT_EQ(future.get(), 101);
+  EXPECT_EQ(std::move(future).get(), 101);
 }

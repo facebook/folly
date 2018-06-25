@@ -36,7 +36,7 @@ TEST(Reduce, basic) {
       [](double a, Try<int>&& b){
         return a + *b + 0.1;
       });
-    EXPECT_EQ(1.2, f1.get());
+    EXPECT_EQ(1.2, std::move(f1).get());
   }
 
   // One (Try)
@@ -47,7 +47,7 @@ TEST(Reduce, basic) {
       [](double a, Try<int>&& b){
         return a + *b + 0.1;
       });
-    EXPECT_EQ(1.1, f1.get());
+    EXPECT_EQ(1.1, std::move(f1).get());
   }
 
   // Returning values (Try)
@@ -58,7 +58,7 @@ TEST(Reduce, basic) {
       [](double a, Try<int>&& b){
         return a + *b + 0.1;
       });
-    EXPECT_EQ(6.3, f1.get());
+    EXPECT_EQ(6.3, std::move(f1).get());
   }
 
   // Returning values
@@ -69,7 +69,7 @@ TEST(Reduce, basic) {
       [](double a, int&& b){
         return a + b + 0.1;
       });
-    EXPECT_EQ(6.3, f1.get());
+    EXPECT_EQ(6.3, std::move(f1).get());
   }
 
   // Returning futures (Try)
@@ -80,7 +80,7 @@ TEST(Reduce, basic) {
       [](double a, Try<int>&& b){
         return makeFuture<double>(a + *b + 0.1);
       });
-    EXPECT_EQ(6.3, f2.get());
+    EXPECT_EQ(6.3, std::move(f2).get());
   }
 
   // Returning futures
@@ -91,7 +91,7 @@ TEST(Reduce, basic) {
       [](double a, int&& b){
         return makeFuture<double>(a + b + 0.1);
       });
-    EXPECT_EQ(6.3, f2.get());
+    EXPECT_EQ(6.3, std::move(f2).get());
   }
 }
 
@@ -108,13 +108,13 @@ TEST(Reduce, chain) {
     auto f = collectAll(makeFutures(3)).reduce(0, [](int a, Try<int>&& b){
       return a + *b;
     });
-    EXPECT_EQ(6, f.get());
+    EXPECT_EQ(6, std::move(f).get());
   }
   {
     auto f = collect(makeFutures(3)).reduce(0, [](int a, int&& b){
       return a + b;
     });
-    EXPECT_EQ(6, f.get());
+    EXPECT_EQ(6, std::move(f).get());
   }
 }
 
@@ -130,7 +130,7 @@ TEST(Reduce, unorderedReduce) {
                         fs.end(),
                         0.0,
                         [](double /* a */, int&& b) { return double(b); });
-    EXPECT_EQ(3.0, f.get());
+    EXPECT_EQ(3.0, std::move(f).get());
   }
   {
     Promise<int> p1;
@@ -150,7 +150,7 @@ TEST(Reduce, unorderedReduce) {
     p3.setValue(3);
     p2.setValue(2);
     p1.setValue(1);
-    EXPECT_EQ(1.0, f.get());
+    EXPECT_EQ(1.0, std::move(f).get());
   }
 }
 
@@ -172,7 +172,7 @@ TEST(Reduce, unorderedReduceException) {
   p3.setValue(3);
   p2.setException(exception_wrapper(std::runtime_error("blah")));
   p1.setValue(1);
-  EXPECT_THROW(f.get(), std::runtime_error);
+  EXPECT_THROW(std::move(f).get(), std::runtime_error);
 }
 
 TEST(Reduce, unorderedReduceFuture) {

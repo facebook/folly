@@ -44,7 +44,7 @@ TEST_F(TimekeeperFixture, after) {
   auto t1 = now();
   auto f = timeLord_->after(awhile);
   EXPECT_FALSE(f.isReady());
-  f.get();
+  std::move(f).get();
   auto t2 = now();
 
   EXPECT_GE(t2 - t1, awhile);
@@ -96,7 +96,7 @@ TEST(Timekeeper, futureWithinHandlesNullTimekeeperSingleton) {
   };
   Promise<int> p;
   auto f = p.getFuture().within(one_ms);
-  EXPECT_THROW(f.get(), FutureNoTimekeeper);
+  EXPECT_THROW(std::move(f).get(), FutureNoTimekeeper);
 }
 
 TEST(Timekeeper, semiFutureWithinHandlesNullTimekeeperSingleton) {
@@ -200,7 +200,7 @@ TEST(Timekeeper, futureWithinThrows) {
   auto f =
       p.getFuture().within(one_ms).onError([](FutureTimeout&) { return -1; });
 
-  EXPECT_EQ(-1, f.get());
+  EXPECT_EQ(-1, std::move(f).get());
 }
 
 TEST(Timekeeper, semiFutureWithinThrows) {
@@ -215,7 +215,7 @@ TEST(Timekeeper, futureWithinAlreadyComplete) {
   auto f =
       makeFuture(42).within(one_ms).onError([&](FutureTimeout&) { return -1; });
 
-  EXPECT_EQ(42, f.get());
+  EXPECT_EQ(42, std::move(f).get());
 }
 
 TEST(Timekeeper, semiFutureWithinAlreadyComplete) {
@@ -232,7 +232,7 @@ TEST(Timekeeper, futureWithinFinishesInTime) {
                .onError([&](FutureTimeout&) { return -1; });
   p.setValue(42);
 
-  EXPECT_EQ(42, f.get());
+  EXPECT_EQ(42, std::move(f).get());
 }
 
 TEST(Timekeeper, semiFutureWithinFinishesInTime) {
@@ -257,7 +257,7 @@ TEST(Timekeeper, semiFutureWithinVoidSpecialization) {
 TEST(Timekeeper, futureWithinException) {
   Promise<Unit> p;
   auto f = p.getFuture().within(awhile, std::runtime_error("expected"));
-  EXPECT_THROW(f.get(), std::runtime_error);
+  EXPECT_THROW(std::move(f).get(), std::runtime_error);
 }
 
 TEST(Timekeeper, semiFutureWithinException) {
