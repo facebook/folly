@@ -761,13 +761,12 @@ class alignas(64) ConcurrentHashMapSegment {
       bucket_count_ = o.bucket_count_;
     }
 
-    /* implicit */ Iterator(Iterator&& o) noexcept
-        : hazptrs_(std::move(o.hazptrs_)) {
-      node_ = o.node_;
-      buckets_ = o.buckets_;
-      idx_ = o.idx_;
-      bucket_count_ = o.bucket_count_;
-    }
+    Iterator(Iterator&& o) noexcept
+        : hazptrs_(std::move(o.hazptrs_)),
+          node_(std::exchange(o.node_, nullptr)),
+          buckets_(std::exchange(o.buckets_, nullptr)),
+          bucket_count_(std::exchange(o.bucket_count_, 0)),
+          idx_(std::exchange(o.idx_, 0)) {}
 
     // These are accessed directly from the functions above
     hazptr_array<3, Atom> hazptrs_;

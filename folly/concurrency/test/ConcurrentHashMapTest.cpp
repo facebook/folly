@@ -337,14 +337,18 @@ TEST(ConcurrentHashMap, UpdateStressTest) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
         k = k % (iters / num_threads) + offset;
         unsigned long val = 3;
-        auto res = m.find(k);
-        EXPECT_NE(res, m.cend());
-        EXPECT_EQ(k, res->second);
-        auto r = m.assign(k, res->second);
-        EXPECT_TRUE(r);
-        res = m.find(k);
-        EXPECT_NE(res, m.cend());
-        EXPECT_EQ(k, res->second);
+        {
+          auto res = m.find(k);
+          EXPECT_NE(res, m.cend());
+          EXPECT_EQ(k, res->second);
+          auto r = m.assign(k, res->second);
+          EXPECT_TRUE(r);
+        }
+        {
+          auto res = m.find(k);
+          EXPECT_NE(res, m.cend());
+          EXPECT_EQ(k, res->second);
+        }
         // Another random insertion to force table resizes
         val = size + i + offset;
         EXPECT_TRUE(m.insert(val, val).second);
@@ -721,4 +725,24 @@ TEST(ConcurrentHashMap, ForEachLoop) {
     ++iters;
   }
   EXPECT_EQ(iters, 1);
+}
+
+TEST(ConcurrentHashMap, IteratorMove) {
+  using CHM = ConcurrentHashMap<int, int>;
+  using Iter = CHM::ConstIterator;
+  struct Foo {
+    Iter it;
+    explicit Foo(Iter&& it_) : it(std::move(it_)) {}
+    Foo(Foo&&) = default;
+    Foo& operator=(Foo&&) = default;
+  };
+  CHM map;
+  int k = 111;
+  int v = 999999;
+  map.insert(k, v);
+  Foo foo(map.find(k));
+  ASSERT_EQ(foo.it->second, v);
+  Foo foo2(map.find(0));
+  foo2 = std::move(foo);
+  ASSERT_EQ(foo2.it->second, v);
 }

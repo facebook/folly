@@ -431,11 +431,25 @@ class ConcurrentHashMap {
       return *this;
     }
 
+    ConstIterator& operator=(ConstIterator&& o) noexcept {
+      if (this != &o) {
+        it_ = std::move(o.it_);
+        segment_ = std::exchange(o.segment_, uint64_t(NumShards));
+        parent_ = std::exchange(o.parent_, nullptr);
+      }
+      return *this;
+    }
+
     ConstIterator(const ConstIterator& o) {
       parent_ = o.parent_;
       it_ = o.it_;
       segment_ = o.segment_;
     }
+
+    ConstIterator(ConstIterator&& o) noexcept
+        : it_(std::move(o.it_)),
+          segment_(std::exchange(o.segment_, uint64_t(NumShards))),
+          parent_(std::exchange(o.parent_, nullptr)) {}
 
     ConstIterator(const ConcurrentHashMap* parent, uint64_t segment)
         : segment_(segment), parent_(parent) {}
