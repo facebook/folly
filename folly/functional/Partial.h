@@ -16,7 +16,11 @@
 
 #pragma once
 
-#include <folly/functional/ApplyTuple.h>
+#include <folly/Utility.h>
+#include <folly/functional/Invoke.h>
+
+#include <tuple>
+#include <utility>
 
 namespace folly {
 
@@ -29,9 +33,19 @@ struct PartialConstructFromCallable {};
 
 template <typename F, typename Tuple>
 class Partial {
- private:
-  F f_;
-  Tuple stored_args_;
+  using Indexes = make_index_sequence<std::tuple_size<Tuple>{}>;
+
+  template <typename Self, std::size_t... I, typename... Args>
+  static auto invokeForward(Self&& self, index_sequence<I...>, Args&&... args)
+      -> decltype(invoke(
+          std::declval<Self>().f_,
+          std::get<I>(std::declval<Self>().stored_args_)...,
+          std::declval<Args>()...)) {
+    return invoke(
+        std::forward<Self>(self).f_,
+        std::get<I>(std::forward<Self>(self).stored_args_)...,
+        std::forward<Args>(args)...);
+  }
 
  public:
   template <typename Callable, typename... Args>
@@ -40,37 +54,40 @@ class Partial {
         stored_args_(std::forward<Args>(args)...) {}
 
   template <typename... CArgs>
-  auto operator()(CArgs&&... cargs) & -> decltype(applyTuple(
-      static_cast<F&>(f_),
-      static_cast<Tuple&>(stored_args_),
-      std::forward_as_tuple(std::forward<CArgs>(cargs)...))) {
-    return applyTuple(
-        static_cast<F&>(f_),
-        static_cast<Tuple&>(stored_args_),
-        std::forward_as_tuple(std::forward<CArgs>(cargs)...));
+  auto operator()(CArgs&&... cargs) & -> decltype(invokeForward(
+      std::declval<Partial&>(),
+      Indexes{},
+      std::declval<CArgs>()...)) {
+    return invokeForward(*this, Indexes{}, std::forward<CArgs>(cargs)...);
+  }
+  template <typename... CArgs>
+  auto operator()(CArgs&&... cargs) const& -> decltype(invokeForward(
+      std::declval<const Partial&>(),
+      Indexes{},
+      std::declval<CArgs>()...)) {
+    return invokeForward(*this, Indexes{}, std::forward<CArgs>(cargs)...);
+  }
+  template <typename... As>
+  auto operator()(As&&... a) && -> decltype(invokeForward(
+      std::declval<Partial&&>(),
+      Indexes{},
+      std::declval<As>()...)) {
+    return invokeForward(std::move(*this), Indexes{}, std::forward<As>(a)...);
+  }
+  template <typename... As>
+  auto operator()(As&&... as) const&& -> decltype(invokeForward(
+      std::declval<const Partial&&>(),
+      Indexes{},
+      std::declval<As>()...)) {
+    return invokeForward(std::move(*this), Indexes{}, std::forward<As>(as)...);
   }
 
-  template <typename... CArgs>
-  auto operator()(CArgs&&... cargs) const& -> decltype(applyTuple(
-      static_cast<F const&>(f_),
-      static_cast<Tuple const&>(stored_args_),
-      std::forward_as_tuple(std::forward<CArgs>(cargs)...))) {
-    return applyTuple(
-        static_cast<F const&>(f_),
-        static_cast<Tuple const&>(stored_args_),
-        std::forward_as_tuple(std::forward<CArgs>(cargs)...));
-  }
-
-  template <typename... CArgs>
-  auto operator()(CArgs&&... cargs) && -> decltype(applyTuple(
-      static_cast<F&&>(f_),
-      static_cast<Tuple&&>(stored_args_),
-      std::forward_as_tuple(std::forward<CArgs>(cargs)...))) {
-    return applyTuple(
-        static_cast<F&&>(f_),
-        static_cast<Tuple&&>(stored_args_),
-        std::forward_as_tuple(std::forward<CArgs>(cargs)...));
-  }
+ private:
+  // the stored callable
+  F f_;
+  // the stored arguments, these will be forwarded along with the actual
+  // argumnets to the callable above
+  Tuple stored_args_;
 };
 
 } // namespace partial

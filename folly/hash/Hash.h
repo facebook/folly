@@ -566,7 +566,7 @@ struct IsAvalanchingHasher<hasher<std::pair<T1, T2>>, K> : std::true_type {};
 template <typename... Ts>
 struct hasher<std::tuple<Ts...>> {
   size_t operator()(const std::tuple<Ts...>& key) const {
-    return applyTuple(Hash(), key);
+    return apply(Hash(), key);
   }
 };
 

@@ -94,7 +94,7 @@ struct GuardObj : GuardObjBase {
   {}
 
   ~GuardObj() {
-    folly::applyTuple(f_, args_);
+    folly::apply(f_, args_);
   }
 
   GuardObj(const GuardObj&) = delete;
@@ -128,20 +128,19 @@ void move_only_func(Mover&&) {}
 TEST(ApplyTuple, Test) {
   auto argsTuple = std::make_tuple(1, 2, 3.0);
   auto func2 = func;
-  folly::applyTuple(func2, argsTuple);
-  folly::applyTuple(func, argsTuple);
-  folly::applyTuple(func, std::make_tuple(1, 2, 3.0));
-  folly::applyTuple(makeFunc(), std::make_tuple(1, 2, 3.0));
-  folly::applyTuple(makeFunc(), argsTuple);
+  folly::apply(func2, argsTuple);
+  folly::apply(func, argsTuple);
+  folly::apply(func, std::make_tuple(1, 2, 3.0));
+  folly::apply(makeFunc(), std::make_tuple(1, 2, 3.0));
+  folly::apply(makeFunc(), argsTuple);
 
   std::unique_ptr<Wat> wat(new Wat);
-  folly::applyTuple(&Wat::func, std::make_tuple(wat.get(), 1, 2, 3.0));
+  folly::apply(&Wat::func, std::make_tuple(wat.get(), 1, 2, 3.0));
   auto argsTuple2 = std::make_tuple(wat.get(), 1, 2, 3.0);
-  folly::applyTuple(&Wat::func, argsTuple2);
+  folly::apply(&Wat::func, argsTuple2);
 
-  EXPECT_EQ(10.0,
-            folly::applyTuple(&Wat::retVal,
-                              std::make_tuple(wat.get(), 1, 9.0)));
+  EXPECT_EQ(
+      10.0, folly::apply(&Wat::retVal, std::make_tuple(wat.get(), 1, 9.0)));
 
   auto test = guard(func, 1, 2, 3.0);
   CopyCount cpy;
@@ -149,31 +148,32 @@ TEST(ApplyTuple, Test) {
   auto test3 = guard(anotherFunc, std::cref(cpy));
 
   Overloaded ovl;
-  EXPECT_EQ(0,
-            folly::applyTuple(
-              static_cast<int (Overloaded::*)(int)>(&Overloaded::func),
-              std::make_tuple(&ovl, 12)));
+  EXPECT_EQ(
+      0,
+      folly::apply(
+          static_cast<int (Overloaded::*)(int)>(&Overloaded::func),
+          std::make_tuple(&ovl, 12)));
   EXPECT_EQ(
       /* do not code-mode to EXPECT_TRUE */ true,
-      folly::applyTuple(
+      folly::apply(
           static_cast<bool (Overloaded::*)(bool)>(&Overloaded::func),
           std::make_tuple(&ovl, false)));
 
-  int x = folly::applyTuple(std::plus<int>(), std::make_tuple(12, 12));
+  int x = folly::apply(std::plus<int>(), std::make_tuple(12, 12));
   EXPECT_EQ(24, x);
 
   Mover m;
-  folly::applyTuple(move_only_func,
-                    std::forward_as_tuple(std::forward<Mover>(Mover())));
+  folly::apply(
+      move_only_func, std::forward_as_tuple(std::forward<Mover>(Mover())));
   const auto tuple3 = std::make_tuple(1, 2, 3.0);
-  folly::applyTuple(func, tuple3);
+  folly::apply(func, tuple3);
 }
 
 TEST(ApplyTuple, Mutable) {
   auto argsTuple = std::make_tuple(1, 2, 3.0);
 
-  folly::applyTuple([](int a, int b, double c) mutable { func(a, b, c); },
-                    argsTuple);
+  folly::apply(
+      [](int a, int b, double c) mutable { func(a, b, c); }, argsTuple);
 }
 
 TEST(ApplyTuple, ConstOverloads) {
@@ -186,15 +186,15 @@ TEST(ApplyTuple, ConstOverloads) {
   ConstOverloaded covl;
 
   // call operator()()
-  EXPECT_EQ(folly::applyTuple(covl, std::make_tuple()), 101);
-  EXPECT_EQ(folly::applyTuple(std::ref(covl), std::make_tuple()), 101);
-  EXPECT_EQ(folly::applyTuple(std::move(covl), std::make_tuple()), 101);
+  EXPECT_EQ(folly::apply(covl, std::make_tuple()), 101);
+  EXPECT_EQ(folly::apply(std::ref(covl), std::make_tuple()), 101);
+  EXPECT_EQ(folly::apply(std::move(covl), std::make_tuple()), 101);
 
   // call operator()() const
-  EXPECT_EQ(folly::applyTuple(const_cast<ConstOverloaded const&>(covl),
-                              std::make_tuple()),
-            102);
-  EXPECT_EQ(folly::applyTuple(std::cref(covl), std::make_tuple()), 102);
+  EXPECT_EQ(
+      folly::apply(const_cast<ConstOverloaded const&>(covl), std::make_tuple()),
+      102);
+  EXPECT_EQ(folly::apply(std::cref(covl), std::make_tuple()), 102);
 }
 
 TEST(ApplyTuple, RefOverloads) {
@@ -208,17 +208,17 @@ TEST(ApplyTuple, RefOverloads) {
   RefOverloaded rovl;
 
   // call operator()() &
-  EXPECT_EQ(folly::applyTuple(rovl, std::make_tuple()), 201);
-  EXPECT_EQ(folly::applyTuple(std::ref(rovl), std::make_tuple()), 201);
+  EXPECT_EQ(folly::apply(rovl, std::make_tuple()), 201);
+  EXPECT_EQ(folly::apply(std::ref(rovl), std::make_tuple()), 201);
 
   // call operator()() const &
-  EXPECT_EQ(folly::applyTuple(const_cast<RefOverloaded const&>(rovl),
-                              std::make_tuple()),
-            202);
-  EXPECT_EQ(folly::applyTuple(std::cref(rovl), std::make_tuple()), 202);
+  EXPECT_EQ(
+      folly::apply(const_cast<RefOverloaded const&>(rovl), std::make_tuple()),
+      202);
+  EXPECT_EQ(folly::apply(std::cref(rovl), std::make_tuple()), 202);
 
   // call operator()() &&
-  EXPECT_EQ(folly::applyTuple(std::move(rovl), std::make_tuple()), 203);
+  EXPECT_EQ(folly::apply(std::move(rovl), std::make_tuple()), 203);
 }
 
 struct MemberFunc {
@@ -232,20 +232,20 @@ TEST(ApplyTuple, MemberFunction) {
   mf.x = 123;
 
   // call getter
-  EXPECT_EQ(folly::applyTuple(&MemberFunc::getX, std::make_tuple(&mf)), 123);
+  EXPECT_EQ(folly::apply(&MemberFunc::getX, std::make_tuple(&mf)), 123);
 
   // call setter
-  folly::applyTuple(&MemberFunc::setX, std::make_tuple(&mf, 234));
+  folly::apply(&MemberFunc::setX, std::make_tuple(&mf, 234));
   EXPECT_EQ(mf.x, 234);
-  EXPECT_EQ(folly::applyTuple(&MemberFunc::getX, std::make_tuple(&mf)), 234);
+  EXPECT_EQ(folly::apply(&MemberFunc::getX, std::make_tuple(&mf)), 234);
 }
 
 TEST(ApplyTuple, MemberFunctionWithRefWrapper) {
   MemberFunc mf;
   mf.x = 234;
 
-  EXPECT_EQ(folly::applyTuple(&MemberFunc::getX, std::make_tuple(std::ref(mf))),
-            234);
+  EXPECT_EQ(
+      folly::apply(&MemberFunc::getX, std::make_tuple(std::ref(mf))), 234);
 }
 
 TEST(ApplyTuple, MemberFunctionWithConstPointer) {
@@ -253,8 +253,9 @@ TEST(ApplyTuple, MemberFunctionWithConstPointer) {
   mf.x = 234;
 
   EXPECT_EQ(
-      folly::applyTuple(&MemberFunc::getX,
-                        std::make_tuple(const_cast<MemberFunc const*>(&mf))),
+      folly::apply(
+          &MemberFunc::getX,
+          std::make_tuple(const_cast<MemberFunc const*>(&mf))),
       234);
 }
 
@@ -263,8 +264,8 @@ TEST(ApplyTuple, MemberFunctionWithSharedPtr) {
   mf.x = 234;
 
   EXPECT_EQ(
-      folly::applyTuple(&MemberFunc::getX,
-                        std::make_tuple(std::make_shared<MemberFunc>(mf))),
+      folly::apply(
+          &MemberFunc::getX, std::make_tuple(std::make_shared<MemberFunc>(mf))),
       234);
 }
 
@@ -273,47 +274,61 @@ TEST(ApplyTuple, MemberFunctionWithUniquePtr) {
   mf.x = 234;
 
   EXPECT_EQ(
-      folly::applyTuple(&MemberFunc::getX,
-                        std::make_tuple(std::make_unique<MemberFunc>(mf))),
+      folly::apply(
+          &MemberFunc::getX, std::make_tuple(std::make_unique<MemberFunc>(mf))),
       234);
 }
 
 TEST(ApplyTuple, Array) {
-  folly::applyTuple(func, std::array<int, 3>{{1, 2, 3}});
-  folly::applyTuple(func, std::array<double, 3>{{1, 2, 3}});
+  folly::apply(func, std::array<int, 3>{{1, 2, 3}});
+  folly::apply(func, std::array<double, 3>{{1, 2, 3}});
 }
 
 TEST(ApplyTuple, Pair) {
   auto add = [](int x, int y) { return x + y; };
 
-  EXPECT_EQ(folly::applyTuple(add, std::pair<int, int>{1200, 34}), 1234);
+  EXPECT_EQ(folly::apply(add, std::pair<int, int>{1200, 34}), 1234);
 }
 
 TEST(ApplyTuple, MultipleTuples) {
   auto add = [](int x, int y, int z) { return x * 100 + y * 10 + z; };
 
-  EXPECT_EQ(123, folly::applyTuple(add, std::make_tuple(1, 2, 3)));
+  EXPECT_EQ(123, folly::apply(add, std::make_tuple(1, 2, 3)));
   EXPECT_EQ(
-      123, folly::applyTuple(add, std::make_tuple(1, 2, 3), std::make_tuple()));
+      123,
+      folly::apply(
+          add, std::tuple_cat(std::make_tuple(1, 2, 3), std::make_tuple())));
   EXPECT_EQ(
-      123, folly::applyTuple(add, std::make_tuple(1, 2), std::make_tuple(3)));
+      123,
+      folly::apply(
+          add, std::tuple_cat(std::make_tuple(1, 2), std::make_tuple(3))));
   EXPECT_EQ(
-      123, folly::applyTuple(add, std::make_tuple(1), std::make_tuple(2, 3)));
+      123,
+      folly::apply(
+          add, std::tuple_cat(std::make_tuple(1), std::make_tuple(2, 3))));
   EXPECT_EQ(
-      123, folly::applyTuple(add, std::make_tuple(), std::make_tuple(1, 2, 3)));
+      123,
+      folly::apply(
+          add, std::tuple_cat(std::make_tuple(), std::make_tuple(1, 2, 3))));
 
   EXPECT_EQ(
       123,
-      folly::applyTuple(
-          add, std::make_tuple(1, 2, 3), std::make_tuple(), std::make_tuple()));
+      folly::apply(
+          add,
+          std::tuple_cat(
+              std::make_tuple(1, 2, 3), std::make_tuple(), std::make_tuple())));
   EXPECT_EQ(
       123,
-      folly::applyTuple(
-          add, std::make_tuple(1), std::make_tuple(2), std::make_tuple(3)));
+      folly::apply(
+          add,
+          std::tuple_cat(
+              std::make_tuple(1), std::make_tuple(2), std::make_tuple(3))));
   EXPECT_EQ(
       123,
-      folly::applyTuple(
-          add, std::make_tuple(1), std::make_tuple(), std::make_tuple(2, 3)));
+      folly::apply(
+          add,
+          std::tuple_cat(
+              std::make_tuple(1), std::make_tuple(), std::make_tuple(2, 3))));
 }
 
 TEST(ApplyTuple, UncurryCopyMove) {

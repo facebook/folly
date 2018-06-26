@@ -14,17 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Defines a function folly::applyTuple, which takes a function and a
- * std::tuple of arguments and calls the function with those
- * arguments.
- *
- * Example:
- *
- *    int x = folly::applyTuple(std::plus<int>(), std::make_tuple(12, 12));
- *    ASSERT(x == 24);
- */
-
 #pragma once
 
 #include <functional>
@@ -39,70 +28,22 @@ namespace folly {
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
-namespace apply_tuple {
-
-inline constexpr std::size_t sum() {
-  return 0;
+template <class F, class T, std::size_t... I>
+constexpr decltype(auto) applyImpl(F&& f, T&& t, folly::index_sequence<I...>) {
+  return invoke(std::forward<F>(f), std::get<I>(std::forward<T>(t))...);
 }
-template <typename... Args>
-inline constexpr std::size_t sum(std::size_t v1, Args... vs) {
-  return v1 + sum(vs...);
-}
-
-template <typename... Tuples>
-struct TupleSizeSum {
-  static constexpr auto value = sum(std::tuple_size<Tuples>::value...);
-};
-
-template <typename... Tuples>
-using MakeIndexSequenceFromTuple = folly::make_index_sequence<
-    TupleSizeSum<typename std::decay<Tuples>::type...>::value>;
-
-template <class F, class Tuple, std::size_t... Indexes>
-inline constexpr auto call(F&& f, Tuple&& t, folly::index_sequence<Indexes...>)
-    -> decltype(invoke(
-        std::forward<F>(f),
-        std::get<Indexes>(std::forward<Tuple>(t))...)) {
-  return invoke(
-      std::forward<F>(f), std::get<Indexes>(std::forward<Tuple>(t))...);
-}
-
-template <class Tuple, std::size_t... Indexes>
-inline constexpr auto forwardTuple(Tuple&& t, folly::index_sequence<Indexes...>)
-    -> decltype(
-        std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...)) {
-  return std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...);
-}
-
-} // namespace apply_tuple
 } // namespace detail
 
 //////////////////////////////////////////////////////////////////////
 
-/**
- * Invoke a callable object with a set of arguments passed as a tuple, or a
- *     series of tuples
- *
- * Example: the following lines are equivalent
- *     func(1, 2, 3, "foo");
- *     applyTuple(func, std::make_tuple(1, 2, 3, "foo"));
- *     applyTuple(func, std::make_tuple(1, 2), std::make_tuple(3, "foo"));
- */
-
-template <class F, class... Tuples>
-inline constexpr auto applyTuple(F&& f, Tuples&&... t)
-    -> decltype(detail::apply_tuple::call(
-        std::forward<F>(f),
-        std::tuple_cat(detail::apply_tuple::forwardTuple(
-            std::forward<Tuples>(t),
-            detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples>{})...),
-        detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples...>{})) {
-  return detail::apply_tuple::call(
-      std::forward<F>(f),
-      std::tuple_cat(detail::apply_tuple::forwardTuple(
-          std::forward<Tuples>(t),
-          detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples>{})...),
-      detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples...>{});
+//  mimic: std::apply, C++17
+template <typename F, typename Tuple>
+constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
+  constexpr auto size = std::tuple_size<std::remove_reference_t<Tuple>>::value;
+  return detail::applyImpl(
+      std::forward<F>(func),
+      std::forward<Tuple>(tuple),
+      folly::make_index_sequence<size>{});
 }
 
 namespace detail {
@@ -116,8 +57,8 @@ class Uncurry {
 
   template <class Tuple>
   auto operator()(Tuple&& tuple) const
-      -> decltype(applyTuple(std::declval<F>(), std::forward<Tuple>(tuple))) {
-    return applyTuple(func_, std::forward<Tuple>(tuple));
+      -> decltype(apply(std::declval<F>(), std::forward<Tuple>(tuple))) {
+    return apply(func_, std::forward<Tuple>(tuple));
   }
 
  private:
@@ -173,8 +114,7 @@ struct Construct {
 //  mimic: std::make_from_tuple, C++17
 template <class T, class Tuple>
 constexpr T make_from_tuple(Tuple&& t) {
-  return applyTuple(
-      detail::apply_tuple::Construct<T>(), std::forward<Tuple>(t));
+  return apply(detail::apply_tuple::Construct<T>(), std::forward<Tuple>(t));
 }
 
 #endif
