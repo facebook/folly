@@ -20,6 +20,7 @@
 #include <tuple>
 #include <utility>
 
+#include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
 
@@ -29,7 +30,10 @@ namespace folly {
 
 namespace detail {
 template <class F, class T, std::size_t... I>
-constexpr decltype(auto) applyImpl(F&& f, T&& t, folly::index_sequence<I...>) {
+constexpr auto applyImpl(F&& f, T&& t, folly::index_sequence<I...>) noexcept(
+    is_nothrow_invocable<F&&, decltype(std::get<I>(std::declval<T>()))...>::
+        value)
+    -> invoke_result_t<F&&, decltype(std::get<I>(std::declval<T>()))...> {
   return invoke(std::forward<F>(f), std::get<I>(std::forward<T>(t))...);
 }
 } // namespace detail
@@ -52,6 +56,51 @@ constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
 template <typename Tuple>
 using index_sequence_for_tuple =
     make_index_sequence<std::tuple_size<Tuple>::value>;
+
+/**
+ * Mimic the invoke suite of traits for tuple based apply invocation
+ */
+template <typename F, typename Tuple>
+using apply_result_t = decltype(detail::applyImpl(
+    std::declval<F>(),
+    std::declval<Tuple>(),
+    index_sequence_for_tuple<std::remove_reference_t<Tuple>>{}));
+
+template <typename F, typename Tuple, typename = void_t<>>
+class apply_result {};
+template <typename F, typename Tuple>
+class apply_result<F, Tuple, void_t<apply_result_t<F, Tuple>>> {
+  using type = apply_result_t<F, Tuple>;
+};
+
+template <typename F, typename Tuple, typename = void_t<>>
+struct is_applicable : std::false_type {};
+template <typename F, typename Tuple>
+struct is_applicable<F, Tuple, void_t<apply_result_t<F, Tuple>>>
+    : std::true_type {};
+
+template <typename R, typename F, typename Tuple, typename = void_t<>>
+struct is_applicable_r : std::false_type {};
+template <typename R, typename F, typename Tuple>
+struct is_applicable_r<R, F, Tuple, void_t<apply_result_t<F, Tuple>>>
+    : std::is_convertible<apply_result_t<F, Tuple>, R> {};
+
+template <typename F, typename Tuple, typename = void_t<>>
+struct is_nothrow_applicable : std::false_type {};
+template <typename F, typename Tuple>
+struct is_nothrow_applicable<F, Tuple, void_t<apply_result_t<F, Tuple>>>
+    : bool_constant<noexcept(detail::applyImpl(
+          std::declval<F>(),
+          std::declval<Tuple>(),
+          index_sequence_for_tuple<std::remove_reference_t<Tuple>>{}))> {};
+
+template <typename R, typename F, typename Tuple, typename = void_t<>>
+struct is_nothrow_applicable_r : std::false_type {};
+template <typename R, typename F, typename Tuple>
+struct is_nothrow_applicable_r<R, F, Tuple, void_t<apply_result_t<F, Tuple>>>
+    : folly::Conjunction<
+          std::is_convertible<apply_result_t<F, Tuple>, R>,
+          is_nothrow_applicable<F, Tuple>> {};
 
 namespace detail {
 namespace apply_tuple {

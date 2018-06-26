@@ -16,6 +16,7 @@
 
 #include <iostream>
 
+#include <folly/Overload.h>
 #include <folly/functional/ApplyTuple.h>
 #include <folly/portability/GTest.h>
 
@@ -436,4 +437,117 @@ TEST(MakeIndexSequenceFromTuple, Basic) {
   EXPECT_TRUE((std::is_same<
                index_sequence_for_tuple<const TwoElementTuple>,
                index_sequence<0>>::value));
+}
+
+TEST(ApplyResult, Basic) {
+  {
+    auto f = [](auto) -> int { return {}; };
+    EXPECT_TRUE((std::is_same<
+                 folly::apply_result_t<decltype(f), std::tuple<int>>,
+                 int>{}));
+  }
+
+  {
+    auto f = folly::overload(
+        [](int) {},
+        [](double) -> double { return {}; },
+        [](int, int) -> int { return {}; });
+
+    EXPECT_TRUE((std::is_same<
+                 folly::apply_result_t<decltype(f), std::tuple<int>>,
+                 void>::value));
+    EXPECT_TRUE((std::is_same<
+                 folly::apply_result_t<decltype(f), std::tuple<double>>,
+                 double>::value));
+    EXPECT_TRUE((std::is_same<
+                 folly::apply_result_t<decltype(f), std::tuple<int, int>>,
+                 int>::value));
+  }
+}
+
+TEST(IsApplicable, Basic) {
+  {
+    auto f = [] {};
+    EXPECT_TRUE((folly::is_applicable<decltype(f), std::tuple<>>::value));
+    EXPECT_FALSE((folly::is_applicable<decltype(f), std::tuple<int>>::value));
+  }
+  {
+    auto f = folly::overload([](int) {}, [](double) -> double { return {}; });
+    EXPECT_TRUE((folly::is_applicable<decltype(f), std::tuple<double>>::value));
+    EXPECT_TRUE((folly::is_applicable<decltype(f), std::tuple<int>>::value));
+    EXPECT_FALSE((folly::is_applicable<decltype(f), std::tuple<>>::value));
+    EXPECT_FALSE(
+        (folly::is_applicable<decltype(f), std::tuple<int, double>>::value));
+  }
+}
+
+TEST(IsNothrowApplicable, Basic) {
+  {
+    auto f = []() noexcept {};
+    EXPECT_TRUE((folly::is_nothrow_applicable<decltype(f), std::tuple<>>{}));
+    EXPECT_FALSE(
+        (folly::is_nothrow_applicable<decltype(f), std::tuple<int>>{}));
+  }
+  {
+    auto f = folly::overload([](int) noexcept {}, [](double) -> double {
+      return {};
+    });
+    EXPECT_FALSE(
+        (folly::is_nothrow_applicable<decltype(f), std::tuple<double>>{}));
+    EXPECT_TRUE((folly::is_nothrow_applicable<decltype(f), std::tuple<int>>{}));
+    EXPECT_FALSE((folly::is_nothrow_applicable<decltype(f), std::tuple<>>{}));
+    EXPECT_FALSE(
+        (folly::is_nothrow_applicable<decltype(f), std::tuple<int, double>>::
+             value));
+  }
+}
+
+TEST(IsApplicableR, Basic) {
+  {
+    auto f = []() -> int { return {}; };
+    EXPECT_TRUE((folly::is_applicable_r<double, decltype(f), std::tuple<>>{}));
+    EXPECT_FALSE(
+        (folly::is_applicable_r<double, decltype(f), std::tuple<int>>{}));
+  }
+  {
+    auto f = folly::overload([](int) noexcept {}, [](double) -> double {
+      return {};
+    });
+    EXPECT_TRUE(
+        (folly::is_applicable_r<float, decltype(f), std::tuple<double>>{}));
+    EXPECT_TRUE((folly::is_applicable_r<void, decltype(f), std::tuple<int>>{}));
+    EXPECT_FALSE((folly::is_applicable_r<void, decltype(f), std::tuple<>>{}));
+    EXPECT_FALSE(
+        (folly::is_applicable_r<double, decltype(f), std::tuple<int, double>>::
+             value));
+  }
+}
+
+TEST(IsNothrowApplicableR, Basic) {
+  {
+    auto f = []() noexcept->int {
+      return {};
+    };
+    EXPECT_TRUE(
+        (folly::is_nothrow_applicable_r<double, decltype(f), std::tuple<>>{}));
+    EXPECT_FALSE(
+        (folly::
+             is_nothrow_applicable_r<double, decltype(f), std::tuple<int>>{}));
+  }
+  {
+    auto f = folly::overload([](int) noexcept {}, [](double) -> double {
+      return {};
+    });
+    EXPECT_FALSE((
+        folly::
+            is_nothrow_applicable_r<float, decltype(f), std::tuple<double>>{}));
+    EXPECT_TRUE(
+        (folly::is_nothrow_applicable_r<void, decltype(f), std::tuple<int>>{}));
+    EXPECT_FALSE(
+        (folly::is_nothrow_applicable_r<void, decltype(f), std::tuple<>>{}));
+    EXPECT_FALSE((folly::is_nothrow_applicable_r<
+                  double,
+                  decltype(f),
+                  std::tuple<int, double>>::value));
+  }
 }
