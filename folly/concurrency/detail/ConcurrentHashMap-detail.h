@@ -728,12 +728,6 @@ class alignas(64) ConcurrentHashMapSegment {
       }
     }
 
-    Iterator operator++(int) {
-      auto prev = *this;
-      ++*this;
-      return prev;
-    }
-
     bool operator==(const Iterator& o) const {
       return node_ == o.node_;
     }
@@ -742,24 +736,20 @@ class alignas(64) ConcurrentHashMapSegment {
       return !(*this == o);
     }
 
-    Iterator& operator=(const Iterator& o) {
-      node_ = o.node_;
-      hazptrs_[1].reset(node_);
-      idx_ = o.idx_;
-      buckets_ = o.buckets_;
-      hazptrs_[0].reset(buckets_);
-      bucket_count_ = o.bucket_count_;
+    Iterator& operator=(const Iterator& o) = delete;
+
+    Iterator& operator=(Iterator&& o) noexcept {
+      if (this != &o) {
+        hazptrs_ = std::move(o.hazptrs_);
+        node_ = std::exchange(o.node_, nullptr);
+        buckets_ = std::exchange(o.buckets_, nullptr);
+        bucket_count_ = std::exchange(o.bucket_count_, 0);
+        idx_ = std::exchange(o.idx_, 0);
+      }
       return *this;
     }
 
-    /* implicit */ Iterator(const Iterator& o) {
-      node_ = o.node_;
-      hazptrs_[1].reset(node_);
-      idx_ = o.idx_;
-      buckets_ = o.buckets_;
-      hazptrs_[0].reset(buckets_);
-      bucket_count_ = o.bucket_count_;
-    }
+    Iterator(const Iterator& o) = delete;
 
     Iterator(Iterator&& o) noexcept
         : hazptrs_(std::move(o.hazptrs_)),

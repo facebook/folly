@@ -233,15 +233,15 @@ TEST(ConcurrentHashMap, MapIterateTest) {
   EXPECT_NE(iter, foomap.cend());
   EXPECT_EQ(iter->first, 1);
   EXPECT_EQ(iter->second, 1);
-  iter++;
+  ++iter;
   EXPECT_NE(iter, foomap.cend());
   EXPECT_EQ(iter->first, 2);
   EXPECT_EQ(iter->second, 2);
-  iter++;
+  ++iter;
   EXPECT_EQ(iter, foomap.cend());
 
   int count = 0;
-  for (auto it = foomap.cbegin(); it != foomap.cend(); it++) {
+  for (auto it = foomap.cbegin(); it != foomap.cend(); ++it) {
     count++;
   }
   EXPECT_EQ(count, 2);
@@ -271,8 +271,7 @@ TEST(ConcurrentHashMap, EraseTest) {
 TEST(ConcurrentHashMap, CopyIterator) {
   ConcurrentHashMap<int, int> map;
   map.insert(0, 0);
-  auto const cbegin = map.cbegin();
-  for (auto cit = cbegin; cit != map.cend(); ++cit) {
+  for (auto cit = map.cbegin(); cit != map.cend(); ++cit) {
     std::pair<int const, int> const ckv{0, 0};
     EXPECT_EQ(*cit, ckv);
   }
@@ -459,7 +458,7 @@ TEST(ConcurrentHashMap, IterateStressTest) {
           EXPECT_TRUE(res);
         }
         int count = 0;
-        for (auto it = m.cbegin(); it != m.cend(); it++) {
+        for (auto it = m.cbegin(); it != m.cend(); ++it) {
           printf("Item is %li\n", it->first);
           if (it->first < 10) {
             count++;

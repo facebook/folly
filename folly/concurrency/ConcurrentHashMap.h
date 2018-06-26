@@ -405,15 +405,9 @@ class ConcurrentHashMap {
     }
 
     ConstIterator& operator++() {
-      it_++;
+      ++it_;
       next();
       return *this;
-    }
-
-    ConstIterator operator++(int) {
-      auto prev = *this;
-      ++*this;
-      return prev;
     }
 
     bool operator==(const ConstIterator& o) const {
@@ -424,12 +418,7 @@ class ConcurrentHashMap {
       return !(*this == o);
     }
 
-    ConstIterator& operator=(const ConstIterator& o) {
-      parent_ = o.parent_;
-      it_ = o.it_;
-      segment_ = o.segment_;
-      return *this;
-    }
+    ConstIterator& operator=(const ConstIterator& o) = delete;
 
     ConstIterator& operator=(ConstIterator&& o) noexcept {
       if (this != &o) {
@@ -440,11 +429,7 @@ class ConcurrentHashMap {
       return *this;
     }
 
-    ConstIterator(const ConstIterator& o) {
-      parent_ = o.parent_;
-      it_ = o.it_;
-      segment_ = o.segment_;
-    }
+    ConstIterator(const ConstIterator& o) = delete;
 
     ConstIterator(ConstIterator&& o) noexcept
         : it_(std::move(o.it_)),
