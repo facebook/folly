@@ -46,6 +46,13 @@ constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
       folly::make_index_sequence<size>{});
 }
 
+/**
+ * Helper to generate an index sequence from a tuple like type
+ */
+template <typename Tuple>
+using index_sequence_for_tuple =
+    make_index_sequence<std::tuple_size<Tuple>::value>;
+
 namespace detail {
 namespace apply_tuple {
 
