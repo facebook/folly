@@ -27,6 +27,7 @@
 #include <glog/logging.h>
 
 #include <atomic>
+#include <chrono>
 
 /**
  *  Thread local classes and singletons
@@ -74,6 +75,9 @@ class hazptr_tc {
   hazptr_tc_entry<Atom> entry_[kCapacity];
   uint8_t count_{0};
   bool local_{false}; // for debug mode only
+  // the following two members are for detecting capacity problems
+  uint16_t num_fills_{0};
+  std::chrono::steady_clock::time_point first_fill_time_;
 
  public:
   ~hazptr_tc() {
@@ -125,6 +129,7 @@ class hazptr_tc {
 
   FOLLY_NOINLINE void fill(uint8_t num) {
     DCHECK_LE(count_ + num, capacity());
+    fill_should_not_be_called_frequently();
     auto& domain = default_hazptr_domain<Atom>();
     for (uint8_t i = 0; i < num; ++i) {
       auto hprec = domain.hprec_acquire();
@@ -136,6 +141,27 @@ class hazptr_tc {
     DCHECK_GE(count_, num);
     for (uint8_t i = 0; i < num; ++i) {
       entry_[--count_].evict();
+    }
+  }
+
+  FOLLY_NOINLINE void fill_should_not_be_called_frequently() {
+    constexpr uint16_t max_fills = 10;
+    constexpr auto period = std::chrono::milliseconds(1);
+    if (num_fills_++ == 0) {
+      first_fill_time_ = std::chrono::steady_clock::now();
+    } else if (num_fills_ > max_fills) {
+      auto now = std::chrono::steady_clock::now();
+      auto dur = now - first_fill_time_;
+      using std::chrono::nanoseconds;
+      CHECK_GT(nanoseconds(dur).count(), nanoseconds(period).count())
+          << "[*** INVESTIGATE: "
+          << "Frequent calls to hazptr_tc::fill may indicate "
+          << "unnecessary overhead either due to "
+          << "insufficient thread cache capacity, "
+          << "or due to unnecessary allocation of extra hazard pointers "
+          << "triggered by user code. ***]";
+      num_fills_ = 1;
+      first_fill_time_ = now;
     }
   }
 
