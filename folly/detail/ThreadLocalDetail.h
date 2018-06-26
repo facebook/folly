@@ -350,7 +350,7 @@ struct StaticMetaBase {
     t->next = t->prev = t;
   }
 
-  static ThreadEntryList* getThreadEntryList();
+  FOLLY_EXPORT static ThreadEntryList* getThreadEntryList();
 
   static void onThreadExit(void* ptr);
 
