@@ -18,16 +18,16 @@
 
 #include <folly/Portability.h>
 
-// clang-format off
-// F14 has been implemented for x86_64 SSE2 and AARCH64 NEON (so far)
 #ifndef FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-# if FOLLY_SSE >= 2 && FOLLY_X64 || FOLLY_AARCH64
-#  define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
-# else
-#  define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
-#  pragma message                                                     \
-    "Vector intrinsics / F14 support unavailable on this platform, "  \
+
+// F14 has been implemented for SSE2 and NEON (so far)
+#if FOLLY_SSE >= 2 || FOLLY_NEON
+#define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
+#else
+#define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
+#pragma message                                                      \
+    "Vector intrinsics / F14 support unavailable on this platform, " \
     "falling back to std::unordered_map / set"
-# endif
 #endif
-// clang-format on
+
+#endif

@@ -301,6 +301,12 @@ constexpr auto kIsBigEndian = !kIsLittleEndian;
 #define FOLLY_SSE_PREREQ(major, minor) \
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
+#ifndef FOLLY_NEON
+# if defined(__ARM_NEON)
+#  define FOLLY_NEON 1
+# endif
+#endif
+
 #if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
 namespace FOLLY_GFLAGS_NAMESPACE { }
 namespace gflags {

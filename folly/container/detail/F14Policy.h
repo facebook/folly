@@ -25,7 +25,9 @@
 #include <folly/Unit.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
+#include <folly/lang/Align.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/memory/Malloc.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
@@ -226,6 +228,10 @@ struct BasePolicy
   std::size_t computeKeyHash(K const& key) const {
     static_assert(
         isAvalanchingHasher() == IsAvalanchingHasher<Hasher, K>::value, "");
+    static_assert(
+        !isAvalanchingHasher() ||
+            sizeof(decltype(hasher()(key))) >= sizeof(std::size_t),
+        "hasher is not avalanching if it doesn't return enough bits");
     return hasher()(key);
   }
 
@@ -272,14 +278,13 @@ struct BasePolicy
       std::size_t /*capacity*/,
       P&& /*rhs*/) {}
 
-  // Rounds chunkBytes up to the next multiple of 16 if it is possible
-  // that a sub-Chunk allocation has a size that is not a multiple of 16.
-  static std::size_t alignedChunkAllocSize(std::size_t chunkAllocSize) {
-    if ((sizeof(Item) % 8) != 0) {
-      chunkAllocSize = -(-chunkAllocSize & ~std::size_t{0xf});
+  std::size_t alignedAllocSize(std::size_t n) const {
+    if (kRequiredVectorAlignment <= alignof(max_align_t) ||
+        std::is_same<ByteAlloc, std::allocator<uint8_t>>::value) {
+      return n;
+    } else {
+      return n + kRequiredVectorAlignment;
     }
-    FOLLY_SAFE_DCHECK((chunkAllocSize % 16) == 0, "");
-    return chunkAllocSize;
   }
 
   bool beforeRehash(
@@ -288,9 +293,9 @@ struct BasePolicy
       std::size_t /*newCapacity*/,
       std::size_t chunkAllocSize,
       BytePtr& outChunkAllocation) {
-    ByteAlloc a{alloc()};
     outChunkAllocation =
-        ByteAllocTraits::allocate(a, alignedChunkAllocSize(chunkAllocSize));
+        allocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+            alloc(), chunkAllocSize);
     return false;
   }
 
@@ -304,9 +309,8 @@ struct BasePolicy
       std::size_t chunkAllocSize) {
     // on success, this will be the old allocation, on failure the new one
     if (chunkAllocation != nullptr) {
-      ByteAlloc a{alloc()};
-      ByteAllocTraits::deallocate(
-          a, chunkAllocation, alignedChunkAllocSize(chunkAllocSize));
+      deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+          alloc(), chunkAllocation, chunkAllocSize);
     }
   }
 
@@ -321,10 +325,8 @@ struct BasePolicy
       std::size_t /*capacity*/,
       BytePtr chunkAllocation,
       std::size_t chunkAllocSize) {
-    FOLLY_SAFE_DCHECK(chunkAllocation != nullptr, "");
-    ByteAlloc a{alloc()};
-    ByteAllocTraits::deallocate(
-        a, chunkAllocation, alignedChunkAllocSize(chunkAllocSize));
+    deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+        alloc(), chunkAllocation, chunkAllocSize);
   }
 
   void prefetchValue(Item const&) const {
@@ -459,6 +461,8 @@ class ValueContainerPolicy : public BasePolicy<
   using typename Super::Value;
 
  private:
+  using typename Super::ByteAlloc;
+
   using Super::kIsMap;
 
  public:
@@ -571,7 +575,10 @@ class ValueContainerPolicy : public BasePolicy<
       std::size_t /*capacity*/,
       V&& visitor) const {
     if (chunkAllocSize > 0) {
-      visitor(Super::alignedChunkAllocSize(chunkAllocSize), 1);
+      visitor(
+          allocationBytesForOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+              chunkAllocSize),
+          1);
     }
   }
 
@@ -698,6 +705,8 @@ class NodeContainerPolicy
   using typename Super::Value;
 
  private:
+  using typename Super::ByteAlloc;
+
   using Super::kIsMap;
 
  public:
@@ -796,7 +805,10 @@ class NodeContainerPolicy
       std::size_t /*capacity*/,
       V&& visitor) const {
     if (chunkAllocSize > 0) {
-      visitor(Super::alignedChunkAllocSize(chunkAllocSize), 1);
+      visitor(
+          allocationBytesForOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+              chunkAllocSize),
+          1);
     }
     if (size > 0) {
       visitor(sizeof(Value), size);
@@ -1212,14 +1224,7 @@ class VectorContainerPolicy : public BasePolicy<
   static std::size_t allocSize(
       std::size_t prefixBytes,
       std::size_t valueCapacity) {
-    auto n = valuesOffset(prefixBytes) + sizeof(Value) * valueCapacity;
-    if (alignof(Value) <= 8) {
-      // ensure that the result is a multiple of 16 to protect against
-      // allocators that don't always align to 16
-      n = -(-n & ~std::size_t{0xf});
-    }
-    FOLLY_SAFE_DCHECK((n % 16) == 0, "");
-    return n;
+    return valuesOffset(prefixBytes) + sizeof(Value) * valueCapacity;
   }
 
  public:
@@ -1235,11 +1240,9 @@ class VectorContainerPolicy : public BasePolicy<
             newCapacity <= (std::numeric_limits<Item>::max)(),
         "");
 
-    {
-      ByteAlloc a{this->alloc()};
-      outChunkAllocation =
-          ByteAllocTraits::allocate(a, allocSize(chunkAllocSize, newCapacity));
-    }
+    outChunkAllocation =
+        allocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+            Super::alloc(), allocSize(chunkAllocSize, newCapacity));
 
     ValuePtr before = values_;
     ValuePtr after = std::pointer_traits<ValuePtr>::pointer_to(
@@ -1279,9 +1282,8 @@ class VectorContainerPolicy : public BasePolicy<
     // on success, chunkAllocation is the old allocation, on failure it is the
     // new one
     if (chunkAllocation != nullptr) {
-      ByteAlloc a{this->alloc()};
-      ByteAllocTraits::deallocate(
-          a,
+      deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+          Super::alloc(),
           chunkAllocation,
           allocSize(chunkAllocSize, (success ? oldCapacity : newCapacity)));
     }
@@ -1306,9 +1308,8 @@ class VectorContainerPolicy : public BasePolicy<
       BytePtr chunkAllocation,
       std::size_t chunkAllocSize) {
     if (chunkAllocation != nullptr) {
-      ByteAlloc a{this->alloc()};
-      ByteAllocTraits::deallocate(
-          a, chunkAllocation, allocSize(chunkAllocSize, capacity));
+      deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+          Super::alloc(), chunkAllocation, allocSize(chunkAllocSize, capacity));
       values_ = nullptr;
     }
   }
@@ -1321,7 +1322,10 @@ class VectorContainerPolicy : public BasePolicy<
       V&& visitor) const {
     FOLLY_SAFE_DCHECK((chunkAllocSize == 0) == (capacity == 0), "");
     if (chunkAllocSize > 0) {
-      visitor(allocSize(chunkAllocSize, capacity), 1);
+      visitor(
+          allocationBytesForOverAligned<ByteAlloc, kRequiredVectorAlignment>(
+              allocSize(chunkAllocSize, capacity)),
+          1);
     }
   }
 

@@ -48,8 +48,8 @@
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-#if FOLLY_AARCH64
-#if __ARM_FEATURE_CRC32
+#if FOLLY_NEON
+#ifdef __ARM_FEATURE_CRC32
 #include <arm_acle.h> // __crc32cd
 #endif
 #include <arm_neon.h> // uint8x16t intrinsics
@@ -246,12 +246,11 @@ using KeyTypeForEmplace = KeyTypeForEmplaceHelper<
 
 template <typename T>
 FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
-#if FOLLY_AARCH64
+#ifndef _WIN32
   __builtin_prefetch(static_cast<void const*>(ptr));
+#elif FOLLY_NEON
+  __prefetch(static_cast<void const*>(ptr));
 #else
-  // _mm_prefetch is x86_64-specific and comes from xmmintrin.h.
-  // It seems to compile to the same thing as __builtin_prefetch, but
-  // also works on windows.
   _mm_prefetch(
       static_cast<char const*>(static_cast<void const*>(ptr)), _MM_HINT_T0);
 #endif
@@ -267,21 +266,31 @@ FOLLY_ALWAYS_INLINE static unsigned findFirstSetNonZero(T mask) {
   }
 }
 
-#if FOLLY_AARCH64
+#if FOLLY_NEON
 using TagVector = uint8x16_t;
 
 using MaskType = uint64_t;
 
 constexpr unsigned kMaskSpacing = 4;
-#else
+#else // SSE2
 using TagVector = __m128i;
 
-using MaskType = unsigned;
+using MaskType = uint32_t;
 
 constexpr unsigned kMaskSpacing = 1;
 #endif
 
-extern TagVector kEmptyTagVector;
+// We could use unaligned loads to relax this requirement, but that
+// would be both a performance penalty and require a bulkier packed
+// ItemIter format
+constexpr std::size_t kRequiredVectorAlignment =
+    constexpr_max(std::size_t{16}, alignof(max_align_t));
+
+using EmptyTagVectorType = std::aligned_storage_t<
+    sizeof(TagVector) + kRequiredVectorAlignment,
+    alignof(max_align_t)>;
+
+extern EmptyTagVectorType kEmptyTagVector;
 
 template <unsigned BitCount>
 struct FullMask {
@@ -292,6 +301,74 @@ struct FullMask {
 template <>
 struct FullMask<1> : std::integral_constant<MaskType, 1> {};
 
+#if FOLLY_ARM
+// Mask iteration is different for ARM because that is the only platform
+// for which the mask is bigger than a register.
+
+// Iterates a mask, optimized for the case that only a few bits are set
+class SparseMaskIter {
+  static_assert(kMaskSpacing == 4, "");
+
+  uint32_t interleavedMask_;
+
+ public:
+  explicit SparseMaskIter(MaskType mask)
+      : interleavedMask_{static_cast<uint32_t>(((mask >> 32) << 2) | mask)} {}
+
+  bool hasNext() {
+    return interleavedMask_ != 0;
+  }
+
+  unsigned next() {
+    FOLLY_SAFE_DCHECK(hasNext(), "");
+    unsigned i = findFirstSetNonZero(interleavedMask_);
+    interleavedMask_ &= (interleavedMask_ - 1);
+    return ((i >> 2) | (i << 2)) & 0xf;
+  }
+};
+
+// Iterates a mask, optimized for the case that most bits are set
+class DenseMaskIter {
+  static_assert(kMaskSpacing == 4, "");
+
+  std::size_t count_;
+  unsigned index_;
+  uint8_t const* tags_;
+
+ public:
+  explicit DenseMaskIter(uint8_t const* tags, MaskType mask) {
+    if (mask == 0) {
+      count_ = 0;
+    } else {
+      count_ =
+          folly::popcount(static_cast<uint32_t>(((mask >> 32) << 2) | mask));
+      if (LIKELY((mask & 1) != 0)) {
+        index_ = 0;
+      } else {
+        index_ = findFirstSetNonZero(mask) / kMaskSpacing;
+      }
+      tags_ = tags;
+    }
+  }
+
+  bool hasNext() {
+    return count_ > 0;
+  }
+
+  unsigned next() {
+    auto rv = index_;
+    --count_;
+    if (count_ > 0) {
+      do {
+        ++index_;
+      } while ((tags_[index_] & 0x80) == 0);
+    }
+    FOLLY_SAFE_DCHECK(index_ < 16, "");
+    return rv;
+  }
+};
+
+#else
 // Iterates a mask, optimized for the case that only a few bits are set
 class SparseMaskIter {
   MaskType mask_;
@@ -317,7 +394,7 @@ class DenseMaskIter {
   unsigned index_{0};
 
  public:
-  explicit DenseMaskIter(MaskType mask) : mask_{mask} {}
+  explicit DenseMaskIter(uint8_t const*, MaskType mask) : mask_{mask} {}
 
   bool hasNext() {
     return mask_ != 0;
@@ -337,6 +414,7 @@ class DenseMaskIter {
     }
   }
 };
+#endif
 
 // Iterates a mask, returning pairs of [begin,end) index covering blocks
 // of set bits
@@ -405,10 +483,10 @@ class FirstEmptyInMask {
 };
 
 template <typename ItemType>
-struct alignas(16) F14Chunk {
+struct alignas(kRequiredVectorAlignment) F14Chunk {
   using Item = ItemType;
 
-  // Assuming alignof(max_align_t) == 16 (and assuming alignof(Item) >=
+  // For our 16 byte vector alignment (and assuming alignof(Item) >=
   // 4) kCapacity of 14 is the most space efficient.  Slightly smaller
   // or larger capacities can help with cache alignment in a couple of
   // cases without wasting too much space, but once the items are larger
@@ -447,11 +525,15 @@ struct alignas(16) F14Chunk {
       rawItems_;
 
   static F14Chunk* emptyInstance() {
-    auto rv = static_cast<F14Chunk*>(static_cast<void*>(&kEmptyTagVector));
+    auto raw = reinterpret_cast<char*>(&kEmptyTagVector);
+    if (kRequiredVectorAlignment > alignof(max_align_t)) {
+      auto delta = kRequiredVectorAlignment -
+          (reinterpret_cast<uintptr_t>(raw) % kRequiredVectorAlignment);
+      raw += delta;
+    }
+    auto rv = reinterpret_cast<F14Chunk*>(raw);
     FOLLY_SAFE_DCHECK(
-        !rv->occupied(0) && rv->chunk0Capacity() == 0 &&
-            rv->outboundOverflowCount() == 0,
-        "");
+        (reinterpret_cast<uintptr_t>(rv) % kRequiredVectorAlignment) == 0, "");
     return rv;
   }
 
@@ -534,9 +616,9 @@ struct alignas(16) F14Chunk {
     tags_[index] = 0;
   }
 
-#if FOLLY_AARCH64
+#if FOLLY_NEON
   ////////
-  // Tag filtering using AArch64 Advanced SIMD (NEON) intrinsics
+  // Tag filtering using NEON intrinsics
 
   SparseMaskIter tagMatchIter(uint8_t needle) const {
     FOLLY_SAFE_DCHECK((needle & 0x80) != 0, "");
@@ -550,7 +632,7 @@ struct alignas(16) F14Chunk {
     return SparseMaskIter(mask);
   }
 
-  uint64_t occupiedMask() const {
+  MaskType occupiedMask() const {
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
     // signed shift extends top bit to all bits
     auto occupiedV =
@@ -560,7 +642,7 @@ struct alignas(16) F14Chunk {
   }
 #else
   ////////
-  // Tag filtering using x86_64 SSE2 intrinsics
+  // Tag filtering using SSE2 intrinsics
 
   TagVector const* tagVector() const {
     return static_cast<TagVector const*>(static_cast<void const*>(&tags_[0]));
@@ -575,14 +657,14 @@ struct alignas(16) F14Chunk {
     return SparseMaskIter{mask};
   }
 
-  unsigned occupiedMask() const {
+  MaskType occupiedMask() const {
     auto tagV = _mm_load_si128(tagVector());
     return _mm_movemask_epi8(tagV) & kFullMask;
   }
 #endif
 
   DenseMaskIter occupiedIter() const {
-    return DenseMaskIter{occupiedMask()};
+    return DenseMaskIter{&tags_[0], occupiedMask()};
   }
 
   MaskRangeIter occupiedRangeIter() const {
@@ -637,8 +719,7 @@ struct alignas(16) F14Chunk {
 template <typename Ptr>
 class PackedChunkItemPtr {
  public:
-  PackedChunkItemPtr(Ptr p, std::size_t i) noexcept
-      : ptr_{p}, index_{static_cast<unsigned>(i)} {
+  PackedChunkItemPtr(Ptr p, std::size_t i) noexcept : ptr_{p}, index_{i} {
     FOLLY_SAFE_DCHECK(ptr_ != nullptr || index_ == 0, "");
   }
 
@@ -666,7 +747,7 @@ class PackedChunkItemPtr {
 
  private:
   Ptr ptr_;
-  unsigned index_;
+  std::size_t index_;
 };
 
 // Bare pointer form, packed into a uintptr_t.  Uses only bits wasted by
@@ -1131,17 +1212,19 @@ class F14Table : public Policy {
   // For hash functions we don't trust to avalanche, we repair things by
   // applying a bit mixer to the user-supplied hash.
 
+#if FOLLY_X64 || FOLLY_AARCH64
+  // 64-bit
   static HashPair splitHash(std::size_t hash) {
+    static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");
     uint8_t tag;
     if (!Policy::isAvalanchingHasher()) {
-#if FOLLY_SSE > 4 || (FOLLY_SSE == 4 && FOLLY_SSE_MINOR >= 2)
+#if FOLLY_SSE_PREREQ(4, 2)
       // SSE4.2 CRC
       auto c = _mm_crc32_u64(0, hash);
       tag = static_cast<uint8_t>(~(c >> 25));
       hash += c;
-#elif FOLLY_AARCH64 && __ARM_FEATURE_CRC32
-      // AARCH64 CRC is Optional on armv8 (-march=armv8-a+crc), standard
-      // on armv8.1
+#elif __ARM_FEATURE_CRC32
+      // CRC is optional on armv8 (-march=armv8-a+crc), standard on armv8.1
       auto c = __crc32cd(0, hash);
       tag = static_cast<uint8_t>(~(c >> 25));
       hash += c;
@@ -1178,6 +1261,35 @@ class F14Table : public Policy {
     }
     return std::make_pair(hash, tag);
   }
+#else
+  // 32-bit
+  static HashPair splitHash(std::size_t hash) {
+    static_assert(sizeof(std::size_t) == sizeof(uint32_t), "");
+    uint8_t tag;
+    if (!Policy::isAvalanchingHasher()) {
+#if FOLLY_SSE_PREREQ(4, 2)
+      // SSE4.2 CRC
+      auto c = _mm_crc32_u32(0, hash);
+      tag = static_cast<uint8_t>(~(c >> 25));
+      hash += c;
+#elif __ARM_FEATURE_CRC32
+      auto c = __crc32cw(0, hash);
+      tag = static_cast<uint8_t>(~(c >> 25));
+      hash += c;
+#else
+      // finalizer for 32-bit murmur2
+      hash ^= hash >> 13;
+      hash *= 0x5bd1e995;
+      hash ^= hash >> 15;
+      tag = static_cast<uint8_t>(~(hash >> 25));
+#endif
+    } else {
+      // we don't trust the top bit
+      tag = (hash >> 24) | 0x80;
+    }
+    return std::make_pair(hash, tag);
+  }
+#endif
 
   //////// memory management helpers
 

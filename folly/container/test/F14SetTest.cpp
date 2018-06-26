@@ -100,19 +100,31 @@ TEST(F14Set, getAllocatedMemorySize) {
   {
     folly::F14ValueSet<int> set;
     set.insert(10);
-    EXPECT_EQ(sizeof(set), 32);
-    EXPECT_EQ(set.getAllocatedMemorySize(), 32);
+    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    if (alignof(folly::max_align_t) == 16) {
+      // chunks will be allocated as 2 max_align_t-s
+      EXPECT_EQ(set.getAllocatedMemorySize(), 32);
+    } else {
+      // chunks will be allocated using aligned_malloc with the true size
+      EXPECT_EQ(set.getAllocatedMemorySize(), 24);
+    }
   }
   {
     folly::F14NodeSet<int> set;
     set.insert(10);
-    EXPECT_EQ(sizeof(set), 32);
-    EXPECT_EQ(set.getAllocatedMemorySize(), 36);
+    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    if (alignof(folly::max_align_t) == 16) {
+      // chunks will be allocated as 2 max_align_t-s
+      EXPECT_EQ(set.getAllocatedMemorySize(), 36);
+    } else {
+      // chunks will be allocated using aligned_malloc with the true size
+      EXPECT_EQ(set.getAllocatedMemorySize(), 20 + 2 * sizeof(void*));
+    }
   }
   {
     folly::F14VectorSet<int> set;
     set.insert(10);
-    EXPECT_EQ(sizeof(set), 24);
+    EXPECT_EQ(sizeof(set), 8 + 2 * sizeof(void*));
     EXPECT_EQ(set.getAllocatedMemorySize(), 32);
   }
 }
@@ -735,19 +747,25 @@ TEST(F14VectorSet, destructuring) {
   runInsertAndEmplace<F14VectorSet<Tracked<0>>>();
 }
 
-TEST(F14ValueSet, vectorMaxSize) {
+TEST(F14ValueSet, maxSize) {
   F14ValueSet<int> s;
-  EXPECT_EQ(s.max_size(), std::numeric_limits<uint64_t>::max() / sizeof(int));
+  EXPECT_EQ(
+      s.max_size(), std::numeric_limits<std::size_t>::max() / sizeof(int));
 }
 
-TEST(F14NodeSet, vectorMaxSize) {
+TEST(F14NodeSet, maxSize) {
   F14NodeSet<int> s;
-  EXPECT_EQ(s.max_size(), std::numeric_limits<uint64_t>::max() / sizeof(int));
+  EXPECT_EQ(
+      s.max_size(), std::numeric_limits<std::size_t>::max() / sizeof(int));
 }
 
-TEST(F14VectorSet, vectorMaxSize) {
+TEST(F14VectorSet, maxSize) {
   F14VectorSet<int> s;
-  EXPECT_EQ(s.max_size(), std::numeric_limits<uint32_t>::max());
+  EXPECT_EQ(
+      s.max_size(),
+      std::min(
+          std::size_t{std::numeric_limits<uint32_t>::max()},
+          std::numeric_limits<std::size_t>::max() / sizeof(int)));
 }
 
 template <typename S>

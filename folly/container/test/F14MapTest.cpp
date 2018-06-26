@@ -1126,23 +1126,28 @@ TEST(F14VectorMap, destructuringErase) {
       0);
 }
 
-TEST(F14ValueMap, vectorMaxSize) {
+TEST(F14ValueMap, maxSize) {
   F14ValueMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
-      std::numeric_limits<uint64_t>::max() / sizeof(std::pair<int, int>));
+      std::numeric_limits<std::size_t>::max() / sizeof(std::pair<int, int>));
 }
 
-TEST(F14NodeMap, vectorMaxSize) {
+TEST(F14NodeMap, maxSize) {
   F14NodeMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
-      std::numeric_limits<uint64_t>::max() / sizeof(std::pair<int, int>));
+      std::numeric_limits<std::size_t>::max() / sizeof(std::pair<int, int>));
 }
 
 TEST(F14VectorMap, vectorMaxSize) {
   F14VectorMap<int, int> m;
-  EXPECT_EQ(m.max_size(), std::numeric_limits<uint32_t>::max());
+  EXPECT_EQ(
+      m.max_size(),
+      std::min(
+          std::size_t{std::numeric_limits<uint32_t>::max()},
+          std::numeric_limits<std::size_t>::max() /
+              sizeof(std::pair<int, int>)));
 }
 
 template <typename M>
