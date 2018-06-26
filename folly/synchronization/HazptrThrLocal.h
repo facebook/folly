@@ -69,7 +69,7 @@ class hazptr_tc_entry {
  */
 template <template <typename> class Atom>
 class hazptr_tc {
-  static constexpr uint8_t kCapacity = 3;
+  static constexpr uint8_t kCapacity = 6;
 
   hazptr_tc_entry<Atom> entry_[kCapacity];
   uint8_t count_{0};
