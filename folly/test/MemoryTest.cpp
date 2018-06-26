@@ -17,6 +17,7 @@
 #include <folly/Memory.h>
 
 #include <limits>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -315,4 +316,80 @@ TEST(enable_shared_from_this, compatible_with_std_enable_shared_from_this) {
   // Runtime compatibility.
   test_enable_shared_from_this(std::make_shared<C_folly>());
   test_enable_shared_from_this(std::make_shared<C_folly const>());
+}
+
+template <typename T>
+struct ExpectingAlloc {
+  using value_type = T;
+
+  ExpectingAlloc(std::size_t expectedSize, std::size_t expectedCount)
+      : expectedSize_{expectedSize}, expectedCount_{expectedCount} {}
+
+  template <class U>
+  explicit ExpectingAlloc(ExpectingAlloc<U> const& other) noexcept
+      : expectedSize_{other.expectedSize_},
+        expectedCount_{other.expectedCount_} {}
+
+  T* allocate(std::size_t n) {
+    EXPECT_EQ(expectedSize_, sizeof(T));
+    EXPECT_EQ(expectedSize_, alignof(T));
+    EXPECT_EQ(expectedCount_, n);
+    return std::allocator<T>{}.allocate(n);
+  }
+
+  void deallocate(T* p, std::size_t n) {
+    std::allocator<T>{}.deallocate(p, n);
+  }
+
+  std::size_t expectedSize_;
+  std::size_t expectedCount_;
+};
+
+struct alignas(64) OverAlignedType {
+  std::array<char, 64> raw_;
+};
+
+TEST(allocateOverAligned, notActuallyOver) {
+  // allocates 6 bytes with alignment 4, should get turned into an
+  // allocation of 2 elements of something of size and alignment 4
+  ExpectingAlloc<char> a(4, 2);
+  auto p = folly::allocateOverAligned<decltype(a), 4>(a, 6);
+  EXPECT_EQ((reinterpret_cast<uintptr_t>(p) % 4), 0);
+  folly::deallocateOverAligned<decltype(a), 4>(a, p, 6);
+  EXPECT_EQ((folly::allocationBytesForOverAligned<decltype(a), 4>(6)), 8);
+}
+
+TEST(allocateOverAligned, manualOverStdAlloc) {
+  // allocates 6 bytes with alignment 64 using std::allocator, which will
+  // result in a call to aligned_malloc underneath.  We free one directly
+  // to check that this is not the padding path
+  std::allocator<short> a;
+  auto p = folly::allocateOverAligned<decltype(a), 64>(a, 3);
+  auto p2 = folly::allocateOverAligned<decltype(a), 64>(a, 3);
+  EXPECT_EQ((reinterpret_cast<uintptr_t>(p) % 64), 0);
+  folly::deallocateOverAligned<decltype(a), 64>(a, p, 3);
+  aligned_free(p2);
+  EXPECT_EQ((folly::allocationBytesForOverAligned<decltype(a), 64>(3)), 6);
+}
+
+TEST(allocateOverAligned, manualOverCustomAlloc) {
+  // allocates 6 byte with alignment 64 using non-standard allocator, which
+  // will result in an allocation of 64 + alignof(max_align_t) underneath.
+  ExpectingAlloc<short> a(
+      alignof(folly::max_align_t), 64 / alignof(folly::max_align_t) + 1);
+  auto p = folly::allocateOverAligned<decltype(a), 64>(a, 3);
+  EXPECT_EQ((reinterpret_cast<uintptr_t>(p) % 64), 0);
+  folly::deallocateOverAligned<decltype(a), 64>(a, p, 3);
+  EXPECT_EQ(
+      (folly::allocationBytesForOverAligned<decltype(a), 64>(3)),
+      64 + alignof(folly::max_align_t));
+}
+
+TEST(allocateOverAligned, defaultOverCustomAlloc) {
+  ExpectingAlloc<OverAlignedType> a(
+      alignof(folly::max_align_t), 128 / alignof(folly::max_align_t));
+  auto p = folly::allocateOverAligned(a, 1);
+  EXPECT_EQ((reinterpret_cast<uintptr_t>(p) % 64), 0);
+  folly::deallocateOverAligned(a, p, 1);
+  EXPECT_EQ(folly::allocationBytesForOverAligned<decltype(a)>(1), 128);
 }
