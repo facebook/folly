@@ -1351,11 +1351,9 @@ inline std::string errorValue(const Src& value) {
 }
 
 template <typename Tgt, typename Src>
-using IsArithToArith = std::integral_constant<
-    bool,
+using IsArithToArith = bool_constant<
     !std::is_same<Tgt, Src>::value && !std::is_same<Tgt, bool>::value &&
-        std::is_arithmetic<Src>::value &&
-        std::is_arithmetic<Tgt>::value>;
+    std::is_arithmetic<Src>::value && std::is_arithmetic<Tgt>::value>;
 
 } // namespace detail
 

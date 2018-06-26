@@ -88,9 +88,8 @@ using invoke_result_ =
 
 template <typename F, typename... Args>
 struct invoke_nothrow_
-    : std::integral_constant<
-          bool,
-          noexcept(invoke(std::declval<F>(), std::declval<Args>()...))> {};
+    : bool_constant<noexcept(
+          invoke(std::declval<F>(), std::declval<Args>()...))> {};
 
 //  from: http://en.cppreference.com/w/cpp/types/result_of, CC-BY-SA
 

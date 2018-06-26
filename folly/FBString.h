@@ -1513,9 +1513,7 @@ class basic_fbstring {
  public:
   template <class ItOrLength, class ItOrChar>
   iterator insert(const_iterator p, ItOrLength first_or_n, ItOrChar last_or_c) {
-    using Sel = std::integral_constant<
-        bool,
-        std::numeric_limits<ItOrLength>::is_specialized>;
+    using Sel = bool_constant<std::numeric_limits<ItOrLength>::is_specialized>;
     return insertImplDiscr(p, first_or_n, last_or_c, Sel());
   }
 
@@ -2252,10 +2250,9 @@ inline void basic_fbstring<E, T, A, S>::replaceImpl(
   Invariant checker(*this);
 
   // Handle aliased replace
-  using Sel = std::integral_constant<
-      bool,
+  using Sel = bool_constant<
       std::is_same<FwdIterator, iterator>::value ||
-          std::is_same<FwdIterator, const_iterator>::value>;
+      std::is_same<FwdIterator, const_iterator>::value>;
   if (replaceAliased(i1, i2, s1, s2, Sel())) {
     return;
   }

@@ -208,10 +208,9 @@ class fbvector {
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
  private:
-  typedef std::integral_constant<
-      bool,
+  typedef bool_constant<
       is_trivially_copyable<T>::value &&
-          sizeof(T) <= 16 // don't force large structures to be passed by value
+      sizeof(T) <= 16 // don't force large structures to be passed by value
       >
       should_pass_by_value;
   typedef typename std::conditional<

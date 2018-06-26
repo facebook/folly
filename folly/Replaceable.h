@@ -357,21 +357,19 @@ struct copy_assignment_mixin<T, true> {
 
 template <typename T>
 struct is_constructible_from_replaceable
-    : std::integral_constant<
-          bool,
+    : bool_constant<
           std::is_constructible<T, Replaceable<T>&>::value ||
-              std::is_constructible<T, Replaceable<T>&&>::value ||
-              std::is_constructible<T, const Replaceable<T>&>::value ||
-              std::is_constructible<T, const Replaceable<T>&&>::value> {};
+          std::is_constructible<T, Replaceable<T>&&>::value ||
+          std::is_constructible<T, const Replaceable<T>&>::value ||
+          std::is_constructible<T, const Replaceable<T>&&>::value> {};
 
 template <typename T>
 struct is_convertible_from_replaceable
-    : std::integral_constant<
-          bool,
+    : bool_constant<
           std::is_convertible<Replaceable<T>&, T>::value ||
-              std::is_convertible<Replaceable<T>&&, T>::value ||
-              std::is_convertible<const Replaceable<T>&, T>::value ||
-              std::is_convertible<const Replaceable<T>&&, T>::value> {};
+          std::is_convertible<Replaceable<T>&&, T>::value ||
+          std::is_convertible<const Replaceable<T>&, T>::value ||
+          std::is_convertible<const Replaceable<T>&&, T>::value> {};
 } // namespace replaceable_detail
 
 // Type trait template to statically test whether a type is a specialization of
