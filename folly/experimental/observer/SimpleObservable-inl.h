@@ -63,7 +63,7 @@ struct SimpleObservable<T>::Wrapper {
   }
 
   void unsubscribe() {
-    folly::Function<void()> empty;
+    Function<void()> empty;
     context->callback_.swap(empty);
   }
 };
