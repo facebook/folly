@@ -295,7 +295,7 @@ struct BasePolicy
       BytePtr& outChunkAllocation) {
     outChunkAllocation =
         allocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-            alloc(), chunkAllocSize);
+            ByteAlloc{alloc()}, chunkAllocSize);
     return false;
   }
 
@@ -310,7 +310,7 @@ struct BasePolicy
     // on success, this will be the old allocation, on failure the new one
     if (chunkAllocation != nullptr) {
       deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-          alloc(), chunkAllocation, chunkAllocSize);
+          ByteAlloc{alloc()}, chunkAllocation, chunkAllocSize);
     }
   }
 
@@ -326,7 +326,7 @@ struct BasePolicy
       BytePtr chunkAllocation,
       std::size_t chunkAllocSize) {
     deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-        alloc(), chunkAllocation, chunkAllocSize);
+        ByteAlloc{alloc()}, chunkAllocation, chunkAllocSize);
   }
 
   void prefetchValue(Item const&) const {
@@ -1242,7 +1242,7 @@ class VectorContainerPolicy : public BasePolicy<
 
     outChunkAllocation =
         allocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-            Super::alloc(), allocSize(chunkAllocSize, newCapacity));
+            ByteAlloc{Super::alloc()}, allocSize(chunkAllocSize, newCapacity));
 
     ValuePtr before = values_;
     ValuePtr after = std::pointer_traits<ValuePtr>::pointer_to(
@@ -1283,7 +1283,7 @@ class VectorContainerPolicy : public BasePolicy<
     // new one
     if (chunkAllocation != nullptr) {
       deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-          Super::alloc(),
+          ByteAlloc{Super::alloc()},
           chunkAllocation,
           allocSize(chunkAllocSize, (success ? oldCapacity : newCapacity)));
     }
@@ -1309,7 +1309,9 @@ class VectorContainerPolicy : public BasePolicy<
       std::size_t chunkAllocSize) {
     if (chunkAllocation != nullptr) {
       deallocateOverAligned<ByteAlloc, kRequiredVectorAlignment>(
-          Super::alloc(), chunkAllocation, allocSize(chunkAllocSize, capacity));
+          ByteAlloc{Super::alloc()},
+          chunkAllocation,
+          allocSize(chunkAllocSize, capacity));
       values_ = nullptr;
     }
   }
