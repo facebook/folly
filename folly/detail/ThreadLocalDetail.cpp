@@ -76,20 +76,30 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
   static FOLLY_TLS ThreadEntryList threadEntryListSingleton;
   return &threadEntryListSingleton;
 #else
-  static pthread_key_t pthreadKey;
-  static folly::once_flag onceFlag;
-  folly::call_once(onceFlag, [&]() {
-    int ret = pthread_key_create(&pthreadKey, nullptr);
-    checkPosixError(ret, "pthread_key_create failed");
-    PthreadKeyUnregister::registerKey(pthreadKey);
-  });
+  class PthreadKey {
+   public:
+    PthreadKey() {
+      int ret = pthread_key_create(&pthreadKey_, nullptr);
+      checkPosixError(ret, "pthread_key_create failed");
+      PthreadKeyUnregister::registerKey(pthreadKey_);
+    }
+
+    FOLLY_ALWAYS_INLINE pthread_key_t get() const {
+      return pthreadKey_;
+    }
+
+   private:
+    pthread_key_t pthreadKey_;
+  };
+
+  static auto instance = detail::createGlobal<PthreadKey, void>();
 
   ThreadEntryList* threadEntryList =
-      static_cast<ThreadEntryList*>(pthread_getspecific(pthreadKey));
+      static_cast<ThreadEntryList*>(pthread_getspecific(instance->get()));
 
   if (UNLIKELY(!threadEntryList)) {
     threadEntryList = new ThreadEntryList();
-    int ret = pthread_setspecific(pthreadKey, threadEntryList);
+    int ret = pthread_setspecific(instance->get(), threadEntryList);
     checkPosixError(ret, "pthread_setspecific failed");
   }
 
