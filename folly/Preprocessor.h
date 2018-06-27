@@ -67,6 +67,8 @@
  */
 #define FB_SINGLE_ARG(...) __VA_ARGS__
 
+#define FOLLY_PP_DETAIL_APPEND_VA_ARG(...) , ##__VA_ARGS__
+
 /**
  * Helper macro that just ignores its parameters.
  */

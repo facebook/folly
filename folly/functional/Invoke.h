@@ -167,6 +167,8 @@ struct is_nothrow_invocable_r
 namespace folly {
 namespace detail {
 
+struct invoke_private_overload;
+
 template <typename Invoke>
 struct free_invoke_proxy {
  public:
@@ -194,8 +196,6 @@ struct free_invoke_proxy {
 
 } // namespace detail
 } // namespace folly
-
-#define FOLLY_INVOKE_DETAIL_USING_NAMESPACE(ns) using namespace ns;
 
 /***
  *  FOLLY_CREATE_FREE_INVOKE_TRAITS
@@ -275,20 +275,28 @@ struct free_invoke_proxy {
  *    HasData a, b;
  *    traits::invoke(a, b); // throw 7
  */
-#define FOLLY_CREATE_FREE_INVOKE_TRAITS(classname, funcname, ...)       \
-  namespace classname##__folly_detail_invoke_ns {                       \
-    FOLLY_PP_FOR_EACH(FOLLY_INVOKE_DETAIL_USING_NAMESPACE, __VA_ARGS__) \
-    struct classname##__folly_detail_invoke {                           \
-      template <typename... Args>                                       \
-      constexpr auto operator()(Args&&... args) const                   \
-          noexcept(noexcept(funcname(static_cast<Args&&>(args)...)))    \
-              -> decltype(funcname(static_cast<Args&&>(args)...)) {     \
-        return funcname(static_cast<Args&&>(args)...);                  \
-      }                                                                 \
-    };                                                                  \
-  }                                                                     \
-  struct classname : ::folly::detail::free_invoke_proxy<                \
-                         classname##__folly_detail_invoke_ns::          \
+#define FOLLY_CREATE_FREE_INVOKE_TRAITS(classname, funcname, ...)    \
+  namespace classname##__folly_detail_invoke_ns {                    \
+    namespace classname##__folly_detail_invoke_ns_inline {           \
+      FOLLY_PUSH_WARNING                                             \
+      FOLLY_CLANG_DISABLE_WARNING("-Wunused-function")               \
+      void funcname(::folly::detail::invoke_private_overload&);      \
+      FOLLY_POP_WARNING                                              \
+    }                                                                \
+    using FB_ARG_2_OR_1(                                             \
+        classname##__folly_detail_invoke_ns_inline                   \
+            FOLLY_PP_DETAIL_APPEND_VA_ARG(__VA_ARGS__))::funcname;   \
+    struct classname##__folly_detail_invoke {                        \
+      template <typename... Args>                                    \
+      constexpr auto operator()(Args&&... args) const                \
+          noexcept(noexcept(funcname(static_cast<Args&&>(args)...))) \
+              -> decltype(funcname(static_cast<Args&&>(args)...)) {  \
+        return funcname(static_cast<Args&&>(args)...);               \
+      }                                                              \
+    };                                                               \
+  }                                                                  \
+  struct classname : ::folly::detail::free_invoke_proxy<             \
+                         classname##__folly_detail_invoke_ns::       \
                              classname##__folly_detail_invoke> {}
 
 namespace folly {
