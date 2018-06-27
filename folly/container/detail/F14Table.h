@@ -885,7 +885,7 @@ class F14ItemIter {
     folly::assume(itemPtr_ != nullptr);
   }
 
-  FOLLY_ALWAYS_INLINE void advance() {
+  FOLLY_ALWAYS_INLINE void advanceImpl(bool checkEof, bool likelyDead) {
     auto c = chunk();
 
     // common case is packed entries
@@ -918,16 +918,22 @@ class F14ItemIter {
     //
     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82776 has the bug we
     // filed about the issue.  while (true) {
-    for (std::size_t i = 1; i != 0; ++i) {
-      // exhausted the current chunk
-      if (UNLIKELY(c->eof())) {
-        FOLLY_SAFE_DCHECK(index_ == 0, "");
-        itemPtr_ = nullptr;
-        return;
+    for (std::size_t i = 1; !likelyDead || i != 0; ++i) {
+      if (checkEof) {
+        // exhausted the current chunk
+        if (UNLIKELY(c->eof())) {
+          FOLLY_SAFE_DCHECK(index_ == 0, "");
+          itemPtr_ = nullptr;
+          return;
+        }
+      } else {
+        FOLLY_SAFE_DCHECK(!c->eof(), "");
       }
       --c;
       auto last = c->lastOccupied();
-      prefetchAddr(&*c - 1);
+      if (checkEof && !likelyDead) {
+        prefetchAddr(&*c - 1);
+      }
       if (LIKELY(last.hasIndex())) {
         index_ = last.index();
         itemPtr_ = std::pointer_traits<ItemPtr>::pointer_to(c->item(index_));
@@ -936,31 +942,16 @@ class F14ItemIter {
     }
   }
 
-  // precheckedAdvance requires knowledge that the current iterator
-  // position isn't the last item
   void precheckedAdvance() {
-    auto c = chunk();
+    advanceImpl(false, false);
+  }
 
-    // common case is packed entries
-    while (index_ > 0) {
-      --index_;
-      --itemPtr_;
-      if (LIKELY(c->occupied(index_))) {
-        return;
-      }
-    }
+  FOLLY_ALWAYS_INLINE void advance() {
+    advanceImpl(true, false);
+  }
 
-    while (true) {
-      // exhausted the current chunk
-      FOLLY_SAFE_DCHECK(!c->eof(), "");
-      --c;
-      auto last = c->lastOccupied();
-      if (LIKELY(last.hasIndex())) {
-        index_ = last.index();
-        itemPtr_ = std::pointer_traits<ItemPtr>::pointer_to(c->item(index_));
-        return;
-      }
-    }
+  FOLLY_ALWAYS_INLINE void advanceLikelyDead() {
+    advanceImpl(true, true);
   }
 
   ChunkPtr chunk() const {

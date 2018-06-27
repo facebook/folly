@@ -432,11 +432,13 @@ class F14BasicSet {
   template <typename BeforeDestroy>
   FOLLY_ALWAYS_INLINE iterator
   eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
-    table_.eraseIterInto(table_.unwrapIter(pos), beforeDestroy);
+    auto itemPos = table_.unwrapIter(pos);
+    table_.eraseIterInto(itemPos, beforeDestroy);
 
     // If we are inlined then gcc and clang can optimize away all of the
     // work of ++pos if the caller discards it.
-    return ++pos;
+    itemPos.advanceLikelyDead();
+    return table_.makeIter(itemPos);
   }
 
   template <typename BeforeDestroy>

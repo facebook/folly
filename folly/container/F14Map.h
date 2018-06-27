@@ -572,15 +572,17 @@ class F14BasicMap {
     // work of itemPos.advance() if our return value is discarded.
     auto itemPos = table_.unwrapIter(pos);
     table_.eraseIter(itemPos);
-    itemPos.advance();
+    itemPos.advanceLikelyDead();
     return table_.makeIter(itemPos);
   }
 
   // This form avoids ambiguity when key_type has a templated constructor
   // that accepts const_iterator
   iterator erase(iterator pos) {
-    table_.eraseIter(table_.unwrapIter(pos));
-    return ++pos;
+    auto itemPos = table_.unwrapIter(pos);
+    table_.eraseIter(itemPos);
+    itemPos.advanceLikelyDead();
+    return table_.makeIter(itemPos);
   }
 
   iterator erase(const_iterator first, const_iterator last) {
