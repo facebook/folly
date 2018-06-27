@@ -186,16 +186,9 @@ struct member_invoke_proxy {
 
   template <typename O, typename... Args>
   static constexpr auto invoke(O&& o, Args&&... args) noexcept(
-      noexcept(folly::invoke(
-          Invoke{},
-          static_cast<O&&>(o),
-          static_cast<Args&&>(args)...)))
-      -> decltype(folly::invoke(
-          Invoke{},
-          static_cast<O&&>(o),
-          static_cast<Args&&>(args)...)) {
-    return folly::invoke(
-        Invoke{}, static_cast<O&&>(o), static_cast<Args&&>(args)...);
+      noexcept(Invoke{}(static_cast<O&&>(o), static_cast<Args&&>(args)...)))
+      -> decltype(Invoke{}(static_cast<O&&>(o), static_cast<Args&&>(args)...)) {
+    return Invoke{}(static_cast<O&&>(o), static_cast<Args&&>(args)...);
   }
 };
 
@@ -232,42 +225,42 @@ struct member_invoke_proxy {
  *  follows:
  *
  *    struct CanFoo {
- *      int foo(Bar const&) { return 1; }
+ *      int foo(Bar&) { return 1; }
  *      int foo(Car&&) noexcept { return 2; }
  *    };
  *
  *    using traits = foo_invoke_traits;
  *
- *    traits::invoke(CanFoo{}, Bar{}) // 1
+ *    traits::invoke(CanFoo{}, Car{}) // 2
  *
- *    traits::invoke_result<CanFoo, Bar&&> // has member
- *    traits::invoke_result_t<CanFoo, Bar&&> // int
- *    traits::invoke_result<CanFoo, Bar&> // empty
- *    traits::invoke_result_t<CanFoo, Bar&> // error
+ *    traits::invoke_result<CanFoo, Bar&> // has member
+ *    traits::invoke_result_t<CanFoo, Bar&> // int
+ *    traits::invoke_result<CanFoo, Bar&&> // empty
+ *    traits::invoke_result_t<CanFoo, Bar&&> // error
  *
- *    traits::is_invocable<CanFoo, Bar&&>::value // true
- *    traits::is_invocable<CanFoo, Bar&>::value // false
+ *    traits::is_invocable<CanFoo, Bar&>::value // true
+ *    traits::is_invocable<CanFoo, Bar&&>::value // false
  *
- *    traits::is_invocable_r<int, CanFoo, Bar&&>::value // true
- *    traits::is_invocable_r<char*, CanFoo, Bar&&>::value // false
+ *    traits::is_invocable_r<int, CanFoo, Bar&>::value // true
+ *    traits::is_invocable_r<char*, CanFoo, Bar&>::value // false
  *
- *    traits::is_nothrow_invocable<CanFoo, Bar&&>::value // false
+ *    traits::is_nothrow_invocable<CanFoo, Bar&>::value // false
  *    traits::is_nothrow_invocable<CanFoo, Car&&>::value // true
  *
- *    traits::is_nothrow_invocable<int, CanFoo, Bar&&>::value // false
- *    traits::is_nothrow_invocable<char*, CanFoo, Bar&&>::value // false
+ *    traits::is_nothrow_invocable<int, CanFoo, Bar&>::value // false
+ *    traits::is_nothrow_invocable<char*, CanFoo, Bar&>::value // false
  *    traits::is_nothrow_invocable<int, CanFoo, Car&&>::value // true
  *    traits::is_nothrow_invocable<char*, CanFoo, Car&&>::value // false
  */
-#define FOLLY_CREATE_MEMBER_INVOKE_TRAITS(classname, membername)            \
-  struct classname##__folly_detail_member_invoke {                          \
-    template <typename O, typename... Args>                                 \
-    constexpr auto operator()(O&& o, Args&&... args) noexcept(noexcept(     \
-        static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)))      \
-        -> decltype(                                                        \
-            static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)) { \
-      return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...);  \
-    }                                                                       \
-  };                                                                        \
-  struct classname : ::folly::detail::member_invoke_proxy<                  \
+#define FOLLY_CREATE_MEMBER_INVOKE_TRAITS(classname, membername)              \
+  struct classname##__folly_detail_member_invoke {                            \
+    template <typename O, typename... Args>                                   \
+    constexpr auto operator()(O&& o, Args&&... args) const noexcept(noexcept( \
+        static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)))        \
+        -> decltype(                                                          \
+            static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)) {   \
+      return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...);    \
+    }                                                                         \
+  };                                                                          \
+  struct classname : ::folly::detail::member_invoke_proxy<                    \
                          classname##__folly_detail_member_invoke> {}
