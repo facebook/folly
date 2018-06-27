@@ -227,6 +227,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -414,7 +415,7 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
   }
 
   static ReturnType uninitCall(Data&, Args&&...) noexcept {
-    throw std::bad_function_call();
+    terminate_with<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) noexcept {
