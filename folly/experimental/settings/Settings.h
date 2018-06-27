@@ -85,8 +85,11 @@ class Setting {
    * the order of minutes).
    *
    * @param reason  Will be stored with the current value, useful for debugging.
+   * @throws std::runtime_error  If we can't convert t to string.
    */
   void set(const Type& t, StringPiece reason = "api") {
+    /* Check that we can still display it */
+    folly::to<std::string>(t);
     core_.set(t, reason);
   }
 
@@ -97,6 +100,14 @@ class Setting {
   SettingMetadata meta_;
   SettingCore<Type> core_;
 };
+
+/* C++20 has std::type_indentity */
+template <class T>
+struct TypeIdentity {
+  using type = T;
+};
+template <class T>
+using TypeIdentityT = typename TypeIdentity<T>::type;
 
 } // namespace detail
 
@@ -128,7 +139,7 @@ class Setting {
         setting(                                                          \
             folly::settings::SettingMetadata{                             \
                 #_project, #_name, #_Type, typeid(_Type), #_def, _desc},  \
-            _def);                                                        \
+            folly::settings::detail::TypeIdentityT<_Type>{_def});         \
     return *setting;                                                      \
   }                                                                       \
   /* Ensure the setting is registered even if not used in program */      \

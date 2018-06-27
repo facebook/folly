@@ -54,13 +54,24 @@ class SettingCoreBase {
 
 void registerSetting(SettingCoreBase& core);
 
+template <class T>
+std::enable_if_t<std::is_constructible<T, StringPiece>::value, T>
+convertOrConstruct(StringPiece newValue) {
+  return T(newValue);
+}
+template <class T>
+std::enable_if_t<!std::is_constructible<T, StringPiece>::value, T>
+convertOrConstruct(StringPiece newValue) {
+  return to<T>(newValue);
+}
+
 template <class Type>
 class SettingCore : public SettingCoreBase {
  public:
   using Contents = SettingContents<Type>;
 
   void setFromString(StringPiece newValue, StringPiece reason) override {
-    set(to<Type>(newValue), reason.str());
+    set(convertOrConstruct<Type>(newValue), reason.str());
   }
   std::pair<std::string, std::string> getAsString() const override {
     auto contents = *const_cast<SettingCore*>(this)->tlValue();
