@@ -46,8 +46,6 @@ template <class LockedType, class Mutex, class LockPolicy>
 class LockedPtrBase;
 template <class LockedType, class LockPolicy>
 class LockedPtr;
-template <class LockedType, class LockPolicy = LockPolicyExclusive>
-class LockedGuardPtr;
 
 /**
  * Public version of LockInterfaceDispatcher that contains the MutexLevel enum
@@ -171,12 +169,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
     return ConstLockedPtr(static_cast<const Subclass*>(this), timeout);
   }
 
-  /*
-   * Note: C++ 17 adds guaranteed copy elision.  (http://wg21.link/P0135)
-   * Once compilers support this, it would be nice to add wguard() and rguard()
-   * methods that return LockedGuardPtr objects.
-   */
-
   /**
    * Invoke a function while holding the lock exclusively.
    *
@@ -193,15 +185,11 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    */
   template <class Function>
   auto withWLock(Function&& function) {
-    LockedGuardPtr<Subclass, LockPolicyExclusive> guardPtr(
-        static_cast<Subclass*>(this));
-    return function(*guardPtr);
+    return function(*wlock());
   }
   template <class Function>
   auto withWLock(Function&& function) const {
-    LockedGuardPtr<const Subclass, LockPolicyExclusive> guardPtr(
-        static_cast<const Subclass*>(this));
-    return function(*guardPtr);
+    return function(*wlock());
   }
 
   /**
@@ -230,9 +218,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    */
   template <class Function>
   auto withRLock(Function&& function) const {
-    LockedGuardPtr<const Subclass, LockPolicyShared> guardPtr(
-        static_cast<const Subclass*>(this));
-    return function(*guardPtr);
+    return function(*rlock());
   }
 
   template <class Function>
@@ -255,10 +241,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
   using UpgradeLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyUpgrade>;
   using ConstUpgradeLockedPtr =
       ::folly::LockedPtr<const Subclass, LockPolicyUpgrade>;
-  using UpgradeLockedGuardPtr =
-      ::folly::LockedGuardPtr<Subclass, LockPolicyUpgrade>;
-  using ConstUpgradeLockedGuardPtr =
-      ::folly::LockedGuardPtr<const Subclass, LockPolicyUpgrade>;
 
   using TryUpgradeLockedPtr =
       ::folly::LockedPtr<Subclass, LockPolicyTryUpgrade>;
@@ -330,8 +312,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
    */
   template <class Function>
   auto withULock(Function&& function) const {
-    ConstUpgradeLockedGuardPtr guardPtr(static_cast<const Subclass*>(this));
-    return function(*guardPtr);
+    return function(*ulock());
   }
 
   /**
@@ -421,12 +402,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
     return ConstLockedPtr(static_cast<const Subclass*>(this), timeout);
   }
 
-  /*
-   * Note: C++ 17 adds guaranteed copy elision.  (http://wg21.link/P0135)
-   * Once compilers support this, it would be nice to add guard() methods that
-   * return LockedGuardPtr objects.
-   */
-
   /**
    * Invoke a function while holding the lock.
    *
@@ -443,15 +418,11 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
    */
   template <class Function>
   auto withLock(Function&& function) {
-    LockedGuardPtr<Subclass, LockPolicyExclusive> guardPtr(
-        static_cast<Subclass*>(this));
-    return function(*guardPtr);
+    return function(*lock());
   }
   template <class Function>
   auto withLock(Function&& function) const {
-    LockedGuardPtr<const Subclass, LockPolicyExclusive> guardPtr(
-        static_cast<const Subclass*>(this));
-    return function(*guardPtr);
+    return function(*lock());
   }
 
   /**
@@ -798,8 +769,6 @@ struct Synchronized : public SynchronizedBase<
   friend class folly::LockedPtrBase;
   template <class LockedType, class LockPolicy>
   friend class folly::LockedPtr;
-  template <class LockedType, class LockPolicy>
-  friend class folly::LockedGuardPtr;
 
   /**
    * Helper constructors to enable Synchronized for
@@ -1523,62 +1492,6 @@ class LockedPtr : public LockedPtrBase<
     return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>(
         exchange(this->parent_, nullptr));
   }
-};
-
-/**
- * LockedGuardPtr is a simplified version of LockedPtr.
- *
- * It is non-movable, and supports fewer features than LockedPtr.  However, it
- * is ever-so-slightly more performant than LockedPtr.  (The destructor can
- * unconditionally release the lock, without requiring a conditional branch.)
- *
- * The relationship between LockedGuardPtr and LockedPtr is similar to that
- * between std::lock_guard and std::unique_lock.
- */
-template <class SynchronizedType, class LockPolicy>
-class LockedGuardPtr {
- private:
-  // CDataType is the DataType with the appropriate const-qualification
-  using CDataType = detail::SynchronizedDataType<SynchronizedType>;
-
- public:
-  using DataType = typename SynchronizedType::DataType;
-  using MutexType = typename SynchronizedType::MutexType;
-  using Synchronized = typename std::remove_const<SynchronizedType>::type;
-
-  LockedGuardPtr() = delete;
-
-  /**
-   * Takes a Synchronized<T> and locks it.
-   */
-  explicit LockedGuardPtr(SynchronizedType* parent) : parent_(parent) {
-    LockPolicy::lock(parent_->mutex_);
-  }
-
-  /**
-   * Destructor releases.
-   */
-  ~LockedGuardPtr() {
-    LockPolicy::unlock(parent_->mutex_);
-  }
-
-  /**
-   * Access the locked data.
-   */
-  CDataType* operator->() const {
-    return &parent_->datum_;
-  }
-
-  /**
-   * Access the locked data.
-   */
-  CDataType& operator*() const {
-    return parent_->datum_;
-  }
-
- private:
-  // This is the entire state of LockedGuardPtr.
-  SynchronizedType* const parent_{nullptr};
 };
 
 /**
