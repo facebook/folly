@@ -32,6 +32,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iosfwd>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <type_traits>

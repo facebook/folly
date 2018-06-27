@@ -19,6 +19,7 @@
 #include <cerrno>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #include <folly/detail/FileUtilDetail.h>
 #include <folly/portability/Fcntl.h>

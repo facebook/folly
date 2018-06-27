@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cerrno>
 
 #include <folly/portability/SysUio.h>

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdlib>
 #include <functional>
 #include <new>
 #include <type_traits>
