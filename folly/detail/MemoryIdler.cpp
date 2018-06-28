@@ -183,10 +183,14 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
   if (madvise((void*)tls_stackLimit, len, MADV_DONTNEED) != 0) {
     // It is likely that the stack vma hasn't been fully grown.  In this
     // case madvise will apply dontneed to the present vmas, then return
-    // errno of ENOMEM.  We can also get an EAGAIN, theoretically.
-    // EINVAL means either an invalid alignment or length, or that some
-    // of the pages are locked or shared.  Neither should occur.
-    assert(errno == EAGAIN || errno == ENOMEM);
+    // errno of ENOMEM.
+    // If thread stack pages are backed by locked or huge pages, madvise will
+    // fail with EINVAL. (EINVAL may also be returned if the address or length
+    // are bad.) Warn in debug mode, since MemoryIdler may not function as
+    // expected.
+    // We can also get an EAGAIN, theoretically.
+    PLOG_IF(WARNING, kIsDebug && errno == EINVAL) << "madvise failed";
+    assert(errno == EAGAIN || errno == ENOMEM || errno == EINVAL);
   }
 }
 
