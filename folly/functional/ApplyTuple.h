@@ -28,28 +28,6 @@ namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
-namespace detail {
-template <class F, class T, std::size_t... I>
-constexpr auto applyImpl(F&& f, T&& t, folly::index_sequence<I...>) noexcept(
-    is_nothrow_invocable<F&&, decltype(std::get<I>(std::declval<T>()))...>::
-        value)
-    -> invoke_result_t<F&&, decltype(std::get<I>(std::declval<T>()))...> {
-  return invoke(std::forward<F>(f), std::get<I>(std::forward<T>(t))...);
-}
-} // namespace detail
-
-//////////////////////////////////////////////////////////////////////
-
-//  mimic: std::apply, C++17
-template <typename F, typename Tuple>
-constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
-  constexpr auto size = std::tuple_size<std::remove_reference_t<Tuple>>::value;
-  return detail::applyImpl(
-      std::forward<F>(func),
-      std::forward<Tuple>(tuple),
-      folly::make_index_sequence<size>{});
-}
-
 /**
  * Helper to generate an index sequence from a tuple like type
  */
@@ -57,50 +35,59 @@ template <typename Tuple>
 using index_sequence_for_tuple =
     make_index_sequence<std::tuple_size<Tuple>::value>;
 
+namespace detail {
+namespace apply_tuple {
+namespace adl {
+using std::get;
+struct ApplyInvoke {
+  template <typename T>
+  using seq = index_sequence_for_tuple<std::remove_reference_t<T>>;
+
+  template <typename F, typename T, std::size_t... I>
+  static constexpr auto invoke_(F&& f, T&& t, index_sequence<I...>) noexcept(
+      is_nothrow_invocable<F&&, decltype(get<I>(std::declval<T>()))...>::value)
+      -> invoke_result_t<F&&, decltype(get<I>(std::declval<T>()))...> {
+    return invoke(static_cast<F&&>(f), get<I>(static_cast<T&&>(t))...);
+  }
+};
+} // namespace adl
+} // namespace apply_tuple
+} // namespace detail
+
+struct ApplyInvoke : private detail::apply_tuple::adl::ApplyInvoke {
+ public:
+  template <typename F, typename T>
+  constexpr auto operator()(F&& f, T&& t) const noexcept(
+      noexcept(invoke_(static_cast<F&&>(f), static_cast<T&&>(t), seq<T>{})))
+      -> decltype(invoke_(static_cast<F&&>(f), static_cast<T&&>(t), seq<T>{})) {
+    return invoke_(static_cast<F&&>(f), static_cast<T&&>(t), seq<T>{});
+  }
+};
+
+//////////////////////////////////////////////////////////////////////
+
+//  mimic: std::apply, C++17
+template <typename F, typename Tuple>
+constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
+  return ApplyInvoke{}(static_cast<F&&>(func), static_cast<Tuple&&>(tuple));
+}
+
 /**
  * Mimic the invoke suite of traits for tuple based apply invocation
  */
 template <typename F, typename Tuple>
-using apply_result_t = decltype(detail::applyImpl(
-    std::declval<F>(),
-    std::declval<Tuple>(),
-    index_sequence_for_tuple<std::remove_reference_t<Tuple>>{}));
-
-template <typename F, typename Tuple, typename = void_t<>>
-class apply_result {};
+struct apply_result : invoke_result<ApplyInvoke, F, Tuple> {};
 template <typename F, typename Tuple>
-class apply_result<F, Tuple, void_t<apply_result_t<F, Tuple>>> {
-  using type = apply_result_t<F, Tuple>;
-};
-
-template <typename F, typename Tuple, typename = void_t<>>
-struct is_applicable : std::false_type {};
+using apply_result_t = invoke_result_t<ApplyInvoke, F, Tuple>;
 template <typename F, typename Tuple>
-struct is_applicable<F, Tuple, void_t<apply_result_t<F, Tuple>>>
-    : std::true_type {};
-
-template <typename R, typename F, typename Tuple, typename = void_t<>>
-struct is_applicable_r : std::false_type {};
+struct is_applicable : is_invocable<ApplyInvoke, F, Tuple> {};
 template <typename R, typename F, typename Tuple>
-struct is_applicable_r<R, F, Tuple, void_t<apply_result_t<F, Tuple>>>
-    : std::is_convertible<apply_result_t<F, Tuple>, R> {};
-
-template <typename F, typename Tuple, typename = void_t<>>
-struct is_nothrow_applicable : std::false_type {};
+struct is_applicable_r : is_invocable_r<R, ApplyInvoke, F, Tuple> {};
 template <typename F, typename Tuple>
-struct is_nothrow_applicable<F, Tuple, void_t<apply_result_t<F, Tuple>>>
-    : bool_constant<noexcept(detail::applyImpl(
-          std::declval<F>(),
-          std::declval<Tuple>(),
-          index_sequence_for_tuple<std::remove_reference_t<Tuple>>{}))> {};
-
-template <typename R, typename F, typename Tuple, typename = void_t<>>
-struct is_nothrow_applicable_r : std::false_type {};
+struct is_nothrow_applicable : is_nothrow_invocable<ApplyInvoke, F, Tuple> {};
 template <typename R, typename F, typename Tuple>
-struct is_nothrow_applicable_r<R, F, Tuple, void_t<apply_result_t<F, Tuple>>>
-    : folly::Conjunction<
-          std::is_convertible<apply_result_t<F, Tuple>, R>,
-          is_nothrow_applicable<F, Tuple>> {};
+struct is_nothrow_applicable_r
+    : is_nothrow_invocable_r<R, ApplyInvoke, F, Tuple> {};
 
 namespace detail {
 namespace apply_tuple {
