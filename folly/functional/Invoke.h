@@ -192,6 +192,8 @@ struct free_invoke_proxy {
       -> decltype(Invoke{}(static_cast<Args&&>(args)...)) {
     return Invoke{}(static_cast<Args&&>(args)...);
   }
+
+  using invoke_type = Invoke;
 };
 
 } // namespace detail
@@ -213,6 +215,10 @@ struct free_invoke_proxy {
  *  The container also has a static member function:
  *
  *  * invoke
+ *
+ *  And a member type alias:
+ *
+ *  * invoke_type
  *
  *  These members have behavior matching the behavior of C++17's corresponding
  *  invocation traits types, aliases, and functions, but substituting canonical
@@ -326,6 +332,8 @@ struct member_invoke_proxy {
       -> decltype(Invoke{}(static_cast<O&&>(o), static_cast<Args&&>(args)...)) {
     return Invoke{}(static_cast<O&&>(o), static_cast<Args&&>(args)...);
   }
+
+  using invoke_type = Invoke;
 };
 
 } // namespace detail
@@ -347,6 +355,10 @@ struct member_invoke_proxy {
  *  The container also has a static member function:
  *
  *  * invoke
+ *
+ *  And a member type alias:
+ *
+ *  * invoke_type
  *
  *  These members have behavior matching the behavior of C++17's corresponding
  *  invocation traits types, aliases, and functions, but substituting canonical
