@@ -17,13 +17,11 @@
 
 #include <functional>
 
-#include <boost/iterator/iterator_adaptor.hpp>
-#include <boost/iterator/iterator_facade.hpp>
-
 #include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Likely.h>
+#include <folly/detail/Iterators.h>
 
 //////////////////////////////////////////////////////////////////////
 
@@ -198,79 +196,91 @@ inline dynamic::ObjectMaker dynamic::object(dynamic a, dynamic b) {
 
 //////////////////////////////////////////////////////////////////////
 
-struct dynamic::item_iterator : boost::iterator_adaptor<
+struct dynamic::item_iterator : detail::IteratorAdaptor<
                                     dynamic::item_iterator,
-                                    dynamic::ObjectImpl::iterator> {
-  /* implicit */ item_iterator(base_type b) : iterator_adaptor_(b) {}
+                                    dynamic::ObjectImpl::iterator,
+                                    std::pair<dynamic const, dynamic>> {
+  using Super = detail::IteratorAdaptor<
+      dynamic::item_iterator,
+      dynamic::ObjectImpl::iterator,
+      std::pair<dynamic const, dynamic>>;
+  /* implicit */ item_iterator(dynamic::ObjectImpl::iterator b) : Super(b) {}
 
   using object_type = dynamic::ObjectImpl;
-
- private:
-  friend class boost::iterator_core_access;
 };
 
-struct dynamic::value_iterator : boost::iterator_adaptor<
+struct dynamic::value_iterator : detail::IteratorAdaptor<
                                      dynamic::value_iterator,
                                      dynamic::ObjectImpl::iterator,
                                      dynamic> {
-  /* implicit */ value_iterator(base_type b) : iterator_adaptor_(b) {}
+  using Super = detail::IteratorAdaptor<
+      dynamic::value_iterator,
+      dynamic::ObjectImpl::iterator,
+      dynamic>;
+  /* implicit */ value_iterator(dynamic::ObjectImpl::iterator b) : Super(b) {}
 
   using object_type = dynamic::ObjectImpl;
 
- private:
   dynamic& dereference() const {
-    return base_reference()->second;
+    return base()->second;
   }
-  friend class boost::iterator_core_access;
 };
 
 struct dynamic::const_item_iterator
-  : boost::iterator_adaptor<dynamic::const_item_iterator,
-                            dynamic::ObjectImpl::const_iterator> {
-  /* implicit */ const_item_iterator(base_type b) : iterator_adaptor_(b) { }
-  /* implicit */ const_item_iterator(item_iterator i)
-      : iterator_adaptor_(i.base()) {}
-  /* implicit */ const_item_iterator(dynamic::ObjectImpl::iterator i)
-      : iterator_adaptor_(i) {}
+    : detail::IteratorAdaptor<
+          dynamic::const_item_iterator,
+          dynamic::ObjectImpl::const_iterator,
+          std::pair<dynamic const, dynamic> const> {
+  using Super = detail::IteratorAdaptor<
+      dynamic::const_item_iterator,
+      dynamic::ObjectImpl::const_iterator,
+      std::pair<dynamic const, dynamic> const>;
+  /* implicit */ const_item_iterator(dynamic::ObjectImpl::const_iterator b)
+      : Super(b) {}
+  /* implicit */ const_item_iterator(const_item_iterator const& i)
+      : Super(i.base()) {}
+  /* implicit */ const_item_iterator(item_iterator i) : Super(i.base()) {}
 
   using object_type = dynamic::ObjectImpl const;
-
- private:
-  friend class boost::iterator_core_access;
 };
 
-struct dynamic::const_key_iterator
-  : boost::iterator_adaptor<dynamic::const_key_iterator,
-                            dynamic::ObjectImpl::const_iterator,
-                            dynamic const> {
-  /* implicit */ const_key_iterator(base_type b) : iterator_adaptor_(b) { }
+struct dynamic::const_key_iterator : detail::IteratorAdaptor<
+                                         dynamic::const_key_iterator,
+                                         dynamic::ObjectImpl::const_iterator,
+                                         dynamic const> {
+  using Super = detail::IteratorAdaptor<
+      dynamic::const_key_iterator,
+      dynamic::ObjectImpl::const_iterator,
+      dynamic const>;
+  /* implicit */ const_key_iterator(dynamic::ObjectImpl::const_iterator b)
+      : Super(b) {}
 
   using object_type = dynamic::ObjectImpl const;
 
- private:
   dynamic const& dereference() const {
-    return base_reference()->first;
+    return base()->first;
   }
-  friend class boost::iterator_core_access;
 };
 
-struct dynamic::const_value_iterator
-  : boost::iterator_adaptor<dynamic::const_value_iterator,
-                            dynamic::ObjectImpl::const_iterator,
-                            dynamic const> {
-  /* implicit */ const_value_iterator(base_type b) : iterator_adaptor_(b) { }
-  /* implicit */ const_value_iterator(value_iterator i)
-      : iterator_adaptor_(i.base()) {}
+struct dynamic::const_value_iterator : detail::IteratorAdaptor<
+                                           dynamic::const_value_iterator,
+                                           dynamic::ObjectImpl::const_iterator,
+                                           dynamic const> {
+  using Super = detail::IteratorAdaptor<
+      dynamic::const_value_iterator,
+      dynamic::ObjectImpl::const_iterator,
+      dynamic const>;
+  /* implicit */ const_value_iterator(dynamic::ObjectImpl::const_iterator b)
+      : Super(b) {}
+  /* implicit */ const_value_iterator(value_iterator i) : Super(i.base()) {}
   /* implicit */ const_value_iterator(dynamic::ObjectImpl::iterator i)
-      : iterator_adaptor_(i) {}
+      : Super(i) {}
 
   using object_type = dynamic::ObjectImpl const;
 
- private:
   dynamic const& dereference() const {
-    return base_reference()->second;
+    return base()->second;
   }
-  friend class boost::iterator_core_access;
 };
 
 //////////////////////////////////////////////////////////////////////
