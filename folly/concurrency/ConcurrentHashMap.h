@@ -278,15 +278,15 @@ class ConcurrentHashMap {
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
-      return folly::Optional<ConstIterator>();
+      return none;
     } else {
       auto r =
           seg->assign(res.it_, std::forward<Key>(k), std::forward<Value>(v));
       if (!r) {
-        return folly::Optional<ConstIterator>();
+        return none;
       }
     }
-    return res;
+    return std::move(res);
   }
 
   // Assign to desired if and only if key k is equal to expected
@@ -297,7 +297,7 @@ class ConcurrentHashMap {
     ConstIterator res(this, segment);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
-      return folly::Optional<ConstIterator>();
+      return none;
     } else {
       auto r = seg->assign_if_equal(
           res.it_,
@@ -305,10 +305,10 @@ class ConcurrentHashMap {
           expected,
           std::forward<Value>(desired));
       if (!r) {
-        return folly::Optional<ConstIterator>();
+        return none;
       }
     }
-    return res;
+    return std::move(res);
   }
 
   // Copying wrappers around insert and find.
