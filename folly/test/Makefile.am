@@ -385,4 +385,8 @@ iterator_test_SOURCES = ../container/test/IteratorTest.cpp
 iterator_test_LDADD = libfollytestmain.la
 TESTS += iterator_test
 
+detail_iterators_test_SOURCES = IteratorTests.cpp
+detail_iterators_test_LDADD = libfollytestmain.la
+TESTS += iterator_test
+
 check_PROGRAMS += $(TESTS)
