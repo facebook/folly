@@ -250,6 +250,7 @@ namespace function {
 enum class Op { MOVE, NUKE, FULL, HEAP };
 
 union Data {
+  Data() {}
   void* big;
   std::aligned_storage<6 * sizeof(void*)>::type tiny;
 };

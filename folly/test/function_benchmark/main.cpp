@@ -417,53 +417,54 @@ int main(int argc, char** argv) {
 ============================================================================
 folly/test/function_benchmark/main.cpp          relative  time/iter  iters/s
 ============================================================================
-fn_invoke                                                    1.00ns  995.54M
+fn_invoke                                                    1.02ns  980.05M
 fn_ptr_invoke                                                1.22ns  822.98M
-std_function_invoke                                          2.73ns  365.79M
-Function_invoke                                              2.73ns  365.78M
-mem_fn_invoke                                                1.40ns  713.96M
-fn_ptr_invoke_through_inline                                 1.22ns  823.00M
-lambda_invoke_fn                                             1.22ns  823.00M
+std_function_invoke                                          2.73ns  365.78M
+Function_invoke                                              2.73ns  365.80M
+mem_fn_invoke                                                1.37ns  731.32M
+fn_ptr_invoke_through_inline                                 1.22ns  822.98M
+lambda_invoke_fn                                             1.22ns  822.96M
 lambda_noop                                                  0.00fs  Infinity
-lambda_local_var                                           379.17ps    2.64G
-fn_ptr_invoke_through_template                               1.09ns  916.40M
-virtual_fn_invoke                                            1.22ns  823.00M
-fn_ptr_create_invoke                                         1.22ns  822.88M
-std_function_create_invoke                                   3.65ns  274.29M
-Function_create_invoke                                      10.63ns   94.04M
-mem_fn_create_invoke                                       980.40ps    1.02G
-std_bind_create_invoke                                      18.95ns   52.76M
-std_bind_direct_invoke                                       1.21ns  824.92M
-scope_guard_std_function                                     7.00ns  142.94M
-scope_guard_std_function_rvalue                              6.46ns  154.69M
-scope_guard_Function_rvalue                                 11.24ns   88.97M
-scope_guard_fn_ptr                                           1.22ns  822.88M
+lambda_local_var                                           182.45ps    5.48G
+fn_ptr_invoke_through_template                             911.58ps    1.10G
+virtual_fn_invoke                                            1.22ns  822.99M
+fn_ptr_create_invoke                                         1.22ns  822.97M
+std_function_create_invoke                                   3.92ns  255.32M
+Function_create_invoke                                       2.84ns  351.67M
+mem_fn_create_invoke                                         1.22ns  822.99M
+std_bind_create_invoke                                      18.92ns   52.85M
+std_bind_direct_invoke                                       1.22ns  822.99M
+scope_guard_std_function                                     7.36ns  135.87M
+scope_guard_std_function_rvalue                              6.46ns  154.70M
+scope_guard_Function_rvalue                                  4.94ns  202.59M
+scope_guard_fn_ptr                                           1.22ns  822.97M
 scope_guard_lambda_noop                                      0.00fs  Infinity
-scope_guard_lambda_function                                  1.22ns  822.97M
-scope_guard_lambda_local_var                                81.15ps   12.32G
+scope_guard_lambda_function                                  1.22ns  822.99M
+scope_guard_lambda_local_var                               101.27ps    9.87G
 ----------------------------------------------------------------------------
-throw_exception                                              1.89us  528.64K
-catch_no_exception                                           1.22ns  823.00M
-return_exc_ptr                                               1.40us  715.12K
-exc_ptr_param_return                                         1.41us  711.09K
-exc_ptr_param_return_null                                    1.22ns  822.99M
-return_string                                                2.73ns  365.78M
-return_string_noexcept                                       2.73ns  365.78M
-return_code                                                  1.17ns  857.79M
+throw_exception                                              1.88us  531.42K
+catch_no_exception                                           1.22ns  822.98M
+return_exc_ptr                                               1.39us  717.63K
+exc_ptr_param_return                                         1.40us  712.23K
+exc_ptr_param_return_null                                    1.22ns  823.00M
+return_string                                                2.43ns  411.48M
+return_string_noexcept                                       2.43ns  411.48M
+return_code                                                961.88ps    1.04G
 return_code_noexcept                                         1.22ns  822.99M
 ----------------------------------------------------------------------------
-std_function_create_move_invoke                             49.31ns   20.28M
-Function_create_move_invoke                                 60.81ns   16.44M
-std_function_create_move_invoke_small                        6.77ns  147.81M
-Function_create_move_invoke_small                           19.44ns   51.44M
-std_function_create_move_invoke_ref                          6.68ns  149.74M
-Function_create_move_invoke_ref                             20.66ns   48.41M
+std_function_create_move_invoke                             47.37ns   21.11M
+Function_create_move_invoke                                 53.55ns   18.67M
+std_function_create_move_invoke_small                        6.76ns  147.82M
+Function_create_move_invoke_small                            7.75ns  129.08M
+std_function_create_move_invoke_ref                          6.67ns  150.02M
+Function_create_move_invoke_ref                              7.63ns  131.09M
 ----------------------------------------------------------------------------
 function_ptr_move                                            1.21ns  823.06M
 std_function_move_small                                      5.77ns  173.20M
-Function_move_small                                         24.63ns   40.60M
+Function_move_small                                         10.17ns   98.31M
 std_function_move_small_trivial                              5.77ns  173.27M
-Function_move_small_trivial                                 22.63ns   44.19M
-std_function_move_large                                      5.77ns  173.21M
+Function_move_small_trivial                                  8.78ns  113.85M
+std_function_move_large                                      5.77ns  173.23M
+Function_move_large                                          8.21ns  121.85M
 ============================================================================
-*/
+ */
