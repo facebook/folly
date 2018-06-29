@@ -307,6 +307,20 @@ BENCHMARK(Function_create_move_invoke, iters) {
   }
 }
 
+BENCHMARK(std_function_create_move_invoke_small, iters) {
+  for (size_t i = 0; i < iters; ++i) {
+    std::function<void()> f(doNothing);
+    invoke(std::move(f));
+  }
+}
+
+BENCHMARK(Function_create_move_invoke_small, iters) {
+  for (size_t i = 0; i < iters; ++i) {
+    folly::Function<void()> f(doNothing);
+    invoke(std::move(f));
+  }
+}
+
 BENCHMARK(std_function_create_move_invoke_ref, iters) {
   LargeClass a;
   for (size_t i = 0; i < iters; ++i) {
@@ -323,9 +337,133 @@ BENCHMARK(Function_create_move_invoke_ref, iters) {
   }
 }
 
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(function_ptr_move, iters) {
+  auto f = &doNothing;
+  for (size_t i = 0; i < iters; ++i) {
+    auto f2 = std::move(f);
+    folly::doNotOptimizeAway(f2);
+    f = std::move(f2);
+  }
+}
+
+BENCHMARK(std_function_move_small, iters) {
+  std::shared_ptr<int> a(new int);
+  std::function<void()> f([a]() { doNothing(); });
+  for (size_t i = 0; i < iters; ++i) {
+    auto f2 = std::move(f);
+    folly::doNotOptimizeAway(f2);
+    f = std::move(f2);
+  }
+}
+
+BENCHMARK(Function_move_small, iters) {
+  std::shared_ptr<int> a(new int);
+  folly::Function<void()> f([a]() { doNothing(); });
+  for (size_t i = 0; i < iters; ++i) {
+    auto f2 = std::move(f);
+    folly::doNotOptimizeAway(f2);
+    f = std::move(f2);
+  }
+}
+
+BENCHMARK(std_function_move_small_trivial, iters) {
+  std::function<void()> f(doNothing);
+  for (size_t i = 0; i < iters; ++i) {
+    auto f2 = std::move(f);
+    folly::doNotOptimizeAway(f2);
+    f = std::move(f2);
+  }
+}
+
+BENCHMARK(Function_move_small_trivial, iters) {
+  folly::Function<void()> f(doNothing);
+  for (size_t i = 0; i < iters; ++i) {
+    auto f2 = std::move(f);
+    folly::doNotOptimizeAway(f2);
+    f = std::move(f2);
+  }
+}
+
+BENCHMARK(std_function_move_large, iters) {
+  LargeClass a;
+  std::function<void()> f(a);
+  for (size_t i = 0; i < iters; ++i) {
+    auto f2 = std::move(f);
+    folly::doNotOptimizeAway(f2);
+    f = std::move(f2);
+  }
+}
+
+BENCHMARK(Function_move_large, iters) {
+  LargeClass a;
+  folly::Function<void()> f(a);
+  for (size_t i = 0; i < iters; ++i) {
+    auto f2 = std::move(f);
+    folly::doNotOptimizeAway(f2);
+    f = std::move(f2);
+  }
+}
+
 // main()
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
 }
+
+/*
+============================================================================
+folly/test/function_benchmark/main.cpp          relative  time/iter  iters/s
+============================================================================
+fn_invoke                                                    1.00ns  995.54M
+fn_ptr_invoke                                                1.22ns  822.98M
+std_function_invoke                                          2.73ns  365.79M
+Function_invoke                                              2.73ns  365.78M
+mem_fn_invoke                                                1.40ns  713.96M
+fn_ptr_invoke_through_inline                                 1.22ns  823.00M
+lambda_invoke_fn                                             1.22ns  823.00M
+lambda_noop                                                  0.00fs  Infinity
+lambda_local_var                                           379.17ps    2.64G
+fn_ptr_invoke_through_template                               1.09ns  916.40M
+virtual_fn_invoke                                            1.22ns  823.00M
+fn_ptr_create_invoke                                         1.22ns  822.88M
+std_function_create_invoke                                   3.65ns  274.29M
+Function_create_invoke                                      10.63ns   94.04M
+mem_fn_create_invoke                                       980.40ps    1.02G
+std_bind_create_invoke                                      18.95ns   52.76M
+std_bind_direct_invoke                                       1.21ns  824.92M
+scope_guard_std_function                                     7.00ns  142.94M
+scope_guard_std_function_rvalue                              6.46ns  154.69M
+scope_guard_Function_rvalue                                 11.24ns   88.97M
+scope_guard_fn_ptr                                           1.22ns  822.88M
+scope_guard_lambda_noop                                      0.00fs  Infinity
+scope_guard_lambda_function                                  1.22ns  822.97M
+scope_guard_lambda_local_var                                81.15ps   12.32G
+----------------------------------------------------------------------------
+throw_exception                                              1.89us  528.64K
+catch_no_exception                                           1.22ns  823.00M
+return_exc_ptr                                               1.40us  715.12K
+exc_ptr_param_return                                         1.41us  711.09K
+exc_ptr_param_return_null                                    1.22ns  822.99M
+return_string                                                2.73ns  365.78M
+return_string_noexcept                                       2.73ns  365.78M
+return_code                                                  1.17ns  857.79M
+return_code_noexcept                                         1.22ns  822.99M
+----------------------------------------------------------------------------
+std_function_create_move_invoke                             49.31ns   20.28M
+Function_create_move_invoke                                 60.81ns   16.44M
+std_function_create_move_invoke_small                        6.77ns  147.81M
+Function_create_move_invoke_small                           19.44ns   51.44M
+std_function_create_move_invoke_ref                          6.68ns  149.74M
+Function_create_move_invoke_ref                             20.66ns   48.41M
+----------------------------------------------------------------------------
+function_ptr_move                                            1.21ns  823.06M
+std_function_move_small                                      5.77ns  173.20M
+Function_move_small                                         24.63ns   40.60M
+std_function_move_small_trivial                              5.77ns  173.27M
+Function_move_small_trivial                                 22.63ns   44.19M
+std_function_move_large                                      5.77ns  173.21M
+============================================================================
+*/
