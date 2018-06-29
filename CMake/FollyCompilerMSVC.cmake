@@ -268,7 +268,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       _CRT_NONSTDC_NO_WARNINGS # Don't deprecate posix names of functions.
       _CRT_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
       _SCL_SECURE_NO_WARNINGS # Don't deprecate the non _s versions of various standard library functions, because safety is for chumps.
-      
+      _ENABLE_EXTENDED_ALIGNED_STORAGE  #A type with an extended alignment in VS 15.8 or later
       _STL_EXTRA_DISABLED_WARNINGS=4774\ 4987
 
       $<$<BOOL:${MSVC_ENABLE_CPP_LATEST}>:_HAS_AUTO_PTR_ETC=1> # We're building in C++ 17 or greater mode, but certain dependencies (Boost) still have dependencies on unary_function and binary_function, so we have to make sure not to remove them.
