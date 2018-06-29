@@ -31,6 +31,7 @@
 #include <folly/FBVector.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/detail/Iterators.h>
 #include <folly/lang/Ordering.h>
 #include <folly/portability/SysUio.h>
 
@@ -1552,13 +1553,9 @@ inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(
   return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
 }
 
-class IOBuf::Iterator {
+class IOBuf::Iterator
+    : public detail::IteratorFacade<IOBuf::Iterator, ByteRange const> {
  public:
-  using difference_type = ssize_t;
-  using value_type = ByteRange;
-  using reference = ByteRange const&;
-  using pointer = ByteRange const*;
-  using iterator_category = std::forward_iterator_tag;
 
   // Note that IOBufs are stored as a circular list without a guard node,
   // so pos == end is ambiguous (it may mean "begin" or "end").  To solve
@@ -1585,47 +1582,6 @@ class IOBuf::Iterator {
     return *this;
   }
 
-  Iterator& operator++() {
-    increment();
-    return *this;
-  }
-
-  Iterator operator++(int) {
-    Iterator ret(*this);
-    ++*this;
-    return ret;
-  }
-
-  ByteRange const& operator*() const {
-    return dereference();
-  }
-
-  ByteRange const* operator->() const {
-    return &dereference();
-  }
-
-  bool operator==(Iterator const& rhs) const {
-    return equal(rhs);
-  }
-
-  bool operator!=(Iterator const& rhs) const {
-    return !equal(rhs);
-  }
-
- private:
-  void setVal() {
-    val_ = ByteRange(pos_->data(), pos_->tail());
-  }
-
-  void adjustForEnd() {
-    if (pos_ == end_) {
-      pos_ = end_ = nullptr;
-      val_ = ByteRange();
-    } else {
-      setVal();
-    }
-  }
-
   const ByteRange& dereference() const {
     return val_;
   }
@@ -1640,6 +1596,20 @@ class IOBuf::Iterator {
   void increment() {
     pos_ = pos_->next();
     adjustForEnd();
+  }
+
+ private:
+  void setVal() {
+    val_ = ByteRange(pos_->data(), pos_->tail());
+  }
+
+  void adjustForEnd() {
+    if (pos_ == end_) {
+      pos_ = end_ = nullptr;
+      val_ = ByteRange();
+    } else {
+      setVal();
+    }
   }
 
   const IOBuf* pos_{nullptr};
