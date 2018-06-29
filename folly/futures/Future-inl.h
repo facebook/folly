@@ -540,6 +540,7 @@ class DeferredExecutor final : public Executor {
   }
 
   void setExecutor(folly::Executor* executor) {
+    DCHECK(!dynamic_cast<DeferredExecutor*>(executor));
     if (nestedExecutors_) {
       for (auto nestedExecutor : *nestedExecutors_) {
         nestedExecutor->setExecutor(executor);
@@ -880,6 +881,9 @@ template <class T>
 template <typename F>
 SemiFuture<typename futures::detail::tryCallableResult<T, F>::value_type>
 SemiFuture<T>::defer(F&& func) && {
+  static_assert(
+      !futures::detail::tryCallableResult<T, F>::ReturnsFuture::value,
+      "defer does not support Future unwrapping");
   DeferredExecutor* deferredExecutor = getDeferredExecutor();
   if (!deferredExecutor) {
     deferredExecutor = new DeferredExecutor();
@@ -898,6 +902,9 @@ template <class T>
 template <typename F>
 SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
 SemiFuture<T>::deferValue(F&& func) && {
+  static_assert(
+      !futures::detail::valueCallableResult<T, F>::ReturnsFuture::value,
+      "deferValue does not support Future unwrapping");
   return std::move(*this).defer([f = std::forward<F>(func)](
                                     folly::Try<T>&& t) mutable {
     return std::forward<F>(f)(
@@ -910,13 +917,17 @@ SemiFuture<T>::deferValue(F&& func) && {
 template <class T>
 template <class ExceptionType, class F>
 SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
+  static_assert(
+      !isFutureOrSemiFuture<decltype(
+          std::forward<F>(func)(std::declval<ExceptionType&>()))>::value,
+      "deferError does not support Future unwrapping");
   return std::move(*this).defer(
       [func = std::forward<F>(func)](Try<T>&& t) mutable {
         if (auto e = t.template tryGetExceptionObject<ExceptionType>()) {
-          return makeSemiFutureWith(
-              [&]() mutable { return std::forward<F>(func)(*e); });
+          return Try<T>(makeTryWith([&] { return std::forward<F>(func)(*e); }))
+              .value();
         } else {
-          return makeSemiFuture<T>(std::move(t));
+          return std::move(*t);
         }
       });
 }
@@ -924,14 +935,19 @@ SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
 template <class T>
 template <class F>
 SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
+  static_assert(
+      !isFutureOrSemiFuture<decltype(
+          std::forward<F>(func)(std::declval<exception_wrapper&>()))>::value,
+      "deferError does not support Future unwrapping");
   return std::move(*this).defer(
       [func = std::forward<F>(func)](Try<T> t) mutable {
         if (t.hasException()) {
-          return makeSemiFutureWith([&]() mutable {
-            return std::forward<F>(func)(std::move(t.exception()));
-          });
+          return Try<T>(makeTryWith([&] {
+                   return std::forward<F>(func)(std::move(t.exception()));
+                 }))
+              .value();
         } else {
-          return makeSemiFuture<T>(std::move(t));
+          return std::move(*t);
         }
       });
 }
@@ -942,7 +958,7 @@ SemiFuture<T> SemiFuture<T>::delayed(Duration dur, Timekeeper* tk) && {
       .toUnsafeFuture()
       .then([](std::tuple<Try<T>, Try<Unit>> tup) {
         Try<T>& t = std::get<0>(tup);
-        return makeFuture<T>(std::move(t));
+        return makeFuture<T>(std::move(*t));
       });
 }
 
