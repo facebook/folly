@@ -632,6 +632,61 @@ class TryLockable {
   folly::Function<void()> onUnlock;
 };
 
+struct TestSharedMutex {
+ public:
+  void lock() {
+    onLock_();
+  }
+  void unlock() {
+    onUnlock_();
+  }
+  void lock_shared() {
+    onLockShared_();
+  }
+  void unlock_shared() {
+    onUnlockShared_();
+  }
+
+  bool try_lock() {
+    onLock_();
+    return true;
+  }
+  bool try_lock_shared() {
+    onLockShared_();
+    return true;
+  }
+
+  std::function<void()> onLock_;
+  std::function<void()> onUnlock_;
+  std::function<void()> onLockShared_;
+  std::function<void()> onUnlockShared_;
+};
+
+struct TestMutex {
+ public:
+  void lock() {
+    onLock();
+    ++numTimesLocked;
+  }
+  bool try_lock() {
+    if (shouldTryLockSucceed) {
+      lock();
+      return true;
+    }
+    return false;
+  }
+  void unlock() {
+    onUnlock();
+    ++numTimesUnlocked;
+  }
+
+  int numTimesLocked{0};
+  int numTimesUnlocked{0};
+  bool shouldTryLockSucceed{true};
+  std::function<void()> onLock{[] {}};
+  std::function<void()> onUnlock{[] {}};
+};
+
 template <int kLockable, typename Func>
 void testTryLock(Func func) {
   {
@@ -850,42 +905,15 @@ TEST(FollyLockTest, TestVariadicLockWithArbitraryLockables) {
   EXPECT_TRUE(lckTwo);
 }
 
-namespace {
-struct TestLock {
- public:
-  void lock() {
-    onLock();
-    ++numTimesLocked;
-  }
-  bool try_lock() {
-    if (shouldTryLockSucceed) {
-      lock();
-      return true;
-    }
-    return false;
-  }
-  void unlock() {
-    onUnlock();
-    ++numTimesUnlocked;
-  }
-
-  int numTimesLocked{0};
-  int numTimesUnlocked{0};
-  bool shouldTryLockSucceed{true};
-  std::function<void()> onLock{[] {}};
-  std::function<void()> onUnlock{[] {}};
-};
-} // namespace
-
 TEST(FollyLockTest, TestVariadicLockSmartAndPoliteAlgorithm) {
-  auto one = TestLock{};
-  auto two = TestLock{};
-  auto three = TestLock{};
+  auto one = TestMutex{};
+  auto two = TestMutex{};
+  auto three = TestMutex{};
   auto makeReset = [&] {
     return folly::makeGuard([&] {
-      one = TestLock{};
-      two = TestLock{};
-      three = TestLock{};
+      one = TestMutex{};
+      two = TestMutex{};
+      three = TestMutex{};
     });
   };
 
@@ -943,6 +971,60 @@ TEST(FollyLockTest, TestVariadicLockSmartAndPoliteAlgorithm) {
     EXPECT_EQ(three.numTimesLocked, 2);
     EXPECT_EQ(three.numTimesUnlocked, 1);
   }
+}
+
+TEST(SynchronizedAlgorithmTest, Basic) {
+  auto sync = Synchronized<int>{0};
+  auto value = synchronized([](auto s) { return *s; }, wlock(sync));
+  EXPECT_EQ(value, 0);
+}
+
+TEST(SynchronizedAlgorithmTest, BasicNonShareableMutex) {
+  auto sync = Synchronized<int, std::mutex>{0};
+  auto value = synchronized([](auto s) { return *s; }, lock(sync));
+  EXPECT_EQ(value, 0);
+}
+
+TEST(Synchronized, SynchronizedFunctionNonConst) {
+  auto locked = 0;
+  auto unlocked = 0;
+  auto sync = Synchronized<int, TestSharedMutex>{
+      std::piecewise_construct,
+      std::make_tuple(0),
+      std::make_tuple([&] { ++locked; }, [&] { ++unlocked; }, [] {}, [] {})};
+
+  synchronized([](auto) {}, wlock(sync));
+  EXPECT_EQ(locked, 1);
+  EXPECT_EQ(unlocked, 1);
+}
+
+TEST(Synchronized, SynchronizedFunctionConst) {
+  auto locked = 0;
+  auto unlocked = 0;
+  auto sync = Synchronized<int, TestSharedMutex>{
+      std::piecewise_construct,
+      std::make_tuple(0),
+      std::make_tuple([] {}, [] {}, [&] { ++locked; }, [&] { ++unlocked; })};
+
+  synchronized([](auto) {}, rlock(sync));
+  EXPECT_EQ(locked, 1);
+  EXPECT_EQ(unlocked, 1);
+}
+
+TEST(Synchronized, SynchronizedFunctionManyObjects) {
+  auto fail = [] { EXPECT_TRUE(false); };
+  auto pass = [] {};
+
+  auto one = Synchronized<int, TestSharedMutex>{
+      std::piecewise_construct,
+      std::make_tuple(0),
+      std::make_tuple(pass, pass, fail, fail)};
+  auto two = Synchronized<std::string, TestSharedMutex>{
+      std::piecewise_construct,
+      std::make_tuple(),
+      std::make_tuple(fail, fail, pass, pass)};
+
+  synchronized([](auto, auto) {}, wlock(one), rlock(two));
 }
 
 } // namespace folly
