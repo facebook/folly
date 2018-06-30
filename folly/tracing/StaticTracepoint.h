@@ -40,5 +40,6 @@
   do {                                                \
   } while (0)
 #define FOLLY_SDT_IS_ENABLED(provider, name) (false)
-
+#define FOLLY_SDT_DEFINE_SEMAPHORE(provider, name)
+#define FOLLY_SDT_DECLARE_SEMAPHORE(provider, name)
 #endif
