@@ -66,11 +66,19 @@ struct ApplyInvoke : private detail::apply_tuple::adl::ApplyInvoke {
 
 //////////////////////////////////////////////////////////////////////
 
+#if __cpp_lib_apply >= 201603
+
+/* using override */ using std::apply;
+
+#else // __cpp_lib_apply >= 201603
+
 //  mimic: std::apply, C++17
 template <typename F, typename Tuple>
 constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
   return ApplyInvoke{}(static_cast<F&&>(func), static_cast<Tuple&&>(tuple));
 }
+
+#endif // __cpp_lib_apply >= 201603
 
 /**
  * Mimic the invoke suite of traits for tuple based apply invocation
