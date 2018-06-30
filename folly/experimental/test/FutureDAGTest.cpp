@@ -271,5 +271,5 @@ TEST_F(FutureDAGTest, DestroyBeforeComplete) {
     f = localDag->go();
   }
   barrier->wait();
-  ASSERT_NO_THROW(f.get());
+  ASSERT_NO_THROW(std::move(f).get());
 }

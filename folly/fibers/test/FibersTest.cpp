@@ -1620,7 +1620,7 @@ void singleBatchDispatch(ExecutorT& executor, int batchSize, int index) {
 
   auto indexCopy = index;
   auto result = batchDispatcher.add(std::move(indexCopy));
-  EXPECT_EQ(folly::to<std::string>(index), result.get());
+  EXPECT_EQ(folly::to<std::string>(index), std::move(result).get());
 }
 
 TEST(FiberManager, batchDispatchTest) {
@@ -1720,7 +1720,7 @@ void doubleBatchOuterDispatch(
 
   auto indexCopy = index;
   auto result = batchDispatcher.add(std::move(indexCopy));
-  EXPECT_EQ(folly::to<std::string>(index), result.get());
+  EXPECT_EQ(folly::to<std::string>(index), std::move(result).get());
 }
 
 TEST(FiberManager, doubleBatchDispatchTest) {

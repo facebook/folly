@@ -284,5 +284,5 @@ TEST(Executor, DoNothingExecutor) {
   x.add({});
 
   EXPECT_TRUE(f.isReady());
-  EXPECT_THROW(f.get(), folly::BrokenPromise);
+  EXPECT_THROW(std::move(f).get(), folly::BrokenPromise);
 }
