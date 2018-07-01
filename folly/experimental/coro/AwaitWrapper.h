@@ -31,10 +31,19 @@ class AwaitWrapper {
       return {};
     }
 
-    std::experimental::suspend_never final_suspend() {
-      executor_->add(awaiter_);
-      awaitWrapper_->promise_ = nullptr;
-      return {};
+    auto final_suspend() {
+      struct FinalAwaiter {
+        bool await_ready() noexcept {
+          return false;
+        }
+        void await_suspend(
+            std::experimental::coroutine_handle<promise_type> h) noexcept {
+          auto& p = h.promise();
+          p.executor_->add(p.awaiter_);
+        }
+        void await_resume() noexcept {}
+      };
+      return FinalAwaiter{};
     }
 
     void return_void() {}
@@ -50,7 +59,6 @@ class AwaitWrapper {
 
     Executor* executor_;
     std::experimental::coroutine_handle<> awaiter_;
-    AwaitWrapper* awaitWrapper_{nullptr};
   };
 
   static AwaitWrapper create(Awaitable* awaitable) {
@@ -90,8 +98,6 @@ class AwaitWrapper {
 
   ~AwaitWrapper() {
     if (promise_) {
-      // This happens if await_ready() returns true or await_suspend() returns
-      // false.
       std::experimental::coroutine_handle<promise_type>::from_promise(*promise_)
           .destroy();
     }
@@ -99,9 +105,7 @@ class AwaitWrapper {
 
  private:
   AwaitWrapper(Awaitable* awaitable) : awaitable_(awaitable) {}
-  AwaitWrapper(promise_type& promise) : promise_(&promise) {
-    promise.awaitWrapper_ = this;
-  }
+  AwaitWrapper(promise_type& promise) : promise_(&promise) {}
 
   static AwaitWrapper awaitWrapper() {
     co_return;
