@@ -1294,3 +1294,21 @@ TEST(Conv, TryToThenWithVoid) {
   Unit u = x.value();
   (void)u;
 }
+
+TEST(conv, TryIntToUnscopedEnumAndBack) {
+  enum UnscopedEnum {
+    First = 0,
+    Second = 1,
+  };
+  EXPECT_EQ(UnscopedEnum::Second, folly::tryTo<UnscopedEnum>(1).value());
+  EXPECT_EQ(1, folly::tryTo<int>(UnscopedEnum::Second).value());
+}
+
+TEST(conv, TryIntToScopedEnumAndBack) {
+  enum class ScopedEnum {
+    First = 0,
+    Second = 1,
+  };
+  EXPECT_EQ(ScopedEnum::Second, folly::tryTo<ScopedEnum>(1).value());
+  EXPECT_EQ(1, folly::tryTo<int>(ScopedEnum::Second).value());
+}

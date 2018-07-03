@@ -1561,8 +1561,8 @@ tryTo(const Src& value) {
 
 template <class Tgt, class Src>
 typename std::enable_if<
-    !std::is_convertible<Src, StringPiece>::valuea &&
-        std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value,
+    !std::is_convertible<Src, StringPiece>::value && std::is_enum<Tgt>::value &&
+        !std::is_same<Src, Tgt>::value,
     Expected<Tgt, ConversionCode>>::type
 tryTo(const Src& value) {
   using I = typename std::underlying_type<Tgt>::type;
