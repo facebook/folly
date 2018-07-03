@@ -1330,6 +1330,12 @@ class LockedPtr : public LockedPtrBase<
   using UnlockerData = typename Base::UnlockerData;
   // CDataType is the DataType with the appropriate const-qualification
   using CDataType = detail::SynchronizedDataType<SynchronizedType>;
+  // Enable only if the unlock policy of the other LockPolicy is the same as
+  // ours
+  template <typename LockPolicyOther>
+  using EnableIfSameUnlockPolicy = std::enable_if_t<std::is_same<
+      typename LockPolicy::UnlockPolicy,
+      typename LockPolicyOther::UnlockPolicy>::value>;
 
   // friend other LockedPtr types
   template <typename SynchronizedTypeOther, typename LockPolicyOther>
@@ -1371,19 +1377,19 @@ class LockedPtr : public LockedPtrBase<
    * Move constructor.
    */
   LockedPtr(LockedPtr&& rhs) noexcept = default;
+  template <
+      typename LockPolicyType,
+      EnableIfSameUnlockPolicy<LockPolicyType>* = nullptr>
+  LockedPtr(LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept
+      : Base{std::move(other)} {}
 
   /**
    * Move assignment operator.
    */
   LockedPtr& operator=(LockedPtr&& rhs) noexcept = default;
-
   template <
       typename LockPolicyType,
-      typename std::enable_if<
-          std::is_same<
-              typename LockPolicy::UnlockPolicy,
-              typename LockPolicyType::UnlockPolicy>::value,
-          int>::type = 0>
+      EnableIfSameUnlockPolicy<LockPolicyType>* = nullptr>
   LockedPtr& operator=(
       LockedPtr<SynchronizedType, LockPolicyType>&& other) noexcept {
     Base::operator=(std::move(other));
