@@ -222,7 +222,7 @@ TEST(Timekeeper, semiFutureWithinAlreadyComplete) {
   auto f = makeSemiFuture(42).within(one_ms).toUnsafeFuture().onError(
       [&](FutureTimeout&) { return -1; });
 
-  EXPECT_EQ(42, f.get());
+  EXPECT_EQ(42, std::move(f).get());
 }
 
 TEST(Timekeeper, futureWithinFinishesInTime) {
@@ -243,7 +243,7 @@ TEST(Timekeeper, semiFutureWithinFinishesInTime) {
                .onError([&](FutureTimeout&) { return -1; });
   p.setValue(42);
 
-  EXPECT_EQ(42, f.get());
+  EXPECT_EQ(42, std::move(f).get());
 }
 
 TEST(Timekeeper, futureWithinVoidSpecialization) {

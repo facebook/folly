@@ -36,18 +36,18 @@ TEST(AsyncFunc, manual_executor) {
 TEST(AsyncFunc, value_lambda) {
   auto lambda = [] { return 42; };
   auto future = async(lambda);
-  EXPECT_EQ(42, future.get());
+  EXPECT_EQ(42, std::move(future).get());
 }
 
 TEST(AsyncFunc, void_lambda) {
   auto lambda = [] { /*do something*/ return; };
   auto future = async(lambda);
   // Futures with a void returning function, return Unit type
-  EXPECT_EQ(typeid(Unit), typeid(future.get()));
+  EXPECT_EQ(typeid(Unit), typeid(std::move(future).get()));
 }
 
 TEST(AsyncFunc, moveonly_lambda) {
   auto lambda = [] { return std::make_unique<int>(42); };
   auto future = async(lambda);
-  EXPECT_EQ(42, *future.get());
+  EXPECT_EQ(42, *std::move(future).get());
 }

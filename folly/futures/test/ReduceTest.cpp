@@ -199,5 +199,5 @@ TEST(Reduce, unorderedReduceFuture) {
   ps[1].setValue(2.0);
   ps[2].setValue(3.0);
 
-  EXPECT_EQ(1.0, f.get());
+  EXPECT_EQ(1.0, std::move(f).get());
 }

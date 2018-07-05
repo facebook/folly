@@ -614,7 +614,7 @@ static void removeThreadTest() {
   fe.setNumThreads(1);
 
   // future::then should be fulfilled because there is other thread available
-  EXPECT_EQ(77, f->get());
+  EXPECT_EQ(77, std::move(*f).get());
   // two thread should be different because then part should be rescheduled to
   // the other thread
   EXPECT_NE(id1, id2);
@@ -786,7 +786,7 @@ static void WeakRefTest() {
             .then([]() { burnMs(100)(); })
             .then([&] { ++counter; });
   }
-  EXPECT_THROW(f->get(), folly::BrokenPromise);
+  EXPECT_THROW(std::move(*f).get(), folly::BrokenPromise);
   EXPECT_EQ(1, counter);
 }
 

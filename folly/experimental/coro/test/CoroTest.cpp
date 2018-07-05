@@ -119,7 +119,7 @@ TEST(Coro, FutureThrow) {
   executor.drive();
 
   EXPECT_TRUE(future.isReady());
-  EXPECT_THROW(future.get(), std::runtime_error);
+  EXPECT_THROW(std::move(future).get(), std::runtime_error);
 }
 
 coro::Task<int> taskRecursion(int depth) {
