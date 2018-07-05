@@ -253,15 +253,10 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
       : detail::ForwardPointers<Encoder::forwardQuantum>(list.forwardPointers),
         detail::SkipPointers<Encoder::skipQuantum>(list.skipPointers),
         bits_(list.bits),
-        size_(list.size) {
+        size_(list.size),
+        upperBound_(
+            (kUnchecked || UNLIKELY(list.size == 0)) ? 0 : list.upperBound) {
     reset();
-
-    if (kUnchecked || UNLIKELY(list.size == 0)) {
-      upperBound_ = 0;
-      return;
-    }
-
-    upperBound_ = list.upperBound;
   }
 
   void reset() {
@@ -440,8 +435,8 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
   SizeType position_;
   ValueType value_;
 
-  SizeType size_;
-  ValueType upperBound_;
+  const SizeType size_;
+  const ValueType upperBound_;
 };
 
 } // namespace compression
