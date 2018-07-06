@@ -57,6 +57,16 @@ class PriorityMPMCQueue {
     return queues_.at(queue).write(std::move(item));
   }
 
+  bool writeWithPriority(
+      T&& item,
+      size_t priority,
+      std::chrono::milliseconds timeout) {
+    size_t queue = std::min(getNumPriorities() - 1, priority);
+    CHECK_LT(queue, queues_.size());
+    return queues_.at(queue).tryWriteUntil(
+        std::chrono::steady_clock::now() + timeout, std::move(item));
+  }
+
   bool read(T& item) {
     for (auto& q : queues_) {
       if (q.readIfNotEmpty(item)) {

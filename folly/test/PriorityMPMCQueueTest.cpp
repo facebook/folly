@@ -94,3 +94,36 @@ TEST(PriorityMPMCQueue, TestReadWithPriority) {
     EXPECT_FALSE(queue.readWithPriority(item, i));
   }
 }
+
+TEST(PriorityMPMCQueue, TestWriteWithPriorityAndTimeout) {
+  PriorityMPMCQueue<size_t> queue(5, 1);
+  EXPECT_TRUE(queue.isEmpty());
+  EXPECT_EQ(5, queue.getNumPriorities());
+
+  const auto timeout = std::chrono::milliseconds{30};
+  for (int i = 0; i < 5; i++) {
+    auto time_before = std::chrono::steady_clock::now();
+    EXPECT_TRUE(queue.writeWithPriority(i, i, timeout));
+    auto time_after = std::chrono::steady_clock::now();
+    EXPECT_LE(time_after - time_before, timeout);
+  }
+
+  // check writeWithPriority will wait for at least timeout if the queue is
+  // full.
+  auto time_before = std::chrono::steady_clock::now();
+  EXPECT_FALSE(queue.writeWithPriority(5, 0, timeout));
+  auto time_after = std::chrono::steady_clock::now();
+  EXPECT_GE(time_after - time_before, timeout);
+
+  EXPECT_FALSE(queue.isEmpty());
+  EXPECT_EQ(5, queue.size());
+  EXPECT_EQ(5, queue.sizeGuess());
+
+  size_t item;
+  for (int i = 0; i < 5; i++) {
+    queue.read(item);
+    EXPECT_EQ(i, item);
+    EXPECT_EQ(4 - i, queue.size());
+    EXPECT_EQ(4 - i, queue.sizeGuess());
+  }
+}
