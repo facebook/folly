@@ -551,3 +551,44 @@ TEST(IsNothrowApplicableR, Basic) {
                   std::tuple<int, double>>::value));
   }
 }
+
+TEST(ForwardTuple, Basic) {
+  auto tuple = std::make_tuple(1, 2.0);
+
+  EXPECT_TRUE((std::is_same<
+               decltype(folly::forward_tuple(tuple)),
+               std::tuple<int&, double&>>::value));
+  EXPECT_EQ(folly::forward_tuple(tuple), tuple);
+  EXPECT_TRUE((std::is_same<
+               decltype(folly::forward_tuple(folly::as_const(tuple))),
+               std::tuple<const int&, const double&>>::value));
+  EXPECT_EQ(folly::forward_tuple(folly::as_const(tuple)), tuple);
+
+  EXPECT_TRUE((std::is_same<
+               decltype(folly::forward_tuple(std::move(tuple))),
+               std::tuple<int&&, double&&>>::value));
+  EXPECT_EQ(folly::forward_tuple(std::move(tuple)), tuple);
+  EXPECT_TRUE(
+      (std::is_same<
+          decltype(folly::forward_tuple(std::move(folly::as_const(tuple)))),
+          std::tuple<const int&, const double&>>::value));
+  EXPECT_EQ(folly::forward_tuple(std::move(folly::as_const(tuple))), tuple);
+
+  auto integer = 1;
+  auto floating_point = 2.0;
+  auto ref_tuple = std::forward_as_tuple(integer, std::move(floating_point));
+
+  EXPECT_TRUE((std::is_same<
+               decltype(folly::forward_tuple(ref_tuple)),
+               std::tuple<int&, double&>>::value));
+
+  EXPECT_TRUE((std::is_same<
+               decltype(folly::forward_tuple(std::move(ref_tuple))),
+               std::tuple<int&, double&&>>::value));
+
+  EXPECT_TRUE((std::is_same<
+               decltype(std::tuple_cat(
+                   folly::forward_tuple(tuple),
+                   folly::forward_tuple(std::move(tuple)))),
+               std::tuple<int&, double&, int&&, double&&>>::value));
+}

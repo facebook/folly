@@ -39,6 +39,7 @@ namespace detail {
 namespace apply_tuple {
 namespace adl {
 using std::get;
+
 struct ApplyInvoke {
   template <typename T>
   using seq = index_sequence_for_tuple<std::remove_reference_t<T>>;
@@ -50,6 +51,15 @@ struct ApplyInvoke {
     return invoke(static_cast<F&&>(f), get<I>(static_cast<T&&>(t))...);
   }
 };
+
+template <
+    typename Tuple,
+    std::size_t... Indices,
+    typename ReturnTuple =
+        std::tuple<decltype(get<Indices>(std::declval<Tuple>()))...>>
+auto forward_tuple(Tuple&& tuple, index_sequence<Indices...>) -> ReturnTuple {
+  return ReturnTuple{get<Indices>(std::forward<Tuple>(tuple))...};
+}
 } // namespace adl
 } // namespace apply_tuple
 } // namespace detail
@@ -79,6 +89,33 @@ constexpr decltype(auto) apply(F&& func, Tuple&& tuple) {
 }
 
 #endif // __cpp_lib_apply >= 201603
+
+/**
+ * Get a tuple of references from the passed tuple, forwarding will be applied
+ * on the individual types of the tuple based on the value category of the
+ * passed tuple
+ *
+ * For example
+ *
+ *    forward_tuple(std::make_tuple(1, 2))
+ *
+ * Returns a std::tuple<int&&, int&&>,
+ *
+ *    auto tuple = std::make_tuple(1, 2);
+ *    forward_tuple(tuple)
+ *
+ * Returns a std::tuple<int&, int&>
+ */
+template <typename Tuple>
+auto forward_tuple(Tuple&& tuple) noexcept
+    -> decltype(detail::apply_tuple::adl::forward_tuple(
+        std::declval<Tuple>(),
+        std::declval<
+            index_sequence_for_tuple<std::remove_reference_t<Tuple>>>())) {
+  return detail::apply_tuple::adl::forward_tuple(
+      std::forward<Tuple>(tuple),
+      index_sequence_for_tuple<std::remove_reference_t<Tuple>>{});
+}
 
 /**
  * Mimic the invoke suite of traits for tuple based apply invocation
