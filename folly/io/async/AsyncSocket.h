@@ -598,6 +598,14 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return connectTimeout_;
   }
 
+  std::chrono::steady_clock::time_point getConnectStartTime() const {
+    return connectStartTime_;
+  }
+
+  std::chrono::steady_clock::time_point getConnectEndTime() const {
+    return connectEndTime_;
+  }
+
   bool getTFOAttempted() const {
     return tfoAttempted_;
   }

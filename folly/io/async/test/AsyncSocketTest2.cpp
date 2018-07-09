@@ -102,12 +102,17 @@ TEST(AsyncSocketTest, Connect) {
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback cb;
+  const auto startedAt = std::chrono::steady_clock::now();
   socket->connect(&cb, server.getAddress(), 30);
 
   evb.loop();
+  const auto finishedAt = std::chrono::steady_clock::now();
 
   ASSERT_EQ(cb.state, STATE_SUCCEEDED);
   EXPECT_LE(0, socket->getConnectTime().count());
+  EXPECT_GE(socket->getConnectStartTime(), startedAt);
+  EXPECT_LE(socket->getConnectStartTime(), socket->getConnectEndTime());
+  EXPECT_LE(socket->getConnectEndTime(), finishedAt);
   EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(30));
 }
 
