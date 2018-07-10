@@ -573,7 +573,7 @@ TEST(Optional, Pointee) {
 TEST(Optional, MakeOptional) {
   // const L-value version
   const std::string s("abc");
-  auto optStr = make_optional(s);
+  auto optStr = folly::make_optional(s);
   ASSERT_TRUE(optStr.hasValue());
   EXPECT_EQ(*optStr, "abc");
   *optStr = "cde";
@@ -582,7 +582,7 @@ TEST(Optional, MakeOptional) {
 
   // L-value version
   std::string s2("abc");
-  auto optStr2 = make_optional(s2);
+  auto optStr2 = folly::make_optional(s2);
   ASSERT_TRUE(optStr2.hasValue());
   EXPECT_EQ(*optStr2, "abc");
   *optStr2 = "cde";
@@ -591,7 +591,7 @@ TEST(Optional, MakeOptional) {
 
   // L-value reference version
   std::string& s3(s2);
-  auto optStr3 = make_optional(s3);
+  auto optStr3 = folly::make_optional(s3);
   ASSERT_TRUE(optStr3.hasValue());
   EXPECT_EQ(*optStr3, "abc");
   *optStr3 = "cde";
@@ -599,7 +599,7 @@ TEST(Optional, MakeOptional) {
 
   // R-value ref version
   unique_ptr<int> pInt(new int(3));
-  auto optIntPtr = make_optional(std::move(pInt));
+  auto optIntPtr = folly::make_optional(std::move(pInt));
   EXPECT_TRUE(pInt.get() == nullptr);
   ASSERT_TRUE(optIntPtr.hasValue());
   EXPECT_EQ(**optIntPtr, 3);
