@@ -44,6 +44,7 @@
 #endif
 
 #if FOLLY_HAVE_LIBBZ2
+#include <folly/portability/Windows.h>
 #include <bzlib.h>
 #endif
 
