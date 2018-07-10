@@ -19,6 +19,7 @@
 #include <future>
 
 #include <folly/Executor.h>
+#include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/synchronization/Baton.h>
 

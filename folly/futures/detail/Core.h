@@ -31,6 +31,7 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/MicroSpinLock.h>
+#include <glog/logging.h>
 
 #include <folly/io/async/Request.h>
 

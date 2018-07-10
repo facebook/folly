@@ -21,44 +21,68 @@
 
 #include <folly/MapUtil.h>
 #include <folly/SingletonThreadLocal.h>
+#include <folly/synchronization/Hazptr.h>
 
 namespace folly {
+
+struct RequestContext::State : hazptr_obj_base<State> {
+  std::map<std::string, std::shared_ptr<RequestData>> requestData_;
+  std::set<RequestData*> callbackData_;
+};
+
+RequestContext::RequestContext() : state_(new State) {}
+
+RequestContext::~RequestContext() {
+  auto p = state_.load(std::memory_order_relaxed);
+  delete p;
+}
 
 bool RequestContext::doSetContextData(
     const std::string& val,
     std::unique_ptr<RequestData>& data,
     bool strict) {
-  auto ulock = state_.ulock();
+  State* p{nullptr};
 
-  bool conflict = false;
-  auto it = ulock->requestData_.find(val);
-  if (it != ulock->requestData_.end()) {
-    if (strict) {
-      return false;
-    } else {
-      LOG_FIRST_N(WARNING, 1) << "Calling RequestContext::setContextData for "
-                              << val << " but it is already set";
-      conflict = true;
-    }
-  }
+  {
+    std::lock_guard<std::mutex> g(m_);
+    p = state_.load(std::memory_order_acquire);
 
-  auto wlock = ulock.moveFromUpgradeToWrite();
-  if (conflict) {
-    if (it->second) {
-      if (it->second->hasCallback()) {
-        it->second->onUnset();
-        wlock->callbackData_.erase(it->second.get());
+    bool conflict = false;
+    auto it = p->requestData_.find(val);
+    if (it != p->requestData_.end()) {
+      if (strict) {
+        return false;
+      } else {
+        LOG_FIRST_N(WARNING, 1) << "Calling RequestContext::setContextData for "
+                                << val << " but it is already set";
+        conflict = true;
       }
-      it->second.reset(nullptr);
     }
-    return true;
+
+    auto newstate = new State(*p);
+    it = newstate->requestData_.find(val);
+
+    if (conflict) {
+      if (it->second) {
+        if (it->second->hasCallback()) {
+          it->second->onUnset();
+          newstate->callbackData_.erase(it->second.get());
+        }
+        it->second.reset();
+      }
+    }
+
+    if (data && data->hasCallback()) {
+      newstate->callbackData_.insert(data.get());
+      data->onSet();
+    }
+    newstate->requestData_[val] = std::move(data);
+    state_.store(newstate, std::memory_order_release);
   }
 
-  if (data && data->hasCallback()) {
-    wlock->callbackData_.insert(data.get());
-    data->onSet();
+  if (p) {
+    p->retire();
   }
-  wlock->requestData_[val] = std::move(data);
 
   return true;
 }
@@ -76,38 +100,49 @@ bool RequestContext::setContextDataIfAbsent(
 }
 
 bool RequestContext::hasContextData(const std::string& val) const {
-  return state_.rlock()->requestData_.count(val);
+  hazptr_local<1> hptr;
+  auto p = hptr[0].get_protected(state_);
+  return p->requestData_.count(val) != 0;
 }
 
 RequestData* RequestContext::getContextData(const std::string& val) {
-  const std::unique_ptr<RequestData> dflt{nullptr};
-  return get_ref_default(state_.rlock()->requestData_, val, dflt).get();
+  const std::shared_ptr<RequestData> dflt{nullptr};
+  hazptr_local<1> hptr;
+  auto p = hptr[0].get_protected(state_);
+  p->requestData_.count(val);
+  return get_ref_default(p->requestData_, val, dflt).get();
 }
 
 const RequestData* RequestContext::getContextData(
     const std::string& val) const {
-  const std::unique_ptr<RequestData> dflt{nullptr};
-  return get_ref_default(state_.rlock()->requestData_, val, dflt).get();
+  const std::shared_ptr<RequestData> dflt{nullptr};
+  hazptr_local<1> hptr;
+  auto p = hptr[0].get_protected(state_);
+  p->requestData_.count(val);
+  return get_ref_default(p->requestData_, val, dflt).get();
 }
 
 void RequestContext::onSet() {
-  auto rlock = state_.rlock();
-  for (const auto& data : rlock->callbackData_) {
+  hazptr_holder<> hptr;
+  auto p = hptr.get_protected(state_);
+  for (const auto& data : p->callbackData_) {
     data->onSet();
   }
 }
 
 void RequestContext::onUnset() {
-  auto rlock = state_.rlock();
-  for (const auto& data : rlock->callbackData_) {
+  hazptr_holder<> hptr;
+  auto p = hptr.get_protected(state_);
+  for (const auto& data : p->callbackData_) {
     data->onUnset();
   }
 }
 
 std::shared_ptr<RequestContext> RequestContext::createChild() {
+  hazptr_local<1> hptr;
+  auto p = hptr[0].get_protected(state_);
   auto child = std::make_shared<RequestContext>();
-  auto rlock = state_.rlock();
-  for (const auto& entry : rlock->requestData_) {
+  for (const auto& entry : p->requestData_) {
     auto& key = entry.first;
     auto childData = entry.second->createChild();
     if (childData) {
@@ -118,24 +153,37 @@ std::shared_ptr<RequestContext> RequestContext::createChild() {
 }
 
 void RequestContext::clearContextData(const std::string& val) {
-  std::unique_ptr<RequestData> requestData;
-  // Delete the RequestData after giving up the wlock just in case one of the
-  // RequestData destructors will try to grab the lock again.
+  std::shared_ptr<RequestData> requestData;
+  // requestData is deleted while lock is not held, in case
+  // destructor contains calls to RequestContext
+  State* p{nullptr};
+
   {
-    auto ulock = state_.ulock();
-    auto it = ulock->requestData_.find(val);
-    if (it == ulock->requestData_.end()) {
+    std::lock_guard<std::mutex> g(m_);
+    p = state_.load(std::memory_order_acquire);
+
+    auto it = p->requestData_.find(val);
+    if (it == p->requestData_.end()) {
       return;
     }
 
-    auto wlock = ulock.moveFromUpgradeToWrite();
+    auto newstate = new State(*p);
+
+    it = newstate->requestData_.find(val);
+    CHECK(it != newstate->requestData_.end());
+
     if (it->second && it->second->hasCallback()) {
       it->second->onUnset();
-      wlock->callbackData_.erase(it->second.get());
+      newstate->callbackData_.erase(it->second.get());
     }
 
-    requestData = std::move(it->second);
-    wlock->requestData_.erase(it);
+    requestData = it->second;
+    newstate->requestData_.erase(it);
+    state_.store(newstate, std::memory_order_release);
+  }
+
+  if (p) {
+    p->retire();
   }
 }
 
