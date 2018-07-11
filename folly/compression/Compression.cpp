@@ -1491,7 +1491,7 @@ bool LZMA2StreamCodec::doUncompressStream(
 }
 #endif // FOLLY_HAVE_LIBLZMA
 
-#ifdef FOLLY_HAVE_LIBZSTD
+#if FOLLY_HAVE_LIBZSTD
 
 static int zstdConvertLevel(int level) {
   switch (level) {
