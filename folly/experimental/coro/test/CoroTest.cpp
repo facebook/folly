@@ -223,4 +223,59 @@ TEST(Coro, TimedWait) {
   via(&executor, taskTimedWait()).toFuture().getVia(&executor);
 }
 
+template <int value>
+struct AwaitableInt {
+  bool await_ready() const {
+    return true;
+  }
+
+  bool await_suspend(std::experimental::coroutine_handle<>) {
+    LOG(FATAL) << "Should never be called.";
+  }
+
+  int await_resume() {
+    return value;
+  }
+};
+
+struct AwaitableWithOperator {};
+
+AwaitableInt<42> operator co_await(const AwaitableWithOperator&) {
+  return {};
+}
+
+coro::Task<int> taskAwaitableWithOperator() {
+  co_return co_await AwaitableWithOperator();
+}
+
+TEST(Coro, AwaitableWithOperator) {
+  ManualExecutor executor;
+  EXPECT_EQ(
+      42,
+      via(&executor, taskAwaitableWithOperator()).toFuture().getVia(&executor));
+}
+
+struct AwaitableWithMemberOperator {
+  AwaitableInt<42> operator co_await() {
+    return {};
+  }
+};
+
+AwaitableInt<24> operator co_await(const AwaitableWithMemberOperator&) {
+  return {};
+}
+
+coro::Task<int> taskAwaitableWithMemberOperator() {
+  co_return co_await AwaitableWithMemberOperator();
+}
+
+TEST(Coro, AwaitableWithMemberOperator) {
+  ManualExecutor executor;
+  EXPECT_EQ(
+      42,
+      via(&executor, taskAwaitableWithMemberOperator())
+          .toFuture()
+          .getVia(&executor));
+}
+
 #endif

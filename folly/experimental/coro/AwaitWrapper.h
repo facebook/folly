@@ -19,9 +19,21 @@
 
 #include <folly/ExceptionString.h>
 #include <folly/Executor.h>
+#include <folly/Optional.h>
 
 namespace folly {
 namespace coro {
+namespace detail {
+
+template <typename T>
+T&& getRef(T&& t) {
+  return std::forward<T>(t);
+}
+
+template <typename T>
+T& getRef(std::reference_wrapper<T> t) {
+  return t.get();
+}
 
 template <typename Awaitable>
 class AwaitWrapper {
@@ -61,39 +73,40 @@ class AwaitWrapper {
     std::experimental::coroutine_handle<> awaiter_;
   };
 
-  static AwaitWrapper create(Awaitable* awaitable) {
-    return {awaitable};
+  AwaitWrapper(AwaitWrapper&& other)
+      : promise_(std::exchange(other.promise_, nullptr)),
+        awaitable_(std::move(other.awaitable_)) {}
+  AwaitWrapper& operator=(AwaitWrapper&&) = delete;
+
+  static AwaitWrapper create(Awaitable&& awaitable) {
+    return {std::move(awaitable)};
   }
 
-  static AwaitWrapper create(Awaitable* awaitable, Executor* executor) {
+  static AwaitWrapper create(Awaitable&& awaitable, Executor* executor) {
     auto ret = awaitWrapper();
-    ret.awaitable_ = awaitable;
+    ret.awaitable_.emplace(std::move(awaitable));
     ret.promise_->executor_ = executor;
     return ret;
   }
 
   bool await_ready() {
-    return awaitable_->await_ready();
+    return getRef(*awaitable_).await_ready();
   }
 
-  using await_suspend_return_type =
-      decltype((*static_cast<Awaitable*>(nullptr))
-                   .await_suspend(std::experimental::coroutine_handle<>()));
-
-  await_suspend_return_type await_suspend(
-      std::experimental::coroutine_handle<> awaiter) {
+  decltype(auto) await_suspend(std::experimental::coroutine_handle<> awaiter) {
     if (promise_) {
       promise_->awaiter_ = std::move(awaiter);
-      return awaitable_->await_suspend(
-          std::experimental::coroutine_handle<promise_type>::from_promise(
-              *promise_));
+      return getRef(*awaitable_)
+          .await_suspend(
+              std::experimental::coroutine_handle<promise_type>::from_promise(
+                  *promise_));
     }
 
-    return awaitable_->await_suspend(awaiter);
+    return getRef(*awaitable_).await_suspend(awaiter);
   }
 
-  decltype((*static_cast<Awaitable*>(nullptr)).await_resume()) await_resume() {
-    return awaitable_->await_resume();
+  decltype(auto) await_resume() {
+    return getRef(*awaitable_).await_resume();
   }
 
   ~AwaitWrapper() {
@@ -104,7 +117,9 @@ class AwaitWrapper {
   }
 
  private:
-  AwaitWrapper(Awaitable* awaitable) : awaitable_(awaitable) {}
+  AwaitWrapper(Awaitable&& awaitable) {
+    awaitable_.emplace(std::move(awaitable));
+  }
   AwaitWrapper(promise_type& promise) : promise_(&promise) {}
 
   static AwaitWrapper awaitWrapper() {
@@ -112,7 +127,68 @@ class AwaitWrapper {
   }
 
   promise_type* promise_{nullptr};
-  Awaitable* awaitable_{nullptr};
+
+  Optional<Awaitable> awaitable_;
 };
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++17-extensions"
+
+FOLLY_CREATE_MEMBER_INVOKE_TRAITS(
+    member_operator_co_await_traits,
+    operator co_await);
+
+template <typename Awaitable>
+inline constexpr bool has_member_operator_co_await_v =
+    member_operator_co_await_traits::is_invocable<Awaitable>::value;
+
+FOLLY_CREATE_FREE_INVOKE_TRAITS(
+    non_member_operator_co_await_traits,
+    operator co_await);
+
+template <typename Awaitable>
+inline constexpr bool has_non_member_operator_co_await_v =
+    non_member_operator_co_await_traits::is_invocable<Awaitable>::value;
+} // namespace detail
+
+template <typename Awaitable>
+decltype(auto) get_awaiter(Awaitable&& awaitable) {
+  if constexpr (detail::has_member_operator_co_await_v<Awaitable&&>) {
+    return std::forward<Awaitable>(awaitable).operator co_await();
+  } else if constexpr (detail::has_non_member_operator_co_await_v<
+                           Awaitable&&>) {
+    return operator co_await(std::forward<Awaitable>(awaitable));
+  } else {
+    // This is necessary for it to work with std::reference_wrapper
+    return static_cast<Awaitable&>(awaitable);
+  }
+}
+
+template <typename Awaitable>
+auto createAwaitWrapper(Awaitable&& awaitable) {
+  using Awaiter =
+      decltype(::folly::coro::get_awaiter(std::declval<Awaitable&&>()));
+  using Wrapper = std::conditional_t<
+      std::is_reference<Awaiter>::value,
+      std::reference_wrapper<std::remove_reference_t<Awaiter>>,
+      Awaiter>;
+  return detail::AwaitWrapper<Wrapper>::create(
+      ::folly::coro::get_awaiter(std::forward<Awaitable>(awaitable)));
+}
+
+template <typename Awaitable>
+auto createAwaitWrapper(Awaitable&& awaitable, folly::Executor* executor) {
+  using Awaiter =
+      decltype(::folly::coro::get_awaiter(std::declval<Awaitable&&>()));
+  using Wrapper = std::conditional_t<
+      std::is_reference<Awaiter>::value,
+      std::reference_wrapper<std::remove_reference_t<Awaiter>>,
+      Awaiter>;
+  return detail::AwaitWrapper<Wrapper>::create(
+      ::folly::coro::get_awaiter(std::forward<Awaitable>(awaitable)), executor);
+}
+
+#pragma clang diagnostic pop
+
 } // namespace coro
 } // namespace folly

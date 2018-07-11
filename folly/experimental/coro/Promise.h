@@ -86,48 +86,46 @@ class Promise : public PromiseBase<T> {
   }
 
   template <typename U>
-  auto await_transform(folly::SemiFuture<U>& future) {
-    return folly::detail::FutureAwaitable<U>(future.via(executor_));
+  decltype(auto) await_transform(folly::SemiFuture<U>& future) {
+    return future.via(executor_);
   }
 
   template <typename U>
-  auto await_transform(folly::SemiFuture<U>&& future) {
-    return folly::detail::FutureAwaitable<U>(future.via(executor_));
+  decltype(auto) await_transform(folly::SemiFuture<U>&& future) {
+    return future.via(executor_);
   }
 
   template <typename U>
-  auto await_transform(folly::Future<U>& future) {
-    future = future.via(executor_);
-    return folly::detail::FutureRefAwaitable<U>(future);
+  decltype(auto) await_transform(folly::Future<U>& future) {
+    return future.via(executor_);
   }
 
   template <typename U>
-  auto await_transform(folly::Future<U>&& future) {
-    future = future.via(executor_);
-    return folly::detail::FutureRefAwaitable<U>(future);
+  decltype(auto) await_transform(folly::Future<U>&& future) {
+    return future.via(executor_);
   }
 
   template <typename U>
-  AwaitWrapper<Future<U>> await_transform(Future<U>& future) {
+  auto await_transform(Future<U>& future) {
     if (future.promise_->executor_ == executor_) {
-      return AwaitWrapper<Future<U>>::create(future);
+      return createAwaitWrapper(future);
     }
 
-    return AwaitWrapper<Future<U>>::create(future, executor_);
+    return createAwaitWrapper(future, executor_);
   }
 
   template <typename U>
-  AwaitWrapper<Future<U>> await_transform(Future<U>&& future) {
+  auto await_transform(Future<U>&& future) {
     if (future.promise_->executor_ == executor_) {
-      return AwaitWrapper<Future<U>>::create(&future);
+      return createAwaitWrapper(future);
     }
 
-    return AwaitWrapper<Future<U>>::create(&future, executor_);
+    return createAwaitWrapper(future, executor_);
   }
 
   template <typename U>
-  AwaitWrapper<U> await_transform(U&& awaitable) {
-    return AwaitWrapper<U>::create(&awaitable, executor_);
+  auto await_transform(U&& awaitable) {
+    return createAwaitWrapper(std::forward<U>(awaitable), executor_);
   }
 
   auto await_transform(getCurrentExecutor) {
