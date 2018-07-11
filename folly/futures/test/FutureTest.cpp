@@ -233,8 +233,11 @@ TEST(Future, hasPreconditionValid) {
 
   DOIT(f.isReady());
   DOIT(f.result());
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   DOIT(f.get());
   DOIT(f.get(std::chrono::milliseconds(10)));
+  FOLLY_POP_WARNING
   DOIT(std::move(f).get());
   DOIT(std::move(f).get(std::chrono::milliseconds(10)));
   DOIT(f.getTry());
@@ -269,8 +272,11 @@ TEST(Future, hasPostconditionValid) {
   DOIT(swallow(f.poll()));
   DOIT(f.raise(std::logic_error("foo")));
   DOIT(f.cancel());
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   DOIT(swallow(f.get()));
   DOIT(swallow(f.get(std::chrono::milliseconds(10))));
+  FOLLY_POP_WARNING
   DOIT(swallow(f.getTry()));
   DOIT(f.wait());
   DOIT(std::move(f.wait()));

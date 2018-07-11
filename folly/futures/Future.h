@@ -1553,7 +1553,8 @@ class Future : private futures::detail::FutureBase<T> {
   /// throws the exception. The future must not already have a callback.
   ///
   /// Deprecated in favor of `get() &&`.
-  T get() &;
+  [[deprecated("being removed soon; use rvalue-qualified get() instead")]] T
+  get() &;
 
   /// Blocks until the future is fulfilled, or until `dur` elapses. Returns the
   /// value (moved-out), or throws the exception (which might be a FutureTimeout
@@ -1573,7 +1574,8 @@ class Future : private futures::detail::FutureBase<T> {
   /// exception).
   ///
   /// Deprecated in favor of `get(Duration) &&`.
-  T get(Duration dur) &;
+  [[deprecated("being removed soon; use rvalue-qualified get() instead")]] T
+  get(Duration dur) &;
 
   /// A reference to the Try of the value
   ///
