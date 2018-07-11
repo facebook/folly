@@ -487,6 +487,10 @@ class sorted_vector_set
     return m_.cont_ < other.m_.cont_;
   }
 
+  const value_type* data() const noexcept {
+    return m_.cont_.data();
+  }
+
  private:
   /*
    * This structure derives from the comparison object in order to
@@ -838,6 +842,10 @@ class sorted_vector_map
 
   bool operator<(const sorted_vector_map& other) const {
     return m_.cont_ < other.m_.cont_;
+  }
+
+  const value_type* data() const noexcept {
+    return m_.cont_.data();
   }
 
  private:

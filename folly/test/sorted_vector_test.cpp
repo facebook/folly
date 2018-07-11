@@ -773,3 +773,18 @@ TEST(SortedVectorTypes, TestBulkInsertionWithDuplicatesIntoEmptySet) {
   }
   EXPECT_THAT(set, testing::ElementsAreArray({0, 1}));
 }
+
+TEST(SortedVectorTypes, TestDataPointsToFirstElement) {
+  sorted_vector_set<int> set;
+  sorted_vector_map<int, int> map;
+
+  set.insert(0);
+  map[0] = 0;
+  EXPECT_EQ(set.data(), &*set.begin());
+  EXPECT_EQ(map.data(), &*map.begin());
+
+  set.insert(1);
+  map[1] = 1;
+  EXPECT_EQ(set.data(), &*set.begin());
+  EXPECT_EQ(map.data(), &*map.begin());
+}
