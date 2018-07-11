@@ -21,9 +21,25 @@
 
 #include <folly/MapUtil.h>
 #include <folly/SingletonThreadLocal.h>
+#include <folly/synchronization/CallOnce.h>
 #include <folly/synchronization/Hazptr.h>
 
 namespace folly {
+
+namespace {
+
+/*
+ * Some requests may not be deleted until long after main when the
+ * default hazptr_domain destructs.  This may cause destruction
+ * ordering issues.  Instead, cleanup as soon as possible after main
+ * using atexit.
+ */
+folly::once_flag atexitflag;
+void cleanup(void) {
+  atexit([]() { hazptr_cleanup(); });
+}
+
+} // namespace
 
 struct RequestContext::State : hazptr_obj_base<State> {
   std::map<std::string, std::shared_ptr<RequestData>> requestData_;
@@ -82,6 +98,7 @@ bool RequestContext::doSetContextData(
 
   if (p) {
     p->retire();
+    folly::call_once(atexitflag, cleanup);
   }
 
   return true;
@@ -184,6 +201,7 @@ void RequestContext::clearContextData(const std::string& val) {
 
   if (p) {
     p->retire();
+    folly::call_once(atexitflag, cleanup);
   }
 }
 
