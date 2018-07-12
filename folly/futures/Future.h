@@ -21,9 +21,6 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
-#if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
-#endif
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
@@ -37,6 +34,10 @@
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 #include <folly/lang/Exception.h>
+
+#if FOLLY_HAS_COROUTINES
+#include <experimental/coroutine>
+#endif
 
 // boring predeclarations and details
 #include <folly/futures/Future-pre.h>
@@ -1989,13 +1990,13 @@ class FutureRefAwaitable {
 } // namespace detail
 
 template <typename T>
-detail::FutureRefAwaitable<T>
+inline detail::FutureRefAwaitable<T>
 /* implicit */ operator co_await(Future<T>& future) {
   return detail::FutureRefAwaitable<T>(future);
 }
 
 template <typename T>
-detail::FutureRefAwaitable<T>
+inline detail::FutureRefAwaitable<T>
 /* implicit */ operator co_await(Future<T>&& future) {
   return detail::FutureRefAwaitable<T>(future);
 }

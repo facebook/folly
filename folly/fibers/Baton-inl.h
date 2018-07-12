@@ -19,6 +19,21 @@
 namespace folly {
 namespace fibers {
 
+class Baton::FiberWaiter : public Baton::Waiter {
+ public:
+  void setFiber(Fiber& fiber) {
+    DCHECK(!fiber_);
+    fiber_ = &fiber;
+  }
+
+  void post() override {
+    fiber_->resume();
+  }
+
+ private:
+  Fiber* fiber_{nullptr};
+};
+
 inline Baton::Baton() : Baton(NO_WAITER) {
   assert(Baton(NO_WAITER).futex_.futex == static_cast<uint32_t>(NO_WAITER));
   assert(Baton(POSTED).futex_.futex == static_cast<uint32_t>(POSTED));
@@ -28,7 +43,7 @@ inline Baton::Baton() : Baton(NO_WAITER) {
       static_cast<uint32_t>(THREAD_WAITING));
 
   assert(futex_.futex.is_lock_free());
-  assert(waitingFiber_.is_lock_free());
+  assert(waiter_.is_lock_free());
 }
 
 template <typename F>
@@ -44,20 +59,10 @@ void Baton::wait(F&& mainContextFunc) {
 
 template <typename F>
 void Baton::waitFiber(FiberManager& fm, F&& mainContextFunc) {
-  auto& waitingFiber = waitingFiber_;
-  auto f = [&mainContextFunc, &waitingFiber](Fiber& fiber) mutable {
-    auto baton_fiber = waitingFiber.load();
-    do {
-      if (LIKELY(baton_fiber == NO_WAITER)) {
-        continue;
-      } else if (baton_fiber == POSTED || baton_fiber == TIMEOUT) {
-        fiber.resume();
-        break;
-      } else {
-        throw std::logic_error("Some Fiber is already waiting on this Baton.");
-      }
-    } while (!waitingFiber.compare_exchange_weak(
-        baton_fiber, reinterpret_cast<intptr_t>(&fiber)));
+  FiberWaiter waiter;
+  auto f = [this, &mainContextFunc, &waiter](Fiber& fiber) mutable {
+    waiter.setFiber(fiber);
+    setWaiter(waiter);
 
     mainContextFunc();
   };
@@ -89,7 +94,7 @@ bool Baton::try_wait_for(
 
   waitFiber(*fm, static_cast<F&&>(mainContextFunc));
 
-  auto posted = waitingFiber_ == POSTED;
+  auto posted = waiter_ == POSTED;
 
   if (!canceled) {
     fm->timeoutManager_->cancel(id);

@@ -17,8 +17,13 @@
 
 #include <atomic>
 
+#include <folly/Portability.h>
 #include <folly/detail/Futex.h>
 #include <folly/fibers/TimeoutController.h>
+
+#if FOLLY_HAS_COROUTINES
+#include <experimental/coroutine>
+#endif
 
 namespace folly {
 namespace fibers {
@@ -36,14 +41,27 @@ class Baton {
  public:
   class TimeoutHandler;
 
+  class Waiter {
+   public:
+    virtual void post() = 0;
+
+    virtual ~Waiter() {}
+  };
+
   Baton();
 
   ~Baton() {}
 
   bool ready() const {
-    auto state = waitingFiber_.load();
+    auto state = waiter_.load();
     return state == POSTED;
   }
+
+  /**
+   * Registers a waiter for the baton. The waiter will be notified when
+   * the baton is posted.
+   */
+  void setWaiter(Waiter& waiter);
 
   /**
    * Puts active fiber to sleep. Returns when post is called.
@@ -213,6 +231,8 @@ class Baton {
   };
 
  private:
+  class FiberWaiter;
+
   enum {
     /**
      * Must be positive.  If multiple threads are actively using a
@@ -232,7 +252,7 @@ class Baton {
     PreBlockAttempts = 300,
   };
 
-  explicit Baton(intptr_t state) : waitingFiber_(state) {}
+  explicit Baton(intptr_t state) : waiter_(state) {}
 
   void postHelper(intptr_t new_value);
   void postThread();
@@ -256,13 +276,48 @@ class Baton {
   static constexpr intptr_t THREAD_WAITING = -3;
 
   union {
-    std::atomic<intptr_t> waitingFiber_;
+    std::atomic<intptr_t> waiter_;
     struct {
       folly::detail::Futex<> futex{};
       int32_t _unused_packing;
     } futex_;
   };
 };
+
+#if FOLLY_HAS_COROUTINES
+namespace detail {
+class BatonAwaitableWaiter : public Baton::Waiter {
+ public:
+  explicit BatonAwaitableWaiter(Baton& baton) : baton_(baton) {}
+
+  void post() override {
+    assert(h_);
+    h_();
+  }
+
+  bool await_ready() const {
+    return baton_.ready();
+  }
+
+  void await_resume() {}
+
+  void await_suspend(std::experimental::coroutine_handle<> h) {
+    assert(!h_);
+    h_ = std::move(h);
+    baton_.setWaiter(*this);
+  }
+
+ private:
+  std::experimental::coroutine_handle<> h_;
+  Baton& baton_;
+};
+} // namespace detail
+
+inline detail::BatonAwaitableWaiter /* implicit */ operator co_await(
+    Baton& baton) {
+  return detail::BatonAwaitableWaiter(baton);
+}
+#endif
 } // namespace fibers
 } // namespace folly
 

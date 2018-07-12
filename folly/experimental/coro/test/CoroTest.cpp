@@ -278,4 +278,27 @@ TEST(Coro, AwaitableWithMemberOperator) {
           .getVia(&executor));
 }
 
+coro::Task<int> taskBaton(fibers::Baton& baton) {
+  co_await baton;
+  co_return 42;
+}
+
+TEST(Coro, Baton) {
+  ManualExecutor executor;
+  fibers::Baton baton;
+  auto future = via(&executor, taskBaton(baton));
+
+  EXPECT_FALSE(future.await_ready());
+
+  executor.run();
+
+  EXPECT_FALSE(future.await_ready());
+
+  baton.post();
+  executor.run();
+
+  EXPECT_TRUE(future.await_ready());
+  EXPECT_EQ(42, future.get());
+}
+
 #endif
