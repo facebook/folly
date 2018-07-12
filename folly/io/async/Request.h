@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <atomic>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <set>
+
+#include <folly/Synchronized.h>
 
 namespace folly {
 
@@ -58,8 +58,6 @@ class RequestData {
 // copied between threads.
 class RequestContext {
  public:
-  RequestContext();
-  ~RequestContext();
   // Create a unique request context for this request.
   // It will be passed between queues / threads (where implemented),
   // so it should be valid for the lifetime of the request.
@@ -133,9 +131,11 @@ class RequestContext {
       std::unique_ptr<RequestData>& data,
       bool strict);
 
-  struct State;
-  std::atomic<State*> state_;
-  std::mutex m_;
+  struct State {
+    std::map<std::string, std::unique_ptr<RequestData>> requestData_;
+    std::set<RequestData*> callbackData_;
+  };
+  folly::Synchronized<State> state_;
 };
 
 class RequestContextScopeGuard {
