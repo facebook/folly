@@ -255,6 +255,12 @@ TEST(Function, Emptiness_T) {
   EXPECT_EQ(nullptr, h);
   EXPECT_FALSE(h);
   EXPECT_THROW(h(101), std::bad_function_call);
+
+  Function<int(int)> i{Function<int(int)>{}};
+  EXPECT_EQ(i, nullptr);
+  EXPECT_EQ(nullptr, i);
+  EXPECT_FALSE(i);
+  EXPECT_THROW(i(107), std::bad_function_call);
 }
 
 // TEST =====================================================================
