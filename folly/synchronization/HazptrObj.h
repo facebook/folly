@@ -114,7 +114,7 @@ class hazptr_obj {
     }
 #endif
     hazptr_obj_list<Atom> l(this);
-    hazptr_domain_push_retired(l, domain);
+    hazptr_domain_push_retired(l, true, domain);
   }
 
   FOLLY_NOINLINE void pre_retire_check_fail() noexcept {

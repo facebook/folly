@@ -100,6 +100,7 @@ class hazptr_domain {
  private:
   friend void hazptr_domain_push_retired<Atom>(
       hazptr_obj_list<Atom>&,
+      bool check,
       hazptr_domain<Atom>&) noexcept;
   friend class hazptr_holder<Atom>;
   friend class hazptr_obj<Atom>;
@@ -359,8 +360,9 @@ FOLLY_ALWAYS_INLINE hazptr_domain<Atom>& default_hazptr_domain() {
 template <template <typename> class Atom>
 void hazptr_domain_push_retired(
     hazptr_obj_list<Atom>& l,
+    bool check,
     hazptr_domain<Atom>& domain) noexcept {
-  domain.push_retired(l);
+  domain.push_retired(l, check);
 }
 
 /** hazptr_retire */

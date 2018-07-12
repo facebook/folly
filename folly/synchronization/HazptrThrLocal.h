@@ -187,12 +187,8 @@ class hazptr_priv {
   }
 
   void push(hazptr_obj<Atom>* obj) {
-    if (!in_dtor_) {
-      push_in_priv_list(obj);
-    } else {
-      hazptr_obj_list<Atom> l(obj);
-      hazptr_domain_push_retired<Atom>(l);
-    }
+    DCHECK(!in_dtor_);
+    push_in_priv_list(obj);
   }
 
   void push_in_priv_list(hazptr_obj<Atom>* obj) {
@@ -219,7 +215,7 @@ class hazptr_priv {
     if (h) {
       DCHECK(t);
       hazptr_obj_list<Atom> l(h, t, rcount_);
-      hazptr_domain_push_retired<Atom>(l);
+      hazptr_domain_push_retired<Atom>(l, false);
       rcount_ = 0;
     }
   }
