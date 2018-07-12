@@ -587,8 +587,9 @@ class Range {
   // B) If you have to use this exact function then make your own hasher
   //    object and copy the body over (see thrift example: D3972362).
   //    https://github.com/facebook/fbthrift/commit/f8ed502e24ab4a32a9d5f266580
-  [[deprecated("Replace with folly::Hash if the hash is not serialized")]]
-  uint32_t hash() const {
+  [[deprecated(
+      "Replace with folly::Hash if the hash is not serialized")]] uint32_t
+  hash() const {
     // Taken from fbi/nstring.h:
     //    Quick and dirty bernstein hash...fine for short ascii strings
     uint32_t hash = 5381;
@@ -1420,16 +1421,12 @@ template <class T>
 struct hasher<
     folly::Range<T*>,
     typename std::enable_if<std::is_pod<T>::value, void>::type> {
+  using folly_is_avalanching = std::true_type;
+
   size_t operator()(folly::Range<T*> r) const {
     return hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0);
   }
 };
-
-template <typename H, typename K>
-struct IsAvalanchingHasher;
-
-template <typename T, typename E, typename K>
-struct IsAvalanchingHasher<hasher<folly::Range<T*>, E>, K> : std::true_type {};
 
 /**
  * _sp is a user-defined literal suffix to make an appropriate Range

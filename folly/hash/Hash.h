@@ -24,6 +24,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/functional/ApplyTuple.h>
 #include <folly/hash/SpookyHashV1.h>
 #include <folly/hash/SpookyHashV2.h>
@@ -385,6 +387,9 @@ namespace detail {
 
 template <typename I>
 struct integral_hasher {
+  using folly_is_avalanching =
+      bool_constant<(sizeof(I) >= 8 || sizeof(size_t) == 4)>;
+
   size_t operator()(I const& i) const noexcept {
     static_assert(sizeof(I) <= 16, "Input type is too wide");
     /* constexpr */ if (sizeof(I) <= 4) {
@@ -403,12 +408,10 @@ struct integral_hasher {
   }
 };
 
-template <typename I>
-using integral_hasher_avalanches =
-    bool_constant<sizeof(I) >= 8 || sizeof(size_t) == 4>;
-
 template <typename F>
 struct float_hasher {
+  using folly_is_avalanching = std::true_type;
+
   size_t operator()(F const& f) const noexcept {
     static_assert(sizeof(F) <= 8, "Input type is too wide");
 
@@ -447,6 +450,16 @@ struct Hash {
 // the argument of H::operator() are not considered here; K is separate
 // to handle the case of generic hashers like folly::Hash).
 //
+// If std::hash<T> or folly::hasher<T> is specialized for a new type T and
+// the implementation avalanches input entropy across all of the bits of a
+// std::size_t result, the specialization should be marked as avalanching.
+// This can be done either by adding a member type folly_is_avalanching
+// to the functor H that contains a constexpr bool value of true, or by
+// specializing IsAvalanchingHasher<H, K>.  The member type mechanism is
+// more convenient, but specializing IsAvalanchingHasher may be required
+// if a hasher is polymorphic on the key type or if its definition cannot
+// be modified.
+//
 // The standard's definition of hash quality is based on the chance hash
 // collisions using the entire hash value.  No requirement is made that
 // this property holds for subsets of the bits.  In addition, hashed keys
@@ -465,20 +478,35 @@ struct Hash {
 // is useful when mapping the hash value onto a smaller space efficiently
 // (such as when implementing a hash table).
 template <typename Hasher, typename Key>
-struct IsAvalanchingHasher : std::false_type {};
+struct IsAvalanchingHasher;
 
-template <typename T, typename E, typename K>
-struct IsAvalanchingHasher<hasher<T, E>, K>
-    : std::conditional<
-          std::is_enum<T>::value || std::is_integral<T>::value,
-          detail::integral_hasher_avalanches<T>,
-          std::is_floating_point<T>>::type {};
+namespace detail {
+template <typename Hasher, typename Void = void>
+struct IsAvalanchingHasherFromMemberType : std::false_type {};
+
+template <typename Hasher>
+struct IsAvalanchingHasherFromMemberType<
+    Hasher,
+    void_t<typename Hasher::folly_is_avalanching>>
+    : bool_constant<Hasher::folly_is_avalanching::value> {};
+} // namespace detail
+
+template <typename Hasher, typename Key>
+struct IsAvalanchingHasher : detail::IsAvalanchingHasherFromMemberType<Hasher> {
+};
+
+// It's ugly to put this here, but folly::transparent isn't hash specific
+// so it seems even more ugly to put this near its declaration
+template <typename H, typename K>
+struct IsAvalanchingHasher<transparent<H>, K> : IsAvalanchingHasher<H, K> {};
 
 template <typename K>
 struct IsAvalanchingHasher<Hash, K> : IsAvalanchingHasher<hasher<K>, K> {};
 
 template <>
 struct hasher<bool> {
+  using folly_is_avalanching = std::true_type;
+
   size_t operator()(bool key) const noexcept {
     // Make sure that all the output bits depend on the input.
     return key ? std::numeric_limits<size_t>::max() : 0;
@@ -538,6 +566,8 @@ struct hasher<double> : detail::float_hasher<double> {};
 
 template <>
 struct hasher<std::string> {
+  using folly_is_avalanching = std::true_type;
+
   size_t operator()(const std::string& key) const {
     return static_cast<size_t>(
         hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
@@ -547,21 +577,25 @@ template <typename K>
 struct IsAvalanchingHasher<hasher<std::string>, K> : std::true_type {};
 
 template <typename T>
-struct hasher<T, typename std::enable_if<std::is_enum<T>::value, void>::type> {
-  // Hash for the underlying_type (integral types) are marked noexcept above.
+struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {
   size_t operator()(T key) const noexcept {
-    return Hash()(static_cast<typename std::underlying_type<T>::type>(key));
+    return Hash()(static_cast<std::underlying_type_t<T>>(key));
   }
 };
 
+template <typename T, typename K>
+struct IsAvalanchingHasher<
+    hasher<T, std::enable_if_t<std::is_enum<T>::value>>,
+    K> : IsAvalanchingHasher<hasher<std::underlying_type_t<T>>, K> {};
+
 template <typename T1, typename T2>
 struct hasher<std::pair<T1, T2>> {
+  using folly_is_avalanching = std::true_type;
+
   size_t operator()(const std::pair<T1, T2>& key) const {
     return Hash()(key.first, key.second);
   }
 };
-template <typename T1, typename T2, typename K>
-struct IsAvalanchingHasher<hasher<std::pair<T1, T2>>, K> : std::true_type {};
 
 template <typename... Ts>
 struct hasher<std::tuple<Ts...>> {
@@ -614,7 +648,8 @@ struct hash<unsigned __int128>
 // items in the pair.
 template <typename T1, typename T2>
 struct hash<std::pair<T1, T2>> {
- public:
+  using folly_is_avalanching = std::true_type;
+
   size_t operator()(const std::pair<T1, T2>& x) const {
     return folly::hash::hash_combine(x.first, x.second);
   }
@@ -623,33 +658,26 @@ struct hash<std::pair<T1, T2>> {
 // Hash function for tuples. Requires default hash functions for all types.
 template <typename... Ts>
 struct hash<std::tuple<Ts...>> {
+ private:
+  using FirstT = std::decay_t<std::tuple_element_t<0, std::tuple<Ts..., bool>>>;
+
+ public:
+  using folly_is_avalanching = folly::bool_constant<(
+      sizeof...(Ts) != 1 ||
+      folly::IsAvalanchingHasher<std::hash<FirstT>, FirstT>::value)>;
+
   size_t operator()(std::tuple<Ts...> const& key) const {
     folly::TupleHasher<
-        std::tuple_size<std::tuple<Ts...>>::value - 1, // start index
+        sizeof...(Ts) - 1, // start index
         Ts...>
         hasher;
 
     return hasher(key);
   }
 };
-
 } // namespace std
 
 namespace folly {
-
-// These IsAvalanchingHasher<std::hash<T>> specializations refer to the
-// std::hash specializations defined in this file
-
-template <typename U1, typename U2, typename K>
-struct IsAvalanchingHasher<std::hash<std::pair<U1, U2>>, K> : std::true_type {};
-
-template <typename U, typename K>
-struct IsAvalanchingHasher<std::hash<std::tuple<U>>, K>
-    : IsAvalanchingHasher<std::hash<U>, U> {};
-
-template <typename U1, typename U2, typename... Us, typename K>
-struct IsAvalanchingHasher<std::hash<std::tuple<U1, U2, Us...>>, K>
-    : std::true_type {};
 
 // std::hash<std::string> is avalanching on libstdc++-v3 (code checked),
 // libc++ (code checked), and MSVC (based on online information).

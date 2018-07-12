@@ -651,6 +651,15 @@ static_assert(
     !folly::IsAvalanchingHasher<std::hash<TestStruct>, TestStruct>::value,
     "");
 
+static_assert(
+    !folly::IsAvalanchingHasher<folly::transparent<std::hash<int>>, int>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        folly::transparent<std::hash<std::string>>,
+        std::string>::value,
+    "");
+
 // these come from folly/hash/Hash.h
 static_assert(
     folly::IsAvalanchingHasher<
@@ -747,6 +756,16 @@ static_assert(
 static_assert(
     folly::IsAvalanchingHasher<folly::hasher<folly::StringPiece>, std::string>::
         value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        folly::hasher<folly::StringPiece>,
+        folly::StringPiece>::value,
+    "");
+static_assert(
+    folly::IsAvalanchingHasher<
+        folly::transparent<folly::hasher<folly::StringPiece>>,
+        folly::StringPiece>::value,
     "");
 
 static_assert(
