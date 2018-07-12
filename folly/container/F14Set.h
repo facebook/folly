@@ -146,7 +146,7 @@ class F14BasicSet {
           typename Policy::Hasher,
           typename Policy::KeyEqual,
           K>::value &&
-          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::value,
+          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value,
       T>;
 
  public:
@@ -797,11 +797,8 @@ class F14VectorSet
           typename Policy::Hasher,
           typename Policy::KeyEqual,
           K>::value &&
-          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::
-              value &&
-          !std::is_same<
-              typename Policy::ReverseIter,
-              folly::remove_cvref_t<K>>::value,
+          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
+          !std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>::value,
       T>;
 
  public:
@@ -917,7 +914,7 @@ class F14VectorSet
           static_cast<uint32_t>(tailIndex)});
       tail.item() = index;
       auto p = std::addressof(values[index]);
-      folly::assume(p != nullptr);
+      assume(p != nullptr);
       this->table_.transfer(a, std::addressof(values[tailIndex]), p, 1);
     }
   }

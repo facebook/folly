@@ -150,10 +150,8 @@ class F14BasicMap {
           typename Policy::Hasher,
           typename Policy::KeyEqual,
           K>::value &&
-          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::
-              value &&
-          !std::is_same<typename Policy::ConstIter, folly::remove_cvref_t<K>>::
-              value,
+          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
+          !std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>::value,
       T>;
 
  public:
@@ -497,7 +495,7 @@ class F14BasicMap {
       std::piecewise_construct_t,
       std::tuple<Args1...>&& first_args,
       std::tuple<Args2...>&& second_args) {
-    auto key = folly::make_from_tuple<key_type>(
+    auto key = make_from_tuple<key_type>(
         std::tuple<Args1&&...>(std::move(first_args)));
     return table_.tryEmplaceValue(
         key,
@@ -1005,16 +1003,12 @@ class F14VectorMap
           typename Policy::Hasher,
           typename Policy::KeyEqual,
           K>::value &&
-          !std::is_same<typename Policy::Iter, folly::remove_cvref_t<K>>::
+          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
+          !std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>::value &&
+          !std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>::
               value &&
-          !std::is_same<typename Policy::ConstIter, folly::remove_cvref_t<K>>::
-              value &&
-          !std::is_same<
-              typename Policy::ReverseIter,
-              folly::remove_cvref_t<K>>::value &&
-          !std::is_same<
-              typename Policy::ConstReverseIter,
-              folly::remove_cvref_t<K>>::value,
+          !std::is_same<typename Policy::ConstReverseIter, remove_cvref_t<K>>::
+              value,
       T>;
 
  public:
@@ -1129,7 +1123,7 @@ class F14VectorMap
           static_cast<uint32_t>(tailIndex)});
       tail.item() = index;
       auto p = std::addressof(values[index]);
-      folly::assume(p != nullptr);
+      assume(p != nullptr);
       this->table_.transfer(a, std::addressof(values[tailIndex]), p, 1);
     }
   }

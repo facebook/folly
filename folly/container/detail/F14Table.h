@@ -132,8 +132,7 @@ struct StdNodeReplica<
     V,
     H,
     std::enable_if_t<
-        !StdIsFastHash<H>::value ||
-        !folly::is_nothrow_invocable<H, K>::value>> {
+        !StdIsFastHash<H>::value || !is_nothrow_invocable<H, K>::value>> {
   void* next;
   V value;
   std::size_t hash;
@@ -200,9 +199,8 @@ struct EligibleForHeterogeneousFind<
     Hasher,
     KeyEqual,
     ArgKey,
-    folly::void_t<
-        typename Hasher::is_transparent,
-        typename KeyEqual::is_transparent>> : std::true_type {};
+    void_t<typename Hasher::is_transparent, typename KeyEqual::is_transparent>>
+    : std::true_type {};
 
 template <
     typename TableKey,
@@ -221,7 +219,7 @@ template <
     typename... KeyArgs>
 using KeyTypeForEmplaceHelper = std::conditional_t<
     sizeof...(KeyArgs) == 1 &&
-        (std::is_same<folly::remove_cvref_t<KeyArg0OrBool>, TableKey>::value ||
+        (std::is_same<remove_cvref_t<KeyArg0OrBool>, TableKey>::value ||
          EligibleForHeterogeneousFind<
              TableKey,
              Hasher,
@@ -258,7 +256,7 @@ FOLLY_ALWAYS_INLINE static void prefetchAddr(T const* ptr) {
 
 template <typename T>
 FOLLY_ALWAYS_INLINE static unsigned findFirstSetNonZero(T mask) {
-  folly::assume(mask != 0);
+  assume(mask != 0);
   if (sizeof(mask) == sizeof(unsigned)) {
     return __builtin_ctz(static_cast<unsigned>(mask));
   } else {
@@ -340,8 +338,7 @@ class DenseMaskIter {
     if (mask == 0) {
       count_ = 0;
     } else {
-      count_ =
-          folly::popcount(static_cast<uint32_t>(((mask >> 32) << 2) | mask));
+      count_ = popcount(static_cast<uint32_t>(((mask >> 32) << 2) | mask));
       if (LIKELY((mask & 1) != 0)) {
         index_ = 0;
       } else {
@@ -458,8 +455,8 @@ class LastOccupiedInMask {
   }
 
   unsigned index() const {
-    folly::assume(mask_ != 0);
-    return (folly::findLastSet(mask_) - 1) / kMaskSpacing;
+    assume(mask_ != 0);
+    return (findLastSet(mask_) - 1) / kMaskSpacing;
   }
 };
 
@@ -691,12 +688,12 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   Item& item(std::size_t i) {
     FOLLY_SAFE_DCHECK(this->occupied(i), "");
-    return *folly::launder(itemAddr(i));
+    return *launder(itemAddr(i));
   }
 
   Item const& citem(std::size_t i) const {
     FOLLY_SAFE_DCHECK(this->occupied(i), "");
-    return *folly::launder(itemAddr(i));
+    return *launder(itemAddr(i));
   }
 
   static F14Chunk& owner(Item& item, std::size_t index) {
@@ -822,7 +819,7 @@ class PackedChunkItemPtr<T*> {
  public:
   PackedChunkItemPtr(T* p, std::size_t i) noexcept {
     uintptr_t encoded = i >> (kIndexBits - kAlignBits);
-    folly::assume((encoded & ~kAlignMask) == 0);
+    assume((encoded & ~kAlignMask) == 0);
     raw_ = reinterpret_cast<uintptr_t>(p) | encoded;
     FOLLY_SAFE_DCHECK(p == ptr(), "");
     FOLLY_SAFE_DCHECK(i == index(), "");
@@ -879,10 +876,10 @@ class F14ItemIter {
       : itemPtr_{std::pointer_traits<ItemPtr>::pointer_to(chunk->item(index))},
         index_{index} {
     FOLLY_SAFE_DCHECK(index < Chunk::kCapacity, "");
-    folly::assume(
+    assume(
         std::pointer_traits<ItemPtr>::pointer_to(chunk->item(index)) !=
         nullptr);
-    folly::assume(itemPtr_ != nullptr);
+    assume(itemPtr_ != nullptr);
   }
 
   FOLLY_ALWAYS_INLINE void advanceImpl(bool checkEof, bool likelyDead) {
@@ -1020,11 +1017,11 @@ struct SizeAndPackedBegin<SizeType, ItemIter, false> {
   SizeType size_{0};
 
   [[noreturn]] typename ItemIter::Packed& packedBegin() {
-    folly::assume_unreachable();
+    assume_unreachable();
   }
 
   [[noreturn]] typename ItemIter::Packed const& packedBegin() const {
-    folly::assume_unreachable();
+    assume_unreachable();
   }
 };
 
@@ -1529,7 +1526,7 @@ class F14Table : public Policy {
   void insertAtBlank(ItemIter pos, HashPair hp, Args&&... args) {
     try {
       auto dst = pos.itemAddr();
-      folly::assume(dst != nullptr);
+      assume(dst != nullptr);
       this->constructValueAtItem(size(), dst, std::forward<Args>(args)...);
     } catch (...) {
       eraseBlank(pos, hp);
@@ -1595,8 +1592,8 @@ class F14Table : public Policy {
     // partial failure should not occur.  Sorry for the subtle invariants
     // in the Policy API.
 
-    if (folly::is_trivially_copyable<Item>::value &&
-        !this->destroyItemOnClear() && bucket_count() == src.bucket_count()) {
+    if (is_trivially_copyable<Item>::value && !this->destroyItemOnClear() &&
+        bucket_count() == src.bucket_count()) {
       // most happy path
       auto n = chunkAllocSize(chunkMask_ + 1, bucket_count());
       std::memcpy(&chunks_[0], &src.chunks_[0], n);
@@ -1631,7 +1628,7 @@ class F14Table : public Policy {
           auto&& srcArg =
               std::forward<T>(src).buildArgForItem(srcChunk->item(srcI));
           auto dst = dstChunk->itemAddr(dstI);
-          folly::assume(dst != nullptr);
+          assume(dst != nullptr);
           this->constructValueAtItem(
               0, dst, std::forward<decltype(srcArg)>(srcArg));
           dstChunk->setTag(dstI, srcChunk->tag(srcI));
@@ -2190,7 +2187,7 @@ class F14Table : public Policy {
   F14TableStats computeStats() const {
     F14TableStats stats;
 
-    if (folly::kIsDebug && Policy::kEnableItemIteration) {
+    if (kIsDebug && Policy::kEnableItemIteration) {
       // validate iteration
       std::size_t n = 0;
       ItemIter prev;

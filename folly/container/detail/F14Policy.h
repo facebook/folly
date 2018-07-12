@@ -488,7 +488,7 @@ class ValueContainerPolicy : public BasePolicy<
 
   static constexpr bool destroyItemOnClear() {
     return !std::is_trivially_destructible<Item>::value ||
-        !folly::AllocatorHasDefaultObjectDestroy<Alloc, Item>::value;
+        !AllocatorHasDefaultObjectDestroy<Alloc, Item>::value;
   }
 
   // inherit constructors
@@ -529,7 +529,7 @@ class ValueContainerPolicy : public BasePolicy<
   void
   constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
-    folly::assume(itemAddr != nullptr);
+    assume(itemAddr != nullptr);
     AllocTraits::construct(a, itemAddr, std::forward<Args>(args)...);
   }
 
@@ -556,7 +556,7 @@ class ValueContainerPolicy : public BasePolicy<
         // location), but it seems highly likely that it will also cause
         // the compiler to drop such assumptions that are violated due
         // to our UB const_cast in moveValue.
-        destroyItem(*folly::launder(std::addressof(src)));
+        destroyItem(*launder(std::addressof(src)));
       } else {
         destroyItem(src);
       }
@@ -769,17 +769,17 @@ class NodeContainerPolicy
   void
   constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
-    folly::assume(itemAddr != nullptr);
+    assume(itemAddr != nullptr);
     new (itemAddr) Item{AllocTraits::allocate(a, 1)};
     auto p = std::addressof(**itemAddr);
-    folly::assume(p != nullptr);
+    assume(p != nullptr);
     AllocTraits::construct(a, p, std::forward<Args>(args)...);
   }
 
   void moveItemDuringRehash(Item* itemAddr, Item& src) {
     // This is basically *itemAddr = src; src = nullptr, but allowing
     // for fancy pointers.
-    folly::assume(itemAddr != nullptr);
+    assume(itemAddr != nullptr);
     new (itemAddr) Item{std::move(src)};
     src = nullptr;
     src.~Item();
@@ -985,10 +985,9 @@ class VectorContainerPolicy : public BasePolicy<
 
  private:
   static constexpr bool valueIsTriviallyCopyable() {
-    return folly::AllocatorHasDefaultObjectConstruct<Alloc, Value, Value>::
-               value &&
-        folly::AllocatorHasDefaultObjectDestroy<Alloc, Value>::value &&
-        folly::is_trivially_copyable<Value>::value;
+    return AllocatorHasDefaultObjectConstruct<Alloc, Value, Value>::value &&
+        AllocatorHasDefaultObjectDestroy<Alloc, Value>::value &&
+        is_trivially_copyable<Value>::value;
   }
 
  public:
@@ -1139,10 +1138,10 @@ class VectorContainerPolicy : public BasePolicy<
       std::memcpy(dst, src, n * sizeof(Value));
     } else {
       for (std::size_t i = 0; i < n; ++i, ++src, ++dst) {
-        folly::assume(dst != nullptr);
+        assume(dst != nullptr);
         AllocTraits::construct(a, dst, Super::moveValue(*src));
         if (kIsMap) {
-          AllocTraits::destroy(a, folly::launder(src));
+          AllocTraits::destroy(a, launder(src));
         } else {
           AllocTraits::destroy(a, src);
         }
@@ -1164,7 +1163,7 @@ class VectorContainerPolicy : public BasePolicy<
     } else {
       for (std::size_t i = 0; i < size; ++i, ++src, ++dst) {
         try {
-          folly::assume(dst != nullptr);
+          assume(dst != nullptr);
           AllocTraits::construct(a, dst, constructorArgFor(*src));
         } catch (...) {
           for (Value* cleanup = std::addressof(values_[0]); cleanup != dst;
@@ -1347,8 +1346,8 @@ class VectorContainerPolicy : public BasePolicy<
     if (underlying.atEnd()) {
       return linearEnd();
     } else {
-      folly::assume(values_ + underlying.item() != nullptr);
-      folly::assume(values_ != nullptr);
+      assume(values_ + underlying.item() != nullptr);
+      assume(values_ != nullptr);
       return Iter{values_ + underlying.item(), values_};
     }
   }
@@ -1359,7 +1358,7 @@ class VectorContainerPolicy : public BasePolicy<
 
   Item iterToIndex(ConstIter const& iter) const {
     auto n = iter.index();
-    folly::assume(n <= std::numeric_limits<Item>::max());
+    assume(n <= std::numeric_limits<Item>::max());
     return static_cast<Item>(n);
   }
 
