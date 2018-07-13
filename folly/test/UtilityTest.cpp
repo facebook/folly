@@ -77,12 +77,17 @@ TEST_F(UtilityTest, as_const) {
   EXPECT_TRUE(noexcept(folly::as_const(s)));
 }
 
+template <typename T>
+static T& as_mutable(T const& t) {
+  return const_cast<T&>(t);
+}
+
 TEST_F(UtilityTest, forward_like) {
   int x = 0;
   // just show that it may be invoked, and that it is purely a cast
   // the real work is done by like_t, in terms of which forward_like is defined
   EXPECT_EQ(&x, std::addressof(folly::forward_like<char&>(x)));
-  EXPECT_EQ(&x, std::addressof(folly::forward_like<char const>(x)));
+  EXPECT_EQ(&x, std::addressof(as_mutable(folly::forward_like<char const>(x))));
 }
 
 TEST_F(UtilityTest, exchange) {
