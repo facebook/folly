@@ -15,6 +15,8 @@
  */
 
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -67,4 +69,53 @@ TEST(RateLimiter, interval1per100ms) {
 
 TEST(RateLimiter, interval15per150ms) {
   intervalTest(15, 150ms);
+}
+
+TEST(RateLimiter, concurrentThreads) {
+  constexpr uint64_t maxEvents = 20;
+  constexpr uint64_t numThreads = 32;
+
+  IntervalRateLimiter limiter{20, 10s};
+  std::atomic<uint32_t> count{0};
+  std::mutex m;
+  std::condition_variable cv;
+  bool go = false;
+
+  auto threadMain = [&]() {
+    // Have each thread wait for go to become true before starting.
+    // This hopefully gives us the best chance of having all threads start
+    // at close to the same time.
+    {
+      std::unique_lock<std::mutex> lock{m};
+      cv.wait(lock, [&go] { return go; });
+    }
+
+    for (uint64_t iteration = 0; iteration < maxEvents * 2; ++iteration) {
+      if (limiter.check()) {
+        count.fetch_add(1, std::memory_order_relaxed);
+      }
+    }
+  };
+
+  // Start the threads
+  std::vector<std::thread> threads;
+  threads.reserve(numThreads);
+  for (uint64_t n = 0; n < numThreads; ++n) {
+    threads.emplace_back(threadMain);
+  }
+
+  // Set go to true and notify all the threads
+  {
+    std::lock_guard<std::mutex> lg(m);
+    go = true;
+  }
+  cv.notify_all();
+
+  // Wait for all of the threads
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  // We should have passed the check exactly maxEvents times
+  EXPECT_EQ(maxEvents, count.load(std::memory_order_relaxed));
 }

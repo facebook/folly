@@ -17,12 +17,6 @@
 
 namespace folly {
 namespace logging {
-IntervalRateLimiter::IntervalRateLimiter(
-    uint64_t maxPerInterval,
-    clock::duration interval)
-    : maxPerInterval_{maxPerInterval},
-      interval_{interval},
-      timestamp_{clock::now().time_since_epoch().count()} {}
 
 bool IntervalRateLimiter::checkSlow() {
   auto ts = timestamp_.load();
@@ -36,6 +30,17 @@ bool IntervalRateLimiter::checkSlow() {
     // We treat this as if we fell into the previous interval, and so we
     // rate-limit ourself.
     return false;
+  }
+
+  if (ts == 0) {
+    // If we initialized timestamp_ for the very first time increment count_ by
+    // one instead of setting it to 0.  Our original increment made it roll over
+    // to 0, so other threads may have already incremented it again and passed
+    // the check.
+    auto origCount = count_.fetch_add(1, std::memory_order_acq_rel);
+    // Check to see if other threads already hit the rate limit cap before we
+    // finished checkSlow().
+    return (origCount < maxPerInterval_);
   }
 
   // In the future, if we wanted to return the number of dropped events we
