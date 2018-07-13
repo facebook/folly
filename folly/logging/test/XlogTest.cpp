@@ -23,11 +23,17 @@
 #include <folly/logging/test/XlogHeader1.h>
 #include <folly/logging/test/XlogHeader2.h>
 #include <folly/portability/Constexpr.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
+#include <chrono>
+#include <thread>
 
 using namespace folly;
 using std::make_shared;
+using testing::ElementsAre;
+using testing::ElementsAreArray;
+using namespace std::chrono_literals;
 
 XLOG_SET_CATEGORY_NAME("xlog_test.main_file")
 
@@ -264,6 +270,69 @@ TEST_F(XlogTest, perFileCategoryHandling) {
       "folly.logging.test.XlogFile1.cpp",
       messages[0].first.getCategory()->getName());
   messages.clear();
+}
+
+TEST_F(XlogTest, rateLimiting) {
+  auto handler = make_shared<TestLogHandler>();
+  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
+  LoggerDB::get().setLevel("xlog_test", LogLevel::DBG1);
+
+  // Test XLOG_EVERY_N
+  for (size_t n = 0; n < 50; ++n) {
+    XLOG_EVERY_N(DBG1, 7, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0",
+          "msg 7",
+          "msg 14",
+          "msg 21",
+          "msg 28",
+          "msg 35",
+          "msg 42",
+          "msg 49"));
+  handler->clearMessages();
+
+  // Test XLOG_EVERY_MS and XLOG_N_PER_MS
+  // We test these together to minimize the number of sleep operations.
+  for (size_t n = 0; n < 10; ++n) {
+    // Integer arguments are treated as millisecond
+    XLOG_EVERY_MS(DBG1, 100, "int arg ", n);
+    // Other duration arguments also work, as long as they are
+    // coarser than milliseconds
+    XLOG_EVERY_MS(DBG1, 100ms, "ms arg ", n);
+    XLOG_EVERY_MS(DBG1, 1s, "s arg ", n);
+
+    // Use XLOG_N_PER_MS() too
+    XLOG_N_PER_MS(DBG1, 2, 100, "2x int arg ", n);
+    XLOG_N_PER_MS(DBG1, 1, 100ms, "1x ms arg ", n);
+    XLOG_N_PER_MS(DBG1, 3, 1s, "3x s arg ", n);
+
+    // Sleep for 100ms between iterations 5 and 6
+    if (n == 5) {
+      /* sleep override */ std::this_thread::sleep_for(110ms);
+    }
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAreArray({
+          "int arg 0",
+          "ms arg 0",
+          "s arg 0",
+          "2x int arg 0",
+          "1x ms arg 0",
+          "3x s arg 0",
+          "2x int arg 1",
+          "3x s arg 1",
+          "3x s arg 2",
+          "int arg 6",
+          "ms arg 6",
+          "2x int arg 6",
+          "1x ms arg 6",
+          "2x int arg 7",
+      }));
+  handler->clearMessages();
 }
 
 TEST_F(XlogTest, getXlogCategoryName) {

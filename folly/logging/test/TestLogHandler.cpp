@@ -19,6 +19,15 @@
 
 namespace folly {
 
+std::vector<std::string> TestLogHandler::getMessageValues() {
+  std::vector<std::string> values;
+  values.reserve(messages_.size());
+  for (const auto& msgInfo : messages_) {
+    values.push_back(msgInfo.first.getMessage());
+  }
+  return values;
+}
+
 std::shared_ptr<LogHandler> TestLogHandlerFactory::createHandler(
     const Options& options) {
   return std::make_shared<TestLogHandler>(LogHandlerConfig{type_, options});

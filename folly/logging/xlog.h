@@ -21,6 +21,7 @@
 #include <folly/logging/LogStream.h>
 #include <folly/logging/Logger.h>
 #include <folly/logging/LoggerDB.h>
+#include <folly/logging/RateLimiter.h>
 #include <cstdlib>
 
 /*
@@ -86,6 +87,54 @@
       arg1,                                   \
       ##__VA_ARGS__)
 
+/**
+ * Similar to XLOG(...) except only log a message every @param ms
+ * milliseconds.
+ *
+ * Note that this is threadsafe.
+ */
+#define XLOG_EVERY_MS(level, ms, ...)                                    \
+  XLOG_IF(                                                               \
+      level,                                                             \
+      [] {                                                               \
+        static ::folly::logging::IntervalRateLimiter                     \
+            folly_detail_xlog_limiter(1, std::chrono::milliseconds(ms)); \
+        return folly_detail_xlog_limiter.check();                        \
+      }(),                                                               \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOG(...) except only log a message every @param n
+ * invocations.
+ *
+ * The internal counter is process-global and threadsafe.
+ */
+#define XLOG_EVERY_N(level, n, ...)                                            \
+  XLOG_IF(                                                                     \
+      level,                                                                   \
+      [] {                                                                     \
+        static std::atomic<size_t> folly_detail_xlog_count{0};                 \
+        return FOLLY_UNLIKELY(                                                 \
+            (folly_detail_xlog_count.fetch_add(1, std::memory_order_relaxed) % \
+             (n)) == 0);                                                       \
+      }(),                                                                     \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOG(...) except only log at most @param count messages
+ * per @param ms millisecond interval.
+ *
+ * The internal counters are process-global and threadsafe.
+ */
+#define XLOG_N_PER_MS(level, count, ms, ...)                                   \
+  XLOG_IF(                                                                     \
+      level,                                                                   \
+      [] {                                                                     \
+        static ::folly::logging::IntervalRateLimiter                           \
+            folly_detail_xlog_limiter((count), std::chrono::milliseconds(ms)); \
+        return folly_detail_xlog_limiter.check();                              \
+      }(),                                                                     \
+      ##__VA_ARGS__)
 /**
  * FOLLY_XLOG_STRIP_PREFIXES can be defined to a string containing a
  * colon-separated list of directory prefixes to strip off from the filename
