@@ -96,7 +96,7 @@ void ThreadedExecutor::controlLaunchEnqueuedTasks() {
   with_unique_lock(enqueuedm_, [&] { std::swap(enqueuedt, enqueued_); });
   for (auto& f : enqueuedt) {
     auto th = threadFactory_->newThread(
-        [ this, f = std::move(f) ]() mutable { work(f); });
+        [this, f = std::move(f)]() mutable { work(f); });
     auto id = th.get_id();
     running_[id] = std::move(th);
   }

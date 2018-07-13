@@ -24,36 +24,38 @@
 #include <folly/lang/Exception.h>
 
 namespace folly {
-  // An executor that supports timed scheduling. Like RxScheduler.
-  class ScheduledExecutor : public virtual Executor {
-   public:
-     // Reality is that better than millisecond resolution is very hard to
-     // achieve. However, we reserve the right to be incredible.
-     typedef std::chrono::microseconds Duration;
-     typedef std::chrono::steady_clock::time_point TimePoint;
+// An executor that supports timed scheduling. Like RxScheduler.
+class ScheduledExecutor : public virtual Executor {
+ public:
+  // Reality is that better than millisecond resolution is very hard to
+  // achieve. However, we reserve the right to be incredible.
+  typedef std::chrono::microseconds Duration;
+  typedef std::chrono::steady_clock::time_point TimePoint;
 
-     ~ScheduledExecutor() override = default;
+  ~ScheduledExecutor() override = default;
 
-     void add(Func) override = 0;
+  void add(Func) override = 0;
 
-     /// Alias for add() (for Rx consistency)
-     void schedule(Func&& a) { add(std::move(a)); }
+  /// Alias for add() (for Rx consistency)
+  void schedule(Func&& a) {
+    add(std::move(a));
+  }
 
-     /// Schedule a Func to be executed after dur time has elapsed
-     /// Expect millisecond resolution at best.
-     void schedule(Func&& a, Duration const& dur) {
-       scheduleAt(std::move(a), now() + dur);
-     }
+  /// Schedule a Func to be executed after dur time has elapsed
+  /// Expect millisecond resolution at best.
+  void schedule(Func&& a, Duration const& dur) {
+    scheduleAt(std::move(a), now() + dur);
+  }
 
-     /// Schedule a Func to be executed at time t, or as soon afterward as
-     /// possible. Expect millisecond resolution at best. Must be threadsafe.
-     virtual void scheduleAt(Func&& /* a */, TimePoint const& /* t */) {
-       throw_exception<std::logic_error>("unimplemented");
-     }
+  /// Schedule a Func to be executed at time t, or as soon afterward as
+  /// possible. Expect millisecond resolution at best. Must be threadsafe.
+  virtual void scheduleAt(Func&& /* a */, TimePoint const& /* t */) {
+    throw_exception<std::logic_error>("unimplemented");
+  }
 
-     /// Get this executor's notion of time. Must be threadsafe.
-     virtual TimePoint now() {
-       return std::chrono::steady_clock::now();
-     }
-  };
-  } // namespace folly
+  /// Get this executor's notion of time. Must be threadsafe.
+  virtual TimePoint now() {
+    return std::chrono::steady_clock::now();
+  }
+};
+} // namespace folly

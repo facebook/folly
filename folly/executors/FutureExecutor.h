@@ -45,11 +45,12 @@ class FutureExecutor : public ExecutorImpl {
     using T = typename invoke_result_t<F>::value_type;
     folly::Promise<T> promise;
     auto future = promise.getFuture();
-    ExecutorImpl::add(
-        [ promise = std::move(promise), func = std::move(func) ]() mutable {
-          func().then([promise = std::move(promise)](
-              folly::Try<T> && t) mutable { promise.setTry(std::move(t)); });
-        });
+    ExecutorImpl::add([promise = std::move(promise),
+                       func = std::move(func)]() mutable {
+      func().then([promise = std::move(promise)](folly::Try<T>&& t) mutable {
+        promise.setTry(std::move(t));
+      });
+    });
     return future;
   }
 
@@ -70,7 +71,7 @@ class FutureExecutor : public ExecutorImpl {
     folly::Promise<T> promise;
     auto future = promise.getFuture();
     ExecutorImpl::add(
-        [ promise = std::move(promise), func = std::move(func) ]() mutable {
+        [promise = std::move(promise), func = std::move(func)]() mutable {
           promise.setWith(std::move(func));
         });
     return future;

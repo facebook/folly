@@ -43,7 +43,7 @@ class PriorityThreadFactory : public ThreadFactory {
 
   std::thread newThread(Func&& func) override {
     int priority = priority_;
-    return factory_->newThread([ priority, func = std::move(func) ]() mutable {
+    return factory_->newThread([priority, func = std::move(func)]() mutable {
       if (setpriority(PRIO_PROCESS, 0, priority) != 0) {
         LOG(ERROR) << "setpriority failed (are you root?) with error " << errno,
             strerror(errno);

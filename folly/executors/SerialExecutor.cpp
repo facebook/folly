@@ -16,7 +16,6 @@
 
 #include <folly/executors/SerialExecutor.h>
 
-
 #include <glog/logging.h>
 
 #include <folly/ExceptionString.h>
