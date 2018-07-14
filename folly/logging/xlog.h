@@ -54,7 +54,11 @@
  * best if you always invoke the compiler from the root directory of your
  * project repository.
  */
-#define XLOG(level, ...) XLOG_IF(level, true, ##__VA_ARGS__)
+#define XLOG(level, ...)                   \
+  XLOG_IMPL(                               \
+      ::folly::LogLevel::level,            \
+      ::folly::LogStreamProcessor::APPEND, \
+      ##__VA_ARGS__)
 
 /**
  * Log a message if and only if the specified condition predicate evaluates
@@ -62,7 +66,7 @@
  * passes.
  */
 #define XLOG_IF(level, cond, ...)          \
-  XLOG_IMPL(                               \
+  XLOG_IF_IMPL(                            \
       ::folly::LogLevel::level,            \
       cond,                                \
       ::folly::LogStreamProcessor::APPEND, \
@@ -70,8 +74,13 @@
 /**
  * Log a message to this file's default log category, using a format string.
  */
-#define XLOGF(level, fmt, arg1, ...) \
-  XLOGF_IF(level, true, fmt, arg1, ##__VA_ARGS__)
+#define XLOGF(level, fmt, arg1, ...)       \
+  XLOG_IMPL(                               \
+      ::folly::LogLevel::level,            \
+      ::folly::LogStreamProcessor::FORMAT, \
+      fmt,                                 \
+      arg1,                                \
+      ##__VA_ARGS__)
 
 /**
  * Log a message using a format string if and only if the specified condition
@@ -79,7 +88,7 @@
  * if the log-level check passes.
  */
 #define XLOGF_IF(level, cond, fmt, arg1, ...) \
-  XLOG_IMPL(                                  \
+  XLOG_IF_IMPL(                               \
       ::folly::LogLevel::level,               \
       cond,                                   \
       ::folly::LogStreamProcessor::FORMAT,    \
@@ -153,10 +162,17 @@
 #define XLOG_FILENAME __FILE__
 #endif
 
+#define XLOG_IMPL(level, type, ...) \
+  XLOG_ACTUAL_IMPL(                 \
+      level, true, ::folly::isLogLevelFatal(level), type, ##__VA_ARGS__)
+
+#define XLOG_IF_IMPL(level, cond, type, ...) \
+  XLOG_ACTUAL_IMPL(level, cond, false, type, ##__VA_ARGS__)
+
 /**
  * Helper macro used to implement XLOG() and XLOGF()
  *
- * Beware that the level argument is evalutated twice.
+ * Beware that the level argument is evaluated twice.
  *
  * This macro is somewhat tricky:
  *
@@ -196,29 +212,28 @@
  *   initialized.  On all subsequent calls, disabled log statements can be
  *   skipped with just a single check of the LogLevel.
  */
-#define XLOG_IMPL(level, cond, type, ...)                                \
-  (!XLOG_IS_ON_IMPL(level) || !(cond))                                   \
-      ? ::folly::logDisabledHelper(                                      \
-            ::folly::bool_constant<::folly::isLogLevelFatal(level)>{})   \
-      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &   \
-          ::folly::LogStreamProcessor(                                   \
-              [] {                                                       \
-                static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE> \
-                    folly_detail_xlog_category;                          \
-                return folly_detail_xlog_category.getInfo(               \
-                    &xlog_detail::xlogFileScopeInfo);                    \
-              }(),                                                       \
-              (level),                                                   \
-              xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0),        \
-              xlog_detail::isXlogCategoryOverridden(0),                  \
-              XLOG_FILENAME,                                             \
-              __LINE__,                                                  \
-              (type),                                                    \
-              ##__VA_ARGS__)                                             \
+#define XLOG_ACTUAL_IMPL(level, cond, always_fatal, type, ...)             \
+  (!XLOG_IS_ON_IMPL(level) || !(cond))                                     \
+      ? ::folly::logDisabledHelper(::folly::bool_constant<always_fatal>{}) \
+      : ::folly::LogStreamVoidify<::folly::isLogLevelFatal(level)>{} &     \
+          ::folly::LogStreamProcessor(                                     \
+              [] {                                                         \
+                static ::folly::XlogCategoryInfo<XLOG_IS_IN_HEADER_FILE>   \
+                    folly_detail_xlog_category;                            \
+                return folly_detail_xlog_category.getInfo(                 \
+                    &xlog_detail::xlogFileScopeInfo);                      \
+              }(),                                                         \
+              (level),                                                     \
+              xlog_detail::getXlogCategoryName(XLOG_FILENAME, 0),          \
+              xlog_detail::isXlogCategoryOverridden(0),                    \
+              XLOG_FILENAME,                                               \
+              __LINE__,                                                    \
+              (type),                                                      \
+              ##__VA_ARGS__)                                               \
               .stream()
 
 /**
- * Check if and XLOG() statement with the given log level would be enabled.
+ * Check if an XLOG() statement with the given log level would be enabled.
  *
  * The level parameter must be an unqualified LogLevel enum value.
  */

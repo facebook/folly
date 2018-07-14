@@ -33,10 +33,20 @@ class FatalTests(unittest.TestCase):
             )
 
     def run_helper(self, *args, **kwargs):
-        """
-        Run the helper.
+        """Run the helper and verify it crashes.
+
         Check that it crashes with SIGABRT and prints nothing on stdout.
         Returns the data printed to stderr.
+        """
+        returncode, out, err = self.run_helper_nochecks(*args, **kwargs)
+        self.assertEqual(returncode, -signal.SIGABRT)
+        self.assertEqual(out, b"")
+        return err
+
+    def run_helper_nochecks(self, *args, **kwargs):
+        """Run the helper.
+
+        Returns a tuple of [returncode, stdout_output, stderr_output]
         """
         env = kwargs.pop("env", None)
         if kwargs:
@@ -48,11 +58,18 @@ class FatalTests(unittest.TestCase):
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
         )
         out, err = p.communicate()
-        status = p.returncode
+        return p.returncode, out, err
 
-        self.assertEqual(status, -signal.SIGABRT)
-        self.assertEqual(out, b"")
-        return err
+    def is_debug_build(self):
+        returncode, out, err = self.run_helper_nochecks("--check_debug")
+        self.assertEqual(b"", err)
+        self.assertEqual(0, returncode)
+        if out.strip() == b"DEBUG=1":
+            return True
+        elif out.strip() == b"DEBUG=0":
+            return False
+        else:
+            self.fail("unexpected output from --check_debug: {}".format(out))
 
     def get_crash_regex(self, msg=b"test program crashing!", glog=True):
         if glog:
@@ -65,7 +82,10 @@ class FatalTests(unittest.TestCase):
     def test_no_crash(self):
         # Simple sanity check that the program runs without
         # crashing when requested
-        subprocess.check_output([self.helper, "--crash=no"])
+        returncode, out, err = self.run_helper_nochecks("--crash=no")
+        self.assertEqual(0, returncode)
+        self.assertEqual(b"", out)
+        self.assertEqual(b"", err)
 
     def test_async(self):
         handler_setings = "default=stream:stream=stderr,async=true"
@@ -109,3 +129,22 @@ class FatalTests(unittest.TestCase):
             re.MULTILINE,
         )
         self.assertRegex(err, regex)
+
+    def test_fatal_xlog_if(self):
+        # Specify --crash=no to ensure that the XLOG_IF() check is actually what
+        # triggers the crash.
+        err = self.run_helper("--fail_fatal_xlog_if", "--crash=no")
+        self.assertRegex(err, self.get_crash_regex(b"--fail_fatal_xlog_if specified!"))
+
+    def test_dfatal_xlog_if(self):
+        returncode, out, err = self.run_helper_nochecks(
+            "--fail_dfatal_xlog_if", "--crash=no"
+        )
+        # The "--fail_dfatal_xlog_if" message should be logged regardless of which build
+        # type we are using.  However, in debug builds it will not trigger a crash.
+        self.assertRegex(err, self.get_crash_regex(b"--fail_dfatal_xlog_if specified!"))
+        self.assertEqual(b"", out)
+        if self.is_debug_build():
+            self.assertEqual(-signal.SIGABRT, returncode)
+        else:
+            self.assertEqual(0, returncode)

@@ -47,7 +47,11 @@ std::string loggingFormatPrintf(
  * Log a message to the file's default log category using a printf-style format
  * string.
  */
-#define XLOGC(level, fmt, ...) XLOGC_IF(level, true, fmt, ##__VA_ARGS__)
+#define XLOGC(level, fmt, ...)             \
+  XLOG_IMPL(                               \
+      ::folly::LogLevel::level,            \
+      ::folly::LogStreamProcessor::APPEND, \
+      ::folly::loggingFormatPrintf(fmt, ##__VA_ARGS__))
 
 /**
  * Log a message using a printf-style format string if and only if the
@@ -55,7 +59,7 @@ std::string loggingFormatPrintf(
  * is *only* evaluated if the log-level check passes.
  */
 #define XLOGC_IF(level, cond, fmt, ...)    \
-  XLOG_IMPL(                               \
+  XLOG_IF_IMPL(                            \
       ::folly::LogLevel::level,            \
       cond,                                \
       ::folly::LogStreamProcessor::APPEND, \
