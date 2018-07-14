@@ -2191,11 +2191,6 @@ T Future<T>::get() && {
 }
 
 template <class T>
-T Future<T>::get() & {
-  return std::move(wait().value());
-}
-
-template <class T>
 T Future<T>::get(Duration dur) && {
   wait(dur);
   auto future = copy(std::move(*this));
@@ -2203,15 +2198,6 @@ T Future<T>::get(Duration dur) && {
     throw_exception<FutureTimeout>();
   }
   return std::move(future).value();
-}
-
-template <class T>
-T Future<T>::get(Duration dur) & {
-  wait(dur);
-  if (!this->isReady()) {
-    throw_exception<FutureTimeout>();
-  }
-  return std::move(this->value());
 }
 
 template <class T>
