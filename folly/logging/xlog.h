@@ -322,6 +322,30 @@
   }
 
 /**
+ * Assert that a condition is true.
+ *
+ * This crashes the program with an XLOG(FATAL) message if the condition is
+ * false.  Unlike assert() CHECK statements are always enabled, regardless of
+ * the setting of NDEBUG.
+ */
+#define XCHECK(cond, ...) \
+  XLOG_IF(FATAL, UNLIKELY(!(cond)), "Check failed: " #cond " ", ##__VA_ARGS__)
+
+/**
+ * Assert that a condition is true in non-debug builds.
+ *
+ * When NDEBUG is set this behaves like XDCHECK()
+ * When NDEBUG is not defined XDCHECK statements are not evaluated and will
+ * never log.
+ *
+ * You can use `XLOG_IF(DFATAL, condition)` instead if you want the condition to
+ * be evaluated in release builds but log a message without crashing the
+ * program.
+ */
+#define XDCHECK(cond, ...) \
+  (!::folly::kIsDebug) ? static_cast<void>(0) : XCHECK(cond, ##__VA_ARGS__)
+
+/**
  * XLOG_IS_IN_HEADER_FILE evaluates to false if we can definitively tell if we
  * are not in a header file.  Otherwise, it evaluates to true.
  */

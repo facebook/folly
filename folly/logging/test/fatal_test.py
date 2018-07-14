@@ -148,3 +148,35 @@ class FatalTests(unittest.TestCase):
             self.assertEqual(-signal.SIGABRT, returncode)
         else:
             self.assertEqual(0, returncode)
+
+    def test_xcheck(self):
+        # Specify --crash=no to ensure that the XCHECK() is actually what triggers the
+        # crash.
+        err = self.run_helper("--fail_xcheck", "--crash=no")
+        self.assertRegex(
+            err,
+            self.get_crash_regex(
+                b"Check failed: !FLAGS_fail_xcheck : --fail_xcheck specified!"
+            ),
+        )
+
+    def test_xcheck_nomsg(self):
+        err = self.run_helper("--fail_xcheck_nomsg", "--crash=no")
+        self.assertRegex(
+            err, self.get_crash_regex(b"Check failed: !FLAGS_fail_xcheck_nomsg ")
+        )
+
+    def test_xdcheck(self):
+        returncode, out, err = self.run_helper_nochecks("--fail_xdcheck", "--crash=no")
+        self.assertEqual(b"", out)
+        if self.is_debug_build():
+            self.assertRegex(
+                err,
+                self.get_crash_regex(
+                    b"Check failed: !FLAGS_fail_xdcheck : --fail_xdcheck specified!"
+                ),
+            )
+            self.assertEqual(-signal.SIGABRT, returncode)
+        else:
+            self.assertEqual(b"", err)
+            self.assertEqual(0, returncode)
