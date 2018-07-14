@@ -174,7 +174,7 @@ class hazptr_priv {
   ~hazptr_priv() {
     in_dtor_ = true;
     if (!empty()) {
-      push_all_to_domain();
+      push_all_to_domain(false);
     }
   }
 
@@ -204,18 +204,18 @@ class hazptr_priv {
       }
     }
     if (++rcount_ >= kThreshold) {
-      push_all_to_domain();
+      push_all_to_domain(true);
     }
   }
 
-  void push_all_to_domain() {
+  void push_all_to_domain(bool check_to_reclaim) {
     hazptr_obj<Atom>* h = nullptr;
     hazptr_obj<Atom>* t = nullptr;
     collect(h, t);
     if (h) {
       DCHECK(t);
       hazptr_obj_list<Atom> l(h, t, rcount_);
-      hazptr_domain_push_retired<Atom>(l, false);
+      hazptr_domain_push_retired<Atom>(l, check_to_reclaim);
       rcount_ = 0;
     }
   }

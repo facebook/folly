@@ -276,7 +276,7 @@ class hazptr_domain {
     }
 #if FOLLY_HAZPTR_THR_LOCAL
     if (!shutdown_) {
-      hazptr_priv_tls<Atom>().push_all_to_domain();
+      hazptr_priv_tls<Atom>().push_all_to_domain(false);
     }
 #endif
     bool done = ((children.count() == 0) && (retired() == nullptr));
