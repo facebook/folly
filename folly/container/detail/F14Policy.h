@@ -529,6 +529,9 @@ class ValueContainerPolicy : public BasePolicy<
   void
   constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
+    // This assume helps GCC and MSVC avoid a null-check in the subsequent
+    // placement new.  GCC >= 6 and clang seem to figure it out themselves.
+    // MSVC as of 19 2017 still has the issue.
     assume(itemAddr != nullptr);
     AllocTraits::construct(a, itemAddr, std::forward<Args>(args)...);
   }
@@ -1106,8 +1109,9 @@ class VectorContainerPolicy : public BasePolicy<
   void constructValueAtItem(std::size_t size, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
     *itemAddr = size;
-    AllocTraits::construct(
-        a, std::addressof(values_[size]), std::forward<Args>(args)...);
+    auto dst = std::addressof(values_[size]);
+    assume(dst != nullptr);
+    AllocTraits::construct(a, dst, std::forward<Args>(args)...);
   }
 
   void moveItemDuringRehash(Item* itemAddr, Item& src) {

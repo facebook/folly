@@ -1766,13 +1766,41 @@ class F14Table : public Policy {
   }
 
   FOLLY_NOINLINE void rehashImpl(
-      std::size_t newChunkCount,
-      std::size_t newMaxSizeWithoutRehash) {
-    FOLLY_SAFE_DCHECK(newMaxSizeWithoutRehash > 0, "");
+      std::size_t capacity,
+      std::size_t origChunkCount,
+      std::size_t origMaxSizeWithoutRehash) {
+    FOLLY_SAFE_DCHECK(capacity >= size(), "");
 
     auto origChunks = chunks_;
-    const auto origChunkCount = chunkMask_ + 1;
-    const auto origMaxSizeWithoutRehash = bucket_count();
+
+    // compute new size
+    std::size_t const kInitialCapacity = 2;
+    std::size_t const kHalfChunkCapacity =
+        (Chunk::kDesiredCapacity / 2) & ~std::size_t{1};
+    std::size_t newMaxSizeWithoutRehash;
+    std::size_t newChunkCount;
+    if (capacity <= kHalfChunkCapacity) {
+      newChunkCount = 1;
+      newMaxSizeWithoutRehash =
+          (capacity < kInitialCapacity) ? kInitialCapacity : kHalfChunkCapacity;
+    } else {
+      newChunkCount = nextPowTwo(
+          (capacity + Chunk::kDesiredCapacity - 1) / Chunk::kDesiredCapacity);
+      newMaxSizeWithoutRehash = newChunkCount * Chunk::kDesiredCapacity;
+
+      constexpr std::size_t kMaxChunksWithoutCapacityOverflow =
+          (std::numeric_limits<std::size_t>::max)() / Chunk::kDesiredCapacity;
+
+      if (newChunkCount > kMaxChunksWithoutCapacityOverflow ||
+          newMaxSizeWithoutRehash > max_size()) {
+        throw_exception<std::bad_alloc>();
+      }
+    }
+
+    // is rehash needed?
+    if (origMaxSizeWithoutRehash == newMaxSizeWithoutRehash) {
+      return;
+    }
 
     BytePtr rawAllocation;
     auto undoState = this->beforeRehash(
@@ -1900,38 +1928,10 @@ class F14Table : public Policy {
   // user has no control over max_load_factor
 
   void rehash(std::size_t capacity) {
-    if (capacity < size()) {
-      capacity = size();
-    }
-
-    std::size_t const kInitialCapacity = 2;
-    std::size_t const kHalfChunkCapacity =
-        (Chunk::kDesiredCapacity / 2) & ~std::size_t{1};
-    std::size_t maxSizeWithoutRehash;
-    std::size_t chunkCount;
-    if (capacity <= kInitialCapacity) {
-      chunkCount = 1;
-      maxSizeWithoutRehash = kInitialCapacity;
-    } else if (capacity <= kHalfChunkCapacity) {
-      chunkCount = 1;
-      maxSizeWithoutRehash = kHalfChunkCapacity;
-    } else {
-      chunkCount = folly::nextPowTwo(
-          (capacity + Chunk::kDesiredCapacity - 1) / Chunk::kDesiredCapacity);
-      maxSizeWithoutRehash = chunkCount * Chunk::kDesiredCapacity;
-
-      constexpr std::size_t kMaxChunksWithoutCapacityOverflow =
-          (std::numeric_limits<std::size_t>::max)() / Chunk::kDesiredCapacity;
-
-      if (UNLIKELY(
-              chunkCount > kMaxChunksWithoutCapacityOverflow ||
-              maxSizeWithoutRehash > max_size())) {
-        throw_exception<std::bad_alloc>();
-      }
-    }
-    if (bucket_count() != maxSizeWithoutRehash) {
-      rehashImpl(chunkCount, maxSizeWithoutRehash);
-    }
+    rehashImpl(
+        std::max<std::size_t>(capacity, size()),
+        chunkMask_ + 1,
+        bucket_count());
   }
 
   void reserve(std::size_t capacity) {
@@ -1940,13 +1940,11 @@ class F14Table : public Policy {
 
   // Returns true iff a rehash was performed
   void reserveForInsert(size_t incoming = 1) {
-    if (size() + incoming - 1 >= bucket_count()) {
-      reserveForInsertImpl(incoming);
+    auto capacity = size() + incoming;
+    auto bc = bucket_count();
+    if (capacity - 1 >= bc) {
+      rehashImpl(capacity, chunkMask_ + 1, bc);
     }
-  }
-
-  FOLLY_NOINLINE void reserveForInsertImpl(size_t incoming) {
-    rehash(size() + incoming);
   }
 
   // Returns pos,true if construct, pos,false if found.  key is only used
@@ -1956,9 +1954,11 @@ class F14Table : public Policy {
   std::pair<ItemIter, bool> tryEmplaceValue(K const& key, Args&&... args) {
     const auto hp = splitHash(this->computeKeyHash(key));
 
-    auto existing = findImpl(hp, key);
-    if (!existing.atEnd()) {
-      return std::make_pair(existing, false);
+    if (size() > 0) {
+      auto existing = findImpl(hp, key);
+      if (!existing.atEnd()) {
+        return std::make_pair(existing, false);
+      }
     }
 
     reserveForInsert();
