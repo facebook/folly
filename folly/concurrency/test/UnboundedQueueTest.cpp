@@ -127,6 +127,33 @@ TEST(UnboundedQueue, peek) {
   peek_test<UMPSC, true>();
 }
 
+TEST(UnboundedQueue, cleanup_on_destruction) {
+  struct Foo {
+    int* p_{nullptr};
+    explicit Foo(int* p) : p_(p) {}
+    Foo(Foo&& o) noexcept : p_(std::exchange(o.p_, nullptr)) {}
+    ~Foo() {
+      if (p_) {
+        ++(*p_);
+      }
+    }
+    Foo& operator=(Foo&& o) noexcept {
+      p_ = std::exchange(o.p_, nullptr);
+      return *this;
+    }
+  };
+  int count = 0;
+  int num = 3;
+  {
+    folly::UMPMCQueue<Foo, false> q;
+    for (int i = 0; i < num; ++i) {
+      Foo foo(&count);
+      q.enqueue(std::move(foo));
+    }
+  }
+  EXPECT_EQ(count, num);
+}
+
 template <typename ProdFunc, typename ConsFunc, typename EndFunc>
 inline uint64_t run_once(
     int nprod,

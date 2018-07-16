@@ -251,11 +251,8 @@ class UnboundedQueue {
 
   /** destructor */
   ~UnboundedQueue() {
-    Segment* next;
-    for (Segment* s = head(); s; s = next) {
-      next = s->nextSegment();
-      reclaimSegment(s);
-    }
+    cleanUpRemainingItems();
+    reclaimRemainingSegments();
   }
 
   /** enqueue */
@@ -635,6 +632,34 @@ class UnboundedQueue {
     }
   }
 
+  /** cleanUpRemainingItems */
+  void cleanUpRemainingItems() {
+    auto end = producerTicket();
+    auto s = head();
+    for (auto t = consumerTicket(); t < end; ++t) {
+      if (t >= s->minTicket() + SegmentSize) {
+        s = s->nextSegment();
+      }
+      DCHECK_LT(t, (s->minTicket() + SegmentSize));
+      auto idx = index(t);
+      auto& e = s->entry(idx);
+      e.destroyItem();
+    }
+  }
+
+  /** reclaimRemainingSegments */
+  void reclaimRemainingSegments() {
+    auto h = head();
+    auto s = h->nextSegment();
+    h->setNextSegment(nullptr);
+    reclaimSegment(h);
+    while (s) {
+      auto next = s->nextSegment();
+      delete s;
+      s = next;
+    }
+  }
+
   FOLLY_ALWAYS_INLINE size_t index(Ticket t) const noexcept {
     return (t * Stride) & (SegmentSize - 1);
   }
@@ -751,6 +776,10 @@ class UnboundedQueue {
       return flag_.try_wait_until(deadline, opt);
     }
 
+    FOLLY_ALWAYS_INLINE void destroyItem() noexcept {
+      itemPtr()->~T();
+    }
+
    private:
     FOLLY_ALWAYS_INLINE void getItem(T& item) noexcept {
       item = std::move(*(itemPtr()));
@@ -765,10 +794,6 @@ class UnboundedQueue {
 
     FOLLY_ALWAYS_INLINE T* itemPtr() noexcept {
       return static_cast<T*>(static_cast<void*>(&item_));
-    }
-
-    FOLLY_ALWAYS_INLINE void destroyItem() noexcept {
-      itemPtr()->~T();
     }
   }; // Entry
 
@@ -785,6 +810,10 @@ class UnboundedQueue {
 
     Segment* nextSegment() const noexcept {
       return next_.load(std::memory_order_acquire);
+    }
+
+    void setNextSegment(Segment* next) {
+      next_.store(next, std::memory_order_relaxed);
     }
 
     bool casNextSegment(Segment* next) noexcept {
