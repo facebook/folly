@@ -1078,6 +1078,25 @@ TEST(HazptrTest, dsched_wide_cas) {
   wide_cas_test<DeterministicAtomic>();
 }
 
+TEST(HazptrTest, reclamation_without_calling_cleanup) {
+  c_.clear();
+  int nthr = 5;
+  int objs = folly::detail::hazptr_domain_rcount_threshold();
+  std::vector<std::thread> thr(nthr);
+  for (int tid = 0; tid < nthr; ++tid) {
+    thr[tid] = std::thread([&, tid] {
+      for (int i = tid; i < objs; i += nthr) {
+        auto p = new Node<>;
+        p->retire();
+      }
+    });
+  }
+  for (auto& t : thr) {
+    t.join();
+  }
+  ASSERT_GT(c_.dtors(), 0);
+}
+
 // Benchmark drivers
 
 template <typename InitFunc, typename Func, typename EndFunc>

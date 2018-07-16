@@ -33,6 +33,14 @@
 
 namespace folly {
 
+namespace detail {
+
+constexpr int hazptr_domain_rcount_threshold() {
+  return 1000;
+}
+
+} // namespace detail
+
 /**
  *  hazptr_domain
  *
@@ -42,7 +50,7 @@ namespace folly {
  */
 template <template <typename> class Atom>
 class hazptr_domain {
-  static constexpr int kThreshold = 1000;
+  static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
   static constexpr uint64_t kSyncTimePeriod{2000000000}; // nanoseconds
 
