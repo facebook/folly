@@ -560,17 +560,17 @@ TEST(Json, PrintTo) {
 
   std::string expected =
       R"({
-  false : true,
-  true : false,
-  0.5 : 0.25,
-  1.5 : 2.25,
-  0 : 1,
-  1 : 2,
-  2 : 3,
-  "a" : [
+  false: true,
+  true: false,
+  0.5: 0.25,
+  1.5: 2.25,
+  0: 1,
+  1: 2,
+  2: 3,
+  "a": [
     {
-      "a" : "b",
-      "c" : "d"
+      "a": "b",
+      "c": "d"
     },
     12.5,
     "Yo Dawg",
@@ -579,9 +579,9 @@ TEST(Json, PrintTo) {
     ],
     null
   ],
-  "another" : 32.2,
-  "foo" : "bar",
-  "junk" : 12
+  "another": 32.2,
+  "foo": "bar",
+  "junk": 12
 })";
   PrintTo(value, &oss);
   EXPECT_EQ(expected, oss.str());

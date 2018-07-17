@@ -175,7 +175,7 @@ struct Printer {
   }
 
   void mapColon() const {
-    out_ += indentLevel_ ? " : " : ":";
+    out_ += indentLevel_ ? ": " : ":";
   }
 
  private:
