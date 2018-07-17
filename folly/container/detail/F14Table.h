@@ -1526,7 +1526,6 @@ class F14Table : public Policy {
   void insertAtBlank(ItemIter pos, HashPair hp, Args&&... args) {
     try {
       auto dst = pos.itemAddr();
-      assume(dst != nullptr);
       this->constructValueAtItem(size(), dst, std::forward<Args>(args)...);
     } catch (...) {
       eraseBlank(pos, hp);
@@ -1628,7 +1627,6 @@ class F14Table : public Policy {
           auto&& srcArg =
               std::forward<T>(src).buildArgForItem(srcChunk->item(srcI));
           auto dst = dstChunk->itemAddr(dstI);
-          assume(dst != nullptr);
           this->constructValueAtItem(
               0, dst, std::forward<decltype(srcArg)>(srcArg));
           dstChunk->setTag(dstI, srcChunk->tag(srcI));

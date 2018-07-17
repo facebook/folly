@@ -529,9 +529,13 @@ class ValueContainerPolicy : public BasePolicy<
   void
   constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
-    // This assume helps GCC and MSVC avoid a null-check in the subsequent
-    // placement new.  GCC >= 6 and clang seem to figure it out themselves.
-    // MSVC as of 19 2017 still has the issue.
+    // GCC < 6 doesn't use the fact that itemAddr came from a reference
+    // to avoid a null-check in the placement new.  folly::assume-ing it
+    // here gets rid of that branch.  The branch is very predictable,
+    // but spoils some further optimizations.  All clang versions that
+    // compile folly seem to be okay.
+    //
+    // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(itemAddr != nullptr);
     AllocTraits::construct(a, itemAddr, std::forward<Args>(args)...);
   }
@@ -772,9 +776,11 @@ class NodeContainerPolicy
   void
   constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
+    // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(itemAddr != nullptr);
     new (itemAddr) Item{AllocTraits::allocate(a, 1)};
     auto p = std::addressof(**itemAddr);
+    // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(p != nullptr);
     AllocTraits::construct(a, p, std::forward<Args>(args)...);
   }
@@ -782,6 +788,7 @@ class NodeContainerPolicy
   void moveItemDuringRehash(Item* itemAddr, Item& src) {
     // This is basically *itemAddr = src; src = nullptr, but allowing
     // for fancy pointers.
+    // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(itemAddr != nullptr);
     new (itemAddr) Item{std::move(src)};
     src = nullptr;
@@ -1110,6 +1117,7 @@ class VectorContainerPolicy : public BasePolicy<
     Alloc& a = this->alloc();
     *itemAddr = size;
     auto dst = std::addressof(values_[size]);
+    // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(dst != nullptr);
     AllocTraits::construct(a, dst, std::forward<Args>(args)...);
   }
@@ -1142,6 +1150,7 @@ class VectorContainerPolicy : public BasePolicy<
       std::memcpy(dst, src, n * sizeof(Value));
     } else {
       for (std::size_t i = 0; i < n; ++i, ++src, ++dst) {
+        // TODO(T31574848): clean up assume-s used to optimize placement new
         assume(dst != nullptr);
         AllocTraits::construct(a, dst, Super::moveValue(*src));
         if (kIsMap) {
@@ -1167,6 +1176,7 @@ class VectorContainerPolicy : public BasePolicy<
     } else {
       for (std::size_t i = 0; i < size; ++i, ++src, ++dst) {
         try {
+          // TODO(T31574848): clean up assume-s used to optimize placement new
           assume(dst != nullptr);
           AllocTraits::construct(a, dst, constructorArgFor(*src));
         } catch (...) {
