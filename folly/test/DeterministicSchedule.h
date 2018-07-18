@@ -23,6 +23,7 @@
 #include <atomic>
 #include <functional>
 #include <mutex>
+#include <queue>
 #include <thread>
 #include <unordered_set>
 #include <vector>
@@ -181,6 +182,12 @@ class DeterministicSchedule : boost::noncopyable {
 
   /** Clears the function set by setAuxChk */
   static void clearAuxChk();
+
+  /** Remove the current thread's semaphore from sems_ */
+  static sem_t* descheduleCurrentThread();
+
+  /** Add sem back into sems_ */
+  static void reschedule(sem_t* sem);
 
  private:
   static FOLLY_TLS sem_t* tls_sem;
@@ -453,6 +460,7 @@ struct DeterministicAtomic {
  */
 struct DeterministicMutex {
   std::mutex m;
+  std::queue<sem_t*> waiters_;
 
   DeterministicMutex() = default;
   ~DeterministicMutex() = default;
@@ -461,12 +469,17 @@ struct DeterministicMutex {
 
   void lock() {
     FOLLY_TEST_DSCHED_VLOG(this << ".lock()");
-    while (!try_lock()) {
-      // Not calling m.lock() in order to avoid deadlock when the
-      // mutex m is held by another thread. The deadlock would be
-      // between the call to m.lock() and the lock holder's wait on
-      // its own tls_sem scheduling semaphore.
+    DeterministicSchedule::beforeSharedAccess();
+    while (!m.try_lock()) {
+      sem_t* sem = DeterministicSchedule::descheduleCurrentThread();
+      if (sem) {
+        waiters_.push(sem);
+      }
+      DeterministicSchedule::afterSharedAccess();
+      // Wait to be scheduled by unlock
+      DeterministicSchedule::beforeSharedAccess();
     }
+    DeterministicSchedule::afterSharedAccess();
   }
 
   bool try_lock() {
@@ -480,6 +493,13 @@ struct DeterministicMutex {
   void unlock() {
     FOLLY_TEST_DSCHED_VLOG(this << ".unlock()");
     m.unlock();
+    DeterministicSchedule::beforeSharedAccess();
+    if (!waiters_.empty()) {
+      sem_t* sem = waiters_.front();
+      DeterministicSchedule::reschedule(sem);
+      waiters_.pop();
+    }
+    DeterministicSchedule::afterSharedAccess();
   }
 };
 } // namespace test

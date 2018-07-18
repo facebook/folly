@@ -183,6 +183,22 @@ void DeterministicSchedule::clearAuxChk() {
   aux_chk = nullptr;
 }
 
+void DeterministicSchedule::reschedule(sem_t* sem) {
+  auto sched = tls_sched;
+  if (sched) {
+    sched->sems_.push_back(sem);
+  }
+}
+
+sem_t* DeterministicSchedule::descheduleCurrentThread() {
+  auto sched = tls_sched;
+  if (sched) {
+    sched->sems_.erase(
+        std::find(sched->sems_.begin(), sched->sems_.end(), tls_sem));
+  }
+  return tls_sem;
+}
+
 sem_t* DeterministicSchedule::beforeThreadCreate() {
   sem_t* s = new sem_t;
   sem_init(s, 0, 0);
