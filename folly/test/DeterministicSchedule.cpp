@@ -226,6 +226,11 @@ void DeterministicSchedule::afterThreadCreate(sem_t* sem) {
 void DeterministicSchedule::beforeThreadExit() {
   assert(tls_sched == this);
   beforeSharedAccess();
+  auto parent = joins_.find(std::this_thread::get_id());
+  if (parent != joins_.end()) {
+    reschedule(parent->second);
+    joins_.erase(parent);
+  }
   sems_.erase(std::find(sems_.begin(), sems_.end(), tls_sem));
   active_.erase(std::this_thread::get_id());
   if (sems_.size() > 0) {
@@ -242,16 +247,19 @@ void DeterministicSchedule::beforeThreadExit() {
 void DeterministicSchedule::join(std::thread& child) {
   auto sched = tls_sched;
   if (sched) {
-    bool done = false;
-    while (!done) {
-      beforeSharedAccess();
-      done = !sched->active_.count(child.get_id());
-      if (done) {
-        FOLLY_TEST_DSCHED_VLOG("joined " << std::hex << child.get_id());
-      }
+    beforeSharedAccess();
+    assert(sched->joins_.count(child.get_id()) == 0);
+    if (sched->active_.count(child.get_id())) {
+      sem_t* sem = descheduleCurrentThread();
+      sched->joins_.insert({child.get_id(), sem});
       afterSharedAccess();
+      // Wait to be scheduled by exiting child thread
+      beforeSharedAccess();
+      assert(!sched->active_.count(child.get_id()));
     }
+    afterSharedAccess();
   }
+  FOLLY_TEST_DSCHED_VLOG("joined " << std::hex << child.get_id());
   child.join();
 }
 

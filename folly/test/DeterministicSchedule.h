@@ -199,6 +199,7 @@ class DeterministicSchedule : boost::noncopyable {
   std::function<size_t(size_t)> scheduler_;
   std::vector<sem_t*> sems_;
   std::unordered_set<std::thread::id> active_;
+  std::unordered_map<std::thread::id, sem_t*> joins_;
   unsigned nextThreadId_;
   /* step_ keeps count of shared accesses that correspond to user
    * synchronization steps (atomic accesses for now).
