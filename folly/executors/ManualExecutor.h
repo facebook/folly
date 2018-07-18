@@ -39,6 +39,8 @@ class ManualExecutor : public DrivableExecutor,
                        public ScheduledExecutor,
                        public SequencedExecutor {
  public:
+  ~ManualExecutor();
+
   void add(Func) override;
 
   /// Do work. Returns the number of functions that were executed (maybe 0).

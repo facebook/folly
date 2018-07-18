@@ -22,6 +22,10 @@
 
 namespace folly {
 
+ManualExecutor::~ManualExecutor() {
+  drain();
+}
+
 void ManualExecutor::add(Func callback) {
   std::lock_guard<std::mutex> lock(lock_);
   funcs_.emplace(std::move(callback));

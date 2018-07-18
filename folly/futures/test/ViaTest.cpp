@@ -540,6 +540,7 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetValueFirst) {
     ManualExecutor x;
     future = makeFuture().via(&x).then(
         [c = std::move(captured_promise)] { return 42; });
+    x.clear();
   }
 
   EXPECT_THROW(std::move(*future).get(std::chrono::seconds(5)), BrokenPromise);
@@ -564,6 +565,7 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetCallbackFirst) {
     future = trigger.getFuture().via(&x).then(
         [c = std::move(captured_promise)] { return 42; });
     trigger.setValue();
+    x.clear();
   }
 
   EXPECT_THROW(std::move(*future).get(std::chrono::seconds(5)), BrokenPromise);

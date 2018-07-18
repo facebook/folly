@@ -37,6 +37,10 @@ TEST(ManualExecutor, runIsStable) {
   x.add(f2);
   x.run();
   EXPECT_EQ(count, 0);
+
+  // ManualExecutor's destructor drains, so explicitly clear the two added by
+  // f2.
+  EXPECT_EQ(2, x.clear());
 }
 
 TEST(ManualExecutor, drainIsNotStable) {
@@ -195,6 +199,15 @@ TEST(ManualExecutor, clear) {
   x.advance(std::chrono::milliseconds(10));
   x.run();
   EXPECT_EQ(0, count);
+}
+
+TEST(ManualExecutor, drainsOnDestruction) {
+  size_t count = 0;
+  {
+    ManualExecutor x;
+    x.add([&] { ++count; });
+  }
+  EXPECT_EQ(1, count);
 }
 
 TEST(Executor, InlineExecutor) {
