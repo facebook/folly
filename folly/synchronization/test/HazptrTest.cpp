@@ -300,6 +300,12 @@ void basic_objects_test() {
     ++num;
     auto obj = new NodeRC<false, Atom>(0, nullptr);
     obj->acquire_link_safe();
+    obj->unlink_and_reclaim_unchecked();
+  }
+  {
+    ++num;
+    auto obj = new NodeRC<false, Atom>(0, nullptr);
+    obj->acquire_link_safe();
     hazptr_root<NodeRC<false, Atom>> root(obj);
   }
   ASSERT_EQ(c_.ctors(), num);

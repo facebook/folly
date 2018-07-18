@@ -119,31 +119,39 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base_linked;
 
-  void count_inc(Count add) {
+  Count count() const noexcept {
+    return count_.load(std::memory_order_acquire);
+  }
+
+  void count_set(Count val) noexcept {
+    count_.store(val, std::memory_order_release);
+  }
+
+  void count_inc(Count add) noexcept {
     auto oldval = count_.fetch_add(add, std::memory_order_acq_rel);
     DCHECK_LT(oldval & kLinkMask, kLinkMask);
     DCHECK_LT(oldval & kRefMask, kRefMask);
   }
 
-  void count_inc_safe(Count add) {
-    auto oldval = count_.load(std::memory_order_relaxed);
-    count_.store(oldval + add, std::memory_order_release);
+  void count_inc_safe(Count add) noexcept {
+    auto oldval = count();
+    count_set(oldval + add);
     DCHECK_LT(oldval & kLinkMask, kLinkMask);
     DCHECK_LT(oldval & kRefMask, kRefMask);
   }
 
-  bool count_cas(Count& oldval, Count newval) {
+  bool count_cas(Count& oldval, Count newval) noexcept {
     return count_.compare_exchange_weak(
         oldval, newval, std::memory_order_acq_rel, std::memory_order_acquire);
   }
 
   bool release_link() noexcept {
     auto sub = kLink;
-    auto oldval = count_.load(std::memory_order_acquire);
+    auto oldval = count();
     while (true) {
       DCHECK_GT(oldval & kLinkMask, 0u);
       if (oldval == kLink) {
-        count_.store(0u, std::memory_order_release);
+        count_set(0u);
         return true;
       }
       if (count_cas(oldval, oldval - sub)) {
@@ -154,11 +162,11 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
 
   bool release_ref() noexcept {
     auto sub = kRef;
-    auto oldval = count_.load(std::memory_order_acquire);
+    auto oldval = count();
     while (true) {
       if (oldval == 0u) {
         if (kIsDebug) {
-          count_.store(kRefMask);
+          count_set(kRefMask);
         }
         return true;
       }
@@ -170,11 +178,11 @@ class hazptr_obj_linked : public hazptr_obj<Atom> {
   }
 
   bool downgrade_link() noexcept {
-    auto oldval = count_.load(std::memory_order_acquire);
+    auto oldval = count();
     auto sub = kLink - kRef;
     while (true) {
       if (oldval == kLink) {
-        count_.store(kRef, std::memory_order_release);
+        count_set(kRef);
         return true;
       }
       if (count_cas(oldval, oldval - sub)) {
@@ -240,6 +248,17 @@ class hazptr_obj_base_linked : public hazptr_obj_linked<Atom>,
     if (this->release_link()) { // defined in hazptr_obj_linked
       downgrade_retire_immutable_descendants();
       retire();
+    }
+  }
+
+  /* unlink_and_reclaim_unchecked: Reclaim object if the last link is
+     released, without checking hazard pointers. To be called only
+     when the object cannot possibly be protected by any hazard
+     pointers. */
+  void unlink_and_reclaim_unchecked() {
+    if (this->release_link()) { // defined in hazptr_obj_linked
+      DCHECK_EQ(this->count(), 0u);
+      delete_self();
     }
   }
 
