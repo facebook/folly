@@ -114,11 +114,11 @@ ssize_t read_all(int fd, uint8_t* buffer, size_t size) {
 // Returns the position in the file after done reading.
 off_t get_stack_trace(int fd, size_t file_pos, uint8_t* buffer, size_t count) {
   off_t rv = lseek(fd, file_pos, SEEK_SET);
-  assert(rv == (off_t)file_pos);
+  CHECK_EQ(rv, (off_t)file_pos);
 
   // Subtract 1 from size of buffer to hold nullptr.
   ssize_t bytes_read = read_all(fd, buffer, count - 1);
-  assert(bytes_read > 0);
+  CHECK_GT(bytes_read, 0);
   buffer[bytes_read] = '\0';
   return lseek(fd, 0, SEEK_CUR);
 }
