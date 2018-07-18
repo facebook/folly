@@ -216,10 +216,6 @@ testWithLock() {
   obj.withWLock([](const std::vector<int>& lockedObj) {
     EXPECT_EQ(1002, lockedObj.size());
   });
-  constObj.withWLock([](const std::vector<int>& lockedObj) {
-    EXPECT_EQ(1002, lockedObj.size());
-    EXPECT_EQ(11, lockedObj.back());
-  });
   obj.withRLock([](const std::vector<int>& lockedObj) {
     EXPECT_EQ(1002, lockedObj.size());
     EXPECT_EQ(11, lockedObj.back());
@@ -232,10 +228,6 @@ testWithLock() {
   obj.withWLock([](auto& lockedObj) { lockedObj.push_back(12); });
   obj.withWLock(
       [](const auto& lockedObj) { EXPECT_EQ(1003, lockedObj.size()); });
-  constObj.withWLock([](const auto& lockedObj) {
-    EXPECT_EQ(1003, lockedObj.size());
-    EXPECT_EQ(12, lockedObj.back());
-  });
   obj.withRLock([](const auto& lockedObj) {
     EXPECT_EQ(1003, lockedObj.size());
     EXPECT_EQ(12, lockedObj.back());
@@ -265,10 +257,6 @@ testWithLock() {
     }
     EXPECT_EQ(15, lockedObj->back());
   });
-  constObj.withWLockPtr([](auto&& lockedObj) {
-    EXPECT_EQ(1005, lockedObj->size());
-    EXPECT_EQ(15, lockedObj->back());
-  });
 #else
   obj.withWLockPtr([](typename SynchType::LockedPtr&& lockedObj) {
     lockedObj->push_back(13);
@@ -280,10 +268,6 @@ testWithLock() {
   obj.withWLockPtr([](typename SynchType::LockedPtr&& lockedObj) {
     lockedObj->push_back(16);
     EXPECT_EQ(1006, lockedObj->size());
-  });
-  constObj.withWLockPtr([](typename SynchType::ConstWLockedPtr&& lockedObj) {
-    EXPECT_EQ(1006, lockedObj->size());
-    EXPECT_EQ(16, lockedObj->back());
   });
   obj.withRLockPtr([](typename SynchType::ConstLockedPtr&& lockedObj) {
     EXPECT_EQ(1006, lockedObj->size());
