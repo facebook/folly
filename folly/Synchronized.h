@@ -257,9 +257,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
   UpgradeLockedPtr ulock() {
     return UpgradeLockedPtr(static_cast<Subclass*>(this));
   }
-  ConstUpgradeLockedPtr ulock() const {
-    return ConstUpgradeLockedPtr(static_cast<const Subclass*>(this));
-  }
 
   /**
    * Attempts to acquire the lock in upgrade mode.  If acquisition is
@@ -271,9 +268,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
   TryUpgradeLockedPtr tryULock() {
     return TryUpgradeLockedPtr{static_cast<Subclass*>(this)};
   }
-  ConstTryUpgradeLockedPtr tryULock() const {
-    return ConstTryUpgradeLockedPtr{static_cast<const Subclass*>(this)};
-  }
 
   /**
    * Acquire an upgrade lock and return a LockedPtr that can be used to safely
@@ -284,11 +278,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
   template <class Rep, class Period>
   UpgradeLockedPtr ulock(const std::chrono::duration<Rep, Period>& timeout) {
     return UpgradeLockedPtr(static_cast<Subclass*>(this), timeout);
-  }
-  template <class Rep, class Period>
-  UpgradeLockedPtr ulock(
-      const std::chrono::duration<Rep, Period>& timeout) const {
-    return ConstUpgradeLockedPtr(static_cast<const Subclass*>(this), timeout);
   }
 
   /**
@@ -312,7 +301,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
    * moveFromUpgradeToWrite() method)
    */
   template <class Function>
-  auto withULock(Function&& function) const {
+  auto withULock(Function&& function) {
     return function(*ulock());
   }
 
@@ -330,10 +319,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
    */
   template <class Function>
   auto withULockPtr(Function&& function) {
-    return function(ulock());
-  }
-  template <class Function>
-  auto withULockPtr(Function&& function) const {
     return function(ulock());
   }
 };
@@ -1563,10 +1548,6 @@ auto rlock(const Synchronized<Data, Mutex>& synchronized, Args&&... args) {
 }
 template <typename D, typename M, typename... Args>
 auto ulock(Synchronized<D, M>& synchronized, Args&&... args) {
-  return detail::ulock(synchronized, std::forward<Args>(args)...);
-}
-template <typename D, typename M, typename... Args>
-auto ulock(const Synchronized<D, M>& synchronized, Args&&... args) {
   return detail::ulock(synchronized, std::forward<Args>(args)...);
 }
 template <typename D, typename M, typename... Args>
