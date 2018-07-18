@@ -77,6 +77,11 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   size_t numThreads();
   void setNumThreads(size_t numThreads);
+
+  // Return actual number of active threads -- this could be different from
+  // numThreads() due to ThreadPoolExecutor's dynamic behavior.
+  size_t numActiveThreads();
+
   /*
    * stop() is best effort - there is no guarantee that unexecuted tasks won't
    * be executed before it returns. Specifically, IOThreadPoolExecutor's stop()

@@ -117,6 +117,10 @@ size_t ThreadPoolExecutor::numThreads() {
   return maxThreads_.load(std::memory_order_relaxed);
 }
 
+size_t ThreadPoolExecutor::numActiveThreads() {
+  return activeThreads_.load(std::memory_order_relaxed);
+}
+
 // Set the maximum number of running threads.
 void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
   /* Since ThreadPoolExecutor may be dynamically adjusting the number of
