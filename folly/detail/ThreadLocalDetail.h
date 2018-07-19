@@ -125,7 +125,6 @@ struct ElementWrapper {
 
     DCHECK(deleter1 != nullptr);
     ownsDeleter ? (*deleter2)(ptr, mode) : (*deleter1)(ptr, mode);
-    cleanup();
     return true;
   }
 
@@ -353,6 +352,10 @@ struct StaticMetaBase {
   FOLLY_EXPORT static ThreadEntryList* getThreadEntryList();
 
   static void onThreadExit(void* ptr);
+
+  // returns the elementsCapacity for the
+  // current thread ThreadEntry struct
+  uint32_t elementsCapacity() const;
 
   uint32_t allocate(EntryID* ent);
 

@@ -184,11 +184,15 @@ class ThreadLocalPtr {
 
   void reset(T* newPtr = nullptr) {
     auto guard = makeGuard([&] { delete newPtr; });
-    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
+    threadlocal_detail::ElementWrapper* w = &StaticMeta::get(&id_);
 
-    w.dispose(TLPDestructionMode::THIS_THREAD);
+    w->dispose(TLPDestructionMode::THIS_THREAD);
+    // need to get a new ptr since the
+    // ThreadEntry::elements array can be reallocated
+    w = &StaticMeta::get(&id_);
+    w->cleanup();
     guard.dismiss();
-    w.set(newPtr);
+    w->set(newPtr);
   }
 
   explicit operator bool() const {
@@ -238,10 +242,14 @@ class ThreadLocalPtr {
         deleter(newPtr, TLPDestructionMode::THIS_THREAD);
       }
     });
-    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
-    w.dispose(TLPDestructionMode::THIS_THREAD);
+    threadlocal_detail::ElementWrapper* w = &StaticMeta::get(&id_);
+    w->dispose(TLPDestructionMode::THIS_THREAD);
+    // need to get a new ptr since the
+    // ThreadEntry::elements array can be reallocated
+    w = &StaticMeta::get(&id_);
+    w->cleanup();
     guard.dismiss();
-    w.set(newPtr, deleter);
+    w->set(newPtr, deleter);
   }
 
   // Holds a global lock for iteration through all thread local child objects.
@@ -456,4 +464,19 @@ class ThreadLocalPtr {
   mutable typename StaticMeta::EntryID id_;
 };
 
+namespace threadlocal_detail {
+template <typename>
+struct static_meta_of;
+
+template <typename T, typename Tag, typename AccessMode>
+struct static_meta_of<ThreadLocalPtr<T, Tag, AccessMode>> {
+  using type = StaticMeta<Tag, AccessMode>;
+};
+
+template <typename T, typename Tag, typename AccessMode>
+struct static_meta_of<ThreadLocal<T, Tag, AccessMode>> {
+  using type = StaticMeta<Tag, AccessMode>;
+};
+
+} // namespace threadlocal_detail
 } // namespace folly

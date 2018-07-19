@@ -139,6 +139,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       shouldRun = false;
       FOR_EACH_RANGE (i, 0, threadEntry->elementsCapacity) {
         if (threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
+          threadEntry->elements[i].cleanup();
           shouldRun = true;
         }
       }
@@ -170,6 +171,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
         shouldRunInner = false;
         FOR_EACH_RANGE (i, 0, tmp->elementsCapacity) {
           if (tmp->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
+            tmp->elements[i].cleanup();
             shouldRunInner = true;
             shouldRunOuter = true;
           }
@@ -200,6 +202,12 @@ void StaticMetaBase::onThreadExit(void* ptr) {
 #ifndef FOLLY_TLD_USE_FOLLY_TLS
   delete threadEntryList;
 #endif
+}
+
+uint32_t StaticMetaBase::elementsCapacity() const {
+  ThreadEntry* threadEntry = (*threadEntry_)();
+
+  return FOLLY_LIKELY(!!threadEntry) ? threadEntry->elementsCapacity : 0;
 }
 
 uint32_t StaticMetaBase::allocate(EntryID* ent) {
@@ -285,7 +293,9 @@ void StaticMetaBase::destroy(EntryID* ent) {
     }
     // Delete elements outside the locks.
     for (ElementWrapper& elem : elements) {
-      elem.dispose(TLPDestructionMode::ALL_THREADS);
+      if (elem.dispose(TLPDestructionMode::ALL_THREADS)) {
+        elem.cleanup();
+      }
     }
   } catch (...) { // Just in case we get a lock error or something anyway...
     LOG(WARNING) << "Destructor discarding an exception that was thrown.";

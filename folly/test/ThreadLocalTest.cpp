@@ -60,6 +60,23 @@ struct Widget {
 };
 int Widget::totalVal_ = 0;
 
+struct MultiWidget {
+  int val_{0};
+  MultiWidget() = default;
+  ~MultiWidget() {
+    // force a reallocation in the destructor by
+    // allocating more than elementsCapacity
+
+    using TL = ThreadLocal<size_t>;
+    using TLMeta = threadlocal_detail::static_meta_of<TL>::type;
+    auto const numElements = TLMeta::instance().elementsCapacity() + 1;
+    std::vector<ThreadLocal<size_t>> elems(numElements);
+    for (auto& t : elems) {
+      *t += 1;
+    }
+  }
+};
+
 TEST(ThreadLocalPtr, BasicDestructor) {
   Widget::totalVal_ = 0;
   ThreadLocalPtr<Widget> w;
@@ -223,6 +240,12 @@ TEST(ThreadLocal, BasicDestructor) {
   ThreadLocal<Widget> w;
   std::thread([&w]() { w->val_ += 10; }).join();
   EXPECT_EQ(10, Widget::totalVal_);
+}
+
+// this should force a realloc of the ElementWrapper array
+TEST(ThreadLocal, ReallocDestructor) {
+  ThreadLocal<MultiWidget> w;
+  std::thread([&w]() { w->val_ += 10; }).join();
 }
 
 TEST(ThreadLocal, SimpleRepeatDestructor) {
