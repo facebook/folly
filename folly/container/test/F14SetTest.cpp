@@ -130,10 +130,10 @@ TEST(F14Set, getAllocatedMemorySize) {
 }
 
 template <typename S>
-void runVisitContiguousRangesTest() {
+void runVisitContiguousRangesTest(int n) {
   S set;
 
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < n; ++i) {
     set.insert(i);
     set.erase(i / 2);
   }
@@ -151,6 +151,18 @@ void runVisitContiguousRangesTest() {
       iter->second = true;
     }
   });
+
+  // ensure no entries were skipped
+  for (auto& e : visited) {
+    EXPECT_TRUE(e.second);
+  }
+}
+
+template <typename S>
+void runVisitContiguousRangesTest() {
+  runVisitContiguousRangesTest<S>(0); // empty
+  runVisitContiguousRangesTest<S>(5); // single chunk
+  runVisitContiguousRangesTest<S>(1000); // many chunks
 }
 
 TEST(F14ValueSet, visitContiguousRanges) {

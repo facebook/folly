@@ -1557,6 +1557,7 @@ class F14Table : public Policy {
   }
 
   ChunkPtr lastOccupiedChunk() const {
+    FOLLY_SAFE_DCHECK(size() > 0, "");
     if (Policy::kEnableItemIteration) {
       return begin().chunk();
     } else {
@@ -2139,9 +2140,12 @@ class F14Table : public Policy {
   // visitor should take an Item const&
   template <typename V>
   void visitItems(V&& visitor) const {
+    if (empty()) {
+      return;
+    }
     std::size_t maxChunkIndex = lastOccupiedChunk() - chunks_;
     auto chunk = &chunks_[0];
-    for (std::size_t i = 0; i < maxChunkIndex; ++i, ++chunk) {
+    for (std::size_t i = 0; i <= maxChunkIndex; ++i, ++chunk) {
       auto iter = chunk->occupiedIter();
       if (Policy::prefetchBeforeCopy()) {
         for (auto piter = iter; piter.hasNext();) {
@@ -2157,9 +2161,12 @@ class F14Table : public Policy {
   // visitor should take two Item const*
   template <typename V>
   void visitContiguousItemRanges(V&& visitor) const {
+    if (empty()) {
+      return;
+    }
     std::size_t maxChunkIndex = lastOccupiedChunk() - chunks_;
     auto chunk = &chunks_[0];
-    for (std::size_t i = 0; i < maxChunkIndex; ++i, ++chunk) {
+    for (std::size_t i = 0; i <= maxChunkIndex; ++i, ++chunk) {
       for (auto iter = chunk->occupiedRangeIter(); iter.hasNext();) {
         auto be = iter.next();
         FOLLY_SAFE_DCHECK(
