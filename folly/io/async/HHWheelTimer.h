@@ -144,7 +144,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
         list<Callback, boost::intrusive::constant_time_size<false>>
             List;
 
-    std::shared_ptr<RequestContext> context_;
+    std::shared_ptr<RequestContext> requestContext_;
 
     // Give HHWheelTimer direct access to our members so it can take care
     // of scheduling/cancelling.

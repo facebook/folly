@@ -147,7 +147,7 @@ void HHWheelTimer::scheduleTimeout(
   // Cancel the callback if it happens to be scheduled already.
   callback->cancelTimeout();
 
-  callback->context_ = RequestContext::saveContext();
+  callback->requestContext_ = RequestContext::saveContext();
 
   count_++;
 
@@ -232,7 +232,7 @@ void HHWheelTimer::timeoutExpired() noexcept {
     count_--;
     cb->wheel_ = nullptr;
     cb->expiration_ = {};
-    RequestContextScopeGuard rctx(cb->context_);
+    RequestContextScopeGuard rctx(cb->requestContext_);
     cb->timeoutExpired();
     if (isDestroyed) {
       // The HHWheelTimer itself has been destroyed. The other callbacks
