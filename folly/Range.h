@@ -474,6 +474,13 @@ class Range {
     return detail::value_before(e_);
   }
 
+  /// explicit operator conversion to any compatible type
+  ///
+  /// A compatible type is one which is constructible with a pair of iterators
+  /// passed by const-ref.
+  ///
+  /// Participates in overload resolution precisely when the target type is
+  /// compatible. This allows std::is_constructible compile-time checks to work.
   template <
       typename Tgt,
       std::enable_if_t<
@@ -484,6 +491,19 @@ class Range {
     return Tgt(b_, e_);
   }
 
+  /// explicit non-operator conversion to any compatible type
+  ///
+  /// A compatible type is one which is constructible with a pair of iterators
+  /// passed by const-ref.
+  ///
+  /// Participates in overload resolution precisely when the target type is
+  /// compatible. This allows is_invocable compile-time checks to work.
+  ///
+  /// Provided in addition to the explicit operator conversion to permit passing
+  /// additional arguments to the target type constructor. A canonical example
+  /// of an additional argument might be an allocator, where the target type is
+  /// some specialization of std::vector or std::basic_string in a context which
+  /// requires a non-default-constructed allocator.
   template <typename Tgt, typename... Args>
   constexpr auto to(Args&&... args) const noexcept(noexcept(
       Tgt(std::declval<Iter const&>(),
