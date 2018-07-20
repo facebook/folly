@@ -104,19 +104,6 @@ void RequestContext::onUnset() {
   }
 }
 
-std::shared_ptr<RequestContext> RequestContext::createChild() {
-  auto child = std::make_shared<RequestContext>();
-  auto rlock = state_.rlock();
-  for (const auto& entry : rlock->requestData_) {
-    auto& key = entry.first;
-    auto childData = entry.second->createChild();
-    if (childData) {
-      child->setContextData(key, std::move(childData));
-    }
-  }
-  return child;
-}
-
 void RequestContext::clearContextData(const std::string& val) {
   std::unique_ptr<RequestData> requestData;
   // Delete the RequestData after giving up the wlock just in case one of the

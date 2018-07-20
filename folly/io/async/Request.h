@@ -45,12 +45,6 @@ class RequestData {
   // instance overrides the hasCallback method to return true otherwise
   // the callback will not be executed
   virtual void onUnset() {}
-
-  // Create a child RequestData of this one, or return nullptr (in which case
-  // this RequestData will not exist in the child RequestContext)
-  virtual std::unique_ptr<RequestData> createChild() {
-    return nullptr;
-  }
 };
 
 // If you do not call create() to create a unique request context,
@@ -103,8 +97,6 @@ class RequestContext {
 
   void onSet();
   void onUnset();
-
-  std::shared_ptr<RequestContext> createChild();
 
   // The following API is used to pass the context through queues / threads.
   // saveContext is called to get a shared_ptr to the context, and
@@ -163,24 +155,4 @@ class RequestContextScopeGuard {
     RequestContext::setContext(std::move(prev_));
   }
 };
-
-class RootRequestContextGuard : public RequestContextScopeGuard {
- public:
-  RootRequestContextGuard() : RequestContextScopeGuard() {}
-};
-
-class NestedRequestContextGuard : public RequestContextScopeGuard {
- public:
-  NestedRequestContextGuard() : RequestContextScopeGuard(createNested()) {}
-
- private:
-  static std::shared_ptr<RequestContext> createNested() {
-    RequestContext* curr = RequestContext::get();
-    if (curr) {
-      return curr->createChild();
-    }
-    return std::make_shared<RequestContext>();
-  }
-};
-
 } // namespace folly
