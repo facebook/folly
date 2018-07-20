@@ -44,6 +44,26 @@ class TestData : public RequestData {
   int data_;
 };
 
+RequestContext& getContext() {
+  auto* ctx = RequestContext::get();
+  EXPECT_TRUE(ctx != nullptr);
+  return *ctx;
+}
+
+void setData(int data = 0) {
+  getContext().setContextData("test", std::make_unique<TestData>(data));
+}
+
+bool hasData() {
+  return getContext().getContextData("test") != nullptr;
+}
+
+const TestData& getData() {
+  auto* ptr = dynamic_cast<TestData*>(getContext().getContextData("test"));
+  EXPECT_TRUE(ptr != nullptr);
+  return *ptr;
+}
+
 TEST(RequestContext, SimpleTest) {
   EventBase base;
 
@@ -79,6 +99,35 @@ TEST(RequestContext, SimpleTest) {
   RequestContext::setContext(std::shared_ptr<RequestContext>());
   // There should always be a default context
   EXPECT_TRUE(nullptr != RequestContext::get());
+}
+
+TEST(RequestContext, RequestContextScopeGuard) {
+  RequestContextScopeGuard g0;
+  setData(10);
+  {
+    RequestContextScopeGuard g1;
+    EXPECT_FALSE(hasData());
+    setData(20);
+    EXPECT_EQ(20, getData().data_);
+    EXPECT_EQ(1, getData().set_);
+    EXPECT_EQ(0, getData().unset_);
+  }
+  EXPECT_EQ(10, getData().data_);
+  EXPECT_EQ(2, getData().set_);
+  EXPECT_EQ(1, getData().unset_);
+}
+
+TEST(RequestContext, defaultContext) {
+  // Don't create a top level guard
+  // Regression test for set/onset used to not work with the default context
+  setData(10);
+  {
+    RequestContextScopeGuard g1;
+    EXPECT_FALSE(hasData());
+  }
+  EXPECT_EQ(10, getData().data_);
+  EXPECT_EQ(2, getData().set_);
+  EXPECT_EQ(1, getData().unset_);
 }
 
 TEST(RequestContext, setIfAbsentTest) {
