@@ -1431,6 +1431,23 @@ TEST(Range, LiteralSuffixContainsNulBytes) {
   EXPECT_EQ(5u, literalPiece.size());
 }
 
+class tag {};
+class fake_string_view {
+ private:
+  StringPiece piece_;
+
+ public:
+  using size_type = std::size_t;
+  explicit fake_string_view(char const* s, size_type c, tag = {})
+      : piece_(s, c) {}
+  /* implicit */ operator StringPiece() const {
+    return piece_;
+  }
+  friend bool operator==(char const* rhs, fake_string_view lhs) {
+    return rhs == lhs.piece_;
+  }
+};
+
 TEST(Range, StringPieceExplicitConversionOperator) {
   using PieceM = StringPiece;
   using PieceC = StringPiece const;
@@ -1438,16 +1455,20 @@ TEST(Range, StringPieceExplicitConversionOperator) {
   EXPECT_FALSE((std::is_convertible<PieceM, int>::value));
   EXPECT_FALSE((std::is_convertible<PieceM, std::string>::value));
   EXPECT_FALSE((std::is_convertible<PieceM, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_convertible<PieceM, fake_string_view>::value));
   EXPECT_FALSE((std::is_constructible<int, PieceM>::value));
   EXPECT_TRUE((std::is_constructible<std::string, PieceM>::value));
   EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceM>::value));
+  EXPECT_TRUE((std::is_constructible<fake_string_view, PieceM>::value));
 
   EXPECT_FALSE((std::is_convertible<PieceC, int>::value));
   EXPECT_FALSE((std::is_convertible<PieceC, std::string>::value));
   EXPECT_FALSE((std::is_convertible<PieceC, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_convertible<PieceC, fake_string_view>::value));
   EXPECT_FALSE((std::is_constructible<int, PieceC>::value));
   EXPECT_TRUE((std::is_constructible<std::string, PieceC>::value));
   EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceC>::value));
+  EXPECT_TRUE((std::is_constructible<fake_string_view, PieceC>::value));
 
   using testing::ElementsAreArray;
   std::array<char, 5> array = {{'h', 'e', 'l', 'l', 'o'}};
@@ -1472,6 +1493,15 @@ TEST(Range, StringPieceExplicitConversionOperator) {
   EXPECT_THAT(piecec.to<std::vector<char>>(), ElementsAreArray(array));
   EXPECT_THAT(piecem.to<std::vector<char>>(alloc), ElementsAreArray(array));
   EXPECT_THAT(piecec.to<std::vector<char>>(alloc), ElementsAreArray(array));
+
+  EXPECT_EQ("hello", fake_string_view(piecem));
+  EXPECT_EQ("hello", fake_string_view(piecec));
+  EXPECT_EQ("hello", fake_string_view{piecem});
+  EXPECT_EQ("hello", fake_string_view{piecec});
+  EXPECT_EQ("hello", piecem.to<fake_string_view>());
+  EXPECT_EQ("hello", piecec.to<fake_string_view>());
+  EXPECT_EQ("hello", piecem.to<fake_string_view>(tag{}));
+  EXPECT_EQ("hello", piecec.to<fake_string_view>(tag{}));
 }
 
 TEST(Range, MutableStringPieceExplicitConversionOperator) {
@@ -1481,16 +1511,20 @@ TEST(Range, MutableStringPieceExplicitConversionOperator) {
   EXPECT_FALSE((std::is_convertible<PieceM, int>::value));
   EXPECT_FALSE((std::is_convertible<PieceM, std::string>::value));
   EXPECT_FALSE((std::is_convertible<PieceM, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_convertible<PieceM, fake_string_view>::value));
   EXPECT_FALSE((std::is_constructible<int, PieceM>::value));
   EXPECT_TRUE((std::is_constructible<std::string, PieceM>::value));
   EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceM>::value));
+  EXPECT_TRUE((std::is_constructible<fake_string_view, PieceM>::value));
 
   EXPECT_FALSE((std::is_convertible<PieceC, int>::value));
   EXPECT_FALSE((std::is_convertible<PieceC, std::string>::value));
   EXPECT_FALSE((std::is_convertible<PieceC, std::vector<char>>::value));
+  EXPECT_FALSE((std::is_convertible<PieceC, fake_string_view>::value));
   EXPECT_FALSE((std::is_constructible<int, PieceC>::value));
   EXPECT_TRUE((std::is_constructible<std::string, PieceC>::value));
   EXPECT_TRUE((std::is_constructible<std::vector<char>, PieceC>::value));
+  EXPECT_TRUE((std::is_constructible<fake_string_view, PieceC>::value));
 
   using testing::ElementsAreArray;
   std::array<char, 5> array = {{'h', 'e', 'l', 'l', 'o'}};
@@ -1515,4 +1549,13 @@ TEST(Range, MutableStringPieceExplicitConversionOperator) {
   EXPECT_THAT(piecec.to<std::vector<char>>(), ElementsAreArray(array));
   EXPECT_THAT(piecem.to<std::vector<char>>(alloc), ElementsAreArray(array));
   EXPECT_THAT(piecec.to<std::vector<char>>(alloc), ElementsAreArray(array));
+
+  EXPECT_EQ("hello", fake_string_view(piecem));
+  EXPECT_EQ("hello", fake_string_view(piecec));
+  EXPECT_EQ("hello", fake_string_view{piecem});
+  EXPECT_EQ("hello", fake_string_view{piecec});
+  EXPECT_EQ("hello", piecem.to<fake_string_view>());
+  EXPECT_EQ("hello", piecec.to<fake_string_view>());
+  EXPECT_EQ("hello", piecem.to<fake_string_view>(tag{}));
+  EXPECT_EQ("hello", piecec.to<fake_string_view>(tag{}));
 }

@@ -476,15 +476,25 @@ class Range {
 
   /// explicit operator conversion to any compatible type
   ///
-  /// A compatible type is one which is constructible with a pair of iterators
-  /// passed by const-ref.
+  /// A compatible type is one which is constructible with an iterator and a
+  /// size (preferred), or a pair of iterators (fallback), passed by const-ref.
   ///
   /// Participates in overload resolution precisely when the target type is
   /// compatible. This allows std::is_constructible compile-time checks to work.
   template <
       typename Tgt,
       std::enable_if_t<
-          std::is_constructible<Tgt, Iter const&, Iter const&>::value,
+          std::is_constructible<Tgt, Iter const&, size_type>::value,
+          int> = 0>
+  constexpr explicit operator Tgt() const noexcept(
+      std::is_nothrow_constructible<Tgt, Iter const&, size_type>::value) {
+    return Tgt(b_, walk_size());
+  }
+  template <
+      typename Tgt,
+      std::enable_if_t<
+          !std::is_constructible<Tgt, Iter const&, size_type>::value &&
+              std::is_constructible<Tgt, Iter const&, Iter const&>::value,
           int> = 0>
   constexpr explicit operator Tgt() const noexcept(
       std::is_nothrow_constructible<Tgt, Iter const&, Iter const&>::value) {
@@ -493,8 +503,8 @@ class Range {
 
   /// explicit non-operator conversion to any compatible type
   ///
-  /// A compatible type is one which is constructible with a pair of iterators
-  /// passed by const-ref.
+  /// A compatible type is one which is constructible with an iterator and a
+  /// size (preferred), or a pair of iterators (fallback), passed by const-ref.
   ///
   /// Participates in overload resolution precisely when the target type is
   /// compatible. This allows is_invocable compile-time checks to work.
@@ -506,7 +516,17 @@ class Range {
   /// requires a non-default-constructed allocator.
   template <typename Tgt, typename... Args>
   constexpr std::enable_if_t<
-      std::is_constructible<Tgt, Iter const&, Iter const&>::value,
+      std::is_constructible<Tgt, Iter const&, size_type>::value,
+      Tgt>
+  to(Args&&... args) const noexcept(
+      std::is_nothrow_constructible<Tgt, Iter const&, size_type, Args&&...>::
+          value) {
+    return Tgt(b_, walk_size(), static_cast<Args&&>(args)...);
+  }
+  template <typename Tgt, typename... Args>
+  constexpr std::enable_if_t<
+      !std::is_constructible<Tgt, Iter const&, size_type>::value &&
+          std::is_constructible<Tgt, Iter const&, Iter const&>::value,
       Tgt>
   to(Args&&... args) const noexcept(
       std::is_nothrow_constructible<Tgt, Iter const&, Iter const&, Args&&...>::
