@@ -487,7 +487,7 @@ class Range {
           std::is_constructible<Tgt, Iter const&, Iter const&>::value,
           int> = 0>
   constexpr explicit operator Tgt() const noexcept(
-      noexcept(Tgt(std::declval<Iter const&>(), std::declval<Iter const&>()))) {
+      std::is_nothrow_constructible<Tgt, Iter const&, Iter const&>::value) {
     return Tgt(b_, e_);
   }
 
@@ -505,14 +505,12 @@ class Range {
   /// some specialization of std::vector or std::basic_string in a context which
   /// requires a non-default-constructed allocator.
   template <typename Tgt, typename... Args>
-  constexpr auto to(Args&&... args) const noexcept(noexcept(
-      Tgt(std::declval<Iter const&>(),
-          std::declval<Iter const&>(),
-          static_cast<Args&&>(args)...)))
-      -> decltype(
-          Tgt(std::declval<Iter const&>(),
-              std::declval<Iter const&>(),
-              static_cast<Args&&>(args)...)) {
+  constexpr std::enable_if_t<
+      std::is_constructible<Tgt, Iter const&, Iter const&>::value,
+      Tgt>
+  to(Args&&... args) const noexcept(
+      std::is_nothrow_constructible<Tgt, Iter const&, Iter const&, Args&&...>::
+          value) {
     return Tgt(b_, e_, static_cast<Args&&>(args)...);
   }
 
