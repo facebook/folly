@@ -36,6 +36,8 @@
  * https://github.com/boostorg/context/blob/boost-1.61.0/include/boost/context/detail/fcontext.hpp
  */
 
+#include <folly/Function.h>
+
 namespace folly {
 namespace fibers {
 
