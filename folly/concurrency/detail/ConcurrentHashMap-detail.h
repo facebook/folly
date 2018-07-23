@@ -244,7 +244,9 @@ class alignas(64) ConcurrentHashMapSegment {
     auto buckets = buckets_.load(std::memory_order_relaxed);
     // We can delete and not retire() here, since users must have
     // their own synchronization around destruction.
-    buckets->destroy(bucket_count_.load(std::memory_order_relaxed));
+    auto count = bucket_count_.load(std::memory_order_relaxed);
+    buckets->unlink_and_reclaim_nodes(count);
+    buckets->destroy(count);
   }
 
   size_t size() {
@@ -673,6 +675,23 @@ class alignas(64) ConcurrentHashMapSegment {
       this->~Buckets();
       Allocator().deallocate(
           (uint8_t*)this, sizeof(BucketRoot) * count + sizeof(*this));
+    }
+
+    void unlink_and_reclaim_nodes(size_t count) {
+      for (size_t i = 0; i < count; i++) {
+        auto node = buckets_[i]().load(std::memory_order_relaxed);
+        if (node) {
+          buckets_[i]().store(nullptr, std::memory_order_relaxed);
+          while (node) {
+            auto next = node->next_.load(std::memory_order_relaxed);
+            if (next) {
+              node->next_.store(nullptr, std::memory_order_relaxed);
+            }
+            node->unlink_and_reclaim_unchecked();
+            node = next;
+          }
+        }
+      }
     }
 
     BucketRoot buckets_[0];
