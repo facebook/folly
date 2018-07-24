@@ -203,16 +203,26 @@ struct ThreadEntryList;
  * This is written from the owning thread only (under the lock), read
  * from the owning thread (no lock necessary), and read from other threads
  * (under the lock).
+ * StaticMetaBase::head_ elementsCapacity can be read from any thread on
+ * reallocate (no lock)
  */
 struct ThreadEntry {
   ElementWrapper* elements{nullptr};
-  size_t elementsCapacity{0};
+  std::atomic<size_t> elementsCapacity{0};
   ThreadEntry* next{nullptr};
   ThreadEntry* prev{nullptr};
   ThreadEntryList* list{nullptr};
   ThreadEntry* listNext{nullptr};
   StaticMetaBase* meta{nullptr};
   bool removed_{false};
+
+  size_t getElementsCapacity() const noexcept {
+    return elementsCapacity.load(std::memory_order_relaxed);
+  }
+
+  void setElementsCapacity(size_t capacity) noexcept {
+    elementsCapacity.store(capacity, std::memory_order_relaxed);
+  }
 };
 
 struct ThreadEntryList {
@@ -448,11 +458,11 @@ struct StaticMeta : StaticMetaBase {
       size_t& capacity) {
     auto& inst = instance();
     threadEntry = inst.threadEntry_();
-    if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
+    if (UNLIKELY(threadEntry->getElementsCapacity() <= id)) {
       inst.reserve(ent);
       id = ent->getOrInvalid();
     }
-    capacity = threadEntry->elementsCapacity;
+    capacity = threadEntry->getElementsCapacity();
     assert(capacity > id);
   }
 
@@ -505,12 +515,14 @@ struct StaticMeta : StaticMetaBase {
     // init the head list
     head.next = head.prev = &head;
     // init the circular lists
-    for (size_t i = 0u; i < head.elementsCapacity; ++i) {
+    auto elementsCapacity = head.getElementsCapacity();
+    for (size_t i = 0u; i < elementsCapacity; ++i) {
       head.elements[i].node.init(&head, static_cast<uint32_t>(i));
     }
     // init the thread entry
     ThreadEntry* threadEntry = instance().threadEntry_();
-    for (size_t i = 0u; i < threadEntry->elementsCapacity; ++i) {
+    elementsCapacity = threadEntry->getElementsCapacity();
+    for (size_t i = 0u; i < elementsCapacity; ++i) {
       if (!threadEntry->elements[i].node.zero()) {
         threadEntry->elements[i].node.initZero(
             threadEntry, static_cast<uint32_t>(i));
@@ -519,7 +531,7 @@ struct StaticMeta : StaticMetaBase {
     }
 
     // If this thread was in the list before the fork, add it back.
-    if (threadEntry->elementsCapacity != 0) {
+    if (elementsCapacity != 0) {
       instance().push_back(threadEntry);
     }
     instance().lock_.unlock();

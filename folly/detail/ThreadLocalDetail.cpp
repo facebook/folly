@@ -125,7 +125,8 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       // mark it as removed
       threadEntry->removed_ = true;
       meta.erase(&(*threadEntry));
-      for (size_t i = 0u; i < threadEntry->elementsCapacity; ++i) {
+      auto elementsCapacity = threadEntry->getElementsCapacity();
+      for (size_t i = 0u; i < elementsCapacity; ++i) {
         threadEntry->elements[i].node.eraseZero();
       }
       // No need to hold the lock any longer; the ThreadEntry is private to this
@@ -137,7 +138,8 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     // may be required.
     for (bool shouldRun = true; shouldRun;) {
       shouldRun = false;
-      FOR_EACH_RANGE (i, 0, threadEntry->elementsCapacity) {
+      auto elementsCapacity = threadEntry->getElementsCapacity();
+      FOR_EACH_RANGE (i, 0, elementsCapacity) {
         if (threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
           threadEntry->elements[i].cleanup();
           shouldRun = true;
@@ -169,7 +171,8 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       }
       for (bool shouldRunInner = true; shouldRunInner;) {
         shouldRunInner = false;
-        FOR_EACH_RANGE (i, 0, tmp->elementsCapacity) {
+        auto elementsCapacity = tmp->getElementsCapacity();
+        FOR_EACH_RANGE (i, 0, elementsCapacity) {
           if (tmp->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
             tmp->elements[i].cleanup();
             shouldRunInner = true;
@@ -191,7 +194,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
     if (tmp->elements) {
       free(tmp->elements);
       tmp->elements = nullptr;
-      tmp->elementsCapacity = 0;
+      tmp->setElementsCapacity(0);
     }
 
 #ifndef FOLLY_TLD_USE_FOLLY_TLS
@@ -207,7 +210,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
 uint32_t StaticMetaBase::elementsCapacity() const {
   ThreadEntry* threadEntry = (*threadEntry_)();
 
-  return FOLLY_LIKELY(!!threadEntry) ? threadEntry->elementsCapacity : 0;
+  return FOLLY_LIKELY(!!threadEntry) ? threadEntry->getElementsCapacity() : 0;
 }
 
 uint32_t StaticMetaBase::allocate(EntryID* ent) {
@@ -268,8 +271,8 @@ void StaticMetaBase::destroy(EntryID* ent) {
           next->eraseZero();
 
           ThreadEntry* e = next->parent;
-
-          if (id < e->elementsCapacity && e->elements[id].ptr) {
+          auto elementsCapacity = e->getElementsCapacity();
+          if (id < elementsCapacity && e->elements[id].ptr) {
             elements.push_back(e->elements[id]);
 
             /*
@@ -306,15 +309,16 @@ ElementWrapper* StaticMetaBase::reallocate(
     ThreadEntry* threadEntry,
     uint32_t idval,
     size_t& newCapacity) {
-  size_t prevCapacity = threadEntry->elementsCapacity;
+  size_t prevCapacity = threadEntry->getElementsCapacity();
 
   // Growth factor < 2, see folly/docs/FBVector.md; + 5 to prevent
   // very slow start.
   auto smallCapacity = static_cast<size_t>((idval + 5) * kSmallGrowthFactor);
   auto bigCapacity = static_cast<size_t>((idval + 5) * kBigGrowthFactor);
 
-  newCapacity = (threadEntry->meta &&
-                 (bigCapacity <= threadEntry->meta->head_.elementsCapacity))
+  newCapacity =
+      (threadEntry->meta &&
+       (bigCapacity <= threadEntry->meta->head_.getElementsCapacity()))
       ? bigCapacity
       : smallCapacity;
 
@@ -377,7 +381,7 @@ ElementWrapper* StaticMetaBase::reallocate(
 void StaticMetaBase::reserve(EntryID* id) {
   auto& meta = *this;
   ThreadEntry* threadEntry = (*threadEntry_)();
-  size_t prevCapacity = threadEntry->elementsCapacity;
+  size_t prevCapacity = threadEntry->getElementsCapacity();
 
   uint32_t idval = id->getOrAllocate(meta);
   if (prevCapacity > idval) {
@@ -415,15 +419,15 @@ void StaticMetaBase::reserve(EntryID* id) {
       threadEntry->elements[i].node.initZero(threadEntry, i);
     }
 
-    threadEntry->elementsCapacity = newCapacity;
+    threadEntry->setElementsCapacity(newCapacity);
   }
 
   free(reallocated);
 }
 
 void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
-  if (head_.elementsCapacity <= id) {
-    size_t prevCapacity = head_.elementsCapacity;
+  if (head_.getElementsCapacity() <= id) {
+    size_t prevCapacity = head_.getElementsCapacity();
     size_t newCapacity;
     ElementWrapper* reallocated = reallocate(&head_, id, newCapacity);
 
@@ -439,7 +443,7 @@ void StaticMetaBase::reserveHeadUnlocked(uint32_t id) {
       head_.elements[i].node.init(&head_, i);
     }
 
-    head_.elementsCapacity = newCapacity;
+    head_.setElementsCapacity(newCapacity);
     free(reallocated);
   }
 }
