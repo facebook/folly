@@ -57,9 +57,9 @@ TEST(ConfigUpdate, updateLogLevels) {
   EXPECT_EQ(LogLevel::DBG5, db.getCategory("foo.bar")->getLevel());
   EXPECT_EQ(LogLevel::DBG5, db.getCategory("foo.bar")->getEffectiveLevel());
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo")->getLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("foo")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getEffectiveLevel());
+  EXPECT_EQ(kDefaultLogLevel, db.getCategory("foo")->getEffectiveLevel());
+  EXPECT_EQ(kDefaultLogLevel, db.getCategory("")->getLevel());
+  EXPECT_EQ(kDefaultLogLevel, db.getCategory("")->getEffectiveLevel());
 
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar.test")->getLevel());
   EXPECT_EQ(
@@ -68,7 +68,7 @@ TEST(ConfigUpdate, updateLogLevels) {
   db.updateConfig(
       parseLogConfig("sys=warn,foo.test=debug,foo.test.stuff=warn"));
   EXPECT_EQ(LogLevel::WARN, db.getCategory("sys")->getLevel());
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("sys")->getEffectiveLevel());
+  EXPECT_EQ(kDefaultLogLevel, db.getCategory("sys")->getEffectiveLevel());
   EXPECT_EQ(LogLevel::DBG, db.getCategory("foo.test")->getLevel());
   EXPECT_EQ(LogLevel::DBG, db.getCategory("foo.test")->getEffectiveLevel());
   EXPECT_EQ(LogLevel::WARN, db.getCategory("foo.test.stuff")->getLevel());
@@ -83,14 +83,14 @@ TEST(ConfigUpdate, updateConfig) {
       std::make_unique<TestLogHandlerFactory>("handlerA"));
   db.registerHandlerFactory(
       std::make_unique<TestLogHandlerFactory>("handlerB"));
-  EXPECT_EQ(parseLogConfig(".:=ERROR:"), db.getConfig());
+  EXPECT_EQ(parseLogConfig(".:=INFO:"), db.getConfig());
 
   // Create some categories that aren't affected by our config updates below,
   // just to ensure that they don't show up in getConfig() results since they
   // have the default config settings.
   db.getCategory("test.category1");
   db.getCategory("test.category2");
-  EXPECT_EQ(parseLogConfig(".:=ERROR:"), db.getConfig());
+  EXPECT_EQ(parseLogConfig(".:=INFO:"), db.getConfig());
 
   // Apply an update
   db.updateConfig(parseLogConfig("INFO:stderr; stderr=handlerA:stream=stderr"));
@@ -296,7 +296,7 @@ TEST(ConfigUpdate, updateConfig) {
       parseLogConfig("bar=INFO:h2, test.abc=DBG3; "
                      "h2=handlerB: abc=xyz"));
   EXPECT_EQ(
-      parseLogConfig(".:=ERR:, bar=INFO:h2, test.abc=DBG3:; "
+      parseLogConfig(".:=INFO:, bar=INFO:h2, test.abc=DBG3:; "
                      "h2=handlerB: abc=xyz"),
       db.getConfig());
 }
@@ -307,7 +307,7 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
       std::make_unique<TestLogHandlerFactory>("handlerA"));
   db.registerHandlerFactory(
       std::make_unique<TestLogHandlerFactory>("handlerB"));
-  EXPECT_EQ(parseLogConfig(".:=ERROR:"), db.getConfig());
+  EXPECT_EQ(parseLogConfig(".:=INFO:"), db.getConfig());
 
   // Manually attach a handler to a category.
   // It should be reported as "anonymousHandler1"
@@ -316,7 +316,7 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
   db.setLevel("x.y.z", LogLevel::DBG2);
   db.getCategory("x.y.z")->addHandler(handlerFoo);
   EXPECT_EQ(
-      parseLogConfig(".:=ERR:, x.y.z=DBG2:anonymousHandler1; "
+      parseLogConfig(".:=INFO:, x.y.z=DBG2:anonymousHandler1; "
                      "anonymousHandler1=foo:abc=xyz"),
       db.getConfig());
 
@@ -325,7 +325,7 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
   db.setLevel("test.category", LogLevel::DBG1);
   db.getCategory("test.category")->addHandler(handlerFoo);
   EXPECT_EQ(
-      parseLogConfig(".:=ERR:, "
+      parseLogConfig(".:=INFO:, "
                      "x.y.z=DBG2:anonymousHandler1, "
                      "test.category=DBG1:anonymousHandler1; "
                      "anonymousHandler1=foo:abc=xyz"),
@@ -337,7 +337,7 @@ TEST(ConfigUpdate, getConfigAnonymousHandlers) {
   db.updateConfig(parseLogConfig(
       "a.b.c=INFO:anonymousHandler1; anonymousHandler1=handlerA:key=value"));
   EXPECT_EQ(
-      parseLogConfig(".:=ERR:, "
+      parseLogConfig(".:=INFO:, "
                      "a.b.c=INFO:anonymousHandler1, "
                      "x.y.z=DBG2:anonymousHandler2, "
                      "test.category=DBG1:anonymousHandler2; "
@@ -352,7 +352,7 @@ TEST(ConfigUpdate, getFullConfig) {
       std::make_unique<TestLogHandlerFactory>("handlerA"));
   db.registerHandlerFactory(
       std::make_unique<TestLogHandlerFactory>("handlerB"));
-  EXPECT_EQ(parseLogConfig(".:=ERROR:"), db.getConfig());
+  EXPECT_EQ(parseLogConfig(".:=INFO:"), db.getConfig());
 
   db.getCategory("src.libfoo.foo.c");
   db.getCategory("src.libfoo.foo.h");
@@ -361,16 +361,16 @@ TEST(ConfigUpdate, getFullConfig) {
   db.getCategory("test.foo.test.c");
 
   db.updateConfig(
-      parseLogConfig(".=ERR:stdout,"
+      parseLogConfig(".=INFO:stdout,"
                      "src.libfoo=dbg5; "
                      "stdout=handlerA:stream=stdout"));
   EXPECT_EQ(
-      parseLogConfig(".:=ERR:stdout,"
+      parseLogConfig(".:=INFO:stdout,"
                      "src.libfoo=dbg5:; "
                      "stdout=handlerA:stream=stdout"),
       db.getConfig());
   EXPECT_EQ(
-      parseLogConfig(".:=ERR:stdout,"
+      parseLogConfig(".:=INFO:stdout,"
                      "src=FATAL:, "
                      "src.libfoo=dbg5:, "
                      "src.libfoo.foo=FATAL:, "

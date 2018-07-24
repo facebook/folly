@@ -40,9 +40,9 @@ TEST(PrintfTest, printfStyleMacros) {
 
   auto& messages = handler->getMessages();
 
-  // test.other's effective level should be ERR, so a warning
+  // test.other's effective level should be INFO, so a DBG0
   // message to it should be discarded
-  FB_LOGC(other, WARN, "this should be discarded: %d", 5);
+  FB_LOGC(other, DBG0, "this should be discarded: %d", 5);
   ASSERT_EQ(0, messages.size());
 
   // Disabled log messages should not evaluate their arguments

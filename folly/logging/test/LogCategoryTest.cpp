@@ -32,15 +32,15 @@ TEST(LogCategory, effectiveLevel) {
   Logger foo2{&db, "..foo.."};
   EXPECT_EQ(foo.getCategory(), foo2.getCategory());
 
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("")->getEffectiveLevel());
+  EXPECT_EQ(kDefaultLogLevel, db.getCategory("")->getLevel());
+  EXPECT_EQ(kDefaultLogLevel, db.getCategory("")->getEffectiveLevel());
 
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar")->getLevel());
-  EXPECT_EQ(LogLevel::ERR, db.getCategory("foo.bar")->getEffectiveLevel());
+  EXPECT_EQ(kDefaultLogLevel, db.getCategory("foo.bar")->getEffectiveLevel());
 
-  db.setLevel(".foo", LogLevel::WARN);
+  db.setLevel(".foo", LogLevel::DBG0);
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar")->getLevel());
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("foo.bar")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::DBG0, db.getCategory("foo.bar")->getEffectiveLevel());
 
   db.setLevel(".", LogLevel::DBG0);
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.bar")->getLevel());
@@ -62,11 +62,11 @@ TEST(LogCategory, effectiveLevel) {
   db.setLevel(".", LogLevel::ERR);
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.test.1234")->getLevel());
   EXPECT_EQ(
-      LogLevel::WARN, db.getCategory("foo.test.1234")->getEffectiveLevel());
+      LogLevel::DBG0, db.getCategory("foo.test.1234")->getEffectiveLevel());
   EXPECT_EQ(LogLevel::MAX_LEVEL, db.getCategory("foo.test")->getLevel());
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("foo.test")->getEffectiveLevel());
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("foo")->getLevel());
-  EXPECT_EQ(LogLevel::WARN, db.getCategory("foo")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::DBG0, db.getCategory("foo.test")->getEffectiveLevel());
+  EXPECT_EQ(LogLevel::DBG0, db.getCategory("foo")->getLevel());
+  EXPECT_EQ(LogLevel::DBG0, db.getCategory("foo")->getEffectiveLevel());
   EXPECT_EQ(
       LogLevel::CRITICAL, db.getCategory("foo.test.noinherit")->getLevel());
   EXPECT_EQ(

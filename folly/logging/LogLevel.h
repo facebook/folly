@@ -99,6 +99,8 @@ enum class LogLevel : uint32_t {
   MAX_LEVEL = 0x7fffffff,
 };
 
+constexpr LogLevel kDefaultLogLevel = LogLevel::INFO;
+
 /*
  * Support adding and subtracting integers from LogLevels, to create slightly
  * adjusted log level values.

@@ -59,7 +59,7 @@ FOLLY_ATTR_WEAK void initializeLoggerDB(LoggerDB& db) {
   auto defaultHandlerConfig =
       LogHandlerConfig("stream", {{"stream", "stderr"}, {"async", "false"}});
   auto rootCategoryConfig =
-      LogCategoryConfig(LogLevel::WARNING, false, {"default"});
+      LogCategoryConfig(kDefaultLogLevel, false, {"default"});
   LogConfig config(
       /* handlerConfigs */ {{"default", defaultHandlerConfig}},
       /* categoryConfig */ {{"", rootCategoryConfig}});
@@ -116,14 +116,14 @@ LoggerDB& LoggerDB::get() {
 }
 
 LoggerDB::LoggerDB() {
-  // Create the root log category, and set the level to ERR by default
+  // Create the root log category and set its log level
   auto rootUptr = std::make_unique<LogCategory>(this);
   LogCategory* root = rootUptr.get();
   auto ret =
       loggersByName_.wlock()->emplace(root->getName(), std::move(rootUptr));
   DCHECK(ret.second);
 
-  root->setLevelLocked(LogLevel::ERR, false);
+  root->setLevelLocked(kDefaultLogLevel, false);
 }
 
 LoggerDB::LoggerDB(TestConstructorArg) : LoggerDB() {}
@@ -466,7 +466,7 @@ void LoggerDB::resetConfig(const LogConfig& config) {
         category->clearHandlers();
 
         if (category == rootCategory) {
-          category->setLevelLocked(LogLevel::ERR, false);
+          category->setLevelLocked(kDefaultLogLevel, false);
         } else {
           category->setLevelLocked(LogLevel::MAX_LEVEL, true);
         }

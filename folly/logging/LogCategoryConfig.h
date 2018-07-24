@@ -29,7 +29,7 @@ namespace folly {
 class LogCategoryConfig {
  public:
   explicit LogCategoryConfig(
-      LogLevel level = LogLevel::WARNING,
+      LogLevel level = kDefaultLogLevel,
       bool inheritParentLevel = true);
   LogCategoryConfig(
       LogLevel level,
@@ -42,7 +42,7 @@ class LogCategoryConfig {
   /**
    * The LogLevel for this category.
    */
-  LogLevel level{LogLevel::WARNING};
+  LogLevel level{kDefaultLogLevel};
 
   /**
    * Whether this category should inherit its effective log level from its

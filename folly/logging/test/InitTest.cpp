@@ -47,7 +47,7 @@ TEST(Init, checkConfig) {
   auto initialConfig = folly::LoggerDB::get().getConfig();
   EXPECT_EQ(0, getBaseLoggingConfigCalled);
   EXPECT_EQ(
-      parseLogConfig(".:=WARN:default; "
+      parseLogConfig(".:=INFO:default; "
                      "default=stream:stream=stderr,async=false"),
       LoggerDB::get().getConfig());
 

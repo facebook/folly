@@ -105,9 +105,9 @@ class LoggerDB {
    *
    * All LogCategories not mentioned in the new LogConfig will have all
    * currently configured log handlers removed and their log level set to its
-   * default state.  For the root category the default log level is ERR; for
-   * all other categories the default level is MAX_LEVEL with log level
-   * inheritance enabled.
+   * default state.  For the root category the default log level is
+   * kDefaultLogLevel (see LogLevel.h); for all other categories the default
+   * level is MAX_LEVEL with log level inheritance enabled.
    *
    * LogCategories listed in the new config but without LogHandler information
    * defined will have all existing handlers removed.
