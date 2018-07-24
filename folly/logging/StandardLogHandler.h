@@ -43,7 +43,8 @@ class StandardLogHandler : public LogHandler {
   StandardLogHandler(
       LogHandlerConfig config,
       std::shared_ptr<LogFormatter> formatter,
-      std::shared_ptr<LogWriter> writer);
+      std::shared_ptr<LogWriter> writer,
+      LogLevel syncLevel = LogLevel::MAX_LEVEL);
   ~StandardLogHandler();
 
   /**
@@ -89,6 +90,7 @@ class StandardLogHandler : public LogHandler {
 
  private:
   std::atomic<LogLevel> level_{LogLevel::NONE};
+  std::atomic<LogLevel> syncLevel_{LogLevel::MAX_LEVEL};
 
   // The following variables are const, and cannot be modified after the
   // log handler is constructed.  This allows us to access them without

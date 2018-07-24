@@ -28,8 +28,10 @@ static ExampleObject staticInitialized("static");
 // Configure folly to enable INFO+ messages, and everything else to
 // enable WARNING+.
 //
-// Set the default log handler to log asynchronously by default.
-FOLLY_INIT_LOGGING_CONFIG(".=WARNING,folly=INFO; default:async=true");
+// Set the default log handler to log asynchronously by default
+// (except log messages with level WARNING and above synchronously)
+FOLLY_INIT_LOGGING_CONFIG(
+    ".=WARNING,folly=INFO; default:async=true,sync_level=WARNING");
 
 int main(int argc, char* argv[]) {
   // Using log macros before calling folly::initLogging() will use the default

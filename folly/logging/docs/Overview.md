@@ -77,7 +77,11 @@ suddenly makes your code log more messages than normal.
 
 This behavior is easily configurable, so that you can choose the best trade-off
 for your program (possibly dropping some messages vs possibly blocking threads
-on logging I/O).
+on logging I/O). When using asynchronous logging, you also have the option to
+specify levels above which you would like to enable synchronous logging.
+This can help ensure that all logs of a certain level or above are persisted
+before a potential crash while ensuring that all logs below that level remain
+non-blocking.
 
 ## Support for folly::format()
 

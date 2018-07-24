@@ -50,6 +50,8 @@ std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
         to<string>("unknown log formatter type \"", *formatterType, "\""));
   }
 
+  Optional<LogLevel> syncLevel;
+
   // Process the log formatter and log handler options
   std::vector<string> errors;
   for (const auto& entry : options) {
@@ -69,6 +71,20 @@ std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
     // We explicitly processed the "formatter" option above.
     handled |= handled || (entry.first == "formatter");
 
+    // Process the "sync_level" option.
+    if (entry.first == "sync_level") {
+      try {
+        syncLevel = stringToLogLevel(entry.second);
+      } catch (const std::exception& ex) {
+        errors.push_back(to<string>(
+            "unable to parse value for option \"",
+            entry.first,
+            "\": ",
+            ex.what()));
+      }
+      handled = true;
+    }
+
     // Complain about unknown options.
     if (!handled) {
       errors.push_back(to<string>("unknown option \"", entry.first, "\""));
@@ -83,8 +99,13 @@ std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
   auto formatter = formatterFactory->createFormatter();
   auto writer = writerFactory->createWriter();
 
-  return std::make_shared<StandardLogHandler>(
-      LogHandlerConfig{type, options}, formatter, writer);
+  if (syncLevel) {
+    return std::make_shared<StandardLogHandler>(
+        LogHandlerConfig{type, options}, formatter, writer, *syncLevel);
+  } else {
+    return std::make_shared<StandardLogHandler>(
+        LogHandlerConfig{type, options}, formatter, writer);
+  }
 }
 
 } // namespace folly

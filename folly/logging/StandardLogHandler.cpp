@@ -24,8 +24,10 @@ namespace folly {
 StandardLogHandler::StandardLogHandler(
     LogHandlerConfig config,
     std::shared_ptr<LogFormatter> formatter,
-    std::shared_ptr<LogWriter> writer)
-    : formatter_{std::move(formatter)},
+    std::shared_ptr<LogWriter> writer,
+    LogLevel syncLevel)
+    : syncLevel_(syncLevel),
+      formatter_{std::move(formatter)},
       writer_{std::move(writer)},
       config_{config} {}
 
@@ -38,6 +40,9 @@ void StandardLogHandler::handleMessage(
     return;
   }
   writer_->writeMessage(formatter_->formatMessage(message, handlerCategory));
+  if (message.getLevel() >= syncLevel_.load(std::memory_order_relaxed)) {
+    flush();
+  }
 }
 
 void StandardLogHandler::flush() {

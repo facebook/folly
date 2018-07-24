@@ -203,6 +203,15 @@ Example log configuration strings:
   `LoggerDB::updateConfig()`, and cannot be used with
   `LoggerDB::resetConfig()`.
 
+* `INFO; default:async=true,sync_level=WARN`  
+
+  Sets the root log category level to INFO, and sets the "async" property to
+  true and "sync_level" property to WARN. Setting "async" property ensures that
+  we enable asynchronous logging but the "sync_level" flag specifies that all
+  logs of the level WARN and above are processed synchronously. This can help
+  ensure that all logs of the level WARN or above are persisted before a
+  potential crash while ensuring that all logs below the level WARN are
+  non-blocking.
 
 JSON Configuration Syntax
 -------------------------
@@ -285,6 +294,7 @@ following fields:
       "options": {
         "stream": "stderr",
         "async": true,
+        "sync_level": "WARN",
         "max_buffer_size": 4096000
       }
     }
