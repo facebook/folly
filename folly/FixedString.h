@@ -70,13 +70,13 @@ using FixedStringBase = FixedStringBase_<>;
 }
 
 constexpr std::size_t checkOverflow(std::size_t i, std::size_t max) {
-  return i <= max ? i : (assertOutOfBounds(), max);
+  return i <= max ? i : (void(assertOutOfBounds()), max);
 }
 
 constexpr std::size_t checkOverflowOrNpos(std::size_t i, std::size_t max) {
   return i == FixedStringBase::npos
       ? max
-      : (i <= max ? i : (assertOutOfBounds(), max));
+      : (i <= max ? i : (void(assertOutOfBounds()), max));
 }
 
 // Intentionally NOT constexpr. See note above for assertOutOfBounds
