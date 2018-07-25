@@ -2306,6 +2306,16 @@ std::vector<Future<Result>> map(It first, It last, F func) {
   }
   return results;
 }
+
+template <class It, class F, class ItT, class Result>
+std::vector<Future<Result>> map(Executor& exec, It first, It last, F func) {
+  std::vector<Future<Result>> results;
+  for (auto it = first; it != last; it++) {
+    results.push_back(std::move(*it).via(&exec).then(func));
+  }
+  return results;
+}
+
 } // namespace futures
 
 template <class Clock>
