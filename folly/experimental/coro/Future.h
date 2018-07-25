@@ -117,7 +117,7 @@ class Future {
 };
 
 namespace detail {
-SemiFuture<Unit> toSemiFuture(Future<void> future) {
+inline SemiFuture<Unit> toSemiFuture(Future<void> future) {
   co_await future;
   co_return folly::unit;
 }
