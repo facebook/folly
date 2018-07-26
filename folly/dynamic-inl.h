@@ -364,6 +364,10 @@ struct dynamic::NumericTypeHelper<double> {
 
 inline dynamic::dynamic(std::vector<bool>::reference b)
     : dynamic(static_cast<bool>(b)) {}
+#if defined(_LIBCPP_VERSION)
+inline dynamic::dynamic(std::vector<bool>::const_reference b)
+    : dynamic(static_cast<bool>(b)) {}
+#endif
 
 template <
     class T,

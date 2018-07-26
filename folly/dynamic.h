@@ -177,8 +177,14 @@ struct dynamic : private boost::operators<dynamic> {
    * bool. Calling a function f(dynamic) with f(v[idx]) would require a double
    * implicit conversion (reference -> bool -> dynamic) which is not allowed,
    * hence we explicitly accept the reference proxy.
+   *
+   * std::vector<bool>::const_reference is not bool in libcpp:
+   * http://howardhinnant.github.io/onvectorbool.html
    */
   /* implicit */ dynamic(std::vector<bool>::reference val);
+#if defined(_LIBCPP_VERSION)
+  /* implicit */ dynamic(std::vector<bool>::const_reference val);
+#endif
 
   /*
    * Create a dynamic that is an array of the values from the supplied
