@@ -376,6 +376,10 @@ class Core final {
     return executor_.get();
   }
 
+  int8_t getPriority() const {
+    return priority_;
+  }
+
   /// Call only from consumer thread
   ///
   /// Eventual effect is to pass `e` to the Promise's interrupt handler, either

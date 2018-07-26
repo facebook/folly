@@ -340,6 +340,11 @@ class FutureBase {
     raise(FutureCancellation());
   }
 
+  // Returns this future's executor priority.
+  int8_t getPriority() const {
+    return getCore().getPriority();
+  }
+
  protected:
   friend class Promise<T>;
   template <class>
@@ -833,6 +838,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
   Future<T> toUnsafeFuture() &&;
+
+  /// Return this future's executor priority.
+  int8_t getPriority() const {
+    return Base::getPriority();
+  }
 
 #if FOLLY_HAS_COROUTINES
   class promise_type {
@@ -1810,6 +1820,11 @@ class Future : private futures::detail::FutureBase<T> {
   /// - RESULT will not have an Executor regardless of whether `*this` had one
   SemiFuture<T> semi() {
     return SemiFuture<T>{std::move(*this)};
+  }
+
+  // Returns this future's executor priority.
+  int8_t getPriority() const {
+    return Base::getPriority();
   }
 
  protected:

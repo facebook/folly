@@ -32,8 +32,9 @@ class FOLLY_EXPORT FutureSplitterInvalid : public FutureException {
  * FutureSplitter provides a `getFuture()' method which can be called multiple
  * times, returning a new Future each time. These futures are completed when the
  * original Future passed to the FutureSplitter constructor is completed, and
- * are completed on the same executor (if any) as the original Future. Calls to
- * `getFuture()' after that time return a completed Future.
+ * are completed on the same executor (if any) and at the same priority as the
+ * original Future. Calls to `getFuture()' after that time return a completed
+ * Future.
  */
 template <class T>
 class FutureSplitter {
@@ -50,7 +51,8 @@ class FutureSplitter {
    */
   explicit FutureSplitter(Future<T>&& future)
       : promise_(std::make_shared<SharedPromise<T>>()),
-        e_(getExecutorFrom(future)) {
+        e_(getExecutorFrom(future)),
+        priority_(future.getPriority()) {
     future.then([promise = promise_](Try<T>&& theTry) {
       promise->setTry(std::move(theTry));
     });
@@ -63,7 +65,7 @@ class FutureSplitter {
     if (promise_ == nullptr) {
       throw_exception<FutureSplitterInvalid>();
     }
-    return promise_->getSemiFuture().via(e_);
+    return promise_->getSemiFuture().via(e_, priority_);
   }
 
   /**
@@ -79,6 +81,7 @@ class FutureSplitter {
  private:
   std::shared_ptr<SharedPromise<T>> promise_;
   Executor* e_ = nullptr;
+  int8_t priority_{-1};
 
   static Executor* getExecutorFrom(Future<T>& f) {
     // If the passed future had a null executor, use an inline executor
