@@ -131,9 +131,13 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
   auto& curCtx = getStaticContext();
   if (ctx != curCtx) {
     FOLLY_SDT(folly, request_context_switch_before, curCtx.get(), ctx.get());
-    get()->onUnset();
+    if (curCtx) {
+      curCtx->onUnset();
+    }
     std::swap(ctx, curCtx);
-    get()->onSet();
+    if (curCtx) {
+      curCtx->onSet();
+    }
   }
   return ctx;
 }
