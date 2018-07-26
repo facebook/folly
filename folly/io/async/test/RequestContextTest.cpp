@@ -50,18 +50,22 @@ RequestContext& getContext() {
   return *ctx;
 }
 
-void setData(int data = 0) {
-  getContext().setContextData("test", std::make_unique<TestData>(data));
+void setData(int data = 0, std::string key = "test") {
+  getContext().setContextData(key, std::make_unique<TestData>(data));
 }
 
-bool hasData() {
-  return getContext().getContextData("test") != nullptr;
+bool hasData(std::string key = "test") {
+  return getContext().hasContextData(key);
 }
 
-const TestData& getData() {
-  auto* ptr = dynamic_cast<TestData*>(getContext().getContextData("test"));
+const TestData& getData(std::string key = "test") {
+  auto* ptr = dynamic_cast<TestData*>(getContext().getContextData(key));
   EXPECT_TRUE(ptr != nullptr);
   return *ptr;
+}
+
+void clearData(std::string key = "test") {
+  getContext().clearContextData(key);
 }
 
 TEST(RequestContext, SimpleTest) {
@@ -206,4 +210,72 @@ TEST(RequestContext, deadlockTest) {
   RequestContext::get()->setContextData(
       "test", std::make_unique<DeadlockTestData>("test2"));
   RequestContext::get()->clearContextData("test");
+}
+
+TEST(RequestContext, ShallowCopyBasic) {
+  ShallowCopyRequestContextScopeGuard g0;
+  setData(123, "immutable");
+  EXPECT_EQ(123, getData("immutable").data_);
+  EXPECT_FALSE(hasData());
+
+  {
+    ShallowCopyRequestContextScopeGuard g1;
+    EXPECT_EQ(123, getData("immutable").data_);
+    setData(789);
+    EXPECT_EQ(789, getData().data_);
+  }
+
+  EXPECT_FALSE(hasData());
+  EXPECT_EQ(123, getData("immutable").data_);
+  // TODO: Should be 1/0
+  EXPECT_EQ(3, getData("immutable").set_);
+  EXPECT_EQ(2, getData("immutable").unset_);
+}
+
+TEST(RequestContext, ShallowCopyOverwrite) {
+  RequestContextScopeGuard g0;
+  setData(123);
+  EXPECT_EQ(123, getData().data_);
+  {
+    ShallowCopyRequestContextScopeGuard g1(
+        "test", std::make_unique<TestData>(789));
+    EXPECT_EQ(789, getData().data_);
+    EXPECT_EQ(1, getData().set_);
+    EXPECT_EQ(0, getData().unset_);
+  }
+  EXPECT_EQ(123, getData().data_);
+  // TODO: Should be 2/1
+  EXPECT_EQ(3, getData().set_);
+  EXPECT_EQ(2, getData().unset_);
+}
+
+TEST(RequestContext, ShallowCopyDefaultContext) {
+  // Don't set global scope guard
+  setData(123);
+  EXPECT_EQ(123, getData().data_);
+  {
+    ShallowCopyRequestContextScopeGuard g1(
+        "test", std::make_unique<TestData>(789));
+    EXPECT_EQ(789, getData().data_);
+  }
+  EXPECT_EQ(123, getData().data_);
+  EXPECT_EQ(2, getData().set_);
+  EXPECT_EQ(1, getData().unset_);
+}
+
+TEST(RequestContext, ShallowCopyClear) {
+  RequestContextScopeGuard g0;
+  setData(123);
+  EXPECT_EQ(123, getData().data_);
+  {
+    ShallowCopyRequestContextScopeGuard g1;
+    EXPECT_EQ(123, getData().data_);
+    clearData();
+    setData(789);
+    EXPECT_EQ(789, getData().data_);
+  }
+  EXPECT_EQ(123, getData().data_);
+  // TODO: Should be 2/1
+  EXPECT_EQ(3, getData().set_);
+  EXPECT_EQ(2, getData().unset_);
 }

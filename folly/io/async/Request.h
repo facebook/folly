@@ -45,6 +45,28 @@ class RequestData {
   // instance overrides the hasCallback method to return true otherwise
   // the callback will not be executed
   virtual void onUnset() {}
+
+ private:
+  // Start shallow copy implementation details:
+  // For efficiency, RequestContext provides a raw ptr interface.
+  // To support shallow copy, we need a shared ptr.
+  // To keep it as safe as possible (even if a raw ptr is passed back),
+  // the counter lives directly in RequestData.
+
+  friend class RequestContext;
+
+  // Unique ptr with custom destructor, decrement the counter
+  // and only free if 0
+  struct DestructPtr {
+    void operator()(RequestData* ptr);
+  };
+  using SharedPtr = std::unique_ptr<RequestData, DestructPtr>;
+
+  // Initialize the pseudo-shared ptr, increment the counter
+  static SharedPtr constructPtr(RequestData* ptr);
+
+  std::atomic<int> keepAliveCounter_{0};
+  // End shallow copy
 };
 
 // If you do not call create() to create a unique request context,
@@ -118,18 +140,40 @@ class RequestContext {
  private:
   static std::shared_ptr<RequestContext>& getStaticContext();
 
+  friend struct ShallowCopyRequestContextScopeGuard;
+
+  // Private to encourage using shallow copy guard
+  static std::shared_ptr<RequestContext> shallowCopy();
+
+  // Similar to setContextData, except it overwrites the data
+  // if already set (instead of warn + reset ptr).
+  // Private to encourage using shallow copy guard
+  void overwriteContextData(
+      const std::string& val,
+      std::unique_ptr<RequestData> data);
+
+  enum class DoSetBehaviour {
+    SET,
+    SET_IF_ABSENT,
+    OVERWRITE,
+  };
+
   bool doSetContextData(
       const std::string& val,
       std::unique_ptr<RequestData>& data,
-      bool strict);
+      DoSetBehaviour behaviour);
 
   struct State {
-    std::map<std::string, std::unique_ptr<RequestData>> requestData_;
+    std::map<std::string, RequestData::SharedPtr> requestData_;
     std::set<RequestData*> callbackData_;
   };
   folly::Synchronized<State> state_;
 };
 
+/**
+ * Note: you probably want to use ShallowCopyRequestContextScopeGuard
+ * This resets all other RequestData for the duration of the scope!
+ */
 class RequestContextScopeGuard {
  private:
   std::shared_ptr<RequestContext> prev_;
@@ -155,4 +199,30 @@ class RequestContextScopeGuard {
     RequestContext::setContext(std::move(prev_));
   }
 };
+
+/**
+ * This guard maintains all the RequestData pointers of the parent.
+ * This allows to overwrite a specific RequestData pointer for the
+ * scope's duration, without breaking others.
+ *
+ * TODO: currently calls onSet and onUnset incorrectly, will fix on top
+ */
+struct ShallowCopyRequestContextScopeGuard : public RequestContextScopeGuard {
+  ShallowCopyRequestContextScopeGuard()
+      : RequestContextScopeGuard(RequestContext::shallowCopy()) {}
+
+  /**
+   * Shallow copy then overwrite one specific RequestData
+   *
+   * Helper constructor which is a more efficient equivalent to
+   * "clearRequestData" then "setRequestData" after the guard.
+   */
+  ShallowCopyRequestContextScopeGuard(
+      const std::string& val,
+      std::unique_ptr<RequestData> data)
+      : ShallowCopyRequestContextScopeGuard() {
+    RequestContext::get()->overwriteContextData(val, std::move(data));
+  }
+};
+
 } // namespace folly

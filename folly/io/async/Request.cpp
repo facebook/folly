@@ -24,22 +24,44 @@
 
 namespace folly {
 
+void RequestData::DestructPtr::operator()(RequestData* ptr) {
+  if (ptr) {
+    auto keepAliveCounter =
+        ptr->keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
+    // Note: this is the value before decrement, hence == 1 check
+    DCHECK(keepAliveCounter > 0);
+    if (keepAliveCounter == 1) {
+      delete ptr;
+    }
+  }
+}
+
+/* static */ RequestData::SharedPtr RequestData::constructPtr(
+    RequestData* ptr) {
+  if (ptr) {
+    auto keepAliveCounter =
+        ptr->keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
+    DCHECK(keepAliveCounter >= 0);
+  }
+  return SharedPtr(ptr);
+}
+
 bool RequestContext::doSetContextData(
     const std::string& val,
     std::unique_ptr<RequestData>& data,
-    bool strict) {
+    DoSetBehaviour behaviour) {
   auto ulock = state_.ulock();
 
   bool conflict = false;
   auto it = ulock->requestData_.find(val);
   if (it != ulock->requestData_.end()) {
-    if (strict) {
+    if (behaviour == DoSetBehaviour::SET_IF_ABSENT) {
       return false;
-    } else {
+    } else if (behaviour == DoSetBehaviour::SET) {
       LOG_FIRST_N(WARNING, 1) << "Calling RequestContext::setContextData for "
                               << val << " but it is already set";
-      conflict = true;
     }
+    conflict = true;
   }
 
   auto wlock = ulock.moveFromUpgradeToWrite();
@@ -51,14 +73,16 @@ bool RequestContext::doSetContextData(
       }
       it->second.reset(nullptr);
     }
-    return true;
+    if (behaviour == DoSetBehaviour::SET) {
+      return true;
+    }
   }
 
   if (data && data->hasCallback()) {
     wlock->callbackData_.insert(data.get());
     data->onSet();
   }
-  wlock->requestData_[val] = std::move(data);
+  wlock->requestData_[val] = RequestData::constructPtr(data.release());
 
   return true;
 }
@@ -66,13 +90,19 @@ bool RequestContext::doSetContextData(
 void RequestContext::setContextData(
     const std::string& val,
     std::unique_ptr<RequestData> data) {
-  doSetContextData(val, data, false /* strict */);
+  doSetContextData(val, data, DoSetBehaviour::SET);
 }
 
 bool RequestContext::setContextDataIfAbsent(
     const std::string& val,
     std::unique_ptr<RequestData> data) {
-  return doSetContextData(val, data, true /* strict */);
+  return doSetContextData(val, data, DoSetBehaviour::SET_IF_ABSENT);
+}
+
+void RequestContext::overwriteContextData(
+    const std::string& val,
+    std::unique_ptr<RequestData> data) {
+  doSetContextData(val, data, DoSetBehaviour::OVERWRITE);
 }
 
 bool RequestContext::hasContextData(const std::string& val) const {
@@ -80,13 +110,13 @@ bool RequestContext::hasContextData(const std::string& val) const {
 }
 
 RequestData* RequestContext::getContextData(const std::string& val) {
-  const std::unique_ptr<RequestData> dflt{nullptr};
+  const RequestData::SharedPtr dflt{nullptr};
   return get_ref_default(state_.rlock()->requestData_, val, dflt).get();
 }
 
 const RequestData* RequestContext::getContextData(
     const std::string& val) const {
-  const std::unique_ptr<RequestData> dflt{nullptr};
+  const RequestData::SharedPtr dflt{nullptr};
   return get_ref_default(state_.rlock()->requestData_, val, dflt).get();
 }
 
@@ -105,7 +135,7 @@ void RequestContext::onUnset() {
 }
 
 void RequestContext::clearContextData(const std::string& val) {
-  std::unique_ptr<RequestData> requestData;
+  RequestData::SharedPtr requestData;
   // Delete the RequestData after giving up the wlock just in case one of the
   // RequestData destructors will try to grab the lock again.
   {
@@ -145,6 +175,21 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
 std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
   using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;
   return SingletonT::get();
+}
+
+/* static */ std::shared_ptr<RequestContext> RequestContext::shallowCopy() {
+  auto* parent = get();
+  auto child = std::make_shared<RequestContext>();
+  if (parent) {
+    auto rlock = parent->state_.rlock();
+    auto wlock = child->state_.wlock();
+    wlock->callbackData_ = rlock->callbackData_;
+    for (const auto& entry : rlock->requestData_) {
+      wlock->requestData_[entry.first] =
+          RequestData::constructPtr(entry.second.get());
+    }
+  }
+  return child;
 }
 
 RequestContext* RequestContext::get() {
