@@ -140,17 +140,23 @@ class RequestContext {
  private:
   static std::shared_ptr<RequestContext>& getStaticContext();
 
+  // Start shallow copy guard implementation details:
+  // All methods are private to encourage proper use
   friend struct ShallowCopyRequestContextScopeGuard;
 
-  // Private to encourage using shallow copy guard
-  static std::shared_ptr<RequestContext> shallowCopy();
+  // This sets a shallow copy of the current context as current,
+  // then return the previous context (so it can be reset later).
+  static std::shared_ptr<RequestContext> setShallowCopyContext();
+
+  // Reset the previously copied parent context
+  static void unsetShallowCopyContext(std::shared_ptr<RequestContext> ctx);
 
   // Similar to setContextData, except it overwrites the data
   // if already set (instead of warn + reset ptr).
-  // Private to encourage using shallow copy guard
   void overwriteContextData(
       const std::string& val,
       std::unique_ptr<RequestData> data);
+  // End shallow copy guard
 
   enum class DoSetBehaviour {
     SET,
@@ -165,6 +171,7 @@ class RequestContext {
 
   struct State {
     std::map<std::string, RequestData::SharedPtr> requestData_;
+    // Note: shallow copy relies on this being ordered
     std::set<RequestData*> callbackData_;
   };
   folly::Synchronized<State> state_;
@@ -205,11 +212,11 @@ class RequestContextScopeGuard {
  * This allows to overwrite a specific RequestData pointer for the
  * scope's duration, without breaking others.
  *
- * TODO: currently calls onSet and onUnset incorrectly, will fix on top
+ * Only modified pointers will have their set/onset methods called
  */
-struct ShallowCopyRequestContextScopeGuard : public RequestContextScopeGuard {
+struct ShallowCopyRequestContextScopeGuard {
   ShallowCopyRequestContextScopeGuard()
-      : RequestContextScopeGuard(RequestContext::shallowCopy()) {}
+      : prev_(RequestContext::setShallowCopyContext()) {}
 
   /**
    * Shallow copy then overwrite one specific RequestData
@@ -223,6 +230,22 @@ struct ShallowCopyRequestContextScopeGuard : public RequestContextScopeGuard {
       : ShallowCopyRequestContextScopeGuard() {
     RequestContext::get()->overwriteContextData(val, std::move(data));
   }
+
+  ~ShallowCopyRequestContextScopeGuard() {
+    RequestContext::unsetShallowCopyContext(std::move(prev_));
+  }
+
+  ShallowCopyRequestContextScopeGuard(
+      const ShallowCopyRequestContextScopeGuard&) = delete;
+  ShallowCopyRequestContextScopeGuard& operator=(
+      const ShallowCopyRequestContextScopeGuard&) = delete;
+  ShallowCopyRequestContextScopeGuard(ShallowCopyRequestContextScopeGuard&&) =
+      delete;
+  ShallowCopyRequestContextScopeGuard& operator=(
+      ShallowCopyRequestContextScopeGuard&&) = delete;
+
+ private:
+  std::shared_ptr<RequestContext> prev_;
 };
 
 } // namespace folly

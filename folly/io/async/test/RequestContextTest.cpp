@@ -227,9 +227,8 @@ TEST(RequestContext, ShallowCopyBasic) {
 
   EXPECT_FALSE(hasData());
   EXPECT_EQ(123, getData("immutable").data_);
-  // TODO: Should be 1/0
-  EXPECT_EQ(3, getData("immutable").set_);
-  EXPECT_EQ(2, getData("immutable").unset_);
+  EXPECT_EQ(1, getData("immutable").set_);
+  EXPECT_EQ(0, getData("immutable").unset_);
 }
 
 TEST(RequestContext, ShallowCopyOverwrite) {
@@ -244,9 +243,8 @@ TEST(RequestContext, ShallowCopyOverwrite) {
     EXPECT_EQ(0, getData().unset_);
   }
   EXPECT_EQ(123, getData().data_);
-  // TODO: Should be 2/1
-  EXPECT_EQ(3, getData().set_);
-  EXPECT_EQ(2, getData().unset_);
+  EXPECT_EQ(2, getData().set_);
+  EXPECT_EQ(1, getData().unset_);
 }
 
 TEST(RequestContext, ShallowCopyDefaultContext) {
@@ -275,7 +273,6 @@ TEST(RequestContext, ShallowCopyClear) {
     EXPECT_EQ(789, getData().data_);
   }
   EXPECT_EQ(123, getData().data_);
-  // TODO: Should be 2/1
-  EXPECT_EQ(3, getData().set_);
-  EXPECT_EQ(2, getData().unset_);
+  EXPECT_EQ(2, getData().set_);
+  EXPECT_EQ(1, getData().unset_);
 }

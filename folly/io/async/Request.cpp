@@ -177,19 +177,57 @@ std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
   return SingletonT::get();
 }
 
-/* static */ std::shared_ptr<RequestContext> RequestContext::shallowCopy() {
+/* static */ std::shared_ptr<RequestContext>
+RequestContext::setShallowCopyContext() {
   auto* parent = get();
   auto child = std::make_shared<RequestContext>();
-  if (parent) {
-    auto rlock = parent->state_.rlock();
-    auto wlock = child->state_.wlock();
-    wlock->callbackData_ = rlock->callbackData_;
-    for (const auto& entry : rlock->requestData_) {
-      wlock->requestData_[entry.first] =
+
+  {
+    auto parentLock = parent->state_.rlock();
+    auto childLock = child->state_.wlock();
+    childLock->callbackData_ = parentLock->callbackData_;
+    for (const auto& entry : parentLock->requestData_) {
+      childLock->requestData_[entry.first] =
           RequestData::constructPtr(entry.second.get());
     }
   }
+
+  // Do not use setContext to avoid global set/unset
+  std::swap(child, getStaticContext());
   return child;
+}
+
+/* static */ void RequestContext::unsetShallowCopyContext(
+    std::shared_ptr<RequestContext> ctx) {
+  // Do not use setContext to avoid set/unset
+  std::swap(ctx, getStaticContext());
+  // For readability
+  auto child = std::move(ctx);
+  // Handle the case where parent is actually default context
+  auto* parent = get();
+
+  // Call set/unset for all request data that differs
+  {
+    auto parentLock = parent->state_.rlock();
+    auto childLock = child->state_.rlock();
+    auto piter = parentLock->callbackData_.begin();
+    auto pend = parentLock->callbackData_.end();
+    auto citer = childLock->callbackData_.begin();
+    auto cend = childLock->callbackData_.end();
+    while (piter != pend || citer != cend) {
+      if (piter == pend || *citer < *piter) {
+        (*citer)->onUnset();
+        ++citer;
+      } else if (citer == cend || *piter < *citer) {
+        (*piter)->onSet();
+        ++piter;
+      } else {
+        DCHECK(*piter == *citer);
+        ++piter;
+        ++citer;
+      }
+    }
+  }
 }
 
 RequestContext* RequestContext::get() {
