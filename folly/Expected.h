@@ -1362,8 +1362,8 @@ inline bool operator>=(
 /**
  * swap Expected values
  */
-template <class Error, class Value>
-void swap(Expected<Error, Value>& lhs, Expected<Value, Error>& rhs) noexcept(
+template <class Value, class Error>
+void swap(Expected<Value, Error>& lhs, Expected<Value, Error>& rhs) noexcept(
     expected_detail::StrictAllOf<IsNothrowSwappable, Value, Error>::value) {
   lhs.swap(rhs);
 }

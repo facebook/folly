@@ -297,11 +297,11 @@ TEST(Expected, Order) {
   EXPECT_EQ(vect, expected);
 }
 
-TEST(Expected, Swap) {
+TEST(Expected, SwapMethod) {
   Expected<std::string, E> a;
   Expected<std::string, E> b;
 
-  swap(a, b);
+  a.swap(b);
   EXPECT_FALSE(a.hasValue());
   EXPECT_FALSE(b.hasValue());
 
@@ -310,7 +310,7 @@ TEST(Expected, Swap) {
   EXPECT_FALSE(b.hasValue());
   EXPECT_EQ("hello", a.value());
 
-  swap(a, b);
+  b.swap(a);
   EXPECT_FALSE(a.hasValue());
   EXPECT_TRUE(b.hasValue());
   EXPECT_EQ("hello", b.value());
@@ -319,7 +319,63 @@ TEST(Expected, Swap) {
   EXPECT_TRUE(a.hasValue());
   EXPECT_EQ("bye", a.value());
 
-  swap(a, b);
+  a.swap(b);
+  EXPECT_EQ("hello", a.value());
+  EXPECT_EQ("bye", b.value());
+}
+
+TEST(Expected, StdSwapFunction) {
+  Expected<std::string, E> a;
+  Expected<std::string, E> b;
+
+  std::swap(a, b);
+  EXPECT_FALSE(a.hasValue());
+  EXPECT_FALSE(b.hasValue());
+
+  a = "greeting";
+  EXPECT_TRUE(a.hasValue());
+  EXPECT_FALSE(b.hasValue());
+  EXPECT_EQ("greeting", a.value());
+
+  std::swap(a, b);
+  EXPECT_FALSE(a.hasValue());
+  EXPECT_TRUE(b.hasValue());
+  EXPECT_EQ("greeting", b.value());
+
+  a = "goodbye";
+  EXPECT_TRUE(a.hasValue());
+  EXPECT_EQ("goodbye", a.value());
+
+  std::swap(a, b);
+  EXPECT_EQ("greeting", a.value());
+  EXPECT_EQ("goodbye", b.value());
+}
+
+TEST(Expected, FollySwapFunction) {
+  Expected<std::string, E> a;
+  Expected<std::string, E> b;
+
+  folly::swap(a, b);
+  EXPECT_FALSE(a.hasValue());
+  EXPECT_FALSE(b.hasValue());
+
+  a = "salute";
+  EXPECT_TRUE(a.hasValue());
+  EXPECT_FALSE(b.hasValue());
+  EXPECT_EQ("salute", a.value());
+
+  folly::swap(a, b);
+  EXPECT_FALSE(a.hasValue());
+  EXPECT_TRUE(b.hasValue());
+  EXPECT_EQ("salute", b.value());
+
+  a = "adieu";
+  EXPECT_TRUE(a.hasValue());
+  EXPECT_EQ("adieu", a.value());
+
+  folly::swap(a, b);
+  EXPECT_EQ("salute", a.value());
+  EXPECT_EQ("adieu", b.value());
 }
 
 TEST(Expected, Comparisons) {
