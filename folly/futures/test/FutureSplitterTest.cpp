@@ -176,9 +176,11 @@ TEST(FutureSplitter, splitFutureFailure) {
 }
 
 TEST(FutureSplitter, splitFuturePriority) {
-  std::vector<int8_t> priorities = {folly::Executor::LO_PRI,
-                                    folly::Executor::MID_PRI,
-                                    folly::Executor::HI_PRI};
+  std::vector<int8_t> priorities = {
+      folly::Executor::LO_PRI,
+      folly::Executor::MID_PRI,
+      folly::Executor::HI_PRI,
+  };
 
   for (const auto priority : priorities) {
     Promise<int> p;

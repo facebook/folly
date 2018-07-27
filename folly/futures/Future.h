@@ -550,6 +550,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /* implicit */ SemiFuture(Future<T>&&) noexcept;
 
   using Base::cancel;
+  using Base::getPriority;
   using Base::hasException;
   using Base::hasValue;
   using Base::isReady;
@@ -839,11 +840,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   Future<T> toUnsafeFuture() &&;
 
-  /// Return this future's executor priority.
-  int8_t getPriority() const {
-    return Base::getPriority();
-  }
-
 #if FOLLY_HAS_COROUTINES
   class promise_type {
    public:
@@ -1039,15 +1035,16 @@ class Future : private futures::detail::FutureBase<T> {
   Future& operator=(Future<T2>&&);
 
   using Base::cancel;
+  using Base::getPriority;
   using Base::hasException;
   using Base::hasValue;
   using Base::isReady;
   using Base::poll;
   using Base::raise;
+  using Base::result;
   using Base::setCallback_;
   using Base::valid;
   using Base::value;
-  using Base::result;
 
   /// Creates/returns an invalid Future, that is, one with no shared state.
   ///
@@ -1820,11 +1817,6 @@ class Future : private futures::detail::FutureBase<T> {
   /// - RESULT will not have an Executor regardless of whether `*this` had one
   SemiFuture<T> semi() {
     return SemiFuture<T>{std::move(*this)};
-  }
-
-  // Returns this future's executor priority.
-  int8_t getPriority() const {
-    return Base::getPriority();
   }
 
  protected:
