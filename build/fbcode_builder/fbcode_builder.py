@@ -316,15 +316,26 @@ class FBCodeBuilder(object):
             )),
         ]
 
-    def configure(self):
+    def configure(self, name=None):
+        autoconf_options = {}
+        if name is not None:
+            autoconf_options.update(
+                self.option('{0}:autoconf_options'.format(name), {})
+            )
         return [
             self.run(ShellQuoted(
                 'LDFLAGS="$LDFLAGS -L"{p}"/lib -Wl,-rpath="{p}"/lib" '
                 'CFLAGS="$CFLAGS -I"{p}"/include" '
                 'CPPFLAGS="$CPPFLAGS -I"{p}"/include" '
                 'PY_PREFIX={p} '
-                './configure --prefix={p}'
-            ).format(p=self.option('prefix'))),
+                './configure --prefix={p} {args}'
+            ).format(
+                p=self.option('prefix'),
+                args=shell_join(' ', (
+                    ShellQuoted('{k}={v}').format(k=k, v=v)
+                    for k, v in autoconf_options.items()
+                )),
+            )),
         ]
 
     def autoconf_install(self, name):
