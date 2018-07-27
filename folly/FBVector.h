@@ -185,7 +185,7 @@ class fbvector {
   static void swap(Impl& a, Impl& b) {
     using std::swap;
     if (!usingStdAllocator::value) {
-      swap<Allocator>(a, b);
+      swap(static_cast<Allocator&>(a), static_cast<Allocator&>(b));
     }
     a.swapData(b);
   }
