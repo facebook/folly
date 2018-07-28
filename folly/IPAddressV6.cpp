@@ -442,7 +442,7 @@ string IPAddressV6::str() const {
     throw IPAddressFormatException(sformat(
         "Invalid address with hex '{}' with error {}",
         detail::Bytes::toHex(bytes(), 16),
-        strerror(errno)));
+        errnoStr(errno)));
   }
 
   auto scopeId = getScopeId();

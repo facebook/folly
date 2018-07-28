@@ -40,6 +40,7 @@ namespace fs = folly::fs;
 using folly::AsyncIO;
 using folly::AsyncIOOp;
 using folly::AsyncIOQueue;
+using folly::errnoStr;
 
 namespace {
 
@@ -126,7 +127,7 @@ typedef std::unique_ptr<char, void (*)(void*)> ManagedBuffer;
 ManagedBuffer allocateAligned(size_t size) {
   void* buf;
   int rc = posix_memalign(&buf, kAlign, size);
-  CHECK_EQ(rc, 0) << strerror(rc);
+  CHECK_EQ(rc, 0) << errnoStr(rc);
   return ManagedBuffer(reinterpret_cast<char*>(buf), free);
 }
 

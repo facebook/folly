@@ -26,6 +26,7 @@
 #include <thread>
 
 #include <folly/Memory.h>
+#include <folly/String.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
@@ -721,7 +722,7 @@ bool EventBase::scheduleTimeout(
   DCHECK(ev->ev_base);
 
   if (event_add(ev, &tv) < 0) {
-    LOG(ERROR) << "EventBase: failed to schedule timeout: " << strerror(errno);
+    LOG(ERROR) << "EventBase: failed to schedule timeout: " << errnoStr(errno);
     return false;
   }
 

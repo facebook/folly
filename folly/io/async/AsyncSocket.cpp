@@ -19,6 +19,7 @@
 #include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>
+#include <folly/String.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
@@ -1585,7 +1586,7 @@ int AsyncSocket::setNoDelay(bool noDelay) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update TCP_NODELAY option on AsyncSocket " << this
             << " (fd=" << fd_ << ", state=" << state_
-            << "): " << strerror(errnoCopy);
+            << "): " << errnoStr(errnoCopy);
     return errnoCopy;
   }
 
@@ -1612,7 +1613,7 @@ int AsyncSocket::setCongestionFlavor(const std::string& cname) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update TCP_CONGESTION option on AsyncSocket " << this
             << "(fd=" << fd_ << ", state=" << state_
-            << "): " << strerror(errnoCopy);
+            << "): " << errnoStr(errnoCopy);
     return errnoCopy;
   }
 
@@ -1633,7 +1634,7 @@ int AsyncSocket::setQuickAck(bool quickack) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update TCP_QUICKACK option on AsyncSocket" << this
             << "(fd=" << fd_ << ", state=" << state_
-            << "): " << strerror(errnoCopy);
+            << "): " << errnoStr(errnoCopy);
     return errnoCopy;
   }
 
@@ -1654,7 +1655,7 @@ int AsyncSocket::setSendBufSize(size_t bufsize) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update SO_SNDBUF option on AsyncSocket" << this
             << "(fd=" << fd_ << ", state=" << state_
-            << "): " << strerror(errnoCopy);
+            << "): " << errnoStr(errnoCopy);
     return errnoCopy;
   }
 
@@ -1672,7 +1673,7 @@ int AsyncSocket::setRecvBufSize(size_t bufsize) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update SO_RCVBUF option on AsyncSocket" << this
             << "(fd=" << fd_ << ", state=" << state_
-            << "): " << strerror(errnoCopy);
+            << "): " << errnoStr(errnoCopy);
     return errnoCopy;
   }
 
@@ -1690,7 +1691,7 @@ int AsyncSocket::setTCPProfile(int profd) {
     int errnoCopy = errno;
     VLOG(2) << "failed to set socket namespace option on AsyncSocket" << this
             << "(fd=" << fd_ << ", state=" << state_
-            << "): " << strerror(errnoCopy);
+            << "): " << errnoStr(errnoCopy);
     return errnoCopy;
   }
 

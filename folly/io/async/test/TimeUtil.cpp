@@ -33,6 +33,7 @@
 
 #include <folly/Conv.h>
 #include <folly/ScopeGuard.h>
+#include <folly/String.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
 
@@ -73,7 +74,7 @@ static int64_t determineSchedstatUnits() {
   struct utsname unameInfo;
   if (uname(&unameInfo) != 0) {
     LOG(ERROR) << "unable to determine jiffies/second: uname failed: %s"
-               << strerror(errno);
+               << errnoStr(errno);
     return -1;
   }
 

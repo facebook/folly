@@ -29,17 +29,17 @@ namespace folly {
 
 void getfds(int fds[2]) {
   if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
-    LOG(ERROR) << "failed to create socketpair: " << strerror(errno);
+    LOG(ERROR) << "failed to create socketpair: " << errnoStr(errno);
   }
   for (int idx = 0; idx < 2; ++idx) {
     int flags = fcntl(fds[idx], F_GETFL, 0);
     if (flags == -1) {
       LOG(ERROR) << "failed to get flags for socket " << idx << ": "
-                 << strerror(errno);
+                 << errnoStr(errno);
     }
     if (fcntl(fds[idx], F_SETFL, flags | O_NONBLOCK) != 0) {
       LOG(ERROR) << "failed to put socket " << idx
-                 << " in non-blocking mode: " << strerror(errno);
+                 << " in non-blocking mode: " << errnoStr(errno);
     }
   }
 }

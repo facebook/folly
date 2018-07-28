@@ -18,6 +18,7 @@
 
 #include <folly/Conv.h>
 #include <folly/SocketAddress.h>
+#include <folly/String.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
@@ -29,6 +30,7 @@
 using folly::AsyncTimeout;
 using folly::AsyncUDPServerSocket;
 using folly::AsyncUDPSocket;
+using folly::errnoStr;
 using folly::EventBase;
 using folly::IOBuf;
 using folly::SocketAddress;
@@ -537,7 +539,7 @@ TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
                   CMSG_DATA(&cmsg));
           errRecvd =
               (serr->ee_origin == SO_EE_ORIGIN_ICMP || SO_EE_ORIGIN_ICMP6);
-          LOG(ERROR) << "errno " << strerror(serr->ee_errno);
+          LOG(ERROR) << "errno " << errnoStr(serr->ee_errno);
         }
         evb_.terminateLoopSoon();
       }));

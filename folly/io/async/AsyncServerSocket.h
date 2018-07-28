@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/SocketAddress.h>
+#include <folly/String.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -624,7 +625,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
               handler.socket_, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val)) !=
           0) {
         LOG(ERROR) << "failed to set SO_KEEPALIVE on async server socket: %s"
-                   << strerror(errno);
+                   << errnoStr(errno);
       }
     }
   }

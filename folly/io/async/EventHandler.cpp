@@ -15,6 +15,7 @@
  */
 
 #include <folly/io/async/EventHandler.h>
+#include <folly/String.h>
 #include <folly/io/async/EventBase.h>
 
 #include <assert.h>
@@ -90,7 +91,7 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
   // more space).
   if (event_add(&event_, nullptr) < 0) {
     LOG(ERROR) << "EventBase: failed to register event handler for fd "
-               << event_.ev_fd << ": " << strerror(errno);
+               << event_.ev_fd << ": " << errnoStr(errno);
     // Call event_del() to make sure the event is completely uninstalled
     event_del(&event_);
     return false;

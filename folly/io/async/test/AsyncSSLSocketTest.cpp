@@ -16,6 +16,7 @@
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 
 #include <folly/SocketAddress.h>
+#include <folly/String.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/AsyncSSLSocket.h>
@@ -109,17 +110,17 @@ constexpr size_t SSLClient::kMaxReadsPerEvent;
 
 void getfds(int fds[2]) {
   if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
-    FAIL() << "failed to create socketpair: " << strerror(errno);
+    FAIL() << "failed to create socketpair: " << errnoStr(errno);
   }
   for (int idx = 0; idx < 2; ++idx) {
     int flags = fcntl(fds[idx], F_GETFL, 0);
     if (flags == -1) {
       FAIL() << "failed to get flags for socket " << idx << ": "
-             << strerror(errno);
+             << errnoStr(errno);
     }
     if (fcntl(fds[idx], F_SETFL, flags | O_NONBLOCK) != 0) {
       FAIL() << "failed to put socket " << idx
-             << " in non-blocking mode: " << strerror(errno);
+             << " in non-blocking mode: " << errnoStr(errno);
     }
   }
 }

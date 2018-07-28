@@ -760,7 +760,7 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
   if (reusePortEnabled_ &&
       setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(int)) != 0) {
     LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
-               << strerror(errno);
+               << errnoStr(errno);
 #ifdef WIN32
     folly::throwSystemError(errno, "failed to bind to the async server socket");
 #else
@@ -779,13 +779,13 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
           (keepAliveEnabled_) ? &one : &zero,
           sizeof(int)) != 0) {
     LOG(ERROR) << "failed to set SO_KEEPALIVE on async server socket: "
-               << strerror(errno);
+               << errnoStr(errno);
   }
 
   // Setup FD_CLOEXEC flag
   if (closeOnExec_ && (-1 == folly::setCloseOnExec(fd, closeOnExec_))) {
     LOG(ERROR) << "failed to set FD_CLOEXEC on async server socket: "
-               << strerror(errno);
+               << errnoStr(errno);
   }
 
   // Set TCP nodelay if available, MAC OS X Hack
@@ -795,7 +795,7 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) != 0) {
       // This isn't a fatal error; just log an error message and continue
       LOG(ERROR) << "failed to set TCP_NODELAY on async server socket: "
-                 << strerror(errno);
+                 << errnoStr(errno);
     }
   }
 #else

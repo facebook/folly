@@ -18,6 +18,7 @@
 
 #include <folly/executors/thread_factory/ThreadFactory.h>
 
+#include <folly/String.h>
 #include <folly/portability/SysResource.h>
 #include <folly/portability/SysTime.h>
 
@@ -46,7 +47,7 @@ class PriorityThreadFactory : public ThreadFactory {
     return factory_->newThread([priority, func = std::move(func)]() mutable {
       if (setpriority(PRIO_PROCESS, 0, priority) != 0) {
         LOG(ERROR) << "setpriority failed (are you root?) with error " << errno,
-            strerror(errno);
+            errnoStr(errno);
       }
       func();
     });

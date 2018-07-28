@@ -673,12 +673,9 @@ TEST(SocketAddress, AnonymousUnix) {
   EXPECT_NE(addr0, addr0);
 }
 
-#define REQUIRE_ERRNO(cond, msg)                                   \
-  if (!(cond)) {                                                   \
-    int _requireErrnoCopy_ = errno;                                \
-    std::ostringstream _requireMsg_;                               \
-    _requireMsg_ << (msg) << ": " << strerror(_requireErrnoCopy_); \
-    ADD_FAILURE();                                                 \
+#define REQUIRE_ERRNO(cond, msg)                                \
+  if (!(cond)) {                                                \
+    ADD_FAILURE() << (msg) << ": " << ::folly::errnoStr(errno); \
   }
 
 void testSetFromSocket(
