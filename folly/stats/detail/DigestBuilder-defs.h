@@ -18,7 +18,6 @@
 
 #include <folly/stats/detail/DigestBuilder.h>
 
-#include <boost/sort/spreadsort/spreadsort.hpp>
 #include <algorithm>
 
 #include <folly/concurrency/CacheLocality.h>
@@ -65,7 +64,7 @@ DigestT DigestBuilder<DigestT>::build() {
     for (const auto& vec : valuesVec) {
       values.insert(values.end(), vec.begin(), vec.end());
     }
-    boost::sort::spreadsort::spreadsort(values.begin(), values.end());
+    std::sort(values.begin(), values.end());
     DigestT digest(digestSize_);
     digests.push_back(digest.merge(values));
   }
@@ -84,8 +83,7 @@ void DigestBuilder<DigestT>::append(double value) {
   }
   cpuLocalBuf->buffer.push_back(value);
   if (cpuLocalBuf->buffer.size() == bufferSize_) {
-    boost::sort::spreadsort::spreadsort(
-        cpuLocalBuf->buffer.begin(), cpuLocalBuf->buffer.end());
+    std::sort(cpuLocalBuf->buffer.begin(), cpuLocalBuf->buffer.end());
     if (!cpuLocalBuf->digest) {
       cpuLocalBuf->digest = std::make_unique<DigestT>(digestSize_);
     }
