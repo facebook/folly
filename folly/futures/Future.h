@@ -1232,6 +1232,11 @@ class Future : private futures::detail::FutureBase<T> {
   Future<typename futures::detail::tryCallableResult<T, F>::value_type> thenTry(
       F&& func) &&;
 
+  template <typename R, typename... Args>
+  auto thenTry(R (&func)(Args...)) && {
+    return std::move(*this).thenTry(&func);
+  }
+
   /// When this Future has completed, execute func which is a function that
   /// can be called with `T&&` (often a lambda with parameter type
   /// `auto&&` or `auto`).

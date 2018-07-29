@@ -1078,7 +1078,10 @@ template <class T>
 template <typename F>
 Future<typename futures::detail::tryCallableResult<T, F>::value_type>
 Future<T>::thenTry(F&& func) && {
-  return std::move(*this).then(std::forward<F>(func));
+  return std::move(*this).then(
+      [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
+        return std::forward<F>(f)(std::move(t));
+      });
 }
 
 template <class T>

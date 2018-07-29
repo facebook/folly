@@ -950,8 +950,8 @@ static folly::Future<std::string> doWorkStaticTry(Try<std::string>&& t) {
 
 TEST(Future, thenTrythenValue) {
   auto f =
-      makeFuture<std::string>("0")
-          .thenTry([]() { return makeFuture<std::string>("1"); })
+      makeFuture()
+          .thenTry([](auto&&) { return makeFuture<std::string>("1"); })
           .thenTry(
               [](Try<std::string>&& t) { return makeFuture(t.value() + ";2"); })
           .thenTry([](const Try<std::string>&& t) {
