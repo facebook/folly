@@ -130,7 +130,7 @@ sudo apt-get install \
     pkg-config
 ```
 
-If advanced debugging functionality is required
+If advanced debugging functionality is required:
 
 ```
 sudo apt-get install \
