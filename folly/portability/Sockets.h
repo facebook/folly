@@ -48,6 +48,22 @@
 #define MSG_ZEROCOPY 0x4000000
 #endif
 
+#ifndef SOL_UDP
+#define SOL_UDP 17
+#endif
+
+#ifndef ETH_MAX_MTU
+#define ETH_MAX_MTU 0xFFFFU
+#endif
+
+#ifndef UDP_SEGMENT
+#define UDP_SEGMENT 103
+#endif
+
+#ifndef UDP_MAX_SEGMENTS
+#define UDP_MAX_SEGMENTS (1 << 6UL)
+#endif
+
 #else
 #include <folly/portability/IOVec.h>
 #include <folly/portability/SysTypes.h>
@@ -62,6 +78,8 @@ using sa_family_t = ADDRESS_FAMILY;
 #define SO_EE_ORIGIN_ZEROCOPY 0
 #define SO_ZEROCOPY 0
 #define MSG_ZEROCOPY 0x0
+#define SOL_UDP 0x0
+#define UDP_SEGMENT 0x0
 
 // We don't actually support either of these flags
 // currently.

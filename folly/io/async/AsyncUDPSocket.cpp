@@ -227,11 +227,12 @@ void AsyncUDPSocket::setFD(int fd, FDOwnership ownership) {
   localAddress_.setFromLocalAddress(fd_);
 }
 
-ssize_t AsyncUDPSocket::write(
+ssize_t AsyncUDPSocket::writeGSO(
     const folly::SocketAddress& address,
-    const std::unique_ptr<folly::IOBuf>& buf) {
+    const std::unique_ptr<folly::IOBuf>& buf,
+    int gso) {
   // UDP's typical MTU size is 1500, so high number of buffers
-  //   really do not make sense. Optimze for buffer chains with
+  //   really do not make sense. Optimize for buffer chains with
   //   buffers less than 16, which is the highest I can think of
   //   for a real use case.
   iovec vec[16];
@@ -243,13 +244,20 @@ ssize_t AsyncUDPSocket::write(
     iovec_len = 1;
   }
 
-  return writev(address, vec, iovec_len);
+  return writev(address, vec, iovec_len, gso);
+}
+
+ssize_t AsyncUDPSocket::write(
+    const folly::SocketAddress& address,
+    const std::unique_ptr<folly::IOBuf>& buf) {
+  return writeGSO(address, buf, 0);
 }
 
 ssize_t AsyncUDPSocket::writev(
     const folly::SocketAddress& address,
     const struct iovec* vec,
-    size_t iovec_len) {
+    size_t iovec_len,
+    int gso) {
   CHECK_NE(-1, fd_) << "Socket not yet bound";
 
   sockaddr_storage addrStorage;
@@ -264,9 +272,34 @@ ssize_t AsyncUDPSocket::writev(
   msg.msg_controllen = 0;
   msg.msg_flags = 0;
 
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  if (gso > 0) {
+    char control[CMSG_SPACE(sizeof(uint16_t))];
+    msg.msg_control = control;
+    msg.msg_controllen = sizeof(control);
+
+    struct cmsghdr* cm = CMSG_FIRSTHDR(&msg);
+    cm->cmsg_level = SOL_UDP;
+    cm->cmsg_type = UDP_SEGMENT;
+    cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
+    uint16_t gso_len = static_cast<uint16_t>(gso);
+    memcpy(CMSG_DATA(cm), &gso_len, sizeof(gso_len));
+
+    return sendmsg(fd_, &msg, 0);
+  }
+#else
+  CHECK_LT(gso, 1) << "GSO not supported";
+#endif
+
   return sendmsg(fd_, &msg, 0);
 }
 
+ssize_t AsyncUDPSocket::writev(
+    const folly::SocketAddress& address,
+    const struct iovec* vec,
+    size_t iovec_len) {
+  return writev(address, vec, iovec_len, 0);
+}
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
   CHECK(!readCallback_) << "Another read callback already installed";
   CHECK_NE(-1, fd_) << "UDP server socket not yet bind to an address";
@@ -463,6 +496,29 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
   }
 
   return registerHandler(uint16_t(flags | PERSIST));
+}
+
+bool AsyncUDPSocket::setGSO(int val) {
+  int ret = ::setsockopt(fd_, SOL_UDP, UDP_SEGMENT, &val, sizeof(val));
+
+  gso_ = ret ? -1 : val;
+
+  return !ret;
+}
+
+int AsyncUDPSocket::getGSO() {
+  // check if we can return the cached value
+  if (FOLLY_UNLIKELY(!gso_.hasValue())) {
+    int gso = -1;
+    socklen_t optlen = sizeof(gso);
+    if (!::getsockopt(fd_, SOL_UDP, UDP_SEGMENT, &gso, &optlen)) {
+      gso_ = gso;
+    } else {
+      gso_ = -1;
+    }
+  }
+
+  return gso_.value();
 }
 
 void AsyncUDPSocket::detachEventBase() {

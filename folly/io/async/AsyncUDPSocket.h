@@ -137,8 +137,28 @@ class AsyncUDPSocket : public EventHandler {
       const std::unique_ptr<folly::IOBuf>& buf);
 
   /**
+   * Send the data in buffer to destination. Returns the return code from
+   * ::sendmsg.
+   *  gso is the generic segmentation offload value
+   *  writeGSO will return -1 if
+   *  buf->computeChainDataLength() <= gso
+   *  Before calling writeGSO with a positive value
+   *  verify GSO is supported on this platform by calling getGSO
+   */
+  virtual ssize_t writeGSO(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>& buf,
+      int gso);
+
+  /**
    * Send data in iovec to destination. Returns the return code from sendmsg.
    */
+  virtual ssize_t writev(
+      const folly::SocketAddress& address,
+      const struct iovec* vec,
+      size_t veclen,
+      int gso);
+
   virtual ssize_t writev(
       const folly::SocketAddress& address,
       const struct iovec* vec,
@@ -252,6 +272,12 @@ class AsyncUDPSocket : public EventHandler {
 
   virtual void attachEventBase(folly::EventBase* evb);
 
+  // generic segmentation offload get/set
+  // negative return value means GSO is not available
+  int getGSO();
+
+  bool setGSO(int val);
+
  protected:
   virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
     return ::sendmsg(socket, message, flags);
@@ -288,6 +314,10 @@ class AsyncUDPSocket : public EventHandler {
   int rcvBuf_{0};
   int sndBuf_{0};
   int busyPollUs_{0};
+
+  // generic segmentation offload value, if available
+  // See https://lwn.net/Articles/188489/ for more details
+  folly::Optional<int> gso_;
 
   ErrMessageCallback* errMessageCallback_{nullptr};
 };
