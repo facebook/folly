@@ -79,7 +79,7 @@ struct OptionalPromiseReturn;
 
 typedef int detail::NoneHelper::*None;
 
-const None none = nullptr;
+const None none = {};
 
 class FOLLY_EXPORT OptionalEmptyException : public std::runtime_error {
  public:
