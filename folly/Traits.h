@@ -589,10 +589,6 @@ template <class T, class A>
   class vector;
 template <class T, class A>
   class deque;
-FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
-template <class T, class A>
-  class list;
-FOLLY_GLIBCXX_NAMESPACE_CXX11_END
 template <class T, class C, class A>
   class set;
 template <class K, class V, class C, class A>
@@ -709,7 +705,6 @@ bool greater_than(LHS const lhs) {
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string)
 #endif
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::vector)
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::list)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::deque)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::unique_ptr)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::shared_ptr)
