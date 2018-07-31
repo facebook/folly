@@ -83,9 +83,16 @@ class GFlagValueSemanticBase : public po::value_semantic {
 
   std::string name() const override { return "arg"; }
 #if BOOST_VERSION >= 105900
+  FOLLY_PUSH_WARNING
+  // Unfortunately, internal builds use a patched Boost with this method
+  // removed, so applying `override` would break those builds.
+  // So, the simple case is to just ignore the warning here.
+  // Note that `adjacent_tokens_only` method is removed as of Boost 1.65
+  FOLLY_GCC_DISABLE_WARNING("-Winconsistent-missing-override")
   bool adjacent_tokens_only() const {
     return false;
   }
+  FOLLY_POP_WARNING
 #endif
   bool is_composing() const override { return false; }
   bool is_required() const override { return false; }
