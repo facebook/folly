@@ -580,8 +580,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   /// Blocks until the semifuture is fulfilled, or until `dur` elapses. Returns
   /// the value (moved-out), or throws the exception (which might be a
-  /// FutureTimeout).
-  /// exception).
+  /// FutureTimeout exception).
   ///
   /// Preconditions:
   ///
@@ -819,9 +818,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   SemiFuture<T> delayed(Duration dur, Timekeeper* tk = nullptr) &&;
 
-  /// Return a future that completes inline, as if the future had no executor.
-  /// Intended for porting legacy code without behavioural change, and for rare
-  /// cases where this is really the intended behaviour.
   /// Returns a future that completes inline, as if the future had no executor.
   /// Intended for porting legacy code without behavioral change, and for rare
   /// cases where this is really the intended behavior.
@@ -1372,8 +1368,11 @@ class Future : private futures::detail::FutureBase<T> {
   /// Set an error continuation for this Future. The continuation should take an
   /// argument of the type that you want to catch, and should return a value of
   /// the same type as this Future, or a Future of that type (see overload
-  /// below). For instance,
+  /// below).
   ///
+  /// Example:
+  ///
+  /// ```
   /// makeFuture()
   ///   .thenValue([] {
   ///     throw std::runtime_error("oh no!");
@@ -1383,6 +1382,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///     LOG(INFO) << "std::runtime_error: " << e.what();
   ///     return -1; // or makeFuture<int>(-1)
   ///   });
+  /// ```
   ///
   /// Preconditions:
   ///
@@ -1900,8 +1900,9 @@ class Future : private futures::detail::FutureBase<T> {
 /// unpleasantly surprised if we redefine Duration to microseconds, or
 /// something.
 ///
-///    timekeeper.after(std::chrono::duration_cast<Duration>(
-///      someNanoseconds))
+/// ```
+/// timekeeper.after(std::chrono::duration_cast<Duration>(someNanoseconds))
+/// ```
 class Timekeeper {
  public:
   virtual ~Timekeeper() = default;
