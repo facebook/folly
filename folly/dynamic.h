@@ -100,6 +100,19 @@ struct dynamic : private boost::operators<dynamic> {
  private:
   typedef std::vector<dynamic> Array;
 
+  /*
+   * Violating spec, std::vector<bool>::const_reference is not bool in libcpp:
+   * http://howardhinnant.github.io/onvectorbool.html
+   *
+   * This is used to add a public ctor which is only enabled under libcpp taking
+   * std::vector<bool>::const_reference without using the preprocessor.
+   */
+  struct VectorBoolConstRefFake : std::false_type {};
+  using VectorBoolConstRefCtorType = std::conditional_t<
+      std::is_same<std::vector<bool>::const_reference, bool>::value,
+      VectorBoolConstRefFake,
+      std::vector<bool>::const_reference>;
+
  public:
   typedef Array::iterator iterator;
   typedef Array::const_iterator const_iterator;
@@ -177,14 +190,9 @@ struct dynamic : private boost::operators<dynamic> {
    * bool. Calling a function f(dynamic) with f(v[idx]) would require a double
    * implicit conversion (reference -> bool -> dynamic) which is not allowed,
    * hence we explicitly accept the reference proxy.
-   *
-   * std::vector<bool>::const_reference is not bool in libcpp:
-   * http://howardhinnant.github.io/onvectorbool.html
    */
   /* implicit */ dynamic(std::vector<bool>::reference val);
-#if defined(_LIBCPP_VERSION)
-  /* implicit */ dynamic(std::vector<bool>::const_reference val);
-#endif
+  /* implicit */ dynamic(VectorBoolConstRefCtorType val);
 
   /*
    * Create a dynamic that is an array of the values from the supplied
