@@ -578,6 +578,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   T get() &&;
 
+  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get()")]] T
+  get() & = delete;
+
   /// Blocks until the semifuture is fulfilled, or until `dur` elapses. Returns
   /// the value (moved-out), or throws the exception (which might be a
   /// FutureTimeout exception).
@@ -590,6 +593,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   T get(Duration dur) &&;
+
+  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get(dur)")]] T
+  get(Duration dur) & = delete;
 
   /// Blocks until the future is fulfilled. Returns the Try of the result
   ///   (moved-out).
@@ -1562,6 +1568,9 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   T get() &&;
 
+  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get()")]] T
+  get() & = delete;
+
   /// Blocks until the future is fulfilled, or until `dur` elapses. Returns the
   /// value (moved-out), or throws the exception (which might be a FutureTimeout
   /// exception).
@@ -1574,6 +1583,9 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   T get(Duration dur) &&;
+
+  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get(dur)")]] T
+  get(Duration dur) & = delete;
 
   /// A reference to the Try of the value
   ///
