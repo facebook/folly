@@ -214,13 +214,19 @@ RequestContext::setShallowCopyContext() {
     auto pend = parentLock->callbackData_.end();
     auto citer = childLock->callbackData_.begin();
     auto cend = childLock->callbackData_.end();
-    while (piter != pend || citer != cend) {
-      if (piter == pend || *citer < *piter) {
+    while (true) {
+      if (piter == pend) {
+        if (citer == cend) {
+          break;
+        }
         (*citer)->onUnset();
         ++citer;
       } else if (citer == cend || *piter < *citer) {
         (*piter)->onSet();
         ++piter;
+      } else if (*citer < *piter) {
+        (*citer)->onUnset();
+        ++citer;
       } else {
         DCHECK(*piter == *citer);
         ++piter;
