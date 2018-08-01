@@ -179,10 +179,10 @@ std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
 
 /* static */ std::shared_ptr<RequestContext>
 RequestContext::setShallowCopyContext() {
-  auto* parent = get();
+  auto& parent = getStaticContext();
   auto child = std::make_shared<RequestContext>();
 
-  {
+  if (parent) {
     auto parentLock = parent->state_.rlock();
     auto childLock = child->state_.wlock();
     childLock->callbackData_ = parentLock->callbackData_;
@@ -193,21 +193,16 @@ RequestContext::setShallowCopyContext() {
   }
 
   // Do not use setContext to avoid global set/unset
-  std::swap(child, getStaticContext());
+  std::swap(child, parent);
   return child;
 }
 
 /* static */ void RequestContext::unsetShallowCopyContext(
-    std::shared_ptr<RequestContext> ctx) {
-  // Do not use setContext to avoid set/unset
-  std::swap(ctx, getStaticContext());
-  // For readability
-  auto child = std::move(ctx);
-  // Handle the case where parent is actually default context
-  auto* parent = get();
+    std::shared_ptr<RequestContext> parent) {
+  auto& child = getStaticContext();
 
   // Call set/unset for all request data that differs
-  {
+  if (parent && child) {
     auto parentLock = parent->state_.rlock();
     auto childLock = child->state_.rlock();
     auto piter = parentLock->callbackData_.begin();
@@ -233,7 +228,14 @@ RequestContext::setShallowCopyContext() {
         ++citer;
       }
     }
+  } else if (parent) {
+    parent->onSet();
+  } else if (child) {
+    child->onUnset();
   }
+
+  // Do not use setContext to avoid set/unset
+  child = parent;
 }
 
 RequestContext* RequestContext::get() {

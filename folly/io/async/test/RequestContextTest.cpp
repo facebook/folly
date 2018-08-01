@@ -123,14 +123,12 @@ TEST(RequestContext, RequestContextScopeGuard) {
 
 TEST(RequestContext, defaultContext) {
   // Don't create a top level guard
-  // Regression test for set/onset used to not work with the default context
   setData(10);
   {
     RequestContextScopeGuard g1;
     EXPECT_FALSE(hasData());
   }
   EXPECT_EQ(10, getData().data_);
-  // TODO: should be 2/1
   EXPECT_EQ(1, getData().set_);
   EXPECT_EQ(0, getData().unset_);
 }
@@ -257,8 +255,8 @@ TEST(RequestContext, ShallowCopyDefaultContext) {
     EXPECT_EQ(789, getData().data_);
   }
   EXPECT_EQ(123, getData().data_);
-  EXPECT_EQ(2, getData().set_);
-  EXPECT_EQ(1, getData().unset_);
+  EXPECT_EQ(1, getData().set_);
+  EXPECT_EQ(0, getData().unset_);
 }
 
 TEST(RequestContext, ShallowCopyClear) {
