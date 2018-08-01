@@ -148,9 +148,6 @@ class RequestContext {
   // then return the previous context (so it can be reset later).
   static std::shared_ptr<RequestContext> setShallowCopyContext();
 
-  // Reset the previously copied parent context
-  static void unsetShallowCopyContext(std::shared_ptr<RequestContext> ctx);
-
   // Similar to setContextData, except it overwrites the data
   // if already set (instead of warn + reset ptr).
   void overwriteContextData(
@@ -171,7 +168,7 @@ class RequestContext {
 
   struct State {
     std::map<std::string, RequestData::SharedPtr> requestData_;
-    // Note: shallow copy relies on this being ordered
+    // Note: setContext efficiency relies on this being ordered
     std::set<RequestData*> callbackData_;
   };
   folly::Synchronized<State> state_;
@@ -232,7 +229,7 @@ struct ShallowCopyRequestContextScopeGuard {
   }
 
   ~ShallowCopyRequestContextScopeGuard() {
-    RequestContext::unsetShallowCopyContext(std::move(prev_));
+    RequestContext::setContext(std::move(prev_));
   }
 
   ShallowCopyRequestContextScopeGuard(

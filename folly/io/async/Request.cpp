@@ -157,19 +157,47 @@ void RequestContext::clearContextData(const std::string& val) {
 }
 
 std::shared_ptr<RequestContext> RequestContext::setContext(
-    std::shared_ptr<RequestContext> ctx) {
+    std::shared_ptr<RequestContext> newCtx) {
   auto& curCtx = getStaticContext();
-  if (ctx != curCtx) {
-    FOLLY_SDT(folly, request_context_switch_before, curCtx.get(), ctx.get());
-    if (curCtx) {
+  if (newCtx != curCtx) {
+    FOLLY_SDT(folly, request_context_switch_before, curCtx.get(), newCtx.get());
+
+    // Call set/unset for all request data that differs
+    if (newCtx && curCtx) {
+      auto newLock = newCtx->state_.rlock();
+      auto curLock = curCtx->state_.rlock();
+      auto niter = newLock->callbackData_.begin();
+      auto nend = newLock->callbackData_.end();
+      auto citer = curLock->callbackData_.begin();
+      auto cend = curLock->callbackData_.end();
+      while (true) {
+        if (niter == nend) {
+          if (citer == cend) {
+            break;
+          }
+          (*citer)->onUnset();
+          ++citer;
+        } else if (citer == cend || *niter < *citer) {
+          (*niter)->onSet();
+          ++niter;
+        } else if (*citer < *niter) {
+          (*citer)->onUnset();
+          ++citer;
+        } else {
+          DCHECK(*niter == *citer);
+          ++niter;
+          ++citer;
+        }
+      }
+    } else if (newCtx) {
+      newCtx->onSet();
+    } else if (curCtx) {
       curCtx->onUnset();
     }
-    std::swap(ctx, curCtx);
-    if (curCtx) {
-      curCtx->onSet();
-    }
+
+    std::swap(curCtx, newCtx);
   }
-  return ctx;
+  return newCtx;
 }
 
 std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
@@ -195,47 +223,6 @@ RequestContext::setShallowCopyContext() {
   // Do not use setContext to avoid global set/unset
   std::swap(child, parent);
   return child;
-}
-
-/* static */ void RequestContext::unsetShallowCopyContext(
-    std::shared_ptr<RequestContext> parent) {
-  auto& child = getStaticContext();
-
-  // Call set/unset for all request data that differs
-  if (parent && child) {
-    auto parentLock = parent->state_.rlock();
-    auto childLock = child->state_.rlock();
-    auto piter = parentLock->callbackData_.begin();
-    auto pend = parentLock->callbackData_.end();
-    auto citer = childLock->callbackData_.begin();
-    auto cend = childLock->callbackData_.end();
-    while (true) {
-      if (piter == pend) {
-        if (citer == cend) {
-          break;
-        }
-        (*citer)->onUnset();
-        ++citer;
-      } else if (citer == cend || *piter < *citer) {
-        (*piter)->onSet();
-        ++piter;
-      } else if (*citer < *piter) {
-        (*citer)->onUnset();
-        ++citer;
-      } else {
-        DCHECK(*piter == *citer);
-        ++piter;
-        ++citer;
-      }
-    }
-  } else if (parent) {
-    parent->onSet();
-  } else if (child) {
-    child->onUnset();
-  }
-
-  // Do not use setContext to avoid set/unset
-  child = parent;
 }
 
 RequestContext* RequestContext::get() {
