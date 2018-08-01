@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <limits>
-
-#include <boost/next_prior.hpp>
 
 #include <folly/json.h>
+
+#include <iterator>
+#include <limits>
+
 #include <folly/portability/GTest.h>
 
 using folly::dynamic;
@@ -85,7 +86,7 @@ TEST(Json, Parse) {
     "[12,false, false  , null , [12e4,32, [], 12]]");
   EXPECT_EQ(array.size(), 5);
   if (array.size() == 5) {
-    EXPECT_EQ(boost::prior(array.end())->size(), 4);
+    EXPECT_EQ(std::prev(array.end())->size(), 4);
   }
 
   EXPECT_THROW(parseJson("\n[12,\n\nnotvalidjson"),

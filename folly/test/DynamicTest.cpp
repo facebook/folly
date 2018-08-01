@@ -19,7 +19,7 @@
 #include <folly/json.h>
 #include <folly/portability/GTest.h>
 
-#include <boost/next_prior.hpp>
+#include <iterator>
 
 using folly::dynamic;
 
@@ -52,12 +52,12 @@ TEST(Dynamic, ObjectBasics) {
   found.emplace_back(newObject.keys().begin()->asString(),
                      *newObject.values().begin());
 
-  EXPECT_EQ(*boost::next(newObject.keys().begin()),
-            boost::next(newObject.items().begin())->first);
-  EXPECT_EQ(*boost::next(newObject.values().begin()),
-            boost::next(newObject.items().begin())->second);
-  found.emplace_back(boost::next(newObject.keys().begin())->asString(),
-                     *boost::next(newObject.values().begin()));
+  EXPECT_EQ(*std::next(newObject.keys().begin()),
+            std::next(newObject.items().begin())->first);
+  EXPECT_EQ(*std::next(newObject.values().begin()),
+            std::next(newObject.items().begin())->second);
+  found.emplace_back(std::next(newObject.keys().begin())->asString(),
+                     *std::next(newObject.values().begin()));
 
   std::sort(found.begin(), found.end());
 
@@ -178,7 +178,7 @@ TEST(Dynamic, ObjectErase) {
   obj["asd"] = 42.0;
   obj["foo"] = 42.0;
   EXPECT_EQ(obj.size(), 3);
-  auto ret = obj.erase(boost::next(obj.items().begin()), obj.items().end());
+  auto ret = obj.erase(std::next(obj.items().begin()), obj.items().end());
   EXPECT_TRUE(ret == obj.items().end());
   EXPECT_EQ(obj.size(), 1);
   obj.erase(obj.items().begin());
@@ -194,7 +194,7 @@ TEST(Dynamic, ArrayErase) {
   arr.erase(arr.begin());
   EXPECT_EQ(arr.size(), 5);
 
-  arr.erase(boost::next(arr.begin()), boost::prior(arr.end()));
+  arr.erase(std::next(arr.begin()), std::prev(arr.end()));
   EXPECT_EQ(arr.size(), 2);
   EXPECT_EQ(arr[0], 2);
   EXPECT_EQ(arr[1], 6);

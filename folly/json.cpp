@@ -17,10 +17,10 @@
 
 #include <algorithm>
 #include <functional>
+#include <iterator>
 #include <type_traits>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/next_prior.hpp>
 
 #include <folly/Conv.h>
 #include <folly/Portability.h>
@@ -145,7 +145,7 @@ struct Printer {
     indent();
     newline();
     (*this)(a[0]);
-    for (auto& val : range(boost::next(a.begin()), a.end())) {
+    for (auto& val : range(std::next(a.begin()), a.end())) {
       out_ += ',';
       newline();
       (*this)(val);
