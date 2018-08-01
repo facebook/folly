@@ -13,6 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
+// other vendors
+#ifdef FOLLY_USE_LIBSTDCPP
+
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -182,3 +187,4 @@ TEST(AtomicSharedPtr, DeterministicTest) {
     DSched::join(t);
   }
 }
+#endif // #ifdef FOLLY_USE_LIBSTDCPP
