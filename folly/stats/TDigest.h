@@ -133,6 +133,10 @@ class TDigest {
     return centroids_;
   }
 
+  size_t maxSize() const {
+    return maxSize_;
+  }
+
  private:
   std::vector<Centroid> centroids_;
   size_t maxSize_;
