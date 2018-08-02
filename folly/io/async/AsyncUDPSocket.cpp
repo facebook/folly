@@ -499,16 +499,22 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
 }
 
 bool AsyncUDPSocket::setGSO(int val) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   int ret = ::setsockopt(fd_, SOL_UDP, UDP_SEGMENT, &val, sizeof(val));
 
   gso_ = ret ? -1 : val;
 
   return !ret;
+#else
+  (void)val;
+  return false;
+#endif
 }
 
 int AsyncUDPSocket::getGSO() {
   // check if we can return the cached value
   if (FOLLY_UNLIKELY(!gso_.hasValue())) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
     int gso = -1;
     socklen_t optlen = sizeof(gso);
     if (!::getsockopt(fd_, SOL_UDP, UDP_SEGMENT, &gso, &optlen)) {
@@ -516,6 +522,9 @@ int AsyncUDPSocket::getGSO() {
     } else {
       gso_ = -1;
     }
+#else
+    gso_ = -1;
+#endif
   }
 
   return gso_.value();
