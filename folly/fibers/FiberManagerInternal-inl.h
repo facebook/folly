@@ -112,7 +112,8 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       fiber->state_ == Fiber::NOT_STARTED ||
       fiber->state_ == Fiber::READY_TO_RUN);
   currentFiber_ = fiber;
-  fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
+  // Note: resetting the context is handled by the loop
+  RequestContext::setContext(std::move(fiber->rcontext_));
   if (observer_) {
     observer_->starting(reinterpret_cast<uintptr_t>(fiber));
   }
@@ -138,7 +139,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
-    fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
+    fiber->rcontext_ = RequestContext::saveContext();
   } else if (fiber->state_ == Fiber::INVALID) {
     assert(fibersActive_ > 0);
     --fibersActive_;
@@ -160,7 +161,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
-    fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
+    fiber->rcontext_ = RequestContext::saveContext();
     fiber->localData_.reset();
     fiber->rcontext_.reset();
 
@@ -178,7 +179,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
-    fiber->rcontext_ = RequestContext::setContext(std::move(fiber->rcontext_));
+    fiber->rcontext_ = RequestContext::saveContext();
     fiber->state_ = Fiber::READY_TO_RUN;
     yieldedFibers_.push_back(*fiber);
   }
@@ -199,7 +200,13 @@ inline void FiberManager::loopUntilNoReadyImpl() {
   auto originalFiberManager = this;
   std::swap(currentFiberManager_, originalFiberManager);
 
+  // Save current context, and reset it after executing all fibers.
+  // This can avoid a lot of context swapping,
+  // if the Fibers share the same context
+  auto curCtx = RequestContext::saveContext();
+
   SCOPE_EXIT {
+    RequestContext::setContext(std::move(curCtx));
     isLoopScheduled_ = false;
     if (!readyFibers_.empty()) {
       ensureLoopScheduled();
