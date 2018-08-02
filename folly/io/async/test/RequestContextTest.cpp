@@ -210,6 +210,38 @@ TEST(RequestContext, deadlockTest) {
   RequestContext::get()->clearContextData("test");
 }
 
+// A common use case is to use set/unset to maintain a thread global
+// Regression test to ensure that unset is always called before set
+TEST(RequestContext, sharedGlobalTest) {
+  static bool global = false;
+
+  class GlobalTestData : public RequestData {
+   public:
+    void onSet() override {
+      ASSERT_FALSE(global);
+      global = true;
+    }
+
+    void onUnset() override {
+      ASSERT_TRUE(global);
+      global = false;
+    }
+
+    bool hasCallback() override {
+      return true;
+    }
+  };
+
+  RequestContextScopeGuard g0;
+  RequestContext::get()->setContextData(
+      "test", std::make_unique<GlobalTestData>());
+  {
+    RequestContextScopeGuard g1;
+    RequestContext::get()->setContextData(
+        "test", std::make_unique<GlobalTestData>());
+  }
+}
+
 TEST(RequestContext, ShallowCopyBasic) {
   ShallowCopyRequestContextScopeGuard g0;
   setData(123, "immutable");
