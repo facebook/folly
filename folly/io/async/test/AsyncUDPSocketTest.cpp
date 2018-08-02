@@ -26,6 +26,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Sockets.h>
 
 using folly::AsyncTimeout;
 using folly::AsyncUDPServerSocket;
@@ -530,6 +531,7 @@ TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
   socket_->setErrMessageCallback(&err);
   folly::SocketAddress addr("127.0.0.1", 10000);
   bool errRecvd = false;
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
   EXPECT_CALL(err, errMessage_(_))
       .WillOnce(Invoke([this, &errRecvd](auto& cmsg) {
         if ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
@@ -543,6 +545,7 @@ TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
         }
         evb_.terminateLoopSoon();
       }));
+#endif // FOLLY_HAVE_MSG_ERRQUEUE
   socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
   evb_.loopForever();
   EXPECT_TRUE(errRecvd);
