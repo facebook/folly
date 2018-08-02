@@ -1200,8 +1200,7 @@ TEST(F14FastMap, moveOnly) {
   runMoveOnlyTest<F14FastMap<f14::MoveOnlyTestInt, f14::MoveOnlyTestInt>>();
 }
 
-TEST(F14ValueMap, heterogeneous) {
-  // note: std::string is implicitly convertible to but not from StringPiece
+TEST(F14ValueMap, heterogeneousLookup) {
   using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;
   using KeyEqual = folly::transparent<std::equal_to<folly::StringPiece>>;
 
@@ -1210,8 +1209,8 @@ TEST(F14ValueMap, heterogeneous) {
   constexpr auto world = "world"_sp;
 
   F14ValueMap<std::string, bool, Hasher, KeyEqual> map;
-  map.emplace(hello.str(), true);
-  map.emplace(world.str(), false);
+  map.emplace(hello, true);
+  map.emplace(world, false);
 
   auto checks = [hello, buddy](auto& ref) {
     // count
@@ -1362,12 +1361,64 @@ void runHeterogeneousInsertTest() {
       << Tracked<1>::counts;
 }
 
+template <typename M>
+void runHeterogeneousInsertStringTest() {
+  using P = std::pair<StringPiece, std::string>;
+  using CP = std::pair<const StringPiece, std::string>;
+
+  M map;
+  P p{"foo", "hello"};
+  std::vector<P> v{p};
+  StringPiece foo{"foo"};
+
+  map.insert(P("foo", "hello"));
+  // TODO(T31574848): the list-initialization below does not work on libstdc++
+  // versions (e.g., GCC < 6) with no implementation of N4387 ("perfect
+  // initialization" for pairs and tuples).
+  //   StringPiece sp{"foo"};
+  //   map.insert({sp, "hello"});
+  map.insert({"foo", "hello"});
+  map.insert(CP("foo", "hello"));
+  map.insert(p);
+  map.insert(v.begin(), v.end());
+  map.insert(
+      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
+  map.insert_or_assign("foo", "hello");
+  map.insert_or_assign(StringPiece{"foo"}, "hello");
+  EXPECT_EQ(map["foo"], "hello");
+
+  map.emplace(StringPiece{"foo"}, "hello");
+  map.emplace("foo", "hello");
+  map.emplace(p);
+  map.emplace();
+  map.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(StringPiece{"foo"}),
+      std::forward_as_tuple(/* count */ 20, 'x'));
+  map.try_emplace(StringPiece{"foo"}, "hello");
+  map.try_emplace(foo, "hello");
+  map.try_emplace(foo);
+  map.try_emplace("foo");
+  map.try_emplace("foo", "hello");
+  map.try_emplace("foo", /* count */ 20, 'x');
+
+  map.erase(StringPiece{"foo"});
+  map.erase(foo);
+  map.erase("");
+  EXPECT_TRUE(map.empty());
+}
+
 TEST(F14ValueMap, heterogeneousInsert) {
   runHeterogeneousInsertTest<F14ValueMap<
       Tracked<1>,
       int,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14ValueMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 TEST(F14NodeMap, heterogeneousInsert) {
@@ -1376,6 +1427,11 @@ TEST(F14NodeMap, heterogeneousInsert) {
       int,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14NodeMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 TEST(F14VectorMap, heterogeneousInsert) {
@@ -1384,6 +1440,11 @@ TEST(F14VectorMap, heterogeneousInsert) {
       int,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14VectorMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 TEST(F14FastMap, heterogeneousInsert) {
@@ -1392,6 +1453,11 @@ TEST(F14FastMap, heterogeneousInsert) {
       int,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14FastMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 ///////////////////////////////////

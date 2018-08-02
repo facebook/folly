@@ -878,8 +878,8 @@ TEST(F14ValueSet, heterogeneous) {
   constexpr auto world = "world"_sp;
 
   F14ValueSet<std::string, Hasher, KeyEqual> set;
-  set.emplace(hello.str());
-  set.emplace(world.str());
+  set.emplace(hello);
+  set.emplace(world);
 
   auto checks = [hello, buddy](auto& ref) {
     // count
@@ -1025,11 +1025,39 @@ void runHeterogeneousInsertTest() {
       << Tracked<1>::counts;
 }
 
+template <typename S>
+void runHeterogeneousInsertStringTest() {
+  S set;
+  StringPiece k{"foo"};
+  std::vector<StringPiece> v{k};
+
+  set.insert(k);
+  set.insert("foo");
+  set.insert(StringPiece{"foo"});
+  set.insert(v.begin(), v.end());
+  set.insert(
+      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
+
+  set.emplace();
+  set.emplace(k);
+  set.emplace("foo");
+  set.emplace(StringPiece("foo"));
+
+  set.erase("");
+  set.erase(k);
+  set.erase(StringPiece{"foo"});
+  EXPECT_TRUE(set.empty());
+}
+
 TEST(F14ValueSet, heterogeneousInsert) {
   runHeterogeneousInsertTest<F14ValueSet<
       Tracked<1>,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14ValueSet<
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 TEST(F14NodeSet, heterogeneousInsert) {
@@ -1037,6 +1065,10 @@ TEST(F14NodeSet, heterogeneousInsert) {
       Tracked<1>,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14NodeSet<
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 TEST(F14VectorSet, heterogeneousInsert) {
@@ -1044,6 +1076,10 @@ TEST(F14VectorSet, heterogeneousInsert) {
       Tracked<1>,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14VectorSet<
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 TEST(F14FastSet, heterogeneousInsert) {
@@ -1051,6 +1087,10 @@ TEST(F14FastSet, heterogeneousInsert) {
       Tracked<1>,
       TransparentTrackedHash<1>,
       TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14FastSet<
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
 }
 
 namespace {

@@ -332,6 +332,27 @@ class F14BasicMap {
     return emplace(std::forward<P>(value));
   }
 
+  // TODO(T31574848): Work around libstdc++ versions (e.g., GCC < 6) with no
+  // implementation of N4387 ("perfect initialization" for pairs and tuples).
+  template <typename U1, typename U2>
+  std::enable_if_t<
+      std::is_constructible<key_type, U1 const&>::value &&
+          std::is_constructible<mapped_type, U2 const&>::value,
+      std::pair<iterator, bool>>
+  insert(std::pair<U1, U2> const& value) {
+    return emplace(value);
+  }
+
+  // TODO(T31574848)
+  template <typename U1, typename U2>
+  std::enable_if_t<
+      std::is_constructible<key_type, U1&&>::value &&
+          std::is_constructible<mapped_type, U2&&>::value,
+      std::pair<iterator, bool>>
+  insert(std::pair<U1, U2>&& value) {
+    return emplace(std::move(value));
+  }
+
   std::pair<iterator, bool> insert(value_type&& value) {
     return emplace(std::move(value));
   }
@@ -458,8 +479,16 @@ class F14BasicMap {
   std::pair<ItemIter, bool> emplaceItem(U1&& x, U2&& y) {
     using K = KeyTypeForEmplace<key_type, hasher, key_equal, U1>;
     K key(std::forward<U1>(x));
+
+    // TODO(T31574848): piecewise_construct is to work around libstdc++ versions
+    // (e.g., GCC < 6) with no implementation of N4387 ("perfect initialization"
+    // for pairs and tuples).  Otherwise we could just pass key, forwarded key,
+    // and forwarded y to tryEmplaceValue.
     return table_.tryEmplaceValue(
-        key, std::forward<K>(key), std::forward<U2>(y));
+        key,
+        std::piecewise_construct,
+        std::forward_as_tuple(std::forward<K>(key)),
+        std::forward_as_tuple(std::forward<U2>(y)));
   }
 
   template <typename U1, typename U2>
