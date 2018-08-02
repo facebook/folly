@@ -141,13 +141,13 @@ dynamic numericOp(dynamic const& a, dynamic const& b) {
 
 /*
  * We're doing this instead of a simple member typedef to avoid the
- * undefined behavior of parameterizing std::unordered_map<> with an
+ * undefined behavior of parameterizing F14NodeMap<> with an
  * incomplete type.
  *
  * Note: Later we may add separate order tracking here (a multi-index
  * type of thing.)
  */
-struct dynamic::ObjectImpl : std::unordered_map<dynamic, dynamic> {};
+struct dynamic::ObjectImpl : F14NodeMap<dynamic, dynamic> {};
 
 //////////////////////////////////////////////////////////////////////
 
@@ -855,10 +855,11 @@ struct dynamic::GetAddrImpl<std::string> {
   }
 };
 template <> struct dynamic::GetAddrImpl<dynamic::ObjectImpl> {
-  static_assert(sizeof(ObjectImpl) <= sizeof(Data::objectBuffer),
-    "In your implementation, std::unordered_map<> apparently takes different"
-    " amount of space depending on its template parameters.  This is "
-    "weird.  Make objectBuffer bigger if you want to compile dynamic.");
+  static_assert(
+      sizeof(ObjectImpl) <= sizeof(Data::objectBuffer),
+      "In your implementation, F14NodeMap<> apparently takes different"
+      " amount of space depending on its template parameters.  This is "
+      "weird.  Make objectBuffer bigger if you want to compile dynamic.");
 
   static ObjectImpl* get(Data& d) noexcept {
     void* data = &d.objectBuffer;

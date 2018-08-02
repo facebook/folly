@@ -57,7 +57,6 @@
 #include <ostream>
 #include <string>
 #include <type_traits>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -65,6 +64,7 @@
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
+#include <folly/container/F14Map.h>
 #include <folly/json_pointer.h>
 
 namespace folly {
@@ -608,15 +608,14 @@ struct dynamic : private boost::operators<dynamic> {
 
     /*
      * Objects are placement new'd here.  We have to use a char buffer
-     * because we don't know the type here (std::unordered_map<> with
+     * because we don't know the type here (F14NodeMap<> with
      * dynamic would be parameterizing a std:: template with an
      * incomplete type right now).  (Note that in contrast we know it
      * is ok to do this with fbvector because we own it.)
      */
     std::aligned_storage<
-      sizeof(std::unordered_map<int,int>),
-      alignof(std::unordered_map<int,int>)
-    >::type objectBuffer;
+        sizeof(F14NodeMap<int, int>),
+        alignof(F14NodeMap<int, int>)>::type objectBuffer;
   } u_;
 };
 
