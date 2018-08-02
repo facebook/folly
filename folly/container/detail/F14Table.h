@@ -138,7 +138,7 @@ struct F14LinkCheck<getF14IntrinsicsMode()> {
 bool tlsPendingSafeInserts(std::ptrdiff_t delta = 0);
 std::size_t tlsMinstdRand(std::size_t n);
 
-#if defined(_LIBCPP_VERSION)
+#if FOLLY_USE_LIBCPP
 
 template <typename K, typename V, typename H>
 struct StdNodeReplica {

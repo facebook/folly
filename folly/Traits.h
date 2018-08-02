@@ -316,7 +316,7 @@ using aligned_storage_for_t =
     typename std::aligned_storage<sizeof(T), alignof(T)>::type;
 
 // Older versions of libstdc++ do not provide std::is_trivially_copyable
-#if defined(__clang__) && !defined(_LIBCPP_VERSION)
+#if defined(__clang__) && !defined(FOLLY_USE_LIBCPP)
 template <class T>
 struct is_trivially_copyable : bool_constant<__is_trivially_copyable(T)> {};
 #elif defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
