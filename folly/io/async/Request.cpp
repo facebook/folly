@@ -166,37 +166,30 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
     if (newCtx && curCtx) {
       auto newLock = newCtx->state_.rlock();
       auto curLock = curCtx->state_.rlock();
-      auto niter = newLock->callbackData_.begin();
-      auto nend = newLock->callbackData_.end();
-      auto citer = curLock->callbackData_.begin();
-      auto cend = curLock->callbackData_.end();
-      while (true) {
-        if (niter == nend) {
-          if (citer == cend) {
-            break;
-          }
-          (*citer)->onUnset();
-          ++citer;
-        } else if (citer == cend || *niter < *citer) {
-          (*niter)->onSet();
-          ++niter;
-        } else if (*citer < *niter) {
-          (*citer)->onUnset();
-          ++citer;
-        } else {
-          DCHECK(*niter == *citer);
-          ++niter;
-          ++citer;
+      auto& newData = newLock->callbackData_;
+      auto& curData = curLock->callbackData_;
+      for (auto* callback : curData) {
+        if (newData.find(callback) == newData.end()) {
+          callback->onUnset();
+        }
+      }
+      std::swap(curCtx, newCtx);
+      for (auto* callback : newData) {
+        if (curData.find(callback) == curData.end()) {
+          callback->onSet();
         }
       }
     } else if (newCtx) {
-      newCtx->onSet();
+      std::swap(curCtx, newCtx);
+      // Note: actually newCtx
+      curCtx->onSet();
     } else if (curCtx) {
       curCtx->onUnset();
+      std::swap(curCtx, newCtx);
     }
-
-    std::swap(curCtx, newCtx);
   }
+
+  // Note: actually curCtx
   return newCtx;
 }
 
