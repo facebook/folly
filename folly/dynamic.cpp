@@ -188,7 +188,7 @@ dynamic& dynamic::operator[](dynamic const& k) & {
     return at(k);
   }
   auto& obj = get<ObjectImpl>();
-  auto ret = obj.insert({k, nullptr});
+  auto ret = obj.emplace(k, nullptr);
   return ret.first->second;
 }
 
@@ -246,11 +246,6 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
   }
 }
 
-[[noreturn]] static void throwOutOfRangeAtMissingKey(dynamic const& idx) {
-  auto msg = sformat("couldn't find key {} in dynamic object", idx.asString());
-  throw_exception<std::out_of_range>(msg);
-}
-
 dynamic const& dynamic::at(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {
@@ -263,7 +258,8 @@ dynamic const& dynamic::at(dynamic const& idx) const& {
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
     auto it = pobject->find(idx);
     if (it == pobject->end()) {
-      throwOutOfRangeAtMissingKey(idx);
+      throw_exception<std::out_of_range>(
+          sformat("couldn't find key {} in dynamic object", idx.asString()));
     }
     return it->second;
   } else {
@@ -316,6 +312,7 @@ std::size_t dynamic::hash() const {
   case BOOL:
     return std::hash<bool>()(getBool());
   case STRING:
+    // keep consistent with detail::DynamicHasher
     return Hash()(getString());
   }
   assume_unreachable();

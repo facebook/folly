@@ -379,11 +379,24 @@ struct dynamic : private boost::operators<dynamic> {
   const_item_iterator find(dynamic const&) const;
   item_iterator find(dynamic const&);
 
+  template <typename K>
+  std::enable_if_t<
+      std::is_convertible<K, StringPiece>::value,
+      const_item_iterator>
+  find(K const&) const;
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, item_iterator>
+  find(K const&);
+
   /*
    * If this is an object, returns whether it contains a field with
    * the given name.  Otherwise throws TypeError.
    */
   std::size_t count(dynamic const&) const;
+
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, std::size_t>
+  count(K const&) const;
 
   /*
    * For objects or arrays, provides access to sub-fields by index or
@@ -396,6 +409,16 @@ struct dynamic : private boost::operators<dynamic> {
   dynamic const& at(dynamic const&) const&;
   dynamic&       at(dynamic const&) &;
   dynamic&&      at(dynamic const&) &&;
+
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic const&>
+  at(K const&) const&;
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&> at(
+      K const&) &;
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&&> at(
+      K const&) &&;
 
   /*
    * Locate element using JSON pointer, per RFC 6901. Returns nullptr if
@@ -440,6 +463,16 @@ struct dynamic : private boost::operators<dynamic> {
   dynamic const& operator[](dynamic const&) const&;
   dynamic&&      operator[](dynamic const&) &&;
 
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&>
+  operator[](K&&) &;
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic const&>
+  operator[](K&&) const&;
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&&>
+  operator[](K&&) &&;
+
   /*
    * Only defined for objects, throws TypeError otherwise.
    *
@@ -477,7 +510,8 @@ struct dynamic : private boost::operators<dynamic> {
 
   /*
    * Inserts the supplied key-value pair to an object, or throws if
-   * it's not an object.
+   * it's not an object. If the key already exists, insert will overwrite the
+   * value, i.e., similar to insert_or_assign.
    *
    * Invalidates iterators.
    */
@@ -519,6 +553,9 @@ struct dynamic : private boost::operators<dynamic> {
    * Returns the number of elements erased (i.e. 1 or 0).
    */
   std::size_t erase(dynamic const& key);
+  template <typename K>
+  std::enable_if_t<std::is_convertible<K, StringPiece>::value, std::size_t>
+  erase(K&&);
 
   /*
    * Erase an element from a dynamic object or array, using an

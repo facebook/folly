@@ -23,6 +23,59 @@
 #include <folly/Likely.h>
 #include <folly/detail/Iterators.h>
 
+namespace folly {
+namespace detail {
+struct DynamicHasher {
+  using is_transparent = void;
+
+  size_t operator()(dynamic const& d) const {
+    return d.hash();
+  }
+
+  template <typename T>
+  std::enable_if_t<std::is_convertible<T, StringPiece>::value, size_t>
+  operator()(T const& val) const {
+    // keep consistent with dynamic::hash() for strings
+    return Hash()(static_cast<StringPiece>(val));
+  }
+};
+
+struct DynamicKeyEqual {
+  using is_transparent = void;
+
+  bool operator()(const dynamic& lhs, const dynamic& rhs) const {
+    return std::equal_to<dynamic>()(lhs, rhs);
+  }
+
+  // Dynamic objects contains a map<dynamic, dynamic>. At least one of the
+  // operands should be a dynamic. Hence, an operator() where both operands are
+  // convertible to StringPiece is unnecessary.
+  template <typename A, typename B>
+  std::enable_if_t<
+      std::is_convertible<A, StringPiece>::value &&
+          std::is_convertible<B, StringPiece>::value,
+      bool>
+  operator()(A const& lhs, B const& rhs) const = delete;
+
+  template <typename A>
+  std::enable_if_t<std::is_convertible<A, StringPiece>::value, bool> operator()(
+      A const& lhs,
+      dynamic const& rhs) const {
+    return FOLLY_LIKELY(rhs.type() == dynamic::Type::STRING) &&
+        std::equal_to<StringPiece>()(lhs, rhs.stringPiece());
+  }
+
+  template <typename B>
+  std::enable_if_t<std::is_convertible<B, StringPiece>::value, bool> operator()(
+      dynamic const& lhs,
+      B const& rhs) const {
+    return FOLLY_LIKELY(lhs.type() == dynamic::Type::STRING) &&
+        std::equal_to<StringPiece>()(lhs.stringPiece(), rhs);
+  }
+};
+} // namespace detail
+} // namespace folly
+
 //////////////////////////////////////////////////////////////////////
 
 namespace std {
@@ -147,7 +200,11 @@ dynamic numericOp(dynamic const& a, dynamic const& b) {
  * Note: Later we may add separate order tracking here (a multi-index
  * type of thing.)
  */
-struct dynamic::ObjectImpl : F14NodeMap<dynamic, dynamic> {};
+struct dynamic::ObjectImpl : F14NodeMap<
+                                 dynamic,
+                                 dynamic,
+                                 detail::DynamicHasher,
+                                 detail::DynamicKeyEqual> {};
 
 //////////////////////////////////////////////////////////////////////
 
@@ -590,21 +647,43 @@ inline dynamic&& dynamic::operator[](dynamic const& idx) && {
   return std::move((*this)[idx]);
 }
 
-template <class K, class V> inline dynamic& dynamic::setDefault(K&& k, V&& v) {
+template <typename K>
+inline std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&>
+    dynamic::operator[](K&& k) & {
   auto& obj = get<ObjectImpl>();
-  return obj.insert(std::make_pair(std::forward<K>(k),
-                                   std::forward<V>(v))).first->second;
+  auto ret = obj.emplace(std::forward<K>(k), nullptr);
+  return ret.first->second;
 }
 
-template <class K> inline dynamic& dynamic::setDefault(K&& k, dynamic&& v) {
-  auto& obj = get<ObjectImpl>();
-  return obj.insert(std::make_pair(std::forward<K>(k),
-                                   std::move(v))).first->second;
+template <typename K>
+inline std::
+    enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic const&>
+        dynamic::operator[](K&& k) const& {
+  return at(std::forward<K>(k));
 }
 
-template <class K> inline dynamic& dynamic::setDefault(K&& k, const dynamic& v) {
+template <typename K>
+inline std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&&>
+    dynamic::operator[](K&& k) && {
+  return std::move((*this)[std::forward<K>(k)]);
+}
+
+template <class K, class V>
+inline dynamic& dynamic::setDefault(K&& k, V&& v) {
   auto& obj = get<ObjectImpl>();
-  return obj.insert(std::make_pair(std::forward<K>(k), v)).first->second;
+  return obj.emplace(std::forward<K>(k), std::forward<V>(v)).first->second;
+}
+
+template <class K>
+inline dynamic& dynamic::setDefault(K&& k, dynamic&& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.emplace(std::forward<K>(k), std::move(v)).first->second;
+}
+
+template <class K>
+inline dynamic& dynamic::setDefault(K&& k, const dynamic& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.emplace(std::forward<K>(k), v).first->second;
 }
 
 inline dynamic* dynamic::get_ptr(dynamic const& idx) & {
@@ -624,6 +703,33 @@ inline dynamic&& dynamic::at(dynamic const& idx) && {
   return std::move(at(idx));
 }
 
+template <typename K>
+std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic const&>
+dynamic::at(K const& idx) const& {
+  auto* pobject = get_nothrow<ObjectImpl>();
+  if (!pobject) {
+    throwTypeError_("object/array", type());
+  }
+  auto it = pobject->find(idx);
+  if (it == pobject->end()) {
+    throw_exception<std::out_of_range>(
+        sformat("couldn't find key {} in dynamic object", idx));
+  }
+  return it->second;
+}
+
+template <typename K>
+inline std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&>
+dynamic::at(K const& idx) & {
+  return const_cast<dynamic&>(const_cast<dynamic const*>(this)->at(idx));
+}
+
+template <typename K>
+inline std::enable_if_t<std::is_convertible<K, StringPiece>::value, dynamic&&>
+dynamic::at(K const& idx) && {
+  return std::move(at(idx));
+}
+
 inline bool dynamic::empty() const {
   if (isNull()) {
     return true;
@@ -634,6 +740,11 @@ inline bool dynamic::empty() const {
 inline std::size_t dynamic::count(dynamic const& key) const {
   return find(key) != items().end() ? 1u : 0u;
 }
+template <typename K>
+inline std::enable_if_t<std::is_convertible<K, StringPiece>::value, std::size_t>
+dynamic::count(K const& key) const {
+  return find(key) != items().end() ? 1u : 0u;
+}
 
 inline dynamic::const_item_iterator dynamic::find(dynamic const& key) const {
   return get<ObjectImpl>().find(key);
@@ -642,10 +753,25 @@ inline dynamic::item_iterator dynamic::find(dynamic const& key) {
   return get<ObjectImpl>().find(key);
 }
 
-template <class K, class V> inline void dynamic::insert(K&& key, V&& val) {
+template <typename K>
+inline std::enable_if_t<
+    std::is_convertible<K, StringPiece>::value,
+    dynamic::const_item_iterator>
+dynamic::find(K const& key) const {
+  return get<ObjectImpl>().find(key);
+}
+template <typename K>
+inline std::enable_if_t<
+    std::is_convertible<K, StringPiece>::value,
+    dynamic::item_iterator>
+dynamic::find(K const& key) {
+  return get<ObjectImpl>().find(key);
+}
+
+template <class K, class V>
+inline void dynamic::insert(K&& key, V&& val) {
   auto& obj = get<ObjectImpl>();
-  auto rv = obj.insert({ std::forward<K>(key), nullptr });
-  rv.first->second = std::forward<V>(val);
+  obj[std::forward<K>(key)] = std::forward<V>(val);
 }
 
 inline void dynamic::update(const dynamic& mergeObj) {
@@ -709,6 +835,12 @@ inline dynamic dynamic::merge(
 inline std::size_t dynamic::erase(dynamic const& key) {
   auto& obj = get<ObjectImpl>();
   return obj.erase(key);
+}
+template <typename K>
+inline std::enable_if_t<std::is_convertible<K, StringPiece>::value, std::size_t>
+dynamic::erase(K&& key) {
+  auto& obj = get<ObjectImpl>();
+  return obj.erase(std::forward<K>(key));
 }
 
 inline dynamic::iterator dynamic::erase(const_iterator it) {
