@@ -159,11 +159,8 @@ void RequestContext::clearContextData(const std::string& val) {
 namespace {
 // Execute functor exec for all RequestData in data, which are not in other
 // Similar to std::set_difference but avoid intermediate data structure
-template <typename TExec>
-void exec_set_difference(
-    const std::set<RequestData*>& data,
-    const std::set<RequestData*>& other,
-    TExec&& exec) {
+template <typename TData, typename TExec>
+void exec_set_difference(const TData& data, const TData& other, TExec&& exec) {
   auto diter = data.begin();
   auto dend = data.end();
   auto oiter = other.begin();
@@ -230,9 +227,10 @@ RequestContext::setShallowCopyContext() {
     auto parentLock = parent->state_.rlock();
     auto childLock = child->state_.wlock();
     childLock->callbackData_ = parentLock->callbackData_;
+    childLock->requestData_.reserve(parentLock->requestData_.size());
     for (const auto& entry : parentLock->requestData_) {
-      childLock->requestData_[entry.first] =
-          RequestData::constructPtr(entry.second.get());
+      childLock->requestData_.insert(std::make_pair(
+          entry.first, RequestData::constructPtr(entry.second.get())));
     }
   }
 

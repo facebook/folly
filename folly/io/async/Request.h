@@ -16,9 +16,14 @@
 
 #pragma once
 
+// TODO: will remove on top, after fixing all dependencies
 #include <map>
-#include <memory>
 #include <set>
+
+#include <folly/container/F14Map.h>
+#include <folly/sorted_vector_types.h>
+#include <memory>
+#include <string>
 
 #include <folly/Synchronized.h>
 
@@ -167,9 +172,12 @@ class RequestContext {
       DoSetBehaviour behaviour);
 
   struct State {
-    std::map<std::string, RequestData::SharedPtr> requestData_;
-    // Note: setContext efficiency relies on this being ordered
-    std::set<RequestData*> callbackData_;
+    // This must be optimized for lookup, its hot path is getContextData
+    F14FastMap<std::string, RequestData::SharedPtr> requestData_;
+    // This must be optimized for iteration, its hot path is setContext
+    // We also use the fact that it's ordered to efficiently compute
+    // the difference with previous context
+    sorted_vector_set<RequestData*> callbackData_;
   };
   folly::Synchronized<State> state_;
 };
