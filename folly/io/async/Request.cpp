@@ -156,6 +156,32 @@ void RequestContext::clearContextData(const std::string& val) {
   }
 }
 
+namespace {
+// Execute functor exec for all RequestData in data, which are not in other
+// Similar to std::set_difference but avoid intermediate data structure
+template <typename TExec>
+void exec_set_difference(
+    const std::set<RequestData*>& data,
+    const std::set<RequestData*>& other,
+    TExec&& exec) {
+  auto diter = data.begin();
+  auto dend = data.end();
+  auto oiter = other.begin();
+  auto oend = other.end();
+  while (diter != dend) {
+    if (oiter == oend || *diter < *oiter) {
+      exec(*diter);
+      ++diter;
+    } else if (*oiter < *diter) {
+      ++oiter;
+    } else {
+      ++diter;
+      ++oiter;
+    }
+  }
+}
+} // namespace
+
 std::shared_ptr<RequestContext> RequestContext::setContext(
     std::shared_ptr<RequestContext> newCtx) {
   auto& staticCtx = getStaticContext();
@@ -173,17 +199,11 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
     auto curLock = curCtx->state_.rlock();
     auto& newData = newLock->callbackData_;
     auto& curData = curLock->callbackData_;
-    for (auto* callback : curData) {
-      if (newData.find(callback) == newData.end()) {
-        callback->onUnset();
-      }
-    }
+    exec_set_difference(
+        curData, newData, [](RequestData* data) { data->onUnset(); });
     staticCtx = newCtx;
-    for (auto* callback : newData) {
-      if (curData.find(callback) == curData.end()) {
-        callback->onSet();
-      }
-    }
+    exec_set_difference(
+        newData, curData, [](RequestData* data) { data->onSet(); });
   } else {
     if (curCtx) {
       curCtx->onUnset();
