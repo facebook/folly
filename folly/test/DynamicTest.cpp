@@ -33,31 +33,11 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(obj.at("a"), false);
   EXPECT_EQ(obj.size(), 1);
   obj.insert("a", true);
-
-  dynamic key{"a"};
-  folly::StringPiece sp{"a"};
-  std::string s{"a"};
-
   EXPECT_EQ(obj.size(), 1);
   EXPECT_EQ(obj.at("a"), true);
-  EXPECT_EQ(obj.at(sp), true);
-  EXPECT_EQ(obj.at(key), true);
-
-  obj.at(sp) = nullptr;
+  obj.at("a") = nullptr;
   EXPECT_EQ(obj.size(), 1);
-  EXPECT_TRUE(obj.at(s) == nullptr);
-
-  obj["a"] = 12;
-  EXPECT_EQ(obj[sp], 12);
-  obj[key] = "foo";
-  EXPECT_EQ(obj["a"], "foo");
-  (void)obj["b"];
-  EXPECT_EQ(obj.size(), 2);
-
-  obj.erase("a");
-  EXPECT_TRUE(obj.find(sp) == obj.items().end());
-  obj.erase("b");
-  EXPECT_EQ(obj.size(), 0);
+  EXPECT_TRUE(obj.at("a") == nullptr);
 
   dynamic newObject = dynamic::object;
 
