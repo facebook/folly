@@ -34,7 +34,7 @@
 #include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
 
-#include <folly/container/F14Map-pre.h>
+#include <folly/container/F14Map-fwd.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 

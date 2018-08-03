@@ -74,9 +74,9 @@ nobase_follyinclude_HEADERS = \
 	container/Iterator.h \
 	container/Enumerate.h \
 	container/EvictingCacheMap.h \
-	container/F14Map-pre.h \
+	container/F14Map-fwd.h \
 	container/F14Map.h \
-	container/F14Set-pre.h \
+	container/F14Set-fwd.h \
 	container/F14Set.h \
 	container/Foreach.h \
 	container/Foreach-inl.h \

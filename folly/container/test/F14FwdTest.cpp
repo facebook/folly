@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/container/F14Map-pre.h>
-#include <folly/container/F14Set-pre.h>
+#include <folly/container/F14Map-fwd.h>
+#include <folly/container/F14Set-fwd.h>
 #include <folly/portability/GTest.h>
 
 namespace {
@@ -23,7 +23,7 @@ template <typename TContainer>
 void foo(TContainer*) {}
 } // namespace
 
-TEST(F14Pre, simple) {
+TEST(F14Fwd, simple) {
   using namespace folly;
   foo<F14NodeMap<int, int>>(nullptr);
   foo<F14ValueMap<int, int>>(nullptr);

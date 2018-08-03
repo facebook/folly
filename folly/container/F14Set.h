@@ -31,7 +31,7 @@
 
 #include <folly/lang/SafeAssert.h>
 
-#include <folly/container/F14Set-pre.h>
+#include <folly/container/F14Set-fwd.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
 
