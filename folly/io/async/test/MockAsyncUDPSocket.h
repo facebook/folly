@@ -32,6 +32,12 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
       write,
       ssize_t(const SocketAddress&, const std::unique_ptr<IOBuf>&));
   MOCK_METHOD3(
+      writeGSO,
+      ssize_t(
+          const folly::SocketAddress&,
+          const std::unique_ptr<folly::IOBuf>&,
+          int));
+  MOCK_METHOD3(
       writev,
       ssize_t(const SocketAddress&, const struct iovec*, size_t));
   MOCK_METHOD1(resumeRead, void(ReadCallback*));
@@ -44,6 +50,8 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD1(setErrMessageCallback, void(ErrMessageCallback*));
   MOCK_METHOD1(connect, int(const SocketAddress&));
   MOCK_CONST_METHOD0(isBound, bool());
+  MOCK_METHOD0(getGSO, int());
+  MOCK_METHOD1(setGSO, bool(int));
 };
 
 } // namespace test
