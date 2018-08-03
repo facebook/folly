@@ -156,7 +156,7 @@ class F14HashToken final {
   F14HashToken() = default;
 
  private:
-  using HashPair = std::pair<std::size_t, uint8_t>;
+  using HashPair = std::pair<std::size_t, std::size_t>;
 
   explicit F14HashToken(HashPair hp) : hp_(hp) {}
   explicit operator HashPair() const {
@@ -617,10 +617,10 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   ////////
   // Tag filtering using NEON intrinsics
 
-  SparseMaskIter tagMatchIter(uint8_t needle) const {
-    FOLLY_SAFE_DCHECK((needle & 0x80) != 0, "");
+  SparseMaskIter tagMatchIter(std::size_t needle) const {
+    FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
     uint8x16_t tagV = vld1q_u8(&tags_[0]);
-    auto needleV = vdupq_n_u8(needle);
+    auto needleV = vdupq_n_u8(static_cast<uint8_t>(needle));
     auto eqV = vceqq_u8(tagV, needleV);
     // get info from every byte into the bottom half of every uint16_t
     // by shifting right 4, then round to get it into a 64-bit vector
@@ -645,10 +645,27 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     return static_cast<TagVector const*>(static_cast<void const*>(&tags_[0]));
   }
 
-  SparseMaskIter tagMatchIter(uint8_t needle) const {
-    FOLLY_SAFE_DCHECK((needle & 0x80) != 0, "");
+  SparseMaskIter tagMatchIter(std::size_t needle) const {
+    FOLLY_SAFE_DCHECK(needle >= 0x80 && needle < 0x100, "");
     auto tagV = _mm_load_si128(tagVector());
-    auto needleV = _mm_set1_epi8(needle);
+
+    // TRICKY!  It may seem strange to have a std::size_t needle and narrow
+    // it at the last moment, rather than making HashPair::second be a
+    // uint8_t, but the latter choice sometimes leads to a performance
+    // problem.
+    //
+    // On architectures with SSE2 but not AVX2, _mm_set1_epi8 expands
+    // to multiple instructions.  One of those is a MOVD of either 4 or
+    // 8 byte width.  Only the bottom byte of that move actually affects
+    // the result, but if a 1-byte needle has been spilled then this will
+    // be a 4 byte load.  GCC 5.5 has been observed to reload needle
+    // (or perhaps fuse a reload and part of a previous static_cast)
+    // needle using a MOVZX with a 1 byte load in parallel with the MOVD.
+    // This combination causes a failure of store-to-load forwarding,
+    // which has a big performance penalty (60 nanoseconds per find on
+    // a microbenchmark).  Keeping needle >= 4 bytes avoids the problem
+    // and also happens to result in slightly more compact assembly.
+    auto needleV = _mm_set1_epi8(static_cast<uint8_t>(needle));
     auto eqV = _mm_cmpeq_epi8(tagV, needleV);
     auto mask = _mm_movemask_epi8(eqV) & kFullMask;
     return SparseMaskIter{mask};
@@ -1204,17 +1221,17 @@ class F14Table : public Policy {
   // 64-bit
   static HashPair splitHash(std::size_t hash) {
     static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");
-    uint8_t tag;
+    std::size_t tag;
     if (!Policy::isAvalanchingHasher()) {
 #if FOLLY_SSE_PREREQ(4, 2)
       // SSE4.2 CRC
-      auto c = _mm_crc32_u64(0, hash);
-      tag = static_cast<uint8_t>(~(c >> 25));
+      std::size_t c = _mm_crc32_u64(0, hash);
+      tag = (c >> 24) | 0x80;
       hash += c;
 #elif __ARM_FEATURE_CRC32
       // CRC is optional on armv8 (-march=armv8-a+crc), standard on armv8.1
-      auto c = __crc32cd(0, hash);
-      tag = static_cast<uint8_t>(~(c >> 25));
+      std::size_t c = __crc32cd(0, hash);
+      tag = (c >> 24) | 0x80;
       hash += c;
 #else
       // The mixer below is not fully avalanching for all 64 bits of
@@ -1240,7 +1257,7 @@ class F14Table : public Policy {
 #endif
       hash = hi ^ lo;
       hash *= kMul;
-      tag = static_cast<uint8_t>(hash >> 15) | 0x80;
+      tag = ((hash >> 15) & 0x7f) | 0x80;
       hash >>= 22;
 #endif
     } else {
