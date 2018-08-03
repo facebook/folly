@@ -118,6 +118,7 @@ nobase_follyinclude_HEADERS = \
 	executors/IOExecutor.h \
 	executors/IOObjectCache.h \
 	executors/IOThreadPoolExecutor.h \
+	executors/ManualExecutor.h \
 	executors/QueuedImmediateExecutor.h \
 	executors/ScheduledExecutor.h \
 	executors/SequencedExecutor.h \
@@ -299,6 +300,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/VirtualEventBase.h \
 	io/async/WriteChainAsyncTransportWrapper.h \
 	io/async/test/AsyncSSLSocketTest.h \
+	io/async/test/AsyncSocketTest.h \
 	io/async/test/AsyncSocketTest2.h \
 	io/async/test/BlockingSocket.h \
 	io/async/test/MockAsyncSocket.h \
