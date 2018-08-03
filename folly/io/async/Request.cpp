@@ -158,39 +158,42 @@ void RequestContext::clearContextData(const std::string& val) {
 
 std::shared_ptr<RequestContext> RequestContext::setContext(
     std::shared_ptr<RequestContext> newCtx) {
-  auto& curCtx = getStaticContext();
-  if (newCtx != curCtx) {
-    FOLLY_SDT(folly, request_context_switch_before, curCtx.get(), newCtx.get());
-
-    // Call set/unset for all request data that differs
-    if (newCtx && curCtx) {
-      auto newLock = newCtx->state_.rlock();
-      auto curLock = curCtx->state_.rlock();
-      auto& newData = newLock->callbackData_;
-      auto& curData = curLock->callbackData_;
-      for (auto* callback : curData) {
-        if (newData.find(callback) == newData.end()) {
-          callback->onUnset();
-        }
-      }
-      std::swap(curCtx, newCtx);
-      for (auto* callback : newData) {
-        if (curData.find(callback) == curData.end()) {
-          callback->onSet();
-        }
-      }
-    } else if (newCtx) {
-      std::swap(curCtx, newCtx);
-      // Note: actually newCtx
-      curCtx->onSet();
-    } else if (curCtx) {
-      curCtx->onUnset();
-      std::swap(curCtx, newCtx);
-    }
+  auto& staticCtx = getStaticContext();
+  if (newCtx == staticCtx) {
+    return newCtx;
   }
 
-  // Note: actually curCtx
-  return newCtx;
+  FOLLY_SDT(
+      folly, request_context_switch_before, staticCtx.get(), newCtx.get());
+
+  auto curCtx = staticCtx;
+  if (newCtx && curCtx) {
+    // Only call set/unset for all request data that differs
+    auto newLock = newCtx->state_.rlock();
+    auto curLock = curCtx->state_.rlock();
+    auto& newData = newLock->callbackData_;
+    auto& curData = curLock->callbackData_;
+    for (auto* callback : curData) {
+      if (newData.find(callback) == newData.end()) {
+        callback->onUnset();
+      }
+    }
+    staticCtx = newCtx;
+    for (auto* callback : newData) {
+      if (curData.find(callback) == curData.end()) {
+        callback->onSet();
+      }
+    }
+  } else {
+    if (curCtx) {
+      curCtx->onUnset();
+    }
+    staticCtx = newCtx;
+    if (newCtx) {
+      newCtx->onSet();
+    }
+  }
+  return curCtx;
 }
 
 std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
