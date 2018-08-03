@@ -1115,7 +1115,8 @@ class VectorContainerPolicy : public BasePolicy<
   template <typename... Args>
   void constructValueAtItem(std::size_t size, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
-    *itemAddr = size;
+    FOLLY_SAFE_DCHECK(size < std::numeric_limits<InternalSizeType>::max(), "");
+    *itemAddr = static_cast<InternalSizeType>(size);
     auto dst = std::addressof(values_[size]);
     // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(dst != nullptr);

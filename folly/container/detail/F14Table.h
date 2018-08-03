@@ -1320,7 +1320,7 @@ class F14Table : public Policy {
     return size() == 0;
   }
 
-  std::size_t size() const noexcept {
+  typename Policy::InternalSizeType size() const noexcept {
     return sizeAndPackedBegin_.size_;
   }
 
@@ -1810,7 +1810,13 @@ class F14Table : public Policy {
         rawAllocation);
     chunks_ =
         initializeChunks(rawAllocation, newChunkCount, newMaxSizeWithoutRehash);
-    chunkMask_ = newChunkCount - 1;
+
+    FOLLY_SAFE_DCHECK(
+        newChunkCount <
+            std::numeric_limits<typename Policy::InternalSizeType>::max(),
+        "");
+    chunkMask_ =
+        static_cast<typename Policy::InternalSizeType>(newChunkCount - 1);
 
     bool success = false;
     SCOPE_EXIT {
@@ -1829,7 +1835,12 @@ class F14Table : public Policy {
         finishedAllocSize =
             chunkAllocSize(newChunkCount, newMaxSizeWithoutRehash);
         chunks_ = origChunks;
-        chunkMask_ = origChunkCount - 1;
+        FOLLY_SAFE_DCHECK(
+            origChunkCount <
+                std::numeric_limits<typename Policy::InternalSizeType>::max(),
+            "");
+        chunkMask_ =
+            static_cast<typename Policy::InternalSizeType>(origChunkCount - 1);
       }
 
       this->afterRehash(
