@@ -302,7 +302,7 @@ constexpr auto kIsBigEndian = !kIsLittleEndian;
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
 #ifndef FOLLY_NEON
-# if defined(__ARM_NEON)
+# if defined(__ARM_NEON) || defined(__ARM_NEON__)
 #  define FOLLY_NEON 1
 # endif
 #endif
