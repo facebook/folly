@@ -82,6 +82,19 @@ TEST(Interrupt, futureWithinTimedOut) {
   EXPECT_TRUE(done.try_wait_for(std::chrono::milliseconds(100)));
 }
 
+TEST(Interrupt, propagation) {
+  Promise<Unit> p;
+  Baton b;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  auto f = makeFuture().then([&]{ b.post(); return p.getFuture();});
+  f.wait(std::chrono::milliseconds(50)); // Allow then to be executed
+  EXPECT_TRUE(b.ready()); // Ensure then is executed
+  EXPECT_FALSE(f.isReady());
+  f.cancel();
+  ASSERT_TRUE(flag);
+}
+
 TEST(Interrupt, semiFutureWithinTimedOut) {
   Promise<int> p;
   Baton<> done;
