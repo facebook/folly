@@ -372,14 +372,14 @@ class FBCodeBuilder(object):
             self.cmake_configure(name, cmake_path) + self.make_and_install()
         )
 
-    def fb_github_autoconf_install(self, project_and_path):
+    def fb_github_autoconf_install(self, project_and_path, github_org='facebook'):
         return [
-            self.fb_github_project_workdir(project_and_path),
+            self.fb_github_project_workdir(project_and_path, github_org),
             self.autoconf_install(project_and_path),
         ]
 
-    def fb_github_cmake_install(self, project_and_path, cmake_path='..'):
+    def fb_github_cmake_install(self, project_and_path, cmake_path='..', github_org='facebook'):
         return [
-            self.fb_github_project_workdir(project_and_path),
+            self.fb_github_project_workdir(project_and_path, github_org),
             self.cmake_install(project_and_path, cmake_path),
         ]
