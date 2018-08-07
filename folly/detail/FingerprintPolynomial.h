@@ -18,6 +18,8 @@
 
 #include <cstdint>
 
+#include <glog/logging.h>
+
 namespace folly {
 namespace detail {
 
