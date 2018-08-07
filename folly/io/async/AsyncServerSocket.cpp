@@ -927,7 +927,7 @@ void AsyncServerSocket::dispatchSocket(int socket, SocketAddress&& address) {
   // Short circuit if the callback is in the primary EventBase thread
 
   CallbackInfo* info = nextCallback();
-  if (info->eventBase == nullptr) {
+  if (info->eventBase == nullptr || info->eventBase == this->eventBase_) {
     info->callback->connectionAccepted(socket, address);
     return;
   }
@@ -994,7 +994,7 @@ void AsyncServerSocket::dispatchError(const char* msgstr, int errnoValue) {
 
   while (true) {
     // Short circuit if the callback is in the primary EventBase thread
-    if (info->eventBase == nullptr) {
+    if (info->eventBase == nullptr || info->eventBase == this->eventBase_) {
       std::runtime_error ex(
           std::string(msgstr) + folly::to<std::string>(errnoValue));
       info->callback->acceptError(ex);

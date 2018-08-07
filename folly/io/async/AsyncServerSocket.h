@@ -598,7 +598,9 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     }
     int64_t numMsgs = 0;
     for (const auto& callback : callbacks_) {
-      numMsgs += callback.consumer->getQueue()->size();
+      if (callback.consumer) {
+        numMsgs += callback.consumer->getQueue()->size();
+      }
     }
     return numMsgs;
   }
