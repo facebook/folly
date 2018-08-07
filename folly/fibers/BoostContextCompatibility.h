@@ -70,6 +70,7 @@ class FiberImpl {
       : func_(std::move(func)) {
     auto stackBase = stackLimit + stackSize;
 #if BOOST_VERSION >= 106100
+    stackBase_ = stackBase;
     fiberContext_ =
         boost::context::detail::make_fcontext(stackBase, stackSize, &fiberFunc);
 #elif BOOST_VERSION >= 105200
@@ -102,6 +103,7 @@ class FiberImpl {
     auto transfer =
         boost::context::detail::jump_fcontext(mainContext_, nullptr);
     mainContext_ = transfer.fctx;
+    fixStackUnwinding();
     auto context = reinterpret_cast<intptr_t>(transfer.data);
 #elif BOOST_VERSION >= 105600
     auto context =
@@ -120,8 +122,22 @@ class FiberImpl {
   static void fiberFunc(boost::context::detail::transfer_t transfer) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(transfer.data);
     fiberImpl->mainContext_ = transfer.fctx;
+    fiberImpl->fixStackUnwinding();
     fiberImpl->func_();
   }
+
+  void fixStackUnwinding() {
+    if (kIsArchAmd64 && kIsLinux) {
+      // Extract RBP and RIP from main context to stitch main context stack and
+      // fiber stack.
+      auto stackBase = reinterpret_cast<void**>(stackBase_);
+      auto mainContext = reinterpret_cast<void**>(mainContext_);
+      stackBase[-2] = mainContext[6];
+      stackBase[-1] = mainContext[7];
+    }
+  }
+
+  unsigned char* stackBase_;
 #else
   static void fiberFunc(intptr_t arg) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(arg);
