@@ -317,18 +317,24 @@ double TDigest::estimateQuantile(double q) const {
   }
 
   double delta = 0;
+  double min = min_;
+  double max = max_;
   if (centroids_.size() > 1) {
     if (pos == 0) {
       delta = centroids_[pos + 1].mean() - centroids_[pos].mean();
+      max = centroids_[pos + 1].mean();
     } else if (pos == centroids_.size() - 1) {
       delta = centroids_[pos].mean() - centroids_[pos - 1].mean();
+      min = centroids_[pos - 1].mean();
     } else {
       delta = (centroids_[pos + 1].mean() - centroids_[pos - 1].mean()) / 2;
+      min = centroids_[pos - 1].mean();
+      max = centroids_[pos + 1].mean();
     }
   }
   auto value = centroids_[pos].mean() +
       ((rank - t) / centroids_[pos].weight() - 0.5) * delta;
-  return clamp(value, min_, max_);
+  return clamp(value, min, max);
 }
 
 double TDigest::Centroid::add(double sum, double weight) {

@@ -259,6 +259,22 @@ TEST(TDigest, ConstructFromCentroids) {
   EXPECT_NE(digest1.getCentroids().size(), digest3.getCentroids().size());
 }
 
+TEST(TDigest, LargeOutlierTest) {
+  folly::TDigest digest(100);
+
+  std::vector<double> values;
+  for (double i = 0; i < 19; ++i) {
+    values.push_back(i);
+  }
+  values.push_back(1000000);
+
+  std::sort(values.begin(), values.end());
+  digest = digest.merge(values);
+  EXPECT_LT(
+      (int64_t)digest.estimateQuantile(0.5),
+      (int64_t)digest.estimateQuantile(0.90));
+}
+
 class DistributionTest
     : public ::testing::TestWithParam<
           std::tuple<std::pair<bool, size_t>, double, bool>> {};
