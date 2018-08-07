@@ -16,10 +16,6 @@
 
 #pragma once
 
-// TODO: will remove on top, after fixing all dependencies
-#include <map>
-#include <set>
-
 #include <folly/container/F14Map.h>
 #include <folly/sorted_vector_types.h>
 #include <memory>

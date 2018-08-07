@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <map>
+
 #include <folly/ThreadLocal.h>
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/io/async/EventBase.h>
