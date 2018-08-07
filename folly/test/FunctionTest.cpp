@@ -1096,6 +1096,34 @@ TEST(Function, SelfMove) {
   EXPECT_EQ(43, f());
 }
 
+TEST(Function, SelfMove2) {
+  int alive{0};
+  struct arg {
+    int* ptr_;
+    explicit arg(int* ptr) noexcept : ptr_(ptr) {
+      ++*ptr_;
+    }
+    arg(arg&& o) noexcept : ptr_(o.ptr_) {
+      ++*ptr_;
+    }
+    arg& operator=(arg&&) = delete;
+    ~arg() {
+      --*ptr_;
+    }
+  };
+  EXPECT_EQ(0, alive);
+  Function<int()> f = [myarg = arg{&alive}] { return 42; };
+  EXPECT_EQ(1, alive);
+  Function<int()>& g = f;
+  f = std::move(g);
+  EXPECT_FALSE(bool(f)) << "self-assign is self-destruct";
+  EXPECT_EQ(0, alive) << "self-asign is self-destruct";
+  f = [] { return 43; };
+  EXPECT_EQ(0, alive) << "sanity check against double-destruction";
+  EXPECT_TRUE(bool(f));
+  EXPECT_EQ(43, f());
+}
+
 TEST(Function, DeducableArguments) {
   deduceArgs(Function<void()>{[] {}});
   deduceArgs(Function<void(int, float)>{[](int, float) {}});
