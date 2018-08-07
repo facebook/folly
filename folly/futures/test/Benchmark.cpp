@@ -36,7 +36,7 @@ T incr(Try<T>&& t) {
 void someThens(size_t n) {
   auto f = makeFuture<int>(42);
   for (size_t i = 0; i < n; i++) {
-    f = f.then(incr<int>);
+    f = std::move(f).then(incr<int>);
   }
 }
 
@@ -101,7 +101,7 @@ BENCHMARK(no_contention) {
     consumer = std::thread([&]{
       b1.post();
       for (auto& f : futures) {
-        f.then(incr<int>);
+        std::move(f).then(incr<int>);
       }
     });
     consumer.join();
@@ -138,7 +138,7 @@ BENCHMARK_RELATIVE(contention) {
       b1.post();
       for (auto& f : futures) {
         sem_wait(&sem);
-        f.then(incr<int>);
+        std::move(f).then(incr<int>);
       }
     });
 
