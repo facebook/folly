@@ -25,12 +25,14 @@ LogStreamProcessor::LogStreamProcessor(
     LogLevel level,
     folly::StringPiece filename,
     unsigned int lineNumber,
+    folly::StringPiece functionName,
     AppendType) noexcept
     : LogStreamProcessor(
           category,
           level,
           filename,
           lineNumber,
+          functionName,
           INTERNAL,
           std::string()) {}
 
@@ -41,6 +43,7 @@ LogStreamProcessor::LogStreamProcessor(
     bool isCategoryNameOverridden,
     folly::StringPiece filename,
     unsigned int lineNumber,
+    folly::StringPiece functionName,
     AppendType) noexcept
     : LogStreamProcessor(
           categoryInfo,
@@ -49,6 +52,7 @@ LogStreamProcessor::LogStreamProcessor(
           isCategoryNameOverridden,
           filename,
           lineNumber,
+          functionName,
           INTERNAL,
           std::string()) {}
 
@@ -57,12 +61,14 @@ LogStreamProcessor::LogStreamProcessor(
     LogLevel level,
     folly::StringPiece filename,
     unsigned int lineNumber,
+    folly::StringPiece functionName,
     InternalType,
     std::string&& msg) noexcept
     : category_{category},
       level_{level},
       filename_{filename},
       lineNumber_{lineNumber},
+      functionName_{functionName},
       message_{std::move(msg)},
       stream_{this} {}
 
@@ -92,6 +98,7 @@ LogStreamProcessor::LogStreamProcessor(
     bool isCategoryNameOverridden,
     folly::StringPiece filename,
     unsigned int lineNumber,
+    folly::StringPiece functionName,
     InternalType,
     std::string&& msg) noexcept
     : category_{getXlogCategory(
@@ -101,6 +108,7 @@ LogStreamProcessor::LogStreamProcessor(
       level_{level},
       filename_{filename},
       lineNumber_{lineNumber},
+      functionName_{functionName},
       message_{std::move(msg)},
       stream_{this} {}
 
@@ -132,12 +140,14 @@ LogStreamProcessor::LogStreamProcessor(
     LogLevel level,
     folly::StringPiece filename,
     unsigned int lineNumber,
+    folly::StringPiece functionName,
     InternalType,
     std::string&& msg) noexcept
     : category_{getXlogCategory(fileScopeInfo)},
       level_{level},
       filename_{filename},
       lineNumber_{lineNumber},
+      functionName_{functionName},
       message_{std::move(msg)},
       stream_{this} {}
 
@@ -146,12 +156,14 @@ LogStreamProcessor::LogStreamProcessor(
     LogLevel level,
     folly::StringPiece filename,
     unsigned int lineNumber,
+    folly::StringPiece functionName,
     AppendType) noexcept
     : LogStreamProcessor(
           fileScopeInfo,
           level,
           filename,
           lineNumber,
+          functionName,
           INTERNAL,
           std::string()) {}
 #endif
@@ -182,6 +194,7 @@ void LogStreamProcessor::logNow() noexcept {
                                      level_,
                                      filename_,
                                      lineNumber_,
+                                     functionName_,
                                      extractMessageString(stream_)});
 }
 

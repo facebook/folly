@@ -357,7 +357,15 @@ TEST_F(LoggerTest, logRawMacros) {
 
   auto& messages = handler_->getMessages();
 
-  FB_LOG_RAW(foobar, LogLevel::DBG1, "src/some/file.c", 1234, "hello", ' ', 1)
+  FB_LOG_RAW(
+      foobar,
+      LogLevel::DBG1,
+      "src/some/file.c",
+      1234,
+      "testFunction",
+      "hello",
+      ' ',
+      1)
       << " world";
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("hello 1 world", messages[0].first.getMessage());
@@ -367,7 +375,15 @@ TEST_F(LoggerTest, logRawMacros) {
   messages.clear();
 
   auto level = LogLevel::DBG1;
-  FB_LOGF_RAW(foobar, level, "test/mytest.c", 99, "{}: num={}", "test", 42)
+  FB_LOGF_RAW(
+      foobar,
+      level,
+      "test/mytest.c",
+      99,
+      "testFunction",
+      "{}: num={}",
+      "test",
+      42)
       << " plus extra stuff";
   ASSERT_EQ(1, messages.size());
   EXPECT_EQ("test: num=42 plus extra stuff", messages[0].first.getMessage());

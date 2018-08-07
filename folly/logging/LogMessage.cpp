@@ -26,6 +26,7 @@ LogMessage::LogMessage(
     LogLevel level,
     StringPiece filename,
     unsigned int lineNumber,
+    StringPiece functionName,
     std::string&& msg)
     : category_{category},
       level_{level},
@@ -33,6 +34,7 @@ LogMessage::LogMessage(
       timestamp_{system_clock::now()},
       filename_{filename},
       lineNumber_{lineNumber},
+      functionName_{functionName},
       rawMessage_{std::move(msg)} {
   sanitizeMessage();
 }
@@ -43,6 +45,7 @@ LogMessage::LogMessage(
     system_clock::time_point timestamp,
     StringPiece filename,
     unsigned int lineNumber,
+    StringPiece functionName,
     std::string&& msg)
     : category_{category},
       level_{level},
@@ -50,6 +53,7 @@ LogMessage::LogMessage(
       timestamp_{timestamp},
       filename_{filename},
       lineNumber_{lineNumber},
+      functionName_{functionName},
       rawMessage_{std::move(msg)} {
   sanitizeMessage();
 }

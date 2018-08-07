@@ -228,6 +228,7 @@
               xlog_detail::isXlogCategoryOverridden(0),                    \
               XLOG_FILENAME,                                               \
               __LINE__,                                                    \
+              __func__,                                                    \
               (type),                                                      \
               ##__VA_ARGS__)                                               \
               .stream()

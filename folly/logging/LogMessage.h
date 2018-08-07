@@ -42,14 +42,22 @@ class LogMessage {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       std::string&& msg);
   LogMessage(
       const LogCategory* category,
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       folly::StringPiece msg)
-      : LogMessage(category, level, filename, lineNumber, msg.str()) {}
+      : LogMessage(
+            category,
+            level,
+            filename,
+            lineNumber,
+            functionName,
+            msg.str()) {}
 
   /**
    * Construct a LogMessage with an explicit timestamp.
@@ -62,6 +70,7 @@ class LogMessage {
       std::chrono::system_clock::time_point timestamp,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       std::string&& msg);
 
   const LogCategory* getCategory() const {
@@ -79,6 +88,10 @@ class LogMessage {
 
   unsigned int getLineNumber() const {
     return lineNumber_;
+  }
+
+  folly::StringPiece getFunctionName() const {
+    return functionName_;
   }
 
   std::chrono::system_clock::time_point getTimestamp() const {
@@ -122,6 +135,11 @@ class LogMessage {
    * The line number in the source file that generated this log message.
    */
   unsigned int const lineNumber_{0};
+
+  /**
+   * The name of the function that generated this log message.
+   */
+  folly::StringPiece const functionName_;
 
   /**
    * containsNewlines_ will be true if the message contains internal newlines.

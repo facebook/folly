@@ -41,6 +41,7 @@ std::string formatMsg(
     StringPiece msg,
     StringPiece filename,
     unsigned int lineNumber,
+    StringPiece functionName,
     // Default timestamp: 2017-04-17 13:45:56.123456 UTC
     uint64_t timestampNS = 1492436756123456789ULL) {
   LoggerDB db{LoggerDB::TESTING};
@@ -50,8 +51,13 @@ std::string formatMsg(
   std::chrono::system_clock::time_point logTimePoint{
       std::chrono::duration_cast<std::chrono::system_clock::duration>(
           std::chrono::nanoseconds{timestampNS})};
-  LogMessage logMessage{
-      category, level, logTimePoint, filename, lineNumber, msg.str()};
+  LogMessage logMessage{category,
+                        level,
+                        logTimePoint,
+                        filename,
+                        lineNumber,
+                        functionName,
+                        msg.str()};
 
   return formatter.formatMessage(logMessage, category);
 }
@@ -64,7 +70,9 @@ TEST(GlogFormatter, log) {
   auto expected = folly::sformat(
       "W0417 13:45:56.123456 {:5d} myfile.cpp:1234] hello world\n", tid);
   EXPECT_EQ(
-      expected, formatMsg(LogLevel::WARN, "hello world", "myfile.cpp", 1234));
+      expected,
+      formatMsg(
+          LogLevel::WARN, "hello world", "myfile.cpp", 1234, "testFunction"));
 }
 
 TEST(GlogFormatter, filename) {
@@ -79,7 +87,8 @@ TEST(GlogFormatter, filename) {
           LogLevel::WARN,
           "hello world",
           "src/test/logging/code/myfile.cpp",
-          1234));
+          1234,
+          "testFunction"));
 
   // Log a message with a very long file name.
   expected = folly::sformat(
@@ -94,7 +103,8 @@ TEST(GlogFormatter, filename) {
           "oh noes",
           "this_is_a_really_long_file_name_that_will_probably_exceed_"
           "our_buffer_allocation_guess.cpp",
-          123456789));
+          123456789,
+          "testFunction"));
 }
 
 TEST(GlogFormatter, multiline) {
@@ -126,7 +136,8 @@ TEST(GlogFormatter, multiline) {
           "\n"
           "=============",
           "src/rodent.cpp",
-          777));
+          777,
+          "testFunction"));
 }
 
 TEST(GlogFormatter, singleNewline) {
@@ -139,7 +150,9 @@ TEST(GlogFormatter, singleNewline) {
       "V0417 13:45:56.123456 {tid:>5s} foo.txt:123] \n"
       "V0417 13:45:56.123456 {tid:>5s} foo.txt:123] \n",
       formatMap);
-  EXPECT_EQ(expected, formatMsg(LogLevel::DBG9, "\n", "foo.txt", 123));
+  EXPECT_EQ(
+      expected,
+      formatMsg(LogLevel::DBG9, "\n", "foo.txt", 123, "testFunction"));
 }
 
 TEST(GlogFormatter, unprintableChars) {
@@ -151,17 +164,28 @@ TEST(GlogFormatter, unprintableChars) {
       tid);
   EXPECT_EQ(
       expected,
-      formatMsg(LogLevel::ERR, "foo\abar\x1btest", "escapes.cpp", 97));
+      formatMsg(
+          LogLevel::ERR,
+          "foo\abar\x1btest",
+          "escapes.cpp",
+          97,
+          "testFunction"));
   expected = folly::sformat(
       "I0417 13:45:56.123456 {:5d} escapes.cpp:98] foo\\\\bar\"test\n", tid);
   EXPECT_EQ(
-      expected, formatMsg(LogLevel::INFO, "foo\\bar\"test", "escapes.cpp", 98));
+      expected,
+      formatMsg(
+          LogLevel::INFO, "foo\\bar\"test", "escapes.cpp", 98, "testFunction"));
   expected = folly::sformat(
       "C0417 13:45:56.123456 {:5d} escapes.cpp:99] nul\\x00byte\n", tid);
   EXPECT_EQ(
       expected,
       formatMsg(
-          LogLevel::CRITICAL, std::string("nul\0byte", 8), "escapes.cpp", 99));
+          LogLevel::CRITICAL,
+          std::string("nul\0byte", 8),
+          "escapes.cpp",
+          99,
+          "testFunction"));
 }
 
 int main(int argc, char* argv[]) {

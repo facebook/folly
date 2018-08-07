@@ -105,6 +105,7 @@ class LogStreamProcessor {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       AppendType) noexcept;
 
   /**
@@ -122,6 +123,7 @@ class LogStreamProcessor {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       AppendType,
       Args&&... args) noexcept
       : LogStreamProcessor(
@@ -129,6 +131,7 @@ class LogStreamProcessor {
             level,
             filename,
             lineNumber,
+            functionName,
             INTERNAL,
             createLogString(std::forward<Args>(args)...)) {}
 
@@ -147,6 +150,7 @@ class LogStreamProcessor {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       FormatType,
       folly::StringPiece fmt,
       Args&&... args) noexcept
@@ -155,6 +159,7 @@ class LogStreamProcessor {
             level,
             filename,
             lineNumber,
+            functionName,
             INTERNAL,
             formatLogString(fmt, std::forward<Args>(args)...)) {}
 
@@ -174,6 +179,7 @@ class LogStreamProcessor {
       bool isCategoryNameOverridden,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       AppendType) noexcept;
   template <typename... Args>
   LogStreamProcessor(
@@ -183,6 +189,7 @@ class LogStreamProcessor {
       bool isCategoryNameOverridden,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       AppendType,
       Args&&... args) noexcept
       : LogStreamProcessor(
@@ -192,6 +199,7 @@ class LogStreamProcessor {
             isCategoryNameOverridden,
             filename,
             lineNumber,
+            functionName,
             INTERNAL,
             createLogString(std::forward<Args>(args)...)) {}
   template <typename... Args>
@@ -202,6 +210,7 @@ class LogStreamProcessor {
       bool isCategoryNameOverridden,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       FormatType,
       folly::StringPiece fmt,
       Args&&... args) noexcept
@@ -212,6 +221,7 @@ class LogStreamProcessor {
             isCategoryNameOverridden,
             filename,
             lineNumber,
+            functionName,
             INTERNAL,
             formatLogString(fmt, std::forward<Args>(args)...)) {}
 
@@ -231,6 +241,7 @@ class LogStreamProcessor {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       AppendType) noexcept;
   LogStreamProcessor(
       XlogFileScopeInfo* fileScopeInfo,
@@ -239,9 +250,15 @@ class LogStreamProcessor {
       bool /* isCategoryNameOverridden */,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       AppendType) noexcept
-      : LogStreamProcessor(fileScopeInfo, level, filename, lineNumber, APPEND) {
-  }
+      : LogStreamProcessor(
+            fileScopeInfo,
+            level,
+            filename,
+            lineNumber,
+            functionName,
+            APPEND) {}
   template <typename... Args>
   LogStreamProcessor(
       XlogFileScopeInfo* fileScopeInfo,
@@ -250,6 +267,7 @@ class LogStreamProcessor {
       bool /* isCategoryNameOverridden */,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       AppendType,
       Args&&... args) noexcept
       : LogStreamProcessor(
@@ -257,6 +275,7 @@ class LogStreamProcessor {
             level,
             filename,
             lineNumber,
+            functionName,
             INTERNAL,
             createLogString(std::forward<Args>(args)...)) {}
   template <typename... Args>
@@ -267,6 +286,7 @@ class LogStreamProcessor {
       bool /* isCategoryNameOverridden */,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       FormatType,
       folly::StringPiece fmt,
       Args&&... args) noexcept
@@ -275,6 +295,7 @@ class LogStreamProcessor {
             level,
             filename,
             lineNumber,
+            functionName,
             INTERNAL,
             formatLogString(fmt, std::forward<Args>(args)...)) {}
 #endif
@@ -308,6 +329,7 @@ class LogStreamProcessor {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       InternalType,
       std::string&& msg) noexcept;
   LogStreamProcessor(
@@ -317,6 +339,7 @@ class LogStreamProcessor {
       bool isCategoryNameOverridden,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       InternalType,
       std::string&& msg) noexcept;
   LogStreamProcessor(
@@ -324,6 +347,7 @@ class LogStreamProcessor {
       LogLevel level,
       folly::StringPiece filename,
       unsigned int lineNumber,
+      folly::StringPiece functionName,
       InternalType,
       std::string&& msg) noexcept;
 
@@ -411,6 +435,7 @@ class LogStreamProcessor {
   LogLevel const level_;
   folly::StringPiece filename_;
   unsigned int lineNumber_;
+  folly::StringPiece functionName_;
   std::string message_;
   LogStream stream_;
 };
