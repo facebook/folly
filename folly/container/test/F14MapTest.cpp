@@ -100,7 +100,7 @@ TEST(F14Map, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<bool, bool>();
   runAllocatedMemorySizeTests<int, int>();
   runAllocatedMemorySizeTests<bool, std::string>();
-  runAllocatedMemorySizeTests<long double, std::string>();
+  runAllocatedMemorySizeTests<double, std::string>();
   runAllocatedMemorySizeTests<std::string, int>();
   runAllocatedMemorySizeTests<std::string, std::string>();
   runAllocatedMemorySizeTests<folly::fbstring, long>();
@@ -219,7 +219,7 @@ void runSimple() {
   EXPECT_TRUE(h3.find(s("xxx")) == h3.end());
 
   for (uint64_t i = 0; i < 1000; ++i) {
-    h[std::to_string(i * i * i)] = s("x");
+    h[to<std::string>(i * i * i)] = s("x");
     EXPECT_EQ(h.size(), i + 1);
   }
   {
@@ -227,10 +227,10 @@ void runSimple() {
     swap(h, h2);
   }
   for (uint64_t i = 0; i < 1000; ++i) {
-    EXPECT_TRUE(h2.find(std::to_string(i * i * i)) != h2.end());
+    EXPECT_TRUE(h2.find(to<std::string>(i * i * i)) != h2.end());
     EXPECT_EQ(
-        h2.find(std::to_string(i * i * i))->first, std::to_string(i * i * i));
-    EXPECT_TRUE(h2.find(std::to_string(i * i * i + 2)) == h2.end());
+        h2.find(to<std::string>(i * i * i))->first, to<std::string>(i * i * i));
+    EXPECT_TRUE(h2.find(to<std::string>(i * i * i + 2)) == h2.end());
   }
 
   T h4{h2};
@@ -258,7 +258,7 @@ void runSimple() {
   EXPECT_TRUE(h2.empty());
   EXPECT_TRUE(h7.empty());
   for (uint64_t i = 0; i < 1000; ++i) {
-    auto k = std::to_string(i * i * i);
+    auto k = to<std::string>(i * i * i);
     EXPECT_EQ(h4.count(k), 1);
     EXPECT_EQ(h5.count(k), 1);
     EXPECT_EQ(h6.count(k), 1);
@@ -288,7 +288,7 @@ void runRehash() {
   T h;
   auto b = h.bucket_count();
   for (unsigned i = 0; i < n; ++i) {
-    h.insert(std::make_pair(std::to_string(i), s("")));
+    h.insert(std::make_pair(to<std::string>(i), s("")));
     if (b != h.bucket_count()) {
       F14TableStats::compute(h);
       b = h.bucket_count();
@@ -735,7 +735,7 @@ TEST(F14VectorMap, steady_state_stats) {
   std::mt19937_64 gen(0);
   std::uniform_int_distribution<> dist(0, 10000);
   for (std::size_t i = 0; i < 100000; ++i) {
-    auto key = "0123456789ABCDEFGHIJKLMNOPQ" + std::to_string(dist(gen));
+    auto key = "0123456789ABCDEFGHIJKLMNOPQ" + to<std::string>(dist(gen));
     if (dist(gen) < 1400) {
       h.insert_or_assign(key, i);
     } else {

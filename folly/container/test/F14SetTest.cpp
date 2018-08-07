@@ -93,7 +93,7 @@ TEST(F14Set, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<bool>();
   runAllocatedMemorySizeTests<int>();
   runAllocatedMemorySizeTests<long>();
-  runAllocatedMemorySizeTests<long double>();
+  runAllocatedMemorySizeTests<double>();
   runAllocatedMemorySizeTests<std::string>();
   runAllocatedMemorySizeTests<folly::fbstring>();
 
@@ -239,7 +239,7 @@ void runSimple() {
   EXPECT_TRUE(h3.find(s("xxx")) == h3.end());
 
   for (uint64_t i = 0; i < 1000; ++i) {
-    h.insert(std::move(std::to_string(i * i * i)));
+    h.insert(std::move(to<std::string>(i * i * i)));
     EXPECT_EQ(h.size(), i + 1);
   }
   {
@@ -247,9 +247,9 @@ void runSimple() {
     swap(h, h2);
   }
   for (uint64_t i = 0; i < 1000; ++i) {
-    EXPECT_TRUE(h2.find(std::to_string(i * i * i)) != h2.end());
-    EXPECT_EQ(*h2.find(std::to_string(i * i * i)), std::to_string(i * i * i));
-    EXPECT_TRUE(h2.find(std::to_string(i * i * i + 2)) == h2.end());
+    EXPECT_TRUE(h2.find(to<std::string>(i * i * i)) != h2.end());
+    EXPECT_EQ(*h2.find(to<std::string>(i * i * i)), to<std::string>(i * i * i));
+    EXPECT_TRUE(h2.find(to<std::string>(i * i * i + 2)) == h2.end());
   }
 
   T h4{h2};
@@ -278,7 +278,7 @@ void runSimple() {
   EXPECT_TRUE(h2.empty());
   EXPECT_TRUE(h7.empty());
   for (uint64_t i = 0; i < 1000; ++i) {
-    auto k = std::to_string(i * i * i);
+    auto k = to<std::string>(i * i * i);
     EXPECT_EQ(h4.count(k), 1);
     EXPECT_EQ(h5.count(k), 1);
     EXPECT_EQ(h6.count(k), 1);
@@ -300,7 +300,7 @@ void runRehash() {
   unsigned n = 10000;
   T h;
   for (unsigned i = 0; i < n; ++i) {
-    h.insert(std::to_string(i));
+    h.insert(to<std::string>(i));
   }
   EXPECT_EQ(h.size(), n);
   F14TableStats::compute(h);
