@@ -1147,9 +1147,16 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  typename R::Return then(F&& func) {
+  typename R::Return then(F&& func) && {
     return this->template thenImplementation<F, R>(
         std::forward<F>(func), typename R::Arg());
+  }
+
+  template <typename F, typename R = futures::detail::callableResult<T, F>>
+  [[deprecated("must be rvalue-qualified, e.g., std::move(future).then(...)")]]
+      typename R::Return
+      then(F&& func) & {
+    return std::move(*this).then(std::forward<F>(func));
   }
 
   /// Variant where func is an member function
@@ -1175,7 +1182,15 @@ class Future : private futures::detail::FutureBase<T> {
   template <typename R, typename Caller, typename... Args>
   Future<typename isFuture<R>::Inner> then(
       R (Caller::*func)(Args...),
-      Caller* instance);
+      Caller* instance) &&;
+
+  template <typename R, typename Caller, typename... Args>
+  [[deprecated(
+      "must be rvalue-qualified, e.g., std::move(future).then(...)")]] Future<typename isFuture<R>::
+                                                                                  Inner>
+  then(R (Caller::*func)(Args...), Caller* instance) & {
+    return std::move(*this).then(func, instance);
+  }
 
   /// Execute the callback via the given Executor. The executor doesn't stick.
   ///
@@ -1200,11 +1215,19 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Executor, class Arg, class... Args>
-  auto then(Executor* x, Arg&& arg, Args&&... args) {
+  auto then(Executor* x, Arg&& arg, Args&&... args) && {
     auto oldX = this->getExecutor();
     this->setExecutor(x);
-    return this->then(std::forward<Arg>(arg), std::forward<Args>(args)...)
+    return std::move(*this)
+        .then(std::forward<Arg>(arg), std::forward<Args>(args)...)
         .via(oldX);
+  }
+
+  template <class Executor, class Arg, class... Args>
+  [[deprecated(
+      "must be rvalue-qualified, e.g., std::move(future).then(...)")]] auto
+  then(Executor* x, Arg&& arg, Args&&... args) & {
+    return std::move(*this).then(x, arg, args...);
   }
 
   /// When this Future has completed, execute func which is a function that
@@ -1368,7 +1391,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   Future<Unit> unit() {
-    return then();
+    return std::move(*this).then();
   }
 
   /// Set an error continuation for this Future. The continuation should take an
@@ -1765,7 +1788,8 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Callback, class... Callbacks>
   auto thenMulti(Callback&& fn, Callbacks&&... fns) {
     // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
-    return then(std::forward<Callback>(fn))
+    return std::move(*this)
+        .then(std::forward<Callback>(fn))
         .thenMulti(std::forward<Callbacks>(fns)...);
   }
 
@@ -1783,7 +1807,7 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Callback>
   auto thenMulti(Callback&& fn) {
     // thenMulti with one callback is just a then
-    return then(std::forward<Callback>(fn));
+    return std::move(*this).then(std::forward<Callback>(fn));
   }
 
   /// Create a Future chain from a sequence of callbacks. i.e.
@@ -1814,7 +1838,8 @@ class Future : private futures::detail::FutureBase<T> {
     // via(x).then(a).thenMulti(b, ...).via(oldX)
     auto oldX = this->getExecutor();
     this->setExecutor(x);
-    return then(std::forward<Callback>(fn))
+    return std::move(*this)
+        .then(std::forward<Callback>(fn))
         .thenMulti(std::forward<Callbacks>(fns)...)
         .via(oldX);
   }
@@ -1822,7 +1847,7 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Callback>
   auto thenMultiWithExecutor(Executor* x, Callback&& fn) {
     // thenMulti with one callback is just a then with an executor
-    return then(x, std::forward<Callback>(fn));
+    return std::move(*this).then(x, std::forward<Callback>(fn));
   }
 
   /// Moves-out `*this`, creating/returning a corresponding SemiFuture.

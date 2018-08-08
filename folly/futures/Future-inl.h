@@ -1018,9 +1018,10 @@ template <class F>
 typename std::
     enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
     Future<T>::unwrap() {
-  return then([](Future<typename isFuture<T>::Inner> internal_future) {
-    return internal_future;
-  });
+  return std::move(*this).then(
+      [](Future<typename isFuture<T>::Inner> internal_future) {
+        return internal_future;
+      });
 }
 
 template <class T>
@@ -1063,13 +1064,14 @@ Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
 
 template <typename T>
 template <typename R, typename Caller, typename... Args>
-  Future<typename isFuture<R>::Inner>
-Future<T>::then(R(Caller::*func)(Args...), Caller *instance) {
+Future<typename isFuture<R>::Inner> Future<T>::then(
+    R (Caller::*func)(Args...),
+    Caller* instance) && {
   typedef typename std::remove_cv<typename std::remove_reference<
       typename futures::detail::ArgType<Args...>::FirstArg>::type>::type
       FirstArg;
 
-  return then([instance, func](Try<T>&& t){
+  return std::move(*this).thenTry([instance, func](Try<T>&& t) {
     return (instance->*func)(t.template get<isTry<FirstArg>::value, Args>()...);
   });
 }
@@ -1126,7 +1128,7 @@ Future<T> Future<T>::thenError(F&& func) && {
 
 template <class T>
 Future<Unit> Future<T>::then() {
-  return then([]() {});
+  return std::move(*this).then([]() {});
 }
 
 // onError where the callback returns T
@@ -1209,10 +1211,11 @@ Future<T>::onError(F&& func) {
 template <class T>
 template <class F>
 Future<T> Future<T>::ensure(F&& func) {
-  return this->then([funcw = std::forward<F>(func)](Try<T>&& t) mutable {
-    std::forward<F>(funcw)();
-    return makeFuture(std::move(t));
-  });
+  return std::move(*this).then(
+      [funcw = std::forward<F>(func)](Try<T>&& t) mutable {
+        std::forward<F>(funcw)();
+        return makeFuture(std::move(t));
+      });
 }
 
 template <class T>
@@ -1741,7 +1744,7 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
 
   auto sfunc = std::make_shared<std::decay_t<F>>(std::forward<F>(func));
 
-  auto f = first->then(
+  auto f = std::move(*first).then(
       [initial = std::forward<T>(initial), sfunc](Try<ItT>&& head) mutable {
         return (*sfunc)(
             std::move(initial), head.template get<IsTry::value, Arg&&>());
@@ -1833,14 +1836,15 @@ window(Executor* executor, Collection input, F func, size_t n) {
 template <class T>
 template <class I, class F>
 Future<I> Future<T>::reduce(I&& initial, F&& func) {
-  return then([minitial = std::forward<I>(initial),
-               mfunc = std::forward<F>(func)](T&& vals) mutable {
-    auto ret = std::move(minitial);
-    for (auto& val : vals) {
-      ret = mfunc(std::move(ret), std::move(val));
-    }
-    return ret;
-  });
+  return std::move(*this).then(
+      [minitial = std::forward<I>(initial),
+       mfunc = std::forward<F>(func)](T&& vals) mutable {
+        auto ret = std::move(minitial);
+        for (auto& val : vals) {
+          ret = mfunc(std::move(ret), std::move(val));
+        }
+        return ret;
+      });
 }
 
 // unorderedReduce (iterator)
@@ -2263,7 +2267,7 @@ Future<bool> Future<T>::willEqual(Future<T>& f) {
 template <class T>
 template <class F>
 Future<T> Future<T>::filter(F&& predicate) {
-  return this->then([p = std::forward<F>(predicate)](T val) {
+  return std::move(*this).then([p = std::forward<F>(predicate)](T val) {
     T const& valConstRef = val;
     if (!p(valConstRef)) {
       throw_exception<FuturePredicateDoesNotObtain>();
@@ -2281,10 +2285,8 @@ template <class P, class F>
 Future<Unit> whileDo(P&& predicate, F&& thunk) {
   if (predicate()) {
     auto future = thunk();
-    return future.then([
-      predicate = std::forward<P>(predicate),
-      thunk = std::forward<F>(thunk)
-    ]() mutable {
+    return std::move(future).then([predicate = std::forward<P>(predicate),
+                                   thunk = std::forward<F>(thunk)]() mutable {
       return whileDo(std::forward<P>(predicate), std::forward<F>(thunk));
     });
   }
@@ -2305,7 +2307,7 @@ template <class It, class F, class ItT, class Result>
 std::vector<Future<Result>> map(It first, It last, F func) {
   std::vector<Future<Result>> results;
   for (auto it = first; it != last; it++) {
-    results.push_back(it->then(func));
+    results.push_back(std::move(*it).then(func));
   }
   return results;
 }

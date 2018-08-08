@@ -240,8 +240,8 @@ TEST(Future, hasPreconditionValid) {
   DOIT(f.hasException());
   DOIT(f.value());
   DOIT(f.poll());
-  DOIT(f.then());
-  DOIT(f.then([](auto&&) {}));
+  DOIT(std::move(f).then());
+  DOIT(std::move(f).then([](auto&&) {}));
 
 #undef DOIT
 }
@@ -1263,10 +1263,10 @@ TEST(Future, unwrap) {
   bool flag2 = false;
 
   // do a, then do b, and get the result of a + b.
-  Future<int> f = fa.then([&](Try<int>&& ta) {
+  Future<int> f = std::move(fa).then([&](Try<int>&& ta) {
     auto va = ta.value();
     flag1 = true;
-    return fb.then([va, &flag2](Try<int>&& tb) {
+    return std::move(fb).then([va, &flag2](Try<int>&& tb) {
       flag2 = true;
       return va + tb.value();
     });
@@ -1357,7 +1357,7 @@ TEST(Future, CircularDependencySharedPtrSelfReset) {
   Promise<int64_t> promise;
   auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
 
-  ptr->then([ptr](folly::Try<int64_t>&& /* uid */) mutable {
+  std::move(*ptr).thenTry([ptr](folly::Try<int64_t>&& /* uid */) mutable {
     EXPECT_EQ(1, ptr.use_count());
 
     // Leaving no references to ourselves.

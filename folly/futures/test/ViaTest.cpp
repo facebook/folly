@@ -617,7 +617,7 @@ TEST(ViaFunc, isSticky) {
   auto f = via(&x, [&]{ count++; });
   x.run();
 
-  f.then([&]{ count++; });
+  std::move(f).then([&] { count++; });
   EXPECT_EQ(1, count);
   x.run();
   EXPECT_EQ(2, count);

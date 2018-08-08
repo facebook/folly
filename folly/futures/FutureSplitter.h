@@ -53,7 +53,7 @@ class FutureSplitter {
       : promise_(std::make_shared<SharedPromise<T>>()),
         e_(getExecutorFrom(future)),
         priority_(future.getPriority()) {
-    future.then([promise = promise_](Try<T>&& theTry) {
+    std::move(future).then([promise = promise_](Try<T>&& theTry) {
       promise->setTry(std::move(theTry));
     });
   }

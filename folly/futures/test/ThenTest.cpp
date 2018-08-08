@@ -189,7 +189,7 @@ TEST(Then, constValue) {
 TEST(Then, objectAliveDuringImmediateNoParamContinuation) {
   auto f = makeFuture<CountedWidget>(23);
   auto called = false;
-  f.then([&] {
+  std::move(f).then([&] {
     EXPECT_EQ(CountedWidget::instances_.size(), 1u);
     EXPECT_EQ(CountedWidget::instances_[0]->v_, 23);
     called = true;
