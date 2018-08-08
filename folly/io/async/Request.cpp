@@ -166,13 +166,19 @@ void exec_set_difference(const TData& data, const TData& other, TExec&& exec) {
   auto oiter = other.begin();
   auto oend = other.end();
   while (diter != dend) {
-    if (oiter == oend || *diter < *oiter) {
+    // Order of "if" optimizes for the 2 common cases:
+    // 1) empty other, switching to default context
+    // 2) identical other, switching to similar context with same callbacks
+    if (oiter == oend) {
       exec(*diter);
       ++diter;
-    } else if (*oiter < *diter) {
-      ++oiter;
-    } else {
+    } else if (*diter == *oiter) {
       ++diter;
+      ++oiter;
+    } else if (*diter < *oiter) {
+      exec(*diter);
+      ++diter;
+    } else {
       ++oiter;
     }
   }
