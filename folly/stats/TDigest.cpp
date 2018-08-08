@@ -175,6 +175,10 @@ TDigest TDigest::merge(Range<const double*> sortedValues) const {
   result.sum_ += cur.add(sumsToMerge, weightsToMerge);
   compressed.push_back(cur);
   compressed.shrink_to_fit();
+
+  // Deal with floating point precision
+  std::sort(compressed.begin(), compressed.end());
+
   result.centroids_ = std::move(compressed);
   return result;
 }
@@ -272,6 +276,9 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   result.sum_ += cur.add(sumsToMerge, weightsToMerge);
   compressed.push_back(cur);
   compressed.shrink_to_fit();
+
+  // Deal with floating point precision
+  std::sort(compressed.begin(), compressed.end());
 
   result.count_ = count;
   result.min_ = min;
