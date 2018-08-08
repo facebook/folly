@@ -24,6 +24,8 @@
 #include <folly/test/DeterministicSchedule.h>
 #include <glog/logging.h>
 
+using namespace folly;
+
 DEFINE_int32(reps, 1, "number of reps");
 DEFINE_int64(ops, 32, "number of operations per rep");
 DEFINE_int64(elems, 64, "number of elements");

@@ -112,6 +112,8 @@
 //  size_t size()
 //  bool empty()
 
+namespace folly {
+
 template <
     typename T,
     bool MayBlock = false,
@@ -128,6 +130,8 @@ class RelaxedConcurrentPriorityQueue {
 
   // Align size for the shared buffer node
   static constexpr size_t Align = 1u << 7;
+  static constexpr int LevelForForceInsert = 3;
+  static constexpr int LevelForTraverseParent = 7;
 
   static_assert(PopBatch <= 256, "PopBatch must be <= 256");
   static_assert(
@@ -185,12 +189,14 @@ class RelaxedConcurrentPriorityQueue {
   std::unique_ptr<BufferNode[]> shared_buffer_;
   alignas(Align) Atom<int> top_loc_;
 
-  // Numbers of active waiting threads
-  // (Written by consumer;  read by producer)
-  alignas(Align) Atom<int> active_waiting_;
-  // Monotonically increasing value (overflow to 0 is allowed)
-  // (Written by producer;  read by consumer)
-  folly::detail::Futex<Atom> seq_number_;
+  /// Blocking algorithm
+  // Numbers of futexs in the array
+  static constexpr size_t NumFutex = 128;
+  // The index gap for accessing futex in the array
+  static constexpr size_t Stride = 33;
+  std::unique_ptr<folly::detail::Futex<Atom>[]> futex_array_;
+  alignas(Align) Atom<uint32_t> cticket_;
+  alignas(Align) Atom<uint32_t> pticket_;
 
   // Two counters to calculate size of the queue
   alignas(Align) Atom<size_t> counter_p_;
@@ -199,7 +205,11 @@ class RelaxedConcurrentPriorityQueue {
  public:
   /// Constructor
   RelaxedConcurrentPriorityQueue()
-      : active_waiting_(0), seq_number_(0), counter_p_(0), counter_c_(0) {
+      : cticket_(1), pticket_(1), counter_p_(0), counter_c_(0) {
+    if (MayBlock) {
+      futex_array_.reset(new folly::detail::Futex<Atom>[NumFutex]);
+    }
+
     if (PopBatch > 0) {
       top_loc_ = -1;
       shared_buffer_.reset(new BufferNode[PopBatch]);
@@ -219,6 +229,9 @@ class RelaxedConcurrentPriorityQueue {
   ~RelaxedConcurrentPriorityQueue() {
     if (PopBatch > 0) {
       deleteSharedBuffer();
+    }
+    if (MayBlock) {
+      futex_array_.reset();
     }
     Position pos;
     pos.level = pos.index = 0;
@@ -412,7 +425,8 @@ class RelaxedConcurrentPriorityQueue {
           path = false;
           seed = ++loc;
           return pos;
-        } else if (getElementSize(pos) < ListTargetSize) {
+        } else if (
+            b > LevelForForceInsert && getElementSize(pos) < ListTargetSize) {
           // [fast path] conservative implementation
           // it makes sure every tree element should
           // have more than the given number of nodes.
@@ -647,7 +661,6 @@ class RelaxedConcurrentPriorityQueue {
       return false;
     }
 
-    // TODO a good place to improve accuracy
     // insert to an inner node
     Position parent = parentOf(pos);
     if (!trylockNode(parent)) {
@@ -660,11 +673,51 @@ class RelaxedConcurrentPriorityQueue {
     T pv = readValue(parent);
     T nv = readValue(pos);
     if (LIKELY(pv > val && nv <= val)) {
-      newNode->next = getList(pos);
-      setTreeNode(pos, newNode);
+      // improve the accuracy by getting the node(R) with less priority than the
+      // new value from parent level, insert the new node to the parent list
+      // and insert R to the current list.
+      // It only happens at >= LevelForTraverseParent for reducing contention
       uint32_t sz = getElementSize(pos);
-      setElementSize(pos, sz + 1);
-      unlockNode(parent);
+      if (pos.level >= LevelForTraverseParent) {
+        Node* start = getList(parent);
+        while (start->next != nullptr && start->next->val >= val) {
+          start = start->next;
+        }
+        if (start->next != nullptr) {
+          newNode->next = start->next;
+          start->next = newNode;
+          while (start->next->next != nullptr) {
+            start = start->next;
+          }
+          newNode = start->next;
+          start->next = nullptr;
+        }
+        unlockNode(parent);
+
+        Node* curList = getList(pos);
+        if (curList == nullptr) {
+          newNode->next = nullptr;
+          setTreeNode(pos, newNode);
+        } else {
+          Node* p = curList;
+          if (p->val <= newNode->val) {
+            newNode->next = curList;
+            setTreeNode(pos, newNode);
+          } else {
+            while (p->next != nullptr && p->next->val >= newNode->val) {
+              p = p->next;
+            }
+            newNode->next = p->next;
+            p->next = newNode;
+          }
+        }
+        setElementSize(pos, sz + 1);
+      } else {
+        unlockNode(parent);
+        newNode->next = getList(pos);
+        setTreeNode(pos, newNode);
+        setElementSize(pos, sz + 1);
+      }
       if (UNLIKELY(sz > PruningSize)) {
         startPruning(pos);
       } else {
@@ -689,13 +742,23 @@ class RelaxedConcurrentPriorityQueue {
     if (sz >= ListTargetSize) {
       return false;
     }
-    Node* p = getList(pos);
-    newNode->next = p;
-    setTreeNode(pos, newNode);
-    p = newNode;
-    while (p != nullptr && p->next != nullptr && p->val <= p->next->val) {
-      std::swap(p->val, p->next->val);
-      p = p->next;
+
+    Node* curList = getList(pos);
+    if (curList == nullptr) {
+      newNode->next = nullptr;
+      setTreeNode(pos, newNode);
+    } else {
+      Node* p = curList;
+      if (p->val <= newNode->val) {
+        newNode->next = curList;
+        setTreeNode(pos, newNode);
+      } else {
+        while (p->next != nullptr && p->next->val >= newNode->val) {
+          p = p->next;
+        }
+        newNode->next = p->next;
+        p->next = newNode;
+      }
     }
     setElementSize(pos, sz + 1);
     return true;
@@ -962,23 +1025,30 @@ class RelaxedConcurrentPriorityQueue {
     return true;
   }
 
-  FOLLY_ALWAYS_INLINE bool toWakeUp() {
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    auto c = active_waiting_.load(std::memory_order_acquire);
-    return c > 0;
-  }
-
-  void wakeUp() {
-    seq_number_.fetch_add(1, std::memory_order_seq_cst);
-    seq_number_.futexWake(1);
-  }
-
   void blockingPushImpl() {
-    if (LIKELY(!toWakeUp())) {
-      return;
+    auto p = pticket_.fetch_add(1, std::memory_order_acq_rel);
+    auto loc = getFutexArrayLoc(p);
+    uint32_t curfutex = futex_array_[loc].load(std::memory_order_acquire);
+
+    while (true) {
+      uint32_t ready = p << 1; // get the lower 31 bits
+      // avoid the situation that push has larger ticket already set the value
+      if (UNLIKELY(
+              ready + 1 < curfutex ||
+              ((curfutex > ready) && (curfutex - ready > 0x40000000)))) {
+        return;
+      }
+
+      if (futex_array_[loc].compare_exchange_strong(curfutex, ready)) {
+        if (curfutex &
+            1) { // One or more consumers may be blocked on this futex
+          futex_array_[loc].futexWake();
+        }
+        return;
+      } else {
+        curfutex = futex_array_[loc].load(std::memory_order_acquire);
+      }
     }
-    // slow path, likely to have a futexWake call
-    wakeUp();
   }
 
   // This could guarentee the Mound is empty
@@ -993,25 +1063,70 @@ class RelaxedConcurrentPriorityQueue {
     return top_loc_.load(std::memory_order_acquire) < 0;
   }
 
-  bool isEmpty() {
+  FOLLY_ALWAYS_INLINE bool isEmpty() {
     if (PopBatch > 0) {
       return isMoundEmpty() && isSharedBufferEmpty();
     }
     return isMoundEmpty();
   }
 
-  void blockingPopImpl() {
-    active_waiting_.fetch_add(1, std::memory_order_seq_cst);
-    auto w = seq_number_.load(std::memory_order_acquire);
+  FOLLY_ALWAYS_INLINE bool futexIsReady(const size_t& curticket) {
+    auto loc = getFutexArrayLoc(curticket);
+    auto curfutex = futex_array_[loc].load(std::memory_order_acquire);
+    uint32_t short_cticket = curticket & 0x7FFFFFFF;
+    uint32_t futex_ready = curfutex >> 1;
+    // handle unsigned 31 bits overflow
+    return futex_ready >= short_cticket ||
+        short_cticket - futex_ready > 0x40000000;
+  }
 
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    if (!isEmpty()) { // not empty
-      active_waiting_.fetch_sub(1, std::memory_order_seq_cst);
+  template <typename Clock, typename Duration>
+  FOLLY_NOINLINE bool trySpinBeforeBlock(
+      const size_t& curticket,
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      const folly::WaitOptions& opt = wait_options()) {
+    return folly::detail::spin_pause_until(deadline, opt, [=] {
+             return futexIsReady(curticket);
+           }) == folly::detail::spin_result::success;
+  }
+
+  void tryBlockingPop(const size_t& curticket) {
+    auto loc = getFutexArrayLoc(curticket);
+    auto curfutex = futex_array_[loc].load(std::memory_order_acquire);
+    if (curfutex &
+        1) { /// The last round consumers are still waiting, go to sleep
+      futex_array_[loc].futexWait(curfutex);
+    }
+    if (trySpinBeforeBlock(
+            curticket,
+            std::chrono::time_point<std::chrono::steady_clock>::max())) {
+      return; /// Spin until the push ticket is ready
+    }
+    while (true) {
+      curfutex = futex_array_[loc].load(std::memory_order_acquire);
+      if (curfutex &
+          1) { /// The last round consumers are still waiting, go to sleep
+        futex_array_[loc].futexWait(curfutex);
+      } else if (!futexIsReady(curticket)) { // current ticket < pop ticket
+        uint32_t blocking_futex = curfutex + 1;
+        if (futex_array_[loc].compare_exchange_strong(
+                curfutex, blocking_futex)) {
+          futex_array_[loc].futexWait(blocking_futex);
+        }
+      } else {
+        return;
+      }
+    }
+  }
+
+  void blockingPopImpl() {
+    auto ct = cticket_.fetch_add(1, std::memory_order_acq_rel);
+    // fast path check
+    if (futexIsReady(ct)) {
       return;
     }
-
-    seq_number_.futexWait(w);
-    active_waiting_.fetch_sub(1, std::memory_order_seq_cst);
+    // Blocking
+    tryBlockingPop(ct);
   }
 
   bool tryPopFromMound(T& val) {
@@ -1048,18 +1163,14 @@ class RelaxedConcurrentPriorityQueue {
     }
 
     // Spinning strategy
-    if (!MayBlock) {
-      while (true) {
-        auto res = folly::detail::spin_yield_until(
-            deadline, [=] { return !isEmpty(); });
-        if (res == folly::detail::spin_result::success) {
-          return true;
-        } else if (res == folly::detail::spin_result::timeout) {
-          return false;
-        }
+    while (true) {
+      auto res =
+          folly::detail::spin_yield_until(deadline, [=] { return !isEmpty(); });
+      if (res == folly::detail::spin_result::success) {
+        return true;
+      } else if (res == folly::detail::spin_result::timeout) {
+        return false;
       }
-    } else { // Blocking strategy
-      blockingPopImpl();
     }
     return true;
   }
@@ -1079,7 +1190,15 @@ class RelaxedConcurrentPriorityQueue {
     return false;
   }
 
+  size_t getFutexArrayLoc(size_t s) {
+    return ((s - 1) * Stride) & (NumFutex - 1);
+  }
+
   void moundPop(T& val) {
+    if (MayBlock) {
+      blockingPopImpl();
+    }
+
     if (PopBatch > 0) {
       if (tryPopFromSharedBuffer(val)) {
         return;
@@ -1097,3 +1216,5 @@ class RelaxedConcurrentPriorityQueue {
     }
   }
 };
+
+} // namespace folly
