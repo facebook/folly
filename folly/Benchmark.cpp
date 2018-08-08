@@ -244,78 +244,75 @@ static string metricReadable(double n, unsigned int decimals) {
   return humanReadable(n, decimals, kMetricSuffixes);
 }
 
-static void printBenchmarkResultsAsTable(
-    const vector<detail::BenchmarkResult>& data) {
-  // Width available
-  static const unsigned int columns = 76;
+namespace {
+class BenchmarkResultsPrinter {
+ public:
+  static constexpr unsigned int columns{76};
+  double baselineNsPerIter{numeric_limits<double>::max()};
+  string lastFile;
 
-  // Compute the longest benchmark name
-  size_t longestName = 0;
-  for (auto& bm : benchmarks()) {
-    longestName = max(longestName, bm.name.size());
+  void separator(char pad) {
+    puts(string(columns, pad).c_str());
   }
 
-  // Print a horizontal rule
-  auto separator = [&](char pad) {
-    puts(string(columns, pad).c_str());
-  };
-
-  // Print header for a file
-  auto header = [&](const string& file) {
+  void header(const string& file) {
     separator('=');
     printf("%-*srelative  time/iter  iters/s\n",
            columns - 28, file.c_str());
     separator('=');
-  };
+  }
 
-  double baselineNsPerIter = numeric_limits<double>::max();
-  string lastFile;
+  void print(const vector<detail::BenchmarkResult>& data) {
+    for (auto& datum : data) {
+      auto file = datum.file;
+      if (file != lastFile) {
+        // New file starting
+        header(file);
+        lastFile = file;
+      }
 
-  for (auto& datum : data) {
-    auto file = datum.file;
-    if (file != lastFile) {
-      // New file starting
-      header(file);
-      lastFile = file;
-    }
-
-    string s = datum.name;
-    if (s == "-") {
-      separator('-');
-      continue;
-    }
-    bool useBaseline /* = void */;
-    if (s[0] == '%') {
-      s.erase(0, 1);
-      useBaseline = true;
-    } else {
-      baselineNsPerIter = datum.timeInNs;
-      useBaseline = false;
-    }
-    s.resize(columns - 29, ' ');
-    auto nsPerIter = datum.timeInNs;
-    auto secPerIter = nsPerIter / 1E9;
-    auto itersPerSec = (secPerIter == 0)
-                           ? std::numeric_limits<double>::infinity()
-                           : (1 / secPerIter);
-    if (!useBaseline) {
-      // Print without baseline
-      printf("%*s           %9s  %7s\n",
-             static_cast<int>(s.size()), s.c_str(),
-             readableTime(secPerIter, 2).c_str(),
-             metricReadable(itersPerSec, 2).c_str());
-    } else {
-      // Print with baseline
-      auto rel = baselineNsPerIter / nsPerIter * 100.0;
-      printf("%*s %7.2f%%  %9s  %7s\n",
-             static_cast<int>(s.size()), s.c_str(),
-             rel,
-             readableTime(secPerIter, 2).c_str(),
-             metricReadable(itersPerSec, 2).c_str());
+      string s = datum.name;
+      if (s == "-") {
+        separator('-');
+        continue;
+      }
+      bool useBaseline /* = void */;
+      if (s[0] == '%') {
+        s.erase(0, 1);
+        useBaseline = true;
+      } else {
+        baselineNsPerIter = datum.timeInNs;
+        useBaseline = false;
+      }
+      s.resize(columns - 29, ' ');
+      auto nsPerIter = datum.timeInNs;
+      auto secPerIter = nsPerIter / 1E9;
+      auto itersPerSec = (secPerIter == 0)
+          ? std::numeric_limits<double>::infinity()
+          : (1 / secPerIter);
+      if (!useBaseline) {
+        // Print without baseline
+        printf(
+            "%*s           %9s  %7s\n",
+            static_cast<int>(s.size()),
+            s.c_str(),
+            readableTime(secPerIter, 2).c_str(),
+            metricReadable(itersPerSec, 2).c_str());
+      } else {
+        // Print with baseline
+        auto rel = baselineNsPerIter / nsPerIter * 100.0;
+        printf(
+            "%*s %7.2f%%  %9s  %7s\n",
+            static_cast<int>(s.size()),
+            s.c_str(),
+            rel,
+            readableTime(secPerIter, 2).c_str(),
+            metricReadable(itersPerSec, 2).c_str());
+      }
     }
   }
-  separator('=');
-}
+};
+} // namespace
 
 static void printBenchmarkResultsAsJson(
     const vector<detail::BenchmarkResult>& data) {
@@ -337,11 +334,13 @@ static void printBenchmarkResultsAsVerboseJson(
 static void printBenchmarkResults(const vector<detail::BenchmarkResult>& data) {
   if (FLAGS_json_verbose) {
     printBenchmarkResultsAsVerboseJson(data);
+    return;
   } else if (FLAGS_json) {
     printBenchmarkResultsAsJson(data);
-  } else {
-    printBenchmarkResultsAsTable(data);
+    return;
   }
+
+  CHECK(FLAGS_json_verbose || FLAGS_json) << "Cannot print benchmark results";
 }
 
 void benchmarkResultsToDynamic(
@@ -461,6 +460,7 @@ void runBenchmarks() {
 
   auto const globalBaseline =
       runBenchmarkGetNSPerIteration(benchmarks()[baselineIndex].func, 0);
+  auto printer = BenchmarkResultsPrinter{};
   FOR_EACH_RANGE (i, 0, benchmarks().size()) {
     if (i == baselineIndex) {
       continue;
@@ -473,12 +473,21 @@ void runBenchmarks() {
       }
       elapsed = runBenchmarkGetNSPerIteration(bm.func, globalBaseline);
     }
-    results.push_back({bm.file, bm.name, elapsed});
+
+    if (!FLAGS_json_verbose && !FLAGS_json) {
+      printer.print({{bm.file, bm.name, elapsed}});
+    } else {
+      results.push_back({bm.file, bm.name, elapsed});
+    }
   }
 
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
 
-  printBenchmarkResults(results);
+  if (FLAGS_json_verbose || FLAGS_json) {
+    printBenchmarkResults(results);
+  } else {
+    printer.separator('=');
+  }
 }
 
 } // namespace folly
