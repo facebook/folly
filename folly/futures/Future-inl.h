@@ -1297,8 +1297,8 @@ Future<T>::onError(F&& func) {
 }
 
 template <class Func>
-auto via(Executor* x, Func&& func)
-    -> Future<typename isFuture<decltype(std::declval<Func>()())>::Inner> {
+auto via(Executor* x, Func&& func) -> Future<
+    typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner> {
   // TODO make this actually more performant. :-P #7260175
   return via(x).then(std::forward<Func>(func));
 }

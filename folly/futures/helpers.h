@@ -274,8 +274,8 @@ inline Future<Unit> via(
 /// This is semantically equivalent to via(executor).then(func), but
 /// easier to read and slightly more efficient.
 template <class Func>
-auto via(Executor*, Func&& func)
-    -> Future<typename isFuture<decltype(std::declval<Func>()())>::Inner>;
+auto via(Executor*, Func&& func) -> Future<
+    typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner>;
 
 /** When all the input Futures complete, the returned Future will complete.
   Errors do not cause early termination; this Future will always succeed

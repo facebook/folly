@@ -603,6 +603,11 @@ TEST(ViaFunc, future) {
             .getVia(&x));
 }
 
+TEST(ViaFunc, semi_future) {
+  ManualExecutor x;
+  EXPECT_EQ(42, via(&x, [] { return makeSemiFuture(42); }).getVia(&x));
+}
+
 TEST(ViaFunc, voidFuture) {
   ManualExecutor x;
   int count = 0;
