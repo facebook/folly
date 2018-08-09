@@ -140,22 +140,33 @@ TEST(Random, sanity) {
 }
 
 TEST(Random, SecureFork) {
-  unsigned char buffer = 0;
-  // Init random buffer
-  folly::Random::secureRandom(&buffer, 1);
+  // Random buffer size is 128, must be less than that.
+  int retries = 100;
+  while (true) {
+    unsigned char buffer = 0;
+    // Init random buffer
+    folly::Random::secureRandom(&buffer, 1);
 
-  auto pid = fork();
-  EXPECT_NE(pid, -1);
-  if (pid) {
-    // parent
-    int status = 0;
-    folly::Random::secureRandom(&buffer, 1);
-    auto pid2 = wait(&status);
-    EXPECT_NE(WEXITSTATUS(status), buffer);
-    EXPECT_EQ(pid, pid2);
-  } else {
-    // child
-    folly::Random::secureRandom(&buffer, 1);
-    exit(buffer); // Do not print gtest results
+    auto pid = fork();
+    EXPECT_NE(pid, -1);
+    if (pid) {
+      // parent
+      int status = 0;
+      folly::Random::secureRandom(&buffer, 1);
+      auto pid2 = wait(&status);
+      EXPECT_EQ(pid, pid2);
+      // Since this *is* random data, we could randomly end up with
+      // the same byte.  Try again a few times if so before assuming
+      // real failure.
+      if (WEXITSTATUS(status) == buffer && retries-- > 0) {
+        continue;
+      }
+      EXPECT_NE(WEXITSTATUS(status), buffer);
+      return;
+    } else {
+      // child
+      folly::Random::secureRandom(&buffer, 1);
+      exit(buffer); // Do not print gtest results
+    }
   }
 }
