@@ -1045,16 +1045,28 @@ struct SizeAndPackedBegin<SizeType, ItemIter, false> {
 template <typename Policy>
 class F14Table : public Policy {
  public:
-  using typename Policy::Item;
+  using Item = typename Policy::Item;
+
   using value_type = typename Policy::Value;
   using allocator_type = typename Policy::Alloc;
 
  private:
+  using Alloc = typename Policy::Alloc;
+  using AllocTraits = typename Policy::AllocTraits;
+  using Hasher = typename Policy::Hasher;
+  using InternalSizeType = typename Policy::InternalSizeType;
+  using KeyEqual = typename Policy::KeyEqual;
+
   using Policy::kAllocIsAlwaysEqual;
   using Policy::kDefaultConstructIsNoexcept;
+  using Policy::kEnableItemIteration;
   using Policy::kSwapIsNoexcept;
 
-  using AllocTraits = typename Policy::AllocTraits;
+  using Policy::destroyItemOnClear;
+  using Policy::isAvalanchingHasher;
+  using Policy::prefetchBeforeCopy;
+  using Policy::prefetchBeforeDestroy;
+  using Policy::prefetchBeforeRehash;
 
   using ByteAlloc = typename AllocTraits::template rebind_alloc<uint8_t>;
   using BytePtr = typename std::allocator_traits<ByteAlloc>::pointer;
@@ -1072,11 +1084,8 @@ class F14Table : public Policy {
   //////// begin fields
 
   ChunkPtr chunks_{Chunk::emptyInstance()};
-  typename Policy::InternalSizeType chunkMask_{0};
-  SizeAndPackedBegin<
-      typename Policy::InternalSizeType,
-      ItemIter,
-      Policy::kEnableItemIteration>
+  InternalSizeType chunkMask_{0};
+  SizeAndPackedBegin<InternalSizeType, ItemIter, kEnableItemIteration>
       sizeAndPackedBegin_;
 
   //////// end fields
@@ -1086,7 +1095,7 @@ class F14Table : public Policy {
     swap(chunks_, rhs.chunks_);
     swap(chunkMask_, rhs.chunkMask_);
     swap(sizeAndPackedBegin_.size_, rhs.sizeAndPackedBegin_.size_);
-    if (Policy::kEnableItemIteration) {
+    if (kEnableItemIteration) {
       swap(
           sizeAndPackedBegin_.packedBegin(),
           rhs.sizeAndPackedBegin_.packedBegin());
@@ -1096,9 +1105,9 @@ class F14Table : public Policy {
  public:
   F14Table(
       std::size_t initialCapacity,
-      typename Policy::Hasher const& hasher,
-      typename Policy::KeyEqual const& keyEqual,
-      typename Policy::Alloc const& alloc)
+      Hasher const& hasher,
+      KeyEqual const& keyEqual,
+      Alloc const& alloc)
       : Policy{hasher, keyEqual, alloc} {
     if (initialCapacity > 0) {
       reserve(initialCapacity);
@@ -1109,21 +1118,19 @@ class F14Table : public Policy {
     buildFromF14Table(rhs);
   }
 
-  F14Table(F14Table const& rhs, typename Policy::Alloc const& alloc)
-      : Policy{rhs, alloc} {
+  F14Table(F14Table const& rhs, Alloc const& alloc) : Policy{rhs, alloc} {
     buildFromF14Table(rhs);
   }
 
   F14Table(F14Table&& rhs) noexcept(
-      std::is_nothrow_move_constructible<typename Policy::Hasher>::value&&
-          std::is_nothrow_move_constructible<typename Policy::KeyEqual>::value&&
-              std::is_nothrow_move_constructible<typename Policy::Alloc>::value)
+      std::is_nothrow_move_constructible<Hasher>::value&&
+          std::is_nothrow_move_constructible<KeyEqual>::value&&
+              std::is_nothrow_move_constructible<Alloc>::value)
       : Policy{std::move(rhs)} {
     swapContents(rhs);
   }
 
-  F14Table(F14Table&& rhs, typename Policy::Alloc const& alloc) noexcept(
-      kAllocIsAlwaysEqual)
+  F14Table(F14Table&& rhs, Alloc const& alloc) noexcept(kAllocIsAlwaysEqual)
       : Policy{std::move(rhs), alloc} {
     if (kAllocIsAlwaysEqual || this->alloc() == rhs.alloc()) {
       // move storage (common case)
@@ -1144,11 +1151,11 @@ class F14Table : public Policy {
   }
 
   F14Table& operator=(F14Table&& rhs) noexcept(
-      std::is_nothrow_move_assignable<typename Policy::Hasher>::value&&
-          std::is_nothrow_move_assignable<typename Policy::KeyEqual>::value &&
+      std::is_nothrow_move_assignable<Hasher>::value&&
+          std::is_nothrow_move_assignable<KeyEqual>::value &&
       (kAllocIsAlwaysEqual ||
        (AllocTraits::propagate_on_container_move_assignment::value &&
-        std::is_nothrow_move_assignable<typename Policy::Alloc>::value))) {
+        std::is_nothrow_move_assignable<Alloc>::value))) {
     if (this != &rhs) {
       reset();
       static_cast<Policy&>(*this) = std::move(rhs);
@@ -1222,7 +1229,7 @@ class F14Table : public Policy {
   static HashPair splitHash(std::size_t hash) {
     static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");
     std::size_t tag;
-    if (!Policy::isAvalanchingHasher()) {
+    if (!isAvalanchingHasher()) {
 #if FOLLY_SSE_PREREQ(4, 2)
       // SSE4.2 CRC
       std::size_t c = _mm_crc32_u64(0, hash);
@@ -1271,7 +1278,7 @@ class F14Table : public Policy {
   static HashPair splitHash(std::size_t hash) {
     static_assert(sizeof(std::size_t) == sizeof(uint32_t), "");
     uint8_t tag;
-    if (!Policy::isAvalanchingHasher()) {
+    if (!isAvalanchingHasher()) {
 #if FOLLY_SSE_PREREQ(4, 2)
       // SSE4.2 CRC
       auto c = _mm_crc32_u32(0, hash);
@@ -1325,7 +1332,7 @@ class F14Table : public Policy {
 
  public:
   ItemIter begin() const noexcept {
-    FOLLY_SAFE_DCHECK(Policy::kEnableItemIteration, "");
+    FOLLY_SAFE_DCHECK(kEnableItemIteration, "");
     return ItemIter{sizeAndPackedBegin_.packedBegin()};
   }
 
@@ -1337,14 +1344,14 @@ class F14Table : public Policy {
     return size() == 0;
   }
 
-  typename Policy::InternalSizeType size() const noexcept {
+  InternalSizeType size() const noexcept {
     return sizeAndPackedBegin_.size_;
   }
 
   std::size_t max_size() const noexcept {
     auto& a = this->alloc();
     return std::min<std::size_t>(
-        (std::numeric_limits<typename Policy::InternalSizeType>::max)(),
+        (std::numeric_limits<InternalSizeType>::max)(),
         AllocTraits::max_size(a));
   }
 
@@ -1492,7 +1499,7 @@ class F14Table : public Policy {
 
  private:
   void adjustSizeAndBeginAfterInsert(ItemIter iter) {
-    if (Policy::kEnableItemIteration) {
+    if (kEnableItemIteration) {
       // packedBegin is the max of all valid ItemIter::pack()
       auto packed = iter.pack();
       if (sizeAndPackedBegin_.packedBegin() < packed) {
@@ -1527,7 +1534,7 @@ class F14Table : public Policy {
 
   void adjustSizeAndBeginBeforeErase(ItemIter iter) {
     --sizeAndPackedBegin_.size_;
-    if (Policy::kEnableItemIteration) {
+    if (kEnableItemIteration) {
       if (iter.pack() == sizeAndPackedBegin_.packedBegin()) {
         if (size() == 0) {
           iter = ItemIter{};
@@ -1575,7 +1582,7 @@ class F14Table : public Policy {
 
   ChunkPtr lastOccupiedChunk() const {
     FOLLY_SAFE_DCHECK(size() > 0, "");
-    if (Policy::kEnableItemIteration) {
+    if (kEnableItemIteration) {
       return begin().chunk();
     } else {
       return chunks_ + chunkMask_;
@@ -1615,7 +1622,7 @@ class F14Table : public Policy {
       auto n = chunkAllocSize(chunkMask_ + 1, bucket_count());
       std::memcpy(&chunks_[0], &src.chunks_[0], n);
       sizeAndPackedBegin_.size_ = src.size();
-      if (Policy::kEnableItemIteration) {
+      if (kEnableItemIteration) {
         auto srcBegin = src.begin();
         sizeAndPackedBegin_.packedBegin() =
             ItemIter{chunks_ + (srcBegin.chunk() - src.chunks_),
@@ -1633,7 +1640,7 @@ class F14Table : public Policy {
         dstChunk->copyOverflowInfoFrom(*srcChunk);
 
         auto iter = srcChunk->occupiedIter();
-        if (Policy::prefetchBeforeCopy()) {
+        if (prefetchBeforeCopy()) {
           for (auto piter = iter; piter.hasNext();) {
             this->prefetchValue(srcChunk->citem(piter.next()));
           }
@@ -1656,7 +1663,7 @@ class F14Table : public Policy {
       } while (size() != src.size());
 
       // reset doesn't care about packedBegin, so we don't fix it until the end
-      if (Policy::kEnableItemIteration) {
+      if (kEnableItemIteration) {
         sizeAndPackedBegin_.packedBegin() =
             ItemIter{chunks_ + maxChunkIndex,
                      chunks_[maxChunkIndex].lastOccupied().index()}
@@ -1719,7 +1726,7 @@ class F14Table : public Policy {
     while (true) {
       auto srcChunk = &src.chunks_[srcChunkIndex];
       auto iter = srcChunk->occupiedIter();
-      if (Policy::prefetchBeforeRehash()) {
+      if (prefetchBeforeRehash()) {
         for (auto piter = iter; piter.hasNext();) {
           this->prefetchValue(srcChunk->item(piter.next()));
         }
@@ -1829,11 +1836,8 @@ class F14Table : public Policy {
         initializeChunks(rawAllocation, newChunkCount, newMaxSizeWithoutRehash);
 
     FOLLY_SAFE_DCHECK(
-        newChunkCount <
-            std::numeric_limits<typename Policy::InternalSizeType>::max(),
-        "");
-    chunkMask_ =
-        static_cast<typename Policy::InternalSizeType>(newChunkCount - 1);
+        newChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
+    chunkMask_ = static_cast<InternalSizeType>(newChunkCount - 1);
 
     bool success = false;
     SCOPE_EXIT {
@@ -1853,11 +1857,8 @@ class F14Table : public Policy {
             chunkAllocSize(newChunkCount, newMaxSizeWithoutRehash);
         chunks_ = origChunks;
         FOLLY_SAFE_DCHECK(
-            origChunkCount <
-                std::numeric_limits<typename Policy::InternalSizeType>::max(),
-            "");
-        chunkMask_ =
-            static_cast<typename Policy::InternalSizeType>(origChunkCount - 1);
+            origChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
+        chunkMask_ = static_cast<InternalSizeType>(origChunkCount - 1);
       }
 
       this->afterRehash(
@@ -1887,7 +1888,7 @@ class F14Table : public Policy {
         }
         ++srcI;
       }
-      if (Policy::kEnableItemIteration) {
+      if (kEnableItemIteration) {
         sizeAndPackedBegin_.packedBegin() = ItemIter{dstChunk, dstI - 1}.pack();
       }
     } else {
@@ -1918,7 +1919,7 @@ class F14Table : public Policy {
       std::size_t remaining = size();
       while (remaining > 0) {
         auto iter = srcChunk->occupiedIter();
-        if (Policy::prefetchBeforeRehash()) {
+        if (prefetchBeforeRehash()) {
           for (auto piter = iter; piter.hasNext();) {
             this->prefetchValue(srcChunk->item(piter.next()));
           }
@@ -1937,7 +1938,7 @@ class F14Table : public Policy {
         --srcChunk;
       }
 
-      if (Policy::kEnableItemIteration) {
+      if (kEnableItemIteration) {
         // this code replaces size invocations of adjustSizeAndBeginAfterInsert
         std::size_t i = chunkMask_;
         while (fullness[i] == 0) {
@@ -2036,11 +2037,11 @@ class F14Table : public Policy {
     }
 
     if (!empty()) {
-      if (Policy::destroyItemOnClear()) {
+      if (destroyItemOnClear()) {
         for (std::size_t ci = 0; ci <= chunkMask_; ++ci) {
           ChunkPtr chunk = chunks_ + ci;
           auto iter = chunk->occupiedIter();
-          if (Policy::prefetchBeforeDestroy()) {
+          if (prefetchBeforeDestroy()) {
             for (auto piter = iter; piter.hasNext();) {
               this->prefetchValue(chunk->item(piter.next()));
             }
@@ -2060,7 +2061,7 @@ class F14Table : public Policy {
         }
         chunks_[0].markEof(c0c);
       }
-      if (Policy::kEnableItemIteration) {
+      if (kEnableItemIteration) {
         sizeAndPackedBegin_.packedBegin() = ItemIter{}.pack();
       }
       sizeAndPackedBegin_.size_ = 0;
@@ -2175,7 +2176,7 @@ class F14Table : public Policy {
     auto chunk = &chunks_[0];
     for (std::size_t i = 0; i <= maxChunkIndex; ++i, ++chunk) {
       auto iter = chunk->occupiedIter();
-      if (Policy::prefetchBeforeCopy()) {
+      if (prefetchBeforeCopy()) {
         for (auto piter = iter; piter.hasNext();) {
           this->prefetchValue(chunk->citem(piter.next()));
         }
@@ -2220,7 +2221,7 @@ class F14Table : public Policy {
   F14TableStats computeStats() const {
     F14TableStats stats;
 
-    if (kIsDebug && Policy::kEnableItemIteration) {
+    if (kIsDebug && kEnableItemIteration) {
       // validate iteration
       std::size_t n = 0;
       ItemIter prev;
