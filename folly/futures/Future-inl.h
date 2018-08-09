@@ -1127,7 +1127,7 @@ Future<T> Future<T>::thenError(F&& func) && {
 }
 
 template <class T>
-Future<Unit> Future<T>::then() {
+Future<Unit> Future<T>::then() && {
   return std::move(*this).then([]() {});
 }
 

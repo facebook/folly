@@ -1375,7 +1375,12 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  Future<Unit> then();
+  Future<Unit> then() &&;
+
+  [[deprecated("must be rvalue-qualified, e.g., std::move(future).then()")]]
+  Future<Unit> then() & {
+    return std::move(*this).then();
+  }
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
