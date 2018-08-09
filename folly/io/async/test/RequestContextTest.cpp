@@ -44,31 +44,53 @@ class TestData : public RequestData {
   int data_;
 };
 
-RequestContext& getContext() {
-  auto* ctx = RequestContext::get();
-  EXPECT_TRUE(ctx != nullptr);
-  return *ctx;
-}
+class RequestContextTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    // Make sure each test starts out using the default context, and not some
+    // other context left over by a previous test.
+    RequestContext::setContext(nullptr);
 
-void setData(int data = 0, std::string key = "test") {
-  getContext().setContextData(key, std::make_unique<TestData>(data));
-}
+    // Make sure no data is set for the "test" key when we start.  There could
+    // be left over data in the default context from a previous test.  If we
+    // don't clear it out future calls to setContextData() won't actually work,
+    // and will reset the data to null instead of properly setting the new
+    // desired data.
+    //
+    // (All of the tests generally want the behavior of overwriteContextData()
+    // rather than setContextData(), but that method is private.)
+    //
+    // We ideally want to clear out data for any keys that may be set, not just
+    // the "test" key, but there also isn't a RequestContext API to do this.
+    clearData();
+  }
 
-bool hasData(std::string key = "test") {
-  return getContext().hasContextData(key);
-}
+  RequestContext& getContext() {
+    auto* ctx = RequestContext::get();
+    EXPECT_TRUE(ctx != nullptr);
+    return *ctx;
+  }
 
-const TestData& getData(std::string key = "test") {
-  auto* ptr = dynamic_cast<TestData*>(getContext().getContextData(key));
-  EXPECT_TRUE(ptr != nullptr);
-  return *ptr;
-}
+  void setData(int data = 0, std::string key = "test") {
+    getContext().setContextData(key, std::make_unique<TestData>(data));
+  }
 
-void clearData(std::string key = "test") {
-  getContext().clearContextData(key);
-}
+  bool hasData(std::string key = "test") {
+    return getContext().hasContextData(key);
+  }
 
-TEST(RequestContext, SimpleTest) {
+  const TestData& getData(std::string key = "test") {
+    auto* ptr = dynamic_cast<TestData*>(getContext().getContextData(key));
+    EXPECT_TRUE(ptr != nullptr);
+    return *ptr;
+  }
+
+  void clearData(std::string key = "test") {
+    getContext().clearContextData(key);
+  }
+};
+
+TEST_F(RequestContextTest, SimpleTest) {
   EventBase base;
 
   // There should always be a default context with get()
@@ -105,7 +127,7 @@ TEST(RequestContext, SimpleTest) {
   EXPECT_TRUE(nullptr != RequestContext::get());
 }
 
-TEST(RequestContext, RequestContextScopeGuard) {
+TEST_F(RequestContextTest, RequestContextScopeGuard) {
   RequestContextScopeGuard g0;
   setData(10);
   {
@@ -121,7 +143,7 @@ TEST(RequestContext, RequestContextScopeGuard) {
   EXPECT_EQ(1, getData().unset_);
 }
 
-TEST(RequestContext, defaultContext) {
+TEST_F(RequestContextTest, defaultContext) {
   // Don't create a top level guard
   setData(10);
   {
@@ -133,7 +155,7 @@ TEST(RequestContext, defaultContext) {
   EXPECT_EQ(0, getData().unset_);
 }
 
-TEST(RequestContext, setIfAbsentTest) {
+TEST_F(RequestContextTest, setIfAbsentTest) {
   EXPECT_TRUE(RequestContext::get() != nullptr);
 
   RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
@@ -155,7 +177,7 @@ TEST(RequestContext, setIfAbsentTest) {
   EXPECT_TRUE(nullptr != RequestContext::get());
 }
 
-TEST(RequestContext, testSetUnset) {
+TEST_F(RequestContextTest, testSetUnset) {
   RequestContext::create();
   auto ctx1 = RequestContext::saveContext();
   ctx1->setContextData("test", std::make_unique<TestData>(10));
@@ -188,7 +210,7 @@ TEST(RequestContext, testSetUnset) {
   EXPECT_EQ(1, testData2->unset_);
 }
 
-TEST(RequestContext, deadlockTest) {
+TEST_F(RequestContextTest, deadlockTest) {
   class DeadlockTestData : public RequestData {
    public:
     explicit DeadlockTestData(const std::string& val) : val_(val) {}
@@ -212,7 +234,7 @@ TEST(RequestContext, deadlockTest) {
 
 // A common use case is to use set/unset to maintain a thread global
 // Regression test to ensure that unset is always called before set
-TEST(RequestContext, sharedGlobalTest) {
+TEST_F(RequestContextTest, sharedGlobalTest) {
   static bool global = false;
 
   class GlobalTestData : public RequestData {
@@ -242,7 +264,7 @@ TEST(RequestContext, sharedGlobalTest) {
   }
 }
 
-TEST(RequestContext, ShallowCopyBasic) {
+TEST_F(RequestContextTest, ShallowCopyBasic) {
   ShallowCopyRequestContextScopeGuard g0;
   setData(123, "immutable");
   EXPECT_EQ(123, getData("immutable").data_);
@@ -261,7 +283,7 @@ TEST(RequestContext, ShallowCopyBasic) {
   EXPECT_EQ(0, getData("immutable").unset_);
 }
 
-TEST(RequestContext, ShallowCopyOverwrite) {
+TEST_F(RequestContextTest, ShallowCopyOverwrite) {
   RequestContextScopeGuard g0;
   setData(123);
   EXPECT_EQ(123, getData().data_);
@@ -277,7 +299,7 @@ TEST(RequestContext, ShallowCopyOverwrite) {
   EXPECT_EQ(1, getData().unset_);
 }
 
-TEST(RequestContext, ShallowCopyDefaultContext) {
+TEST_F(RequestContextTest, ShallowCopyDefaultContext) {
   // Don't set global scope guard
   setData(123);
   EXPECT_EQ(123, getData().data_);
@@ -291,7 +313,7 @@ TEST(RequestContext, ShallowCopyDefaultContext) {
   EXPECT_EQ(0, getData().unset_);
 }
 
-TEST(RequestContext, ShallowCopyClear) {
+TEST_F(RequestContextTest, ShallowCopyClear) {
   RequestContextScopeGuard g0;
   setData(123);
   EXPECT_EQ(123, getData().data_);
