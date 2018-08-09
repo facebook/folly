@@ -18,6 +18,9 @@
 
 #include <type_traits>
 
+// FOLLY_HAVE_LIBDWARF_DWARF_H is only ever set for autoconf-based builds.
+// We can delete this #if check once we completely deprecate and remove
+// the autoconf build.
 #if FOLLY_HAVE_LIBDWARF_DWARF_H
 #include <libdwarf/dwarf.h>
 #else
