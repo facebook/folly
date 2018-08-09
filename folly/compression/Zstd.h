@@ -24,7 +24,9 @@
 
 #if FOLLY_HAVE_LIBZSTD
 
+#ifndef ZSTD_STATIC_LINKING_ONLY
 #define ZSTD_STATIC_LINKING_ONLY
+#endif
 #include <zstd.h>
 
 namespace folly {

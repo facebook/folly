@@ -20,7 +20,6 @@
 #include <stdexcept>
 #include <string>
 
-#define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
 
 #include <folly/Conv.h>
