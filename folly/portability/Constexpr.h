@@ -28,7 +28,18 @@ namespace detail {
 
 template <typename Char>
 constexpr size_t constexpr_strlen_internal(const Char* s, size_t len) {
-  return *s == Char(0) ? len : constexpr_strlen_internal(s + 1, len + 1);
+  // clang-format off
+  return
+      *(s + 0) == Char(0) ? len + 0 :
+      *(s + 1) == Char(0) ? len + 1 :
+      *(s + 2) == Char(0) ? len + 2 :
+      *(s + 3) == Char(0) ? len + 3 :
+      *(s + 4) == Char(0) ? len + 4 :
+      *(s + 5) == Char(0) ? len + 5 :
+      *(s + 6) == Char(0) ? len + 6 :
+      *(s + 7) == Char(0) ? len + 7 :
+      constexpr_strlen_internal(s + 8, len + 8);
+  // clang-format on
 }
 static_assert(
     constexpr_strlen_internal("123456789", 0) == 9,
