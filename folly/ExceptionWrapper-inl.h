@@ -606,8 +606,8 @@ inline void exception_wrapper::handle_(
   // This continuation gets evaluated if CatchFns... does not include a
   // catch-all handler. It is a no-op.
   auto continuation = [](StdEx* ex) { return ex; };
-  if (StdEx* e = impl(continuation)) {
-    throw *e; // Not handled. Throw.
+  if (nullptr != impl(continuation)) {
+    this_.throw_exception();
   }
 }
 

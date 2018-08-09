@@ -636,6 +636,37 @@ TEST(ExceptionWrapper, handle_std_exception_unhandled) {
   EXPECT_TRUE(handled);
 }
 
+TEST(ExceptionWrapper, handle_std_exception_propagated) {
+  auto ep = std::make_exception_ptr(std::runtime_error{"hello world"});
+  exception_wrapper const ew_eptr(ep, from_eptr<std::runtime_error>(ep));
+  exception_wrapper const ew_small(std::runtime_error{"hello world"});
+  exception_wrapper const ew_big(BigRuntimeError{"hello world"});
+
+  try {
+    ew_eptr.handle();
+  } catch (const std::runtime_error&) {
+    SUCCEED();
+  } catch (const std::exception&) {
+    ADD_FAILURE();
+  }
+
+  try {
+    ew_small.handle();
+  } catch (const std::runtime_error&) {
+    SUCCEED();
+  } catch (const std::exception&) {
+    ADD_FAILURE();
+  }
+
+  try {
+    ew_big.handle();
+  } catch (const std::runtime_error&) {
+    SUCCEED();
+  } catch (const std::exception&) {
+    ADD_FAILURE();
+  }
+}
+
 TEST(ExceptionWrapper, handle_non_std_exception_small) {
   auto ep = std::make_exception_ptr(42);
   exception_wrapper const ew_eptr1(ep);
