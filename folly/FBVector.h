@@ -113,7 +113,7 @@ class fbvector {
     // note that 'allocate' and 'deallocate' are inherited from Allocator
     T* D_allocate(size_type n) {
       if (usingStdAllocator::value) {
-        return static_cast<T*>(malloc(n * sizeof(T)));
+        return static_cast<T*>(checkedMalloc(n * sizeof(T)));
       } else {
         return std::allocator_traits<Allocator>::allocate(*this, n);
       }
