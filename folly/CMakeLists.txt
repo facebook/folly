@@ -13,4 +13,3 @@ install(
 )
 
 add_subdirectory(experimental/exception_tracer)
-add_subdirectory(experimental/symbolizer)
