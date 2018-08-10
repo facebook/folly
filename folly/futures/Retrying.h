@@ -84,21 +84,21 @@ void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
   using F = invoke_result_t<FF, size_t>;
   using T = typename F::value_type;
   auto f = makeFutureWith([&] { return ff(k++); });
-  f.then([k,
-          prom = std::move(prom),
-          pm = std::forward<Policy>(p),
-          ffm = std::forward<FF>(ff)](Try<T>&& t) mutable {
+  std::move(f).then([k,
+                     prom = std::move(prom),
+                     pm = std::forward<Policy>(p),
+                     ffm = std::forward<FF>(ff)](Try<T>&& t) mutable {
     if (t.hasValue()) {
       prom.setValue(std::move(t).value());
       return;
     }
     auto& x = t.exception();
     auto q = makeFutureWith([&] { return pm(k, x); });
-    q.then([k,
-            prom = std::move(prom),
-            xm = std::move(x),
-            pm = std::move(pm),
-            ffm = std::move(ffm)](Try<bool> shouldRetry) mutable {
+    std::move(q).then([k,
+                       prom = std::move(prom),
+                       xm = std::move(x),
+                       pm = std::move(pm),
+                       ffm = std::move(ffm)](Try<bool> shouldRetry) mutable {
       if (shouldRetry.hasValue() && shouldRetry.value()) {
         retryingImpl(k, std::move(pm), std::move(ffm), std::move(prom));
       } else if (shouldRetry.hasValue()) {
