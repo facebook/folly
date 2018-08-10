@@ -72,6 +72,7 @@ set(
   "${CMAKE_CURRENT_SOURCE_DIR}:${CMAKE_CURRENT_BINARY_DIR}"
 )
 
+include(GNUInstallDirs)
 include(folly-deps) # Find the required packages
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -204,6 +205,11 @@ source_group("folly\\build" FILES
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
 )
 
+# Generate pkg-config variables from folly_deps before we add our own
+# build/install-time include directory generator expressions
+include(GenPkgConfig)
+gen_pkgconfig_vars(FOLLY_PKGCONFIG folly_deps)
+
 target_include_directories(folly_deps
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -307,6 +313,19 @@ install(
   DESTINATION ${CMAKE_INSTALL_DIR}
   NAMESPACE Folly::
   FILE folly-targets.cmake
+  COMPONENT dev
+)
+
+# Generate a pkg-config file so that downstream projects that don't use
+# CMake can depend on folly using pkg-config.
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/CMake/libfolly.pc.in
+  ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
+  @ONLY
+)
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
+  DESTINATION ${LIB_INSTALL_DIR}/pkgconfig
   COMPONENT dev
 )
 
