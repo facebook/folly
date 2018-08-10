@@ -24,7 +24,7 @@
 
 #include <gssapi/gssapi_generic.h>
 #include <gssapi/gssapi_krb5.h>
-#include <krb5.h> // @manual
+#include <krb5/krb5.h>
 
 // Kerberos defines a bunch of things that we implement as actual
 // functions, so undefine whatever mess kerberos has done.
