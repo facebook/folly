@@ -43,7 +43,7 @@ def make_docker_context(
         opts = {}
 
     valid_versions = (
-        ('ubuntu:14.04', '4.9'), ('ubuntu:16.04', '5'), ('debian:8.6', '4.9')
+        ('ubuntu:16.04', '5'),
     )
 
     def add_args(parser):
@@ -69,14 +69,14 @@ def make_docker_context(
         )
         parser.add_argument(
             '--os-image', metavar='IMG', choices=zip(*valid_versions)[0],
-            default=opts.get('os_image', 'debian:8.6'),
+            default=opts.get('os_image', valid_versions[0][0]),
             help='Docker OS image -- be sure to use only ones you trust (See '
                 'README.docker). Choices: %(choices)s. Default: %(default)s.',
         )
         parser.add_argument(
             '--gcc-version', metavar='VER',
             choices=set(zip(*valid_versions)[1]),
-            default=opts.get('gcc_version', '4.9'),
+            default=opts.get('gcc_version', valid_versions[0][1]),
             help='Choices: %(choices)s. Default: %(default)s.',
         )
         parser.add_argument(

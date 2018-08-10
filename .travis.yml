@@ -36,12 +36,6 @@ cache:
 #   https://github.com/travis-ci/travis-ci/issues/5142
 matrix:
   include:
-    - env: ['os_image=ubuntu:14.04', gcc_version=4.9]
-      services: [docker]
-    # Unlike 14.04, this Debian Stable has 4.9 as the system compiler, so
-    # there is no risk of 4.8/4.9 ABI incompatibilities.
-    - env: ['os_image=debian:8.6', gcc_version=4.9]
-      services: [docker]
     - env: ['os_image=ubuntu:16.04', gcc_version=5]
       services: [docker]
 
