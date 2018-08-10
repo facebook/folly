@@ -18,8 +18,6 @@
 
 #include <folly/Portability.h>
 
-#ifndef FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-
 // F14 has been implemented for SSE2 and NEON (so far)
 #if FOLLY_SSE >= 2 || FOLLY_NEON
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
@@ -30,4 +28,28 @@
     "falling back to std::unordered_map / set"
 #endif
 
+#if FOLLY_SSE_PREREQ(4, 2) || __ARM_FEATURE_CRC32
+#define FOLLY_F14_CRC_INTRINSIC_AVAILABLE 1
+#else
+#define FOLLY_F14_CRC_INTRINSIC_AVAILABLE 0
 #endif
+
+namespace folly {
+namespace f14 {
+namespace detail {
+
+enum class F14IntrinsicsMode { None, Simd, SimdAndCrc };
+
+static constexpr F14IntrinsicsMode getF14IntrinsicsMode() {
+#if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+  return F14IntrinsicsMode::None;
+#elif !FOLLY_F14_CRC_INTRINSIC_AVAILABLE
+  return F14IntrinsicsMode::Simd;
+#else
+  return F14IntrinsicsMode::SimdAndCrc;
+#endif
+}
+
+} // namespace detail
+} // namespace f14
+} // namespace folly

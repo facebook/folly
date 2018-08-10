@@ -16,20 +16,21 @@
 
 #include <folly/container/detail/F14Table.h>
 
-///////////////////////////////////
-#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-///////////////////////////////////
-
 namespace folly {
 namespace f14 {
 namespace detail {
 
+// If you get a link failure that leads you here, your build is varying
+// compiler flags across compilation units in a way that would break F14.
+// SIMD (SSE2 or NEON) needs to be either on everywhere or off everywhere
+// that uses F14.  If SIMD is on then hardware CRC needs to be enabled
+// everywhere or disabled everywhere.
+void F14LinkCheck<getF14IntrinsicsMode()>::check() noexcept {}
+
+#if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 EmptyTagVectorType kEmptyTagVector = {};
+#endif
 
 } // namespace detail
 } // namespace f14
 } // namespace folly
-
-///////////////////////////////////
-#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-///////////////////////////////////

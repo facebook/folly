@@ -48,23 +48,30 @@
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
+#if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
 #if FOLLY_NEON
-#ifdef __ARM_FEATURE_CRC32
 #include <arm_acle.h> // __crc32cd
+#else
+#include <nmmintrin.h> // _mm_crc32_u64
 #endif
+#else
+#ifdef _WIN32
+#include <intrin.h> // _mul128 in fallback bit mixer
+#endif
+#endif
+
+#if FOLLY_NEON
 #include <arm_neon.h> // uint8x16t intrinsics
 #else // SSE2
 #include <immintrin.h> // __m128i intrinsics
-#include <nmmintrin.h> // _mm_crc32_u64
 #include <xmmintrin.h> // _mm_prefetch
 #endif
-#endif
 
-#ifdef _WIN32
-#include <intrin.h> // for _mul128
 #endif
 
 namespace folly {
+
 struct F14TableStats {
   char const* policy;
   std::size_t size{0};
@@ -98,6 +105,24 @@ struct F14TableStats {
 
 namespace f14 {
 namespace detail {
+
+template <F14IntrinsicsMode>
+struct F14LinkCheck {};
+
+template <>
+struct F14LinkCheck<getF14IntrinsicsMode()> {
+  // The purpose of this method is to trigger a link failure if
+  // compilation flags vary across compilation units.  The definition
+  // is in F14Table.cpp, so only one of F14LinkCheck<None>::check,
+  // F14LinkCheck<Simd>::check, or F14LinkCheck<SimdAndCrc>::check will
+  // be available at link time.
+  //
+  // To cause a link failure the function must be invoked in code that
+  // is not optimized away, so we call it on a couple of cold paths
+  // (exception handling paths in copy construction and rehash).  LTO may
+  // remove it entirely, but that's fine.
+  static void check() noexcept;
+};
 
 #if defined(_LIBCPP_VERSION)
 
@@ -1230,16 +1255,18 @@ class F14Table : public Policy {
     static_assert(sizeof(std::size_t) == sizeof(uint64_t), "");
     std::size_t tag;
     if (!isAvalanchingHasher()) {
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
+#if FOLLY_SSE
       // SSE4.2 CRC
       std::size_t c = _mm_crc32_u64(0, hash);
       tag = (c >> 24) | 0x80;
       hash += c;
-#elif __ARM_FEATURE_CRC32
+#else
       // CRC is optional on armv8 (-march=armv8-a+crc), standard on armv8.1
       std::size_t c = __crc32cd(0, hash);
       tag = (c >> 24) | 0x80;
       hash += c;
+#endif
 #else
       // The mixer below is not fully avalanching for all 64 bits of
       // output, but looks quite good for bits 18..63 and puts plenty
@@ -1279,15 +1306,17 @@ class F14Table : public Policy {
     static_assert(sizeof(std::size_t) == sizeof(uint32_t), "");
     uint8_t tag;
     if (!isAvalanchingHasher()) {
-#if FOLLY_SSE_PREREQ(4, 2)
+#if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
+#if FOLLY_SSE
       // SSE4.2 CRC
       auto c = _mm_crc32_u32(0, hash);
       tag = static_cast<uint8_t>(~(c >> 25));
       hash += c;
-#elif __ARM_FEATURE_CRC32
+#else
       auto c = __crc32cw(0, hash);
       tag = static_cast<uint8_t>(~(c >> 25));
       hash += c;
+#endif
 #else
       // finalizer for 32-bit murmur2
       hash ^= hash >> 13;
@@ -1784,6 +1813,7 @@ class F14Table : public Policy {
       }
     } catch (...) {
       reset();
+      F14LinkCheck<getF14IntrinsicsMode()>::check();
       throw;
     }
   }
@@ -1859,6 +1889,7 @@ class F14Table : public Policy {
         FOLLY_SAFE_DCHECK(
             origChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
         chunkMask_ = static_cast<InternalSizeType>(origChunkCount - 1);
+        F14LinkCheck<getF14IntrinsicsMode()>::check();
       }
 
       this->afterRehash(
