@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define HAZPTR_DEBUG true
 #define HAZPTR_STATS true
 #define HAZPTR_SCAN_THRESHOLD 10
 

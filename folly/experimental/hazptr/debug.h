@@ -17,13 +17,15 @@
 
 #include <glog/logging.h>
 
-#ifndef HAZPTR_DEBUG
-#define HAZPTR_DEBUG false
+#ifdef HAZPTR_DEBUG
+#define HAZPTR_DEBUG_ HAZPTR_DEBUG
+#else
+#define HAZPTR_DEBUG_ false
 #endif
 
 #define HAZPTR_DEBUG_PRINT(...)                      \
   do {                                               \
-    if (HAZPTR_DEBUG) {                              \
+    if (HAZPTR_DEBUG_) {                             \
       VLOG(2) << __func__ << " --- " << __VA_ARGS__; \
     }                                                \
   } while (false)
