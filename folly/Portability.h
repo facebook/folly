@@ -434,7 +434,7 @@ constexpr auto kCpplibVer = 0;
 #endif
 #endif
 
-#if __cpp_coroutines >= 201703L && FOLLY_HAS_INCLUDE(<experimental/coroutine>)
+#if __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
 #elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
 #define FOLLY_HAS_COROUTINES 1

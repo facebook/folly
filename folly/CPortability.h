@@ -59,12 +59,6 @@
 #define FOLLY_HAS_FEATURE(...) 0
 #endif
 
-#if defined(__has_include)
-#define FOLLY_HAS_INCLUDE(...) __has_include(__VA_ARGS__)
-#else
-#define FOLLY_HAS_INCLUDE(...) 0
-#endif
-
 /* Define a convenience macro to test when address sanitizer is being used
  * across the different compilers (e.g. clang, gcc) */
 #if FOLLY_HAS_FEATURE(address_sanitizer) || __SANITIZE_ADDRESS__
