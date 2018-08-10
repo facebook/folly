@@ -17,6 +17,8 @@
 
 #include <experimental/coroutine>
 
+#include <glog/logging.h>
+
 #include <folly/ExceptionString.h>
 #include <folly/Executor.h>
 #include <folly/Optional.h>

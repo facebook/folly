@@ -16,8 +16,8 @@
 #pragma once
 
 #include <folly/ThreadLocal.h>
+#include <folly/experimental/observer/Observer-pre.h>
 #include <folly/experimental/observer/detail/Core.h>
-#include <folly/experimental/observer/detail/Observer-pre.h>
 
 namespace folly {
 namespace observer {

@@ -179,11 +179,11 @@ nobase_follyinclude_HEADERS = \
 	experimental/observer/detail/Core.h \
 	experimental/observer/detail/GraphCycleDetector.h \
 	experimental/observer/detail/ObserverManager.h \
-	experimental/observer/detail/Observer-pre.h \
 	experimental/observer/Observable.h \
 	experimental/observer/Observable-inl.h \
 	experimental/observer/Observer.h \
 	experimental/observer/Observer-inl.h \
+	experimental/observer/Observer-pre.h \
 	experimental/observer/SimpleObservable.h \
 	experimental/observer/SimpleObservable-inl.h \
 	experimental/ProgramOptions.h \

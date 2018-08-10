@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <stddef.h>
+
 namespace folly {
 namespace compression {
 namespace detail {

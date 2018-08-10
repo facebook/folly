@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <glog/logging.h>
+
 #include <folly/experimental/observer/detail/Core.h>
 #include <folly/experimental/observer/detail/GraphCycleDetector.h>
 #include <folly/futures/Future.h>

@@ -26,6 +26,8 @@
 
 #include <glog/logging.h>
 
+#include <folly/Benchmark.h>
+#include <folly/Likely.h>
 #include <folly/portability/GTest.h>
 
 namespace folly { namespace compression {
