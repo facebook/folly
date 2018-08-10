@@ -75,10 +75,15 @@ class BufferedRandomDevice {
   static once_flag flag;
   static constexpr size_t kDefaultBufferSize = 128;
 
+  static void notifyNewGlobalEpoch() {
+    globalEpoch_.fetch_add(1, std::memory_order_relaxed);
+  }
+
   explicit BufferedRandomDevice(size_t bufferSize = kDefaultBufferSize);
 
   void get(void* data, size_t size) {
-    if (LIKELY(size <= remaining())) {
+    auto const globalEpoch = globalEpoch_.load(std::memory_order_relaxed);
+    if (LIKELY(globalEpoch == epoch_ && size <= remaining())) {
       memcpy(data, ptr_, size);
       ptr_ += size;
     } else {
@@ -93,12 +98,16 @@ class BufferedRandomDevice {
     return size_t(buffer_.get() + bufferSize_ - ptr_);
   }
 
+  static std::atomic<size_t> globalEpoch_;
+
+  size_t epoch_{size_t(-1)}; // refill on first use
   const size_t bufferSize_;
   std::unique_ptr<unsigned char[]> buffer_;
   unsigned char* ptr_;
 };
 
 once_flag BufferedRandomDevice::flag;
+std::atomic<size_t> BufferedRandomDevice::globalEpoch_{0};
 struct RandomTag {};
 
 BufferedRandomDevice::BufferedRandomDevice(size_t bufferSize)
@@ -112,17 +121,19 @@ BufferedRandomDevice::BufferedRandomDevice(size_t bufferSize)
         /*parent*/ []() {},
         /*child*/
         []() {
-          using Single = SingletonThreadLocal<BufferedRandomDevice, RandomTag>;
-          auto& t = Single::get();
-          // Clear out buffered data on fork.
-          //
           // Ensure child and parent do not share same entropy pool.
-          t.ptr_ = t.buffer_.get() + t.bufferSize_;
+          BufferedRandomDevice::notifyNewGlobalEpoch();
         });
   });
 }
 
 void BufferedRandomDevice::getSlow(unsigned char* data, size_t size) {
+  auto const globalEpoch = globalEpoch_.load(std::memory_order_relaxed);
+  if (globalEpoch != epoch_) {
+    epoch_ = globalEpoch_;
+    ptr_ = buffer_.get() + bufferSize_;
+  }
+
   DCHECK_GT(size, remaining());
   if (size >= bufferSize_) {
     // Just read directly.
