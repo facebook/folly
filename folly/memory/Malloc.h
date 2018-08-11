@@ -93,8 +93,6 @@ extern "C" int mallctlbymib(const size_t*, size_t, void*, size_t*, void*,
                             size_t)
 __attribute__((__weak__));
 
-#define FOLLY_HAVE_MALLOC_H 1
-
 #else // !defined(_LIBSTDCXX_FBSTRING)
 
 #include <folly/lang/Exception.h> /* nolint */
@@ -105,7 +103,7 @@ __attribute__((__weak__));
 // for malloc_usable_size
 // NOTE: FreeBSD 9 doesn't have malloc.h.  Its definitions
 // are found in stdlib.h.
-#if FOLLY_HAVE_MALLOC_H
+#if __has_include(<malloc.h>)
 #include <malloc.h>
 #else
 #include <stdlib.h>

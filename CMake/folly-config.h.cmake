@@ -35,7 +35,6 @@
 
 #cmakedefine FOLLY_HAVE_LIBGLOG 1
 
-#cmakedefine FOLLY_HAVE_MALLOC_H 1
 #cmakedefine FOLLY_HAVE_FEATURES_H 1
 #cmakedefine FOLLY_USE_JEMALLOC 1
 
