@@ -18,9 +18,9 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 #include <folly/Synchronized.h>
+#include <folly/container/F14Map.h>
 #include <folly/sorted_vector_types.h>
 
 namespace folly {
@@ -169,7 +169,8 @@ class RequestContext {
 
   struct State {
     // This must be optimized for lookup, its hot path is getContextData
-    std::unordered_map<std::string, RequestData::SharedPtr> requestData_;
+    // Efficiency of copying the container also matters in setShallowCopyContext
+    F14FastMap<std::string, RequestData::SharedPtr> requestData_;
     // This must be optimized for iteration, its hot path is setContext
     // We also use the fact that it's ordered to efficiently compute
     // the difference with previous context
