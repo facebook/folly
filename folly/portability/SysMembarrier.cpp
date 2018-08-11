@@ -27,7 +27,7 @@
 #if !defined(__NR_membarrier)
 #define __NR_membarrier 324
 #endif
-#if FOLLY_HAVE_LINUX_MEMBARRIER_H
+#if __has_include(<linux/membarrier.h>)
 #include <linux/membarrier.h> // @manual
 #else
 #define MEMBARRIER_CMD_QUERY 0
