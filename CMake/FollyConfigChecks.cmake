@@ -6,7 +6,6 @@ include(CheckSymbolExists)
 include(CheckTypeSize)
 include(CheckCXXCompilerFlag)
 
-CHECK_INCLUDE_FILE_CXX(features.h FOLLY_HAVE_FEATURES_H)
 CHECK_INCLUDE_FILE_CXX(jemalloc/jemalloc.h FOLLY_USE_JEMALLOC)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")

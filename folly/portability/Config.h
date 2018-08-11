@@ -24,7 +24,7 @@
 #include FOLLY_PLATFORM_CONFIG
 #endif
 
-#if FOLLY_HAVE_FEATURES_H
+#if __has_include(<features.h>)
 #include <features.h> // @manual
 #endif
 

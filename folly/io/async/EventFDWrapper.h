@@ -25,7 +25,7 @@
 #include <folly/folly-config.h>
 #endif
 
-#ifdef FOLLY_HAVE_FEATURES_H
+#if __has_include(<features.h>)
 #include <features.h>
 #endif
 
