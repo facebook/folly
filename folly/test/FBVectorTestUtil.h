@@ -17,6 +17,8 @@
 //
 // Author: andrei.alexandrescu@fb.com
 
+#include <boost/random/mersenne_twister.hpp>
+
 #include <folly/Benchmark.h>
 #include <folly/FBString.h>
 #include <folly/Random.h>
@@ -27,7 +29,7 @@ namespace test {
 namespace detail {
 
 auto static const seed = randomNumberSeed();
-typedef boost::mt19937 RandomT;
+typedef boost::random::mt19937 RandomT;
 static RandomT rng(seed);
 
 template <class Integral1, class Integral2>

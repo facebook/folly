@@ -17,7 +17,9 @@
 #pragma once
 
 #include <atomic>
+#include <cassert>
 #include <cstdint>
+#include <system_error>
 
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
