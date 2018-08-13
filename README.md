@@ -222,7 +222,7 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `mast
 
 - additional platform specific dependencies:
 
-  Fedora 21 64-bit
+  Fedora >= 21 64-bit (last tested on Fedora 28 64-bit)
     - gcc
     - gcc-c++
     - cmake
