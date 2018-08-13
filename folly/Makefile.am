@@ -292,6 +292,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/ssl/OpenSSLUtils.h \
 	io/async/ssl/SSLErrors.h \
 	io/async/ssl/TLSDefinitions.h \
+	io/async/PasswordInFile.h \
 	io/async/Request.h \
 	io/async/SSLContext.h \
 	io/async/SSLOptions.h \
@@ -603,6 +604,7 @@ libfolly_la_SOURCES = \
 	io/async/EventBaseManager.cpp \
 	io/async/EventBaseThread.cpp \
 	io/async/EventHandler.cpp \
+	io/async/PasswordInFile.cpp \
 	io/async/Request.cpp \
 	io/async/SSLContext.cpp \
 	io/async/SSLOptions.cpp \
