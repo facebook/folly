@@ -292,6 +292,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/ssl/OpenSSLUtils.h \
 	io/async/ssl/SSLErrors.h \
 	io/async/ssl/TLSDefinitions.h \
+	io/async/PasswordInFile.h \
 	io/async/Request.h \
 	io/async/SSLContext.h \
 	io/async/SSLOptions.h \
