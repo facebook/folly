@@ -604,6 +604,7 @@ libfolly_la_SOURCES = \
 	io/async/EventBaseManager.cpp \
 	io/async/EventBaseThread.cpp \
 	io/async/EventHandler.cpp \
+	io/async/PasswordInFile.cpp \
 	io/async/Request.cpp \
 	io/async/SSLContext.cpp \
 	io/async/SSLOptions.cpp \
