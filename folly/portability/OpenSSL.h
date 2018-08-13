@@ -61,13 +61,13 @@
 #define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
 #endif
 
-#if !OPENSSL_IS_BORINGSSL && !FOLLY_OPENSSL_IS_100 && !FOLLY_OPENSSL_IS_101 && \
-    !FOLLY_OPENSSL_IS_102 && !FOLLY_OPENSSL_IS_110
+#if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_100 && \
+    !FOLLY_OPENSSL_IS_101 && !FOLLY_OPENSSL_IS_102 && !FOLLY_OPENSSL_IS_110
 #warning Compiling with unsupported OpenSSL version
 #endif
 
 // BoringSSL and OpenSSL 0.9.8f later with TLS extension support SNI.
-#if OPENSSL_IS_BORINGSSL || \
+#if defined(OPENSSL_IS_BORINGSSL) || \
     (OPENSSL_VERSION_NUMBER >= 0x00908070L && !defined(OPENSSL_NO_TLSEXT))
 #define FOLLY_OPENSSL_HAS_SNI 1
 #else
@@ -75,7 +75,7 @@
 #endif
 
 // BoringSSL and OpenSSL 1.0.2 later with TLS extension support ALPN.
-#if OPENSSL_IS_BORINGSSL || \
+#if defined(OPENSSL_IS_BORINGSSL) || \
     (OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT))
 #define FOLLY_OPENSSL_HAS_ALPN 1
 #else
@@ -92,7 +92,7 @@ namespace folly {
 namespace portability {
 namespace ssl {
 
-#if OPENSSL_IS_BORINGSSL
+#ifdef OPENSSL_IS_BORINGSSL
 int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 int TLS1_get_client_version(SSL* s);
 #endif
