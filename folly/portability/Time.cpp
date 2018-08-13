@@ -97,7 +97,7 @@ static int clock_thread_cputime(struct timespec* ts) {
   return 0;
 }
 
-int clock_gettime(clockid_t clk_id, struct timespec* ts) {
+__attribute__((weak)) int clock_gettime(clockid_t clk_id, struct timespec* ts) {
   switch (clk_id) {
     case CLOCK_REALTIME: {
       auto now = std::chrono::system_clock::now().time_since_epoch();
