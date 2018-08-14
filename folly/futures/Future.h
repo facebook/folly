@@ -1512,7 +1512,12 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F>
-  Future<T> ensure(F&& func);
+  Future<T> ensure(F&& func) &&;
+
+  template <class F>
+  Future<T> ensure(F&& func) & {
+    return std::move(*this).ensure(std::forward<F>(func));
+  }
 
   /// Like onError, but for timeouts. example:
   ///

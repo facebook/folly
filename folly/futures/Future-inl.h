@@ -1210,7 +1210,7 @@ Future<T>::onError(F&& func) {
 
 template <class T>
 template <class F>
-Future<T> Future<T>::ensure(F&& func) {
+Future<T> Future<T>::ensure(F&& func) && {
   return std::move(*this).then(
       [funcw = std::forward<F>(func)](Try<T>&& t) mutable {
         std::forward<F>(funcw)();
