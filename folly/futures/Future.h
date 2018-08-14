@@ -1765,7 +1765,12 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F>
-  Future<T> filter(F&& predicate);
+  Future<T> filter(F&& predicate) &&;
+
+  template <class F>
+  Future<T> filter(F&& predicate) & {
+    return std::move(*this).filter(std::forward<F>(predicate));
+  }
 
   /// Like reduce, but works on a Future<std::vector<T / Try<T>>>, for example
   /// the result of collect or collectAll

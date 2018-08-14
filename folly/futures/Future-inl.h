@@ -2266,7 +2266,7 @@ Future<bool> Future<T>::willEqual(Future<T>& f) {
 
 template <class T>
 template <class F>
-Future<T> Future<T>::filter(F&& predicate) {
+Future<T> Future<T>::filter(F&& predicate) && {
   return std::move(*this).then([p = std::forward<F>(predicate)](T val) {
     T const& valConstRef = val;
     if (!p(valConstRef)) {
