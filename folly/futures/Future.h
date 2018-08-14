@@ -1775,7 +1775,13 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class I, class F>
-  Future<I> reduce(I&& initial, F&& func);
+  Future<I> reduce(I&& initial, F&& func) &&;
+
+  template <class I, class F>
+  Future<I> reduce(I&& initial, F&& func) & {
+    return std::move(*this).reduce(
+        std::forward<I>(initial), std::forward<F>(func));
+  }
 
   /// Create a Future chain from a sequence of continuations. i.e.
   ///

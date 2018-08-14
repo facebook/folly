@@ -1835,7 +1835,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
 
 template <class T>
 template <class I, class F>
-Future<I> Future<T>::reduce(I&& initial, F&& func) {
+Future<I> Future<T>::reduce(I&& initial, F&& func) && {
   return std::move(*this).then(
       [minitial = std::forward<I>(initial),
        mfunc = std::forward<F>(func)](T&& vals) mutable {
