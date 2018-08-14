@@ -26,14 +26,14 @@ void foo(int x) {
   cout << "making Promise" << endl;
   Promise<int> p;
   Future<int> f = p.getSemiFuture().via(&executor);
-  auto f2 = f.then(foo);
+  auto f2 = move(f).then(foo);
   cout << "Future chain made" << endl;
 
 // ... now perhaps in another event callback
 
   cout << "fulfilling Promise" << endl;
   p.setValue(42);
-  f2.get();
+  move(f2).get();
   cout << "Promise fulfilled" << endl;
 ```
 
