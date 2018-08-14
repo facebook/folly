@@ -499,6 +499,10 @@ const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl) {
   return X509_CRL_get_nextUpdate(crl);
 }
 
+const X509_ALGOR* X509_get0_tbs_sigalg(const X509* x) {
+  return x->cert_info->signature;
+}
+
 #endif // !FOLLY_OPENSSL_IS_110
 } // namespace ssl
 } // namespace portability

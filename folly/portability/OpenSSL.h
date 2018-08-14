@@ -203,6 +203,8 @@ X509* X509_OBJECT_get0_X509(const X509_OBJECT* obj);
 const ASN1_TIME* X509_CRL_get0_lastUpdate(const X509_CRL* crl);
 const ASN1_TIME* X509_CRL_get0_nextUpdate(const X509_CRL* crl);
 
+const X509_ALGOR* X509_get0_tbs_sigalg(const X509* x);
+
 #endif
 
 #if FOLLY_OPENSSL_IS_110
