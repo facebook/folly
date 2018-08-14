@@ -1086,10 +1086,27 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
   /// Future<T> instance.
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - Calling code should act as if `valid() == false`,
+  ///   i.e., as if `*this` was moved into RESULT.
+  /// - `RESULT.valid() == true`
   template <class F = T>
   typename std::
       enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
-      unwrap();
+      unwrap() &&;
+
+  template <class F = T>
+  typename std::
+      enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
+      unwrap() & {
+    return std::move(*this).unwrap();
+  }
 
   /// Returns a Future which will call back on the other side of executor.
   ///

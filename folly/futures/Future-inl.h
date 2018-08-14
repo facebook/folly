@@ -1017,7 +1017,7 @@ template <class T>
 template <class F>
 typename std::
     enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
-    Future<T>::unwrap() {
+    Future<T>::unwrap() && {
   return std::move(*this).then(
       [](Future<typename isFuture<T>::Inner> internal_future) {
         return internal_future;
