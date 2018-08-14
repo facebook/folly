@@ -1155,9 +1155,7 @@ class Future : private futures::detail::FutureBase<T> {
   template <typename F, typename R = futures::detail::callableResult<T, F>>
   [[deprecated("must be rvalue-qualified, e.g., std::move(future).then(...)")]]
       typename R::Return
-      then(F&& func) & {
-    return std::move(*this).then(std::forward<F>(func));
-  }
+      then(F&& func) & = delete;
 
   /// Variant where func is an member function
   ///
@@ -1186,11 +1184,9 @@ class Future : private futures::detail::FutureBase<T> {
 
   template <typename R, typename Caller, typename... Args>
   [[deprecated(
-      "must be rvalue-qualified, e.g., std::move(future).then(...)")]] Future<typename isFuture<R>::
-                                                                                  Inner>
-  then(R (Caller::*func)(Args...), Caller* instance) & {
-    return std::move(*this).then(func, instance);
-  }
+      "must be rvalue-qualified, e.g., std::move(future).then(...)")]]
+  Future<typename isFuture<R>::Inner>
+  then(R (Caller::*func)(Args...), Caller* instance) & = delete;
 
   /// Execute the callback via the given Executor. The executor doesn't stick.
   ///
@@ -1226,9 +1222,7 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Executor, class Arg, class... Args>
   [[deprecated(
       "must be rvalue-qualified, e.g., std::move(future).then(...)")]] auto
-  then(Executor* x, Arg&& arg, Args&&... args) & {
-    return std::move(*this).then(x, arg, args...);
-  }
+  then(Executor* x, Arg&& arg, Args&&... args) & = delete;
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with `Try<T>&&` (often a lambda with parameter type
@@ -1378,9 +1372,7 @@ class Future : private futures::detail::FutureBase<T> {
   Future<Unit> then() &&;
 
   [[deprecated("must be rvalue-qualified, e.g., std::move(future).then()")]]
-  Future<Unit> then() & {
-    return std::move(*this).then();
-  }
+  Future<Unit> then() & = delete;
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
