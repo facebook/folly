@@ -1404,7 +1404,10 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  Future<Unit> unit() {
+  Future<Unit> unit() && {
+    return std::move(*this).then();
+  }
+  Future<Unit> unit() & {
     return std::move(*this).then();
   }
 
