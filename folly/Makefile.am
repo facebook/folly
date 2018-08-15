@@ -86,6 +86,7 @@ nobase_follyinclude_HEADERS = \
 	detail/AtFork.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
+	detail/Demangle.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
@@ -533,6 +534,7 @@ libfollybasesse42_la_SOURCES = \
 libfollybase_la_SOURCES = \
 	Conv.cpp \
 	Demangle.cpp \
+	detail/Demangle.cpp \
 	detail/RangeCommon.cpp \
 	Format.cpp \
 	FormatArg.cpp \

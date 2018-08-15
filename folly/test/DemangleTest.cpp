@@ -16,6 +16,7 @@
 
 #include <folly/Demangle.h>
 
+#include <folly/detail/Demangle.h>
 #include <folly/portability/GTest.h>
 
 using folly::demangle;
@@ -25,7 +26,7 @@ struct ThisIsAVeryLongStructureName {
 };
 } // namespace folly_test
 
-#if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
+#if FOLLY_DETAIL_HAVE_DEMANGLE_H
 TEST(Demangle, demangle) {
   char expected[] = "folly_test::ThisIsAVeryLongStructureName";
   EXPECT_STREQ(
@@ -81,7 +82,7 @@ TEST(Demangle, LongSymbolFallback) {
 }
 #endif // defined(FOLLY_DEMANGLE_MAX_SYMBOL_SIZE)
 
-#endif // FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
+#endif // FOLLY_DETAIL_HAVE_DEMANGLE_H
 
 TEST(Demangle, strlcpy) {
   char buf[6];
