@@ -136,10 +136,9 @@ TEST(TDigest, MergeLargeAsDigests) {
   // Ensure that the values do not monotonically increase across digests.
   std::random_shuffle(values.begin(), values.end());
   for (int i = 0; i < 10; ++i) {
-    std::vector<double> sorted(
+    std::vector<double> unsorted_values(
         values.begin() + (i * 100), values.begin() + (i + 1) * 100);
-    std::sort(sorted.begin(), sorted.end());
-    digests.push_back(digest.merge(sorted));
+    digests.push_back(digest.merge(unsorted_values));
   }
 
   digest = TDigest::merge(digests);
@@ -165,8 +164,6 @@ TEST(TDigest, NegativeValues) {
     values.push_back(i);
     values.push_back(-i);
   }
-
-  std::sort(values.begin(), values.end());
 
   digest = digest.merge(values);
 
@@ -194,9 +191,6 @@ TEST(TDigest, NegativeValuesMergeDigests) {
     values.push_back(i);
     negativeValues.push_back(-i);
   }
-
-  std::sort(values.begin(), values.end());
-  std::sort(negativeValues.begin(), negativeValues.end());
 
   auto digest1 = digest.merge(values);
   auto digest2 = digest.merge(negativeValues);
@@ -365,9 +359,6 @@ TEST_P(DistributionTest, ReasonableError) {
 
     std::vector<TDigest> digests;
     for (size_t i = 0; i < kNumSamples / 1000; ++i) {
-      auto it_l = values.begin() + (i * 1000);
-      auto it_r = it_l + 1000;
-      std::sort(it_l, it_r);
       folly::Range<const double*> r(values, i * 1000, 1000);
       if (digestMerge) {
         digests.push_back(digest.merge(r));

@@ -15,6 +15,7 @@
  */
 
 #include <folly/stats/TDigest.h>
+#include <folly/stats/detail/DoubleRadixSort.h>
 
 #include <algorithm>
 #include <limits>
@@ -101,7 +102,28 @@ TDigest::TDigest(
   }
 }
 
-TDigest TDigest::merge(Range<const double*> sortedValues) const {
+// Merge unsorted values by first sorting them.  Use radix sort if
+// possible.  This implementation puts all additional memory in the
+// heap, so that if called from fiber context we do not smash the
+// stack.  Otherwise it is very similar to boost::spreadsort.
+TDigest TDigest::merge(Range<const double*> unsortedValues) const {
+  auto n = unsortedValues.size();
+
+  // We require 256 buckets per byte level, plus one count array we can reuse.
+  std::unique_ptr<uint64_t[]> buckets{new uint64_t[256 * 9]};
+  // Allocate input and tmp array
+  std::unique_ptr<double[]> tmp{new double[n * 2]};
+  auto out = tmp.get() + n;
+  auto in = tmp.get();
+  std::copy(unsortedValues.begin(), unsortedValues.end(), in);
+
+  detail::double_radix_sort(n, buckets.get(), in, out);
+  DCHECK(std::is_sorted(in, in + n));
+
+  return merge(presorted, Range<const double*>(in, in + n));
+}
+
+TDigest TDigest::merge(presorted_t, Range<const double*> sortedValues) const {
   if (sortedValues.empty()) {
     return *this;
   }

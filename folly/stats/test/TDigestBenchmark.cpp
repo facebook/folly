@@ -46,7 +46,7 @@ void merge(unsigned int iters, size_t maxSize, size_t bufSize) {
   }
 
   for (const auto& buffer : buffers) {
-    digest = digest.merge(buffer);
+    digest = digest.merge(folly::presorted, buffer);
   }
 }
 
@@ -64,7 +64,6 @@ void mergeDigests(unsigned int iters, size_t maxSize, size_t nDigests) {
       for (size_t j = 0; j < maxSize; ++j) {
         buffer.push_back(distribution(generator));
       }
-      std::sort(buffer.begin(), buffer.end());
       digests.push_back(digest.merge(buffer));
     }
   }
@@ -95,7 +94,6 @@ void estimateQuantile(unsigned int iters, size_t maxSize, double quantile) {
       for (size_t j = 0; j < bufSize; ++j) {
         buffer.push_back(values[i * bufSize + j]);
       }
-      std::sort(buffer.begin(), buffer.end());
       digest = digest.merge(buffer);
     }
   }

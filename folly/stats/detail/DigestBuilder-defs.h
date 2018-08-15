@@ -64,7 +64,6 @@ DigestT DigestBuilder<DigestT>::build() {
     for (const auto& vec : valuesVec) {
       values.insert(values.end(), vec.begin(), vec.end());
     }
-    std::sort(values.begin(), values.end());
     DigestT digest(digestSize_);
     digests.push_back(digest.merge(values));
   }
@@ -83,7 +82,6 @@ void DigestBuilder<DigestT>::append(double value) {
   }
   cpuLocalBuf->buffer.push_back(value);
   if (cpuLocalBuf->buffer.size() == bufferSize_) {
-    std::sort(cpuLocalBuf->buffer.begin(), cpuLocalBuf->buffer.end());
     if (!cpuLocalBuf->digest) {
       cpuLocalBuf->digest = std::make_unique<DigestT>(digestSize_);
     }
