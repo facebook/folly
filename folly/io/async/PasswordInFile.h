@@ -41,4 +41,4 @@ class PasswordInFile : public PasswordCollector {
   std::string password_;
 };
 
-} // namespace wangle
+} // namespace folly
