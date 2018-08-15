@@ -97,5 +97,15 @@ bool crc32_hw_supported();
  */
 uint32_t
 crc32_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
+
+/* See Checksum.h for details.
+ *
+ * crc2len *must* be a power of two >= 4.
+ */
+uint32_t crc32_combine_sw(uint32_t crc1, uint32_t crc2, size_t crc2len);
+uint32_t crc32_combine_hw(uint32_t crc1, uint32_t crc2, size_t crc2len);
+uint32_t crc32c_combine_sw(uint32_t crc1, uint32_t crc2, size_t crc2len);
+uint32_t crc32c_combine_hw(uint32_t crc1, uint32_t crc2, size_t crc2len);
+
 } // namespace detail
 } // namespace folly

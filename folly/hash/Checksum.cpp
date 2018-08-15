@@ -22,6 +22,7 @@
 #include <stdexcept>
 
 #if FOLLY_SSE_PREREQ(4, 2)
+#include <emmintrin.h>
 #include <nmmintrin.h>
 #endif
 
@@ -145,6 +146,36 @@ uint32_t crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
 uint32_t
 crc32_type(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   return ~crc32(data, nbytes, startingChecksum);
+}
+
+uint32_t crc32_combine(uint32_t crc1, uint32_t crc2, size_t crc2len) {
+  // Append up to 32 bits of zeroes in the normal way
+  uint8_t data[4] = {0, 0, 0, 0};
+  auto len = crc2len & 3;
+  if (len) {
+    crc1 = crc32(data, len, crc1);
+  }
+
+  if (detail::crc32_hw_supported()) {
+    return detail::crc32_combine_hw(crc1, crc2, crc2len);
+  } else {
+    return detail::crc32_combine_sw(crc1, crc2, crc2len);
+  }
+}
+
+uint32_t crc32c_combine(uint32_t crc1, uint32_t crc2, size_t crc2len) {
+  // Append up to 32 bits of zeroes in the normal way
+  uint8_t data[4] = {0, 0, 0, 0};
+  auto len = crc2len & 3;
+  if (len) {
+    crc1 = crc32c(data, len, crc1);
+  }
+
+  if (detail::crc32_hw_supported()) {
+    return detail::crc32c_combine_hw(crc1, crc2, crc2len - len);
+  } else {
+    return detail::crc32c_combine_sw(crc1, crc2, crc2len - len);
+  }
 }
 
 } // namespace folly

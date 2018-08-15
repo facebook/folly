@@ -19,6 +19,7 @@
 #include <boost/crc.hpp>
 
 #include <folly/Benchmark.h>
+#include <folly/Random.h>
 #include <folly/hash/Hash.h>
 #include <folly/hash/detail/ChecksumDetail.h>
 #include <folly/portability/GFlags.h>
@@ -199,6 +200,28 @@ TEST(Checksum, crc32_type) {
   testMatchesBoost32Type();
 }
 
+TEST(Checksum, crc32_combine) {
+  for (size_t totlen = 1024; totlen < BUFFER_SIZE; totlen += BUFFER_SIZE / 8) {
+    auto mid = folly::Random::rand64(0, totlen);
+    auto crc1 = folly::crc32(&buffer[0], mid, 0);
+    auto crc2 = folly::crc32(&buffer[mid], totlen - mid, 0);
+    auto crcfull = folly::crc32(&buffer[0], totlen, 0);
+    auto combined = folly::crc32_combine(crc1, crc2, totlen - mid);
+    EXPECT_EQ(combined, crcfull);
+  }
+}
+
+TEST(Checksum, crc32c_combine) {
+  for (size_t totlen = 1024; totlen < BUFFER_SIZE; totlen += BUFFER_SIZE / 8) {
+    auto mid = folly::Random::rand64(0, totlen);
+    auto crc1 = folly::crc32c(&buffer[0], mid, 0);
+    auto crc2 = folly::crc32c(&buffer[mid], totlen - mid, 0);
+    auto crcfull = folly::crc32c(&buffer[0], totlen, 0);
+    auto combined = folly::crc32c_combine(crc1, crc2, totlen - mid);
+    EXPECT_EQ(combined, crcfull);
+  }
+}
+
 void benchmarkHardwareCRC32C(unsigned long iters, size_t blockSize) {
   if (folly::detail::crc32c_hw_supported()) {
     uint32_t checksum;
@@ -238,6 +261,43 @@ void benchmarkSoftwareCRC32(unsigned long iters, size_t blockSize) {
   for (unsigned long i = 0; i < iters; i++) {
     checksum = folly::detail::crc32_sw(buffer, blockSize);
     folly::doNotOptimizeAway(checksum);
+  }
+}
+
+void benchmarkCombineHardwareCrc32(unsigned long iters, size_t blockSize) {
+  // Arbitrarily chosen checksums
+  uint32_t checksum1 = 0xEDB88320;
+  uint32_t checksum2 = 0x82F63B78;
+  uint32_t result;
+  for (unsigned long i = 0; i < iters; i++) {
+    result = folly::crc32_combine(checksum1, checksum2, blockSize);
+    folly::doNotOptimizeAway(result);
+  }
+}
+
+void benchmarkCombineSoftwareLinear(unsigned long iters, size_t blockSize) {
+  // Arbitrarily chosen checksums
+  std::vector<uint8_t> zbuffer;
+  zbuffer.reserve(blockSize);
+  memset(zbuffer.data(), 0, blockSize);
+  uint32_t checksum1 = 0xEDB88320;
+  uint32_t checksum2 = 0x82F63B78;
+  uint32_t result;
+  for (unsigned long i = 0; i < iters; i++) {
+    result = folly::crc32c(zbuffer.data(), blockSize, checksum1);
+    result ^= checksum2;
+    folly::doNotOptimizeAway(result);
+  }
+}
+
+void benchmarkCombineHardwareCrc32c(unsigned long iters, size_t blockSize) {
+  // Arbitrarily chosen checksums
+  uint32_t checksum1 = 0xEDB88320;
+  uint32_t checksum2 = 0x82F63B78;
+  uint32_t result;
+  for (unsigned long i = 0; i < iters; i++) {
+    result = folly::crc32c_combine(checksum1, checksum2, blockSize);
+    folly::doNotOptimizeAway(result);
   }
 }
 
@@ -295,6 +355,20 @@ BENCHMARK(crc32_hardware_512KB_block, iters) {
 
 BENCHMARK(crc32_software_512KB_block, iters) {
   benchmarkSoftwareCRC32(iters, 512 * 1024);
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(crc32_combine_linear_512KB_block, iters) {
+  benchmarkCombineSoftwareLinear(iters, 512 * 1024);
+}
+
+BENCHMARK(crc32_combine_512KB_block, iters) {
+  benchmarkCombineHardwareCrc32(iters, 512 * 1024);
+}
+
+BENCHMARK(crc32c_combine_512KB_block, iters) {
+  benchmarkCombineHardwareCrc32c(iters, 512 * 1024);
 }
 
 int main(int argc, char** argv) {

@@ -57,4 +57,37 @@ crc32(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 uint32_t
 crc32_type(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
+/**
+ * Given two checksums, combine them in to one checksum.
+ *
+ * Example:
+ *                     len1            len2
+ * Given a buffer [  checksum 1  |  checksum 2  ]
+ * such that the first buffer's crc is checksum1 and has length len1,
+ * and the remainder of the buffer's crc is checksum2 and len 2,
+ * a total checksum over the whole buffer can be made by:
+ *
+ * crc32_combine(checksum1, checksum 2, len2); // len1 not needed.
+ *
+ * Note that this is equivalent to:
+ *
+ * crc32(buffer2, len2, crc32(buffer1, len1));
+ *
+ * However, this allows calculating the checksums in parallel
+ * or calculating checksum 2 before checksum 1.
+ *
+ * Additionally, this is also equivalent, but much slower:
+ * crc2 = crc32(buffer2, len2, 0);
+ * crc1 = crc32(buffer1, len1, 0);
+ * combined = crc2 ^ crc32(buffer_of_all_zeros, len2, crc1);
+ *
+ * crc32[c]_combine is roughly ~10x faster than either of the other
+ * above two examples.
+ */
+uint32_t crc32_combine(uint32_t crc1, uint32_t crc2, size_t crc2len);
+
+/* crc32c_combine is the same as crc32_combine, but uses the crc32c
+   polynomial */
+uint32_t crc32c_combine(uint32_t crc1, uint32_t crc2, size_t crc2len);
+
 } // namespace folly

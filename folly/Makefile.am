@@ -529,7 +529,8 @@ nobase_follyinclude_HEADERS = \
 libfollybasesse42_la_SOURCES = \
 	detail/RangeSse42.cpp \
 	hash/detail/ChecksumDetail.cpp \
-	hash/detail/Crc32cDetail.cpp
+	hash/detail/Crc32cDetail.cpp \
+	hash/detail/Crc32CombineDetail.cpp
 
 libfollybase_la_SOURCES = \
 	Conv.cpp \
