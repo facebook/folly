@@ -99,7 +99,7 @@ static_assert(
 
 inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
     std::exception_ptr const& ptr,
-    std::exception const& e) {
+    std::exception const& e) noexcept {
   if (!kMicrosoftAbiVer) {
     return reinterpret_cast<std::uintptr_t>(&e);
   } else {
@@ -130,7 +130,7 @@ inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
 }
 inline std::uintptr_t exception_wrapper::ExceptionPtr::as_int_(
     std::exception_ptr const&,
-    AnyException e) {
+    AnyException e) noexcept {
   return reinterpret_cast<std::uintptr_t>(e.typeinfo_) + 1;
 }
 inline bool exception_wrapper::ExceptionPtr::has_exception_() const {
@@ -333,7 +333,8 @@ inline exception_wrapper::~exception_wrapper() {
 }
 
 template <class Ex>
-inline exception_wrapper::exception_wrapper(std::exception_ptr ptr, Ex& ex)
+inline
+exception_wrapper::exception_wrapper(std::exception_ptr ptr, Ex& ex) noexcept
     : eptr_{ptr, ExceptionPtr::as_int_(ptr, ex)},
       vptr_(&ExceptionPtr::ops_) {
   assert(eptr_.ptr_);

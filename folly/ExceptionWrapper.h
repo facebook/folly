@@ -264,10 +264,10 @@ class exception_wrapper final {
 
     static std::uintptr_t as_int_(
         std::exception_ptr const& ptr,
-        std::exception const& e);
+        std::exception const& e) noexcept;
     static std::uintptr_t as_int_(
         std::exception_ptr const& ptr,
-        AnyException e);
+        AnyException e) noexcept;
     bool has_exception_() const;
     std::exception const* as_exception_() const;
     std::type_info const* as_type_() const;
@@ -418,7 +418,7 @@ class exception_wrapper final {
   //! \post `bool(*this)`
   //! \post `type() == typeid(ex)`
   template <class Ex>
-  exception_wrapper(std::exception_ptr ptr, Ex& ex);
+  exception_wrapper(std::exception_ptr ptr, Ex& ex) noexcept;
 
   //! \pre `typeid(ex) == typeid(typename decay<Ex>::type)`
   //! \post `bool(*this)`
