@@ -452,6 +452,7 @@ nobase_follyinclude_HEADERS = \
 	stats/detail/BufferedStat.h \
 	stats/detail/DigestBuilder-defs.h \
 	stats/detail/DigestBuilder.h \
+	stats/detail/DoubleRadixSort.h \
 	stats/detail/SlidingWindow-defs.h \
 	stats/detail/SlidingWindow.h \
 	stats/BucketedTimeSeries-defs.h \
@@ -690,6 +691,7 @@ libfolly_la_SOURCES = \
 	stats/QuantileEstimator.cpp \
 	stats/TDigest.cpp \
 	stats/TimeseriesHistogram.cpp \
+	stats/detail/DoubleRadixSort.cpp \
 	synchronization/AsymmetricMemoryBarrier.cpp \
 	synchronization/Hazptr.cpp \
 	synchronization/LifoSem.cpp \
