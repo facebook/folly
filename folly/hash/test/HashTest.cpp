@@ -448,6 +448,7 @@ TEST(Hash, pair) {
 }
 
 TEST(Hash, hash_combine) {
+  EXPECT_TRUE(noexcept(hash_combine(1, 2)));
   EXPECT_NE(hash_combine(1, 2), hash_combine(2, 1));
 }
 

@@ -62,7 +62,7 @@ inline uint64_t hash_128_to_64(
 
 // Never used, but gcc demands it.
 template <class Hasher>
-inline size_t hash_combine_generic(const Hasher&) {
+inline size_t hash_combine_generic(const Hasher&) noexcept {
   return 0;
 }
 
@@ -79,8 +79,16 @@ hash_range(Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
 
 inline uint32_t twang_32from64(uint64_t key) noexcept;
 
+namespace detail {
+using c_array_size_t = size_t[];
+} // namespace detail
+
 template <class Hasher, typename T, typename... Ts>
-size_t hash_combine_generic(const Hasher& h, const T& t, const Ts&... ts) {
+size_t hash_combine_generic(
+    const Hasher& h,
+    const T& t,
+    const Ts&... ts) noexcept(noexcept(detail::c_array_size_t{h(t),
+                                                              h(ts)...})) {
   size_t seed = h(t);
   if (sizeof...(ts) == 0) {
     return seed;
@@ -109,7 +117,8 @@ class StdHasher {
 };
 
 template <typename T, typename... Ts>
-size_t hash_combine(const T& t, const Ts&... ts) {
+size_t hash_combine(const T& t, const Ts&... ts) noexcept(
+    noexcept(hash_combine_generic(StdHasher{}, t, ts...))) {
   return hash_combine_generic(StdHasher{}, t, ts...);
 }
 
