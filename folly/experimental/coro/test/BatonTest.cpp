@@ -44,29 +44,29 @@ TEST(Baton, InitiallyReady) {
 
 TEST(Baton, AwaitBaton) {
   coro::Baton baton;
-  bool reachedBeforeWait = false;
-  bool reachedAfterWait = false;
+  bool reachedBeforeAwait = false;
+  bool reachedAfterAwait = false;
 
   auto makeTask = [&]() -> coro::Task<void> {
-    reachedBeforeWait = true;
-    co_await baton.waitAsync();
-    reachedAfterWait = true;
+    reachedBeforeAwait = true;
+    co_await baton;
+    reachedAfterAwait = true;
   };
 
   coro::Task<void> t = makeTask();
 
-  CHECK(!reachedBeforeWait);
-  CHECK(!reachedAfterWait);
+  CHECK(!reachedBeforeAwait);
+  CHECK(!reachedAfterAwait);
 
   auto& executor = InlineExecutor::instance();
   coro::Future<void> f = via(&executor, std::move(t));
 
-  CHECK(reachedBeforeWait);
-  CHECK(!reachedAfterWait);
+  CHECK(reachedBeforeAwait);
+  CHECK(!reachedAfterAwait);
 
   baton.post();
 
-  CHECK(reachedAfterWait);
+  CHECK(reachedAfterAwait);
 }
 
 #endif

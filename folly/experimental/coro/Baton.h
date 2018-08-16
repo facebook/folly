@@ -25,8 +25,9 @@ namespace coro {
 /// coroutine to co_await the baton and suspend until the baton is posted
 /// by some other thread via a call to .post().
 ///
-/// The Baton supports multiple awaiting coroutines at a time. When the
-/// baton is posted, all awaiting coroutines are resumed.
+/// The Baton supports being awaited by a single coroutine at a time. If the
+/// baton is not ready at the time it is awaited then the awaiting coroutine
+/// suspends and is later resumed when some thread calls .post().
 ///
 /// Example usage:
 ///
@@ -36,7 +37,7 @@ namespace coro {
 ///   folly::coro::Task<void> consumer()
 ///   {
 ///     // Wait until the baton is posted.
-///     co_await baton.waitAsync().via(executor);
+///     co_await baton;
 ///
 ///     // Now safe to read shared state.
 ///     std::cout << sharedValue << std::cout;
@@ -77,7 +78,7 @@ class Baton {
   /// the behaviour is as if an inline executor was specified.
   /// i.e. the coroutine will be resumed inside the call to .post() on the
   /// thread that next calls .post().
-  [[nodiscard]] WaitOperation waitAsync() const noexcept;
+  [[nodiscard]] WaitOperation operator co_await() const noexcept;
 
   /// Set the Baton to the signalled state if it is not already signalled.
   ///
@@ -136,7 +137,7 @@ inline bool Baton::ready() const noexcept {
       static_cast<const void*>(this);
 }
 
-inline Baton::WaitOperation Baton::waitAsync() const noexcept {
+inline Baton::WaitOperation Baton::operator co_await() const noexcept {
   return Baton::WaitOperation{*this};
 }
 

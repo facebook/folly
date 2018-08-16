@@ -66,7 +66,7 @@ TEST(Mutex, LockAsync) {
   auto makeTask = [&](coro::Baton& b) -> coro::Task<void> {
     co_await m.co_lock();
     ++value;
-    co_await b.waitAsync();
+    co_await b;
     ++value;
     m.unlock();
   };
@@ -104,7 +104,7 @@ TEST(Mutex, ScopedLockAsync) {
   auto makeTask = [&](coro::Baton& b) -> coro::Task<void> {
     auto lock = co_await m.co_scoped_lock();
     ++value;
-    co_await b.waitAsync();
+    co_await b;
     ++value;
   };
 
@@ -120,7 +120,7 @@ TEST(Mutex, ScopedLockAsync) {
   // This will resume f1 coroutine and let it release the
   // lock. This will in turn resume f2 which was suspended
   // at co_await m.lockAsync() which will then increment the value
-  // before becoming blocked on
+  // before becoming blocked on b2.
   b1.post();
 
   CHECK_EQ(3, value);
