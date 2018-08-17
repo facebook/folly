@@ -22,6 +22,7 @@
 #include <folly/ExceptionString.h>
 #include <folly/Executor.h>
 #include <folly/Optional.h>
+#include <folly/experimental/coro/Traits.h>
 
 namespace folly {
 namespace coro {
@@ -133,43 +134,11 @@ class AwaitWrapper {
   Optional<Awaitable> awaitable_;
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++17-extensions"
-
-FOLLY_CREATE_MEMBER_INVOKE_TRAITS(
-    member_operator_co_await_traits,
-    operator co_await);
-
-template <typename Awaitable>
-inline constexpr bool has_member_operator_co_await_v =
-    member_operator_co_await_traits::is_invocable<Awaitable>::value;
-
-FOLLY_CREATE_FREE_INVOKE_TRAITS(
-    non_member_operator_co_await_traits,
-    operator co_await);
-
-template <typename Awaitable>
-inline constexpr bool has_non_member_operator_co_await_v =
-    non_member_operator_co_await_traits::is_invocable<Awaitable>::value;
 } // namespace detail
 
 template <typename Awaitable>
-decltype(auto) get_awaiter(Awaitable&& awaitable) {
-  if constexpr (detail::has_member_operator_co_await_v<Awaitable&&>) {
-    return std::forward<Awaitable>(awaitable).operator co_await();
-  } else if constexpr (detail::has_non_member_operator_co_await_v<
-                           Awaitable&&>) {
-    return operator co_await(std::forward<Awaitable>(awaitable));
-  } else {
-    // This is necessary for it to work with std::reference_wrapper
-    return static_cast<Awaitable&>(awaitable);
-  }
-}
-
-template <typename Awaitable>
 auto createAwaitWrapper(Awaitable&& awaitable) {
-  using Awaiter =
-      decltype(::folly::coro::get_awaiter(std::declval<Awaitable&&>()));
+  using Awaiter = folly::coro::awaiter_type_t<Awaitable>;
   using Wrapper = std::conditional_t<
       std::is_reference<Awaiter>::value,
       std::reference_wrapper<std::remove_reference_t<Awaiter>>,
@@ -180,8 +149,7 @@ auto createAwaitWrapper(Awaitable&& awaitable) {
 
 template <typename Awaitable>
 auto createAwaitWrapper(Awaitable&& awaitable, folly::Executor* executor) {
-  using Awaiter =
-      decltype(::folly::coro::get_awaiter(std::declval<Awaitable&&>()));
+  using Awaiter = folly::coro::awaiter_type_t<Awaitable>;
   using Wrapper = std::conditional_t<
       std::is_reference<Awaiter>::value,
       std::reference_wrapper<std::remove_reference_t<Awaiter>>,
@@ -189,8 +157,6 @@ auto createAwaitWrapper(Awaitable&& awaitable, folly::Executor* executor) {
   return detail::AwaitWrapper<Wrapper>::create(
       ::folly::coro::get_awaiter(std::forward<Awaitable>(awaitable)), executor);
 }
-
-#pragma clang diagnostic pop
 
 } // namespace coro
 } // namespace folly
