@@ -1101,13 +1101,6 @@ class Future : private futures::detail::FutureBase<T> {
       enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
       unwrap() &&;
 
-  template <class F = T>
-  typename std::
-      enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
-      unwrap() & {
-    return std::move(*this).unwrap();
-  }
-
   /// Returns a Future which will call back on the other side of executor.
   ///
   /// Preconditions:

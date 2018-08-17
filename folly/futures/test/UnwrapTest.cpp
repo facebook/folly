@@ -24,7 +24,7 @@ using namespace folly;
 TEST(Unwrap, simpleScenario) {
   Future<int> encapsulated_future = makeFuture(5484);
   Future<Future<int>> future = makeFuture(std::move(encapsulated_future));
-  EXPECT_EQ(5484, future.unwrap().value());
+  EXPECT_EQ(5484, std::move(future).unwrap().value());
 }
 
 // Makes sure that unwrap() works when chaning Future's commands.
