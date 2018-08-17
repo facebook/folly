@@ -754,36 +754,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   }
 
   /**
-   * A set of possible outcomes of certificate validation.
-   */
-  enum class CertValidationResult {
-    CERT_VALID, // Cert is valid.
-    CERT_MISSING, // No cert is provided.
-    CERT_INVALID_FUTURE, // Cert has start datetime in the future.
-    CERT_INVALID_EXPIRED, // Cert has expired.
-    CERT_INVALID_BAD_CHAIN, // Cert has bad chain.
-    CERT_INVALID_OTHER, // Cert is invalid due to other reasons.
-  };
-
-  /**
-   * Get the validation result of client cert. If the server side has not
-   * set this value, it will return folly::none; otherwise a value in
-   * CertValidationResult.
-   */
-  const Optional<CertValidationResult> getClientCertValidationResult() {
-    return clientCertValidationResult_;
-  }
-
-  /**
-   * Set the validation result of client cert. Used by server side.
-   * @param result A value of CertValidationResult wrapped by folly::Optional.
-   */
-  void setClientCertValidationResult(
-      const Optional<CertValidationResult>& result) {
-    clientCertValidationResult_ = result;
-  }
-
-  /**
    * Force AsyncSSLSocket object to cache local and peer socket addresses.
    * If called with "true" before connect() this function forces full local
    * and remote socket addresses to be cached in the socket object and available
@@ -961,8 +931,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   folly::SSLContext::SSLVerifyPeerEnum verifyPeer_{
       folly::SSLContext::SSLVerifyPeerEnum::USE_CTX};
-
-  Optional<CertValidationResult> clientCertValidationResult_{none};
 
   // Callback for SSL_CTX_set_verify()
   static int sslVerifyCallback(int preverifyOk, X509_STORE_CTX* ctx);

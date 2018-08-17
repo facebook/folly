@@ -188,24 +188,6 @@ std::string getCommonName(X509* cert) {
   return cn;
 }
 
-TEST(AsyncSSLSocketTest, ClientCertValidationResultTest) {
-  EventBase ev;
-  int fd = 0;
-
-  AsyncSSLSocket::UniquePtr sock(
-      new AsyncSSLSocket(std::make_shared<SSLContext>(), &ev, fd, false));
-
-  // Initially the cert is not validated, so no result is available.
-  EXPECT_EQ(nullptr, get_pointer(sock->getClientCertValidationResult()));
-
-  sock->setClientCertValidationResult(
-      make_optional(AsyncSSLSocket::CertValidationResult::CERT_VALID));
-
-  EXPECT_EQ(
-      AsyncSSLSocket::CertValidationResult::CERT_VALID,
-      *sock->getClientCertValidationResult());
-}
-
 /**
  * Test connecting to, writing to, reading from, and closing the
  * connection to the SSL server.
