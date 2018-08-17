@@ -1024,7 +1024,14 @@ TEST(IOBuf, wrapZeroLenIov) {
   iov.push_back({nullptr, 0});
   iov.push_back({nullptr, 0});
   auto wrapped = IOBuf::wrapIov(iov.data(), iov.size());
-  EXPECT_EQ(nullptr, wrapped);
+  EXPECT_NE(nullptr, wrapped);
+  EXPECT_EQ(wrapped->countChainElements(), 1);
+  EXPECT_EQ(wrapped->length(), 0);
+
+  wrapped = IOBuf::wrapIov(nullptr, 0);
+  EXPECT_NE(nullptr, wrapped);
+  EXPECT_EQ(wrapped->countChainElements(), 1);
+  EXPECT_EQ(wrapped->length(), 0);
 }
 
 TEST(IOBuf, move) {

@@ -1021,13 +1021,16 @@ unique_ptr<IOBuf> IOBuf::wrapIov(const iovec* vec, size_t count) {
     size_t len = vec[i].iov_len;
     void* data = vec[i].iov_base;
     if (len > 0) {
-      auto buf = folly::IOBuf::wrapBuffer(data, len);
+      auto buf = wrapBuffer(data, len);
       if (!result) {
         result = std::move(buf);
       } else {
         result->prependChain(std::move(buf));
       }
     }
+  }
+  if (UNLIKELY(result == nullptr)) {
+    return create(0);
   }
   return result;
 }

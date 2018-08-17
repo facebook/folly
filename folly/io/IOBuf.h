@@ -1224,8 +1224,8 @@ class IOBuf {
   size_t fillIov(struct iovec* iov, size_t len) const;
 
   /**
-   * A helper that wraps a number of iovecs into an IOBuf chain.  Empty iovecs
-   * are ignored.  If no data is wrapped, nullptr is returned.
+   * A helper that wraps a number of iovecs into an IOBuf chain.  If count == 0,
+   * then a zero length buf is returned.  This function never returns nullptr.
    */
   static std::unique_ptr<IOBuf> wrapIov(const iovec* vec, size_t count);
 

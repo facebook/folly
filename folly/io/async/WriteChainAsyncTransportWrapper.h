@@ -45,9 +45,7 @@ class WriteChainAsyncTransportWrapper
       size_t count,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override {
     auto writeBuffer = folly::IOBuf::wrapIov(vec, count);
-    if (writeBuffer) {
-      writeChain(callback, std::move(writeBuffer), flags);
-    }
+    writeChain(callback, std::move(writeBuffer), flags);
   }
 
   /**
