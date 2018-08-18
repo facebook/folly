@@ -1400,9 +1400,6 @@ class Future : private futures::detail::FutureBase<T> {
   Future<Unit> unit() && {
     return std::move(*this).then();
   }
-  Future<Unit> unit() & {
-    return std::move(*this).then();
-  }
 
   /// Set an error continuation for this Future. The continuation should take an
   /// argument of the type that you want to catch, and should return a value of
