@@ -562,15 +562,25 @@ std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
     Alloc const& alloc,
     Args&&... args) {
   using traits = std::allocator_traits<Alloc>;
+  struct DeferCondDeallocate {
+    bool& cond;
+    Alloc& copy;
+    T* p;
+    ~DeferCondDeallocate() {
+      if (FOLLY_UNLIKELY(!cond)) {
+        traits::deallocate(copy, p, 1);
+      }
+    }
+  };
   auto copy = alloc;
   auto const p = traits::allocate(copy, 1);
-  try {
+  {
+    bool constructed = false;
+    DeferCondDeallocate handler{constructed, copy, p};
     traits::construct(copy, p, static_cast<Args&&>(args)...);
-    return {p, allocator_delete<Alloc>(std::move(copy))};
-  } catch (...) {
-    traits::deallocate(copy, p, 1);
-    throw;
+    constructed = true;
   }
+  return {p, allocator_delete<Alloc>(std::move(copy))};
 }
 
 struct SysBufferDeleter {

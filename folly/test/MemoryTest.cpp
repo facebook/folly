@@ -172,6 +172,58 @@ TEST(allocate_sys_buffer, compiles) {
   //  Freed at the end of the scope.
 }
 
+struct CountedAllocatorStats {
+  size_t deallocates = 0;
+};
+
+template <typename T>
+class CountedAllocator : public std::allocator<T> {
+ private:
+  CountedAllocatorStats* stats_;
+
+ public:
+  explicit CountedAllocator(CountedAllocatorStats& stats) noexcept
+      : stats_(&stats) {}
+  void deallocate(T* p, size_t n) {
+    std::allocator<T>::deallocate(p, n);
+    ++stats_->deallocates;
+  }
+};
+
+TEST(allocate_unique, ctor_failure) {
+  struct CtorThrows {
+    explicit CtorThrows(bool cond) {
+      if (cond) {
+        throw std::runtime_error("nope");
+      }
+    }
+  };
+  using Alloc = CountedAllocator<CtorThrows>;
+  using Deleter = allocator_delete<CountedAllocator<CtorThrows>>;
+  {
+    CountedAllocatorStats stats;
+    Alloc const alloc(stats);
+    EXPECT_EQ(0, stats.deallocates);
+    std::unique_ptr<CtorThrows, Deleter> ptr{nullptr, Deleter{alloc}};
+    ptr = allocate_unique<CtorThrows>(alloc, false);
+    EXPECT_NE(nullptr, ptr);
+    EXPECT_EQ(0, stats.deallocates);
+    ptr = nullptr;
+    EXPECT_EQ(nullptr, ptr);
+    EXPECT_EQ(1, stats.deallocates);
+  }
+  {
+    CountedAllocatorStats stats;
+    Alloc const alloc(stats);
+    EXPECT_EQ(0, stats.deallocates);
+    std::unique_ptr<CtorThrows, Deleter> ptr{nullptr, Deleter{alloc}};
+    EXPECT_THROW(
+        ptr = allocate_unique<CtorThrows>(alloc, true), std::runtime_error);
+    EXPECT_EQ(nullptr, ptr);
+    EXPECT_EQ(1, stats.deallocates);
+  }
+}
+
 namespace {
 template <typename T>
 struct TestAlloc1 : SysAllocator<T> {
