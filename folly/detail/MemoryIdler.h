@@ -84,8 +84,8 @@ struct MemoryIdler {
         std::chrono::system_clock::now().time_since_epoch().count()));
 
     // multiplying the duration by a floating point doesn't work, grr
-    auto extraFrac =
-        timeoutVariationFrac / std::numeric_limits<uint64_t>::max() * h;
+    auto extraFrac = timeoutVariationFrac /
+        static_cast<float>(std::numeric_limits<uint64_t>::max()) * h;
     auto tics = uint64_t(idleTimeout.count() * (1 + extraFrac));
     return IdleTime(tics);
   }
