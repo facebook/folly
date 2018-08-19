@@ -1507,11 +1507,6 @@ class Future : private futures::detail::FutureBase<T> {
   template <class F>
   Future<T> ensure(F&& func) &&;
 
-  template <class F>
-  Future<T> ensure(F&& func) & {
-    return std::move(*this).ensure(std::forward<F>(func));
-  }
-
   /// Like onError, but for timeouts. example:
   ///
   /// ```
