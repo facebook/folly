@@ -644,17 +644,45 @@ class AsyncWriter {
         const AsyncSocketException& ex) noexcept = 0;
   };
 
-  // Write methods that aren't part of AsyncTransport
+  /**
+   * If you supply a non-null WriteCallback, exactly one of writeSuccess()
+   * or writeErr() will be invoked when the write completes. If you supply
+   * the same WriteCallback object for multiple write() calls, it will be
+   * invoked exactly once per call. The only way to cancel outstanding
+   * write requests is to close the socket (e.g., with closeNow() or
+   * shutdownWriteNow()). When closing the socket this way, writeErr() will
+   * still be invoked once for each outstanding write operation.
+   */
   virtual void write(
       WriteCallback* callback,
       const void* buf,
       size_t bytes,
       WriteFlags flags = WriteFlags::NONE) = 0;
+
+  /**
+   * If you supply a non-null WriteCallback, exactly one of writeSuccess()
+   * or writeErr() will be invoked when the write completes. If you supply
+   * the same WriteCallback object for multiple write() calls, it will be
+   * invoked exactly once per call. The only way to cancel outstanding
+   * write requests is to close the socket (e.g., with closeNow() or
+   * shutdownWriteNow()). When closing the socket this way, writeErr() will
+   * still be invoked once for each outstanding write operation.
+   */
   virtual void writev(
       WriteCallback* callback,
       const iovec* vec,
       size_t count,
       WriteFlags flags = WriteFlags::NONE) = 0;
+
+  /**
+   * If you supply a non-null WriteCallback, exactly one of writeSuccess()
+   * or writeErr() will be invoked when the write completes. If you supply
+   * the same WriteCallback object for multiple write() calls, it will be
+   * invoked exactly once per call. The only way to cancel outstanding
+   * write requests is to close the socket (e.g., with closeNow() or
+   * shutdownWriteNow()). When closing the socket this way, writeErr() will
+   * still be invoked once for each outstanding write operation.
+   */
   virtual void writeChain(
       WriteCallback* callback,
       std::unique_ptr<IOBuf>&& buf,
