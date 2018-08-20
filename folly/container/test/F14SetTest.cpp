@@ -96,37 +96,6 @@ TEST(F14Set, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<double>();
   runAllocatedMemorySizeTests<std::string>();
   runAllocatedMemorySizeTests<folly::fbstring>();
-
-  {
-    folly::F14ValueSet<int> set;
-    set.insert(10);
-    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
-    if (alignof(folly::max_align_t) == 16) {
-      // chunks will be allocated as 2 max_align_t-s
-      EXPECT_EQ(set.getAllocatedMemorySize(), 32);
-    } else {
-      // chunks will be allocated using aligned_malloc with the true size
-      EXPECT_EQ(set.getAllocatedMemorySize(), 24);
-    }
-  }
-  {
-    folly::F14NodeSet<int> set;
-    set.insert(10);
-    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
-    if (alignof(folly::max_align_t) == 16) {
-      // chunks will be allocated as 2 max_align_t-s
-      EXPECT_EQ(set.getAllocatedMemorySize(), 36);
-    } else {
-      // chunks will be allocated using aligned_malloc with the true size
-      EXPECT_EQ(set.getAllocatedMemorySize(), 20 + 2 * sizeof(void*));
-    }
-  }
-  {
-    folly::F14VectorSet<int> set;
-    set.insert(10);
-    EXPECT_EQ(sizeof(set), 8 + 2 * sizeof(void*));
-    EXPECT_EQ(set.getAllocatedMemorySize(), 32);
-  }
 }
 
 template <typename S>
@@ -511,6 +480,39 @@ TEST(F14FastSet, simple) {
   // F14FastSet inherits from a conditional typedef. Verify it compiles.
   runRandom<F14FastSet<uint64_t>>();
   runSimple<F14FastSet<std::string>>();
+}
+
+TEST(F14Set, ContainerSize) {
+  {
+    folly::F14ValueSet<int> set;
+    set.insert(10);
+    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    if (alignof(folly::max_align_t) == 16) {
+      // chunks will be allocated as 2 max_align_t-s
+      EXPECT_EQ(set.getAllocatedMemorySize(), 32);
+    } else {
+      // chunks will be allocated using aligned_malloc with the true size
+      EXPECT_EQ(set.getAllocatedMemorySize(), 24);
+    }
+  }
+  {
+    folly::F14NodeSet<int> set;
+    set.insert(10);
+    EXPECT_EQ(sizeof(set), 4 * sizeof(void*));
+    if (alignof(folly::max_align_t) == 16) {
+      // chunks will be allocated as 2 max_align_t-s
+      EXPECT_EQ(set.getAllocatedMemorySize(), 36);
+    } else {
+      // chunks will be allocated using aligned_malloc with the true size
+      EXPECT_EQ(set.getAllocatedMemorySize(), 20 + 2 * sizeof(void*));
+    }
+  }
+  {
+    folly::F14VectorSet<int> set;
+    set.insert(10);
+    EXPECT_EQ(sizeof(set), 8 + 2 * sizeof(void*));
+    EXPECT_EQ(set.getAllocatedMemorySize(), 32);
+  }
 }
 
 TEST(F14VectorMap, reverse_iterator) {

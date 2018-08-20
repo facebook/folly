@@ -63,11 +63,8 @@ void runAllocatedMemorySizeTest() {
   TMap<K, V, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
   EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
 
-  std::size_t maxSize = 0;
   for (size_t i = 0; i < 1000; ++i) {
     m.insert(std::make_pair(folly::to<K>(i), V{}));
-    maxSize = std::max(m.size(), maxSize);
-    EXPECT_GT(maxSize, (m.bucket_count() / 2) & ~std::size_t{1});
     m.erase(folly::to<K>(i / 10 + 2));
     EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
     std::size_t size = 0;
