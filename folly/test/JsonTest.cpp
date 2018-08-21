@@ -299,8 +299,13 @@ TEST(Json, JsonNonAsciiEncoding) {
   EXPECT_ANY_THROW(folly::json::serialize("\xc0\x80", opts));
   EXPECT_ANY_THROW(folly::json::serialize("\xe0\x80\x80", opts));
 
-  // Longer than 3 byte encodings
-  EXPECT_ANY_THROW(folly::json::serialize("\xf4\x8f\xbf\xbf", opts));
+  // Allow 4 byte encodings, escape using 2 UTF-16 surrogate pairs.
+  // "\xf0\x9f\x8d\x80" is Unicode Character 'FOUR LEAF CLOVER' (U+1F340)
+  // >>> json.dumps({"a": u"\U0001F340"})
+  // '{"a": "\\ud83c\\udf40"}'
+  EXPECT_EQ(
+      folly::json::serialize("\xf0\x9f\x8d\x80", opts), R"("\ud83c\udf40")");
+  // Longer than 4 byte encodings
   EXPECT_ANY_THROW(folly::json::serialize("\xed\xaf\xbf\xed\xbf\xbf", opts));
 }
 

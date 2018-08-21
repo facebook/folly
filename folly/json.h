@@ -86,7 +86,9 @@ struct serialization_opts {
   // try to be minimally "pretty".
   bool pretty_formatting;
 
-  // If true, non-ASCII utf8 characters would be encoded as \uXXXX.
+  // If true, non-ASCII utf8 characters would be encoded as \uXXXX:
+  // - if the code point is in [U+0000..U+FFFF] => encode as a single \uXXXX
+  // - if the code point is > U+FFFF => encode as 2 UTF-16 surrogate pairs.
   bool encode_non_ascii;
 
   // Check that strings are valid utf8

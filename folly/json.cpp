@@ -718,13 +718,31 @@ void escapeString(
     if (opts.encode_non_ascii && (*p & 0x80)) {
       // note that this if condition captures utf8 chars
       // with value > 127, so size > 1 byte
-      char32_t v = utf8ToCodePoint(p, e, opts.skip_invalid_utf8);
-      char buf[] = "\\u\0\0\0\0";
-      buf[2] = hexDigit(uint8_t(v >> 12));
-      buf[3] = hexDigit((v >> 8) & 0x0f);
-      buf[4] = hexDigit((v >> 4) & 0x0f);
-      buf[5] = hexDigit(v & 0x0f);
-      out.append(buf, 6);
+      // NOTE: char32_t / char16_t are both unsigned.
+      char32_t cp = utf8ToCodePoint(p, e, opts.skip_invalid_utf8);
+      auto writeHex = [&](char16_t v) {
+        char buf[] = "\\u\0\0\0\0";
+        buf[2] = hexDigit((v >> 12) & 0x0f);
+        buf[3] = hexDigit((v >> 8) & 0x0f);
+        buf[4] = hexDigit((v >> 4) & 0x0f);
+        buf[5] = hexDigit(v & 0x0f);
+        out.append(buf, 6);
+      };
+      // From the ECMA-404 The JSON Data Interchange Syntax 2nd Edition Dec 2017
+      if (cp < 0x10000u) {
+        // If the code point is in the Basic Multilingual Plane (U+0000 through
+        // U+FFFF), then it may be represented as a six-character sequence:
+        // a reverse solidus, followed by the lowercase letter u, followed by
+        // four hexadecimal digits that encode the code point.
+        writeHex(static_cast<char16_t>(cp));
+      } else {
+        // To escape a code point that is not in the Basic Multilingual Plane,
+        // the character may be represented as a twelve-character sequence,
+        // encoding the UTF-16 surrogate pair corresponding to the code point.
+        writeHex(static_cast<char16_t>(
+            0xd800u + (((cp - 0x10000u) >> 10) & 0x3ffu)));
+        writeHex(static_cast<char16_t>(0xdc00u + ((cp - 0x10000u) & 0x3ffu)));
+      }
     } else if (*p == '\\' || *p == '\"') {
       char buf[] = "\\\0";
       buf[1] = char(*p++);
