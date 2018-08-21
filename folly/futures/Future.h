@@ -1813,7 +1813,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// where f is a Future<A> and the result of the chain is a Future<D>
   /// becomes
   ///
-  ///   f.thenMultiWithExecutor(executor, a, b, c);
+  ///   std::move(f).thenMultiWithExecutor(executor, a, b, c);
   ///
   /// Preconditions:
   ///
@@ -1825,7 +1825,8 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Callback, class... Callbacks>
-  auto thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns) {
+  auto
+  thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns) && {
     // thenMultiExecutor with two callbacks is
     // via(x).then(a).thenMulti(b, ...).via(oldX)
     auto oldX = this->getExecutor();
@@ -1837,9 +1838,21 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <class Callback>
-  auto thenMultiWithExecutor(Executor* x, Callback&& fn) {
+  auto thenMultiWithExecutor(Executor* x, Callback&& fn) && {
     // thenMulti with one callback is just a then with an executor
     return std::move(*this).then(x, std::forward<Callback>(fn));
+  }
+
+  template <class Callback, class... Callbacks>
+  auto thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns) & {
+    return std::move(*this).themMultiWithExecutor(
+        x, std::forward<Callback>(fn), std::forward<Callbacks>(fns)...);
+  }
+
+  template <class Callback>
+  auto thenMultiWithExecutor(Executor* x, Callback&& fn) & {
+    return std::move(*this).themMultiWithExecutor(
+        x, std::forward<Callback>(fn));
   }
 
   /// Moves-out `*this`, creating/returning a corresponding SemiFuture.
