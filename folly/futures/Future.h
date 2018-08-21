@@ -1759,7 +1759,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// where f is a Future<A> and the result of the chain is a Future<D>
   /// becomes
   ///
-  ///   f.thenMulti(a, b, c);
+  ///   std::move(f).thenMulti(a, b, c);
   ///
   /// Preconditions:
   ///
@@ -1771,11 +1771,17 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Callback, class... Callbacks>
-  auto thenMulti(Callback&& fn, Callbacks&&... fns) {
+  auto thenMulti(Callback&& fn, Callbacks&&... fns) && {
     // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
     return std::move(*this)
         .then(std::forward<Callback>(fn))
         .thenMulti(std::forward<Callbacks>(fns)...);
+  }
+
+  template <class Callback, class... Callbacks>
+  auto thenMulti(Callback&& fn, Callbacks&&... fns) & {
+    return std::move(*this).thenMulti(
+        std::forward<Callback>(fn), std::forward<Callbacks>(fns)...);
   }
 
   /// Create a Future chain from a sequence of callbacks.
@@ -1790,9 +1796,14 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Callback>
-  auto thenMulti(Callback&& fn) {
+  auto thenMulti(Callback&& fn) && {
     // thenMulti with one callback is just a then
     return std::move(*this).then(std::forward<Callback>(fn));
+  }
+
+  template <class Callback>
+  auto thenMulti(Callback&& fn) & {
+    return std::move(*this).thenMulti(std::forward<Callback>(fn));
   }
 
   /// Create a Future chain from a sequence of callbacks. i.e.
