@@ -263,21 +263,21 @@ unsafeTelescope128(char * buffer, size_t room, unsigned __int128 x) {
     const auto y = x / 10;
     const auto digit = x % 10;
 
-    buffer[p--] = '0' + digit;
+    buffer[p--] = static_cast<char>('0' + digit);
     x = y;
   }
 
-  uint64_t xx = x; // Moving to faster 64-bit division thereafter
+  uint64_t xx = static_cast<uint64_t>(x); // Rest uses faster 64-bit division
 
   while (xx >= 10) {
     const auto y = xx / 10ULL;
     const auto digit = xx % 10ULL;
 
-    buffer[p--] = '0' + digit;
+    buffer[p--] = static_cast<char>('0' + digit);
     xx = y;
   }
 
-  buffer[p] = '0' + xx;
+  buffer[p] = static_cast<char>('0' + xx);
 
   return p;
 }
@@ -331,7 +331,7 @@ inline uint32_t digits10(uint64_t v) {
   }
 
   // bits is in the ballpark of log_2(v).
-  const uint8_t leadingZeroes = __builtin_clzll(v);
+  const uint32_t leadingZeroes = __builtin_clzll(v);
   const auto bits = 63 - leadingZeroes;
 
   // approximate log_10(v) == log_10(2) * bits.
@@ -390,12 +390,12 @@ inline uint32_t uint64ToBufferUnsafe(uint64_t v, char *const buffer) {
     // Keep these together so a peephole optimization "sees" them and
     // computes them in one shot.
     auto const q = v / 10;
-    auto const r = static_cast<char>(v % 10);
-    buffer[pos--] = '0' + r;
+    auto const r = v % 10;
+    buffer[pos--] = static_cast<char>('0' + r);
     v = q;
   }
   // Last digit is trivial to handle
-  buffer[pos] = static_cast<char>(v) + '0';
+  buffer[pos] = static_cast<char>(v + '0');
   return result;
 }
 

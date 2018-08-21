@@ -47,8 +47,8 @@ std::ostream& operator<<(std::ostream& xo, Histo const& histo) {
     }
     partial += histo.data[i];
     if (histo.data[i] > 0) {
-      xo << i << ": " << histo.data[i] << " (" << (partial * 100.0 / sum)
-         << "%)";
+      xo << i << ": " << histo.data[i] << " ("
+         << (static_cast<double>(partial) * 100.0 / sum) << "%)";
     }
   }
   xo << "]";
@@ -73,7 +73,7 @@ double expectedProbe(std::vector<std::size_t> const& probeLengths) {
     sum += i * probeLengths[i];
     count += probeLengths[i];
   }
-  return static_cast<double>(sum) / count;
+  return static_cast<double>(sum) / static_cast<double>(count);
 }
 
 // Returns i such that probeLengths elements 0 to i (inclusive) account
@@ -457,7 +457,9 @@ std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
   xo << "  valueBytes: " << (stats.size * stats.valueSize) << std::endl;
   xo << "  overheadBytes: " << stats.overheadBytes << std::endl;
   if (stats.size > 0) {
-    xo << "  overheadBytesPerKey: " << (stats.overheadBytes * 1.0 / stats.size)
+    xo << "  overheadBytesPerKey: "
+       << (static_cast<double>(stats.overheadBytes) /
+           static_cast<double>(stats.size))
        << std::endl;
   }
   xo << "}";

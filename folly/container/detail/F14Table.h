@@ -577,7 +577,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
 
   void copyOverflowInfoFrom(F14Chunk const& rhs) {
     FOLLY_SAFE_DCHECK(hostedOverflowCount() == 0, "");
-    control_ += rhs.control_ & 0xf0;
+    control_ += static_cast<uint8_t>(rhs.control_ & 0xf0);
     outboundOverflowCount_ = rhs.outboundOverflowCount_;
   }
 
@@ -625,13 +625,14 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     }
   }
 
-  uint8_t tag(std::size_t index) const {
+  std::size_t tag(std::size_t index) const {
     return tags_[index];
   }
 
-  void setTag(std::size_t index, uint8_t tag) {
-    FOLLY_SAFE_DCHECK(this != emptyInstance() && (tag & 0x80) != 0, "");
-    tags_[index] = tag;
+  void setTag(std::size_t index, std::size_t tag) {
+    FOLLY_SAFE_DCHECK(
+        this != emptyInstance() && tag >= 0x80 && tag <= 0xff, "");
+    tags_[index] = static_cast<uint8_t>(tag);
   }
 
   void clearTag(std::size_t index) {

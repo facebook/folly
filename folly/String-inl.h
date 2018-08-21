@@ -110,7 +110,8 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       unsigned char val = 0;
       for (int i = 0; i < 3 && p != str.end() && *p >= '0' && *p <= '7';
            ++i, ++p) {
-        val = (val << 3) | (*p - '0');
+        val <<= 3;
+        val |= (*p - '0');
       }
       out.push_back(val);
       last = p;
@@ -129,7 +130,8 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       for (; (p != str.end() &&
               (h = detail::hexTable[static_cast<unsigned char>(*p)]) < 16);
            ++p) {
-        val = (val << 4) | h;
+        val <<= 4;
+        val |= h;
       }
       out.push_back(val);
       last = p;

@@ -1072,7 +1072,7 @@ class FormatValue<std::tuple<Args...>> {
   template <size_t K, class Callback>
   typename std::enable_if<K == valueCount>::type
   doFormatFrom(size_t i, FormatArg& arg, Callback& /* cb */) const {
-    arg.enforce("tuple index out of range, max=", i);
+    arg.error("tuple index out of range, max=", i);
   }
 
   template <size_t K, class Callback>
