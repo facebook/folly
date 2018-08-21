@@ -466,10 +466,11 @@ class ValueContainerPolicy : public BasePolicy<
   using Super::kIsMap;
 
  public:
-  using ConstIter = ValueContainerIterator<typename AllocTraits::const_pointer>;
+  using ConstIter =
+      ValueContainerIterator<typename Super::AllocTraits::const_pointer>;
   using Iter = std::conditional_t<
       kIsMap,
-      ValueContainerIterator<typename AllocTraits::pointer>,
+      ValueContainerIterator<typename Super::AllocTraits::pointer>,
       ConstIter>;
 
   //////// F14Table policy
@@ -717,10 +718,11 @@ class NodeContainerPolicy
   using Super::kIsMap;
 
  public:
-  using ConstIter = NodeContainerIterator<typename AllocTraits::const_pointer>;
+  using ConstIter =
+      NodeContainerIterator<typename Super::AllocTraits::const_pointer>;
   using Iter = std::conditional_t<
       kIsMap,
-      NodeContainerIterator<typename AllocTraits::pointer>,
+      NodeContainerIterator<typename Super::AllocTraits::pointer>,
       ConstIter>;
 
   //////// F14Table policy
@@ -964,16 +966,18 @@ class VectorContainerPolicy : public BasePolicy<
   using InternalSizeType = Item;
 
   using ConstIter =
-      VectorContainerIterator<typename AllocTraits::const_pointer>;
+      VectorContainerIterator<typename Super::AllocTraits::const_pointer>;
   using Iter = std::conditional_t<
       kIsMap,
-      VectorContainerIterator<typename AllocTraits::pointer>,
+      VectorContainerIterator<typename Super::AllocTraits::pointer>,
       ConstIter>;
-  using ConstReverseIter = typename AllocTraits::const_pointer;
-  using ReverseIter = std::
-      conditional_t<kIsMap, typename AllocTraits::pointer, ConstReverseIter>;
+  using ConstReverseIter = typename Super::AllocTraits::const_pointer;
+  using ReverseIter = std::conditional_t<
+      kIsMap,
+      typename Super::AllocTraits::pointer,
+      ConstReverseIter>;
 
-  using ValuePtr = typename AllocTraits::pointer;
+  using ValuePtr = typename Super::AllocTraits::pointer;
 
   //////// F14Table policy
 
