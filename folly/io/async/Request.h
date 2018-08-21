@@ -25,6 +25,43 @@
 
 namespace folly {
 
+/*
+ * A token to be used to fetch data from RequestContext.
+ * Generally you will want this to be a static, created only once using a
+ * string, and then only copied. The string constructor is expensive.
+ */
+class RequestToken {
+ public:
+  explicit RequestToken(const std::string& str);
+
+  bool operator==(const RequestToken& other) const {
+    return token_ == other.token_;
+  }
+
+  // Slow, use only for debug log messages.
+  std::string getDebugString() const;
+
+  friend struct std::hash<folly::RequestToken>;
+
+ private:
+  static Synchronized<std::unordered_map<std::string, uint32_t>>& getCache();
+
+  uint32_t token_;
+};
+
+} // namespace folly
+
+namespace std {
+template <>
+struct hash<folly::RequestToken> {
+  size_t operator()(const folly::RequestToken& token) const {
+    return hash<uint32_t>()(token.token_);
+  }
+};
+} // namespace std
+
+namespace folly {
+
 // Some request context that follows an async request through a process
 // Everything in the context must be thread safe
 
@@ -96,27 +133,49 @@ class RequestContext {
   // used, will print a warning message for the first time, clear the existing
   // RequestData instance for "val", and **not** add "data".
   void setContextData(
-      const std::string& val,
+      const RequestToken& val,
       std::unique_ptr<RequestData> data);
+  void setContextData(
+      const std::string& val,
+      std::unique_ptr<RequestData> data) {
+    setContextData(RequestToken(val), std::move(data));
+  }
 
   // Add RequestData instance "data" to this RequestContext instance, with
   // string identifier "val". If the same string identifier has already been
   // used, return false and do nothing. Otherwise add "data" and return true.
   bool setContextDataIfAbsent(
-      const std::string& val,
+      const RequestToken& val,
       std::unique_ptr<RequestData> data);
+  bool setContextDataIfAbsent(
+      const std::string& val,
+      std::unique_ptr<RequestData> data) {
+    return setContextDataIfAbsent(RequestToken(val), std::move(data));
+  }
 
   // Remove the RequestData instance with string identifier "val", if it exists.
-  void clearContextData(const std::string& val);
+  void clearContextData(const RequestToken& val);
+  void clearContextData(const std::string& val) {
+    clearContextData(RequestToken(val));
+  }
 
   // Returns true if and only if the RequestData instance with string identifier
   // "val" exists in this RequestContext instnace.
-  bool hasContextData(const std::string& val) const;
+  bool hasContextData(const RequestToken& val) const;
+  bool hasContextData(const std::string& val) const {
+    return hasContextData(RequestToken(val));
+  }
 
   // Get (constant) raw pointer of the RequestData instance with string
   // identifier "val" if it exists, otherwise returns null pointer.
-  RequestData* getContextData(const std::string& val);
-  const RequestData* getContextData(const std::string& val) const;
+  RequestData* getContextData(const RequestToken& val);
+  const RequestData* getContextData(const RequestToken& val) const;
+  RequestData* getContextData(const std::string& val) {
+    return getContextData(RequestToken(val));
+  }
+  const RequestData* getContextData(const std::string& val) const {
+    return getContextData(RequestToken(val));
+  }
 
   void onSet();
   void onUnset();
@@ -152,8 +211,13 @@ class RequestContext {
   // Similar to setContextData, except it overwrites the data
   // if already set (instead of warn + reset ptr).
   void overwriteContextData(
-      const std::string& val,
+      const RequestToken& val,
       std::unique_ptr<RequestData> data);
+  void overwriteContextData(
+      const std::string& val,
+      std::unique_ptr<RequestData> data) {
+    overwriteContextData(RequestToken(val), std::move(data));
+  }
   // End shallow copy guard
 
   enum class DoSetBehaviour {
@@ -163,14 +227,20 @@ class RequestContext {
   };
 
   bool doSetContextData(
-      const std::string& val,
+      const RequestToken& val,
       std::unique_ptr<RequestData>& data,
       DoSetBehaviour behaviour);
+  bool doSetContextData(
+      const std::string& val,
+      std::unique_ptr<RequestData>& data,
+      DoSetBehaviour behaviour) {
+    return doSetContextData(RequestToken(val), data, behaviour);
+  }
 
   struct State {
     // This must be optimized for lookup, its hot path is getContextData
     // Efficiency of copying the container also matters in setShallowCopyContext
-    F14FastMap<std::string, RequestData::SharedPtr> requestData_;
+    F14FastMap<RequestToken, RequestData::SharedPtr> requestData_;
     // This must be optimized for iteration, its hot path is setContext
     // We also use the fact that it's ordered to efficiently compute
     // the difference with previous context
@@ -226,6 +296,12 @@ struct ShallowCopyRequestContextScopeGuard {
    * Helper constructor which is a more efficient equivalent to
    * "clearRequestData" then "setRequestData" after the guard.
    */
+  ShallowCopyRequestContextScopeGuard(
+      const RequestToken& val,
+      std::unique_ptr<RequestData> data)
+      : ShallowCopyRequestContextScopeGuard() {
+    RequestContext::get()->overwriteContextData(val, std::move(data));
+  }
   ShallowCopyRequestContextScopeGuard(
       const std::string& val,
       std::unique_ptr<RequestData> data)

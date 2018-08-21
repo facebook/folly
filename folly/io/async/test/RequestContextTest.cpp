@@ -23,6 +23,8 @@
 
 using namespace folly;
 
+RequestToken testtoken("test");
+
 class TestData : public RequestData {
  public:
   explicit TestData(int data) : data_(data) {}
@@ -108,9 +110,9 @@ TEST_F(RequestContextTest, SimpleTest) {
   RequestContext::get()->setContextData("test", std::make_unique<TestData>(10));
   base.runInEventBaseThread([&]() {
     EXPECT_TRUE(RequestContext::get() != nullptr);
-    auto data =
-        dynamic_cast<TestData*>(RequestContext::get()->getContextData("test"))
-            ->data_;
+    auto data = dynamic_cast<TestData*>(
+                    RequestContext::get()->getContextData(testtoken))
+                    ->data_;
     EXPECT_EQ(10, data);
     base.terminateLoopSoon();
   });
@@ -163,7 +165,7 @@ TEST_F(RequestContextTest, setIfAbsentTest) {
       "test", std::make_unique<TestData>(20)));
   EXPECT_EQ(
       10,
-      dynamic_cast<TestData*>(RequestContext::get()->getContextData("test"))
+      dynamic_cast<TestData*>(RequestContext::get()->getContextData(testtoken))
           ->data_);
 
   EXPECT_TRUE(RequestContext::get()->setContextDataIfAbsent(
@@ -189,8 +191,8 @@ TEST_F(RequestContextTest, testSetUnset) {
   // Override RequestContext
   RequestContext::create();
   auto ctx2 = RequestContext::saveContext();
-  ctx2->setContextData("test", std::make_unique<TestData>(20));
-  auto testData2 = dynamic_cast<TestData*>(ctx2->getContextData("test"));
+  ctx2->setContextData(testtoken, std::make_unique<TestData>(20));
+  auto testData2 = dynamic_cast<TestData*>(ctx2->getContextData(testtoken));
 
   // onSet called in setContextData
   EXPECT_EQ(1, testData2->set_);
@@ -229,7 +231,7 @@ TEST_F(RequestContextTest, deadlockTest) {
 
   RequestContext::get()->setContextData(
       "test", std::make_unique<DeadlockTestData>("test2"));
-  RequestContext::get()->clearContextData("test");
+  RequestContext::get()->clearContextData(testtoken);
 }
 
 // A common use case is to use set/unset to maintain a thread global
