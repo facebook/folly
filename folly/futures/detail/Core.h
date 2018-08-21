@@ -112,19 +112,17 @@ static_assert(sizeof(SpinLock) == 1, "missized");
 /// The FSM to manage the primary producer-to-consumer info-flow has these
 ///   allowed (atomic) transitions:
 ///
-/// ```
-/// +-------------------------------------------------------------+
-/// |                    ---> OnlyResult -----                    |
-/// |                  /                       \                  |
-/// |               (setResult())             (setCallback())     |
-/// |                /                           \                |
-/// |   Start ----->                               ------> Done   |
-/// |                \                           /                |
-/// |               (setCallback())           (setResult())       |
-/// |                  \                       /                  |
-/// |                    ---> OnlyCallback ---                    |
-/// +-------------------------------------------------------------+
-/// ```
+///   +-------------------------------------------------------------+
+///   |                    ---> OnlyResult -----                    |
+///   |                  /                       \                  |
+///   |               (setResult())             (setCallback())     |
+///   |                /                           \                |
+///   |   Start ----->                               ------> Done   |
+///   |                \                           /                |
+///   |               (setCallback())           (setResult())       |
+///   |                  \                       /                  |
+///   |                    ---> OnlyCallback ---                    |
+///   +-------------------------------------------------------------+
 ///
 /// States and the corresponding producer-to-consumer data status & ownership:
 ///

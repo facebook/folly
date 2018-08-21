@@ -773,17 +773,15 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///
   /// Example:
   ///
-  /// ```
-  /// makeSemiFuture()
-  ///   .defer([] {
-  ///     throw std::runtime_error("oh no!");
-  ///     return 42;
-  ///   })
-  ///   .deferError([] (exception_wrapper&& e) {
-  ///     LOG(INFO) << e.what();
-  ///     return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
-  ///   });
-  /// ```
+  ///   makeSemiFuture()
+  ///     .defer([] {
+  ///       throw std::runtime_error("oh no!");
+  ///       return 42;
+  ///     })
+  ///     .deferError([] (exception_wrapper&& e) {
+  ///       LOG(INFO) << e.what();
+  ///       return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
+  ///     });
   ///
   /// Preconditions:
   ///
@@ -1143,9 +1141,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// A Future for the return type of func is returned.
   ///
-  /// ```
-  /// Future<string> f2 = f1.then([](Try<T>&&) { return string("foo"); });
-  /// ```
+  ///   Future<string> f2 = f1.then([](Try<T>&&) { return string("foo"); });
   ///
   /// Preconditions:
   ///
@@ -1242,12 +1238,10 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// A Future for the return type of func is returned.
   ///
-  /// ```
-  /// Future<string> f2 = std::move(f1).thenTry([](auto&& t) {
-  ///   ...
-  ///   return string("foo");
-  /// });
-  /// ```
+  ///   Future<string> f2 = std::move(f1).thenTry([](auto&& t) {
+  ///     ...
+  ///     return string("foo");
+  ///   });
   ///
   /// Preconditions:
   ///
@@ -1274,12 +1268,10 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// A Future for the return type of func is returned.
   ///
-  /// ```
-  /// Future<string> f2 = f1.thenValue([](auto&& v) {
-  ///   ...
-  ///   return string("foo");
-  /// });
-  /// ```
+  ///   Future<string> f2 = f1.thenValue([](auto&& v) {
+  ///     ...
+  ///     return string("foo");
+  ///   });
   ///
   /// Preconditions:
   ///
@@ -1304,17 +1296,15 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// Example:
   ///
-  /// ```
-  /// makeFuture()
-  ///   .thenTry([] {
-  ///     throw std::runtime_error("oh no!");
-  ///     return 42;
-  ///   })
-  ///   .thenError<std::runtime_error>([] (auto const& e) {
-  ///     LOG(INFO) << "std::runtime_error: " << e.what();
-  ///     return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
-  ///   });
-  /// ```
+  ///   makeFuture()
+  ///     .thenTry([] {
+  ///       throw std::runtime_error("oh no!");
+  ///       return 42;
+  ///     })
+  ///     .thenError<std::runtime_error>([] (auto const& e) {
+  ///       LOG(INFO) << "std::runtime_error: " << e.what();
+  ///       return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
+  ///     });
   ///
   /// Preconditions:
   ///
@@ -1338,17 +1328,15 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// Example:
   ///
-  /// ```
-  /// makeFuture()
-  ///   .thenTry([] {
-  ///     throw std::runtime_error("oh no!");
-  ///     return 42;
-  ///   })
-  ///   .thenError([] (exception_wrapper&& e) {
-  ///     LOG(INFO) << e.what();
-  ///     return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
-  ///   });
-  /// ```
+  ///   makeFuture()
+  ///     .thenTry([] {
+  ///       throw std::runtime_error("oh no!");
+  ///       return 42;
+  ///     })
+  ///     .thenError([] (exception_wrapper&& e) {
+  ///       LOG(INFO) << e.what();
+  ///       return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
+  ///     });
   ///
   /// Preconditions:
   ///
@@ -1408,17 +1396,15 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// Example:
   ///
-  /// ```
-  /// makeFuture()
-  ///   .thenValue([] {
-  ///     throw std::runtime_error("oh no!");
-  ///     return 42;
-  ///   })
-  ///   .onError([] (std::runtime_error& e) {
-  ///     LOG(INFO) << "std::runtime_error: " << e.what();
-  ///     return -1; // or makeFuture<int>(-1)
-  ///   });
-  /// ```
+  ///   makeFuture()
+  ///     .thenValue([] {
+  ///       throw std::runtime_error("oh no!");
+  ///       return 42;
+  ///     })
+  ///     .onError([] (std::runtime_error& e) {
+  ///       LOG(INFO) << "std::runtime_error: " << e.what();
+  ///       return -1; // or makeFuture<int>(-1)
+  ///     });
   ///
   /// Preconditions:
   ///
@@ -1509,21 +1495,17 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// Like onError, but for timeouts. example:
   ///
-  /// ```
-  /// Future<int> f = makeFuture<int>(42)
-  ///   .delayed(long_time)
-  ///   .onTimeout(short_time,
-  ///     [] { return -1; });
-  /// ```
+  ///   Future<int> f = makeFuture<int>(42)
+  ///     .delayed(long_time)
+  ///     .onTimeout(short_time,
+  ///       [] { return -1; });
   ///
   /// or perhaps
   ///
-  /// ```
-  /// Future<int> f = makeFuture<int>(42)
-  ///   .delayed(long_time)
-  ///   .onTimeout(short_time,
-  ///     [] { return makeFuture<int>(some_exception); });
-  /// ```
+  ///   Future<int> f = makeFuture<int>(42)
+  ///     .delayed(long_time)
+  ///     .onTimeout(short_time,
+  ///       [] { return makeFuture<int>(some_exception); });
   ///
   /// Preconditions:
   ///
@@ -1772,16 +1754,12 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// Create a Future chain from a sequence of continuations. i.e.
   ///
-  /// ```
-  /// f.then(a).then(b).then(c)
-  /// ```
+  ///   f.then(a).then(b).then(c)
   ///
   /// where f is a Future<A> and the result of the chain is a Future<D>
   /// becomes
   ///
-  /// ```
-  /// f.thenMulti(a, b, c);
-  /// ```
+  ///   f.thenMulti(a, b, c);
   ///
   /// Preconditions:
   ///
@@ -1819,16 +1797,12 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// Create a Future chain from a sequence of callbacks. i.e.
   ///
-  /// ```
-  /// f.via(executor).then(a).then(b).then(c).via(oldExecutor)
-  /// ```
+  ///   f.via(executor).then(a).then(b).then(c).via(oldExecutor)
   ///
   /// where f is a Future<A> and the result of the chain is a Future<D>
   /// becomes
   ///
-  /// ```
-  /// f.thenMultiWithExecutor(executor, a, b, c);
-  /// ```
+  ///   f.thenMultiWithExecutor(executor, a, b, c);
   ///
   /// Preconditions:
   ///
@@ -1944,9 +1918,7 @@ class Future : private futures::detail::FutureBase<T> {
 /// unpleasantly surprised if we redefine Duration to microseconds, or
 /// something.
 ///
-/// ```
-/// timekeeper.after(std::chrono::duration_cast<Duration>(someNanoseconds))
-/// ```
+///   timekeeper.after(std::chrono::duration_cast<Duration>(someNanoseconds))
 class Timekeeper {
  public:
   virtual ~Timekeeper() = default;

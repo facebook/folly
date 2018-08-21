@@ -86,13 +86,11 @@ class CoreCallbackState;
 ///
 /// That usage pattern looks roughly like this:
 ///
-/// ```
-/// auto [p, f] = makePromiseContract(executor);
-/// g = std::move(f).then([](MyValue&& x) {
-///     ...executor runs this code if/when a MyValue is ready...
-///   });
-/// ...launch the async producer that eventually calls p.setResult()...
-/// ```
+///   auto [p, f] = makePromiseContract(executor);
+///   g = std::move(f).then([](MyValue&& x) {
+///       ...executor runs this code if/when a MyValue is ready...
+///     });
+///   ...launch the async producer that eventually calls p.setResult()...
 ///
 /// This is just one of many potential usage patterns. It has the desired
 /// property of being nonblocking to the caller. Of course the `.then()`
@@ -233,13 +231,11 @@ class Promise {
   ///
   /// Sample usage:
   ///
-  /// ```
-  /// Promise<MyValue> p = ...
-  /// ...
-  /// auto const ep = std::exception_ptr();
-  /// auto const ew = exception_wrapper::from_exception_ptr(ep);
-  /// p.setException(ew);
-  /// ```
+  ///   Promise<MyValue> p = ...
+  ///   ...
+  ///   auto const ep = std::exception_ptr();
+  ///   auto const ew = exception_wrapper::from_exception_ptr(ep);
+  ///   p.setException(ew);
   ///
   /// Functionally equivalent to `setTry(Try<T>(std::move(ew)))`
   ///
@@ -367,9 +363,7 @@ class Promise {
   ///
   /// Example:
   ///
-  /// ```
-  /// p.setWith([] { do something that may throw; return a T; });
-  /// ```
+  ///   p.setWith([] { do something that may throw; return a T; });
   ///
   /// Functionally equivalent to `setTry(makeTryWith(static_cast<F&&>(func)));`
   ///
