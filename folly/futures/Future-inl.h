@@ -1138,7 +1138,7 @@ typename std::enable_if<
     !is_invocable<F, exception_wrapper>::value &&
         !futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
-Future<T>::onError(F&& func) {
+Future<T>::onError(F&& func) && {
   typedef std::remove_reference_t<
       typename futures::detail::Extract<F>::FirstArg>
       Exn;
@@ -1173,7 +1173,7 @@ typename std::enable_if<
     !is_invocable<F, exception_wrapper>::value &&
         futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
-Future<T>::onError(F&& func) {
+Future<T>::onError(F&& func) && {
   static_assert(
       std::is_same<typename futures::detail::Extract<F>::Return, Future<T>>::
           value,
@@ -1233,7 +1233,7 @@ typename std::enable_if<
     is_invocable<F, exception_wrapper>::value &&
         futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
-Future<T>::onError(F&& func) {
+Future<T>::onError(F&& func) && {
   static_assert(
       std::is_same<typename futures::detail::Extract<F>::Return, Future<T>>::
           value,
@@ -1271,7 +1271,7 @@ typename std::enable_if<
     is_invocable<F, exception_wrapper>::value &&
         !futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
-Future<T>::onError(F&& func) {
+Future<T>::onError(F&& func) && {
   static_assert(
       std::is_same<typename futures::detail::Extract<F>::Return, Future<T>>::
           value,

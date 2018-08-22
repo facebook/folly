@@ -1420,7 +1420,7 @@ class Future : private futures::detail::FutureBase<T> {
       !is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func);
+  onError(F&& func) &&;
 
   /// Overload of onError where the error continuation returns a Future<T>
   ///
@@ -1438,7 +1438,7 @@ class Future : private futures::detail::FutureBase<T> {
       !is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func);
+  onError(F&& func) &&;
 
   /// Overload of onError that takes exception_wrapper and returns Future<T>
   ///
@@ -1456,7 +1456,7 @@ class Future : private futures::detail::FutureBase<T> {
       is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func);
+  onError(F&& func) &&;
 
   /// Overload of onError that takes exception_wrapper and returns T
   ///
@@ -1474,7 +1474,12 @@ class Future : private futures::detail::FutureBase<T> {
       is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func);
+  onError(F&& func) &&;
+
+  template <class F>
+  auto onError(F&& func) & {
+    return std::move(*this).onError(std::forward<F>(func));
+  }
 
   /// func is like std::function<void()> and is executed unconditionally, and
   /// the value/exception is passed through to the resulting Future.
