@@ -428,7 +428,7 @@ FutureBase<T>::thenImplementation(
 template <class T>
 template <typename E>
 SemiFuture<T>
-FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) {
+FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
   struct Context {
     explicit Context(E ex) : exception(std::move(ex)) {}
     E exception;
@@ -1221,7 +1221,7 @@ Future<T> Future<T>::ensure(F&& func) && {
 template <class T>
 template <class F>
 Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
-  return within(dur, tk).template thenError<FutureTimeout>(
+  return std::move(*this).within(dur, tk).template thenError<FutureTimeout>(
       [funcw = std::forward<F>(func)](auto const&) mutable {
         return std::forward<F>(funcw)();
       });
@@ -1936,19 +1936,20 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
 // within
 
 template <class T>
-Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
-  return within(dur, FutureTimeout(), tk);
+Future<T> Future<T>::within(Duration dur, Timekeeper* tk) && {
+  return std::move(*this).within(dur, FutureTimeout(), tk);
 }
 
 template <class T>
 template <class E>
-Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
+Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) && {
   if (this->isReady()) {
     return std::move(*this);
   }
 
   auto* exe = this->getExecutor();
-  return this->withinImplementation(dur, e, tk)
+  return std::move(*this)
+      .withinImplementation(dur, e, tk)
       .via(exe ? exe : &InlineExecutor::instance());
 }
 

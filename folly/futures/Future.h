@@ -436,7 +436,7 @@ class FutureBase {
   thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
 
   template <typename E>
-  SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk);
+  SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk) &&;
 };
 template <class T>
 void convertFuture(SemiFuture<T>&& sf, Future<T>& f);
@@ -806,7 +806,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <class E>
   SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) && {
     return this->isReady() ? std::move(*this)
-                           : this->withinImplementation(dur, e, tk);
+                           : std::move(*this).withinImplementation(dur, e, tk);
   }
 
   /// Delay the completion of this SemiFuture for at least this duration from
@@ -1536,7 +1536,11 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  Future<T> within(Duration, Timekeeper* = nullptr);
+  Future<T> within(Duration, Timekeeper* = nullptr) &&;
+
+  auto within(Duration dur, Timekeeper* tk = nullptr) & {
+    return std::move(*this).within(dur, tk);
+  }
 
   /// Throw the given exception if this Future does not complete within the
   /// given duration from now. The optional Timekeeper is as with
@@ -1552,7 +1556,12 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class E>
-  Future<T> within(Duration, E exception, Timekeeper* = nullptr);
+  Future<T> within(Duration, E exception, Timekeeper* = nullptr) &&;
+
+  template <class E>
+  auto within(Duration dur, E exception, Timekeeper* tk = nullptr) & {
+    return std::move(*this).within(dur, exception, tk);
+  }
 
   /// Delay the completion of this Future for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().
