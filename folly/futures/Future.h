@@ -1876,8 +1876,12 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `RESULT.valid() ==` the original value of `this->valid()`
   /// - RESULT will not have an Executor regardless of whether `*this` had one
-  SemiFuture<T> semi() {
+  SemiFuture<T> semi() && {
     return SemiFuture<T>{std::move(*this)};
+  }
+
+  auto semi() & {
+    return std::move(*this).semi();
   }
 
  protected:
