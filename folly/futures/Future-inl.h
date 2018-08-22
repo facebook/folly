@@ -1106,9 +1106,10 @@ Future<T> Future<T>::thenError(F&& func) && {
   // Allow for applying to future with null executor while this is still
   // possible.
   auto* e = this->getExecutor();
-  return onError([func = std::forward<F>(func)](ExceptionType& ex) mutable {
-           return std::forward<F>(func)(ex);
-         })
+  return std::move(*this)
+      .onError([func = std::forward<F>(func)](ExceptionType& ex) mutable {
+        return std::forward<F>(func)(ex);
+      })
       .via(e ? e : &InlineExecutor::instance());
 }
 
@@ -1119,10 +1120,11 @@ Future<T> Future<T>::thenError(F&& func) && {
   // Allow for applying to future with null executor while this is still
   // possible.
   auto* e = this->getExecutor();
-  return onError([func = std::forward<F>(func)](
-                     folly::exception_wrapper&& ex) mutable {
-           return std::forward<F>(func)(std::move(ex));
-         })
+  return std::move(*this)
+      .onError([func = std::forward<F>(func)](
+                   folly::exception_wrapper&& ex) mutable {
+        return std::forward<F>(func)(std::move(ex));
+      })
       .via(e ? e : &InlineExecutor::instance());
 }
 
