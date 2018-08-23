@@ -19,7 +19,6 @@
 #include <folly/io/async/test/BlockingSocket.h>
 #include <folly/portability/Sockets.h>
 
-#include <boost/scoped_array.hpp>
 #include <memory>
 
 enum StateEnum { STATE_WAITING, STATE_SUCCEEDED, STATE_FAILED };
@@ -393,7 +392,7 @@ class TestServer {
     // accept a connection
     std::shared_ptr<BlockingSocket> acceptedSocket = accept();
     // read the data and compare it to the specified buffer
-    boost::scoped_array<uint8_t> readbuf(new uint8_t[len]);
+    std::unique_ptr<uint8_t[]> readbuf(new uint8_t[len]);
     acceptedSocket->readAll(readbuf.get(), len);
     CHECK_EQ(memcmp(buf, readbuf.get(), len), 0);
     // make sure we get EOF next

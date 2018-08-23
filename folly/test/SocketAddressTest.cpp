@@ -27,7 +27,6 @@
 #include <folly/portability/Sockets.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
-using namespace boost;
 using std::string;
 using std::cerr;
 using std::endl;

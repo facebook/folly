@@ -35,15 +35,12 @@
 #include <folly/synchronization/Baton.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
-#include <boost/scoped_array.hpp>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <iostream>
+#include <memory>
 #include <thread>
 
-using namespace boost;
-
-using boost::scoped_array;
 using std::cerr;
 using std::endl;
 using std::min;
@@ -877,7 +874,7 @@ void testConnectOptWrite(size_t size1, size_t size2, bool close = false) {
 
   // Tell the connect callback to perform a write when the connect succeeds
   WriteCallback wcb2;
-  scoped_array<char> buf2(new char[size2]);
+  std::unique_ptr<char[]> buf2(new char[size2]);
   memset(buf2.get(), 'b', size2);
   if (size2 > 0) {
     ccb.successCallback = [&] { socket->write(&wcb2, buf2.get(), size2); };
@@ -886,7 +883,7 @@ void testConnectOptWrite(size_t size1, size_t size2, bool close = false) {
   }
 
   // Schedule one write() immediately, before the connect finishes
-  scoped_array<char> buf1(new char[size1]);
+  std::unique_ptr<char[]> buf1(new char[size1]);
   memset(buf1.get(), 'a', size1);
   WriteCallback wcb1;
   if (size1 > 0) {
@@ -1036,7 +1033,7 @@ TEST(AsyncSocketTest, WriteTimeout) {
   size_t writeLength = 32 * 1024 * 1024;
   uint32_t timeout = 200;
   socket->setSendTimeout(timeout);
-  scoped_array<char> buf(new char[writeLength]);
+  std::unique_ptr<char[]> buf(new char[writeLength]);
   memset(buf.get(), 'a', writeLength);
   WriteCallback wcb;
   socket->write(&wcb, buf.get(), writeLength);
@@ -1091,7 +1088,7 @@ TEST(AsyncSocketTest, WritePipeError) {
 
   // write() a large chunk of data
   size_t writeLength = 32 * 1024 * 1024;
-  scoped_array<char> buf(new char[writeLength]);
+  std::unique_ptr<char[]> buf(new char[writeLength]);
   memset(buf.get(), 'a', writeLength);
   WriteCallback wcb;
   socket->write(&wcb, buf.get(), writeLength);
