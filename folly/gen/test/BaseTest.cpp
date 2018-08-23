@@ -1336,6 +1336,25 @@ TEST(Gen, GroupBy) {
                | as<vector>());
 }
 
+TEST(Gen, GroupByAdjacent) {
+  vector<string> finite{"a", "b", "cc", "dd", "ee", "fff", "g", "hhh"};
+  vector<vector<string>> finiteGroups{
+      {"a", "b"}, {"cc", "dd", "ee"}, {"fff"}, {"g"}, {"hhh"}};
+  EXPECT_EQ(
+      finiteGroups,
+      from(finite) |
+          groupByAdjacent([](const string& str) { return str.size(); }) |
+          mapOp(as<vector>()) | as<vector>());
+
+  auto infinite = seq(0);
+  vector<vector<int>> infiniteGroups{
+      {0, 1, 2, 3, 4}, {5, 6, 7, 8, 9}, {10, 11, 12, 13, 14}};
+  EXPECT_EQ(
+      infiniteGroups,
+      infinite | groupByAdjacent([](const int& i) { return (i % 10) < 5; }) |
+          take(3) | mapOp(as<vector>()) | as<vector>());
+}
+
 TEST(Gen, Unwrap) {
   Optional<int> o(4);
   Optional<int> e;

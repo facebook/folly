@@ -349,6 +349,9 @@ template <class Selector>
 class GroupBy;
 
 template <class Selector>
+class GroupByAdjacent;
+
+template <class Selector>
 class Distinct;
 
 template <class Operators>
@@ -684,6 +687,13 @@ Order orderByDescending(Selector selector = Selector()) {
 template <class Selector = Identity, class GroupBy = detail::GroupBy<Selector>>
 GroupBy groupBy(Selector selector = Selector()) {
   return GroupBy(std::move(selector));
+}
+
+template <
+    class Selector = Identity,
+    class GroupByAdjacent = detail::GroupByAdjacent<Selector>>
+GroupByAdjacent groupByAdjacent(Selector selector = Selector()) {
+  return GroupByAdjacent(std::move(selector));
 }
 
 template <

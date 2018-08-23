@@ -1169,6 +1169,107 @@ class GroupBy : public Operator<GroupBy<Selector>> {
   }
 };
 
+/**
+ * GroupByAdjacent - Group adjacent values by a given key selector, producing a
+ * sequence of groups. This differs from GroupBy in that only contiguous sets
+ * of values with the same key are considered part of the same group. Unlike
+ * GroupBy, this can be used on infinite sequences.
+ *
+ * This type is usually used through the 'groupByAdjacent' helper function:
+ *
+ *   auto tens
+ *     = seq(0)
+ *     | groupByAdjacent([](int i){ return (i / 10) % 2; })
+ *
+ * This example results in a list like [ 0:[0-9], 1:[10-19], 0:[20-29], ... ]
+ */
+template <class Selector>
+class GroupByAdjacent : public Operator<GroupByAdjacent<Selector>> {
+  Selector selector_;
+
+ public:
+  GroupByAdjacent() {}
+
+  explicit GroupByAdjacent(Selector selector)
+      : selector_(std::move(selector)) {}
+
+  template <
+      class Value,
+      class Source,
+      class ValueDecayed = typename std::decay<Value>::type,
+      class Key = invoke_result_t<Selector, Value>,
+      class KeyDecayed = typename std::decay<Key>::type>
+  class Generator
+      : public GenImpl<
+            Group<KeyDecayed, ValueDecayed>&&,
+            Generator<Value, Source, ValueDecayed, Key, KeyDecayed>> {
+    Source source_;
+    Selector selector_;
+
+   public:
+    Generator(Source source, Selector selector)
+        : source_(std::move(source)), selector_(std::move(selector)) {}
+
+    typedef Group<KeyDecayed, ValueDecayed> GroupType;
+
+    template <class Handler>
+    bool apply(Handler&& handler) const {
+      Optional<KeyDecayed> key = none;
+      typename GroupType::VectorType values;
+
+      bool result = source_.apply([&](Value value) mutable {
+        KeyDecayed newKey = selector_(value);
+
+        // start the first group
+        if (!key.hasValue()) {
+          key.emplace(newKey);
+        }
+
+        if (key == newKey) {
+          // grow the current group
+          values.push_back(value);
+        } else {
+          // flush the current group
+          GroupType group(key.value(), std::move(values));
+          if (!handler(std::move(group))) {
+            return false;
+          }
+
+          // start a new group
+          key.emplace(newKey);
+          values.clear();
+          values.push_back(value);
+        }
+        return true;
+      });
+
+      if (!result) {
+        return false;
+      }
+
+      if (!key.hasValue()) {
+        return true;
+      }
+
+      // flush the final group
+      GroupType group(key.value(), std::move(values));
+      return handler(std::move(group));
+    }
+
+    static constexpr bool infinite = Source::infinite;
+  };
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), selector_);
+  }
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), selector_);
+  }
+};
+
 /*
  * TypeAssertion - For verifying the exact type of the value produced by a
  * generator. Useful for testing and debugging, and acts as a no-op at runtime.
