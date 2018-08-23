@@ -1862,18 +1862,6 @@ class Future : private futures::detail::FutureBase<T> {
     return std::move(*this).then(x, std::forward<Callback>(fn));
   }
 
-  template <class Callback, class... Callbacks>
-  auto thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns) & {
-    return std::move(*this).themMultiWithExecutor(
-        x, std::forward<Callback>(fn), std::forward<Callbacks>(fns)...);
-  }
-
-  template <class Callback>
-  auto thenMultiWithExecutor(Executor* x, Callback&& fn) & {
-    return std::move(*this).themMultiWithExecutor(
-        x, std::forward<Callback>(fn));
-  }
-
   /// Moves-out `*this`, creating/returning a corresponding SemiFuture.
   /// Result will behave like `*this` except result won't have an Executor.
   ///
