@@ -115,12 +115,12 @@ using KeyValuePairLeakChecker = MemoryLeakCheckerAllocator<
 using ValueLeakChecker =
     MemoryLeakCheckerAllocator<std::allocator<StringPiece>>;
 
-typedef StringKeyedUnorderedMap<
+using LeakCheckedUnorderedMap = StringKeyedUnorderedMap<
     int,
-    folly::Hash,
+    folly::hasher<StringPiece>,
     std::equal_to<StringPiece>,
-    KeyValuePairLeakChecker>
-    LeakCheckedUnorderedMap;
+    MemoryLeakCheckerAllocator<
+        std::allocator<std::pair<const std::string, int>>>>;
 
 typedef StringKeyedSetBase<std::less<StringPiece>, ValueLeakChecker>
     LeakCheckedSet;
@@ -129,9 +129,9 @@ typedef StringKeyedMap<int, std::less<StringPiece>, KeyValuePairLeakChecker>
     LeakCheckedMap;
 
 using LeakCheckedUnorderedSet = BasicStringKeyedUnorderedSet<
-    folly::Hash,
+    folly::hasher<StringPiece>,
     std::equal_to<folly::StringPiece>,
-    ValueLeakChecker>;
+    MemoryLeakCheckerAllocator<std::allocator<std::string>>>;
 
 TEST(StringKeyedUnorderedMapTest, sanity) {
   LeakCheckedUnorderedMap map;
