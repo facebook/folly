@@ -375,13 +375,13 @@ using ValueContainerIteratorBase = BaseIter<
 template <typename ValuePtr>
 class ValueContainerIterator : public ValueContainerIteratorBase<ValuePtr> {
   using Super = ValueContainerIteratorBase<ValuePtr>;
-  using typename Super::ItemIter;
-  using typename Super::ValueConstPtr;
+  using ItemIter = typename Super::ItemIter;
+  using ValueConstPtr = typename Super::ValueConstPtr;
 
  public:
-  using typename Super::pointer;
-  using typename Super::reference;
-  using typename Super::value_type;
+  using pointer = typename Super::pointer;
+  using reference = typename Super::reference;
+  using value_type = typename Super::value_type;
 
   ValueContainerIterator() = default;
   ValueContainerIterator(ValueContainerIterator const&) = default;
@@ -454,14 +454,14 @@ class ValueContainerPolicy : public BasePolicy<
       KeyEqualOrVoid,
       AllocOrVoid,
       SetOrMapValueType<Key, MappedTypeOrVoid>>;
-  using typename Super::Alloc;
-  using typename Super::AllocTraits;
-  using typename Super::Item;
-  using typename Super::ItemIter;
-  using typename Super::Value;
+  using Alloc = typename Super::Alloc;
+  using AllocTraits = typename Super::AllocTraits;
+  using Item = typename Super::Item;
+  using ItemIter = typename Super::ItemIter;
+  using Value = typename Super::Value;
 
  private:
-  using typename Super::ByteAlloc;
+  using ByteAlloc = typename Super::ByteAlloc;
 
   using Super::kIsMap;
 
@@ -616,13 +616,13 @@ class NodeContainerPolicy;
 template <typename ValuePtr>
 class NodeContainerIterator : public BaseIter<ValuePtr, NonConstPtr<ValuePtr>> {
   using Super = BaseIter<ValuePtr, NonConstPtr<ValuePtr>>;
-  using typename Super::ItemIter;
-  using typename Super::ValueConstPtr;
+  using ItemIter = typename Super::ItemIter;
+  using ValueConstPtr = typename Super::ValueConstPtr;
 
  public:
-  using typename Super::pointer;
-  using typename Super::reference;
-  using typename Super::value_type;
+  using pointer = typename Super::pointer;
+  using reference = typename Super::reference;
+  using value_type = typename Super::value_type;
 
   NodeContainerIterator() = default;
   NodeContainerIterator(NodeContainerIterator const&) = default;
@@ -706,14 +706,14 @@ class NodeContainerPolicy
               std::is_void<MappedTypeOrVoid>::value,
               Key,
               MapValueType<Key, MappedTypeOrVoid>>>>>::pointer>;
-  using typename Super::Alloc;
-  using typename Super::AllocTraits;
-  using typename Super::Item;
-  using typename Super::ItemIter;
-  using typename Super::Value;
+  using Alloc = typename Super::Alloc;
+  using AllocTraits = typename Super::AllocTraits;
+  using Item = typename Super::Item;
+  using ItemIter = typename Super::ItemIter;
+  using Value = typename Super::Value;
 
  private:
-  using typename Super::ByteAlloc;
+  using ByteAlloc = typename Super::ByteAlloc;
 
   using Super::kIsMap;
 
@@ -853,12 +853,12 @@ class VectorContainerPolicy;
 template <typename ValuePtr>
 class VectorContainerIterator : public BaseIter<ValuePtr, uint32_t> {
   using Super = BaseIter<ValuePtr, uint32_t>;
-  using typename Super::ValueConstPtr;
+  using ValueConstPtr = typename Super::ValueConstPtr;
 
  public:
-  using typename Super::pointer;
-  using typename Super::reference;
-  using typename Super::value_type;
+  using pointer = typename Super::pointer;
+  using reference = typename Super::reference;
+  using value_type = typename Super::value_type;
 
   VectorContainerIterator() = default;
   VectorContainerIterator(VectorContainerIterator const&) = default;
@@ -944,16 +944,16 @@ class VectorContainerPolicy : public BasePolicy<
       KeyEqualOrVoid,
       AllocOrVoid,
       uint32_t>;
-  using typename Super::Alloc;
-  using typename Super::AllocTraits;
-  using typename Super::ByteAlloc;
-  using typename Super::ByteAllocTraits;
-  using typename Super::BytePtr;
-  using typename Super::Hasher;
-  using typename Super::Item;
-  using typename Super::ItemIter;
-  using typename Super::KeyEqual;
-  using typename Super::Value;
+  using Alloc = typename Super::Alloc;
+  using AllocTraits = typename Super::AllocTraits;
+  using ByteAlloc = typename Super::ByteAlloc;
+  using ByteAllocTraits = typename Super::ByteAllocTraits;
+  using BytePtr = typename Super::BytePtr;
+  using Hasher = typename Super::Hasher;
+  using Item = typename Super::Item;
+  using ItemIter = typename Super::ItemIter;
+  using KeyEqual = typename Super::KeyEqual;
+  using Value = typename Super::Value;
 
   using Super::kAllocIsAlwaysEqual;
 
