@@ -1541,9 +1541,9 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  Future<T> within(Duration, Timekeeper* = nullptr) &&;
+  Future<T> within(Duration dur, Timekeeper* tk = nullptr) &&;
 
-  auto within(Duration dur, Timekeeper* tk = nullptr) & {
+  Future<T> within(Duration dur, Timekeeper* tk = nullptr) & {
     return std::move(*this).within(dur, tk);
   }
 
@@ -1561,10 +1561,10 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class E>
-  Future<T> within(Duration, E exception, Timekeeper* = nullptr) &&;
+  Future<T> within(Duration dur, E exception, Timekeeper* tk = nullptr) &&;
 
   template <class E>
-  auto within(Duration dur, E exception, Timekeeper* tk = nullptr) & {
+  Future<T> within(Duration dur, E exception, Timekeeper* tk = nullptr) & {
     return std::move(*this).within(dur, exception, tk);
   }
 
