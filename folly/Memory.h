@@ -533,11 +533,11 @@ class allocator_delete : private std::remove_reference<Alloc>::type {
   allocator_delete& operator=(allocator_delete const&) = default;
   allocator_delete& operator=(allocator_delete&&) = default;
 
-  explicit allocator_delete(const allocator_type& allocator)
-      : allocator_type(allocator) {}
+  explicit allocator_delete(const allocator_type& alloc)
+      : allocator_type(alloc) {}
 
-  explicit allocator_delete(allocator_type&& allocator)
-      : allocator_type(std::move(allocator)) {}
+  explicit allocator_delete(allocator_type&& alloc)
+      : allocator_type(std::move(alloc)) {}
 
   template <typename U>
   allocator_delete(const allocator_delete<U>& other)
