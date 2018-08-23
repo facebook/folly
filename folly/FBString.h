@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <iosfwd>
 #include <limits>
+#include <stdexcept>
 #include <type_traits>
 
 // This file appears in two locations: inside fbcode and in the
