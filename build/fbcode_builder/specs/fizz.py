@@ -12,6 +12,9 @@ def fbcode_builder_spec(builder):
     return {
         'depends_on': [folly, sodium],
         'steps': [
-            builder.fb_github_cmake_install('fizz/fizz/build'),
+            builder.fb_github_cmake_install(
+                'fizz/fizz/build',
+                github_org='facebookincubator',
+            ),
         ],
     }
