@@ -322,7 +322,7 @@ TEST(Future, hasPostconditionInvalid) {
   DOIT(makeValid(), swallow(std::move(f.wait())));
   DOIT(makeValid(), swallow(std::move(f).get()));
   DOIT(makeValid(), swallow(std::move(f).get(std::chrono::milliseconds(10))));
-  DOIT(makeValid(), swallow(f.semi()));
+  DOIT(makeValid(), swallow(std::move(f).semi()));
 
 #undef DOIT
 }
