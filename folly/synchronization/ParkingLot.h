@@ -168,7 +168,7 @@ class ParkingLot {
 
     template <typename D>
     WaitNode(uint64_t key, uint64_t lotid, D&& data)
-        : WaitNodeBase(key, lotid), data_(std::forward<Data>(data)) {}
+        : WaitNodeBase(key, lotid), data_(std::forward<D>(data)) {}
   };
 
  public:
