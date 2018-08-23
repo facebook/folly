@@ -1222,7 +1222,7 @@ Future<T> Future<T>::ensure(F&& func) && {
 
 template <class T>
 template <class F>
-Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
+Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) && {
   return std::move(*this).within(dur, tk).template thenError<FutureTimeout>(
       [funcw = std::forward<F>(func)](auto const&) mutable {
         return std::forward<F>(funcw)();
