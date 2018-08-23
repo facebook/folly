@@ -1880,7 +1880,7 @@ class Future : private futures::detail::FutureBase<T> {
     return SemiFuture<T>{std::move(*this)};
   }
 
-  auto semi() & {
+  SemiFuture<T> semi() & {
     return std::move(*this).semi();
   }
 
