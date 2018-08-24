@@ -1797,12 +1797,6 @@ class Future : private futures::detail::FutureBase<T> {
         .thenMulti(std::forward<Callbacks>(fns)...);
   }
 
-  template <class Callback, class... Callbacks>
-  auto thenMulti(Callback&& fn, Callbacks&&... fns) & {
-    return std::move(*this).thenMulti(
-        std::forward<Callback>(fn), std::forward<Callbacks>(fns)...);
-  }
-
   /// Create a Future chain from a sequence of callbacks.
   ///
   /// Preconditions:
