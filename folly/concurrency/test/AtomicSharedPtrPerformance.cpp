@@ -13,6 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+// AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
+// other vendors
+#ifdef FOLLY_USE_LIBSTDCPP
+
 #include <folly/concurrency/AtomicSharedPtr.h>
 
 #include <sys/time.h>
@@ -225,3 +230,11 @@ int main(int, char**) {
   runSuite<folly::atomic_shared_ptr<int>>();
   return 0;
 }
+
+#else // #ifdef FOLLY_USE_LIBSTDCPP
+
+int main(int, char**) {
+  return 1;
+}
+
+#endif // #ifdef FOLLY_USE_LIBSTDCPP

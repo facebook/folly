@@ -372,6 +372,12 @@ constexpr auto kIsLibcpp = true;
 constexpr auto kIsLibcpp = false;
 #endif
 
+#if FOLLY_USE_LIBSTDCPP
+constexpr auto kIsLibstdcpp = true;
+#else
+constexpr auto kIsLibstdcpp = false;
+#endif
+
 #if _MSC_VER
 constexpr auto kMscVer = _MSC_VER;
 #else
