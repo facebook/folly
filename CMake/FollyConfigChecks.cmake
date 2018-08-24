@@ -179,6 +179,15 @@ check_cxx_source_compiles("
   FOLLY_USE_LIBCPP
 )
 
+check_cxx_source_compiles("
+  #include <type_traits>
+  #if !__GLIBCXX__
+  #error No libstdc++
+  #endif
+  int main() { return 0; }"
+  FOLLY_USE_LIBSTDCPP
+)
+
 check_cxx_source_runs("
   #include <string.h>
   #include <errno.h>
