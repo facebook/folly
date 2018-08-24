@@ -113,6 +113,7 @@ struct tryCallableResult {
       detail::argResult<true, F, Try<T>&&>>::type Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
+  typedef Future<value_type> Return;
 };
 
 template <typename T, typename F>
@@ -121,6 +122,7 @@ struct valueCallableResult {
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
   typedef typename Arg::ArgList::FirstArg FirstArg;
+  typedef Future<value_type> Return;
 };
 
 template <typename L>

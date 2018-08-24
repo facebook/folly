@@ -1080,23 +1080,27 @@ template <class T>
 template <typename F>
 Future<typename futures::detail::tryCallableResult<T, F>::value_type>
 Future<T>::thenTry(F&& func) && {
-  return std::move(*this).then(
-      [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
-        return std::forward<F>(f)(std::move(t));
-      });
+  auto lambdaFunc = [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
+    return std::forward<F>(f)(std::move(t));
+  };
+  using R = futures::detail::tryCallableResult<T, decltype(lambdaFunc)>;
+  return this->template thenImplementation<decltype(lambdaFunc), R>(
+      std::move(lambdaFunc), typename R::Arg());
 }
 
 template <class T>
 template <typename F>
 Future<typename futures::detail::valueCallableResult<T, F>::value_type>
 Future<T>::thenValue(F&& func) && {
-  return std::move(*this).then([f = std::forward<F>(func)](
-                                   folly::Try<T>&& t) mutable {
+  auto lambdaFunc = [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
     return std::forward<F>(f)(
         t.template get<
             false,
             typename futures::detail::valueCallableResult<T, F>::FirstArg>());
-  });
+  };
+  using R = futures::detail::tryCallableResult<T, decltype(lambdaFunc)>;
+  return this->template thenImplementation<decltype(lambdaFunc), R>(
+      std::move(lambdaFunc), typename R::Arg());
 }
 
 template <class T>
