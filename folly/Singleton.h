@@ -136,6 +136,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <functional>
+#include <list>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -703,6 +704,10 @@ class LeakySingleton {
     }
 
     auto& entry = entryInstance();
+    if (entry.ptr) {
+      // Make sure existing pointer doesn't get reported as a leak by LSAN.
+      entry.leakedPtrs.push_back(std::exchange(entry.ptr, nullptr));
+    }
     entry.createFunc = createFunc;
     entry.state = State::Dead;
   }
@@ -720,6 +725,7 @@ class LeakySingleton {
     CreateFunc createFunc;
     std::mutex mutex;
     detail::TypeDescriptor type_{typeid(T), typeid(Tag)};
+    std::list<T*> leakedPtrs;
   };
 
   static Entry& entryInstance() {
