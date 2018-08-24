@@ -52,6 +52,15 @@ constexpr folly::StringPiece kLargeNonAsciiString =
     "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
     "qwerty \xc2\x80 \xef\xbf\xbf poiuy";
 
+constexpr folly::StringPiece kLargeAsciiStringWithSpecialChars =
+    "<script>foo%@bar.com</script>"
+    "<script>foo%@bar.com</script>"
+    "<script>foo%@bar.com</script>"
+    "<script>foo%@bar.com</script>"
+    "<script>foo%@bar.com</script>"
+    "<script>foo%@bar.com</script>"
+    "<script>foo%@bar.com</script>";
+
 TEST(Json, StripComments) {
   const std::string kTestDir = "folly/test/";
   const std::string kTestFile = "json_test_data/commented.json";
@@ -106,6 +115,18 @@ BENCHMARK(jsonSerializeAsciiWithUtf8Validation, iters) {
 
   folly::json::serialization_opts opts;
   opts.validate_utf8 = true;
+
+  for (size_t i = 0; i < iters; ++i) {
+    folly::json::serialize(obj, opts);
+  }
+}
+
+BENCHMARK(jsonSerializeWithExtraUnicodeEscapes, iters) {
+  const dynamic obj = kLargeAsciiStringWithSpecialChars;
+
+  folly::json::serialization_opts opts;
+  opts.extra_ascii_to_escape_bitmap =
+      folly::json::buildExtraAsciiToEscapeBitmap("<%@");
 
   for (size_t i = 0; i < iters; ++i) {
     folly::json::serialize(obj, opts);

@@ -600,6 +600,16 @@ dynamic parseValue(Input& in) {
 
 //////////////////////////////////////////////////////////////////////
 
+std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars) {
+  std::array<uint64_t, 2> escapes{{0, 0}};
+  for (const char c : chars) {
+    if (c >= 0x20 && c < 0x80) {
+      escapes[c / 64] |= uint64_t(1) << (c % 64);
+    }
+  }
+  return escapes;
+}
+
 std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
   std::string ret;
   unsigned indentLevel = 0;
@@ -611,8 +621,8 @@ std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
 // Fast path to determine the longest prefix that can be left
 // unescaped in a string of sizeof(T) bytes packed in an integer of
 // type T.
-template <class T>
-size_t firstEscapableInWord(T s) {
+template <bool EnableExtraAsciiEscapes, class T>
+size_t firstEscapableInWord(T s, const serialization_opts& opts) {
   static_assert(std::is_unsigned<T>::value, "Unsigned integer required");
   static constexpr T kOnes = ~T() / 255; // 0x...0101
   static constexpr T kMsbs = kOnes * 0x80; // 0x...8080
@@ -635,6 +645,25 @@ size_t firstEscapableInWord(T s) {
   auto isLow = isLess(s, 0x20); // <= 0x1f
   auto needsEscape = isHigh | isLow | isChar('\\') | isChar('"');
 
+  if /* constexpr */ (EnableExtraAsciiEscapes) {
+    // Deal with optional bitmap for unicode escapes. Escapes can optionally be
+    // set for ascii characters 32 - 127, so the inner loop may run up to 96
+    // times. However, for the case where 0 or a handful of bits are set,
+    // looping will be minimal through use of findFirstSet.
+    for (size_t i = 0; i < opts.extra_ascii_to_escape_bitmap.size(); ++i) {
+      const auto offset = i * 64;
+      // Clear first 32 characters if this is the first index, since those are
+      // always escaped.
+      auto bitmap = opts.extra_ascii_to_escape_bitmap[i] &
+          (i == 0 ? uint64_t(-1) << 32 : ~0UL);
+      while (bitmap) {
+        auto bit = folly::findFirstSet(bitmap);
+        needsEscape |= isChar(offset + bit - 1);
+        bitmap &= bitmap - 1;
+      }
+    }
+  }
+
   if (!needsEscape) {
     return sizeof(T);
   }
@@ -647,7 +676,8 @@ size_t firstEscapableInWord(T s) {
 }
 
 // Escape a string so that it is legal to print it in JSON text.
-void escapeString(
+template <bool EnableExtraAsciiEscapes>
+void escapeStringImpl(
     StringPiece input,
     std::string& out,
     const serialization_opts& opts) {
@@ -673,7 +703,7 @@ void escapeString(
       } else {
         word = folly::partialLoadUnaligned<uint64_t>(firstEsc, avail);
       }
-      auto prefix = firstEscapableInWord(word);
+      auto prefix = firstEscapableInWord<EnableExtraAsciiEscapes>(word, opts);
       DCHECK_LE(prefix, avail);
       firstEsc += prefix;
       if (prefix < 8) {
@@ -715,9 +745,19 @@ void escapeString(
         }
       }
     }
-    if (opts.encode_non_ascii && (*p & 0x80)) {
+
+    auto encodeUnicode = opts.encode_non_ascii && (*p & 0x80);
+    if /* constexpr */ (EnableExtraAsciiEscapes) {
+      encodeUnicode = encodeUnicode ||
+          (*p >= 0x20 && *p < 0x80 &&
+           (opts.extra_ascii_to_escape_bitmap[*p / 64] &
+            (uint64_t(1) << (*p % 64))));
+    }
+
+    if (encodeUnicode) {
       // note that this if condition captures utf8 chars
-      // with value > 127, so size > 1 byte
+      // with value > 127, so size > 1 byte (or they are whitelisted for
+      // Unicode encoding).
       // NOTE: char32_t / char16_t are both unsigned.
       char32_t cp = utf8ToCodePoint(p, e, opts.skip_invalid_utf8);
       auto writeHex = [&](char16_t v) {
@@ -769,6 +809,19 @@ void escapeString(
   }
 
   out.push_back('\"');
+}
+
+void escapeString(
+    StringPiece input,
+    std::string& out,
+    const serialization_opts& opts) {
+  if (FOLLY_UNLIKELY(
+          opts.extra_ascii_to_escape_bitmap[0] ||
+          opts.extra_ascii_to_escape_bitmap[1])) {
+    escapeStringImpl<true>(input, out, opts);
+  } else {
+    escapeStringImpl<false>(input, out, opts);
+  }
 }
 
 std::string stripComments(StringPiece jsonC) {

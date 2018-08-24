@@ -68,7 +68,8 @@ struct serialization_opts {
         double_num_digits(0), // ignored when mode is SHORTEST
         double_fallback(false),
         parse_numbers_as_strings(false),
-        recursion_limit(100) {}
+        recursion_limit(100),
+        extra_ascii_to_escape_bitmap{{0, 0}} {}
 
   // If true, keys in an object can be non-strings.  (In strict
   // JSON, object keys must be strings.)  This is used by dynamic's
@@ -127,7 +128,21 @@ struct serialization_opts {
 
   // Recursion limit when parsing.
   unsigned int recursion_limit;
+
+  // Bitmap representing ASCII characters to escape with unicode
+  // representations. The least significant bit of the first in the pair is
+  // ASCII value 0; the most significant bit of the second in the pair is ASCII
+  // value 127. Some specific characters in this range are always escaped
+  // regardless of the bitmask - namely characters less than 0x20, \, and ".
+  std::array<uint64_t, 2> extra_ascii_to_escape_bitmap;
 };
+
+/*
+ * Generates a bitmap with bits set for each of the ASCII characters provided
+ * for use in the serialization_opts extra_ascii_to_escape_bitmap option. If any
+ * characters are not valid ASCII, they are ignored.
+ */
+std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars);
 
 /*
  * Main JSON serialization routine taking folly::dynamic parameters.
@@ -150,6 +165,7 @@ void escapeString(
  * Strip all C99-like comments (i.e. // and / * ... * /)
  */
 std::string stripComments(StringPiece jsonC);
+
 } // namespace json
 
 //////////////////////////////////////////////////////////////////////

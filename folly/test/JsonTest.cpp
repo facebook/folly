@@ -608,3 +608,86 @@ TEST(Json, RecursionLimit) {
   opts_high_recursion_limit.recursion_limit = 10000;
   parseJson(in, opts_high_recursion_limit);
 }
+
+TEST(Json, ExtraEscapes) {
+  folly::json::serialization_opts opts;
+  dynamic in = dynamic::object("a", "<foo@bar%baz?>");
+
+  // Only in second index, only first bit of that index.
+  opts.extra_ascii_to_escape_bitmap =
+      folly::json::buildExtraAsciiToEscapeBitmap("@");
+  auto serialized = folly::json::serialize(in, opts);
+  EXPECT_EQ("{\"a\":\"<foo\\u0040bar%baz?>\"}", serialized);
+  EXPECT_EQ(in, folly::parseJson(serialized));
+
+  // Only last bit.
+  opts.extra_ascii_to_escape_bitmap =
+      folly::json::buildExtraAsciiToEscapeBitmap("?");
+  serialized = folly::json::serialize(in, opts);
+  EXPECT_EQ("{\"a\":\"<foo@bar%baz\\u003f>\"}", serialized);
+  EXPECT_EQ(in, folly::parseJson(serialized));
+
+  // Multiple bits.
+  opts.extra_ascii_to_escape_bitmap =
+      folly::json::buildExtraAsciiToEscapeBitmap("<%@?");
+  serialized = folly::json::serialize(in, opts);
+  EXPECT_EQ("{\"a\":\"\\u003cfoo\\u0040bar\\u0025baz\\u003f>\"}", serialized);
+  EXPECT_EQ(in, folly::parseJson(serialized));
+
+  // Non-ASCII
+  in = dynamic::object("a", "a\xe0\xa0\x80z\xc0\x80");
+  opts.extra_ascii_to_escape_bitmap =
+      folly::json::buildExtraAsciiToEscapeBitmap("@");
+  serialized = folly::json::serialize(in, opts);
+  EXPECT_EQ("{\"a\":\"a\xe0\xa0\x80z\xc0\x80\"}", serialized);
+  EXPECT_EQ(in, folly::parseJson(serialized));
+}
+
+TEST(Json, CharsToUnicodeEscape) {
+  auto testPair = [](std::array<uint64_t, 2> arr, uint64_t zero, uint64_t one) {
+    EXPECT_EQ(zero, arr[0]);
+    EXPECT_EQ(one, arr[1]);
+  };
+
+  testPair(folly::json::buildExtraAsciiToEscapeBitmap(""), 0, 0);
+
+  // ?=63
+  testPair(folly::json::buildExtraAsciiToEscapeBitmap("?"), (1UL << 63), 0);
+
+  // @=64
+  testPair(
+      folly::json::buildExtraAsciiToEscapeBitmap("@"), 0, (1UL << (64 - 64)));
+
+  testPair(
+      folly::json::buildExtraAsciiToEscapeBitmap("?@"),
+      (1UL << 63),
+      (1UL << (64 - 64)));
+  testPair(
+      folly::json::buildExtraAsciiToEscapeBitmap("@?"),
+      (1UL << 63),
+      (1UL << (64 - 64)));
+
+  // duplicates
+  testPair(
+      folly::json::buildExtraAsciiToEscapeBitmap("@?@?"),
+      (1UL << 63),
+      (1UL << (64 - 64)));
+
+  // ?=63, @=64, $=36
+  testPair(
+      folly::json::buildExtraAsciiToEscapeBitmap("?@$"),
+      (1UL << 63) | (1UL << 36),
+      (1UL << (64 - 64)));
+
+  // ?=63, $=36, @=64, !=33
+  testPair(
+      folly::json::buildExtraAsciiToEscapeBitmap("?@$!"),
+      (1UL << 63) | (1UL << 36) | (1UL << 33),
+      (1UL << (64 - 64)));
+
+  // ?=63, $=36, @=64, !=33, ]=93
+  testPair(
+      folly::json::buildExtraAsciiToEscapeBitmap("?@$!]"),
+      (1UL << 63) | (1UL << 36) | (1UL << 33),
+      (1UL << (64 - 64)) | (1UL << (93 - 64)));
+}
