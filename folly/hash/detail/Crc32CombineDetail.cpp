@@ -16,7 +16,11 @@
 
 #include <folly/hash/detail/ChecksumDetail.h>
 
+#include <array>
+
 #include <folly/Bits.h>
+#include <folly/CPortability.h>
+#include <folly/ConstexprMath.h>
 
 namespace folly {
 
@@ -24,15 +28,47 @@ namespace folly {
 // b, m, and p are all bit-reflected.
 //
 // https://en.wikipedia.org/wiki/Finite_field_arithmetic
-static uint32_t gf_multiply_sw(uint32_t a, uint32_t b, uint32_t m) {
-  uint32_t p = 0;
-  for (int i = 0; i < 32; i++) {
-    p ^= -((b >> 31) & 1) & a;
-    a = (a >> 1) ^ (-(a & 1) & m);
-    b <<= 1;
-  }
-  return p;
+static constexpr uint32_t
+gf_multiply_sw_1(size_t i, uint32_t p, uint32_t a, uint32_t b, uint32_t m) {
+  // clang-format off
+  return i == 32 ? p : gf_multiply_sw_1(
+      /* i = */ i + 1,
+      /* p = */ p ^ (-((b >> 31) & 1) & a),
+      /* a = */ (a >> 1) ^ (-(a & 1) & m),
+      /* b = */ b << 1,
+      /* m = */ m);
+  // clang-format on
 }
+static constexpr uint32_t gf_multiply_sw(uint32_t a, uint32_t b, uint32_t m) {
+  return gf_multiply_sw_1(/* i = */ 0, /* p = */ 0, a, b, m);
+}
+
+static constexpr uint32_t gf_square_sw(uint32_t a, uint32_t m) {
+  return gf_multiply_sw(a, a, m);
+}
+
+namespace {
+
+template <size_t i, uint32_t m>
+struct gf_powers_memo {
+  static constexpr uint32_t value =
+      gf_square_sw(gf_powers_memo<i - 1, m>::value, m);
+};
+template <uint32_t m>
+struct gf_powers_memo<0, m> {
+  static constexpr uint32_t value = m;
+};
+
+template <uint32_t m>
+struct gf_powers_make {
+  template <size_t... i>
+  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN constexpr auto operator()(
+      index_sequence<i...>) const {
+    return std::array<uint32_t, sizeof...(i)>{{gf_powers_memo<i, m>::value...}};
+  }
+};
+
+} // namespace
 
 #if FOLLY_SSE_PREREQ(4, 2)
 
@@ -85,42 +121,11 @@ static uint32_t gf_multiply_crc32_hw(uint64_t, uint64_t, uint32_t) {
 
 /*
  * Pre-calculated powers tables for crc32c and crc32.
- * Calculated using:
- *
- * printf("Powers for 0x%08x\n", polynomial);
- * auto power = polynomial;
- * for (int i = 0; i < 62; i++) {
- *   printf("%i 0x%08x\n", i, power);
- *   power = gf_multiply(power, power, polynomial);
- * }
- * printf("-------------\n");
  */
-static const uint32_t crc32c_powers[] = {
-    0x82f63b78, 0x6ea2d55c, 0x18b8ea18, 0x510ac59a, 0xb82be955, 0xb8fdb1e7,
-    0x88e56f72, 0x74c360a4, 0xe4172b16, 0x0d65762a, 0x35d73a62, 0x28461564,
-    0xbf455269, 0xe2ea32dc, 0xfe7740e6, 0xf946610b, 0x3c204f8f, 0x538586e3,
-    0x59726915, 0x734d5309, 0xbc1ac763, 0x7d0722cc, 0xd289cabe, 0xe94ca9bc,
-    0x05b74f3f, 0xa51e1f42, 0x40000000, 0x20000000, 0x08000000, 0x00800000,
-    0x00008000, 0x82f63b78, 0x6ea2d55c, 0x18b8ea18, 0x510ac59a, 0xb82be955,
-    0xb8fdb1e7, 0x88e56f72, 0x74c360a4, 0xe4172b16, 0x0d65762a, 0x35d73a62,
-    0x28461564, 0xbf455269, 0xe2ea32dc, 0xfe7740e6, 0xf946610b, 0x3c204f8f,
-    0x538586e3, 0x59726915, 0x734d5309, 0xbc1ac763, 0x7d0722cc, 0xd289cabe,
-    0xe94ca9bc, 0x05b74f3f, 0xa51e1f42, 0x40000000, 0x20000000, 0x08000000,
-    0x00800000, 0x00008000,
-};
-static const uint32_t crc32_powers[] = {
-    0xedb88320, 0xb1e6b092, 0xa06a2517, 0xed627dae, 0x88d14467, 0xd7bbfe6a,
-    0xec447f11, 0x8e7ea170, 0x6427800e, 0x4d47bae0, 0x09fe548f, 0x83852d0f,
-    0x30362f1a, 0x7b5a9cc3, 0x31fec169, 0x9fec022a, 0x6c8dedc4, 0x15d6874d,
-    0x5fde7a4e, 0xbad90e37, 0x2e4e5eef, 0x4eaba214, 0xa8a472c0, 0x429a969e,
-    0x148d302a, 0xc40ba6d0, 0xc4e22c3c, 0x40000000, 0x20000000, 0x08000000,
-    0x00800000, 0x00008000, 0xedb88320, 0xb1e6b092, 0xa06a2517, 0xed627dae,
-    0x88d14467, 0xd7bbfe6a, 0xec447f11, 0x8e7ea170, 0x6427800e, 0x4d47bae0,
-    0x09fe548f, 0x83852d0f, 0x30362f1a, 0x7b5a9cc3, 0x31fec169, 0x9fec022a,
-    0x6c8dedc4, 0x15d6874d, 0x5fde7a4e, 0xbad90e37, 0x2e4e5eef, 0x4eaba214,
-    0xa8a472c0, 0x429a969e, 0x148d302a, 0xc40ba6d0, 0xc4e22c3c, 0x40000000,
-    0x20000000, 0x08000000,
-};
+static constexpr std::array<uint32_t, 62> const crc32c_powers =
+    gf_powers_make<0x82f63b78>{}(make_index_sequence<62>{});
+static constexpr std::array<uint32_t, 62> const crc32_powers =
+    gf_powers_make<0xedb88320>{}(make_index_sequence<62>{});
 
 template <typename F>
 static uint32_t crc32_append_zeroes(
@@ -128,7 +133,9 @@ static uint32_t crc32_append_zeroes(
     uint32_t crc,
     size_t len,
     uint32_t polynomial,
-    uint32_t const* powers) {
+    std::array<uint32_t, 62> const& powers_array) {
+  auto powers = powers_array.data();
+
   // Append by multiplying by consecutive powers of two of the zeroes
   // array
   len >>= 2;
