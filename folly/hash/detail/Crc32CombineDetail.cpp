@@ -19,7 +19,6 @@
 #include <array>
 
 #include <folly/Bits.h>
-#include <folly/CPortability.h>
 #include <folly/ConstexprMath.h>
 
 namespace folly {
@@ -62,8 +61,7 @@ struct gf_powers_memo<0, m> {
 template <uint32_t m>
 struct gf_powers_make {
   template <size_t... i>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN constexpr auto operator()(
-      index_sequence<i...>) const {
+  constexpr auto operator()(index_sequence<i...>) const {
     return std::array<uint32_t, sizeof...(i)>{{gf_powers_memo<i, m>::value...}};
   }
 };
