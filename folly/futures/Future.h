@@ -1867,10 +1867,6 @@ class Future : private futures::detail::FutureBase<T> {
     return SemiFuture<T>{std::move(*this)};
   }
 
-  SemiFuture<T> semi() & {
-    return std::move(*this).semi();
-  }
-
  protected:
   friend class Promise<T>;
   template <class>
