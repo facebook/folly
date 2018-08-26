@@ -69,8 +69,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/operators.hpp>
-
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
@@ -227,10 +225,7 @@ template <
     class Allocator = std::allocator<T>,
     class GrowthPolicy = void,
     class Container = std::vector<T, Allocator>>
-class sorted_vector_set
-    : boost::totally_ordered1<
-          sorted_vector_set<T, Compare, Allocator, GrowthPolicy>,
-          detail::growth_policy_wrapper<GrowthPolicy>> {
+class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
 
@@ -482,9 +477,21 @@ class sorted_vector_set
   bool operator==(const sorted_vector_set& other) const {
     return other.m_.cont_ == m_.cont_;
   }
+  bool operator!=(const sorted_vector_set& other) const {
+    return !operator==(other);
+  }
 
   bool operator<(const sorted_vector_set& other) const {
     return m_.cont_ < other.m_.cont_;
+  }
+  bool operator>(const sorted_vector_set& other) const {
+    return other < *this;
+  }
+  bool operator<=(const sorted_vector_set& other) const {
+    return !operator>(other);
+  }
+  bool operator>=(const sorted_vector_set& other) const {
+    return !operator<(other);
   }
 
   const value_type* data() const noexcept {
@@ -557,10 +564,7 @@ template <
     class Allocator = std::allocator<std::pair<Key, Value>>,
     class GrowthPolicy = void,
     class Container = std::vector<std::pair<Key, Value>, Allocator>>
-class sorted_vector_map
-    : boost::totally_ordered1<
-          sorted_vector_map<Key, Value, Compare, Allocator, GrowthPolicy>,
-          detail::growth_policy_wrapper<GrowthPolicy>> {
+class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   detail::growth_policy_wrapper<GrowthPolicy>&
   get_growth_policy() { return *this; }
 
@@ -839,9 +843,21 @@ class sorted_vector_map
   bool operator==(const sorted_vector_map& other) const {
     return m_.cont_ == other.m_.cont_;
   }
+  bool operator!=(const sorted_vector_map& other) const {
+    return !operator==(other);
+  }
 
   bool operator<(const sorted_vector_map& other) const {
     return m_.cont_ < other.m_.cont_;
+  }
+  bool operator>(const sorted_vector_map& other) const {
+    return other < *this;
+  }
+  bool operator<=(const sorted_vector_map& other) const {
+    return !operator>(other);
+  }
+  bool operator>=(const sorted_vector_map& other) const {
+    return !operator<(other);
   }
 
   const value_type* data() const noexcept {
