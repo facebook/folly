@@ -188,7 +188,7 @@ TEST(AsyncSSLSocketTest2, AttachDetachSSLContext) {
 
   auto f = client->getFuture();
   client->connect();
-  EXPECT_TRUE(f.within(std::chrono::seconds(3)).get());
+  EXPECT_TRUE(std::move(f).within(std::chrono::seconds(3)).get());
 }
 
 class ConnectClient : public AsyncSocket::ConnectCallback {
@@ -255,7 +255,7 @@ TEST(AsyncSSLSocketTest2, TestTLS12DefaultClient) {
   auto c1 = std::make_unique<ConnectClient>();
   auto f1 = c1->getFuture();
   c1->connect(server.getAddress());
-  EXPECT_TRUE(f1.within(std::chrono::seconds(3)).get());
+  EXPECT_TRUE(std::move(f1).within(std::chrono::seconds(3)).get());
 }
 
 TEST(AsyncSSLSocketTest2, TestTLS12BadClient) {
@@ -275,7 +275,7 @@ TEST(AsyncSSLSocketTest2, TestTLS12BadClient) {
   c2->setCtx(clientCtx);
   auto f2 = c2->getFuture();
   c2->connect(server.getAddress());
-  EXPECT_FALSE(f2.within(std::chrono::seconds(3)).get());
+  EXPECT_FALSE(std::move(f2).within(std::chrono::seconds(3)).get());
 }
 
 } // namespace folly
