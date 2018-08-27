@@ -1519,11 +1519,6 @@ class Future : private futures::detail::FutureBase<T> {
   template <class F>
   Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr) &&;
 
-  template <class F>
-  Future<T> onTimeout(Duration dur, F&& func, Timekeeper* tk = nullptr) & {
-    return std::move(*this).onTimeout(dur, std::forward<F>(func), tk);
-  }
-
   /// Throw FutureTimeout if this Future does not complete within the given
   /// duration from now. The optional Timekeeper is as with futures::sleep().
   ///
