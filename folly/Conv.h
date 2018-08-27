@@ -44,6 +44,7 @@
 #include <folly/Range.h>
 #include <folly/Traits.h>
 #include <folly/Unit.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Math.h>
 
 namespace folly {
@@ -129,7 +130,7 @@ inline ConversionCode enforceWhitespaceErr(StringPiece sp) {
 inline void enforceWhitespace(StringPiece sp) {
   auto err = enforceWhitespaceErr(sp);
   if (err != ConversionCode::SUCCESS) {
-    throw makeConversionError(err, sp);
+    throw_exception(makeConversionError(err, sp));
   }
 }
 } // namespace detail
@@ -1512,10 +1513,14 @@ inline
       detail::ReturnUnit<Error>>::type;
   auto tmp = detail::parseToWrap(src, result);
   return tmp
-      .thenOrThrow(Check(), [&](Error e) { throw makeConversionError(e, src); })
+      .thenOrThrow(
+          Check(),
+          [&](Error e) { throw_exception(makeConversionError(e, src)); })
       .thenOrThrow(
           [&](Unit) { return std::move(result); },
-          [&](Error e) { throw makeConversionError(e, tmp.value()); });
+          [&](Error e) {
+            throw_exception(makeConversionError(e, tmp.value()));
+          });
 }
 
 /**
