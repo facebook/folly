@@ -86,7 +86,9 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
   virtual void connAccepted(const std::shared_ptr<AsyncSSLSocket>& s) = 0;
 
   void detach() {
-    socket_->detachEventBase();
+    if (socket_) {
+      socket_->detachEventBase();
+    }
   }
 
   StateEnum state;
