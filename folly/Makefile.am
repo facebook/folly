@@ -367,6 +367,7 @@ nobase_follyinclude_HEADERS = \
 	Memory.h \
 	memory/Arena.h \
 	memory/Arena-inl.h \
+	memory/EnableSharedFromThis.h \
 	memory/MallctlHelper.h \
 	memory/Malloc.h \
 	memory/ThreadCachedArena.h \
