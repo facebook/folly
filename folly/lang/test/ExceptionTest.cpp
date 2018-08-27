@@ -48,6 +48,15 @@ static std::string message_for_terminate_with(std::string const& what) {
   // clang-format on
 }
 
+static std::string message_for_terminate() {
+  // clang-format off
+  return
+      folly::kIsGlibcxx ? "terminate called without an active exception" :
+      folly::kIsLibcpp ? "terminating" :
+      "" /* empty regex matches anything */;
+  // clang-format on
+}
+
 class MyException : public std::exception {
  private:
   char const* what_;
@@ -92,4 +101,11 @@ TEST_F(ExceptionTest, terminate_with_variadic) {
   EXPECT_DEATH(
       folly::terminate_with<MyException>("hello world", 6),
       message_for_terminate_with<MyException>("world"));
+}
+
+TEST_F(ExceptionTest, invoke_noreturn_cold) {
+  EXPECT_THROW(
+      folly::invoke_noreturn_cold([] { throw std::runtime_error("bad"); }),
+      std::runtime_error);
+  EXPECT_DEATH(folly::invoke_noreturn_cold([] {}), message_for_terminate());
 }
