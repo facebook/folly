@@ -246,7 +246,7 @@ void contendedRW(size_t itersPerThread,
   typedef AtomicUnorderedInsertMap<Key,MutableAtom<uint32_t>,PairHash> Map;
 
   std::unique_ptr<Map> ptr = {};
-  std::atomic<bool> go;
+  std::atomic<bool> go{false};
   std::vector<std::thread> threads;
 
   BENCHMARK_SUSPEND {

@@ -335,8 +335,7 @@ TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
   const int kNumThreads = 256;
   SimpleThreadCachedInt stci[kNumThreads + 1];
   std::atomic<bool> run(true);
-  std::atomic<int> totalAtomic;
-  ;
+  std::atomic<int> totalAtomic{0};
   std::vector<std::thread> threads;
   // thread i will increment all the thread locals
   // in the range 0..i

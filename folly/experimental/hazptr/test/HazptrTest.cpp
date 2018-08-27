@@ -516,7 +516,7 @@ TEST_F(HazptrTest, mt_refcount) {
 
   std::atomic<bool> ready(false);
   std::atomic<int> setHazptrs(0);
-  std::atomic<Foo*> head;
+  std::atomic<Foo*> head{nullptr};
 
   int num = 20;
   int nthr = 10;

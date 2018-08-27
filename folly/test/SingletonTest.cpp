@@ -530,7 +530,7 @@ TEST(Singleton, SingletonEagerInitParallel) {
   const static size_t kIters = 1000;
   const static size_t kThreads = 20;
 
-  std::atomic<size_t> initCounter;
+  std::atomic<size_t> initCounter{0};
 
   auto& vault = *SingletonVault::singleton<EagerInitParallelTag>();
 
