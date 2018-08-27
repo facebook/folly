@@ -115,6 +115,26 @@ Try<T>::~Try() {
   }
 }
 
+template <typename T>
+template <typename... Args>
+T& Try<T>::emplace(Args&&... args) noexcept(
+    std::is_nothrow_constructible<T, Args&&...>::value) {
+  this->destroy();
+  new (&value_) T(static_cast<Args&&>(args)...);
+  contains_ = Contains::VALUE;
+  return value_;
+}
+
+template <typename T>
+template <typename... Args>
+exception_wrapper& Try<T>::emplaceException(Args&&... args) noexcept(
+    std::is_nothrow_constructible<exception_wrapper, Args&&...>::value) {
+  this->destroy();
+  new (&e_) exception_wrapper(static_cast<Args&&>(args)...);
+  contains_ = Contains::EXCEPTION;
+  return e_;
+}
+
 template <class T>
 T& Try<T>::value() & {
   throwIfFailed();
@@ -161,8 +181,36 @@ void Try<T>::destroy() noexcept {
   }
 }
 
+Try<void>& Try<void>::operator=(const Try<void>& t) noexcept {
+  if (t.hasException()) {
+    if (hasException()) {
+      e_ = t.e_;
+    } else {
+      new (&e_) exception_wrapper(t.e_);
+      hasValue_ = false;
+    }
+  } else {
+    if (hasException()) {
+      e_.~exception_wrapper();
+      hasValue_ = true;
+    }
+  }
+  return *this;
+}
+
+template <typename... Args>
+exception_wrapper& Try<void>::emplaceException(Args&&... args) noexcept(
+    std::is_nothrow_constructible<exception_wrapper, Args&&...>::value) {
+  if (hasException()) {
+    e_.~exception_wrapper();
+  }
+  new (&e_) exception_wrapper(static_cast<Args&&>(args)...);
+  hasValue_ = false;
+  return e_;
+}
+
 void Try<void>::throwIfFailed() const {
-  if (!hasValue_) {
+  if (hasException()) {
     e_.throw_exception();
   }
 }
@@ -194,6 +242,23 @@ typename std::
   } catch (...) {
     return Try<void>(exception_wrapper(std::current_exception()));
   }
+}
+
+template <typename T, typename... Args>
+T* tryEmplace(Try<T>& t, Args&&... args) noexcept {
+  try {
+    return std::addressof(t.emplace(static_cast<Args&&>(args)...));
+  } catch (const std::exception& ex) {
+    t.emplaceException(std::current_exception(), ex);
+    return nullptr;
+  } catch (...) {
+    t.emplaceException(std::current_exception());
+    return nullptr;
+  }
+}
+
+void tryEmplace(Try<void>& t) noexcept {
+  t.emplace();
 }
 
 namespace try_detail {

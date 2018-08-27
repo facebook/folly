@@ -121,6 +121,34 @@ class Try {
   ~Try();
 
   /*
+   * In-place construct the value in the Try object.
+   *
+   * Destroys any previous value prior to constructing the new value.
+   * Leaves *this in an empty state if the construction of T throws.
+   *
+   * @returns reference to the newly constructed value.
+   */
+  template <typename... Args>
+  T& emplace(Args&&... args) noexcept(
+      std::is_nothrow_constructible<T, Args&&...>::value);
+
+  /*
+   * In-place construct an exception in the Try object.
+   *
+   * Destroys any previous value prior to constructing the new value.
+   * Leaves *this in an empty state if the construction of the exception_wrapper
+   * throws.
+   *
+   * Any arguments passed to emplaceException() are forwarded on to the
+   * exception_wrapper constructor.
+   *
+   * @returns reference to the newly constructed exception_wrapper.
+   */
+  template <typename... Args>
+  exception_wrapper& emplaceException(Args&&... args) noexcept(
+      std::is_nothrow_constructible<exception_wrapper, Args&&...>::value);
+
+  /*
    * Get a mutable reference to the contained value. If the Try contains an
    * exception it will be rethrown.
    *
@@ -364,15 +392,49 @@ class Try<void> {
         e_(std::move(e)){}
 
   // Copy assigner
-  Try& operator=(const Try<void>& t) noexcept {
-    hasValue_ = t.hasValue_;
-    e_ = t.e_;
-    return *this;
-  }
+  inline Try& operator=(const Try<void>& t) noexcept;
+
   // Copy constructor
-  Try(const Try<void>& t) noexcept {
-    *this = t;
+  Try(const Try<void>& t) noexcept : hasValue_(t.hasValue_) {
+    if (t.hasException()) {
+      new (&e_) exception_wrapper(t.e_);
+    }
   }
+
+  ~Try() {
+    if (hasException()) {
+      e_.~exception_wrapper();
+    }
+  }
+
+  /*
+   * In-place construct a 'void' value into this Try object.
+   *
+   * This has the effect of clearing any existing exception stored in the
+   * Try object.
+   */
+  void emplace() noexcept {
+    if (hasException()) {
+      e_.~exception_wrapper();
+      hasValue_ = true;
+    }
+  }
+
+  /*
+   * In-place construct an exception in the Try object.
+   *
+   * Destroys any previous value prior to constructing the new value.
+   * Leaves *this in an empty state if the construction of the exception_wrapper
+   * throws.
+   *
+   * Any arguments passed to emplaceException() are forwarded on to the
+   * exception_wrapper constructor.
+   *
+   * @returns reference to the newly constructed exception_wrapper.
+   */
+  template <typename... Args>
+  exception_wrapper& emplaceException(Args&&... args) noexcept(
+      std::is_nothrow_constructible<exception_wrapper, Args&&...>::value);
 
   // If the Try contains an exception, throws it
   void value() const { throwIfFailed(); }
@@ -503,7 +565,9 @@ class Try<void> {
 
  private:
   bool hasValue_;
-  exception_wrapper e_;
+  union {
+    exception_wrapper e_;
+  };
 };
 
 /*
@@ -528,6 +592,22 @@ template <typename F>
 typename std::
     enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
     makeTryWith(F&& f);
+
+/*
+ * Try to in-place construct a new value from the specified arguments.
+ *
+ * If T's constructor throws an exception then this is caught and the Try<T>
+ * object is initialised to hold that exception.
+ *
+ * @param args Are passed to T's constructor.
+ */
+template <typename T, typename... Args>
+T* tryEmplace(Try<T>& t, Args&&... args) noexcept;
+
+/*
+ * Overload of tryEmplace() for Try<void>.
+ */
+inline void tryEmplace(Try<void>& t) noexcept;
 
 /**
  * Tuple<Try<Type>...> -> std::tuple<Type...>
