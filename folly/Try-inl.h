@@ -55,13 +55,16 @@ Try<T>& Try<T>::operator=(Try<T>&& t) noexcept(
     return *this;
   }
 
-  this->~Try();
-  contains_ = t.contains_;
-  if (contains_ == Contains::VALUE) {
-    new (&value_)T(std::move(t.value_));
-  } else if (contains_ == Contains::EXCEPTION) {
+  destroy();
+
+  if (t.contains_ == Contains::VALUE) {
+    new (&value_) T(std::move(t.value_));
+  } else if (t.contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(std::move(t.e_));
   }
+
+  contains_ = t.contains_;
+
   return *this;
 }
 
@@ -85,13 +88,21 @@ Try<T>& Try<T>::operator=(const Try<T>& t) noexcept(
   static_assert(
       std::is_copy_constructible<T>::value,
       "T must be copyable for Try<T> to be copyable");
-  this->~Try();
-  contains_ = t.contains_;
-  if (contains_ == Contains::VALUE) {
-    new (&value_)T(t.value_);
-  } else if (contains_ == Contains::EXCEPTION) {
+
+  if (this == &t) {
+    return *this;
+  }
+
+  destroy();
+
+  if (t.contains_ == Contains::VALUE) {
+    new (&value_) T(t.value_);
+  } else if (t.contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(t.e_);
   }
+
+  contains_ = t.contains_;
+
   return *this;
 }
 
@@ -137,6 +148,16 @@ void Try<T>::throwIfFailed() const {
       e_.throw_exception();
     default:
       throw_exception<UsingUninitializedTry>();
+  }
+}
+
+template <class T>
+void Try<T>::destroy() noexcept {
+  auto oldContains = folly::exchange(contains_, Contains::NOTHING);
+  if (LIKELY(oldContains == Contains::VALUE)) {
+    value_.~T();
+  } else if (UNLIKELY(oldContains == Contains::EXCEPTION)) {
+    e_.~exception_wrapper();
   }
 }
 

@@ -33,6 +33,7 @@ class A {
   int x() const {
     return x_;
   }
+
  private:
   int x_;
 };
@@ -79,6 +80,96 @@ TEST(Try, in_place_nested) {
   Try<Try<A>> t_t_a(in_place, in_place, 5);
 
   EXPECT_EQ(5, t_t_a.value().value().x());
+}
+
+TEST(Try, assignmentWithThrowingCopyConstructor) {
+  struct MyException : std::exception {};
+  struct ThrowingCopyConstructor {
+    int& counter_;
+    explicit ThrowingCopyConstructor(int& counter) : counter_(counter) {
+      ++counter_;
+    }
+
+    [[noreturn]] ThrowingCopyConstructor(
+        const ThrowingCopyConstructor& other) noexcept(false)
+        : counter_(other.counter_) {
+      throw MyException{};
+    }
+
+    ThrowingCopyConstructor& operator=(const ThrowingCopyConstructor&) = delete;
+
+    ~ThrowingCopyConstructor() {
+      --counter_;
+    }
+  };
+
+  int counter = 0;
+
+  {
+    Try<ThrowingCopyConstructor> t1{in_place, counter};
+    Try<ThrowingCopyConstructor> t2{in_place, counter};
+    EXPECT_EQ(2, counter);
+    EXPECT_THROW(t2 = t1, MyException);
+    EXPECT_EQ(1, counter);
+    EXPECT_FALSE(t2.hasValue());
+    EXPECT_TRUE(t1.hasValue());
+  }
+  EXPECT_EQ(0, counter);
+  {
+    Try<ThrowingCopyConstructor> t1{in_place, counter};
+    Try<ThrowingCopyConstructor> t2;
+    EXPECT_EQ(1, counter);
+    EXPECT_THROW(t2 = t1, MyException);
+    EXPECT_EQ(1, counter);
+    EXPECT_FALSE(t2.hasValue());
+    EXPECT_TRUE(t1.hasValue());
+  }
+  EXPECT_EQ(0, counter);
+}
+
+TEST(Try, assignmentWithThrowingMoveConstructor) {
+  struct MyException : std::exception {};
+  struct ThrowingMoveConstructor {
+    int& counter_;
+    explicit ThrowingMoveConstructor(int& counter) : counter_(counter) {
+      ++counter_;
+    }
+
+    [[noreturn]] ThrowingMoveConstructor(
+        ThrowingMoveConstructor&& other) noexcept(false)
+        : counter_(other.counter_) {
+      throw MyException{};
+    }
+
+    ThrowingMoveConstructor& operator=(ThrowingMoveConstructor&&) = delete;
+
+    ~ThrowingMoveConstructor() {
+      --counter_;
+    }
+  };
+
+  int counter = 0;
+
+  {
+    Try<ThrowingMoveConstructor> t1{in_place, counter};
+    Try<ThrowingMoveConstructor> t2{in_place, counter};
+    EXPECT_EQ(2, counter);
+    EXPECT_THROW(t2 = std::move(t1), MyException);
+    EXPECT_EQ(1, counter);
+    EXPECT_FALSE(t2.hasValue());
+    EXPECT_TRUE(t1.hasValue());
+  }
+  EXPECT_EQ(0, counter);
+  {
+    Try<ThrowingMoveConstructor> t1{in_place, counter};
+    Try<ThrowingMoveConstructor> t2;
+    EXPECT_EQ(1, counter);
+    EXPECT_THROW(t2 = std::move(t1), MyException);
+    EXPECT_EQ(1, counter);
+    EXPECT_FALSE(t2.hasValue());
+    EXPECT_TRUE(t1.hasValue());
+  }
+  EXPECT_EQ(0, counter);
 }
 
 TEST(Try, nothrow) {
@@ -193,9 +284,7 @@ TEST(Try, moveOnly) {
 }
 
 TEST(Try, makeTryWith) {
-  auto func = []() {
-    return std::make_unique<int>(1);
-  };
+  auto func = []() { return std::make_unique<int>(1); };
 
   auto result = makeTryWith(func);
   EXPECT_TRUE(result.hasValue());
@@ -212,18 +301,14 @@ TEST(Try, makeTryWithThrow) {
 }
 
 TEST(Try, makeTryWithVoid) {
-  auto func = []() {
-    return;
-  };
+  auto func = []() { return; };
 
   auto result = makeTryWith(func);
   EXPECT_TRUE(result.hasValue());
 }
 
 TEST(Try, makeTryWithVoidThrow) {
-  auto func = []() {
-    throw std::runtime_error("Runtime");
-  };
+  auto func = []() { throw std::runtime_error("Runtime"); };
 
   auto result = makeTryWith(func);
   EXPECT_TRUE(result.hasException<std::runtime_error>());

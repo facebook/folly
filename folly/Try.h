@@ -330,6 +330,8 @@ class Try {
   }
 
  private:
+  void destroy() noexcept;
+
   Contains contains_;
   union {
     T value_;
