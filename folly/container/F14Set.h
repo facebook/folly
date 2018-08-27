@@ -191,7 +191,8 @@ class F14BasicSet {
       allocator_type const& alloc)
       : F14BasicSet(initialCapacity, hash, key_equal{}, alloc) {}
 
-  explicit F14BasicSet(allocator_type const& alloc) : F14BasicSet(0, alloc) {}
+  explicit F14BasicSet(allocator_type const& alloc)
+      : F14BasicSet(0, hasher{}, key_equal{}, alloc) {}
 
   template <typename InputIt>
   F14BasicSet(

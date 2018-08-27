@@ -197,7 +197,8 @@ class F14BasicMap {
       allocator_type const& alloc)
       : F14BasicMap(initialCapacity, hash, key_equal{}, alloc) {}
 
-  explicit F14BasicMap(allocator_type const& alloc) : F14BasicMap(0, alloc) {}
+  explicit F14BasicMap(allocator_type const& alloc)
+      : F14BasicMap(0, hasher{}, key_equal{}, alloc) {}
 
   template <typename InputIt>
   F14BasicMap(

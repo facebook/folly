@@ -483,8 +483,6 @@ TEST(F14FastSet, simple) {
 }
 
 TEST(F14Set, ContainerSize) {
-// TODO(T33121191): pending investigation on EBO applicability on ios platforms.
-#if !FOLLY_MOBILE || !__APPLE__
   {
     folly::F14ValueSet<int> set;
     set.insert(10);
@@ -515,7 +513,6 @@ TEST(F14Set, ContainerSize) {
     EXPECT_EQ(sizeof(set), 8 + 2 * sizeof(void*));
     EXPECT_EQ(set.getAllocatedMemorySize(), 32);
   }
-#endif
 }
 
 TEST(F14VectorMap, reverse_iterator) {
