@@ -107,10 +107,7 @@ struct callableResult {
 
 template <typename T, typename F>
 struct tryCallableResult {
-  typedef typename std::conditional<
-      is_invocable<F>::value,
-      detail::argResult<false, F>,
-      detail::argResult<true, F, Try<T>&&>>::type Arg;
+  typedef detail::argResult<true, F, Try<T>&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
   typedef Future<value_type> Return;
