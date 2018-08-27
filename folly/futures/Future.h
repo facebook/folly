@@ -1538,10 +1538,6 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   Future<T> within(Duration dur, Timekeeper* tk = nullptr) &&;
 
-  Future<T> within(Duration dur, Timekeeper* tk = nullptr) & {
-    return std::move(*this).within(dur, tk);
-  }
-
   /// Throw the given exception if this Future does not complete within the
   /// given duration from now. The optional Timekeeper is as with
   /// futures::sleep().
@@ -1557,11 +1553,6 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   template <class E>
   Future<T> within(Duration dur, E exception, Timekeeper* tk = nullptr) &&;
-
-  template <class E>
-  Future<T> within(Duration dur, E exception, Timekeeper* tk = nullptr) & {
-    return std::move(*this).within(dur, exception, tk);
-  }
 
   /// Delay the completion of this Future for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().
