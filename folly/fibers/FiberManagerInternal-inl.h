@@ -370,7 +370,7 @@ struct FiberManager::AddTaskFinallyHelper {
 
     void operator()() {
       try {
-        finally_(std::move(*result_));
+        finally_(std::move(result_));
       } catch (...) {
         fm_.exceptionCallback_(
             std::current_exception(), "running Finally functor");
@@ -387,7 +387,7 @@ struct FiberManager::AddTaskFinallyHelper {
     friend class Func;
 
     G finally_;
-    folly::Optional<folly::Try<Result>> result_;
+    folly::Try<Result> result_;
     FiberManager& fm_;
   };
 
@@ -397,7 +397,7 @@ struct FiberManager::AddTaskFinallyHelper {
         : func_(std::move(func)), result_(finally.result_) {}
 
     void operator()() {
-      result_ = folly::makeTryWith(std::move(func_));
+      folly::tryEmplaceWith(result_, std::move(func_));
 
       if (allocateInBuffer) {
         this->~Func();
@@ -408,7 +408,7 @@ struct FiberManager::AddTaskFinallyHelper {
 
    private:
     F func_;
-    folly::Optional<folly::Try<Result>>& result_;
+    folly::Try<Result>& result_;
   };
 
   static constexpr bool allocateInBuffer =
@@ -473,7 +473,7 @@ invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
 
   folly::Try<Result> result;
   auto f = [&func, &result]() mutable {
-    result = folly::makeTryWith(std::forward<F>(func));
+    folly::tryEmplaceWith(result, std::forward<F>(func));
   };
 
   immediateFunc_ = std::ref(f);

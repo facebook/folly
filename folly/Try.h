@@ -609,6 +609,37 @@ T* tryEmplace(Try<T>& t, Args&&... args) noexcept;
  */
 inline void tryEmplace(Try<void>& t) noexcept;
 
+/*
+ * Try to in-place construct a new value from the result of a function.
+ *
+ * If the function completes successfully then attempts to in-place construct
+ * a value of type, T, passing the result of the function as the only parameter.
+ *
+ * If either the call to the function completes with an exception or the
+ * constructor completes with an exception then the exception is caught and
+ * stored in the Try object.
+ *
+ * @returns A pointer to the newly constructed object if it completed
+ * successfully, otherwise returns nullptr if the operation completed with
+ * an exception.
+ */
+template <typename T, typename Func>
+T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept;
+
+/*
+ * Specialization of tryEmplaceWith() for Try<void>.
+ *
+ * Calls func() and if it doesn't throw an exception then calls t.emplace().
+ * If func() throws then captures the exception in t using t.emplaceException().
+ *
+ * Func must be callable with zero parameters and must return void.
+ *
+ * @returns true if func() completed without an exception, false if func()
+ * threw an exception.
+ */
+template <typename Func>
+bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept;
+
 /**
  * Tuple<Try<Type>...> -> std::tuple<Type...>
  *

@@ -286,6 +286,52 @@ TEST(Try, tryEmplaceVoidTry) {
   EXPECT_FALSE(t.hasException());
 }
 
+TEST(Try, tryEmplaceWith) {
+  Try<std::string> t;
+  tryEmplaceWith(t, [] { return "hello"; });
+  EXPECT_EQ("hello", t.value());
+}
+
+TEST(Try, tryEmplaceWithFunctionThrows) {
+  struct MyException : std::exception {};
+  Try<int> t;
+  tryEmplaceWith(t, []() -> int { throw MyException{}; });
+  EXPECT_TRUE(t.hasException());
+  EXPECT_TRUE(t.hasException<MyException>());
+}
+
+TEST(Try, tryEmplaceWithConstructorThrows) {
+  struct MyException : std::exception {};
+  struct ThrowingConstructor {
+    int value_;
+    explicit ThrowingConstructor(bool shouldThrow) noexcept(false) : value_(0) {
+      if (shouldThrow) {
+        throw MyException{};
+      }
+    }
+  };
+
+  Try<ThrowingConstructor> t;
+  tryEmplaceWith(t, [] { return false; });
+  EXPECT_TRUE(t.hasValue());
+  tryEmplaceWith(t, [] { return true; });
+  EXPECT_TRUE(t.hasException());
+  EXPECT_TRUE(t.hasException<MyException>());
+}
+
+TEST(Try, tryEmplaceWithVoidTry) {
+  Try<void> t;
+  bool hasRun = false;
+  tryEmplaceWith(t, [&] { hasRun = true; });
+  EXPECT_TRUE(t.hasValue());
+  EXPECT_TRUE(hasRun);
+
+  struct MyException : std::exception {};
+  tryEmplaceWith(t, [&] { throw MyException{}; });
+  EXPECT_TRUE(t.hasException());
+  EXPECT_TRUE(t.hasException<MyException>());
+}
+
 TEST(Try, nothrow) {
   using F = HasCtors<false>;
   using T = HasCtors<true>;

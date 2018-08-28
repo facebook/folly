@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Utility.h>
+#include <folly/functional/Invoke.h>
 
 #include <stdexcept>
 #include <tuple>
@@ -259,6 +260,40 @@ T* tryEmplace(Try<T>& t, Args&&... args) noexcept {
 
 void tryEmplace(Try<void>& t) noexcept {
   t.emplace();
+}
+
+template <typename T, typename Func>
+T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept {
+  static_assert(
+      std::is_constructible<T, folly::invoke_result_t<Func>>::value,
+      "Unable to initialise a value of type T with the result of 'func'");
+  try {
+    return std::addressof(t.emplace(static_cast<Func&&>(func)()));
+  } catch (const std::exception& ex) {
+    t.emplaceException(std::current_exception(), ex);
+    return nullptr;
+  } catch (...) {
+    t.emplaceException(std::current_exception());
+    return nullptr;
+  }
+}
+
+template <typename Func>
+bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept {
+  static_assert(
+      std::is_void<folly::invoke_result_t<Func>>::value,
+      "Func returns non-void. Cannot be used to emplace Try<void>");
+  try {
+    static_cast<Func&&>(func)();
+    t.emplace();
+    return true;
+  } catch (const std::exception& ex) {
+    t.emplaceException(std::current_exception(), ex);
+    return false;
+  } catch (...) {
+    t.emplaceException(std::current_exception());
+    return false;
+  }
 }
 
 namespace try_detail {
