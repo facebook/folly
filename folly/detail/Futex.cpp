@@ -222,47 +222,46 @@ FutexResult emulatedFutexWaitImpl(
 } // namespace
 
 /////////////////////////////////
-// Futex<> specializations
+// Futex<> overloads
 
-template <>
-int
-Futex<std::atomic>::futexWake(int count, uint32_t wakeMask) {
+int futexWakeImpl(Futex<std::atomic>* futex, int count, uint32_t wakeMask) {
 #ifdef __linux__
-  return nativeFutexWake(this, count, wakeMask);
+  return nativeFutexWake(futex, count, wakeMask);
 #else
-  return emulatedFutexWake(this, count, wakeMask);
+  return emulatedFutexWake(futex, count, wakeMask);
 #endif
 }
 
-template <>
-int
-Futex<EmulatedFutexAtomic>::futexWake(int count, uint32_t wakeMask) {
-  return emulatedFutexWake(this, count, wakeMask);
+int futexWakeImpl(
+    Futex<EmulatedFutexAtomic>* futex,
+    int count,
+    uint32_t wakeMask) {
+  return emulatedFutexWake(futex, count, wakeMask);
 }
 
-template <>
-FutexResult Futex<std::atomic>::futexWaitImpl(
+FutexResult futexWaitImpl(
+    Futex<std::atomic>* futex,
     uint32_t expected,
     system_clock::time_point const* absSystemTime,
     steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask) {
 #ifdef __linux__
   return nativeFutexWaitImpl(
-      this, expected, absSystemTime, absSteadyTime, waitMask);
+      futex, expected, absSystemTime, absSteadyTime, waitMask);
 #else
   return emulatedFutexWaitImpl(
-      this, expected, absSystemTime, absSteadyTime, waitMask);
+      futex, expected, absSystemTime, absSteadyTime, waitMask);
 #endif
 }
 
-template <>
-FutexResult Futex<EmulatedFutexAtomic>::futexWaitImpl(
+FutexResult futexWaitImpl(
+    Futex<EmulatedFutexAtomic>* futex,
     uint32_t expected,
     system_clock::time_point const* absSystemTime,
     steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask) {
   return emulatedFutexWaitImpl(
-      this, expected, absSystemTime, absSteadyTime, waitMask);
+      futex, expected, absSystemTime, absSteadyTime, waitMask);
 }
 
 } // namespace detail

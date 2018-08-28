@@ -39,19 +39,19 @@ typedef DeterministicSchedule DSched;
 template <template <typename> class Atom>
 void run_basic_thread(
     Futex<Atom>& f) {
-  EXPECT_EQ(FutexResult::AWOKEN, f.futexWait(0));
+  EXPECT_EQ(FutexResult::AWOKEN, futexWait(&f, 0));
 }
 
 template <template <typename> class Atom>
 void run_basic_tests() {
   Futex<Atom> f(0);
 
-  EXPECT_EQ(FutexResult::VALUE_CHANGED, f.futexWait(1));
-  EXPECT_EQ(f.futexWake(), 0);
+  EXPECT_EQ(FutexResult::VALUE_CHANGED, futexWait(&f, 1));
+  EXPECT_EQ(futexWake(&f), 0);
 
   auto thr = DSched::thread(std::bind(run_basic_thread<Atom>, std::ref(f)));
 
-  while (f.futexWake() != 1) {
+  while (futexWake(&f) != 1) {
     std::this_thread::yield();
   }
 
@@ -68,7 +68,7 @@ void liveClockWaitUntilTests() {
       while (true) {
         const auto deadline = time_point_cast<Duration>(
             Clock::now() + microseconds(1 << (stress % 20)));
-        const auto res = fp->futexWaitUntil(0, deadline);
+        const auto res = futexWaitUntil(fp, 0, deadline);
         EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::AWOKEN);
         if (res == FutexResult::AWOKEN) {
           break;
@@ -76,7 +76,7 @@ void liveClockWaitUntilTests() {
       }
     });
 
-    while (f.futexWake() != 1) {
+    while (futexWake(&f) != 1) {
       std::this_thread::yield();
     }
 
@@ -86,7 +86,7 @@ void liveClockWaitUntilTests() {
   {
     const auto start = Clock::now();
     const auto deadline = time_point_cast<Duration>(start + milliseconds(100));
-    EXPECT_EQ(f.futexWaitUntil(0, deadline), FutexResult::TIMEDOUT);
+    EXPECT_EQ(futexWaitUntil(&f, 0, deadline), FutexResult::TIMEDOUT);
     LOG(INFO) << "Futex wait timed out after waiting for "
               << duration_cast<milliseconds>(Clock::now() - start).count()
               << "ms using clock with " << Duration::period::den
@@ -97,7 +97,7 @@ void liveClockWaitUntilTests() {
     const auto start = Clock::now();
     const auto deadline = time_point_cast<Duration>(
         start - 2 * start.time_since_epoch());
-    EXPECT_EQ(f.futexWaitUntil(0, deadline), FutexResult::TIMEDOUT);
+    EXPECT_EQ(futexWaitUntil(&f, 0, deadline), FutexResult::TIMEDOUT);
     LOG(INFO) << "Futex wait with invalid deadline timed out after waiting for "
               << duration_cast<milliseconds>(Clock::now() - start).count()
               << "ms using clock with " << Duration::period::den
@@ -111,7 +111,7 @@ void deterministicAtomicWaitUntilTests() {
 
   // Futex wait must eventually fail with either FutexResult::TIMEDOUT or
   // FutexResult::INTERRUPTED
-  const auto res = f.futexWaitUntil(0, Clock::now() + milliseconds(100));
+  const auto res = futexWaitUntil(&f, 0, Clock::now() + milliseconds(100));
   EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::INTERRUPTED);
 }
 
@@ -192,10 +192,10 @@ void run_wake_blocked_test() {
     bool success = false;
     Futex<Atom> f(0);
     auto thr = DSched::thread(
-        [&] { success = FutexResult::AWOKEN == f.futexWait(0); });
+        [&] { success = FutexResult::AWOKEN == futexWait(&f, 0); });
     /* sleep override */ std::this_thread::sleep_for(delay);
     f.store(1);
-    f.futexWake(1);
+    futexWake(&f, 1);
     DSched::join(thr);
     LOG(INFO) << "delay=" << delay.count() << "_ms, success=" << success;
     if (success) {

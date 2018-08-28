@@ -157,7 +157,7 @@ void MicroLockCore::unlock(unsigned slot) {
       oldWord, newWord, std::memory_order_release, std::memory_order_relaxed));
 
   if (oldWord & waitBit(slot)) {
-    (void)wordPtr->futexWake(1, heldBit(slot));
+    detail::futexWake(wordPtr, 1, heldBit(slot));
   }
 }
 

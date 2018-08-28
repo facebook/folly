@@ -142,8 +142,8 @@ inline void EventCount::notifyAll() noexcept {
 inline void EventCount::doNotify(int n) noexcept {
   uint64_t prev = val_.fetch_add(kAddEpoch, std::memory_order_acq_rel);
   if (UNLIKELY(prev & kWaiterMask)) {
-    (reinterpret_cast<detail::Futex<std::atomic>*>(&val_) + kEpochOffset)
-        ->futexWake(n);
+    detail::futexWake(
+        reinterpret_cast<detail::Futex<std::atomic>*>(&val_) + kEpochOffset, n);
   }
 }
 
@@ -162,8 +162,9 @@ inline void EventCount::cancelWait() noexcept {
 
 inline void EventCount::wait(Key key) noexcept {
   while ((val_.load(std::memory_order_acquire) >> kEpochShift) == key.epoch_) {
-    (reinterpret_cast<detail::Futex<std::atomic>*>(&val_) + kEpochOffset)
-        ->futexWait(key.epoch_);
+    detail::futexWait(
+        reinterpret_cast<detail::Futex<std::atomic>*>(&val_) + kEpochOffset,
+        key.epoch_);
   }
   // memory_order_relaxed would suffice for correctness, but the faster
   // #waiters gets to 0, the less likely it is that we'll do spurious wakeups

@@ -1042,7 +1042,7 @@ class RelaxedConcurrentPriorityQueue {
       if (futex_array_[loc].compare_exchange_strong(curfutex, ready)) {
         if (curfutex &
             1) { // One or more consumers may be blocked on this futex
-          futex_array_[loc].futexWake();
+          detail::futexWake(&futex_array_[loc]);
         }
         return;
       } else {
@@ -1095,7 +1095,7 @@ class RelaxedConcurrentPriorityQueue {
     auto curfutex = futex_array_[loc].load(std::memory_order_acquire);
     if (curfutex &
         1) { /// The last round consumers are still waiting, go to sleep
-      futex_array_[loc].futexWait(curfutex);
+      detail::futexWait(&futex_array_[loc], curfutex);
     }
     if (trySpinBeforeBlock(
             curticket,
@@ -1106,12 +1106,12 @@ class RelaxedConcurrentPriorityQueue {
       curfutex = futex_array_[loc].load(std::memory_order_acquire);
       if (curfutex &
           1) { /// The last round consumers are still waiting, go to sleep
-        futex_array_[loc].futexWait(curfutex);
+        detail::futexWait(&futex_array_[loc], curfutex);
       } else if (!futexIsReady(curticket)) { // current ticket < pop ticket
         uint32_t blocking_futex = curfutex + 1;
         if (futex_array_[loc].compare_exchange_strong(
                 curfutex, blocking_futex)) {
-          futex_array_[loc].futexWait(blocking_futex);
+          detail::futexWait(&futex_array_[loc], blocking_futex);
         }
       } else {
         return;

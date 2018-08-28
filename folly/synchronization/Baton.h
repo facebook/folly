@@ -154,7 +154,7 @@ class Baton {
 
     assert(before == WAITING);
     state_.store(LATE_DELIVERY, std::memory_order_release);
-    state_.futexWake(1);
+    detail::futexWake(&state_, 1);
   }
 
   /// Waits until post() has been called in the current Baton lifetime.

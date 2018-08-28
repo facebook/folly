@@ -47,7 +47,7 @@ retry:
           goto retry;
         }
       }
-      (void)wordPtr->futexWait(newWord, slotHeldBit);
+      detail::futexWait(wordPtr, newWord, slotHeldBit);
       needWaitBit = slotWaitBit;
     } else if (spins > maxSpins) {
       // sched_yield(), but more portable

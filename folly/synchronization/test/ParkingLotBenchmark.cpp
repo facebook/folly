@@ -39,7 +39,7 @@ BENCHMARK(FutexNoWaitersWake, iters) {
     t = std::thread([&]() {
       b.wait();
       for (auto i = 0u; i < iters; i++) {
-        fu.futexWake(1);
+        detail::futexWake(&fu, 1);
       }
     });
   }
@@ -82,7 +82,7 @@ BENCHMARK(FutexWakeOne, iters) {
     t = std::thread([&]() {
       b.wait();
       while (true) {
-        fu.futexWait(0);
+        detail::futexWait(&fu, 0);
         if (fu.load(std::memory_order_relaxed)) {
           return;
         }
@@ -92,10 +92,10 @@ BENCHMARK(FutexWakeOne, iters) {
   susp.dismiss();
   b.wait();
   for (auto i = 0u; i < iters; i++) {
-    fu.futexWake(1);
+    detail::futexWake(&fu, 1);
   }
   fu.store(1);
-  fu.futexWake(threads.size());
+  detail::futexWake(&fu, threads.size());
 
   for (auto& t : threads) {
     t.join();
@@ -148,7 +148,7 @@ BENCHMARK(FutexWakeAll, iters) {
     t = std::thread([&]() {
       b.wait();
       while (true) {
-        fu.futexWait(0);
+        detail::futexWait(&fu, 0);
         if (done.load(std::memory_order_relaxed)) {
           return;
         }
@@ -158,11 +158,11 @@ BENCHMARK(FutexWakeAll, iters) {
   susp.dismiss();
   b.wait();
   for (auto i = 0u; i < iters; i++) {
-    fu.futexWake(threads.size());
+    detail::futexWake(&fu, threads.size());
   }
   fu.store(1);
   done = true;
-  fu.futexWake(threads.size());
+  detail::futexWake(&fu, threads.size());
 
   for (auto& t : threads) {
     t.join();

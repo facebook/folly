@@ -320,7 +320,7 @@ FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_push_impl(
 
     if (res) {
       if (wake) {
-        empty_.futexWake();
+        detail::futexWake(&empty_);
       }
       return true;
     }
@@ -329,12 +329,12 @@ FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_push_impl(
     }
     while (isTrue(full_)) {
       if (when == std::chrono::time_point<Clock>::max()) {
-        full_.futexWait(1);
+        detail::futexWait(&full_, 1);
       } else {
         if (Clock::now() > when) {
           return false;
         } else {
-          full_.futexWaitUntil(1, when);
+          detail::futexWaitUntil(&full_, 1, when);
         }
       }
     } // inner while loop
@@ -369,18 +369,18 @@ FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_pop_impl(
 
     if (res) {
       if (wake) {
-        full_.futexWake();
+        detail::futexWake(&full_);
       }
       return true;
     }
     while (isTrue(empty_)) {
       if (when == std::chrono::time_point<Clock>::max()) {
-        empty_.futexWait(1);
+        detail::futexWait(&empty_, 1);
       } else {
         if (Clock::now() > when) {
           return false;
         } else {
-          empty_.futexWaitUntil(1, when);
+          detail::futexWaitUntil(&empty_, 1, when);
         }
       }
     } // inner while loop
@@ -415,12 +415,12 @@ FlatCombiningPriorityQueue<T, PriorityQueue, Mutex, Atom>::try_peek_impl(
     }
     while (isTrue(empty_)) {
       if (when == std::chrono::time_point<Clock>::max()) {
-        empty_.futexWait(1);
+        detail::futexWait(&empty_, 1);
       } else {
         if (Clock::now() > when) {
           return false;
         } else {
-          empty_.futexWaitUntil(1, when);
+          detail::futexWaitUntil(&empty_, 1, when);
         }
       }
     } // inner while loop

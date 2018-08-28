@@ -99,10 +99,10 @@ struct MemoryIdler {
   /// system with bursty requests. The default is to wait up to 50%
   /// extra, so on average 25% extra.
   template <
-      template <typename> class Atom,
+      typename Futex,
       typename IdleTime = std::chrono::steady_clock::duration>
   static FutexResult futexWait(
-      Futex<Atom>& fut,
+      Futex& fut,
       uint32_t expected,
       uint32_t waitMask = -1,
       IdleTime const& idleTimeout =
@@ -121,7 +121,9 @@ struct MemoryIdler {
             timeoutVariationFrac)) {
       return pre;
     }
-    return fut.futexWait(expected, waitMask);
+
+    using folly::detail::futexWait;
+    return futexWait(&fut, expected, waitMask);
   }
 
   /// Equivalent to fut.futexWaitUntil(expected, deadline, waitMask), but
@@ -133,11 +135,11 @@ struct MemoryIdler {
   /// system with bursty requests. The default is to wait up to 50%
   /// extra, so on average 25% extra.
   template <
-      template <typename> class Atom,
+      typename Futex,
       typename Deadline,
       typename IdleTime = std::chrono::steady_clock::duration>
   static FutexResult futexWaitUntil(
-      Futex<Atom>& fut,
+      Futex& fut,
       uint32_t expected,
       Deadline const& deadline,
       uint32_t waitMask = -1,
@@ -157,17 +159,16 @@ struct MemoryIdler {
             timeoutVariationFrac)) {
       return pre;
     }
-    return fut.futexWaitUntil(expected, deadline, waitMask);
+
+    using folly::detail::futexWaitUntil;
+    return futexWaitUntil(&fut, expected, deadline, waitMask);
   }
 
  private:
-  template <
-      template <typename> class Atom,
-      typename Deadline,
-      typename IdleTime>
+  template <typename Futex, typename Deadline, typename IdleTime>
   static bool futexWaitPreIdle(
       FutexResult& _ret,
-      Futex<Atom>& fut,
+      Futex& fut,
       uint32_t expected,
       Deadline const& deadline,
       uint32_t waitMask,
@@ -189,7 +190,8 @@ struct MemoryIdler {
     if (idleTimeout > IdleTime::zero()) {
       auto idleDeadline = Deadline::clock::now() + idleTimeout;
       if (idleDeadline < deadline) {
-        auto rv = fut.futexWaitUntil(expected, idleDeadline, waitMask);
+        using folly::detail::futexWaitUntil;
+        auto rv = futexWaitUntil(&fut, expected, idleDeadline, waitMask);
         if (rv != FutexResult::TIMEDOUT) {
           // finished before timeout hit, no flush
           _ret = rv;

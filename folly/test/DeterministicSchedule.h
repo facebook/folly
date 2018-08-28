@@ -455,6 +455,18 @@ struct DeterministicAtomic {
   }
 };
 
+/* Futex extensions for DeterministicSchedule based Futexes */
+int futexWakeImpl(
+    detail::Futex<test::DeterministicAtomic>* futex,
+    int count,
+    uint32_t wakeMask);
+detail::FutexResult futexWaitImpl(
+    detail::Futex<test::DeterministicAtomic>* futex,
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask);
+
 /**
  * DeterministicMutex is a drop-in replacement of std::mutex that
  * cooperates with DeterministicSchedule.
@@ -504,23 +516,6 @@ struct DeterministicMutex {
   }
 };
 } // namespace test
-} // namespace folly
-
-/* Specialization declarations */
-
-namespace folly {
-namespace detail {
-
-template <>
-int Futex<test::DeterministicAtomic>::futexWake(int count, uint32_t wakeMask);
-
-template <>
-FutexResult Futex<test::DeterministicAtomic>::futexWaitImpl(
-    uint32_t expected,
-    std::chrono::system_clock::time_point const* absSystemTime,
-    std::chrono::steady_clock::time_point const* absSteadyTime,
-    uint32_t waitMask);
-} // namespace detail
 
 template <>
 Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc();

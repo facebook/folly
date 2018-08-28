@@ -60,7 +60,7 @@ class ThreadCachedInts {
       ints_->orphan_dec_[1].fetch_add(
           dec_[1].load(std::memory_order_relaxed), std::memory_order_relaxed);
       ints_->waiting_.store(0, std::memory_order_release);
-      ints_->waiting_.futexWake();
+      detail::futexWake(&ints_->waiting_);
       // reset the cache_ on destructor so we can handle the delete/recreate
       cache_ = nullptr;
     }
@@ -102,7 +102,7 @@ class ThreadCachedInts {
     folly::asymmetricLightBarrier(); // C
     if (waiting_.load(std::memory_order_acquire)) {
       waiting_.store(0, std::memory_order_release);
-      waiting_.futexWake();
+      detail::futexWake(&waiting_);
     }
   }
 
@@ -150,7 +150,7 @@ class ThreadCachedInts {
       if (readFull(phase) == 0) {
         break;
       }
-      waiting_.futexWait(1);
+      detail::futexWait(&waiting_, 1);
     }
     waiting_.store(0, std::memory_order_relaxed);
   }

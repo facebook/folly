@@ -153,13 +153,13 @@ struct TurnSequencer {
         }
       }
       if (absTime) {
-        auto futexResult =
-            state_.futexWaitUntil(new_state, *absTime, futexChannel(turn));
+        auto futexResult = detail::futexWaitUntil(
+            &state_, new_state, *absTime, futexChannel(turn));
         if (futexResult == FutexResult::TIMEDOUT) {
           return TryWaitResult::TIMEDOUT;
         }
       } else {
-        state_.futexWait(new_state, futexChannel(turn));
+        detail::futexWait(&state_, new_state, futexChannel(turn));
       }
     }
 
@@ -202,8 +202,8 @@ struct TurnSequencer {
                  max_waiter_delta == 0 ? 0 : max_waiter_delta - 1);
       if (state_.compare_exchange_strong(state, new_state)) {
         if (max_waiter_delta != 0) {
-          state_.futexWake(std::numeric_limits<int>::max(),
-                           futexChannel(turn + 1));
+          detail::futexWake(
+              &state_, std::numeric_limits<int>::max(), futexChannel(turn + 1));
         }
         break;
       }

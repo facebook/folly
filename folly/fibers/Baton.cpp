@@ -24,6 +24,9 @@
 namespace folly {
 namespace fibers {
 
+using folly::detail::futexWaitUntil;
+using folly::detail::futexWake;
+
 void Baton::setWaiter(Waiter& waiter) {
   auto curr_waiter = waiter_.load();
   do {
@@ -120,8 +123,9 @@ bool Baton::timedWaitThread(TimeoutController::Duration timeout) {
           waiter_.compare_exchange_strong(waiter, THREAD_WAITING))) {
     auto deadline = TimeoutController::Clock::now() + timeout;
     do {
+      auto* futex = &futex_.futex;
       const auto wait_rv =
-          futex_.futex.futexWaitUntil(uint32_t(THREAD_WAITING), deadline);
+          futexWaitUntil(futex, uint32_t(THREAD_WAITING), deadline);
       if (wait_rv == folly::detail::FutexResult::TIMEDOUT) {
         return false;
       }
@@ -174,11 +178,11 @@ bool Baton::try_wait() {
 void Baton::postThread() {
   auto expected = THREAD_WAITING;
 
+  auto* futex = &futex_.futex;
   if (!waiter_.compare_exchange_strong(expected, POSTED)) {
     return;
   }
-
-  futex_.futex.futexWake(1);
+  futexWake(futex, 1);
 }
 
 void Baton::reset() {

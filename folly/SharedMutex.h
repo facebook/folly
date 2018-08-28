@@ -513,7 +513,7 @@ class SharedMutexImpl {
     }
 
     bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
-      futex.futexWait(expected, waitMask);
+      detail::futexWait(&futex, expected, waitMask);
       return true;
     }
   };
@@ -566,7 +566,8 @@ class SharedMutexImpl {
     }
 
     bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
-      auto result = futex.futexWaitUntil(expected, deadline(), waitMask);
+      auto result =
+          detail::futexWaitUntil(&futex, expected, deadline(), waitMask);
       return result != folly::detail::FutexResult::TIMEDOUT;
     }
   };
@@ -586,7 +587,8 @@ class SharedMutexImpl {
     }
 
     bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
-      auto result = futex.futexWaitUntil(expected, absDeadline_, waitMask);
+      auto result =
+          detail::futexWaitUntil(&futex, expected, absDeadline_, waitMask);
       return result != folly::detail::FutexResult::TIMEDOUT;
     }
   };
@@ -979,7 +981,8 @@ class SharedMutexImpl {
     // wakeup, we just disable the optimization in the case that there
     // are waiting U or S that we are eligible to wake.
     if ((wakeMask & kWaitingE) == kWaitingE &&
-        (state & wakeMask) == kWaitingE && state_.futexWake(1, kWaitingE) > 0) {
+        (state & wakeMask) == kWaitingE &&
+        detail::futexWake(&state_, 1, kWaitingE) > 0) {
       // somebody woke up, so leave state_ as is and clear it later
       return;
     }
@@ -994,7 +997,7 @@ class SharedMutexImpl {
   }
 
   void futexWakeAll(uint32_t wakeMask) {
-    state_.futexWake(std::numeric_limits<int>::max(), wakeMask);
+    detail::futexWake(&state_, std::numeric_limits<int>::max(), wakeMask);
   }
 
   DeferredReaderSlot* deferredReader(uint32_t slot) {

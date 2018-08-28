@@ -601,7 +601,7 @@ class DynamicBoundedQueue {
       }
       if (MayBlock) {
         if (canBlock(weight, capacity)) {
-          waiting_.futexWaitUntil(WAITING, deadline);
+          detail::futexWaitUntil(&waiting_, WAITING, deadline);
         }
       } else {
         asm_volatile_pause();
@@ -645,7 +645,7 @@ class DynamicBoundedQueue {
     if (MayBlock) {
       std::atomic_thread_fence(std::memory_order_seq_cst);
       waiting_.store(NOTWAITING, std::memory_order_relaxed);
-      waiting_.futexWake();
+      detail::futexWake(&waiting_);
     }
   }
 

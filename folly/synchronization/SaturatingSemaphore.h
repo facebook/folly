@@ -268,7 +268,7 @@ FOLLY_NOINLINE void SaturatingSemaphore<MayBlock, Atom>::postSlowWaiterMayBlock(
             READY,
             std::memory_order_release,
             std::memory_order_relaxed)) {
-      state_.futexWake();
+      detail::futexWake(&state_);
       return;
     }
   }

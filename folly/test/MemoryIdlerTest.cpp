@@ -49,16 +49,6 @@ TEST(MemoryIdler, releaseMallocTLS) {
   delete[] p;
 }
 
-
-/// MockedAtom gives us a way to select a mocked Futex implementation
-/// inside Baton, even though the atom itself isn't exercised by the
-/// mocked futex
-template <typename T>
-struct MockAtom : public std::atomic<T> {
-  explicit MockAtom(T init = 0) : std::atomic<T>(init) {}
-};
-
-
 /// MockClock is a bit tricky because we are mocking a static function
 /// (now()), so we need to find the corresponding mock instance without
 /// extending its scope beyond that of the test.  I generally avoid
@@ -84,29 +74,39 @@ struct MockClock {
 };
 
 std::weak_ptr<StrictMock<MockClock>> MockClock::s_mockClockInstance;
+static auto const forever = MockClock::time_point::max();
 
+/// MockedAtom gives us a way to select a mocked Futex implementation
+/// inside Baton, even though the atom itself isn't exercised by the
+/// mocked futex
+///
+/// Futex<MockAtom> is our mocked futex implementation.  Note that the method
+/// signatures differ from the real Futex because we have elided unused default
+/// params and collapsed templated methods into the used type
+template <typename T>
+struct MockAtom : public std::atomic<T> {
+  explicit MockAtom(T init = 0) : std::atomic<T>(init) {}
 
-
-namespace folly { namespace detail {
-
-/// Futex<MockAtom> is our mocked futex implementation.  Note that the
-/// method signatures differ from the real Futex because we have elided
-/// unused default params and collapsed templated methods into the
-/// used type
-template <>
-struct Futex<MockAtom> {
   MOCK_METHOD2(futexWait, FutexResult(uint32_t, uint32_t));
   MOCK_METHOD3(futexWaitUntil,
                FutexResult(uint32_t, const MockClock::time_point&, uint32_t));
 };
 
-} // namespace detail
-} // namespace folly
-
-static auto const forever = MockClock::time_point::max();
+FutexResult
+futexWait(Futex<MockAtom>* futex, uint32_t expected, uint32_t waitMask) {
+  return futex->futexWait(expected, waitMask);
+}
+template <typename Clock, typename Duration>
+FutexResult futexWaitUntil(
+    Futex<MockAtom>* futex,
+    std::uint32_t expected,
+    std::chrono::time_point<Clock, Duration> const& deadline,
+    uint32_t waitMask) {
+  return futex->futexWaitUntil(expected, deadline, waitMask);
+}
 
 TEST(MemoryIdler, futexWaitValueChangedEarly) {
-  StrictMock<Futex<MockAtom>> fut;
+  Futex<MockAtom> fut;
   auto clock = MockClock::setup();
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
@@ -121,7 +121,7 @@ TEST(MemoryIdler, futexWaitValueChangedEarly) {
 }
 
 TEST(MemoryIdler, futexWaitValueChangedLate) {
-  StrictMock<Futex<MockAtom>> fut;
+  Futex<MockAtom> fut;
   auto clock = MockClock::setup();
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
@@ -138,7 +138,7 @@ TEST(MemoryIdler, futexWaitValueChangedLate) {
 }
 
 TEST(MemoryIdler, futexWaitAwokenEarly) {
-  StrictMock<Futex<MockAtom>> fut;
+  Futex<MockAtom> fut;
   auto clock = MockClock::setup();
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
@@ -151,7 +151,7 @@ TEST(MemoryIdler, futexWaitAwokenEarly) {
 }
 
 TEST(MemoryIdler, futexWaitAwokenLate) {
-  StrictMock<Futex<MockAtom>> fut;
+  Futex<MockAtom> fut;
   auto clock = MockClock::setup();
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
@@ -168,7 +168,7 @@ TEST(MemoryIdler, futexWaitAwokenLate) {
 }
 
 TEST(MemoryIdler, futexWaitImmediateFlush) {
-  StrictMock<Futex<MockAtom>> fut;
+  Futex<MockAtom> fut;
   auto clock = MockClock::setup();
 
   EXPECT_CALL(fut, futexWaitUntil(2, forever, 0xff))
@@ -180,7 +180,7 @@ TEST(MemoryIdler, futexWaitImmediateFlush) {
 }
 
 TEST(MemoryIdler, futexWaitNeverFlush) {
-  StrictMock<Futex<MockAtom>> fut;
+  Futex<MockAtom> fut;
   auto clock = MockClock::setup();
 
   EXPECT_CALL(fut, futexWaitUntil(1, forever, -1))
