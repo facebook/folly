@@ -213,7 +213,7 @@ class FutureBase {
   /// - `valid() == true` (else throws FutureInvalid)
   bool isReady() const;
 
-  /// True if the result is an exception (not a value) on a future for which
+  /// True if the result is a value (not an exception) on a future for which
   ///   isReady returns true.
   ///
   /// Equivalent to result().hasValue()
@@ -224,8 +224,8 @@ class FutureBase {
   /// - `isReady() == true` (else throws FutureNotReady)
   bool hasValue() const;
 
-  /// True if the result is ready (`isReady() == true`) and the result is an
-  ///   exception (not a value).
+  /// True if the result is an exception (not a value) on a future for which
+  ///   isReady returns true.
   ///
   /// Equivalent to result().hasException()
   ///
