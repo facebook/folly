@@ -344,7 +344,7 @@ struct SingletonHolder : public SingletonHolderBase {
   std::atomic<SingletonHolderState> state_{SingletonHolderState::NotRegistered};
 
   // the thread creating the singleton (only valid while creating an object)
-  std::atomic<std::thread::id> creating_thread_;
+  std::atomic<std::thread::id> creating_thread_{};
 
   // The singleton itself and related functions.
 
