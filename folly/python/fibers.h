@@ -23,16 +23,12 @@
 #include <Python.h>
 #include <folly/Function.h>
 #include <folly/fibers/FiberManagerInternal.h>
-#include <folly/python/fiber_manager_api.h>
 
 namespace folly {
 namespace python {
 
-inline folly::fibers::FiberManager* getFiberManager(
-    const folly::fibers::FiberManager::Options& opts = {}) {
-  import_folly__fiber_manager();
-  return get_fiber_manager(opts);
-}
+folly::fibers::FiberManager* getFiberManager(
+    const folly::fibers::FiberManager::Options& opts = {});
 
 /**
  * Helper function with similar callback/userData parameters as bridgeFuture.
