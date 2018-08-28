@@ -18,8 +18,13 @@
 
 #include <folly/Portability.h>
 
-// F14 has been implemented for SSE2 and NEON (so far)
-#if FOLLY_SSE >= 2 || FOLLY_NEON
+// F14 has been implemented for SSE2 and NEON (so far). The NEON version is only
+// enabled on aarch64 as it is difficult to ensure that dependent targets on
+// other Android ARM platforms set the NEON compilation flags consistently. If
+// dependent targets don't consistently build with NEON, due to C++ templates
+// and ODR, the NEON version may be linked in where a non-NEON version is
+// expected.
+#if ((FOLLY_SSE >= 2) || (FOLLY_NEON && FOLLY_AARCH64))
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
 #else
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
