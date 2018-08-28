@@ -20,6 +20,7 @@
 
 #include <folly/Chrono.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
@@ -39,7 +40,7 @@ TEST(Coro, Basic) {
   executor.drive();
 
   EXPECT_TRUE(future.await_ready());
-  EXPECT_EQ(42, future.get());
+  EXPECT_EQ(42, folly::coro::blockingWait(future));
 }
 
 TEST(Coro, BasicFuture) {
@@ -81,7 +82,7 @@ TEST(Coro, Sleep) {
 
   EXPECT_FALSE(future.await_ready());
 
-  future.wait();
+  coro::blockingWait(future);
 
   // The total time should be roughly 1 second. Some builds, especially
   // optimized ones, may result in slightly less than 1 second, so we perform
@@ -107,7 +108,7 @@ TEST(Coro, Throw) {
   executor.drive();
 
   EXPECT_TRUE(future.await_ready());
-  EXPECT_THROW(future.get(), std::runtime_error);
+  EXPECT_THROW(coro::blockingWait(future), std::runtime_error);
 }
 
 TEST(Coro, FutureThrow) {
@@ -136,8 +137,7 @@ TEST(Coro, LargeStack) {
   ScopedEventBaseThread evbThread;
   auto future = via(evbThread.getEventBase(), taskRecursion(5000));
 
-  future.wait();
-  EXPECT_EQ(5000, future.get());
+  EXPECT_EQ(5000, coro::blockingWait(future));
 }
 
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
@@ -163,8 +163,7 @@ TEST(Coro, NestedThreads) {
   ScopedEventBaseThread evbThread;
   auto future = via(evbThread.getEventBase(), taskThread());
 
-  future.wait();
-  EXPECT_EQ(42, future.get());
+  EXPECT_EQ(42, coro::blockingWait(future));
 }
 
 coro::Task<int> taskYield(Executor* executor) {
@@ -177,7 +176,7 @@ coro::Task<int> taskYield(Executor* executor) {
   co_await coro::yield();
 
   EXPECT_TRUE(future.await_ready());
-  co_return future.get();
+  co_return co_await future;
 }
 
 TEST(Coro, CurrentExecutor) {
@@ -185,8 +184,7 @@ TEST(Coro, CurrentExecutor) {
   auto future =
       via(evbThread.getEventBase(), taskYield(evbThread.getEventBase()));
 
-  future.wait();
-  EXPECT_EQ(42, future.get());
+  EXPECT_EQ(42, coro::blockingWait(future));
 }
 
 coro::Task<void> taskTimedWait() {
@@ -298,7 +296,7 @@ TEST(Coro, Baton) {
   executor.run();
 
   EXPECT_TRUE(future.await_ready());
-  EXPECT_EQ(42, future.get());
+  EXPECT_EQ(42, coro::blockingWait(future));
 }
 
 #endif

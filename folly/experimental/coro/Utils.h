@@ -17,6 +17,7 @@
 
 #include <experimental/coroutine>
 #include <future>
+#include <type_traits>
 
 #include <folly/Optional.h>
 #include <folly/experimental/coro/Wait.h>
@@ -28,22 +29,33 @@ namespace coro {
 template <typename T>
 class AwaitableReady {
  public:
-  explicit AwaitableReady(T value) : value_(std::move(value)) {}
+  explicit AwaitableReady(T value) noexcept(
+      std::is_nothrow_move_constructible<T>::value)
+      : value_(static_cast<T&&>(value)) {}
 
-  bool await_ready() {
+  bool await_ready() noexcept {
     return true;
   }
 
-  bool await_suspend(std::experimental::coroutine_handle<>) {
-    return false;
-  }
+  void await_suspend(std::experimental::coroutine_handle<>) noexcept {}
 
-  T await_resume() {
-    return std::move(value_);
+  T await_resume() noexcept(std::is_nothrow_move_constructible<T>::value) {
+    return static_cast<T&&>(value_);
   }
 
  private:
   T value_;
+};
+
+template <>
+class AwaitableReady<void> {
+ public:
+  AwaitableReady() noexcept = default;
+  bool await_ready() noexcept {
+    return true;
+  }
+  void await_suspend(std::experimental::coroutine_handle<>) noexcept {}
+  void await_resume() noexcept {}
 };
 
 struct getCurrentExecutor {};

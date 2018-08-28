@@ -37,16 +37,6 @@ class Future {
     other.promise_ = nullptr;
   }
 
-  Wait wait() {
-    (void)co_await *this;
-    co_return;
-  }
-
-  typename std::add_lvalue_reference<T>::type get() {
-    DCHECK(promise_->state_ == Promise<T>::State::HAS_RESULT);
-    return *promise_->result_;
-  }
-
   bool await_ready() {
     return promise_->state_.load(std::memory_order_acquire) ==
         Promise<T>::State::HAS_RESULT;
@@ -75,7 +65,8 @@ class Future {
   }
 
   typename std::add_lvalue_reference<T>::type await_resume() {
-    return get();
+    DCHECK(promise_->state_ == Promise<T>::State::HAS_RESULT);
+    return *promise_->result_;
   }
 
   auto toFuture() &&;

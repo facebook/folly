@@ -22,6 +22,7 @@
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
+#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Future.h>
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/Promise.h>
@@ -149,9 +150,9 @@ TEST(Mutex, ThreadSafety) {
   auto f2 = makeTask().scheduleVia(&threadPool);
   auto f3 = makeTask().scheduleVia(&threadPool);
 
-  f1.wait();
-  f2.wait();
-  f3.wait();
+  coro::blockingWait(f1);
+  coro::blockingWait(f2);
+  coro::blockingWait(f3);
 
   CHECK_EQ(30'000, value);
 }
