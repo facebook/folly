@@ -63,6 +63,7 @@ enum class CodecType {
   /**
    * Use zlib compression.
    * Levels supported: 0 = no compression, 1 = fast, ..., 9 = best; default = 6
+   * Streaming compression is supported.
    */
   ZLIB = 4,
 
@@ -74,6 +75,7 @@ enum class CodecType {
   /**
    * Use LZMA2 compression.
    * Levels supported: 0 = no compression, 1 = fast, ..., 9 = best; default = 6
+   * Streaming compression is supported.
    */
   LZMA2 = 6,
   LZMA2_VARINT_SIZE = 7,
@@ -82,6 +84,7 @@ enum class CodecType {
    * Use ZSTD compression.
    * Levels supported: 1 = fast, ..., 19 = best; default = 3
    * Use ZSTD_FAST for the fastest zstd compression (negative levels).
+   * Streaming compression is supported.
    */
   ZSTD = 8,
 
@@ -89,6 +92,7 @@ enum class CodecType {
    * Use gzip compression.  This is the same compression algorithm as ZLIB but
    * gzip-compressed files tend to be easier to work with from the command line.
    * Levels supported: 0 = no compression, 1 = fast, ..., 9 = best; default = 6
+   * Streaming compression is supported.
    */
   GZIP = 9,
 
@@ -101,6 +105,9 @@ enum class CodecType {
   /**
    * Use bzip2 compression.
    * Levels supported: 1 = fast, 9 = best; default = 9
+   * Streaming compression is supported BUT FlushOp::FLUSH does NOT ensure that
+   * the decompressor can read all the data up to that point, due to a bug in
+   * the bzip2 library.
    */
   BZIP2 = 11,
 
@@ -114,6 +121,7 @@ enum class CodecType {
    * speed is around 25% faster than ZSTD.
    * This codec is fully compatible with ZSTD.
    * Levels supported: 1 = best, ..., 5 = fast; default = 1
+   * Streaming compression is supported.
    */
   ZSTD_FAST = 12,
 

@@ -1549,10 +1549,13 @@ std::unique_ptr<StreamCodec> getZstdFastStreamCodec(int level, CodecType type) {
 
 #if FOLLY_HAVE_LIBBZ2
 
-class Bzip2Codec final : public Codec {
+class Bzip2StreamCodec final : public StreamCodec {
  public:
-  static std::unique_ptr<Codec> create(int level, CodecType type);
-  explicit Bzip2Codec(int level, CodecType type);
+  static std::unique_ptr<Codec> createCodec(int level, CodecType type);
+  static std::unique_ptr<StreamCodec> createStream(int level, CodecType type);
+  explicit Bzip2StreamCodec(int level, CodecType type);
+
+  ~Bzip2StreamCodec() override;
 
   std::vector<std::string> validPrefixes() const override;
   bool canUncompress(IOBuf const* data, Optional<uint64_t> uncompressedLength)
@@ -1560,21 +1563,41 @@ class Bzip2Codec final : public Codec {
 
  private:
   uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
-  std::unique_ptr<IOBuf> doCompress(IOBuf const* data) override;
-  std::unique_ptr<IOBuf> doUncompress(
-      IOBuf const* data,
-      Optional<uint64_t> uncompressedLength) override;
+
+  void doResetStream() override;
+  bool doCompressStream(
+      ByteRange& input,
+      MutableByteRange& output,
+      StreamCodec::FlushOp flushOp) override;
+  bool doUncompressStream(
+      ByteRange& input,
+      MutableByteRange& output,
+      StreamCodec::FlushOp flushOp) override;
+
+  void resetCStream();
+  void resetDStream();
+
+  Optional<bz_stream> cstream_{};
+  Optional<bz_stream> dstream_{};
 
   int level_;
+  bool needReset_{true};
 };
 
-/* static */ std::unique_ptr<Codec> Bzip2Codec::create(
+/* static */ std::unique_ptr<Codec> Bzip2StreamCodec::createCodec(
     int level,
     CodecType type) {
-  return std::make_unique<Bzip2Codec>(level, type);
+  return createStream(level, type);
 }
 
-Bzip2Codec::Bzip2Codec(int level, CodecType type) : Codec(type) {
+/* static */ std::unique_ptr<StreamCodec> Bzip2StreamCodec::createStream(
+    int level,
+    CodecType type) {
+  return std::make_unique<Bzip2StreamCodec>(level, type);
+}
+
+Bzip2StreamCodec::Bzip2StreamCodec(int level, CodecType type)
+    : StreamCodec(type) {
   DCHECK(type == CodecType::BZIP2);
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
@@ -1597,15 +1620,17 @@ Bzip2Codec::Bzip2Codec(int level, CodecType type) : Codec(type) {
 static uint32_t constexpr kBzip2MagicLE = 0x685a42;
 static uint64_t constexpr kBzip2MagicBytes = 3;
 
-std::vector<std::string> Bzip2Codec::validPrefixes() const {
+std::vector<std::string> Bzip2StreamCodec::validPrefixes() const {
   return {prefixToStringLE(kBzip2MagicLE, kBzip2MagicBytes)};
 }
 
-bool Bzip2Codec::canUncompress(IOBuf const* data, Optional<uint64_t>) const {
+bool Bzip2StreamCodec::canUncompress(IOBuf const* data, Optional<uint64_t>)
+    const {
   return dataStartsWithLE(data, kBzip2MagicLE, kBzip2MagicBytes);
 }
 
-uint64_t Bzip2Codec::doMaxCompressedLength(uint64_t uncompressedLength) const {
+uint64_t Bzip2StreamCodec::doMaxCompressedLength(
+    uint64_t uncompressedLength) const {
   // http://www.bzip.org/1.0.5/bzip2-manual-1.0.5.html#bzbufftobuffcompress
   //   To guarantee that the compressed data will fit in its buffer, allocate an
   //   output buffer of size 1% larger than the uncompressed data, plus six
@@ -1631,126 +1656,125 @@ static int bzCheck(int const rc) {
     case BZ_FLUSH_OK:
     case BZ_FINISH_OK:
     case BZ_STREAM_END:
+    // Allow BZ_PARAM_ERROR.
+    // It can get returned if no progress is made, but we handle that.
+    case BZ_PARAM_ERROR:
       return rc;
     default:
       throw std::runtime_error(to<std::string>("Bzip2 error: ", rc));
   }
 }
 
-static std::unique_ptr<IOBuf> addOutputBuffer(
-    bz_stream* stream,
-    uint64_t const bufferLength) {
-  DCHECK_LE(bufferLength, std::numeric_limits<unsigned>::max());
-  DCHECK_EQ(stream->avail_out, 0);
-
-  auto buf = IOBuf::create(bufferLength);
-  buf->append(buf->capacity());
-
-  stream->next_out = reinterpret_cast<char*>(buf->writableData());
-  stream->avail_out = buf->length();
-
-  return buf;
+Bzip2StreamCodec::~Bzip2StreamCodec() {
+  if (cstream_) {
+    BZ2_bzCompressEnd(cstream_.get_pointer());
+    cstream_.clear();
+  }
+  if (dstream_) {
+    BZ2_bzDecompressEnd(dstream_.get_pointer());
+    dstream_.clear();
+  }
 }
 
-std::unique_ptr<IOBuf> Bzip2Codec::doCompress(IOBuf const* data) {
-  bz_stream stream = createBzStream();
-  bzCheck(BZ2_bzCompressInit(&stream, level_, 0, 0));
-  SCOPE_EXIT {
-    bzCheck(BZ2_bzCompressEnd(&stream));
-  };
-
-  uint64_t const uncompressedLength = data->computeChainDataLength();
-  uint64_t const maxCompressedLen = maxCompressedLength(uncompressedLength);
-  uint64_t constexpr kMaxSingleStepLength = uint64_t(64) << 20; // 64 MiB
-  uint64_t constexpr kDefaultBufferLength = uint64_t(4) << 20;
-
-  auto out = addOutputBuffer(
-      &stream,
-      maxCompressedLen <= kMaxSingleStepLength ? maxCompressedLen
-                                               : kDefaultBufferLength);
-
-  for (auto range : *data) {
-    while (!range.empty()) {
-      auto const inSize = std::min<size_t>(range.size(), kMaxSingleStepLength);
-      stream.next_in =
-          const_cast<char*>(reinterpret_cast<char const*>(range.data()));
-      stream.avail_in = inSize;
-
-      if (stream.avail_out == 0) {
-        out->prependChain(addOutputBuffer(&stream, kDefaultBufferLength));
-      }
-
-      bzCheck(BZ2_bzCompress(&stream, BZ_RUN));
-      range.uncheckedAdvance(inSize - stream.avail_in);
-    }
-  }
-  do {
-    if (stream.avail_out == 0) {
-      out->prependChain(addOutputBuffer(&stream, kDefaultBufferLength));
-    }
-  } while (bzCheck(BZ2_bzCompress(&stream, BZ_FINISH)) != BZ_STREAM_END);
-
-  out->prev()->trimEnd(stream.avail_out);
-
-  return out;
+void Bzip2StreamCodec::doResetStream() {
+  needReset_ = true;
 }
 
-std::unique_ptr<IOBuf> Bzip2Codec::doUncompress(
-    const IOBuf* data,
-    Optional<uint64_t> uncompressedLength) {
-  bz_stream stream = createBzStream();
-  bzCheck(BZ2_bzDecompressInit(&stream, 0, 0));
+void Bzip2StreamCodec::resetCStream() {
+  if (cstream_) {
+    BZ2_bzCompressEnd(cstream_.get_pointer());
+  }
+  cstream_ = createBzStream();
+  bzCheck(BZ2_bzCompressInit(cstream_.get_pointer(), level_, 0, 0));
+}
+
+int bzip2TranslateFlush(StreamCodec::FlushOp flushOp) {
+  switch (flushOp) {
+    case StreamCodec::FlushOp::NONE:
+      return BZ_RUN;
+    case StreamCodec::FlushOp::END:
+      return BZ_FINISH;
+    case StreamCodec::FlushOp::FLUSH:
+      throw std::invalid_argument(
+          "Bzip2StreamCodec: FlushOp::FLUSH not supported");
+    default:
+      throw std::invalid_argument("Bzip2StreamCodec: Invalid flush");
+  }
+}
+
+bool Bzip2StreamCodec::doCompressStream(
+    ByteRange& input,
+    MutableByteRange& output,
+    StreamCodec::FlushOp flushOp) {
+  if (needReset_) {
+    resetCStream();
+    needReset_ = false;
+  }
+  if (input.empty() && output.empty()) {
+    return false;
+  }
+
+  cstream_->next_in =
+      const_cast<char*>(reinterpret_cast<const char*>(input.data()));
+  cstream_->avail_in = input.size();
+  cstream_->next_out = reinterpret_cast<char*>(output.data());
+  cstream_->avail_out = output.size();
   SCOPE_EXIT {
-    bzCheck(BZ2_bzDecompressEnd(&stream));
+    input.uncheckedAdvance(input.size() - cstream_->avail_in);
+    output.uncheckedAdvance(output.size() - cstream_->avail_out);
   };
-
-  uint64_t constexpr kMaxSingleStepLength = uint64_t(64) << 20; // 64 MiB
-  uint64_t const kBlockSize = uint64_t(100) << 10; // 100 KiB
-  uint64_t const kDefaultBufferLength =
-      computeBufferLength(data->computeChainDataLength(), kBlockSize);
-
-  auto out = addOutputBuffer(
-      &stream,
-      ((uncompressedLength && *uncompressedLength <= kMaxSingleStepLength)
-           ? *uncompressedLength
-           : kDefaultBufferLength));
-
-  int rc = BZ_OK;
-  for (auto range : *data) {
-    while (!range.empty()) {
-      auto const inSize = std::min<size_t>(range.size(), kMaxSingleStepLength);
-      stream.next_in =
-          const_cast<char*>(reinterpret_cast<char const*>(range.data()));
-      stream.avail_in = inSize;
-
-      if (stream.avail_out == 0) {
-        out->prependChain(addOutputBuffer(&stream, kDefaultBufferLength));
+  int const rc = bzCheck(
+      BZ2_bzCompress(cstream_.get_pointer(), bzip2TranslateFlush(flushOp)));
+  switch (flushOp) {
+    case StreamCodec::FlushOp::NONE:
+      return false;
+    case StreamCodec::FlushOp::FLUSH:
+      if (rc == BZ_RUN_OK) {
+        DCHECK_EQ(cstream_->avail_in, 0);
+        DCHECK(input.size() == 0 || cstream_->avail_out != output.size());
+        return true;
       }
-
-      rc = bzCheck(BZ2_bzDecompress(&stream));
-      range.uncheckedAdvance(inSize - stream.avail_in);
-    }
+      return false;
+    case StreamCodec::FlushOp::END:
+      return rc == BZ_STREAM_END;
+    default:
+      throw std::invalid_argument("Bzip2StreamCodec: invalid FlushOp");
   }
-  while (rc != BZ_STREAM_END) {
-    if (stream.avail_out == 0) {
-      out->prependChain(addOutputBuffer(&stream, kDefaultBufferLength));
-    }
-    size_t const outputSize = stream.avail_out;
-    rc = bzCheck(BZ2_bzDecompress(&stream));
-    if (outputSize == stream.avail_out) {
-      throw std::runtime_error("Bzip2Codec: Truncated input");
-    }
+  return false;
+}
+
+void Bzip2StreamCodec::resetDStream() {
+  if (dstream_) {
+    BZ2_bzDecompressEnd(dstream_.get_pointer());
+  }
+  dstream_ = createBzStream();
+  bzCheck(BZ2_bzDecompressInit(dstream_.get_pointer(), 0, 0));
+}
+
+bool Bzip2StreamCodec::doUncompressStream(
+    ByteRange& input,
+    MutableByteRange& output,
+    StreamCodec::FlushOp flushOp) {
+  if (flushOp == StreamCodec::FlushOp::FLUSH) {
+    throw std::invalid_argument(
+        "Bzip2StreamCodec: FlushOp::FLUSH not supported");
+  }
+  if (needReset_) {
+    resetDStream();
+    needReset_ = false;
   }
 
-  out->prev()->trimEnd(stream.avail_out);
-
-  uint64_t const totalOut =
-      (uint64_t(stream.total_out_hi32) << 32) + stream.total_out_lo32;
-  if (uncompressedLength && uncompressedLength != totalOut) {
-    throw std::runtime_error("Bzip2 error: Invalid uncompressed length");
-  }
-
-  return out;
+  dstream_->next_in =
+      const_cast<char*>(reinterpret_cast<const char*>(input.data()));
+  dstream_->avail_in = input.size();
+  dstream_->next_out = reinterpret_cast<char*>(output.data());
+  dstream_->avail_out = output.size();
+  SCOPE_EXIT {
+    input.uncheckedAdvance(input.size() - dstream_->avail_in);
+    output.uncheckedAdvance(output.size() - dstream_->avail_out);
+  };
+  int const rc = bzCheck(BZ2_bzDecompress(dstream_.get_pointer()));
+  return rc == BZ_STREAM_END;
 }
 
 #endif // FOLLY_HAVE_LIBBZ2
@@ -2051,7 +2075,7 @@ constexpr Factory
 #endif
 
 #if FOLLY_HAVE_LIBBZ2
-        {Bzip2Codec::create, nullptr},
+        {Bzip2StreamCodec::createCodec, Bzip2StreamCodec::createStream},
 #else
         {},
 #endif
