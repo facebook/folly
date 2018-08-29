@@ -253,7 +253,8 @@ TEST(AsyncFileWriter, flush) {
   // Now read from the pipe
   std::vector<char> buf;
   buf.resize(paddingSize);
-  readFull(readPipe.fd(), buf.data(), buf.size());
+  auto bytesRead = readFull(readPipe.fd(), buf.data(), buf.size());
+  EXPECT_EQ(bytesRead, paddingSize);
 
   // Make sure flush completes successfully now
   std::move(future).get(10ms);

@@ -78,10 +78,10 @@ ssize_t writevNoInt(int fd, const iovec* iov, int count);
  * readv and preadv.  The contents of iov after these functions return
  * is unspecified.
  */
-ssize_t readFull(int fd, void* buf, size_t n);
-ssize_t preadFull(int fd, void* buf, size_t n, off_t offset);
-ssize_t readvFull(int fd, iovec* iov, int count);
-ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
+FOLLY_NODISCARD ssize_t readFull(int fd, void* buf, size_t n);
+FOLLY_NODISCARD ssize_t preadFull(int fd, void* buf, size_t n, off_t offset);
+FOLLY_NODISCARD ssize_t readvFull(int fd, iovec* iov, int count);
+FOLLY_NODISCARD ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
 
 /**
  * Similar to readFull and preadFull above, wrappers around write() and
