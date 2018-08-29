@@ -142,9 +142,9 @@ TEST(Window, exception) {
 
 TEST(Window, stackOverflow) {
   // Number of futures to spawn.
-  constexpr size_t m = 1000;
+  static constexpr size_t m = 1000;
   // Size of each block of input and output.
-  constexpr size_t n = 1000;
+  static constexpr size_t n = 1000;
 
   std::vector<std::array<int, n>> ints;
   int64_t expectedSum = 0;
