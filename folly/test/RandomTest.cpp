@@ -139,6 +139,7 @@ TEST(Random, sanity) {
   }
 }
 
+#ifndef _WIN32
 TEST(Random, SecureFork) {
   // Random buffer size is 128, must be less than that.
   int retries = 100;
@@ -170,3 +171,4 @@ TEST(Random, SecureFork) {
     }
   }
 }
+#endif
