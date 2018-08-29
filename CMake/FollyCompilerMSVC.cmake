@@ -218,6 +218,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd4623 # Default constructor was implicitly defined as deleted.
       /wd4625 # Copy constructor was implicitly defined as deleted.
       /wd4626 # Assignment operator was implicitly defined as deleted.
+      /wd4643 # Forward declaring standard library types is not permitted.
       /wd4647 # Behavior change in __is_pod.
       /wd4668 # Macro was not defined, replacing with 0.
       /wd4706 # Assignment within conditional expression.
@@ -228,6 +229,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd5026 # Move constructor was implicitly defined as deleted.
       /wd5027 # Move assignment operator was implicitly defined as deleted.
       /wd5031 # #pragma warning(pop): likely mismatch, popping warning state pushed in different file. This is needed because of how boost does things.
+      /wd5045 # Compiler will insert Spectre mitigation for memory load if /Qspectre switch is specified.
 
       # Warnings to treat as errors:
       /we4099 # Mixed use of struct and class on same type names.
