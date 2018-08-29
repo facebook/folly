@@ -30,7 +30,6 @@ constexpr size_t AsyncFileWriter::kDefaultMaxBufferSize;
 
 AsyncFileWriter::AsyncFileWriter(StringPiece path)
     : AsyncFileWriter{File{path.str(), O_WRONLY | O_APPEND | O_CREAT}} {}
-
 AsyncFileWriter::AsyncFileWriter(folly::File&& file) : file_{std::move(file)} {
   folly::detail::AtFork::registerHandler(
       this,
@@ -77,6 +76,10 @@ AsyncFileWriter::~AsyncFileWriter() {
       onIoError(ex);
     }
   }
+}
+
+bool AsyncFileWriter::ttyOutput() const {
+  return isatty(file_.fd());
 }
 
 void AsyncFileWriter::writeMessage(StringPiece buffer, uint32_t flags) {

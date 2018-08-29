@@ -42,6 +42,10 @@ class TestLogWriter : public LogWriter {
 
   int flushed_messages_count{0};
   int unflushed_messages_count{0};
+
+  bool ttyOutput() const override {
+    return false;
+  }
 };
 
 class TestHandlerFactory : public LogHandlerFactory {

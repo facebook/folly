@@ -64,6 +64,10 @@ class TestLogWriter : public LogWriter {
     return messages_;
   }
 
+  bool ttyOutput() const override {
+    return false;
+  }
+
  private:
   std::vector<std::string> messages_;
 };

@@ -53,7 +53,8 @@ class StandardLogHandlerFactory {
 
   class FormatterFactory : public OptionProcessor {
    public:
-    virtual std::shared_ptr<LogFormatter> createFormatter() = 0;
+    virtual std::shared_ptr<LogFormatter> createFormatter(
+        const std::shared_ptr<LogWriter>& logWriter) = 0;
   };
 
   class WriterFactory : public OptionProcessor {

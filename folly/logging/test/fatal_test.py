@@ -73,7 +73,7 @@ class FatalTests(unittest.TestCase):
 
     def get_crash_regex(self, msg=b"test program crashing!", glog=True):
         if glog:
-            prefix = br"^C[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
+            prefix = br"^F[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
         else:
             prefix = br"^FATAL:.*FatalHelper.cpp:[0-9]+: "
         regex = prefix + re.escape(msg) + b"$"
@@ -106,7 +106,7 @@ class FatalTests(unittest.TestCase):
     def test_other_category(self):
         err = self.run_helper("--category=foo.bar", "--logging", ".=FATAL")
         regex = re.compile(
-            br"^C[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
+            br"^F[0-9]{4} .* FatalHelper.cpp:[0-9]+\] "
             br"crashing to category foo\.bar$",
             re.MULTILINE,
         )

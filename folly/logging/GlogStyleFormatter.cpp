@@ -33,8 +33,10 @@ StringPiece getGlogLevelName(LogLevel level) {
     return "WARNING";
   } else if (level < LogLevel::CRITICAL) {
     return "ERROR";
+  } else if (level < LogLevel::DFATAL) {
+    return "CRITICAL";
   }
-  return "CRITICAL";
+  return "FATAL";
 }
 } // namespace
 

@@ -51,6 +51,13 @@ class ImmediateFileWriter : public LogWriter {
   void flush() override;
 
   /**
+   * Returns true if the output steam is a tty.
+   */
+  bool ttyOutput() const override {
+    return isatty(file_.fd());
+  }
+
+  /**
    * Get the output file.
    */
   const folly::File& getFile() const {

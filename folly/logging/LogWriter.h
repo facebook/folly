@@ -72,5 +72,10 @@ class LogWriter {
    * will not necessarily be processed by the flush call.
    */
   virtual void flush() = 0;
+
+  /**
+   * Is the log writer writing to a tty or not.
+   */
+  virtual bool ttyOutput() const = 0;
 };
 } // namespace folly

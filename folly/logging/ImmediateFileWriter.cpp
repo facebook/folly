@@ -18,6 +18,7 @@
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 #include <folly/logging/LoggerDB.h>
+#include <folly/portability/Unistd.h>
 
 using folly::StringPiece;
 

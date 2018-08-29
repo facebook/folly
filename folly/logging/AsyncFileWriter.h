@@ -73,6 +73,11 @@ class AsyncFileWriter : public LogWriter {
   void flush() override;
 
   /**
+   * Returns true if the output steam is a tty.
+   */
+  bool ttyOutput() const override;
+
+  /**
    * Set the maximum buffer size for this AsyncFileWriter, in bytes.
    *
    * This controls the upper bound on how much unwritten data will be buffered
@@ -149,6 +154,7 @@ class AsyncFileWriter : public LogWriter {
   void restartThread();
 
   folly::File file_;
+
   folly::Synchronized<Data, std::mutex> data_;
   /**
    * messageReady_ is signaled by writer threads whenever they add a new
