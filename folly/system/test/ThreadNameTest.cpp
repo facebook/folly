@@ -42,6 +42,7 @@ TEST(ThreadName, getCurrentThreadName) {
   SCOPE_EXIT { th.join(); };
 }
 
+#if FOLLY_HAVE_PTHREAD
 TEST(ThreadName, setThreadName_other_pthread) {
   Baton<> handle_set;
   Baton<> let_thread_end;
@@ -57,6 +58,7 @@ TEST(ThreadName, setThreadName_other_pthread) {
   EXPECT_EQ(
       expectedSetOtherThreadNameResult, setThreadName(handle, kThreadName));
 }
+#endif
 
 TEST(ThreadName, setThreadName_other_id) {
   Baton<> let_thread_end;
