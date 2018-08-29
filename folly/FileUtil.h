@@ -172,7 +172,7 @@ bool readFile(
     size_t num_bytes = std::numeric_limits<size_t>::max()) {
   DCHECK(file_name);
 
-  const auto fd = openNoInt(file_name, O_RDONLY);
+  const auto fd = openNoInt(file_name, O_RDONLY | O_CLOEXEC);
   if (fd == -1) {
     return false;
   }
