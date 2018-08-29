@@ -31,6 +31,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Expected.h>
+#include <folly/portability/SysTime.h>
 #include <folly/portability/SysTypes.h>
 
 namespace folly {
