@@ -134,7 +134,8 @@ TEST(TDigest, MergeLargeAsDigests) {
     values.push_back(i);
   }
   // Ensure that the values do not monotonically increase across digests.
-  std::random_shuffle(values.begin(), values.end());
+  std::shuffle(
+      values.begin(), values.end(), std::mt19937(std::random_device()()));
   for (int i = 0; i < 10; ++i) {
     std::vector<double> unsorted_values(
         values.begin() + (i * 100), values.begin() + (i + 1) * 100);

@@ -93,7 +93,7 @@ TEST(EventCount, Simple) {
   VLOG(1) << "Using " << ops.size() << " threads: uppers=" << uppers
           << " downers=" << downers << " sem_count=" << count;
 
-  std::random_shuffle(ops.begin(), ops.end());
+  std::shuffle(ops.begin(), ops.end(), std::mt19937(std::random_device()()));
 
   std::vector<std::thread> threads;
   threads.reserve(ops.size());
