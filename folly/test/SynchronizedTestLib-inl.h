@@ -868,8 +868,8 @@ void testExchange() {
   folly::Synchronized<std::vector<int>, Mutex> v(input);
   std::vector<int> next = {4, 5, 6};
   auto prev = v.exchange(std::move(next));
-  EXPECT_EQ((std::vector<int>{1, 2, 3}), prev);
-  EXPECT_EQ((std::vector<int>{4, 5, 6}), v.copy());
+  EXPECT_EQ((std::vector<int>{{1, 2, 3}}), prev);
+  EXPECT_EQ((std::vector<int>{{4, 5, 6}}), v.copy());
 }
 } // namespace sync_tests
 } // namespace folly
