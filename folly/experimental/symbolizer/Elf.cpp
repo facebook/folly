@@ -210,11 +210,22 @@ bool ElfFile::init(const char** msg) {
     return false;
   }
 
-  // Validate ELF magic numbers
-  if (file_[EI_MAG0] != ELFMAG0 || file_[EI_MAG1] != ELFMAG1 ||
-      file_[EI_MAG2] != ELFMAG2 || file_[EI_MAG3] != ELFMAG3) {
+  std::array<char, 5> elfMagBuf = {{0, 0, 0, 0, 0}};
+  if (::lseek(fd_, 0, SEEK_SET) != 0 || ::read(fd_, elfMagBuf.data(), 4) != 4) {
+    if (msg) {
+      *msg = "unable to read ELF file for magic number";
+    }
+    return false;
+  }
+  if (std::strncmp(elfMagBuf.data(), ELFMAG, sizeof(ELFMAG)) != 0) {
     if (msg) {
       *msg = "invalid ELF magic";
+    }
+    return false;
+  }
+  if (::lseek(fd_, 0, SEEK_SET) != 0) {
+    if (msg) {
+      *msg = "unable to reset file descriptor after reading ELF magic number";
     }
     return false;
   }
