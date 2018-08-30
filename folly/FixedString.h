@@ -3037,9 +3037,14 @@ constexpr const std::size_t& npos = detail::fixedstring::FixedStringBase::npos;
  */
 template <class Char, Char... Cs>
 constexpr BasicFixedString<Char, sizeof...(Cs)> operator"" _fs() noexcept {
+#if __cplusplus >= 201402L
+  const Char a[] = {Cs..., Char(0)};
+  return {+a, sizeof...(Cs)};
+#else
   using A = const Char[sizeof...(Cs) + 1u];
   // The `+` in `+A{etc}` forces the array type to decay to a pointer
   return {+A{Cs..., Char(0)}, sizeof...(Cs)};
+#endif
 }
 
 #pragma GCC diagnostic pop
