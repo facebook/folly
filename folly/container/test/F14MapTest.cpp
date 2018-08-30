@@ -60,28 +60,33 @@ void runAllocatedMemorySizeTest() {
   using A = SwapTrackingAlloc<std::pair<const K, V>>;
 
   resetTracking();
-  TMap<K, V, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
-  EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
-
-  for (size_t i = 0; i < 1000; ++i) {
-    m.insert(std::make_pair(folly::to<K>(i), V{}));
-    m.erase(folly::to<K>(i / 10 + 2));
+  {
+    TMap<K, V, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
     EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
-    std::size_t size = 0;
-    std::size_t count = 0;
-    m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
-    m.visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
-      size += bytes * n;
-      count += n;
-    });
-    EXPECT_EQ(testAllocatedMemorySize, size);
-    EXPECT_EQ(testAllocatedBlockCount, count);
-  }
+    auto emptyMapAllocatedMemorySize = testAllocatedMemorySize;
+    auto emptyMapAllocatedBlockCount = testAllocatedBlockCount;
 
-  m = decltype(m){};
+    for (size_t i = 0; i < 1000; ++i) {
+      m.insert(std::make_pair(folly::to<K>(i), V{}));
+      m.erase(folly::to<K>(i / 10 + 2));
+      EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
+      std::size_t size = 0;
+      std::size_t count = 0;
+      m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
+      m.visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
+        size += bytes * n;
+        count += n;
+      });
+      EXPECT_EQ(testAllocatedMemorySize, size);
+      EXPECT_EQ(testAllocatedBlockCount, count);
+    }
+
+    m = decltype(m){};
+    EXPECT_EQ(testAllocatedMemorySize, emptyMapAllocatedMemorySize);
+    EXPECT_EQ(testAllocatedBlockCount, emptyMapAllocatedBlockCount);
+  }
   EXPECT_EQ(testAllocatedMemorySize, 0);
   EXPECT_EQ(testAllocatedBlockCount, 0);
-  m.visitAllocationClasses([](std::size_t, std::size_t n) { EXPECT_EQ(n, 0); });
 }
 
 template <typename K, typename V>

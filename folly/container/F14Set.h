@@ -61,6 +61,8 @@ class F14BasicSet : public std::unordered_set<K, H, E, A> {
         this->size() * sizeof(StdNodeReplica<K, typename Super::value_type, H>);
   }
 
+  // TODO(T33376370): this implementation is incorrect for android. Fix it or
+  // disable it.
   template <typename V>
   void visitAllocationClasses(V&& visitor) const {
     auto bc = this->bucket_count();

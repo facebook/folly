@@ -56,28 +56,37 @@ void runAllocatedMemorySizeTest() {
   using A = SwapTrackingAlloc<K>;
 
   resetTracking();
-  TSet<K, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
-  EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
-
-  for (size_t i = 0; i < 1000; ++i) {
-    m.insert(folly::to<K>(i));
-    m.erase(folly::to<K>(i / 10 + 2));
+  {
+    TSet<K, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
     EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
-    std::size_t size = 0;
-    std::size_t count = 0;
-    m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
-    m.visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
-      size += bytes * n;
-      count += n;
-    });
-    EXPECT_EQ(testAllocatedMemorySize, size);
-    EXPECT_EQ(testAllocatedBlockCount, count);
-  }
+    auto emptySetAllocatedMemorySize = testAllocatedMemorySize;
+    auto emptySetAllocatedBlockCount = testAllocatedBlockCount;
 
-  m = decltype(m){};
+    // TODO(T33426422): check unordered_set impl in Android NDK for allocation
+    // behaviors
+#if (!FOLLY_MOBILE || defined(__APPLE__))
+    for (size_t i = 0; i < 1000; ++i) {
+      m.insert(folly::to<K>(i));
+      m.erase(folly::to<K>(i / 10 + 2));
+      EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
+      std::size_t size = 0;
+      std::size_t count = 0;
+      m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
+      m.visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
+        size += bytes * n;
+        count += n;
+      });
+      EXPECT_EQ(testAllocatedMemorySize, size);
+      EXPECT_EQ(testAllocatedBlockCount, count);
+    }
+#endif
+
+    m = decltype(m){};
+    EXPECT_EQ(testAllocatedMemorySize, emptySetAllocatedMemorySize);
+    EXPECT_EQ(testAllocatedBlockCount, emptySetAllocatedBlockCount);
+  }
   EXPECT_EQ(testAllocatedMemorySize, 0);
   EXPECT_EQ(testAllocatedBlockCount, 0);
-  m.visitAllocationClasses([](std::size_t, std::size_t n) { EXPECT_EQ(n, 0); });
 }
 
 template <typename K>

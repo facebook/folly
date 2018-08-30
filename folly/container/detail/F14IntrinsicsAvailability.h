@@ -24,7 +24,10 @@
 // dependent targets don't consistently build with NEON, due to C++ templates
 // and ODR, the NEON version may be linked in where a non-NEON version is
 // expected.
-#if !FOLLY_MOBILE && ((FOLLY_SSE >= 2) || (FOLLY_NEON && FOLLY_AARCH64))
+//
+// TODO: enable for android (T33376370)
+#if ((FOLLY_SSE >= 2) || (FOLLY_NEON && FOLLY_AARCH64)) && \
+    (!FOLLY_MOBILE || defined(__APPLE__))
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
 #else
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
