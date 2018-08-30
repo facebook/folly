@@ -28,6 +28,7 @@
 // within fcntl, so it's not an issue.
 #define FD_CLOEXEC HANDLE_FLAG_INHERIT
 #define O_NONBLOCK 1
+#define O_CLOEXEC _O_NOINHERIT
 #define F_GETFD 1
 #define F_SETFD 2
 #define F_GETFL 3
