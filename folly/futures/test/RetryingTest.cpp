@@ -190,6 +190,7 @@ TEST(RetryingTest, policy_sleep_defaults) {
 }
 
 TEST(RetryingTest, large_retries) {
+#ifndef _WIN32
   rlimit oldMemLimit;
   PCHECK(getrlimit(RLIMIT_AS, &oldMemLimit) == 0);
 
@@ -203,6 +204,7 @@ TEST(RetryingTest, large_retries) {
   SCOPE_EXIT {
     PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0);
   };
+#endif
 
   TestExecutor executor(4);
   // size of implicit promise is at least the size of the return.
