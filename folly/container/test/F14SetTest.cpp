@@ -1099,7 +1099,8 @@ namespace {
 struct CharArrayHasher {
   template <std::size_t N>
   std::size_t operator()(std::array<char, N> const& value) const {
-    return folly::Hash{}(StringPiece{value.begin(), value.end()});
+    return folly::Hash{}(
+        StringPiece{value.data(), &value.data()[value.size()]});
   }
 };
 
