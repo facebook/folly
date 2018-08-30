@@ -308,12 +308,12 @@ TEST(Ahm, counter) {
   const int mult = 10;
   Counters c(numKeys);
   vector<int64_t> keys;
-  FOR_EACH_RANGE(i, 1, numKeys) {
+  FOR_EACH_RANGE (i, 1, numKeys) {
     keys.push_back(i);
   }
   vector<std::thread> threads;
   for (auto key : keys) {
-    FOR_EACH_RANGE(i, 0, key * mult) {
+    FOR_EACH_RANGE (i, 0, key * mult) {
       threads.push_back(std::thread([&, key] { c.increment(key); }));
     }
   }

@@ -308,7 +308,7 @@ BENCHMARK(ForEachKVMacro, iters) {
 
   BENCHMARK_SUSPEND { setupBenchmark(iters); }
 
-  FOR_EACH_KV(k, v, bmMap) {
+  FOR_EACH_KV (k, v, bmMap) {
     sumKeys += k;
     sumValues += v;
   }
@@ -324,7 +324,7 @@ BENCHMARK(ForEachManual, iters) {
 
 BENCHMARK(ForEachRange, iters) {
   int sum = 1;
-  FOR_EACH_RANGE(i, 1, iters) { sum *= i; }
+  FOR_EACH_RANGE (i, 1, iters) { sum *= i; }
   doNotOptimizeAway(sum);
 }
 
@@ -338,7 +338,7 @@ BENCHMARK(ForEachDescendingManual, iters) {
 
 BENCHMARK(ForEachRangeR, iters) {
   int sum = 1;
-  FOR_EACH_RANGE_R(i, 1U, iters) { sum *= i; }
+  FOR_EACH_RANGE_R (i, 1U, iters) { sum *= i; }
   doNotOptimizeAway(sum);
 }
 

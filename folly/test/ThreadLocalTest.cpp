@@ -289,7 +289,7 @@ TEST(ThreadLocal, InterleavedDestructors) {
       ++thIter;
     }
   });
-  FOR_EACH_RANGE(i, 0, wVersionMax) {
+  FOR_EACH_RANGE (i, 0, wVersionMax) {
     int thIterPrev = 0;
     {
       std::lock_guard<std::mutex> g(lock);

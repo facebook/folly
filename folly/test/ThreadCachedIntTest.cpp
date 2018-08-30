@@ -224,7 +224,7 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
     std::vector<std::thread> threads;
     for (int i = 0; i < FLAGS_numThreads; ++i) {
       threads.push_back(std::thread([&] {
-        FOR_EACH_RANGE(k, 0, numPerThread) {
+        FOR_EACH_RANGE (k, 0, numPerThread) {
           ++TCInt64;
         }
         std::atomic_fetch_add(&threadsDone, 1);
@@ -310,7 +310,7 @@ struct ShardedAtomicInt {
   int64_t readFast() {
     int64_t ret = 0;
     static const int numToRead = 8;
-    FOR_EACH_RANGE(i, 0, numToRead) {
+    FOR_EACH_RANGE (i, 0, numToRead) {
       ret += ints_[i].load(std::memory_order_relaxed);
     }
     return ret * (kBuckets_ / numToRead);

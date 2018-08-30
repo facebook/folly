@@ -305,14 +305,14 @@ static StringPiece pc1 = "1234567890123456789";
 
 void handwrittenAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(handwrittenAtoi(p.begin(), p.end()));
   }
 }
 
 void follyAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(folly::to<int64_t>(p.begin(), p.end()));
   }
 }
@@ -320,13 +320,13 @@ void follyAtoiMeasure(unsigned int n, unsigned int digits) {
 void clibAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
-  FOR_EACH_RANGE(i, 0, n) { doNotOptimizeAway(atoll(p.begin())); }
+  FOR_EACH_RANGE (i, 0, n) { doNotOptimizeAway(atoll(p.begin())); }
 }
 
 void lexicalCastMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(boost::lexical_cast<uint64_t>(p.begin()));
   }
 }
@@ -369,7 +369,7 @@ unsigned u64ToAsciiTable(uint64_t value, char* dst) {
 void u64ToAsciiTableBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   char buf[20];
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(u64ToAsciiTable(uint64Num[index] + (i % 8), buf));
   }
 }
@@ -399,7 +399,7 @@ unsigned u64ToAsciiClassic(uint64_t value, char* dst) {
 void u64ToAsciiClassicBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   char buf[20];
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(u64ToAsciiClassic(uint64Num[index] + (i % 8), buf));
   }
 }
@@ -407,7 +407,7 @@ void u64ToAsciiClassicBM(unsigned int n, size_t index) {
 void u64ToAsciiFollyBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   char buf[20];
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(uint64ToBufferUnsafe(uint64Num[index] + (i % 8), buf));
   }
 }
@@ -452,7 +452,7 @@ void i64ToStringFollyMeasureNeg(unsigned int n, size_t index) {
 void u2aAppendClassicBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   string s;
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     // auto buf = &s.back() + 1;
     char buffer[20];
     s.append(buffer, u64ToAsciiClassic(uint64Num[index] + (i % 8), buffer));
@@ -463,7 +463,7 @@ void u2aAppendClassicBM(unsigned int n, size_t index) {
 void u2aAppendFollyBM(unsigned int n, size_t index) {
   checkArrayIndex(uint64Num, index);
   string s;
-  FOR_EACH_RANGE(i, 0, n) {
+  FOR_EACH_RANGE (i, 0, n) {
     // auto buf = &s.back() + 1;
     char buffer[20];
     s.append(buffer, uint64ToBufferUnsafe(uint64Num[index] + (i % 8), buffer));
@@ -477,7 +477,7 @@ struct StringIdenticalToBM {
   void operator()(unsigned int n, size_t len) const {
     String s;
     BENCHMARK_SUSPEND { s.append(len, '0'); }
-    FOR_EACH_RANGE(i, 0, n) {
+    FOR_EACH_RANGE (i, 0, n) {
       String result = to<String>(s);
       doNotOptimizeAway(result.size());
     }
@@ -490,7 +490,7 @@ struct StringVariadicToBM {
   void operator()(unsigned int n, size_t len) const {
     String s;
     BENCHMARK_SUSPEND { s.append(len, '0'); }
-    FOR_EACH_RANGE(i, 0, n) {
+    FOR_EACH_RANGE (i, 0, n) {
       String result = to<String>(s, nullptr);
       doNotOptimizeAway(result.size());
     }

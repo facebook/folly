@@ -327,7 +327,7 @@ TEST(Foreach, ForEachRvalue) {
     ++n;
   }
   EXPECT_EQ(strlen(hello), n);
-  FOR_EACH_R(it, std::string(hello)) {
+  FOR_EACH_R (it, std::string(hello)) {
     --n;
     EXPECT_EQ(hello[n], *it);
   }
@@ -404,7 +404,7 @@ TEST(Foreach, ForEachEnumerate) {
   int sumAA = 0;
   int sumIter = 0;
   int numIterations = 0;
-  FOR_EACH_ENUMERATE(aa, iter, vv) {
+  FOR_EACH_ENUMERATE (aa, iter, vv) {
     sumAA += aa;
     sumIter += *iter;
     ++numIterations;
@@ -416,7 +416,7 @@ TEST(Foreach, ForEachEnumerate) {
   vv.push_back(1);
   vv.push_back(3);
   vv.push_back(5);
-  FOR_EACH_ENUMERATE(aa, iter, vv) {
+  FOR_EACH_ENUMERATE (aa, iter, vv) {
     sumAA += aa;
     sumIter += *iter;
     ++numIterations;
@@ -435,7 +435,7 @@ TEST(Foreach, ForEachEnumerateBreak) {
   vv.push_back(2);
   vv.push_back(4);
   vv.push_back(8);
-  FOR_EACH_ENUMERATE(aa, iter, vv) {
+  FOR_EACH_ENUMERATE (aa, iter, vv) {
     sumAA += aa;
     sumIter += *iter;
     ++numIterations;

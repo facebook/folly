@@ -258,7 +258,7 @@ void BENCHFUN(getline)(size_t iters, size_t arg) {
 
   BENCHMARK_SUSPEND {
     string line;
-    FOR_EACH_RANGE(i, 0, 512) {
+    FOR_EACH_RANGE (i, 0, 512) {
       randomString(&line, arg);
       lines += line;
       lines += '\n';
