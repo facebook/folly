@@ -87,6 +87,11 @@ FOLLY_ALWAYS_INLINE int __builtin_popcount(unsigned int x) {
   return int(__popcnt(x));
 }
 
+FOLLY_ALWAYS_INLINE int __builtin_popcountl(unsigned long x) {
+  static_assert(sizeof(x) == 4, "");
+  return int(__popcnt(x));
+}
+
 FOLLY_ALWAYS_INLINE int __builtin_popcountll(unsigned long long x) {
   return int(__popcnt64(x));
 }
