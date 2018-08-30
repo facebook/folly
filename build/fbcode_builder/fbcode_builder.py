@@ -154,8 +154,9 @@ class FBCodeBuilder(object):
         return self.step('Diagnostics', [
             self.comment('Builder {0}'.format(repr(self))),
             self.run(ShellQuoted('hostname')),
-            self.run(ShellQuoted('cat /etc/issue')),
+            self.run(ShellQuoted('cat /etc/issue || echo no /etc/issue')),
             self.run(ShellQuoted('g++ --version || echo g++ not installed')),
+            self.run(ShellQuoted('cmake --version || echo cmake not installed')),
         ])
 
     def step(self, name, actions):
