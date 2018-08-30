@@ -42,7 +42,7 @@ StringPiece getGlogLevelName(LogLevel level) {
 
 StringPiece getResetSequence(LogLevel level) {
   if (level >= LogLevel::INFO && level < LogLevel::WARN) {
-    return "\e[0m";
+    return "\033[0m";
   } else {
     return "";
   }
@@ -50,15 +50,15 @@ StringPiece getResetSequence(LogLevel level) {
 
 StringPiece getColorSequence(LogLevel level) {
   if (level < LogLevel::INFO) {
-    return "\e[1;30m"; // BOLD/BRIGHT BLACK ~ GREY
+    return "\033[1;30m"; // BOLD/BRIGHT BLACK ~ GREY
   } else if (level < LogLevel::WARN) {
     return ""; // NO COLOR
   } else if (level < LogLevel::ERR) {
-    return "\e[33m"; // YELLOW
+    return "\033[33m"; // YELLOW
   } else if (level < LogLevel::CRITICAL) {
-    return "\e[31m"; // RED
+    return "\033[31m"; // RED
   }
-  return "\e[1;41m"; // BOLD ON RED BACKGROUND
+  return "\033[1;41m"; // BOLD ON RED BACKGROUND
 }
 
 struct FormatKeys {
