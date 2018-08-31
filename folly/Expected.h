@@ -137,27 +137,29 @@ using IsConvertible = StrictConjunction<
     std::is_assignable<To&, From>>;
 
 template <class T, class U>
-auto doEmplaceAssign(int, T& t, U&& u) -> decltype(void(t = (U &&)u)) {
-  t = (U &&)u;
+auto doEmplaceAssign(int, T& t, U&& u)
+    -> decltype(void(t = static_cast<U&&>(u))) {
+  t = static_cast<U&&>(u);
 }
 
 template <class T, class U>
-auto doEmplaceAssign(long, T& t, U&& u) -> decltype(void(T((U &&)u))) {
+auto doEmplaceAssign(long, T& t, U&& u)
+    -> decltype(void(T(static_cast<U&&>(u)))) {
   t.~T();
-  ::new ((void*)std::addressof(t)) T((U &&)u);
+  ::new ((void*)std::addressof(t)) T(static_cast<U&&>(u));
 }
 
 template <class T, class... Us>
 auto doEmplaceAssign(int, T& t, Us&&... us)
-    -> decltype(void(t = T((Us &&)us...))) {
-  t = T((Us &&)us...);
+    -> decltype(void(t = T(static_cast<Us&&>(us)...))) {
+  t = T(static_cast<Us&&>(us)...);
 }
 
 template <class T, class... Us>
 auto doEmplaceAssign(long, T& t, Us&&... us)
-    -> decltype(void(T((Us &&)us...))) {
+    -> decltype(void(T(static_cast<Us&&>(us)...))) {
   t.~T();
-  ::new ((void*)std::addressof(t)) T((Us &&)us...);
+  ::new ((void*)std::addressof(t)) T(static_cast<Us&&>(us)...);
 }
 
 struct EmptyTag {};
@@ -665,7 +667,7 @@ class FOLLY_EXPORT BadExpectedAccess : public std::logic_error {
 };
 
 namespace expected_detail {
-
+// empty
 } // namespace expected_detail
 
 /**
