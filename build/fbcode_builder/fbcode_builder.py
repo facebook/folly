@@ -178,42 +178,50 @@ class FBCodeBuilder(object):
         '''
         raise NotImplementedError
 
+    def debian_deps(self):
+        return [
+            'autoconf-archive',
+            'bison',
+            'build-essential',
+            'cmake',
+            'curl',
+            'flex',
+            'git',
+            'gperf',
+            'joe',
+            'libboost-all-dev',
+            'libcap-dev',
+            'libdouble-conversion-dev',
+            'libevent-dev',
+            'libgflags-dev',
+            'libgoogle-glog-dev',
+            'libkrb5-dev',
+            'libpcre3-dev',
+            'libpthread-stubs0-dev',
+            'libnuma-dev',
+            'libsasl2-dev',
+            'libsnappy-dev',
+            'libsqlite3-dev',
+            'libssl-dev',
+            'libtool',
+            'netcat-openbsd',
+            'pkg-config',
+            'sudo',
+            'unzip',
+            'wget',
+        ]
+
     #
     # Specific build helpers
     #
 
     def install_debian_deps(self):
         actions = [
-            self.run(ShellQuoted(
-                'apt-get update && apt-get install -yq '
-                'autoconf-archive '
-                'bison '
-                'build-essential '
-                'cmake '
-                'curl '
-                'flex '
-                'git '
-                'gperf '
-                'joe '
-                'libboost-all-dev '
-                'libcap-dev '
-                'libdouble-conversion-dev '
-                'libevent-dev '
-                'libgflags-dev '
-                'libgoogle-glog-dev '
-                'libkrb5-dev '
-                'libnuma-dev '
-                'libsasl2-dev '
-                'libsnappy-dev '
-                'libsqlite3-dev '
-                'libssl-dev '
-                'libtool '
-                'netcat-openbsd '
-                'pkg-config '
-                'sudo '
-                'unzip '
-                'wget'
-            )),
+            self.run(
+                ShellQuoted('apt-get update && apt-get install -yq {deps}').format(
+                    deps=shell_join(' ', (
+                        ShellQuoted(dep) for dep in self.debian_deps())))
+            ),
         ]
         gcc_version = self.option('gcc_version')
 
