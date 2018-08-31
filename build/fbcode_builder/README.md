@@ -55,4 +55,6 @@ internal continuous-integration platform using the same build-step DSL.
 
 Please follow the ambient style (or PEP-8), and keep the code Python 2.6
 compatible -- since `fbcode_builder`'s only dependency is Docker, we want to
-allow building projects on even fairly ancient base systems.
+allow building projects on even fairly ancient base systems.   We also wish
+to be compatible with Python 3, and would appreciate it if you kept that
+in mind while making changes also.

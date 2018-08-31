@@ -38,21 +38,31 @@ def make_temp_dir(d):
         shutil.rmtree(d, ignore_errors=True)
 
 
+def _inner_read_config(path):
+    '''
+    Helper to read a named config file.
+    The grossness with the global is a workaround for this python bug:
+    https://bugs.python.org/issue21591
+    The bug prevents us from defining either a local function or a lambda
+    in the scope of read_fbcode_builder_config below.
+    '''
+    global _project_dir
+    full_path = os.path.join(_project_dir, path)
+    return read_fbcode_builder_config(full_path)
+
+
 def read_fbcode_builder_config(filename):
     # Allow one spec to read another
     # When doing so, treat paths as relative to the config's project directory.
-    project_dir = os.path.dirname(filename)
+    # _project_dir is a "local" for _inner_read_config; see the comments
+    # in that function for an explanation of the use of global.
+    global _project_dir
+    _project_dir = os.path.dirname(filename)
 
-    def inner_read_config(path):
-        full_path = os.path.join(project_dir, path)
-        return read_fbcode_builder_config(full_path)
-
-    scope = {'read_fbcode_builder_config': inner_read_config}
+    scope = {'read_fbcode_builder_config': _inner_read_config}
     with open(filename) as config_file:
-        # Note that this will need to be changed to an exec() function call for
-        # python 3 compatibility.  Unfortunately python 2.7 does not seem to
-        # treat the scope correctly when using exec() function syntax here.
-        exec config_file.read() in scope
+        code = compile(config_file.read(), filename, mode='exec')
+    exec(code, scope)
     return scope['config']
 
 
