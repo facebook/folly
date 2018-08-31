@@ -1476,6 +1476,14 @@ class Future : private futures::detail::FutureBase<T> {
       Future<T>>::type
   onError(F&& func) &&;
 
+  // clang-format off
+  template <class F>
+  [[deprecated("use rvalue-qualified fn, eg, std::move(future).onError(...)")]]
+  Future<T> onError(F&& func) & {
+    return std::move(*this).onError(std::forward<F>(func));
+  }
+  // clang-format on
+
   /// func is like std::function<void()> and is executed unconditionally, and
   /// the value/exception is passed through to the resulting Future.
   /// func shouldn't throw, but if it does it will be captured and propagated,
