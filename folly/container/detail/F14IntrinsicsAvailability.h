@@ -26,8 +26,8 @@
 // expected.
 //
 // TODO: enable for android (T33376370)
-#if ((FOLLY_SSE >= 2) || (FOLLY_NEON && FOLLY_AARCH64)) && \
-    (!FOLLY_MOBILE || defined(__APPLE__))
+// TODO: enable for iOS (T33470422)
+#if ((FOLLY_SSE >= 2) || (FOLLY_NEON && FOLLY_AARCH64)) && (!FOLLY_MOBILE)
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
 #else
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0
