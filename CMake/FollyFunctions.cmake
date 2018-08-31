@@ -212,6 +212,8 @@ function(folly_define_tests)
                 set(test_${cur_test}_tag "HANGING")
               elseif ("x${ARGV${currentArg}}" STREQUAL "xSLOW")
                 set(test_${cur_test}_tag "SLOW")
+              elseif ("x${ARGV${currentArg}}" STREQUAL "xWINDOWS_DISABLED")
+                set(test_${cur_test}_tag "WINDOWS_DISABLED")
               else()
                 message(FATAL_ERROR "Unknown test tag '${ARGV${currentArg}}'!")
               endif()
@@ -251,7 +253,8 @@ function(folly_define_tests)
     if ("x${test_${cur_test}_tag}" STREQUAL "xNONE" OR
         ("x${test_${cur_test}_tag}" STREQUAL "xBROKEN" AND BUILD_BROKEN_TESTS) OR
         ("x${test_${cur_test}_tag}" STREQUAL "xSLOW" AND BUILD_SLOW_TESTS) OR
-        ("x${test_${cur_test}_tag}" STREQUAL "xHANGING" AND BUILD_HANGING_TESTS)
+        ("x${test_${cur_test}_tag}" STREQUAL "xHANGING" AND BUILD_HANGING_TESTS) OR
+        ("x${test_${cur_test}_tag}" STREQUAL "xWINDOWS_DISABLED" AND NOT WIN32)
     )
       set(cur_test_name ${test_${cur_test}_name})
       set(cur_dir_name ${directory_${test_${cur_test}_directory}_name})
