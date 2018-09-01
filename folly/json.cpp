@@ -602,9 +602,9 @@ dynamic parseValue(Input& in) {
 
 std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars) {
   std::array<uint64_t, 2> escapes{{0, 0}};
-  for (const char c : chars) {
-    if (c >= 0x20 && c < 0x80) {
-      escapes[c / 64] |= uint64_t(1) << (c % 64);
+  for (auto b : ByteRange(chars)) {
+    if (b >= 0x20 && b < 0x80) {
+      escapes[b / 64] |= uint64_t(1) << (b % 64);
     }
   }
   return escapes;
