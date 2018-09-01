@@ -48,22 +48,18 @@ TEST(AtomicStruct, two_by_32) {
   EXPECT_EQ(c.load().right, 40);
 }
 
-TEST(AtomicStruct, size_selection) {
-  struct S1 { char x[1]; };
-  struct S2 { char x[2]; };
-  struct S3 { char x[3]; };
-  struct S4 { char x[4]; };
-  struct S5 { char x[5]; };
-  struct S6 { char x[6]; };
-  struct S7 { char x[7]; };
-  struct S8 { char x[8]; };
+template <size_t I>
+struct S {
+  char x[I];
+};
 
-  EXPECT_EQ(sizeof(AtomicStruct<S1>), 1);
-  EXPECT_EQ(sizeof(AtomicStruct<S2>), 2);
-  EXPECT_EQ(sizeof(AtomicStruct<S3>), 4);
-  EXPECT_EQ(sizeof(AtomicStruct<S4>), 4);
-  EXPECT_EQ(sizeof(AtomicStruct<S5>), 8);
-  EXPECT_EQ(sizeof(AtomicStruct<S6>), 8);
-  EXPECT_EQ(sizeof(AtomicStruct<S7>), 8);
-  EXPECT_EQ(sizeof(AtomicStruct<S8>), 8);
+TEST(AtomicStruct, size_selection) {
+  EXPECT_EQ(sizeof(AtomicStruct<S<1>>), 1);
+  EXPECT_EQ(sizeof(AtomicStruct<S<2>>), 2);
+  EXPECT_EQ(sizeof(AtomicStruct<S<3>>), 4);
+  EXPECT_EQ(sizeof(AtomicStruct<S<4>>), 4);
+  EXPECT_EQ(sizeof(AtomicStruct<S<5>>), 8);
+  EXPECT_EQ(sizeof(AtomicStruct<S<6>>), 8);
+  EXPECT_EQ(sizeof(AtomicStruct<S<7>>), 8);
+  EXPECT_EQ(sizeof(AtomicStruct<S<8>>), 8);
 }
