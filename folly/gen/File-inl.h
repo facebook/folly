@@ -120,10 +120,7 @@ class FileWriter : public Operator<FileWriter> {
   std::unique_ptr<IOBuf> buffer_;
 };
 
-inline auto byLineImpl(File file, char delim, bool keepDelimiter)
-    -> decltype(fromFile(std::move(file))
-                | eachAs<StringPiece>()
-                | resplit(delim, keepDelimiter)) {
+inline auto byLineImpl(File file, char delim, bool keepDelimiter) {
   return fromFile(std::move(file))
     | eachAs<StringPiece>()
     | resplit(delim, keepDelimiter);
@@ -136,30 +133,29 @@ inline auto byLineImpl(File file, char delim, bool keepDelimiter)
  * Note: This produces StringPieces which reference temporary strings which are
  * only valid during iteration.
  */
-inline auto byLineFull(File file, char delim = '\n')
-    -> decltype(detail::byLineImpl(std::move(file), delim, true)) {
+inline auto byLineFull(File file, char delim = '\n') {
   return detail::byLineImpl(std::move(file), delim, true);
 }
 
-inline auto byLineFull(int fd, char delim = '\n')
-    -> decltype(byLineFull(File(fd), delim)) {
+inline auto byLineFull(int fd, char delim = '\n') {
   return byLineFull(File(fd), delim);
 }
 
-inline auto byLineFull(const char* f, char delim = '\n')
-    -> decltype(byLineFull(File(f), delim)) {
+inline auto byLineFull(const char* f, char delim = '\n') {
   return byLineFull(File(f), delim);
 }
 
-inline auto byLine(File file, char delim = '\n')
-    -> decltype(detail::byLineImpl(std::move(file), delim, false)) {
+inline auto byLine(File file, char delim = '\n') {
   return detail::byLineImpl(std::move(file), delim, false);
 }
 
-inline auto byLine(int fd, char delim = '\n')
-  -> decltype(byLine(File(fd), delim)) { return byLine(File(fd), delim); }
+inline auto byLine(int fd, char delim = '\n') {
+  return byLine(File(fd), delim);
+}
 
-inline auto byLine(const char* f, char delim = '\n')
-  -> decltype(byLine(File(f), delim)) { return byLine(File(f), delim); }
+inline auto byLine(const char* f, char delim = '\n') {
+  return byLine(File(f), delim);
+}
+
 } // namespace gen
 } // namespace folly
