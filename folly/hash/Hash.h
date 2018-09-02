@@ -94,7 +94,7 @@ size_t hash_combine_generic(
     return seed;
   }
   size_t remainder = hash_combine_generic(h, ts...);
-  /* static */ if (sizeof(size_t) == sizeof(uint32_t)) {
+  if /* constexpr */ (sizeof(size_t) == sizeof(uint32_t)) {
     return twang_32from64((uint64_t(seed) << 32) | remainder);
   } else {
     return static_cast<size_t>(hash_128_to_64(seed, remainder));

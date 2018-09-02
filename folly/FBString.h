@@ -141,7 +141,7 @@ template <class Pod, class T>
 inline void podFill(Pod* b, Pod* e, T c) {
   FBSTRING_ASSERT(b && e && b <= e);
   constexpr auto kUseMemset = sizeof(T) == 1;
-  /* static */ if (kUseMemset) {
+  if /* constexpr */ (kUseMemset) {
     memset(b, c, size_t(e - b));
   } else {
     auto const ee = b + ((e - b) & ~7u);
@@ -477,7 +477,7 @@ template <class Char> class fbstring_core {
 
   size_t size() const {
     size_t ret = ml_.size_;
-    /* static */ if (kIsLittleEndian) {
+    if /* constexpr */ (kIsLittleEndian) {
       // We can save a couple instructions, because the category is
       // small iff the last char, as unsigned, is <= maxSmallSize.
       typedef typename std::make_unsigned<Char>::type UChar;

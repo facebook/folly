@@ -171,14 +171,14 @@ struct EliasFanoEncoderV2 {
       writeBits56(lower_, size_ * numLowerBits, numLowerBits, lowerBits);
     }
 
-    /* static */ if (skipQuantum != 0) {
+    if /* constexpr */ (skipQuantum != 0) {
       while ((skipPointersSize_ + 1) * skipQuantum <= upperBits) {
         // Store the number of preceding 1-bits.
         skipPointers_[skipPointersSize_++] = SkipValue(size_);
       }
     }
 
-    /* static */ if (forwardQuantum != 0) {
+    if /* constexpr */ (forwardQuantum != 0) {
       if ((size_ + 1) % forwardQuantum == 0) {
         const auto k = size_ / forwardQuantum;
         // Store the number of preceding 0-bits.
@@ -264,7 +264,7 @@ struct EliasFanoEncoderV2<Value,
     // *** Skip pointers.
     // Store (1-indexed) position of every skipQuantum-th
     // 0-bit in upper bits sequence.
-    /* static */ if (skipQuantum != 0) {
+    if /* constexpr */ (skipQuantum != 0) {
       // 8 * upper is used here instead of upperSizeBits, as that is
       // more serialization-friendly way (upperSizeBits doesn't need
       // to be known by this function, unlike upper).
@@ -276,7 +276,7 @@ struct EliasFanoEncoderV2<Value,
     // *** Forward pointers.
     // Store (1-indexed) position of every forwardQuantum-th
     // 1-bit in upper bits sequence.
-    /* static */ if (forwardQuantum != 0) {
+    if /* constexpr */ (forwardQuantum != 0) {
       size_t numForwardPointers = size / forwardQuantum;
       layout.forwardPointers = numForwardPointers * sizeof(SkipValueType);
     }
