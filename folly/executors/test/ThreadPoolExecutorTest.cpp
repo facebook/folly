@@ -134,6 +134,47 @@ TEST(ThreadPoolExecutorTest, IOJoin) {
 }
 
 template <class TPE>
+static void destroy() {
+  TPE tpe(1);
+  std::atomic<int> completed(0);
+  auto f = [&]() {
+    burnMs(10)();
+    completed++;
+  };
+  for (int i = 0; i < 1000; i++) {
+    tpe.add(f);
+  }
+  tpe.stop();
+  EXPECT_GT(1000, completed);
+}
+
+// IOThreadPoolExecutor's destuctor joins all tasks. Outstanding tasks belong
+// to the event base, will be executed upon its destruction, and cannot be
+// taken back.
+template <>
+void destroy<IOThreadPoolExecutor>() {
+  Optional<IOThreadPoolExecutor> tpe(in_place, 1);
+  std::atomic<int> completed(0);
+  auto f = [&]() {
+    burnMs(10)();
+    completed++;
+  };
+  for (int i = 0; i < 10; i++) {
+    tpe->add(f);
+  }
+  tpe.clear();
+  EXPECT_EQ(10, completed);
+}
+
+TEST(ThreadPoolExecutorTest, CPUDestroy) {
+  destroy<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, IODestroy) {
+  destroy<IOThreadPoolExecutor>();
+}
+
+template <class TPE>
 static void resizeUnderLoad() {
   TPE tpe(10);
   std::atomic<int> completed(0);
