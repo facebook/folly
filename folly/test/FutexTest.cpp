@@ -18,6 +18,7 @@
 #include <folly/test/DeterministicSchedule.h>
 
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <ratio>
 #include <thread>

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/detail/Futex.h>
+#include <folly/synchronization/ParkingLot.h>
 
 namespace folly {
 namespace detail {
@@ -52,20 +53,23 @@ typename TargetClock::time_point time_point_conv(
  * because ADL lookup finds the definitions of these functions when you pass
  * the relevant arguments
  */
-int futexWakeImpl(Futex<std::atomic>* futex, int count, uint32_t wakeMask);
+int futexWakeImpl(
+    const Futex<std::atomic>* futex,
+    int count,
+    uint32_t wakeMask);
 FutexResult futexWaitImpl(
-    Futex<std::atomic>* futex,
+    const Futex<std::atomic>* futex,
     uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTime,
     std::chrono::steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask);
 
 int futexWakeImpl(
-    Futex<EmulatedFutexAtomic>* futex,
+    const Futex<EmulatedFutexAtomic>* futex,
     int count,
     uint32_t wakeMask);
 FutexResult futexWaitImpl(
-    Futex<EmulatedFutexAtomic>* futex,
+    const Futex<EmulatedFutexAtomic>* futex,
     uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTime,
     std::chrono::steady_clock::time_point const* absSteadyTime,
@@ -92,20 +96,21 @@ futexWaitImpl(
 }
 
 template <typename Futex>
-FutexResult futexWait(Futex* futex, uint32_t expected, uint32_t waitMask) {
+FutexResult
+futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask) {
   auto rv = futexWaitImpl(futex, expected, nullptr, nullptr, waitMask);
   assert(rv != FutexResult::TIMEDOUT);
   return rv;
 }
 
 template <typename Futex>
-int futexWake(Futex* futex, int count, uint32_t wakeMask) {
+int futexWake(const Futex* futex, int count, uint32_t wakeMask) {
   return futexWakeImpl(futex, count, wakeMask);
 }
 
 template <typename Futex, class Clock, class Duration>
 FutexResult futexWaitUntil(
-    Futex* futex,
+    const Futex* futex,
     uint32_t expected,
     std::chrono::time_point<Clock, Duration> const& deadline,
     uint32_t waitMask) {

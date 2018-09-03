@@ -56,7 +56,7 @@ namespace {
 # define FUTEX_CLOCK_REALTIME 256
 #endif
 
-int nativeFutexWake(void* addr, int count, uint32_t wakeMask) {
+int nativeFutexWake(const void* addr, int count, uint32_t wakeMask) {
   int rv = syscall(__NR_futex,
                    addr, /* addr1 */
                    FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, /* op */
@@ -98,7 +98,7 @@ timeSpecFromTimePoint(time_point<Clock> absTime)
 }
 
 FutexResult nativeFutexWaitImpl(
-    void* addr,
+    const void* addr,
     uint32_t expected,
     system_clock::time_point const* absSystemTime,
     steady_clock::time_point const* absSteadyTime,
@@ -162,7 +162,7 @@ FutexResult nativeFutexWaitImpl(
 using Lot = ParkingLot<uint32_t>;
 Lot parkingLot;
 
-int emulatedFutexWake(void* addr, int count, uint32_t waitMask) {
+int emulatedFutexWake(const void* addr, int count, uint32_t waitMask) {
   int woken = 0;
   parkingLot.unpark(addr, [&](const uint32_t& mask) {
     if ((mask & waitMask) == 0) {
@@ -185,8 +185,8 @@ FutexResult emulatedFutexWaitImpl(
     steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask) {
   static_assert(
-      std::is_same<F, Futex<std::atomic>>::value ||
-          std::is_same<F, Futex<EmulatedFutexAtomic>>::value,
+      std::is_same<F, const Futex<std::atomic>>::value ||
+          std::is_same<F, const Futex<EmulatedFutexAtomic>>::value,
       "Type F must be either Futex<std::atomic> or Futex<EmulatedFutexAtomic>");
   ParkResult res;
   if (absSystemTime) {
@@ -224,7 +224,10 @@ FutexResult emulatedFutexWaitImpl(
 /////////////////////////////////
 // Futex<> overloads
 
-int futexWakeImpl(Futex<std::atomic>* futex, int count, uint32_t wakeMask) {
+int futexWakeImpl(
+    const Futex<std::atomic>* futex,
+    int count,
+    uint32_t wakeMask) {
 #ifdef __linux__
   return nativeFutexWake(futex, count, wakeMask);
 #else
@@ -233,14 +236,14 @@ int futexWakeImpl(Futex<std::atomic>* futex, int count, uint32_t wakeMask) {
 }
 
 int futexWakeImpl(
-    Futex<EmulatedFutexAtomic>* futex,
+    const Futex<EmulatedFutexAtomic>* futex,
     int count,
     uint32_t wakeMask) {
   return emulatedFutexWake(futex, count, wakeMask);
 }
 
 FutexResult futexWaitImpl(
-    Futex<std::atomic>* futex,
+    const Futex<std::atomic>* futex,
     uint32_t expected,
     system_clock::time_point const* absSystemTime,
     steady_clock::time_point const* absSteadyTime,
@@ -255,7 +258,7 @@ FutexResult futexWaitImpl(
 }
 
 FutexResult futexWaitImpl(
-    Futex<EmulatedFutexAtomic>* futex,
+    const Futex<EmulatedFutexAtomic>* futex,
     uint32_t expected,
     system_clock::time_point const* absSystemTime,
     steady_clock::time_point const* absSteadyTime,

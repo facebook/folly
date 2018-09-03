@@ -56,7 +56,8 @@ using Futex = Atom<std::uint32_t>;
  * other return (signal, this->load() != expected, or spurious wakeup).
  */
 template <typename Futex>
-FutexResult futexWait(Futex* futex, uint32_t expected, uint32_t waitMask = -1);
+FutexResult
+futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
 
 /**
  * Similar to futexWait but also accepts a deadline until when the wait call
@@ -73,7 +74,7 @@ template <
     class Clock,
     class Duration = typename Clock::duration>
 FutexResult futexWaitUntil(
-    Futex* futex,
+    const Futex* futex,
     uint32_t expected,
     std::chrono::time_point<Clock, Duration> const& deadline,
     uint32_t waitMask = -1);
@@ -89,7 +90,7 @@ FutexResult futexWaitUntil(
  */
 template <typename Futex>
 int futexWake(
-    Futex* futex,
+    const Futex* futex,
     int count = std::numeric_limits<int>::max(),
     uint32_t wakeMask = -1);
 

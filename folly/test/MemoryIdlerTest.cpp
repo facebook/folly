@@ -87,18 +87,19 @@ template <typename T>
 struct MockAtom : public std::atomic<T> {
   explicit MockAtom(T init = 0) : std::atomic<T>(init) {}
 
-  MOCK_METHOD2(futexWait, FutexResult(uint32_t, uint32_t));
-  MOCK_METHOD3(futexWaitUntil,
-               FutexResult(uint32_t, const MockClock::time_point&, uint32_t));
+  MOCK_CONST_METHOD2(futexWait, FutexResult(uint32_t, uint32_t));
+  MOCK_CONST_METHOD3(
+      futexWaitUntil,
+      FutexResult(uint32_t, const MockClock::time_point&, uint32_t));
 };
 
 FutexResult
-futexWait(Futex<MockAtom>* futex, uint32_t expected, uint32_t waitMask) {
+futexWait(const Futex<MockAtom>* futex, uint32_t expected, uint32_t waitMask) {
   return futex->futexWait(expected, waitMask);
 }
 template <typename Clock, typename Duration>
 FutexResult futexWaitUntil(
-    Futex<MockAtom>* futex,
+    const Futex<MockAtom>* futex,
     std::uint32_t expected,
     std::chrono::time_point<Clock, Duration> const& deadline,
     uint32_t waitMask) {

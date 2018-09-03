@@ -37,8 +37,10 @@ thread_local AuxAct DeterministicSchedule::tls_aux_act;
 AuxChk DeterministicSchedule::aux_chk;
 
 // access is protected by futexLock
-static std::unordered_map<detail::Futex<DeterministicAtomic>*,
-                          std::list<std::pair<uint32_t, bool*>>> futexQueues;
+static std::unordered_map<
+    const detail::Futex<DeterministicAtomic>*,
+    std::list<std::pair<uint32_t, bool*>>>
+    futexQueues;
 
 static std::mutex futexLock;
 
@@ -303,7 +305,7 @@ void DeterministicSchedule::wait(sem_t* sem) {
 }
 
 detail::FutexResult futexWaitImpl(
-    detail::Futex<DeterministicAtomic>* futex,
+    const detail::Futex<DeterministicAtomic>* futex,
     uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTimeout,
     std::chrono::steady_clock::time_point const* absSteadyTimeout,
@@ -377,7 +379,7 @@ detail::FutexResult futexWaitImpl(
 }
 
 int futexWakeImpl(
-    detail::Futex<test::DeterministicAtomic>* futex,
+    const detail::Futex<test::DeterministicAtomic>* futex,
     int count,
     uint32_t wakeMask) {
   using namespace test;

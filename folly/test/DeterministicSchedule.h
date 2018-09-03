@@ -457,11 +457,11 @@ struct DeterministicAtomic {
 
 /* Futex extensions for DeterministicSchedule based Futexes */
 int futexWakeImpl(
-    detail::Futex<test::DeterministicAtomic>* futex,
+    const detail::Futex<test::DeterministicAtomic>* futex,
     int count,
     uint32_t wakeMask);
 detail::FutexResult futexWaitImpl(
-    detail::Futex<test::DeterministicAtomic>* futex,
+    const detail::Futex<test::DeterministicAtomic>* futex,
     uint32_t expected,
     std::chrono::system_clock::time_point const* absSystemTime,
     std::chrono::steady_clock::time_point const* absSteadyTime,
