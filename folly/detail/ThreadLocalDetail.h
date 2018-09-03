@@ -342,10 +342,6 @@ struct StaticMetaBase {
 
   StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict);
 
-  [[noreturn]] ~StaticMetaBase() {
-    folly::assume_unreachable();
-  }
-
   void push_back(ThreadEntry* t) {
     t->next = &head_;
     t->prev = head_.prev;
@@ -403,6 +399,9 @@ struct StaticMetaBase {
   ThreadEntry head_;
   ThreadEntry* (*threadEntry_)();
   bool strict_;
+
+ protected:
+  ~StaticMetaBase() {}
 };
 
 // Held in a singleton to track our global instances.
@@ -413,7 +412,7 @@ struct StaticMetaBase {
 // for threads that use ThreadLocalPtr objects collide on a lock inside
 // StaticMeta; you can specify multiple Tag types to break that lock.
 template <class Tag, class AccessMode>
-struct StaticMeta : StaticMetaBase {
+struct StaticMeta final : StaticMetaBase {
   StaticMeta()
       : StaticMetaBase(
             &StaticMeta::getThreadEntrySlow,
@@ -424,6 +423,8 @@ struct StaticMeta : StaticMetaBase {
         /*parent*/ &StaticMeta::onForkParent,
         /*child*/ &StaticMeta::onForkChild);
   }
+
+  ~StaticMeta() = delete;
 
   static StaticMeta<Tag, AccessMode>& instance() {
     // Leak it on exit, there's only one per process and we don't have to
