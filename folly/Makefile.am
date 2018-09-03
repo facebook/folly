@@ -334,6 +334,7 @@ nobase_follyinclude_HEADERS = \
 	LockTraits.h \
 	LockTraitsBoost.h \
 	logging/AsyncFileWriter.h \
+	logging/CustomLogFormatter.h \
 	logging/FileHandlerFactory.h \
 	logging/FileWriterFactory.h \
 	logging/GlogStyleFormatter.h \
@@ -628,6 +629,7 @@ libfolly_la_SOURCES = \
 	lang/ColdClass.cpp \
 	lang/SafeAssert.cpp \
 	logging/AsyncFileWriter.cpp \
+	logging/CustomLogFormatter.cpp \
 	logging/FileHandlerFactory.cpp \
 	logging/FileWriterFactory.cpp \
 	logging/GlogStyleFormatter.cpp \
