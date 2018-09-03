@@ -18,6 +18,8 @@
 #include <memory>
 #include <thread>
 
+#include <boost/thread.hpp>
+
 #include <folly/Exception.h>
 #include <folly/VirtualExecutor.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
@@ -29,6 +31,7 @@
 #include <folly/executors/thread_factory/InitThreadFactory.h>
 #include <folly/executors/thread_factory/PriorityThreadFactory.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/detail/Spin.h>
 
 using namespace folly;
 using namespace std::chrono;
@@ -770,16 +773,22 @@ TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryCPU) {
 }
 
 TEST(ThreadPoolExecutorTest, DynamicThreadsTest) {
+  boost::barrier barrier{3};
+  auto twice_waiting_task = [&] { barrier.wait(), barrier.wait(); };
   CPUThreadPoolExecutor e(2);
   e.setThreadDeathTimeout(std::chrono::milliseconds(100));
-  e.add([] { /* sleep override */ usleep(1000); });
-  e.add([] { /* sleep override */ usleep(1000); });
-  auto stats = e.getPoolStats();
-  EXPECT_GE(2, stats.activeThreadCount);
-  /* sleep override */ sleep(1);
-  e.add([] {});
-  stats = e.getPoolStats();
-  EXPECT_LE(stats.activeThreadCount, 0);
+  e.add(twice_waiting_task);
+  e.add(twice_waiting_task);
+  barrier.wait(); // ensure both tasks are mid-flight
+  EXPECT_EQ(2, e.getPoolStats().activeThreadCount) << "sanity check";
+
+  auto pred = [&] { return e.getPoolStats().activeThreadCount == 0; };
+  EXPECT_FALSE(pred()) << "sanity check";
+  barrier.wait(); // let both mid-flight tasks complete
+  EXPECT_EQ(
+      folly::detail::spin_result::success,
+      folly::detail::spin_yield_until(
+          std::chrono::steady_clock::now() + std::chrono::seconds(1), pred));
 }
 
 TEST(ThreadPoolExecutorTest, DynamicThreadAddRemoveRace) {
