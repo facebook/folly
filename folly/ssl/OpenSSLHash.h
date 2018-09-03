@@ -177,9 +177,9 @@ class OpenSSLHash {
     if (LIKELY(result == expected)) {
       return;
     }
-    check_libssl_result_throw();
+    throw_exception<std::runtime_error>("openssl crypto function failed");
   }
-  [[noreturn]] static void check_libssl_result_throw();
 };
+
 } // namespace ssl
 } // namespace folly

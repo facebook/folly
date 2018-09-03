@@ -184,10 +184,6 @@ void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
       type.name());
 }
 
-[[noreturn]] void SingletonVaultState::throwUnexpectedState(const char* msg) {
-  throw std::logic_error(msg);
-}
-
 } // namespace detail
 
 namespace {

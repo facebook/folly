@@ -28,8 +28,5 @@ namespace ssl {
       "expected out of size {} but was of size {}", size, out.size()));
 }
 
-[[noreturn]] void OpenSSLHash::check_libssl_result_throw() {
-  throw std::runtime_error("openssl crypto function failed");
-}
 } // namespace ssl
 } // namespace folly

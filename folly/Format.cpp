@@ -422,10 +422,4 @@ FormatKeyNotFoundException::FormatKeyNotFoundException(StringPiece key)
 
 constexpr StringPiece const FormatKeyNotFoundException::kMessagePrefix;
 
-namespace detail {
-[[noreturn]] void throwFormatKeyNotFoundException(StringPiece key) {
-  throw FormatKeyNotFoundException(key);
-}
-} // namespace detail
-
 } // namespace folly

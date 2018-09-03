@@ -72,19 +72,6 @@ TypeError& TypeError::operator=(TypeError&&) noexcept(
     std::is_nothrow_move_assignable<std::runtime_error>::value) = default;
 TypeError::~TypeError() = default;
 
-[[noreturn]] void throwTypeError_(
-    std::string const& expected,
-    dynamic::Type actual) {
-  throw TypeError(expected, actual);
-}
-
-[[noreturn]] void throwTypeError_(
-    std::string const& expected,
-    dynamic::Type actual1,
-    dynamic::Type actual2) {
-  throw TypeError(expected, actual1, actual2);
-}
-
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
 #define FB_DYNAMIC_APPLY(type, apply) \
@@ -119,7 +106,7 @@ TypeError::~TypeError() = default;
 
 bool dynamic::operator<(dynamic const& o) const {
   if (UNLIKELY(type_ == OBJECT || o.type_ == OBJECT)) {
-    throwTypeError_("object", type_);
+    throw_exception<TypeError>("object", type_);
   }
   if (type_ != o.type_) {
     return type_ < o.type_;
@@ -182,7 +169,7 @@ dynamic& dynamic::operator=(dynamic&& o) noexcept {
 
 dynamic& dynamic::operator[](dynamic const& k) & {
   if (!isObject() && !isArray()) {
-    throwTypeError_("object/array", type());
+    throw_exception<TypeError>("object/array", type());
   }
   if (isArray()) {
     return at(k);
@@ -229,7 +216,7 @@ dynamic dynamic::getDefault(const dynamic& k, dynamic&& v) && {
 const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {
-      throwTypeError_("int64", idx.type());
+      throw_exception<TypeError>("int64", idx.type());
     }
     if (idx < 0 || idx >= parray->size()) {
       return nullptr;
@@ -242,19 +229,14 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
     }
     return &it->second;
   } else {
-    throwTypeError_("object/array", type());
+    throw_exception<TypeError>("object/array", type());
   }
-}
-
-[[noreturn]] static void throwOutOfRangeAtMissingKey(dynamic const& idx) {
-  auto msg = sformat("couldn't find key {} in dynamic object", idx.asString());
-  throw_exception<std::out_of_range>(msg);
 }
 
 dynamic const& dynamic::at(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {
-      throwTypeError_("int64", idx.type());
+      throw_exception<TypeError>("int64", idx.type());
     }
     if (idx < 0 || idx >= parray->size()) {
       throw_exception<std::out_of_range>("out of range in dynamic array");
@@ -263,11 +245,14 @@ dynamic const& dynamic::at(dynamic const& idx) const& {
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
     auto it = pobject->find(idx);
     if (it == pobject->end()) {
-      throwOutOfRangeAtMissingKey(idx);
+      invoke_noreturn_cold([&] {
+        throw_exception<std::out_of_range>(
+            sformat("couldn't find key {} in dynamic object", idx.asString()));
+      });
     }
     return it->second;
   } else {
-    throwTypeError_("object/array", type());
+    throw_exception<TypeError>("object/array", type());
   }
 }
 
@@ -281,7 +266,7 @@ std::size_t dynamic::size() const {
   if (auto* str = get_nothrow<std::string>()) {
     return str->size();
   }
-  throwTypeError_("array/object", type());
+  throw_exception<TypeError>("array/object", type());
 }
 
 dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
@@ -384,7 +369,7 @@ const dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) const& {
         dyn = dyn->get_ptr("");
         continue;
       }
-      throwTypeError_("object", dyn->type());
+      throw_exception<TypeError>("object", dyn->type());
     }
     if (auto* parray = dyn->get_nothrow<dynamic::Array>()) {
       if (token.size() > 1 && token.at(0) == '0') {
@@ -405,7 +390,7 @@ const dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) const& {
       dyn = it != pobject->end() ? &it->second : nullptr;
       continue;
     }
-    throwTypeError_("object/array", dyn->type());
+    throw_exception<TypeError>("object/array", dyn->type());
   }
   return dyn;
 }

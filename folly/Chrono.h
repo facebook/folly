@@ -21,6 +21,7 @@
 #include <type_traits>
 
 #include <folly/Portability.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Time.h>
 
 /***
@@ -159,11 +160,6 @@ constexpr std::chrono::time_point<Clock, To> round(
 
 namespace folly {
 namespace chrono {
-namespace detail {
-[[noreturn]] FOLLY_NOINLINE inline void throw_coarse_steady_clock_now_exn() {
-  throw std::runtime_error("Error using CLOCK_MONOTONIC_COARSE.");
-}
-} // namespace detail
 
 struct coarse_steady_clock {
   using rep = std::chrono::milliseconds::rep;
@@ -180,7 +176,8 @@ struct coarse_steady_clock {
     timespec ts;
     auto ret = clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
     if (ret != 0) {
-      detail::throw_coarse_steady_clock_now_exn();
+      throw_exception<std::runtime_error>(
+          "Error using CLOCK_MONOTONIC_COARSE.");
     }
     return time_point(std::chrono::duration_cast<duration>(
         std::chrono::seconds(ts.tv_sec) +
@@ -188,5 +185,6 @@ struct coarse_steady_clock {
 #endif
   }
 };
+
 } // namespace chrono
 } // namespace folly

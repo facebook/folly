@@ -231,7 +231,7 @@ BENCHMARK_DRAW_LINE();
 BENCHMARK(throw_exception, iters) {
   for (size_t n = 0; n < iters; ++n) {
     try {
-      throwException();
+      folly::throw_exception<Exception>("this is a test");
     } catch (const std::exception& ex) {
     }
   }

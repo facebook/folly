@@ -14,14 +14,33 @@
  * limitations under the License.
  */
 
-#include <folly/FormatArg.h>
+#pragma once
+
+#include <exception>
+
+#include <folly/CPortability.h>
 
 namespace folly {
 
-[[noreturn]] void throwBadFormatArg(char const* msg) {
-  throw BadFormatArg(msg);
-}
-[[noreturn]] void throwBadFormatArg(std::string const& msg) {
-  throw BadFormatArg(msg);
-}
+/**
+ * Exception type that is thrown on invalid access of an empty `Poly` object.
+ */
+struct FOLLY_EXPORT BadPolyAccess : std::exception {
+  BadPolyAccess() = default;
+  char const* what() const noexcept override {
+    return "BadPolyAccess";
+  }
+};
+
+/**
+ * Exception type that is thrown when attempting to extract from a `Poly` a
+ * value of the wrong type.
+ */
+struct FOLLY_EXPORT BadPolyCast : std::bad_cast {
+  BadPolyCast() = default;
+  char const* what() const noexcept override {
+    return "BadPolyCast";
+  }
+};
+
 } // namespace folly

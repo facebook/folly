@@ -22,8 +22,9 @@
 
 namespace folly {
 namespace detail {
-[[noreturn]] void throwBadPolyAccess() { throw BadPolyAccess(); }
-[[noreturn]] void throwBadPolyCast() { throw BadPolyCast(); }
+
+// empty
+
 } // namespace detail
 } // namespace folly
 

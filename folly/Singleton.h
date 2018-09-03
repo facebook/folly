@@ -129,6 +129,7 @@
 #include <folly/detail/StaticSingletonManager.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/hash/Hash.h>
+#include <folly/lang/Exception.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/synchronization/RWSpinLock.h>
 
@@ -271,11 +272,9 @@ struct SingletonVaultState {
       Type expected,
       const char* msg = "Unexpected singleton state change") const {
     if (expected != state) {
-      throwUnexpectedState(msg);
+      throw_exception<std::logic_error>(msg);
     }
   }
-
-  [[noreturn]] static void throwUnexpectedState(const char* msg);
 };
 
 // This interface is used by SingletonVault to interact with SingletonHolders.

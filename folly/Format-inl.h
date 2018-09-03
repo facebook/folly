@@ -29,6 +29,7 @@
 #include <folly/FormatTraits.h>
 #include <folly/MapUtil.h>
 #include <folly/Traits.h>
+#include <folly/lang/Exception.h>
 #include <folly/portability/Windows.h>
 
 // Ignore -Wformat-nonliteral warnings within this file
@@ -184,7 +185,8 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
       p = q;
 
       if (p == end || *p != '}') {
-        throwBadFormatArg("folly::format: single '}' in format string");
+        throw_exception<BadFormatArg>(
+            "folly::format: single '}' in format string");
       }
       ++p;
     }
@@ -206,7 +208,8 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
     p = q + 1;
 
     if (p == end) {
-      throwBadFormatArg("folly::format: '}' at end of format string");
+      throw_exception<BadFormatArg>(
+          "folly::format: '}' at end of format string");
     }
 
     // "{{" -> "{"
@@ -219,7 +222,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
     // Format string
     q = static_cast<const char*>(memchr(p, '}', size_t(end - p)));
     if (q == nullptr) {
-      throwBadFormatArg("folly::format: missing ending '}'");
+      throw_exception<BadFormatArg>("folly::format: missing ending '}'");
     }
     FormatArg arg(StringPiece(p, q));
     p = q + 1;
@@ -268,7 +271,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
     }
 
     if (hasDefaultArgIndex && hasExplicitArgIndex) {
-      throwBadFormatArg(
+      throw_exception<BadFormatArg>(
           "folly::format: may not have both default and explicit arg indexes");
     }
 
@@ -294,10 +297,10 @@ namespace format_value {
 template <class FormatCallback>
 void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
   if (arg.width != FormatArg::kDefaultWidth && arg.width < 0) {
-    throwBadFormatArg("folly::format: invalid width");
+    throw_exception<BadFormatArg>("folly::format: invalid width");
   }
   if (arg.precision != FormatArg::kDefaultPrecision && arg.precision < 0) {
-    throwBadFormatArg("folly::format: invalid precision");
+    throw_exception<BadFormatArg>("folly::format: invalid precision");
   }
 
   if (arg.precision != FormatArg::kDefaultPrecision &&
@@ -957,7 +960,7 @@ struct KeyableTraitsAssoc : public FormatTraitsBase {
     if (auto ptr = get_ptr(map, KeyFromStringPiece<key_type>::convert(key))) {
       return *ptr;
     }
-    detail::throwFormatKeyNotFoundException(key);
+    throw_exception<FormatKeyNotFoundException>(key);
   }
   static const value_type&
   at(const T& map, StringPiece key, const value_type& dflt) {

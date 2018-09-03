@@ -16,31 +16,15 @@
 
 #include <folly/test/function_benchmark/test_functions.h>
 
+#include <folly/lang/Exception.h>
+
 /*
  * These functions are defined in a separate file so that
  * gcc won't be able to inline them.
  */
 
 
-class Exception : public std::exception {
- public:
-  explicit Exception(const std::string& value) : value_(value) {}
-  ~Exception() noexcept override {}
-
-  const char* what() const noexcept override {
-    return value_.c_str();
-  }
-
- private:
-  std::string value_;
-};
-
 void doNothing() {
-}
-
-[[noreturn]]
-void throwException() {
-  throw Exception("this is a test");
 }
 
 std::exception_ptr returnExceptionPtr() {

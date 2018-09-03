@@ -23,15 +23,13 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
 class FOLLY_EXPORT BadFormatArg : public std::invalid_argument {
   using invalid_argument::invalid_argument;
 };
-
-[[noreturn]] void throwBadFormatArg(char const* msg);
-[[noreturn]] void throwBadFormatArg(std::string const& msg);
 
 /**
  * Parsed format argument.
@@ -215,7 +213,7 @@ inline std::string FormatArg::errorStr(Args&&... args) const {
 
 template <typename... Args>
 [[noreturn]] inline void FormatArg::error(Args&&... args) const {
-  throwBadFormatArg(errorStr(std::forward<Args>(args)...));
+  throw_exception<BadFormatArg>(errorStr(std::forward<Args>(args)...));
 }
 
 template <bool emptyOk>

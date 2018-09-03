@@ -331,10 +331,6 @@ class FOLLY_EXPORT FormatKeyNotFoundException : public std::out_of_range {
   static constexpr StringPiece const kMessagePrefix = "format key not found: ";
 };
 
-namespace detail {
-[[noreturn]] void throwFormatKeyNotFoundException(StringPiece key);
-} // namespace detail
-
 /**
  * Wrap a sequence or associative container so that out-of-range lookups
  * return a default value rather than throwing an exception.
