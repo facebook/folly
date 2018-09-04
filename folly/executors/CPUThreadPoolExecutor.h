@@ -54,8 +54,6 @@ namespace folly {
  * combination with Lifosem - it almost doesn't matter if more threads than are
  * necessary are specified at startup.
  *
- * @note stop() will finish all outstanding tasks at exit.
- *
  * @note Supports priorities - priorities are implemented as multiple queues -
  * each worker thread checks the highest priority queue first. Threads
  * themselves don't have priorities set, so a series of long running low
