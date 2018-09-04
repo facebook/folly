@@ -71,15 +71,16 @@ constexpr detail::ShellCmdFormat operator"" _shellify(
 } // namespace literals
 
 /**
-  * Create argument array for `Subprocess()` for a process running in a
-  * shell.
-  *
-  * The shell to use is always going to be `/bin/sh`.
-  *
-  * This is deprecated in favour of the user-defined-literal `_shellify`
-  * from namespace `folly::shell_literals` because that requires that the format
-  * string is a compile-time constant which can be inspected during code reviews
-  */
+ * Create argument array for `Subprocess()` for a process running in a
+ * shell.
+ *
+ * The shell to use is always going to be `/bin/sh`.
+ *
+ * This is deprecated in favour of the user-defined-literal `_shellify`
+ * from namespace `folly::shell_literals` because that requires that the format
+ * string is a compile-time constant which can be inspected during code reviews
+ */
+// clang-format off
 template <typename... Arguments>
 [[deprecated(
     "Use `\"command {} {} ...\"_shellify(argument1, argument2 ...)` from "
@@ -89,5 +90,6 @@ std::vector<std::string> shellify(
     Arguments&&... arguments) {
   return detail::shellify(format, std::forward<Arguments>(arguments)...);
 }
+// clang-format on
 
 } // namespace folly

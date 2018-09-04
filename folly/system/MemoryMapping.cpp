@@ -45,9 +45,11 @@ static constexpr ssize_t kDefaultMlockChunkSize =
 #endif // _MSC_VER
     ;
 
-DEFINE_int64(mlock_chunk_size, kDefaultMlockChunkSize,
-             "Maximum bytes to mlock/munlock/munmap at once "
-             "(will be rounded up to PAGESIZE). Ignored if negative.");
+DEFINE_int64(
+    mlock_chunk_size,
+    kDefaultMlockChunkSize,
+    "Maximum bytes to mlock/munlock/munmap at once "
+    "(will be rounded up to PAGESIZE). Ignored if negative.");
 
 #ifndef MAP_POPULATE
 #define MAP_POPULATE 0
@@ -59,27 +61,36 @@ MemoryMapping::MemoryMapping(MemoryMapping&& other) noexcept {
   swap(other);
 }
 
-MemoryMapping::MemoryMapping(File file, off_t offset, off_t length,
-                             Options options)
-  : file_(std::move(file)),
-    options_(std::move(options)) {
+MemoryMapping::MemoryMapping(
+    File file,
+    off_t offset,
+    off_t length,
+    Options options)
+    : file_(std::move(file)), options_(std::move(options)) {
   CHECK(file_);
   init(offset, length);
 }
 
-MemoryMapping::MemoryMapping(const char* name, off_t offset, off_t length,
-                             Options options)
-    : MemoryMapping(File(name, options.writable ? O_RDWR : O_RDONLY),
-                    offset,
-                    length,
-                    options) { }
+MemoryMapping::MemoryMapping(
+    const char* name,
+    off_t offset,
+    off_t length,
+    Options options)
+    : MemoryMapping(
+          File(name, options.writable ? O_RDWR : O_RDONLY),
+          offset,
+          length,
+          options) {}
 
-MemoryMapping::MemoryMapping(int fd, off_t offset, off_t length,
-                             Options options)
-  : MemoryMapping(File(fd), offset, length, options) { }
+MemoryMapping::MemoryMapping(
+    int fd,
+    off_t offset,
+    off_t length,
+    Options options)
+    : MemoryMapping(File(fd), offset, length, options) {}
 
 MemoryMapping::MemoryMapping(AnonymousType, off_t length, Options options)
-  : options_(std::move(options)) {
+    : options_(std::move(options)) {
   init(0, length);
 }
 
@@ -132,7 +143,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
   }
 
   CHECK_GT(pageSize, 0);
-  CHECK_EQ(pageSize & (pageSize - 1), 0);  // power of two
+  CHECK_EQ(pageSize & (pageSize - 1), 0); // power of two
   CHECK_GE(offset, 0);
 
   // Round down the start of the mapped region
@@ -156,8 +167,8 @@ void MemoryMapping::init(off_t offset, off_t length) {
       if (grow) {
         if (!autoExtend) {
           PCHECK(0 == ftruncate(file_.fd(), offset + length))
-            << "ftruncate() failed, couldn't grow file to "
-            << offset + length;
+              << "ftruncate() failed, couldn't grow file to "
+              << offset + length;
           remaining = length;
         } else {
           // Extend mapping to multiple of page size, don't use ftruncate
@@ -187,15 +198,15 @@ void MemoryMapping::init(off_t offset, off_t length) {
     // The standard doesn't actually require PROT_NONE to be zero...
     int prot = PROT_NONE;
     if (options_.readable || options_.writable) {
-      prot = ((options_.readable ? PROT_READ : 0) |
-              (options_.writable ? PROT_WRITE : 0));
+      prot =
+          ((options_.readable ? PROT_READ : 0) |
+           (options_.writable ? PROT_WRITE : 0));
     }
 
     unsigned char* start = static_cast<unsigned char*>(mmap(
         options_.address, size_t(mapLength_), prot, flags, file_.fd(), offset));
     PCHECK(start != MAP_FAILED)
-      << " offset=" << offset
-      << " length=" << mapLength_;
+        << " offset=" << offset << " length=" << mapLength_;
     mapStart_ = start;
     data_.reset(start + skipStart, size_t(length));
   }
@@ -224,9 +235,12 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
  * - success: true + amountSucceeded == bufSize (op success on whole buffer)
  * - failure: false + amountSucceeded == nr bytes on which op succeeded.
  */
-bool memOpInChunks(std::function<int(void*, size_t)> op,
-                   void* mem, size_t bufSize, off_t pageSize,
-                   size_t& amountSucceeded) {
+bool memOpInChunks(
+    std::function<int(void*, size_t)> op,
+    void* mem,
+    size_t bufSize,
+    off_t pageSize,
+    size_t& amountSucceeded) {
   // Linux' unmap/mlock/munlock take a kernel semaphore and block other threads
   // from doing other memory operations. If the size of the buffer is big the
   // semaphore can be down for seconds (for benchmarks see
@@ -275,8 +289,12 @@ bool MemoryMapping::mlock(LockMode lock) {
   }
 
   // only part of the buffer was mlocked, unlock it back
-  if (!memOpInChunks(::munlock, mapStart_, amountSucceeded, options_.pageSize,
-                     amountSucceeded)) {
+  if (!memOpInChunks(
+          ::munlock,
+          mapStart_,
+          amountSucceeded,
+          options_.pageSize,
+          amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
 
@@ -317,8 +335,8 @@ MemoryMapping::~MemoryMapping() {
             size_t(mapLength_),
             options_.pageSize,
             amountSucceeded)) {
-      PLOG(FATAL) << folly::format("munmap({}) failed at {}",
-                                   mapLength_, amountSucceeded);
+      PLOG(FATAL) << folly::format(
+          "munmap({}) failed at {}", mapLength_, amountSucceeded);
     }
   }
 }
@@ -329,9 +347,8 @@ void MemoryMapping::advise(int advice) const {
 
 void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
   CHECK_LE(offset + length, size_t(mapLength_))
-    << " offset: " << offset
-    << " length: " << length
-    << " mapLength_: " << mapLength_;
+      << " offset: " << offset << " length: " << length
+      << " mapLength_: " << mapLength_;
 
   // Include the entire start page: round down to page boundary.
   const auto offMisalign = offset % options_.pageSize;
@@ -366,7 +383,9 @@ void MemoryMapping::swap(MemoryMapping& other) noexcept {
   swap(this->data_, other.data_);
 }
 
-void swap(MemoryMapping& a, MemoryMapping& b) noexcept { a.swap(b); }
+void swap(MemoryMapping& a, MemoryMapping& b) noexcept {
+  a.swap(b);
+}
 
 void alignedForwardMemcpy(void* dst, const void* src, size_t size) {
   assert(reinterpret_cast<uintptr_t>(src) % alignof(unsigned long) == 0);
@@ -399,9 +418,10 @@ void mmapFileCopy(const char* src, const char* dest, mode_t mode) {
       off_t(srcMap.range().size()),
       MemoryMapping::writable());
 
-  alignedForwardMemcpy(destMap.writableRange().data(),
-                       srcMap.range().data(),
-                       srcMap.range().size());
+  alignedForwardMemcpy(
+      destMap.writableRange().data(),
+      srcMap.range().data(),
+      srcMap.range().size());
 }
 
 } // namespace folly

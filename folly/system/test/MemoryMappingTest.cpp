@@ -154,7 +154,7 @@ TEST(MemoryMapping, ZeroLength) {
 TEST(MemoryMapping, Advise) {
   File f = File::temporary();
   size_t kPageSize = 4096;
-  size_t size = kPageSize + 10;  // unaligned file size
+  size_t size = kPageSize + 10; // unaligned file size
   PCHECK(ftruncateNoInt(f.fd(), size) == 0) << size;
 
   MemoryMapping m(File(f.fd()));
