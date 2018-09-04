@@ -50,14 +50,12 @@ inline void forEach(InputIterator first, InputIterator last, F&& f) {
   Baton baton;
 
   auto taskFunc = [&tasksTodo, &e, &f, &baton](size_t id, FuncType&& func) {
-    return [
-      id,
-      &tasksTodo,
-      &e,
-      &f,
-      &baton,
-      func_ = std::forward<FuncType>(func)
-    ]() mutable {
+    return [id,
+            &tasksTodo,
+            &e,
+            &f,
+            &baton,
+            func_ = std::forward<FuncType>(func)]() mutable {
       try {
         callFuncs(std::forward<FuncType>(func_), f, id);
       } catch (...) {

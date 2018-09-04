@@ -94,7 +94,7 @@ void TaskIterator<T>::addTask(F&& func) {
   auto taskId = context_->totalTasks++;
 
   fm_.addTask(
-      [ taskId, context = context_, func = std::forward<F>(func) ]() mutable {
+      [taskId, context = context_, func = std::forward<F>(func)]() mutable {
         context->results.emplace_back(
             taskId, folly::makeTryWith(std::move(func)));
 

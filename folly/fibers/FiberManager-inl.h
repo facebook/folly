@@ -31,7 +31,7 @@ auto FiberManager::addTaskFuture(F&& func)
   auto f = p.getFuture();
   addTaskFinally(
       [func = std::forward<F>(func)]() mutable { return func(); },
-      [p = std::move(p)](folly::Try<T> && t) mutable {
+      [p = std::move(p)](folly::Try<T>&& t) mutable {
         p.setTry(std::move(t));
       });
   return f;
@@ -43,7 +43,7 @@ auto FiberManager::addTaskRemoteFuture(F&& func)
   folly::Promise<typename folly::lift_unit<invoke_result_t<F>>::type> p;
   auto f = p.getFuture();
   addTaskRemote(
-      [ p = std::move(p), func = std::forward<F>(func), this ]() mutable {
+      [p = std::move(p), func = std::forward<F>(func), this]() mutable {
         auto t = folly::makeTryWith(std::forward<F>(func));
         runInMainContext([&]() { p.setTry(std::move(t)); });
       });

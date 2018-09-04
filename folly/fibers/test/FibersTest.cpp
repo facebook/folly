@@ -341,9 +341,8 @@ TEST(FiberManager, awaitThrow) {
 
         EXPECT_THROW(
             await([&](Promise<int> p) {
-              evb.runInEventBaseThread([p = std::move(p)]() mutable {
-                p.setValue(42);
-              });
+              evb.runInEventBaseThread(
+                  [p = std::move(p)]() mutable { p.setValue(42); });
               throw ExpectedException();
             }),
             ExpectedException);
