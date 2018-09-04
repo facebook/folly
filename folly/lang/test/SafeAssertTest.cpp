@@ -23,9 +23,11 @@
 
 using namespace folly;
 
+// clang-format off
 [[noreturn]] void fail() {
   FOLLY_SAFE_CHECK(0 + 0, "hello");
 }
+// clang-format on
 
 void succeed() {
   FOLLY_SAFE_CHECK(1, "world");

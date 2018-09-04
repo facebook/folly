@@ -32,7 +32,7 @@ namespace cold_detail {
 struct ColdClass {
   FOLLY_COLD ColdClass() noexcept;
 };
-} // namespace cold
+} // namespace cold_detail
 
 /* using override */ using cold_detail::ColdClass;
 } // namespace folly

@@ -236,14 +236,16 @@ struct EndianInt {
 // ntohs, htons == big16
 // ntohl, htonl == big32
 #define FB_GEN1(fn, t, sz) \
-  static t fn##sz(t x) { return fn<t>(x); } \
+  static t fn##sz(t x) {   \
+    return fn<t>(x);       \
+  }
 
 #define FB_GEN2(t, sz) \
   FB_GEN1(swap, t, sz) \
-  FB_GEN1(big, t, sz) \
+  FB_GEN1(big, t, sz)  \
   FB_GEN1(little, t, sz)
 
-#define FB_GEN(sz) \
+#define FB_GEN(sz)          \
   FB_GEN2(uint##sz##_t, sz) \
   FB_GEN2(int##sz##_t, sz)
 
@@ -251,18 +253,21 @@ class Endian {
  public:
   enum class Order : uint8_t {
     LITTLE,
-    BIG
+    BIG,
   };
 
   static constexpr Order order = kIsLittleEndian ? Order::LITTLE : Order::BIG;
 
-  template <class T> static T swap(T x) {
+  template <class T>
+  static T swap(T x) {
     return folly::detail::EndianInt<T>::swap(x);
   }
-  template <class T> static T big(T x) {
+  template <class T>
+  static T big(T x) {
     return folly::detail::EndianInt<T>::big(x);
   }
-  template <class T> static T little(T x) {
+  template <class T>
+  static T little(T x) {
     return folly::detail::EndianInt<T>::little(x);
   }
 
@@ -278,19 +283,17 @@ class Endian {
 #undef FB_GEN2
 #undef FB_GEN1
 
-
-template <class T, class Enable=void> struct Unaligned;
+template <class T, class Enable = void>
+struct Unaligned;
 
 /**
  * Representation of an unaligned value of a POD type.
  */
 FOLLY_PACK_PUSH
 template <class T>
-struct Unaligned<
-    T,
-    typename std::enable_if<std::is_pod<T>::value>::type> {
-  Unaligned() = default;  // uninitialized
-  /* implicit */ Unaligned(T v) : value(v) { }
+struct Unaligned<T, typename std::enable_if<std::is_pod<T>::value>::type> {
+  Unaligned() = default; // uninitialized
+  /* implicit */ Unaligned(T v) : value(v) {}
   T value;
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP

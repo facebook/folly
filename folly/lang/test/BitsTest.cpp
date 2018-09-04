@@ -43,12 +43,11 @@ namespace {
 template <class INT>
 void testFFS() {
   EXPECT_EQ(0, findFirstSet(static_cast<INT>(0)));
-  size_t bits = std::numeric_limits<
-    typename std::make_unsigned<INT>::type>::digits;
+  size_t bits =
+      std::numeric_limits<typename std::make_unsigned<INT>::type>::digits;
   for (size_t i = 0; i < bits; i++) {
-    INT v = (static_cast<INT>(1) << (bits - 1)) |
-            (static_cast<INT>(1) << i);
-    EXPECT_EQ(i+1, findFirstSet(v));
+    INT v = (static_cast<INT>(1) << (bits - 1)) | (static_cast<INT>(1) << i);
+    EXPECT_EQ(i + 1, findFirstSet(v));
   }
 }
 
@@ -156,12 +155,12 @@ TEST(Bits, isPowTwo) {
   EXPECT_FALSE(isPowTwo(511ul));
   EXPECT_TRUE(isPowTwo(512ul));
   EXPECT_FALSE(isPowTwo(513ul));
-  EXPECT_FALSE(isPowTwo((1ul<<31) - 1));
-  EXPECT_TRUE(isPowTwo(1ul<<31));
-  EXPECT_FALSE(isPowTwo((1ul<<31) + 1));
-  EXPECT_FALSE(isPowTwo((1ull<<63) - 1));
-  EXPECT_TRUE(isPowTwo(1ull<<63));
-  EXPECT_FALSE(isPowTwo((1ull<<63) + 1));
+  EXPECT_FALSE(isPowTwo((1ul << 31) - 1));
+  EXPECT_TRUE(isPowTwo(1ul << 31));
+  EXPECT_FALSE(isPowTwo((1ul << 31) + 1));
+  EXPECT_FALSE(isPowTwo((1ull << 63) - 1));
+  EXPECT_TRUE(isPowTwo(1ull << 63));
+  EXPECT_FALSE(isPowTwo((1ull << 63) + 1));
 }
 
 TEST(Bits, popcount) {

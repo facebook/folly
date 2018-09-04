@@ -42,10 +42,12 @@ FOLLY_ALWAYS_INLINE void assume(bool cond) {
   if (kIsDebug) {
     detail::assume_check(cond);
   } else {
-#if defined(__clang__)  // Must go first because Clang also defines __GNUC__.
+#if defined(__clang__) // Must go first because Clang also defines __GNUC__.
     __builtin_assume(cond);
 #elif defined(__GNUC__)
-    if (!cond) { __builtin_unreachable(); }
+    if (!cond) {
+      __builtin_unreachable();
+    }
 #elif defined(_MSC_VER)
     __assume(cond);
 #else

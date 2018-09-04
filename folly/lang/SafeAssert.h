@@ -25,9 +25,13 @@
  * logs to stderr and only does async-signal-safe calls.
  */
 #define FOLLY_SAFE_CHECK_IMPL(expr, expr_s, msg) \
-  ((expr) ? static_cast<void>(0) : \
-   ::folly::detail::assertionFailure( \
-       FB_STRINGIZE(expr_s), (msg), __FILE__, __LINE__, __PRETTY_FUNCTION__))
+  ((expr) ? static_cast<void>(0)                 \
+          : ::folly::detail::assertionFailure(   \
+                FB_STRINGIZE(expr_s),            \
+                (msg),                           \
+                __FILE__,                        \
+                __LINE__,                        \
+                __PRETTY_FUNCTION__))
 #define FOLLY_SAFE_CHECK(expr, msg) FOLLY_SAFE_CHECK_IMPL((expr), (expr), (msg))
 
 /**
@@ -38,7 +42,8 @@
 #define FOLLY_SAFE_DCHECK(expr, msg) \
   FOLLY_SAFE_CHECK_IMPL(!folly::kIsDebug || (expr), (expr), (msg))
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 [[noreturn]] void assertionFailure(
     const char* expr,

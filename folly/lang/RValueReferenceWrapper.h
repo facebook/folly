@@ -101,7 +101,7 @@ class rvalue_reference_wrapper {
    * the wrapped reference points to a callable object. Destructive.
    */
   template <class... Args>
-  decltype(auto) operator()(Args&&... args) &&
+      decltype(auto) operator()(Args&&... args) &&
       noexcept(noexcept(std::declval<T>()(std::forward<Args>(args)...))) {
     return static_cast<rvalue_reference_wrapper&&>(*this).get()(
         std::forward<Args>(args)...);

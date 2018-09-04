@@ -19,7 +19,8 @@
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 namespace {
 void writeStderr(const char* s, size_t len) {
@@ -30,8 +31,12 @@ void writeStderr(const char* s) {
 }
 } // namespace
 
-void assertionFailure(const char* expr, const char* msg, const char* file,
-                      unsigned int line, const char* function) {
+void assertionFailure(
+    const char* expr,
+    const char* msg,
+    const char* file,
+    unsigned int line,
+    const char* function) {
   writeStderr("\n\nAssertion failure: ");
   writeStderr(expr + 1, strlen(expr) - 2);
   writeStderr("\nMessage: ");
