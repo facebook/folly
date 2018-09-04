@@ -139,3 +139,13 @@ TEST(ThreadLocal, DependencyTest) {
   })
       .join();
 }
+
+TEST(SingletonThreadLocalTest, Reused) {
+  for (auto i = 0u; i < 2u; ++i) {
+    FOLLY_DECLARE_REUSED(data, std::string);
+    if (i == 0u) {
+      data = "hello";
+    }
+    EXPECT_EQ(i == 0u ? "hello" : "", data);
+  }
+}

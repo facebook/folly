@@ -18,6 +18,7 @@
 
 #include <boost/intrusive/list.hpp>
 
+#include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
 #include <folly/detail/Singleton.h>
 #include <folly/functional/Invoke.h>
@@ -165,4 +166,46 @@ class SingletonThreadLocal {
     return getWrapperTL().accessAllThreads();
   }
 };
+
 } // namespace folly
+
+/// FOLLY_DECLARE_REUSED
+///
+/// Useful for local variables of container types, where it is desired to avoid
+/// the overhead associated with the local variable entering and leaving scope.
+/// Rather, where it is desired that the memory be reused between invocations
+/// of the same scope in the same thread rather than deallocated and reallocated
+/// between invocations of the same scope in the same thread. Note that the
+/// container will always be cleared between invocations; it is only the backing
+/// memory allocation which is reused.
+///
+/// Example:
+///
+///   void traverse_perform(int root);
+///   template <typename F>
+///   void traverse_each_child_r(int root, F const&);
+///   void traverse_depthwise(int root) {
+///     // preserves some of the memory backing these per-thread data structures
+///     FOLLY_DECLARE_REUSED(seen, std::unordered_set<int>);
+///     FOLLY_DECLARE_REUSED(work, std::vector<int>);
+///     // example algorithm that uses these per-thread data structures
+///     work.push_back(root);
+///     while (!work.empty()) {
+///       root = work.back();
+///       work.pop_back();
+///       seen.insert(root);
+///       traverse_perform(root);
+///       traverse_each_child_r(root, [&](int item) {
+///         if (!seen.count(item)) {
+///           work.push_back(item);
+///         }
+///       });
+///     }
+///   }
+#define FOLLY_DECLARE_REUSED(name, ...)                                        \
+  struct __folly_reused_type_##name {                                          \
+    __VA_ARGS__ object;                                                        \
+  };                                                                           \
+  auto& name =                                                                 \
+      ::folly::SingletonThreadLocal<__folly_reused_type_##name>::get().object; \
+  auto __folly_reused_g_##name = ::folly::makeGuard([&] { name.clear(); })
