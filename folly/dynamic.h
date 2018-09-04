@@ -358,6 +358,16 @@ struct dynamic : private boost::operators<dynamic> {
    */
   template <class T> struct IterableProxy;
 
+  /*
+   * Helper for heterogeneous lookup and mutation on objects: at(), find(),
+   * count(), erase(), operator[]
+   */
+  template <typename K, typename T>
+  using IfIsNonStringDynamicConvertible = std::enable_if_t<
+      !std::is_convertible<K, StringPiece>::value &&
+          std::is_convertible<K, dynamic>::value,
+      T>;
+
  public:
   /*
    * You can iterate over the keys, values, or items (std::pair of key and
@@ -376,14 +386,22 @@ struct dynamic : private boost::operators<dynamic> {
    * Returns: items().end() if the key is not present, or a
    * const_item_iterator pointing to the item.
    */
-  const_item_iterator find(dynamic const&) const;
-  item_iterator find(dynamic const&);
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, const_item_iterator> find(K&&) const;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, item_iterator> find(K&&);
+
+  const_item_iterator find(StringPiece) const;
+  item_iterator find(StringPiece);
 
   /*
    * If this is an object, returns whether it contains a field with
    * the given name.  Otherwise throws TypeError.
    */
-  std::size_t count(dynamic const&) const;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, std::size_t> count(K&&) const;
+
+  std::size_t count(StringPiece) const;
 
   /*
    * For objects or arrays, provides access to sub-fields by index or
@@ -393,9 +411,20 @@ struct dynamic : private boost::operators<dynamic> {
    * will throw a TypeError.  Using an index that is out of range or
    * object-element that's not present throws std::out_of_range.
    */
-  dynamic const& at(dynamic const&) const&;
-  dynamic&       at(dynamic const&) &;
-  dynamic&&      at(dynamic const&) &&;
+ private:
+  dynamic const& atImpl(dynamic const&) const&;
+
+ public:
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic const&> at(K&&) const&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic&> at(K&&) &;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic&&> at(K&&) &&;
+
+  dynamic const& at(StringPiece) const&;
+  dynamic& at(StringPiece) &;
+  dynamic&& at(StringPiece) &&;
 
   /*
    * Locate element using JSON pointer, per RFC 6901. Returns nullptr if
@@ -436,9 +465,16 @@ struct dynamic : private boost::operators<dynamic> {
    * These functions do not invalidate iterators except when a null value
    * is inserted into an object as described above.
    */
-  dynamic&       operator[](dynamic const&) &;
-  dynamic const& operator[](dynamic const&) const&;
-  dynamic&&      operator[](dynamic const&) &&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic&> operator[](K&&) &;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic const&> operator[](K&&) const&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic&&> operator[](K&&) &&;
+
+  dynamic& operator[](StringPiece) &;
+  dynamic const& operator[](StringPiece) const&;
+  dynamic&& operator[](StringPiece) &&;
 
   /*
    * Only defined for objects, throws TypeError otherwise.
@@ -477,7 +513,8 @@ struct dynamic : private boost::operators<dynamic> {
 
   /*
    * Inserts the supplied key-value pair to an object, or throws if
-   * it's not an object.
+   * it's not an object. If the key already exists, insert will overwrite the
+   * value, i.e., similar to insert_or_assign.
    *
    * Invalidates iterators.
    */
@@ -518,7 +555,10 @@ struct dynamic : private boost::operators<dynamic> {
    *
    * Returns the number of elements erased (i.e. 1 or 0).
    */
-  std::size_t erase(dynamic const& key);
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, std::size_t> erase(K&&);
+
+  std::size_t erase(StringPiece);
 
   /*
    * Erase an element from a dynamic object or array, using an

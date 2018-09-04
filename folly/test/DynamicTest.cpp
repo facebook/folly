@@ -16,12 +16,14 @@
 
 #include <folly/dynamic.h>
 
+#include <folly/Range.h>
 #include <folly/json.h>
 #include <folly/portability/GTest.h>
 
 #include <iterator>
 
 using folly::dynamic;
+using folly::StringPiece;
 
 TEST(Dynamic, Default) {
   dynamic obj;
@@ -33,11 +35,31 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(obj.at("a"), false);
   EXPECT_EQ(obj.size(), 1);
   obj.insert("a", true);
+
+  dynamic key{"a"};
+  folly::StringPiece sp{"a"};
+  std::string s{"a"};
+
   EXPECT_EQ(obj.size(), 1);
   EXPECT_EQ(obj.at("a"), true);
-  obj.at("a") = nullptr;
+  EXPECT_EQ(obj.at(sp), true);
+  EXPECT_EQ(obj.at(key), true);
+
+  obj.at(sp) = nullptr;
   EXPECT_EQ(obj.size(), 1);
-  EXPECT_TRUE(obj.at("a") == nullptr);
+  EXPECT_TRUE(obj.at(s) == nullptr);
+
+  obj["a"] = 12;
+  EXPECT_EQ(obj[sp], 12);
+  obj[key] = "foo";
+  EXPECT_EQ(obj["a"], "foo");
+  (void)obj["b"];
+  EXPECT_EQ(obj.size(), 2);
+
+  obj.erase("a");
+  EXPECT_TRUE(obj.find(sp) == obj.items().end());
+  obj.erase("b");
+  EXPECT_EQ(obj.size(), 0);
 
   dynamic newObject = dynamic::object;
 
@@ -140,6 +162,124 @@ TEST(Dynamic, ObjectBasics) {
   mergeObj1 = origMergeObj1; // reset it
   mergeObj1.update_missing(mergeObj2);
   EXPECT_EQ(mergeObj1, combinedPreferObj1);
+}
+
+namespace {
+
+struct StaticStrings {
+  static constexpr auto kA = "a";
+  static constexpr const char* kB = "b";
+  static const folly::StringPiece kFoo;
+  static const std::string kBar;
+};
+/* static */ const folly::StringPiece StaticStrings::kFoo{"foo"};
+/* static */ const std::string StaticStrings::kBar{"bar"};
+
+} // namespace
+
+TEST(Dynamic, ObjectHeterogeneousAccess) {
+  dynamic empty;
+  dynamic foo{"foo"};
+  const char* a = "a";
+  StringPiece sp{"a"};
+  std::string str{"a"};
+  dynamic bar{"bar"};
+  const char* b = "b";
+
+  dynamic obj = dynamic::object("a", 123)(empty, 456)(foo, 789);
+
+  // at()
+  EXPECT_EQ(obj.at(empty), 456);
+  EXPECT_EQ(obj.at(nullptr), 456);
+  EXPECT_EQ(obj.at(foo), 789);
+
+  EXPECT_EQ(obj.at(a), 123);
+  EXPECT_EQ(obj.at(StaticStrings::kA), 123);
+  EXPECT_EQ(obj.at("a"), 123);
+
+  EXPECT_EQ(obj.at(sp), 123);
+  EXPECT_EQ(obj.at(StringPiece{"a"}), 123);
+  EXPECT_EQ(obj.at(StaticStrings::kFoo), 789);
+
+  EXPECT_EQ(obj.at(std::string{"a"}), 123);
+  EXPECT_EQ(obj.at(str), 123);
+
+  EXPECT_THROW(obj.at(b), std::out_of_range);
+  EXPECT_THROW(obj.at(StringPiece{b}), std::out_of_range);
+  EXPECT_THROW(obj.at(StaticStrings::kBar), std::out_of_range);
+
+  // find()
+  EXPECT_EQ(obj.find(empty)->second, 456);
+  EXPECT_EQ(obj.find(nullptr)->second, 456);
+  EXPECT_EQ(obj.find(foo)->second, 789);
+
+  EXPECT_EQ(obj.find(a)->second, 123);
+  EXPECT_EQ(obj.find(StaticStrings::kA)->second, 123);
+  EXPECT_EQ(obj.find("a")->second, 123);
+
+  EXPECT_EQ(obj.find(sp)->second, 123);
+  EXPECT_EQ(obj.find(StringPiece{"a"})->second, 123);
+  EXPECT_EQ(obj.find(StaticStrings::kFoo)->second, 789);
+
+  EXPECT_EQ(obj.find(std::string{"a"})->second, 123);
+  EXPECT_EQ(obj.find(str)->second, 123);
+
+  EXPECT_TRUE(obj.find(b) == obj.items().end());
+  EXPECT_TRUE(obj.find(StringPiece{b}) == obj.items().end());
+  EXPECT_TRUE(obj.find(StaticStrings::kBar) == obj.items().end());
+
+  // count()
+  EXPECT_EQ(obj.count(empty), 1);
+  EXPECT_EQ(obj.count(nullptr), 1);
+  EXPECT_EQ(obj.count(foo), 1);
+
+  EXPECT_EQ(obj.count(a), 1);
+  EXPECT_EQ(obj.count(StaticStrings::kA), 1);
+  EXPECT_EQ(obj.count("a"), 1);
+
+  EXPECT_EQ(obj.count(sp), 1);
+  EXPECT_EQ(obj.count(StringPiece{"a"}), 1);
+  EXPECT_EQ(obj.count(StaticStrings::kFoo), 1);
+
+  EXPECT_EQ(obj.count(std::string{"a"}), 1);
+  EXPECT_EQ(obj.count(str), 1);
+
+  EXPECT_EQ(obj.count(b), 0);
+  EXPECT_EQ(obj.count(StringPiece{b}), 0);
+  EXPECT_EQ(obj.count(StaticStrings::kBar), 0);
+
+  // operator[]
+  EXPECT_EQ(obj[empty], 456);
+  EXPECT_EQ(obj[nullptr], 456);
+  EXPECT_EQ(obj[foo], 789);
+
+  EXPECT_EQ(obj[a], 123);
+  EXPECT_EQ(obj[StaticStrings::kA], 123);
+  EXPECT_EQ(obj["a"], 123);
+
+  EXPECT_EQ(obj[sp], 123);
+  EXPECT_EQ(obj[StringPiece{"a"}], 123);
+  EXPECT_EQ(obj[StaticStrings::kFoo], 789);
+
+  EXPECT_EQ(obj[std::string{"a"}], 123);
+  EXPECT_EQ(obj[str], 123);
+
+  EXPECT_EQ(obj[b], nullptr);
+  obj[b] = 42;
+  EXPECT_EQ(obj[StringPiece{b}], 42);
+  obj[StaticStrings::kBar] = 43;
+  EXPECT_EQ(obj["bar"], 43);
+
+  // erase() + dynamic&&
+  EXPECT_EQ(obj.erase(StaticStrings::kB), /* num elements erased */ 1);
+
+  dynamic obj2 = obj;
+  dynamic obj3 = obj;
+  dynamic obj4 = obj;
+  EXPECT_EQ(std::move(obj).find(StaticStrings::kFoo)->second, 789);
+  EXPECT_EQ(std::move(obj2).at(StaticStrings::kA), 123);
+  EXPECT_EQ(std::move(obj3)[nullptr], 456);
+  EXPECT_EQ(std::move(obj4).erase(StaticStrings::kBar), 1);
 }
 
 TEST(Dynamic, CastFromVectorOfBooleans) {

@@ -167,15 +167,43 @@ dynamic& dynamic::operator=(dynamic&& o) noexcept {
   return *this;
 }
 
-dynamic& dynamic::operator[](dynamic const& k) & {
-  if (!isObject() && !isArray()) {
+dynamic const& dynamic::atImpl(dynamic const& idx) const& {
+  if (auto* parray = get_nothrow<Array>()) {
+    if (!idx.isInt()) {
+      throw_exception<TypeError>("int64", idx.type());
+    }
+    if (idx < 0 || idx >= parray->size()) {
+      throw_exception<std::out_of_range>("out of range in dynamic array");
+    }
+    return (*parray)[size_t(idx.asInt())];
+  } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
+    auto it = pobject->find(idx);
+    if (it == pobject->end()) {
+      throw_exception<std::out_of_range>(
+          sformat("couldn't find key {} in dynamic object", idx.asString()));
+    }
+    return it->second;
+  } else {
     throw_exception<TypeError>("object/array", type());
   }
-  if (isArray()) {
-    return at(k);
+}
+
+dynamic const& dynamic::at(StringPiece idx) const& {
+  auto* pobject = get_nothrow<ObjectImpl>();
+  if (!pobject) {
+    throw_exception<TypeError>("object/array", type());
   }
+  auto it = pobject->find(idx);
+  if (it == pobject->end()) {
+    throw_exception<std::out_of_range>(
+        sformat("couldn't find key {} in dynamic object", idx));
+  }
+  return it->second;
+}
+
+dynamic& dynamic::operator[](StringPiece k) & {
   auto& obj = get<ObjectImpl>();
-  auto ret = obj.insert({k, nullptr});
+  auto ret = obj.emplace(k, nullptr);
   return ret.first->second;
 }
 
@@ -233,29 +261,6 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
   }
 }
 
-dynamic const& dynamic::at(dynamic const& idx) const& {
-  if (auto* parray = get_nothrow<Array>()) {
-    if (!idx.isInt()) {
-      throw_exception<TypeError>("int64", idx.type());
-    }
-    if (idx < 0 || idx >= parray->size()) {
-      throw_exception<std::out_of_range>("out of range in dynamic array");
-    }
-    return (*parray)[size_t(idx.asInt())];
-  } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
-    auto it = pobject->find(idx);
-    if (it == pobject->end()) {
-      invoke_noreturn_cold([&] {
-        throw_exception<std::out_of_range>(
-            sformat("couldn't find key {} in dynamic object", idx.asString()));
-      });
-    }
-    return it->second;
-  } else {
-    throw_exception<TypeError>("object/array", type());
-  }
-}
-
 std::size_t dynamic::size() const {
   if (auto* ar = get_nothrow<Array>()) {
     return ar->size();
@@ -301,6 +306,7 @@ std::size_t dynamic::hash() const {
   case BOOL:
     return std::hash<bool>()(getBool());
   case STRING:
+    // keep consistent with detail::DynamicHasher
     return Hash()(getString());
   }
   assume_unreachable();
