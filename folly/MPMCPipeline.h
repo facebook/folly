@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/detail/MPMCPipelineDetail.h>
 
 namespace folly {
@@ -101,41 +102,53 @@ template <class In, class... Stages> class MPMCPipeline {
   static constexpr size_t kAmplification =
     detail::AmplificationProduct<StageInfos>::value;
 
+  class TicketBaseDebug {
+   public:
+    TicketBaseDebug() noexcept : owner_(nullptr), value_(0xdeadbeeffaceb00c) {}
+    TicketBaseDebug(TicketBaseDebug&& other) noexcept
+        : owner_(std::exchange(other.owner_, nullptr)),
+          value_(std::exchange(other.value_, 0xdeadbeeffaceb00c)) {}
+    explicit TicketBaseDebug(MPMCPipeline* owner, uint64_t value) noexcept
+        : owner_(owner), value_(value) {}
+    void check_owner(MPMCPipeline* owner) const {
+      CHECK(owner == owner_);
+    }
+
+    MPMCPipeline* owner_;
+    uint64_t value_;
+  };
+
+  class TicketBaseNDebug {
+   public:
+    TicketBaseNDebug() = default;
+    TicketBaseNDebug(TicketBaseNDebug&&) = default;
+    explicit TicketBaseNDebug(MPMCPipeline*, uint64_t value) noexcept
+        : value_(value) {}
+    void check_owner(MPMCPipeline*) const {}
+
+    uint64_t value_;
+  };
+
+  using TicketBase =
+      std::conditional_t<kIsDebug, TicketBaseDebug, TicketBaseNDebug>;
+
  public:
   /**
    * Ticket, returned by blockingReadStage, must be given back to
    * blockingWriteStage. Tickets are not thread-safe.
    */
   template <size_t Stage>
-  class Ticket {
+  class Ticket : TicketBase {
    public:
     ~Ticket() noexcept {
       CHECK_EQ(remainingUses_, 0) << "All tickets must be completely used!";
     }
 
-#ifndef NDEBUG
-    Ticket() noexcept
-      : owner_(nullptr),
-        remainingUses_(0),
-        value_(0xdeadbeeffaceb00c) {
-    }
-#else
-    Ticket() noexcept : remainingUses_(0) { }
-#endif
+    Ticket() noexcept : remainingUses_(0) {}
 
     Ticket(Ticket&& other) noexcept
-      :
-#ifndef NDEBUG
-        owner_(other.owner_),
-#endif
-        remainingUses_(other.remainingUses_),
-        value_(other.value_) {
-      other.remainingUses_ = 0;
-#ifndef NDEBUG
-      other.owner_ = nullptr;
-      other.value_ = 0xdeadbeeffaceb00c;
-#endif
-    }
+        : TicketBase(static_cast<TicketBase&&>(other)),
+          remainingUses_(std::exchange(other.remainingUses_, 0)) {}
 
     Ticket& operator=(Ticket&& other) noexcept {
       if (this != &other) {
@@ -147,31 +160,16 @@ template <class In, class... Stages> class MPMCPipeline {
 
    private:
     friend class MPMCPipeline;
-#ifndef NDEBUG
-    MPMCPipeline* owner_;
-#endif
     size_t remainingUses_;
-    uint64_t value_;
-
 
     Ticket(MPMCPipeline* owner, size_t amplification, uint64_t value) noexcept
-      :
-#ifndef NDEBUG
-        owner_(owner),
-#endif
-        remainingUses_(amplification),
-        value_(value * amplification) {
-      (void)owner; // -Wunused-parameter
-    }
+        : TicketBase(owner, value * amplification),
+          remainingUses_(amplification) {}
 
     uint64_t use(MPMCPipeline* owner) {
       CHECK_GT(remainingUses_--, 0);
-#ifndef NDEBUG
-      CHECK(owner == owner_);
-#else
-      (void)owner; // -Wunused-parameter
-#endif
-      return value_++;
+      TicketBase::check_owner(owner);
+      return TicketBase::value_++;
     }
   };
 
