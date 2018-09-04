@@ -38,9 +38,9 @@ int pthread_key_create(pthread_key_t* key, void (*destructor)(void*));
 int pthread_key_delete(pthread_key_t key);
 void* pthread_getspecific(pthread_key_t key);
 int pthread_setspecific(pthread_key_t key, const void* value);
-}
-}
-}
+} // namespace pthread
+} // namespace portability
+} // namespace folly
 
 /* using override */ using namespace folly::portability::pthread;
 
@@ -177,5 +177,5 @@ struct hash<pthread_t> {
         std::hash<decltype(k.x)>()(k.x);
   }
 };
-}
+} // namespace std
 #endif

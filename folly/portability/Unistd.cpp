@@ -332,8 +332,8 @@ ssize_t write(int fh, void const* buf, size_t count) {
   }
   return r;
 }
-}
-}
-}
+} // namespace unistd
+} // namespace portability
+} // namespace folly
 
 #endif

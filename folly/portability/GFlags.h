@@ -64,7 +64,7 @@
 
 namespace google {
 class FlagSaver {};
-}
+} // namespace google
 
 #else
 #include <gflags/gflags.h>

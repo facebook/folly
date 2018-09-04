@@ -48,9 +48,9 @@ int creat(char const* fn, int pm);
 int fcntl(int fd, int cmd, ...);
 int posix_fallocate(int fd, off_t offset, off_t len);
 int open(char const* fn, int of, int pm = 0);
-}
-}
-}
+} // namespace fcntl
+} // namespace portability
+} // namespace folly
 
 /* using override */ using namespace folly::portability::fcntl;
 #endif

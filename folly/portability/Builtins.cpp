@@ -25,7 +25,7 @@ namespace detail {
 void call_flush_instruction_cache_self_pid(void* begin, size_t size) {
   FlushInstructionCache(GetCurrentProcess(), begin, size);
 }
-}
-}
-}
+} // namespace detail
+} // namespace portability
+} // namespace folly
 #endif

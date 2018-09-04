@@ -111,7 +111,7 @@ int posix_fallocate(int fd, off_t offset, off_t len) {
   // can't exactly pre-allocate on windows anyways.
   return 0;
 }
-}
-}
-}
+} // namespace fcntl
+} // namespace portability
+} // namespace folly
 #endif

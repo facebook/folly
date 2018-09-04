@@ -64,7 +64,7 @@ int pthread_setspecific(pthread_key_t key, const void* value) {
     return -1;
   }
 }
-}
-}
-}
+} // namespace pthread
+} // namespace portability
+} // namespace folly
 #endif

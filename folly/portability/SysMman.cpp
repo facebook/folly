@@ -85,7 +85,7 @@ struct MemMapDebugTrailer {
   size_t length;
   uint32_t magic;
 };
-}
+} // namespace
 
 void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
   // Make sure it's something we support first.

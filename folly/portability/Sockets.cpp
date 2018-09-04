@@ -433,7 +433,7 @@ int socketpair(int domain, int type, int protocol, int sv[2]) {
   sv[1] = _open_osfhandle(pair[1], O_RDWR | O_BINARY);
   return 0;
 }
-}
-}
-}
+} // namespace sockets
+} // namespace portability
+} // namespace folly
 #endif

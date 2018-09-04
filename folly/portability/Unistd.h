@@ -86,9 +86,9 @@ long sysconf(int tp);
 int truncate(const char* path, off_t len);
 int usleep(unsigned int ms);
 ssize_t write(int fh, void const* buf, size_t count);
-}
-}
-}
+} // namespace unistd
+} // namespace portability
+} // namespace folly
 
 /* using override */ using namespace folly::portability::unistd;
 

@@ -27,8 +27,8 @@ namespace portability {
 namespace detail {
 void call_flush_instruction_cache_self_pid(void* begin, size_t size);
 }
-}
-}
+} // namespace portability
+} // namespace folly
 
 FOLLY_ALWAYS_INLINE void __builtin___clear_cache(char* begin, char* end) {
   if (folly::kIsArchAmd64) {
