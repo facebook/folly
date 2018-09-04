@@ -573,8 +573,8 @@ NoCompressionCodec::NoCompressionCodec(int level, CodecType type)
       level = 0;
   }
   if (level != 0) {
-    throw std::invalid_argument(to<std::string>(
-        "NoCompressionCodec: invalid level ", level));
+    throw std::invalid_argument(
+        to<std::string>("NoCompressionCodec: invalid level ", level));
   }
 }
 
@@ -583,8 +583,7 @@ uint64_t NoCompressionCodec::doMaxCompressedLength(
   return uncompressedLength;
 }
 
-std::unique_ptr<IOBuf> NoCompressionCodec::doCompress(
-    const IOBuf* data) {
+std::unique_ptr<IOBuf> NoCompressionCodec::doCompress(const IOBuf* data) {
   return data->clone();
 }
 
@@ -626,7 +625,7 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
 
 } // namespace
 
-#endif  // FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA
+#endif // FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA
 
 #if FOLLY_HAVE_LIBLZ4
 
@@ -660,7 +659,9 @@ class LZ4Codec final : public Codec {
   uint64_t doMaxUncompressedLength() const override;
   uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
 
-  bool encodeSize() const { return type() == CodecType::LZ4_VARINT_SIZE; }
+  bool encodeSize() const {
+    return type() == CodecType::LZ4_VARINT_SIZE;
+  }
 
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
@@ -713,7 +714,7 @@ bool LZ4Codec::doNeedsUncompressedLength() const {
 // define LZ4_MAX_INPUT_SIZE (even though the max size is the same), so do it
 // here.
 #ifndef LZ4_MAX_INPUT_SIZE
-# define LZ4_MAX_INPUT_SIZE 0x7E000000
+#define LZ4_MAX_INPUT_SIZE 0x7E000000
 #endif
 
 uint64_t LZ4Codec::doMaxUncompressedLength() const {
@@ -812,8 +813,8 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
       actualUncompressedLength);
 
   if (n < 0 || uint64_t(n) != actualUncompressedLength) {
-    throw std::runtime_error(to<std::string>(
-        "LZ4 decompression returned invalid value ", n));
+    throw std::runtime_error(
+        to<std::string>("LZ4 decompression returned invalid value ", n));
   }
   out->append(actualUncompressedLength);
   return out;
@@ -1044,15 +1045,14 @@ class IOBufSnappySource final : public snappy::Source {
   size_t Available() const override;
   const char* Peek(size_t* len) override;
   void Skip(size_t n) override;
+
  private:
   size_t available_;
   io::Cursor cursor_;
 };
 
 IOBufSnappySource::IOBufSnappySource(const IOBuf* data)
-  : available_(data->computeChainDataLength()),
-    cursor_(data) {
-}
+    : available_(data->computeChainDataLength()), cursor_(data) {}
 
 size_t IOBufSnappySource::Available() const {
   return available_;
@@ -1097,8 +1097,8 @@ SnappyCodec::SnappyCodec(int level, CodecType type) : Codec(type) {
       level = 1;
   }
   if (level != 1) {
-    throw std::invalid_argument(to<std::string>(
-        "SnappyCodec: invalid level: ", level));
+    throw std::invalid_argument(
+        to<std::string>("SnappyCodec: invalid level: ", level));
   }
 }
 
@@ -1115,8 +1115,8 @@ std::unique_ptr<IOBuf> SnappyCodec::doCompress(const IOBuf* data) {
   IOBufSnappySource source(data);
   auto out = IOBuf::create(maxCompressedLength(source.Available()));
 
-  snappy::UncheckedByteArraySink sink(reinterpret_cast<char*>(
-      out->writableTail()));
+  snappy::UncheckedByteArraySink sink(
+      reinterpret_cast<char*>(out->writableTail()));
 
   size_t n = snappy::Compress(&source, &sink);
 
@@ -1144,8 +1144,8 @@ std::unique_ptr<IOBuf> SnappyCodec::doUncompress(
 
   {
     IOBufSnappySource source(data);
-    if (!snappy::RawUncompress(&source,
-                               reinterpret_cast<char*>(out->writableTail()))) {
+    if (!snappy::RawUncompress(
+            &source, reinterpret_cast<char*>(out->writableTail()))) {
       throw std::runtime_error("snappy::RawUncompress failed");
     }
   }
@@ -1154,7 +1154,7 @@ std::unique_ptr<IOBuf> SnappyCodec::doUncompress(
   return out;
 }
 
-#endif  // FOLLY_HAVE_LIBSNAPPY
+#endif // FOLLY_HAVE_LIBSNAPPY
 
 #if FOLLY_HAVE_LIBLZMA
 

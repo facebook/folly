@@ -44,11 +44,7 @@ TEST(FollyCountersTest, SumWorks) {
 
 TEST(FollyCountersTest, AvgWorks) {
   CompressionCounter counter(
-      kCodecType,
-      kCodecName,
-      folly::none,
-      kKey,
-      CompressionCounterType::AVG);
+      kCodecType, kCodecName, folly::none, kKey, CompressionCounterType::AVG);
   for (int i = 0; i < 100; ++i) {
     counter += 5;
   }

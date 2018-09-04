@@ -41,7 +41,7 @@ bool isValidStrategy(int strategy) {
       Z_FILTERED,
       Z_HUFFMAN_ONLY,
       Z_RLE,
-      Z_FIXED
+      Z_FIXED,
   }};
   return std::any_of(strategies.begin(), strategies.end(), [&](int i) {
     return i == strategy;

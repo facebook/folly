@@ -130,7 +130,7 @@ enum class CodecType {
 
 class Codec {
  public:
-  virtual ~Codec() { }
+  virtual ~Codec() {}
 
   static constexpr uint64_t UNLIMITED_UNCOMPRESSED_LENGTH = uint64_t(-1);
   /**
@@ -144,7 +144,9 @@ class Codec {
   /**
    * Return the codec's type.
    */
-  CodecType type() const { return type_; }
+  CodecType type() const {
+    return type_;
+  }
 
   /**
    * Does this codec need the exact uncompressed length on decompression?
