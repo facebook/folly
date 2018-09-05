@@ -59,7 +59,7 @@ void atomic_notify_one(const std::atomic<Integer>* atomic);
 template <typename Integer>
 void atomic_notify_all(const std::atomic<Integer>* atomic);
 
-//  mimic: std::atomic_uint_fast_wait_t
+//  mimic: std::atomic_uint_fast_wait_t, p1135r0
 using atomic_uint_fast_wait_t = std::atomic<std::uint32_t>;
 
 } // namespace folly
