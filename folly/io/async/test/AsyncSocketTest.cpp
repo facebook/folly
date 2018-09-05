@@ -22,6 +22,10 @@
 
 namespace folly {
 
+#ifndef TCP_SAVE_SYN
+#define TCP_SAVE_SYN 27
+#endif
+
 TEST(AsyncSocketTest, getSockOpt) {
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb, 0);
@@ -84,6 +88,33 @@ TEST(AsyncSocketTest, duplicateBind) {
 
   auto server2 = AsyncServerSocket::newSocket(&base);
   EXPECT_THROW(server2->bind(address.getPort()), std::exception);
+}
+
+TEST(AsyncSocketTest, tosReflect) {
+  EventBase base;
+  auto server1 = AsyncServerSocket::newSocket(&base);
+  server1->bind(0);
+  server1->listen(10);
+  int fd = server1->getSocket();
+
+  // Verify if tos reflect is disabled by default
+  // and the TCP_SAVE_SYN setting is not enabled
+  EXPECT_FALSE(server1->getTosReflect());
+  int value;
+  socklen_t valueLength = sizeof(value);
+  int rc = getsockopt(fd, IPPROTO_TCP, TCP_SAVE_SYN, &value, &valueLength);
+  ASSERT_EQ(rc, 0);
+  ASSERT_EQ(value, 0);
+
+  // Enable TOS reflect on the server socket
+  server1->setTosReflect(true);
+
+  // Verify if tos reflect is enabled now
+  // and the TCP_SAVE_SYN setting is also enabled
+  EXPECT_TRUE(server1->getTosReflect());
+  rc = getsockopt(fd, IPPROTO_TCP, TCP_SAVE_SYN, &value, &valueLength);
+  ASSERT_EQ(rc, 0);
+  ASSERT_EQ(value, 1);
 }
 
 } // namespace folly

@@ -3505,4 +3505,122 @@ TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
   ASSERT_EQ(recv_data, test_data);
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 }
+
+TEST(AsyncSocketTest, V6TosReflectTest) {
+  EventBase eventBase;
+
+  // Create a server socket
+  std::shared_ptr<AsyncServerSocket> serverSocket(
+      AsyncServerSocket::newSocket(&eventBase));
+  folly::IPAddress ip("::1");
+  std::vector<folly::IPAddress> serverIp;
+  serverIp.push_back(ip);
+  serverSocket->bind(serverIp, 10000);
+  serverSocket->listen(16);
+  folly::SocketAddress serverAddress;
+  serverSocket->getAddress(&serverAddress);
+
+  // Enable TOS reflect
+  serverSocket->setTosReflect(true);
+
+  // Add a callback to accept one connection then stop the loop
+  TestAcceptCallback acceptCallback;
+  acceptCallback.setConnectionAcceptedFn(
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
+    serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+  });
+  serverSocket->addAcceptCallback(&acceptCallback, &eventBase);
+  serverSocket->startAccepting();
+
+  // Create a client socket, setsockopt() the TOS before connecting
+  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
+                         ConnCallback* ccb,
+                         EventBase* evb,
+                         folly::SocketAddress sAddr) {
+    clientSock = AsyncSocket::newSocket(evb);
+    AsyncSocket::OptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
+    AsyncSocket::OptionMap optionMap;
+    optionMap.insert({v6Opts, 0x2c});
+    SocketAddress bindAddr("0.0.0.0", 0);
+    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+  };
+
+  std::shared_ptr<AsyncSocket> socket(nullptr);
+  ConnCallback cb;
+  clientThread(socket, &cb, &eventBase, serverAddress);
+
+  eventBase.loop();
+
+  // Verify if the connection is accepted and if the accepted socket has
+  // setsockopt on the TOS for the same value that was on the client socket
+  int fd = acceptCallback.getEvents()->at(1).fd;
+  ASSERT_GE(fd, 0);
+  int value;
+  socklen_t valueLength = sizeof(value);
+  int rc = getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &value, &valueLength);
+  ASSERT_EQ(rc, 0);
+  ASSERT_EQ(value, 0x2c);
+}
+
+TEST(AsyncSocketTest, V4TosReflectTest) {
+  EventBase eventBase;
+
+  // Create a server socket
+  std::shared_ptr<AsyncServerSocket> serverSocket(
+      AsyncServerSocket::newSocket(&eventBase));
+  folly::IPAddress ip("127.0.0.1");
+  std::vector<folly::IPAddress> serverIp;
+  serverIp.push_back(ip);
+  serverSocket->bind(serverIp, 10000);
+  serverSocket->listen(16);
+  folly::SocketAddress serverAddress;
+  serverSocket->getAddress(&serverAddress);
+
+  // Enable TOS reflect
+  serverSocket->setTosReflect(true);
+
+  // Add a callback to accept one connection then stop the loop
+  TestAcceptCallback acceptCallback;
+  acceptCallback.setConnectionAcceptedFn(
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
+    serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+  });
+  serverSocket->addAcceptCallback(&acceptCallback, &eventBase);
+  serverSocket->startAccepting();
+
+  // Create a client socket, setsockopt() the TOS before connecting
+  auto clientThread = [](std::shared_ptr<AsyncSocket>& clientSock,
+                         ConnCallback* ccb,
+                         EventBase* evb,
+                         folly::SocketAddress sAddr) {
+    clientSock = AsyncSocket::newSocket(evb);
+    AsyncSocket::OptionKey v4Opts = {IPPROTO_IP, IP_TOS};
+    AsyncSocket::OptionMap optionMap;
+    optionMap.insert({v4Opts, 0x2c});
+    SocketAddress bindAddr("0.0.0.0", 0);
+    clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
+  };
+
+  std::shared_ptr<AsyncSocket> socket(nullptr);
+  ConnCallback cb;
+  clientThread(socket, &cb, &eventBase, serverAddress);
+
+  eventBase.loop();
+
+  // Verify if the connection is accepted and if the accepted socket has
+  // setsockopt on the TOS for the same value that was on the client socket
+  int fd = acceptCallback.getEvents()->at(1).fd;
+  ASSERT_GE(fd, 0);
+  int value;
+  socklen_t valueLength = sizeof(value);
+  int rc = getsockopt(fd, IPPROTO_IP, IP_TOS, &value, &valueLength);
+  ASSERT_EQ(rc, 0);
+  ASSERT_EQ(value, 0x2c);
+}
 #endif

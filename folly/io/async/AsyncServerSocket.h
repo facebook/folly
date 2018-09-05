@@ -578,6 +578,15 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   }
 
   /**
+   * Enable/Disable TOS reflection for the server socket
+   */
+  void setTosReflect(bool enable);
+
+  bool getTosReflect() {
+    return tosReflect_;
+  }
+
+  /**
    * Get the number of connections dropped by the AsyncServerSocket
    */
   std::size_t getNumDroppedConnections() const {
@@ -878,6 +887,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   uint32_t tfoMaxQueueSize_{0};
   std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   ConnectionEventCallback* connectionEventCallback_{nullptr};
+  bool tosReflect_{false};
 };
 
 } // namespace folly
