@@ -3515,7 +3515,7 @@ TEST(AsyncSocketTest, V6TosReflectTest) {
   folly::IPAddress ip("::1");
   std::vector<folly::IPAddress> serverIp;
   serverIp.push_back(ip);
-  serverSocket->bind(serverIp, 10000);
+  serverSocket->bind(serverIp, 0);
   serverSocket->listen(16);
   folly::SocketAddress serverAddress;
   serverSocket->getAddress(&serverAddress);
@@ -3574,7 +3574,7 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
   folly::IPAddress ip("127.0.0.1");
   std::vector<folly::IPAddress> serverIp;
   serverIp.push_back(ip);
-  serverSocket->bind(serverIp, 10000);
+  serverSocket->bind(serverIp, 0);
   serverSocket->listen(16);
   folly::SocketAddress serverAddress;
   serverSocket->getAddress(&serverAddress);
