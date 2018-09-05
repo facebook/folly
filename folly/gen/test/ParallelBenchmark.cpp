@@ -53,24 +53,23 @@ static auto isPrimeSlow = [](int n) {
 static auto primes =
     seq(1, 1 << 20) | filter(isPrimeSlow) | as<vector>();
 
+static auto stopc(int n) {
+  return [=](int d) { return d * d > n; };
+}
+static auto divides(int n) {
+  return [=](int d) { return 0 == n % d; };
+}
+
 static auto isPrime = [](int n) {
-  return from(primes)
-         | until([&](int d) { return d * d > n; })
-         | filter([&](int d) { return 0 == n % d; })
-         | isEmpty;
+  return from(primes) | until(stopc(n)) | filter(divides(n)) | isEmpty;
 };
 
 static auto factors = [](int n) {
-  return from(primes)
-       | until([&](int d) { return d * d > n; })
-       | filter([&](int d) { return 0 == n % d; })
-       | count;
+  return from(primes) | until(stopc(n)) | filter(divides(n)) | count;
 };
 
 static auto factorsSlow = [](int n) {
-  return from(primes)
-       | filter([&](int d) { return 0 == n % d; })
-       | count;
+  return from(primes) | filter(divides(n)) | count;
 };
 
 static auto sleepyWork = [](int i) {
