@@ -41,9 +41,9 @@ using std::get;
 
 /**
  * The adl_ functions below lookup the function name in the namespace of the
- * type of the object being passed into the function.  If no function with
- * that name exists for the passed object then the default std:: versions are
- * going to be called
+ * type of the object being passed into the function. If no function with that
+ * name exists for the passed object then the default std:: versions are going
+ * to be called
  */
 template <std::size_t Index, typename Type>
 auto adl_get(Type&& instance) -> decltype(get<Index>(std::declval<Type>())) {
@@ -61,22 +61,21 @@ auto adl_end(Type&& instance) -> decltype(end(instance)) {
 } // namespace adl
 
 /**
- * Enable if the range supports fetching via non member get<>()
+ * Enable if the tuple supports fetching via non member get<>()
  */
 template <typename T>
 using EnableIfNonMemberGetFound =
     void_t<decltype(adl::adl_get<0>(std::declval<T>()))>;
 /**
- * Enable if the range supports fetching via a member get<>()
+ * Enable if the tuple supports fetching via a member get<>()
  */
 template <typename T>
 using EnableIfMemberGetFound =
     void_t<decltype(std::declval<T>().template get<0>())>;
 
 /**
- * A get that tries ADL get<> first and if that is not found tries to execute
- * a member function get<> on the instance, just as proposed by the structured
- * bindings proposal here 11.5.3
+ * A get that tries member get<> first and if that is not found tries ADL get<>.
+ * This mechanism is as found in the structured bindings proposal here 11.5.3.
  * http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf
  */
 template <std::size_t Index, typename Type, typename = void>
@@ -97,10 +96,7 @@ struct Get<Index, Type, EnableIfMemberGetFound<Type>> {
 };
 
 /**
- * Concepts-ish
- */
-/**
- * Check if the range is a tuple or a range
+ * Check if the sequence is a tuple
  */
 template <typename Type, typename T = typename std::decay<Type>::type>
 using EnableIfTuple = void_t<
@@ -108,7 +104,7 @@ using EnableIfTuple = void_t<
     decltype(std::tuple_size<T>::value)>;
 
 /**
- * Check if the range is a range
+ * Check if the sequence is a range
  */
 template <typename Type, typename T = typename std::decay<Type>::type>
 using EnableIfRange = void_t<
@@ -116,7 +112,7 @@ using EnableIfRange = void_t<
     decltype(adl::adl_end(std::declval<T>()))>;
 
 /**
- * Forwards the return value of the first element of the range, used to
+ * Forwards the return value of the first element of the sequence, used to
  * determine the type of the first element in the range in SFINAE use cases
  */
 template <typename Sequence, typename = void>
@@ -131,10 +127,10 @@ struct DeclvalSequence<Sequence, EnableIfTuple<Sequence>> {
 
 /**
  * Check if the functor accepts one or two arguments, one of the first element
- * in the range, assuming that all the other elements can also be passed to the
- * functor, and the second being an instantiation of std::integral_constant,
- * and the third being an instantiation of LoopControl, to provide
- * breakability to the loop
+ * in the sequence, assuming that all the other elements can also be passed to
+ * the functor, and the second being an instantiation of std::integral_constant,
+ * and the third being an instantiation of LoopControl, to provide breakability
+ * to the loop
  */
 template <typename Sequence, typename Func>
 using EnableIfAcceptsOneArgument = void_t<decltype(std::declval<Func>()(
@@ -175,7 +171,7 @@ using EnableIfHasIndexingOperator =
 
 /**
  * Implementation for the range iteration, this provides specializations in
- * the case where the function returns a break or continue.
+ * the case where the function returns a break or continue
  */
 template <typename Seq, typename F, typename = void>
 struct ForEachRange {
@@ -250,7 +246,7 @@ void for_each_range_impl(Sequence&& range, Func& func) {
 /**
  * The class provides a way to tell whether the function passed in to the
  * algorithm returns an instance of LoopControl, if it does then the break-able
- * implementation will be used.  If the function provided to the algorithm
+ * implementation will be used. If the function provided to the algorithm
  * does not use the break API, then the basic no break, 0 overhead
  * implementation will be used
  */
@@ -292,7 +288,7 @@ struct ForEachTupleImpl<Seq, F, EnableIfBreaksTuple<Seq, F>> {
  * The two top level compile time loop iteration functions handle the dispatch
  * based on the number of arguments the passed in function can be passed, if 2
  * arguments can be passed then the implementation dispatches work further to
- * the implementation classes above.  If not then an adaptor is constructed
+ * the implementation classes above. If not then an adaptor is constructed
  * which is passed on to the 2 argument specialization, which then in turn
  * forwards implementation to the implementation classes above
  */
@@ -323,11 +319,10 @@ void for_each_tuple_impl(Sequence&& seq, Func& func) {
 
 /**
  * Top level handlers for the for_each loop, the basic specialization handles
- * ranges and the specialized version handles compile time ranges (tuple like)
+ * tuples and the specialized version handles ranges
  *
- * This implies that if a range is a compile time range, its compile time
- * get<> API (whether through a member function or through a ADL looked up
- * method) will be used in preference over iterators
+ * This implies that if type is both a range and a tuple, it is treated as a
+ * range rather than as a tuple
  */
 template <typename R, typename = void>
 struct ForEachImpl {

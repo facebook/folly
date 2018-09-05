@@ -26,7 +26,7 @@ namespace folly {
 /**
  * @function for_each
  *
- * folly::for_each is a generalized iteration algorithm.  Example:
+ * folly::for_each is a generalized iteration algorithm. Example:
  *
  *  auto one = std::make_tuple(1, 2, 3);
  *  auto two = std::vector<int>{1, 2, 3};
@@ -36,20 +36,24 @@ namespace folly {
  *  folly::for_each(one, func);
  *  folly::for_each(two, func);
  *
- * The for_each function allows iteration through sequences, these
- * can either be runtime sequences (i.e. entities for which std::begin and
- * std::end work) or compile time sequences (as deemed by the presence of
- * std::tuple_length<>, get<> (ADL resolved) functions)
+ * The for_each function allows iteration through sequences, these can either be
+ * runtime sequences (i.e. entities for which std::begin and std::end work) or
+ * compile time sequences (as deemed by the presence of std::tuple_length<> and
+ * member get<> or ADL get<> functions).
  *
- * The function is made to provide a convenient library based alternative to
- * the proposal p0589r0, which aims to generalize the range based for loop
- * even further to work with compile time sequences.
+ * If a sequence type is both a runtime sequence (aka range) and a compile-time
+ * sequence (aka tuple), then it is treated as a range in preference to a tuple.
+ * An example of such a type is std::array.
+ *
+ * The function is made to provide a convenient library based alternative to the
+ * proposal p0589r0, which aims to generalize the range based for loop even
+ * further to work with compile time sequences.
  *
  * A drawback of using range based for loops is that sometimes you do not have
- * access to the index within the range.  This provides easy access to that,
- * even with compile time sequences.
+ * access to the index within the range. This provides easy access to that, even
+ * with compile time sequences.
  *
- * And breaking out is easy
+ * And breaking out is easy:
  *
  *  auto range_one = std::vector<int>{1, 2, 3};
  *  auto range_two = std::make_tuple(1, 2, 3);
@@ -63,17 +67,16 @@ namespace folly {
  *  folly_for_each(range_one, func);
  *  folly_for_each(range_two, func);
  *
- * A simple use case would be when using futures, if the user was doing calls
- * to n servers then they would accept the callback with the futures like this
+ * A simple use case would be when using futures, if the user was doing calls to
+ * n servers then they would accept the callback with the futures like this:
  *
  *  auto vec = std::vector<std::future<int>>{request_one(), ...};
  *  when_all(vec.begin(), vec.end()).then([](auto futures) {
  *    folly::for_each(futures, [](auto& fut) { ... });
  *  });
  *
- * Now when this code switches to use tuples instead of the runtime
- * std::vector, then the loop does not need to change, the code will still
- * work just fine
+ * Now when this code switches to use tuples instead of the runtime std::vector,
+ * then the loop does not need to change, the code will still work just fine:
  *
  *  when_all(future_one, future_two, future_three).then([](auto futures) {
  *    folly::for_each(futures, [](auto& fut) { ... });
@@ -85,7 +88,7 @@ FOLLY_CPP14_CONSTEXPR Func for_each(Range&& range, Func func);
 /**
  * The user should return loop_break and loop_continue if they want to iterate
  * in such a way that they can preemptively stop the loop and break out when
- * certain conditions are met
+ * certain conditions are met.
  */
 namespace for_each_detail {
 enum class LoopControl : bool { BREAK, CONTINUE };
@@ -96,11 +99,11 @@ constexpr auto loop_continue = for_each_detail::LoopControl::CONTINUE;
 
 /**
  * Utility method to help access elements of a sequence with one uniform
- * interface
+ * interface.
  *
  * This can be useful for example when you are looping through a sequence and
  * want to modify another sequence based on the information in the current
- * sequence
+ * sequence:
  *
  *  auto range_one = std::make_tuple(1, 2, 3);
  *  auto range_two = std::make_tuple(4, 5, 6);
@@ -108,12 +111,12 @@ constexpr auto loop_continue = for_each_detail::LoopControl::CONTINUE;
  *    folly::fetch(range_two, index) = ele;
  *  });
  *
- * For non-tuple like ranges, this works by first trying to use the iterator
- * class if the iterator has been marked to be a random access iterator.  This
- * should be inspectable via the std::iterator_traits traits class.  If the
- * iterator class is not present or is not a random access iterator then the
- * implementation falls back to trying to use the indexing operator
- * (operator[]) to fetch the required element
+ * For ranges, this works by first trying to use the iterator class if the
+ * iterator has been marked to be a random access iterator. This should be
+ * inspectable via the std::iterator_traits traits class. If the iterator class
+ * is not present or is not a random access iterator then the implementation
+ * falls back to trying to use the indexing operator (operator[]) to fetch the
+ * required element.
  */
 template <typename Sequence, typename Index>
 FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
