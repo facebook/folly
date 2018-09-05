@@ -242,41 +242,34 @@ TEST(DynamicConverter, crazy) {
   //   some from a vector of KV pairs.
   // T will be vector<set<string>>
 
-  std::set<std::string>
-    s1 = { "a", "e", "i", "o", "u" },
-    s2 = { "2", "3", "5", "7" },
-    s3 = { "Hello", "World" };
+  std::set<std::string> s1 = {"a", "e", "i", "o", "u"};
+  std::set<std::string> s2 = {"2", "3", "5", "7"};
+  std::set<std::string> s3 = {"Hello", "World"};
 
-  std::vector<std::set<std::string>>
-    v1 = {},
-    v2 = { s1, s2 },
-    v3 = { s3 };
+  std::vector<std::set<std::string>> v1 = {};
+  std::vector<std::set<std::string>> v2 = {s1, s2};
+  std::vector<std::set<std::string>> v3 = {s3};
 
-  std::unordered_map<bool, std::vector<std::set<std::string>>>
-    m1 = { { true, v1 }, { false, v2 } },
-    m2 = { { true, v3 } };
+  std::unordered_map<bool, std::vector<std::set<std::string>>> m1 = {
+      {true, v1}, {false, v2}};
+  std::unordered_map<bool, std::vector<std::set<std::string>>> m2 = {
+      {true, v3}};
 
   std::vector<std::unordered_map<bool, std::vector<std::set<std::string>>>>
     f1 = { m1, m2 };
 
+  dynamic ds1 = dynamic::array("a", "e", "i", "o", "u");
+  dynamic ds2 = dynamic::array("2", "3", "5", "7");
+  dynamic ds3 = dynamic::array("Hello", "World");
 
-  dynamic
-    ds1 = dynamic::array("a", "e", "i", "o", "u"),
-    ds2 = dynamic::array("2", "3", "5", "7"),
-    ds3 = dynamic::array("Hello", "World");
+  dynamic dv1 = dynamic::array;
+  dynamic dv2 = dynamic::array(ds1, ds2);
+  dynamic dv3(dynamic::array(ds3));
 
-  dynamic
-    dv1 = dynamic::array,
-    dv2 = dynamic::array(ds1, ds2),
-    dv3(dynamic::array(ds3));
+  dynamic dm1 = dynamic::object(true, dv1)(false, dv2);
+  dynamic dm2 = dynamic::array(dynamic::array(true, dv3));
 
-  dynamic
-    dm1 = dynamic::object(true, dv1)(false, dv2),
-    dm2 = dynamic::array(dynamic::array(true, dv3));
-
-  dynamic
-    df1 = dynamic::array(dm1, dm2);
-
+  dynamic df1 = dynamic::array(dm1, dm2);
 
   auto i = convertTo<std::vector<std::unordered_map<bool, std::vector<
           std::set<std::string>>>>>(df1); // yes, that is 5 close-chevrons
