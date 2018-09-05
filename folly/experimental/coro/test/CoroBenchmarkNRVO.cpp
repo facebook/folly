@@ -15,6 +15,15 @@
  */
 
 #include <folly/Benchmark.h>
+#include <thread>
+
+struct ExpensiveCopy {
+  ExpensiveCopy() {}
+
+  ExpensiveCopy(const ExpensiveCopy&) {
+    std::this_thread::sleep_for(std::chrono::milliseconds{1});
+  }
+};
 
 #if FOLLY_HAS_COROUTINES
 #include <experimental/coroutine>
@@ -153,14 +162,6 @@ class InlineTask {
 
   T value_;
   promise_type* promise_;
-};
-
-struct ExpensiveCopy {
-  ExpensiveCopy() {}
-
-  ExpensiveCopy(const ExpensiveCopy&) {
-    std::this_thread::sleep_for(std::chrono::milliseconds{1});
-  }
 };
 
 InlineTask<ExpensiveCopy> co_nestedCalls(size_t times) {
