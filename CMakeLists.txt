@@ -427,8 +427,7 @@ if (BUILD_TESTS)
       TEST f14_fwd_test SOURCES F14FwdTest.cpp
       TEST f14_map_test SOURCES F14MapTest.cpp
       TEST f14_set_test SOURCES F14SetTest.cpp
-      TEST foreach_test WINDOWS_DISABLED
-        SOURCES ForeachTest.cpp
+      TEST foreach_test SOURCES ForeachTest.cpp
       TEST merge_test SOURCES MergeTest.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
 

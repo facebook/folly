@@ -25,6 +25,7 @@
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 
@@ -61,47 +62,49 @@ auto adl_end(Type&& instance) -> decltype(end(instance)) {
 } // namespace adl
 
 /**
- * Enable if the tuple supports fetching via non member get<>()
- */
-template <typename T>
-using EnableIfNonMemberGetFound =
-    void_t<decltype(adl::adl_get<0>(std::declval<T>()))>;
-/**
  * Enable if the tuple supports fetching via a member get<>()
  */
 template <typename T>
 using EnableIfMemberGetFound =
     void_t<decltype(std::declval<T>().template get<0>())>;
+template <typename, typename T>
+struct IsMemberGetFound : std::false_type {};
+template <typename T>
+struct IsMemberGetFound<EnableIfMemberGetFound<T>, T> : std::true_type {};
 
 /**
  * A get that tries member get<> first and if that is not found tries ADL get<>.
  * This mechanism is as found in the structured bindings proposal here 11.5.3.
  * http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4659.pdf
  */
-template <std::size_t Index, typename Type, typename = void>
-struct Get {
-  template <typename T>
-  static auto impl(T&& instance)
-      -> decltype(adl::adl_get<Index>(std::declval<T>())) {
-    return adl::adl_get<Index>(std::forward<T>(instance));
-  }
-};
-template <std::size_t Index, typename Type>
-struct Get<Index, Type, EnableIfMemberGetFound<Type>> {
-  template <typename T>
-  static auto impl(T&& instance)
-      -> decltype(std::declval<T>().template get<Index>()) {
-    return std::forward<T>(instance).template get<Index>();
-  }
-};
+template <
+    std::size_t Index,
+    typename Type,
+    std::enable_if_t<!IsMemberGetFound<void, Type>::value, int> = 0>
+auto get_impl(Type&& instance)
+    -> decltype(adl::adl_get<Index>(static_cast<Type&&>(instance))) {
+  return adl::adl_get<Index>(static_cast<Type&&>(instance));
+}
+template <
+    std::size_t Index,
+    typename Type,
+    std::enable_if_t<IsMemberGetFound<void, Type>::value, int> = 0>
+auto get_impl(Type&& instance)
+    -> decltype(static_cast<Type&&>(instance).template get<Index>()) {
+  return static_cast<Type&&>(instance).template get<Index>();
+}
 
 /**
  * Check if the sequence is a tuple
  */
 template <typename Type, typename T = typename std::decay<Type>::type>
 using EnableIfTuple = void_t<
-    decltype(Get<0, T>::impl(std::declval<T>())),
+    decltype(get_impl<0>(std::declval<T>())),
     decltype(std::tuple_size<T>::value)>;
+template <typename, typename T>
+struct IsTuple : std::false_type {};
+template <typename T>
+struct IsTuple<EnableIfTuple<T>, T> : std::true_type {};
 
 /**
  * Check if the sequence is a range
@@ -110,179 +113,124 @@ template <typename Type, typename T = typename std::decay<Type>::type>
 using EnableIfRange = void_t<
     decltype(adl::adl_begin(std::declval<T>())),
     decltype(adl::adl_end(std::declval<T>()))>;
+template <typename, typename T>
+struct IsRange : std::false_type {};
+template <typename T>
+struct IsRange<EnableIfRange<T>, T> : std::true_type {};
+
+struct TupleTag {};
+struct RangeTag {};
 
 /**
- * Forwards the return value of the first element of the sequence, used to
- * determine the type of the first element in the range in SFINAE use cases
- */
-template <typename Sequence, typename = void>
-struct DeclvalSequence {
-  using type = decltype(*(adl::adl_begin(std::declval<Sequence>())));
-};
-
-template <typename Sequence>
-struct DeclvalSequence<Sequence, EnableIfTuple<Sequence>> {
-  using type = decltype(Get<0, Sequence>::impl(std::declval<Sequence>()));
-};
-
-/**
- * Check if the functor accepts one or two arguments, one of the first element
- * in the sequence, assuming that all the other elements can also be passed to
- * the functor, and the second being an instantiation of std::integral_constant,
- * and the third being an instantiation of LoopControl, to provide breakability
- * to the loop
- */
-template <typename Sequence, typename Func>
-using EnableIfAcceptsOneArgument = void_t<decltype(std::declval<Func>()(
-    std::declval<typename DeclvalSequence<Sequence>::type>()))>;
-template <typename Sequence, typename Func>
-using EnableIfAcceptsTwoArguments = void_t<decltype(std::declval<Func>()(
-    std::declval<typename DeclvalSequence<Sequence>::type>(),
-    index_constant<0>{}))>;
-template <typename Sequence, typename Func>
-using EnableIfAcceptsThreeArguments = void_t<decltype(std::declval<Func>()(
-    std::declval<typename DeclvalSequence<Sequence>::type>(),
-    index_constant<0>{},
-    adl::adl_begin(std::declval<Sequence>())))>;
-template <typename Sequence, typename Func>
-using EnableIfBreaksRange = std::enable_if_t<std::is_same<
-    typename std::decay<decltype(std::declval<Func>()(
-        std::declval<typename DeclvalSequence<Sequence>::type>(),
-        std::size_t{0},
-        adl::adl_begin(std::declval<Sequence>())))>::type,
-    LoopControl>::value>;
-template <typename Sequence, typename Func>
-using EnableIfBreaksTuple = std::enable_if_t<std::is_same<
-    typename std::decay<decltype(std::declval<Func>()(
-        std::declval<typename DeclvalSequence<Sequence>::type>(),
-        index_constant<0>{}))>::type,
-    LoopControl>::value>;
-/**
- * Enables if the sequence has random access iterators
+ * Should ideally check if it is a tuple and if not return void, but msvc fails
  */
 template <typename Sequence>
-using EnableIfRandomAccessIterators = std::enable_if_t<std::is_same<
-    typename std::iterator_traits<typename std::decay<decltype(
-        adl::adl_begin(std::declval<Sequence>()))>::type>::iterator_category,
-    std::random_access_iterator_tag>::value>;
-template <typename Sequence, typename Index>
-using EnableIfHasIndexingOperator =
-    void_t<decltype(std::declval<Sequence>()[std::declval<Index>()])>;
+using SequenceTag =
+    std::conditional_t<IsRange<void, Sequence>::value, RangeTag, TupleTag>;
 
-/**
- * Implementation for the range iteration, this provides specializations in
- * the case where the function returns a break or continue
- */
-template <typename Seq, typename F, typename = void>
-struct ForEachRange {
-  template <typename Sequence, typename Func>
-  static void impl(Sequence&& range, Func& func) {
-    auto first = adl::adl_begin(range);
-    auto last = adl::adl_end(range);
-    for (auto index = std::size_t{0}; first != last; ++index) {
-      auto next = std::next(first);
-      func(*first, index, first);
-      first = next;
-    }
-  }
-};
+struct BeginAddTag {};
+struct IndexingTag {};
 
-template <typename Seq, typename F>
-struct ForEachRange<Seq, F, EnableIfBreaksRange<Seq, F>> {
-  template <typename Sequence, typename Func>
-  static void impl(Sequence&& range, Func& func) {
-    auto first = adl::adl_begin(range);
-    auto last = adl::adl_end(range);
-    for (auto index = std::size_t{0}; first != last; ++index) {
-      auto next = std::next(first);
-      if (loop_break == func(*first, index, first)) {
-        break;
-      }
-      first = next;
-    }
-  }
-};
+template <typename Func, typename Item, typename Iter>
+using ForEachImplTag = std::conditional_t<
+    is_invocable<Func, Item, index_constant<0>, Iter>::value,
+    index_constant<3>,
+    std::conditional_t<
+        is_invocable<Func, Item, index_constant<0>>::value,
+        index_constant<2>,
+        std::conditional_t<
+            is_invocable<Func, Item>::value,
+            index_constant<1>,
+            void>>>;
+
+template <
+    typename Func,
+    typename... Args,
+    std::enable_if_t<is_invocable_r<LoopControl, Func, Args...>::value, int> =
+        0>
+LoopControl invoke_returning_loop_control(Func&& f, Args&&... a) {
+  return static_cast<Func&&>(f)(static_cast<Args&&>(a)...);
+}
+template <
+    typename Func,
+    typename... Args,
+    std::enable_if_t<!is_invocable_r<LoopControl, Func, Args...>::value, int> =
+        0>
+LoopControl invoke_returning_loop_control(Func&& f, Args&&... a) {
+  static_assert(
+      std::is_void<invoke_result_t<Func, Args...>>::value,
+      "return either LoopControl or void");
+  return static_cast<Func&&>(f)(static_cast<Args&&>(a)...), loop_continue;
+}
 
 /**
  * Implementations for the runtime function
  */
-template <
-    typename Sequence,
-    typename Func,
-    EnableIfAcceptsThreeArguments<Sequence, Func>* = nullptr>
-void for_each_range_impl(Sequence&& range, Func& func) {
-  ForEachRange<Sequence, Func>::impl(std::forward<Sequence>(range), func);
+template <typename Sequence, typename Func>
+void for_each_range_impl(index_constant<3>, Sequence&& range, Func& func) {
+  auto first = adl::adl_begin(range);
+  auto last = adl::adl_end(range);
+  for (auto index = std::size_t{0}; first != last; ++index) {
+    auto next = std::next(first);
+    auto control = invoke_returning_loop_control(func, *first, index, first);
+    if (loop_break == control) {
+      break;
+    }
+    first = next;
+  }
 }
-template <
-    typename Sequence,
-    typename Func,
-    EnableIfAcceptsTwoArguments<Sequence, Func>* = nullptr>
-void for_each_range_impl(Sequence&& range, Func& func) {
+template <typename Sequence, typename Func>
+void for_each_range_impl(index_constant<2>, Sequence&& range, Func& func) {
   // make a three arg adaptor for the function passed in so that the main
   // implementation function can be used
   auto three_arg_adaptor = [&func](
                                auto&& ele, auto index, auto) -> decltype(auto) {
     return func(std::forward<decltype(ele)>(ele), index);
   };
-  for_each_range_impl(std::forward<Sequence>(range), three_arg_adaptor);
+  for_each_range_impl(
+      index_constant<3>{}, std::forward<Sequence>(range), three_arg_adaptor);
 }
 
-template <
-    typename Sequence,
-    typename Func,
-    EnableIfAcceptsOneArgument<Sequence, Func>* = nullptr>
-void for_each_range_impl(Sequence&& range, Func& func) {
+template <typename Sequence, typename Func>
+void for_each_range_impl(index_constant<1>, Sequence&& range, Func& func) {
   // make a three argument adaptor for the function passed in that just ignores
   // the second and third argument
   auto three_arg_adaptor = [&func](auto&& ele, auto, auto) -> decltype(auto) {
     return func(std::forward<decltype(ele)>(ele));
   };
-  for_each_range_impl(std::forward<Sequence>(range), three_arg_adaptor);
+  for_each_range_impl(
+      index_constant<3>{}, std::forward<Sequence>(range), three_arg_adaptor);
 }
 
 /**
  * Handlers for iteration
  */
-/**
- * The class provides a way to tell whether the function passed in to the
- * algorithm returns an instance of LoopControl, if it does then the break-able
- * implementation will be used. If the function provided to the algorithm
- * does not use the break API, then the basic no break, 0 overhead
- * implementation will be used
- */
-template <typename Seq, typename F, typename = void>
-struct ForEachTupleImpl {
-  template <typename Sequence, typename Func, std::size_t... Indices>
-  static void impl(Sequence&& seq, Func& func, index_sequence<Indices...>) {
-    // unroll the loop in an initializer list construction parameter expansion
-    // pack
-    static_cast<void>(std::initializer_list<int>{
-        (func(
-             Get<Indices, Sequence>::impl(std::forward<Sequence>(seq)),
-             index_constant<Indices>{}),
-         0)...});
-  }
-};
-template <typename Seq, typename F>
-struct ForEachTupleImpl<Seq, F, EnableIfBreaksTuple<Seq, F>> {
-  template <typename Sequence, typename Func, std::size_t... Indices>
-  static void impl(Sequence&& seq, Func& func, index_sequence<Indices...>) {
-    // unroll the loop in an initializer list construction parameter expansion
-    // pack
-    LoopControl break_or_not = LoopControl::CONTINUE;
+template <typename Sequence, typename Func, std::size_t... Indices>
+void for_each_tuple_impl(
+    index_sequence<Indices...>,
+    Sequence&& seq,
+    Func& func) {
+  using _ = int[];
 
-    // cast to void to ignore the result, use the initialzer list constructor
-    // to do the loop execution, the ternary conditional will decide whether
-    // or not to evaluate the result
-    static_cast<void>(std::initializer_list<int>{
-        (((break_or_not == loop_continue)
-              ? (break_or_not = func(
-                     Get<Indices, Sequence>::impl(std::forward<Sequence>(seq)),
+  // unroll the loop in an initializer list construction parameter expansion
+  // pack
+  auto control = loop_continue;
+
+  // cast to void to ignore the result; use the int[] initialization to do the
+  // loop execution, the ternary conditional will decide whether or not to
+  // evaluate the result
+  //
+  // if func does not return loop-control, expect the optimizer to see through
+  // invoke_returning_loop_control always returning loop_continue
+  void(
+      _{(((control == loop_continue)
+              ? (control = invoke_returning_loop_control(
+                     func,
+                     get_impl<Indices>(std::forward<Sequence>(seq)),
                      index_constant<Indices>{}))
               : (loop_continue)),
          0)...});
-  }
-};
+}
 
 /**
  * The two top level compile time loop iteration functions handle the dispatch
@@ -292,97 +240,90 @@ struct ForEachTupleImpl<Seq, F, EnableIfBreaksTuple<Seq, F>> {
  * which is passed on to the 2 argument specialization, which then in turn
  * forwards implementation to the implementation classes above
  */
-template <
-    typename Sequence,
-    typename Func,
-    EnableIfAcceptsTwoArguments<Sequence, Func>* = nullptr>
-void for_each_tuple_impl(Sequence&& seq, Func& func) {
+template <typename Sequence, typename Func>
+void for_each_tuple_impl(index_constant<2>, Sequence&& seq, Func& func) {
   // pass the length as an index sequence to the implementation as an
   // optimization over manual template "tail recursion" unrolling
-  constexpr auto length =
-      std::tuple_size<typename std::decay<Sequence>::type>::value;
-  ForEachTupleImpl<Sequence, Func>::impl(
-      std::forward<Sequence>(seq), func, make_index_sequence<length>{});
+  using size = std::tuple_size<typename std::decay<Sequence>::type>;
+  for_each_tuple_impl(
+      make_index_sequence<size::value>{}, std::forward<Sequence>(seq), func);
 }
-template <
-    typename Sequence,
-    typename Func,
-    EnableIfAcceptsOneArgument<Sequence, Func>* = nullptr>
-void for_each_tuple_impl(Sequence&& seq, Func& func) {
+template <typename Sequence, typename Func>
+void for_each_tuple_impl(index_constant<1>, Sequence&& seq, Func& func) {
   // make an adaptor for the function passed in, in case it can only be passed
   // on argument
   auto two_arg_adaptor = [&func](auto&& ele, auto) -> decltype(auto) {
     return func(std::forward<decltype(ele)>(ele));
   };
-  for_each_tuple_impl(std::forward<Sequence>(seq), two_arg_adaptor);
+  for_each_tuple_impl(
+      index_constant<2>{}, std::forward<Sequence>(seq), two_arg_adaptor);
 }
 
 /**
- * Top level handlers for the for_each loop, the basic specialization handles
- * tuples and the specialized version handles ranges
+ * Top level handlers for the for_each loop, with one overload for tuples and
+ * one overload for ranges
  *
  * This implies that if type is both a range and a tuple, it is treated as a
  * range rather than as a tuple
  */
-template <typename R, typename = void>
-struct ForEachImpl {
-  template <typename Sequence, typename Func>
-  static void impl(Sequence&& range, Func& func) {
-    for_each_tuple_impl(std::forward<Sequence>(range), func);
-  }
-};
-template <typename R>
-struct ForEachImpl<R, EnableIfRange<R>> {
-  template <typename Sequence, typename Func>
-  static void impl(Sequence&& range, Func& func) {
-    for_each_range_impl(std::forward<Sequence>(range), func);
-  }
-};
+template <typename Sequence, typename Func>
+static void for_each_impl(TupleTag, Sequence&& range, Func& func) {
+  using type = decltype(get_impl<0>(std::declval<Sequence>()));
+  using tag = ForEachImplTag<Func, type, void>;
+  static_assert(!std::is_same<tag, void>::value, "unknown invocability");
+  for_each_tuple_impl(tag{}, std::forward<Sequence>(range), func);
+}
+template <typename Sequence, typename Func>
+static void for_each_impl(RangeTag, Sequence&& range, Func& func) {
+  using iter = decltype(adl::adl_begin(std::declval<Sequence>()));
+  using type = decltype(*std::declval<iter>());
+  using tag = ForEachImplTag<Func, type, iter>;
+  static_assert(!std::is_same<tag, void>::value, "unknown invocability");
+  for_each_range_impl(tag{}, std::forward<Sequence>(range), func);
+}
 
-template <typename S, typename I, typename = void>
-struct FetchIteratorIndexImpl {
-  template <typename Sequence, typename Index>
-  static decltype(auto) impl(Sequence&& sequence, Index&& index) {
-    return std::forward<Sequence>(sequence)[std::forward<Index>(index)];
-  }
-};
-template <typename S, typename I>
-struct FetchIteratorIndexImpl<S, I, EnableIfRandomAccessIterators<S>> {
-  template <typename Sequence, typename Index>
-  static decltype(auto) impl(Sequence&& sequence, Index index) {
-    return *(adl::adl_begin(std::forward<Sequence>(sequence)) + index);
-  }
-};
-template <typename S, typename = void>
-struct FetchImpl {
-  template <typename Sequence, typename Index>
-  static decltype(auto) impl(Sequence&& sequence, Index index) {
-    return Get<static_cast<std::size_t>(index), Sequence>::impl(
-        std::forward<Sequence>(sequence));
-  }
-};
-template <typename S>
-struct FetchImpl<S, EnableIfRange<S>> {
-  template <typename Sequence, typename Index>
-  static decltype(auto) impl(Sequence&& sequence, Index&& index) {
-    return FetchIteratorIndexImpl<Sequence, Index>::impl(
-        std::forward<Sequence>(sequence), std::forward<Index>(index));
-  }
-};
+template <typename Sequence, typename Index>
+decltype(auto) fetch_impl(IndexingTag, Sequence&& sequence, Index&& index) {
+  return std::forward<Sequence>(sequence)[std::forward<Index>(index)];
+}
+template <typename Sequence, typename Index>
+decltype(auto) fetch_impl(BeginAddTag, Sequence&& sequence, Index index) {
+  return *(adl::adl_begin(std::forward<Sequence>(sequence)) + index);
+}
+
+template <typename Sequence, typename Index>
+decltype(auto) fetch_impl(TupleTag, Sequence&& sequence, Index index) {
+  return get_impl<index>(std::forward<Sequence>(sequence));
+}
+template <typename Sequence, typename Index>
+decltype(auto) fetch_impl(RangeTag, Sequence&& sequence, Index&& index) {
+  using iter = decltype(adl::adl_begin(std::declval<Sequence>()));
+  using iter_traits = std::iterator_traits<remove_cvref_t<iter>>;
+  using iter_cat = typename iter_traits::iterator_category;
+  using tag = std::conditional_t<
+      std::is_same<iter_cat, std::random_access_iterator_tag>::value,
+      BeginAddTag,
+      IndexingTag>;
+  return fetch_impl(
+      tag{}, std::forward<Sequence>(sequence), std::forward<Index>(index));
+}
 
 } // namespace for_each_detail
 
 template <typename Sequence, typename Func>
-FOLLY_CPP14_CONSTEXPR Func for_each(Sequence&& range, Func func) {
-  for_each_detail::ForEachImpl<typename std::decay<Sequence>::type>::impl(
-      std::forward<Sequence>(range), func);
+FOLLY_CPP14_CONSTEXPR Func for_each(Sequence&& sequence, Func func) {
+  namespace fed = for_each_detail;
+  using tag = fed::SequenceTag<Sequence>;
+  fed::for_each_impl(tag{}, std::forward<Sequence>(sequence), func);
   return func;
 }
 
 template <typename Sequence, typename Index>
 FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index) {
-  return for_each_detail::FetchImpl<Sequence>::impl(
-      std::forward<Sequence>(sequence), std::forward<Index>(index));
+  namespace fed = for_each_detail;
+  using tag = fed::SequenceTag<Sequence>;
+  return for_each_detail::fetch_impl(
+      tag{}, std::forward<Sequence>(sequence), std::forward<Index>(index));
 }
 
 } // namespace folly
