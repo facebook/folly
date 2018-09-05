@@ -40,37 +40,36 @@ TEST(ExceptionTest, Simple) {
   // Make sure errno isn't used when we don't want it to, set it to something
   // else than what we set when we call Explicit functions
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({throwSystemErrorExplicit(EIO, "hello");},
-                      EIO, "hello");
+  EXPECT_SYSTEM_ERROR(throwSystemErrorExplicit(EIO, "hello"), EIO, "hello");
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({throwSystemErrorExplicit(EIO, "hello", " world");},
-                      EIO, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      throwSystemErrorExplicit(EIO, "hello", " world"), EIO, "hello world");
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({throwSystemError("hello", " world");},
-                      ERANGE, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      throwSystemError("hello", " world"), ERANGE, "hello world");
 
-  EXPECT_NO_THROW({checkPosixError(0, "hello", " world");});
+  EXPECT_NO_THROW(checkPosixError(0, "hello", " world"));
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({checkPosixError(EIO, "hello", " world");},
-                      EIO, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      checkPosixError(EIO, "hello", " world"), EIO, "hello world");
 
-  EXPECT_NO_THROW({checkKernelError(0, "hello", " world");});
-  EXPECT_NO_THROW({checkKernelError(EIO, "hello", " world");});
+  EXPECT_NO_THROW(checkKernelError(0, "hello", " world"));
+  EXPECT_NO_THROW(checkKernelError(EIO, "hello", " world"));
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({checkKernelError(-EIO, "hello", " world");},
-                      EIO, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      checkKernelError(-EIO, "hello", " world"), EIO, "hello world");
 
-  EXPECT_NO_THROW({checkUnixError(0, "hello", " world");});
-  EXPECT_NO_THROW({checkUnixError(1, "hello", " world");});
+  EXPECT_NO_THROW(checkUnixError(0, "hello", " world"));
+  EXPECT_NO_THROW(checkUnixError(1, "hello", " world"));
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({checkUnixError(-1, "hello", " world");},
-                      ERANGE, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      checkUnixError(-1, "hello", " world"), ERANGE, "hello world");
 
-  EXPECT_NO_THROW({checkUnixErrorExplicit(0, EIO, "hello", " world");});
-  EXPECT_NO_THROW({checkUnixErrorExplicit(1, EIO, "hello", " world");});
+  EXPECT_NO_THROW(checkUnixErrorExplicit(0, EIO, "hello", " world"));
+  EXPECT_NO_THROW(checkUnixErrorExplicit(1, EIO, "hello", " world"));
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({checkUnixErrorExplicit(-1, EIO, "hello", " world");},
-                      EIO, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      checkUnixErrorExplicit(-1, EIO, "hello", " world"), EIO, "hello world");
 
   TemporaryDirectory tmpdir;
   auto exnpath = tmpdir.path() / "ExceptionTest";
@@ -78,16 +77,17 @@ TEST(ExceptionTest, Simple) {
   ASSERT_TRUE(fp != nullptr);
   SCOPE_EXIT { fclose(fp); };
 
-  EXPECT_NO_THROW({ checkFopenError(fp, "hello", " world"); });
+  EXPECT_NO_THROW(checkFopenError(fp, "hello", " world"));
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({checkFopenError(nullptr, "hello", " world");},
-                      ERANGE, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      checkFopenError(nullptr, "hello", " world"), ERANGE, "hello world");
 
-  EXPECT_NO_THROW({ checkFopenErrorExplicit(fp, EIO, "hello", " world"); });
+  EXPECT_NO_THROW(checkFopenErrorExplicit(fp, EIO, "hello", " world"));
   errno = ERANGE;
-  EXPECT_SYSTEM_ERROR({checkFopenErrorExplicit(nullptr, EIO,
-                                               "hello", " world");},
-                      EIO, "hello world");
+  EXPECT_SYSTEM_ERROR(
+      checkFopenErrorExplicit(nullptr, EIO, "hello", " world"),
+      EIO,
+      "hello world");
 }
 
 TEST(ExceptionTest, makeSystemError) {
