@@ -270,11 +270,19 @@ inline Future<Unit> via(
     Executor* executor,
     int8_t priority = Executor::MID_PRI);
 
+inline Future<Unit> via(
+    Executor::KeepAlive<> executor,
+    int8_t priority = Executor::MID_PRI);
+
 /// Execute a function via the given executor and return a future.
 /// This is semantically equivalent to via(executor).then(func), but
 /// easier to read and slightly more efficient.
 template <class Func>
 auto via(Executor*, Func&& func) -> Future<
+    typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner>;
+
+template <class Func>
+auto via(Executor::KeepAlive<>, Func&& func) -> Future<
     typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner>;
 
 /** When all the input Futures complete, the returned Future will complete.

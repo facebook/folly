@@ -1309,6 +1309,12 @@ auto via(Executor* x, Func&& func) -> Future<
   return via(x).then(std::forward<Func>(func));
 }
 
+template <class Func>
+auto via(Executor::KeepAlive<> x, Func&& func) -> Future<
+    typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner> {
+  return via(std::move(x)).then(std::forward<Func>(func));
+}
+
 // makeFuture
 
 template <class T>
@@ -1373,6 +1379,10 @@ Future<T> makeFuture(Try<T>&& t) {
 // via
 Future<Unit> via(Executor* executor, int8_t priority) {
   return makeFuture().via(executor, priority);
+}
+
+Future<Unit> via(Executor::KeepAlive<> executor, int8_t priority) {
+  return makeFuture().via(std::move(executor), priority);
 }
 
 namespace futures {

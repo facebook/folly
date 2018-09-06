@@ -634,3 +634,13 @@ TEST(ViaFunc, moveOnly) {
 
   EXPECT_EQ(42, via(&x, [intp = std::move(intp)] { return *intp; }).getVia(&x));
 }
+
+TEST(ViaFunc, valueKeepAlive) {
+  ManualExecutor x;
+  EXPECT_EQ(42, via(getKeepAliveToken(&x), [] { return 42; }).getVia(&x));
+}
+
+TEST(ViaFunc, thenValueKeepAlive) {
+  ManualExecutor x;
+  EXPECT_EQ(42, via(getKeepAliveToken(&x)).then([] { return 42; }).getVia(&x));
+}
