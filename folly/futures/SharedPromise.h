@@ -82,15 +82,14 @@ class SharedPromise {
 
   /// Set an interrupt handler to handle interrupts. See the documentation for
   /// Future::raise(). Your handler can do whatever it wants, but if you
-  /// bother to set one then you probably will want to fulfill the SharedPromise with
-  /// an exception (or special value) indicating how the interrupt was
+  /// bother to set one then you probably will want to fulfill the SharedPromise
+  /// with an exception (or special value) indicating how the interrupt was
   /// handled.
   void setInterruptHandler(std::function<void(exception_wrapper const&)>);
 
   /// Sugar to fulfill this SharedPromise<Unit>
   template <class B = T>
-  typename std::enable_if<std::is_same<Unit, B>::value, void>::type
-  setValue() {
+  typename std::enable_if<std::is_same<Unit, B>::value, void>::type setValue() {
     setTry(Try<T>(T()));
   }
 

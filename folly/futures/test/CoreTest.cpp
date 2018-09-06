@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/futures/Future.h>
 #include <folly/futures/detail/Core.h>
+#include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

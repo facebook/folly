@@ -34,7 +34,6 @@ class TestData : public RequestData {
 };
 
 TEST(Context, basic) {
-
   // Start a new context
   folly::RequestContextScopeGuard rctx;
 
@@ -45,11 +44,11 @@ TEST(Context, basic) {
 
   // Start a future
   Promise<Unit> p;
-  auto future = p.getFuture().then([&]{
+  auto future = p.getFuture().then([&] {
     // Check that the context followed the future
     EXPECT_TRUE(RequestContext::get() != nullptr);
-    auto a = dynamic_cast<TestData*>(
-      RequestContext::get()->getContextData("test"));
+    auto a =
+        dynamic_cast<TestData*>(RequestContext::get()->getContextData("test"));
     auto data = a->data_;
     EXPECT_EQ(10, data);
   });

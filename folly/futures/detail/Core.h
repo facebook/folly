@@ -178,8 +178,10 @@ static_assert(sizeof(SpinLock) == 1, "missized");
 ///   from more than one thread at a time there won't be any problems.
 template <typename T>
 class Core final {
-  static_assert(!std::is_void<T>::value,
-                "void futures are not supported. Use Unit instead.");
+  static_assert(
+      !std::is_void<T>::value,
+      "void futures are not supported. Use Unit instead.");
+
  public:
   /// State will be Start
   static Core* make() {
@@ -584,13 +586,13 @@ class Core final {
   std::atomic<unsigned char> callbackReferences_{0};
   std::atomic<bool> interruptHandlerSet_{false};
   SpinLock interruptLock_;
-  int8_t priority_ {-1};
+  int8_t priority_{-1};
   Executor::KeepAlive<> executor_;
   union {
     Context context_;
   };
-  std::unique_ptr<exception_wrapper> interrupt_ {};
-  std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};
+  std::unique_ptr<exception_wrapper> interrupt_{};
+  std::function<void(exception_wrapper const&)> interruptHandler_{nullptr};
 };
 
 } // namespace detail

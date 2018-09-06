@@ -24,8 +24,7 @@ TEST(NonCopyableLambda, basic) {
   Future<int> future = promise.getFuture();
 
   Future<Unit>().then(std::bind(
-      [](Promise<int>& p2) mutable { p2.setValue(123); },
-      std::move(promise)));
+      [](Promise<int>& p2) mutable { p2.setValue(123); }, std::move(promise)));
 
   // The previous statement can be simplified in C++14:
   //  Future<Unit>().then([promise = std::move(promise)]() mutable {

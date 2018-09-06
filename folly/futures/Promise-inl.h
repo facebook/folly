@@ -127,8 +127,7 @@ void Promise<T>::setTry(Try<T>&& t) {
 template <class T>
 template <class M>
 void Promise<T>::setValue(M&& v) {
-  static_assert(!std::is_same<T, void>::value,
-                "Use setValue() instead");
+  static_assert(!std::is_same<T, void>::value, "Use setValue() instead");
 
   setTry(Try<T>(std::forward<M>(v)));
 }

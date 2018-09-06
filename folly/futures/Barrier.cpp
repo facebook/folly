@@ -17,11 +17,11 @@
 #include <folly/futures/Barrier.h>
 #include <folly/lang/Exception.h>
 
-namespace folly { namespace futures {
+namespace folly {
+namespace futures {
 
 Barrier::Barrier(uint32_t n)
-  : size_(n),
-    controlBlock_(allocateControlBlock()) { }
+    : size_(n), controlBlock_(allocateControlBlock()) {}
 
 Barrier::~Barrier() {
   auto block = controlBlock_.load(std::memory_order_relaxed);
@@ -78,8 +78,8 @@ folly::Future<bool> Barrier::wait() {
 
   // Bump the value and record ourselves as reader.
   // This ensures that block stays allocated, as the reader count is > 0.
-  auto prev = block->valueAndReaderCount.fetch_add(kReader + 1,
-                                                   std::memory_order_acquire);
+  auto prev = block->valueAndReaderCount.fetch_add(
+      kReader + 1, std::memory_order_acquire);
 
   auto prevValue = static_cast<uint32_t>(prev & kValueMask);
   DCHECK_LT(prevValue, size_);
@@ -97,8 +97,8 @@ folly::Future<bool> Barrier::wait() {
   }
 
   // Free the control block if we're the last reader at max value.
-  prev = block->valueAndReaderCount.fetch_sub(kReader,
-                                              std::memory_order_acq_rel);
+  prev =
+      block->valueAndReaderCount.fetch_sub(kReader, std::memory_order_acq_rel);
   if (prev == (kReader | uint64_t(size_))) {
     freeControlBlock(block);
   }

@@ -30,9 +30,7 @@ TEST(Map, basic) {
   fs.push_back(p3.getFuture());
 
   int c = 0;
-  std::vector<Future<Unit>> fs2 = futures::map(fs, [&](int i){
-    c += i;
-  });
+  std::vector<Future<Unit>> fs2 = futures::map(fs, [&](int i) { c += i; });
 
   // Ensure we call the callbacks as the futures complete regardless of order
   p2.setValue(1);

@@ -99,14 +99,14 @@ ThreadWheelTimekeeper::ThreadWheelTimekeeper()
       wheelTimer_(
           HHWheelTimer::newTimer(&eventBase_, std::chrono::milliseconds(1))) {
   eventBase_.waitUntilRunning();
-  eventBase_.runInEventBaseThread([this]{
+  eventBase_.runInEventBaseThread([this] {
     // 15 characters max
     eventBase_.setName("FutureTimekeepr");
   });
 }
 
 ThreadWheelTimekeeper::~ThreadWheelTimekeeper() {
-  eventBase_.runInEventBaseThreadAndWait([this]{
+  eventBase_.runInEventBaseThreadAndWait([this] {
     wheelTimer_->cancelAll();
     eventBase_.terminateLoopSoon();
   });
@@ -130,9 +130,8 @@ Future<Unit> ThreadWheelTimekeeper::after(Duration dur) {
   // callback has either been executed, or will never be executed. So we are
   // fine here.
   //
-  if (!eventBase_.runInEventBaseThread([this, cob, dur]{
-        wheelTimer_->scheduleTimeout(cob.get(), dur);
-      })) {
+  if (!eventBase_.runInEventBaseThread(
+          [this, cob, dur] { wheelTimer_->scheduleTimeout(cob.get(), dur); })) {
     // Release promise to break the circular reference. Because if
     // scheduleTimeout fails, there is nothing to *promise*. Internally
     // Core would automatically set an exception result when Promise is

@@ -31,7 +31,7 @@ TEST(Wait, waitImmediate) {
   auto done = makeFuture(42).wait().value();
   EXPECT_EQ(42, done);
 
-  vector<int> v{1,2,3};
+  vector<int> v{1, 2, 3};
   auto done_v = makeFuture(v).wait().value();
   EXPECT_EQ(v.size(), done_v.size());
   EXPECT_EQ(v, done_v);
@@ -67,7 +67,8 @@ TEST(Wait, wait) {
         result.store(n.wait().value());
       },
       std::move(f));
-  while(!flag){}
+  while (!flag) {
+  }
   EXPECT_EQ(result.load(), 1);
   p.setValue(42);
   th.join();
@@ -127,179 +128,179 @@ TEST(Wait, waitReplacesSelf) {
 }
 
 TEST(Wait, waitWithDuration) {
- {
-  Promise<int> p;
-  Future<int> f = p.getFuture();
-  f.wait(milliseconds(1));
-  EXPECT_FALSE(f.isReady());
-  p.setValue(1);
-  EXPECT_TRUE(f.isReady());
- }
- {
-  Promise<int> p;
-  Future<int> f = p.getFuture();
-  p.setValue(1);
-  f.wait(milliseconds(1));
-  EXPECT_TRUE(f.isReady());
- }
- {
-  vector<Future<bool>> v_fb;
-  v_fb.push_back(makeFuture(true));
-  v_fb.push_back(makeFuture(false));
-  auto f = collectAll(v_fb);
-  f.wait(milliseconds(1));
-  EXPECT_TRUE(f.isReady());
-  EXPECT_EQ(2, f.value().size());
- }
- {
-  vector<Future<bool>> v_fb;
-  Promise<bool> p1;
-  Promise<bool> p2;
-  v_fb.push_back(p1.getFuture());
-  v_fb.push_back(p2.getFuture());
-  auto f = collectAll(v_fb);
-  f.wait(milliseconds(1));
-  EXPECT_FALSE(f.isReady());
-  p1.setValue(true);
-  EXPECT_FALSE(f.isReady());
-  p2.setValue(true);
-  EXPECT_TRUE(f.isReady());
- }
- {
-  auto f = makeFuture().wait(milliseconds(1));
-  EXPECT_TRUE(f.isReady());
- }
+  {
+    Promise<int> p;
+    Future<int> f = p.getFuture();
+    f.wait(milliseconds(1));
+    EXPECT_FALSE(f.isReady());
+    p.setValue(1);
+    EXPECT_TRUE(f.isReady());
+  }
+  {
+    Promise<int> p;
+    Future<int> f = p.getFuture();
+    p.setValue(1);
+    f.wait(milliseconds(1));
+    EXPECT_TRUE(f.isReady());
+  }
+  {
+    vector<Future<bool>> v_fb;
+    v_fb.push_back(makeFuture(true));
+    v_fb.push_back(makeFuture(false));
+    auto f = collectAll(v_fb);
+    f.wait(milliseconds(1));
+    EXPECT_TRUE(f.isReady());
+    EXPECT_EQ(2, f.value().size());
+  }
+  {
+    vector<Future<bool>> v_fb;
+    Promise<bool> p1;
+    Promise<bool> p2;
+    v_fb.push_back(p1.getFuture());
+    v_fb.push_back(p2.getFuture());
+    auto f = collectAll(v_fb);
+    f.wait(milliseconds(1));
+    EXPECT_FALSE(f.isReady());
+    p1.setValue(true);
+    EXPECT_FALSE(f.isReady());
+    p2.setValue(true);
+    EXPECT_TRUE(f.isReady());
+  }
+  {
+    auto f = makeFuture().wait(milliseconds(1));
+    EXPECT_TRUE(f.isReady());
+  }
 
- {
-   Promise<Unit> p;
-   auto start = std::chrono::steady_clock::now();
-   auto f = p.getFuture().wait(milliseconds(100));
-   auto elapsed = std::chrono::steady_clock::now() - start;
-   EXPECT_GE(elapsed, milliseconds(100));
-   EXPECT_FALSE(f.isReady());
-   p.setValue();
-   EXPECT_TRUE(f.isReady());
- }
+  {
+    Promise<Unit> p;
+    auto start = std::chrono::steady_clock::now();
+    auto f = p.getFuture().wait(milliseconds(100));
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    EXPECT_GE(elapsed, milliseconds(100));
+    EXPECT_FALSE(f.isReady());
+    p.setValue();
+    EXPECT_TRUE(f.isReady());
+  }
 
- {
-   // Try to trigger the race where the resultant Future is not yet complete
-   // even if we didn't hit the timeout, and make sure we deal with it properly
-   Promise<Unit> p;
-   folly::Baton<> b;
-   auto t = std::thread([&]{
-     b.post();
-     /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
-     p.setValue();
-   });
-   b.wait();
-   auto f = p.getFuture().wait(std::chrono::seconds(3600));
-   EXPECT_TRUE(f.isReady());
-   t.join();
- }
+  {
+    // Try to trigger the race where the resultant Future is not yet complete
+    // even if we didn't hit the timeout, and make sure we deal with it properly
+    Promise<Unit> p;
+    folly::Baton<> b;
+    auto t = std::thread([&] {
+      b.post();
+      /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
+      p.setValue();
+    });
+    b.wait();
+    auto f = p.getFuture().wait(std::chrono::seconds(3600));
+    EXPECT_TRUE(f.isReady());
+    t.join();
+  }
 
- {
-   // `Future::wait(Duration) &` when promise is fulfilled during the wait
-   Promise<int> p;
+  {
+    // `Future::wait(Duration) &` when promise is fulfilled during the wait
+    Promise<int> p;
 
-   auto f = p.getFuture();
-   EXPECT_FALSE(f.isReady());
+    auto f = p.getFuture();
+    EXPECT_FALSE(f.isReady());
 
-   folly::Baton<> b;
-   auto t = std::thread([&] {
-     b.post();
-     /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
-     p.setValue(42);
-   });
-   b.wait();
+    folly::Baton<> b;
+    auto t = std::thread([&] {
+      b.post();
+      /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
+      p.setValue(42);
+    });
+    b.wait();
 
-   f.wait(std::chrono::seconds(10));
-   EXPECT_TRUE(f.valid());
-   EXPECT_TRUE(f.isReady());
-   EXPECT_EQ(f.value(), 42);
+    f.wait(std::chrono::seconds(10));
+    EXPECT_TRUE(f.valid());
+    EXPECT_TRUE(f.isReady());
+    EXPECT_EQ(f.value(), 42);
 
-   t.join();
-   EXPECT_TRUE(f.isReady());
-   EXPECT_EQ(f.value(), 42);
- }
+    t.join();
+    EXPECT_TRUE(f.isReady());
+    EXPECT_EQ(f.value(), 42);
+  }
 
- {
-   // `Future::wait(Duration) &&` when promise is fulfilled during the wait
-   Promise<int> p;
+  {
+    // `Future::wait(Duration) &&` when promise is fulfilled during the wait
+    Promise<int> p;
 
-   auto f1 = p.getFuture();
-   EXPECT_FALSE(f1.isReady());
+    auto f1 = p.getFuture();
+    EXPECT_FALSE(f1.isReady());
 
-   folly::Baton<> b;
-   auto t = std::thread([&] {
-     b.post();
-     /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
-     p.setValue(42);
-   });
-   b.wait();
+    folly::Baton<> b;
+    auto t = std::thread([&] {
+      b.post();
+      /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
+      p.setValue(42);
+    });
+    b.wait();
 
-   auto f2 = std::move(f1).wait(std::chrono::seconds(10));
-   EXPECT_FALSE(f1.valid());
-   EXPECT_TRUE(f2.valid());
-   EXPECT_TRUE(f2.isReady());
-   EXPECT_EQ(f2.value(), 42);
+    auto f2 = std::move(f1).wait(std::chrono::seconds(10));
+    EXPECT_FALSE(f1.valid());
+    EXPECT_TRUE(f2.valid());
+    EXPECT_TRUE(f2.isReady());
+    EXPECT_EQ(f2.value(), 42);
 
-   t.join();
-   EXPECT_TRUE(f2.valid());
-   EXPECT_TRUE(f2.isReady());
-   EXPECT_EQ(f2.value(), 42);
- }
+    t.join();
+    EXPECT_TRUE(f2.valid());
+    EXPECT_TRUE(f2.isReady());
+    EXPECT_EQ(f2.value(), 42);
+  }
 
- {
-   // `SemiFuture::wait(Duration) &` when promise is fulfilled during the wait
-   Promise<int> p;
+  {
+    // `SemiFuture::wait(Duration) &` when promise is fulfilled during the wait
+    Promise<int> p;
 
-   auto f = p.getSemiFuture();
-   EXPECT_FALSE(f.isReady());
+    auto f = p.getSemiFuture();
+    EXPECT_FALSE(f.isReady());
 
-   folly::Baton<> b;
-   auto t = std::thread([&] {
-     b.post();
-     /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
-     p.setValue(42);
-   });
-   b.wait();
+    folly::Baton<> b;
+    auto t = std::thread([&] {
+      b.post();
+      /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
+      p.setValue(42);
+    });
+    b.wait();
 
-   f.wait(std::chrono::seconds(10));
-   EXPECT_TRUE(f.valid());
-   EXPECT_TRUE(f.isReady());
-   EXPECT_EQ(f.value(), 42);
+    f.wait(std::chrono::seconds(10));
+    EXPECT_TRUE(f.valid());
+    EXPECT_TRUE(f.isReady());
+    EXPECT_EQ(f.value(), 42);
 
-   t.join();
-   EXPECT_TRUE(f.isReady());
-   EXPECT_EQ(f.value(), 42);
- }
+    t.join();
+    EXPECT_TRUE(f.isReady());
+    EXPECT_EQ(f.value(), 42);
+  }
 
- {
-   // `SemiFuture::wait(Duration) &&` when promise is fulfilled during the wait
-   Promise<int> p;
+  {
+    // `SemiFuture::wait(Duration) &&` when promise is fulfilled during the wait
+    Promise<int> p;
 
-   auto f1 = p.getSemiFuture();
-   EXPECT_FALSE(f1.isReady());
+    auto f1 = p.getSemiFuture();
+    EXPECT_FALSE(f1.isReady());
 
-   folly::Baton<> b;
-   auto t = std::thread([&] {
-     b.post();
-     /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
-     p.setValue(42);
-   });
-   b.wait();
+    folly::Baton<> b;
+    auto t = std::thread([&] {
+      b.post();
+      /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
+      p.setValue(42);
+    });
+    b.wait();
 
-   auto f2 = std::move(f1).wait(std::chrono::seconds(10));
-   EXPECT_FALSE(f1.valid());
-   EXPECT_TRUE(f2.valid());
-   EXPECT_TRUE(f2.isReady());
-   EXPECT_EQ(f2.value(), 42);
+    auto f2 = std::move(f1).wait(std::chrono::seconds(10));
+    EXPECT_FALSE(f1.valid());
+    EXPECT_TRUE(f2.valid());
+    EXPECT_TRUE(f2.isReady());
+    EXPECT_EQ(f2.value(), 42);
 
-   t.join();
-   EXPECT_TRUE(f2.valid());
-   EXPECT_TRUE(f2.isReady());
-   EXPECT_EQ(f2.value(), 42);
- }
+    t.join();
+    EXPECT_TRUE(f2.valid());
+    EXPECT_TRUE(f2.isReady());
+    EXPECT_EQ(f2.value(), 42);
+  }
 }
 
 TEST(Wait, multipleWait) {

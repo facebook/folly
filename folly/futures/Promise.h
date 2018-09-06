@@ -56,7 +56,8 @@ class FOLLY_EXPORT BrokenPromise : public PromiseException {
 // forward declaration
 template <class T>
 class SemiFuture;
-template <class T> class Future;
+template <class T>
+class Future;
 
 namespace futures {
 namespace detail {
@@ -322,8 +323,7 @@ class Promise {
   /// - `isFulfilled() == true`
   /// - `valid() == true` (unchanged)
   template <class B = T>
-  typename std::enable_if<std::is_same<Unit, B>::value, void>::type
-  setValue() {
+  typename std::enable_if<std::is_same<Unit, B>::value, void>::type setValue() {
     setTry(Try<T>(T()));
   }
 

@@ -26,9 +26,9 @@ struct Widget {
   int v_, copied_, moved_;
   /* implicit */ Widget(int v) : v_(v), copied_(0), moved_(0) {}
   Widget(const Widget& other)
-    : v_(other.v_), copied_(other.copied_ + 1), moved_(other.moved_) {}
+      : v_(other.v_), copied_(other.copied_ + 1), moved_(other.moved_) {}
   Widget(Widget&& other) noexcept
-    : v_(other.v_), copied_(other.copied_), moved_(other.moved_ + 1) {}
+      : v_(other.v_), copied_(other.copied_), moved_(other.moved_ + 1) {}
   Widget& operator=(const Widget& /* other */) {
     throw std::logic_error("unexpected copy assignment");
   }
@@ -87,102 +87,92 @@ TEST(Then, makeFuture) {
 }
 
 TEST(Then, tryConstRValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](const Try<Widget>&& t) {
-      EXPECT_EQ(t.value().copied_, 0);
-      EXPECT_EQ(t.value().moved_, 2);
-      return t.value().v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](const Try<Widget>&& t) {
+    EXPECT_EQ(t.value().copied_, 0);
+    EXPECT_EQ(t.value().moved_, 2);
+    return t.value().v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, tryRValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](Try<Widget>&& t) {
-      EXPECT_EQ(t.value().copied_, 0);
-      EXPECT_EQ(t.value().moved_, 2);
-      return t.value().v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](Try<Widget>&& t) {
+    EXPECT_EQ(t.value().copied_, 0);
+    EXPECT_EQ(t.value().moved_, 2);
+    return t.value().v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, tryConstLValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](const Try<Widget>& t) {
-      EXPECT_EQ(t.value().copied_, 0);
-      EXPECT_EQ(t.value().moved_, 2);
-      return t.value().v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](const Try<Widget>& t) {
+    EXPECT_EQ(t.value().copied_, 0);
+    EXPECT_EQ(t.value().moved_, 2);
+    return t.value().v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, tryValue) {
-  auto future = makeFuture<Widget>(23).then(
-    [](Try<Widget> t) {
-      EXPECT_EQ(t.value().copied_, 0);
-      EXPECT_EQ(t.value().moved_, 3);
-      return t.value().v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](Try<Widget> t) {
+    EXPECT_EQ(t.value().copied_, 0);
+    EXPECT_EQ(t.value().moved_, 3);
+    return t.value().v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, tryConstValue) {
-  auto future = makeFuture<Widget>(23).then(
-    [](const Try<Widget> t) {
-      EXPECT_EQ(t.value().copied_, 0);
-      EXPECT_EQ(t.value().moved_, 3);
-      return t.value().v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](const Try<Widget> t) {
+    EXPECT_EQ(t.value().copied_, 0);
+    EXPECT_EQ(t.value().moved_, 3);
+    return t.value().v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, constRValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](const Widget&& w) {
-      EXPECT_EQ(w.copied_, 0);
-      EXPECT_EQ(w.moved_, 2);
-      return w.v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](const Widget&& w) {
+    EXPECT_EQ(w.copied_, 0);
+    EXPECT_EQ(w.moved_, 2);
+    return w.v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, rValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](Widget&& w) {
-      EXPECT_EQ(w.copied_, 0);
-      EXPECT_EQ(w.moved_, 2);
-      return w.v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](Widget&& w) {
+    EXPECT_EQ(w.copied_, 0);
+    EXPECT_EQ(w.moved_, 2);
+    return w.v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, constLValueReference) {
-  auto future = makeFuture<Widget>(23).then(
-    [](const Widget& w) {
-      EXPECT_EQ(w.copied_, 0);
-      EXPECT_EQ(w.moved_, 2);
-      return w.v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](const Widget& w) {
+    EXPECT_EQ(w.copied_, 0);
+    EXPECT_EQ(w.moved_, 2);
+    return w.v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, value) {
-  auto future = makeFuture<Widget>(23).then(
-    [](Widget w) {
-      EXPECT_EQ(w.copied_, 0);
-      EXPECT_EQ(w.moved_, 3);
-      return w.v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](Widget w) {
+    EXPECT_EQ(w.copied_, 0);
+    EXPECT_EQ(w.moved_, 3);
+    return w.v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
 TEST(Then, constValue) {
-  auto future = makeFuture<Widget>(23).then(
-    [](const Widget w) {
-      EXPECT_EQ(w.copied_, 0);
-      EXPECT_EQ(w.moved_, 3);
-      return w.v_;
-    });
+  auto future = makeFuture<Widget>(23).then([](const Widget w) {
+    EXPECT_EQ(w.copied_, 0);
+    EXPECT_EQ(w.moved_, 3);
+    return w.v_;
+  });
   EXPECT_EQ(future.value(), 23);
 }
 
@@ -211,6 +201,5 @@ TEST(Then, objectAliveDuringDeferredNoParamContinuation) {
 
 TEST(Then, voidThenShouldPropagateExceptions) {
   EXPECT_FALSE(makeFuture(42).then().hasException());
-  EXPECT_TRUE(makeFuture<int>(std::runtime_error("err"))
-             .then().hasException());
+  EXPECT_TRUE(makeFuture<int>(std::runtime_error("err")).then().hasException());
 }

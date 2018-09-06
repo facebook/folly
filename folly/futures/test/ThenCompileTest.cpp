@@ -7,6 +7,7 @@ using namespace folly;
 TEST(Basic, thenVariants) {
   SomeClass anObject;
 
+  // clang-format off
   {Future<B> f = someFuture<A>().then(&aFunction<Future<B>, Try<A>&&>);}
   {Future<B> f = someFuture<A>().then(&SomeClass::aStaticMethod<Future<B>, Try<A>&&>);}
   {Future<B> f = someFuture<A>().then(&SomeClass::aMethod<Future<B>, Try<A>&&>, &anObject);}
@@ -73,4 +74,5 @@ TEST(Basic, thenVariants) {
   {Future<B> f = someFuture<A>().then([&](A){return B();});}
   {Future<B> f = someFuture<A>().then(&SomeClass::aMethod<B, A&>, &anObject);}
   {Future<B> f = someFuture<A>().then([&](){return B();});}
+  // clang-format on
 }

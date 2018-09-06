@@ -31,15 +31,12 @@ static eggs_t eggs("eggs");
 TEST(Window, basic) {
   // int -> Future<int>
   auto fn = [](std::vector<int> input, size_t window_size, size_t expect) {
-    auto res = reduce(
-      window(
-        input,
-        [](int i) { return makeFuture(i); },
-        window_size),
-      0,
-      [](int sum, const Try<int>& b) {
-        return sum + *b;
-      }).get();
+    auto res =
+        reduce(
+            window(input, [](int i) { return makeFuture(i); }, window_size),
+            0,
+            [](int sum, const Try<int>& b) { return sum + *b; })
+            .get();
     EXPECT_EQ(expect, res);
   };
   {
@@ -59,27 +56,31 @@ TEST(Window, basic) {
   }
   {
     // int -> Future<Unit>
-    auto res = reduce(window(std::vector<int>({1, 2, 3}),
-                             [](int /* i */) { return makeFuture(); },
-                             2),
-                      0,
-                      [](int sum, const Try<Unit>& b) {
-                        EXPECT_TRUE(b.hasValue());
-                        return sum + 1;
-                      }).get();
+    auto res = reduce(
+                   window(
+                       std::vector<int>({1, 2, 3}),
+                       [](int /* i */) { return makeFuture(); },
+                       2),
+                   0,
+                   [](int sum, const Try<Unit>& b) {
+                     EXPECT_TRUE(b.hasValue());
+                     return sum + 1;
+                   })
+                   .get();
     EXPECT_EQ(3, res);
   }
   {
     // string -> return Future<int>
     auto res = reduce(
-      window(
-        std::vector<std::string>{"1", "2", "3"},
-        [](std::string s) { return makeFuture<int>(folly::to<int>(s)); },
-        2),
-      0,
-      [](int sum, const Try<int>& b) {
-        return sum + *b;
-      }).get();
+                   window(
+                       std::vector<std::string>{"1", "2", "3"},
+                       [](std::string s) {
+                         return makeFuture<int>(folly::to<int>(s));
+                       },
+                       2),
+                   0,
+                   [](int sum, const Try<int>& b) { return sum + *b; })
+                   .get();
     EXPECT_EQ(6, res);
   }
   {
@@ -98,16 +99,15 @@ TEST(Window, basic) {
   }
   {
     SCOPED_TRACE("repeat same fn");
-    auto res = reduce(
-      window(
-        5UL,
-        [](size_t iteration) {
-          return folly::makeFuture(iteration); },
-        2),
-        0UL,
-        [](size_t sum, const Try<size_t>& b) {
-          return sum + b.value();
-        }).get();
+    auto res =
+        reduce(
+            window(
+                5UL,
+                [](size_t iteration) { return folly::makeFuture(iteration); },
+                2),
+            0UL,
+            [](size_t sum, const Try<size_t>& b) { return sum + b.value(); })
+            .get();
     EXPECT_EQ(0 + 1 + 2 + 3 + 4, res);
   }
 }
@@ -180,9 +180,7 @@ TEST(Window, parallel) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collect(window(input, [&](int i) {
-    return ps[i].getFuture();
-  }, 3));
+  auto f = collect(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
@@ -211,16 +209,14 @@ TEST(Window, parallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collect(window(input, [&](int i) {
-    return ps[i].getFuture();
-  }, 3));
+  auto f = collect(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
-      if (i == (ps.size()/2)) {
+      if (i == (ps.size() / 2)) {
         ps[i].setException(eggs);
       } else {
         ps[i].setValue(i);
@@ -244,16 +240,15 @@ TEST(Window, allParallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collectAll(window(input, [&](int i) {
-    return ps[i].getFuture();
-  }, 3));
+  auto f =
+      collectAll(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
-      if (i == (ps.size()/2)) {
+      if (i == (ps.size() / 2)) {
         ps[i].setException(eggs);
       } else {
         ps[i].setValue(i);
@@ -269,7 +264,7 @@ TEST(Window, allParallelWithError) {
 
   EXPECT_TRUE(f.isReady());
   for (size_t i = 0; i < ps.size(); i++) {
-    if (i == (ps.size()/2)) {
+    if (i == (ps.size() / 2)) {
       EXPECT_THROW(f.value()[i].value(), eggs_t);
     } else {
       EXPECT_TRUE(f.value()[i].hasValue());

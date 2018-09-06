@@ -33,9 +33,7 @@ std::chrono::steady_clock::time_point now() {
 }
 
 struct TimekeeperFixture : public testing::Test {
-  TimekeeperFixture() :
-    timeLord_(folly::detail::getTimekeeperSingleton())
-  {}
+  TimekeeperFixture() : timeLord_(folly::detail::getTimekeeperSingleton()) {}
 
   std::shared_ptr<Timekeeper> timeLord_;
 };
@@ -52,14 +50,14 @@ TEST_F(TimekeeperFixture, after) {
 
 TEST(Timekeeper, futureGet) {
   Promise<int> p;
-  auto t = std::thread([&]{ p.setValue(42); });
+  auto t = std::thread([&] { p.setValue(42); });
   EXPECT_EQ(42, p.getFuture().get());
   t.join();
 }
 
 TEST(Timekeeper, futureGetBeforeTimeout) {
   Promise<int> p;
-  auto t = std::thread([&]{ p.setValue(42); });
+  auto t = std::thread([&] { p.setValue(42); });
   // Technically this is a race and if the test server is REALLY overloaded
   // and it takes more than a second to do that thread it could be flaky. But
   // I want a low timeout (in human terms) so if this regresses and someone
@@ -283,8 +281,13 @@ TEST(Timekeeper, onTimeout) {
 TEST(Timekeeper, onTimeoutComplete) {
   bool flag = false;
   makeFuture(42)
-    .onTimeout(zero_ms, [&]{ flag = true; return -1; })
-    .get();
+      .onTimeout(
+          zero_ms,
+          [&] {
+            flag = true;
+            return -1;
+          })
+      .get();
   EXPECT_FALSE(flag);
 }
 
@@ -317,9 +320,7 @@ TEST(Timekeeper, interruptDoesntCrash) {
 
 TEST(Timekeeper, chainedInterruptTest) {
   bool test = false;
-  auto f = futures::sleep(milliseconds(100)).then([&](){
-    test = true;
-  });
+  auto f = futures::sleep(milliseconds(100)).then([&]() { test = true; });
   f.cancel();
   f.wait();
   EXPECT_FALSE(test);
@@ -367,7 +368,7 @@ TEST(Timekeeper, executor) {
 
   Promise<Unit> p;
   ExecutorTester tester;
-  auto f = p.getFuture().via(&tester).within(one_ms).then([&](){});
+  auto f = p.getFuture().via(&tester).within(one_ms).then([&]() {});
   p.setValue();
   f.wait();
   EXPECT_EQ(2, tester.count);
@@ -395,8 +396,8 @@ TEST_F(TimekeeperFixture, atBeforeNow) {
 TEST_F(TimekeeperFixture, howToCastDuration) {
   // I'm not sure whether this rounds up or down but it's irrelevant for the
   // purpose of this example.
-  auto f = timeLord_->after(std::chrono::duration_cast<Duration>(
-      std::chrono::nanoseconds(1)));
+  auto f = timeLord_->after(
+      std::chrono::duration_cast<Duration>(std::chrono::nanoseconds(1)));
 }
 
 TEST_F(TimekeeperFixture, destruction) {

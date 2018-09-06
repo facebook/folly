@@ -120,7 +120,7 @@ TEST(SharedPromise, moveMove) {
 
 TEST(SharedPromise, setWith) {
   SharedPromise<int> p;
-  p.setWith([]{ return 1; });
+  p.setWith([] { return 1; });
   EXPECT_EQ(1, p.getFuture().value());
 }
 

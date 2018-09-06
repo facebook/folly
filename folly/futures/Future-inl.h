@@ -1199,7 +1199,7 @@ Future<T>::onError(F&& func) && {
           if (tf2.hasException()) {
             state.setException(std::move(tf2.exception()));
           } else {
-            tf2->setCallback_([p = state.stealPromise()](Try<T> && t3) mutable {
+            tf2->setCallback_([p = state.stealPromise()](Try<T>&& t3) mutable {
               p.setTry(std::move(t3));
             });
           }
@@ -1255,7 +1255,7 @@ Future<T>::onError(F&& func) && {
           if (tf2.hasException()) {
             state.setException(std::move(tf2.exception()));
           } else {
-            tf2->setCallback_([p = state.stealPromise()](Try<T> && t3) mutable {
+            tf2->setCallback_([p = state.stealPromise()](Try<T>&& t3) mutable {
               p.setTry(std::move(t3));
             });
           }
@@ -1365,9 +1365,9 @@ Future<T> makeFuture(exception_wrapper ew) {
 }
 
 template <class T, class E>
-typename std::enable_if<std::is_base_of<std::exception, E>::value,
-                        Future<T>>::type
-makeFuture(E const& e) {
+typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::
+    type
+    makeFuture(E const& e) {
   return makeFuture(Try<T>(make_exception_wrapper<E>(e)));
 }
 
@@ -1620,11 +1620,9 @@ Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
 
 // TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
-Future<
-  std::pair<size_t,
-            Try<
-              typename
-              std::iterator_traits<InputIterator>::value_type::value_type>>>
+Future<std::pair<
+    size_t,
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last) {
   using F = typename std::iterator_traits<InputIterator>::value_type;
   using T = typename F::value_type;
@@ -1783,8 +1781,7 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
 // window (collection)
 
 template <class Collection, class F, class ItT, class Result>
-std::vector<Future<Result>>
-window(Collection input, F func, size_t n) {
+std::vector<Future<Result>> window(Collection input, F func, size_t n) {
   // Use global QueuedImmediateExecutor singleton to avoid stack overflow.
   auto executor = &QueuedImmediateExecutor::instance();
   return window(executor, std::move(input), std::move(func), n);

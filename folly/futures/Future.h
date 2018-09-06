@@ -1158,10 +1158,11 @@ class Future : private futures::detail::FutureBase<T> {
         std::forward<F>(func), typename R::Arg());
   }
 
+  // clang-format off
   template <typename F, typename R = futures::detail::callableResult<T, F>>
   [[deprecated("must be rvalue-qualified, e.g., std::move(future).then(...)")]]
-      typename R::Return
-      then(F&& func) & = delete;
+  typename R::Return then(F&& func) & = delete;
+  // clang-format on
 
   /// Variant where func is an member function
   ///
@@ -1188,11 +1189,13 @@ class Future : private futures::detail::FutureBase<T> {
       R (Caller::*func)(Args...),
       Caller* instance) &&;
 
+  // clang-format off
   template <typename R, typename Caller, typename... Args>
   [[deprecated(
       "must be rvalue-qualified, e.g., std::move(future).then(...)")]]
   Future<typename isFuture<R>::Inner>
   then(R (Caller::*func)(Args...), Caller* instance) & = delete;
+  // clang-format on
 
   /// Execute the callback via the given Executor. The executor doesn't stick.
   ///
@@ -1369,8 +1372,11 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   Future<Unit> then() &&;
 
-  [[deprecated("must be rvalue-qualified, e.g., std::move(future).then()")]]
+  // clang-format off
+  [[deprecated(
+      "must be rvalue-qualified, e.g., std::move(future).then()")]]
   Future<Unit> then() & = delete;
+  // clang-format on
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
@@ -1482,7 +1488,6 @@ class Future : private futures::detail::FutureBase<T> {
   Future<T> onError(F&& func) & {
     return std::move(*this).onError(std::forward<F>(func));
   }
-  // clang-format on
 
   /// func is like std::function<void()> and is executed unconditionally, and
   /// the value/exception is passed through to the resulting Future.
@@ -1500,6 +1505,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   template <class F>
   Future<T> ensure(F&& func) &&;
+  // clang-format on
 
   /// Like onError, but for timeouts. example:
   ///

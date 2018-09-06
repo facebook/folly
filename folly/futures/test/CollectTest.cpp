@@ -66,7 +66,6 @@ TEST(Collect, collectAll) {
 
     auto allf = collectAll(futures);
 
-
     promises[0].setValue(42);
     promises[1].setException(eggs);
 
@@ -239,7 +238,6 @@ TEST(Collect, collect) {
 
     collect(futures);
   }
-
 }
 
 struct NotDefaultConstructible {
@@ -336,10 +334,8 @@ TEST(Collect, collectAny) {
       futures.push_back(p.getFuture());
     }
 
-    auto anyf = collectAny(futures)
-      .then([](std::pair<size_t, Try<int>> p) {
-        EXPECT_EQ(42, p.second.value());
-      });
+    auto anyf = collectAny(futures).then(
+        [](std::pair<size_t, Try<int>> p) { EXPECT_EQ(42, p.second.value()); });
 
     promises[3].setValue(42);
     EXPECT_TRUE(anyf.isReady());
@@ -430,10 +426,9 @@ TEST(Collect, alreadyCompleted) {
       fs.push_back(makeFuture(i));
     }
 
-    collectAny(fs)
-      .then([&](std::pair<size_t, Try<int>> p) {
-        EXPECT_EQ(p.first, p.second.value());
-      });
+    collectAny(fs).then([&](std::pair<size_t, Try<int>> p) {
+      EXPECT_EQ(p.first, p.second.value());
+    });
   }
 }
 
@@ -479,7 +474,7 @@ TEST(Collect, parallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
-      if (i == (ps.size()/2)) {
+      if (i == (ps.size() / 2)) {
         ps[i].setException(eggs);
       } else {
         ps[i].setValue(i);
@@ -540,7 +535,7 @@ TEST(Collect, allParallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     ts.emplace_back([&ps, &barrier, i]() {
       barrier.wait();
-      if (i == (ps.size()/2)) {
+      if (i == (ps.size() / 2)) {
         ps[i].setException(eggs);
       } else {
         ps[i].setValue(i);
@@ -556,7 +551,7 @@ TEST(Collect, allParallelWithError) {
 
   EXPECT_TRUE(f.isReady());
   for (size_t i = 0; i < ps.size(); i++) {
-    if (i == (ps.size()/2)) {
+    if (i == (ps.size() / 2)) {
       EXPECT_THROW(f.value()[i].value(), eggs_t);
     } else {
       EXPECT_TRUE(f.value()[i].hasValue());
@@ -728,12 +723,11 @@ TEST(Collect, collectVariadic) {
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  collect(std::move(fb), std::move(fi))
-    .then([&](std::tuple<bool, int> tup) {
-      flag = true;
-      EXPECT_EQ(std::get<0>(tup), true);
-      EXPECT_EQ(std::get<1>(tup), 42);
-    });
+  collect(std::move(fb), std::move(fi)).then([&](std::tuple<bool, int> tup) {
+    flag = true;
+    EXPECT_EQ(std::get<0>(tup), true);
+    EXPECT_EQ(std::get<1>(tup), 42);
+  });
   pb.setValue(true);
   EXPECT_FALSE(flag);
   pi.setValue(42);

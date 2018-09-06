@@ -76,7 +76,7 @@ class CallbackLifetimeTest : public testing::Test {
 
 TEST_F(CallbackLifetimeTest, thenReturnsValue) {
   auto c = mkC();
-  via(&executor).then([_ = mkCGuard(c)]{}).wait();
+  via(&executor).then([_ = mkCGuard(c)] {}).wait();
   EXPECT_EQ(1, *c);
 }
 
@@ -102,7 +102,7 @@ TEST_F(CallbackLifetimeTest, onErrorTakesExnReturnsValueMatch) {
   auto c = mkC();
   via(&executor)
       .then(raise)
-      .onError([_ = mkCGuard(c)](std::exception&){})
+      .onError([_ = mkCGuard(c)](std::exception&) {})
       .wait();
   EXPECT_EQ(1, *c);
 }
@@ -120,7 +120,7 @@ TEST_F(CallbackLifetimeTest, onErrorTakesExnReturnsValueWrong) {
   auto c = mkC();
   via(&executor)
       .then(raise)
-      .onError([_ = mkCGuard(c)](std::logic_error&){})
+      .onError([_ = mkCGuard(c)](std::logic_error&) {})
       .wait();
   EXPECT_EQ(1, *c);
 }
@@ -174,7 +174,7 @@ TEST_F(CallbackLifetimeTest, onErrorTakesWrapReturnsValue) {
   auto c = mkC();
   via(&executor)
       .then(raise)
-      .onError([_ = mkCGuard(c)](exception_wrapper &&){})
+      .onError([_ = mkCGuard(c)](exception_wrapper&&) {})
       .wait();
   EXPECT_EQ(1, *c);
 }
@@ -183,7 +183,7 @@ TEST_F(CallbackLifetimeTest, onErrorTakesWrapReturnsValueThrows) {
   auto c = mkC();
   via(&executor)
       .then(raise)
-      .onError([_ = mkCGuard(c)](exception_wrapper &&) { raise(); })
+      .onError([_ = mkCGuard(c)](exception_wrapper&&) { raise(); })
       .wait();
   EXPECT_EQ(1, *c);
 }
@@ -192,7 +192,7 @@ TEST_F(CallbackLifetimeTest, onErrorTakesWrapReturnsFuture) {
   auto c = mkC();
   via(&executor)
       .then(raise)
-      .onError([_ = mkCGuard(c)](exception_wrapper &&) { return makeFuture(); })
+      .onError([_ = mkCGuard(c)](exception_wrapper&&) { return makeFuture(); })
       .wait();
   EXPECT_EQ(1, *c);
 }
@@ -201,7 +201,7 @@ TEST_F(CallbackLifetimeTest, onErrorTakesWrapReturnsFutureThrows) {
   auto c = mkC();
   via(&executor)
       .then(raise)
-      .onError([_ = mkCGuard(c)](exception_wrapper &&) { return raiseFut(); })
+      .onError([_ = mkCGuard(c)](exception_wrapper&&) { return raiseFut(); })
       .wait();
   EXPECT_EQ(1, *c);
 }

@@ -32,10 +32,8 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(0);
 
-    Future<double> f1 = reduce(fs, 1.2,
-      [](double a, Try<int>&& b){
-        return a + *b + 0.1;
-      });
+    Future<double> f1 =
+        reduce(fs, 1.2, [](double a, Try<int>&& b) { return a + *b + 0.1; });
     EXPECT_EQ(1.2, std::move(f1).get());
   }
 
@@ -43,10 +41,8 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(1);
 
-    Future<double> f1 = reduce(fs, 0.0,
-      [](double a, Try<int>&& b){
-        return a + *b + 0.1;
-      });
+    Future<double> f1 =
+        reduce(fs, 0.0, [](double a, Try<int>&& b) { return a + *b + 0.1; });
     EXPECT_EQ(1.1, std::move(f1).get());
   }
 
@@ -54,10 +50,8 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f1 = reduce(fs, 0.0,
-      [](double a, Try<int>&& b){
-        return a + *b + 0.1;
-      });
+    Future<double> f1 =
+        reduce(fs, 0.0, [](double a, Try<int>&& b) { return a + *b + 0.1; });
     EXPECT_EQ(6.3, std::move(f1).get());
   }
 
@@ -65,10 +59,8 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f1 = reduce(fs, 0.0,
-      [](double a, int&& b){
-        return a + b + 0.1;
-      });
+    Future<double> f1 =
+        reduce(fs, 0.0, [](double a, int&& b) { return a + b + 0.1; });
     EXPECT_EQ(6.3, std::move(f1).get());
   }
 
@@ -76,10 +68,9 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f2 = reduce(fs, 0.0,
-      [](double a, Try<int>&& b){
-        return makeFuture<double>(a + *b + 0.1);
-      });
+    Future<double> f2 = reduce(fs, 0.0, [](double a, Try<int>&& b) {
+      return makeFuture<double>(a + *b + 0.1);
+    });
     EXPECT_EQ(6.3, std::move(f2).get());
   }
 
@@ -87,10 +78,9 @@ TEST(Reduce, basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f2 = reduce(fs, 0.0,
-      [](double a, int&& b){
-        return makeFuture<double>(a + b + 0.1);
-      });
+    Future<double> f2 = reduce(fs, 0.0, [](double a, int&& b) {
+      return makeFuture<double>(a + b + 0.1);
+    });
     EXPECT_EQ(6.3, std::move(f2).get());
   }
 }
@@ -105,15 +95,14 @@ TEST(Reduce, chain) {
   };
 
   {
-    auto f = collectAll(makeFutures(3)).reduce(0, [](int a, Try<int>&& b){
+    auto f = collectAll(makeFutures(3)).reduce(0, [](int a, Try<int>&& b) {
       return a + *b;
     });
     EXPECT_EQ(6, std::move(f).get());
   }
   {
-    auto f = collect(makeFutures(3)).reduce(0, [](int a, int&& b){
-      return a + b;
-    });
+    auto f =
+        collect(makeFutures(3)).reduce(0, [](int a, int&& b) { return a + b; });
     EXPECT_EQ(6, std::move(f).get());
   }
 }
@@ -126,10 +115,9 @@ TEST(Reduce, unorderedReduce) {
     fs.push_back(makeFuture(3));
 
     Future<double> f =
-        unorderedReduce(fs.begin(),
-                        fs.end(),
-                        0.0,
-                        [](double /* a */, int&& b) { return double(b); });
+        unorderedReduce(fs.begin(), fs.end(), 0.0, [](double /* a */, int&& b) {
+          return double(b);
+        });
     EXPECT_EQ(3.0, std::move(f).get());
   }
   {
@@ -143,10 +131,9 @@ TEST(Reduce, unorderedReduce) {
     fs.push_back(p3.getFuture());
 
     Future<double> f =
-        unorderedReduce(fs.begin(),
-                        fs.end(),
-                        0.0,
-                        [](double /* a */, int&& b) { return double(b); });
+        unorderedReduce(fs.begin(), fs.end(), 0.0, [](double /* a */, int&& b) {
+          return double(b);
+        });
     p3.setValue(3);
     p2.setValue(2);
     p1.setValue(1);
@@ -165,10 +152,9 @@ TEST(Reduce, unorderedReduceException) {
   fs.push_back(p3.getFuture());
 
   Future<double> f =
-      unorderedReduce(fs.begin(),
-                      fs.end(),
-                      0.0,
-                      [](double /* a */, int&& b) { return b + 0.0; });
+      unorderedReduce(fs.begin(), fs.end(), 0.0, [](double /* a */, int&& b) {
+        return b + 0.0;
+      });
   p3.setValue(3);
   p2.setException(exception_wrapper(std::runtime_error("blah")));
   p1.setValue(1);

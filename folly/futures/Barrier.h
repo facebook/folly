@@ -22,7 +22,8 @@
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 
-namespace folly { namespace futures {
+namespace folly {
+namespace futures {
 
 // A folly::Future-istic Barrier synchronization primitive
 //

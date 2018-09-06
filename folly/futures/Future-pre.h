@@ -19,7 +19,8 @@
 
 namespace folly {
 
-template <class> class Promise;
+template <class>
+class Promise;
 
 template <class T>
 class SemiFuture;
@@ -71,7 +72,8 @@ struct isTry<Try<T>> : std::true_type {};
 namespace futures {
 namespace detail {
 
-template <class> class Core;
+template <class>
+class Core;
 
 template <typename...>
 struct ArgType;
@@ -123,10 +125,10 @@ struct valueCallableResult {
 };
 
 template <typename L>
-struct Extract : Extract<decltype(&L::operator())> { };
+struct Extract : Extract<decltype(&L::operator())> {};
 
 template <typename Class, typename R, typename... Args>
-struct Extract<R(Class::*)(Args...) const> {
+struct Extract<R (Class::*)(Args...) const> {
   typedef isFutureOrSemiFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
@@ -134,7 +136,7 @@ struct Extract<R(Class::*)(Args...) const> {
 };
 
 template <typename Class, typename R, typename... Args>
-struct Extract<R(Class::*)(Args...)> {
+struct Extract<R (Class::*)(Args...)> {
   typedef isFutureOrSemiFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
