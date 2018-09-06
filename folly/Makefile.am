@@ -541,7 +541,6 @@ libfollybase_la_SOURCES = \
 	detail/Demangle.cpp \
 	detail/RangeCommon.cpp \
 	Format.cpp \
-	FormatArg.cpp \
 	memory/MallctlHelper.cpp \
 	String.cpp \
 	Unicode.cpp
