@@ -246,7 +246,7 @@ class ElfFile {
       snprintf(
           msg,
           sizeof(msg),
-          "Offset (%lu + %lu) is not contained within our mmapped"
+          "Offset (%zu + %zu) is not contained within our mmapped"
           " file (%s) of length %zu",
           offset,
           sizeof(T),
