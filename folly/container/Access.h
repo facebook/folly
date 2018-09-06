@@ -30,11 +30,11 @@
 
 namespace folly {
 
-/* using override */ using std::size;
-/* using override */ using std::empty;
 /* using override */ using std::data;
+/* using override */ using std::empty;
+/* using override */ using std::size;
 
-}
+} // namespace folly
 
 #else
 
@@ -84,6 +84,6 @@ constexpr E const* data(std::initializer_list<E> il) noexcept {
   return il.begin();
 }
 
-}
+} // namespace folly
 
 #endif

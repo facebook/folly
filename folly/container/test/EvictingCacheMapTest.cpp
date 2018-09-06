@@ -77,7 +77,6 @@ TEST(EvictingCacheMap, SanityTest) {
   EXPECT_FALSE(map.exists(1));
 }
 
-
 TEST(EvictingCacheMap, PruneTest) {
   EvictingCacheMap<int, int> map(0);
   EXPECT_EQ(0, map.size());
@@ -309,7 +308,7 @@ TEST(EvictingCacheMap, SetClearSize) {
 
 TEST(EvictingCacheMap, DestructorInvocationTest) {
   struct SumInt {
-    SumInt(int val_, int* ref_) : val(val_), ref(ref_) { }
+    SumInt(int val_, int* ref_) : val(val_), ref(ref_) {}
     ~SumInt() {
       *ref += val;
     }
@@ -535,7 +534,7 @@ TEST(EvictingCacheMap, FindTest) {
       EXPECT_EQ(i, it->first);
       EXPECT_EQ(i, it->second);
     } else {
-      EXPECT_TRUE( map.find(i) == map.end());
+      EXPECT_TRUE(map.find(i) == map.end());
     }
   }
   for (int i = nItems * 2 - 1; i >= 0; i--) {

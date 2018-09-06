@@ -280,9 +280,11 @@ BENCHMARK(ForEachKVNoMacroAssign, iters) {
   int sumKeys = 0;
   std::string sumValues;
 
-  BENCHMARK_SUSPEND { setupBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupBenchmark(iters);
+  }
 
-  FOR_EACH(iter, bmMap) {
+  FOR_EACH (iter, bmMap) {
     const int k = iter->first;
     const std::string v = iter->second;
     sumKeys += k;
@@ -294,9 +296,11 @@ BENCHMARK(ForEachKVNoMacroNoAssign, iters) {
   int sumKeys = 0;
   std::string sumValues;
 
-  BENCHMARK_SUSPEND { setupBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupBenchmark(iters);
+  }
 
-  FOR_EACH(iter, bmMap) {
+  FOR_EACH (iter, bmMap) {
     sumKeys += iter->first;
     sumValues += iter->second;
   }
@@ -306,7 +310,9 @@ BENCHMARK(ForEachKVMacro, iters) {
   int sumKeys = 0;
   std::string sumValues;
 
-  BENCHMARK_SUSPEND { setupBenchmark(iters); }
+  BENCHMARK_SUSPEND {
+    setupBenchmark(iters);
+  }
 
   FOR_EACH_KV (k, v, bmMap) {
     sumKeys += k;

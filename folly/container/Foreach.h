@@ -140,12 +140,11 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
  *
  * If you need access to the iterators please write an explicit iterator loop
  */
-#define FOR_EACH(i, c)                                  \
-  if (bool _FE_ANON(s1_) = false) {} else               \
-    for (auto && _FE_ANON(s2_) = (c);                   \
-         !_FE_ANON(s1_); _FE_ANON(s1_) = true)          \
-      for (auto i = _FE_ANON(s2_).begin();              \
-           i != _FE_ANON(s2_).end(); ++i)
+#define FOR_EACH(i, c)                                                     \
+  if (bool _FE_ANON(s1_) = false) {                                        \
+  } else                                                                   \
+    for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = true) \
+      for (auto i = _FE_ANON(s2_).begin(); i != _FE_ANON(s2_).end(); ++i)
 
 /*
  * If you just want the element values, please use this (ranges-v3) construct:
@@ -154,12 +153,11 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
  *
  * If you need access to the iterators please write an explicit iterator loop
  */
-#define FOR_EACH_R(i, c)                                \
-  if (bool _FE_ANON(s1_) = false) {} else               \
-    for (auto && _FE_ANON(s2_) = (c);                   \
-         !_FE_ANON(s1_); _FE_ANON(s1_) = true)          \
-      for (auto i = _FE_ANON(s2_).rbegin();             \
-           i != _FE_ANON(s2_).rend(); ++i)
+#define FOR_EACH_R(i, c)                                                   \
+  if (bool _FE_ANON(s1_) = false) {                                        \
+  } else                                                                   \
+    for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = true) \
+      for (auto i = _FE_ANON(s2_).rbegin(); i != _FE_ANON(s2_).rend(); ++i)
 
 /*
  * If you just want the element values, please use this construct:
@@ -169,14 +167,15 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
  * If you need access to the iterators please write an explicit iterator loop
  * and use a counter variable
  */
-#define FOR_EACH_ENUMERATE(count, i, c)                                \
-  if (bool _FE_ANON(s1_) = false) {} else                            \
-    for (auto && FOR_EACH_state2 = (c);                                \
-         !_FE_ANON(s1_); _FE_ANON(s1_) = true)                     \
-      if (size_t _FE_ANON(n1_) = 0) {} else                            \
-        if (const size_t& count = _FE_ANON(n1_)) {} else               \
-          for (auto i = FOR_EACH_state2.begin();                       \
-               i != FOR_EACH_state2.end(); ++_FE_ANON(n1_), ++i)
+#define FOR_EACH_ENUMERATE(count, i, c)                                      \
+  if (bool _FE_ANON(s1_) = false) {                                          \
+  } else                                                                     \
+    for (auto&& FOR_EACH_state2 = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = true) \
+      if (size_t _FE_ANON(n1_) = 0) {                                        \
+      } else if (const size_t& count = _FE_ANON(n1_)) {                      \
+      } else                                                                 \
+        for (auto i = FOR_EACH_state2.begin(); i != FOR_EACH_state2.end();   \
+             ++_FE_ANON(n1_), ++i)
 /**
  * If you just want the keys, please use this (ranges-v3) construct:
  *
@@ -195,28 +194,30 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
  *    }
  *
  */
-#define FOR_EACH_KV(k, v, c)                                  \
-  if (unsigned int _FE_ANON(s1_) = 0) {} else                 \
-    for (auto && _FE_ANON(s2_) = (c);                         \
-         !_FE_ANON(s1_); _FE_ANON(s1_) = 1)                   \
-      for (auto _FE_ANON(s3_) = _FE_ANON(s2_).begin();        \
-           _FE_ANON(s3_) != _FE_ANON(s2_).end();              \
-           _FE_ANON(s1_) == 2                                 \
-             ? ((_FE_ANON(s1_) = 0), ++_FE_ANON(s3_))         \
-             : (_FE_ANON(s3_) = _FE_ANON(s2_).end()))         \
-        for (auto &k = _FE_ANON(s3_)->first;                  \
-             !_FE_ANON(s1_); ++_FE_ANON(s1_))                 \
-          for (auto &v = _FE_ANON(s3_)->second;               \
-               !_FE_ANON(s1_); ++_FE_ANON(s1_))
+#define FOR_EACH_KV(k, v, c)                                                  \
+  if (unsigned int _FE_ANON(s1_) = 0) {                                       \
+  } else                                                                      \
+    for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = 1)       \
+      for (auto _FE_ANON(s3_) = _FE_ANON(s2_).begin();                        \
+           _FE_ANON(s3_) != _FE_ANON(s2_).end();                              \
+           _FE_ANON(s1_) == 2 ? ((_FE_ANON(s1_) = 0), ++_FE_ANON(s3_))        \
+                              : (_FE_ANON(s3_) = _FE_ANON(s2_).end()))        \
+        for (auto& k = _FE_ANON(s3_)->first; !_FE_ANON(s1_); ++_FE_ANON(s1_)) \
+          for (auto& v = _FE_ANON(s3_)->second; !_FE_ANON(s1_); ++_FE_ANON(s1_))
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 // Boost 1.48 lacks has_less, we emulate a subset of it here.
 template <typename T, typename U>
 class HasLess {
-  struct BiggerThanChar { char unused[2]; };
-  template <typename C, typename D> static char test(decltype(C() < D())*);
-  template <typename, typename> static BiggerThanChar test(...);
+  struct BiggerThanChar {
+    char unused[2];
+  };
+  template <typename C, typename D>
+  static char test(decltype(C() < D())*);
+  template <typename, typename>
+  static BiggerThanChar test(...);
 
  public:
   enum { value = sizeof(test<T, U>(nullptr)) == 1 };
@@ -260,40 +261,39 @@ notThereYet(T& iter, const U& end) {
 
 template <class T, class U>
 typename std::enable_if<
-  (std::is_arithmetic<T>::value && std::is_arithmetic<U>::value) ||
-  (std::is_pointer<T>::value && std::is_pointer<U>::value),
-  bool>::type
+    (std::is_arithmetic<T>::value && std::is_arithmetic<U>::value) ||
+        (std::is_pointer<T>::value && std::is_pointer<U>::value),
+    bool>::type
 notThereYet(T& iter, const U& end) {
   return iter < end;
 }
 
 template <class T, class U>
 typename std::enable_if<
-  !(
-    (std::is_arithmetic<T>::value && std::is_arithmetic<U>::value) ||
-    (std::is_pointer<T>::value && std::is_pointer<U>::value)
-  ),
-  bool>::type
+    !((std::is_arithmetic<T>::value && std::is_arithmetic<U>::value) ||
+      (std::is_pointer<T>::value && std::is_pointer<U>::value)),
+    bool>::type
 notThereYet(T& iter, const U& end) {
   return iter != end;
 }
 
 #endif
 
-
 /**
  * downTo is similar to notThereYet, but in reverse - it helps the
  * FOR_EACH_RANGE_R macro.
  */
 template <class T, class U>
-typename std::enable_if<HasLess<U, T>::value, bool>::type
-downTo(T& iter, const U& begin) {
+typename std::enable_if<HasLess<U, T>::value, bool>::type downTo(
+    T& iter,
+    const U& begin) {
   return begin < iter--;
 }
 
 template <class T, class U>
-typename std::enable_if<!HasLess<U, T>::value, bool>::type
-downTo(T& iter, const U& begin) {
+typename std::enable_if<!HasLess<U, T>::value, bool>::type downTo(
+    T& iter,
+    const U& begin) {
   if (iter == begin) {
     return false;
   }
@@ -310,9 +310,9 @@ downTo(T& iter, const U& begin) {
  *
  *    for (auto& element : make_iterator_range(begin, end))
  */
-#define FOR_EACH_RANGE(i, begin, end)           \
-  for (auto i = (true ? (begin) : (end));       \
-       ::folly::detail::notThereYet(i, (end));  \
+#define FOR_EACH_RANGE(i, begin, end)          \
+  for (auto i = (true ? (begin) : (end));      \
+       ::folly::detail::notThereYet(i, (end)); \
        ++i)
 
 /*

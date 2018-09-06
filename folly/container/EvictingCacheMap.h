@@ -115,32 +115,28 @@ class EvictingCacheMap {
 
   // iterator base : returns TPair on dereference
   template <typename Value, typename TIterator>
-  class iterator_base
-    : public boost::iterator_adaptor<iterator_base<Value, TIterator>,
-                                    TIterator,
-                                    Value,
-                                    boost::bidirectional_traversal_tag > {
+  class iterator_base : public boost::iterator_adaptor<
+                            iterator_base<Value, TIterator>,
+                            TIterator,
+                            Value,
+                            boost::bidirectional_traversal_tag> {
    public:
-    iterator_base() {
-    }
+    iterator_base() {}
     explicit iterator_base(TIterator it)
-        : iterator_base::iterator_adaptor_(it) {
-    }
+        : iterator_base::iterator_adaptor_(it) {}
     Value& dereference() const {
       return this->base_reference()->pr;
     }
   };
 
   // iterators
-  typedef iterator_base<
-    TPair, typename NodeList::iterator> iterator;
-  typedef iterator_base<
-    const TPair, typename NodeList::const_iterator> const_iterator;
-  typedef iterator_base<
-    TPair, typename NodeList::reverse_iterator> reverse_iterator;
-  typedef iterator_base<
-    const TPair,
-    typename NodeList::const_reverse_iterator> const_reverse_iterator;
+  typedef iterator_base<TPair, typename NodeList::iterator> iterator;
+  typedef iterator_base<const TPair, typename NodeList::const_iterator>
+      const_iterator;
+  typedef iterator_base<TPair, typename NodeList::reverse_iterator>
+      reverse_iterator;
+  typedef iterator_base<const TPair, typename NodeList::const_reverse_iterator>
+      const_reverse_iterator;
 
   // the default map typedefs
   using key_type = TKey;
@@ -216,7 +212,7 @@ class EvictingCacheMap {
    * @param key key to search for
    * @return true if exists, false otherwise
    */
-  bool exists(const TKey& key) const  {
+  bool exists(const TKey& key) const {
     return findInIndex(key) != index_.end();
   }
 
@@ -315,10 +311,11 @@ class EvictingCacheMap {
    *     a value that already exists.
    * @param pruneHook callback to use on eviction (if it occurs).
    */
-  void set(const TKey& key,
-           TValue value,
-           bool promote = true,
-           PruneHookCall pruneHook = nullptr) {
+  void set(
+      const TKey& key,
+      TValue value,
+      bool promote = true,
+      PruneHookCall pruneHook = nullptr) {
     auto it = findInIndex(key);
     if (it != index_.end()) {
       it->pr.second = std::move(value);
@@ -372,7 +369,6 @@ class EvictingCacheMap {
   void setPruneHook(PruneHookCall pruneHook) {
     pruneHook_ = pruneHook;
   }
-
 
   /**
    * Prune the minimum of pruneSize and size() from the back of the LRU.
@@ -481,12 +477,14 @@ class EvictingCacheMap {
    * @param pruneHook a custom pruneHook function
    * @param failSafe true if exceptions are to ignored, false by default
    */
-  void pruneWithFailSafeOption(std::size_t pruneSize,
-    PruneHookCall pruneHook, bool failSafe) {
+  void pruneWithFailSafeOption(
+      std::size_t pruneSize,
+      PruneHookCall pruneHook,
+      bool failSafe) {
     auto& ph = (nullptr == pruneHook) ? pruneHook_ : pruneHook;
 
     for (std::size_t i = 0; i < pruneSize && !lru_.empty(); i++) {
-      auto *node = &(*lru_.rbegin());
+      auto* node = &(*lru_.rbegin());
       std::unique_ptr<Node> nptr(node);
 
       lru_.erase(lru_.iterator_to(*node));

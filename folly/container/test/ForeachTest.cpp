@@ -323,9 +323,7 @@ TEST(ForEach, FetchTestPreferIterator) {
 TEST(Foreach, ForEachRvalue) {
   const char* const hello = "hello";
   int n = 0;
-  FOR_EACH(it, std::string(hello)) {
-    ++n;
-  }
+  FOR_EACH (it, std::string(hello)) { ++n; }
   EXPECT_EQ(strlen(hello), n);
   FOR_EACH_R (it, std::string(hello)) {
     --n;
@@ -337,10 +335,8 @@ TEST(Foreach, ForEachRvalue) {
 TEST(Foreach, ForEachNested) {
   const std::string hello = "hello";
   size_t n = 0;
-  FOR_EACH(i, hello) {
-    FOR_EACH(j, hello) {
-      ++n;
-    }
+  FOR_EACH (i, hello) {
+    FOR_EACH (j, hello) { ++n; }
   }
   auto len = hello.size();
   EXPECT_EQ(len * len, n);
@@ -421,7 +417,7 @@ TEST(Foreach, ForEachEnumerate) {
     sumIter += *iter;
     ++numIterations;
   }
-  EXPECT_EQ(sumAA, 3);   // 0 + 1 + 2
+  EXPECT_EQ(sumAA, 3); // 0 + 1 + 2
   EXPECT_EQ(sumIter, 9); // 1 + 3 + 5
   EXPECT_EQ(numIterations, 3);
 }
@@ -443,7 +439,7 @@ TEST(Foreach, ForEachEnumerateBreak) {
       break;
     }
   }
-  EXPECT_EQ(sumAA, 1);   // 0 + 1
+  EXPECT_EQ(sumAA, 1); // 0 + 1
   EXPECT_EQ(sumIter, 3); // 1 + 2
   EXPECT_EQ(numIterations, 2);
 }
@@ -451,25 +447,17 @@ TEST(Foreach, ForEachEnumerateBreak) {
 TEST(Foreach, ForEachRangeR) {
   int sum = 0;
 
-  FOR_EACH_RANGE_R (i, 0, 0) {
-    sum += i;
-  }
+  FOR_EACH_RANGE_R (i, 0, 0) { sum += i; }
   EXPECT_EQ(0, sum);
 
-  FOR_EACH_RANGE_R (i, 0, -1) {
-    sum += i;
-  }
+  FOR_EACH_RANGE_R (i, 0, -1) { sum += i; }
   EXPECT_EQ(0, sum);
 
-  FOR_EACH_RANGE_R (i, 0, 5) {
-    sum += i;
-  }
+  FOR_EACH_RANGE_R (i, 0, 5) { sum += i; }
   EXPECT_EQ(10, sum);
 
-  std::list<int> lst = { 0, 1, 2, 3, 4 };
+  std::list<int> lst = {0, 1, 2, 3, 4};
   sum = 0;
-  FOR_EACH_RANGE_R (i, lst.begin(), lst.end()) {
-    sum += *i;
-  }
+  FOR_EACH_RANGE_R (i, lst.begin(), lst.end()) { sum += *i; }
   EXPECT_EQ(10, sum);
 }

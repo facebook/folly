@@ -23,7 +23,8 @@
 
 namespace folly {
 
-template <class BaseIter> class BitIterator;
+template <class BaseIter>
+class BitIterator;
 
 namespace bititerator_detail {
 
@@ -34,7 +35,7 @@ namespace bititerator_detail {
 template <class Ref, class Value>
 class BitReference {
  public:
-  BitReference(Ref r, size_t bit) : ref_(r), bit_(bit) { }
+  BitReference(Ref r, size_t bit) : ref_(r), bit_(bit) {}
 
   /* implicit */ operator bool() const {
     return ref_ & (one_ << bit_);
@@ -76,15 +77,15 @@ struct BitIteratorBase {
           typename std::iterator_traits<BaseIter>::value_type>::value,
       "BitIterator may only be used with integral types");
   typedef boost::iterator_adaptor<
-    BitIterator<BaseIter>,      // Derived
-    BaseIter,                   // Base
-    bool,                       // Value
-    boost::use_default,         // CategoryOrTraversal
-    bititerator_detail::BitReference<
-      typename std::iterator_traits<BaseIter>::reference,
-      typename std::iterator_traits<BaseIter>::value_type
-    >,  // Reference
-    ssize_t> type;
+      BitIterator<BaseIter>, // Derived
+      BaseIter, // Base
+      bool, // Value
+      boost::use_default, // CategoryOrTraversal
+      bititerator_detail::BitReference<
+          typename std::iterator_traits<BaseIter>::reference,
+          typename std::iterator_traits<BaseIter>::value_type>, // Reference
+      ssize_t>
+      type;
 };
 
 } // namespace bititerator_detail

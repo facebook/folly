@@ -65,13 +65,13 @@ TEST(BitIterator, Simple) {
 
   v[0] = 0;
   bi = v.begin();
-  *bi++ = true;     // 1
+  *bi++ = true; // 1
   *bi++ = false;
-  *bi++ = true;     // 4
+  *bi++ = true; // 4
   *bi++ = false;
   *bi++ = false;
-  *bi++ = true;     // 32
-  *++bi = true;     // 128 (note pre-increment)
+  *bi++ = true; // 32
+  *++bi = true; // 128 (note pre-increment)
 
   EXPECT_EQ(165, v[0]);
 }
