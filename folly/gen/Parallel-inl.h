@@ -45,8 +45,12 @@ class ClosableMPMCQueue {
     CHECK(!consumers());
   }
 
-  void openProducer() { ++producers_; }
-  void openConsumer() { ++consumers_; }
+  void openProducer() {
+    ++producers_;
+  }
+  void openConsumer() {
+    ++consumers_;
+  }
 
   void closeInputProducer() {
     size_t producers = producers_--;
@@ -159,13 +163,15 @@ class Parallel : public Operator<Parallel<Ops>> {
           decltype(std::declval<Ops>().compose(Empty<InputDecayed&&>())),
       class Output = typename Composed::ValueType,
       class OutputDecayed = typename std::decay<Output>::type>
-  class Generator : public GenImpl<OutputDecayed&&,
-                                   Generator<Input,
-                                             Source,
-                                             InputDecayed,
-                                             Composed,
-                                             Output,
-                                             OutputDecayed>> {
+  class Generator : public GenImpl<
+                        OutputDecayed&&,
+                        Generator<
+                            Input,
+                            Source,
+                            InputDecayed,
+                            Composed,
+                            Output,
+                            OutputDecayed>> {
     const Source source_;
     const Ops ops_;
     const size_t threads_;
@@ -269,9 +275,13 @@ class Parallel : public Operator<Parallel<Ops>> {
         CHECK(!outQueue_.producers());
       }
 
-      void closeInputProducer() { inQueue_.closeInputProducer(); }
+      void closeInputProducer() {
+        inQueue_.closeInputProducer();
+      }
 
-      void closeOutputConsumer() { outQueue_.closeOutputConsumer(); }
+      void closeOutputConsumer() {
+        outQueue_.closeOutputConsumer();
+      }
 
       bool writeUnlessClosed(Input&& input) {
         return inQueue_.writeUnlessClosed(std::forward<Input>(input));

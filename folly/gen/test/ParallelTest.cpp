@@ -57,55 +57,55 @@ struct {
   }
 } makeUnique;
 
-static auto primes = seq(1, 1 << 14)
-                   | filter(isPrime)
-                   | as<vector<size_t>>();
+static auto primes = seq(1, 1 << 14) | filter(isPrime) | as<vector<size_t>>();
 
 static auto primeFactors = [](int n) {
-  return from(primes)
-       | filter([&](int d) { return 0 == n % d; })
-       | count;
+  return from(primes) | filter([&](int d) { return 0 == n % d; }) | count;
 };
 
 TEST(ParallelTest, Serial) {
   EXPECT_EQ(
-            seq(1,10) | map(square) | filter(even) | sum,
-            seq(1,10) | parallel(map(square) | filter(even)) | sum);
+      seq(1, 10) | map(square) | filter(even) | sum,
+      seq(1, 10) | parallel(map(square) | filter(even)) | sum);
 }
 
 auto heavyWork = map(primeFactors);
 
 TEST(ParallelTest, ComputeBound64) {
   int length = 1 << 10;
-  EXPECT_EQ(seq<size_t>(1, length) | heavyWork | sum,
-            seq<size_t>(1, length) | parallel(heavyWork) | sum);
+  EXPECT_EQ(
+      seq<size_t>(1, length) | heavyWork | sum,
+      seq<size_t>(1, length) | parallel(heavyWork) | sum);
 }
 
 TEST(ParallelTest, Take) {
   int length = 1 << 18;
   int limit = 1 << 14;
-  EXPECT_EQ(seq(1, length) | take(limit) | count,
-            seq(1, length) | parallel(heavyWork) | take(limit) | count);
+  EXPECT_EQ(
+      seq(1, length) | take(limit) | count,
+      seq(1, length) | parallel(heavyWork) | take(limit) | count);
 }
-
 
 TEST(ParallelTest, Unique) {
   auto uniqued = from(primes) | map(makeUnique) | as<vector>();
-  EXPECT_EQ(primes.size(),
-            from(primes) | parallel(map(makeUnique)) |
-                parallel(dereference | map(makeUnique)) | dereference | count);
-  EXPECT_EQ(2,
-            from(primes) | parallel(map(makeUnique)) |
-                parallel(dereference | map(makeUnique)) | dereference |
-                take(2) | count);
+  EXPECT_EQ(
+      primes.size(),
+      from(primes) | parallel(map(makeUnique)) |
+          parallel(dereference | map(makeUnique)) | dereference | count);
+  EXPECT_EQ(
+      2,
+      from(primes) | parallel(map(makeUnique)) |
+          parallel(dereference | map(makeUnique)) | dereference | take(2) |
+          count);
 }
 
 TEST(ParallelTest, PSum) {
-  EXPECT_EQ(from(primes) | map(sleepyWork) | sum,
-            from(primes) | parallel(map(sleepyWork) | sub(sum)) | sum);
+  EXPECT_EQ(
+      from(primes) | map(sleepyWork) | sum,
+      from(primes) | parallel(map(sleepyWork) | sub(sum)) | sum);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();

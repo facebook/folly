@@ -29,8 +29,7 @@ namespace detail {
 class FileReader : public GenImpl<ByteRange, FileReader> {
  public:
   FileReader(File file, std::unique_ptr<IOBuf> buffer)
-    : file_(std::move(file)),
-      buffer_(std::move(buffer)) {
+      : file_(std::move(file)), buffer_(std::move(buffer)) {
     buffer_->clear();
   }
 
@@ -65,8 +64,7 @@ class FileReader : public GenImpl<ByteRange, FileReader> {
 class FileWriter : public Operator<FileWriter> {
  public:
   FileWriter(File file, std::unique_ptr<IOBuf> buffer)
-    : file_(std::move(file)),
-      buffer_(std::move(buffer)) {
+      : file_(std::move(file)), buffer_(std::move(buffer)) {
     if (buffer_) {
       buffer_->clear();
     }
@@ -102,8 +100,8 @@ class FileWriter : public Operator<FileWriter> {
         n = ::write(file_.fd(), v.data(), v.size());
       } while (n == -1 && errno == EINTR);
       if (n == -1) {
-        throw std::system_error(errno, std::system_category(),
-                                "write() failed");
+        throw std::system_error(
+            errno, std::system_category(), "write() failed");
       }
       v.advance(size_t(n));
     }
@@ -121,9 +119,11 @@ class FileWriter : public Operator<FileWriter> {
 };
 
 inline auto byLineImpl(File file, char delim, bool keepDelimiter) {
+  // clang-format off
   return fromFile(std::move(file))
-    | eachAs<StringPiece>()
-    | resplit(delim, keepDelimiter);
+      | eachAs<StringPiece>()
+      | resplit(delim, keepDelimiter);
+  // clang-format on
 }
 
 } // namespace detail

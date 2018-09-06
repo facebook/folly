@@ -34,9 +34,8 @@ namespace detail {
  * Returns the number of trailing bytes of "prefix" that make up the
  * delimiter, or 0 if the delimiter was not found.
  */
-inline size_t splitPrefix(StringPiece& in,
-                          StringPiece& prefix,
-                          char delimiter) {
+inline size_t
+splitPrefix(StringPiece& in, StringPiece& prefix, char delimiter) {
   size_t found = in.find(delimiter);
   if (found != StringPiece::npos) {
     ++found;
@@ -51,9 +50,8 @@ inline size_t splitPrefix(StringPiece& in,
 /**
  * As above, but supports multibyte delimiters.
  */
-inline size_t splitPrefix(StringPiece& in,
-                          StringPiece& prefix,
-                          StringPiece delimiter) {
+inline size_t
+splitPrefix(StringPiece& in, StringPiece& prefix, StringPiece delimiter) {
   auto found = in.find(delimiter);
   if (found != StringPiece::npos) {
     found += delimiter.size();
@@ -68,9 +66,7 @@ inline size_t splitPrefix(StringPiece& in,
 /**
  * As above, but splits by any of the EOL terms: \r, \n, or \r\n.
  */
-inline size_t splitPrefix(StringPiece& in,
-                         StringPiece& prefix,
-                         MixedNewlines) {
+inline size_t splitPrefix(StringPiece& in, StringPiece& prefix, MixedNewlines) {
   const auto kCRLF = "\r\n";
   const size_t kLenCRLF = 2;
 
@@ -171,7 +167,7 @@ bool StreamSplitter<Callback>::operator()(StringPiece in) {
     } else if (maxLength_ && buffer_.length() + in.size() >= maxLength_) {
       // Send all of buffer_, plus a bit of in, to the callback
       if (!detail::consumeBufferPlus(
-               pieceCb_, buffer_, in, maxLength_ - buffer_.length())) {
+              pieceCb_, buffer_, in, maxLength_ - buffer_.length())) {
         return false;
       }
       // Post-conditions:
@@ -183,7 +179,7 @@ bool StreamSplitter<Callback>::operator()(StringPiece in) {
   // len(buffer + in) < maxLength_.
 
   // Send lines to callback directly from input (no buffer)
-  while (found) {  // Buffer guaranteed to be empty
+  while (found) { // Buffer guaranteed to be empty
     if (!detail::consumeFixedSizeChunks(pieceCb_, prefix, maxLength_)) {
       return false;
     }
@@ -192,7 +188,7 @@ bool StreamSplitter<Callback>::operator()(StringPiece in) {
 
   // No more delimiters left; consume 'in' until it is shorter than maxLength_
   if (maxLength_) {
-    while (in.size() >= maxLength_) {  // Buffer is guaranteed to be empty
+    while (in.size() >= maxLength_) { // Buffer is guaranteed to be empty
       if (!pieceCb_(StringPiece(in.begin(), maxLength_))) {
         return false;
       }
@@ -200,7 +196,7 @@ bool StreamSplitter<Callback>::operator()(StringPiece in) {
     }
   }
 
-  if (!in.empty()) {  // Buffer may be nonempty
+  if (!in.empty()) { // Buffer may be nonempty
     // Incomplete line left, append to buffer
     buffer_.reserve(0, in.size());
     memcpy(buffer_.writableTail(), in.data(), in.size());
@@ -274,18 +270,17 @@ class SplitStringSource
     : public GenImpl<StringPiece, SplitStringSource<DelimiterType>> {
   StringPiece source_;
   DelimiterType delimiter_;
+
  public:
-  SplitStringSource(const StringPiece source,
-                    DelimiterType delimiter)
-    : source_(source)
-    , delimiter_(std::move(delimiter)) { }
+  SplitStringSource(const StringPiece source, DelimiterType delimiter)
+      : source_(source), delimiter_(std::move(delimiter)) {}
 
   template <class Body>
   bool apply(Body&& body) const {
     StringPiece rest(source_);
     StringPiece prefix;
     while (size_t delim_len = splitPrefix(rest, prefix, this->delimiter_)) {
-      prefix.subtract(delim_len);  // Remove the delimiter
+      prefix.subtract(delim_len); // Remove the delimiter
       if (!body(prefix)) {
         return false;
       }
@@ -308,10 +303,9 @@ class SplitStringSource
 template <class Delimiter, class Output>
 class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
   Delimiter delimiter_;
+
  public:
-  explicit Unsplit(const Delimiter& delimiter)
-    : delimiter_(delimiter) {
-  }
+  explicit Unsplit(const Delimiter& delimiter) : delimiter_(delimiter) {}
 
   template <class Source, class Value>
   Output compose(const GenImpl<Value, Source>& source) const {
@@ -332,10 +326,10 @@ template <class Delimiter, class OutputBuffer>
 class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
   Delimiter delimiter_;
   OutputBuffer* outputBuffer_;
+
  public:
   UnsplitBuffer(const Delimiter& delimiter, OutputBuffer* outputBuffer)
-    : delimiter_(delimiter)
-    , outputBuffer_(outputBuffer) {
+      : delimiter_(delimiter), outputBuffer_(outputBuffer) {
     CHECK(outputBuffer);
   }
 
@@ -355,18 +349,19 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
   }
 };
 
-
 /**
  * Hack for static for-like constructs
  */
 template <class Target, class = void>
-inline Target passthrough(Target target) { return target; }
+inline Target passthrough(Target target) {
+  return target;
+}
 
 FOLLY_PUSH_WARNING
 #ifdef __clang__
 // Clang isn't happy with eatField() hack below.
 #pragma GCC diagnostic ignored "-Wreturn-stack-address"
-#endif  // __clang__
+#endif // __clang__
 
 /**
  * ParseToTuple - For splitting a record and immediatlely converting it to a
@@ -381,9 +376,9 @@ FOLLY_PUSH_WARNING
 template <class TargetContainer, class Delimiter, class... Targets>
 class SplitTo {
   Delimiter delimiter_;
+
  public:
-  explicit SplitTo(Delimiter delimiter)
-    : delimiter_(delimiter) {}
+  explicit SplitTo(Delimiter delimiter) : delimiter_(delimiter) {}
 
   TargetContainer operator()(StringPiece line) const {
     int i = 0;
@@ -391,9 +386,10 @@ class SplitTo {
     // HACK(tjackson): Used for referencing fields[] corresponding to variadic
     // template parameters.
     auto eatField = [&]() -> StringPiece& { return fields[i++]; };
-    if (!split(delimiter_,
-               line,
-               detail::passthrough<StringPiece&, Targets>(eatField())...)) {
+    if (!split(
+            delimiter_,
+            line,
+            detail::passthrough<StringPiece&, Targets>(eatField())...)) {
       throw std::runtime_error("field count mismatch");
     }
     i = 0;

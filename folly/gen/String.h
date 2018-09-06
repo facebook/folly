@@ -92,7 +92,6 @@ S lines(StringPiece source) {
  *   assert(result == "a b c");
  */
 
-
 // NOTE: The template arguments are reversed to allow the user to cleanly
 // specify the output type while still inferring the type of the delimiter.
 template <
@@ -142,34 +141,33 @@ UnsplitBuffer unsplit(const char* delimiter, OutputBuffer* outputBuffer) {
 template <class... Targets>
 detail::Map<detail::SplitTo<std::tuple<Targets...>, char, Targets...>>
 eachToTuple(char delim) {
-  return detail::Map<
-    detail::SplitTo<std::tuple<Targets...>, char, Targets...>>(
-    detail::SplitTo<std::tuple<Targets...>, char, Targets...>(delim));
+  return detail::Map<detail::SplitTo<std::tuple<Targets...>, char, Targets...>>(
+      detail::SplitTo<std::tuple<Targets...>, char, Targets...>(delim));
 }
 
 template <class... Targets>
 detail::Map<detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>
 eachToTuple(StringPiece delim) {
   return detail::Map<
-    detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>(
-    detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>(delim));
+      detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>(
+      detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>(delim));
 }
 
 template <class First, class Second>
 detail::Map<detail::SplitTo<std::pair<First, Second>, char, First, Second>>
 eachToPair(char delim) {
   return detail::Map<
-    detail::SplitTo<std::pair<First, Second>, char, First, Second>>(
-    detail::SplitTo<std::pair<First, Second>, char, First, Second>(delim));
+      detail::SplitTo<std::pair<First, Second>, char, First, Second>>(
+      detail::SplitTo<std::pair<First, Second>, char, First, Second>(delim));
 }
 
 template <class First, class Second>
 detail::Map<detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>>
 eachToPair(StringPiece delim) {
   return detail::Map<
-    detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>>(
-    detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>(
-      to<fbstring>(delim)));
+      detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>>(
+      detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>(
+          to<fbstring>(delim)));
 }
 
 /**
@@ -196,12 +194,12 @@ eachToPair(StringPiece delim) {
  */
 template <class Callback>
 class StreamSplitter {
-
  public:
-  StreamSplitter(char delimiter,
-                 Callback&& pieceCb,
-                 uint64_t maxLength = 0,
-                 uint64_t initialCapacity = 0)
+  StreamSplitter(
+      char delimiter,
+      Callback&& pieceCb,
+      uint64_t maxLength = 0,
+      uint64_t initialCapacity = 0)
       : buffer_(IOBuf::CREATE, initialCapacity),
         delimiter_(delimiter),
         maxLength_(maxLength),
@@ -232,14 +230,13 @@ class StreamSplitter {
   // Holds the current "incomplete" chunk so that chunks can span calls to ()
   IOBuf buffer_;
   char delimiter_;
-  uint64_t maxLength_;  // The callback never gets more chars than this
+  uint64_t maxLength_; // The callback never gets more chars than this
   Callback pieceCb_;
 };
 
-template <class Callback>  // Helper to enable template deduction
-StreamSplitter<Callback> streamSplitter(char delimiter,
-                                        Callback&& pieceCb,
-                                        uint64_t capacity = 0) {
+template <class Callback> // Helper to enable template deduction
+StreamSplitter<Callback>
+streamSplitter(char delimiter, Callback&& pieceCb, uint64_t capacity = 0) {
   return StreamSplitter<Callback>(delimiter, std::move(pieceCb), capacity);
 }
 

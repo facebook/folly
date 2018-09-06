@@ -149,69 +149,83 @@ TEST(StringGen, ResplitKeepDelimiter) {
 TEST(StringGen, EachToTuple) {
   {
     auto lines = "2:1.414:yo 3:1.732:hi";
+    // clang-format off
     auto actual
       = split(lines, ' ')
       | eachToTuple<int, double, std::string>(':')
       | as<vector>();
-    vector<tuple<int, double, std::string>> expected {
-      make_tuple(2, 1.414, "yo"),
-      make_tuple(3, 1.732, "hi"),
+    // clang-format on
+    vector<tuple<int, double, std::string>> expected{
+        make_tuple(2, 1.414, "yo"),
+        make_tuple(3, 1.732, "hi"),
     };
     EXPECT_EQ(expected, actual);
   }
   {
     auto lines = "2 3";
+    // clang-format off
     auto actual
       = split(lines, ' ')
       | eachToTuple<int>(',')
       | as<vector>();
-    vector<tuple<int>> expected {
-      make_tuple(2),
-      make_tuple(3),
+    // clang-format on
+    vector<tuple<int>> expected{
+        make_tuple(2),
+        make_tuple(3),
     };
     EXPECT_EQ(expected, actual);
   }
   {
     // StringPiece target
     auto lines = "1:cat 2:dog";
+    // clang-format off
     auto actual
       = split(lines, ' ')
       | eachToTuple<int, StringPiece>(':')
       | as<vector>();
-    vector<tuple<int, StringPiece>> expected {
-      make_tuple(1, "cat"),
-      make_tuple(2, "dog"),
+    // clang-format on
+    vector<tuple<int, StringPiece>> expected{
+        make_tuple(1, "cat"),
+        make_tuple(2, "dog"),
     };
     EXPECT_EQ(expected, actual);
   }
   {
     // Empty field
     auto lines = "2:tjackson:4 3::5";
+    // clang-format off
     auto actual
       = split(lines, ' ')
       | eachToTuple<int, fbstring, int>(':')
       | as<vector>();
-    vector<tuple<int, fbstring, int>> expected {
-      make_tuple(2, "tjackson", 4),
-      make_tuple(3, "", 5),
+    // clang-format on
+    vector<tuple<int, fbstring, int>> expected{
+        make_tuple(2, "tjackson", 4),
+        make_tuple(3, "", 5),
     };
     EXPECT_EQ(expected, actual);
   }
   {
     // Excess fields
     auto lines = "1:2 3:4:5";
-    EXPECT_THROW((split(lines, ' ')
-                    | eachToTuple<int, int>(':')
-                    | as<vector>()),
-                 std::runtime_error);
+    // clang-format off
+    EXPECT_THROW(
+        (split(lines, ' ')
+          | eachToTuple<int, int>(':')
+          | as<vector>()),
+        std::runtime_error);
+    // clang-format on
   }
   {
     // Missing fields
     auto lines = "1:2:3 4:5";
-    EXPECT_THROW((split(lines, ' ')
-                    | eachToTuple<int, int, int>(':')
-                    | as<vector>()),
-                 std::runtime_error);
+    // clang-format off
+    EXPECT_THROW(
+        (split(lines, ' ')
+          | eachToTuple<int, int, int>(':')
+          | as<vector>()),
+        std::runtime_error);
+    // clang-format on
   }
 }
 
@@ -219,40 +233,48 @@ TEST(StringGen, EachToPair) {
   {
     // char delimiters
     auto lines = "2:1.414 3:1.732";
+    // clang-format off
     auto actual
       = split(lines, ' ')
       | eachToPair<int, double>(':')
       | as<std::map<int, double>>();
-    std::map<int, double> expected {
-      { 3, 1.732 },
-      { 2, 1.414 },
+    // clang-format on
+    std::map<int, double> expected{
+        {3, 1.732},
+        {2, 1.414},
     };
     EXPECT_EQ(expected, actual);
   }
   {
     // string delimiters
     auto lines = "ab=>cd ef=>gh";
+    // clang-format off
     auto actual
       = split(lines, ' ')
       | eachToPair<string, string>("=>")
       | as<std::map<string, string>>();
-    std::map<string, string> expected {
-      { "ab", "cd" },
-      { "ef", "gh" },
+    // clang-format on
+    std::map<string, string> expected{
+        {"ab", "cd"},
+        {"ef", "gh"},
     };
     EXPECT_EQ(expected, actual);
   }
 }
 
-void checkResplitMaxLength(vector<string> ins,
-                           char delim,
-                           uint64_t maxLength,
-                           vector<string> outs) {
+void checkResplitMaxLength(
+    vector<string> ins,
+    char delim,
+    uint64_t maxLength,
+    vector<string> outs) {
   vector<std::string> pieces;
-  auto splitter = streamSplitter(delim, [&pieces](StringPiece s) {
-    pieces.push_back(string(s.begin(), s.end()));
-    return true;
-  }, maxLength);
+  auto splitter = streamSplitter(
+      delim,
+      [&pieces](StringPiece s) {
+        pieces.push_back(string(s.begin(), s.end()));
+        return true;
+      },
+      maxLength);
   for (const auto& in : ins) {
     splitter(in);
   }
@@ -270,22 +292,21 @@ void checkResplitMaxLength(vector<string> ins,
 }
 
 TEST(StringGen, ResplitMaxLength) {
+  // clang-format off
   checkResplitMaxLength(
-    {"hel", "lo,", ", world", ", goodbye, m", "ew"}, ',', 5,
-    {"hello", ",", ",", " worl", "d,", " good", "bye,", " mew"}
-  );
+      {"hel", "lo,", ", world", ", goodbye, m", "ew"}, ',', 5,
+      {"hello", ",", ",", " worl", "d,", " good", "bye,", " mew"});
   // " meow" cannot be "end of stream", since it's maxLength long
   checkResplitMaxLength(
-    {"hel", "lo,", ", world", ", goodbye, m", "eow"}, ',', 5,
-    {"hello", ",", ",", " worl", "d,", " good", "bye,", " meow", ""}
-  );
+      {"hel", "lo,", ", world", ", goodbye, m", "eow"}, ',', 5,
+      {"hello", ",", ",", " worl", "d,", " good", "bye,", " meow", ""});
   checkResplitMaxLength(
-    {"||", "", "", "", "|a|b", "cdefghijklmn", "|opqrst",
-     "uvwx|y|||", "z", "0123456789", "|", ""}, '|', 2,
-    {"|", "|", "|", "a|", "bc", "de", "fg", "hi", "jk", "lm", "n|", "op", "qr",
-     "st", "uv", "wx", "|", "y|", "|", "|", "z0", "12", "34", "56", "78", "9|",
-     ""}
-  );
+      {"||", "", "", "", "|a|b", "cdefghijklmn", "|opqrst",
+       "uvwx|y|||", "z", "0123456789", "|", ""}, '|', 2,
+      {"|", "|", "|", "a|", "bc", "de", "fg", "hi", "jk", "lm", "n|", "op",
+       "qr", "st", "uv", "wx", "|", "y|", "|", "|", "z0", "12", "34", "56",
+       "78", "9|", ""});
+  // clang-format on
 }
 
 template <typename F>
@@ -299,7 +320,6 @@ void runUnsplitSuite(F fn) {
 }
 
 TEST(StringGen, Unsplit) {
-
   auto basicFn = [](StringPiece s) {
     EXPECT_EQ(split(s, ',') | unsplit(','), s);
   };
@@ -307,8 +327,7 @@ TEST(StringGen, Unsplit) {
   auto existingBuffer = [](StringPiece s) {
     folly::fbstring buffer("asdf");
     split(s, ',') | unsplit(',', &buffer);
-    auto expected = folly::to<folly::fbstring>(
-        "asdf", s.empty() ? "" : ",", s);
+    auto expected = folly::to<folly::fbstring>("asdf", s.empty() ? "" : ",", s);
     EXPECT_EQ(expected, buffer);
   };
 
@@ -334,16 +353,21 @@ TEST(StringGen, Unsplit) {
 
 TEST(StringGen, Batch) {
   std::vector<std::string> chunks{
-      "on", "e\nt", "w", "o", "\nthr", "ee\nfo", "ur\n",
-  };
-  std::vector<std::string> lines{
-      "one", "two", "three", "four",
-  };
+      "on", "e\nt", "w", "o", "\nthr", "ee\nfo", "ur\n"};
+  std::vector<std::string> lines{"one", "two", "three", "four"};
   EXPECT_EQ(4, from(chunks) | resplit('\n') | count);
   EXPECT_EQ(4, from(chunks) | resplit('\n') | batch(2) | rconcat | count);
   EXPECT_EQ(4, from(chunks) | resplit('\n') | batch(3) | rconcat | count);
-  EXPECT_EQ(lines, from(chunks) | resplit('\n') | eachTo<std::string>() |
-                       batch(3) | rconcat | as<vector>());
+  // clang-format off
+  EXPECT_EQ(
+      lines,
+      from(chunks)
+        | resplit('\n')
+        | eachTo<std::string>()
+        | batch(3)
+        | rconcat
+        | as<vector>());
+  // clang-format on
 }
 
 TEST(StringGen, UncurryTuple) {

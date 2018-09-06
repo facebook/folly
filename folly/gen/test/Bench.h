@@ -18,15 +18,18 @@
 
 #include <folly/Benchmark.h>
 
-#define BENCH_GEN_IMPL(gen, prefix)                         \
-static bool FB_ANONYMOUS_VARIABLE(benchGen) = (             \
-  ::folly::addBenchmark(__FILE__, prefix FB_STRINGIZE(gen), \
-    [](unsigned iters){                                     \
-      const unsigned num = iters;                           \
-      while (iters--) {                                     \
-        folly::doNotOptimizeAway(gen);                      \
-      }                                                     \
-      return num;                                           \
-    }), true)
+#define BENCH_GEN_IMPL(gen, prefix)             \
+  static bool FB_ANONYMOUS_VARIABLE(benchGen) = \
+      (::folly::addBenchmark(                   \
+           __FILE__,                            \
+           prefix FB_STRINGIZE(gen),            \
+           [](unsigned iters) {                 \
+             const unsigned num = iters;        \
+             while (iters--) {                  \
+               folly::doNotOptimizeAway(gen);   \
+             }                                  \
+             return num;                        \
+           }),                                  \
+       true)
 #define BENCH_GEN(gen) BENCH_GEN_IMPL(gen, "")
 #define BENCH_GEN_REL(gen) BENCH_GEN_IMPL(gen, "%")

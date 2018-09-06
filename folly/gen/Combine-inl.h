@@ -37,9 +37,10 @@ template <class Container>
 class Interleave : public Operator<Interleave<Container>> {
   // see comment about copies in CopiedSource
   const std::shared_ptr<const Container> container_;
+
  public:
   explicit Interleave(Container container)
-    : container_(new Container(std::move(container))) {}
+      : container_(new Container(std::move(container))) {}
 
   template <class Value, class Source>
   class Generator : public GenImpl<Value, Generator<Value, Source>> {
@@ -47,31 +48,32 @@ class Interleave : public Operator<Interleave<Container>> {
     const std::shared_ptr<const Container> container_;
     typedef const typename Container::value_type& ConstRefType;
 
-    static_assert(std::is_same<const Value&, ConstRefType>::value,
-                  "Only matching types may be interleaved");
+    static_assert(
+        std::is_same<const Value&, ConstRefType>::value,
+        "Only matching types may be interleaved");
 
    public:
-    explicit Generator(Source source,
-                       const std::shared_ptr<const Container> container)
-      : source_(std::move(source)),
-        container_(container) { }
+    explicit Generator(
+        Source source,
+        const std::shared_ptr<const Container> container)
+        : source_(std::move(source)), container_(container) {}
 
     template <class Handler>
     bool apply(Handler&& handler) const {
       auto iter = container_->begin();
       return source_.apply([&](const Value& value) -> bool {
-            if (iter == container_->end()) {
-              return false;
-            }
-            if (!handler(value)) {
-              return false;
-            }
-            if (!handler(*iter)) {
-              return false;
-            }
-            iter++;
-            return true;
-        });
+        if (iter == container_->end()) {
+          return false;
+        }
+        if (!handler(value)) {
+          return false;
+        }
+        if (!handler(*iter)) {
+          return false;
+        }
+        iter++;
+        return true;
+      });
     }
   };
 
@@ -97,9 +99,10 @@ template <class Container>
 class Zip : public Operator<Zip<Container>> {
   // see comment about copies in CopiedSource
   const std::shared_ptr<const Container> container_;
+
  public:
   explicit Zip(Container container)
-    : container_(new Container(std::move(container))) {}
+      : container_(new Container(std::move(container))) {}
 
   template <
       class Value1,
@@ -108,30 +111,30 @@ class Zip : public Operator<Zip<Container>> {
       class Result = std::tuple<
           typename std::decay<Value1>::type,
           typename std::decay<Value2>::type>>
-  class Generator : public GenImpl<Result,
-                                   Generator<Value1,Source,Value2,Result>> {
+  class Generator
+      : public GenImpl<Result, Generator<Value1, Source, Value2, Result>> {
     Source source_;
     const std::shared_ptr<const Container> container_;
 
    public:
-    explicit Generator(Source source,
-                       const std::shared_ptr<const Container> container)
-      : source_(std::move(source)),
-        container_(container) { }
+    explicit Generator(
+        Source source,
+        const std::shared_ptr<const Container> container)
+        : source_(std::move(source)), container_(container) {}
 
     template <class Handler>
     bool apply(Handler&& handler) const {
       auto iter = container_->begin();
       return (source_.apply([&](Value1 value) -> bool {
-            if (iter == container_->end()) {
-              return false;
-            }
-            if (!handler(std::make_tuple(std::forward<Value1>(value), *iter))) {
-              return false;
-            }
-            ++iter;
-            return true;
-          }));
+        if (iter == container_->end()) {
+          return false;
+        }
+        if (!handler(std::make_tuple(std::forward<Value1>(value), *iter))) {
+          return false;
+        }
+        ++iter;
+        return true;
+      }));
     }
   };
 
@@ -147,48 +150,45 @@ class Zip : public Operator<Zip<Container>> {
 };
 
 template <class... Types1, class... Types2>
-auto add_to_tuple(std::tuple<Types1...> t1, std::tuple<Types2...> t2) ->
-std::tuple<Types1..., Types2...> {
+auto add_to_tuple(std::tuple<Types1...> t1, std::tuple<Types2...> t2)
+    -> std::tuple<Types1..., Types2...> {
   return std::tuple_cat(std::move(t1), std::move(t2));
 }
 
 template <class... Types1, class Type2>
-auto add_to_tuple(std::tuple<Types1...> t1, Type2&& t2) ->
-decltype(std::tuple_cat(std::move(t1),
-                        std::make_tuple(std::forward<Type2>(t2)))) {
-  return std::tuple_cat(std::move(t1),
-                        std::make_tuple(std::forward<Type2>(t2)));
+auto add_to_tuple(std::tuple<Types1...> t1, Type2&& t2) -> decltype(
+    std::tuple_cat(std::move(t1), std::make_tuple(std::forward<Type2>(t2)))) {
+  return std::tuple_cat(
+      std::move(t1), std::make_tuple(std::forward<Type2>(t2)));
 }
 
 template <class Type1, class... Types2>
-auto add_to_tuple(Type1&& t1, std::tuple<Types2...> t2) ->
-decltype(std::tuple_cat(std::make_tuple(std::forward<Type1>(t1)),
-                        std::move(t2))) {
-  return std::tuple_cat(std::make_tuple(std::forward<Type1>(t1)),
-                        std::move(t2));
+auto add_to_tuple(Type1&& t1, std::tuple<Types2...> t2) -> decltype(
+    std::tuple_cat(std::make_tuple(std::forward<Type1>(t1)), std::move(t2))) {
+  return std::tuple_cat(
+      std::make_tuple(std::forward<Type1>(t1)), std::move(t2));
 }
 
 template <class Type1, class Type2>
-auto add_to_tuple(Type1&& t1, Type2&& t2) ->
-decltype(std::make_tuple(std::forward<Type1>(t1),
-                         std::forward<Type2>(t2))) {
-  return std::make_tuple(std::forward<Type1>(t1),
-                         std::forward<Type2>(t2));
+auto add_to_tuple(Type1&& t1, Type2&& t2) -> decltype(
+    std::make_tuple(std::forward<Type1>(t1), std::forward<Type2>(t2))) {
+  return std::make_tuple(std::forward<Type1>(t1), std::forward<Type2>(t2));
 }
 
 // Merges a 2-tuple into a single tuple (get<0> could already be a tuple)
 class MergeTuples {
  public:
   template <class Tuple>
-  auto operator()(Tuple&& value) const ->
-  decltype(add_to_tuple(std::get<0>(std::forward<Tuple>(value)),
-                        std::get<1>(std::forward<Tuple>(value)))) {
-    static_assert(std::tuple_size<
-                    typename std::remove_reference<Tuple>::type
-                    >::value == 2,
-                  "Can only merge tuples of size 2");
-    return add_to_tuple(std::get<0>(std::forward<Tuple>(value)),
-                        std::get<1>(std::forward<Tuple>(value)));
+  auto operator()(Tuple&& value) const -> decltype(add_to_tuple(
+      std::get<0>(std::forward<Tuple>(value)),
+      std::get<1>(std::forward<Tuple>(value)))) {
+    static_assert(
+        std::tuple_size<typename std::remove_reference<Tuple>::type>::value ==
+            2,
+        "Can only merge tuples of size 2");
+    return add_to_tuple(
+        std::get<0>(std::forward<Tuple>(value)),
+        std::get<1>(std::forward<Tuple>(value)));
   }
 };
 

@@ -25,17 +25,18 @@
 #include <folly/gen/Parallel.h>
 #include <folly/gen/test/Bench.h>
 
-
-DEFINE_int32(threads,
-             std::max(1, (int32_t) sysconf(_SC_NPROCESSORS_CONF) / 2),
-             "Num threads.");
+DEFINE_int32(
+    threads,
+    std::max(1, (int32_t)sysconf(_SC_NPROCESSORS_CONF) / 2),
+    "Num threads.");
 
 using namespace folly::gen;
 using std::vector;
 
-
-constexpr int kFib = 28;  // unit of work
-size_t fib(int n) { return n <= 1 ? 1 : fib(n - 1) + fib(n - 2); }
+constexpr int kFib = 28; // unit of work
+size_t fib(int n) {
+  return n <= 1 ? 1 : fib(n - 1) + fib(n - 2);
+}
 
 static auto isPrimeSlow = [](int n) {
   if (n < 2) {
@@ -50,8 +51,7 @@ static auto isPrimeSlow = [](int n) {
   return true;
 };
 
-static auto primes =
-    seq(1, 1 << 20) | filter(isPrimeSlow) | as<vector>();
+static auto primes = seq(1, 1 << 20) | filter(isPrimeSlow) | as<vector>();
 
 static auto stopc(int n) {
   return [=](int d) { return d * d > n; };
@@ -78,9 +78,7 @@ static auto sleepyWork = [](int i) {
   return i;
 };
 
-static auto sleepAndWork = [](int i) {
-  return factorsSlow(i) + sleepyWork(i);
-};
+static auto sleepAndWork = [](int i) { return factorsSlow(i) + sleepyWork(i); };
 
 auto start = 1 << 20;
 auto v = seq(start) | take(1 << 20) | as<vector>();
@@ -116,19 +114,26 @@ BENCHMARK_DRAW_LINE();
 
 const int fibs = 1000;
 BENCH_GEN(seq(1, fibs) | map([](int) { return fib(kFib); }) | sum);
-BENCH_GEN_REL(seq(1, fibs) |
-              parallel(map([](int) { return fib(kFib); }) | sub(sum)) | sum);
+// clang-format off
+BENCH_GEN_REL(
+    seq(1, fibs)
+      | parallel(map([](int) { return fib(kFib); }) | sub(sum))
+      | sum);
+// clang-format on
 BENCH_GEN_REL([] {
+  // clang-format off
   auto threads = seq(1, int(FLAGS_threads))
-               | map([](int i) {
-                   return std::thread([=] {
-                     return range((i + 0) * fibs / FLAGS_threads,
-                                  (i + 1) * fibs / FLAGS_threads) |
-                            map([](int) { return fib(kFib); }) | sum;
-                   });
-                 })
-               | as<vector>();
+      | map([](int i) {
+        return std::thread([=] {
+          return range(
+              (i + 0) * fibs / FLAGS_threads, (i + 1) * fibs / FLAGS_threads)
+              | map([](int) { return fib(kFib); })
+              | sum;
+        });
+      })
+      | as<vector>();
   from(threads) | [](std::thread &thread) { thread.join(); };
+  // clang-format on
   return 1;
 }());
 BENCHMARK_DRAW_LINE();
@@ -160,7 +165,7 @@ seq(1, fibs) | parallel(map([](int) { return fi 1698.07%    87.96ms    11.37
 ----------------------------------------------------------------------------
 ============================================================================
 #endif
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;

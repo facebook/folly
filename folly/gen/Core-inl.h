@@ -108,8 +108,7 @@ template <
     class Left,
     class Right,
     class Composed = detail::Composed<Left, Right>>
-Composed operator|(const Operator<Left>& left,
-                   const Operator<Right>& right) {
+Composed operator|(const Operator<Left>& left, const Operator<Right>& right) {
   return Composed(left.self(), right.self());
 }
 
@@ -117,8 +116,7 @@ template <
     class Left,
     class Right,
     class Composed = detail::Composed<Left, Right>>
-Composed operator|(const Operator<Left>& left,
-                   Operator<Right>&& right) {
+Composed operator|(const Operator<Left>& left, Operator<Right>&& right) {
   return Composed(left.self(), std::move(right.self()));
 }
 
@@ -126,8 +124,7 @@ template <
     class Left,
     class Right,
     class Composed = detail::Composed<Left, Right>>
-Composed operator|(Operator<Left>&& left,
-                   const Operator<Right>& right) {
+Composed operator|(Operator<Left>&& left, const Operator<Right>& right) {
   return Composed(std::move(left.self()), right.self());
 }
 
@@ -135,8 +132,7 @@ template <
     class Left,
     class Right,
     class Composed = detail::Composed<Left, Right>>
-Composed operator|(Operator<Left>&& left,
-                   Operator<Right>&& right) {
+Composed operator|(Operator<Left>&& left, Operator<Right>&& right) {
   return Composed(std::move(left.self()), std::move(right.self()));
 }
 
@@ -176,10 +172,10 @@ class GenImpl : public FBounded<Self> {
   template <class Body>
   void foreach(Body&& body) const {
     this->self().apply([&](Value value) -> bool {
-        static_assert(!infinite, "Cannot call foreach on infinite GenImpl");
-        body(std::forward<Value>(value));
-        return true;
-      });
+      static_assert(!infinite, "Cannot call foreach on infinite GenImpl");
+      body(std::forward<Value>(value));
+      return true;
+    });
   }
 
   // Child classes should override if the sequence generated is *definitely*
@@ -201,11 +197,12 @@ template <
     class RightValue,
     class Right,
     class Chain = detail::Chain<LeftValue, Left, Right>>
-Chain operator+(const GenImpl<LeftValue, Left>& left,
-                const GenImpl<RightValue, Right>& right) {
+Chain operator+(
+    const GenImpl<LeftValue, Left>& left,
+    const GenImpl<RightValue, Right>& right) {
   static_assert(
-    std::is_same<LeftValue, RightValue>::value,
-    "Generators may ony be combined if Values are the exact same type.");
+      std::is_same<LeftValue, RightValue>::value,
+      "Generators may ony be combined if Values are the exact same type.");
   return Chain(left.self(), right.self());
 }
 
@@ -215,11 +212,12 @@ template <
     class RightValue,
     class Right,
     class Chain = detail::Chain<LeftValue, Left, Right>>
-Chain operator+(const GenImpl<LeftValue, Left>& left,
-                GenImpl<RightValue, Right>&& right) {
+Chain operator+(
+    const GenImpl<LeftValue, Left>& left,
+    GenImpl<RightValue, Right>&& right) {
   static_assert(
-    std::is_same<LeftValue, RightValue>::value,
-    "Generators may ony be combined if Values are the exact same type.");
+      std::is_same<LeftValue, RightValue>::value,
+      "Generators may ony be combined if Values are the exact same type.");
   return Chain(left.self(), std::move(right.self()));
 }
 
@@ -229,11 +227,12 @@ template <
     class RightValue,
     class Right,
     class Chain = detail::Chain<LeftValue, Left, Right>>
-Chain operator+(GenImpl<LeftValue, Left>&& left,
-                const GenImpl<RightValue, Right>& right) {
+Chain operator+(
+    GenImpl<LeftValue, Left>&& left,
+    const GenImpl<RightValue, Right>& right) {
   static_assert(
-    std::is_same<LeftValue, RightValue>::value,
-    "Generators may ony be combined if Values are the exact same type.");
+      std::is_same<LeftValue, RightValue>::value,
+      "Generators may ony be combined if Values are the exact same type.");
   return Chain(std::move(left.self()), right.self());
 }
 
@@ -243,11 +242,12 @@ template <
     class RightValue,
     class Right,
     class Chain = detail::Chain<LeftValue, Left, Right>>
-Chain operator+(GenImpl<LeftValue, Left>&& left,
-                GenImpl<RightValue, Right>&& right) {
+Chain operator+(
+    GenImpl<LeftValue, Left>&& left,
+    GenImpl<RightValue, Right>&& right) {
   static_assert(
-    std::is_same<LeftValue, RightValue>::value,
-    "Generators may ony be combined if Values are the exact same type.");
+      std::is_same<LeftValue, RightValue>::value,
+      "Generators may ony be combined if Values are the exact same type.");
   return Chain(std::move(left.self()), std::move(right.self()));
 }
 
@@ -257,10 +257,10 @@ Chain operator+(GenImpl<LeftValue, Left>&& left,
  */
 template <class Value, class Gen, class Handler>
 typename std::enable_if<
-  IsCompatibleSignature<Handler, void(Value)>::value>::type
+    IsCompatibleSignature<Handler, void(Value)>::value>::type
 operator|(const GenImpl<Value, Gen>& gen, Handler&& handler) {
-  static_assert(!Gen::infinite,
-                "Cannot pull all values from an infinite sequence.");
+  static_assert(
+      !Gen::infinite, "Cannot pull all values from an infinite sequence.");
   gen.self().foreach(std::forward<Handler>(handler));
 }
 
@@ -269,9 +269,9 @@ operator|(const GenImpl<Value, Gen>& gen, Handler&& handler) {
  *   gen | [](Value v) -> bool { return shouldContinue(); };
  */
 template <class Value, class Gen, class Handler>
-typename std::enable_if<
-  IsCompatibleSignature<Handler, bool(Value)>::value, bool>::type
-operator|(const GenImpl<Value, Gen>& gen, Handler&& handler) {
+typename std::
+    enable_if<IsCompatibleSignature<Handler, bool(Value)>::value, bool>::type
+    operator|(const GenImpl<Value, Gen>& gen, Handler&& handler) {
   return gen.self().apply(std::forward<Handler>(handler));
 }
 
@@ -281,14 +281,14 @@ operator|(const GenImpl<Value, Gen>& gen, Handler&& handler) {
  *   gen | map(square) | sum
  */
 template <class Value, class Gen, class Op>
-auto operator|(const GenImpl<Value, Gen>& gen, const Operator<Op>& op) ->
-decltype(op.self().compose(gen.self())) {
+auto operator|(const GenImpl<Value, Gen>& gen, const Operator<Op>& op)
+    -> decltype(op.self().compose(gen.self())) {
   return op.self().compose(gen.self());
 }
 
 template <class Value, class Gen, class Op>
-auto operator|(GenImpl<Value, Gen>&& gen, const Operator<Op>& op) ->
-decltype(op.self().compose(std::move(gen.self()))) {
+auto operator|(GenImpl<Value, Gen>&& gen, const Operator<Op>& op)
+    -> decltype(op.self().compose(std::move(gen.self()))) {
   return op.self().compose(std::move(gen.self()));
 }
 
@@ -309,12 +309,12 @@ template <class First, class Second>
 class Composed : public Operator<Composed<First, Second>> {
   First first_;
   Second second_;
+
  public:
   Composed() = default;
 
   Composed(First first, Second second)
-    : first_(std::move(first))
-    , second_(std::move(second)) {}
+      : first_(std::move(first)), second_(std::move(second)) {}
 
   template <
       class Source,
@@ -348,20 +348,18 @@ class Composed : public Operator<Composed<First, Second>> {
  *   int total = nums | sum;
  */
 template <class Value, class First, class Second>
-class Chain : public GenImpl<Value,
-                             Chain<Value, First, Second>> {
+class Chain : public GenImpl<Value, Chain<Value, First, Second>> {
   First first_;
   Second second_;
 
  public:
   explicit Chain(First first, Second second)
-      : first_(std::move(first))
-      , second_(std::move(second)) {}
+      : first_(std::move(first)), second_(std::move(second)) {}
 
   template <class Handler>
   bool apply(Handler&& handler) const {
-    return first_.apply(std::forward<Handler>(handler))
-        && second_.apply(std::forward<Handler>(handler));
+    return first_.apply(std::forward<Handler>(handler)) &&
+        second_.apply(std::forward<Handler>(handler));
   }
 
   template <class Body>

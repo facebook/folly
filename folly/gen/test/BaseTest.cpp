@@ -108,41 +108,35 @@ TEST(Gen, Map) {
 
 TEST(Gen, Member) {
   struct Counter {
-    Counter(int start = 0)
-      : c(start)
-    {}
+    Counter(int start = 0) : c(start) {}
 
-    int count() const { return c; }
-    int incr() { return ++c; }
+    int count() const {
+      return c;
+    }
+    int incr() {
+      return ++c;
+    }
 
-    int& ref() { return c; }
-    const int& ref() const { return c; }
+    int& ref() {
+      return c;
+    }
+    const int& ref() const {
+      return c;
+    }
+
    private:
     int c;
   };
   auto counters = seq(1, 10) | eachAs<Counter>() | as<vector>();
-  EXPECT_EQ(10 * (1 + 10) / 2,
-            from(counters)
-          | member(&Counter::count)
-          | sum);
-  EXPECT_EQ(10 * (1 + 10) / 2,
-            from(counters)
-          | indirect
-          | member(&Counter::count)
-          | sum);
-  EXPECT_EQ(10 * (2 + 11) / 2,
-            from(counters)
-          | member(&Counter::incr)
-          | sum);
-  EXPECT_EQ(10 * (3 + 12) / 2,
-            from(counters)
-          | indirect
-          | member(&Counter::incr)
-          | sum);
-  EXPECT_EQ(10 * (3 + 12) / 2,
-            from(counters)
-          | member(&Counter::count)
-          | sum);
+  EXPECT_EQ(10 * (1 + 10) / 2, from(counters) | member(&Counter::count) | sum);
+  EXPECT_EQ(
+      10 * (1 + 10) / 2,
+      from(counters) | indirect | member(&Counter::count) | sum);
+  EXPECT_EQ(10 * (2 + 11) / 2, from(counters) | member(&Counter::incr) | sum);
+  EXPECT_EQ(
+      10 * (3 + 12) / 2,
+      from(counters) | indirect | member(&Counter::incr) | sum);
+  EXPECT_EQ(10 * (3 + 12) / 2, from(counters) | member(&Counter::count) | sum);
 
   // type-verifications
   auto m = empty<Counter&>();
@@ -166,18 +160,10 @@ TEST(Gen, Field) {
   };
 
   std::vector<X> xs(1);
-  EXPECT_EQ(2, from(xs)
-             | field(&X::a)
-             | sum);
-  EXPECT_EQ(3, from(xs)
-             | field(&X::b)
-             | sum);
-  EXPECT_EQ(4, from(xs)
-             | field(&X::c)
-             | sum);
-  EXPECT_EQ(2, seq(&xs[0], &xs[0])
-             | field(&X::a)
-             | sum);
+  EXPECT_EQ(2, from(xs) | field(&X::a) | sum);
+  EXPECT_EQ(3, from(xs) | field(&X::b) | sum);
+  EXPECT_EQ(4, from(xs) | field(&X::c) | sum);
+  EXPECT_EQ(2, seq(&xs[0], &xs[0]) | field(&X::a) | sum);
   // type-verification
   empty<X&>() | field(&X::a) | assert_type<const int&>();
   empty<X*>() | field(&X::a) | assert_type<const int&>();
@@ -216,9 +202,8 @@ TEST(Gen, SeqWithStep) {
 
 TEST(Gen, SeqWithStepArray) {
   const std::array<int, 6> arr{{1, 2, 3, 4, 5, 6}};
-  EXPECT_EQ(9, seq(&arr[0], &arr[5], 2)
-             | map([](const int *i) { return *i; })
-             | sum);
+  EXPECT_EQ(
+      9, seq(&arr[0], &arr[5], 2) | map([](const int* i) { return *i; }) | sum);
 }
 
 TEST(Gen, Range) {
@@ -233,28 +218,30 @@ TEST(Gen, RangeWithStep) {
 }
 
 TEST(Gen, FromIterators) {
-  vector<int> source {2, 3, 5, 7, 11};
+  vector<int> source{2, 3, 5, 7, 11};
   auto gen = from(folly::range(source.begin() + 1, source.end() - 1));
   EXPECT_EQ(3 * 5 * 7, gen | product);
 }
 
 TEST(Gen, FromMap) {
-  auto source = seq(0, 10)
-              | map([](int i) { return std::make_pair(i, i * i); })
-              | as<std::map<int, int>>();
-  auto gen = fromConst(source)
-           | map([&](const std::pair<const int, int>& p) {
-               return p.second - p.first;
-             });
+  // clang-format off
+  auto source
+      = seq(0, 10)
+      | map([](int i) { return std::make_pair(i, i * i); })
+      | as<std::map<int, int>>();
+  auto gen
+      = fromConst(source)
+      | map([&](const std::pair<const int, int>& p) {
+        return p.second - p.first;
+      });
+  // clang-format on
   EXPECT_EQ(330, gen | sum);
 }
 
 TEST(Gen, Filter) {
   const auto expected = vector<int>{1, 2, 4, 5, 7, 8};
   auto actual =
-      seq(1, 9)
-    | filter([](int x) { return x % 3; })
-    | as<vector<int>>();
+      seq(1, 9) | filter([](int x) { return x % 3; }) | as<vector<int>>();
   EXPECT_EQ(expected, actual);
 }
 
@@ -262,10 +249,7 @@ TEST(Gen, FilterDefault) {
   {
     // Default filter should remove 0s
     const auto expected = vector<int>{1, 1, 2, 3};
-    auto actual =
-        from({0, 1, 1, 0, 2, 3, 0})
-      | filter()
-      | as<vector>();
+    auto actual = from({0, 1, 1, 0, 2, 3, 0}) | filter() | as<vector>();
     EXPECT_EQ(expected, actual);
   }
   {
@@ -274,46 +258,46 @@ TEST(Gen, FilterDefault) {
     int b = 3;
     int c = 0;
     const auto expected = vector<int*>{&a, &b, &c};
-    auto actual =
-        from({(int*)nullptr, &a, &b, &c, (int*)nullptr})
+    // clang-format off
+    auto actual = from({(int*)nullptr, &a, &b, &c, (int*)nullptr})
       | filter()
       | as<vector>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
   {
     // Default filter on Optionals should remove folly::null
     const auto expected =
         vector<Optional<int>>{Optional<int>(5), Optional<int>(0)};
-    const auto actual =
-        from({Optional<int>(5), Optional<int>(), Optional<int>(0)})
+    // clang-format off
+    const auto actual = from(
+        {Optional<int>(5), Optional<int>(), Optional<int>(0)})
       | filter()
       | as<vector>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
 }
 
 TEST(Gen, FilterSink) {
-  auto actual
-    = seq(1, 2)
+  // clang-format off
+  auto actual = seq(1, 2)
     | map([](int x) { return vector<int>{x}; })
     | filter([](vector<int> v) { return !v.empty(); })
     | as<vector>();
+  // clang-format on
   EXPECT_FALSE(from(actual) | rconcat | isEmpty);
 }
 
 TEST(Gen, Contains) {
   {
-    auto gen =
-        seq(1, 9)
-      | map(square);
+    auto gen = seq(1, 9) | map(square);
     EXPECT_TRUE(gen | contains(49));
     EXPECT_FALSE(gen | contains(50));
   }
   {
-    auto gen =
-        seq(1) // infinite, to prove laziness
-      | map(square)
-      | eachTo<std::string>();
+    // infinite, to prove laziness
+    auto gen = seq(1) | map(square) | eachTo<std::string>();
 
     // std::string gen, const char* needle
     EXPECT_TRUE(gen | take(9999) | contains("49"));
@@ -323,25 +307,30 @@ TEST(Gen, Contains) {
 TEST(Gen, Take) {
   {
     auto expected = vector<int>{1, 4, 9, 16};
+    // clang-format off
     auto actual =
       seq(1, 1000)
       | mapped([](int x) { return x * x; })
       | take(4)
       | as<vector<int>>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
   {
-    auto expected = vector<int>{ 0, 1, 4, 5, 8 };
+    auto expected = vector<int>{0, 1, 4, 5, 8};
+    // clang-format off
     auto actual
       = ((seq(0) | take(2)) +
          (seq(4) | take(2)) +
          (seq(8) | take(2)))
       | take(5)
       | as<vector>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
   {
-    auto expected = vector<int>{ 0, 1, 4, 5, 8 };
+    auto expected = vector<int>{0, 1, 4, 5, 8};
+    // clang-format off
     auto actual
       = seq(0)
       | mapped([](int i) {
@@ -350,6 +339,7 @@ TEST(Gen, Take) {
       | concat
       | take(5)
       | as<vector>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
   {
@@ -359,41 +349,31 @@ TEST(Gen, Take) {
   }
 }
 
-
 TEST(Gen, Stride) {
-  {
-    EXPECT_THROW(stride(0), std::invalid_argument);
-  }
+  EXPECT_THROW(stride(0), std::invalid_argument);
   {
     auto expected = vector<int>{1, 2, 3, 4};
-    auto actual
-      = seq(1, 4)
-      | stride(1)
-      | as<vector<int>>();
+    auto actual = seq(1, 4) | stride(1) | as<vector<int>>();
     EXPECT_EQ(expected, actual);
   }
   {
     auto expected = vector<int>{1, 3, 5, 7};
-    auto actual
-      = seq(1, 8)
-      | stride(2)
-      | as<vector<int>>();
+    auto actual = seq(1, 8) | stride(2) | as<vector<int>>();
     EXPECT_EQ(expected, actual);
   }
   {
     auto expected = vector<int>{1, 4, 7, 10};
-    auto actual
-      = seq(1, 12)
-      | stride(3)
-      | as<vector<int>>();
+    auto actual = seq(1, 12) | stride(3) | as<vector<int>>();
     EXPECT_EQ(expected, actual);
   }
   {
     auto expected = vector<int>{1, 3, 5, 7, 9, 1, 4, 7, 10};
+    // clang-format off
     auto actual
       = ((seq(1, 10) | stride(2)) +
          (seq(1, 10) | stride(3)))
       | as<vector<int>>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
   EXPECT_EQ(500, seq(1) | take(1000) | stride(2) | count);
@@ -403,17 +383,15 @@ TEST(Gen, Stride) {
 TEST(Gen, Sample) {
   std::mt19937 rnd(42);
 
-  auto sampler =
-      seq(1, 100)
-    | sample(50, rnd);
-  std::unordered_map<int,int> hits;
+  auto sampler = seq(1, 100) | sample(50, rnd);
+  std::unordered_map<int, int> hits;
   const int kNumIters = 80;
   for (int i = 0; i < kNumIters; i++) {
     auto vec = sampler | as<vector<int>>();
     EXPECT_EQ(vec.size(), 50);
     auto uniq = fromConst(vec) | as<set<int>>();
-    EXPECT_EQ(uniq.size(), vec.size());  // sampling without replacement
-    for (auto v: vec) {
+    EXPECT_EQ(uniq.size(), vec.size()); // sampling without replacement
+    for (auto v : vec) {
       ++hits[v];
     }
   }
@@ -422,50 +400,50 @@ TEST(Gen, Sample) {
   // at least once and no value all 80 times. (The odds of either of those
   // events is 1/2^80).
   EXPECT_EQ(hits.size(), 100);
-  for (auto hit: hits) {
+  for (auto hit : hits) {
     EXPECT_GT(hit.second, 0);
     EXPECT_LT(hit.second, kNumIters);
   }
 
-  auto small =
-      seq(1, 5)
-    | sample(10);
+  auto small = seq(1, 5) | sample(10);
   EXPECT_EQ((small | sum), 15);
   EXPECT_EQ((small | take(3) | count), 3);
 }
 
 TEST(Gen, Skip) {
   auto gen =
-      seq(1, 1000)
-    | mapped([](int x) { return x * x; })
-    | skip(4)
-    | take(4);
+      seq(1, 1000) | mapped([](int x) { return x * x; }) | skip(4) | take(4);
   EXPECT_EQ((vector<int>{25, 36, 49, 64}), gen | as<vector>());
 }
 
 TEST(Gen, Until) {
   {
     auto expected = vector<int>{1, 4, 9, 16};
+    // clang-format off
     auto actual
       = seq(1, 1000)
       | mapped([](int x) { return x * x; })
       | until([](int x) { return x > 20; })
       | as<vector<int>>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
   {
-    auto expected = vector<int>{ 0, 1, 4, 5, 8 };
+    auto expected = vector<int>{0, 1, 4, 5, 8};
+    // clang-format off
     auto actual
       = ((seq(0) | until([](int i) { return i > 1; })) +
          (seq(4) | until([](int i) { return i > 5; })) +
          (seq(8) | until([](int i) { return i > 9; })))
       | until([](int i) { return i > 8; })
       | as<vector<int>>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
   /*
   {
     auto expected = vector<int>{ 0, 1, 5, 6, 10 };
+    // clang-format off
     auto actual
       = seq(0)
       | mapped([](int i) {
@@ -474,6 +452,7 @@ TEST(Gen, Until) {
       | concat
       | until([](int i) { return i > 10; })
       | as<vector<int>>();
+    // clang-format on
     EXPECT_EQ(expected, actual);
   }
     */
@@ -509,12 +488,12 @@ TEST(Gen, Visit) {
 
 TEST(Gen, Composed) {
   // Operator, Operator
-  auto valuesOf =
-      filter([](Optional<int>& o) { return o.hasValue(); })
+  // clang-format off
+  auto valuesOf
+    = filter([](Optional<int>& o) { return o.hasValue(); })
     | map([](Optional<int>& o) -> int& { return o.value(); });
-  std::vector<Optional<int>> opts {
-    none, 4, none, 6, none
-  };
+  // clang-format on
+  std::vector<Optional<int>> opts{none, 4, none, 6, none};
   EXPECT_EQ(4 * 4 + 6 * 6, from(opts) | valuesOf | map(square) | sum);
   // Operator, Sink
   auto sumOpt = valuesOf | sum;
@@ -522,8 +501,8 @@ TEST(Gen, Composed) {
 }
 
 TEST(Gen, Chain) {
-  std::vector<int> nums {2, 3, 5, 7};
-  std::map<int, int> mappings { { 3, 9}, {5, 25} };
+  std::vector<int> nums{2, 3, 5, 7};
+  std::map<int, int> mappings{{3, 9}, {5, 25}};
   auto gen = from(nums) + (from(mappings) | get<1>());
   EXPECT_EQ(51, gen | sum);
   EXPECT_EQ(5, gen | take(2) | sum);
@@ -531,79 +510,76 @@ TEST(Gen, Chain) {
 }
 
 TEST(Gen, Concat) {
-  std::vector<std::vector<int>> nums {{2, 3}, {5, 7}};
+  std::vector<std::vector<int>> nums{{2, 3}, {5, 7}};
   auto gen = from(nums) | rconcat;
   EXPECT_EQ(17, gen | sum);
   EXPECT_EQ(10, gen | take(3) | sum);
 }
 
 TEST(Gen, ConcatGen) {
-  auto gen = seq(1, 10)
-           | map([](int i) { return seq(1, i); })
-           | concat;
+  auto gen = seq(1, 10) | map([](int i) { return seq(1, i); }) | concat;
   EXPECT_EQ(220, gen | sum);
   EXPECT_EQ(10, gen | take(6) | sum);
 }
 
 TEST(Gen, ConcatAlt) {
-  std::vector<std::vector<int>> nums {{2, 3}, {5, 7}};
-  auto actual = from(nums)
-              | map([](std::vector<int>& v) { return from(v); })
-              | concat
-              | sum;
+  std::vector<std::vector<int>> nums{{2, 3}, {5, 7}};
+  // clang-format off
+  auto actual
+    = from(nums)
+    | map([](std::vector<int>& v) { return from(v); })
+    | concat
+    | sum;
+  // clang-format on
   auto expected = 17;
   EXPECT_EQ(expected, actual);
 }
 
 TEST(Gen, Order) {
   auto expected = vector<int>{0, 3, 5, 6, 7, 8, 9};
-  auto actual =
-      from({8, 6, 7, 5, 3, 0, 9})
-    | order
-    | as<vector>();
+  auto actual = from({8, 6, 7, 5, 3, 0, 9}) | order | as<vector>();
   EXPECT_EQ(expected, actual);
 }
 
 TEST(Gen, OrderMoved) {
   auto expected = vector<int>{0, 9, 25, 36, 49, 64, 81};
-  auto actual =
-      from({8, 6, 7, 5, 3, 0, 9})
+  // clang-format off
+  auto actual
+    = from({8, 6, 7, 5, 3, 0, 9})
     | move
     | order
     | map(square)
     | as<vector>();
+  // clang-format on
   EXPECT_EQ(expected, actual);
 }
 
 TEST(Gen, OrderTake) {
   auto expected = vector<int>{9, 8, 7};
-  auto actual =
-      from({8, 6, 7, 5, 3, 0, 9})
+  // clang-format off
+  auto actual
+    = from({8, 6, 7, 5, 3, 0, 9})
     | orderByDescending(square)
     | take(3)
     | as<vector>();
+  // clang-format on
   EXPECT_EQ(expected, actual);
 }
 
 TEST(Gen, Distinct) {
   auto expected = vector<int>{3, 1, 2};
-  auto actual =
-      from({3, 1, 3, 2, 1, 2, 3})
-    | distinct
-    | as<vector>();
+  auto actual = from({3, 1, 3, 2, 1, 2, 3}) | distinct | as<vector>();
   EXPECT_EQ(expected, actual);
 }
 
-TEST(Gen, DistinctBy) {   //  0  1  4  9  6  5  6  9  4  1  0
+TEST(Gen, DistinctBy) { //  0  1  4  9  6  5  6  9  4  1  0
   auto expected = vector<int>{0, 1, 2, 3, 4, 5};
   auto actual =
-      seq(0, 100)
-    | distinctBy([](int i) { return i * i % 10; })
-    | as<vector>();
+      seq(0, 100) | distinctBy([](int i) { return i * i % 10; }) | as<vector>();
   EXPECT_EQ(expected, actual);
 }
 
-TEST(Gen, DistinctMove) {   //  0  1  4  9  6  5  6  9  4  1  0
+TEST(Gen, DistinctMove) { //  0  1  4  9  6  5  6  9  4  1  0
   auto expected = vector<int>{0, 1, 2, 3, 4, 5};
   auto actual = seq(0, 100) |
       mapped([](int i) { return std::make_unique<int>(i); })
@@ -627,12 +603,11 @@ TEST(Gen, DistinctInfinite) {
   // of cource, is it eventually made finite before returning the result.
   auto expected = seq(0) | take(5) | as<vector>(); // 0 1 2 3 4
 
-  auto actual =
-      seq(0)                              // 0 1 2 3 4 5 6 7 ...
-    | mapped([](int i) { return i / 2; }) // 0 0 1 1 2 2 3 3 ...
-    | distinct                            // 0 1 2 3 4 5 6 7 ...
-    | take(5)                             // 0 1 2 3 4
-    | as<vector>();
+  auto actual = seq(0) // 0 1 2 3 4 5 6 7 ...
+      | mapped([](int i) { return i / 2; }) // 0 0 1 1 2 2 3 3 ...
+      | distinct // 0 1 2 3 4 5 6 7 ...
+      | take(5) // 0 1 2 3 4
+      | as<vector>();
 
   EXPECT_EQ(expected, actual);
 }
@@ -643,23 +618,26 @@ TEST(Gen, DistinctByInfinite) {
   // at the end, the sequence may infinite loop. This is fine becasue we cannot
   // solve the halting problem.
   auto expected = vector<int>{1, 2};
-  auto actual =
-      seq(1)                                    // 1 2 3 4 5 6 7 8 ...
-    | distinctBy([](int i) { return i % 2; })   // 1 2 (but might by infinite)
-    | take(2)                                   // 1 2
-    | as<vector>();
+  auto actual = seq(1) // 1 2 3 4 5 6 7 8 ...
+      | distinctBy([](int i) { return i % 2; }) // 1 2 (but might by infinite)
+      | take(2) // 1 2
+      | as<vector>();
   // Note that if we had take(3), this would infinite loop
 
   EXPECT_EQ(expected, actual);
 }
 
 TEST(Gen, MinBy) {
-  EXPECT_EQ(7, seq(1, 10)
-             | minBy([](int i) -> double {
-                 double d = i - 6.8;
-                 return d * d;
-               })
-             | unwrap);
+  // clang-format off
+  EXPECT_EQ(
+      7,
+      seq(1, 10)
+        | minBy([](int i) -> double {
+            double d = i - 6.8;
+            return d * d;
+          })
+        | unwrap);
+  // clang-format on
 }
 
 TEST(Gen, MaxBy) {
@@ -669,13 +647,13 @@ TEST(Gen, MaxBy) {
 }
 
 TEST(Gen, Min) {
-  auto odds = seq(2,10) | filter([](int i){ return i % 2; });
+  auto odds = seq(2, 10) | filter([](int i) { return i % 2; });
 
   EXPECT_EQ(3, odds | min);
 }
 
 TEST(Gen, Max) {
-  auto odds = seq(2,10) | filter([](int i){ return i % 2; });
+  auto odds = seq(2, 10) | filter([](int i) { return i % 2; });
 
   EXPECT_EQ(9, odds | max);
 }
@@ -695,12 +673,12 @@ TEST(Gen, FromRValue) {
     // this case.
     fbvector<int> v({1, 2, 3, 4});
     auto q1 = from(v);
-    EXPECT_EQ(v.size(), 4);  // ensure that the lvalue version was called!
+    EXPECT_EQ(v.size(), 4); // ensure that the lvalue version was called!
     auto expected = 1 * 2 * 3 * 4;
     EXPECT_EQ(expected, q1 | product);
 
     auto q2 = from(std::move(v));
-    EXPECT_EQ(v.size(), 0);  // ensure that rvalue version was called
+    EXPECT_EQ(v.size(), 0); // ensure that rvalue version was called
     EXPECT_EQ(expected, q2 | product);
   }
   {
@@ -721,33 +699,35 @@ TEST(Gen, FromRValue) {
     }
   }
   {
-    auto q = from(set<int>{1,2,3,2,1});
+    auto q = from(set<int>{1, 2, 3, 2, 1});
     EXPECT_EQ(q | sum, 6);
   }
 }
 
 TEST(Gen, OrderBy) {
   auto expected = vector<int>{5, 6, 4, 7, 3, 8, 2, 9, 1, 10};
-  auto actual =
-      seq(1, 10)
+  // clang-format off
+  auto actual
+    = seq(1, 10)
     | orderBy([](int x) { return (5.1 - x) * (5.1 - x); })
     | as<vector>();
+  // clang-format on
   EXPECT_EQ(expected, actual);
 
   expected = seq(1, 10) | as<vector>();
-  actual =
-      from(expected)
+  // clang-format off
+  actual
+    = from(expected)
     | map([] (int x) { return 11 - x; })
     | orderBy()
     | as<vector>();
+  // clang-format on
   EXPECT_EQ(expected, actual);
 }
 
 TEST(Gen, Foldl) {
   int expected = 2 * 3 * 4 * 5;
-  auto actual =
-      seq(2, 5)
-    | foldl(1, multiply);
+  auto actual = seq(2, 5) | foldl(1, multiply);
   EXPECT_EQ(expected, actual);
 }
 
@@ -778,7 +758,7 @@ TEST(Gen, First) {
 }
 
 TEST(Gen, FromCopy) {
-  vector<int> v {3, 5};
+  vector<int> v{3, 5};
   auto src = from(v);
   auto copy = fromCopy(v);
   EXPECT_EQ(8, src | sum);
@@ -789,11 +769,11 @@ TEST(Gen, FromCopy) {
 }
 
 TEST(Gen, Get) {
-  std::map<int, int> pairs {
-    {1, 1},
-    {2, 4},
-    {3, 9},
-    {4, 16},
+  std::map<int, int> pairs{
+      {1, 1},
+      {2, 4},
+      {3, 9},
+      {4, 16},
   };
   auto pairSrc = from(pairs);
   auto keys = pairSrc | get<0>();
@@ -805,10 +785,10 @@ TEST(Gen, Get) {
   EXPECT_EQ(15, keys | sum);
   EXPECT_EQ(55, values | sum);
 
-  vector<tuple<int, int, int>> tuples {
-    make_tuple(1, 1, 1),
-    make_tuple(2, 4, 8),
-    make_tuple(3, 9, 27),
+  vector<tuple<int, int, int>> tuples{
+      make_tuple(1, 1, 1),
+      make_tuple(2, 4, 8),
+      make_tuple(3, 9, 27),
   };
   EXPECT_EQ(36, from(tuples) | get<2>() | sum);
 }
@@ -848,45 +828,43 @@ TEST(Gen, Yielders) {
       yield(i);
     }
     yield(7);
-    for (int i = 3; ; ++i) {
+    for (int i = 3;; ++i) {
       yield(i * i);
     }
   };
-  vector<int> expected {
-    1, 2, 3, 4, 5, 7, 9, 16, 25
-  };
+  vector<int> expected{1, 2, 3, 4, 5, 7, 9, 16, 25};
   EXPECT_EQ(expected, gen | take(9) | as<vector>());
 }
 
 TEST(Gen, NestedYield) {
   auto nums = GENERATOR(int) {
-    for (int i = 1; ; ++i) {
+    for (int i = 1;; ++i) {
       yield(i);
     }
   };
   auto gen = GENERATOR(int) {
     nums | take(10) | yield;
-    seq(1, 5) | [&](int i) {
-      yield(i);
-    };
+    seq(1, 5) | [&](int i) { yield(i); };
   };
   EXPECT_EQ(70, gen | sum);
 }
 
 TEST(Gen, MapYielders) {
-  auto gen = seq(1, 5)
-           | map([](int n) {
-               return GENERATOR(int) {
-                 int i;
-                 for (i = 1; i < n; ++i) {
-                   yield(i);
-                 }
-                 for (; i >= 1; --i) {
-                   yield(i);
-                 }
-               };
-             })
-           | concat;
+  // clang-format off
+  auto gen
+    = seq(1, 5)
+    | map([](int n) {
+        return GENERATOR(int) {
+          int i;
+          for (i = 1; i < n; ++i) {
+            yield(i);
+          }
+          for (; i >= 1; --i) {
+            yield(i);
+          }
+        };
+      })
+    | concat;
   vector<int> expected {
                 1,
              1, 2, 1,
@@ -894,6 +872,7 @@ TEST(Gen, MapYielders) {
        1, 2, 3, 4, 3, 2, 1,
     1, 2, 3, 4, 5, 4, 3, 2, 1,
   };
+  // clang-format on
   EXPECT_EQ(expected, gen | as<vector>());
 }
 
@@ -907,13 +886,11 @@ TEST(Gen, VirtualGen) {
   EXPECT_EQ(30, v | take(4) | sum);
 }
 
-
 TEST(Gen, CustomType) {
-  struct Foo{
+  struct Foo {
     int y;
   };
-  auto gen = from({Foo{2}, Foo{3}})
-           | map([](const Foo& f) { return f.y; });
+  auto gen = from({Foo{2}, Foo{3}}) | map([](const Foo& f) { return f.y; });
   EXPECT_EQ(5, gen | sum);
 }
 
@@ -930,7 +907,7 @@ namespace {
 
 class TestIntSeq : public GenImpl<int, TestIntSeq> {
  public:
-  TestIntSeq() { }
+  TestIntSeq() {}
 
   template <class Body>
   bool apply(Body&& body) const {
@@ -963,15 +940,13 @@ TEST(Gen, FromArray) {
 }
 
 TEST(Gen, FromStdArray) {
-  std::array<int,4> source {{2, 3, 5, 7}};
+  std::array<int, 4> source{{2, 3, 5, 7}};
   auto gen = from(source);
   EXPECT_EQ(2 * 3 * 5 * 7, gen | product);
 }
 
 TEST(Gen, StringConcat) {
-  auto gen = seq(1, 10)
-           | eachTo<string>()
-           | rconcat;
+  auto gen = seq(1, 10) | eachTo<string>() | rconcat;
   EXPECT_EQ("12345678910", gen | as<string>());
 }
 
@@ -1055,42 +1030,39 @@ TEST(Gen, Collect) {
   EXPECT_EQ(s.size(), 5);
 }
 
-
 TEST(Gen, Cycle) {
   {
     auto s = from({1, 2});
-    EXPECT_EQ((vector<int> { 1, 2, 1, 2, 1 }),
-              s | cycle | take(5) | as<vector>());
+    EXPECT_EQ((vector<int>{1, 2, 1, 2, 1}), s | cycle | take(5) | as<vector>());
   }
   {
     auto s = from({1, 2});
-    EXPECT_EQ((vector<int> { 1, 2, 1, 2 }),
-              s | cycle(2) | as<vector>());
+    EXPECT_EQ((vector<int>{1, 2, 1, 2}), s | cycle(2) | as<vector>());
   }
   {
     auto s = from({1, 2, 3});
-    EXPECT_EQ((vector<int> { 1, 2, 1, 2, 1 }),
-              s | take(2) | cycle | take(5) | as<vector>());
+    EXPECT_EQ(
+        (vector<int>{1, 2, 1, 2, 1}),
+        s | take(2) | cycle | take(5) | as<vector>());
   }
   {
     auto s = empty<int>();
-    EXPECT_EQ((vector<int> { }),
-              s | cycle | take(4) | as<vector>());
+    EXPECT_EQ((vector<int>{}), s | cycle | take(4) | as<vector>());
   }
   {
     int c = 3;
     int* pcount = &c;
     auto countdown = GENERATOR(int) {
       ASSERT_GE(*pcount, 0)
-        << "Cycle should have stopped when it didnt' get values!";
+          << "Cycle should have stopped when it didnt' get values!";
       for (int i = 1; i <= *pcount; ++i) {
         yield(i);
       }
       --*pcount;
     };
     auto s = countdown;
-    EXPECT_EQ((vector<int> { 1, 2, 3, 1, 2, 1}),
-              s | cycle | take(7) | as<vector>());
+    EXPECT_EQ(
+        (vector<int>{1, 2, 3, 1, 2, 1}), s | cycle | take(7) | as<vector>());
     // take necessary as cycle returns an infinite generator
   }
 }
@@ -1102,42 +1074,40 @@ TEST(Gen, Dereference) {
     EXPECT_EQ(6, s | dereference | sum);
   }
   {
-    vector<int> a { 1, 2 };
-    vector<int> b { 3, 4 };
-    vector<vector<int>*> pv { &a, nullptr, &b };
-    from(pv)
-      | dereference
-      | [&](vector<int>& v) {
-          v.push_back(5);
-        };
+    vector<int> a{1, 2};
+    vector<int> b{3, 4};
+    vector<vector<int>*> pv{&a, nullptr, &b};
+    from(pv) | dereference | [&](vector<int>& v) { v.push_back(5); };
     EXPECT_EQ(3, a.size());
     EXPECT_EQ(3, b.size());
     EXPECT_EQ(5, a.back());
     EXPECT_EQ(5, b.back());
   }
   {
-    vector<std::map<int, int>> maps {
-      {
-        { 2, 31 },
-        { 3, 41 },
-      },
-      {
-        { 3, 52 },
-        { 4, 62 },
-      },
-      {
-        { 4, 73 },
-        { 5, 83 },
-      },
+    vector<std::map<int, int>> maps{
+        {
+            {2, 31},
+            {3, 41},
+        },
+        {
+            {3, 52},
+            {4, 62},
+        },
+        {
+            {4, 73},
+            {5, 83},
+        },
     };
+    // clang-format off
     EXPECT_EQ(
-      93,
-      from(maps)
-      | map([](std::map<int, int>& m) {
-          return get_ptr(m, 3);
-        })
-      | dereference
-      | sum);
+        93,
+        from(maps)
+        | map([](std::map<int, int>& m) {
+            return get_ptr(m, 3);
+          })
+        | dereference
+        | sum);
+    // clang-format on
   }
   {
     vector<unique_ptr<int>> ups;
@@ -1195,62 +1165,71 @@ TEST(Gen, Indirect) {
 
 TEST(Gen, Guard) {
   using std::runtime_error;
-  EXPECT_THROW(from({"1", "a", "3"})
-               | eachTo<int>()
-               | sum,
-               runtime_error);
-  EXPECT_EQ(4,
-            from({"1", "a", "3"})
-            | guard<runtime_error>([](runtime_error&, const char*) {
-                return true; // continue
-              })
-            | eachTo<int>()
-            | sum);
-  EXPECT_EQ(1,
-            from({"1", "a", "3"})
-            | guard<runtime_error>([](runtime_error&, const char*) {
-                return false; // break
-              })
-            | eachTo<int>()
-            | sum);
-  EXPECT_THROW(from({"1", "a", "3"})
-                | guard<runtime_error>([](runtime_error&, const char* v) {
-                    if (v[0] == 'a') {
-                      throw;
-                    }
-                    return true;
-                  })
-               | eachTo<int>()
-               | sum,
-               runtime_error);
+  // clang-format off
+  EXPECT_THROW(
+      from({"1", "a", "3"})
+      | eachTo<int>()
+      | sum,
+      runtime_error);
+  EXPECT_EQ(
+      4,
+      from({"1", "a", "3"})
+      | guard<runtime_error>([](runtime_error&, const char*) {
+          return true; // continue
+        })
+      | eachTo<int>()
+      | sum);
+  EXPECT_EQ(
+      1,
+      from({"1", "a", "3"})
+      | guard<runtime_error>([](runtime_error&, const char*) {
+          return false; // break
+        })
+      | eachTo<int>()
+      | sum);
+  EXPECT_THROW(
+      from({"1", "a", "3"})
+      | guard<runtime_error>([](runtime_error&, const char* v) {
+          if (v[0] == 'a') {
+            throw;
+          }
+          return true;
+        })
+      | eachTo<int>()
+      | sum,
+      runtime_error);
+  // clang-format on
 }
 
 TEST(Gen, eachTryTo) {
   using std::runtime_error;
-  EXPECT_EQ(4,
-            from({"1", "a", "3"})
-            | eachTryTo<int>()
-            | dereference
-            | sum);
-  EXPECT_EQ(1,
-            from({"1", "a", "3"})
-            | eachTryTo<int>()
-            | takeWhile()
-            | dereference
-            | sum);
+  // clang-format off
+  EXPECT_EQ(
+      4,
+      from({"1", "a", "3"})
+      | eachTryTo<int>()
+      | dereference
+      | sum);
+  EXPECT_EQ(
+      1,
+      from({"1", "a", "3"})
+      | eachTryTo<int>()
+      | takeWhile()
+      | dereference
+      | sum);
+  // clang-format on
 }
 
 TEST(Gen, Batch) {
-  EXPECT_EQ((vector<vector<int>> { {1} }),
-            seq(1, 1) | batch(5) | as<vector>());
-  EXPECT_EQ((vector<vector<int>> { {1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11} }),
-            seq(1, 11) | batch(3) | as<vector>());
-  EXPECT_THROW(seq(1, 1) | batch(0) | as<vector>(),
-               std::invalid_argument);
+  EXPECT_EQ((vector<vector<int>>{{1}}), seq(1, 1) | batch(5) | as<vector>());
+  EXPECT_EQ(
+      (vector<vector<int>>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11}}),
+      seq(1, 11) | batch(3) | as<vector>());
+  EXPECT_THROW(seq(1, 1) | batch(0) | as<vector>(), std::invalid_argument);
 }
 
 TEST(Gen, BatchMove) {
-  auto expected = vector<vector<int>>{ {0, 1}, {2, 3}, {4} };
+  auto expected = vector<vector<int>>{{0, 1}, {2, 3}, {4}};
   auto actual = seq(0, 4) |
       mapped([](int i) { return std::make_unique<int>(i); }) | batch(2) |
       mapped([](std::vector<std::unique_ptr<int>>& pVector) {
@@ -1315,8 +1294,18 @@ TEST(Gen, Just) {
 }
 
 TEST(Gen, GroupBy) {
-  vector<string> strs{"zero", "one", "two",   "three", "four",
-                      "five", "six", "seven", "eight", "nine"};
+  vector<string> strs{
+      "zero",
+      "one",
+      "two",
+      "three",
+      "four",
+      "five",
+      "six",
+      "seven",
+      "eight",
+      "nine",
+  };
 
   auto gb = from(strs) | groupBy([](const string& str) { return str.size(); });
 
@@ -1324,16 +1313,24 @@ TEST(Gen, GroupBy) {
   EXPECT_EQ(3, gb | count);
 
   vector<string> mode{"zero", "four", "five", "nine"};
-  EXPECT_EQ(mode,
-            gb | maxBy([](const Group<size_t, string>& g) { return g.size(); })
-               | unwrap
-               | as<vector>());
+  // clang-format off
+  EXPECT_EQ(
+      mode,
+      gb
+      | maxBy([](const Group<size_t, string>& g) { return g.size(); })
+      | unwrap
+      | as<vector>());
+  // clang-format on
 
   vector<string> largest{"three", "seven", "eight"};
-  EXPECT_EQ(largest,
-            gb | maxBy([](const Group<size_t, string>& g) { return g.key(); })
-               | unwrap
-               | as<vector>());
+  // clang-format off
+  EXPECT_EQ(
+      largest,
+      gb
+      | maxBy([](const Group<size_t, string>& g) { return g.key(); })
+      | unwrap
+      | as<vector>());
+  // clang-format on
 }
 
 TEST(Gen, GroupByAdjacent) {
@@ -1387,7 +1384,7 @@ TEST(Gen, Unwrap) {
   EXPECT_EQ(8, *moved3);
 
   {
-  // mixed types, with common type matching optional
+    // mixed types, with common type matching optional
     Optional<double> full(3.3);
     decltype(full) empty;
     auto fallback = unwrapOr(4);
@@ -1402,7 +1399,7 @@ TEST(Gen, Unwrap) {
   }
 
   {
-  // mixed types, with common type matching fallback
+    // mixed types, with common type matching fallback
     Optional<int> full(3);
     decltype(full) empty;
     auto fallback = unwrapOr(5.0); // type: double
@@ -1454,7 +1451,7 @@ TEST(Gen, Unwrap) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();

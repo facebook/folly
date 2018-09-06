@@ -47,12 +47,12 @@ template <class Predicate>
 class PMap : public Operator<PMap<Predicate>> {
   Predicate pred_;
   size_t nThreads_;
+
  public:
   PMap() = default;
 
   PMap(Predicate pred, size_t nThreads)
-    : pred_(std::move(pred)),
-      nThreads_(nThreads) { }
+      : pred_(std::move(pred)), nThreads_(nThreads) {}
 
   template <
       class Value,
@@ -75,8 +75,7 @@ class PMap : public Operator<PMap<Predicate>> {
 
      public:
       ExecutionPipeline(const Predicate& pred, size_t nThreads)
-        : pred_(pred),
-          pipeline_(nThreads, nThreads) {
+          : pred_(pred), pipeline_(nThreads, nThreads) {
         workers_.reserve(nThreads);
         for (size_t i = 0; i < nThreads; i++) {
           workers_.push_back(std::thread([this] { this->predApplier(); }));
@@ -86,7 +85,9 @@ class PMap : public Operator<PMap<Predicate>> {
       ~ExecutionPipeline() {
         assert(pipeline_.sizeGuess() == 0);
         assert(done_.load());
-        for (auto& w : workers_) { w.join(); }
+        for (auto& w : workers_) {
+          w.join();
+        }
       }
 
       void stop() {
@@ -131,8 +132,7 @@ class PMap : public Operator<PMap<Predicate>> {
           if (pipeline_.template readStage<0>(ticket, in)) {
             wake_.cancelWait();
             Output out = pred_(std::move(in));
-            pipeline_.template blockingWriteStage<0>(ticket,
-                                                     std::move(out));
+            pipeline_.template blockingWriteStage<0>(ticket, std::move(out));
             continue;
           }
 
@@ -149,10 +149,9 @@ class PMap : public Operator<PMap<Predicate>> {
 
    public:
     Generator(Source source, const Predicate& pred, size_t nThreads)
-      : source_(std::move(source)),
-        pred_(pred),
-        nThreads_(nThreads ? nThreads : sysconf(_SC_NPROCESSORS_ONLN)) {
-    }
+        : source_(std::move(source)),
+          pred_(pred),
+          nThreads_(nThreads ? nThreads : sysconf(_SC_NPROCESSORS_ONLN)) {}
 
     template <class Body>
     void foreach(Body&& body) const {

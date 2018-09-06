@@ -58,7 +58,6 @@ Chunked chunked(Container& container, int chunkSize = 256) {
   return Chunked(chunkSize, folly::range(container.begin(), container.end()));
 }
 
-
 /**
  * parallel - A parallelization operator.
  *

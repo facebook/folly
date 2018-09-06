@@ -58,8 +58,8 @@ TEST(FileGen, ByLine) {
 }
 
 TEST(FileGen, ByLineFull) {
-  auto cases = std::vector<std::string> {
-       stripLeftMargin(R"(
+  auto cases = std::vector<std::string>{
+      stripLeftMargin(R"(
          Hello world
          This is the second line
 
@@ -67,11 +67,12 @@ TEST(FileGen, ByLineFull) {
          a few empty lines above
          incomplete last line)"),
 
-         "complete last line\n",
+      "complete last line\n",
 
-         "\n",
+      "\n",
 
-         ""};
+      "",
+  };
 
   for (auto& lines : cases) {
     test::TemporaryFile file("ByLineFull");
@@ -113,8 +114,9 @@ TEST(FileGenBufferedTest, FileWriterSimple) {
 
   auto squares = seq(1, 100) | map([](int x) { return x * x; });
   squares | map(toLine) | eachAs<StringPiece>() | toFile(File(file.fd()));
-  EXPECT_EQ(squares | sum,
-            byLine(File(file.path().string().c_str())) | eachTo<int>() | sum);
+  EXPECT_EQ(
+      squares | sum,
+      byLine(File(file.path().string().c_str())) | eachTo<int>() | sum);
 }
 
 INSTANTIATE_TEST_CASE_P(

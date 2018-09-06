@@ -35,7 +35,7 @@ class FileWriter;
  * to hold each value).
  */
 template <class S = detail::FileReader>
-S fromFile(File file, size_t bufferSize=4096) {
+S fromFile(File file, size_t bufferSize = 4096) {
   return S(std::move(file), IOBuf::create(bufferSize));
 }
 
@@ -52,7 +52,7 @@ S fromFile(File file, std::unique_ptr<IOBuf> buffer) {
  * If bufferSize is 0, writes will be unbuffered.
  */
 template <class S = detail::FileWriter>
-S toFile(File file, size_t bufferSize=4096) {
+S toFile(File file, size_t bufferSize = 4096) {
   return S(std::move(file), bufferSize ? nullptr : IOBuf::create(bufferSize));
 }
 
