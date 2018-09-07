@@ -263,6 +263,20 @@ void runSimple() {
     EXPECT_EQ(h8.count(k), 1);
   }
 
+  h8.clear();
+  h8.emplace(s("abc"));
+  EXPECT_GT(h8.bucket_count(), 1);
+  h8 = {};
+  EXPECT_GT(h8.bucket_count(), 1);
+  h9 = {s("abc"), s("def")};
+  EXPECT_TRUE(h8.empty());
+  EXPECT_EQ(h9.size(), 2);
+
+  auto expectH8 = [&](T& ref) { EXPECT_EQ(&ref, &h8); };
+  expectH8((h8 = h2));
+  expectH8((h8 = std::move(h2)));
+  expectH8((h8 = {}));
+
   F14TableStats::compute(h);
   F14TableStats::compute(h2);
   F14TableStats::compute(h3);

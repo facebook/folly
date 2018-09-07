@@ -275,6 +275,12 @@ class F14BasicMap {
 
   F14BasicMap& operator=(F14BasicMap&&) = default;
 
+  F14BasicMap& operator=(std::initializer_list<value_type> ilist) {
+    clear();
+    bulkInsert(ilist.begin(), ilist.end(), false);
+    return *this;
+  }
+
   allocator_type get_allocator() const noexcept {
     return table_.alloc();
   }
@@ -916,9 +922,16 @@ class F14ValueMap
   using Super = f14::detail::F14BasicMap<Policy>;
 
  public:
-  F14ValueMap() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
+  using typename Super::value_type;
+
+  F14ValueMap() = default;
 
   using Super::Super;
+
+  F14ValueMap& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   void swap(F14ValueMap& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
@@ -970,9 +983,14 @@ class F14NodeMap
  public:
   using typename Super::value_type;
 
-  F14NodeMap() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
+  F14NodeMap() = default;
 
   using Super::Super;
+
+  F14NodeMap& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   void swap(F14NodeMap& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
@@ -1049,10 +1067,15 @@ class F14VectorMap
   using reverse_iterator = typename Policy::ReverseIter;
   using const_reverse_iterator = typename Policy::ConstReverseIter;
 
-  F14VectorMap() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
+  F14VectorMap() = default;
 
   // inherit constructors
   using Super::Super;
+
+  F14VectorMap& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   void swap(F14VectorMap& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
@@ -1252,8 +1275,16 @@ class F14FastMap : public std::conditional_t<
       F14VectorMap<Key, Mapped, Hasher, KeyEqual, Alloc>>;
 
  public:
+  using typename Super::value_type;
+
+  F14FastMap() = default;
+
   using Super::Super;
-  F14FastMap() : Super() {}
+
+  F14FastMap& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 };
 
 template <typename K, typename M, typename H, typename E, typename A>

@@ -271,6 +271,12 @@ class F14BasicSet {
 
   F14BasicSet& operator=(F14BasicSet&&) = default;
 
+  F14BasicSet& operator=(std::initializer_list<value_type> ilist) {
+    clear();
+    bulkInsert(ilist.begin(), ilist.end(), false);
+    return *this;
+  }
+
   allocator_type get_allocator() const noexcept {
     return table_.alloc();
   }
@@ -699,9 +705,16 @@ class F14ValueSet
   using Super = f14::detail::F14BasicSet<Policy>;
 
  public:
-  F14ValueSet() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
+  using typename Super::value_type;
+
+  F14ValueSet() = default;
 
   using Super::Super;
+
+  F14ValueSet& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   void swap(F14ValueSet& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
@@ -746,9 +759,14 @@ class F14NodeSet
  public:
   using typename Super::value_type;
 
-  F14NodeSet() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
+  F14NodeSet() = default;
 
   using Super::Super;
+
+  F14NodeSet& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   void swap(F14NodeSet& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
@@ -812,10 +830,14 @@ class F14VectorSet
   using reverse_iterator = typename Policy::ReverseIter;
   using const_reverse_iterator = reverse_iterator;
 
-  F14VectorSet() noexcept(Policy::kDefaultConstructIsNoexcept) : Super{} {}
+  F14VectorSet() = default;
 
-  // inherit constructors
   using Super::Super;
+
+  F14VectorSet& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   void swap(F14VectorSet& rhs) noexcept(Policy::kSwapIsNoexcept) {
     this->table_.swap(rhs.table_);
@@ -1026,8 +1048,16 @@ class F14FastSet : public std::conditional_t<
       F14VectorSet<Key, Hasher, KeyEqual, Alloc>>;
 
  public:
+  using typename Super::value_type;
+
+  F14FastSet() = default;
+
   using Super::Super;
-  F14FastSet() : Super() {}
+
+  F14FastSet& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 };
 
 template <typename K, typename H, typename E, typename A>
