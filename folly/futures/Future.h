@@ -1219,7 +1219,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  template <class Executor, class Arg, class... Args>
+  template <class Arg, class... Args>
   auto then(Executor* x, Arg&& arg, Args&&... args) && {
     auto oldX = this->getExecutor();
     this->setExecutor(x);
@@ -1228,7 +1228,7 @@ class Future : private futures::detail::FutureBase<T> {
         .via(oldX);
   }
 
-  template <class Executor, class Arg, class... Args>
+  template <class Arg, class... Args>
   [[deprecated(
       "must be rvalue-qualified, e.g., std::move(future).then(...)")]] auto
   then(Executor* x, Arg&& arg, Args&&... args) & = delete;
