@@ -53,37 +53,53 @@ template <
     typename K>
 void runAllocatedMemorySizeTest() {
   using namespace folly::f14;
+  using namespace folly::f14::detail;
   using A = SwapTrackingAlloc<K>;
 
   resetTracking();
   {
-    TSet<K, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
-    EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
+    TSet<K, DefaultHasher<K>, DefaultKeyEqual<K>, A> s;
+
+    // if F14 intrinsics are not available then we fall back to using
+    // std::unordered_set underneath, but in that case the allocation
+    // info is only best effort
+    bool preciseAllocInfo = getF14IntrinsicsMode() != F14IntrinsicsMode::None;
+
+    if (preciseAllocInfo) {
+      EXPECT_EQ(testAllocatedMemorySize, 0);
+      EXPECT_EQ(s.getAllocatedMemorySize(), 0);
+    }
     auto emptySetAllocatedMemorySize = testAllocatedMemorySize;
     auto emptySetAllocatedBlockCount = testAllocatedBlockCount;
 
-    // TODO(T33426422): check unordered_set impl in Android NDK for allocation
-    // behaviors
-#if (!FOLLY_MOBILE || defined(__APPLE__))
     for (size_t i = 0; i < 1000; ++i) {
-      m.insert(folly::to<K>(i));
-      m.erase(folly::to<K>(i / 10 + 2));
-      EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
+      s.insert(folly::to<K>(i));
+      s.erase(folly::to<K>(i / 10 + 2));
+      if (preciseAllocInfo) {
+        EXPECT_EQ(testAllocatedMemorySize, s.getAllocatedMemorySize());
+      }
+      EXPECT_GE(s.getAllocatedMemorySize(), sizeof(K) * s.size());
       std::size_t size = 0;
       std::size_t count = 0;
-      m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
-      m.visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
+      s.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
+      s.visitAllocationClasses([&](std::size_t bytes, std::size_t n) {
         size += bytes * n;
         count += n;
       });
-      EXPECT_EQ(testAllocatedMemorySize, size);
-      EXPECT_EQ(testAllocatedBlockCount, count);
+      if (preciseAllocInfo) {
+        EXPECT_EQ(testAllocatedMemorySize, size);
+        EXPECT_EQ(testAllocatedBlockCount, count);
+      }
     }
-#endif
 
-    m = decltype(m){};
+    s = decltype(s){};
     EXPECT_EQ(testAllocatedMemorySize, emptySetAllocatedMemorySize);
     EXPECT_EQ(testAllocatedBlockCount, emptySetAllocatedBlockCount);
+
+    s.reserve(5);
+    EXPECT_GT(testAllocatedMemorySize, emptySetAllocatedMemorySize);
+    s = {};
+    EXPECT_GT(testAllocatedMemorySize, emptySetAllocatedMemorySize);
   }
   EXPECT_EQ(testAllocatedMemorySize, 0);
   EXPECT_EQ(testAllocatedBlockCount, 0);

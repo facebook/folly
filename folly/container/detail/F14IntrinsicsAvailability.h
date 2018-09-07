@@ -18,16 +18,21 @@
 
 #include <folly/Portability.h>
 
-// F14 has been implemented for SSE2 and NEON (so far). The NEON version is only
-// enabled on aarch64 as it is difficult to ensure that dependent targets on
-// other Android ARM platforms set the NEON compilation flags consistently. If
-// dependent targets don't consistently build with NEON, due to C++ templates
-// and ODR, the NEON version may be linked in where a non-NEON version is
-// expected.
+// F14 has been implemented for SSE2 and NEON (so far).
 //
-// TODO: enable for android (T33376370)
-// TODO: enable for iOS (T33470422)
-#if ((FOLLY_SSE >= 2) || (FOLLY_NEON && FOLLY_AARCH64)) && (!FOLLY_MOBILE)
+// This platform detection is a bit of a mess because it combines the
+// detection of supported platforms (FOLLY_SSE >= 2 || FOLLY_NEON) with
+// the selection of platforms on which we want to use it.
+//
+// Currently no 32-bit ARM versions are desired because we don't want to
+// need a separate build for chips that don't have NEON.  AARCH64 support
+// is enabled for non-mobile platforms, but on mobile platforms there
+// are downstream iteration order effects that have not yet been resolved.
+//
+// If FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE differs across compilation
+// units the program will fail to link due to a missing definition of
+// folly::container::detail::F14LinkCheck<X>::check() for some X.
+#if (FOLLY_SSE >= 2 || (FOLLY_NEON && FOLLY_AARCH64)) && !FOLLY_MOBILE
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 1
 #else
 #define FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE 0

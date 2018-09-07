@@ -23,6 +23,7 @@
 
 #include <boost/interprocess/allocators/adaptive_pool.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
+
 #include <folly/Format.h>
 #include <folly/Random.h>
 #include <folly/Traits.h>
@@ -174,29 +175,34 @@ TEST(ShmF14VectorSet, simple) {
 
 template <typename M>
 void runSimultaneousAccessMapTest() {
-  auto name = makeRandomName();
-  auto segment1 = makeShmSegment(8192, name);
-  auto segment2 =
-      std::make_shared<managed_shared_memory>(open_only, name.c_str());
+  using namespace folly::f14::detail;
 
-  auto m1 = segment1->construct<M>("m")(
-      typename M::allocator_type{segment1->get_segment_manager()});
-  auto m2 = segment2->find<M>("m").first;
+  // fallback std::unordered_map on libstdc++ doesn't pass this test
+  if (getF14IntrinsicsMode() != F14IntrinsicsMode::None) {
+    auto name = makeRandomName();
+    auto segment1 = makeShmSegment(8192, name);
+    auto segment2 =
+        std::make_shared<managed_shared_memory>(open_only, name.c_str());
 
-  std::cout << "m in segment1 @ " << (uintptr_t)m1 << "\n";
-  std::cout << "m in segment2 @ " << (uintptr_t)m2 << "\n";
+    auto m1 = segment1->construct<M>("m")(
+        typename M::allocator_type{segment1->get_segment_manager()});
+    auto m2 = segment2->find<M>("m").first;
 
-  EXPECT_NE(&*m1, &*m2);
+    std::cout << "m in segment1 @ " << (uintptr_t)m1 << "\n";
+    std::cout << "m in segment2 @ " << (uintptr_t)m2 << "\n";
 
-  (*m1)[1] = 10;
-  EXPECT_EQ(m2->count(0), 0);
-  EXPECT_EQ((*m2)[1], 10);
-  (*m2)[2] = 20;
-  EXPECT_EQ(m1->size(), 2);
-  EXPECT_EQ(m1->find(2)->second, 20);
-  (*m1)[3] = 30;
-  EXPECT_EQ(m2->size(), 3);
-  EXPECT_FALSE(m2->try_emplace(3, 33).second);
+    EXPECT_NE(&*m1, &*m2);
+
+    (*m1)[1] = 10;
+    EXPECT_EQ(m2->count(0), 0);
+    EXPECT_EQ((*m2)[1], 10);
+    (*m2)[2] = 20;
+    EXPECT_EQ(m1->size(), 2);
+    EXPECT_EQ(m1->find(2)->second, 20);
+    (*m1)[3] = 30;
+    EXPECT_EQ(m2->size(), 3);
+    EXPECT_FALSE(m2->emplace(std::make_pair(3, 33)).second);
+  }
 }
 
 TEST(ShmF14ValueMap, simultaneous) {

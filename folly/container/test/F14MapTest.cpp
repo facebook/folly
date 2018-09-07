@@ -57,19 +57,32 @@ template <
     typename V>
 void runAllocatedMemorySizeTest() {
   using namespace folly::f14;
+  using namespace folly::f14::detail;
   using A = SwapTrackingAlloc<std::pair<const K, V>>;
 
   resetTracking();
   {
     TMap<K, V, DefaultHasher<K>, DefaultKeyEqual<K>, A> m;
-    EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
+
+    // if F14 intrinsics are not available then we fall back to using
+    // std::unordered_map underneath, but in that case the allocation
+    // info is only best effort
+    bool preciseAllocInfo = getF14IntrinsicsMode() != F14IntrinsicsMode::None;
+
+    if (preciseAllocInfo) {
+      EXPECT_EQ(testAllocatedMemorySize, 0);
+      EXPECT_EQ(m.getAllocatedMemorySize(), 0);
+    }
     auto emptyMapAllocatedMemorySize = testAllocatedMemorySize;
     auto emptyMapAllocatedBlockCount = testAllocatedBlockCount;
 
     for (size_t i = 0; i < 1000; ++i) {
       m.insert(std::make_pair(folly::to<K>(i), V{}));
       m.erase(folly::to<K>(i / 10 + 2));
-      EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
+      if (preciseAllocInfo) {
+        EXPECT_EQ(testAllocatedMemorySize, m.getAllocatedMemorySize());
+      }
+      EXPECT_GE(m.getAllocatedMemorySize(), sizeof(std::pair<K, V>) * m.size());
       std::size_t size = 0;
       std::size_t count = 0;
       m.visitAllocationClasses([&](std::size_t, std::size_t) mutable {});
@@ -77,13 +90,20 @@ void runAllocatedMemorySizeTest() {
         size += bytes * n;
         count += n;
       });
-      EXPECT_EQ(testAllocatedMemorySize, size);
-      EXPECT_EQ(testAllocatedBlockCount, count);
+      if (preciseAllocInfo) {
+        EXPECT_EQ(testAllocatedMemorySize, size);
+        EXPECT_EQ(testAllocatedBlockCount, count);
+      }
     }
 
     m = decltype(m){};
     EXPECT_EQ(testAllocatedMemorySize, emptyMapAllocatedMemorySize);
     EXPECT_EQ(testAllocatedBlockCount, emptyMapAllocatedBlockCount);
+
+    m.reserve(5);
+    EXPECT_GT(testAllocatedMemorySize, 0);
+    m = {};
+    EXPECT_GT(testAllocatedMemorySize, 0);
   }
   EXPECT_EQ(testAllocatedMemorySize, 0);
   EXPECT_EQ(testAllocatedBlockCount, 0);
