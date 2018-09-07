@@ -34,6 +34,7 @@
 #include <folly/Utility.h>
 #include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 using namespace std;
 using namespace folly;
@@ -1243,77 +1244,84 @@ TEST(FBString, testConstructionFromLiteralZero) {
   EXPECT_THROW(fbstring s(nullptr), std::logic_error);
 }
 
-TEST(FBString, testFixedBugs) {
-  { // D479397
-    fbstring str(1337, 'f');
+TEST(FBString, testFixedBugs_D479397) {
+  fbstring str(1337, 'f');
+  fbstring cp = str;
+  cp.clear();
+  cp.c_str();
+  EXPECT_EQ(str.front(), 'f');
+}
+
+TEST(FBString, testFixedBugs_D481173) {
+  fbstring str(1337, 'f');
+  for (int i = 0; i < 2; ++i) {
     fbstring cp = str;
-    cp.clear();
-    cp.c_str();
-    EXPECT_EQ(str.front(), 'f');
+    cp[1] = 'b';
+    EXPECT_EQ(cp.c_str()[cp.size()], '\0');
+    cp.push_back('?');
   }
-  { // D481173
-    fbstring str(1337, 'f');
-    for (int i = 0; i < 2; ++i) {
-      fbstring cp = str;
-      cp[1] = 'b';
-      EXPECT_EQ(cp.c_str()[cp.size()], '\0');
-      cp.push_back('?');
-    }
-  }
-  { // D580267
-    {
-      fbstring str(1337, 'f');
-      fbstring cp = str;
-      cp.push_back('f');
-    }
-    {
-      fbstring str(1337, 'f');
-      fbstring cp = str;
-      cp += "bb";
-    }
-  }
-  { // D661622
-    folly::basic_fbstring<wchar_t> s;
-    EXPECT_EQ(0, s.size());
-  }
-  { // D785057
-    fbstring str(1337, 'f');
-    std::swap(str, str);
-    EXPECT_EQ(1337, str.size());
-  }
-  { // D1012196, --allocator=malloc
-    fbstring str(128, 'f');
-    str.clear();  // Empty medium string.
-    fbstring copy(str);  // Medium string of 0 capacity.
-    copy.push_back('b');
-    EXPECT_GE(copy.capacity(), 1);
-  }
-  { // D2813713
-    fbstring s1("a");
-    s1.reserve(8); // Trigger the optimized code path.
-    auto test1 = '\0' + std::move(s1);
-    EXPECT_EQ(2, test1.size());
+}
 
-    fbstring s2(1, '\0');
-    s2.reserve(8);
-    auto test2 = "a" + std::move(s2);
-    EXPECT_EQ(2, test2.size());
-  }
-  { // D3698862
-    EXPECT_EQ(fbstring().find(fbstring(), 4), fbstring::npos);
-  }
-  if (usingJEMalloc()) { // D4355440
-    fbstring str(1337, 'f');
-    str.reserve(3840);
-    EXPECT_NE(str.capacity(), 3840);
+TEST(FBString, testFixedBugs_D580267_push_back) {
+  fbstring str(1337, 'f');
+  fbstring cp = str;
+  cp.push_back('f');
+}
 
-    struct {
-      std::atomic<size_t> refCount_;
-    } dummyRefCounted;
-    EXPECT_EQ(
-        str.capacity(),
-        goodMallocSize(3840) - sizeof(dummyRefCounted) - sizeof(char));
-  }
+TEST(FBString, testFixedBugs_D580267_operator_add_assign) {
+  fbstring str(1337, 'f');
+  fbstring cp = str;
+  cp += "bb";
+}
+
+TEST(FBString, testFixedBugs_D661622) {
+  folly::basic_fbstring<wchar_t> s;
+  EXPECT_EQ(0, s.size());
+}
+
+TEST(FBString, testFixedBugs_D785057) {
+  fbstring str(1337, 'f');
+  std::swap(str, str);
+  EXPECT_EQ(1337, str.size());
+}
+
+TEST(FBString, testFixedBugs_D1012196_allocator_malloc) {
+  fbstring str(128, 'f');
+  str.clear(); // Empty medium string.
+  fbstring copy(str); // Medium string of 0 capacity.
+  copy.push_back('b');
+  EXPECT_GE(copy.capacity(), 1);
+}
+
+TEST(FBString, testFixedBugs_D2813713) {
+  fbstring s1("a");
+  s1.reserve(8); // Trigger the optimized code path.
+  auto test1 = '\0' + std::move(s1);
+  EXPECT_EQ(2, test1.size());
+
+  fbstring s2(1, '\0');
+  s2.reserve(8);
+  auto test2 = "a" + std::move(s2);
+  EXPECT_EQ(2, test2.size());
+}
+
+TEST(FBString, testFixedBugs_D3698862) {
+  EXPECT_EQ(fbstring().find(fbstring(), 4), fbstring::npos);
+}
+
+TEST(FBString, testFixedBugs_D4355440) {
+  SKIP_IF(!usingJEMalloc());
+
+  fbstring str(1337, 'f');
+  str.reserve(3840);
+  EXPECT_NE(str.capacity(), 3840);
+
+  struct DummyRefCounted {
+    std::atomic<size_t> refCount_;
+  };
+  EXPECT_EQ(
+      str.capacity(),
+      goodMallocSize(3840) - sizeof(DummyRefCounted) - sizeof(char));
 }
 
 TEST(FBString, findWithNpos) {
