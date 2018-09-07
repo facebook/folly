@@ -30,6 +30,7 @@ namespace folly {
 template <typename Ex>
 [[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception(Ex&& ex) {
 #if (__GNUC__ && !__EXCEPTIONS)
+  (void)ex;
   std::terminate();
 #else
   throw static_cast<Ex&&>(ex);
