@@ -357,7 +357,6 @@ BENCHMARK(coroRecursionAllocatorDepth10, iters) {
 BENCHMARK(coroRecursionAllocatorDepth1000, iters) {
   coroRecursionAllocator(1000, iters);
 }
-#endif
 
 void recursion(size_t times, size_t iters) {
   auto recursion = Recursion::create(times);
@@ -373,6 +372,7 @@ BENCHMARK(recursionDepth10, iters) {
 BENCHMARK(recursionDepth1000, iters) {
   recursion(1000, iters);
 }
+#endif
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
