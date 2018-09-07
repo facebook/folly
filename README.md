@@ -83,7 +83,7 @@ wget https://github.com/google/googletest/archive/release-1.8.0.tar.gz && \
 tar zxf release-1.8.0.tar.gz && \
 rm -f release-1.8.0.tar.gz && \
 cd googletest-release-1.8.0 && \
-cmake configure . && \
+cmake . && \
 make && \
 make install
 ```
@@ -96,12 +96,12 @@ variables to make CMAKE look also look for header files and libraries in
 non-standard locations.  For example, to also search the directories
 `/alt/include/path1` and `/alt/include/path2` for header files and the
 directories `/alt/lib/path1` and `/alt/lib/path2` for libraries, you can invoke
-`cmake configure` as follows:
+`cmake` as follows:
 
 ```
-cmake configure \
+cmake \
   -DCMAKE_INCLUDE_PATH=/alt/include/path1:/alt/include/path2 \
-  -DCMAKE_LIBRARY_PATH=/alt/lib/path1:/alt/lib/path2
+  -DCMAKE_LIBRARY_PATH=/alt/lib/path1:/alt/lib/path2 ...
 ```
 
 #### Ubuntu 16.04 LTS
@@ -142,7 +142,7 @@ sudo apt-get install \
 In the folly directory, run:
 ```
   mkdir _build && cd _build
-  cmake configure ..
+  cmake ..
   make -j $(nproc)
   make install
 ```
@@ -216,7 +216,7 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `mast
   [double-conversion/] `ln -s src double-conversion`
 
   [folly/] `mkdir build && cd build`
-  [folly/build/] `cmake configure "-DCMAKE_INCLUDE_PATH=$DOUBLE_CONVERSION_HOME/include" "-DCMAKE_LIBRARY_PATH=$DOUBLE_CONVERSION_HOME/lib" ..`
+  [folly/build/] `cmake "-DCMAKE_INCLUDE_PATH=$DOUBLE_CONVERSION_HOME/include" "-DCMAKE_LIBRARY_PATH=$DOUBLE_CONVERSION_HOME/lib" ..`
 
   [folly/build/] `make`
 
