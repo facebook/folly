@@ -28,7 +28,8 @@ namespace folly {
 /**
  * Helper tag template to use amplification > 1
  */
-template <class T, size_t Amp> class MPMCPipelineStage;
+template <class T, size_t Amp>
+class MPMCPipelineStage;
 
 /**
  * Multi-Producer, Multi-Consumer pipeline.
@@ -92,15 +93,16 @@ template <class T, size_t Amp> class MPMCPipelineStage;
  * all slots are filled (and therefore the queue doesn't freeze) because
  * we require that each step produces exactly K outputs for every input.
  */
-template <class In, class... Stages> class MPMCPipeline {
+template <class In, class... Stages>
+class MPMCPipeline {
   typedef std::tuple<detail::PipelineStageInfo<Stages>...> StageInfos;
   typedef std::tuple<
-             detail::MPMCPipelineStageImpl<In>,
-             detail::MPMCPipelineStageImpl<
-                 typename detail::PipelineStageInfo<Stages>::value_type>...>
-    StageTuple;
+      detail::MPMCPipelineStageImpl<In>,
+      detail::MPMCPipelineStageImpl<
+          typename detail::PipelineStageInfo<Stages>::value_type>...>
+      StageTuple;
   static constexpr size_t kAmplification =
-    detail::AmplificationProduct<StageInfos>::value;
+      detail::AmplificationProduct<StageInfos>::value;
 
   class TicketBaseDebug {
    public:
@@ -183,7 +185,7 @@ template <class In, class... Stages> class MPMCPipeline {
    * Construct a pipeline with N+1 queue sizes.
    */
   template <class... Sizes>
-  explicit MPMCPipeline(Sizes... sizes) : stages_(sizes...) { }
+  explicit MPMCPipeline(Sizes... sizes) : stages_(sizes...) {}
 
   /**
    * Push an element into (the first stage of) the pipeline. Blocking.
@@ -239,18 +241,15 @@ template <class In, class... Stages> class MPMCPipeline {
    */
   template <size_t Stage, class... Args>
   void blockingWriteStage(Ticket<Stage>& ticket, Args&&... args) {
-    std::get<Stage+1>(stages_).blockingWriteWithTicket(
-        ticket.use(this),
-        std::forward<Args>(args)...);
+    std::get<Stage + 1>(stages_).blockingWriteWithTicket(
+        ticket.use(this), std::forward<Args>(args)...);
   }
 
   /**
    * Pop an element from (the final stage of) the pipeline. Blocking.
    */
-  void blockingRead(
-      typename std::tuple_element<
-          sizeof...(Stages),
-          StageTuple>::type::value_type& elem) {
+  void blockingRead(typename std::tuple_element<sizeof...(Stages), StageTuple>::
+                        type::value_type& elem) {
     std::get<sizeof...(Stages)>(stages_).blockingRead(elem);
   }
 
@@ -258,10 +257,8 @@ template <class In, class... Stages> class MPMCPipeline {
    * Try to pop an element from (the final stage of) the pipeline.
    * Non-blocking.
    */
-  bool read(
-      typename std::tuple_element<
-          sizeof...(Stages),
-          StageTuple>::type::value_type& elem) {
+  bool read(typename std::tuple_element<sizeof...(Stages), StageTuple>::type::
+                value_type& elem) {
     return std::get<sizeof...(Stages)>(stages_).read(elem);
   }
 

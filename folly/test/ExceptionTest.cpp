@@ -22,19 +22,19 @@
 #include <cstdio>
 #include <memory>
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
-#define EXPECT_SYSTEM_ERROR(statement, err, msg) \
-  try { \
-    statement; \
-    ADD_FAILURE() << "Didn't throw"; \
-  } catch (const std::system_error& e) { \
+#define EXPECT_SYSTEM_ERROR(statement, err, msg)                  \
+  try {                                                           \
+    statement;                                                    \
+    ADD_FAILURE() << "Didn't throw";                              \
+  } catch (const std::system_error& e) {                          \
     std::system_error expected(err, std::system_category(), msg); \
-    EXPECT_STREQ(expected.what(), e.what()); \
-  } catch (...) { \
-    ADD_FAILURE() << "Threw a different type"; \
+    EXPECT_STREQ(expected.what(), e.what());                      \
+  } catch (...) {                                                 \
+    ADD_FAILURE() << "Threw a different type";                    \
   }
-
 
 TEST(ExceptionTest, Simple) {
   // Make sure errno isn't used when we don't want it to, set it to something
@@ -75,7 +75,9 @@ TEST(ExceptionTest, Simple) {
   auto exnpath = tmpdir.path() / "ExceptionTest";
   auto fp = fopen(exnpath.string().c_str(), "w+b");
   ASSERT_TRUE(fp != nullptr);
-  SCOPE_EXIT { fclose(fp); };
+  SCOPE_EXIT {
+    fclose(fp);
+  };
 
   EXPECT_NO_THROW(checkFopenError(fp, "hello", " world"));
   errno = ERANGE;

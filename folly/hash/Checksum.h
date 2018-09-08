@@ -34,8 +34,8 @@ namespace folly {
  *       polynomial and thus yields different results for the same input
  *       than a traditional CRC-32.
  */
-uint32_t crc32c(const uint8_t* data, size_t nbytes,
-    uint32_t startingChecksum = ~0U);
+uint32_t
+crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum = ~0U);
 
 /**
  * Compute the CRC-32 checksum of a buffer, using a hardware-accelerated

@@ -49,18 +49,14 @@ using FBStringFBVector = fbvector<fbstring>;
 TEST(fbvector, clause_23_3_6_1_3_ambiguity) {
   fbvector<int> v(10, 20);
   EXPECT_EQ(v.size(), 10);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, 20);
-  }
+  FOR_EACH (i, v) { EXPECT_EQ(*i, 20); }
 }
 
 TEST(fbvector, clause_23_3_6_1_11_ambiguity) {
   fbvector<int> v;
   v.assign(10, 20);
   EXPECT_EQ(v.size(), 10);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, 20);
-  }
+  FOR_EACH (i, v) { EXPECT_EQ(*i, 20); }
 }
 
 TEST(fbvector, clause_23_3_6_2_6) {
@@ -85,7 +81,7 @@ TEST(fbvector, clause_23_3_6_4_ambiguity) {
 }
 
 TEST(fbvector, composition) {
-  fbvector< fbvector<double> > matrix(100, fbvector<double>(100));
+  fbvector<fbvector<double>> matrix(100, fbvector<double>(100));
 }
 
 TEST(fbvector, works_with_std_string) {
@@ -95,7 +91,9 @@ TEST(fbvector, works_with_std_string) {
 }
 
 namespace {
-class UserDefinedType { int whatevs_; };
+class UserDefinedType {
+  int whatevs_;
+};
 } // namespace
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE(UserDefinedType)
@@ -133,20 +131,20 @@ TEST(fbvector, emplace) {
 }
 
 TEST(fbvector, initializer_lists) {
-  fbvector<int> vec = { 1, 2, 3 };
+  fbvector<int> vec = {1, 2, 3};
   EXPECT_EQ(vec.size(), 3);
   EXPECT_EQ(vec[0], 1);
   EXPECT_EQ(vec[1], 2);
   EXPECT_EQ(vec[2], 3);
 
-  vec = { 0, 0, 12, 16 };
+  vec = {0, 0, 12, 16};
   EXPECT_EQ(vec.size(), 4);
   EXPECT_EQ(vec[0], 0);
   EXPECT_EQ(vec[1], 0);
   EXPECT_EQ(vec[2], 12);
   EXPECT_EQ(vec[3], 16);
 
-  vec.insert(vec.begin() + 1, { 23, 23 });
+  vec.insert(vec.begin() + 1, {23, 23});
   EXPECT_EQ(vec.size(), 6);
   EXPECT_EQ(vec[0], 0);
   EXPECT_EQ(vec[1], 23);
@@ -157,7 +155,7 @@ TEST(fbvector, initializer_lists) {
 }
 
 TEST(fbvector, unique_ptr) {
-  fbvector<std::unique_ptr<int> > v(12);
+  fbvector<std::unique_ptr<int>> v(12);
   std::unique_ptr<int> p(new int(12));
   v.push_back(std::move(p));
   EXPECT_EQ(*v.back(), 12);
@@ -185,29 +183,32 @@ TEST(FBVector, task858056) {
 }
 
 TEST(FBVector, move_iterator) {
-  fbvector<int> base = { 0, 1, 2 };
+  fbvector<int> base = {0, 1, 2};
 
   auto cp1 = base;
-  fbvector<int> fbvi1(std::make_move_iterator(cp1.begin()),
-                      std::make_move_iterator(cp1.end()));
+  fbvector<int> fbvi1(
+      std::make_move_iterator(cp1.begin()), std::make_move_iterator(cp1.end()));
   EXPECT_EQ(fbvi1, base);
 
   auto cp2 = base;
   fbvector<int> fbvi2;
-  fbvi2.assign(std::make_move_iterator(cp2.begin()),
-               std::make_move_iterator(cp2.end()));
+  fbvi2.assign(
+      std::make_move_iterator(cp2.begin()), std::make_move_iterator(cp2.end()));
   EXPECT_EQ(fbvi2, base);
 
   auto cp3 = base;
   fbvector<int> fbvi3;
-  fbvi3.insert(fbvi3.end(),
-               std::make_move_iterator(cp3.begin()),
-               std::make_move_iterator(cp3.end()));
+  fbvi3.insert(
+      fbvi3.end(),
+      std::make_move_iterator(cp3.begin()),
+      std::make_move_iterator(cp3.end()));
   EXPECT_EQ(fbvi3, base);
 }
 
 TEST(FBVector, reserve_consistency) {
-  struct S { int64_t a, b, c, d; };
+  struct S {
+    int64_t a, b, c, d;
+  };
 
   fbvector<S> fb1;
   for (size_t i = 0; i < 1000; ++i) {

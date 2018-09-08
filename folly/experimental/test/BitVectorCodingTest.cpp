@@ -95,11 +95,15 @@ void init() {
   encodeLargeData = generateRandomList(1000 * 1000, 100 * 1000 * 1000, gen);
 }
 
-void free() { list.free(); }
+void free() {
+  list.free();
+}
 
 } // namespace bm
 
-BENCHMARK(Next, iters) { bmNext<bm::Reader>(bm::list, bm::data, iters); }
+BENCHMARK(Next, iters) {
+  bmNext<bm::Reader>(bm::list, bm::data, iters);
+}
 
 size_t Skip_ForwardQ128(size_t iters, size_t logAvgSkip) {
   bmSkip<bm::Reader>(bm::list, bm::data, logAvgSkip, iters);
@@ -140,14 +144,14 @@ BENCHMARK(JumpTo_SkipQ128, iters) {
 BENCHMARK_DRAW_LINE();
 
 BENCHMARK(Encode_10) {
-  auto list = bm::Encoder::encode(bm::encodeSmallData.begin(),
-                                  bm::encodeSmallData.end());
+  auto list = bm::Encoder::encode(
+      bm::encodeSmallData.begin(), bm::encodeSmallData.end());
   list.free();
 }
 
 BENCHMARK(Encode) {
-  auto list = bm::Encoder::encode(bm::encodeLargeData.begin(),
-                                  bm::encodeLargeData.end());
+  auto list = bm::Encoder::encode(
+      bm::encodeLargeData.begin(), bm::encodeLargeData.end());
   list.free();
 }
 

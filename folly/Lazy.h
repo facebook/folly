@@ -101,10 +101,7 @@ struct Lazy {
   explicit Lazy(Func&& f) : func_(std::move(f)) {}
   explicit Lazy(const Func& f) : func_(f) {}
 
-  Lazy(Lazy&& o)
-    : value_(std::move(o.value_))
-    , func_(std::move(o.func_))
-  {}
+  Lazy(Lazy&& o) : value_(std::move(o.value_)), func_(std::move(o.func_)) {}
 
   Lazy(const Lazy&) = delete;
   Lazy& operator=(const Lazy&) = delete;

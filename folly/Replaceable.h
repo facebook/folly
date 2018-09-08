@@ -615,7 +615,7 @@ class alignas(T) Replaceable
     return launder(reinterpret_cast<T*>(storage_));
   }
 
-  constexpr const T& operator*() const & {
+  constexpr const T& operator*() const& {
     return *launder(reinterpret_cast<T const*>(storage_));
   }
 
@@ -627,7 +627,7 @@ class alignas(T) Replaceable
     return std::move(*launder(reinterpret_cast<T*>(storage_)));
   }
 
-  constexpr const T&& operator*() const && {
+  constexpr const T&& operator*() const&& {
     return std::move(*launder(reinterpret_cast<T const*>(storage_)));
   }
 

@@ -171,8 +171,8 @@ struct make_seq<0> {
 
 #if __cpp_lib_integer_sequence || _MSC_VER
 
-/* using override */ using std::integer_sequence;
 /* using override */ using std::index_sequence;
+/* using override */ using std::integer_sequence;
 
 #else
 

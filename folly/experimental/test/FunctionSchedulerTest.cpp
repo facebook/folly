@@ -47,7 +47,9 @@ namespace {
  * to run.
  */
 static const auto timeFactor = std::chrono::milliseconds(400);
-std::chrono::milliseconds testInterval(int n) { return n * timeFactor; }
+std::chrono::milliseconds testInterval(int n) {
+  return n * timeFactor;
+}
 int getTicksWithinRange(int n, int min, int max) {
   assert(min <= max);
   n = std::max(min, n);
@@ -143,7 +145,9 @@ TEST(FunctionScheduler, AddCancel2) {
           fs.cancelFunction("selfCancel");
         }
       },
-      testInterval(1), "selfCancel", testInterval(1));
+      testInterval(1),
+      "selfCancel",
+      testInterval(1));
   delay(4);
   EXPECT_EQ(3, selfCancelCount);
   EXPECT_FALSE(fs.cancelFunction("selfCancel"));
@@ -191,8 +195,9 @@ TEST(FunctionScheduler, AddMultiple) {
   FunctionScheduler fs;
   fs.addFunction([&] { total += 2; }, testInterval(2), "add2");
   fs.addFunction([&] { total += 3; }, testInterval(3), "add3");
-  EXPECT_THROW(fs.addFunction([&] { total += 2; }, testInterval(2), "add2"),
-               std::invalid_argument); // function name already exists
+  EXPECT_THROW(
+      fs.addFunction([&] { total += 2; }, testInterval(2), "add2"),
+      std::invalid_argument); // function name already exists
 
   fs.start();
   delay(1);
@@ -324,8 +329,9 @@ TEST(FunctionScheduler, AddInvalid) {
   atomic<int> total{0};
   FunctionScheduler fs;
   // interval may not be negative
-  EXPECT_THROW(fs.addFunction([&] { total += 2; }, testInterval(-1), "add2"),
-               std::invalid_argument);
+  EXPECT_THROW(
+      fs.addFunction([&] { total += 2; }, testInterval(-1), "add2"),
+      std::invalid_argument);
 
   EXPECT_FALSE(fs.cancelFunction("addNoFunc"));
 }
@@ -373,13 +379,12 @@ TEST(FunctionScheduler, NoShutdown) {
 TEST(FunctionScheduler, StartDelay) {
   atomic<int> total{0};
   FunctionScheduler fs;
-  fs.addFunction([&] { total += 2; }, testInterval(2), "add2",
-                 testInterval(2));
-  fs.addFunction([&] { total += 3; }, testInterval(3), "add3",
-                 testInterval(2));
-  EXPECT_THROW(fs.addFunction([&] { total += 2; }, testInterval(3),
-                              "addX", testInterval(-1)),
-               std::invalid_argument);
+  fs.addFunction([&] { total += 2; }, testInterval(2), "add2", testInterval(2));
+  fs.addFunction([&] { total += 3; }, testInterval(3), "add3", testInterval(2));
+  EXPECT_THROW(
+      fs.addFunction(
+          [&] { total += 2; }, testInterval(3), "addX", testInterval(-1)),
+      std::invalid_argument);
   fs.start();
   delay(1); // t1
   EXPECT_EQ(0, total);
@@ -406,13 +411,13 @@ TEST(FunctionScheduler, NoSteadyCatchup) {
   std::atomic<int> ticks(0);
   FunctionScheduler fs;
   // fs.setSteady(false); is the default
-  fs.addFunction([&ticks] {
-                   if (++ticks == 2) {
-                     std::this_thread::sleep_for(
-                         std::chrono::milliseconds(200));
-                   }
-                 },
-                 milliseconds(5));
+  fs.addFunction(
+      [&ticks] {
+        if (++ticks == 2) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+      },
+      milliseconds(5));
   fs.start();
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -425,13 +430,13 @@ TEST(FunctionScheduler, SteadyCatchup) {
   std::atomic<int> ticks(0);
   FunctionScheduler fs;
   fs.setSteady(true);
-  fs.addFunction([&ticks] {
-                   if (++ticks == 2) {
-                     std::this_thread::sleep_for(
-                         std::chrono::milliseconds(200));
-                   }
-                 },
-                 milliseconds(5));
+  fs.addFunction(
+      [&ticks] {
+        if (++ticks == 2) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+      },
+      milliseconds(5));
   fs.start();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -449,11 +454,12 @@ TEST(FunctionScheduler, UniformDistribution) {
   std::chrono::milliseconds maxInterval =
       testInterval(kTicks) + (timeFactor / 5);
   FunctionScheduler fs;
-  fs.addFunctionUniformDistribution([&] { total += 2; },
-                                    minInterval,
-                                    maxInterval,
-                                    "UniformDistribution",
-                                    std::chrono::milliseconds(0));
+  fs.addFunctionUniformDistribution(
+      [&] { total += 2; },
+      minInterval,
+      maxInterval,
+      "UniformDistribution",
+      std::chrono::milliseconds(0));
   fs.start();
   delay(1);
   EXPECT_EQ(2, total);

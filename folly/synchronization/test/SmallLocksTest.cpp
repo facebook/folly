@@ -32,9 +32,9 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/Unistd.h>
 
-using folly::MSLGuard;
 using folly::MicroLock;
 using folly::MicroSpinLock;
+using folly::MSLGuard;
 using std::string;
 
 #ifdef FOLLY_PICO_SPIN_LOCK_H_
@@ -56,18 +56,23 @@ struct LockedVal {
 // Compile time test for packed struct support (requires that both of
 // these classes are POD).
 FOLLY_PACK_PUSH
-struct ignore1 { MicroSpinLock msl; int16_t foo; } FOLLY_PACK_ATTR;
+struct ignore1 {
+  MicroSpinLock msl;
+  int16_t foo;
+} FOLLY_PACK_ATTR;
 static_assert(sizeof(ignore1) == 3, "Size check failed");
 static_assert(sizeof(MicroSpinLock) == 1, "Size check failed");
 #ifdef FOLLY_PICO_SPIN_LOCK_H_
-struct ignore2 { PicoSpinLock<uint32_t> psl; int16_t foo; } FOLLY_PACK_ATTR;
+struct ignore2 {
+  PicoSpinLock<uint32_t> psl;
+  int16_t foo;
+} FOLLY_PACK_ATTR;
 static_assert(sizeof(ignore2) == 6, "Size check failed");
 #endif
 FOLLY_PACK_POP
 
 LockedVal v;
 void splock_test() {
-
   const int max = 1000;
   auto rng = folly::ThreadLocalPRNG();
   for (int i = 0; i < max; i++) {
@@ -85,10 +90,13 @@ void splock_test() {
 }
 
 #ifdef FOLLY_PICO_SPIN_LOCK_H_
-template <class T> struct PslTest {
+template <class T>
+struct PslTest {
   PicoSpinLock<T> lock;
 
-  PslTest() { lock.init(); }
+  PslTest() {
+    lock.init();
+  }
 
   void doTest() {
     using UT = typename std::make_unsigned<T>::type;
@@ -161,7 +169,7 @@ TEST(SmallLocks, PicoSpinCorrectness) {
 }
 
 TEST(SmallLocks, PicoSpinSigned) {
-  typedef PicoSpinLock<int16_t,0> Lock;
+  typedef PicoSpinLock<int16_t, 0> Lock;
   Lock val;
   val.init(-4);
   EXPECT_EQ(val.getData(), -4);
@@ -192,7 +200,6 @@ FOLLY_PACK_POP
 namespace {
 
 struct SimpleBarrier {
-
   SimpleBarrier() : lock_(), cv_(), ready_(false) {}
 
   void wait() {

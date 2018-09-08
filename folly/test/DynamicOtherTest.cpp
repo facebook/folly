@@ -96,8 +96,8 @@ TEST(Dynamic, FormattedIO) {
   std::ostringstream out;
   dynamic doubl = 123.33;
   dynamic dint = 12;
-  out << "0x" << std::hex << ++dint << ' ' << std::setprecision(1)
-      << doubl << '\n';
+  out << "0x" << std::hex << ++dint << ' ' << std::setprecision(1) << doubl
+      << '\n';
   EXPECT_EQ(out.str(), "0xd 1e+02\n");
 
   out.str("");
@@ -111,9 +111,8 @@ TEST(Dynamic, FormattedIO) {
   EXPECT_EQ(out.str(), R"({"a":12})");
 
   out.str("");
-  dynamic objy2 = dynamic::array(objy,
-                                 dynamic::object(12, "str"),
-                                 dynamic::object(true, false));
+  dynamic objy2 = dynamic::array(
+      objy, dynamic::object(12, "str"), dynamic::object(true, false));
   out << objy2;
   EXPECT_EQ(out.str(), R"([{"a":12},{12:"str"},{true:false}])");
 }

@@ -116,7 +116,7 @@ class Fingerprint {
   Fingerprint& update32(uint32_t v) {
     uint32_t out = shlor32(v);
     for (int i = 0; i < 4; i++) {
-      xortab(detail::FingerprintTable<BITS>::table[i][out&0xff]);
+      xortab(detail::FingerprintTable<BITS>::table[i][out & 0xff]);
       out >>= 8;
     }
     return *this;
@@ -125,7 +125,7 @@ class Fingerprint {
   Fingerprint& update64(uint64_t v) {
     uint64_t out = shlor64(v);
     for (int i = 0; i < 8; i++) {
-      xortab(detail::FingerprintTable<BITS>::table[i][out&0xff]);
+      xortab(detail::FingerprintTable<BITS>::table[i][out & 0xff]);
       out >>= 8;
     }
     return *this;
@@ -143,7 +143,7 @@ class Fingerprint {
    * Return the number of uint64s needed to hold the fingerprint value.
    */
   static int size() {
-    return 1 + (BITS-1)/64;
+    return 1 + (BITS - 1) / 64;
   }
 
   /**
@@ -171,11 +171,11 @@ class Fingerprint {
   // Helper functions: shift the fingerprint value left by 8/32/64 bits,
   // return the "out" value (the bits that were shifted out), and add "v"
   // in the bits on the right.
-  uint8_t  shlor8(uint8_t v);
+  uint8_t shlor8(uint8_t v);
   uint32_t shlor32(uint32_t v);
   uint64_t shlor64(uint64_t v);
 
-  uint64_t fp_[1 + (BITS-1)/64];
+  uint64_t fp_[1 + (BITS - 1) / 64];
 };
 
 // Convenience functions
@@ -194,8 +194,7 @@ inline uint64_t fingerprint64(StringPiece str) {
  * Return the 64 most significant bits in *msb, and the 32 least significant
  * bits in *lsb.
  */
-inline void fingerprint96(StringPiece str,
-                          uint64_t* msb, uint32_t* lsb) {
+inline void fingerprint96(StringPiece str, uint64_t* msb, uint32_t* lsb) {
   uint64_t fp[2];
   Fingerprint<96>().update(str).write(fp);
   *msb = fp[0];
@@ -207,14 +206,12 @@ inline void fingerprint96(StringPiece str,
  * Return the 64 most significant bits in *msb, and the 64 least significant
  * bits in *lsb.
  */
-inline void fingerprint128(StringPiece str,
-                           uint64_t* msb, uint64_t* lsb) {
+inline void fingerprint128(StringPiece str, uint64_t* msb, uint64_t* lsb) {
   uint64_t fp[2];
   Fingerprint<128>().update(str).write(fp);
   *msb = fp[0];
   *lsb = fp[1];
 }
-
 
 template <>
 inline uint8_t Fingerprint<64>::shlor8(uint8_t v) {

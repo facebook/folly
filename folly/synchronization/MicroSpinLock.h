@@ -98,9 +98,12 @@ struct MicroSpinLock {
   }
 
   bool cas(uint8_t compare, uint8_t newVal) {
-    return std::atomic_compare_exchange_strong_explicit(payload(), &compare, newVal,
-                                                        std::memory_order_acquire,
-                                                        std::memory_order_relaxed);
+    return std::atomic_compare_exchange_strong_explicit(
+        payload(),
+        &compare,
+        newVal,
+        std::memory_order_acquire,
+        std::memory_order_relaxed);
   }
 };
 static_assert(
@@ -128,7 +131,9 @@ struct alignas(max_align_v) SpinLockArray {
     return data_[i].lock;
   }
 
-  constexpr size_t size() const { return N; }
+  constexpr size_t size() const {
+    return N;
+  }
 
  private:
   struct PaddedSpinLock {
@@ -136,8 +141,9 @@ struct alignas(max_align_v) SpinLockArray {
     T lock;
     char padding[FOLLY_CACHE_LINE_SIZE - sizeof(T)];
   };
-  static_assert(sizeof(PaddedSpinLock) == FOLLY_CACHE_LINE_SIZE,
-                "Invalid size of PaddedSpinLock");
+  static_assert(
+      sizeof(PaddedSpinLock) == FOLLY_CACHE_LINE_SIZE,
+      "Invalid size of PaddedSpinLock");
 
   // Check if T can theoretically cross a cache line.
   static_assert(

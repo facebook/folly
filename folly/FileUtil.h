@@ -120,8 +120,9 @@ bool readFile(
     int fd,
     Container& out,
     size_t num_bytes = std::numeric_limits<size_t>::max()) {
-  static_assert(sizeof(out[0]) == 1,
-                "readFile: only containers with byte-sized elements accepted");
+  static_assert(
+      sizeof(out[0]) == 1,
+      "readFile: only containers with byte-sized elements accepted");
 
   size_t soFar = 0; // amount of bytes successfully read
   SCOPE_EXIT {
@@ -140,8 +141,7 @@ bool readFile(
   // should attempt to read stuff. If not zero, we'll attempt to read
   // one extra byte.
   constexpr size_t initialAlloc = 1024 * 4;
-  out.resize(
-    std::min(
+  out.resize(std::min(
       buf.st_size > 0 ? (size_t(buf.st_size) + 1) : initialAlloc, num_bytes));
 
   while (soFar < out.size()) {
@@ -202,18 +202,19 @@ bool readFile(
  * state will be unchanged on error.
  */
 template <class Container>
-bool writeFile(const Container& data,
-               const char* filename,
-               int flags = O_WRONLY | O_CREAT | O_TRUNC,
-               mode_t mode = 0666) {
-  static_assert(sizeof(data[0]) == 1,
-                "writeFile works with element size equal to 1");
+bool writeFile(
+    const Container& data,
+    const char* filename,
+    int flags = O_WRONLY | O_CREAT | O_TRUNC,
+    mode_t mode = 0666) {
+  static_assert(
+      sizeof(data[0]) == 1, "writeFile works with element size equal to 1");
   int fd = open(filename, flags, mode);
   if (fd == -1) {
     return false;
   }
   bool ok = data.empty() ||
-    writeFull(fd, &data[0], data.size()) == static_cast<ssize_t>(data.size());
+      writeFull(fd, &data[0], data.size()) == static_cast<ssize_t>(data.size());
   return closeNoInt(fd) == 0 && ok;
 }
 

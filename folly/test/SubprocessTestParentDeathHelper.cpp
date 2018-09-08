@@ -60,10 +60,8 @@ void runChild(const char* file) {
 }
 
 [[noreturn]] void runParent(const char* file) {
-  std::vector<std::string> args {"/proc/self/exe", "--child", file};
-  Subprocess proc(
-      args,
-      Subprocess::Options().parentDeathSignal(kSignal));
+  std::vector<std::string> args{"/proc/self/exe", "--child", file};
+  Subprocess proc(args, Subprocess::Options().parentDeathSignal(kSignal));
   CHECK(proc.poll().running());
 
   // The child will kill us.
@@ -72,7 +70,7 @@ void runChild(const char* file) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 2);
   if (FLAGS_child) {

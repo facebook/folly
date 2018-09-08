@@ -39,8 +39,8 @@ namespace chrono {
 /* using override */ using std::chrono::ceil;
 /* using override */ using std::chrono::floor;
 /* using override */ using std::chrono::round;
-}
-}
+} // namespace chrono
+} // namespace folly
 
 #else
 

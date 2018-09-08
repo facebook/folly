@@ -29,7 +29,8 @@
 
 DEFINE_int32(random_seed, folly::randomNumberSeed(), "random seed");
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
 void testVarint(uint64_t val, std::initializer_list<uint8_t> bytes) {
   size_t n = bytes.size();
@@ -93,10 +94,10 @@ TEST(Varint, Simple) {
   testVarint(16383, {0xff, 0x7f});
   testVarint(16384, {0x80, 0x80, 0x01});
 
-  testVarint(static_cast<uint32_t>(-1),
-             {0xff, 0xff, 0xff, 0xff, 0x0f});
-  testVarint(static_cast<uint64_t>(-1),
-             {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01});
+  testVarint(static_cast<uint32_t>(-1), {0xff, 0xff, 0xff, 0xff, 0x0f});
+  testVarint(
+      static_cast<uint64_t>(-1),
+      {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01});
 }
 
 void testVarintFail(std::initializer_list<uint8_t> bytes) {
@@ -117,11 +118,11 @@ TEST(ZigZag, Simple) {
   EXPECT_EQ(3, encodeZigZag(-2));
   EXPECT_EQ(4, encodeZigZag(2));
 
-  EXPECT_EQ(0,  decodeZigZag(0));
+  EXPECT_EQ(0, decodeZigZag(0));
   EXPECT_EQ(-1, decodeZigZag(1));
-  EXPECT_EQ(1,  decodeZigZag(2));
+  EXPECT_EQ(1, decodeZigZag(2));
   EXPECT_EQ(-2, decodeZigZag(3));
-  EXPECT_EQ(2,  decodeZigZag(4));
+  EXPECT_EQ(2, decodeZigZag(4));
 }
 
 namespace {
@@ -199,7 +200,7 @@ BENCHMARK(VarintDecoding, iters) {
 } // namespace test
 } // namespace folly
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);

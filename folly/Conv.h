@@ -195,9 +195,9 @@ namespace detail {
 // though the runtime performance is the same.
 
 template <typename... Ts>
-auto getLastElement(Ts&&... ts) -> decltype(
-    std::get<sizeof...(Ts)-1>(std::forward_as_tuple(std::forward<Ts>(ts)...))) {
-  return std::get<sizeof...(Ts)-1>(
+auto getLastElement(Ts&&... ts) -> decltype(std::get<sizeof...(Ts) - 1>(
+    std::forward_as_tuple(std::forward<Ts>(ts)...))) {
+  return std::get<sizeof...(Ts) - 1>(
       std::forward_as_tuple(std::forward<Ts>(ts)...));
 }
 
@@ -250,13 +250,12 @@ struct LastElement : std::decay<decltype(
 namespace detail {
 
 template <typename IntegerType>
-constexpr unsigned int
-digitsEnough() {
+constexpr unsigned int digitsEnough() {
   return (unsigned int)(ceil(sizeof(IntegerType) * CHAR_BIT * M_LN2 / M_LN10));
 }
 
 inline size_t
-unsafeTelescope128(char * buffer, size_t room, unsigned __int128 x) {
+unsafeTelescope128(char* buffer, size_t room, unsigned __int128 x) {
   typedef unsigned __int128 Usrc;
   size_t p = room - 1;
 
@@ -381,7 +380,7 @@ inline uint32_t digits10(uint64_t v) {
  * because it does not add a terminating \0.
  */
 
-inline uint32_t uint64ToBufferUnsafe(uint64_t v, char *const buffer) {
+inline uint32_t uint64ToBufferUnsafe(uint64_t v, char* const buffer) {
   auto const result = digits10(v);
   // WARNING: using size_t or pointer arithmetic for pos slows down
   // the loop below 20x. This is because several 32-bit ops can be
@@ -404,14 +403,12 @@ inline uint32_t uint64ToBufferUnsafe(uint64_t v, char *const buffer) {
  * A single char gets appended.
  */
 template <class Tgt>
-void toAppend(char value, Tgt * result) {
+void toAppend(char value, Tgt* result) {
   *result += value;
 }
 
 template <class T>
-constexpr typename std::enable_if<
-  std::is_same<T, char>::value,
-  size_t>::type
+constexpr typename std::enable_if<std::is_same<T, char>::value, size_t>::type
 estimateSpaceNeeded(T) {
   return 1;
 }
@@ -426,9 +423,9 @@ constexpr size_t estimateSpaceNeeded(const char (&)[N]) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_convertible<Src, const char*>::value
-  && IsSomeString<Tgt>::value>::type
-toAppend(Src value, Tgt * result) {
+    std::is_convertible<Src, const char*>::value &&
+    IsSomeString<Tgt>::value>::type
+toAppend(Src value, Tgt* result) {
   // Treat null pointers like an empty string, as in:
   // operator<<(std::ostream&, const char*).
   const char* c = value;
@@ -441,7 +438,7 @@ template <class Src>
 typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
     type
     estimateSpaceNeeded(Src value) {
-  const char *c = value;
+  const char* c = value;
   if (c) {
     return folly::StringPiece(value).size();
   };
@@ -471,9 +468,9 @@ inline size_t estimateSpaceNeeded(std::nullptr_t /* value */) {
 
 template <class Src>
 typename std::enable_if<
-  std::is_pointer<Src>::value &&
-  IsSomeString<std::remove_pointer<Src>>::value,
-  size_t>::type
+    std::is_pointer<Src>::value &&
+        IsSomeString<std::remove_pointer<Src>>::value,
+    size_t>::type
 estimateSpaceNeeded(Src value) {
   return value->size();
 }
@@ -483,8 +480,8 @@ estimateSpaceNeeded(Src value) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  IsSomeString<Src>::value && IsSomeString<Tgt>::value>::type
-toAppend(const Src& value, Tgt * result) {
+    IsSomeString<Src>::value && IsSomeString<Tgt>::value>::type
+toAppend(const Src& value, Tgt* result) {
   result->append(value);
 }
 
@@ -492,9 +489,9 @@ toAppend(const Src& value, Tgt * result) {
  * and StringPiece objects too
  */
 template <class Tgt>
-typename std::enable_if<
-   IsSomeString<Tgt>::value>::type
-toAppend(StringPiece value, Tgt * result) {
+typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
+    StringPiece value,
+    Tgt* result) {
   result->append(value.data(), value.size());
 }
 
@@ -503,9 +500,9 @@ toAppend(StringPiece value, Tgt * result) {
  * so make a specialization.
  */
 template <class Tgt>
-typename std::enable_if<
-   IsSomeString<Tgt>::value>::type
-toAppend(const fbstring& value, Tgt * result) {
+typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
+    const fbstring& value,
+    Tgt* result) {
   result->append(value.data(), value.size());
 }
 
@@ -515,8 +512,7 @@ toAppend(const fbstring& value, Tgt * result) {
  */
 
 template <class Tgt>
-void
-toAppend(__int128 value, Tgt * result) {
+void toAppend(__int128 value, Tgt* result) {
   typedef unsigned __int128 Usrc;
   char buffer[detail::digitsEnough<unsigned __int128>() + 1];
   size_t p;
@@ -532,8 +528,7 @@ toAppend(__int128 value, Tgt * result) {
 }
 
 template <class Tgt>
-void
-toAppend(unsigned __int128 value, Tgt * result) {
+void toAppend(unsigned __int128 value, Tgt* result) {
   char buffer[detail::digitsEnough<unsigned __int128>()];
   size_t p;
 
@@ -543,18 +538,16 @@ toAppend(unsigned __int128 value, Tgt * result) {
 }
 
 template <class T>
-constexpr typename std::enable_if<
-  std::is_same<T, __int128>::value,
-  size_t>::type
-estimateSpaceNeeded(T) {
+constexpr
+    typename std::enable_if<std::is_same<T, __int128>::value, size_t>::type
+    estimateSpaceNeeded(T) {
   return detail::digitsEnough<__int128>();
 }
 
 template <class T>
-constexpr typename std::enable_if<
-  std::is_same<T, unsigned __int128>::value,
-  size_t>::type
-estimateSpaceNeeded(T) {
+constexpr typename std::
+    enable_if<std::is_same<T, unsigned __int128>::value, size_t>::type
+    estimateSpaceNeeded(T) {
   return detail::digitsEnough<unsigned __int128>();
 }
 
@@ -570,9 +563,9 @@ estimateSpaceNeeded(T) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value && std::is_signed<Src>::value &&
-  IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
-toAppend(Src value, Tgt * result) {
+    std::is_integral<Src>::value && std::is_signed<Src>::value &&
+    IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
+toAppend(Src value, Tgt* result) {
   char buffer[20];
   if (value < 0) {
     result->push_back('-');
@@ -586,9 +579,9 @@ toAppend(Src value, Tgt * result) {
 
 template <class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value && std::is_signed<Src>::value
-  && sizeof(Src) >= 4 && sizeof(Src) < 16,
-  size_t>::type
+    std::is_integral<Src>::value && std::is_signed<Src>::value &&
+        sizeof(Src) >= 4 && sizeof(Src) < 16,
+    size_t>::type
 estimateSpaceNeeded(Src value) {
   if (value < 0) {
     // When "value" is the smallest negative, negating it would evoke
@@ -605,18 +598,18 @@ estimateSpaceNeeded(Src value) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value && !std::is_signed<Src>::value
-  && IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
-toAppend(Src value, Tgt * result) {
+    std::is_integral<Src>::value && !std::is_signed<Src>::value &&
+    IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
+toAppend(Src value, Tgt* result) {
   char buffer[20];
   result->append(buffer, uint64ToBufferUnsafe(value, buffer));
 }
 
 template <class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value && !std::is_signed<Src>::value
-  && sizeof(Src) >= 4 && sizeof(Src) < 16,
-  size_t>::type
+    std::is_integral<Src>::value && !std::is_signed<Src>::value &&
+        sizeof(Src) >= 4 && sizeof(Src) < 16,
+    size_t>::type
 estimateSpaceNeeded(Src value) {
   return digits10(value);
 }
@@ -627,25 +620,24 @@ estimateSpaceNeeded(Src value) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value
-  && IsSomeString<Tgt>::value && sizeof(Src) < 4>::type
-toAppend(Src value, Tgt * result) {
-  typedef typename
-    std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::type
-    Intermediate;
+    std::is_integral<Src>::value && IsSomeString<Tgt>::value &&
+    sizeof(Src) < 4>::type
+toAppend(Src value, Tgt* result) {
+  typedef
+      typename std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::
+          type Intermediate;
   toAppend<Tgt>(static_cast<Intermediate>(value), result);
 }
 
 template <class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value
-  && sizeof(Src) < 4
-  && !std::is_same<Src, char>::value,
-  size_t>::type
+    std::is_integral<Src>::value && sizeof(Src) < 4 &&
+        !std::is_same<Src, char>::value,
+    size_t>::type
 estimateSpaceNeeded(Src value) {
-  typedef typename
-    std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::type
-    Intermediate;
+  typedef
+      typename std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::
+          type Intermediate;
   return estimateSpaceNeeded(static_cast<Intermediate>(value));
 }
 
@@ -654,15 +646,14 @@ estimateSpaceNeeded(Src value) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type
-toAppend(Src value, Tgt * result) {
+    std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type
+toAppend(Src value, Tgt* result) {
   toAppend(
       static_cast<typename std::underlying_type<Src>::type>(value), result);
 }
 
 template <class Src>
-typename std::enable_if<
-  std::is_enum<Src>::value, size_t>::type
+typename std::enable_if<std::is_enum<Src>::value, size_t>::type
 estimateSpaceNeeded(Src value) {
   return estimateSpaceNeeded(
       static_cast<typename std::underlying_type<Src>::type>(value));
@@ -680,21 +671,22 @@ constexpr int kConvMaxDecimalInShortestHigh = 21;
 /** Wrapper around DoubleToStringConverter **/
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_floating_point<Src>::value
-  && IsSomeString<Tgt>::value>::type
+    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(
-  Src value,
-  Tgt * result,
-  double_conversion::DoubleToStringConverter::DtoaMode mode,
-  unsigned int numDigits) {
+    Src value,
+    Tgt* result,
+    double_conversion::DoubleToStringConverter::DtoaMode mode,
+    unsigned int numDigits) {
   using namespace double_conversion;
-  DoubleToStringConverter
-    conv(DoubleToStringConverter::NO_FLAGS,
-         "Infinity", "NaN", 'E',
-         detail::kConvMaxDecimalInShortestLow,
-         detail::kConvMaxDecimalInShortestHigh,
-         6,   // max leading padding zeros
-         1);  // max trailing padding zeros
+  DoubleToStringConverter conv(
+      DoubleToStringConverter::NO_FLAGS,
+      "Infinity",
+      "NaN",
+      'E',
+      detail::kConvMaxDecimalInShortestLow,
+      detail::kConvMaxDecimalInShortestHigh,
+      6, // max leading padding zeros
+      1); // max trailing padding zeros
   char buffer[256];
   StringBuilder builder(buffer, sizeof(buffer));
   switch (mode) {
@@ -719,11 +711,10 @@ toAppend(
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_floating_point<Src>::value
-  && IsSomeString<Tgt>::value>::type
-toAppend(Src value, Tgt * result) {
+    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
+toAppend(Src value, Tgt* result) {
   toAppend(
-    value, result, double_conversion::DoubleToStringConverter::SHORTEST, 0);
+      value, result, double_conversion::DoubleToStringConverter::SHORTEST, 0);
 }
 
 /**
@@ -732,13 +723,12 @@ toAppend(Src value, Tgt * result) {
  * as used in toAppend(double, string*).
  */
 template <class Src>
-typename std::enable_if<
-  std::is_floating_point<Src>::value, size_t>::type
+typename std::enable_if<std::is_floating_point<Src>::value, size_t>::type
 estimateSpaceNeeded(Src value) {
   // kBase10MaximalLength is 17. We add 1 for decimal point,
   // e.g. 10.0/9 is 17 digits and 18 characters, including the decimal point.
   constexpr int kMaxMantissaSpace =
-    double_conversion::DoubleToStringConverter::kBase10MaximalLength + 1;
+      double_conversion::DoubleToStringConverter::kBase10MaximalLength + 1;
   // strlen("E-") + digits10(numeric_limits<double>::max_exponent10)
   constexpr int kMaxExponentSpace = 2 + 3;
   static const int kMaxPositiveSpace = std::max({
@@ -749,8 +739,8 @@ estimateSpaceNeeded(Src value) {
       // If kConvMaxDecimalInShortestHigh is 21, then 1e21 is the smallest
       // number > 1 which ToShortest outputs in exponential notation,
       // so 21 is the longest non-exponential number > 1.
-      detail::kConvMaxDecimalInShortestHigh
-    });
+      detail::kConvMaxDecimalInShortestHigh,
+  });
   return size_t(
       kMaxPositiveSpace +
       (value < 0 ? 1 : 0)); // +1 for minus sign, if negative
@@ -766,18 +756,17 @@ struct HasLengthEstimator : std::false_type {};
 
 template <class Src>
 constexpr typename std::enable_if<
-  !std::is_fundamental<Src>::value
+    !std::is_fundamental<Src>::value &&
 #if FOLLY_HAVE_INT128_T
-  // On OSX 10.10, is_fundamental<__int128> is false :-O
-  && !std::is_same<__int128, Src>::value
-  && !std::is_same<unsigned __int128, Src>::value
+        // On OSX 10.10, is_fundamental<__int128> is false :-O
+        !std::is_same<__int128, Src>::value &&
+        !std::is_same<unsigned __int128, Src>::value &&
 #endif
-  && !IsSomeString<Src>::value
-  && !std::is_convertible<Src, const char*>::value
-  && !std::is_convertible<Src, StringPiece>::value
-  && !std::is_enum<Src>::value
-  && !HasLengthEstimator<Src>::value,
-  size_t>::type
+        !IsSomeString<Src>::value &&
+        !std::is_convertible<Src, const char*>::value &&
+        !std::is_convertible<Src, StringPiece>::value &&
+        !std::is_enum<Src>::value && !HasLengthEstimator<Src>::value,
+    size_t>::type
 estimateSpaceNeeded(const Src&) {
   return sizeof(Src) + 1; // dumbest best effort ever?
 }
@@ -796,12 +785,12 @@ size_t estimateSpaceToReserve(size_t sofar, const T& v, const Ts&... vs) {
 }
 
 template <class... Ts>
-void reserveInTarget(const Ts&...vs) {
+void reserveInTarget(const Ts&... vs) {
   getLastElement(vs...)->reserve(estimateSpaceToReserve(0, vs...));
 }
 
 template <class Delimiter, class... Ts>
-void reserveInTargetDelim(const Delimiter& d, const Ts&...vs) {
+void reserveInTargetDelim(const Delimiter& d, const Ts&... vs) {
   static_assert(sizeof...(vs) >= 2, "Needs at least 2 args");
   size_t fordelim = (sizeof...(vs) - 2) *
       estimateSpaceToReserve(0, d, static_cast<std::string*>(nullptr));
@@ -813,8 +802,7 @@ void reserveInTargetDelim(const Delimiter& d, const Ts&...vs) {
  */
 template <class T, class Tgt>
 typename std::enable_if<
-  IsSomeString<typename std::remove_pointer<Tgt>::type>
-  ::value>::type
+    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type
 toAppendStrImpl(const T& v, Tgt result) {
   toAppend(v, result);
 }
@@ -924,14 +912,15 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
  */
 template <class Delimiter, class Tgt>
 typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
-    const Delimiter& /* delim */, Tgt* /* result */) {}
+    const Delimiter& /* delim */,
+    Tgt* /* result */) {}
 
 /**
  * 1 element: same as toAppend.
  */
 template <class Delimiter, class T, class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
-    const Delimiter& /* delim */, const T& v, Tgt* tgt) {
+typename std::enable_if<IsSomeString<Tgt>::value>::type
+toAppendDelim(const Delimiter& /* delim */, const T& v, Tgt* tgt) {
   toAppend(v, tgt);
 }
 
@@ -1220,8 +1209,7 @@ convertTo(const bool& value) noexcept {
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && !std::is_same<Tgt, Src>::value &&
-        !std::is_same<Tgt, bool>::value &&
-        std::is_integral<Tgt>::value,
+        !std::is_same<Tgt, bool>::value && std::is_integral<Tgt>::value,
     Expected<Tgt, ConversionCode>>::type
 convertTo(const Src& value) noexcept {
   if /* constexpr */ (

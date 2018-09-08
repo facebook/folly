@@ -41,7 +41,7 @@ void cEscape(StringPiece str, String& out) {
   esc[0] = '\\';
   out.reserve(out.size() + str.size());
   auto p = str.begin();
-  auto last = p;  // last regular character
+  auto last = p; // last regular character
   // We advance over runs of regular characters (printable, not double-quote or
   // backslash) and copy them in one go; this is faster than calling push_back
   // repeatedly.
@@ -49,9 +49,9 @@ void cEscape(StringPiece str, String& out) {
     char c = *p;
     unsigned char v = static_cast<unsigned char>(c);
     char e = detail::cEscapeTable[v];
-    if (e == 'P') {  // printable
+    if (e == 'P') { // printable
       ++p;
-    } else if (e == 'O') {  // octal
+    } else if (e == 'O') { // octal
       out.append(&*last, size_t(p - last));
       esc[1] = '0' + ((v >> 6) & 7);
       esc[2] = '0' + ((v >> 3) & 7);
@@ -59,7 +59,7 @@ void cEscape(StringPiece str, String& out) {
       out.append(esc, 4);
       ++p;
       last = p;
-    } else {  // special 1-character escape
+    } else { // special 1-character escape
       out.append(&*last, size_t(p - last));
       esc[1] = e;
       out.append(esc, 2);
@@ -86,18 +86,18 @@ template <class String>
 void cUnescape(StringPiece str, String& out, bool strict) {
   out.reserve(out.size() + str.size());
   auto p = str.begin();
-  auto last = p;  // last regular character (not part of an escape sequence)
+  auto last = p; // last regular character (not part of an escape sequence)
   // We advance over runs of regular characters (not backslash) and copy them
   // in one go; this is faster than calling push_back repeatedly.
   while (p != str.end()) {
     char c = *p;
-    if (c != '\\') {  // normal case
+    if (c != '\\') { // normal case
       ++p;
       continue;
     }
     out.append(&*last, p - last);
     ++p;
-    if (p == str.end()) {  // backslash at end of string
+    if (p == str.end()) { // backslash at end of string
       if (strict) {
         throw std::invalid_argument("incomplete escape sequence");
       }
@@ -106,7 +106,7 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       continue;
     }
     char e = detail::cUnescapeTable[static_cast<unsigned char>(*p)];
-    if (e == 'O') {  // octal
+    if (e == 'O') { // octal
       unsigned char val = 0;
       for (int i = 0; i < 3 && p != str.end() && *p >= '0' && *p <= '7';
            ++i, ++p) {
@@ -115,9 +115,9 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       }
       out.push_back(val);
       last = p;
-    } else if (e == 'X') {  // hex
+    } else if (e == 'X') { // hex
       ++p;
-      if (p == str.end()) {  // \x at end of string
+      if (p == str.end()) { // \x at end of string
         if (strict) {
           throw std::invalid_argument("incomplete hex escape sequence");
         }
@@ -135,7 +135,7 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       }
       out.push_back(val);
       last = p;
-    } else if (e == 'I') {  // invalid
+    } else if (e == 'I') { // invalid
       if (strict) {
         throw std::invalid_argument("invalid escape sequence");
       }
@@ -143,7 +143,7 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       out.push_back(*p);
       ++p;
       last = p;
-    } else {  // standard escape sequence, \' etc
+    } else { // standard escape sequence, \' etc
       out.push_back(e);
       ++p;
       last = p;
@@ -170,7 +170,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
   // Preallocate assuming that 25% of the input string will be escaped
   out.reserve(out.size() + str.size() + 3 * (str.size() / 4));
   auto p = str.begin();
-  auto last = p;  // last regular character
+  auto last = p; // last regular character
   // We advance over runs of passthrough characters and copy them in one go;
   // this is faster than calling push_back repeatedly.
   unsigned char minEncode = static_cast<unsigned char>(mode);
@@ -207,8 +207,7 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
   while (p != str.end()) {
     char c = *p;
     switch (c) {
-    case '%':
-      {
+      case '%': {
         if (UNLIKELY(std::distance(p, str.end()) < 3)) {
           throw std::invalid_argument("incomplete percent encode sequence");
         }
@@ -223,19 +222,19 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
         last = p;
         break;
       }
-    case '+':
-      if (mode == UriEscapeMode::QUERY) {
-        out.append(&*last, size_t(p - last));
-        out.push_back(' ');
+      case '+':
+        if (mode == UriEscapeMode::QUERY) {
+          out.append(&*last, size_t(p - last));
+          out.push_back(' ');
+          ++p;
+          last = p;
+          break;
+        }
+        // else fallthrough
+        FOLLY_FALLTHROUGH;
+      default:
         ++p;
-        last = p;
         break;
-      }
-      // else fallthrough
-      FOLLY_FALLTHROUGH;
-    default:
-      ++p;
-      break;
     }
   }
   out.append(&*last, size_t(p - last));
@@ -247,10 +246,14 @@ namespace detail {
  * The following functions are type-overloaded helpers for
  * internalSplit().
  */
-inline size_t delimSize(char)          { return 1; }
-inline size_t delimSize(StringPiece s) { return s.size(); }
+inline size_t delimSize(char) {
+  return 1;
+}
+inline size_t delimSize(StringPiece s) {
+  return s.size();
+}
 inline bool atDelim(const char* s, char c) {
- return *s == c;
+  return *s == c;
 }
 inline bool atDelim(const char* s, StringPiece sp) {
   return !std::memcmp(s, sp.start(), sp.size());
@@ -278,7 +281,10 @@ inline char delimFront(StringPiece s) {
  * @param ignoreEmpty iff true, don't copy empty segments to output
  */
 template <class OutStringT, class DelimT, class OutputIterator>
-void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
+void internalSplit(
+    DelimT delim,
+    StringPiece sp,
+    OutputIterator out,
     bool ignoreEmpty) {
   assert(sp.empty() || sp.start() != nullptr);
 
@@ -294,8 +300,7 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
   }
   if (std::is_same<DelimT, StringPiece>::value && dSize == 1) {
     // Call the char version because it is significantly faster.
-    return internalSplit<OutStringT>(delimFront(delim), sp, out,
-      ignoreEmpty);
+    return internalSplit<OutStringT>(delimFront(delim), sp, out, ignoreEmpty);
   }
 
   size_t tokenStartPos = 0;
@@ -319,10 +324,13 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
   }
 }
 
-template <class String> StringPiece prepareDelim(const String& s) {
+template <class String>
+StringPiece prepareDelim(const String& s) {
   return StringPiece(s);
 }
-inline char prepareDelim(char c) { return c; }
+inline char prepareDelim(char c) {
+  return c;
+}
 
 template <bool exact, class Delim, class OutputType>
 bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
@@ -348,8 +356,8 @@ bool splitFixed(
     return false;
   }
   StringPiece head(input.begin(), input.begin() + cut);
-  StringPiece tail(input.begin() + cut + detail::delimSize(delimiter),
-                   input.end());
+  StringPiece tail(
+      input.begin() + cut + detail::delimSize(delimiter), input.end());
   if (LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
     outHead = folly::to<OutputType>(head);
     return true;
@@ -362,27 +370,29 @@ bool splitFixed(
 //////////////////////////////////////////////////////////////////////
 
 template <class Delim, class String, class OutputType>
-void split(const Delim& delimiter,
-           const String& input,
-           std::vector<OutputType>& out,
-           bool ignoreEmpty) {
+void split(
+    const Delim& delimiter,
+    const String& input,
+    std::vector<OutputType>& out,
+    bool ignoreEmpty) {
   detail::internalSplit<OutputType>(
-    detail::prepareDelim(delimiter),
-    StringPiece(input),
-    std::back_inserter(out),
-    ignoreEmpty);
+      detail::prepareDelim(delimiter),
+      StringPiece(input),
+      std::back_inserter(out),
+      ignoreEmpty);
 }
 
 template <class Delim, class String, class OutputType>
-void split(const Delim& delimiter,
-           const String& input,
-           fbvector<OutputType>& out,
-           bool ignoreEmpty) {
+void split(
+    const Delim& delimiter,
+    const String& input,
+    fbvector<OutputType>& out,
+    bool ignoreEmpty) {
   detail::internalSplit<OutputType>(
-    detail::prepareDelim(delimiter),
-    StringPiece(input),
-    std::back_inserter(out),
-    ignoreEmpty);
+      detail::prepareDelim(delimiter),
+      StringPiece(input),
+      std::back_inserter(out),
+      ignoreEmpty);
 }
 
 template <
@@ -390,15 +400,13 @@ template <
     class Delim,
     class String,
     class OutputIterator>
-void splitTo(const Delim& delimiter,
-             const String& input,
-             OutputIterator out,
-             bool ignoreEmpty) {
+void splitTo(
+    const Delim& delimiter,
+    const String& input,
+    OutputIterator out,
+    bool ignoreEmpty) {
   detail::internalSplit<OutputValueType>(
-    detail::prepareDelim(delimiter),
-    StringPiece(input),
-    out,
-    ignoreEmpty);
+      detail::prepareDelim(delimiter), StringPiece(input), out, ignoreEmpty);
 }
 
 template <bool exact, class Delim, class... OutputTypes>
@@ -419,24 +427,25 @@ namespace detail {
  * struct need not conform to the std::string api completely (ex. does not need
  * to implement append()).
  */
-template <class T> struct IsSizableString {
-  enum { value = IsSomeString<T>::value
-         || std::is_same<T, StringPiece>::value };
+template <class T>
+struct IsSizableString {
+  enum {
+    value = IsSomeString<T>::value || std::is_same<T, StringPiece>::value
+  };
 };
 
 template <class Iterator>
-struct IsSizableStringContainerIterator :
-  IsSizableString<typename std::iterator_traits<Iterator>::value_type> {
-};
+struct IsSizableStringContainerIterator
+    : IsSizableString<typename std::iterator_traits<Iterator>::value_type> {};
 
 template <class Delim, class Iterator, class String>
-void internalJoinAppend(Delim delimiter,
-                        Iterator begin,
-                        Iterator end,
-                        String& output) {
+void internalJoinAppend(
+    Delim delimiter,
+    Iterator begin,
+    Iterator end,
+    String& output) {
   assert(begin != end);
-  if (std::is_same<Delim, StringPiece>::value &&
-      delimSize(delimiter) == 1) {
+  if (std::is_same<Delim, StringPiece>::value && delimSize(delimiter) == 1) {
     internalJoinAppend(delimFront(delimiter), begin, end, output);
     return;
   }
@@ -448,10 +457,7 @@ void internalJoinAppend(Delim delimiter,
 
 template <class Delim, class Iterator, class String>
 typename std::enable_if<IsSizableStringContainerIterator<Iterator>::value>::type
-internalJoin(Delim delimiter,
-             Iterator begin,
-             Iterator end,
-             String& output) {
+internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
   output.clear();
   if (begin == end) {
     return;
@@ -467,12 +473,9 @@ internalJoin(Delim delimiter,
 }
 
 template <class Delim, class Iterator, class String>
-typename
-std::enable_if<!IsSizableStringContainerIterator<Iterator>::value>::type
-internalJoin(Delim delimiter,
-             Iterator begin,
-             Iterator end,
-             String& output) {
+typename std::enable_if<
+    !IsSizableStringContainerIterator<Iterator>::value>::type
+internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
   output.clear();
   if (begin == end) {
     return;
@@ -483,15 +486,12 @@ internalJoin(Delim delimiter,
 } // namespace detail
 
 template <class Delim, class Iterator, class String>
-void join(const Delim& delimiter,
-          Iterator begin,
-          Iterator end,
-          String& output) {
-  detail::internalJoin(
-    detail::prepareDelim(delimiter),
-    begin,
-    end,
-    output);
+void join(
+    const Delim& delimiter,
+    Iterator begin,
+    Iterator end,
+    String& output) {
+  detail::internalJoin(detail::prepareDelim(delimiter), begin, end, output);
 }
 
 template <class OutputString>
@@ -584,8 +584,10 @@ void humanify(const String1& input, String2& output) {
 }
 
 template <class InputString, class OutputString>
-bool hexlify(const InputString& input, OutputString& output,
-             bool append_output) {
+bool hexlify(
+    const InputString& input,
+    OutputString& output,
+    bool append_output) {
   if (!append_output) {
     output.clear();
   }
@@ -626,8 +628,8 @@ namespace detail {
  * Hex-dump at most 16 bytes starting at offset from a memory area of size
  * bytes.  Return the number of bytes actually dumped.
  */
-size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
-                   std::string& line);
+size_t
+hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line);
 } // namespace detail
 
 template <class OutIt>

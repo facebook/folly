@@ -38,7 +38,6 @@
 namespace folly {
 
 /* using override */ using std::invoke;
-
 }
 
 #else
@@ -75,7 +74,7 @@ namespace folly {
 /* using override */ using std::is_nothrow_invocable;
 /* using override */ using std::is_nothrow_invocable_r;
 
-}
+} // namespace folly
 
 #else
 
@@ -129,10 +128,10 @@ struct is_nothrow_invocable_r : std::false_type {};
 template <typename R, typename F, typename... Args>
 struct is_nothrow_invocable_r<void_t<invoke_result_<F, Args...>>, R, F, Args...>
     : StrictConjunction<
-        std::is_convertible<invoke_result_<F, Args...>, R>,
-        invoke_nothrow_<F, Args...>> {};
+          std::is_convertible<invoke_result_<F, Args...>, R>,
+          invoke_nothrow_<F, Args...>> {};
 
-} // namespace detail
+} // namespace invoke_detail
 
 //  mimic: std::invoke_result, C++17
 template <typename F, typename... Args>

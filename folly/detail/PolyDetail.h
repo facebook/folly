@@ -337,7 +337,8 @@ struct ArchetypeBase : Bottom {
   template <std::size_t, class... As>
   [[noreturn]] Bottom _polyCall_(As&&...) const { std::terminate(); }
 
-  friend bool operator==(ArchetypeBase const&, ArchetypeBase const&);
+  friend bool
+  operator==(ArchetypeBase const&, ArchetypeBase const&);
   friend bool operator!=(ArchetypeBase const&, ArchetypeBase const&);
   friend bool operator<(ArchetypeBase const&, ArchetypeBase const&);
   friend bool operator<=(ArchetypeBase const&, ArchetypeBase const&);

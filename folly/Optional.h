@@ -235,7 +235,7 @@ class Optional {
     }
   }
 
-  FOLLY_CPP14_CONSTEXPR const Value& value() const & {
+  FOLLY_CPP14_CONSTEXPR const Value& value() const& {
     require_value();
     return storage_.value;
   }
@@ -250,12 +250,12 @@ class Optional {
     return std::move(storage_.value);
   }
 
-  FOLLY_CPP14_CONSTEXPR const Value&& value() const && {
+  FOLLY_CPP14_CONSTEXPR const Value&& value() const&& {
     require_value();
     return std::move(storage_.value);
   }
 
-  const Value* get_pointer() const & {
+  const Value* get_pointer() const& {
     return storage_.hasValue ? &storage_.value : nullptr;
   }
   Value* get_pointer() & {
@@ -275,13 +275,13 @@ class Optional {
     return has_value();
   }
 
-  FOLLY_CPP14_CONSTEXPR const Value& operator*() const & {
+  FOLLY_CPP14_CONSTEXPR const Value& operator*() const& {
     return value();
   }
   FOLLY_CPP14_CONSTEXPR Value& operator*() & {
     return value();
   }
-  FOLLY_CPP14_CONSTEXPR const Value&& operator*() const && {
+  FOLLY_CPP14_CONSTEXPR const Value&& operator*() const&& {
     return std::move(value());
   }
   FOLLY_CPP14_CONSTEXPR Value&& operator*() && {
@@ -297,7 +297,7 @@ class Optional {
 
   // Return a copy of the value if set, or a given default if not.
   template <class U>
-  FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) const & {
+  FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) const& {
     if (storage_.hasValue) {
       return storage_.value;
     }

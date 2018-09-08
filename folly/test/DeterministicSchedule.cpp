@@ -100,10 +100,12 @@ struct UniformSubset {
 
   void adjustPermSize(size_t numActive) {
     if (perm_.size() > numActive) {
-      perm_.erase(std::remove_if(perm_.begin(),
-                                 perm_.end(),
-                                 [=](size_t x) { return x >= numActive; }),
-                  perm_.end());
+      perm_.erase(
+          std::remove_if(
+              perm_.begin(),
+              perm_.end(),
+              [=](size_t x) { return x >= numActive; }),
+          perm_.end());
     } else {
       while (perm_.size() < numActive) {
         perm_.push_back(perm_.size());
@@ -156,9 +158,10 @@ size_t DeterministicSchedule::getRandNumber(size_t n) {
   return Random::rand32() % n;
 }
 
-int DeterministicSchedule::getcpu(unsigned* cpu,
-                                  unsigned* node,
-                                  void* /* unused */) {
+int DeterministicSchedule::getcpu(
+    unsigned* cpu,
+    unsigned* node,
+    void* /* unused */) {
   if (!tls_threadId && tls_sched) {
     beforeSharedAccess();
     tls_threadId = tls_sched->nextThreadId_++;
@@ -287,8 +290,8 @@ bool DeterministicSchedule::tryWait(sem_t* sem) {
   beforeSharedAccess();
   int rv = sem_trywait(sem);
   int e = rv == 0 ? 0 : errno;
-  FOLLY_TEST_DSCHED_VLOG("sem_trywait(" << sem << ") = " << rv
-                                        << " errno=" << e);
+  FOLLY_TEST_DSCHED_VLOG(
+      "sem_trywait(" << sem << ") = " << rv << " errno=" << e);
   afterSharedAccess();
   if (rv == 0) {
     return true;
@@ -346,8 +349,8 @@ detail::FutexResult futexWaitImpl(
         // Simulate ETIMEDOUT 90% of the time and other failures
         // remaining time
         result = DeterministicSchedule::getRandNumber(100) >= 10
-                     ? FutexResult::TIMEDOUT
-                     : FutexResult::INTERRUPTED;
+            ? FutexResult::TIMEDOUT
+            : FutexResult::INTERRUPTED;
         break;
       }
     }

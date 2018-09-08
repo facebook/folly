@@ -28,7 +28,7 @@ template <class T>
 Try<T>::Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
     : contains_(t.contains_) {
   if (contains_ == Contains::VALUE) {
-    new (&value_)T(std::move(t.value_));
+    new (&value_) T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(std::move(t.e_));
   }
@@ -77,7 +77,7 @@ Try<T>::Try(const Try<T>& t) noexcept(
       "T must be copyable for Try<T> to be copyable");
   contains_ = t.contains_;
   if (contains_ == Contains::VALUE) {
-    new (&value_)T(t.value_);
+    new (&value_) T(t.value_);
   } else if (contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(t.e_);
   }
@@ -149,13 +149,13 @@ T&& Try<T>::value() && {
 }
 
 template <class T>
-const T& Try<T>::value() const & {
+const T& Try<T>::value() const& {
   throwIfFailed();
   return value_;
 }
 
 template <class T>
-const T&& Try<T>::value() const && {
+const T&& Try<T>::value() const&& {
   throwIfFailed();
   return std::move(value_);
 }

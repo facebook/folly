@@ -31,10 +31,8 @@ LIFOSEM_DECLARE_POOL(std::atomic, 1000000)
 namespace folly {
 
 ShutdownSemError::ShutdownSemError(const std::string& msg)
-  : std::runtime_error(msg)
-{}
+    : std::runtime_error(msg) {}
 
-ShutdownSemError::~ShutdownSemError() noexcept {
-}
+ShutdownSemError::~ShutdownSemError() noexcept {}
 
 } // namespace folly

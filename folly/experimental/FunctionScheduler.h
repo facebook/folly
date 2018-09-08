@@ -65,7 +65,9 @@ class FunctionScheduler {
    *
    * NOTE: it's only safe to set this before calling start()
    */
-  void setSteady(bool steady) { steady_ = steady; }
+  void setSteady(bool steady) {
+    steady_ = steady;
+  }
 
   /*
    * Parameters to control the function interval.
@@ -81,9 +83,7 @@ class FunctionScheduler {
     double poissonMean;
 
     LatencyDistribution(bool poisson, double mean)
-      : isPoisson(poisson),
-        poissonMean(mean) {
-    }
+        : isPoisson(poisson), poissonMean(mean) {}
   };
 
   /**
@@ -97,11 +97,11 @@ class FunctionScheduler {
    * Throws an exception on error.  In particular, each function must have a
    * unique name--two functions cannot be added with the same name.
    */
-  void addFunction(Function<void()>&& cb,
-                   std::chrono::milliseconds interval,
-                   StringPiece nameID = StringPiece(),
-                   std::chrono::milliseconds startDelay =
-                     std::chrono::milliseconds(0));
+  void addFunction(
+      Function<void()>&& cb,
+      std::chrono::milliseconds interval,
+      StringPiece nameID = StringPiece(),
+      std::chrono::milliseconds startDelay = std::chrono::milliseconds(0));
 
   /*
    * Add a new function to the FunctionScheduler with a specified
@@ -123,15 +123,16 @@ class FunctionScheduler {
       std::chrono::milliseconds startDelay = std::chrono::milliseconds(0));
 
   /**
-    * Add a new function to the FunctionScheduler with the time
-    * interval being distributed uniformly within the given interval
-    * [minInterval, maxInterval].
-    */
-  void addFunctionUniformDistribution(Function<void()>&& cb,
-                                      std::chrono::milliseconds minInterval,
-                                      std::chrono::milliseconds maxInterval,
-                                      StringPiece nameID,
-                                      std::chrono::milliseconds startDelay);
+   * Add a new function to the FunctionScheduler with the time
+   * interval being distributed uniformly within the given interval
+   * [minInterval, maxInterval].
+   */
+  void addFunctionUniformDistribution(
+      Function<void()>&& cb,
+      std::chrono::milliseconds minInterval,
+      std::chrono::milliseconds maxInterval,
+      StringPiece nameID,
+      std::chrono::milliseconds startDelay);
 
   /**
    * Add a new function to the FunctionScheduler whose start times are attempted
@@ -297,11 +298,15 @@ class FunctionScheduler {
       // Simply reset cb to an empty function.
       cb = {};
     }
-    bool isValid() const { return bool(cb); }
+    bool isValid() const {
+      return bool(cb);
+    }
   };
 
   struct RunTimeOrder {
-    bool operator()(const std::unique_ptr<RepeatFunc>& f1, const std::unique_ptr<RepeatFunc>& f2) const {
+    bool operator()(
+        const std::unique_ptr<RepeatFunc>& f1,
+        const std::unique_ptr<RepeatFunc>& f2) const {
       return f1->getNextRunTime() > f2->getNextRunTime();
     }
   };
@@ -310,12 +315,13 @@ class FunctionScheduler {
   typedef std::unordered_map<StringPiece, RepeatFunc*, Hash> FunctionMap;
 
   void run();
-  void runOneFunction(std::unique_lock<std::mutex>& lock,
-                      std::chrono::steady_clock::time_point now);
-  void cancelFunction(const std::unique_lock<std::mutex>& lock,
-                      RepeatFunc* it);
-  void addFunctionToHeap(const std::unique_lock<std::mutex>& lock,
-                         std::unique_ptr<RepeatFunc> func);
+  void runOneFunction(
+      std::unique_lock<std::mutex>& lock,
+      std::chrono::steady_clock::time_point now);
+  void cancelFunction(const std::unique_lock<std::mutex>& lock, RepeatFunc* it);
+  void addFunctionToHeap(
+      const std::unique_lock<std::mutex>& lock,
+      std::unique_ptr<RepeatFunc> func);
 
   template <typename RepeatFuncNextRunTimeFunc>
   void addFunctionToHeapChecked(

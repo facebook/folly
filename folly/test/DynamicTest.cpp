@@ -71,15 +71,18 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(*newObject.keys().begin(), newObject.items().begin()->first);
   EXPECT_EQ(*newObject.values().begin(), newObject.items().begin()->second);
   std::vector<std::pair<std::string, dynamic>> found;
-  found.emplace_back(newObject.keys().begin()->asString(),
-                     *newObject.values().begin());
+  found.emplace_back(
+      newObject.keys().begin()->asString(), *newObject.values().begin());
 
-  EXPECT_EQ(*std::next(newObject.keys().begin()),
-            std::next(newObject.items().begin())->first);
-  EXPECT_EQ(*std::next(newObject.values().begin()),
-            std::next(newObject.items().begin())->second);
-  found.emplace_back(std::next(newObject.keys().begin())->asString(),
-                     *std::next(newObject.values().begin()));
+  EXPECT_EQ(
+      *std::next(newObject.keys().begin()),
+      std::next(newObject.items().begin())->first);
+  EXPECT_EQ(
+      *std::next(newObject.values().begin()),
+      std::next(newObject.items().begin())->second);
+  found.emplace_back(
+      std::next(newObject.keys().begin())->asString(),
+      *std::next(newObject.values().begin()));
 
   std::sort(found.begin(), found.end());
 
@@ -116,6 +119,7 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(objInsert.find("1")->second.size(), 1);
 
   // Looking up objects as keys
+  // clang-format off
   dynamic objDefinedInOneOrder = folly::dynamic::object
     ("bar", "987")
     ("baz", folly::dynamic::array(1, 2, 3))
@@ -124,6 +128,7 @@ TEST(Dynamic, ObjectBasics) {
     ("bar", "987")
     ("foo2", folly::dynamic::object("1", "2"))
     ("baz", folly::dynamic::array(1, 2, 3));
+  // clang-format on
 
   newObject[objDefinedInOneOrder] = 12;
   EXPECT_EQ(newObject.at(objDefinedInOneOrder).getInt(), 12);
@@ -131,24 +136,30 @@ TEST(Dynamic, ObjectBasics) {
 
   // Merge two objects
   dynamic origMergeObj1 = folly::dynamic::object();
+  // clang-format off
   dynamic mergeObj1 = origMergeObj1 = folly::dynamic::object
     ("key1", "value1")
     ("key2", "value2");
   dynamic mergeObj2 = folly::dynamic::object
     ("key2", "value3")
     ("key3", "value4");
+  // clang-format on
 
   // Merged object where we prefer the values in mergeObj2
+  // clang-format off
   dynamic combinedPreferObj2 = folly::dynamic::object
     ("key1", "value1")
     ("key2", "value3")
     ("key3", "value4");
+  // clang-format on
 
   // Merged object where we prefer the values in mergeObj1
+  // clang-format off
   dynamic combinedPreferObj1 = folly::dynamic::object
     ("key1", "value1")
     ("key2", "value2")
     ("key3", "value4");
+  // clang-format on
 
   auto newMergeObj = dynamic::merge(mergeObj1, mergeObj2);
   EXPECT_EQ(newMergeObj, combinedPreferObj2);
@@ -299,8 +310,7 @@ TEST(Dynamic, CastFromConstVectorOfBooleans) {
 }
 
 TEST(Dynamic, ObjectErase) {
-  dynamic obj = dynamic::object("key1", "val")
-                               ("key2", "val2");
+  dynamic obj = dynamic::object("key1", "val")("key2", "val2");
   EXPECT_EQ(obj.count("key1"), 1);
   EXPECT_EQ(obj.count("key2"), 1);
   EXPECT_EQ(obj.erase("key1"), 1);
@@ -382,9 +392,7 @@ TEST(Dynamic, DeepCopy) {
   EXPECT_EQ(val2.at(2).at(0), "foo3");
   EXPECT_EQ(val2.at(2).at(1), "bar3");
 
-  dynamic obj =
-    dynamic::object("a", "b")
-                   ("c", dynamic::array("d", "e", "f"));
+  dynamic obj = dynamic::object("a", "b")("c", dynamic::array("d", "e", "f"));
   EXPECT_EQ(obj.at("a"), "b");
   dynamic obj2 = obj;
   obj2.at("a") = dynamic::array(1, 2, 3);
@@ -408,8 +416,7 @@ TEST(Dynamic, Operator) {
     dynamic d1 = dynamic::object;
     dynamic d2 = dynamic::object;
     auto foo = d1 < d2;
-    LOG(ERROR) << "operator < returned "
-               << static_cast<int>(foo)
+    LOG(ERROR) << "operator < returned " << static_cast<int>(foo)
                << " instead of throwing";
   } catch (std::exception const&) {
     caught = true;
@@ -472,8 +479,10 @@ TEST(Dynamic, ObjectForwarding) {
   // Make sure dynamic::object can be constructed the same way as any
   // dynamic.
   dynamic d = dynamic::object("asd", dynamic::array("foo", "bar"));
+  // clang-format off
   dynamic d2 = dynamic::object("key2", dynamic::array("value", "words"))
                               ("key", "value1");
+  // clang-format on
 }
 
 TEST(Dynamic, GetPtr) {
@@ -496,18 +505,22 @@ TEST(Dynamic, GetPtr) {
 }
 
 TEST(Dynamic, Assignment) {
-  const dynamic ds[] = { dynamic::array(1, 2, 3),
-                         dynamic::object("a", true),
-                         24,
-                         26.5,
-                         true,
-                         "hello", };
-  const dynamic dd[] = { dynamic::array(5, 6),
-                         dynamic::object("t", "T")(1, 7),
-                         9000,
-                         3.14159,
-                         false,
-                         "world", };
+  const dynamic ds[] = {
+      dynamic::array(1, 2, 3),
+      dynamic::object("a", true),
+      24,
+      26.5,
+      true,
+      "hello",
+  };
+  const dynamic dd[] = {
+      dynamic::array(5, 6),
+      dynamic::object("t", "T")(1, 7),
+      9000,
+      3.14159,
+      false,
+      "world",
+  };
   for (const auto& source : ds) {
     for (const auto& dest : dd) {
       dynamic tmp(dest);

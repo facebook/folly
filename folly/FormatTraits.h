@@ -19,7 +19,8 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 // Shortcut, so we don't have to use enable_if everywhere
 struct FormatTraitsBase {
@@ -29,7 +30,8 @@ struct FormatTraitsBase {
 // Traits that define enabled, value_type, and at() for anything
 // indexable with integral keys: pointers, arrays, vectors, and maps
 // with integral keys
-template <class T, class Enable = void> struct IndexableTraits;
+template <class T, class Enable = void>
+struct IndexableTraits;
 
 // Base class for sequences (vectors, deques)
 template <class C>

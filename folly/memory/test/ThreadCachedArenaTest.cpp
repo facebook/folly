@@ -38,7 +38,7 @@ namespace {
 
 class ArenaTester {
  public:
-  explicit ArenaTester(ThreadCachedArena& arena) : arena_(&arena) { }
+  explicit ArenaTester(ThreadCachedArena& arena) : arena_(&arena) {}
 
   void allocate(size_t count, size_t maxSize);
   void verify();
@@ -84,8 +84,8 @@ void ArenaTester::verify() {
 void ArenaTester::merge(ArenaTester&& other) {
   {
     std::lock_guard<std::mutex> lock(mergeMutex_);
-    std::move(other.areas_.begin(), other.areas_.end(),
-              std::back_inserter(areas_));
+    std::move(
+        other.areas_.begin(), other.areas_.end(), std::back_inserter(areas_));
   }
   other.areas_.clear();
 }
@@ -103,14 +103,13 @@ TEST(ThreadCachedArena, BlockSize) {
   // Keep allocating until we're no longer one single alignment away from the
   // previous allocation -- that's when we've gotten to the next block.
   uint8_t* p;
-  while ((p = static_cast<uint8_t*>(arena.allocate(1))) ==
-         prev + alignment) {
+  while ((p = static_cast<uint8_t*>(arena.allocate(1))) == prev + alignment) {
     prev = p;
     blockSize += alignment;
   }
 
-  VLOG(1) << "Requested block size: " << requestedBlockSize << ", actual: "
-          << blockSize;
+  VLOG(1) << "Requested block size: " << requestedBlockSize
+          << ", actual: " << blockSize;
   EXPECT_LE(requestedBlockSize, blockSize);
 }
 
@@ -138,13 +137,12 @@ TEST(ThreadCachedArena, MultiThreaded) {
     std::vector<std::thread> threads;
     threads.reserve(numThreads);
     for (size_t j = 0; j < numThreads; j++) {
-      threads.emplace_back(
-          [&arena, &mainTester] () {
-            ArenaTester tester(arena);
-            tester.allocate(500, 1 << 10);
-            tester.verify();
-            mainTester.merge(std::move(tester));
-          });
+      threads.emplace_back([&arena, &mainTester]() {
+        ArenaTester tester(arena);
+        tester.allocate(500, 1 << 10);
+        tester.verify();
+        mainTester.merge(std::move(tester));
+      });
     }
     for (auto& t : threads) {
       t.join();
@@ -187,7 +185,7 @@ BENCHMARK(bmUMStandard, iters) {
   using Map = std::unordered_map<int, int>;
 
   while (iters--) {
-    Map map {0};
+    Map map{0};
     for (int i = 0; i < kNumValues; i++) {
       map[i] = i;
     }
@@ -265,7 +263,7 @@ BENCHMARK_DRAW_LINE();
 // *       bmMArena                         2135  2.002 s   937.6 us  1.042 k
 // ----------------------------------------------------------------------------
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto ret = RUN_ALL_TESTS();

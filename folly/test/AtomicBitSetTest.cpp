@@ -20,7 +20,8 @@
 
 #include <glog/logging.h>
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
 TEST(AtomicBitSet, Simple) {
   constexpr size_t kSize = 1000;
@@ -56,7 +57,7 @@ TEST(AtomicBitSet, Simple) {
 } // namespace test
 } // namespace folly
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();

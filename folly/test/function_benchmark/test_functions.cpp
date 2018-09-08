@@ -23,9 +23,7 @@
  * gcc won't be able to inline them.
  */
 
-
-void doNothing() {
-}
+void doNothing() {}
 
 std::exception_ptr returnExceptionPtr() {
   Exception ex("this is a test");
@@ -55,11 +53,9 @@ int returnCodeNoExcept(int value) noexcept {
   return value;
 }
 
-void TestClass::doNothing() {
-}
+void TestClass::doNothing() {}
 
-VirtualClass::~VirtualClass() {
-}
+VirtualClass::~VirtualClass() {}
 
 void VirtualClass::doNothing() {}
 

@@ -93,7 +93,9 @@ FOLLY_STORAGE_CONSTEXPR decltype(formatBinary) formatBinary =
 using namespace folly::detail;
 
 void FormatValue<double>::formatHelper(
-    fbstring& piece, int& prefixLen, FormatArg& arg) const {
+    fbstring& piece,
+    int& prefixLen,
+    FormatArg& arg) const {
   using ::double_conversion::DoubleToStringConverter;
   using ::double_conversion::StringBuilder;
 
@@ -112,98 +114,96 @@ void FormatValue<double>::formatHelper(
   }
 
   // 2+: for null terminator and optional sign shenanigans.
-  constexpr int bufLen =
-      2 + constexpr_max(
-              2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
-                  DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
-              constexpr_max(8 + DoubleToStringConverter::kMaxExponentialDigits,
-                            7 + DoubleToStringConverter::kMaxPrecisionDigits));
+  constexpr int bufLen = 2 +
+      constexpr_max(2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
+                        DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
+                    constexpr_max(
+                        8 + DoubleToStringConverter::kMaxExponentialDigits,
+                        7 + DoubleToStringConverter::kMaxPrecisionDigits));
   char buf[bufLen];
   StringBuilder builder(buf + 1, bufLen - 1);
 
   char plusSign;
   switch (arg.sign) {
-  case FormatArg::Sign::PLUS_OR_MINUS:
-    plusSign = '+';
-    break;
-  case FormatArg::Sign::SPACE_OR_MINUS:
-    plusSign = ' ';
-    break;
-  default:
-    plusSign = '\0';
-    break;
+    case FormatArg::Sign::PLUS_OR_MINUS:
+      plusSign = '+';
+      break;
+    case FormatArg::Sign::SPACE_OR_MINUS:
+      plusSign = ' ';
+      break;
+    default:
+      plusSign = '\0';
+      break;
   };
 
-  auto flags =
-      DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |
+  auto flags = DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |
       (arg.trailingDot ? DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT
                        : 0);
 
   double val = val_;
   switch (arg.presentation) {
-  case '%':
-    val *= 100;
-    FOLLY_FALLTHROUGH;
-  case 'f':
-  case 'F':
-    {
-      if (arg.precision >
-          DoubleToStringConverter::kMaxFixedDigitsAfterPoint) {
+    case '%':
+      val *= 100;
+      FOLLY_FALLTHROUGH;
+    case 'f':
+    case 'F': {
+      if (arg.precision > DoubleToStringConverter::kMaxFixedDigitsAfterPoint) {
         arg.precision = DoubleToStringConverter::kMaxFixedDigitsAfterPoint;
       }
-      DoubleToStringConverter conv(flags,
-                                   infinitySymbol,
-                                   nanSymbol,
-                                   exponentSymbol,
-                                   -4,
-                                   arg.precision,
-                                   0,
-                                   0);
-      arg.enforce(conv.ToFixed(val, arg.precision, &builder),
-                  "fixed double conversion failed");
+      DoubleToStringConverter conv(
+          flags,
+          infinitySymbol,
+          nanSymbol,
+          exponentSymbol,
+          -4,
+          arg.precision,
+          0,
+          0);
+      arg.enforce(
+          conv.ToFixed(val, arg.precision, &builder),
+          "fixed double conversion failed");
+      break;
     }
-    break;
-  case 'e':
-  case 'E':
-    {
+    case 'e':
+    case 'E': {
       if (arg.precision > DoubleToStringConverter::kMaxExponentialDigits) {
         arg.precision = DoubleToStringConverter::kMaxExponentialDigits;
       }
 
-      DoubleToStringConverter conv(flags,
-                                   infinitySymbol,
-                                   nanSymbol,
-                                   exponentSymbol,
-                                   -4,
-                                   arg.precision,
-                                   0,
-                                   0);
+      DoubleToStringConverter conv(
+          flags,
+          infinitySymbol,
+          nanSymbol,
+          exponentSymbol,
+          -4,
+          arg.precision,
+          0,
+          0);
       arg.enforce(conv.ToExponential(val, arg.precision, &builder));
+      break;
     }
-    break;
-  case 'n':  // should be locale-aware, but isn't
-  case 'g':
-  case 'G':
-    {
+    case 'n': // should be locale-aware, but isn't
+    case 'g':
+    case 'G': {
       if (arg.precision < DoubleToStringConverter::kMinPrecisionDigits) {
         arg.precision = DoubleToStringConverter::kMinPrecisionDigits;
-      } else if (arg.precision >
-                 DoubleToStringConverter::kMaxPrecisionDigits) {
+      } else if (arg.precision > DoubleToStringConverter::kMaxPrecisionDigits) {
         arg.precision = DoubleToStringConverter::kMaxPrecisionDigits;
       }
-      DoubleToStringConverter conv(flags,
-                                   infinitySymbol,
-                                   nanSymbol,
-                                   exponentSymbol,
-                                   -4,
-                                   arg.precision,
-                                   0,
-                                   0);
+      DoubleToStringConverter conv(
+          flags,
+          infinitySymbol,
+          nanSymbol,
+          exponentSymbol,
+          -4,
+          arg.precision,
+          0,
+          0);
       arg.enforce(conv.ToShortest(val, &builder));
+      break;
     }
-    break;
-  default:
-    arg.error("invalid specifier '", arg.presentation, "'");
+    default:
+      arg.error("invalid specifier '", arg.presentation, "'");
   }
 
   int len = builder.position();
@@ -224,7 +224,6 @@ void FormatValue<double>::formatHelper(
 
   piece = fbstring(p, size_t(len));
 }
-
 
 void FormatArg::initSlow() {
   auto b = fullArgString.begin();
@@ -248,15 +247,16 @@ void FormatArg::initSlow() {
     Align a;
     if (p + 1 != end &&
         (a = formatAlignTable[static_cast<unsigned char>(p[1])]) !=
-        Align::INVALID) {
+            Align::INVALID) {
       fill = *p;
       align = a;
       p += 2;
       if (p == end) {
         return;
       }
-    } else if ((a = formatAlignTable[static_cast<unsigned char>(*p)]) !=
-               Align::INVALID) {
+    } else if (
+        (a = formatAlignTable[static_cast<unsigned char>(*p)]) !=
+        Align::INVALID) {
       align = a;
       if (++p == end) {
         return;
@@ -358,26 +358,28 @@ void FormatArg::initSlow() {
 void FormatArg::validate(Type type) const {
   enforce(keyEmpty(), "index not allowed");
   switch (type) {
-  case Type::INTEGER:
-    enforce(precision == kDefaultPrecision,
-            "precision not allowed on integers");
-    break;
-  case Type::FLOAT:
-    enforce(!basePrefix,
-            "base prefix ('#') specifier only allowed on integers");
-    enforce(!thousandsSeparator,
-            "thousands separator (',') only allowed on integers");
-    break;
-  case Type::OTHER:
-    enforce(align != Align::PAD_AFTER_SIGN,
-            "'='alignment only allowed on numbers");
-    enforce(sign == Sign::DEFAULT,
-            "sign specifier only allowed on numbers");
-    enforce(!basePrefix,
-            "base prefix ('#') specifier only allowed on integers");
-    enforce(!thousandsSeparator,
-            "thousands separator (',') only allowed on integers");
-    break;
+    case Type::INTEGER:
+      enforce(
+          precision == kDefaultPrecision, "precision not allowed on integers");
+      break;
+    case Type::FLOAT:
+      enforce(
+          !basePrefix, "base prefix ('#') specifier only allowed on integers");
+      enforce(
+          !thousandsSeparator,
+          "thousands separator (',') only allowed on integers");
+      break;
+    case Type::OTHER:
+      enforce(
+          align != Align::PAD_AFTER_SIGN,
+          "'='alignment only allowed on numbers");
+      enforce(sign == Sign::DEFAULT, "sign specifier only allowed on numbers");
+      enforce(
+          !basePrefix, "base prefix ('#') specifier only allowed on integers");
+      enforce(
+          !thousandsSeparator,
+          "thousands separator (',') only allowed on integers");
+      break;
   }
 }
 
@@ -397,8 +399,8 @@ void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
   uint32_t next_group_size = 3;
 
   while (!done) {
-    uint32_t current_group_size = std::max<uint32_t>(1,
-      std::min<uint32_t>(remaining_digits, next_group_size));
+    uint32_t current_group_size = std::max<uint32_t>(
+        1, std::min<uint32_t>(remaining_digits, next_group_size));
 
     // write out the current group's digits to the buffer index
     for (uint32_t i = 0; i < current_group_size; i++) {

@@ -57,12 +57,10 @@ void ThreadedRepeatingFunctionRunner::add(
     std::string name,
     RepeatingFn fn,
     std::chrono::milliseconds initialSleep) {
-  threads_.emplace_back([
-    name = std::move(name),
-    fn = std::move(fn),
-    initialSleep,
-    this
-  ]() mutable {
+  threads_.emplace_back([name = std::move(name),
+                         fn = std::move(fn),
+                         initialSleep,
+                         this]() mutable {
     setThreadName(name);
     executeInLoop(std::move(fn), initialSleep);
   });

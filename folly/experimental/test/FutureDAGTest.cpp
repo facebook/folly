@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <boost/thread/barrier.hpp>
 #include <folly/experimental/FutureDAG.h>
+#include <boost/thread/barrier.hpp>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

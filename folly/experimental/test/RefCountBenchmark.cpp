@@ -22,8 +22,7 @@
 namespace folly {
 
 template <typename Counter>
-void shutdown(Counter&) {
-}
+void shutdown(Counter&) {}
 
 void shutdown(RCURefCount& c) {
   c.useGlobal();
@@ -43,16 +42,16 @@ void benchmark(size_t n) {
 
   for (size_t t = 0; t < threadCount; ++t) {
     ts.emplace_back([&]() {
-        for (size_t i = 0; i < n; ++i) {
-          ++x;
-        }
-        for (size_t i = 0; i < n; ++i) {
-          --x;
-        }
-      });
+      for (size_t i = 0; i < n; ++i) {
+        ++x;
+      }
+      for (size_t i = 0; i < n; ++i) {
+        --x;
+      }
+    });
   }
 
-  for (auto& t: ts) {
+  for (auto& t : ts) {
     t.join();
   }
 
@@ -88,8 +87,7 @@ BENCHMARK(TLRefCountFourThreads, n) {
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
-    "bm_min_usec", "100000", gflags::SET_FLAG_IF_DEFAULT
-  );
+      "bm_min_usec", "100000", gflags::SET_FLAG_IF_DEFAULT);
 
   folly::runBenchmarks();
 

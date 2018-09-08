@@ -29,14 +29,14 @@
  */
 #if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 // We have JEMalloc, so use it.
-# include <jemalloc/jemalloc.h>
+#include <jemalloc/jemalloc.h>
 #else
-# ifndef MALLOCX_LG_ALIGN
-#  define MALLOCX_LG_ALIGN(la) (la)
-# endif
-# ifndef MALLOCX_ZERO
-#  define MALLOCX_ZERO (static_cast<int>(0x40))
-# endif
+#ifndef MALLOCX_LG_ALIGN
+#define MALLOCX_LG_ALIGN(la) (la)
+#endif
+#ifndef MALLOCX_ZERO
+#define MALLOCX_ZERO (static_cast<int>(0x40))
+#endif
 #endif
 
 // If using fbstring from libstdc++ (see comment in FBString.h), then
@@ -52,14 +52,14 @@
 #include <string>
 
 namespace folly {
-  using std::goodMallocSize;
-  using std::jemallocMinInPlaceExpandable;
-  using std::usingJEMalloc;
-  using std::smartRealloc;
-  using std::checkedMalloc;
-  using std::checkedCalloc;
-  using std::checkedRealloc;
-}
+using std::checkedCalloc;
+using std::checkedMalloc;
+using std::checkedRealloc;
+using std::goodMallocSize;
+using std::jemallocMinInPlaceExpandable;
+using std::smartRealloc;
+using std::usingJEMalloc;
+} // namespace folly
 
 #else // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)
 
@@ -71,27 +71,20 @@ namespace folly {
  * jemalloc if we are using jemalloc, or will be nullptr if we are using another
  * malloc implementation.
  */
-extern "C" void* mallocx(size_t, int)
-__attribute__((__weak__));
-extern "C" void* rallocx(void*, size_t, int)
-__attribute__((__weak__));
-extern "C" size_t xallocx(void*, size_t, size_t, int)
-__attribute__((__weak__));
-extern "C" size_t sallocx(const void*, int)
-__attribute__((__weak__));
-extern "C" void dallocx(void*, int)
-__attribute__((__weak__));
-extern "C" void sdallocx(void*, size_t, int)
-__attribute__((__weak__));
-extern "C" size_t nallocx(size_t, int)
-__attribute__((__weak__));
+extern "C" void* mallocx(size_t, int) __attribute__((__weak__));
+extern "C" void* rallocx(void*, size_t, int) __attribute__((__weak__));
+extern "C" size_t xallocx(void*, size_t, size_t, int) __attribute__((__weak__));
+extern "C" size_t sallocx(const void*, int) __attribute__((__weak__));
+extern "C" void dallocx(void*, int) __attribute__((__weak__));
+extern "C" void sdallocx(void*, size_t, int) __attribute__((__weak__));
+extern "C" size_t nallocx(size_t, int) __attribute__((__weak__));
 extern "C" int mallctl(const char*, void*, size_t*, void*, size_t)
-__attribute__((__weak__));
+    __attribute__((__weak__));
 extern "C" int mallctlnametomib(const char*, size_t*, size_t*)
-__attribute__((__weak__));
-extern "C" int mallctlbymib(const size_t*, size_t, void*, size_t*, void*,
-                            size_t)
-__attribute__((__weak__));
+    __attribute__((__weak__));
+extern "C" int
+mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
+    __attribute__((__weak__));
 
 #else // !defined(_LIBSTDCXX_FBSTRING)
 
@@ -118,9 +111,11 @@ __attribute__((__weak__));
 #include <atomic>
 #include <new>
 
+// clang-format off
+
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {
-_GLIBCXX_BEGIN_NAMESPACE_VERSION
+  _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #else
 namespace folly {
 #endif
@@ -131,7 +126,7 @@ namespace folly {
 #if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL) >= 40900
 // This is for checked malloc-like functions (returns non-null pointer
 // which cannot alias any outstanding pointer).
-#define FOLLY_MALLOC_CHECKED_MALLOC                     \
+#define FOLLY_MALLOC_CHECKED_MALLOC \
   __attribute__((__returns_nonnull__, __malloc__))
 #else
 #define FOLLY_MALLOC_CHECKED_MALLOC __attribute__((__malloc__))
@@ -158,14 +153,14 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
   // per-thread counter of allocated memory increases. This makes me
   // feel dirty inside. Also note that this requires jemalloc to have
   // been compiled with --enable-stats.
-  static const bool result = [] () noexcept {
+  static const bool result = []() noexcept {
     // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
     // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
     // (!!). http://goo.gl/xpmctm
-    if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr
-        || sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr
-        || nallocx == nullptr || mallctl == nullptr
-        || mallctlnametomib == nullptr || mallctlbymib == nullptr) {
+    if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr ||
+        sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr ||
+        nallocx == nullptr || mallctl == nullptr ||
+        mallctlnametomib == nullptr || mallctlbymib == nullptr) {
       return false;
     }
 
@@ -174,8 +169,12 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
     /* nolint */ volatile uint64_t* counter;
     size_t counterLen = sizeof(uint64_t*);
 
-    if (mallctl("thread.allocatedp", static_cast<void*>(&counter), &counterLen,
-                nullptr, 0) != 0) {
+    if (mallctl(
+            "thread.allocatedp",
+            static_cast<void*>(&counter),
+            &counterLen,
+            nullptr,
+            0) != 0) {
       return false;
     }
 
@@ -192,7 +191,8 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
     }
 
     return (origAllocated != *counter);
-  }();
+  }
+  ();
 
   return result;
 }
@@ -277,9 +277,11 @@ FOLLY_MALLOC_CHECKED_MALLOC FOLLY_MALLOC_NOINLINE inline void* smartRealloc(
 }
 
 #ifdef _LIBSTDCXX_FBSTRING
-_GLIBCXX_END_NAMESPACE_VERSION
+  _GLIBCXX_END_NAMESPACE_VERSION
 #endif
 
 } // namespace folly
+
+// clang-format on
 
 #endif // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)

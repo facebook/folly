@@ -27,12 +27,12 @@
 #include <folly/portability/Sockets.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
-using std::string;
-using std::cerr;
-using std::endl;
 using folly::SocketAddress;
 using folly::SocketAddressTestHelper;
 using folly::test::TemporaryDirectory;
+using std::cerr;
+using std::endl;
+using std::string;
 
 namespace fsp = folly::portability::sockets;
 

@@ -86,7 +86,8 @@ struct dynamic : private boost::operators<dynamic> {
     OBJECT,
     STRING,
   };
-  template <class T, class Enable = void> struct NumericTypeHelper;
+  template <class T, class Enable = void>
+  struct NumericTypeHelper;
 
   /*
    * We support direct iteration of arrays, and indirect iteration of objects.
@@ -151,7 +152,7 @@ struct dynamic : private boost::operators<dynamic> {
  public:
   static void array(EmptyArrayTag);
   template <class... Args>
-  static dynamic array(Args&& ...args);
+  static dynamic array(Args&&... args);
 
   static ObjectMaker object();
   static ObjectMaker object(dynamic, dynamic);
@@ -296,9 +297,9 @@ struct dynamic : private boost::operators<dynamic> {
    * dynamic.
    */
   std::string asString() const;
-  double   asDouble() const;
-  int64_t  asInt() const;
-  bool     asBool() const;
+  double asDouble() const;
+  int64_t asInt() const;
+  bool asBool() const;
 
   /*
    * Extract the value stored in this dynamic without type conversion.
@@ -306,17 +307,17 @@ struct dynamic : private boost::operators<dynamic> {
    * These will throw a TypeError if the dynamic has a different type.
    */
   const std::string& getString() const&;
-  double          getDouble() const&;
-  int64_t         getInt() const&;
-  bool            getBool() const&;
+  double getDouble() const&;
+  int64_t getInt() const&;
+  bool getBool() const&;
   std::string& getString() &;
-  double&   getDouble() &;
-  int64_t&  getInt() &;
-  bool&     getBool() &;
+  double& getDouble() &;
+  int64_t& getInt() &;
+  bool& getBool() &;
   std::string&& getString() &&;
-  double   getDouble() &&;
-  int64_t  getInt() &&;
-  bool     getBool() &&;
+  double getDouble() &&;
+  int64_t getInt() &&;
+  bool getBool() &&;
 
   /*
    * It is occasionally useful to access a string's internal pointer
@@ -324,8 +325,8 @@ struct dynamic : private boost::operators<dynamic> {
    *
    * These will throw a TypeError if the dynamic is not a string.
    */
-  const char* data()  const&;
-  const char* data()  && = delete;
+  const char* data() const&;
+  const char* data() && = delete;
   const char* c_str() const&;
   const char* c_str() && = delete;
   StringPiece stringPiece() const;
@@ -347,8 +348,8 @@ struct dynamic : private boost::operators<dynamic> {
    * You can iterate over the values of the array.  Calling these on
    * non-arrays will throw a TypeError.
    */
-  const_iterator begin()  const;
-  const_iterator end()    const;
+  const_iterator begin() const;
+  const_iterator end() const;
   iterator begin();
   iterator end();
 
@@ -356,7 +357,8 @@ struct dynamic : private boost::operators<dynamic> {
   /*
    * Helper object returned by keys(), values(), and items().
    */
-  template <class T> struct IterableProxy;
+  template <class T>
+  struct IterableProxy;
 
   /*
    * Helper for heterogeneous lookup and mutation on objects: at(), find(),
@@ -484,8 +486,8 @@ struct dynamic : private boost::operators<dynamic> {
    * default if it is not yet set, otherwise leaving it. setDefault returns
    * a reference to the existing value if present, the new value otherwise.
    */
-  dynamic
-  getDefault(const dynamic& k, const dynamic& v = dynamic::object) const&;
+  dynamic getDefault(const dynamic& k, const dynamic& v = dynamic::object)
+      const&;
   dynamic getDefault(const dynamic& k, dynamic&& v) const&;
   dynamic getDefault(const dynamic& k, const dynamic& v = dynamic::object) &&;
   dynamic getDefault(const dynamic& k, dynamic&& v) &&;
@@ -518,7 +520,8 @@ struct dynamic : private boost::operators<dynamic> {
    *
    * Invalidates iterators.
    */
-  template <class K, class V> void insert(K&&, V&& val);
+  template <class K, class V>
+  void insert(K&&, V&& val);
 
   /*
    * These functions merge two folly dynamic objects.
@@ -611,22 +614,38 @@ struct dynamic : private boost::operators<dynamic> {
  private:
   friend struct TypeError;
   struct ObjectImpl;
-  template <class T> struct TypeInfo;
-  template <class T> struct CompareOp;
-  template <class T> struct GetAddrImpl;
-  template <class T> struct PrintImpl;
+  template <class T>
+  struct TypeInfo;
+  template <class T>
+  struct CompareOp;
+  template <class T>
+  struct GetAddrImpl;
+  template <class T>
+  struct PrintImpl;
 
   explicit dynamic(Array&& array);
 
-  template <class T> T const& get() const;
-  template <class T> T&       get();
-  template <class T> T*       get_nothrow() & noexcept;
-  template <class T> T const* get_nothrow() const& noexcept;
-  template <class T> T*       get_nothrow() && noexcept = delete;
-  template <class T> T*       getAddress() noexcept;
-  template <class T> T const* getAddress() const noexcept;
+  template <class T>
+  T const& get() const;
+  template <class T>
+  T& get();
+  // clang-format off
+  template <class T>
+  T* get_nothrow() & noexcept;
+  // clang-format on
+  template <class T>
+  T const* get_nothrow() const& noexcept;
+  // clang-format off
+  template <class T>
+  T* get_nothrow() && noexcept = delete;
+  // clang-format on
+  template <class T>
+  T* getAddress() noexcept;
+  template <class T>
+  T const* getAddress() const noexcept;
 
-  template <class T> T asImpl() const;
+  template <class T>
+  T asImpl() const;
 
   static char const* typeName(Type);
   void destroy() noexcept;

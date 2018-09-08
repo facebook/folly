@@ -147,7 +147,8 @@ using SynchronizedTimedWithConstTestTypes = testing::Types<
     folly::SharedMutexReadPriority,
     folly::SharedMutexWritePriority>;
 TYPED_TEST_CASE(
-    SynchronizedTimedWithConstTest, SynchronizedTimedWithConstTestTypes);
+    SynchronizedTimedWithConstTest,
+    SynchronizedTimedWithConstTestTypes);
 
 TYPED_TEST(SynchronizedTimedWithConstTest, TimedShared) {
   testTimedShared<TypeParam>();
@@ -177,6 +178,7 @@ class FakeMutex {
     lockCount_ = 0;
     unlockCount_ = 0;
   }
+
  private:
   // Keep these two static for test access
   // Keep them thread_local in case of tests are run in parallel within one

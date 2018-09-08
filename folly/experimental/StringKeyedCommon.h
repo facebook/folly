@@ -27,8 +27,8 @@ namespace folly {
 template <class Alloc>
 StringPiece stringPieceDup(StringPiece piece, const Alloc& alloc) {
   auto size = piece.size();
-  auto keyDup = typename Alloc::template rebind<char>::other(alloc)
-    .allocate(size);
+  auto keyDup =
+      typename Alloc::template rebind<char>::other(alloc).allocate(size);
   if (size) {
     memcpy(
         keyDup, piece.data(), size * sizeof(typename StringPiece::value_type));
@@ -38,8 +38,8 @@ StringPiece stringPieceDup(StringPiece piece, const Alloc& alloc) {
 
 template <class Alloc>
 void stringPieceDel(StringPiece piece, const Alloc& alloc) {
-  typename Alloc::template rebind<char>::other(alloc)
-    .deallocate(const_cast<char*>(piece.data()), piece.size());
+  typename Alloc::template rebind<char>::other(alloc).deallocate(
+      const_cast<char*>(piece.data()), piece.size());
 }
 
 } // namespace folly

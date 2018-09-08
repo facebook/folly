@@ -35,6 +35,8 @@
 
 using namespace ::folly::hash;
 
+// clang-format off
+
 static bool failed = false;
 
 static uint64_t GetClockTickCount() {
@@ -552,3 +554,5 @@ TEST(SpookyHashV1, Main) {
 #endif
     CHECK_EQ(failed, 0);
 }
+
+// clang-format on

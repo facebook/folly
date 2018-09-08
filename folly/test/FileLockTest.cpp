@@ -62,7 +62,8 @@ TEST(File, Locks) {
   auto testLock = [&](LockMode mode, bool expectedSuccess) {
     auto ret = Subprocess({helper.string(),
                            mode == SHARED ? "-s" : "-x",
-                           tempFile.path().string()}).wait();
+                           tempFile.path().string()})
+                   .wait();
     EXPECT_TRUE(ret.exited());
     if (ret.exited()) {
       EXPECT_EQ(expectedSuccess ? 0 : 42, ret.exitStatus());

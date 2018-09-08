@@ -25,8 +25,8 @@ TEST(LogEveryMs, basic) {
 
   while (hist.size() < 10) {
     FB_LOG_EVERY_MS(INFO, 10)
-      << "test msg " << (hist.push_back(std::chrono::steady_clock::now()),
-                         hist.size());
+        << "test msg "
+        << (hist.push_back(std::chrono::steady_clock::now()), hist.size());
   }
 
   bool atLeastOneIsGood = false;
@@ -44,8 +44,7 @@ TEST(LogEveryMs, zero) {
   int count = 0;
 
   for (int i = 0; i < 10; ++i) {
-    FB_LOG_EVERY_MS(INFO, 0)
-      << "test msg " << ++count;
+    FB_LOG_EVERY_MS(INFO, 0) << "test msg " << ++count;
   }
 
   EXPECT_EQ(10, count);

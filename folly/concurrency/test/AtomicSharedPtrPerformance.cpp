@@ -29,29 +29,29 @@
 #include <thread>
 #include <vector>
 
-using std::shared_ptr;
-using std::make_shared;
+using std::atomic;
 using std::cerr;
+using std::condition_variable;
 using std::cout;
 using std::endl;
-using std::condition_variable;
-using std::unique_lock;
-using std::mutex;
-using std::vector;
-using std::thread;
+using std::is_same;
+using std::make_shared;
 using std::memory_order;
-using std::memory_order_relaxed;
-using std::memory_order_acquire;
-using std::memory_order_release;
 using std::memory_order_acq_rel;
+using std::memory_order_acquire;
+using std::memory_order_relaxed;
+using std::memory_order_release;
 using std::memory_order_seq_cst;
 using std::move;
+using std::mutex;
 using std::ref;
-using std::is_same;
-using std::atomic;
-using std::chrono::steady_clock;
+using std::shared_ptr;
+using std::thread;
+using std::unique_lock;
+using std::vector;
 using std::chrono::duration_cast;
 using std::chrono::microseconds;
+using std::chrono::steady_clock;
 
 static uint64_t nowMicro() {
   return duration_cast<microseconds>(steady_clock::now().time_since_epoch())

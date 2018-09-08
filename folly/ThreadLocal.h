@@ -58,9 +58,7 @@ class ThreadLocalPtr;
 template <class T, class Tag = void, class AccessMode = void>
 class ThreadLocal {
  public:
-  constexpr ThreadLocal() : constructor_([]() {
-      return new T();
-    }) {}
+  constexpr ThreadLocal() : constructor_([]() { return new T(); }) {}
 
   template <
       typename F,
@@ -148,9 +146,7 @@ class ThreadLocalPtr {
  public:
   constexpr ThreadLocalPtr() : id_() {}
 
-  ThreadLocalPtr(ThreadLocalPtr&& other) noexcept :
-    id_(std::move(other.id_)) {
-  }
+  ThreadLocalPtr(ThreadLocalPtr&& other) noexcept : id_(std::move(other.id_)) {}
 
   ThreadLocalPtr& operator=(ThreadLocalPtr&& other) {
     assert(this != &other);
@@ -209,9 +205,7 @@ class ThreadLocalPtr {
           std::is_convertible<SourceT*, T*>::value>::type>
   void reset(std::unique_ptr<SourceT, Deleter> source) {
     auto deleter = [delegate = source.get_deleter()](
-        T * ptr, TLPDestructionMode) {
-      delegate(ptr);
-    };
+                       T* ptr, TLPDestructionMode) { delegate(ptr); };
     reset(source.release(), deleter);
   }
 
@@ -294,8 +288,7 @@ class ThreadLocalPtr {
       }
 
       bool equal(const Iterator& other) const {
-        return (accessor_->id_ == other.accessor_->id_ &&
-                e_ == other.e_);
+        return (accessor_->id_ == other.accessor_->id_ && e_ == other.e_);
       }
 
       explicit Iterator(const Accessor* accessor)
@@ -447,8 +440,9 @@ class ThreadLocalPtr {
   // accessor allows a client to iterate through all thread local child
   // elements of this ThreadLocal instance.  Holds a global lock for each <Tag>
   Accessor accessAllThreads() const {
-    static_assert(!std::is_same<Tag, void>::value,
-                  "Must use a unique Tag to use the accessAllThreads feature");
+    static_assert(
+        !std::is_same<Tag, void>::value,
+        "Must use a unique Tag to use the accessAllThreads feature");
     return Accessor(id_.getOrAllocate(StaticMeta::instance()));
   }
 

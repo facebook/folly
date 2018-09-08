@@ -63,13 +63,13 @@ class SpinLock {
 template <typename LOCK>
 class SpinLockGuardImpl : private boost::noncopyable {
  public:
-  FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) :
-    lock_(lock) {
+  FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) : lock_(lock) {
     lock_.lock();
   }
   FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() {
     lock_.unlock();
   }
+
  private:
   LOCK& lock_;
 };

@@ -51,8 +51,8 @@ TEST(NodeTest, Padding) {
   };
   EXPECT_EQ(1, alignof(SevenBytes));
   typedef padded::Node<SevenBytes, 64> SevenByteNode;
-  EXPECT_EQ(9, SevenByteNode::kElementCount);  // 64 / 7
-  EXPECT_EQ(1, SevenByteNode::kPaddingBytes);  // 64 % 7
+  EXPECT_EQ(9, SevenByteNode::kElementCount); // 64 / 7
+  EXPECT_EQ(1, SevenByteNode::kPaddingBytes); // 64 % 7
   EXPECT_EQ(1, alignof(SevenByteNode));
   EXPECT_EQ(64, sizeof(SevenByteNode));
   EXPECT_EQ(0, SevenByteNode::nodeCount(0));
@@ -146,8 +146,7 @@ TEST_F(IntPaddedConstTest, Arithmetic) {
   }
 }
 
-class IntPaddedNonConstTest : public IntPaddedTestBase {
-};
+class IntPaddedNonConstTest : public IntPaddedTestBase {};
 
 TEST_F(IntPaddedNonConstTest, Iteration) {
   v_.resize(4);

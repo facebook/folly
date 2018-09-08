@@ -18,9 +18,11 @@
 
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 
+// clang-format off
 [[noreturn]] void bar() {
   throw std::runtime_error("hello");
 }
+// clang-format on
 
 void dumpExceptions(const char* prefix) {
   std::cerr << "--- " << prefix << "\n";

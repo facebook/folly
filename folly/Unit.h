@@ -42,7 +42,7 @@ struct Unit {
   }
 };
 
-constexpr Unit unit {};
+constexpr Unit unit{};
 
 template <typename T>
 struct lift_unit {

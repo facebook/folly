@@ -21,8 +21,7 @@ using namespace std;
 
 namespace folly {
 
-PasswordInFile::PasswordInFile(const string& file)
-    : fileName_(file) {
+PasswordInFile::PasswordInFile(const string& file) : fileName_(file) {
   readFile(file.c_str(), password_);
   auto p = password_.find('\0');
   if (p != std::string::npos) {
@@ -31,7 +30,7 @@ PasswordInFile::PasswordInFile(const string& file)
 }
 
 PasswordInFile::~PasswordInFile() {
-  OPENSSL_cleanse((char *)password_.data(), password_.length());
+  OPENSSL_cleanse((char*)password_.data(), password_.length());
 }
 
-} // namespace wangle
+} // namespace folly

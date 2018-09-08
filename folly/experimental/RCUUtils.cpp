@@ -37,7 +37,7 @@ struct RCURegisterThreadHelper {
 
 bool RCURegisterThread() {
   static folly::ThreadLocal<RCURegisterThreadHelper>* rcuRegisterThreadHelper =
-    new folly::ThreadLocal<RCURegisterThreadHelper>();
+      new folly::ThreadLocal<RCURegisterThreadHelper>();
 
   auto& helper = **rcuRegisterThreadHelper;
 

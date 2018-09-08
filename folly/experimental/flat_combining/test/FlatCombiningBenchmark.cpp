@@ -423,7 +423,7 @@ TEST(FlatCombining, direct_measurement) {
               << std::endl;
 
     uint64_t base =
-    test("no_combining - base         ", false, false, false, false, 0);
+        test("no_combining - base         ", false, false, false, false, 0);
     test("no_combining - dup          ", false, false, false, false, base);
     std::cout << "---------------------------------------" << std::endl;
 
@@ -457,6 +457,7 @@ TEST(FlatCombining, direct_measurement) {
   }
 }
 
+// clang-format off
 /*
 See benchmark results in https://phabricator.intern.facebook.com/P57204895
 
@@ -1785,3 +1786,4 @@ epb tpr_shadow vnmi flexpriority ept vpid xsaveopt dtherm arat pln pts
 ---
 
  */
+// clang-format on

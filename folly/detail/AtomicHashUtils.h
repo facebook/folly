@@ -23,7 +23,8 @@
 // Some utilities used by AtomicHashArray and AtomicHashMap
 //
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 template <typename Cond>
 void atomic_hash_spin_wait(Cond condition) {

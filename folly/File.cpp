@@ -16,7 +16,6 @@
 
 #include <folly/File.h>
 
-
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
@@ -39,24 +38,22 @@ File::File(int fd, bool ownsFd) noexcept : fd_(fd), ownsFd_(ownsFd) {
 }
 
 File::File(const char* name, int flags, mode_t mode)
-  : fd_(::open(name, flags, mode))
-  , ownsFd_(false) {
+    : fd_(::open(name, flags, mode)), ownsFd_(false) {
   if (fd_ == -1) {
-    throwSystemError(folly::format("open(\"{}\", {:#o}, 0{:#o}) failed",
-                                   name, flags, mode).fbstr());
+    throwSystemError(
+        folly::format("open(\"{}\", {:#o}, 0{:#o}) failed", name, flags, mode)
+            .fbstr());
   }
   ownsFd_ = true;
 }
 
 File::File(const std::string& name, int flags, mode_t mode)
-  : File(name.c_str(), flags, mode) {}
+    : File(name.c_str(), flags, mode) {}
 
 File::File(StringPiece name, int flags, mode_t mode)
-  : File(name.str(), flags, mode) {}
+    : File(name.str(), flags, mode) {}
 
-File::File(File&& other) noexcept
-  : fd_(other.fd_)
-  , ownsFd_(other.ownsFd_) {
+File::File(File&& other) noexcept : fd_(other.fd_), ownsFd_(other.ownsFd_) {
   other.release();
 }
 
@@ -68,9 +65,10 @@ File& File::operator=(File&& other) {
 
 File::~File() {
   auto fd = fd_;
-  if (!closeNoThrow()) {  // ignore most errors
-    DCHECK_NE(errno, EBADF) << "closing fd " << fd << ", it may already "
-      << "have been closed. Another time, this might close the wrong FD.";
+  if (!closeNoThrow()) { // ignore most errors
+    DCHECK_NE(errno, EBADF)
+        << "closing fd " << fd << ", it may already "
+        << "have been closed. Another time, this might close the wrong FD.";
   }
 }
 
@@ -78,7 +76,9 @@ File::~File() {
   // make a temp file with tmpfile(), dup the fd, then return it in a File.
   FILE* tmpFile = tmpfile();
   checkFopenError(tmpFile, "tmpfile() failed");
-  SCOPE_EXIT { fclose(tmpFile); };
+  SCOPE_EXIT {
+    fclose(tmpFile);
+  };
 
   int fd = ::dup(fileno(tmpFile));
   checkUnixError(fd, "dup() failed");
@@ -126,10 +126,18 @@ bool File::closeNoThrow() {
   return r == 0;
 }
 
-void File::lock() { doLock(LOCK_EX); }
-bool File::try_lock() { return doTryLock(LOCK_EX); }
-void File::lock_shared() { doLock(LOCK_SH); }
-bool File::try_lock_shared() { return doTryLock(LOCK_SH); }
+void File::lock() {
+  doLock(LOCK_EX);
+}
+bool File::try_lock() {
+  return doTryLock(LOCK_EX);
+}
+void File::lock_shared() {
+  doLock(LOCK_SH);
+}
+bool File::try_lock_shared() {
+  return doTryLock(LOCK_SH);
+}
 
 void File::doLock(int op) {
   checkUnixError(flockNoInt(fd_, op), "flock() failed (lock)");
@@ -148,6 +156,8 @@ bool File::doTryLock(int op) {
 void File::unlock() {
   checkUnixError(flockNoInt(fd_, LOCK_UN), "flock() failed (unlock)");
 }
-void File::unlock_shared() { unlock(); }
+void File::unlock_shared() {
+  unlock();
+}
 
 } // namespace folly

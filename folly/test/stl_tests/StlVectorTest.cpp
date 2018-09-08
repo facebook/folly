@@ -222,30 +222,28 @@ typedef uint32_t Flags;
 // MA - move assignment
 enum FlagVals : Flags {
   DC_NOEXCEPT = 0x1,
-  DC_THROW    = 0x2,
-  DC_DELETE   = 0x8000,
+  DC_THROW = 0x2,
+  DC_DELETE = 0x8000,
   CC_NOEXCEPT = 0x4,
-  CC_THROW    = 0x8,
-  CC_DELETE   = 0x10000,
+  CC_THROW = 0x8,
+  CC_DELETE = 0x10000,
   MC_NOEXCEPT = 0x10,
-  MC_THROW    = 0x20,
-  MC_DELETE   = 0x20000,
+  MC_THROW = 0x20,
+  MC_DELETE = 0x20000,
   OC_NOEXCEPT = 0x40,
-  OC_THROW    = 0x80,
+  OC_THROW = 0x80,
   // OC_DELETE - DNE
 
   CA_NOEXCEPT = 0x100,
-  CA_THROW    = 0x200,
-  CA_DELETE   = 0x40000,
+  CA_THROW = 0x200,
+  CA_DELETE = 0x40000,
   MA_NOEXCEPT = 0x400,
-  MA_THROW    = 0x800,
-  MA_DELETE   = 0x80000,
+  MA_THROW = 0x800,
+  MA_DELETE = 0x80000,
 
-  ALL_DELETE  = DC_DELETE | CC_DELETE | MC_DELETE
-              | CA_DELETE | MA_DELETE,
+  ALL_DELETE = DC_DELETE | CC_DELETE | MC_DELETE | CA_DELETE | MA_DELETE,
 
-  IS_RELOCATABLE
-              = 0x2000,
+  IS_RELOCATABLE = 0x2000,
 
   // for the allocator
   PROP_COPY = 0x100000,
@@ -256,7 +254,8 @@ enum FlagVals : Flags {
 //-----------------------------------------------------------------------------
 // Deletors
 
-template <bool b> struct D0 {
+template <bool b>
+struct D0 {
   D0() = default;
   D0(const D0&) = default;
   D0(D0&&) = default;
@@ -264,7 +263,8 @@ template <bool b> struct D0 {
   D0& operator=(const D0&) = default;
   D0& operator=(D0&&) = default;
 };
-template <> struct D0<true> {
+template <>
+struct D0<true> {
   D0() = delete;
   D0(const D0&) = default;
   D0(D0&&) = default;
@@ -273,7 +273,8 @@ template <> struct D0<true> {
   D0& operator=(D0&&) = default;
 };
 
-template <bool b> struct D1 {
+template <bool b>
+struct D1 {
   D1() = default;
   D1(const D1&) = default;
   D1(D1&&) = default;
@@ -281,7 +282,8 @@ template <bool b> struct D1 {
   D1& operator=(const D1&) = default;
   D1& operator=(D1&&) = default;
 };
-template <> struct D1<true> {
+template <>
+struct D1<true> {
   D1() = default;
   D1(const D1&) = delete;
   D1(D1&&) = default;
@@ -290,7 +292,8 @@ template <> struct D1<true> {
   D1& operator=(D1&&) = default;
 };
 
-template <bool b> struct D2 {
+template <bool b>
+struct D2 {
   D2() = default;
   D2(const D2&) = default;
   D2(D2&&) = default;
@@ -298,7 +301,8 @@ template <bool b> struct D2 {
   D2& operator=(const D2&) = default;
   D2& operator=(D2&&) = default;
 };
-template <> struct D2<true> {
+template <>
+struct D2<true> {
   D2() = default;
   D2(const D2&) = default;
   D2(D2&&) = delete;
@@ -307,7 +311,8 @@ template <> struct D2<true> {
   D2& operator=(D2&&) = default;
 };
 
-template <bool b> struct D3 {
+template <bool b>
+struct D3 {
   D3() = default;
   D3(const D3&) = default;
   D3(D3&&) = default;
@@ -315,7 +320,8 @@ template <bool b> struct D3 {
   D3& operator=(const D3&) = default;
   D3& operator=(D3&&) = default;
 };
-template <> struct D3<true> {
+template <>
+struct D3<true> {
   D3() = default;
   D3(const D3&) = default;
   D3(D3&&) = default;
@@ -324,7 +330,8 @@ template <> struct D3<true> {
   D3& operator=(D3&&) = default;
 };
 
-template <bool b> struct D4 {
+template <bool b>
+struct D4 {
   D4() = default;
   D4(const D4&) = default;
   D4(D4&&) = default;
@@ -332,7 +339,8 @@ template <bool b> struct D4 {
   D4& operator=(const D4&) = default;
   D4& operator=(D4&&) = default;
 };
-template <> struct D4<true> {
+template <>
+struct D4<true> {
   D4() = default;
   D4(const D4&) = default;
   D4(D4&&) = default;
@@ -343,23 +351,22 @@ template <> struct D4<true> {
 
 template <Flags f>
 struct Delete : D0<(f & DC_DELETE) != 0>,
-              D1<(f & CC_DELETE) != 0>,
-              D2<(f & MC_DELETE) != 0>,
-              D3<(f & CA_DELETE) != 0>,
-              D4<(f & MA_DELETE) != 0> {
+                D1<(f & CC_DELETE) != 0>,
+                D2<(f & MC_DELETE) != 0>,
+                D3<(f & CA_DELETE) != 0>,
+                D4<(f & MA_DELETE) != 0> {
   Delete() = default;
   Delete(const Delete&) = default;
   Delete(Delete&&) = default;
   Delete& operator=(const Delete&) = default;
   Delete& operator=(Delete&&) = default;
 
-  explicit Delete(std::nullptr_t) :
-      D0<(f & DC_DELETE) != 0>(nullptr),
-      D1<(f & CC_DELETE) != 0>(nullptr),
-      D2<(f & MC_DELETE) != 0>(nullptr),
-      D3<(f & CA_DELETE) != 0>(nullptr),
-      D4<(f & MA_DELETE) != 0>(nullptr)
-      {}
+  explicit Delete(std::nullptr_t)
+      : D0<(f & DC_DELETE) != 0>(nullptr),
+        D1<(f & CC_DELETE) != 0>(nullptr),
+        D2<(f & MC_DELETE) != 0>(nullptr),
+        D3<(f & CA_DELETE) != 0>(nullptr),
+        D4<(f & MA_DELETE) != 0>(nullptr) {}
 };
 
 //-----------------------------------------------------------------------------
@@ -367,7 +374,7 @@ struct Delete : D0<(f & DC_DELETE) != 0>,
 
 struct TickException : std::runtime_error {
   explicit TickException(const std::string& s)
-    : std::runtime_error("tick: " + s) {}
+      : std::runtime_error("tick: " + s) {}
 };
 
 struct Ticker {
@@ -387,7 +394,7 @@ int Ticker::TicksLeft = -1;
 
 template <Flags f>
 struct DataTicker : Ticker {
-  DataTicker() noexcept(f & DC_NOEXCEPT) {
+  DataTicker() noexcept(f& DC_NOEXCEPT) {
     if (!(f & DC_NOEXCEPT)) {
       Tick("Data()");
     }
@@ -581,19 +588,20 @@ bool Tracker::Print = false;
 
 template <Flags f = 0, size_t pad = 0>
 struct Data : DataTracker<(f & IS_RELOCATABLE) != 0>,
-              Counter, DataTicker<f>, Delete<f> {
+              Counter,
+              DataTicker<f>,
+              Delete<f> {
   static const Flags flags = f;
   char spacehog[pad ? pad : 1];
 
   Data() = default;
   Data(const Data&) = default;
   Data(Data&&) = default;
-  /* implicit */ Data(int i) :
-    DataTracker<(f & IS_RELOCATABLE) != 0>(i),
-    Counter(),
-    DataTicker<f>(nullptr),
-    Delete<f>(nullptr)
-  {}
+  /* implicit */ Data(int i)
+      : DataTracker<(f & IS_RELOCATABLE) != 0>(i),
+        Counter(),
+        DataTicker<f>(nullptr),
+        Delete<f>(nullptr) {}
   ~Data() = default;
   Data& operator=(const Data&) = default;
   Data& operator=(Data&&) = default;
@@ -656,8 +664,12 @@ struct Alloc : AllocTracker, Ticker {
   Alloc(Alloc&& o) noexcept : a(move(o.a)), id(o.id) {}
   Alloc& operator=(const Alloc&) = default;
   Alloc& operator=(Alloc&&) noexcept = default;
-  bool operator==(const Alloc& o) const { return a == o.a && id == o.id; }
-  bool operator!=(const Alloc& o) const { return !(*this == o); }
+  bool operator==(const Alloc& o) const {
+    return a == o.a && id == o.id;
+  }
+  bool operator!=(const Alloc& o) const {
+    return !(*this == o);
+  }
 
   //---------
   // tracking
@@ -692,8 +704,8 @@ struct Alloc : AllocTracker, Ticker {
       FAIL() << "deallocate failed";
     }
     if (Owner[p] != id) {
-      cerr << "deallocate(" << p << "), where pointer is owned by "
-           << Owner[p] << ", instead of self - " << id << endl;
+      cerr << "deallocate(" << p << "), where pointer is owned by " << Owner[p]
+           << ", instead of self - " << id << endl;
       FAIL() << "deallocate failed";
     }
     Allocated[p] = -1;
@@ -731,11 +743,10 @@ struct Alloc : AllocTracker, Ticker {
 // Verification and resetting
 
 void softReset(int ticks = -1) {
-  Counter::CountLoggedConstruction +=
-    Counter::CountDC + Counter::CountCC + Counter::CountMC
-    + Counter::CountOC - Counter::CountDestroy;
-  Counter::CountDC = Counter::CountCC = Counter::CountMC
-    = Counter::CountOC = Counter::CountCA = Counter::CountMA = 0;
+  Counter::CountLoggedConstruction += Counter::CountDC + Counter::CountCC +
+      Counter::CountMC + Counter::CountOC - Counter::CountDestroy;
+  Counter::CountDC = Counter::CountCC = Counter::CountMC = Counter::CountOC =
+      Counter::CountCA = Counter::CountMA = 0;
   Counter::CountDestroy = Counter::CountTotalOps = 0;
   Ticker::CountTicks = 0;
   Ticker::TicksLeft = ticks;
@@ -755,9 +766,8 @@ void hardReset() {
 }
 
 int getTotal() {
-  int con = Counter::CountDC + Counter::CountCC
-          + Counter::CountMC + Counter::CountOC
-          + Counter::CountLoggedConstruction;
+  int con = Counter::CountDC + Counter::CountCC + Counter::CountMC +
+      Counter::CountOC + Counter::CountLoggedConstruction;
   int del = Counter::CountDestroy;
   return con - del;
 }
@@ -767,19 +777,21 @@ void isSane() {
   ASSERT_GE(tot, 0) << "more objects deleted than constructed";
 
   ASSERT_EQ(tot, Tracker::UIDTotal)
-    << "UIDTotal has incorrect number of objects";
+      << "UIDTotal has incorrect number of objects";
 
   int altTot = 0;
   for (const auto& kv : Tracker::UIDCount) {
-    ASSERT_TRUE(kv.second >= 0) << "there exists " << kv.second << " Data "
-      "with uid " << kv.first;
+    ASSERT_TRUE(kv.second >= 0) << "there exists " << kv.second
+                                << " Data "
+                                   "with uid "
+                                << kv.first;
     altTot += kv.second;
   }
   ASSERT_EQ(tot, altTot) << "UIDCount corrupted";
 
   if (!Tracker::Locations.empty()) { // implied by IsRelocatable
     ASSERT_EQ(tot, Tracker::Locations.size())
-      << "Locations has incorrect number of objects";
+        << "Locations has incorrect number of objects";
     for (const auto& du : Tracker::Locations) {
       ASSERT_EQ(du.second, du.first->uid) << "Locations contains wrong uid";
       ASSERT_EQ(du.first, du.first->self) << "Data.self is corrupted";
@@ -809,8 +821,7 @@ struct customAllocator
           std::allocator<typename Vector::value_type>>::value> {};
 
 template <typename T>
-struct special_move_assignable
-  : is_move_constructibleAndAssignable<T> {};
+struct special_move_assignable : is_move_constructibleAndAssignable<T> {};
 template <Flags f, size_t pad>
 struct special_move_assignable<Data<f, pad>>
     : bool_constant<
@@ -826,27 +837,24 @@ struct special_move_assignable<Data<f, pad>>
 
 uint64_t ReadTSC() {
 #ifdef _MSC_VER
-   return __rdtsc();
+  return __rdtsc();
 #else
-   unsigned reslo, reshi;
+  unsigned reslo, reshi;
 
-    __asm__ __volatile__  (
-    "xorl %%eax,%%eax \n cpuid \n"
-     ::: "%eax", "%ebx", "%ecx", "%edx");
-    __asm__ __volatile__  (
-    "rdtsc\n"
-     : "=a" (reslo), "=d" (reshi) );
-    __asm__ __volatile__  (
-    "xorl %%eax,%%eax \n cpuid \n"
-     ::: "%eax", "%ebx", "%ecx", "%edx");
+  __asm__ __volatile__("xorl %%eax,%%eax \n cpuid \n" ::
+                           : "%eax", "%ebx", "%ecx", "%edx");
+  __asm__ __volatile__("rdtsc\n" : "=a"(reslo), "=d"(reshi));
+  __asm__ __volatile__("xorl %%eax,%%eax \n cpuid \n" ::
+                           : "%eax", "%ebx", "%ecx", "%edx");
 
-   return ((uint64_t)reshi << 32) | reslo;
+  return ((uint64_t)reshi << 32) | reslo;
 #endif
 }
 
 //-----------------------------------------------------------------------------
 // New Boost
 
+// clang-format off
 #define IBOOST_PP_VARIADIC_SIZE(...) IBOOST_PP_VARIADIC_SIZE_I(__VA_ARGS__,   \
   64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, \
   45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, \
@@ -857,6 +865,7 @@ uint64_t ReadTSC() {
   e25, e26, e27, e28, e29, e30, e31, e32, e33, e34, e35, e36, e37, e38, e39,  \
   e40, e41, e42, e43, e44, e45, e46, e47, e48, e49, e50, e51, e52, e53, e54,  \
   e55, e56, e57, e58, e59, e60, e61, e62, e63, size, ...) size
+// clang-format on
 #define IBOOST_PP_VARIADIC_TO_SEQ(...) \
   BOOST_PP_TUPLE_TO_SEQ(IBOOST_PP_VARIADIC_SIZE(__VA_ARGS__), (__VA_ARGS__))
 
@@ -867,91 +876,109 @@ uint64_t ReadTSC() {
   {                                                               \
     string atype = PrettyType<typename type::allocator_type>()(); \
     string ptype = PrettyType<typename type::value_type>()();     \
-    SCOPED_TRACE("allocator: " + atype); {                        \
-    SCOPED_TRACE("datatype: " + ptype); {                         \
-    test_ ## name ## 3 <type> ();                                 \
-    if (::testing::Test::HasFatalFailure()) return;               \
-  }}}
+    SCOPED_TRACE("allocator: " + atype);                          \
+    {                                                             \
+      SCOPED_TRACE("datatype: " + ptype);                         \
+      {                                                           \
+        test_##name##3 < type > ();                               \
+        if (::testing::Test::HasFatalFailure())                   \
+          return;                                                 \
+      }                                                           \
+    }                                                             \
+  }
 #define GEN_TYPE_TEST(r, name, type) \
-  if (0) test_I_ ## name ## 3 <type> ();
+  if (0)                             \
+    test_I_##name##3 < type > ();
 #define GEN_RUNNABLE_TEST(r, name, type) \
-  one = test_I_ ## name ## 3 <type> () || one;
+  one = test_I_##name##3 < type > () || one;
 
 #define GEN_LOOPER(r, d, arg) BOOST_PP_CAT(LOOPER_, arg)
-#define GEN_VMAKER(r, d, arg) { BOOST_PP_CAT(VMAKER_, arg) {
-#define GEN_UMAKER(r, d, arg) } BOOST_PP_CAT(UMAKER_, arg) }
+#define GEN_VMAKER(r, d, arg) \
+  {                           \
+    BOOST_PP_CAT(VMAKER_, arg) {
+#define GEN_UMAKER(r, d, arg) \
+  }                           \
+  BOOST_PP_CAT(UMAKER_, arg)  \
+  }
 #define GEN_CLOSER(r, d, arg) BOOST_PP_CAT(CLOSER_, arg)
 
 #define TYPIFY(r, d, name) BOOST_PP_CAT(TYPIFY_, name)
 #define ARGIFY(r, d, name) TYPIFY(r, d, name) name
 
-#define MAKE_TEST(ref, name, types, restriction, argseq, ...)            \
-  template <class Vector> void test_ ## name ## 2 (std::false_type) {}   \
-  template <class Vector> void test_ ## name ## 2 (std::true_type) {     \
-    BOOST_PP_SEQ_FOR_EACH(GEN_LOOPER, _, argseq)                         \
-    {                                                                    \
-      SETUP                                                              \
-      {                                                                  \
-        BOOST_PP_SEQ_FOR_EACH(GEN_VMAKER, _, argseq)                     \
-        {                                                                \
-          test_ ## name <Vector, typename Vector::value_type,            \
-            typename Vector::allocator_type> ( __VA_ARGS__ );            \
-          if (::testing::Test::HasFatalFailure()) {                      \
-            return;                                                      \
-          }                                                              \
-        }                                                                \
+// clang-format off
+#define MAKE_TEST(ref, name, types, restriction, argseq, ...)              \
+  template <class Vector> void test_ ## name ## 2 (std::false_type) {}     \
+  template <class Vector> void test_ ## name ## 2 (std::true_type) {       \
+    BOOST_PP_SEQ_FOR_EACH(GEN_LOOPER, _, argseq)                           \
+    {                                                                      \
+      SETUP                                                                \
+      {                                                                    \
+        BOOST_PP_SEQ_FOR_EACH(GEN_VMAKER, _, argseq)                       \
+        {                                                                  \
+          test_ ## name <Vector, typename Vector::value_type,              \
+            typename Vector::allocator_type> ( __VA_ARGS__ );              \
+          if (::testing::Test::HasFatalFailure()) {                        \
+            return;                                                        \
+          }                                                                \
+        }                                                                  \
         BOOST_PP_SEQ_FOR_EACH(GEN_UMAKER, _, BOOST_PP_SEQ_REVERSE(argseq)) \
-      }                                                                  \
-      TEARDOWN                                                           \
-    }                                                                    \
-    BOOST_PP_SEQ_FOR_EACH(GEN_CLOSER, _, BOOST_PP_SEQ_REVERSE(argseq))   \
-  }                                                                      \
-  template <class Vector> void test_ ## name ## 3 () {                   \
-    test_ ## name ## 2 <Vector> (bool_constant<                          \
-        restriction<typename Vector::value_type>::value &&               \
-        is_copy_constructible<typename Vector::value_type>::value        \
-      >());                                                              \
-  }                                                                      \
-                                                                         \
-  template <class Vector> bool test_I_ ## name ## 2 (std::false_type)    \
-    { return false; }                                                    \
-  template <class Vector> bool test_I_ ## name ## 2 (std::true_type) {   \
-    return true;                                                         \
-    auto f = test_ ## name <Vector,                                      \
-      typename Vector::value_type, typename Vector::allocator_type>;     \
-    (void)f;                                                             \
-    return true;                                                         \
-  }                                                                      \
-  template <class Vector> bool test_I_ ## name ## 3 () {                 \
-    return test_I_ ## name ## 2 <Vector> (bool_constant<                 \
-      restriction<typename Vector::value_type>::value>());               \
-    return false;                                                        \
-  }                                                                      \
-                                                                         \
-  TEST(FBVector, name) {                                                 \
-    SCOPED_TRACE("N3337 reference: " ref);                               \
-    BOOST_PP_SEQ_FOR_EACH(GEN_TEST, name, types)                         \
-    BOOST_PP_SEQ_FOR_EACH(GEN_TYPE_TEST, name, INTERFACE_TYPES)          \
-    bool one = false;                                                    \
-    BOOST_PP_SEQ_FOR_EACH(GEN_RUNNABLE_TEST, name, types)                \
-    if (!one) {                                                          \
-       FAIL() << "No tests qualified to run";                            \
-    }                                                                    \
+      }                                                                    \
+      TEARDOWN                                                             \
+    }                                                                      \
+    BOOST_PP_SEQ_FOR_EACH(GEN_CLOSER, _, BOOST_PP_SEQ_REVERSE(argseq))     \
+  }                                                                        \
+  template <class Vector> void test_ ## name ## 3 () {                     \
+    test_ ## name ## 2 <Vector> (bool_constant<                            \
+        restriction<typename Vector::value_type>::value &&                 \
+        is_copy_constructible<typename Vector::value_type>::value          \
+      >());                                                                \
+  }                                                                        \
+                                                                           \
+  template <class Vector> bool test_I_ ## name ## 2 (std::false_type)      \
+    { return false; }                                                      \
+  template <class Vector> bool test_I_ ## name ## 2 (std::true_type) {     \
+    return true;                                                           \
+    auto f = test_ ## name <Vector,                                        \
+      typename Vector::value_type, typename Vector::allocator_type>;       \
+    (void)f;                                                               \
+    return true;                                                           \
+  }                                                                        \
+  template <class Vector> bool test_I_ ## name ## 3 () {                   \
+    return test_I_ ## name ## 2 <Vector> (bool_constant<                   \
+      restriction<typename Vector::value_type>::value>());                 \
+    return false;                                                          \
+  }                                                                        \
+                                                                           \
+  TEST(FBVector, name) {                                                   \
+    SCOPED_TRACE("N3337 reference: " ref);                                 \
+    BOOST_PP_SEQ_FOR_EACH(GEN_TEST, name, types)                           \
+    BOOST_PP_SEQ_FOR_EACH(GEN_TYPE_TEST, name, INTERFACE_TYPES)            \
+    bool one = false;                                                      \
+    BOOST_PP_SEQ_FOR_EACH(GEN_RUNNABLE_TEST, name, types)                  \
+    if (!one) {                                                            \
+       FAIL() << "No tests qualified to run";                              \
+    }                                                                      \
   }
+// clang-format on
 
-#define DECL(name, ...)                                                       \
-  template <class Vector, typename T, typename Allocator>                     \
-  void test_ ## name (BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(               \
-    ARGIFY, _, IBOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
+#define DECL(name, ...)                                      \
+  template <class Vector, typename T, typename Allocator>    \
+  void test_##name(BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM( \
+      ARGIFY, _, IBOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
 
-#define STL_TEST_I(ref, name, restriction, ...)                               \
-  DECL(name, __VA_ARGS__);                                                    \
-  MAKE_TEST(ref, name, TEST_TYPES, restriction,                               \
-    IBOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__), __VA_ARGS__)                      \
+#define STL_TEST_I(ref, name, restriction, ...) \
+  DECL(name, __VA_ARGS__);                      \
+  MAKE_TEST(                                    \
+      ref,                                      \
+      name,                                     \
+      TEST_TYPES,                               \
+      restriction,                              \
+      IBOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__),   \
+      __VA_ARGS__)                              \
   DECL(name, __VA_ARGS__)
 
 #define STL_TEST(ref, name, restriction, ...) \
-  STL_TEST_I(ref, name, restriction, z, ## __VA_ARGS__, ticks)
+  STL_TEST_I(ref, name, restriction, z, ##__VA_ARGS__, ticks)
 
 //-----------------------------------------------------------------------------
 // Test Types
@@ -979,8 +1006,8 @@ typedef VECTOR_<EP1, Alloc<EP1>> _TP1;
 typedef VECTOR_<EP2, Alloc<EP2>> _TP2;
 typedef VECTOR_<EP3, Alloc<EP3>> _TP3;
 
-#define TEST_TYPES (_TVIS)(_TVI)(_TV1)(_TV2)(_TV3)(_TV4)(_TV5v1)(_TV5) \
-  (_TP1)(_TP2)(_TP3)
+#define TEST_TYPES \
+  (_TVIS)(_TVI)(_TV1)(_TV2)(_TV3)(_TV4)(_TV5v1)(_TV5)(_TP1)(_TP2)(_TP3)
 
 typedef Data<ALL_DELETE> DD1; // unoperable
 typedef Data<DC_DELETE | CC_DELETE | MC_DELETE> DD2; // unconstructible
@@ -993,10 +1020,12 @@ typedef Data<CA_DELETE> DD7; // move-only assignment
 typedef Data<ALL_DELETE | PROP_MOVE> DDSMA;
 typedef VECTOR_<DDSMA, Alloc<DDSMA>> _TSpecialMA;
 
+// clang-format off
 #define INTERFACE_TYPES \
   (_TVI)(VECTOR_<DD1>)(VECTOR_<DD2>)(VECTOR_<DD3>) \
   (VECTOR_<DD4>)(VECTOR_<DD5>)(VECTOR_<DD6>) \
   (VECTOR_<DD7>)(_TSpecialMA)
+// clang-format on
 
 //-----------------------------------------------------------------------------
 // Pretty printers
@@ -1023,11 +1052,8 @@ struct PrettyType<Data<f, pad>> {
     stringstream tpe;
     tpe << "Data";
 
-    if ((f & DC_DELETE) ||
-        (f & CC_DELETE) ||
-        (f & MC_DELETE) ||
-        (f & CA_DELETE) ||
-        (f & MA_DELETE)) {
+    if ((f & DC_DELETE) || (f & CC_DELETE) || (f & MC_DELETE) ||
+        (f & CA_DELETE) || (f & MA_DELETE)) {
       tpe << "[^";
       if (f & DC_DELETE) {
         tpe << " DC,";
@@ -1047,11 +1073,8 @@ struct PrettyType<Data<f, pad>> {
       tpe << "]";
     }
 
-    if ((f & DC_NOEXCEPT) ||
-        (f & CC_NOEXCEPT) ||
-        (f & MC_NOEXCEPT) ||
-        (f & CA_NOEXCEPT) ||
-        (f & MA_NOEXCEPT)) {
+    if ((f & DC_NOEXCEPT) || (f & CC_NOEXCEPT) || (f & MC_NOEXCEPT) ||
+        (f & CA_NOEXCEPT) || (f & MA_NOEXCEPT)) {
       tpe << "[safe";
       if (f & DC_NOEXCEPT) {
         tpe << " DC,";
@@ -1115,68 +1138,99 @@ struct PrettyType<Alloc<T>> {
 // dummy
 
 #define TYPIFY_z std::nullptr_t
-#define LOOPER_z                                 \
-  Vector* a_p = nullptr; Vector* b_p = nullptr;  \
+#define LOOPER_z         \
+  Vector* a_p = nullptr; \
+  Vector* b_p = nullptr; \
   typename Vector::value_type* t_p = nullptr;
 #define VMAKER_z std::nullptr_t z = nullptr;
-#define UMAKER_z                                                      \
-  verify<Vector>(0);                                                  \
-  if (::testing::Test::HasFatalFailure()) {                           \
-    return;                                                           \
+#define UMAKER_z                            \
+  verify<Vector>(0);                        \
+  if (::testing::Test::HasFatalFailure()) { \
+    return;                                 \
   }
 #define CLOSER_z
 
 //------
 // ticks
 
-#define VERIFICATION                                        \
-  if (b_p != nullptr) verify(t_p != nullptr ,*a_p, *b_p);   \
-  else if (a_p != nullptr) verify(t_p != nullptr, *a_p);    \
-  else verify<Vector>(t_p != nullptr);                      \
-  if (::testing::Test::HasFatalFailure()) return;
+#define VERIFICATION                      \
+  if (b_p != nullptr)                     \
+    verify(t_p != nullptr, *a_p, *b_p);   \
+  else if (a_p != nullptr)                \
+    verify(t_p != nullptr, *a_p);         \
+  else                                    \
+    verify<Vector>(t_p != nullptr);       \
+  if (::testing::Test::HasFatalFailure()) \
+    return;
 
 #define TYPIFY_ticks int
-#define LOOPER_ticks          \
-  int _maxTicks_ = 0;         \
-  bool ticks_thrown = false;  \
+#define LOOPER_ticks         \
+  int _maxTicks_ = 0;        \
+  bool ticks_thrown = false; \
   for (int ticks = -1; ticks < _maxTicks_; ++ticks) {
-#define VMAKER_ticks                                        \
-  string ticks_st = folly::to<string>("ticks = ", ticks);   \
-  SCOPED_TRACE(ticks_st);                                   \
-  { SCOPED_TRACE("pre-run verification");                   \
-    VERIFICATION }                                          \
-  try {                                                     \
+#define VMAKER_ticks                                      \
+  string ticks_st = folly::to<string>("ticks = ", ticks); \
+  SCOPED_TRACE(ticks_st);                                 \
+  {                                                       \
+    SCOPED_TRACE("pre-run verification");                 \
+    VERIFICATION                                          \
+  }                                                       \
+  try {                                                   \
     softReset(ticks);
-#define UMAKER_ticks _maxTicks_ = Ticker::CountTicks; }           \
-  catch (const TickException&) { ticks_thrown = true; }           \
-  catch (const std::exception& e)                                 \
-    { FAIL() << "EXCEPTION: " << e.what(); }                      \
-  catch (...)                                                     \
-    { FAIL() << "UNKNOWN EXCEPTION"; }                            \
-  if (ticks >= 0 && Ticker::CountTicks > ticks && !ticks_thrown)  \
-    FAIL() << "CountTicks = " << Ticker::CountTicks << " > "      \
-           << ticks << " = ticks"                                 \
-           << ", but no tick error was observed";                 \
+#define UMAKER_ticks                                                  \
+  _maxTicks_ = Ticker::CountTicks;                                    \
+  }                                                                   \
+  catch (const TickException&) {                                      \
+    ticks_thrown = true;                                              \
+  }                                                                   \
+  catch (const std::exception& e) {                                   \
+    FAIL() << "EXCEPTION: " << e.what();                              \
+  }                                                                   \
+  catch (...) {                                                       \
+    FAIL() << "UNKNOWN EXCEPTION";                                    \
+  }                                                                   \
+  if (ticks >= 0 && Ticker::CountTicks > ticks && !ticks_thrown)      \
+    FAIL() << "CountTicks = " << Ticker::CountTicks << " > " << ticks \
+           << " = ticks"                                              \
+           << ", but no tick error was observed";                     \
   VERIFICATION
 #define CLOSER_ticks }
-
 
 //--------------------------------------------------
 // vectors (second could be .equal, ==, or distinct)
 
 static const vector<pair<int, int>> VectorSizes = {
-  {  0, -1},
-  {  1, -1},
-  {  2, -1},
-  { 10, -1}, { 10, 1}, { 10, 0},
+    {0, -1},
+    {1, -1},
+    {2, -1},
+    {10, -1},
+    {10, 1},
+    {10, 0},
 #if !FOLLY_SANITIZE_ADDRESS
-  {100, -1}, {100, 1},
+    {100, -1},
+    {100, 1},
 #endif
 
-  //{   10, -1}, {   10, 0}, {   10, 1}, {   10, 2}, {   10, 10},
-  //{  100, -1}, {  100, 0}, {  100, 1}, {  100, 2}, {  100, 10}, {  100, 100},
-  //{ 1000, -1}, { 1000, 0}, { 1000, 1}, { 1000, 2}, { 1000, 10}, { 1000, 100},
-  //  { 1000, 1000},
+#if 0
+    {10, -1},
+    {10, 0},
+    {10, 1},
+    {10, 2},
+    {10, 10},
+    {100, -1},
+    {100, 0},
+    {100, 1},
+    {100, 2},
+    {100, 10},
+    {100, 100},
+    {1000, -1},
+    {1000, 0},
+    {1000, 1},
+    {1000, 2},
+    {1000, 10},
+    {1000, 100},
+    {1000, 1000},
+#endif
 };
 
 int populateIndex = 1426;
@@ -1195,7 +1249,9 @@ void populate(Vector& v, const pair<int, int>& ss) {
 
 template <typename A>
 struct allocGen {
-  static A get() { return A(); }
+  static A get() {
+    return A();
+  }
 };
 template <typename T>
 struct allocGen<Alloc<T>> {
@@ -1214,106 +1270,113 @@ struct allocGen<Alloc<T>> {
   populate(*a_p, a_ss);                                                     \
   string a_st = folly::to<string>("a (", a.size(), "/", a.capacity(), ")"); \
   SCOPED_TRACE(a_st);
-#define UMAKER_a verify(0, a); if (::testing::Test::HasFatalFailure()) return;
+#define UMAKER_a                          \
+  verify(0, a);                           \
+  if (::testing::Test::HasFatalFailure()) \
+    return;
 #define CLOSER_a }
 
 #define TYPIFY_b Vector&
 #define LOOPER_b for (int b_i = -2; b_i < (int)VectorSizes.size(); ++b_i) {
-#define VMAKER_b                                                            \
-  Vector b_s(allocGen<typename Vector::allocator_type>::get());             \
-  b_p = &b_s; string b_st;                                                  \
-  if (b_i == -2) {                                                          \
-    b_p = &a;                                                               \
-    b_st = "b is an alias of a";                                            \
-  }                                                                         \
-  else if (b_i == -1) {                                                     \
-    b_s.~Vector();                                                          \
-    new (&b_s) Vector(a);                                                   \
-    b_st = "b is a deep copy of a";                                         \
-  }                                                                         \
-  else {                                                                    \
-    populate(b_s, VectorSizes[b_i]);                                        \
-    b_st = folly::to<string>("b (", b_s.size(), "/", b_s.capacity(), ")");  \
-  }                                                                         \
-  Vector& b = *b_p;                                                         \
+#define VMAKER_b                                                           \
+  Vector b_s(allocGen<typename Vector::allocator_type>::get());            \
+  b_p = &b_s;                                                              \
+  string b_st;                                                             \
+  if (b_i == -2) {                                                         \
+    b_p = &a;                                                              \
+    b_st = "b is an alias of a";                                           \
+  } else if (b_i == -1) {                                                  \
+    b_s.~Vector();                                                         \
+    new (&b_s) Vector(a);                                                  \
+    b_st = "b is a deep copy of a";                                        \
+  } else {                                                                 \
+    populate(b_s, VectorSizes[b_i]);                                       \
+    b_st = folly::to<string>("b (", b_s.size(), "/", b_s.capacity(), ")"); \
+  }                                                                        \
+  Vector& b = *b_p;                                                        \
   SCOPED_TRACE(b_st);
-#define UMAKER_b \
-  verify(0, a, b); if (::testing::Test::HasFatalFailure()) return;
+#define UMAKER_b                          \
+  verify(0, a, b);                        \
+  if (::testing::Test::HasFatalFailure()) \
+    return;
 #define CLOSER_b }
 
 //----
 // int
 
-static const vector<int> nSizes = { 0, 1, 2, 9, 10, 11 };
+static const vector<int> nSizes = {0, 1, 2, 9, 10, 11};
 
 #define TYPIFY_n int
 #define LOOPER_n for (int n : nSizes) {
-#define VMAKER_n \
-  string n_st = folly::to<string>("n = ", n); SCOPED_TRACE(n_st);
+#define VMAKER_n                              \
+  string n_st = folly::to<string>("n = ", n); \
+  SCOPED_TRACE(n_st);
 #define UMAKER_n
 #define CLOSER_n }
 
 //-----------------------
 // non-internal iterators
 
-static int ijarr[12] = { 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89 };
-static int ijarC[12] = { 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89 };
+static int ijarr[12] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89};
+static int ijarC[12] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89};
 
 #define TYPIFY_i int*
 #define LOOPER_i
-#define VMAKER_i int* i = ijarr; SCOPED_TRACE("i = fib[0]");
+#define VMAKER_i  \
+  int* i = ijarr; \
+  SCOPED_TRACE("i = fib[0]");
 #define UMAKER_i
 #define CLOSER_i
 
 #define TYPIFY_j int*
 #define LOOPER_j for (int j_i = 0; j_i < 12; ++j_i) {
-#define VMAKER_j                                          \
-  int* j = ijarr + j_i;                                   \
-  string j_st = folly::to<string>("j = fib[", j_i, "]");  \
+#define VMAKER_j                                         \
+  int* j = ijarr + j_i;                                  \
+  string j_st = folly::to<string>("j = fib[", j_i, "]"); \
   SCOPED_TRACE(j_st);
-#define UMAKER_j \
-  for (int j_c = 0; j_c < 12; ++j_c) ASSERT_EQ(ijarC[j_c], ijarr[j_c]);
+#define UMAKER_j                     \
+  for (int j_c = 0; j_c < 12; ++j_c) \
+    ASSERT_EQ(ijarC[j_c], ijarr[j_c]);
 #define CLOSER_j }
 
 //-------------------
 // internal iterators
 
 template <class Vector>
-std::pair<typename Vector::iterator, string>
-iterSpotter(Vector& v, int i) {
+std::pair<typename Vector::iterator, string> iterSpotter(Vector& v, int i) {
   typename Vector::iterator it;
   string msg;
 
-  switch(i) {
-  case 1:
-    if (!v.empty()) {
+  switch (i) {
+    case 1:
+      if (!v.empty()) {
+        it = v.begin();
+        ++it;
+        msg = "a[1]";
+        break;
+      }
+      FOLLY_FALLTHROUGH;
+    case 0:
       it = v.begin();
-      ++it;
-      msg = "a[1]";
+      msg = "a.begin";
       break;
-    }
-    FOLLY_FALLTHROUGH;
-  case 0:
-    it = v.begin();
-    msg = "a.begin";
-    break;
 
-  case 2:
-    if (!v.empty()) {
+    case 2:
+      if (!v.empty()) {
+        it = v.end();
+        --it;
+        msg = "a[-1]";
+        break;
+      }
+      FOLLY_FALLTHROUGH;
+    case 3:
       it = v.end();
-      --it;
-      msg = "a[-1]";
+      msg = "a.end";
       break;
-    }
-    FOLLY_FALLTHROUGH;
-  case 3:
-    it = v.end();
-    msg = "a.end";
-    break;
 
-  default:
-    cerr << "internal error" << endl;
-    exit(1);
+    default:
+      cerr << "internal error" << endl;
+      exit(1);
   }
 
   return make_pair(it, msg);
@@ -1321,20 +1384,20 @@ iterSpotter(Vector& v, int i) {
 
 #define TYPIFY_p typename Vector::iterator
 #define LOOPER_p for (int p_i = 0; p_i < 4; ++p_i) {
-#define VMAKER_p                    \
-  auto p_im = iterSpotter(a, p_i);  \
-  auto& p = p_im.first;             \
-  auto& p_m = p_im.second;          \
+#define VMAKER_p                   \
+  auto p_im = iterSpotter(a, p_i); \
+  auto& p = p_im.first;            \
+  auto& p_m = p_im.second;         \
   SCOPED_TRACE("p = " + p_m);
 #define UMAKER_p
 #define CLOSER_p }
 
 #define TYPIFY_q typename Vector::iterator
 #define LOOPER_q for (int q_i = p_i; q_i < 4; ++q_i) {
-#define VMAKER_q                    \
-  auto q_im = iterSpotter(a, q_i);  \
-  auto& q = q_im.first;             \
-  auto& q_m = q_im.second;          \
+#define VMAKER_q                   \
+  auto q_im = iterSpotter(a, q_i); \
+  auto& q = q_im.first;            \
+  auto& q_m = q_im.second;         \
   SCOPED_TRACE("q = " + q_m);
 #define UMAKER_q
 #define CLOSER_q }
@@ -1342,22 +1405,22 @@ iterSpotter(Vector& v, int i) {
 //---------
 // datatype
 
-static const vector<int> tVals = { 0, 1, 2, 3, 17, 66, 521 };
+static const vector<int> tVals = {0, 1, 2, 3, 17, 66, 521};
 
 #define TYPIFY_t typename Vector::value_type&
 #define LOOPER_t for (int t_v : tVals) {
-#define VMAKER_t                                                            \
-  typename Vector::value_type t_s(t_v);                                     \
-  t_p = addressof(t_s);                                                     \
-  string t_st = folly::to<string>("t(", t_v, ")");                          \
-  if (t_v < 4 && a_p != nullptr) {                                          \
-    auto t_im = iterSpotter(*a_p, t_v);                                     \
-    if (t_im.first != a_p->end()) {                                         \
-      t_p = addressof(*t_im.first);                                         \
-      t_st = "t is " + t_im.second;                                         \
-    }                                                                       \
-  }                                                                         \
-  typename Vector::value_type& t = *t_p;                                    \
+#define VMAKER_t                                   \
+  typename Vector::value_type t_s(t_v);            \
+  t_p = addressof(t_s);                            \
+  string t_st = folly::to<string>("t(", t_v, ")"); \
+  if (t_v < 4 && a_p != nullptr) {                 \
+    auto t_im = iterSpotter(*a_p, t_v);            \
+    if (t_im.first != a_p->end()) {                \
+      t_p = addressof(*t_im.first);                \
+      t_st = "t is " + t_im.second;                \
+    }                                              \
+  }                                                \
+  typename Vector::value_type& t = *t_p;           \
   SCOPED_TRACE(t_st);
 #define UMAKER_t
 #define CLOSER_t }
@@ -1366,13 +1429,12 @@ static const vector<int> tVals = { 0, 1, 2, 3, 17, 66, 521 };
 // allocator
 
 #define TYPIFY_m typename Vector::allocator_type
-#define LOOPER_m                          \
-  int m_max = 1 + (a_p != nullptr);       \
+#define LOOPER_m                    \
+  int m_max = 1 + (a_p != nullptr); \
   for (int m_i = 0; m_i < m_max; ++m_i) {
-#define VMAKER_m                                \
-  typename Vector::allocator_type m = m_i == 0  \
-    ? typename Vector::allocator_type()         \
-    : a_p->get_allocator();
+#define VMAKER_m                      \
+  typename Vector::allocator_type m = \
+      m_i == 0 ? typename Vector::allocator_type() : a_p->get_allocator();
 #define UMAKER_m
 #define CLOSER_m }
 
@@ -1390,7 +1452,7 @@ void verifyVector(const Vector& v) {
   ASSERT_TRUE(v.capacity() <= v.max_size()) << "capacity > max_size";
   ASSERT_TRUE(v.data() || true); // message won't print - it will just crash
   ASSERT_TRUE(v.size() == 0 || v.data() != nullptr)
-    << "nullptr data points to at least one element";
+      << "nullptr data points to at least one element";
 }
 
 void verifyAllocator(int ele, int cap) {
@@ -1402,8 +1464,10 @@ void verifyAllocator(int ele, int cap) {
       tot += kv.second;
     }
   }
-  ASSERT_EQ(cap, tot) << "the allocator counts " << tot << " space, "
-    "but the vector(s) have (combined) capacity " << cap;
+  ASSERT_EQ(cap, tot) << "the allocator counts " << tot
+                      << " space, "
+                         "but the vector(s) have (combined) capacity "
+                      << cap;
 }
 
 // Master verifier
@@ -1425,7 +1489,7 @@ void verify(int extras, const Vector& v) {
   verifyVector(v);
   if (!is_arithmetic<typename Vector::value_type>::value) {
     ASSERT_EQ(v.size() + extras, getTotal())
-      << "not all Data are in the vector";
+        << "not all Data are in the vector";
   }
   isSane();
   if (::testing::Test::HasFatalFailure()) {
@@ -1519,24 +1583,24 @@ class DataState {
     return data_[i];
   }
 
-  size_type size() { return size_; }
+  size_type size() {
+    return size_;
+  }
 };
 
 // downgrade iterators
 template <typename It, class tag>
 class Transformer : public boost::iterator_adaptor<
-                            Transformer<It, tag>,
-                            It,
-                            typename iterator_traits<It>::value_type,
-                            tag
-                           > {
+                        Transformer<It, tag>,
+                        It,
+                        typename iterator_traits<It>::value_type,
+                        tag> {
   friend class boost::iterator_core_access;
   shared_ptr<set<It>> dereferenced;
 
  public:
   explicit Transformer(const It& it)
-    : Transformer::iterator_adaptor_(it)
-    , dereferenced(new set<It>()) {}
+      : Transformer::iterator_adaptor_(it), dereferenced(new set<It>()) {}
 
   typename iterator_traits<It>::value_type& dereference() const {
     if (dereferenced->find(this->base_reference()) != dereferenced->end()) {
@@ -1580,54 +1644,72 @@ void mutate(Data<f, pad>& ds) {
 
 // #if 0
 
-
-
 // #else
 
 //-----------------------------------------------------------------------------
 // Container
 
 STL_TEST("23.2.1 Table 96.1-7", containerTypedefs, is_destructible) {
-  static_assert(is_same<T, typename Vector::value_type>::value,
-    "T != Vector::value_type");
-  static_assert(is_same<T&, typename Vector::reference>::value,
-    "T& != Vector::reference");
-  static_assert(is_same<const T&, typename Vector::const_reference>::value,
-    "const T& != Vector::const_reference");
-  static_assert(is_convertible<
-      typename iterator_traits<typename Vector::iterator>::iterator_category,
-      forward_iterator_tag>::value,
-    "Vector::iterator is not a forward iterator");
-  static_assert(is_same<T,
-      typename iterator_traits<typename Vector::iterator>::value_type>::value,
-    "Vector::iterator does not iterate over type T");
-  static_assert(is_convertible<
-      typename iterator_traits<typename Vector::const_iterator>
-        ::iterator_category,
-      forward_iterator_tag>::value,
-    "Vector::const_iterator is not a forward iterator");
-  static_assert(is_same<T,
-      typename iterator_traits<typename Vector::const_iterator>
-        ::value_type>::value,
-    "Vector::const_iterator does not iterate over type T");
-  static_assert(is_convertible<
-      typename Vector::iterator, typename Vector::const_iterator>::value,
-    "Vector::iterator is not convertible to Vector::const_iterator");
-  static_assert(is_signed<typename Vector::difference_type>::value,
-    "Vector::difference_type is not signed");
-  static_assert(is_same<typename Vector::difference_type,
-        typename iterator_traits<typename Vector::iterator>
-      ::difference_type>::value,
-    "Vector::difference_type != Vector::iterator::difference_type");
-  static_assert(is_same<typename Vector::difference_type,
-        typename iterator_traits<typename Vector::const_iterator>
-      ::difference_type>::value,
-    "Vector::difference_type != Vector::const_iterator::difference_type");
-  static_assert(is_unsigned<typename Vector::size_type>::value,
-    "Vector::size_type is not unsigned");
-  static_assert(sizeof(typename Vector::size_type) >=
-      sizeof(typename Vector::difference_type),
-    "Vector::size_type is smaller than Vector::difference_type");
+  static_assert(
+      is_same<T, typename Vector::value_type>::value,
+      "T != Vector::value_type");
+  static_assert(
+      is_same<T&, typename Vector::reference>::value,
+      "T& != Vector::reference");
+  static_assert(
+      is_same<const T&, typename Vector::const_reference>::value,
+      "const T& != Vector::const_reference");
+  static_assert(
+      is_convertible<
+          typename iterator_traits<
+              typename Vector::iterator>::iterator_category,
+          forward_iterator_tag>::value,
+      "Vector::iterator is not a forward iterator");
+  static_assert(
+      is_same<
+          T,
+          typename iterator_traits<typename Vector::iterator>::value_type>::
+          value,
+      "Vector::iterator does not iterate over type T");
+  static_assert(
+      is_convertible<
+          typename iterator_traits<
+              typename Vector::const_iterator>::iterator_category,
+          forward_iterator_tag>::value,
+      "Vector::const_iterator is not a forward iterator");
+  static_assert(
+      is_same<
+          T,
+          typename iterator_traits<
+              typename Vector::const_iterator>::value_type>::value,
+      "Vector::const_iterator does not iterate over type T");
+  static_assert(
+      is_convertible<
+          typename Vector::iterator,
+          typename Vector::const_iterator>::value,
+      "Vector::iterator is not convertible to Vector::const_iterator");
+  static_assert(
+      is_signed<typename Vector::difference_type>::value,
+      "Vector::difference_type is not signed");
+  static_assert(
+      is_same<
+          typename Vector::difference_type,
+          typename iterator_traits<
+              typename Vector::iterator>::difference_type>::value,
+      "Vector::difference_type != Vector::iterator::difference_type");
+  static_assert(
+      is_same<
+          typename Vector::difference_type,
+          typename iterator_traits<
+              typename Vector::const_iterator>::difference_type>::value,
+      "Vector::difference_type != Vector::const_iterator::difference_type");
+  static_assert(
+      is_unsigned<typename Vector::size_type>::value,
+      "Vector::size_type is not unsigned");
+  static_assert(
+      sizeof(typename Vector::size_type) >=
+          sizeof(typename Vector::difference_type),
+      "Vector::size_type is smaller than Vector::difference_type");
 }
 
 STL_TEST("23.2.1 Table 96.8-9", emptyConstruction, is_destructible) {
@@ -1655,10 +1737,10 @@ STL_TEST("framework", populate, is_copy_constructible) {
   u.emplace_back(17);
   ASSERT_EQ(1, u.size());
   ASSERT_LT(u.capacity(), 100)
-    << "single push_back increased capacity to " << u.capacity();
+      << "single push_back increased capacity to " << u.capacity();
   ASSERT_NE(nullptr, u.data());
   ASSERT_EQ(17, convertToInt(u.data()[0]))
-    << "first object did not get emplaced correctly";
+      << "first object did not get emplaced correctly";
 
   for (int i = 0; i < 3; ++i) {
     auto cap = u.capacity();
@@ -1666,7 +1748,7 @@ STL_TEST("framework", populate, is_copy_constructible) {
       u.emplace_back(22);
       ASSERT_EQ(cap, u.capacity()) << "Vector grew when it did not need to";
       ASSERT_EQ(22, convertToInt(u.data()[u.size() - 1]))
-        << "push_back with excess capacity failed";
+          << "push_back with excess capacity failed";
     }
 
     ASSERT_EQ(cap, u.size());
@@ -1675,25 +1757,24 @@ STL_TEST("framework", populate, is_copy_constructible) {
     ASSERT_GT(u.capacity(), cap) << "capacity did not grow on overflow";
     ASSERT_EQ(cap + 1, u.size());
     ASSERT_EQ(4, convertToInt(u.data()[u.size() - 1]))
-      << "grow object did not get emplaced correctly";
+        << "grow object did not get emplaced correctly";
   }
 }
 
-STL_TEST("23.2.1 Table 96.10-11", copyConstruction,
-          is_copy_constructible, a) {
+STL_TEST("23.2.1 Table 96.10-11", copyConstruction, is_copy_constructible, a) {
   const auto& ca = a;
   DataState<Vector> dsa(ca);
   auto am = a.get_allocator();
 
   Vector u(ca);
 
-  ASSERT_TRUE(std::allocator_traits<Allocator>::
-    select_on_container_copy_construction(am) == u.get_allocator());
+  ASSERT_TRUE(
+      std::allocator_traits<Allocator>::select_on_container_copy_construction(
+          am) == u.get_allocator());
   ASSERT_TRUE(dsa == u);
   ASSERT_TRUE(
-    (ca.data() == nullptr && u.data() == nullptr) ||
-    (ca.data() != u.data())
-  ) << "only a shallow copy was made";
+      (ca.data() == nullptr && u.data() == nullptr) || (ca.data() != u.data()))
+      << "only a shallow copy was made";
 
   if (false) {
     Vector(ca2);
@@ -1724,8 +1805,8 @@ STL_TEST("23.2.1 Table 96.13", moveAssignment, special_move_assignable, a, b) {
 
   Vector& ret = a = std::move(b);
 
-  if (std::allocator_traits<Allocator>::
-      propagate_on_container_move_assignment::value) {
+  if (std::allocator_traits<
+          Allocator>::propagate_on_container_move_assignment::value) {
     ASSERT_TRUE(bm == a.get_allocator());
   } else {
     ASSERT_TRUE(am == a.get_allocator());
@@ -1743,12 +1824,12 @@ STL_TEST("23.2.1 Table 96.15-18", iterators, is_destructible, a) {
   DataState<Vector> dsa(a);
   const auto& ca = a;
 
-  auto  itb =  a.begin();
+  auto itb = a.begin();
   auto citb = ca.begin();
-  auto Citb =  a.cbegin();
-  auto  ite =  a.end();
+  auto Citb = a.cbegin();
+  auto ite = a.end();
   auto cite = ca.end();
-  auto Cite =  a.cend();
+  auto Cite = a.cend();
 
   ASSERT_EQ(0, Counter::CountTotalOps);
 
@@ -1758,16 +1839,16 @@ STL_TEST("23.2.1 Table 96.15-18", iterators, is_destructible, a) {
   ASSERT_TRUE(cite == Cite) << "cv.end != v.cend";
 
   if (ca.size() == 0) {
-    ASSERT_TRUE( itb ==  ite) << "begin != end when empty";
+    ASSERT_TRUE(itb == ite) << "begin != end when empty";
     ASSERT_TRUE(Citb == Cite) << "cbegin != cend when empty";
   } else {
-    ASSERT_TRUE( itb !=  ite) << "begin == end when non-empty";
+    ASSERT_TRUE(itb != ite) << "begin == end when non-empty";
     ASSERT_TRUE(Citb != Cite) << "cbegin == cend when non-empty";
   }
 
   auto dist = size_t(std::distance(itb, ite));
   auto Cdist = size_t(std::distance(Citb, Cite));
-  ASSERT_TRUE( dist == ca.size()) << "distance(begin, end) != size";
+  ASSERT_TRUE(dist == ca.size()) << "distance(begin, end) != size";
   ASSERT_TRUE(Cdist == ca.size()) << "distance(cbegin, cend) != size";
 }
 
@@ -1778,17 +1859,16 @@ STL_TEST("23.2.1 Table 96.19-20", equitable, is_arithmetic, a, b) {
   DataState<Vector> dsb(b);
 
   ASSERT_TRUE((bool)(ca == cb) == (bool)(dsa == dsb))
-    << "== does not return equality";
+      << "== does not return equality";
   ASSERT_TRUE((bool)(ca == cb) != (bool)(ca != cb))
-    << "!= is not the opposite of ==";
+      << "!= is not the opposite of ==";
 
   // Data is uncomparable, by design; therefore this test's restriction
   // is 'is_arithmetic'
 }
 
 STL_TEST("23.2.1 Table 96.21", memberSwappable, is_destructible, a, b) {
-  if (!std::allocator_traits<Allocator>::
-        propagate_on_container_swap::value &&
+  if (!std::allocator_traits<Allocator>::propagate_on_container_swap::value &&
       convertToInt(a.get_allocator()) != convertToInt(b.get_allocator())) {
     // undefined behaviour
     return;
@@ -1807,8 +1887,7 @@ STL_TEST("23.2.1 Table 96.21", memberSwappable, is_destructible, a, b) {
     FAIL() << "swap is noexcept";
   }
 
-  if (std::allocator_traits<Allocator>::
-      propagate_on_container_swap::value) {
+  if (std::allocator_traits<Allocator>::propagate_on_container_swap::value) {
     ASSERT_TRUE(bm == a.get_allocator());
     ASSERT_TRUE(am == b.get_allocator());
   } else {
@@ -1821,10 +1900,8 @@ STL_TEST("23.2.1 Table 96.21", memberSwappable, is_destructible, a, b) {
   ASSERT_TRUE(dsa == b && dsb == a) << "swap did not swap";
 }
 
-STL_TEST("23.2.1 Table 96.22", nonmemberSwappable,
-         is_destructible, a, b) {
-  if (!std::allocator_traits<Allocator>::
-        propagate_on_container_swap::value &&
+STL_TEST("23.2.1 Table 96.22", nonmemberSwappable, is_destructible, a, b) {
+  if (!std::allocator_traits<Allocator>::propagate_on_container_swap::value &&
       convertToInt(a.get_allocator()) != convertToInt(b.get_allocator())) {
     // undefined behaviour
     return;
@@ -1843,8 +1920,7 @@ STL_TEST("23.2.1 Table 96.22", nonmemberSwappable,
     FAIL() << "swap is noexcept";
   }
 
-  if (std::allocator_traits<Allocator>::
-      propagate_on_container_swap::value) {
+  if (std::allocator_traits<Allocator>::propagate_on_container_swap::value) {
     ASSERT_TRUE(bm == a.get_allocator());
     ASSERT_TRUE(am == b.get_allocator());
   } else {
@@ -1857,19 +1933,23 @@ STL_TEST("23.2.1 Table 96.22", nonmemberSwappable,
   ASSERT_TRUE(dsa == b && dsb == a) << "swap did not swap";
 }
 
-STL_TEST("23.2.1 Table 96.23", copyAssign,
-          is_copy_constructibleAndAssignable, a, b) {
+STL_TEST(
+    "23.2.1 Table 96.23",
+    copyAssign,
+    is_copy_constructibleAndAssignable,
+    a,
+    b) {
   // it is possible to make use of just the copy constructor.
 
-  #ifdef USING_STD_VECTOR
-  if (std::allocator_traits<Allocator>::
-        propagate_on_container_copy_assignment::value &&
+#ifdef USING_STD_VECTOR
+  if (std::allocator_traits<
+          Allocator>::propagate_on_container_copy_assignment::value &&
       convertToInt(a.get_allocator()) != convertToInt(b.get_allocator())) {
     // Bug. By the looks of things, in the above case, their bez is being
     // cleared and deallocated, but then the garbage pointers are being used.
     return;
   }
-  #endif
+#endif
 
   const auto& cb = b;
   DataState<Vector> dsb(cb);
@@ -1878,8 +1958,8 @@ STL_TEST("23.2.1 Table 96.23", copyAssign,
 
   Vector& ret = a = cb;
 
-  if (std::allocator_traits<Allocator>::
-      propagate_on_container_copy_assignment::value) {
+  if (std::allocator_traits<
+          Allocator>::propagate_on_container_copy_assignment::value) {
     ASSERT_TRUE(bm == a.get_allocator());
   } else {
     ASSERT_TRUE(am == a.get_allocator());
@@ -1895,27 +1975,30 @@ STL_TEST("23.2.1 Table 96.24-26", sizeops, is_destructible) {
 //-----------------------------------------------------------------------------
 // Reversible container
 
-STL_TEST("23.2.1 Table 97.1-2", reversibleContainerTypedefs,
-          is_destructible) {
-  static_assert(is_same<typename Vector::reverse_iterator,
-      std::reverse_iterator<typename Vector::iterator>>::value,
-    "Vector::reverse_iterator != reverse_iterator<Vector:iterator");
-  static_assert(is_same<typename Vector::const_reverse_iterator,
-      std::reverse_iterator<typename Vector::const_iterator>>::value,
-    "Vector::const_reverse_iterator != "
-    "const_reverse_iterator<Vector::iterator");
+STL_TEST("23.2.1 Table 97.1-2", reversibleContainerTypedefs, is_destructible) {
+  static_assert(
+      is_same<
+          typename Vector::reverse_iterator,
+          std::reverse_iterator<typename Vector::iterator>>::value,
+      "Vector::reverse_iterator != reverse_iterator<Vector:iterator");
+  static_assert(
+      is_same<
+          typename Vector::const_reverse_iterator,
+          std::reverse_iterator<typename Vector::const_iterator>>::value,
+      "Vector::const_reverse_iterator != "
+      "const_reverse_iterator<Vector::iterator");
 }
 
 STL_TEST("23.2.1 Table 97.3-5", reversibleIterators, is_destructible, a) {
   const auto& ca = a;
   DataState<Vector> ds(a);
 
-  auto  ritb =  a.rbegin();
+  auto ritb = a.rbegin();
   auto critb = ca.rbegin();
-  auto Critb =  a.crbegin();
-  auto  rite =  a.rend();
+  auto Critb = a.crbegin();
+  auto rite = a.rend();
   auto crite = ca.rend();
-  auto Crite =  a.crend();
+  auto Crite = a.crend();
 
   ASSERT_EQ(0, Counter::CountTotalOps);
 
@@ -1925,16 +2008,16 @@ STL_TEST("23.2.1 Table 97.3-5", reversibleIterators, is_destructible, a) {
   ASSERT_TRUE(crite == Crite) << "cv.rend != v.crend";
 
   if (ca.size() == 0) {
-    ASSERT_TRUE( ritb ==  rite) << "rbegin != rend when empty";
+    ASSERT_TRUE(ritb == rite) << "rbegin != rend when empty";
     ASSERT_TRUE(Critb == Crite) << "crbegin != crend when empty";
   } else {
-    ASSERT_TRUE( ritb !=  rite) << "rbegin == rend when non-empty";
+    ASSERT_TRUE(ritb != rite) << "rbegin == rend when non-empty";
     ASSERT_TRUE(Critb != Crite) << "crbegin == crend when non-empty";
   }
 
   auto dist = size_t(std::distance(ritb, rite));
   auto Cdist = size_t(std::distance(Critb, Crite));
-  ASSERT_TRUE( dist == ca.size()) << "distance(rbegin, rend) != size";
+  ASSERT_TRUE(dist == ca.size()) << "distance(rbegin, rend) != size";
   ASSERT_TRUE(Cdist == ca.size()) << "distance(crbegin, crend) != size";
 }
 
@@ -1942,12 +2025,12 @@ STL_TEST("23.2.1 Table 97.3-5", reversibleIterators, is_destructible, a) {
 // Lexicographical functions
 
 STL_TEST("23.2.1 Table 98", comparable, is_arithmetic) {
-  const Vector v1 = { 1, 2, 3, 4 };
-  const Vector v2 = { 1, 2, 3, 4, 5 };
-  const Vector v3 = { 1, 2, 2 };
-  const Vector v4 = { 1, 2, 2, 4, 5 };
-  const Vector v5 = { };
-  const Vector v6 = { 1, 2, 3, 4 };
+  const Vector v1 = {1, 2, 3, 4};
+  const Vector v2 = {1, 2, 3, 4, 5};
+  const Vector v3 = {1, 2, 2};
+  const Vector v4 = {1, 2, 2, 4, 5};
+  const Vector v5 = {};
+  const Vector v6 = {1, 2, 3, 4};
 
   ASSERT_TRUE(v1 < v2);
   ASSERT_TRUE(v1 > v3);
@@ -1961,8 +2044,9 @@ STL_TEST("23.2.1 Table 98", comparable, is_arithmetic) {
 // Allocator-aware requirements (AA)
 
 STL_TEST("23.2.1 Table 99.1", allocatorTypedefs, is_destructible) {
-  static_assert(is_same<T, typename Vector::allocator_type::value_type>::value,
-    "Vector and vector's allocator value_type mismatch");
+  static_assert(
+      is_same<T, typename Vector::allocator_type::value_type>::value,
+      "Vector and vector's allocator value_type mismatch");
 }
 
 STL_TEST("23.2.1 Table 99.2", getAllocator, is_destructible) {
@@ -1995,19 +2079,25 @@ STL_TEST("23.2.1 Table 99.5", copyWithAllocator, is_copy_constructible, a, m) {
   ASSERT_TRUE(u.get_allocator() == m);
   ASSERT_TRUE(dsa == u);
   ASSERT_TRUE(
-    (ca.data() == nullptr && u.data() == nullptr) ||
-    (ca.data() != u.data())
-  ) << "only a shallow copy was made";
+      (ca.data() == nullptr && u.data() == nullptr) || (ca.data() != u.data()))
+      << "only a shallow copy was made";
 }
 
-STL_TEST("23.2.1 Table 99.6", moveConstructionWithAllocator,
-         is_destructible, a) {
+STL_TEST(
+    "23.2.1 Table 99.6",
+    moveConstructionWithAllocator,
+    is_destructible,
+    a) {
   (void)a;
   // there is nothing new to test here
 }
 
-STL_TEST("23.2.1 Table 99.6", moveConstructionWithAllocatorSupplied,
-         is_move_constructible, a, m) {
+STL_TEST(
+    "23.2.1 Table 99.6",
+    moveConstructionWithAllocatorSupplied,
+    is_move_constructible,
+    a,
+    m) {
   bool deep = m != a.get_allocator();
   auto osize = a.size();
   auto oalloc = AllocTracker::Constructed;
@@ -2031,13 +2121,13 @@ STL_TEST("23.2.1 Table 99.7-9", allocAssign, is_destructible) {
 }
 
 STL_TEST("23.2.1-7", nAllocConstruction, is_copy_constructible, n, m) {
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   const auto& cm = m;
 
   Vector u(n, cm);
 
   ASSERT_TRUE(m == u.get_allocator());
-  #endif
+#endif
 }
 
 STL_TEST("23.2.1-7", nCopyAllocConstruction, is_copy_constructible, n, t, m) {
@@ -2049,8 +2139,13 @@ STL_TEST("23.2.1-7", nCopyAllocConstruction, is_copy_constructible, n, t, m) {
   ASSERT_TRUE(m == u.get_allocator());
 }
 
-STL_TEST("23.2.1-7", forwardIteratorAllocConstruction,
-         is_destructible, i, j, m) {
+STL_TEST(
+    "23.2.1-7",
+    forwardIteratorAllocConstruction,
+    is_destructible,
+    i,
+    j,
+    m) {
   auto fi = makeForwardIterator(i);
   auto fj = makeForwardIterator(j);
   const auto& cfi = fi;
@@ -2062,11 +2157,17 @@ STL_TEST("23.2.1-7", forwardIteratorAllocConstruction,
   ASSERT_TRUE(m == u.get_allocator());
 }
 
-STL_TEST("23.2.1-7", inputIteratorAllocConstruction,
-         is_move_constructible, i, j, m) {
-  #ifdef USING_STD_VECTOR
-  if (Ticker::TicksLeft >= 0) return;
-  #endif
+STL_TEST(
+    "23.2.1-7",
+    inputIteratorAllocConstruction,
+    is_move_constructible,
+    i,
+    j,
+    m) {
+#ifdef USING_STD_VECTOR
+  if (Ticker::TicksLeft >= 0)
+    return;
+#endif
 
   auto ii = makeInputIterator(i);
   auto ij = makeInputIterator(j);
@@ -2087,7 +2188,7 @@ STL_TEST("23.2.1-7", ilAllocConstruction, is_arithmetic, m) {
 
   const auto& cm = m;
 
-  Vector u({ 1, 4, 7 }, cm);
+  Vector u({1, 4, 7}, cm);
 
   ASSERT_TRUE(m == u.get_allocator());
 }
@@ -2127,8 +2228,7 @@ STL_TEST("23.2.3 Table 100.1, alt", nConstruction, is_constructible, n) {
   ASSERT_EQ(Counter::CountTotalOps, Counter::CountDC);
 }
 
-STL_TEST("23.2.3 Table 100.1", nCopyConstruction,
-         is_copy_constructible, n, t) {
+STL_TEST("23.2.3 Table 100.1", nCopyConstruction, is_copy_constructible, n, t) {
   const auto& ct = t;
 
   Vector u(n, ct);
@@ -2141,8 +2241,12 @@ STL_TEST("23.2.3 Table 100.1", nCopyConstruction,
   }
 }
 
-STL_TEST("23.2.3 Table 100.2", forwardIteratorConstruction,
-         is_destructible, i, j) {
+STL_TEST(
+    "23.2.3 Table 100.2",
+    forwardIteratorConstruction,
+    is_destructible,
+    i,
+    j) {
   // All data is emplace-constructible from int, so we restrict to
   // is_destructible
 
@@ -2154,19 +2258,24 @@ STL_TEST("23.2.3 Table 100.2", forwardIteratorConstruction,
   Vector u(cfi, cfj);
 
   ASSERT_TRUE(Allocator() == u.get_allocator());
-  ASSERT_LE(Counter::CountTotalOps, j-i);
+  ASSERT_LE(Counter::CountTotalOps, j - i);
 
   ASSERT_EQ(j - i, u.size()) << "u(i,j).size() != j-i";
   for (auto it = u.begin(); it != u.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it)) << "u(i,j) constructed incorrectly";
-}
+  }
 }
 
-STL_TEST("23.2.3 Table 100.2", inputIteratorConstruction,
-         is_move_constructible, i, j) {
-  #ifdef USING_STD_VECTOR
-  if (Ticker::TicksLeft >= 0) return;
-  #endif
+STL_TEST(
+    "23.2.3 Table 100.2",
+    inputIteratorConstruction,
+    is_move_constructible,
+    i,
+    j) {
+#ifdef USING_STD_VECTOR
+  if (Ticker::TicksLeft >= 0)
+    return;
+#endif
 
   auto ii = makeInputIterator(i);
   auto ij = makeInputIterator(j);
@@ -2179,7 +2288,7 @@ STL_TEST("23.2.3 Table 100.2", inputIteratorConstruction,
   ASSERT_EQ(j - i, u.size()) << "u(i,j).size() != j-i";
   for (auto it = u.begin(); it != u.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it)) << "u(i,j) constructed incorrectly";
-}
+  }
 }
 
 STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
@@ -2191,7 +2300,7 @@ STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
     return;
   }
 
-  Vector u = { 1, 4, 7 };
+  Vector u = {1, 4, 7};
 
   ASSERT_TRUE(Allocator() == u.get_allocator());
   ASSERT_EQ(3, u.size()) << "u(il).size() fail";
@@ -2199,11 +2308,10 @@ STL_TEST("23.2.3 Table 100.3", ilConstruction, is_arithmetic) {
   auto it = u.begin();
   for (; it != u.end(); ++it, i += 3) {
     ASSERT_EQ(i, convertToInt(*it)) << "u(il) constructed incorrectly";
-}
+  }
 }
 
-STL_TEST("23.2.3 Table 100.4", ilAssignment,
-         is_arithmetic, a) {
+STL_TEST("23.2.3 Table 100.4", ilAssignment, is_arithmetic, a) {
   // whitebox: ensure that assign(il) is implemented in terms of
   // assign(il.begin(), il.end())
 
@@ -2214,7 +2322,7 @@ STL_TEST("23.2.3 Table 100.4", ilAssignment,
 
   auto am = a.get_allocator();
 
-  Vector& b = a = { 1, 4, 7 };
+  Vector& b = a = {1, 4, 7};
 
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_TRUE(&b == &a) << "'a = ...' did not return *this";
@@ -2224,15 +2332,19 @@ STL_TEST("23.2.3 Table 100.4", ilAssignment,
   auto it = a.begin();
   for (; it != a.end(); ++it, i += 3) {
     ASSERT_EQ(i, convertToInt(*it)) << "u(il) constructed incorrectly";
-}
+  }
 }
 
 //----------------------------
 // insert-and-erase subsection
 
 template <class Vector>
-void insertNTCheck(const Vector& a, DataState<Vector>& dsa,
-                   int idx, int n, int val) {
+void insertNTCheck(
+    const Vector& a,
+    DataState<Vector>& dsa,
+    int idx,
+    int n,
+    int val) {
   ASSERT_EQ(dsa.size() + n, a.size());
   int i = 0;
   for (; i < idx; ++i) {
@@ -2242,12 +2354,16 @@ void insertNTCheck(const Vector& a, DataState<Vector>& dsa,
     ASSERT_EQ(val, convertToInt(a.data()[i])) << i;
   }
   for (; size_t(i) < a.size(); ++i) {
-    ASSERT_EQ(dsa[i-n], convertToInt(a.data()[i])) << i;
+    ASSERT_EQ(dsa[i - n], convertToInt(a.data()[i])) << i;
   }
 }
 
-STL_TEST("23.2.3 Table 100.5", iteratorEmplacement,
-         is_move_constructibleAndAssignable, a, p) {
+STL_TEST(
+    "23.2.3 Table 100.5",
+    iteratorEmplacement,
+    is_move_constructibleAndAssignable,
+    a,
+    p) {
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
   auto am = a.get_allocator();
@@ -2259,8 +2375,13 @@ STL_TEST("23.2.3 Table 100.5", iteratorEmplacement,
   insertNTCheck(a, dsa, idx, 1, 44);
 }
 
-STL_TEST("23.2.3 Table 100.6", iteratorInsertion,
-         is_copy_constructibleAndAssignable, a, p, t) {
+STL_TEST(
+    "23.2.3 Table 100.6",
+    iteratorInsertion,
+    is_copy_constructibleAndAssignable,
+    a,
+    p,
+    t) {
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
   int tval = convertToInt(t);
@@ -2274,8 +2395,13 @@ STL_TEST("23.2.3 Table 100.6", iteratorInsertion,
   insertNTCheck(a, dsa, idx, 1, tval);
 }
 
-STL_TEST("23.2.3 Table 100.7", iteratorInsertionRV,
-         is_move_constructibleAndAssignable, a, p, t) {
+STL_TEST(
+    "23.2.3 Table 100.7",
+    iteratorInsertionRV,
+    is_move_constructibleAndAssignable,
+    a,
+    p,
+    t) {
   // rvalue-references cannot have their address checked for aliased inserts
   if (a.data() <= addressof(t) && addressof(t) < a.data() + a.size()) {
     return;
@@ -2293,31 +2419,41 @@ STL_TEST("23.2.3 Table 100.7", iteratorInsertionRV,
   insertNTCheck(a, dsa, idx, 1, tval);
 }
 
-STL_TEST("23.2.3 Table 100.8", iteratorInsertionN,
-         is_copy_constructibleAndAssignable, a, p, n, t) {
+STL_TEST(
+    "23.2.3 Table 100.8",
+    iteratorInsertionN,
+    is_copy_constructibleAndAssignable,
+    a,
+    p,
+    n,
+    t) {
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
   int tval = convertToInt(t);
   auto am = a.get_allocator();
   const auto& ct = t;
 
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   auto q =
-  #endif
+#endif
 
-  a.insert(p, n, ct);
+      a.insert(p, n, ct);
 
   ASSERT_TRUE(am == a.get_allocator());
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   ASSERT_EQ(idx, distance(a.begin(), q)) << "incorrect iterator returned";
-  #endif
+#endif
 
   insertNTCheck(a, dsa, idx, n, tval);
 }
 
 template <class Vector>
-void insertItCheck(const Vector& a, DataState<Vector>& dsa,
-                   int idx, int* b, int* e) {
+void insertItCheck(
+    const Vector& a,
+    DataState<Vector>& dsa,
+    int idx,
+    int* b,
+    int* e) {
   ASSERT_EQ(dsa.size() + (e - b), a.size());
   int i = 0;
   for (; i < idx; ++i) {
@@ -2331,8 +2467,14 @@ void insertItCheck(const Vector& a, DataState<Vector>& dsa,
   }
 }
 
-STL_TEST("23.2.3 Table 100.9", iteratorInsertionIterator,
-         is_move_constructibleAndAssignable, a, p, i, j) {
+STL_TEST(
+    "23.2.3 Table 100.9",
+    iteratorInsertionIterator,
+    is_move_constructibleAndAssignable,
+    a,
+    p,
+    i,
+    j) {
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
 
@@ -2342,22 +2484,28 @@ STL_TEST("23.2.3 Table 100.9", iteratorInsertionIterator,
   const auto& cfi = fi;
   const auto& cfj = fj;
 
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   auto q =
-  #endif
+#endif
 
-  a.insert(p, cfi, cfj);
+      a.insert(p, cfi, cfj);
 
   ASSERT_TRUE(am == a.get_allocator());
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   ASSERT_EQ(idx, distance(a.begin(), q)) << "incorrect iterator returned";
-  #endif
+#endif
 
   insertItCheck(a, dsa, idx, i, j);
 }
 
-STL_TEST("23.2.3 Table 100.9", iteratorInsertionInputIterator,
-         is_move_constructibleAndAssignable, a, p, i, j) {
+STL_TEST(
+    "23.2.3 Table 100.9",
+    iteratorInsertionInputIterator,
+    is_move_constructibleAndAssignable,
+    a,
+    p,
+    i,
+    j) {
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
 
@@ -2367,22 +2515,21 @@ STL_TEST("23.2.3 Table 100.9", iteratorInsertionInputIterator,
   const auto& cii = ii;
   const auto& cij = ij;
 
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   auto q =
-  #endif
+#endif
 
-  a.insert(p, cii, cij);
+      a.insert(p, cii, cij);
 
   ASSERT_TRUE(am == a.get_allocator());
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   ASSERT_EQ(idx, distance(a.begin(), q)) << "incorrect iterator returned";
-  #endif
+#endif
 
   insertItCheck(a, dsa, idx, i, j);
 }
 
-STL_TEST("23.2.3 Table 100.10", iteratorInsertIL,
-         is_arithmetic, a, p) {
+STL_TEST("23.2.3 Table 100.10", iteratorInsertIL, is_arithmetic, a, p) {
   // gcc fail
   if (Ticker::TicksLeft >= 0) {
     return;
@@ -2395,18 +2542,18 @@ STL_TEST("23.2.3 Table 100.10", iteratorInsertIL,
   int idx = distance(a.begin(), p);
   auto am = a.get_allocator();
 
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   auto q =
-  #endif
+#endif
 
-  a.insert(p, {1, 4, 7});
+      a.insert(p, {1, 4, 7});
 
   ASSERT_TRUE(am == a.get_allocator());
-  #ifndef USING_STD_VECTOR
+#ifndef USING_STD_VECTOR
   ASSERT_EQ(idx, distance(a.begin(), q)) << "incorrect iterator returned";
-  #endif
+#endif
 
-  int ila[] = { 1, 4, 7 };
+  int ila[] = {1, 4, 7};
   int* i = ila;
   int* j = ila + 3;
   insertItCheck(a, dsa, idx, i, j);
@@ -2441,8 +2588,13 @@ STL_TEST("23.2.3 Table 100.11", iteratorErase, is_move_assignable, a, p) {
   eraseCheck(a, dsa, idx, 1);
 }
 
-STL_TEST("23.2.3 Table 100.12", iteratorEraseRange,
-         is_move_assignable, a, p, q) {
+STL_TEST(
+    "23.2.3 Table 100.12",
+    iteratorEraseRange,
+    is_move_assignable,
+    a,
+    p,
+    q) {
   if (p == a.end()) {
     return;
   }
@@ -2455,14 +2607,13 @@ STL_TEST("23.2.3 Table 100.12", iteratorEraseRange,
 
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_EQ(idx, distance(a.begin(), rit)) << "wrong iterator returned";
-  eraseCheck(a, dsa, idx, distance(p,q));
+  eraseCheck(a, dsa, idx, distance(p, q));
 }
 
 //--------------------------------
 // end insert-and-erase subsection
 
 STL_TEST("23.2.3 Table 100.13", clear, is_destructible, a) {
-
   auto am = a.get_allocator();
 
   try {
@@ -2488,11 +2639,16 @@ STL_TEST("23.2.3 Table 100.14", assignRange, is_move_assignable, a, i, j) {
   ASSERT_EQ(distance(i, j), a.size());
   for (auto it = a.begin(); it != a.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it));
-}
+  }
 }
 
-STL_TEST("23.2.3 Table 100.14", assignInputRange,
-         is_move_constructibleAndAssignable, a, i, j) {
+STL_TEST(
+    "23.2.3 Table 100.14",
+    assignInputRange,
+    is_move_constructibleAndAssignable,
+    a,
+    i,
+    j) {
   auto ii = makeInputIterator(i);
   auto ij = makeInputIterator(j);
   const auto& cii = ii;
@@ -2505,12 +2661,10 @@ STL_TEST("23.2.3 Table 100.14", assignInputRange,
   ASSERT_EQ(distance(i, j), a.size());
   for (auto it = a.begin(); it != a.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it));
-}
+  }
 }
 
-STL_TEST("23.2.3 Table 100.15", assignIL,
-         is_arithmetic, a) {
-
+STL_TEST("23.2.3 Table 100.15", assignIL, is_arithmetic, a) {
   // whitebox: ensure that assign(il) is implemented in terms of
   // assign(il.begin(), il.end())
 
@@ -2524,17 +2678,22 @@ STL_TEST("23.2.3 Table 100.15", assignIL,
   a.assign({1, 4, 7});
 
   ASSERT_TRUE(am == a.get_allocator());
-  int ila[] = { 1, 4, 7 };
+  int ila[] = {1, 4, 7};
   int* i = ila;
 
   ASSERT_EQ(3, a.size());
   for (auto it = a.begin(); it != a.end(); ++it, ++i) {
     ASSERT_EQ(*i, convertToInt(*it));
-}
+  }
 }
 
-STL_TEST("23.2.3 Table 100.16", assignN,
-         is_copy_constructibleAndAssignable, a, n, t) {
+STL_TEST(
+    "23.2.3 Table 100.16",
+    assignN,
+    is_copy_constructibleAndAssignable,
+    a,
+    n,
+    t) {
   auto am = a.get_allocator();
   auto const& ct = t;
   auto tval = convertToInt(t);
@@ -2545,7 +2704,7 @@ STL_TEST("23.2.3 Table 100.16", assignN,
   ASSERT_EQ(n, a.size());
   for (auto it = a.begin(); it != a.end(); ++it) {
     ASSERT_EQ(tval, convertToInt(*it));
-}
+  }
 }
 
 STL_TEST("23.2.3 Table 101.1", front, is_destructible, a) {
@@ -2580,8 +2739,7 @@ STL_TEST("23.2.3 Table 101.2", back, is_destructible, a) {
   }
 }
 
-STL_TEST("23.2.3 Table 101.4", emplaceBack,
-         is_move_constructible, a) {
+STL_TEST("23.2.3 Table 101.4", emplaceBack, is_move_constructible, a) {
   DataState<Vector> dsa(a);
   auto adata = a.data();
   int excess = a.capacity() - a.size();
@@ -2635,8 +2793,7 @@ STL_TEST("23.2.3 Table 101.7", pushBack, is_copy_constructible, a, t) {
   ASSERT_EQ(tval, convertToInt(a.back()));
 }
 
-STL_TEST("23.2.3 Table 101.8", pushBackRV,
-         is_move_constructible, a, t) {
+STL_TEST("23.2.3 Table 101.8", pushBackRV, is_move_constructible, a, t) {
   DataState<Vector> dsa(a);
   int tval = convertToInt(t);
   auto adata = a.data();
@@ -2679,13 +2836,13 @@ STL_TEST("23.2.3 Table 100.10", popBack, is_destructible, a) {
   auto it = a.begin();
   for (; it != a.end(); ++it, ++i) {
     ASSERT_EQ(dsa[i], convertToInt(*it));
-}
+  }
 }
 
 STL_TEST("23.2.3 Table 100.11", operatorBrace, is_destructible, a) {
   const auto& ca = a;
   for (size_t i = 0; i < ca.size(); ++i) {
-    ASSERT_TRUE(addressof(ca[i]) == ca.data()+i);
+    ASSERT_TRUE(addressof(ca[i]) == ca.data() + i);
   }
 
   ASSERT_EQ(0, Counter::CountTotalOps);
@@ -2698,7 +2855,7 @@ STL_TEST("23.2.3 Table 100.11", operatorBrace, is_destructible, a) {
 STL_TEST("23.2.3 Table 100.12", at, is_destructible, a) {
   const auto& ca = a;
   for (size_t i = 0; i < ca.size(); ++i) {
-    ASSERT_TRUE(addressof(ca.at(i)) == ca.data()+i);
+    ASSERT_TRUE(addressof(ca.at(i)) == ca.data() + i);
   }
 
   ASSERT_EQ(0, Counter::CountTotalOps);
@@ -2759,13 +2916,13 @@ STL_TEST("23.3.6.3", reserve, is_move_constructible, a, n) {
     ASSERT_TRUE(adata == a.data());
   } else {
     ASSERT_TRUE(a.capacity() >= size_t(n));
-    ASSERT_LE(Counter::CountTotalOps, 2*a.size()); // move and delete
+    ASSERT_LE(Counter::CountTotalOps, 2 * a.size()); // move and delete
   }
 }
 
 STL_TEST("23.3.6.3", lengthError, is_move_constructible) {
   auto mx = Vector().max_size();
-  auto big = mx+1;
+  auto big = mx + 1;
   if (mx >= big) {
     return; // max_size is the biggest size_type; overflowed
   }
@@ -2802,9 +2959,10 @@ STL_TEST("23.3.6.3", resize, is_copy_constructible, a, n) {
 }
 
 STL_TEST("23.3.6.3", resizeT, is_copy_constructibleAndAssignable, a, n, t) {
-  #ifdef USING_STD_VECTOR
-  if (a.data() <= addressof(t) && addressof(t) < a.data() + a.size()) return;
-  #endif
+#ifdef USING_STD_VECTOR
+  if (a.data() <= addressof(t) && addressof(t) < a.data() + a.size())
+    return;
+#endif
 
   DataState<Vector> dsa(a);
   int sz = a.size();
@@ -2823,10 +2981,10 @@ STL_TEST("23.3.6.3", resizeT, is_copy_constructibleAndAssignable, a, n, t) {
     }
   } else {
     int i = 0;
-    for ( ; i < sz; ++i) {
+    for (; i < sz; ++i) {
       ASSERT_EQ(dsa[i], convertToInt(a[i]));
     }
-    for ( ; i < n; ++i) {
+    for (; i < n; ++i) {
       ASSERT_EQ(val, convertToInt(a[i]));
     }
   }
@@ -2851,7 +3009,7 @@ STL_TEST("23.3.6.3", shrinkToFit, is_move_constructible, a) {
   ASSERT_TRUE(am == a.get_allocator());
   ASSERT_TRUE(dsa == a);
   if (willThrow) {
-    //ASSERT_EQ(ocap, a.capacity()); might shrink in place
+    // ASSERT_EQ(ocap, a.capacity()); might shrink in place
     throw TickException("I swallowed the error");
   } else {
     ASSERT_TRUE(a.capacity() == 0 || a.capacity() < ocap) << "Look into this";
@@ -2860,9 +3018,10 @@ STL_TEST("23.3.6.3", shrinkToFit, is_move_constructible, a) {
 
 #ifndef USING_STD_VECTOR
 STL_TEST("EBO", ebo, is_destructible) {
-  static_assert(!is_same<Allocator, std::allocator<T>>::value ||
-                sizeof(Vector) == 3 * sizeof(void*),
-    "fbvector has default allocator, but has size != 3*sizeof(void*)");
+  static_assert(
+      !is_same<Allocator, std::allocator<T>>::value ||
+          sizeof(Vector) == 3 * sizeof(void*),
+      "fbvector has default allocator, but has size != 3*sizeof(void*)");
 }
 
 STL_TEST("relinquish", relinquish, is_destructible, a) {

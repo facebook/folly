@@ -84,7 +84,7 @@ void Arena<Alloc>::merge(Arena<Alloc>&& other) {
 
 template <class Alloc>
 Arena<Alloc>::~Arena() {
-  auto disposer = [this] (Block* b) { b->deallocate(this->alloc()); };
+  auto disposer = [this](Block* b) { b->deallocate(this->alloc()); };
   while (!blocks_.empty()) {
     blocks_.pop_front_and_dispose(disposer);
   }

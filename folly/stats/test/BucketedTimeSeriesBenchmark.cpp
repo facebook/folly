@@ -21,9 +21,9 @@
 #include <folly/Benchmark.h>
 #include <folly/stats/BucketedTimeSeries-defs.h>
 
-using std::chrono::seconds;
 using folly::BenchmarkSuspender;
 using folly::BucketedTimeSeries;
+using std::chrono::seconds;
 
 void addValue(
     unsigned int iters,

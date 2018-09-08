@@ -54,12 +54,15 @@ void benchmarkSet(size_t n, T) {
   for (size_t i = 0; i < n; ++i) {
     size_t bit = (i * 2973) % (kBufferSize * 8);
     size_t drop = i % size;
-    folly::Bits<T>::set(reinterpret_cast<T *>(buffer.data()),
-                        bit, size - drop, values[i % k] >> drop);
+    folly::Bits<T>::set(
+        reinterpret_cast<T*>(buffer.data()),
+        bit,
+        size - drop,
+        values[i % k] >> drop);
   }
 
   folly::doNotOptimizeAway(
-      folly::Bits<T>::test(reinterpret_cast<T *>(buffer.data()), 512));
+      folly::Bits<T>::test(reinterpret_cast<T*>(buffer.data()), 512));
 }
 
 BENCHMARK_NAMED_PARAM(benchmarkSet, u16, uint16_t())
@@ -80,7 +83,7 @@ void benchmarkGet(size_t n, T x) {
     size_t bit = (i * 2973) % (kBufferSize * 8);
     size_t drop = i % size;
     x += folly::Bits<T>::get(
-        reinterpret_cast<T *>(buffer.data()), bit, size - drop);
+        reinterpret_cast<T*>(buffer.data()), bit, size - drop);
   }
   folly::doNotOptimizeAway(x);
 }
@@ -112,7 +115,7 @@ benchmarkGet(i64)                                 85.78%     8.53ns  117.16M
 ============================================================================
 #endif
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return sum.load();

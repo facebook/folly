@@ -30,14 +30,24 @@
 
 namespace {
 
-template <class T> struct TestTraits {
-  T limit() const { return 1 << 24; }
-  T generate() const { return rand() % 26; }
+template <class T>
+struct TestTraits {
+  T limit() const {
+    return 1 << 24;
+  }
+  T generate() const {
+    return rand() % 26;
+  }
 };
 
-template <> struct TestTraits<std::string> {
-  unsigned int limit() const { return 1 << 22; }
-  std::string generate() const { return std::string(12, ' '); }
+template <>
+struct TestTraits<std::string> {
+  unsigned int limit() const {
+    return 1 << 22;
+  }
+  std::string generate() const {
+    return std::string(12, ' ');
+  }
 };
 
 template <class QueueType, size_t Size, bool Pop = false>
@@ -57,8 +67,8 @@ struct PerfTest {
     done_ = true;
     consumer.join();
 
-    auto duration = duration_cast<milliseconds>(
-      system_clock::now() - startTime);
+    auto duration =
+        duration_cast<milliseconds>(system_clock::now() - startTime);
     LOG(INFO) << "     done: " << duration.count() << "ms";
   }
 
@@ -92,7 +102,8 @@ struct PerfTest {
   TestTraits<T> traits_;
 };
 
-template <class TestType> void doTest(const char* name) {
+template <class TestType>
+void doTest(const char* name) {
   LOG(INFO) << "  testing: " << name;
   std::unique_ptr<TestType> const t(new TestType());
   (*t)();
@@ -103,18 +114,15 @@ void perfTestType(const char* type) {
   const size_t size = 0xfffe;
 
   LOG(INFO) << "Type: " << type;
-  doTest<PerfTest<folly::ProducerConsumerQueue<T>,size,Pop> >(
-    "ProducerConsumerQueue");
+  doTest<PerfTest<folly::ProducerConsumerQueue<T>, size, Pop>>(
+      "ProducerConsumerQueue");
 }
 
 template <class QueueType, size_t Size, bool Pop>
 struct CorrectnessTest {
   typedef typename QueueType::value_type T;
 
-  explicit CorrectnessTest()
-    : queue_(Size)
-    , done_(false)
-  {
+  explicit CorrectnessTest() : queue_(Size), done_(false) {
     const size_t testSize = traits_.limit();
     testData_.reserve(testSize);
     for (size_t i = 0; i < testSize; ++i) {
@@ -200,15 +208,21 @@ struct CorrectnessTest {
 template <class T, bool Pop = false>
 void correctnessTestType(const std::string& type) {
   LOG(INFO) << "Type: " << type;
-  doTest<CorrectnessTest<folly::ProducerConsumerQueue<T>,0xfffe,Pop> >(
-    "ProducerConsumerQueue");
+  doTest<CorrectnessTest<folly::ProducerConsumerQueue<T>, 0xfffe, Pop>>(
+      "ProducerConsumerQueue");
 }
 
 struct DtorChecker {
   static unsigned int numInstances;
-  DtorChecker() { ++numInstances; }
-  DtorChecker(const DtorChecker& /* o */) { ++numInstances; }
-  ~DtorChecker() { --numInstances; }
+  DtorChecker() {
+    ++numInstances;
+  }
+  DtorChecker(const DtorChecker& /* o */) {
+    ++numInstances;
+  }
+  ~DtorChecker() {
+    --numInstances;
+  }
 };
 
 unsigned int DtorChecker::numInstances = 0;
@@ -218,14 +232,14 @@ unsigned int DtorChecker::numInstances = 0;
 //////////////////////////////////////////////////////////////////////
 
 TEST(PCQ, QueueCorrectness) {
-  correctnessTestType<std::string,true>("string (front+pop)");
+  correctnessTestType<std::string, true>("string (front+pop)");
   correctnessTestType<std::string>("string");
   correctnessTestType<int>("int");
   correctnessTestType<unsigned long long>("unsigned long long");
 }
 
 TEST(PCQ, PerfTest) {
-  perfTestType<std::string,true>("string (front+pop)");
+  perfTestType<std::string, true>("string (front+pop)");
   perfTestType<std::string>("string");
   perfTestType<int>("int");
   perfTestType<unsigned long long>("unsigned long long");
@@ -283,7 +297,7 @@ TEST(PCQ, EmptyFull) {
 
   EXPECT_TRUE(queue.write(2));
   EXPECT_FALSE(queue.isEmpty());
-  EXPECT_TRUE(queue.isFull());  // Tricky: full after 2 writes, not 3.
+  EXPECT_TRUE(queue.isFull()); // Tricky: full after 2 writes, not 3.
 
   EXPECT_FALSE(queue.write(3));
   EXPECT_EQ(queue.sizeGuess(), 2);

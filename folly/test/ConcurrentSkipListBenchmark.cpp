@@ -117,7 +117,7 @@ void BM_SetMerge(int iters, int size) {
   susp.dismiss();
 
   int64_t mergedSum = 0;
-  FOR_EACH(it, a_set) {
+  FOR_EACH (it, a_set) {
     if (b_set.find(*it) != b_set.end()) {
       mergedSum += *it;
     }
@@ -142,7 +142,7 @@ void BM_CSLMergeLookup(int iters, int size) {
   susp.dismiss();
 
   SkipListType::Skipper skipper(skipList2);
-  FOR_EACH(it, skipList) {
+  FOR_EACH (it, skipList) {
     if (skipper.to(*it)) {
       mergedSum += *it;
     }
@@ -340,14 +340,13 @@ BENCHMARK(accessorBasicRefcounting, iters) {
   }
 }
 
-
 // Data For testing contention benchmark
 class ConcurrentAccessData {
  public:
-  explicit ConcurrentAccessData(int size) :
-    skipList_(SkipListType::create(10)),
-    sets_(FLAGS_num_sets), locks_(FLAGS_num_sets) {
-
+  explicit ConcurrentAccessData(int size)
+      : skipList_(SkipListType::create(10)),
+        sets_(FLAGS_num_sets),
+        locks_(FLAGS_num_sets) {
     for (int i = 0; i < size; ++i) {
       sets_[0].insert(i);
       skipList_.add(i);
@@ -371,8 +370,8 @@ class ConcurrentAccessData {
     }
 
     LOG(INFO) << "size=" << sets_[0].size()
-      << "; std::set memory size=" << setMemorySize
-      << "; csl memory size=" << cslMemorySize;
+              << "; std::set memory size=" << setMemorySize
+              << "; csl memory size=" << cslMemorySize;
 #endif
 
     readValues_.reserve(size);
@@ -391,7 +390,8 @@ class ConcurrentAccessData {
   }
 
   ~ConcurrentAccessData() {
-    FOR_EACH(lock, locks_) delete *lock;
+    FOR_EACH (lock, locks_)
+      delete *lock;
   }
 
   inline bool skipListFind(int /* idx */, ValueType val) {
@@ -439,7 +439,7 @@ class ConcurrentAccessData {
     }
     uint32_t h = folly::hash::twang_32from64(t * id);
     switch (h % 8) {
-      case 7:   // write
+      case 7: // write
         if ((h & 0x31) == 0) { // 1/4 chance to delete
           skipListErase(0, deleteValues_[t]);
         } else {
@@ -457,8 +457,8 @@ class ConcurrentAccessData {
     }
     uint32_t h = folly::hash::twang_32from64(t * id);
     int idx = (h % FLAGS_num_sets);
-    switch (h % 8) {  // 1/8 chance to write
-      case 7:   // write
+    switch (h % 8) { // 1/8 chance to write
+      case 7: // write
         if ((h & 0x31) == 0) { // 1/32 chance to delete
           setErase(idx, deleteValues_[t]);
         } else {
@@ -480,9 +480,9 @@ class ConcurrentAccessData {
   std::vector<ValueType> deleteValues_;
 };
 
-static std::map<int, std::shared_ptr<ConcurrentAccessData> > g_data;
+static std::map<int, std::shared_ptr<ConcurrentAccessData>> g_data;
 
-static ConcurrentAccessData *mayInitTestData(int size) {
+static ConcurrentAccessData* mayInitTestData(int size) {
   auto it = g_data.find(size);
   if (it == g_data.end()) {
     auto ptr = std::make_shared<ConcurrentAccessData>(size);
@@ -499,12 +499,10 @@ void BM_ContentionCSL(int iters, int size) {
   susp.dismiss();
 
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(std::thread(
-          &ConcurrentAccessData::runSkipList, data, i, iters));
+    threads.push_back(
+        std::thread(&ConcurrentAccessData::runSkipList, data, i, iters));
   }
-  FOR_EACH(t, threads) {
-    (*t).join();
-  }
+  FOR_EACH (t, threads) { (*t).join(); }
 }
 
 void BM_ContentionStdSet(int iters, int size) {
@@ -514,15 +512,12 @@ void BM_ContentionStdSet(int iters, int size) {
   susp.dismiss();
 
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(std::thread(
-          &ConcurrentAccessData::runSet, data, i, iters));
+    threads.push_back(
+        std::thread(&ConcurrentAccessData::runSet, data, i, iters));
   }
-  FOR_EACH(t, threads) {
-    (*t).join();
-  }
+  FOR_EACH (t, threads) { (*t).join(); }
   susp.rehire();
 }
-
 
 // Single-thread benchmarking
 
@@ -548,7 +543,6 @@ BENCHMARK_DRAW_LINE();
 BENCHMARK_PARAM(BM_SetContainsFound, 10000000)
 BENCHMARK_PARAM(BM_CSLContainsFound, 10000000)
 BENCHMARK_DRAW_LINE();
-
 
 // find with keys not in the set
 BENCHMARK_PARAM(BM_SetContainsNotFound, 1000)
@@ -587,7 +581,6 @@ BENCHMARK_PARAM(BM_SetMerge, 1000000)
 BENCHMARK_PARAM(BM_CSLMergeIntersection, 1000000)
 BENCHMARK_PARAM(BM_CSLMergeLookup, 1000000)
 BENCHMARK_DRAW_LINE();
-
 
 // multithreaded benchmarking
 

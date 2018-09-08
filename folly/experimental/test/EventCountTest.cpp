@@ -33,7 +33,7 @@ namespace {
 
 class Semaphore {
  public:
-  explicit Semaphore(int v=0) : value_(v) { }
+  explicit Semaphore(int v = 0) : value_(v) {}
 
   void down() {
     ec_.await([this] { return tryDown(); });
@@ -51,7 +51,7 @@ class Semaphore {
  private:
   bool tryDown() {
     for (int v = value_; v != 0;) {
-      if (value_.compare_exchange_weak(v, v-1)) {
+      if (value_.compare_exchange_weak(v, v - 1)) {
         return true;
       }
     }
@@ -63,8 +63,11 @@ class Semaphore {
 };
 
 template <class T, class Random>
-void randomPartition(Random& random, T key, int n,
-                     std::vector<std::pair<T, int>>& out) {
+void randomPartition(
+    Random& random,
+    T key,
+    int n,
+    std::vector<std::pair<T, int>>& out) {
   while (n != 0) {
     int m = std::min(n, 1000);
     std::uniform_int_distribution<uint32_t> u(1, m);
@@ -82,7 +85,7 @@ TEST(EventCount, Simple) {
 
   enum class Op {
     UP,
-    DOWN
+    DOWN,
   };
   std::vector<std::pair<Op, int>> ops;
   std::mt19937 rnd(randomNumberSeed());
@@ -102,14 +105,14 @@ TEST(EventCount, Simple) {
   for (auto& op : ops) {
     int n = op.second;
     if (op.first == Op::UP) {
-      auto fn = [&sem, n] () mutable {
+      auto fn = [&sem, n]() mutable {
         while (n--) {
           sem.up();
         }
       };
       threads.push_back(std::thread(fn));
     } else {
-      auto fn = [&sem, n] () mutable {
+      auto fn = [&sem, n]() mutable {
         while (n--) {
           sem.down();
         }

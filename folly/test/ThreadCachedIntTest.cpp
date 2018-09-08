@@ -201,12 +201,12 @@ ThreadCachedInt<int32_t> globalInt32(0, 11);
 ThreadCachedInt<int64_t> globalInt64(0, 11);
 int kNumInserts = 100000;
 DEFINE_int32(numThreads, 8, "Number simultaneous threads for benchmarks.");
-#define CREATE_INC_FUNC(size)                                       \
-  void incFunc ## size () {                                         \
-    const int num = kNumInserts / FLAGS_numThreads;                 \
-    for (int i = 0; i < num; ++i) {                                 \
-      ++globalInt ## size ;                                         \
-    }                                                               \
+#define CREATE_INC_FUNC(size)                       \
+  void incFunc##size() {                            \
+    const int num = kNumInserts / FLAGS_numThreads; \
+    for (int i = 0; i < num; ++i) {                 \
+      ++globalInt##size;                            \
+    }                                               \
   }
 CREATE_INC_FUNC(64)
 CREATE_INC_FUNC(32)
@@ -214,8 +214,9 @@ CREATE_INC_FUNC(32)
 // Confirms counts are accurate with competing threads
 TEST(ThreadCachedInt, MultiThreadedCached) {
   kNumInserts = 100000;
-  CHECK_EQ(0, kNumInserts % FLAGS_numThreads) <<
-    "FLAGS_numThreads must evenly divide kNumInserts (" << kNumInserts << ").";
+  CHECK_EQ(0, kNumInserts % FLAGS_numThreads)
+      << "FLAGS_numThreads must evenly divide kNumInserts (" << kNumInserts
+      << ").";
   const int numPerThread = kNumInserts / FLAGS_numThreads;
   ThreadCachedInt<int64_t> TCInt64(0, numPerThread - 2);
   {
@@ -224,11 +225,11 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
     std::vector<std::thread> threads;
     for (int i = 0; i < FLAGS_numThreads; ++i) {
       threads.push_back(std::thread([&] {
-        FOR_EACH_RANGE (k, 0, numPerThread) {
-          ++TCInt64;
-        }
+        FOR_EACH_RANGE (k, 0, numPerThread) { ++TCInt64; }
         std::atomic_fetch_add(&threadsDone, 1);
-        while (run.load()) { usleep(100); }
+        while (run.load()) {
+          usleep(100);
+        }
       }));
     }
 
@@ -238,7 +239,9 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
     otherTCInt64.set(33);
     ++otherTCInt64;
 
-    while (threadsDone.load() < FLAGS_numThreads) { usleep(100); }
+    while (threadsDone.load() < FLAGS_numThreads) {
+      usleep(100);
+    }
 
     ++otherTCInt64;
 
@@ -252,40 +255,40 @@ TEST(ThreadCachedInt, MultiThreadedCached) {
       t.join();
     }
 
-  }  // Caches are flushed when threads finish
+  } // Caches are flushed when threads finish
   EXPECT_EQ(kNumInserts, TCInt64.readFast());
 }
 
-#define MAKE_MT_CACHE_SIZE_BM(size)                             \
-  void BM_mt_cache_size ## size (int iters, int cacheSize) {    \
-    kNumInserts = iters;                                        \
-    globalInt ## size.set(0);                                   \
-    globalInt ## size.setCacheSize(cacheSize);                  \
-    std::vector<std::thread> threads;                           \
-    for (int i = 0; i < FLAGS_numThreads; ++i) {                \
-      threads.push_back(std::thread(incFunc ## size));          \
-    }                                                           \
-    for (auto& t : threads) {                                   \
-      t.join();                                                 \
-    }                                                           \
+#define MAKE_MT_CACHE_SIZE_BM(size)                       \
+  void BM_mt_cache_size##size(int iters, int cacheSize) { \
+    kNumInserts = iters;                                  \
+    globalInt##size.set(0);                               \
+    globalInt##size.setCacheSize(cacheSize);              \
+    std::vector<std::thread> threads;                     \
+    for (int i = 0; i < FLAGS_numThreads; ++i) {          \
+      threads.push_back(std::thread(incFunc##size));      \
+    }                                                     \
+    for (auto& t : threads) {                             \
+      t.join();                                           \
+    }                                                     \
   }
 MAKE_MT_CACHE_SIZE_BM(64)
 MAKE_MT_CACHE_SIZE_BM(32)
 
-#define REG_BASELINE(name, inc_stmt)                            \
-  BENCHMARK(FB_CONCATENATE(BM_mt_baseline_, name), iters) {     \
-    const int iterPerThread = iters / FLAGS_numThreads;         \
-    std::vector<std::thread> threads;                           \
-    for (int i = 0; i < FLAGS_numThreads; ++i) {                \
-      threads.push_back(std::thread([&]() {                     \
-            for (int j = 0; j < iterPerThread; ++j) {           \
-              inc_stmt;                                         \
-            }                                                   \
-          }));                                                  \
-    }                                                           \
-    for (auto& t : threads) {                                   \
-      t.join();                                                 \
-    }                                                           \
+#define REG_BASELINE(name, inc_stmt)                        \
+  BENCHMARK(FB_CONCATENATE(BM_mt_baseline_, name), iters) { \
+    const int iterPerThread = iters / FLAGS_numThreads;     \
+    std::vector<std::thread> threads;                       \
+    for (int i = 0; i < FLAGS_numThreads; ++i) {            \
+      threads.push_back(std::thread([&]() {                 \
+        for (int j = 0; j < iterPerThread; ++j) {           \
+          inc_stmt;                                         \
+        }                                                   \
+      }));                                                  \
+    }                                                       \
+    for (auto& t : threads) {                               \
+      t.join();                                             \
+    }                                                       \
   }
 
 ThreadLocal<int64_t> globalTL64Baseline;
@@ -383,8 +386,7 @@ int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
-    "bm_min_usec", "10000", gflags::SET_FLAG_IF_DEFAULT
-  );
+      "bm_min_usec", "10000", gflags::SET_FLAG_IF_DEFAULT);
   if (FLAGS_benchmark) {
     folly::runBenchmarks();
   }

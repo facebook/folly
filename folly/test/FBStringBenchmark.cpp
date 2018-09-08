@@ -48,18 +48,14 @@ template <class String>
 void randomString(String* toFill, size_t size = 1000) {
   assert(toFill);
   toFill->resize(size);
-  FOR_EACH (i, *toFill) {
-    *i = random('a', 'z');
-  }
+  FOR_EACH (i, *toFill) { *i = random('a', 'z'); }
 }
 
 template <class String>
 void randomBinaryString(String* toFill, size_t size = 1000) {
   assert(toFill);
   toFill->resize(size);
-  FOR_EACH (i, *toFill) {
-    *i = random('0', '1');
-  }
+  FOR_EACH (i, *toFill) { *i = random('0', '1'); }
 }
 
 template <class String, class Integral>
@@ -74,7 +70,7 @@ std::list<char> RandomList(unsigned int maxSize) {
   std::list<char>::iterator i = lst.begin();
   for (; i != lst.end(); ++i) {
     *i = random('a', 'z');
- }
+  }
   return lst;
 }
 

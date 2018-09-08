@@ -50,6 +50,8 @@
 namespace folly {
 namespace hash {
 
+// clang-format off
+
 class SpookyHashV1
 {
 public:
@@ -298,6 +300,8 @@ private:
     size_t m_length;                // total length of the input so far
     uint8_t  m_remainder;           // length of unhashed data stashed in m_data
 };
+
+// clang-format on
 
 } // namespace hash
 } // namespace folly

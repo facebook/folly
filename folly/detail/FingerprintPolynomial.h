@@ -61,7 +61,7 @@ class FingerprintPolynomial {
   void mulX() {
     CHECK_EQ(0u, val_[0] & (1ULL << 63));
     uint64_t b = 0;
-    for (int i = size()-1; i >= 0; i--) {
+    for (int i = size() - 1; i >= 0; i--) {
       uint64_t nb = val_[i] >> 63;
       val_[i] = (val_[i] << 1) | b;
       b = nb;
@@ -93,8 +93,8 @@ class FingerprintPolynomial {
   //   the binary representation of A, left shift by 1,
   //   XOR p if a_(k-1) == 1
   void mulXmod(const FingerprintPolynomial<DEG>& p) {
-    bool needXOR = (val_[0] & (1ULL<<63));
-    val_[0] &= ~(1ULL<<63);
+    bool needXOR = (val_[0] & (1ULL << 63));
+    val_[0] &= ~(1ULL << 63);
     mulX();
     if (needXOR) {
       add(p);
@@ -121,15 +121,16 @@ class FingerprintPolynomial {
   // If val is interpreted as polynomial of degree 7, then this sets *this
   // to val * X^(DEG-7)
   void setHigh8Bits(uint8_t val) {
-    val_[0] = ((uint64_t)val) << (64-8);
+    val_[0] = ((uint64_t)val) << (64 - 8);
     for (int i = 1; i < size(); i++) {
       val_[i] = 0;
     }
   }
 
   static constexpr int size() {
-    return 1 + DEG/64;
+    return 1 + DEG / 64;
   }
+
  private:
   // Internal representation: big endian
   // val_[0] contains the highest order coefficients, with bit 63 as the
@@ -137,7 +138,7 @@ class FingerprintPolynomial {
   //
   // If DEG+1 is not a multiple of 64,  val_[size()-1] only uses the highest
   // order (DEG+1)%64 bits (the others are always 0)
-  uint64_t val_[1 + DEG/64];
+  uint64_t val_[1 + DEG / 64];
 };
 
 } // namespace detail

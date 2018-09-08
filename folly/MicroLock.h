@@ -108,17 +108,22 @@ class MicroLockCore {
   inline uint32_t baseShift(unsigned slot) const;
   inline uint32_t heldBit(unsigned slot) const;
   inline uint32_t waitBit(unsigned slot) const;
-  static void lockSlowPath(uint32_t oldWord,
-                           detail::Futex<>* wordPtr,
-                           uint32_t slotHeldBit,
-                           unsigned maxSpins,
-                           unsigned maxYields);
+  static void lockSlowPath(
+      uint32_t oldWord,
+      detail::Futex<>* wordPtr,
+      uint32_t slotHeldBit,
+      unsigned maxSpins,
+      unsigned maxYields);
 
  public:
   inline void unlock(unsigned slot) NO_SANITIZE_ADDRESS;
-  inline void unlock() { unlock(0); }
+  inline void unlock() {
+    unlock(0);
+  }
   // Initializes all the slots.
-  inline void init() { lock_ = 0; }
+  inline void init() {
+    lock_ = 0;
+  }
 };
 
 inline detail::Futex<>* MicroLockCore::word() const {
@@ -165,14 +170,17 @@ template <unsigned MaxSpins = 1000, unsigned MaxYields = 0>
 class MicroLockBase : public MicroLockCore {
  public:
   inline void lock(unsigned slot) NO_SANITIZE_ADDRESS;
-  inline void lock() { lock(0); }
+  inline void lock() {
+    lock(0);
+  }
   inline bool try_lock(unsigned slot) NO_SANITIZE_ADDRESS;
-  inline bool try_lock() { return try_lock(0); }
+  inline bool try_lock() {
+    return try_lock(0);
+  }
 };
 
 template <unsigned MaxSpins, unsigned MaxYields>
 bool MicroLockBase<MaxSpins, MaxYields>::try_lock(unsigned slot) {
-
   // N.B. You might think that try_lock is just the fast path of lock,
   // but you'd be wrong.  Keep in mind that other parts of our host
   // word might be changing while we take the lock!  We're not allowed
@@ -189,27 +197,28 @@ bool MicroLockBase<MaxSpins, MaxYields>::try_lock(unsigned slot) {
     if (oldWord & heldBit(slot)) {
       return false;
     }
-  } while (!wordPtr->compare_exchange_weak(oldWord,
-                                           oldWord | heldBit(slot),
-                                           std::memory_order_acquire,
-                                           std::memory_order_relaxed));
+  } while (!wordPtr->compare_exchange_weak(
+      oldWord,
+      oldWord | heldBit(slot),
+      std::memory_order_acquire,
+      std::memory_order_relaxed));
 
   return true;
 }
 
 template <unsigned MaxSpins, unsigned MaxYields>
 void MicroLockBase<MaxSpins, MaxYields>::lock(unsigned slot) {
-
   static_assert(MaxSpins + MaxYields < (unsigned)-1, "overflow");
 
   detail::Futex<>* wordPtr = word();
   uint32_t oldWord;
   oldWord = wordPtr->load(std::memory_order_relaxed);
   if ((oldWord & heldBit(slot)) == 0 &&
-      wordPtr->compare_exchange_weak(oldWord,
-                                     oldWord | heldBit(slot),
-                                     std::memory_order_acquire,
-                                     std::memory_order_relaxed)) {
+      wordPtr->compare_exchange_weak(
+          oldWord,
+          oldWord | heldBit(slot),
+          std::memory_order_acquire,
+          std::memory_order_relaxed)) {
     // Fast uncontended case: memory_order_acquire above is our barrier
   } else {
     // lockSlowPath doesn't have any slot-dependent computation; it

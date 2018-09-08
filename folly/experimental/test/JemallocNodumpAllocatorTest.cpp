@@ -54,7 +54,7 @@ TEST(JemallocNodumpAllocatorTest, IOBuf) {
   for (auto i = 0u; i < ioBuf.capacity(); ++i) {
     data[i] = 'A';
   }
-  uint8_t* p = static_cast<uint8_t*> (ptr);
+  uint8_t* p = static_cast<uint8_t*>(ptr);
   for (auto i = 0u; i < size; ++i) {
     EXPECT_EQ('A', p[i]);
   }

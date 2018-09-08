@@ -24,8 +24,11 @@
 #include <folly/Benchmark.h>
 #include <folly/portability/GFlags.h>
 
-DEFINE_int32(num_threads, 32, "Number of threads to run concurrency "
-                              "benchmarks");
+DEFINE_int32(
+    num_threads,
+    32,
+    "Number of threads to run concurrency "
+    "benchmarks");
 
 /*
  * Use case 1: Library wraps errors in either exception_wrapper or
@@ -58,7 +61,8 @@ BENCHMARK(exception_ptr_create_and_test_concurrent, iters) {
   BENCHMARK_SUSPEND {
     for (int t = 0; t < FLAGS_num_threads; ++t) {
       threads.emplace_back([&go, iters] {
-        while (!go) { }
+        while (!go) {
+        }
         std::runtime_error e("payload");
         for (size_t i = 0; i < iters; ++i) {
           auto ep = std::make_exception_ptr(e);
@@ -80,7 +84,8 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_test_concurrent, iters) {
   BENCHMARK_SUSPEND {
     for (int t = 0; t < FLAGS_num_threads; ++t) {
       threads.emplace_back([&go, iters] {
-        while (!go) { }
+        while (!go) {
+        }
         std::runtime_error e("payload");
         for (size_t i = 0; i < iters; ++i) {
           auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
@@ -142,7 +147,8 @@ BENCHMARK(exception_ptr_create_and_throw_concurrent, iters) {
   BENCHMARK_SUSPEND {
     for (int t = 0; t < FLAGS_num_threads; ++t) {
       threads.emplace_back([&go, iters] {
-        while (!go) { }
+        while (!go) {
+        }
         std::runtime_error e("payload");
         for (size_t i = 0; i < iters; ++i) {
           auto ep = std::make_exception_ptr(e);
@@ -166,7 +172,8 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_throw_concurrent, iters) {
   BENCHMARK_SUSPEND {
     for (int t = 0; t < FLAGS_num_threads; ++t) {
       threads.emplace_back([&go, iters] {
-        while (!go) { }
+        while (!go) {
+        }
         std::runtime_error e("payload");
         for (size_t i = 0; i < iters; ++i) {
           auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
@@ -190,7 +197,8 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_cast_concurrent, iters) {
   BENCHMARK_SUSPEND {
     for (int t = 0; t < FLAGS_num_threads; ++t) {
       threads.emplace_back([&go, iters] {
-        while (!go) { }
+        while (!go) {
+        }
         std::runtime_error e("payload");
         for (size_t i = 0; i < iters; ++i) {
           auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
@@ -206,7 +214,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_cast_concurrent, iters) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;

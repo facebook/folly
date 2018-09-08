@@ -603,9 +603,7 @@ TEST(Function, CaptureCopyMoveCount) {
   EXPECT_EQ(1, cmt.refCount());
 
   // Move into lambda, move lambda into Function
-  auto lambda1 = [cmt = std::move(cmt)]() {
-    return cmt.moveCount();
-  };
+  auto lambda1 = [cmt = std::move(cmt)]() { return cmt.moveCount(); };
   Function<size_t(void)> uf1 = std::move(lambda1);
 
   // Max copies: 0. Max copy+moves: 2.
@@ -615,9 +613,7 @@ TEST(Function, CaptureCopyMoveCount) {
   cmt.resetCounters();
 
   // Move into lambda, copy lambda into Function
-  auto lambda2 = [cmt = std::move(cmt)]() {
-    return cmt.moveCount();
-  };
+  auto lambda2 = [cmt = std::move(cmt)]() { return cmt.moveCount(); };
   Function<size_t(void)> uf2 = lambda2;
 
   // Max copies: 1. Max copy+moves: 2.
@@ -901,7 +897,8 @@ TEST(Function, asStdFunction_void) {
   int i = 0;
   folly::Function<void()> f = [&] { ++i; };
   auto sf = std::move(f).asStdFunction();
-  static_assert(std::is_same<decltype(sf), std::function<void()>>::value,
+  static_assert(
+      std::is_same<decltype(sf), std::function<void()>>::value,
       "std::function has wrong type");
   sf();
   EXPECT_EQ(1, i);
@@ -911,7 +908,8 @@ TEST(Function, asStdFunction_void_const) {
   int i = 0;
   folly::Function<void() const> f = [&] { ++i; };
   auto sf = std::move(f).asStdFunction();
-  static_assert(std::is_same<decltype(sf), std::function<void()>>::value,
+  static_assert(
+      std::is_same<decltype(sf), std::function<void()>>::value,
       "std::function has wrong type");
   sf();
   EXPECT_EQ(1, i);
@@ -924,7 +922,8 @@ TEST(Function, asStdFunction_return) {
     return 42;
   };
   auto sf = std::move(f).asStdFunction();
-  static_assert(std::is_same<decltype(sf), std::function<int()>>::value,
+  static_assert(
+      std::is_same<decltype(sf), std::function<int()>>::value,
       "std::function has wrong type");
   EXPECT_EQ(42, sf());
   EXPECT_EQ(1, i);
@@ -937,7 +936,8 @@ TEST(Function, asStdFunction_return_const) {
     return 42;
   };
   auto sf = std::move(f).asStdFunction();
-  static_assert(std::is_same<decltype(sf), std::function<int()>>::value,
+  static_assert(
+      std::is_same<decltype(sf), std::function<int()>>::value,
       "std::function has wrong type");
   EXPECT_EQ(42, sf());
   EXPECT_EQ(1, i);
@@ -950,7 +950,8 @@ TEST(Function, asStdFunction_args) {
     return x + y;
   };
   auto sf = std::move(f).asStdFunction();
-  static_assert(std::is_same<decltype(sf), std::function<void(int, int)>>::value,
+  static_assert(
+      std::is_same<decltype(sf), std::function<void(int, int)>>::value,
       "std::function has wrong type");
   sf(42, 42);
   EXPECT_EQ(1, i);
@@ -963,7 +964,8 @@ TEST(Function, asStdFunction_args_const) {
     return x + y;
   };
   auto sf = std::move(f).asStdFunction();
-  static_assert(std::is_same<decltype(sf), std::function<void(int, int)>>::value,
+  static_assert(
+      std::is_same<decltype(sf), std::function<void(int, int)>>::value,
       "std::function has wrong type");
   sf(42, 42);
   EXPECT_EQ(1, i);
@@ -1143,8 +1145,8 @@ TEST(Function, CtorWithCopy) {
     Y& operator=(Y&&) = default;
     Y& operator=(Y const&) = default;
   };
-  auto lx = [x = X()]{};
-  auto ly = [y = Y()]{};
+  auto lx = [x = X()] {};
+  auto ly = [y = Y()] {};
   EXPECT_TRUE(noexcept(Function<void()>(lx)));
   EXPECT_FALSE(noexcept(Function<void()>(ly)));
 }

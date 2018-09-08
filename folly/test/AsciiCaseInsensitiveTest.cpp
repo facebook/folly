@@ -25,7 +25,7 @@ using namespace folly;
 
 TEST(CaseInsensitiveMatch, CompareWithLegacy) {
   AsciiCaseInsensitive cmp;
-  for (int i=0; i<(1<<8); i++) {
+  for (int i = 0; i < (1 << 8); i++) {
     EXPECT_TRUE(cmp(tolower(i), toupper(i)));
     EXPECT_TRUE(cmp(toupper(i), tolower(i)));
   }

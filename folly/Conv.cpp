@@ -50,28 +50,34 @@ struct MaxString {
   static const char* const value;
 };
 
-template <> const char *const MaxString<uint8_t>::value = "255";
-template <> const char *const MaxString<uint16_t>::value = "65535";
-template <> const char *const MaxString<uint32_t>::value = "4294967295";
+template <>
+const char* const MaxString<uint8_t>::value = "255";
+template <>
+const char* const MaxString<uint16_t>::value = "65535";
+template <>
+const char* const MaxString<uint32_t>::value = "4294967295";
 #if __SIZEOF_LONG__ == 4
-template <> const char *const MaxString<unsigned long>::value =
-  "4294967295";
+template <>
+const char* const MaxString<unsigned long>::value = "4294967295";
 #else
-template <> const char *const MaxString<unsigned long>::value =
-  "18446744073709551615";
+template <>
+const char* const MaxString<unsigned long>::value = "18446744073709551615";
 #endif
-static_assert(sizeof(unsigned long) >= 4,
-              "Wrong value for MaxString<unsigned long>::value,"
-              " please update.");
-template <> const char *const MaxString<unsigned long long>::value =
-  "18446744073709551615";
-static_assert(sizeof(unsigned long long) >= 8,
-              "Wrong value for MaxString<unsigned long long>::value"
-              ", please update.");
+static_assert(
+    sizeof(unsigned long) >= 4,
+    "Wrong value for MaxString<unsigned long>::value,"
+    " please update.");
+template <>
+const char* const MaxString<unsigned long long>::value = "18446744073709551615";
+static_assert(
+    sizeof(unsigned long long) >= 8,
+    "Wrong value for MaxString<unsigned long long>::value"
+    ", please update.");
 
 #if FOLLY_HAVE_INT128_T
-template <> const char *const MaxString<__uint128_t>::value =
-  "340282366920938463463374607431768211455";
+template <>
+const char* const MaxString<__uint128_t>::value =
+    "340282366920938463463374607431768211455";
 #endif
 
 /*
@@ -87,119 +93,119 @@ template <> const char *const MaxString<__uint128_t>::value =
 constexpr int32_t OOR = 10000;
 
 alignas(16) constexpr uint16_t shift1[] = {
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
-  1, 2, 3, 4, 5, 6, 7, 8, 9, OOR, OOR,
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
-  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 0-9
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  10
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  20
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  30
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,   1, //  40
+    2,   3,   4,   5,   6,   7,   8,   9,   OOR, OOR,
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  60
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  70
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  80
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  90
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 100
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 110
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 120
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 130
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 140
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 150
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 160
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 170
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 180
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 190
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 200
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 210
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 220
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 230
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 240
+    OOR, OOR, OOR, OOR, OOR, OOR // 250
 };
 
 alignas(16) constexpr uint16_t shift10[] = {
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
-  10, 20, 30, 40, 50, 60, 70, 80, 90, OOR, OOR,
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
-  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 0-9
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  10
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  20
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  30
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,   10, //  40
+    20,  30,  40,  50,  60,  70,  80,  90,  OOR, OOR,
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  60
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  70
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  80
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  90
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 100
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 110
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 120
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 130
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 140
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 150
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 160
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 170
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 180
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 190
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 200
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 210
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 220
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 230
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 240
+    OOR, OOR, OOR, OOR, OOR, OOR // 250
 };
 
 alignas(16) constexpr uint16_t shift100[] = {
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
-  100, 200, 300, 400, 500, 600, 700, 800, 900, OOR, OOR,
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
-  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 0-9
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  10
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  20
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  30
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,   100, //  40
+    200, 300, 400, 500, 600, 700, 800, 900, OOR, OOR,
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  60
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  70
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  80
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, //  90
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 100
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 110
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 120
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 130
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 140
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 150
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 160
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 170
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 180
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 190
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 200
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 210
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 220
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 230
+    OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, // 240
+    OOR, OOR, OOR, OOR, OOR, OOR // 250
 };
 
 alignas(16) constexpr uint16_t shift1000[] = {
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
-  1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, OOR, OOR,
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
-  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
-  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 0-9
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, //  10
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, //  20
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, //  30
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  0,   1000, //  40
+    2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, OOR, OOR,
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, //  60
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, //  70
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, //  80
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, //  90
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 100
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 110
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 120
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 130
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 140
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 150
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 160
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 170
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 180
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 190
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 200
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 210
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 220
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 230
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR,  OOR, OOR, // 240
+    OOR,  OOR,  OOR,  OOR,  OOR,  OOR // 250
 };
 
 struct ErrorString {
@@ -286,7 +292,7 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
     case 'Y':
       result = true;
       if (!bool_str_cmp(&b, len, "yes")) {
-        ++b;  // accept the single 'y' character
+        ++b; // accept the single 'y' character
       }
       break;
     case 'n':
@@ -336,22 +342,24 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
 template <class Tgt>
 Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
   using namespace double_conversion;
-  static StringToDoubleConverter
-    conv(StringToDoubleConverter::ALLOW_TRAILING_JUNK
-         | StringToDoubleConverter::ALLOW_LEADING_SPACES,
-         0.0,
-         // return this for junk input string
-         std::numeric_limits<double>::quiet_NaN(),
-         nullptr, nullptr);
+  static StringToDoubleConverter conv(
+      StringToDoubleConverter::ALLOW_TRAILING_JUNK |
+          StringToDoubleConverter::ALLOW_LEADING_SPACES,
+      0.0,
+      // return this for junk input string
+      std::numeric_limits<double>::quiet_NaN(),
+      nullptr,
+      nullptr);
 
   if (src->empty()) {
     return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
   }
 
   int length;
-  auto result = conv.StringToDouble(src->data(),
-                                    static_cast<int>(src->size()),
-                                    &length); // processed char count
+  auto result = conv.StringToDouble(
+      src->data(),
+      static_cast<int>(src->size()),
+      &length); // processed char count
 
   if (!std::isnan(result)) {
     // If we get here with length = 0, the input string is empty.
@@ -579,41 +587,41 @@ inline Expected<Tgt, ConversionCode> digits_to(
   }
 
   switch (e - b) {
-  case 3: {
-    const int32_t r0 = shift100[static_cast<size_t>(b[0])];
-    const int32_t r1 = shift10[static_cast<size_t>(b[1])];
-    const int32_t r2 = shift1[static_cast<size_t>(b[2])];
-    const auto sum = r0 + r1 + r2;
-    if (sum >= OOR) {
-      goto outOfRange;
+    case 3: {
+      const int32_t r0 = shift100[static_cast<size_t>(b[0])];
+      const int32_t r1 = shift10[static_cast<size_t>(b[1])];
+      const int32_t r2 = shift1[static_cast<size_t>(b[2])];
+      const auto sum = r0 + r1 + r2;
+      if (sum >= OOR) {
+        goto outOfRange;
+      }
+      result = UT(1000 * result + sum);
+      break;
     }
-    result = UT(1000 * result + sum);
-    break;
-  }
-  case 2: {
-    const int32_t r0 = shift10[static_cast<size_t>(b[0])];
-    const int32_t r1 = shift1[static_cast<size_t>(b[1])];
-    const auto sum = r0 + r1;
-    if (sum >= OOR) {
-      goto outOfRange;
+    case 2: {
+      const int32_t r0 = shift10[static_cast<size_t>(b[0])];
+      const int32_t r1 = shift1[static_cast<size_t>(b[1])];
+      const auto sum = r0 + r1;
+      if (sum >= OOR) {
+        goto outOfRange;
+      }
+      result = UT(100 * result + sum);
+      break;
     }
-    result = UT(100 * result + sum);
-    break;
-  }
-  case 1: {
-    const int32_t sum = shift1[static_cast<size_t>(b[0])];
-    if (sum >= OOR) {
-      goto outOfRange;
+    case 1: {
+      const int32_t sum = shift1[static_cast<size_t>(b[0])];
+      if (sum >= OOR) {
+        goto outOfRange;
+      }
+      result = UT(10 * result + sum);
+      break;
     }
-    result = UT(10 * result + sum);
-    break;
-  }
-  default:
-    assert(b == e);
-    if (size == 0) {
-      return makeUnexpected(ConversionCode::NO_DIGITS);
-    }
-    break;
+    default:
+      assert(b == e);
+      if (size == 0) {
+        return makeUnexpected(ConversionCode::NO_DIGITS);
+      }
+      break;
   }
 
   return sgn.finalize(result);

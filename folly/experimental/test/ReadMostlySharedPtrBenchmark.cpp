@@ -36,17 +36,17 @@ void benchmark(size_t n) {
 
   for (size_t t = 0; t < threadCount; ++t) {
     ts.emplace_back([&]() {
-        WeakPtr<int> weakPtr(mainPtr);
-        // Prevent the compiler from hoisting code out of the loop.
-        auto op = [&]() FOLLY_NOINLINE { weakPtr.lock(); };
+      WeakPtr<int> weakPtr(mainPtr);
+      // Prevent the compiler from hoisting code out of the loop.
+      auto op = [&]() FOLLY_NOINLINE { weakPtr.lock(); };
 
-        for (size_t i = 0; i < n; ++i) {
-          op();
-        }
-      });
+      for (size_t i = 0; i < n; ++i) {
+        op();
+      }
+    });
   }
 
-  for (auto& t: ts) {
+  for (auto& t : ts) {
     t.join();
   }
 }
@@ -59,7 +59,6 @@ template <typename T>
 using TLMainPtr = folly::ReadMostlyMainPtr<T, folly::TLRefCount>;
 template <typename T>
 using TLWeakPtr = folly::ReadMostlyWeakPtr<T, folly::TLRefCount>;
-
 
 BENCHMARK(WeakPtrOneThread, n) {
   benchmark<std::shared_ptr, std::weak_ptr, 1>(n);
@@ -88,8 +87,7 @@ BENCHMARK(TLReadMostlyWeakPtrFourThreads, n) {
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   gflags::SetCommandLineOptionWithMode(
-    "bm_min_usec", "100000", gflags::SET_FLAG_IF_DEFAULT
-  );
+      "bm_min_usec", "100000", gflags::SET_FLAG_IF_DEFAULT);
 
   folly::runBenchmarks();
 

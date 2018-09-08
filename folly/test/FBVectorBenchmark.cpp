@@ -110,6 +110,7 @@ int main(int argc, char** argv) {
   return 0;
 }
 
+// clang-format off
 /*
 ============================================================================
 buck-out/opt/gen/folly/test/fbvector_benchmark#gcc-5-glibc-2.23,private-headers/folly/test/FBVectorBenchmarks.cpp.hrelative  time/iter  iters/s
@@ -380,3 +381,4 @@ BM_pushBack_FBStringFBVector(102400)                         3.17ns  315.07M
 BM_pushBack_FBStringFBVector(1024000)                       25.88ns   38.65M
 ============================================================================
 */
+// clang-format on

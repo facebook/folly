@@ -36,6 +36,8 @@
 namespace folly {
 namespace hash {
 
+// clang-format off
+
 //
 // short hash ... it could be used on any message,
 // but it's used by Spooky just for short messages.
@@ -383,6 +385,8 @@ void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2) const
     *hash1 = h0;
     *hash2 = h1;
 }
+
+// clang-format on
 
 } // namespace hash
 } // namespace folly

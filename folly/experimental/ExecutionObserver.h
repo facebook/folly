@@ -24,7 +24,7 @@ namespace folly {
  */
 class ExecutionObserver {
  public:
-  virtual ~ExecutionObserver() { }
+  virtual ~ExecutionObserver() {}
 
   /**
    * Called when a task is about to start executing.

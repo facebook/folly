@@ -33,19 +33,21 @@ namespace detail {
 
 std::vector<uint8_t> randomBytes(size_t n) {
   std::vector<uint8_t> ret(n);
-  std::default_random_engine rng(1729);  // Deterministic seed.
+  std::default_random_engine rng(1729); // Deterministic seed.
   std::uniform_int_distribution<uint16_t> dist(0, 255);
-  std::generate(ret.begin(), ret.end(), [&] () { return dist(rng); });
+  std::generate(ret.begin(), ret.end(), [&]() { return dist(rng); });
   return ret;
 }
 
-std::vector<uint8_t> benchData = randomBytes(1 << 20);  // 1MiB, fits in cache.
+std::vector<uint8_t> benchData = randomBytes(1 << 20); // 1MiB, fits in cache.
 
 template <class Hasher>
 void bmHasher(Hasher hasher, size_t k, size_t iters) {
   CHECK_LE(k, benchData.size());
   for (size_t i = 0, pos = 0; i < iters; ++i, ++pos) {
-    if (pos == benchData.size() - k + 1) { pos = 0; }
+    if (pos == benchData.size() - k + 1) {
+      pos = 0;
+    }
     folly::doNotOptimizeAway(hasher(benchData.data() + pos, k));
   }
 }
@@ -56,17 +58,16 @@ void addHashBenchmark(const std::string& name) {
 
   for (size_t i = 0; i < 16; ++i) {
     auto k = size_t(1) << i;
-    names.emplace_back(folly::sformat("{}: k=2^{}",name, i));
-    folly::addBenchmark(__FILE__, names.back().c_str(),
-                        [=] (unsigned iters) {
-                          Hasher hasher;
-                          bmHasher(hasher, k, iters);
-                          return iters;
-                        });
+    names.emplace_back(folly::sformat("{}: k=2^{}", name, i));
+    folly::addBenchmark(__FILE__, names.back().c_str(), [=](unsigned iters) {
+      Hasher hasher;
+      bmHasher(hasher, k, iters);
+      return iters;
+    });
   }
 
   /* Draw line. */
-  folly::addBenchmark(__FILE__, "-", [] () { return 0; });
+  folly::addBenchmark(__FILE__, "-", []() { return 0; });
 }
 
 struct SpookyHashV2 {
@@ -87,7 +88,7 @@ int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  std::deque<std::string> names;  // Backing for benchmark names.
+  std::deque<std::string> names; // Backing for benchmark names.
 
 #define BENCHMARK_HASH(HASHER) \
   detail::addHashBenchmark<detail::HASHER>(FB_STRINGIZE(HASHER));

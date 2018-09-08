@@ -38,8 +38,7 @@ template <
     class Value,
     class Compare = std::less<StringPiece>,
     class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
-class StringKeyedMap
-    : private std::map<StringPiece, Value, Compare, Alloc> {
+class StringKeyedMap : private std::map<StringPiece, Value, Compare, Alloc> {
  private:
   using Base = std::map<StringPiece, Value, Compare, Alloc>;
 
@@ -65,20 +64,18 @@ class StringKeyedMap
   // Ctors in the same order as
   // http://cplusplus.com/reference/map/map/map/
   explicit StringKeyedMap(
-    const key_compare& comp = key_compare(),
-    const allocator_type& alloc = allocator_type())
-      : Base(comp, alloc) {
-  }
+      const key_compare& comp = key_compare(),
+      const allocator_type& alloc = allocator_type())
+      : Base(comp, alloc) {}
 
-  explicit StringKeyedMap(const allocator_type& alloc)
-      : Base(alloc) {
-  }
+  explicit StringKeyedMap(const allocator_type& alloc) : Base(alloc) {}
 
   template <class InputIterator>
   explicit StringKeyedMap(
-    InputIterator b, InputIterator e,
-    const key_compare& comp = key_compare(),
-    const allocator_type& alloc = allocator_type())
+      InputIterator b,
+      InputIterator e,
+      const key_compare& comp = key_compare(),
+      const allocator_type& alloc = allocator_type())
       : Base(comp, alloc) {
     for (; b != e; ++b) {
       // emplace() will carry the duplication
@@ -87,25 +84,21 @@ class StringKeyedMap
   }
 
   StringKeyedMap(const StringKeyedMap& rhs)
-      : StringKeyedMap(rhs, rhs.get_allocator()) {
-  }
+      : StringKeyedMap(rhs, rhs.get_allocator()) {}
 
   StringKeyedMap(const StringKeyedMap& rhs, const allocator_type& a)
-      : StringKeyedMap(rhs.begin(), rhs.end(), rhs.key_comp(), a) {
-  }
+      : StringKeyedMap(rhs.begin(), rhs.end(), rhs.key_comp(), a) {}
 
-  StringKeyedMap(StringKeyedMap&& other) noexcept
-    : Base(std::move(other)) {
-  }
+  StringKeyedMap(StringKeyedMap&& other) noexcept : Base(std::move(other)) {}
 
   StringKeyedMap(StringKeyedMap&& other, const allocator_type& /* a */) noexcept
       : Base(std::move(other) /*, a*/ /* not supported by gcc */) {}
 
-  StringKeyedMap(std::initializer_list<value_type> il,
-     const key_compare& comp = key_compare(),
-     const allocator_type& alloc = allocator_type())
-      : StringKeyedMap(il.begin(), il.end(), comp, alloc) {
-  }
+  StringKeyedMap(
+      std::initializer_list<value_type> il,
+      const key_compare& comp = key_compare(),
+      const allocator_type& alloc = allocator_type())
+      : StringKeyedMap(il.begin(), il.end(), comp, alloc) {}
 
   StringKeyedMap& operator=(const StringKeyedMap& other) & {
     if (this == &other) {
@@ -121,17 +114,17 @@ class StringKeyedMap
     return *this;
   }
 
-  using Base::empty;
-  using Base::size;
-  using Base::max_size;
   using Base::begin;
-  using Base::end;
-  using Base::rbegin;
-  using Base::rend;
   using Base::cbegin;
   using Base::cend;
   using Base::crbegin;
   using Base::crend;
+  using Base::empty;
+  using Base::end;
+  using Base::max_size;
+  using Base::rbegin;
+  using Base::rend;
+  using Base::size;
 
   bool operator==(StringKeyedMap const& other) const {
     Base const& lhs = *this;
@@ -151,8 +144,8 @@ class StringKeyedMap
   }
 
   using Base::at;
-  using Base::find;
   using Base::count;
+  using Base::find;
   using Base::lower_bound;
   using Base::upper_bound;
 
@@ -162,8 +155,8 @@ class StringKeyedMap
     if (it != end()) {
       return {it, false};
     }
-    return Base::emplace(stringPieceDup(key, get_allocator()),
-                         std::forward<Args>(args)...);
+    return Base::emplace(
+        stringPieceDup(key, get_allocator()), std::forward<Args>(args)...);
   }
 
   std::pair<iterator, bool> insert(value_type val) {
@@ -171,9 +164,8 @@ class StringKeyedMap
     if (it != end()) {
       return {it, false};
     }
-    return Base::insert(
-      std::make_pair(stringPieceDup(val.first, get_allocator()),
-                     std::move(val.second)));
+    return Base::insert(std::make_pair(
+        stringPieceDup(val.first, get_allocator()), std::move(val.second)));
   }
 
   iterator erase(const_iterator position) {

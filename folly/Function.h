@@ -635,7 +635,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
       typename = detail::function::EnableIfNotFunction<Fun>,
       typename = typename Traits::template ResultOf<Fun>>
   /* implicit */ Function(Fun fun) noexcept(
-      IsSmall<Fun>::value && noexcept(Fun(std::declval<Fun>())))
+      IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>())))
       : Function(std::move(fun), IsSmall<Fun>{}) {}
 
   /**
@@ -679,7 +679,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 #if __OBJC__
   // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
-  /* implicit */ Function &operator=(ReturnType (^objCBlock)(Args... args)) {
+  /* implicit */ Function& operator=(ReturnType (^objCBlock)(Args... args)) {
     (*this) = [blockCopy = (ReturnType (^)(Args...))[objCBlock copy]](
                   Args... args) { return blockCopy(args...); };
     return *this;

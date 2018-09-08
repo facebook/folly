@@ -25,7 +25,7 @@ namespace folly {
 
 enum class ProgramOptionsStyle {
   GFLAGS,
-  GNU
+  GNU,
 };
 
 // Add all GFlags to the given options_description.
@@ -66,16 +66,17 @@ boost::program_options::options_description getGFlags(
 //
 // You may pass "rest" to parseNestedCommandLine again, etc.
 struct NestedCommandLineParseResult {
-  NestedCommandLineParseResult() { }
+  NestedCommandLineParseResult() {}
 
-  boost::program_options::parsed_options options {nullptr};
+  boost::program_options::parsed_options options{nullptr};
 
   Optional<std::string> command;
   std::vector<std::string> rest;
 };
 
 NestedCommandLineParseResult parseNestedCommandLine(
-    int argc, const char* const argv[],
+    int argc,
+    const char* const argv[],
     const boost::program_options::options_description& desc);
 
 NestedCommandLineParseResult parseNestedCommandLine(

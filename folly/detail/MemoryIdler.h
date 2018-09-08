@@ -25,7 +25,8 @@
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/system/ThreadId.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 /// MemoryIdler provides helper routines that allow routines to return
 /// some assigned memory resources back to the system.  The intended
@@ -35,12 +36,10 @@ namespace folly { namespace detail {
 /// tcmalloc use these for better performance) and unmap the stack pages
 /// that contain no useful data.
 struct MemoryIdler {
-
   /// Returns memory from thread-local allocation pools to the global
   /// pool, if we know how to for the current malloc implementation.
   /// jemalloc is supported.
   static void flushLocalMallocCaches();
-
 
   enum {
     /// This value is a tradeoff between reclaiming memory and triggering
@@ -56,7 +55,6 @@ struct MemoryIdler {
   /// currently doesn't hold any data, trying to ensure that no page
   /// faults will occur during the next retain bytes of stack allocation
   static void unmapUnusedStack(size_t retain = kDefaultStackToRetain);
-
 
   /// The system-wide default for the amount of time a blocking
   /// thread should wait before reclaiming idle memory.  Set this to

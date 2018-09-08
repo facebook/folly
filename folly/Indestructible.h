@@ -59,7 +59,6 @@ namespace folly {
 
 template <typename T>
 class Indestructible final {
-
  public:
   template <typename S = T, typename = decltype(S())>
   constexpr Indestructible() noexcept(noexcept(T())) {}
@@ -140,10 +139,18 @@ class Indestructible final {
     check();
     return &storage_.value;
   }
-  T& operator*() noexcept { return *get(); }
-  T const& operator*() const noexcept { return *get(); }
-  T* operator->() noexcept { return get(); }
-  T const* operator->() const noexcept { return get(); }
+  T& operator*() noexcept {
+    return *get();
+  }
+  T const& operator*() const noexcept {
+    return *get();
+  }
+  T* operator->() noexcept {
+    return get();
+  }
+  T const* operator->() const noexcept {
+    return get();
+  }
 
  private:
   void check() const noexcept {

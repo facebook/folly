@@ -72,7 +72,7 @@ void basicTest() {
     ++got0;
   }
 
-  for (auto& t: ts) {
+  for (auto& t : ts) {
     t.join();
   }
 

@@ -52,7 +52,7 @@ class TLRefCount {
       if (value == 0) {
         return 0;
       }
-    } while (!globalCount_.compare_exchange_weak(value, value+1));
+    } while (!globalCount_.compare_exchange_weak(value, value + 1));
 
     return value + 1;
   }
@@ -130,13 +130,12 @@ class TLRefCount {
   enum class State {
     LOCAL,
     GLOBAL_TRANSITION,
-    GLOBAL
+    GLOBAL,
   };
 
   class LocalRefCount {
    public:
-    explicit LocalRefCount(TLRefCount& refCount) :
-        refCount_(refCount) {
+    explicit LocalRefCount(TLRefCount& refCount) : refCount_(refCount) {
       std::lock_guard<std::mutex> lg(refCount.globalMutex_);
 
       collectGuard_ = refCount.collectGuard_;

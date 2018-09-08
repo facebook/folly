@@ -1702,7 +1702,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
                *SYNCHRONIZED_VAR(lockedPtr).operator->();             \
            !SYNCHRONIZED_VAR(state);                                  \
            SYNCHRONIZED_VAR(state) = true)                            \
-  FOLLY_POP_WARNING
+    FOLLY_POP_WARNING
 
 #define TIMED_SYNCHRONIZED(timeout, ...)                                       \
   if (bool SYNCHRONIZED_VAR(state) = false) {                                  \

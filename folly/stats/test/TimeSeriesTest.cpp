@@ -27,10 +27,10 @@
 #include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 
-using std::chrono::seconds;
+using folly::BucketedTimeSeries;
 using std::string;
 using std::vector;
-using folly::BucketedTimeSeries;
+using std::chrono::seconds;
 
 using Bucket = folly::detail::Bucket<int64_t>;
 using StatsClock = folly::LegacyStatsClock<std::chrono::seconds>;
@@ -1071,7 +1071,18 @@ TEST(MinuteHourTimeSeries, QueryByInterval) {
   };
 
   int expectedCounts[12] = {
-      60, 3600, 7200, 3540, 7140, 3600, 30, 3000, 7180, 2000, 6200, 3600,
+      60,
+      3600,
+      7200,
+      3540,
+      7140,
+      3600,
+      30,
+      3000,
+      7180,
+      2000,
+      6200,
+      3600,
   };
 
   for (int i = 0; i < 12; ++i) {

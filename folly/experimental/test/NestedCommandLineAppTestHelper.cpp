@@ -23,14 +23,16 @@ namespace po = ::boost::program_options;
 
 namespace {
 
-void init(const std::string& cmd,
-          const po::variables_map& /* options */,
-          const std::vector<std::string>& /* args */) {
+void init(
+    const std::string& cmd,
+    const po::variables_map& /* options */,
+    const std::vector<std::string>& /* args */) {
   printf("running %s\n", cmd.c_str());
 }
 
-void foo(const po::variables_map& options,
-         const std::vector<std::string>& args) {
+void foo(
+    const po::variables_map& options,
+    const std::vector<std::string>& args) {
   printf("foo global-foo %d\n", options["global-foo"].as<int32_t>());
   printf("foo local-foo %d\n", options["local-foo"].as<int32_t>());
   for (auto& arg : args) {
@@ -40,12 +42,14 @@ void foo(const po::variables_map& options,
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   folly::NestedCommandLineApp app("", "0.1", "", "", init);
   app.addGFlags();
+  // clang-format off
   app.addCommand("foo", "[args...]", "Do some foo", "Does foo", foo)
     .add_options()
       ("local-foo", po::value<int32_t>()->default_value(42), "Local foo");
+  // clang-format on
   app.addAlias("bar", "foo");
   app.addAlias("baz", "bar");
   return app.run(argc, argv);

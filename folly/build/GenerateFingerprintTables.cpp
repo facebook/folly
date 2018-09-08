@@ -44,22 +44,31 @@ using namespace folly::detail;
 //
 // DO NOT REPLACE THE POLYNOMIALS USED, EVER, as that would change the value
 // of every single fingerprint in existence.
-DEFINE_int64(poly64, 0xbf3736b51869e9b7,
-             "Generate 64-bit tables using this polynomial");
-DEFINE_int64(poly96_m, 0x51555cb0aa8d39c3,
-             "Generate 96-bit tables using this polynomial "
-             "(most significant 64 bits)");
-DEFINE_int32(poly96_l, 0xb679ec37,
-             "Generate 96-bit tables using this polynomial "
-             "(least significant 32 bits)");
-DEFINE_int64(poly128_m, 0xc91bff9b8768b51b,
-             "Generate 128-bit tables using this polynomial "
-             "(most significant 64 bits)");
-DEFINE_int64(poly128_l, 0x8c5d5853bd77b0d3,
-             "Generate 128-bit tables using this polynomial "
-             "(least significant 64 bits)");
-DEFINE_string(install_dir, ".",
-              "Direectory to place output files in");
+DEFINE_int64(
+    poly64,
+    0xbf3736b51869e9b7,
+    "Generate 64-bit tables using this polynomial");
+DEFINE_int64(
+    poly96_m,
+    0x51555cb0aa8d39c3,
+    "Generate 96-bit tables using this polynomial "
+    "(most significant 64 bits)");
+DEFINE_int32(
+    poly96_l,
+    0xb679ec37,
+    "Generate 96-bit tables using this polynomial "
+    "(least significant 32 bits)");
+DEFINE_int64(
+    poly128_m,
+    0xc91bff9b8768b51b,
+    "Generate 128-bit tables using this polynomial "
+    "(most significant 64 bits)");
+DEFINE_int64(
+    poly128_l,
+    0x8c5d5853bd77b0d3,
+    "Generate 128-bit tables using this polynomial "
+    "(least significant 64 bits)");
+DEFINE_string(install_dir, ".", "Direectory to place output files in");
 DEFINE_string(fbcode_dir, "", "fbcode directory (ignored)");
 
 namespace {
@@ -84,25 +93,31 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
   // fingerprint calculation, but it's useful for reference and unittesting.
   uint64_t poly_val[FingerprintPolynomial<DEG>::size()];
   poly.write(poly_val);
-  CHECK_ERR(fprintf(file,
+  CHECK_ERR(fprintf(
+      file,
       "template <>\n"
       "const uint64_t FingerprintTable<%d>::poly[%d] = {",
-      DEG+1, FingerprintPolynomial<DEG>::size()));
+      DEG + 1,
+      FingerprintPolynomial<DEG>::size()));
   for (int j = 0; j < FingerprintPolynomial<DEG>::size(); j++) {
     CHECK_ERR(fprintf(file, "%s%" PRIu64 "LLU", j ? ", " : "", poly_val[j]));
   }
   CHECK_ERR(fprintf(file, "};\n\n"));
 
   // Write the tables.
-  CHECK_ERR(fprintf(file,
+  CHECK_ERR(fprintf(
+      file,
       "template <>\n"
       "const uint64_t FingerprintTable<%d>::table[8][256][%d] = {\n",
-      DEG+1, FingerprintPolynomial<DEG>::size()));
+      DEG + 1,
+      FingerprintPolynomial<DEG>::size()));
   for (int i = 0; i < 8; i++) {
-    CHECK_ERR(fprintf(file,
+    CHECK_ERR(fprintf(
+        file,
         "  // Table %d"
         "\n"
-        "  {\n", i));
+        "  {\n",
+        i));
     for (int x = 0; x < 256; x++) {
       CHECK_ERR(fprintf(file, "    {"));
       for (int j = 0; j < FingerprintPolynomial<DEG>::size(); j++) {
@@ -118,7 +133,7 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
@@ -126,7 +141,8 @@ int main(int argc, char *argv[]) {
   FILE* file = fopen(name.c_str(), "w");
   PCHECK(file);
 
-  CHECK_ERR(fprintf(file,
+  CHECK_ERR(fprintf(
+      file,
       "/**\n"
       " * Fingerprint tables for 64-, 96-, and 128-bit Rabin fingerprints.\n"
       " *\n"
@@ -154,7 +170,8 @@ int main(int argc, char *argv[]) {
   FingerprintPolynomial<127> poly128(poly128_val);
   computeTables(file, poly128);
 
-  CHECK_ERR(fprintf(file,
+  CHECK_ERR(fprintf(
+      file,
       "}  // namespace detail\n"
       "}  // namespace folly\n"));
   CHECK_ERR(fclose(file));

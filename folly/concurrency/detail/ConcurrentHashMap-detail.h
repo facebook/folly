@@ -621,8 +621,7 @@ class alignas(64) ConcurrentHashMapSegment {
       buckets_.store(newbuckets, std::memory_order_release);
       size_ = 0;
     }
-    buckets->retire(
-        concurrenthashmap::HazptrBucketDeleter<Allocator>(bcount));
+    buckets->retire(concurrenthashmap::HazptrBucketDeleter<Allocator>(bcount));
   }
 
   void max_load_factor(float factor) {

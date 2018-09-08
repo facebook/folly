@@ -82,9 +82,10 @@ TEST(ThreadLocalPtr, BasicDestructor) {
   Widget::totalVal_ = 0;
   ThreadLocalPtr<Widget> w;
   std::thread([&w]() {
-      w.reset(new Widget());
-      w.get()->val_ += 10;
-    }).join();
+    w.reset(new Widget());
+    w.get()->val_ += 10;
+  })
+      .join();
   EXPECT_EQ(10, Widget::totalVal_);
 }
 
@@ -93,9 +94,10 @@ TEST(ThreadLocalPtr, CustomDeleter1) {
   {
     ThreadLocalPtr<Widget> w;
     std::thread([&w]() {
-        w.reset(new Widget(), Widget::customDeleter);
-        w.get()->val_ += 10;
-      }).join();
+      w.reset(new Widget(), Widget::customDeleter);
+      w.get()->val_ += 10;
+    })
+        .join();
     EXPECT_EQ(11, Widget::totalVal_);
   }
   EXPECT_EQ(11, Widget::totalVal_);
@@ -112,7 +114,8 @@ TEST(ThreadLocalPtr, CustomDeleterOwnershipTransfer) {
     std::thread([&w, &source]() {
       w.reset(std::move(source));
       w.get()->val_ += 10;
-    }).join();
+    })
+        .join();
     EXPECT_EQ(11, Widget::totalVal_);
   }
   EXPECT_EQ(11, Widget::totalVal_);
@@ -126,7 +129,8 @@ TEST(ThreadLocalPtr, DefaultDeleterOwnershipTransfer) {
     std::thread([&w, &source]() {
       w.reset(std::move(source));
       w.get()->val_ += 10;
-    }).join();
+    })
+        .join();
     EXPECT_EQ(10, Widget::totalVal_);
   }
   EXPECT_EQ(10, Widget::totalVal_);
@@ -147,11 +151,12 @@ TEST(ThreadLocalPtr, TestRelease) {
   ThreadLocalPtr<Widget> w;
   std::unique_ptr<Widget> wPtr;
   std::thread([&w, &wPtr]() {
-      w.reset(new Widget());
-      w.get()->val_ += 10;
+    w.reset(new Widget());
+    w.get()->val_ += 10;
 
-      wPtr.reset(w.release());
-    }).join();
+    wPtr.reset(w.release());
+  })
+      .join();
   EXPECT_EQ(0, Widget::totalVal_);
   wPtr.reset();
   EXPECT_EQ(10, Widget::totalVal_);
@@ -163,15 +168,15 @@ TEST(ThreadLocalPtr, CreateOnThreadExit) {
   ThreadLocalPtr<int> tl;
 
   std::thread([&] {
-    tl.reset(new int(1),
-             [&](int* ptr, TLPDestructionMode /* mode */) {
-               delete ptr;
-               // This test ensures Widgets allocated here are not leaked.
-               ++w.get()->val_;
-               ThreadLocal<Widget> wl;
-               ++wl.get()->val_;
-             });
-  }).join();
+    tl.reset(new int(1), [&](int* ptr, TLPDestructionMode /* mode */) {
+      delete ptr;
+      // This test ensures Widgets allocated here are not leaked.
+      ++w.get()->val_;
+      ThreadLocal<Widget> wl;
+      ++wl.get()->val_;
+    });
+  })
+      .join();
   EXPECT_EQ(2, Widget::totalVal_);
 }
 
@@ -184,29 +189,29 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
   enum class State {
     START,
     DONE,
-    EXIT
+    EXIT,
   };
   State state = State::START;
   {
     ThreadLocalPtr<Widget> w;
     t = std::thread([&]() {
-        w.reset(new Widget(), Widget::customDeleter);
-        w.get()->val_ += 10;
+      w.reset(new Widget(), Widget::customDeleter);
+      w.get()->val_ += 10;
 
-        // Notify main thread that we're done
-        {
-          std::unique_lock<std::mutex> lock(mutex);
-          state = State::DONE;
-          cv.notify_all();
-        }
+      // Notify main thread that we're done
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        state = State::DONE;
+        cv.notify_all();
+      }
 
-        // Wait for main thread to allow us to exit
-        {
-          std::unique_lock<std::mutex> lock(mutex);
-          while (state != State::EXIT) {
-            cv.wait(lock);
-          }
+      // Wait for main thread to allow us to exit
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        while (state != State::EXIT) {
+          cv.wait(lock);
         }
+      }
     });
 
     // Wait for main thread to start (and set w.get()->val_)
@@ -313,9 +318,8 @@ TEST(ThreadLocal, InterleavedDestructors) {
 }
 
 class SimpleThreadCachedInt {
-
   class NewTag;
-  ThreadLocal<int,NewTag> val_;
+  ThreadLocal<int, NewTag> val_;
 
  public:
   void add(int val) {
@@ -354,7 +358,9 @@ TEST(ThreadLocalPtr, AccessAllThreadsCounter) {
       }
     }));
   }
-  while (totalAtomic.load() != kNumThreads) { usleep(100); }
+  while (totalAtomic.load() != kNumThreads) {
+    usleep(100);
+  }
   for (int i = 0; i <= kNumThreads; i++) {
     EXPECT_EQ(kNumThreads - i, stci[i].read());
   }
@@ -522,9 +528,12 @@ TEST(ThreadLocal, Stress) {
 namespace {
 class HoldsOne {
  public:
-  HoldsOne() : value_(1) { }
+  HoldsOne() : value_(1) {}
   // Do an actual access to catch the buggy case where this == nullptr
-  int value() const { return value_; }
+  int value() const {
+    return value_;
+  }
+
  private:
   int value_;
 };
@@ -545,7 +554,7 @@ int totalValue() {
 
 #ifdef FOLLY_HAVE_PTHREAD_ATFORK
 TEST(ThreadLocal, Fork) {
-  EXPECT_EQ(1, ptr->value());  // ensure created
+  EXPECT_EQ(1, ptr->value()); // ensure created
   EXPECT_EQ(1, totalValue());
   // Spawn a new thread
 
@@ -555,8 +564,8 @@ TEST(ThreadLocal, Fork) {
   bool stopped = false;
   std::condition_variable stoppedCond;
 
-  std::thread t([&] () {
-    EXPECT_EQ(1, ptr->value());  // ensure created
+  std::thread t([&]() {
+    EXPECT_EQ(1, ptr->value()); // ensure created
     {
       std::unique_lock<std::mutex> lock(mutex);
       started = true;
@@ -587,8 +596,10 @@ TEST(ThreadLocal, Fork) {
     // exit successfully if v == 1 (one thread)
     // diagnostic error code otherwise :)
     switch (v) {
-    case 1: _exit(0);
-    case 0: _exit(1);
+      case 1:
+        _exit(0);
+      case 0:
+        _exit(1);
     }
     _exit(2);
   } else if (pid > 0) {
@@ -667,9 +678,9 @@ TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
 
   typedef void (*useA_t)();
   dlerror();
-  useA_t useA = (useA_t) dlsym(handle, "useA");
+  useA_t useA = (useA_t)dlsym(handle, "useA");
 
-  const char *dlsym_error = dlerror();
+  const char* dlsym_error = dlerror();
   EXPECT_EQ(nullptr, dlsym_error);
   ASSERT_NE(nullptr, useA);
 
@@ -678,16 +689,16 @@ TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
   folly::Baton<> b11, b12, b21, b22;
 
   std::thread t1([&]() {
-      useA();
-      b11.post();
-      b12.wait();
-    });
+    useA();
+    b11.post();
+    b12.wait();
+  });
 
   std::thread t2([&]() {
-      useA();
-      b21.post();
-      b22.wait();
-    });
+    useA();
+    b21.post();
+    b22.wait();
+  });
 
   b11.wait();
   b21.wait();
@@ -703,7 +714,8 @@ TEST(ThreadLocal, SHARED_LIBRARY_TEST_NAME) {
 
 #endif
 
-namespace folly { namespace threadlocal_detail {
+namespace folly {
+namespace threadlocal_detail {
 struct PthreadKeyUnregisterTester {
   PthreadKeyUnregister p;
   constexpr PthreadKeyUnregisterTester() = default;

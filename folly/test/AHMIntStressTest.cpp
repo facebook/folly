@@ -30,16 +30,15 @@ struct MyObject {
   int i;
 };
 
-typedef folly::AtomicHashMap<int,std::shared_ptr<MyObject>> MyMap;
+typedef folly::AtomicHashMap<int, std::shared_ptr<MyObject>> MyMap;
 typedef std::lock_guard<std::mutex> Guard;
 
-std::unique_ptr<MyMap> newMap() { return std::make_unique<MyMap>(100); }
+std::unique_ptr<MyMap> newMap() {
+  return std::make_unique<MyMap>(100);
+}
 
 struct MyObjectDirectory {
-  MyObjectDirectory()
-    : cur_(newMap())
-    , prev_(newMap())
-  {}
+  MyObjectDirectory() : cur_(newMap()), prev_(newMap()) {}
 
   std::shared_ptr<MyObject> get(int key) {
     auto val = tryGet(key);
@@ -104,7 +103,9 @@ struct MyObjectDirectory {
  */
 TEST(AHMIntStressTest, Test) {
   auto const objs = new MyObjectDirectory();
-  SCOPE_EXIT { delete objs; };
+  SCOPE_EXIT {
+    delete objs;
+  };
 
   std::vector<std::thread> threads;
   for (int threadId = 0; threadId < 64; ++threadId) {
@@ -121,5 +122,5 @@ TEST(AHMIntStressTest, Test) {
 
   for (auto& t : threads) {
     t.join();
-}
+  }
 }

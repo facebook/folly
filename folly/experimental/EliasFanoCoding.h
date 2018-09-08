@@ -42,7 +42,8 @@
 #error EliasFanoCoding.h requires x86_64
 #endif
 
-namespace folly { namespace compression {
+namespace folly {
+namespace compression {
 
 static_assert(kIsLittleEndian, "EliasFanoCoding.h requires little endianness");
 
@@ -61,7 +62,7 @@ struct EliasFanoCompressedListBase {
         skipPointers(reinterpret_cast<Pointer>(other.skipPointers)),
         forwardPointers(reinterpret_cast<Pointer>(other.forwardPointers)),
         lower(reinterpret_cast<Pointer>(other.lower)),
-        upper(reinterpret_cast<Pointer>(other.upper)) { }
+        upper(reinterpret_cast<Pointer>(other.upper)) {}
 
   template <class T = Pointer>
   auto free() -> decltype(::free(T(nullptr))) {
@@ -94,9 +95,9 @@ template <
     size_t kSkipQuantum = 0, // 0 = disabled
     size_t kForwardQuantum = 0> // 0 = disabled
 struct EliasFanoEncoderV2 {
-  static_assert(std::is_integral<Value>::value &&
-                    std::is_unsigned<Value>::value,
-                "Value should be unsigned integral");
+  static_assert(
+      std::is_integral<Value>::value && std::is_unsigned<Value>::value,
+      "Value should be unsigned integral");
 
   typedef EliasFanoCompressedList CompressedList;
   typedef MutableEliasFanoCompressedList MutableCompressedList;
@@ -128,8 +129,9 @@ struct EliasFanoEncoderV2 {
   // EliasFanoCompressedList has no ownership of it, you need to call
   // free() explicitly.
   template <class RandomAccessIterator>
-  static MutableCompressedList encode(RandomAccessIterator begin,
-                                      RandomAccessIterator end) {
+  static MutableCompressedList encode(
+      RandomAccessIterator begin,
+      RandomAccessIterator end) {
     if (begin == end) {
       return MutableCompressedList();
     }
@@ -143,17 +145,16 @@ struct EliasFanoEncoderV2 {
   explicit EliasFanoEncoderV2(const MutableCompressedList& result)
       : lower_(result.lower),
         upper_(result.upper),
-        skipPointers_(reinterpret_cast<SkipValueType*>(
-              result.skipPointers)),
-        forwardPointers_(reinterpret_cast<SkipValueType*>(
-              result.forwardPointers)),
+        skipPointers_(reinterpret_cast<SkipValueType*>(result.skipPointers)),
+        forwardPointers_(
+            reinterpret_cast<SkipValueType*>(result.forwardPointers)),
         result_(result) {
     std::fill(result.data.begin(), result.data.end(), '\0');
   }
 
   EliasFanoEncoderV2(size_t size, ValueType upperBound)
       : EliasFanoEncoderV2(
-            Layout::fromUpperBoundAndSize(upperBound, size).allocList()) { }
+            Layout::fromUpperBoundAndSize(upperBound, size).allocList()) {}
 
   void add(ValueType value) {
     CHECK_LT(value, std::numeric_limits<ValueType>::max());
@@ -197,8 +198,8 @@ struct EliasFanoEncoderV2 {
 
  private:
   // Writes value (with len up to 56 bits) to data starting at pos-th bit.
-  static void writeBits56(unsigned char* data, size_t pos,
-                          uint8_t len, uint64_t value) {
+  static void
+  writeBits56(unsigned char* data, size_t pos, uint8_t len, uint64_t value) {
     DCHECK_LE(uint32_t(len), 56);
     DCHECK_EQ(0, value & ~((uint64_t(1) << len) - 1));
     unsigned char* const ptr = data + (pos / 8);
@@ -224,36 +225,32 @@ template <
     class SkipValue,
     size_t kSkipQuantum,
     size_t kForwardQuantum>
-struct EliasFanoEncoderV2<Value,
-                          SkipValue,
-                          kSkipQuantum,
-                          kForwardQuantum>::Layout {
+struct EliasFanoEncoderV2<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
+    Layout {
   static Layout fromUpperBoundAndSize(size_t upperBound, size_t size) {
     // numLowerBits can be at most 56 because of detail::writeBits56.
-    const uint8_t numLowerBits = std::min(defaultNumLowerBits(upperBound,
-                                                              size),
-                                          uint8_t(56));
+    const uint8_t numLowerBits =
+        std::min(defaultNumLowerBits(upperBound, size), uint8_t(56));
     // *** Upper bits.
     // Upper bits are stored using unary delta encoding.
     // For example, (3 5 5 9) will be encoded as 1000011001000_2.
     const size_t upperSizeBits =
-      (upperBound >> numLowerBits) +  // Number of 0-bits to be stored.
-      size;                           // 1-bits.
+        (upperBound >> numLowerBits) + // Number of 0-bits to be stored.
+        size; // 1-bits.
     const size_t upper = (upperSizeBits + 7) / 8;
 
     // *** Validity checks.
     // Shift by numLowerBits must be valid.
     CHECK_LT(numLowerBits, 8 * sizeof(Value));
     CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
-    CHECK_LT(upperBound >> numLowerBits,
-             std::numeric_limits<SkipValueType>::max());
+    CHECK_LT(
+        upperBound >> numLowerBits, std::numeric_limits<SkipValueType>::max());
 
     return fromInternalSizes(numLowerBits, upper, size);
   }
 
-  static Layout fromInternalSizes(uint8_t numLowerBits,
-                                  size_t upper,
-                                  size_t size) {
+  static Layout
+  fromInternalSizes(uint8_t numLowerBits, size_t upper, size_t size) {
     Layout layout;
     layout.size = size;
     layout.numLowerBits = numLowerBits;
@@ -289,14 +286,14 @@ struct EliasFanoEncoderV2<Value,
   }
 
   template <class Range>
-  EliasFanoCompressedListBase<typename Range::iterator>
-  openList(Range& buf) const {
+  EliasFanoCompressedListBase<typename Range::iterator> openList(
+      Range& buf) const {
     EliasFanoCompressedListBase<typename Range::iterator> result;
     result.size = size;
     result.numLowerBits = numLowerBits;
     result.data = buf.subpiece(0, bytes());
 
-    auto advance = [&] (size_t n) {
+    auto advance = [&](size_t n) {
       auto begin = buf.data();
       buf.advance(n);
       return begin;
@@ -340,6 +337,7 @@ template <class Encoder, class Instructions, class SizeType>
 class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
                         SkipPointers<Encoder::skipQuantum> {
   typedef typename Encoder::SkipValueType SkipValueType;
+
  public:
   typedef typename Encoder::ValueType ValueType;
 
@@ -391,7 +389,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   ValueType skip(SizeType n) {
     DCHECK_GT(n, 0);
 
-    position_ += n;  // n 1-bits will be read.
+    position_ += n; // n 1-bits will be read.
 
     // Use forward pointer.
     if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
@@ -508,7 +506,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     if (Encoder::skipQuantum == 0 || v < Encoder::skipQuantum) {
       reset();
     } else {
-      value_ = 0;  // Avoid reading the head, skipToNext() will reposition.
+      value_ = 0; // Avoid reading the head, skipToNext() will reposition.
     }
     return skipToNext(v);
   }
@@ -622,8 +620,8 @@ class EliasFanoReader {
       return setDone();
     }
     upper_.next();
-    value_ = readLowerPart(upper_.position()) |
-             (upper_.value() << numLowerBits_);
+    value_ =
+        readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
     return true;
   }
 
@@ -638,8 +636,8 @@ class EliasFanoReader {
       } else {
         upper_.skip(n);
       }
-      value_ = readLowerPart(upper_.position()) |
-        (upper_.value() << numLowerBits_);
+      value_ =
+          readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
       return true;
     }
 
@@ -648,7 +646,9 @@ class EliasFanoReader {
 
   bool skipTo(ValueType value) {
     // Also works when value_ == kInvalidValue.
-    if (value != kInvalidValue) { DCHECK_GE(value + 1, value_ + 1); }
+    if (value != kInvalidValue) {
+      DCHECK_GE(value + 1, value_ + 1);
+    }
 
     if (!kUnchecked && value > lastValue_) {
       return setDone();
@@ -696,7 +696,7 @@ class EliasFanoReader {
   }
 
   bool jump(SizeType n) {
-    if (LIKELY(n < size_)) {  // Also checks that n != -1.
+    if (LIKELY(n < size_)) { // Also checks that n != -1.
       value_ = readLowerPart(n) | (upper_.jump(n + 1) << numLowerBits_);
       return true;
     }
@@ -722,7 +722,7 @@ class EliasFanoReader {
     DCHECK_GT(position(), 0);
     DCHECK_LT(position(), size());
     return readLowerPart(upper_.position() - 1) |
-      (upper_.previousValue() << numLowerBits_);
+        (upper_.previousValue() << numLowerBits_);
   }
 
   SizeType size() const {
@@ -765,8 +765,8 @@ class EliasFanoReader {
 
   void iterateTo(ValueType value) {
     while (true) {
-      value_ = readLowerPart(upper_.position()) |
-        (upper_.value() << numLowerBits_);
+      value_ =
+          readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
       if (LIKELY(value_ >= value)) {
         break;
       }

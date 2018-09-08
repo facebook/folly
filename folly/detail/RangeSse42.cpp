@@ -198,6 +198,6 @@ size_t qfind_first_byte_of_sse42(
 
   return std::string::npos;
 }
-}
-}
+} // namespace detail
+} // namespace folly
 #endif

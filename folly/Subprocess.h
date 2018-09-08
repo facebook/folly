@@ -171,10 +171,18 @@ class ProcessReturnCode {
   /**
    * Helper wrappers around state().
    */
-  bool notStarted() const { return state() == NOT_STARTED; }
-  bool running() const { return state() == RUNNING; }
-  bool exited() const { return state() == EXITED; }
-  bool killed() const { return state() == KILLED; }
+  bool notStarted() const {
+    return state() == NOT_STARTED;
+  }
+  bool running() const {
+    return state() == RUNNING;
+  }
+  bool exited() const {
+    return state() == EXITED;
+  }
+  bool killed() const {
+    return state() == KILLED;
+  }
 
   /**
    * Exit status.  Only valid if state() == EXITED; throws otherwise.
@@ -208,8 +216,9 @@ class ProcessReturnCode {
    * Throws std::logic_error if in an unexpected state.
    */
   void enforce(State state) const;
+
  private:
-  explicit ProcessReturnCode(int rv) : rawStatus_(rv) { }
+  explicit ProcessReturnCode(int rv) : rawStatus_(rv) {}
   static constexpr int RV_NOT_STARTED = -2;
   static constexpr int RV_RUNNING = -1;
 
@@ -231,7 +240,10 @@ class FOLLY_EXPORT CalledProcessError : public SubprocessError {
  public:
   explicit CalledProcessError(ProcessReturnCode rc);
   ~CalledProcessError() throw() override = default;
-  ProcessReturnCode returnCode() const { return returnCode_; }
+  ProcessReturnCode returnCode() const {
+    return returnCode_;
+  }
+
  private:
   ProcessReturnCode returnCode_;
 };
@@ -243,7 +255,9 @@ class FOLLY_EXPORT SubprocessSpawnError : public SubprocessError {
  public:
   SubprocessSpawnError(const char* executable, int errCode, int errnoValue);
   ~SubprocessSpawnError() throw() override = default;
-  int errnoValue() const { return errnoValue_; }
+  int errnoValue() const {
+    return errnoValue_;
+  }
 
  private:
   int errnoValue_;
@@ -286,8 +300,9 @@ class Subprocess {
    */
   class Options {
     friend class Subprocess;
+
    public:
-    Options() {}  // E.g. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58328
+    Options() {} // E.g. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58328
 
     /**
      * Change action for file descriptor fd.
@@ -308,23 +323,35 @@ class Subprocess {
     /**
      * Shortcut to change the action for standard input.
      */
-    Options& stdinFd(int action) { return fd(STDIN_FILENO, action); }
+    Options& stdinFd(int action) {
+      return fd(STDIN_FILENO, action);
+    }
 
     /**
      * Shortcut to change the action for standard output.
      */
-    Options& stdoutFd(int action) { return fd(STDOUT_FILENO, action); }
+    Options& stdoutFd(int action) {
+      return fd(STDOUT_FILENO, action);
+    }
 
     /**
      * Shortcut to change the action for standard error.
      * Note that stderr(1) will redirect the standard error to the same
      * file descriptor as standard output; the equivalent of bash's "2>&1"
      */
-    Options& stderrFd(int action) { return fd(STDERR_FILENO, action); }
+    Options& stderrFd(int action) {
+      return fd(STDERR_FILENO, action);
+    }
 
-    Options& pipeStdin() { return fd(STDIN_FILENO, PIPE_IN); }
-    Options& pipeStdout() { return fd(STDOUT_FILENO, PIPE_OUT); }
-    Options& pipeStderr() { return fd(STDERR_FILENO, PIPE_OUT); }
+    Options& pipeStdin() {
+      return fd(STDIN_FILENO, PIPE_IN);
+    }
+    Options& pipeStdout() {
+      return fd(STDOUT_FILENO, PIPE_OUT);
+    }
+    Options& pipeStderr() {
+      return fd(STDERR_FILENO, PIPE_OUT);
+    }
 
     /**
      * Close all other fds (other than standard input, output, error,
@@ -338,17 +365,26 @@ class Subprocess {
      * not closed; use stdin(CLOSE), stdout(CLOSE), stderr(CLOSE) if you
      * desire this.
      */
-    Options& closeOtherFds() { closeOtherFds_ = true; return *this; }
+    Options& closeOtherFds() {
+      closeOtherFds_ = true;
+      return *this;
+    }
 
     /**
      * Use the search path ($PATH) when searching for the executable.
      */
-    Options& usePath() { usePath_ = true; return *this; }
+    Options& usePath() {
+      usePath_ = true;
+      return *this;
+    }
 
     /**
      * Change the child's working directory, after the vfork.
      */
-    Options& chdir(const std::string& dir) { childDir_ = dir; return *this; }
+    Options& chdir(const std::string& dir) {
+      childDir_ = dir;
+      return *this;
+    }
 
 #if __linux__
     /**
@@ -435,13 +471,13 @@ class Subprocess {
     FdMap fdActions_;
     bool closeOtherFds_{false};
     bool usePath_{false};
-    std::string childDir_;  // "" keeps the parent's working directory
+    std::string childDir_; // "" keeps the parent's working directory
 #if __linux__
     int parentDeathSignal_{0};
 #endif
     bool processGroupLeader_{false};
-    DangerousPostForkPreExecCallback*
-      dangerousPostForkPreExecCallback_{nullptr};
+    DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback_{
+        nullptr};
 #if __linux__
     // none means `vfork()` instead of a custom `clone()`
     // Optional<> is used because value of '0' means do clone without any flags.
@@ -485,11 +521,14 @@ class Subprocess {
    * The shell to use is taken from the environment variable $SHELL,
    * or /bin/sh if $SHELL is unset.
    */
-  [[deprecated("Prefer not running in a shell or use `shellify`.")]]
+  // clang-format off
+  [[deprecated(
+      "Prefer not running in a shell or use `shellify`.")]]
   explicit Subprocess(
       const std::string& cmd,
       const Options& options = Options(),
       const std::vector<std::string>* env = nullptr);
+  // clang-format on
 
   ////
   //// The methods below only manipulate the process state, and do not
@@ -509,7 +548,9 @@ class Subprocess {
    * waitpid() or Subprocess::poll(), but simply returns the status stored
    * in the Subprocess object.
    */
-  ProcessReturnCode returnCode() const { return returnCode_; }
+  ProcessReturnCode returnCode() const {
+    return returnCode_;
+  }
 
   /**
    * Poll the child's status and return it. Return the exit status if the
@@ -546,8 +587,12 @@ class Subprocess {
    * signals are below.
    */
   void sendSignal(int signal);
-  void terminate() { sendSignal(SIGTERM); }
-  void kill() { sendSignal(SIGKILL); }
+  void terminate() {
+    sendSignal(SIGTERM);
+  }
+  void kill() {
+    sendSignal(SIGKILL);
+  }
 
   ////
   //// The methods below only affect the process's communication pipes, but
@@ -687,45 +732,54 @@ class Subprocess {
    private:
     // Binds an FD to the client-provided FD+line callback
     struct StreamSplitterCallback {
-      StreamSplitterCallback(Callback& cb, int fd) : cb_(cb), fd_(fd) { }
+      StreamSplitterCallback(Callback& cb, int fd) : cb_(cb), fd_(fd) {}
       // The return value semantics are inverted vs StreamSplitter
-      bool operator()(StringPiece s) { return !cb_(fd_, s); }
+      bool operator()(StringPiece s) {
+        return !cb_(fd_, s);
+      }
       Callback& cb_;
       int fd_;
     };
     typedef gen::StreamSplitter<StreamSplitterCallback> LineSplitter;
+
    public:
     explicit ReadLinesCallback(
-      Callback&& fdLineCb,
-      uint64_t maxLineLength = 0,  // No line length limit by default
-      char delimiter = '\n',
-      uint64_t bufSize = 1024
-    ) : fdLineCb_(std::forward<Callback>(fdLineCb)),
-        maxLineLength_(maxLineLength),
-        delimiter_(delimiter),
-        bufSize_(bufSize) {}
+        Callback&& fdLineCb,
+        uint64_t maxLineLength = 0, // No line length limit by default
+        char delimiter = '\n',
+        uint64_t bufSize = 1024)
+        : fdLineCb_(std::forward<Callback>(fdLineCb)),
+          maxLineLength_(maxLineLength),
+          delimiter_(delimiter),
+          bufSize_(bufSize) {}
 
     bool operator()(int pfd, int cfd) {
       // Make a splitter for this cfd if it doesn't already exist
       auto it = fdToSplitter_.find(cfd);
-      auto& splitter = (it != fdToSplitter_.end()) ? it->second
-        : fdToSplitter_.emplace(cfd, LineSplitter(
-            delimiter_, StreamSplitterCallback(fdLineCb_, cfd), maxLineLength_
-          )).first->second;
+      auto& splitter = (it != fdToSplitter_.end())
+          ? it->second
+          : fdToSplitter_
+                .emplace(
+                    cfd,
+                    LineSplitter(
+                        delimiter_,
+                        StreamSplitterCallback(fdLineCb_, cfd),
+                        maxLineLength_))
+                .first->second;
       // Read as much as we can from this FD
       char buf[bufSize_];
       while (true) {
         ssize_t ret = readNoInt(pfd, buf, bufSize_);
-        if (ret == -1 && errno == EAGAIN) {  // No more data for now
+        if (ret == -1 && errno == EAGAIN) { // No more data for now
           return false;
         }
         checkUnixError(ret, "read");
-        if (ret == 0) {  // Reached end-of-file
-          splitter.flush();  // Ignore return since the file is over anyway
+        if (ret == 0) { // Reached end-of-file
+          splitter.flush(); // Ignore return since the file is over anyway
           return true;
         }
         if (!splitter(StringPiece(buf, ret))) {
-          return true;  // The callback told us to stop
+          return true; // The callback told us to stop
         }
       }
     }
@@ -797,9 +851,15 @@ class Subprocess {
   int parentFd(int childFd) const {
     return pipes_[findByChildFd(childFd)].pipe.fd();
   }
-  int stdinFd() const { return parentFd(0); }
-  int stdoutFd() const { return parentFd(1); }
-  int stderrFd() const { return parentFd(2); }
+  int stdinFd() const {
+    return parentFd(0);
+  }
+  int stdoutFd() const {
+    return parentFd(1);
+  }
+  int stderrFd() const {
+    return parentFd(2);
+  }
 
   /**
    * The child's pipes are logically separate from the process metadata
@@ -817,7 +877,7 @@ class Subprocess {
   struct ChildPipe {
     ChildPipe(int fd, folly::File&& ppe) : childFd(fd), pipe(std::move(ppe)) {}
     int childFd;
-    folly::File pipe;  // Owns the parent FD
+    folly::File pipe; // Owns the parent FD
   };
   std::vector<ChildPipe> takeOwnershipOfPipes();
 
@@ -827,12 +887,12 @@ class Subprocess {
   // spawnInternal() returns it reads the error pipe to see if the child
   // encountered any errors.
   void spawn(
-      std::unique_ptr<const char*[]> argv,
+      std::unique_ptr<const char* []> argv,
       const char* executable,
       const Options& options,
       const std::vector<std::string>* env);
   void spawnInternal(
-      std::unique_ptr<const char*[]> argv,
+      std::unique_ptr<const char* []> argv,
       const char* executable,
       Options& options,
       const std::vector<std::string>* env,
@@ -841,11 +901,15 @@ class Subprocess {
   // Actions to run in child.
   // Note that this runs after vfork(), so tread lightly.
   // Returns 0 on success, or an errno value on failure.
-  int prepareChild(const Options& options,
-                   const sigset_t* sigmask,
-                   const char* childDir) const;
-  int runChild(const char* executable, char** argv, char** env,
-               const Options& options) const;
+  int prepareChild(
+      const Options& options,
+      const sigset_t* sigmask,
+      const char* childDir) const;
+  int runChild(
+      const char* executable,
+      char** argv,
+      char** env,
+      const Options& options) const;
 
   /**
    * Read from the error pipe, and throw SubprocessSpawnError if the child

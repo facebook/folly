@@ -30,15 +30,18 @@ namespace {
 // Compile time check for packability.  This requires that
 // PackedSyncPtr is a POD struct on gcc.
 FOLLY_PACK_PUSH
-struct ignore { PackedSyncPtr<int> foo; char c; } FOLLY_PACK_ATTR;
+struct ignore {
+  PackedSyncPtr<int> foo;
+  char c;
+} FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
 static_assert(sizeof(ignore) == 9, "PackedSyncPtr wasn't packable");
 
 } // namespace
 
 TEST(PackedSyncPtr, Basic) {
-  PackedSyncPtr<std::pair<int,int>> sp;
-  sp.init(new std::pair<int,int>[2]);
+  PackedSyncPtr<std::pair<int, int>> sp;
+  sp.init(new std::pair<int, int>[2]);
   EXPECT_EQ(sizeof(sp), 8);
   sp->first = 5;
   EXPECT_EQ(sp[0].first, 5);
@@ -57,7 +60,7 @@ TEST(PackedSyncPtr, Basic) {
   EXPECT_EQ(sp.extra(), 0x13);
   EXPECT_EQ((sp.get() + 1)->second, 7);
   delete[] sp.get();
-  auto newP = new std::pair<int,int>();
+  auto newP = new std::pair<int, int>();
   sp.set(newP);
   EXPECT_EQ(sp.extra(), 0x13);
   EXPECT_EQ(sp.get(), newP);
@@ -69,11 +72,14 @@ TEST(PackedSyncPtr, Basic) {
 template <typename T>
 struct SyncVec {
   PackedSyncPtr<T> base;
-  SyncVec() { base.init(); }
-  ~SyncVec() { free(base.get()); }
+  SyncVec() {
+    base.init();
+  }
+  ~SyncVec() {
+    free(base.get());
+  }
   void push_back(const T& t) {
-    base.set((T*) realloc(base.get(),
-      (base.extra() + 1) * sizeof(T)));
+    base.set((T*)realloc(base.get(), (base.extra() + 1) * sizeof(T)));
     base[base.extra()] = t;
     base.setExtra(base.extra() + 1);
   }
@@ -84,8 +90,12 @@ struct SyncVec {
     base.unlock();
   }
 
-  T* begin() const { return base.get(); }
-  T* end() const { return base.get() + base.extra(); }
+  T* begin() const {
+    return base.get();
+  }
+  T* end() const {
+    return base.get() + base.extra();
+  }
 };
 typedef SyncVec<intptr_t> VecT;
 typedef std::unordered_map<int64_t, VecT> Map;
@@ -119,7 +129,7 @@ TEST(PackedSyncPtr, Application) {
     // Make sure every thread successfully inserted it's ID into every vec
     std::set<intptr_t> idsFound;
     for (auto& elem : kv.second) {
-      EXPECT_TRUE(idsFound.insert(elem).second);  // check for dups
+      EXPECT_TRUE(idsFound.insert(elem).second); // check for dups
     }
     EXPECT_EQ(idsFound.size(), nthrs); // check they are all there
   }

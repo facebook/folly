@@ -212,7 +212,7 @@ struct DefaultType<Key, KeysDefault...> {
 template <class... KeysDefault>
 auto extract_default(const KeysDefault&... keysDefault) ->
     typename DefaultType<KeysDefault...>::type const& {
-  return std::get<sizeof...(KeysDefault)-1>(std::tie(keysDefault...));
+  return std::get<sizeof...(KeysDefault) - 1>(std::tie(keysDefault...));
 }
 } // namespace detail
 

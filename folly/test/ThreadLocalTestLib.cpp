@@ -18,8 +18,7 @@
 
 class A {
  public:
-  void use() const {
-  }
+  void use() const {}
 };
 
 folly::ThreadLocal<A> a;
@@ -29,5 +28,4 @@ extern "C" {
 void useA() {
   a->use();
 }
-
 }

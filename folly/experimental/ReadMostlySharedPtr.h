@@ -83,10 +83,8 @@ class ReadMostlySharedPtrCore {
   friend class ReadMostlyMainPtr<T, RefCount>;
   friend class ReadMostlyMainPtrDeleter<RefCount>;
 
-  explicit ReadMostlySharedPtrCore(std::shared_ptr<T> ptr) :
-      ptrRaw_(ptr.get()),
-      ptr_(std::move(ptr)) {
-  }
+  explicit ReadMostlySharedPtrCore(std::shared_ptr<T> ptr)
+      : ptrRaw_(ptr.get()), ptr_(std::move(ptr)) {}
 
   T* ptrRaw_;
   RefCount count_;
@@ -99,8 +97,7 @@ class ReadMostlySharedPtrCore {
 template <typename T, typename RefCount = DefaultRefCount>
 class ReadMostlyMainPtr {
  public:
-  ReadMostlyMainPtr() {
-  }
+  ReadMostlyMainPtr() {}
 
   explicit ReadMostlyMainPtr(std::shared_ptr<T> ptr) {
     reset(std::move(ptr));

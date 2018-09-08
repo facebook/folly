@@ -29,7 +29,8 @@ namespace folly {
 /**
  * Identification of an Intel CPU.
  * Supports CPUID feature flags (EAX=1) and extended features (EAX=7, ECX=0).
- * Values from http://www.intel.com/content/www/us/en/processors/processor-identification-cpuid-instruction-note.html
+ * Values from
+ * http://www.intel.com/content/www/us/en/processors/processor-identification-cpuid-instruction-note.html
  */
 class CpuId {
  public:

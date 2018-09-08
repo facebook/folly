@@ -36,9 +36,11 @@
 #include <folly/ThreadLocal.h>
 #include <folly/synchronization/MicroSpinLock.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
-template <typename ValT, typename NodeT> class csl_iterator;
+template <typename ValT, typename NodeT>
+class csl_iterator;
 
 template <typename T>
 class SkipListNode : private boost::noncopyable {
@@ -56,12 +58,12 @@ class SkipListNode : private boost::noncopyable {
       typename U,
       typename =
           typename std::enable_if<std::is_convertible<U, T>::value>::type>
-  static SkipListNode* create(
-      NodeAlloc& alloc, int height, U&& data, bool isHead = false) {
+  static SkipListNode*
+  create(NodeAlloc& alloc, int height, U&& data, bool isHead = false) {
     DCHECK(height >= 1 && height < 64) << height;
 
-    size_t size = sizeof(SkipListNode) +
-      height * sizeof(std::atomic<SkipListNode*>);
+    size_t size =
+        sizeof(SkipListNode) + height * sizeof(std::atomic<SkipListNode*>);
     auto storage = std::allocator_traits<NodeAlloc>::allocate(alloc, size);
     // do placement new
     return new (storage)
@@ -99,9 +101,9 @@ class SkipListNode : private boost::noncopyable {
   // next valid node as in the linked list
   SkipListNode* next() {
     SkipListNode* node;
-    for (node = skip(0);
-        (node != nullptr && node->markedForRemoval());
-        node = node->skip(0)) {}
+    for (node = skip(0); (node != nullptr && node->markedForRemoval());
+         node = node->skip(0)) {
+    }
     return node;
   }
 
@@ -110,18 +112,32 @@ class SkipListNode : private boost::noncopyable {
     skip_[h].store(next, std::memory_order_release);
   }
 
-  value_type& data() { return data_; }
-  const value_type& data() const { return data_; }
-  int maxLayer() const { return height_ - 1; }
-  int height() const { return height_; }
+  value_type& data() {
+    return data_;
+  }
+  const value_type& data() const {
+    return data_;
+  }
+  int maxLayer() const {
+    return height_ - 1;
+  }
+  int height() const {
+    return height_;
+  }
 
   std::unique_lock<MicroSpinLock> acquireGuard() {
     return std::unique_lock<MicroSpinLock>(spinLock_);
   }
 
-  bool fullyLinked() const      { return getFlags() & FULLY_LINKED; }
-  bool markedForRemoval() const { return getFlags() & MARKED_FOR_REMOVAL; }
-  bool isHeadNode() const       { return getFlags() & IS_HEAD_NODE; }
+  bool fullyLinked() const {
+    return getFlags() & FULLY_LINKED;
+  }
+  bool markedForRemoval() const {
+    return getFlags() & MARKED_FOR_REMOVAL;
+  }
+  bool isHeadNode() const {
+    return getFlags() & IS_HEAD_NODE;
+  }
 
   void setIsHeadNode() {
     setFlags(uint16_t(getFlags() | IS_HEAD_NODE));
@@ -136,8 +152,8 @@ class SkipListNode : private boost::noncopyable {
  private:
   // Note! this can only be called from create() as a placement new.
   template <typename U>
-  SkipListNode(uint8_t height, U&& data, bool isHead) :
-      height_(height), data_(std::forward<U>(data)) {
+  SkipListNode(uint8_t height, U&& data, bool isHead)
+      : height_(height), data_(std::forward<U>(data)) {
     spinLock_.init();
     setFlags(0);
     if (isHead) {
@@ -177,9 +193,10 @@ class SkipListNode : private boost::noncopyable {
 
 class SkipListRandomHeight {
   enum { kMaxHeight = 64 };
+
  public:
   // make it a singleton.
-  static SkipListRandomHeight *instance() {
+  static SkipListRandomHeight* instance() {
     static SkipListRandomHeight instance_;
     return &instance_;
   }
@@ -201,7 +218,9 @@ class SkipListRandomHeight {
   }
 
  private:
-  SkipListRandomHeight() { initLookupTable(); }
+  SkipListRandomHeight() {
+    initLookupTable();
+  }
 
   void initLookupTable() {
     // set skip prob = 1/E
@@ -216,9 +235,9 @@ class SkipListRandomHeight {
       p *= kProb;
       sizeLimit *= kProbInv;
       lookupTable_[i] = lookupTable_[i - 1] + p;
-      sizeLimitTable_[i] = sizeLimit > kMaxSizeLimit ?
-        kMaxSizeLimit :
-        static_cast<size_t>(sizeLimit);
+      sizeLimitTable_[i] = sizeLimit > kMaxSizeLimit
+          ? kMaxSizeLimit
+          : static_cast<size_t>(sizeLimit);
     }
     lookupTable_[kMaxHeight - 1] = 1;
     sizeLimitTable_[kMaxHeight - 1] = kMaxSizeLimit;
@@ -237,13 +256,20 @@ template <typename NodeType, typename NodeAlloc, typename = void>
 class NodeRecycler;
 
 template <typename NodeType, typename NodeAlloc>
-class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
-  !NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
+class NodeRecycler<
+    NodeType,
+    NodeAlloc,
+    typename std::enable_if<
+        !NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
  public:
   explicit NodeRecycler(const NodeAlloc& alloc)
-    : refs_(0), dirty_(false), alloc_(alloc) { lock_.init(); }
+      : refs_(0), dirty_(false), alloc_(alloc) {
+    lock_.init();
+  }
 
-  explicit NodeRecycler() : refs_(0), dirty_(false) { lock_.init(); }
+  explicit NodeRecycler() : refs_(0), dirty_(false) {
+    lock_.init();
+  }
 
   ~NodeRecycler() {
     CHECK_EQ(refs(), 0);
@@ -306,7 +332,9 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
     return refs_.fetch_add(-1, std::memory_order_relaxed);
   }
 
-  NodeAlloc& alloc() { return alloc_; }
+  NodeAlloc& alloc() {
+    return alloc_;
+  }
 
  private:
   int refs() const {
@@ -323,17 +351,22 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
 // In case of arena allocator, no recycling is necessary, and it's possible
 // to save on ConcurrentSkipList size.
 template <typename NodeType, typename NodeAlloc>
-class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
-  NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
+class NodeRecycler<
+    NodeType,
+    NodeAlloc,
+    typename std::enable_if<
+        NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
  public:
-  explicit NodeRecycler(const NodeAlloc& alloc) : alloc_(alloc) { }
+  explicit NodeRecycler(const NodeAlloc& alloc) : alloc_(alloc) {}
 
-  void addRef() { }
-  void releaseRef() { }
+  void addRef() {}
+  void releaseRef() {}
 
   void add(NodeType* /* node */) {}
 
-  NodeAlloc& alloc() { return alloc_; }
+  NodeAlloc& alloc() {
+    return alloc_;
+  }
 
  private:
   NodeAlloc alloc_;

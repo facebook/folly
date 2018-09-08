@@ -83,11 +83,11 @@ namespace folly {
  */
 class EventCount {
  public:
-  EventCount() noexcept : val_(0) { }
+  EventCount() noexcept : val_(0) {}
 
   class Key {
     friend class EventCount;
-    explicit Key(uint32_t e) noexcept : epoch_(e) { }
+    explicit Key(uint32_t e) noexcept : epoch_(e) {}
     uint32_t epoch_;
   };
 
@@ -126,7 +126,7 @@ class EventCount {
 
   static constexpr uint64_t kAddWaiter = uint64_t(1);
   static constexpr uint64_t kSubWaiter = uint64_t(-1);
-  static constexpr size_t  kEpochShift = 32;
+  static constexpr size_t kEpochShift = 32;
   static constexpr uint64_t kAddEpoch = uint64_t(1) << kEpochShift;
   static constexpr uint64_t kWaiterMask = kAddEpoch - 1;
 };

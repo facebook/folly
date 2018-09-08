@@ -21,8 +21,8 @@
 #include <folly/portability/Time.h>
 
 namespace {
-using folly::StringPiece;
 using folly::LogLevel;
+using folly::StringPiece;
 
 StringPiece getGlogLevelName(LogLevel level) {
   if (level < LogLevel::INFO) {

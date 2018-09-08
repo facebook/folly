@@ -19,8 +19,8 @@
 #include <folly/io/Cursor.h>
 
 using namespace folly;
-using folly::io::QueueAppender;
 using folly::bser::serialization_opts;
+using folly::io::QueueAppender;
 
 namespace folly {
 namespace bser {

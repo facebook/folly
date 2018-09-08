@@ -30,11 +30,11 @@ void fun() {
   ++x;
   doNotOptimizeAway(x);
 }
-BENCHMARK(bmFun) { fun(); }
+BENCHMARK(bmFun) {
+  fun();
+}
 BENCHMARK(bmRepeatedFun, n) {
-  FOR_EACH_RANGE (i, 0, n) {
-    fun();
-  }
+  FOR_EACH_RANGE (i, 0, n) { fun(); }
 }
 BENCHMARK_DRAW_LINE();
 
@@ -249,16 +249,12 @@ BENCHMARK(baselinevector) {
     v.resize(1000);
   }
 
-  FOR_EACH_RANGE (i, 0, 100) {
-    v.push_back(42);
-  }
+  FOR_EACH_RANGE (i, 0, 100) { v.push_back(42); }
 }
 
 BENCHMARK_RELATIVE(bmVector) {
   vector<int> v;
-  FOR_EACH_RANGE (i, 0, 100) {
-    v.resize(v.size() + 1, 42);
-  }
+  FOR_EACH_RANGE (i, 0, 100) { v.resize(v.size() + 1, 42); }
 }
 
 BENCHMARK_DRAW_LINE();
@@ -274,9 +270,7 @@ BENCHMARK(noMulti) {
 }
 
 BENCHMARK_MULTI(multiSimple) {
-  FOR_EACH_RANGE (i, 0, 10) {
-    fun();
-  }
+  FOR_EACH_RANGE (i, 0, 10) { fun(); }
   return 10;
 }
 
@@ -289,9 +283,7 @@ BENCHMARK_RELATIVE_MULTI(multiSimpleRel) {
 }
 
 BENCHMARK_MULTI(multiIterArgs, iter) {
-  FOR_EACH_RANGE (i, 0, 10 * iter) {
-    fun();
-  }
+  FOR_EACH_RANGE (i, 0, 10 * iter) { fun(); }
   return 10 * iter;
 }
 
@@ -337,9 +329,7 @@ BENCHMARK(BenchmarkSuspender_dismissing_void, iter) {
     vector<size_t> v(1 << 12, 0);
     iota(v.begin(), v.end(), 0);
     shuffle(v.begin(), v.end(), rng);
-    braces.dismissing([&] {
-        sort(v.begin(), v.end());
-    });
+    braces.dismissing([&] { sort(v.begin(), v.end()); });
   }
 }
 
@@ -351,10 +341,9 @@ BENCHMARK(BenchmarkSuspender_dismissing_value, iter) {
     iota(v.begin(), v.end(), 0);
     shuffle(v.begin(), v.end(), rng);
     auto s = braces.dismissing([&] {
-        sort(v.begin(), v.end());
-        return accumulate(v.begin(), v.end(), 0, [](size_t a, size_t e) {
-            return a + e;
-        });
+      sort(v.begin(), v.end());
+      return accumulate(
+          v.begin(), v.end(), 0, [](size_t a, size_t e) { return a + e; });
     });
     doNotOptimizeAway(s);
   }

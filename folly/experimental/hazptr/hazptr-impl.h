@@ -482,7 +482,10 @@ FOLLY_ALWAYS_INLINE hazptr_holder::hazptr_holder(hazptr_domain& domain) {
   }
   hazptr_ = domain_->hazptrAcquire();
   HAZPTR_DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
-  if (hazptr_ == nullptr) { std::bad_alloc e; throw e; }
+  if (hazptr_ == nullptr) {
+    std::bad_alloc e;
+    throw e;
+  }
 }
 
 FOLLY_ALWAYS_INLINE hazptr_holder::hazptr_holder(std::nullptr_t) noexcept {

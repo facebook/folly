@@ -34,10 +34,10 @@ std::string submatch(const boost::cmatch& m, int idx) {
 
 Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
   static const boost::regex uriRegex(
-      "([a-zA-Z][a-zA-Z0-9+.-]*):"  // scheme:
-      "([^?#]*)"                    // authority and path
-      "(?:\\?([^#]*))?"             // ?query
-      "(?:#(.*))?");                // #fragment
+      "([a-zA-Z][a-zA-Z0-9+.-]*):" // scheme:
+      "([^?#]*)" // authority and path
+      "(?:\\?([^#]*))?" // ?query
+      "(?:#(.*))?"); // #fragment
   static const boost::regex authorityAndPathRegex("//([^/]*)(/.*)?");
 
   boost::cmatch match;
@@ -50,29 +50,31 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
 
   StringPiece authorityAndPath(match[2].first, match[2].second);
   boost::cmatch authorityAndPathMatch;
-  if (!boost::regex_match(authorityAndPath.begin(),
-                          authorityAndPath.end(),
-                          authorityAndPathMatch,
-                          authorityAndPathRegex)) {
+  if (!boost::regex_match(
+          authorityAndPath.begin(),
+          authorityAndPath.end(),
+          authorityAndPathMatch,
+          authorityAndPathRegex)) {
     // Does not start with //, doesn't have authority
     hasAuthority_ = false;
     path_ = authorityAndPath.str();
   } else {
     static const boost::regex authorityRegex(
-        "(?:([^@:]*)(?::([^@]*))?@)?"  // username, password
-        "(\\[[^\\]]*\\]|[^\\[:]*)"     // host (IP-literal (e.g. '['+IPv6+']',
-                                       // dotted-IPv4, or named host)
-        "(?::(\\d*))?");               // port
+        "(?:([^@:]*)(?::([^@]*))?@)?" // username, password
+        "(\\[[^\\]]*\\]|[^\\[:]*)" // host (IP-literal (e.g. '['+IPv6+']',
+                                   // dotted-IPv4, or named host)
+        "(?::(\\d*))?"); // port
 
     const auto authority = authorityAndPathMatch[1];
     boost::cmatch authorityMatch;
-    if (!boost::regex_match(authority.first,
-                            authority.second,
-                            authorityMatch,
-                            authorityRegex)) {
-      throw std::invalid_argument(
-          to<std::string>("invalid URI authority ",
-                          StringPiece(authority.first, authority.second)));
+    if (!boost::regex_match(
+            authority.first,
+            authority.second,
+            authorityMatch,
+            authorityRegex)) {
+      throw std::invalid_argument(to<std::string>(
+          "invalid URI authority ",
+          StringPiece(authority.first, authority.second)));
     }
 
     StringPiece port(authorityMatch[4].first, authorityMatch[4].second);
@@ -147,7 +149,7 @@ const std::vector<std::pair<std::string, std::string>>& Uri::getQueryParams() {
       queryParams_.emplace_back(
           std::string((*itr)[2].first, (*itr)[2].second), // parameter name
           std::string((*itr)[3].first, (*itr)[3].second) // parameter value
-          );
+      );
     }
   }
   return queryParams_;

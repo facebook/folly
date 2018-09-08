@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
 #include <folly/experimental/FlatCombiningPriorityQueue.h>
+#include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>
 #include <glog/logging.h>
 
@@ -273,7 +273,7 @@ enum Exp {
   NoFC,
   FCNonBlock,
   FCBlock,
-  FCTimed
+  FCTimed,
 };
 
 static uint64_t test(std::string name, Exp exp, uint64_t base) {
@@ -286,7 +286,7 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
 
   for (int r = 0; r < FLAGS_reps; ++r) {
     uint64_t dur;
-    switch(exp) {
+    switch (exp) {
       case NoFC: {
         Baseline pq;
         auto fn = [&](uint32_t tid) {
@@ -372,10 +372,8 @@ TEST(FCPriQueue, bench) {
   for (int i : nthr) {
     nthreads = i;
     std::cout << "\n------------------------------------ Number of threads = "
-              << i
-              << std::endl;
-    uint64_t base =
-    test("baseline                    ", NoFC, 0);
+              << i << std::endl;
+    uint64_t base = test("baseline                    ", NoFC, 0);
     test("baseline - dup              ", NoFC, base);
     std::cout << "---- fc -------------------------------" << std::endl;
     test("fc non-blocking             ", FCNonBlock, base);
@@ -552,6 +550,14 @@ L2 cache:              256K
 L3 cache:              20480K
 NUMA node0 CPU(s):     0-7,16-23
 NUMA node1 CPU(s):     8-15,24-31
-Flags:                 fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic popcnt tsc_deadline_timer aes xsave avx lahf_lm epb tpr_shadow vnmi flexpriority ept vpid xsaveopt dtherm arat pln pts
+Flags:                 fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca
+                       cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht
+                       tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc
+                       arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc
+                       aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl
+                       vmx smx est tm2 ssse3 cx16 xtpr pdcm pcid dca sse4_1
+                       sse4_2 x2apic popcnt tsc_deadline_timer aes xsave avx
+                       lahf_lm epb tpr_shadow vnmi flexpriority ept vpid
+                       xsaveopt dtherm arat pln pts
 
  */

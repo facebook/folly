@@ -35,7 +35,10 @@ namespace folly {
 class FOLLY_EXPORT ProgramExit : public std::runtime_error {
  public:
   explicit ProgramExit(int status, const std::string& msg = std::string());
-  int status() const { return status_; }
+  int status() const {
+    return status_;
+  }
+
  private:
   int status_;
 };
@@ -50,11 +53,13 @@ class NestedCommandLineApp {
   typedef std::function<void(
       const std::string& command,
       const boost::program_options::variables_map& options,
-      const std::vector<std::string>& args)> InitFunction;
+      const std::vector<std::string>& args)>
+      InitFunction;
 
   typedef std::function<void(
       const boost::program_options::variables_map& options,
-      const std::vector<std::string>&)> Command;
+      const std::vector<std::string>&)>
+      Command;
 
   static constexpr StringPiece const kHelpCommand = "help";
   static constexpr StringPiece const kVersionCommand = "version";
@@ -145,8 +150,8 @@ class NestedCommandLineApp {
     boost::program_options::options_description options;
   };
 
-  const std::pair<const std::string, CommandInfo>&
-  findCommand(const std::string& name) const;
+  const std::pair<const std::string, CommandInfo>& findCommand(
+      const std::string& name) const;
 
   void displayHelp(
       const boost::program_options::variables_map& options,

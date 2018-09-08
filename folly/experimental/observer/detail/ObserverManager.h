@@ -82,13 +82,11 @@ class ObserverManager {
 
     SharedMutexReadPriority::ReadHolder rh(instance->versionMutex_);
 
-    instance->scheduleCurrent([
-      core = std::move(core),
-      promise = std::move(promise),
-      instancePtr = instance.get(),
-      rh = std::move(rh),
-      force
-    ]() mutable {
+    instance->scheduleCurrent([core = std::move(core),
+                               promise = std::move(promise),
+                               instancePtr = instance.get(),
+                               rh = std::move(rh),
+                               force]() mutable {
       promise.setWith([&]() { core->refresh(instancePtr->version_, force); });
     });
 

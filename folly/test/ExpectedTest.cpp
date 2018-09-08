@@ -27,8 +27,8 @@
 
 #include <glog/logging.h>
 
-using std::unique_ptr;
 using std::shared_ptr;
+using std::unique_ptr;
 
 namespace folly {
 
@@ -288,10 +288,18 @@ TEST(Expected, Shared) {
 
 TEST(Expected, Order) {
   std::vector<Expected<int, E>> vect{
-      {unexpected, E::E1}, {3}, {1}, {unexpected, E::E1}, {2},
+      {unexpected, E::E1},
+      {3},
+      {1},
+      {unexpected, E::E1},
+      {2},
   };
   std::vector<Expected<int, E>> expected{
-      {unexpected, E::E1}, {unexpected, E::E1}, {1}, {2}, {3},
+      {unexpected, E::E1},
+      {unexpected, E::E1},
+      {1},
+      {2},
+      {3},
   };
   std::sort(vect.begin(), vect.end());
   EXPECT_EQ(vect, expected);
@@ -637,7 +645,7 @@ struct NoSelfAssign {
 #endif
 
 TEST(Expected, NoSelfAssign) {
-  folly::Expected<NoSelfAssign, int> e {NoSelfAssign{}};
+  folly::Expected<NoSelfAssign, int> e{NoSelfAssign{}};
   e = e; // @nolint
   e = std::move(e); // @nolint
 }
@@ -676,28 +684,22 @@ TEST(Expected, TriviallyCopyable) {
   // failure.
   EXPECT_TRUE((is_trivially_copyable<Expected<int, E>>::value));
   EXPECT_TRUE((is_trivially_copyable<Expected<char*, E>>::value));
-  EXPECT_TRUE(
-      (is_trivially_copyable<Expected<NoDestructor, E>>::value));
-  EXPECT_FALSE(
-      (is_trivially_copyable<Expected<WithDestructor, E>>::value));
-  EXPECT_TRUE(
-      (is_trivially_copyable<Expected<NoConstructor, E>>::value));
-  EXPECT_FALSE(
-      (is_trivially_copyable<Expected<std::string, E>>::value));
-  EXPECT_FALSE(
-      (is_trivially_copyable<Expected<int, std::string>>::value));
-  EXPECT_TRUE(
-      (is_trivially_copyable<Expected<WithConstructor, E>>::value));
-  EXPECT_TRUE(
-      (is_trivially_copyable<Expected<Expected<int, E>, E>>::value));
+  EXPECT_TRUE((is_trivially_copyable<Expected<NoDestructor, E>>::value));
+  EXPECT_FALSE((is_trivially_copyable<Expected<WithDestructor, E>>::value));
+  EXPECT_TRUE((is_trivially_copyable<Expected<NoConstructor, E>>::value));
+  EXPECT_FALSE((is_trivially_copyable<Expected<std::string, E>>::value));
+  EXPECT_FALSE((is_trivially_copyable<Expected<int, std::string>>::value));
+  EXPECT_TRUE((is_trivially_copyable<Expected<WithConstructor, E>>::value));
+  EXPECT_TRUE((is_trivially_copyable<Expected<Expected<int, E>, E>>::value));
 }
 #endif
 
 TEST(Expected, Then) {
   // Lifting
   {
-    Expected<int, E> ex = Expected<std::unique_ptr<int>, E>{
-        in_place, new int(42)}.then([](std::unique_ptr<int> p) { return *p; });
+    Expected<int, E> ex =
+        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+            [](std::unique_ptr<int> p) { return *p; });
     EXPECT_TRUE(bool(ex));
     EXPECT_EQ(42, *ex);
   }
@@ -713,8 +715,9 @@ TEST(Expected, Then) {
 
   // Void
   {
-    Expected<Unit, E> ex = Expected<std::unique_ptr<int>, E>{
-        in_place, new int(42)}.then([](std::unique_ptr<int>) {});
+    Expected<Unit, E> ex =
+        Expected<std::unique_ptr<int>, E>{in_place, new int(42)}.then(
+            [](std::unique_ptr<int>) {});
     EXPECT_TRUE(bool(ex));
   }
 
@@ -730,11 +733,12 @@ TEST(Expected, Then) {
 
   {
     // Error case:
-    Expected<int, E> ex = Expected<std::unique_ptr<int>, E>{
-        unexpected, E::E1}.then([](std::unique_ptr<int> p) -> int {
-      ADD_FAILURE();
-      return *p;
-    });
+    Expected<int, E> ex =
+        Expected<std::unique_ptr<int>, E>{unexpected, E::E1}.then(
+            [](std::unique_ptr<int> p) -> int {
+              ADD_FAILURE();
+              return *p;
+            });
     EXPECT_FALSE(bool(ex));
     EXPECT_EQ(E::E1, ex.error());
   }

@@ -438,7 +438,18 @@ TEST(TimeseriesHistogram, QueryByInterval) {
   };
 
   int expectedCounts[12] = {
-      60, 3600, 7200, 3540, 7139, 3600, 30, 3000, 7178, 2000, 6199, 3600,
+      60,
+      3600,
+      7200,
+      3540,
+      7139,
+      3600,
+      30,
+      3000,
+      7178,
+      2000,
+      6199,
+      3600,
   };
 
   // The first 7200 values added all fell below the histogram minimum,

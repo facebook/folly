@@ -197,17 +197,19 @@ std::string toPseudoJson(const folly::dynamic& d);
  */
 struct FOLLY_EXPORT DynamicParserParseError : public std::runtime_error {
   explicit DynamicParserParseError(folly::dynamic error)
-    : std::runtime_error(folly::to<std::string>(
-        "DynamicParserParseError: ", detail::toPseudoJson(error)
-      )),
-      error_(std::move(error)) {}
+      : std::runtime_error(folly::to<std::string>(
+            "DynamicParserParseError: ",
+            detail::toPseudoJson(error))),
+        error_(std::move(error)) {}
   /**
    * Structured just like releaseErrors(), but with only 1 error inside:
    *   {"nested": {"key1": {"nested": {"key2": {"error": "err", "value": 5}}}}}
    * or:
    *   {"nested": {"key1": {"key_errors": {"key3": "err"}, "value": 7}}}
    */
-  const folly::dynamic& error() const { return error_; }
+  const folly::dynamic& error() const {
+    return error_;
+  }
 
  private:
   folly::dynamic error_;
@@ -221,7 +223,7 @@ struct FOLLY_EXPORT DynamicParserParseError : public std::runtime_error {
 struct FOLLY_EXPORT DynamicParserLogicError : public std::logic_error {
   template <typename... Args>
   explicit DynamicParserLogicError(Args&&... args)
-    : std::logic_error(folly::to<std::string>(std::forward<Args>(args)...)) {}
+      : std::logic_error(folly::to<std::string>(std::forward<Args>(args)...)) {}
 };
 
 class DynamicParser {
@@ -237,7 +239,7 @@ class DynamicParser {
 
   // You MUST NOT destroy `d` before the parser.
   DynamicParser(OnError on_error, const folly::dynamic* d)
-    : onError_(on_error), stack_(d) {}  // Always access input through stack_
+      : onError_(on_error), stack_(d) {} // Always access input through stack_
 
   /**
    * Once you finished the entire parse, returns a structured description of
@@ -245,7 +247,9 @@ class DynamicParser {
    * May NOT be called if the parse threw any kind of exception.  Returns an
    * empty object for successful OnError::THROW parsers.
    */
-  folly::dynamic releaseErrors() { return stack_.releaseErrors(); }
+  folly::dynamic releaseErrors() {
+    return stack_.releaseErrors();
+  }
 
   /**
    * Error-wraps fn(auto-converted key & value) if d[key] is set. The
@@ -276,12 +280,16 @@ class DynamicParser {
    * The key currently being parsed (integer if inside an array). Throws if
    * called outside of a parser callback.
    */
-  inline const folly::dynamic& key() const { return stack_.key(); }
+  inline const folly::dynamic& key() const {
+    return stack_.key();
+  }
   /**
    * The value currently being parsed (initially, the input dynamic).
    * Throws if parsing nullptr, or parsing after releaseErrors().
    */
-  inline const folly::dynamic& value() const { return stack_.value(); }
+  inline const folly::dynamic& value() const {
+    return stack_.value();
+  }
 
   /**
    * By default, DynamicParser's "nested" object coerces all keys to
@@ -321,8 +329,8 @@ class DynamicParser {
   struct ParserStack {
     struct Pop {
       explicit Pop(ParserStack* sp)
-        : key_(sp->key_), value_(sp->value_), stackPtr_(sp) {}
-      void operator()() noexcept;  // ScopeGuard requires noexcept
+          : key_(sp->key_), value_(sp->value_), stackPtr_(sp) {}
+      void operator()() noexcept; // ScopeGuard requires noexcept
      private:
       const folly::dynamic* key_;
       const folly::dynamic* value_;
@@ -339,9 +347,9 @@ class DynamicParser {
     };
 
     explicit ParserStack(const folly::dynamic* input)
-      : value_(input),
-        errors_(folly::dynamic::object()),
-        subErrors_({&errors_}) {}
+        : value_(input),
+          errors_(folly::dynamic::object()),
+          subErrors_({&errors_}) {}
 
     // Not copiable or movable due to numerous internal pointers
     ParserStack(const ParserStack&) = delete;
@@ -371,7 +379,7 @@ class DynamicParser {
    private:
     friend struct Pop;
 
-    folly::dynamic releaseErrorsImpl();  // for releaseErrors() & throwErrors()
+    folly::dynamic releaseErrorsImpl(); // for releaseErrors() & throwErrors()
 
     // Null outside of a parsing function.
     const folly::dynamic* key_{nullptr};
@@ -392,12 +400,12 @@ class DynamicParser {
     // for unmaterialized errors, from outermost to innermost.
     std::vector<const folly::dynamic*> unmaterializedSubErrorKeys_;
     // Materialized errors, from outermost to innermost
-    std::vector<folly::dynamic*> subErrors_;  // Point into errors_
+    std::vector<folly::dynamic*> subErrors_; // Point into errors_
   };
 
   OnError onError_;
   ParserStack stack_;
-  bool allowNonStringKeyErrors_{false};  // See the setter's docblock.
+  bool allowNonStringKeyErrors_{false}; // See the setter's docblock.
 };
 
 } // namespace folly

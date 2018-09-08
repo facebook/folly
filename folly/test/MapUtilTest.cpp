@@ -123,8 +123,8 @@ TEST(MapUtil, get_ptr_path_simple) {
 
 TEST(MapUtil, get_ptr_path_mixed) {
   using std::map;
-  using std::unordered_map;
   using std::string;
+  using std::unordered_map;
   unordered_map<string, map<int, map<string, int>>> m{{"a", {{1, {{"b", 7}}}}}};
   EXPECT_EQ(7, *get_ptr(m, "a", 1, "b"));
   EXPECT_TRUE(get_ptr(m, "a", 1, "b"));
@@ -188,8 +188,8 @@ TEST(MapUtil, get_default_path) {
 
 TEST(MapUtil, get_default_path_mixed) {
   using std::map;
-  using std::unordered_map;
   using std::string;
+  using std::unordered_map;
   map<int, unordered_map<string, StringPiece>> m;
   int key1 = 42;
   const string key2 = "hello";
@@ -213,8 +213,8 @@ TEST(MapUtil, get_ref_default_path) {
 
 TEST(MapUtil, get_ref_default_path_mixed) {
   using std::map;
-  using std::unordered_map;
   using std::string;
+  using std::unordered_map;
   map<int, unordered_map<string, StringPiece>> m;
   int key1 = 42;
   const string key2 = "hello";

@@ -91,13 +91,13 @@ size_t demangle(const char* name, char* out, size_t outSize) {
 
   DemangleBuf dbuf;
   dbuf.dest = out;
-  dbuf.remaining = outSize ? outSize - 1 : 0;   // leave room for null term
+  dbuf.remaining = outSize ? outSize - 1 : 0; // leave room for null term
   dbuf.total = 0;
 
   // Unlike most library functions, this returns 1 on success and 0 on failure
   int status =
       detail::cplus_demangle_v3_callback_wrapper(name, demangleCallback, &dbuf);
-  if (status == 0) {  // failed, return original
+  if (status == 0) { // failed, return original
     return folly::strlcpy(out, name, outSize);
   }
   if (outSize != 0) {
@@ -121,7 +121,7 @@ size_t demangle(const char* name, char* out, size_t outSize) {
 size_t strlcpy(char* dest, const char* const src, size_t size) {
   size_t len = strlen(src);
   if (size != 0) {
-    size_t n = std::min(len, size - 1);  // always null terminate!
+    size_t n = std::min(len, size - 1); // always null terminate!
     memcpy(dest, src, n);
     dest[n] = '\0';
   }

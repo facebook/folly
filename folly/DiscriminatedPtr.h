@@ -36,7 +36,7 @@
 #include <folly/detail/DiscriminatedPtrDetail.h>
 
 #if !FOLLY_X64 && !FOLLY_AARCH64 && !FOLLY_PPC64
-# error "DiscriminatedPtr is x64, arm64 and ppc64 specific code."
+#error "DiscriminatedPtr is x64, arm64 and ppc64 specific code."
 #endif
 
 namespace folly {
@@ -56,15 +56,15 @@ namespace folly {
 template <typename... Types>
 class DiscriminatedPtr {
   // <, not <=, as our indexes are 1-based (0 means "empty")
-  static_assert(sizeof...(Types) < std::numeric_limits<uint16_t>::max(),
-                "too many types");
+  static_assert(
+      sizeof...(Types) < std::numeric_limits<uint16_t>::max(),
+      "too many types");
 
  public:
   /**
    * Create an empty DiscriminatedPtr.
    */
-  DiscriminatedPtr() : data_(0) {
-  }
+  DiscriminatedPtr() : data_(0) {}
 
   /**
    * Create a DiscriminatedPtr that points to an object of type T.
@@ -177,18 +177,18 @@ class DiscriminatedPtr {
       throw std::invalid_argument("Empty DiscriminatedPtr");
     }
     return dptr_detail::ApplyVisitor<V, Types...>()(
-      n, std::forward<V>(visitor), ptr());
+        n, std::forward<V>(visitor), ptr());
   }
 
   template <typename V>
-  typename dptr_detail::ConstVisitorResult<V, Types...>::type apply(V&& visitor)
-  const {
+  typename dptr_detail::ConstVisitorResult<V, Types...>::type apply(
+      V&& visitor) const {
     size_t n = index();
     if (n == 0) {
       throw std::invalid_argument("Empty DiscriminatedPtr");
     }
     return dptr_detail::ApplyConstVisitor<V, Types...>()(
-      n, std::forward<V>(visitor), ptr());
+        n, std::forward<V>(visitor), ptr());
   }
 
  private:
@@ -200,7 +200,9 @@ class DiscriminatedPtr {
     return uint16_t(dptr_detail::GetTypeIndex<T, Types...>::value);
   }
 
-  uint16_t index() const { return data_ >> 48; }
+  uint16_t index() const {
+    return data_ >> 48;
+  }
   void* ptr() const {
     return reinterpret_cast<void*>(data_ & ((1ULL << 48) - 1));
   }

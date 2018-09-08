@@ -49,7 +49,6 @@ TEST(DynamicConverter, template_metaprogramming) {
   EXPECT_EQ(c3t, true);
   EXPECT_EQ(c4t, true);
 
-
   bool m1f = is_map<int>::value;
   bool m2f = is_map<std::set<int>>::value;
 
@@ -58,7 +57,6 @@ TEST(DynamicConverter, template_metaprogramming) {
   EXPECT_EQ(m1f, false);
   EXPECT_EQ(m2f, false);
   EXPECT_EQ(m1t, true);
-
 
   bool r1f = is_range<int>::value;
 
@@ -81,7 +79,7 @@ TEST(DynamicConverter, arithmetic_types) {
 
   dynamic d4 = 3.141;
   auto i4 = convertTo<float>(d4);
-  EXPECT_EQ((int)(i4*100), 314);
+  EXPECT_EQ((int)(i4 * 100), 314);
 
   dynamic d5 = true;
   auto i5 = convertTo<bool>(d5);
@@ -145,45 +143,45 @@ TEST(DynamicConverter, simple_builtins) {
 TEST(DynamicConverter, simple_fbvector) {
   dynamic d1 = dynamic::array(1, 2, 3);
   auto i1 = convertTo<folly::fbvector<int>>(d1);
-  decltype(i1) i1b = { 1, 2, 3 };
+  decltype(i1) i1b = {1, 2, 3};
   EXPECT_EQ(i1, i1b);
 }
 
 TEST(DynamicConverter, simple_container) {
   dynamic d1 = dynamic::array(1, 2, 3);
   auto i1 = convertTo<std::vector<int>>(d1);
-  decltype(i1) i1b = { 1, 2, 3 };
+  decltype(i1) i1b = {1, 2, 3};
   EXPECT_EQ(i1, i1b);
 
   dynamic d2 = dynamic::array(1, 3, 5, 2, 4);
   auto i2 = convertTo<std::set<int>>(d2);
-  decltype(i2) i2b = { 1, 2, 3, 5, 4 };
+  decltype(i2) i2b = {1, 2, 3, 5, 4};
   EXPECT_EQ(i2, i2b);
 }
 
 TEST(DynamicConverter, simple_map) {
   dynamic d1 = dynamic::object(1, "one")(2, "two");
   auto i1 = convertTo<std::map<int, std::string>>(d1);
-  decltype(i1) i1b = { { 1, "one" }, { 2, "two" } };
+  decltype(i1) i1b = {{1, "one"}, {2, "two"}};
   EXPECT_EQ(i1, i1b);
 
-  dynamic d2 = dynamic::array(dynamic::array(3, "three"),
-                              dynamic::array(4, "four"));
+  dynamic d2 =
+      dynamic::array(dynamic::array(3, "three"), dynamic::array(4, "four"));
   auto i2 = convertTo<std::unordered_map<int, std::string>>(d2);
-  decltype(i2) i2b = { { 3, "three" }, { 4, "four" } };
+  decltype(i2) i2b = {{3, "three"}, {4, "four"}};
   EXPECT_EQ(i2, i2b);
 }
 
 TEST(DynamicConverter, map_keyed_by_string) {
   dynamic d1 = dynamic::object("1", "one")("2", "two");
   auto i1 = convertTo<std::map<std::string, std::string>>(d1);
-  decltype(i1) i1b = { { "1", "one" }, { "2", "two" } };
+  decltype(i1) i1b = {{"1", "one"}, {"2", "two"}};
   EXPECT_EQ(i1, i1b);
 
-  dynamic d2 = dynamic::array(dynamic::array("3", "three"),
-                              dynamic::array("4", "four"));
+  dynamic d2 =
+      dynamic::array(dynamic::array("3", "three"), dynamic::array("4", "four"));
   auto i2 = convertTo<std::unordered_map<std::string, std::string>>(d2);
-  decltype(i2) i2b = { { "3", "three" }, { "4", "four" } };
+  decltype(i2) i2b = {{"3", "three"}, {"4", "four"}};
   EXPECT_EQ(i2, i2b);
 }
 
@@ -191,36 +189,39 @@ TEST(DynamicConverter, map_to_vector_of_pairs) {
   dynamic d1 = dynamic::object("1", "one")("2", "two");
   auto i1 = convertTo<std::vector<std::pair<std::string, std::string>>>(d1);
   std::sort(i1.begin(), i1.end());
-  decltype(i1) i1b = { { "1", "one" }, { "2", "two" } };
+  decltype(i1) i1b = {{"1", "one"}, {"2", "two"}};
   EXPECT_EQ(i1, i1b);
 }
 
 TEST(DynamicConverter, nested_containers) {
-  dynamic d1 = dynamic::array(dynamic::array(1),
-                              dynamic::array(),
-                              dynamic::array(2, 3));
+  dynamic d1 =
+      dynamic::array(dynamic::array(1), dynamic::array(), dynamic::array(2, 3));
   auto i1 = convertTo<folly::fbvector<std::vector<uint8_t>>>(d1);
-  decltype(i1) i1b = { { 1 }, { }, { 2, 3 } };
+  decltype(i1) i1b = {{1}, {}, {2, 3}};
   EXPECT_EQ(i1, i1b);
 
   dynamic h2a = dynamic::array("3", ".", "1", "4");
   dynamic h2b = dynamic::array("2", ".", "7", "2");
   dynamic d2 = dynamic::object(3.14, h2a)(2.72, h2b);
   auto i2 = convertTo<std::map<double, std::vector<folly::fbstring>>>(d2);
-  decltype(i2) i2b =
-    { { 3.14, { "3", ".", "1", "4" } },
-      { 2.72, { "2", ".", "7", "2" } } };
+  decltype(i2) i2b = {
+      {3.14, {"3", ".", "1", "4"}},
+      {2.72, {"2", ".", "7", "2"}},
+  };
   EXPECT_EQ(i2, i2b);
 }
 
 struct A {
   int i;
-  bool operator==(const A & o) const { return i == o.i; }
+  bool operator==(const A& o) const {
+    return i == o.i;
+  }
 };
 namespace folly {
-template <> struct DynamicConverter<A> {
-  static A convert(const dynamic & d) {
-    return { convertTo<int>(d["i"]) };
+template <>
+struct DynamicConverter<A> {
+  static A convert(const dynamic& d) {
+    return {convertTo<int>(d["i"])};
   }
 };
 } // namespace folly
@@ -229,10 +230,10 @@ TEST(DynamicConverter, custom_class) {
   auto i1 = convertTo<A>(d1);
   EXPECT_EQ(i1.i, 17);
 
-  dynamic d2 = dynamic::array(dynamic::object("i", 18),
-                              dynamic::object("i", 19));
+  dynamic d2 =
+      dynamic::array(dynamic::object("i", 18), dynamic::object("i", 19));
   auto i2 = convertTo<std::vector<A>>(d2);
-  decltype(i2) i2b = { { 18 }, { 19 } };
+  decltype(i2) i2b = {{18}, {19}};
   EXPECT_EQ(i2, i2b);
 }
 
@@ -255,8 +256,8 @@ TEST(DynamicConverter, crazy) {
   std::unordered_map<bool, std::vector<std::set<std::string>>> m2 = {
       {true, v3}};
 
-  std::vector<std::unordered_map<bool, std::vector<std::set<std::string>>>>
-    f1 = { m1, m2 };
+  std::vector<std::unordered_map<bool, std::vector<std::set<std::string>>>> f1 =
+      {m1, m2};
 
   dynamic ds1 = dynamic::array("a", "e", "i", "o", "u");
   dynamic ds2 = dynamic::array("2", "3", "5", "7");
@@ -271,8 +272,9 @@ TEST(DynamicConverter, crazy) {
 
   dynamic df1 = dynamic::array(dm1, dm2);
 
-  auto i = convertTo<std::vector<std::unordered_map<bool, std::vector<
-          std::set<std::string>>>>>(df1); // yes, that is 5 close-chevrons
+  auto i = convertTo<std::vector<
+      std::unordered_map<bool, std::vector<std::set<std::string>>>>>(
+      df1); // yes, that is 5 close-chevrons
 
   EXPECT_EQ(f1, i);
 }
@@ -297,7 +299,7 @@ TEST(DynamicConverter, consts) {
 
   dynamic d5 = dynamic::array(1, 2);
   auto i5 = convertTo<const std::pair<const int, const int>>(d5);
-  decltype(i5) i5b = { 1, 2 };
+  decltype(i5) i5b = {1, 2};
   EXPECT_EQ(i5b, i5);
 }
 
@@ -306,11 +308,12 @@ struct Token {
   fbstring lexeme_;
 
   explicit Token(int kind, const fbstring& lexeme)
-    : kind_(kind), lexeme_(lexeme) {}
+      : kind_(kind), lexeme_(lexeme) {}
 };
 
 namespace folly {
-template <> struct DynamicConverter<Token> {
+template <>
+struct DynamicConverter<Token> {
   static Token convert(const dynamic& d) {
     int k = convertTo<int>(d["KIND"]);
     fbstring lex = convertTo<fbstring>(d["LEXEME"]);
@@ -327,12 +330,12 @@ TEST(DynamicConverter, example) {
 }
 
 TEST(DynamicConverter, construct) {
-  using std::vector;
   using std::map;
   using std::pair;
   using std::string;
+  using std::vector;
   {
-    vector<int> c { 1, 2, 3 };
+    vector<int> c{1, 2, 3};
     dynamic d = dynamic::array(1, 2, 3);
     EXPECT_EQ(d, toDynamic(c));
   }
@@ -344,35 +347,36 @@ TEST(DynamicConverter, construct) {
   }
 
   {
-    map<int, int> c { { 2, 4 }, { 3, 9 } };
+    map<int, int> c{{2, 4}, {3, 9}};
     dynamic d = dynamic::object(2, 4)(3, 9);
     EXPECT_EQ(d, toDynamic(c));
   }
 
   {
-    map<string, string> c { { "a", "b" } };
+    map<string, string> c{{"a", "b"}};
     dynamic d = dynamic::object("a", "b");
     EXPECT_EQ(d, toDynamic(c));
   }
 
   {
-    map<string, pair<string, int>> c { { "a", { "b", 3 } } };
+    map<string, pair<string, int>> c{{"a", {"b", 3}}};
     dynamic d = dynamic::object("a", dynamic::array("b", 3));
     EXPECT_EQ(d, toDynamic(c));
   }
 
   {
-    map<string, pair<string, int>> c { { "a", { "b", 3 } } };
+    map<string, pair<string, int>> c{{"a", {"b", 3}}};
     dynamic d = dynamic::object("a", dynamic::array("b", 3));
     EXPECT_EQ(d, toDynamic(c));
   }
 
   {
-    vector<int> vi { 2, 3, 4, 5 };
-    auto c = std::make_pair(range(vi.begin(), vi.begin() + 3),
-                            range(vi.begin() + 1, vi.begin() + 4));
-    dynamic d = dynamic::array(dynamic::array(2, 3, 4),
-                               dynamic::array(3, 4, 5));
+    vector<int> vi{2, 3, 4, 5};
+    auto c = std::make_pair(
+        range(vi.begin(), vi.begin() + 3),
+        range(vi.begin() + 1, vi.begin() + 4));
+    dynamic d =
+        dynamic::array(dynamic::array(2, 3, 4), dynamic::array(3, 4, 5));
     EXPECT_EQ(d, toDynamic(c));
   }
 
@@ -385,9 +389,9 @@ TEST(DynamicConverter, construct) {
 
 TEST(DynamicConverter, errors) {
   const auto int32Over =
-    static_cast<int64_t>(std::numeric_limits<int32_t>().max()) + 1;
+      static_cast<int64_t>(std::numeric_limits<int32_t>().max()) + 1;
   const auto floatOver =
-    static_cast<double>(std::numeric_limits<float>().max()) * 2;
+      static_cast<double>(std::numeric_limits<float>().max()) * 2;
 
   dynamic d1 = int32Over;
   EXPECT_THROW(convertTo<int32_t>(d1), std::range_error);
@@ -398,7 +402,8 @@ TEST(DynamicConverter, errors) {
 
 TEST(DynamicConverter, partial_dynamics) {
   std::vector<dynamic> c{
-      dynamic::array(2, 3, 4), dynamic::array(3, 4, 5),
+      dynamic::array(2, 3, 4),
+      dynamic::array(3, 4, 5),
   };
   dynamic d = dynamic::array(dynamic::array(2, 3, 4), dynamic::array(3, 4, 5));
   EXPECT_EQ(d, toDynamic(c));

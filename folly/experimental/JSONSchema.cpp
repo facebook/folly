@@ -40,15 +40,20 @@ struct FOLLY_EXPORT SchemaError : std::runtime_error {
 
   SchemaError(folly::StringPiece expected, const dynamic& value)
       : std::runtime_error(to<std::string>(
-            "Expected to get ", expected, " for value ", toJson(value))) {}
-  SchemaError(folly::StringPiece expected,
-              const dynamic& schema,
-              const dynamic& value)
-      : std::runtime_error(to<std::string>("Expected to get ",
-                                           expected,
-                                           toJson(schema),
-                                           " for value ",
-                                           toJson(value))) {}
+            "Expected to get ",
+            expected,
+            " for value ",
+            toJson(value))) {}
+  SchemaError(
+      folly::StringPiece expected,
+      const dynamic& schema,
+      const dynamic& value)
+      : std::runtime_error(to<std::string>(
+            "Expected to get ",
+            expected,
+            toJson(schema),
+            " for value ",
+            toJson(value))) {}
 };
 
 template <class... Args>
@@ -64,8 +69,9 @@ struct IValidator {
  private:
   friend struct ValidationContext;
 
-  virtual Optional<SchemaError> validate(ValidationContext&,
-                                         const dynamic& value) const = 0;
+  virtual Optional<SchemaError> validate(
+      ValidationContext&,
+      const dynamic& value) const = 0;
 };
 
 /**
@@ -105,15 +111,16 @@ struct SchemaValidator final : IValidator, public Validator {
   SchemaValidator() = default;
   void loadSchema(SchemaValidatorContext& context, const dynamic& schema);
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override;
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override;
 
   // Validator interface
   void validate(const dynamic& value) const override;
   exception_wrapper try_validate(const dynamic& value) const noexcept override;
 
-  static std::unique_ptr<SchemaValidator> make(SchemaValidatorContext& context,
-                                               const dynamic& schema) {
+  static std::unique_ptr<SchemaValidator> make(
+      SchemaValidatorContext& context,
+      const dynamic& schema) {
     // We break apart the constructor and actually loading the schema so that
     // we can handle the case where a schema refers to itself, e.g. via
     // "$ref": "#".
@@ -128,8 +135,8 @@ struct SchemaValidator final : IValidator, public Validator {
 
 struct MultipleOfValidator final : IValidator {
   explicit MultipleOfValidator(dynamic schema) : schema_(std::move(schema)) {}
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     if (!schema_.isNumber() || !value.isNumber()) {
       return none;
     }
@@ -158,9 +165,8 @@ struct ComparisonValidator final : IValidator {
   }
 
   template <typename Numeric>
-  Optional<SchemaError> validateHelper(const dynamic& value,
-                                       Numeric s,
-                                       Numeric v) const {
+  Optional<SchemaError>
+  validateHelper(const dynamic& value, Numeric s, Numeric v) const {
     if (type_ == Type::MIN) {
       if (exclusive_) {
         if (v <= s) {
@@ -185,8 +191,8 @@ struct ComparisonValidator final : IValidator {
     return none;
   }
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     if (!schema_.isNumber() || !value.isNumber()) {
       return none;
     }
@@ -211,8 +217,8 @@ struct SizeValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     if (length_ < 0) {
       return none;
     }
@@ -235,8 +241,8 @@ struct StringPatternValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     if (!value.isString() || regex_.empty()) {
       return none;
     }
@@ -255,8 +261,8 @@ struct ArrayUniqueValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     if (!unique_ || !value.isArray()) {
       return none;
     }
@@ -273,9 +279,10 @@ struct ArrayUniqueValidator final : IValidator {
 };
 
 struct ArrayItemsValidator final : IValidator {
-  ArrayItemsValidator(SchemaValidatorContext& context,
-                      const dynamic* items,
-                      const dynamic* additionalItems)
+  ArrayItemsValidator(
+      SchemaValidatorContext& context,
+      const dynamic* items,
+      const dynamic* additionalItems)
       : allowAdditionalItems_(true) {
     if (items && items->isObject()) {
       itemsValidator_ = SchemaValidator::make(context, *items);
@@ -298,8 +305,8 @@ struct ArrayItemsValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext& vc,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext& vc, const dynamic& value)
+      const override {
     if (!value.isArray()) {
       return none;
     }
@@ -347,8 +354,8 @@ struct RequiredValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     if (value.isObject()) {
       for (const auto& prop : properties_) {
         if (!value.get_ptr(prop)) {
@@ -364,10 +371,11 @@ struct RequiredValidator final : IValidator {
 };
 
 struct PropertiesValidator final : IValidator {
-  PropertiesValidator(SchemaValidatorContext& context,
-                      const dynamic* properties,
-                      const dynamic* patternProperties,
-                      const dynamic* additionalProperties)
+  PropertiesValidator(
+      SchemaValidatorContext& context,
+      const dynamic* properties,
+      const dynamic* patternProperties,
+      const dynamic* additionalProperties)
       : allowAdditionalProperties_(true) {
     if (properties && properties->isObject()) {
       for (const auto& pair : properties->items()) {
@@ -396,8 +404,8 @@ struct PropertiesValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext& vc,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext& vc, const dynamic& value)
+      const override {
     if (!value.isObject()) {
       return none;
     }
@@ -467,14 +475,15 @@ struct DependencyValidator final : IValidator {
         propertyDep_.emplace_back(std::move(p));
       }
       if (pair.second.isObject()) {
-        schemaDep_.emplace_back(pair.first.getString(),
-                                SchemaValidator::make(context, pair.second));
+        schemaDep_.emplace_back(
+            pair.first.getString(),
+            SchemaValidator::make(context, pair.second));
       }
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext& vc,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext& vc, const dynamic& value)
+      const override {
     if (!value.isObject()) {
       return none;
     }
@@ -504,8 +513,8 @@ struct DependencyValidator final : IValidator {
 struct EnumValidator final : IValidator {
   explicit EnumValidator(dynamic schema) : schema_(std::move(schema)) {}
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     if (!schema_.isArray()) {
       return none;
     }
@@ -532,8 +541,8 @@ struct TypeValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext&,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext&, const dynamic& value)
+      const override {
     auto it =
         std::find(allowedTypes_.begin(), allowedTypes_.end(), value.type());
     if (it == allowedTypes_.end()) {
@@ -581,8 +590,8 @@ struct AllOfValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext& vc,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext& vc, const dynamic& value)
+      const override {
     for (const auto& val : validators_) {
       if (auto se = vc.validate(val.get(), value)) {
         return se;
@@ -597,9 +606,10 @@ struct AllOfValidator final : IValidator {
 struct AnyOfValidator final : IValidator {
   enum class Type { EXACTLY_ONE, ONE_OR_MORE };
 
-  AnyOfValidator(SchemaValidatorContext& context,
-                 const dynamic& schema,
-                 Type type)
+  AnyOfValidator(
+      SchemaValidatorContext& context,
+      const dynamic& schema,
+      Type type)
       : type_(type) {
     if (schema.isArray()) {
       for (const auto& item : schema) {
@@ -608,8 +618,8 @@ struct AnyOfValidator final : IValidator {
     }
   }
 
-  Optional<SchemaError> validate(ValidationContext& vc,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext& vc, const dynamic& value)
+      const override {
     std::vector<SchemaError> errors;
     for (const auto& val : validators_) {
       if (auto se = vc.validate(val.get(), value)) {
@@ -632,8 +642,8 @@ struct AnyOfValidator final : IValidator {
 struct RefValidator final : IValidator {
   explicit RefValidator(IValidator* validator) : validator_(validator) {}
 
-  Optional<SchemaError> validate(ValidationContext& vc,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext& vc, const dynamic& value)
+      const override {
     return vc.validate(validator_, value);
   }
   IValidator* validator_;
@@ -643,8 +653,8 @@ struct NotValidator final : IValidator {
   NotValidator(SchemaValidatorContext& context, const dynamic& schema)
       : validator_(SchemaValidator::make(context, schema)) {}
 
-  Optional<SchemaError> validate(ValidationContext& vc,
-                                 const dynamic& value) const override {
+  Optional<SchemaError> validate(ValidationContext& vc, const dynamic& value)
+      const override {
     if (vc.validate(validator_.get(), value)) {
       return none;
     }
@@ -653,8 +663,9 @@ struct NotValidator final : IValidator {
   std::unique_ptr<IValidator> validator_;
 };
 
-void SchemaValidator::loadSchema(SchemaValidatorContext& context,
-                                 const dynamic& schema) {
+void SchemaValidator::loadSchema(
+    SchemaValidatorContext& context,
+    const dynamic& schema) {
   if (!schema.isObject() || schema.empty()) {
     return;
   }
@@ -818,7 +829,7 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
 void SchemaValidator::validate(const dynamic& value) const {
   ValidationContext vc;
   if (auto se = validate(vc, value)) {
-    throw * se;
+    throw *se;
   }
 }
 
@@ -837,8 +848,9 @@ exception_wrapper SchemaValidator::try_validate(const dynamic& value) const
   return exception_wrapper();
 }
 
-Optional<SchemaError> SchemaValidator::validate(ValidationContext& vc,
-                                                const dynamic& value) const {
+Optional<SchemaError> SchemaValidator::validate(
+    ValidationContext& vc,
+    const dynamic& value) const {
   for (const auto& validator : validators_) {
     if (auto se = vc.validate(validator.get(), value)) {
       return se;

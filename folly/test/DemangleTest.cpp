@@ -22,8 +22,7 @@
 using folly::demangle;
 
 namespace folly_test {
-struct ThisIsAVeryLongStructureName {
-};
+struct ThisIsAVeryLongStructureName {};
 } // namespace folly_test
 
 #if FOLLY_DETAIL_HAVE_DEMANGLE_H
@@ -35,14 +34,17 @@ TEST(Demangle, demangle) {
 
   {
     char buf[sizeof(expected)];
-    EXPECT_EQ(sizeof(expected) - 1,
-              demangle(typeid(folly_test::ThisIsAVeryLongStructureName),
-                       buf, sizeof(buf)));
+    EXPECT_EQ(
+        sizeof(expected) - 1,
+        demangle(
+            typeid(folly_test::ThisIsAVeryLongStructureName),
+            buf,
+            sizeof(buf)));
     EXPECT_STREQ(expected, buf);
 
-    EXPECT_EQ(sizeof(expected) - 1,
-              demangle(typeid(folly_test::ThisIsAVeryLongStructureName),
-                       buf, 11));
+    EXPECT_EQ(
+        sizeof(expected) - 1,
+        demangle(typeid(folly_test::ThisIsAVeryLongStructureName), buf, 11));
     EXPECT_STREQ("folly_test", buf);
   }
 }
@@ -103,5 +105,5 @@ TEST(Demangle, strlcpy) {
 
   buf[0] = 'z';
   EXPECT_EQ(strlen(big_string), folly::strlcpy(buf, big_string, 0));
-  EXPECT_EQ('z', buf[0]);  // unchanged, size = 0
+  EXPECT_EQ('z', buf[0]); // unchanged, size = 0
 }

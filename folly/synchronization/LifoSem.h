@@ -93,7 +93,6 @@ struct LifoSemImpl;
 /// linearizable.
 typedef LifoSemImpl<> LifoSem;
 
-
 /// The exception thrown when wait()ing on an isShutdown() LifoSem
 struct FOLLY_EXPORT ShutdownSemError : public std::runtime_error {
   explicit ShutdownSemError(const std::string& msg);
@@ -122,18 +121,24 @@ namespace detail {
 /// a large static IndexedMemPool of nodes, instead of per-type pools
 template <template <typename> class Atom>
 struct LifoSemRawNode {
-  std::aligned_storage<sizeof(void*),alignof(void*)>::type raw;
+  std::aligned_storage<sizeof(void*), alignof(void*)>::type raw;
 
   /// The IndexedMemPool index of the next node in this chain, or 0
   /// if none.  This will be set to uint32_t(-1) if the node is being
   /// posted due to a shutdown-induced wakeup
   uint32_t next;
 
-  bool isShutdownNotice() const { return next == uint32_t(-1); }
-  void clearShutdownNotice() { next = 0; }
-  void setShutdownNotice() { next = uint32_t(-1); }
+  bool isShutdownNotice() const {
+    return next == uint32_t(-1);
+  }
+  void clearShutdownNotice() {
+    next = 0;
+  }
+  void setShutdownNotice() {
+    next = uint32_t(-1);
+  }
 
-  typedef folly::IndexedMemPool<LifoSemRawNode<Atom>,32,200,Atom> Pool;
+  typedef folly::IndexedMemPool<LifoSemRawNode<Atom>, 32, 200, Atom> Pool;
 
   /// Storage for all of the waiter nodes for LifoSem-s that use Atom
   static Pool& pool();
@@ -159,14 +164,14 @@ struct LifoSemRawNode {
 /// LifoSemBase::wait accordingly.
 template <typename Handoff, template <typename> class Atom>
 struct LifoSemNode : public LifoSemRawNode<Atom> {
-
-  static_assert(sizeof(Handoff) <= sizeof(LifoSemRawNode<Atom>::raw),
+  static_assert(
+      sizeof(Handoff) <= sizeof(LifoSemRawNode<Atom>::raw),
       "Handoff too big for small-object optimization, use indirection");
-  static_assert(alignof(Handoff) <=
-                alignof(decltype(LifoSemRawNode<Atom>::raw)),
+  static_assert(
+      alignof(Handoff) <= alignof(decltype(LifoSemRawNode<Atom>::raw)),
       "Handoff alignment constraint not satisfied");
 
-  template <typename ...Args>
+  template <typename... Args>
   void init(Args&&... args) {
     new (&this->raw) Handoff(std::forward<Args>(args)...);
   }
@@ -189,7 +194,7 @@ struct LifoSemNode : public LifoSemRawNode<Atom> {
 
 template <typename Handoff, template <typename> class Atom>
 struct LifoSemNodeRecycler {
-  void operator()(LifoSemNode<Handoff,Atom>* elem) const {
+  void operator()(LifoSemNode<Handoff, Atom>* elem) const {
     elem->destroy();
     auto idx = LifoSemRawNode<Atom>::pool().locateElem(elem);
     LifoSemRawNode<Atom>::pool().recycleIndex(idx);
@@ -229,7 +234,6 @@ class LifoSemHead {
   };
 
  public:
-
   uint64_t bits;
 
   //////// getters
@@ -261,7 +265,7 @@ class LifoSemHead {
   /// This should only be used for initial construction, not for setting
   /// the value, because it clears the sequence number
   static inline constexpr LifoSemHead fresh(uint32_t value) {
-    return LifoSemHead{ value };
+    return LifoSemHead{value};
   }
 
   /// Returns the LifoSemHead that results from popping a waiter node,
@@ -271,13 +275,12 @@ class LifoSemHead {
     assert(isNodeIdx());
     if (idxNext == 0) {
       // no isNodeIdx bit or data bits.  Wraparound of seq bits is okay
-      return LifoSemHead{ (bits & (SeqMask | IsShutdownMask)) + SeqIncr };
+      return LifoSemHead{(bits & (SeqMask | IsShutdownMask)) + SeqIncr};
     } else {
       // preserve sequence bits (incremented with wraparound okay) and
       // isNodeIdx bit, replace all data bits
-      return LifoSemHead{
-          (bits & (SeqMask | IsShutdownMask | IsNodeIdxMask)) +
-          SeqIncr + idxNext };
+      return LifoSemHead{(bits & (SeqMask | IsShutdownMask | IsNodeIdxMask)) +
+                         SeqIncr + idxNext};
     }
   }
 
@@ -287,7 +290,7 @@ class LifoSemHead {
     assert(isNodeIdx() || value() == 0);
     assert(!isShutdown());
     assert(_idx != 0);
-    return LifoSemHead{ (bits & SeqMask) | IsNodeIdxMask | _idx };
+    return LifoSemHead{(bits & SeqMask) | IsNodeIdxMask | _idx};
   }
 
   /// Returns the LifoSemHead with value increased by delta, with
@@ -295,10 +298,10 @@ class LifoSemHead {
   inline LifoSemHead withValueIncr(uint32_t delta) const {
     assert(!isLocked());
     assert(!isNodeIdx());
-    auto rv = LifoSemHead{ bits + SeqIncr + delta };
+    auto rv = LifoSemHead{bits + SeqIncr + delta};
     if (UNLIKELY(rv.isNodeIdx())) {
       // value has overflowed into the isNodeIdx bit
-      rv = LifoSemHead{ (rv.bits & ~IsNodeIdxMask) | (IsNodeIdxMask - 1) };
+      rv = LifoSemHead{(rv.bits & ~IsNodeIdxMask) | (IsNodeIdxMask - 1)};
     }
     return rv;
   }
@@ -307,13 +310,13 @@ class LifoSemHead {
   inline LifoSemHead withValueDecr(uint32_t delta) const {
     assert(!isLocked());
     assert(delta > 0 && delta <= value());
-    return LifoSemHead{ bits + SeqIncr - delta };
+    return LifoSemHead{bits + SeqIncr - delta};
   }
 
   /// Returns the LifoSemHead with the same state as the current node,
   /// but with the shutdown bit set
   inline LifoSemHead withShutdown() const {
-    return LifoSemHead{ bits | IsShutdownMask };
+    return LifoSemHead{bits | IsShutdownMask};
   }
 
   // Returns LifoSemHead with lock bit set, but rest of bits unchanged.
@@ -330,10 +333,10 @@ class LifoSemHead {
     return LifoSemHead{bits & ~IsLockedMask}.withPop(idxNext);
   }
 
-  inline constexpr bool operator== (const LifoSemHead& rhs) const {
+  inline constexpr bool operator==(const LifoSemHead& rhs) const {
     return bits == rhs.bits;
   }
-  inline constexpr bool operator!= (const LifoSemHead& rhs) const {
+  inline constexpr bool operator!=(const LifoSemHead& rhs) const {
     return !(*this == rhs);
   }
 };
@@ -347,7 +350,6 @@ class LifoSemHead {
 /// See LifoSemNode for more information on how to make your own.
 template <typename Handoff, template <typename> class Atom = std::atomic>
 struct LifoSemBase {
-
   /// Constructor
   constexpr explicit LifoSemBase(uint32_t initialValue = 0)
       : head_(LifoSemHead::fresh(initialValue)) {}
@@ -428,8 +430,9 @@ struct LifoSemBase {
   bool tryWait() {
     uint32_t n = 1;
     auto rv = decrOrPush(n, 0);
-    assert((rv == WaitResult::DECR && n == 0) ||
-           (rv != WaitResult::DECR && n == 1));
+    assert(
+        (rv == WaitResult::DECR && n == 0) ||
+        (rv != WaitResult::DECR && n == 1));
     // SHUTDOWN is okay here, since we don't actually wait
     return rv == WaitResult::DECR;
   }
@@ -444,8 +447,9 @@ struct LifoSemBase {
       auto prev = n;
 #endif
       auto rv = decrOrPush(n, 0);
-      assert((rv == WaitResult::DECR && n < prev) ||
-             (rv != WaitResult::DECR && n == prev));
+      assert(
+          (rv == WaitResult::DECR && n < prev) ||
+          (rv != WaitResult::DECR && n == prev));
       if (rv != WaitResult::DECR) {
         break;
       }
@@ -530,7 +534,6 @@ struct LifoSemBase {
   }
 
  protected:
-
   enum class WaitResult {
     PUSH,
     DECR,
@@ -539,8 +542,9 @@ struct LifoSemBase {
 
   /// The type of a std::unique_ptr that will automatically return a
   /// LifoSemNode to the appropriate IndexedMemPool
-  typedef std::unique_ptr<LifoSemNode<Handoff, Atom>,
-                          LifoSemNodeRecycler<Handoff, Atom>> UniquePtr;
+  typedef std::
+      unique_ptr<LifoSemNode<Handoff, Atom>, LifoSemNodeRecycler<Handoff, Atom>>
+          UniquePtr;
 
   /// Returns a node that can be passed to decrOrLink
   template <typename... Args>
@@ -716,7 +720,7 @@ struct LifoSemBase {
 template <template <typename> class Atom, class BatonType>
 struct LifoSemImpl : public detail::LifoSemBase<BatonType, Atom> {
   constexpr explicit LifoSemImpl(uint32_t v = 0)
-    : detail::LifoSemBase<BatonType, Atom>(v) {}
+      : detail::LifoSemBase<BatonType, Atom>(v) {}
 };
 
 } // namespace folly

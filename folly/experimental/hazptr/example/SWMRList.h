@@ -94,7 +94,7 @@ class SWMRListSet {
     if (!curr || curr->elem_ != v) {
       return false;
     }
-    Node *curr_next = curr->next_.load();
+    Node* curr_next = curr->next_.load();
     // Patch up the actual list...
     prev->store(curr_next, std::memory_order_release);
     // ...and only then null out the removed node.
@@ -113,7 +113,9 @@ class SWMRListSet {
       auto prev = &head_;
       auto curr = prev->load(std::memory_order_acquire);
       while (true) {
-        if (!curr) { return false; }
+        if (!curr) {
+          return false;
+        }
         if (!hptr_curr->try_protect(curr, *prev)) {
           break;
         }
@@ -122,9 +124,9 @@ class SWMRListSet {
           break;
         }
         if (curr->elem_ == val) {
-            return true;
+          return true;
         } else if (!(curr->elem_ < val)) {
-            return false;  // because the list is sorted
+          return false; // because the list is sorted
         }
         prev = &(curr->next_);
         curr = next;

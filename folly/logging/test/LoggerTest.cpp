@@ -142,6 +142,7 @@ TEST_F(LoggerTest, toString) {
 class ToStringFailure {};
 class FormattableButNoToString {};
 
+// clang-format off
 [[noreturn]] void toAppend(
     const ToStringFailure& /* arg */,
     std::string* /* result */) {
@@ -172,6 +173,7 @@ class FormatValue<FormattableButNoToString> {
   }
 };
 } // namespace folly
+// clang-format on
 
 TEST_F(LoggerTest, toStringError) {
   // Use the folly::to<string> log API, with an object that will throw

@@ -26,21 +26,21 @@ struct TwoBy32 {
 };
 
 TEST(AtomicStruct, two_by_32) {
-  AtomicStruct<TwoBy32> a(TwoBy32{ 10, 20 });
+  AtomicStruct<TwoBy32> a(TwoBy32{10, 20});
   TwoBy32 av = a;
   EXPECT_EQ(av.left, 10);
   EXPECT_EQ(av.right, 20);
-  EXPECT_TRUE(a.compare_exchange_strong(av, TwoBy32{ 30, 40 }));
-  EXPECT_FALSE(a.compare_exchange_weak(av, TwoBy32{ 31, 41 }));
+  EXPECT_TRUE(a.compare_exchange_strong(av, TwoBy32{30, 40}));
+  EXPECT_FALSE(a.compare_exchange_weak(av, TwoBy32{31, 41}));
   EXPECT_EQ(av.left, 30);
   EXPECT_TRUE(a.is_lock_free());
-  auto b = a.exchange(TwoBy32{ 50, 60 });
+  auto b = a.exchange(TwoBy32{50, 60});
   EXPECT_EQ(b.left, 30);
   EXPECT_EQ(b.right, 40);
   EXPECT_EQ(a.load().left, 50);
-  a = TwoBy32{ 70, 80 };
+  a = TwoBy32{70, 80};
   EXPECT_EQ(a.load().right, 80);
-  a.store(TwoBy32{ 90, 100 });
+  a.store(TwoBy32{90, 100});
   av = a;
   EXPECT_EQ(av.left, 90);
   AtomicStruct<TwoBy32> c;

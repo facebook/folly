@@ -218,10 +218,10 @@ class FutureDAGFunctor {
   void exec() {
     this->dag->go().get();
   }
-  virtual void operator()(){}
+  virtual void operator()() {}
   explicit FutureDAGFunctor(T init_val) : state(init_val) {}
   FutureDAGFunctor() : state() {}
-  virtual ~FutureDAGFunctor(){}
+  virtual ~FutureDAGFunctor() {}
 };
 
 } // namespace folly

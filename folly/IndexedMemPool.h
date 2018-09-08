@@ -165,7 +165,7 @@ struct IndexedMemPool : boost::noncopyable {
   static_assert(LocalListLimit_ <= 255, "LocalListLimit must fit in 8 bits");
   enum {
     NumLocalLists = NumLocalLists_,
-    LocalListLimit = LocalListLimit_
+    LocalListLimit = LocalListLimit_,
   };
 
   // these are public because clients may need to reason about the number
@@ -183,23 +183,25 @@ struct IndexedMemPool : boost::noncopyable {
     return maxIndex - (NumLocalLists - 1) * LocalListLimit;
   }
 
-
   /// Constructs a pool that can allocate at least _capacity_ elements,
   /// even if all the local lists are full
   explicit IndexedMemPool(uint32_t capacity)
-    : actualCapacity_(maxIndexForCapacity(capacity))
-    , size_(0)
-    , globalHead_(TaggedPtr{})
-  {
+      : actualCapacity_(maxIndexForCapacity(capacity)),
+        size_(0),
+        globalHead_(TaggedPtr{}) {
     const size_t needed = sizeof(Slot) * (actualCapacity_ + 1);
     size_t pagesize = size_t(sysconf(_SC_PAGESIZE));
     mmapLength_ = ((needed - 1) & ~(pagesize - 1)) + pagesize;
     assert(needed <= mmapLength_ && mmapLength_ < needed + pagesize);
     assert((mmapLength_ % pagesize) == 0);
 
-    slots_ = static_cast<Slot*>(mmap(nullptr, mmapLength_,
-                                     PROT_READ | PROT_WRITE,
-                                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    slots_ = static_cast<Slot*>(mmap(
+        nullptr,
+        mmapLength_,
+        PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS,
+        -1,
+        0));
     if (slots_ == MAP_FAILED) {
       assert(errno == ENOMEM);
       throw std::bad_alloc();
@@ -236,7 +238,7 @@ struct IndexedMemPool : boost::noncopyable {
   /// or returns 0 if no elements are available.  Passes a pointer to
   /// the element to Traits::onAllocate before the slot is marked as
   /// allocated.
-  template <typename ...Args>
+  template <typename... Args>
   uint32_t allocIndex(Args&&... args) {
     auto idx = localPop(localHead());
     if (idx != 0) {
@@ -251,7 +253,7 @@ struct IndexedMemPool : boost::noncopyable {
   /// recycle the element to the pool when it is reclaimed, otherwise returns
   /// a null (falsy) std::unique_ptr.  Passes a pointer to the element to
   /// Traits::onAllocate before the slot is marked as allocated.
-  template <typename ...Args>
+  template <typename... Args>
   UniquePtr allocElem(Args&&... args) {
     auto idx = allocIndex(std::forward<Args>(args)...);
     T* ptr = idx == 0 ? nullptr : &slot(idx).elem;
@@ -297,7 +299,6 @@ struct IndexedMemPool : boost::noncopyable {
     return slot(idx).localNext.load(std::memory_order_acquire) == uint32_t(-1);
   }
 
-
  private:
   ///////////// types
 
@@ -318,9 +319,9 @@ struct IndexedMemPool : boost::noncopyable {
     uint32_t tagAndSize;
 
     enum : uint32_t {
-        SizeBits = 8,
-        SizeMask = (1U << SizeBits) - 1,
-        TagIncr = 1U << SizeBits,
+      SizeBits = 8,
+      SizeMask = (1U << SizeBits) - 1,
+      TagIncr = 1U << SizeBits,
     };
 
     uint32_t size() const {
@@ -329,21 +330,21 @@ struct IndexedMemPool : boost::noncopyable {
 
     TaggedPtr withSize(uint32_t repl) const {
       assert(repl <= LocalListLimit);
-      return TaggedPtr{ idx, (tagAndSize & ~SizeMask) | repl };
+      return TaggedPtr{idx, (tagAndSize & ~SizeMask) | repl};
     }
 
     TaggedPtr withSizeIncr() const {
       assert(size() < LocalListLimit);
-      return TaggedPtr{ idx, tagAndSize + 1 };
+      return TaggedPtr{idx, tagAndSize + 1};
     }
 
     TaggedPtr withSizeDecr() const {
       assert(size() > 0);
-      return TaggedPtr{ idx, tagAndSize - 1 };
+      return TaggedPtr{idx, tagAndSize - 1};
     }
 
     TaggedPtr withIdx(uint32_t repl) const {
-      return TaggedPtr{ repl, tagAndSize + TagIncr };
+      return TaggedPtr{repl, tagAndSize + TagIncr};
     }
 
     TaggedPtr withEmpty() const {
@@ -352,7 +353,7 @@ struct IndexedMemPool : boost::noncopyable {
   };
 
   struct alignas(hardware_destructive_interference_size) LocalList {
-    AtomicStruct<TaggedPtr,Atom> head;
+    AtomicStruct<TaggedPtr, Atom> head;
 
     LocalList() : head(TaggedPtr{}) {}
   };
@@ -392,9 +393,9 @@ struct IndexedMemPool : boost::noncopyable {
   ///////////// private methods
 
   uint32_t slotIndex(uint32_t idx) const {
-    assert(0 < idx &&
-           idx <= actualCapacity_ &&
-           idx <= size_.load(std::memory_order_acquire));
+    assert(
+        0 < idx && idx <= actualCapacity_ &&
+        idx <= size_.load(std::memory_order_acquire));
     return idx;
   }
 
@@ -420,7 +421,7 @@ struct IndexedMemPool : boost::noncopyable {
   }
 
   // idx references a single node
-  void localPush(AtomicStruct<TaggedPtr,Atom>& head, uint32_t idx) {
+  void localPush(AtomicStruct<TaggedPtr, Atom>& head, uint32_t idx) {
     Slot& s = slot(idx);
     TaggedPtr h = head.load(std::memory_order_acquire);
     while (true) {
@@ -461,7 +462,7 @@ struct IndexedMemPool : boost::noncopyable {
   }
 
   // returns 0 if allocation failed
-  uint32_t localPop(AtomicStruct<TaggedPtr,Atom>& head) {
+  uint32_t localPop(AtomicStruct<TaggedPtr, Atom>& head) {
     while (true) {
       TaggedPtr h = head.load(std::memory_order_acquire);
       if (h.idx != 0) {
@@ -499,7 +500,7 @@ struct IndexedMemPool : boost::noncopyable {
     }
   }
 
-  AtomicStruct<TaggedPtr,Atom>& localHead() {
+  AtomicStruct<TaggedPtr, Atom>& localHead() {
     auto stripe = AccessSpreader<Atom>::current(NumLocalLists);
     return local_[stripe].head;
   }
@@ -523,10 +524,9 @@ struct IndexedMemPoolRecycler {
 
   explicit IndexedMemPoolRecycler(Pool* pool) : pool(pool) {}
 
-  IndexedMemPoolRecycler(const IndexedMemPoolRecycler<Pool>& rhs)
-      = default;
-  IndexedMemPoolRecycler& operator= (const IndexedMemPoolRecycler<Pool>& rhs)
-      = default;
+  IndexedMemPoolRecycler(const IndexedMemPoolRecycler<Pool>& rhs) = default;
+  IndexedMemPoolRecycler& operator=(const IndexedMemPoolRecycler<Pool>& rhs) =
+      default;
 
   void operator()(typename Pool::value_type* elem) const {
     pool->recycleIndex(pool->locateElem(elem));

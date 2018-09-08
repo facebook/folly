@@ -40,7 +40,7 @@ struct ProducerConsumerQueue {
   typedef T value_type;
 
   ProducerConsumerQueue(const ProducerConsumerQueue&) = delete;
-  ProducerConsumerQueue& operator = (const ProducerConsumerQueue&) = delete;
+  ProducerConsumerQueue& operator=(const ProducerConsumerQueue&) = delete;
 
   // size must be >= 2.
   //
@@ -48,11 +48,10 @@ struct ProducerConsumerQueue {
   // given time is actually (size-1), so if you start with an empty queue,
   // isFull() will return true after size-1 insertions.
   explicit ProducerConsumerQueue(uint32_t size)
-    : size_(size)
-    , records_(static_cast<T*>(std::malloc(sizeof(T) * size)))
-    , readIndex_(0)
-    , writeIndex_(0)
-  {
+      : size_(size),
+        records_(static_cast<T*>(std::malloc(sizeof(T) * size))),
+        readIndex_(0),
+        writeIndex_(0) {
     assert(size >= 2);
     if (!records_) {
       throw std::bad_alloc();

@@ -89,9 +89,8 @@ class AtomicIntrusiveLinkedList {
          compiler bugs (GCC prior to 4.8.3 (bug 60272), clang (bug 18899),
          MSVC (bug 819819); source:
          http://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange */
-    } while (!head_.compare_exchange_weak(oldHead, t,
-                                          std::memory_order_release,
-                                          std::memory_order_relaxed));
+    } while (!head_.compare_exchange_weak(
+        oldHead, t, std::memory_order_release, std::memory_order_relaxed));
 
     return oldHead == nullptr;
   }

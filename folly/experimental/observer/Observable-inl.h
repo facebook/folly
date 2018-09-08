@@ -93,7 +93,7 @@ ObserverCreator<Observable, Traits>::ObserverCreator(Args&&... args)
 
 template <typename Observable, typename Traits>
 Observer<typename ObserverCreator<Observable, Traits>::T>
-ObserverCreator<Observable, Traits>::getObserver()&& {
+ObserverCreator<Observable, Traits>::getObserver() && {
   // This master shared_ptr allows grabbing derived weak_ptrs, pointing to the
   // the same Context object, but using a separate reference count. Master
   // shared_ptr destructor then blocks until all shared_ptrs obtained from
@@ -139,9 +139,8 @@ ObserverCreator<Observable, Traits>::getObserver()&& {
   // callback gets derived weak_ptr.
   ContextMasterPointer contextMaster(context_);
   auto contextWeak = contextMaster.get_weak();
-  auto observer = makeObserver([context = std::move(contextMaster)]() {
-    return context->get();
-  });
+  auto observer = makeObserver(
+      [context = std::move(contextMaster)]() { return context->get(); });
 
   context_->setCore(observer.core_);
   context_->subscribe([contextWeak = std::move(contextWeak)] {

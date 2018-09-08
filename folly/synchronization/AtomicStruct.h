@@ -81,8 +81,8 @@ class AtomicStruct {
  public:
   AtomicStruct() = default;
   ~AtomicStruct() = default;
-  AtomicStruct(AtomicStruct<T> const &) = delete;
-  AtomicStruct<T>& operator= (AtomicStruct<T> const &) = delete;
+  AtomicStruct(AtomicStruct<T> const&) = delete;
+  AtomicStruct<T>& operator=(AtomicStruct<T> const&) = delete;
 
   constexpr /* implicit */ AtomicStruct(T v) noexcept : data(encode(v)) {}
 
@@ -134,7 +134,7 @@ class AtomicStruct {
     return decode(data.exchange(encode(v), mo));
   }
 
-  /* implicit */ operator T () const noexcept {
+  /* implicit */ operator T() const noexcept {
     return decode(data);
   }
 
@@ -142,7 +142,7 @@ class AtomicStruct {
     return decode(data.load(mo));
   }
 
-  T operator= (T v) noexcept {
+  T operator=(T v) noexcept {
     return decode(data = encode(v));
   }
 

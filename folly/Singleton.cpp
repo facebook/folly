@@ -73,6 +73,7 @@ std::string TypeDescriptor::name() const {
   return ret.toStdString();
 }
 
+// clang-format off
 [[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
     const TypeDescriptor& type) {
   // Ensure the availability of std::cerr
@@ -98,10 +99,11 @@ std::string TypeDescriptor::name() const {
 [[noreturn]] void singletonWarnLeakyInstantiatingNotRegisteredAndAbort(
     const TypeDescriptor& type) {
   auto ptr = SingletonVault::stackTraceGetter().load();
-  LOG(FATAL) << "Creating instance for unregistered singleton: "
-             << type.name() << "\n"
+  LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
+             << "\n"
              << "Stacktrace:"
-             << "\n" << (ptr ? (*ptr)() : "(not available)");
+             << "\n"
+             << (ptr ? (*ptr)() : "(not available)");
 }
 
 [[noreturn]] void singletonWarnRegisterMockEarlyAndAbort(
@@ -131,8 +133,8 @@ void singletonWarnDestroyInstanceLeak(
 [[noreturn]] void singletonWarnCreateUnregisteredAndAbort(
     const TypeDescriptor& type) {
   auto ptr = SingletonVault::stackTraceGetter().load();
-  LOG(FATAL) << "Creating instance for unregistered singleton: "
-             << type.name() << "\n"
+  LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
+             << "\n"
              << "Stacktrace:"
              << "\n"
              << (ptr ? (*ptr)() : "(not available)");
@@ -183,6 +185,7 @@ void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
       " Singleton type is: " +
       type.name());
 }
+// clang-format on
 
 } // namespace detail
 
@@ -196,7 +199,8 @@ struct FatalHelper {
         leakedTypes += "\t" + singleton.name() + "\n";
       }
       LOG(DFATAL) << "Singletons of the following types had living references "
-                  << "after destroyInstances was finished:\n" << leakedTypes
+                  << "after destroyInstances was finished:\n"
+                  << leakedTypes
                   << "beware! It is very likely that those singleton instances "
                   << "are leaked.";
     }
@@ -209,12 +213,14 @@ struct FatalHelper {
 // OS X doesn't support constructor priorities.
 FatalHelper fatalHelper;
 #else
-FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
+FatalHelper __attribute__((__init_priority__(101))) fatalHelper;
 #endif
 
 } // namespace
 
-SingletonVault::~SingletonVault() { destroyInstances(); }
+SingletonVault::~SingletonVault() {
+  destroyInstances();
+}
 
 void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
@@ -244,7 +250,7 @@ void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
 }
 
 void SingletonVault::registrationComplete() {
-  std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
+  std::atexit([]() { SingletonVault::singleton()->destroyInstances(); });
 
   auto state = state_.wlock();
   state->check(detail::SingletonVaultState::Type::Running);

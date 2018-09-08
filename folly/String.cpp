@@ -166,10 +166,11 @@ StringPiece rtrimWhitespace(StringPiece sp) {
 
 namespace {
 
-int stringAppendfImplHelper(char* buf,
-                            size_t bufsize,
-                            const char* format,
-                            va_list args) {
+int stringAppendfImplHelper(
+    char* buf,
+    size_t bufsize,
+    const char* format,
+    va_list args) {
   va_list args_copy;
   va_copy(args_copy, args);
   int bytes_used = vsnprintf(buf, bufsize, format, args_copy);
@@ -245,9 +246,8 @@ std::string& stringAppendf(std::string* output, const char* format, ...) {
   return stringVAppendf(output, format, ap);
 }
 
-std::string& stringVAppendf(std::string* output,
-                            const char* format,
-                            va_list ap) {
+std::string&
+stringVAppendf(std::string* output, const char* format, va_list ap) {
   stringAppendfImpl(*output, format, ap);
   return *output;
 }
@@ -274,128 +274,111 @@ struct PrettySuffix {
 };
 
 const PrettySuffix kPrettyTimeSuffixes[] = {
-  { "s ", 1e0L },
-  { "ms", 1e-3L },
-  { "us", 1e-6L },
-  { "ns", 1e-9L },
-  { "ps", 1e-12L },
-  { "s ", 0 },
-  { nullptr, 0 },
+    {"s ", 1e0L},
+    {"ms", 1e-3L},
+    {"us", 1e-6L},
+    {"ns", 1e-9L},
+    {"ps", 1e-12L},
+    {"s ", 0},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettyTimeHmsSuffixes[] = {
-  { "h ", 60L * 60L },
-  { "m ", 60L },
-  { "s ", 1e0L },
-  { "ms", 1e-3L },
-  { "us", 1e-6L },
-  { "ns", 1e-9L },
-  { "ps", 1e-12L },
-  { "s ", 0 },
-  { nullptr, 0 },
+    {"h ", 60L * 60L},
+    {"m ", 60L},
+    {"s ", 1e0L},
+    {"ms", 1e-3L},
+    {"us", 1e-6L},
+    {"ns", 1e-9L},
+    {"ps", 1e-12L},
+    {"s ", 0},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettyBytesMetricSuffixes[] = {
-  { "EB", 1e18L },
-  { "PB", 1e15L },
-  { "TB", 1e12L },
-  { "GB", 1e9L },
-  { "MB", 1e6L },
-  { "kB", 1e3L },
-  { "B ", 0L },
-  { nullptr, 0 },
+    {"EB", 1e18L},
+    {"PB", 1e15L},
+    {"TB", 1e12L},
+    {"GB", 1e9L},
+    {"MB", 1e6L},
+    {"kB", 1e3L},
+    {"B ", 0L},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettyBytesBinarySuffixes[] = {
-  { "EB", int64_t(1) << 60 },
-  { "PB", int64_t(1) << 50 },
-  { "TB", int64_t(1) << 40 },
-  { "GB", int64_t(1) << 30 },
-  { "MB", int64_t(1) << 20 },
-  { "kB", int64_t(1) << 10 },
-  { "B ", 0L },
-  { nullptr, 0 },
+    {"EB", int64_t(1) << 60},
+    {"PB", int64_t(1) << 50},
+    {"TB", int64_t(1) << 40},
+    {"GB", int64_t(1) << 30},
+    {"MB", int64_t(1) << 20},
+    {"kB", int64_t(1) << 10},
+    {"B ", 0L},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
-  { "EiB", int64_t(1) << 60 },
-  { "PiB", int64_t(1) << 50 },
-  { "TiB", int64_t(1) << 40 },
-  { "GiB", int64_t(1) << 30 },
-  { "MiB", int64_t(1) << 20 },
-  { "KiB", int64_t(1) << 10 },
-  { "B  ", 0L },
-  { nullptr, 0 },
+    {"EiB", int64_t(1) << 60},
+    {"PiB", int64_t(1) << 50},
+    {"TiB", int64_t(1) << 40},
+    {"GiB", int64_t(1) << 30},
+    {"MiB", int64_t(1) << 20},
+    {"KiB", int64_t(1) << 10},
+    {"B  ", 0L},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettyUnitsMetricSuffixes[] = {
-  { "qntl", 1e18L },
-  { "qdrl", 1e15L },
-  { "tril", 1e12L },
-  { "bil",  1e9L },
-  { "M",    1e6L },
-  { "k",    1e3L },
-  { " ",      0  },
-  { nullptr, 0 },
+    {"qntl", 1e18L},
+    {"qdrl", 1e15L},
+    {"tril", 1e12L},
+    {"bil", 1e9L},
+    {"M", 1e6L},
+    {"k", 1e3L},
+    {" ", 0},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
-  { "E", int64_t(1) << 60 },
-  { "P", int64_t(1) << 50 },
-  { "T", int64_t(1) << 40 },
-  { "G", int64_t(1) << 30 },
-  { "M", int64_t(1) << 20 },
-  { "k", int64_t(1) << 10 },
-  { " ", 0 },
-  { nullptr, 0 },
+    {"E", int64_t(1) << 60},
+    {"P", int64_t(1) << 50},
+    {"T", int64_t(1) << 40},
+    {"G", int64_t(1) << 30},
+    {"M", int64_t(1) << 20},
+    {"k", int64_t(1) << 10},
+    {" ", 0},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettyUnitsBinaryIECSuffixes[] = {
-  { "Ei", int64_t(1) << 60 },
-  { "Pi", int64_t(1) << 50 },
-  { "Ti", int64_t(1) << 40 },
-  { "Gi", int64_t(1) << 30 },
-  { "Mi", int64_t(1) << 20 },
-  { "Ki", int64_t(1) << 10 },
-  { "  ", 0 },
-  { nullptr, 0 },
+    {"Ei", int64_t(1) << 60},
+    {"Pi", int64_t(1) << 50},
+    {"Ti", int64_t(1) << 40},
+    {"Gi", int64_t(1) << 30},
+    {"Mi", int64_t(1) << 20},
+    {"Ki", int64_t(1) << 10},
+    {"  ", 0},
+    {nullptr, 0},
 };
 
 const PrettySuffix kPrettySISuffixes[] = {
-  { "Y", 1e24L },
-  { "Z", 1e21L },
-  { "E", 1e18L },
-  { "P", 1e15L },
-  { "T", 1e12L },
-  { "G", 1e9L },
-  { "M", 1e6L },
-  { "k", 1e3L },
-  { "h", 1e2L },
-  { "da", 1e1L },
-  { "d", 1e-1L },
-  { "c", 1e-2L },
-  { "m", 1e-3L },
-  { "u", 1e-6L },
-  { "n", 1e-9L },
-  { "p", 1e-12L },
-  { "f", 1e-15L },
-  { "a", 1e-18L },
-  { "z", 1e-21L },
-  { "y", 1e-24L },
-  { " ", 0 },
-  { nullptr, 0}
+    {"Y", 1e24L},  {"Z", 1e21L},  {"E", 1e18L},  {"P", 1e15L},  {"T", 1e12L},
+    {"G", 1e9L},   {"M", 1e6L},   {"k", 1e3L},   {"h", 1e2L},   {"da", 1e1L},
+    {"d", 1e-1L},  {"c", 1e-2L},  {"m", 1e-3L},  {"u", 1e-6L},  {"n", 1e-9L},
+    {"p", 1e-12L}, {"f", 1e-15L}, {"a", 1e-18L}, {"z", 1e-21L}, {"y", 1e-24L},
+    {" ", 0},      {nullptr, 0},
 };
 
 const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
-  kPrettyTimeSuffixes,
-  kPrettyTimeHmsSuffixes,
-  kPrettyBytesMetricSuffixes,
-  kPrettyBytesBinarySuffixes,
-  kPrettyBytesBinaryIECSuffixes,
-  kPrettyUnitsMetricSuffixes,
-  kPrettyUnitsBinarySuffixes,
-  kPrettyUnitsBinaryIECSuffixes,
-  kPrettySISuffixes,
+    kPrettyTimeSuffixes,
+    kPrettyTimeHmsSuffixes,
+    kPrettyBytesMetricSuffixes,
+    kPrettyBytesBinarySuffixes,
+    kPrettyBytesBinaryIECSuffixes,
+    kPrettyUnitsMetricSuffixes,
+    kPrettyUnitsBinarySuffixes,
+    kPrettyUnitsBinaryIECSuffixes,
+    kPrettySISuffixes,
 };
 
 } // namespace
@@ -412,11 +395,13 @@ std::string prettyPrint(double val, PrettyType type, bool addSpace) {
   double abs_val = fabs(val);
   for (int i = 0; suffixes[i].suffix; ++i) {
     if (abs_val >= suffixes[i].val) {
-      snprintf(buf, sizeof buf, "%.4g%s%s",
-               (suffixes[i].val ? (val / suffixes[i].val)
-                                : val),
-               (addSpace ? " " : ""),
-               suffixes[i].suffix);
+      snprintf(
+          buf,
+          sizeof buf,
+          "%.4g%s%s",
+          (suffixes[i].val ? (val / suffixes[i].val) : val),
+          (addSpace ? " " : ""),
+          suffixes[i].suffix);
       return std::string(buf);
     }
   }
@@ -426,43 +411,44 @@ std::string prettyPrint(double val, PrettyType type, bool addSpace) {
   return std::string(buf);
 }
 
-//TODO:
-//1) Benchmark & optimize
-double prettyToDouble(folly::StringPiece *const prettyString,
-                      const PrettyType type) {
+// TODO:
+// 1) Benchmark & optimize
+double prettyToDouble(
+    folly::StringPiece* const prettyString,
+    const PrettyType type) {
   double value = folly::to<double>(prettyString);
   while (prettyString->size() > 0 && std::isspace(prettyString->front())) {
-    prettyString->advance(1); //Skipping spaces between number and suffix
+    prettyString->advance(1); // Skipping spaces between number and suffix
   }
   const PrettySuffix* suffixes = kPrettySuffixes[type];
   int longestPrefixLen = -1;
   int bestPrefixId = -1;
-  for (int j = 0 ; suffixes[j].suffix; ++j) {
-    if (suffixes[j].suffix[0] == ' '){//Checking for " " -> number rule.
+  for (int j = 0; suffixes[j].suffix; ++j) {
+    if (suffixes[j].suffix[0] == ' ') { // Checking for " " -> number rule.
       if (longestPrefixLen == -1) {
-        longestPrefixLen = 0; //No characters to skip
+        longestPrefixLen = 0; // No characters to skip
         bestPrefixId = j;
       }
     } else if (prettyString->startsWith(suffixes[j].suffix)) {
       int suffixLen = int(strlen(suffixes[j].suffix));
-      //We are looking for a longest suffix matching prefix of the string
-      //after numeric value. We need this in case suffixes have common prefix.
+      // We are looking for a longest suffix matching prefix of the string
+      // after numeric value. We need this in case suffixes have common prefix.
       if (suffixLen > longestPrefixLen) {
         longestPrefixLen = suffixLen;
         bestPrefixId = j;
       }
     }
   }
-  if (bestPrefixId == -1) { //No valid suffix rule found
+  if (bestPrefixId == -1) { // No valid suffix rule found
     throw std::invalid_argument(folly::to<std::string>(
         "Unable to parse suffix \"", *prettyString, "\""));
   }
   prettyString->advance(size_t(longestPrefixLen));
-  return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val :
-                                      value;
+  return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val
+                                    : value;
 }
 
-double prettyToDouble(folly::StringPiece prettyString, const PrettyType type){
+double prettyToDouble(folly::StringPiece prettyString, const PrettyType type) {
   double result = prettyToDouble(&prettyString, type);
   detail::enforceWhitespace(prettyString);
   return result;
@@ -494,21 +480,19 @@ fbstring errnoStr(int err) {
   int r = strerror_s(buf, sizeof(buf), err);
   if (r != 0) {
     result = to<fbstring>(
-      "Unknown error ", err,
-      " (strerror_r failed with error ", errno, ")");
+        "Unknown error ", err, " (strerror_r failed with error ", errno, ")");
   } else {
     result.assign(buf);
   }
-#elif defined(FOLLY_HAVE_XSI_STRERROR_R) || \
-  defined(__APPLE__) || defined(__ANDROID__)
+#elif defined(FOLLY_HAVE_XSI_STRERROR_R) || defined(__APPLE__) || \
+    defined(__ANDROID__)
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, sizeof(buf));
 
   // OSX/FreeBSD use EINVAL and Linux uses -1 so just check for non-zero
   if (r != 0) {
     result = to<fbstring>(
-      "Unknown error ", err,
-      " (strerror_r failed with error ", errno, ")");
+        "Unknown error ", err, " (strerror_r failed with error ", errno, ")");
   } else {
     result.assign(buf);
   }
@@ -663,8 +647,8 @@ void toLowerAscii(char* str, size_t length) {
 
 namespace detail {
 
-size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
-                   std::string& line) {
+size_t
+hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line) {
   static char hexValues[] = "0123456789abcdef";
   // Line layout:
   // 8: address
@@ -723,16 +707,16 @@ std::string stripLeftMargin(std::string s) {
   auto piecer = range(pieces);
 
   auto piece = (piecer.end() - 1);
-  auto needle = std::find_if(piece->begin(),
-                             piece->end(),
-                             [](char c) { return c != ' ' && c != '\t'; });
+  auto needle = std::find_if(piece->begin(), piece->end(), [](char c) {
+    return c != ' ' && c != '\t';
+  });
   if (needle == piece->end()) {
     (piecer.end() - 1)->clear();
   }
   piece = piecer.begin();
-  needle = std::find_if(piece->begin(),
-                        piece->end(),
-                        [](char c) { return c != ' ' && c != '\t'; });
+  needle = std::find_if(piece->begin(), piece->end(), [](char c) {
+    return c != ' ' && c != '\t';
+  });
   if (needle == piece->end()) {
     piecer.erase(piecer.begin(), piecer.begin() + 1);
   }
@@ -741,9 +725,9 @@ std::string stripLeftMargin(std::string s) {
   auto indent = sentinel;
   size_t max_length = 0;
   for (piece = piecer.begin(); piece != piecer.end(); piece++) {
-    needle = std::find_if(piece->begin(),
-                          piece->end(),
-                          [](char c) { return c != ' ' && c != '\t'; });
+    needle = std::find_if(piece->begin(), piece->end(), [](char c) {
+      return c != ' ' && c != '\t';
+    });
     if (needle != piece->end()) {
       indent = std::min<size_t>(indent, size_t(needle - piece->begin()));
     } else {
@@ -764,12 +748,12 @@ std::string stripLeftMargin(std::string s) {
 } // namespace folly
 
 #ifdef FOLLY_DEFINED_DMGL
-# undef FOLLY_DEFINED_DMGL
-# undef DMGL_NO_OPTS
-# undef DMGL_PARAMS
-# undef DMGL_ANSI
-# undef DMGL_JAVA
-# undef DMGL_VERBOSE
-# undef DMGL_TYPES
-# undef DMGL_RET_POSTFIX
+#undef FOLLY_DEFINED_DMGL
+#undef DMGL_NO_OPTS
+#undef DMGL_PARAMS
+#undef DMGL_ANSI
+#undef DMGL_JAVA
+#undef DMGL_VERBOSE
+#undef DMGL_TYPES
+#undef DMGL_RET_POSTFIX
 #endif

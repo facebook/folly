@@ -56,7 +56,7 @@ class RingBufferSlot;
 ///
 
 template <typename T, template <typename> class Atom = std::atomic>
-class LockFreeRingBuffer: boost::noncopyable {
+class LockFreeRingBuffer : boost::noncopyable {
   static_assert(
       std::is_nothrow_default_constructible<T>::value,
       "Element type must be nothrow default constructible");
@@ -97,10 +97,9 @@ class LockFreeRingBuffer: boost::noncopyable {
   };
 
   explicit LockFreeRingBuffer(uint32_t capacity) noexcept
-    : capacity_(capacity)
-    , slots_(new detail::RingBufferSlot<T,Atom>[capacity])
-    , ticket_(0)
-  {}
+      : capacity_(capacity),
+        slots_(new detail::RingBufferSlot<T, Atom>[capacity]),
+        ticket_(0) {}
 
   /// Perform a single write of an object of type T.
   /// Writes can block iff a previous writer has not yet completed a write
@@ -160,13 +159,12 @@ class LockFreeRingBuffer: boost::noncopyable {
     return Cursor(ticket - backStep);
   }
 
-  ~LockFreeRingBuffer() {
-  }
+  ~LockFreeRingBuffer() {}
 
  private:
   const uint32_t capacity_;
 
-  const std::unique_ptr<detail::RingBufferSlot<T,Atom>[]> slots_;
+  const std::unique_ptr<detail::RingBufferSlot<T, Atom>[]> slots_;
 
   Atom<uint64_t> ticket_;
 
@@ -183,11 +181,7 @@ namespace detail {
 template <typename T, template <typename> class Atom>
 class RingBufferSlot {
  public:
-  explicit RingBufferSlot() noexcept
-    : sequencer_()
-    , data()
-  {
-  }
+  explicit RingBufferSlot() noexcept : sequencer_(), data() {}
 
   void write(const uint32_t turn, T& value) noexcept {
     Atom<uint32_t> cutoff(0);

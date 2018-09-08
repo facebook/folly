@@ -57,7 +57,7 @@ TEST(IndexedMemPool, no_starvation) {
   typedef DeterministicSchedule Sched;
   Sched sched(Sched::uniform(0));
 
-  typedef IndexedMemPool<int,8,8,DeterministicAtomic> Pool;
+  typedef IndexedMemPool<int, 8, 8, DeterministicAtomic> Pool;
   Pool pool(poolSize);
 
   for (auto pass = 0; pass < 10; ++pass) {
@@ -78,8 +78,8 @@ TEST(IndexedMemPool, no_starvation) {
         Sched::wait(&allocSem);
         uint32_t idx = pool.allocIndex();
         EXPECT_NE(idx, 0u);
-        EXPECT_LE(idx,
-            poolSize + (pool.NumLocalLists - 1) * pool.LocalListLimit);
+        EXPECT_LE(
+            idx, poolSize + (pool.NumLocalLists - 1) * pool.LocalListLimit);
         pool[idx] = i;
         EXPECT_EQ(write(fd[1], &idx, sizeof(idx)), sizeof(idx));
         Sched::post(&readSem);
@@ -93,8 +93,8 @@ TEST(IndexedMemPool, no_starvation) {
         EXPECT_EQ(read(fd[0], &idx, sizeof(idx)), sizeof(idx));
         EXPECT_NE(idx, 0);
         EXPECT_GE(idx, 1u);
-        EXPECT_LE(idx,
-            poolSize + (Pool::NumLocalLists - 1) * Pool::LocalListLimit);
+        EXPECT_LE(
+            idx, poolSize + (Pool::NumLocalLists - 1) * Pool::LocalListLimit);
         EXPECT_EQ(pool[idx], i);
         pool.recycleIndex(idx);
         Sched::post(&allocSem);
@@ -110,7 +110,7 @@ TEST(IndexedMemPool, no_starvation) {
 
 TEST(IndexedMemPool, st_capacity) {
   // only one local list => capacity is exact
-  typedef IndexedMemPool<int,1,32> Pool;
+  typedef IndexedMemPool<int, 1, 32> Pool;
   Pool pool(10);
 
   EXPECT_EQ(pool.capacity(), 10u);
@@ -122,7 +122,7 @@ TEST(IndexedMemPool, st_capacity) {
 }
 
 TEST(IndexedMemPool, mt_capacity) {
-  typedef IndexedMemPool<int,16,32> Pool;
+  typedef IndexedMemPool<int, 16, 32> Pool;
   Pool pool(1000);
 
   std::thread threads[10];
@@ -188,7 +188,7 @@ TEST(IndexedMemPool, eager_recycle) {
 
   for (size_t i = 0; i < 10; ++i) {
     {
-      std::unique_ptr<std::string> arg{ new std::string{ "abc" } };
+      std::unique_ptr<std::string> arg{new std::string{"abc"}};
       auto ptr = pool.allocElem(std::move(arg), 100);
       EXPECT_EQ(NonTrivialStruct::count, 1);
       EXPECT_EQ(ptr->elem_, 103);

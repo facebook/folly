@@ -37,8 +37,7 @@ namespace folly {
 template <
     class Compare = std::less<StringPiece>,
     class Alloc = std::allocator<StringPiece>>
-class StringKeyedSetBase
-    : private std::set<StringPiece, Compare, Alloc> {
+class StringKeyedSetBase : private std::set<StringPiece, Compare, Alloc> {
  private:
   using Base = std::set<StringPiece, Compare, Alloc>;
 
@@ -59,20 +58,18 @@ class StringKeyedSetBase
   typedef typename Base::difference_type difference_type;
 
   explicit StringKeyedSetBase(
-    const key_compare& comp = key_compare(),
-    const allocator_type& alloc = allocator_type())
-      : Base(comp, alloc) {
-  }
+      const key_compare& comp = key_compare(),
+      const allocator_type& alloc = allocator_type())
+      : Base(comp, alloc) {}
 
-  explicit StringKeyedSetBase(const allocator_type& alloc)
-      : Base(alloc) {
-  }
+  explicit StringKeyedSetBase(const allocator_type& alloc) : Base(alloc) {}
 
   template <class InputIterator>
   StringKeyedSetBase(
-    InputIterator b, InputIterator e,
-    const key_compare& comp = key_compare(),
-    const allocator_type& alloc = allocator_type())
+      InputIterator b,
+      InputIterator e,
+      const key_compare& comp = key_compare(),
+      const allocator_type& alloc = allocator_type())
       : Base(comp, alloc) {
     for (; b != e; ++b) {
       emplace(*b);
@@ -80,31 +77,28 @@ class StringKeyedSetBase
   }
 
   StringKeyedSetBase(const StringKeyedSetBase& rhs)
-      : StringKeyedSetBase(rhs, rhs.get_allocator()) {
-  }
+      : StringKeyedSetBase(rhs, rhs.get_allocator()) {}
 
-  StringKeyedSetBase(const StringKeyedSetBase& rhs,
-                     const allocator_type& a)
-      : StringKeyedSetBase(rhs.begin(), rhs.end(), rhs.key_comp(), a) {
-  }
+  StringKeyedSetBase(const StringKeyedSetBase& rhs, const allocator_type& a)
+      : StringKeyedSetBase(rhs.begin(), rhs.end(), rhs.key_comp(), a) {}
 
   StringKeyedSetBase(StringKeyedSetBase&& other) noexcept
       : Base(std::move(other)) {
     assert(other.empty());
   }
 
-  StringKeyedSetBase(StringKeyedSetBase&& other,
-                     const allocator_type& alloc) noexcept
+  StringKeyedSetBase(
+      StringKeyedSetBase&& other,
+      const allocator_type& alloc) noexcept
       : Base(std::move(other), alloc) {
     assert(other.empty());
   }
 
   StringKeyedSetBase(
-    std::initializer_list<value_type> il,
-    const key_compare& comp = key_compare(),
-    const allocator_type& alloc = allocator_type())
-      : StringKeyedSetBase(il.begin(), il.end(), comp, alloc) {
-  }
+      std::initializer_list<value_type> il,
+      const key_compare& comp = key_compare(),
+      const allocator_type& alloc = allocator_type())
+      : StringKeyedSetBase(il.begin(), il.end(), comp, alloc) {}
 
   StringKeyedSetBase& operator=(const StringKeyedSetBase& other) {
     if (this == &other) {
@@ -121,16 +115,16 @@ class StringKeyedSetBase
     return *this;
   }
 
-  using Base::empty;
-  using Base::size;
-  using Base::max_size;
   using Base::begin;
-  using Base::end;
   using Base::cbegin;
   using Base::cend;
-  using Base::find;
   using Base::count;
+  using Base::empty;
+  using Base::end;
+  using Base::find;
   using Base::lower_bound;
+  using Base::max_size;
+  using Base::size;
   using Base::upper_bound;
 
   bool operator==(StringKeyedSetBase const& other) const {

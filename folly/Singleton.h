@@ -188,14 +188,11 @@ namespace detail {
 // a key in unordered_maps.
 class TypeDescriptor {
  public:
-  TypeDescriptor(const std::type_info& ti,
-                 const std::type_info& tag_ti)
-      : ti_(ti), tag_ti_(tag_ti) {
-  }
+  TypeDescriptor(const std::type_info& ti, const std::type_info& tag_ti)
+      : ti_(ti), tag_ti_(tag_ti) {}
 
   TypeDescriptor(const TypeDescriptor& other)
-      : ti_(other.ti_), tag_ti_(other.tag_ti_) {
-  }
+      : ti_(other.ti_), tag_ti_(other.tag_ti_) {}
 
   TypeDescriptor& operator=(const TypeDescriptor& other) {
     if (this != &other) {
@@ -395,8 +392,12 @@ class SingletonVault {
    */
   struct ScopedExpunger {
     SingletonVault* vault;
-    explicit ScopedExpunger(SingletonVault* v) : vault(v) { expunge(); }
-    ~ScopedExpunger() { expunge(); }
+    explicit ScopedExpunger(SingletonVault* v) : vault(v) {
+      expunge();
+    }
+    ~ScopedExpunger() {
+      expunge();
+    }
     void expunge() {
       vault->destroyInstances();
       vault->reenableInstances();
@@ -504,7 +505,7 @@ class SingletonVault {
     return vault;
   }
 
-  typedef std::string(*StackTraceGetterPtr)();
+  typedef std::string (*StackTraceGetterPtr)();
 
   static std::atomic<StackTraceGetterPtr>& stackTraceGetter() {
     /* library-local */ static auto stackTraceGetterPtr = detail::
@@ -533,9 +534,11 @@ class SingletonVault {
   //    any of the singletons managed by folly::Singleton was requested.
   static void scheduleDestroyInstances();
 
-  typedef std::unordered_map<detail::TypeDescriptor,
-                             detail::SingletonHolderBase*,
-                             detail::TypeDescriptorHasher> SingletonMap;
+  typedef std::unordered_map<
+      detail::TypeDescriptor,
+      detail::SingletonHolderBase*,
+      detail::TypeDescriptorHasher>
+      SingletonMap;
   Synchronized<SingletonMap> singletons_;
   Synchronized<std::unordered_set<detail::SingletonHolderBase*>>
       eagerInitSingletons_;
@@ -566,15 +569,17 @@ class Singleton {
   // Generally your program life cycle should be fine with calling
   // get() repeatedly rather than saving the reference, and then not
   // call get() during process shutdown.
-  [[deprecated("Replaced by try_get")]]
-  static T* get() { return getEntry().get(); }
+  [[deprecated("Replaced by try_get")]] static T* get() {
+    return getEntry().get();
+  }
 
   // If, however, you do need to hold a reference to the specific
   // singleton, you can try to do so with a weak_ptr.  Avoid this when
   // possible but the inability to lock the weak pointer can be a
   // signal that the vault has been destroyed.
-  [[deprecated("Replaced by try_get")]]
-  static std::weak_ptr<T> get_weak() { return getEntry().get_weak(); }
+  [[deprecated("Replaced by try_get")]] static std::weak_ptr<T> get_weak() {
+    return getEntry().get_weak();
+  }
 
   // Preferred alternative to get_weak, it returns shared_ptr that can be
   // stored; a singleton won't be destroyed unless shared_ptr is destroyed.
@@ -596,12 +601,14 @@ class Singleton {
     getEntry().vivify();
   }
 
-  explicit Singleton(std::nullptr_t /* _ */ = nullptr,
-                     typename Singleton::TeardownFunc t = nullptr)
+  explicit Singleton(
+      std::nullptr_t /* _ */ = nullptr,
+      typename Singleton::TeardownFunc t = nullptr)
       : Singleton([]() { return new T; }, std::move(t)) {}
 
-  explicit Singleton(typename Singleton::CreateFunc c,
-                     typename Singleton::TeardownFunc t = nullptr) {
+  explicit Singleton(
+      typename Singleton::CreateFunc c,
+      typename Singleton::TeardownFunc t = nullptr) {
     if (c == nullptr) {
       detail::singletonThrowNullCreator(typeid(T));
     }
@@ -634,22 +641,24 @@ class Singleton {
   }
 
   /**
-  * Construct and inject a mock singleton which should be used only from tests.
-  * Unlike regular singletons which are initialized once per process lifetime,
-  * mock singletons live for the duration of a test. This means that one process
-  * running multiple tests can initialize and register the same singleton
-  * multiple times. This functionality should be used only from tests
-  * since it relaxes validation and performance in order to be able to perform
-  * the injection. The returned mock singleton is functionality identical to
-  * regular singletons.
-  */
-  static void make_mock(std::nullptr_t /* c */ = nullptr,
-                        typename Singleton<T>::TeardownFunc t = nullptr) {
+   * Construct and inject a mock singleton which should be used only from tests.
+   * Unlike regular singletons which are initialized once per process lifetime,
+   * mock singletons live for the duration of a test. This means that one
+   * process running multiple tests can initialize and register the same
+   * singleton multiple times. This functionality should be used only from tests
+   * since it relaxes validation and performance in order to be able to perform
+   * the injection. The returned mock singleton is functionality identical to
+   * regular singletons.
+   */
+  static void make_mock(
+      std::nullptr_t /* c */ = nullptr,
+      typename Singleton<T>::TeardownFunc t = nullptr) {
     make_mock([]() { return new T; }, t);
   }
 
-  static void make_mock(CreateFunc c,
-                        typename Singleton<T>::TeardownFunc t = nullptr) {
+  static void make_mock(
+      CreateFunc c,
+      typename Singleton<T>::TeardownFunc t = nullptr) {
     if (c == nullptr) {
       detail::singletonThrowNullCreator(typeid(T));
     }
@@ -666,9 +675,9 @@ class Singleton {
 
   // Construct TeardownFunc.
   static typename detail::SingletonHolder<T>::TeardownFunc getTeardownFunc(
-      TeardownFunc t)  {
+      TeardownFunc t) {
     if (t == nullptr) {
-      return  [](T* v) { delete v; };
+      return [](T* v) { delete v; };
     } else {
       return t;
     }
@@ -691,7 +700,9 @@ class LeakySingleton {
     entry.state = State::Dead;
   }
 
-  static T& get() { return instance(); }
+  static T& get() {
+    return instance();
+  }
 
   static void make_mock(std::nullptr_t /* c */ = nullptr) {
     make_mock([]() { return new T; });

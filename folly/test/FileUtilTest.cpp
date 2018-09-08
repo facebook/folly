@@ -31,7 +31,8 @@
 #include <folly/String.h>
 #include <folly/portability/GTest.h>
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
 using namespace fileutil_detail;
 using namespace std;
@@ -54,7 +55,9 @@ class Reader {
   // pwritev-like
   ssize_t operator()(int fd, const iovec* iov, int count, off_t offset);
 
-  const std::deque<ssize_t> spec() const { return spec_; }
+  const std::deque<ssize_t> spec() const {
+    return spec_;
+  }
 
  private:
   ssize_t nextSize();
@@ -65,10 +68,7 @@ class Reader {
 };
 
 Reader::Reader(off_t offset, StringPiece data, std::deque<ssize_t> spec)
-  : offset_(offset),
-    data_(data),
-    spec_(std::move(spec)) {
-}
+    : offset_(offset), data_(data), spec_(std::move(spec)) {}
 
 ssize_t Reader::nextSize() {
   if (spec_.empty()) {
@@ -80,7 +80,7 @@ ssize_t Reader::nextSize() {
     if (n == -1) {
       errno = EIO;
     }
-    spec_.clear();  // so we fail if called again
+    spec_.clear(); // so we fail if called again
   } else {
     offset_ += n;
   }
@@ -141,14 +141,14 @@ class FileUtilTest : public ::testing::Test {
 };
 
 FileUtilTest::FileUtilTest()
-  : in_("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+    : in_("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") {
   CHECK_EQ(62, in_.size());
 
   readers_.emplace_back(0, reader({0}));
   readers_.emplace_back(62, reader({62}));
-  readers_.emplace_back(62, reader({62, -1}));  // error after end (not called)
+  readers_.emplace_back(62, reader({62, -1})); // error after end (not called)
   readers_.emplace_back(61, reader({61, 0}));
-  readers_.emplace_back(-1, reader({61, -1}));  // error before end
+  readers_.emplace_back(-1, reader({61, -1})); // error before end
   readers_.emplace_back(62, reader({31, 31}));
   readers_.emplace_back(62, reader({1, 10, 20, 10, 1, 20}));
   readers_.emplace_back(61, reader({1, 10, 20, 10, 20, 0}));
@@ -185,8 +185,12 @@ class IovecBuffers {
   explicit IovecBuffers(std::initializer_list<size_t> sizes);
   explicit IovecBuffers(std::vector<size_t> sizes);
 
-  std::vector<iovec> iov() const { return iov_; }  // yes, make a copy
-  std::string join() const { return folly::join("", buffers_); }
+  std::vector<iovec> iov() const {
+    return iov_;
+  } // yes, make a copy
+  std::string join() const {
+    return folly::join("", buffers_);
+  }
   size_t size() const;
 
  private:
@@ -261,8 +265,8 @@ TEST_F(FileUtilTest, preadv) {
     ASSERT_EQ(62, buf.size());
 
     auto iov = buf.iov();
-    EXPECT_EQ(p.first,
-              wrapvFull(p.second, 0, iov.data(), iov.size(), off_t(42)));
+    EXPECT_EQ(
+        p.first, wrapvFull(p.second, 0, iov.data(), iov.size(), off_t(42)));
     if (p.first != (decltype(p.first))(-1)) {
       EXPECT_EQ(in_.substr(0, p.first), buf.join().substr(0, p.first));
     }
@@ -339,9 +343,8 @@ TEST_F(ReadFileFd, InvalidFd) {
   File f(aFile.path().string());
   f.close();
   std::string contents;
-  msvcSuppressAbortOnInvalidParams([&] {
-    EXPECT_FALSE(readFile(f.fd(), contents));
-  });
+  msvcSuppressAbortOnInvalidParams(
+      [&] { EXPECT_FALSE(readFile(f.fd(), contents)); });
   PLOG(INFO);
 }
 

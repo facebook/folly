@@ -75,7 +75,7 @@ class ThreadCachedArena {
   const size_t minBlockSize_;
   const size_t maxAlign_;
 
-  ThreadLocalPtr<SysArena, ThreadLocalPtrTag> arena_;  // Per-thread arena.
+  ThreadLocalPtr<SysArena, ThreadLocalPtrTag> arena_; // Per-thread arena.
 
   // Allocations from threads that are now dead.
   Synchronized<SysArena> zombies_;

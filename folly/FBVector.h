@@ -52,15 +52,17 @@ class fbvector;
 //=============================================================================
 // unrolling
 
-#define FOLLY_FBV_UNROLL_PTR(first, last, OP) do {  \
-  for (; (last) - (first) >= 4; (first) += 4) {     \
-    OP(((first) + 0));                              \
-    OP(((first) + 1));                              \
-    OP(((first) + 2));                              \
-    OP(((first) + 3));                              \
-  }                                                 \
-  for (; (first) != (last); ++(first)) OP((first)); \
-} while(0);
+#define FOLLY_FBV_UNROLL_PTR(first, last, OP)     \
+  do {                                            \
+    for (; (last) - (first) >= 4; (first) += 4) { \
+      OP(((first) + 0));                          \
+      OP(((first) + 1));                          \
+      OP(((first) + 2));                          \
+      OP(((first) + 3));                          \
+    }                                             \
+    for (; (first) != (last); ++(first))          \
+      OP((first));                                \
+  } while (0);
 
 //=============================================================================
 ///////////////////////////////////////////////////////////////////////////////
@@ -73,7 +75,6 @@ namespace folly {
 
 template <class T, class Allocator>
 class fbvector {
-
   //===========================================================================
   //---------------------------------------------------------------------------
   // implementation
@@ -91,18 +92,22 @@ class fbvector {
     // constructors
     Impl() : Allocator(), b_(nullptr), e_(nullptr), z_(nullptr) {}
     /* implicit */ Impl(const Allocator& alloc)
-      : Allocator(alloc), b_(nullptr), e_(nullptr), z_(nullptr) {}
+        : Allocator(alloc), b_(nullptr), e_(nullptr), z_(nullptr) {}
     /* implicit */ Impl(Allocator&& alloc)
-      : Allocator(std::move(alloc)), b_(nullptr), e_(nullptr), z_(nullptr) {}
+        : Allocator(std::move(alloc)), b_(nullptr), e_(nullptr), z_(nullptr) {}
 
     /* implicit */ Impl(size_type n, const Allocator& alloc = Allocator())
-      : Allocator(alloc)
-      { init(n); }
+        : Allocator(alloc) {
+      init(n);
+    }
 
     Impl(Impl&& other) noexcept
-      : Allocator(std::move(other)),
-        b_(other.b_), e_(other.e_), z_(other.z_)
-      { other.b_ = other.e_ = other.z_ = nullptr; }
+        : Allocator(std::move(other)),
+          b_(other.b_),
+          e_(other.e_),
+          z_(other.z_) {
+      other.b_ = other.e_ = other.z_ = nullptr;
+    }
 
     // destructor
     ~Impl() {
@@ -194,18 +199,18 @@ class fbvector {
   //---------------------------------------------------------------------------
   // types and constants
  public:
-  typedef T                                           value_type;
-  typedef value_type&                                 reference;
-  typedef const value_type&                           const_reference;
-  typedef T*                                          iterator;
-  typedef const T*                                    const_iterator;
-  typedef size_t                                      size_type;
-  typedef typename std::make_signed<size_type>::type  difference_type;
-  typedef Allocator                                   allocator_type;
-  typedef typename A::pointer                         pointer;
-  typedef typename A::const_pointer                   const_pointer;
-  typedef std::reverse_iterator<iterator>             reverse_iterator;
-  typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
+  typedef T value_type;
+  typedef value_type& reference;
+  typedef const value_type& const_reference;
+  typedef T* iterator;
+  typedef const T* const_iterator;
+  typedef size_t size_type;
+  typedef typename std::make_signed<size_type>::type difference_type;
+  typedef Allocator allocator_type;
+  typedef typename A::pointer pointer;
+  typedef typename A::const_pointer const_pointer;
+  typedef std::reverse_iterator<iterator> reverse_iterator;
+  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
  private:
   typedef bool_constant<
@@ -213,10 +218,11 @@ class fbvector {
       sizeof(T) <= 16 // don't force large structures to be passed by value
       >
       should_pass_by_value;
-  typedef typename std::conditional<
-      should_pass_by_value::value, T, const T&>::type VT;
-  typedef typename std::conditional<
-      should_pass_by_value::value, T, T&&>::type MT;
+  typedef
+      typename std::conditional<should_pass_by_value::value, T, const T&>::type
+          VT;
+  typedef
+      typename std::conditional<should_pass_by_value::value, T, T&&>::type MT;
 
   typedef bool_constant<std::is_same<Allocator, std::allocator<T>>::value>
       usingStdAllocator;
@@ -255,7 +261,7 @@ class fbvector {
       new (p) U(std::forward<Args>(args)...);
     } else {
       std::allocator_traits<Allocator>::construct(
-        impl_, p, std::forward<Args>(args)...);
+          impl_, p, std::forward<Args>(args)...);
     }
   }
 
@@ -267,13 +273,14 @@ class fbvector {
   template <typename U, typename... Args>
   static void S_construct_a(Allocator& a, U* p, Args&&... args) {
     std::allocator_traits<Allocator>::construct(
-      a, p, std::forward<Args>(args)...);
+        a, p, std::forward<Args>(args)...);
   }
 
   // scalar optimization
   // TODO we can expand this optimization to: default copyable and assignable
-  template <typename U, typename Enable = typename
-    std::enable_if<std::is_scalar<U>::value>::type>
+  template <
+      typename U,
+      typename Enable = typename std::enable_if<std::is_scalar<U>::value>::type>
   void M_construct(U* p, U arg) {
     if (usingStdAllocator::value) {
       *p = arg;
@@ -282,21 +289,25 @@ class fbvector {
     }
   }
 
-  template <typename U, typename Enable = typename
-    std::enable_if<std::is_scalar<U>::value>::type>
+  template <
+      typename U,
+      typename Enable = typename std::enable_if<std::is_scalar<U>::value>::type>
   static void S_construct(U* p, U arg) {
     *p = arg;
   }
 
-  template <typename U, typename Enable = typename
-    std::enable_if<std::is_scalar<U>::value>::type>
+  template <
+      typename U,
+      typename Enable = typename std::enable_if<std::is_scalar<U>::value>::type>
   static void S_construct_a(Allocator& a, U* p, U arg) {
     std::allocator_traits<Allocator>::construct(a, p, arg);
   }
 
   // const& optimization
-  template <typename U, typename Enable = typename
-    std::enable_if<!std::is_scalar<U>::value>::type>
+  template <
+      typename U,
+      typename Enable =
+          typename std::enable_if<!std::is_scalar<U>::value>::type>
   void M_construct(U* p, const U& value) {
     if (usingStdAllocator::value) {
       new (p) U(value);
@@ -305,14 +316,18 @@ class fbvector {
     }
   }
 
-  template <typename U, typename Enable = typename
-    std::enable_if<!std::is_scalar<U>::value>::type>
+  template <
+      typename U,
+      typename Enable =
+          typename std::enable_if<!std::is_scalar<U>::value>::type>
   static void S_construct(U* p, const U& value) {
     new (p) U(value);
   }
 
-  template <typename U, typename Enable = typename
-    std::enable_if<!std::is_scalar<U>::value>::type>
+  template <
+      typename U,
+      typename Enable =
+          typename std::enable_if<!std::is_scalar<U>::value>::type>
   static void S_construct_a(Allocator& a, U* p, const U& value) {
     std::allocator_traits<Allocator>::construct(a, p, value);
   }
@@ -363,6 +378,7 @@ class fbvector {
   // optimized
   static void S_destroy_range(T* first, T* last) noexcept {
     if (!std::is_trivially_destructible<T>::value) {
+#define FOLLY_FBV_OP(p) (p)->~T()
       // EXPERIMENTAL DATA on fbvector<vector<int>> (where each vector<int> has
       //  size 0).
       // The unrolled version seems to work faster for small to medium sized
@@ -374,9 +390,8 @@ class fbvector {
       //  version is about 0.5% slower on size 262144.
 
       // for (; first != last; ++first) first->~T();
-      #define FOLLY_FBV_OP(p) (p)->~T()
       FOLLY_FBV_UNROLL_PTR(first, last, FOLLY_FBV_OP)
-      #undef FOLLY_FBV_OP
+#undef FOLLY_FBV_OP
     }
   }
 
@@ -413,14 +428,17 @@ class fbvector {
 
   // allocator
   template <typename... Args>
-  static void S_uninitialized_fill_n_a(Allocator& a, T* dest,
-                                       size_type sz, Args&&... args) {
+  static void S_uninitialized_fill_n_a(
+      Allocator& a,
+      T* dest,
+      size_type sz,
+      Args&&... args) {
     auto b = dest;
     auto e = dest + sz;
     try {
       for (; b != e; ++b) {
-        std::allocator_traits<Allocator>::construct(a, b,
-          std::forward<Args>(args)...);
+        std::allocator_traits<Allocator>::construct(
+            a, b, std::forward<Args>(args)...);
       }
     } catch (...) {
       S_destroy_range_a(a, dest, b);
@@ -499,14 +517,13 @@ class fbvector {
 
   template <typename It>
   void D_uninitialized_move_a(T* dest, It first, It last) {
-    D_uninitialized_copy_a(dest,
-      std::make_move_iterator(first), std::make_move_iterator(last));
+    D_uninitialized_copy_a(
+        dest, std::make_move_iterator(first), std::make_move_iterator(last));
   }
 
   // allocator
   template <typename It>
-  static void
-  S_uninitialized_copy_a(Allocator& a, T* dest, It first, It last) {
+  static void S_uninitialized_copy_a(Allocator& a, T* dest, It first, It last) {
     auto b = dest;
     try {
       for (; first != last; ++first, ++b) {
@@ -539,9 +556,10 @@ class fbvector {
     }
   }
 
-  static void
-  S_uninitialized_copy_bits(T* dest, std::move_iterator<T*> first,
-                       std::move_iterator<T*> last) {
+  static void S_uninitialized_copy_bits(
+      T* dest,
+      std::move_iterator<T*> first,
+      std::move_iterator<T*> last) {
     T* bFirst = first.base();
     T* bLast = last.base();
     if (bLast != bFirst) {
@@ -550,8 +568,7 @@ class fbvector {
   }
 
   template <typename It>
-  static void
-  S_uninitialized_copy_bits(T* dest, It first, It last) {
+  static void S_uninitialized_copy_bits(T* dest, It first, It last) {
     S_uninitialized_copy(dest, first, last);
   }
 
@@ -683,8 +700,9 @@ class fbvector {
   void relocate_undo(T* dest, T* first, T* last) noexcept {
     if (folly::IsRelocatable<T>::value && usingStdAllocator::value) {
       // used memcpy, old data is still valid, nothing to do
-    } else if (std::is_nothrow_move_constructible<T>::value &&
-               usingStdAllocator::value) {
+    } else if (
+        std::is_nothrow_move_constructible<T>::value &&
+        usingStdAllocator::value) {
       // noexcept move everything back, aka relocate_move
       relocate_move(first, dest, dest + (last - first));
     } else if (!std::is_copy_constructible<T>::value) {
@@ -696,7 +714,6 @@ class fbvector {
     }
   }
 
-
   //===========================================================================
   //---------------------------------------------------------------------------
   // construct/copy/destroy
@@ -706,26 +723,32 @@ class fbvector {
   explicit fbvector(const Allocator& a) : impl_(a) {}
 
   explicit fbvector(size_type n, const Allocator& a = Allocator())
-    : impl_(n, a)
-    { M_uninitialized_fill_n_e(n); }
+      : impl_(n, a) {
+    M_uninitialized_fill_n_e(n);
+  }
 
   fbvector(size_type n, VT value, const Allocator& a = Allocator())
-    : impl_(n, a)
-    { M_uninitialized_fill_n_e(n, value); }
+      : impl_(n, a) {
+    M_uninitialized_fill_n_e(n, value);
+  }
 
-  template <class It, class Category = typename
-            std::iterator_traits<It>::iterator_category>
+  template <
+      class It,
+      class Category = typename std::iterator_traits<It>::iterator_category>
   fbvector(It first, It last, const Allocator& a = Allocator())
-    : fbvector(first, last, a, Category()) {}
+      : fbvector(first, last, a, Category()) {}
 
   fbvector(const fbvector& other)
-    : impl_(other.size(), A::select_on_container_copy_construction(other.impl_))
-    { M_uninitialized_copy_e(other.begin(), other.end()); }
+      : impl_(
+            other.size(),
+            A::select_on_container_copy_construction(other.impl_)) {
+    M_uninitialized_copy_e(other.begin(), other.end());
+  }
 
   fbvector(fbvector&& other) noexcept : impl_(std::move(other.impl_)) {}
 
   fbvector(const fbvector& other, const Allocator& a)
-    : fbvector(other.begin(), other.end(), a) {}
+      : fbvector(other.begin(), other.end(), a) {}
 
   /* may throw */ fbvector(fbvector&& other, const Allocator& a) : impl_(a) {
     if (impl_ == other.impl_) {
@@ -737,7 +760,7 @@ class fbvector {
   }
 
   fbvector(std::initializer_list<T> il, const Allocator& a = Allocator())
-    : fbvector(il.begin(), il.end(), a) {}
+      : fbvector(il.begin(), il.end(), a) {}
 
   ~fbvector() = default; // the cleanup occurs in impl_
 
@@ -772,8 +795,9 @@ class fbvector {
     return *this;
   }
 
-  template <class It, class Category = typename
-            std::iterator_traits<It>::iterator_category>
+  template <
+      class It,
+      class Category = typename std::iterator_traits<It>::iterator_category>
   void assign(It first, It last) {
     assign(first, last, Category());
   }
@@ -811,10 +835,14 @@ class fbvector {
  private:
   // contract dispatch for iterator types fbvector(It first, It last)
   template <class ForwardIterator>
-  fbvector(ForwardIterator first, ForwardIterator last,
-           const Allocator& a, std::forward_iterator_tag)
-    : impl_(size_type(std::distance(first, last)), a)
-    { M_uninitialized_copy_e(first, last); }
+  fbvector(
+      ForwardIterator first,
+      ForwardIterator last,
+      const Allocator& a,
+      std::forward_iterator_tag)
+      : impl_(size_type(std::distance(first, last)), a) {
+    M_uninitialized_copy_e(first, last);
+  }
 
   template <class InputIterator>
   fbvector(
@@ -829,8 +857,7 @@ class fbvector {
   }
 
   // contract dispatch for allocator movement in operator=(fbvector&&)
-  void
-  moveFrom(fbvector&& other, std::true_type) {
+  void moveFrom(fbvector&& other, std::true_type) {
     swap(impl_, other.impl_);
   }
   void moveFrom(fbvector&& other, std::false_type) {
@@ -844,8 +871,10 @@ class fbvector {
 
   // contract dispatch for iterator types in assign(It first, It last)
   template <class ForwardIterator>
-  void assign(ForwardIterator first, ForwardIterator last,
-              std::forward_iterator_tag) {
+  void assign(
+      ForwardIterator first,
+      ForwardIterator last,
+      std::forward_iterator_tag) {
     const auto newSize = size_type(std::distance(first, last));
     if (newSize > capacity()) {
       impl_.reset(newSize);
@@ -860,8 +889,8 @@ class fbvector {
   }
 
   template <class InputIterator>
-  void assign(InputIterator first, InputIterator last,
-              std::input_iterator_tag) {
+  void
+  assign(InputIterator first, InputIterator last, std::input_iterator_tag) {
     auto p = impl_.b_;
     for (; first != last && p != impl_.e_; ++first, ++p) {
       *p = *first;
@@ -883,10 +912,9 @@ class fbvector {
     return dataIsInternal(t);
   }
   bool dataIsInternal(const T& t) {
-    return UNLIKELY(impl_.b_ <= std::addressof(t) &&
-                    std::addressof(t) < impl_.e_);
+    return UNLIKELY(
+        impl_.b_ <= std::addressof(t) && std::addressof(t) < impl_.e_);
   }
-
 
   //===========================================================================
   //---------------------------------------------------------------------------
@@ -1092,7 +1120,7 @@ class fbvector {
     assert(!empty());
     return *impl_.b_;
   }
-  reference back()  {
+  reference back() {
     assert(!empty());
     return impl_.e_[-1];
   }
@@ -1117,7 +1145,7 @@ class fbvector {
   // modifiers (common)
  public:
   template <class... Args>
-  void emplace_back(Args&&... args)  {
+  void emplace_back(Args&&... args) {
     if (impl_.e_ != impl_.z_) {
       M_construct(impl_.e_, std::forward<Args>(args)...);
       ++impl_.e_;
@@ -1126,8 +1154,7 @@ class fbvector {
     }
   }
 
-  void
-  push_back(const T& value) {
+  void push_back(const T& value) {
     if (impl_.e_ != impl_.z_) {
       M_construct(impl_.e_, value);
       ++impl_.e_;
@@ -1136,8 +1163,7 @@ class fbvector {
     }
   }
 
-  void
-  push_back(T&& value) {
+  void push_back(T&& value) {
     if (impl_.e_ != impl_.z_) {
       M_construct(impl_.e_, std::move(value));
       ++impl_.e_;
@@ -1223,8 +1249,10 @@ class fbvector {
           }
           impl_.e_ -= (last - first);
         } else {
-          std::copy(std::make_move_iterator((iterator)last),
-                    std::make_move_iterator(end()), (iterator)first);
+          std::copy(
+              std::make_move_iterator((iterator)last),
+              std::make_move_iterator(end()),
+              (iterator)first);
           auto newEnd = impl_.e_ - std::distance(first, last);
           M_destroy_range_e(newEnd);
         }
@@ -1317,8 +1345,10 @@ class fbvector {
       } else {
         D_uninitialized_move_a(impl_.e_, impl_.e_ - n, impl_.e_);
         try {
-          std::copy_backward(std::make_move_iterator(position),
-                             std::make_move_iterator(impl_.e_ - n), impl_.e_);
+          std::copy_backward(
+              std::make_move_iterator(position),
+              std::make_move_iterator(impl_.e_ - n),
+              impl_.e_);
         } catch (...) {
           D_destroy_range_a(impl_.e_ - n, impl_.e_ + n);
           impl_.e_ -= n;
@@ -1498,8 +1528,9 @@ class fbvector {
         [&](iterator start) { D_destroy_range_a(start, start + n); });
   }
 
-  template <class It, class Category = typename
-            std::iterator_traits<It>::iterator_category>
+  template <
+      class It,
+      class Category = typename std::iterator_traits<It>::iterator_category>
   iterator insert(const_iterator cpos, It first, It last) {
     return insert(cpos, first, last, Category());
   }
@@ -1512,8 +1543,8 @@ class fbvector {
   // insert dispatch for iterator types
  private:
   template <class FIt>
-  iterator insert(const_iterator cpos, FIt first, FIt last,
-                  std::forward_iterator_tag) {
+  iterator
+  insert(const_iterator cpos, FIt first, FIt last, std::forward_iterator_tag) {
     size_type n = size_type(std::distance(first, last));
     return do_real_insert(
         cpos,
@@ -1525,21 +1556,24 @@ class fbvector {
   }
 
   template <class IIt>
-  iterator insert(const_iterator cpos, IIt first, IIt last,
-                  std::input_iterator_tag) {
+  iterator
+  insert(const_iterator cpos, IIt first, IIt last, std::input_iterator_tag) {
     T* position = const_cast<T*>(cpos);
     assert(isValid(position));
     size_type idx = std::distance(begin(), position);
 
-    fbvector storage(std::make_move_iterator(position),
-                     std::make_move_iterator(end()),
-                     A::select_on_container_copy_construction(impl_));
+    fbvector storage(
+        std::make_move_iterator(position),
+        std::make_move_iterator(end()),
+        A::select_on_container_copy_construction(impl_));
     M_destroy_range_e(position);
     for (; first != last; ++first) {
       emplace_back(*first);
     }
-    insert(cend(), std::make_move_iterator(storage.begin()),
-           std::make_move_iterator(storage.end()));
+    insert(
+        cend(),
+        std::make_move_iterator(storage.begin()),
+        std::make_move_iterator(storage.end()));
     return impl_.b_ + idx;
   }
 
@@ -1557,7 +1591,7 @@ class fbvector {
 
   bool operator<(const fbvector& other) const {
     return std::lexicographical_compare(
-      begin(), end(), other.begin(), other.end());
+        begin(), end(), other.begin(), other.end());
   }
 
   bool operator>(const fbvector& other) const {
@@ -1584,7 +1618,6 @@ class fbvector {
 
 }; // class fbvector
 
-
 //=============================================================================
 //-----------------------------------------------------------------------------
 // outlined functions (gcc, you finicky compiler you)
@@ -1592,12 +1625,11 @@ class fbvector {
 template <typename T, typename Allocator>
 template <class... Args>
 void fbvector<T, Allocator>::emplace_back_aux(Args&&... args) {
-  size_type byte_sz = folly::goodMallocSize(
-    computePushBackCapacity() * sizeof(T));
-  if (usingStdAllocator::value
-      && usingJEMalloc()
-      && ((impl_.z_ - impl_.b_) * sizeof(T) >=
-          folly::jemallocMinInPlaceExpandable)) {
+  size_type byte_sz =
+      folly::goodMallocSize(computePushBackCapacity() * sizeof(T));
+  if (usingStdAllocator::value && usingJEMalloc() &&
+      ((impl_.z_ - impl_.b_) * sizeof(T) >=
+       folly::jemallocMinInPlaceExpandable)) {
     // Try to reserve in place.
     // Ask xallocx to allocate in place at least size()+1 and at most sz space.
     // xallocx will allocate as much as possible within that range, which
@@ -1676,8 +1708,7 @@ namespace detail {
 // Format support.
 template <class T, class A>
 struct IndexableTraits<fbvector<T, A>>
-  : public IndexableTraitsSeq<fbvector<T, A>> {
-};
+    : public IndexableTraitsSeq<fbvector<T, A>> {};
 
 } // namespace detail
 

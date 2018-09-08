@@ -61,10 +61,13 @@ BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator)
 BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type)
 BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type)
 
-template <typename T> struct iterator_class_is_container {
+template <typename T>
+struct iterator_class_is_container {
   typedef std::reverse_iterator<typename T::iterator> some_iterator;
-  enum { value = has_value_type<T>::value &&
-              std::is_constructible<T, some_iterator, some_iterator>::value };
+  enum {
+    value = has_value_type<T>::value &&
+        std::is_constructible<T, some_iterator, some_iterator>::value
+  };
 };
 
 template <typename T>
@@ -177,7 +180,8 @@ inline std::move_iterator<Transformer<T, It>> conversionIterator(const It& it) {
  */
 
 // default - intentionally unimplemented
-template <typename T, typename Enable = void> struct DynamicConverter;
+template <typename T, typename Enable = void>
+struct DynamicConverter;
 
 // boolean
 template <>
@@ -259,13 +263,13 @@ struct DynamicConverter<
         !dynamicconverter_detail::is_associative<C>::value>::type> {
   static C convert(const dynamic& d) {
     if (d.isArray()) {
-      return C(dynamicconverter_detail::conversionIterator<C>(d.begin()),
-               dynamicconverter_detail::conversionIterator<C>(d.end()));
+      return C(
+          dynamicconverter_detail::conversionIterator<C>(d.begin()),
+          dynamicconverter_detail::conversionIterator<C>(d.end()));
     } else if (d.isObject()) {
-      return C(dynamicconverter_detail::conversionIterator<C>
-                 (d.items().begin()),
-               dynamicconverter_detail::conversionIterator<C>
-                 (d.items().end()));
+      return C(
+          dynamicconverter_detail::conversionIterator<C>(d.items().begin()),
+          dynamicconverter_detail::conversionIterator<C>(d.items().end()));
     } else {
       throw TypeError("object or array", d.type());
     }

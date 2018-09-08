@@ -40,8 +40,7 @@ std::string guessProgramName() {
 } // namespace
 
 ProgramExit::ProgramExit(int status, const std::string& msg)
-  : std::runtime_error(msg),
-    status_(status) {
+    : std::runtime_error(msg), status_(status) {
   // Message is only allowed for non-zero exit status
   CHECK(status_ != 0 || msg.empty());
 }
@@ -94,13 +93,12 @@ po::options_description& NestedCommandLineApp::addCommand(
     std::string shortHelp,
     std::string fullHelp,
     Command command) {
-  CommandInfo info {
-    std::move(argStr),
-    std::move(shortHelp),
-    std::move(fullHelp),
-    std::move(command),
-    po::options_description(folly::sformat("Options for `{}'", name))
-  };
+  CommandInfo info{
+      std::move(argStr),
+      std::move(shortHelp),
+      std::move(fullHelp),
+      std::move(command),
+      po::options_description(folly::sformat("Options for `{}'", name))};
 
   auto p = commands_.emplace(std::move(name), std::move(info));
   CHECK(p.second) << "Command already exists";
@@ -108,12 +106,11 @@ po::options_description& NestedCommandLineApp::addCommand(
   return p.first->second.options;
 }
 
-void NestedCommandLineApp::addAlias(std::string newName,
-                                     std::string oldName) {
+void NestedCommandLineApp::addAlias(std::string newName, std::string oldName) {
   CHECK(aliases_.count(oldName) || commands_.count(oldName))
-    << "Alias old name does not exist";
+      << "Alias old name does not exist";
   CHECK(!aliases_.count(newName) && !commands_.count(newName))
-    << "Alias new name already exists";
+      << "Alias new name already exists";
   aliases_.emplace(std::move(newName), std::move(oldName));
 }
 
@@ -139,15 +136,21 @@ void NestedCommandLineApp::displayHelp(
     }
 
     for (auto& p : commands_) {
-      printf("  %-*s    %s\n",
-             int(maxLen), p.first.c_str(), p.second.shortHelp.c_str());
+      printf(
+          "  %-*s    %s\n",
+          int(maxLen),
+          p.first.c_str(),
+          p.second.shortHelp.c_str());
     }
 
     if (!aliases_.empty()) {
       printf("\nAvailable aliases:\n");
       for (auto& p : aliases_) {
-        printf("  %-*s => %s\n",
-               int(maxLen), p.first.c_str(), resolveAlias(p.second).c_str());
+        printf(
+            "  %-*s => %s\n",
+            int(maxLen),
+            p.first.c_str(),
+            resolveAlias(p.second).c_str());
       }
     }
     std::cout << "\n" << programHelpFooter_ << "\n";
@@ -155,8 +158,11 @@ void NestedCommandLineApp::displayHelp(
     // Help for a given command
     auto& p = findCommand(args.front());
     if (p.first != args.front()) {
-      printf("`%s' is an alias for `%s'; showing help for `%s'\n",
-             args.front().c_str(), p.first.c_str(), p.first.c_str());
+      printf(
+          "`%s' is an alias for `%s'; showing help for `%s'\n",
+          args.front().c_str(),
+          p.first.c_str(),
+          p.first.c_str());
     }
     auto& info = p.second;
 
@@ -197,7 +203,7 @@ const std::string& NestedCommandLineApp::resolveAlias(
 }
 
 auto NestedCommandLineApp::findCommand(const std::string& name) const
-  -> const std::pair<const std::string, CommandInfo>& {
+    -> const std::pair<const std::string, CommandInfo>& {
   auto pos = commands_.find(resolveAlias(name));
   if (pos == commands_.end()) {
     throw ProgramExit(
@@ -224,7 +230,7 @@ int NestedCommandLineApp::run(const std::vector<std::string>& args) {
     doRun(args);
     status = 0;
   } catch (const ProgramExit& ex) {
-    if (ex.what()[0]) {  // if not empty
+    if (ex.what()[0]) { // if not empty
       fprintf(stderr, "%s\n", ex.what());
     }
     status = ex.status();
@@ -246,8 +252,10 @@ int NestedCommandLineApp::run(const std::vector<std::string>& args) {
       fprintf(stderr, "error on standard output\n");
       status = 1;
     } else if (fflush(stdout)) {
-      fprintf(stderr, "standard output flush failed: %s\n",
-              errnoStr(errno).c_str());
+      fprintf(
+          stderr,
+          "standard output flush failed: %s\n",
+          errnoStr(errno).c_str());
       status = 1;
     }
   }
@@ -305,13 +313,13 @@ void NestedCommandLineApp::doRun(const std::vector<std::string>& args) {
   auto& info = p.second;
 
   auto cmdOptions =
-    po::command_line_parser(parsed.rest).options(info.options).run();
+      po::command_line_parser(parsed.rest).options(info.options).run();
 
   po::store(cmdOptions, vm);
   po::notify(vm);
 
-  auto cmdArgs = po::collect_unrecognized(cmdOptions.options,
-                                          po::include_positional);
+  auto cmdArgs =
+      po::collect_unrecognized(cmdOptions.options, po::include_positional);
 
   cmdArgs.insert(cmdArgs.end(), endArgs.begin(), endArgs.end());
 

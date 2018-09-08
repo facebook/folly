@@ -21,7 +21,9 @@
  * override-include-guard
  */
 
-void BENCHFUN(initRNG)(size_t /* iters */, size_t) { srand(seed); }
+void BENCHFUN(initRNG)(size_t /* iters */, size_t) {
+  srand(seed);
+}
 BENCHMARK_PARAM(BENCHFUN(initRNG), 0)
 
 void BENCHFUN(defaultCtor)(size_t iters, size_t) {
@@ -124,7 +126,6 @@ void BENCHFUN(findSuccessful)(size_t iters, size_t /* arg */) {
   STRING s;
 
   BENCHMARK_SUSPEND {
-
     // Text courtesy (ahem) of
     // http://www.psychologytoday.com/blog/career-transitions/200906/
     // the-dreaded-writing-sample
@@ -186,9 +187,7 @@ expect to get a call for an interview.";
     s1 = "So how do you tackle that writing sample request?";
   }
 
-  FOR_EACH_RANGE (i, 0, iters) {
-    doNotOptimizeAway(s.find(s1));
-  }
+  FOR_EACH_RANGE (i, 0, iters) { doNotOptimizeAway(s.find(s1)); }
 }
 BENCHMARK_PARAM(BENCHFUN(findUnsuccessful), 524288)
 
@@ -224,7 +223,7 @@ void BENCHFUN(replace)(size_t iters, size_t arg) {
     randomString(&s1, toInsert);
     susp.dismiss();
 
-   s.replace(pos, toRemove, s1);
+    s.replace(pos, toRemove, s1);
   }
 }
 BENCHMARK_PARAM(BENCHFUN(replace), 256)
@@ -232,9 +231,7 @@ BENCHMARK_PARAM(BENCHFUN(replace), 256)
 void BENCHFUN(push_back)(size_t iters, size_t arg) {
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s;
-    FOR_EACH_RANGE (j, 0, arg) {
-      s += ' ';
-    }
+    FOR_EACH_RANGE (j, 0, arg) { s += ' '; }
   }
 }
 BENCHMARK_PARAM(BENCHFUN(push_back), 1)
@@ -245,9 +242,7 @@ BENCHMARK_PARAM(BENCHFUN(push_back), 1024)
 void BENCHFUN(short_append)(size_t iters, size_t arg) {
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s;
-    FOR_EACH_RANGE (j, 0, arg) {
-      s += "012";
-    }
+    FOR_EACH_RANGE (j, 0, arg) { s += "012"; }
   }
 }
 BENCHMARK_PARAM(BENCHFUN(short_append), 23)

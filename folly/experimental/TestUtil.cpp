@@ -44,22 +44,23 @@ fs::path generateUniquePath(fs::path path, StringPiece namePrefix) {
   if (namePrefix.empty()) {
     path /= fs::unique_path();
   } else {
-    path /= fs::unique_path(
-        to<std::string>(namePrefix, ".%%%%-%%%%-%%%%-%%%%"));
+    path /=
+        fs::unique_path(to<std::string>(namePrefix, ".%%%%-%%%%-%%%%-%%%%"));
   }
   return path;
 }
 
 } // namespace
 
-TemporaryFile::TemporaryFile(StringPiece namePrefix,
-                             fs::path dir,
-                             Scope scope,
-                             bool closeOnDestruction)
-  : scope_(scope),
-    closeOnDestruction_(closeOnDestruction),
-    fd_(-1),
-    path_(generateUniquePath(std::move(dir), namePrefix)) {
+TemporaryFile::TemporaryFile(
+    StringPiece namePrefix,
+    fs::path dir,
+    Scope scope,
+    bool closeOnDestruction)
+    : scope_(scope),
+      closeOnDestruction_(closeOnDestruction),
+      fd_(-1),
+      path_(generateUniquePath(std::move(dir), namePrefix)) {
   fd_ = open(path_.string().c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
   checkUnixError(fd_, "open failed");
 
@@ -145,12 +146,12 @@ namespace detail {
 SavedState disableInvalidParameters() {
 #ifdef _WIN32
   SavedState ret;
-  ret.previousThreadLocalHandler = _set_thread_local_invalid_parameter_handler(
-      [](const wchar_t*,
-         const wchar_t*,
-         const wchar_t*,
-         unsigned int,
-         uintptr_t) {});
+  ret.previousThreadLocalHandler =
+      _set_thread_local_invalid_parameter_handler([](const wchar_t*,
+                                                     const wchar_t*,
+                                                     const wchar_t*,
+                                                     unsigned int,
+                                                     uintptr_t) {});
   ret.previousCrtReportMode = _CrtSetReportMode(_CRT_ASSERT, 0);
   return ret;
 #else
@@ -170,10 +171,9 @@ void enableInvalidParameters(SavedState) {}
 
 bool hasPCREPatternMatch(StringPiece pattern, StringPiece target) {
   return boost::regex_match(
-    target.begin(),
-    target.end(),
-    boost::regex(pattern.begin(), pattern.end())
-  );
+      target.begin(),
+      target.end(),
+      boost::regex(pattern.begin(), pattern.end()));
 }
 
 bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target) {
@@ -187,19 +187,19 @@ CaptureFD::CaptureFD(int fd, ChunkCob chunk_cob)
   oldFDCopy_ = dup(fd_);
   PCHECK(oldFDCopy_ != -1) << "Could not copy FD " << fd_;
 
-  int file_fd = open(file_.path().string().c_str(), O_WRONLY|O_CREAT, 0600);
-  PCHECK(dup2(file_fd, fd_) != -1) << "Could not replace FD " << fd_
-    << " with " << file_fd;
+  int file_fd = open(file_.path().string().c_str(), O_WRONLY | O_CREAT, 0600);
+  PCHECK(dup2(file_fd, fd_) != -1)
+      << "Could not replace FD " << fd_ << " with " << file_fd;
   PCHECK(close(file_fd) != -1) << "Could not close " << file_fd;
 }
 
 void CaptureFD::release() {
   if (oldFDCopy_ != fd_) {
-    readIncremental();  // Feed chunkCob_
-    PCHECK(dup2(oldFDCopy_, fd_) != -1) << "Could not restore old FD "
-      << oldFDCopy_ << " into " << fd_;
+    readIncremental(); // Feed chunkCob_
+    PCHECK(dup2(oldFDCopy_, fd_) != -1)
+        << "Could not restore old FD " << oldFDCopy_ << " into " << fd_;
     PCHECK(close(oldFDCopy_) != -1) << "Could not close " << oldFDCopy_;
-    oldFDCopy_ = fd_;  // Make this call idempotent
+    oldFDCopy_ = fd_; // Make this call idempotent
   }
 }
 

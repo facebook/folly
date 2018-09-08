@@ -46,49 +46,52 @@ struct Printer {
 
   void operator()(dynamic const& v) const {
     switch (v.type()) {
-    case dynamic::DOUBLE:
-      if (!opts_.allow_nan_inf &&
-          (std::isnan(v.asDouble()) || std::isinf(v.asDouble()))) {
-        throw std::runtime_error("folly::toJson: JSON object value was a "
-          "NaN or INF");
+      case dynamic::DOUBLE:
+        if (!opts_.allow_nan_inf &&
+            (std::isnan(v.asDouble()) || std::isinf(v.asDouble()))) {
+          throw std::runtime_error(
+              "folly::toJson: JSON object value was a "
+              "NaN or INF");
+        }
+        toAppend(
+            v.asDouble(), &out_, opts_.double_mode, opts_.double_num_digits);
+        break;
+      case dynamic::INT64: {
+        auto intval = v.asInt();
+        if (opts_.javascript_safe) {
+          // Use folly::to to check that this integer can be represented
+          // as a double without loss of precision.
+          intval = int64_t(to<double>(intval));
+        }
+        toAppend(intval, &out_);
+        break;
       }
-      toAppend(v.asDouble(), &out_, opts_.double_mode, opts_.double_num_digits);
-      break;
-    case dynamic::INT64: {
-      auto intval = v.asInt();
-      if (opts_.javascript_safe) {
-        // Use folly::to to check that this integer can be represented
-        // as a double without loss of precision.
-        intval = int64_t(to<double>(intval));
-      }
-      toAppend(intval, &out_);
-      break;
-    }
-    case dynamic::BOOL:
-      out_ += v.asBool() ? "true" : "false";
-      break;
-    case dynamic::NULLT:
-      out_ += "null";
-      break;
-    case dynamic::STRING:
-      escapeString(v.asString(), out_, opts_);
-      break;
-    case dynamic::OBJECT:
-      printObject(v);
-      break;
-    case dynamic::ARRAY:
-      printArray(v);
-      break;
-    default:
-      CHECK(0) << "Bad type " << v.type();
+      case dynamic::BOOL:
+        out_ += v.asBool() ? "true" : "false";
+        break;
+      case dynamic::NULLT:
+        out_ += "null";
+        break;
+      case dynamic::STRING:
+        escapeString(v.asString(), out_, opts_);
+        break;
+      case dynamic::OBJECT:
+        printObject(v);
+        break;
+      case dynamic::ARRAY:
+        printArray(v);
+        break;
+      default:
+        CHECK(0) << "Bad type " << v.type();
     }
   }
 
  private:
   void printKV(const std::pair<const dynamic, dynamic>& p) const {
     if (!opts_.allow_non_string_keys && !p.first.isString()) {
-      throw std::runtime_error("folly::toJson: JSON object key was not a "
-        "string");
+      throw std::runtime_error(
+          "folly::toJson: JSON object key was not a "
+          "string");
     }
     (*this)(p.first);
     mapColon();
@@ -202,17 +205,16 @@ struct FOLLY_EXPORT ParseError : std::runtime_error {
 // Wraps our input buffer with some helper functions.
 struct Input {
   explicit Input(StringPiece range, json::serialization_opts const* opts)
-      : range_(range)
-      , opts_(*opts)
-      , lineNum_(0)
-  {
+      : range_(range), opts_(*opts), lineNum_(0) {
     storeCurrent();
   }
 
   Input(Input const&) = delete;
   Input& operator=(Input const&) = delete;
 
-  char const* begin() const { return range_.begin(); }
+  char const* begin() const {
+    return range_.begin();
+  }
 
   // Parse ahead for as long as the supplied predicate is satisfied,
   // returning a range of what was skipped.
@@ -234,16 +236,16 @@ struct Input {
   }
 
   StringPiece skipDigits() {
-    return skipWhile([] (char c) { return c >= '0' && c <= '9'; });
+    return skipWhile([](char c) { return c >= '0' && c <= '9'; });
   }
 
   StringPiece skipMinusAndDigits() {
     bool firstChar = true;
-    return skipWhile([&firstChar] (char c) {
-        bool result = (c >= '0' && c <= '9') || (firstChar && c == '-');
-        firstChar = false;
-        return result;
-      });
+    return skipWhile([&firstChar](char c) {
+      bool result = (c >= '0' && c <= '9') || (firstChar && c == '-');
+      firstChar = false;
+      return result;
+    });
   }
 
   void skipWhitespace() {
@@ -253,8 +255,8 @@ struct Input {
 
   void expect(char c) {
     if (**this != c) {
-      throw ParseError(lineNum_, context(),
-        to<std::string>("expected '", c, '\''));
+      throw ParseError(
+          lineNum_, context(), to<std::string>("expected '", c, '\''));
     }
     ++*this;
   }
@@ -475,12 +477,14 @@ dynamic parseNumber(Input& in) {
 }
 
 std::string decodeUnicodeEscape(Input& in) {
-  auto hexVal = [&] (int c) -> uint16_t {
+  auto hexVal = [&](int c) -> uint16_t {
+    // clang-format off
     return uint16_t(
-           c >= '0' && c <= '9' ? c - '0' :
-           c >= 'a' && c <= 'f' ? c - 'a' + 10 :
-           c >= 'A' && c <= 'F' ? c - 'A' + 10 :
-           (in.error("invalid hex digit"), 0));
+        c >= '0' && c <= '9' ? c - '0' :
+        c >= 'a' && c <= 'f' ? c - 'a' + 10 :
+        c >= 'A' && c <= 'F' ? c - 'A' + 10 :
+        (in.error("invalid hex digit"), 0));
+    // clang-format on
   };
 
   auto readHex = [&]() -> uint16_t {
@@ -506,13 +510,13 @@ std::string decodeUnicodeEscape(Input& in) {
   uint32_t codePoint = readHex();
   if (codePoint >= 0xd800 && codePoint <= 0xdbff) {
     if (!in.consume("\\u")) {
-      in.error("expected another unicode escape for second half of "
-        "surrogate pair");
+      in.error(
+          "expected another unicode escape for second half of "
+          "surrogate pair");
     }
     uint16_t second = readHex();
     if (second >= 0xdc00 && second <= 0xdfff) {
-      codePoint = 0x10000 + ((codePoint & 0x3ff) << 10) +
-                  (second & 0x3ff);
+      codePoint = 0x10000 + ((codePoint & 0x3ff) << 10) + (second & 0x3ff);
     } else {
       in.error("second character in surrogate pair is invalid");
     }
@@ -529,9 +533,7 @@ std::string parseString(Input& in) {
 
   std::string ret;
   for (;;) {
-    auto range = in.skipWhile(
-      [] (char c) { return c != '\"' && c != '\\'; }
-    );
+    auto range = in.skipWhile([](char c) { return c != '\"' && c != '\\'; });
     ret.append(range.begin(), range.end());
 
     if (*in == '\"') {
@@ -541,17 +543,20 @@ std::string parseString(Input& in) {
     if (*in == '\\') {
       ++in;
       switch (*in) {
-      case '\"':    ret.push_back('\"'); ++in; break;
-      case '\\':    ret.push_back('\\'); ++in; break;
-      case '/':     ret.push_back('/');  ++in; break;
-      case 'b':     ret.push_back('\b'); ++in; break;
-      case 'f':     ret.push_back('\f'); ++in; break;
-      case 'n':     ret.push_back('\n'); ++in; break;
-      case 'r':     ret.push_back('\r'); ++in; break;
-      case 't':     ret.push_back('\t'); ++in; break;
-      case 'u':     ++in; ret += decodeUnicodeEscape(in); break;
-      default:
-        in.error(to<std::string>("unknown escape ", *in, " in string").c_str());
+        // clang-format off
+        case '\"':    ret.push_back('\"'); ++in; break;
+        case '\\':    ret.push_back('\\'); ++in; break;
+        case '/':     ret.push_back('/');  ++in; break;
+        case 'b':     ret.push_back('\b'); ++in; break;
+        case 'f':     ret.push_back('\f'); ++in; break;
+        case 'n':     ret.push_back('\n'); ++in; break;
+        case 'r':     ret.push_back('\r'); ++in; break;
+        case 't':     ret.push_back('\t'); ++in; break;
+        case 'u':     ++in; ret += decodeUnicodeEscape(in); break;
+        // clang-format on
+        default:
+          in.error(
+              to<std::string>("unknown escape ", *in, " in string").c_str());
       }
       continue;
     }
@@ -580,20 +585,23 @@ dynamic parseValue(Input& in) {
   RecursionGuard guard(in);
 
   in.skipWhitespace();
-  return *in == '[' ? parseArray(in) :
-         *in == '{' ? parseObject(in) :
-         *in == '\"' ? parseString(in) :
-         (*in == '-' || (*in >= '0' && *in <= '9')) ? parseNumber(in) :
-         in.consume("true") ? true :
-         in.consume("false") ? false :
-         in.consume("null") ? nullptr :
-         in.consume("Infinity") ?
-          (in.getOpts().parse_numbers_as_strings ? (dynamic)"Infinity" :
-            (dynamic)std::numeric_limits<double>::infinity()) :
-         in.consume("NaN") ?
-           (in.getOpts().parse_numbers_as_strings ? (dynamic)"NaN" :
-             (dynamic)std::numeric_limits<double>::quiet_NaN()) :
-         in.error("expected json value");
+  // clang-format off
+  return
+      *in == '[' ? parseArray(in) :
+      *in == '{' ? parseObject(in) :
+      *in == '\"' ? parseString(in) :
+      (*in == '-' || (*in >= '0' && *in <= '9')) ? parseNumber(in) :
+      in.consume("true") ? true :
+      in.consume("false") ? false :
+      in.consume("null") ? nullptr :
+      in.consume("Infinity") ?
+      (in.getOpts().parse_numbers_as_strings ? (dynamic)"Infinity" :
+        (dynamic)std::numeric_limits<double>::infinity()) :
+      in.consume("NaN") ?
+        (in.getOpts().parse_numbers_as_strings ? (dynamic)"NaN" :
+          (dynamic)std::numeric_limits<double>::quiet_NaN()) :
+      in.error("expected json value");
+  // clang-format on
 }
 
 } // namespace
@@ -681,7 +689,7 @@ void escapeStringImpl(
     StringPiece input,
     std::string& out,
     const serialization_opts& opts) {
-  auto hexDigit = [] (uint8_t c) -> char {
+  auto hexDigit = [](uint8_t c) -> char {
     return c < 10 ? c + '0' : c - 10 + 'a';
   };
 
@@ -724,8 +732,8 @@ void escapeStringImpl(
 
     // Since non-ascii encoding inherently does utf8 validation
     // we explicitly validate utf8 only if non-ascii encoding is disabled.
-    if ((opts.validate_utf8 || opts.skip_invalid_utf8)
-        && !opts.encode_non_ascii) {
+    if ((opts.validate_utf8 || opts.skip_invalid_utf8) &&
+        !opts.encode_non_ascii) {
       // To achieve better spatial and temporal coherence
       // we do utf8 validation progressively along with the
       // string-escaping instead of two separate passes.
@@ -789,11 +797,13 @@ void escapeStringImpl(
       out.append(buf, 2);
     } else if (*p <= 0x1f) {
       switch (*p) {
+        // clang-format off
         case '\b': out.append("\\b"); p++; break;
         case '\f': out.append("\\f"); p++; break;
         case '\n': out.append("\\n"); p++; break;
         case '\r': out.append("\\r"); p++; break;
         case '\t': out.append("\\t"); p++; break;
+        // clang-format on
         default:
           // Note that this if condition captures non readable chars
           // with value < 32, so size = 1 byte (e.g control chars).
@@ -891,10 +901,7 @@ dynamic parseJson(StringPiece range) {
   return parseJson(range, json::serialization_opts());
 }
 
-dynamic parseJson(
-    StringPiece range,
-    json::serialization_opts const& opts) {
-
+dynamic parseJson(StringPiece range, json::serialization_opts const& opts) {
   json::Input in(range, &opts);
 
   auto ret = parseValue(in);

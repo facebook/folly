@@ -155,8 +155,7 @@ BENCHMARK(parseBigString, iters) {
 
 BENCHMARK(toJson, iters) {
   dynamic something = parseJson(
-    "{\"old_value\":40,\"changed\":true,\"opened\":false,\"foo\":[1,2,3,4,5,6]}"
-  );
+      "{\"old_value\":40,\"changed\":true,\"opened\":false,\"foo\":[1,2,3,4,5,6]}");
 
   for (size_t i = 0; i < iters; i++) {
     toJson(something);

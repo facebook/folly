@@ -25,10 +25,12 @@ template <typename T>
 class LockFreeLIFO {
   class Node : public hazptr_obj_base<Node> {
     friend LockFreeLIFO;
+
    public:
     ~Node() {
       HAZPTR_DEBUG_PRINT(this);
     }
+
    private:
     Node(T v, Node* n) : value_(v), next_(n) {
       HAZPTR_DEBUG_PRINT(this);

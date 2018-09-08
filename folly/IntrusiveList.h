@@ -29,7 +29,7 @@ namespace folly {
  * An auto-unlink intrusive list hook.
  */
 using IntrusiveListHook = boost::intrusive::list_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
+    boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
 /**
  * An intrusive list.
@@ -71,7 +71,7 @@ using IntrusiveList = boost::intrusive::list<
  * A safe-link intrusive list hook.
  */
 using SafeIntrusiveListHook = boost::intrusive::list_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::safe_link>>;
+    boost::intrusive::link_mode<boost::intrusive::safe_link>>;
 
 /**
  * An intrusive list with const-time size() method.

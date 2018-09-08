@@ -30,9 +30,9 @@ namespace detail {
 
 enum class FutexResult {
   VALUE_CHANGED, /* futex value didn't match expected */
-  AWOKEN,        /* wakeup by matching futex wake, or spurious wakeup */
-  INTERRUPTED,   /* wakeup by interrupting signal */
-  TIMEDOUT,      /* wakeup by expiring deadline */
+  AWOKEN, /* wakeup by matching futex wake, or spurious wakeup */
+  INTERRUPTED, /* wakeup by interrupting signal */
+  TIMEDOUT, /* wakeup by expiring deadline */
 };
 
 /**

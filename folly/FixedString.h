@@ -177,8 +177,9 @@ constexpr bool find_at_(
     const Right& right,
     std::size_t pos,
     std::size_t count) noexcept {
-  return 0u == count || (left[pos + count - 1u] == right[count - 1u] &&
-                         find_at_(left, right, pos, count - 1u));
+  return 0u == count ||
+      (left[pos + count - 1u] == right[count - 1u] &&
+       find_at_(left, right, pos, count - 1u));
 }
 
 template <class Char, class Right>
@@ -357,7 +358,7 @@ struct ReverseIterator {
     --p_;
     return *this;
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator operator++(int)noexcept {
+  FOLLY_CPP14_CONSTEXPR ReverseIterator operator++(int) noexcept {
     auto tmp(*this);
     --p_;
     return tmp;
@@ -366,7 +367,7 @@ struct ReverseIterator {
     ++p_;
     return *this;
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator operator--(int)noexcept {
+  FOLLY_CPP14_CONSTEXPR ReverseIterator operator--(int) noexcept {
     auto tmp(*this);
     ++p_;
     return tmp;
@@ -2007,10 +2008,10 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return creplace(first - data_, last - first, that, that_pos, that_count);
   }
 
-  /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
-  * Copies `min(count, size())` characters starting from offset `0`
-  *   from this string into the buffer pointed to by `dest`.
-  * \return The number of characters copied.
+  /**
+   * Copies `min(count, size())` characters starting from offset `0`
+   *   from this string into the buffer pointed to by `dest`.
+   * \return The number of characters copied.
    */
   FOLLY_CPP14_CONSTEXPR std::size_t copy(Char* dest, std::size_t count) const
       noexcept {

@@ -53,32 +53,38 @@ namespace padded {
  * is intentional: Node itself is trivial, which means that it can be
  * serialized / deserialized using a simple memcpy.
  */
-template <class T, size_t NS, class Enable=void>
+template <class T, size_t NS, class Enable = void>
 class Node;
 
 namespace detail {
 // Shortcut to avoid writing the long enable_if expression every time
-template <class T, size_t NS, class Enable=void> struct NodeValid;
+template <class T, size_t NS, class Enable = void>
+struct NodeValid;
 template <class T, size_t NS>
-struct NodeValid<T, NS,
-                 typename std::enable_if<(
-                     std::is_trivial<T>::value &&
-                     sizeof(T) <= NS &&
-                     NS % alignof(T) == 0)>::type> {
+struct NodeValid<
+    T,
+    NS,
+    typename std::enable_if<(
+        std::is_trivial<T>::value && sizeof(T) <= NS &&
+        NS % alignof(T) == 0)>::type> {
   typedef void type;
 };
 } // namespace detail
 
 template <class T, size_t NS>
-class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
+class Node<T, NS, typename detail::NodeValid<T, NS>::type> {
  public:
   typedef T value_type;
   static constexpr size_t kNodeSize = NS;
   static constexpr size_t kElementCount = NS / sizeof(T);
   static constexpr size_t kPaddingBytes = NS % sizeof(T);
 
-  T* data() { return storage_.data; }
-  const T* data() const { return storage_.data; }
+  T* data() {
+    return storage_.data;
+  }
+  const T* data() const {
+    return storage_.data;
+  }
 
   bool operator==(const Node& other) const {
     return memcmp(data(), other.data(), sizeof(T) * kElementCount) == 0;
@@ -109,9 +115,10 @@ class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
    * the last node is not included in the result.
    */
   static constexpr size_t paddingBytes(size_t n) {
-    return (n ? (kPaddingBytes +
-                 (kElementCount - 1 - (n-1) % kElementCount) * sizeof(T)) :
-            0);
+    return (
+        n ? (kPaddingBytes +
+             (kElementCount - 1 - (n - 1) % kElementCount) * sizeof(T))
+          : 0);
   }
 
   /**
@@ -134,14 +141,18 @@ class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
 
 // We must define kElementCount and kPaddingBytes to work around a bug
 // in gtest that odr-uses them.
-template <class T, size_t NS> constexpr size_t
-Node<T, NS, typename detail::NodeValid<T,NS>::type>::kNodeSize;
-template <class T, size_t NS> constexpr size_t
-Node<T, NS, typename detail::NodeValid<T,NS>::type>::kElementCount;
-template <class T, size_t NS> constexpr size_t
-Node<T, NS, typename detail::NodeValid<T,NS>::type>::kPaddingBytes;
+template <class T, size_t NS>
+constexpr size_t
+    Node<T, NS, typename detail::NodeValid<T, NS>::type>::kNodeSize;
+template <class T, size_t NS>
+constexpr size_t
+    Node<T, NS, typename detail::NodeValid<T, NS>::type>::kElementCount;
+template <class T, size_t NS>
+constexpr size_t
+    Node<T, NS, typename detail::NodeValid<T, NS>::type>::kPaddingBytes;
 
-template <class Iter> class Iterator;
+template <class Iter>
+class Iterator;
 
 namespace detail {
 
@@ -178,21 +189,25 @@ decltype(auto) padded_emplace_back_or_push_back(
 // TransferReferenceConstness<const string&, int> -> const int&
 // TransferReferenceConstness<string&, int> -> int&
 // TransferReferenceConstness<string&, const int> -> const int&
-template <class From, class To, class Enable=void>
+template <class From, class To, class Enable = void>
 struct TransferReferenceConstness;
 
 template <class From, class To>
 struct TransferReferenceConstness<
-  From, To, typename std::enable_if<std::is_const<
-    typename std::remove_reference<From>::type>::value>::type> {
+    From,
+    To,
+    typename std::enable_if<std::is_const<
+        typename std::remove_reference<From>::type>::value>::type> {
   typedef typename std::add_lvalue_reference<
-    typename std::add_const<To>::type>::type type;
+      typename std::add_const<To>::type>::type type;
 };
 
 template <class From, class To>
 struct TransferReferenceConstness<
-  From, To, typename std::enable_if<!std::is_const<
-    typename std::remove_reference<From>::type>::value>::type> {
+    From,
+    To,
+    typename std::enable_if<!std::is_const<
+        typename std::remove_reference<From>::type>::value>::type> {
   typedef typename std::add_lvalue_reference<To>::type type;
 };
 
@@ -201,20 +216,19 @@ struct TransferReferenceConstness<
 template <class Iter>
 struct IteratorBase {
   typedef boost::iterator_adaptor<
-    // CRTC
-    Iterator<Iter>,
-    // Base iterator type
-    Iter,
-    // Value type
-    typename std::iterator_traits<Iter>::value_type::value_type,
-    // Category or traversal
-    boost::use_default,
-    // Reference type
-    typename detail::TransferReferenceConstness<
-      typename std::iterator_traits<Iter>::reference,
-      typename std::iterator_traits<Iter>::value_type::value_type
-    >::type
-  > type;
+      // CRTC
+      Iterator<Iter>,
+      // Base iterator type
+      Iter,
+      // Value type
+      typename std::iterator_traits<Iter>::value_type::value_type,
+      // Category or traversal
+      boost::use_default,
+      // Reference type
+      typename detail::TransferReferenceConstness<
+          typename std::iterator_traits<Iter>::reference,
+          typename std::iterator_traits<Iter>::value_type::value_type>::type>
+      type;
 };
 
 } // namespace detail
@@ -226,19 +240,21 @@ struct IteratorBase {
 template <class Iter>
 class Iterator : public detail::IteratorBase<Iter>::type {
   typedef typename detail::IteratorBase<Iter>::type Super;
+
  public:
   typedef typename std::iterator_traits<Iter>::value_type Node;
 
-  Iterator() : pos_(0) { }
+  Iterator() : pos_(0) {}
 
-  explicit Iterator(Iter base)
-    : Super(base),
-      pos_(0) {
-  }
+  explicit Iterator(Iter base) : Super(base), pos_(0) {}
 
   // Return the current node and the position inside the node
-  const Node& node() const { return *this->base_reference(); }
-  size_t pos() const { return pos_; }
+  const Node& node() const {
+    return *this->base_reference();
+  }
+  size_t pos() const {
+    return pos_;
+  }
 
  private:
   typename Super::reference dereference() const {
@@ -246,12 +262,12 @@ class Iterator : public detail::IteratorBase<Iter>::type {
   }
 
   bool equal(const Iterator& other) const {
-    return (this->base_reference() == other.base_reference() &&
-            pos_ == other.pos_);
+    return (
+        this->base_reference() == other.base_reference() && pos_ == other.pos_);
   }
 
   void advance(typename Super::difference_type n) {
-    constexpr ssize_t elementCount = Node::kElementCount;  // signed!
+    constexpr ssize_t elementCount = Node::kElementCount; // signed!
     ssize_t newPos = pos_ + n;
     if (newPos >= 0 && newPos < elementCount) {
       pos_ = newPos;
@@ -260,7 +276,7 @@ class Iterator : public detail::IteratorBase<Iter>::type {
     ssize_t nblocks = newPos / elementCount;
     newPos %= elementCount;
     if (newPos < 0) {
-      --nblocks;  // negative
+      --nblocks; // negative
       newPos += elementCount;
     }
     this->base_reference() += nblocks;
@@ -282,14 +298,14 @@ class Iterator : public detail::IteratorBase<Iter>::type {
   }
 
   typename Super::difference_type distance_to(const Iterator& other) const {
-    constexpr ssize_t elementCount = Node::kElementCount;  // signed!
+    constexpr ssize_t elementCount = Node::kElementCount; // signed!
     ssize_t nblocks =
-      std::distance(this->base_reference(), other.base_reference());
+        std::distance(this->base_reference(), other.base_reference());
     return nblocks * elementCount + (other.pos_ - pos_);
   }
 
   friend class boost::iterator_core_access;
-  ssize_t pos_;  // signed for easier advance() implementation
+  ssize_t pos_; // signed for easier advance() implementation
 };
 
 /**
@@ -366,13 +382,11 @@ class Adaptor {
 
   static constexpr size_t kElementsPerNode = Node::kElementCount;
   // Constructors
-  Adaptor() : lastCount_(Node::kElementCount) { }
-  explicit Adaptor(Container c, size_t lastCount=Node::kElementCount)
-    : c_(std::move(c)),
-      lastCount_(lastCount) {
-  }
+  Adaptor() : lastCount_(Node::kElementCount) {}
+  explicit Adaptor(Container c, size_t lastCount = Node::kElementCount)
+      : c_(std::move(c)), lastCount_(lastCount) {}
   explicit Adaptor(size_t n, const value_type& value = value_type())
-    : c_(Node::nodeCount(n), fullNode(value)) {
+      : c_(Node::nodeCount(n), fullNode(value)) {
     const auto count = n % Node::kElementCount;
     lastCount_ = count != 0 ? count : Node::kElementCount;
   }
@@ -380,8 +394,7 @@ class Adaptor {
   Adaptor(const Adaptor&) = default;
   Adaptor& operator=(const Adaptor&) = default;
   Adaptor(Adaptor&& other) noexcept
-    : c_(std::move(other.c_)),
-      lastCount_(other.lastCount_) {
+      : c_(std::move(other.c_)), lastCount_(other.lastCount_) {
     other.lastCount_ = Node::kElementCount;
   }
   Adaptor& operator=(Adaptor&& other) {
@@ -404,8 +417,12 @@ class Adaptor {
     }
     return it;
   }
-  const_iterator begin() const { return cbegin(); }
-  const_iterator end() const { return cend(); }
+  const_iterator begin() const {
+    return cbegin();
+  }
+  const_iterator end() const {
+    return cend();
+  }
   iterator begin() {
     return iterator(c_.begin());
   }
@@ -425,14 +442,15 @@ class Adaptor {
     return c_.empty();
   }
   size_type size() const {
-    return (c_.empty() ? 0 :
-            (c_.size() - 1) * Node::kElementCount + lastCount_);
+    return (
+        c_.empty() ? 0 : (c_.size() - 1) * Node::kElementCount + lastCount_);
   }
   size_type max_size() const {
-    return ((c_.max_size() <= std::numeric_limits<size_type>::max() /
-             Node::kElementCount) ?
-            c_.max_size() * Node::kElementCount :
-            std::numeric_limits<size_type>::max());
+    return (
+        (c_.max_size() <=
+         std::numeric_limits<size_type>::max() / Node::kElementCount)
+            ? c_.max_size() * Node::kElementCount
+            : std::numeric_limits<size_type>::max());
   }
 
   const value_type& front() const {
@@ -533,8 +551,8 @@ class Adaptor {
     std::fill(n.data(), n.data() + kElementsPerNode, value);
     return n;
   }
-  Container c_;  // container of Nodes
-  size_t lastCount_;  // number of elements in last Node
+  Container c_; // container of Nodes
+  size_t lastCount_; // number of elements in last Node
 };
 
 } // namespace padded

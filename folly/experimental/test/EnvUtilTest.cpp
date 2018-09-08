@@ -27,9 +27,9 @@
 #include <system_error>
 
 using namespace folly;
-using folly::test::EnvVarSaver;
 using folly::experimental::EnvironmentState;
 using folly::experimental::MalformedEnvironment;
+using folly::test::EnvVarSaver;
 
 DEFINE_string(
     env_util_subprocess_binary,
@@ -163,13 +163,14 @@ TEST(EnvironmentStateTest, forC) {
   char const* program = fLS::FLAGS_env_util_subprocess_binary.c_str();
   pid_t pid;
   PCHECK(
-      0 == posix_spawn(
-               &pid,
-               program,
-               nullptr,
-               nullptr,
-               nullptr,
-               env.toPointerArray().get()));
+      0 ==
+      posix_spawn(
+          &pid,
+          program,
+          nullptr,
+          nullptr,
+          nullptr,
+          env.toPointerArray().get()));
   int result;
   PCHECK(pid == waitpid(pid, &result, 0));
   EXPECT_EQ(0, result);

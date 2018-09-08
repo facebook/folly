@@ -23,8 +23,8 @@ template <typename Tag, typename VaultTag>
 SingletonHolder<T>& SingletonHolder<T>::singleton() {
   /* library-local */ static auto entry =
       createGlobal<SingletonHolder<T>, std::pair<Tag, VaultTag>>([]() {
-        return new SingletonHolder<T>({typeid(T), typeid(Tag)},
-                                      *SingletonVault::singleton<VaultTag>());
+        return new SingletonHolder<T>(
+            {typeid(T), typeid(Tag)}, *SingletonVault::singleton<VaultTag>());
       });
   return *entry;
 }
@@ -89,8 +89,9 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
 
 template <typename T>
 T* SingletonHolder<T>::get() {
-  if (LIKELY(state_.load(std::memory_order_acquire) ==
-             SingletonHolderState::Living)) {
+  if (LIKELY(
+          state_.load(std::memory_order_acquire) ==
+          SingletonHolderState::Living)) {
     return instance_ptr_;
   }
   createInstance();
@@ -104,8 +105,9 @@ T* SingletonHolder<T>::get() {
 
 template <typename T>
 std::weak_ptr<T> SingletonHolder<T>::get_weak() {
-  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
-               SingletonHolderState::Living)) {
+  if (UNLIKELY(
+          state_.load(std::memory_order_acquire) !=
+          SingletonHolderState::Living)) {
     createInstance();
   }
 
@@ -114,8 +116,9 @@ std::weak_ptr<T> SingletonHolder<T>::get_weak() {
 
 template <typename T>
 std::shared_ptr<T> SingletonHolder<T>::try_get() {
-  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
-               SingletonHolderState::Living)) {
+  if (UNLIKELY(
+          state_.load(std::memory_order_acquire) !=
+          SingletonHolderState::Living)) {
     createInstance();
   }
 
@@ -124,8 +127,9 @@ std::shared_ptr<T> SingletonHolder<T>::try_get() {
 
 template <typename T>
 folly::ReadMostlySharedPtr<T> SingletonHolder<T>::try_get_fast() {
-  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
-               SingletonHolderState::Living)) {
+  if (UNLIKELY(
+          state_.load(std::memory_order_acquire) !=
+          SingletonHolderState::Living)) {
     createInstance();
   }
 
@@ -196,7 +200,7 @@ bool SingletonHolder<T>::creationStarted() {
 template <typename T>
 void SingletonHolder<T>::createInstance() {
   if (creating_thread_.load(std::memory_order_acquire) ==
-        std::this_thread::get_id()) {
+      std::this_thread::get_id()) {
     detail::singletonWarnCreateCircularDependencyAndAbort(type());
   }
 
@@ -205,7 +209,7 @@ void SingletonHolder<T>::createInstance() {
     return;
   }
   if (state_.load(std::memory_order_acquire) ==
-        SingletonHolderState::NotRegistered) {
+      SingletonHolderState::NotRegistered) {
     detail::singletonWarnCreateUnregisteredAndAbort(type());
   }
 
@@ -233,13 +237,12 @@ void SingletonHolder<T>::createInstance() {
 
   auto destroy_baton = std::make_shared<folly::Baton<>>();
   auto print_destructor_stack_trace =
-    std::make_shared<std::atomic<bool>>(false);
+      std::make_shared<std::atomic<bool>>(false);
 
   // Can't use make_shared -- no support for a custom deleter, sadly.
   std::shared_ptr<T> instance(
       create_(),
-      [ destroy_baton, print_destructor_stack_trace, type = type() ](
-          T*) mutable {
+      [destroy_baton, print_destructor_stack_trace, type = type()](T*) mutable {
         destroy_baton->post();
         if (print_destructor_stack_trace->load()) {
           detail::singletonPrintDestructionStackTrace(type);

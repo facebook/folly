@@ -1562,7 +1562,6 @@ inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(
 class IOBuf::Iterator
     : public detail::IteratorFacade<IOBuf::Iterator, ByteRange const> {
  public:
-
   // Note that IOBufs are stored as a circular list without a guard node,
   // so pos == end is ambiguous (it may mean "begin" or "end").  To solve
   // the ambiguity (at the cost of one extra comparison in the "increment"

@@ -450,6 +450,7 @@ CIDRNetwork IPAddress::longestCommonPrefix(
   }
 }
 
+// clang-format off
 [[noreturn]] void IPAddress::asV4Throw() const {
   auto fam = detail::familyNameStr(family());
   throw InvalidAddressFamilyException(
@@ -461,5 +462,6 @@ CIDRNetwork IPAddress::longestCommonPrefix(
   throw InvalidAddressFamilyException(
       sformat("Can't convert address with family {} to AF_INET6 address", fam));
 }
+// clang-format on
 
 } // namespace folly

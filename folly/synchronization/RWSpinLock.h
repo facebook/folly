@@ -180,6 +180,7 @@ namespace folly {
  */
 class RWSpinLock {
   enum : int32_t { READER = 4, UPGRADED = 2, WRITER = 1 };
+
  public:
   constexpr RWSpinLock() : bits_(0) {}
 
@@ -259,12 +260,11 @@ class RWSpinLock {
     bits_.fetch_add(-WRITER, std::memory_order_release);
   }
 
-
   // Attempt to acquire writer permission. Return false if we didn't get it.
   bool try_lock() {
     int32_t expect = 0;
-    return bits_.compare_exchange_strong(expect, WRITER,
-      std::memory_order_acq_rel);
+    return bits_.compare_exchange_strong(
+        expect, WRITER, std::memory_order_acq_rel);
   }
 
   // Try to get reader permission on the lock. This can fail if we
@@ -277,7 +277,7 @@ class RWSpinLock {
     // fetch_add is considerably (100%) faster than compare_exchange,
     // so here we are optimizing for the common (lock success) case.
     int32_t value = bits_.fetch_add(READER, std::memory_order_acquire);
-    if (UNLIKELY(value & (WRITER|UPGRADED))) {
+    if (UNLIKELY(value & (WRITER | UPGRADED))) {
       bits_.fetch_add(-READER, std::memory_order_release);
       return false;
     }
@@ -287,8 +287,8 @@ class RWSpinLock {
   // try to unlock upgrade and write lock atomically
   bool try_unlock_upgrade_and_lock() {
     int32_t expect = UPGRADED;
-    return bits_.compare_exchange_strong(expect, WRITER,
-        std::memory_order_acq_rel);
+    return bits_.compare_exchange_strong(
+        expect, WRITER, std::memory_order_acq_rel);
   }
 
   // try to acquire an upgradable lock.
@@ -303,7 +303,9 @@ class RWSpinLock {
   }
 
   // mainly for debugging purposes.
-  int32_t bits() const { return bits_.load(std::memory_order_acquire); }
+  int32_t bits() const {
+    return bits_.load(std::memory_order_acquire);
+  }
 
   class ReadHolder;
   class UpgradedHolder;
@@ -402,14 +404,14 @@ class RWSpinLock {
       other.lock_ = nullptr;
     }
 
-    UpgradedHolder& operator =(UpgradedHolder&& other) {
+    UpgradedHolder& operator=(UpgradedHolder&& other) {
       using std::swap;
       swap(lock_, other.lock_);
       return *this;
     }
 
     UpgradedHolder(const UpgradedHolder& other) = delete;
-    UpgradedHolder& operator =(const UpgradedHolder& other) = delete;
+    UpgradedHolder& operator=(const UpgradedHolder& other) = delete;
 
     ~UpgradedHolder() {
       if (lock_) {
@@ -466,14 +468,14 @@ class RWSpinLock {
       other.lock_ = nullptr;
     }
 
-    WriteHolder& operator =(WriteHolder&& other) {
+    WriteHolder& operator=(WriteHolder&& other) {
       using std::swap;
       swap(lock_, other.lock_);
       return *this;
     }
 
     WriteHolder(const WriteHolder& other) = delete;
-    WriteHolder& operator =(const WriteHolder& other) = delete;
+    WriteHolder& operator=(const WriteHolder& other) = delete;
 
     ~WriteHolder() {
       if (lock_) {
@@ -509,13 +511,14 @@ class RWSpinLock {
   std::atomic<int32_t> bits_;
 };
 
-
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
 // A more balanced Read-Write spin lock implemented based on GCC intrinsics.
 
 namespace detail {
-template <size_t kBitWidth> struct RWTicketIntTrait {
-  static_assert(kBitWidth == 32 || kBitWidth == 64,
+template <size_t kBitWidth>
+struct RWTicketIntTrait {
+  static_assert(
+      kBitWidth == 32 || kBitWidth == 64,
       "bit width has to be either 32 or 64 ");
 };
 
@@ -527,8 +530,8 @@ struct RWTicketIntTrait<64> {
 
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint16_t v[4]) {
-    return _mm_set_epi16(0, 0, 0, 0,
-        short(v[3]), short(v[2]), short(v[1]), short(v[0]));
+    return _mm_set_epi16(
+        0, 0, 0, 0, short(v[3]), short(v[2]), short(v[1]), short(v[0]));
   }
   static inline __m128i fromInteger(uint64_t from) {
     return _mm_cvtsi64_si128(int64_t(from));
@@ -550,11 +553,13 @@ struct RWTicketIntTrait<32> {
 
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint8_t v[4]) {
+    // clang-format off
     return _mm_set_epi8(
         0, 0, 0, 0,
         0, 0, 0, 0,
         0, 0, 0, 0,
         char(v[3]), char(v[2]), char(v[1]), char(v[0]));
+    // clang-format on
   }
   static inline __m128i fromInteger(uint32_t from) {
     return _mm_cvtsi32_si128(int32_t(from));
@@ -574,8 +579,7 @@ class RWTicketSpinLockT {
   typedef detail::RWTicketIntTrait<kBitWidth> IntTraitType;
   typedef typename detail::RWTicketIntTrait<kBitWidth>::FullInt FullInt;
   typedef typename detail::RWTicketIntTrait<kBitWidth>::HalfInt HalfInt;
-  typedef typename detail::RWTicketIntTrait<kBitWidth>::QuarterInt
-    QuarterInt;
+  typedef typename detail::RWTicketIntTrait<kBitWidth>::QuarterInt QuarterInt;
 
   union RWTicket {
     constexpr RWTicket() : whole(0) {}
@@ -589,7 +593,8 @@ class RWTicketSpinLockT {
   } ticket;
 
  private: // Some x64-specific utilities for atomic access to ticket.
-  template <class T> static T load_acquire(T* addr) {
+  template <class T>
+  static T load_acquire(T* addr) {
     T t = *addr; // acquire barrier
     asm_volatile_memory();
     return t;
@@ -602,7 +607,6 @@ class RWTicketSpinLockT {
   }
 
  public:
-
   constexpr RWTicketSpinLockT() {}
 
   RWTicketSpinLockT(RWTicketSpinLockT const&) = delete;
@@ -650,8 +654,8 @@ class RWTicketSpinLockT {
    * turns.
    */
   void writeLockAggressive() {
-    // std::this_thread::yield() is needed here to avoid a pathology if the number
-    // of threads attempting concurrent writes is >= the number of real
+    // std::this_thread::yield() is needed here to avoid a pathology if the
+    // number of threads attempting concurrent writes is >= the number of real
     // cores allocated to this process. This is less likely than the
     // corresponding situation in lock_shared(), but we still want to
     // avoid it
@@ -676,7 +680,8 @@ class RWTicketSpinLockT {
     //
     // We don't worry about std::this_thread::yield() here because the caller
     // has already explicitly abandoned fairness.
-    while (!try_lock()) {}
+    while (!try_lock()) {
+    }
   }
 
   // Atomically unlock the write-lock from writer and acquire the read-lock.
@@ -692,7 +697,7 @@ class RWTicketSpinLockT {
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
     FullInt old = t.whole;
     // SSE2 can reduce the lock and unlock overhead by 10%
-    static const QuarterInt kDeltaBuf[4] = { 1, 1, 0, 0 };   // write/read/user
+    static const QuarterInt kDeltaBuf[4] = {1, 1, 0, 0}; // write/read/user
     static const __m128i kDelta = IntTraitType::make128(kDeltaBuf);
     __m128i m = IntTraitType::fromInteger(old);
     t.whole = IntTraitType::addParallel(m, kDelta);
@@ -722,7 +727,7 @@ class RWTicketSpinLockT {
     old.users = old.read;
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
     // SSE2 may reduce the total lock and unlock overhead by 10%
-    static const QuarterInt kDeltaBuf[4] = { 0, 1, 1, 0 };   // write/read/user
+    static const QuarterInt kDeltaBuf[4] = {0, 1, 1, 0}; // write/read/user
     static const __m128i kDelta = IntTraitType::make128(kDeltaBuf);
     __m128i m = IntTraitType::fromInteger(old.whole);
     t.whole = IntTraitType::addParallel(m, kDelta);
@@ -751,14 +756,14 @@ class RWTicketSpinLockT {
       }
     }
 
-    explicit ReadHolder(RWSpinLock &lock) : lock_ (&lock) {
+    explicit ReadHolder(RWSpinLock& lock) : lock_(&lock) {
       if (lock_) {
         lock_->lock_shared();
       }
     }
 
     // atomically unlock the write-lock from writer and acquire the read-lock
-    explicit ReadHolder(WriteHolder *writer) : lock_(nullptr) {
+    explicit ReadHolder(WriteHolder* writer) : lock_(nullptr) {
       std::swap(this->lock_, writer->lock_);
       if (lock_) {
         lock_->unlock_and_lock_shared();
@@ -771,7 +776,7 @@ class RWTicketSpinLockT {
       }
     }
 
-    void reset(RWSpinLock *lock = nullptr) {
+    void reset(RWSpinLock* lock = nullptr) {
       if (lock_) {
         lock_->unlock_shared();
       }
@@ -781,12 +786,12 @@ class RWTicketSpinLockT {
       }
     }
 
-    void swap(ReadHolder *other) {
+    void swap(ReadHolder* other) {
       std::swap(this->lock_, other->lock_);
     }
 
    private:
-    RWSpinLock *lock_;
+    RWSpinLock* lock_;
   };
 
   class WriteHolder {
@@ -799,7 +804,7 @@ class RWTicketSpinLockT {
         lock_->lock();
       }
     }
-    explicit WriteHolder(RWSpinLock &lock) : lock_ (&lock) {
+    explicit WriteHolder(RWSpinLock& lock) : lock_(&lock) {
       if (lock_) {
         lock_->lock();
       }
@@ -811,7 +816,7 @@ class RWTicketSpinLockT {
       }
     }
 
-    void reset(RWSpinLock *lock = nullptr) {
+    void reset(RWSpinLock* lock = nullptr) {
       if (lock == lock_) {
         return;
       }
@@ -824,20 +829,20 @@ class RWTicketSpinLockT {
       }
     }
 
-    void swap(WriteHolder *other) {
+    void swap(WriteHolder* other) {
       std::swap(this->lock_, other->lock_);
     }
 
    private:
     friend class ReadHolder;
-    RWSpinLock *lock_;
+    RWSpinLock* lock_;
   };
 };
 
 typedef RWTicketSpinLockT<32> RWTicketSpinLock32;
 typedef RWTicketSpinLockT<64> RWTicketSpinLock64;
 
-#endif  // RW_SPINLOCK_USE_X86_INTRINSIC_
+#endif // RW_SPINLOCK_USE_X86_INTRINSIC_
 
 } // namespace folly
 

@@ -34,16 +34,31 @@ template <
     class Allocator,
     class ProbeFcn,
     class KeyConvertFcn>
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                Allocator, ProbeFcn, KeyConvertFcn>::
-AtomicHashArray(size_t capacity, KeyT emptyKey, KeyT lockedKey,
-                KeyT erasedKey, double _maxLoadFactor, uint32_t cacheSize)
+AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::
+    AtomicHashArray(
+        size_t capacity,
+        KeyT emptyKey,
+        KeyT lockedKey,
+        KeyT erasedKey,
+        double _maxLoadFactor,
+        uint32_t cacheSize)
     : capacity_(capacity),
       maxEntries_(size_t(_maxLoadFactor * capacity_ + 0.5)),
-      kEmptyKey_(emptyKey), kLockedKey_(lockedKey), kErasedKey_(erasedKey),
-      kAnchorMask_(nextPowTwo(capacity_) - 1), numEntries_(0, cacheSize),
-      numPendingEntries_(0, cacheSize), isFull_(0), numErases_(0) {
-}
+      kEmptyKey_(emptyKey),
+      kLockedKey_(lockedKey),
+      kErasedKey_(erasedKey),
+      kAnchorMask_(nextPowTwo(capacity_) - 1),
+      numEntries_(0, cacheSize),
+      numPendingEntries_(0, cacheSize),
+      isFull_(0),
+      numErases_(0) {}
 
 /*
  * findInternal --
@@ -61,15 +76,26 @@ template <
     class ProbeFcn,
     class KeyConvertFcn>
 template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
-typename AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                         Allocator, ProbeFcn, KeyConvertFcn>::SimpleRetT
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                Allocator, ProbeFcn, KeyConvertFcn>::
-findInternal(const LookupKeyT key_in) {
+typename AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::SimpleRetT
+AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::findInternal(const LookupKeyT key_in) {
   checkLegalKeyIfKey<LookupKeyT>(key_in);
 
   for (size_t idx = keyToAnchorIdx<LookupKeyT, LookupHashFcn>(key_in),
-       numProbes = 0;
+              numProbes = 0;
        ;
        idx = ProbeFcn()(idx, numProbes, capacity_)) {
     const KeyT key = acquireLoadKey(cells_[idx]);
@@ -114,11 +140,22 @@ template <
     typename LookupEqualFcn,
     typename LookupKeyToKeyFcn,
     typename... ArgTs>
-typename AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                         Allocator, ProbeFcn, KeyConvertFcn>::SimpleRetT
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                Allocator, ProbeFcn, KeyConvertFcn>::
-insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
+typename AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::SimpleRetT
+AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
   const short NO_NEW_INSERTS = 1;
   const short NO_PENDING_INSERTS = 2;
   checkLegalKeyIfKey<LookupKeyT>(key_in);
@@ -144,9 +181,9 @@ insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
         // to pass the isFull_.load() test above. (It shouldn't insert
         // a new entry.)
         detail::atomic_hash_spin_wait([&] {
-          return
-            (isFull_.load(std::memory_order_acquire) != NO_PENDING_INSERTS) &&
-            (numPendingEntries_.readFull() != 0);
+          return (isFull_.load(std::memory_order_acquire) !=
+                  NO_PENDING_INSERTS) &&
+              (numPendingEntries_.readFull() != 0);
         });
         isFull_.store(NO_PENDING_INSERTS, std::memory_order_release);
 
@@ -163,10 +200,10 @@ insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
           // Write the value - done before unlocking
           try {
             key_new = LookupKeyToKeyFcn()(key_in);
-            typedef typename std::remove_const<LookupKeyT>::type
-              LookupKeyTNoConst;
+            typedef
+                typename std::remove_const<LookupKeyT>::type LookupKeyTNoConst;
             constexpr bool kAlreadyChecked =
-              std::is_same<KeyT, LookupKeyTNoConst>::value;
+                std::is_same<KeyT, LookupKeyTNoConst>::value;
             if (!kAlreadyChecked) {
               checkLegalKeyIfKey(key_new);
             }
@@ -187,10 +224,11 @@ insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
           // An erase() can race here and delete right after our insertion
           // Direct comparison rather than EqualFcn ok here
           // (we just inserted it)
-          DCHECK(relaxedLoadKey(*cell) == key_new ||
-                 relaxedLoadKey(*cell) == kErasedKey_);
+          DCHECK(
+              relaxedLoadKey(*cell) == key_new ||
+              relaxedLoadKey(*cell) == kErasedKey_);
           --numPendingEntries_;
-          ++numEntries_;  // This is a thread cached atomic increment :)
+          ++numEntries_; // This is a thread cached atomic increment :)
           if (numEntries_.readFast() >= maxEntries_) {
             isFull_.store(NO_NEW_INSERTS, std::memory_order_relaxed);
           }
@@ -201,9 +239,8 @@ insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
     }
     DCHECK(relaxedLoadKey(*cell) != kEmptyKey_);
     if (kLockedKey_ == acquireLoadKey(*cell)) {
-      detail::atomic_hash_spin_wait([&] {
-        return kLockedKey_ == acquireLoadKey(*cell);
-      });
+      detail::atomic_hash_spin_wait(
+          [&] { return kLockedKey_ == acquireLoadKey(*cell); });
     }
 
     const KeyT thisKey = acquireLoadKey(*cell);
@@ -217,7 +254,6 @@ insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
       // ValueT threw for this very cell (the rethrow block above).
       continue;
     }
-
 
     // NOTE: the way we count numProbes must be same in find(),
     // insert(), and erase(). Otherwise it may break probing.
@@ -249,15 +285,19 @@ template <
     class Allocator,
     class ProbeFcn,
     class KeyConvertFcn>
-size_t AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                       Allocator, ProbeFcn, KeyConvertFcn>::
-erase(KeyT key_in) {
+size_t AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::erase(KeyT key_in) {
   CHECK_NE(key_in, kEmptyKey_);
   CHECK_NE(key_in, kLockedKey_);
   CHECK_NE(key_in, kErasedKey_);
 
-  for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;
-       ;
+  for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;;
        idx = ProbeFcn()(idx, numProbes, capacity_)) {
     DCHECK_LT(idx, capacity_);
     value_type* cell = &cells_[idx];
@@ -304,11 +344,22 @@ template <
     class Allocator,
     class ProbeFcn,
     class KeyConvertFcn>
-typename AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                         Allocator, ProbeFcn, KeyConvertFcn>::SmartPtr
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                Allocator, ProbeFcn, KeyConvertFcn>::
-create(size_t maxSize, const Config& c) {
+typename AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::SmartPtr
+AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::create(size_t maxSize, const Config& c) {
   CHECK_LE(c.maxLoadFactor, 1.0);
   CHECK_GT(c.maxLoadFactor, 0.0);
   CHECK_NE(c.emptyKey, c.lockedKey);
@@ -317,14 +368,19 @@ create(size_t maxSize, const Config& c) {
 
   auto const mem = Allocator().allocate(sz);
   try {
-    new (mem) AtomicHashArray(capacity, c.emptyKey, c.lockedKey, c.erasedKey,
-                              c.maxLoadFactor, c.entryCountThreadCacheSize);
+    new (mem) AtomicHashArray(
+        capacity,
+        c.emptyKey,
+        c.lockedKey,
+        c.erasedKey,
+        c.maxLoadFactor,
+        c.entryCountThreadCacheSize);
   } catch (...) {
     Allocator().deallocate(mem, sz);
     throw;
   }
 
-  SmartPtr map(static_cast<AtomicHashArray*>((void *)mem));
+  SmartPtr map(static_cast<AtomicHashArray*>((void*)mem));
 
   /*
    * Mark all cells as empty.
@@ -339,8 +395,8 @@ create(size_t maxSize, const Config& c) {
    * noticeably speed construction time for an AHA.
    */
   FOR_EACH_RANGE (i, 0, map->capacity_) {
-    cellKeyPtr(map->cells_[i])->store(map->kEmptyKey_,
-      std::memory_order_relaxed);
+    cellKeyPtr(map->cells_[i])
+        ->store(map->kEmptyKey_, std::memory_order_relaxed);
   }
   return map;
 }
@@ -353,9 +409,14 @@ template <
     class Allocator,
     class ProbeFcn,
     class KeyConvertFcn>
-void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                     Allocator, ProbeFcn, KeyConvertFcn>::
-destroy(AtomicHashArray* p) {
+void AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::destroy(AtomicHashArray* p) {
   assert(p);
 
   size_t sz = sizeof(AtomicHashArray) + sizeof(value_type) * p->capacity_;
@@ -367,7 +428,7 @@ destroy(AtomicHashArray* p) {
   }
   p->~AtomicHashArray();
 
-  Allocator().deallocate((char *)p, sz);
+  Allocator().deallocate((char*)p, sz);
 }
 
 // clear -- clears all keys and values in the map and resets all counters
@@ -379,9 +440,14 @@ template <
     class Allocator,
     class ProbeFcn,
     class KeyConvertFcn>
-void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                     Allocator, ProbeFcn, KeyConvertFcn>::
-clear() {
+void AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::clear() {
   FOR_EACH_RANGE (i, 0, capacity_) {
     if (cells_[i].first != kEmptyKey_) {
       cells_[i].~value_type();
@@ -395,7 +461,6 @@ clear() {
   numErases_.store(0, std::memory_order_relaxed);
 }
 
-
 // Iterator implementation
 
 template <
@@ -407,13 +472,18 @@ template <
     class ProbeFcn,
     class KeyConvertFcn>
 template <class ContT, class IterVal>
-struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
-                       Allocator, ProbeFcn, KeyConvertFcn>::
-    aha_iterator
-    : boost::iterator_facade<aha_iterator<ContT,IterVal>,
-                             IterVal,
-                             boost::forward_traversal_tag>
-{
+struct AtomicHashArray<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::aha_iterator
+    : boost::iterator_facade<
+          aha_iterator<ContT, IterVal>,
+          IterVal,
+          boost::forward_traversal_tag> {
   explicit aha_iterator() : aha_(nullptr) {}
 
   // Conversion ctor for interoperability between const_iterator and
@@ -427,14 +497,14 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
       : aha_(o.aha_), offset_(o.offset_) {}
 
   explicit aha_iterator(ContT* array, size_t offset)
-      : aha_(array)
-      , offset_(offset)
-  {}
+      : aha_(array), offset_(offset) {}
 
   // Returns unique index that can be used with findAt().
   // WARNING: The following function will fail silently for hashtable
   // with capacity > 2^32
-  uint32_t getIndex() const { return offset_; }
+  uint32_t getIndex() const {
+    return offset_;
+  }
 
   void advancePastEmpty() {
     while (offset_ < aha_->capacity_ && !isValid()) {
@@ -461,9 +531,8 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
 
   bool isValid() const {
     KeyT key = acquireLoadKey(aha_->cells_[offset_]);
-    return key != aha_->kEmptyKey_  &&
-      key != aha_->kLockedKey_ &&
-      key != aha_->kErasedKey_;
+    return key != aha_->kEmptyKey_ && key != aha_->kLockedKey_ &&
+        key != aha_->kErasedKey_;
   }
 
  private:

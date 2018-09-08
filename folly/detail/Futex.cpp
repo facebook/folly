@@ -44,26 +44,27 @@ namespace {
 /// their headers even though they support it. Make sure we have our constants
 /// even if the headers don't have them.
 #ifndef FUTEX_WAIT_BITSET
-# define FUTEX_WAIT_BITSET 9
+#define FUTEX_WAIT_BITSET 9
 #endif
 #ifndef FUTEX_WAKE_BITSET
-# define FUTEX_WAKE_BITSET 10
+#define FUTEX_WAKE_BITSET 10
 #endif
 #ifndef FUTEX_PRIVATE_FLAG
-# define FUTEX_PRIVATE_FLAG 128
+#define FUTEX_PRIVATE_FLAG 128
 #endif
 #ifndef FUTEX_CLOCK_REALTIME
-# define FUTEX_CLOCK_REALTIME 256
+#define FUTEX_CLOCK_REALTIME 256
 #endif
 
 int nativeFutexWake(const void* addr, int count, uint32_t wakeMask) {
-  int rv = syscall(__NR_futex,
-                   addr, /* addr1 */
-                   FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, /* op */
-                   count, /* val */
-                   nullptr, /* timeout */
-                   nullptr, /* addr2 */
-                   wakeMask); /* val3 */
+  int rv = syscall(
+      __NR_futex,
+      addr, /* addr1 */
+      FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, /* op */
+      count, /* val */
+      nullptr, /* timeout */
+      nullptr, /* addr2 */
+      wakeMask); /* val3 */
 
   /* NOTE: we ignore errors on wake for the case of a futex
      guarding its own destruction, similar to this
@@ -76,9 +77,7 @@ int nativeFutexWake(const void* addr, int count, uint32_t wakeMask) {
 }
 
 template <class Clock>
-struct timespec
-timeSpecFromTimePoint(time_point<Clock> absTime)
-{
+struct timespec timeSpecFromTimePoint(time_point<Clock> absTime) {
   auto epoch = absTime.time_since_epoch();
   if (epoch.count() < 0) {
     // kernel timespec_valid requires non-negative seconds and nanos in [0,1G)
@@ -93,7 +92,7 @@ timeSpecFromTimePoint(time_point<Clock> absTime)
 
   auto secs = duration_cast<time_t_seconds>(epoch);
   auto nanos = duration_cast<long_nanos>(epoch - secs);
-  struct timespec result = { secs.count(), nanos.count() };
+  struct timespec result = {secs.count(), nanos.count()};
   return result;
 }
 
@@ -120,18 +119,19 @@ FutexResult nativeFutexWaitImpl(
 
   // Unlike FUTEX_WAIT, FUTEX_WAIT_BITSET requires an absolute timeout
   // value - http://locklessinc.com/articles/futex_cheat_sheet/
-  int rv = syscall(__NR_futex,
-                   addr, /* addr1 */
-                   op, /* op */
-                   expected, /* val */
-                   timeout, /* timeout */
-                   nullptr, /* addr2 */
-                   waitMask); /* val3 */
+  int rv = syscall(
+      __NR_futex,
+      addr, /* addr1 */
+      op, /* op */
+      expected, /* val */
+      timeout, /* timeout */
+      nullptr, /* addr2 */
+      waitMask); /* val3 */
 
   if (rv == 0) {
     return FutexResult::AWOKEN;
   } else {
-    switch(errno) {
+    switch (errno) {
       case ETIMEDOUT:
         assert(timeout != nullptr);
         return FutexResult::TIMEDOUT;

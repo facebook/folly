@@ -32,10 +32,9 @@ namespace detail {
 template <int BITS>
 class SlowFingerprint {
  public:
-  SlowFingerprint()
-    : poly_(FingerprintTable<BITS>::poly) {
+  SlowFingerprint() : poly_(FingerprintTable<BITS>::poly) {
     // Use the same starting value as Fingerprint, (1 << (BITS-1))
-    fp_.addXk(BITS-1);
+    fp_.addXk(BITS - 1);
   }
 
   SlowFingerprint& update8(uint8_t v) {
@@ -74,15 +73,15 @@ class SlowFingerprint {
   }
 
   void updateLSB(uint64_t val, int bits) {
-    val <<= (64-bits);
+    val <<= (64 - bits);
     for (; bits != 0; --bits) {
       updateBit(val & (1ULL << 63));
       val <<= 1;
     }
   }
 
-  const FingerprintPolynomial<BITS-1> poly_;
-  FingerprintPolynomial<BITS-1> fp_;
+  const FingerprintPolynomial<BITS - 1> poly_;
+  FingerprintPolynomial<BITS - 1> fp_;
 };
 
 } // namespace detail

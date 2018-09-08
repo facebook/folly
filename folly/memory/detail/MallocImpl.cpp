@@ -44,5 +44,4 @@ int (*mallctlnametomib)(const char*, size_t*, size_t*) = nullptr;
 int (*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*, size_t) =
     nullptr;
 #endif
-
 }

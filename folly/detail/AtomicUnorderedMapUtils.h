@@ -24,7 +24,8 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 class MMapAlloc {
  private:
@@ -73,7 +74,7 @@ template <typename Allocator>
 struct GivesZeroFilledMemory : public std::false_type {};
 
 template <>
-struct GivesZeroFilledMemory<MMapAlloc> : public std::true_type{};
+struct GivesZeroFilledMemory<MMapAlloc> : public std::true_type {};
 
 } // namespace detail
 } // namespace folly

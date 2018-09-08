@@ -25,11 +25,13 @@ class VirtualClass;
 
 void BM_fn_ptr_invoke_impl(int iters, void (*fn)());
 void BM_std_function_invoke_impl(int iters, const std::function<void()>& fn);
-void BM_Function_invoke_impl(int iters,
-                             const folly::Function<void() const>& fn);
-void BM_mem_fn_invoke_impl(int iters,
-                           TestClass* tc,
-                           void (TestClass::*memfn)());
+void BM_Function_invoke_impl(
+    int iters,
+    const folly::Function<void() const>& fn);
+void BM_mem_fn_invoke_impl(
+    int iters,
+    TestClass* tc,
+    void (TestClass::*memfn)());
 void BM_virtual_fn_invoke_impl(int iters, VirtualClass* vc);
 
 // Inlined version of BM_fn_ptr_invoke_impl().

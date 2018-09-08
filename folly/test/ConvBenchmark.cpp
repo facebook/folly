@@ -263,7 +263,6 @@ void checkArrayIndex(const T& array, size_t index) {
 // @author: Rajat Goel (rajat)
 
 static int64_t handwrittenAtoi(const char* start, const char* end) {
-
   bool positive = true;
   int64_t retVal = 0;
 
@@ -476,7 +475,9 @@ struct StringIdenticalToBM {
   StringIdenticalToBM() {}
   void operator()(unsigned int n, size_t len) const {
     String s;
-    BENCHMARK_SUSPEND { s.append(len, '0'); }
+    BENCHMARK_SUSPEND {
+      s.append(len, '0');
+    }
     FOR_EACH_RANGE (i, 0, n) {
       String result = to<String>(s);
       doNotOptimizeAway(result.size());
@@ -489,7 +490,9 @@ struct StringVariadicToBM {
   StringVariadicToBM() {}
   void operator()(unsigned int n, size_t len) const {
     String s;
-    BENCHMARK_SUSPEND { s.append(len, '0'); }
+    BENCHMARK_SUSPEND {
+      s.append(len, '0');
+    }
     FOR_EACH_RANGE (i, 0, n) {
       String result = to<String>(s, nullptr);
       doNotOptimizeAway(result.size());

@@ -379,7 +379,9 @@ struct Ignore {
   template <class T>
   constexpr /* implicit */ Ignore(const T&) {}
   template <class T>
-  const Ignore& operator=(T const&) const { return *this; }
+  const Ignore& operator=(T const&) const {
+    return *this;
+  }
 };
 
 template <class...>
@@ -392,8 +394,7 @@ template <class T, class U = T>
 struct IsEqualityComparable
     : std::is_convertible<
           decltype(std::declval<T>() == std::declval<U>()),
-          bool
-      > {};
+          bool> {};
 } // namespace traits_detail_IsEqualityComparable
 
 /* using override */ using traits_detail_IsEqualityComparable::
@@ -406,8 +407,7 @@ template <class T, class U = T>
 struct IsLessThanComparable
     : std::is_convertible<
           decltype(std::declval<T>() < std::declval<U>()),
-          bool
-      > {};
+          bool> {};
 } // namespace traits_detail_IsLessThanComparable
 
 /* using override */ using traits_detail_IsLessThanComparable::
@@ -488,9 +488,8 @@ struct StrictConjunction
 
 template <class... Ts>
 struct StrictDisjunction
-  : Negation<
-      std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>
-    > {};
+    : Negation<
+          std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>> {};
 
 } // namespace folly
 
@@ -575,26 +574,26 @@ struct StrictDisjunction
 FOLLY_NAMESPACE_STD_BEGIN
 
 template <class T, class U>
-  struct pair;
+struct pair;
 #ifndef _GLIBCXX_USE_FB
 FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
 template <class T, class R, class A>
-  class basic_string;
+class basic_string;
 FOLLY_GLIBCXX_NAMESPACE_CXX11_END
 #else
 template <class T, class R, class A, class S>
-  class basic_string;
+class basic_string;
 #endif
 template <class T, class A>
-  class vector;
+class vector;
 template <class T, class A>
-  class deque;
+class deque;
 template <class T, class C, class A>
-  class set;
+class set;
 template <class K, class V, class C, class A>
-  class map;
+class map;
 template <class T>
-  class shared_ptr;
+class shared_ptr;
 
 FOLLY_NAMESPACE_STD_END
 
@@ -623,12 +622,16 @@ namespace detail {
 
 template <typename T, bool>
 struct is_negative_impl {
-  constexpr static bool check(T x) { return x < 0; }
+  constexpr static bool check(T x) {
+    return x < 0;
+  }
 };
 
 template <typename T>
 struct is_negative_impl<T, false> {
-  constexpr static bool check(T) { return false; }
+  constexpr static bool check(T) {
+    return false;
+  }
 };
 
 // folly::to integral specializations can end up generating code
@@ -645,18 +648,22 @@ FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare
 
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(LHS const lhs) {
+  // clang-format off
   return
-    rhs > std::numeric_limits<LHS>::max() ? true :
-    rhs <= std::numeric_limits<LHS>::min() ? false :
-    lhs < rhs;
+      rhs > std::numeric_limits<LHS>::max() ? true :
+      rhs <= std::numeric_limits<LHS>::min() ? false :
+      lhs < rhs;
+  // clang-format on
 }
 
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(LHS const lhs) {
+  // clang-format off
   return
-    rhs > std::numeric_limits<LHS>::max() ? false :
-    rhs < std::numeric_limits<LHS>::min() ? true :
-    lhs > rhs;
+      rhs > std::numeric_limits<LHS>::max() ? false :
+      rhs < std::numeric_limits<LHS>::min() ? true :
+      lhs > rhs;
+  // clang-format on
 }
 
 FOLLY_POP_WARNING
@@ -671,11 +678,15 @@ constexpr bool is_negative(T x) {
 
 // same as `x <= 0`
 template <typename T>
-constexpr bool is_non_positive(T x) { return !x || folly::is_negative(x); }
+constexpr bool is_non_positive(T x) {
+  return !x || folly::is_negative(x);
+}
 
 // same as `x > 0`
 template <typename T>
-constexpr bool is_positive(T x) { return !is_non_positive(x); }
+constexpr bool is_positive(T x) {
+  return !is_non_positive(x);
+}
 
 // same as `x >= 0`
 template <typename T>
@@ -685,16 +696,15 @@ constexpr bool is_non_negative(T x) {
 
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than(LHS const lhs) {
-  return detail::less_than_impl<
-    RHS, rhs, typename std::remove_reference<LHS>::type
-  >(lhs);
+  return detail::
+      less_than_impl<RHS, rhs, typename std::remove_reference<LHS>::type>(lhs);
 }
 
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than(LHS const lhs) {
-  return detail::greater_than_impl<
-    RHS, rhs, typename std::remove_reference<LHS>::type
-  >(lhs);
+  return detail::
+      greater_than_impl<RHS, rhs, typename std::remove_reference<LHS>::type>(
+          lhs);
 }
 } // namespace folly
 

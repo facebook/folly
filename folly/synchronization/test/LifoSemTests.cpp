@@ -51,7 +51,7 @@ TEST(LifoSem, multi) {
   std::atomic<int> blocks(0);
 
   for (auto& thr : threads) {
-    thr = std::thread([&]{
+    thr = std::thread([&] {
       int b = 0;
       for (int i = 0; i < opsPerThread; ++i) {
         if (!sem.tryWait()) {
@@ -71,7 +71,7 @@ TEST(LifoSem, multi) {
     thr.join();
   }
 
-  LOG(INFO) << opsPerThread * sizeof(threads)/sizeof(threads[0])
+  LOG(INFO) << opsPerThread * sizeof(threads) / sizeof(threads[0])
             << " post/wait pairs, " << blocks << " blocked";
 }
 
@@ -84,7 +84,7 @@ TEST(LifoSem, pingpong) {
     DLifoSem a;
     DLifoSem b;
 
-    auto thr = DSched::thread([&]{
+    auto thr = DSched::thread([&] {
       for (int i = 0; i < iters; ++i) {
         a.wait();
         // main thread can't be running here
@@ -112,7 +112,7 @@ TEST(LifoSem, mutex) {
   for (int pass = 0; pass < 10; ++pass) {
     DLifoSem a;
 
-    auto thr = DSched::thread([&]{
+    auto thr = DSched::thread([&] {
       for (int i = 0; i < iters; ++i) {
         a.wait();
         a.post();
@@ -142,7 +142,7 @@ TEST(LifoSem, no_blocking) {
 
     std::vector<std::thread> threads;
     while (threads.size() < numThreads) {
-      threads.emplace_back(DSched::thread([&]{
+      threads.emplace_back(DSched::thread([&] {
         for (int i = 0; i < iters; ++i) {
           a.post(width);
           for (int w = 0; w < width; ++w) {
@@ -167,7 +167,7 @@ TEST(LifoSem, one_way) {
   for (int pass = 0; pass < 10; ++pass) {
     DLifoSem a;
 
-    auto thr = DSched::thread([&]{
+    auto thr = DSched::thread([&] {
       for (int i = 0; i < iters; ++i) {
         a.wait();
       }
@@ -190,7 +190,7 @@ TEST(LifoSem, shutdown_race) {
 
     DLifoSem a;
     int waitCount = 0;
-    auto thr = DSched::thread([&]{
+    auto thr = DSched::thread([&] {
       try {
         while (true) {
           a.wait();
@@ -224,7 +224,7 @@ TEST(LifoSem, shutdown_multi) {
     DLifoSem a;
     std::vector<std::thread> threads;
     while (threads.size() < 20) {
-      threads.push_back(DSched::thread([&]{
+      threads.push_back(DSched::thread([&] {
         try {
           a.wait();
           ADD_FAILURE();
@@ -244,7 +244,7 @@ TEST(LifoSem, shutdown_multi) {
 TEST(LifoSem, multi_try_wait_simple) {
   LifoSem sem;
   sem.post(5);
-  auto n = sem.tryWait(10);     // this used to trigger an assert
+  auto n = sem.tryWait(10); // this used to trigger an assert
   ASSERT_EQ(5, n);
 }
 
@@ -256,8 +256,8 @@ TEST(LifoSem, multi_try_wait) {
 
   const int NPOSTS = 1000;
 
-  auto producer = [&]{
-    for (int i=0; i<NPOSTS; ++i) {
+  auto producer = [&] {
+    for (int i = 0; i < NPOSTS; ++i) {
       sem.post();
     }
   };
@@ -265,7 +265,7 @@ TEST(LifoSem, multi_try_wait) {
   DeterministicAtomic<bool> consumer_stop(false);
   int consumed = 0;
 
-  auto consumer = [&]{
+  auto consumer = [&] {
     bool stop;
     do {
       stop = consumer_stop.load();
@@ -335,7 +335,7 @@ TEST(LifoSem, timeout) {
 BENCHMARK(lifo_sem_pingpong, iters) {
   LifoSem a;
   LifoSem b;
-  auto thr = std::thread([&]{
+  auto thr = std::thread([&] {
     for (size_t i = 0; i < iters; ++i) {
       a.wait();
       b.post();
@@ -350,7 +350,7 @@ BENCHMARK(lifo_sem_pingpong, iters) {
 
 BENCHMARK(lifo_sem_oneway, iters) {
   LifoSem a;
-  auto thr = std::thread([&]{
+  auto thr = std::thread([&] {
     for (size_t i = 0; i < iters; ++i) {
       a.wait();
     }
@@ -422,14 +422,14 @@ static void contendedUse(uint32_t n, int posters, int waiters) {
 
   BENCHMARK_SUSPEND {
     for (int t = 0; t < waiters; ++t) {
-      threads.emplace_back([=,&sem] {
+      threads.emplace_back([=, &sem] {
         for (uint32_t i = t; i < n; i += waiters) {
           sem.wait();
         }
       });
     }
     for (int t = 0; t < posters; ++t) {
-      threads.emplace_back([=,&sem,&go] {
+      threads.emplace_back([=, &sem, &go] {
         while (!go.load()) {
           std::this_thread::yield();
         }
@@ -484,7 +484,7 @@ BENCHMARK_NAMED_PARAM(contendedUse, 32_to_1000, 32, 1000)
 // contendedUse(32_to_1000)                                   777.42ns    1.29M
 // ============================================================================
 
-int main(int argc, char ** argv) {
+int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   int rv = RUN_ALL_TESTS();

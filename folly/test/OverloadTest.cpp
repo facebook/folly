@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/Overload.h>
 #include <boost/variant.hpp>
 #include <folly/DiscriminatedPtr.h>
-#include <folly/Overload.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

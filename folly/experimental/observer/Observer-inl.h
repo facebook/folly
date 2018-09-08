@@ -36,8 +36,8 @@ Observer<T>::Observer(observer_detail::Core::Ptr core)
 template <typename F>
 Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeObserver(
     F&& creator) {
-  auto core = observer_detail::Core::
-      create([creator = std::forward<F>(creator)]() mutable {
+  auto core = observer_detail::Core::create(
+      [creator = std::forward<F>(creator)]() mutable {
         return std::static_pointer_cast<const void>(creator());
       });
 

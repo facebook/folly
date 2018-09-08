@@ -53,7 +53,9 @@ class File {
    */
   explicit File(const char* name, int flags = O_RDONLY, mode_t mode = 0666);
   explicit File(
-      const std::string& name, int flags = O_RDONLY, mode_t mode = 0666);
+      const std::string& name,
+      int flags = O_RDONLY,
+      mode_t mode = 0666);
   explicit File(StringPiece name, int flags = O_RDONLY, mode_t mode = 0666);
 
   /**
@@ -80,7 +82,9 @@ class File {
   /**
    * Return the file descriptor, or -1 if the file was closed.
    */
-  int fd() const { return fd_; }
+  int fd() const {
+    return fd_;
+  }
 
   /**
    * Returns 'true' iff the file was successfully opened.

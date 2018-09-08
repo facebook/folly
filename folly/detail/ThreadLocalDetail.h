@@ -278,7 +278,7 @@ class PthreadKeyUnregister {
    * See also the important note at the top of this class about `constexpr`
    * usage.
    */
-  constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() { }
+  constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() {}
   friend struct folly::threadlocal_detail::PthreadKeyUnregisterTester;
 
   void registerKeyImpl(pthread_key_t key) {
@@ -305,8 +305,7 @@ struct StaticMetaBase {
    public:
     std::atomic<uint32_t> value;
 
-    constexpr EntryID() : value(kEntryIDInvalid) {
-    }
+    constexpr EntryID() : value(kEntryIDInvalid) {}
 
     EntryID(EntryID&& other) noexcept : value(other.value.load()) {
       other.value = kEntryIDInvalid;
@@ -471,7 +470,7 @@ struct StaticMeta final : StaticMetaBase {
     auto& meta = instance();
     auto key = meta.pthreadKey_;
     ThreadEntry* threadEntry =
-      static_cast<ThreadEntry*>(pthread_getspecific(key));
+        static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
       ThreadEntryList* threadEntryList = StaticMeta::getThreadEntryList();
 #ifdef FOLLY_TLD_USE_FOLLY_TLS

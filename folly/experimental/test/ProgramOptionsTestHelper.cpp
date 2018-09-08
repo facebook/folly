@@ -32,26 +32,26 @@ namespace {
 template <class T>
 void print(const po::variables_map& vm, const std::string& name) {
   auto& v = vm[name];
-  printf("%s %s\n",
-         name.c_str(),
-         folly::to<std::string>(v.as<T>()).c_str());
+  printf("%s %s\n", name.c_str(), folly::to<std::string>(v.as<T>()).c_str());
 }
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   po::options_description desc;
   auto styleEnv = getenv("PROGRAM_OPTIONS_TEST_STYLE");
 
   CHECK(styleEnv) << "PROGRAM_OPTIONS_TEST_STYLE is required";
   bool gnuStyle = !strcmp(styleEnv, "GNU");
   CHECK(gnuStyle || !strcmp(styleEnv, "GFLAGS"))
-    << "Invalid value for PROGRAM_OPTIONS_TEST_STYLE";
+      << "Invalid value for PROGRAM_OPTIONS_TEST_STYLE";
 
+  // clang-format off
   desc.add(getGFlags(
       gnuStyle ? folly::ProgramOptionsStyle::GNU :
       folly::ProgramOptionsStyle::GFLAGS));
   desc.add_options()
     ("help,h", "help");
+  // clang-format on
 
   po::variables_map vm;
   auto result = folly::parseNestedCommandLine(argc, argv, desc);

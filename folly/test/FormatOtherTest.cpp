@@ -44,8 +44,10 @@ TEST(FormatOther, file) {
     {
       FILE* fp = fdopen(fds[1], "wb");
       PCHECK(fp);
-      SCOPE_EXIT { fclose(fp); };
-      writeTo(fp, format("{} {}", 42, 23));  // <= 512 bytes (PIPE_BUF)
+      SCOPE_EXIT {
+        fclose(fp);
+      };
+      writeTo(fp, format("{} {}", 42, 23)); // <= 512 bytes (PIPE_BUF)
     }
 
     char buf[512];
@@ -106,7 +108,7 @@ TEST(FormatOther, small_vector) {
   testFormatSeq<small_vector<int, 2>>();
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();

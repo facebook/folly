@@ -71,7 +71,7 @@ void parallelRun(Operation op, size_t numThreads, size_t iters) {
 
   for (auto& t : threads) {
     t.join();
-}
+  }
 }
 
 void benchmarkSharedPtrCopy(size_t numThreads, size_t iters) {

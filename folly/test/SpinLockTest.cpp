@@ -77,7 +77,6 @@ void trylockTestThread(TryLockState<LOCK>* state, size_t count) {
       break;
     }
 
-
     if (ret) {
       // We got lock2.
       EXPECT_NE(state->locked, ret);

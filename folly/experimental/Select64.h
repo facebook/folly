@@ -41,14 +41,14 @@ extern const uint8_t kSelectInByte[2048];
  *     for massive data. Softw. Pract. Exper., 2014
  *
  * [3] Sebastiano Vigna. MG4J 5.2.1. http://mg4j.di.unimi.it/
-*/
+ */
 template <class Instructions>
 inline uint64_t select64(uint64_t x, uint64_t k) {
   DCHECK_LT(k, Instructions::popcount(x));
 
-  constexpr uint64_t kOnesStep4  = 0x1111111111111111ULL;
-  constexpr uint64_t kOnesStep8  = 0x0101010101010101ULL;
-  constexpr uint64_t kMSBsStep8  = 0x80ULL * kOnesStep8;
+  constexpr uint64_t kOnesStep4 = 0x1111111111111111ULL;
+  constexpr uint64_t kOnesStep8 = 0x0101010101010101ULL;
+  constexpr uint64_t kMSBsStep8 = 0x80ULL * kOnesStep8;
 
   auto s = x;
   s = s - ((s & 0xA * kOnesStep4) >> 1);

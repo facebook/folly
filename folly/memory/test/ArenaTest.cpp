@@ -59,8 +59,8 @@ TEST(Arena, SizeSanity) {
     allocatedItems.insert(ptr);
   }
   minimum_size += 10 * requestedBlockSize;
-  maximum_size += 10 * goodMallocSize(requestedBlockSize
-                                      + SysArena::kBlockOverhead);
+  maximum_size +=
+      10 * goodMallocSize(requestedBlockSize + SysArena::kBlockOverhead);
   EXPECT_TRUE(arena.totalSize() >= minimum_size);
   EXPECT_TRUE(arena.totalSize() <= maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
@@ -70,8 +70,8 @@ TEST(Arena, SizeSanity) {
   ptr = static_cast<size_t*>(arena.allocate(10 * requestedBlockSize));
   allocatedItems.insert(ptr);
   minimum_size += 10 * requestedBlockSize;
-  maximum_size += goodMallocSize(10 * requestedBlockSize
-                                 + SysArena::kBlockOverhead);
+  maximum_size +=
+      goodMallocSize(10 * requestedBlockSize + SysArena::kBlockOverhead);
   EXPECT_TRUE(arena.totalSize() >= minimum_size);
   EXPECT_TRUE(arena.totalSize() <= maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
@@ -81,7 +81,7 @@ TEST(Arena, SizeSanity) {
   for (const auto& item : allocatedItems) {
     arena.deallocate(item, 0 /* unused */);
   }
-  //The total size should be the same
+  // The total size should be the same
   EXPECT_TRUE(arena.totalSize() >= minimum_size);
   EXPECT_TRUE(arena.totalSize() <= maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
@@ -157,7 +157,7 @@ TEST(Arena, SizeLimit) {
   EXPECT_THROW(arena.allocate(maxSize + 1), std::bad_alloc);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto ret = RUN_ALL_TESTS();

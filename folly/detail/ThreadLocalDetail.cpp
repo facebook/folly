@@ -22,7 +22,8 @@
 constexpr auto kSmallGrowthFactor = 1.1;
 constexpr auto kBigGrowthFactor = 1.7;
 
-namespace folly { namespace threadlocal_detail {
+namespace folly {
+namespace threadlocal_detail {
 
 void ThreadEntryNode::initIfZero(bool locked) {
   if (UNLIKELY(!next)) {

@@ -31,7 +31,7 @@
  * FB_ONE_OR_NONE(hello) expands to nothing. This macro is used to
  * insert or eliminate text based on the presence of another argument.
  */
-#define FB_ONE_OR_NONE(a, ...) FB_VA_GLUE(FB_THIRD, (a, ## __VA_ARGS__, a))
+#define FB_ONE_OR_NONE(a, ...) FB_VA_GLUE(FB_THIRD, (a, ##__VA_ARGS__, a))
 #define FB_THIRD(a, b, ...) __VA_ARGS__
 
 /**

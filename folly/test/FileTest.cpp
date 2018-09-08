@@ -80,12 +80,12 @@ TEST(File, OwnsFd) {
     EXPECT_EQ(-1, f.fd());
     EXPECT_EQ(p[1], f1.fd());
   }
-  expectWouldBlock(::read(p[0], &buf, 1));  // not closed
+  expectWouldBlock(::read(p[0], &buf, 1)); // not closed
   {
     File f(p[1], true);
     EXPECT_EQ(p[1], f.fd());
   }
-  ssize_t r = ::read(p[0], &buf, 1);  // eof
+  ssize_t r = ::read(p[0], &buf, 1); // eof
   expectOK(r);
   EXPECT_EQ(0, r);
   ::close(p[0]);
@@ -97,9 +97,9 @@ TEST(File, Release) {
   CHECK_EQ(-1, in.release());
 }
 
-#define EXPECT_CONTAINS(haystack, needle) \
+#define EXPECT_CONTAINS(haystack, needle)                                     \
   EXPECT_NE(::std::string::npos, ::folly::StringPiece(haystack).find(needle)) \
-    << "Haystack: '" << haystack << "'\nNeedle: '" << needle << "'";
+      << "Haystack: '" << haystack << "'\nNeedle: '" << needle << "'";
 
 TEST(File, UsefulError) {
   try {

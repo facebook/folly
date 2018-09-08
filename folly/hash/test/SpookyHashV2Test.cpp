@@ -35,12 +35,14 @@
 
 using namespace ::folly::hash;
 
+// clang-format off
+
 static bool failed = false;
 
 static uint64_t GetClockTickCount() {
   timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
-  return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;  // milliseconds
+  return ts.tv_sec * 1000 + ts.tv_nsec / 1000000; // milliseconds
 }
 
 class Random
@@ -542,3 +544,5 @@ TEST(SpookyHashV2, Main) {
 #endif
     CHECK_EQ(failed, 0);
 }
+
+// clang-format on

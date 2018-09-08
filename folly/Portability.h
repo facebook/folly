@@ -36,17 +36,17 @@ constexpr bool kHasUnalignedAccess = false;
 
 // NOTE: this will only do checking in msvc with versions that support /analyze
 #if _MSC_VER
-# ifdef _USE_ATTRIBUTES_FOR_SAL
-#    undef _USE_ATTRIBUTES_FOR_SAL
-# endif
+#ifdef _USE_ATTRIBUTES_FOR_SAL
+#undef _USE_ATTRIBUTES_FOR_SAL
+#endif
 /* nolint */
-# define _USE_ATTRIBUTES_FOR_SAL 1
-# include <sal.h> // @manual
-# define FOLLY_PRINTF_FORMAT _Printf_format_string_
-# define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) /**/
+#define _USE_ATTRIBUTES_FOR_SAL 1
+#include <sal.h> // @manual
+#define FOLLY_PRINTF_FORMAT _Printf_format_string_
+#define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) /**/
 #else
-# define FOLLY_PRINTF_FORMAT /**/
-# define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) \
+#define FOLLY_PRINTF_FORMAT /**/
+#define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) \
   __attribute__((__format__(__printf__, format_param, dots_param)))
 #endif
 
@@ -68,16 +68,16 @@ constexpr bool kHasUnalignedAccess = false;
 
 // target
 #ifdef _MSC_VER
-# define FOLLY_TARGET_ATTRIBUTE(target)
+#define FOLLY_TARGET_ATTRIBUTE(target)
 #else
-# define FOLLY_TARGET_ATTRIBUTE(target) __attribute__((__target__(target)))
+#define FOLLY_TARGET_ATTRIBUTE(target) __attribute__((__target__(target)))
 #endif
 
 // detection for 64 bit
 #if defined(__x86_64__) || defined(_M_X64)
-# define FOLLY_X64 1
+#define FOLLY_X64 1
 #else
-# define FOLLY_X64 0
+#define FOLLY_X64 0
 #endif
 
 #if defined(__arm__)
@@ -87,15 +87,15 @@ constexpr bool kHasUnalignedAccess = false;
 #endif
 
 #if defined(__aarch64__)
-# define FOLLY_AARCH64 1
+#define FOLLY_AARCH64 1
 #else
-# define FOLLY_AARCH64 0
+#define FOLLY_AARCH64 0
 #endif
 
-#if defined (__powerpc64__)
-# define FOLLY_PPC64 1
+#if defined(__powerpc64__)
+#define FOLLY_PPC64 1
 #else
-# define FOLLY_PPC64 0
+#define FOLLY_PPC64 0
 #endif
 
 namespace folly {
@@ -128,53 +128,55 @@ constexpr bool kIsSanitize = false;
 
 // packing is very ugly in msvc
 #ifdef _MSC_VER
-# define FOLLY_PACK_ATTR /**/
-# define FOLLY_PACK_PUSH __pragma(pack(push, 1))
-# define FOLLY_PACK_POP __pragma(pack(pop))
+#define FOLLY_PACK_ATTR /**/
+#define FOLLY_PACK_PUSH __pragma(pack(push, 1))
+#define FOLLY_PACK_POP __pragma(pack(pop))
 #elif defined(__clang__) || defined(__GNUC__)
-# define FOLLY_PACK_ATTR __attribute__((__packed__))
-# define FOLLY_PACK_PUSH /**/
-# define FOLLY_PACK_POP /**/
+#define FOLLY_PACK_ATTR __attribute__((__packed__))
+#define FOLLY_PACK_PUSH /**/
+#define FOLLY_PACK_POP /**/
 #else
-# define FOLLY_PACK_ATTR /**/
-# define FOLLY_PACK_PUSH /**/
-# define FOLLY_PACK_POP /**/
+#define FOLLY_PACK_ATTR /**/
+#define FOLLY_PACK_PUSH /**/
+#define FOLLY_PACK_POP /**/
 #endif
 
 // Generalize warning push/pop.
 #if defined(_MSC_VER)
-# define FOLLY_PUSH_WARNING __pragma(warning(push))
-# define FOLLY_POP_WARNING __pragma(warning(pop))
+#define FOLLY_PUSH_WARNING __pragma(warning(push))
+#define FOLLY_POP_WARNING __pragma(warning(pop))
 // Disable the GCC warnings.
-# define FOLLY_GNU_DISABLE_WARNING(warningName)
-# define FOLLY_GCC_DISABLE_WARNING(warningName)
-# define FOLLY_CLANG_DISABLE_WARNING(warningName)
-# define FOLLY_MSVC_DISABLE_WARNING(warningNumber) __pragma(warning(disable: warningNumber))
+#define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)
+#define FOLLY_CLANG_DISABLE_WARNING(warningName)
+#define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
+  __pragma(warning(disable : warningNumber))
 #elif defined(__GNUC__)
 // Clang & GCC
-# define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
-# define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
-# define FOLLY_GNU_DISABLE_WARNING_INTERNAL2(warningName) #warningName
-# define FOLLY_GNU_DISABLE_WARNING(warningName) \
-  _Pragma(                                      \
-  FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
-# ifdef __clang__
-#  define FOLLY_CLANG_DISABLE_WARNING(warningName) FOLLY_GNU_DISABLE_WARNING(warningName)
-#  define FOLLY_GCC_DISABLE_WARNING(warningName)
-# else
-#  define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#  define FOLLY_GCC_DISABLE_WARNING(warningName) FOLLY_GNU_DISABLE_WARNING(warningName)
-# endif
-# define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
+#define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
+#define FOLLY_GNU_DISABLE_WARNING_INTERNAL2(warningName) #warningName
+#define FOLLY_GNU_DISABLE_WARNING(warningName) \
+  _Pragma(                                     \
+      FOLLY_GNU_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
+#ifdef __clang__
+#define FOLLY_CLANG_DISABLE_WARNING(warningName) \
+  FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)
 #else
-# define FOLLY_PUSH_WARNING
-# define FOLLY_POP_WARNING
-# define FOLLY_GNU_DISABLE_WARNING(warningName)
-# define FOLLY_GCC_DISABLE_WARNING(warningName)
-# define FOLLY_CLANG_DISABLE_WARNING(warningName)
-# define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#define FOLLY_CLANG_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName) \
+  FOLLY_GNU_DISABLE_WARNING(warningName)
 #endif
-
+#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#else
+#define FOLLY_PUSH_WARNING
+#define FOLLY_POP_WARNING
+#define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)
+#define FOLLY_CLANG_DISABLE_WARNING(warningName)
+#define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#endif
 
 #ifdef FOLLY_HAVE_SHADOW_LOCAL_WARNINGS
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS            \
@@ -197,11 +199,11 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
  * (but remember __thread has different semantics when using emutls (ex. apple))
  */
 #if defined(_MSC_VER)
-# define FOLLY_TLS __declspec(thread)
+#define FOLLY_TLS __declspec(thread)
 #elif defined(__GNUC__) || defined(__clang__)
-# define FOLLY_TLS __thread
+#define FOLLY_TLS __thread
 #else
-# error cannot define platform specific thread local storage
+#error cannot define platform specific thread local storage
 #endif
 
 #if FOLLY_MOBILE
@@ -213,11 +215,11 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 // up in a macro to make forward-declarations easier.
 #if FOLLY_USE_LIBCPP
 #include <__config> // @manual
-#define FOLLY_NAMESPACE_STD_BEGIN     _LIBCPP_BEGIN_NAMESPACE_STD
-#define FOLLY_NAMESPACE_STD_END       _LIBCPP_END_NAMESPACE_STD
+#define FOLLY_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
+#define FOLLY_NAMESPACE_STD_END _LIBCPP_END_NAMESPACE_STD
 #else
-#define FOLLY_NAMESPACE_STD_BEGIN     namespace std {
-#define FOLLY_NAMESPACE_STD_END       }
+#define FOLLY_NAMESPACE_STD_BEGIN namespace std {
+#define FOLLY_NAMESPACE_STD_END }
 #endif
 
 // If the new c++ ABI is used, __cxx11 inline namespace needs to be added to
@@ -225,10 +227,10 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 #if _GLIBCXX_USE_CXX11_ABI
 #define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN \
   inline _GLIBCXX_BEGIN_NAMESPACE_CXX11
-# define FOLLY_GLIBCXX_NAMESPACE_CXX11_END   _GLIBCXX_END_NAMESPACE_CXX11
+#define FOLLY_GLIBCXX_NAMESPACE_CXX11_END _GLIBCXX_END_NAMESPACE_CXX11
 #else
-# define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
-# define FOLLY_GLIBCXX_NAMESPACE_CXX11_END
+#define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
+#define FOLLY_GLIBCXX_NAMESPACE_CXX11_END
 #endif
 
 // MSVC specific defines
@@ -238,10 +240,10 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 
 // compiler specific to compiler specific
 // nolint
-# define __PRETTY_FUNCTION__ __FUNCSIG__
+#define __PRETTY_FUNCTION__ __FUNCSIG__
 
 // Hide a GCC specific thing that breaks MSVC if left alone.
-# define __extension__
+#define __extension__
 
 // We have compiler support for the newest of the new, but
 // MSVC doesn't tell us that.
@@ -274,41 +276,41 @@ constexpr auto kIsBigEndian = !kIsLittleEndian;
 } // namespace folly
 
 #ifndef FOLLY_SSE
-# if defined(__SSE4_2__)
-#  define FOLLY_SSE 4
-#  define FOLLY_SSE_MINOR 2
-# elif defined(__SSE4_1__)
-#  define FOLLY_SSE 4
-#  define FOLLY_SSE_MINOR 1
-# elif defined(__SSE4__)
-#  define FOLLY_SSE 4
-#  define FOLLY_SSE_MINOR 0
-# elif defined(__SSE3__)
-#  define FOLLY_SSE 3
-#  define FOLLY_SSE_MINOR 0
-# elif defined(__SSE2__)
-#  define FOLLY_SSE 2
-#  define FOLLY_SSE_MINOR 0
-# elif defined(__SSE__)
-#  define FOLLY_SSE 1
-#  define FOLLY_SSE_MINOR 0
-# else
-#  define FOLLY_SSE 0
-#  define FOLLY_SSE_MINOR 0
-# endif
+#if defined(__SSE4_2__)
+#define FOLLY_SSE 4
+#define FOLLY_SSE_MINOR 2
+#elif defined(__SSE4_1__)
+#define FOLLY_SSE 4
+#define FOLLY_SSE_MINOR 1
+#elif defined(__SSE4__)
+#define FOLLY_SSE 4
+#define FOLLY_SSE_MINOR 0
+#elif defined(__SSE3__)
+#define FOLLY_SSE 3
+#define FOLLY_SSE_MINOR 0
+#elif defined(__SSE2__)
+#define FOLLY_SSE 2
+#define FOLLY_SSE_MINOR 0
+#elif defined(__SSE__)
+#define FOLLY_SSE 1
+#define FOLLY_SSE_MINOR 0
+#else
+#define FOLLY_SSE 0
+#define FOLLY_SSE_MINOR 0
+#endif
 #endif
 
 #define FOLLY_SSE_PREREQ(major, minor) \
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
 #ifndef FOLLY_NEON
-# if defined(__ARM_NEON) || defined(__ARM_NEON__)
-#  define FOLLY_NEON 1
-# endif
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#define FOLLY_NEON 1
+#endif
 #endif
 
 #if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
-namespace FOLLY_GFLAGS_NAMESPACE { }
+namespace FOLLY_GFLAGS_NAMESPACE {}
 namespace gflags {
 using namespace FOLLY_GFLAGS_NAMESPACE;
 } // namespace gflags
@@ -322,7 +324,7 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 // RTTI may not be enabled for this compilation unit.
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))
-# define FOLLY_HAS_RTTI 1
+#define FOLLY_HAS_RTTI 1
 #endif
 
 #if defined(__APPLE__) || defined(_MSC_VER)

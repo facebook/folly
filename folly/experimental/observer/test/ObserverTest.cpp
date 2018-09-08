@@ -46,9 +46,8 @@ TEST(Observer, Observable) {
 TEST(Observer, MakeObserver) {
   SimpleObservable<int> observable(42);
 
-  auto observer = makeObserver([child = observable.getObserver()]() {
-    return **child + 1;
-  });
+  auto observer = makeObserver(
+      [child = observable.getObserver()]() { return **child + 1; });
 
   EXPECT_EQ(43, **observer);
 
@@ -70,9 +69,8 @@ TEST(Observer, MakeObserver) {
 TEST(Observer, MakeObserverDiamond) {
   SimpleObservable<int> observable(42);
 
-  auto observer1 = makeObserver([child = observable.getObserver()]() {
-    return **child + 1;
-  });
+  auto observer1 = makeObserver(
+      [child = observable.getObserver()]() { return **child + 1; });
 
   auto observer2 = makeObserver([child = observable.getObserver()]() {
     return std::make_shared<int>(**child + 2);
@@ -211,7 +209,7 @@ TEST(Observer, Stress) {
 
   auto values = std::make_shared<folly::Synchronized<std::vector<int>>>();
 
-  auto observer = makeObserver([ child = observable.getObserver(), values ]() {
+  auto observer = makeObserver([child = observable.getObserver(), values]() {
     auto value = **child * 10;
     values->withWLock([&](std::vector<int>& vals) { vals.push_back(value); });
     return value;

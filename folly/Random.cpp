@@ -111,9 +111,9 @@ std::atomic<size_t> BufferedRandomDevice::globalEpoch_{0};
 struct RandomTag {};
 
 BufferedRandomDevice::BufferedRandomDevice(size_t bufferSize)
-  : bufferSize_(bufferSize),
-    buffer_(new unsigned char[bufferSize]),
-    ptr_(buffer_.get() + bufferSize) {  // refill on first use
+    : bufferSize_(bufferSize),
+      buffer_(new unsigned char[bufferSize]),
+      ptr_(buffer_.get() + bufferSize) { // refill on first use
   call_once(flag, [this]() {
     detail::AtFork::registerHandler(
         this,

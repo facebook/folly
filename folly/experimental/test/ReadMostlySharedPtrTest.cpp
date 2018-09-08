@@ -27,9 +27,9 @@
 #include <folly/synchronization/Baton.h>
 
 using folly::ReadMostlyMainPtr;
-using folly::ReadMostlyWeakPtr;
-using folly::ReadMostlySharedPtr;
 using folly::ReadMostlyMainPtrDeleter;
+using folly::ReadMostlySharedPtr;
+using folly::ReadMostlyWeakPtr;
 
 // send SIGALRM to test process after this many seconds
 const unsigned int TEST_TIMEOUT = 10;

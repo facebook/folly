@@ -22,13 +22,21 @@
 namespace folly {
 
 const uint32_t GroupVarint32::kMask[] = {
-  0xff, 0xffff, 0xffffff, 0xffffffff
+    0xff,
+    0xffff,
+    0xffffff,
+    0xffffffff,
 };
 
 const uint64_t GroupVarint64::kMask[] = {
-  0xff, 0xffff, 0xffffff, 0xffffffff,
-  0xffffffffffULL, 0xffffffffffffULL, 0xffffffffffffffULL,
-  0xffffffffffffffffULL
+    0xff,
+    0xffff,
+    0xffffff,
+    0xffffffff,
+    0xffffffffffULL,
+    0xffffffffffffULL,
+    0xffffffffffffffULL,
+    0xffffffffffffffffULL,
 };
 
 namespace detail {

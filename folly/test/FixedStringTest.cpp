@@ -263,11 +263,11 @@ TEST(FixedStringIndexTest, Index) {
   static_assert(digits[2] == '2', "");
   static_assert(digits[9] == '9', "");
   static_assert(digits[10] == '\0', "");
-  #ifdef NDEBUG
+#ifdef NDEBUG
   // This should be allowed and work in constexpr mode since the internal array
   // is actually big enough and op[] does no parameter validation:
   static_assert(digits[11] == '\0', "");
-  #endif
+#endif
 
   static_assert(digits.at(0) == '0', "");
   static_assert(digits.at(1) == '1', "");
@@ -641,7 +641,7 @@ TEST(FixedStringConversionTest, ConversionToStdString) {
 constexpr std::size_t countSpacesReverse(folly::FixedString<50> s) {
   std::size_t count = 0u;
   auto i = s.rbegin();
-  for( ; i != s.rend(); ++i, --i, i++, i--, i+=1, i-=1, i+=1 ) {
+  for (; i != s.rend(); ++i, --i, i++, i--, i += 1, i -= 1, i += 1) {
     if (' ' == *i) {
       ++count;
     }
@@ -663,22 +663,22 @@ TEST(FixedStringReverseIteratorTest, ConstexprReverseIteration) {
 }
 
 namespace GCC61971 {
-  // FixedString runs afoul of GCC #61971 (spurious -Warray-bounds)
-  // in optimized builds. The following test case triggers it for gcc-4.x.
-  // Test that FixedString suppresses the warning correctly.
-  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61971
-  constexpr auto xyz = folly::makeFixedString("xyz");
-  constexpr auto dot = folly::makeFixedString(".");
+// FixedString runs afoul of GCC #61971 (spurious -Warray-bounds)
+// in optimized builds. The following test case triggers it for gcc-4.x.
+// Test that FixedString suppresses the warning correctly.
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61971
+constexpr auto xyz = folly::makeFixedString("xyz");
+constexpr auto dot = folly::makeFixedString(".");
 
-  template <typename T1>
-  constexpr auto concatStuff(const T1& component) noexcept {
-    return xyz + dot + component;
-  }
-  constexpr auto co = folly::makeFixedString("co");
+template <typename T1>
+constexpr auto concatStuff(const T1& component) noexcept {
+  return xyz + dot + component;
+}
+constexpr auto co = folly::makeFixedString("co");
 
-  struct S {
-    std::string s{concatStuff(co)};
-  };
+struct S {
+  std::string s{concatStuff(co)};
+};
 } // namespace GCC61971
 
 TEST(FixedStringGCC61971, GCC61971) {

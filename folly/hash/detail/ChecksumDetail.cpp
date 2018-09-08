@@ -218,10 +218,12 @@ _128_bits_at_a_time:
    * which is equivalent to multiplying by x^32.  This is needed because
    * the CRC is defined as M(x)*x^32 mod G(x), not just M(x) mod G(x).
    */
-  x0 = _mm_xor_si128(_mm_srli_si128(x0, 8), _mm_clmulepi64_si128(x0, multipliers_1, 0x10));
+  x0 = _mm_xor_si128(
+      _mm_srli_si128(x0, 8), _mm_clmulepi64_si128(x0, multipliers_1, 0x10));
 
   /* Fold 96 => 64 bits */
-  x0 = _mm_xor_si128(_mm_srli_si128(x0, 4),
+  x0 = _mm_xor_si128(
+      _mm_srli_si128(x0, 4),
       _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), final_multiplier, 0x00));
 
   /*
@@ -267,8 +269,10 @@ _128_bits_at_a_time:
    *                              \           x^32            /
    */
   x1 = x0;
-  x0 = _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), barrett_reduction_constants, 0x00);
-  x0 = _mm_clmulepi64_si128(_mm_and_si128(x0, mask32), barrett_reduction_constants, 0x10);
+  x0 = _mm_clmulepi64_si128(
+      _mm_and_si128(x0, mask32), barrett_reduction_constants, 0x00);
+  x0 = _mm_clmulepi64_si128(
+      _mm_and_si128(x0, mask32), barrett_reduction_constants, 0x10);
   return _mm_cvtsi128_si32(_mm_srli_si128(_mm_xor_si128(x0, x1), 4));
 }
 

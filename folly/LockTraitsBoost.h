@@ -27,7 +27,6 @@
 
 #if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 
-
 namespace folly {
 
 namespace detail {

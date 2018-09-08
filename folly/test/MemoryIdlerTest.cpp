@@ -112,10 +112,11 @@ TEST(MemoryIdler, futexWaitValueChangedEarly) {
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
 
-  EXPECT_CALL(*clock, nowImpl())
-      .WillOnce(Return(begin));
-  EXPECT_CALL(fut, futexWaitUntil(1, AllOf(Ge(begin + idleTimeout),
-                                           Lt(begin + 2 * idleTimeout)), -1))
+  EXPECT_CALL(*clock, nowImpl()).WillOnce(Return(begin));
+  EXPECT_CALL(
+      fut,
+      futexWaitUntil(
+          1, AllOf(Ge(begin + idleTimeout), Lt(begin + 2 * idleTimeout)), -1))
       .WillOnce(Return(FutexResult::VALUE_CHANGED));
   EXPECT_EQ(
       FutexResult::VALUE_CHANGED, MemoryIdler::futexWaitUntil(fut, 1, forever));
@@ -127,10 +128,11 @@ TEST(MemoryIdler, futexWaitValueChangedLate) {
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
 
-  EXPECT_CALL(*clock, nowImpl())
-      .WillOnce(Return(begin));
-  EXPECT_CALL(fut, futexWaitUntil(1, AllOf(Ge(begin + idleTimeout),
-                                           Lt(begin + 2 * idleTimeout)), -1))
+  EXPECT_CALL(*clock, nowImpl()).WillOnce(Return(begin));
+  EXPECT_CALL(
+      fut,
+      futexWaitUntil(
+          1, AllOf(Ge(begin + idleTimeout), Lt(begin + 2 * idleTimeout)), -1))
       .WillOnce(Return(FutexResult::TIMEDOUT));
   EXPECT_CALL(fut, futexWaitUntil(1, forever, -1))
       .WillOnce(Return(FutexResult::VALUE_CHANGED));
@@ -144,8 +146,7 @@ TEST(MemoryIdler, futexWaitAwokenEarly) {
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
 
-  EXPECT_CALL(*clock, nowImpl())
-      .WillOnce(Return(begin));
+  EXPECT_CALL(*clock, nowImpl()).WillOnce(Return(begin));
   EXPECT_CALL(fut, futexWaitUntil(1, Ge(begin + idleTimeout), -1))
       .WillOnce(Return(FutexResult::AWOKEN));
   EXPECT_EQ(FutexResult::AWOKEN, MemoryIdler::futexWaitUntil(fut, 1, forever));
@@ -157,8 +158,7 @@ TEST(MemoryIdler, futexWaitAwokenLate) {
   auto begin = MockClock::time_point(std::chrono::seconds(100));
   auto idleTimeout = MemoryIdler::defaultIdleTimeout.load();
 
-  EXPECT_CALL(*clock, nowImpl())
-      .WillOnce(Return(begin));
+  EXPECT_CALL(*clock, nowImpl()).WillOnce(Return(begin));
   EXPECT_CALL(fut, futexWaitUntil(1, begin + idleTimeout, -1))
       .WillOnce(Return(FutexResult::TIMEDOUT));
   EXPECT_CALL(fut, futexWaitUntil(1, forever, -1))

@@ -65,14 +65,13 @@ template <bool If, class T>
 using AddConstIf = _t<std::conditional<If, const T, T>>;
 
 template <class Fn, class A>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN
-auto fold(Fn&&, A&& a) {
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN auto fold(Fn&&, A&& a) {
   return static_cast<A&&>(a);
 }
 
 template <class Fn, class A, class B, class... Bs>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN
-auto fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN auto
+fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
   return fold(
       // This looks like a use of fn after a move of fn, but in reality, this is
       // just a cast and not a move. That's because regardless of which fold
@@ -315,10 +314,12 @@ class exception_wrapper final {
       static_assert(IsStdException<Ex>::value, "only deriving std::exception");
       Ex ex_;
       Impl() = default;
+      // clang-format off
       template <typename... As>
       explicit Impl(As&&... as)
           : Base{typeid(Ex)}, ex_(std::forward<As>(as)...) {}
       [[noreturn]] void throw_() const override;
+      // clang-format on
       std::exception const* get_exception_() const noexcept override;
       exception_wrapper get_exception_ptr_() const noexcept override;
     };

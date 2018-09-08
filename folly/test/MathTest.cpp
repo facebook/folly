@@ -133,8 +133,8 @@ void runDivTests() {
         continue;
       }
       EXPECT_EQ(divCeil(n, d), (referenceDivCeil<T, C>(n, d))) << n << "/" << d;
-      EXPECT_EQ(divFloor(n, d), (referenceDivFloor<T, C>(n, d))) << n << "/"
-                                                                 << d;
+      EXPECT_EQ(divFloor(n, d), (referenceDivFloor<T, C>(n, d)))
+          << n << "/" << d;
       EXPECT_EQ(divTrunc(n, d), n / d) << n << "/" << d;
       EXPECT_EQ(divRoundAway(n, d), (referenceDivRoundAway<T, C>(n, d)))
           << n << "/" << d;

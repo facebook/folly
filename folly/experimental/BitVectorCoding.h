@@ -34,7 +34,8 @@
 #error BitVectorCoding.h requires x86_64
 #endif
 
-namespace folly { namespace compression {
+namespace folly {
+namespace compression {
 
 static_assert(kIsLittleEndian, "BitVectorCoding.h requires little endianness");
 
@@ -76,9 +77,9 @@ template <
     size_t kSkipQuantum = 0,
     size_t kForwardQuantum = 0>
 struct BitVectorEncoder {
-  static_assert(std::is_integral<Value>::value &&
-                    std::is_unsigned<Value>::value,
-                "Value should be unsigned integral");
+  static_assert(
+      std::is_integral<Value>::value && std::is_unsigned<Value>::value,
+      "Value should be unsigned integral");
 
   typedef BitVectorCompressedList CompressedList;
   typedef MutableBitVectorCompressedList MutableCompressedList;
@@ -91,8 +92,9 @@ struct BitVectorEncoder {
   static constexpr size_t forwardQuantum = kForwardQuantum;
 
   template <class RandomAccessIterator>
-  static MutableCompressedList encode(RandomAccessIterator begin,
-                                      RandomAccessIterator end) {
+  static MutableCompressedList encode(
+      RandomAccessIterator begin,
+      RandomAccessIterator end) {
     if (begin == end) {
       return MutableCompressedList();
     }
@@ -119,7 +121,7 @@ struct BitVectorEncoder {
     CHECK_LT(value, std::numeric_limits<ValueType>::max());
     // Also works when lastValue_ == -1.
     CHECK_GT(value + 1, lastValue_ + 1)
-      << "BitVectorCoding only supports stricly monotone lists";
+        << "BitVectorCoding only supports stricly monotone lists";
 
     auto block = bits_ + (value / 64) * sizeof(uint64_t);
     size_t inner = value % 64;
@@ -195,7 +197,9 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
     return layout;
   }
 
-  size_t bytes() const { return bits + skipPointers + forwardPointers; }
+  size_t bytes() const {
+    return bits + skipPointers + forwardPointers;
+  }
 
   template <class Range>
   BitVectorCompressedListBase<typename Range::iterator> openList(
@@ -327,7 +331,9 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
 
   bool skipTo(ValueType v) {
     // Also works when value_ == kInvalidValue.
-    if (v != kInvalidValue) { DCHECK_GE(v + 1, value_ + 1); }
+    if (v != kInvalidValue) {
+      DCHECK_GE(v + 1, value_ + 1);
+    }
 
     if (!kUnchecked && v > upperBound_) {
       return setDone();
@@ -413,7 +419,8 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
 
  private:
   constexpr static ValueType kInvalidValue =
-    std::numeric_limits<ValueType>::max();  // Must hold kInvalidValue + 1 == 0.
+      std::numeric_limits<ValueType>::max(); // Must hold kInvalidValue + 1 ==
+                                             // 0.
 
   bool setValue(size_t inner) {
     value_ = static_cast<ValueType>(8 * outer_ + inner);

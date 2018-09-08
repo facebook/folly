@@ -25,8 +25,8 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-using folly::sorted_vector_set;
 using folly::sorted_vector_map;
+using folly::sorted_vector_set;
 
 namespace {
 
@@ -65,10 +65,7 @@ struct CountCopyCtor {
 
   explicit CountCopyCtor(int val) : val_(val), count_(0) {}
 
-  CountCopyCtor(const CountCopyCtor& c)
-    : val_(c.val_)
-    , count_(c.count_ + 1)
-  {}
+  CountCopyCtor(const CountCopyCtor& c) : val_(c.val_), count_(c.count_ + 1) {}
 
   bool operator<(const CountCopyCtor& o) const {
     return val_ < o.val_;
@@ -233,7 +230,7 @@ TEST(SortedVectorTypes, BadHints) {
 }
 
 TEST(SortedVectorTypes, SimpleMapTest) {
-  sorted_vector_map<int,float> m;
+  sorted_vector_map<int, float> m;
   for (int i = 0; i < 1000; ++i) {
     m[i] = i / 1000.0;
   }
@@ -249,7 +246,7 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   check_invariant(m);
   EXPECT_THROW(m.at(32), std::out_of_range);
 
-  sorted_vector_map<int,float> m2 = m;
+  sorted_vector_map<int, float> m2 = m;
   EXPECT_TRUE(m2 == m);
   EXPECT_FALSE(m2 != m);
   auto it = m2.lower_bound(1 << 20);
@@ -260,7 +257,7 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   EXPECT_TRUE(m < m2);
   EXPECT_TRUE(m <= m2);
 
-  const sorted_vector_map<int,float>& cm = m;
+  const sorted_vector_map<int, float>& cm = m;
   auto range = cm.equal_range(42);
   auto lbound = cm.lower_bound(42);
   auto ubound = cm.upper_bound(42);
@@ -271,7 +268,7 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   m.erase(m.lower_bound(42));
   check_invariant(m);
 
-  sorted_vector_map<int,float> m3;
+  sorted_vector_map<int, float> m3;
   m3.insert(m2.begin(), m2.end());
   check_invariant(m3);
   EXPECT_TRUE(m3 == m2);
@@ -344,18 +341,27 @@ TEST(SortedVectorTypes, TransparentMapTest) {
 }
 
 TEST(SortedVectorTypes, Sizes) {
-  EXPECT_EQ(sizeof(sorted_vector_set<int>),
-            sizeof(std::vector<int>));
-  EXPECT_EQ(sizeof(sorted_vector_map<int,int>),
-            sizeof(std::vector<std::pair<int,int> >));
+  EXPECT_EQ(sizeof(sorted_vector_set<int>), sizeof(std::vector<int>));
+  EXPECT_EQ(
+      sizeof(sorted_vector_map<int, int>),
+      sizeof(std::vector<std::pair<int, int>>));
 
-  typedef sorted_vector_set<int,std::less<int>,
-    std::allocator<int>,OneAtATimePolicy> SetT;
-  typedef sorted_vector_map<int,int,std::less<int>,
-    std::allocator<std::pair<int,int>>,OneAtATimePolicy> MapT;
+  typedef sorted_vector_set<
+      int,
+      std::less<int>,
+      std::allocator<int>,
+      OneAtATimePolicy>
+      SetT;
+  typedef sorted_vector_map<
+      int,
+      int,
+      std::less<int>,
+      std::allocator<std::pair<int, int>>,
+      OneAtATimePolicy>
+      MapT;
 
   EXPECT_EQ(sizeof(SetT), sizeof(std::vector<int>));
-  EXPECT_EQ(sizeof(MapT), sizeof(std::vector<std::pair<int,int> >));
+  EXPECT_EQ(sizeof(MapT), sizeof(std::vector<std::pair<int, int>>));
 }
 
 TEST(SortedVectorTypes, InitializerLists) {
@@ -373,15 +379,15 @@ TEST(SortedVectorTypes, InitializerLists) {
   EXPECT_EQ(2, *forward_initialized_set.rbegin());
   EXPECT_TRUE(forward_initialized_set == backward_initialized_set);
 
-  sorted_vector_map<int,int> empty_initialized_map{};
+  sorted_vector_map<int, int> empty_initialized_map{};
   EXPECT_TRUE(empty_initialized_map.empty());
 
-  sorted_vector_map<int,int> singleton_initialized_map{{1,10}};
+  sorted_vector_map<int, int> singleton_initialized_map{{1, 10}};
   EXPECT_EQ(1, singleton_initialized_map.size());
   EXPECT_EQ(10, singleton_initialized_map[1]);
 
-  sorted_vector_map<int,int> forward_initialized_map{{1,10}, {2,20}};
-  sorted_vector_map<int,int> backward_initialized_map{{2,20}, {1,10}};
+  sorted_vector_map<int, int> forward_initialized_map{{1, 10}, {2, 20}};
+  sorted_vector_map<int, int> backward_initialized_map{{2, 20}, {1, 10}};
   EXPECT_EQ(2, forward_initialized_map.size());
   EXPECT_EQ(10, forward_initialized_map[1]);
   EXPECT_EQ(20, forward_initialized_map[2]);
@@ -389,13 +395,13 @@ TEST(SortedVectorTypes, InitializerLists) {
 }
 
 TEST(SortedVectorTypes, CustomCompare) {
-  sorted_vector_set<int,less_invert<int> > s;
+  sorted_vector_set<int, less_invert<int>> s;
   for (int i = 0; i < 200; ++i) {
     s.insert(i);
   }
   check_invariant(s);
 
-  sorted_vector_map<int,float,less_invert<int> > m;
+  sorted_vector_map<int, float, less_invert<int>> m;
   for (int i = 0; i < 200; ++i) {
     m[i] = 12.0;
   }
@@ -403,11 +409,12 @@ TEST(SortedVectorTypes, CustomCompare) {
 }
 
 TEST(SortedVectorTypes, GrowthPolicy) {
-  typedef sorted_vector_set<CountCopyCtor,
-                            std::less<CountCopyCtor>,
-                            std::allocator<CountCopyCtor>,
-                            OneAtATimePolicy>
-    SetT;
+  typedef sorted_vector_set<
+      CountCopyCtor,
+      std::less<CountCopyCtor>,
+      std::allocator<CountCopyCtor>,
+      OneAtATimePolicy>
+      SetT;
 
   SetT a;
   for (int i = 0; i < 20; ++i) {
@@ -444,7 +451,7 @@ TEST(SortedVectorTest, EmptyTest) {
   EXPECT_TRUE(emptySet.lower_bound(10) == emptySet.end());
   EXPECT_TRUE(emptySet.find(10) == emptySet.end());
 
-  sorted_vector_map<int,int> emptyMap;
+  sorted_vector_map<int, int> emptyMap;
   EXPECT_TRUE(emptyMap.lower_bound(10) == emptyMap.end());
   EXPECT_TRUE(emptyMap.find(10) == emptyMap.end());
   EXPECT_THROW(emptyMap.at(10), std::out_of_range);
@@ -591,8 +598,7 @@ TEST(SortedVectorTypes, TestSetBulkInsertionMiddleValuesEqualDuplication) {
   EXPECT_EQ(vset.rbegin()->count_, 1);
 
   EXPECT_THAT(
-      extractValues(vset),
-      testing::ElementsAreArray({4, 6, 8, 10, 12}));
+      extractValues(vset), testing::ElementsAreArray({4, 6, 8, 10, 12}));
 }
 
 TEST(SortedVectorTypes, TestSetBulkInsertionSortMergeDups) {
@@ -760,7 +766,11 @@ TEST(SortedVectorTypes, TestMapCreationFromVector) {
   check_invariant(vmap);
   auto contents = std::vector<std::pair<int, int>>(vmap.begin(), vmap.end());
   auto expected_contents = std::vector<std::pair<int, int>>({
-      {-1, 2}, {0, 3}, {1, 5}, {3, 1}, {5, 3},
+      {-1, 2},
+      {0, 3},
+      {1, 5},
+      {3, 1},
+      {5, 3},
   });
   EXPECT_EQ(contents, expected_contents);
 }

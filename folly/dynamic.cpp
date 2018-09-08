@@ -27,8 +27,8 @@ namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
-#define FOLLY_DYNAMIC_DEF_TYPEINFO(T) \
-  constexpr const char* dynamic::TypeInfo<T>::name; \
+#define FOLLY_DYNAMIC_DEF_TYPEINFO(T)                 \
+  constexpr const char* dynamic::TypeInfo<T>::name;   \
   constexpr dynamic::Type dynamic::TypeInfo<T>::type; \
   //
 
@@ -112,8 +112,7 @@ bool dynamic::operator<(dynamic const& o) const {
     return type_ < o.type_;
   }
 
-#define FB_X(T) return CompareOp<T>::comp(*getAddress<T>(),   \
-                                          *o.getAddress<T>())
+#define FB_X(T) return CompareOp<T>::comp(*getAddress<T>(), *o.getAddress<T>())
   FB_DYNAMIC_APPLY(type_, FB_X);
 #undef FB_X
 }
@@ -122,7 +121,7 @@ bool dynamic::operator==(dynamic const& o) const {
   if (type() != o.type()) {
     if (isNumber() && o.isNumber()) {
       auto& integ = isInt() ? *this : o;
-      auto& doubl = isInt() ? o     : *this;
+      auto& doubl = isInt() ? o : *this;
       return integ.asInt() == doubl.asDouble();
     }
     return false;
@@ -277,37 +276,35 @@ std::size_t dynamic::size() const {
 dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
   auto& arr = get<Array>();
   return get<Array>().erase(
-    arr.begin() + (first - arr.begin()),
-    arr.begin() + (last - arr.begin()));
+      arr.begin() + (first - arr.begin()), arr.begin() + (last - arr.begin()));
 }
 
 std::size_t dynamic::hash() const {
   switch (type()) {
-  case NULLT:
-    return 0xBAAAAAAD;
-  case OBJECT:
-  {
-    // Accumulate using addition instead of using hash_range (as in the ARRAY
-    // case), as we need a commutative hash operation since unordered_map's
-    // iteration order is unspecified.
-    auto h = std::hash<std::pair<dynamic, dynamic>>{};
-    return std::accumulate(
-        items().begin(),
-        items().end(),
-        size_t{0x0B1EC7},
-        [&](auto acc, auto item) { return acc + h(item); });
+    case NULLT:
+      return 0xBAAAAAAD;
+    case OBJECT: {
+      // Accumulate using addition instead of using hash_range (as in the ARRAY
+      // case), as we need a commutative hash operation since unordered_map's
+      // iteration order is unspecified.
+      auto h = std::hash<std::pair<dynamic, dynamic>>{};
+      return std::accumulate(
+          items().begin(),
+          items().end(),
+          size_t{0x0B1EC7},
+          [&](auto acc, auto item) { return acc + h(item); });
     }
-  case ARRAY:
-    return folly::hash::hash_range(begin(), end());
-  case INT64:
-    return std::hash<int64_t>()(getInt());
-  case DOUBLE:
-    return std::hash<double>()(getDouble());
-  case BOOL:
-    return std::hash<bool>()(getBool());
-  case STRING:
-    // keep consistent with detail::DynamicHasher
-    return Hash()(getString());
+    case ARRAY:
+      return folly::hash::hash_range(begin(), end());
+    case INT64:
+      return std::hash<int64_t>()(getInt());
+    case DOUBLE:
+      return std::hash<double>()(getDouble());
+    case BOOL:
+      return std::hash<bool>()(getBool());
+    case STRING:
+      // keep consistent with detail::DynamicHasher
+      return Hash()(getString());
   }
   assume_unreachable();
 }

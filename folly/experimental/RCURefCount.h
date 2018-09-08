@@ -24,11 +24,8 @@ class RCURefCount {
  public:
   using Int = int64_t;
 
-  RCURefCount() :
-      localCount_([&]() {
-          return new LocalRefCount(globalCount_);
-        }) {
-  }
+  RCURefCount()
+      : localCount_([&]() { return new LocalRefCount(globalCount_); }) {}
 
   ~RCURefCount() noexcept {
     assert(state_ == State::GLOBAL);
@@ -57,8 +54,8 @@ class RCURefCount {
         if (!globalCount) {
           return 0;
         }
-      } while (!globalCount_.compare_exchange_weak(globalCount,
-                                                   globalCount + 1));
+      } while (
+          !globalCount_.compare_exchange_weak(globalCount, globalCount + 1));
 
       return globalCount + 1;
     }
@@ -129,14 +126,13 @@ class RCURefCount {
   enum class State {
     LOCAL,
     GLOBAL_TRANSITION,
-    GLOBAL
+    GLOBAL,
   };
 
   class LocalRefCount {
    public:
-    explicit LocalRefCount(AtomicInt& globalCount) :
-        count_(0),
-        globalCount_(globalCount) {
+    explicit LocalRefCount(AtomicInt& globalCount)
+        : count_(0), globalCount_(globalCount) {
       RCURegisterThread();
     }
 

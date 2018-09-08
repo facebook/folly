@@ -30,10 +30,11 @@ namespace {
 
 class StringAppender {
  public:
-  /* implicit */ StringAppender(std::string& s) : s_(s) { }
+  /* implicit */ StringAppender(std::string& s) : s_(s) {}
   void operator()(StringPiece sp) {
     s_.append(sp.data(), sp.size());
   }
+
  private:
   std::string& s_;
 };
@@ -81,8 +82,13 @@ void testGroupVarint32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, ...) {
   EXPECT_EQ(d, fd);
 }
 
-void testGroupVarint64(uint64_t a, uint64_t b, uint64_t c, uint64_t d,
-                       uint64_t e, ...) {
+void testGroupVarint64(
+    uint64_t a,
+    uint64_t b,
+    uint64_t c,
+    uint64_t d,
+    uint64_t e,
+    ...) {
   va_list ap;
   va_start(ap, e);
   std::vector<char> expectedBytes;
@@ -129,12 +135,17 @@ TEST(GroupVarint, GroupVarint32) {
   EXPECT_EQ(17, GroupVarint32::maxSize(4));
   EXPECT_EQ(22, GroupVarint32::maxSize(5));
   EXPECT_EQ(26, GroupVarint32::maxSize(6));
-  testGroupVarint32(0, 0, 0, 0,
-                    0, 0, 0, 0, 0, -1);
-  testGroupVarint32(1, 2, 3, 4,
-                    0, 1, 2, 3, 4, -1);
-  testGroupVarint32(1 << 8, (2 << 16) + 3, (4 << 24) + (5 << 8) + 6, 7,
-                    0x39, 0, 1, 3, 0, 2, 6, 5, 0, 4, 7, -1);
+  // clang-format off
+  testGroupVarint32(
+      0, 0, 0, 0,
+      0, 0, 0, 0, 0, -1);
+  testGroupVarint32(
+      1, 2, 3, 4,
+      0, 1, 2, 3, 4, -1);
+  testGroupVarint32(
+      1 << 8, (2 << 16) + 3, (4 << 24) + (5 << 8) + 6, 7,
+      0x39, 0, 1, 3, 0, 2, 6, 5, 0, 4, 7, -1);
+  // clang-format on
 }
 
 TEST(GroupVarint, GroupVarint64) {
@@ -145,20 +156,25 @@ TEST(GroupVarint, GroupVarint64) {
   EXPECT_EQ(34, GroupVarint64::maxSize(4));
   EXPECT_EQ(42, GroupVarint64::maxSize(5));
   EXPECT_EQ(52, GroupVarint64::maxSize(6));
-  testGroupVarint64(0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, -1);
-  testGroupVarint64(1, 2, 3, 4, 5,
-                    0, 0, 1, 2, 3, 4, 5, -1);
-  testGroupVarint64(1 << 8, (2 << 16) + 3, (4 << 24) + (5 << 8) + 6,
-                    (7ULL << 32) + (8 << 16),
-                    (9ULL << 56) + (10ULL << 40) + 11,
-                    0xd1, 0x78,
-                    0, 1,
-                    3, 0, 2,
-                    6, 5, 0, 4,
-                    0, 0, 8, 0, 7,
-                    11, 0, 0, 0, 0, 10, 0, 9,
-                    -1);
+  // clang-format off
+  testGroupVarint64(
+      0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, -1);
+  testGroupVarint64(
+      1, 2, 3, 4, 5,
+      0, 0, 1, 2, 3, 4, 5, -1);
+  testGroupVarint64(
+      1 << 8, (2 << 16) + 3, (4 << 24) + (5 << 8) + 6,
+      (7ULL << 32) + (8 << 16),
+      (9ULL << 56) + (10ULL << 40) + 11,
+      0xd1, 0x78,
+      0, 1,
+      3, 0, 2,
+      6, 5, 0, 4,
+      0, 0, 8, 0, 7,
+      11, 0, 0, 0, 0, 10, 0, 9,
+      -1);
+  // clang-format on
 }
 
 TEST(GroupVarint, GroupVarintEncoder) {
@@ -182,7 +198,6 @@ TEST(GroupVarint, GroupVarintEncoder) {
   EXPECT_EQ(5, s.size());
   EXPECT_EQ(std::string("\x00\x01\x02\x03\x04", 5), s);
 }
-
 
 TEST(GroupVarint, GroupVarintDecoder) {
   // Make sure we don't read out of bounds

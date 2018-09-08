@@ -29,8 +29,8 @@
 
 #include <boost/optional.hpp>
 
-using std::unique_ptr;
 using std::shared_ptr;
+using std::unique_ptr;
 
 namespace folly {
 
@@ -188,7 +188,7 @@ TEST(Optional, value_or_rvalue_arg) {
   EXPECT_EQ("meow", opt.value_or(dflt));
   EXPECT_EQ("hello", dflt);
   EXPECT_EQ("meow", opt.value_or(std::move(dflt)));
-  EXPECT_EQ("hello", dflt);  // only moved if used
+  EXPECT_EQ("hello", dflt); // only moved if used
 }
 
 TEST(Optional, value_or_noncopyable) {
@@ -198,7 +198,7 @@ TEST(Optional, value_or_noncopyable) {
 }
 
 struct ExpectingDeleter {
-  explicit ExpectingDeleter(int expected_) : expected(expected_) { }
+  explicit ExpectingDeleter(int expected_) : expected(expected_) {}
   int expected;
   void operator()(const int* ptr) {
     EXPECT_EQ(*ptr, expected);
@@ -208,7 +208,8 @@ struct ExpectingDeleter {
 
 TEST(Optional, value_move) {
   auto ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
-      {new int(42), ExpectingDeleter{1337}}).value();
+                 {new int(42), ExpectingDeleter{1337}})
+                 .value();
   *ptr = 1337;
 }
 
@@ -309,18 +310,18 @@ TEST(Optional, Shared) {
 
 TEST(Optional, Order) {
   std::vector<Optional<int>> vect{
-    { none },
-    { 3 },
-    { 1 },
-    { none },
-    { 2 },
+      {none},
+      {3},
+      {1},
+      {none},
+      {2},
   };
-  std::vector<Optional<int>> expected {
-    { none },
-    { none },
-    { 1 },
-    { 2 },
-    { 3 },
+  std::vector<Optional<int>> expected{
+      {none},
+      {none},
+      {1},
+      {2},
+      {3},
   };
   std::sort(vect.begin(), vect.end());
   EXPECT_EQ(vect, expected);
@@ -411,12 +412,12 @@ TEST(Optional, Comparisons) {
   EXPECT_TRUE(boi != 2);
   EXPECT_TRUE(boi >= 1);
   EXPECT_TRUE(boi > 0);
-  EXPECT_TRUE(1 <  boi);
+  EXPECT_TRUE(1 < boi);
   EXPECT_TRUE(2 <= boi);
   EXPECT_TRUE(3 == boi);
   EXPECT_TRUE(4 != boi);
   EXPECT_TRUE(5 >= boi);
-  EXPECT_TRUE(6 >  boi);
+  EXPECT_TRUE(6 > boi);
 
   boost::optional<bool> bob(false);
   EXPECT_TRUE((bool)bob);
@@ -524,14 +525,14 @@ TEST(Optional, Conversions) {
   Optional<char*> mstr;
   Optional<int> mint;
 
-  //These don't compile
-  //bool b = mbool;
-  //short s = mshort;
-  //char* c = mstr;
-  //int x = mint;
-  //char* c(mstr);
-  //short s(mshort);
-  //int x(mint);
+  // These don't compile
+  // bool b = mbool;
+  // short s = mshort;
+  // char* c = mstr;
+  // int x = mint;
+  // char* c(mstr);
+  // short s(mshort);
+  // int x(mint);
 
   // intended explicit operator bool, for if (opt).
   bool b(mbool);
@@ -606,8 +607,8 @@ TEST(Optional, MakeOptional) {
 }
 
 #if __CLANG_PREREQ(3, 6)
-# pragma clang diagnostic push
-# pragma clang diagnostic ignored "-Wself-move"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wself-move"
 #endif
 
 TEST(Optional, SelfAssignment) {
@@ -621,22 +622,26 @@ TEST(Optional, SelfAssignment) {
 }
 
 #if __CLANG_PREREQ(3, 6)
-# pragma clang diagnostic pop
+#pragma clang diagnostic pop
 #endif
 
 namespace {
 
 class ContainsOptional {
  public:
-  ContainsOptional() { }
-  explicit ContainsOptional(int x) : opt_(x) { }
-  bool hasValue() const { return opt_.hasValue(); }
-  int value() const { return opt_.value(); }
+  ContainsOptional() {}
+  explicit ContainsOptional(int x) : opt_(x) {}
+  bool hasValue() const {
+    return opt_.hasValue();
+  }
+  int value() const {
+    return opt_.value();
+  }
 
-  ContainsOptional(const ContainsOptional &other) = default;
-  ContainsOptional& operator=(const ContainsOptional &other) = default;
-  ContainsOptional(ContainsOptional &&other) = default;
-  ContainsOptional& operator=(ContainsOptional &&other) = default;
+  ContainsOptional(const ContainsOptional& other) = default;
+  ContainsOptional& operator=(const ContainsOptional& other) = default;
+  ContainsOptional(ContainsOptional&& other) = default;
+  ContainsOptional& operator=(ContainsOptional&& other) = default;
 
  private:
   Optional<int> opt_;

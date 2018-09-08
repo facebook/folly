@@ -25,6 +25,7 @@
 
 struct MyException {};
 
+// clang-format off
 [[noreturn]] void bar() {
   throw std::runtime_error("hello");
 }
@@ -36,6 +37,7 @@ struct MyException {};
 [[noreturn]] void baz() {
   foo();
 }
+// clang-format on
 
 using namespace folly::exception_tracer;
 

@@ -103,8 +103,7 @@ uint32_t crc_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
       ((startingChecksum & 0x0f0f0f0f) << 4);
   startingChecksum = ((startingChecksum >> 8) & 0x00ff00ff) |
       ((startingChecksum & 0x00ff00ff) << 8);
-  startingChecksum = (startingChecksum >> 16) |
-      (startingChecksum << 16);
+  startingChecksum = (startingChecksum >> 16) | (startingChecksum << 16);
 
   boost::crc_optimal<32, CRC_POLYNOMIAL, ~0U, 0, true, true> sum(
       startingChecksum);
@@ -126,8 +125,7 @@ crc32_sw(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
 
 } // namespace detail
 
-uint32_t crc32c(const uint8_t *data, size_t nbytes,
-    uint32_t startingChecksum) {
+uint32_t crc32c(const uint8_t* data, size_t nbytes, uint32_t startingChecksum) {
   if (detail::crc32c_hw_supported()) {
     return detail::crc32c_hw(data, nbytes, startingChecksum);
   } else {

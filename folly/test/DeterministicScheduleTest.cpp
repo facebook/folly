@@ -235,17 +235,18 @@ DEFINE_bool(bug, false, "Introduce bug");
 #define AUX_UPDATE() (aux_->lastUpdate_ = aux_->step_ + 1)
 
 /** Macro for inline definition of auxiliary actions */
-#define AUX_ACT(act)                          \
-  do {                                        \
-    AUX_THR(func_) = __func__;                \
-    AUX_THR(line_) = __LINE__;                \
-    AuxAct auxfn(                             \
-      [&](bool success) {                     \
-        if (success) {}                       \
-        if (true) {act}                       \
-      }                                       \
-    );                                        \
-    DeterministicSchedule::setAuxAct(auxfn);  \
+#define AUX_ACT(act)                         \
+  do {                                       \
+    AUX_THR(func_) = __func__;               \
+    AUX_THR(line_) = __LINE__;               \
+    AuxAct auxfn([&](bool success) {         \
+      if (success) {                         \
+      }                                      \
+      if (true) {                            \
+        act                                  \
+      }                                      \
+    });                                      \
+    DeterministicSchedule::setAuxAct(auxfn); \
   } while (0)
 
 /** Alias for original class */
@@ -257,12 +258,10 @@ template <typename T>
 struct AnnotatedAtomicCounter : public Base<T> {
   /** Manage DSched auxChk */
   void setAuxChk() {
-    AuxChk auxfn(
-      [&](uint64_t step) {
-        auxLog(step);
-        auxCheck();
-      }
-    );
+    AuxChk auxfn([&](uint64_t step) {
+      auxLog(step);
+      auxCheck();
+    });
     DeterministicSchedule::setAuxChk(auxfn);
   }
 

@@ -34,21 +34,20 @@
 using namespace std;
 using namespace folly;
 
-
 TEST(Conv, digits10) {
   char buffer[100];
   uint64_t power;
 
   // first, some basic sniff tests
-  EXPECT_EQ( 1, digits10(0));
-  EXPECT_EQ( 1, digits10(1));
-  EXPECT_EQ( 1, digits10(9));
-  EXPECT_EQ( 2, digits10(10));
-  EXPECT_EQ( 2, digits10(99));
-  EXPECT_EQ( 3, digits10(100));
-  EXPECT_EQ( 3, digits10(999));
-  EXPECT_EQ( 4, digits10(1000));
-  EXPECT_EQ( 4, digits10(9999));
+  EXPECT_EQ(1, digits10(0));
+  EXPECT_EQ(1, digits10(1));
+  EXPECT_EQ(1, digits10(9));
+  EXPECT_EQ(2, digits10(10));
+  EXPECT_EQ(2, digits10(99));
+  EXPECT_EQ(3, digits10(100));
+  EXPECT_EQ(3, digits10(999));
+  EXPECT_EQ(4, digits10(1000));
+  EXPECT_EQ(4, digits10(9999));
   EXPECT_EQ(20, digits10(18446744073709551615ULL));
 
   // try the first X nonnegatives.
@@ -113,8 +112,8 @@ TEST(Conv, Type2Type) {
   EXPECT_EQ(to<double>(.42), .42);
   EXPECT_EQ(to<std::string>(std::string("Hello")), "Hello");
   EXPECT_EQ(to<folly::fbstring>(folly::fbstring("hello")), "hello");
-  EXPECT_EQ(to<folly::StringPiece>(folly::StringPiece("Forty Two")),
-            "Forty Two");
+  EXPECT_EQ(
+      to<folly::StringPiece>(folly::StringPiece("Forty Two")), "Forty Two");
 }
 
 TEST(Conv, Integral2Integral) {
@@ -144,16 +143,15 @@ TEST(Conv, Floating2Floating) {
     auto shouldWork = to<float>(std::numeric_limits<double>::min());
     // The value of `shouldWork' is an implementation defined choice
     // between the following two alternatives.
-    EXPECT_TRUE(shouldWork == std::numeric_limits<float>::min() ||
-                shouldWork == 0.f);
+    EXPECT_TRUE(
+        shouldWork == std::numeric_limits<float>::min() || shouldWork == 0.f);
   } catch (...) {
     ADD_FAILURE();
   }
 }
 
 template <class String>
-void testIntegral2String() {
-}
+void testIntegral2String() {}
 
 template <class String, class Int, class... Ints>
 void testIntegral2String() {
@@ -198,7 +196,7 @@ void test128Bit2String() {
   value = __int128(1) << 64;
   EXPECT_EQ(to<String>(value), "18446744073709551616");
 
-  svalue =  -(__int128(1) << 64);
+  svalue = -(__int128(1) << 64);
   EXPECT_EQ(to<String>(svalue), "-18446744073709551616");
 
   value = 0;
@@ -244,8 +242,7 @@ TEST(Conv, Integral2String) {
 }
 
 template <class String>
-void testString2Integral() {
-}
+void testString2Integral() {}
 
 template <class String, class Int, class... Ints>
 void testString2Integral() {
@@ -254,22 +251,22 @@ void testString2Integral() {
 
   // Unsigned numbers small enough to fit in a signed type
   static const String strings[] = {
-    "0",
-    "00",
-    "2 ",
-    " 84",
-    " \n 123    \t\n",
-    " 127",
-    "0000000000000000000000000042"
+      "0",
+      "00",
+      "2 ",
+      " 84",
+      " \n 123    \t\n",
+      " 127",
+      "0000000000000000000000000042",
   };
   static const Uint values[] = {
-    0,
-    0,
-    2,
-    84,
-    123,
-    127,
-    42
+      0,
+      0,
+      2,
+      84,
+      123,
+      127,
+      42,
   };
   FOR_EACH_RANGE (i, 0, sizeof(strings) / sizeof(*strings)) {
     EXPECT_EQ(to<Uint>(strings[i]), values[i]);
@@ -278,16 +275,16 @@ void testString2Integral() {
 
   // Unsigned numbers that won't fit in the signed variation
   static const String uStrings[] = {
-    " 128",
-    "213",
-    "255"
+      " 128",
+      "213",
+      "255",
   };
   static const Uint uValues[] = {
-    128,
-    213,
-    255
+      128,
+      213,
+      255,
   };
-  FOR_EACH_RANGE (i, 0, sizeof(uStrings)/sizeof(*uStrings)) {
+  FOR_EACH_RANGE (i, 0, sizeof(uStrings) / sizeof(*uStrings)) {
     EXPECT_EQ(to<Uint>(uStrings[i]), uValues[i]);
     if (sizeof(Int) == 1) {
       EXPECT_THROW(to<Sint>(uStrings[i]), std::range_error);
@@ -296,35 +293,35 @@ void testString2Integral() {
 
   if (sizeof(Int) >= 4) {
     static const String strings2[] = {
-      "256",
-      "6324 ",
-      "63245675 ",
-      "2147483647"
+        "256",
+        "6324 ",
+        "63245675 ",
+        "2147483647",
     };
     static const Uint values2[] = {
-      (Uint)256,
-      (Uint)6324,
-      (Uint)63245675,
-      (Uint)2147483647
+        (Uint)256,
+        (Uint)6324,
+        (Uint)63245675,
+        (Uint)2147483647,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(strings2)/sizeof(*strings2)) {
+    FOR_EACH_RANGE (i, 0, sizeof(strings2) / sizeof(*strings2)) {
       EXPECT_EQ(to<Uint>(strings2[i]), values2[i]);
       EXPECT_EQ(to<Sint>(strings2[i]), values2[i]);
     }
 
     static const String uStrings2[] = {
-      "2147483648",
-      "3147483648",
-      "4147483648",
-      "4000000000",
+        "2147483648",
+        "3147483648",
+        "4147483648",
+        "4000000000",
     };
     static const Uint uValues2[] = {
-      (Uint)2147483648U,
-      (Uint)3147483648U,
-      (Uint)4147483648U,
-      (Uint)4000000000U,
+        (Uint)2147483648U,
+        (Uint)3147483648U,
+        (Uint)4147483648U,
+        (Uint)4000000000U,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(uStrings2)/sizeof(uStrings2)) {
+    FOR_EACH_RANGE (i, 0, sizeof(uStrings2) / sizeof(uStrings2)) {
       EXPECT_EQ(to<Uint>(uStrings2[i]), uValues2[i]);
       if (sizeof(Int) == 4) {
         EXPECT_THROW(to<Sint>(uStrings2[i]), std::range_error);
@@ -335,37 +332,37 @@ void testString2Integral() {
   if (sizeof(Int) >= 8) {
     static_assert(sizeof(Int) <= 8, "Now that would be interesting");
     static const String strings3[] = {
-      "2147483648",
-      "5000000001",
-      "25687346509278435",
-      "100000000000000000",
-      "9223372036854775807",
+        "2147483648",
+        "5000000001",
+        "25687346509278435",
+        "100000000000000000",
+        "9223372036854775807",
     };
     static const Uint values3[] = {
-      (Uint)2147483648ULL,
-      (Uint)5000000001ULL,
-      (Uint)25687346509278435ULL,
-      (Uint)100000000000000000ULL,
-      (Uint)9223372036854775807ULL,
+        (Uint)2147483648ULL,
+        (Uint)5000000001ULL,
+        (Uint)25687346509278435ULL,
+        (Uint)100000000000000000ULL,
+        (Uint)9223372036854775807ULL,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(strings3)/sizeof(*strings3)) {
+    FOR_EACH_RANGE (i, 0, sizeof(strings3) / sizeof(*strings3)) {
       EXPECT_EQ(to<Uint>(strings3[i]), values3[i]);
       EXPECT_EQ(to<Sint>(strings3[i]), values3[i]);
     }
 
     static const String uStrings3[] = {
-      "9223372036854775808",
-      "9987435987394857987",
-      "17873648761234698740",
-      "18446744073709551615",
+        "9223372036854775808",
+        "9987435987394857987",
+        "17873648761234698740",
+        "18446744073709551615",
     };
     static const Uint uValues3[] = {
-      (Uint)9223372036854775808ULL,
-      (Uint)9987435987394857987ULL,
-      (Uint)17873648761234698740ULL,
-      (Uint)18446744073709551615ULL,
+        (Uint)9223372036854775808ULL,
+        (Uint)9987435987394857987ULL,
+        (Uint)17873648761234698740ULL,
+        (Uint)18446744073709551615ULL,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(uStrings3)/sizeof(*uStrings3)) {
+    FOR_EACH_RANGE (i, 0, sizeof(uStrings3) / sizeof(*uStrings3)) {
       EXPECT_EQ(to<Uint>(uStrings3[i]), uValues3[i]);
       if (sizeof(Int) == 8) {
         EXPECT_THROW(to<Sint>(uStrings3[i]), std::range_error);
@@ -375,24 +372,24 @@ void testString2Integral() {
 
   // Minimum possible negative values, and negative sign overflow
   static const String strings4[] = {
-    "-128",
-    "-32768",
-    "-2147483648",
-    "-9223372036854775808",
+      "-128",
+      "-32768",
+      "-2147483648",
+      "-9223372036854775808",
   };
   static const String strings5[] = {
-    "-129",
-    "-32769",
-    "-2147483649",
-    "-9223372036854775809",
+      "-129",
+      "-32769",
+      "-2147483649",
+      "-9223372036854775809",
   };
   static const Sint values4[] = {
-    (Sint)-128LL,
-    (Sint)-32768LL,
-    (Sint)-2147483648LL,
-    (Sint)(-9223372036854775807LL - 1),
+      (Sint)-128LL,
+      (Sint)-32768LL,
+      (Sint)-2147483648LL,
+      (Sint)(-9223372036854775807LL - 1),
   };
-  FOR_EACH_RANGE (i, 0, sizeof(strings4)/sizeof(*strings4)) {
+  FOR_EACH_RANGE (i, 0, sizeof(strings4) / sizeof(*strings4)) {
     if (sizeof(Int) > std::pow(2, i)) {
       EXPECT_EQ(values4[i], to<Sint>(strings4[i]));
       EXPECT_EQ(values4[i] - 1, to<Sint>(strings5[i]));
@@ -407,15 +404,15 @@ void testString2Integral() {
 
   // Bogus string values
   static const String bogusStrings[] = {
-    "",
-    "0x1234",
-    "123L",
-    "123a",
-    "x 123 ",
-    "234 y",
-    "- 42",  // whitespace is not allowed between the sign and the value
-    " +   13 ",
-    "12345678901234567890123456789",
+      "",
+      "0x1234",
+      "123L",
+      "123a",
+      "x 123 ",
+      "234 y",
+      "- 42", // whitespace is not allowed between the sign and the value
+      " +   13 ",
+      "12345678901234567890123456789",
   };
   for (const auto& str : bogusStrings) {
     EXPECT_THROW(to<Sint>(str), std::range_error);
@@ -475,8 +472,8 @@ TEST(Conv, StringPieceAppend) {
 
 TEST(Conv, BadStringToIntegral) {
   // Note that leading spaces (e.g.  " 1") are valid.
-  vector<string> v = { "a", "", " ", "\n", " a0", "abcdef", "1Z", "!#" };
-  for (auto& s: v) {
+  vector<string> v = {"a", "", " ", "\n", " a0", "abcdef", "1Z", "!#"};
+  for (auto& s : v) {
     EXPECT_THROW(to<int>(s), std::range_error) << "s=" << s;
   }
 }
@@ -531,9 +528,9 @@ void testVariadicToDelim() {
 }
 
 TEST(Conv, NullString) {
-  string s1 = to<string>((char *) nullptr);
+  string s1 = to<string>((char*)nullptr);
   EXPECT_TRUE(s1.empty());
-  fbstring s2 = to<fbstring>((char *) nullptr);
+  fbstring s2 = to<fbstring>((char*)nullptr);
   EXPECT_TRUE(s2.empty());
 }
 
@@ -612,7 +609,7 @@ TEST(Conv, StringPieceToDouble) {
   try {
     to<double>("not a number");
     ADD_FAILURE();
-  } catch (const std::range_error &) {
+  } catch (const std::range_error&) {
   }
 
   EXPECT_TRUE(std::isnan(to<double>("nan")));
@@ -649,7 +646,7 @@ TEST(Conv, EmptyStringToInt) {
   try {
     to<int>(pc);
     ADD_FAILURE();
-  } catch (const std::range_error &) {
+  } catch (const std::range_error&) {
   }
 }
 
@@ -660,7 +657,7 @@ TEST(Conv, CorruptedStringToInt) {
   try {
     to<int64_t>(&pc);
     ADD_FAILURE();
-  } catch (const std::range_error &) {
+  } catch (const std::range_error&) {
   }
 }
 
@@ -671,7 +668,7 @@ TEST(Conv, EmptyStringToDouble) {
   try {
     to<double>(pc);
     ADD_FAILURE();
-  } catch (const std::range_error &) {
+  } catch (const std::range_error&) {
   }
 }
 
@@ -696,7 +693,7 @@ TEST(Conv, DoubleToInt) {
     LOG(ERROR) << "to<int> returned " << i2 << " instead of throwing";
     ADD_FAILURE();
   } catch (std::range_error&) {
-    //LOG(INFO) << e.what();
+    // LOG(INFO) << e.what();
   }
 }
 
@@ -708,12 +705,11 @@ TEST(Conv, EnumToInt) {
   EXPECT_EQ(j, 42);
   try {
     auto i2 = to<char>(y);
-    LOG(ERROR) << "to<char> returned "
-               << static_cast<unsigned int>(i2)
+    LOG(ERROR) << "to<char> returned " << static_cast<unsigned int>(i2)
                << " instead of throwing";
     ADD_FAILURE();
   } catch (std::range_error&) {
-    //LOG(INFO) << e.what();
+    // LOG(INFO) << e.what();
   }
 }
 
@@ -733,12 +729,11 @@ TEST(Conv, IntToEnum) {
   EXPECT_EQ(j, 100);
   try {
     auto i2 = to<A>(5000000000L);
-    LOG(ERROR) << "to<A> returned "
-               << static_cast<unsigned int>(i2)
+    LOG(ERROR) << "to<A> returned " << static_cast<unsigned int>(i2)
                << " instead of throwing";
     ADD_FAILURE();
   } catch (std::range_error&) {
-    //LOG(INFO) << e.what();
+    // LOG(INFO) << e.what();
   }
 }
 
@@ -827,8 +822,7 @@ void testStr2Bool() {
   EXPECT_THROW(to<bool>(Src("bar no")), std::range_error);
   EXPECT_THROW(to<bool>(Src("one")), std::range_error);
   EXPECT_THROW(to<bool>(Src("true_")), std::range_error);
-  EXPECT_THROW(to<bool>(Src("bogus_token_that_is_too_long")),
-               std::range_error);
+  EXPECT_THROW(to<bool>(Src("bogus_token_that_is_too_long")), std::range_error);
 }
 
 TEST(Conv, StringToBool) {
@@ -837,13 +831,14 @@ TEST(Conv, StringToBool) {
 
   // Test with strings that are not NUL terminated.
   const char buf[] = "01234";
-  EXPECT_FALSE(to<bool>(StringPiece(buf, buf + 1)));  // "0"
-  EXPECT_TRUE(to<bool>(StringPiece(buf + 1, buf + 2)));  // "1"
+  EXPECT_FALSE(to<bool>(StringPiece(buf, buf + 1))); // "0"
+  EXPECT_TRUE(to<bool>(StringPiece(buf + 1, buf + 2))); // "1"
   const char buf2[] = "one two three";
-  EXPECT_TRUE(to<bool>(StringPiece(buf2, buf2 + 2)));  // "on"
+  EXPECT_TRUE(to<bool>(StringPiece(buf2, buf2 + 2))); // "on"
   const char buf3[] = "false";
-  EXPECT_THROW(to<bool>(StringPiece(buf3, buf3 + 3)),  // "fal"
-               std::range_error);
+  EXPECT_THROW(
+      to<bool>(StringPiece(buf3, buf3 + 3)), // "fal"
+      std::range_error);
 
   // Test the StringPiece* API
   const char buf4[] = "001foo";
@@ -1170,13 +1165,13 @@ TEST(Conv, TryPtrPairToInt) {
 TEST(Conv, NewUint64ToString) {
   char buf[21];
 
-#define THE_GREAT_EXPECTATIONS(n, len)                  \
-  do {                                                  \
-    EXPECT_EQ((len), uint64ToBufferUnsafe((n), buf));   \
-    buf[(len)] = 0;                                     \
-    auto s = string(#n);                                \
-    s = s.substr(0, s.size() - 2);                      \
-    EXPECT_EQ(s, buf);                                  \
+#define THE_GREAT_EXPECTATIONS(n, len)                \
+  do {                                                \
+    EXPECT_EQ((len), uint64ToBufferUnsafe((n), buf)); \
+    buf[(len)] = 0;                                   \
+    auto s = string(#n);                              \
+    s = s.substr(0, s.size() - 2);                    \
+    EXPECT_EQ(s, buf);                                \
   } while (0)
 
   THE_GREAT_EXPECTATIONS(0UL, 1);
@@ -1212,7 +1207,7 @@ TEST(Conv, allocate_size) {
   auto res1 = folly::to<std::string>(str1, ".", str2);
   EXPECT_EQ(res1, str1 + "." + str2);
 
-  std::string res2; //empty
+  std::string res2; // empty
   toAppendFit(str1, str2, 1, &res2);
   EXPECT_EQ(res2, str1 + str2 + "1");
 
@@ -1245,7 +1240,7 @@ void toAppend(const Dimensions& in, String* result) {
   folly::toAppend(in.w, 'x', in.h, result);
 }
 
-size_t estimateSpaceNeeded(const Dimensions&in) {
+size_t estimateSpaceNeeded(const Dimensions& in) {
   return 2000 + folly::estimateSpaceNeeded(in.w) +
       folly::estimateSpaceNeeded(in.h);
 }

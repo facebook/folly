@@ -38,20 +38,17 @@
 // with very little overhead if s was already std::string
 namespace folly {
 
-inline
-std::string toStdString(const folly::fbstring& s) {
+inline std::string toStdString(const folly::fbstring& s) {
   return std::string(s.data(), s.size());
 }
 
-inline
-const std::string& toStdString(const std::string& s) {
+inline const std::string& toStdString(const std::string& s) {
   return s;
 }
 
 // If called with a temporary, the compiler will select this overload instead
 // of the above, so we don't return a (lvalue) reference to a temporary.
-inline
-std::string&& toStdString(std::string&& s) {
+inline std::string&& toStdString(std::string&& s) {
   return std::move(s);
 }
 
@@ -128,9 +125,10 @@ enum class UriEscapeMode : unsigned char {
   PATH = 2
 };
 template <class String>
-void uriEscape(StringPiece str,
-               String& out,
-               UriEscapeMode mode = UriEscapeMode::ALL);
+void uriEscape(
+    StringPiece str,
+    String& out,
+    UriEscapeMode mode = UriEscapeMode::ALL);
 
 /**
  * Similar to uriEscape above, but returns the escaped string.
@@ -149,9 +147,10 @@ String uriEscape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
  * XX is a valid hex sequence, otherwise we throw invalid_argument.
  */
 template <class String>
-void uriUnescape(StringPiece str,
-                 String& out,
-                 UriEscapeMode mode = UriEscapeMode::ALL);
+void uriUnescape(
+    StringPiece str,
+    String& out,
+    UriEscapeMode mode = UriEscapeMode::ALL);
 
 /**
  * Similar to uriUnescape above, but returns the unescaped string.
@@ -170,15 +169,16 @@ String uriUnescape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
  * the specified string and returns a reference to it.
  */
 std::string stringPrintf(FOLLY_PRINTF_FORMAT const char* format, ...)
-  FOLLY_PRINTF_FORMAT_ATTR(1, 2);
+    FOLLY_PRINTF_FORMAT_ATTR(1, 2);
 
 /* Similar to stringPrintf, with different signature. */
 void stringPrintf(std::string* out, FOLLY_PRINTF_FORMAT const char* fmt, ...)
-  FOLLY_PRINTF_FORMAT_ATTR(2, 3);
+    FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
-std::string& stringAppendf(std::string* output,
-                          FOLLY_PRINTF_FORMAT const char* format, ...)
-  FOLLY_PRINTF_FORMAT_ATTR(2, 3);
+std::string& stringAppendf(
+    std::string* output,
+    FOLLY_PRINTF_FORMAT const char* format,
+    ...) FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
 /**
  * Similar to stringPrintf, but accepts a va_list argument.
@@ -251,8 +251,10 @@ String humanify(const String& input) {
  * replace it.
  */
 template <class InputString, class OutputString>
-bool hexlify(const InputString& input, OutputString& output,
-             bool append=false);
+bool hexlify(
+    const InputString& input,
+    OutputString& output,
+    bool append = false);
 
 template <class OutputString = std::string>
 OutputString hexlify(ByteRange input) {
@@ -345,8 +347,9 @@ std::string prettyPrint(double val, PrettyType, bool addSpace = true);
  * '10 Mx' => 10 000 000, prettyString == "x"
  * 'abc' => throws std::range_error
  */
-double prettyToDouble(folly::StringPiece *const prettyString,
-                      const PrettyType type);
+double prettyToDouble(
+    folly::StringPiece* const prettyString,
+    const PrettyType type);
 
 /**
  * Same as prettyToDouble(folly::StringPiece*, PrettyType), but
@@ -414,26 +417,29 @@ fbstring errnoStr(int err);
  */
 
 template <class Delim, class String, class OutputType>
-void split(const Delim& delimiter,
-           const String& input,
-           std::vector<OutputType>& out,
-           const bool ignoreEmpty = false);
+void split(
+    const Delim& delimiter,
+    const String& input,
+    std::vector<OutputType>& out,
+    const bool ignoreEmpty = false);
 
 template <class Delim, class String, class OutputType>
-void split(const Delim& delimiter,
-           const String& input,
-           folly::fbvector<OutputType>& out,
-           const bool ignoreEmpty = false);
+void split(
+    const Delim& delimiter,
+    const String& input,
+    folly::fbvector<OutputType>& out,
+    const bool ignoreEmpty = false);
 
 template <
     class OutputValueType,
     class Delim,
     class String,
     class OutputIterator>
-void splitTo(const Delim& delimiter,
-             const String& input,
-             OutputIterator out,
-             const bool ignoreEmpty = false);
+void splitTo(
+    const Delim& delimiter,
+    const String& input,
+    OutputIterator out,
+    const bool ignoreEmpty = false);
 
 /*
  * Split a string into a fixed number of string pieces and/or numeric types
@@ -496,36 +502,32 @@ split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
  */
 
 template <class Delim, class Iterator, class String>
-void join(const Delim& delimiter,
-          Iterator begin,
-          Iterator end,
-          String& output);
+void join(const Delim& delimiter, Iterator begin, Iterator end, String& output);
 
 template <class Delim, class Container, class String>
-void join(const Delim& delimiter,
-          const Container& container,
-          String& output) {
+void join(const Delim& delimiter, const Container& container, String& output) {
   join(delimiter, container.begin(), container.end(), output);
 }
 
 template <class Delim, class Value, class String>
-void join(const Delim& delimiter,
-          const std::initializer_list<Value>& values,
-          String& output) {
+void join(
+    const Delim& delimiter,
+    const std::initializer_list<Value>& values,
+    String& output) {
   join(delimiter, values.begin(), values.end(), output);
 }
 
 template <class Delim, class Container>
-std::string join(const Delim& delimiter,
-                 const Container& container) {
+std::string join(const Delim& delimiter, const Container& container) {
   std::string output;
   join(delimiter, container.begin(), container.end(), output);
   return output;
 }
 
 template <class Delim, class Value>
-std::string join(const Delim& delimiter,
-                 const std::initializer_list<Value>& values) {
+std::string join(
+    const Delim& delimiter,
+    const std::initializer_list<Value>& values) {
   std::string output;
   join(delimiter, values.begin(), values.end(), output);
   return output;
@@ -557,8 +559,8 @@ StringPiece ltrimWhitespace(StringPiece sp);
 StringPiece rtrimWhitespace(StringPiece sp);
 
 /**
- * Returns a subpiece with all whitespace removed from the back and front of @sp.
- * Whitespace means any of [' ', '\n', '\r', '\t'].
+ * Returns a subpiece with all whitespace removed from the back and front of
+ * @sp. Whitespace means any of [' ', '\n', '\r', '\t'].
  */
 inline StringPiece trimWhitespace(StringPiece sp) {
   return ltrimWhitespace(rtrimWhitespace(sp));

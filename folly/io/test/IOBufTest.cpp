@@ -1012,7 +1012,8 @@ TEST(IOBuf, wrapIov) {
   auto wrapped = IOBuf::wrapIov(iov.data(), iov.size());
   EXPECT_EQ(iov.size() - 1, wrapped->countChainElements());
   IOBuf const* w = wrapped.get();
-  // skip the first iovec, which is empty/null, as it is ignored by IOBuf::wrapIov
+  // skip the first iovec, which is empty/null, as it is ignored by
+  // IOBuf::wrapIov
   for (size_t i = 0; i < wrapped->countChainElements(); ++i, w = w->next()) {
     EXPECT_EQ(w->data(), iov[i + 1].iov_base);
     EXPECT_EQ(w->length(), iov[i + 1].iov_len);
