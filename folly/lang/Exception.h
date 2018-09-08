@@ -20,6 +20,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Portability.h>
 
 namespace folly {
 
@@ -29,11 +30,11 @@ namespace folly {
 /// -fno-exceptions.
 template <typename Ex>
 [[noreturn]] FOLLY_NOINLINE FOLLY_COLD void throw_exception(Ex&& ex) {
-#if (__GNUC__ && !__EXCEPTIONS)
+#if FOLLY_HAS_EXCEPTIONS
+  throw static_cast<Ex&&>(ex);
+#else
   (void)ex;
   std::terminate();
-#else
-  throw static_cast<Ex&&>(ex);
 #endif
 }
 
