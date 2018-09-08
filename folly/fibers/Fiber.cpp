@@ -112,6 +112,9 @@ Fiber::~Fiber() {
 }
 
 void Fiber::recordStackPosition() {
+  // For ASAN builds, functions may run on fake stack.
+  // So we cannot get meaningful stack position.
+#ifndef FOLLY_SANITIZE_ADDRESS
   int stackDummy;
   auto currentPosition = static_cast<size_t>(
       fiberStackLimit_ + fiberStackSize_ -
@@ -119,6 +122,7 @@ void Fiber::recordStackPosition() {
   fiberManager_.stackHighWatermark_ =
       std::max(fiberManager_.stackHighWatermark_, currentPosition);
   VLOG(4) << "Stack usage: " << currentPosition;
+#endif
 }
 
 [[noreturn]] void Fiber::fiberFunc() {

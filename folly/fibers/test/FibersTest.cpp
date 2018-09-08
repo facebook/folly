@@ -2177,14 +2177,29 @@ TEST(TimedMutex, ThreadFiberDeadlockRace) {
   EXPECT_EQ(0, fm.hasTasks());
 }
 
-/**
- * Test that we can properly track fiber stack usage.
- *
- * This functionality can only be enabled when ASAN is disabled, so avoid
- * running this test with ASAN.
- */
+namespace {
+// Checks whether stackHighWatermark is set for non-ASAN builds,
+// and not set for ASAN builds.
 #ifndef FOLLY_SANITIZE_ADDRESS
-TEST(FiberManager, recordStack) {
+void expectStackHighWatermark(size_t minStackSize, size_t stackHighWatermark) {
+  // Check that we properly accounted fiber stack usage
+  EXPECT_NE(0, stackHighWatermark);
+  EXPECT_LT(minStackSize, stackHighWatermark);
+}
+#else
+void expectStackHighWatermark(size_t, size_t stackHighWatermark) {
+  // For ASAN, stackHighWatermark is not tracked.
+  EXPECT_EQ(0, stackHighWatermark);
+}
+#endif
+} // namespace
+
+/**
+ * Test that we can properly track fiber stack usage, via recordStackEvery
+ * For ASAN builds, it is not recorded.
+ */
+
+TEST(FiberManager, highWaterMarkViaRecordStackEvery) {
   auto f = [] {
     folly::fibers::FiberManager::Options opts;
     opts.recordStackEvery = 1;
@@ -2208,10 +2223,39 @@ TEST(FiberManager, recordStack) {
     (void)s;
 
     loopController.loop([&]() { loopController.stop(); });
-
-    // Check that we properly accounted fiber stack usage.
-    EXPECT_LT(n * sizeof(int), fm.stackHighWatermark());
+    expectStackHighWatermark(n * sizeof(int), fm.stackHighWatermark());
   };
   std::thread(f).join();
 }
-#endif
+
+/**
+ * Test that we can properly track fiber stack usage,
+ * via current position estimate. For ASAN builds, it is not recorded.
+ */
+TEST(FiberManager, highWaterMarkViaRecordCurrentPosition) {
+  auto f = [] {
+    FiberManager fm(std::make_unique<SimpleLoopController>());
+    auto& loopController =
+        dynamic_cast<SimpleLoopController&>(fm.loopController());
+
+    static constexpr size_t n = 1000;
+    int s = 0;
+    fm.addTask([&]() {
+      int b[n] = {0};
+      for (size_t i = 0; i < n; ++i) {
+        b[i] = i;
+      }
+      for (size_t i = 0; i + 1 < n; ++i) {
+        s += b[i] * b[i + 1];
+      }
+      // Calls preempt, which calls recordStackPosition.
+      fm.runInMainContext([]() {});
+    });
+
+    (void)s;
+
+    loopController.loop([&]() { loopController.stop(); });
+    expectStackHighWatermark(n * sizeof(int), fm.stackHighWatermark());
+  };
+  std::thread(f).join();
+}
