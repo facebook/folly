@@ -22,7 +22,7 @@ enum class ordering : int { lt = -1, eq = 0, gt = 1 };
 
 template <typename T>
 constexpr ordering to_ordering(T c) {
-  return c < T(0) ? ordering::lt : c > T(0) ? ordering::gt : ordering::eq;
+  return ordering(int(c < T(0)) * -1 + int(c > T(0)));
 }
 
 namespace detail {
