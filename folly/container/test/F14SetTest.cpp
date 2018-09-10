@@ -97,9 +97,9 @@ void runAllocatedMemorySizeTest() {
     EXPECT_EQ(testAllocatedBlockCount, emptySetAllocatedBlockCount);
 
     s.reserve(5);
-    EXPECT_GT(testAllocatedMemorySize, emptySetAllocatedMemorySize);
+    EXPECT_GT(testAllocatedMemorySize, 0);
     s = {};
-    EXPECT_GT(testAllocatedMemorySize, emptySetAllocatedMemorySize);
+    EXPECT_GT(testAllocatedMemorySize, 0);
   }
   EXPECT_EQ(testAllocatedMemorySize, 0);
   EXPECT_EQ(testAllocatedBlockCount, 0);
