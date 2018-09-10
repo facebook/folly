@@ -105,6 +105,11 @@ class OpenSSLUtils {
   static SSL_CTX* getSSLInitialCtx(SSL* ssl);
 
   /**
+   * Get the common name out of a cert.  Return empty if x509 is null.
+   */
+  static std::string getCommonName(X509* x509);
+
+  /**
    * Wrappers for BIO operations that may be different across different
    * versions/flavors of OpenSSL (including forks like BoringSSL)
    */

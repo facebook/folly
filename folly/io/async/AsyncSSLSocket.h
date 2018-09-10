@@ -741,16 +741,18 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   void setBufferMovableEnabled(bool enabled);
 
+  const AsyncTransportCertificate* getPeerCertificate() const override;
+  const AsyncTransportCertificate* getSelfCertificate() const override;
+
   /**
    * Returns the peer certificate, or nullptr if no peer certificate received.
    */
   ssl::X509UniquePtr getPeerCert() const override {
-    if (!ssl_) {
+    auto peerCert = getPeerCertificate();
+    if (!peerCert) {
       return nullptr;
     }
-
-    X509* cert = SSL_get_peer_certificate(ssl_);
-    return ssl::X509UniquePtr(cert);
+    return peerCert->getX509();
   }
 
   /**

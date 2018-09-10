@@ -179,15 +179,6 @@ std::string getFileAsBuf(const char* fileName) {
   return buffer;
 }
 
-std::string getCommonName(X509* cert) {
-  X509_NAME* subject = X509_get_subject_name(cert);
-  std::string cn;
-  cn.resize(ub_common_name);
-  X509_NAME_get_text_by_NID(
-      subject, NID_commonName, const_cast<char*>(cn.data()), ub_common_name);
-  return cn;
-}
-
 /**
  * Test connecting to, writing to, reading from, and closing the
  * connection to the SSL server.
@@ -1586,6 +1577,23 @@ TEST(AsyncSSLSocketTest, ClientCertHandshakeSuccess) {
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_FALSE(server.handshakeError_);
   EXPECT_LE(0, server.handshakeTime.count());
+
+  // check certificates
+  auto clientSsl = std::move(client).moveSocket();
+  auto serverSsl = std::move(server).moveSocket();
+
+  auto clientPeer = clientSsl->getPeerCertificate();
+  auto clientSelf = clientSsl->getSelfCertificate();
+  auto serverPeer = serverSsl->getPeerCertificate();
+  auto serverSelf = serverSsl->getSelfCertificate();
+
+  EXPECT_NE(clientPeer, nullptr);
+  EXPECT_NE(clientSelf, nullptr);
+  EXPECT_NE(serverPeer, nullptr);
+  EXPECT_NE(serverSelf, nullptr);
+
+  EXPECT_EQ(clientPeer->getIdentity(), serverSelf->getIdentity());
+  EXPECT_EQ(clientSelf->getIdentity(), serverPeer->getIdentity());
 }
 
 /**
@@ -1878,6 +1886,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestFailure) {
 #endif // FOLLY_OPENSSL_IS_110
 
 TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
+  using folly::ssl::OpenSSLUtils;
   auto cert = getFileAsBuf(kTestCert);
   auto key = getFileAsBuf(kTestKey);
 
@@ -1894,7 +1903,7 @@ TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
   certBio = nullptr;
   keyBio = nullptr;
 
-  auto origCommonName = getCommonName(certStruct.get());
+  auto origCommonName = OpenSSLUtils::getCommonName(certStruct.get());
   auto origKeySize = EVP_PKEY_bits(keyStruct.get());
   certStruct = nullptr;
   keyStruct = nullptr;
@@ -1910,7 +1919,7 @@ TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
   auto newKey = SSL_get_privatekey(ssl.get());
 
   // Get properties from SSL struct
-  auto newCommonName = getCommonName(newCert);
+  auto newCommonName = OpenSSLUtils::getCommonName(newCert);
   auto newKeySize = EVP_PKEY_bits(newKey);
 
   // Check that the key and cert have the expected properties

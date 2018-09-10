@@ -312,6 +312,18 @@ void OpenSSLUtils::setBioFd(BIO* b, int fd, int flags) {
   BIO_set_fd(b, sock, flags);
 }
 
+std::string OpenSSLUtils::getCommonName(X509* x509) {
+  if (x509 == nullptr) {
+    return "";
+  }
+  X509_NAME* subject = X509_get_subject_name(x509);
+  std::string cn;
+  cn.resize(ub_common_name);
+  X509_NAME_get_text_by_NID(
+      subject, NID_commonName, const_cast<char*>(cn.data()), ub_common_name);
+  return cn;
+}
+
 } // namespace ssl
 } // namespace folly
 

@@ -1269,8 +1269,11 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool zeroCopyEnabled_{false};
   bool zeroCopyVal_{false};
 
-  std::unique_ptr<const AsyncTransportCertificate> peerCertData_{nullptr};
-  std::unique_ptr<const AsyncTransportCertificate> selfCertData_{nullptr};
+  // subclasses may cache these on first call to get
+  mutable std::unique_ptr<const AsyncTransportCertificate> peerCertData_{
+      nullptr};
+  mutable std::unique_ptr<const AsyncTransportCertificate> selfCertData_{
+      nullptr};
 };
 #ifdef _MSC_VER
 #pragma vtordisp(pop)
