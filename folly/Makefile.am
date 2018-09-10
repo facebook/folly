@@ -91,6 +91,7 @@ nobase_follyinclude_HEADERS = \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
 	detail/Futex.h \
+	detail/Futex-inl.h \
 	detail/GroupVarintDetail.h \
 	detail/IPAddress.h \
 	detail/IPAddressSource.h \
