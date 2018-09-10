@@ -1152,8 +1152,29 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
+  /// NOTE: All three of these variations are deprecated and deprecation
+  /// attributes will be added in the near future. Please prefer thenValue,
+  /// thenTry or thenError rather than then and onError as they avoid ambiguity
+  /// when using polymorphic lambdas.
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  typename R::Return then(F&& func) && {
+  typename std::enable_if<
+      !is_invocable<F>::value && is_invocable<F, T&&>::value,
+      typename R::Return>::type
+  then(F&& func) && {
+    return std::move(*this).thenValue(std::forward<F>(func));
+  }
+
+  template <typename F, typename R = futures::detail::callableResult<T, F>>
+  typename std::enable_if<
+      !is_invocable<F, T&&>::value && !is_invocable<F>::value,
+      typename R::Return>::type
+  then(F&& func) && {
+    return std::move(*this).thenTry(std::forward<F>(func));
+  }
+
+  template <typename F, typename R = futures::detail::callableResult<T, F>>
+  typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
+  then(F&& func) && {
     return this->template thenImplementation<F, R>(
         std::forward<F>(func), typename R::Arg());
   }
