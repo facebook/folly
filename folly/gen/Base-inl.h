@@ -1643,7 +1643,7 @@ class Concat : public Operator<Concat> {
           [&](Inner inner) { inner.foreach(std::forward<Body>(body)); });
     }
 
-    // Resulting concatination is only finite if both Source and Inner are also
+    // Resulting concatenation is only finite if both Source and Inner are also
     // finite. In one sence, if dosn't make sence to call concat when the Inner
     // generator is infinite (you could just call first), so we could also just
     // static_assert if the inner is infinite. Taking the less restrictive
