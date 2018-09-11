@@ -43,7 +43,13 @@ class SimpleQuantileEstimator {
   QuantileEstimates estimateQuantiles(
       Range<const double*> quantiles,
       TimePoint now = ClockT::now());
+
   void addValue(double value, TimePoint now = ClockT::now());
+
+  /// Flush buffered values
+  void flush() {
+    bufferedDigest_.flush();
+  }
 
  private:
   detail::BufferedDigest<TDigest, ClockT> bufferedDigest_;
@@ -65,7 +71,13 @@ class SlidingWindowQuantileEstimator {
   QuantileEstimates estimateQuantiles(
       Range<const double*> quantiles,
       TimePoint now = ClockT::now());
+
   void addValue(double value, TimePoint now = ClockT::now());
+
+  /// Flush buffered values
+  void flush() {
+    bufferedSlidingWindow_.flush();
+  }
 
  private:
   detail::BufferedSlidingWindow<TDigest, ClockT> bufferedSlidingWindow_;

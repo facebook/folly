@@ -51,6 +51,11 @@ std::vector<BucketT> SlidingWindow<BucketT>::get() const {
 }
 
 template <typename BucketT>
+BucketT SlidingWindow<BucketT>::front() const {
+  return buckets_[curHead_];
+}
+
+template <typename BucketT>
 void SlidingWindow<BucketT>::set(size_t idx, BucketT bucket) {
   if (idx < buckets_.size()) {
     idx = (curHead_ + idx) % buckets_.size();

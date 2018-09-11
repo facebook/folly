@@ -44,6 +44,8 @@ class BufferedStat {
 
   void append(double value, TimePoint now = ClockT::now());
 
+  void flush();
+
  protected:
   // https://www.mail-archive.com/llvm-bugs@lists.llvm.org/msg18280.html
   // Wrap the time point in something with a noexcept constructor.
@@ -66,12 +68,27 @@ class BufferedStat {
       TimePoint oldExpiry,
       const std::unique_lock<SharedMutex>& g) = 0;
 
+  // Update digest if now > expiry
   std::unique_lock<SharedMutex> updateIfExpired(TimePoint now);
+
+  // Update digest unconditionally
+  std::unique_lock<SharedMutex> update();
 
  private:
   DigestBuilder<DigestT> digestBuilder_;
 
-  void doUpdate(TimePoint now, const std::unique_lock<SharedMutex>& g);
+  // Controls how digest updates happen in doUpdate
+  enum class UpdateMode {
+    OnExpiry,
+    Now,
+  };
+
+  // Update digest. If updateMode == UpdateMode::Now digest is updated
+  // unconditionally, else digest is updated only if expiry has passed.
+  void doUpdate(
+      TimePoint now,
+      const std::unique_lock<SharedMutex>& g,
+      UpdateMode updateMode);
 
   TimePoint roundUp(TimePoint t);
 };

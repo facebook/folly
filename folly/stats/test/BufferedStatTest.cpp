@@ -114,6 +114,43 @@ TEST_F(BufferedDigestTest, PartiallyPassedExpiry) {
   EXPECT_EQ(2, values[2]);
 }
 
+TEST_F(BufferedDigestTest, ForceUpdate) {
+  bd->append(0);
+  bd->append(1);
+  bd->append(2);
+
+  // empty since we haven't passed expiry
+  auto digest = bd->get();
+  EXPECT_TRUE(digest.empty());
+
+  // force update
+  bd->flush();
+  digest = bd->get();
+  auto values = digest.getValues();
+  EXPECT_EQ(0, values[0]);
+  EXPECT_EQ(1, values[1]);
+  EXPECT_EQ(2, values[2]);
+
+  // append 3 and do a normal get; only the previously
+  // flushed values should show up and not 3 since we
+  // haven't passed expiry
+  bd->append(3);
+  digest = bd->get();
+  values = digest.getValues();
+  EXPECT_EQ(0, values[0]);
+  EXPECT_EQ(1, values[1]);
+  EXPECT_EQ(2, values[2]);
+
+  // pass expiry; 3 should now be visible
+  MockClock::Now += bufferDuration;
+  digest = bd->get();
+  values = digest.getValues();
+  EXPECT_EQ(0, values[0]);
+  EXPECT_EQ(1, values[1]);
+  EXPECT_EQ(2, values[2]);
+  EXPECT_EQ(3, values[3]);
+}
+
 class BufferedSlidingWindowTest : public ::testing::Test {
  protected:
   std::unique_ptr<BufferedSlidingWindow<SimpleDigest, MockClock>> bsw;
@@ -151,6 +188,59 @@ TEST_F(BufferedSlidingWindowTest, PartiallyPassedExpiry) {
 
   for (double i = 0; i < 3; ++i) {
     EXPECT_EQ(i, digests[0].getValues()[i]);
+  }
+}
+
+TEST_F(BufferedSlidingWindowTest, ForceUpdate) {
+  bsw->append(0);
+  bsw->append(1);
+  bsw->append(2);
+
+  // empty since we haven't passed expiry
+  auto digests = bsw->get();
+  EXPECT_EQ(0, digests.size());
+
+  // flush
+  bsw->flush();
+  digests = bsw->get();
+  EXPECT_EQ(1, digests.size());
+  EXPECT_EQ(3, digests[0].getValues().size());
+  for (double i = 0; i < 3; ++i) {
+    EXPECT_EQ(i, digests[0].getValues()[i]);
+  }
+
+  // append 3 and flush again; 3 will be merged with
+  // current window
+  bsw->append(3);
+  bsw->flush();
+  digests = bsw->get();
+  EXPECT_EQ(1, digests.size());
+  EXPECT_EQ(4, digests[0].getValues().size());
+  for (double i = 0; i < 4; ++i) {
+    EXPECT_EQ(i, digests[0].getValues()[i]);
+  }
+
+  // append 4 and do a regular get. previous values
+  // show up but not 4
+  bsw->append(4);
+  digests = bsw->get();
+  EXPECT_EQ(1, digests.size());
+  EXPECT_EQ(4, digests[0].getValues().size());
+  for (double i = 0; i < 4; ++i) {
+    EXPECT_EQ(i, digests[0].getValues()[i]);
+  }
+
+  // pass expiry
+  MockClock::Now += windowDuration;
+  digests = bsw->get();
+  EXPECT_EQ(2, digests.size());
+
+  EXPECT_EQ(1, digests[0].getValues().size());
+  EXPECT_EQ(4, digests[0].getValues().front());
+
+  EXPECT_EQ(4, digests[1].getValues().size());
+  for (double i = 0; i < 4; ++i) {
+    EXPECT_EQ(i, digests[1].getValues()[i]);
   }
 }
 

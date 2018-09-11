@@ -39,7 +39,7 @@ void BufferedStat<DigestT, ClockT>::append(double value, TimePoint now) {
   if (UNLIKELY(now > expiry_.load(std::memory_order_relaxed).tp)) {
     std::unique_lock<SharedMutex> g(mutex_, std::try_to_lock_t());
     if (g.owns_lock()) {
-      doUpdate(now, g);
+      doUpdate(now, g, UpdateMode::OnExpiry);
     }
   }
   digestBuilder_.append(value);
@@ -59,18 +59,25 @@ template <typename DigestT, typename ClockT>
 std::unique_lock<SharedMutex> BufferedStat<DigestT, ClockT>::updateIfExpired(
     TimePoint now) {
   std::unique_lock<SharedMutex> g(mutex_);
-  doUpdate(now, g);
+  doUpdate(now, g, UpdateMode::OnExpiry);
   return g;
+}
+
+template <typename DigestT, typename ClockT>
+void BufferedStat<DigestT, ClockT>::flush() {
+  std::unique_lock<SharedMutex> g(mutex_);
+  doUpdate(ClockT::now(), g, UpdateMode::Now);
 }
 
 template <typename DigestT, typename ClockT>
 void BufferedStat<DigestT, ClockT>::doUpdate(
     TimePoint now,
-    const std::unique_lock<SharedMutex>& g) {
+    const std::unique_lock<SharedMutex>& g,
+    UpdateMode updateMode) {
   DCHECK(g.owns_lock());
   // Check that no other thread has performed the slide after the check
   auto oldExpiry = expiry_.load(std::memory_order_relaxed).tp;
-  if (now > oldExpiry) {
+  if (now > oldExpiry || updateMode == UpdateMode::Now) {
     now = roundUp(now);
     expiry_.store(TimePointHolder(now), std::memory_order_relaxed);
     onNewDigest(digestBuilder_.build(), now, oldExpiry, g);
@@ -133,11 +140,16 @@ void BufferedSlidingWindow<DigestT, ClockT>::onNewDigest(
     TimePoint newExpiry,
     TimePoint oldExpiry,
     const std::unique_lock<SharedMutex>& /*g*/) {
-  auto diff = newExpiry - oldExpiry;
-  slidingWindow_.slide(diff / this->bufferDuration_);
-
-  diff -= this->bufferDuration_;
-  slidingWindow_.set(diff / this->bufferDuration_, std::move(digest));
+  if (newExpiry > oldExpiry) {
+    auto diff = newExpiry - oldExpiry;
+    slidingWindow_.slide(diff / this->bufferDuration_);
+    diff -= this->bufferDuration_;
+    slidingWindow_.set(diff / this->bufferDuration_, std::move(digest));
+  } else {
+    // just update current window
+    std::array<DigestT, 2> a{{slidingWindow_.front(), std::move(digest)}};
+    slidingWindow_.set(0 /* current window */, DigestT::merge(a));
+  }
 }
 
 } // namespace detail
