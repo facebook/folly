@@ -440,6 +440,9 @@ if (BUILD_TESTS)
         SOURCES DynamicBoundedQueueTest.cpp
       TEST unbounded_queue_test SOURCES UnboundedQueueTest.cpp
 
+    DIRECTORY detail/test/
+      TEST static_singleton_manager_test SOURCES StaticSingletonManagerTest.cpp
+
     DIRECTORY executors/test/
       TEST async_helpers_test SOURCES AsyncTest.cpp
       TEST codel_test SOURCES CodelTest.cpp
