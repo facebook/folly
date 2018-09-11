@@ -245,7 +245,7 @@ unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
   // SharedInfo struct, and the data itself all with a single call to malloc().
   size_t requiredStorage = offsetof(HeapFullStorage, align) + capacity;
   size_t mallocSize = goodMallocSize(requiredStorage);
-  auto* storage = static_cast<HeapFullStorage*>(malloc(mallocSize));
+  auto* storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
   new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kDataInUse);
   new (&storage->shared) SharedInfo(freeInternalBuf, storage);
