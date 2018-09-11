@@ -132,11 +132,7 @@ IOBuf::SharedInfo::SharedInfo(FreeFunction fn, void* arg)
 
 void* IOBuf::operator new(size_t size) {
   size_t fullSize = offsetof(HeapStorage, buf) + size;
-  auto* storage = static_cast<HeapStorage*>(malloc(fullSize));
-  // operator new is not allowed to return nullptr
-  if (UNLIKELY(storage == nullptr)) {
-    throw std::bad_alloc();
-  }
+  auto* storage = static_cast<HeapStorage*>(checkedMalloc(fullSize));
 
   new (&storage->prefix) HeapPrefix(kIOBufInUse);
   return &(storage->buf);
@@ -865,11 +861,7 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
   // an internal buffer).  malloc/copy/free.
   if (newBuffer == nullptr) {
     newAllocatedCapacity = goodExtBufferSize(newCapacity);
-    void* p = malloc(newAllocatedCapacity);
-    if (UNLIKELY(p == nullptr)) {
-      throw std::bad_alloc();
-    }
-    newBuffer = static_cast<uint8_t*>(p);
+    newBuffer = static_cast<uint8_t*>(checkedMalloc(newAllocatedCapacity));
     if (length_ > 0) {
       assert(data_ != nullptr);
       memcpy(newBuffer + minHeadroom, data_, length_);
@@ -918,10 +910,7 @@ void IOBuf::allocExtBuffer(
     SharedInfo** infoReturn,
     std::size_t* capacityReturn) {
   size_t mallocSize = goodExtBufferSize(minCapacity);
-  uint8_t* buf = static_cast<uint8_t*>(malloc(mallocSize));
-  if (UNLIKELY(buf == nullptr)) {
-    throw std::bad_alloc();
-  }
+  uint8_t* buf = static_cast<uint8_t*>(checkedMalloc(mallocSize));
   initExtBuffer(buf, mallocSize, infoReturn, capacityReturn);
   *bufReturn = buf;
 }
