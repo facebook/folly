@@ -37,13 +37,11 @@ namespace fibers {
 namespace {
 
 inline FiberManager::Options preprocessOptions(FiberManager::Options opts) {
-#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD)
-  /* Sanitizers need a lot of extra stack space.
-     16x is a conservative estimate, 8x also worked with tests
-     where it mattered.  Note that overallocating here does not necessarily
-     increase RSS, since unused memory is pretty much free. */
-  opts.stackSize *= 16;
-#endif
+  /**
+   * Adjust the stack size according to the multiplier config.
+   * Typically used with sanitizers, which need a lot of extra stack space.
+   */
+  opts.stackSize *= std::exchange(opts.stackSizeMultiplier, 1);
   return opts;
 }
 

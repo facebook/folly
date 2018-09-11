@@ -86,6 +86,14 @@ class FiberManager : public ::folly::Executor {
     size_t stackSize{kDefaultStackSize};
 
     /**
+     * Sanitizers need a lot of extra stack space. 16x is a conservative
+     * estimate, but 8x also worked with tests where it mattered. Note that
+     * over-allocating here does not necessarily increase RSS, since unused
+     * memory is pretty much free.
+     */
+    size_t stackSizeMultiplier{kIsSanitize ? 16 : 1};
+
+    /**
      * Record exact amount of stack used.
      *
      * This is fairly expensive: we fill each newly allocated stack
