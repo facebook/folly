@@ -133,19 +133,6 @@ TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
   doTestAll<128, 128, size_t>();
 }
 
-TEST_F(EliasFanoCodingTest, Select64) {
-  typedef instructions::EF_TEST_ARCH instr;
-  constexpr uint64_t kPrime = uint64_t(-59);
-  for (uint64_t x = kPrime, i = 0; i < (1 << 20); x *= kPrime, i += 1) {
-    size_t w = instr::popcount(x);
-    for (size_t k = 0; k < w; ++k) {
-      auto pos = folly::select64<instr>(x, k);
-      CHECK_EQ((x >> pos) & 1, 1);
-      CHECK_EQ(instr::popcount(x & ((uint64_t(1) << pos) - 1)), k);
-    }
-  }
-}
-
 TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
   typedef EliasFanoEncoderV2<uint32_t, uint32_t, 2, 2> Encoder;
   typedef EliasFanoReader<Encoder, instructions::EF_TEST_ARCH> Reader;

@@ -24,7 +24,17 @@
 namespace folly {
 
 namespace detail {
+
+//  kSelectInByte
+//
+//  Described in:
+//    http://dsiutils.di.unimi.it/docs/it/unimi/dsi/bits/Fast.html#selectInByte
+//
+//  A precomputed table containing in position 256j + i, for integers i in
+//  [0, 256) and j in [0, 8), the position of the j-th set bit in the binary
+//  representation of i, or 8 if it has fewer than j set bits.
 extern const uint8_t kSelectInByte[2048];
+
 } // namespace detail
 
 /**
