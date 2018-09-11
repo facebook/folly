@@ -172,7 +172,7 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
     transport_->shutdownWriteNow();
   }
 
-  std::string getApplicationProtocol() noexcept override {
+  std::string getApplicationProtocol() const noexcept override {
     return transport_->getApplicationProtocol();
   }
 

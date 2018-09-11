@@ -396,7 +396,7 @@ bool AsyncSSLSocket::connecting() const {
         (sslState_ == STATE_UNINIT || sslState_ == STATE_CONNECTING))));
 }
 
-std::string AsyncSSLSocket::getApplicationProtocol() noexcept {
+std::string AsyncSSLSocket::getApplicationProtocol() const noexcept {
   const unsigned char* protoName = nullptr;
   unsigned protoLength;
   if (getSelectedNextProtocolNoThrow(&protoName, &protoLength)) {

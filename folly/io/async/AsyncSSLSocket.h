@@ -322,7 +322,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void shutdownWriteNow() override;
   bool good() const override;
   bool connecting() const override;
-  std::string getApplicationProtocol() noexcept override;
+  std::string getApplicationProtocol() const noexcept override;
 
   std::string getSecurityProtocol() const override {
     if (sslState_ == STATE_UNENCRYPTED) {

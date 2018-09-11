@@ -411,7 +411,7 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
    * protocol. This is useful for transports which are used to tunnel other
    * protocols.
    */
-  virtual std::string getApplicationProtocol() noexcept {
+  virtual std::string getApplicationProtocol() const noexcept {
     return "";
   }
 
