@@ -1,4 +1,4 @@
-find_path(LIBIBERTY_INCLUDE_DIR NAMES libiberty/libiberty.h)
+find_path(LIBIBERTY_INCLUDE_DIR NAMES libiberty.h PATH_SUFFIXES libiberty)
 mark_as_advanced(LIBIBERTY_INCLUDE_DIR)
 
 find_library(LIBIBERTY_LIBRARY NAMES iberty)
