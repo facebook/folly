@@ -221,14 +221,14 @@ class FcCustomExample : public FlatCombining<
   // custom combined op processing - overrides FlatCombining::combinedOp(Req&)
   void combinedOp(Req& req) {
     switch (req.getType()) {
-      case Req::Type::ADD: {
+      case Req::Type::ADD:
         data_.add(req.getVal());
-      } break;
-      case Req::Type::FETCHADD: {
+        return;
+      case Req::Type::FETCHADD:
         req.setRes(data_.fetchAdd(req.getVal()));
-      } break;
-      default: { assert(false); }
+        return;
     }
+    assume_unreachable();
   }
 
  private:

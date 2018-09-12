@@ -299,7 +299,8 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
           }
         };
         dur = run_once(pq, fn);
-      } break;
+        break;
+      }
       case FCNonBlock: {
         FCPQ pq;
         auto fn = [&](uint32_t tid) {
@@ -312,7 +313,8 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
           }
         };
         dur = run_once(pq, fn);
-      } break;
+        break;
+      }
       case FCBlock: {
         FCPQ pq;
         auto fn = [&](uint32_t tid) {
@@ -325,7 +327,8 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
           }
         };
         dur = run_once(pq, fn);
-      } break;
+        break;
+      }
       case FCTimed: {
         FCPQ pq;
         auto fn = [&](uint32_t tid) {
@@ -339,7 +342,8 @@ static uint64_t test(std::string name, Exp exp, uint64_t base) {
           }
         };
         dur = run_once(pq, fn);
-      } break;
+        break;
+      }
       default:
         CHECK(false);
     }
