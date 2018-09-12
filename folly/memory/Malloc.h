@@ -208,7 +208,10 @@ inline size_t goodMallocSize(size_t minSize) noexcept {
     return minSize;
   }
 
-  return nallocx(minSize, 0);
+  // nallocx returns 0 if minSize can't succeed, but 0 is not actually
+  // a goodMallocSize if you want minSize
+  auto rv = nallocx(minSize, 0);
+  return rv ? rv : minSize;
 }
 
 // We always request "good" sizes for allocation, so jemalloc can
