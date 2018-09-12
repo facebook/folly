@@ -38,89 +38,7 @@
 namespace folly {
 namespace hash {
 
-// This is a general-purpose way to create a single hash from multiple
-// hashable objects. hash_combine_generic takes a class Hasher implementing
-// hash<T>; hash_combine uses a default hasher StdHasher that uses std::hash.
-// hash_combine_generic hashes each argument and combines those hashes in
-// an order-dependent way to yield a new hash.
-
-// This is the Hash128to64 function from Google's cityhash (available
-// under the MIT License).  We use it to reduce multiple 64 bit hashes
-// into a single hash.
-inline uint64_t hash_128_to_64(
-    const uint64_t upper,
-    const uint64_t lower) noexcept {
-  // Murmur-inspired hashing.
-  const uint64_t kMul = 0x9ddfea08eb382d69ULL;
-  uint64_t a = (lower ^ upper) * kMul;
-  a ^= (a >> 47);
-  uint64_t b = (upper ^ a) * kMul;
-  b ^= (b >> 47);
-  b *= kMul;
-  return b;
-}
-
-// Never used, but gcc demands it.
-template <class Hasher>
-inline size_t hash_combine_generic(const Hasher&) noexcept {
-  return 0;
-}
-
-template <
-    class Iter,
-    class Hash = std::hash<typename std::iterator_traits<Iter>::value_type>>
-uint64_t
-hash_range(Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
-  for (; begin != end; ++begin) {
-    hash = hash_128_to_64(hash, hasher(*begin));
-  }
-  return hash;
-}
-
-inline uint32_t twang_32from64(uint64_t key) noexcept;
-
-namespace detail {
-using c_array_size_t = size_t[];
-} // namespace detail
-
-template <class Hasher, typename T, typename... Ts>
-size_t hash_combine_generic(
-    const Hasher& h,
-    const T& t,
-    const Ts&... ts) noexcept(noexcept(detail::c_array_size_t{h(t),
-                                                              h(ts)...})) {
-  size_t seed = h(t);
-  if (sizeof...(ts) == 0) {
-    return seed;
-  }
-  size_t remainder = hash_combine_generic(h, ts...);
-  if /* constexpr */ (sizeof(size_t) == sizeof(uint32_t)) {
-    return twang_32from64((uint64_t(seed) << 32) | remainder);
-  } else {
-    return static_cast<size_t>(hash_128_to_64(seed, remainder));
-  }
-}
-
-// Simply uses std::hash to hash.  Note that std::hash is not guaranteed
-// to be a very good hash function; provided std::hash doesn't collide on
-// the individual inputs, you are fine, but that won't be true for, say,
-// strings or pairs
-class StdHasher {
- public:
-  // The standard requires all explicit and partial specializations of std::hash
-  // supplied by either the standard library or by users to be default
-  // constructible.
-  template <typename T>
-  size_t operator()(const T& t) const noexcept(noexcept(std::hash<T>()(t))) {
-    return std::hash<T>()(t);
-  }
-};
-
-template <typename T, typename... Ts>
-size_t hash_combine(const T& t, const Ts&... ts) noexcept(
-    noexcept(hash_combine_generic(StdHasher{}, t, ts...))) {
-  return hash_combine_generic(StdHasher{}, t, ts...);
-}
+uint64_t hash_128_to_64(const uint64_t upper, const uint64_t lower) noexcept;
 
 //////////////////////////////////////////////////////////////////////
 
@@ -621,6 +539,91 @@ template <typename T1, typename T2, typename... Ts, typename K>
 struct IsAvalanchingHasher<hasher<std::tuple<T1, T2, Ts...>>, K>
     : std::true_type {};
 
+namespace hash {
+// This is a general-purpose way to create a single hash from multiple
+// hashable objects. hash_combine_generic takes a class Hasher implementing
+// hash<T>; hash_combine uses a default hasher StdHasher that uses std::hash.
+// hash_combine_generic hashes each argument and combines those hashes in
+// an order-dependent way to yield a new hash.
+
+// This is the Hash128to64 function from Google's cityhash (available
+// under the MIT License).  We use it to reduce multiple 64 bit hashes
+// into a single hash.
+inline uint64_t hash_128_to_64(
+    const uint64_t upper,
+    const uint64_t lower) noexcept {
+  // Murmur-inspired hashing.
+  const uint64_t kMul = 0x9ddfea08eb382d69ULL;
+  uint64_t a = (lower ^ upper) * kMul;
+  a ^= (a >> 47);
+  uint64_t b = (upper ^ a) * kMul;
+  b ^= (b >> 47);
+  b *= kMul;
+  return b;
+}
+
+// Never used, but gcc demands it.
+template <class Hasher>
+inline size_t hash_combine_generic(const Hasher&) noexcept {
+  return 0;
+}
+
+template <
+    class Iter,
+    class Hash = std::hash<typename std::iterator_traits<Iter>::value_type>>
+uint64_t
+hash_range(Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
+  for (; begin != end; ++begin) {
+    hash = hash_128_to_64(hash, hasher(*begin));
+  }
+  return hash;
+}
+
+inline uint32_t twang_32from64(uint64_t key) noexcept;
+
+namespace detail {
+using c_array_size_t = size_t[];
+} // namespace detail
+
+template <class Hasher, typename T, typename... Ts>
+size_t hash_combine_generic(
+    const Hasher& h,
+    const T& t,
+    const Ts&... ts) noexcept(noexcept(detail::c_array_size_t{h(t),
+                                                              h(ts)...})) {
+  size_t seed = h(t);
+  if (sizeof...(ts) == 0) {
+    return seed;
+  }
+  size_t remainder = hash_combine_generic(h, ts...);
+  if /* constexpr */ (sizeof(size_t) == sizeof(uint32_t)) {
+    return twang_32from64((uint64_t(seed) << 32) | remainder);
+  } else {
+    return static_cast<size_t>(hash_128_to_64(seed, remainder));
+  }
+}
+
+// Simply uses std::hash to hash.  Note that std::hash is not guaranteed
+// to be a very good hash function; provided std::hash doesn't collide on
+// the individual inputs, you are fine, but that won't be true for, say,
+// strings or pairs
+class StdHasher {
+ public:
+  // The standard requires all explicit and partial specializations of std::hash
+  // supplied by either the standard library or by users to be default
+  // constructible.
+  template <typename T>
+  size_t operator()(const T& t) const noexcept(noexcept(std::hash<T>()(t))) {
+    return std::hash<T>()(t);
+  }
+};
+
+template <typename T, typename... Ts>
+size_t hash_combine(const T& t, const Ts&... ts) noexcept(
+    noexcept(hash_combine_generic(StdHasher{}, t, ts...))) {
+  return hash_combine_generic(StdHasher{}, t, ts...);
+}
+} // namespace hash
 // recursion
 template <size_t index, typename... Ts>
 struct TupleHasher {
