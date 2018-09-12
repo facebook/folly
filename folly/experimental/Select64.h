@@ -32,9 +32,20 @@ namespace detail {
 //  Described in:
 //    http://dsiutils.di.unimi.it/docs/it/unimi/dsi/bits/Fast.html#selectInByte
 //
-//  A precomputed table containing in position (j, i), for integers i in
-//  [0, 256) and j in [0, 8), the position of the j-th set bit in the binary
-//  representation of i, or 8 if it has fewer than j set bits.
+//  A precomputed tabled containing the positions of the set bits in the binary
+//  representations of all 8-bit unsigned integers.
+//
+//  For i: [0, 256) ranging over all 8-bit unsigned integers and for j: [0, 8)
+//  ranging over all 0-based bit positions in an 8-bit unsigned integer, the
+//  table entry kSelectInByte[i][j] is the 0-based bit position of the j-th set
+//  bit in the binary representation of i, or 8 if it has fewer than j set bits.
+//
+//  Example: i: 17 (b00010001), j: [0, 8)
+//    kSelectInByte[b00010001][0] = 0
+//    kSelectInByte[b00010001][1] = 4
+//    kSelectInByte[b00010001][2] = 8
+//    ...
+//    kSelectInByte[b00010001][7] = 8
 extern std::array<std::array<std::uint8_t, 256>, 8> const kSelectInByte;
 
 } // namespace detail
