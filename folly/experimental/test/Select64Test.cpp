@@ -38,7 +38,7 @@ TEST_F(Select64Test, SelectInByteTable) {
   for (size_t i = 0u; i < 256u; ++i) {
     uint8_t decoded = 0;
     for (size_t j = 0u; j < 8u; ++j) {
-      auto const entry = folly::detail::kSelectInByte[256 * j + i];
+      auto const entry = folly::detail::kSelectInByte[j][i];
       decoded |= uint8_t(entry != 8) << entry;
     }
     EXPECT_EQ(i, decoded);

@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <array>
+
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
@@ -30,10 +32,10 @@ namespace detail {
 //  Described in:
 //    http://dsiutils.di.unimi.it/docs/it/unimi/dsi/bits/Fast.html#selectInByte
 //
-//  A precomputed table containing in position 256j + i, for integers i in
+//  A precomputed table containing in position (j, i), for integers i in
 //  [0, 256) and j in [0, 8), the position of the j-th set bit in the binary
 //  representation of i, or 8 if it has fewer than j set bits.
-extern const uint8_t kSelectInByte[2048];
+extern std::array<std::array<std::uint8_t, 256>, 8> const kSelectInByte;
 
 } // namespace detail
 
@@ -70,7 +72,7 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
   uint64_t geqKStep8 = (((kStep8 | kMSBsStep8) - byteSums) & kMSBsStep8);
   uint64_t place = Instructions::popcount(geqKStep8) * 8;
   uint64_t byteRank = k - (((byteSums << 8) >> place) & uint64_t(0xFF));
-  return place + detail::kSelectInByte[((x >> place) & 0xFF) | (byteRank << 8)];
+  return place + detail::kSelectInByte[byteRank][((x >> place) & 0xFF)];
 }
 
 template <>
