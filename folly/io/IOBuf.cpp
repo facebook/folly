@@ -148,6 +148,12 @@ void IOBuf::operator delete(void* ptr) {
   releaseStorage(storage, kIOBufInUse);
 }
 
+void IOBuf::operator delete(void* /* ptr */, void* /* placement */) {
+  // Provide matching operator for `IOBuf::new` to avoid MSVC compilation
+  // warning (C4291) about memory leak when exception is thrown in the
+  // constructor.
+}
+
 void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) {
   CHECK_EQ(storage->prefix.magic, static_cast<uint16_t>(kHeapMagic));
 

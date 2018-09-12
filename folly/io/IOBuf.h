@@ -1238,6 +1238,7 @@ class IOBuf {
   void* operator new(size_t size);
   void* operator new(size_t size, void* ptr);
   void operator delete(void* ptr);
+  void operator delete(void* ptr, void* placement);
 
   /**
    * Destructively convert this IOBuf to a fbstring efficiently.
