@@ -693,6 +693,9 @@ toAppend(
     case DoubleToStringConverter::SHORTEST:
       conv.ToShortest(value, &builder);
       break;
+    case DoubleToStringConverter::SHORTEST_SINGLE:
+      conv.ToShortestSingle(value, &builder);
+      break;
     case DoubleToStringConverter::FIXED:
       conv.ToFixed(value, int(numDigits), &builder);
       break;
