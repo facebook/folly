@@ -94,9 +94,15 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
 } // namespace detail
 } // namespace f14
 
-template <typename K, typename M, typename H, typename E, typename A>
-class F14ValueMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
-  using Super = f14::detail::F14BasicMap<K, M, H, E, A>;
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc>
+class F14ValueMap
+    : public f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc> {
+  using Super = f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
 
  public:
   using typename Super::value_type;
@@ -111,9 +117,15 @@ class F14ValueMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
   }
 };
 
-template <typename K, typename M, typename H, typename E, typename A>
-class F14NodeMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
-  using Super = f14::detail::F14BasicMap<K, M, H, E, A>;
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc>
+class F14NodeMap
+    : public f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc> {
+  using Super = f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
 
  public:
   using typename Super::value_type;
@@ -128,9 +140,15 @@ class F14NodeMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
   }
 };
 
-template <typename K, typename M, typename H, typename E, typename A>
-class F14VectorMap : public f14::detail::F14BasicMap<K, M, H, E, A> {
-  using Super = f14::detail::F14BasicMap<K, M, H, E, A>;
+template <
+    typename Key,
+    typename Mapped,
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc>
+class F14VectorMap
+    : public f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc> {
+  using Super = f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
 
  public:
   using typename Super::value_type;

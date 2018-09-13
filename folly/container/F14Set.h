@@ -90,9 +90,10 @@ class F14BasicSet : public std::unordered_set<K, H, E, A> {
 } // namespace detail
 } // namespace f14
 
-template <typename K, typename H, typename E, typename A>
-class F14NodeSet : public f14::detail::F14BasicSet<K, H, E, A> {
-  using Super = f14::detail::F14BasicSet<K, H, E, A>;
+template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
+class F14NodeSet
+    : public f14::detail::F14BasicSet<Key, Hasher, KeyEqual, Alloc> {
+  using Super = f14::detail::F14BasicSet<Key, Hasher, KeyEqual, Alloc>;
 
  public:
   using typename Super::value_type;
@@ -107,9 +108,10 @@ class F14NodeSet : public f14::detail::F14BasicSet<K, H, E, A> {
   }
 };
 
-template <typename K, typename H, typename E, typename A>
-class F14ValueSet : public f14::detail::F14BasicSet<K, H, E, A> {
-  using Super = f14::detail::F14BasicSet<K, H, E, A>;
+template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
+class F14ValueSet
+    : public f14::detail::F14BasicSet<Key, Hasher, KeyEqual, Alloc> {
+  using Super = f14::detail::F14BasicSet<Key, Hasher, KeyEqual, Alloc>;
 
  public:
   using typename Super::value_type;
@@ -124,9 +126,10 @@ class F14ValueSet : public f14::detail::F14BasicSet<K, H, E, A> {
   }
 };
 
-template <typename K, typename H, typename E, typename A>
-class F14VectorSet : public f14::detail::F14BasicSet<K, H, E, A> {
-  using Super = f14::detail::F14BasicSet<K, H, E, A>;
+template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
+class F14VectorSet
+    : public f14::detail::F14BasicSet<Key, Hasher, KeyEqual, Alloc> {
+  using Super = f14::detail::F14BasicSet<Key, Hasher, KeyEqual, Alloc>;
 
  public:
   using typename Super::value_type;
