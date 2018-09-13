@@ -167,6 +167,13 @@ TEST(AlignedSysAllocator, bad_alloc_default) {
   }
 }
 
+TEST(AlignedSysAllocator, converting_constructor) {
+  using Alloc1 = AlignedSysAllocator<float>;
+  using Alloc2 = AlignedSysAllocator<double>;
+  Alloc1 const alloc1(1024);
+  Alloc2 const alloc2(alloc1);
+}
+
 TEST(allocate_sys_buffer, compiles) {
   auto buf = allocate_sys_buffer(256);
   //  Freed at the end of the scope.

@@ -409,6 +409,9 @@ class AlignedSysAllocator : private Align {
  private:
   using Self = AlignedSysAllocator<T, Align>;
 
+  template <typename, typename>
+  friend class AlignedSysAllocator;
+
   constexpr Align const& align() const {
     return *this;
   }
