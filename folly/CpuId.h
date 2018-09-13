@@ -41,7 +41,7 @@ class CpuId {
   // mode since inlining happens more likely, and it doesn't happen for
   // statically linked binaries which don't depend on the PLT)
   FOLLY_ALWAYS_INLINE CpuId() {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && (FOLLY_X64 || defined(_M_IX86))
     int reg[4];
     __cpuid(static_cast<int*>(reg), 0);
     const int n = reg[0];
