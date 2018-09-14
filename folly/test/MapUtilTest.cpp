@@ -131,7 +131,6 @@ TEST(MapUtil, get_ptr_path_mixed) {
   EXPECT_FALSE(get_ptr(m, "b", 1, "b"));
   EXPECT_FALSE(get_ptr(m, "a", 2, "b"));
   EXPECT_FALSE(get_ptr(m, "a", 1, "c"));
-  EXPECT_TRUE(get_ptr(m, "a", 1, "b"));
   EXPECT_TRUE(get_ptr(m, "a", 1));
   EXPECT_TRUE(get_ptr(m, "a"));
   const auto& cm = m;
