@@ -353,22 +353,15 @@ const ElfShdr* ElfFile::getSectionByName(const char* name) const {
     return nullptr; // no section name string table
   }
 
-  // Find offset in the section name string table of the requested name
   const ElfShdr& sectionNames = *getSectionByIndex(elfHeader().e_shstrndx);
-  const char* foundName = iterateStrings(
-      sectionNames, [&](const char* s) { return !strcmp(name, s); });
-  if (foundName == nullptr) {
-    return nullptr;
-  }
-
-  size_t offset = foundName - (file_ + sectionNames.sh_offset);
+  const char* start = file_ + sectionNames.sh_offset;
 
   // Find section with the appropriate sh_name offset
   const ElfShdr* foundSection = iterateSections([&](const ElfShdr& sh) {
-    if (sh.sh_name == offset) {
-      return true;
+    if (sh.sh_name >= sectionNames.sh_size) {
+      return false;
     }
-    return false;
+    return !strcmp(start + sh.sh_name, name);
   });
   return foundSection;
 }
