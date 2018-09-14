@@ -19,7 +19,7 @@
 
 namespace folly {
 
-std::vector<std::string> TestLogHandler::getMessageValues() {
+std::vector<std::string> TestLogHandler::getMessageValues() const {
   std::vector<std::string> values;
   values.reserve(messages_.size());
   for (const auto& msgInfo : messages_) {

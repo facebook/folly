@@ -45,7 +45,7 @@ class TestLogHandler : public LogHandler {
     return messages_;
   }
 
-  std::vector<std::string> getMessageValues();
+  std::vector<std::string> getMessageValues() const;
   void clearMessages() {
     messages_.clear();
   }
