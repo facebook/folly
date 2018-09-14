@@ -55,9 +55,7 @@ Optional<std::string> getCurrentThreadName();
  * is not available.
  */
 bool setThreadName(std::thread::id tid, StringPiece name);
-#if FOLLY_HAVE_PTHREAD
 bool setThreadName(pthread_t pid, StringPiece name);
-#endif
 
 /**
  * Equivalent to setThreadName(std::this_thread::get_id(), name);

@@ -642,6 +642,7 @@ if (BUILD_TESTS)
       TEST constexpr_test SOURCES ConstexprTest.cpp
       TEST libgen-test SOURCES LibgenTest.cpp
       TEST openssl_portability_test SOURCES OpenSSLPortabilityTest.cpp
+      TEST pthread_test SOURCES PThreadTest.cpp
       TEST time-test SOURCES TimeTest.cpp
 
     DIRECTORY ssl/test/

@@ -24,12 +24,78 @@
 
 #elif !FOLLY_HAVE_PTHREAD
 
-#include <folly/portability/Windows.h> // nolint
 #include <cstdint>
+#include <memory>
+
+#include <folly/portability/Sched.h>
+#include <folly/portability/Time.h>
+#include <folly/portability/Windows.h> // nolint
+
+#define PTHREAD_CREATE_JOINABLE 0
+#define PTHREAD_CREATE_DETACHED 1
+
+#define PTHREAD_MUTEX_DEFAULT 0
+#define PTHREAD_MUTEX_RECURSIVE 1
+
+#define _POSIX_TIMEOUTS 200112L
 
 namespace folly {
 namespace portability {
 namespace pthread {
+struct pthread_attr_t {
+  size_t stackSize;
+  bool detached;
+};
+
+int pthread_attr_init(pthread_attr_t* attr);
+int pthread_attr_setdetachstate(pthread_attr_t* attr, int state);
+int pthread_attr_setstacksize(pthread_attr_t* attr, size_t kb);
+
+namespace pthread_detail {
+struct pthread_t {
+  HANDLE handle{INVALID_HANDLE_VALUE};
+  DWORD threadID{0};
+  bool detached{false};
+
+  ~pthread_t() noexcept;
+};
+} // namespace pthread_detail
+using pthread_t = std::shared_ptr<pthread_detail::pthread_t>;
+
+int pthread_equal(pthread_t threadA, pthread_t threadB);
+int pthread_create(
+    pthread_t* thread,
+    const pthread_attr_t* attr,
+    void* (*start_routine)(void*),
+    void* arg);
+pthread_t pthread_self();
+int pthread_join(pthread_t thread, void** exitCode);
+
+HANDLE pthread_getw32threadhandle_np(pthread_t thread);
+DWORD pthread_getw32threadid_np(pthread_t thread);
+
+int pthread_setschedparam(
+    pthread_t thread,
+    int policy,
+    const sched_param* param);
+
+struct pthread_mutexattr_t {
+  int type;
+};
+int pthread_mutexattr_init(pthread_mutexattr_t* attr);
+int pthread_mutexattr_destroy(pthread_mutexattr_t* attr);
+int pthread_mutexattr_settype(pthread_mutexattr_t* attr, int type);
+
+using pthread_mutex_t = struct pthread_mutex_t_*;
+int pthread_mutex_init(pthread_mutex_t* mutex, const pthread_mutexattr_t* attr);
+int pthread_mutex_destroy(pthread_mutex_t* mutex);
+int pthread_mutex_lock(pthread_mutex_t* mutex);
+int pthread_mutex_trylock(pthread_mutex_t* mutex);
+int pthread_mutex_unlock(pthread_mutex_t* mutex);
+int pthread_mutex_timedlock(
+    pthread_mutex_t* mutex,
+    const timespec* abs_timeout);
+
 // In reality, this is boost::thread_specific_ptr*, but we're attempting
 // to avoid introducing boost into a portability header.
 using pthread_key_t = void*;

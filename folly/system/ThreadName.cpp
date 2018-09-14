@@ -169,7 +169,6 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
 #endif
 }
 
-#if FOLLY_HAVE_PTHREAD
 bool setThreadName(pthread_t pid, StringPiece name) {
 #if _WIN32
   static_assert(
@@ -199,7 +198,6 @@ bool setThreadName(pthread_t pid, StringPiece name) {
   return setThreadName(id, name);
 #endif
 }
-#endif
 
 bool setThreadName(StringPiece name) {
   return setThreadName(std::this_thread::get_id(), name);
