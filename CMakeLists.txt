@@ -674,6 +674,7 @@ if (BUILD_TESTS)
     DIRECTORY synchronization/test/
       TEST atomic_struct_test SOURCES AtomicStructTest.cpp
       TEST small_locks_test SOURCES SmallLocksTest.cpp
+      TEST atomic_util_test SOURCES AtomicUtilTest.cpp
 
     DIRECTORY test/
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
