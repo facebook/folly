@@ -16,18 +16,12 @@
 #include <thread>
 
 #include <folly/Benchmark.h>
-#include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/TLRefCount.h>
 
 namespace folly {
 
 template <typename Counter>
 void shutdown(Counter&) {}
-
-void shutdown(RCURefCount& c) {
-  c.useGlobal();
-  --c;
-}
 
 void shutdown(TLRefCount& c) {
   c.useGlobal();
@@ -56,22 +50,6 @@ void benchmark(size_t n) {
   }
 
   shutdown(x);
-}
-
-BENCHMARK(atomicOneThread, n) {
-  benchmark<std::atomic<RCURefCount::Int>, 1>(n);
-}
-
-BENCHMARK(atomicFourThreads, n) {
-  benchmark<std::atomic<RCURefCount::Int>, 4>(n);
-}
-
-BENCHMARK(RCURefCountOneThread, n) {
-  benchmark<RCURefCount, 1>(n);
-}
-
-BENCHMARK(RCURefCountFourThreads, n) {
-  benchmark<RCURefCount, 4>(n);
 }
 
 BENCHMARK(TLRefCountOneThread, n) {

@@ -21,7 +21,6 @@
 #include <thread>
 
 #include <folly/Memory.h>
-#include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
@@ -66,7 +65,6 @@ class Coordinator {
   }
 
   void waitForRequest() {
-    folly::RCURegisterThread();
     requestBaton_.wait();
   }
 

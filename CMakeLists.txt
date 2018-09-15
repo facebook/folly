@@ -163,15 +163,6 @@ if (NOT FOLLY_USE_SYMBOLIZER)
     ${FOLLY_DIR}/SingletonStackTrace.cpp
   )
 endif()
-if (NOT ${LIBURCU_FOUND})
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/experimental/RCUUtils.cpp
-  )
-  list(REMOVE_ITEM hfiles
-    ${FOLLY_DIR}/experimental/RCURefCount.h
-    ${FOLLY_DIR}/experimental/RCUUtils.h
-  )
-endif()
 if (NOT ${LIBAIO_FOUND})
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/experimental/io/AsyncIO.cpp

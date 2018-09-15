@@ -22,7 +22,6 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Memory.h>
-#include <folly/experimental/RCURefCount.h>
 #include <folly/portability/GFlags.h>
 
 template <
@@ -52,10 +51,6 @@ void benchmark(size_t n) {
 }
 
 template <typename T>
-using RCUMainPtr = folly::ReadMostlyMainPtr<T, folly::RCURefCount>;
-template <typename T>
-using RCUWeakPtr = folly::ReadMostlyWeakPtr<T, folly::RCURefCount>;
-template <typename T>
 using TLMainPtr = folly::ReadMostlyMainPtr<T, folly::TLRefCount>;
 template <typename T>
 using TLWeakPtr = folly::ReadMostlyWeakPtr<T, folly::TLRefCount>;
@@ -66,14 +61,6 @@ BENCHMARK(WeakPtrOneThread, n) {
 
 BENCHMARK(WeakPtrFourThreads, n) {
   benchmark<std::shared_ptr, std::weak_ptr, 4>(n);
-}
-
-BENCHMARK(RCUReadMostlyWeakPtrOneThread, n) {
-  benchmark<RCUMainPtr, RCUWeakPtr, 1>(n);
-}
-
-BENCHMARK(RCUReadMostlyWeakPtrFourThreads, n) {
-  benchmark<RCUMainPtr, RCUWeakPtr, 4>(n);
 }
 
 BENCHMARK(TLReadMostlyWeakPtrOneThread, n) {

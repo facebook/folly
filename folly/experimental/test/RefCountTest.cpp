@@ -15,7 +15,6 @@
  */
 #include <thread>
 
-#include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/TLRefCount.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
@@ -114,16 +113,8 @@ void stressTest(size_t itersCount) {
   }
 }
 
-TEST(RCURefCount, Basic) {
-  basicTest<RCURefCount>();
-}
-
 TEST(TLRefCount, Basic) {
   basicTest<TLRefCount>();
-}
-
-TEST(RCURefCount, Stress) {
-  stressTest<RCURefCount>(100000);
 }
 
 TEST(TLRefCount, Stress) {
