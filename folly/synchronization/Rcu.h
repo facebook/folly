@@ -19,6 +19,7 @@
 #include <functional>
 #include <limits>
 
+#include <folly/Indestructible.h>
 #include <folly/Optional.h>
 #include <folly/detail/TurnSequencer.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
@@ -379,10 +380,10 @@ class rcu_domain {
   void half_sync(bool blocking, list_head& cbs);
 };
 
-extern rcu_domain<RcuTag> rcu_default_domain_;
+extern folly::Indestructible<rcu_domain<RcuTag>> rcu_default_domain_;
 
 inline rcu_domain<RcuTag>* rcu_default_domain() {
-  return &rcu_default_domain_;
+  return &(*rcu_default_domain_);
 }
 
 // Main reader guard class.

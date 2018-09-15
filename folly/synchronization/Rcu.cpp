@@ -17,6 +17,7 @@
 
 namespace folly {
 
-FOLLY_STATIC_CTOR_PRIORITY_MAX rcu_domain<RcuTag> rcu_default_domain_;
+FOLLY_STATIC_CTOR_PRIORITY_MAX folly::Indestructible<rcu_domain<RcuTag>>
+    rcu_default_domain_;
 
 } // namespace folly
