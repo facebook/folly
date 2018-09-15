@@ -424,13 +424,13 @@ class FutureBase {
   }
 
   // Variant: returns a value
-  // e.g. f.then([](Try<T> t){ return t.value(); });
+  // e.g. f.thenTry([](Try<T> t){ return t.value(); });
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
 
   // Variant: returns a Future
-  // e.g. f.then([](Try<T> t){ return makeFuture<T>(t); });
+  // e.g. f.thenTry([](Try<T> t){ return makeFuture<T>(t); });
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
@@ -459,7 +459,7 @@ DeferredExecutor* stealDeferredExecutor(SemiFuture<T>& future);
 /// - The consumer-side should generally start with a SemiFuture, not a Future.
 /// - Example, when a library creates and returns a future, it should usually
 ///   return a `SemiFuture`, not a Future.
-/// - Reason: so the thread policy for continuations (`.then()`, etc.) can be
+/// - Reason: so the thread policy for continuations (`.thenValue`, etc.) can be
 ///   specified by the library's caller (using `.via()`).
 /// - A SemiFuture is converted to a Future using `.via()`.
 /// - Use `makePromiseContract()` when creating both a Promise and an associated
@@ -467,7 +467,7 @@ DeferredExecutor* stealDeferredExecutor(SemiFuture<T>& future);
 ///
 /// When practical, prefer SemiFuture/Future's nonblocking style/pattern:
 ///
-/// - the nonblocking style uses continuations, e.g., `.then()`, etc.; the
+/// - the nonblocking style uses continuations, e.g., `.thenValue`, etc.; the
 ///   continuations are deferred until the result is available.
 /// - the blocking style blocks until complete, e.g., `.wait()`, `.get()`, etc.
 /// - the two styles cannot be mixed within the same future; use one or the
@@ -571,7 +571,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Preconditions:
   ///
   /// - `valid() == true` (else throws FutureInvalid)
-  /// - must not have a continuation, e.g., via `.then()` or similar
+  /// - must not have a continuation, e.g., via `.thenValue()` or similar
   ///
   /// Postconditions:
   ///
@@ -933,7 +933,7 @@ std::pair<Promise<T>, SemiFuture<T>> makePromiseContract() {
 /// - The consumer-side should generally start with a SemiFuture, not a Future.
 /// - Example, when a library creates and returns a future, it should usually
 ///   return a `SemiFuture`, not a Future.
-/// - Reason: so the thread policy for continuations (`.then()`, etc.) can be
+/// - Reason: so the thread policy for continuations (`.thenValue`, etc.) can be
 ///   specified by the library's caller (using `.via()`).
 /// - A SemiFuture is converted to a Future using `.via()`.
 /// - Use `makePromiseContract()` when creating both a Promise and an associated
@@ -941,7 +941,7 @@ std::pair<Promise<T>, SemiFuture<T>> makePromiseContract() {
 ///
 /// When practical, prefer SemiFuture/Future's nonblocking style/pattern:
 ///
-/// - the nonblocking style uses continuations, e.g., `.then()`, etc.; the
+/// - the nonblocking style uses continuations, e.g., `.thenValue`, etc.; the
 ///   continuations are deferred until the result is available.
 /// - the blocking style blocks until complete, e.g., `.wait()`, `.get()`, etc.
 /// - the two styles cannot be mixed within the same future; use one or the
@@ -1141,7 +1141,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// A Future for the return type of func is returned.
   ///
-  ///   Future<string> f2 = f1.then([](Try<T>&&) { return string("foo"); });
+  ///   Future<string> f2 = f1.thenTry([](Try<T>&&) { return string("foo"); });
   ///
   /// Preconditions:
   ///
@@ -1190,11 +1190,11 @@ class Future : private futures::detail::FutureBase<T> {
   ///   struct Worker { R doWork(Try<T>); }
   ///
   ///   Worker *w;
-  ///   Future<R> f2 = f1.then(&Worker::doWork, w);
+  ///   Future<R> f2 = f1.thenTry(&Worker::doWork, w);
   ///
   /// This is just sugar for
   ///
-  ///   f1.then(std::bind(&Worker::doWork, w));
+  ///   f1.thenTry(std::bind(&Worker::doWork, w));
   ///
   /// Preconditions:
   ///
@@ -1395,7 +1395,7 @@ class Future : private futures::detail::FutureBase<T> {
 
   // clang-format off
   [[deprecated(
-      "must be rvalue-qualified, e.g., std::move(future).then()")]]
+      "must be rvalue-qualified, e.g., std::move(future).thenValue()")]]
   Future<Unit> then() & = delete;
   // clang-format on
 
@@ -1428,7 +1428,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///       throw std::runtime_error("oh no!");
   ///       return 42;
   ///     })
-  ///     .onError([] (std::runtime_error& e) {
+  ///     .thenError<std::runtime_error>([] (std::runtime_error& e) {
   ///       LOG(INFO) << "std::runtime_error: " << e.what();
   ///       return -1; // or makeFuture<int>(-1)
   ///     });
