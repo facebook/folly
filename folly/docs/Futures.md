@@ -6,7 +6,7 @@
 
 Folly Futures is an async C++ framework inspired by [Twitter's Futures](https://twitter.github.io/finagle/guide/Futures.html) implementation in Scala (see also [Future.scala](https://github.com/twitter/util/blob/master/util-core/src/main/scala/com/twitter/util/Future.scala), [Promise.scala](https://github.com/twitter/util/blob/master/util-core/src/main/scala/com/twitter/util/Promise.scala), and friends), and loosely builds upon the existing but anemic Futures code found in the C++11 standard ([std::future](http://en.cppreference.com/w/cpp/thread/future)) and [boost::future](http://www.boost.org/doc/libs/1_53_0/doc/html/thread/synchronization.html#thread.synchronization.futures) (especially >= 1.53.0). Although inspired by the C++11 std::future interface, it is not a drop-in replacement because some ideas don't translate well enough to maintain API compatibility.
 
-The primary difference from std::future is that you can attach callbacks to Futures (with `then()`), under the control of an executor to manage where work runs, which enables sequential and parallel composition of Futures for cleaner asynchronous code.
+The primary difference from std::future is that you can attach callbacks to Futures (with `thenValue` or `thenTry`), under the control of an executor to manage where work runs, which enables sequential and parallel composition of Futures for cleaner asynchronous code.
 
 # Brief Synopsis
 
@@ -26,7 +26,7 @@ void foo(int x) {
   cout << "making Promise" << endl;
   Promise<int> p;
   Future<int> f = p.getSemiFuture().via(&executor);
-  auto f2 = move(f).then(foo);
+  auto f2 = move(f).thenValue(foo);
   cout << "Future chain made" << endl;
 
 // ... now perhaps in another event callback
@@ -147,38 +147,41 @@ For example:
 ```
 folly::ThreadedExecutor executor;
 SemiFuture<GetReply> semiFut = mc.future_get("foo");
-Future<GetReply> fut1 = semiFut.via(&executor);
+Future<GetReply> fut1 = std::move(semiFut).via(&executor);
 ```
 
 Once an executor is attached, a `Future` allows continuations to be attached and chained together monadically. An example will clarify:
 
 ```
 SemiFuture<GetReply> semiFut = mc.future_get("foo");
-Future<GetReply> fut1 = semiFut.via(&executor);
+Future<GetReply> fut1 = std::move(semiFut).via(&executor);
 
-Future<string> fut2 = fut1.then(
+Future<string> fut2 = std::move(fut1).thenValue(
   [](GetReply reply) {
     if (reply.result == MemcacheClient::GetReply::Result::FOUND)
       return reply.value;
     throw SomeException("No value");
   });
 
-Future<Unit> fut3 = fut2
-  .then([](string str) {
+Future<Unit> fut3 = std::move(fut2)
+  .thenValue([](string str) {
     cout << str << endl;
   })
-  .onError([](std::exception const& e) {
+  .thenTry([](folly::Try<string> strTry) {
+    cout << strTry.value() << endl;
+  })
+  .thenError<std::exception>([](std::exception const& e) {
     cerr << e.what() << endl;
   });
 ```
 
 That example is a little contrived but the idea is that you can transform a result from one type to another, potentially in a chain, and unhandled errors propagate. Of course, the intermediate variables are optional.
 
-Using `.then` to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell.
+Using `.thenValue` or `.thenTry` to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell. `.thenValue` appends a continuation that takes `T&&` for some `Future<T>` and an error bypasses the callback and is passed to the next, `thenTry` takes a callback taking `folly::Try<T>` which encapsulates both value and exception. `thenError<ExceptionType>` will bypass a value and only run if there is an exception, the `ExceptionType` template parameter allows filtering by exception type; `ExceptionType` is optional and if not passed the function will be parameterised with a `folly::exception_wrapper`.
 
 Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future. Futures have a blocking method called `wait()` that does exactly that and optionally takes a timeout.
 
-Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::then` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. **But**, be warned that you might be surprised about which thread your callback executes on. Let's consider an example, where we take a future straight from a promise, without going via the safer SemiFuture, and where we therefore have a `Future` that does not carry an executor. This is in general something to avoid.
+Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::thenValue` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. **But**, be warned that you might be surprised about which thread your callback executes on. Let's consider an example, where we take a future straight from a promise, without going via the safer SemiFuture, and where we therefore have a `Future` that does not carry an executor. This is in general something to avoid.
 
 ```
 // Thread A
@@ -186,30 +189,30 @@ Promise<Unit> p;
 auto f = p.getFuture();
 
 // Thread B
-f.then(x).then(y).then(z);
+std::move(f).thenValue(x).thenValue(y).thenTry(z);
 
 // Thread A
 p.setValue();
 ```
 
-This is legal and technically threadsafe. However, it is important to realize that you do not know in which thread `x`, `y`, and/or `z` will execute. Maybe they will execute in Thread A when `p.setValue()` is called. Or, maybe they will execute in Thread B when `f.then` is called. Or, maybe `x` will execute in Thread A, but `y` and/or `z` will execute in Thread B. There's a race between `setValue` and `then`—whichever runs last will execute the callback. The only guarantee is that one of them will run the callback.
+This is legal and technically threadsafe. However, it is important to realize that you do not know in which thread `x`, `y`, and/or `z` will execute. Maybe they will execute in Thread A when `p.setValue()` is called. Or, maybe they will execute in Thread B when `f.thenValue` is called. Or, maybe `x` will execute in Thread A, but `y` and/or `z` will execute in Thread B. There's a race between `setValue` and `then`—whichever runs last will execute the callback. The only guarantee is that one of them will run the callback.
 
 For safety, `.via` should be preferred. We can chain `.via` operations to give very strong control over where callbacks run:
 
 ```
-aFuture
-  .then(x)
-  .via(e1).then(y1).then(y2)
-  .via(e2).then(z);
+std::move(aFuture)
+  .thenValue(x)
+  .via(e1).thenValue(y1).thenValue(y2)
+  .via(e2).thenValue(z);
 ```
 
 `x` will execute in the context of the executor associated with `aFuture`. `y1` and `y2` will execute in the context of `e1`, and `z` will execute in the context of `e2`. If after `z` you want to get back to the original context, you need to get there with a call to `via` passing the original executor. Another way to express this is using an overload of `then` that takes an Executor:
 
 ```
-aFuture
-  .then(x)
-  .then(e1, y1, y2)
-  .then(e2, z);
+std::move(aFuture)
+  .thenValue(x)
+  .thenValue(e1, y1, y2)
+  .thenValue(e2, z);
 ```
 
 Either way, there is no ambiguity about which executor will run `y1`, `y2`, or `z`.
@@ -217,8 +220,8 @@ Either way, there is no ambiguity about which executor will run `y1`, `y2`, or `
 You can still have a race after `via` if you break it into multiple statements, e.g. in this counterexample:
 
 ```
-f2 = f.via(e1).then(y1).then(y2); // nothing racy here
-f2.then(y3); // racy
+f2 = std::move(f).via(e1).thenValue(y1).thenValue(y2); // nothing racy here
+std::move(f2).thenValue(y3); // racy
 ```
 
 # You make me Promises, Promises
