@@ -434,20 +434,19 @@ struct StaticMeta final : StaticMetaBase {
   }
 
   FOLLY_ALWAYS_INLINE static ElementWrapper& get(EntryID* ent) {
+    // Eliminate as many branches and as much extra code as possible in the
+    // cached fast path, leaving only one branch here and one indirection below.
     uint32_t id = ent->getOrInvalid();
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
     static FOLLY_TLS ThreadEntry* threadEntry{};
     static FOLLY_TLS size_t capacity{};
-    // Eliminate as many branches and as much extra code as possible in the
-    // cached fast path, leaving only one branch here and one indirection below.
-    if (UNLIKELY(capacity <= id)) {
-      getSlowReserveAndCache(ent, id, threadEntry, capacity);
-    }
 #else
     ThreadEntry* threadEntry{};
     size_t capacity{};
-    getSlowReserveAndCache(ent, id, threadEntry, capacity);
 #endif
+    if (FOLLY_UNLIKELY(capacity <= id)) {
+      getSlowReserveAndCache(ent, id, threadEntry, capacity);
+    }
     return threadEntry->elements[id];
   }
 

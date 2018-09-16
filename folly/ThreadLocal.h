@@ -67,13 +67,8 @@ class ThreadLocal {
       : constructor_(std::forward<F>(constructor)) {}
 
   T* get() const {
-    T* const ptr = tlp_.get();
-    if (LIKELY(ptr != nullptr)) {
-      return ptr;
-    }
-
-    // separated new item creation out to speed up the fast path.
-    return makeTlp();
+    auto const ptr = tlp_.get();
+    return FOLLY_LIKELY(!!ptr) ? ptr : makeTlp();
   }
 
   T* operator->() const {
