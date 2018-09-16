@@ -399,7 +399,8 @@ class rcu_reader_domain {
       : domain_(domain) {}
   rcu_reader_domain(const rcu_reader_domain&) = delete;
   rcu_reader_domain(rcu_reader_domain&& other) noexcept
-      : epoch_(std::move(other.epoch_)), domain_(std::move(other.domain_)) {}
+      : epoch_(std::move(other.epoch_)),
+        domain_(std::exchange(other.domain_, nullptr)) {}
   rcu_reader_domain& operator=(const rcu_reader_domain&) = delete;
   rcu_reader_domain& operator=(rcu_reader_domain&& other) noexcept {
     if (epoch_.has_value()) {
