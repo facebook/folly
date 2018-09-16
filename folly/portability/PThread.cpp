@@ -22,9 +22,11 @@
 #include <errno.h>
 
 #include <chrono>
+#include <condition_variable>
 #include <exception>
 #include <limits>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 
 #include <folly/lang/Assume.h>
@@ -278,7 +280,7 @@ struct pthread_mutex_t_ {
  public:
   pthread_mutex_t_(int mutex_type) : type(mutex_type) {
     switch (type) {
-      case PTHREAD_MUTEX_DEFAULT:
+      case PTHREAD_MUTEX_NORMAL:
         new (&timed_mtx) std::timed_mutex();
         break;
       case PTHREAD_MUTEX_RECURSIVE:
@@ -289,7 +291,7 @@ struct pthread_mutex_t_ {
 
   ~pthread_mutex_t_() noexcept {
     switch (type) {
-      case PTHREAD_MUTEX_DEFAULT:
+      case PTHREAD_MUTEX_NORMAL:
         timed_mtx.~timed_mutex();
         break;
       case PTHREAD_MUTEX_RECURSIVE:
@@ -300,7 +302,7 @@ struct pthread_mutex_t_ {
 
   void lock() {
     switch (type) {
-      case PTHREAD_MUTEX_DEFAULT:
+      case PTHREAD_MUTEX_NORMAL:
         timed_mtx.lock();
         break;
       case PTHREAD_MUTEX_RECURSIVE:
@@ -311,7 +313,7 @@ struct pthread_mutex_t_ {
 
   bool try_lock() {
     switch (type) {
-      case PTHREAD_MUTEX_DEFAULT:
+      case PTHREAD_MUTEX_NORMAL:
         return timed_mtx.try_lock();
       case PTHREAD_MUTEX_RECURSIVE:
         return recursive_timed_mtx.try_lock();
@@ -321,7 +323,7 @@ struct pthread_mutex_t_ {
 
   bool timed_try_lock(std::chrono::system_clock::time_point until) {
     switch (type) {
-      case PTHREAD_MUTEX_DEFAULT:
+      case PTHREAD_MUTEX_NORMAL:
         return timed_mtx.try_lock_until(until);
       case PTHREAD_MUTEX_RECURSIVE:
         return recursive_timed_mtx.try_lock_until(until);
@@ -331,13 +333,44 @@ struct pthread_mutex_t_ {
 
   void unlock() {
     switch (type) {
-      case PTHREAD_MUTEX_DEFAULT:
+      case PTHREAD_MUTEX_NORMAL:
         timed_mtx.unlock();
         break;
       case PTHREAD_MUTEX_RECURSIVE:
         recursive_timed_mtx.unlock();
         break;
     }
+  }
+
+  void condition_wait(std::condition_variable_any& cond) {
+    switch (type) {
+      case PTHREAD_MUTEX_NORMAL: {
+        std::unique_lock<std::timed_mutex> lock(timed_mtx);
+        cond.wait(lock);
+        break;
+      }
+      case PTHREAD_MUTEX_RECURSIVE: {
+        std::unique_lock<std::recursive_timed_mutex> lock(recursive_timed_mtx);
+        cond.wait(lock);
+        break;
+      }
+    }
+  }
+
+  bool condition_timed_wait(
+      std::condition_variable_any& cond,
+      std::chrono::system_clock::time_point until) {
+    switch (type) {
+      case PTHREAD_MUTEX_NORMAL: {
+        std::unique_lock<std::timed_mutex> lock(timed_mtx);
+        return cond.wait_until(lock, until) == std::cv_status::no_timeout;
+      }
+      case PTHREAD_MUTEX_RECURSIVE: {
+        std::unique_lock<std::recursive_timed_mutex> lock(recursive_timed_mtx);
+        return cond.wait_until(lock, until) == std::cv_status::no_timeout;
+      }
+    }
+    folly::assume_unreachable();
   }
 };
 
@@ -387,6 +420,14 @@ int pthread_mutex_trylock(pthread_mutex_t* mutex) {
   }
 }
 
+static std::chrono::system_clock::time_point timespec_to_time_point(
+    const timespec* t) {
+  using time_point = std::chrono::system_clock::time_point;
+  auto ns =
+      std::chrono::seconds(t->tv_sec) + std::chrono::nanoseconds(t->tv_nsec);
+  return time_point(std::chrono::duration_cast<time_point::duration>(ns));
+}
+
 int pthread_mutex_timedlock(
     pthread_mutex_t* mutex,
     const timespec* abs_timeout) {
@@ -394,11 +435,7 @@ int pthread_mutex_timedlock(
     return EINVAL;
   }
 
-  using time_point = std::chrono::system_clock::time_point;
-  auto ns = std::chrono::seconds(abs_timeout->tv_sec) +
-      std::chrono::nanoseconds(abs_timeout->tv_nsec);
-  auto time = time_point(std::chrono::duration_cast<time_point::duration>(ns));
-
+  auto time = timespec_to_time_point(abs_timeout);
   if ((*mutex)->timed_try_lock(time)) {
     return 0;
   } else {
@@ -414,6 +451,202 @@ int pthread_mutex_unlock(pthread_mutex_t* mutex) {
   // This implementation allows other threads to unlock it,
   // as the STL containers also do.
   (*mutex)->unlock();
+  return 0;
+}
+
+struct pthread_rwlock_t_ {
+  std::shared_timed_mutex mtx;
+  std::atomic<bool> writing{false};
+};
+
+int pthread_rwlock_init(pthread_rwlock_t* rwlock, const void* attr) {
+  if (attr != nullptr) {
+    return EINVAL;
+  }
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  *rwlock = new pthread_rwlock_t_();
+  return 0;
+}
+
+int pthread_rwlock_destroy(pthread_rwlock_t* rwlock) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  delete *rwlock;
+  *rwlock = nullptr;
+  return 0;
+}
+
+int pthread_rwlock_rdlock(pthread_rwlock_t* rwlock) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  (*rwlock)->mtx.lock_shared();
+  return 0;
+}
+
+int pthread_rwlock_tryrdlock(pthread_rwlock_t* rwlock) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  if ((*rwlock)->mtx.try_lock_shared()) {
+    return 0;
+  } else {
+    return EBUSY;
+  }
+}
+
+int pthread_rwlock_timedrdlock(
+    pthread_rwlock_t* rwlock,
+    const timespec* abs_timeout) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  auto time = timespec_to_time_point(abs_timeout);
+  if ((*rwlock)->mtx.try_lock_shared_until(time)) {
+    return 0;
+  } else {
+    return ETIMEDOUT;
+  }
+}
+
+int pthread_rwlock_wrlock(pthread_rwlock_t* rwlock) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  (*rwlock)->mtx.lock();
+  (*rwlock)->writing = true;
+  return 0;
+}
+
+// Note: As far as I can tell, rwlock is technically supposed to
+// be an upgradable lock, but we don't implement it that way.
+int pthread_rwlock_trywrlock(pthread_rwlock_t* rwlock) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  if ((*rwlock)->mtx.try_lock()) {
+    (*rwlock)->writing = true;
+    return 0;
+  } else {
+    return EBUSY;
+  }
+}
+
+int pthread_rwlock_timedwrlock(
+    pthread_rwlock_t* rwlock,
+    const timespec* abs_timeout) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  auto time = timespec_to_time_point(abs_timeout);
+  if ((*rwlock)->mtx.try_lock_until(time)) {
+    (*rwlock)->writing = true;
+    return 0;
+  } else {
+    return ETIMEDOUT;
+  }
+}
+
+int pthread_rwlock_unlock(pthread_rwlock_t* rwlock) {
+  if (rwlock == nullptr) {
+    return EINVAL;
+  }
+
+  // Note: We don't have any checking to ensure we have actually
+  // locked things first, so you'll actually be in undefined behavior
+  // territory if you do attempt to unlock things you haven't locked.
+  if ((*rwlock)->writing) {
+    (*rwlock)->mtx.unlock();
+    // If we fail, then another thread has already immediately acquired
+    // the write lock, so this should stay as true :)
+    bool dump = true;
+    (void)(*rwlock)->writing.compare_exchange_strong(dump, false);
+  } else {
+    (*rwlock)->mtx.unlock_shared();
+  }
+  return 0;
+}
+
+struct pthread_cond_t_ {
+  // pthread_mutex_t is backed by timed
+  // mutexes, so no basic condition variable for
+  // us :(
+  std::condition_variable_any cond;
+};
+
+int pthread_cond_init(pthread_cond_t* cond, const void* attr) {
+  if (attr != nullptr) {
+    return EINVAL;
+  }
+  if (cond == nullptr) {
+    return EINVAL;
+  }
+
+  *cond = new pthread_cond_t_();
+  return 0;
+}
+
+int pthread_cond_destroy(pthread_cond_t* cond) {
+  if (cond == nullptr) {
+    return EINVAL;
+  }
+
+  delete *cond;
+  *cond = nullptr;
+  return 0;
+}
+
+int pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
+  if (cond == nullptr || mutex == nullptr) {
+    return EINVAL;
+  }
+
+  (*mutex)->condition_wait((*cond)->cond);
+  return 0;
+}
+
+int pthread_cond_timedwait(
+    pthread_cond_t* cond,
+    pthread_mutex_t* mutex,
+    const timespec* abstime) {
+  if (cond == nullptr || mutex == nullptr || abstime == nullptr) {
+    return EINVAL;
+  }
+
+  auto time = timespec_to_time_point(abstime);
+  if ((*mutex)->condition_timed_wait((*cond)->cond, time)) {
+    return 0;
+  } else {
+    return ETIMEDOUT;
+  }
+}
+
+int pthread_cond_signal(pthread_cond_t* cond) {
+  if (cond == nullptr) {
+    return EINVAL;
+  }
+
+  (*cond)->cond.notify_one();
+  return 0;
+}
+
+int pthread_cond_broadcast(pthread_cond_t* cond) {
+  if (cond == nullptr) {
+    return EINVAL;
+  }
+
+  (*cond)->cond.notify_all();
   return 0;
 }
 

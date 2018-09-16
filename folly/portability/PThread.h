@@ -34,8 +34,9 @@
 #define PTHREAD_CREATE_JOINABLE 0
 #define PTHREAD_CREATE_DETACHED 1
 
-#define PTHREAD_MUTEX_DEFAULT 0
+#define PTHREAD_MUTEX_NORMAL 0
 #define PTHREAD_MUTEX_RECURSIVE 1
+#define PTHREAD_MUTEX_DEFAULT PTHREAD_MUTEX_NORMAL
 
 #define _POSIX_TIMEOUTS 200112L
 
@@ -95,6 +96,39 @@ int pthread_mutex_unlock(pthread_mutex_t* mutex);
 int pthread_mutex_timedlock(
     pthread_mutex_t* mutex,
     const timespec* abs_timeout);
+
+using pthread_rwlock_t = struct pthread_rwlock_t_*;
+// Technically the second argument here is supposed to be a
+// const pthread_rwlockattr_t* but we don support it, so we
+// simply don't define pthread_rwlockattr_t at all to cause
+// a build-break if anyone tries to use it.
+int pthread_rwlock_init(pthread_rwlock_t* rwlock, const void* attr);
+int pthread_rwlock_destroy(pthread_rwlock_t* rwlock);
+int pthread_rwlock_rdlock(pthread_rwlock_t* rwlock);
+int pthread_rwlock_tryrdlock(pthread_rwlock_t* rwlock);
+int pthread_rwlock_timedrdlock(
+    pthread_rwlock_t* rwlock,
+    const timespec* abs_timeout);
+int pthread_rwlock_wrlock(pthread_rwlock_t* rwlock);
+int pthread_rwlock_trywrlock(pthread_rwlock_t* rwlock);
+int pthread_rwlock_timedwrlock(
+    pthread_rwlock_t* rwlock,
+    const timespec* abs_timeout);
+int pthread_rwlock_unlock(pthread_rwlock_t* rwlock);
+
+using pthread_cond_t = struct pthread_cond_t_*;
+// Once again, technically the second argument should be a
+// pthread_condattr_t, but we don't implement it, so void*
+// it is.
+int pthread_cond_init(pthread_cond_t* cond, const void* attr);
+int pthread_cond_destroy(pthread_cond_t* cond);
+int pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex);
+int pthread_cond_timedwait(
+    pthread_cond_t* cond,
+    pthread_mutex_t* mutex,
+    const timespec* abstime);
+int pthread_cond_signal(pthread_cond_t* cond);
+int pthread_cond_broadcast(pthread_cond_t* cond);
 
 // In reality, this is boost::thread_specific_ptr*, but we're attempting
 // to avoid introducing boost into a portability header.
