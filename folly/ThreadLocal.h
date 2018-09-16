@@ -66,7 +66,7 @@ class ThreadLocal {
   explicit ThreadLocal(F&& constructor)
       : constructor_(std::forward<F>(constructor)) {}
 
-  T* get() const {
+  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* get() const {
     auto const ptr = tlp_.get();
     return FOLLY_LIKELY(!!ptr) ? ptr : makeTlp();
   }
@@ -97,7 +97,7 @@ class ThreadLocal {
   ThreadLocal(const ThreadLocal&) = delete;
   ThreadLocal& operator=(const ThreadLocal&) = delete;
 
-  T* makeTlp() const {
+  FOLLY_NOINLINE T* makeTlp() const {
     auto const ptr = constructor_();
     tlp_.reset(ptr);
     return ptr;

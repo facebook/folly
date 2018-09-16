@@ -433,7 +433,7 @@ struct StaticMeta final : StaticMetaBase {
     return *instance;
   }
 
-  FOLLY_ALWAYS_INLINE static ElementWrapper& get(EntryID* ent) {
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static ElementWrapper& get(EntryID* ent) {
     // Eliminate as many branches and as much extra code as possible in the
     // cached fast path, leaving only one branch here and one indirection below.
     uint32_t id = ent->getOrInvalid();
@@ -450,7 +450,7 @@ struct StaticMeta final : StaticMetaBase {
     return threadEntry->elements[id];
   }
 
-  static void getSlowReserveAndCache(
+  FOLLY_NOINLINE static void getSlowReserveAndCache(
       EntryID* ent,
       uint32_t& id,
       ThreadEntry*& threadEntry,
