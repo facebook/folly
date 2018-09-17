@@ -380,10 +380,10 @@ class rcu_domain {
   void half_sync(bool blocking, list_head& cbs);
 };
 
-extern folly::Indestructible<rcu_domain<RcuTag>> rcu_default_domain_;
+extern folly::Indestructible<rcu_domain<RcuTag>*> rcu_default_domain_;
 
 inline rcu_domain<RcuTag>* rcu_default_domain() {
-  return &(*rcu_default_domain_);
+  return *rcu_default_domain_;
 }
 
 // Main reader guard class.
