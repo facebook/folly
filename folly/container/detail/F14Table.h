@@ -47,6 +47,12 @@
 #include <folly/container/detail/F14Defaults.h>
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 
+#if FOLLY_SANITIZE_ADDRESS
+#define FOLLY_F14_TLS_IF_ASAN FOLLY_TLS
+#else
+#define FOLLY_F14_TLS_IF_ASAN
+#endif
+
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 #if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
@@ -314,6 +320,9 @@ using EmptyTagVectorType = std::aligned_storage_t<
     alignof(max_align_t)>;
 
 extern EmptyTagVectorType kEmptyTagVector;
+
+extern FOLLY_F14_TLS_IF_ASAN std::size_t asanPendingSafeInserts;
+extern FOLLY_F14_TLS_IF_ASAN std::size_t asanRehashState;
 
 template <unsigned BitCount>
 struct FullMask {
@@ -1819,13 +1828,11 @@ class F14Table : public Policy {
     }
   }
 
-  FOLLY_NOINLINE void rehashImpl(
+  FOLLY_NOINLINE void reserveImpl(
       std::size_t capacity,
       std::size_t origChunkCount,
       std::size_t origMaxSizeWithoutRehash) {
     FOLLY_SAFE_DCHECK(capacity >= size(), "");
-
-    auto origChunks = chunks_;
 
     // compute new size
     std::size_t const kInitialCapacity = 2;
@@ -1838,8 +1845,7 @@ class F14Table : public Policy {
       newMaxSizeWithoutRehash =
           (capacity < kInitialCapacity) ? kInitialCapacity : kHalfChunkCapacity;
     } else {
-      newChunkCount = nextPowTwo(
-          (capacity + Chunk::kDesiredCapacity - 1) / Chunk::kDesiredCapacity);
+      newChunkCount = nextPowTwo((capacity - 1) / Chunk::kDesiredCapacity + 1);
       newMaxSizeWithoutRehash = newChunkCount * Chunk::kDesiredCapacity;
 
       constexpr std::size_t kMaxChunksWithoutCapacityOverflow =
@@ -1851,10 +1857,21 @@ class F14Table : public Policy {
       }
     }
 
-    // is rehash needed?
-    if (origMaxSizeWithoutRehash == newMaxSizeWithoutRehash) {
-      return;
+    if (origMaxSizeWithoutRehash != newMaxSizeWithoutRehash) {
+      rehashImpl(
+          origChunkCount,
+          origMaxSizeWithoutRehash,
+          newChunkCount,
+          newMaxSizeWithoutRehash);
     }
+  }
+
+  void rehashImpl(
+      std::size_t origChunkCount,
+      std::size_t origMaxSizeWithoutRehash,
+      std::size_t newChunkCount,
+      std::size_t newMaxSizeWithoutRehash) {
+    auto origChunks = chunks_;
 
     BytePtr rawAllocation;
     auto undoState = this->beforeRehash(
@@ -1984,18 +2001,64 @@ class F14Table : public Policy {
     success = true;
   }
 
+  void asanOnReserve(std::size_t capacity) {
+    if (kIsSanitizeAddress && capacity > size()) {
+      asanPendingSafeInserts += capacity - size();
+    }
+  }
+
+  bool asanShouldAddExtraRehash() {
+    if (!kIsSanitizeAddress) {
+      return false;
+    } else if (asanPendingSafeInserts > 0) {
+      --asanPendingSafeInserts;
+      return false;
+    } else if (size() <= 1) {
+      return size() > 0;
+    } else {
+      constexpr std::size_t kBigPrime = 4294967291U;
+      auto s = (asanRehashState += kBigPrime);
+      return (s % size()) == 0;
+    }
+  }
+
+  void asanExtraRehash() {
+    auto cc = chunkMask_ + 1;
+    auto bc = bucket_count();
+    rehashImpl(cc, bc, cc, bc);
+  }
+
+  void asanOnInsert() {
+    // When running under ASAN, we add a spurious rehash with 1/size()
+    // probability before every insert.  This means that finding reference
+    // stability problems for F14Value and F14Vector is much more likely.
+    // The most common pattern that causes this is
+    //
+    //   auto& ref = map[k1]; map[k2] = foo(ref);
+    //
+    // One way to fix this is to call map.reserve(N) before such a
+    // sequence, where N is the number of keys that might be inserted
+    // within the section that retains references.
+    if (asanShouldAddExtraRehash()) {
+      asanExtraRehash();
+    }
+  }
+
  public:
   // user has no control over max_load_factor
 
   void rehash(std::size_t capacity) {
-    rehashImpl(
-        std::max<std::size_t>(capacity, size()),
-        chunkMask_ + 1,
-        bucket_count());
+    reserve(capacity);
   }
 
   void reserve(std::size_t capacity) {
-    rehash(capacity);
+    // We want to support the pattern
+    //   map.reserve(2); auto& r1 = map[k1]; auto& r2 = map[k2];
+    asanOnReserve(capacity);
+    reserveImpl(
+        std::max<std::size_t>(capacity, size()),
+        chunkMask_ + 1,
+        bucket_count());
   }
 
   // Returns true iff a rehash was performed
@@ -2003,7 +2066,7 @@ class F14Table : public Policy {
     auto capacity = size() + incoming;
     auto bc = bucket_count();
     if (capacity - 1 >= bc) {
-      rehashImpl(capacity, chunkMask_ + 1, bc);
+      reserveImpl(capacity, chunkMask_ + 1, bc);
     }
   }
 
@@ -2020,6 +2083,8 @@ class F14Table : public Policy {
         return std::make_pair(existing, false);
       }
     }
+
+    asanOnInsert();
 
     reserveForInsert();
 
@@ -2162,7 +2227,18 @@ class F14Table : public Policy {
   }
 
   void clear() noexcept {
-    clearImpl<false>();
+    if (kIsSanitizeAddress) {
+      // force recycling of heap memory
+      auto bc = bucket_count();
+      reset();
+      try {
+        reserveImpl(bc, 0, 0);
+      } catch (std::bad_alloc const&) {
+        // ASAN mode only, keep going
+      }
+    } else {
+      clearImpl<false>();
+    }
   }
 
   // Like clear(), but always frees all dynamic storage allocated

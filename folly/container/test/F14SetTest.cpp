@@ -728,7 +728,6 @@ void runInsertAndEmplace() {
     typename S::value_type k1{0};
     typename S::value_type k2{0};
     uint64_t k3 = 0;
-    uint64_t k4 = 10;
     S s;
     resetTracking();
     EXPECT_TRUE(s.emplace(k1).second);
@@ -745,8 +744,9 @@ void runInsertAndEmplace() {
     // copy convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 1, 0}), 0);
 
+    s.clear();
     resetTracking();
-    EXPECT_TRUE(s.emplace(k4).second);
+    EXPECT_TRUE(s.emplace(k3).second);
     // copy convert + move expected for successful emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 1, 1, 0}), 0);
   }
@@ -754,7 +754,6 @@ void runInsertAndEmplace() {
     typename S::value_type k1{0};
     typename S::value_type k2{0};
     uint64_t k3 = 0;
-    uint64_t k4 = 10;
     S s;
     resetTracking();
     EXPECT_TRUE(s.emplace(std::move(k1)).second);
@@ -771,8 +770,9 @@ void runInsertAndEmplace() {
     // move convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 0, 0, 1}), 0);
 
+    s.clear();
     resetTracking();
-    EXPECT_TRUE(s.emplace(std::move(k4)).second);
+    EXPECT_TRUE(s.emplace(std::move(k3)).second);
     // move convert + move expected for successful emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts.dist(Counts{0, 1, 0, 1}), 0);
   }

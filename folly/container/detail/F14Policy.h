@@ -21,6 +21,7 @@
 #include <utility>
 
 #include <folly/Memory.h>
+#include <folly/Portability.h>
 #include <folly/Unit.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
@@ -379,6 +380,12 @@ struct BasePolicy
     // out that DenseMaskIter with an empty body can be elided.
     FOLLY_SAFE_DCHECK(false, "should be disabled");
   }
+
+  void afterDestroyWithoutDeallocate(Value* addr, std::size_t n) {
+    if (kIsSanitizeAddress) {
+      memset(static_cast<void*>(addr), 0x66, sizeof(Value) * n);
+    }
+  }
 };
 
 // BaseIter is a convenience for concrete set and map implementations
@@ -615,7 +622,9 @@ class ValueContainerPolicy : public BasePolicy<
 
   void destroyItem(Item& item) {
     Alloc& a = this->alloc();
-    AllocTraits::destroy(a, std::addressof(item));
+    auto ptr = std::addressof(item);
+    AllocTraits::destroy(a, ptr);
+    this->afterDestroyWithoutDeallocate(ptr, 1);
   }
 
   template <typename V>
@@ -1189,6 +1198,7 @@ class VectorContainerPolicy : public BasePolicy<
     complainUnlessNothrowMove<Key>();
     complainUnlessNothrowMove<lift_unit_t<MappedTypeOrVoid>>();
 
+    auto origSrc = src;
     if (valueIsTriviallyCopyable()) {
       std::memcpy(static_cast<void*>(dst), src, n * sizeof(Value));
     } else {
@@ -1203,6 +1213,7 @@ class VectorContainerPolicy : public BasePolicy<
         }
       }
     }
+    this->afterDestroyWithoutDeallocate(origSrc, n);
   }
 
   template <typename P, typename V>
