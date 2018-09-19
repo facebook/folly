@@ -559,7 +559,10 @@ class StdHasher {
 // hashable objects. hash_combine_generic takes a class Hasher implementing
 // hash<T>; hash_combine uses a default hasher StdHasher that uses std::hash.
 // hash_combine_generic hashes each argument and combines those hashes in
-// an order-dependent way to yield a new hash.
+// an order-dependent way to yield a new hash; hash_range does so (also in an
+// order-dependent way) for items in the range [first, last);
+// commutative_hash_combine_* hashes values but combines them in an
+// order-independent way to yield a new hash.
 
 // This is the Hash128to64 function from Google's cityhash (available
 // under the MIT License).  We use it to reduce multiple 64 bit hashes
@@ -577,6 +580,23 @@ inline uint64_t hash_128_to_64(
   return b;
 }
 
+template <class Hash, class Value>
+uint64_t commutative_hash_combine_value_generic(
+    uint64_t seed,
+    Hash const& hasher,
+    Value const& value) {
+  auto const x = hasher(value);
+  auto const y = IsAvalanchingHasher<Hash, Value>::value ? x : twang_mix64(x);
+  // Commutative accumulator taken from this paper:
+  // https://www.preprints.org/manuscript/201710.0192/v1/download
+  return 3860031 + (seed + y) * 2779 + (seed * y * 2);
+}
+
+// hash_range combines hashes of items in the range [first, last) in an
+// __order-dependent__ fashion. To hash an unordered container (e.g.,
+// folly::dynamic, hash tables like std::unordered_map), use
+// commutative_hash_combine_range instead, which combines hashes of items
+// independent of ordering.
 template <
     class Iter,
     class Hash = std::hash<typename std::iterator_traits<Iter>::value_type>>
@@ -586,6 +606,23 @@ hash_range(Iter begin, Iter end, uint64_t hash = 0, Hash hasher = Hash()) {
     hash = hash_128_to_64(hash, hasher(*begin));
   }
   return hash;
+}
+
+template <class Hash, class Iter>
+uint64_t commutative_hash_combine_range_generic(
+    uint64_t seed,
+    Hash const& hasher,
+    Iter first,
+    Iter last) {
+  while (first != last) {
+    seed = commutative_hash_combine_value_generic(seed, hasher, *first++);
+  }
+  return seed;
+}
+
+template <class Iter>
+uint64_t commutative_hash_combine_range(Iter first, Iter last) {
+  return commutative_hash_combine_range_generic(0, Hash{}, first, last);
 }
 
 namespace detail {
@@ -616,11 +653,27 @@ size_t hash_combine_generic(
   }
 }
 
+template <typename Hash, typename... Value>
+uint64_t commutative_hash_combine_generic(
+    uint64_t seed,
+    Hash const& hasher,
+    Value const&... value) {
+  // variadic foreach:
+  uint64_t _[] = {
+      0, seed = commutative_hash_combine_value_generic(seed, hasher, value)...};
+  (void)_;
+  return seed;
+}
 
 template <typename T, typename... Ts>
 size_t hash_combine(const T& t, const Ts&... ts) noexcept(
     noexcept(hash_combine_generic(StdHasher{}, t, ts...))) {
   return hash_combine_generic(StdHasher{}, t, ts...);
+}
+
+template <typename... Value>
+uint64_t commutative_hash_combine(Value const&... value) {
+  return commutative_hash_combine_generic(0, Hash{}, value...);
 }
 } // namespace hash
 

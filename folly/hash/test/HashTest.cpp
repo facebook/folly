@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 
+#include <random>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -545,6 +546,36 @@ TEST(Hash, hash_range) {
   EXPECT_EQ(hash_vector<int32_t>({1, 2}), hash_vector<int16_t>({1, 2}));
   EXPECT_NE(hash_vector<int>({2, 1}), hash_vector<int>({1, 2}));
   EXPECT_EQ(hash_vector<int>({}), hash_vector<float>({}));
+}
+
+TEST(Hash, commutative_hash_combine) {
+  EXPECT_EQ(
+      commutative_hash_combine_value_generic(
+          folly::Hash{}(12345ul), folly::Hash{}, 6789ul),
+      commutative_hash_combine_value_generic(
+          folly::Hash{}(6789ul), folly::Hash{}, 12345ul));
+
+  std::vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::random_device rd;
+  std::mt19937 g(rd());
+  auto h = commutative_hash_combine_range(v.begin(), v.end());
+  for (int i = 0; i < 100; i++) {
+    std::shuffle(v.begin(), v.end(), g);
+    EXPECT_EQ(h, commutative_hash_combine_range(v.begin(), v.end()));
+  }
+  EXPECT_NE(
+      h,
+      commutative_hash_combine_range_generic(
+          /* seed = */ 0xdeadbeef, folly::Hash{}, v.begin(), v.end()));
+  EXPECT_NE(
+      h, commutative_hash_combine_range(v.begin(), v.begin() + (v.size() - 1)));
+
+  EXPECT_EQ(h, commutative_hash_combine(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+  EXPECT_EQ(h, commutative_hash_combine(10, 2, 3, 4, 5, 6, 7, 8, 9, 1));
+
+  EXPECT_EQ(
+      commutative_hash_combine(12345, 6789),
+      commutative_hash_combine(6789, 12345));
 }
 
 TEST(Hash, std_tuple_different_hash) {
