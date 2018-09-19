@@ -46,13 +46,6 @@
 
 #pragma once
 
-// MSVC does not support intrinsics constexpr
-#if defined(_MSC_VER)
-#define FOLLY_INTRINSIC_CONSTEXPR const
-#else
-#define FOLLY_INTRINSIC_CONSTEXPR constexpr
-#endif
-
 #include <cassert>
 #include <cinttypes>
 #include <cstdint>
@@ -86,7 +79,7 @@ constexpr std::make_unsigned_t<Dst> bits_to_unsigned(Src const s) {
 /// Return the 1-based index of the least significant bit which is set.
 /// For x > 0, the exponent in the largest power of two which does not divide x.
 template <typename T>
-inline FOLLY_INTRINSIC_CONSTEXPR unsigned int findFirstSet(T const v) {
+inline constexpr unsigned int findFirstSet(T const v) {
   using S0 = int;
   using S1 = long int;
   using S2 = long long int;
@@ -109,7 +102,7 @@ inline FOLLY_INTRINSIC_CONSTEXPR unsigned int findFirstSet(T const v) {
 /// Return the 1-based index of the most significant bit which is set.
 /// For x > 0, findLastSet(x) == 1 + floor(log2(x)).
 template <typename T>
-inline FOLLY_INTRINSIC_CONSTEXPR unsigned int findLastSet(T const v) {
+inline constexpr unsigned int findLastSet(T const v) {
   using U0 = unsigned int;
   using U1 = unsigned long int;
   using U2 = unsigned long long int;
@@ -134,7 +127,7 @@ inline FOLLY_INTRINSIC_CONSTEXPR unsigned int findLastSet(T const v) {
 ///
 /// Returns the number of bits which are set.
 template <typename T>
-inline FOLLY_INTRINSIC_CONSTEXPR unsigned int popcount(T const v) {
+inline constexpr unsigned int popcount(T const v) {
   using U0 = unsigned int;
   using U1 = unsigned long int;
   using U2 = unsigned long long int;
@@ -153,13 +146,13 @@ inline FOLLY_INTRINSIC_CONSTEXPR unsigned int popcount(T const v) {
 }
 
 template <class T>
-inline FOLLY_INTRINSIC_CONSTEXPR T nextPowTwo(T const v) {
+inline constexpr T nextPowTwo(T const v) {
   static_assert(std::is_unsigned<T>::value, "signed type");
   return v ? (T(1) << findLastSet(v - 1)) : T(1);
 }
 
 template <class T>
-inline FOLLY_INTRINSIC_CONSTEXPR T prevPowTwo(T const v) {
+inline constexpr T prevPowTwo(T const v) {
   static_assert(std::is_unsigned<T>::value, "signed type");
   return v ? (T(1) << (findLastSet(v) - 1)) : T(0);
 }
