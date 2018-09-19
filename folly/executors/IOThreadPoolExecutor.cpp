@@ -118,6 +118,13 @@ IOThreadPoolExecutor::pickThread() {
   }
   auto n = ths.size();
   if (n == 0) {
+    // XXX I think the only way this can happen is if somebody calls
+    // getEventBase (1) from one of the executor's threads while the executor
+    // is stopping or getting downsized to zero or (2) from outside the executor
+    // when it has no threads. In the first case, it's not obvious what the
+    // correct behavior should be-- do we really want to return ourselves even
+    // though we're about to exit? (The comment above seems to imply no.) In
+    // the second case, `!me` so we'll crash anyway.
     return me;
   }
   auto thread = ths[nextThread_.fetch_add(1, std::memory_order_relaxed) % n];
