@@ -2119,8 +2119,10 @@ SemiFuture<T>& SemiFuture<T>::wait(Duration dur) & {
 }
 
 template <class T>
-SemiFuture<T>&& SemiFuture<T>::wait(Duration dur) && {
-  return std::move(wait(dur));
+bool SemiFuture<T>::wait(Duration dur) && {
+  auto future = std::move(*this);
+  future.wait(dur);
+  return future.isReady();
 }
 
 template <class T>

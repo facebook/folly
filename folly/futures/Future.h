@@ -619,9 +619,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///
   /// Postconditions:
   ///
-  /// - if returns (no exception), moves-out the Try; treat `*this` as if
-  ///   `!valid()`.
-  /// - on FutureTimeout exception, `valid()` remains true.
+  /// - `valid() == false`
   Try<T> getTry(Duration dur) &&;
 
   /// Blocks the caller's thread until this Future `isReady()`, i.e., until the
@@ -654,6 +652,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<T>&& wait() &&;
 
   /// Blocks until the future is fulfilled, or `dur` elapses.
+  /// Returns true if the future was fulfilled.
   ///
   /// Preconditions:
   ///
@@ -661,24 +660,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///
   /// Postconditions:
   ///
-  /// - `valid() == true`
-  /// - `&RESULT == this`
-  /// - `isReady()` will be indeterminate - may or may not be true
-  SemiFuture<T>& wait(Duration dur) &;
-
-  /// Blocks until the future is fulfilled, or `dur` elapses.
-  ///
-  /// Preconditions:
-  ///
-  /// - `valid() == true` (else throws FutureInvalid)
-  ///
-  /// Postconditions:
-  ///
-  /// - `valid() == true` (but the calling code can trivially move-out `*this`
-  ///   by assigning or constructing the result into a distinct object).
-  /// - `&RESULT == this`
-  /// - `isReady()` will be indeterminate - may or may not be true
-  SemiFuture<T>&& wait(Duration dur) &&;
+  /// - `valid() == false`
+  bool wait(Duration dur) &&;
 
   /// Returns a Future which will call back on the other side of executor.
   Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
@@ -914,6 +897,19 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   // Throws FutureInvalid if !this->core_
   DeferredExecutor* stealDeferredExecutor() const;
+
+  /// Blocks until the future is fulfilled, or `dur` elapses.
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - `valid() == true`
+  /// - `&RESULT == this`
+  /// - `isReady()` will be indeterminate - may or may not be true
+  SemiFuture<T>& wait(Duration dur) &;
 
   static void releaseDeferredExecutor(Core* core);
 };

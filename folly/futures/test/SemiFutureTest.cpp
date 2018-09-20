@@ -494,26 +494,6 @@ TEST(SemiFuture, SimpleTimedGet) {
       std::move(sf).get(std::chrono::milliseconds(100)), FutureTimeout);
 }
 
-TEST(SemiFuture, SimpleTimedWait) {
-  Promise<folly::Unit> p;
-  auto sf = p.getSemiFuture();
-  sf.wait(std::chrono::milliseconds(100));
-  EXPECT_FALSE(sf.isReady());
-  p.setValue();
-  EXPECT_TRUE(sf.isReady());
-}
-
-TEST(SemiFuture, SimpleTimedMultipleWait) {
-  Promise<folly::Unit> p;
-  auto sf = p.getSemiFuture();
-  sf.wait(std::chrono::milliseconds(100));
-  sf.wait(std::chrono::milliseconds(100));
-  EXPECT_FALSE(sf.isReady());
-  p.setValue();
-  sf.wait(std::chrono::milliseconds(100));
-  EXPECT_TRUE(sf.isReady());
-}
-
 TEST(SemiFuture, SimpleTimedGetViaFromSemiFuture) {
   TimedDrivableExecutor e2;
   Promise<folly::Unit> p;
@@ -629,29 +609,6 @@ TEST(SemiFuture, DeferWithGetTimedGet) {
   EXPECT_THROW(
       std::move(sf).get(std::chrono::milliseconds(100)), FutureTimeout);
   ASSERT_EQ(innerResult, 0);
-}
-
-TEST(SemiFuture, DeferWithGetTimedWait) {
-  Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { return 17; });
-  ASSERT_FALSE(sf.isReady());
-  sf.wait(std::chrono::milliseconds(100));
-  ASSERT_FALSE(sf.isReady());
-  p.setValue();
-  ASSERT_EQ(std::move(sf).get(), 17);
-}
-
-TEST(SemiFuture, DeferWithGetMultipleTimedWait) {
-  Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { return 17; });
-  sf.wait(std::chrono::milliseconds(100));
-  sf.wait(std::chrono::milliseconds(100));
-  ASSERT_FALSE(sf.isReady());
-  p.setValue();
-  sf.wait(std::chrono::milliseconds(100));
-  ASSERT_EQ(std::move(sf).get(), 17);
 }
 
 TEST(SemiFuture, DeferWithVia) {
@@ -1029,11 +986,12 @@ TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
     promise1.setValue(1);
     promise2.setValue(2);
 
-    EXPECT_TRUE(future.wait(std::chrono::milliseconds{100}).isReady());
+    auto result = std::move(future).getTry(std::chrono::milliseconds{100});
 
-    auto value = std::move(future).get();
-    EXPECT_EQ(2, *std::get<0>(value));
-    EXPECT_EQ(4, *std::get<1>(value));
+    EXPECT_TRUE(result.hasValue());
+
+    EXPECT_EQ(2, *std::get<0>(*result));
+    EXPECT_EQ(4, *std::get<1>(*result));
   }
 
   {
