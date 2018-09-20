@@ -154,7 +154,7 @@ typename std::
 
 /** Make a Future out of a Try */
 template <class T>
-SemiFuture<T> makeSemiFuture(Try<T>&& t);
+SemiFuture<T> makeSemiFuture(Try<T> t);
 
 /**
   Make a completed Future by moving in a value. e.g.
@@ -252,7 +252,7 @@ typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::
        valid Future where necessary.
  */
 template <class T>
-Future<T> makeFuture(Try<T>&& t);
+Future<T> makeFuture(Try<T> t);
 
 /*
  * Return a new Future that will call back on the given Executor.

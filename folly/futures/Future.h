@@ -885,7 +885,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using typename Base::Core;
 
   template <class T2>
-  friend SemiFuture<T2> makeSemiFuture(Try<T2>&&);
+  friend SemiFuture<T2> makeSemiFuture(Try<T2>);
 
   explicit SemiFuture(Core* obj) : Base(obj) {}
 
@@ -1901,7 +1901,7 @@ class Future : private futures::detail::FutureBase<T> {
       : Base(futures::detail::EmptyConstruct{}) {}
 
   template <class T2>
-  friend Future<T2> makeFuture(Try<T2>&&);
+  friend Future<T2> makeFuture(Try<T2>);
 
   /// Repeat the given future (i.e., the computation it contains) n times.
   ///

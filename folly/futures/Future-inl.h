@@ -764,7 +764,7 @@ typename std::
 }
 
 template <class T>
-SemiFuture<T> makeSemiFuture(Try<T>&& t) {
+SemiFuture<T> makeSemiFuture(Try<T> t) {
   return SemiFuture<T>(SemiFuture<T>::Core::make(std::move(t)));
 }
 
@@ -1372,7 +1372,7 @@ typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::
 }
 
 template <class T>
-Future<T> makeFuture(Try<T>&& t) {
+Future<T> makeFuture(Try<T> t) {
   return Future<T>(Future<T>::Core::make(std::move(t)));
 }
 
