@@ -117,13 +117,16 @@ static uint32_t gf_multiply_crc32_hw(uint64_t, uint64_t, uint32_t) {
 
 #endif
 
+static constexpr uint32_t crc32c_m = 0x82f63b78;
+static constexpr uint32_t crc32_m = 0xedb88320;
+
 /*
  * Pre-calculated powers tables for crc32c and crc32.
  */
 static constexpr std::array<uint32_t, 62> const crc32c_powers =
-    gf_powers_make<0x82f63b78>{}(make_index_sequence<62>{});
+    gf_powers_make<crc32c_m>{}(make_index_sequence<62>{});
 static constexpr std::array<uint32_t, 62> const crc32_powers =
-    gf_powers_make<0xedb88320>{}(make_index_sequence<62>{});
+    gf_powers_make<crc32_m>{}(make_index_sequence<62>{});
 
 template <typename F>
 static uint32_t crc32_append_zeroes(
@@ -157,26 +160,25 @@ namespace detail {
 
 uint32_t crc32_combine_sw(uint32_t crc1, uint32_t crc2, size_t crc2len) {
   return crc2 ^
-      crc32_append_zeroes(
-             gf_multiply_sw, crc1, crc2len, 0xEDB88320, crc32_powers);
+      crc32_append_zeroes(gf_multiply_sw, crc1, crc2len, crc32_m, crc32_powers);
 }
 
 uint32_t crc32_combine_hw(uint32_t crc1, uint32_t crc2, size_t crc2len) {
   return crc2 ^
       crc32_append_zeroes(
-             gf_multiply_crc32_hw, crc1, crc2len, 0xEDB88320, crc32_powers);
+             gf_multiply_crc32_hw, crc1, crc2len, crc32_m, crc32_powers);
 }
 
 uint32_t crc32c_combine_sw(uint32_t crc1, uint32_t crc2, size_t crc2len) {
   return crc2 ^
       crc32_append_zeroes(
-             gf_multiply_sw, crc1, crc2len, 0x82F63B78, crc32c_powers);
+             gf_multiply_sw, crc1, crc2len, crc32c_m, crc32c_powers);
 }
 
 uint32_t crc32c_combine_hw(uint32_t crc1, uint32_t crc2, size_t crc2len) {
   return crc2 ^
       crc32_append_zeroes(
-             gf_multiply_crc32c_hw, crc1, crc2len, 0x82F63B78, crc32c_powers);
+             gf_multiply_crc32c_hw, crc1, crc2len, crc32c_m, crc32c_powers);
 }
 
 } // namespace detail
