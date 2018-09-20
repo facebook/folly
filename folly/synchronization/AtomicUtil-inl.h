@@ -25,6 +25,10 @@
 #include <tuple>
 #include <type_traits>
 
+#if _WIN32
+#include <intrin.h>
+#endif
+
 namespace folly {
 namespace detail {
 
