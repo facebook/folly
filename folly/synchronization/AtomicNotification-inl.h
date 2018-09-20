@@ -99,7 +99,7 @@ template <template <typename...> class Atom, typename Integer, typename... Args>
 void atomic_notify_one_impl(const Atom<Integer, Args...>* atomic) {
   static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
   parkingLot.unpark(atomic, [&](const auto& data) {
-    assert(data == std::numeric_limits<std::uint32_t>::max());
+    FOLLY_SAFE_DCHECK(data == std::numeric_limits<std::uint32_t>::max(), "");
     return UnparkControl::RemoveBreak;
   });
 }
@@ -114,7 +114,7 @@ template <template <typename...> class Atom, typename Integer, typename... Args>
 void atomic_notify_all_impl(const Atom<Integer, Args...>* atomic) {
   static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
   parkingLot.unpark(atomic, [&](const auto& data) {
-    assert(data == std::numeric_limits<std::uint32_t>::max());
+    FOLLY_SAFE_DCHECK(data == std::numeric_limits<std::uint32_t>::max(), "");
     return UnparkControl::RemoveContinue;
   });
 }
