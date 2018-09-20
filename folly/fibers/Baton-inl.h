@@ -34,7 +34,7 @@ class Baton::FiberWaiter : public Baton::Waiter {
   Fiber* fiber_{nullptr};
 };
 
-inline Baton::Baton() : Baton(NO_WAITER) {
+inline Baton::Baton() noexcept : Baton(NO_WAITER) {
   assert(Baton(NO_WAITER).futex_.futex == static_cast<uint32_t>(NO_WAITER));
   assert(Baton(POSTED).futex_.futex == static_cast<uint32_t>(POSTED));
   assert(Baton(TIMEOUT).futex_.futex == static_cast<uint32_t>(TIMEOUT));

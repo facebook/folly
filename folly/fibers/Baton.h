@@ -48,9 +48,9 @@ class Baton {
     virtual ~Waiter() {}
   };
 
-  Baton();
+  Baton() noexcept;
 
-  ~Baton() {}
+  ~Baton() noexcept = default;
 
   bool ready() const {
     auto state = waiter_.load();

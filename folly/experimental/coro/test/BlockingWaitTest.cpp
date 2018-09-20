@@ -22,6 +22,8 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Utils.h>
+#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerMap.h>
 #include <folly/portability/GTest.h>
 
 #include <memory>
@@ -222,6 +224,24 @@ TEST(BlockingWait, moveCountingAwaitableReady) {
   // 3. Move value to Try<T>
   // 4. Move value to blockingWait() return-value
   EXPECT_GE(4, result.count_);
+}
+
+TEST(BlockingWait, WaitInFiber) {
+  SimplePromise<int> promise;
+  folly::EventBase evb;
+  auto& fm = folly::fibers::getFiberManager(evb);
+
+  auto future =
+      fm.addTaskFuture([&] { return folly::coro::blockingWait(promise); });
+
+  evb.loopOnce();
+  EXPECT_FALSE(future.isReady());
+
+  promise.emplace(42);
+
+  evb.loopOnce();
+  EXPECT_TRUE(future.isReady());
+  EXPECT_EQ(42, std::move(future).get());
 }
 
 #endif

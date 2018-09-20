@@ -17,6 +17,7 @@
 
 #include <folly/Try.h>
 #include <folly/experimental/coro/Traits.h>
+#include <folly/fibers/Baton.h>
 #include <folly/synchronization/Baton.h>
 
 #include <cassert>
@@ -64,7 +65,7 @@ class BlockingWaitPromiseBase {
   }
 
  private:
-  folly::Baton<> baton_;
+  folly::fibers::Baton baton_;
 };
 
 template <typename T>
