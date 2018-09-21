@@ -37,39 +37,55 @@ class Future {
     other.promise_ = nullptr;
   }
 
-  bool await_ready() {
-    return promise_->state_.load(std::memory_order_acquire) ==
-        Promise<T>::State::HAS_RESULT;
-  }
+  class Awaiter {
+   public:
+    explicit Awaiter(Promise<T>* promise) noexcept : promise_(promise) {}
 
-  bool await_suspend(std::experimental::coroutine_handle<> awaiter) {
-    auto state = promise_->state_.load(std::memory_order_acquire);
+    bool await_ready() noexcept {
+      return promise_->isReady();
+    }
 
-    if (state == Promise<T>::State::HAS_RESULT) {
+    bool await_suspend(std::experimental::coroutine_handle<> awaiter) noexcept {
+      auto state = promise_->state_.load(std::memory_order_acquire);
+
+      if (state == Promise<T>::State::HAS_RESULT) {
+        return false;
+      }
+      DCHECK(state == Promise<T>::State::EMPTY);
+
+      promise_->awaiter_ = std::move(awaiter);
+
+      if (promise_->state_.compare_exchange_strong(
+              state,
+              Promise<T>::State::HAS_AWAITER,
+              std::memory_order_release,
+              std::memory_order_acquire)) {
+        return true;
+      }
+
+      DCHECK(promise_->state_ == Promise<T>::State::HAS_RESULT);
       return false;
     }
-    DCHECK(state == Promise<T>::State::EMPTY);
 
-    promise_->awaiter_ = std::move(awaiter);
-
-    if (promise_->state_.compare_exchange_strong(
-            state,
-            Promise<T>::State::HAS_AWAITER,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
-      return true;
+    T await_resume() {
+      DCHECK(promise_->state_ == Promise<T>::State::HAS_RESULT);
+      return std::move(promise_->result_).value();
     }
 
-    DCHECK(promise_->state_ == Promise<T>::State::HAS_RESULT);
-    return false;
-  }
+   private:
+    Promise<T>* promise_;
+  };
 
-  typename std::add_lvalue_reference<T>::type await_resume() {
-    DCHECK(promise_->state_ == Promise<T>::State::HAS_RESULT);
-    return *promise_->result_;
+  Awaiter operator co_await() && noexcept {
+    return Awaiter{promise_};
   }
 
   auto toFuture() &&;
+
+  bool isReady() const noexcept {
+    DCHECK(promise_);
+    return promise_->isReady();
+  }
 
   ~Future() {
     if (!promise_) {
@@ -109,7 +125,7 @@ class Future {
 
 namespace detail {
 inline SemiFuture<Unit> toSemiFuture(Future<void> future) {
-  co_await future;
+  co_await std::move(future);
   co_return folly::unit;
 }
 

@@ -863,7 +863,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <typename Awaitable>
   static SemiFuture fromAwaitable(Awaitable&& awaitable) {
     return [](Awaitable awaitable) -> SemiFuture {
-      co_return co_await awaitable;
+      co_return co_await std::forward<Awaitable>(awaitable);
     }(std::forward<Awaitable>(awaitable));
   }
 #endif
@@ -1996,10 +1996,11 @@ std::pair<Promise<T>, Future<T>> makePromiseContract(Executor* e) {
 
 namespace folly {
 namespace detail {
+
 template <typename T>
 class FutureAwaitable {
  public:
-  explicit FutureAwaitable(folly::Future<T>&& future)
+  explicit FutureAwaitable(folly::Future<T>&& future) noexcept
       : future_(std::move(future)) {}
 
   bool await_ready() const {
@@ -2007,49 +2008,23 @@ class FutureAwaitable {
   }
 
   T await_resume() {
-    return std::move(future_.value());
+    return std::move(future_).value();
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([h](Try<T>&&) mutable { h(); });
+    future_.setCallback_([h](Try<T>&&) mutable { h.resume(); });
   }
 
  private:
   folly::Future<T> future_;
 };
 
-template <typename T>
-class FutureRefAwaitable {
- public:
-  explicit FutureRefAwaitable(folly::Future<T>& future) : future_(future) {}
-
-  bool await_ready() const {
-    return future_.isReady();
-  }
-
-  T await_resume() {
-    return std::move(future_.value());
-  }
-
-  void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([h](Try<T>&&) mutable { h(); });
-  }
-
- private:
-  folly::Future<T>& future_;
-};
 } // namespace detail
 
 template <typename T>
-inline detail::FutureRefAwaitable<T>
-/* implicit */ operator co_await(Future<T>& future) {
-  return detail::FutureRefAwaitable<T>(future);
-}
-
-template <typename T>
-inline detail::FutureRefAwaitable<T>
-/* implicit */ operator co_await(Future<T>&& future) {
-  return detail::FutureRefAwaitable<T>(future);
+inline detail::FutureAwaitable<T>
+/* implicit */ operator co_await(Future<T>&& future) noexcept {
+  return detail::FutureAwaitable<T>(std::move(future));
 }
 } // namespace folly
 #endif

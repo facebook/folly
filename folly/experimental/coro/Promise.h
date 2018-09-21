@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <type_traits>
+
 #include <glog/logging.h>
 
 #include <folly/ExceptionWrapper.h>
@@ -47,7 +49,10 @@ class PromiseBase {
  public:
   template <typename U>
   void return_value(U&& value) {
-    result_ = Try<T>(std::forward<U>(value));
+    static_assert(
+        std::is_convertible<U&&, T>::value,
+        "Returned value is not convertible to task result type");
+    result_.emplace(static_cast<U&&>(value));
   }
 
  protected:
@@ -80,23 +85,23 @@ class Promise : public PromiseBase<T> {
     return {};
   }
 
+  // Don't allow awaiting lvalues of these types.
+  template <typename U>
+  void await_transform(folly::SemiFuture<U>& future) = delete;
+  template <typename U>
+  void await_transform(folly::Future<U>& future) = delete;
+  template <typename U>
+  void await_transform(Future<U>& future) = delete;
+  template <typename U>
+  void await_transform(Task<U>& task) = delete;
+
   template <typename U>
   auto await_transform(Task<U>&& task) {
     return std::move(task).viaInline(executor_);
   }
 
   template <typename U>
-  decltype(auto) await_transform(folly::SemiFuture<U>& future) {
-    return future.via(executor_);
-  }
-
-  template <typename U>
   decltype(auto) await_transform(folly::SemiFuture<U>&& future) {
-    return future.via(executor_);
-  }
-
-  template <typename U>
-  decltype(auto) await_transform(folly::Future<U>& future) {
     return future.via(executor_);
   }
 
@@ -106,21 +111,12 @@ class Promise : public PromiseBase<T> {
   }
 
   template <typename U>
-  auto await_transform(Future<U>& future) {
-    if (future.promise_->executor_ == executor_) {
-      return createAwaitWrapper(future);
-    }
-
-    return createAwaitWrapper(future, executor_);
-  }
-
-  template <typename U>
   auto await_transform(Future<U>&& future) {
     if (future.promise_->executor_ == executor_) {
-      return createAwaitWrapper(future);
+      return createAwaitWrapper(std::move(future));
     }
 
-    return createAwaitWrapper(future, executor_);
+    return createAwaitWrapper(std::move(future), executor_);
   }
 
   template <typename U>
@@ -145,6 +141,11 @@ class Promise : public PromiseBase<T> {
 
   void start() {
     std::experimental::coroutine_handle<Promise>::from_promise (*this)();
+  }
+
+  bool isReady() const noexcept {
+    return state_.load(std::memory_order_acquire) ==
+        Promise<T>::State::HAS_RESULT;
   }
 
  private:

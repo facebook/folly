@@ -150,9 +150,9 @@ TEST(Mutex, ThreadSafety) {
   auto f2 = makeTask().scheduleVia(&threadPool);
   auto f3 = makeTask().scheduleVia(&threadPool);
 
-  coro::blockingWait(f1);
-  coro::blockingWait(f2);
-  coro::blockingWait(f3);
+  coro::blockingWait(std::move(f1));
+  coro::blockingWait(std::move(f2));
+  coro::blockingWait(std::move(f3));
 
   CHECK_EQ(30'000, value);
 }

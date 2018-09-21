@@ -35,12 +35,12 @@ TEST(Coro, Basic) {
   ManualExecutor executor;
   auto future = via(&executor, task42());
 
-  EXPECT_FALSE(future.await_ready());
+  EXPECT_FALSE(future.isReady());
 
   executor.drive();
 
-  EXPECT_TRUE(future.await_ready());
-  EXPECT_EQ(42, folly::coro::blockingWait(future));
+  EXPECT_TRUE(future.isReady());
+  EXPECT_EQ(42, folly::coro::blockingWait(std::move(future)));
 }
 
 TEST(Coro, BasicFuture) {
@@ -62,16 +62,26 @@ TEST(Coro, Basic2) {
   ManualExecutor executor;
   auto future = via(&executor, taskVoid());
 
-  EXPECT_FALSE(future.await_ready());
+  EXPECT_FALSE(future.isReady());
 
   executor.drive();
 
-  EXPECT_TRUE(future.await_ready());
+  EXPECT_TRUE(future.isReady());
 }
 
 coro::Task<void> taskSleep() {
   (void)co_await futures::sleep(std::chrono::seconds{1});
   co_return;
+}
+
+TEST(Coro, TaskOfMoveOnly) {
+  auto f = []() -> coro::Task<std::unique_ptr<int>> {
+    co_return std::make_unique<int>(123);
+  };
+
+  auto p = coro::blockingWait(f().scheduleVia(&InlineExecutor::instance()));
+  EXPECT_TRUE(p);
+  EXPECT_EQ(123, *p);
 }
 
 TEST(Coro, Sleep) {
@@ -80,9 +90,9 @@ TEST(Coro, Sleep) {
   auto startTime = std::chrono::steady_clock::now();
   auto future = via(evbThread.getEventBase(), taskSleep());
 
-  EXPECT_FALSE(future.await_ready());
+  EXPECT_FALSE(future.isReady());
 
-  coro::blockingWait(future);
+  coro::blockingWait(std::move(future));
 
   // The total time should be roughly 1 second. Some builds, especially
   // optimized ones, may result in slightly less than 1 second, so we perform
@@ -90,8 +100,6 @@ TEST(Coro, Sleep) {
   auto totalTime = std::chrono::steady_clock::now() - startTime;
   EXPECT_GE(
       chrono::round<std::chrono::seconds>(totalTime), std::chrono::seconds{1});
-
-  EXPECT_TRUE(future.await_ready());
 }
 
 coro::Task<int> taskException() {
@@ -103,12 +111,12 @@ TEST(Coro, Throw) {
   ManualExecutor executor;
   auto future = via(&executor, taskException());
 
-  EXPECT_FALSE(future.await_ready());
+  EXPECT_FALSE(future.isReady());
 
   executor.drive();
 
-  EXPECT_TRUE(future.await_ready());
-  EXPECT_THROW(coro::blockingWait(future), std::runtime_error);
+  EXPECT_TRUE(future.isReady());
+  EXPECT_THROW(coro::blockingWait(std::move(future)), std::runtime_error);
 }
 
 TEST(Coro, FutureThrow) {
@@ -137,7 +145,7 @@ TEST(Coro, LargeStack) {
   ScopedEventBaseThread evbThread;
   auto future = via(evbThread.getEventBase(), taskRecursion(5000));
 
-  EXPECT_EQ(5000, coro::blockingWait(future));
+  EXPECT_EQ(5000, coro::blockingWait(std::move(future)));
 }
 
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
@@ -163,7 +171,7 @@ TEST(Coro, NestedThreads) {
   ScopedEventBaseThread evbThread;
   auto future = via(evbThread.getEventBase(), taskThread());
 
-  EXPECT_EQ(42, coro::blockingWait(future));
+  EXPECT_EQ(42, coro::blockingWait(std::move(future)));
 }
 
 coro::Task<int> taskYield(Executor* executor) {
@@ -171,12 +179,12 @@ coro::Task<int> taskYield(Executor* executor) {
   EXPECT_EQ(executor, currentExecutor);
 
   auto future = via(currentExecutor, task42());
-  EXPECT_FALSE(future.await_ready());
+  EXPECT_FALSE(future.isReady());
 
   co_await coro::yield();
 
-  EXPECT_TRUE(future.await_ready());
-  co_return co_await future;
+  EXPECT_TRUE(future.isReady());
+  co_return co_await std::move(future);
 }
 
 TEST(Coro, CurrentExecutor) {
@@ -184,7 +192,7 @@ TEST(Coro, CurrentExecutor) {
   auto future =
       via(evbThread.getEventBase(), taskYield(evbThread.getEventBase()));
 
-  EXPECT_EQ(42, coro::blockingWait(future));
+  EXPECT_EQ(42, coro::blockingWait(std::move(future)));
 }
 
 coro::Task<void> taskTimedWait() {
@@ -286,17 +294,17 @@ TEST(Coro, Baton) {
   fibers::Baton baton;
   auto future = via(&executor, taskBaton(baton));
 
-  EXPECT_FALSE(future.await_ready());
+  EXPECT_FALSE(future.isReady());
 
   executor.run();
 
-  EXPECT_FALSE(future.await_ready());
+  EXPECT_FALSE(future.isReady());
 
   baton.post();
   executor.run();
 
-  EXPECT_TRUE(future.await_ready());
-  EXPECT_EQ(42, coro::blockingWait(future));
+  EXPECT_TRUE(future.isReady());
+  EXPECT_EQ(42, coro::blockingWait(std::move(future)));
 }
 
 #endif
