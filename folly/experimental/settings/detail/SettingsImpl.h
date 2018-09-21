@@ -25,12 +25,10 @@
 #include <folly/Range.h>
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
+#include <folly/experimental/settings/SettingsMetadata.h>
 
 namespace folly {
 namespace settings {
-
-struct SettingMetadata;
-
 namespace detail {
 
 /**
@@ -130,10 +128,10 @@ class SettingCore : public SettingCoreBase {
   }
 
   SettingCore(
-      const SettingMetadata& meta,
+      SettingMetadata meta,
       T defaultValue,
       std::atomic<uint64_t>& trivialStorage)
-      : meta_(meta),
+      : meta_(std::move(meta)),
         defaultValue_(std::move(defaultValue)),
         trivialStorage_(trivialStorage),
         localValue_([]() {
@@ -146,7 +144,7 @@ class SettingCore : public SettingCoreBase {
   }
 
  private:
-  const SettingMetadata& meta_;
+  SettingMetadata meta_;
   const T defaultValue_;
 
   SharedMutex globalLock_;

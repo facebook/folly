@@ -19,47 +19,11 @@
 #include <string>
 
 #include <folly/Range.h>
+#include <folly/experimental/settings/SettingsMetadata.h>
 #include <folly/experimental/settings/detail/SettingsImpl.h>
 
 namespace folly {
 namespace settings {
-
-/**
- * Static information about the setting definition
- */
-struct SettingMetadata {
-  /**
-   * Project string.
-   */
-  folly::StringPiece project;
-
-  /**
-   * Setting name within the project.
-   */
-  folly::StringPiece name;
-
-  /**
-   * String representation of the type.
-   */
-  folly::StringPiece typeStr;
-
-  /**
-   * typeid() of the type.
-   */
-  const std::type_info& typeId;
-
-  /**
-   * String representation of the default value.
-   * (note: string literal default values will be stringified with quotes)
-   */
-  folly::StringPiece defaultStr;
-
-  /**
-   * Setting description field.
-   */
-  folly::StringPiece description;
-};
-
 namespace detail {
 
 template <class T>
@@ -99,11 +63,9 @@ class Setting {
       SettingMetadata meta,
       T defaultValue,
       std::atomic<uint64_t>& trivialStorage)
-      : meta_(std::move(meta)),
-        core_(meta_, std::move(defaultValue), trivialStorage) {}
+      : core_(std::move(meta), std::move(defaultValue), trivialStorage) {}
 
  private:
-  SettingMetadata meta_;
   SettingCore<T> core_;
 };
 
