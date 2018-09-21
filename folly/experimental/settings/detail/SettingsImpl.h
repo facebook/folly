@@ -120,7 +120,14 @@ class SettingCore : public SettingCoreBase {
       Indestructible<std::pair<size_t, std::shared_ptr<Contents>>>>>
       localValue_;
 
-  std::shared_ptr<Contents>& tlValue() {
+  FOLLY_ALWAYS_INLINE std::shared_ptr<Contents>& tlValue() {
+    auto& value = ***localValue_;
+    if (LIKELY(value.first == *globalVersion_)) {
+      return value.second;
+    }
+    return tlValueSlow();
+  }
+  FOLLY_NOINLINE std::shared_ptr<Contents>& tlValueSlow() {
     auto& value = ***localValue_;
     while (value.first < *globalVersion_) {
       /* If this destroys the old value, do it without holding the lock */
