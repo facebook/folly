@@ -26,8 +26,12 @@ namespace folly {
 namespace settings {
 namespace detail {
 
-template <class T>
-class Setting {
+/**
+ * @param TrivialPtr location of the small type storage.  Optimization
+ *   for better inlining.
+ */
+template <class T, std::atomic<uint64_t>* TrivialPtr>
+class SettingWrapper {
  public:
   /**
    * Returns the setting's current value.
@@ -39,7 +43,7 @@ class Setting {
    * here after some amount of time (on the order of minutes).
    */
   std::conditional_t<IsSmallPOD<T>::value, T, const T&> operator*() const {
-    return core_.get();
+    return core_.getWithHint(*TrivialPtr);
   }
   const T* operator->() const {
     return &core_.getSlow();
@@ -59,14 +63,10 @@ class Setting {
     core_.set(t, reason);
   }
 
-  Setting(
-      SettingMetadata meta,
-      T defaultValue,
-      std::atomic<uint64_t>& trivialStorage)
-      : core_(std::move(meta), std::move(defaultValue), trivialStorage) {}
+  explicit SettingWrapper(SettingCore<T>& core) : core_(core) {}
 
  private:
-  SettingCore<T> core_;
+  SettingCore<T>& core_;
 };
 
 /* C++20 has std::type_indentity */
@@ -92,21 +92,25 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
  *
  * Requires a trailing semicolon.
  */
-#define FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__(                            \
-    _project, _name, _Type, _overloadType)                             \
-  extern std::atomic<folly::settings::detail::Setting<_Type>*>         \
-      FOLLY_SETTINGS_CACHE__##_project##_##_name;                      \
-  folly::settings::detail::Setting<_Type>&                             \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name();                     \
-  FOLLY_ALWAYS_INLINE folly::settings::detail::Setting<_Type>&         \
-      FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(_overloadType) { \
-    if (!FOLLY_SETTINGS_CACHE__##_project##_##_name.load()) {          \
-      FOLLY_SETTINGS_CACHE__##_project##_##_name.store(                \
-          &FOLLY_SETTINGS_FUNC__##_project##_##_name());               \
-    }                                                                  \
-    return *FOLLY_SETTINGS_CACHE__##_project##_##_name.load();         \
-  }                                                                    \
-  folly::settings::detail::Setting<_Type>&                             \
+#define FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__(                                   \
+    _project, _name, _Type, _overloadType)                                    \
+  extern std::atomic<folly::settings::detail::SettingCore<_Type>*>            \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name;                             \
+  extern std::atomic<uint64_t> FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;  \
+  folly::settings::detail::SettingCore<_Type>&                                \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name();                            \
+  FOLLY_ALWAYS_INLINE auto FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(   \
+      _overloadType) {                                                        \
+    if (!FOLLY_SETTINGS_CACHE__##_project##_##_name.load()) {                 \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name.store(                       \
+          &FOLLY_SETTINGS_FUNC__##_project##_##_name());                      \
+    }                                                                         \
+    return folly::settings::detail::                                          \
+        SettingWrapper<_Type, &FOLLY_SETTINGS_TRIVIAL__##_project##_##_name>( \
+            *FOLLY_SETTINGS_CACHE__##_project##_##_name.load());              \
+  }                                                                           \
+  /* This is here just to force a semicolon */                                \
+  folly::settings::detail::SettingCore<_Type>&                                \
       FOLLY_SETTINGS_FUNC__##_project##_##_name()
 
 } // namespace detail
@@ -136,7 +140,7 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
      Aggregate all off these together in a single section for better TLB      \
      and cache locality. */                                                   \
   __attribute__((__section__(".folly.settings.cache")))                       \
-      std::atomic<folly::settings::detail::Setting<_Type>*>                   \
+      std::atomic<folly::settings::detail::SettingCore<_Type>*>               \
           FOLLY_SETTINGS_CACHE__##_project##_##_name;                         \
   /* Location for the small value cache (if _Type is small and trivial).      \
      Intentionally located right after the pointer cache above to take        \
@@ -144,9 +148,9 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
   __attribute__((__section__(".folly.settings.cache"))) std::atomic<uint64_t> \
       FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                           \
   /* Meyers singleton to avoid SIOF */                                        \
-  FOLLY_NOINLINE folly::settings::detail::Setting<_Type>&                     \
+  FOLLY_NOINLINE folly::settings::detail::SettingCore<_Type>&                 \
       FOLLY_SETTINGS_FUNC__##_project##_##_name() {                           \
-    static folly::Indestructible<folly::settings::detail::Setting<_Type>>     \
+    static folly::Indestructible<folly::settings::detail::SettingCore<_Type>> \
         setting(                                                              \
             folly::settings::SettingMetadata{                                 \
                 #_project, #_name, #_Type, typeid(_Type), #_def, _desc},      \

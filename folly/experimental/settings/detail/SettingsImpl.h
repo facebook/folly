@@ -92,8 +92,15 @@ class SettingCore : public SettingCoreBase {
     return meta_;
   }
 
-  std::conditional_t<IsSmallPOD<T>::value, T, const T&> get() const {
-    return getImpl(IsSmallPOD<T>(), trivialStorage_);
+  /**
+   * @param trivialStorage must refer to the same location
+   *   as the internal trivialStorage_.  This hint will
+   *   generate better inlined code since the address is known
+   *   at compile time at the callsite.
+   */
+  std::conditional_t<IsSmallPOD<T>::value, T, const T&> getWithHint(
+      std::atomic<uint64_t>& trivialStorage) const {
+    return getImpl(IsSmallPOD<T>(), trivialStorage);
   }
   const T& getSlow() const {
     return getImpl(std::false_type{}, trivialStorage_);
