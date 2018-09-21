@@ -66,17 +66,19 @@ template <class T>
 class Setting {
  public:
   /**
-   * Returns the setting's current value.  Note that the returned
-   * reference is not guaranteed to be long-lived and should not be
-   * saved anywhere. In particular, a set() call might invalidate a
-   * reference obtained here after some amount of time (on the order
-   * of minutes).
+   * Returns the setting's current value.
+   *
+   * As an optimization, returns by value for small types, and by
+   * const& for larger types.  Note that the returned reference is not
+   * guaranteed to be long-lived and should not be saved anywhere. In
+   * particular, a set() call might invalidate a reference obtained
+   * here after some amount of time (on the order of minutes).
    */
-  const T& operator*() const {
+  std::conditional_t<IsSmallPOD<T>::value, T, const T&> operator*() const {
     return core_.get();
   }
   const T* operator->() const {
-    return &core_.get();
+    return &core_.getSlow();
   }
 
   /**
@@ -93,8 +95,12 @@ class Setting {
     core_.set(t, reason);
   }
 
-  Setting(SettingMetadata meta, T defaultValue)
-      : meta_(std::move(meta)), core_(meta_, std::move(defaultValue)) {}
+  Setting(
+      SettingMetadata meta,
+      T defaultValue,
+      std::atomic<uint64_t>& trivialStorage)
+      : meta_(std::move(meta)),
+        core_(meta_, std::move(defaultValue), trivialStorage) {}
 
  private:
   SettingMetadata meta_;
@@ -163,26 +169,32 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
  * @param _def   default value for the setting
  * @param _desc  setting documentation
  */
-#define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _desc)            \
-  /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__. \
-     Aggregate all off these together in a single section for better TLB     \
-     and cache locality. */                                                  \
-  __attribute__((__section__(".folly.settings.cache")))                      \
-      std::atomic<folly::settings::detail::Setting<_Type>*>                  \
-          FOLLY_SETTINGS_CACHE__##_project##_##_name;                        \
-  /* Meyers singleton to avoid SIOF */                                       \
-  FOLLY_NOINLINE folly::settings::detail::Setting<_Type>&                    \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name() {                          \
-    static folly::Indestructible<folly::settings::detail::Setting<_Type>>    \
-        setting(                                                             \
-            folly::settings::SettingMetadata{                                \
-                #_project, #_name, #_Type, typeid(_Type), #_def, _desc},     \
-            folly::settings::detail::TypeIdentityT<_Type>{_def});            \
-    return *setting;                                                         \
-  }                                                                          \
-  /* Ensure the setting is registered even if not used in program */         \
-  auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                          \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name();                           \
+#define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _desc)             \
+  /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__.  \
+     Aggregate all off these together in a single section for better TLB      \
+     and cache locality. */                                                   \
+  __attribute__((__section__(".folly.settings.cache")))                       \
+      std::atomic<folly::settings::detail::Setting<_Type>*>                   \
+          FOLLY_SETTINGS_CACHE__##_project##_##_name;                         \
+  /* Location for the small value cache (if _Type is small and trivial).      \
+     Intentionally located right after the pointer cache above to take        \
+     advantage of the prefetching */                                          \
+  __attribute__((__section__(".folly.settings.cache"))) std::atomic<uint64_t> \
+      FOLLY_SETTINGS_TRIVIAL__##_project##_##_name;                           \
+  /* Meyers singleton to avoid SIOF */                                        \
+  FOLLY_NOINLINE folly::settings::detail::Setting<_Type>&                     \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name() {                           \
+    static folly::Indestructible<folly::settings::detail::Setting<_Type>>     \
+        setting(                                                              \
+            folly::settings::SettingMetadata{                                 \
+                #_project, #_name, #_Type, typeid(_Type), #_def, _desc},      \
+            folly::settings::detail::TypeIdentityT<_Type>{_def},              \
+            FOLLY_SETTINGS_TRIVIAL__##_project##_##_name);                    \
+    return *setting;                                                          \
+  }                                                                           \
+  /* Ensure the setting is registered even if not used in program */          \
+  auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                           \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name();                            \
   FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__(_project, _name, _Type, char)
 
 /**

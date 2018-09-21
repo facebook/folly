@@ -33,6 +33,15 @@ struct SettingMetadata;
 
 namespace detail {
 
+/**
+ * Can we store T in a global atomic?
+ */
+template <class T>
+struct IsSmallPOD
+    : std::integral_constant<
+          bool,
+          std::is_trivial<T>::value && sizeof(T) <= sizeof(uint64_t)> {};
+
 template <class T>
 struct SettingContents {
   std::string updateReason;
@@ -85,24 +94,54 @@ class SettingCore : public SettingCoreBase {
     return meta_;
   }
 
-  const T& get() const {
+  std::conditional_t<IsSmallPOD<T>::value, T, const T&> get() const {
+    return getImpl(IsSmallPOD<T>(), trivialStorage_);
+  }
+  const T& getSlow() const {
+    return getImpl(std::false_type{}, trivialStorage_);
+  }
+  /***
+   * SmallPOD version: just read the global atomic
+   */
+  T getImpl(std::true_type, std::atomic<uint64_t>& trivialStorage) const {
+    uint64_t v = trivialStorage.load();
+    T t;
+    std::memcpy(&t, &v, sizeof(T));
+    return t;
+  }
+
+  /**
+   * Non-SmallPOD version: read the thread local shared_ptr
+   */
+  const T& getImpl(std::false_type, std::atomic<uint64_t>& /* ignored */)
+      const {
     return const_cast<SettingCore*>(this)->tlValue()->value;
   }
+
   void set(const T& t, StringPiece reason) {
     SharedMutex::WriteHolder lg(globalLock_);
     globalValue_ = std::make_shared<Contents>(reason.str(), t);
+    if (IsSmallPOD<T>::value) {
+      uint64_t v = 0;
+      std::memcpy(&v, &t, sizeof(T));
+      trivialStorage_.store(v);
+    }
     ++(*globalVersion_);
   }
 
-  SettingCore(const SettingMetadata& meta, T defaultValue)
+  SettingCore(
+      const SettingMetadata& meta,
+      T defaultValue,
+      std::atomic<uint64_t>& trivialStorage)
       : meta_(meta),
         defaultValue_(std::move(defaultValue)),
-        globalValue_(std::make_shared<Contents>("default", defaultValue_)),
+        trivialStorage_(trivialStorage),
         localValue_([]() {
           return new CachelinePadded<
               Indestructible<std::pair<size_t, std::shared_ptr<Contents>>>>(
               0, nullptr);
         }) {
+    set(defaultValue_, "default");
     registerSetting(*this);
   }
 
@@ -112,6 +151,8 @@ class SettingCore : public SettingCoreBase {
 
   SharedMutex globalLock_;
   std::shared_ptr<Contents> globalValue_;
+
+  std::atomic<uint64_t>& trivialStorage_;
 
   /* Local versions start at 0, this will force a read on first local access. */
   CachelinePadded<std::atomic<size_t>> globalVersion_{1};
