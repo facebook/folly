@@ -33,10 +33,10 @@ struct SettingMetadata;
 
 namespace detail {
 
-template <class Type>
+template <class T>
 struct SettingContents {
   std::string updateReason;
-  Type value;
+  T value;
 
   template <class... Args>
   SettingContents(std::string _reason, Args&&... args)
@@ -65,13 +65,13 @@ convertOrConstruct(StringPiece newValue) {
   return to<T>(newValue);
 }
 
-template <class Type>
+template <class T>
 class SettingCore : public SettingCoreBase {
  public:
-  using Contents = SettingContents<Type>;
+  using Contents = SettingContents<T>;
 
   void setFromString(StringPiece newValue, StringPiece reason) override {
-    set(convertOrConstruct<Type>(newValue), reason.str());
+    set(convertOrConstruct<T>(newValue), reason.str());
   }
   std::pair<std::string, std::string> getAsString() const override {
     auto contents = *const_cast<SettingCore*>(this)->tlValue();
@@ -85,16 +85,16 @@ class SettingCore : public SettingCoreBase {
     return meta_;
   }
 
-  const Type& get() const {
+  const T& get() const {
     return const_cast<SettingCore*>(this)->tlValue()->value;
   }
-  void set(const Type& t, StringPiece reason) {
+  void set(const T& t, StringPiece reason) {
     SharedMutex::WriteHolder lg(globalLock_);
     globalValue_ = std::make_shared<Contents>(reason.str(), t);
     ++(*globalVersion_);
   }
 
-  SettingCore(const SettingMetadata& meta, Type defaultValue)
+  SettingCore(const SettingMetadata& meta, T defaultValue)
       : meta_(meta),
         defaultValue_(std::move(defaultValue)),
         globalValue_(std::make_shared<Contents>("default", defaultValue_)),
@@ -108,7 +108,7 @@ class SettingCore : public SettingCoreBase {
 
  private:
   const SettingMetadata& meta_;
-  const Type defaultValue_;
+  const T defaultValue_;
 
   SharedMutex globalLock_;
   std::shared_ptr<Contents> globalValue_;

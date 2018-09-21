@@ -62,7 +62,7 @@ struct SettingMetadata {
 
 namespace detail {
 
-template <class Type>
+template <class T>
 class Setting {
  public:
   /**
@@ -72,10 +72,10 @@ class Setting {
    * reference obtained here after some amount of time (on the order
    * of minutes).
    */
-  const Type& operator*() const {
+  const T& operator*() const {
     return core_.get();
   }
-  const Type* operator->() const {
+  const T* operator->() const {
     return &core_.get();
   }
 
@@ -87,18 +87,18 @@ class Setting {
    * @param reason  Will be stored with the current value, useful for debugging.
    * @throws std::runtime_error  If we can't convert t to string.
    */
-  void set(const Type& t, StringPiece reason = "api") {
+  void set(const T& t, StringPiece reason = "api") {
     /* Check that we can still display it */
     folly::to<std::string>(t);
     core_.set(t, reason);
   }
 
-  Setting(SettingMetadata meta, Type defaultValue)
+  Setting(SettingMetadata meta, T defaultValue)
       : meta_(std::move(meta)), core_(meta_, std::move(defaultValue)) {}
 
  private:
   SettingMetadata meta_;
-  SettingCore<Type> core_;
+  SettingCore<T> core_;
 };
 
 /* C++20 has std::type_indentity */
