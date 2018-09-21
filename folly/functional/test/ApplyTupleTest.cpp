@@ -499,9 +499,8 @@ TEST(IsNothrowApplicable, Basic) {
         (folly::is_nothrow_applicable<decltype(f), std::tuple<int>>{}));
   }
   {
-    auto f = folly::overload([](int) noexcept {}, [](double) -> double {
-      return {};
-    });
+    auto f = folly::overload(
+        [](int) noexcept {}, [](double) -> double { return {}; });
     EXPECT_FALSE(
         (folly::is_nothrow_applicable<decltype(f), std::tuple<double>>{}));
     EXPECT_TRUE((folly::is_nothrow_applicable<decltype(f), std::tuple<int>>{}));
@@ -520,9 +519,8 @@ TEST(IsApplicableR, Basic) {
         (folly::is_applicable_r<double, decltype(f), std::tuple<int>>{}));
   }
   {
-    auto f = folly::overload([](int) noexcept {}, [](double) -> double {
-      return {};
-    });
+    auto f = folly::overload(
+        [](int) noexcept {}, [](double) -> double { return {}; });
     EXPECT_TRUE(
         (folly::is_applicable_r<float, decltype(f), std::tuple<double>>{}));
     EXPECT_TRUE((folly::is_applicable_r<void, decltype(f), std::tuple<int>>{}));
@@ -545,9 +543,8 @@ TEST(IsNothrowApplicableR, Basic) {
              is_nothrow_applicable_r<double, decltype(f), std::tuple<int>>{}));
   }
   {
-    auto f = folly::overload([](int) noexcept {}, [](double) -> double {
-      return {};
-    });
+    auto f = folly::overload(
+        [](int) noexcept {}, [](double) -> double { return {}; });
     EXPECT_FALSE((
         folly::
             is_nothrow_applicable_r<float, decltype(f), std::tuple<double>>{}));

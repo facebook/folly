@@ -699,7 +699,9 @@ TEST(SemiFuture, MakeSemiFutureFromFutureWithTry) {
 }
 
 namespace {
-[[noreturn]] void deferHelper(folly::Try<folly::Unit>&&) { throw eggs; }
+[[noreturn]] void deferHelper(folly::Try<folly::Unit>&&) {
+  throw eggs;
+}
 } // namespace
 
 TEST(SemiFuture, DeferWithinContinuation) {

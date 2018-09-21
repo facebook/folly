@@ -591,7 +591,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
   /*implicit*/ Function(ReturnType (^objCBlock)(Args... args))
-      : Function([blockCopy = (ReturnType (^)(Args...))[objCBlock copy]](
+      : Function([blockCopy = (ReturnType(^)(Args...))[objCBlock copy]](
                      Args... args) { return blockCopy(args...); }){};
 #endif
 
@@ -680,7 +680,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // Make sure Objective C blocks are copied
   template <class ReturnType, class... Args>
   /* implicit */ Function& operator=(ReturnType (^objCBlock)(Args... args)) {
-    (*this) = [blockCopy = (ReturnType (^)(Args...))[objCBlock copy]](
+    (*this) = [blockCopy = (ReturnType(^)(Args...))[objCBlock copy]](
                   Args... args) { return blockCopy(args...); };
     return *this;
   }

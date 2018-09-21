@@ -152,7 +152,7 @@ namespace {
 // Copy pointers to the given strings in a format suitable for posix_spawn
 std::unique_ptr<const char* []> cloneStrings(
     const std::vector<std::string>& s) {
-  std::unique_ptr<const char* []> d(new const char*[s.size() + 1]);
+  std::unique_ptr<const char*[]> d(new const char*[s.size() + 1]);
   for (size_t i = 0; i < s.size(); i++) {
     d[i] = s[i].c_str();
   }
@@ -247,7 +247,7 @@ void Subprocess::setAllNonBlocking() {
 }
 
 void Subprocess::spawn(
-    std::unique_ptr<const char* []> argv,
+    std::unique_ptr<const char*[]> argv,
     const char* executable,
     const Options& optionsIn,
     const std::vector<std::string>* env) {
@@ -319,7 +319,7 @@ void Subprocess::spawn(
 FOLLY_PUSH_WARNING
 FOLLY_GCC_DISABLE_WARNING("-Wclobbered")
 void Subprocess::spawnInternal(
-    std::unique_ptr<const char* []> argv,
+    std::unique_ptr<const char*[]> argv,
     const char* executable,
     Options& options,
     const std::vector<std::string>* env,
@@ -382,7 +382,7 @@ void Subprocess::spawnInternal(
   char** argVec = const_cast<char**>(argv.get());
 
   // Set up environment
-  std::unique_ptr<const char* []> envHolder;
+  std::unique_ptr<const char*[]> envHolder;
   char** envVec;
   if (env) {
     envHolder = cloneStrings(*env);

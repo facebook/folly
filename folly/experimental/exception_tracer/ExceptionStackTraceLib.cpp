@@ -66,10 +66,10 @@ void moveTopException(StackTraceStack& from, StackTraceStack& to) {
 
 struct Initializer {
   Initializer() {
-    registerCxaThrowCallback([](
-        void*, std::type_info*, void (*)(void*)) noexcept {
-      addActiveException();
-    });
+    registerCxaThrowCallback(
+        [](void*, std::type_info*, void (*)(void*)) noexcept {
+          addActiveException();
+        });
 
     registerCxaBeginCatchCallback([](void*) noexcept {
       moveTopException(activeExceptions, caughtExceptions);
@@ -101,9 +101,8 @@ struct Initializer {
       }
     });
 
-    registerRethrowExceptionCallback([](std::exception_ptr) noexcept {
-      addActiveException();
-    });
+    registerRethrowExceptionCallback(
+        [](std::exception_ptr) noexcept { addActiveException(); });
 
     try {
       ::folly::exception_tracer::installHandlers();

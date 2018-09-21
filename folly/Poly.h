@@ -333,7 +333,9 @@ template <class T, class I>
 /// \overload
 template <class T, class I>
 [[noreturn]] detail::AddCvrefOf<T, I> const& poly_cast(
-    detail::ArchetypeRoot<I> const&) { assume_unreachable(); }
+    detail::ArchetypeRoot<I> const&) {
+  assume_unreachable();
+}
 /// \endcond
 
 /// \overload

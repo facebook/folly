@@ -243,8 +243,7 @@ TEST(Json, JsonNonAsciiEncoding) {
 
   // multiple unicode encodings
   EXPECT_EQ(
-      folly::json::serialize("\x1f\xe2\x82\xac", opts),
-      R"("\u001f\u20ac")");
+      folly::json::serialize("\x1f\xe2\x82\xac", opts), R"("\u001f\u20ac")");
   EXPECT_EQ(
       folly::json::serialize("\x1f\xc2\xa2\xe2\x82\xac", opts),
       R"("\u001f\u00a2\u20ac")");

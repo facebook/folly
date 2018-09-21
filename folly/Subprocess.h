@@ -887,12 +887,12 @@ class Subprocess {
   // spawnInternal() returns it reads the error pipe to see if the child
   // encountered any errors.
   void spawn(
-      std::unique_ptr<const char* []> argv,
+      std::unique_ptr<const char*[]> argv,
       const char* executable,
       const Options& options,
       const std::vector<std::string>* env);
   void spawnInternal(
-      std::unique_ptr<const char* []> argv,
+      std::unique_ptr<const char*[]> argv,
       const char* executable,
       Options& options,
       const std::vector<std::string>* env,
