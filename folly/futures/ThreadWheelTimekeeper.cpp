@@ -79,6 +79,9 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
 
   void interruptHandler(exception_wrapper ew) {
     auto rBase = base_.rlock();
+    if (!*rBase) {
+      return;
+    }
     // Capture shared_ptr of self in lambda, if we don't do this, object
     // may go away before the lambda is executed from event base thread.
     // This is not racing with timeoutExpired anymore because this is called
