@@ -109,6 +109,38 @@ struct TypeIdentity {
 template <class T>
 using TypeIdentityT = typename TypeIdentity<T>::type;
 
+/**
+ * Optimization: fast-path on top of the Meyers singleton. Each
+ * translation unit gets this code inlined, while the slow path
+ * initialization code is not.  We check the global pointer which
+ * should only be initialized after the Meyers singleton. It's ok for
+ * multiple calls to attempt to update the global pointer, as they
+ * would be serialized on the Meyer's singleton initialization lock
+ * anyway.
+ *
+ * Both FOLLY_SETTING_DECLARE and FOLLY_SETTING_DEFINE will provide
+ * a copy of this function and we work around ODR by using different
+ * overload types.
+ *
+ * Requires a trailing semicolon.
+ */
+#define FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__(                            \
+    _project, _name, _Type, _overloadType)                             \
+  extern std::atomic<folly::settings::detail::Setting<_Type>*>         \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name;                      \
+  folly::settings::detail::Setting<_Type>&                             \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name();                     \
+  FOLLY_ALWAYS_INLINE folly::settings::detail::Setting<_Type>&         \
+      FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(_overloadType) { \
+    if (!FOLLY_SETTINGS_CACHE__##_project##_##_name.load()) {          \
+      FOLLY_SETTINGS_CACHE__##_project##_##_name.store(                \
+          &FOLLY_SETTINGS_FUNC__##_project##_##_name());               \
+    }                                                                  \
+    return *FOLLY_SETTINGS_CACHE__##_project##_##_name.load();         \
+  }                                                                    \
+  folly::settings::detail::Setting<_Type>&                             \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name()
+
 } // namespace detail
 
 /**
@@ -131,27 +163,33 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
  * @param _def   default value for the setting
  * @param _desc  setting documentation
  */
-#define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _desc)         \
-  /* Meyers singleton to avoid SIOF */                                    \
-  folly::settings::detail::Setting<_Type>&                                \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name() {                       \
-    static folly::Indestructible<folly::settings::detail::Setting<_Type>> \
-        setting(                                                          \
-            folly::settings::SettingMetadata{                             \
-                #_project, #_name, #_Type, typeid(_Type), #_def, _desc},  \
-            folly::settings::detail::TypeIdentityT<_Type>{_def});         \
-    return *setting;                                                      \
-  }                                                                       \
-  /* Ensure the setting is registered even if not used in program */      \
-  auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                       \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name()
+#define FOLLY_SETTING_DEFINE(_project, _name, _Type, _def, _desc)            \
+  /* Fastpath optimization, see notes in FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__. \
+     Aggregate all off these together in a single section for better TLB     \
+     and cache locality. */                                                  \
+  __attribute__((__section__(".folly.settings.cache")))                      \
+      std::atomic<folly::settings::detail::Setting<_Type>*>                  \
+          FOLLY_SETTINGS_CACHE__##_project##_##_name;                        \
+  /* Meyers singleton to avoid SIOF */                                       \
+  FOLLY_NOINLINE folly::settings::detail::Setting<_Type>&                    \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name() {                          \
+    static folly::Indestructible<folly::settings::detail::Setting<_Type>>    \
+        setting(                                                             \
+            folly::settings::SettingMetadata{                                \
+                #_project, #_name, #_Type, typeid(_Type), #_def, _desc},     \
+            folly::settings::detail::TypeIdentityT<_Type>{_def});            \
+    return *setting;                                                         \
+  }                                                                          \
+  /* Ensure the setting is registered even if not used in program */         \
+  auto& FOLLY_SETTINGS_INIT__##_project##_##_name =                          \
+      FOLLY_SETTINGS_FUNC__##_project##_##_name();                           \
+  FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__(_project, _name, _Type, char)
 
 /**
  * Declares a setting that's defined elsewhere.
  */
 #define FOLLY_SETTING_DECLARE(_project, _name, _Type) \
-  folly::settings::detail::Setting<_Type>&            \
-      FOLLY_SETTINGS_FUNC__##_project##_##_name()
+  FOLLY_SETTINGS_DEFINE_LOCAL_FUNC__(_project, _name, _Type, int)
 
 /**
  * Accesses a defined setting.
@@ -163,7 +201,7 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
  *     the setting itself.
  */
 #define FOLLY_SETTING(_project, _name) \
-  FOLLY_SETTINGS_FUNC__##_project##_##_name()
+  FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(0)
 
 /**
  * Look up a setting by name, and update the value from a string representation.
