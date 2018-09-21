@@ -56,10 +56,11 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
   }
 
  protected:
-  EventBase* base_;
+  folly::Synchronized<EventBase*> base_;
   Promise<Unit> promise_;
 
   void timeoutExpired() noexcept override {
+    base_ = nullptr;
     // Don't need Promise anymore, break the circular reference
     auto promise = stealPromise();
     if (!promise.isFulfilled()) {
@@ -68,6 +69,7 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
   }
 
   void callbackCanceled() noexcept override {
+    base_ = nullptr;
     // Don't need Promise anymore, break the circular reference
     auto promise = stealPromise();
     if (!promise.isFulfilled()) {
@@ -76,12 +78,13 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
   }
 
   void interruptHandler(exception_wrapper ew) {
+    auto rBase = base_.rlock();
     // Capture shared_ptr of self in lambda, if we don't do this, object
     // may go away before the lambda is executed from event base thread.
     // This is not racing with timeoutExpired anymore because this is called
     // through Future, which means Core is still alive and keeping a ref count
     // on us, so what timeouExpired is doing won't make the object go away
-    base_->runInEventBaseThread(
+    (*rBase)->runInEventBaseThread(
         [me = shared_from_this(), ew = std::move(ew)]() mutable {
           me->cancelTimeout();
           // Don't need Promise anymore, break the circular reference
