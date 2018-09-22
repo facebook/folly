@@ -2332,7 +2332,7 @@ std::vector<Future<Result>> map(It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
-    results.push_back(std::move(*it).thenValue(func));
+    results.push_back(std::move(*it).then(func));
   }
   return results;
 }
@@ -2342,7 +2342,7 @@ std::vector<Future<Result>> map(Executor& exec, It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
-    results.push_back(std::move(*it).via(&exec).thenValue(func));
+    results.push_back(std::move(*it).via(&exec).then(func));
   }
   return results;
 }
