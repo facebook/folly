@@ -1072,12 +1072,8 @@ ordering IOBufCompare::impl(const IOBuf& a, const IOBuf& b) const {
   for (;;) {
     auto ba = ca.peekBytes();
     auto bb = cb.peekBytes();
-    if (ba.empty() && bb.empty()) {
-      return ordering::eq;
-    } else if (ba.empty()) {
-      return ordering::lt;
-    } else if (bb.empty()) {
-      return ordering::gt;
+    if (ba.empty() || bb.empty()) {
+      return to_ordering(int(bb.empty()) - int(ba.empty()));
     }
     const size_t n = std::min(ba.size(), bb.size());
     DCHECK_GT(n, 0u);
