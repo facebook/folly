@@ -468,7 +468,7 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
 
   // Have time keeper use a weak ptr to hold ctx,
   // so that ctx can be deallocated as soon as the future job finished.
-  tk->after(dur).then([weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
+  tk->after(dur).thenTry([weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
     auto lockedCtx = weakCtx.lock();
     if (!lockedCtx) {
       // ctx already released. "this" completed first, cancel "after"
@@ -890,7 +890,7 @@ SemiFuture<T>::defer(F&& func) && {
     this->setExecutor(deferredExecutor);
   }
 
-  auto sf = Future<T>(this->core_).then(std::forward<F>(func)).semi();
+  auto sf = Future<T>(this->core_).thenTry(std::forward<F>(func)).semi();
   this->core_ = nullptr;
   // Carry deferred executor through chain as constructor from Future will
   // nullify it
@@ -956,7 +956,7 @@ template <typename T>
 SemiFuture<T> SemiFuture<T>::delayed(Duration dur, Timekeeper* tk) && {
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
       .toUnsafeFuture()
-      .then([](std::tuple<Try<T>, Try<Unit>> tup) {
+      .thenValue([](std::tuple<Try<T>, Try<Unit>> tup) {
         Try<T>& t = std::get<0>(tup);
         return makeFuture<T>(std::move(*t));
       });
@@ -986,7 +986,8 @@ template <
             std::is_convertible<T2&&, T>::value,
         int>::type>
 Future<T>::Future(Future<T2>&& other)
-    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
+    : Future(
+          std::move(other).thenValue([](T2&& v) { return T(std::move(v)); })) {}
 
 template <class T>
 template <
@@ -997,7 +998,8 @@ template <
             !std::is_convertible<T2&&, T>::value,
         int>::type>
 Future<T>::Future(Future<T2>&& other)
-    : Future(std::move(other).then([](T2&& v) { return T(std::move(v)); })) {}
+    : Future(
+          std::move(other).thenValue([](T2&& v) { return T(std::move(v)); })) {}
 
 template <class T>
 template <
@@ -1008,7 +1010,7 @@ template <
         int>::type>
 Future<T>& Future<T>::operator=(Future<T2>&& other) {
   return operator=(
-      std::move(other).then([](T2&& v) { return T(std::move(v)); }));
+      std::move(other).thenValue([](T2&& v) { return T(std::move(v)); }));
 }
 
 // unwrap
@@ -1018,7 +1020,7 @@ template <class F>
 typename std::
     enable_if<isFuture<F>::value, Future<typename isFuture<T>::Inner>>::type
     Future<T>::unwrap() && {
-  return std::move(*this).then(
+  return std::move(*this).thenValue(
       [](Future<typename isFuture<T>::Inner> internal_future) {
         return internal_future;
       });
@@ -1134,7 +1136,7 @@ Future<T> Future<T>::thenError(F&& func) && {
 
 template <class T>
 Future<Unit> Future<T>::then() && {
-  return std::move(*this).then([]() {});
+  return std::move(*this).thenValue([](T&&) {});
 }
 
 // onError where the callback returns T
@@ -1306,13 +1308,18 @@ template <class Func>
 auto via(Executor* x, Func&& func) -> Future<
     typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner> {
   // TODO make this actually more performant. :-P #7260175
-  return via(x).then(std::forward<Func>(func));
+  return via(x).thenValue([f = std::forward<Func>(func)](auto&&) mutable {
+    return std::forward<Func>(f)();
+  });
 }
 
 template <class Func>
 auto via(Executor::KeepAlive<> x, Func&& func) -> Future<
     typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner> {
-  return via(std::move(x)).then(std::forward<Func>(func));
+  return via(std::move(x))
+      .thenValue([f = std::forward<Func>(func)](auto&&) mutable {
+        return std::forward<Func>(f)();
+      });
 }
 
 // makeFuture
@@ -1758,14 +1765,14 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
 
   auto sfunc = std::make_shared<std::decay_t<F>>(std::forward<F>(func));
 
-  auto f = std::move(*first).then(
+  auto f = std::move(*first).thenTry(
       [initial = std::forward<T>(initial), sfunc](Try<ItT>&& head) mutable {
         return (*sfunc)(
             std::move(initial), head.template get<IsTry::value, Arg&&>());
       });
 
   for (++first; first != last; ++first) {
-    f = collectAllSemiFuture(f, *first).toUnsafeFuture().then(
+    f = collectAllSemiFuture(f, *first).toUnsafeFuture().thenValue(
         [sfunc](std::tuple<Try<T>, Try<ItT>>&& t) {
           return (*sfunc)(
               std::move(std::get<0>(t).value()),
@@ -1849,7 +1856,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
 template <class T>
 template <class I, class F>
 Future<I> Future<T>::reduce(I&& initial, F&& func) && {
-  return std::move(*this).then(
+  return std::move(*this).thenValue(
       [minitial = std::forward<I>(initial),
        mfunc = std::forward<F>(func)](T&& vals) mutable {
         auto ret = std::move(minitial);
@@ -1973,7 +1980,7 @@ Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) && {
   auto e = this->getExecutor();
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
       .via(e ? e : &InlineExecutor::instance())
-      .then([](std::tuple<Try<T>, Try<Unit>>&& tup) {
+      .thenValue([](std::tuple<Try<T>, Try<Unit>>&& tup) {
         return makeFuture<T>(std::get<0>(std::move(tup)));
       });
 }
@@ -2051,7 +2058,7 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
   if (f.isReady()) {
     return;
   }
-  f = std::move(f).via(e).then([](T&& t) { return std::move(t); });
+  f = std::move(f).via(e).thenValue([](T&& t) { return std::move(t); });
   while (!f.isReady()) {
     e->drive();
   }
@@ -2071,7 +2078,7 @@ void waitViaImpl(
     return;
   }
   // Chain operations, ensuring that the executor is kept alive for the duration
-  f = std::move(f).via(e).then(
+  f = std::move(f).via(e).thenValue(
       [keepAlive = getKeepAliveToken(e)](T&& t) { return std::move(t); });
   auto now = std::chrono::steady_clock::now();
   auto deadline = now + timeout;
@@ -2269,7 +2276,7 @@ struct TryEquals {
 
 template <class T>
 Future<bool> Future<T>::willEqual(Future<T>& f) {
-  return collectAllSemiFuture(*this, f).toUnsafeFuture().then(
+  return collectAllSemiFuture(*this, f).toUnsafeFuture().thenValue(
       [](const std::tuple<Try<T>, Try<T>>& t) {
         if (std::get<0>(t).hasValue() && std::get<1>(t).hasValue()) {
           return futures::detail::TryEquals<T>::equals(
@@ -2283,7 +2290,7 @@ Future<bool> Future<T>::willEqual(Future<T>& f) {
 template <class T>
 template <class F>
 Future<T> Future<T>::filter(F&& predicate) && {
-  return std::move(*this).then([p = std::forward<F>(predicate)](T val) {
+  return std::move(*this).thenValue([p = std::forward<F>(predicate)](T val) {
     T const& valConstRef = val;
     if (!p(valConstRef)) {
       throw_exception<FuturePredicateDoesNotObtain>();
@@ -2301,10 +2308,11 @@ template <class P, class F>
 Future<Unit> whileDo(P&& predicate, F&& thunk) {
   if (predicate()) {
     auto future = thunk();
-    return std::move(future).then([predicate = std::forward<P>(predicate),
-                                   thunk = std::forward<F>(thunk)]() mutable {
-      return whileDo(std::forward<P>(predicate), std::forward<F>(thunk));
-    });
+    return std::move(future).thenValue(
+        [predicate = std::forward<P>(predicate),
+         thunk = std::forward<F>(thunk)](auto&&) mutable {
+          return whileDo(std::forward<P>(predicate), std::forward<F>(thunk));
+        });
   }
   return makeFuture();
 }
@@ -2324,7 +2332,7 @@ std::vector<Future<Result>> map(It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
-    results.push_back(std::move(*it).then(func));
+    results.push_back(std::move(*it).thenValue(func));
   }
   return results;
 }
@@ -2334,7 +2342,7 @@ std::vector<Future<Result>> map(Executor& exec, It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
-    results.push_back(std::move(*it).via(&exec).then(func));
+    results.push_back(std::move(*it).via(&exec).thenValue(func));
   }
   return results;
 }

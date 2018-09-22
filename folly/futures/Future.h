@@ -1177,7 +1177,8 @@ class Future : private futures::detail::FutureBase<T> {
 
   // clang-format off
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("must be rvalue-qualified, e.g., std::move(future).then(...)")]]
+  [[deprecated(
+    "must be rvalue-qualified, e.g., std::move(future).thenValue(...)")]]
   typename R::Return then(F&& func) & = delete;
   // clang-format on
 
