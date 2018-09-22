@@ -1473,7 +1473,9 @@ struct IOBufHash {
  * Ordering for IOBuf objects. Compares data in the entire chain.
  */
 struct IOBufCompare {
-  ordering operator()(const IOBuf& a, const IOBuf& b) const;
+  ordering operator()(const IOBuf& a, const IOBuf& b) const {
+    return &a == &b ? ordering::eq : impl(a, b);
+  }
   ordering operator()(
       const std::unique_ptr<IOBuf>& a,
       const std::unique_ptr<IOBuf>& b) const {
@@ -1485,6 +1487,9 @@ struct IOBufCompare {
         operator()(*a, *b);
     // clang-format on
   }
+
+ private:
+  ordering impl(IOBuf const& a, IOBuf const& b) const;
 };
 
 /**

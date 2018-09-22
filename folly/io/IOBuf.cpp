@@ -1066,7 +1066,7 @@ size_t IOBufHash::operator()(const IOBuf& buf) const {
   return static_cast<std::size_t>(h1);
 }
 
-ordering IOBufCompare::operator()(const IOBuf& a, const IOBuf& b) const {
+ordering IOBufCompare::impl(const IOBuf& a, const IOBuf& b) const {
   io::Cursor ca(&a);
   io::Cursor cb(&b);
   for (;;) {
