@@ -190,7 +190,7 @@ dynamic const& dynamic::atImpl(dynamic const& idx) const& {
 dynamic const& dynamic::at(StringPiece idx) const& {
   auto* pobject = get_nothrow<ObjectImpl>();
   if (!pobject) {
-    throw_exception<TypeError>("object/array", type());
+    throw_exception<TypeError>("object", type());
   }
   auto it = pobject->find(idx);
   if (it == pobject->end()) {
@@ -270,7 +270,7 @@ std::size_t dynamic::size() const {
   if (auto* str = get_nothrow<std::string>()) {
     return str->size();
   }
-  throw_exception<TypeError>("array/object", type());
+  throw_exception<TypeError>("array/object/string", type());
 }
 
 dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
