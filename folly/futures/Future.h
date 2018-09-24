@@ -1153,7 +1153,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// thenTry or thenError rather than then and onError as they avoid ambiguity
   /// when using polymorphic lambdas.
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  typename std::enable_if<
+  [[deprecated("use thenValue instead")]] typename std::enable_if<
       !is_invocable<F>::value && is_invocable<F, T&&>::value,
       typename R::Return>::type
   then(F&& func) && {
@@ -1161,7 +1161,7 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  typename std::enable_if<
+  [[deprecated("use thenTry instead")]] typename std::enable_if<
       !is_invocable<F, T&&>::value && !is_invocable<F>::value,
       typename R::Return>::type
   then(F&& func) && {
@@ -1169,6 +1169,7 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
+  [[deprecated("use thenValue(auto&&) or thenValue(folly::Unit) instead")]]
   typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
   then(F&& func) && {
     return this->template thenImplementation<F, R>(
@@ -1241,9 +1242,12 @@ class Future : private futures::detail::FutureBase<T> {
   auto then(Executor* x, Arg&& arg, Args&&... args) && {
     auto oldX = this->getExecutor();
     this->setExecutor(x);
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
     return std::move(*this)
         .then(std::forward<Arg>(arg), std::forward<Args>(args)...)
         .via(oldX);
+    FOLLY_POP_WARNING
   }
 
   template <class Arg, class... Args>

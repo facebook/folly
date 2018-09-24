@@ -2332,7 +2332,10 @@ std::vector<Future<Result>> map(It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
     results.push_back(std::move(*it).then(func));
+    FOLLY_POP_WARNING
   }
   return results;
 }
@@ -2342,7 +2345,10 @@ std::vector<Future<Result>> map(Executor& exec, It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
     results.push_back(std::move(*it).via(&exec).then(func));
+    FOLLY_POP_WARNING
   }
   return results;
 }
