@@ -167,3 +167,12 @@ TEST(MacAddress, ordering) {
   testCmp("01:00:00:00:00:00", "02:00:00:00:00:00");
   testCmp("00:00:00:00:00:01", "00:00:00:00:01:00");
 }
+
+TEST(MacAddress, hash) {
+  EXPECT_EQ(
+      std::hash<MacAddress>()(MacAddress("00:11:22:33:44:55")),
+      std::hash<MacAddress>()(MacAddress("00-11-22-33-44-55")));
+  EXPECT_NE(
+      std::hash<MacAddress>()(MacAddress("00:11:22:33:44:55")),
+      std::hash<MacAddress>()(MacAddress("00:11:22:33:44:56")));
+}
