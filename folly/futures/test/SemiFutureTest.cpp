@@ -1050,3 +1050,16 @@ TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
     EXPECT_TRUE(deferredDestroyed);
   }
 }
+
+TEST(SemiFuture, DeferWithNestedSemiFuture) {
+  auto start = std::chrono::steady_clock::now();
+  auto future = futures::sleep(std::chrono::milliseconds{100})
+                    .semi()
+                    .deferValue([](auto&&) {
+                      return futures::sleep(std::chrono::milliseconds{200});
+                    });
+  future.wait();
+  EXPECT_TRUE(future.hasValue());
+  EXPECT_GE(
+      std::chrono::steady_clock::now() - start, std::chrono::milliseconds{300});
+}
