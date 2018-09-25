@@ -1479,10 +1479,10 @@ collectAllSemiFuture(Fs&&... fs) {
 
   auto future = ctx->p.getSemiFuture();
   if (!executors.empty()) {
-    future = std::move(future).defer(
-        [](Try<typename decltype(future)::value_type>&& t) {
-          return std::move(t).value();
-        });
+    auto work = [](Try<typename decltype(future)::value_type>&& t) {
+      return std::move(t).value();
+    };
+    future = std::move(future).defer(work);
     auto deferredExecutor = futures::detail::getDeferredExecutor(future);
     deferredExecutor->setNestedExecutors(std::move(executors));
   }
