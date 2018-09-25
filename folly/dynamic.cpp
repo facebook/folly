@@ -240,7 +240,7 @@ dynamic dynamic::getDefault(const dynamic& k, dynamic&& v) && {
   return std::move(it == obj.end() ? v : it->second);
 }
 
-const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
+const dynamic* dynamic::get_ptrImpl(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {
       throw_exception<TypeError>("int64", idx.type());
@@ -258,6 +258,18 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
   } else {
     throw_exception<TypeError>("object/array", type());
   }
+}
+
+const dynamic* dynamic::get_ptr(StringPiece idx) const& {
+  auto* pobject = get_nothrow<ObjectImpl>();
+  if (!pobject) {
+    throw_exception<TypeError>("object", type());
+  }
+  auto it = pobject->find(idx);
+  if (it == pobject->end()) {
+    return nullptr;
+  }
+  return &it->second;
 }
 
 std::size_t dynamic::size() const {

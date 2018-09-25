@@ -219,6 +219,37 @@ TEST(Dynamic, ObjectHeterogeneousAccess) {
   EXPECT_THROW(obj.at(StringPiece{b}), std::out_of_range);
   EXPECT_THROW(obj.at(StaticStrings::kBar), std::out_of_range);
 
+  // get_ptr()
+  EXPECT_NE(obj.get_ptr(empty), nullptr);
+  EXPECT_EQ(*obj.get_ptr(empty), 456);
+  EXPECT_NE(obj.get_ptr(nullptr), nullptr);
+  EXPECT_EQ(*obj.get_ptr(nullptr), 456);
+  EXPECT_NE(obj.get_ptr(foo), nullptr);
+  EXPECT_EQ(*obj.get_ptr(foo), 789);
+
+  EXPECT_NE(obj.get_ptr(a), nullptr);
+  EXPECT_EQ(*obj.get_ptr(a), 123);
+  EXPECT_NE(obj.get_ptr(StaticStrings::kA), nullptr);
+  EXPECT_EQ(*obj.get_ptr(StaticStrings::kA), 123);
+  EXPECT_NE(obj.get_ptr("a"), nullptr);
+  EXPECT_EQ(*obj.get_ptr("a"), 123);
+
+  EXPECT_NE(obj.get_ptr(sp), nullptr);
+  EXPECT_EQ(*obj.get_ptr(sp), 123);
+  EXPECT_NE(obj.get_ptr(StringPiece{"a"}), nullptr);
+  EXPECT_EQ(*obj.get_ptr(StringPiece{"a"}), 123);
+  EXPECT_NE(obj.get_ptr(StaticStrings::kFoo), nullptr);
+  EXPECT_EQ(*obj.get_ptr(StaticStrings::kFoo), 789);
+
+  EXPECT_NE(obj.get_ptr(std::string{"a"}), nullptr);
+  EXPECT_EQ(*obj.get_ptr(std::string{"a"}), 123);
+  EXPECT_NE(obj.get_ptr(str), nullptr);
+  EXPECT_EQ(*obj.get_ptr(str), 123);
+
+  EXPECT_EQ(obj.get_ptr(b), nullptr);
+  EXPECT_EQ(obj.get_ptr(StringPiece{b}), nullptr);
+  EXPECT_EQ(obj.get_ptr(StaticStrings::kBar), nullptr);
+
   // find()
   EXPECT_EQ(obj.find(empty)->second, 456);
   EXPECT_EQ(obj.find(nullptr)->second, 456);

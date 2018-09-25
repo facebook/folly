@@ -449,9 +449,20 @@ struct dynamic : private boost::operators<dynamic> {
    * Using these with dynamic objects that are not arrays or objects
    * will throw a TypeError.
    */
-  const dynamic* get_ptr(dynamic const&) const&;
-  dynamic* get_ptr(dynamic const&) &;
-  dynamic* get_ptr(dynamic const&) && = delete;
+ private:
+  const dynamic* get_ptrImpl(dynamic const&) const&;
+
+ public:
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, const dynamic*> get_ptr(K&&) const&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic*> get_ptr(K&&) &;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic*> get_ptr(K&&) && = delete;
+
+  const dynamic* get_ptr(StringPiece) const&;
+  dynamic* get_ptr(StringPiece) &;
+  dynamic* get_ptr(StringPiece) && = delete;
 
   /*
    * This works for access to both objects and arrays.

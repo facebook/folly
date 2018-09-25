@@ -689,7 +689,19 @@ inline dynamic& dynamic::setDefault(K&& k, const dynamic& v) {
   return obj.emplace(std::forward<K>(k), v).first->second;
 }
 
-inline dynamic* dynamic::get_ptr(dynamic const& idx) & {
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic const*> dynamic::get_ptr(
+    K&& k) const& {
+  return get_ptrImpl(std::forward<K>(k));
+}
+
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic*> dynamic::get_ptr(
+    K&& idx) & {
+  return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
+}
+
+inline dynamic* dynamic::get_ptr(StringPiece idx) & {
   return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
 }
 
