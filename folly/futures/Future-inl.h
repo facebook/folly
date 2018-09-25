@@ -500,194 +500,194 @@ class DeferredExecutor final : public Executor {
  public:
   void add(Func func) override {
     auto state = state_.load(std::memory_order_acquire);
-    if (state == State::HAS_FUNCTION) {
-      // This means we are inside runAndDestroy, just run the function inline
-      func();
+    if (state == State::DETACHED) {
+      return;
+    }
+    if (state == State::HAS_EXECUTOR) {
+      executor_->add(std::move(func));
+      return;
+    }
+    DCHECK(state == State::EMPTY);
+    func_ = std::move(func);
+    if (state_.compare_exchange_strong(
+            state,
+            State::HAS_FUNCTION,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
+      return;
+    }
+    DCHECK(state == State::DETACHED || state == State::HAS_EXECUTOR);
+    if (state == State::DETACHED) {
+      std::exchange(func_, nullptr);
+      return;
+    }
+    executor_->add(std::exchange(func_, nullptr));
+  }
+
+  void setExecutor(folly::Executor::KeepAlive<> executor) {
+    DCHECK(!dynamic_cast<DeferredExecutor*>(executor.get()));
+    if (nestedExecutors_) {
+      auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
+      for (auto& nestedExecutor : *nestedExecutors) {
+        nestedExecutor->setExecutor(executor.copy());
+      }
+    }
+    executor_ = std::move(executor);
+    auto state = state_.load(std::memory_order_acquire);
+    if (state == State::EMPTY &&
+        state_.compare_exchange_strong(
+            state,
+            State::HAS_EXECUTOR,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
       return;
     }
 
-    func_ = std::move(func);
-    std::shared_ptr<FutureBatonType> baton;
-    do {
-      if (state == State::HAS_EXECUTOR) {
-        state_.store(State::HAS_FUNCTION, std::memory_order_release);
-        executor_->add([this] { this->runAndDestroy(); });
-        return;
-      }
-      if (state == State::DETACHED) {
-        // Function destructor may trigger more functions to be added to the
-        // Executor. They should be run inline.
-        state = State::HAS_FUNCTION;
-        func_ = nullptr;
-        delete this;
-        return;
-      }
-      if (state == State::HAS_BATON) {
-        baton = baton_.copy();
-      }
-      assert(state == State::EMPTY || state == State::HAS_BATON);
-    } while (!state_.compare_exchange_weak(
-        state,
-        State::HAS_FUNCTION,
-        std::memory_order_release,
-        std::memory_order_acquire));
-
-    // After compare_exchange_weak is complete, we can no longer use this
-    // object since it may be destroyed from another thread.
-    if (baton) {
-      baton->post();
-    }
-  }
-
-  void setExecutor(folly::Executor* executor) {
-    DCHECK(!dynamic_cast<DeferredExecutor*>(executor));
-    if (nestedExecutors_) {
-      for (auto nestedExecutor : *nestedExecutors_) {
-        nestedExecutor->setExecutor(executor);
-      }
-    }
-    executor_ = executor;
-    auto state = state_.load(std::memory_order_acquire);
-    do {
-      if (state == State::HAS_FUNCTION) {
-        executor_->add([this] { this->runAndDestroy(); });
-        return;
-      }
-      assert(state == State::EMPTY);
-    } while (!state_.compare_exchange_weak(
-        state,
-        State::HAS_EXECUTOR,
-        std::memory_order_release,
-        std::memory_order_acquire));
-  }
-
-  void runAndDestroy() {
-    assert(state_.load(std::memory_order_relaxed) == State::HAS_FUNCTION);
-    func_();
-    delete this;
+    DCHECK(state == State::HAS_FUNCTION);
+    state_.store(State::HAS_EXECUTOR, std::memory_order_release);
+    executor_->add(std::exchange(func_, nullptr));
   }
 
   void detach() {
     if (nestedExecutors_) {
-      for (auto nestedExecutor : *nestedExecutors_) {
+      auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
+      for (auto& nestedExecutor : *nestedExecutors) {
         nestedExecutor->detach();
       }
     }
     auto state = state_.load(std::memory_order_acquire);
-    do {
-      if (state == State::HAS_FUNCTION) {
-        // Function destructor may trigger more functions to be added to the
-        // Executor. They should be run inline.
-        func_ = nullptr;
-        delete this;
-        return;
-      }
-
-      assert(state == State::EMPTY);
-    } while (!state_.compare_exchange_weak(
-        state,
-        State::DETACHED,
-        std::memory_order_release,
-        std::memory_order_acquire));
-  }
-
-  void wait() {
-    if (nestedExecutors_) {
-      for (auto nestedExecutor : *nestedExecutors_) {
-        nestedExecutor->wait();
-        nestedExecutor->runAndDestroy();
-      }
+    if (state == State::EMPTY &&
+        state_.compare_exchange_strong(
+            state,
+            State::DETACHED,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
       return;
     }
-    auto state = state_.load(std::memory_order_acquire);
-    auto baton = std::make_shared<FutureBatonType>();
-    baton_ = baton;
-    do {
-      if (state == State::HAS_FUNCTION) {
-        return;
-      }
-      assert(state == State::EMPTY);
-    } while (!state_.compare_exchange_weak(
-        state,
-        State::HAS_BATON,
-        std::memory_order_release,
-        std::memory_order_acquire));
 
-    baton->wait();
+    DCHECK(state == State::HAS_FUNCTION);
+    state_.store(State::DETACHED, std::memory_order_release);
+    std::exchange(func_, nullptr);
+  }
 
-    assert(state_.load(std::memory_order_relaxed) == State::HAS_FUNCTION);
+  void setNestedExecutors(
+      std::vector<folly::Executor::KeepAlive<DeferredExecutor>> executors) {
+    DCHECK(!nestedExecutors_);
+    nestedExecutors_ = std::make_unique<
+        std::vector<folly::Executor::KeepAlive<DeferredExecutor>>>(
+        std::move(executors));
+  }
+
+  static KeepAlive<DeferredExecutor> create() {
+    return makeKeepAlive<DeferredExecutor>(new DeferredExecutor());
+  }
+
+ private:
+  DeferredExecutor() {}
+
+  bool keepAliveAcquire() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    DCHECK(keepAliveCount > 0);
+    return true;
+  }
+
+  void keepAliveRelease() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
+    DCHECK(keepAliveCount > 0);
+    if (keepAliveCount == 1) {
+      delete this;
+    }
+  }
+
+  enum class State { EMPTY, HAS_FUNCTION, HAS_EXECUTOR, DETACHED };
+  std::atomic<State> state_{State::EMPTY};
+  Func func_;
+  folly::Executor::KeepAlive<> executor_;
+  std::unique_ptr<std::vector<folly::Executor::KeepAlive<DeferredExecutor>>>
+      nestedExecutors_;
+  std::atomic<ssize_t> keepAliveCount_{1};
+};
+
+class WaitExecutor final : public folly::Executor {
+ public:
+  void add(Func func) override {
+    auto wQueue = queue_.wlock();
+    if (wQueue->detached) {
+      return;
+    }
+    bool empty = wQueue->funcs.empty();
+    wQueue->funcs.push_back(std::move(func));
+    if (empty) {
+      baton_.post();
+    }
+  }
+
+  void drive() {
+    baton_.wait();
+    baton_.reset();
+    auto funcs = std::move(queue_.wlock()->funcs);
+    for (auto& func : funcs) {
+      std::exchange(func, nullptr)();
+    }
   }
 
   using Clock = std::chrono::steady_clock;
 
-  bool wait(Duration duration) {
-    return wait_until(Clock::now() + duration);
+  bool driveUntil(Clock::time_point deadline) {
+    if (!baton_.try_wait_until(deadline)) {
+      return false;
+    }
+    baton_.reset();
+    auto funcs = std::move(queue_.wlock()->funcs);
+    for (auto& func : funcs) {
+      std::exchange(func, nullptr)();
+    }
+    return true;
   }
 
-  bool wait_until(Clock::time_point deadline) {
-    if (nestedExecutors_) {
-      for (auto nestedExecutor : *nestedExecutors_) {
-        if (!nestedExecutor->wait_until(deadline)) {
-          return false;
-        }
-      }
-      for (auto nestedExecutor : *nestedExecutors_) {
-        nestedExecutor->runAndDestroy();
-      }
-    }
-
-    auto state = state_.load(std::memory_order_acquire);
-    auto baton = std::make_shared<FutureBatonType>();
-    baton_ = baton;
-    do {
-      if (state == State::HAS_FUNCTION) {
-        return true;
-      }
-      assert(state == State::EMPTY);
-    } while (!state_.compare_exchange_weak(
-        state,
-        State::HAS_BATON,
-        std::memory_order_release,
-        std::memory_order_acquire));
-
-    if (baton->try_wait_until(deadline)) {
-      assert(state_.load(std::memory_order_relaxed) == State::HAS_FUNCTION);
-      return true;
-    }
-
-    state = state_.load(std::memory_order_acquire);
-    do {
-      if (state == State::HAS_FUNCTION) {
-        return true;
-      }
-      assert(state == State::HAS_BATON);
-    } while (!state_.compare_exchange_weak(
-        state,
-        State::EMPTY,
-        std::memory_order_release,
-        std::memory_order_acquire));
-    return false;
+  void detach() {
+    // Make sure we don't hold the lock while destroying funcs.
+    [&] {
+      auto wQueue = queue_.wlock();
+      wQueue->detached = true;
+      return std::move(wQueue->funcs);
+    }();
   }
 
-  void setNestedExecutors(std::vector<DeferredExecutor*> executors) {
-    DCHECK(!nestedExecutors_);
-    nestedExecutors_ =
-        std::make_unique<std::vector<DeferredExecutor*>>(executors);
+  static KeepAlive<WaitExecutor> create() {
+    return makeKeepAlive<WaitExecutor>(new WaitExecutor());
   }
 
  private:
-  enum class State {
-    EMPTY,
-    HAS_FUNCTION,
-    HAS_EXECUTOR,
-    HAS_BATON,
-    DETACHED,
+  WaitExecutor() {}
+
+  bool keepAliveAcquire() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    DCHECK(keepAliveCount > 0);
+    return true;
+  }
+
+  void keepAliveRelease() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
+    DCHECK(keepAliveCount > 0);
+    if (keepAliveCount == 1) {
+      delete this;
+    }
+  }
+
+  struct Queue {
+    std::vector<Func> funcs;
+    bool detached{false};
   };
-  std::atomic<State> state_{State::EMPTY};
-  Func func_;
-  Executor* executor_;
-  folly::Synchronized<std::shared_ptr<FutureBatonType>> baton_;
-  std::unique_ptr<std::vector<DeferredExecutor*>> nestedExecutors_;
+
+  folly::Synchronized<Queue> queue_;
+  FutureBatonType baton_;
+
+  std::atomic<ssize_t> keepAliveCount_{1};
 };
 
 // Vector-like structure to play with window,
@@ -790,14 +790,16 @@ typename SemiFuture<T>::DeferredExecutor* SemiFuture<T>::getDeferredExecutor()
 }
 
 template <class T>
-typename SemiFuture<T>::DeferredExecutor* SemiFuture<T>::stealDeferredExecutor()
-    const {
+folly::Executor::KeepAlive<typename SemiFuture<T>::DeferredExecutor>
+SemiFuture<T>::stealDeferredExecutor() const {
   if (auto executor = this->getExecutor()) {
     assert(dynamic_cast<DeferredExecutor*>(executor) != nullptr);
+    auto executorKeepAlive =
+        folly::getKeepAliveToken(static_cast<DeferredExecutor*>(executor));
     this->core_->setExecutor(nullptr);
-    return static_cast<DeferredExecutor*>(executor);
+    return executorKeepAlive;
   }
-  return nullptr;
+  return {};
 }
 
 template <class T>
@@ -857,7 +859,7 @@ Future<T> SemiFuture<T>::via(
   }
 
   if (auto deferredExecutor = getDeferredExecutor()) {
-    deferredExecutor->setExecutor(executor.get());
+    deferredExecutor->setExecutor(executor.copy());
   }
 
   auto newFuture = Future<T>(this->core_);
@@ -886,8 +888,9 @@ SemiFuture<T>::defer(F&& func) && {
       "defer does not support Future unwrapping");
   DeferredExecutor* deferredExecutor = getDeferredExecutor();
   if (!deferredExecutor) {
-    deferredExecutor = new DeferredExecutor();
-    this->setExecutor(deferredExecutor);
+    auto newDeferredExecutor = DeferredExecutor::create();
+    deferredExecutor = newDeferredExecutor.get();
+    this->setExecutor(std::move(newDeferredExecutor));
   }
 
   auto sf = Future<T>(this->core_).thenTry(std::forward<F>(func)).semi();
@@ -1415,22 +1418,23 @@ DeferredExecutor* getDeferredExecutor(SemiFuture<T>& future) {
 }
 
 template <typename T>
-DeferredExecutor* stealDeferredExecutor(SemiFuture<T>& future) {
+folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor(
+    SemiFuture<T>& future) {
   return future.stealDeferredExecutor();
 }
 
 template <typename T>
-DeferredExecutor* stealDeferredExecutor(Future<T>&) {
-  return nullptr;
+folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor(Future<T>&) {
+  return {};
 }
 
 template <typename... Ts>
 void stealDeferredExecutorsVariadic(
-    std::vector<DeferredExecutor*>& executors,
+    std::vector<folly::Executor::KeepAlive<DeferredExecutor>>& executors,
     Ts&... ts) {
   auto foreach = [&](auto& future) {
     if (auto executor = stealDeferredExecutor(future)) {
-      executors.push_back(executor);
+      executors.push_back(std::move(executor));
     }
     return folly::unit;
   };
@@ -1439,12 +1443,12 @@ void stealDeferredExecutorsVariadic(
 
 template <class InputIterator>
 void stealDeferredExecutors(
-    std::vector<DeferredExecutor*>& executors,
+    std::vector<folly::Executor::KeepAlive<DeferredExecutor>>& executors,
     InputIterator first,
     InputIterator last) {
   for (auto it = first; it != last; ++it) {
     if (auto executor = stealDeferredExecutor(*it)) {
-      executors.push_back(executor);
+      executors.push_back(std::move(executor));
     }
   }
 }
@@ -1465,7 +1469,8 @@ collectAllSemiFuture(Fs&&... fs) {
     Result results;
   };
 
-  std::vector<futures::detail::DeferredExecutor*> executors;
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
   futures::detail::stealDeferredExecutorsVariadic(executors, fs...);
 
   auto ctx = std::make_shared<Context>();
@@ -1513,7 +1518,8 @@ collectAllSemiFuture(InputIterator first, InputIterator last) {
     std::vector<Try<T>> results;
   };
 
-  std::vector<futures::detail::DeferredExecutor*> executors;
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
   futures::detail::stealDeferredExecutors(executors, first, last);
 
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
@@ -2098,9 +2104,13 @@ void waitViaImpl(
 template <class T>
 SemiFuture<T>& SemiFuture<T>::wait() & {
   if (auto deferredExecutor = getDeferredExecutor()) {
-    deferredExecutor->wait();
-    deferredExecutor->runAndDestroy();
+    auto waitExecutor = futures::detail::WaitExecutor::create();
+    deferredExecutor->setExecutor(waitExecutor.copy());
     this->core_->setExecutor(nullptr);
+    while (!isReady()) {
+      waitExecutor->drive();
+    }
+    waitExecutor->detach();
   } else {
     futures::detail::waitImpl(*this);
   }
@@ -2115,10 +2125,16 @@ SemiFuture<T>&& SemiFuture<T>::wait() && {
 template <class T>
 SemiFuture<T>& SemiFuture<T>::wait(Duration dur) & {
   if (auto deferredExecutor = getDeferredExecutor()) {
-    if (deferredExecutor->wait(dur)) {
-      deferredExecutor->runAndDestroy();
-      this->core_->setExecutor(nullptr);
+    auto waitExecutor = futures::detail::WaitExecutor::create();
+    auto deadline = futures::detail::WaitExecutor::Clock::now() + dur;
+    deferredExecutor->setExecutor(waitExecutor.copy());
+    this->core_->setExecutor(nullptr);
+    while (!isReady()) {
+      if (!waitExecutor->driveUntil(deadline)) {
+        break;
+      }
     }
+    waitExecutor->detach();
   } else {
     futures::detail::waitImpl(*this, dur);
   }

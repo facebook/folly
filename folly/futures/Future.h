@@ -447,7 +447,8 @@ template <typename T>
 DeferredExecutor* getDeferredExecutor(SemiFuture<T>& future);
 
 template <typename T>
-DeferredExecutor* stealDeferredExecutor(SemiFuture<T>& future);
+folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor(
+    SemiFuture<T>& future);
 } // namespace detail
 } // namespace futures
 
@@ -876,8 +877,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   friend class SemiFuture;
   template <class>
   friend class Future;
-  friend DeferredExecutor* futures::detail::stealDeferredExecutor<T>(
-      SemiFuture&);
+  friend folly::Executor::KeepAlive<DeferredExecutor>
+  futures::detail::stealDeferredExecutor<T>(SemiFuture&);
   friend DeferredExecutor* futures::detail::getDeferredExecutor<T>(SemiFuture&);
 
   using Base::setExecutor;
@@ -896,7 +897,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   DeferredExecutor* getDeferredExecutor() const;
 
   // Throws FutureInvalid if !this->core_
-  DeferredExecutor* stealDeferredExecutor() const;
+  folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor() const;
 
   /// Blocks until the future is fulfilled, or `dur` elapses.
   ///
