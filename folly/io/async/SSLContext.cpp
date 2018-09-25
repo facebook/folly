@@ -489,10 +489,14 @@ bool SSLContext::setRandomizedAdvertisedNextProtocols(
   if ((uint8_t)protocolType & (uint8_t)NextProtocolType::ALPN) {
     SSL_CTX_set_alpn_select_cb(ctx_, alpnSelectCallback, this);
     // Client cannot really use randomized alpn
-    SSL_CTX_set_alpn_protos(
-        ctx_,
-        advertisedNextProtocols_[0].protocols,
-        advertisedNextProtocols_[0].length);
+    // Note that this function reverses the typical return value convention
+    // of openssl and returns 0 on success.
+    if (SSL_CTX_set_alpn_protos(
+            ctx_,
+            advertisedNextProtocols_[0].protocols,
+            advertisedNextProtocols_[0].length) != 0) {
+      return false;
+    }
   }
 #endif
   return true;
@@ -513,6 +517,9 @@ void SSLContext::unsetNextProtocols() {
 #if FOLLY_OPENSSL_HAS_ALPN
   SSL_CTX_set_alpn_select_cb(ctx_, nullptr, nullptr);
   SSL_CTX_set_alpn_protos(ctx_, nullptr, 0);
+  // clear the error stack here since openssl internals sometimes add a
+  // malloc failure when doing a memdup of NULL, 0..
+  ERR_clear_error();
 #endif
 }
 
