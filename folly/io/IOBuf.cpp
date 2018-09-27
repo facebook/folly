@@ -335,7 +335,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
   }
 }
 
-IOBuf::IOBuf(WrapBufferOp, const void* buf, std::size_t capacity)
+IOBuf::IOBuf(WrapBufferOp, const void* buf, std::size_t capacity) noexcept
     : IOBuf(
           InternalConstructor(),
           0,
@@ -347,13 +347,14 @@ IOBuf::IOBuf(WrapBufferOp, const void* buf, std::size_t capacity)
           static_cast<uint8_t*>(const_cast<void*>(buf)),
           capacity) {}
 
-IOBuf::IOBuf(WrapBufferOp op, ByteRange br) : IOBuf(op, br.data(), br.size()) {}
+IOBuf::IOBuf(WrapBufferOp op, ByteRange br) noexcept
+    : IOBuf(op, br.data(), br.size()) {}
 
 unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, std::size_t capacity) {
   return std::make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
 }
 
-IOBuf IOBuf::wrapBufferAsValue(const void* buf, std::size_t capacity) {
+IOBuf IOBuf::wrapBufferAsValue(const void* buf, std::size_t capacity) noexcept {
   return IOBuf(WrapBufferOp::WRAP_BUFFER, buf, capacity);
 }
 
@@ -399,7 +400,7 @@ IOBuf::IOBuf(
     uint8_t* buf,
     std::size_t capacity,
     uint8_t* data,
-    std::size_t length)
+    std::size_t length) noexcept
     : next_(this),
       prev_(this),
       data_(data),
@@ -1048,7 +1049,7 @@ size_t IOBuf::fillIov(struct iovec* iov, size_t len) const {
   return 0;
 }
 
-size_t IOBufHash::operator()(const IOBuf& buf) const {
+size_t IOBufHash::operator()(const IOBuf& buf) const noexcept {
   folly::hash::SpookyHashV2 hasher;
   hasher.Init(0, 0);
   io::Cursor cursor(&buf);
@@ -1066,7 +1067,7 @@ size_t IOBufHash::operator()(const IOBuf& buf) const {
   return static_cast<std::size_t>(h1);
 }
 
-ordering IOBufCompare::impl(const IOBuf& a, const IOBuf& b) const {
+ordering IOBufCompare::impl(const IOBuf& a, const IOBuf& b) const noexcept {
   io::Cursor ca(&a);
   io::Cursor cb(&b);
   for (;;) {
@@ -1081,6 +1082,7 @@ ordering IOBufCompare::impl(const IOBuf& a, const IOBuf& b) const {
     if (r != ordering::eq) {
       return r;
     }
+    // Cursor::skip() may throw if n is too large, but n is not too large here
     ca.skip(n);
     cb.skip(n);
   }
