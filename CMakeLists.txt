@@ -119,8 +119,6 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
 )
 list(REMOVE_ITEM hfiles
-  ${FOLLY_DIR}/detail/SlowFingerprint.h
-  ${FOLLY_DIR}/detail/FingerprintPolynomial.h
   ${FOLLY_DIR}/python/fibers.h
   ${FOLLY_DIR}/python/GILAwareManualExecutor.h
 )
@@ -194,9 +192,6 @@ auto_source_group(folly ${FOLLY_DIR} ${files} ${hfiles})
 apply_folly_compile_options_to_target(folly_base)
 # Add the generated files to the correct source group.
 source_group("folly" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h)
-source_group("folly\\build" FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
-)
 
 # Generate pkg-config variables from folly_deps before we add our own
 # build/install-time include directory generator expressions
@@ -219,51 +214,10 @@ target_compile_definitions(folly_base
     $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
 )
 
-# Now to generate the fingerprint tables
-add_executable(GenerateFingerprintTables
-  ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp
-  $<TARGET_OBJECTS:folly_base>
-)
-target_link_libraries(GenerateFingerprintTables PRIVATE folly_deps)
-apply_folly_compile_options_to_target(GenerateFingerprintTables)
-set_property(TARGET GenerateFingerprintTables PROPERTY FOLDER "Build")
-source_group("" FILES ${FOLLY_DIR}/build/GenerateFingerprintTables.cpp)
-
-# Compile the fingerprint tables.
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
-  COMMAND
-    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  COMMAND
-    GenerateFingerprintTables
-    --install_dir ${CMAKE_CURRENT_BINARY_DIR}/folly/build
-  DEPENDS GenerateFingerprintTables
-  COMMENT "Generating the fingerprint tables..."
-)
-add_library(folly_fingerprint STATIC
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/build/FingerprintTables.cpp
-  ${FOLLY_DIR}/Fingerprint.h
-  ${FOLLY_DIR}/detail/SlowFingerprint.h
-  ${FOLLY_DIR}/detail/FingerprintPolynomial.h
-  $<TARGET_OBJECTS:folly_base>
-)
-target_link_libraries(folly_fingerprint PRIVATE folly_deps)
-apply_folly_compile_options_to_target(folly_fingerprint)
-
-# We want to generate a single library and target for folly, but we needed a
-# two-stage compile for the fingerprint tables, so we create a phony source
-# file that we modify whenever the base libraries change, causing folly to be
-# re-linked, making things happy.
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp
-  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp
-  DEPENDS folly_base folly_fingerprint
-)
 add_library(folly
-  ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp
   $<TARGET_OBJECTS:folly_base>
 )
 apply_folly_compile_options_to_target(folly)
-source_group("" FILES ${CMAKE_CURRENT_BINARY_DIR}/folly_dep.cpp)
 
 target_link_libraries(folly PUBLIC folly_deps)
 
@@ -274,9 +228,6 @@ install(TARGETS folly folly_deps
   ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
 auto_install_files(folly ${FOLLY_DIR}
   ${hfiles}
-  ${FOLLY_DIR}/Fingerprint.h
-  ${FOLLY_DIR}/detail/SlowFingerprint.h
-  ${FOLLY_DIR}/detail/FingerprintPolynomial.h
 )
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
