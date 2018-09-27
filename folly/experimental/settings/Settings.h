@@ -24,6 +24,8 @@
 
 namespace folly {
 namespace settings {
+
+class Snapshot;
 namespace detail {
 
 /**
@@ -58,8 +60,6 @@ class SettingWrapper {
    * @throws std::runtime_error  If we can't convert t to string.
    */
   void set(const T& t, StringPiece reason = "api") {
-    /* Check that we can still display it */
-    folly::to<std::string>(t);
     core_.set(t, reason);
   }
 
@@ -67,6 +67,7 @@ class SettingWrapper {
 
  private:
   SettingCore<T>& core_;
+  friend class folly::settings::Snapshot;
 };
 
 /* C++20 has std::type_indentity */
@@ -226,6 +227,108 @@ void forEachSetting(
     const std::function<
         void(const SettingMetadata&, folly::StringPiece, folly::StringPiece)>&
         func);
+
+namespace detail {
+
+/**
+ * Like SettingWrapper, but checks against any values saved/updated in a
+ * snapshot.
+ */
+template <class T>
+class SnapshotSettingWrapper {
+ public:
+  /**
+   * The references are only valid for the duration of the snapshot's
+   * lifetime or until the setting has been updated in the snapshot,
+   * whichever happens earlier.
+   */
+  const T& operator*() const;
+  const T* operator->() const {
+    return &operator*();
+  }
+
+  /**
+   * Update the setting in the snapshot, the effects are not visible
+   * in this snapshot.
+   */
+  void set(const T& t, StringPiece reason = "api") {
+    core_.set(t, reason, &snapshot_);
+  }
+
+ private:
+  Snapshot& snapshot_;
+  SettingCore<T>& core_;
+  friend class folly::settings::Snapshot;
+
+  SnapshotSettingWrapper(Snapshot& snapshot, SettingCore<T>& core)
+      : snapshot_(snapshot), core_(core) {}
+};
+
+} // namespace detail
+
+/**
+ * Captures the current state of all setting values and allows
+ * updating multiple settings at once, with verification and rollback.
+ *
+ * A single snapshot cannot be used concurrently from different
+ * threads.  Multiple concurrent snapshots are safe. Passing a single
+ * snapshot from one thread to another is safe as long as the user
+ * properly synchronizes the handoff.
+ *
+ * Example usage:
+ *
+ *   folly::settings::Snapshot snapshot;
+ *   // FOLLY_SETTING(project, name) refers to the globally visible value
+ *   // snapshot(FOLLY_SETTING(project, name)) refers to the value saved in the
+ *   //  snapshot
+ *   FOLLY_SETTING(project, name).set(new_value);
+ *   assert(*FOLLY_SETTING(project, name) == new_value);
+ *   assert(*snapshot(FOLLY_SETTING(project, name)) == old_value);
+ *
+ *   snapshot(FOLLY_SETTING(project, name)).set(new_snapshot_value);
+ *   assert(*FOLLY_SETTING(project, name) == new_value);
+ *   assert(*snapshot(FOLLY_SETTING(project, name)) == new_snapshot_value);
+ *
+ *   // At this point we can discard the snapshot and forget new_snapshot_value,
+ *   // or choose to publish:
+ *   snapshot.publish();
+ *   assert(*FOLLY_SETTING(project, name) == new_snapshot_value);
+ */
+class Snapshot final : public detail::SnapshotBase {
+ public:
+  /**
+   * Wraps a global FOLLY_SETTING(a, b) and returns a snapshot-local wrapper.
+   */
+  template <class T, std::atomic<uint64_t>* P>
+  detail::SnapshotSettingWrapper<T> operator()(
+      detail::SettingWrapper<T, P>&& setting) {
+    return detail::SnapshotSettingWrapper<T>(*this, setting.core_);
+  }
+
+  /**
+   * Returns a snapshot of all current setting values.
+   * Global settings changes will not be visible in the snapshot, and vice
+   * versa.
+   */
+  Snapshot() = default;
+
+  /**
+   * Apply all settings updates from this snapshot to the global state
+   * unconditionally.
+   */
+  void publish();
+
+ private:
+  template <typename T>
+  friend class detail::SnapshotSettingWrapper;
+};
+
+namespace detail {
+template <class T>
+inline const T& SnapshotSettingWrapper<T>::operator*() const {
+  return snapshot_.get(core_);
+}
+} // namespace detail
 
 } // namespace settings
 } // namespace folly
