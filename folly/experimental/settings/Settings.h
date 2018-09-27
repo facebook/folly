@@ -48,7 +48,7 @@ class SettingWrapper {
     return core_.getWithHint(*TrivialPtr);
   }
   const T* operator->() const {
-    return &core_.getSlow();
+    return &core_.getSlow().value;
   }
 
   /**
@@ -183,50 +183,10 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
   FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(0)
 
 /**
- * Look up a setting by name, and update the value from a string representation.
- *
- * @returns True if the setting was successfully updated, false if no setting
- *   with that name was found.
- * @throws std::runtime_error  If there's a conversion error.
- */
-bool setFromString(
-    folly::StringPiece settingName,
-    folly::StringPiece newValue,
-    folly::StringPiece reason);
-
-/**
- * Type that encapsulates the current pair of (to<string>(value), reason)
- */
-using SettingsInfo = std::pair<std::string, std::string>;
-/**
- * @return If the setting exists, the current setting information.
- *         Empty Optional otherwise.
- */
-folly::Optional<SettingsInfo> getAsString(folly::StringPiece settingName);
-
-/**
  * @return If the setting exists, returns the current settings metadata.
  *         Empty Optional otherwise.
  */
-folly::Optional<SettingMetadata> getSettingsMeta(
-    folly::StringPiece settingName);
-
-/**
- * Reset the value of the setting identified by name to its default value.
- * The reason will be set to "default".
- *
- * @return  True if the setting was reset, false if the setting is not found.
- */
-bool resetToDefault(folly::StringPiece settingName);
-
-/**
- * Iterates over all known settings and calls
- * func(meta, to<string>(value), reason) for each.
- */
-void forEachSetting(
-    const std::function<
-        void(const SettingMetadata&, folly::StringPiece, folly::StringPiece)>&
-        func);
+Optional<SettingMetadata> getSettingsMeta(StringPiece settingName);
 
 namespace detail {
 
@@ -316,7 +276,42 @@ class Snapshot final : public detail::SnapshotBase {
    * Apply all settings updates from this snapshot to the global state
    * unconditionally.
    */
-  void publish();
+  void publish() override;
+
+  /**
+   * Look up a setting by name, and update the value from a string
+   * representation.
+   *
+   * @returns True if the setting was successfully updated, false if no setting
+   *   with that name was found.
+   * @throws std::runtime_error  If there's a conversion error.
+   */
+  bool setFromString(
+      StringPiece settingName,
+      StringPiece newValue,
+      StringPiece reason) override;
+
+  /**
+   * @return If the setting exists, the current setting information.
+   *         Empty Optional otherwise.
+   */
+  Optional<SettingsInfo> getAsString(StringPiece settingName) const override;
+
+  /**
+   * Reset the value of the setting identified by name to its default value.
+   * The reason will be set to "default".
+   *
+   * @return  True if the setting was reset, false if the setting is not found.
+   */
+  bool resetToDefault(StringPiece settingName) override;
+
+  /**
+   * Iterates over all known settings and calls
+   * func(meta, to<string>(value), reason) for each.
+   */
+  void forEachSetting(const std::function<
+                      void(const SettingMetadata&, StringPiece, StringPiece)>&
+                          func) const override;
 
  private:
   template <typename T>
@@ -326,7 +321,7 @@ class Snapshot final : public detail::SnapshotBase {
 namespace detail {
 template <class T>
 inline const T& SnapshotSettingWrapper<T>::operator*() const {
-  return snapshot_.get(core_);
+  return snapshot_.get(core_).value;
 }
 } // namespace detail
 
