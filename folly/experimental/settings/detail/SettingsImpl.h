@@ -327,6 +327,10 @@ class SettingCore : public SettingCoreBase {
     *settingVersion_ = nextGlobalVersion();
   }
 
+  const T& defaultValue() const {
+    return defaultValue_;
+  }
+
   SettingCore(
       SettingMetadata meta,
       T defaultValue,

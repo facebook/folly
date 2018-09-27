@@ -58,6 +58,10 @@ struct UserDefinedType {
     }
   }
 
+  bool operator==(const UserDefinedType& other) const {
+    return value_ == other.value_;
+  }
+
   int value_;
 };
 /* Note: conversion intentionally to different strings to test that this
@@ -203,6 +207,17 @@ TEST(Settings, basic) {
     EXPECT_FALSE(
         sn.setFromString("follytest_nonexisting", "300", "from_string"));
   }
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, multi_token_type).defaultValue(), 123);
+  EXPECT_EQ(
+      a_ns::FOLLY_SETTING(follytest, public_flag_to_a).defaultValue(), 456);
+  EXPECT_EQ(
+      b_ns::FOLLY_SETTING(follytest, public_flag_to_b).defaultValue(), "basdf");
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, some_flag).defaultValue(), "default");
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, user_defined).defaultValue(),
+      some_ns::UserDefinedType("b"));
   {
     std::string allFlags;
     folly::settings::Snapshot sn;

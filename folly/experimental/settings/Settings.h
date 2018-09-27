@@ -63,6 +63,16 @@ class SettingWrapper {
     core_.set(t, reason);
   }
 
+  /**
+   * Returns the default value this setting was constructed with.
+   * NOTE: SettingsMetadata is type-agnostic, so it only stores the string
+   * representation of the default value.  This method returns the
+   * actual value that was passed on construction.
+   */
+  const T& defaultValue() const {
+    return core_.defaultValue();
+  }
+
   explicit SettingWrapper(SettingCore<T>& core) : core_(core) {}
 
  private:
