@@ -479,6 +479,9 @@ namespace detail {
 template <typename Void, typename OutputType>
 struct IsConvertible : std::false_type {};
 
+template <>
+struct IsConvertible<void, decltype(std::ignore)> : std::true_type {};
+
 template <typename OutputType>
 struct IsConvertible<
     void_t<decltype(parseTo(StringPiece{}, std::declval<OutputType&>()))>,
