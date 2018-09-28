@@ -64,33 +64,25 @@ class ObserverManager {
     return inManagerThread_;
   }
 
-  static Future<Unit>
+  static void
   scheduleRefresh(Core::Ptr core, size_t minVersion, bool force = false) {
     if (core->getVersion() >= minVersion) {
-      return makeFuture<Unit>(Unit());
+      return;
     }
 
     auto instance = getInstance();
 
     if (!instance) {
-      return makeFuture<Unit>(
-          std::logic_error("ObserverManager requested during shutdown"));
+      return;
     }
-
-    Promise<Unit> promise;
-    auto future = promise.getFuture();
 
     SharedMutexReadPriority::ReadHolder rh(instance->versionMutex_);
 
-    instance->scheduleCurrent([core = std::move(core),
-                               promise = std::move(promise),
-                               instancePtr = instance.get(),
-                               rh = std::move(rh),
-                               force]() mutable {
-      promise.setWith([&]() { core->refresh(instancePtr->version_, force); });
-    });
-
-    return future;
+    instance->scheduleCurrent(
+        [core = std::move(core),
+         instancePtr = instance.get(),
+         rh = std::move(rh),
+         force]() { core->refresh(instancePtr->version_, force); });
   }
 
   static void scheduleRefreshNewVersion(Core::WeakPtr coreWeak) {
@@ -105,7 +97,20 @@ class ObserverManager {
 
   static void initCore(Core::Ptr core) {
     DCHECK(core->getVersion() == 0);
-    scheduleRefresh(std::move(core), 1).get();
+
+    auto instance = getInstance();
+    if (!instance) {
+      throw std::logic_error("ObserverManager requested during shutdown");
+    }
+
+    auto inManagerThread = std::exchange(inManagerThread_, true);
+    SCOPE_EXIT {
+      inManagerThread_ = inManagerThread;
+    };
+
+    SharedMutexReadPriority::ReadHolder rh(instance->versionMutex_);
+
+    core->refresh(instance->version_, false);
   }
 
   class DependencyRecorder {

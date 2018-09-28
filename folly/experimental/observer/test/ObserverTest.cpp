@@ -350,3 +350,14 @@ TEST(Observer, SetCallback) {
   EXPECT_EQ(43, callbackValue);
   EXPECT_EQ(2, callbackCallsCount);
 }
+
+int makeObserverRecursion(int n) {
+  if (n == 0) {
+    return 0;
+  }
+  return **makeObserver([=] { return makeObserverRecursion(n - 1) + 1; });
+}
+
+TEST(Observer, NestedMakeObserver) {
+  EXPECT_EQ(32, makeObserverRecursion(32));
+}
