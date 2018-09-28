@@ -119,14 +119,11 @@ FOLLY_STORAGE_CONSTEXPR const uint64_t
         FingerprintTablePoly<127>::data[1]};
 
 template <>
-FOLLY_STORAGE_CONSTEXPR const poly_table<64> FingerprintTable<64>::table =
-    make_poly_table<63>();
+const poly_table<64> FingerprintTable<64>::table = make_poly_table<63>();
 template <>
-FOLLY_STORAGE_CONSTEXPR const poly_table<96> FingerprintTable<96>::table =
-    make_poly_table<95>();
+const poly_table<96> FingerprintTable<96>::table = make_poly_table<95>();
 template <>
-FOLLY_STORAGE_CONSTEXPR const poly_table<128> FingerprintTable<128>::table =
-    make_poly_table<127>();
+const poly_table<128> FingerprintTable<128>::table = make_poly_table<127>();
 
 } // namespace detail
 } // namespace folly
