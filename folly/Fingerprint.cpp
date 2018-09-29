@@ -16,6 +16,7 @@
 
 #include <folly/Fingerprint.h>
 
+#include <folly/Portability.h>
 #include <folly/Utility.h>
 #include <folly/detail/FingerprintPolynomial.h>
 
@@ -101,29 +102,32 @@ constexpr poly_table<Deg> make_poly_table() {
   return copy_table(table);
 }
 
+// private global variables marked constexpr to enforce that make_poly_table is
+// really invoked at constexpr time, which would not otherwise be guaranteed
+FOLLY_STORAGE_CONSTEXPR auto const poly_table_63 = make_poly_table<63>();
+FOLLY_STORAGE_CONSTEXPR auto const poly_table_95 = make_poly_table<95>();
+FOLLY_STORAGE_CONSTEXPR auto const poly_table_127 = make_poly_table<127>();
+
 } // namespace
 
 template <>
-FOLLY_STORAGE_CONSTEXPR const uint64_t
-    FingerprintTable<64>::poly[poly_size(64)] = {
-        FingerprintTablePoly<63>::data[0]};
+const uint64_t FingerprintTable<64>::poly[poly_size(64)] = {
+    FingerprintTablePoly<63>::data[0]};
 template <>
-FOLLY_STORAGE_CONSTEXPR const uint64_t
-    FingerprintTable<96>::poly[poly_size(96)] = {
-        FingerprintTablePoly<95>::data[0],
-        FingerprintTablePoly<95>::data[1]};
+const uint64_t FingerprintTable<96>::poly[poly_size(96)] = {
+    FingerprintTablePoly<95>::data[0],
+    FingerprintTablePoly<95>::data[1]};
 template <>
-FOLLY_STORAGE_CONSTEXPR const uint64_t
-    FingerprintTable<128>::poly[poly_size(128)] = {
-        FingerprintTablePoly<127>::data[0],
-        FingerprintTablePoly<127>::data[1]};
+const uint64_t FingerprintTable<128>::poly[poly_size(128)] = {
+    FingerprintTablePoly<127>::data[0],
+    FingerprintTablePoly<127>::data[1]};
 
 template <>
-const poly_table<64> FingerprintTable<64>::table = make_poly_table<63>();
+const poly_table<64> FingerprintTable<64>::table = poly_table_63;
 template <>
-const poly_table<96> FingerprintTable<96>::table = make_poly_table<95>();
+const poly_table<96> FingerprintTable<96>::table = poly_table_95;
 template <>
-const poly_table<128> FingerprintTable<128>::table = make_poly_table<127>();
+const poly_table<128> FingerprintTable<128>::table = poly_table_127;
 
 } // namespace detail
 } // namespace folly
