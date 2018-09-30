@@ -340,8 +340,7 @@ class SettingCore : public SettingCoreBase {
         trivialStorage_(trivialStorage),
         localValue_([]() {
           return new CachelinePadded<
-              Indestructible<std::pair<Version, std::shared_ptr<Contents>>>>(
-              0, nullptr);
+              std::pair<Version, std::shared_ptr<Contents>>>(0, nullptr);
         }) {
     set(defaultValue_, "default");
     registerSetting(*this);
@@ -360,19 +359,18 @@ class SettingCore : public SettingCoreBase {
    */
   CachelinePadded<std::atomic<Version>> settingVersion_{1};
 
-  ThreadLocal<CachelinePadded<
-      Indestructible<std::pair<Version, std::shared_ptr<Contents>>>>>
+  ThreadLocal<CachelinePadded<std::pair<Version, std::shared_ptr<Contents>>>>
       localValue_;
 
-  FOLLY_ALWAYS_INLINE std::shared_ptr<Contents>& tlValue() const {
-    auto& value = ***localValue_;
+  FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
+    auto& value = **localValue_;
     if (LIKELY(value.first == *settingVersion_)) {
       return value.second;
     }
     return tlValueSlow();
   }
-  FOLLY_NOINLINE std::shared_ptr<Contents>& tlValueSlow() const {
-    auto& value = ***localValue_;
+  FOLLY_NOINLINE const std::shared_ptr<Contents>& tlValueSlow() const {
+    auto& value = **localValue_;
     while (value.first < *settingVersion_) {
       /* If this destroys the old value, do it without holding the lock */
       value.second.reset();
