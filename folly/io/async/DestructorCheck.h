@@ -81,7 +81,7 @@ class DestructorCheck {
     // previous node.
     Safety* next_{nullptr};
 
-    friend DestructorCheck::~DestructorCheck();
+    friend class DestructorCheck;
     friend class Safety;
   };
 
