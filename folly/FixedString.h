@@ -3011,7 +3011,7 @@ inline namespace {
 constexpr const std::size_t& npos = detail::fixedstring::FixedStringBase::npos;
 } // namespace
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__ICC)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wgnu-string-literal-operator-template"
