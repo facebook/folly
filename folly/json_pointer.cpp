@@ -63,6 +63,16 @@ json_pointer json_pointer::parse(StringPiece const str) {
   }
 }
 
+bool json_pointer::is_prefix_of(json_pointer const& other) const noexcept {
+  auto const& other_tokens = other.tokens();
+  if (tokens_.size() > other_tokens.size()) {
+    return false;
+  }
+  auto const other_begin = other_tokens.cbegin();
+  auto const other_end = other_tokens.cbegin() + tokens_.size();
+  return std::equal(tokens_.cbegin(), tokens_.cend(), other_begin, other_end);
+}
+
 std::vector<std::string> const& json_pointer::tokens() const {
   return tokens_;
 }
