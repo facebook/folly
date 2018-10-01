@@ -671,6 +671,52 @@ inline dynamic&& dynamic::operator[](StringPiece k) && {
   return std::move((*this)[k]);
 }
 
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
+    K&& k,
+    const dynamic& v) const& {
+  auto& obj = get<ObjectImpl>();
+  auto it = obj.find(std::forward<K>(k));
+  return it == obj.end() ? v : it->second;
+}
+
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
+    K&& k,
+    dynamic&& v) const& {
+  auto& obj = get<ObjectImpl>();
+  auto it = obj.find(std::forward<K>(k));
+  // Avoid clang bug with ternary
+  if (it == obj.end()) {
+    return std::move(v);
+  } else {
+    return it->second;
+  }
+}
+
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
+    K&& k,
+    const dynamic& v) && {
+  auto& obj = get<ObjectImpl>();
+  auto it = obj.find(std::forward<K>(k));
+  // Avoid clang bug with ternary
+  if (it == obj.end()) {
+    return v;
+  } else {
+    return std::move(it->second);
+  }
+}
+
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic> dynamic::getDefault(
+    K&& k,
+    dynamic&& v) && {
+  auto& obj = get<ObjectImpl>();
+  auto it = obj.find(std::forward<K>(k));
+  return std::move(it == obj.end() ? v : it->second);
+}
+
 template <typename K, typename V>
 dynamic::IfIsNonStringDynamicConvertible<K, dynamic&> dynamic::setDefault(
     K&& k,

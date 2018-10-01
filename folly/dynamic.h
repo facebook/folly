@@ -497,15 +497,27 @@ struct dynamic : private boost::operators<dynamic> {
    * default if it is not yet set, otherwise leaving it. setDefault returns
    * a reference to the existing value if present, the new value otherwise.
    */
-  dynamic getDefault(const dynamic& k, const dynamic& v = dynamic::object)
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic> getDefault(
+      K&& k,
+      const dynamic& v = dynamic::object) const&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic> getDefault(K&& k, dynamic&& v)
       const&;
-  dynamic getDefault(const dynamic& k, dynamic&& v) const&;
-  dynamic getDefault(const dynamic& k, const dynamic& v = dynamic::object) &&;
-  dynamic getDefault(const dynamic& k, dynamic&& v) &&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic> getDefault(
+      K&& k,
+      const dynamic& v = dynamic::object) &&;
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic> getDefault(K&& k, dynamic&& v) &&;
+
+  dynamic getDefault(StringPiece k, const dynamic& v = dynamic::object) const&;
+  dynamic getDefault(StringPiece k, dynamic&& v) const&;
+  dynamic getDefault(StringPiece k, const dynamic& v = dynamic::object) &&;
+  dynamic getDefault(StringPiece k, dynamic&& v) &&;
 
   template <typename K, typename V>
   IfIsNonStringDynamicConvertible<K, dynamic&> setDefault(K&& k, V&& v);
-
   template <typename V>
   dynamic& setDefault(StringPiece k, V&& v);
   // MSVC 2015 Update 3 needs these extra overloads because if V were a
