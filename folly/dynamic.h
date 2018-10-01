@@ -502,16 +502,25 @@ struct dynamic : private boost::operators<dynamic> {
   dynamic getDefault(const dynamic& k, dynamic&& v) const&;
   dynamic getDefault(const dynamic& k, const dynamic& v = dynamic::object) &&;
   dynamic getDefault(const dynamic& k, dynamic&& v) &&;
-  template <class K, class V>
-  dynamic& setDefault(K&& k, V&& v);
+
+  template <typename K, typename V>
+  IfIsNonStringDynamicConvertible<K, dynamic&> setDefault(K&& k, V&& v);
+
+  template <typename V>
+  dynamic& setDefault(StringPiece k, V&& v);
   // MSVC 2015 Update 3 needs these extra overloads because if V were a
   // defaulted template parameter, it causes MSVC to consider v an rvalue
   // reference rather than a universal reference, resulting in it not being
   // able to find the correct overload to construct a dynamic with.
-  template <class K>
-  dynamic& setDefault(K&& k, dynamic&& v);
-  template <class K>
-  dynamic& setDefault(K&& k, const dynamic& v = dynamic::object);
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic&> setDefault(K&& k, dynamic&& v);
+  template <typename K>
+  IfIsNonStringDynamicConvertible<K, dynamic&> setDefault(
+      K&& k,
+      const dynamic& v = dynamic::object);
+
+  dynamic& setDefault(StringPiece k, dynamic&& v);
+  dynamic& setDefault(StringPiece k, const dynamic& v = dynamic::object);
 
   /*
    * Resizes an array so it has at n elements, using the supplied

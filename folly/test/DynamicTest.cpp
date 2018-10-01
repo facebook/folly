@@ -504,6 +504,17 @@ TEST(Dynamic, GetSetDefaultTest) {
   dynamic d4 = dynamic::array;
   EXPECT_ANY_THROW(d4.getDefault("foo", "bar"));
   EXPECT_ANY_THROW(d4.setDefault("foo", "bar"));
+
+  // Using dynamic keys
+  dynamic k10{10}, k20{20}, kTrue{true};
+  dynamic d5 = dynamic::object(k10, "foo");
+  EXPECT_EQ(d5.setDefault(k10, "bar"), "foo");
+  EXPECT_EQ(d5.setDefault(k20, "bar"), "bar");
+  EXPECT_EQ(d5.setDefault(kTrue, "baz"), "baz");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kA, "foo"), "foo");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kB, "foo"), "foo");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kFoo, "bar"), "bar");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kBar, "foo"), "foo");
 }
 
 TEST(Dynamic, ObjectForwarding) {

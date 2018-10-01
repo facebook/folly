@@ -671,22 +671,44 @@ inline dynamic&& dynamic::operator[](StringPiece k) && {
   return std::move((*this)[k]);
 }
 
-template <class K, class V>
-inline dynamic& dynamic::setDefault(K&& k, V&& v) {
+template <typename K, typename V>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic&> dynamic::setDefault(
+    K&& k,
+    V&& v) {
   auto& obj = get<ObjectImpl>();
   return obj.emplace(std::forward<K>(k), std::forward<V>(v)).first->second;
 }
 
-template <class K>
-inline dynamic& dynamic::setDefault(K&& k, dynamic&& v) {
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic&> dynamic::setDefault(
+    K&& k,
+    dynamic&& v) {
   auto& obj = get<ObjectImpl>();
   return obj.emplace(std::forward<K>(k), std::move(v)).first->second;
 }
 
-template <class K>
-inline dynamic& dynamic::setDefault(K&& k, const dynamic& v) {
+template <typename K>
+dynamic::IfIsNonStringDynamicConvertible<K, dynamic&> dynamic::setDefault(
+    K&& k,
+    const dynamic& v) {
   auto& obj = get<ObjectImpl>();
   return obj.emplace(std::forward<K>(k), v).first->second;
+}
+
+template <typename V>
+dynamic& dynamic::setDefault(StringPiece k, V&& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.emplace(k, std::forward<V>(v)).first->second;
+}
+
+inline dynamic& dynamic::setDefault(StringPiece k, dynamic&& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.emplace(k, std::move(v)).first->second;
+}
+
+inline dynamic& dynamic::setDefault(StringPiece k, const dynamic& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.emplace(k, v).first->second;
 }
 
 template <typename K>
