@@ -1231,6 +1231,18 @@ class IOBuf {
    */
   static std::unique_ptr<IOBuf> wrapIov(const iovec* vec, size_t count);
 
+  /**
+   * A helper that takes ownerships a number of iovecs into an IOBuf chain.  If
+   * count == 0, then a zero length buf is returned.  This function never
+   * returns nullptr.
+   */
+  static std::unique_ptr<IOBuf> takeOwnershipIov(
+      const iovec* vec,
+      size_t count,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true);
+
   /*
    * Overridden operator new and delete.
    * These perform specialized memory management to help support

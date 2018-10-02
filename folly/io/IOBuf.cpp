@@ -1031,6 +1031,31 @@ unique_ptr<IOBuf> IOBuf::wrapIov(const iovec* vec, size_t count) {
   return result;
 }
 
+std::unique_ptr<IOBuf> IOBuf::takeOwnershipIov(
+    const iovec* vec,
+    size_t count,
+    FreeFunction freeFn,
+    void* userData,
+    bool freeOnError) {
+  unique_ptr<IOBuf> result = nullptr;
+  for (size_t i = 0; i < count; ++i) {
+    size_t len = vec[i].iov_len;
+    void* data = vec[i].iov_base;
+    if (len > 0) {
+      auto buf = takeOwnership(data, len, freeFn, userData, freeOnError);
+      if (!result) {
+        result = std::move(buf);
+      } else {
+        result->prependChain(std::move(buf));
+      }
+    }
+  }
+  if (UNLIKELY(result == nullptr)) {
+    return create(0);
+  }
+  return result;
+}
+
 size_t IOBuf::fillIov(struct iovec* iov, size_t len) const {
   IOBuf const* p = this;
   size_t i = 0;
