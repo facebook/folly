@@ -332,16 +332,25 @@ inline char prepareDelim(char c) {
   return c;
 }
 
+template <class OutputType>
+void toOrIgnore(StringPiece input, OutputType& output) {
+  output = folly::to<OutputType>(input);
+}
+
+inline void toOrIgnore(StringPiece, decltype(std::ignore)&) {}
+
 template <bool exact, class Delim, class OutputType>
 bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
   static_assert(
       exact || std::is_same<OutputType, StringPiece>::value ||
-          IsSomeString<OutputType>::value,
-      "split<false>() requires that the last argument be a string type");
+          IsSomeString<OutputType>::value ||
+          std::is_same<OutputType, decltype(std::ignore)>::value,
+      "split<false>() requires that the last argument be a string type "
+      "or std::ignore");
   if (exact && UNLIKELY(std::string::npos != input.find(delimiter))) {
     return false;
   }
-  output = folly::to<OutputType>(input);
+  toOrIgnore(input, output);
   return true;
 }
 
@@ -359,7 +368,7 @@ bool splitFixed(
   StringPiece tail(
       input.begin() + cut + detail::delimSize(delimiter), input.end());
   if (LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
-    outHead = folly::to<OutputType>(head);
+    toOrIgnore(head, outHead);
     return true;
   }
   return false;

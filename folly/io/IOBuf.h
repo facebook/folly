@@ -392,13 +392,15 @@ class IOBuf {
    * Similar to wrapBuffer(), but returns IOBuf by value rather than
    * heap-allocating it.
    */
-  static IOBuf wrapBufferAsValue(const void* buf, std::size_t capacity);
-  static IOBuf wrapBufferAsValue(ByteRange br) {
+  static IOBuf wrapBufferAsValue(
+      const void* buf,
+      std::size_t capacity) noexcept;
+  static IOBuf wrapBufferAsValue(ByteRange br) noexcept {
     return wrapBufferAsValue(br.data(), br.size());
   }
 
-  IOBuf(WrapBufferOp op, const void* buf, std::size_t capacity);
-  IOBuf(WrapBufferOp op, ByteRange br);
+  IOBuf(WrapBufferOp op, const void* buf, std::size_t capacity) noexcept;
+  IOBuf(WrapBufferOp op, ByteRange br) noexcept;
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
@@ -1229,6 +1231,18 @@ class IOBuf {
    */
   static std::unique_ptr<IOBuf> wrapIov(const iovec* vec, size_t count);
 
+  /**
+   * A helper that takes ownerships a number of iovecs into an IOBuf chain.  If
+   * count == 0, then a zero length buf is returned.  This function never
+   * returns nullptr.
+   */
+  static std::unique_ptr<IOBuf> takeOwnershipIov(
+      const iovec* vec,
+      size_t count,
+      FreeFunction freeFn = nullptr,
+      void* userData = nullptr,
+      bool freeOnError = true);
+
   /*
    * Overridden operator new and delete.
    * These perform specialized memory management to help support
@@ -1329,7 +1343,7 @@ class IOBuf {
       uint8_t* buf,
       std::size_t capacity,
       uint8_t* data,
-      std::size_t length);
+      std::size_t length) noexcept;
 
   void unshareOneSlow();
   void unshareChained();
@@ -1463,8 +1477,8 @@ class IOBuf {
  * Hasher for IOBuf objects. Hashes the entire chain using SpookyHashV2.
  */
 struct IOBufHash {
-  size_t operator()(const IOBuf& buf) const;
-  size_t operator()(const std::unique_ptr<IOBuf>& buf) const {
+  size_t operator()(const IOBuf& buf) const noexcept;
+  size_t operator()(const std::unique_ptr<IOBuf>& buf) const noexcept {
     return buf ? (*this)(*buf) : 0;
   }
 };
@@ -1489,7 +1503,7 @@ struct IOBufCompare {
   }
 
  private:
-  ordering impl(IOBuf const& a, IOBuf const& b) const;
+  ordering impl(IOBuf const& a, IOBuf const& b) const noexcept;
 };
 
 /**

@@ -50,16 +50,189 @@ struct SettingContents {
       : updateReason(std::move(_reason)), value(std::forward<Args>(args)...) {}
 };
 
+class SnapshotBase;
+
 class SettingCoreBase {
  public:
-  virtual void setFromString(StringPiece newValue, StringPiece reason) = 0;
-  virtual std::pair<std::string, std::string> getAsString() const = 0;
-  virtual void resetToDefault() = 0;
+  using Key = intptr_t;
+  using Version = uint64_t;
+
+  virtual void setFromString(
+      StringPiece newValue,
+      StringPiece reason,
+      SnapshotBase* snapshot) = 0;
+  virtual std::pair<std::string, std::string> getAsString(
+      const SnapshotBase* snapshot) const = 0;
+  virtual void resetToDefault(SnapshotBase* snapshot) = 0;
   virtual const SettingMetadata& meta() const = 0;
   virtual ~SettingCoreBase() {}
+
+  /**
+   * Hashable key uniquely identifying this setting in this process
+   */
+  Key getKey() const {
+    return reinterpret_cast<Key>(this);
+  }
 };
 
 void registerSetting(SettingCoreBase& core);
+
+/**
+ * Returns the monotonically increasing unique positive version.
+ */
+SettingCoreBase::Version nextGlobalVersion();
+
+template <class T>
+class SettingCore;
+
+/**
+ * Type erasure for setting values
+ */
+class BoxedValue {
+ public:
+  BoxedValue() = default;
+
+  /**
+   * Stores a value that can be retrieved later
+   */
+  template <class T>
+  explicit BoxedValue(const SettingContents<T>& value)
+      : value_(std::make_shared<SettingContents<T>>(value)) {}
+
+  /**
+   * Stores a value that can be both retrieved later and optionally
+   * applied globally
+   */
+  template <class T>
+  BoxedValue(const T& value, StringPiece reason, SettingCore<T>& core)
+      : value_(std::make_shared<SettingContents<T>>(reason.str(), value)),
+        publish_([value = value_, &core]() {
+          auto& contents = BoxedValue::unboxImpl<T>(value.get());
+          core.set(contents.value, contents.updateReason);
+        }) {}
+
+  /**
+   * Returns the reference to the stored value
+   */
+  template <class T>
+  const SettingContents<T>& unbox() const {
+    return BoxedValue::unboxImpl<T>(value_.get());
+  }
+
+  /**
+   * Applies the stored value globally
+   */
+  void publish() {
+    if (publish_) {
+      publish_();
+    }
+  }
+
+ private:
+  std::shared_ptr<void> value_;
+  std::function<void()> publish_;
+
+  template <class T>
+  static const SettingContents<T>& unboxImpl(void* value) {
+    return *static_cast<const SettingContents<T>*>(value);
+  }
+};
+
+/**
+ * If there are any outstanding snapshots that care about this
+ * value that's about to be updated, save it to extend its lifetime
+ */
+void saveValueForOutstandingSnapshots(
+    SettingCoreBase::Key settingKey,
+    SettingCoreBase::Version version,
+    const BoxedValue& value);
+
+/**
+ * @returns a pointer to a saved value at or before the given version
+ */
+const BoxedValue* getSavedValue(
+    SettingCoreBase::Key key,
+    SettingCoreBase::Version at);
+
+class SnapshotBase {
+ public:
+  /**
+   * Type that encapsulates the current pair of (to<string>(value), reason)
+   */
+  using SettingsInfo = std::pair<std::string, std::string>;
+
+  /**
+   * Apply all settings updates from this snapshot to the global state
+   * unconditionally.
+   */
+  virtual void publish() = 0;
+
+  /**
+   * Look up a setting by name, and update the value from a string
+   * representation.
+   *
+   * @returns True if the setting was successfully updated, false if no setting
+   *   with that name was found.
+   * @throws std::runtime_error  If there's a conversion error.
+   */
+  virtual bool setFromString(
+      StringPiece settingName,
+      StringPiece newValue,
+      StringPiece reason) = 0;
+
+  /**
+   * @return If the setting exists, the current setting information.
+   *         Empty Optional otherwise.
+   */
+  virtual Optional<SettingsInfo> getAsString(StringPiece settingName) const = 0;
+
+  /**
+   * Reset the value of the setting identified by name to its default value.
+   * The reason will be set to "default".
+   *
+   * @return  True if the setting was reset, false if the setting is not found.
+   */
+  virtual bool resetToDefault(StringPiece settingName) = 0;
+
+  /**
+   * Iterates over all known settings and calls
+   * func(meta, to<string>(value), reason) for each.
+   */
+  virtual void forEachSetting(
+      const std::function<
+          void(const SettingMetadata&, StringPiece, StringPiece)>& func)
+      const = 0;
+
+  virtual ~SnapshotBase();
+
+ protected:
+  detail::SettingCoreBase::Version at_;
+  std::unordered_map<detail::SettingCoreBase::Key, detail::BoxedValue>
+      snapshotValues_;
+
+  template <typename T>
+  friend class SettingCore;
+
+  SnapshotBase();
+
+  template <class T>
+  const SettingContents<T>& get(const detail::SettingCore<T>& core) const {
+    auto it = snapshotValues_.find(core.getKey());
+    if (it != snapshotValues_.end()) {
+      return it->second.template unbox<T>();
+    }
+    auto savedValue = detail::getSavedValue(core.getKey(), at_);
+    if (savedValue) {
+      return savedValue->template unbox<T>();
+    }
+    return core.getSlow();
+  }
+
+  template <class T>
+  void set(detail::SettingCore<T>& core, const T& t, StringPiece reason) {
+    snapshotValues_[core.getKey()] = detail::BoxedValue(t, reason, core);
+  }
+};
 
 template <class T>
 std::enable_if_t<std::is_constructible<T, StringPiece>::value, T>
@@ -77,17 +250,24 @@ class SettingCore : public SettingCoreBase {
  public:
   using Contents = SettingContents<T>;
 
-  void setFromString(StringPiece newValue, StringPiece reason) override {
-    set(convertOrConstruct<T>(newValue), reason.str());
+  void setFromString(
+      StringPiece newValue,
+      StringPiece reason,
+      SnapshotBase* snapshot) override {
+    set(convertOrConstruct<T>(newValue), reason.str(), snapshot);
   }
-  std::pair<std::string, std::string> getAsString() const override {
-    auto contents = *const_cast<SettingCore*>(this)->tlValue();
+
+  std::pair<std::string, std::string> getAsString(
+      const SnapshotBase* snapshot) const override {
+    auto& contents = snapshot ? snapshot->get(*this) : getSlow();
     return std::make_pair(
         to<std::string>(contents.value), contents.updateReason);
   }
-  void resetToDefault() override {
-    set(defaultValue_, "default");
+
+  void resetToDefault(SnapshotBase* snapshot) override {
+    set(defaultValue_, "default", snapshot);
   }
+
   const SettingMetadata& meta() const override {
     return meta_;
   }
@@ -102,8 +282,8 @@ class SettingCore : public SettingCoreBase {
       std::atomic<uint64_t>& trivialStorage) const {
     return getImpl(IsSmallPOD<T>(), trivialStorage);
   }
-  const T& getSlow() const {
-    return getImpl(std::false_type{}, trivialStorage_);
+  const SettingContents<T>& getSlow() const {
+    return *tlValue();
   }
   /***
    * SmallPOD version: just read the global atomic
@@ -123,15 +303,32 @@ class SettingCore : public SettingCoreBase {
     return const_cast<SettingCore*>(this)->tlValue()->value;
   }
 
-  void set(const T& t, StringPiece reason) {
+  void set(const T& t, StringPiece reason, SnapshotBase* snapshot = nullptr) {
+    /* Check that we can still display it (will throw otherwise) */
+    to<std::string>(t);
+
+    if (snapshot) {
+      snapshot->set(*this, t, reason);
+      return;
+    }
+
     SharedMutex::WriteHolder lg(globalLock_);
+
+    if (globalValue_) {
+      saveValueForOutstandingSnapshots(
+          getKey(), *settingVersion_, BoxedValue(*globalValue_));
+    }
     globalValue_ = std::make_shared<Contents>(reason.str(), t);
     if (IsSmallPOD<T>::value) {
       uint64_t v = 0;
       std::memcpy(&v, &t, sizeof(T));
       trivialStorage_.store(v);
     }
-    ++(*globalVersion_);
+    *settingVersion_ = nextGlobalVersion();
+  }
+
+  const T& defaultValue() const {
+    return defaultValue_;
   }
 
   SettingCore(
@@ -143,8 +340,7 @@ class SettingCore : public SettingCoreBase {
         trivialStorage_(trivialStorage),
         localValue_([]() {
           return new CachelinePadded<
-              Indestructible<std::pair<size_t, std::shared_ptr<Contents>>>>(
-              0, nullptr);
+              std::pair<Version, std::shared_ptr<Contents>>>(0, nullptr);
         }) {
     set(defaultValue_, "default");
     registerSetting(*this);
@@ -159,27 +355,27 @@ class SettingCore : public SettingCoreBase {
 
   std::atomic<uint64_t>& trivialStorage_;
 
-  /* Local versions start at 0, this will force a read on first local access. */
-  CachelinePadded<std::atomic<size_t>> globalVersion_{1};
+  /* Thread local versions start at 0, this will force a read on first access.
+   */
+  CachelinePadded<std::atomic<Version>> settingVersion_{1};
 
-  ThreadLocal<CachelinePadded<
-      Indestructible<std::pair<size_t, std::shared_ptr<Contents>>>>>
+  ThreadLocal<CachelinePadded<std::pair<Version, std::shared_ptr<Contents>>>>
       localValue_;
 
-  FOLLY_ALWAYS_INLINE std::shared_ptr<Contents>& tlValue() {
-    auto& value = ***localValue_;
-    if (LIKELY(value.first == *globalVersion_)) {
+  FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
+    auto& value = **localValue_;
+    if (LIKELY(value.first == *settingVersion_)) {
       return value.second;
     }
     return tlValueSlow();
   }
-  FOLLY_NOINLINE std::shared_ptr<Contents>& tlValueSlow() {
-    auto& value = ***localValue_;
-    while (value.first < *globalVersion_) {
+  FOLLY_NOINLINE const std::shared_ptr<Contents>& tlValueSlow() const {
+    auto& value = **localValue_;
+    while (value.first < *settingVersion_) {
       /* If this destroys the old value, do it without holding the lock */
       value.second.reset();
       SharedMutex::ReadHolder lg(globalLock_);
-      value.first = *globalVersion_;
+      value.first = *settingVersion_;
       value.second = globalValue_;
     }
     return value.second;

@@ -58,6 +58,10 @@ struct UserDefinedType {
     }
   }
 
+  bool operator==(const UserDefinedType& other) const {
+    return value_ == other.value_;
+  }
+
   int value_;
 };
 /* Note: conversion intentionally to different strings to test that this
@@ -84,29 +88,43 @@ FOLLY_SETTING_DEFINE(
 
 TEST(Settings, user_defined) {
   EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 100);
-  EXPECT_TRUE(
-      folly::settings::setFromString("follytest_user_defined", "a", "test"));
-  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 0);
   {
-    auto info = folly::settings::getAsString("follytest_user_defined");
+    folly::settings::Snapshot sn;
+    EXPECT_TRUE(sn.setFromString("follytest_user_defined", "a", "test"));
+    sn.publish();
+    EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 0);
+  }
+  {
+    folly::settings::Snapshot sn;
+    auto info = sn.getAsString("follytest_user_defined");
     EXPECT_TRUE(info.hasValue());
     EXPECT_EQ(info->first, "a_out");
     EXPECT_EQ(info->second, "test");
   }
-  EXPECT_THROW(
-      folly::settings::setFromString("follytest_user_defined", "c", "test2"),
-      std::runtime_error);
-  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 0);
   {
-    auto info = folly::settings::getAsString("follytest_user_defined");
+    folly::settings::Snapshot sn;
+    EXPECT_THROW(
+        sn.setFromString("follytest_user_defined", "c", "test2"),
+        std::runtime_error);
+    sn.publish();
+    EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 0);
+  }
+  {
+    folly::settings::Snapshot sn;
+    auto info = sn.getAsString("follytest_user_defined");
     EXPECT_TRUE(info.hasValue());
     EXPECT_EQ(info->first, "a_out");
     EXPECT_EQ(info->second, "test");
   }
-  EXPECT_TRUE(folly::settings::resetToDefault("follytest_user_defined"));
-  EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 100);
   {
-    auto info = folly::settings::getAsString("follytest_user_defined");
+    folly::settings::Snapshot sn;
+    EXPECT_TRUE(sn.resetToDefault("follytest_user_defined"));
+    sn.publish();
+    EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 100);
+  }
+  {
+    folly::settings::Snapshot sn;
+    auto info = sn.getAsString("follytest_user_defined");
     EXPECT_TRUE(info.hasValue());
     EXPECT_EQ(info->first, "b_out");
     EXPECT_EQ(info->second, "default");
@@ -119,7 +137,8 @@ TEST(Settings, user_defined) {
       std::runtime_error);
   EXPECT_EQ(some_ns::FOLLY_SETTING(follytest, user_defined)->value_, 100);
   {
-    auto info = folly::settings::getAsString("follytest_user_defined");
+    folly::settings::Snapshot sn;
+    auto info = sn.getAsString("follytest_user_defined");
     EXPECT_TRUE(info.hasValue());
     EXPECT_EQ(info->first, "b_out");
     EXPECT_EQ(info->second, "default");
@@ -138,12 +157,13 @@ TEST(Settings, basic) {
   a_ns::setRemote(200);
   EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 200);
   EXPECT_EQ(a_ns::getRemote(), 200);
-
-  auto res = folly::settings::getAsString("follytest_public_flag_to_a");
-  EXPECT_TRUE(res.hasValue());
-  EXPECT_EQ(res->first, "200");
-  EXPECT_EQ(res->second, "remote_set");
-
+  {
+    folly::settings::Snapshot sn;
+    auto res = sn.getAsString("follytest_public_flag_to_a");
+    EXPECT_TRUE(res.hasValue());
+    EXPECT_EQ(res->first, "200");
+    EXPECT_EQ(res->second, "remote_set");
+  }
   {
     auto meta = folly::settings::getSettingsMeta("follytest_public_flag_to_a");
     EXPECT_TRUE(meta.hasValue());
@@ -153,7 +173,6 @@ TEST(Settings, basic) {
     EXPECT_EQ(md.typeStr, "int");
     EXPECT_EQ(md.typeId, typeid(int));
   }
-
   {
     auto meta = folly::settings::getSettingsMeta("follytest_some_flag");
     EXPECT_TRUE(meta.hasValue());
@@ -163,63 +182,195 @@ TEST(Settings, basic) {
     EXPECT_EQ(md.typeStr, "std::string");
     EXPECT_EQ(md.typeId, typeid(std::string));
   }
-
-  res = folly::settings::getAsString("follytest_nonexisting");
-  EXPECT_FALSE(res.hasValue());
-
-  EXPECT_TRUE(folly::settings::setFromString(
-      "follytest_public_flag_to_a", "300", "from_string"));
-  EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 300);
+  {
+    folly::settings::Snapshot sn;
+    auto res = sn.getAsString("follytest_nonexisting");
+    EXPECT_FALSE(res.hasValue());
+  }
+  {
+    folly::settings::Snapshot sn;
+    EXPECT_TRUE(
+        sn.setFromString("follytest_public_flag_to_a", "300", "from_string"));
+    sn.publish();
+    EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 300);
+  }
   EXPECT_EQ(a_ns::getRemote(), 300);
-  res = folly::settings::getAsString("follytest_public_flag_to_a");
-  EXPECT_TRUE(res.hasValue());
-  EXPECT_EQ(res->first, "300");
-  EXPECT_EQ(res->second, "from_string");
-
-  EXPECT_FALSE(folly::settings::setFromString(
-      "follytest_nonexisting", "300", "from_string"));
-
-  std::string allFlags;
-  folly::settings::forEachSetting(
-      [&allFlags](
-          const folly::settings::SettingMetadata& meta,
-          folly::StringPiece value,
-          folly::StringPiece reason) {
-        if (meta.typeId == typeid(int)) {
-          EXPECT_EQ(meta.typeStr, "int");
-        } else if (meta.typeId == typeid(std::string)) {
-          EXPECT_EQ(meta.typeStr, "std::string");
-        } else if (meta.typeId == typeid(unsigned int)) {
-          EXPECT_EQ(meta.typeStr, "unsigned int");
-        } else if (meta.typeId == typeid(some_ns::UserDefinedType)) {
-          EXPECT_EQ(meta.typeStr, "UserDefinedType");
-        } else {
-          ASSERT_FALSE(true);
-        }
-        allFlags += folly::sformat(
-            "{}/{}/{}/{}/{}/{}/{}\n",
-            meta.project,
-            meta.name,
-            meta.typeStr,
-            meta.defaultStr,
-            meta.description,
-            value,
-            reason);
-      });
+  {
+    folly::settings::Snapshot sn;
+    auto res = sn.getAsString("follytest_public_flag_to_a");
+    EXPECT_TRUE(res.hasValue());
+    EXPECT_EQ(res->first, "300");
+    EXPECT_EQ(res->second, "from_string");
+  }
+  {
+    folly::settings::Snapshot sn;
+    EXPECT_FALSE(
+        sn.setFromString("follytest_nonexisting", "300", "from_string"));
+  }
   EXPECT_EQ(
-      allFlags,
-      "follytest/internal_flag_to_a/int/789/Desc of int/789/default\n"
-      "follytest/internal_flag_to_b/std::string/\"test\"/Desc of str/test/default\n"
-      "follytest/multi_token_type/unsigned int/123/Test that multi-token type names can be used/123/default\n"
-      "follytest/public_flag_to_a/int/456/Public flag to a/300/from_string\n"
-      "follytest/public_flag_to_b/std::string/\"basdf\"/Public flag to b/basdf/default\n"
-      "follytest/some_flag/std::string/\"default\"/Description/default/default\n"
-      "follytest/unused/std::string/\"unused_default\"/Not used, but should still be in the list/unused_default/default\n"
-      "follytest/user_defined/UserDefinedType/\"b\"/User defined type constructed from string/b_out/default\n");
+      some_ns::FOLLY_SETTING(follytest, multi_token_type).defaultValue(), 123);
+  EXPECT_EQ(
+      a_ns::FOLLY_SETTING(follytest, public_flag_to_a).defaultValue(), 456);
+  EXPECT_EQ(
+      b_ns::FOLLY_SETTING(follytest, public_flag_to_b).defaultValue(), "basdf");
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, some_flag).defaultValue(), "default");
+  EXPECT_EQ(
+      some_ns::FOLLY_SETTING(follytest, user_defined).defaultValue(),
+      some_ns::UserDefinedType("b"));
+  {
+    std::string allFlags;
+    folly::settings::Snapshot sn;
+    sn.forEachSetting([&allFlags](
+                          const folly::settings::SettingMetadata& meta,
+                          folly::StringPiece value,
+                          folly::StringPiece reason) {
+      if (meta.typeId == typeid(int)) {
+        EXPECT_EQ(meta.typeStr, "int");
+      } else if (meta.typeId == typeid(std::string)) {
+        EXPECT_EQ(meta.typeStr, "std::string");
+      } else if (meta.typeId == typeid(unsigned int)) {
+        EXPECT_EQ(meta.typeStr, "unsigned int");
+      } else if (meta.typeId == typeid(some_ns::UserDefinedType)) {
+        EXPECT_EQ(meta.typeStr, "UserDefinedType");
+      } else {
+        ASSERT_FALSE(true);
+      }
+      allFlags += folly::sformat(
+          "{}/{}/{}/{}/{}/{}/{}\n",
+          meta.project,
+          meta.name,
+          meta.typeStr,
+          meta.defaultStr,
+          meta.description,
+          value,
+          reason);
+    });
+    EXPECT_EQ(
+        allFlags,
+        "follytest/internal_flag_to_a/int/789/Desc of int/789/default\n"
+        "follytest/internal_flag_to_b/std::string/\"test\"/Desc of str/test/default\n"
+        "follytest/multi_token_type/unsigned int/123/Test that multi-token type names can be used/123/default\n"
+        "follytest/public_flag_to_a/int/456/Public flag to a/300/from_string\n"
+        "follytest/public_flag_to_b/std::string/\"basdf\"/Public flag to b/basdf/default\n"
+        "follytest/some_flag/std::string/\"default\"/Description/default/default\n"
+        "follytest/unused/std::string/\"unused_default\"/Not used, but should still be in the list/unused_default/default\n"
+        "follytest/user_defined/UserDefinedType/\"b\"/User defined type constructed from string/b_out/default\n");
+  }
+  {
+    folly::settings::Snapshot sn;
+    EXPECT_TRUE(sn.resetToDefault("follytest_public_flag_to_a"));
+    sn.publish();
+    EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 456);
+    EXPECT_EQ(a_ns::getRemote(), 456);
+  }
+  {
+    folly::settings::Snapshot sn;
+    EXPECT_FALSE(sn.resetToDefault("follytest_nonexisting"));
+  }
+}
 
-  EXPECT_TRUE(folly::settings::resetToDefault("follytest_public_flag_to_a"));
-  EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 456);
-  EXPECT_EQ(a_ns::getRemote(), 456);
+TEST(Settings, snapshot) {
+  // Test discarding a snapshot
+  {
+    folly::settings::Snapshot snapshot;
 
-  EXPECT_FALSE(folly::settings::resetToDefault("follytest_nonexisting"));
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "default");
+    EXPECT_EQ(
+        *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)), "default");
+
+    // Set the global value, snapshot doesn't see it
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("global_value");
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value");
+    EXPECT_EQ(
+        *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)), "default");
+
+    // Set the value in the snapshot only
+    snapshot(some_ns::FOLLY_SETTING(follytest, some_flag))
+        .set("snapshot_value");
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value");
+    EXPECT_EQ(
+        *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)),
+        "snapshot_value");
+  }
+  // Discard the snapshot
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value");
+
+  // Test publishing a snapshot
+  {
+    folly::settings::Snapshot snapshot;
+
+    // Set the value in the snapshot only
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value");
+    EXPECT_EQ(
+        *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)),
+        "global_value");
+    snapshot(some_ns::FOLLY_SETTING(follytest, some_flag))
+        .set("snapshot_value2");
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value");
+    EXPECT_EQ(
+        *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)),
+        "snapshot_value2");
+
+    // Set the global value, snapshot doesn't see it
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("global_value2");
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "global_value2");
+    EXPECT_EQ(
+        *snapshot(some_ns::FOLLY_SETTING(follytest, some_flag)),
+        "snapshot_value2");
+    snapshot.publish();
+  }
+
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "snapshot_value2");
+
+  // Snapshots at different points in time
+  {
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("a");
+    a_ns::FOLLY_SETTING(follytest, public_flag_to_a).set(123);
+
+    folly::settings::Snapshot snapshot_1;
+
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "a");
+    EXPECT_EQ(*snapshot_1(some_ns::FOLLY_SETTING(follytest, some_flag)), "a");
+    EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 123);
+    EXPECT_EQ(
+        *snapshot_1(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("b");
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "b");
+    EXPECT_EQ(*snapshot_1(some_ns::FOLLY_SETTING(follytest, some_flag)), "a");
+    EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 123);
+    EXPECT_EQ(
+        *snapshot_1(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+
+    folly::settings::Snapshot snapshot_2;
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "b");
+    EXPECT_EQ(*snapshot_1(some_ns::FOLLY_SETTING(follytest, some_flag)), "a");
+    EXPECT_EQ(*snapshot_2(some_ns::FOLLY_SETTING(follytest, some_flag)), "b");
+    EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 123);
+    EXPECT_EQ(
+        *snapshot_1(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+    EXPECT_EQ(
+        *snapshot_2(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("c");
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "c");
+    EXPECT_EQ(*snapshot_1(some_ns::FOLLY_SETTING(follytest, some_flag)), "a");
+    EXPECT_EQ(*snapshot_2(some_ns::FOLLY_SETTING(follytest, some_flag)), "b");
+    EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 123);
+    EXPECT_EQ(
+        *snapshot_1(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+    EXPECT_EQ(
+        *snapshot_2(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+
+    a_ns::FOLLY_SETTING(follytest, public_flag_to_a).set(456);
+    EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "c");
+    EXPECT_EQ(*snapshot_1(some_ns::FOLLY_SETTING(follytest, some_flag)), "a");
+    EXPECT_EQ(*snapshot_2(some_ns::FOLLY_SETTING(follytest, some_flag)), "b");
+    EXPECT_EQ(*a_ns::FOLLY_SETTING(follytest, public_flag_to_a), 456);
+    EXPECT_EQ(
+        *snapshot_1(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+    EXPECT_EQ(
+        *snapshot_2(a_ns::FOLLY_SETTING(follytest, public_flag_to_a)), 123);
+  }
 }

@@ -504,6 +504,17 @@ TEST(Dynamic, GetSetDefaultTest) {
   dynamic d4 = dynamic::array;
   EXPECT_ANY_THROW(d4.getDefault("foo", "bar"));
   EXPECT_ANY_THROW(d4.setDefault("foo", "bar"));
+
+  // Using dynamic keys
+  dynamic k10{10}, k20{20}, kTrue{true};
+  dynamic d5 = dynamic::object(k10, "foo");
+  EXPECT_EQ(d5.setDefault(k10, "bar"), "foo");
+  EXPECT_EQ(d5.setDefault(k20, "bar"), "bar");
+  EXPECT_EQ(d5.setDefault(kTrue, "baz"), "baz");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kA, "foo"), "foo");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kB, "foo"), "foo");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kFoo, "bar"), "bar");
+  EXPECT_EQ(d5.setDefault(StaticStrings::kBar, "foo"), "foo");
 }
 
 TEST(Dynamic, ObjectForwarding) {
@@ -568,6 +579,7 @@ std::string make_long_string() {
 
 TEST(Dynamic, GetDefault) {
   const auto s = make_long_string();
+  dynamic kDynamicKey{10};
   dynamic ds(s);
   dynamic tmp(s);
   dynamic d1 = dynamic::object("key1", s);
@@ -579,11 +591,31 @@ TEST(Dynamic, GetDefault) {
   EXPECT_EQ(ds, d1.getDefault("key1", ayy));
   EXPECT_EQ(ds, d1.getDefault("key1", ayy));
   EXPECT_EQ(ds, d1.getDefault("not-a-key", tmp));
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kA, tmp));
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kB, tmp));
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kFoo, tmp));
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kBar, tmp));
+  EXPECT_EQ(ds, d1.getDefault(kDynamicKey, tmp));
   EXPECT_EQ(ds, tmp);
   // lvalue - rvalue
   EXPECT_EQ(ds, d1.getDefault("key1", "ayy"));
   EXPECT_EQ(ds, d1.getDefault("key1", "ayy"));
   EXPECT_EQ(ds, d1.getDefault("not-a-key", std::move(tmp)));
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kA, std::move(tmp)));
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kB, std::move(tmp)));
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kFoo, std::move(tmp)));
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, d1.getDefault(StaticStrings::kBar, std::move(tmp)));
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, d1.getDefault(kDynamicKey, std::move(tmp)));
   EXPECT_NE(ds, tmp);
   // rvalue - lvalue
   tmp = s;
@@ -592,11 +624,46 @@ TEST(Dynamic, GetDefault) {
   EXPECT_EQ(ds, std::move(d2).getDefault("not-a-key", tmp));
   EXPECT_EQ(dynamic(dynamic::object("key2", s)), d2);
   EXPECT_EQ(ds, tmp);
+  EXPECT_EQ(ds, std::move(d2).getDefault(StaticStrings::kA, tmp));
+  EXPECT_EQ(dynamic(dynamic::object("key2", s)), d2);
+  EXPECT_EQ(ds, tmp);
+  EXPECT_EQ(ds, std::move(d2).getDefault(StaticStrings::kB, tmp));
+  EXPECT_EQ(dynamic(dynamic::object("key2", s)), d2);
+  EXPECT_EQ(ds, tmp);
+  EXPECT_EQ(ds, std::move(d2).getDefault(StaticStrings::kFoo, tmp));
+  EXPECT_EQ(dynamic(dynamic::object("key2", s)), d2);
+  EXPECT_EQ(ds, tmp);
+  EXPECT_EQ(ds, std::move(d2).getDefault(StaticStrings::kBar, tmp));
+  EXPECT_EQ(dynamic(dynamic::object("key2", s)), d2);
+  EXPECT_EQ(ds, tmp);
+  EXPECT_EQ(ds, std::move(d2).getDefault(kDynamicKey, tmp));
+  EXPECT_EQ(dynamic(dynamic::object("key2", s)), d2);
+  EXPECT_EQ(ds, tmp);
   // rvalue - rvalue
   EXPECT_EQ(ds, std::move(d3).getDefault("key3", std::move(tmp)));
   EXPECT_NE(ds, d3["key3"]);
   EXPECT_EQ(ds, tmp);
   EXPECT_EQ(ds, std::move(d4).getDefault("not-a-key", std::move(tmp)));
+  EXPECT_EQ(dynamic(dynamic::object("key4", s)), d4);
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, std::move(d4).getDefault(StaticStrings::kA, std::move(tmp)));
+  EXPECT_EQ(dynamic(dynamic::object("key4", s)), d4);
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, std::move(d4).getDefault(StaticStrings::kB, std::move(tmp)));
+  EXPECT_EQ(dynamic(dynamic::object("key4", s)), d4);
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, std::move(d4).getDefault(StaticStrings::kFoo, std::move(tmp)));
+  EXPECT_EQ(dynamic(dynamic::object("key4", s)), d4);
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, std::move(d4).getDefault(StaticStrings::kBar, std::move(tmp)));
+  EXPECT_EQ(dynamic(dynamic::object("key4", s)), d4);
+  EXPECT_NE(ds, tmp);
+  tmp = s;
+  EXPECT_EQ(ds, std::move(d4).getDefault(kDynamicKey, std::move(tmp)));
   EXPECT_EQ(dynamic(dynamic::object("key4", s)), d4);
   EXPECT_NE(ds, tmp);
 }

@@ -230,6 +230,7 @@ class ScopeGuardForNewException {
   ScopeGuardForNewException(const ScopeGuardForNewException& other) = delete;
 
   void* operator new(std::size_t) = delete;
+  void operator delete(void*) = delete;
 
   FunctionType function_;
   int exceptionCounter_{uncaught_exceptions()};

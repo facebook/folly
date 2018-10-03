@@ -61,7 +61,9 @@ class SlowFingerprint {
   }
 
   void write(uint64_t* out) const {
-    fp_.write(out);
+    for (int i = 0; i < fp_.size(); ++i) {
+      out[i] = fp_.get(i);
+    }
   }
 
  private:

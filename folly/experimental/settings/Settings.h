@@ -24,6 +24,8 @@
 
 namespace folly {
 namespace settings {
+
+class Snapshot;
 namespace detail {
 
 /**
@@ -46,7 +48,7 @@ class SettingWrapper {
     return core_.getWithHint(*TrivialPtr);
   }
   const T* operator->() const {
-    return &core_.getSlow();
+    return &core_.getSlow().value;
   }
 
   /**
@@ -58,15 +60,24 @@ class SettingWrapper {
    * @throws std::runtime_error  If we can't convert t to string.
    */
   void set(const T& t, StringPiece reason = "api") {
-    /* Check that we can still display it */
-    folly::to<std::string>(t);
     core_.set(t, reason);
+  }
+
+  /**
+   * Returns the default value this setting was constructed with.
+   * NOTE: SettingsMetadata is type-agnostic, so it only stores the string
+   * representation of the default value.  This method returns the
+   * actual value that was passed on construction.
+   */
+  const T& defaultValue() const {
+    return core_.defaultValue();
   }
 
   explicit SettingWrapper(SettingCore<T>& core) : core_(core) {}
 
  private:
   SettingCore<T>& core_;
+  friend class folly::settings::Snapshot;
 };
 
 /* C++20 has std::type_indentity */
@@ -182,50 +193,147 @@ using TypeIdentityT = typename TypeIdentity<T>::type;
   FOLLY_SETTINGS_LOCAL_FUNC__##_project##_##_name(0)
 
 /**
- * Look up a setting by name, and update the value from a string representation.
- *
- * @returns True if the setting was successfully updated, false if no setting
- *   with that name was found.
- * @throws std::runtime_error  If there's a conversion error.
- */
-bool setFromString(
-    folly::StringPiece settingName,
-    folly::StringPiece newValue,
-    folly::StringPiece reason);
-
-/**
- * Type that encapsulates the current pair of (to<string>(value), reason)
- */
-using SettingsInfo = std::pair<std::string, std::string>;
-/**
- * @return If the setting exists, the current setting information.
- *         Empty Optional otherwise.
- */
-folly::Optional<SettingsInfo> getAsString(folly::StringPiece settingName);
-
-/**
  * @return If the setting exists, returns the current settings metadata.
  *         Empty Optional otherwise.
  */
-folly::Optional<SettingMetadata> getSettingsMeta(
-    folly::StringPiece settingName);
+Optional<SettingMetadata> getSettingsMeta(StringPiece settingName);
+
+namespace detail {
 
 /**
- * Reset the value of the setting identified by name to its default value.
- * The reason will be set to "default".
+ * Like SettingWrapper, but checks against any values saved/updated in a
+ * snapshot.
+ */
+template <class T>
+class SnapshotSettingWrapper {
+ public:
+  /**
+   * The references are only valid for the duration of the snapshot's
+   * lifetime or until the setting has been updated in the snapshot,
+   * whichever happens earlier.
+   */
+  const T& operator*() const;
+  const T* operator->() const {
+    return &operator*();
+  }
+
+  /**
+   * Update the setting in the snapshot, the effects are not visible
+   * in this snapshot.
+   */
+  void set(const T& t, StringPiece reason = "api") {
+    core_.set(t, reason, &snapshot_);
+  }
+
+ private:
+  Snapshot& snapshot_;
+  SettingCore<T>& core_;
+  friend class folly::settings::Snapshot;
+
+  SnapshotSettingWrapper(Snapshot& snapshot, SettingCore<T>& core)
+      : snapshot_(snapshot), core_(core) {}
+};
+
+} // namespace detail
+
+/**
+ * Captures the current state of all setting values and allows
+ * updating multiple settings at once, with verification and rollback.
  *
- * @return  True if the setting was reset, false if the setting is not found.
+ * A single snapshot cannot be used concurrently from different
+ * threads.  Multiple concurrent snapshots are safe. Passing a single
+ * snapshot from one thread to another is safe as long as the user
+ * properly synchronizes the handoff.
+ *
+ * Example usage:
+ *
+ *   folly::settings::Snapshot snapshot;
+ *   // FOLLY_SETTING(project, name) refers to the globally visible value
+ *   // snapshot(FOLLY_SETTING(project, name)) refers to the value saved in the
+ *   //  snapshot
+ *   FOLLY_SETTING(project, name).set(new_value);
+ *   assert(*FOLLY_SETTING(project, name) == new_value);
+ *   assert(*snapshot(FOLLY_SETTING(project, name)) == old_value);
+ *
+ *   snapshot(FOLLY_SETTING(project, name)).set(new_snapshot_value);
+ *   assert(*FOLLY_SETTING(project, name) == new_value);
+ *   assert(*snapshot(FOLLY_SETTING(project, name)) == new_snapshot_value);
+ *
+ *   // At this point we can discard the snapshot and forget new_snapshot_value,
+ *   // or choose to publish:
+ *   snapshot.publish();
+ *   assert(*FOLLY_SETTING(project, name) == new_snapshot_value);
  */
-bool resetToDefault(folly::StringPiece settingName);
+class Snapshot final : public detail::SnapshotBase {
+ public:
+  /**
+   * Wraps a global FOLLY_SETTING(a, b) and returns a snapshot-local wrapper.
+   */
+  template <class T, std::atomic<uint64_t>* P>
+  detail::SnapshotSettingWrapper<T> operator()(
+      detail::SettingWrapper<T, P>&& setting) {
+    return detail::SnapshotSettingWrapper<T>(*this, setting.core_);
+  }
 
-/**
- * Iterates over all known settings and calls
- * func(meta, to<string>(value), reason) for each.
- */
-void forEachSetting(
-    const std::function<
-        void(const SettingMetadata&, folly::StringPiece, folly::StringPiece)>&
-        func);
+  /**
+   * Returns a snapshot of all current setting values.
+   * Global settings changes will not be visible in the snapshot, and vice
+   * versa.
+   */
+  Snapshot() = default;
+
+  /**
+   * Apply all settings updates from this snapshot to the global state
+   * unconditionally.
+   */
+  void publish() override;
+
+  /**
+   * Look up a setting by name, and update the value from a string
+   * representation.
+   *
+   * @returns True if the setting was successfully updated, false if no setting
+   *   with that name was found.
+   * @throws std::runtime_error  If there's a conversion error.
+   */
+  bool setFromString(
+      StringPiece settingName,
+      StringPiece newValue,
+      StringPiece reason) override;
+
+  /**
+   * @return If the setting exists, the current setting information.
+   *         Empty Optional otherwise.
+   */
+  Optional<SettingsInfo> getAsString(StringPiece settingName) const override;
+
+  /**
+   * Reset the value of the setting identified by name to its default value.
+   * The reason will be set to "default".
+   *
+   * @return  True if the setting was reset, false if the setting is not found.
+   */
+  bool resetToDefault(StringPiece settingName) override;
+
+  /**
+   * Iterates over all known settings and calls
+   * func(meta, to<string>(value), reason) for each.
+   */
+  void forEachSetting(const std::function<
+                      void(const SettingMetadata&, StringPiece, StringPiece)>&
+                          func) const override;
+
+ private:
+  template <typename T>
+  friend class detail::SnapshotSettingWrapper;
+};
+
+namespace detail {
+template <class T>
+inline const T& SnapshotSettingWrapper<T>::operator*() const {
+  return snapshot_.get(core_).value;
+}
+} // namespace detail
 
 } // namespace settings
 } // namespace folly

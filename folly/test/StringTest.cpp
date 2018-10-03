@@ -19,6 +19,7 @@
 #endif
 
 #include <folly/String.h>
+#include <tuple>
 
 #include <cinttypes>
 #include <set>
@@ -954,6 +955,20 @@ TEST(Split, fixed_convert) {
   // Enable verifying that a line only contains one field
   EXPECT_TRUE(folly::split(' ', "hello", a));
   EXPECT_FALSE(folly::split(' ', "hello world", a));
+
+  // Test cases with std::ignore.
+  EXPECT_TRUE(folly::split(':', "a:13:14.7:b", std::ignore, b, c, d));
+  EXPECT_EQ(13, b);
+  EXPECT_NEAR(14.7, c, 1e-10);
+  EXPECT_EQ("b", d);
+
+  EXPECT_TRUE(folly::split(':', "a:13:14.7:b", std::ignore, b, c, std::ignore));
+  EXPECT_EQ(13, b);
+  EXPECT_NEAR(14.7, c, 1e-10);
+
+  EXPECT_TRUE(folly::split<false>(':', "a:13:14.7:b", a, b, std::ignore));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ(13, b);
 }
 
 namespace my {

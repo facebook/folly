@@ -356,6 +356,8 @@ class SafeStackTracePrinter {
       size_t minSignalSafeElfCacheSize = kDefaultMinSignalSafeElfCacheSize,
       int fd = STDERR_FILENO);
 
+  virtual ~SafeStackTracePrinter() {}
+
   /**
    * Only allocates on the stack and is signal-safe but not thread-safe.  Don't
    * call printStackTrace() on the same StackTracePrinter object from multiple
@@ -372,6 +374,9 @@ class SafeStackTracePrinter {
 
   // Flush printer_, also fsync, in case we're about to crash again...
   void flush();
+
+ protected:
+  virtual void printSymbolizedStackTrace();
 
  private:
   static constexpr size_t kMaxStackTraceDepth = 100;
@@ -415,5 +420,22 @@ class FastStackTracePrinter {
   const std::unique_ptr<SymbolizePrinter> printer_;
   Symbolizer symbolizer_;
 };
+
+/**
+ * Use this class in rare situations where signal handlers are running in a
+ * tiny stack specified by sigaltstack.
+ *
+ * This is neither thread-safe nor signal-safe. However, it can usually print
+ * something useful while SafeStackTracePrinter would stack overflow.
+ *
+ * Signal handlers would need to block other signals to make this safer.
+ * Note it's still unsafe even with that.
+ */
+class UnsafeSelfAllocateStackTracePrinter : public SafeStackTracePrinter {
+ protected:
+  void printSymbolizedStackTrace() override;
+  const long pageSizeUnchecked_ = sysconf(_SC_PAGESIZE);
+};
+
 } // namespace symbolizer
 } // namespace folly

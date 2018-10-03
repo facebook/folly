@@ -1020,6 +1020,25 @@ TEST(IOBuf, wrapIov) {
   }
 }
 
+TEST(IOBuf, takeOwnershipIov) {
+  // Test taking IOVs ownership
+  folly::fbvector<folly::StringPiece> words{"hello", "world!"};
+  folly::fbvector<struct iovec> iov;
+  iov.push_back({nullptr, 0});
+  for (size_t i = 0; i < words.size(); i++) {
+    iov.push_back({(void*)strdup(words[i].data()), words[i].size() + 1});
+  }
+  auto buf = IOBuf::takeOwnershipIov(iov.data(), iov.size());
+  EXPECT_EQ(iov.size() - 1, buf->countChainElements());
+
+  IOBuf const* b = buf.get();
+  // skip the first iovec, which is empty/null, as it is ignored by
+  // IOBuf::takeIovOwnership
+  for (size_t i = 0; i < buf->countChainElements(); ++i, b = b->next()) {
+    EXPECT_EQ(words[i], static_cast<const char*>(iov[i + 1].iov_base));
+  }
+}
+
 TEST(IOBuf, wrapZeroLenIov) {
   folly::fbvector<struct iovec> iov;
   iov.push_back({nullptr, 0});

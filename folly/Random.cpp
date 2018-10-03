@@ -63,7 +63,7 @@ void readRandomDevice(void* data, size_t size) {
   PCHECK(CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data));
 #else
   // Keep the random device open for the duration of the program.
-  static int randomFd = ::open("/dev/urandom", O_RDONLY);
+  static int randomFd = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
   PCHECK(randomFd >= 0);
   auto bytesRead = readFull(randomFd, data, size);
   PCHECK(bytesRead >= 0 && size_t(bytesRead) == size);

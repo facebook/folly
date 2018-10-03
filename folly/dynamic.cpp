@@ -206,13 +206,13 @@ dynamic& dynamic::operator[](StringPiece k) & {
   return ret.first->second;
 }
 
-dynamic dynamic::getDefault(const dynamic& k, const dynamic& v) const& {
+dynamic dynamic::getDefault(StringPiece k, const dynamic& v) const& {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(k);
   return it == obj.end() ? v : it->second;
 }
 
-dynamic dynamic::getDefault(const dynamic& k, dynamic&& v) const& {
+dynamic dynamic::getDefault(StringPiece k, dynamic&& v) const& {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(k);
   // Avoid clang bug with ternary
@@ -223,7 +223,7 @@ dynamic dynamic::getDefault(const dynamic& k, dynamic&& v) const& {
   }
 }
 
-dynamic dynamic::getDefault(const dynamic& k, const dynamic& v) && {
+dynamic dynamic::getDefault(StringPiece k, const dynamic& v) && {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(k);
   // Avoid clang bug with ternary
@@ -234,7 +234,7 @@ dynamic dynamic::getDefault(const dynamic& k, const dynamic& v) && {
   }
 }
 
-dynamic dynamic::getDefault(const dynamic& k, dynamic&& v) && {
+dynamic dynamic::getDefault(StringPiece k, dynamic&& v) && {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(k);
   return std::move(it == obj.end() ? v : it->second);

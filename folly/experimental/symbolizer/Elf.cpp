@@ -99,6 +99,7 @@ int ElfFile::openNoThrow(
     return kSystemError;
   }
   if (!init(msg)) {
+    reset();
     errno = EINVAL;
     return kInvalidElfFile;
   }
