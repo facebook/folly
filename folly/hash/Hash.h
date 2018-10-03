@@ -16,8 +16,16 @@
 
 #pragma once
 
+#if __has_include(<cstdint>) 
 #include <cstdint>
+#else 
+#include <stdint.h>
+#endif
+#if __has_include(<cstring>) 
 #include <cstring>
+#else
+#include <string.h>
+#endif
 #include <limits>
 #include <string>
 #include <tuple>

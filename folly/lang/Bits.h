@@ -47,8 +47,16 @@
 #pragma once
 
 #include <cassert>
+#if __has_include(<cinttypes>) 
 #include <cinttypes>
+#else 
+#include <inttypes.h>
+#endif
+#if __has_include(<cstdint>) 
 #include <cstdint>
+#else 
+#include <stdint.h>
+#endif
 #include <cstring>
 #include <limits>
 #include <type_traits>

@@ -19,7 +19,11 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#if __has_include(<cstdint>) 
 #include <cstdint>
+#else 
+#include <stdint.h>
+#endif
 #include <limits>
 #include <type_traits>
 
@@ -48,7 +52,7 @@ enum class FutexResult {
  * functions are available as free functions rather than member functions
  */
 template <template <typename> class Atom = std::atomic>
-using Futex = Atom<std::uint32_t>;
+using Futex = Atom<::uint32_t>;
 
 /**
  * Puts the thread to sleep if this->load() == expected.  Returns true when

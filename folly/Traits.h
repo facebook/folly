@@ -420,7 +420,7 @@ namespace traits_detail_IsNothrowSwappable {
 // is enabled.
 template <typename T>
 using IsNothrowSwappable = std::is_nothrow_swappable<T>;
-#elif _CPPLIB_VER
+#elif _CPPLIB_VER > 601
 // MSVC 2015+ defines the base even if C++17 is disabled, and
 // MSVC 2015 has issues with our fallback implementation due to
 // over-eager evaluation of noexcept.

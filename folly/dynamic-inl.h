@@ -20,6 +20,7 @@
 #include <folly/CPortability.h>
 #include <folly/Conv.h>
 #include <folly/Format.h>
+#include <folly/GLog.h>
 #include <folly/Likely.h>
 #include <folly/detail/Iterators.h>
 #include <folly/lang/Exception.h>

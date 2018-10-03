@@ -16,6 +16,7 @@
 
 #pragma once
 
+#if FOLLY_HAVE_LIBGLOG
 #include <atomic>
 #include <chrono>
 
@@ -56,4 +57,20 @@
         } else                                                                 \
           LOG(severity)
 
+#endif
+#else
+#include <iostream>
+#ifndef FB_LOG_EVERY_MS
+#define FB_LOG_EVERY_MS(severity, milli_interval)
+#endif
+#define CHECK(x) std::cerr
+#define CHECK_GE(x,y)
+#define DCHECK_EQ(x,y)
+#define DCHECK_GT(x,y)
+#define DCHECK_LT(x,y)
+#define DCHECK_LE(x,y)
+#define DCHECK(x)
+#define WARNING 0
+#define DFATAL 0
+#define LOG(x) std::cerr
 #endif

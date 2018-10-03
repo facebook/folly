@@ -21,7 +21,9 @@
 #if !defined(_WIN32)
 
 #include <pthread.h>
-
+#if FOLLY_HAVE_PTHREAD_NP
+#include <pthread_np.h>
+#endif
 #elif !FOLLY_HAVE_PTHREAD
 
 #include <cstdint>

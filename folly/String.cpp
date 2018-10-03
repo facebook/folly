@@ -24,8 +24,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <glog/logging.h>
-
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/container/Array.h>

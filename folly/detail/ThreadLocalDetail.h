@@ -24,8 +24,6 @@
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
-
 #include <folly/Exception.h>
 #include <folly/Function.h>
 #include <folly/Portability.h>

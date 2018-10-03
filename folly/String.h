@@ -28,6 +28,7 @@
 #include <folly/ExceptionString.h>
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
+#include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>

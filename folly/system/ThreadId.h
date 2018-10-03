@@ -78,10 +78,12 @@ inline uint64_t getCurrentThreadID() {
  * joined.
  */
 inline uint64_t getOSThreadID() {
-#if __APPLE__
+#if __APPLE__ 
   uint64_t tid;
   pthread_threadid_np(nullptr, &tid);
   return tid;
+#elif __has_include(<pthread_np.h>>)
+  return uint64_t(pthread_getthreadid_np());
 #elif _WIN32
   return uint64_t(GetCurrentThreadId());
 #else

@@ -40,6 +40,7 @@
 #include <folly/Demangle.h>
 #include <folly/Expected.h>
 #include <folly/FBString.h>
+#include <folly/GLog.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>

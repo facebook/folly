@@ -20,7 +20,11 @@
 #pragma once
 
 #include <cassert>
+#if __has_include(<cstdint>) 
 #include <cstdint>
+#else 
+#include <stdint.h>
+#endif
 #include <exception>
 #include <iosfwd>
 #include <memory>
