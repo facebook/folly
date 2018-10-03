@@ -119,7 +119,7 @@ class File {
   /**
    * Swap this File with another.
    */
-  void swap(File& other);
+  void swap(File& other) noexcept;
 
   // movable
   File(File&&) noexcept;
@@ -153,6 +153,6 @@ class File {
   bool ownsFd_;
 };
 
-void swap(File& a, File& b);
+void swap(File& a, File& b) noexcept;
 
 } // namespace folly
