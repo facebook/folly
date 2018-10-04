@@ -391,6 +391,7 @@ TEST(AccessSpreader, Simple) {
   Getcpu::Func AccessSpreader<tag>::pickGetcpuFunc() { \
     return func;                                       \
   }                                                    \
+  template struct AccessSpreader<tag>;                 \
   }
 
 DECLARE_SPREADER_TAG(ManualTag, CacheLocality::uniform(16), testingGetcpu)

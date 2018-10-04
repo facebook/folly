@@ -41,6 +41,7 @@ using namespace folly;
   Getcpu::Func AccessSpreader<tag>::pickGetcpuFunc() { \
     return func;                                       \
   }                                                    \
+  template struct AccessSpreader<tag>;                 \
   }
 
 DECLARE_SPREADER_TAG(
@@ -93,44 +94,44 @@ BENCHMARK(AccessSpreaderUse, iters) {
 // ============================================================================
 // folly/test/CacheLocalityTest.cpp                relative  time/iter  iters/s
 // ============================================================================
-// AccessSpreaderUse                                           11.94ns   83.79M
+// AccessSpreaderUse                                           11.53ns   86.75M
 // ----------------------------------------------------------------------------
-// contentionAtWidthGetcpu(1_stripe_0_work)                   985.75ns    1.01M
-// contentionAtWidthGetcpu(2_stripe_0_work)                   424.02ns    2.36M
-// contentionAtWidthGetcpu(4_stripe_0_work)                   190.13ns    5.26M
-// contentionAtWidthGetcpu(8_stripe_0_work)                    91.86ns   10.89M
-// contentionAtWidthGetcpu(16_stripe_0_work)                   29.31ns   34.12M
-// contentionAtWidthGetcpu(32_stripe_0_work)                   29.53ns   33.86M
-// contentionAtWidthGetcpu(64_stripe_0_work)                   29.93ns   33.41M
-// contentionAtWidthThreadLocal(2_stripe_0_work)              609.21ns    1.64M
-// contentionAtWidthThreadLocal(4_stripe_0_work)              303.60ns    3.29M
-// contentionAtWidthThreadLocal(8_stripe_0_work)              246.57ns    4.06M
-// contentionAtWidthThreadLocal(16_stripe_0_work)             154.84ns    6.46M
-// contentionAtWidthThreadLocal(32_stripe_0_work)              24.14ns   41.43M
-// contentionAtWidthThreadLocal(64_stripe_0_work)              23.95ns   41.75M
-// contentionAtWidthPthreadSelf(2_stripe_0_work)              722.01ns    1.39M
-// contentionAtWidthPthreadSelf(4_stripe_0_work)              501.56ns    1.99M
-// contentionAtWidthPthreadSelf(8_stripe_0_work)              474.58ns    2.11M
-// contentionAtWidthPthreadSelf(16_stripe_0_work)             300.90ns    3.32M
-// contentionAtWidthPthreadSelf(32_stripe_0_work)             175.77ns    5.69M
-// contentionAtWidthPthreadSelf(64_stripe_0_work)             174.88ns    5.72M
-// atomicIncrBaseline(local_incr_0_work)                       16.81ns   59.51M
+// contentionAtWidthGetcpu(1_stripe_0_work)                     1.05us  954.62K
+// contentionAtWidthGetcpu(2_stripe_0_work)                   521.93ns    1.92M
+// contentionAtWidthGetcpu(4_stripe_0_work)                   306.91ns    3.26M
+// contentionAtWidthGetcpu(8_stripe_0_work)                   150.86ns    6.63M
+// contentionAtWidthGetcpu(16_stripe_0_work)                   86.20ns   11.60M
+// contentionAtWidthGetcpu(32_stripe_0_work)                   35.90ns   27.85M
+// contentionAtWidthGetcpu(64_stripe_0_work)                   36.76ns   27.21M
+// contentionAtWidthThreadLocal(2_stripe_0_work)              303.88ns    3.29M
+// contentionAtWidthThreadLocal(4_stripe_0_work)              225.62ns    4.43M
+// contentionAtWidthThreadLocal(8_stripe_0_work)              106.88ns    9.36M
+// contentionAtWidthThreadLocal(16_stripe_0_work)              72.82ns   13.73M
+// contentionAtWidthThreadLocal(32_stripe_0_work)              26.53ns   37.70M
+// contentionAtWidthThreadLocal(64_stripe_0_work)              25.02ns   39.97M
+// contentionAtWidthPthreadSelf(2_stripe_0_work)              363.34ns    2.75M
+// contentionAtWidthPthreadSelf(4_stripe_0_work)              247.74ns    4.04M
+// contentionAtWidthPthreadSelf(8_stripe_0_work)              109.03ns    9.17M
+// contentionAtWidthPthreadSelf(16_stripe_0_work)              93.61ns   10.68M
+// contentionAtWidthPthreadSelf(32_stripe_0_work)              68.63ns   14.57M
+// contentionAtWidthPthreadSelf(64_stripe_0_work)              64.98ns   15.39M
+// atomicIncrBaseline(local_incr_0_work)                       13.64ns   73.33M
 // ----------------------------------------------------------------------------
-// contentionAtWidthGetcpu(1_stripe_500_work)                   1.82us  549.97K
-// contentionAtWidthGetcpu(2_stripe_500_work)                 533.71ns    1.87M
-// contentionAtWidthGetcpu(4_stripe_500_work)                 424.64ns    2.35M
-// contentionAtWidthGetcpu(8_stripe_500_work)                 451.85ns    2.21M
-// contentionAtWidthGetcpu(16_stripe_500_work)                425.54ns    2.35M
-// contentionAtWidthGetcpu(32_stripe_500_work)                501.66ns    1.99M
-// atomicIncrBaseline(local_incr_500_work)                    438.46ns    2.28M
+// contentionAtWidthGetcpu(1_stripe_500_work)                   1.87us  534.91K
+// contentionAtWidthGetcpu(2_stripe_500_work)                   1.58us  632.15K
+// contentionAtWidthGetcpu(4_stripe_500_work)                 622.80ns    1.61M
+// contentionAtWidthGetcpu(8_stripe_500_work)                 501.08ns    2.00M
+// contentionAtWidthGetcpu(16_stripe_500_work)                480.42ns    2.08M
+// contentionAtWidthGetcpu(32_stripe_500_work)                420.10ns    2.38M
+// atomicIncrBaseline(local_incr_500_work)                    407.74ns    2.45M
 // ----------------------------------------------------------------------------
-// contentionAtWidthGetcpu(1_stripe_1000_work)                  1.88us  532.20K
-// contentionAtWidthGetcpu(2_stripe_1000_work)                824.62ns    1.21M
-// contentionAtWidthGetcpu(4_stripe_1000_work)                803.56ns    1.24M
-// contentionAtWidthGetcpu(8_stripe_1000_work)                926.65ns    1.08M
-// contentionAtWidthGetcpu(16_stripe_1000_work)               900.10ns    1.11M
-// contentionAtWidthGetcpu(32_stripe_1000_work)               890.75ns    1.12M
-// atomicIncrBaseline(local_incr_1000_work)                   774.47ns    1.29M
+// contentionAtWidthGetcpu(1_stripe_1000_work)                  1.93us  518.44K
+// contentionAtWidthGetcpu(2_stripe_1000_work)                  1.49us  669.39K
+// contentionAtWidthGetcpu(4_stripe_1000_work)                876.77ns    1.14M
+// contentionAtWidthGetcpu(8_stripe_1000_work)                749.22ns    1.33M
+// contentionAtWidthGetcpu(16_stripe_1000_work)               754.72ns    1.32M
+// contentionAtWidthGetcpu(32_stripe_1000_work)               591.59ns    1.69M
+// atomicIncrBaseline(local_incr_1000_work)                   611.62ns    1.64M
 // ============================================================================
 template <template <typename> class Tag>
 static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
@@ -173,7 +174,8 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
       for (size_t i = iters; i > 0; --i) {
         ++*(counters[AccessSpreader<Tag>::current(stripes)]);
         for (size_t j = work; j > 0; --j) {
-          localWork.load();
+          auto x = localWork.load();
+          folly::doNotOptimizeAway(x);
         }
       }
     }));
@@ -181,7 +183,11 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
     if (threads.size() == numThreads / 15 || threads.size() == numThreads / 5) {
       // create a few dummy threads to wrap back around to 0 mod numCpus
       for (size_t i = threads.size(); i != numThreads; ++i) {
-        std::thread([&]() { AccessSpreader<Tag>::current(stripes); }).join();
+        std::thread t([&]() {
+          auto x = AccessSpreader<Tag>::current(stripes);
+          folly::doNotOptimizeAway(x);
+        });
+        t.join();
       }
     }
   }
@@ -214,7 +220,8 @@ atomicIncrBaseline(size_t iters, size_t work, size_t numThreads = 32) {
       for (size_t i = iters; i > 0; --i) {
         localCounter++;
         for (size_t j = work; j > 0; --j) {
-          localWork.load();
+          auto x = localWork.load();
+          folly::doNotOptimizeAway(x);
         }
       }
     }));
