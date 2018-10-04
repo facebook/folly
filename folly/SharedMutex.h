@@ -24,6 +24,7 @@
 #include <thread>
 #include <type_traits>
 
+#include <folly/CPortability.h>
 #include <folly/Likely.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
@@ -215,6 +216,26 @@
 // SharedMutex's use of thread local storage is an optimization, so
 // for the case where thread local storage is not supported, define it
 // away.
+
+// Note about TSAN (ThreadSanitizer): the SharedMutexWritePriority version
+// (the default) of this mutex is annotated appropriately so that TSAN can
+// perform lock inversion analysis. However, the SharedMutexReadPriority version
+// is not annotated.  This is because TSAN's lock order heuristic
+// assumes that two calls to lock_shared must be ordered, which leads
+// to too many false positives for the reader-priority case.
+//
+// Suppose thread A holds a SharedMutexWritePriority lock in shared mode and an
+// independent thread B is waiting for exclusive access. Then a thread C's
+// lock_shared can't proceed until A has released the lock. Discounting
+// situations that never use exclusive mode (so no lock is necessary at all)
+// this means that without higher-level reasoning it is not safe to ignore
+// reader <-> reader interactions.
+//
+// This reasoning does not apply to SharedMutexReadPriority, because there are
+// no actions by a thread B that can make C need to wait for A. Since the
+// overwhelming majority of SharedMutex instances use write priority, we
+// restrict the TSAN annotations to only SharedMutexWritePriority.
+
 #ifndef FOLLY_SHAREDMUTEX_TLS
 #if !FOLLY_MOBILE
 #define FOLLY_SHAREDMUTEX_TLS FOLLY_TLS
@@ -236,14 +257,23 @@ struct SharedMutexToken {
   uint16_t slot_;
 };
 
+namespace detail {
+// Returns a guard that gives permission for the current thread to
+// call FOLLY_ANNOTATE_RWLOCK_CREATE and adjust the annotation bits
+// in the SharedMutex at ptr.
+std::unique_lock<std::mutex> sharedMutexAnnotationGuard(void* ptr);
+} // namespace detail
+
 template <
     bool ReaderPriority,
     typename Tag_ = void,
     template <typename> class Atom = std::atomic,
-    bool BlockImmediately = false>
+    bool BlockImmediately = false,
+    bool AnnotateForThreadSanitizer = kIsSanitizeThread && !ReaderPriority>
 class SharedMutexImpl {
  public:
   static constexpr bool kReaderPriority = ReaderPriority;
+
   typedef Tag_ Tag;
 
   typedef SharedMutexToken Token;
@@ -281,7 +311,7 @@ class SharedMutexImpl {
     // if a futexWait fails to go to sleep because the value has been
     // changed, we don't necessarily clean up the wait bits, so it is
     // possible they will be set here in a correct system
-    assert((state & ~(kWaitingAny | kMayDefer)) == 0);
+    assert((state & ~(kWaitingAny | kMayDefer | kAnnotationCreated)) == 0);
     if ((state & kMayDefer) != 0) {
       for (uint32_t slot = 0; slot < kMaxDeferredReaders; ++slot) {
         auto slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
@@ -289,37 +319,46 @@ class SharedMutexImpl {
       }
     }
 #endif
+    annotateDestroy();
   }
 
   void lock() {
     WaitForever ctx;
     (void)lockExclusiveImpl(kHasSolo, ctx);
+    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
   }
 
   bool try_lock() {
     WaitNever ctx;
-    return lockExclusiveImpl(kHasSolo, ctx);
+    auto result = lockExclusiveImpl(kHasSolo, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    return result;
   }
 
   template <class Rep, class Period>
   bool try_lock_for(const std::chrono::duration<Rep, Period>& duration) {
     WaitForDuration<Rep, Period> ctx(duration);
-    return lockExclusiveImpl(kHasSolo, ctx);
+    auto result = lockExclusiveImpl(kHasSolo, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    return result;
   }
 
   template <class Clock, class Duration>
   bool try_lock_until(
       const std::chrono::time_point<Clock, Duration>& absDeadline) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
-    return lockExclusiveImpl(kHasSolo, ctx);
+    auto result = lockExclusiveImpl(kHasSolo, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    return result;
   }
 
   void unlock() {
+    annotateReleased(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
     // It is possible that we have a left-over kWaitingNotS if the last
     // unlock_shared() that let our matching lock() complete finished
     // releasing before lock()'s futexWait went to sleep.  Clean it up now
     auto state = (state_ &= ~(kWaitingNotS | kPrevDefer | kHasE));
-    assert((state & ~kWaitingAny) == 0);
+    assert((state & ~(kWaitingAny | kAnnotationCreated)) == 0);
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU | kWaitingS);
   }
 
@@ -328,27 +367,35 @@ class SharedMutexImpl {
   void lock_shared() {
     WaitForever ctx;
     (void)lockSharedImpl(nullptr, ctx);
+    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
   }
 
   void lock_shared(Token& token) {
     WaitForever ctx;
     (void)lockSharedImpl(&token, ctx);
+    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
   }
 
   bool try_lock_shared() {
     WaitNever ctx;
-    return lockSharedImpl(nullptr, ctx);
+    auto result = lockSharedImpl(nullptr, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   bool try_lock_shared(Token& token) {
     WaitNever ctx;
-    return lockSharedImpl(&token, ctx);
+    auto result = lockSharedImpl(&token, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   template <class Rep, class Period>
   bool try_lock_shared_for(const std::chrono::duration<Rep, Period>& duration) {
     WaitForDuration<Rep, Period> ctx(duration);
-    return lockSharedImpl(nullptr, ctx);
+    auto result = lockSharedImpl(nullptr, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   template <class Rep, class Period>
@@ -356,14 +403,18 @@ class SharedMutexImpl {
       const std::chrono::duration<Rep, Period>& duration,
       Token& token) {
     WaitForDuration<Rep, Period> ctx(duration);
-    return lockSharedImpl(&token, ctx);
+    auto result = lockSharedImpl(&token, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   template <class Clock, class Duration>
   bool try_lock_shared_until(
       const std::chrono::time_point<Clock, Duration>& absDeadline) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
-    return lockSharedImpl(nullptr, ctx);
+    auto result = lockSharedImpl(nullptr, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   template <class Clock, class Duration>
@@ -371,10 +422,14 @@ class SharedMutexImpl {
       const std::chrono::time_point<Clock, Duration>& absDeadline,
       Token& token) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
-    return lockSharedImpl(&token, ctx);
+    auto result = lockSharedImpl(&token, ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   void unlock_shared() {
+    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+
     auto state = state_.load(std::memory_order_acquire);
 
     // kPrevDefer can only be set if HasE or BegunE is set
@@ -392,6 +447,8 @@ class SharedMutexImpl {
   }
 
   void unlock_shared(Token& token) {
+    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+
     assert(
         token.type_ == Token::Type::INLINE_SHARED ||
         token.type_ == Token::Type::DEFERRED_SHARED);
@@ -406,6 +463,8 @@ class SharedMutexImpl {
   }
 
   void unlock_and_lock_shared() {
+    annotateReleased(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
     // We can't use state_ -=, because we need to clear 2 bits (1 of which
     // has an uncertain initial state) and set 1 other.  We might as well
     // clear the relevant wake bits at the same time.  Note that since S
@@ -414,7 +473,8 @@ class SharedMutexImpl {
     // S) we need to wake E as well.
     auto state = state_.load(std::memory_order_acquire);
     do {
-      assert((state & ~(kWaitingAny | kPrevDefer)) == kHasE);
+      assert(
+          (state & ~(kWaitingAny | kPrevDefer | kAnnotationCreated)) == kHasE);
     } while (!state_.compare_exchange_strong(
         state, (state & ~(kWaitingAny | kPrevDefer | kHasE)) + kIncrHasS));
     if ((state & (kWaitingE | kWaitingU | kWaitingS)) != 0) {
@@ -430,28 +490,37 @@ class SharedMutexImpl {
   void lock_upgrade() {
     WaitForever ctx;
     (void)lockUpgradeImpl(ctx);
+    // For TSAN: treat upgrade locks as equivalent to read locks
+    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
   }
 
   bool try_lock_upgrade() {
     WaitNever ctx;
-    return lockUpgradeImpl(ctx);
+    auto result = lockUpgradeImpl(ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   template <class Rep, class Period>
   bool try_lock_upgrade_for(
       const std::chrono::duration<Rep, Period>& duration) {
     WaitForDuration<Rep, Period> ctx(duration);
-    return lockUpgradeImpl(ctx);
+    auto result = lockUpgradeImpl(ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   template <class Clock, class Duration>
   bool try_lock_upgrade_until(
       const std::chrono::time_point<Clock, Duration>& absDeadline) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
-    return lockUpgradeImpl(ctx);
+    auto result = lockUpgradeImpl(ctx);
+    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    return result;
   }
 
   void unlock_upgrade() {
+    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
     auto state = (state_ -= kHasU);
     assert((state & (kWaitingNotS | kHasSolo)) == 0);
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU);
@@ -461,9 +530,13 @@ class SharedMutexImpl {
     // no waiting necessary, so waitMask is empty
     WaitForever ctx;
     (void)lockExclusiveImpl(0, ctx);
+    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
   }
 
   void unlock_upgrade_and_lock_shared() {
+    // No need to annotate for TSAN here because we model upgrade and shared
+    // locks as the same.
     auto state = (state_ -= kHasU - kIncrHasS);
     assert((state & (kWaitingNotS | kHasSolo)) == 0);
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU);
@@ -475,12 +548,15 @@ class SharedMutexImpl {
   }
 
   void unlock_and_lock_upgrade() {
+    annotateReleased(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
     // We can't use state_ -=, because we need to clear 2 bits (1 of
     // which has an uncertain initial state) and set 1 other.  We might
     // as well clear the relevant wake bits at the same time.
     auto state = state_.load(std::memory_order_acquire);
     while (true) {
-      assert((state & ~(kWaitingAny | kPrevDefer)) == kHasE);
+      assert(
+          (state & ~(kWaitingAny | kPrevDefer | kAnnotationCreated)) == kHasE);
       auto after =
           (state & ~(kWaitingNotS | kWaitingS | kPrevDefer | kHasE)) + kHasU;
       if (state_.compare_exchange_strong(state, after)) {
@@ -593,6 +669,49 @@ class SharedMutexImpl {
     }
   };
 
+  void annotateLazyCreate() {
+    if (AnnotateForThreadSanitizer &&
+        (state_.load() & kAnnotationCreated) == 0) {
+      auto guard = detail::sharedMutexAnnotationGuard(this);
+      // check again
+      if ((state_.load() & kAnnotationCreated) == 0) {
+        state_.fetch_or(kAnnotationCreated);
+        FOLLY_ANNOTATE_BENIGN_RACE_SIZED(&state_, sizeof(state_), "init TSAN");
+        FOLLY_ANNOTATE_RWLOCK_CREATE(this);
+      }
+    }
+  }
+
+  void annotateDestroy() {
+    if (AnnotateForThreadSanitizer) {
+      annotateLazyCreate();
+      FOLLY_ANNOTATE_RWLOCK_DESTROY(this);
+    }
+  }
+
+  void annotateAcquired(long w) {
+    if (AnnotateForThreadSanitizer) {
+      annotateLazyCreate();
+      FOLLY_ANNOTATE_RWLOCK_ACQUIRED(this, w);
+    }
+  }
+
+  void annotateTryAcquired(bool result, long w) {
+    if (AnnotateForThreadSanitizer) {
+      annotateLazyCreate();
+      if (result) {
+        FOLLY_ANNOTATE_RWLOCK_ACQUIRED(this, w);
+      }
+    }
+  }
+
+  void annotateReleased(long w) {
+    if (AnnotateForThreadSanitizer) {
+      assert((state_.load() & kAnnotationCreated) != 0);
+      FOLLY_ANNOTATE_RWLOCK_RELEASED(this, w);
+    }
+  }
+
   // 32 bits of state
   Futex state_{};
 
@@ -604,8 +723,14 @@ class SharedMutexImpl {
   // the first unlock_shared() is scanning.  The former case is cleaned
   // up before we finish applying the locks.  The latter case can persist
   // until destruction, when it is cleaned up.
-  static constexpr uint32_t kIncrHasS = 1 << 10;
+  static constexpr uint32_t kIncrHasS = 1 << 11;
   static constexpr uint32_t kHasS = ~(kIncrHasS - 1);
+
+  // Set if it a call to FOLLY_ANNOTATE_RWLOCK_CREATE has been
+  // completed for this instance.  That annotation call (and setting
+  // this bit afterward) must be guarded by one of the mutexes in
+  // annotationCreationGuards.
+  static constexpr uint32_t kAnnotationCreated = 1 << 10;
 
   // If false, then there are definitely no deferred read locks for this
   // instance.  Cleared after initialization and when exclusively locked.
@@ -1386,6 +1511,8 @@ class SharedMutexImpl {
 typedef SharedMutexImpl<true> SharedMutexReadPriority;
 typedef SharedMutexImpl<false> SharedMutexWritePriority;
 typedef SharedMutexWritePriority SharedMutex;
+typedef SharedMutexImpl<false, void, std::atomic, false, false>
+    SharedMutexSuppressTSAN;
 
 // Prevent the compiler from instantiating these in other translation units.
 // They are instantiated once in SharedMutex.cpp
@@ -1396,38 +1523,60 @@ template <
     bool ReaderPriority,
     typename Tag_,
     template <typename> class Atom,
-    bool BlockImmediately>
-alignas(hardware_destructive_interference_size)
-    typename SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-        DeferredReaderSlot
-    SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-        deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor] = {};
+    bool BlockImmediately,
+    bool AnnotateForThreadSanitizer>
+alignas(hardware_destructive_interference_size) typename SharedMutexImpl<
+    ReaderPriority,
+    Tag_,
+    Atom,
+    BlockImmediately,
+    AnnotateForThreadSanitizer>::DeferredReaderSlot
+    SharedMutexImpl<
+        ReaderPriority,
+        Tag_,
+        Atom,
+        BlockImmediately,
+        AnnotateForThreadSanitizer>::deferredReaders
+        [kMaxDeferredReaders * kDeferredSeparationFactor] = {};
 
 template <
     bool ReaderPriority,
     typename Tag_,
     template <typename> class Atom,
-    bool BlockImmediately>
-FOLLY_SHAREDMUTEX_TLS uint32_t
-    SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-        tls_lastTokenlessSlot = 0;
+    bool BlockImmediately,
+    bool AnnotateForThreadSanitizer>
+FOLLY_SHAREDMUTEX_TLS uint32_t SharedMutexImpl<
+    ReaderPriority,
+    Tag_,
+    Atom,
+    BlockImmediately,
+    AnnotateForThreadSanitizer>::tls_lastTokenlessSlot = 0;
 
 template <
     bool ReaderPriority,
     typename Tag_,
     template <typename> class Atom,
-    bool BlockImmediately>
-FOLLY_SHAREDMUTEX_TLS uint32_t
-    SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-        tls_lastDeferredReaderSlot = 0;
+    bool BlockImmediately,
+    bool AnnotateForThreadSanitizer>
+FOLLY_SHAREDMUTEX_TLS uint32_t SharedMutexImpl<
+    ReaderPriority,
+    Tag_,
+    Atom,
+    BlockImmediately,
+    AnnotateForThreadSanitizer>::tls_lastDeferredReaderSlot = 0;
 
 template <
     bool ReaderPriority,
     typename Tag_,
     template <typename> class Atom,
-    bool BlockImmediately>
-bool SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
-    tryUnlockTokenlessSharedDeferred() {
+    bool BlockImmediately,
+    bool AnnotateForThreadSanitizer>
+bool SharedMutexImpl<
+    ReaderPriority,
+    Tag_,
+    Atom,
+    BlockImmediately,
+    AnnotateForThreadSanitizer>::tryUnlockTokenlessSharedDeferred() {
   auto bestSlot = tls_lastTokenlessSlot;
   for (uint32_t i = 0; i < kMaxDeferredReaders; ++i) {
     auto slotPtr = deferredReader(bestSlot ^ i);
@@ -1445,9 +1594,15 @@ template <
     bool ReaderPriority,
     typename Tag_,
     template <typename> class Atom,
-    bool BlockImmediately>
+    bool BlockImmediately,
+    bool AnnotateForThreadSanitizer>
 template <class WaitContext>
-bool SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+bool SharedMutexImpl<
+    ReaderPriority,
+    Tag_,
+    Atom,
+    BlockImmediately,
+    AnnotateForThreadSanitizer>::
     lockSharedImpl(uint32_t& state, Token* token, WaitContext& ctx) {
   while (true) {
     if (UNLIKELY((state & kHasE) != 0) &&
