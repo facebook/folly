@@ -18,15 +18,20 @@
 namespace folly {
 namespace observer {
 
+namespace detail {
+
 template <typename Observable, typename Traits>
-class ObserverCreator<Observable, Traits>::Context {
+class ObserverCreatorContext {
+  using T = typename Traits::element_type;
+
  public:
   template <typename... Args>
-  Context(Args&&... args) : observable_(std::forward<Args>(args)...) {
+  ObserverCreatorContext(Args&&... args)
+      : observable_(std::forward<Args>(args)...) {
     updateValue();
   }
 
-  ~Context() {
+  ~ObserverCreatorContext() {
     if (value_.copy()) {
       Traits::unsubscribe(observable_);
     }
@@ -85,6 +90,8 @@ class ObserverCreator<Observable, Traits>::Context {
 
   std::mutex updateMutex_;
 };
+
+} // namespace detail
 
 template <typename Observable, typename Traits>
 template <typename... Args>
