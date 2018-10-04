@@ -855,37 +855,22 @@ void AsyncSSLSocket::setSSLSession(SSL_SESSION* session, bool takeOwnership) {
 
 void AsyncSSLSocket::getSelectedNextProtocol(
     const unsigned char** protoName,
-    unsigned* protoLen,
-    SSLContext::NextProtocolType* protoType) const {
-  if (!getSelectedNextProtocolNoThrow(protoName, protoLen, protoType)) {
+    unsigned* protoLen) const {
+  if (!getSelectedNextProtocolNoThrow(protoName, protoLen)) {
     throw AsyncSocketException(
-        AsyncSocketException::NOT_SUPPORTED, "NPN not supported");
+        AsyncSocketException::NOT_SUPPORTED, "ALPN not supported");
   }
 }
 
 bool AsyncSSLSocket::getSelectedNextProtocolNoThrow(
     const unsigned char** protoName,
-    unsigned* protoLen,
-    SSLContext::NextProtocolType* protoType) const {
+    unsigned* protoLen) const {
   *protoName = nullptr;
   *protoLen = 0;
 #if FOLLY_OPENSSL_HAS_ALPN
   SSL_get0_alpn_selected(ssl_, protoName, protoLen);
-  if (*protoLen > 0) {
-    if (protoType) {
-      *protoType = SSLContext::NextProtocolType::ALPN;
-    }
-    return true;
-  }
-#endif
-#ifdef OPENSSL_NPN_NEGOTIATED
-  SSL_get0_next_proto_negotiated(ssl_, protoName, protoLen);
-  if (protoType) {
-    *protoType = SSLContext::NextProtocolType::NPN;
-  }
   return true;
 #else
-  (void)protoType;
   return false;
 #endif
 }

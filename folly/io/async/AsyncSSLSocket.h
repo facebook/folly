@@ -465,8 +465,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   /**
    * Get the name of the protocol selected by the client during
-   * Next Protocol Negotiation (NPN) or Application Layer Protocol Negotiation
-   * (ALPN)
+   * Application Layer Protocol Negotiation (ALPN)
    *
    * Throw an exception if openssl does not support NPN
    *
@@ -480,8 +479,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   virtual void getSelectedNextProtocol(
       const unsigned char** protoName,
-      unsigned* protoLen,
-      SSLContext::NextProtocolType* protoType = nullptr) const;
+      unsigned* protoLen) const;
 
   /**
    * Get the name of the protocol selected by the client during
@@ -499,8 +497,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   virtual bool getSelectedNextProtocolNoThrow(
       const unsigned char** protoName,
-      unsigned* protoLen,
-      SSLContext::NextProtocolType* protoType = nullptr) const;
+      unsigned* protoLen) const;
 
   /**
    * Determine if the session specified during setSSLSession was reused

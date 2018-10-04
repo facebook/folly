@@ -914,23 +914,21 @@ class BlockingWriteServer : private AsyncSSLSocket::HandshakeCB,
   std::unique_ptr<uint8_t[]> buf_;
 };
 
-class NpnClient : private AsyncSSLSocket::HandshakeCB,
-                  private AsyncTransportWrapper::WriteCallback {
+class AlpnClient : private AsyncSSLSocket::HandshakeCB,
+                   private AsyncTransportWrapper::WriteCallback {
  public:
-  explicit NpnClient(AsyncSSLSocket::UniquePtr socket)
+  explicit AlpnClient(AsyncSSLSocket::UniquePtr socket)
       : nextProto(nullptr), nextProtoLength(0), socket_(std::move(socket)) {
     socket_->sslConn(this);
   }
 
   const unsigned char* nextProto;
   unsigned nextProtoLength;
-  SSLContext::NextProtocolType protocolType;
   folly::Optional<AsyncSocketException> except;
 
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
-    socket_->getSelectedNextProtocol(
-        &nextProto, &nextProtoLength, &protocolType);
+    socket_->getSelectedNextProtocol(&nextProto, &nextProtoLength);
   }
   void handshakeErr(
       AsyncSSLSocket*,
@@ -950,23 +948,21 @@ class NpnClient : private AsyncSSLSocket::HandshakeCB,
   AsyncSSLSocket::UniquePtr socket_;
 };
 
-class NpnServer : private AsyncSSLSocket::HandshakeCB,
-                  private AsyncTransportWrapper::ReadCallback {
+class AlpnServer : private AsyncSSLSocket::HandshakeCB,
+                   private AsyncTransportWrapper::ReadCallback {
  public:
-  explicit NpnServer(AsyncSSLSocket::UniquePtr socket)
+  explicit AlpnServer(AsyncSSLSocket::UniquePtr socket)
       : nextProto(nullptr), nextProtoLength(0), socket_(std::move(socket)) {
     socket_->sslAccept(this);
   }
 
   const unsigned char* nextProto;
   unsigned nextProtoLength;
-  SSLContext::NextProtocolType protocolType;
   folly::Optional<AsyncSocketException> except;
 
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
-    socket_->getSelectedNextProtocol(
-        &nextProto, &nextProtoLength, &protocolType);
+    socket_->getSelectedNextProtocol(&nextProto, &nextProtoLength);
   }
   void handshakeErr(
       AsyncSSLSocket*,

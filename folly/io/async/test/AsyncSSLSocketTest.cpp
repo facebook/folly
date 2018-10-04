@@ -429,10 +429,8 @@ TEST(AsyncSSLSocketTest, SocketWithDelay) {
   cerr << "SocketWithDelay test completed" << endl;
 }
 
-using NextProtocolTypePair =
-    std::pair<SSLContext::NextProtocolType, SSLContext::NextProtocolType>;
-
-class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
+#if FOLLY_OPENSSL_HAS_ALPN
+class NextProtocolTest : public Test {
   // For matching protos
  public:
   void SetUp() override {
@@ -452,8 +450,8 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-    client = std::make_unique<NpnClient>(std::move(clientSock));
-    server = std::make_unique<NpnServer>(std::move(serverSock));
+    client = std::make_unique<AlpnClient>(std::move(clientSock));
+    server = std::make_unique<AlpnServer>(std::move(serverSock));
 
     eventBase.loop();
   }
@@ -477,26 +475,6 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
     EXPECT_EQ(server->nextProto, nullptr);
   }
 
-  void expectProtocolType() {
-    expectHandshakeSuccess();
-    if (GetParam().first == SSLContext::NextProtocolType::ANY &&
-        GetParam().second == SSLContext::NextProtocolType::ANY) {
-      EXPECT_EQ(client->protocolType, server->protocolType);
-    } else if (
-        GetParam().first == SSLContext::NextProtocolType::ANY ||
-        GetParam().second == SSLContext::NextProtocolType::ANY) {
-      // Well not much we can say
-    } else {
-      expectProtocolType(GetParam());
-    }
-  }
-
-  void expectProtocolType(NextProtocolTypePair expected) {
-    expectHandshakeSuccess();
-    EXPECT_EQ(client->protocolType, expected.first);
-    EXPECT_EQ(server->protocolType, expected.second);
-  }
-
   void expectHandshakeSuccess() {
     EXPECT_FALSE(client->except.hasValue())
         << "client handshake error: " << client->except->what();
@@ -515,131 +493,45 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
   std::shared_ptr<SSLContext> clientCtx{std::make_shared<SSLContext>()};
   std::shared_ptr<SSLContext> serverCtx{std::make_shared<SSLContext>()};
   int fds[2];
-  std::unique_ptr<NpnClient> client;
-  std::unique_ptr<NpnServer> server;
+  std::unique_ptr<AlpnClient> client;
+  std::unique_ptr<AlpnServer> server;
 };
 
-class NextProtocolTLSExtTest : public NextProtocolTest {
-  // For extended TLS protos
-};
-
-class NextProtocolNPNOnlyTest : public NextProtocolTest {
-  // For mismatching protos
-};
-
-class NextProtocolMismatchTest : public NextProtocolTest {
-  // For mismatching protos
-};
-
-TEST_P(NextProtocolTest, NpnTestOverlap) {
-  clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
+TEST_F(NextProtocolTest, AlpnTestOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub", "baz"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
 
   connect();
 
   expectProtocol("baz");
-  expectProtocolType();
 }
 
-TEST_P(NextProtocolTest, NpnTestUnset) {
+TEST_F(NextProtocolTest, AlpnTestUnset) {
   // Identical to above test, except that we want unset NPN before
   // looping.
-  clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
+  clientCtx->setAdvertisedNextProtocols({"blub", "baz"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
 
   connect(true /* unset */);
 
-  // if alpn negotiation fails, type will appear as npn
   expectNoProtocol();
-  EXPECT_EQ(client->protocolType, server->protocolType);
 }
 
-TEST_P(NextProtocolMismatchTest, NpnAlpnTestNoOverlap) {
-  clientCtx->setAdvertisedNextProtocols({"foo"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-
+TEST_F(NextProtocolTest, AlpnTestNoOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
   connect();
 
   expectNoProtocol();
-  expectProtocolType(
-      {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
 }
 
-TEST_P(NextProtocolTest, NpnTestNoOverlap) {
-  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-  connect();
-
-  if (GetParam().first == SSLContext::NextProtocolType::ALPN ||
-      GetParam().second == SSLContext::NextProtocolType::ALPN) {
-    // This is arguably incorrect behavior since RFC7301 states an ALPN protocol
-    // mismatch should result in a fatal alert, but this is the current behavior
-    // on all OpenSSL versions/variants, and we want to know if it changes.
-    expectNoProtocol();
-  } else if (
-      GetParam().first == SSLContext::NextProtocolType::ANY &&
-      GetParam().second == SSLContext::NextProtocolType::ANY) {
-#if FOLLY_OPENSSL_IS_110
-    // OpenSSL 1.1.0 sends a fatal alert on mismatch, which is probably the
-    // correct behavior per RFC7301
-    expectHandshakeError();
-#else
-    // Behavior varies for other OpenSSL versions.
-    expectHandshakeSuccess();
-    if (client->nextProtoLength == 0) {
-      // BoringSSL and OpenSSL 1.0.2 before 1.0.2h
-      expectNoProtocol();
-    } else {
-      // OpenSSL 1.0.2h+
-      expectProtocol("blub");
-      expectProtocolType({SSLContext::NextProtocolType::NPN,
-                          SSLContext::NextProtocolType::NPN});
-    }
-#endif
-  } else {
-    expectProtocol("blub");
-    expectProtocolType(
-        {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
-  }
-}
-
-TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterHit) {
-  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
-  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickPony);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-
-  connect();
-
-  expectProtocol("ponies");
-  expectProtocolType();
-}
-
-TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterMiss) {
-  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
-  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickNone);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-
-  connect();
-
-  expectProtocol("blub");
-  expectProtocolType();
-}
-
-TEST_P(NextProtocolTest, RandomizedNpnTest) {
+TEST_F(NextProtocolTest, RandomizedAlpnTest) {
   // Probability that this test will fail is 2^-64, which could be considered
   // as negligible.
   const int kTries = 64;
 
-  clientCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().first);
-  serverCtx->setRandomizedAdvertisedNextProtocols(
-      {{1, {"foo"}}, {1, {"bar"}}}, GetParam().second);
+  clientCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
+  serverCtx->setRandomizedAdvertisedNextProtocols({{1, {"foo"}}, {1, {"bar"}}});
 
   std::set<string> selectedProtocols;
   for (int i = 0; i < kTries; ++i) {
@@ -652,59 +544,10 @@ TEST_P(NextProtocolTest, RandomizedNpnTest) {
         0);
     string selected((const char*)client->nextProto, client->nextProtoLength);
     selectedProtocols.insert(selected);
-    expectProtocolType();
+    expectHandshakeSuccess();
   }
   EXPECT_EQ(selectedProtocols.size(), 2);
 }
-
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolTest,
-    ::testing::Values(
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::NPN,
-            SSLContext::NextProtocolType::NPN),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::NPN,
-            SSLContext::NextProtocolType::ANY),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ANY,
-            SSLContext::NextProtocolType::ANY)));
-
-#if FOLLY_OPENSSL_HAS_ALPN
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolTLSExtTest,
-    ::testing::Values(
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::ALPN),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::ANY),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ANY,
-            SSLContext::NextProtocolType::ALPN)));
-#endif
-
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolNPNOnlyTest,
-    ::testing::Values(NextProtocolTypePair(
-        SSLContext::NextProtocolType::NPN,
-        SSLContext::NextProtocolType::NPN)));
-
-#if FOLLY_OPENSSL_HAS_ALPN
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolMismatchTest,
-    ::testing::Values(
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::NPN,
-            SSLContext::NextProtocolType::ALPN),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::NPN)));
 #endif
 
 #ifndef OPENSSL_NO_TLSEXT

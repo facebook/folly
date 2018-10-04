@@ -430,42 +430,33 @@ class SSLContext {
    */
   void setOptions(long options);
 
-  enum class NextProtocolType : uint8_t {
-    NPN = 0x1,
-    ALPN = 0x2,
-    ANY = NPN | ALPN
-  };
-
-#ifdef OPENSSL_NPN_NEGOTIATED
+#if FOLLY_OPENSSL_HAS_ALPN
   /**
-   * Set the list of protocols that this SSL context supports. In server
-   * mode, this is the list of protocols that will be advertised for Next
-   * Protocol Negotiation (NPN) or Application Layer Protocol Negotiation
-   * (ALPN). In client mode, the first protocol advertised by the server
-   * that is also on this list is chosen. Invoking this function with a list
-   * of length zero causes NPN to be disabled.
+   * Set the list of protocols that this SSL context supports. In client
+   * mode, this is the list of protocols that will be advertised for Application
+   * Layer Protocol Negotiation (ALPN). In server mode, the first protocol
+   * advertised by the client that is also on this list is chosen.
+   * Invoking this function with a list of length zero causes ALPN to be
+   * disabled.
    *
    * @param protocols   List of protocol names. This method makes a copy,
    *                    so the caller needn't keep the list in scope after
    *                    the call completes. The list must have at least
-   *                    one element to enable NPN. Each element must have
+   *                    one element to enable ALPN. Each element must have
    *                    a string length < 256.
-   * @param protocolType  What type of protocol negotiation to support.
-   * @return true if NPN/ALPN has been activated. False if NPN/ALPN is disabled.
+   * @return true if ALPN has been activated. False if ALPN is disabled.
    */
-  bool setAdvertisedNextProtocols(
-      const std::list<std::string>& protocols,
-      NextProtocolType protocolType = NextProtocolType::ANY);
+  bool setAdvertisedNextProtocols(const std::list<std::string>& protocols);
   /**
    * Set weighted list of lists of protocols that this SSL context supports.
    * In server mode, each element of the list contains a list of protocols that
-   * could be advertised for Next Protocol Negotiation (NPN) or Application
-   * Layer Protocol Negotiation (ALPN). The list of protocols that will be
-   * advertised to a client is selected randomly, based on weights of elements.
-   * Client mode doesn't support randomized NPN/ALPN, so this list should
-   * contain only 1 element. The first protocol advertised by the server that
-   * is also on the list of protocols of this element is chosen. Invoking this
-   * function with a list of length zero causes NPN/ALPN to be disabled.
+   * could be advertised for Application Layer Protocol Negotiation (ALPN).
+   * The list of protocols that will be advertised to a client is selected
+   * randomly, based on weights of elements. Client mode doesn't support
+   * randomized ALPN, so this list should contain only 1 element. The first
+   * protocol advertised by the client that is also on the list of protocols
+   * of this element is chosen. Invoking this function with a list of length
+   * zero causes ALPN to be disabled.
    *
    * @param items  List of NextProtocolsItems, Each item contains a list of
    *               protocol names and weight. After the call of this fucntion
@@ -475,27 +466,17 @@ class SSLContext {
    *               completes. The list must have at least one element with
    *               non-zero weight and non-empty protocols list to enable NPN.
    *               Each name of the protocol must have a string length < 256.
-   * @param protocolType  What type of protocol negotiation to support.
-   * @return true if NPN/ALPN has been activated. False if NPN/ALPN is disabled.
+   * @return true if ALPN has been activated. False if ALPN is disabled.
    */
   bool setRandomizedAdvertisedNextProtocols(
-      const std::list<NextProtocolsItem>& items,
-      NextProtocolType protocolType = NextProtocolType::ANY);
-
-  void setClientProtocolFilterCallback(ClientProtocolFilterCallback cb) {
-    clientProtoFilter_ = cb;
-  }
-
-  ClientProtocolFilterCallback getClientProtocolFilterCallback() {
-    return clientProtoFilter_;
-  }
+      const std::list<NextProtocolsItem>& items);
 
   /**
-   * Disables NPN on this SSL context.
+   * Disables ALPN on this SSL context.
    */
   void unsetNextProtocols();
   void deleteNextProtocolsStrings();
-#endif // OPENSSL_NPN_NEGOTIATED
+#endif // FOLLY_OPENSSL_HAS_ALPN
 
   /**
    * Gets the underlying SSL_CTX for advanced usage
@@ -553,7 +534,7 @@ class SSLContext {
 
   static bool initialized_;
 
-#ifdef OPENSSL_NPN_NEGOTIATED
+#if FOLLY_OPENSSL_HAS_ALPN
 
   struct AdvertisedNextProtocolsItem {
     unsigned char* protocols;
@@ -572,15 +553,7 @@ class SSLContext {
       const unsigned char** out,
       unsigned int* outlen,
       void* data);
-  static int selectNextProtocolCallback(
-      SSL* ssl,
-      unsigned char** out,
-      unsigned char* outlen,
-      const unsigned char* server,
-      unsigned int server_len,
-      void* args);
 
-#if FOLLY_OPENSSL_HAS_ALPN
   static int alpnSelectCallback(
       SSL* ssl,
       const unsigned char** out,
@@ -588,10 +561,10 @@ class SSLContext {
       const unsigned char* in,
       unsigned int inlen,
       void* data);
-#endif
+
   size_t pickNextProtocols();
 
-#endif // OPENSSL_NPN_NEGOTIATED
+#endif // FOLLY_OPENSSL_HAS_ALPN
 
   static int passwordCallback(char* password, int size, int, void* data);
 
