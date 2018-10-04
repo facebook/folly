@@ -239,8 +239,10 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
   auto curCtx = staticCtx;
   if (newCtx && curCtx) {
     // Only call set/unset for all request data that differs
-    auto newLock = newCtx->state_.rlock();
-    auto curLock = curCtx->state_.rlock();
+    auto ret = folly::acquireLocked(
+        as_const(newCtx->state_), as_const(curCtx->state_));
+    auto& newLock = std::get<0>(ret);
+    auto& curLock = std::get<1>(ret);
     auto& newData = newLock->callbackData_;
     auto& curData = curLock->callbackData_;
     exec_set_difference(
