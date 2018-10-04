@@ -239,6 +239,24 @@ struct AccessSpreader {
                               [cpu % kMaxCpus];
   }
 
+#ifdef FOLLY_TLS
+  /// Returns the stripe associated with the current CPU.  The returned
+  /// value will be < numStripes.
+  /// This function caches the current cpu in a thread-local variable for a
+  /// certain small number of calls, which can make the result imprecise, but
+  /// it is more efficient (amortized 2 ns on my dev box, compared to 12 ns for
+  /// current()).
+  static size_t cachedCurrent(size_t numStripes) {
+    return widthAndCpuToStripe[std::min(size_t(kMaxCpus), numStripes)]
+                              [cpuCache.cpu()];
+  }
+#else
+  /// Fallback implementation when thread-local storage isn't available.
+  static size_t cachedCurrent(size_t numStripes) {
+    return current(numStripes);
+  }
+#endif
+
  private:
   /// If there are more cpus than this nothing will crash, but there
   /// might be unnecessary sharing
@@ -266,6 +284,30 @@ struct AccessSpreader {
   /// or modulo on the actual number of cpus, we just fill in the entire
   /// array.
   static CompactStripe widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus];
+
+  /// Caches the current CPU and refreshes the cache every so often.
+  class CpuCache {
+   public:
+    unsigned cpu() {
+      if (UNLIKELY(cachedCpuUses_-- == 0)) {
+        unsigned cpu;
+        AccessSpreader::getcpuFunc(&cpu, nullptr, nullptr);
+        cachedCpu_ = cpu % kMaxCpus;
+        cachedCpuUses_ = kMaxCachedCpuUses - 1;
+      }
+      return cachedCpu_;
+    }
+
+   private:
+    static constexpr unsigned kMaxCachedCpuUses = 32;
+
+    unsigned cachedCpu_{0};
+    unsigned cachedCpuUses_{0};
+  };
+
+#ifdef FOLLY_TLS
+  static FOLLY_TLS CpuCache cpuCache;
+#endif
 
   static bool initialized;
 
@@ -330,6 +372,12 @@ Getcpu::Func AccessSpreader<Atom>::getcpuFunc =
 template <template <typename> class Atom>
 typename AccessSpreader<Atom>::CompactStripe
     AccessSpreader<Atom>::widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus] = {};
+
+#ifdef FOLLY_TLS
+template <template <typename> class Atom>
+FOLLY_TLS
+    typename AccessSpreader<Atom>::CpuCache AccessSpreader<Atom>::cpuCache;
+#endif
 
 template <template <typename> class Atom>
 bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
