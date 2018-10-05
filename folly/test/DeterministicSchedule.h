@@ -292,7 +292,7 @@ struct DeterministicAtomic {
 
   /* implicit */ operator T() const noexcept {
     DeterministicSchedule::beforeSharedAccess();
-    T rv = data;
+    T rv = data.operator T();
     FOLLY_TEST_DSCHED_VLOG(this << "() -> " << std::hex << rv);
     DeterministicSchedule::afterSharedAccess(true);
     return rv;
@@ -362,12 +362,9 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_add(
-      T v,
-      std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
+  T fetch_add(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
-    T rv = data;
-    data += v;
+    T rv = data.fetch_add(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_add(" << std::hex << v << ") -> " << std::hex << rv);
     DeterministicSchedule::afterSharedAccess(true);
@@ -383,12 +380,9 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_sub(
-      T v,
-      std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
+  T fetch_sub(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
-    T rv = data;
-    data -= v;
+    T rv = data.fetch_sub(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_sub(" << std::hex << v << ") -> " << std::hex << rv);
     DeterministicSchedule::afterSharedAccess(true);
@@ -404,12 +398,9 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_and(
-      T v,
-      std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
+  T fetch_and(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
-    T rv = data;
-    data &= v;
+    T rv = data.fetch_and(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_and(" << std::hex << v << ") -> " << std::hex << rv);
     DeterministicSchedule::afterSharedAccess(true);
@@ -425,12 +416,9 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_or(
-      T v,
-      std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
+  T fetch_or(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
-    T rv = data;
-    data |= v;
+    T rv = data.fetch_or(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_or(" << std::hex << v << ") -> " << std::hex << rv);
     DeterministicSchedule::afterSharedAccess(true);
@@ -446,12 +434,9 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_xor(
-      T v,
-      std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
+  T fetch_xor(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
-    T rv = data;
-    data ^= v;
+    T rv = data.fetch_xor(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_xor(" << std::hex << v << ") -> " << std::hex << rv);
     DeterministicSchedule::afterSharedAccess(true);
