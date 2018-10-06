@@ -15,7 +15,9 @@
  */
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
+
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
+#include <folly/portability/GFlags.h>
 
 DEFINE_bool(
     dynamic_cputhreadpoolexecutor,
