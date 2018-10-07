@@ -39,9 +39,9 @@ TEST(Ensure, mutableLambda) {
   set->insert(1);
   set->insert(2);
 
-  auto f = makeFuture(4).ensure([set]() mutable { set->clear(); }).then([]() {
-    throw std::runtime_error("ensure");
-  });
+  auto f = makeFuture(4)
+               .ensure([set]() mutable { set->clear(); })
+               .thenValue([](auto&&) { throw std::runtime_error("ensure"); });
 
   EXPECT_EQ(0, set->size());
   EXPECT_THROW(std::move(f).get(), std::runtime_error);

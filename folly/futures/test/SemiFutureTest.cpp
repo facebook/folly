@@ -632,7 +632,7 @@ TEST(SemiFuture, ChainingDefertoThen) {
   auto f = p.getSemiFuture().toUnsafeFuture();
   auto sf = std::move(f).semi().defer([&](auto&&) { innerResult = 17; });
   // Run "F" here inline in a task running on the eventbase
-  auto tf = std::move(sf).via(&e2).then([&]() { result = 42; });
+  auto tf = std::move(sf).via(&e2).thenValue([&](auto&&) { result = 42; });
   p.setValue();
   tf.getVia(&e2);
   ASSERT_EQ(innerResult, 17);

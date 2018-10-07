@@ -67,7 +67,7 @@ TEST(Times, success) {
 
   auto thunk = makeThunk(ps, interrupt, ps_mutex);
   auto f = folly::times(3, thunk)
-               .then([&]() mutable { complete = true; })
+               .thenValue([&](auto&&) mutable { complete = true; })
                .onError([&](FutureException& /* e */) { failure = true; });
 
   popAndFulfillPromise(ps, ps_mutex);
@@ -93,7 +93,7 @@ TEST(Times, failure) {
 
   auto thunk = makeThunk(ps, interrupt, ps_mutex);
   auto f = folly::times(3, thunk)
-               .then([&]() mutable { complete = true; })
+               .thenValue([&](auto&&) mutable { complete = true; })
                .onError([&](FutureException& /* e */) { failure = true; });
 
   popAndFulfillPromise(ps, ps_mutex);
@@ -121,7 +121,7 @@ TEST(Times, interrupt) {
 
   auto thunk = makeThunk(ps, interrupt, ps_mutex);
   auto f = folly::times(3, thunk)
-               .then([&]() mutable { complete = true; })
+               .thenValue([&](auto&&) mutable { complete = true; })
                .onError([&](FutureException& /* e */) { failure = true; });
 
   EXPECT_EQ(0, interrupt);
