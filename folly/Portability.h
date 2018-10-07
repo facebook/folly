@@ -434,7 +434,11 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR
 #define FOLLY_STORAGE_CPP14_CONSTEXPR
 #else
+#if __ICC
+#define FOLLY_STORAGE_CONSTEXPR
+#else
 #define FOLLY_STORAGE_CONSTEXPR constexpr
+#endif
 #if FOLLY_USE_CPP14_CONSTEXPR
 #define FOLLY_STORAGE_CPP14_CONSTEXPR constexpr
 #else
