@@ -144,7 +144,7 @@ TEST(StringKeyedUnorderedMapTest, sanity) {
 
   EXPECT_EQ(map.size(), 2);
 
-  map = map;
+  map = static_cast<decltype(map)&>(map); // suppress self-assign warning
 
   EXPECT_EQ(map.find("hello")->second, 1);
   EXPECT_EQ(map.find("lo")->second, 3);
@@ -227,7 +227,7 @@ TEST(StringKeyedSetTest, sanity) {
 
   EXPECT_EQ(set.size(), 2);
 
-  set = set;
+  set = static_cast<decltype(set)&>(set); // suppress self-assign warning
 
   EXPECT_NE(set.find(StringPiece("hello")), set.end());
   EXPECT_NE(set.find("lo"), set.end());
@@ -312,7 +312,7 @@ TEST(StringKeyedUnorderedSetTest, sanity) {
 
   EXPECT_EQ(set.size(), 2);
 
-  set = set;
+  set = static_cast<decltype(set)&>(set); // suppress self-assign warning
 
   EXPECT_NE(set.find("hello"), set.end());
   EXPECT_NE(set.find("lo"), set.end());
@@ -437,7 +437,7 @@ TEST(StringKeyedMapTest, sanity) {
 
   EXPECT_EQ(map.size(), 2);
 
-  map = map;
+  map = static_cast<decltype(map)&>(map); // suppress self-assign warning
 
   EXPECT_EQ(map.find("hello")->second, 1);
   EXPECT_EQ(map.find("lo")->second, 3);

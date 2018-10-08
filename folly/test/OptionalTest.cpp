@@ -613,7 +613,7 @@ TEST(Optional, MakeOptional) {
 
 TEST(Optional, SelfAssignment) {
   Optional<int> a = 42;
-  a = a;
+  a = static_cast<decltype(a)&>(a); // suppress self-assign warning
   ASSERT_TRUE(a.hasValue() && a.value() == 42);
 
   Optional<int> b = 23333333;

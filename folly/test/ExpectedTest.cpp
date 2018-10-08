@@ -524,7 +524,7 @@ TEST(Expected, MakeOptional) {
 
 TEST(Expected, SelfAssignment) {
   Expected<std::string, E> a = "42";
-  a = a;
+  a = static_cast<decltype(a)&>(a); // suppress self-assign warning
   ASSERT_TRUE(a.hasValue() && a.value() == "42");
 
   Expected<std::string, E> b = "23333333";
@@ -646,7 +646,7 @@ struct NoSelfAssign {
 
 TEST(Expected, NoSelfAssign) {
   folly::Expected<NoSelfAssign, int> e{NoSelfAssign{}};
-  e = e; // @nolint
+  e = static_cast<decltype(e)&>(e); // suppress self-assign warning
   e = std::move(e); // @nolint
 }
 
