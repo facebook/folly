@@ -532,9 +532,16 @@ class exception_wrapper final {
   template <class Ex>
   bool is_compatible_with() const noexcept;
 
-  //! \pre `bool(*this)`
   //! Throws the wrapped expression.
+  //! \pre `bool(*this)`
   [[noreturn]] void throw_exception() const;
+
+  //! Throws the wrapped expression nested into another exception.
+  //! \pre `bool(*this)`
+  //! \tparam ex Exception in *this will be thrown nested into ex;
+  //      see std::throw_with_nested() for details on this semantic.
+  template <class Ex>
+  [[noreturn]] void throw_with_nested(Ex&& ex) const;
 
   //! Call `fn` with the wrapped exception (if any), if `fn` can accept it.
   //! \par Example

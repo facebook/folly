@@ -87,6 +87,23 @@ TEST(ExceptionWrapper, throw_test) {
   }
 }
 
+// Tests that when we call throw_with_nested, we can unnest it later.
+TEST(ExceptionWrapper, throw_with_nested) {
+  auto ew = make_exception_wrapper<std::runtime_error>("inner");
+  try {
+    ew.throw_with_nested(std::runtime_error("outer"));
+    ADD_FAILURE();
+  } catch (std::runtime_error& outer) {
+    EXPECT_STREQ(outer.what(), "outer");
+    try {
+      std::rethrow_if_nested(outer);
+      ADD_FAILURE();
+    } catch (std::runtime_error& inner) {
+      EXPECT_STREQ(inner.what(), "inner");
+    }
+  }
+}
+
 TEST(ExceptionWrapper, members) {
   auto ew = exception_wrapper();
   EXPECT_FALSE(bool(ew));
