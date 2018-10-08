@@ -95,84 +95,6 @@
 #define FOLLY_SANITIZE_THREAD 1
 #endif
 
-/* These functions are defined by the TSAN runtime library and allow us to
- * annotate mutexes appopriately for TSAN. */
-#ifdef FOLLY_SANITIZE_THREAD
-extern "C" void
-AnnotateRWLockCreate(const char* f, int l, const volatile void* addr);
-extern "C" void
-AnnotateRWLockCreateStatic(const char* f, int l, const volatile void* addr);
-extern "C" void
-AnnotateRWLockDestroy(const char* f, int l, const volatile void* addr);
-extern "C" void
-AnnotateRWLockAcquired(const char* f, int l, const volatile void* addr, long w);
-extern "C" void
-AnnotateRWLockReleased(const char* f, int l, const volatile void* addr, long w);
-extern "C" void AnnotateBenignRaceSized(
-    const char* f,
-    int l,
-    const volatile void* addr,
-    long size,
-    const char* desc);
-
-#define FOLLY_ANNOTATE_RWLOCK_CREATE(addr) \
-  AnnotateRWLockCreate(__FILE__, __LINE__, (addr))
-#define FOLLY_ANNOTATE_RWLOCK_CREATE_STATIC(addr) \
-  AnnotateRWLockCreateStatic(__FILE__, __LINE__, (addr))
-#define FOLLY_ANNOTATE_RWLOCK_DESTROY(addr) \
-  AnnotateRWLockDestroy(__FILE__, __LINE__, (addr))
-#define FOLLY_ANNOTATE_RWLOCK_ACQUIRED(addr, w) \
-  AnnotateRWLockAcquired(__FILE__, __LINE__, (addr), (w))
-#define FOLLY_ANNOTATE_RWLOCK_TRY_ACQUIRED(result, addr, w) \
-  if ((result)) {                                           \
-    FOLLY_ANNOTATE_RWLOCK_ACQUIRED((addr), (w));            \
-  }
-#define FOLLY_ANNOTATE_RWLOCK_RELEASED(addr, w) \
-  AnnotateRWLockReleased(__FILE__, __LINE__, (addr), (w))
-#define FOLLY_ANNOTATE_BENIGN_RACE_SIZED(addr, size, desc) \
-  AnnotateBenignRaceSized(__FILE__, __LINE__, (addr), (size), (desc))
-
-#else
-
-#define FOLLY_ANNOTATE_RWLOCK_CREATE(addr) \
-  (void)addr;                              \
-  do {                                     \
-  } while (0)
-#define FOLLY_ANNOTATE_RWLOCK_CREATE_STATIC(addr) \
-  (void)addr;                                     \
-  do {                                            \
-  } while (0)
-#define FOLLY_ANNOTATE_RWLOCK_DESTROY(addr) \
-  (void)addr;                               \
-  do {                                      \
-  } while (0)
-#define FOLLY_ANNOTATE_RWLOCK_ACQUIRED(addr, w) \
-  (void)addr;                                   \
-  (void)w;                                      \
-  do {                                          \
-  } while (0)
-#define FOLLY_ANNOTATE_RWLOCK_TRY_ACQUIRED(result, addr, w) \
-  (void)result;                                             \
-  (void)addr;                                               \
-  (void)w;                                                  \
-  do {                                                      \
-  } while (0)
-#define FOLLY_ANNOTATE_RWLOCK_RELEASED(addr, w) \
-  (void)addr;                                   \
-  (void)w;                                      \
-  do {                                          \
-  } while (0)
-#define FOLLY_ANNOTATE_BENIGN_RACE_SIZED(addr, size, desc) \
-  (void)addr;                                              \
-  (void)size;                                              \
-  (void)desc;                                              \
-  do {                                                     \
-  } while (0)
-#endif
-
-#define FOLLY_ANNOTATE_RWLOCK_RDLOCK 0L
-#define FOLLY_ANNOTATE_RWLOCK_WRLOCK 1L
-
 /**
  * Define a convenience macro to test when ASAN, UBSAN or TSAN sanitizer are
  * being used
@@ -241,3 +163,81 @@ extern "C" void AnnotateBenignRaceSized(
 #define FOLLY_MICROSOFT_ABI_VER _MSC_VER
 #endif
 #endif
+
+/* These functions are defined by the TSAN runtime library and allow us to
+ * annotate mutexes appopriately for TSAN. */
+#ifdef FOLLY_SANITIZE_THREAD
+extern "C" FOLLY_ATTR_WEAK void
+AnnotateRWLockCreate(const char* f, int l, const volatile void* addr);
+extern "C" FOLLY_ATTR_WEAK void
+AnnotateRWLockCreateStatic(const char* f, int l, const volatile void* addr);
+extern "C" FOLLY_ATTR_WEAK void
+AnnotateRWLockDestroy(const char* f, int l, const volatile void* addr);
+extern "C" FOLLY_ATTR_WEAK void
+AnnotateRWLockAcquired(const char* f, int l, const volatile void* addr, long w);
+extern "C" FOLLY_ATTR_WEAK void
+AnnotateRWLockReleased(const char* f, int l, const volatile void* addr, long w);
+extern "C" FOLLY_ATTR_WEAK void AnnotateBenignRaceSized(
+    const char* f,
+    int l,
+    const volatile void* addr,
+    long size,
+    const char* desc);
+
+#define FOLLY_ANNOTATE_RWLOCK_CREATE(addr) \
+  AnnotateRWLockCreate(__FILE__, __LINE__, (addr))
+#define FOLLY_ANNOTATE_RWLOCK_CREATE_STATIC(addr) \
+  AnnotateRWLockCreateStatic(__FILE__, __LINE__, (addr))
+#define FOLLY_ANNOTATE_RWLOCK_DESTROY(addr) \
+  AnnotateRWLockDestroy(__FILE__, __LINE__, (addr))
+#define FOLLY_ANNOTATE_RWLOCK_ACQUIRED(addr, w) \
+  AnnotateRWLockAcquired(__FILE__, __LINE__, (addr), (w))
+#define FOLLY_ANNOTATE_RWLOCK_TRY_ACQUIRED(result, addr, w) \
+  if ((result)) {                                           \
+    FOLLY_ANNOTATE_RWLOCK_ACQUIRED((addr), (w));            \
+  }
+#define FOLLY_ANNOTATE_RWLOCK_RELEASED(addr, w) \
+  AnnotateRWLockReleased(__FILE__, __LINE__, (addr), (w))
+#define FOLLY_ANNOTATE_BENIGN_RACE_SIZED(addr, size, desc) \
+  AnnotateBenignRaceSized(__FILE__, __LINE__, (addr), (size), (desc))
+
+#else
+
+#define FOLLY_ANNOTATE_RWLOCK_CREATE(addr) \
+  (void)addr;                              \
+  do {                                     \
+  } while (0)
+#define FOLLY_ANNOTATE_RWLOCK_CREATE_STATIC(addr) \
+  (void)addr;                                     \
+  do {                                            \
+  } while (0)
+#define FOLLY_ANNOTATE_RWLOCK_DESTROY(addr) \
+  (void)addr;                               \
+  do {                                      \
+  } while (0)
+#define FOLLY_ANNOTATE_RWLOCK_ACQUIRED(addr, w) \
+  (void)addr;                                   \
+  (void)w;                                      \
+  do {                                          \
+  } while (0)
+#define FOLLY_ANNOTATE_RWLOCK_TRY_ACQUIRED(result, addr, w) \
+  (void)result;                                             \
+  (void)addr;                                               \
+  (void)w;                                                  \
+  do {                                                      \
+  } while (0)
+#define FOLLY_ANNOTATE_RWLOCK_RELEASED(addr, w) \
+  (void)addr;                                   \
+  (void)w;                                      \
+  do {                                          \
+  } while (0)
+#define FOLLY_ANNOTATE_BENIGN_RACE_SIZED(addr, size, desc) \
+  (void)addr;                                              \
+  (void)size;                                              \
+  (void)desc;                                              \
+  do {                                                     \
+  } while (0)
+#endif
+
+#define FOLLY_ANNOTATE_RWLOCK_RDLOCK 0L
+#define FOLLY_ANNOTATE_RWLOCK_WRLOCK 1L
