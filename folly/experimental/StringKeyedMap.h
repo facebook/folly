@@ -191,9 +191,7 @@ class StringKeyedMap : private std::map<StringPiece, Value, Compare, Alloc> {
     Base::clear();
   }
 
-  void swap(StringKeyedMap& other) & {
-    return Base::swap(other);
-  }
+  using Base::swap;
 
   ~StringKeyedMap() {
     // Here we assume that map doesn't use keys in destructor

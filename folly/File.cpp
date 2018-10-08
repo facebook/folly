@@ -93,13 +93,13 @@ int File::release() noexcept {
   return released;
 }
 
-void File::swap(File& other) {
+void File::swap(File& other) noexcept {
   using std::swap;
   swap(fd_, other.fd_);
   swap(ownsFd_, other.ownsFd_);
 }
 
-void swap(File& a, File& b) {
+void swap(File& a, File& b) noexcept {
   a.swap(b);
 }
 
