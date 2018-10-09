@@ -517,24 +517,15 @@ TEST(Expected, MakeOptional) {
   EXPECT_EQ(**exIntPtr, 3);
 }
 
-#if __CLANG_PREREQ(3, 6)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wself-move"
-#endif
-
 TEST(Expected, SelfAssignment) {
   Expected<std::string, E> a = "42";
   a = static_cast<decltype(a)&>(a); // suppress self-assign warning
   ASSERT_TRUE(a.hasValue() && a.value() == "42");
 
   Expected<std::string, E> b = "23333333";
-  b = std::move(b);
+  b = static_cast<decltype(b)&&>(b); // suppress self-move warning
   ASSERT_TRUE(b.hasValue() && b.value() == "23333333");
 }
-
-#if __CLANG_PREREQ(3, 6)
-#pragma clang diagnostic pop
-#endif
 
 class ContainsExpected {
  public:
@@ -641,13 +632,12 @@ struct NoSelfAssign {
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
-#pragma GCC diagnostic ignored "-Wself-move"
 #endif
 
 TEST(Expected, NoSelfAssign) {
   folly::Expected<NoSelfAssign, int> e{NoSelfAssign{}};
   e = static_cast<decltype(e)&>(e); // suppress self-assign warning
-  e = std::move(e); // @nolint
+  e = static_cast<decltype(e)&&>(e); // @nolint suppress self-move warning
 }
 
 #ifdef __GNUC__

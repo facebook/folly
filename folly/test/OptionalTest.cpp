@@ -606,24 +606,15 @@ TEST(Optional, MakeOptional) {
   EXPECT_EQ(**optIntPtr, 3);
 }
 
-#if __CLANG_PREREQ(3, 6)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wself-move"
-#endif
-
 TEST(Optional, SelfAssignment) {
   Optional<int> a = 42;
   a = static_cast<decltype(a)&>(a); // suppress self-assign warning
   ASSERT_TRUE(a.hasValue() && a.value() == 42);
 
   Optional<int> b = 23333333;
-  b = std::move(b);
+  b = static_cast<decltype(b)&&>(b); // suppress self-move warning
   ASSERT_TRUE(b.hasValue() && b.value() == 23333333);
 }
-
-#if __CLANG_PREREQ(3, 6)
-#pragma clang diagnostic pop
-#endif
 
 namespace {
 
