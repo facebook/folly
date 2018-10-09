@@ -484,14 +484,7 @@ fbstring errnoStr(int err) {
   } else {
     result.assign(buf);
   }
-#elif defined(FOLLY_HAVE_XSI_STRERROR_R) || defined(__APPLE__) || \
-    (defined(__ANDROID__) &&                                      \
-     !(defined(_STRING_H) && defined(__USE_GNU) && __ANDROID_API__ >= 23))
-  // Above: _STRING_H (no trailing underscore) guards unified NDK headers
-  // vs. _STRING_H_ which guards old per-API+arch NDK headers.
-  // Old non-unified headers always declare strerror_r as XSI compatible.
-  // New unified headers declare it as XSI compatible for API<23,
-  // but as GNU-compatible (with return type char*) for API>=23.
+#elif FOLLY_HAVE_XSI_STRERROR_R || defined(__APPLE__)
 
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, sizeof(buf));
