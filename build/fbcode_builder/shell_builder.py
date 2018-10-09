@@ -57,7 +57,7 @@ class ShellFBCodeBuilder(FBCodeBuilder):
                 ShellQuoted(
                     # Set CCACHE_DIR before the `ccache` invocations below.
                     'export CCACHE_DIR={ccache_dir} '
-                    'CC="ccache ${CC:-gcc}" CXX="ccache ${CXX:-g++}"'
+                    'CC="ccache ${{CC:-gcc}}" CXX="ccache ${{CXX:-g++}}"'
                 ).format(ccache_dir=ccache_dir)
             ]
         return steps
