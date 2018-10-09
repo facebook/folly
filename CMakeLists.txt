@@ -649,8 +649,7 @@ if (BUILD_TESTS)
       #TEST file_lock_test SOURCES FileLockTest.cpp
       TEST file_util_test HANGING
         SOURCES FileUtilTest.cpp
-      # Linux is apparently unhappy about this.. Should probably figure out why.
-      #TEST fingerprint_test SOURCES FingerprintTest.cpp
+      TEST fingerprint_test SOURCES FingerprintTest.cpp
       TEST format_other_test SOURCES FormatOtherTest.cpp
       TEST format_test SOURCES FormatTest.cpp
       TEST function_test BROKEN
