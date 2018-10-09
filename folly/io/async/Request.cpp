@@ -273,8 +273,9 @@ RequestContext::setShallowCopyContext() {
   auto child = std::make_shared<RequestContext>();
 
   if (parent) {
-    auto parentLock = parent->state_.rlock();
-    auto childLock = child->state_.wlock();
+    auto ret = folly::acquireLocked(as_const(parent->state_), child->state_);
+    auto& parentLock = std::get<0>(ret);
+    auto& childLock = std::get<1>(ret);
     childLock->callbackData_ = parentLock->callbackData_;
     childLock->requestData_.reserve(parentLock->requestData_.size());
     for (const auto& entry : parentLock->requestData_) {
