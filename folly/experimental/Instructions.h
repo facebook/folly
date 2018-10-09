@@ -24,6 +24,7 @@
 
 #include <folly/CpuId.h>
 #include <folly/Portability.h>
+#include <folly/lang/Assume.h>
 #include <folly/portability/Builtins.h>
 
 namespace folly {
@@ -34,7 +35,7 @@ namespace instructions {
 // with Nehalem, Intel CPUs support POPCNT instruction and gcc will emit
 // it for __builtin_popcountll intrinsic.
 // But we provide an alternative way for the client code: it can switch to
-// the appropriate version of EliasFanoReader<> in realtime (client should
+// the appropriate version of EliasFanoReader<> at runtime (client should
 // implement this switching logic itself) by specifying instruction set to
 // use explicitly.
 
@@ -147,6 +148,48 @@ struct Haswell : public Nehalem {
 #endif
   }
 };
+
+enum class Type {
+  DEFAULT,
+  NEHALEM,
+  HASWELL,
+};
+
+inline Type detect() {
+  const static Type type = [] {
+    if (instructions::Haswell::supported()) {
+      VLOG(2) << "Will use folly::compression::instructions::Haswell";
+      return Type::HASWELL;
+    } else if (instructions::Nehalem::supported()) {
+      VLOG(2) << "Will use folly::compression::instructions::Nehalem";
+      return Type::NEHALEM;
+    } else {
+      VLOG(2) << "Will use folly::compression::instructions::Default";
+      return Type::DEFAULT;
+    }
+  }();
+  return type;
+}
+
+template <class F>
+auto dispatch(Type type, F&& f) -> decltype(f(std::declval<Default>())) {
+  switch (type) {
+    case Type::HASWELL:
+      return f(Haswell());
+    case Type::NEHALEM:
+      return f(Nehalem());
+    case Type::DEFAULT:
+      return f(Default());
+  }
+
+  assume_unreachable();
+}
+
+template <class F>
+auto dispatch(F&& f) -> decltype(f(std::declval<Default>())) {
+  return dispatch(detect(), std::forward<F>(f));
+}
+
 } // namespace instructions
 } // namespace compression
 } // namespace folly

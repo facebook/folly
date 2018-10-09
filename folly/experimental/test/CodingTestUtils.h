@@ -28,6 +28,8 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Likely.h>
+#include <folly/Optional.h>
+#include <folly/experimental/Instructions.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
@@ -414,6 +416,18 @@ void bmJumpTo(
     }
     reader.jumpTo(data[order[j]]);
     folly::doNotOptimizeAway(reader.value());
+  }
+}
+
+folly::Optional<instructions::Type> instructionsOverride();
+
+template <class F>
+auto dispatchInstructions(F&& f)
+    -> decltype(f(std::declval<instructions::Default>())) {
+  if (auto type = instructionsOverride()) {
+    return instructions::dispatch(*type, std::forward<F>(f));
+  } else {
+    return instructions::dispatch(std::forward<F>(f));
   }
 }
 
