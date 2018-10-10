@@ -1238,16 +1238,26 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  template <class Arg, class... Args>
-  auto then(Executor* x, Arg&& arg, Args&&... args) && {
+  template <class Arg>
+  auto then(Executor* x, Arg&& arg) && {
     auto oldX = this->getExecutor();
     this->setExecutor(x);
-    FOLLY_PUSH_WARNING
-    FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
+    // TODO(T29171940): thenImplementation here is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, Arg&&>;
     return std::move(*this)
-        .then(std::forward<Arg>(arg), std::forward<Args>(args)...)
+        .thenImplementation(std::forward<Arg>(arg), R{})
         .via(oldX);
-    FOLLY_POP_WARNING
+  }
+
+  template <class R, class Caller, class... Args>
+  auto then(Executor* x, R (Caller::*func)(Args...), Caller* instance) && {
+    auto oldX = this->getExecutor();
+    this->setExecutor(x);
+
+    return std::move(*this).then(func, instance).via(oldX);
   }
 
   template <class Arg, class... Args>
@@ -1809,8 +1819,13 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Callback, class... Callbacks>
   auto thenMulti(Callback&& fn, Callbacks&&... fns) && {
     // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
+
+    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, decltype(fn)>;
     return std::move(*this)
-        .then(std::forward<Callback>(fn))
+        .thenImplementation(std::forward<Callback>(fn), R{})
         .thenMulti(std::forward<Callbacks>(fns)...);
   }
 
@@ -1828,7 +1843,12 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Callback>
   auto thenMulti(Callback&& fn) && {
     // thenMulti with one callback is just a then
-    return std::move(*this).then(std::forward<Callback>(fn));
+
+    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, decltype(fn)>;
+    return std::move(*this).thenImplementation(std::forward<Callback>(fn), R{});
   }
 
   template <class Callback>
@@ -1861,8 +1881,12 @@ class Future : private futures::detail::FutureBase<T> {
     // via(x).then(a).thenMulti(b, ...).via(oldX)
     auto oldX = this->getExecutor();
     this->setExecutor(x);
+    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, decltype(fn)>;
     return std::move(*this)
-        .then(std::forward<Callback>(fn))
+        .thenImplementation(std::forward<Callback>(fn), R{})
         .thenMulti(std::forward<Callbacks>(fns)...)
         .via(oldX);
   }
