@@ -308,6 +308,7 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
+    ${FOLLY_DIR}/experimental/test/CodingTestUtils.cpp
     ${FOLLY_DIR}/logging/test/ConfigHelpers.cpp
     ${FOLLY_DIR}/logging/test/ConfigHelpers.h
     ${FOLLY_DIR}/logging/test/TestLogHandler.cpp
@@ -405,8 +406,8 @@ if (BUILD_TESTS)
       TEST bits_test_2 SOURCES BitsTest.cpp
       TEST bitvector_test SOURCES BitVectorCodingTest.cpp
       TEST dynamic_parser_test SOURCES DynamicParserTest.cpp
-      TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp CodingTestUtils.cpp
-      TEST event_count_test SOURCES EventCountTest.cpp CodingTestUtils.cpp
+      TEST eliasfano_test SOURCES EliasFanoCodingTest.cpp
+      TEST event_count_test SOURCES EventCountTest.cpp
       # FunctionSchedulerTest has a lot of timing-dependent checks,
       # and tends to fail on heavily loaded systems.
       TEST function_scheduler_test BROKEN SOURCES FunctionSchedulerTest.cpp
