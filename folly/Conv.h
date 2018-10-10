@@ -844,7 +844,7 @@ toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
 
 /**
  * Variadic conversion to string. Appends each element in turn.
- * If we have two or more things to append, we it will not reserve
+ * If we have two or more things to append, we will not reserve
  * the space for them and will depend on strings exponential growth.
  * If you just append once consider using toAppendFit which reserves
  * the space needed (but does not have exponential as a result).
