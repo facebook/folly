@@ -425,15 +425,15 @@ class FutureBase {
 
   // Variant: returns a value
   // e.g. f.thenTry([](Try<T> t){ return t.value(); });
-  template <typename F, typename R, bool isTry, typename... Args>
+  template <typename F, typename R>
   typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, R);
 
   // Variant: returns a Future
   // e.g. f.thenTry([](Try<T> t){ return makeFuture<T>(t); });
-  template <typename F, typename R, bool isTry, typename... Args>
+  template <typename F, typename R>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, R);
 
   template <typename E>
   SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk) &&;
@@ -1173,8 +1173,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated("use thenValue(auto&&) or thenValue(folly::Unit) instead")]]
   typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
   then(F&& func) && {
-    return this->template thenImplementation<F, R>(
-        std::forward<F>(func), typename R::Arg());
+    return this->thenImplementation(std::forward<F>(func), R{});
   }
 
   // clang-format off
