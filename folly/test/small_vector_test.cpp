@@ -1101,7 +1101,7 @@ TEST(small_vector, SelfMoveAssignmentForVectorOfPair) {
   test.emplace_back(13, 2);
   EXPECT_EQ(test.size(), 1);
   EXPECT_EQ(test[0].first, 13);
-  test = static_cast<decltype(test)&&>(test); // trick clang -Wself-move
+  test = static_cast<decltype(test)&&>(test); // suppress self-move warning
   EXPECT_EQ(test.size(), 1);
   EXPECT_EQ(test[0].first, 13);
 }
