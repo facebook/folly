@@ -47,7 +47,9 @@ inline void asm_volatile_pause() {
 }
 
 inline std::uint64_t asm_rdtsc() {
-#if FOLLY_X64
+#if _MSC_VER
+  return (uint64_t)__rdtsc();
+#elif defined(__i386__) || FOLLY_X64
   // read the timestamp counter on x86
   auto hi = std::uint32_t{};
   auto lo = std::uint32_t{};
