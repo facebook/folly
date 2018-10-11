@@ -18,6 +18,9 @@
 
 #include <folly/Portability.h>
 
+#include <chrono>
+#include <cstdint>
+
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
@@ -40,6 +43,20 @@ inline void asm_volatile_pause() {
   asm volatile("yield");
 #elif FOLLY_PPC64
   asm volatile("or 27,27,27");
+#endif
+}
+
+inline std::uint64_t asm_rdtsc() {
+#if FOLLY_X64
+  // read the timestamp counter on x86
+  auto hi = std::uint32_t{};
+  auto lo = std::uint32_t{};
+  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  return (((std::uint64_t)lo) + (((std::uint64_t)hi) << 32));
+#else
+  // use steady_clock::now() as an approximation for the timestamp counter on
+  // non-x86 systems
+  return std::chrono::steady_clock::now().time_since_epoch().count();
 #endif
 }
 } // namespace folly

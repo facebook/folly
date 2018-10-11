@@ -44,18 +44,22 @@ class Sleeper {
  public:
   Sleeper() : spinCount(0) {}
 
+  static void sleep() {
+    /*
+     * Always sleep 0.5ms, assuming this will make the kernel put
+     * us down for whatever its minimum timer resolution is (in
+     * linux this varies by kernel version from 1ms to 10ms).
+     */
+    struct timespec ts = {0, 500000};
+    nanosleep(&ts, nullptr);
+  }
+
   void wait() {
     if (spinCount < kMaxActiveSpin) {
       ++spinCount;
       asm_volatile_pause();
     } else {
-      /*
-       * Always sleep 0.5ms, assuming this will make the kernel put
-       * us down for whatever its minimum timer resolution is (in
-       * linux this varies by kernel version from 1ms to 10ms).
-       */
-      struct timespec ts = {0, 500000};
-      nanosleep(&ts, nullptr);
+      sleep();
     }
   }
 };

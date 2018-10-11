@@ -24,6 +24,8 @@
 #include <google/base/spinlock.h>
 
 #include <folly/Benchmark.h>
+#include <folly/SharedMutex.h>
+#include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/SmallLocks.h>
 
 /* "Work cycle" is just an additional nop loop iteration.
@@ -47,23 +49,36 @@ static void burn(size_t n) {
 
 namespace {
 
-struct SimpleBarrier {
-  explicit SimpleBarrier(size_t count) : lock_(), cv_(), count_(count) {}
+template <typename Mutex>
+std::unique_lock<Mutex> lock(Mutex& mutex) {
+  return std::unique_lock<Mutex>{mutex};
+}
+template <typename Mutex, typename Other>
+void unlock(Mutex&, Other) {}
+auto lock(folly::DistributedMutex& mutex) {
+  return mutex.lock();
+}
+template <typename State>
+void unlock(folly::DistributedMutex& mutex, State state) {
+  mutex.unlock(std::move(state));
+}
 
+struct SimpleBarrier {
+  explicit SimpleBarrier(int count) : count_(count) {}
   void wait() {
-    std::unique_lock<std::mutex> lockHeld(lock_);
-    if (++num_ == count_) {
-      cv_.notify_all();
-    } else {
-      cv_.wait(lockHeld, [&]() { return num_ >= count_; });
+    // we spin for a bit to try and get the kernel to schedule threads on
+    // different cores
+    for (auto i = 0; i < 100000; ++i) {
+      folly::doNotOptimizeAway(i);
+    }
+    num_.fetch_add(1);
+    while (num_.load() != count_) {
     }
   }
 
  private:
-  std::mutex lock_;
-  std::condition_variable cv_;
-  size_t num_{0};
-  size_t count_;
+  std::atomic<int> num_{0};
+  const int count_;
 };
 } // namespace
 
@@ -106,7 +121,7 @@ static void runContended(size_t numOps, size_t numThreads) {
   size_t threadgroups = totalthreads / numThreads;
   struct lockstruct {
     char padding1[128];
-    Lock lock;
+    Lock mutex;
     char padding2[128];
     long value = 1;
   };
@@ -122,13 +137,13 @@ static void runContended(size_t numOps, size_t numThreads) {
 
   for (size_t t = 0; t < totalthreads; ++t) {
     threads[t] = std::thread([&, t] {
-      lockstruct* lock = &locks[t % threadgroups];
+      lockstruct* mutex = &locks[t % threadgroups];
       runbarrier.wait();
       for (size_t op = 0; op < numOps; op += 1) {
-        lock->lock.lock();
+        auto state = lock(mutex->mutex);
         burn(FLAGS_work);
-        lock->value++;
-        lock->lock.unlock();
+        mutex->value++;
+        unlock(mutex->mutex, std::move(state));
         burn(FLAGS_unlocked_work);
       }
     });
@@ -175,7 +190,7 @@ static void runFairness() {
 
   for (size_t t = 0; t < totalthreads; ++t) {
     threads[t] = std::thread([&, t] {
-      lockstruct* lock = &locks[t % threadgroups];
+      lockstruct* mutex = &locks[t % threadgroups];
       long value = 0;
       std::chrono::microseconds max(0);
       std::chrono::microseconds time(0);
@@ -184,7 +199,7 @@ static void runFairness() {
       while (!stop) {
         std::chrono::steady_clock::time_point prelock =
             std::chrono::steady_clock::now();
-        lock->lock.lock();
+        auto state = lock(mutex->lock);
         std::chrono::steady_clock::time_point postlock =
             std::chrono::steady_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -196,7 +211,7 @@ static void runFairness() {
         }
         burn(FLAGS_work);
         value++;
-        lock->lock.unlock();
+        unlock(mutex->lock, std::move(state));
         burn(FLAGS_unlocked_work);
       }
       {
@@ -245,47 +260,47 @@ static void runFairness() {
       mx.count());
 }
 
-BENCHMARK(StdMutexUncontendedBenchmark, iters) {
-  std::mutex lock;
-  while (iters--) {
-    lock.lock();
-    lock.unlock();
+template <typename Mutex>
+void runUncontended(std::size_t iters) {
+  auto&& mutex = Mutex{};
+  for (auto i = std::size_t{0}; i < iters; ++i) {
+    auto state = lock(mutex);
+    unlock(mutex, std::move(state));
   }
+}
+
+BENCHMARK(StdMutexUncontendedBenchmark, iters) {
+  runUncontended<std::mutex>(iters);
 }
 
 BENCHMARK(GoogleSpinUncontendedBenchmark, iters) {
-  SpinLock lock;
-  while (iters--) {
-    lock.Lock();
-    lock.Unlock();
-  }
+  runUncontended<GoogleSpinLockAdapter>(iters);
 }
 
 BENCHMARK(MicroSpinLockUncontendedBenchmark, iters) {
-  folly::MicroSpinLock lock;
-  lock.init();
-  while (iters--) {
-    lock.lock();
-    lock.unlock();
-  }
+  runUncontended<InitLock<folly::MicroSpinLock>>(iters);
 }
 
 BENCHMARK(PicoSpinLockUncontendedBenchmark, iters) {
-  // uint8_t would be more fair, but PicoSpinLock needs at lesat two bytes
-  folly::PicoSpinLock<uint16_t> lock;
-  lock.init();
-  while (iters--) {
-    lock.lock();
-    lock.unlock();
-  }
+  runUncontended<InitLock<folly::PicoSpinLock<std::uint16_t>>>(iters);
 }
 
 BENCHMARK(MicroLockUncontendedBenchmark, iters) {
-  folly::MicroLock lock;
-  lock.init();
+  runUncontended<InitLock<folly::MicroLock>>(iters);
+}
+
+BENCHMARK(SharedMutexUncontendedBenchmark, iters) {
+  runUncontended<folly::SharedMutex>(iters);
+}
+
+BENCHMARK(DistributedMutexUncontendedBenchmark, iters) {
+  runUncontended<folly::DistributedMutex>(iters);
+}
+
+BENCHMARK(AtomicFetchAddUncontendedBenchmark, iters) {
+  auto&& atomic = std::atomic<uint64_t>{0};
   while (iters--) {
-    lock.lock();
-    lock.unlock();
+    folly::doNotOptimizeAway(atomic.fetch_add(1));
   }
 }
 
@@ -334,6 +349,12 @@ static void folly_picospin(size_t numOps, size_t numThreads) {
 static void folly_microlock(size_t numOps, size_t numThreads) {
   runContended<folly::MicroLock>(numOps, numThreads);
 }
+static void folly_sharedmutex(size_t numOps, size_t numThreads) {
+  runContended<folly::SharedMutex>(numOps, numThreads);
+}
+static void folly_distributedmutex(size_t numOps, size_t numThreads) {
+  runContended<folly::DistributedMutex>(numOps, numThreads);
+}
 
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 1thread, 1)
@@ -341,42 +362,64 @@ BENCH_REL(google_spin, 1thread, 1)
 BENCH_REL(folly_microspin, 1thread, 1)
 BENCH_REL(folly_picospin, 1thread, 1)
 BENCH_REL(folly_microlock, 1thread, 1)
+BENCH_REL(folly_sharedmutex, 1thread, 1)
+BENCH_REL(folly_distributedmutex, 1thread, 1)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 2thread, 2)
 BENCH_REL(google_spin, 2thread, 2)
 BENCH_REL(folly_microspin, 2thread, 2)
 BENCH_REL(folly_picospin, 2thread, 2)
 BENCH_REL(folly_microlock, 2thread, 2)
+BENCH_REL(folly_sharedmutex, 2thread, 2)
+BENCH_REL(folly_distributedmutex, 2thread, 2)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 4thread, 4)
 BENCH_REL(google_spin, 4thread, 4)
 BENCH_REL(folly_microspin, 4thread, 4)
 BENCH_REL(folly_picospin, 4thread, 4)
 BENCH_REL(folly_microlock, 4thread, 4)
+BENCH_REL(folly_sharedmutex, 4thread, 4)
+BENCH_REL(folly_distributedmutex, 4thread, 4)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 8thread, 8)
 BENCH_REL(google_spin, 8thread, 8)
 BENCH_REL(folly_microspin, 8thread, 8)
 BENCH_REL(folly_picospin, 8thread, 8)
 BENCH_REL(folly_microlock, 8thread, 8)
+BENCH_REL(folly_sharedmutex, 8thread, 8)
+BENCH_REL(folly_distributedmutex, 8thread, 8)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 16thread, 16)
 BENCH_REL(google_spin, 16thread, 16)
 BENCH_REL(folly_microspin, 16thread, 16)
 BENCH_REL(folly_picospin, 16thread, 16)
 BENCH_REL(folly_microlock, 16thread, 16)
+BENCH_REL(folly_sharedmutex, 16thread, 16)
+BENCH_REL(folly_distributedmutex, 16thread, 16)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 32thread, 32)
 BENCH_REL(google_spin, 32thread, 32)
 BENCH_REL(folly_microspin, 32thread, 32)
 BENCH_REL(folly_picospin, 32thread, 32)
 BENCH_REL(folly_microlock, 32thread, 32)
+BENCH_REL(folly_sharedmutex, 32thread, 32)
+BENCH_REL(folly_distributedmutex, 32thread, 32)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex, 64thread, 64)
 BENCH_REL(google_spin, 64thread, 64)
 BENCH_REL(folly_microspin, 64thread, 64)
 BENCH_REL(folly_picospin, 64thread, 64)
 BENCH_REL(folly_microlock, 64thread, 64)
+BENCH_REL(folly_sharedmutex, 64thread, 64)
+BENCH_REL(folly_distributedmutex, 64thread, 64)
+BENCHMARK_DRAW_LINE();
+BENCH_BASE(std_mutex, 128thread, 128)
+BENCH_REL(google_spin, 128thread, 128)
+BENCH_REL(folly_microspin, 128thread, 128)
+BENCH_REL(folly_picospin, 128thread, 128)
+BENCH_REL(folly_microlock, 128thread, 128)
+BENCH_REL(folly_sharedmutex, 128thread, 128)
+BENCH_REL(folly_distributedmutex, 128thread, 128)
 
 #define FairnessTest(type) \
   {                        \
@@ -391,7 +434,9 @@ int main(int argc, char** argv) {
   FairnessTest(GoogleSpinLockAdapter);
   FairnessTest(InitLock<folly::MicroSpinLock>);
   FairnessTest(InitLock<folly::PicoSpinLock<uint16_t>>);
-  FairnessTest(folly::MicroLock);
+  FairnessTest(InitLock<folly::MicroLock>);
+  FairnessTest(folly::SharedMutex);
+  FairnessTest(folly::DistributedMutex);
 
   folly::runBenchmarks();
 
@@ -403,70 +448,101 @@ int main(int argc, char** argv) {
 Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz
 
 std::mutex:
-Sum: 3762980 Mean: 67196 stddev: 916
-Lock time stats in us: mean 15 stddev 1141 max 22384
+Sum: 3645010 Mean: 65089 stddev: 841
+Lock time stats in us: mean 16 stddev 1178 max 21361
 GoogleSpinLockAdapter:
-Sum: 4263945 Mean: 76141 stddev: 2072
-Lock time stats in us: mean 10 stddev 1007 max 10132
+Sum: 4329140 Mean: 77306 stddev: 2338
+Lock time stats in us: mean 10 stddev 16 max 19860
 InitLock<folly::MicroSpinLock>:
-Sum: 3469284 Mean: 61951 stddev: 15693
-Lock time stats in us: mean 31 stddev 1237 max 334200
+Sum: 3513882 Mean: 62747 stddev: 27713
+Lock time stats in us: mean 31 stddev 1222 max 211624
 InitLock<folly::PicoSpinLock<uint16_t>>:
-Sum: 1011034 Mean: 18054 stddev: 3819
-Lock time stats in us: mean 108 stddev 4247 max 691707
-folly::MicroLock:
-Sum: 1712173 Mean: 30574 stddev: 4032
-Lock time stats in us: mean 53 stddev 2508 max 11554
+Sum: 2182472 Mean: 38972 stddev: 41789
+Lock time stats in us: mean 49 stddev 1967 max 228875
+InitLock<folly::MicroLock>:
+Sum: 1868601 Mean: 33367 stddev: 4836
+Lock time stats in us: mean 48 stddev 2298 max 12235
+folly::SharedMutex:
+Sum: 2037742 Mean: 36388 stddev: 18204
+Lock time stats in us: mean 53 stddev 2107 max 132469
+folly::DistributedMutex:
+Sum: 6793764 Mean: 121317 stddev: 20791
+Lock time stats in us: mean 15 stddev 8 max 55696
 ============================================================================
 folly/synchronization/test/SmallLocksBenchmark.cpprelative  time/iter  iters/s
 ============================================================================
-StdMutexUncontendedBenchmark                                16.74ns   59.72M
-GoogleSpinUncontendedBenchmark                              11.26ns   88.78M
-MicroSpinLockUncontendedBenchmark                           10.62ns   94.16M
-PicoSpinLockUncontendedBenchmark                            11.83ns   84.54M
-MicroLockUncontendedBenchmark                               20.62ns   48.50M
+StdMutexUncontendedBenchmark                                16.73ns   59.77M
+GoogleSpinUncontendedBenchmark                              11.26ns   88.80M
+MicroSpinLockUncontendedBenchmark                           10.06ns   99.44M
+PicoSpinLockUncontendedBenchmark                            11.25ns   88.89M
+MicroLockUncontendedBenchmark                               19.20ns   52.09M
+SharedMutexUncontendedBenchmark                             19.45ns   51.40M
+DistributedMutexUncontendedBenchmark                        17.02ns   58.75M
+AtomicFetchAddUncontendedBenchmark                           5.47ns  182.91M
 ----------------------------------------------------------------------------
 ----------------------------------------------------------------------------
-std_mutex(1thread)                                         745.50ns    1.34M
-google_spin(1thread)                             103.88%   717.66ns    1.39M
-folly_microspin(1thread)                         102.61%   726.55ns    1.38M
-folly_picospin(1thread)                           90.78%   821.20ns    1.22M
-folly_microlock(1thread)                          96.64%   771.42ns    1.30M
+std_mutex(1thread)                                         802.21ns    1.25M
+google_spin(1thread)                             109.81%   730.52ns    1.37M
+folly_microspin(1thread)                         119.16%   673.22ns    1.49M
+folly_picospin(1thread)                          119.02%   673.99ns    1.48M
+folly_microlock(1thread)                         131.67%   609.28ns    1.64M
+folly_sharedmutex(1thread)                       118.41%   677.46ns    1.48M
+folly_distributedmutex(1thread)                  100.27%   800.02ns    1.25M
 ----------------------------------------------------------------------------
-std_mutex(2thread)                                           1.26us  796.48K
-google_spin(2thread)                             136.08%   922.64ns    1.08M
-folly_microspin(2thread)                         145.00%   865.87ns    1.15M
-folly_picospin(2thread)                          163.80%   766.49ns    1.30M
-folly_microlock(2thread)                         137.96%   910.06ns    1.10M
+std_mutex(2thread)                                           1.30us  769.21K
+google_spin(2thread)                             129.59%     1.00us  996.85K
+folly_microspin(2thread)                         158.13%   822.13ns    1.22M
+folly_picospin(2thread)                          150.43%   864.23ns    1.16M
+folly_microlock(2thread)                         144.94%   896.92ns    1.11M
+folly_sharedmutex(2thread)                       120.36%     1.08us  925.83K
+folly_distributedmutex(2thread)                  112.98%     1.15us  869.08K
 ----------------------------------------------------------------------------
-std_mutex(4thread)                                           2.16us  462.09K
-google_spin(4thread)                             107.52%     2.01us  496.84K
-folly_microspin(4thread)                         103.81%     2.08us  479.71K
-folly_picospin(4thread)                          105.20%     2.06us  486.14K
-folly_microlock(4thread)                          77.07%     2.81us  356.15K
+std_mutex(4thread)                                           2.36us  424.08K
+google_spin(4thread)                             120.20%     1.96us  509.75K
+folly_microspin(4thread)                         109.07%     2.16us  462.53K
+folly_picospin(4thread)                          113.37%     2.08us  480.78K
+folly_microlock(4thread)                          83.88%     2.81us  355.71K
+folly_sharedmutex(4thread)                        90.47%     2.61us  383.65K
+folly_distributedmutex(4thread)                  121.82%     1.94us  516.63K
 ----------------------------------------------------------------------------
-std_mutex(8thread)                                           5.55us  180.33K
-google_spin(8thread)                             110.44%     5.02us  199.16K
-folly_microspin(8thread)                         105.13%     5.27us  189.58K
-folly_picospin(8thread)                           98.81%     5.61us  178.19K
-folly_microlock(8thread)                          81.95%     6.77us  147.78K
+std_mutex(8thread)                                           5.39us  185.64K
+google_spin(8thread)                             127.72%     4.22us  237.10K
+folly_microspin(8thread)                         106.70%     5.05us  198.08K
+folly_picospin(8thread)                           88.02%     6.12us  163.41K
+folly_microlock(8thread)                          79.78%     6.75us  148.11K
+folly_sharedmutex(8thread)                        78.25%     6.88us  145.26K
+folly_distributedmutex(8thread)                  162.74%     3.31us  302.12K
 ----------------------------------------------------------------------------
-std_mutex(16thread)                                         11.30us   88.48K
-google_spin(16thread)                            109.33%    10.34us   96.74K
-folly_microspin(16thread)                        105.86%    10.68us   93.67K
-folly_picospin(16thread)                          43.61%    25.92us   38.58K
-folly_microlock(16thread)                         52.82%    21.40us   46.73K
+std_mutex(16thread)                                         11.74us   85.16K
+google_spin(16thread)                            109.91%    10.68us   93.60K
+folly_microspin(16thread)                        103.93%    11.30us   88.50K
+folly_picospin(16thread)                          50.36%    23.32us   42.89K
+folly_microlock(16thread)                         55.85%    21.03us   47.56K
+folly_sharedmutex(16thread)                       64.27%    18.27us   54.74K
+folly_distributedmutex(16thread)                 181.32%     6.48us  154.41K
 ----------------------------------------------------------------------------
-std_mutex(32thread)                                         32.24us   31.02K
-google_spin(32thread)                            100.57%    32.06us   31.19K
-folly_microspin(32thread)                        102.32%    31.51us   31.73K
-folly_picospin(32thread)                          36.63%    88.02us   11.36K
-folly_microlock(32thread)                         57.61%    55.97us   17.87K
+std_mutex(32thread)                                         31.56us   31.68K
+google_spin(32thread)                             95.17%    33.17us   30.15K
+folly_microspin(32thread)                        100.60%    31.38us   31.87K
+folly_picospin(32thread)                          31.30%   100.84us    9.92K
+folly_microlock(32thread)                         55.04%    57.35us   17.44K
+folly_sharedmutex(32thread)                       65.09%    48.49us   20.62K
+folly_distributedmutex(32thread)                 177.39%    17.79us   56.20K
 ----------------------------------------------------------------------------
-std_mutex(64thread)                                         35.67us   28.04K
-google_spin(64thread)                            111.44%    32.01us   31.24K
-folly_microspin(64thread)                         94.45%    37.76us   26.48K
-folly_picospin(64thread)                          36.01%    99.05us   10.10K
-folly_microlock(64thread)                         54.11%    65.92us   15.17K
+std_mutex(64thread)                                         39.90us   25.06K
+google_spin(64thread)                            110.92%    35.98us   27.80K
+folly_microspin(64thread)                        105.98%    37.65us   26.56K
+folly_picospin(64thread)                          33.03%   120.80us    8.28K
+folly_microlock(64thread)                         58.02%    68.78us   14.54K
+folly_sharedmutex(64thread)                       68.43%    58.32us   17.15K
+folly_distributedmutex(64thread)                 200.38%    19.91us   50.22K
+----------------------------------------------------------------------------
+std_mutex(128thread)                                        75.67us   13.21K
+google_spin(128thread)                           116.14%    65.16us   15.35K
+folly_microspin(128thread)                       100.82%    75.06us   13.32K
+folly_picospin(128thread)                         44.99%   168.21us    5.94K
+folly_microlock(128thread)                        53.93%   140.31us    7.13K
+folly_sharedmutex(128thread)                      64.37%   117.55us    8.51K
+folly_distributedmutex(128thread)                185.71%    40.75us   24.54K
 ============================================================================
 */
