@@ -37,20 +37,10 @@ class ScopeGuardImplBase {
     dismissed_ = true;
   }
 
-  template <typename T>
-  FOLLY_ALWAYS_INLINE static void runAndWarnAboutToCrashOnException(
-      T& function) noexcept {
-    try {
-      function();
-    } catch (...) {
-      warnAboutToCrash();
-      std::terminate();
-    }
-  }
-
  protected:
   ScopeGuardImplBase() noexcept : dismissed_(false) {}
 
+  static void warnAboutToCrash() noexcept;
   static ScopeGuardImplBase makeEmptyScopeGuard() noexcept {
     return ScopeGuardImplBase{};
   }
@@ -61,12 +51,9 @@ class ScopeGuardImplBase {
   }
 
   bool dismissed_;
-
- private:
-  static void warnAboutToCrash() noexcept;
 };
 
-template <typename FunctionType>
+template <typename FunctionType, bool InvokeNoexcept>
 class ScopeGuardImpl : public ScopeGuardImplBase {
  public:
   explicit ScopeGuardImpl(FunctionType& fn) noexcept(
@@ -105,7 +92,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
     other.dismissed_ = true;
   }
 
-  ~ScopeGuardImpl() noexcept {
+  ~ScopeGuardImpl() noexcept(InvokeNoexcept) {
     if (!dismissed_) {
       execute();
     }
@@ -118,8 +105,9 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
 
   template <typename Fn>
   static auto makeFailsafe(std::false_type, Fn* fn) noexcept
-      -> ScopeGuardImpl<decltype(std::ref(*fn))> {
-    return ScopeGuardImpl<decltype(std::ref(*fn))>{std::ref(*fn)};
+      -> ScopeGuardImpl<decltype(std::ref(*fn)), InvokeNoexcept> {
+    return ScopeGuardImpl<decltype(std::ref(*fn)), InvokeNoexcept>{
+        std::ref(*fn)};
   }
 
   template <typename Fn>
@@ -130,15 +118,24 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
 
   void* operator new(std::size_t) = delete;
 
-  void execute() noexcept {
-    runAndWarnAboutToCrashOnException(function_);
+  void execute() noexcept(InvokeNoexcept) {
+    if (InvokeNoexcept) {
+      try {
+        function_();
+      } catch (...) {
+        warnAboutToCrash();
+        std::terminate();
+      }
+    } else {
+      function_();
+    }
   }
 
   FunctionType function_;
 };
 
-template <typename F>
-using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type>;
+template <typename F, bool INE>
+using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type, INE>;
 
 } // namespace detail
 
@@ -184,9 +181,9 @@ using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type>;
  *     http://www.codeproject.com/KB/cpp/scope_guard.aspx
  */
 template <typename F>
-detail::ScopeGuardImplDecay<F> makeGuard(F&& f) noexcept(
-    noexcept(detail::ScopeGuardImplDecay<F>(static_cast<F&&>(f)))) {
-  return detail::ScopeGuardImplDecay<F>(static_cast<F&&>(f));
+detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
+    noexcept(detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f)))) {
+  return detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f));
 }
 
 namespace detail {
@@ -209,30 +206,24 @@ namespace detail {
 template <typename FunctionType, bool ExecuteOnException>
 class ScopeGuardForNewException {
  public:
-  explicit ScopeGuardForNewException(const FunctionType& fn) : function_(fn) {}
+  explicit ScopeGuardForNewException(const FunctionType& fn) : guard_(fn) {}
 
   explicit ScopeGuardForNewException(FunctionType&& fn)
-      : function_(std::move(fn)) {}
+      : guard_(std::move(fn)) {}
 
   ScopeGuardForNewException(ScopeGuardForNewException&& other) = default;
 
   ~ScopeGuardForNewException() noexcept(ExecuteOnException) {
-    if (ExecuteOnException == (exceptionCounter_ < uncaught_exceptions())) {
-      if (ExecuteOnException) {
-        ScopeGuardImplBase::runAndWarnAboutToCrashOnException(function_);
-      } else {
-        function_();
-      }
+    if (ExecuteOnException != (exceptionCounter_ < uncaught_exceptions())) {
+      guard_.dismiss();
     }
   }
 
  private:
-  ScopeGuardForNewException(const ScopeGuardForNewException& other) = delete;
-
   void* operator new(std::size_t) = delete;
   void operator delete(void*) = delete;
 
-  FunctionType function_;
+  ScopeGuardImpl<FunctionType, ExecuteOnException> guard_;
   int exceptionCounter_{uncaught_exceptions()};
 };
 
@@ -270,10 +261,10 @@ operator+(ScopeGuardOnSuccess, FunctionType&& fn) {
 enum class ScopeGuardOnExit {};
 
 template <typename FunctionType>
-ScopeGuardImpl<typename std::decay<FunctionType>::type> operator+(
+ScopeGuardImpl<typename std::decay<FunctionType>::type, true> operator+(
     detail::ScopeGuardOnExit,
     FunctionType&& fn) {
-  return ScopeGuardImpl<typename std::decay<FunctionType>::type>(
+  return ScopeGuardImpl<typename std::decay<FunctionType>::type, true>(
       std::forward<FunctionType>(fn));
 }
 } // namespace detail
