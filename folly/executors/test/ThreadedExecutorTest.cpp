@@ -29,8 +29,8 @@ class ThreadedExecutorTest : public testing::Test {};
 TEST_F(ThreadedExecutorTest, example) {
   folly::ThreadedExecutor x;
   auto ret = folly::via(&x)
-                 .then([&] { return 42; })
-                 .then([&](int n) { return folly::to<std::string>(n); })
+                 .thenValue([&](auto&&) { return 42; })
+                 .thenValue([&](int n) { return folly::to<std::string>(n); })
                  .get();
 
   EXPECT_EQ("42", ret);
@@ -54,9 +54,9 @@ TEST_F(ThreadedExecutorTest, many) {
       folly::collect(
           folly::gen::range<size_t>(0, kNumTasks) |
           folly::gen::map([&](size_t i) {
-            return folly::via(&x).then([=] { return i; }).then([](size_t k) {
-              return folly::to<std::string>(k);
-            });
+            return folly::via(&x)
+                .thenValue([=](auto&&) { return i; })
+                .thenValue([](size_t k) { return folly::to<std::string>(k); });
           }) |
           folly::gen::as<std::vector>())
           .get();
@@ -73,11 +73,11 @@ TEST_F(ThreadedExecutorTest, many_sleeping_constant_time) {
           folly::gen::range<size_t>(0, kNumTasks) |
           folly::gen::map([&](size_t i) {
             return folly::via(&x)
-                .then([=] {
+                .thenValue([=](auto&&) {
                   /* sleep override */ std::this_thread::sleep_for(kDelay);
                 })
-                .then([=] { return i; })
-                .then([](size_t k) { return folly::to<std::string>(k); });
+                .thenValue([=](auto&&) { return i; })
+                .thenValue([](size_t k) { return folly::to<std::string>(k); });
           }) |
           folly::gen::as<std::vector>())
           .get();
@@ -94,12 +94,12 @@ TEST_F(ThreadedExecutorTest, many_sleeping_decreasing_time) {
           folly::gen::range<size_t>(0, kNumTasks) |
           folly::gen::map([&](size_t i) {
             return folly::via(&x)
-                .then([=] {
+                .thenValue([=](auto&&) {
                   auto delay = kDelay * (kNumTasks - i) / kNumTasks;
                   /* sleep override */ std::this_thread::sleep_for(delay);
                 })
-                .then([=] { return i; })
-                .then([](size_t k) { return folly::to<std::string>(k); });
+                .thenValue([=](auto&&) { return i; })
+                .thenValue([](size_t k) { return folly::to<std::string>(k); });
           }) |
           folly::gen::as<std::vector>())
           .get();
