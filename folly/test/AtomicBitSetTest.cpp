@@ -54,6 +54,15 @@ TEST(AtomicBitSet, Simple) {
   }
 }
 
+TEST(AtomicBitSet, Size) {
+    constexpr size_t kSize = 1024;
+    AtomicBitSet<kSize - 1> bs1;
+    AtomicBitSet<kSize> bs2;
+
+    EXPECT_EQ(bs1.size() + 1, bs2.size());
+    EXPECT_EQ(bs1.underlyingSize(), bs2.underlyingSize());
+}
+
 } // namespace test
 } // namespace folly
 

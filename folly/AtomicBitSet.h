@@ -84,6 +84,13 @@ class AtomicBitSet : private boost::noncopyable {
   bool operator[](size_t idx) const;
 
   /**
+   * Return the size of the underlying buffer in bytes.
+   */
+  constexpr size_t underlyingSize() const {
+    return kUnderlyingBufferSize * sizeof(AtomicBlockType);
+  }
+
+  /**
    * Return the size of the bitset.
    */
   constexpr size_t size() const {
@@ -116,7 +123,10 @@ class AtomicBitSet : private boost::noncopyable {
   // avoid casts
   static constexpr BlockType kOne = 1;
 
-  std::array<AtomicBlockType, N> data_;
+  static constexpr size_t kUnderlyingBufferSize =
+    N / kBitsPerBlock + (N % kBitsPerBlock ? 1 : 0);
+
+  std::array<AtomicBlockType, kUnderlyingBufferSize> data_;
 };
 
 // value-initialize to zero
@@ -125,14 +135,14 @@ inline AtomicBitSet<N>::AtomicBitSet() : data_() {}
 
 template <size_t N>
 inline bool AtomicBitSet<N>::set(size_t idx, std::memory_order order) {
-  assert(idx < N * kBitsPerBlock);
+  assert(idx < N);
   BlockType mask = kOne << bitOffset(idx);
   return data_[blockIndex(idx)].fetch_or(mask, order) & mask;
 }
 
 template <size_t N>
 inline bool AtomicBitSet<N>::reset(size_t idx, std::memory_order order) {
-  assert(idx < N * kBitsPerBlock);
+  assert(idx < N);
   BlockType mask = kOne << bitOffset(idx);
   return data_[blockIndex(idx)].fetch_and(~mask, order) & mask;
 }
@@ -145,7 +155,7 @@ AtomicBitSet<N>::set(size_t idx, bool value, std::memory_order order) {
 
 template <size_t N>
 inline bool AtomicBitSet<N>::test(size_t idx, std::memory_order order) const {
-  assert(idx < N * kBitsPerBlock);
+  assert(idx < N);
   BlockType mask = kOne << bitOffset(idx);
   return data_[blockIndex(idx)].load(order) & mask;
 }
