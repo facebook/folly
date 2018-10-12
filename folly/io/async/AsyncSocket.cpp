@@ -2782,6 +2782,11 @@ void AsyncSocket::doClose() {
     ::close(fd_);
   }
   fd_ = -1;
+
+  // we also want to clear the zerocopy maps
+  // if the fd has been closed
+  idZeroCopyBufPtrMap_.clear();
+  idZeroCopyBufInfoMap_.clear();
 }
 
 std::ostream& operator<<(
