@@ -70,9 +70,8 @@ class DelayedDestructionBase : private boost::noncopyable {
 
     DestructorGuard(const DestructorGuard& dg) : DestructorGuard(dg.dd_) {}
 
-    DestructorGuard(DestructorGuard&& dg) noexcept : dd_(dg.dd_) {
-      dg.dd_ = nullptr;
-    }
+    DestructorGuard(DestructorGuard&& dg) noexcept
+        : dd_(std::exchange(dg.dd_, nullptr)) {}
 
     DestructorGuard& operator=(DestructorGuard dg) noexcept {
       std::swap(dd_, dg.dd_);
