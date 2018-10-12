@@ -648,11 +648,11 @@ static void removeThreadTest() {
   TPE fe(2);
   f = folly::makeFuture()
           .via(&fe)
-          .then([&id1]() {
+          .thenValue([&id1](auto&&) {
             burnMs(100)();
             id1 = std::this_thread::get_id();
           })
-          .then([&id2]() {
+          .thenValue([&id2](auto&&) {
             return 77;
             id2 = std::this_thread::get_id();
           });
@@ -708,11 +708,11 @@ template <typename TPE>
 void keepAliveTest() {
   auto executor = std::make_unique<TPE>(4);
 
-  auto f =
-      futures::sleep(std::chrono::milliseconds{100})
-          .via(executor.get())
-          .then([keepAlive = getKeepAliveToken(executor.get())] { return 42; })
-          .semi();
+  auto f = futures::sleep(std::chrono::milliseconds{100})
+               .via(executor.get())
+               .thenValue([keepAlive = getKeepAliveToken(executor.get())](
+                              auto&&) { return 42; })
+               .semi();
 
   executor.reset();
 
@@ -831,11 +831,11 @@ static void WeakRefTest() {
     TPE fe(1);
     f = folly::makeFuture()
             .via(&fe)
-            .then([]() { burnMs(100)(); })
-            .then([&] { ++counter; })
+            .thenValue([](auto&&) { burnMs(100)(); })
+            .thenValue([&](auto&&) { ++counter; })
             .via(fe.weakRef())
-            .then([]() { burnMs(100)(); })
-            .then([&] { ++counter; });
+            .thenValue([](auto&&) { burnMs(100)(); })
+            .thenValue([&](auto&&) { ++counter; });
   }
   EXPECT_THROW(std::move(*f).get(), folly::BrokenPromise);
   EXPECT_EQ(1, counter);
@@ -853,12 +853,12 @@ static void virtualExecutorTest() {
       VirtualExecutor ve(fe);
       f = futures::sleep(100ms)
               .via(&ve)
-              .then([&] {
+              .thenValue([&](auto&&) {
                 ++counter;
                 return futures::sleep(100ms);
               })
               .via(&fe)
-              .then([&] { ++counter; })
+              .thenValue([&](auto&&) { ++counter; })
               .semi();
     }
     EXPECT_EQ(1, counter);
