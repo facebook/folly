@@ -87,7 +87,7 @@ class AtomicBitSet : private boost::noncopyable {
    * Return the size of the underlying buffer in bytes.
    */
   constexpr size_t underlyingSize() const {
-    return kUnderlyingBufferSize * sizeof(BlockType);
+    return kUnderlyingBufferSize * sizeof(AtomicBlockType);
   }
 
   /**
