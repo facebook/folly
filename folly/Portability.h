@@ -19,7 +19,6 @@
 #include <cstddef>
 
 #include <folly/portability/Config.h>
-
 #include <folly/CPortability.h>
 
 // Unaligned loads and stores
@@ -476,3 +475,20 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_HAS_EXCEPTIONS 1 // default assumption for unknown platforms
 #endif
+
+// feature test __cpp_lib_string_view is defined in <string>, which is
+// too heavy to include here.  MSVC __has_include support arrived later
+// than string_view, so we need an alternate case for it.
+#ifdef __has_include
+#if __has_include(<string_view>) && __cplusplus >= 201703L
+#define FOLLY_HAS_STRING_VIEW 1
+#else
+#define FOLLY_HAS_STRING_VIEW 0
+#endif
+#else // __has_include
+#if _MSC_VER >= 1910 && (_MSVC_LANG > 201402 || __cplusplus > 201402)
+#define FOLLY_HAS_STRING_VIEW 1
+#else
+#define FOLLY_HAS_STRING_VIEW 0
+#endif
+#endif // __has_include
