@@ -35,8 +35,8 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
       EventBase* evb) {
     auto sock = std::shared_ptr<MockAsyncSSLSocket>(
         new MockAsyncSSLSocket(ctx, evb), Destructor());
-    sock->ssl_ = SSL_new(ctx->getSSLCtx());
-    SSL_set_fd(sock->ssl_, -1);
+    sock->ssl_.reset(SSL_new(ctx->getSSLCtx()));
+    SSL_set_fd(sock->ssl_.get(), -1);
     return sock;
   }
 

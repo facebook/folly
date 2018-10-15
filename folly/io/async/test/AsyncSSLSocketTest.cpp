@@ -1496,6 +1496,7 @@ static void makeNonBlockingPipe(int pipefds[2]) {
 // Custom RSA private key encryption method
 static int kRSAExIndex = -1;
 static int kRSAEvbExIndex = -1;
+static int kRSASocketExIndex = -1;
 static constexpr StringPiece kEngineId = "AsyncSSLSocketTest";
 
 static int customRsaPrivEnc(
@@ -1511,6 +1512,9 @@ static int customRsaPrivEnc(
 
   RSA* actualRSA = reinterpret_cast<RSA*>(RSA_get_ex_data(rsa, kRSAExIndex));
   CHECK(actualRSA);
+
+  AsyncSSLSocket* socket = reinterpret_cast<AsyncSSLSocket*>(
+      RSA_get_ex_data(rsa, kRSASocketExIndex));
 
   ASYNC_JOB* job = ASYNC_get_current_job();
   if (job == nullptr) {
@@ -1535,8 +1539,13 @@ static int customRsaPrivEnc(
                                      to = to,
                                      padding = padding,
                                      actualRSA = actualRSA,
-                                     writer = asyncPipeWriter.get()]() {
+                                     writer = std::move(asyncPipeWriter),
+                                     socket = socket]() {
     LOG(INFO) << "Running job";
+    if (socket) {
+      LOG(INFO) << "Got a socket passed in, closing it...";
+      socket->closeNow();
+    }
     *retptr = RSA_meth_get_priv_enc(RSA_PKCS1_OpenSSL())(
         flen, from, to, actualRSA, padding);
     LOG(INFO) << "Finished job, writing to pipe";
@@ -1634,8 +1643,11 @@ setupCustomRSA(const char* certPath, const char* keyPath, EventBase* jobEvb) {
 
   kRSAExIndex = RSA_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
   kRSAEvbExIndex = RSA_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+  kRSASocketExIndex =
+      RSA_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
   CHECK_NE(kRSAExIndex, -1);
   CHECK_NE(kRSAEvbExIndex, -1);
+  CHECK_NE(kRSASocketExIndex, -1);
   RSA_set_ex_data(dummyrsa, kRSAExIndex, actualrsa);
   RSA_set_ex_data(dummyrsa, kRSAEvbExIndex, jobEvb);
 
@@ -1714,6 +1726,47 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestFailure) {
       new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
       new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), false, false);
+  SSLHandshakeServer server(std::move(serverSock), false, false);
+
+  eventBase.loop();
+
+  EXPECT_TRUE(server.handshakeError_);
+  EXPECT_TRUE(client.handshakeError_);
+  ASYNC_cleanup_thread();
+}
+
+TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
+  ASYNC_init_thread(1, 1);
+  EventBase eventBase;
+  ScopedEventBaseThread jobEvbThread;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadClientCAList(kTestCA);
+
+  auto rsaPointers =
+      setupCustomRSA(kTestCert, kTestKey, jobEvbThread.getEventBase());
+  CHECK(rsaPointers->dummyrsa);
+  // up-refs dummyrsa
+  SSL_CTX_use_RSAPrivateKey(serverCtx->getSSLCtx(), rsaPointers->dummyrsa);
+  SSL_CTX_set_mode(serverCtx->getSSLCtx(), SSL_MODE_ASYNC);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+  int fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  RSA_set_ex_data(rsaPointers->dummyrsa, kRSASocketExIndex, serverSock.get());
 
   SSLHandshakeClient client(std::move(clientSock), false, false);
   SSLHandshakeServer server(std::move(serverSock), false, false);

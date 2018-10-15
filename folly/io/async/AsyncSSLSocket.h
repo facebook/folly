@@ -157,20 +157,22 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    public:
     DefaultOpenSSLAsyncFinishCallback(
         AsyncPipeReader::UniquePtr reader,
-        AsyncSSLSocket* sslSocket)
-        : pipeReader_(std::move(reader)), sslSocket_(sslSocket) {}
+        AsyncSSLSocket* sslSocket,
+        DestructorGuard dg)
+        : pipeReader_(std::move(reader)),
+          sslSocket_(sslSocket),
+          dg_(std::move(dg)) {}
+
+    ~DefaultOpenSSLAsyncFinishCallback() {
+      pipeReader_->setReadCB(nullptr);
+      sslSocket_->setAsyncOperationFinishCallback(nullptr);
+    }
 
     void readDataAvailable(size_t len) noexcept override {
       CHECK_EQ(len, 1);
-      if (byte_ > 0) {
-        sslSocket_->restartSSLAccept();
-      } else {
-        AsyncSocketException ex(
-            AsyncSocketException::INTERNAL_ERROR,
-            "Error with asynchronous crypto operation");
-        sslSocket_->failHandshake(__func__, ex);
-      }
+      sslSocket_->restartSSLAccept();
       pipeReader_->setReadCB(nullptr);
+      sslSocket_->setAsyncOperationFinishCallback(nullptr);
     }
 
     void getReadBuffer(void** bufReturn, size_t* lenReturn) noexcept override {
@@ -186,6 +188,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     uint8_t byte_{0};
     AsyncPipeReader::UniquePtr pipeReader_;
     AsyncSSLSocket* sslSocket_{nullptr};
+    DestructorGuard dg_;
   };
 
   /**
@@ -861,7 +864,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * applied. If verifyPeer_ was explicitly set either via sslConn/sslAccept,
    * those options override the settings in the underlying SSLContext.
    */
-  void applyVerificationOptions(SSL* ssl);
+  void applyVerificationOptions(const ssl::SSLUniquePtr& ssl);
 
   /**
    * Sets up SSL with a custom write bio which intercepts all writes.
@@ -873,13 +876,17 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * A SSL_write wrapper that understand EOR
    *
-   * @param ssl: SSL* object
+   * @param ssl: SSL pointer
    * @param buf: Buffer to be written
    * @param n:   Number of bytes to be written
    * @param eor: Does the last byte (buf[n-1]) have the app-last-byte?
    * @return:    The number of app bytes successfully written to the socket
    */
-  int eorAwareSSLWrite(SSL* ssl, const void* buf, int n, bool eor);
+  int eorAwareSSLWrite(
+      const ssl::SSLUniquePtr& ssl,
+      const void* buf,
+      int n,
+      bool eor);
 
   // Inherit error handling methods from AsyncSocket, plus the following.
   void failHandshake(const char* fn, const AsyncSocketException& ex);
@@ -909,7 +916,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::shared_ptr<folly::SSLContext> ctx_;
   // Callback for SSL_accept() or SSL_connect()
   HandshakeCB* handshakeCallback_{nullptr};
-  SSL* ssl_{nullptr};
+  ssl::SSLUniquePtr ssl_;
   SSL_SESSION* sslSession_{nullptr};
   Timeout handshakeTimeout_;
   Timeout connectionTimeout_;
