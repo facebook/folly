@@ -799,6 +799,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   }
 
  private:
+  /**
+   * Handle the return from invoking SSL_accept
+   */
+  void handleReturnFromSSLAccept(int ret);
+
   void init();
 
  protected:

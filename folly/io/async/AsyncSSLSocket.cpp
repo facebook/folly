@@ -1144,7 +1144,20 @@ void AsyncSSLSocket::handleAccept() noexcept {
     SSL_set_msg_callback_arg(ssl_, this);
   }
 
-  int ret = SSL_accept(ssl_);
+  DCHECK(ctx_->sslAcceptRunner());
+  updateEventRegistration(
+      EventHandler::NONE, EventHandler::READ | EventHandler::WRITE);
+  DelayedDestruction::DestructorGuard dg(this);
+  ctx_->sslAcceptRunner()->run(
+      [this, dg]() { return SSL_accept(ssl_); },
+      [this, dg](int ret) { handleReturnFromSSLAccept(ret); });
+}
+
+void AsyncSSLSocket::handleReturnFromSSLAccept(int ret) {
+  if (sslState_ != STATE_ACCEPTING) {
+    return;
+  }
+
   if (ret <= 0) {
     VLOG(3) << "SSL_accept returned: " << ret;
     int sslError;

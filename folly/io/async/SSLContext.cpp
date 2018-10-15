@@ -66,6 +66,8 @@ SSLContext::SSLContext(SSLVersion version) {
 
   SSL_CTX_set_options(ctx_, SSL_OP_NO_COMPRESSION);
 
+  sslAcceptRunner_ = std::make_unique<SSLAcceptRunner>();
+
 #if FOLLY_OPENSSL_HAS_SNI
   SSL_CTX_set_tlsext_servername_callback(ctx_, baseServerNameOpenSSLCallback);
   SSL_CTX_set_tlsext_servername_arg(ctx_, this);

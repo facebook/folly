@@ -1309,7 +1309,9 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
     LOG(INFO) << "Handshake success";
     handshakeSuccess_ = true;
-    handshakeTime = socket_->getHandshakeTime();
+    if (socket_) {
+      handshakeTime = socket_->getHandshakeTime();
+    }
   }
 
   void handshakeErr(
@@ -1317,12 +1319,16 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
       const AsyncSocketException& ex) noexcept override {
     LOG(INFO) << "Handshake error " << ex.what();
     handshakeError_ = true;
-    handshakeTime = socket_->getHandshakeTime();
+    if (socket_) {
+      handshakeTime = socket_->getHandshakeTime();
+    }
   }
 
   // WriteCallback
   void writeSuccess() noexcept override {
-    socket_->close();
+    if (socket_) {
+      socket_->close();
+    }
   }
 
   void writeErr(
@@ -1449,6 +1455,77 @@ class EventBaseAborter : public AsyncTimeout {
 
  private:
   EventBase* eventBase_;
+};
+
+class SSLAcceptEvbRunner : public SSLAcceptRunner {
+ public:
+  explicit SSLAcceptEvbRunner(EventBase* evb) : evb_(evb) {}
+  ~SSLAcceptEvbRunner() override = default;
+
+  void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
+      const override {
+    evb_->runInLoop([acceptFunc = std::move(acceptFunc),
+                     finallyFunc = std::move(finallyFunc)]() mutable {
+      finallyFunc(acceptFunc());
+    });
+  }
+
+ protected:
+  EventBase* evb_;
+};
+
+class SSLAcceptErrorRunner : public SSLAcceptEvbRunner {
+ public:
+  explicit SSLAcceptErrorRunner(EventBase* evb) : SSLAcceptEvbRunner(evb) {}
+  ~SSLAcceptErrorRunner() override = default;
+
+  void run(Function<int()> /*acceptFunc*/, Function<void(int)> finallyFunc)
+      const override {
+    evb_->runInLoop(
+        [finallyFunc = std::move(finallyFunc)]() mutable { finallyFunc(-1); });
+  }
+};
+
+class SSLAcceptCloseRunner : public SSLAcceptEvbRunner {
+ public:
+  explicit SSLAcceptCloseRunner(EventBase* evb, folly::AsyncSSLSocket* sock)
+      : SSLAcceptEvbRunner(evb), socket_(sock) {}
+  ~SSLAcceptCloseRunner() override = default;
+
+  void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
+      const override {
+    evb_->runInLoop([acceptFunc = std::move(acceptFunc),
+                     finallyFunc = std::move(finallyFunc),
+                     sock = socket_]() mutable {
+      auto ret = acceptFunc();
+      sock->closeNow();
+      finallyFunc(ret);
+    });
+  }
+
+ private:
+  folly::AsyncSSLSocket* socket_;
+};
+
+class SSLAcceptDestroyRunner : public SSLAcceptEvbRunner {
+ public:
+  explicit SSLAcceptDestroyRunner(EventBase* evb, SSLHandshakeBase* base)
+      : SSLAcceptEvbRunner(evb), sslBase_(base) {}
+  ~SSLAcceptDestroyRunner() override = default;
+
+  void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
+      const override {
+    evb_->runInLoop([acceptFunc = std::move(acceptFunc),
+                     finallyFunc = std::move(finallyFunc),
+                     sslBase = sslBase_]() mutable {
+      auto ret = acceptFunc();
+      std::move(*sslBase).moveSocket();
+      finallyFunc(ret);
+    });
+  }
+
+ private:
+  SSLHandshakeBase* sslBase_;
 };
 
 } // namespace folly

@@ -30,6 +30,7 @@
 #include <folly/folly-config.h>
 #endif
 
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/String.h>
@@ -62,6 +63,24 @@ class PasswordCollector {
    * Return a description of this collector for logging purposes
    */
   virtual std::string describe() const = 0;
+};
+
+/**
+ * Run SSL_accept via a runner
+ */
+class SSLAcceptRunner {
+ public:
+  virtual ~SSLAcceptRunner() = default;
+
+  /**
+   * This is expected to run the first function and provide its return
+   * value to the second function. This can be used to run the SSL_accept
+   * in different contexts.
+   */
+  virtual void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
+      const {
+    finallyFunc(acceptFunc());
+  }
 };
 
 /**
@@ -510,6 +529,22 @@ class SSLContext {
 #endif
 
   /**
+   * Sets the runner used for SSL_accept. If none is given, the accept will be
+   * done directly.
+   */
+  void sslAcceptRunner(std::unique_ptr<SSLAcceptRunner> runner) {
+    if (nullptr == runner) {
+      LOG(ERROR) << "Ignore invalid runner";
+      return;
+    }
+    sslAcceptRunner_ = std::move(runner);
+  }
+
+  const SSLAcceptRunner* sslAcceptRunner() {
+    return sslAcceptRunner_.get();
+  }
+
+  /**
    * Helper to match a hostname versus a pattern.
    */
   static bool matchName(const char* host, const char* pattern, int size);
@@ -533,6 +568,8 @@ class SSLContext {
   ClientProtocolFilterCallback clientProtoFilter_{nullptr};
 
   static bool initialized_;
+
+  std::unique_ptr<SSLAcceptRunner> sslAcceptRunner_;
 
 #if FOLLY_OPENSSL_HAS_ALPN
 
