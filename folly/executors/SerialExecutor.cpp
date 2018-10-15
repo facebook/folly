@@ -56,36 +56,24 @@ void SerialExecutor::keepAliveRelease() {
 }
 
 void SerialExecutor::add(Func func) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    queue_.push(std::move(func));
-  }
+  queue_.enqueue(std::move(func));
   parent_->add([keepAlive = getKeepAliveToken(this)] { keepAlive->run(); });
 }
 
 void SerialExecutor::addWithPriority(Func func, int8_t priority) {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    queue_.push(std::move(func));
-  }
+  queue_.enqueue(std::move(func));
   parent_->addWithPriority(
       [keepAlive = getKeepAliveToken(this)] { keepAlive->run(); }, priority);
 }
 
 void SerialExecutor::run() {
-  std::unique_lock<std::mutex> lock(mutex_);
-
-  ++scheduled_;
-
-  if (scheduled_ > 1) {
+  if (scheduled_.fetch_add(1, std::memory_order_relaxed) > 0) {
     return;
   }
 
   do {
-    DCHECK(!queue_.empty());
-    Func func = std::move(queue_.front());
-    queue_.pop();
-    lock.unlock();
+    Func func;
+    queue_.dequeue(func);
 
     try {
       func();
@@ -97,13 +85,7 @@ void SerialExecutor::run() {
                     "object";
     }
 
-    // Destroy the function (and the data it captures) before we acquire the
-    // lock again.
-    func = {};
-
-    lock.lock();
-    --scheduled_;
-  } while (scheduled_);
+  } while (scheduled_.fetch_sub(1, std::memory_order_relaxed) > 1);
 }
 
 } // namespace folly
