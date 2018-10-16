@@ -67,7 +67,6 @@ set(
 )
 
 include(GNUInstallDirs)
-include(folly-deps) # Find the required packages
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include(FollyCompilerMSVC)
@@ -76,6 +75,7 @@ else()
 endif()
 include(FollyFunctions)
 
+include(folly-deps) # Find the required packages
 include(FollyConfigChecks)
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake

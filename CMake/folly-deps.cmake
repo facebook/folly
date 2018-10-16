@@ -151,6 +151,36 @@ if (FOLLY_HAVE_ELF_H AND FOLLY_HAVE_BACKTRACE AND LIBDWARF_FOUND)
 endif()
 message(STATUS "Setting FOLLY_USE_SYMBOLIZER: ${FOLLY_USE_SYMBOLIZER}")
 
+# Using clang with libstdc++ requires explicitly linking against libatomic
+check_cxx_source_compiles("
+  #include <atomic>
+  int main(int argc, char** argv) {
+    struct Test { int val; };
+    std::atomic<Test> s;
+    return static_cast<int>(s.is_lock_free());
+  }"
+  FOLLY_CPP_ATOMIC_BUILTIN
+)
+if(NOT FOLLY_CPP_ATOMIC_BUILTIN)
+  list(APPEND CMAKE_REQUIRED_LIBRARIES atomic)
+  list(APPEND FOLLY_LINK_LIBRARIES atomic)
+  check_cxx_source_compiles("
+    #include <atomic>
+    int main(int argc, char** argv) {
+      struct Test { int val; };
+      std::atomic<Test> s2;
+      return static_cast<int>(s2.is_lock_free());
+    }"
+    FOLLY_CPP_ATOMIC_WITH_LIBATOMIC
+  )
+  if (NOT FOLLY_CPP_ATOMIC_WITH_LIBATOMIC)
+    message(
+      FATAL_ERROR "unable to link C++ std::atomic code: you may need \
+      to install GNU libatomic"
+    )
+  endif()
+endif()
+
 option(
   FOLLY_ASAN_ENABLED
   "Build folly with Address Sanitizer enabled."
