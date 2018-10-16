@@ -8,6 +8,7 @@
 #include <functional>
 
 #include "traits.h"
+#include "properties.h"
 
 namespace pushmi {
 namespace __adl {
@@ -122,6 +123,25 @@ PUSHMI_TEMPLATE (class SD, class TP, class Out)
 void submit(SD& sd, TP tp, Out out)
   noexcept(noexcept(sd->submit(std::move(tp), std::move(out)))) {
   sd->submit(std::move(tp), std::move(out));
+}
+
+//
+// support a nullary function as a receiver
+//
+
+PUSHMI_TEMPLATE (class S)
+  (requires Invocable<S&>)
+void set_done(S& s) noexcept {
+}
+PUSHMI_TEMPLATE (class S, class E)
+  (requires Invocable<S&>)
+void set_error(S& s, E&& e) noexcept {
+  std::abort();
+}
+PUSHMI_TEMPLATE (class S)
+  (requires Invocable<S&>)
+void set_value(S& s) noexcept(noexcept(s())) {
+  s();
 }
 
 //
@@ -327,6 +347,11 @@ PUSHMI_INLINE_VAR constexpr __adl::get_executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr __adl::get_top_fn now{};
 PUSHMI_INLINE_VAR constexpr __adl::get_top_fn top{};
+
+template<class T>
+struct property_set_traits<T, std::enable_if_t<(bool)Invocable<T&> && not Valid<T&, __properties_t>>> {
+  using properties = property_set<is_receiver<>>;
+};
 
 template <class T>
 struct property_set_traits<std::promise<T>> {

@@ -15,7 +15,7 @@ namespace pushmi {
 template <class T, class = void>
 struct property_traits;
 
-template <class T>
+template <class T, class = void>
 struct property_set_traits;
 
 template<class... PropertyN>
@@ -66,9 +66,6 @@ class receiver;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_receiver;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single_sender;

@@ -7,7 +7,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "detail/concept_def.h"
+#include "detail/functional.h"
 
 #define PUSHMI_NOEXCEPT_AUTO(...) \
   noexcept(noexcept(static_cast<decltype((__VA_ARGS__))>(__VA_ARGS__)))\

@@ -36,9 +36,6 @@ template<>
 struct construct_deduced<flow_receiver>;
 
 template<>
-struct construct_deduced<sender>;
-
-template<>
 struct construct_deduced<single_sender>;
 
 template<>

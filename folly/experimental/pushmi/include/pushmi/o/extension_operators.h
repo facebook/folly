@@ -61,6 +61,8 @@ struct make_receiver<is_many<>, true> : construct_deduced<flow_receiver> {};
 template <class Cardinality, bool IsFlow>
 struct receiver_from_impl {
   using MakeReceiver = make_receiver<Cardinality, IsFlow>;
+  template<class... AN>
+  using receiver_type = pushmi::invoke_result_t<MakeReceiver&, AN...>;
   PUSHMI_TEMPLATE (class... Ts)
    (requires Invocable<MakeReceiver, Ts...>)
   auto operator()(std::tuple<Ts...> args) const {
@@ -86,6 +88,10 @@ using receiver_from_fn =
     receiver_from_impl<
         property_set_index_t<properties_t<In>, is_single<>>,
         property_query_v<properties_t<In>, is_flow<>>>;
+
+template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class... AN>
+using receiver_type_t =
+  typename receiver_from_fn<In>::template receiver_type<AN...>;
 
 template <class In, class FN>
 struct submit_transform_out_1 {

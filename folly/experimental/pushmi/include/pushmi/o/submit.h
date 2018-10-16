@@ -17,13 +17,6 @@
 namespace pushmi {
 namespace detail {
 namespace submit_detail {
-template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class ...AN>
-using receiver_type_t =
-    pushmi::invoke_result_t<
-        pushmi::detail::make_receiver<
-          property_set_index_t<properties_t<In>, is_single<>>,
-          property_query_v<properties_t<In>, is_flow<>>>,
-        AN...>;
 
 PUSHMI_CONCEPT_DEF(
   template (class In, class ... AN)
@@ -52,11 +45,10 @@ private:
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
       (requires
-        submit_detail::AutoSenderTo<In, AN...> &&
-        Invocable<::pushmi::detail::receiver_from_fn<In>&, std::tuple<AN...>>
+        submit_detail::AutoSenderTo<In, AN...>
       )
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>{}(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
       return in;
     }

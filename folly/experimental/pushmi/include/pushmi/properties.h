@@ -16,17 +16,13 @@ namespace pushmi {
 template <class T>
 using __property_category_t = typename T::property_category;
 
+// allow specializations to use enable_if to constrain
 template <class T, class>
-struct property_traits : property_traits<std::decay_t<T>> {
-};
+struct property_traits {};
 template <class T>
 struct property_traits<T,
-    std::enable_if_t<Decayed<T> && not Valid<T, __property_category_t>>> {
-};
-template <class T>
-struct property_traits<T,
-    std::enable_if_t<Decayed<T> && Valid<T, __property_category_t>>> {
-  using property_category = __property_category_t<T>;
+    std::enable_if_t<Valid<std::decay_t<T>, __property_category_t>>> {
+  using property_category = __property_category_t<std::decay_t<T>>;
 };
 
 template <class T>
@@ -56,7 +52,7 @@ PUSHMI_CONCEPT_DEF(
 namespace detail {
 template <PUSHMI_TYPE_CONSTRAINT(Property) P, class = property_category_t<P>>
 struct property_set_element {};
-}
+} // namespace detail
 
 template<class... PropertyN>
 struct property_set : detail::property_set_element<PropertyN>... {
@@ -76,23 +72,13 @@ PUSHMI_CONCEPT_DEF(
 template <class T>
 using __properties_t = typename T::properties;
 
-namespace detail {
-template <class T, class = void>
-struct property_set_traits_impl : property_traits<std::decay_t<T>> {
-};
+// allow specializations to use enable_if to constrain
+template <class T, class>
+struct property_set_traits {};
 template <class T>
-struct property_set_traits_impl<T,
-    std::enable_if_t<Decayed<T> && not Valid<T, __properties_t>>> {
-};
-template <class T>
-struct property_set_traits_impl<T,
-    std::enable_if_t<Decayed<T> && Valid<T, __properties_t>>> {
-  using properties = __properties_t<T>;
-};
-} // namespace detail
-
-template <class T>
-struct property_set_traits : detail::property_set_traits_impl<T> {
+struct property_set_traits<T,
+  std::enable_if_t<Valid<std::decay_t<T>, __properties_t>>> {
+  using properties = __properties_t<std::decay_t<T>>;
 };
 
 template <class T>

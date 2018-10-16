@@ -708,6 +708,61 @@ PUSHMI_INLINE_VAR constexpr std::enable_if_t<B, int> requires_ = 0;
 } // namespace pushmi
 
 PUSHMI_PP_IGNORE_CXX2A_COMPAT_END
+// clang-format off
+// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include <functional>
+
+//#include "concept_def.h"
+
+namespace pushmi {
+
+PUSHMI_INLINE_VAR constexpr struct invoke_fn {
+private:
+  template <class F>
+  using mem_fn_t = decltype(std::mem_fn(std::declval<F>()));
+public:
+  template <class F, class... As>
+  auto operator()(F&& f, As&&...as) const
+      noexcept(noexcept(((F&&) f)((As&&) as...))) ->
+      decltype(((F&&) f)((As&&) as...)) {
+    return ((F&&) f)((As&&) as...);
+  }
+  template <class F, class... As>
+  auto operator()(F&& f, As&&...as) const
+      noexcept(noexcept(std::declval<mem_fn_t<F>>()((As&&) as...))) ->
+      decltype(std::mem_fn(f)((As&&) as...)) {
+    return std::mem_fn(f)((As&&) as...);
+  }
+} invoke {};
+
+template <class F, class...As>
+using invoke_result_t =
+  decltype(pushmi::invoke(std::declval<F>(), std::declval<As>()...));
+
+PUSHMI_CONCEPT_DEF(
+  template (class F, class... Args)
+  (concept Invocable)(F, Args...),
+    requires(F&& f) (
+      pushmi::invoke((F &&) f, std::declval<Args>()...)
+    )
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class F, class... Args)
+  (concept NothrowInvocable)(F, Args...),
+    requires(F&& f) (
+      requires_<noexcept(pushmi::invoke((F &&) f, std::declval<Args>()...))>
+    ) &&
+    Invocable<F, Args...>
+);
+
+} // namespace pushmi
 //#pragma once
 // Copyright (c) 2018-present, Facebook, Inc.
 //
@@ -717,7 +772,7 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_END
 //#include <functional>
 //#include <type_traits>
 
-//#include "detail/concept_def.h"
+//#include "detail/functional.h"
 
 #define PUSHMI_NOEXCEPT_AUTO(...) \
   noexcept(noexcept(static_cast<decltype((__VA_ARGS__))>(__VA_ARGS__)))\
@@ -935,61 +990,6 @@ PUSHMI_INLINE_VAR constexpr struct as_const_fn {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include <functional>
-
-//#include "concept_def.h"
-
-namespace pushmi {
-
-PUSHMI_INLINE_VAR constexpr struct invoke_fn {
-private:
-  template <class F>
-  using mem_fn_t = decltype(std::mem_fn(std::declval<F>()));
-public:
-  template <class F, class... As>
-  auto operator()(F&& f, As&&...as) const
-      noexcept(noexcept(((F&&) f)((As&&) as...))) ->
-      decltype(((F&&) f)((As&&) as...)) {
-    return ((F&&) f)((As&&) as...);
-  }
-  template <class F, class... As>
-  auto operator()(F&& f, As&&...as) const
-      noexcept(noexcept(std::declval<mem_fn_t<F>>()((As&&) as...))) ->
-      decltype(std::mem_fn(f)((As&&) as...)) {
-    return std::mem_fn(f)((As&&) as...);
-  }
-} invoke {};
-
-template <class F, class...As>
-using invoke_result_t =
-  decltype(pushmi::invoke(std::declval<F>(), std::declval<As>()...));
-
-PUSHMI_CONCEPT_DEF(
-  template (class F, class... Args)
-  (concept Invocable)(F, Args...),
-    requires(F&& f) (
-      pushmi::invoke((F &&) f, std::declval<Args>()...)
-    )
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class F, class... Args)
-  (concept NothrowInvocable)(F, Args...),
-    requires(F&& f) (
-      requires_<noexcept(pushmi::invoke((F &&) f, std::declval<Args>()...))>
-    ) &&
-    Invocable<F, Args...>
-);
-
-} // namespace pushmi
-// clang-format off
-// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
 #if __cpp_lib_optional >= 201606
 //#include <optional>
 #endif
@@ -1125,7 +1125,7 @@ namespace pushmi {
 template <class T, class = void>
 struct property_traits;
 
-template <class T>
+template <class T, class = void>
 struct property_set_traits;
 
 template<class... PropertyN>
@@ -1176,9 +1176,6 @@ class receiver;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_receiver;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single_sender;
@@ -1582,10 +1579,198 @@ locked_shared_entangled_pair<T, Dual> lock_both(shared_entangled<T, Dual>& e){
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//#include "traits.h"
+
+namespace pushmi {
+
+// property_set implements a map of category-type to property-type.
+// for each category only one property in that category is allowed in the set.
+
+// customization point for a property with a category
+
+template <class T>
+using __property_category_t = typename T::property_category;
+
+// allow specializations to use enable_if to constrain
+template <class T, class>
+struct property_traits {};
+template <class T>
+struct property_traits<T,
+    std::enable_if_t<Valid<std::decay_t<T>, __property_category_t>>> {
+  using property_category = __property_category_t<std::decay_t<T>>;
+};
+
+template <class T>
+using property_category_t = __property_category_t<property_traits<T>>;
+
+PUSHMI_CONCEPT_DEF(
+  template (class T)
+  concept Property,
+    Valid<T, property_category_t>
+);
+
+// in cases where Set contains T, allow T to find itself only once
+PUSHMI_CONCEPT_DEF(
+  template (class T, class... Set)
+  (concept FoundExactlyOnce)(T, Set...),
+    sum_v<(PUSHMI_PP_IS_SAME(T, Set) ? 1 : 0)...> == 1
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class... PropertyN)
+  (concept UniqueCategory)(PropertyN...),
+    And<FoundExactlyOnce<property_category_t<PropertyN>,
+                         property_category_t<PropertyN>...>...> &&
+    And<Property<PropertyN>...>
+);
+
+namespace detail {
+template <PUSHMI_TYPE_CONSTRAINT(Property) P, class = property_category_t<P>>
+struct property_set_element {};
+} // namespace detail
+
+template<class... PropertyN>
+struct property_set : detail::property_set_element<PropertyN>... {
+  static_assert(and_v<Property<PropertyN>...>, "property_set only supports types that match the Property concept");
+  static_assert(UniqueCategory<PropertyN...>, "property_set has multiple properties from the same category");
+  using properties = property_set;
+};
+
+PUSHMI_CONCEPT_DEF(
+  template (class T)
+  concept PropertySet,
+    detail::is_v<T, property_set>
+);
+
+// customization point for a type with properties
+
+template <class T>
+using __properties_t = typename T::properties;
+
+// allow specializations to use enable_if to constrain
+template <class T, class>
+struct property_set_traits {};
+template <class T>
+struct property_set_traits<T,
+  std::enable_if_t<Valid<std::decay_t<T>, __properties_t>>> {
+  using properties = __properties_t<std::decay_t<T>>;
+};
+
+template <class T>
+using properties_t =
+    std::enable_if_t<
+        PropertySet<__properties_t<property_set_traits<T>>>,
+        __properties_t<property_set_traits<T>>>;
+
+PUSHMI_CONCEPT_DEF(
+  template (class T)
+  concept Properties,
+    Valid<T, properties_t>
+);
+
+// find property in the specified set that matches the category of the property specified.
+namespace detail {
+template <class PIn, class POut>
+POut __property_set_index_fn(property_set_element<POut, property_category_t<PIn>>);
+
+template <class PIn, class POut, class...Ps>
+property_set<std::conditional_t<PUSHMI_PP_IS_SAME(Ps, PIn), POut, Ps>...>
+__property_set_insert_fn(property_set<Ps...>, property_set_element<POut, property_category_t<PIn>>);
+
+template <class PIn, class...Ps>
+property_set<Ps..., PIn> __property_set_insert_fn(property_set<Ps...>, ...);
+
+template <class PS, class P>
+using property_set_insert_one_t =
+  decltype(detail::__property_set_insert_fn<P>(PS{}, PS{}));
+
+template <class PS0, class>
+struct property_set_insert {
+  using type = PS0;
+};
+
+template <class PS0, class P, class... P1>
+struct property_set_insert<PS0, property_set<P, P1...>>
+  : property_set_insert<property_set_insert_one_t<PS0, P>, property_set<P1...>>
+{};
+} // namespace detail
+
+template <class PS, class P>
+using property_set_index_t =
+  std::enable_if_t<
+    PropertySet<PS> && Property<P>,
+    decltype(detail::__property_set_index_fn<P>(PS{}))>;
+
+template <class PS0, class PS1>
+using property_set_insert_t =
+  typename std::enable_if_t<
+    PropertySet<PS0> && PropertySet<PS1>,
+    detail::property_set_insert<PS0, PS1>>::type;
+
+// query for properties on types with properties.
+
+namespace detail {
+template<class PIn, class POut>
+std::is_base_of<PIn, POut>
+property_query_fn(property_set_element<POut, property_category_t<PIn>>*);
+template<class PIn>
+std::false_type property_query_fn(void*);
+
+template<class PS, class... ExpectedN>
+struct property_query_impl : bool_<
+  and_v<decltype(property_query_fn<ExpectedN>(
+      (properties_t<PS>*)nullptr))::value...>> {};
+} //namespace detail
+
+template<class PS, class... ExpectedN>
+struct property_query
+  : std::conditional_t<
+      Properties<PS> && And<Property<ExpectedN>...>,
+      detail::property_query_impl<PS, ExpectedN...>,
+      std::false_type> {};
+
+template<class PS, class... ExpectedN>
+PUSHMI_INLINE_VAR constexpr bool property_query_v =
+  property_query<PS, ExpectedN...>::value;
+
+
+// query for categories on types with properties.
+
+namespace detail {
+template<class CIn, class POut>
+std::true_type category_query_fn(property_set_element<POut, CIn>*);
+template<class C>
+std::false_type category_query_fn(void*);
+
+template<class PS, class... ExpectedN>
+struct category_query_impl : bool_<
+  and_v<decltype(category_query_fn<ExpectedN>(
+      (properties_t<PS>*)nullptr))::value...>> {};
+} //namespace detail
+
+template<class PS, class... ExpectedN>
+struct category_query
+  : std::conditional_t<
+      Properties<PS> && not Or<Property<ExpectedN>...>,
+      detail::category_query_impl<PS, ExpectedN...>,
+      std::false_type> {};
+
+template<class PS, class... ExpectedN>
+PUSHMI_INLINE_VAR constexpr bool category_query_v =
+  category_query<PS, ExpectedN...>::value;
+
+} // namespace pushmi
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 //#include <future>
 //#include <functional>
 
 //#include "traits.h"
+//#include "properties.h"
 
 namespace pushmi {
 namespace __adl {
@@ -1700,6 +1885,25 @@ PUSHMI_TEMPLATE (class SD, class TP, class Out)
 void submit(SD& sd, TP tp, Out out)
   noexcept(noexcept(sd->submit(std::move(tp), std::move(out)))) {
   sd->submit(std::move(tp), std::move(out));
+}
+
+//
+// support a nullary function as a receiver
+//
+
+PUSHMI_TEMPLATE (class S)
+  (requires Invocable<S&>)
+void set_done(S& s) noexcept {
+}
+PUSHMI_TEMPLATE (class S, class E)
+  (requires Invocable<S&>)
+void set_error(S& s, E&& e) noexcept {
+  std::abort();
+}
+PUSHMI_TEMPLATE (class S)
+  (requires Invocable<S&>)
+void set_value(S& s) noexcept(noexcept(s())) {
+  s();
 }
 
 //
@@ -1906,6 +2110,11 @@ PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr __adl::get_top_fn now{};
 PUSHMI_INLINE_VAR constexpr __adl::get_top_fn top{};
 
+template<class T>
+struct property_set_traits<T, std::enable_if_t<(bool)Invocable<T&> && not Valid<T&, __properties_t>>> {
+  using properties = property_set<is_receiver<>>;
+};
+
 template <class T>
 struct property_set_traits<std::promise<T>> {
   using properties = property_set<is_receiver<>>;
@@ -1914,207 +2123,6 @@ template <>
 struct property_set_traits<std::promise<void>> {
   using properties = property_set<is_receiver<>>;
 };
-
-} // namespace pushmi
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
-//#include "traits.h"
-
-namespace pushmi {
-
-// property_set implements a map of category-type to property-type.
-// for each category only one property in that category is allowed in the set.
-
-// customization point for a property with a category
-
-template <class T>
-using __property_category_t = typename T::property_category;
-
-template <class T, class>
-struct property_traits : property_traits<std::decay_t<T>> {
-};
-template <class T>
-struct property_traits<T,
-    std::enable_if_t<Decayed<T> && not Valid<T, __property_category_t>>> {
-};
-template <class T>
-struct property_traits<T,
-    std::enable_if_t<Decayed<T> && Valid<T, __property_category_t>>> {
-  using property_category = __property_category_t<T>;
-};
-
-template <class T>
-using property_category_t = __property_category_t<property_traits<T>>;
-
-PUSHMI_CONCEPT_DEF(
-  template (class T)
-  concept Property,
-    Valid<T, property_category_t>
-);
-
-// in cases where Set contains T, allow T to find itself only once
-PUSHMI_CONCEPT_DEF(
-  template (class T, class... Set)
-  (concept FoundExactlyOnce)(T, Set...),
-    sum_v<(PUSHMI_PP_IS_SAME(T, Set) ? 1 : 0)...> == 1
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class... PropertyN)
-  (concept UniqueCategory)(PropertyN...),
-    And<FoundExactlyOnce<property_category_t<PropertyN>,
-                         property_category_t<PropertyN>...>...> &&
-    And<Property<PropertyN>...>
-);
-
-namespace detail {
-template <PUSHMI_TYPE_CONSTRAINT(Property) P, class = property_category_t<P>>
-struct property_set_element {};
-}
-
-template<class... PropertyN>
-struct property_set : detail::property_set_element<PropertyN>... {
-  static_assert(and_v<Property<PropertyN>...>, "property_set only supports types that match the Property concept");
-  static_assert(UniqueCategory<PropertyN...>, "property_set has multiple properties from the same category");
-  using properties = property_set;
-};
-
-PUSHMI_CONCEPT_DEF(
-  template (class T)
-  concept PropertySet,
-    detail::is_v<T, property_set>
-);
-
-// customization point for a type with properties
-
-template <class T>
-using __properties_t = typename T::properties;
-
-namespace detail {
-template <class T, class = void>
-struct property_set_traits_impl : property_traits<std::decay_t<T>> {
-};
-template <class T>
-struct property_set_traits_impl<T,
-    std::enable_if_t<Decayed<T> && not Valid<T, __properties_t>>> {
-};
-template <class T>
-struct property_set_traits_impl<T,
-    std::enable_if_t<Decayed<T> && Valid<T, __properties_t>>> {
-  using properties = __properties_t<T>;
-};
-} // namespace detail
-
-template <class T>
-struct property_set_traits : detail::property_set_traits_impl<T> {
-};
-
-template <class T>
-using properties_t =
-    std::enable_if_t<
-        PropertySet<__properties_t<property_set_traits<T>>>,
-        __properties_t<property_set_traits<T>>>;
-
-PUSHMI_CONCEPT_DEF(
-  template (class T)
-  concept Properties,
-    Valid<T, properties_t>
-);
-
-// find property in the specified set that matches the category of the property specified.
-namespace detail {
-template <class PIn, class POut>
-POut __property_set_index_fn(property_set_element<POut, property_category_t<PIn>>);
-
-template <class PIn, class POut, class...Ps>
-property_set<std::conditional_t<PUSHMI_PP_IS_SAME(Ps, PIn), POut, Ps>...>
-__property_set_insert_fn(property_set<Ps...>, property_set_element<POut, property_category_t<PIn>>);
-
-template <class PIn, class...Ps>
-property_set<Ps..., PIn> __property_set_insert_fn(property_set<Ps...>, ...);
-
-template <class PS, class P>
-using property_set_insert_one_t =
-  decltype(detail::__property_set_insert_fn<P>(PS{}, PS{}));
-
-template <class PS0, class>
-struct property_set_insert {
-  using type = PS0;
-};
-
-template <class PS0, class P, class... P1>
-struct property_set_insert<PS0, property_set<P, P1...>>
-  : property_set_insert<property_set_insert_one_t<PS0, P>, property_set<P1...>>
-{};
-} // namespace detail
-
-template <class PS, class P>
-using property_set_index_t =
-  std::enable_if_t<
-    PropertySet<PS> && Property<P>,
-    decltype(detail::__property_set_index_fn<P>(PS{}))>;
-
-template <class PS0, class PS1>
-using property_set_insert_t =
-  typename std::enable_if_t<
-    PropertySet<PS0> && PropertySet<PS1>,
-    detail::property_set_insert<PS0, PS1>>::type;
-
-// query for properties on types with properties.
-
-namespace detail {
-template<class PIn, class POut>
-std::is_base_of<PIn, POut>
-property_query_fn(property_set_element<POut, property_category_t<PIn>>*);
-template<class PIn>
-std::false_type property_query_fn(void*);
-
-template<class PS, class... ExpectedN>
-struct property_query_impl : bool_<
-  and_v<decltype(property_query_fn<ExpectedN>(
-      (properties_t<PS>*)nullptr))::value...>> {};
-} //namespace detail
-
-template<class PS, class... ExpectedN>
-struct property_query
-  : std::conditional_t<
-      Properties<PS> && And<Property<ExpectedN>...>,
-      detail::property_query_impl<PS, ExpectedN...>,
-      std::false_type> {};
-
-template<class PS, class... ExpectedN>
-PUSHMI_INLINE_VAR constexpr bool property_query_v =
-  property_query<PS, ExpectedN...>::value;
-
-
-// query for categories on types with properties.
-
-namespace detail {
-template<class CIn, class POut>
-std::true_type category_query_fn(property_set_element<POut, CIn>*);
-template<class C>
-std::false_type category_query_fn(void*);
-
-template<class PS, class... ExpectedN>
-struct category_query_impl : bool_<
-  and_v<decltype(category_query_fn<ExpectedN>(
-      (properties_t<PS>*)nullptr))::value...>> {};
-} //namespace detail
-
-template<class PS, class... ExpectedN>
-struct category_query
-  : std::conditional_t<
-      Properties<PS> && not Or<Property<ExpectedN>...>,
-      detail::category_query_impl<PS, ExpectedN...>,
-      std::false_type> {};
-
-template<class PS, class... ExpectedN>
-PUSHMI_INLINE_VAR constexpr bool category_query_v =
-  category_query<PS, ExpectedN...>::value;
 
 } // namespace pushmi
 // clang-format off
@@ -2606,9 +2614,6 @@ struct construct_deduced<receiver>;
 
 template<>
 struct construct_deduced<flow_receiver>;
-
-template<>
-struct construct_deduced<sender>;
 
 template<>
 struct construct_deduced<single_sender>;
@@ -3192,6 +3197,13 @@ public:
   receiver() = default;
 };
 
+PUSHMI_CONCEPT_DEF(
+  template (class T)
+  concept ReceiverDataArg,
+    Receiver<T> &&
+    not Invocable<T&>
+);
+
 ////////////////////////////////////////////////////////////////////////////////
 // make_receiver
 PUSHMI_INLINE_VAR constexpr struct make_receiver_fn {
@@ -3201,7 +3213,7 @@ PUSHMI_INLINE_VAR constexpr struct make_receiver_fn {
   PUSHMI_TEMPLATE(class VF)
     (requires PUSHMI_EXP(
       lazy::True<>
-      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::ReceiverDataArg<VF>)))
   auto operator()(VF vf) const {
     return receiver<VF, abortEF, ignoreDF>{std::move(vf)};
   }
@@ -3217,7 +3229,7 @@ PUSHMI_INLINE_VAR constexpr struct make_receiver_fn {
     (requires PUSHMI_EXP(
       lazy::True<>
       PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-        not lazy::Receiver<VF> PUSHMI_AND
+        not lazy::ReceiverDataArg<VF> PUSHMI_AND
         not lazy::Invocable<EF&>)))
   auto operator()(VF vf, EF ef) const {
     return receiver<VF, EF, ignoreDF>{std::move(vf), std::move(ef)};
@@ -3226,7 +3238,7 @@ PUSHMI_INLINE_VAR constexpr struct make_receiver_fn {
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
       lazy::Invocable<DF&>
-      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::ReceiverDataArg<EF>)))
   auto operator()(EF ef, DF df) const {
     return receiver<ignoreVF, EF, DF>{std::move(ef), std::move(df)};
   }
@@ -3234,56 +3246,56 @@ PUSHMI_INLINE_VAR constexpr struct make_receiver_fn {
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
       lazy::Invocable<DF&>
-      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::ReceiverDataArg<VF>)))
   auto operator()(VF vf, EF ef, DF df) const {
     return receiver<VF, EF, DF>{std::move(vf), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::ReceiverDataArg<Data>))
   auto operator()(Data d) const {
     return receiver<Data, passDVF, passDEF, passDDF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::ReceiverDataArg<Data>))
   auto operator()(Data d, DVF vf) const {
     return receiver<Data, DVF, passDEF, passDDF>{std::move(d), std::move(vf)};
   }
   PUSHMI_TEMPLATE(class Data, class... DEFN)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::ReceiverDataArg<Data>))
   auto operator()(Data d, on_error_fn<DEFN...> ef) const {
     return receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF>{std::move(d), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class... DDFN)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::ReceiverDataArg<Data>))
   auto operator()(Data d, on_done_fn<DDFN...> df) const {
     return receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>>{std::move(d), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class... DEFN)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::ReceiverDataArg<Data>))
   auto operator()(Data d, DVF vf, on_error_fn<DEFN...> ef) const {
     return receiver<Data, DVF, on_error_fn<DEFN...>, passDDF>{std::move(d), std::move(vf), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class DEF, class... DDFN)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::ReceiverDataArg<Data>))
   auto operator()(Data d, DEF ef, on_done_fn<DDFN...> df) const {
     return receiver<Data, passDVF, DEF, on_done_fn<DDFN...>>{std::move(d), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data> PUSHMI_AND
+      lazy::ReceiverDataArg<Data> PUSHMI_AND
       lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DVF vf, DEF ef, DDF df) const {
     return receiver<Data, DVF, DEF, DDF>{std::move(d), std::move(vf), std::move(ef), std::move(df)};
@@ -3298,7 +3310,6 @@ receiver() -> receiver<>;
 PUSHMI_TEMPLATE(class VF)
   (requires PUSHMI_EXP(
     True<>
-    // lazy::Callable<VF>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
 receiver(VF) -> receiver<VF, abortEF, ignoreDF>;
 
@@ -3312,7 +3323,7 @@ PUSHMI_TEMPLATE(class VF, class EF)
   (requires PUSHMI_EXP(
     lazy::True<>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-      not lazy::Receiver<VF> PUSHMI_AND
+      not lazy::ReceiverDataArg<VF> PUSHMI_AND
       not lazy::Invocable<EF&>)))
 receiver(VF, EF) -> receiver<VF, EF, ignoreDF>;
 
@@ -3320,59 +3331,59 @@ PUSHMI_TEMPLATE(class EF, class DF)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
     lazy::Invocable<DF&>
-    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::ReceiverDataArg<EF>)))
 receiver(EF, DF) -> receiver<ignoreVF, EF, DF>;
 
 PUSHMI_TEMPLATE(class VF, class EF, class DF)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
     lazy::Invocable<DF&>
-    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::ReceiverDataArg<VF>)))
 receiver(VF, EF, DF) -> receiver<VF, EF, DF>;
 
 PUSHMI_TEMPLATE(class Data)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>))
+    lazy::ReceiverDataArg<Data>))
 receiver(Data d) -> receiver<Data, passDVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>))
+    lazy::ReceiverDataArg<Data>))
 receiver(Data d, DVF vf) -> receiver<Data, DVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>))
+    lazy::ReceiverDataArg<Data>))
 receiver(Data d, on_error_fn<DEFN...>) ->
     receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class... DDFN)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>))
+    lazy::ReceiverDataArg<Data>))
 receiver(Data d, on_done_fn<DDFN...>) ->
     receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class... DEFN)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>))
+    lazy::ReceiverDataArg<Data>))
 receiver(Data d, DVF vf, on_error_fn<DEFN...> ef) -> receiver<Data, DVF, on_error_fn<DEFN...>, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DEF, class... DDFN)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>
+    lazy::ReceiverDataArg<Data>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
 receiver(Data d, DEF, on_done_fn<DDFN...>) -> receiver<Data, passDVF, DEF, on_done_fn<DDFN...>>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data> PUSHMI_AND
+    lazy::ReceiverDataArg<Data>PUSHMI_AND
     lazy::Invocable<DDF&, Data&>))
 receiver(Data d, DVF vf, DEF ef, DDF df) -> receiver<Data, DVF, DEF, DDF>;
 #endif
@@ -3700,6 +3711,13 @@ class flow_receiver<>
     : public flow_receiver<ignoreVF, abortEF, ignoreDF, ignoreStrtF> {
 };
 
+PUSHMI_CONCEPT_DEF(
+  template (class T)
+  concept FlowReceiverDataArg,
+    Receiver<T, is_flow<>> &&
+    not Invocable<T&>
+);
+
 // TODO winnow down the number of make_flow_receiver overloads and deduction
 // guides here, as was done for make_many.
 
@@ -3713,7 +3731,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
     (requires PUSHMI_EXP(
       lazy::True<>
       PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-        not lazy::Receiver<VF>)))
+        not lazy::FlowReceiverDataArg<VF>)))
   auto operator()(VF nf) const {
     return flow_receiver<VF, abortEF, ignoreDF, ignoreStrtF>{
       std::move(nf)};
@@ -3732,7 +3750,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
     (requires PUSHMI_EXP(
       lazy::True<>
       PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-        not lazy::Receiver<VF> PUSHMI_AND
+        not lazy::FlowReceiverDataArg<VF> PUSHMI_AND
         not lazy::Invocable<EF&>)))
   auto operator()(VF nf, EF ef) const {
     return flow_receiver<VF, EF, ignoreDF, ignoreStrtF>{std::move(nf),
@@ -3743,7 +3761,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
       lazy::True<> PUSHMI_AND
       lazy::Invocable<DF&>
       PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-        not lazy::Receiver<EF>)))
+        not lazy::FlowReceiverDataArg<EF>)))
   auto operator()(EF ef, DF df) const {
     return flow_receiver<ignoreVF, EF, DF, ignoreStrtF>{std::move(ef), std::move(df)};
   }
@@ -3751,7 +3769,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
     (requires PUSHMI_EXP(
       lazy::Invocable<DF&>
       PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-        not lazy::Receiver<VF>)))
+        not lazy::FlowReceiverDataArg<VF>)))
   auto operator()(VF nf, EF ef, DF df) const {
     return flow_receiver<VF, EF, DF, ignoreStrtF>{std::move(nf),
       std::move(ef), std::move(df)};
@@ -3760,7 +3778,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
     (requires PUSHMI_EXP(
       lazy::Invocable<DF&>
       PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-        not lazy::Receiver<VF>)))
+        not lazy::FlowReceiverDataArg<VF>)))
   auto operator()(VF nf, EF ef, DF df, StrtF strtf) const {
     return flow_receiver<VF, EF, DF, StrtF>{std::move(nf), std::move(ef),
       std::move(df), std::move(strtf)};
@@ -3768,7 +3786,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
   PUSHMI_TEMPLATE(class Data)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::FlowReceiverDataArg<Data>))
   auto operator()(Data d) const {
     return flow_receiver<Data, passDVF, passDEF, passDDF, passDStrtF>{
         std::move(d)};
@@ -3776,28 +3794,28 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
   PUSHMI_TEMPLATE(class Data, class DVF)
     (requires PUSHMI_EXP(
       lazy::True<> PUSHMI_AND
-      lazy::Receiver<Data>))
+      lazy::FlowReceiverDataArg<Data>))
   auto operator()(Data d, DVF nf) const {
     return flow_receiver<Data, DVF, passDEF, passDDF, passDStrtF>{
       std::move(d), std::move(nf)};
   }
   PUSHMI_TEMPLATE(class Data, class... DEFN)
     (requires PUSHMI_EXP(
-      lazy::Receiver<Data>))
+      lazy::FlowReceiverDataArg<Data>))
   auto operator()(Data d, on_error_fn<DEFN...> ef) const {
     return flow_receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>{
       std::move(d), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class... DDFN)
     (requires PUSHMI_EXP(
-      lazy::Receiver<Data>))
+      lazy::FlowReceiverDataArg<Data>))
   auto operator()(Data d, on_done_fn<DDFN...> df) const {
     return flow_receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>, passDStrtF>{
       std::move(d), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
     (requires PUSHMI_EXP(
-      lazy::Receiver<Data>
+      lazy::FlowReceiverDataArg<Data>
       PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
         not lazy::Invocable<DEF&, Data&>)))
   auto operator()(Data d, DVF nf, DEF ef) const {
@@ -3805,7 +3823,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
   }
   PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
     (requires PUSHMI_EXP(
-      lazy::Receiver<Data> PUSHMI_AND
+      lazy::FlowReceiverDataArg<Data> PUSHMI_AND
       lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DEF ef, DDF df) const {
     return flow_receiver<Data, passDVF, DEF, DDF, passDStrtF>{
@@ -3813,7 +3831,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
     (requires PUSHMI_EXP(
-      lazy::Receiver<Data> PUSHMI_AND
+      lazy::FlowReceiverDataArg<Data> PUSHMI_AND
       lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DVF nf, DEF ef, DDF df) const {
     return flow_receiver<Data, DVF, DEF, DDF, passDStrtF>{std::move(d),
@@ -3821,7 +3839,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
     (requires PUSHMI_EXP(
-      lazy::Receiver<Data> PUSHMI_AND
+      lazy::FlowReceiverDataArg<Data> PUSHMI_AND
       lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DVF nf, DEF ef, DDF df, DStrtF strtf) const {
     return flow_receiver<Data, DVF, DEF, DDF, DStrtF>{std::move(d),
@@ -3838,7 +3856,7 @@ PUSHMI_TEMPLATE(class VF)
   (requires PUSHMI_EXP(
     lazy::True<>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-      not lazy::Receiver<VF>)))
+      not lazy::FlowReceiverDataArg<VF>)))
 flow_receiver(VF) ->
   flow_receiver<VF, abortEF, ignoreDF, ignoreStrtF>;
 
@@ -3854,7 +3872,7 @@ PUSHMI_TEMPLATE(class VF, class EF)
   (requires PUSHMI_EXP(
     lazy::True<>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-      not lazy::Receiver<VF> PUSHMI_AND
+      not lazy::FlowReceiverDataArg<VF> PUSHMI_AND
       not lazy::Invocable<EF&>)))
 flow_receiver(VF, EF) ->
   flow_receiver<VF, EF, ignoreDF, ignoreStrtF>;
@@ -3864,7 +3882,7 @@ PUSHMI_TEMPLATE(class EF, class DF)
     lazy::True<> PUSHMI_AND
     lazy::Invocable<DF&>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-      not lazy::Receiver<EF>)))
+      not lazy::FlowReceiverDataArg<EF>)))
 flow_receiver(EF, DF) ->
   flow_receiver<ignoreVF, EF, DF, ignoreStrtF>;
 
@@ -3872,7 +3890,7 @@ PUSHMI_TEMPLATE(class VF, class EF, class DF)
   (requires PUSHMI_EXP(
     lazy::Invocable<DF&>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-      not lazy::Receiver<VF>)))
+      not lazy::FlowReceiverDataArg<VF>)))
 flow_receiver(VF, EF, DF) ->
   flow_receiver<VF, EF, DF, ignoreStrtF>;
 
@@ -3880,47 +3898,47 @@ PUSHMI_TEMPLATE(class VF, class EF, class DF, class StrtF)
   (requires PUSHMI_EXP(
     lazy::Invocable<DF&>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
-      not lazy::Receiver<VF>)))
+      not lazy::FlowReceiverDataArg<VF>)))
 flow_receiver(VF, EF, DF, StrtF) ->
   flow_receiver<VF, EF, DF, StrtF>;
 
 PUSHMI_TEMPLATE(class Data)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>))
+    lazy::FlowReceiverDataArg<Data>))
 flow_receiver(Data d) ->
   flow_receiver<Data, passDVF, passDEF, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data>))
+    lazy::FlowReceiverDataArg<Data>))
 flow_receiver(Data d, DVF nf) ->
   flow_receiver<Data, DVF, passDEF, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
   (requires PUSHMI_EXP(
-    lazy::Receiver<Data>))
+    lazy::FlowReceiverDataArg<Data>))
 flow_receiver(Data d, on_error_fn<DEFN...>) ->
   flow_receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class... DDFN)
   (requires PUSHMI_EXP(
-    lazy::Receiver<Data>))
+    lazy::FlowReceiverDataArg<Data>))
 flow_receiver(Data d, on_done_fn<DDFN...>) ->
   flow_receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DDF)
   (requires PUSHMI_EXP(
     lazy::True<> PUSHMI_AND
-    lazy::Receiver<Data> PUSHMI_AND
+    lazy::FlowReceiverDataArg<Data> PUSHMI_AND
     lazy::Invocable<DDF&, Data&>))
 flow_receiver(Data d, DDF) ->
     flow_receiver<Data, passDVF, passDEF, DDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
   (requires PUSHMI_EXP(
-    lazy::Receiver<Data>
+    lazy::FlowReceiverDataArg<Data>
     PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
       not lazy::Invocable<DEF&, Data&>)))
 flow_receiver(Data d, DVF nf, DEF ef) ->
@@ -3928,21 +3946,21 @@ flow_receiver(Data d, DVF nf, DEF ef) ->
 
 PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
   (requires PUSHMI_EXP(
-    lazy::Receiver<Data> PUSHMI_AND
+    lazy::FlowReceiverDataArg<Data> PUSHMI_AND
     lazy::Invocable<DDF&, Data&>))
 flow_receiver(Data d, DEF, DDF) ->
   flow_receiver<Data, passDVF, DEF, DDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
   (requires PUSHMI_EXP(
-    lazy::Receiver<Data> PUSHMI_AND
+    lazy::FlowReceiverDataArg<Data> PUSHMI_AND
     lazy::Invocable<DDF&, Data&>))
 flow_receiver(Data d, DVF nf, DEF ef, DDF df) ->
   flow_receiver<Data, DVF, DEF, DDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
   (requires PUSHMI_EXP(
-    lazy::Receiver<Data> PUSHMI_AND
+    lazy::FlowReceiverDataArg<Data> PUSHMI_AND
     lazy::Invocable<DDF&, Data&> ))
 flow_receiver(Data d, DVF nf, DEF ef, DDF df, DStrtF strtf) ->
   flow_receiver<Data, DVF, DEF, DDF, DStrtF>;
@@ -6949,6 +6967,8 @@ struct make_receiver<is_many<>, true> : construct_deduced<flow_receiver> {};
 template <class Cardinality, bool IsFlow>
 struct receiver_from_impl {
   using MakeReceiver = make_receiver<Cardinality, IsFlow>;
+  template<class... AN>
+  using receiver_type = pushmi::invoke_result_t<MakeReceiver&, AN...>;
   PUSHMI_TEMPLATE (class... Ts)
    (requires Invocable<MakeReceiver, Ts...>)
   auto operator()(std::tuple<Ts...> args) const {
@@ -6974,6 +6994,10 @@ using receiver_from_fn =
     receiver_from_impl<
         property_set_index_t<properties_t<In>, is_single<>>,
         property_query_v<properties_t<In>, is_flow<>>>;
+
+template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class... AN>
+using receiver_type_t =
+  typename receiver_from_fn<In>::template receiver_type<AN...>;
 
 template <class In, class FN>
 struct submit_transform_out_1 {
@@ -7274,13 +7298,6 @@ PUSHMI_INLINE_VAR constexpr detail::top_fn top{};
 namespace pushmi {
 namespace detail {
 namespace submit_detail {
-template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class ...AN>
-using receiver_type_t =
-    pushmi::invoke_result_t<
-        pushmi::detail::make_receiver<
-          property_set_index_t<properties_t<In>, is_single<>>,
-          property_query_v<properties_t<In>, is_flow<>>>,
-        AN...>;
 
 PUSHMI_CONCEPT_DEF(
   template (class In, class ... AN)
@@ -7309,11 +7326,10 @@ private:
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
       (requires
-        submit_detail::AutoSenderTo<In, AN...> &&
-        Invocable<::pushmi::detail::receiver_from_fn<In>&, std::tuple<AN...>>
+        submit_detail::AutoSenderTo<In, AN...>
       )
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>{}(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
       return in;
     }
