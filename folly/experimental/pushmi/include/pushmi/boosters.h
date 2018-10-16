@@ -34,6 +34,9 @@ struct construct_deduced<none>;
 template<>
 struct construct_deduced<single>;
 
+template<>
+struct construct_deduced<flow_single>;
+
 template <template <class...> class T, class... AN>
 using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;
 

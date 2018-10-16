@@ -2,6 +2,7 @@
 
 add_executable(PushmiTest
   catch.cpp
+  FlowTest.cpp
   CompileTest.cpp
   NewThreadTest.cpp
   TrampolineTest.cpp

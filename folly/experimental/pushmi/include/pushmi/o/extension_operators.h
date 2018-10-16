@@ -13,6 +13,8 @@
 #include "../deferred.h"
 #include "../single_deferred.h"
 #include "../time_single_deferred.h"
+#include "../flow_single.h"
+#include "../flow_single_deferred.h"
 #include "../detail/if_constexpr.h"
 #include "../detail/functional.h"
 
@@ -44,17 +46,20 @@ constexpr decltype(auto) apply(F&& f, Tuple&& t) {
 
 namespace detail {
 
-template <class Tag>
+template <class... TagN>
 struct make_receiver;
 template <>
-struct make_receiver<is_none<>> : construct_deduced<none> {};
+struct make_receiver<is_none<>, void> : construct_deduced<none> {};
 template <>
-struct make_receiver<is_single<>> : construct_deduced<single> {};
+struct make_receiver<is_single<>, void> : construct_deduced<single> {};
+template <>
+struct make_receiver<is_single<>, is_flow<>> : construct_deduced<flow_single> {};
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
 struct out_from_fn {
   using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
-  using Make = make_receiver<Cardinality>;
+  using Flow = std::conditional_t<property_query_v<properties_t<In>, is_flow<>>, is_flow<>, void>;
+  using Make = make_receiver<Cardinality, Flow>;
   PUSHMI_TEMPLATE (class... Ts)
    (requires Invocable<Make, Ts...>)
   auto operator()(std::tuple<Ts...> args) const {

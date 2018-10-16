@@ -531,6 +531,14 @@ flow_single(Data d, DVF vf, DEF ef, DDF df, DStpF stpf, DStrtF strtf)
 template <class V, class PE = std::exception_ptr, class E = PE>
 using any_flow_single = flow_single<V, PE, E>;
 
+template<>
+struct construct_deduced<flow_single> {
+  template<class... AN>
+  auto operator()(AN&&... an) const -> decltype(pushmi::make_flow_single((AN&&) an...)) {
+    return pushmi::make_flow_single((AN&&) an...);
+  }
+};
+
 // template <class V, class PE = std::exception_ptr, class E = PE, class Wrapped>
 //     requires FlowSingleReceiver<Wrapped, V, PE, E> && !detail::is_v<Wrapped, none> &&
 //     !detail::is_v<Wrapped, std::promise>

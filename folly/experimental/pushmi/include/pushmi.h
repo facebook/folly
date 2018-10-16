@@ -2161,6 +2161,9 @@ struct construct_deduced<none>;
 template<>
 struct construct_deduced<single>;
 
+template<>
+struct construct_deduced<flow_single>;
+
 template <template <class...> class T, class... AN>
 using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;
 
@@ -4529,6 +4532,14 @@ flow_single(Data d, DVF vf, DEF ef, DDF df, DStpF stpf, DStrtF strtf)
 template <class V, class PE = std::exception_ptr, class E = PE>
 using any_flow_single = flow_single<V, PE, E>;
 
+template<>
+struct construct_deduced<flow_single> {
+  template<class... AN>
+  auto operator()(AN&&... an) const -> decltype(pushmi::make_flow_single((AN&&) an...)) {
+    return pushmi::make_flow_single((AN&&) an...);
+  }
+};
+
 // template <class V, class PE = std::exception_ptr, class E = PE, class Wrapped>
 //     requires FlowSingleReceiver<Wrapped, V, PE, E> && !detail::is_v<Wrapped, none> &&
 //     !detail::is_v<Wrapped, std::promise>
@@ -4648,9 +4659,30 @@ class flow_single_deferred<SF> {
       : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out, is_flow<>> && Invocable<SF&, Out>)
+    (requires Receiver<Out, is_single<>, is_flow<>> && Invocable<SF&, Out>)
   void submit(Out out) {
     sf_(std::move(out));
+  }
+};
+
+template <PUSHMI_TYPE_CONSTRAINT(Sender<is_single<>, is_flow<>>) Data, class DSF>
+class flow_single_deferred<Data, DSF> {
+  Data data_;
+  DSF sf_;
+
+ public:
+  using properties = property_set<is_sender<>, is_single<>>;
+
+  constexpr flow_single_deferred() = default;
+  constexpr explicit flow_single_deferred(Data data)
+      : data_(std::move(data)) {}
+  constexpr flow_single_deferred(Data data, DSF sf)
+      : data_(std::move(data)), sf_(std::move(sf)) {}
+  PUSHMI_TEMPLATE(class Out)
+    (requires PUSHMI_EXP(defer::Receiver<Out, is_single<>, is_flow<>> PUSHMI_AND
+        defer::Invocable<DSF&, Data&, Out>))
+  void submit(Out out) {
+    sf_(data_, std::move(out));
   }
 };
 
@@ -4660,9 +4692,20 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_single_deferred_fn {
   inline auto operator()() const {
     return flow_single_deferred<ignoreSF>{};
   }
-  template <class SF>
+  PUSHMI_TEMPLATE(class SF)
+    (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
   auto operator()(SF sf) const {
-    return flow_single_deferred<SF>(std::move(sf));
+    return flow_single_deferred<SF>{std::move(sf)};
+  }
+  PUSHMI_TEMPLATE(class Data)
+    (requires True<> && Sender<Data, is_single<>, is_flow<>>)
+  auto operator()(Data d) const {
+    return flow_single_deferred<Data, passDSF>{std::move(d)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DSF)
+    (requires Sender<Data, is_single<>, is_flow<>>)
+  auto operator()(Data d, DSF sf) const {
+    return flow_single_deferred<Data, DSF>{std::move(d), std::move(sf)};
   }
 } const make_flow_single_deferred {};
 
@@ -4671,8 +4714,17 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_single_deferred_fn {
 #if __cpp_deduction_guides >= 201703
 flow_single_deferred() -> flow_single_deferred<ignoreSF>;
 
-template <class SF>
+PUSHMI_TEMPLATE(class SF)
+  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
 flow_single_deferred(SF) -> flow_single_deferred<SF>;
+
+PUSHMI_TEMPLATE(class Data)
+  (requires True<> && Sender<Data, is_single<>, is_flow<>>)
+flow_single_deferred(Data) -> flow_single_deferred<Data, passDSF>;
+
+PUSHMI_TEMPLATE(class Data, class DSF)
+  (requires Sender<Data, is_single<>, is_flow<>>)
+flow_single_deferred(Data, DSF) -> flow_single_deferred<Data, DSF>;
 #endif
 
 template <class V, class PE = std::exception_ptr, class E = PE>
@@ -5007,6 +5059,8 @@ inline auto new_thread() {
 //#include "../deferred.h"
 //#include "../single_deferred.h"
 //#include "../time_single_deferred.h"
+//#include "../flow_single.h"
+//#include "../flow_single_deferred.h"
 //#include "../detail/if_constexpr.h"
 //#include "../detail/functional.h"
 
@@ -5038,17 +5092,20 @@ constexpr decltype(auto) apply(F&& f, Tuple&& t) {
 
 namespace detail {
 
-template <class Tag>
+template <class... TagN>
 struct make_receiver;
 template <>
-struct make_receiver<is_none<>> : construct_deduced<none> {};
+struct make_receiver<is_none<>, void> : construct_deduced<none> {};
 template <>
-struct make_receiver<is_single<>> : construct_deduced<single> {};
+struct make_receiver<is_single<>, void> : construct_deduced<single> {};
+template <>
+struct make_receiver<is_single<>, is_flow<>> : construct_deduced<flow_single> {};
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
 struct out_from_fn {
   using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
-  using Make = make_receiver<Cardinality>;
+  using Flow = std::conditional_t<property_query_v<properties_t<In>, is_flow<>>, is_flow<>, void>;
+  using Make = make_receiver<Cardinality, Flow>;
   PUSHMI_TEMPLATE (class... Ts)
    (requires Invocable<Make, Ts...>)
   auto operator()(std::tuple<Ts...> args) const {
@@ -5288,7 +5345,12 @@ namespace submit_detail {
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class ...AN>
 using receiver_type_t =
     pushmi::invoke_result_t<
-        pushmi::detail::make_receiver<property_set_index_t<properties_t<In>, is_silent<>>>,
+        pushmi::detail::make_receiver<
+          property_set_index_t<properties_t<In>, is_silent<>>,
+          std::conditional_t<
+            property_query_v<properties_t<In>, is_flow<>>,
+            is_flow<>,
+            void>>,
         AN...>;
 
 PUSHMI_CONCEPT_DEF(

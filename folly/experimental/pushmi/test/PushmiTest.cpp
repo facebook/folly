@@ -60,7 +60,7 @@ SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
     REQUIRE( v::SenderTo<E, v::any_single<int>, v::is_single<>> );
 
     WHEN( "tap and submit are applied" ) {
-      
+
       int signals = 0;
       e |
         op::tap(
