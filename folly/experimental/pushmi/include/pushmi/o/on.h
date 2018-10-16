@@ -22,7 +22,7 @@ struct on_fn {
 template <class ExecutorFactory>
 auto on_fn::operator()(ExecutorFactory ef) const {
   return [ef = std::move(ef)]<class In>(In in) {
-    return ::pushmi::detail::deferred_from<In, archetype_single>(
+    return ::pushmi::detail::deferred_from<In, single<>>(
       std::move(in),
       ::pushmi::detail::submit_transform_out<In>(
         [ef]<class Out>(In& in, Out out) {

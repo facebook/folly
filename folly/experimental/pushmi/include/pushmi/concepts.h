@@ -16,20 +16,6 @@ struct none_tag : silent_tag {};
 struct single_tag : none_tag {};
 struct flow_tag : single_tag {};
 
-template <class Tag>
-concept bool Silent = Derived<Tag, silent_tag>;
-
-template <class Tag>
-concept bool None = Silent<Tag> && Derived<Tag, none_tag>;
-
-template <class Tag>
-concept bool Single = None<Tag> && Derived<Tag, single_tag>;
-
-template <class Tag>
-concept bool Flow = Single<Tag> && Derived<Tag, flow_tag>;
-
-
-
 
 template <class T>
 using __sender_category_t = typename T::sender_category;
@@ -69,8 +55,8 @@ using receiver_category_t = __receiver_category_t<receiver_traits<T>>;
 
 
 
-
-
+////////////////////////////////////////////////////////////////////////////////
+// Receiver concepts
 template <class S, class Tag = silent_tag>
 concept bool Receiver = Valid<receiver_traits<S>, __receiver_category_t> &&
   Derived<receiver_category_t<S>, Tag> &&
@@ -93,11 +79,8 @@ concept bool SingleReceiver = NoneReceiver<S, E> &&
   };
 
 
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+// Sender concepts
 template <class D, class Tag = silent_tag>
 concept bool Sender = Valid<sender_traits<D>, __sender_category_t> &&
   Derived<sender_category_t<D>, Tag> && SemiMovable<D>;
@@ -110,23 +93,21 @@ concept bool SenderTo = Sender<D, Tag> &&
   };
 
 
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+// TimeSender concepts
 template <class D, class Tag = silent_tag>
 concept bool TimeSender = Sender<D, Tag> && requires(D& d) {
   { ::pushmi::now(d) } -> Regular
 };
 
-template <class D, class S, class Tag = silent_tag>
-concept bool TimeSenderTo = Receiver<S, Tag> && TimeSender<D, Tag> &&
-  requires(D& d, S&& s) {
-    ::pushmi::submit(d, ::pushmi::now(d), (S &&) s);
-  };
-
 template <TimeSender D>
 using time_point_t = decltype(::pushmi::now(std::declval<D&>()));
+
+template <class D, class S, class Tag = silent_tag>
+concept bool TimeSenderTo = Receiver<S, Tag> && TimeSender<D, Tag> &&
+  requires(D& d, S&& s, time_point_t<D> tp) {
+    ::pushmi::submit(d, tp, (S &&) s);
+  };
 
 
 // // this is a more general form where C (Constraint) could be time or priority

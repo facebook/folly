@@ -73,7 +73,7 @@ public:
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
    static_assert(TimeSenderTo<W, single<Other, E>>);
-   if constexpr ((bool)TimeSenderTo<W, single<Other, E>>) {
+   if constexpr((bool)TimeSenderTo<W, single<Other, E>>) {
       pobj_ = std::addressof(w);
       vptr_ = detail::any_time_executor_ref_vtable_v<E, TP, Other, Wrapped>();
    }

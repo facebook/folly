@@ -32,10 +32,10 @@ SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
       int signals = 0;
       e |
         op::tap(
-          [&](auto e) noexcept {  signals += 1000; },
+          [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; }) |
         op::submit(
-          [&](auto e) noexcept {  signals += 1000; },
+          [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
       THEN( "the done signal is recorded twice" ) {
@@ -63,11 +63,11 @@ SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
       e |
         op::tap(
           [&](auto v){ signals += 100; },
-          [&](auto e) noexcept {  signals += 1000; },
+          [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; }) |
         op::submit(
           [&](auto v){ signals += 100; },
-          [&](auto e) noexcept {  signals += 1000; },
+          [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
       THEN( "the done signal is recorded twice" ) {
@@ -96,7 +96,7 @@ SCENARIO( "just() can be used with transform and submit", "[just][deferred]" ) {
           [&](int v){ signals += 10000; return v * 2; }) |
         op::submit(
           [&](auto v){ value = v; signals += 100; },
-          [&](auto e) noexcept {  signals += 1000; },
+          [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
       THEN( "the transform signal is recorded twice, the value signal once and the result is correct" ) {

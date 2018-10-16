@@ -4,6 +4,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <functional>
 #include <type_traits>
 
 namespace pushmi {
@@ -101,12 +102,11 @@ using requires_ = std::enable_if_t<B, T>;
 } // namespace pushmi
 
 #if 1
+#define PUSHMI_VOID_LAMBDA_REQUIRES(...) \
+  ->::pushmi::detail::requires_<(__VA_ARGS__)>
 
-#define PUSHMI_VOID_LAMBDA_REQUIRES(RequiresExp...) \
-  ->::pushmi::detail::requires_<(RequiresExp)>
-
-#define PUSHMI_T_LAMBDA_REQUIRES(T, RequiresExp...) \
-  ->::pushmi::detail::requires_<(RequiresExp), T>
+#define PUSHMI_T_LAMBDA_REQUIRES(T, ...) \
+  ->::pushmi::detail::requires_<(__VA_ARGS__), T>
 #elif 0
 
 // unsupported syntax..

@@ -15,7 +15,7 @@ namespace operators {
 namespace detail {
 
 class via_fn {
-  template <class ExecutorFactory>
+  template <Invocable ExecutorFactory>
   auto operator()(ExecutorFactory ef) const;
 };
 
@@ -30,15 +30,15 @@ struct via_fn_data : public Out {
 template<class Executor, class Out>
 via_fn_data(Out, Executor) -> via_fn_data<Executor, Out>;
 
-template <class ExecutorFactory>
+template <Invocable ExecutorFactory>
 auto via_fn::operator()(ExecutorFactory ef) const {
   return [ef = std::move(ef)]<class In>(In in) {
-    return ::pushmi::detail::deferred_from<In, archetype_single>(
+    return ::pushmi::detail::deferred_from<In, single<>>(
       std::move(in),
       ::pushmi::detail::submit_transform_out<In>(
         [ef]<class Out>(Out out) {
           auto exec = ef();
-          return ::pushmi::detail::out_from<In>(
+          return ::pushmi::detail::out_from_fn<In>()(
             via_fn_data{std::move(out), std::move(exec)},
             // copy 'f' to allow multiple calls to submit
             ::pushmi::on_value{[]<class V>(auto& data, V&& v){

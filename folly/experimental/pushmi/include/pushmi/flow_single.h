@@ -279,9 +279,7 @@ class flow_single<>
     : public flow_single<ignoreVF, abortEF, ignoreDF, ignoreStpF, ignoreStrtF> {
 };
 
-using archetype_flow_single = flow_single<>;
-
-flow_single()->archetype_flow_single;
+flow_single()->flow_single<>;
 
 template <class VF>
     requires !Receiver<VF> && !detail::is_v<VF, on_error> &&

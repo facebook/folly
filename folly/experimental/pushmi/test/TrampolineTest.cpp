@@ -56,7 +56,7 @@ SCENARIO( "trampoline executor", "[trampoline][deferred]" ) {
         op::submit(
           [&](auto at){ signaled = at;
             signals += 100; },
-          [&](auto e) noexcept {  signals += 1000; },
+          [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
       THEN( "the value signal is recorded once and the signal did not drift much" ) {

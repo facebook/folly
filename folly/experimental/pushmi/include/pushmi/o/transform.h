@@ -17,19 +17,20 @@ namespace operators {
 namespace detail {
 
 struct transform_fn {
-template <class... FN>
-auto operator()(FN... fn) const;
+  template <class... FN>
+  auto operator()(FN... fn) const;
 };
+
 template <class... FN>
 auto transform_fn::operator()(FN... fn) const {
   auto f = overload{std::move(fn)...};
   return [f = std::move(f)]<class In>(In in) {
     // copy 'f' to allow multiple calls to connect to multiple 'in'
-    return ::pushmi::detail::deferred_from<In, archetype_single>(
+    return ::pushmi::detail::deferred_from<In, single<>>(
       std::move(in),
       ::pushmi::detail::submit_transform_out<In>(
         [f]<class Out>(Out out) {
-          return ::pushmi::detail::out_from<In>(
+          return ::pushmi::detail::out_from_fn<In>()(
             std::move(out),
             // copy 'f' to allow multiple calls to submit
             on_value{

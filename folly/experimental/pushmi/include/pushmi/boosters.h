@@ -25,73 +25,26 @@ struct construct {
 };
 
 template<template <class...> class T>
-struct construct_deduced {
+struct construct_deduced;
+
+template<>
+struct construct_deduced<none> {
   template<class... AN>
-    requires requires (AN&&... an) { T{(AN&&) an...}; }
-  auto operator()(AN&&... an) const {
-    return T{std::forward<AN>(an)...};
+  auto operator()(AN&&... an) const -> decltype(none{(AN&&) an...}) {
+    return none{(AN&&) an...};
+  }
+};
+
+template<>
+struct construct_deduced<single> {
+  template<class... AN>
+  auto operator()(AN&&... an) const -> decltype(single{(AN&&) an...}) {
+    return single{(AN&&) an...};
   }
 };
 
 template <template <class...> class T, class... AN>
 using deduced_type_t = std::invoke_result_t<construct_deduced<T>, AN...>;
-
-// template <class Fn>
-// struct apply {
-//   template <class Tup>
-//     requires requires (Tup&& tup) { std::apply(Fn{}, (Tup&&) tup); }
-//   decltype(auto) operator()(Tup&& tup) const {
-//     return std::apply(Fn{}, (Tup&&) tup);
-//   }
-// };
-//
-// template <class Fn, class Gn>
-// struct compose {
-//   template <class... AN>
-//     requires Invocable<Gn, AN...> &&
-//       Invocable<Fn, std::invoke_result_t<Gn, AN...>>
-//   decltype(auto) operator()(AN&&... an) const {
-//     return std::invoke(Fn{}, std::invoke(Gn{}, (AN&&) an...));
-//   }
-// };
-//
-// template <class T>
-// inline constexpr apply<construct<T>> from_tuple {};
-//
-// template <template <class...> class T>
-// inline constexpr apply<construct_deduced<T>> from_tuple_deduced {};
-
-template <class T, class... AN>
-auto from_tuple(std::tuple<AN...>&& t) {
-  return std::apply(construct<T>{}, std::move(t));
-}
-
-template <template<class...> class T, class... AN>
-auto from_tuple(std::tuple<AN...>&& t) {
-  using Deduced = decltype(T{std::declval<AN&&>()...});
-  return std::apply(construct<Deduced>{}, std::move(t));
-}
-
-template <class T>
-void sfinae_from_tuple(...);
-
-template <template<class... TN> class T>
-void sfinae_from_tuple(...);
-
-template <class T, class... AN,
-  class Constructor = construct<T>>
-auto sfinae_from_tuple(std::tuple<AN...>&& t) ->
-  decltype(std::apply(Constructor{}, std::move(t))) {
-  return std::apply(Constructor{}, std::move(t));
-}
-
-template <template<class...> class T, class... AN,
-  class Deduced = decltype(T{std::declval<AN>()...}),
-  class Constructor = construct<Deduced>>
-auto sfinae_from_tuple(std::tuple<AN...>&& t) ->
-  decltype(std::apply(Constructor{}, std::move(t))) {
-  return std::apply(Constructor{}, std::move(t));
-}
 
 struct ignoreVF {
   template <class V>

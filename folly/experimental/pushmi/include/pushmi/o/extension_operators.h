@@ -14,108 +14,35 @@ namespace pushmi {
 
 namespace detail{
 
-// template <Sender In>
-// struct out_from_fn {
-//
-// };
+template <class Tag>
+struct make_receiver;
+template <>
+struct make_receiver<none_tag> : construct_deduced<none> {};
+template <>
+struct make_receiver<single_tag> : construct_deduced<single> {};
 
-
-
-
-
-template<Sender In, class... AN>
-auto out_from(std::tuple<AN...>&& args) {
-  using SingleReceiver =
-      decltype(pushmi::sfinae_from_tuple<single>(std::move(args)));
-  using NoneReceiver =
-      decltype(pushmi::sfinae_from_tuple<none>(std::move(args)));
-  if constexpr ((bool)TimeSenderTo<In, SingleReceiver, single_tag> ||
-      SenderTo<In, SingleReceiver, single_tag>) {
-    return pushmi::from_tuple<single>(std::move(args));
-  } else if constexpr ((bool)TimeSenderTo<In, NoneReceiver, none_tag> ||
-      SenderTo<In, NoneReceiver, none_tag>) {
-    return pushmi::from_tuple<none>(std::move(args));
+template <Sender In>
+struct out_from_fn {
+  using Make = make_receiver<sender_category_t<In>>;
+  template <class... Ts>
+   requires Invocable<Make, Ts...>
+  auto operator()(std::tuple<Ts...> args) const {
+    return std::apply(Make(), std::move(args));
   }
-}
-
-template<Sender In, class... AN, class... DVFN, class... DEFN, class... DDFN>
-auto out_from(
-    std::tuple<AN...>&& args,
-    on_value<DVFN...> vf,
-    on_error<DEFN...> ef,
-    on_done<DDFN...> df) {
-  auto out = out_from<In>(std::move(args));
-  if constexpr (::pushmi::detail::is_v<decltype(out), single>) {
-    return single{std::move(out), std::move(vf), std::move(ef), std::move(df)};
-  } else if constexpr (::pushmi::detail::is_v<decltype(out), none>) {
-    return none{std::move(out), std::move(ef), std::move(df)};
+  template <class... Ts, class... Fns,
+    class This = std::enable_if_t<sizeof...(Fns) != 0, out_from_fn>>
+    requires (SemiMovable<Fns> &&...) &&
+      Invocable<Make, std::tuple<Ts...>> &&
+      Invocable<This, std::invoke_result_t<Make, std::tuple<Ts...>>, Fns...>
+  auto operator()(std::tuple<Ts...> args, Fns...fns) const {
+    return This()(This()(std::move(args)), std::move(fns)...);
   }
-}
-
-template<Sender In, Receiver Out, class... DVFN, class... DEFN, class... DDFN>
-auto out_from(
-    Out&& out,
-    on_value<DVFN...> vf,
-    on_error<DEFN...> ef,
-    on_done<DDFN...> df) {
-  using SingleReceiver =
-      decltype(pushmi::sfinae_from_tuple<single>(std::tuple{std::move(out)}));
-  using NoneReceiver =
-      decltype(pushmi::sfinae_from_tuple<none>(std::tuple{std::move(out)}));
-  if constexpr ((bool)TimeSenderTo<In, SingleReceiver, single_tag> ||
-      SenderTo<In, SingleReceiver, single_tag>) {
-    return single{std::move(out), std::move(vf), std::move(ef), std::move(df)};
-  } else if constexpr ((bool)TimeSenderTo<In, NoneReceiver, none_tag> ||
-      SenderTo<In, NoneReceiver, none_tag>) {
-    return none{std::move(out), std::move(ef), std::move(df)};
+  template <Receiver<sender_category_t<In>> Out, class...Fns>
+    requires (SemiMovable<Fns> &&...)
+  auto operator()(Out out, Fns... fns) const {
+    return Make()(std::move(out), std::move(fns)...);
   }
-}
-
-template<Sender In, Receiver Out, class... DEFN, class... DDFN>
-auto out_from(Out&& out, on_error<DEFN...> ef, on_done<DDFN...> df) {
-  using SingleReceiver =
-      decltype(pushmi::sfinae_from_tuple<single>(std::tuple{std::move(out)}));
-  using NoneReceiver =
-      decltype(pushmi::sfinae_from_tuple<none>(std::tuple{std::move(out)}));
-  if constexpr ((bool)TimeSenderTo<In, SingleReceiver, single_tag> ||
-      SenderTo<In, SingleReceiver, single_tag>) {
-    return single{std::move(out), std::move(ef), std::move(df)};
-  } else if constexpr ((bool)TimeSenderTo<In, NoneReceiver, none_tag> ||
-      SenderTo<In, NoneReceiver, none_tag>) {
-    return none{std::move(out), std::move(ef), std::move(df)};
-  }
-}
-
-template<Sender In, Receiver Out, class... DVFN>
-auto out_from(Out&& out, on_value<DVFN...> vf) {
-  using SingleReceiver =
-      decltype(pushmi::sfinae_from_tuple<single>(std::tuple{std::move(out)}));
-  using NoneReceiver =
-      decltype(pushmi::sfinae_from_tuple<none>(std::tuple{std::move(out)}));
-  if constexpr ((bool)TimeSenderTo<In, SingleReceiver, single_tag> ||
-      SenderTo<In, SingleReceiver, single_tag>) {
-    return single{std::move(out), std::move(vf)};
-  } else if constexpr ((bool)TimeSenderTo<In, NoneReceiver, none_tag> ||
-      SenderTo<In, NoneReceiver, none_tag>) {
-    return none{std::move(out)};
-  }
-}
-
-template<Sender In, Receiver Out>
-auto out_from(Out&& out) {
-  using SingleReceiver =
-      decltype(pushmi::sfinae_from_tuple<single>(std::tuple{std::move(out)}));
-  using NoneReceiver =
-      decltype(pushmi::sfinae_from_tuple<none>(std::tuple{std::move(out)}));
-  if constexpr ((bool)TimeSenderTo<In, SingleReceiver, single_tag> ||
-      SenderTo<In, SingleReceiver, single_tag>) {
-    return single{std::move(out)};
-  } else if constexpr ((bool)TimeSenderTo<In, NoneReceiver, none_tag> ||
-      SenderTo<In, NoneReceiver, none_tag>) {
-    return none{std::move(out)};
-  }
-}
-
+};
 
 template<Sender In, class FN>
 auto submit_transform_out(FN fn){
@@ -151,7 +78,7 @@ auto submit_transform_out(SDSF sdsf, TSDSF tsdsf){
   }
 }
 
-template<Sender In, class Out, class... FN>
+template<Sender In, Receiver Out, class... FN>
 auto deferred_from(FN&&... fn) {
   if constexpr ((bool)TimeSenderTo<In, Out, single_tag>) {
     return time_single_deferred{(FN&&) fn...};
@@ -162,7 +89,7 @@ auto deferred_from(FN&&... fn) {
   }
 }
 
-template<Sender In, class Out, class... FN>
+template<Sender In, Receiver Out, class... FN>
 auto deferred_from(In in, FN&&... fn) {
   if constexpr ((bool)TimeSenderTo<In, Out, single_tag>) {
     return time_single_deferred{std::move(in), (FN&&) fn...};
@@ -175,7 +102,7 @@ auto deferred_from(In in, FN&&... fn) {
 
 template<
     Sender In,
-    class Out,
+    Receiver Out,
     bool SenderRequires,
     bool SingleSenderRequires,
     bool TimeSingleSenderRequires>
@@ -198,10 +125,10 @@ namespace detail{
 struct set_value_fn {
   template<class V>
   auto operator()(V&& v) const {
-  return [v = (V&&) v]<class Out>(Out out) mutable PUSHMI_VOID_LAMBDA_REQUIRES(Receiver<Out>) {
-    ::pushmi::set_value(out, (V&&) v);
-  };
-}
+    return [v = (V&&) v]<class Out>(Out out) mutable PUSHMI_VOID_LAMBDA_REQUIRES(Receiver<Out>) {
+      ::pushmi::set_value(out, (V&&) v);
+    };
+  }
 };
 
 struct set_error_fn {
@@ -238,7 +165,7 @@ struct set_starting_fn {
   }
 };
 
-struct do_submit_fn {
+struct submit_fn {
   template <class Out>
   auto operator()(Out out) const {
     static_assert(Receiver<Out>, "'Out' must be a model of Receiver");
@@ -255,7 +182,7 @@ struct do_submit_fn {
   }
 };
 
-struct get_now_fn {
+struct now_fn {
   auto operator()() const {
     return []<class In>(In in) PUSHMI_T_LAMBDA_REQUIRES(decltype(::pushmi::now(in)), TimeSender<In>) {
       return ::pushmi::now(in);
@@ -270,9 +197,9 @@ inline constexpr detail::set_error_fn set_error{};
 inline constexpr detail::set_value_fn set_value{};
 inline constexpr detail::set_stopping_fn set_stopping{};
 inline constexpr detail::set_starting_fn set_starting{};
-inline constexpr detail::do_submit_fn submit{};
-inline constexpr detail::get_now_fn now{};
-inline constexpr detail::get_now_fn top{};
+inline constexpr detail::submit_fn submit{};
+inline constexpr detail::now_fn now{};
+inline constexpr detail::now_fn top{};
 
 } // namespace extension_operators
 

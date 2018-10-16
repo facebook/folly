@@ -18,20 +18,11 @@ namespace operators {
 
 namespace detail {
 
-inline constexpr struct make_receiver_fn {
-  template <class... AN>
-  deduced_type_t<none, AN...> operator()(none_tag, AN&& ...an) const {
-    return none{(AN&&) an...};
-  }
-  template <class... AN>
-  deduced_type_t<single, AN...> operator()(single_tag, AN&& ...an) const {
-    return single{(AN&&) an...};
-  }
-} make_receiver {};
-
 template <Sender In, class ...AN>
 using receiver_type_t =
-    std::invoke_result_t<make_receiver_fn, sender_category_t<In>, AN...>;
+    std::invoke_result_t<
+        pushmi::detail::make_receiver<sender_category_t<In>>,
+        AN...>;
 
 template <class In, class ... AN>
 concept bool AutoSenderTo = SenderTo<In, receiver_type_t<In, AN...>>;
@@ -49,13 +40,13 @@ private:
     std::tuple<AN...> args_;
     template <AutoSenderTo<AN...> In>
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from<In>(std::move(args_))};
+      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
       return in;
     }
     template <AutoTimeSenderTo<AN...> In>
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from<In>(std::move(args_))};
+      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, ::pushmi::now(in), std::move(out));
       return in;
     }
@@ -75,7 +66,7 @@ private:
     std::tuple<AN...> args_;
     template <AutoTimeSenderTo<AN...> In>
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from<In>(std::move(args_))};
+      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(at_), std::move(out));
       return in;
     }
@@ -98,7 +89,7 @@ private:
       // TODO - only move, move-only types..
       // if out can be copied, then submit can be called multiple
       // times..
-      auto out{::pushmi::detail::out_from<In>(std::move(args_))};
+      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
       auto at = ::pushmi::now(in) + std::move(after_);
       ::pushmi::submit(in, std::move(at), std::move(out));
       return in;
@@ -124,7 +115,7 @@ private:
     In impl_(In in) {
       bool done = false;
       std::condition_variable signaled;
-      auto out{::pushmi::detail::out_from<In>(
+      auto out{::pushmi::detail::out_from_fn<In>()(
         std::move(args_),
         on_value{[&]<class Out, class V>(Out out, V&& v){
           if constexpr ((bool)TimeSender<std::remove_cvref_t<V>>) {
@@ -150,7 +141,7 @@ private:
           signaled.notify_all();
         }}
       )};
-      if constexpr ((bool)IsTimeSender) {
+      if constexpr (IsTimeSender) {
         ::pushmi::submit(in, ::pushmi::now(in), std::move(out));
       } else {
         ::pushmi::submit(in, std::move(out));
