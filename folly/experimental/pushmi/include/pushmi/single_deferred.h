@@ -24,7 +24,7 @@ class any_single_deferred {
     static void s_submit(data&, single<V, E>) {}
     void (*op_)(data&, data*) = s_op;
     void (*submit_)(data&, single<V, E>) = s_submit;
-    static constexpr vtable const noop_ {};
+    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
   } const* vptr_ = &vtable::noop_;
   template <class Wrapped>
   any_single_deferred(Wrapped obj, std::false_type) : any_single_deferred() {
@@ -93,12 +93,12 @@ class any_single_deferred {
 
 // Class static definitions:
 template <class V, class E>
-constexpr typename any_single_deferred<V, E>::vtable const
-    any_single_deferred<V, E>::vtable::noop_;
+PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename any_single_deferred<V, E>::vtable const
+    any_single_deferred<V, E>::vtable::noop_);
 
 template <class SF>
 class single_deferred<SF> {
-  SF sf_{};
+  SF sf_;
 
  public:
   using properties = property_set<is_sender<>, is_single<>>;
@@ -108,7 +108,7 @@ class single_deferred<SF> {
       : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-    (requires defer::Receiver<Out, is_single<>> && defer::Invocable<SF&, Out>)
+    (requires PUSHMI_EXP(defer::Receiver<Out, is_single<>> PUSHMI_AND defer::Invocable<SF&, Out>))
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -117,8 +117,8 @@ class single_deferred<SF> {
 namespace detail {
 template <PUSHMI_TYPE_CONSTRAINT(Sender<is_single<>>) Data, class DSF>
 class single_deferred_2 {
-  Data data_{};
-  DSF sf_{};
+  Data data_;
+  DSF sf_;
 
  public:
   using properties = property_set<is_sender<>, is_single<>>;
@@ -129,8 +129,8 @@ class single_deferred_2 {
   constexpr single_deferred_2(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
   PUSHMI_TEMPLATE(class Out)
-    (requires defer::Receiver<Out, is_single<>> &&
-        defer::Invocable<DSF&, Data&, Out>)
+    (requires PUSHMI_EXP(defer::Receiver<Out, is_single<>> PUSHMI_AND
+        defer::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
   }

@@ -37,11 +37,30 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #endif
 
 #ifdef __clang__
+#define PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__ = {}
+#define PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__
+#elif defined(__GNUC__) && __GNUC__ >= 8
+#define PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__ = {}
+#define PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__
+#else
+#define PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(...)  __VA_ARGS__
+#define PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(...)  __VA_ARGS__ {}
+#endif
+
+#ifdef __clang__
 #define PUSHMI_PP_IS_SAME(...) __is_same(__VA_ARGS__)
-#elif defined(__GNUC__) && __GNUC__ >= 6
+#elif defined(__GNUC__) && __GNUC__ >= 6 && !defined(__NVCC__)
 #define PUSHMI_PP_IS_SAME(...) __is_same_as(__VA_ARGS__)
 #else
 #define PUSHMI_PP_IS_SAME(...) std::is_same<__VA_ARGS__>::value
+#endif
+
+#ifdef __clang__
+#define PUSHMI_PP_IS_CONSTRUCTIBLE(...)  __is_constructible(__VA_ARGS__)
+#elif defined(__GNUC__) && __GNUC__ >= 8
+#define PUSHMI_PP_IS_CONSTRUCTIBLE(...)  __is_constructible(__VA_ARGS__)
+#else
+#define PUSHMI_PP_IS_CONSTRUCTIBLE(...) std::is_constructible<__VA_ARGS__>::value
 #endif
 
 #if __COUNTER__ != __COUNTER__
@@ -382,9 +401,14 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #if __cpp_concepts
 #define PUSHMI_BROKEN_SUBSUMPTION(...)
 #define PUSHMI_TYPE_CONSTRAINT(...) __VA_ARGS__
+#define PUSHMI_EXP(...) __VA_ARGS__
+#define PUSHMI_AND &&
 #else
 #define PUSHMI_BROKEN_SUBSUMPTION(...) __VA_ARGS__
 #define PUSHMI_TYPE_CONSTRAINT(...) class
+// bool() is used to prevent 'error: pasting "PUSHMI_PP_REQUIRES_PROBE_" and "::" does not give a valid preprocessing token'
+#define PUSHMI_EXP(...) bool(::pushmi::expAnd(__VA_ARGS__))
+#define PUSHMI_AND ,
 #endif
 
 
@@ -440,8 +464,27 @@ struct And {
         return detail::And<And, That>{};
     }
 };
+
 } // namespace detail
 } // namespace concepts
+
+namespace isolated {
+
+template<class T0>
+constexpr auto expAnd(T0&& t0) {
+  return (T0&&)t0;
+}
+template<class T0, class... TN>
+constexpr auto expAnd(T0&& t0, TN&&... tn) {
+  return concepts::detail::And<T0, decltype(isolated::expAnd((TN&&)tn...))>{};
+}
+
+}
+
+template<class... TN>
+constexpr auto expAnd(TN&&... tn) {
+  return isolated::expAnd((TN&&)tn...);
+}
 
 template <class T>
 constexpr bool implicitly_convertible_to(T) {

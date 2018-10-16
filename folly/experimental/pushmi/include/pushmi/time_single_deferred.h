@@ -29,7 +29,7 @@ class any_time_single_deferred {
     void (*op_)(data&, data*) = s_op;
     TP (*now_)(data&) = s_now;
     void (*submit_)(data&, TP, single<V, E>) = s_submit;
-    static constexpr vtable const noop_ = {};
+    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
   } const* vptr_ = &vtable::noop_;
   template <class Wrapped>
   any_time_single_deferred(Wrapped obj, std::false_type)
@@ -114,16 +114,16 @@ class any_time_single_deferred {
 
 // Class static definitions:
 template <class V, class E, class TP>
-constexpr typename any_time_single_deferred<V, E, TP>::vtable const
-    any_time_single_deferred<V, E, TP>::vtable::noop_;
+PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename any_time_single_deferred<V, E, TP>::vtable const
+    any_time_single_deferred<V, E, TP>::vtable::noop_);
 
 template <class SF, class NF>
 #if __cpp_concepts
   requires Invocable<NF&>
 #endif
 class time_single_deferred<SF, NF> {
-  SF sf_{};
-  NF nf_{};
+  SF sf_;
+  NF nf_;
 
  public:
   using properties = property_set<is_time<>, is_single<>>;
@@ -150,9 +150,9 @@ template <PUSHMI_TYPE_CONSTRAINT(TimeSender<is_single<>>) Data, class DSF, class
   requires Invocable<DNF&, Data&>
 #endif
 class time_single_deferred_2 {
-  Data data_{};
-  DSF sf_{};
-  DNF nf_{};
+  Data data_;
+  DSF sf_;
+  DNF nf_;
 
  public:
   using properties = property_set<is_time<>, is_single<>>;

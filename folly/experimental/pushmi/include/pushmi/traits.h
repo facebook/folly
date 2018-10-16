@@ -63,9 +63,9 @@ PUSHMI_CONCEPT_DEF(
 );
 
 PUSHMI_CONCEPT_DEF(
-  template(class T, template<class...> class C, class... Args)
-  (concept Valid)(T, C, Args...),
-    True< C<T, Args...> >
+  template(class T, template<class...> class C)
+  (concept Valid)(T, C),
+    True< C<T> >
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -104,7 +104,7 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class T, class... Args)
   (concept Constructible)(T, Args...),
-    __is_constructible(T, Args...)
+    PUSHMI_PP_IS_CONSTRUCTIBLE(T, Args...)
 );
 
 PUSHMI_CONCEPT_DEF(

@@ -13,24 +13,25 @@
 
 namespace pushmi {
 
+template<typename In>
+struct send_via {
+    In in;
+    template<class... AN>
+    auto via(AN&&... an) {
+        return in | ::pushmi::operators::via((AN&&) an...);
+    }
+};
+
 namespace detail {
 
 struct request_via_fn {
-  template<typename In>
-  struct semisender {
-      In in;
-      template<class... AN>
-      auto via(AN&&... an) {
-          return in | ::pushmi::operators::via((AN&&) an...);
-      }
-  };
-  auto operator()() const;
+  inline auto operator()() const;
 };
 
-auto request_via_fn::operator()() const {
+inline auto request_via_fn::operator()() const {
   return constrain(lazy::Sender<_1>, [](auto in) {
     using In = decltype(in);
-    return semisender<In>{in};
+    return send_via<In>{in};
   });
 }
 
@@ -50,7 +51,7 @@ auto via_cast(In in) {
 
 PUSHMI_TEMPLATE(class To, class In)
   (requires Same<To, is_sender<>>)
-auto via_cast(detail::request_via_fn::semisender<In> ss) {
+auto via_cast(send_via<In> ss) {
   return ss.in;
 }
 

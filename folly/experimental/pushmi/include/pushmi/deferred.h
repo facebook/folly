@@ -27,7 +27,7 @@ class deferred<detail::erase_deferred_t, E> {
     static void s_submit(data&, any_none<E>) {}
     void (*op_)(data&, data*) = s_op;
     void (*submit_)(data&, any_none<E>) = s_submit;
-    static constexpr vtable const noop_{};
+    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
   } const* vptr_ = &vtable::noop_;
   template <class Wrapped>
   deferred(Wrapped obj, std::false_type) : deferred() {
@@ -93,12 +93,12 @@ class deferred<detail::erase_deferred_t, E> {
 
 // Class static definitions:
 template <class E>
-constexpr typename deferred<detail::erase_deferred_t, E>::vtable const
-    deferred<detail::erase_deferred_t, E>::vtable::noop_;
+PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename deferred<detail::erase_deferred_t, E>::vtable const
+    deferred<detail::erase_deferred_t, E>::vtable::noop_);
 
 template <class SF>
 class deferred<SF> {
-  SF sf_{};
+  SF sf_;
 
  public:
   using properties = property_set<is_sender<>, is_none<>>;
@@ -114,8 +114,8 @@ class deferred<SF> {
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender<is_none<>>) Data, class DSF>
 class deferred<Data, DSF> {
-  Data data_{};
-  DSF sf_{};
+  Data data_;
+  DSF sf_;
   static_assert(Sender<Data, is_none<>>, "The Data template parameter "
     "must satisfy the Sender concept.");
 
