@@ -8,91 +8,48 @@
 
 #include <functional>
 
-#include "../traits.h"
-#include "../forwards.h"
+#include "concept_def.h"
 
 namespace pushmi {
 
-namespace detail {
-
-struct placeholder;
-
-#ifndef __has_builtin
-#define __has_builtin(x) 0
-#endif
-
-#if __has_builtin(__type_pack_element)
-#define PUSHMI_TYPE_PACK_ELEMENT(...) \
-  __type_pack_element<__VA_ARGS__>
-#else
-template <std::size_t I, class... Args>
-struct type_pack_element {
-};
-template <std::size_t I, class A, class... Args>
-struct type_pack_element<I, A, Args...> : type_pack_element<I - 1, Args...> {
-};
-template <class A, class... Args>
-struct type_pack_element<0, A, Args...> {
-  using type = A;
-};
-#define PUSHMI_TYPE_PACK_ELEMENT(...) \
-  typename type_pack_element<__VA_ARGS__>::type
-#endif
-
-template <class T, class Args, class = void>
-struct substitute {
-  using type = T;
-};
-template <std::size_t I, class... Args>
-struct substitute<placeholder[I], typelist<Args...>,
-    void_t<PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...)>>
-  : std::decay<PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...)> {
-};
-template <std::size_t I, class... Args>
-struct substitute<placeholder(&&)[I], typelist<Args...>,
-    void_t<PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...)>> {
-  using type = PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...);
-};
-template <template <class...> class R, class... Ts, class Args>
-struct substitute<R<Ts...>, Args,
-    void_t<R<typename substitute<Ts, Args>::type...>>> {
-  using type = R<typename substitute<Ts, Args>::type...>;
-};
-
-template <class Fn, class Requirements>
-struct constrained_fn : Fn {
-  constrained_fn() = default;
-  constrained_fn(Fn fn) : Fn(std::move(fn)) {}
-
-  PUSHMI_TEMPLATE (class... Ts)
-    (requires Invocable<Fn&, Ts...> &&
-      (bool)typename substitute<Requirements, typelist<Ts...>>::type{})
-  decltype(auto) operator()(Ts&&... ts)
-      noexcept(noexcept(std::declval<Fn&>()((Ts&&) ts...))) {
-    return static_cast<Fn&>(*this)((Ts&&) ts...);
+PUSHMI_INLINE_VAR constexpr struct invoke_fn {
+private:
+  template <class F>
+  using mem_fn_t = decltype(std::mem_fn(std::declval<F>()));
+public:
+  template <class F, class... As>
+  auto operator()(F&& f, As&&...as) const
+      noexcept(noexcept(((F&&) f)((As&&) as...))) ->
+      decltype(((F&&) f)((As&&) as...)) {
+    return ((F&&) f)((As&&) as...);
   }
-  PUSHMI_TEMPLATE (class... Ts)
-    (requires Invocable<const Fn&, Ts...> &&
-      (bool)typename substitute<Requirements, typelist<Ts...>>::type{})
-  decltype(auto) operator()(Ts&&... ts) const
-      noexcept(noexcept(std::declval<const Fn&>()((Ts&&) ts...))) {
-    return static_cast<const Fn&>(*this)((Ts&&) ts...);
+  template <class F, class... As>
+  auto operator()(F&& f, As&&...as) const
+      noexcept(noexcept(std::declval<mem_fn_t<F>>()((As&&) as...))) ->
+      decltype(std::mem_fn(f)((As&&) as...)) {
+    return std::mem_fn(f)((As&&) as...);
   }
-};
+} invoke {};
 
-struct constrain_fn {
-  template <class Requirements, class Fn>
-  constexpr auto operator()(Requirements, Fn fn) const {
-    return constrained_fn<Fn, Requirements>{std::move(fn)};
-  }
-};
+template <class F, class...As>
+using invoke_result_t =
+  decltype(pushmi::invoke(std::declval<F>(), std::declval<As>()...));
 
-} // namespace detail
+PUSHMI_CONCEPT_DEF(
+  template (class F, class... Args)
+  (concept Invocable)(F, Args...),
+    requires(F&& f) (
+      pushmi::invoke((F &&) f, std::declval<Args>()...)
+    )
+);
 
-using _1 = detail::placeholder[1];
-using _2 = detail::placeholder[2];
-using _3 = detail::placeholder[3];
-
-PUSHMI_INLINE_VAR constexpr const detail::constrain_fn constrain {};
+PUSHMI_CONCEPT_DEF(
+  template (class F, class... Args)
+  (concept NothrowInvocable)(F, Args...),
+    requires(F&& f) (
+      requires_<noexcept(pushmi::invoke((F &&) f, std::declval<Args>()...))>
+    ) &&
+    Invocable<F, Args...>
+);
 
 } // namespace pushmi

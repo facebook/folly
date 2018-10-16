@@ -11,33 +11,33 @@
 #include "submit.h"
 #include "extension_operators.h"
 
-#if __cpp_deduction_guides >= 201703
-#define MAKE(x) x MAKE_
-#define MAKE_(...) {__VA_ARGS__}
-#else
-#define MAKE(x) make_ ## x
-#endif
-
 namespace pushmi {
 
 namespace operators {
 
-PUSHMI_TEMPLATE(class F)
-  (requires Invocable<F>)
-auto defer(F f) {
-  return MAKE(single_deferred)(
-    constrain(lazy::Receiver<_1>,
-      [f = std::move(f)](auto out) mutable {
-        auto sender = f();
-        PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<decltype(sender)>) (
-          ::pushmi::submit(sender, ::pushmi::now(id(sender)), std::move(out));
-        ) else (
-          ::pushmi::submit(sender, std::move(out));
-        ));
-      }
-    )
-  );
-}
+PUSHMI_INLINE_VAR constexpr struct defer_fn {
+private:
+  template <class F>
+  struct impl {
+    F f_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    void operator()(Out out) {
+      auto sender = f_();
+      PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<decltype(sender)>) (
+        ::pushmi::submit(sender, ::pushmi::now(id(sender)), std::move(out));
+      ) else (
+        ::pushmi::submit(sender, std::move(out));
+      ));
+    }
+  };
+public:
+  PUSHMI_TEMPLATE(class F)
+    (requires Invocable<F&>)
+  auto operator()(F f) const {
+    return make_single_deferred(impl<F>{std::move(f)});
+  }
+} defer {};
 
 } // namespace operators
 

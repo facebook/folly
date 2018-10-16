@@ -12,24 +12,33 @@ namespace pushmi {
 namespace detail {
 
 struct no_fail_fn {
-  auto operator()() const {
-    return constrain(lazy::Sender<_1>, [](auto in) {
-      using In = decltype(in);
+private:
+  template <class In>
+  struct out_impl {
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    auto operator()(Out out) const {
+      return ::pushmi::detail::out_from_fn<In>()(
+        std::move(out),
+        ::pushmi::on_error([](auto&, auto&&) noexcept {
+          std::abort();
+        })
+      );
+    }
+  };
+  struct in_impl {
+    PUSHMI_TEMPLATE(class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
       return ::pushmi::detail::deferred_from<In, single<>>(
         std::move(in),
-        ::pushmi::detail::submit_transform_out<In>(
-          constrain(lazy::Receiver<_1>, [](auto out) {
-            using Out = decltype(out);
-            return ::pushmi::detail::out_from_fn<In>()(
-              std::move(out),
-              ::pushmi::on_error([](auto&, auto&&) noexcept {
-                std::abort();
-              })
-            );
-          })
-        )
+        ::pushmi::detail::submit_transform_out<In>(out_impl<In>{})
       );
-    });
+    }
+  };
+public:
+  auto operator()() const {
+    return in_impl{};
   }
 };
 

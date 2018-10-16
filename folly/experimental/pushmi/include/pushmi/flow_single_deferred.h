@@ -129,8 +129,8 @@ class flow_single_deferred<Data, DSF> {
   constexpr flow_single_deferred(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(defer::Receiver<Out, is_single<>, is_flow<>> PUSHMI_AND
-        defer::Invocable<DSF&, Data&, Out>))
+    (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>, is_flow<>> PUSHMI_AND
+        lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
   }

@@ -11,33 +11,40 @@
 #include "extension_operators.h"
 
 namespace pushmi {
+namespace detail {
+  template <class E>
+  struct error_impl {
+    E e_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires NoneReceiver<Out, E>)
+    void operator()(Out out) {
+      ::pushmi::set_error(out, std::move(e_));
+    }
+  };
+  template <class V, class E>
+  struct single_error_impl {
+    E e_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires SingleReceiver<Out, V, E>)
+    void operator()(Out out) {
+      ::pushmi::set_error(out, std::move(e_));
+    }
+  };
+}
 
 namespace operators {
 
 PUSHMI_TEMPLATE(class E)
   (requires SemiMovable<E>)
 auto error(E e) {
-  return make_deferred(
-    constrain(lazy::NoneReceiver<_1, E>,
-      [e = std::move(e)](auto out) mutable {
-        ::pushmi::set_error(out, std::move(e));
-      }
-    )
-  );
+  return make_deferred(detail::error_impl<E>{std::move(e)});
 }
 
 PUSHMI_TEMPLATE(class V, class E)
   (requires SemiMovable<V> && SemiMovable<E>)
 auto error(E e) {
-  return make_single_deferred(
-    constrain(lazy::SingleReceiver<_1, V, E>,
-      [e = std::move(e)](auto out) mutable {
-        ::pushmi::set_error(out, std::move(e));
-      }
-    )
-  );
+  return make_single_deferred(detail::single_error_impl<V, E>{std::move(e)});
 }
 
 } // namespace operators
-
 } // namespace pushmi

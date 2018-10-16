@@ -25,15 +25,19 @@ struct send_via {
 namespace detail {
 
 struct request_via_fn {
-  inline auto operator()() const;
+private:
+  struct impl {
+    PUSHMI_TEMPLATE(class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
+      return send_via<In>{in};
+    }
+  };
+public:
+  inline auto operator()() const {
+    return impl{};
+  }
 };
-
-inline auto request_via_fn::operator()() const {
-  return constrain(lazy::Sender<_1>, [](auto in) {
-    using In = decltype(in);
-    return send_via<In>{in};
-  });
-}
 
 } // namespace detail
 
@@ -44,7 +48,7 @@ PUSHMI_INLINE_VAR constexpr detail::request_via_fn request_via{};
 } // namespace operators
 
 PUSHMI_TEMPLATE(class To, class In)
-  (requires Same<To, is_sender<>> && Sender<_1>)
+  (requires Same<To, is_sender<>> && Sender<In>)
 auto via_cast(In in) {
   return in;
 }

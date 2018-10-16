@@ -268,7 +268,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_single_fn {
     return flow_single<>{};
   }
   PUSHMI_TEMPLATE (class VF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF> PUSHMI_AND not defer::Invocable<VF&>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<VF&>)))
   auto operator()(VF vf) const {
     return flow_single<VF, abortEF, ignoreDF, ignoreStrtF>{
       std::move(vf)};
@@ -279,76 +279,76 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_single_fn {
       std::move(ef)};
   }
   PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
   auto operator()(DF df) const {
     return flow_single<ignoreVF, abortEF, DF, ignoreStrtF>{std::move(df)};
   }
   PUSHMI_TEMPLATE (class VF, class EF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF> PUSHMI_AND not defer::Invocable<EF&>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<EF&>)))
   auto operator()(VF vf, EF ef) const {
     return flow_single<VF, EF, ignoreDF, ignoreStrtF>{std::move(vf),
       std::move(ef)};
   }
   PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
   auto operator()(EF ef, DF df) const {
     return flow_single<ignoreVF, EF, DF, ignoreStrtF>{std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE (class VF, class EF, class DF)
-    (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF>)))
+    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
   auto operator()(VF vf, EF ef, DF df) const {
     return flow_single<VF, EF, DF, ignoreStrtF>{std::move(vf),
       std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE (class VF, class EF, class DF, class StrtF)
-    (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF>)))
+    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
   auto operator()(VF vf, EF ef, DF df, StrtF strtf) const {
     return flow_single<VF, EF, DF, StrtF>{std::move(vf), std::move(ef),
       std::move(df), std::move(strtf)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data>))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data>))
   auto operator()(Data d) const {
     return flow_single<Data, passDVF, passDEF, passDDF, passDStrtF>{
         std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DVF&, Data&>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DVF&, Data&>)))
   auto operator()(Data d, DVF vf) const {
     return flow_single<Data, DVF, passDEF, passDDF, passDStrtF>{
       std::move(d), std::move(vf)};
   }
   PUSHMI_TEMPLATE(class Data, class... DEFN)
-    (requires PUSHMI_EXP(defer::Receiver<Data>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data>))
   auto operator()(Data d, on_error_fn<DEFN...> ef) const {
     return flow_single<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>{
       std::move(d), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DDF df) const {
     return flow_single<Data, passDVF, passDEF, DDF, passDStrtF>{
       std::move(d), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-    (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
+    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
   auto operator()(Data d, DVF vf, DEF ef) const {
     return flow_single<Data, DVF, DEF, passDDF, passDStrtF>{std::move(d), std::move(vf), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DEF ef, DDF df) const {
     return flow_single<Data, passDVF, DEF, DDF, passDStrtF>{
       std::move(d), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-    (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DVF vf, DEF ef, DDF df) const {
     return flow_single<Data, DVF, DEF, DDF, passDStrtF>{std::move(d),
       std::move(vf), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
-    (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DVF vf, DEF ef, DDF df, DStrtF strtf) const {
     return flow_single<Data, DVF, DEF, DDF, DStrtF>{std::move(d),
       std::move(vf), std::move(ef), std::move(df), std::move(strtf)};
@@ -361,7 +361,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_single_fn {
 flow_single() -> flow_single<>;
 
 PUSHMI_TEMPLATE(class VF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF> PUSHMI_AND not defer::Invocable<VF&>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<VF&>)))
 flow_single(VF) ->
   flow_single<VF, abortEF, ignoreDF, ignoreStrtF>;
 
@@ -370,67 +370,67 @@ flow_single(on_error_fn<EFN...>) ->
   flow_single<ignoreVF, on_error_fn<EFN...>, ignoreDF, ignoreStrtF>;
 
 PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
 flow_single(DF) ->
   flow_single<ignoreVF, abortEF, DF, ignoreStrtF>;
 
 PUSHMI_TEMPLATE(class VF, class EF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF> PUSHMI_AND not defer::Invocable<EF&>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<EF&>)))
 flow_single(VF, EF) ->
   flow_single<VF, EF, ignoreDF, ignoreStrtF>;
 
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
 flow_single(EF, DF) ->
   flow_single<ignoreVF, EF, DF, ignoreStrtF>;
 
 PUSHMI_TEMPLATE(class VF, class EF, class DF)
-  (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF>)))
+  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
 flow_single(VF, EF, DF) ->
   flow_single<VF, EF, DF, ignoreStrtF>;
 
 PUSHMI_TEMPLATE(class VF, class EF, class DF, class StrtF)
-  (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<VF>)))
+  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
 flow_single(VF, EF, DF, StrtF) ->
   flow_single<VF, EF, DF, StrtF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data>))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data>))
 flow_single(Data d) ->
   flow_single<Data, passDVF, passDEF, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DVF&, Data&>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DVF&, Data&>)))
 flow_single(Data d, DVF vf) ->
   flow_single<Data, DVF, passDEF, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires PUSHMI_EXP(defer::Receiver<Data>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data>))
 flow_single(Data d, on_error_fn<DEFN...>) ->
   flow_single<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
 flow_single(Data d, DDF) ->
     flow_single<Data, passDVF, passDEF, DDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-  (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
+  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
 flow_single(Data d, DVF vf, DEF ef) ->
   flow_single<Data, DVF, DEF, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
 flow_single(Data d, DEF, DDF) ->
   flow_single<Data, passDVF, DEF, DDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
 flow_single(Data d, DVF vf, DEF ef, DDF df) ->
   flow_single<Data, DVF, DEF, DDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
-  (requires PUSHMI_EXP(defer::Receiver<Data> PUSHMI_AND defer::Invocable<DDF&, Data&> ))
+  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&> ))
 flow_single(Data d, DVF vf, DEF ef, DDF df, DStrtF strtf) ->
   flow_single<Data, DVF, DEF, DDF, DStrtF>;
 #endif

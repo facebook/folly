@@ -84,54 +84,67 @@ struct out_from_fn {
   }
 };
 
+template <class In, class FN>
+struct submit_transform_out_1 {
+  FN fn_;
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out>)
+  void operator()(In& in, Out out) const {
+    ::pushmi::submit(in, fn_(std::move(out)));
+  }
+};
+template <class In, class FN>
+struct submit_transform_out_2 {
+  FN fn_;
+  PUSHMI_TEMPLATE(class TP, class Out)
+    (requires Receiver<Out>)
+  void operator()(In& in, TP tp, Out out) const {
+    ::pushmi::submit(in, tp, fn_(std::move(out)));
+  }
+};
+template <class In, class SDSF>
+struct submit_transform_out_3 {
+  SDSF sdsf_;
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out> && Invocable<const SDSF&, In&, Out>)
+  void operator()(In& in, Out out) const {
+    sdsf_(in, std::move(out));
+  }
+};
+template <class In, class TSDSF>
+struct submit_transform_out_4 {
+  TSDSF tsdsf_;
+  PUSHMI_TEMPLATE(class TP, class Out)
+    (requires Receiver<Out> && Invocable<const TSDSF&, In&, TP, Out>)
+  void operator()(In& in, TP tp, Out out) const {
+    tsdsf_(in, tp, std::move(out));
+  }
+};
+
 PUSHMI_TEMPLATE(class In, class FN)
   (requires Sender<In> && SemiMovable<FN>
     PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
-auto submit_transform_out(FN fn){
-  return on_submit(
-    constrain(lazy::Receiver<_2>,
-      [fn = std::move(fn)](In& in, auto out) {
-        ::pushmi::submit(in, fn(std::move(out)));
-      }
-    )
-  );
+auto submit_transform_out(FN fn) {
+  return on_submit(submit_transform_out_1<In, FN>{std::move(fn)});
 }
 
 PUSHMI_TEMPLATE(class In, class FN)
   (requires TimeSender<In> && SemiMovable<FN>)
 auto submit_transform_out(FN fn){
-  return on_submit(
-    constrain(lazy::Receiver<_3>,
-      [fn = std::move(fn)](In& in, auto tp, auto out) {
-        ::pushmi::submit(in, tp, fn(std::move(out)));
-      }
-    )
-  );
+  return on_submit(submit_transform_out_2<In, FN>{std::move(fn)});
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
   (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>
     PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
-auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
-  return on_submit(
-    constrain(lazy::Receiver<_2> && lazy::Invocable<SDSF&, In&, _2>,
-      [sdsf = std::move(sdsf)](In& in, auto out) {
-        sdsf(in, std::move(out));
-      }
-    )
-  );
+auto submit_transform_out(SDSF sdsf, TSDSF) {
+  return on_submit(submit_transform_out_3<In, SDSF>{std::move(sdsf)});
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
   (requires TimeSender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
-auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
-  return on_submit(
-    constrain(lazy::Receiver<_3> && lazy::Invocable<TSDSF&, In&, _2, _3>,
-      [tsdsf = std::move(tsdsf)](In& in, auto tp, auto out) {
-        tsdsf(in, tp, std::move(out));
-      }
-    )
-  );
+auto submit_transform_out(SDSF, TSDSF tsdsf) {
+  return on_submit(submit_transform_out_4<In, TSDSF>{std::move(tsdsf)});
 }
 
 PUSHMI_TEMPLATE(class In)
@@ -203,89 +216,140 @@ constexpr bool deferred_requires_from() {
 }
 
 struct set_value_fn {
-  template<class V>
+private:
+  template <class V>
+  struct impl {
+    V v_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out, is_single<>>)
+    void operator()(Out out) {
+      ::pushmi::set_value(out, std::move(v_));
+    }
+  };
+public:
+  template <class V>
   auto operator()(V&& v) const {
-    return constrain(lazy::Receiver<_1, is_single<>>,
-        [v = (V&&) v](auto out) mutable {
-          ::pushmi::set_value(out, (V&&) v);
-        }
-    );
+    return impl<std::decay_t<V>>{(V&&) v};
   }
 };
 
 struct set_error_fn {
+private:
+  template <class E>
+  struct impl {
+    E e_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires NoneReceiver<Out, E>)
+    void operator()(Out out) {
+      ::pushmi::set_error(out, std::move(e_));
+    }
+  };
+public:
   PUSHMI_TEMPLATE(class E)
     (requires SemiMovable<E>)
   auto operator()(E e) const {
-    return constrain(lazy::NoneReceiver<_1, E>,
-      [e = std::move(e)](auto out) mutable {
-        ::pushmi::set_error(out, std::move(e));
-      }
-    );
+    return impl<E>{std::move(e)};
   }
 };
 
 struct set_done_fn {
+private:
+  struct impl {
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    void operator()(Out out) {
+      ::pushmi::set_done(out);
+    }
+  };
+public:
   auto operator()() const {
-    return constrain(lazy::Receiver<_1>,
-      [](auto out) {
-        ::pushmi::set_done(out);
-      }
-    );
+    return impl{};
   }
 };
 
 struct set_next_fn {
-  template<class V>
+private:
+  template <class V>
+  struct impl {
+    V v_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out, is_many<>>)
+    void operator()(Out out) {
+      ::pushmi::set_next(out, std::move(v_));
+    }
+  };
+public:
+  template <class V>
   auto operator()(V&& v) const {
-    return constrain(lazy::Receiver<_1, is_many<>>,
-        [v = (V&&) v](auto out) mutable {
-          ::pushmi::set_next(out, (V&&) v);
-        }
-    );
+    return impl<std::decay_t<V>>{(V&&) v};
   }
 };
 
 struct set_starting_fn {
+private:
+  template <class Up>
+  struct impl {
+    Up up_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    void operator()(Out out) {
+      ::pushmi::set_starting(out, std::move(up_));
+    }
+  };
+public:
   PUSHMI_TEMPLATE(class Up)
     (requires Receiver<Up>)
   auto operator()(Up up) const {
-    return constrain(lazy::Receiver<_1>,
-      [up = std::move(up)](auto out) {
-        ::pushmi::set_starting(out, std::move(up));
-      }
-    );
+    return impl<Up>{std::move(up)};
   }
 };
 
 struct do_submit_fn {
+private:
+  template <class Out>
+  struct impl {
+    Out out_;
+    PUSHMI_TEMPLATE (class In)
+      (requires SenderTo<In, Out>)
+    void operator()(In in) {
+      ::pushmi::submit(in, std::move(out_));
+    }
+  };
+  template <class TP, class Out>
+  struct time_impl {
+    TP tp_;
+    Out out_;
+    PUSHMI_TEMPLATE (class In)
+      (requires TimeSenderTo<In, Out>)
+    void operator()(In in) {
+      ::pushmi::submit(in, std::move(tp_), std::move(out_));
+    }
+  };
+public:
   PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>)
   auto operator()(Out out) const {
-    return constrain(lazy::SenderTo<_1, Out>,
-      [out = std::move(out)](auto in) mutable {
-        ::pushmi::submit(in, std::move(out));
-      }
-    );
+    return impl<Out>{std::move(out)};
   }
   PUSHMI_TEMPLATE(class TP, class Out)
     (requires Receiver<Out>)
   auto operator()(TP tp, Out out) const {
-    return constrain(lazy::TimeSenderTo<_1, Out>,
-      [tp = std::move(tp), out = std::move(out)](auto in) mutable {
-        ::pushmi::submit(in, std::move(tp), std::move(out));
-      }
-    );
+    return time_impl<TP, Out>{std::move(tp), std::move(out)};
   }
 };
 
 struct now_fn {
+private:
+  struct impl {
+    PUSHMI_TEMPLATE (class In)
+      (requires TimeSender<In>)
+    auto operator()(In in) const {
+      return ::pushmi::now(in);
+    }
+  };
+public:
   auto operator()() const {
-    return constrain(lazy::TimeSender<_1>,
-      [](auto in) {
-        return ::pushmi::now(in);
-      }
-    );
+    return impl{};
   }
 };
 

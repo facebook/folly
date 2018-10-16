@@ -56,15 +56,6 @@ PUSHMI_INLINE_VAR constexpr struct make_tap_fn {
   }
 } const make_tap {};
 
-struct tap_fn {
-private:
-  template <class In, class SideEffects>
-  static auto impl(In, SideEffects);
-public:
-  template <class... AN>
-  auto operator()(AN... an) const;
-};
-
 #if __NVCC__
 #define PUSHMI_STATIC_ASSERT(...)
 #elif __cpp_if_constexpr >= 201606
@@ -76,53 +67,66 @@ inline void do_assert(bool condition, char const*) {
 }
 #endif
 
-template <class... AN>
-auto tap_fn::operator()(AN... an) const {
-  return constrain(lazy::Sender<_1>,
-    [args = std::tuple<AN...>{std::move(an)...}](auto in) mutable {
-      using In = decltype(in);
+struct tap_fn {
+private:
+  template <class In, class SideEffects>
+  static auto impl(In in, SideEffects sideEffects) {
+    PUSHMI_STATIC_ASSERT(
+      ::pushmi::detail::deferred_requires_from<In, SideEffects,
+        SenderTo<In, SideEffects, is_none<>>,
+        SenderTo<In, SideEffects, is_single<>>,
+        TimeSenderTo<In, SideEffects, is_single<>> >(),
+        "'In' is not deliverable to 'SideEffects'");
+
+    return ::pushmi::detail::deferred_from<In, SideEffects>(
+      std::move(in),
+      ::pushmi::detail::submit_transform_out<In>(
+        out_impl<In, SideEffects>{std::move(sideEffects)}
+      )
+    );
+  }
+
+  template <class... AN>
+  struct in_impl {
+    std::tuple<AN...> args_;
+    PUSHMI_TEMPLATE (class In)
+      (requires Sender<In>)
+    auto operator()(In in) {
       return tap_fn::impl(
         std::move(in),
-        ::pushmi::detail::out_from_fn<In>()(std::move(args)));
-    });
-}
-
-template <class In, class SideEffects>
-auto tap_fn::impl(In in, SideEffects sideEffects) {
-  PUSHMI_STATIC_ASSERT(
-    ::pushmi::detail::deferred_requires_from<In, SideEffects,
-      SenderTo<In, SideEffects, is_none<>>,
-      SenderTo<In, SideEffects, is_single<>>,
-      TimeSenderTo<In, SideEffects, is_single<>> >(),
-      "'In' is not deliverable to 'SideEffects'");
-
-  return ::pushmi::detail::deferred_from<In, SideEffects>(
-    std::move(in),
-    ::pushmi::detail::submit_transform_out<In>(
-      constrain(lazy::Receiver<_1>,
-        [sideEffects_ = std::move(sideEffects)](auto out) {
-          using Out = decltype(out);
-          PUSHMI_STATIC_ASSERT(
-            ::pushmi::detail::deferred_requires_from<In, SideEffects,
-              SenderTo<In, Out, is_none<>>,
-              SenderTo<In, Out, is_single<>>,
-              TimeSenderTo<In, Out, is_single<>> >(),
-              "'In' is not deliverable to 'Out'");
-          auto gang{::pushmi::detail::out_from_fn<In>()(
-              detail::make_tap(sideEffects_, std::move(out)))};
-          using Gang = decltype(gang);
-          PUSHMI_STATIC_ASSERT(
-            ::pushmi::detail::deferred_requires_from<In, SideEffects,
-              SenderTo<In, Gang>,
-              SenderTo<In, Gang, is_single<>>,
-              TimeSenderTo<In, Gang, is_single<>> >(),
-              "'In' is not deliverable to 'Out' & 'SideEffects'");
-          return gang;
-        }
-      )
-    )
-  );
-}
+        ::pushmi::detail::out_from_fn<In>()(std::move(args_)));
+    }
+  };
+  template <class In, class SideEffects>
+  struct out_impl {
+    SideEffects sideEffects_;
+    PUSHMI_TEMPLATE (class Out)
+      (requires Receiver<Out>)
+    auto operator()(Out out) const {
+      PUSHMI_STATIC_ASSERT(
+        ::pushmi::detail::deferred_requires_from<In, SideEffects,
+          SenderTo<In, Out, is_none<>>,
+          SenderTo<In, Out, is_single<>>,
+          TimeSenderTo<In, Out, is_single<>> >(),
+          "'In' is not deliverable to 'Out'");
+      auto gang{::pushmi::detail::out_from_fn<In>()(
+          detail::make_tap(sideEffects_, std::move(out)))};
+      using Gang = decltype(gang);
+      PUSHMI_STATIC_ASSERT(
+        ::pushmi::detail::deferred_requires_from<In, SideEffects,
+          SenderTo<In, Gang>,
+          SenderTo<In, Gang, is_single<>>,
+          TimeSenderTo<In, Gang, is_single<>> >(),
+          "'In' is not deliverable to 'Out' & 'SideEffects'");
+      return gang;
+    }
+  };
+public:
+  template <class... AN>
+  auto operator()(AN... an) const  {
+    return in_impl<AN...>{{std::move(an)...}};
+  }
+};
 
 } // namespace detail
 

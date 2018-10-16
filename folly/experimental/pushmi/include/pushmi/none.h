@@ -208,40 +208,40 @@ PUSHMI_INLINE_VAR constexpr struct make_none_fn {
     return none<>{};
   }
   PUSHMI_TEMPLATE(class EF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF> PUSHMI_AND not defer::Invocable<EF&>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF> PUSHMI_AND not lazy::Invocable<EF&>)))
   auto operator()(EF ef) const {
     return none<EF, ignoreDF>{std::move(ef)};
   }
   PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
   auto operator()(DF df) const {
     return none<abortEF, DF>{std::move(df)};
   }
   PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
+    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
   auto operator()(EF ef, DF df) const {
     return none<EF, DF>{std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>))
   auto operator()(Data d) const {
     return none<Data, passDEF, passDDF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DEF)
-    (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>
-      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
+    (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
   auto operator()(Data d, DEF ef) const {
     return none<Data, DEF, passDDF>{std::move(d), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
-      defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
+      lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DDF df) const {
     return none<Data, passDEF, DDF>{std::move(d), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
-      defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
+      lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DEF ef, DDF df) const {
     return none<Data, DEF, DDF>{std::move(d), std::move(ef), std::move(df)};
   }
@@ -253,34 +253,34 @@ PUSHMI_INLINE_VAR constexpr struct make_none_fn {
 none() -> none<>;
 
 PUSHMI_TEMPLATE(class EF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF> PUSHMI_AND not defer::Invocable<EF&>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF> PUSHMI_AND not lazy::Invocable<EF&>)))
 none(EF) -> none<EF, ignoreDF>;
 
 PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
 none(DF) -> none<abortEF, DF>;
 
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
+  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
 none(EF, DF) -> none<EF, DF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>))
 none(Data) -> none<Data, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DEF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>
-    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
+  (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
 none(Data, DEF) -> none<Data, DEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
-    defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
+    lazy::Invocable<DDF&, Data&>))
 none(Data, DDF) -> none<Data, passDEF, DDF>;
 
 PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
-    defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
+    lazy::Invocable<DDF&, Data&>))
 none(Data, DEF, DDF) -> none<Data, DEF, DDF>;
 #endif
 

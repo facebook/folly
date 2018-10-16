@@ -26,59 +26,102 @@ auto make_via_fn_data(Out out, Executor ex) -> via_fn_data<Executor, Out> {
 }
 
 struct via_fn {
-  PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&>)
-  auto operator()(ExecutorFactory ef) const {
-    return constrain(lazy::Sender<_1>, [ef = std::move(ef)](auto in) {
-      using In = decltype(in);
+private:
+  template <class Out>
+  struct on_value_impl {
+    template <class V>
+    struct impl {
+      V v_;
+      Out out_;
+      void operator()(any) {
+        ::pushmi::set_value(out_, std::move(v_));
+      }
+    };
+    template <class Data, class V>
+    void operator()(Data& data, V&& v) const {
+      ::pushmi::submit(
+        data.exec,
+        ::pushmi::now(data.exec),
+        ::pushmi::make_single(
+          impl<std::decay_t<V>>{(V&&) v, std::move(static_cast<Out&>(data))}
+        )
+      );
+    }
+  };
+  template <class Out>
+  struct on_error_impl {
+    template <class E>
+    struct impl {
+      E e_;
+      Out out_;
+      void operator()(any) {
+        ::pushmi::set_error(out_, std::move(e_));
+      }
+    };
+    template <class Data, class E>
+    void operator()(Data& data, E e) const noexcept {
+      ::pushmi::submit(
+        data.exec,
+        ::pushmi::now(data.exec),
+        ::pushmi::make_single(
+          impl<E>{std::move(e), std::move(static_cast<Out&>(data))}
+        )
+      );
+    }
+  };
+  template <class Out>
+  struct on_done_impl {
+    struct impl {
+      Out out_;
+      void operator()(any) {
+        ::pushmi::set_done(out_);
+      }
+    };
+    template <class Data>
+    void operator()(Data& data) const {
+      ::pushmi::submit(
+        data.exec,
+        ::pushmi::now(data.exec),
+        ::pushmi::make_single(
+          impl{std::move(static_cast<Out&>(data))}
+        )
+      );
+    }
+  };
+  template <class In, class ExecutorFactory>
+  struct out_impl {
+    ExecutorFactory ef_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    auto operator()(Out out) const {
+      auto exec = ef_();
+      return ::pushmi::detail::out_from_fn<In>()(
+        make_via_fn_data(std::move(out), std::move(exec)),
+        ::pushmi::on_value(on_value_impl<Out>{}),
+        ::pushmi::on_error(on_error_impl<Out>{}),
+        ::pushmi::on_done(on_done_impl<Out>{})
+      );
+    }
+  };
+  template <class ExecutorFactory>
+  struct in_impl {
+    ExecutorFactory ef_;
+    PUSHMI_TEMPLATE (class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
       return ::pushmi::detail::deferred_from<In, single<>>(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
-          constrain(lazy::Receiver<_1>, [ef](auto out) {
-            using Out = decltype(out);
-            auto exec = ef();
-            return ::pushmi::detail::out_from_fn<In>()(
-              make_via_fn_data(std::move(out), std::move(exec)),
-              // copy 'f' to allow multiple calls to submit
-              ::pushmi::on_value([](auto& data, auto&& v) {
-                using V = decltype(v);
-                ::pushmi::submit(
-                  data.exec,
-                  ::pushmi::now(data.exec),
-                  ::pushmi::make_single(
-                    [v = (V&&)v, out = std::move(static_cast<Out&>(data))](auto) mutable {
-                      ::pushmi::set_value(out, std::move(v));
-                    }
-                  )
-                );
-              }),
-              ::pushmi::on_error([](auto& data, auto e) noexcept {
-                ::pushmi::submit(
-                  data.exec,
-                  ::pushmi::now(data.exec),
-                  ::pushmi::make_single(
-                    [e = std::move(e), out = std::move(static_cast<Out&>(data))](auto) mutable {
-                      ::pushmi::set_error(out, std::move(e));
-                    }
-                  )
-                );
-              }),
-              ::pushmi::on_done([](auto& data){
-                ::pushmi::submit(
-                  data.exec,
-                  ::pushmi::now(data.exec),
-                  ::pushmi::make_single(
-                    [out = std::move(static_cast<Out&>(data))](auto) mutable {
-                      ::pushmi::set_done(out);
-                    }
-                  )
-                );
-              })
-            );
-          })
+          out_impl<In, ExecutorFactory>{ef_}
         )
       );
-    });
+    }
+  };
+public:
+  PUSHMI_TEMPLATE(class ExecutorFactory)
+    (requires Invocable<ExecutorFactory&>)
+  auto operator()(ExecutorFactory ef) const {
+    return in_impl<ExecutorFactory>{std::move(ef)};
   }
 };
 

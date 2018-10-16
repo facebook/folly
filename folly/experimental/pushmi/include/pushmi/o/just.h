@@ -14,18 +14,24 @@ namespace pushmi {
 
 namespace operators {
 
-PUSHMI_TEMPLATE(class V)
-  (requires SemiMovable<V>)
-auto just(V v) {
-  return make_single_deferred(
-    constrain(lazy::SingleReceiver<_1, V>,
-      [v = std::move(v)](auto out) mutable {
-        ::pushmi::set_value(out, std::move(v));
-      }
-    )
-  );
-}
-
+PUSHMI_INLINE_VAR constexpr struct just_fn {
+private:
+  template <class V>
+  struct impl {
+    V v_;
+    PUSHMI_TEMPLATE (class Out)
+      (requires SingleReceiver<Out, V>)
+    void operator()(Out out) {
+      ::pushmi::set_value(out, std::move(v_));
+    }
+  };
+public:
+  PUSHMI_TEMPLATE(class V)
+    (requires SemiMovable<V>)
+  auto operator()(V v) const {
+    return make_single_deferred(impl<V>{std::move(v)});
+  }
+} just {};
 } // namespace operators
 
 } // namespace pushmi

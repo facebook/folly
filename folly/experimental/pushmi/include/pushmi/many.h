@@ -279,7 +279,7 @@ PUSHMI_INLINE_VAR constexpr struct make_many_fn {
     return many<>{};
   }
   PUSHMI_TEMPLATE(class NF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<NF> PUSHMI_AND not defer::Invocable<NF&>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<NF&>)))
   auto operator()(NF nf) const {
     return many<NF, abortEF, ignoreDF>{std::move(nf)};
   }
@@ -288,57 +288,57 @@ PUSHMI_INLINE_VAR constexpr struct make_many_fn {
     return many<ignoreNF, on_error_fn<EFN...>, ignoreDF>{std::move(ef)};
   }
   PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
   auto operator()(DF df) const {
     return many<ignoreNF, abortEF, DF>{std::move(df)};
   }
   PUSHMI_TEMPLATE(class NF, class EF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<NF> PUSHMI_AND not defer::Invocable<EF&>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<EF&>)))
   auto operator()(NF nf, EF ef) const {
     return many<NF, EF, ignoreDF>{std::move(nf), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
   auto operator()(EF ef, DF df) const {
     return many<ignoreNF, EF, DF>{std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class NF, class EF, class DF)
-    (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<NF>)))
+    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
   auto operator()(NF nf, EF ef, DF df) const {
     return many<NF, EF, DF>{std::move(nf), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_many<>>))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>>))
   auto operator()(Data d) const {
     return many<Data, passDNXF, passDEF, passDDF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DNF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DNF&, Data&>)))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DNF&, Data&>)))
   auto operator()(Data d, DNF nf) const {
     return many<Data, DNF, passDEF, passDDF>{std::move(d), std::move(nf)};
   }
   PUSHMI_TEMPLATE(class Data, class... DEFN)
-    (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>>))
   auto operator()(Data d, on_error_fn<DEFN...> ef) const {
     return many<Data, passDNXF, on_error_fn<DEFN...>, passDDF>{std::move(d), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_many<>> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DDF df) const {
     return many<Data, passDNXF, passDEF, DDF>{std::move(d), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DNF, class DEF)
-    (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
+    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
   auto operator()(Data d, DNF nf, DEF ef) const {
     return many<Data, DNF, DEF, passDDF>{std::move(d), std::move(nf), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DEF ef, DDF df) const {
     return many<Data, passDNXF, DEF, DDF>{std::move(d), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF)
-    (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DNF nf, DEF ef, DDF df) const {
     return many<Data, DNF, DEF, DDF>{std::move(d), std::move(nf), std::move(ef), std::move(df)};
   }
@@ -350,55 +350,55 @@ PUSHMI_INLINE_VAR constexpr struct make_many_fn {
 many() -> many<>;
 
 PUSHMI_TEMPLATE(class NF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<NF> PUSHMI_AND not defer::Invocable<NF&>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<NF&>)))
 many(NF) -> many<NF, abortEF, ignoreDF>;
 
 template <class... EFN>
 many(on_error_fn<EFN...>) -> many<ignoreNF, on_error_fn<EFN...>, ignoreDF>;
 
 PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
 many(DF) -> many<ignoreNF, abortEF, DF>;
 
 PUSHMI_TEMPLATE(class NF, class EF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<NF> PUSHMI_AND not defer::Invocable<EF&>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<EF&>)))
 many(NF, EF) -> many<NF, EF, ignoreDF>;
 
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
 many(EF, DF) -> many<ignoreNF, EF, DF>;
 
 PUSHMI_TEMPLATE(class NF, class EF, class DF)
-  (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<NF>)))
+  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
 many(NF, EF, DF) -> many<NF, EF, DF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_many<>>))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>>))
 many(Data d) -> many<Data, passDNXF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DNF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DNF&, Data&>)))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DNF&, Data&>)))
 many(Data d, DNF nf) -> many<Data, DNF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>>))
 many(Data d, on_error_fn<DEFN...>) ->
     many<Data, passDNXF, on_error_fn<DEFN...>, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_many<>> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
 many(Data d, DDF) -> many<Data, passDNXF, passDEF, DDF>;
 
 PUSHMI_TEMPLATE(class Data, class DNF, class DEF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
+  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
 many(Data d, DNF nf, DEF ef) -> many<Data, DNF, DEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
 many(Data d, DEF, DDF) -> many<Data, passDNXF, DEF, DDF>;
 
 PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_many<>> PUSHMI_AND defer::Invocable<DDF&, Data&>))
+  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
 many(Data d, DNF nf, DEF ef, DDF df) -> many<Data, DNF, DEF, DDF>;
 #endif
 

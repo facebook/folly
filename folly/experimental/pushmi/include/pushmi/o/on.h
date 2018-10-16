@@ -13,33 +13,70 @@ namespace pushmi {
 namespace detail {
 
 struct on_fn {
+private:
+  template <class In, class Out>
+  struct on_value_impl {
+    In in_;
+    Out out_;
+    void operator()(any) {
+      ::pushmi::submit(in_, std::move(out_));
+    }
+  };
+  template <class In, class ExecutorFactory>
+  struct out_impl {
+    ExecutorFactory ef_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires SenderTo<In, Out>)
+    void operator()(In& in, Out out) const {
+      auto exec = ef_();
+      ::pushmi::submit(exec, ::pushmi::now(exec),
+        ::pushmi::make_single(on_value_impl<In, Out>{in, std::move(out)})
+      );
+    }
+  };
+  template <class In, class TP, class Out>
+  struct time_on_value_impl {
+    In in_;
+    TP at_;
+    Out out_;
+    void operator()(any) {
+      ::pushmi::submit(in_, at_, std::move(out_));
+    }
+  };
+  template <class In, class ExecutorFactory>
+  struct time_out_impl {
+    ExecutorFactory ef_;
+    PUSHMI_TEMPLATE(class TP, class Out)
+      (requires TimeSenderTo<In, Out>)
+    void operator()(In& in, TP at, Out out) const {
+      auto exec = ef_();
+      ::pushmi::submit(exec, at,
+        ::pushmi::make_single(
+          time_on_value_impl<In, TP, Out>{in, at, std::move(out)}
+        )
+      );
+    }
+  };
+  template <class ExecutorFactory>
+  struct in_impl {
+    ExecutorFactory ef_;
+    PUSHMI_TEMPLATE (class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
+      return ::pushmi::detail::deferred_from<In, single<>>(
+        std::move(in),
+        detail::submit_transform_out<In>(
+          out_impl<In, ExecutorFactory>{ef_},
+          time_out_impl<In, ExecutorFactory>{ef_}
+        )
+      );
+    }
+  };
+public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
     (requires Invocable<ExecutorFactory&>)
   auto operator()(ExecutorFactory ef) const {
-    return constrain(lazy::Sender<_1>, [ef = std::move(ef)](auto in) {
-      using In = decltype(in);
-      return ::pushmi::detail::deferred_from<In, single<>>(
-        std::move(in),
-        ::pushmi::detail::submit_transform_out<In>(
-          constrain(lazy::SenderTo<In, _2>, [ef](In& in, auto out) {
-            auto exec = ef();
-            ::pushmi::submit(exec, ::pushmi::now(exec),
-              ::pushmi::make_single([in = in, out = std::move(out)](auto) mutable {
-                ::pushmi::submit(in, std::move(out));
-              })
-            );
-          }),
-          constrain(lazy::TimeSenderTo<In, _3>, [ef](In& in, auto at, auto out) {
-            auto exec = ef();
-            ::pushmi::submit(exec, at,
-              ::pushmi::on_value([in = in, at, out = std::move(out)](auto) mutable {
-                ::pushmi::submit(in, at, std::move(out));
-              })
-            );
-          })
-        )
-      );
-    });
+    return in_impl<ExecutorFactory>{std::move(ef)};
   }
 };
 

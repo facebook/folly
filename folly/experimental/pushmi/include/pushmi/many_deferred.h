@@ -109,7 +109,7 @@ class many_deferred<SF> {
       : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(defer::Receiver<Out, is_many<>> PUSHMI_AND defer::Invocable<SF&, Out>))
+    (requires PUSHMI_EXP(lazy::Receiver<Out, is_many<>> PUSHMI_AND lazy::Invocable<SF&, Out>))
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -130,8 +130,8 @@ class many_deferred_2 {
   constexpr many_deferred_2(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(defer::Receiver<Out, is_many<>> PUSHMI_AND
-        defer::Invocable<DSF&, Data&, Out>))
+    (requires PUSHMI_EXP(lazy::Receiver<Out, is_many<>> PUSHMI_AND
+        lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
   }

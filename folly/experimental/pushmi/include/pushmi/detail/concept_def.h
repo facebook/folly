@@ -206,35 +206,7 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
         concept bool NAME = PUSHMI_PP_DEF_IMPL(__VA_ARGS__)(__VA_ARGS__);      \
     }                                                                          \
-    namespace defer = _eager_;                                                 \
-    namespace lazy {                                                           \
-        PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        struct PUSHMI_PP_CAT(NAME, Concept) {                                  \
-            using Concept = PUSHMI_PP_CAT(NAME, Concept);                      \
-            explicit constexpr operator bool() const noexcept {                \
-                return (bool) defer::NAME<PUSHMI_PP_EXPAND ARGS>;              \
-            }                                                                  \
-            template <class PMThis = Concept, bool PMB>                        \
-              requires PMB == (bool)PMThis{}                                   \
-            constexpr operator std::integral_constant<bool, PMB>() const noexcept {\
-                return {};                                                     \
-            }                                                                  \
-            constexpr auto operator!() const noexcept {                        \
-                return ::pushmi::concepts::detail::Not<Concept>{};             \
-            }                                                                  \
-            template <class That>                                              \
-            constexpr auto operator&&(That) const noexcept {                   \
-                return ::pushmi::concepts::detail::And<Concept, That>{};       \
-            }                                                                  \
-            template <class That>                                              \
-            constexpr auto operator||(That) const noexcept {                   \
-                return ::pushmi::concepts::detail::Or<Concept, That>{};        \
-            }                                                                  \
-        };                                                                     \
-        PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        PUSHMI_INLINE_VAR constexpr auto NAME =                                \
-            PUSHMI_PP_CAT(NAME, Concept)<PUSHMI_PP_EXPAND ARGS>{};             \
-    }                                                                          \
+    namespace lazy = _eager_;                                                  \
     /**/
 #else
 // No requires expression:
@@ -301,7 +273,6 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
         PUSHMI_INLINE_VAR constexpr auto NAME =                                \
             PUSHMI_PP_CAT(NAME, Concept)::Eval<PUSHMI_PP_EXPAND ARGS>{};       \
     }                                                                          \
-    namespace defer = lazy;                                                    \
     /**/
 #endif
 

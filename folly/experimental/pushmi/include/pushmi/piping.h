@@ -9,7 +9,7 @@
 namespace pushmi {
 
 PUSHMI_TEMPLATE (class In, class Op)
-  (requires defer::Sender<std::decay_t<In>> && defer::Invocable<Op&, In>)
+  (requires lazy::Sender<std::decay_t<In>> && lazy::Invocable<Op&, In>)
 decltype(auto) operator|(In&& in, Op op) {
   return op((In&&) in);
 }

@@ -13,6 +13,7 @@
 
 #include "concepts.h"
 #include "traits.h"
+#include "detail/functional.h"
 
 namespace pushmi {
 
@@ -44,13 +45,11 @@ template <template <class...> class T, class... AN>
 using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;
 
 struct ignoreVF {
-  template <class V>
-  void operator()(V&&) {}
+  void operator()(detail::any) {}
 };
 
 struct abortEF {
-  template <class E>
-  void operator()(E &&) noexcept {
+  void operator()(detail::any) noexcept {
     std::abort();
   }
 };
@@ -60,21 +59,17 @@ struct ignoreDF {
 };
 
 struct ignoreNF {
-  template <class V>
-  void operator()(V&&) {}
+  void operator()(detail::any) {}
 };
 
 struct ignoreStrtF {
-  template <class Up>
-  void operator()(Up&&) {}
+  void operator()(detail::any) {}
 };
 
 
 struct ignoreSF {
-  template <class Out>
-  void operator()(Out) {}
-  template <class TP, class Out>
-  void operator()(TP, Out) {}
+  void operator()(detail::any) {}
+  void operator()(detail::any, detail::any) {}
 };
 
 struct systemNowF {
@@ -193,15 +188,15 @@ public:
   constexpr overload_fn(Fn fn, Fns... fns)
       : fns_{std::move(fn), overload_fn<Fns...>{std::move(fns)...}} {}
   PUSHMI_TEMPLATE (class... Args)
-    (requires defer::Invocable<Fn&, Args...> ||
-      defer::Invocable<overload_fn<Fns...>&, Args...>)
+    (requires lazy::Invocable<Fn&, Args...> ||
+      lazy::Invocable<overload_fn<Fns...>&, Args...>)
   decltype(auto) operator()(Args &&... args) PUSHMI_NOEXCEPT_AUTO(
       std::declval<_which_t<Invocable<Fn&, Args...>>&>()(std::declval<Args>()...)) {
     return std::get<!Invocable<Fn&, Args...>>(fns_)((Args &&) args...);
   }
   PUSHMI_TEMPLATE (class... Args)
-    (requires defer::Invocable<const Fn&, Args...> ||
-      defer::Invocable<const overload_fn<Fns...>&, Args...>)
+    (requires lazy::Invocable<const Fn&, Args...> ||
+      lazy::Invocable<const overload_fn<Fns...>&, Args...>)
   decltype(auto) operator()(Args &&... args) const PUSHMI_NOEXCEPT_AUTO(
       std::declval<const _which_t<Invocable<const Fn&, Args...>>&>()(std::declval<Args>()...)) {
     return std::get<!Invocable<const Fn&, Args...>>(fns_)((Args &&) args...);

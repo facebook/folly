@@ -132,7 +132,7 @@ PUSHMI_CONCEPT_DEF(
 
 PUSHMI_CONCEPT_DEF(
   template (class A, class B)
-  concept Derived,
+  concept DerivedFrom,
     __is_base_of(B, A)
 );
 
@@ -190,47 +190,6 @@ PUSHMI_CONCEPT_DEF(
   template (class T)
   concept Regular,
     Semiregular<T> && EqualityComparable<T>
-);
-
-#if 0 //__cpp_lib_invoke >= 201411
-using std::invoke;
-#else
-PUSHMI_TEMPLATE (class F, class...As)
-  (requires requires (
-    std::declval<F>()(std::declval<As>()...)
-  ))
-decltype(auto) invoke(F&& f, As&&...as)
-    noexcept(noexcept(((F&&) f)((As&&) as...))) {
-  return ((F&&) f)((As&&) as...);
-}
-PUSHMI_TEMPLATE (class F, class...As)
-  (requires requires (
-    std::mem_fn(std::declval<F>())(std::declval<As>()...)
-  ) && std::is_member_pointer<F>::value)
-decltype(auto) invoke(F f, As&&...as)
-    noexcept(noexcept(std::declval<decltype(std::mem_fn(f))>()((As&&) as...))) {
-  return std::mem_fn(f)((As&&) as...);
-}
-#endif
-template <class F, class...As>
-using invoke_result_t =
-  decltype(pushmi::invoke(std::declval<F>(), std::declval<As>()...));
-
-PUSHMI_CONCEPT_DEF(
-  template (class F, class... Args)
-  (concept Invocable)(F, Args...),
-    requires(F&& f) (
-      pushmi::invoke((F &&) f, std::declval<Args>()...)
-    )
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class F, class... Args)
-  (concept NothrowInvocable)(F, Args...),
-    requires(F&& f) (
-      requires_<noexcept(pushmi::invoke((F &&) f, std::declval<Args>()...))>
-    ) &&
-    Invocable<F, Args...>
 );
 
 namespace detail {

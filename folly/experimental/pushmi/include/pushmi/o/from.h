@@ -10,36 +10,48 @@
 
 namespace pushmi {
 
+PUSHMI_CONCEPT_DEF(
+  template (class R)
+  concept Range,
+    requires (R&& r) (
+      implicitly_convertible_to<bool>(std::begin(r) == std::end(r))
+    )
+);
+
 namespace operators {
 
-PUSHMI_TEMPLATE(class O, class S)
-  (requires
-    ConvertibleTo<
-            typename std::iterator_traits<O>::iterator_category,
-            std::forward_iterator_tag> &&
-    ConvertibleTo<
-            typename std::iterator_traits<S>::iterator_category,
-            std::forward_iterator_tag>)
-auto from(O begin, S end) {
-  return make_many_deferred(constrain(
-      lazy::ManyReceiver<_1, typename std::iterator_traits<O>::value_type>,
-      [begin = std::move(begin), end = std::move(end)](auto out) {
-        auto c = begin;
-        for (; c != end; ++c) {
-          ::pushmi::set_next(out, *c);
-        }
-        ::pushmi::set_done(out);
-      }));
-}
+PUSHMI_INLINE_VAR constexpr struct from_fn {
+private:
+  template <class I, class S>
+  struct out_impl {
+    I begin_;
+    S end_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires ManyReceiver<Out, typename std::iterator_traits<I>::value_type>)
+    void operator()(Out out) const {
+      auto c = begin_;
+      for (; c != end_; ++c) {
+        ::pushmi::set_next(out, *c);
+      }
+      ::pushmi::set_done(out);
+    }
+  };
+public:
+  PUSHMI_TEMPLATE(class I, class S)
+    (requires
+      DerivedFrom<
+          typename std::iterator_traits<I>::iterator_category,
+          std::forward_iterator_tag>)
+  auto operator()(I begin, S end) const {
+    return make_many_deferred(out_impl<I, S>{begin, end});
+  }
 
-PUSHMI_TEMPLATE(class R)
-(requires requires (
-  std::begin(std::declval<R&&>()),
-  std::end(std::declval<R&&>())
-))
-auto from(R&& range) {
-  return from(std::begin(range), std::end(range));
-}
+  PUSHMI_TEMPLATE(class R)
+    (requires Range<R>)
+  auto operator()(R&& range) const {
+    return (*this)(std::begin(range), std::end(range));
+  }
+} from {};
 
 } // namespace operators
 

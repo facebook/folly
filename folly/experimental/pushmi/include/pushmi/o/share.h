@@ -18,24 +18,25 @@ namespace detail {
 
 template<class T>
 struct share_fn {
-  auto operator()() const;
+private:
+  struct impl {
+    PUSHMI_TEMPLATE (class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
+      subject<T, properties_t<In>> sub;
+      PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<In>) (
+        ::pushmi::submit(in, ::pushmi::now(id(in)), sub.receiver());
+      ) else (
+        ::pushmi::submit(id(in), sub.receiver());
+      ));
+      return sub;
+    }
+  };
+public:
+  auto operator()() const {
+    return impl{};
+  }
 };
-
-template<class T>
-auto share_fn<T>::operator()() const {
-  return constrain(lazy::Sender<_1>, [](auto in) {
-    using In = decltype(in);
-    subject<T, properties_t<In>> sub;
-
-    PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<In>) (
-      ::pushmi::submit(in, ::pushmi::now(id(in)), sub.receiver());
-    ) else (
-      ::pushmi::submit(id(in), sub.receiver());
-    ));
-
-    return sub;
-  });
-}
 
 } // namespace detail
 

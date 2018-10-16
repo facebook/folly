@@ -12,31 +12,49 @@ namespace pushmi {
 namespace detail {
 
 struct filter_fn {
+private:
+  template <class Predicate>
+  struct on_value_impl {
+    Predicate p_;
+    template <class Out, class V>
+    void operator()(Out& out, V&& v) const {
+      if (p_(as_const(v))) {
+        ::pushmi::set_value(out, (V&&) v);
+      } else {
+        ::pushmi::set_done(out);
+      }
+    }
+  };
+  template <class In, class Predicate>
+  struct out_impl {
+    Predicate p_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    auto operator()(Out out) const {
+      return ::pushmi::detail::out_from_fn<In>()(
+        std::move(out),
+        // copy 'p' to allow multiple calls to submit
+        ::pushmi::on_value(on_value_impl<Predicate>{p_})
+      );
+    }
+  };
+  template <class Predicate>
+  struct in_impl {
+    Predicate p_;
+    PUSHMI_TEMPLATE(class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
+      return ::pushmi::detail::deferred_from<In, single<>>(
+        std::move(in),
+        ::pushmi::detail::submit_transform_out<In>(out_impl<In, Predicate>{p_})
+      );
+    }
+  };
+public:
   PUSHMI_TEMPLATE(class Predicate)
     (requires SemiMovable<Predicate>)
   auto operator()(Predicate p) const {
-    return constrain(lazy::Sender<_1>, [p = std::move(p)](auto in) {
-      using In = decltype(in);
-      return ::pushmi::detail::deferred_from<In, single<>>(
-        std::move(in),
-        ::pushmi::detail::submit_transform_out<In>(
-          constrain(lazy::Receiver<_1>, [p](auto out) {
-            using Out = decltype(out);
-            return ::pushmi::detail::out_from_fn<In>()(
-              std::move(out),
-              // copy 'p' to allow multiple calls to submit
-              ::pushmi::on_value([p](auto& out, auto&& v) {
-                if (p(as_const(v))) {
-                  ::pushmi::set_value(out, std::move(v));
-                } else {
-                  ::pushmi::set_done(out);
-                }
-              })
-            );
-          })
-        )
-      );
-    });
+    return in_impl<Predicate>{std::move(p)};
   }
 };
 

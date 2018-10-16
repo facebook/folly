@@ -11,24 +11,32 @@
 #include "../detail/functional.h"
 
 namespace pushmi {
+namespace detail {
+  template <class V>
+  struct single_empty_impl {
+    PUSHMI_TEMPLATE(class Out)
+      (requires SingleReceiver<Out, V>)
+    void operator()(Out out) {
+      ::pushmi::set_done(out);
+    }
+  };
+  struct empty_impl {
+    PUSHMI_TEMPLATE(class Out)
+      (requires NoneReceiver<Out>)
+    void operator()(Out out) {
+      ::pushmi::set_done(out);
+    }
+  };
+}
 
 namespace operators {
-
 template <class V>
 auto empty() {
-  return make_single_deferred(
-    constrain(lazy::SingleReceiver<_1, V>, [](auto out) mutable {
-      ::pushmi::set_done(out);
-    })
-  );
+  return make_single_deferred(detail::single_empty_impl<V>{});
 }
 
 inline auto empty() {
-  return make_deferred(
-    constrain(lazy::NoneReceiver<_1>, [](auto out) mutable {
-      ::pushmi::set_done(out);
-    })
-  );
+  return make_deferred(detail::empty_impl{});
 }
 
 } // namespace operators

@@ -12,30 +12,50 @@ namespace pushmi {
 namespace detail {
 
 struct switch_on_error_fn {
-  PUSHMI_TEMPLATE(class ErrorSelector)
-    (requires SemiMovable<ErrorSelector>)
-  auto operator()(ErrorSelector es) const {
-    return constrain(lazy::Sender<_1>, [es = std::move(es)](auto in) {
-      using In = decltype(in);
+private:
+  template <class ErrorSelector>
+  struct on_error_impl {
+    ErrorSelector es_;
+    template <class Out, class E>
+    void operator()(Out& out, E&& e) const noexcept {
+      static_assert(::pushmi::NothrowInvocable<const ErrorSelector&, E>,
+        "switch_on_error - error selector function must be noexcept");
+      auto next = es_((E&&) e);
+      ::pushmi::submit(next, out);
+    }
+  };
+  template <class In, class ErrorSelector>
+  struct out_impl {
+    ErrorSelector es_;
+    PUSHMI_TEMPLATE (class Out)
+      (requires Receiver<Out>)
+    auto operator()(Out out) const {
+      return ::pushmi::detail::out_from_fn<In>()(
+        std::move(out),
+        // copy 'es' to allow multiple calls to submit
+        ::pushmi::on_error(on_error_impl<ErrorSelector>{es_})
+      );
+    }
+  };
+  template <class ErrorSelector>
+  struct in_impl {
+    ErrorSelector es_;
+    PUSHMI_TEMPLATE (class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
       return ::pushmi::detail::deferred_from<In, single<>>(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
-          constrain(lazy::Receiver<_1>, [es](auto out) {
-            using Out = decltype(out);
-            return ::pushmi::detail::out_from_fn<In>()(
-              std::move(out),
-              // copy 'es' to allow multiple calls to submit
-              ::pushmi::on_error([es](auto& out, auto&& e) noexcept {
-                static_assert(::pushmi::NothrowInvocable<ErrorSelector, decltype(e)>,
-                  "switch_on_error - error selector function must be noexcept");
-                auto next = es(std::move(e));
-                ::pushmi::submit(next, std::move(out));
-              })
-            );
-          })
+          out_impl<In, ErrorSelector>{es_}
         )
       );
-    });
+    }
+  };
+public:
+  PUSHMI_TEMPLATE(class ErrorSelector)
+    (requires SemiMovable<ErrorSelector>)
+  auto operator()(ErrorSelector es) const {
+    return in_impl<ErrorSelector>{std::move(es)};
   }
 };
 

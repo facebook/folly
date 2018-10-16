@@ -88,4 +88,11 @@ namespace aliases {
     namespace ep = ::pushmi::extension_operators;
 }
 
+namespace detail {
+  struct any {
+    template <class T>
+    constexpr any(T&&) noexcept {}
+  };
+}
+
 } // namespace pushmi

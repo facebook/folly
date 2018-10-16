@@ -61,26 +61,31 @@ struct transform_on<F, is_many<>> {
 };
 
 struct transform_fn {
+private:
+  template <class F>
+  struct impl {
+    F f_;
+    PUSHMI_TEMPLATE (class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
+      using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
+      return ::pushmi::detail::deferred_from<In>(
+        std::move(in),
+        ::pushmi::detail::submit_transform_out<In>(
+          // copy 'f_' to allow multiple calls to connect to multiple 'in'
+          transform_on<F, Cardinality>{f_}
+        )
+      );
+    }
+  };
+public:
   template <class... FN>
-  auto operator()(FN... fn) const;
-};
-
-template <class... FN>
-auto transform_fn::operator()(FN... fn) const {
-  auto f = ::pushmi::overload(std::move(fn)...);
-  return ::pushmi::constrain(::pushmi::lazy::Sender<::pushmi::_1>, [f = std::move(f)](auto in) {
-    using In = decltype(in);
-    // copy 'f' to allow multiple calls to connect to multiple 'in'
+  auto operator()(FN... fn) const {
+    auto f = ::pushmi::overload(std::move(fn)...);
     using F = decltype(f);
-    using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
-    return ::pushmi::detail::deferred_from<In>(
-      std::move(in),
-      ::pushmi::detail::submit_transform_out<In>(
-        transform_on<F, Cardinality>{f}
-      )
-    );
-  });
-}
+    return impl<F>{std::move(f)};
+  }
+};
 
 } // namespace detail
 

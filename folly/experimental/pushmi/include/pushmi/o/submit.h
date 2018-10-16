@@ -120,6 +120,53 @@ public:
 
 struct blocking_submit_fn {
 private:
+  struct lock_state {
+    bool done = false;
+    std::mutex lock;
+    std::condition_variable signaled;
+  };
+  struct on_value_impl {
+    lock_state* state_;
+    PUSHMI_TEMPLATE (class Out, class Value)
+      (requires Receiver<Out, is_single<>>)
+    void operator()(Out out, Value&& v) const {
+      using V = remove_cvref_t<Value>;
+      PUSHMI_IF_CONSTEXPR( ((bool)Time<V>) (
+        // to keep the blocking semantics, make sure that the
+        // nested submits block here to prevent a spurious
+        // completion signal
+        auto nest = ::pushmi::nested_trampoline();
+        ::pushmi::submit(nest, ::pushmi::now(nest), std::move(out));
+      ) else (
+        ::pushmi::set_value(out, id((Value&&) v));
+      ))
+      std::unique_lock<std::mutex> guard{state_->lock};
+      state_->done = true;
+      state_->signaled.notify_all();
+    }
+  };
+  struct on_error_impl {
+    lock_state* state_;
+    PUSHMI_TEMPLATE(class Out, class E)
+      (requires NoneReceiver<Out, E>)
+    void operator()(Out out, E e) const noexcept {
+      ::pushmi::set_error(out, std::move(e));
+      std::unique_lock<std::mutex> guard{state_->lock};
+      state_->done = true;
+      state_->signaled.notify_all();
+    }
+  };
+  struct on_done_impl {
+    lock_state* state_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    void operator()(Out out) const {
+      ::pushmi::set_done(out);
+      std::unique_lock<std::mutex> guard{state_->lock};
+      state_->done = true;
+      state_->signaled.notify_all();
+    }
+  };
   // TODO - only move, move-only types..
   // if out can be copied, then submit can be called multiple
   // times..
@@ -129,53 +176,21 @@ private:
 
     template <bool IsTimeSender, class In>
     In impl_(In in) {
-      bool done = false;
-      std::mutex lock;
-      std::condition_variable signaled;
+      lock_state state{};
       auto out{::pushmi::detail::out_from_fn<In>()(
         std::move(args_),
-        on_value(constrain(pushmi::lazy::Receiver<_1, is_single<>>,
-          [&](auto out, auto&& v) {
-            using V = remove_cvref_t<decltype(v)>;
-            PUSHMI_IF_CONSTEXPR( ((bool)Time<V>) (
-              // to keep the blocking semantics, make sure that the
-              // nested submits block here to prevent a spurious
-              // completion signal
-              auto nest = ::pushmi::nested_trampoline();
-              ::pushmi::submit(nest, ::pushmi::now(nest), std::move(out));
-            ) else (
-              ::pushmi::set_value(out, id((V&&) v));
-            ))
-            std::unique_lock<std::mutex> guard{lock};
-            done = true;
-            signaled.notify_all();
-          }
-        )),
-        on_error(constrain(pushmi::lazy::NoneReceiver<_1, _2>,
-          [&](auto out, auto e) noexcept {
-            ::pushmi::set_error(out, std::move(e));
-            std::unique_lock<std::mutex> guard{lock};
-            done = true;
-            signaled.notify_all();
-          }
-        )),
-        on_done(constrain(pushmi::lazy::Receiver<_1>,
-          [&](auto out){
-            ::pushmi::set_done(out);
-            std::unique_lock<std::mutex> guard{lock};
-            done = true;
-            signaled.notify_all();
-          }
-        ))
+        on_value(on_value_impl{&state}),
+        on_error(on_error_impl{&state}),
+        on_done(on_done_impl{&state})
       )};
       PUSHMI_IF_CONSTEXPR( (IsTimeSender) (
         id(::pushmi::submit)(in, id(::pushmi::now)(in), std::move(out));
       ) else (
         id(::pushmi::submit)(in, std::move(out));
       ))
-      std::unique_lock<std::mutex> guard{lock};
-      signaled.wait(guard, [&]{
-        return done;
+      std::unique_lock<std::mutex> guard{state.lock};
+      state.signaled.wait(guard, [&]{
+        return state.done;
       });
       return in;
     }
@@ -200,6 +215,18 @@ public:
 
 template <class T>
 struct get_fn {
+private:
+  struct on_value_impl {
+    pushmi::detail::opt<T>* result_;
+    void operator()(T t) const { *result_ = std::move(t); }
+  };
+  struct on_error_impl {
+    std::exception_ptr* ep_;
+    template <class E>
+    void operator()(E e) const noexcept { *ep_ = std::make_exception_ptr(e); }
+    void operator()(std::exception_ptr ep) const noexcept { *ep_ = ep; }
+  };
+public:
   // TODO constrain this better
   PUSHMI_TEMPLATE (class In)
     (requires Sender<In>)
@@ -207,10 +234,8 @@ struct get_fn {
     pushmi::detail::opt<T> result_;
     std::exception_ptr ep_;
     auto out = make_single(
-      on_value([&](T t){ result_ = std::move(t); }),
-      on_error(
-        [&](auto e) noexcept { ep_ = std::make_exception_ptr(e); },
-        [&](std::exception_ptr ep) noexcept { ep_ = ep; })
+      on_value(on_value_impl{&result_}),
+      on_error(on_error_impl{&ep_})
     );
     using Out = decltype(out);
     static_assert(SenderTo<In, Out, is_single<>> ||
