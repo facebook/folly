@@ -20,12 +20,16 @@ struct countdownsingle {
   int* counter;
 
   template <class ExecutorRef>
-  void operator()(ExecutorRef exec) {
-    if (--*counter > 0) {
-      exec | op::submit(mi::make_single(*this));
-    }
-  }
+  void operator()(ExecutorRef exec) const;
 };
+
+template <class ExecutorRef>
+void countdownsingle::operator()(ExecutorRef exec) const {
+  if (--*counter > 0) {
+    //exec | op::submit(mi::make_single(*this));
+    exec | op::submit(mi::single<countdownsingle, mi::abortEF, mi::ignoreDF>{*this});
+  }
+}
 
 struct inline_executor {
     using properties = mi::property_set<mi::is_sender<>, mi::is_single<>>;
