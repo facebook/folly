@@ -39,7 +39,8 @@ add_executable(PushmiTest PushmiTest.cpp
   TrampolineTest.cpp
   NewThreadTest.cpp
   FlowTest.cpp
-  FlowManyTest.cpp)
+  FlowManyTest.cpp
+  )
 
 target_link_libraries(PushmiTest pushmi catch Threads::Threads)
 catch_discover_tests(PushmiTest)

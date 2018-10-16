@@ -41,7 +41,6 @@ private:
     void operator()(Data& data, V&& v) const {
       ::pushmi::submit(
         data.exec,
-        ::pushmi::now(data.exec),
         ::pushmi::make_single(
           impl<std::decay_t<V>>{(V&&) v, std::move(static_cast<Out&>(data))}
         )
@@ -62,7 +61,6 @@ private:
     void operator()(Data& data, E e) const noexcept {
       ::pushmi::submit(
         data.exec,
-        ::pushmi::now(data.exec),
         ::pushmi::make_single(
           impl<E>{std::move(e), std::move(static_cast<Out&>(data))}
         )
@@ -81,7 +79,6 @@ private:
     void operator()(Data& data) const {
       ::pushmi::submit(
         data.exec,
-        ::pushmi::now(data.exec),
         ::pushmi::make_single(
           impl{std::move(static_cast<Out&>(data))}
         )
@@ -128,7 +125,7 @@ private:
   };
 public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&>)
+    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
   auto operator()(ExecutorFactory ef) const {
     return in_impl<ExecutorFactory>{std::move(ef)};
   }

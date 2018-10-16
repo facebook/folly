@@ -238,76 +238,64 @@ void many_sender_test(){
   static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
 }
 
-void time_single_sender_test(){
-  auto in0 = pushmi::MAKE(time_single_sender)();
-  auto in1 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{});
-  auto in2 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{}, pushmi::systemNowF{}, pushmi::trampolineEXF{});
-  auto in3 = pushmi::MAKE(time_single_sender)([&](auto tp, auto out){
-    in0.submit(tp, pushmi::MAKE(single)(std::move(out),
+void constrained_single_sender_test(){
+  auto in0 = pushmi::MAKE(constrained_single_sender)();
+  auto in1 = pushmi::MAKE(constrained_single_sender)(pushmi::ignoreSF{});
+  auto in2 = pushmi::MAKE(constrained_single_sender)(pushmi::ignoreSF{}, pushmi::inlineConstrainedEXF{}, pushmi::priorityZeroF{});
+  auto in3 = pushmi::MAKE(constrained_single_sender)([&](auto c, auto out){
+    in0.submit(c, pushmi::MAKE(single)(std::move(out),
       pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
     ));
-  }, [](){ return pushmi::trampoline(); }, [](){ return std::chrono::system_clock::now(); });
-  auto in4 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{}, pushmi::systemNowF{});
+  }, [](){ return pushmi::inline_constrained_executor(); }, [](){ return 0; });
+  auto in4 = pushmi::MAKE(constrained_single_sender)(pushmi::ignoreSF{}, pushmi::inlineConstrainedEXF{});
 
   std::promise<int> p0;
   auto promise0 = pushmi::MAKE(single)(std::move(p0));
-  in0.submit(in0.now(), std::move(promise0));
+  in0.submit(in0.top(), std::move(promise0));
 
   auto out0 = pushmi::MAKE(single)();
   auto out1 = pushmi::MAKE(single)(out0, pushmi::on_value([](auto d, int v){
     pushmi::set_value(d, v);
   }));
-  in3.submit(in0.now(), out1);
+  in3.submit(in0.top(), out1);
+
+  auto any0 = pushmi::any_constrained_single_sender<int>(in0);
+
+  static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
+
+  in3 | op::submit();
+  in3 | op::blocking_submit();
+}
+
+void time_single_sender_test(){
+  auto in0 = pushmi::MAKE(time_single_sender)();
+  auto in1 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{});
+  auto in2 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{}, pushmi::inlineTimeEXF{}, pushmi::systemNowF{});
+  auto in3 = pushmi::MAKE(time_single_sender)([&](auto tp, auto out){
+    in0.submit(tp, pushmi::MAKE(single)(std::move(out),
+      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
+    ));
+  }, [](){ return pushmi::inline_time_executor(); }, [](){ return std::chrono::system_clock::now(); });
+  auto in4 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{}, pushmi::inlineTimeEXF{});
+
+  std::promise<int> p0;
+  auto promise0 = pushmi::MAKE(single)(std::move(p0));
+  in0.submit(in0.top(), std::move(promise0));
+
+  auto out0 = pushmi::MAKE(single)();
+  auto out1 = pushmi::MAKE(single)(out0, pushmi::on_value([](auto d, int v){
+    pushmi::set_value(d, v);
+  }));
+  in3.submit(in0.top(), out1);
 
   auto any0 = pushmi::any_time_single_sender<int>(in0);
 
   static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
 
   in3 | op::submit();
-  in3 | op::submit_at(in3.now() + 1s);
+  in3 | op::blocking_submit();
+  in3 | op::submit_at(in3.top() + 1s);
   in3 | op::submit_after(1s);
-
-#if 0
-  auto tr = v::trampoline();
-  tr |
-    op::transform([]<class TR>(TR tr) {
-      return v::get_now(tr);
-    }) |
-    // op::submit(v::MAKE(single){});
-    op::get<std::chrono::system_clock::time_point>();
-
-  std::vector<std::string> times;
-  auto push = [&](int time) {
-    return v::on_value([&, time](auto) { times.push_back(std::to_string(time)); });
-  };
-
-  auto nt = v::new_thread();
-
-  auto out = v::any_single<v::any_time_executor_ref<std::exception_ptr, std::chrono::system_clock::time_point>>{v::MAKE(single){}};
-  (v::any_time_executor_ref{nt}).submit(v::get_now(nt), v::MAKE(single){});
-
-  nt |
-    op::transform([&]<class NT>(NT nt){
-      // auto out = v::any_single<v::any_time_executor_ref<std::exception_ptr, std::chrono::system_clock::time_point>>{v::MAKE(single){}};
-      // nt.submit(v::get_now(nt), std::move(out));
-      // nt.submit(v::get_now(nt), v::MAKE(single){});
-      // nt | op::submit_at(v::get_now(nt), std::move(out));
-      // nt |
-      // op::submit(v::MAKE(single){});
-      // op::submit_at(nt | ep::get_now(), v::on_value{[](auto){}}) |
-      // op::submit_at(nt | ep::get_now(), v::on_value{[](auto){}}) |
-      // op::submit_after(20ms, v::MAKE(single){}) ;//|
-      // op::submit_after(20ms, v::on_value{[](auto){}}) |
-      // op::submit_after(40ms, push(42));
-      return v::get_now(nt);
-    }) |
-   // op::submit(v::MAKE(single){});
-   op::blocking_submit(v::MAKE(single){});
-    // op::get<decltype(v::get_now(nt))>();
-    // op::get<std::chrono::system_clock::time_point>();
-
-  auto ref = v::any_time_executor_ref<std::exception_ptr, std::chrono::system_clock::time_point>{nt};
-#endif
 }
 
 void flow_single_test() {

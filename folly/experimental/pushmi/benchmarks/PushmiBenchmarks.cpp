@@ -12,6 +12,7 @@
 
 #include "pushmi/trampoline.h"
 #include "pushmi/new_thread.h"
+#include "pushmi/time_source.h"
 
 #include "pushmi/none.h"
 #include "pushmi/entangle.h"
@@ -82,7 +83,7 @@ struct countdownnone {
 struct inline_time_executor {
     using properties = mi::property_set<mi::is_time<>, mi::is_executor<>, mi::is_single<>>;
 
-    std::chrono::system_clock::time_point now() { return std::chrono::system_clock::now(); }
+    std::chrono::system_clock::time_point top() { return std::chrono::system_clock::now(); }
     auto executor() { return *this; }
     template<class Out>
     void submit(std::chrono::system_clock::time_point at, Out out) {
@@ -437,7 +438,7 @@ NONIUS_BENCHMARK("trampoline virtual derecursion 1'000", [](nonius::chronometer 
   auto tr = mi::trampoline();
   using TR = decltype(tr);
   auto single = countdownsingle{counter};
-  std::function<void(mi::any_time_executor_ref<>)> recurse{[&](auto exec){::pushmi::set_value(single, exec);}};
+  std::function<void(mi::any_executor_ref<>)> recurse{[&](auto exec){::pushmi::set_value(single, exec);}};
   meter.measure([&]{
     counter.store(1'000);
     tr | op::submit([&](auto exec) { recurse(exec); });
@@ -502,4 +503,33 @@ NONIUS_BENCHMARK("new thread submit 1'000", [](nonius::chronometer meter){
     while(counter.load() > 0);
     return counter.load();
   });
+})
+
+NONIUS_BENCHMARK("new thread blocking_submit 1'000", [](nonius::chronometer meter){
+  auto nt = mi::new_thread();
+  using NT = decltype(nt);
+  std::atomic<int> counter{0};
+  countdownsingle single{counter};
+  meter.measure([&]{
+    counter.store(1'000);
+    nt | op::blocking_submit(single);
+    return counter.load();
+  });
+})
+
+NONIUS_BENCHMARK("new thread + time submit 1'000", [](nonius::chronometer meter){
+  auto nt = mi::new_thread();
+  using NT = decltype(nt);
+  auto time = mi::time_source<>{};
+  auto tnt = time.make(mi::systemNowF{}, [nt](){ return nt; })();
+  using TNT = decltype(tnt);
+  std::atomic<int> counter{0};
+  countdownsingle single{counter};
+  meter.measure([&]{
+    counter.store(1'000);
+    tnt | op::submit(single);
+    while(counter.load() > 0);
+    return counter.load();
+  });
+  time.join();
 })

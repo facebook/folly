@@ -155,7 +155,7 @@ auto submit_transform_out(SDSF, TSDSF tsdsf) {
   return on_submit(submit_transform_out_4<In, TSDSF>{std::move(tsdsf)});
 }
 
-template <class Cardinality, bool IsTime = false, bool IsFlow = false>
+template <class Cardinality, bool IsConstrained = false, bool IsTime = false, bool IsFlow = false>
 struct make_sender;
 template <>
 struct make_sender<is_none<>> : construct_deduced<sender> {};
@@ -164,11 +164,13 @@ struct make_sender<is_single<>> : construct_deduced<single_sender> {};
 template <>
 struct make_sender<is_many<>> : construct_deduced<many_sender> {};
 template <>
-struct make_sender<is_single<>, false, true> : construct_deduced<flow_single_sender> {};
+struct make_sender<is_single<>, false, false, true> : construct_deduced<flow_single_sender> {};
 template <>
-struct make_sender<is_many<>, false, true> : construct_deduced<flow_many_sender> {};
+struct make_sender<is_many<>, false, false, true> : construct_deduced<flow_many_sender> {};
 template <>
-struct make_sender<is_single<>, true, false> : construct_deduced<time_single_sender> {};
+struct make_sender<is_single<>, true, true, false> : construct_deduced<time_single_sender> {};
+template <>
+struct make_sender<is_single<>, true, false, false> : construct_deduced<constrained_single_sender> {};
 
 PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   PUSHMI_TEMPLATE(class In, class... FN)
@@ -177,6 +179,7 @@ PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
     using MakeSender =
         make_sender<
             property_set_index_t<properties_t<In>, is_silent<>>,
+            property_query_v<properties_t<In>, is_constrained<>>,
             property_query_v<properties_t<In>, is_time<>>,
             property_query_v<properties_t<In>, is_flow<>>>;
     return MakeSender{}(std::move(in), (FN&&) fn...);
@@ -299,7 +302,7 @@ private:
   struct impl {
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
-    auto operator()(In in) const {
+    auto operator()(In& in) const {
       return ::pushmi::executor(in);
     }
   };
@@ -316,7 +319,7 @@ private:
     Out out_;
     PUSHMI_TEMPLATE (class In)
       (requires SenderTo<In, Out>)
-    void operator()(In in) {
+    void operator()(In& in) {
       ::pushmi::submit(in, std::move(out_));
     }
   };
@@ -326,7 +329,7 @@ private:
     Out out_;
     PUSHMI_TEMPLATE (class In)
       (requires TimeSenderTo<In, Out>)
-    void operator()(In in) {
+    void operator()(In& in) {
       ::pushmi::submit(in, std::move(tp_), std::move(out_));
     }
   };
@@ -343,12 +346,27 @@ public:
   }
 };
 
+struct top_fn {
+private:
+  struct impl {
+    PUSHMI_TEMPLATE (class In)
+      (requires ConstrainedSender<In>)
+    auto operator()(In& in) const {
+      return ::pushmi::top(in);
+    }
+  };
+public:
+  auto operator()() const {
+    return impl{};
+  }
+};
+
 struct now_fn {
 private:
   struct impl {
     PUSHMI_TEMPLATE (class In)
       (requires TimeSender<In>)
-    auto operator()(In in) const {
+    auto operator()(In& in) const {
       return ::pushmi::now(in);
     }
   };
@@ -370,7 +388,7 @@ PUSHMI_INLINE_VAR constexpr detail::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr detail::executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr detail::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr detail::now_fn now{};
-PUSHMI_INLINE_VAR constexpr detail::now_fn top{};
+PUSHMI_INLINE_VAR constexpr detail::top_fn top{};
 
 } // namespace extension_operators
 

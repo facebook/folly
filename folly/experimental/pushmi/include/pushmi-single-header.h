@@ -25,6 +25,7 @@
 #include <tuple>
 #include <deque>
 #include <vector>
+#include <queue>
 
 #if __cpp_lib_optional >= 201606
 #include <optional>

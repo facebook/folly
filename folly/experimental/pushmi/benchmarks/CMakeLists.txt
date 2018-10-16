@@ -1,4 +1,5 @@
 
+
 FIND_PACKAGE (Boost)
 
 if (Boost_FOUND)
@@ -13,7 +14,6 @@ target_include_directories(PushmiBenchmarks
 target_link_libraries(PushmiBenchmarks
   pushmi
   Threads::Threads
-  ${Boost_LIBRARIES}
 )
 
 else()

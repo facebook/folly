@@ -81,7 +81,6 @@ struct flow_from_up {
     if (requested < 1) {return;}
     // submit work to exec
     ::pushmi::submit(p->exec,
-      ::pushmi::now(p->exec),
       make_single([p = p, requested](auto) {
         auto remaining = requested;
         // this loop is structured to work when there is re-entrancy
@@ -102,7 +101,6 @@ struct flow_from_up {
   void error(E e) noexcept {
     p->stop.store(true);
     ::pushmi::submit(p->exec,
-      ::pushmi::now(p->exec),
       make_single([p = p](auto) {
         ::pushmi::set_done(p->out);
       }));
@@ -111,7 +109,6 @@ struct flow_from_up {
   void done() {
     p->stop.store(true);
     ::pushmi::submit(p->exec,
-      ::pushmi::now(p->exec),
       make_single([p = p](auto) {
         ::pushmi::set_done(p->out);
       }));
@@ -132,7 +129,6 @@ private:
       auto p = std::make_shared<Producer>(begin_, end_, std::move(out), exec_, false);
 
       ::pushmi::submit(exec_,
-        ::pushmi::now(exec_),
         make_single([p](auto exec) {
           // pass reference for cancellation.
           ::pushmi::set_starting(p->out, make_many(flow_from_up<Producer>{p}));
@@ -160,13 +156,13 @@ public:
       DerivedFrom<
           typename std::iterator_traits<I>::iterator_category,
           std::forward_iterator_tag> &&
-      Sender<Exec> && Time<Exec> && Single<Exec>)
+      Sender<Exec, is_single<>, is_executor<>>)
   auto operator()(I begin, S end, Exec exec) const {
     return make_flow_many_sender(out_impl<I, S, Exec>{begin, end, exec});
   }
 
   PUSHMI_TEMPLATE(class R, class Exec)
-    (requires Range<R> && Sender<Exec> && Time<Exec> && Single<Exec>)
+    (requires Range<R> && Sender<Exec, is_single<>, is_executor<>>)
   auto operator()(R&& range, Exec exec) const {
     return (*this)(std::begin(range), std::end(range), exec);
   }

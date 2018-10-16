@@ -36,83 +36,39 @@ struct countdownsingle {
 
 SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
 
-  GIVEN( "A trampoline time_single_sender" ) {
+  GIVEN( "A trampoline single_sender" ) {
     auto tr = v::trampoline();
     using TR = decltype(tr);
 
-    // REQUIRE( v::TimeSingleDeferred<
-    //   TR, v::archetype_single,
-    //   TR&, std::exception_ptr> );
-    // REQUIRE( v::TimeExecutor<
-    //   TR&, v::archetype_single,
-    //   std::exception_ptr> );
-
-    WHEN( "submit now" ) {
+    WHEN( "submit" ) {
       auto signals = 0;
-      auto start = v::now(tr);
-      auto signaled = v::now(tr);
       tr |
-        op::transform([](auto tr){ return v::now(tr); }) |
+        op::transform([](auto){ return 42; }) |
         op::submit(
-          [&](auto at){ signaled = at;
+          [&](auto){
             signals += 100; },
           [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
-      THEN( "the value signal is recorded once and the signal did not drift much" ) {
+      THEN( "the value signal is recorded once" ) {
         REQUIRE( signals == 100 );
-        INFO("The delay is " << ::Catch::Detail::stringify(signaled - start));
-        REQUIRE( signaled - start < 10s );
       }
     }
 
-    WHEN( "blocking get now" ) {
-      auto start = v::now(tr);
-      auto signaled = tr |
-        op::transform([](auto tr){ return v::now(tr); }) |
-        op::get<decltype(v::now(tr))>;
+    WHEN( "blocking get" ) {
+      auto v = tr |
+        op::transform([](auto){ return 42; }) |
+        op::get<int>;
 
-      THEN( "the signal did not drift much" ) {
-        INFO("The delay is " << ::Catch::Detail::stringify(signaled - start));
-        REQUIRE( signaled - start < 10s );
-      }
-    }
-
-    WHEN( "submissions are ordered in time" ) {
-      std::vector<std::string> times;
-      auto push = [&](int time) {
-        return v::on_value([&, time](auto) { times.push_back(std::to_string(time)); });
-      };
-      tr | op::submit(v::on_value([push](auto tr) {
-        tr |
-            op::submit_after(40ms, push(40)) |
-            op::submit_after(10ms, push(10)) |
-            op::submit_after(20ms, push(20)) |
-            op::submit_after(10ms, push(11));
-      }));
-
-      THEN( "the items were pushed in time order not insertion order" ) {
-        REQUIRE( times == std::vector<std::string>{"10", "11", "20", "40"});
-      }
-    }
-
-    WHEN( "now is called" ) {
-      bool done = false;
-      tr | ep::now();
-      tr | op::submit([&](auto tr) {
-        tr | ep::now();
-        done = true;
-      });
-
-      THEN( "both calls to now() complete" ) {
-        REQUIRE( done == true );
+      THEN( "the result is" ) {
+        REQUIRE( v == 42 );
       }
     }
 
     WHEN( "virtual derecursion is triggered" ) {
       int counter = 100'000;
-      std::function<void(pushmi::any_time_executor_ref<> exec)> recurse;
-      recurse = [&](pushmi::any_time_executor_ref<> tr) {
+      std::function<void(pushmi::any_executor_ref<> exec)> recurse;
+      recurse = [&](pushmi::any_executor_ref<> tr) {
         if (--counter <= 0)
           return;
         tr | op::submit(recurse);

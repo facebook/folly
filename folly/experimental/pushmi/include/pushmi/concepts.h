@@ -170,23 +170,6 @@ PUSHMI_CONCEPT_DEF(
     is_executor_v<PS> && is_sender_v<PS> && is_single_v<PS>
 );
 
-// Time trait and tag
-template<class... TN>
-struct is_time;
-// Tag
-template<>
-struct is_time<> : is_sender<> {};
-// Trait
-template<class PS>
-struct is_time<PS> : property_query<PS, is_time<>> {};
-template<class PS>
-PUSHMI_INLINE_VAR constexpr bool is_time_v = is_time<PS>::value;
-PUSHMI_CONCEPT_DEF(
-  template (class PS)
-  concept Time,
-    is_time_v<PS> && is_sender_v<PS>
-);
-
 // Constrained trait and tag
 template<class... TN>
 struct is_constrained;
@@ -202,6 +185,23 @@ PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Constrained,
     is_constrained_v<PS> && is_sender_v<PS>
+);
+
+// Time trait and tag
+template<class... TN>
+struct is_time;
+// Tag
+template<>
+struct is_time<> : is_constrained<> {};
+// Trait
+template<class PS>
+struct is_time<PS> : property_query<PS, is_time<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_time_v = is_time<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept Time,
+    is_time_v<PS> && is_constrained_v<PS> && is_sender_v<PS>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -358,64 +358,34 @@ PUSHMI_CONCEPT_DEF(
 
 // add concepts for constraints
 //
-
-PUSHMI_CONCEPT_DEF(
-  template (class D, class... PropertyN)
-  (concept TimeSender)(D, PropertyN...),
-    requires(D& d) (
-      ::pushmi::now(d),
-      requires_<Regular<decltype(::pushmi::now(d))>>
-    ) &&
-    Sender<D> &&
-    property_query_v<D, PropertyN...> &&
-    Time<D> &&
-    None<D>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class D, class S, class... PropertyN)
-  (concept TimeSenderTo)(D, S, PropertyN...),
-    requires(D& d, S&& s) (
-      ::pushmi::submit(d, ::pushmi::now(d), (S &&) s)
-    ) &&
-    TimeSender<D> &&
-    property_query_v<D, PropertyN...> &&
-    Receiver<S>
-);
-
-template <class D>
-PUSHMI_PP_CONSTRAINED_USING(
-  TimeSender<D>,
-  time_point_t =, decltype(::pushmi::now(std::declval<D&>())));
-
-// this is a more general form where the constraint could be time or priority
-// enum or any other ordering constraint value-type.
+// the constraint could be time or priority enum or any other
+// ordering constraint value-type.
 //
 // top() returns the constraint value that will cause the item to run asap.
 // So now() for time and NORMAL for priority.
 //
-// I would like to replace Time.. with Constrained.. but not sure if it will
-// obscure too much.
 
 PUSHMI_CONCEPT_DEF(
-  template (class D)
-  concept ConstrainedSender,
+  template (class D, class... PropertyN)
+  (concept ConstrainedSender)(D, PropertyN...),
     requires(D& d) (
       ::pushmi::top(d),
       requires_<Regular<decltype(::pushmi::top(d))>>
     ) &&
     Sender<D> &&
+    property_query_v<D, PropertyN...> &&
     Constrained<D> &&
     None<D>
 );
 
 PUSHMI_CONCEPT_DEF(
-  template (class D, class S)
-  concept ConstrainedSenderTo,
+  template (class D, class S, class... PropertyN)
+  (concept ConstrainedSenderTo)(D, S, PropertyN...),
     requires(D& d, S&& s) (
       ::pushmi::submit(d, ::pushmi::top(d), (S &&) s)
     ) &&
     ConstrainedSender<D> &&
+    property_query_v<D, PropertyN...> &&
     Receiver<S>
 );
 
@@ -423,5 +393,29 @@ template <class D>
 PUSHMI_PP_CONSTRAINED_USING(
   ConstrainedSender<D>,
   constraint_t =, decltype(::pushmi::top(std::declval<D&>())));
+
+
+PUSHMI_CONCEPT_DEF(
+  template (class D, class... PropertyN)
+  (concept TimeSender)(D, PropertyN...),
+    requires(D& d) (
+      ::pushmi::now(d),
+      requires_<Regular<decltype(::pushmi::now(d) + std::chrono::seconds(1))>>
+    ) &&
+    ConstrainedSender<D, PropertyN...> &&
+    Time<D>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class D, class S, class... PropertyN)
+  (concept TimeSenderTo)(D, S, PropertyN...),
+    ConstrainedSenderTo<D, S, PropertyN...> &&
+    TimeSender<D>
+);
+
+template <class D>
+PUSHMI_PP_CONSTRAINED_USING(
+  TimeSender<D>,
+  time_point_t =, decltype(::pushmi::now(std::declval<D&>())));
 
 } // namespace pushmi

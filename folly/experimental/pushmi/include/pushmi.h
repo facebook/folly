@@ -25,6 +25,7 @@
 #include <tuple>
 #include <deque>
 #include <vector>
+#include <queue>
 
 #if __cpp_lib_optional >= 201606
 #include <optional>
@@ -1165,6 +1166,9 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class many_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
+class constrained_single_sender;
+
+template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class time_single_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
@@ -1179,11 +1183,41 @@ class flow_many;
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_many_sender;
 
+
+template<
+  class V,
+  class E = std::exception_ptr>
+class any_single_sender;
+
+template<
+  class V,
+  class E = std::exception_ptr,
+  class C = std::ptrdiff_t>
+struct any_constrained_single_sender;
+
 template<
   class V,
   class E = std::exception_ptr,
   class TP = std::chrono::system_clock::time_point>
-struct any_time_single_sender;
+class any_time_single_sender;
+
+template<
+  class E = std::exception_ptr>
+struct any_executor;
+
+template<
+  class E = std::exception_ptr>
+struct any_executor_ref;
+
+template<
+  class E = std::exception_ptr,
+  class CV = std::ptrdiff_t>
+struct any_constrained_executor;
+
+template<
+  class E = std::exception_ptr,
+  class TP = std::ptrdiff_t>
+struct any_constrained_executor_ref;
 
 template<
   class E = std::exception_ptr,
@@ -1556,15 +1590,15 @@ void submit(SD& sd, Out out) noexcept(noexcept(sd.submit(std::move(out)))) {
 }
 
 PUSHMI_TEMPLATE (class SD)
-  (requires requires (std::declval<SD&>().now()))
-auto now(SD& sd) noexcept(noexcept(sd.now())) {
-  return sd.now();
+  (requires requires (std::declval<SD&>().top()))
+auto top(SD& sd) noexcept(noexcept(sd.top())) {
+  return sd.top();
 }
 
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>().submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>().now()),
+        std::declval<TP(&)(TP)>()(std::declval<SD&>().top()),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -1616,15 +1650,15 @@ void submit(SD& sd, Out out) noexcept(noexcept(sd->submit(std::move(out)))) {
 }
 
 PUSHMI_TEMPLATE (class SD)
-  (requires requires (std::declval<SD&>()->now()))
-auto now(SD& sd) noexcept(noexcept(sd->now())) {
-  return sd->now();
+  (requires requires (std::declval<SD&>()->top()))
+auto top(SD& sd) noexcept(noexcept(sd->top())) {
+  return sd->top();
 }
 
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>()->submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>()->now()),
+        std::declval<TP(&)(TP)>()(std::declval<SD&>()->top()),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -1703,15 +1737,15 @@ void submit(std::reference_wrapper<SD> sd, Out out) noexcept(
   submit(sd.get(), std::move(out));
 }
 PUSHMI_TEMPLATE (class SD)
-  (requires requires ( now(std::declval<SD&>()) ))
-auto now(std::reference_wrapper<SD> sd) noexcept(noexcept(now(sd.get()))) {
-  return now(sd.get());
+  (requires requires ( top(std::declval<SD&>()) ))
+auto top(std::reference_wrapper<SD> sd) noexcept(noexcept(top(sd.get()))) {
+  return top(sd.get());
 }
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     submit(
       std::declval<SD&>(),
-      std::declval<TP(&)(TP)>()(now(std::declval<SD&>())),
+      std::declval<TP(&)(TP)>()(top(std::declval<SD&>())),
       std::declval<Out>())
   ))
 void submit(std::reference_wrapper<SD> sd, TP tp, Out out)
@@ -1827,13 +1861,13 @@ struct do_submit_fn {
   }
 };
 
-struct get_now_fn {
+struct get_top_fn {
   PUSHMI_TEMPLATE (class SD)
     (requires requires (
-      now(std::declval<SD&>())
+      top(std::declval<SD&>())
     ))
-  auto operator()(SD&& sd) const noexcept(noexcept(now(sd))) {
-    return now(sd);
+  auto operator()(SD&& sd) const noexcept(noexcept(top(sd))) {
+    return top(sd);
   }
 };
 
@@ -1846,8 +1880,8 @@ PUSHMI_INLINE_VAR constexpr __adl::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr __adl::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr __adl::get_executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
-PUSHMI_INLINE_VAR constexpr __adl::get_now_fn now{};
-PUSHMI_INLINE_VAR constexpr __adl::get_now_fn top{};
+PUSHMI_INLINE_VAR constexpr __adl::get_top_fn now{};
+PUSHMI_INLINE_VAR constexpr __adl::get_top_fn top{};
 
 template <class T>
 struct property_set_traits<std::promise<T>> {
@@ -2206,23 +2240,6 @@ PUSHMI_CONCEPT_DEF(
     is_executor_v<PS> && is_sender_v<PS> && is_single_v<PS>
 );
 
-// Time trait and tag
-template<class... TN>
-struct is_time;
-// Tag
-template<>
-struct is_time<> : is_sender<> {};
-// Trait
-template<class PS>
-struct is_time<PS> : property_query<PS, is_time<>> {};
-template<class PS>
-PUSHMI_INLINE_VAR constexpr bool is_time_v = is_time<PS>::value;
-PUSHMI_CONCEPT_DEF(
-  template (class PS)
-  concept Time,
-    is_time_v<PS> && is_sender_v<PS>
-);
-
 // Constrained trait and tag
 template<class... TN>
 struct is_constrained;
@@ -2238,6 +2255,23 @@ PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Constrained,
     is_constrained_v<PS> && is_sender_v<PS>
+);
+
+// Time trait and tag
+template<class... TN>
+struct is_time;
+// Tag
+template<>
+struct is_time<> : is_constrained<> {};
+// Trait
+template<class PS>
+struct is_time<PS> : property_query<PS, is_time<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_time_v = is_time<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept Time,
+    is_time_v<PS> && is_constrained_v<PS> && is_sender_v<PS>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -2394,64 +2428,34 @@ PUSHMI_CONCEPT_DEF(
 
 // add concepts for constraints
 //
-
-PUSHMI_CONCEPT_DEF(
-  template (class D, class... PropertyN)
-  (concept TimeSender)(D, PropertyN...),
-    requires(D& d) (
-      ::pushmi::now(d),
-      requires_<Regular<decltype(::pushmi::now(d))>>
-    ) &&
-    Sender<D> &&
-    property_query_v<D, PropertyN...> &&
-    Time<D> &&
-    None<D>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class D, class S, class... PropertyN)
-  (concept TimeSenderTo)(D, S, PropertyN...),
-    requires(D& d, S&& s) (
-      ::pushmi::submit(d, ::pushmi::now(d), (S &&) s)
-    ) &&
-    TimeSender<D> &&
-    property_query_v<D, PropertyN...> &&
-    Receiver<S>
-);
-
-template <class D>
-PUSHMI_PP_CONSTRAINED_USING(
-  TimeSender<D>,
-  time_point_t =, decltype(::pushmi::now(std::declval<D&>())));
-
-// this is a more general form where the constraint could be time or priority
-// enum or any other ordering constraint value-type.
+// the constraint could be time or priority enum or any other
+// ordering constraint value-type.
 //
 // top() returns the constraint value that will cause the item to run asap.
 // So now() for time and NORMAL for priority.
 //
-// I would like to replace Time.. with Constrained.. but not sure if it will
-// obscure too much.
 
 PUSHMI_CONCEPT_DEF(
-  template (class D)
-  concept ConstrainedSender,
+  template (class D, class... PropertyN)
+  (concept ConstrainedSender)(D, PropertyN...),
     requires(D& d) (
       ::pushmi::top(d),
       requires_<Regular<decltype(::pushmi::top(d))>>
     ) &&
     Sender<D> &&
+    property_query_v<D, PropertyN...> &&
     Constrained<D> &&
     None<D>
 );
 
 PUSHMI_CONCEPT_DEF(
-  template (class D, class S)
-  concept ConstrainedSenderTo,
+  template (class D, class S, class... PropertyN)
+  (concept ConstrainedSenderTo)(D, S, PropertyN...),
     requires(D& d, S&& s) (
       ::pushmi::submit(d, ::pushmi::top(d), (S &&) s)
     ) &&
     ConstrainedSender<D> &&
+    property_query_v<D, PropertyN...> &&
     Receiver<S>
 );
 
@@ -2459,6 +2463,30 @@ template <class D>
 PUSHMI_PP_CONSTRAINED_USING(
   ConstrainedSender<D>,
   constraint_t =, decltype(::pushmi::top(std::declval<D&>())));
+
+
+PUSHMI_CONCEPT_DEF(
+  template (class D, class... PropertyN)
+  (concept TimeSender)(D, PropertyN...),
+    requires(D& d) (
+      ::pushmi::now(d),
+      requires_<Regular<decltype(::pushmi::now(d) + std::chrono::seconds(1))>>
+    ) &&
+    ConstrainedSender<D, PropertyN...> &&
+    Time<D>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class D, class S, class... PropertyN)
+  (concept TimeSenderTo)(D, S, PropertyN...),
+    ConstrainedSenderTo<D, S, PropertyN...> &&
+    TimeSender<D>
+);
+
+template <class D>
+PUSHMI_PP_CONSTRAINED_USING(
+  TimeSender<D>,
+  time_point_t =, decltype(::pushmi::now(std::declval<D&>())));
 
 } // namespace pushmi
 //#pragma once
@@ -2520,6 +2548,9 @@ template<>
 struct construct_deduced<flow_single_sender>;
 
 template<>
+struct construct_deduced<constrained_single_sender>;
+
+template<>
 struct construct_deduced<time_single_sender>;
 
 template<>
@@ -2556,7 +2587,6 @@ struct trampolineEXF;
 //   auto operator()() { return trampoline(); }
 // };
 
-
 struct ignoreSF {
   void operator()(detail::any) {}
   void operator()(detail::any, detail::any) {}
@@ -2564,6 +2594,10 @@ struct ignoreSF {
 
 struct systemNowF {
   auto operator()() { return std::chrono::system_clock::now(); }
+};
+
+struct priorityZeroF {
+  auto operator()(){ return 0; }
 };
 
 struct passDVF {
@@ -2636,6 +2670,14 @@ struct passDNF {
     (requires TimeSender<Data>)
   auto operator()(Data& in) const noexcept {
     return ::pushmi::now(in);
+  }
+};
+
+struct passDZF {
+  PUSHMI_TEMPLATE(class Data)
+    (requires ConstrainedSender<Data>)
+  auto operator()(Data& in) const noexcept {
+    return ::pushmi::top(in);
   }
 };
 
@@ -4952,7 +4994,324 @@ namespace pushmi {
 namespace detail {
 template <class T, template <class...> class C>
 using not_is_t = std::enable_if_t<!is_v<std::decay_t<T>, C>, std::decay_t<T>>;
+} // namespace detail
 
+//
+// define types for executors
+
+namespace detail {
+template <class T>
+using not_any_executor_ref_t = not_is_t<T, any_executor_ref>;
+} // namespace detail
+
+template<class E>
+struct any_executor_ref {
+private:
+  using This = any_executor_ref;
+  void* pobj_;
+  struct vtable {
+    void (*submit_)(void*, void*);
+  } const *vptr_;
+  template <class T>
+  using wrapped_t = detail::not_any_executor_ref_t<T>;
+public:
+  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+
+  any_executor_ref() = delete;
+  any_executor_ref(const any_executor_ref&) = default;
+
+  PUSHMI_TEMPLATE (class Wrapped)
+    (requires Sender<wrapped_t<Wrapped>, is_executor<>, is_single<>>)
+    // (requires SenderTo<wrapped_t<Wrapped>, single<This, E>>)
+  any_executor_ref(Wrapped& w) {
+    // This can't be a requirement because it asks if submit(w, single<T,E>)
+    // is well-formed (where T is an alias for any_executor_ref). If w
+    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
+    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // ask whether T'& is convertible to T. That brings us right back to this
+    // constructor. Constraint recursion!
+    static_assert(
+      SenderTo<Wrapped, single<This, E>>,
+      "Expecting to be passed a Sender that can send to a SingleReceiver"
+      " that accpets a value of type This and an error of type E");
+    struct s {
+      static void submit(void* pobj, void* s) {
+        return ::pushmi::submit(
+          *static_cast<Wrapped*>(pobj),
+          std::move(*static_cast<single<This, E>*>(s)));
+      }
+    };
+    static const vtable vtbl{s::submit};
+    pobj_ = std::addressof(w);
+    vptr_ = &vtbl;
+  }
+  any_executor_ref executor() { return *this; }
+  template<class SingleReceiver>
+  void submit(SingleReceiver&& sa) {
+    // static_assert(
+    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
+    //   "requires any_single<any_executor_ref<E, TP>, E>");
+    any_single<This, E> s{(SingleReceiver&&) sa};
+    vptr_->submit_(pobj_, &s);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// make_any_executor_ref
+template <
+    class E = std::exception_ptr>
+auto make_any_executor_ref() {
+  return any_executor_ref<E>{};
+}
+
+PUSHMI_TEMPLATE (
+    class E = std::exception_ptr,
+    class Wrapped)
+  (requires Sender<detail::not_any_executor_ref_t<Wrapped>, is_executor<>, is_single<>>)
+auto make_any_executor_ref(Wrapped& w) {
+  return any_executor_ref<E>{w};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
+any_executor_ref() ->
+    any_executor_ref<
+        std::exception_ptr>;
+
+PUSHMI_TEMPLATE (class Wrapped)
+  (requires Sender<detail::not_any_executor_ref_t<Wrapped>, is_executor<>, is_single<>>)
+any_executor_ref(Wrapped&) ->
+    any_executor_ref<
+        std::exception_ptr>;
+#endif
+
+namespace detail {
+template<class E>
+using any_executor_base =
+  any_single_sender<any_executor_ref<E>, E>;
+
+template<class T, class E>
+using not_any_executor =
+  std::enable_if_t<
+    !std::is_base_of<any_executor_base<E>, std::decay_t<T>>::value,
+    std::decay_t<T>>;
+} // namespace detail
+
+template <class E>
+struct any_executor : detail::any_executor_base<E> {
+  constexpr any_executor() = default;
+  using detail::any_executor_base<E>::any_executor_base;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// make_any_executor
+template <
+    class E = std::exception_ptr>
+auto make_any_executor() -> any_executor<E> {
+  return any_executor<E>{};
+}
+
+PUSHMI_TEMPLATE(
+    class E = std::exception_ptr,
+    class Wrapped)
+  (requires SenderTo<
+      detail::not_any_executor<Wrapped, E>,
+      single<any_executor_ref<E>, E>>)
+auto make_any_executor(Wrapped w) -> any_executor<E> {
+  return any_executor<E>{std::move(w)};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
+any_executor() ->
+    any_executor<
+        std::exception_ptr>;
+
+PUSHMI_TEMPLATE(class Wrapped)
+  (requires SenderTo<
+      detail::not_any_executor<
+          Wrapped,
+          std::exception_ptr>,
+      single<
+          any_executor_ref<
+              std::exception_ptr>,
+          std::exception_ptr>>)
+any_executor(Wrapped) ->
+    any_executor<
+        std::exception_ptr>;
+#endif
+
+
+//
+// define types for constrained executors
+
+namespace detail {
+template <class T>
+using not_any_constrained_executor_ref_t = not_is_t<T, any_constrained_executor_ref>;
+} // namespace detail
+
+template<class E, class CV>
+struct any_constrained_executor_ref {
+private:
+  using This = any_constrained_executor_ref;
+  void* pobj_;
+  struct vtable {
+    CV (*top_)(void*);
+    void (*submit_)(void*, CV, void*);
+  } const *vptr_;
+  template <class T>
+  using wrapped_t = detail::not_any_constrained_executor_ref_t<T>;
+public:
+  using properties = property_set<is_constrained<>, is_executor<>, is_single<>>;
+
+  any_constrained_executor_ref() = delete;
+  any_constrained_executor_ref(const any_constrained_executor_ref&) = default;
+
+  PUSHMI_TEMPLATE (class Wrapped)
+    (requires ConstrainedSender<wrapped_t<Wrapped>, is_single<>>)
+    // (requires ConstrainedSenderTo<wrapped_t<Wrapped>, single<This, E>>)
+  any_constrained_executor_ref(Wrapped& w) {
+    // This can't be a requirement because it asks if submit(w, top(w), single<T,E>)
+    // is well-formed (where T is an alias for any_constrained_executor_ref). If w
+    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
+    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // ask whether T'& is convertible to T. That brings us right back to this
+    // constructor. Constraint recursion!
+    static_assert(
+      ConstrainedSenderTo<Wrapped, single<This, E>>,
+      "Expecting to be passed a ConstrainedSender that can send to a SingleReceiver"
+      " that accpets a value of type This and an error of type E");
+    struct s {
+      static CV top(void* pobj) {
+        return ::pushmi::top(*static_cast<Wrapped*>(pobj));
+      }
+      static void submit(void* pobj, CV cv, void* s) {
+        return ::pushmi::submit(
+          *static_cast<Wrapped*>(pobj),
+          cv,
+          std::move(*static_cast<single<This, E>*>(s)));
+      }
+    };
+    static const vtable vtbl{s::top, s::submit};
+    pobj_ = std::addressof(w);
+    vptr_ = &vtbl;
+  }
+  CV top() {
+    return vptr_->top_(pobj_);
+  }
+  any_constrained_executor_ref executor() { return *this; }
+  template<class SingleReceiver>
+  void submit(CV cv, SingleReceiver&& sa) {
+    // static_assert(
+    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
+    //   "requires any_single<any_constrained_executor_ref<E, TP>, E>");
+    any_single<This, E> s{(SingleReceiver&&) sa};
+    vptr_->submit_(pobj_, cv, &s);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// make_any_constrained_executor_ref
+template <
+    class E = std::exception_ptr,
+    class CV = std::ptrdiff_t>
+auto make_any_constrained_executor_ref() {
+  return any_constrained_executor_ref<E, CV>{};
+}
+
+PUSHMI_TEMPLATE (
+    class E = std::exception_ptr,
+    class Wrapped)
+  (requires ConstrainedSender<detail::not_any_constrained_executor_ref_t<Wrapped>, is_single<>>)
+auto make_any_constrained_executor_ref(Wrapped& w) {
+  return any_constrained_executor_ref<E, constraint_t<Wrapped>>{w};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
+any_constrained_executor_ref() ->
+    any_constrained_executor_ref<
+        std::exception_ptr,
+        std::ptrdiff_t>;
+
+PUSHMI_TEMPLATE (class Wrapped)
+  (requires ConstrainedSender<detail::not_any_constrained_executor_ref_t<Wrapped>, is_single<>>)
+any_constrained_executor_ref(Wrapped&) ->
+    any_constrained_executor_ref<
+        std::exception_ptr,
+        constraint_t<Wrapped>>;
+#endif
+
+namespace detail {
+template<class E, class CV>
+using any_constrained_executor_base =
+  any_constrained_single_sender<any_constrained_executor_ref<E, CV>, E, CV>;
+
+template<class T, class E, class CV>
+using not_any_constrained_executor =
+  std::enable_if_t<
+    !std::is_base_of<any_constrained_executor_base<E, CV>, std::decay_t<T>>::value,
+    std::decay_t<T>>;
+} // namespace detail
+
+template <class E, class CV>
+struct any_constrained_executor : detail::any_constrained_executor_base<E, CV> {
+  using properties = property_set<is_constrained<>, is_executor<>, is_single<>>;
+  constexpr any_constrained_executor() = default;
+  using detail::any_constrained_executor_base<E, CV>::any_constrained_executor_base;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// make_any_constrained_executor
+template <
+    class E = std::exception_ptr,
+    class CV = std::ptrdiff_t>
+auto make_any_constrained_executor() -> any_constrained_executor<E, CV> {
+  return any_constrained_executor<E, CV>{};
+}
+
+PUSHMI_TEMPLATE(
+    class E = std::exception_ptr,
+    class Wrapped)
+  (requires ConstrainedSenderTo<
+      detail::not_any_constrained_executor<Wrapped, E, constraint_t<Wrapped>>,
+      single<any_constrained_executor_ref<E, constraint_t<Wrapped>>, E>>)
+auto make_any_constrained_executor(Wrapped w) -> any_constrained_executor<E, constraint_t<Wrapped>> {
+  return any_constrained_executor<E, constraint_t<Wrapped>>{std::move(w)};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
+any_constrained_executor() ->
+    any_constrained_executor<
+        std::exception_ptr,
+        std::ptrdiff_t>;
+
+PUSHMI_TEMPLATE(class Wrapped)
+  (requires ConstrainedSenderTo<
+      detail::not_any_constrained_executor<
+          Wrapped,
+          std::exception_ptr,
+          constraint_t<Wrapped>>,
+      single<
+          any_constrained_executor_ref<
+              std::exception_ptr,
+              constraint_t<Wrapped>>,
+          std::exception_ptr>>)
+any_constrained_executor(Wrapped) ->
+    any_constrained_executor<
+        std::exception_ptr,
+        constraint_t<Wrapped>>;
+#endif
+
+//
+// define types for time executors
+
+namespace detail {
 template <class T>
 using not_any_time_executor_ref_t = not_is_t<T, any_time_executor_ref>;
 } // namespace detail
@@ -5003,7 +5362,7 @@ public:
     pobj_ = std::addressof(w);
     vptr_ = &vtbl;
   }
-  std::chrono::system_clock::time_point now() {
+  std::chrono::system_clock::time_point top() {
     return vptr_->now_(pobj_);
   }
   any_time_executor_ref executor() { return *this; }
@@ -5028,11 +5387,10 @@ auto make_any_time_executor_ref() {
 
 PUSHMI_TEMPLATE (
     class E = std::exception_ptr,
-    class TP = std::chrono::system_clock::time_point,
     class Wrapped)
   (requires TimeSender<detail::not_any_time_executor_ref_t<Wrapped>, is_single<>>)
 auto make_any_time_executor_ref(Wrapped& w) {
-  return any_time_executor_ref<E, TP>{w};
+  return any_time_executor_ref<E, time_point_t<Wrapped>>{w};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5048,7 +5406,7 @@ PUSHMI_TEMPLATE (class Wrapped)
 any_time_executor_ref(Wrapped&) ->
     any_time_executor_ref<
         std::exception_ptr,
-        std::chrono::system_clock::time_point>;
+        time_point_t<Wrapped>>;
 #endif
 
 namespace detail {
@@ -5065,6 +5423,7 @@ using not_any_time_executor =
 
 template <class E, class TP>
 struct any_time_executor : detail::any_time_executor_base<E, TP> {
+  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
   constexpr any_time_executor() = default;
   using detail::any_time_executor_base<E, TP>::any_time_executor_base;
 };
@@ -5080,13 +5439,12 @@ auto make_any_time_executor() -> any_time_executor<E, TP> {
 
 PUSHMI_TEMPLATE(
     class E = std::exception_ptr,
-    class TP = std::chrono::system_clock::time_point,
     class Wrapped)
   (requires TimeSenderTo<
-      detail::not_any_time_executor<Wrapped, E, TP>,
-      single<any_time_executor_ref<E, TP>, E>>)
-auto make_any_time_executor(Wrapped w) -> any_time_executor<E, TP> {
-  return any_time_executor<E, TP>{std::move(w)};
+      detail::not_any_time_executor<Wrapped, E, time_point_t<Wrapped>>,
+      single<any_time_executor_ref<E, time_point_t<Wrapped>>, E>>)
+auto make_any_time_executor(Wrapped w) -> any_time_executor<E, time_point_t<Wrapped>> {
+  return any_time_executor<E, time_point_t<Wrapped>>{std::move(w)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5102,16 +5460,16 @@ PUSHMI_TEMPLATE(class Wrapped)
       detail::not_any_time_executor<
           Wrapped,
           std::exception_ptr,
-          std::chrono::system_clock::time_point>,
+          time_point_t<Wrapped>>,
       single<
           any_time_executor_ref<
               std::exception_ptr,
-              std::chrono::system_clock::time_point>,
+              time_point_t<Wrapped>>,
           std::exception_ptr>>)
 any_time_executor(Wrapped) ->
     any_time_executor<
         std::exception_ptr,
-        std::chrono::system_clock::time_point>;
+        time_point_t<Wrapped>>;
 #endif
 
 } // namespace pushmi
@@ -5125,11 +5483,36 @@ any_time_executor(Wrapped) ->
 
 namespace pushmi {
 
-class inline_time_executor {
+class inline_constrained_executor_t {
+  public:
+    using properties = property_set<is_constrained<>, is_executor<>, is_single<>>;
+
+    std::ptrdiff_t top() {
+      return 0;
+    }
+    auto executor() { return *this; }
+    PUSHMI_TEMPLATE(class CV, class Out)
+      (requires Regular<CV> && Receiver<Out, is_single<>>)
+    void submit(CV, Out out) {
+      ::pushmi::set_value(std::move(out), *this);
+    }
+};
+
+struct inlineConstrainedEXF {
+  inline_constrained_executor_t operator()(){
+    return {};
+  }
+};
+
+inline inline_constrained_executor_t inline_constrained_executor() {
+  return {};
+}
+
+class inline_time_executor_t {
   public:
     using properties = property_set<is_time<>, is_executor<>, is_single<>>;
 
-    auto now() {
+    auto top() {
       return std::chrono::system_clock::now();
     }
     auto executor() { return *this; }
@@ -5141,13 +5524,35 @@ class inline_time_executor {
     }
 };
 
-struct inlineEXF {
-  inline_time_executor operator()(){
+struct inlineTimeEXF {
+  inline_time_executor_t operator()(){
     return {};
   }
 };
 
-inline inline_time_executor inline_executor() {
+inline inline_time_executor_t inline_time_executor() {
+  return {};
+}
+
+class inline_executor_t {
+  public:
+    using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+
+    auto executor() { return *this; }
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out, is_single<>>)
+    void submit(Out out) {
+      ::pushmi::set_value(std::move(out), *this);
+    }
+};
+
+struct inlineEXF {
+  inline_executor_t operator()(){
+    return {};
+  }
+};
+
+inline inline_executor_t inline_executor() {
   return {};
 }
 
@@ -5191,51 +5596,38 @@ class trampoline;
 
 template <class E = std::exception_ptr>
 class delegator : _pipeable_sender_ {
-  using time_point = typename trampoline<E>::time_point;
-
  public:
-  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
 
-  time_point now() {
-    return trampoline<E>::now();
-  }
   delegator executor() { return {}; }
   PUSHMI_TEMPLATE (class SingleReceiver)
     (requires Receiver<remove_cvref_t<SingleReceiver>, is_single<>>)
-  void submit(time_point when, SingleReceiver&& what) {
+  void submit(SingleReceiver&& what) {
     trampoline<E>::submit(
-        ownordelegate, when, std::forward<SingleReceiver>(what));
+        ownordelegate, std::forward<SingleReceiver>(what));
   }
 };
 
 template <class E = std::exception_ptr>
 class nester : _pipeable_sender_ {
-  using time_point = typename trampoline<E>::time_point;
-
  public:
-  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
 
-  time_point now() {
-    return trampoline<E>::now();
-  }
   nester executor() { return {}; }
   template <class SingleReceiver>
-  void submit(time_point when, SingleReceiver&& what) {
-    trampoline<E>::submit(ownornest, when, std::forward<SingleReceiver>(what));
+  void submit(SingleReceiver&& what) {
+    trampoline<E>::submit(ownornest, std::forward<SingleReceiver>(what));
   }
 };
 
 template <class E>
 class trampoline {
- public:
-  using time_point = std::chrono::system_clock::time_point;
-
  private:
   using error_type = std::decay_t<E>;
   using work_type =
-     any_single<any_time_executor_ref<error_type, time_point>, error_type>;
-  using queue_type = std::deque<std::tuple<time_point, work_type>>;
-  using pending_type = std::tuple<int, queue_type, time_point>;
+     any_single<any_executor_ref<error_type>, error_type>;
+  using queue_type = std::deque<work_type>;
+  using pending_type = std::tuple<int, queue_type, bool>;
 
   inline static pending_type*& owner() {
     static thread_local pending_type* pending = nullptr;
@@ -5250,7 +5642,7 @@ class trampoline {
     return std::get<1>(p);
   }
 
-  inline static time_point& next(pending_type& p) {
+  inline static bool& repeat(pending_type& p) {
     return std::get<2>(p);
   }
 
@@ -5263,21 +5655,17 @@ class trampoline {
     return owner() != nullptr;
   }
 
-  inline static time_point now() {
-    return std::chrono::system_clock::now();
-  }
-
   template <class Selector, class Derived>
-  static void submit(Selector, Derived&, time_point awhen, recurse_t) {
+  static void submit(Selector, Derived&, recurse_t) {
     if (!is_owned()) {
       abort();
     }
-    next(*owner()) = awhen;
+    repeat(*owner()) = true;
   }
 
   PUSHMI_TEMPLATE (class SingleReceiver)
     (requires not Same<SingleReceiver, recurse_t>)
-  static void submit(ownordelegate_t, time_point awhen, SingleReceiver awhat) {
+  static void submit(ownordelegate_t, SingleReceiver awhat) {
     delegator<E> that;
 
     if (is_owned()) {
@@ -5285,10 +5673,9 @@ class trampoline {
 
       // poor mans scope guard
       try {
-        if (++depth(*owner()) > 100 || awhen > trampoline<E>::now()) {
+        if (++depth(*owner()) > 100) {
           // defer work to owner
-          pending(*owner()).push_back(
-              std::make_tuple(awhen, work_type{std::move(awhat)}));
+          pending(*owner()).push_back(work_type{std::move(awhat)});
         } else {
           // dynamic recursion - optimization to balance queueing and
           // stack usage and value interleaving on the same thread.
@@ -5307,16 +5694,16 @@ class trampoline {
     pending_type pending_store;
     owner() = &pending_store;
     depth(pending_store) = 0;
+    repeat(pending_store) = false;
     // poor mans scope guard
     try {
-      trampoline<E>::submit(ownornest, awhen, std::move(awhat));
+      trampoline<E>::submit(ownornest, std::move(awhat));
     } catch(...) {
 
       // ignore exceptions while delivering the exception
       try {
         ::pushmi::set_error(awhat, std::current_exception());
-        for (auto& item : pending(pending_store)) {
-          auto& what = std::get<1>(item);
+        for (auto& what : pending(pending_store)) {
           ::pushmi::set_error(what, std::current_exception());
         }
       } catch (...) {
@@ -5335,11 +5722,11 @@ class trampoline {
 
   PUSHMI_TEMPLATE (class SingleReceiver)
     (requires not Same<SingleReceiver, recurse_t>)
-  static void submit(ownornest_t, time_point awhen, SingleReceiver awhat) {
+  static void submit(ownornest_t, SingleReceiver awhat) {
     delegator<E> that;
 
     if (!is_owned()) {
-      trampoline<E>::submit(ownordelegate, awhen, std::move(awhat));
+      trampoline<E>::submit(ownordelegate, std::move(awhat));
       return;
     }
 
@@ -5347,19 +5734,15 @@ class trampoline {
 
     // static recursion - tail call optimization
     if (pending(pending_store).empty()) {
-      auto when = awhen;
-      while (when != time_point{}) {
-        if (when > trampoline<E>::now()) {
-          std::this_thread::sleep_until(when);
-        }
-        next(pending_store) = time_point{};
+      bool go = true;
+      while (go) {
+        repeat(pending_store) = false;
         ::pushmi::set_value(awhat, that);
-        when = next(pending_store);
+        go = repeat(pending_store);
       }
     } else {
-      // ensure work is sorted by time
       pending(pending_store)
-          .push_back(std::make_tuple(awhen, work_type{std::move(awhat)}));
+          .push_back(work_type{std::move(awhat)});
     }
 
     if (pending(pending_store).empty()) {
@@ -5367,22 +5750,9 @@ class trampoline {
     }
 
     while (!pending(pending_store).empty()) {
-      std::stable_sort(
-          pending(pending_store).begin(),
-          pending(pending_store).end(),
-          [](auto& lhs, auto& rhs) {
-            auto& lwhen = std::get<0>(lhs);
-            auto& rwhen = std::get<0>(rhs);
-            return lwhen < rwhen;
-          });
-      auto item = std::move(pending(pending_store).front());
+      auto what = std::move(pending(pending_store).front());
       pending(pending_store).pop_front();
-      auto& when = std::get<0>(item);
-      if (when > trampoline<E>::now()) {
-        std::this_thread::sleep_until(when);
-      }
-      auto& what = std::get<1>(item);
-      any_time_executor_ref<error_type, time_point> anythis{that};
+      any_executor_ref<error_type> anythis{that};
       ::pushmi::set_value(what, anythis);
     }
   }
@@ -5418,9 +5788,9 @@ struct trampolineEXF {
 namespace detail {
 
 PUSHMI_TEMPLATE (class E)
-  (requires TimeSenderTo<delegator<E>, recurse_t>)
+  (requires SenderTo<delegator<E>, recurse_t>)
 decltype(auto) repeat(delegator<E>& exec) {
-  ::pushmi::submit(exec, ::pushmi::now(exec), recurse);
+  ::pushmi::submit(exec, recurse);
 }
 template <class AnyExec>
 void repeat(AnyExec& exec) {
@@ -5448,26 +5818,23 @@ namespace pushmi {
 // very poor perf example executor.
 //
 
-struct new_thread_time_executor {
-  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+struct new_thread_executor {
+  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
 
-  auto now() {
-    return std::chrono::system_clock::now();
-  }
-  new_thread_time_executor executor() { return {}; }
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Regular<TP> && Receiver<Out>)
-  void submit(TP at, Out out) {
-    std::thread t{[at = std::move(at), out = std::move(out)]() mutable {
+  new_thread_executor executor() { return {}; }
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out>)
+  void submit(Out out) {
+    std::thread t{[out = std::move(out)]() mutable {
       auto tr = ::pushmi::trampoline();
-      ::pushmi::submit(tr, std::move(at), std::move(out));
+      ::pushmi::submit(tr, std::move(out));
     }};
     // pass ownership of thread to out
     t.detach();
   }
 };
 
-inline new_thread_time_executor new_thread() {
+inline new_thread_executor new_thread() {
   return {};
 }
 
@@ -5480,12 +5847,12 @@ inline new_thread_time_executor new_thread() {
 
 //#include "single.h"
 //#include "executor.h"
-//#include "trampoline.h"
+//#include "inline.h"
 
 namespace pushmi {
 
-template <class V, class E, class TP>
-class any_time_single_sender {
+template <class V, class E, class CV>
+class any_constrained_single_sender {
   union data {
     void* pobj_ = nullptr;
     char buffer_[sizeof(std::promise<int>)]; // can hold a V in-situ
@@ -5497,45 +5864,45 @@ class any_time_single_sender {
   }
   struct vtable {
     static void s_op(data&, data*) {}
-    static TP s_now(data&) { return TP{}; }
-    static any_time_executor<E, TP> s_executor(data&) { return {}; }
-    static void s_submit(data&, TP, single<V, E>) {}
+    static CV s_top(data&) { return CV{}; }
+    static any_constrained_executor<E, CV> s_executor(data&) { return {}; }
+    static void s_submit(data&, CV, single<V, E>) {}
     void (*op_)(data&, data*) = vtable::s_op;
-    TP (*now_)(data&) = vtable::s_now;
-    any_time_executor<E, TP> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, TP, single<V, E>) = vtable::s_submit;
+    CV (*top_)(data&) = vtable::s_top;
+    any_constrained_executor<E, CV> (*executor_)(data&) = vtable::s_executor;
+    void (*submit_)(data&, CV, single<V, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  any_time_single_sender(Wrapped obj, std::false_type)
-    : any_time_single_sender() {
+  any_constrained_single_sender(Wrapped obj, std::false_type)
+    : any_constrained_single_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static TP now(data& src) {
-        return ::pushmi::now(*static_cast<Wrapped*>(src.pobj_));
+      static CV top(data& src) {
+        return ::pushmi::top(*static_cast<Wrapped*>(src.pobj_));
       }
-      static any_time_executor<E, TP> executor(data& src) {
-        return any_time_executor<E, TP>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+      static any_constrained_executor<E, CV> executor(data& src) {
+        return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, TP at, single<V, E> out) {
+      static void submit(data& src, CV at, single<V, E> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>(src.pobj_),
             std::move(at),
             std::move(out));
       }
     };
-    static const vtable vtbl{s::op, s::now, s::executor, s::submit};
+    static const vtable vtbl{s::op, s::top, s::executor, s::submit};
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  any_time_single_sender(Wrapped obj, std::true_type) noexcept
-    : any_time_single_sender() {
+  any_constrained_single_sender(Wrapped obj, std::true_type) noexcept
+    : any_constrained_single_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -5543,138 +5910,299 @@ class any_time_single_sender {
               std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static TP now(data& src) {
-        return ::pushmi::now(*static_cast<Wrapped*>((void*)src.buffer_));
+      static CV top(data& src) {
+        return ::pushmi::top(*static_cast<Wrapped*>((void*)src.buffer_));
       }
-      static any_time_executor<E, TP> executor(data& src) {
-        return any_time_executor<E, TP>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+      static any_constrained_executor<E, CV> executor(data& src) {
+        return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, TP tp, single<V, E> out) {
+      static void submit(data& src, CV cv, single<V, E> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_),
-            std::move(tp),
+            std::move(cv),
             std::move(out));
       }
     };
-    static const vtable vtbl{s::op, s::now, s::executor, s::submit};
+    static const vtable vtbl{s::op, s::top, s::executor, s::submit};
     new (data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, any_time_single_sender>::value, U>;
+    std::enable_if_t<!std::is_same<U, any_constrained_single_sender>::value, U>;
 
  public:
-  using properties = property_set<is_time<>, is_single<>>;
+  using properties = property_set<is_constrained<>, is_single<>>;
 
-  any_time_single_sender() = default;
-  any_time_single_sender(any_time_single_sender&& that) noexcept
-      : any_time_single_sender() {
+  any_constrained_single_sender() = default;
+  any_constrained_single_sender(any_constrained_single_sender&& that) noexcept
+      : any_constrained_single_sender() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
-    (requires TimeSenderTo<wrapped_t<Wrapped>, single<V, E>>)
-  explicit any_time_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
-  : any_time_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {
+    (requires ConstrainedSenderTo<wrapped_t<Wrapped>, single<V, E>>)
+  explicit any_constrained_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+  : any_constrained_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {
   }
-  ~any_time_single_sender() {
+  ~any_constrained_single_sender() {
     vptr_->op_(data_, nullptr);
   }
-  any_time_single_sender& operator=(any_time_single_sender&& that) noexcept {
-    this->~any_time_single_sender();
-    new ((void*)this) any_time_single_sender(std::move(that));
+  any_constrained_single_sender& operator=(any_constrained_single_sender&& that) noexcept {
+    this->~any_constrained_single_sender();
+    new ((void*)this) any_constrained_single_sender(std::move(that));
     return *this;
   }
-  TP now() {
-    return vptr_->now_(data_);
+  CV top() {
+    return vptr_->top_(data_);
   }
-  any_time_executor<E, TP> executor() {
+  any_constrained_executor<E, CV> executor() {
     return vptr_->executor_(data_);
   }
-  void submit(TP at, single<V, E> out) {
+  void submit(CV at, single<V, E> out) {
     vptr_->submit_(data_, std::move(at), std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class E, class TP>
-constexpr typename any_time_single_sender<V, E, TP>::vtable const
-    any_time_single_sender<V, E, TP>::noop_;
+template <class V, class E, class CV>
+constexpr typename any_constrained_single_sender<V, E, CV>::vtable const
+    any_constrained_single_sender<V, E, CV>::noop_;
 
-template<class SF, class NF, class EXF>
-  // (requires Invocable<NF&> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-class time_single_sender<SF, NF, EXF> {
+template<class SF, class ZF, class EXF>
+  // (requires Invocable<ZF&> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+class constrained_single_sender<SF, ZF, EXF> {
   SF sf_;
   EXF exf_;
-  NF nf_;
+  ZF zf_;
 
  public:
-  using properties = property_set<is_time<>, is_single<>>;
+  using properties = property_set<is_constrained<>, is_single<>>;
 
-  constexpr time_single_sender() = default;
-  constexpr explicit time_single_sender(SF sf)
+  constexpr constrained_single_sender() = default;
+  constexpr explicit constrained_single_sender(SF sf)
       : sf_(std::move(sf)) {}
-  constexpr time_single_sender(SF sf, EXF exf)
+  constexpr constrained_single_sender(SF sf, EXF exf)
       : sf_(std::move(sf)), exf_(std::move(exf)) {}
-  constexpr time_single_sender(SF sf, EXF exf, NF nf)
-      : sf_(std::move(sf)), nf_(std::move(nf)), exf_(std::move(exf)) {}
+  constexpr constrained_single_sender(SF sf, EXF exf, ZF zf)
+      : sf_(std::move(sf)), zf_(std::move(zf)), exf_(std::move(exf)) {}
 
-  auto now() {
-    return nf_();
+  auto top() {
+    return zf_();
   }
   auto executor() { return exf_(); }
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Regular<TP> && Receiver<Out, is_single<>> &&
-      Invocable<SF&, TP, Out>)
-  void submit(TP tp, Out out) {
-    sf_(std::move(tp), std::move(out));
+  PUSHMI_TEMPLATE(class CV, class Out)
+    (requires Regular<CV> && Receiver<Out, is_single<>> &&
+      Invocable<SF&, CV, Out>)
+  void submit(CV cv, Out out) {
+    sf_(std::move(cv), std::move(out));
   }
 };
 
-template <PUSHMI_TYPE_CONSTRAINT(TimeSender<is_single<>>) Data, class DSF, class DNF, class DEXF>
+template <PUSHMI_TYPE_CONSTRAINT(ConstrainedSender<is_single<>>) Data, class DSF, class DZF, class DEXF>
 #if __cpp_concepts
-  requires Invocable<DNF&, Data&> && Invocable<DEXF&, Data&>
+  requires Invocable<DZF&, Data&> && Invocable<DEXF&, Data&>
 #endif
-class time_single_sender<Data, DSF, DNF, DEXF> {
+class constrained_single_sender<Data, DSF, DZF, DEXF> {
   Data data_;
   DSF sf_;
   DEXF exf_;
-  DNF nf_;
+  DZF zf_;
 
  public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_time<>, is_single<>>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_single<>>>;
 
-  constexpr time_single_sender() = default;
-  constexpr explicit time_single_sender(Data data)
+  constexpr constrained_single_sender() = default;
+  constexpr explicit constrained_single_sender(Data data)
       : data_(std::move(data)) {}
-  constexpr time_single_sender(Data data, DSF sf, DEXF exf = DEXF{})
+  constexpr constrained_single_sender(Data data, DSF sf, DEXF exf = DEXF{})
       : data_(std::move(data)), sf_(std::move(sf)), exf_(std::move(exf)) {}
-  constexpr time_single_sender(Data data, DSF sf, DEXF exf, DNF nf)
-      : data_(std::move(data)), sf_(std::move(sf)), nf_(std::move(nf)), exf_(std::move(exf)) {}
+  constexpr constrained_single_sender(Data data, DSF sf, DEXF exf, DZF zf)
+      : data_(std::move(data)), sf_(std::move(sf)), zf_(std::move(zf)), exf_(std::move(exf)) {}
 
-  auto now() {
-    return nf_(data_);
+  auto top() {
+    return zf_(data_);
   }
   auto executor() { return exf_(data_); }
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Regular<TP> && Receiver<Out, is_single<>> &&
-      Invocable<DSF&, Data&, TP, Out>)
-  void submit(TP tp, Out out) {
-    sf_(data_, std::move(tp), std::move(out));
+  PUSHMI_TEMPLATE(class CV, class Out)
+    (requires Regular<CV> && Receiver<Out, is_single<>> &&
+      Invocable<DSF&, Data&, CV, Out>)
+  void submit(CV cv, Out out) {
+    sf_(data_, std::move(cv), std::move(out));
   }
+};
+
+template <>
+class constrained_single_sender<>
+    : public constrained_single_sender<ignoreSF, priorityZeroF, inlineConstrainedEXF> {
+public:
+  constrained_single_sender() = default;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// make_constrained_single_sender
+PUSHMI_INLINE_VAR constexpr struct make_constrained_single_sender_fn {
+  inline auto operator()() const  {
+    return constrained_single_sender<ignoreSF, priorityZeroF, inlineConstrainedEXF>{};
+  }
+  PUSHMI_TEMPLATE(class SF)
+    (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+  auto operator()(SF sf) const {
+    return constrained_single_sender<SF, priorityZeroF, inlineConstrainedEXF>{std::move(sf)};
+  }
+  PUSHMI_TEMPLATE (class SF, class EXF)
+    (requires Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+  auto operator()(SF sf, EXF exf) const {
+    return constrained_single_sender<SF, priorityZeroF, EXF>{std::move(sf), std::move(exf)};
+  }
+  PUSHMI_TEMPLATE (class SF, class ZF, class EXF)
+    (requires Invocable<ZF&> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+  auto operator()(SF sf, EXF exf, ZF zf) const {
+    return constrained_single_sender<SF, ZF, EXF>{std::move(sf), std::move(exf), std::move(zf)};
+  }
+  PUSHMI_TEMPLATE (class Data)
+    (requires ConstrainedSender<Data, is_single<>>)
+  auto operator()(Data d) const {
+    return constrained_single_sender<Data, passDSF, passDZF, passDEXF>{std::move(d)};
+  }
+  PUSHMI_TEMPLATE (class Data, class DSF)
+    (requires ConstrainedSender<Data, is_single<>>)
+  auto operator()(Data d, DSF sf) const {
+    return constrained_single_sender<Data, DSF, passDZF, passDEXF>{std::move(d), std::move(sf)};
+  }
+  PUSHMI_TEMPLATE (class Data, class DSF, class DEXF)
+    (requires ConstrainedSender<Data, is_single<>> && Invocable<DEXF&, Data&>)
+  auto operator()(Data d, DSF sf, DEXF exf) const  {
+    return constrained_single_sender<Data, DSF, passDZF, DEXF>{std::move(d), std::move(sf),
+      std::move(exf)};
+  }
+  PUSHMI_TEMPLATE (class Data, class DSF, class DZF, class DEXF)
+    (requires ConstrainedSender<Data, is_single<>> && Invocable<DZF&, Data&> && Invocable<DEXF&, Data&>)
+  auto operator()(Data d, DSF sf, DEXF exf, DZF zf) const  {
+    return constrained_single_sender<Data, DSF, DZF, DEXF>{std::move(d), std::move(sf),
+      std::move(exf), std::move(zf)};
+  }
+} const make_constrained_single_sender {};
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
+constrained_single_sender() -> constrained_single_sender<ignoreSF, priorityZeroF, inlineConstrainedEXF>;
+
+PUSHMI_TEMPLATE(class SF)
+  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+constrained_single_sender(SF) -> constrained_single_sender<SF, priorityZeroF, inlineConstrainedEXF>;
+
+PUSHMI_TEMPLATE (class SF, class EXF)
+  (requires Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+constrained_single_sender(SF, EXF) -> constrained_single_sender<SF, priorityZeroF, EXF>;
+
+PUSHMI_TEMPLATE (class SF, class ZF, class EXF)
+  (requires Invocable<ZF&> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+constrained_single_sender(SF, EXF, ZF) -> constrained_single_sender<SF, ZF, EXF>;
+
+PUSHMI_TEMPLATE (class Data, class DSF)
+  (requires ConstrainedSender<Data, is_single<>>)
+constrained_single_sender(Data, DSF) -> constrained_single_sender<Data, DSF, passDZF, passDEXF>;
+
+PUSHMI_TEMPLATE (class Data, class DSF, class DEXF)
+  (requires ConstrainedSender<Data, is_single<>> && Invocable<DEXF&, Data&>)
+constrained_single_sender(Data, DSF, DEXF) -> constrained_single_sender<Data, DSF, passDZF, DEXF>;
+
+PUSHMI_TEMPLATE (class Data, class DSF, class DZF, class DEXF)
+  (requires ConstrainedSender<Data, is_single<>> && Invocable<DZF&, Data&> && Invocable<DEXF&, Data&>)
+constrained_single_sender(Data, DSF, DEXF, DZF) -> constrained_single_sender<Data, DSF, DZF, DEXF>;
+#endif
+
+template<>
+struct construct_deduced<constrained_single_sender>
+  : make_constrained_single_sender_fn {};
+
+// template <
+//     class V,
+//     class E = std::exception_ptr,
+//     class CV = std::chrono::system_clock::time_point,
+//     ConstrainedSenderTo<single<V, E>, is_single<>> Wrapped>
+// auto erase_cast(Wrapped w) {
+//   return constrained_single_sender<V, E>{std::move(w)};
+// }
+
+} // namespace pushmi
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "single.h"
+//#include "executor.h"
+//#include "inline.h"
+//#include "constrained_single_sender.h"
+
+namespace pushmi {
+
+
+template <class V, class E, class TP>
+class any_time_single_sender : public any_constrained_single_sender<V, E, TP> {
+public:
+  using properties = property_set<is_time<>, is_single<>>;
+  constexpr any_time_single_sender() = default;
+  template<class T>
+  constexpr explicit any_time_single_sender(T t)
+      : any_constrained_single_sender<V, E, TP>(std::move(t)) {}
+  template<class T0, class T1, class... TN>
+  constexpr any_time_single_sender(T0 t0, T1 t1, TN... tn)
+      : any_constrained_single_sender<V, E, TP>(std::move(t0), std::move(t1), std::move(tn)...) {}
+
+  any_time_executor<E, TP> executor() {
+    return any_time_executor<E, TP>{any_constrained_single_sender<V, E, TP>::executor()};
+  }
+
+};
+
+template<class SF, class NF, class EXF>
+class time_single_sender<SF, NF, EXF> : public constrained_single_sender<SF, NF, EXF> {
+public:
+  using properties = property_set<is_time<>, is_single<>>;
+
+  constexpr time_single_sender() = default;
+  template<class T>
+  constexpr explicit time_single_sender(T t)
+      : constrained_single_sender<SF, NF, EXF>(std::move(t)) {}
+  template<class T0, class T1, class... TN>
+  constexpr time_single_sender(T0 t0, T1 t1, TN... tn)
+      : constrained_single_sender<SF, NF, EXF>(std::move(t0), std::move(t1), std::move(tn)...) {}
+};
+
+template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
+class time_single_sender : public constrained_single_sender<TN...> {
+public:
+  constexpr time_single_sender() = default;
+  template<class T>
+  constexpr explicit time_single_sender(T t)
+      : constrained_single_sender<TN...>(std::move(t)) {}
+  template<class C0, class C1, class... CN>
+  constexpr time_single_sender(C0 c0, C1 c1, CN... cn)
+      : constrained_single_sender<TN...>(std::move(c0), std::move(c1), std::move(cn)...) {}
+};
+
+template <>
+class time_single_sender<>
+    : public time_single_sender<ignoreSF, systemNowF, inlineTimeEXF> {
+public:
+  time_single_sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_time_single_sender
 PUSHMI_INLINE_VAR constexpr struct make_time_single_sender_fn {
   inline auto operator()() const  {
-    return time_single_sender<ignoreSF, systemNowF, trampolineEXF>{};
+    return time_single_sender<ignoreSF, systemNowF, inlineTimeEXF>{};
   }
   PUSHMI_TEMPLATE(class SF)
     (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
   auto operator()(SF sf) const {
-    return time_single_sender<SF, systemNowF, trampolineEXF>{std::move(sf)};
+    return time_single_sender<SF, systemNowF, inlineTimeEXF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE (class SF, class EXF)
     (requires Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
@@ -5713,11 +6241,11 @@ PUSHMI_INLINE_VAR constexpr struct make_time_single_sender_fn {
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-time_single_sender() -> time_single_sender<ignoreSF, systemNowF, trampolineEXF>;
+time_single_sender() -> time_single_sender<ignoreSF, systemNowF, inlineTimeEXF>;
 
 PUSHMI_TEMPLATE(class SF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-time_single_sender(SF) -> time_single_sender<SF, systemNowF, trampolineEXF>;
+time_single_sender(SF) -> time_single_sender<SF, systemNowF, inlineTimeEXF>;
 
 PUSHMI_TEMPLATE (class SF, class EXF)
   (requires Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
@@ -5744,15 +6272,497 @@ template<>
 struct construct_deduced<time_single_sender>
   : make_time_single_sender_fn {};
 
-// template <
-//     class V,
-//     class E = std::exception_ptr,
-//     class TP = std::chrono::system_clock::time_point,
-//     TimeSenderTo<single<V, E>, is_single<>> Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return time_single_sender<V, E>{std::move(w)};
-// }
+} //namespace pushmi
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
 
+//#include "time_single_sender.h"
+//#include "executor.h"
+
+//#include <queue>
+
+//
+// time_source is used to build a time_single_executor from a single_executor.
+//
+
+namespace pushmi {
+
+template<class E, class TP>
+class time_source_shared;
+
+template<class E, class TP, class NF, class Executor>
+class time_source_executor;
+
+template<class E, class TP>
+class time_heap_item
+{
+public:
+  using time_point = std::decay_t<TP>;
+
+  time_heap_item(time_point at, any_single<any_time_executor_ref<E, TP>, E> out) :
+    when(std::move(at)), what(std::move(out)) {}
+
+  time_point when;
+  any_single<any_time_executor_ref<E, TP>, E> what;
+};
+template<class E, class TP>
+bool operator<(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+  return l.when < r.when;
+}
+template<class E, class TP>
+bool operator>(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+  return l.when > r.when;
+}
+template<class E, class TP>
+bool operator==(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+  return l.when == r.when;
+}
+template<class E, class TP>
+bool operator!=(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+  return !(l == r);
+}
+template<class E, class TP>
+bool operator<=(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+  return !(l > r);
+}
+template<class E, class TP>
+bool operator>=(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+  return !(l < r);
+}
+
+template<class E, class TP>
+class time_source_queue_base : public std::enable_shared_from_this<time_source_queue_base<E, TP>>{
+public:
+  using time_point = std::decay_t<TP>;
+  bool dispatching_ = false;
+  bool pending_ = false;
+  std::priority_queue<time_heap_item<E, TP>, std::vector<time_heap_item<E, TP>>, std::greater<>> heap_;
+
+  virtual ~time_source_queue_base() {}
+
+  time_heap_item<E, TP>& top() {
+    // :(
+    return const_cast<time_heap_item<E, TP>&>(this->heap_.top());
+  }
+
+  virtual void dispatch()=0;
+};
+
+template<class E, class TP, class NF, class Executor>
+class time_source_queue : public time_source_queue_base<E, TP> {
+public:
+  using time_point = std::decay_t<TP>;
+  ~time_source_queue() {
+  }
+  time_source_queue(std::weak_ptr<time_source_shared<E, time_point>> source, NF nf, Executor ex) :
+    source_(std::move(source)), nf_(std::move(nf)), ex_(std::move(ex)) {}
+  std::weak_ptr<time_source_shared<E, time_point>> source_;
+  NF nf_;
+  Executor ex_;
+
+  void dispatch() override;
+
+  auto shared_from_that() {
+    return std::static_pointer_cast<
+            time_source_queue<E, TP, NF, Executor>>(
+              this->shared_from_this());
+  }
+
+  template<class Exec>
+  void value(Exec&&) {
+    auto s = source_.lock();
+
+    if (s->t_.get_id() == std::this_thread::get_id()) {
+      // Executor is not allowed to use the time_source thread
+      std::abort();
+    }
+
+    //
+    // pull ready items from the heap in order.
+
+    // drain anything queued within the next 50ms before
+    // going back to the pending queue.
+    auto start = nf_() + std::chrono::milliseconds(50);
+
+    std::unique_lock<std::mutex> guard{s->lock_};
+
+    if (!this->dispatching_ || this->pending_) {
+      std::abort();
+    }
+
+    if (this->heap_.empty()) { return; }
+    auto subEx = time_source_executor<E, TP, NF, Executor>{s, shared_from_that()};
+    while (!this->heap_.empty() && this->heap_.top().when <= start) {
+      auto item{std::move(this->top())};
+      this->heap_.pop();
+      guard.unlock();
+      std::this_thread::sleep_until(item.when);
+      ::pushmi::set_value(item.what, subEx);
+      guard.lock();
+      // allows set_value to queue nested items
+      --s->items_;
+    }
+    this->dispatching_ = false;
+
+    if (this->heap_.empty()) {
+      // if this is empty, tell worker to check for the done condition.
+      ++s->dirty_;
+      s->wake_.notify_one();
+    } else {
+      if (!!s->error_) {
+        while(!this->heap_.empty()) {
+          try {
+            auto what{std::move(this->top().what)};
+            this->heap_.pop();
+            --s->items_;
+            guard.unlock();
+            ::pushmi::set_error(what, *s->error_);
+            guard.lock();
+          } catch(...) {
+            // we already have an error, ignore this one.
+          }
+        }
+      } else {
+        // add back to pending_ to get the remaining items dispatched
+        s->pending_.push_back(this->shared_from_this());
+        this->pending_ = true;
+        if (this->heap_.top().when <= s->earliest_) {
+          // this is the earliest, tell worker to reset earliest_
+          ++s->dirty_;
+          s->wake_.notify_one();
+        }
+      }
+    }
+  }
+  template<class AE>
+  void error(AE e) noexcept {
+    auto s = source_.lock();
+    std::unique_lock<std::mutex> guard{s->lock_};
+
+    if (!this->dispatching_ || this->pending_) {
+      std::abort();
+    }
+
+    while (!this->heap_.empty()) {
+      auto what{std::move(this->top().what)};
+      this->heap_.pop();
+      --s->items_;
+      guard.unlock();
+      ::pushmi::set_error(what, detail::as_const(e));
+      guard.lock();
+    }
+    this->dispatching_ = false;
+  }
+  void done() {
+    auto s = source_.lock();
+    auto done = false;
+    std::unique_lock<std::mutex> guard{s->lock_};
+
+    if (!this->dispatching_ || this->pending_) {
+      std::abort();
+    }
+
+    while (!this->heap_.empty()) {
+      auto what{std::move(this->top().what)};
+      this->heap_.pop();
+      --s->items_;
+      guard.unlock();
+      ::pushmi::set_done(what);
+      guard.lock();
+    }
+    this->dispatching_ = false;
+  }
+};
+
+template<class E, class TP, class NF, class Executor>
+struct time_source_queue_receiver : std::shared_ptr<time_source_queue<E, TP, NF, Executor>> {
+  ~time_source_queue_receiver() {
+  }
+  explicit time_source_queue_receiver(std::shared_ptr<time_source_queue<E, TP, NF, Executor>> that) :
+    std::shared_ptr<time_source_queue<E, TP, NF, Executor>>(that),
+    source_(that->source_.lock()) {
+    }
+  using properties = property_set<is_receiver<>, is_single<>>;
+  std::shared_ptr<time_source_shared<E, TP>> source_;
+};
+
+template<class E, class TP, class NF, class Executor>
+void time_source_queue<E, TP, NF, Executor>::dispatch() {
+  ::pushmi::submit(ex_,
+    time_source_queue_receiver<E, TP, NF, Executor>{
+      shared_from_that()});
+}
+
+template<class E, class TP>
+class time_queue_dispatch_pred_fn {
+public:
+  bool operator()(std::shared_ptr<time_source_queue_base<E, TP>>& q){
+    return !q->heap_.empty();
+  }
+};
+
+template<class E, class TP>
+class time_item_process_pred_fn {
+public:
+  using time_point = std::decay_t<TP>;
+  const time_point* start_;
+  time_point* earliest_;
+  bool operator()(const std::shared_ptr<time_source_queue_base<E, TP>>& q){
+    // ready for dispatch if it has a ready item
+    bool ready = !q->dispatching_ && !q->heap_.empty() && q->heap_.top().when <= *start_;
+    q->dispatching_ = ready;
+    q->pending_ = !ready && !q->heap_.empty();
+    // ready queues are ignored, they will update earliest_ after they have processed the ready items
+    *earliest_ = !ready && !q->heap_.empty() ? min(*earliest_, q->heap_.top().when) : *earliest_;
+    return q->pending_;
+  }
+};
+
+template<class E, class TP>
+class time_source_shared_base : public std::enable_shared_from_this<time_source_shared_base<E, TP>> {
+public:
+  using time_point = std::decay_t<TP>;
+  std::mutex lock_;
+  std::condition_variable wake_;
+  std::thread t_;
+  std::chrono::system_clock::time_point earliest_;
+  bool done_;
+  bool joined_;
+  int dirty_;
+  int items_;
+  detail::opt<E> error_;
+  std::deque<std::shared_ptr<time_source_queue_base<E, TP>>> pending_;
+
+  time_source_shared_base() :
+    earliest_(std::chrono::system_clock::now() + std::chrono::hours(24)),
+    done_(false),
+    joined_(false),
+    dirty_(0),
+    items_(0) {}
+};
+
+template<class E, class TP>
+class time_source_shared : public time_source_shared_base<E, TP> {
+public:
+  std::thread t_;
+  // this is safe to reuse as long as there is only one thread in the time_source_shared
+  std::vector<std::shared_ptr<time_source_queue_base<E, TP>>> ready_;
+
+  ~time_source_shared() {
+    // not allowed to be discarded without joining and completing all queued items
+    if (t_.joinable() || this->items_ != 0) { std::abort(); }
+  }
+  time_source_shared() {
+  }
+
+  static void start(std::shared_ptr<time_source_shared<E, TP>> that) {
+    that->t_ = std::thread{&time_source_shared<E, TP>::worker, that};
+  }
+  static void join(std::shared_ptr<time_source_shared<E, TP>> that) {
+    std::unique_lock<std::mutex> guard{that->lock_};
+    that->done_ = true;
+    ++that->dirty_;
+    that->wake_.notify_one();
+    guard.unlock();
+    that->t_.join();
+  }
+
+  static void worker(std::shared_ptr<time_source_shared<E, TP>> that) {
+    try {
+      std::unique_lock<std::mutex> guard{that->lock_};
+
+      // once done_, keep going until empty
+      while (!that->done_ || that->items_ > 0) {
+
+        // wait for something to do
+        that->wake_.wait_until(
+          guard,
+          that->earliest_,
+          [&](){
+            return that->dirty_ != 0 ||
+              std::chrono::system_clock::now() >= that->earliest_;
+          });
+        that->dirty_ = 0;
+
+        //
+        // select ready and empty queues and reset earliest_
+
+        auto start = std::chrono::system_clock::now();
+        auto earliest = start + std::chrono::hours(24);
+        auto process = time_item_process_pred_fn<E, TP>{&start, &earliest};
+
+        auto process_begin = std::partition(that->pending_.begin(), that->pending_.end(), process);
+        that->earliest_ = earliest;
+
+        // copy out the queues that have ready items so that the lock
+        // is not held during dispatch
+
+        std::copy_if(process_begin, that->pending_.end(), std::back_inserter(that->ready_), time_queue_dispatch_pred_fn<E, TP>{});
+
+        // remove processed queues from pending queue.
+        that->pending_.erase(process_begin, that->pending_.end());
+
+        // printf("d %lu, %lu, %d, %ld\n", that->pending_.size(), that->ready_.size(), that->items_, std::chrono::duration_cast<std::chrono::milliseconds>(earliest - start).count());
+
+        // dispatch to queues with ready items
+        guard.unlock();
+        for (auto& q : that->ready_) {
+          q->dispatch();
+        }
+        guard.lock();
+        that->ready_.clear();
+      }
+      that->joined_ = true;
+    } catch(...) {
+      //
+      // block any more items from being enqueued, all new items will be sent
+      // this error on the same context that calls submit
+      //
+      // also dispatch errors to all items already in the queues from the
+      // time thread
+      std::unique_lock<std::mutex> guard{that->lock_};
+      // creates a dependency that std::exception_ptr must be ConvertibleTo E
+      // TODO: break this dependency rather than enforce it with concepts
+      that->error_ = std::current_exception();
+      for(auto& q : that->pending_) {
+        while(!q->heap_.empty()) {
+          try {
+            auto what{std::move(q->top().what)};
+            q->heap_.pop();
+            --that->items_;
+            guard.unlock();
+            ::pushmi::set_error(what, *that->error_);
+            guard.lock();
+          } catch(...) {
+            // we already have an error, ignore this one.
+          }
+        }
+      }
+    }
+  }
+
+  void insert(std::shared_ptr<time_source_queue_base<E, TP>> queue, time_heap_item<E, TP> item){
+    std::unique_lock<std::mutex> guard{this->lock_};
+
+    // deliver error_ and return
+    if (!!this->error_) {::pushmi::set_error(item.what, *this->error_); return; }
+    // once join() is called, new work queued to the executor is not safe unless it is nested in an existing item.
+    if (!!this->joined_) { std::abort(); };
+
+    queue->heap_.push(std::move(item));
+    ++this->items_;
+
+    if (!queue->dispatching_ && !queue->pending_) {
+      // add queue to pending pending_ list if it is not already there
+      this->pending_.push_back(queue);
+      queue->pending_ = true;
+    }
+
+    if (queue->heap_.top().when < this->earliest_) {
+      // this is the earliest, tell worker to reset earliest_
+      ++this->dirty_;
+      this->wake_.notify_one();
+    }
+  }
+
+};
+
+//
+// the time executor will directly call the executor when the work is due now.
+// the time executor will queue the work to the time ordered heap when the work is due in the future.
+//
+
+template<class E, class TP, class NF, class Executor>
+class time_source_executor {
+  using time_point = std::decay_t<TP>;
+  std::shared_ptr<time_source_shared<E, time_point>> source_;
+  std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue_;
+public:
+  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+
+  time_source_executor(
+    std::shared_ptr<time_source_shared<E, time_point>> source,
+    std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue) :
+    source_(std::move(source)), queue_(std::move(queue)) {}
+
+  auto top() { return queue_->nf_(); }
+  auto executor() { return *this; }
+
+  PUSHMI_TEMPLATE(class TPA, class Out)
+    (requires Regular<TPA> && Receiver<Out, is_single<>>)
+  void submit(TPA tp, Out out) {
+    // queue for later
+    source_->insert(queue_, time_heap_item<E, TP>{tp, any_single<any_time_executor_ref<E, TP>, E>{std::move(out)}});
+  }
+};
+
+//
+// the time executor factory produces a new time ordered queue each time that it is called.
+//
+
+template<class E, class TP, class NF, class ExecutorFactory>
+class time_source_executor_factory_fn {
+  using time_point = std::decay_t<TP>;
+  std::shared_ptr<time_source_shared<E, time_point>> source_;
+  NF nf_;
+  ExecutorFactory ef_;
+public:
+  time_source_executor_factory_fn(
+    std::shared_ptr<time_source_shared<E, time_point>> source,
+    NF nf,
+    ExecutorFactory ef
+  ) : source_(std::move(source)), nf_(std::move(nf)), ef_(std::move(ef)) {}
+  auto operator()(){
+    auto ex = ef_();
+    auto queue = std::make_shared<time_source_queue<E, time_point, NF, decltype(ex)>>(
+      source_,
+      nf_,
+      std::move(ex));
+    return time_source_executor<E, time_point, NF, decltype(ex)>{source_, queue};
+  }
+};
+
+//
+// each time_source is an independent source of timed events
+//
+// a time_source is a time_single_executor factory, it is not an executor itself.
+//
+// each time_source has a single thread that is shared across all the
+// time executors it produces. the thread is used to wait for the next time event.
+// when a time event is ready the thread will use the executor passed into make()
+// to callback on the receiver passed to the time executor submit()
+//
+// passing an executor to time_source.make() will create a time executor factory.
+// the time executor factory is a function that will return a time executor when
+// called with no arguments.
+//
+//
+//
+
+template<class E = std::exception_ptr, class TP = std::chrono::system_clock::time_point>
+class time_source {
+public:
+  using time_point = std::decay_t<TP>;
+private:
+  std::shared_ptr<time_source_shared<E, time_point>> source_;
+public:
+  time_source() : source_(std::make_shared<time_source_shared<E, time_point>>()) {
+    source_->start(source_);
+  };
+
+  PUSHMI_TEMPLATE(class NF, class ExecutorFactory)
+    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
+  auto make(NF nf, ExecutorFactory ef) {
+    return time_source_executor_factory_fn<E, time_point, NF, ExecutorFactory>{source_, std::move(nf), std::move(ef)};
+  }
+
+  void join() {
+    source_->join(source_);
+  }
+};
 } // namespace pushmi
 //#pragma once
 // Copyright (c) 2018-present, Facebook, Inc.
@@ -5782,10 +6792,10 @@ class sender<detail::erase_sender_t, E> {
   }
   struct vtable {
     static void s_op(data&, data*) {}
-    static any_time_executor<E /* hmm, TP will be invasive */> s_executor(data&) { return {}; }
+    static any_executor<E> s_executor(data&) { return {}; }
     static void s_submit(data&, any_none<E>) {}
     void (*op_)(data&, data*) = vtable::s_op;
-    any_time_executor<E> (*executor_)(data&) = vtable::s_executor;
+    any_executor<E> (*executor_)(data&) = vtable::s_executor;
     void (*submit_)(data&, any_none<E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
@@ -5798,8 +6808,8 @@ class sender<detail::erase_sender_t, E> {
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, any_none<E> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
@@ -5818,8 +6828,8 @@ class sender<detail::erase_sender_t, E> {
               std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, any_none<E> out) {
         ::pushmi::submit(
@@ -5853,7 +6863,7 @@ class sender<detail::erase_sender_t, E> {
     new ((void*)this) sender(std::move(that));
     return *this;
   }
-  any_time_executor<E> executor() {
+  any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
   void submit(any_none<E> out) {
@@ -5911,6 +6921,13 @@ class sender<Data, DSF, DEXF> {
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
+};
+
+template <>
+class sender<>
+    : public sender<ignoreSF, trampolineEXF> {
+public:
+  sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6003,7 +7020,7 @@ struct construct_deduced<sender> : make_sender_fn {};
 
 namespace pushmi {
 
-template <class V, class E = std::exception_ptr>
+template <class V, class E>
 class any_single_sender {
   union data {
     void* pobj_ = nullptr;
@@ -6016,10 +7033,10 @@ class any_single_sender {
   }
   struct vtable {
     static void s_op(data&, data*) {}
-    static any_time_executor<E /* hmm, TP will be invasive */> s_executor(data&) { return {}; }
+    static any_executor<E> s_executor(data&) { return {}; }
     static void s_submit(data&, single<V, E>) {}
     void (*op_)(data&, data*) = vtable::s_op;
-    any_time_executor<E> (*executor_)(data&) = vtable::s_executor;
+    any_executor<E> (*executor_)(data&) = vtable::s_executor;
     void (*submit_)(data&, single<V, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
@@ -6032,8 +7049,8 @@ class any_single_sender {
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, single<V, E> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
@@ -6053,8 +7070,8 @@ class any_single_sender {
               std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, single<V, E> out) {
         ::pushmi::submit(
@@ -6090,7 +7107,7 @@ class any_single_sender {
     new ((void*)this) any_single_sender(std::move(that));
     return *this;
   }
-  any_time_executor<E> executor() {
+  any_executor<E> executor() {
     vptr_->executor_(data_);
   }
   void submit(single<V, E> out) {
@@ -6149,6 +7166,13 @@ class single_sender<Data, DSF, DEXF> {
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
+};
+
+template <>
+class single_sender<>
+    : public single_sender<ignoreSF, trampolineEXF> {
+public:
+  single_sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6247,10 +7271,10 @@ class any_flow_single_sender {
   }
   struct vtable {
     static void s_op(data&, data*) {}
-    static any_time_executor<E /* hmm, TP will be invasive */> s_executor(data&) { return {}; }
+    static any_executor<E> s_executor(data&) { return {}; }
     static void s_submit(data&, flow_single<V, PE, E>) {}
     void (*op_)(data&, data*) = vtable::s_op;
-    any_time_executor<E> (*executor_)(data&) = vtable::s_executor;
+    any_executor<E> (*executor_)(data&) = vtable::s_executor;
     void (*submit_)(data&, flow_single<V, PE, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
@@ -6263,8 +7287,8 @@ class any_flow_single_sender {
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, flow_single<V, PE, E> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
@@ -6284,8 +7308,8 @@ class any_flow_single_sender {
               std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, flow_single<V, PE, E> out) {
         ::pushmi::submit(
@@ -6321,7 +7345,7 @@ class any_flow_single_sender {
     new ((void*)this) any_flow_single_sender(std::move(that));
     return *this;
   }
-  any_time_executor<E> executor() {
+  any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
   void submit(flow_single<V, PE, E> out) {
@@ -6380,6 +7404,13 @@ class flow_single_sender<Data, DSF, DEXF> {
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
+};
+
+template <>
+class flow_single_sender<>
+    : public flow_single_sender<ignoreSF, trampolineEXF> {
+public:
+  flow_single_sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6477,10 +7508,10 @@ class any_many_sender {
   }
   struct vtable {
     static void s_op(data&, data*) {}
-    static any_time_executor<E /* hmm, TP will be invasive */> s_executor(data&) { return {}; }
+    static any_executor<E> s_executor(data&) { return {}; }
     static void s_submit(data&, many<V, E>) {}
     void (*op_)(data&, data*) = vtable::s_op;
-    any_time_executor<E> (*executor_)(data&) = vtable::s_executor;
+    any_executor<E> (*executor_)(data&) = vtable::s_executor;
     void (*submit_)(data&, many<V, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
@@ -6493,8 +7524,8 @@ class any_many_sender {
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, many<V, E> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
@@ -6514,8 +7545,8 @@ class any_many_sender {
               std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, many<V, E> out) {
         ::pushmi::submit(
@@ -6551,7 +7582,7 @@ class any_many_sender {
     new ((void*)this) any_many_sender(std::move(that));
     return *this;
   }
-  any_time_executor<E> executor() {
+  any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
   void submit(many<V, E> out) {
@@ -6610,6 +7641,13 @@ class many_sender<Data, DSF, DEXF> {
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
+};
+
+template <>
+class many_sender<>
+    : public many_sender<ignoreSF, trampolineEXF> {
+public:
+  many_sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6708,10 +7746,10 @@ class flow_many_sender<V, PV, PE, E> {
   }
   struct vtable {
     static void s_op(data&, data*) {}
-    static any_time_executor<E /* hmm, TP will be invasive */> s_executor(data&) { return {}; }
+    static any_executor<E> s_executor(data&) { return {}; }
     static void s_submit(data&, any_flow_many<V, PV, PE, E>) {}
     void (*op_)(data&, data*) = vtable::s_op;
-    any_time_executor<E> (*executor_)(data&) = vtable::s_executor;
+    any_executor<E> (*executor_)(data&) = vtable::s_executor;
     void (*submit_)(data&, any_flow_many<V, PV, PE, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
@@ -6724,8 +7762,8 @@ class flow_many_sender<V, PV, PE, E> {
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, any_flow_many<V, PV, PE, E> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
@@ -6745,8 +7783,8 @@ class flow_many_sender<V, PV, PE, E> {
               std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, any_flow_many<V, PV, PE, E> out) {
         ::pushmi::submit(
@@ -6782,7 +7820,7 @@ class flow_many_sender<V, PV, PE, E> {
     new ((void*)this) flow_many_sender(std::move(that));
     return *this;
   }
-  any_time_executor<E> executor() {
+  any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
   void submit(any_flow_many<V, PV, PE, E> out) {
@@ -6841,6 +7879,13 @@ class flow_many_sender<Data, DSF, DEXF> {
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
+};
+
+template <>
+class flow_many_sender<>
+    : public flow_many_sender<ignoreSF, trampolineEXF> {
+public:
+  flow_many_sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7073,7 +8118,7 @@ auto submit_transform_out(SDSF, TSDSF tsdsf) {
   return on_submit(submit_transform_out_4<In, TSDSF>{std::move(tsdsf)});
 }
 
-template <class Cardinality, bool IsTime = false, bool IsFlow = false>
+template <class Cardinality, bool IsConstrained = false, bool IsTime = false, bool IsFlow = false>
 struct make_sender;
 template <>
 struct make_sender<is_none<>> : construct_deduced<sender> {};
@@ -7082,11 +8127,13 @@ struct make_sender<is_single<>> : construct_deduced<single_sender> {};
 template <>
 struct make_sender<is_many<>> : construct_deduced<many_sender> {};
 template <>
-struct make_sender<is_single<>, false, true> : construct_deduced<flow_single_sender> {};
+struct make_sender<is_single<>, false, false, true> : construct_deduced<flow_single_sender> {};
 template <>
-struct make_sender<is_many<>, false, true> : construct_deduced<flow_many_sender> {};
+struct make_sender<is_many<>, false, false, true> : construct_deduced<flow_many_sender> {};
 template <>
-struct make_sender<is_single<>, true, false> : construct_deduced<time_single_sender> {};
+struct make_sender<is_single<>, true, true, false> : construct_deduced<time_single_sender> {};
+template <>
+struct make_sender<is_single<>, true, false, false> : construct_deduced<constrained_single_sender> {};
 
 PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   PUSHMI_TEMPLATE(class In, class... FN)
@@ -7095,6 +8142,7 @@ PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
     using MakeSender =
         make_sender<
             property_set_index_t<properties_t<In>, is_silent<>>,
+            property_query_v<properties_t<In>, is_constrained<>>,
             property_query_v<properties_t<In>, is_time<>>,
             property_query_v<properties_t<In>, is_flow<>>>;
     return MakeSender{}(std::move(in), (FN&&) fn...);
@@ -7217,7 +8265,7 @@ private:
   struct impl {
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
-    auto operator()(In in) const {
+    auto operator()(In& in) const {
       return ::pushmi::executor(in);
     }
   };
@@ -7234,7 +8282,7 @@ private:
     Out out_;
     PUSHMI_TEMPLATE (class In)
       (requires SenderTo<In, Out>)
-    void operator()(In in) {
+    void operator()(In& in) {
       ::pushmi::submit(in, std::move(out_));
     }
   };
@@ -7244,7 +8292,7 @@ private:
     Out out_;
     PUSHMI_TEMPLATE (class In)
       (requires TimeSenderTo<In, Out>)
-    void operator()(In in) {
+    void operator()(In& in) {
       ::pushmi::submit(in, std::move(tp_), std::move(out_));
     }
   };
@@ -7261,12 +8309,27 @@ public:
   }
 };
 
+struct top_fn {
+private:
+  struct impl {
+    PUSHMI_TEMPLATE (class In)
+      (requires ConstrainedSender<In>)
+    auto operator()(In& in) const {
+      return ::pushmi::top(in);
+    }
+  };
+public:
+  auto operator()() const {
+    return impl{};
+  }
+};
+
 struct now_fn {
 private:
   struct impl {
     PUSHMI_TEMPLATE (class In)
       (requires TimeSender<In>)
-    auto operator()(In in) const {
+    auto operator()(In& in) const {
       return ::pushmi::now(in);
     }
   };
@@ -7288,7 +8351,7 @@ PUSHMI_INLINE_VAR constexpr detail::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr detail::executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr detail::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr detail::now_fn now{};
-PUSHMI_INLINE_VAR constexpr detail::now_fn top{};
+PUSHMI_INLINE_VAR constexpr detail::top_fn top{};
 
 } // namespace extension_operators
 
@@ -7327,6 +8390,11 @@ PUSHMI_CONCEPT_DEF(
 );
 PUSHMI_CONCEPT_DEF(
   template (class In, class ... AN)
+  (concept AutoConstrainedSenderTo)(In, AN...),
+    ConstrainedSenderTo<In, receiver_type_t<In, AN...>> && not Time<In>
+);
+PUSHMI_CONCEPT_DEF(
+  template (class In, class ... AN)
   (concept AutoTimeSenderTo)(In, AN...),
     TimeSenderTo<In, receiver_type_t<In, AN...>>
 );
@@ -7345,6 +8413,13 @@ private:
     In operator()(In in) {
       auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
+      return in;
+    }
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoConstrainedSenderTo<In, AN...>)
+    In operator()(In in) {
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
+      ::pushmi::submit(in, ::pushmi::top(in), std::move(out));
       return in;
     }
     PUSHMI_TEMPLATE(class In)
@@ -7413,9 +8488,93 @@ public:
 struct blocking_submit_fn {
 private:
   struct lock_state {
-    bool done = false;
+    bool done{false};
+    std::atomic<int> nested{0};
     std::mutex lock;
     std::condition_variable signaled;
+  };
+  template<class Out>
+  struct nested_receiver_impl;
+  PUSHMI_TEMPLATE (class Exec)
+    (requires Sender<Exec> && Executor<Exec>)
+  struct nested_executor_impl {
+    nested_executor_impl(lock_state* state, Exec ex) :
+      state_(state),
+      ex_(std::move(ex)) {}
+    lock_state* state_;
+    Exec ex_;
+
+    using properties = properties_t<Exec>;
+
+    auto executor() { return ::pushmi::executor(ex_); }
+
+    PUSHMI_TEMPLATE (class CV, class Out)
+      (requires Receiver<Out> && Constrained<Exec>)
+    auto top() { return ::pushmi::top(ex_); }
+
+    PUSHMI_TEMPLATE (class CV, class Out)
+      (requires Receiver<Out> && Constrained<Exec>)
+    void submit(CV cv, Out out) {
+      ++state_->nested;
+      ::pushmi::submit(ex_, cv, nested_receiver_impl<Out>{state_, std::move(out)});
+    }
+
+    PUSHMI_TEMPLATE (class Out)
+      (requires Receiver<Out> && not Constrained<Exec>)
+    void submit(Out out) {
+      ++state_->nested;
+      ::pushmi::submit(ex_, nested_receiver_impl<Out>{state_, std::move(out)});
+    }
+  };
+  template<class Out>
+  struct nested_receiver_impl {
+    nested_receiver_impl(lock_state* state, Out out) :
+      state_(state),
+      out_(std::move(out)) {}
+    lock_state* state_;
+    Out out_;
+
+    using properties = properties_t<Out>;
+
+    template<class V>
+    void value(V&& v) {
+      std::exception_ptr e;
+      try{
+        using executor_t = remove_cvref_t<V>;
+        auto n = nested_executor_impl<executor_t>{state_, (V&&) v};
+        ::pushmi::set_value(out_, any_executor_ref<>{n});
+      }
+      catch(...) {e = std::current_exception();}
+      if(--state_->nested == 0) {
+        state_->signaled.notify_all();
+      }
+      if (e) {std::rethrow_exception(e);}
+    }
+    template<class E>
+    void error(E&& e) noexcept {
+      ::pushmi::set_error(out_, (E&&) e);
+      if(--state_->nested == 0) {
+        state_->signaled.notify_all();
+      }
+    }
+    void done() {
+      std::exception_ptr e;
+      try{
+        ::pushmi::set_done(out_);
+      }
+      catch(...) {e = std::current_exception();}
+      if(--state_->nested == 0) {
+        state_->signaled.notify_all();
+      }
+      if (e) {std::rethrow_exception(e);}
+    }
+  };
+  struct nested_executor_impl_fn {
+    PUSHMI_TEMPLATE (class Exec)
+      (requires Executor<Exec>)
+    auto operator()(lock_state* state, Exec ex) const {
+      return nested_executor_impl<Exec>{state, std::move(ex)};
+    }
   };
   struct on_value_impl {
     lock_state* state_;
@@ -7423,18 +8582,17 @@ private:
       (requires Receiver<Out, is_single<>>)
     void operator()(Out out, Value&& v) const {
       using V = remove_cvref_t<Value>;
-      PUSHMI_IF_CONSTEXPR( ((bool)Time<V>) (
-        // to keep the blocking semantics, make sure that the
-        // nested submits block here to prevent a spurious
-        // completion signal
-        auto nest = ::pushmi::nested_trampoline();
-        ::pushmi::submit(nest, ::pushmi::now(nest), std::move(out));
+      ++state_->nested;
+      PUSHMI_IF_CONSTEXPR( ((bool)Executor<V>) (
+        id(::pushmi::set_value)(out, id(nested_executor_impl_fn{})(state_, id((Value&&) v)));
       ) else (
-        ::pushmi::set_value(out, id((Value&&) v));
+        id(::pushmi::set_value)(out, id((Value&&) v));
       ))
       std::unique_lock<std::mutex> guard{state_->lock};
       state_->done = true;
-      state_->signaled.notify_all();
+      if (--state_->nested == 0){
+        state_->signaled.notify_all();
+      }
     }
   };
   struct on_next_impl {
@@ -7467,7 +8625,7 @@ private:
       state_->signaled.notify_all();
     }
   };
-  template <bool IsTimeSender, class In>
+  template <bool IsConstrainedSender, bool IsTimeSender, class In>
   struct submit_impl {
     PUSHMI_TEMPLATE(class Out)
       (requires Receiver<Out>)
@@ -7475,7 +8633,11 @@ private:
       PUSHMI_IF_CONSTEXPR( (IsTimeSender) (
         id(::pushmi::submit)(in, id(::pushmi::now)(in), std::move(out));
       ) else (
-        id(::pushmi::submit)(in, std::move(out));
+        PUSHMI_IF_CONSTEXPR( (IsConstrainedSender) (
+          id(::pushmi::submit)(in, id(::pushmi::top)(in), std::move(out));
+        ) else (
+          id(::pushmi::submit)(in, std::move(out));
+        ))
       ))
     }
   };
@@ -7486,11 +8648,11 @@ private:
   struct fn {
     std::tuple<AN...> args_;
 
-    template <bool IsTimeSender, class In>
+    template <bool IsConstrainedSender, bool IsTimeSender, class In>
     In impl_(In in) {
       lock_state state{};
 
-      auto submit = submit_impl<IsTimeSender, In>{};
+      auto submit = submit_impl<IsConstrainedSender, IsTimeSender, In>{};
       PUSHMI_IF_CONSTEXPR( ((bool)Many<In>) (
         auto out{::pushmi::detail::receiver_from_fn<In>()(
           std::move(args_),
@@ -7511,7 +8673,7 @@ private:
 
       std::unique_lock<std::mutex> guard{state.lock};
       state.signaled.wait(guard, [&]{
-        return state.done;
+        return state.done && state.nested.load() == 0;
       });
       return in;
     }
@@ -7519,12 +8681,17 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoSenderTo<In, AN...>)
     In operator()(In in) {
-      return this->impl_<false>(std::move(in));
+      return this->impl_<false, false>(std::move(in));
+    }
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoConstrainedSenderTo<In, AN...>)
+    In operator()(In in) {
+      return this->impl_<true, false>(std::move(in));
     }
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
-      return this->impl_<true>(std::move(in));
+      return this->impl_<true, true>(std::move(in));
     }
   };
 public:
@@ -7876,7 +9043,6 @@ struct flow_from_up {
     if (requested < 1) {return;}
     // submit work to exec
     ::pushmi::submit(p->exec,
-      ::pushmi::now(p->exec),
       make_single([p = p, requested](auto) {
         auto remaining = requested;
         // this loop is structured to work when there is re-entrancy
@@ -7897,7 +9063,6 @@ struct flow_from_up {
   void error(E e) noexcept {
     p->stop.store(true);
     ::pushmi::submit(p->exec,
-      ::pushmi::now(p->exec),
       make_single([p = p](auto) {
         ::pushmi::set_done(p->out);
       }));
@@ -7906,7 +9071,6 @@ struct flow_from_up {
   void done() {
     p->stop.store(true);
     ::pushmi::submit(p->exec,
-      ::pushmi::now(p->exec),
       make_single([p = p](auto) {
         ::pushmi::set_done(p->out);
       }));
@@ -7927,7 +9091,6 @@ private:
       auto p = std::make_shared<Producer>(begin_, end_, std::move(out), exec_, false);
 
       ::pushmi::submit(exec_,
-        ::pushmi::now(exec_),
         make_single([p](auto exec) {
           // pass reference for cancellation.
           ::pushmi::set_starting(p->out, make_many(flow_from_up<Producer>{p}));
@@ -7955,13 +9118,13 @@ public:
       DerivedFrom<
           typename std::iterator_traits<I>::iterator_category,
           std::forward_iterator_tag> &&
-      Sender<Exec> && Time<Exec> && Single<Exec>)
+      Sender<Exec, is_single<>, is_executor<>>)
   auto operator()(I begin, S end, Exec exec) const {
     return make_flow_many_sender(out_impl<I, S, Exec>{begin, end, exec});
   }
 
   PUSHMI_TEMPLATE(class R, class Exec)
-    (requires Range<R> && Sender<Exec> && Time<Exec> && Single<Exec>)
+    (requires Range<R> && Sender<Exec, is_single<>, is_executor<>>)
   auto operator()(R&& range, Exec exec) const {
     return (*this)(std::begin(range), std::end(range), exec);
   }
@@ -8132,7 +9295,7 @@ private:
       (requires SenderTo<In, Out>)
     void operator()(In& in, Out out) const {
       auto exec = ef_();
-      ::pushmi::submit(exec, ::pushmi::now(exec),
+      ::pushmi::submit(exec,
         ::pushmi::make_single(on_value_impl<In, Out>{in, std::move(out)})
       );
     }
@@ -8177,7 +9340,7 @@ private:
   };
 public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&>)
+    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
   auto operator()(ExecutorFactory ef) const {
     return in_impl<ExecutorFactory>{std::move(ef)};
   }
@@ -8799,7 +9962,6 @@ private:
     void operator()(Data& data, V&& v) const {
       ::pushmi::submit(
         data.exec,
-        ::pushmi::now(data.exec),
         ::pushmi::make_single(
           impl<std::decay_t<V>>{(V&&) v, std::move(static_cast<Out&>(data))}
         )
@@ -8820,7 +9982,6 @@ private:
     void operator()(Data& data, E e) const noexcept {
       ::pushmi::submit(
         data.exec,
-        ::pushmi::now(data.exec),
         ::pushmi::make_single(
           impl<E>{std::move(e), std::move(static_cast<Out&>(data))}
         )
@@ -8839,7 +10000,6 @@ private:
     void operator()(Data& data) const {
       ::pushmi::submit(
         data.exec,
-        ::pushmi::now(data.exec),
         ::pushmi::make_single(
           impl{std::move(static_cast<Out&>(data))}
         )
@@ -8886,7 +10046,7 @@ private:
   };
 public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&>)
+    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
   auto operator()(ExecutorFactory ef) const {
     return in_impl<ExecutorFactory>{std::move(ef)};
   }

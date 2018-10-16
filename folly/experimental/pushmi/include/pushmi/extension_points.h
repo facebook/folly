@@ -56,15 +56,15 @@ void submit(SD& sd, Out out) noexcept(noexcept(sd.submit(std::move(out)))) {
 }
 
 PUSHMI_TEMPLATE (class SD)
-  (requires requires (std::declval<SD&>().now()))
-auto now(SD& sd) noexcept(noexcept(sd.now())) {
-  return sd.now();
+  (requires requires (std::declval<SD&>().top()))
+auto top(SD& sd) noexcept(noexcept(sd.top())) {
+  return sd.top();
 }
 
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>().submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>().now()),
+        std::declval<TP(&)(TP)>()(std::declval<SD&>().top()),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -116,15 +116,15 @@ void submit(SD& sd, Out out) noexcept(noexcept(sd->submit(std::move(out)))) {
 }
 
 PUSHMI_TEMPLATE (class SD)
-  (requires requires (std::declval<SD&>()->now()))
-auto now(SD& sd) noexcept(noexcept(sd->now())) {
-  return sd->now();
+  (requires requires (std::declval<SD&>()->top()))
+auto top(SD& sd) noexcept(noexcept(sd->top())) {
+  return sd->top();
 }
 
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>()->submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>()->now()),
+        std::declval<TP(&)(TP)>()(std::declval<SD&>()->top()),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -203,15 +203,15 @@ void submit(std::reference_wrapper<SD> sd, Out out) noexcept(
   submit(sd.get(), std::move(out));
 }
 PUSHMI_TEMPLATE (class SD)
-  (requires requires ( now(std::declval<SD&>()) ))
-auto now(std::reference_wrapper<SD> sd) noexcept(noexcept(now(sd.get()))) {
-  return now(sd.get());
+  (requires requires ( top(std::declval<SD&>()) ))
+auto top(std::reference_wrapper<SD> sd) noexcept(noexcept(top(sd.get()))) {
+  return top(sd.get());
 }
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     submit(
       std::declval<SD&>(),
-      std::declval<TP(&)(TP)>()(now(std::declval<SD&>())),
+      std::declval<TP(&)(TP)>()(top(std::declval<SD&>())),
       std::declval<Out>())
   ))
 void submit(std::reference_wrapper<SD> sd, TP tp, Out out)
@@ -327,13 +327,13 @@ struct do_submit_fn {
   }
 };
 
-struct get_now_fn {
+struct get_top_fn {
   PUSHMI_TEMPLATE (class SD)
     (requires requires (
-      now(std::declval<SD&>())
+      top(std::declval<SD&>())
     ))
-  auto operator()(SD&& sd) const noexcept(noexcept(now(sd))) {
-    return now(sd);
+  auto operator()(SD&& sd) const noexcept(noexcept(top(sd))) {
+    return top(sd);
   }
 };
 
@@ -346,8 +346,8 @@ PUSHMI_INLINE_VAR constexpr __adl::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr __adl::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr __adl::get_executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
-PUSHMI_INLINE_VAR constexpr __adl::get_now_fn now{};
-PUSHMI_INLINE_VAR constexpr __adl::get_now_fn top{};
+PUSHMI_INLINE_VAR constexpr __adl::get_top_fn now{};
+PUSHMI_INLINE_VAR constexpr __adl::get_top_fn top{};
 
 template <class T>
 struct property_set_traits<std::promise<T>> {

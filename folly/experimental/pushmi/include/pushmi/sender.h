@@ -26,10 +26,10 @@ class sender<detail::erase_sender_t, E> {
   }
   struct vtable {
     static void s_op(data&, data*) {}
-    static any_time_executor<E /* hmm, TP will be invasive */> s_executor(data&) { return {}; }
+    static any_executor<E> s_executor(data&) { return {}; }
     static void s_submit(data&, any_none<E>) {}
     void (*op_)(data&, data*) = vtable::s_op;
-    any_time_executor<E> (*executor_)(data&) = vtable::s_executor;
+    any_executor<E> (*executor_)(data&) = vtable::s_executor;
     void (*submit_)(data&, any_none<E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
@@ -42,8 +42,8 @@ class sender<detail::erase_sender_t, E> {
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, any_none<E> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
@@ -62,8 +62,8 @@ class sender<detail::erase_sender_t, E> {
               std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static any_time_executor<E> executor(data& src) {
-        return any_time_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+      static any_executor<E> executor(data& src) {
+        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, any_none<E> out) {
         ::pushmi::submit(
@@ -97,7 +97,7 @@ class sender<detail::erase_sender_t, E> {
     new ((void*)this) sender(std::move(that));
     return *this;
   }
-  any_time_executor<E> executor() {
+  any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
   void submit(any_none<E> out) {
@@ -155,6 +155,13 @@ class sender<Data, DSF, DEXF> {
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
+};
+
+template <>
+class sender<>
+    : public sender<ignoreSF, trampolineEXF> {
+public:
+  sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

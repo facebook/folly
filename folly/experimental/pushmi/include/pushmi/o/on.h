@@ -29,7 +29,7 @@ private:
       (requires SenderTo<In, Out>)
     void operator()(In& in, Out out) const {
       auto exec = ef_();
-      ::pushmi::submit(exec, ::pushmi::now(exec),
+      ::pushmi::submit(exec,
         ::pushmi::make_single(on_value_impl<In, Out>{in, std::move(out)})
       );
     }
@@ -74,7 +74,7 @@ private:
   };
 public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&>)
+    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
   auto operator()(ExecutorFactory ef) const {
     return in_impl<ExecutorFactory>{std::move(ef)};
   }

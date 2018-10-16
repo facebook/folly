@@ -32,6 +32,11 @@ PUSHMI_CONCEPT_DEF(
 );
 PUSHMI_CONCEPT_DEF(
   template (class In, class ... AN)
+  (concept AutoConstrainedSenderTo)(In, AN...),
+    ConstrainedSenderTo<In, receiver_type_t<In, AN...>> && not Time<In>
+);
+PUSHMI_CONCEPT_DEF(
+  template (class In, class ... AN)
   (concept AutoTimeSenderTo)(In, AN...),
     TimeSenderTo<In, receiver_type_t<In, AN...>>
 );
@@ -50,6 +55,13 @@ private:
     In operator()(In in) {
       auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
+      return in;
+    }
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoConstrainedSenderTo<In, AN...>)
+    In operator()(In in) {
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
+      ::pushmi::submit(in, ::pushmi::top(in), std::move(out));
       return in;
     }
     PUSHMI_TEMPLATE(class In)
@@ -118,9 +130,93 @@ public:
 struct blocking_submit_fn {
 private:
   struct lock_state {
-    bool done = false;
+    bool done{false};
+    std::atomic<int> nested{0};
     std::mutex lock;
     std::condition_variable signaled;
+  };
+  template<class Out>
+  struct nested_receiver_impl;
+  PUSHMI_TEMPLATE (class Exec)
+    (requires Sender<Exec> && Executor<Exec>)
+  struct nested_executor_impl {
+    nested_executor_impl(lock_state* state, Exec ex) :
+      state_(state),
+      ex_(std::move(ex)) {}
+    lock_state* state_;
+    Exec ex_;
+
+    using properties = properties_t<Exec>;
+
+    auto executor() { return ::pushmi::executor(ex_); }
+
+    PUSHMI_TEMPLATE (class CV, class Out)
+      (requires Receiver<Out> && Constrained<Exec>)
+    auto top() { return ::pushmi::top(ex_); }
+
+    PUSHMI_TEMPLATE (class CV, class Out)
+      (requires Receiver<Out> && Constrained<Exec>)
+    void submit(CV cv, Out out) {
+      ++state_->nested;
+      ::pushmi::submit(ex_, cv, nested_receiver_impl<Out>{state_, std::move(out)});
+    }
+
+    PUSHMI_TEMPLATE (class Out)
+      (requires Receiver<Out> && not Constrained<Exec>)
+    void submit(Out out) {
+      ++state_->nested;
+      ::pushmi::submit(ex_, nested_receiver_impl<Out>{state_, std::move(out)});
+    }
+  };
+  template<class Out>
+  struct nested_receiver_impl {
+    nested_receiver_impl(lock_state* state, Out out) :
+      state_(state),
+      out_(std::move(out)) {}
+    lock_state* state_;
+    Out out_;
+
+    using properties = properties_t<Out>;
+
+    template<class V>
+    void value(V&& v) {
+      std::exception_ptr e;
+      try{
+        using executor_t = remove_cvref_t<V>;
+        auto n = nested_executor_impl<executor_t>{state_, (V&&) v};
+        ::pushmi::set_value(out_, any_executor_ref<>{n});
+      }
+      catch(...) {e = std::current_exception();}
+      if(--state_->nested == 0) {
+        state_->signaled.notify_all();
+      }
+      if (e) {std::rethrow_exception(e);}
+    }
+    template<class E>
+    void error(E&& e) noexcept {
+      ::pushmi::set_error(out_, (E&&) e);
+      if(--state_->nested == 0) {
+        state_->signaled.notify_all();
+      }
+    }
+    void done() {
+      std::exception_ptr e;
+      try{
+        ::pushmi::set_done(out_);
+      }
+      catch(...) {e = std::current_exception();}
+      if(--state_->nested == 0) {
+        state_->signaled.notify_all();
+      }
+      if (e) {std::rethrow_exception(e);}
+    }
+  };
+  struct nested_executor_impl_fn {
+    PUSHMI_TEMPLATE (class Exec)
+      (requires Executor<Exec>)
+    auto operator()(lock_state* state, Exec ex) const {
+      return nested_executor_impl<Exec>{state, std::move(ex)};
+    }
   };
   struct on_value_impl {
     lock_state* state_;
@@ -128,18 +224,17 @@ private:
       (requires Receiver<Out, is_single<>>)
     void operator()(Out out, Value&& v) const {
       using V = remove_cvref_t<Value>;
-      PUSHMI_IF_CONSTEXPR( ((bool)Time<V>) (
-        // to keep the blocking semantics, make sure that the
-        // nested submits block here to prevent a spurious
-        // completion signal
-        auto nest = ::pushmi::nested_trampoline();
-        ::pushmi::submit(nest, ::pushmi::now(nest), std::move(out));
+      ++state_->nested;
+      PUSHMI_IF_CONSTEXPR( ((bool)Executor<V>) (
+        id(::pushmi::set_value)(out, id(nested_executor_impl_fn{})(state_, id((Value&&) v)));
       ) else (
-        ::pushmi::set_value(out, id((Value&&) v));
+        id(::pushmi::set_value)(out, id((Value&&) v));
       ))
       std::unique_lock<std::mutex> guard{state_->lock};
       state_->done = true;
-      state_->signaled.notify_all();
+      if (--state_->nested == 0){
+        state_->signaled.notify_all();
+      }
     }
   };
   struct on_next_impl {
@@ -172,7 +267,7 @@ private:
       state_->signaled.notify_all();
     }
   };
-  template <bool IsTimeSender, class In>
+  template <bool IsConstrainedSender, bool IsTimeSender, class In>
   struct submit_impl {
     PUSHMI_TEMPLATE(class Out)
       (requires Receiver<Out>)
@@ -180,7 +275,11 @@ private:
       PUSHMI_IF_CONSTEXPR( (IsTimeSender) (
         id(::pushmi::submit)(in, id(::pushmi::now)(in), std::move(out));
       ) else (
-        id(::pushmi::submit)(in, std::move(out));
+        PUSHMI_IF_CONSTEXPR( (IsConstrainedSender) (
+          id(::pushmi::submit)(in, id(::pushmi::top)(in), std::move(out));
+        ) else (
+          id(::pushmi::submit)(in, std::move(out));
+        ))
       ))
     }
   };
@@ -191,11 +290,11 @@ private:
   struct fn {
     std::tuple<AN...> args_;
 
-    template <bool IsTimeSender, class In>
+    template <bool IsConstrainedSender, bool IsTimeSender, class In>
     In impl_(In in) {
       lock_state state{};
 
-      auto submit = submit_impl<IsTimeSender, In>{};
+      auto submit = submit_impl<IsConstrainedSender, IsTimeSender, In>{};
       PUSHMI_IF_CONSTEXPR( ((bool)Many<In>) (
         auto out{::pushmi::detail::receiver_from_fn<In>()(
           std::move(args_),
@@ -216,7 +315,7 @@ private:
 
       std::unique_lock<std::mutex> guard{state.lock};
       state.signaled.wait(guard, [&]{
-        return state.done;
+        return state.done && state.nested.load() == 0;
       });
       return in;
     }
@@ -224,12 +323,17 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoSenderTo<In, AN...>)
     In operator()(In in) {
-      return this->impl_<false>(std::move(in));
+      return this->impl_<false, false>(std::move(in));
+    }
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoConstrainedSenderTo<In, AN...>)
+    In operator()(In in) {
+      return this->impl_<true, false>(std::move(in));
     }
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
-      return this->impl_<true>(std::move(in));
+      return this->impl_<true, true>(std::move(in));
     }
   };
 public:

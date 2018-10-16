@@ -10,6 +10,7 @@ using namespace std::literals;
 
 #include "pushmi/entangle.h"
 #include "pushmi/new_thread.h"
+#include "pushmi/time_source.h"
 #include "pushmi/trampoline.h"
 
 using namespace pushmi::aliases;
@@ -102,113 +103,14 @@ SCENARIO("flow single immediate cancellation", "[flow][sender]") {
   }
 }
 
-SCENARIO("flow single cancellation trampoline", "[flow][sender]") {
-  auto tr = mi::trampoline();
-  using TR = decltype(tr);
-  int signals = 0;
-
-  GIVEN("A flow single sender") {
-    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
-      // boolean cancellation
-      bool stop = false;
-      auto set_stop = [](auto& stop) {
-        if (!!stop) {
-          *stop = true;
-        }
-      };
-      auto tokens = mi::shared_entangle(stop, set_stop);
-
-      using Stopper = decltype(tokens.second);
-      struct Data : mi::none<> {
-        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
-        Stopper stopper;
-      };
-      auto up = mi::MAKE(none)(
-          Data{std::move(tokens.second)},
-          [&](auto& data, auto e) noexcept {
-            signals += 100000;
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          },
-          [&](auto& data) {
-            signals += 10000;
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          });
-
-      tr |
-          op::submit([out = std::move(out),
-                      up = std::move(up),
-                      stoppee = std::move(tokens.first)](auto tr) mutable {
-            // pass reference for cancellation.
-            ::mi::set_starting(out, std::move(up));
-
-            // submit work to happen later
-            tr |
-                op::submit_after(
-                    100ms,
-                    [out = std::move(out),
-                     stoppee = std::move(stoppee)](auto) mutable {
-                      // check boolean to select signal
-                      auto both = lock_both(stoppee);
-                      if (!!both.first && !*(both.first)) {
-                        ::mi::set_value(out, 42);
-                      } else {
-                        // cancellation is not an error
-                        ::mi::set_done(out);
-                      }
-                    });
-          });
-    });
-
-    WHEN("submit is applied and cancels the producer") {
-      f |
-          op::submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // stop producer before it is scheduled to run
-              mi::on_starting([&](auto up) {
-                signals += 10;
-                tr | op::submit_after(50ms, [up = std::move(up)](auto) mutable {
-                  ::mi::set_done(up);
-                });
-              }));
-
-      THEN(
-          "the starting, up.done and out.done signals are each recorded once") {
-        REQUIRE(signals == 10011);
-      }
-    }
-
-    WHEN("submit is applied and cancels the producer late") {
-      f |
-          op::submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // do not stop producer before it is scheduled to run
-              mi::on_starting([&](auto up) {
-                signals += 10;
-                tr |
-                    op::submit_after(250ms, [up = std::move(up)](auto) mutable {
-                      ::mi::set_done(up);
-                    });
-              }));
-
-      THEN(
-          "the starting, up.done and out.value signals are each recorded once") {
-        REQUIRE(signals == 10110);
-      }
-    }
-  }
-}
-
 SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
   auto nt = mi::new_thread();
   using NT = decltype(nt);
+  auto time = mi::time_source<>{};
+  auto tnt = time.make(mi::systemNowF{}, [nt](){ return nt; })();
+  auto tcncl = time.make(mi::systemNowF{}, [nt](){ return nt; })();
   std::atomic<int> signals{0};
-  auto at = nt.now() + 200ms;
+  auto at = mi::now(tnt) + 200ms;
 
   GIVEN("A flow single sender") {
     auto f = mi::MAKE(flow_single_sender)([&](auto out) {
@@ -240,16 +142,16 @@ SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
           });
 
       // make all the signals come from the same thread
-      nt |
+      tnt |
           op::submit([stoppee = std::move(tokens.first),
                       up = std::move(up),
                       out = std::move(out),
-                      at](auto nt) mutable {
+                      at](auto tnt) mutable {
             // pass reference for cancellation.
             ::mi::set_starting(out, std::move(up));
 
             // submit work to happen later
-            nt |
+            tnt |
                 op::submit_at(
                     at,
                     [stoppee = std::move(stoppee),
@@ -276,7 +178,7 @@ SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
               // stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
-                nt |
+                tcncl |
                     op::submit_at(
                         at - 50ms, [up = std::move(up)](auto) mutable {
                           ::mi::set_done(up);
@@ -303,7 +205,7 @@ SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
               // do not stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
-                nt |
+                tcncl |
                     op::submit_at(
                         at + 50ms, [up = std::move(up)](auto) mutable {
                           ::mi::set_done(up);
@@ -328,7 +230,7 @@ SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
       for (;;) {
         signals = 0;
         // set completion time to be in 100ms
-        at = nt.now() + 100ms;
+        at = mi::now(tnt) + 100ms;
         {
         f |
             op::blocking_submit(
@@ -338,14 +240,14 @@ SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
                 // stop producer at the same time that it is scheduled to run
                 mi::on_starting([&](auto up) {
                   signals += 10;
-                  nt | op::submit_at(at, [up = std::move(up)](auto) mutable {
+                  tcncl | op::submit_at(at, [up = std::move(up)](auto) mutable {
                     ::mi::set_done(up);
                   });
                 }));
         }
 
         // make sure any cancellation signal has completed
-        std::this_thread::sleep_for(10ms);
+        std::this_thread::sleep_for(100ms);
 
         // accumulate known signals
         ++total;
@@ -371,14 +273,19 @@ SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
         continue;
       }
     }
+
+    time.join();
   }
 }
 
 SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
   auto nt = mi::new_thread();
   using NT = decltype(nt);
+  auto time = mi::time_source<>{};
+  auto tnt = time.make(mi::systemNowF{}, [nt](){ return nt; })();
+  auto tcncl = time.make(mi::systemNowF{}, [nt](){ return nt; })();
   std::atomic<int> signals{0};
-  auto at = nt.now() + 200ms;
+  auto at = mi::now(tnt) + 200ms;
 
   GIVEN("A flow single sender") {
     auto f = mi::MAKE(flow_single_sender)([&](auto out) {
@@ -410,16 +317,16 @@ SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
           });
 
       // make all the signals come from the same thread
-      nt |
+      tnt |
           op::submit([stoppee = std::move(tokens.first),
                       up = std::move(up),
                       out = std::move(out),
-                      at](auto nt) mutable {
+                      at](auto tnt) mutable {
             // pass reference for cancellation.
             ::mi::set_starting(out, std::move(up));
 
             // submit work to happen later
-            nt |
+            tnt |
                 op::submit_at(
                     at,
                     [stoppee = std::move(stoppee),
@@ -446,7 +353,7 @@ SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
               // stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
-                nt |
+                tcncl |
                     op::submit_at(
                         at - 50ms, [up = std::move(up)](auto) mutable {
                           ::mi::set_done(up);
@@ -473,7 +380,7 @@ SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
               // do not stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
-                nt |
+                tcncl |
                     op::submit_at(
                         at + 50ms, [up = std::move(up)](auto) mutable {
                           ::mi::set_done(up);
@@ -498,7 +405,7 @@ SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
       for (;;) {
         signals = 0;
         // set completion time to be in 100ms
-        at = nt.now() + 100ms;
+        at = mi::now(tnt) + 100ms;
         {
         f |
             op::blocking_submit(
@@ -508,14 +415,14 @@ SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
                 // stop producer at the same time that it is scheduled to run
                 mi::on_starting([&](auto up) {
                   signals += 10;
-                  nt | op::submit_at(at, [up = std::move(up)](auto) mutable {
+                  tcncl | op::submit_at(at, [up = std::move(up)](auto) mutable {
                     ::mi::set_done(up);
                   });
                 }));
         }
 
         // make sure any cancellation signal has completed
-        std::this_thread::sleep_for(10ms);
+        std::this_thread::sleep_for(200ms);
 
         // accumulate known signals
         ++total;
@@ -541,5 +448,7 @@ SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
         continue;
       }
     }
+
+    time.join();
   }
 }

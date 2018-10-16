@@ -24,21 +24,17 @@ using std::experimental::static_thread_pool;
 namespace execution = std::experimental::execution;
 
 template<class Executor>
-struct pool_time_executor {
-  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+struct pool_executor {
+  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
 
   using e_t = Executor;
   e_t e;
-  explicit pool_time_executor(e_t e) : e(std::move(e)) {}
-  auto now() {
-    return std::chrono::system_clock::now();
-  }
+  explicit pool_executor(e_t e) : e(std::move(e)) {}
   auto executor() { return *this; }
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Regular<TP> && Receiver<Out>)
-  void submit(TP at, Out out) const {
-    e.execute([e = *this, at = std::move(at), out = std::move(out)]() mutable {
-      std::this_thread::sleep_until(at);
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out>)
+  void submit(Out out) const {
+    e.execute([e = *this, out = std::move(out)]() mutable {
       ::pushmi::set_value(out, e);
     });
   }
@@ -52,7 +48,7 @@ public:
 
   inline auto executor() {
     auto exec = execution::require(p.executor(), execution::never_blocking, execution::oneway);
-    return pool_time_executor<decltype(exec)>{exec};
+    return pool_executor<decltype(exec)>{exec};
   }
 
   inline void stop() {p.stop();}
