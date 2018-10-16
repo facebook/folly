@@ -439,12 +439,7 @@ template <class V, class PE = std::exception_ptr, class E = PE>
 using any_flow_single = flow_single<V, PE, E>;
 
 template<>
-struct construct_deduced<flow_single> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_flow_single((AN&&) an...)) {
-    return pushmi::make_flow_single((AN&&) an...);
-  }
-};
+struct construct_deduced<flow_single> : make_flow_single_fn {};
 
 // template <class V, class PE = std::exception_ptr, class E = PE, class Wrapped>
 //     requires FlowSingleReceiver<Wrapped, V, PE, E> && !detail::is_v<Wrapped, none> &&

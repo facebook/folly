@@ -2369,6 +2369,21 @@ struct construct_deduced<many>;
 template<>
 struct construct_deduced<flow_single>;
 
+template<>
+struct construct_deduced<deferred>;
+
+template<>
+struct construct_deduced<single_deferred>;
+
+template<>
+struct construct_deduced<many_deferred>;
+
+template<>
+struct construct_deduced<flow_single_deferred>;
+
+template<>
+struct construct_deduced<time_single_deferred>;
+
 template <template <class...> class T, class... AN>
 using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;
 
@@ -2931,12 +2946,7 @@ template <class E = std::exception_ptr>
 using any_none = none<E>;
 
 template<>
-struct construct_deduced<none> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_none((AN&&) an...)) {
-    return pushmi::make_none((AN&&) an...);
-  }
-};
+struct construct_deduced<none> : make_none_fn {};
 
 // // this is ambiguous because NoneReceiver and SingleReceiver only constrain the done() method.
 // // template <class E = std::exception_ptr, NoneReceiver<E> Wrapped>
@@ -3142,6 +3152,9 @@ deferred(Data, DSF) -> deferred<Data, DSF>;
 
 template <class E = std::exception_ptr>
 using any_deferred = deferred<detail::erase_deferred_t, E>;
+
+template<>
+struct construct_deduced<deferred> : make_deferred_fn {};
 
 // template <SenderTo<any_none<std::exception_ptr>, is_none<>> Wrapped>
 // auto erase_cast(Wrapped w) {
@@ -3567,12 +3580,7 @@ template <class V, class E = std::exception_ptr>
 using any_single = single<V, E>;
 
 template<>
-struct construct_deduced<single> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_single((AN&&) an...)) {
-    return pushmi::make_single((AN&&) an...);
-  }
-};
+struct construct_deduced<single> : make_single_fn {};
 
 // template <class V, class E = std::exception_ptr, class Wrapped>
 //     requires SingleReceiver<Wrapped, V, E> && !detail::is_v<Wrapped, none>
@@ -3784,6 +3792,9 @@ PUSHMI_TEMPLATE(class Data, class DSF)
   (requires Sender<Data, is_single<>>)
 single_deferred(Data, DSF) -> single_deferred<Data, DSF>;
 #endif
+
+template<>
+struct construct_deduced<single_deferred> : make_single_deferred_fn {};
 
 // template <
 //     class V,
@@ -4033,6 +4044,10 @@ PUSHMI_TEMPLATE (class Data, class DSF, class DNF)
   (requires TimeSender<Data, is_single<>> && Invocable<DNF&, Data&>)
 time_single_deferred(Data, DSF, DNF) -> time_single_deferred<Data, DSF, DNF>;
 #endif
+
+template<>
+struct construct_deduced<time_single_deferred>
+  : make_time_single_deferred_fn {};
 
 // template <
 //     class V,
@@ -4661,12 +4676,7 @@ template <class V, class PE = std::exception_ptr, class E = PE>
 using any_flow_single = flow_single<V, PE, E>;
 
 template<>
-struct construct_deduced<flow_single> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_flow_single((AN&&) an...)) {
-    return pushmi::make_flow_single((AN&&) an...);
-  }
-};
+struct construct_deduced<flow_single> : make_flow_single_fn {};
 
 // template <class V, class PE = std::exception_ptr, class E = PE, class Wrapped>
 //     requires FlowSingleReceiver<Wrapped, V, PE, E> && !detail::is_v<Wrapped, none> &&
@@ -4857,6 +4867,10 @@ flow_single_deferred(Data, DSF) -> flow_single_deferred<Data, DSF>;
 
 template <class V, class PE = std::exception_ptr, class E = PE>
 using any_flow_single_deferred = flow_single_deferred<V, PE, E>;
+
+template<>
+struct construct_deduced<flow_single_deferred>
+  : make_flow_single_deferred_fn {};
 
 // // TODO constrain me
 // template <class V, class E = std::exception_ptr, Sender Wrapped>
@@ -5273,12 +5287,7 @@ template <class V, class E = std::exception_ptr>
 using any_many = many<V, E>;
 
 template<>
-struct construct_deduced<many> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_many((AN&&) an...)) {
-    return pushmi::make_many((AN&&) an...);
-  }
-};
+struct construct_deduced<many> : make_many_fn {};
 
 // template <class V, class E = std::exception_ptr, class Wrapped>
 //     requires ManyReceiver<Wrapped, V, E> && !detail::is_v<Wrapped, none>
@@ -5481,6 +5490,9 @@ PUSHMI_TEMPLATE(class Data, class DSF)
   (requires Sender<Data, is_many<>>)
 many_deferred(Data, DSF) -> many_deferred<Data, DSF>;
 #endif
+
+template<>
+struct construct_deduced<many_deferred> : make_many_deferred_fn {};
 
 // template <
 //     class V,
@@ -5863,31 +5875,31 @@ template <>
 struct make_receiver<is_single<>, true> : construct_deduced<flow_single> {};
 
 template <class Cardinality, bool IsFlow>
-struct out_from_impl {
-  using Make = make_receiver<Cardinality, IsFlow>;
+struct receiver_from_impl {
+  using MakeReceiver = make_receiver<Cardinality, IsFlow>;
   PUSHMI_TEMPLATE (class... Ts)
-   (requires Invocable<Make, Ts...>)
+   (requires Invocable<MakeReceiver, Ts...>)
   auto operator()(std::tuple<Ts...> args) const {
-    return pushmi::apply(Make(), std::move(args));
+    return pushmi::apply(MakeReceiver(), std::move(args));
   }
   PUSHMI_TEMPLATE (class... Ts, class... Fns,
-    class This = std::enable_if_t<sizeof...(Fns) != 0, out_from_impl>)
+    class This = std::enable_if_t<sizeof...(Fns) != 0, receiver_from_impl>)
     (requires And<SemiMovable<Fns>...> &&
-      Invocable<Make, std::tuple<Ts...>> &&
-      Invocable<This, pushmi::invoke_result_t<Make, std::tuple<Ts...>>, Fns...>)
+      Invocable<MakeReceiver, std::tuple<Ts...>> &&
+      Invocable<This, pushmi::invoke_result_t<MakeReceiver, std::tuple<Ts...>>, Fns...>)
   auto operator()(std::tuple<Ts...> args, Fns...fns) const {
     return This()(This()(std::move(args)), std::move(fns)...);
   }
   PUSHMI_TEMPLATE(class Out, class...Fns)
     (requires Receiver<Out, Cardinality> && And<SemiMovable<Fns>...>)
   auto operator()(Out out, Fns... fns) const {
-    return Make()(std::move(out), std::move(fns)...);
+    return MakeReceiver()(std::move(out), std::move(fns)...);
   }
 };
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
-using out_from_fn =
-    out_from_impl<
+using receiver_from_fn =
+    receiver_from_impl<
         property_set_index_t<properties_t<In>, is_silent<>>,
         property_query_v<properties_t<In>, is_flow<>>>;
 
@@ -5954,51 +5966,31 @@ auto submit_transform_out(SDSF, TSDSF tsdsf) {
   return on_submit(submit_transform_out_4<In, TSDSF>{std::move(tsdsf)});
 }
 
-PUSHMI_TEMPLATE(class In)
-  (requires Sender<In>)
-auto deferred_from_maker() {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_flow<>, is_single<>>) (
-    return make_flow_single_deferred;
-  ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_time<>, is_single<>>) (
-      return make_time_single_deferred;
-    ) else (
-      PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_single<>>) (
-        return make_single_deferred;
-      ) else (
-        PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_many<>>) (
-          return make_many_deferred;
-        ) else (
-          return make_deferred;
-        ))
-      ))
-    ))
-  ))
-}
+template <class Cardinality, bool IsTime = false, bool IsFlow = false>
+struct make_sender;
+template <>
+struct make_sender<is_none<>> : construct_deduced<deferred> {};
+template <>
+struct make_sender<is_single<>> : construct_deduced<single_deferred> {};
+template <>
+struct make_sender<is_many<>> : construct_deduced<many_deferred> {};
+template <>
+struct make_sender<is_single<>, false, true> : construct_deduced<flow_single_deferred> {};
+template <>
+struct make_sender<is_single<>, true, false> : construct_deduced<time_single_deferred> {};
 
-PUSHMI_TEMPLATE(class In, class Out, class... FN)
-  (requires Sender<In> && Receiver<Out>)
-auto deferred_from(FN&&... fn) {
-  return deferred_from_maker<In>()((FN&&) fn...);
-}
-
-PUSHMI_TEMPLATE(class In, class Out, class... FN)
-  (requires Sender<In> && Receiver<Out>)
-auto deferred_from(In in, FN&&... fn) {
-  return deferred_from_maker<In>()(std::move(in), (FN&&) fn...);
-}
-
-PUSHMI_TEMPLATE(class In, class... FN)
-  (requires Sender<In>)
-auto deferred_from(FN&&... fn) {
-  return deferred_from_maker<In>()((FN&&) fn...);
-}
-
-PUSHMI_TEMPLATE(class In, class... FN)
-  (requires Sender<In>)
-auto deferred_from(In in, FN&&... fn) {
-  return deferred_from_maker<In>()(std::move(in), (FN&&) fn...);
-}
+PUSHMI_INLINE_VAR constexpr struct deferred_from_fn {
+  PUSHMI_TEMPLATE(class In, class... FN)
+    (requires Sender<In>)
+  auto operator()(In in, FN&&... fn) const {
+    using MakeSender =
+        make_sender<
+            property_set_index_t<properties_t<In>, is_silent<>>,
+            property_query_v<properties_t<In>, is_time<>>,
+            property_query_v<properties_t<In>, is_flow<>>>;
+    return MakeSender{}(std::move(in), (FN&&) fn...);
+  }
+} const deferred_from {};
 
 PUSHMI_TEMPLATE(
     class In,
@@ -6226,14 +6218,14 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
       return in;
     }
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, ::pushmi::now(in), std::move(out));
       return in;
     }
@@ -6254,7 +6246,7 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(at_), std::move(out));
       return in;
     }
@@ -6279,7 +6271,7 @@ private:
       // TODO - only move, move-only types..
       // if out can be copied, then submit can be called multiple
       // times..
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       auto at = ::pushmi::now(in) + std::move(after_);
       ::pushmi::submit(in, std::move(at), std::move(out));
       return in;
@@ -6352,7 +6344,7 @@ private:
     template <bool IsTimeSender, class In>
     In impl_(In in) {
       lock_state state{};
-      auto out{::pushmi::detail::out_from_fn<In>()(
+      auto out{::pushmi::detail::receiver_from_fn<In>()(
         std::move(args_),
         on_value(on_value_impl{&state}),
         on_error(on_error_impl{&state}),
@@ -6525,7 +6517,7 @@ struct subject<T, PS> {
   }
 
   auto receiver() {
-    return detail::out_from_fn<subject>{}(subject_receiver{s});
+    return detail::receiver_from_fn<subject>{}(subject_receiver{s});
   }
 };
 
@@ -6827,7 +6819,7 @@ private:
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from<In, single<>>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         detail::submit_transform_out<In>(
           out_impl<In, ExecutorFactory>{ef_},
@@ -7070,7 +7062,7 @@ private:
         TimeSenderTo<In, SideEffects, is_single<>> >(),
         "'In' is not deliverable to 'SideEffects'");
 
-    return ::pushmi::detail::deferred_from<In, SideEffects>(
+    return ::pushmi::detail::deferred_from(
       std::move(in),
       ::pushmi::detail::submit_transform_out<In>(
         out_impl<In, SideEffects>{std::move(sideEffects)}
@@ -7086,7 +7078,7 @@ private:
     auto operator()(In in) {
       return tap_fn::impl(
         std::move(in),
-        ::pushmi::detail::out_from_fn<In>()(std::move(args_)));
+        ::pushmi::detail::receiver_from_fn<In>()(std::move(args_)));
     }
   };
   template <class In, class SideEffects>
@@ -7101,7 +7093,7 @@ private:
           SenderTo<In, Out, is_single<>>,
           TimeSenderTo<In, Out, is_single<>> >(),
           "'In' is not deliverable to 'Out'");
-      auto gang{::pushmi::detail::out_from_fn<In>()(
+      auto gang{::pushmi::detail::receiver_from_fn<In>()(
           detail::make_tap(sideEffects_, std::move(out)))};
       using Gang = decltype(gang);
       PUSHMI_STATIC_ASSERT(
@@ -7198,7 +7190,7 @@ private:
       (requires Sender<In>)
     auto operator()(In in) const {
       using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
-      return ::pushmi::detail::deferred_from<In>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           // copy 'f_' to allow multiple calls to connect to multiple 'in'
@@ -7256,7 +7248,7 @@ private:
     PUSHMI_TEMPLATE(class Out)
       (requires Receiver<Out>)
     auto operator()(Out out) const {
-      return ::pushmi::detail::out_from_fn<In>()(
+      return ::pushmi::detail::receiver_from_fn<In>()(
         std::move(out),
         // copy 'p' to allow multiple calls to submit
         ::pushmi::on_value(on_value_impl<Predicate>{p_})
@@ -7269,7 +7261,7 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from<In, single<>>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(out_impl<In, Predicate>{p_})
       );
@@ -7322,7 +7314,7 @@ private:
     PUSHMI_TEMPLATE (class Out)
       (requires Receiver<Out>)
     auto operator()(Out out) const {
-      return ::pushmi::detail::out_from_fn<In>()(
+      return ::pushmi::detail::receiver_from_fn<In>()(
         std::move(out),
         // copy 'es' to allow multiple calls to submit
         ::pushmi::on_error(on_error_impl<ErrorSelector>{es_})
@@ -7335,7 +7327,7 @@ private:
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from<In, single<>>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           out_impl<In, ErrorSelector>{es_}
@@ -7455,7 +7447,7 @@ private:
       (requires Receiver<Out>)
     auto operator()(Out out) const {
       auto exec = ef_();
-      return ::pushmi::detail::out_from_fn<In>()(
+      return ::pushmi::detail::receiver_from_fn<In>()(
         make_via_fn_data(std::move(out), std::move(exec)),
         ::pushmi::on_value(on_value_impl<Out>{}),
         ::pushmi::on_error(on_error_impl<Out>{}),
@@ -7469,7 +7461,7 @@ private:
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from<In, single<>>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           out_impl<In, ExecutorFactory>{ef_}

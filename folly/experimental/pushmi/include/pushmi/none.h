@@ -288,12 +288,7 @@ template <class E = std::exception_ptr>
 using any_none = none<E>;
 
 template<>
-struct construct_deduced<none> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_none((AN&&) an...)) {
-    return pushmi::make_none((AN&&) an...);
-  }
-};
+struct construct_deduced<none> : make_none_fn {};
 
 // // this is ambiguous because NoneReceiver and SingleReceiver only constrain the done() method.
 // // template <class E = std::exception_ptr, NoneReceiver<E> Wrapped>

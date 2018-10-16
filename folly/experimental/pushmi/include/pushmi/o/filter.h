@@ -31,7 +31,7 @@ private:
     PUSHMI_TEMPLATE(class Out)
       (requires Receiver<Out>)
     auto operator()(Out out) const {
-      return ::pushmi::detail::out_from_fn<In>()(
+      return ::pushmi::detail::receiver_from_fn<In>()(
         std::move(out),
         // copy 'p' to allow multiple calls to submit
         ::pushmi::on_value(on_value_impl<Predicate>{p_})
@@ -44,7 +44,7 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from<In, single<>>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(out_impl<In, Predicate>{p_})
       );

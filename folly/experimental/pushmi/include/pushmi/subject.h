@@ -89,7 +89,7 @@ struct subject<T, PS> {
   }
 
   auto receiver() {
-    return detail::out_from_fn<subject>{}(subject_receiver{s});
+    return detail::receiver_from_fn<subject>{}(subject_receiver{s});
   }
 };
 

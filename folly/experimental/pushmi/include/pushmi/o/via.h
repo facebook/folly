@@ -95,7 +95,7 @@ private:
       (requires Receiver<Out>)
     auto operator()(Out out) const {
       auto exec = ef_();
-      return ::pushmi::detail::out_from_fn<In>()(
+      return ::pushmi::detail::receiver_from_fn<In>()(
         make_via_fn_data(std::move(out), std::move(exec)),
         ::pushmi::on_value(on_value_impl<Out>{}),
         ::pushmi::on_error(on_error_impl<Out>{}),
@@ -109,7 +109,7 @@ private:
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from<In, single<>>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           out_impl<In, ExecutorFactory>{ef_}

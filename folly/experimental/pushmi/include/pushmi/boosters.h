@@ -41,6 +41,21 @@ struct construct_deduced<many>;
 template<>
 struct construct_deduced<flow_single>;
 
+template<>
+struct construct_deduced<deferred>;
+
+template<>
+struct construct_deduced<single_deferred>;
+
+template<>
+struct construct_deduced<many_deferred>;
+
+template<>
+struct construct_deduced<flow_single_deferred>;
+
+template<>
+struct construct_deduced<time_single_deferred>;
+
 template <template <class...> class T, class... AN>
 using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;
 

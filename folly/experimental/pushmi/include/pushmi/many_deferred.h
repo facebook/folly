@@ -193,6 +193,9 @@ PUSHMI_TEMPLATE(class Data, class DSF)
 many_deferred(Data, DSF) -> many_deferred<Data, DSF>;
 #endif
 
+template<>
+struct construct_deduced<many_deferred> : make_many_deferred_fn {};
+
 // template <
 //     class V,
 //     class E = std::exception_ptr,

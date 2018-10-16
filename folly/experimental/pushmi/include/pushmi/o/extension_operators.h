@@ -60,31 +60,31 @@ template <>
 struct make_receiver<is_single<>, true> : construct_deduced<flow_single> {};
 
 template <class Cardinality, bool IsFlow>
-struct out_from_impl {
-  using Make = make_receiver<Cardinality, IsFlow>;
+struct receiver_from_impl {
+  using MakeReceiver = make_receiver<Cardinality, IsFlow>;
   PUSHMI_TEMPLATE (class... Ts)
-   (requires Invocable<Make, Ts...>)
+   (requires Invocable<MakeReceiver, Ts...>)
   auto operator()(std::tuple<Ts...> args) const {
-    return pushmi::apply(Make(), std::move(args));
+    return pushmi::apply(MakeReceiver(), std::move(args));
   }
   PUSHMI_TEMPLATE (class... Ts, class... Fns,
-    class This = std::enable_if_t<sizeof...(Fns) != 0, out_from_impl>)
+    class This = std::enable_if_t<sizeof...(Fns) != 0, receiver_from_impl>)
     (requires And<SemiMovable<Fns>...> &&
-      Invocable<Make, std::tuple<Ts...>> &&
-      Invocable<This, pushmi::invoke_result_t<Make, std::tuple<Ts...>>, Fns...>)
+      Invocable<MakeReceiver, std::tuple<Ts...>> &&
+      Invocable<This, pushmi::invoke_result_t<MakeReceiver, std::tuple<Ts...>>, Fns...>)
   auto operator()(std::tuple<Ts...> args, Fns...fns) const {
     return This()(This()(std::move(args)), std::move(fns)...);
   }
   PUSHMI_TEMPLATE(class Out, class...Fns)
     (requires Receiver<Out, Cardinality> && And<SemiMovable<Fns>...>)
   auto operator()(Out out, Fns... fns) const {
-    return Make()(std::move(out), std::move(fns)...);
+    return MakeReceiver()(std::move(out), std::move(fns)...);
   }
 };
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
-using out_from_fn =
-    out_from_impl<
+using receiver_from_fn =
+    receiver_from_impl<
         property_set_index_t<properties_t<In>, is_silent<>>,
         property_query_v<properties_t<In>, is_flow<>>>;
 
@@ -151,51 +151,31 @@ auto submit_transform_out(SDSF, TSDSF tsdsf) {
   return on_submit(submit_transform_out_4<In, TSDSF>{std::move(tsdsf)});
 }
 
-PUSHMI_TEMPLATE(class In)
-  (requires Sender<In>)
-auto deferred_from_maker() {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_flow<>, is_single<>>) (
-    return make_flow_single_deferred;
-  ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_time<>, is_single<>>) (
-      return make_time_single_deferred;
-    ) else (
-      PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_single<>>) (
-        return make_single_deferred;
-      ) else (
-        PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_many<>>) (
-          return make_many_deferred;
-        ) else (
-          return make_deferred;
-        ))
-      ))
-    ))
-  ))
-}
+template <class Cardinality, bool IsTime = false, bool IsFlow = false>
+struct make_sender;
+template <>
+struct make_sender<is_none<>> : construct_deduced<deferred> {};
+template <>
+struct make_sender<is_single<>> : construct_deduced<single_deferred> {};
+template <>
+struct make_sender<is_many<>> : construct_deduced<many_deferred> {};
+template <>
+struct make_sender<is_single<>, false, true> : construct_deduced<flow_single_deferred> {};
+template <>
+struct make_sender<is_single<>, true, false> : construct_deduced<time_single_deferred> {};
 
-PUSHMI_TEMPLATE(class In, class Out, class... FN)
-  (requires Sender<In> && Receiver<Out>)
-auto deferred_from(FN&&... fn) {
-  return deferred_from_maker<In>()((FN&&) fn...);
-}
-
-PUSHMI_TEMPLATE(class In, class Out, class... FN)
-  (requires Sender<In> && Receiver<Out>)
-auto deferred_from(In in, FN&&... fn) {
-  return deferred_from_maker<In>()(std::move(in), (FN&&) fn...);
-}
-
-PUSHMI_TEMPLATE(class In, class... FN)
-  (requires Sender<In>)
-auto deferred_from(FN&&... fn) {
-  return deferred_from_maker<In>()((FN&&) fn...);
-}
-
-PUSHMI_TEMPLATE(class In, class... FN)
-  (requires Sender<In>)
-auto deferred_from(In in, FN&&... fn) {
-  return deferred_from_maker<In>()(std::move(in), (FN&&) fn...);
-}
+PUSHMI_INLINE_VAR constexpr struct deferred_from_fn {
+  PUSHMI_TEMPLATE(class In, class... FN)
+    (requires Sender<In>)
+  auto operator()(In in, FN&&... fn) const {
+    using MakeSender =
+        make_sender<
+            property_set_index_t<properties_t<In>, is_silent<>>,
+            property_query_v<properties_t<In>, is_time<>>,
+            property_query_v<properties_t<In>, is_flow<>>>;
+    return MakeSender{}(std::move(in), (FN&&) fn...);
+  }
+} const deferred_from {};
 
 PUSHMI_TEMPLATE(
     class In,

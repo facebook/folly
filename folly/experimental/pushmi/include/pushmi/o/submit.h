@@ -48,14 +48,14 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
       return in;
     }
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, ::pushmi::now(in), std::move(out));
       return in;
     }
@@ -76,7 +76,7 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(at_), std::move(out));
       return in;
     }
@@ -101,7 +101,7 @@ private:
       // TODO - only move, move-only types..
       // if out can be copied, then submit can be called multiple
       // times..
-      auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       auto at = ::pushmi::now(in) + std::move(after_);
       ::pushmi::submit(in, std::move(at), std::move(out));
       return in;
@@ -174,7 +174,7 @@ private:
     template <bool IsTimeSender, class In>
     In impl_(In in) {
       lock_state state{};
-      auto out{::pushmi::detail::out_from_fn<In>()(
+      auto out{::pushmi::detail::receiver_from_fn<In>()(
         std::move(args_),
         on_value(on_value_impl{&state}),
         on_error(on_error_impl{&state}),

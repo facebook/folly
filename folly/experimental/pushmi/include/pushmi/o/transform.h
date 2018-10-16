@@ -69,7 +69,7 @@ private:
       (requires Sender<In>)
     auto operator()(In in) const {
       using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
-      return ::pushmi::detail::deferred_from<In>(
+      return ::pushmi::detail::deferred_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           // copy 'f_' to allow multiple calls to connect to multiple 'in'

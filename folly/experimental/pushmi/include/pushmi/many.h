@@ -406,12 +406,7 @@ template <class V, class E = std::exception_ptr>
 using any_many = many<V, E>;
 
 template<>
-struct construct_deduced<many> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_many((AN&&) an...)) {
-    return pushmi::make_many((AN&&) an...);
-  }
-};
+struct construct_deduced<many> : make_many_fn {};
 
 // template <class V, class E = std::exception_ptr, class Wrapped>
 //     requires ManyReceiver<Wrapped, V, E> && !detail::is_v<Wrapped, none>

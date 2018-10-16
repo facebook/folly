@@ -410,12 +410,7 @@ template <class V, class E = std::exception_ptr>
 using any_single = single<V, E>;
 
 template<>
-struct construct_deduced<single> {
-  template<class... AN>
-  auto operator()(AN&&... an) const -> decltype(pushmi::make_single((AN&&) an...)) {
-    return pushmi::make_single((AN&&) an...);
-  }
-};
+struct construct_deduced<single> : make_single_fn {};
 
 // template <class V, class E = std::exception_ptr, class Wrapped>
 //     requires SingleReceiver<Wrapped, V, E> && !detail::is_v<Wrapped, none>

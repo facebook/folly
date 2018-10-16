@@ -238,6 +238,10 @@ PUSHMI_TEMPLATE (class Data, class DSF, class DNF)
 time_single_deferred(Data, DSF, DNF) -> time_single_deferred<Data, DSF, DNF>;
 #endif
 
+template<>
+struct construct_deduced<time_single_deferred>
+  : make_time_single_deferred_fn {};
+
 // template <
 //     class V,
 //     class E = std::exception_ptr,

@@ -78,7 +78,7 @@ private:
         TimeSenderTo<In, SideEffects, is_single<>> >(),
         "'In' is not deliverable to 'SideEffects'");
 
-    return ::pushmi::detail::deferred_from<In, SideEffects>(
+    return ::pushmi::detail::deferred_from(
       std::move(in),
       ::pushmi::detail::submit_transform_out<In>(
         out_impl<In, SideEffects>{std::move(sideEffects)}
@@ -94,7 +94,7 @@ private:
     auto operator()(In in) {
       return tap_fn::impl(
         std::move(in),
-        ::pushmi::detail::out_from_fn<In>()(std::move(args_)));
+        ::pushmi::detail::receiver_from_fn<In>()(std::move(args_)));
     }
   };
   template <class In, class SideEffects>
@@ -109,7 +109,7 @@ private:
           SenderTo<In, Out, is_single<>>,
           TimeSenderTo<In, Out, is_single<>> >(),
           "'In' is not deliverable to 'Out'");
-      auto gang{::pushmi::detail::out_from_fn<In>()(
+      auto gang{::pushmi::detail::receiver_from_fn<In>()(
           detail::make_tap(sideEffects_, std::move(out)))};
       using Gang = decltype(gang);
       PUSHMI_STATIC_ASSERT(

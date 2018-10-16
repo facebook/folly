@@ -180,6 +180,10 @@ flow_single_deferred(Data, DSF) -> flow_single_deferred<Data, DSF>;
 template <class V, class PE = std::exception_ptr, class E = PE>
 using any_flow_single_deferred = flow_single_deferred<V, PE, E>;
 
+template<>
+struct construct_deduced<flow_single_deferred>
+  : make_flow_single_deferred_fn {};
+
 // // TODO constrain me
 // template <class V, class E = std::exception_ptr, Sender Wrapped>
 // auto erase_cast(Wrapped w) {

@@ -179,6 +179,9 @@ deferred(Data, DSF) -> deferred<Data, DSF>;
 template <class E = std::exception_ptr>
 using any_deferred = deferred<detail::erase_deferred_t, E>;
 
+template<>
+struct construct_deduced<deferred> : make_deferred_fn {};
+
 // template <SenderTo<any_none<std::exception_ptr>, is_none<>> Wrapped>
 // auto erase_cast(Wrapped w) {
 //   return deferred<detail::erase_deferred_t, std::exception_ptr>{std::move(w)};
