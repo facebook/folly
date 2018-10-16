@@ -12,12 +12,18 @@ namespace pushmi {
 // very poor perf example executor.
 //
 
-struct __new_thread_submit {
+struct new_thread_time_executor {
+  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+
+  auto now() {
+    return std::chrono::system_clock::now();
+  }
+  new_thread_time_executor executor() { return {}; }
   PUSHMI_TEMPLATE(class TP, class Out)
     (requires Regular<TP> && Receiver<Out>)
-  void operator()(TP at, Out out) const {
+  void submit(TP at, Out out) {
     std::thread t{[at = std::move(at), out = std::move(out)]() mutable {
-      auto tr = trampoline();
+      auto tr = ::pushmi::trampoline();
       ::pushmi::submit(tr, std::move(at), std::move(out));
     }};
     // pass ownership of thread to out
@@ -25,8 +31,8 @@ struct __new_thread_submit {
   }
 };
 
-inline auto new_thread() {
-  return make_time_single_sender(__new_thread_submit{});
+inline new_thread_time_executor new_thread() {
+  return {};
 }
 
-}
+} // namespace pushmi

@@ -79,18 +79,11 @@ struct countdownnone {
   void operator()() const;
 };
 
-struct inline_executor {
-    using properties = mi::property_set<mi::is_sender<>, mi::is_single<>>;
-    template<class Out>
-    void submit(Out out) {
-      ::mi::set_value(out, *this);
-    }
-};
-
 struct inline_time_executor {
-    using properties = mi::property_set<mi::is_time<>, mi::is_single<>>;
+    using properties = mi::property_set<mi::is_time<>, mi::is_executor<>, mi::is_single<>>;
 
     std::chrono::system_clock::time_point now() { return std::chrono::system_clock::now(); }
+    auto executor() { return *this; }
     template<class Out>
     void submit(std::chrono::system_clock::time_point at, Out out) {
       std::this_thread::sleep_until(at);
@@ -98,8 +91,18 @@ struct inline_time_executor {
     }
 };
 
+struct inline_executor {
+    using properties = mi::property_set<mi::is_sender<>, mi::is_single<>>;
+    auto executor() { return inline_time_executor{}; }
+    template<class Out>
+    void submit(Out out) {
+      ::mi::set_value(out, *this);
+    }
+};
+
 struct inline_executor_none {
     using properties = mi::property_set<mi::is_sender<>, mi::is_none<>>;
+    auto executor() { return inline_time_executor{}; }
     template<class Out>
     void submit(Out out) {
       ::mi::set_done(out);
@@ -117,6 +120,7 @@ struct inline_executor_flow_single {
     CancellationFactory cf;
 
     using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_single<>>;
+    auto executor() { return inline_time_executor{}; }
     template<class Out>
     void submit(Out out) {
 
@@ -181,6 +185,7 @@ using inline_executor_flow_single_entangled = inline_executor_flow_single<entang
 
 struct inline_executor_flow_single_ignore {
     using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_single<>>;
+    auto executor() { return inline_time_executor{}; }
     template<class Out>
     void submit(Out out) {
       // pass reference for cancellation.
@@ -200,6 +205,7 @@ struct inline_executor_flow_many {
 
   using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_many<>>;
 
+  auto executor() { return inline_time_executor{}; }
   template<class Out>
   void submit(Out out) {
 
@@ -244,6 +250,7 @@ struct inline_executor_flow_many {
 
 struct inline_executor_flow_many_ignore {
     using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_many<>>;
+    auto executor() { return inline_time_executor{}; }
     template<class Out>
     void submit(Out out) {
       // pass reference for cancellation.
@@ -257,6 +264,7 @@ struct inline_executor_flow_many_ignore {
 
 struct inline_executor_many {
     using properties = mi::property_set<mi::is_sender<>, mi::is_many<>>;
+    auto executor() { return inline_time_executor{}; }
     template<class Out>
     void submit(Out out) {
       ::mi::set_next(out, *this);

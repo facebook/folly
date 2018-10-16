@@ -6,7 +6,7 @@
 
 #include <chrono>
 #include <functional>
-#include "time_single_sender.h"
+#include "single.h"
 
 namespace pushmi {
 namespace detail {
@@ -29,7 +29,7 @@ private:
   template <class T>
   using wrapped_t = detail::not_any_time_executor_ref_t<T>;
 public:
-  using properties = property_set<is_time<>, is_single<>>;
+  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
 
   any_time_executor_ref() = delete;
   any_time_executor_ref(const any_time_executor_ref&) = default;
@@ -66,6 +66,7 @@ public:
   std::chrono::system_clock::time_point now() {
     return vptr_->now_(pobj_);
   }
+  any_time_executor_ref executor() { return *this; }
   template<class SingleReceiver>
   void submit(TP tp, SingleReceiver&& sa) {
     // static_assert(
@@ -122,7 +123,7 @@ using not_any_time_executor =
     std::decay_t<T>>;
 } // namespace detail
 
-template<class E, class TP>
+template <class E, class TP>
 struct any_time_executor : detail::any_time_executor_base<E, TP> {
   constexpr any_time_executor() = default;
   using detail::any_time_executor_base<E, TP>::any_time_executor_base;

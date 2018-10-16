@@ -89,6 +89,14 @@ private:
     }
   };
   template <class In, class ExecutorFactory>
+  struct executor_impl {
+    ExecutorFactory ef_;
+    template <class Data>
+    auto operator()(Data& data) const {
+      return ef_();
+    }
+  };
+  template <class In, class ExecutorFactory>
   struct out_impl {
     ExecutorFactory ef_;
     PUSHMI_TEMPLATE(class Out)
@@ -113,7 +121,8 @@ private:
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           out_impl<In, ExecutorFactory>{ef_}
-        )
+        ),
+        ::pushmi::on_executor(executor_impl<In, ExecutorFactory>{ef_})
       );
     }
   };

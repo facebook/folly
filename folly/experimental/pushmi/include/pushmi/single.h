@@ -232,7 +232,7 @@ class single<Data, DVF, DEF, DDF> {
       "error function must be noexcept and support std::exception_ptr");
 
  public:
-  using properties = property_set<is_receiver<>, is_single<>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_single<>>>;
 
   constexpr explicit single(Data d)
       : single(std::move(d), DVF{}, DEF{}, DDF{}) {}

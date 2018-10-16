@@ -170,7 +170,7 @@ class none<Data, DEF, DDF> {
     !detail::is_v<Data, single>,
     "none should not be used to wrap a single<>");
 public:
-  using properties = property_set<is_receiver<>, is_none<>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_none<>>>;
 
   constexpr explicit none(Data d) : none(std::move(d), DEF{}, DDF{}) {}
   constexpr none(Data d, DDF df)

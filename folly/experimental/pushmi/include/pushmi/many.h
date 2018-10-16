@@ -229,7 +229,7 @@ class many<Data, DNF, DEF, DDF> {
       "error function must be noexcept and support std::exception_ptr");
 
  public:
-  using properties = property_set<is_receiver<>, is_many<>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_many<>>>;
 
   constexpr explicit many(Data d)
       : many(std::move(d), DNF{}, DEF{}, DDF{}) {}

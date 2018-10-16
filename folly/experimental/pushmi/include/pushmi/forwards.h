@@ -81,6 +81,17 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_many_sender;
 
 template<
+  class V,
+  class E = std::exception_ptr,
+  class TP = std::chrono::system_clock::time_point>
+struct any_time_single_sender;
+
+template<
+  class E = std::exception_ptr,
+  class TP = std::chrono::system_clock::time_point>
+struct any_time_executor;
+
+template<
   class E = std::exception_ptr,
   class TP = std::chrono::system_clock::time_point>
 struct any_time_executor_ref;

@@ -7,7 +7,8 @@
 
 #include <vector>
 
-#include <pushmi/time_single_sender.h>
+#include "time_single_sender.h"
+#include "trampoline.h"
 
 namespace pushmi {
 
@@ -17,7 +18,7 @@ struct subject;
 template<class T, class PS>
 struct subject<T, PS> {
 
-  using properties = property_set_insert_t<property_set<is_sender<>, is_single<>>, PS>;
+  using properties = property_set_insert_t<property_set<is_sender<>, is_single<>>, property_set<property_set_index_t<PS, is_silent<>>>>;
 
   struct subject_shared {
     bool done_ = false;
@@ -61,7 +62,7 @@ struct subject<T, PS> {
   // need a template overload of none/sender and the rest that stores a 'ptr' with its own lifetime management
   struct subject_receiver {
 
-    using properties = property_set_insert_t<property_set<is_receiver<>, is_single<>>, PS>;
+    using properties = property_set_insert_t<property_set<is_receiver<>, is_single<>>, property_set<property_set_index_t<PS, is_silent<>>>>;
 
     std::shared_ptr<subject_shared> s;
 
@@ -82,6 +83,7 @@ struct subject<T, PS> {
 
   std::shared_ptr<subject_shared> s = std::make_shared<subject_shared>();
 
+  auto executor() { return trampoline(); }
   PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>)
   void submit(Out out) {

@@ -235,7 +235,7 @@ class flow_many<Data, DNF, DEF, DDF, DStrtF> {
   DStrtF strtf_;
 
  public:
-  using properties = property_set<is_receiver<>, is_flow<>, is_many<>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_flow<>, is_many<>>>;
 
   static_assert(
       !detail::is_v<DNF, on_error_fn>,

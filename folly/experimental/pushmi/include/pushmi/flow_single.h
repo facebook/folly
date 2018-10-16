@@ -205,7 +205,7 @@ class flow_single<Data, DVF, DEF, DDF, DStrtF> {
   DStrtF strtf_;
 
  public:
-  using properties = property_set<is_receiver<>, is_flow<>, is_single<>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_flow<>, is_single<>>>;
 
   static_assert(
       !detail::is_v<DVF, on_error_fn>,

@@ -294,6 +294,21 @@ public:
   }
 };
 
+struct executor_fn {
+private:
+  struct impl {
+    PUSHMI_TEMPLATE (class In)
+      (requires Sender<In>)
+    auto operator()(In in) const {
+      return ::pushmi::executor(in);
+    }
+  };
+public:
+  auto operator()() const {
+    return impl{};
+  }
+};
+
 struct do_submit_fn {
 private:
   template <class Out>
@@ -352,6 +367,7 @@ PUSHMI_INLINE_VAR constexpr detail::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr detail::set_value_fn set_value{};
 PUSHMI_INLINE_VAR constexpr detail::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr detail::set_starting_fn set_starting{};
+PUSHMI_INLINE_VAR constexpr detail::executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr detail::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr detail::now_fn now{};
 PUSHMI_INLINE_VAR constexpr detail::now_fn top{};

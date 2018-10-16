@@ -140,10 +140,6 @@ using property_set_index_t =
     PropertySet<PS> && Property<P>,
     decltype(detail::__property_set_index_fn<P>(PS{}))>;
 
-template <class T, class P>
-using property_from_category_t =
-  property_set_index_t<properties_t<T>, P>;
-
 template <class PS0, class PS1>
 using property_set_insert_t =
   typename std::enable_if_t<

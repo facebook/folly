@@ -27,6 +27,10 @@ struct receiver_category {};
 
 struct sender_category {};
 
+// for senders that are executors
+
+struct executor_category {};
+
 // time and constrained are mutually exclusive refinements of sender (time is a special case of constrained and may be folded in later)
 
 
@@ -149,6 +153,23 @@ PUSHMI_INLINE_VAR constexpr bool is_sender_v = is_sender<PS>::value;
 //     is_sender_v<PS>
 // );
 
+// Executor trait and tag
+template<class... TN>
+struct is_executor;
+// Tag
+template<>
+struct is_executor<> { using property_category = executor_category; };
+// Trait
+template<class PS>
+struct is_executor<PS> : property_query<PS, is_executor<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_executor_v = is_executor<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept Executor,
+    is_executor_v<PS> && is_sender_v<PS> && is_single_v<PS>
+);
+
 // Time trait and tag
 template<class... TN>
 struct is_time;
@@ -163,7 +184,7 @@ PUSHMI_INLINE_VAR constexpr bool is_time_v = is_time<PS>::value;
 PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Time,
-    is_time_v<PS>
+    is_time_v<PS> && is_sender_v<PS>
 );
 
 // Constrained trait and tag
@@ -180,7 +201,7 @@ PUSHMI_INLINE_VAR constexpr bool is_constrained_v = is_constrained<PS>::value;
 PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Constrained,
-    is_constrained_v<PS>
+    is_constrained_v<PS> && is_sender_v<PS>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -191,7 +212,8 @@ PUSHMI_CONCEPT_DEF(
     ) &&
     SemiMovable<S> &&
     property_query_v<S, PropertyN...> &&
-    is_receiver_v<S>
+    is_receiver_v<S> &&
+    !is_sender_v<S>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -236,10 +258,15 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class D, class... PropertyN)
   (concept Sender)(D, PropertyN...),
+    requires(D& d) (
+      ::pushmi::executor(d),
+      requires_<Executor<decltype(::pushmi::executor(d))>>
+    ) &&
     SemiMovable<D> &&
     None<D> &&
     property_query_v<D, PropertyN...> &&
-    is_sender_v<D>
+    is_sender_v<D> &&
+    !is_receiver_v<D>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -252,6 +279,11 @@ PUSHMI_CONCEPT_DEF(
     Receiver<S> &&
     property_query_v<D, PropertyN...>
 );
+
+template <class D>
+PUSHMI_PP_CONSTRAINED_USING(
+  Sender<D>,
+  executor_t =, decltype(::pushmi::executor(std::declval<D&>())));
 
 // add concepts to support cancellation
 //

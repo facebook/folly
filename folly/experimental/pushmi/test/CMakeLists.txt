@@ -6,7 +6,7 @@ target_include_directories(catch PUBLIC
 include(../external/Catch2/contrib/Catch.cmake)
 
 
-if(NOT ${CMAKE_VERSION} VERSION_LESS "3.10.0")
+if(NOT ${CMAKE_VERSION} VERSION_LESS "3.10.0" AND NOT PUSHMI_ONE_TEST_BINARY)
 
 add_executable(FlowTest FlowTest.cpp)
 target_link_libraries(FlowTest pushmi catch Threads::Threads)

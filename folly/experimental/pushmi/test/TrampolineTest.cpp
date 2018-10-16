@@ -15,8 +15,8 @@ using namespace std::literals;
 #include "pushmi/o/submit.h"
 #include "pushmi/o/extension_operators.h"
 
+#include "pushmi/inline.h"
 #include "pushmi/trampoline.h"
-#include "pushmi/new_thread.h"
 
 using namespace pushmi::aliases;
 
@@ -142,10 +142,14 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
-      sender | op::on([&](){return tr;}) |
+      auto inlineon = sender | op::on([&](){return mi::inline_executor();});
+      inlineon |
           op::submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});
+      }
+      THEN( "executor was not changed by on" ) {
+        REQUIRE(std::is_same<mi::executor_t<decltype(sender)>, mi::executor_t<decltype(inlineon)>>::value);
       }
     }
 
@@ -158,10 +162,14 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
-      sender | op::via([&](){return tr;}) |
+      auto inlinevia = sender | op::via([&](){return mi::inline_executor();});
+      inlinevia |
           op::submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});
+      }
+      THEN( "executor was changed by via" ) {
+        REQUIRE(!std::is_same<mi::executor_t<decltype(sender)>, mi::executor_t<decltype(inlinevia)>>::value);
       }
     }
   }
