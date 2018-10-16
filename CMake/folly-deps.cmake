@@ -151,10 +151,41 @@ if (FOLLY_HAVE_ELF_H AND FOLLY_HAVE_BACKTRACE AND LIBDWARF_FOUND)
 endif()
 message(STATUS "Setting FOLLY_USE_SYMBOLIZER: ${FOLLY_USE_SYMBOLIZER}")
 
+option(
+  FOLLY_ASAN_ENABLED
+  "Build folly with Address Sanitizer enabled."
+  OFF
+)
+if (FOLLY_ASAN_ENABLED)
+  if ("${CMAKE_CXX_COMPILER_ID}" MATCHES GNU)
+    set(FOLLY_ASAN_ENABLED ON)
+    set(FOLLY_ASAN_FLAGS -fsanitize=address,undefined)
+    list(APPEND FOLLY_CXX_FLAGS ${FOLLY_ASAN_FLAGS})
+    # All of the functions in folly/detail/Sse.cpp are intended to be compiled
+    # with ASAN disabled.  They are marked with attributes to disable the
+    # sanitizer, but even so, gcc fails to compile them for some reason when
+    # sanitization is enabled on the compile line.
+    set_source_files_properties(
+      "${CMAKE_SOURCE_DIR}/folly/detail/Sse.cpp"
+      PROPERTIES COMPILE_FLAGS -fno-sanitize=address,undefined
+    )
+  elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES Clang)
+    set(FOLLY_ASAN_ENABLED ON)
+    set(
+      FOLLY_ASAN_FLAGS
+      -fno-common
+      -fsanitize=address,undefined,integer,nullability
+      -fno-sanitize=unsigned-integer-overflow
+    )
+    list(APPEND FOLLY_CXX_FLAGS ${FOLLY_ASAN_FLAGS})
+  endif()
+endif()
+
 add_library(folly_deps INTERFACE)
 list(REMOVE_DUPLICATES FOLLY_INCLUDE_DIRECTORIES)
 target_include_directories(folly_deps INTERFACE ${FOLLY_INCLUDE_DIRECTORIES})
 target_link_libraries(folly_deps INTERFACE
   ${FOLLY_LINK_LIBRARIES}
   ${FOLLY_SHINY_DEPENDENCIES}
+  ${FOLLY_ASAN_FLAGS}
 )
