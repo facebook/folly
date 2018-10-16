@@ -26,6 +26,11 @@ PUSHMI_TEMPLATE (class S, class V)
 void set_value(S& s, V&& v) noexcept(noexcept(s.value((V&&) v))) {
   s.value((V&&) v);
 }
+PUSHMI_TEMPLATE (class S, class V)
+  (requires requires (std::declval<S&>().next(std::declval<V>())))
+void set_next(S& s, V&& v) noexcept(noexcept(s.next((V&&) v))) {
+  s.next((V&&) v);
+}
 
 PUSHMI_TEMPLATE (class S, class Up)
   (requires requires (std::declval<S&>().starting(std::declval<Up>())))
@@ -94,6 +99,12 @@ PUSHMI_TEMPLATE (class S, class V)
 void set_value(std::reference_wrapper<S> s, V&& v) noexcept(
   noexcept(set_value(s.get(), (V&&) v))) {
   set_value(s.get(), (V&&) v);
+}
+PUSHMI_TEMPLATE (class S, class V)
+  (requires requires ( set_next(std::declval<S&>(), std::declval<V>()) ))
+void set_next(std::reference_wrapper<S> s, V&& v) noexcept(
+  noexcept(set_next(s.get(), (V&&) v))) {
+  set_next(s.get(), (V&&) v);
 }
 PUSHMI_TEMPLATE (class S, class Up)
   (requires requires ( set_starting(std::declval<S&>(), std::declval<Up>()) ))
@@ -164,6 +175,21 @@ struct set_value_fn {
     }
   }
 };
+struct set_next_fn {
+  PUSHMI_TEMPLATE (class S, class V)
+    (requires requires (
+      set_next(std::declval<S&>(), std::declval<V>()),
+      set_error(std::declval<S&>(), std::current_exception())
+    ))
+  void operator()(S&& s, V&& v) const
+      noexcept(noexcept(set_next(s, (V&&) v))) {
+    try {
+      set_next(s, (V&&) v);
+    } catch (...) {
+      set_error(s, std::current_exception());
+    }
+  }
+};
 
 struct set_starting_fn {
   PUSHMI_TEMPLATE (class S, class Up)
@@ -219,6 +245,7 @@ struct get_now_fn {
 PUSHMI_INLINE_VAR constexpr __adl::set_done_fn set_done{};
 PUSHMI_INLINE_VAR constexpr __adl::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr __adl::set_value_fn set_value{};
+PUSHMI_INLINE_VAR constexpr __adl::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr __adl::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr __adl::get_now_fn now{};

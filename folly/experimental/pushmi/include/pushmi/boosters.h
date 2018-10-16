@@ -56,6 +56,11 @@ struct ignoreDF {
   void operator()() {}
 };
 
+struct ignoreNF {
+  template <class V>
+  void operator()(V&&) {}
+};
+
 struct ignoreStrtF {
   template <class Up>
   void operator()(Up&&) {}
@@ -96,6 +101,16 @@ struct passDDF {
     (requires Receiver<Data>)
   void operator()(Data& out) const {
     ::pushmi::set_done(out);
+  }
+};
+
+struct passDNXF {
+  PUSHMI_TEMPLATE(class V, class Data)
+    (requires requires (
+      ::pushmi::set_next(std::declval<Data&>(), std::declval<V>())
+    ) && Receiver<Data>)
+  void operator()(Data& out, V&& v) const {
+    ::pushmi::set_next(out, (V&&) v);
   }
 };
 
@@ -229,6 +244,17 @@ struct on_done_fn : Fn {
 template <class Fn>
 auto on_done(Fn fn) -> on_done_fn<Fn> {
   return on_done_fn<Fn>{std::move(fn)};
+}
+
+template <class... Fns>
+struct on_next_fn : overload_fn<Fns...> {
+  constexpr on_next_fn() = default;
+  using overload_fn<Fns...>::overload_fn;
+};
+
+template <class... Fns>
+auto on_next(Fns... fns) -> on_next_fn<Fns...> {
+  return on_next_fn<Fns...>{std::move(fns)...};
 }
 
 template <class... Fns>

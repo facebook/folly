@@ -220,6 +220,9 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class S, class T, class E = std::exception_ptr)
   (concept ManyReceiver)(S, T, E),
+    requires(S& s, T&& t) (
+      ::pushmi::set_next(s, (T &&) t) // Semantics: called 0-N times.
+    ) &&
     NoneReceiver<S, E> &&
     SemiMovable<T> &&
     SemiMovable<E> &&
@@ -296,11 +299,13 @@ PUSHMI_CONCEPT_DEF(
       class S,
       class Up,
       class T,
+      class PT,
       class PE = std::exception_ptr,
       class E = PE)
   (concept FlowManyReceiver)(S, Up, T, PE, E),
     ManyReceiver<S, T, E> &&
-    FlowSingleReceiver<S, Up, T, PE, E>
+    ManyReceiver<Up, PT, PE> &&
+    FlowNoneReceiver<S, Up, PE, E>
 );
 
 PUSHMI_CONCEPT_DEF(
